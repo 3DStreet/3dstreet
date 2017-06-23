@@ -1,0 +1,23 @@
+<html>
+  <head>
+    <script src="https://rawgit.com/aframevr/aframe/master/dist/aframe-master.js"></script>
+    <script src="aframe-streetmix.js"></script>
+
+  </head>
+  <body>
+    <a-scene>
+      <a-assets>
+        <a-asset-item id="bike-lane-obj" src="assets/bike-lane.obj"></a-asset-item>
+        <a-asset-item id="bike-lane-mtl" src="assets/bike-lane.mtl"></a-asset-item>
+      </a-assets>
+
+      <!-- <a-entity id="street-static">
+        <a-entity id="bike-lane" scale="0.1 0.1 0.1" position="0 0 -1" rotation="0 0 0" obj-model="obj:#bike-lane-obj; mtl:#bike-lane-mtl"></a-entity>
+      </a-entity> -->
+
+      <a-entity id="street" position="-7 -4 -12"></a-entity>
+
+      <a-sky color="lightblue">
+    </a-scene>
+  </body>
+</html>
