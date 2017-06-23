@@ -9,7 +9,8 @@ const defaultModelWidthsInMeters = {
   "parking-lane": 2.4
 }
 
-// Normally a MagicaVoxel voxel = 1 meter in A-Frame by default, however for this project each voxel represents 1 decimeter (1/10th of a meter).
+// Normally a MagicaVoxel voxel = 1 meter in A-Frame by default
+// However for this project each voxel represents 1 decimeter (1/10th of a meter).
 // We need to reduce the size of the model (scale * 0.1) to compensate.
 const voxelScaleFactor = 0.1;
 
@@ -26,19 +27,17 @@ function processSegments(segments) {
     console.log("Model Default Width: " + modelWidthInMeters + "m");
 
     // what is "delta" between default width and requested width?
-    // For example: requested width = 2m, but default model width is 1.8. 2 / 1.8 = 1.111111111
     // default * scale = requested :: scale = requested / default
-    var scale = segmentWidthInMeters / modelWidthInMeters * voxelScaleFactor;
-    console.log("Scale: " + scale + "m");
+    // For example: requested width = 2m, but default model width is 1.8. 2 / 1.8 = 1.111111111
+    var scaleX = segmentWidthInMeters / modelWidthInMeters * voxelScaleFactor;
+    console.log("Scale: " + scaleX);
 
     cumulativeWidthInMeters = cumulativeWidthInMeters + segmentWidthInMeters;
     console.log("Cumulative Street Width: " + cumulativeWidthInMeters + "m");
 
     // add new object
     var segmentEl = document.createElement("a-entity");
-    segmentEl.setAttribute("scale", scale + " " + voxelScaleFactor + " " + voxelScaleFactor);
-
-
+    segmentEl.setAttribute("scale", scaleX + " " + voxelScaleFactor + " " + voxelScaleFactor);
     var positionX = cumulativeWidthInMeters - (0.5 * segmentWidthInMeters);
     segmentEl.setAttribute("position", positionX + " 0 0");
     segmentEl.setAttribute("obj-model", "obj", "url(assets/" + segments[i].type + ".obj)");
