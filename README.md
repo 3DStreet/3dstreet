@@ -23,8 +23,11 @@ List of segments and variants in json file:
 | drive-lane          | yes       | no direction indicated        |
 | turn-lane           | no        |        |
 | bus-lane            | no        |        |
-| streetcar           | no        |        |
 | light-rail          | no        |        |
 | streetcar           | no        |        |
 | transit-shelter     | no        | 3d object bus stop     |
 | train               | no        |        |
+
+Model credits:
+* Voxel street segments created by Kieran Farr, MIT License same as project repo
+* Some 3D models created by vencreations, https://www.cgtrader.com/vencreations, ["Royalty Free" License](https://www.cgtrader.com/pages/terms-and-conditions#royalty-free-license)
