@@ -42,7 +42,7 @@ function processSegments(segments, streetElementId) {
     segmentEl.setAttribute("position", positionX + " 0 0");
     segmentEl.setAttribute("obj-model", "obj", "url(assets/" + segments[i].type + ".obj)");
     // segmentEl.setAttribute("obj-model", "mtl", "url(assets/" + segments[i].type + ".mtl)");
-    segmentEl.setAttribute("obj-model", "mtl", "url(assets/magicapalette.mtl)");
+    segmentEl.setAttribute("obj-model", "mtl", "#magica-mtl");
     document.getElementById(streetElementId).appendChild(segmentEl);
   };
 };
