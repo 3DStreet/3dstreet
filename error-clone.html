@@ -1,0 +1,55 @@
+<html>
+  <head>
+    <script src="https://rawgit.com/aframevr/aframe/master/dist/aframe-master.js"></script>
+    <script src="error-clone.js"></script>
+    <script src="https://rawgit.com/ngokevin/kframe/master/components/sun-sky/dist/aframe-sun-sky.min.js"></script>
+
+  </head>
+  <body>
+    <a-scene fog="type: linear; color: #dae4e4; far: 100">
+      <a-assets>
+        <!-- MagicaVoxel objects -->
+        <a-asset-item id="bike-lane-obj" src="assets/bike-lane.obj"></a-asset-item>
+        <a-asset-item id="magica-mtl" src="assets/magicapalette.mtl"></a-asset-item>
+
+        <!-- Downloaded objects -->
+        <a-asset-item id="palmtree2-obj" src="assets/SPW_Natures_Tree_Palm_02.obj"></a-asset-item>
+        <a-asset-item id="palmtree3-obj" src="assets/SPW_Natures_Tree_Palm_03.obj"></a-asset-item>
+        <a-asset-item id="SPW_Natures_01" src="assets/SPW_Natures_01.mtl"></a-asset-item>
+
+        <a-asset-item id="streetlight1-obj" src="assets/SPW_Urban_Road Props_Street Light_01.obj"></a-asset-item>
+        <a-asset-item id="streetlight2-obj" src="assets/SPW_Urban_Road Props_Street Light_02.obj"></a-asset-item>
+        <a-asset-item id="SPW_Urban_Road_Props_01" src="assets/SPW_Urban_Road_Props_01.mtl"></a-asset-item>
+
+
+      </a-assets>
+
+      <!-- <a-entity id="street-static">
+        <a-entity id="bike-lane" scale="0.1 0.1 0.1" position="0 0 -1" rotation="0 0 0" obj-model="obj:#bike-lane-obj; mtl:#magica-mtl"></a-entity>
+        <a-entity id="palmtree2" scale="0.005 0.005 0.005" position="0 0 -1" rotation="0 0 0" obj-model="obj:#palmtree2-obj; mtl:#SPW_Natures_01"></a-entity>
+        <a-entity id="palmtree3" scale="0.005 0.005 0.005" position="0 0 0" rotation="0 0 0" obj-model="obj:#palmtree3-obj; mtl:#SPW_Natures_01"></a-entity>
+        <a-entity id="streetlight1" scale="0.01 0.01 0.01" position="0 0 -1" rotation="0 0 0" obj-model="obj:#streetlight1-obj; mtl:#SPW_Urban_Road_Props_01"></a-entity>
+        <a-entity id="streetlight2" scale="0.01 0.01 0.01" position="0 0 0" rotation="0 0 0" obj-model="obj:#streetlight2-obj; mtl:#SPW_Urban_Road_Props_01"></a-entity>
+      </a-entity> -->
+<a-entity position="0 7 0" geometry="height:7.74;radius:14;primitive:cylinder;openEnded:true" material="side:back; src:url(assets/clouds.png); transparent: true; repeat: 16; opacity: 0.5"></a-entity>
+      <a-entity id="streets" position="-7 -4 -12">
+        <a-entity id="street"></a-entity>
+        <a-entity id="street1" position="0 0 -12.5"></a-entity>
+        <a-entity id="street2" position="0 0 -25"></a-entity>
+        <a-entity id="street3" position="0 0 -37.5"></a-entity>
+        <a-entity id="street4" position="0 0 -50"></a-entity>
+        <a-entity id="street5" position="0 0 -62.5"></a-entity>
+        <a-entity id="street6" position="0 0 -75"></a-entity>
+
+        <a-entity id="street-1" position="0 0 12.5"></a-entity>
+        <a-entity id="street-2" position="0 0 25"></a-entity>
+        <a-entity id="street-3" position="0 0 37.5"></a-entity>
+        <a-entity id="street-4" position="0 0 50"></a-entity>
+
+
+      </a-entity>
+      <a-sun-sky material="sunPosition: -0.2 7.5 -5; fog: false"></a-sun-sky>
+      <!-- <a-sky color="#caf9ff" material="fog: false"></a-sky> -->
+    </a-scene>
+  </body>
+</html>
