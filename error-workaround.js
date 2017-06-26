@@ -51,10 +51,10 @@ function processSegments(segments, streetElementId) {
 var request = new XMLHttpRequest();
 
 // LOCAL
-// request.open('GET', 'sample.json', true);
+request.open('GET', 'sample.json', true);
 
 // REMOTE WITH REDIRECT
-request.open('GET', 'https://streetmix.net/api/v1/streets?namespacedId=3&creatorId=kfarr', true);
+// request.open('GET', 'https://streetmix.net/api/v1/streets?namespacedId=3&creatorId=kfarr', true);
 
 // DIRECT TO REMOTE FILE
 // request.open('GET', 'https://streetmix.net/api/v1/streets/7a633310-e598-11e6-80db-ebe3de713876', true);
