@@ -91,7 +91,7 @@ request.onload = function() {
 
     // Use JavaScript to repeat the street METHOD TWO
     var streetEl = document.getElementById("street");
-    streetEl.flushToDOM();
+    streetEl.flushToDOM(true);
     document.getElementById("street2").innerHTML = streetEl.innerHTML;
 
   } else {
