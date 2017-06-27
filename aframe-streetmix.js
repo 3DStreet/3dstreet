@@ -6,8 +6,13 @@ const defaultModelWidthsInMeters = {
   "bike-lane": 1.8,
   "drive-lane": 3,
   "divider": 0.3,
-  "parking-lane": 2.4
+  "parking-lane": 2.4,
+  "sidewalk": 3,
+  "turn-lane": 3,
 }
+
+// Orientation - default model orientation is "outbound" (away from camera)
+
 
 // Normally a MagicaVoxel voxel = 1 meter in A-Frame by default
 // However for this project each voxel represents 1 decimeter (1/10th of a meter).
@@ -35,14 +40,47 @@ function processSegments(segments, streetElementId) {
     cumulativeWidthInMeters = cumulativeWidthInMeters + segmentWidthInMeters;
     console.log("Cumulative Street Width: " + cumulativeWidthInMeters + "m");
 
+    // get variantString
+    var variantList = segments[i].variantString.split("|");
+
+    // Note: segment 3d models are outbound by default
+    // If segment variant inbound, rotate segment model by 180 degrees
+    var rotationY = (variantList[0] == "inbound") ? 180 : 0;
+
+    // old method to change inbound to outbund -- Useful in a moment?
+    // invert X and Z axes. Otherwise use default voxelScaleFactor
+    //var scaleZ = (variantList[0] == "inbound") ? voxelScaleFactor * (-1) : voxelScaleFactor;
+    //var scaleX = (variantList[0] == "inbound") ? scaleX * (-1) : scaleX; // this is added otherwise model renders darker for some reason
+
+    // the 3d model file name of a segment type is usually identical, let's start with that
+    var objectFileName = segments[i].type;
+
+    // there are some cases to look at segment variants in order to find the right model
+    // type + variant2 = model
+
+    console.log(variantList);
+    // drive lane + sharrow = drive-lane-sharrow
+    if (segments[i].type == "drive-lane" && variantList[1] == "sharrow") {objectFileName = "drive-lane-sharrow"};
+
+    // more to do:
+    // turn lane + both = turn-lane-both
+    // turn lane + shared = turn-lane-shared
+    // turn lane + left = turn-lane-left
+    // turn lane + left-straight = turn-lane-left-straight
+    // turn lane + straight = turn-lane-straight
+    // turn lane + right = INVERT AXIS of turn-lane-left
+    // turn lane + right-straight = INVERT AXIS of turn-lane-left-straight
+
     // add new object
     var segmentEl = document.createElement("a-entity");
     segmentEl.setAttribute("scale", scaleX + " " + voxelScaleFactor + " " + voxelScaleFactor);
     var positionX = cumulativeWidthInMeters - (0.5 * segmentWidthInMeters);
     segmentEl.setAttribute("position", positionX + " 0 0");
-    segmentEl.setAttribute("obj-model", "obj", "url(assets/" + segments[i].type + ".obj)");
+    segmentEl.setAttribute("rotation", "0 " + rotationY + " 0")
+    segmentEl.setAttribute("obj-model", "obj", "url(assets/segments/" + objectFileName + ".obj)");
     // segmentEl.setAttribute("obj-model", "mtl", "url(assets/" + segments[i].type + ".mtl)");
     segmentEl.setAttribute("obj-model", "mtl", "#magica-mtl");
+
     document.getElementById(streetElementId).appendChild(segmentEl);
   };
 };
