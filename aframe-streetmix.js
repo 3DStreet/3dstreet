@@ -1,7 +1,9 @@
 
 
-// Each segment "type" is a separate model created in MagicaVoxel.
-// These are the intended default widths of the models in meters.
+// Models - Each segment "type" is a separate model created in MagicaVoxel.
+// Orientation - default model orientation is "outbound" (away from camera)
+
+// Width - These are the intended default widths of the models in meters.
 const defaultModelWidthsInMeters = {
   "bike-lane": 1.8,
   "drive-lane": 3,
@@ -11,10 +13,7 @@ const defaultModelWidthsInMeters = {
   "turn-lane": 3,
 }
 
-// Orientation - default model orientation is "outbound" (away from camera)
-
-
-// Normally a MagicaVoxel voxel = 1 meter in A-Frame by default
+// Scale - Normally a MagicaVoxel voxel = 1 meter in A-Frame by default
 // However for this project each voxel represents 1 decimeter (1/10th of a meter).
 // We need to reduce the size of the model (scale * 0.1) to compensate.
 const voxelScaleFactor = 0.1;
@@ -47,6 +46,7 @@ function processSegments(segments, streetElementId) {
 
     // get variantString
     var variantList = segments[i].variantString.split("|");
+    console.log(variantList);
 
     // Note: segment 3d models are outbound by default
     // If segment variant inbound, rotate segment model by 180 degrees
@@ -56,37 +56,19 @@ function processSegments(segments, streetElementId) {
     var objectFileName = segments[i].type;
 
     // there are some cases to look at segment variants in order to find the right model
-    // type + variant2 = model
-
-    console.log(variantList);
-    // drive lane + sharrow = drive-lane-sharrow
+    // if type && variant2 then use model  ... there's definitely a better way to do this ...
     if (segments[i].type == "drive-lane" && variantList[1] == "sharrow") {objectFileName = "drive-lane-sharrow"};
-
-    // more to do:
-    // turn lane + both = turn-lane-both
     if (segments[i].type == "turn-lane" && variantList[1] == "both") {objectFileName = "turn-lane-both"};
-
-    // turn lane + shared = turn-lane-shared
     if (segments[i].type == "turn-lane" && variantList[1] == "shared") {objectFileName = "turn-lane-shared"};
-
-    // turn lane + left = turn-lane-left
     if (segments[i].type == "turn-lane" && variantList[1] == "left") {objectFileName = "turn-lane-left"};
-
-    // turn lane + left-straight = turn-lane-left-straight
     if (segments[i].type == "turn-lane" && variantList[1] == "left-straight") {objectFileName = "turn-lane-left-straight"};
-
-    // turn lane + straight = turn-lane-straight
     if (segments[i].type == "turn-lane" && variantList[1] == "straight") {objectFileName = "turn-lane-straight"};
-
-    // turn lane + right = INVERT AXIS of turn-lane-left
     if (segments[i].type == "turn-lane" && variantList[1] == "right") {
       objectFileName = "turn-lane-left";
       scaleX = scaleX * (-1);
       scaleY = scaleY * (-1); // this is added otherwise scaleX invert renders the model darker for some reason
       positionY = positionY + 0.1; // this is added because scaleY invert displaces the lane down by 0.1 for some reason
     }
-
-    // turn lane + right-straight = INVERT AXIS of turn-lane-left-straight
     if (segments[i].type == "turn-lane" && variantList[1] == "right-straight") {
       objectFileName = "turn-lane-left-straight";
       scaleX = scaleX * (-1);
@@ -94,77 +76,56 @@ function processSegments(segments, streetElementId) {
       positionY = positionY + 0.1; // this is added because scaleY invert displaces the lane down by 0.1 for some reason
     }
 
-
     // add new object
     var segmentEl = document.createElement("a-entity");
     segmentEl.setAttribute("scale", scaleX + " " + scaleY + " " + scaleZ);
     segmentEl.setAttribute("position", positionX + " " + positionY + " 0");
     segmentEl.setAttribute("rotation", "0 " + rotationY + " 0")
     segmentEl.setAttribute("obj-model", "obj", "url(assets/segments/" + objectFileName + ".obj)");
-    // segmentEl.setAttribute("obj-model", "mtl", "url(assets/" + segments[i].type + ".mtl)");
     segmentEl.setAttribute("obj-model", "mtl", "#magica-mtl");
-
     document.getElementById(streetElementId).appendChild(segmentEl);
   };
 };
 
-// getjson replacement from http://youmightnotneedjquery.com/#json
-var request = new XMLHttpRequest();
+function loadStreet(streetURL) {
+  // getjson replacement from http://youmightnotneedjquery.com/#json
+  var request = new XMLHttpRequest();
+  request.open('GET', streetURL, true);
+  request.onload = function() {
+    if (this.status >= 200 && this.status < 400) {
+      // Connection success
+      var streetmixObject = JSON.parse(this.response);
+      var streetmixSegments = streetmixObject.data.street.segments;
+      processSegments(streetmixSegments, "street");
+      processSegments(streetmixSegments, "street1");
+      processSegments(streetmixSegments, "street2");
+      processSegments(streetmixSegments, "street3");
+      processSegments(streetmixSegments, "street4");
+      processSegments(streetmixSegments, "street5");
+      processSegments(streetmixSegments, "street6");
+      processSegments(streetmixSegments, "street-1");
+      processSegments(streetmixSegments, "street-2");
+      processSegments(streetmixSegments, "street-3");
+      processSegments(streetmixSegments, "street-4");
+    } else {
+      // We reached our target server, but it returned an error
+      console.log("oops - We reached our target server, but it returned an error");
+    }
+  };
+  request.onerror = function() {
+    // There was a connection error of some sort
+    console.log("oops - There was a connection error of some sort");
+  };
+  request.send();
+};
 
 // LOCAL
-// request.open('GET', 'sample.json', true);
+// var streetURL = 'sample.json';
 
 // REMOTE WITH REDIRECT
-request.open('GET', 'https://streetmix.net/api/v1/streets?namespacedId=3&creatorId=kfarr', true);
+var streetURL = 'https://streetmix.net/api/v1/streets?namespacedId=3&creatorId=kfarr';
 
 // DIRECT TO REMOTE FILE
-// request.open('GET', 'https://streetmix.net/api/v1/streets/7a633310-e598-11e6-80db-ebe3de713876', true);
+// var streetURL = 'https://streetmix.net/api/v1/streets/7a633310-e598-11e6-80db-ebe3de713876';
 
-request.onload = function() {
-  if (this.status >= 200 && this.status < 400) {
-    // Connection success
-    var streetmixObject = JSON.parse(this.response);
-    var streetmixSegments = streetmixObject.data.street.segments;
-    processSegments(streetmixSegments, "street");
-
-    processSegments(streetmixSegments, "street1");
-    processSegments(streetmixSegments, "street2");
-    processSegments(streetmixSegments, "street3");
-    processSegments(streetmixSegments, "street4");
-    processSegments(streetmixSegments, "street5");
-    processSegments(streetmixSegments, "street6");
-
-    processSegments(streetmixSegments, "street-1");
-    processSegments(streetmixSegments, "street-2");
-    processSegments(streetmixSegments, "street-3");
-    processSegments(streetmixSegments, "street-4");
-
-    // Use JavaScript to repeat the street METHOD ONE
-    // var streetEl = document.getElementById("street");
-    //
-    // streetEl.flushToDOM(true);
-    //
-    // // Copy the element and its child nodes
-    // var streetElCopy = streetEl.cloneNode(true);
-    // streetElCopy.id = "street2";
-    // streetElCopy.setAttribute("position", "0 0 -2");
-    // document.getElementById("streets").appendChild(streetElCopy);
-
-    // Use JavaScript to repeat the street METHOD TWO
-    // var streetEl = document.getElementById("street");
-    // streetEl.flushToDOM();
-    // document.getElementById("street2").innerHTML = streetEl.innerHTML;
-    // // document.getElementById("streets").appendChild(streetElCopy);
-
-  } else {
-    // We reached our target server, but it returned an error
-    console.log("oops - We reached our target server, but it returned an error");
-  }
-};
-
-request.onerror = function() {
-  // There was a connection error of some sort
-  console.log("oops - There was a connection error of some sort");
-};
-
-request.send();
+loadStreet(streetURL);
