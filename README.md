@@ -19,7 +19,7 @@ Streetmix.net mixed with A-Frame for visualization of streetscapes
 | sidewalk-wayfinding | no        | | 3d model needed     |
 | sidewalk-lamp       | no        | | 3d object - street light 1 and 2     |
 | parklet             | no        | | 3d model needed     |
-| divider             | Yes - Partial       | | only 1 texture (double yellow lines) does not match streetmix (dashed white lines), some 3d models needed for variants       |
+| divider             | Yes - Partial   | `divider-type`: striped-buffer, bollard | only 1 texture (double yellow lines) does not match streetmix (dashed white lines), some 3d models needed for variants       |
 | parking-lane        | Yes - Partial  |       | `parking-lane-direction` and `parking-lane-orientation` unsupported - "ticks" on both sides of lane |
 | bike-lane           | Yes - Partial  | `direction`: inbound, outbound | `bike-asphalt` not supported, only green color   |
 | drive-lane          | Yes - Full      | `direction`: inbound, outbound \| `car-type`: sharrow | `car-type`: car, truck - No 3D car or truck models supported yet.        |
