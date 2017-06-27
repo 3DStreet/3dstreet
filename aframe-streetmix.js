@@ -125,17 +125,29 @@ function initStreet() {
   // Is there a URL in the URL HASH?
   var streetURL = location.hash.substring(1);
   console.log("hash check: " + streetURL);
-  if (!streetURL) {
+
+  if (streetURL) {
+    var pathArray = new URL(streetURL).pathname.split( '/' );
+    // optimistically try to convert from streetmix URL to api url
+    if (pathArray[1] != "api") {
+      streetURL = streetmixUserToAPI(streetURL);
+    }
+  } else {
+    // if no URL provided then here are some defaults to choose from:
+
     // LOCAL
     // var streetURL = 'sample.json';
+
     // REMOTE WITH REDIRECT:
     var streetURL = 'https://streetmix.net/api/v1/streets?namespacedId=3&creatorId=kfarr';
-    // DIRECT TO REMOTE FILE:
+
+    // DIRECT TO REMOTE FILE: - don't use this since it's hard to convert back to user friendly URL
     // var streetURL = 'https://streetmix.net/api/v1/streets/7a633310-e598-11e6-80db-ebe3de713876';
   };
 
   console.log("streetURL check: " + streetURL);
   loadStreet(streetURL);
+  window.location.hash = '#' + streetmixAPIToUser(streetURL);
 }
 window.onload = initStreet;
 
@@ -145,7 +157,14 @@ function locationHashChanged() {
   // if yes, then clear old city // load new city with that hash
   var streetURL = location.hash.substring(1);
   console.log("hash changed to: " + streetURL);
+
   if (streetURL) {
+    var pathArray = new URL(streetURL).pathname.split( '/' );
+    // optimistically try to convert from streetmix URL to api url
+    if (pathArray[1] != "api") {
+      streetURL = streetmixUserToAPI(streetURL);
+    }
+
     // Erase exiting city (if any)
     for (var i=-6; i<7; i++) {
       var streetEl = document.getElementById("street" + i);
