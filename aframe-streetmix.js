@@ -35,10 +35,15 @@ function processSegments(segments, streetElementId) {
     // default * scale = requested :: scale = requested / default
     // For example: requested width = 2m, but default model width is 1.8. 2 / 1.8 = 1.111111111
     var scaleX = segmentWidthInMeters / modelWidthInMeters * voxelScaleFactor;
+    var scaleY = voxelScaleFactor;
+    var scaleZ = voxelScaleFactor;
     console.log("Scale: " + scaleX);
 
     cumulativeWidthInMeters = cumulativeWidthInMeters + segmentWidthInMeters;
     console.log("Cumulative Street Width: " + cumulativeWidthInMeters + "m");
+
+    var positionX = cumulativeWidthInMeters - (0.5 * segmentWidthInMeters);
+    var positionY = 0;
 
     // get variantString
     var variantList = segments[i].variantString.split("|");
@@ -46,11 +51,6 @@ function processSegments(segments, streetElementId) {
     // Note: segment 3d models are outbound by default
     // If segment variant inbound, rotate segment model by 180 degrees
     var rotationY = (variantList[0] == "inbound") ? 180 : 0;
-
-    // old method to change inbound to outbund -- Useful in a moment?
-    // invert X and Z axes. Otherwise use default voxelScaleFactor
-    //var scaleZ = (variantList[0] == "inbound") ? voxelScaleFactor * (-1) : voxelScaleFactor;
-    //var scaleX = (variantList[0] == "inbound") ? scaleX * (-1) : scaleX; // this is added otherwise model renders darker for some reason
 
     // the 3d model file name of a segment type is usually identical, let's start with that
     var objectFileName = segments[i].type;
@@ -64,18 +64,41 @@ function processSegments(segments, streetElementId) {
 
     // more to do:
     // turn lane + both = turn-lane-both
+    if (segments[i].type == "turn-lane" && variantList[1] == "both") {objectFileName = "turn-lane-both"};
+
     // turn lane + shared = turn-lane-shared
+    if (segments[i].type == "turn-lane" && variantList[1] == "shared") {objectFileName = "turn-lane-shared"};
+
     // turn lane + left = turn-lane-left
+    if (segments[i].type == "turn-lane" && variantList[1] == "left") {objectFileName = "turn-lane-left"};
+
     // turn lane + left-straight = turn-lane-left-straight
+    if (segments[i].type == "turn-lane" && variantList[1] == "left-straight") {objectFileName = "turn-lane-left-straight"};
+
     // turn lane + straight = turn-lane-straight
+    if (segments[i].type == "turn-lane" && variantList[1] == "straight") {objectFileName = "turn-lane-straight"};
+
     // turn lane + right = INVERT AXIS of turn-lane-left
+    if (segments[i].type == "turn-lane" && variantList[1] == "right") {
+      objectFileName = "turn-lane-left";
+      scaleX = scaleX * (-1);
+      scaleY = scaleY * (-1); // this is added otherwise scaleX invert renders the model darker for some reason
+      positionY = positionY + 0.1; // this is added because scaleY invert displaces the lane down by 0.1 for some reason
+    }
+
     // turn lane + right-straight = INVERT AXIS of turn-lane-left-straight
+    if (segments[i].type == "turn-lane" && variantList[1] == "right-straight") {
+      objectFileName = "turn-lane-left-straight";
+      scaleX = scaleX * (-1);
+      scaleY = scaleY * (-1); // this is added otherwise scaleX invert renders the model darker for some reason
+      positionY = positionY + 0.1; // this is added because scaleY invert displaces the lane down by 0.1 for some reason
+    }
+
 
     // add new object
     var segmentEl = document.createElement("a-entity");
-    segmentEl.setAttribute("scale", scaleX + " " + voxelScaleFactor + " " + voxelScaleFactor);
-    var positionX = cumulativeWidthInMeters - (0.5 * segmentWidthInMeters);
-    segmentEl.setAttribute("position", positionX + " 0 0");
+    segmentEl.setAttribute("scale", scaleX + " " + scaleY + " " + scaleZ);
+    segmentEl.setAttribute("position", positionX + " " + positionY + " 0");
     segmentEl.setAttribute("rotation", "0 " + rotationY + " 0")
     segmentEl.setAttribute("obj-model", "obj", "url(assets/segments/" + objectFileName + ".obj)");
     // segmentEl.setAttribute("obj-model", "mtl", "url(assets/" + segments[i].type + ".mtl)");
