@@ -96,7 +96,7 @@ function loadStreet(streetURL) {
       // Connection success
       var streetmixObject = JSON.parse(this.response);
       var streetmixSegments = streetmixObject.data.street.segments;
-      processSegments(streetmixSegments, "street");
+      processSegments(streetmixSegments, "street0");
       processSegments(streetmixSegments, "street1");
       processSegments(streetmixSegments, "street2");
       processSegments(streetmixSegments, "street3");
@@ -107,6 +107,8 @@ function loadStreet(streetURL) {
       processSegments(streetmixSegments, "street-2");
       processSegments(streetmixSegments, "street-3");
       processSegments(streetmixSegments, "street-4");
+      processSegments(streetmixSegments, "street-5");
+      processSegments(streetmixSegments, "street-6");
     } else {
       // We reached our target server, but it returned an error
       console.log("oops - We reached our target server, but it returned an error");
@@ -119,13 +121,42 @@ function loadStreet(streetURL) {
   request.send();
 };
 
-// LOCAL
-// var streetURL = 'sample.json';
+function initStreet() {
+  // Is there a URL in the URL HASH?
+  var streetURL = location.hash.substring(1);
+  console.log("hash check: " + streetURL);
 
-// REMOTE WITH REDIRECT
-var streetURL = 'https://streetmix.net/api/v1/streets?namespacedId=3&creatorId=kfarr';
+  if (!streetURL) {
+    // LOCAL
+    // var streetURL = 'sample.json';
 
-// DIRECT TO REMOTE FILE
-// var streetURL = 'https://streetmix.net/api/v1/streets/7a633310-e598-11e6-80db-ebe3de713876';
+    // REMOTE WITH REDIRECT
+    var streetURL = 'https://streetmix.net/api/v1/streets?namespacedId=3&creatorId=kfarr';
 
-loadStreet(streetURL);
+    // DIRECT TO REMOTE FILE
+    // var streetURL = 'https://streetmix.net/api/v1/streets/7a633310-e598-11e6-80db-ebe3de713876';
+  };
+
+  console.log("streetURL check: " + streetURL);
+  loadStreet(streetURL);
+}
+window.onload = initStreet;
+
+// If Hash Changed
+function locationHashChanged() {
+  // check if valid hash
+  // if yes, then clear old city // load new city with that hash
+  var streetURL = location.hash.substring(1);
+  console.log("hash changed to: " + streetURL);
+  if (streetURL) {
+    // Erase exiting city (if any)
+    for (var i=-6; i<7; i++) {
+      var streetEl = document.getElementById("street" + i);
+      while (streetEl.firstChild) {
+        streetEl.removeChild(streetEl.firstChild);
+      }
+    }
+    loadStreet(streetURL);
+  };
+}
+window.onhashchange = locationHashChanged;

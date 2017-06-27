@@ -6,7 +6,7 @@
 
   </head>
   <body>
-    <a-scene fog="type: linear; color: #dae4e4; far: 100">
+    <a-scene fog="type: linear; color: #dae4e4; far: 100" stats>
       <a-assets>
         <!-- MagicaVoxel objects -->
         <a-asset-item id="bike-lane-obj" src="assets/segments/bike-lane.obj"></a-asset-item>
@@ -34,7 +34,7 @@
       <a-entity id="clouds" position="0 35 0" scale="7 7 7" geometry="height:7.74;radius:14;primitive:cylinder;openEnded:true" material="side:back; src:url(assets/clouds.png); transparent: true; repeat: 16; opacity: 0.4"></a-entity>
       <!-- this position should be 0; instead a camera enetity should elevate viewer above street and reset to 0 when entering VR mode -->
       <a-entity id="streets" position="-7 -4 -12">
-        <a-entity id="street"></a-entity>
+        <a-entity id="street0"></a-entity>
         <a-entity id="street1" position="0 0 -12.5"></a-entity>
         <a-entity id="street2" position="0 0 -25"></a-entity>
         <a-entity id="street3" position="0 0 -37.5"></a-entity>
@@ -46,7 +46,8 @@
         <a-entity id="street-2" position="0 0 25"></a-entity>
         <a-entity id="street-3" position="0 0 37.5"></a-entity>
         <a-entity id="street-4" position="0 0 50"></a-entity>
-
+        <a-entity id="street-5" position="0 0 62.5"></a-entity>
+        <a-entity id="street-6" position="0 0 75"></a-entity>
 
       </a-entity>
       <a-sun-sky material="sunPosition: -0.2 7.5 -5; fog: false"></a-sun-sky>
