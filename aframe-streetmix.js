@@ -75,6 +75,7 @@ function processSegments(segments, streetElementId) {
       scaleY = scaleY * (-1); // this is added otherwise scaleX invert renders the model darker for some reason
       positionY = positionY + 0.1; // this is added because scaleY invert displaces the lane down by 0.1 for some reason
     }
+    if (segments[i].type == "divider" && variantList[0] == "bollard") {objectFileName = "divider-bollard"};
 
     // add new object
     var segmentEl = document.createElement("a-entity");
