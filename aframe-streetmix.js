@@ -11,6 +11,9 @@ const defaultModelWidthsInMeters = {
   "parking-lane": 2.4,
   "sidewalk": 3,
   "turn-lane": 3,
+  "bus-lane": 3,
+  "light-rail": 3,
+  "streetcar": 3,
 }
 
 // Scale - Normally a MagicaVoxel voxel = 1 meter in A-Frame by default
@@ -76,6 +79,7 @@ function processSegments(segments, streetElementId) {
       positionY = positionY + 0.1; // this is added because scaleY invert displaces the lane down by 0.1 for some reason
     }
     if (segments[i].type == "divider" && variantList[0] == "bollard") {objectFileName = "divider-bollard"};
+    if (segments[i].type == "streetcar") {objectFileName = "light-rail"};
 
     // add new object
     var segmentEl = document.createElement("a-entity");
