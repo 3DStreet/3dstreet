@@ -24,9 +24,9 @@ Streetmix.net mixed with A-Frame for visualization of streetscapes
 | bike-lane           | Yes - Partial  | `direction`: inbound, outbound | `bike-asphalt` not supported, only green color   |
 | drive-lane          | Yes - Full      | `direction`: inbound, outbound \| `car-type`: sharrow | `car-type`: car, truck - No 3D car or truck models supported yet.        |
 | turn-lane           | Yes - Full        | `direction`: inbound, outbound \| `turn-lane-orientation`: left, left-straight, right, right-straight, both, shared, straight       | Note: there appears to be a bug with Streetmix.net rendering of `turn-lane-orientation` variant in street cross section for `inbound` - it appears to be inverted from the street's json database value. Presumably users have simply adjusted the arrows until they found a configuration that looked correct so the database value may not represent user intention for these segments. |
-| bus-lane            | no        |        |
-| light-rail          | no        |        |
-| streetcar           | no        |        |
+| bus-lane            | Yes - Partial        | `direction`: inbound, outbound       | `bus-asphalt` not supported default always red |
+| light-rail          | Yes - Partial        | `direction`: inbound, outbound       | `public-transit-asphalt` not supported default always red |
+| streetcar           | Yes - Partial        | `direction`: inbound, outbound       | `public-transit-asphalt` not supported default always red |
 | transit-shelter     | no        | | 3d object bus stop     |
 | train               | no        |        |  This does not appear to be enabled in Streetmix UI. Is this intended to be mixed mode or unpaved grade separated tracks? |
 
