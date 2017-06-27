@@ -1,12 +1,14 @@
-# aframe-streetmix
+# 🛣️ aframe-streetmix
 Streetmix.net mixed with A-Frame for visualization of streetscapes
 
-Demos:
-* https://kfarr.github.io/aframe-streetmix/
-* https://www.youtube.com/watch?v=89DxvLGa978
+### Demo in your browser now: https://kfarr.github.io/aframe-streetmix/
 
-List of segments and variants in json file:
-* https://github.com/streetmix/streetmix/blob/master/assets/scripts/segments/info.js
+### How to use with your own Streetmix streets:
+* Make sure you've saved a Streetmix street to your account using Twitter so that you have a URL for your street that looks something like this: `https://streetmix.net/kfarr/3/my-awesome-street-name`
+* Load https://kfarr.github.io/aframe-streetmix/ and paste in your street name after the `#` symbol and press `enter`
+* Your URL bar should look something like this when it's loaded: [`https://kfarr.github.io/aframe-streetmix/#https://streetmix.net/kfarr/3`](https://kfarr.github.io/aframe-streetmix/#https://streetmix.net/kfarr/3)
+
+### Segment Support
 
 | [Streetmix Segment](https://github.com/streetmix/streetmix/blob/master/assets/scripts/segments/info.js)              | Supported? | Supported Variants  | Unsupported Variants |
 | ---------------------------- | --------- | ------ | ----- |
@@ -28,6 +30,6 @@ List of segments and variants in json file:
 | transit-shelter     | no        | | 3d object bus stop     |
 | train               | no        |        |  This does not appear to be enabled in Streetmix UI. Is this intended to be mixed mode or unpaved grade separated tracks? |
 
-Model credits:
+### Model Credits
 * Voxel street segments created by Kieran Farr, MIT License same as project repo
 * Some 3D models created by vencreations, https://www.cgtrader.com/vencreations, ["Royalty Free" License](https://www.cgtrader.com/pages/terms-and-conditions#royalty-free-license)
