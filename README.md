@@ -1,12 +1,12 @@
-# 🛣️ aframe-streetmix
+# 🛣️ streetmix3d
 Streetmix.net mixed with A-Frame for visualization of streetscapes
 
-### Demo in your browser now: https://kfarr.github.io/aframe-streetmix/
+### Demo in your browser now: https://kfarr.github.io/streetmix3d/
 
 ### How to use with your own Streetmix streets:
 * Make sure you've saved a Streetmix street to your account using Twitter so that you have a URL for your street that looks something like this: `https://streetmix.net/kfarr/3/my-awesome-street-name`
-* Load https://kfarr.github.io/aframe-streetmix/ and paste in your street name after the `#` symbol and press `enter`
-* Your URL bar should look something like this when it's loaded: [`https://kfarr.github.io/aframe-streetmix/#https://streetmix.net/kfarr/3`](https://kfarr.github.io/aframe-streetmix/#https://streetmix.net/kfarr/3)
+* Load https://kfarr.github.io/streetmix3d/ and paste in your street name after the `#` symbol and press `enter`
+* Your URL bar should look something like this when it's loaded: [`https://kfarr.github.io/streetmix3d/#https://streetmix.net/kfarr/3`](https://kfarr.github.io/streetmix3d/#https://streetmix.net/kfarr/3)
 
 ### Segment Support
 
