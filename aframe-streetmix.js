@@ -93,6 +93,14 @@ function processSegments(segments, streetElementId) {
 };
 
 function loadStreet(streetURL) {
+  // Erase exiting city (if any)
+  for (var i=-6; i<7; i++) {
+    var streetEl = document.getElementById("street" + i);
+    while (streetEl.firstChild) {
+      streetEl.removeChild(streetEl.firstChild);
+    }
+  }
+
   // getjson replacement from http://youmightnotneedjquery.com/#json
   var request = new XMLHttpRequest();
   request.open('GET', streetURL, true);
@@ -137,9 +145,7 @@ function initStreet() {
     if (pathArray[1] != "api") {
       streetURL = streetmixUserToAPI(streetURL);
     }
-  } else {
-    // if no URL provided then here are some defaults to choose from:
-
+  } else {    // DEFAULTS if no URL provided then here are some defaults to choose from:
     // LOCAL
     // var streetURL = 'sample.json';
 
@@ -153,10 +159,22 @@ function initStreet() {
   console.log("streetURL check: " + streetURL);
   loadStreet(streetURL);
   window.location.hash = '#' + streetmixAPIToUser(streetURL);
+  document.getElementById("input-url").value = streetmixAPIToUser(streetURL);
+
+  // Run processURLChange when Enter pressed on input field
+  document.getElementById('input-url').onkeypress = function(e){
+    if (!e) e = window.event;
+    var keyCode = e.keyCode || e.which;
+    if (keyCode == '13'){
+      // Enter pressed
+      processURLChange();
+    }
+  }
+
 }
 window.onload = initStreet;
 
-// If Hash Changed
+// If URL Hash Changed load new street from this value
 function locationHashChanged() {
   // check if valid hash
   // if yes, then clear old city // load new city with that hash
@@ -170,17 +188,33 @@ function locationHashChanged() {
       streetURL = streetmixUserToAPI(streetURL);
     }
 
-    // Erase exiting city (if any)
-    for (var i=-6; i<7; i++) {
-      var streetEl = document.getElementById("street" + i);
-      while (streetEl.firstChild) {
-        streetEl.removeChild(streetEl.firstChild);
-      }
-    }
     loadStreet(streetURL);
+
+    // update the user interface to show the new URL
+    document.getElementById("input-url").value = streetmixAPIToUser(streetURL);
   };
 }
 window.onhashchange = locationHashChanged;
+
+// Load new street from input-url value
+function processURLChange() {
+  var streetURL = document.getElementById("input-url").value;
+  console.log("hash changed to: " + streetURL);
+
+  if (streetURL) {
+    var pathArray = new URL(streetURL).pathname.split( '/' );
+    // optimistically try to convert from streetmix URL to api url
+    if (pathArray[1] != "api") {
+      streetURL = streetmixUserToAPI(streetURL);
+    }
+
+    loadStreet(streetURL);
+    window.location.hash = '#' + streetmixAPIToUser(streetURL);
+
+  };
+}
+
+
 
 function streetmixUserToAPI(userURL) {
   // this takes in a user facing Streetmix.net URL like https://streetmix.net/kfarr/3/a-frame-city-builder-street-only
