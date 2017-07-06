@@ -1,6 +1,9 @@
 # 🛣️ streetmix3d
 Streetmix.net mixed with A-Frame for visualization of streetscapes
 
+<img src="https://raw.githubusercontent.com/kfarr/streetmix3d/master/assets/streetmix3d-banner.jpg" />
+
+
 ### Demo in your browser now: https://kfarr.github.io/streetmix3d/
 
 ### How to use with your own Streetmix streets:
