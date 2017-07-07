@@ -1,14 +1,18 @@
+<img src="https://raw.githubusercontent.com/kfarr/streetmix3d/master/assets/streetmix3d-banner.jpg" />
+
 # 🛣️ streetmix3d
 Streetmix.net mixed with A-Frame for visualization of streetscapes
 
-<img src="https://raw.githubusercontent.com/kfarr/streetmix3d/master/assets/streetmix3d-banner.jpg" />
-
-
 ### Demo in your browser now: https://kfarr.github.io/streetmix3d/
 
-### Use with your own Streetmix streets:
-* Make sure you've saved a Streetmix street to your account using Twitter so that you have a URL for your street that looks something like this: `https://streetmix.net/kfarr/3/my-awesome-street-name`
-* Load https://kfarr.github.io/streetmix3d/ and paste in your street URL after the `#` symbol and press `enter` or use the UI to paste in the URL box and press the magic green button.
+### How to make your own Streetmix3D street:
+* First, use <a href="https://streetmix.net">Streetmix.net</a> to create a street design. (Streetmix is a tool that lets you design, remix, and share your neighborhood street. <a href="https://github.com/streetmix/streetmix/blob/master/README.md#about">More information about Streetmix here</a>.)
+* Then, save a Streetmix street using a Twitter account so that you have a unique URL for your street that looks something like this: `https://streetmix.net/kfarr/3/my-awesome-street-name`
+* Load https://kfarr.github.io/streetmix3d/, paste in your street URL, and press the magic green button.
+* See instant changes to your work: Switch back to a Streetmix.net tab, make changes to your street, then reload the Streetmix3D page to see the edits applied.
+* "Walk" around the scene or use VR: Use the <code>W A S D</code> keys to move around the 3D scene. You can even use a VR headset to see a 1:1 scale virtual view of your street with a <a href="https://webvr.rocks">WebVR compatible headset.</a>
+
+<img src="https://raw.githubusercontent.com/kfarr/streetmix3d/master/assets/streetmix3d.gif" />
 
 ### Segment Support
 
