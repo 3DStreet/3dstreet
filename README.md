@@ -1,9 +1,10 @@
-<img src="https://raw.githubusercontent.com/kfarr/streetmix3d/master/assets/streetmix3d-banner.jpg" />
 
-# 🛣️ streetmix3d
+# Streetmix3d
 Streetmix.net mixed with A-Frame for visualization of streetscapes
 
 ### Demo in your browser now: https://kfarr.github.io/streetmix3d/
+
+<img src="https://raw.githubusercontent.com/kfarr/streetmix3d/master/assets/streetmix3d.gif" />
 
 ### How to make your own Streetmix3D street:
 * First, use <a href="https://streetmix.net">Streetmix.net</a> to create a street design. (Streetmix is a tool that lets you design, remix, and share your neighborhood street. <a href="https://github.com/streetmix/streetmix/blob/master/README.md#about">More information about Streetmix here</a>.)
@@ -12,9 +13,9 @@ Streetmix.net mixed with A-Frame for visualization of streetscapes
 * See instant changes to your work: Switch back to a Streetmix.net tab, make changes to your street, then reload the Streetmix3D page to see the edits applied.
 * "Walk" around the scene or use VR: Use the <code>W A S D</code> keys to move around the 3D scene. You can even use a VR headset to see a 1:1 scale virtual view of your street with a <a href="https://webvr.rocks">WebVR compatible headset.</a>
 
-<img src="https://raw.githubusercontent.com/kfarr/streetmix3d/master/assets/streetmix3d.gif" />
+### Streetmix Segment Support
 
-### Segment Support
+Streetmix3D does not yet support all of the street `segments` found in Streetmix. You may find some segments don't display at all or are missing 3D elements. We'd gladly support any help making 3D models that match the designs from the original Streetmix. Here is a complete list:
 
 | [Streetmix Segment](https://github.com/streetmix/streetmix/blob/master/assets/scripts/segments/info.js)              | Supported? | Supported Variants  | Unsupported Variants |
 | ---------------------------- | --------- | ------ | ----- |
@@ -39,3 +40,5 @@ Streetmix.net mixed with A-Frame for visualization of streetscapes
 ### Model Credits
 * Voxel street segments created by Kieran Farr, MIT License same as project repo
 * Some 3D models created by vencreations, https://www.cgtrader.com/vencreations, ["Royalty Free" License](https://www.cgtrader.com/pages/terms-and-conditions#royalty-free-license)
+
+<img src="https://raw.githubusercontent.com/kfarr/streetmix3d/master/assets/streetmix3d-banner.jpg" />
