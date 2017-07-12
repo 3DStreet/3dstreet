@@ -2,7 +2,7 @@
   <head>
     <script src="https://rawgit.com/aframevr/aframe/master/dist/aframe-master.js"></script>
     <script src="https://rawgit.com/ngokevin/kframe/master/components/sun-sky/dist/aframe-sun-sky.min.js"></script>
-
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/velocity/1.5.0/velocity.js"></script>
     <script src="aframe-streetmix.js"></script>
 
     <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css" integrity="sha384-BVYiiSIFeK1dGmJRAkycuHAHRg32OmUcww7on3RYdg4Va+PmSTsz/K68vbdEjh4u" crossorigin="anonymous">
@@ -23,13 +23,27 @@
     .row {
       padding: 0.75rem;
     }
-    .number {
+    .big {
       font-size: 125%;
       font-weight: bold;
     }
-    .big {
-      font-size: 150%;
-      font-weight: bold;
+    .menu-overlay {
+      z-index: 99999;
+      position: fixed;
+      top: 15px;
+      right: 15px;
+      box-sizing: border-box;
+      padding: 1.5em;
+      width: 50px;
+      height: 50px;
+      padding-bottom: 0px;
+      background: rgba(0, 0, 0, 0.5) url(./assets/white-arrow.png) center no-repeat;
+      background-size: 40px 40px;
+      font-family: Source Sans Pro, Helvetica Neue, Helvetica, Arial, sans-serif;
+    }
+    .menu-overlay:hover {
+      background: rgba(0, 0, 0, 0.2) url(./assets/white-arrow.png) center no-repeat;
+      background-size: 40px 40px;
     }
     </style>
 
@@ -82,17 +96,29 @@
       <a-sun-sky material="sunPosition: -0.2 7.5 -5; fog: false"></a-sun-sky>
       <!-- <a-sky color="#caf9ff" material="fog: false"></a-sky> -->
     </a-scene>
-    <div class="intro">
+    <div id="intro" class="intro">
       <div class="row">
         <div class="col-md-12"><span class="big">Streetmix3D</span></div>
       </div>
       <div class="row">
-        <div class="col-md-4"><span class="number">&#9312;</span> Go to <a href="//streetmix.net">Streetmix.net</a>, login with Twitter, and copy a street URL.</div>
-        <div class="col-md-4"><span class="number">&#9313;</span> Paste Streetmix URL here: <input id="input-url" type="text" class="form-control" onfocus="this.select();" ></div>
-        <div class="col-md-4"><span class="number">&#9314;</span> Press <code>enter</code> or click button: <a onclick="processURLChange()" class="btn btn-success btn-block">Load Street in 3D</a></div>
+        <div class="col-md-4">&#9312; Go to <a href="//streetmix.net">Streetmix.net</a>, login with Twitter, and copy a street URL.</div>
+        <div class="col-md-4">&#9313; Paste Streetmix URL here: <input id="input-url" type="text" class="form-control" onfocus="this.select();" ></div>
+        <div class="col-md-4">&#9314; Press <code>enter</code> or click button: <a onclick="processURLChange()" class="btn btn-success btn-block">Load Street in 3D</a></div>
       </div>
     </div>
-    
+    <a onclick="toggle()"><div id="arrow" class="menu-overlay btn btn-outline-secondary"></div></a>
+
+    <script>
+    var toggle = function() {
+      var introEl = document.getElementById("intro");
+      var introOpacity = window.getComputedStyle(introEl,null).getPropertyValue("opacity");
+      var newOpacity = introOpacity == 1 ? 0 : 1;
+      Velocity(document.getElementById("intro"), { opacity: newOpacity }, { duration: 250 });
+      Velocity(document.getElementById("arrow"), { rotateZ: "+=180deg" }, { duration: 250 });
+
+    }
+    </script>
+
      <!--githubcorner-->
     <a href="https://github.com/kfarr/streetmix3d" class="github-corner">
       <svg width="80" height="80" viewBox="0 0 250 250" style="fill: #111; color: #EFEFEF; position: fixed; bottom: 0; border: 0; left: 0; transform: rotate(180deg); opacity: 0.8">
@@ -101,6 +127,6 @@
     </a>
     <style>.github-corner:hover .octo-arm{animation:octocat-wave 560ms ease-in-out}@keyframes octocat-wave{0%,100%{transform:rotate(0)}20%,60%{transform:rotate(-25deg)}40%,80%{transform:rotate(10deg)}}@media (max-width:500px){.github-corner:hover .octo-arm{animation:none}.github-corner .octo-arm{animation:octocat-wave 560ms ease-in-out}}
     </style>
-    
+
   </body>
 </html>
