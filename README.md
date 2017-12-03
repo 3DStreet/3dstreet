@@ -23,7 +23,7 @@ Streetmix3D does not yet support all of the street `segments` found in Streetmix
 | sidewalk-tree       | no        |   | 3d object - palm 2 and 3   |
 | sidewalk-bench      | no        |      | 3d object - bench 1, 2 and 3|
 | sidewalk-bike-rack  | no        |     | 3d model needed |
-| sidewalk-wayfinding | Yes - Patrial        | `medium` | known issue: one side has mirror texture, 3d model needed for `small` and `large` variants     |
+| sidewalk-wayfinding | Yes - Partial        | `medium` | known issue: one side has mirror texture, 3d model needed for `small` and `large` variants     |
 | sidewalk-lamp       | no        | | 3d object - street light 1 and 2     |
 | parklet             | no        | | 3d model needed     |
 | divider             | Yes - Partial   | `divider-type`: striped-buffer, bollard | only 1 texture (double yellow lines) does not match streetmix (dashed white lines), some 3d models needed for variants       |
