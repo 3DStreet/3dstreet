@@ -55,6 +55,9 @@
         <a-asset-item id="bike-lane-obj" src="assets/segments/bike-lane.obj"></a-asset-item>
         <a-asset-item id="magica-mtl" src="assets/segments/magica.mtl"></a-asset-item>
 
+        <a-asset-item id="pylon-obj" src="assets/objects/nyc-wayfinding-pylon-large-nomtl.obj"></a-asset-item>
+        <!-- <a-asset-item id="pylon-mtl" src="assets/objects/nyc-wayfinding-pylon-large.mtl"></a-asset-item> -->
+
         <!-- Downloaded objects -->
         <a-asset-item id="palmtree2-obj" src="assets/objects/SPW_Natures_Tree_Palm_02.obj"></a-asset-item>
         <a-asset-item id="palmtree3-obj" src="assets/objects/SPW_Natures_Tree_Palm_03.obj"></a-asset-item>
@@ -63,6 +66,8 @@
         <a-asset-item id="streetlight1-obj" src="assets/objects/SPW_Urban_Road Props_Street Light_01.obj"></a-asset-item>
         <a-asset-item id="streetlight2-obj" src="assets/objects/SPW_Urban_Road Props_Street Light_02.obj"></a-asset-item>
         <a-asset-item id="SPW_Urban_Road_Props_01" src="assets/objects/SPW_Urban_Road_Props_01.mtl"></a-asset-item>
+
+        <image id="wayfinding" src="assets/objects/wayfinding.jpg" />
 
 
       </a-assets>
@@ -75,8 +80,19 @@
         <a-entity id="streetlight2" scale="0.01 0.01 0.01" position="0 0 0" rotation="0 0 0" obj-model="obj:#streetlight2-obj; mtl:#SPW_Urban_Road_Props_01"></a-entity>
       </a-entity> -->
       <a-entity id="clouds" position="0 35 0" scale="7 7 7" geometry="height:7.74;radius:14;primitive:cylinder;openEnded:true" material="side:back; src:url(assets/clouds.png); transparent: true; repeat: 16; opacity: 0.4"></a-entity>
-      <!-- this position should be 0; instead a camera enetity should elevate viewer above street and reset to 0 when entering VR mode -->
-      <a-entity id="streets" position="-7 -4 -12">
+
+      <!-- WAYFINDING TESTING -->
+
+      <!-- wayfinding sign using Carson's object, custom material, the backside of the sign is reversed
+           this is the code used in javascript to show at every block -->
+      <!-- <a-entity class="wayfinding-obj" scale="0.1 0.13 0.1" position="0 0 -1" rotation="0 270 0" obj-model="obj:#pylon-obj;" material="src:#wayfinding; side:double;"></a-entity> -->
+
+      <!-- wayfinding sign added by a box geometry primitive, texture is visible on all sides, including squished the sides / deepth -->
+      <!-- <a-entity class="wayfinding-geo" geometry="primitive: box; width: 0.8; height: 2.2; depth: 0.05" position="3 1.1 -1" material="src:#wayfinding; side:double;"></a-entity> -->
+
+    <!-- END WAYFINDING TESTING -->
+
+      <a-entity id="streets" position="-7 0 -12">
         <a-entity id="street0"></a-entity>
         <a-entity id="street1" position="0 0 -12.5"></a-entity>
         <a-entity id="street2" position="0 0 -25"></a-entity>

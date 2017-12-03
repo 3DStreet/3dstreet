@@ -14,6 +14,7 @@ const defaultModelWidthsInMeters = {
   "bus-lane": 3,
   "light-rail": 3,
   "streetcar": 3,
+  "sidewalk-wayfinding": 3,
 }
 
 // Scale - Normally a MagicaVoxel voxel = 1 meter in A-Frame by default
@@ -22,6 +23,7 @@ const defaultModelWidthsInMeters = {
 const voxelScaleFactor = 0.1;
 
 function processSegments(segments, streetElementId) {
+  // takes a street's `segments` (array) from streetmix and a `streetElementId` (string) and places objects to make up a street with all segments
   var cumulativeWidthInMeters = 0;
   for (var i = 0; i < segments.length; i++) {
 
@@ -31,7 +33,7 @@ function processSegments(segments, streetElementId) {
     console.log("Type: " + segmentType + "; Width: " + segmentWidthInFeet + "ft / " + segmentWidthInMeters + "m");
 
     var modelWidthInMeters = defaultModelWidthsInMeters[segmentType];
-    console.log("Model Default Width: " + modelWidthInMeters + "m");
+//    console.log("Model Default Width: " + modelWidthInMeters + "m");
 
     // what is "delta" between default width and requested width?
     // default * scale = requested :: scale = requested / default
@@ -39,10 +41,10 @@ function processSegments(segments, streetElementId) {
     var scaleX = segmentWidthInMeters / modelWidthInMeters * voxelScaleFactor;
     var scaleY = voxelScaleFactor;
     var scaleZ = voxelScaleFactor;
-    console.log("Scale: " + scaleX);
+//    console.log("Scale: " + scaleX);
 
     cumulativeWidthInMeters = cumulativeWidthInMeters + segmentWidthInMeters;
-    console.log("Cumulative Street Width: " + cumulativeWidthInMeters + "m");
+//    console.log("Cumulative Street Width: " + cumulativeWidthInMeters + "m");
 
     var positionX = cumulativeWidthInMeters - (0.5 * segmentWidthInMeters);
     var positionY = 0;
@@ -68,6 +70,7 @@ function processSegments(segments, streetElementId) {
     if (segments[i].type == "turn-lane" && variantList[1] == "straight") {objectFileName = "turn-lane-straight"};
     if (segments[i].type == "turn-lane" && variantList[1] == "right") {
       objectFileName = "turn-lane-left";
+      // NEGATIVE SCALE NOT RECOMMENDED - https://github.com/aframevr/aframe/issues/717
       scaleX = scaleX * (-1);
       scaleY = scaleY * (-1); // this is added otherwise scaleX invert renders the model darker for some reason
       positionY = positionY + 0.1; // this is added because scaleY invert displaces the lane down by 0.1 for some reason
@@ -79,6 +82,24 @@ function processSegments(segments, streetElementId) {
       positionY = positionY + 0.1; // this is added because scaleY invert displaces the lane down by 0.1 for some reason
     }
     if (segments[i].type == "divider" && variantList[0] == "bollard") {objectFileName = "divider-bollard"};
+    if (segments[i].type == "sidewalk-wayfinding" && variantList[0] == "medium") {
+      objectFileName = "sidewalk"; // this is the "ground, normal "
+      // scaleX = scaleX * (-1);
+      // scaleY = scaleY * (-1); // this is added otherwise scaleX invert renders the model darker for some reason
+      // positionY = positionY + 0.1; // this is added because scaleY invert displaces the lane down by 0.1 for some reason
+      var placedObjectEl = document.createElement("a-entity");
+      placedObjectEl.setAttribute("class", segments[i].type);
+      placedObjectEl.setAttribute("scale", "0.1 0.13 0.1");
+      placedObjectEl.setAttribute("position", positionX + "0 0");
+      placedObjectEl.setAttribute("rotation", "0 270 0")
+      placedObjectEl.setAttribute("obj-model", "obj", "#pylon-obj");
+      placedObjectEl.setAttribute("id", streetElementId + segments[i].type)
+      // add the new elmement to DOM
+      document.getElementById(streetElementId).appendChild(placedObjectEl);
+      // workaround to assign material: fetch the same element after added to DOM then change material SRC
+      placedObjectEl = document.getElementById(streetElementId + segments[i].type);
+      placedObjectEl.setAttribute("material", "src:#wayfinding");
+    };
     if (segments[i].type == "streetcar") {objectFileName = "light-rail"};
 
     // add new object
@@ -89,6 +110,7 @@ function processSegments(segments, streetElementId) {
     segmentEl.setAttribute("obj-model", "obj", "url(assets/segments/" + objectFileName + ".obj)");
     segmentEl.setAttribute("obj-model", "mtl", "#magica-mtl");
     document.getElementById(streetElementId).appendChild(segmentEl);
+
   };
 };
 
