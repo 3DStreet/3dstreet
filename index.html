@@ -1,9 +1,9 @@
 <html>
   <head>
     <script src="https://aframe.io/releases/0.7.1/aframe.min.js"></script>
-    <script src="https://rawgit.com/ngokevin/kframe/master/components/sun-sky/dist/aframe-sun-sky.min.js"></script>
+    <script src="https://unpkg.com/aframe-sun-sky@^3.0.3/dist/aframe-sun-sky.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/velocity/1.5.0/velocity.js"></script>
-    <script src="https://cdn.rawgit.com/tizzle/aframe-orbit-controls-component/v0.1.14/dist/aframe-orbit-controls-component.min.js"></script>
+    <script src="https://unpkg.com/aframe-orbit-controls@1.2.0/dist/aframe-orbit-controls.min.js"></script>
 
     <script src="aframe-streetmix.js"></script>
 
@@ -73,19 +73,8 @@
 
 
       </a-assets>
-      <a-entity wasd-controls
-                id="camera"
-                camera="fov: 80; zoom: 1;"
-                position="0 2 5"
-                orbit-controls="
-                    autoRotate: false;
-                    target: #street0;
-                    enableDamping: true;
-                    dampingFactor: 0.125;
-                    rotateSpeed:0.25;
-                    minDistance:3;
-                    maxDistance:100;
-                    enableKeys: false;"></a-entity>
+      <a-entity wasd-controls id="camera" orbit-controls="target: 0 0 0;initialPosition:0 2 5;minDistance:3;maxDistance:100;"></a-entity>
+
       <!-- <a-entity id="street-static">
         <a-entity id="bike-lane" scale="0.1 0.1 0.1" position="0 0 -1" rotation="0 0 0" obj-model="obj:#bike-lane-obj; mtl:#magica-mtl"></a-entity>
         <a-entity id="palmtree2" scale="0.005 0.005 0.005" position="0 0 -1" rotation="0 0 0" obj-model="obj:#palmtree2-obj; mtl:#SPW_Natures_01"></a-entity>

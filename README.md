@@ -54,3 +54,17 @@ I learned a few things:
 * Some 3D models created by vencreations, https://www.cgtrader.com/vencreations, ["Royalty Free" License](https://www.cgtrader.com/pages/terms-and-conditions#royalty-free-license)
 
 <img src="https://raw.githubusercontent.com/kfarr/streetmix3d/master/assets/streetmix3d-banner.jpg" />
+
+### Potential Backgrounds
+https://www.flickr.com/photos/sitoo/48130422838/
+https://www.flickr.com/photos/kanalu/40842804183/
+https://www.flickr.com/photos/simonwaldherr/43292801800/
+https://www.flickr.com/photos/sitoo/46891684951/
+https://www.flickr.com/photos/165401243@N04/45103062855/
+https://www.flickr.com/photos/170458314@N04/48375643091/in/pool-equirectangular/
+https://www.hdri-skies-360.com/
+http://www.philohome.com/skycollec/skycollec.htm
+https://cdn.eso.org/images/large/eso0932a.jpg
+
+### Vision
+Animate this https://twitter.com/metrolosangeles/status/1153807208229957632
