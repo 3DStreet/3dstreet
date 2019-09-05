@@ -68,3 +68,19 @@ https://cdn.eso.org/images/large/eso0932a.jpg
 
 ### Vision
 Animate this https://twitter.com/metrolosangeles/status/1153807208229957632
+
+### Get buildings on block
+https://www.instructables.com/id/Capture-3D-Models-From-Google-Maps-or-Earth/
+https://www.autodesk.com/products/recap/overview
+
+### Get other map snippets in your scene
+https://github.com/w3reality/three-geo
+A-Frame three-geo adapter from @bluepenguinvr https://glitch.com/edit/#!/threegeo-aframe?path=index.html:86:11
+https://threegeo-aframe.glitch.me/
+
+### Others
+https://webkid.io/blog/3d-map-library-roundup/
+cool example https://demo.f4map.com/#lat=55.7425832&lon=37.6501812&zoom=15&camera.theta=0.9
+works but complicated code https://github.com/OSMBuildings/OSMBuildings
+interesting but not quite suited for this project https://github.com/peterqliu/threebox
+https://cesium.com/content/
