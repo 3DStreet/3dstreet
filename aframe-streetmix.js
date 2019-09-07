@@ -58,32 +58,32 @@ function processSegments(segments, streetElementId) {
     var rotationY = (variantList[0] == "inbound") ? 180 : 0;
 
     // the 3d model file name of a segment type is usually identical, let's start with that
-    var objectFileName = segments[i].type;
+    var mixinId = segments[i].type;
 
     // there are some cases to look at segment variants in order to find the right model
     // if type && variant2 then use model  ... there's definitely a better way to do this ...
-    if (segments[i].type == "drive-lane" && variantList[1] == "sharrow") {objectFileName = "drive-lane-sharrow"};
-    if (segments[i].type == "turn-lane" && variantList[1] == "both") {objectFileName = "turn-lane-both"};
-    if (segments[i].type == "turn-lane" && variantList[1] == "shared") {objectFileName = "turn-lane-shared"};
-    if (segments[i].type == "turn-lane" && variantList[1] == "left") {objectFileName = "turn-lane-left"};
-    if (segments[i].type == "turn-lane" && variantList[1] == "left-straight") {objectFileName = "turn-lane-left-straight"};
-    if (segments[i].type == "turn-lane" && variantList[1] == "straight") {objectFileName = "turn-lane-straight"};
+    if (segments[i].type == "drive-lane" && variantList[1] == "sharrow") {mixinId = "drive-lane-sharrow"};
+    if (segments[i].type == "turn-lane" && variantList[1] == "both") {mixinId = "turn-lane-both"};
+    if (segments[i].type == "turn-lane" && variantList[1] == "shared") {mixinId = "turn-lane-shared"};
+    if (segments[i].type == "turn-lane" && variantList[1] == "left") {mixinId = "turn-lane-left"};
+    if (segments[i].type == "turn-lane" && variantList[1] == "left-straight") {mixinId = "turn-lane-left-straight"};
+    if (segments[i].type == "turn-lane" && variantList[1] == "straight") {mixinId = "turn-lane-straight"};
     if (segments[i].type == "turn-lane" && variantList[1] == "right") {
-      objectFileName = "turn-lane-left";
+      mixinId = "turn-lane-left";
       // NEGATIVE SCALE NOT RECOMMENDED - https://github.com/aframevr/aframe/issues/717
       scaleX = scaleX * (-1);
       scaleY = scaleY * (-1); // this is added otherwise scaleX invert renders the model darker for some reason
       positionY = positionY + 0.1; // this is added because scaleY invert displaces the lane down by 0.1 for some reason
     }
     if (segments[i].type == "turn-lane" && variantList[1] == "right-straight") {
-      objectFileName = "turn-lane-left-straight";
+      mixinId = "turn-lane-left-straight";
       scaleX = scaleX * (-1);
       scaleY = scaleY * (-1); // this is added otherwise scaleX invert renders the model darker for some reason
       positionY = positionY + 0.1; // this is added because scaleY invert displaces the lane down by 0.1 for some reason
     }
-    if (segments[i].type == "divider" && variantList[0] == "bollard") {objectFileName = "divider-bollard"};
+    if (segments[i].type == "divider" && variantList[0] == "bollard") {mixinId = "divider-bollard"};
     if (segments[i].type == "sidewalk-wayfinding" && variantList[0] == "medium") {
-      objectFileName = "sidewalk"; // this is the "ground, normal "
+      mixinId = "sidewalk"; // this is the "ground, normal "
       // scaleX = scaleX * (-1);
       // scaleY = scaleY * (-1); // this is added otherwise scaleX invert renders the model darker for some reason
       // positionY = positionY + 0.1; // this is added because scaleY invert displaces the lane down by 0.1 for some reason
@@ -100,15 +100,14 @@ function processSegments(segments, streetElementId) {
       placedObjectEl = document.getElementById(streetElementId + segments[i].type);
       placedObjectEl.setAttribute("material", "src:#wayfinding");
     };
-    if (segments[i].type == "streetcar") {objectFileName = "light-rail"};
+    if (segments[i].type == "streetcar") {mixinId = "light-rail"};
 
     // add new object
     var segmentEl = document.createElement("a-entity");
     segmentEl.setAttribute("scale", scaleX + " " + scaleY + " " + scaleZ);
     segmentEl.setAttribute("position", positionX + " " + positionY + " 0");
     segmentEl.setAttribute("rotation", "0 " + rotationY + " 0")
-    segmentEl.setAttribute("obj-model", "obj", "url(assets/segments/" + objectFileName + ".obj)");
-    segmentEl.setAttribute("obj-model", "mtl", "#magica-mtl");
+    segmentEl.setAttribute("mixin", mixinId + "-vox");
     document.getElementById(streetElementId).appendChild(segmentEl);
 
   };

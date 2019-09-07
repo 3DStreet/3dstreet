@@ -55,6 +55,20 @@
       <a-assets>
         <!-- MagicaVoxel objects -->
         <a-asset-item id="bike-lane-obj" src="assets/segments/bike-lane.obj"></a-asset-item>
+        <a-asset-item id="bus-lane-obj" src="assets/segments/bus-lane.obj"></a-asset-item>
+        <a-asset-item id="divider-bollard-obj" src="assets/segments/divider-bollard.obj"></a-asset-item>
+        <a-asset-item id="divider-obj" src="assets/segments/divider.obj"></a-asset-item>
+        <a-asset-item id="drive-lane-sharrow-obj" src="assets/segments/drive-lane-sharrow.obj"></a-asset-item>
+        <a-asset-item id="drive-lane-obj" src="assets/segments/drive-lane.obj"></a-asset-item>
+        <a-asset-item id="light-rail-obj" src="assets/segments/light-rail.obj"></a-asset-item>
+        <a-asset-item id="parking-lane-obj" src="assets/segments/parking-lane.obj"></a-asset-item>
+        <a-asset-item id="sidewalk-obj" src="assets/segments/sidewalk.obj"></a-asset-item>
+        <a-asset-item id="turn-lane-both-obj" src="assets/segments/turn-lane-both.obj"></a-asset-item>
+        <a-asset-item id="turn-lane-left-straight-obj" src="assets/segments/turn-lane-left-straight.obj"></a-asset-item>
+        <a-asset-item id="turn-lane-left-obj" src="assets/segments/turn-lane-left.obj"></a-asset-item>
+        <a-asset-item id="turn-lane-shared-obj" src="assets/segments/turn-lane-shared.obj"></a-asset-item>
+        <a-asset-item id="turn-lane-straight-obj" src="assets/segments/turn-lane-straight.obj"></a-asset-item>
+
         <a-asset-item id="magica-mtl" src="assets/segments/magica.mtl"></a-asset-item>
 
         <a-asset-item id="pylon-obj" src="assets/objects/nyc-wayfinding-pylon-large-nomtl.obj"></a-asset-item>
@@ -64,13 +78,27 @@
         <a-asset-item id="palmtree2-obj" src="assets/objects/SPW_Natures_Tree_Palm_02.obj"></a-asset-item>
         <a-asset-item id="palmtree3-obj" src="assets/objects/SPW_Natures_Tree_Palm_03.obj"></a-asset-item>
         <a-asset-item id="SPW_Natures_01" src="assets/objects/SPW_Natures_01.mtl"></a-asset-item>
-
         <a-asset-item id="streetlight1-obj" src="assets/objects/SPW_Urban_Road Props_Street Light_01.obj"></a-asset-item>
         <a-asset-item id="streetlight2-obj" src="assets/objects/SPW_Urban_Road Props_Street Light_02.obj"></a-asset-item>
         <a-asset-item id="SPW_Urban_Road_Props_01" src="assets/objects/SPW_Urban_Road_Props_01.mtl"></a-asset-item>
 
         <image id="wayfinding" src="assets/objects/wayfinding.jpg" />
 
+        <a-mixin id="bike-lane-vox" obj-model="obj:#bike-lane-obj;mtl:#magica-mtl"></a-mixin>
+        <a-mixin id="bus-lane-vox" obj-model="obj:#bus-lane-obj;mtl:#magica-mtl"></a-mixin>
+        <a-mixin id="divider-bollard-vox" obj-model="obj:#divider-bollard-obj;mtl:#magica-mtl" ></a-mixin>
+        <a-mixin id="divider-vox" obj-model="obj:#divider-obj;mtl:#magica-mtl"></a-mixin>
+        <a-mixin id="drive-lane-sharrow-vox" obj-model="obj:#drive-lane-sharrow;mtl:#magica-mtl"></a-mixin>
+        <a-mixin id="drive-lane-vox" obj-model="obj:#drive-lane-obj;mtl:#magica-mtl"></a-mixin>
+        <a-mixin id="light-rail-vox" obj-model="obj:#light-rail-obj;mtl:#magica-mtl"></a-mixin>
+        <a-mixin id="parking-lane-vox" obj-model="obj:#parking-lane-obj;mtl:#magica-mtl"></a-mixin>
+        <a-mixin id="sidewalk-vox" obj-model="obj:#sidewalk-obj;mtl:#magica-mtl"></a-mixin>
+        <a-mixin id="parking-lane-vox" obj-model="obj:#parking-lane-obj;mtl:#magica-mtl"></a-mixin>
+        <a-mixin id="turn-lane-both-vox" obj-model="obj:#turn-lane-both-obj;mtl:#magica-mtl"></a-mixin>
+        <a-mixin id="turn-lane-left-straight-vox" obj-model="obj:#turn-lane-left-straight-obj;mtl:#magica-mtl"></a-mixin>
+        <a-mixin id="turn-lane-left-vox" obj-model="obj:#turn-lane-left-obj;mtl:#magica-mtl"></a-mixin>
+        <a-mixin id="turn-lane-shared-vox" obj-model="obj:#turn-lane-shared-obj;mtl:#magica-mtl"></a-mixin>
+        <a-mixin id="turn-lane-straight-vox" obj-model="obj:#turn-lane-straight-obj;mtl:#magica-mtl"></a-mixin>
 
       </a-assets>
       <a-entity wasd-controls id="camera" orbit-controls="target: 0 0 0;initialPosition:0 2 5;minDistance:3;maxDistance:100;"></a-entity>
