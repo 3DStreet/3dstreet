@@ -52,8 +52,10 @@
 
   </head>
   <body>
-    <a-scene fog="type: linear; color: #fffbcd; far: 100" >
+    <a-scene fog="type: linear; color: #fffbcd; far: 200" >
       <a-assets>
+        <a-asset-item id="15harrison" src="assets/15harrison/out.glb"></a-asset-item>
+
         <!-- MagicaVoxel objects -->
         <a-asset-item id="bike-lane-obj" src="assets/segments/bike-lane.obj"></a-asset-item>
         <a-asset-item id="bus-lane-obj" src="assets/segments/bus-lane.obj"></a-asset-item>
@@ -84,6 +86,7 @@
         <a-asset-item id="SPW_Urban_Road_Props_01" src="assets/objects/SPW_Urban_Road_Props_01.mtl"></a-asset-item>
 
         <image id="wayfinding" src="assets/objects/wayfinding.jpg" />
+        <image id="sky" src="assets/CGSkies_0343_8k_ERextended.jpg" />
 
         <a-mixin id="bike-lane-vox" obj-model="obj:#bike-lane-obj;mtl:#magica-mtl"></a-mixin>
         <a-mixin id="bus-lane-vox" obj-model="obj:#bus-lane-obj;mtl:#magica-mtl"></a-mixin>
@@ -101,15 +104,23 @@
         <a-mixin id="turn-lane-shared-vox" obj-model="obj:#turn-lane-shared-obj;mtl:#magica-mtl"></a-mixin>
         <a-mixin id="turn-lane-straight-vox" obj-model="obj:#turn-lane-straight-obj;mtl:#magica-mtl"></a-mixin>
 
+        <a-mixin id="drive-lane-t1" geometry="width:3;height:150;primitive:plane" material="repeat:1.5 75;src:materials/asphalthd_Base_Color.jpg;normalTextureRepeat:1.5 75;normalMap:materials/asphalthd_Normal.jpg;"></a-mixin>
+        <a-mixin id="bike-lane-t1" geometry="width:1.8;height:150;primitive:plane" material="repeat:2 150;src:materials/bikelane_Base_Color.jpg;normalTextureRepeat:2 150;normalMap:materials/bikelane_Normal.jpg"></a-mixin>
+        <a-mixin id="divider-t1" geometry="width:0.3;height:150;primitive:plane" material="repeat:0.21 150;offset:0.415 0;normalTextureOffset:0.415 0;src:materials/double_yellow1__Base_Color.jpg;normalTextureRepeat:0.21 150;normalMap:materials/double_yellow1__Normal.jpg"></a-mixin>
+        <a-mixin id="sidewalk-t1" geometry="width:3;height:150;primitive:plane" material="repeat:1.5 75;src:materials/sidewalkhd_Base_Color.jpg;normalTextureRepeat:1.5 75;normalMap:materials/sidewalkhd_Normal.jpg;"></a-mixin>
+
         <a-mixin id="asphalt1" geometry="width:3;height:150;primitive:plane" material="repeat:1.5 75;src:materials/asphalthd_Base_Color.jpg;normalTextureRepeat:1.5 75;normalMap:materials/asphalthd_Normal.jpg;"></a-mixin>
         <a-mixin id="asphaltbike1" geometry="width:1.8;height:150;primitive:plane" material="repeat:2 150;src:materials/bikelane_Base_Color.jpg;normalTextureRepeat:2 150;normalMap:materials/bikelane_Normal.jpg"></a-mixin>
         <a-mixin id="divider1" geometry="width:0.3;height:150;primitive:plane" material="repeat:0.21 150;offset:0.415 0;normalTextureOffset:0.415 0;src:materials/double_yellow1__Base_Color.jpg;normalTextureRepeat:0.21 150;normalMap:materials/double_yellow1__Normal.jpg"></a-mixin>
         <a-mixin id="sidewalk1" geometry="width:3;height:150;primitive:plane" material="repeat:1.5 75;src:materials/sidewalkhd_Base_Color.jpg;normalTextureRepeat:1.5 75;normalMap:materials/sidewalkhd_Normal.jpg;"></a-mixin>
 
+
       </a-assets>
       <a-entity wasd-controls id="camera" orbit-controls="target: 0 0 0;initialPosition:0 2 5;minDistance:3;maxDistance:100;"></a-entity>
 
-      <a-entity id="static-textured">
+      <a-entity id="streetscan" gltf-model="#15harrison" scale="0.2 0.2 0.2" rotation="0 -90.52 0" position="3.38 5.19 0"></a-entity>
+
+      <!-- <a-entity id="static-textured" position="0 0.1 0">
         <a-entity class="sidewalk" mixin="sidewalk1" position="-5.521 0.21 -0.282" rotation="270 0 0"></a-entity>
         <a-entity class="bike-lane" mixin="asphaltbike1" position="-3.17 0.11 -0.282" rotation="270 0 0"> </a-entity>
         <a-entity class="drive-lane" mixin="asphalt1" position="-0.776 0.11 -0.285" rotation="270 0 0" ></a-entity>
@@ -117,14 +128,9 @@
         <a-entity class="drive-lane" mixin="asphalt1" position="2.546 0.11 -0.285" rotation="270 0 0" ></a-entity>
         <a-entity class="bike-lane" mixin="asphaltbike1" position="4.967 0.11 -0.282" rotation="270 0 0"></a-entity>
         <a-entity class="sidewalk" mixin="sidewalk1" position="7.318 0.21 -0.282" rotation="270 0 0"></a-entity>
+      </a-entity> -->
 
-        <!-- <a-sun-sky material="sunPosition: -0.2 7.5 -5; fog: false"></a-sun-sky> -->
-        <!-- <a-sky color="#caf9ff" material="fog: false"></a-sky> -->
-
-
-
-        <a-sky position="0 -140 0" rotation="0 60 0" material="fog: false;src:assets\CGSkies_0343_8k_ERextended_Whitefog.jpg"></a-sky>
-      </a-entity>
+      <a-sky position="0 -140 0" rotation="0 60 0" material="fog: false;src:#sky"></a-sky>
 
       <!-- <a-entity id="street-static">
         <a-entity id="bike-lane" scale="0.1 0.1 0.1" position="0 0 -1" rotation="0 0 0" obj-model="obj:#bike-lane-obj; mtl:#magica-mtl"></a-entity>

@@ -20,7 +20,9 @@ const defaultModelWidthsInMeters = {
 // Scale - Normally a MagicaVoxel voxel = 1 meter in A-Frame by default
 // However for this project each voxel represents 1 decimeter (1/10th of a meter).
 // We need to reduce the size of the model (scale * 0.1) to compensate.
+// const voxelScaleFactor = 1;
 const voxelScaleFactor = 0.1;
+
 
 function processSegments(segments, streetElementId) {
   // takes a street's `segments` (array) from streetmix and a `streetElementId` (string) and places objects to make up a street with all segments
@@ -106,6 +108,10 @@ function processSegments(segments, streetElementId) {
     var segmentEl = document.createElement("a-entity");
     segmentEl.setAttribute("scale", scaleX + " " + scaleY + " " + scaleZ);
     segmentEl.setAttribute("position", positionX + " " + positionY + " 0");
+
+    // segmentEl.setAttribute("rotation", "270 " + rotationY + " 0")
+    // segmentEl.setAttribute("mixin", mixinId + "-t1");
+
     segmentEl.setAttribute("rotation", "0 " + rotationY + " 0")
     segmentEl.setAttribute("mixin", mixinId + "-vox");
     document.getElementById(streetElementId).appendChild(segmentEl);
