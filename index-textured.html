@@ -54,7 +54,9 @@
   <body>
     <a-scene fog="type: linear; color: #fffbcd; far: 200" >
       <a-assets>
-        <a-asset-item id="15harrison" src="assets/15harrison/out.glb"></a-asset-item>
+        <a-asset-item id="15harrison" src="assets/15harrison/out-recap-sketchfab.glb"></a-asset-item>
+        <a-asset-item id="harrison-obj" src="assets/model_37.7673477_-122.4136603/raw_export/model.obj"></a-asset-item>
+        <a-asset-item id="harrison-mtl" src="assets/model_37.7673477_-122.4136603/raw_export/model.mtl"></a-asset-item>
 
         <!-- MagicaVoxel objects -->
         <a-asset-item id="bike-lane-obj" src="assets/segments/bike-lane.obj"></a-asset-item>
@@ -114,11 +116,37 @@
         <a-mixin id="divider1" geometry="width:0.3;height:150;primitive:plane" material="repeat:0.21 150;offset:0.415 0;normalTextureOffset:0.415 0;src:materials/double_yellow1__Base_Color.jpg;normalTextureRepeat:0.21 150;normalMap:materials/double_yellow1__Normal.jpg"></a-mixin>
         <a-mixin id="sidewalk1" geometry="width:3;height:150;primitive:plane" material="repeat:1.5 75;src:materials/sidewalkhd_Base_Color.jpg;normalTextureRepeat:1.5 75;normalMap:materials/sidewalkhd_Normal.jpg;"></a-mixin>
 
+        <image id="subtitle" src="materials/subtitle.png" />
+
 
       </a-assets>
-      <a-entity wasd-controls id="camera" orbit-controls="target: 0 0 0;initialPosition:0 2 5;minDistance:3;maxDistance:100;"></a-entity>
 
-      <a-entity id="streetscan" gltf-model="#15harrison" scale="0.2 0.2 0.2" rotation="0 -90.52 0" position="3.38 5.19 0"></a-entity>
+      <a-entity id="cam-parent">
+        <a-entity wasd-controls id="camera" orbit-controls="target: 0 0 0;initialPosition:0 2 5;minDistance:3;maxDistance:100;">
+
+          <!-- <a-entity
+            geometry="primitive: plane; height: auto; width: 3"
+            material="color: blue"
+            text="anchor: left; width: 4; value: This text will be 4 units wide."></a-entity> -->
+
+            <a-entity position="0 2 0" geometry="primitive: plane; width: 10; height: auto" material="src: #subtitle; alphaTest: 0.; transparent: true;"
+                      text="color: yellow; align: left; value: San Francisco; width: 10; ">
+              <a-entity position="-5.1 0 0.001" geometry="primitive: plane; width: 0.1; height: 0.46" material="color: white;"></a-entity>
+            </a-entity>
+            <a-entity position="5 1 0" geometry="primitive: plane; width: 20; height: auto" material="src: #subtitle; alphaTest: 0.; transparent: true;"
+                      text="color: yellow; align: left; value: Harrison Street; width: 20; ">
+              <a-entity position="-10.1 0 0.001" geometry="primitive: plane; width: 0.1; height: 0.92" material="color: white;"></a-entity>
+            </a-entity>
+
+          </a-entity>
+        </a-entity>
+
+      <a-entity id="streetscan" gltf-model="#15harrison" scale="0.19 0.19 0.19" rotation="0 -90.52 0" position="7.013 4.890 0"></a-entity>
+
+      <!-- <a-entity obj-model="obj: #harrison-obj; mtl: #harrison-mtl"></a-entity> -->
+
+      <!-- <a-gltf-model id="streetscan" src="url(assets/15harrison/out-recap-sketchfab.glb)" scale="1 1 1" rotation="0 0 0" position="3.38 5.19 0"></a-gltf-model> -->
+
 
       <!-- <a-entity id="static-textured" position="0 0.1 0">
         <a-entity class="sidewalk" mixin="sidewalk1" position="-5.521 0.21 -0.282" rotation="270 0 0"></a-entity>
