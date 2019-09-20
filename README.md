@@ -17,7 +17,7 @@ Streetmix.net mixed with A-Frame for visualization of streetscapes
 
 Streetmix3D does not yet support all of the street `segments` found in Streetmix. You may find some segments don't display at all or are missing 3D elements. We'd gladly support any help making 3D models that match the designs from the original Streetmix. Here is a complete list:
 
-| [Streetmix Segment](https://github.com/streetmix/streetmix/blob/master/assets/scripts/segments/info.js)              | Supported? | Supported Variants  | Unsupported Variants |
+| [Streetmix Segment](https://github.com/streetmix/streetmix/blob/master/assets/scripts/segments/README.md)              | Supported? | Supported Variants  | Unsupported Variants |
 | ---------------------------- | --------- | ------ | ----- |
 | sidewalk            | Yes - Full        |        | no pedestrian 3d models, density levels unsupported, uses empty sidewalk for all variants |
 | sidewalk-tree       | no        |   | 3d object - palm 2 and 3   |
