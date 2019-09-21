@@ -16,7 +16,8 @@ https://www.sfmta.com/reports/striping-drawings
 ### Camera notes
 https://glitch.com/edit/#!/orbit-to-cam-position?path=POSITION-ROTATION.md:46:0
 
-
+https://stackoverflow.com/questions/29586422/three-js-ignore-parents-rotation
+https://stackoverflow.com/questions/15181351/keep-object-rotation-based-on-parent-other-object-coordinate-system-in-three-js
 
 
 orbit-to-cam-position
@@ -51,3 +52,57 @@ AFRAME.scenes[0].camera.el.getObject3D('camera').position.set(0, 10, -4); //work
 AFRAME.scenes[0].camera.el.getObject3D('camera').position.set(0, 10, -4); //works! AFRAME.scenes[0].camera.el.setAttribute("animation__1", "property: object3D.position; from: 100 10 -4; to: 0 10 -4; easing: easeOutSine; dur: 2000;")
 
 AFRAME.scenes[0].camera.el.setAttribute("animation__1", "property: position; from: 0 10 -2; to: 0 1 5; easing: easeOutSine; dur: 2000;")
+
+
+
+scenes:
+
+**********************************
+
+Neighborhood Welcome
+- sky view, looking north - 2d map
+large: Mission District
+small: San Francisco, CA
+AFRAME.scenes[0].camera.el.setAttribute("animation__1", "property: position; from: 0 400 -2; to: 0.5 250 1; easing: easeOutSine; dur: 5000;")
+
+fade in 3d model and 3d road or voxel road?
+
+large: Harrison St
+small: 15th to Alameda St
+AFRAME.scenes[0].camera.el.setAttribute("animation__1", "property: position; from: 0.5 250 1; to: -42.634 12.735 -13.256; easing: easeInOutSine; dur: 5000;")
+
+// RETURN
+AFRAME.scenes[0].camera.el.setAttribute("animation__1", "property: position; to: 0.5 250 1; from: -42.634 12.735 -13.256; easing: easeInOutSine; dur: 5000;")
+
+large: Current Conditions
+small: September 2019
+AFRAME.scenes[0].camera.el.setAttribute("animation__1", "property: position; to: -0.1 43 -7; from: -42.634 12.735 -13.256; easing: easeInOutSine; dur: 5000;")
+
+fade out 3d model
+AFRAME.scenes[0].camera.el.setAttribute("animation__1", "property: position; from: -0.1 43 -7; to: -0.1 23 -7; easing: easeInOutSine; dur: 5000;")
+
+small: Transit First Score
+large: 40% (red color)
+
+Top Down (outbound) view
+Labels (voxel view)
+Width Overall
+Width for each segment
+2d overlay of streetmix2d
+
+Transit Score: 40% (red)
+score = width of transit segments / total width of street
+transit = anything but drive lane and parking
+
+//FADE TO BLACK
+
+Alt1 Parking Protected Inbound
+Alt2 Parking Protected Outbound
+
+Transit Score: 50% (yellow)
+
+
+
+alternate2
+
+alt2 primary feature
