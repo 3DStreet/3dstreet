@@ -20,8 +20,8 @@ const defaultModelWidthsInMeters = {
 // Scale - Normally a MagicaVoxel voxel = 1 meter in A-Frame by default
 // However for this project each voxel represents 1 decimeter (1/10th of a meter).
 // We need to reduce the size of the model (scale * 0.1) to compensate.
-// const voxelScaleFactor = 1;
-const voxelScaleFactor = 0.1;
+// const voxelScaleFactor = 1;     // USE THIS LINE FOR TEXTURE MODE
+const voxelScaleFactor = 0.1;   // USE THIS LINE FOR VOXEL MODE
 
 
 function processSegments(segments, streetElementId) {
@@ -109,9 +109,11 @@ function processSegments(segments, streetElementId) {
     segmentEl.setAttribute("scale", scaleX + " " + scaleY + " " + scaleZ);
     segmentEl.setAttribute("position", positionX + " " + positionY + " 0");
 
+    // USE THESE 2 LINES FOR TEXTURE MODE:
     // segmentEl.setAttribute("rotation", "270 " + rotationY + " 0")
     // segmentEl.setAttribute("mixin", mixinId + "-t1");
 
+    // USE THESE 2 LINES FOR VOXEL MODE:
     segmentEl.setAttribute("rotation", "0 " + rotationY + " 0")
     segmentEl.setAttribute("mixin", mixinId + "-vox");
     document.getElementById(streetElementId).appendChild(segmentEl);
