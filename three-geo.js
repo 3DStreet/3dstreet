@@ -32,11 +32,17 @@
               // Beware the value of radius; radius > 5.0 (km) could trigger huge number of tile API calls!!
               tgeo.getTerrain([this.data.lat, this.data.lng], this.data.radius, this.data.zoom, {
                   onRgbDem: (meshes) => { // your implementation when terrain's geometry is obtained'
-            console.log('obtained meshes...');
-            console.log('meshes: ', meshes);
+                      console.log('obtained meshes...');
+                      console.log('meshes: ', meshes);
                       meshes.forEach((mesh) => { geoScene.add(mesh); });
                   },
                   onSatelliteMat: (mesh) => { // your implementation when terrain's satellite texture is obtained
+                    console.log("satellite is done!!!");
+                    // include in schema: +          spinner: {type: 'selector'},
+                    // this.data.spinner.setAttribute("style", "display: none;");
+                    // this.data.spinner.style.display = "none";
+                    // document.getElementById("cover-spin").style.display = "none";
+
                   },
               });
           }
