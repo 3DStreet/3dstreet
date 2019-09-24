@@ -6,7 +6,6 @@
     <script src="https://unpkg.com/aframe-orbit-controls@1.2.0/dist/aframe-orbit-controls.min.js"></script>
     <script src="https://unpkg.com/three-geo@1.2.5/dist/three-geo.min.js"></script>
 
-
     <script src="aframe-streetmix.js"></script>
     <script src="three-geo.js"></script>
     <script src="aframe-presentation-component.js"></script>
@@ -55,7 +54,7 @@
 
   </head>
   <body>
-    <a-scene fogoff="type: linear; color: #fffbcd; far: 200" >
+    <a-scene vr-mode-ui="enabled: false" fogoff="type: linear; color: #fffbcd; far: 200" >
       <a-assets>
         <a-asset-item id="15harrison" src="assets/15harrison/out-recap-sketchfab.glb"></a-asset-item>
         <!-- <a-asset-item id="harrison-obj" src="assets/model_37.7673477_-122.4136603/raw_export/model.obj"></a-asset-item>
@@ -125,22 +124,15 @@
       </a-assets>
 
       <a-entity id="rig">
-        <a-entity id="camera" camera>
-        <!-- <a-entity id="camera" orbit-controls="target: 0 0 0;initialPosition:0 2 5;minDistance:3;maxDistance:100;"> -->
+        <!-- <a-entity id="camera" camera> -->
+        <a-entity id="camera" orbit-controls="enableKeys: false; target: 0 0 0;initialPosition:0 2 5;minDistance:3;maxDistance:100;enableRotate:false;">
 
           <!-- <a-entity
             geometry="primitive: plane; height: auto; width: 3"
             material="color: blue"
             text="anchor: left; width: 4; value: This text will be 4 units wide."></a-entity> -->
 
-            <a-entity position="0 2 0" geometry="primitive: plane; width: 10; height: auto" material="src: #subtitle; alphaTest: 0.; transparent: true;"
-                      text="color: yellow; align: left; value: San Francisco; width: 10; ">
-              <a-entity position="-5.1 0 0.001" geometry="primitive: plane; width: 0.1; height: 0.46" material="color: white;"></a-entity>
-            </a-entity>
-            <a-entity position="5 1 0" geometry="primitive: plane; width: 20; height: auto" material="src: #subtitle; alphaTest: 0.; transparent: true;"
-                      text="color: yellow; align: left; value: Harrison Street; width: 20; ">
-              <a-entity position="-10.1 0 0.001" geometry="primitive: plane; width: 0.1; height: 0.92" material="color: white;"></a-entity>
-            </a-entity>
+
 
           </a-entity>
         </a-entity>
@@ -182,9 +174,9 @@
       <!-- <a-entity class="wayfinding-geo" geometry="primitive: box; width: 0.8; height: 2.2; depth: 0.05" position="3 1.1 -1" material="src:#wayfinding; side:double;"></a-entity> -->
 
     <!-- END WAYFINDING TESTING -->
-      <a-entity id="streetscan" gltf-model="#15harrison" scale="0.19 0.19 0.19" rotation="0 93.310 0" position="-1.978 4.890 0.301"></a-entity>
+      <a-entity id="streetscan" gltf-model="#15harrison" scale="0.19 0.19 0.19" rotation="0 93.310 0" position="-1.978 4.890 0.301" visible="false"></a-entity>
 
-      <a-entity id="streets" position="11.889 0.1 -1.386" rotation="0 184.3 0">
+      <a-entity id="streets" position="11.889 0.1 -1.386" rotation="0 184.3 0" visible="false">
         <a-entity id="street0"></a-entity>
         <a-entity id="street1" position="0 0 -12.5"></a-entity>
         <a-entity id="street2" position="0 0 -25"></a-entity>
@@ -202,7 +194,8 @@
 
       </a-entity>
 
-      <a-entity id="hoodmap" scale="750 1 750" position="0 0 0">
+      <a-entity id="hoodmap" scale="750 1 750" position="0 -2 0"
+        animation_opacity="from: ;to:;">
 
         <a-entity three-geo="token: pk.eyJ1Ijoia2llcmFuZmFyciIsImEiOiJjazB0NWh2YncwOW9rM25sd2p0YTlxemk2In0.mLl4sNGDFbz_QXk0GIK02Q;
                      lat: 37.767548;
@@ -211,13 +204,53 @@
                      zoom: 19;
                      axes_on: false;"
                 rotation="-90 0 0"></a-entity>
+
       </a-entity>
 
-      <a-presentation use-hash="false">
-        <a-presentation-slide camera-position="0.5 250 1" camera-rotation="-88.63607246839707 0.11364974403152148 4.762288908833026"></a-presentation-slide>
-        <a-presentation-slide camera-position="-42.634 12.735 -13.256" camera-rotation="0 -102 0"></a-presentation-slide>
-        <a-presentation-slide camera-position="-0.1 43 -7" camera-rotation="-92.54480437981309 -0.1271981794462486 -177.14042000677006"></a-presentation-slide>
-        <a-presentation-slide camera-position="6 3 0" camera-rotation="0 -180 0" camera-duration="2500"></a-presentation-slide>
+      <a-entity id="lower-third" position="2.1 245 5" rotation="-90 0 0">
+        <a-entity position="5 1 0" geometry="primitive: plane; width: 20; height: auto" material="src: #subtitle; alphaTest: 0.; transparent: true;"
+                  text="color: yellow; align: left; value: Mission District; width: 20; ">
+          <a-entity position="-10.1 0 0.001" geometry="primitive: plane; width: 0.1; height: 0.92" material="color: white;"></a-entity>
+        </a-entity>
+        <a-entity position="0 0 0" geometry="primitive: plane; width: 10; height: auto" material="src: #subtitle; alphaTest: 0.; transparent: true;"
+                  text="color: yellow; align: left; value: San Francisco; width: 10; ">
+          <a-entity position="-5.1 0 0.001" geometry="primitive: plane; width: 0.1; height: 0.46" material="color: white;"></a-entity>
+        </a-entity>
+      </a-entity>
+
+      <a-entity id="lower-third-2" position="-37.634 11 -5.256" rotation="-180 90 180">
+        <a-entity position="5 1 0" geometry="primitive: plane; width: 20; height: auto" material="src: #subtitle; alphaTest: 0.; transparent: true;"
+                  text="color: yellow; align: left; value: Harrison St; width: 20; ">
+          <a-entity position="-10.1 0 0.001" geometry="primitive: plane; width: 0.1; height: 0.92" material="color: white;"></a-entity>
+        </a-entity>
+        <a-entity position="0 0 0" geometry="primitive: plane; width: 10; height: auto" material="src: #subtitle; alphaTest: 0.; transparent: true;"
+                  text="color: yellow; align: left; value: 15th to Alameda St; width: 10; ">
+          <a-entity position="-5.1 0 0.001" geometry="primitive: plane; width: 0.1; height: 0.46" material="color: white;"></a-entity>
+        </a-entity>
+      </a-entity>
+
+      <a-entity id="lower-third-3" position="-2 38 -4" rotation="-90 0 -180">
+        <a-entity position="5 1 0" geometry="primitive: plane; width: 20; height: auto" material="src: #subtitle; alphaTest: 0.; transparent: true;"
+                  text="color: red; align: left; value: 40% ; width: 20; ">
+          <a-entity position="-10.1 0 0.001" geometry="primitive: plane; width: 0.1; height: 0.92" material="color: white;"></a-entity>
+        </a-entity>
+        <a-entity position="0 0 0" geometry="primitive: plane; width: 10; height: auto" material="src: #subtitle; alphaTest: 0.; transparent: true;"
+                  text="color: yellow; align: left; value: Transit First Score; width: 10; ">
+          <a-entity position="-5.1 0 0.001" geometry="primitive: plane; width: 0.1; height: 0.46" material="color: white;"></a-entity>
+        </a-entity>
+      </a-entity>
+
+      <a-presentation id="presentation" presentation-camera="#camera" use-hash="false">
+        <a-presentation-slide camera-position="0.5 250 1" camera-duration="2500" easing="easeInOutSine"  ></a-presentation-slide>
+        <a-presentation-slide camera-position="-42.634 12.735 -13.256" show-entities="#streetscan" camera-duration="2500" easing="easeInOutSine" ></a-presentation-slide>
+        <a-presentation-slide camera-position="-0.1 43 -7" hide-entities="#hoodmap" show-entities="#streets" camera-duration="2500" easing="easeInOutSine" ></a-presentation-slide>
+        <a-presentation-slide camera-position="6 3 0" hide-entities="#streetscan" camera-duration="2500" easing="easeInOutSine" ></a-presentation-slide>
+
+        <!-- <a-presentation-slide camera-duration="5000" easing="easeInOutSine" camera-position="0.5 250 1" camera-rotation="-88.63607246839707 0.11364974403152148 4.762288908833026"></a-presentation-slide>
+        <a-presentation-slide camera-duration="5000" easing="easeInOutSine" camera-position="-42.634 12.735 -13.256" camera-rotation="0 -102 0"></a-presentation-slide>
+        <a-presentation-slide camera-duration="5000" easing="easeInOutSine" camera-position="-0.1 43 -7" camera-rotation="-92.54480437981309 -0.1271981794462486 -177.14042000677006"></a-presentation-slide>
+        <a-presentation-slide camera-duration="5000" easing="easeInOutSine" camera-position="6 3 0" camera-rotation="0 -180 0" camera-duration="2500"></a-presentation-slide> -->
+
       </a-presentation>
 
     </a-scene>

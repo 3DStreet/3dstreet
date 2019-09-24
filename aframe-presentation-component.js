@@ -38,14 +38,18 @@ AFRAME.registerComponent('presentation', {
         const curPos = currentSlide.components['presentation-slide'].data.cameraPosition;
         const curRot = currentSlide.components['presentation-slide'].data.cameraRotation;
 
+        const easing = currentSlide.components['presentation-slide'].data.easing;
         const duration = currentSlide.components['presentation-slide'].data.cameraDuration;
 
+        console.log(curRot);
+        console.log(camera);
         if (instant) {
             camera.setAttribute('position', curPos);
-            camera.setAttribute('rotation', curRot);
+            // camera.setAttribute('rotation', curRot);
         } else {
-            camera.setAttribute('animation__position', `property: position; dur: ${duration}; easing: linear; from: ${prevPos.x} ${prevPos.y} ${prevPos.z}; to: ${curPos.x} ${curPos.y} ${curPos.z}`);
-            camera.setAttribute('animation__rotation', `property: rotation; dur: ${duration}; easing: linear; from: ${prevRot.x} ${prevRot.y} ${prevRot.z}; to: ${curRot.x} ${curRot.y} ${curRot.z}`);
+            console.log('animation__position', `property: position; dur: ${duration}; easing: ${easing}; from: ${prevPos.x} ${prevPos.y} ${prevPos.z}; to: ${curPos.x} ${curPos.y} ${curPos.z}`);
+            camera.setAttribute('animation__position', `property: position; dur: ${duration}; easing: ${easing}; from: ${prevPos.x} ${prevPos.y} ${prevPos.z}; to: ${curPos.x} ${curPos.y} ${curPos.z}`);
+            // camera.setAttribute('animation__rotation', `property: rotation; dur: ${duration}; easing: linear; from: ${prevRot.x} ${prevRot.y} ${prevRot.z}; to: ${curRot.x} ${curRot.y} ${curRot.z}`);
         }
 
         const emitEvent = currentSlide.components['presentation-slide'].data.emitEvent;
@@ -182,6 +186,7 @@ AFRAME.registerComponent('presentation-slide', {
         cameraDuration: { type: 'number', default: 1000, },
         cameraPosition: { type: 'vec3' },
         cameraRotation: { type: 'vec3' },
+        easing: { type: 'string', default: 'linear'},
         emitEvent: { type: 'string' },
         emitValues: { type: 'array', default: [] },
         hideEntities: { type: 'array', default: [] },
@@ -195,8 +200,8 @@ AFRAME.registerPrimitive('a-presentation', {
     },
 
     mappings: {
-        'camera': 'presentation.camera',
-        'keyboard-shortcuts': 'presentation.keyboardShortcuts',
+        'presentation-camera': 'presentation.camera',
+        'presentation-keyboard-shortcuts': 'presentation.keyboardShortcuts',
         'use-hash': 'presentation.useHash',
     }
 });
@@ -213,6 +218,7 @@ AFRAME.registerPrimitive('a-presentation-slide', {
         'camera-duration': 'presentation-slide.cameraDuration',
         'camera-position': 'presentation-slide.cameraPosition',
         'camera-rotation': 'presentation-slide.cameraRotation',
+        'easing': 'presentation-slide.easing',
         'emit-event': 'presentation-slide.emitEvent',
         'emit-values': 'presentation-slide.emitValues',
         'hide-entities': 'presentation-slide.hideEntities',
