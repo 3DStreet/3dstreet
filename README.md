@@ -68,6 +68,8 @@ https://cdn.eso.org/images/large/eso0932a.jpg
 
 ### Vision
 Animate this https://twitter.com/metrolosangeles/status/1153807208229957632
+Animate this https://twitter.com/FouadUrbanist/status/1176890584935653380
+Or something like this! https://github.com/nagix/mini-tokyo-3d
 
 ### Get buildings on block
 https://www.instructables.com/id/Capture-3D-Models-From-Google-Maps-or-Earth/
