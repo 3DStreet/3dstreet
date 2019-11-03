@@ -32,15 +32,12 @@ function insertSeparatorSegments(segments) {
 
   const newValues = segments.reduce((newArray, currentValue, currentIndex, arr) => {
     if (currentIndex == 0) { return newArray.concat(currentValue) }
-
     // do the current AND previous segments have last 4 characters of `type` = "lane"
     if (currentValue.type.slice(currentValue.type.length - 4) == "lane" && arr[currentIndex - 1].type.slice(arr[currentIndex - 1].type.length - 4) == "lane") {
       // add zero width separator segment
       newArray.push( {type: "separator", variantString: "dashed", width: 0} )
     }
-
     newArray.push(currentValue);
-
     return newArray;
   }, []);
 
@@ -53,6 +50,7 @@ function insertSeparatorSegments(segments) {
 function processSegments(segments, streetElementId) {
   // takes a street's `segments` (array) from streetmix and a `streetElementId` (string) and places objects to make up a street with all segments
   segments = insertSeparatorSegments(segments);
+  console.log(segments);
   var cumulativeWidthInMeters = 0;
   for (var i = 0; i < segments.length; i++) {
 

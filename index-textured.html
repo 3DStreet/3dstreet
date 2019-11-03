@@ -112,11 +112,7 @@
         <a-mixin id="bike-lane-t1" geometry="width:1.8;height:150;primitive:plane" material="repeat:2 150;src:materials/bikelane_Base_Color.jpg;normalTextureRepeat:2 150;normalMap:materials/bikelane_Normal.jpg"></a-mixin>
         <a-mixin id="divider-t1" geometry="width:0.3;height:150;primitive:plane" material="repeat:0.21 150;offset:0.415 0;normalTextureOffset:0.415 0;src:materials/double_yellow1__Base_Color.jpg;normalTextureRepeat:0.21 150;normalMap:materials/double_yellow1__Normal.jpg"></a-mixin>
         <a-mixin id="sidewalk-t1" geometry="width:3;height:150;primitive:plane" material="repeat:1.5 75;src:materials/sidewalkhd_Base_Color.jpg;normalTextureRepeat:1.5 75;normalMap:materials/sidewalkhd_Normal.jpg;"></a-mixin>
-
-        <a-mixin id="asphalt1" geometry="width:3;height:150;primitive:plane" material="repeat:1.5 75;src:materials/asphalthd_Base_Color.jpg;normalTextureRepeat:1.5 75;normalMap:materials/asphalthd_Normal.jpg;"></a-mixin>
-        <a-mixin id="asphaltbike1" geometry="width:1.8;height:150;primitive:plane" material="repeat:2 150;src:materials/bikelane_Base_Color.jpg;normalTextureRepeat:2 150;normalMap:materials/bikelane_Normal.jpg"></a-mixin>
-        <a-mixin id="divider1" geometry="width:0.3;height:150;primitive:plane" material="repeat:0.21 150;offset:0.415 0;normalTextureOffset:0.415 0;src:materials/double_yellow1__Base_Color.jpg;normalTextureRepeat:0.21 150;normalMap:materials/double_yellow1__Normal.jpg"></a-mixin>
-        <a-mixin id="sidewalk1" geometry="width:3;height:150;primitive:plane" material="repeat:1.5 75;src:materials/sidewalkhd_Base_Color.jpg;normalTextureRepeat:1.5 75;normalMap:materials/sidewalkhd_Normal.jpg;"></a-mixin>
+        <a-mixin id="separator-dashed-t1" geometry="width:0.5;height:150;primitive:plane" material="repeat:0.21 25;offset:0.5 0.5;src:materials/separator-short-dash_1024.png;transparent: true;"></a-mixin>
 
         <image id="subtitle" src="materials/subtitle.png" />
 
@@ -144,13 +140,16 @@
 
       <!-- static for debugging textures without parsing json -->
       <!-- <a-entity id="static-textured" position="0 0.1 0">
-        <a-entity class="sidewalk" mixin="sidewalk1" position="-5.521 0.21 -0.282" rotation="270 0 0"></a-entity>
-        <a-entity class="bike-lane" mixin="asphaltbike1" position="-3.17 0.11 -0.282" rotation="270 0 0"> </a-entity>
-        <a-entity class="drive-lane" mixin="asphalt1" position="-0.776 0.11 -0.285" rotation="270 0 0" ></a-entity>
-        <a-entity class="divider" mixin="divider1" position="0.869 0.11 -0.282" rotation="270 0 0" ></a-entity>
-        <a-entity class="drive-lane" mixin="asphalt1" position="2.546 0.11 -0.285" rotation="270 0 0" ></a-entity>
-        <a-entity class="bike-lane" mixin="asphaltbike1" position="4.967 0.11 -0.282" rotation="270 0 0"></a-entity>
-        <a-entity class="sidewalk" mixin="sidewalk1" position="7.318 0.21 -0.282" rotation="270 0 0"></a-entity>
+        <a-entity class="sidewalk" mixin="sidewalk-t1" position="-5.521 0.21 -0.282" rotation="270 0 0"></a-entity>
+        <a-entity class="bike-lane" mixin="bike-lane-t1" position="-3.17 0.11 -0.282" rotation="270 0 0"> </a-entity>
+
+        <a-entity class="separator-dashed" mixin="separator-dashed-t1" position="-2.1 0.12 -0.282" rotation="270 0 0"> </a-entity>
+
+        <a-entity class="drive-lane" mixin="drive-lane-t1" position="-0.776 0.11 -0.285" rotation="270 0 0" ></a-entity>
+        <a-entity class="divider" mixin="divider-t1" position="0.869 0.11 -0.282" rotation="270 0 0" ></a-entity>
+        <a-entity class="drive-lane" mixin="drive-lane-t1" position="2.546 0.11 -0.285" rotation="270 0 0" ></a-entity>
+        <a-entity class="bike-lane" mixin="bike-lane-t1" position="4.967 0.11 -0.282" rotation="270 0 0"></a-entity>
+        <a-entity class="sidewalk" mixin="sidewalk-t1" position="7.318 0.21 -0.282" rotation="270 0 0"></a-entity>
       </a-entity> -->
 
       <a-sky position="0 -140 0" rotation="0 155 0" material="fog: false;src:#sky"></a-sky>
