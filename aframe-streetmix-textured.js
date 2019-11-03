@@ -27,13 +27,32 @@ const voxelScaleFactor = 1;     // USE THIS LINE FOR TEXTURE MODE
 function insertSeparatorSegments(segments) {
   // takes a list of segments
   // if adjacent `*lane`, add separator
-  console.log(segments);
+  // OLD SEGMENTS
+  // console.log('Old segments', segments);
 
+  const newValues = segments.reduce((newArray, currentValue, currentIndex, arr) => {
+    if (currentIndex == 0) { return newArray.concat(currentValue) }
+
+    // do the current AND previous segments have last 4 characters of `type` = "lane"
+    if (currentValue.type.slice(currentValue.type.length - 4) == "lane" && arr[currentIndex - 1].type.slice(arr[currentIndex - 1].type.length - 4) == "lane") {
+      // add zero width separator segment
+      newArray.push( {type: "separator", variantString: "dashed", width: 0} )
+    }
+
+    newArray.push(currentValue);
+
+    return newArray;
+  }, []);
+
+  // console.log('newValues =', newValues)
+  // console.log(segments);
+
+  return newValues;
 }
 
 function processSegments(segments, streetElementId) {
   // takes a street's `segments` (array) from streetmix and a `streetElementId` (string) and places objects to make up a street with all segments
-  insertSeparatorSegments(segments);
+  segments = insertSeparatorSegments(segments);
   var cumulativeWidthInMeters = 0;
   for (var i = 0; i < segments.length; i++) {
 
@@ -111,6 +130,8 @@ function processSegments(segments, streetElementId) {
       placedObjectEl.setAttribute("material", "src:#wayfinding");
     };
     if (segments[i].type == "streetcar") {mixinId = "light-rail"};
+
+    // if (segments[i].type == "separator" && variantList[0] == "dashed") {mixinId = "dashed"};
 
     // add new object
     var segmentEl = document.createElement("a-entity");
