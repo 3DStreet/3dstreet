@@ -24,15 +24,16 @@ const voxelScaleFactor = 1;     // USE THIS LINE FOR TEXTURE MODE
 // const voxelScaleFactor = 0.1;   // USE THIS LINE FOR VOXEL MODE
 
 
-function insertLaneMarkerSegments(segments) {
+function insertSeparatorSegments(segments) {
   // takes a list of segments
   // if adjacent `*lane`, add separator
   console.log(segments);
+
 }
 
 function processSegments(segments, streetElementId) {
   // takes a street's `segments` (array) from streetmix and a `streetElementId` (string) and places objects to make up a street with all segments
-  insertLaneMarkerSegments(segments);
+  insertSeparatorSegments(segments);
   var cumulativeWidthInMeters = 0;
   for (var i = 0; i < segments.length; i++) {
 
@@ -129,12 +130,9 @@ function processSegments(segments, streetElementId) {
 };
 
 function loadStreet(streetURL) {
-  // Erase exiting street (if any)
-  var streetEl = document.getElementById("streets");
-  if (streetEl.firstChild) {
-    streetEl.removeChild(streetEl.firstChild);
-  }
-
+  // Erase existing street (if any)
+  const myNode = document.getElementById("streets");
+  myNode.innerHTML = '';
 
   // getjson replacement from http://youmightnotneedjquery.com/#json
   var request = new XMLHttpRequest();
@@ -145,18 +143,6 @@ function loadStreet(streetURL) {
       var streetmixObject = JSON.parse(this.response);
       var streetmixSegments = streetmixObject.data.street.segments;
       processSegments(streetmixSegments, "streets");
-      // processSegments(streetmixSegments, "street1");
-      // processSegments(streetmixSegments, "street2");
-      // processSegments(streetmixSegments, "street3");
-      // processSegments(streetmixSegments, "street4");
-      // processSegments(streetmixSegments, "street5");
-      // processSegments(streetmixSegments, "street6");
-      // processSegments(streetmixSegments, "street-1");
-      // processSegments(streetmixSegments, "street-2");
-      // processSegments(streetmixSegments, "street-3");
-      // processSegments(streetmixSegments, "street-4");
-      // processSegments(streetmixSegments, "street-5");
-      // processSegments(streetmixSegments, "street-6");
     } else {
       // We reached our target server, but it returned an error
       console.log("oops - We reached our target server, but it returned an error");
