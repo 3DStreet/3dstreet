@@ -8,7 +8,7 @@ const defaultModelWidthsInMeters = {
   "bike-lane": 1.8,
   "drive-lane": 3,
   "divider": 0.3,
-  "parking-lane": 2.4,
+  "parking-lane": 3,
   "sidewalk": 3,
   "turn-lane": 3,
   "bus-lane": 3,
@@ -34,10 +34,22 @@ function insertSeparatorSegments(segments) {
     // don't insert a lane marker for the first segment
     if (currentIndex == 0) { return newArray.concat(currentValue) }
 
+    const previousValue = arr[currentIndex - 1];
+
     // if current AND previous segments have last 4 characters of `type` = "lane"
-    if (currentValue.type.slice(currentValue.type.length - 4) == "lane" && arr[currentIndex - 1].type.slice(arr[currentIndex - 1].type.length - 4) == "lane") {
+    if (currentValue.type.slice(currentValue.type.length - 4) == "lane" && previousValue.type.slice(arr[currentIndex - 1].type.length - 4) == "lane") {
       // add zero width separator segment
-      newArray.push( {type: "separator", variantString: "dashed", width: 0} )
+      var variantString = "solid";
+
+      // if identical lane types are adjacent, then used dashed
+      if (currentValue.type == previousValue.type) { variantString = "dashed" }
+
+      // if adjacent segments in opposite directions then use double yellow
+      if (currentValue.variantString.split("|")[0] !== previousValue.variantString.split("|")[0]) {
+        variantString = "doubleyellow";
+      }
+
+      newArray.push( {type: "separator", variantString: variantString, width: 0} )
     }
     newArray.push(currentValue);
     return newArray;
@@ -80,7 +92,7 @@ function processSegments(segments, streetElementId) {
 
     // get variantString
     var variantList = segments[i].variantString.split("|");
-    console.log(variantList);
+    // console.log(variantList);
 
     // Note: segment 3d models are outbound by default
     // If segment variant inbound, rotate segment model by 180 degrees
@@ -136,6 +148,20 @@ function processSegments(segments, streetElementId) {
       positionY = positionY + 0.01; // make sure the lane marker is above the asphalt
       scaleX = 1;
     };
+
+    if (segments[i].type == "separator" && variantList[0] == "solid") {
+      mixinId = "separator-solid";
+      positionY = positionY + 0.01; // make sure the lane marker is above the asphalt
+      scaleX = 1;
+    };
+
+    if (segments[i].type == "separator" && variantList[0] == "doubleyellow") {
+      mixinId = "separator-doubleyellow";
+      positionY = positionY + 0.01; // make sure the lane marker is above the asphalt
+      scaleX = 1;
+    };
+
+    if (segments[i].type == "parking-lane") {mixinId = "drive-lane"};
 
     // add new object
     var segmentEl = document.createElement("a-entity");
