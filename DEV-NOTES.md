@@ -1,4 +1,10 @@
-Some notes on dimensions
+file guide
+index.html -> 3d rendering of streetmix segments using low poly voxel graphics
+index-slide.html -> prototype oct 2019 for slide presentation changing viewpoints and perspective
+index-texture.html -> work in progress to provide better visual fidelity 3d rendering
+
+
+### Some notes on dimensions
 
 Each segment "type" is a separate model. The models are created using MagicaVoxel. Normally a MagicaVoxel voxel = 1 meter in A-Frame by default, however for this project each voxel represents 1 decimeter (1/10th of a meter). The app reduces the size of the model (scale * 0.1) to compensate.
 
