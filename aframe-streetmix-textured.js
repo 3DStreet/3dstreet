@@ -31,8 +31,10 @@ function insertSeparatorSegments(segments) {
   // console.log('Old segments', segments);
 
   const newValues = segments.reduce((newArray, currentValue, currentIndex, arr) => {
+    // don't insert a lane marker for the first segment
     if (currentIndex == 0) { return newArray.concat(currentValue) }
-    // do the current AND previous segments have last 4 characters of `type` = "lane"
+
+    // if current AND previous segments have last 4 characters of `type` = "lane"
     if (currentValue.type.slice(currentValue.type.length - 4) == "lane" && arr[currentIndex - 1].type.slice(arr[currentIndex - 1].type.length - 4) == "lane") {
       // add zero width separator segment
       newArray.push( {type: "separator", variantString: "dashed", width: 0} )
@@ -129,7 +131,11 @@ function processSegments(segments, streetElementId) {
     };
     if (segments[i].type == "streetcar") {mixinId = "light-rail"};
 
-    // if (segments[i].type == "separator" && variantList[0] == "dashed") {mixinId = "dashed"};
+    if (segments[i].type == "separator" && variantList[0] == "dashed") {
+      mixinId = "separator-dashed";
+      positionY = positionY + 0.01; // make sure the lane marker is above the asphalt
+      scaleX = 1;
+    };
 
     // add new object
     var segmentEl = document.createElement("a-entity");
