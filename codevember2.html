@@ -1,0 +1,200 @@
+<html>
+  <head>
+    <script src="https://aframe.io/releases/0.9.2/aframe.min.js"></script>
+    <script src="https://unpkg.com/aframe-sun-sky@^3.0.3/dist/aframe-sun-sky.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/velocity/1.5.0/velocity.js"></script>
+    <script src="https://unpkg.com/aframe-orbit-controls@1.2.0/dist/aframe-orbit-controls.min.js"></script>
+    <!-- <script src="https://unpkg.com/three-geo@1.2.5/dist/three-geo.min.js"></script> -->
+
+    <script src="js/forward.js"></script>
+    <script src="js/aframe-streetmix-textured.js"></script>
+    <!-- <script src="js/three-geo.js"></script> -->
+
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css" integrity="sha384-BVYiiSIFeK1dGmJRAkycuHAHRg32OmUcww7on3RYdg4Va+PmSTsz/K68vbdEjh4u" crossorigin="anonymous">
+    <style>
+    .intro {
+      z-index: 1;
+      position: absolute;
+      top: 1vw;
+      left: 1vw;
+      width: 98vw;
+      font-size: 150%;
+      box-sizing: border-box;
+      padding: 0.75rem;
+      color: #FFF;
+      background: rgba(0, 0, 0, 0.75);
+      font-family: Source Sans Pro, Helvetica Neue, Helvetica, Arial, sans-serif;
+    }
+    .row {
+      padding: 0.75rem;
+    }
+    .big {
+      font-size: 125%;
+      font-weight: bold;
+    }
+    .menu-overlay {
+      z-index: 99999;
+      position: fixed;
+      top: 15px;
+      right: 15px;
+      box-sizing: border-box;
+      padding: 1.5em;
+      width: 50px;
+      height: 50px;
+      padding-bottom: 0px;
+      background: rgba(0, 0, 0, 0.5) url(./assets/white-arrow.png) center no-repeat;
+      background-size: 40px 40px;
+      font-family: Source Sans Pro, Helvetica Neue, Helvetica, Arial, sans-serif;
+    }
+    .menu-overlay:hover {
+      background: rgba(0, 0, 0, 0.2) url(./assets/white-arrow.png) center no-repeat;
+      background-size: 40px 40px;
+    }
+    </style>
+
+  </head>
+  <body>
+    <a-scene fogoff="type: linear; color: #fffbcd; far: 200" >
+      <a-assets>
+        <a-asset-item id="15harrison" src="assets/15harrison/out-recap-sketchfab.glb"></a-asset-item>
+        <!-- <a-asset-item id="harrison-obj" src="assets/model_37.7673477_-122.4136603/raw_export/model.obj"></a-asset-item>
+        <a-asset-item id="harrison-mtl" src="assets/model_37.7673477_-122.4136603/raw_export/model.mtl"></a-asset-item> -->
+
+        <!-- MagicaVoxel objects -->
+        <a-asset-item id="bike-lane-obj" src="assets/segments/bike-lane.obj"></a-asset-item>
+        <a-asset-item id="bus-lane-obj" src="assets/segments/bus-lane.obj"></a-asset-item>
+        <a-asset-item id="divider-bollard-obj" src="assets/segments/divider-bollard.obj"></a-asset-item>
+        <a-asset-item id="divider-obj" src="assets/segments/divider.obj"></a-asset-item>
+        <a-asset-item id="drive-lane-sharrow-obj" src="assets/segments/drive-lane-sharrow.obj"></a-asset-item>
+        <a-asset-item id="drive-lane-obj" src="assets/segments/drive-lane.obj"></a-asset-item>
+        <a-asset-item id="light-rail-obj" src="assets/segments/light-rail.obj"></a-asset-item>
+        <a-asset-item id="parking-lane-obj" src="assets/segments/parking-lane.obj"></a-asset-item>
+        <a-asset-item id="sidewalk-obj" src="assets/segments/sidewalk.obj"></a-asset-item>
+        <a-asset-item id="turn-lane-both-obj" src="assets/segments/turn-lane-both.obj"></a-asset-item>
+        <a-asset-item id="turn-lane-left-straight-obj" src="assets/segments/turn-lane-left-straight.obj"></a-asset-item>
+        <a-asset-item id="turn-lane-left-obj" src="assets/segments/turn-lane-left.obj"></a-asset-item>
+        <a-asset-item id="turn-lane-shared-obj" src="assets/segments/turn-lane-shared.obj"></a-asset-item>
+        <a-asset-item id="turn-lane-straight-obj" src="assets/segments/turn-lane-straight.obj"></a-asset-item>
+
+        <a-asset-item id="magica-mtl" src="assets/segments/magica.mtl"></a-asset-item>
+
+        <a-asset-item id="pylon-obj" src="assets/objects/nyc-wayfinding-pylon-large-nomtl.obj"></a-asset-item>
+        <!-- <a-asset-item id="pylon-mtl" src="assets/objects/nyc-wayfinding-pylon-large.mtl"></a-asset-item> -->
+
+        <!-- Unused objects what do they look like? -->
+        <a-asset-item id="palmtree2-obj" src="assets/objects/SPW_Natures_Tree_Palm_02.obj"></a-asset-item>
+        <a-asset-item id="palmtree3-obj" src="assets/objects/SPW_Natures_Tree_Palm_03.obj"></a-asset-item>
+        <a-asset-item id="SPW_Natures_01" src="assets/objects/SPW_Natures_01.mtl"></a-asset-item>
+        <a-asset-item id="streetlight1-obj" src="assets/objects/SPW_Urban_Road Props_Street Light_01.obj"></a-asset-item>
+        <a-asset-item id="streetlight2-obj" src="assets/objects/SPW_Urban_Road Props_Street Light_02.obj"></a-asset-item>
+        <a-asset-item id="SPW_Urban_Road_Props_01" src="assets/objects/SPW_Urban_Road_Props_01.mtl"></a-asset-item>
+
+        <image id="wayfinding" src="assets/objects/wayfinding.jpg" />
+        <image id="sky" src="assets/CGSkies_0343_8k_ERextended.jpg" />
+
+        <a-mixin id="bike-lane-vox" obj-model="obj:#bike-lane-obj;mtl:#magica-mtl"></a-mixin>
+        <a-mixin id="bus-lane-vox" obj-model="obj:#bus-lane-obj;mtl:#magica-mtl"></a-mixin>
+        <a-mixin id="divider-bollard-vox" obj-model="obj:#divider-bollard-obj;mtl:#magica-mtl" ></a-mixin>
+        <a-mixin id="divider-vox" obj-model="obj:#divider-obj;mtl:#magica-mtl"></a-mixin>
+        <a-mixin id="drive-lane-sharrow-vox" obj-model="obj:#drive-lane-sharrow;mtl:#magica-mtl"></a-mixin>
+        <a-mixin id="drive-lane-vox" obj-model="obj:#drive-lane-obj;mtl:#magica-mtl"></a-mixin>
+        <a-mixin id="light-rail-vox" obj-model="obj:#light-rail-obj;mtl:#magica-mtl"></a-mixin>
+        <a-mixin id="parking-lane-vox" obj-model="obj:#parking-lane-obj;mtl:#magica-mtl"></a-mixin>
+        <a-mixin id="sidewalk-vox" obj-model="obj:#sidewalk-obj;mtl:#magica-mtl"></a-mixin>
+        <a-mixin id="parking-lane-vox" obj-model="obj:#parking-lane-obj;mtl:#magica-mtl"></a-mixin>
+        <a-mixin id="turn-lane-both-vox" obj-model="obj:#turn-lane-both-obj;mtl:#magica-mtl"></a-mixin>
+        <a-mixin id="turn-lane-left-straight-vox" obj-model="obj:#turn-lane-left-straight-obj;mtl:#magica-mtl"></a-mixin>
+        <a-mixin id="turn-lane-left-vox" obj-model="obj:#turn-lane-left-obj;mtl:#magica-mtl"></a-mixin>
+        <a-mixin id="turn-lane-shared-vox" obj-model="obj:#turn-lane-shared-obj;mtl:#magica-mtl"></a-mixin>
+        <a-mixin id="turn-lane-straight-vox" obj-model="obj:#turn-lane-straight-obj;mtl:#magica-mtl"></a-mixin>
+
+        <a-mixin id="drive-lane-t1" geometry="width:3;height:150;primitive:plane" material="repeat:1.5 75;src:materials/asphalthd_Base_Color.jpg;normalTextureRepeat:1.5 75;normalMap:materials/asphalthd_Normal.jpg;"></a-mixin>
+        <a-mixin id="bus-lane-t1" geometry="width:3;height:150;primitive:plane" material="repeat:1.5 75;src:materials/asphaltred1hd_Base_Color.jpg;normalTextureRepeat:1.5 75;normalMap:materials/asphaltred1hd_Normal.jpg;"></a-mixin>
+        <a-mixin id="bike-lane-t1" geometry="width:1.8;height:150;primitive:plane" material="repeat:2 150;src:materials/bikelane_Base_Color.jpg;normalTextureRepeat:2 150;normalMap:materials/bikelane_Normal.jpg"></a-mixin>
+        <a-mixin id="divider-t1" geometry="width:0.3;height:150;primitive:plane" material="repeat:1 150;offset:0.415 0;normalTextureOffset:0.415 0;src:materials/hatched_Base_Color.jpg;normalTextureRepeat:0.21 150;normalMap:materials/hatched_Normal.jpg"></a-mixin>
+        <a-mixin id="sidewalk-t1" geometry="width:3;height:150;primitive:plane" material="repeat:1.5 75;src:materials/sidewalkhd_Base_Color.jpg;normalTextureRepeat:1.5 75;normalMap:materials/sidewalkhd_Normal.jpg;"></a-mixin>
+        <a-mixin id="separator-dashed-t1" geometry="width:0.5;height:150;primitive:plane" material="repeat:0.25 25;offset:0.38 0;src:materials/separator-short-dash_1024.png;transparent: true;"></a-mixin>
+        <a-mixin id="separator-solid-t1" geometry="width:0.5;height:150;primitive:plane" material="repeat:0.25 25;offset:0.38 0;src:materials/separator-solid_1024.png;transparent: true;"></a-mixin>
+        <a-mixin id="separator-doubleyellow-t1" geometry="width:0.5;height:150;primitive:plane" material="repeat:0.25 25;offset:0.38 0;src:materials/separator-double-yellow_512.png;transparent: true;"></a-mixin>
+
+        <image id="subtitle" src="materials/subtitle.png" />
+
+
+      </a-assets>
+
+      <a-entity id="rig1" position="-3 4 0" forward="speed: -0.02" rotation="0 184.3 0">
+        <a-entity id="rig2" rotation="-90 0 0">
+          <a-entity id="camera" camera></a-entity>
+        </a-entity>
+      </a-entity>
+
+
+      <!-- 3d street renderings -->
+      <!-- <a-entity obj-model="obj: #harrison-obj; mtl: #harrison-mtl"></a-entity> -->
+      <!-- <a-gltf-model id="s3dtreetscan" src="url(assets/15harrison/out-recap-sketchfab.glb)" scale="1 1 1" rotation="0 0 0" position="3.38 5.19 0"></a-gltf-model> -->
+
+      <!-- static for debugging textures without parsing json -->
+      <!-- <a-entity id="static-textured" position="0 0.1 0">
+        <a-entity class="sidewalk" mixin="sidewalk-t1" position="-5.521 0.21 -0.282" rotation="270 0 0"></a-entity>
+        <a-entity class="bike-lane" mixin="bike-lane-t1" position="-3.17 0.11 -0.282" rotation="270 0 0"> </a-entity>
+
+        <a-entity class="separator-dashed" mixin="separator-dashed-t1" position="-2.1 0.12 -0.282" rotation="270 0 0"> </a-entity>
+
+        <a-entity class="drive-lane" mixin="drive-lane-t1" position="-0.776 0.11 -0.285" rotation="270 0 0" ></a-entity>
+        <a-entity class="divider" mixin="divider-t1" position="0.869 0.11 -0.282" rotation="270 0 0" ></a-entity>
+        <a-entity class="drive-lane" mixin="drive-lane-t1" position="2.546 0.11 -0.285" rotation="270 0 0" ></a-entity>
+        <a-entity class="bike-lane" mixin="bike-lane-t1" position="4.967 0.11 -0.282" rotation="270 0 0"></a-entity>
+        <a-entity class="sidewalk" mixin="sidewalk-t1" position="7.318 0.21 -0.282" rotation="270 0 0"></a-entity>
+      </a-entity> -->
+
+      <a-sky position="0 -140 0" rotation="0 155 0" material="fog: false;src:#sky"></a-sky>
+      <!-- <a-entity id="streetscan" gltf-model="#15harrison" scale="0.19 0.19 0.19" rotation="0 93.310 0" position="-1.978 4.890 0.301"></a-entity> -->
+
+      <a-entity id="streets" position="11.889 0.1 -1.386" rotation="0 184.3 0"></a-entity>
+
+      <!-- // 2D Satelite map of the neighborhood -->
+      <!-- <a-entity id="hoodmap" scale="750 1 750" position="0 0 0">
+        <a-entity three-geo="token: pk.eyJ1Ijoia2llcmFuZmFyciIsImEiOiJjazB0NWh2YncwOW9rM25sd2p0YTlxemk2In0.mLl4sNGDFbz_QXk0GIK02Q;
+                     lat: 37.767548;
+                     lng: -122.413335;
+                     radius: 0.5;
+                     zoom: 19;
+                     axes_on: false;"
+                rotation="-90 0 0"></a-entity>
+      </a-entity> -->
+
+    </a-scene>
+    <div id="intro" class="intro">
+      <div class="row">
+        <div class="col-md-12"><span class="big">Streetmix3D</span></div>
+      </div>
+      <div class="row">
+        <div class="col-md-4">&#9312; Go to <a href="//streetmix.net">Streetmix.net</a>, login with Twitter, and copy a street URL.</div>
+        <div class="col-md-4">&#9313; Paste Streetmix URL here: <input id="input-url" type="text" class="form-control" onfocus="this.select();" ></div>
+        <div class="col-md-4">&#9314; Press <code>enter</code> or click button: <a onclick="processURLChange()" class="btn btn-success btn-block">Load Street in 3D</a></div>
+      </div>
+    </div>
+    <a onclick="toggle()"><div id="arrow" class="menu-overlay btn btn-outline-secondary"></div></a>
+
+    <script>
+    var toggle = function() {
+      var introEl = document.getElementById("intro");
+      var introOpacity = window.getComputedStyle(introEl,null).getPropertyValue("opacity");
+      var newOpacity = introOpacity == 1 ? 0 : 1;
+      Velocity(document.getElementById("intro"), { opacity: newOpacity }, { duration: 250 });
+      Velocity(document.getElementById("arrow"), { rotateZ: "+=180deg" }, { duration: 250 });
+
+    }
+    </script>
+
+     <!--githubcorner-->
+    <a href="https://github.com/kfarr/streetmix3d" class="github-corner">
+      <svg width="80" height="80" viewBox="0 0 250 250" style="fill: #111; color: #EFEFEF; position: fixed; bottom: 0; border: 0; left: 0; transform: rotate(180deg); opacity: 0.8">
+        <path d="M0,0 L115,115 L130,115 L142,142 L250,250 L250,0 Z"></path><path d="M128.3,109.0 C113.8,99.7 119.0,89.6 119.0,89.6 C122.0,82.7 120.5,78.6 120.5,78.6 C119.2,72.0 123.4,76.3 123.4,76.3 C127.3,80.9 125.5,87.3 125.5,87.3 C122.9,97.6 130.6,101.9 134.4,103.2" fill="currentColor" style="transform-origin: 130px 106px;" class="octo-arm"></path><path d="M115.0,115.0 C114.9,115.1 118.7,116.5 119.8,115.4 L133.7,101.6 C136.9,99.2 139.9,98.4 142.2,98.6 C133.8,88.0 127.5,74.4 143.8,58.0 C148.5,53.4 154.0,51.2 159.7,51.0 C160.3,49.4 163.2,43.6 171.4,40.1 C171.4,40.1 176.1,42.5 178.8,56.2 C183.1,58.6 187.2,61.8 190.9,65.4 C194.5,69.0 197.7,73.2 200.1,77.6 C213.8,80.2 216.3,84.9 216.3,84.9 C212.7,93.1 206.9,96.0 205.4,96.6 C205.1,102.4 203.0,107.8 198.3,112.5 C181.9,128.9 168.3,122.5 157.7,114.1 C157.9,116.9 156.7,120.9 152.7,124.9 L141.0,136.5 C139.8,137.7 141.6,141.9 141.8,141.8 Z" fill="currentColor" class="octo-body"></path>
+      </svg>
+    </a>
+    <style>.github-corner:hover .octo-arm{animation:octocat-wave 560ms ease-in-out}@keyframes octocat-wave{0%,100%{transform:rotate(0)}20%,60%{transform:rotate(-25deg)}40%,80%{transform:rotate(10deg)}}@media (max-width:500px){.github-corner:hover .octo-arm{animation:none}.github-corner .octo-arm{animation:octocat-wave 560ms ease-in-out}}
+    </style>
+
+  </body>
+</html>

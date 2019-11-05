@@ -51,6 +51,12 @@ function insertSeparatorSegments(segments) {
 
       newArray.push( {type: "separator", variantString: variantString, width: 0} )
     }
+
+    // if a *lane segment and divider are adjacent, use a solid separator
+    if ((currentValue.type.slice(currentValue.type.length - 4) == "lane" && previousValue.type == "divider") || (previousValue.type.slice(previousValue.type.length - 4) == "lane" && currentValue.type == "divider")) {
+      newArray.push( {type: "separator", variantString: "solid", width: 0} )
+    }
+
     newArray.push(currentValue);
     return newArray;
   }, []);
