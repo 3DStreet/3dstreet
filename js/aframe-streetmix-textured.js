@@ -129,6 +129,32 @@ function processSegments(segments, streetElementId) {
       positionY = positionY + 0.1; // this is added because scaleY invert displaces the lane down by 0.1 for some reason
     }
     if (segments[i].type == "divider" && variantList[0] == "bollard") {mixinId = "divider-bollard"};
+
+
+    if (segments[i].type == "bus-lane") {
+      var rotationBusY = (variantList[0] == "inbound") ? -90 : 90;
+      var placedObjectEl = document.createElement("a-entity");
+      placedObjectEl.setAttribute("class", "bus");
+      placedObjectEl.setAttribute("position", positionX + " 0.89 0");
+      placedObjectEl.setAttribute("rotation", "0 " + rotationBusY + " 0");
+      placedObjectEl.setAttribute("mixin", "bus");
+
+      // add the new elmement to DOM
+      document.getElementById(streetElementId).appendChild(placedObjectEl);
+
+
+      var rotationBusY = (variantList[0] == "inbound") ? -90 : 90;
+      var placedObjectEl = document.createElement("a-entity");
+      placedObjectEl.setAttribute("class", "bus-shadow");
+      placedObjectEl.setAttribute("position", positionX + " 0.01 -0.3");
+      placedObjectEl.setAttribute("rotation", "-90 " + rotationBusY + " 0");
+      placedObjectEl.setAttribute("mixin", "bus-shadow");
+//position="0 -1.489 -0.1" rotation="-90 -90 0"
+
+      // add the new elmement to DOM
+      document.getElementById(streetElementId).appendChild(placedObjectEl);
+    };
+
     if (segments[i].type == "sidewalk-wayfinding" && variantList[0] == "medium") {
       mixinId = "sidewalk"; // this is the "ground, normal "
       // scaleX = scaleX * (-1);
@@ -147,6 +173,7 @@ function processSegments(segments, streetElementId) {
       placedObjectEl = document.getElementById(streetElementId + segments[i].type);
       placedObjectEl.setAttribute("material", "src:#wayfinding");
     };
+
     if (segments[i].type == "streetcar") {mixinId = "light-rail"};
 
     if (segments[i].type == "separator" && variantList[0] == "dashed") {
