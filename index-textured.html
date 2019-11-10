@@ -59,6 +59,9 @@
         <!-- <a-asset-item id="15harrison" src="assets/15harrison/out-recap-sketchfab.glb"></a-asset-item> -->
         <a-asset-item id="xd40" src="assets/objects/XD40.glb"></a-asset-item>
 
+        <a-asset-item id="lamp-modern-glb" src="assets/objects/lamp-post-modern.glb"></a-asset-item>
+        <a-asset-item id="lamp-traditional-glb" src="assets/objects/lamp-post-traditional.glb"></a-asset-item>
+
         <!-- <a-asset-item id="harrison-obj" src="assets/model_37.7673477_-122.4136603/raw_export/model.obj"></a-asset-item>
         <a-asset-item id="harrison-mtl" src="assets/model_37.7673477_-122.4136603/raw_export/model.mtl"></a-asset-item> -->
 
@@ -119,10 +122,11 @@
         <a-mixin id="separator-solid-t1" geometry="width:0.5;height:150;primitive:plane" material="repeat:0.25 25;offset:0.38 0;src:materials/separator-solid_1024.png;transparent: true;"></a-mixin>
         <a-mixin id="separator-doubleyellow-t1" geometry="width:0.5;height:150;primitive:plane" material="repeat:0.25 25;offset:0.38 0;src:materials/separator-double-yellow_512.png;transparent: true;"></a-mixin>
 
+        <a-mixin id="bus" gltf-model="#xd40"></a-entity>
         <a-mixin id="bus-shadow" geometry="width: 8.5; height: 2.3; primitive: plane"  material="src: url(materials/bus-shadow.png); alphaTest: 0;transparent:true; metalness: 0 ; roughness: 1;" ></a-mixin>
 
-
-        <a-mixin id="bus" gltf-model="#xd40"></a-entity>
+        <a-mixin id="lamp-modern" gltf-model="#lamp-modern-glb" position="1.043 0.100 -3.463" rotation="0 -120 0" scale="0.35 0.35 0.35"></a-entity>
+        <a-mixin id="lamp-traditional" gltf-model="#lamp-traditional-glb" position="0 0.1 0" scale="0.2 0.2 0.2" ></a-entity>
 
         <image id="subtitle" src="materials/subtitle.png" />
 
@@ -166,6 +170,9 @@
       <!-- <a-entity id="streetscan" gltf-model="#15harrison" scale="0.19 0.19 0.19" rotation="0 93.310 0" position="-1.978 4.890 0.301"></a-entity> -->
 
       <a-entity id="streets" position="11.889 0.1 -1.386" rotation="0 184.3 0"></a-entity>
+
+      <!-- <a-entity class="lamp-traditional" mixin="lamp-traditional" ></a-entity>
+      <a-entity class="lamp-modern" mixin="lamp-modern" ></a-entity> -->
 
       <!-- // 2D Satelite map of the neighborhood -->
       <!-- <a-entity id="hoodmap" scale="750 1 750" position="0 0 0">

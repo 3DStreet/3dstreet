@@ -1,5 +1,3 @@
-
-
 // Models - Each segment "type" is a separate model created in MagicaVoxel.
 // Orientation - default model orientation is "outbound" (away from camera)
 
@@ -15,6 +13,7 @@ const defaultModelWidthsInMeters = {
   "light-rail": 3,
   "streetcar": 3,
   "sidewalk-wayfinding": 3,
+  "sidewalk-lamp": 3,
 }
 
 // Scale - Normally a MagicaVoxel voxel = 1 meter in A-Frame by default
@@ -149,7 +148,6 @@ function processSegments(segments, streetElementId) {
       placedObjectEl.setAttribute("position", positionX + " 0.01 -0.3");
       placedObjectEl.setAttribute("rotation", "-90 " + rotationBusY + " 0");
       placedObjectEl.setAttribute("mixin", "bus-shadow");
-//position="0 -1.489 -0.1" rotation="-90 -90 0"
 
       // add the new elmement to DOM
       document.getElementById(streetElementId).appendChild(placedObjectEl);
@@ -175,6 +173,44 @@ function processSegments(segments, streetElementId) {
     };
 
     if (segments[i].type == "streetcar") {mixinId = "light-rail"};
+
+    // if (segments[i].type == "sidewalk-lamp" && variantList[1] == "modern") {
+
+    if (segments[i].type == "sidewalk-lamp" && variantList[1] == "modern") {
+      // sidewalk mixin
+      mixinId = "sidewalk";
+
+      // var rotationBusY = (variantList[0] == "inbound") ? -90 : 90;
+      var placedObjectEl = document.createElement("a-entity");
+      placedObjectEl.setAttribute("class", "lamp-modern");
+      placedObjectEl.setAttribute("position", (positionX + 1.043) + " 0.1 -3.463");  // position="1.043 0.100 -3.463"
+      // placedObjectEl.setAttribute("rotation", "0 " + rotationBusY + " 0");
+      placedObjectEl.setAttribute("mixin", "lamp-modern");
+
+      // add the new elmement to DOM
+      document.getElementById(streetElementId).appendChild(placedObjectEl);
+
+      //
+
+    };
+
+
+    if (segments[i].type == "sidewalk-lamp" && variantList[1] == "traditional") {
+      // sidewalk mixin
+      mixinId = "sidewalk";
+
+      var placedObjectEl = document.createElement("a-entity");
+      placedObjectEl.setAttribute("class", "lamp-traditional");
+      placedObjectEl.setAttribute("position", positionX + " 0.1 0");  // position="1.043 0.100 -3.463"
+      // placedObjectEl.setAttribute("rotation", "0 " + rotationBusY + " 0");
+      placedObjectEl.setAttribute("mixin", "lamp-traditional");
+
+      // add the new elmement to DOM
+      document.getElementById(streetElementId).appendChild(placedObjectEl);
+
+      //
+
+    };
 
     if (segments[i].type == "separator" && variantList[0] == "dashed") {
       mixinId = "separator-dashed";

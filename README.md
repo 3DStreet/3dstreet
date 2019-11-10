@@ -50,8 +50,11 @@ I learned a few things:
 * I wrote a quick JS helper function that takes a user facing URL on Streetmix (such as https://streetmix.net/kfarr/3/a-frame-city-builder-street-only) and transforms it into the API Redirect to find the UUID endpoint, it is here and the inverse function is a few lines below: https://github.com/kfarr/streetmix3d/blob/master/aframe-streetmix.js#L219
 
 ### Model Credits
-* Voxel street segments created by Kieran Farr, MIT License same as project repo
+* Unless credited all models, materials and textures created by Kieran Farr, MIT License same as project repo
 * Some 3D models created by vencreations, https://www.cgtrader.com/vencreations, ["Royalty Free" License](https://www.cgtrader.com/pages/terms-and-conditions#royalty-free-license)
+* Modern Lamp post https://poly.google.com/view/2DoFKofZE6H
+* Traditional lamp post https://poly.google.com/view/ez9fM9NvtRB
+* New Flyer XD40 Bus https://twitter.com/_TimTheTerrible
 
 <img src="https://raw.githubusercontent.com/kfarr/streetmix3d/master/assets/streetmix3d-banner.jpg" />
 
