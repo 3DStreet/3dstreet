@@ -3,6 +3,8 @@ index.html -> 3d rendering of streetmix segments using low poly voxel graphics
 index-slide.html -> prototype oct 2019 for slide presentation changing viewpoints and perspective
 index-texture.html -> work in progress to provide better visual fidelity 3d rendering
 
+### Useful tools
+https://glb-packer.glitch.me/
 
 ### Some notes on dimensions
 
