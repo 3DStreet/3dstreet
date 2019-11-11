@@ -22,6 +22,17 @@ const defaultModelWidthsInMeters = {
 const voxelScaleFactor = 1;     // USE THIS LINE FOR TEXTURE MODE
 // const voxelScaleFactor = 0.1;   // USE THIS LINE FOR VOXEL MODE
 
+function cloneMixin({objectMixinId="", parentId="", step=1, radius=10, rotation="0 0 0"}) {
+  for (var j = (radius * -1); j <= radius; j = j + step) {
+    var placedObjectEl = document.createElement("a-entity");
+    placedObjectEl.setAttribute("class", objectMixinId);
+    placedObjectEl.setAttribute("position", "0 0 " + j);
+    placedObjectEl.setAttribute("mixin", objectMixinId);
+    placedObjectEl.setAttribute("rotation", rotation);
+    // add the new elmement to DOM
+    document.getElementById(parentId).appendChild(placedObjectEl);
+  }
+}
 
 function insertSeparatorSegments(segments) {
   // takes a list of segments
@@ -174,41 +185,42 @@ function processSegments(segments, streetElementId) {
 
     if (segments[i].type == "streetcar") {mixinId = "light-rail"};
 
-    // if (segments[i].type == "sidewalk-lamp" && variantList[1] == "modern") {
-
     if (segments[i].type == "sidewalk-lamp" && variantList[1] == "modern") {
-      // sidewalk mixin
+      // sidewalk mixin as the segment surface - this doesn't look great (squished texture not made for this width)
       mixinId = "sidewalk";
 
-      // var rotationBusY = (variantList[0] == "inbound") ? -90 : 90;
+      // make the parent for all the lamps
       var placedObjectEl = document.createElement("a-entity");
-      placedObjectEl.setAttribute("class", "lamp-modern");
-      placedObjectEl.setAttribute("position", (positionX + 1.043) + " 0.1 -3.463");  // position="1.043 0.100 -3.463"
-      // placedObjectEl.setAttribute("rotation", "0 " + rotationBusY + " 0");
-      placedObjectEl.setAttribute("mixin", "lamp-modern");
-
+      placedObjectEl.setAttribute("class", "lamp-parent");
+      placedObjectEl.setAttribute("position", positionX + " 0 0");  // position="1.043 0.100 -3.463"
+      placedObjectEl.setAttribute("id", "lamp-parent-" + positionX);
       // add the new elmement to DOM
       document.getElementById(streetElementId).appendChild(placedObjectEl);
 
-      //
+      // clone a bunch of lamps under the parent
+      var rotationCloneY = (variantList[0] == "right") ? -90 : 90;
+      cloneMixin({objectMixinId: "lamp-modern", parentId: "lamp-parent-" + positionX, step: 15, radius: 60, rotation: "0 " + rotationCloneY + " 0"});
 
+      if (variantList[0] == "both") {
+        cloneMixin({objectMixinId: "lamp-modern", parentId: "lamp-parent-" + positionX, step: 15, radius: 60, rotation: "0 -90 0"});
+      }
     };
-
 
     if (segments[i].type == "sidewalk-lamp" && variantList[1] == "traditional") {
       // sidewalk mixin
       mixinId = "sidewalk";
 
+      // make the parent for all the lamps
       var placedObjectEl = document.createElement("a-entity");
-      placedObjectEl.setAttribute("class", "lamp-traditional");
-      placedObjectEl.setAttribute("position", positionX + " 0.1 0");  // position="1.043 0.100 -3.463"
-      // placedObjectEl.setAttribute("rotation", "0 " + rotationBusY + " 0");
-      placedObjectEl.setAttribute("mixin", "lamp-traditional");
-
+      placedObjectEl.setAttribute("class", "lamp-parent");
+      placedObjectEl.setAttribute("position", positionX + " 0 0");  // position="1.043 0.100 -3.463"
+      placedObjectEl.setAttribute("id", "lamp-parent-" + positionX);
       // add the new elmement to DOM
       document.getElementById(streetElementId).appendChild(placedObjectEl);
 
-      //
+      // clone a bunch of lamps under the parent
+      cloneMixin({objectMixinId: "lamp-traditional", parentId: "lamp-parent-" + positionX, step: 15, radius: 60});
+
 
     };
 

@@ -59,7 +59,7 @@
         <!-- <a-asset-item id="15harrison" src="assets/15harrison/out-recap-sketchfab.glb"></a-asset-item> -->
         <a-asset-item id="xd40" src="assets/objects/XD40.glb"></a-asset-item>
 
-        <a-asset-item id="lamp-modern-glb" src="assets/objects/lamp-post-modern.glb"></a-asset-item>
+        <a-asset-item id="lamp-modern-glb" src="assets/objects/lamp-post-modern-centered.glb"></a-asset-item>
         <a-asset-item id="lamp-traditional-glb" src="assets/objects/lamp-post-traditional.glb"></a-asset-item>
 
         <!-- <a-asset-item id="harrison-obj" src="assets/model_37.7673477_-122.4136603/raw_export/model.obj"></a-asset-item>
@@ -125,16 +125,19 @@
         <a-mixin id="bus" gltf-model="#xd40"></a-entity>
         <a-mixin id="bus-shadow" geometry="width: 8.5; height: 2.3; primitive: plane"  material="src: url(materials/bus-shadow.png); alphaTest: 0;transparent:true; metalness: 0 ; roughness: 1;" ></a-mixin>
 
-        <a-mixin id="lamp-modern" gltf-model="#lamp-modern-glb" position="1.043 0.100 -3.463" rotation="0 -120 0" scale="0.35 0.35 0.35"></a-entity>
-        <a-mixin id="lamp-traditional" gltf-model="#lamp-traditional-glb" position="0 0.1 0" scale="0.2 0.2 0.2" ></a-entity>
+        <a-mixin id="lamp-modern" gltf-model="#lamp-modern-glb" scale="0.35 0.35 0.35"></a-entity>
+        <a-mixin id="lamp-traditional" gltf-model="#lamp-traditional-glb" scale="0.2 0.2 0.2" ></a-entity>
 
         <image id="subtitle" src="materials/subtitle.png" />
 
 
       </a-assets>
 
+      <a-entity light="type: ambient; color: #BBB"></a-entity>
+      <a-entity light="type: directional; color: #FFF; intensity: 0.6" position="0.5 1 -1"></a-entity>
+
       <a-entity id="cam-parent">
-        <a-entity wasd-controls id="camera" orbit-controls="target: 0 0 0;initialPosition:0 2 5;minDistance:3;maxDistance:100;">
+        <a-entity wasd-controls id="camera" orbit-controls="target: 0 0 0;initialPosition:0 2 10;minDistance:3;maxDistance:100;">
           <!-- Label text -->
           <!-- <a-entity position="0 2 0" geometry="primitive: plane; width: 10; height: auto" material="src: #subtitle; alphaTest: 0.; transparent: true;"
                     text="color: yellow; align: left; value: San Francisco; width: 10; ">
@@ -166,10 +169,10 @@
         <a-entity class="sidewalk" mixin="sidewalk-t1" position="7.318 0.21 -0.282" rotation="270 0 0"></a-entity>
       </a-entity> -->
 
-      <a-sky position="0 -140 0" rotation="0 60 0" material="fog: false;src:#sky"></a-sky>
+      <a-sky position="0 -140 0" rotation="0 240 0" material="fog: false;src:#sky"></a-sky>
       <!-- <a-entity id="streetscan" gltf-model="#15harrison" scale="0.19 0.19 0.19" rotation="0 93.310 0" position="-1.978 4.890 0.301"></a-entity> -->
 
-      <a-entity id="streets" position="11.889 0.1 -1.386" rotation="0 184.3 0"></a-entity>
+      <a-entity id="streets" position="-15 0 0" rotation="0 0 0"></a-entity>
 
       <!-- <a-entity class="lamp-traditional" mixin="lamp-traditional" ></a-entity>
       <a-entity class="lamp-modern" mixin="lamp-modern" ></a-entity> -->
