@@ -22,11 +22,11 @@ const defaultModelWidthsInMeters = {
 const voxelScaleFactor = 1;     // USE THIS LINE FOR TEXTURE MODE
 // const voxelScaleFactor = 0.1;   // USE THIS LINE FOR VOXEL MODE
 
-function cloneMixin({objectMixinId="", parentId="", step=1, radius=10, rotation="0 0 0"}) {
+function cloneMixin({objectMixinId="", parentId="", step=15, radius=60, rotation="0 0 0", positionXYString="0 0"}) {
   for (var j = (radius * -1); j <= radius; j = j + step) {
     var placedObjectEl = document.createElement("a-entity");
     placedObjectEl.setAttribute("class", objectMixinId);
-    placedObjectEl.setAttribute("position", "0 0 " + j);
+    placedObjectEl.setAttribute("position", positionXYString + " " + j);
     placedObjectEl.setAttribute("mixin", objectMixinId);
     placedObjectEl.setAttribute("rotation", rotation);
     // add the new elmement to DOM
@@ -185,7 +185,7 @@ function processSegments(segments, streetElementId) {
 
     if (segments[i].type == "streetcar") {mixinId = "light-rail"};
 
-    if (segments[i].type == "sidewalk-lamp" && variantList[1] == "modern") {
+    if (segments[i].type == "sidewalk-lamp" && (variantList[1] == "modern" || variantList[1] == "pride")) {
       // sidewalk mixin as the segment surface - this doesn't look great (squished texture not made for this width)
       mixinId = "sidewalk";
 
@@ -199,11 +199,20 @@ function processSegments(segments, streetElementId) {
 
       // clone a bunch of lamps under the parent
       var rotationCloneY = (variantList[0] == "right") ? -90 : 90;
-      cloneMixin({objectMixinId: "lamp-modern", parentId: "lamp-parent-" + positionX, step: 15, radius: 60, rotation: "0 " + rotationCloneY + " 0"});
+      cloneMixin({objectMixinId: "lamp-modern", parentId: "lamp-parent-" + positionX, rotation: "0 " + rotationCloneY + " 0"});
 
       if (variantList[0] == "both") {
-        cloneMixin({objectMixinId: "lamp-modern", parentId: "lamp-parent-" + positionX, step: 15, radius: 60, rotation: "0 -90 0"});
+        cloneMixin({objectMixinId: "lamp-modern", parentId: "lamp-parent-" + positionX, rotation: "0 -90 0"});
       }
+
+      if (variantList[1] == "pride" && (variantList[0] == "right" || variantList[0] == "both")) {
+        cloneMixin({objectMixinId: "pride-flag", parentId: "lamp-parent-" + positionX, positionXYString: "0.409 3.345"});
+      }
+
+      if (variantList[1] == "pride" && (variantList[0] == "left" || variantList[0] == "both")) {
+        cloneMixin({objectMixinId: "pride-flag", parentId: "lamp-parent-" + positionX, rotation: "0 -180 0", positionXYString: "-0.409 3.345"});
+      }
+
     };
 
     if (segments[i].type == "sidewalk-lamp" && variantList[1] == "traditional") {
@@ -219,7 +228,7 @@ function processSegments(segments, streetElementId) {
       document.getElementById(streetElementId).appendChild(placedObjectEl);
 
       // clone a bunch of lamps under the parent
-      cloneMixin({objectMixinId: "lamp-traditional", parentId: "lamp-parent-" + positionX, step: 15, radius: 60});
+      cloneMixin({objectMixinId: "lamp-traditional", parentId: "lamp-parent-" + positionX});
 
 
     };
