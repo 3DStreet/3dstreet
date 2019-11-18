@@ -54,10 +54,11 @@
 
   </head>
   <body>
-    <a-scene fogoff="type: linear; color: #fffbcd; far: 200" >
+    <a-scene fogoff="type: linear; color: #fffbcd; far: 200" gltf-model="dracoDecoderPath: js/;">
       <a-assets>
         <!-- <a-asset-item id="15harrison" src="assets/15harrison/out-recap-sketchfab.glb"></a-asset-item> -->
         <a-asset-item id="xd40" src="assets/objects/XD40.glb"></a-asset-item>
+        <a-asset-item id="carmodel" src="assets/objects/SM_Veh_Car_Sedan_01.gltf"></a-asset-item>
 
         <a-asset-item id="lamp-modern-glb" src="assets/objects/lamp-post-modern-centered.glb"></a-asset-item>
         <a-asset-item id="lamp-traditional-glb" src="assets/objects/lamp-post-traditional.glb"></a-asset-item>
@@ -123,7 +124,10 @@
         <a-mixin id="separator-doubleyellow-t1" geometry="width:0.5;height:150;primitive:plane" material="repeat:0.25 25;offset:0.38 0;src:materials/separator-double-yellow_512.png;transparent: true;"></a-mixin>
 
         <a-mixin id="bus" gltf-model="#xd40"></a-entity>
+        <a-mixin id="car" gltf-model="#carmodel" scale="0.75 0.75 0.75"></a-entity>
+
         <a-mixin id="bus-shadow" geometry="width: 8.5; height: 2.3; primitive: plane"  material="src: url(materials/bus-shadow.png); alphaTest: 0;transparent:true; metalness: 0 ; roughness: 1;" ></a-mixin>
+        <a-mixin id="car-shadow" geometry="width: 3.8; height: 1.8; primitive: plane"  material="src: url(materials/bus-shadow.png); alphaTest: 0;transparent:true; metalness: 0 ; roughness: 1;" ></a-mixin>
 
         <a-mixin id="lamp-modern" gltf-model="#lamp-modern-glb" scale="0.35 0.35 0.35"></a-entity>
         <a-mixin id="lamp-traditional" gltf-model="#lamp-traditional-glb" scale="0.2 0.2 0.2" ></a-entity>
@@ -151,6 +155,8 @@
           </a-entity> -->
         </a-entity>
       </a-entity>
+
+      <!-- <a-gltf-model id="car" src="#car" scale="0.75 0.75 0.75" rotation="0 0 0" position="0 0 0"></a-gltf-model> -->
 
 
       <!-- 3d street renderings -->

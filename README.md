@@ -51,10 +51,15 @@ I learned a few things:
 
 ### Model Credits
 * Unless credited all models, materials and textures created by Kieran Farr, MIT License same as project repo
-* Some 3D models created by vencreations, https://www.cgtrader.com/vencreations, ["Royalty Free" License](https://www.cgtrader.com/pages/terms-and-conditions#royalty-free-license)
 * Modern Lamp post https://poly.google.com/view/2DoFKofZE6H
 * Traditional lamp post https://poly.google.com/view/ez9fM9NvtRB
 * New Flyer XD40 Bus https://twitter.com/_TimTheTerrible
+* Some city / car models https://sketchfab.com/3d-models/polygon-city-pack-preview-5a16f543d1054fbc9ce1cb17a2ba412e
+* Some road textures https://www.textures.com/download/roads0086/44877 https://www.textures.com/download/roads0122/55065
+
+### Audio Credits
+* Ambient SF https://www.soundsnap.com/ssl_16_11_amb_ext_afternoon_alamo_square_painted_houses_park_with_birds_some_people_around_calm_city_san_francisco_st_wav
+* Diesel idling bus https://www.soundsnap.com/turbodiesel_bus_riding_and_idling
 
 <img src="https://raw.githubusercontent.com/kfarr/streetmix3d/master/assets/streetmix3d-banner.jpg" />
 
@@ -72,6 +77,7 @@ https://cdn.eso.org/images/large/eso0932a.jpg
 ### Vision
 Animate this https://twitter.com/metrolosangeles/status/1153807208229957632
 Animate this https://twitter.com/FouadUrbanist/status/1176890584935653380
+Animate this https://twitter.com/NACTO/status/1189926384233259008
 Or something like this! https://github.com/nagix/mini-tokyo-3d
 
 ### Get buildings on block
