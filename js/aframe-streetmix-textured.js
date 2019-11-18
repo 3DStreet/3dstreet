@@ -164,6 +164,29 @@ function processSegments(segments, streetElementId) {
       document.getElementById(streetElementId).appendChild(placedObjectEl);
     };
 
+    if (segments[i].type == "drive-lane") {
+      var rotationBusY = (variantList[0] == "inbound") ? 0 : 180;
+      var placedObjectEl = document.createElement("a-entity");
+      placedObjectEl.setAttribute("class", "car");
+      placedObjectEl.setAttribute("position", positionX + " 0 0");
+      placedObjectEl.setAttribute("rotation", "0 " + rotationBusY + " 0");
+      placedObjectEl.setAttribute("mixin", "car");
+
+      // add the new elmement to DOM
+      document.getElementById(streetElementId).appendChild(placedObjectEl);
+
+
+      var rotationBusY = (variantList[0] == "inbound") ? -90 : 90;
+      var placedObjectEl = document.createElement("a-entity");
+      placedObjectEl.setAttribute("class", "car-shadow");
+      placedObjectEl.setAttribute("position", positionX + " 0.01 -0.1");
+      placedObjectEl.setAttribute("rotation", "-90 " + rotationBusY + " 0");
+      placedObjectEl.setAttribute("mixin", "car-shadow");
+
+      // add the new elmement to DOM
+      document.getElementById(streetElementId).appendChild(placedObjectEl);
+    };
+
     if (segments[i].type == "sidewalk-wayfinding" && variantList[0] == "medium") {
       mixinId = "sidewalk"; // this is the "ground, normal "
       // scaleX = scaleX * (-1);
