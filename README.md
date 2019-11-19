@@ -56,6 +56,7 @@ I learned a few things:
 * New Flyer XD40 Bus https://twitter.com/_TimTheTerrible
 * Some city / car models https://sketchfab.com/3d-models/polygon-city-pack-preview-5a16f543d1054fbc9ce1cb17a2ba412e
 * Some road textures https://www.textures.com/download/roads0086/44877 https://www.textures.com/download/roads0122/55065
+* Sidewalk textures https://www.textures.com/download/floorsregular0299/87153 https://www.textures.com/download/floorsregular0301/87158
 
 ### Audio Credits
 * Ambient SF https://www.soundsnap.com/ssl_16_11_amb_ext_afternoon_alamo_square_painted_houses_park_with_birds_some_people_around_calm_city_san_francisco_st_wav

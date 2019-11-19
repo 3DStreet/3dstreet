@@ -8,12 +8,19 @@ const defaultModelWidthsInMeters = {
   "divider": 0.3,
   "parking-lane": 3,
   "sidewalk": 3,
+  "sidewalk-tree": 3,
   "turn-lane": 3,
   "bus-lane": 3,
   "light-rail": 3,
   "streetcar": 3,
   "sidewalk-wayfinding": 3,
   "sidewalk-lamp": 3,
+  "sidewalk-bike-rack": 3,
+  "sidewalk-bench": 3,
+  "scooter-drop-zone": 3,
+  "bikeshare": 3,
+  "flex-zone-curb": 3,
+  "transit-shelter": 3,
 }
 
 // Scale - Normally a MagicaVoxel voxel = 1 meter in A-Frame by default
@@ -21,6 +28,13 @@ const defaultModelWidthsInMeters = {
 // We need to reduce the size of the model (scale * 0.1) to compensate.
 const voxelScaleFactor = 1;     // USE THIS LINE FOR TEXTURE MODE
 // const voxelScaleFactor = 0.1;   // USE THIS LINE FOR VOXEL MODE
+
+function isSidewalk(string) {
+  // https://streetmix.net/api/v1/streets/3f1a9810-0a8f-11ea-adff-7fe273b63f1d
+//  return if string sidewalk* or "scooter-drop-zone", bikeshare, flex-zone-curb, transit-shelter
+  const sidewalkList = ['scooter-drop-zone', 'bikeshare', 'flex-zone-curb', 'transit-shelter'];
+  return string.substring(0,8) == 'sidewalk' || sidewalkList.includes(string);
+}
 
 function cloneMixin({objectMixinId="", parentId="", step=15, radius=60, rotation="0 0 0", positionXYString="0 0"}) {
   for (var j = (radius * -1); j <= radius; j = j + step) {
@@ -275,6 +289,10 @@ function processSegments(segments, streetElementId) {
     };
 
     if (segments[i].type == "parking-lane") {mixinId = "drive-lane"};
+
+    if (isSidewalk(segments[i].type)) {
+      mixinId = "sidewalk";
+    }
 
     // add new object
     var segmentEl = document.createElement("a-entity");
