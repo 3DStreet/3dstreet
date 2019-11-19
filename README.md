@@ -47,7 +47,7 @@ https://github.com/streetmix/streetmix/blob/master/assets/scripts/segments/info.
 I learned a few things:
 * Each street has a unique UUID (such as `7a633310-e598-11e6-80db-ebe3de713876`) with its own corresponding API endpoint (such as https://streetmix.net/api/v1/streets/7a633310-e598-11e6-80db-ebe3de713876)
 * This UUID is not shown in the UI. It can be found by going to this URL and supplying the nameSpacedId and creatorId, such as: https://streetmix.net/api/v1/streets?namespacedId=3&creatorId=kfarr . This will redirect to the UUID API endpoint
-* I wrote a quick JS helper function that takes a user facing URL on Streetmix (such as https://streetmix.net/kfarr/3/a-frame-city-builder-street-only) and transforms it into the API Redirect to find the UUID endpoint, it is here and the inverse function is a few lines below: https://github.com/kfarr/streetmix3d/blob/master/aframe-streetmix.js#L219
+* I wrote a quick JS helper function that takes a user facing URL on Streetmix (such as https://streetmix.net/kfarr/3/a-frame-city-builder-street-only) and transforms it into the API Redirect to find the UUID endpoint, it is here and the inverse function is a few lines below: https://github.com/kfarr/streetmix3d/blob/master/js/aframe-streetmix.js#L219
 
 ### Model Credits
 * Unless credited all models, materials and textures created by Kieran Farr, MIT License same as project repo
