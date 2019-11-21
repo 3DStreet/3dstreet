@@ -45,6 +45,8 @@ function cloneMixin({objectMixinId="", parentId="", step=15, radius=60, rotation
     placedObjectEl.setAttribute("rotation", rotation);
     // add the new elmement to DOM
     document.getElementById(parentId).appendChild(placedObjectEl);
+    // could be good to use geometry merger https://github.com/supermedium/superframe/tree/master/components/geometry-merger
+
   }
 }
 
@@ -91,10 +93,26 @@ function insertSeparatorSegments(segments) {
   return newValues;
 }
 
+function calcStreetWidth(segments) {
+  var cumulativeWidthInMeters = 0;
+  segments.forEach((currentSegment) => {
+    const segmentWidthInFeet = currentSegment.width;
+    const segmentWidthInMeters = segmentWidthInFeet * 0.3048;
+    cumulativeWidthInMeters = cumulativeWidthInMeters + segmentWidthInMeters;
+  });
+  return cumulativeWidthInMeters;
+}
+
 function processSegments(segments, streetElementId) {
   // takes a street's `segments` (array) from streetmix and a `streetElementId` (string) and places objects to make up a street with all segments
   segments = insertSeparatorSegments(segments);
-  console.log(segments);
+  // console.log(segments);
+
+  // offset to center the street around global x position of 0
+  const streetWidth = calcStreetWidth(segments);
+  const offset = 0 - streetWidth / 2;
+  document.getElementById(streetElementId).setAttribute("position", offset + " 0 0")
+
   var cumulativeWidthInMeters = 0;
   for (var i = 0; i < segments.length; i++) {
 
@@ -311,9 +329,53 @@ function processSegments(segments, streetElementId) {
   };
 };
 
+function processBuildings(streetObject, buildingElementId) {
+  // https://github.com/streetmix/illustrations/tree/master/images/buildings
+  const buildingVariants = ["waterfront", "grass", "fence", "parking-lot", "residential", "narrow", "wide"]
+  const buildingLotWidth = 150;
+  const buildingsArray = [streetObject.leftBuildingVariant, streetObject.rightBuildingVariant];
+  // console.log(buildingsArray);
+
+  buildingsArray.forEach((currentValue, index) => {
+    const side = (index == 0) ? "left" : "right";
+    const sideMultiplier = (side == "left") ? -1 : 1;
+
+    const positionX = ((buildingLotWidth / 2) + (calcStreetWidth(streetObject.segments) / 2)) * sideMultiplier;
+
+    if (currentValue == "grass" || currentValue == "fence") {
+      var placedObjectEl = document.createElement("a-entity");
+      placedObjectEl.setAttribute("scale", "0.7425 1 0.7425");
+      placedObjectEl.setAttribute("position", positionX + " -0.2 0");
+      placedObjectEl.setAttribute("id", "building-" + side);
+      // add the new elmement to DOM
+      placedObjectEl.setAttribute("ground", "groundTexture: squares; groundColor: #638a14; groundColor2: #788d1e; groundYScale: 0.2");
+      document.getElementById(buildingElementId).appendChild(placedObjectEl);
+    }
+
+    if (currentValue == "fence") {
+      const objectPositionX = positionX - (sideMultiplier * buildingLotWidth / 2);
+      // make the parent for all the objects to be cloned
+      var placedObjectEl = document.createElement("a-entity");
+      placedObjectEl.setAttribute("class", "fence-parent");
+      placedObjectEl.setAttribute("position", objectPositionX + " 0 0");  // position="1.043 0.100 -3.463"
+      placedObjectEl.setAttribute("id", "fence-parent-" + positionX);
+      // add the new elmement to DOM
+      document.getElementById(buildingElementId).appendChild(placedObjectEl);
+
+      // clone a bunch of lamps under the parent
+      var rotationCloneY = (side == "right") ? -90 : 90;
+      cloneMixin({objectMixinId: "fence", parentId: "fence-parent-" + positionX, rotation: "0 " + rotationCloneY + " 0", step: 2.40, radius: 75});
+
+    }
+  })
+}
+
 function loadStreet(streetURL) {
   // Erase existing street (if any)
-  const myNode = document.getElementById("streets");
+  var myNode = document.getElementById("streets");
+  myNode.innerHTML = '';
+
+  myNode = document.getElementById("buildings");
   myNode.innerHTML = '';
 
   // getjson replacement from http://youmightnotneedjquery.com/#json
@@ -323,8 +385,10 @@ function loadStreet(streetURL) {
     if (this.status >= 200 && this.status < 400) {
       // Connection success
       var streetmixObject = JSON.parse(this.response);
+      var streetObject = streetmixObject.data.street;
       var streetmixSegments = streetmixObject.data.street.segments;
       processSegments(streetmixSegments, "streets");
+      processBuildings(streetObject, "buildings");
     } else {
       // We reached our target server, but it returned an error
       console.log("oops - We reached our target server, but it returned an error");

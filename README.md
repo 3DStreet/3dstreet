@@ -57,6 +57,7 @@ I learned a few things:
 * Some city / car models https://sketchfab.com/3d-models/polygon-city-pack-preview-5a16f543d1054fbc9ce1cb17a2ba412e
 * Some road textures https://www.textures.com/download/roads0086/44877 https://www.textures.com/download/roads0122/55065
 * Sidewalk textures https://www.textures.com/download/floorsregular0299/87153 https://www.textures.com/download/floorsregular0301/87158
+* Fence model https://sketchfab.com/3d-models/chainlink-fence-low-poly-50901b0cc91b4e04a18ecd13bc379a90
 
 ### Audio Credits
 * Ambient SF https://www.soundsnap.com/ssl_16_11_amb_ext_afternoon_alamo_square_painted_houses_park_with_birds_some_people_around_calm_city_san_francisco_st_wav
@@ -75,6 +76,20 @@ https://www.hdri-skies-360.com/
 http://www.philohome.com/skycollec/skycollec.htm
 https://cdn.eso.org/images/large/eso0932a.jpg
 
+### Potential building models:
+## House / Suburban Style
+https://sketchfab.com/3d-models/residential-pack-part-1-4be6c94086bd476796e5568df6ca9ee7 <<-- this looks good
+https://sketchfab.com/3d-models/residential-pack-part-2-0d8f8bf7b49046aeb54426dd70213bc2
+https://sketchfab.com/3d-models/residential-pack-part-3-c5a2c6ed161447dab81d34c09fb2dc7a
+https://sketchfab.com/3d-models/suburb-house-1-fbdd97651fff4a42b7d193f1b53bb8dd - low poly suburban
+https://poly.google.com/view/75V_MLvKMqM - cartoon style
+https://poly.google.com/view/cH1j7_BN9wx - bungalow rural
+https://poly.google.com/view/6FQ_iKCIQd7 - apartment style, photogrammetry low poly
+https://poly.google.com/view/2b2pH3CD9ad - photogrammetry low poly
+https://poly.google.com/view/bQpvnFgH5wr - cartoon style
+## Commercial
+https://poly.google.com/view/cINomH54DAx - low poly photogrammetry suburban commercial
+https://poly.google.com/view/2M7mM1xmEp1 - low poly photogrammetry urban PDR
 ### Vision
 Animate this https://twitter.com/metrolosangeles/status/1153807208229957632
 Animate this https://twitter.com/FouadUrbanist/status/1176890584935653380

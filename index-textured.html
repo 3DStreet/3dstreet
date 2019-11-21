@@ -5,6 +5,7 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/velocity/1.5.0/velocity.js"></script>
     <script src="https://unpkg.com/aframe-orbit-controls@1.2.0/dist/aframe-orbit-controls.min.js"></script>
     <!-- <script src="https://unpkg.com/three-geo@1.2.5/dist/three-geo.min.js"></script> -->
+    <script src="https://unpkg.com/aframe-ground-component@0.0.4/dist/aframe-ground-component.min.js"></script>
 
 
     <script src="js/aframe-streetmix-textured.js"></script>
@@ -54,11 +55,14 @@
 
   </head>
   <body>
-    <a-scene fogoff="type: linear; color: #fffbcd; far: 200" gltf-model="dracoDecoderPath: js/;">
+
+    <a-scene fogoff="type: linear; color: #D5C69B; far: 200" gltf-model="dracoDecoderPath: js/;">
       <a-assets>
         <!-- <a-asset-item id="15harrison" src="assets/15harrison/out-recap-sketchfab.glb"></a-asset-item> -->
         <a-asset-item id="xd40" src="assets/objects/XD40.glb"></a-asset-item>
         <a-asset-item id="carmodel" src="assets/objects/SM_Veh_Car_Sedan_01.gltf"></a-asset-item>
+
+        <a-asset-item id="fence-model" src="assets/objects/chainlink_fence_-_low_poly.glb"></a-asset-item>
 
         <a-asset-item id="lamp-modern-glb" src="assets/objects/lamp-post-modern-centered.glb"></a-asset-item>
         <a-asset-item id="lamp-traditional-glb" src="assets/objects/lamp-post-traditional.glb"></a-asset-item>
@@ -131,24 +135,26 @@
         <a-mixin id="separator-solid-t1" geometry="width:0.5;height:150;primitive:plane" material="repeat:0.25 25;offset:0.38 0;src:materials/separator-solid_1024.png;transparent: true;"></a-mixin>
         <a-mixin id="separator-doubleyellow-t1" geometry="width:0.5;height:150;primitive:plane" material="repeat:0.25 25;offset:0.38 0;src:materials/separator-double-yellow_512.png;transparent: true;"></a-mixin>
 
-        <a-mixin id="bus" gltf-model="#xd40"></a-entity>
-        <a-mixin id="car" gltf-model="#carmodel" scale="0.75 0.75 0.75"></a-entity>
+        <a-mixin id="bus" gltf-model="#xd40"></a-mixin>
+        <a-mixin id="car" gltf-model="#carmodel" scale="0.75 0.75 0.75"></a-mixin>
 
         <a-mixin id="bus-shadow" geometry="width: 8.5; height: 2.3; primitive: plane"  material="src: url(materials/bus-shadow.png); alphaTest: 0;transparent:true; metalness: 0 ; roughness: 1;" ></a-mixin>
         <a-mixin id="car-shadow" geometry="width: 3.8; height: 1.8; primitive: plane"  material="src: url(materials/bus-shadow.png); alphaTest: 0;transparent:true; metalness: 0 ; roughness: 1;" ></a-mixin>
 
-        <a-mixin id="lamp-modern" gltf-model="#lamp-modern-glb" scale="0.35 0.35 0.35"></a-entity>
-        <a-mixin id="lamp-traditional" gltf-model="#lamp-traditional-glb" scale="0.2 0.2 0.2" ></a-entity>
+        <a-mixin id="lamp-modern" gltf-model="#lamp-modern-glb" scale="0.35 0.35 0.35"></a-mixin>
+        <a-mixin id="lamp-traditional" gltf-model="#lamp-traditional-glb" scale="0.2 0.2 0.2" ></a-mixin>
 
         <a-mixin id="pride-flag" position="0.409 3.345 0" rotation="0 0 0" scale="0.5 0.75 0" geometry="width:2;height:2;primitive:plane" material="side:double; src:materials/rainbow-flag-poles_512.png;transparent: true;"></a-mixin>
 
+        <a-mixin id="fence" gltf-model="#fence-model" scale="0.1 0.1 0.1"></a-mixin>
+
         <image id="subtitle" src="materials/subtitle.png" />
-
-
       </a-assets>
 
       <a-entity light="type: ambient; color: #BBB"></a-entity>
       <a-entity light="type: directional; color: #FFF; intensity: 0.6" position="0.5 1 -1"></a-entity>
+
+      <a-entity id="buildings"></a-entity>
 
       <a-entity id="cam-parent">
         <a-entity wasd-controls id="camera" orbit-controls="target: 0 0 0;initialPosition:0 2 10;minDistance:3;maxDistance:100;">
@@ -188,7 +194,9 @@
       <a-sky position="0 -140 0" rotation="0 240 0" material="fog: false;src:#sky"></a-sky>
       <!-- <a-entity id="streetscan" gltf-model="#15harrison" scale="0.19 0.19 0.19" rotation="0 93.310 0" position="-1.978 4.890 0.301"></a-entity> -->
 
-      <a-entity id="streets" position="-15 0 0" rotation="0 0 0"></a-entity>
+      <a-entity id="street-parent" position="0 0 0" rotation="0 0 0">
+        <a-entity id="streets"></a-entity>
+      </a-entity>
 
       <!-- <a-entity class="lamp-traditional" mixin="lamp-traditional" ></a-entity>
       <a-entity class="lamp-modern" mixin="lamp-modern" ></a-entity> -->
@@ -205,7 +213,7 @@
       </a-entity> -->
 
     </a-scene>
-    <div id="intro" class="intro">
+    <div id="intro" class="intro" style="opacity: 0;">
       <div class="row">
         <div class="col-md-12"><span class="big">Streetmix3D</span></div>
       </div>
