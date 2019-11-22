@@ -177,7 +177,7 @@ function processSegments(segments, streetElementId) {
       var rotationBusY = (variantList[0] == "inbound") ? -90 : 90;
       var placedObjectEl = document.createElement("a-entity");
       placedObjectEl.setAttribute("class", "bus");
-      placedObjectEl.setAttribute("position", positionX + " 0.89 0");
+      placedObjectEl.setAttribute("position", positionX + " 1.4 0");
       placedObjectEl.setAttribute("rotation", "0 " + rotationBusY + " 0");
       placedObjectEl.setAttribute("mixin", "bus");
 
@@ -188,7 +188,7 @@ function processSegments(segments, streetElementId) {
       var rotationBusY = (variantList[0] == "inbound") ? -90 : 90;
       var placedObjectEl = document.createElement("a-entity");
       placedObjectEl.setAttribute("class", "bus-shadow");
-      placedObjectEl.setAttribute("position", positionX + " 0.01 -0.3");
+      placedObjectEl.setAttribute("position", positionX + " 0.01 0");
       placedObjectEl.setAttribute("rotation", "-90 " + rotationBusY + " 0");
       placedObjectEl.setAttribute("mixin", "bus-shadow");
 
@@ -211,7 +211,7 @@ function processSegments(segments, streetElementId) {
       var rotationBusY = (variantList[0] == "inbound") ? -90 : 90;
       var placedObjectEl = document.createElement("a-entity");
       placedObjectEl.setAttribute("class", "car-shadow");
-      placedObjectEl.setAttribute("position", positionX + " 0.01 -0.1");
+      placedObjectEl.setAttribute("position", positionX + " 0.01 0");
       placedObjectEl.setAttribute("rotation", "-90 " + rotationBusY + " 0");
       placedObjectEl.setAttribute("mixin", "car-shadow");
 
