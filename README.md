@@ -95,6 +95,7 @@ Animate this https://twitter.com/metrolosangeles/status/1153807208229957632
 Animate this https://twitter.com/FouadUrbanist/status/1176890584935653380
 Animate this https://twitter.com/NACTO/status/1189926384233259008
 Or something like this! https://github.com/nagix/mini-tokyo-3d
+Make this type of image interactive https://nacto.org/publication/urban-bikeway-design-guide/intersection-treatments/combined-bike-laneturn-lane/
 
 ### Get buildings on block
 https://www.instructables.com/id/Capture-3D-Models-From-Google-Maps-or-Earth/
@@ -111,3 +112,8 @@ cool example https://demo.f4map.com/#lat=55.7425832&lon=37.6501812&zoom=15&camer
 works but complicated code https://github.com/OSMBuildings/OSMBuildings
 interesting but not quite suited for this project https://github.com/peterqliu/threebox
 https://cesium.com/content/
+
+### References
+CA MUTCD 2014 Ch 3b Page 79-80, 88 https://dot.ca.gov/-/media/dot-media/programs/traffic-operations/documents/ca-mutcd/camutcd2014-chap3b-rev3-a11y.pdf
+CA MUTCD 2014 Ch 9c 9C-3 Page 11 - https://dot.ca.gov/-/media/dot-media/programs/traffic-operations/documents/ca-mutcd/camutcd2014-chap9c-rev3-a11y.pdf
+City of Lodi PWD https://www.lodi.gov/DocumentCenter/View/2519/710-Pavement-Marking-Details-PDF
