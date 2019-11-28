@@ -6,6 +6,7 @@
     <script src="https://unpkg.com/aframe-orbit-controls@1.2.0/dist/aframe-orbit-controls.min.js"></script>
     <!-- <script src="https://unpkg.com/three-geo@1.2.5/dist/three-geo.min.js"></script> -->
     <script src="https://unpkg.com/aframe-ground-component@0.0.4/dist/aframe-ground-component.min.js"></script>
+    <script src="https://unpkg.com/aframe-atlas-uvs-component@2.1.0/dist/aframe-atlas-uvs-component.min.js"></script>
 
 
     <script src="js/aframe-streetmix-textured.js"></script>
@@ -25,6 +26,18 @@
       color: #FFF;
       background: rgba(0, 0, 0, 0.75);
       font-family: Source Sans Pro, Helvetica Neue, Helvetica, Arial, sans-serif;
+
+      -webkit-transition: all 0.2s ease-in-out 0s;
+      -moz-transition: all 0.2s ease-in-out 0s;
+      -ms-transition: all 0.2s ease-in-out 0s;
+      transition: all 0.2s ease-in-out 0s;
+
+      opacity: 0;
+      visibility: hidden;
+    }
+    #intro.shown {
+      opacity: 1;
+      visibility: visible;
     }
     .row {
       padding: 0.75rem;
@@ -135,11 +148,20 @@
         <a-mixin id="separator-solid-t1" geometry="width:0.5;height:150;primitive:plane" material="repeat:0.25 25;offset:0.38 0;src:materials/separator-solid_1024.png;transparent: true;"></a-mixin>
         <a-mixin id="separator-doubleyellow-t1" geometry="width:0.5;height:150;primitive:plane" material="repeat:0.25 25;offset:0.38 0;src:materials/separator-double-yellow_512.png;transparent: true;"></a-mixin>
 
+        <a-mixin id="markings" atlas-uvs="totalRows: 4; totalColumns: 4" scale="2 2 2" material="src: materials/lane-markings-atlas_2048.png;alphaTest: 0;transparent:true;" geometry="primitive: plane; buffer: false; skipCache: true"></a-mixin>
+        <a-mixin id="right" atlas-uvs="column: 3; row: 2"></a-mixin>
+        <a-mixin id="left" atlas-uvs="column: 3; row: 3"></a-mixin>
+        <a-mixin id="both" atlas-uvs="column: 2; row: 1"></a-mixin>
+        <a-mixin id="all" atlas-uvs="column: 3; row: 1"></a-mixin>
+        <a-mixin id="left-straight" atlas-uvs="column: 2; row: 3"></a-mixin>
+        <a-mixin id="right-straight" atlas-uvs="column: 2; row: 2"></a-mixin>
+        <a-mixin id="straight" atlas-uvs="column: 2; row: 4"></a-mixin>
+
         <a-mixin id="bus" gltf-model="#xd40" scale="1.55 1.55 1.55"></a-mixin>
         <a-mixin id="car" gltf-model="#carmodel"></a-mixin>
 
-        <a-mixin id="bus-shadow" geometry="width: 12; height: 3; primitive: plane"  material="src: url(materials/bus-shadow.png); alphaTest: 0;transparent:true; metalness: 0 ; roughness: 1;" ></a-mixin>
-        <a-mixin id="car-shadow" geometry="width: 4.7; height: 2.5; primitive: plane"  material="src: url(materials/bus-shadow.png); alphaTest: 0;transparent:true; metalness: 0 ; roughness: 1;" ></a-mixin>
+        <a-mixin id="bus-shadow" geometry="width: 12; height: 3; primitive: plane"  material="src: url(materials/bus-shadow.png); alphaTest: 0;transparent:true; roughness: 1;" ></a-mixin>
+        <a-mixin id="car-shadow" geometry="width: 4.7; height: 2.5; primitive: plane"  material="src: url(materials/bus-shadow.png); alphaTest: 0;transparent:true; roughness: 1;" ></a-mixin>
 
         <a-mixin id="lamp-modern" gltf-model="#lamp-modern-glb" scale="0.5 0.5 0.5"></a-mixin>
         <a-mixin id="lamp-traditional" gltf-model="#lamp-traditional-glb" scale="0.2 0.2 0.2" ></a-mixin>
@@ -154,7 +176,6 @@
       <a-entity light="type: ambient; color: #BBB"></a-entity>
       <a-entity light="type: directional; color: #FFF; intensity: 0.6" position="0.5 1 -1"></a-entity>
 
-      <a-entity id="buildings"></a-entity>
 
       <a-entity id="cam-parent">
         <a-entity wasd-controls id="camera" orbit-controls="target: 0 0 0;initialPosition:0 2 10;minDistance:3;maxDistance:100;">
@@ -194,14 +215,18 @@
       <a-sky position="0 -140 0" rotation="0 240 0" material="fog: false;src:#sky"></a-sky>
       <!-- <a-entity id="streetscan" gltf-model="#15harrison" scale="0.19 0.19 0.19" rotation="0 93.310 0" position="-1.978 4.890 0.301"></a-entity> -->
 
+      <!-- <a-entity mixin="markings right-turn" ></a-entity> -->
+
+      <!-- <a-entity mixin="right" atlas-uvs="column: 3; row: 1"></a-entity> -->
+
       <a-entity id="street-parent" position="0 0 0" rotation="0 0 0">
         <a-entity id="streets"></a-entity>
       </a-entity>
 
+      <a-entity id="buildings"></a-entity>
+
       <!-- <a-entity id="ford-crown-vic-bounding" geometry="depth: 5.3; height: 1.448; width: 1.99" position="0.92059 0.74 0"></a-entity>
       <a-entity id="newflyer-XD40-bounding" geometry="depth: 12; height: 3.2; width: 2.59" position="-3.97 1.59 0"></a-entity> -->
-      <!-- <a-entity class="lamp-traditional" mixin="lamp-traditional" ></a-entity>
-      <a-entity class="lamp-modern" mixin="lamp-modern" ></a-entity> -->
 
       <!-- // 2D Satelite map of the neighborhood -->
       <!-- <a-entity id="hoodmap" scale="750 1 750" position="0 0 0">
@@ -215,7 +240,7 @@
       </a-entity> -->
 
     </a-scene>
-    <div id="intro" class="intro" style="opacity: 0;">
+    <div id="intro" class="intro" >
       <div class="row">
         <div class="col-md-12"><span class="big">Streetmix3D</span></div>
       </div>
@@ -230,11 +255,7 @@
     <script>
     var toggle = function() {
       var introEl = document.getElementById("intro");
-      var introOpacity = window.getComputedStyle(introEl,null).getPropertyValue("opacity");
-      var newOpacity = introOpacity == 1 ? 0 : 1;
-      Velocity(document.getElementById("intro"), { opacity: newOpacity }, { duration: 250 });
-      Velocity(document.getElementById("arrow"), { rotateZ: "+=180deg" }, { duration: 250 });
-
+      introEl.classList.toggle("shown");
     }
     </script>
 

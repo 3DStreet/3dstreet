@@ -112,6 +112,8 @@ cool example https://demo.f4map.com/#lat=55.7425832&lon=37.6501812&zoom=15&camer
 works but complicated code https://github.com/OSMBuildings/OSMBuildings
 interesting but not quite suited for this project https://github.com/peterqliu/threebox
 https://cesium.com/content/
+Car driving reference code 1 https://github.com/spacejack/carphysics2d/blob/master/public/js/Car.js
+Car driving reference code 2 https://github.com/chipbell4/car-physics/blob/master/app.js
 
 ### References
 CA MUTCD 2014 Ch 3b Page 79-80, 88 https://dot.ca.gov/-/media/dot-media/programs/traffic-operations/documents/ca-mutcd/camutcd2014-chap3b-rev3-a11y.pdf
