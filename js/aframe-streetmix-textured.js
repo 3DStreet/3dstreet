@@ -1,4 +1,3 @@
-// Models - Each segment "type" is a separate model created in MagicaVoxel.
 // Orientation - default model orientation is "outbound" (away from camera)
 
 // Width - These are the intended default widths of the models in meters.
@@ -22,12 +21,6 @@ const defaultModelWidthsInMeters = {
   "flex-zone-curb": 3,
   "transit-shelter": 3,
 }
-
-// Scale - Normally a MagicaVoxel voxel = 1 meter in A-Frame by default
-// However for this project each voxel represents 1 decimeter (1/10th of a meter).
-// We need to reduce the size of the model (scale * 0.1) to compensate.
-const voxelScaleFactor = 1;     // USE THIS LINE FOR TEXTURE MODE
-// const voxelScaleFactor = 0.1;   // USE THIS LINE FOR VOXEL MODE
 
 function isSidewalk(string) {
   // https://streetmix.net/api/v1/streets/3f1a9810-0a8f-11ea-adff-7fe273b63f1d
@@ -127,9 +120,7 @@ function processSegments(segments, streetElementId) {
     // what is "delta" between default width and requested width?
     // default * scale = requested :: scale = requested / default
     // For example: requested width = 2m, but default model width is 1.8. 2 / 1.8 = 1.111111111
-    var scaleX = segmentWidthInMeters / modelWidthInMeters * voxelScaleFactor;
-    var scaleY = voxelScaleFactor;
-    var scaleZ = voxelScaleFactor;
+    var scaleX = segmentWidthInMeters / modelWidthInMeters;
 //    console.log("Scale: " + scaleX);
 
     cumulativeWidthInMeters = cumulativeWidthInMeters + segmentWidthInMeters;
@@ -245,9 +236,7 @@ function processSegments(segments, streetElementId) {
 
     if (segments[i].type == "sidewalk-wayfinding" && variantList[0] == "medium") {
       mixinId = "sidewalk"; // this is the "ground, normal "
-      // scaleX = scaleX * (-1);
-      // scaleY = scaleY * (-1); // this is added otherwise scaleX invert renders the model darker for some reason
-      // positionY = positionY + 0.1; // this is added because scaleY invert displaces the lane down by 0.1 for some reason
+
       var placedObjectEl = document.createElement("a-entity");
       placedObjectEl.setAttribute("class", segments[i].type);
       placedObjectEl.setAttribute("scale", "0.1 0.13 0.1");
@@ -338,16 +327,13 @@ function processSegments(segments, streetElementId) {
 
     // add new object
     var segmentEl = document.createElement("a-entity");
-    segmentEl.setAttribute("scale", scaleX + " " + scaleY + " " + scaleZ);
+    segmentEl.setAttribute("scale", scaleX + " 1 1");
     segmentEl.setAttribute("position", positionX + " " + positionY + " 0");
 
     // USE THESE 2 LINES FOR TEXTURE MODE:
     segmentEl.setAttribute("rotation", "270 " + rotationY + " 0")
     segmentEl.setAttribute("mixin", mixinId + "-t1");
 
-    // USE THESE 2 LINES FOR VOXEL MODE:
-    // segmentEl.setAttribute("rotation", "0 " + rotationY + " 0")
-    // segmentEl.setAttribute("mixin", mixinId + "-vox");
     document.getElementById(streetElementId).appendChild(segmentEl);
 
   };
