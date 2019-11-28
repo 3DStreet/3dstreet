@@ -170,12 +170,20 @@ function processSegments(segments, streetElementId) {
 
     };
 
+    // variant doesn't exist yet      if (segments[i].type == "turn-lane" && variantList[1] == "shared") {mixinId = "turn-lane-shared"};
     if (segments[i].type == "turn-lane" ) {
       mixinId = "drive-lane";       // use normal drive lane road material
-      const markerMixinId = variantList[1];       // set the mixin of the road markings to match the current variant name
-      var mixinString = "markings " + markerMixinId
+      var markerMixinId = variantList[1];       // set the mixin of the road markings to match the current variant name
 
-      // variant doesn't exist yet      if (segments[i].type == "turn-lane" && variantList[1] == "shared") {mixinId = "turn-lane-shared"};
+      // Fix streetmix inbound turn lane orientation (change left to right)
+      // Remove this when this ticket is resolved: https://github.com/streetmix/streetmix/issues/683
+      if (variantList[0] == "inbound") {
+        markerMixinId = markerMixinId.replace(/left|right/g, function(m) {
+          return m === 'left' ? 'right' : 'left';
+        })
+      }
+
+      var mixinString = "markings " + markerMixinId
 
       // make the parent for all the objects to be cloned
       var placedObjectEl = document.createElement("a-entity");
