@@ -152,20 +152,11 @@ function processSegments(segments, streetElementId) {
     // there are some cases to look at segment variants in order to find the right model
     // if type && variant2 then use model  ... there's definitely a better way to do this ...
 
-    // sharrow not supported
-    if (segments[i].type == "drive-lane" && variantList[1] == "sharrow") {mixinId = "drive-lane-sharrow"};
-
-    if (segments[i].type == "turn-lane" ) {
-      // use normal drive lane road material
+    // sharrow variant not supported
+    if (segments[i].type == "drive-lane" && variantList[1] == "sharrow") {
       mixinId = "drive-lane";
-
-      // set the mixin of the road markings to match the current variant name
       const markerMixinId = variantList[1];
-
-      // item to added
       var mixinString = "markings " + markerMixinId
-
-// DON'T HAVE      if (segments[i].type == "turn-lane" && variantList[1] == "shared") {mixinId = "turn-lane-shared"};
 
       // make the parent for all the objects to be cloned
       var placedObjectEl = document.createElement("a-entity");
@@ -175,9 +166,26 @@ function processSegments(segments, streetElementId) {
       // add the new elmement to DOM
       document.getElementById(streetElementId).appendChild(placedObjectEl);
 
-      // clone a bunch of lamps under the parent
-      // var rotationCloneY = (side == "right") ? -90 : 90;
-      cloneMixin({objectMixinId: mixinString, parentId: "markings-parent-" + positionX, rotation: "-90 0 0", step: 10, radius: 70});
+      cloneMixin({objectMixinId: mixinString, parentId: "markings-parent-" + positionX, rotation: "-90 " + rotationY + " 0", step: 10, radius: 70});
+
+    };
+
+    if (segments[i].type == "turn-lane" ) {
+      mixinId = "drive-lane";       // use normal drive lane road material
+      const markerMixinId = variantList[1];       // set the mixin of the road markings to match the current variant name
+      var mixinString = "markings " + markerMixinId
+
+      // variant doesn't exist yet      if (segments[i].type == "turn-lane" && variantList[1] == "shared") {mixinId = "turn-lane-shared"};
+
+      // make the parent for all the objects to be cloned
+      var placedObjectEl = document.createElement("a-entity");
+      placedObjectEl.setAttribute("class", "markings-parent");
+      placedObjectEl.setAttribute("position", positionX + " 0.015 0");  // position="1.043 0.100 -3.463"
+      placedObjectEl.setAttribute("id", "markings-parent-" + positionX);
+      // add the new elmement to DOM
+      document.getElementById(streetElementId).appendChild(placedObjectEl);
+
+      cloneMixin({objectMixinId: mixinString, parentId: "markings-parent-" + positionX, rotation: "-90 " + rotationY + " 0", step: 10, radius: 70});
     }
 
     if (segments[i].type == "divider" && variantList[0] == "bollard") {mixinId = "divider-bollard"};
@@ -192,7 +200,6 @@ function processSegments(segments, streetElementId) {
 
       // add the new elmement to DOM
       document.getElementById(streetElementId).appendChild(placedObjectEl);
-
 
       var rotationBusY = (variantList[0] == "inbound") ? -90 : 90;
       var placedObjectEl = document.createElement("a-entity");
