@@ -145,9 +145,8 @@ function processSegments(segments, streetElementId) {
 
     // sharrow variant not supported
     if (segments[i].type == "drive-lane" && variantList[1] == "sharrow") {
-      mixinId = "drive-lane";
       const markerMixinId = variantList[1];
-      var mixinString = "markings " + markerMixinId
+      var mixinString = "markings " + markerMixinId;
 
       // make the parent for all the objects to be cloned
       var placedObjectEl = document.createElement("a-entity");
@@ -160,6 +159,19 @@ function processSegments(segments, streetElementId) {
       cloneMixin({objectMixinId: mixinString, parentId: "markings-parent-" + positionX, rotation: "-90 " + rotationY + " 0", step: 10, radius: 70});
 
     };
+
+    if (segments[i].type == "bike-lane") {
+      // make the parent for all the objects to be cloned
+      var placedObjectEl = document.createElement("a-entity");
+      placedObjectEl.setAttribute("class", "markings-parent");
+      placedObjectEl.setAttribute("position", positionX + " 0.015 0");  // position="1.043 0.100 -3.463"
+      placedObjectEl.setAttribute("id", "markings-parent-" + positionX);
+      // add the new elmement to DOM
+      document.getElementById(streetElementId).appendChild(placedObjectEl);
+
+      cloneMixin({objectMixinId: "markings marking-bike-lane", parentId: "markings-parent-" + positionX, rotation: "-90 " + rotationY + " 0", step: 10, radius: 70});
+
+    }
 
     // variant doesn't exist yet      if (segments[i].type == "turn-lane" && variantList[1] == "shared") {mixinId = "turn-lane-shared"};
     if (segments[i].type == "turn-lane" ) {
