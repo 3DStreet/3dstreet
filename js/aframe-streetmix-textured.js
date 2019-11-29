@@ -63,6 +63,9 @@ function insertSeparatorSegments(segments) {
       // if identical lane types are adjacent, then used dashed
       if (currentValue.type == previousValue.type) { variantString = "dashed" }
 
+      // Or, if either is a drive lane or turn lane then use dashed
+      if ((currentValue.type == "drive-lane" && previousValue.type == "turn-lane") || (previousValue.type == "drive-lane" && currentValue.type == "turn-lane")) { variantString = "dashed" }
+
       // if adjacent segments in opposite directions then use double yellow
       if (currentValue.variantString.split("|")[0] !== previousValue.variantString.split("|")[0]) {
         variantString = "doubleyellow";
