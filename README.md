@@ -119,3 +119,7 @@ Car driving reference code 2 https://github.com/chipbell4/car-physics/blob/maste
 CA MUTCD 2014 Ch 3b Page 79-80, 88 https://dot.ca.gov/-/media/dot-media/programs/traffic-operations/documents/ca-mutcd/camutcd2014-chap3b-rev3-a11y.pdf
 CA MUTCD 2014 Ch 9c 9C-3 Page 11 - https://dot.ca.gov/-/media/dot-media/programs/traffic-operations/documents/ca-mutcd/camutcd2014-chap9c-rev3-a11y.pdf
 City of Lodi PWD https://www.lodi.gov/DocumentCenter/View/2519/710-Pavement-Marking-Details-PDF
+
+### Potential collaborators
+https://www.linkedin.com/in/arturoparacuellos/
+https://www.linkedin.com/in/simonbruno77/
