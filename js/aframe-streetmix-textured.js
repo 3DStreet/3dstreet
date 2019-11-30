@@ -172,7 +172,7 @@ function processSegments(segments, streetElementId) {
       // add the new elmement to DOM
       document.getElementById(streetElementId).appendChild(placedObjectEl);
 
-      cloneMixin({objectMixinId: "markings marking-bike-lane", parentId: "markings-parent-" + positionX, rotation: "-90 " + rotationY + " 0", step: 10, radius: 70});
+      cloneMixin({objectMixinId: "markings bike-lane", parentId: "markings-parent-" + positionX, rotation: "-90 " + rotationY + " 0", step: 20, radius: 70});
 
     }
 
@@ -224,6 +224,38 @@ function processSegments(segments, streetElementId) {
 
       // add the new elmement to DOM
       document.getElementById(streetElementId).appendChild(placedObjectEl);
+
+
+      // make the parent for all the objects to be cloned
+      var placedObjectEl = document.createElement("a-entity");
+      placedObjectEl.setAttribute("class", "markings-parent");
+      placedObjectEl.setAttribute("position", positionX + " 0.015 0");  // position="1.043 0.100 -3.463"
+      placedObjectEl.setAttribute("id", "markings-parent-" + positionX);
+      // add the new elmement to DOM
+      document.getElementById(streetElementId).appendChild(placedObjectEl);
+
+      cloneMixin({objectMixinId: "markings stencil-bus", parentId: "markings-parent-" + positionX, rotation: "-90 " + rotationY + " 0", step: 50, radius: 70});
+
+      // make the parent for all the objects to be cloned
+      var placedObjectEl = document.createElement("a-entity");
+      placedObjectEl.setAttribute("class", "markings-parent");
+      placedObjectEl.setAttribute("position", positionX + " 0.015 10");  // position="1.043 0.100 -3.463"
+      placedObjectEl.setAttribute("id", "markings-parent-offset10-" + positionX);
+      // add the new elmement to DOM
+      document.getElementById(streetElementId).appendChild(placedObjectEl);
+
+      cloneMixin({objectMixinId: "markings stencil-taxi", parentId: "markings-parent-offset10-" + positionX, rotation: "-90 " + rotationY + " 0", step: 50, radius: 70});
+
+      // make the parent for all the objects to be cloned
+      var placedObjectEl = document.createElement("a-entity");
+      placedObjectEl.setAttribute("class", "markings-parent");
+      placedObjectEl.setAttribute("position", positionX + " 0.015 20");  // position="1.043 0.100 -3.463"
+      placedObjectEl.setAttribute("id", "markings-parent-offset20-" + positionX);
+      // add the new elmement to DOM
+      document.getElementById(streetElementId).appendChild(placedObjectEl);
+
+      cloneMixin({objectMixinId: "markings stencil-only", parentId: "markings-parent-offset20-" + positionX, rotation: "-90 " + rotationY + " 0", step: 50, radius: 70});
+
     };
 
     if (segments[i].type == "drive-lane") {

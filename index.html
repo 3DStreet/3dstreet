@@ -40,7 +40,7 @@
         <a-mixin id="sidewalk-t0" geometry="width:3;height:150;primitive:plane" material="repeat:1.5 75;src:materials/sidewalkhd_Base_Color.jpg;normalTextureRepeat:1.5 75;normalMap:materials/sidewalkhd_Normal.jpg;"></a-mixin>
 
         <a-mixin id="bus-lane-t0" geometry="width:3;height:150;primitive:plane" material="repeat:1.5 75;src:materials/asphaltred1hd_Base_Color.jpg;normalTextureRepeat:1.5 75;normalMap:materials/asphaltred1hd_Normal.jpg;"></a-mixin>
-        <a-mixin id="bus-lane-t1" geometry="width:3;height:150;primitive:plane" material="repeat:0.3 25;offset:0.55 0;color:#e5534c;src:materials/TexturesCom_Roads0086_1_seamless_S_rotate.jpg;"></a-mixin>
+        <a-mixin id="bus-lane-t1" geometry="width:3;height:150;primitive:plane" material="repeat:0.3 25;offset:0.55 0;color:#ff9393;src:materials/TexturesCom_Roads0086_1_seamless_S_rotate.jpg;"></a-mixin>
 
         <a-mixin id="divider-t1" geometry="width:0.3;height:150;primitive:plane" material="repeat:1 150;offset:0.415 0;normalTextureOffset:0.415 0;src:materials/hatched_Base_Color.jpg;normalTextureRepeat:0.21 150;normalMap:materials/hatched_Normal.jpg"></a-mixin>
 
@@ -57,7 +57,19 @@
         <a-mixin id="right-straight" atlas-uvs="column: 2; row: 2"></a-mixin>
         <a-mixin id="straight" atlas-uvs="column: 2; row: 4"></a-mixin>
         <a-mixin id="sharrow" atlas-uvs="totalRows: 4; totalColumns: 8; column: 2; row: 3" scale="1.5 3 1"></a-mixin>
-        <a-mixin id="marking-bike-lane" atlas-uvs="totalRows: 2; totalColumns: 8; column: 1; row: 2" scale="1 4 1"></a-mixin>
+        <a-mixin id="bike-lane" atlas-uvs="totalRows: 2; totalColumns: 8; column: 1; row: 2" scale="1 4 1"></a-mixin>
+
+        <a-mixin id="stencil-bus" atlas-uvs="totalRows: 8; totalColumns: 8; column: 1; row: 4" scale="3 3 3"></a-mixin>
+        <a-mixin id="stencil-lane" atlas-uvs="totalRows: 8; totalColumns: 8; column: 2; row: 4" scale="3 3 3"></a-mixin>
+        <a-mixin id="stencil-taxi" atlas-uvs="totalRows: 8; totalColumns: 8; column: 1; row: 3" scale="3 3 3"></a-mixin>
+        <a-mixin id="stencil-only" atlas-uvs="totalRows: 8; totalColumns: 8; column: 2; row: 3" scale="3 3 3"></a-mixin>
+
+        <a-mixin id="stencil-yield" atlas-uvs="totalRows: 8; totalColumns: 8; column: 1; row: 2" scale="3 3 3"></a-mixin>
+        <a-mixin id="stencil-slow" atlas-uvs="totalRows: 8; totalColumns: 8; column: 2; row: 2" scale="3 3 3"></a-mixin>
+        <a-mixin id="stencil-xing" atlas-uvs="totalRows: 8; totalColumns: 8; column: 1; row: 1" scale="3 3 3"></a-mixin>
+        <a-mixin id="stencil-stop" atlas-uvs="totalRows: 8; totalColumns: 8; column: 2; row: 1" scale="3 3 3"></a-mixin>
+
+
 
 
         <a-mixin id="bus" gltf-model="#xd40" scale="1.55 1.55 1.55"></a-mixin>
