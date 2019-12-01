@@ -17,25 +17,32 @@ Streetmix.net mixed with A-Frame for visualization of streetscapes
 
 Streetmix3D does not yet support all of the street `segments` found in Streetmix. You may find some segments don't display at all or are missing 3D elements. We'd gladly support any help making 3D models that match the designs from the original Streetmix. Here is a complete list:
 
-| [Streetmix Segment](https://github.com/streetmix/streetmix/blob/master/assets/scripts/segments/README.md)              | Supported? | Supported Variants  | Unsupported Variants |
+| [Streetmix Segment](https://github.com/streetmix/streetmix/blob/master/assets/scripts/segments/info.json)              | Streetmix3D Support? | Supported Variants  | Unsupported Variants |
 | ---------------------------- | --------- | ------ | ----- |
-| sidewalk            | Yes - Full        |        | no pedestrian 3d models, density levels unsupported, uses empty sidewalk for all variants |
-| sidewalk-tree       | no        |   | 3d object - palm 2 and 3   |
-| sidewalk-bench      | no        |      | 3d object - bench 1, 2 and 3|
-| sidewalk-bike-rack  | no        |     | 3d model needed |
-| sidewalk-wayfinding | Yes - Partial        | `medium` | known issue: one side has mirror texture, 3d model needed for `small` and `large` variants     |
-| sidewalk-lamp       | no        | | 3d object - street light 1 and 2     |
-| parklet             | no        | | 3d model needed     |
-| divider             | Yes - Partial   | `divider-type`: striped-buffer, bollard | only 1 texture (double yellow lines) does not match streetmix (dashed white lines), some 3d models needed for variants       |
-| parking-lane        | Yes - Partial  |       | `parking-lane-direction` and `parking-lane-orientation` unsupported - "ticks" on both sides of lane |
-| bike-lane           | Yes - Partial  | `direction`: inbound, outbound | `bike-asphalt` not supported, only green color   |
-| drive-lane          | Yes - Full      | `direction`: inbound, outbound \| `car-type`: sharrow | `car-type`: car, truck - No 3D car or truck models supported yet.        |
-| turn-lane           | Yes - Full        | `direction`: inbound, outbound \| `turn-lane-orientation`: left, left-straight, right, right-straight, both, shared, straight       | Note: there appears to be a bug with Streetmix.net rendering of `turn-lane-orientation` variant in street cross section for `inbound` - it appears to be inverted from the street's json database value. https://github.com/streetmix/streetmix/issues/683 |
-| bus-lane            | Yes - Partial        | `direction`: inbound, outbound       | `bus-asphalt` not supported default always red |
-| light-rail          | Yes - Partial        | `direction`: inbound, outbound       | `public-transit-asphalt` not supported default always red |
-| streetcar           | Yes - Partial        | `direction`: inbound, outbound       | `public-transit-asphalt` not supported default always red |
-| transit-shelter     | no        | | 3d object bus stop     |
-| train               | no        |        |  This does not appear to be enabled in Streetmix UI. Is this intended to be mixed mode or unpaved grade separated tracks? |
+| sidewalk            | Partial       | "empty" only    | All variants show empty sidewalk, no pedestrian 3d models or density variants. |
+| sidewalk-tree       | no        |   |   |
+| sidewalk-bench      | no        |   |   |
+| sidewalk-bike-rack  | no        |   |   |
+| sidewalk-wayfinding | Partial   | `medium` size is rendered for all variants | known issue: one side has mirror texture, 3d model needed for `small` and `large` variants     |
+| sidewalk-lamp       | Yes       | All |   |
+| parklet             | no        |   |   |
+| divider             | Partial   | `divider-type`: striped-buffer is rendered for all variants |  |
+| parking-lane        | Partial |       | `parking-lane-direction` and `parking-lane-orientation` unsupported, parking delimiter markings unsupported |
+| bike-lane           | Yes | | `bike-asphalt` color not supported, green used for all variants   |
+| drive-lane          | Partial | | `car-type`: "car" and "sharrow" | Not supported: `car-type` truck and autonomous vehicle |
+| turn-lane           | Yes        | All except "shared" | Note: there appears to be a bug with Streetmix.net rendering of `turn-lane-orientation` variant in street cross section for `inbound` - it appears to be inverted from the street's json database value. https://github.com/streetmix/streetmix/issues/683 |
+| bus-lane            | Yes        |   | `bus-asphalt` color not supported, default always red |
+| light-rail          | No        |   | `public-transit-asphalt` not supported, default always red |
+| streetcar           | No        |   | `public-transit-asphalt` not supported, default always red |
+| transit-shelter     | No        | |   |
+| train               | No        |        |  No support planned, not a public Streetmix segment type. |
+| scooter | No ||
+| scooter-drop-zone | No ||
+| bikeshare | No ||
+| food-truck | No ||
+| flex-zone | No ||
+| flex-zone-curb | No ||
+
 
 ### Helpful Streetmix debugging information
 
