@@ -383,7 +383,7 @@ function processSegments(segments, streetElementId) {
       // // add the new elmement to DOM
       // document.getElementById(streetElementId).appendChild(placedObjectEl);
       //
-      // 
+      //
       // cloneMixin({objectMixinId: "markings parking-delimiter", parentId: "markings-parent-" + positionX, rotation: "-90 " + rotationY + " 0", step: 8, radius: 70});
 
     };
@@ -423,13 +423,40 @@ function processBuildings(streetObject, buildingElementId) {
       var placedObjectEl = document.createElement("a-entity");
       placedObjectEl.setAttribute("scale", "0.7425 1 0.7425");
       placedObjectEl.setAttribute("position", positionX + " -0.2 0");
-      placedObjectEl.setAttribute("id", "building-" + side);
+      placedObjectEl.setAttribute("id", "ground-" + side);
       // add the new elmement to DOM
       placedObjectEl.setAttribute("ground", "groundTexture: squares; groundColor: #638a14; groundColor2: #788d1e; groundYScale: 0.2");
       document.getElementById(buildingElementId).appendChild(placedObjectEl);
     }
 
-    if (currentValue == "fence") {
+    if (currentValue == "parking-lot") {
+      var placedObjectEl = document.createElement("a-entity");
+      placedObjectEl.setAttribute("scale", "0.7425 1 0.7425");
+      placedObjectEl.setAttribute("position", positionX + " -0.2 0");
+      placedObjectEl.setAttribute("id", "ground-" + side);
+      // add the new elmement to DOM
+      placedObjectEl.setAttribute("ground", "groundTexture: squares; groundColor: #5e625e; groundColor2: #6f7070; groundYScale: 0.2");
+      document.getElementById(buildingElementId).appendChild(placedObjectEl);
+
+      // place the parking stall stencils next
+      const objectPositionX = positionX - (sideMultiplier * buildingLotWidth / 2);
+      const offset = (side == "right") ? 2.1 : -2.1;
+
+      // make the parent for all the objects to be cloned
+      var placedObjectEl = document.createElement("a-entity");
+      placedObjectEl.setAttribute("class", "markings-parent");
+      placedObjectEl.setAttribute("position", (objectPositionX + offset) + " -0.1 0");  // position="1.043 0.100 -3.463"
+      placedObjectEl.setAttribute("id", "markings-parent-" + positionX);
+      // add the new elmement to DOM
+      document.getElementById(buildingElementId).appendChild(placedObjectEl);
+
+      // clone a bunch of lamps under the parent
+      var rotationCloneY = (side == "right") ? 180 : 0;
+      cloneMixin({objectMixinId: "markings perpendicular-stalls", parentId: "markings-parent-" + positionX, rotation: "-90 " + rotationCloneY + " 0", step: 10, radius: 75});
+
+    }
+
+    if (currentValue == "fence" || currentValue == "parking-lot") {
       const objectPositionX = positionX - (sideMultiplier * buildingLotWidth / 2);
       // make the parent for all the objects to be cloned
       var placedObjectEl = document.createElement("a-entity");
