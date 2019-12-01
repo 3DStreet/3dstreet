@@ -42,6 +42,21 @@ Streetmix3D does not yet support all of the street `segments` found in Streetmix
 | flex-zone | No ||
 | flex-zone-curb | No ||
 
+### Streetmix Building Support
+
+"Buildings" are lots and/or objects rendered on either side of the street to add to the setting.
+
+| [Streetmix Building](https://github.com/streetmix/streetmix/blob/master/assets/scripts/segments/buildings.js)              | Streetmix3D Support? | Supported Variants  | Unsupported Variants |
+| ---------------------------- | --------- | ------ | ----- |
+| grass            | Yes       |     |  |
+| fence       | Yes       | |   |
+| parking-lot           | Yes | |    |
+| waterfront          | No | | |
+| residential          | No | | |
+| narrow          | No | | |
+| wide          | No | | |
+
+
 
 ### Helpful Streetmix debugging information
 
