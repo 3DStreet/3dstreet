@@ -366,7 +366,27 @@ function processSegments(segments, streetElementId) {
       scaleX = 1;
     };
 
-    if (segments[i].type == "parking-lane") {mixinId = "drive-lane"};
+    if (segments[i].type == "parking-lane") {
+      mixinId = "drive-lane";
+
+      // var thisPositionX = positionX;
+      //
+      // if (positionX > streetWidth / 2) {thisPositionX = positionX - 0.4} else {thisPositionX = positionX + 0.4}
+      //
+      // console.log(thisPositionX);
+      //
+      // // make the parent for all the objects to be cloned
+      // var placedObjectEl = document.createElement("a-entity");
+      // placedObjectEl.setAttribute("class", "markings-parent");
+      // placedObjectEl.setAttribute("position", thisPositionX + " 0.015 0");  // position="1.043 0.100 -3.463"
+      // placedObjectEl.setAttribute("id", "markings-parent-" + positionX);
+      // // add the new elmement to DOM
+      // document.getElementById(streetElementId).appendChild(placedObjectEl);
+      //
+      // 
+      // cloneMixin({objectMixinId: "markings parking-delimiter", parentId: "markings-parent-" + positionX, rotation: "-90 " + rotationY + " 0", step: 8, radius: 70});
+
+    };
 
     if (isSidewalk(segments[i].type)) {
       mixinId = "sidewalk";
