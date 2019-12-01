@@ -1,5 +1,15 @@
 // Orientation - default model orientation is "outbound" (away from camera)
 
+AFRAME.registerComponent('af', {
+  init: function () {
+    // wait until this object  model is loaded ...
+    setTimeout(() => {
+      this.el.getObject3D('mesh').material.map.anisotropy = 4;
+      this.el.getObject3D('mesh').material.map.needsUpdate = true;
+    }, 8000);
+  },
+})
+
 // Width - These are the intended default widths of the models in meters.
 const defaultModelWidthsInMeters = {
   "bike-lane": 1.8,
