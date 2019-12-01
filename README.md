@@ -20,16 +20,16 @@ Streetmix3D does not yet support all of the street `segments` found in Streetmix
 | ---------------------------- | --------- | ------ | ----- |
 | sidewalk            | Yes - Partial       | "empty" only    | All variants show empty sidewalk, no pedestrian 3d models or density variants. |
 | sidewalk-lamp       | Yes       | All |   |
-| sidewalk-wayfinding | Yes - Partial   | `medium` size is rendered for all variants | known issue: one side has mirror texture, 3d model needed for `small` and `large` variants     |
-| bike-lane           | Yes | | `bike-asphalt` color not supported, green used for all variants   |
+| bike-lane           | Yes - Partial | | `bike-asphalt` color not supported, green used for all variants   |
 | drive-lane          | Yes - Partial | `car-type`: "car" and "sharrow" | Not supported: `car-type` truck and autonomous vehicle |
-| turn-lane           | Yes        | All except "shared" | Note: there appears to be a bug with Streetmix.net rendering of `turn-lane-orientation` variant in street cross section for `inbound` - it appears to be inverted from the street's json database value. https://github.com/streetmix/streetmix/issues/683 |
-| bus-lane            | Yes        |   | `bus-asphalt` color not supported, default always red |
+| turn-lane           | Yes - Partial        | All except "shared" | Note: there appears to be a bug with Streetmix.net rendering of `turn-lane-orientation` variant in street cross section for `inbound` - it appears to be inverted from the street's json database value. https://github.com/streetmix/streetmix/issues/683 |
+| bus-lane            | Yes - Partial        |   | `bus-asphalt` color not supported, default always red |
 | divider             | Yes - Partial   | `divider-type`: striped-buffer is rendered for all variants |  |
 | parking-lane        | Yes - Partial |       | `parking-lane-direction` and `parking-lane-orientation` unsupported, parking delimiter markings unsupported |
 | sidewalk-tree       | No        |   |   |
 | sidewalk-bench      | No        |   |   |
 | sidewalk-bike-rack  | No        |   |   |
+| sidewalk-wayfinding | No   |   |  |
 | parklet             | No        |   |   |
 | light-rail          | No        |   | `public-transit-asphalt` not supported, default always red |
 | streetcar           | No        |   | `public-transit-asphalt` not supported, default always red |
