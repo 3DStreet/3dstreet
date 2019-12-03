@@ -1,12 +1,13 @@
 // Orientation - default model orientation is "outbound" (away from camera)
 
 AFRAME.registerComponent('af', {
+  dependencies: ['material', 'geometry'],
   init: function () {
     // wait until this object  model is loaded ...
     setTimeout(() => {
       this.el.getObject3D('mesh').material.map.anisotropy = 4;
       this.el.getObject3D('mesh').material.map.needsUpdate = true;
-    }, 8000);
+    }, 5000);
   },
 })
 
