@@ -1,6 +1,6 @@
 <html>
   <head>
-    <script src="https://aframe.io/releases/0.9.2/aframe.min.js"></script>
+    <script src="https://aframe.io/releases/1.0.0/aframe.min.js"></script>
     <script src="https://unpkg.com/aframe-sun-sky@^3.0.3/dist/aframe-sun-sky.min.js"></script>
     <!-- <script src="https://cdnjs.cloudflare.com/ajax/libs/velocity/1.5.0/velocity.js"></script> -->
     <script src="https://unpkg.com/aframe-orbit-controls@1.2.0/dist/aframe-orbit-controls.min.js"></script>
@@ -17,13 +17,13 @@
 
     <a-scene stats fogoff="type: linear; color: #D5C69B; far: 200" gltf-model="dracoDecoderPath: js/;">
       <a-assets>
-        <a-asset-item id="xd40" src="assets/objects/XD40.glb"></a-asset-item>
-        <a-asset-item id="carmodel" src="assets/objects/SM_Veh_Car_Sedan_01.gltf"></a-asset-item>
+        <a-asset-item id="xd40" response-type="arraybuffer" src="assets/objects/XD40.glb"></a-asset-item>
+        <a-asset-item id="carmodel" response-type="arraybuffer" src="assets/objects/SM_Veh_Car_Sedan_01.gltf"></a-asset-item>
 
-        <a-asset-item id="fence-model" src="assets/objects/chainlink_fence_-_low_poly.glb"></a-asset-item>
+        <a-asset-item id="fence-model" response-type="arraybuffer" src="assets/objects/chainlink_fence_-_low_poly.glb"></a-asset-item>
 
-        <a-asset-item id="lamp-modern-glb" src="assets/objects/lamp-post-modern-centered.glb"></a-asset-item>
-        <a-asset-item id="lamp-traditional-glb" src="assets/objects/lamp-post-traditional.glb"></a-asset-item>
+        <a-asset-item id="lamp-modern-glb" response-type="arraybuffer" src="assets/objects/lamp-post-modern-centered.glb"></a-asset-item>
+        <a-asset-item id="lamp-traditional-glb" response-type="arraybuffer" src="assets/objects/lamp-post-traditional.glb"></a-asset-item>
 
         <a-asset-item id="pylon-obj" src="assets/objects/nyc-wayfinding-pylon-large-nomtl.obj"></a-asset-item>
 
