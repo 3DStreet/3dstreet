@@ -355,8 +355,20 @@ function processSegments(segments, streetElementId) {
 
       // clone a bunch of lamps under the parent
       cloneMixin({objectMixinId: "lamp-traditional", parentId: "lamp-parent-" + positionX});
+    };
 
+    if (segments[i].type == "transit-shelter" ) {
+      var rotationBusStopY = (variantList[0] == "right") ? 0 : 180;
+      var parityBusStop = (variantList[0] == "right") ? 1 : -1;
 
+      var placedObjectEl = document.createElement("a-entity");
+      placedObjectEl.setAttribute("class", "bus-stop");
+      placedObjectEl.setAttribute("position", (positionX + (0.75 * parityBusStop)) + " 0 0");
+      placedObjectEl.setAttribute("rotation", "-90 " + rotationBusStopY + " 0");
+      placedObjectEl.setAttribute("mixin", "bus-stop");
+
+      // add the new elmement to DOM
+      document.getElementById(streetElementId).appendChild(placedObjectEl);
     };
 
     if (segments[i].type == "separator" && variantList[0] == "dashed") {

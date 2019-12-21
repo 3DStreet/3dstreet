@@ -25,6 +25,8 @@
         <a-asset-item id="lamp-modern-glb" response-type="arraybuffer" src="assets/objects/lamp-post-modern-centered.glb"></a-asset-item>
         <a-asset-item id="lamp-traditional-glb" response-type="arraybuffer" src="assets/objects/lamp-post-traditional.glb"></a-asset-item>
 
+        <a-asset-item id="bus-stop-glb" response-type="arraybuffer" src="assets/objects/ccFO2EGGIq9-bus-stop.glb"></a-asset-item>
+
         <a-asset-item id="pylon-obj" src="assets/objects/nyc-wayfinding-pylon-large-nomtl.obj"></a-asset-item>
 
         <img id="markings-atlas" src="materials/lane-markings-atlas_2048.png" />
@@ -84,6 +86,8 @@
         <a-mixin id="lamp-traditional" gltf-model="#lamp-traditional-glb" scale="0.2 0.2 0.2" ></a-mixin>
         <a-mixin id="pride-flag" position="0.409 3.345 0" rotation="0 0 0" scale="0.5 0.75 0" geometry="width:2;height:2;primitive:plane" material="side:double; src:materials/rainbow-flag-poles_512.png;transparent: true;"></a-mixin>
 
+        <a-mixin id="bus-stop" gltf-model="#bus-stop-glb" rotation="-90 0 0" scale="0.001 0.001 0.001" ></a-mixin>
+
         <a-mixin id="fence" gltf-model="#fence-model" scale="0.1 0.1 0.1"></a-mixin>
 
         <image id="subtitle" src="materials/subtitle.png" />
@@ -126,6 +130,8 @@
       <a-entity id="street-parent" position="0 0 0" rotation="0 0 0">
         <a-entity id="streets"></a-entity>
       </a-entity>
+
+      <!-- <a-entity id="bus-stop-instance1" mixin="bus-stop"></a-entity> -->
 
       <a-entity id="buildings"></a-entity>
 
