@@ -56,10 +56,7 @@ Streetmix3D does not yet support all of the street `segments` found in Streetmix
 | narrow          | No | | |
 | wide          | No | | |
 
-
-
 ### Helpful Streetmix debugging information
-
 Here are some tips and links from my experience "reverse engineering" Streetmix to get info out of their API.
 
 I heavily referenced this Streetmix page which outlines all the possible segments:
@@ -79,6 +76,7 @@ I learned a few things:
 * Some road textures https://www.textures.com/download/roads0086/44877 https://www.textures.com/download/roads0122/55065
 * Sidewalk textures https://www.textures.com/download/floorsregular0299/87153 https://www.textures.com/download/floorsregular0301/87158
 * Fence model https://sketchfab.com/3d-models/chainlink-fence-low-poly-50901b0cc91b4e04a18ecd13bc379a90
+* Bus stop, creative commons https://poly.google.com/view/7iBPwMlmfge
 
 ### Audio Credits
 * Ambient SF https://www.soundsnap.com/ssl_16_11_amb_ext_afternoon_alamo_square_painted_houses_park_with_birds_some_people_around_calm_city_san_francisco_st_wav
