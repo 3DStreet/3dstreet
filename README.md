@@ -77,6 +77,7 @@ I learned a few things:
 * Sidewalk textures https://www.textures.com/download/floorsregular0299/87153 https://www.textures.com/download/floorsregular0301/87158
 * Fence model https://sketchfab.com/3d-models/chainlink-fence-low-poly-50901b0cc91b4e04a18ecd13bc379a90
 * Bus stop, creative commons https://poly.google.com/view/7iBPwMlmfge
+* Palm tree: https://poly.google.com/view/3vvQFrjtYWb
 
 ### Audio Credits
 * Ambient SF https://www.soundsnap.com/ssl_16_11_amb_ext_afternoon_alamo_square_painted_houses_park_with_birds_some_people_around_calm_city_san_francisco_st_wav
