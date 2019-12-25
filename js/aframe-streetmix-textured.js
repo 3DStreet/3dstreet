@@ -40,17 +40,20 @@ function isSidewalk(string) {
   return string.substring(0,8) == 'sidewalk' || sidewalkList.includes(string);
 }
 
-function cloneMixin({objectMixinId="", parentId="", step=15, radius=60, rotation="0 0 0", positionXYString="0 0"}) {
+function cloneMixin({objectMixinId="", parentId="", step=15, radius=60, rotation="0 0 0", positionXYString="0 0", randomY=false}) {
   for (var j = (radius * -1); j <= radius; j = j + step) {
     var placedObjectEl = document.createElement("a-entity");
     placedObjectEl.setAttribute("class", objectMixinId);
     placedObjectEl.setAttribute("position", positionXYString + " " + j);
     placedObjectEl.setAttribute("mixin", objectMixinId);
-    placedObjectEl.setAttribute("rotation", rotation);
+    if (randomY) {
+      placedObjectEl.setAttribute("rotation", "0 " + Math.floor(Math.random() * 361) + " 0");
+    } else {
+      placedObjectEl.setAttribute("rotation", rotation);
+    }
     // add the new elmement to DOM
     document.getElementById(parentId).appendChild(placedObjectEl);
     // could be good to use geometry merger https://github.com/supermedium/superframe/tree/master/components/geometry-merger
-
   }
 }
 
@@ -310,6 +313,30 @@ function processSegments(segments, streetElementId) {
     };
 
     if (segments[i].type == "streetcar") {mixinId = "light-rail"};
+
+    if (segments[i].type == "sidewalk-tree") {
+      // sidewalk mixin as the segment surface - this doesn't look great (squished texture not made for this width)
+      mixinId = "sidewalk";
+
+      // make the parent for all the trees
+      var placedObjectEl = document.createElement("a-entity");
+      placedObjectEl.setAttribute("class", "tree-parent");
+      placedObjectEl.setAttribute("position", positionX + " 0 7");
+      placedObjectEl.setAttribute("id", "tree-parent-" + positionX);
+      // add the new elmement to DOM
+      document.getElementById(streetElementId).appendChild(placedObjectEl);
+
+      console.log(variantList[0]);
+      if (variantList[0] == "palm-tree") {
+        objectMixinId = "palm-tree";
+      } else {
+        objectMixinId = "tree3";
+      }
+
+      // clone a bunch of trees under the parent
+      cloneMixin({objectMixinId: objectMixinId, parentId: "tree-parent-" + positionX, randomY: true});
+    };
+
 
     if (segments[i].type == "sidewalk-lamp" && (variantList[1] == "modern" || variantList[1] == "pride")) {
       // sidewalk mixin as the segment surface - this doesn't look great (squished texture not made for this width)
