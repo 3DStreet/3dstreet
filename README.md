@@ -26,14 +26,14 @@ Streetmix3D does not yet support all of the street `segments` found in Streetmix
 | bus-lane            | Yes - Partial        |   | `bus-asphalt` color not supported, default always red |
 | divider             | Yes - Partial   | `divider-type`: striped-buffer is rendered for all variants |  |
 | parking-lane        | Yes - Partial |       | `parking-lane-direction` and `parking-lane-orientation` unsupported, parking delimiter markings unsupported |
-| sidewalk-tree       | No        |   |   |
+| sidewalk-tree       | Yes        |   | Supports palm tree and normal street tree.  |
 | sidewalk-bench      | No        |   |   |
 | sidewalk-bike-rack  | No        |   |   |
 | sidewalk-wayfinding | No   |   |  |
 | parklet             | No        |   |   |
 | light-rail          | No        |   | `public-transit-asphalt` not supported, default always red |
 | streetcar           | No        |   | `public-transit-asphalt` not supported, default always red |
-| transit-shelter     | No        | |   |
+| transit-shelter     | Yes        | |  doesn't support height |
 | train               | No        |        |  No support planned, not a public Streetmix segment type. |
 | scooter | No ||
 | scooter-drop-zone | No ||
