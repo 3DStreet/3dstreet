@@ -16,17 +16,22 @@ Streetmix.net mixed with A-Frame for visualization of streetscapes
 
 Streetmix3D does not yet support all of the street `segments` found in Streetmix. You may find some segments don't display at all or are missing 3D elements. Here is a complete list:
 
-| [Streetmix Segment](https://github.com/streetmix/streetmix/blob/master/assets/scripts/segments/info.json)              | Streetmix3D Support? | Supported Variants  | Unsupported Variants |
+| [Streetmix Segment](https://github.com/streetmix/streetmix/blob/master/assets/scripts/segments/info.json)              | Streetmix3D Support? | Supported Variants  | Notes and Model Source |
 | ---------------------------- | --------- | ------ | ----- |
-| sidewalk            | Yes - Partial       | "empty" only    | All variants show empty sidewalk, no pedestrian 3d models or density variants. |
-| sidewalk-lamp       | Yes       | All |   |
+| sidewalk            | Yes - Partial       | `empty`    | All variants show empty sidewalk, no pedestrian 3d models or density variants. |
+| sidewalk-lamp       | Yes       | All Variants: `right`, `left`, `both` All Subvariants: `modern`, `traditional`, `pride`  | 
+
+Modern Lamp: License [Google Poly CC Attrib](https://support.google.com/poly/answer/7418679?hl=en), [Modern Lamp Post](https://poly.google.com/view/2DoFKofZE6H), Traditional Lamp: License [Google Poly CC Attrib](https://support.google.com/poly/answer/7418679?hl=en), [Traditional Lamp Post](https://poly.google.com/view/ez9fM9NvtRB)
+
+
+Creative Commons Attrib ,   |
 | bike-lane           | Yes - Partial | | `bike-asphalt` color not supported, green used for all variants   |
 | drive-lane          | Yes - Partial | `car-type`: "car" and "sharrow" | Not supported: `car-type` truck and autonomous vehicle |
 | turn-lane           | Yes - Partial        | All except "shared" | Note: there appears to be a bug with Streetmix.net rendering of `turn-lane-orientation` variant in street cross section for `inbound` - it appears to be inverted from the street's json database value. https://github.com/streetmix/streetmix/issues/683 |
 | bus-lane            | Yes - Partial        |   | `bus-asphalt` color not supported, default always red |
 | divider             | Yes - Partial   | `divider-type`: striped-buffer is rendered for all variants |  |
 | parking-lane        | Yes - Partial |       | `parking-lane-direction` and `parking-lane-orientation` unsupported, parking delimiter markings unsupported |
-| sidewalk-tree       | Yes        |   | Supports palm tree and normal street tree.  |
+| sidewalk-tree       | Yes        | All: `palm-tree`, `big`  | Supports palm tree and normal ("big") street tree. Palm Tree: License [Google Poly CC Attrib](https://support.google.com/poly/answer/7418679?hl=en), [Model Source](https://poly.google.com/view/3vvQFrjtYWb), Street Tree: License [Sketchfab "Standard"](https://sketchfab.com/licenses), [Model Source](https://sketchfab.com/licenses)  |
 | sidewalk-bench      | No        |   |   |
 | sidewalk-bike-rack  | No        |   |   |
 | sidewalk-wayfinding | No   |   |  |
@@ -69,15 +74,14 @@ I learned a few things:
 
 ### Model Credits
 * Unless credited all models, materials and textures created by Kieran Farr, MIT License same as project repo
-* Modern Lamp post https://poly.google.com/view/2DoFKofZE6H
-* Traditional lamp post https://poly.google.com/view/ez9fM9NvtRB
+* [Creative Commons Google Poly](https://support.google.com/poly/answer/7418679?hl=en) 
 * New Flyer XD40 Bus https://twitter.com/_TimTheTerrible
 * Some city / car models https://sketchfab.com/3d-models/polygon-city-pack-preview-5a16f543d1054fbc9ce1cb17a2ba412e
 * Some road textures https://www.textures.com/download/roads0086/44877 https://www.textures.com/download/roads0122/55065
 * Sidewalk textures https://www.textures.com/download/floorsregular0299/87153 https://www.textures.com/download/floorsregular0301/87158
 * Fence model https://sketchfab.com/3d-models/chainlink-fence-low-poly-50901b0cc91b4e04a18ecd13bc379a90
 * Bus stop, creative commons https://poly.google.com/view/7iBPwMlmfge
-* Palm tree: https://poly.google.com/view/3vvQFrjtYWb
+
 
 ### Audio Credits
 * Ambient SF https://www.soundsnap.com/ssl_16_11_amb_ext_afternoon_alamo_square_painted_houses_park_with_birds_some_people_around_calm_city_san_francisco_st_wav
