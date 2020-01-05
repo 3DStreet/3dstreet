@@ -314,6 +314,28 @@ function processSegments(segments, streetElementId) {
 
     if (segments[i].type == "streetcar") {mixinId = "light-rail"};
 
+    if (segments[i].type == "sidewalk-bench") {
+      // sidewalk mixin as the segment surface - this doesn't look great (squished texture not made for this width)
+      mixinId = "sidewalk";
+
+      // make the parent for all the trees
+      var placedObjectEl = document.createElement("a-entity");
+      placedObjectEl.setAttribute("class", "bench-parent");
+      placedObjectEl.setAttribute("position", positionX + " 0 3.5");
+      placedObjectEl.setAttribute("id", "bench-parent-" + positionX);
+      // add the new elmement to DOM
+      document.getElementById(streetElementId).appendChild(placedObjectEl);
+
+      var rotationCloneY = (variantList[0] == "right") ? -90 : 90;
+
+      if (variantList[0] == "center") {
+        // nothing, oh my this gives me heartburn
+      } else {
+        // `right` or `left` bench
+        cloneMixin({objectMixinId: "bench", parentId: "bench-parent-" + positionX, rotation: "0 " + rotationCloneY + " 0"});
+      }
+    };
+
     if (segments[i].type == "sidewalk-tree") {
       // sidewalk mixin as the segment surface - this doesn't look great (squished texture not made for this width)
       mixinId = "sidewalk";
@@ -326,7 +348,6 @@ function processSegments(segments, streetElementId) {
       // add the new elmement to DOM
       document.getElementById(streetElementId).appendChild(placedObjectEl);
 
-      console.log(variantList[0]);
       if (variantList[0] == "palm-tree") {
         objectMixinId = "palm-tree";
       } else {
@@ -475,7 +496,7 @@ function processBuildings(streetObject, buildingElementId) {
       placedObjectEl.setAttribute("position", positionX + " -0.2 0");
       placedObjectEl.setAttribute("id", "ground-" + side);
       // add the new elmement to DOM
-      placedObjectEl.setAttribute("ground", "groundTexture: squares; groundColor: #638a14; groundColor2: #788d1e; groundYScale: 0.2");
+      placedObjectEl.setAttribute("ground", "ground: flat; groundTexture: squares; groundColor: #638a14; groundColor2: #788d1e; groundYScale: 0.2");
       document.getElementById(buildingElementId).appendChild(placedObjectEl);
     }
 
@@ -485,7 +506,7 @@ function processBuildings(streetObject, buildingElementId) {
       placedObjectEl.setAttribute("position", positionX + " -0.2 0");
       placedObjectEl.setAttribute("id", "ground-" + side);
       // add the new elmement to DOM
-      placedObjectEl.setAttribute("ground", "groundTexture: squares; groundColor: #5e625e; groundColor2: #6f7070; groundYScale: 0.2");
+      placedObjectEl.setAttribute("ground", "ground: flat; groundTexture: squares; groundColor: #5e625e; groundColor2: #6f7070; groundYScale: 0.2");
       document.getElementById(buildingElementId).appendChild(placedObjectEl);
 
       // place the parking stall stencils next

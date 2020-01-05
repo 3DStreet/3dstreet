@@ -21,6 +21,7 @@
         <a-asset-item id="carmodel" response-type="arraybuffer" src="assets/objects/SM_Veh_Car_Sedan_01.gltf"></a-asset-item>
         <a-asset-item id="treemodel3" response-type="arraybuffer" src="assets/objects/SM_Env_Tree_03.gltf"></a-asset-item>
         <a-asset-item id="palmtreemodel" response-type="arraybuffer" src="assets/objects/PalmTree.gltf"></a-asset-item>
+        <a-asset-item id="benchmodel" response-type="arraybuffer" src="assets/objects/SM_Prop_ParkBench_02.gltf"></a-asset-item>
 
         <a-asset-item id="fence-model" response-type="arraybuffer" src="assets/objects/chainlink_fence_-_low_poly.glb"></a-asset-item>
 
@@ -82,6 +83,7 @@
         <a-mixin id="car" gltf-model="#carmodel"></a-mixin>
         <a-mixin id="tree3" gltf-model="#treemodel3" scale="1.25 1.25 1.25"></a-mixin>
         <a-mixin id="palm-tree" gltf-model="#palmtreemodel" scale="1 1.5 1"></a-mixin>
+        <a-mixin id="bench" gltf-model="#benchmodel" scale="1 1 1"></a-mixin>
 
         <a-mixin id="bus-shadow" geometry="width: 12; height: 3; primitive: plane"  material="src: url(materials/bus-shadow.png); alphaTest: 0;transparent:true; roughness: 1;" ></a-mixin>
         <a-mixin id="car-shadow" geometry="width: 4.7; height: 2.5; primitive: plane"  material="src: url(materials/bus-shadow.png); alphaTest: 0;transparent:true; roughness: 1;" ></a-mixin>
@@ -136,7 +138,7 @@
       </a-entity>
 
       <!-- <a-entity id="bus-stop-instance1" mixin="bus-stop"></a-entity> -->
-      <!-- <a-entity id="tree-instance1" mixin="palm-tree" position="8.8 0 0"></a-entity> -->
+      <!-- <a-entity id="bench-instance1" mixin="bench" position="8.8 0 0"></a-entity> -->
 
       <a-entity id="buildings"></a-entity>
 
