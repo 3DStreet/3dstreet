@@ -19,19 +19,19 @@ Streetmix3D does not yet support all of the street `segments` found in Streetmix
 | [Streetmix Segment](https://github.com/streetmix/streetmix/blob/master/assets/scripts/segments/info.json)              | Streetmix3D Support? | Supported Variants  | Notes and Model Source |
 | ---------------------------- | --------- | ------ | ----- |
 | sidewalk            | Yes - Partial       | `empty`    | All variants show empty sidewalk, no pedestrian 3d models or density variants. |
-| sidewalk-lamp       | Yes       | All Variants: `right`, `left`, `both` All Subvariants: `modern`, `traditional`, `pride`  | Modern Lamp: License [Google Poly CC Attrib](https://support.google.com/poly/answer/7418679?hl=en), [Modern Lamp Post](https://poly.google.com/view/2DoFKofZE6H), Traditional Lamp: License [Google Poly CC Attrib](https://support.google.com/poly/answer/7418679?hl=en), [Traditional Lamp Post](https://poly.google.com/view/ez9fM9NvtRB) |
+| sidewalk-lamp       | Yes - All       | Variants: `right`, `left`, `both` Subvariants: `modern`, `traditional`, `pride`  | Modern Lamp: License [Google Poly CC Attrib](https://support.google.com/poly/answer/7418679?hl=en), [Modern Lamp Post](https://poly.google.com/view/2DoFKofZE6H), Traditional Lamp: License [Google Poly CC Attrib](https://support.google.com/poly/answer/7418679?hl=en), [Traditional Lamp Post](https://poly.google.com/view/ez9fM9NvtRB) |
 | bike-lane           | Yes - Partial | | `bike-asphalt` color not supported, green used for all variants   |
 | drive-lane          | Yes - Partial | `car-type`: "car" and "sharrow" | Not supported: `car-type` truck and autonomous vehicle |
 | turn-lane           | Yes - Partial        | All except "shared" | Note: there appears to be a bug with Streetmix.net rendering of `turn-lane-orientation` variant in street cross section for `inbound` - it appears to be inverted from the street's json database value. https://github.com/streetmix/streetmix/issues/683 |
 | bus-lane            | Yes - Partial        |   | `bus-asphalt` color not supported, default always red |
 | divider             | Yes - Partial   | `divider-type`: striped-buffer is rendered for all variants |  |
 | parking-lane        | Yes - Partial |       | `parking-lane-direction` and `parking-lane-orientation` unsupported, parking delimiter markings unsupported |
-| sidewalk-tree       | Yes        | All: `palm-tree`, `big`  | Supports palm tree and normal ("big") street tree. Palm Tree: License [Google Poly CC Attrib](https://support.google.com/poly/answer/7418679?hl=en), [Model Source](https://poly.google.com/view/3vvQFrjtYWb), Street Tree: License [Sketchfab "Standard"](https://sketchfab.com/licenses), [Model Source](https://sketchfab.com/licenses)  |
-| sidewalk-bench      | No        |   |   |
+| sidewalk-tree       | Yes - All        | `palm-tree`, `big`  | Supports palm tree and normal ("big") street tree. Palm Tree: License [Google Poly CC Attrib](https://support.google.com/poly/answer/7418679?hl=en), [Model Source](https://poly.google.com/view/3vvQFrjtYWb), Street Tree: License [Sketchfab "Standard"](https://sketchfab.com/licenses), [Model Source](https://sketchfab.com/licenses)  |
+| sidewalk-bench      | Yes - Partial        | `left`, `right` | "center" bench not supported.  |
 | sidewalk-bike-rack  | No        |   |   |
 | sidewalk-wayfinding | No   |   |  |
 | parklet             | No        |   |   |
-| light-rail          | No        |   | `public-transit-asphalt` not supported, default always red |
+| light-rail          | No        |   | `public-transit-asphalt` not supported, default always red https://poly.google.com/view/0LrARHcOWtE |
 | streetcar           | No        |   | `public-transit-asphalt` not supported, default always red |
 | transit-shelter     | Yes        | |  doesn't support height |
 | train               | No        |        |  No support planned, not a public Streetmix segment type. |
@@ -69,7 +69,7 @@ I learned a few things:
 
 ### Model Credits
 * Unless credited all models, materials and textures created by Kieran Farr, MIT License same as project repo
-* [Creative Commons Google Poly](https://support.google.com/poly/answer/7418679?hl=en) 
+* [Creative Commons Google Poly](https://support.google.com/poly/answer/7418679?hl=en)
 * New Flyer XD40 Bus https://twitter.com/_TimTheTerrible
 * Some city / car models https://sketchfab.com/3d-models/polygon-city-pack-preview-5a16f543d1054fbc9ce1cb17a2ba412e
 * Some road textures https://www.textures.com/download/roads0086/44877 https://www.textures.com/download/roads0122/55065
