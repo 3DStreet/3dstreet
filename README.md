@@ -31,7 +31,7 @@ Streetmix3D does not yet support all of the street `segments` found in Streetmix
 | sidewalk-bike-rack  | No        |   |   |
 | sidewalk-wayfinding | No   |   |  |
 | parklet             | No        |   |   |
-| light-rail          | No        |   |  `public-transit-asphalt` not supported, default always red. Model credits: [Siemens Avenio](https://sketchfab.com/3d-models/siemens-avenio-for-cities-skylines-7e3d9f90af9447dabcb813a4af43ae76), License [CC BY NC SA 4.0](https://creativecommons.org/licenses/by-nc-sa/4.0/); [Train track 2 black](https://poly.google.com/view/0LrARHcOWtE), License [Google Poly CC BY](https://support.google.com/poly/answer/7418679?hl=en) |
+| light-rail          | Yes - Partial        |   |  `public-transit-asphalt` not supported, default always red. Model credits: [Siemens Avenio](https://sketchfab.com/3d-models/siemens-avenio-for-cities-skylines-7e3d9f90af9447dabcb813a4af43ae76), License [CC BY NC SA 4.0](https://creativecommons.org/licenses/by-nc-sa/4.0/); [Train track 2 black](https://poly.google.com/view/0LrARHcOWtE), License [Google Poly CC BY](https://support.google.com/poly/answer/7418679?hl=en) |
 | streetcar           | No        |   | `public-transit-asphalt` not supported, default always red |
 | transit-shelter     | Yes        | |  doesn't support height |
 | train               | No        |        |  No support planned, not a public Streetmix segment type. |
