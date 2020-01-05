@@ -22,6 +22,8 @@
         <a-asset-item id="treemodel3" response-type="arraybuffer" src="assets/objects/SM_Env_Tree_03.gltf"></a-asset-item>
         <a-asset-item id="palmtreemodel" response-type="arraybuffer" src="assets/objects/PalmTree.gltf"></a-asset-item>
         <a-asset-item id="benchmodel" response-type="arraybuffer" src="assets/objects/SM_Prop_ParkBench_02.gltf"></a-asset-item>
+        <a-asset-item id="trackmodel" response-type="arraybuffer" src="assets/objects/track.gltf"></a-asset-item>
+        <a-asset-item id="trammodel" response-type="arraybuffer" src="assets/objects/tram_siemens_avenio.gltf"></a-asset-item>
 
         <a-asset-item id="fence-model" response-type="arraybuffer" src="assets/objects/chainlink_fence_-_low_poly.glb"></a-asset-item>
 
@@ -84,6 +86,8 @@
         <a-mixin id="tree3" gltf-model="#treemodel3" scale="1.25 1.25 1.25"></a-mixin>
         <a-mixin id="palm-tree" gltf-model="#palmtreemodel" scale="1 1.5 1"></a-mixin>
         <a-mixin id="bench" gltf-model="#benchmodel" scale="1 1 1"></a-mixin>
+        <a-mixin id="track" gltf-model="#trackmodel" scale="1 1 1"></a-mixin>
+        <a-mixin id="tram" gltf-model="#trammodel" scale="1 1 1"></a-mixin>
 
         <a-mixin id="bus-shadow" geometry="width: 12; height: 3; primitive: plane"  material="src: url(materials/bus-shadow.png); alphaTest: 0;transparent:true; roughness: 1;" ></a-mixin>
         <a-mixin id="car-shadow" geometry="width: 4.7; height: 2.5; primitive: plane"  material="src: url(materials/bus-shadow.png); alphaTest: 0;transparent:true; roughness: 1;" ></a-mixin>
@@ -128,8 +132,10 @@
         <a-entity class="sidewalk" mixin="sidewalk-t1" position="7.318 0.21 -0.282" rotation="270 0 0"></a-entity>
       </a-entity> -->
 
+      <!-- bounding boxes based on vehicle specs available online -->
       <!-- <a-entity id="ford-crown-vic-bounding" geometry="depth: 5.3; height: 1.448; width: 1.99" position="0.92059 0.74 0"></a-entity>
-      <a-entity id="newflyer-XD40-bounding" geometry="depth: 12; height: 3.2; width: 2.59" position="-3.97 1.59 0"></a-entity> -->
+      <a-entity id="newflyer-XD40-bounding" geometry="depth: 12; height: 3.2; width: 2.59" position="-3.97 1.59 0"></a-entity>
+      <a-entity id="siemens-avenio-bounding" geometry="depth: 30; height: 3.4; width: 2.65" position="8.8 1.7 0"></a-entity> -->
 
       <a-sky position="0 -140 0" rotation="0 240 0" material="fog: false;src:#sky"></a-sky>
 
@@ -138,7 +144,8 @@
       </a-entity>
 
       <!-- <a-entity id="bus-stop-instance1" mixin="bus-stop"></a-entity> -->
-      <!-- <a-entity id="bench-instance1" mixin="bench" position="8.8 0 0"></a-entity> -->
+      <!-- <a-entity id="tram-instance1" mixin="tram" position="8.8 0 0"></a-entity> -->
+
 
       <a-entity id="buildings"></a-entity>
 

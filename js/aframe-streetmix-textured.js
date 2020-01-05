@@ -69,8 +69,12 @@ function insertSeparatorSegments(segments) {
 
     const previousValue = arr[currentIndex - 1];
 
+    function isLaneIsh(typeString) {
+      return (typeString.slice(typeString.length - 4) == "lane" || typeString == "light-rail")
+    }
+
     // if current AND previous segments have last 4 characters of `type` = "lane"
-    if (currentValue.type.slice(currentValue.type.length - 4) == "lane" && previousValue.type.slice(arr[currentIndex - 1].type.length - 4) == "lane") {
+    if (isLaneIsh(currentValue.type) && isLaneIsh(previousValue.type)) {
       // add zero width separator segment
       var variantString = "solid";
 
@@ -187,6 +191,34 @@ function processSegments(segments, streetElementId) {
       document.getElementById(streetElementId).appendChild(placedObjectEl);
 
       cloneMixin({objectMixinId: "markings bike-lane", parentId: "markings-parent-" + positionX, rotation: "-90 " + rotationY + " 0", step: 20, radius: 70});
+
+    }
+
+    if (segments[i].type == "light-rail" ) {
+      mixinId = "bus-lane";       // use normal drive lane road material
+
+      // add choo choo
+      var rotationBusY = (variantList[0] == "inbound") ? 0 : 180;
+      var placedObjectEl = document.createElement("a-entity");
+      placedObjectEl.setAttribute("class", "tram");
+      placedObjectEl.setAttribute("position", positionX + " 0 0");
+      placedObjectEl.setAttribute("rotation", "0 " + rotationBusY + " 0");
+      placedObjectEl.setAttribute("mixin", "tram");
+
+      // add the new elmement to DOM
+      document.getElementById(streetElementId).appendChild(placedObjectEl);
+
+
+      // make the parent for all the objects to be cloned
+      var placedObjectEl = document.createElement("a-entity");
+      placedObjectEl.setAttribute("class", "track-parent");
+      placedObjectEl.setAttribute("position", positionX + " -0.2 0");  // position="1.043 0.100 -3.463"
+      placedObjectEl.setAttribute("id", "track-parent-" + positionX);
+      // add the new elmement to DOM
+      document.getElementById(streetElementId).appendChild(placedObjectEl);
+
+      cloneMixin({objectMixinId: "track", parentId: "track-parent-" + positionX, step: 20.25, radius: 70});
+
 
     }
 

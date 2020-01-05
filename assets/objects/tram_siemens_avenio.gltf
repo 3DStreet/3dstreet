@@ -1,0 +1,687 @@
+{
+  "accessors": [
+    {
+      "bufferView": 2,
+      "componentType": 5126,
+      "count": 534,
+      "max": [
+        1.2750002145767212,
+        3.5442590713500977,
+        4.4480619430541992
+      ],
+      "min": [
+        -1.2750002145767212,
+        0,
+        -4.1698369979858398
+      ],
+      "type": "VEC3"
+    },
+    {
+      "bufferView": 2,
+      "byteOffset": 6408,
+      "componentType": 5126,
+      "count": 534,
+      "max": [
+        1,
+        1,
+        1
+      ],
+      "min": [
+        -1,
+        -0.92387968301773071,
+        -1
+      ],
+      "type": "VEC3"
+    },
+    {
+      "bufferView": 3,
+      "componentType": 5126,
+      "count": 534,
+      "max": [
+        1,
+        1,
+        1,
+        1
+      ],
+      "min": [
+        -1,
+        -1,
+        -1,
+        -1
+      ],
+      "type": "VEC4"
+    },
+    {
+      "bufferView": 1,
+      "componentType": 5126,
+      "count": 534,
+      "max": [
+        0.99248701333999634,
+        0.97923499345779419
+      ],
+      "min": [
+        0.014955073595046997,
+        0.0074936072342097759
+      ],
+      "type": "VEC2"
+    },
+    {
+      "bufferView": 0,
+      "componentType": 5125,
+      "count": 882,
+      "max": [
+        533
+      ],
+      "min": [
+        0
+      ],
+      "type": "SCALAR"
+    },
+    {
+      "bufferView": 2,
+      "byteOffset": 12816,
+      "componentType": 5126,
+      "count": 556,
+      "max": [
+        1.2771142721176147,
+        3.5442590713500977,
+        4.6820211410522461
+      ],
+      "min": [
+        -1.2771142721176147,
+        0,
+        -4.1698408126831055
+      ],
+      "type": "VEC3"
+    },
+    {
+      "bufferView": 2,
+      "byteOffset": 19488,
+      "componentType": 5126,
+      "count": 556,
+      "max": [
+        1,
+        1,
+        1
+      ],
+      "min": [
+        -1,
+        -0.92387956380844116,
+        -1
+      ],
+      "type": "VEC3"
+    },
+    {
+      "bufferView": 3,
+      "byteOffset": 8544,
+      "componentType": 5126,
+      "count": 556,
+      "max": [
+        1,
+        1,
+        1,
+        1
+      ],
+      "min": [
+        -1,
+        -1,
+        -1,
+        -1
+      ],
+      "type": "VEC4"
+    },
+    {
+      "bufferView": 1,
+      "byteOffset": 4272,
+      "componentType": 5126,
+      "count": 556,
+      "max": [
+        0.99197739362716675,
+        0.97936952114105225
+      ],
+      "min": [
+        0.005263984203338623,
+        0.0069929435849189758
+      ],
+      "type": "VEC2"
+    },
+    {
+      "bufferView": 0,
+      "byteOffset": 3528,
+      "componentType": 5125,
+      "count": 1113,
+      "max": [
+        555
+      ],
+      "min": [
+        0
+      ],
+      "type": "SCALAR"
+    },
+    {
+      "bufferView": 2,
+      "byteOffset": 26160,
+      "componentType": 5126,
+      "count": 600,
+      "max": [
+        1.3174529075622559,
+        3.5442590713500977,
+        4.6820211410522461
+      ],
+      "min": [
+        -1.3174521923065186,
+        0,
+        -4.1698408126831055
+      ],
+      "type": "VEC3"
+    },
+    {
+      "bufferView": 2,
+      "byteOffset": 33360,
+      "componentType": 5126,
+      "count": 600,
+      "max": [
+        1,
+        1,
+        1
+      ],
+      "min": [
+        -1,
+        -1,
+        -1
+      ],
+      "type": "VEC3"
+    },
+    {
+      "bufferView": 3,
+      "byteOffset": 17440,
+      "componentType": 5126,
+      "count": 600,
+      "max": [
+        1,
+        1,
+        1,
+        1
+      ],
+      "min": [
+        -1,
+        -1,
+        -1,
+        -1
+      ],
+      "type": "VEC4"
+    },
+    {
+      "bufferView": 1,
+      "byteOffset": 8720,
+      "componentType": 5126,
+      "count": 600,
+      "max": [
+        0.99338430166244507,
+        0.97936952114105225
+      ],
+      "min": [
+        0.005263984203338623,
+        0.0069929435849189758
+      ],
+      "type": "VEC2"
+    },
+    {
+      "bufferView": 0,
+      "byteOffset": 7980,
+      "componentType": 5125,
+      "count": 1173,
+      "max": [
+        599
+      ],
+      "min": [
+        0
+      ],
+      "type": "SCALAR"
+    },
+    {
+      "bufferView": 2,
+      "byteOffset": 40560,
+      "componentType": 5126,
+      "count": 1156,
+      "max": [
+        1.2749999761581421,
+        4.9406509399414062,
+        4.1698369979858398
+      ],
+      "min": [
+        -1.2749999761581421,
+        0,
+        -4.4480619430541992
+      ],
+      "type": "VEC3"
+    },
+    {
+      "bufferView": 2,
+      "byteOffset": 54432,
+      "componentType": 5126,
+      "count": 1156,
+      "max": [
+        1,
+        1,
+        1
+      ],
+      "min": [
+        -1,
+        -1,
+        -1
+      ],
+      "type": "VEC3"
+    },
+    {
+      "bufferView": 3,
+      "byteOffset": 27040,
+      "componentType": 5126,
+      "count": 1156,
+      "max": [
+        1,
+        1,
+        1,
+        1
+      ],
+      "min": [
+        -1,
+        -1,
+        -1,
+        -1
+      ],
+      "type": "VEC4"
+    },
+    {
+      "bufferView": 1,
+      "byteOffset": 13520,
+      "componentType": 5126,
+      "count": 1156,
+      "max": [
+        0.99248701333999634,
+        0.97923499345779419
+      ],
+      "min": [
+        0.0080218110233545303,
+        0.0074936072342097759
+      ],
+      "type": "VEC2"
+    },
+    {
+      "bufferView": 0,
+      "byteOffset": 12672,
+      "componentType": 5125,
+      "count": 1824,
+      "max": [
+        1155
+      ],
+      "min": [
+        0
+      ],
+      "type": "SCALAR"
+    }
+  ],
+  "asset": {
+    "extras": {
+      "author": "accessviolation (https://sketchfab.com/accessviolation)",
+      "license": "CC-BY-NC-SA-4.0 (http://creativecommons.org/licenses/by-nc-sa/4.0/)",
+      "source": "https://sketchfab.com/models/7e3d9f90af9447dabcb813a4af43ae76",
+      "title": "Siemens Avenio for Cities Skylines"
+    },
+    "generator": "Sketchfab-3.18.7",
+    "version": "2.0"
+  },
+  "bufferViews": [
+    {
+      "buffer": 0,
+      "byteLength": 19968,
+      "byteOffset": 0,
+      "name": "floatBufferViews",
+      "target": 34963
+    },
+    {
+      "buffer": 0,
+      "byteLength": 22768,
+      "byteOffset": 19968,
+      "byteStride": 8,
+      "name": "floatBufferViews",
+      "target": 34962
+    },
+    {
+      "buffer": 0,
+      "byteLength": 68304,
+      "byteOffset": 42736,
+      "byteStride": 12,
+      "name": "floatBufferViews",
+      "target": 34962
+    },
+    {
+      "buffer": 0,
+      "byteLength": 45536,
+      "byteOffset": 111040,
+      "byteStride": 16,
+      "name": "floatBufferViews",
+      "target": 34962
+    }
+  ],
+  "buffers": [
+    {
+      "byteLength": 156576,
+      "uri": "tram_siemens_avenio.bin"
+    }
+  ],
+  "images": [
+    {
+      "uri": "textures/Avenio_Panto_baseColor.png"
+    },
+    {
+      "uri": "textures/Avenio_Front_baseColor.png"
+    }
+  ],
+  "materials": [
+    {
+      "doubleSided": true,
+      "emissiveFactor": [
+        0,
+        0,
+        0
+      ],
+      "name": "Avenio_Panto",
+      "pbrMetallicRoughness": {
+        "baseColorFactor": [
+          1,
+          1,
+          1,
+          1
+        ],
+        "baseColorTexture": {
+          "index": 0,
+          "texCoord": 0
+        },
+        "metallicFactor": 0,
+        "roughnessFactor": 0.59999999999999998
+      }
+    },
+    {
+      "doubleSided": true,
+      "emissiveFactor": [
+        0,
+        0,
+        0
+      ],
+      "name": "Avenio_Front",
+      "pbrMetallicRoughness": {
+        "baseColorFactor": [
+          1,
+          1,
+          1,
+          1
+        ],
+        "baseColorTexture": {
+          "index": 1,
+          "texCoord": 0
+        },
+        "metallicFactor": 0,
+        "roughnessFactor": 0.59999999999999998
+      }
+    }
+  ],
+  "meshes": [
+    {
+      "name": "Avenio1.001_Avenio_Panto_0",
+      "primitives": [
+        {
+          "attributes": {
+            "NORMAL": 1,
+            "POSITION": 0,
+            "TANGENT": 2,
+            "TEXCOORD_0": 3
+          },
+          "indices": 4,
+          "material": 0,
+          "mode": 4
+        }
+      ]
+    },
+    {
+      "name": "Avenio0.copy_Avenio_Front_0",
+      "primitives": [
+        {
+          "attributes": {
+            "NORMAL": 6,
+            "POSITION": 5,
+            "TANGENT": 7,
+            "TEXCOORD_0": 8
+          },
+          "indices": 9,
+          "material": 1,
+          "mode": 4
+        }
+      ]
+    },
+    {
+      "name": "Avenio0_Avenio_Front_0",
+      "primitives": [
+        {
+          "attributes": {
+            "NORMAL": 11,
+            "POSITION": 10,
+            "TANGENT": 12,
+            "TEXCOORD_0": 13
+          },
+          "indices": 14,
+          "material": 1,
+          "mode": 4
+        }
+      ]
+    },
+    {
+      "name": "Avenio1_Avenio_Panto_0",
+      "primitives": [
+        {
+          "attributes": {
+            "NORMAL": 16,
+            "POSITION": 15,
+            "TANGENT": 17,
+            "TEXCOORD_0": 18
+          },
+          "indices": 19,
+          "material": 0,
+          "mode": 4
+        }
+      ]
+    }
+  ],
+  "nodes": [
+    {
+      "children": [
+        1
+      ],
+      "name": "RootNode (gltf orientation matrix)",
+      "rotation": [
+        -0.70710678118654746,
+        -0,
+        -0,
+        0.70710678118654757
+      ]
+    },
+    {
+      "children": [
+        2
+      ],
+      "name": "RootNode (model correction matrix)"
+    },
+    {
+      "children": [
+        3
+      ],
+      "matrix": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        -1,
+        0,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "name": "Avenio.fbx"
+    },
+    {
+      "children": [
+        4,
+        6,
+        8,
+        10
+      ],
+      "name": "RootNode"
+    },
+    {
+      "children": [
+        5
+      ],
+      "matrix": [
+        0.99999999999995437,
+        0,
+        3.0199160505616878e-07,
+        0,
+        0,
+        1,
+        0,
+        0,
+        -3.0199160505616878e-07,
+        0,
+        0.99999999999995437,
+        0,
+        0,
+        0,
+        -4.4480600357055664,
+        1
+      ],
+      "name": "Avenio1.001"
+    },
+    {
+      "mesh": 0,
+      "name": "Avenio1.001_Avenio_Panto_0"
+    },
+    {
+      "children": [
+        7
+      ],
+      "matrix": [
+        -0.9999999999999889,
+        1.2246467991473394e-16,
+        -1.5099579909783712e-07,
+        0,
+        1.2246466142308313e-16,
+        1,
+        1.2246467991473394e-16,
+        0,
+        1.5099579909783712e-07,
+        1.2246466142308313e-16,
+        -0.9999999999999889,
+        0,
+        0,
+        0,
+        -12.789850234985352,
+        1
+      ],
+      "name": "Avenio0.copy"
+    },
+    {
+      "mesh": 1,
+      "name": "Avenio0.copy_Avenio_Front_0"
+    },
+    {
+      "children": [
+        9
+      ],
+      "matrix": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        12.789854049682617,
+        1
+      ],
+      "name": "Avenio0"
+    },
+    {
+      "mesh": 2,
+      "name": "Avenio0_Avenio_Front_0"
+    },
+    {
+      "children": [
+        11
+      ],
+      "matrix": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        4.448061466217041,
+        1
+      ],
+      "name": "Avenio1"
+    },
+    {
+      "mesh": 3,
+      "name": "Avenio1_Avenio_Panto_0"
+    }
+  ],
+  "samplers": [
+    {
+      "magFilter": 9729,
+      "minFilter": 9987,
+      "wrapS": 10497,
+      "wrapT": 10497
+    }
+  ],
+  "scene": 0,
+  "scenes": [
+    {
+      "name": "OSG_Scene",
+      "nodes": [
+        0
+      ]
+    }
+  ],
+  "textures": [
+    {
+      "sampler": 0,
+      "source": 0
+    },
+    {
+      "sampler": 0,
+      "source": 1
+    }
+  ]
+}
