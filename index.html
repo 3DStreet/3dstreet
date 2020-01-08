@@ -26,6 +26,7 @@
         <a-asset-item id="benchmodel" response-type="arraybuffer" src="assets/objects/SM_Prop_ParkBench_02.gltf"></a-asset-item>
         <a-asset-item id="trackmodel" response-type="arraybuffer" src="assets/objects/track.gltf"></a-asset-item>
         <a-asset-item id="trammodel" response-type="arraybuffer" src="assets/objects/tram_siemens_avenio.gltf"></a-asset-item>
+        <a-asset-item id="blockmodel" response-type="arraybuffer" src="assets/objects/scenesmall2.glb"></a-asset-item>
 
         <a-asset-item id="fence-model" response-type="arraybuffer" src="assets/objects/chainlink_fence_-_low_poly.glb"></a-asset-item>
 
@@ -34,11 +35,8 @@
 
         <a-asset-item id="bus-stop-glb" response-type="arraybuffer" src="assets/objects/ccFO2EGGIq9-bus-stop.glb"></a-asset-item>
 
-        <a-asset-item id="pylon-obj" src="assets/objects/nyc-wayfinding-pylon-large-nomtl.obj"></a-asset-item>
-
         <img id="markings-atlas" src="materials/lane-markings-atlas_2048.png" />
         <img id="sky" src="assets/CGSkies_0343_8k_ERextended.jpg" />
-        <img id="wayfinding" src="assets/objects/wayfinding.jpg" />
 
         <a-mixin id="drive-lane-t1" geometry="width:3;height:150;primitive:plane" material="repeat:0.3 25;offset:0.55 0;src:materials/TexturesCom_Roads0086_1_seamless_S_rotate.jpg;"></a-mixin>
         <a-mixin id="drive-lane-t0" geometry="width:3;height:150;primitive:plane" material="repeat:1.5 75;src:materials/asphalthd_Base_Color.jpg;normalTextureRepeat:1.5 75;normalMap:materials/asphalthd_Normal.jpg;"></a-mixin>
@@ -90,6 +88,7 @@
         <a-mixin id="bench" gltf-model="#benchmodel" scale="1 1 1"></a-mixin>
         <a-mixin id="track" gltf-model="#trackmodel" scale="1 1 1"></a-mixin>
         <a-mixin id="tram" gltf-model="#trammodel" scale="1 1 1"></a-mixin>
+        <a-mixin id="block" gltf-model="#blockmodel" scale="1 1 1" rotation="0 -90 0"></a-mixin>
 
         <a-mixin id="bus-shadow" geometry="width: 12; height: 3; primitive: plane"  material="src: url(materials/bus-shadow.png); alphaTest: 0;transparent:true; roughness: 1;" ></a-mixin>
         <a-mixin id="car-shadow" geometry="width: 4.7; height: 2.5; primitive: plane"  material="src: url(materials/bus-shadow.png); alphaTest: 0;transparent:true; roughness: 1;" ></a-mixin>
@@ -150,6 +149,7 @@
 
 
       <a-entity id="buildings"></a-entity>
+      <!-- <a-entity id="blockinstance" mixin="block" position="-10.7 0 10" rotation="0 -90 0"></a-entity> -->
 
     </a-scene>
     <div id="intro" class="intro" >

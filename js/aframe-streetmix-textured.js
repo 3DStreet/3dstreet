@@ -560,6 +560,25 @@ function processBuildings(streetObject, buildingElementId) {
       document.getElementById(buildingElementId).appendChild(placedObjectEl);
     }
 
+    if (currentValue == "narrow" || currentValue == "wide") {
+      // <a-entity id="blockinstance" mixin="block" position="-10.7 0 10" rotation="0 -90 0"></a-entity>
+      var placedObjectEl = document.createElement("a-entity");
+      placedObjectEl.setAttribute("position", (positionX + 80) + " 0 10");
+      placedObjectEl.setAttribute("id", "block-" + side);
+      // add the new elmement to DOM
+      placedObjectEl.setAttribute("mixin", "block");
+      document.getElementById(buildingElementId).appendChild(placedObjectEl);
+
+      var placedObjectEl = document.createElement("a-entity");
+      placedObjectEl.setAttribute("scale", "0.7425 1 0.7425");
+      placedObjectEl.setAttribute("position", positionX + " -0.2 0");
+      placedObjectEl.setAttribute("id", "ground-" + side);
+      // add the new elmement to DOM
+      placedObjectEl.setAttribute("ground", "ground: flat; groundTexture: squares; groundColor: #5e625e; groundColor2: #6f7070; groundYScale: 0.2");
+      document.getElementById(buildingElementId).appendChild(placedObjectEl);
+
+    }
+
     if (currentValue == "parking-lot") {
       var placedObjectEl = document.createElement("a-entity");
       placedObjectEl.setAttribute("scale", "0.7425 1 0.7425");
