@@ -26,7 +26,7 @@ Streetmix3D does not yet support all of the street `segments` found in Streetmix
 | bus-lane            | Yes - Partial        |   | `bus-asphalt` color not supported, default always red |
 | divider             | Yes - Partial   | `divider-type`: striped-buffer is rendered for all variants |  |
 | parking-lane        | Yes - Partial |       | `parking-lane-direction` and `parking-lane-orientation` unsupported, parking delimiter markings unsupported |
-| sidewalk-tree       | Yes - All        | `palm-tree`, `big`  | Supports palm tree and normal ("big") street tree. Palm Tree: License [Google Poly CC Attrib](https://support.google.com/poly/answer/7418679?hl=en), [Model Source](https://poly.google.com/view/3vvQFrjtYWb), Street Tree: License [Sketchfab "Standard"](https://sketchfab.com/licenses), [Model Source](https://sketchfab.com/licenses)  |
+| sidewalk-tree       | Yes - All        | `palm-tree`, `big`  | Supports palm tree and normal ("big") street tree. Palm Tree: License [Google Poly CC Attrib](https://support.google.com/poly/answer/7418679?hl=en), [Model Source](https://poly.google.com/view/3vvQFrjtYWb), Street Tree: License [Sketchfab "Standard"](https://sketchfab.com/licenses), [Polygon City Pack](https://sketchfab.com/3d-models/polygon-city-pack-preview-5a16f543d1054fbc9ce1cb17a2ba412e)  |
 | sidewalk-bench      | Yes - Partial        | `left`, `right` | "center" bench not supported.  |
 | sidewalk-bike-rack  | No        |   |  Potential: https://sketchfab.com/3d-models/bike-rack-c4aae071cc2543eeb98bcf1a76be40e4 |
 | sidewalk-wayfinding | No   |   |  |
@@ -46,15 +46,15 @@ Streetmix3D does not yet support all of the street `segments` found in Streetmix
 
 "Buildings" are lots and/or objects rendered on either side of the street to add to the setting.
 
-| [Streetmix Building](https://github.com/streetmix/streetmix/blob/master/assets/scripts/segments/buildings.js)              | Streetmix3D Support? | Supported Variants  | Unsupported Variants |
+| [Streetmix Building](https://github.com/streetmix/streetmix/blob/master/assets/scripts/segments/buildings.js)              | Streetmix3D Support? | Supported Variants  | Notes |
 | ---------------------------- | --------- | ------ | ----- |
 | grass            | Yes       |     |  |
 | fence       | Yes       | |   |
 | parking-lot           | Yes | |    |
 | waterfront          | No | | |
 | residential          | No | | |
-| narrow          | No | | |
-| wide          | No | | |
+| narrow          | Yes | | Narrow and wide are the same thing |
+| wide          | Yes | | Buildings: License [Sketchfab "Standard"](https://sketchfab.com/licenses) from [Polygon City Pack](https://sketchfab.com/3d-models/polygon-city-pack-preview-5a16f543d1054fbc9ce1cb17a2ba412e) |
 
 ### Helpful Streetmix debugging information
 Here are some tips and links from my experience "reverse engineering" Streetmix to get info out of their API.
@@ -76,7 +76,8 @@ I learned a few things:
 * Sidewalk textures https://www.textures.com/download/floorsregular0299/87153 https://www.textures.com/download/floorsregular0301/87158
 * Fence model https://sketchfab.com/3d-models/chainlink-fence-low-poly-50901b0cc91b4e04a18ecd13bc379a90
 * Bus stop, creative commons https://poly.google.com/view/7iBPwMlmfge
-
+* Do something with this adorable train: https://sketchfab.com/3d-models/tram-and-rails-modular-4168da5a8b884171b4540dd33eb05ef2
+* Trolley: https://sketchfab.com/3d-models/neighborhood-trolley-3bc683cca6b84d8985cc0befe710b8fa
 
 ### Audio Credits
 * Ambient SF https://www.soundsnap.com/ssl_16_11_amb_ext_afternoon_alamo_square_painted_houses_park_with_birds_some_people_around_calm_city_san_francisco_st_wav
