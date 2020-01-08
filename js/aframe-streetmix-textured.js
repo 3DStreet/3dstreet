@@ -1,5 +1,15 @@
 // Orientation - default model orientation is "outbound" (away from camera)
 
+const initialState = {
+  layers: {
+    paths: true,
+  },
+  textures: {
+    suffix: '-t1'
+  }
+}
+const state = initialState;
+
 AFRAME.registerComponent('af', {
   dependencies: ['material', 'geometry'],
   init: function () {
@@ -197,6 +207,23 @@ function processSegments(segments, streetElementId) {
     if (segments[i].type == "light-rail" ) {
       mixinId = "bus-lane";       // use normal drive lane road material
 
+      // <a-curve id="track1">
+		  //   <a-curve-point position="0 0 75" geometry="primitive:box; height:0.1; width:0.1; depth:0.1" material="color:#ff0000"></a-curve-point>
+      //   <a-curve-point position="0 0 0" geometry="primitive:box; height:0.1; width:0.1; depth:0.1" material="color:#ff0000"></a-curve-point>
+      //   <a-curve-point position="0 0 -75" geometry="primitive:box; height:0.1; width:0.1; depth:0.1" material="color:#ff0000"></a-curve-point>
+  	  // </a-curve>
+      //
+      // <a-entity id="tram-instance1" mixin="tram" alongpath="curve: #track1; loop:true; dur:10000; rotate:false;" ></a-entity>
+
+      var pathEl = document.createElement("a-curve");
+      pathEl.setAttribute("id", "path-" + i);
+      pathEl.innerHTML = `
+        <a-curve-point position="${positionX} 0 75"></a-curve-point>
+        <a-curve-point position="${positionX} 0 0"></a-curve-point>
+        <a-curve-point position="${positionX} 0 -75"></a-curve-point>
+      `
+      document.getElementById(streetElementId).appendChild(pathEl);
+
       // add choo choo
       var rotationBusY = (variantList[0] == "inbound") ? 0 : 180;
       var placedObjectEl = document.createElement("a-entity");
@@ -204,6 +231,7 @@ function processSegments(segments, streetElementId) {
       placedObjectEl.setAttribute("position", positionX + " 0 0");
       placedObjectEl.setAttribute("rotation", "0 " + rotationBusY + " 0");
       placedObjectEl.setAttribute("mixin", "tram");
+      placedObjectEl.setAttribute("alongpath", "curve: #path-" + i + "; loop:true; dur:10000;")
 
       // add the new elmement to DOM
       document.getElementById(streetElementId).appendChild(placedObjectEl);
@@ -502,7 +530,7 @@ function processSegments(segments, streetElementId) {
 
     // USE THESE 2 LINES FOR TEXTURE MODE:
     segmentEl.setAttribute("rotation", "270 " + rotationY + " 0")
-    segmentEl.setAttribute("mixin", mixinId + "-t1");
+    segmentEl.setAttribute("mixin", mixinId + state.textures.suffix); // append suffix to mixin id to specify texture index
 
     document.getElementById(streetElementId).appendChild(segmentEl);
 
