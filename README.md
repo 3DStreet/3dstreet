@@ -28,7 +28,7 @@ Streetmix3D does not yet support all of the street `segments` found in Streetmix
 | parking-lane        | Yes - Partial |       | `parking-lane-direction` and `parking-lane-orientation` unsupported, parking delimiter markings unsupported |
 | sidewalk-tree       | Yes - All        | `palm-tree`, `big`  | Supports palm tree and normal ("big") street tree. Palm Tree: License [Google Poly CC Attrib](https://support.google.com/poly/answer/7418679?hl=en), [Model Source](https://poly.google.com/view/3vvQFrjtYWb), Street Tree: License [Sketchfab "Standard"](https://sketchfab.com/licenses), [Model Source](https://sketchfab.com/licenses)  |
 | sidewalk-bench      | Yes - Partial        | `left`, `right` | "center" bench not supported.  |
-| sidewalk-bike-rack  | No        |   |   |
+| sidewalk-bike-rack  | No        |   |  Potential: https://sketchfab.com/3d-models/bike-rack-c4aae071cc2543eeb98bcf1a76be40e4 |
 | sidewalk-wayfinding | No   |   |  |
 | parklet             | No        |   |   |
 | light-rail          | Yes - Partial        |   |  `public-transit-asphalt` not supported, default always red. Model credits: [Siemens Avenio](https://sketchfab.com/3d-models/siemens-avenio-for-cities-skylines-7e3d9f90af9447dabcb813a4af43ae76), License [CC BY NC SA 4.0](https://creativecommons.org/licenses/by-nc-sa/4.0/); [Train track 2 black](https://poly.google.com/view/0LrARHcOWtE), License [Google Poly CC BY](https://support.google.com/poly/answer/7418679?hl=en) |
