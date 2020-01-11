@@ -1,6 +1,6 @@
 <html>
   <head>
-    <script src="https://aframe.io/releases/1.0.0/aframe.min.js"></script>
+    <script src="https://aframe.io/releases/1.0.3/aframe.min.js"></script>
     <script src="https://unpkg.com/aframe-sun-sky@^3.0.3/dist/aframe-sun-sky.min.js"></script>
     <!-- <script src="https://cdnjs.cloudflare.com/ajax/libs/velocity/1.5.0/velocity.js"></script> -->
     <script src="https://unpkg.com/aframe-orbit-controls@1.2.0/dist/aframe-orbit-controls.min.js"></script>
@@ -17,44 +17,44 @@
   </head>
   <body>
 
-    <a-scene stats fogoff="type: linear; color: #D5C69B; far: 200" gltf-model="dracoDecoderPath: js/;">
+    <a-scene stats renderer="colorManagement: true; highRefreshRate: true; foveationLevel: 3; physicallyCorrectLights: true; logarithmicDepthBuffer: true;" fogoff="type: linear; color: #D5C69B; far: 200" gltf-model="dracoDecoderPath: js/;">
       <a-assets>
-        <a-asset-item id="xd40" response-type="arraybuffer" src="assets/objects/XD40.glb"></a-asset-item>
-        <a-asset-item id="carmodel" response-type="arraybuffer" src="assets/objects/SM_Veh_Car_Sedan_01.gltf"></a-asset-item>
-        <a-asset-item id="treemodel3" response-type="arraybuffer" src="assets/objects/SM_Env_Tree_03.gltf"></a-asset-item>
-        <a-asset-item id="palmtreemodel" response-type="arraybuffer" src="assets/objects/PalmTree.gltf"></a-asset-item>
-        <a-asset-item id="benchmodel" response-type="arraybuffer" src="assets/objects/SM_Prop_ParkBench_02.gltf"></a-asset-item>
-        <a-asset-item id="trackmodel" response-type="arraybuffer" src="assets/objects/track.gltf"></a-asset-item>
-        <a-asset-item id="trammodel" response-type="arraybuffer" src="assets/objects/tram_siemens_avenio.gltf"></a-asset-item>
-        <a-asset-item id="blockmodel" response-type="arraybuffer" src="assets/objects/scenesmall2.glb"></a-asset-item>
+        <a-asset-item id="xd40" src="assets/objects/XD40.glb"></a-asset-item>
+        <a-asset-item id="carmodel" src="assets/objects/SM_Veh_Car_Sedan_01.gltf"></a-asset-item>
+        <a-asset-item id="treemodel3" src="assets/objects/SM_Env_Tree_03.gltf"></a-asset-item>
+        <a-asset-item id="palmtreemodel" src="assets/objects/PalmTree.gltf"></a-asset-item>
+        <a-asset-item id="benchmodel" src="assets/objects/SM_Prop_ParkBench_02.gltf"></a-asset-item>
+        <a-asset-item id="trackmodel" src="assets/objects/track.gltf"></a-asset-item>
+        <a-asset-item id="trammodel" src="assets/objects/tram_siemens_avenio.gltf"></a-asset-item>
+        <a-asset-item id="blockmodel" src="assets/objects/scenesmall2.glb"></a-asset-item>
 
-        <a-asset-item id="fence-model" response-type="arraybuffer" src="assets/objects/chainlink_fence_-_low_poly.glb"></a-asset-item>
+        <a-asset-item id="fence-model" src="assets/objects/chainlink_fence_-_low_poly.glb"></a-asset-item>
 
-        <a-asset-item id="lamp-modern-glb" response-type="arraybuffer" src="assets/objects/lamp-post-modern-centered.glb"></a-asset-item>
-        <a-asset-item id="lamp-traditional-glb" response-type="arraybuffer" src="assets/objects/lamp-post-traditional.glb"></a-asset-item>
+        <a-asset-item id="lamp-modern-glb" src="assets/objects/lamp-post-modern-centered.glb"></a-asset-item>
+        <a-asset-item id="lamp-traditional-glb" src="assets/objects/lamp-post-traditional.glb"></a-asset-item>
 
-        <a-asset-item id="bus-stop-glb" response-type="arraybuffer" src="assets/objects/ccFO2EGGIq9-bus-stop.glb"></a-asset-item>
+        <a-asset-item id="bus-stop-glb" src="assets/objects/ccFO2EGGIq9-bus-stop.glb"></a-asset-item>
 
         <img id="markings-atlas" src="materials/lane-markings-atlas_2048.png" />
-        <img id="sky" src="assets/CGSkies_0343_8k_ERextended.jpg" />
+        <img id="sky" position="0 -140 0" src="assets/CGSkies_0343_8k_ERextended.jpg" />
 
-        <a-mixin id="drive-lane-t1" geometry="width:3;height:150;primitive:plane" material="repeat:0.3 25;offset:0.55 0;src:materials/TexturesCom_Roads0086_1_seamless_S_rotate.jpg;"></a-mixin>
+        <a-mixin id="drive-lane-t1" geometry="width:3;height:150;primitive:plane;segments-height:15" material="repeat:0.3 25;offset:0.55 0;src:materials/TexturesCom_Roads0086_1_seamless_S_rotate.jpg;"></a-mixin>
         <a-mixin id="drive-lane-t0" geometry="width:3;height:150;primitive:plane" material="repeat:1.5 75;src:materials/asphalthd_Base_Color.jpg;normalTextureRepeat:1.5 75;normalMap:materials/asphalthd_Normal.jpg;"></a-mixin>
 
-        <a-mixin id="bike-lane-t1" geometry="width:1.8;height:150;primitive:plane" material="repeat:0.3 25;offset:0.55 0;color:#adff83;roughness:1;metalness:0;src:materials/TexturesCom_Roads0086_1_seamless_S_rotate.jpg;"></a-mixin>
+        <a-mixin id="bike-lane-t1" geometry="width:1.8;height:150;primitive:plane;segments-height:15" material="repeat:0.3 25;offset:0.55 0;color:#adff83;roughness:1;metalness:0;src:materials/TexturesCom_Roads0086_1_seamless_S_rotate.jpg;"></a-mixin>
         <a-mixin id="bike-lane-t0" geometry="width:1.8;height:150;primitive:plane" material="repeat:2 150;src:materials/bikelane_Base_Color.jpg;normalTextureRepeat:2 150;normalMap:materials/bikelane_Normal.jpg"></a-mixin>
 
-        <a-mixin id="sidewalk-t1" geometry="width:3;height:150;primitive:plane" material="repeat:1.5 75;src:materials/TexturesCom_FloorsRegular0301_1_seamless_S.jpg;"></a-mixin>
+        <a-mixin id="sidewalk-t1" geometry="width:3;height:150;primitive:plane;segments-height:15" material="repeat:1.5 75;src:materials/TexturesCom_FloorsRegular0301_1_seamless_S.jpg;"></a-mixin>
         <a-mixin id="sidewalk-t0" geometry="width:3;height:150;primitive:plane" material="repeat:1.5 75;src:materials/sidewalkhd_Base_Color.jpg;normalTextureRepeat:1.5 75;normalMap:materials/sidewalkhd_Normal.jpg;"></a-mixin>
 
         <a-mixin id="bus-lane-t0" geometry="width:3;height:150;primitive:plane" material="repeat:1.5 75;src:materials/asphaltred1hd_Base_Color.jpg;normalTextureRepeat:1.5 75;normalMap:materials/asphaltred1hd_Normal.jpg;"></a-mixin>
-        <a-mixin id="bus-lane-t1" geometry="width:3;height:150;primitive:plane" material="repeat:0.3 25;offset:0.55 0;color:#ff9393;src:materials/TexturesCom_Roads0086_1_seamless_S_rotate.jpg;"></a-mixin>
+        <a-mixin id="bus-lane-t1" geometry="width:3;height:150;primitive:plane;segments-height:15" material="repeat:0.3 25;offset:0.55 0;color:#ff9393;src:materials/TexturesCom_Roads0086_1_seamless_S_rotate.jpg;"></a-mixin>
 
-        <a-mixin id="divider-t1" geometry="width:0.3;height:150;primitive:plane" material="repeat:1 150;offset:0.415 0;normalTextureOffset:0.415 0;src:materials/hatched_Base_Color.jpg;normalTextureRepeat:0.21 150;normalMap:materials/hatched_Normal.jpg"></a-mixin>
+        <a-mixin id="divider-t1" geometry="width:0.3;height:150;primitive:plane;segments-height:15" material="repeat:1 150;offset:0.415 0;normalTextureOffset:0.415 0;src:materials/hatched_Base_Color.jpg;normalTextureRepeat:0.21 150;normalMap:materials/hatched_Normal.jpg"></a-mixin>
 
-        <a-mixin id="separator-dashed-t1" af geometry="width:0.4;height:150;primitive:plane" material="repeat:0.25 25;offset:0.38 0;src:materials/separator-short-dash_1024.png;transparent: true;"></a-mixin>
-        <a-mixin id="separator-solid-t1" af geometry="width:0.4;height:150;primitive:plane" material="repeat:0.25 25;offset:0.38 0;src:materials/separator-solid_1024.png;transparent: true;"></a-mixin>
-        <a-mixin id="separator-doubleyellow-t1" af geometry="width:0.5;height:150;primitive:plane" material="repeat:0.25 25;offset:0.38 0;src:materials/separator-double-yellow_512.png;transparent: true;"></a-mixin>
+        <a-mixin id="separator-dashed-t1" af geometry="width:0.4;height:150;primitive:plane;segments-height:15" material="repeat:0.25 25;offset:0.38 0;src:materials/separator-short-dash_1024.png;transparent: true;"></a-mixin>
+        <a-mixin id="separator-solid-t1" af geometry="width:0.4;height:150;primitive:plane;segments-height:15" material="repeat:0.25 25;offset:0.38 0;src:materials/separator-solid_1024.png;transparent: true;"></a-mixin>
+        <a-mixin id="separator-doubleyellow-t1" af geometry="width:0.5;height:150;primitive:plane;segments-height:15" material="repeat:0.25 25;offset:0.38 0;src:materials/separator-double-yellow_512.png;transparent: true;"></a-mixin>
 
         <a-mixin id="markings" atlas-uvs="totalRows: 4; totalColumns: 4" scale="2 2 2" material="src: #markings-atlas;alphaTest: 0;transparent:true;" geometry="primitive: plane; buffer: false; skipCache: true"></a-mixin>
         <a-mixin id="right" atlas-uvs="column: 3; row: 2"></a-mixin>
@@ -104,7 +104,7 @@
         <image id="subtitle" src="materials/subtitle.png" />
       </a-assets>
 
-      <a-entity light="type: ambient; color: #BBB"></a-entity>
+      <a-entity light="type: ambient; color: #FFF; intensity: 2"></a-entity>
       <a-entity light="type: directional; color: #FFF; intensity: 0.6" position="0.5 1 -1"></a-entity>
 
       <a-entity id="cam-parent">
@@ -138,7 +138,7 @@
       <a-entity id="newflyer-XD40-bounding" geometry="depth: 12; height: 3.2; width: 2.59" position="-3.97 1.59 0"></a-entity>
       <a-entity id="siemens-avenio-bounding" geometry="depth: 30; height: 3.4; width: 2.65" position="8.8 1.7 0"></a-entity> -->
 
-      <a-sky position="0 -140 0" rotation="0 240 0" material="fog: false;src:#sky"></a-sky>
+      <a-sky position="0 0 0" rotation="0 240 0" material="fog: false;src:#sky"></a-sky>
 
       <a-entity id="street-parent" position="0 0 0" rotation="0 0 0">
         <a-entity id="streets"></a-entity>
