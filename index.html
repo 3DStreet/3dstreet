@@ -26,6 +26,7 @@
         <a-asset-item id="benchmodel" src="assets/objects/SM_Prop_ParkBench_02.gltf"></a-asset-item>
         <a-asset-item id="trackmodel" src="assets/objects/track.gltf"></a-asset-item>
         <a-asset-item id="trammodel" src="assets/objects/tram_siemens_avenio.gltf"></a-asset-item>
+        <a-asset-item id="trolleymodel" src="assets/objects/godarvilletram.gltf"></a-asset-item>
         <a-asset-item id="blockmodel" src="assets/objects/scenesmall2.glb"></a-asset-item>
 
         <a-asset-item id="fence-model" src="assets/objects/chainlink_fence_-_low_poly.glb"></a-asset-item>
@@ -88,6 +89,7 @@
         <a-mixin id="bench" gltf-model="#benchmodel" scale="1 1 1"></a-mixin>
         <a-mixin id="track" gltf-model="#trackmodel" scale="1 1 1"></a-mixin>
         <a-mixin id="tram" gltf-model="#trammodel" scale="1 1 1"></a-mixin>
+        <a-mixin id="trolley" gltf-model="#trolleymodel" scale="1 1 1"></a-mixin>
         <a-mixin id="block" gltf-model="#blockmodel" scale="1 1 1"></a-mixin>
 
         <a-mixin id="bus-shadow" geometry="width: 12; height: 3; primitive: plane"  material="src: url(materials/bus-shadow.png); alphaTest: 0;transparent:true; roughness: 1;" ></a-mixin>
@@ -146,6 +148,7 @@
 
       <!-- <a-entity id="bus-stop-instance1" mixin="bus-stop"></a-entity> -->
       <!-- <a-entity id="tram-instance1" mixin="tram" position="8.8 0 0"></a-entity> -->
+      <!-- <a-entity id="trolley-instance1" mixin="trolley" position="8.8 0 0"></a-entity> -->
 
 
       <a-entity id="buildings"></a-entity>

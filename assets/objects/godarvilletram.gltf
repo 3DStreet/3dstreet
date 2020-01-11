@@ -1,0 +1,329 @@
+{
+    "asset" : {
+        "generator" : "Khronos glTF Blender I/O v1.0.5",
+        "version" : "2.0"
+    },
+    "extensionsUsed" : [
+        "KHR_draco_mesh_compression"
+    ],
+    "extensionsRequired" : [
+        "KHR_draco_mesh_compression"
+    ],
+    "scene" : 0,
+    "scenes" : [
+        {
+            "name" : "Scene",
+            "nodes" : [
+                0,
+                1,
+                5
+            ]
+        }
+    ],
+    "nodes" : [
+        {
+            "name" : "Light",
+            "rotation" : [
+                0.16907575726509094,
+                0.7558803558349609,
+                -0.27217137813568115,
+                0.570947527885437
+            ],
+            "translation" : [
+                4.076245307922363,
+                5.903861999511719,
+                -1.0054539442062378
+            ]
+        },
+        {
+            "name" : "Camera",
+            "rotation" : [
+                0.483536034822464,
+                0.33687159419059753,
+                -0.20870360732078552,
+                0.7804827094078064
+            ],
+            "translation" : [
+                7.358891487121582,
+                4.958309173583984,
+                6.925790786743164
+            ]
+        },
+        {
+            "mesh" : 0,
+            "name" : "GodarvilleTram_Body",
+            "rotation" : [
+                -0.7071068286895752,
+                0,
+                0,
+                0.7071067094802856
+            ],
+            "translation" : [
+                0,
+                -2.38915753364563,
+                0
+            ]
+        },
+        {
+            "mesh" : 1,
+            "name" : "GodarvilleTram_w1",
+            "rotation" : [
+                -0.7071068286895752,
+                0,
+                0,
+                0.7071067094802856
+            ],
+            "translation" : [
+                0,
+                -2.389157772064209,
+                0
+            ]
+        },
+        {
+            "mesh" : 2,
+            "name" : "GodarvilleTram_w2",
+            "rotation" : [
+                -0.7071068286895752,
+                0,
+                0,
+                0.7071067094802856
+            ],
+            "translation" : [
+                0,
+                -2.389157772064209,
+                0
+            ]
+        },
+        {
+            "children" : [
+                2,
+                3,
+                4
+            ],
+            "name" : "GodarvilleTram",
+            "translation" : [
+                0,
+                2.38915753364563,
+                0
+            ]
+        }
+    ],
+    "materials" : [
+        {
+            "doubleSided" : true,
+            "name" : "GodarvilleTram",
+            "pbrMetallicRoughness" : {
+                "baseColorTexture" : {
+                    "index" : 0,
+                    "texCoord" : 0
+                },
+                "metallicFactor" : 0.20000000298023224,
+                "roughnessFactor" : 0.858578622341156
+            }
+        }
+    ],
+    "meshes" : [
+        {
+            "name" : "Mesh.002",
+            "primitives" : [
+                {
+                    "attributes" : {
+                        "POSITION" : 0,
+                        "NORMAL" : 1,
+                        "TEXCOORD_0" : 2
+                    },
+                    "extensions" : {
+                        "KHR_draco_mesh_compression" : {
+                            "bufferView" : 0,
+                            "attributes" : {
+                                "POSITION" : 0,
+                                "NORMAL" : 1,
+                                "TEXCOORD_0" : 2
+                            }
+                        }
+                    },
+                    "indices" : 3,
+                    "material" : 0,
+                    "mode" : 4
+                }
+            ]
+        },
+        {
+            "name" : "Mesh",
+            "primitives" : [
+                {
+                    "attributes" : {
+                        "POSITION" : 4,
+                        "NORMAL" : 5,
+                        "TEXCOORD_0" : 6
+                    },
+                    "extensions" : {
+                        "KHR_draco_mesh_compression" : {
+                            "bufferView" : 1,
+                            "attributes" : {
+                                "POSITION" : 0,
+                                "NORMAL" : 1,
+                                "TEXCOORD_0" : 2
+                            }
+                        }
+                    },
+                    "indices" : 7,
+                    "material" : 0,
+                    "mode" : 4
+                }
+            ]
+        },
+        {
+            "name" : "Mesh.001",
+            "primitives" : [
+                {
+                    "attributes" : {
+                        "POSITION" : 8,
+                        "NORMAL" : 9,
+                        "TEXCOORD_0" : 10
+                    },
+                    "extensions" : {
+                        "KHR_draco_mesh_compression" : {
+                            "bufferView" : 2,
+                            "attributes" : {
+                                "POSITION" : 0,
+                                "NORMAL" : 1,
+                                "TEXCOORD_0" : 2
+                            }
+                        }
+                    },
+                    "indices" : 11,
+                    "material" : 0,
+                    "mode" : 4
+                }
+            ]
+        }
+    ],
+    "textures" : [
+        {
+            "source" : 0
+        }
+    ],
+    "images" : [
+        {
+            "mimeType" : "image/jpeg",
+            "name" : "GodarvilleTram_Base",
+            "uri" : "GodarvilleTram_Base.jpg"
+        }
+    ],
+    "accessors" : [
+        {
+            "componentType" : 5126,
+            "count" : 6506,
+            "max" : [
+                1.1404199600219727,
+                5.105160236358643,
+                4.783360958099365
+            ],
+            "min" : [
+                -1.1404199600219727,
+                -5.105160236358643,
+                0.08721669763326645
+            ],
+            "type" : "VEC3"
+        },
+        {
+            "componentType" : 5126,
+            "count" : 6506,
+            "type" : "VEC3"
+        },
+        {
+            "componentType" : 5126,
+            "count" : 6506,
+            "type" : "VEC2"
+        },
+        {
+            "componentType" : 5123,
+            "count" : 15912,
+            "type" : "SCALAR"
+        },
+        {
+            "componentType" : 5126,
+            "count" : 402,
+            "max" : [
+                0.8076140284538269,
+                -1.0952500104904175,
+                0.8183509707450867
+            ],
+            "min" : [
+                -0.8076140284538269,
+                -1.9066599607467651,
+                -0.005046399775892496
+            ],
+            "type" : "VEC3"
+        },
+        {
+            "componentType" : 5126,
+            "count" : 402,
+            "type" : "VEC3"
+        },
+        {
+            "componentType" : 5126,
+            "count" : 402,
+            "type" : "VEC2"
+        },
+        {
+            "componentType" : 5123,
+            "count" : 1104,
+            "type" : "SCALAR"
+        },
+        {
+            "componentType" : 5126,
+            "count" : 402,
+            "max" : [
+                0.8076140284538269,
+                1.915060043334961,
+                0.8183509707450867
+            ],
+            "min" : [
+                -0.8076140284538269,
+                1.1036499738693237,
+                -0.005046280100941658
+            ],
+            "type" : "VEC3"
+        },
+        {
+            "componentType" : 5126,
+            "count" : 402,
+            "type" : "VEC3"
+        },
+        {
+            "componentType" : 5126,
+            "count" : 402,
+            "type" : "VEC2"
+        },
+        {
+            "componentType" : 5123,
+            "count" : 1104,
+            "type" : "SCALAR"
+        }
+    ],
+    "bufferViews" : [
+        {
+            "buffer" : 0,
+            "byteLength" : 38688,
+            "byteOffset" : 0
+        },
+        {
+            "buffer" : 0,
+            "byteLength" : 2676,
+            "byteOffset" : 38688
+        },
+        {
+            "buffer" : 0,
+            "byteLength" : 2713,
+            "byteOffset" : 41364
+        }
+    ],
+    "buffers" : [
+        {
+            "byteLength" : 44080,
+            "uri" : "godarvilletram.bin"
+        }
+    ]
+}

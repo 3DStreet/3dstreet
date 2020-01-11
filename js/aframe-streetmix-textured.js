@@ -80,7 +80,7 @@ function insertSeparatorSegments(segments) {
     const previousValue = arr[currentIndex - 1];
 
     function isLaneIsh(typeString) {
-      return (typeString.slice(typeString.length - 4) == "lane" || typeString == "light-rail")
+      return (typeString.slice(typeString.length - 4) == "lane" || typeString == "light-rail" || typeString == "streetcar")
     }
 
     // if current AND previous segments have last 4 characters of `type` = "lane"
@@ -204,8 +204,10 @@ function processSegments(segments, streetElementId) {
 
     }
 
-    if (segments[i].type == "light-rail" ) {
-      mixinId = "bus-lane";       // use normal drive lane road material
+    if (segments[i].type == "light-rail" || segments[i].type == "streetcar") {
+      var mixinId = "bus-lane";       // use normal drive lane road material
+      var parityRail = (variantList[0] == "outbound") ? 1 : -1;
+      var objectMixinId = (segments[i].type == "streetcar") ? "trolley" : "tram";
 
       // <a-curve id="track1">
 		  //   <a-curve-point position="0 0 75" geometry="primitive:box; height:0.1; width:0.1; depth:0.1" material="color:#ff0000"></a-curve-point>
@@ -218,19 +220,19 @@ function processSegments(segments, streetElementId) {
       var pathEl = document.createElement("a-curve");
       pathEl.setAttribute("id", "path-" + i);
       pathEl.innerHTML = `
-        <a-curve-point position="${positionX} 0 75"></a-curve-point>
+        <a-curve-point position="${positionX} 0 ${75 * parityRail}"></a-curve-point>
         <a-curve-point position="${positionX} 0 0"></a-curve-point>
-        <a-curve-point position="${positionX} 0 -75"></a-curve-point>
+        <a-curve-point position="${positionX} 0 ${-75 * parityRail}"></a-curve-point>
       `
       document.getElementById(streetElementId).appendChild(pathEl);
 
       // add choo choo
       var rotationBusY = (variantList[0] == "inbound") ? 0 : 180;
       var placedObjectEl = document.createElement("a-entity");
-      placedObjectEl.setAttribute("class", "tram");
+      placedObjectEl.setAttribute("class", objectMixinId);
       placedObjectEl.setAttribute("position", positionX + " 0 0");
       placedObjectEl.setAttribute("rotation", "0 " + rotationBusY + " 0");
-      placedObjectEl.setAttribute("mixin", "tram");
+      placedObjectEl.setAttribute("mixin", objectMixinId);
       placedObjectEl.setAttribute("alongpath", "curve: #path-" + i + "; loop:true; dur:10000;")
 
       // add the new elmement to DOM
@@ -245,7 +247,7 @@ function processSegments(segments, streetElementId) {
       // add the new elmement to DOM
       document.getElementById(streetElementId).appendChild(placedObjectEl);
 
-      cloneMixin({objectMixinId: "track", parentId: "track-parent-" + positionX, step: 20.25, radius: 70});
+      cloneMixin({objectMixinId: "track", parentId: "track-parent-" + positionX, step: 20.25, radius: 80});
 
 
     }
@@ -371,8 +373,6 @@ function processSegments(segments, streetElementId) {
       placedObjectEl = document.getElementById(streetElementId + segments[i].type);
       placedObjectEl.setAttribute("material", "src:#wayfinding");
     };
-
-    if (segments[i].type == "streetcar") {mixinId = "light-rail"};
 
     if (segments[i].type == "sidewalk-bench") {
       // sidewalk mixin as the segment surface - this doesn't look great (squished texture not made for this width)
@@ -556,7 +556,7 @@ function processBuildings(streetObject, buildingElementId) {
       placedObjectEl.setAttribute("position", positionX + " -0.2 0");
       placedObjectEl.setAttribute("id", "ground-" + side);
       // add the new elmement to DOM
-      placedObjectEl.setAttribute("ground", "ground: flat; groundTexture: squares; groundColor: #638a14; groundColor2: #788d1e; groundYScale: 0.2");
+      placedObjectEl.setAttribute("ground", "ground: flat; groundTexture: squares; groundColor: #32460a; groundColor2: #526117; groundYScale: 0.2");
       document.getElementById(buildingElementId).appendChild(placedObjectEl);
     }
 
