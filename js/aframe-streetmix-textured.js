@@ -576,7 +576,7 @@ function processBuildings(streetObject, buildingElementId) {
       placedObjectEl.setAttribute("position", positionX + " -0.2 0");
       placedObjectEl.setAttribute("id", "ground-" + side);
       // add the new elmement to DOM
-      placedObjectEl.setAttribute("ground", "ground: flat; groundTexture: squares; groundColor: #5e625e; groundColor2: #6f7070; groundYScale: 0.2");
+      placedObjectEl.setAttribute("ground", "ground: flat; groundTexture: squares; groundColor: #292c2a; groundColor2: #343434; groundYScale: 0.2");
       document.getElementById(buildingElementId).appendChild(placedObjectEl);
 
     }
@@ -587,7 +587,7 @@ function processBuildings(streetObject, buildingElementId) {
       placedObjectEl.setAttribute("position", positionX + " -0.2 0");
       placedObjectEl.setAttribute("id", "ground-" + side);
       // add the new elmement to DOM
-      placedObjectEl.setAttribute("ground", "ground: flat; groundTexture: squares; groundColor: #5e625e; groundColor2: #6f7070; groundYScale: 0.2");
+      placedObjectEl.setAttribute("ground", "ground: flat; groundTexture: squares; groundColor: #292c2a; groundColor2: #343434; groundYScale: 0.2");
       document.getElementById(buildingElementId).appendChild(placedObjectEl);
 
       // place the parking stall stencils next
