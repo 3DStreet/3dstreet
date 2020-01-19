@@ -200,12 +200,27 @@ function processSegments(segments, streetElementId) {
       // add the new elmement to DOM
       document.getElementById(streetElementId).appendChild(placedObjectEl);
 
+      if (variantList[1] == "red") {
+        mixinId = "surface-red bike-lane"
+      }
+      if (variantList[1] == "green") {
+        mixinId = "surface-green bike-lane"
+      }
+
       cloneMixin({objectMixinId: "markings bike-lane", parentId: "markings-parent-" + positionX, rotation: "-90 " + rotationY + " 0", step: 20, radius: 70});
 
     }
 
     if (segments[i].type == "light-rail" || segments[i].type == "streetcar") {
-      var mixinId = "bus-lane";       // use normal drive lane road material
+
+      mixinId = "bus-lane";
+      if (variantList[1] == "colored") {
+        var mixinId = "surface-red bus-lane";
+      }
+      if (variantList[1] == "grass") {
+        var mixinId = "surface-green bus-lane";
+      }
+
       var parityRail = (variantList[0] == "outbound") ? 1 : -1;
       var objectMixinId = (segments[i].type == "streetcar") ? "trolley" : "tram";
 
@@ -281,6 +296,11 @@ function processSegments(segments, streetElementId) {
     if (segments[i].type == "divider" && variantList[0] == "bollard") {mixinId = "divider-bollard"};
 
     if (segments[i].type == "bus-lane") {
+
+      if (variantList[1] == "colored") {
+        var mixinId = "surface-red bus-lane";
+      }
+
       var rotationBusY = (variantList[0] == "inbound") ? -90 : 90;
       var placedObjectEl = document.createElement("a-entity");
       placedObjectEl.setAttribute("class", "bus");

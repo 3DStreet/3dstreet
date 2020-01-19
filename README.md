@@ -23,7 +23,7 @@ Streetmix3D does not yet support all of the street `segments` found in Streetmix
 | bike-lane           | Yes - Partial | | `bike-asphalt` color not supported, green used for all variants   |
 | drive-lane          | Yes - Partial | `car-type`: "car" and "sharrow" | Not supported: `car-type` truck and autonomous vehicle |
 | turn-lane           | Yes - Partial        | All except "shared" | Note: there appears to be a bug with Streetmix.net rendering of `turn-lane-orientation` variant in street cross section for `inbound` - it appears to be inverted from the street's json database value. https://github.com/streetmix/streetmix/issues/683 |
-| bus-lane            | Yes - Partial        |   | `bus-asphalt` color not supported, default always red |
+| bus-lane            | Yes - Partial        |  `shared` (sharrow) variant not supported | Model Credits: [New Flyer XD40 Bus](https://sketchfab.com/3d-models/new-flyer-xd40-d61e475543324d21aa24b2b208fbf3c5) |
 | divider             | Yes - Partial   | `divider-type`: striped-buffer is rendered for all variants |  |
 | parking-lane        | Yes - Partial |       | `parking-lane-direction` and `parking-lane-orientation` unsupported, parking delimiter markings unsupported |
 | sidewalk-tree       | Yes - All        | `palm-tree`, `big`  | Supports palm tree and normal ("big") street tree. Palm Tree: License [Google Poly CC Attrib](https://support.google.com/poly/answer/7418679?hl=en), [Model Source](https://poly.google.com/view/3vvQFrjtYWb), Street Tree: License [Sketchfab "Standard"](https://sketchfab.com/licenses), [Polygon City Pack](https://sketchfab.com/3d-models/polygon-city-pack-preview-5a16f543d1054fbc9ce1cb17a2ba412e)  |
@@ -31,8 +31,8 @@ Streetmix3D does not yet support all of the street `segments` found in Streetmix
 | sidewalk-bike-rack  | Yes - Partial        |   |  Doesn't support height -- always at sidewalk level. No bike model yet, just the rack. Model credits: [Bike Rack by illustrationlogic](https://sketchfab.com/3d-models/bike-rack-c4aae071cc2543eeb98bcf1a76be40e4), License [CC BY NC SA 4.0](https://creativecommons.org/licenses/by-nc-sa/4.0/) |
 | sidewalk-wayfinding | No   |   |  |
 | parklet             | No        |   |   |
-| light-rail          | Yes - Partial        |   |  `public-transit-asphalt` not supported, default always red. Model credits: [Siemens Avenio](https://sketchfab.com/3d-models/siemens-avenio-for-cities-skylines-7e3d9f90af9447dabcb813a4af43ae76), License [CC BY NC SA 4.0](https://creativecommons.org/licenses/by-nc-sa/4.0/); [Train track 2 black](https://poly.google.com/view/0LrARHcOWtE), License [Google Poly CC BY](https://support.google.com/poly/answer/7418679?hl=en) |
-| streetcar           | Yes - Partial        |   | `public-transit-asphalt` not supported, default always red. Model credit: [Godarville Tram](https://www.turbosquid.com/FullPreview/Index.cfm/ID/1015103), License [Turbo Squid Royalty Free](https://blog.turbosquid.com/royalty-free-license/) |
+| light-rail          | Yes - All        | `grass` variant displays as green color asphalt  |  Model credits: [Siemens Avenio](https://sketchfab.com/3d-models/siemens-avenio-for-cities-skylines-7e3d9f90af9447dabcb813a4af43ae76), License [CC BY NC SA 4.0](https://creativecommons.org/licenses/by-nc-sa/4.0/); [Train track 2 black](https://poly.google.com/view/0LrARHcOWtE), License [Google Poly CC BY](https://support.google.com/poly/answer/7418679?hl=en) |
+| streetcar           | Yes - All        | `grass` variant displays as green color asphalt  | Model credit: [Godarville Tram](https://www.turbosquid.com/FullPreview/Index.cfm/ID/1015103), License [Turbo Squid Royalty Free](https://blog.turbosquid.com/royalty-free-license/) |
 | transit-shelter     | Yes        | |  Doesn't support height -- always at sidewalk level.  |
 | train               | No        |        |  No support planned, not a public Streetmix segment type. |
 | scooter | No ||
@@ -70,7 +70,7 @@ I learned a few things:
 ### Model Credits
 * Unless credited all models, materials and textures created by Kieran Farr, MIT License same as project repo
 * [Creative Commons Google Poly](https://support.google.com/poly/answer/7418679?hl=en)
-* New Flyer XD40 Bus https://twitter.com/_TimTheTerrible
+*
 * Some city / car models https://sketchfab.com/3d-models/polygon-city-pack-preview-5a16f543d1054fbc9ce1cb17a2ba412e
 * Some road textures https://www.textures.com/download/roads0086/44877 https://www.textures.com/download/roads0122/55065
 * Sidewalk textures https://www.textures.com/download/floorsregular0299/87153 https://www.textures.com/download/floorsregular0301/87158
