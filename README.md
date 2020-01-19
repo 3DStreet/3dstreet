@@ -1,10 +1,10 @@
 
-# Streetmix3d
-Streetmix.net mixed with A-Frame for visualization of streetscapes
+# Streetmix3D
+### Try in your browser now: https://kfarr.github.io/streetmix3d/
 
-### Demo in your browser now: https://kfarr.github.io/streetmix3d/
+Streetmix3D creates 3D visualizations of your 2D [Streetmix.net](https://streetmix.net) streets using A-Frame and WebXR.
 
-<img src="https://raw.githubusercontent.com/kfarr/streetmix3d/master/assets/streetmix3d.gif" />
+<img src="https://raw.githubusercontent.com/kfarr/streetmix3d/master/assets/streetmix3d.jpg" />
 
 ### How to make your own Streetmix3D street:
 * First, use <a href="https://streetmix.net">Streetmix.net</a> to create a street design. (Streetmix is a tool that lets you design, remix, and share your neighborhood street. <a href="https://github.com/streetmix/streetmix/blob/master/README.md#about">More information about Streetmix here</a>.)
