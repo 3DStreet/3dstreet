@@ -20,7 +20,7 @@ Streetmix3D does not yet support all of the street `segments` found in Streetmix
 | ---------------------------- | --------- | ------ | ----- |
 | sidewalk            | Yes - Partial       | `empty`    | All variants show empty sidewalk, no pedestrian 3d models or density variants. |
 | sidewalk-lamp       | Yes - All       | Variants: `right`, `left`, `both` Subvariants: `modern`, `traditional`, `pride`  | [Modern Lamp Post](https://poly.google.com/view/2DoFKofZE6H), License [Google Poly CC Attrib](https://support.google.com/poly/answer/7418679?hl=en); [Traditional Lamp Post](https://poly.google.com/view/ez9fM9NvtRB), License [Google Poly CC Attrib](https://support.google.com/poly/answer/7418679?hl=en) |
-| bike-lane           | Yes - Partial | | `bike-asphalt` color not supported, green used for all variants   |
+| bike-lane           | Yes - All | Variants: `regular`, `red`, `green` | No bikes shown   |
 | drive-lane          | Yes - Partial | `car-type`: "car" and "sharrow" | Not supported: `car-type` truck and autonomous vehicle |
 | turn-lane           | Yes - Partial        | All except "shared" | Note: there appears to be a bug with Streetmix.net rendering of `turn-lane-orientation` variant in street cross section for `inbound` - it appears to be inverted from the street's json database value. https://github.com/streetmix/streetmix/issues/683 |
 | bus-lane            | Yes - Partial        |  `shared` (sharrow) variant not supported | Model Credits: [New Flyer XD40 Bus](https://sketchfab.com/3d-models/new-flyer-xd40-d61e475543324d21aa24b2b208fbf3c5) |
@@ -33,7 +33,7 @@ Streetmix3D does not yet support all of the street `segments` found in Streetmix
 | parklet             | No        |   |   |
 | light-rail          | Yes - All        | `grass` variant displays as green color asphalt  |  Model credits: [Siemens Avenio](https://sketchfab.com/3d-models/siemens-avenio-for-cities-skylines-7e3d9f90af9447dabcb813a4af43ae76), License [CC BY NC SA 4.0](https://creativecommons.org/licenses/by-nc-sa/4.0/); [Train track 2 black](https://poly.google.com/view/0LrARHcOWtE), License [Google Poly CC BY](https://support.google.com/poly/answer/7418679?hl=en) |
 | streetcar           | Yes - All        | `grass` variant displays as green color asphalt  | Model credit: [Godarville Tram](https://www.turbosquid.com/FullPreview/Index.cfm/ID/1015103), License [Turbo Squid Royalty Free](https://blog.turbosquid.com/royalty-free-license/) |
-| transit-shelter     | Yes        | |  Doesn't support height -- always at sidewalk level.  |
+| transit-shelter     | Yes - Partial        | |  Doesn't support height -- always at sidewalk level.  |
 | train               | No        |        |  No support planned, not a public Streetmix segment type. |
 | scooter | No ||
 | scooter-drop-zone | No ||
