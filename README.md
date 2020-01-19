@@ -28,12 +28,12 @@ Streetmix3D does not yet support all of the street `segments` found in Streetmix
 | parking-lane        | Yes - Partial |       | `parking-lane-direction` and `parking-lane-orientation` unsupported, parking delimiter markings unsupported |
 | sidewalk-tree       | Yes - All        | `palm-tree`, `big`  | Supports palm tree and normal ("big") street tree. Palm Tree: License [Google Poly CC Attrib](https://support.google.com/poly/answer/7418679?hl=en), [Model Source](https://poly.google.com/view/3vvQFrjtYWb), Street Tree: License [Sketchfab "Standard"](https://sketchfab.com/licenses), [Polygon City Pack](https://sketchfab.com/3d-models/polygon-city-pack-preview-5a16f543d1054fbc9ce1cb17a2ba412e)  |
 | sidewalk-bench      | Yes - Partial        | `left`, `right` | "center" bench not supported.  |
-| sidewalk-bike-rack  | No        |   |  Potential: https://sketchfab.com/3d-models/bike-rack-c4aae071cc2543eeb98bcf1a76be40e4 |
+| sidewalk-bike-rack  | Yes - Partial        |   |  Doesn't support height -- always at sidewalk level. No bike model yet, just the rack. Model credits: [Bike Rack by illustrationlogic](https://sketchfab.com/3d-models/bike-rack-c4aae071cc2543eeb98bcf1a76be40e4), License [CC BY NC SA 4.0](https://creativecommons.org/licenses/by-nc-sa/4.0/) |
 | sidewalk-wayfinding | No   |   |  |
 | parklet             | No        |   |   |
 | light-rail          | Yes - Partial        |   |  `public-transit-asphalt` not supported, default always red. Model credits: [Siemens Avenio](https://sketchfab.com/3d-models/siemens-avenio-for-cities-skylines-7e3d9f90af9447dabcb813a4af43ae76), License [CC BY NC SA 4.0](https://creativecommons.org/licenses/by-nc-sa/4.0/); [Train track 2 black](https://poly.google.com/view/0LrARHcOWtE), License [Google Poly CC BY](https://support.google.com/poly/answer/7418679?hl=en) |
 | streetcar           | Yes - Partial        |   | `public-transit-asphalt` not supported, default always red. Model credit: [Godarville Tram](https://www.turbosquid.com/FullPreview/Index.cfm/ID/1015103), License [Turbo Squid Royalty Free](https://blog.turbosquid.com/royalty-free-license/) |
-| transit-shelter     | Yes        | |  doesn't support height |
+| transit-shelter     | Yes        | |  Doesn't support height -- always at sidewalk level.  |
 | train               | No        |        |  No support planned, not a public Streetmix segment type. |
 | scooter | No ||
 | scooter-drop-zone | No ||

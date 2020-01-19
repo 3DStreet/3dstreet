@@ -23,7 +23,6 @@
   </head>
   <body>
     <!-- https://www.codeply.com/go/sbfCXYgqoO -->
-    <!-- search not in navbar collapse -->
     <nav class="navbar fixed-top navbar-expand navbar-dark bg-dark" >
         <div class="d-flex flex-grow-1">
             <a href="https://github.com/kfarr/streetmix3d/" class="navbar-brand" title="View Github README">Streetmix3D</a>
@@ -32,13 +31,13 @@
                     <!-- <input type="text" class="form-control border border-right-0" placeholder="Paste Streetmix URL" /> -->
                     <input id="input-url" type="text" class="form-control d-none d-lg-block" onfocus="this.select();" title="Paste in Streetmix.net URL such as 'https://streetmix.net/kfarr/3'" />
                     <span class="input-group-append">
-                        <button class="btn btn-outline-light border " type="button" onclick="processURLChange()" title="Clear Scene and Re-Render">
+                        <button class="btn btn-outline-light border" type="button" onclick="processURLChange()" title="Clear Scene and Re-Render">
                             <i class="fa fa-refresh"></i>
                         </button>
-                        <button class="btn btn-outline-light border " type="button" onclick="openStreetmixURL()" title="Edit Street in Streetmix2D">
+                        <button class="btn btn-outline-light border" type="button" onclick="openStreetmixURL()" title="Edit Street in Streetmix2D">
                             <i class="fa fa-pencil"></i>
                         </button>
-                        <button class="btn btn-outline-light border " type="button" onclick="openJSONURL()" title="View Raw Streetmix JSON">
+                        <button class="btn btn-outline-light border" type="button" onclick="openJSONURL()" title="View Raw Streetmix JSON">
                             <i class="fa fa-code"></i>
                         </button>
                     </span>
@@ -53,6 +52,8 @@
         <a-asset-item id="treemodel3" src="assets/objects/SM_Env_Tree_03.gltf"></a-asset-item>
         <a-asset-item id="palmtreemodel" src="assets/objects/PalmTree.gltf"></a-asset-item>
         <a-asset-item id="benchmodel" src="assets/objects/SM_Prop_ParkBench_02.gltf"></a-asset-item>
+        <a-asset-item id="bikerackmodel" src="assets/objects/bikerack.glb"></a-asset-item>
+
         <a-asset-item id="trackmodel" src="assets/objects/track.gltf"></a-asset-item>
         <a-asset-item id="trammodel" src="assets/objects/tram_siemens_avenio.gltf"></a-asset-item>
         <a-asset-item id="trolleymodel" src="assets/objects/godarvilletram.gltf"></a-asset-item>
@@ -120,6 +121,7 @@
         <a-mixin id="tram" gltf-model="#trammodel" scale="1 1 1"></a-mixin>
         <a-mixin id="trolley" gltf-model="#trolleymodel" scale="1 1 1"></a-mixin>
         <a-mixin id="block" gltf-model="#blockmodel" scale="1 1 1"></a-mixin>
+        <a-mixin id="bikerack" gltf-model="#bikerackmodel" scale="0.25 0.25 0.25"></a-mixin>
 
         <a-mixin id="bus-shadow" geometry="width: 12; height: 3; primitive: plane"  material="src: url(materials/bus-shadow.png); alphaTest: 0;transparent:true; roughness: 1;" ></a-mixin>
         <a-mixin id="car-shadow" geometry="width: 4.7; height: 2.5; primitive: plane"  material="src: url(materials/bus-shadow.png); alphaTest: 0;transparent:true; roughness: 1;" ></a-mixin>
