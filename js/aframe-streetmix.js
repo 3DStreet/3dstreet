@@ -13,7 +13,8 @@ const state = initialState;
 AFRAME.registerComponent('af', {
   dependencies: ['material', 'geometry'],
   init: function () {
-    // wait until this object  model is loaded ...
+    // TODO: wait to fire this until material loaded event instead of setTimeout
+    // https://aframe.io/docs/1.0.0/components/visible.html#hiding-entity-until-texture-loaded
     setTimeout(() => {
       this.el.getObject3D('mesh').material.map.anisotropy = 4;
       this.el.getObject3D('mesh').material.map.needsUpdate = true;
