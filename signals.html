@@ -1,0 +1,56 @@
+<html>
+  <head>
+    <script src="https://aframe.io/releases/1.0.3/aframe.min.js"></script>
+    <script src="https://unpkg.com/aframe-atlas-uvs-component@2.1.0/dist/aframe-atlas-uvs-component.min.js"></script>
+    <script src="https://unpkg.com/aframe-orbit-controls@1.2.0/dist/aframe-orbit-controls.min.js"></script>
+
+    <script>
+    AFRAME.registerComponent('flash', {
+      init: function () {
+        this.throttledFunction = AFRAME.utils.throttle(this.toggleVisibility, 1000, this);
+      },
+      toggleVisibility: function () {
+        this.el.setAttribute('visible', !this.el.getAttribute('visible'));
+      },
+      tick: function (time, timeDelta) {
+        this.throttledFunction();  // Called once a second.
+      }
+    });
+    </script>
+  </head>
+  <body>
+    <a-scene renderer="colorManagement: true; highRefreshRate: true; foveationLevel: 3; physicallyCorrectLights: true; logarithmicDepthBuffer: false;" gltf-model="dracoDecoderPath: js/;">
+      <a-assets>
+        <a-asset-item id="signal-model" src="assets/signals/signal.glb"></a-asset-item>
+        <a-asset-item id="pole-model" src="assets/signals/pole.glb"></a-asset-item>
+        <a-asset-item id="bracket-model" src="assets/signals/bracket.glb"></a-asset-item>
+        <a-mixin id="signal-led" scale="0.3 0.3 0.3" atlas-uvs="totalRows: 3; totalColumns: 3" material="src: assets/signals/led-signal-atlas.jpg" geometry="primitive: plane; buffer: false; skipCache: true"></a-mixin>
+        <a-mixin id="off" atlas-uvs="column: 2; row: 1"></a-entity>
+        <a-mixin id="green-on" atlas-uvs="column: 1; row: 2"></a-entity>
+        <a-mixin id="yellow-on" atlas-uvs="column: 2; row: 2"></a-entity>
+        <a-mixin id="red-on" atlas-uvs="column: 3; row: 2"></a-entity>
+        <a-mixin id="green-off" atlas-uvs="column: 1; row: 3"></a-entity>
+        <a-mixin id="yellow-off" atlas-uvs="column: 2; row: 3"></a-entity>
+        <a-mixin id="red-off" atlas-uvs="column: 3; row: 3"></a-entity>
+      </a-assets>
+      <a-entity light="type: ambient; color: #FFF; intensity: 2"></a-entity>
+      <a-entity light="type: directional; color: #FFF; intensity: 0.6" position="0.5 1 -1"></a-entity>
+      <a-sky src="assets/sky14_brown.jpg" position="0 -10 0"></a-sky>
+      <a-entity id="cam-parent">
+        <a-entity id="camera" camera wasd-controls="enabled: false" orbit-controls="autoRotate: true;autoRotateSpeed:0.02;target: 0 3 0;initialPosition:1 4 3;minDistance:3;maxDistance:100;enableKeys:false"></a-entity>
+      </a-entity>
+
+      <a-entity class="signal" gltf-model="#signal-model" scale="1 1 1">
+        <a-entity class="lightbank" position="0 3.9343 0.531">
+          <a-entity class="light" mixin="signal-led red-off" position="0 0.356 0"></a-entity>
+          <a-entity class="light" mixin="signal-led red-on" position="0 0.356 0.02" flash animation_broke="property: visible; from: true; to: false; loop: true; dur: 1000; dir: reverse;"></a-entity>
+          <a-entity class="light" mixin="signal-led yellow-off" position="0 0 0"></a-entity>
+          <a-entity class="light" mixin="signal-led green-off" position="0 -0.356 0"></a-entity>
+        </a-entity>
+      </a-entity>
+      <a-entity class="pole" gltf-model="#pole-model" scale="1 1 1"></a-entity>
+      <a-entity class="bracket" gltf-model="#bracket-model" scale="1 1 1"></a-entity>
+
+    </a-scene>
+  </body>
+</html>
