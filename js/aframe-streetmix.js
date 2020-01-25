@@ -39,6 +39,7 @@ const defaultModelWidthsInMeters = {
   "sidewalk-bike-rack": 3,
   "sidewalk-bench": 3,
   "scooter-drop-zone": 3,
+  "scooter": 1.8,
   "bikeshare": 3,
   "flex-zone-curb": 3,
   "transit-shelter": 3,
@@ -192,7 +193,7 @@ function processSegments(segments, streetElementId) {
 
     };
 
-    if (segments[i].type == "bike-lane") {
+    if (segments[i].type == "bike-lane" || segments[i].type == "scooter") {
       // make the parent for all the objects to be cloned
       var placedObjectEl = document.createElement("a-entity");
       placedObjectEl.setAttribute("class", "markings-parent");
