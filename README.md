@@ -22,7 +22,7 @@ Streetmix3D does not yet support all of the street `segments` found in Streetmix
 | sidewalk-lamp       | Yes - All       | Variants: `right`, `left`, `both` Subvariants: `modern`, `traditional`, `pride`  | [Modern Lamp Post](https://poly.google.com/view/2DoFKofZE6H), License [Google Poly CC Attrib](https://support.google.com/poly/answer/7418679?hl=en); [Traditional Lamp Post](https://poly.google.com/view/ez9fM9NvtRB), License [Google Poly CC Attrib](https://support.google.com/poly/answer/7418679?hl=en) |
 | bike-lane           | Yes - All | Variants: `regular`, `red`, `green` | No bikes shown   |
 | drive-lane          | Yes - Partial | `car-type`: "car" and "sharrow" | Not supported: `car-type` truck and autonomous vehicle |
-| turn-lane           | Yes - Partial        | All except "shared" | Note: there appears to be a bug with Streetmix.net rendering of `turn-lane-orientation` variant in street cross section for `inbound` - it appears to be inverted from the street's json database value. https://github.com/streetmix/streetmix/issues/683 |
+| turn-lane           | Yes - All        | `left` `right` `left-right-straight` `shared` `both` `left-straight` `right-straight` `straight` | Note: there appears to be a bug with Streetmix.net rendering of `turn-lane-orientation` variant in street cross section for `inbound` - it appears to be inverted from the street's json database value. https://github.com/streetmix/streetmix/issues/683. Note: Shared turn lane does exhibit proper segment lane markings. |
 | bus-lane            | Yes - Partial        |  `shared` (sharrow) variant not supported | Model Credits: [New Flyer XD40 Bus](https://sketchfab.com/3d-models/new-flyer-xd40-d61e475543324d21aa24b2b208fbf3c5) |
 | divider             | Yes - Partial   | `divider-type`: striped-buffer is rendered for all variants |  |
 | parking-lane        | Yes - Partial |       | `parking-lane-direction` and `parking-lane-orientation` unsupported, parking delimiter markings unsupported |
@@ -35,12 +35,12 @@ Streetmix3D does not yet support all of the street `segments` found in Streetmix
 | streetcar           | Yes - All        | `grass` variant displays as green color asphalt  | Model credit: [Godarville Tram](https://www.turbosquid.com/FullPreview/Index.cfm/ID/1015103), License [Turbo Squid Royalty Free](https://blog.turbosquid.com/royalty-free-license/) |
 | transit-shelter     | Yes - Partial        | |  Doesn't support height -- always at sidewalk level.  |
 | train               | No        |        |  No support planned, not a public Streetmix segment type. |
-| scooter | No ||
-| scooter-drop-zone | No ||
-| bikeshare | No ||
-| food-truck | No ||
-| flex-zone | No ||
-| flex-zone-curb | No ||
+| scooter | Yes - All | Variants: `regular`, `red`, `green` | No scooters shown. (Treated identically to a bike lane.)  |
+| scooter-drop-zone | No |||
+| bikeshare | No |||
+| food-truck | No |||
+| flex-zone | No |||
+| flex-zone-curb | No |||
 
 ### Streetmix Building Support
 

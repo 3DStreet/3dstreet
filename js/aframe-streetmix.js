@@ -194,6 +194,8 @@ function processSegments(segments, streetElementId) {
     };
 
     if (segments[i].type == "bike-lane" || segments[i].type == "scooter") {
+      mixinId = "bike-lane";
+
       // make the parent for all the objects to be cloned
       var placedObjectEl = document.createElement("a-entity");
       placedObjectEl.setAttribute("class", "markings-parent");
@@ -282,6 +284,14 @@ function processSegments(segments, streetElementId) {
         })
       }
 
+      if (variantList[1] == "shared") {
+        markerMixinId = "left";
+      }
+
+      if (variantList[1] == "left-right-straight") {
+        markerMixinId = "all";
+      }
+
       var mixinString = "markings " + markerMixinId
 
       // make the parent for all the objects to be cloned
@@ -291,8 +301,20 @@ function processSegments(segments, streetElementId) {
       placedObjectEl.setAttribute("id", "markings-parent-" + positionX);
       // add the new elmement to DOM
       document.getElementById(streetElementId).appendChild(placedObjectEl);
-
       cloneMixin({objectMixinId: mixinString, parentId: "markings-parent-" + positionX, rotation: "-90 " + rotationY + " 0", step: 10, radius: 70});
+
+      if (variantList[1] == "shared") {
+        // add an additional marking to represent the opposite turn marking stencil (rotated 180º)
+        var placedObjectEl = document.createElement("a-entity");
+        placedObjectEl.setAttribute("class", "markings-parent");
+        placedObjectEl.setAttribute("position", positionX + " 0.015 2");  // position="1.043 0.100 -3.463"
+        placedObjectEl.setAttribute("id", "markings-parent-offset2-" + positionX);
+        // add the new elmement to DOM
+        document.getElementById(streetElementId).appendChild(placedObjectEl);
+        cloneMixin({objectMixinId: mixinString, parentId: "markings-parent-offset2-" + positionX, rotation: "-90 " + (rotationY + 180) + " 0", step: 10, radius: 70});
+      }
+
+
     }
 
     if (segments[i].type == "divider" && variantList[0] == "bollard") {mixinId = "divider-bollard"};
