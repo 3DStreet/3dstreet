@@ -671,6 +671,22 @@ function processBuildings(streetObject, buildingElementId) {
 
     }
 
+    if (currentValue == "waterfront") {
+      const objectPositionX = positionX - (sideMultiplier * buildingLotWidth / 2);
+
+      var placedObjectEl = document.createElement("a-entity");
+      placedObjectEl.setAttribute("class", "seawall-parent");
+      placedObjectEl.setAttribute("position", objectPositionX + " 0 10");  // position="1.043 0.100 -3.463"
+      placedObjectEl.setAttribute("id", "seawall-parent-" + positionX);
+      // add the new elmement to DOM
+      document.getElementById(buildingElementId).appendChild(placedObjectEl);
+
+      // clone a bunch of seawalls under the parent
+      var rotationCloneY = (side == "right") ? -90 : 90;
+      cloneMixin({objectMixinId: "seawall", parentId: "seawall-parent-" + positionX, rotation: "-90 " + rotationCloneY + " 0", step: 15, radius: 70});
+
+    }
+
     if (currentValue == "fence" || currentValue == "parking-lot") {
       const objectPositionX = positionX - (sideMultiplier * buildingLotWidth / 2);
       // make the parent for all the objects to be cloned

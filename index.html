@@ -1,13 +1,19 @@
 <html>
   <head>
+    <!-- <script src="js/offline/aframe.min.js"></script>
+    <script src="js/offline/aframe-atlas-uvs-component.min.js"></script>
+    <script src="js/offline/aframe-orbit-controls.min.js"></script> -->
+
     <script src="https://aframe.io/releases/1.0.3/aframe.min.js"></script>
-    <script src="https://unpkg.com/aframe-sun-sky@^3.0.3/dist/aframe-sun-sky.min.js"></script>
-    <script src="https://unpkg.com/aframe-orbit-controls@1.2.0/dist/aframe-orbit-controls.min.js"></script>
-    <script src="https://unpkg.com/aframe-ground-component@0.0.4/dist/aframe-ground-component.min.js"></script>
     <script src="https://unpkg.com/aframe-atlas-uvs-component@2.1.0/dist/aframe-atlas-uvs-component.min.js"></script>
+    <script src="https://unpkg.com/aframe-orbit-controls@1.2.0/dist/aframe-orbit-controls.min.js"></script>
+
+    <script src="https://unpkg.com/aframe-ground-component@0.0.4/dist/aframe-ground-component.min.js"></script>
     <script src="https://unpkg.com/aframe-alongpath-component@1.0.5/dist/aframe-alongpath-component.min.js"></script>
     <script src="https://unpkg.com/aframe-curve-component@0.1.3/dist/aframe-curve-component.min.js"></script>
+
     <script src="js/aframe-streetmix.js"></script>
+    <script src="js/ocean-plane.js"></script>
 
     <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.4.1/css/bootstrap.min.css" integrity="sha384-Vkoo8x4CGsO3+Hhxv8T/Q5PaXtkKtu6ug5TOeNV6gBiFeWPGFN9MuhOf23Q9Ifjh" crossorigin="anonymous">
     <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/font-awesome/4.7.0/css/font-awesome.min.css">
@@ -46,27 +52,32 @@
     </nav>
     <a-scene renderer="colorManagement: true; highRefreshRate: true; foveationLevel: 3; physicallyCorrectLights: true; logarithmicDepthBuffer: true;" fogoff="type: linear; color: #D5C69B; far: 200" gltf-model="dracoDecoderPath: js/;">
       <a-assets>
-        <a-asset-item id="xd40" src="assets/objects/XD40.glb"></a-asset-item>
-        <a-asset-item id="carmodel" src="assets/objects/SM_Veh_Car_Sedan_01.gltf"></a-asset-item>
+        <!-- sidewalk props -->
         <a-asset-item id="treemodel3" src="assets/objects/SM_Env_Tree_03.gltf"></a-asset-item>
         <a-asset-item id="palmtreemodel" src="assets/objects/PalmTree.gltf"></a-asset-item>
         <a-asset-item id="benchmodel" src="assets/objects/SM_Prop_ParkBench_02.gltf"></a-asset-item>
         <a-asset-item id="bikerackmodel" src="assets/objects/bikerack.glb"></a-asset-item>
-
-        <a-asset-item id="trackmodel" src="assets/objects/track.gltf"></a-asset-item>
-        <a-asset-item id="trammodel" src="assets/objects/tram_siemens_avenio.gltf"></a-asset-item>
-        <a-asset-item id="trolleymodel" src="assets/objects/godarvilletram.gltf"></a-asset-item>
-        <a-asset-item id="blockmodel" src="assets/objects/scenesmall2.glb"></a-asset-item>
-
-        <a-asset-item id="fence-model" src="assets/objects/chainlink_fence_-_low_poly.glb"></a-asset-item>
-
         <a-asset-item id="lamp-modern-glb" src="assets/objects/lamp-post-modern-centered.glb"></a-asset-item>
         <a-asset-item id="lamp-traditional-glb" src="assets/objects/lamp-post-traditional.glb"></a-asset-item>
-
         <a-asset-item id="bus-stop-glb" src="assets/objects/ccFO2EGGIq9-bus-stop.glb"></a-asset-item>
 
+        <!-- vehicles -->
+        <a-asset-item id="trammodel" src="assets/objects/tram_siemens_avenio.gltf"></a-asset-item>
+        <a-asset-item id="trolleymodel" src="assets/objects/godarvilletram.gltf"></a-asset-item>
+        <a-asset-item id="xd40" src="assets/objects/XD40.glb"></a-asset-item>
+        <a-asset-item id="carmodel" src="assets/objects/SM_Veh_Car_Sedan_01.gltf"></a-asset-item>
+
+        <!-- blocks -->
+        <a-asset-item id="blockmodel" src="assets/objects/scenesmall2.glb"></a-asset-item>
+        <a-asset-item id="fence-model" src="assets/objects/chainlink_fence_-_low_poly.glb"></a-asset-item>
+        <a-asset-item id="seawall-model" src="assets/objects/seawall.gltf"></a-asset-item>
+
+        <!-- lane objects -->
+        <a-asset-item id="trackmodel" src="assets/objects/track.gltf"></a-asset-item>
         <img id="markings-atlas" src="materials/lane-markings-atlas_2048.png" />
-        <img id="sky" position="0 -140 0" src="assets/CGSkies_0343_8k_ERextended.jpg" />
+
+        <!-- the sky -->
+        <img id="sky" position="0 -140 0" src="assets/CGSkies_0343_free_ER.jpg" />
 
         <!-- raw photogrammetry textures -->
         <a-mixin id="bike-lane-t0" geometry="width:1.8;height:150;primitive:plane" material="repeat:2 150;src:materials/bikelane_Base_Color.jpg;normalTextureRepeat:2 150;normalMap:materials/bikelane_Normal.jpg"></a-mixin>
@@ -122,6 +133,8 @@
         <a-mixin id="tram" gltf-model="#trammodel" scale="1 1 1"></a-mixin>
         <a-mixin id="trolley" gltf-model="#trolleymodel" scale="1 1 1"></a-mixin>
         <a-mixin id="block" gltf-model="#blockmodel" scale="1 1 1"></a-mixin>
+        <a-mixin id="seawall" gltf-model="#seawall-model" scale="1 1 1" rotation="0 0 0"></a-mixin>
+
         <a-mixin id="bikerack" gltf-model="#bikerackmodel" scale="0.25 0.25 0.25"></a-mixin>
 
         <a-mixin id="bus-shadow" geometry="width: 12; height: 3; primitive: plane"  material="src: url(materials/bus-shadow.png); alphaTest: 0;transparent:true; roughness: 1;" ></a-mixin>
@@ -140,6 +153,9 @@
 
       <a-entity light="type: ambient; color: #FFF; intensity: 2"></a-entity>
       <a-entity light="type: directional; color: #FFF; intensity: 0.6" position="0.5 1 -1"></a-entity>
+      <a-ocean-plane height="100" width="100" position="0 -1 0" material="sphericalEnvMap: #sky;">
+         <!-- <a-animation attribute="position" to="0 0 100" dur="2500" repeat="indefinitely" easing="linear"></a-animation> -->
+      </a-ocean-plane>
 
       <a-entity id="cam-parent">
         <a-entity id="camera" camera wasd-controls="enabled: false" orbit-controls="autoRotate: true;autoRotateSpeed:0.01;target: 0 0 0;initialPosition:0 4 15;minDistance:3;maxDistance:100;enableKeys:false"></a-entity>
@@ -172,7 +188,7 @@
       <a-entity id="newflyer-XD40-bounding" geometry="depth: 12; height: 3.2; width: 2.59" position="-3.97 1.59 0"></a-entity>
       <a-entity id="siemens-avenio-bounding" geometry="depth: 30; height: 3.4; width: 2.65" position="8.8 1.7 0"></a-entity> -->
 
-      <a-sky position="0 0 0" rotation="0 240 0" material="fog: false;src:#sky"></a-sky>
+      <a-sky position="0 -15 0" rotation="0 240 0" material="fog: false;src:#sky"></a-sky>
 
       <a-entity id="street-parent" position="0 0 0" rotation="0 0 0">
         <a-entity id="streets"></a-entity>
