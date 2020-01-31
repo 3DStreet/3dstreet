@@ -1,12 +1,12 @@
 <html>
   <head>
-    <!-- <script src="js/offline/aframe.min.js"></script>
-    <script src="js/offline/aframe-atlas-uvs-component.min.js"></script>
-    <script src="js/offline/aframe-orbit-controls.min.js"></script> -->
-
     <script src="https://aframe.io/releases/1.0.3/aframe.min.js"></script>
     <script src="https://unpkg.com/aframe-atlas-uvs-component@2.1.0/dist/aframe-atlas-uvs-component.min.js"></script>
     <script src="https://unpkg.com/aframe-orbit-controls@1.2.0/dist/aframe-orbit-controls.min.js"></script>
+
+    <!-- <script src="js/offline/aframe.min.js"></script>
+    <script src="js/offline/aframe-atlas-uvs-component.min.js"></script>
+    <script src="js/offline/aframe-orbit-controls.min.js"></script> -->
 
     <script src="https://unpkg.com/aframe-ground-component@0.0.4/dist/aframe-ground-component.min.js"></script>
     <script src="https://unpkg.com/aframe-alongpath-component@1.0.5/dist/aframe-alongpath-component.min.js"></script>
@@ -50,7 +50,7 @@
             </form>
         </div>
     </nav>
-    <a-scene renderer="colorManagement: true; highRefreshRate: true; foveationLevel: 3; physicallyCorrectLights: true; logarithmicDepthBuffer: true;" fogoff="type: linear; color: #D5C69B; far: 200" gltf-model="dracoDecoderPath: js/;">
+    <a-scene renderer="colorManagement: true; highRefreshRate: true; foveationLevel: 3; physicallyCorrectLights: true; logarithmicDepthBuffer: false;" fogoff="type: linear; color: #D5C69B; far: 200" gltf-model="dracoDecoderPath: js/;">
       <a-assets>
         <!-- sidewalk props -->
         <a-asset-item id="treemodel3" src="assets/objects/SM_Env_Tree_03.gltf"></a-asset-item>
@@ -188,7 +188,7 @@
       <a-entity id="newflyer-XD40-bounding" geometry="depth: 12; height: 3.2; width: 2.59" position="-3.97 1.59 0"></a-entity>
       <a-entity id="siemens-avenio-bounding" geometry="depth: 30; height: 3.4; width: 2.65" position="8.8 1.7 0"></a-entity> -->
 
-      <a-sky position="0 -15 0" rotation="0 240 0" material="fog: false;src:#sky"></a-sky>
+      <a-sky position="0 0 0" rotation="0 240 0" material="fog: false;src:#sky"></a-sky>
 
       <a-entity id="street-parent" position="0 0 0" rotation="0 0 0">
         <a-entity id="streets"></a-entity>
