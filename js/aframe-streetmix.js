@@ -472,6 +472,26 @@ function processSegments(segments, streetElementId) {
 
     };
 
+    if (segments[i].type == "bikeshare") {
+      // sidewalk mixin as the segment surface - this doesn't look great (squished texture not made for this width)
+      mixinId = "sidewalk";
+
+      // make the parent for all the stations
+      var placedObjectEl = document.createElement("a-entity");
+      placedObjectEl.setAttribute("class", "bikeshare-parent");
+      placedObjectEl.setAttribute("position", positionX + " 0 0");
+      placedObjectEl.setAttribute("id", "bikeshare-parent-" + positionX);
+      // add the new elmement to DOM
+      document.getElementById(streetElementId).appendChild(placedObjectEl);
+
+      var rotationCloneY = (variantList[0] == "left") ? 90 : 270;
+      console.log(variantList + "*#@*#@*@#*@#*$@#*");
+
+      cloneMixin({objectMixinId: "bikeshare", parentId: "bikeshare-parent-" + positionX, rotation: "0 " + rotationCloneY + " 0", step: 100, radius: 60});
+
+    };
+
+
     if (segments[i].type == "sidewalk-tree") {
       // sidewalk mixin as the segment surface - this doesn't look great (squished texture not made for this width)
       mixinId = "sidewalk";

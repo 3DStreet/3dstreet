@@ -37,7 +37,7 @@ Streetmix3D does not yet support all of the street `segments` found in Streetmix
 | train               | No        |        |  No support planned, not a public Streetmix segment type. |
 | scooter | Yes - All | Variants: `regular`, `red`, `green` | No scooters shown. (Treated identically to a bike lane.)  |
 | scooter-drop-zone | No |||
-| bikeshare | No |||
+| bikeshare | Yes | `left` `right`| Rendered every 100 meters. [Original model credit](https://3dwarehouse.sketchup.com/model/8fd9d5c603e1d5d0ebab176c393922a3/Bikeshare-Station) |
 | food-truck | No |||
 | flex-zone | No |||
 | flex-zone-curb | No |||
