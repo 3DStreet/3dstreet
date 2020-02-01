@@ -317,7 +317,20 @@ function processSegments(segments, streetElementId) {
 
     }
 
-    if (segments[i].type == "divider" && variantList[0] == "bollard") {mixinId = "divider-bollard"};
+    if (segments[i].type == "divider" && variantList[0] == "bollard") {
+      mixinId = "divider";
+
+      // make some safehits
+      var placedObjectEl = document.createElement("a-entity");
+      placedObjectEl.setAttribute("class", "safehit-parent");
+      placedObjectEl.setAttribute("position", positionX + " 0 0");
+      placedObjectEl.setAttribute("id", "safehit-parent-" + positionX);
+      // add the new elmement to DOM
+      document.getElementById(streetElementId).appendChild(placedObjectEl);
+
+      cloneMixin({objectMixinId: "safehit", parentId: "safehit-parent-" + positionX, step: 4, radius: 70});
+
+    };
 
     if (segments[i].type == "bus-lane") {
 
