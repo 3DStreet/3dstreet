@@ -478,17 +478,15 @@ function processSegments(segments, streetElementId) {
 
       // make the parent for all the stations
       var placedObjectEl = document.createElement("a-entity");
-      placedObjectEl.setAttribute("class", "bikeshare-parent");
+      placedObjectEl.setAttribute("class", "bikeshare");
       placedObjectEl.setAttribute("position", positionX + " 0 0");
-      placedObjectEl.setAttribute("id", "bikeshare-parent-" + positionX);
+      placedObjectEl.setAttribute("id", "bikeshare-" + positionX);
+      placedObjectEl.setAttribute("mixin", "bikeshare");
+      var rotationCloneY = (variantList[0] == "left") ? 90 : 270;
+      placedObjectEl.setAttribute("rotation", "0 " + rotationCloneY + " 0");
+
       // add the new elmement to DOM
       document.getElementById(streetElementId).appendChild(placedObjectEl);
-
-      var rotationCloneY = (variantList[0] == "left") ? 90 : 270;
-      console.log(variantList + "*#@*#@*@#*@#*$@#*");
-
-      cloneMixin({objectMixinId: "bikeshare", parentId: "bikeshare-parent-" + positionX, rotation: "0 " + rotationCloneY + " 0", step: 100, radius: 60});
-
     };
 
 
