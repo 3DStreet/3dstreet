@@ -576,22 +576,29 @@ function processSegments(segments, streetElementId) {
     };
 
     if (segments[i].type == "separator" && variantList[0] == "dashed") {
-      mixinId = "separator-dashed";
+      mixinId = "markings dashed-stripe";
       positionY = positionY + 0.01; // make sure the lane marker is above the asphalt
       scaleX = 1;
     };
 
     if (segments[i].type == "separator" && variantList[0] == "solid") {
-      mixinId = "separator-solid";
+      mixinId = "markings solid-stripe";
       positionY = positionY + 0.01; // make sure the lane marker is above the asphalt
       scaleX = 1;
     };
 
     if (segments[i].type == "separator" && variantList[0] == "doubleyellow") {
-      mixinId = "separator-doubleyellow";
+      mixinId = "markings solid-doubleyellow";
       positionY = positionY + 0.01; // make sure the lane marker is above the asphalt
       scaleX = 1;
     };
+
+    if (segments[i].type == "separator" && variantList[0] == "dashedyellow") {
+      mixinId = "markings dashed-stripe";
+      positionY = positionY + 0.01; // make sure the lane marker is above the asphalt
+      scaleX = 1;
+    };
+
 
     if (segments[i].type == "parking-lane") {
       mixinId = "drive-lane";

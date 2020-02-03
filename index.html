@@ -78,7 +78,7 @@
         <!-- lane objects -->
         <a-asset-item id="trackmodel" src="assets/objects/track.gltf"></a-asset-item>
         <img id="stencils-atlas" src="materials/stencils-atlas_2048.png" />
-        <!-- <img id="markings-atlas" src="materials/lane-markings-atlas_1024.png" /> -->
+        <img id="markings-atlas" src="materials/lane-markings-atlas_1024.png" />
 
         <!-- the sky -->
         <img id="sky" position="0 -140 0" src="assets/CGSkies_0343_doubled_2048.jpg" />
@@ -98,12 +98,12 @@
         <a-mixin id="safehit" gltf-model="#flexiguide-glb" scale="1 1 1"></a-mixin>
 
         <!-- note: hex color f7d117 -->
-        <!-- <a-mixin id="markings" atlas-uvs="totalRows: 1; totalColumns: 8" scale="2 2 2" material="src: #markings-atlas;alphaTest: 0;transparent:true;" geometry="primitive: plane; buffer: false; skipCache: true"></a-mixin> -->
+        <a-mixin id="markings" atlas-uvs="totalRows: 1; totalColumns: 8; row: 1" scale="1 1 1" material="src: #markings-atlas;alphaTest: 0;transparent:true;repeat:1 25;" geometry="primitive: plane; buffer: false; skipCache: true; width:0.2; height:150;"></a-mixin>
+        <a-mixin id="solid-stripe-t1" af atlas-uvs="column: 1"></a-mixin>
+        <a-mixin id="dashed-stripe-t1" af atlas-uvs="column: 4"></a-mixin>
+        <a-mixin id="solid-doubleyellow-t1" af atlas-uvs="totalColumns: 4; column: 3" geometry="width: 0.5"></a-mixin>
 
-        <a-mixin id="separator-dashed-t1" af geometry="width:0.4;height:150;primitive:plane;segments-height:15" material="repeat:0.25 25;offset:0.38 0;src:materials/separator-short-dash_1024.png;transparent: true;"></a-mixin>
-        <a-mixin id="separator-solid-t1" af geometry="width:0.4;height:150;primitive:plane;segments-height:15" material="repeat:0.25 25;offset:0.38 0;src:materials/separator-solid_1024.png;transparent: true;"></a-mixin>
-        <a-mixin id="separator-doubleyellow-t1" af geometry="width:0.5;height:150;primitive:plane;segments-height:15" material="repeat:0.25 25;offset:0.38 0;src:materials/separator-double-yellow_512.png;transparent: true;"></a-mixin>
-
+        <a-mixin id="yellow" material="color:#f7d117"></a-mixin>
         <a-mixin id="surface-green" material="color:#adff83"></a-mixin>
         <a-mixin id="surface-red" material="color:#ff9393"></a-mixin>
 
