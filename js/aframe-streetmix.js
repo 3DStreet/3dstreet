@@ -722,6 +722,7 @@ function processBuildings(streetObject, buildingElementId) {
 
 function loadStreet(streetURL) {
   // Erase existing street (if any)
+  // TODO: Remove all DOM logic from this function
   var myNode = document.getElementById("streets");
   myNode.innerHTML = '';
 
@@ -737,16 +738,17 @@ function loadStreet(streetURL) {
       var streetmixObject = JSON.parse(this.response);
       var streetObject = streetmixObject.data.street;
       var streetmixSegments = streetmixObject.data.street.segments;
+      // TODO: return (and document) `streetmixObject` for more general usage, remove processSegments/Buildings from this function
       processSegments(streetmixSegments, "streets");
       processBuildings(streetObject, "buildings");
     } else {
       // We reached our target server, but it returned an error
-      console.log("oops - We reached our target server, but it returned an error");
+      console.log("Streetmix Loading Error: We reached our target server, but it returned an error");
     }
   };
   request.onerror = function() {
     // There was a connection error of some sort
-    console.log("oops - There was a connection error of some sort");
+    console.log("Streetmix Loading Error: There was a connection error of some sort");
   };
   request.send();
 };
