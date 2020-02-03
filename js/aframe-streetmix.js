@@ -101,7 +101,10 @@ function insertSeparatorSegments(segments) {
       // if adjacent segments in opposite directions then use double yellow
       if (currentValue.variantString.split("|")[0] !== previousValue.variantString.split("|")[0]) {
         variantString = "doubleyellow";
-        // TODO: if adjacenet segments are both bike lanes, then use yellow short dash
+        // if adjacenet segments are both bike lanes, then use yellow short dash
+        if (currentValue.type == "bike-lane" && previousValue.type == "bike-lane") {
+          variantString = "shortdashedyellow";
+        }
       }
 
       // special case -- if either lanes are turn lane shared, then use solid and long dash
@@ -593,8 +596,8 @@ function processSegments(segments, streetElementId) {
       scaleX = 1;
     };
 
-    if (segments[i].type == "separator" && variantList[0] == "dashedyellow") {
-      mixinId = "markings dashed-stripe";
+    if (segments[i].type == "separator" && variantList[0] == "shortdashedyellow") {
+      mixinId = "markings yellow short-dashed-stripe";
       positionY = positionY + 0.01; // make sure the lane marker is above the asphalt
       scaleX = 1;
     };
