@@ -185,17 +185,17 @@ function processSegments(segments, streetElementId) {
     // sharrow variant not supported
     if (segments[i].type == "drive-lane" && variantList[1] == "sharrow") {
       const markerMixinId = variantList[1];
-      var mixinString = "markings " + markerMixinId;
+      var mixinString = "stencils " + markerMixinId;
 
       // make the parent for all the objects to be cloned
       var placedObjectEl = document.createElement("a-entity");
-      placedObjectEl.setAttribute("class", "markings-parent");
+      placedObjectEl.setAttribute("class", "stencils-parent");
       placedObjectEl.setAttribute("position", positionX + " 0.015 0");  // position="1.043 0.100 -3.463"
-      placedObjectEl.setAttribute("id", "markings-parent-" + positionX);
+      placedObjectEl.setAttribute("id", "stencils-parent-" + positionX);
       // add the new elmement to DOM
       document.getElementById(streetElementId).appendChild(placedObjectEl);
 
-      cloneMixin({objectMixinId: mixinString, parentId: "markings-parent-" + positionX, rotation: "-90 " + rotationY + " 0", step: 10, radius: 70});
+      cloneMixin({objectMixinId: mixinString, parentId: "stencils-parent-" + positionX, rotation: "-90 " + rotationY + " 0", step: 10, radius: 70});
 
     };
 
@@ -204,9 +204,9 @@ function processSegments(segments, streetElementId) {
 
       // make the parent for all the objects to be cloned
       var placedObjectEl = document.createElement("a-entity");
-      placedObjectEl.setAttribute("class", "markings-parent");
+      placedObjectEl.setAttribute("class", "stencils-parent");
       placedObjectEl.setAttribute("position", positionX + " 0.015 0");  // position="1.043 0.100 -3.463"
-      placedObjectEl.setAttribute("id", "markings-parent-" + positionX);
+      placedObjectEl.setAttribute("id", "stencils-parent-" + positionX);
       // add the new elmement to DOM
       document.getElementById(streetElementId).appendChild(placedObjectEl);
 
@@ -217,7 +217,7 @@ function processSegments(segments, streetElementId) {
         mixinId = "surface-green bike-lane"
       }
 
-      cloneMixin({objectMixinId: "markings bike-lane", parentId: "markings-parent-" + positionX, rotation: "-90 " + rotationY + " 0", step: 20, radius: 70});
+      cloneMixin({objectMixinId: "stencils bike-lane", parentId: "stencils-parent-" + positionX, rotation: "-90 " + rotationY + " 0", step: 20, radius: 70});
 
     }
 
@@ -297,26 +297,26 @@ function processSegments(segments, streetElementId) {
         markerMixinId = "all";
       }
 
-      var mixinString = "markings " + markerMixinId
+      var mixinString = "stencils " + markerMixinId
 
       // make the parent for all the objects to be cloned
       var placedObjectEl = document.createElement("a-entity");
-      placedObjectEl.setAttribute("class", "markings-parent");
+      placedObjectEl.setAttribute("class", "stencils-parent");
       placedObjectEl.setAttribute("position", positionX + " 0.015 0");  // position="1.043 0.100 -3.463"
-      placedObjectEl.setAttribute("id", "markings-parent-" + positionX);
+      placedObjectEl.setAttribute("id", "stencils-parent-" + positionX);
       // add the new elmement to DOM
       document.getElementById(streetElementId).appendChild(placedObjectEl);
-      cloneMixin({objectMixinId: mixinString, parentId: "markings-parent-" + positionX, rotation: "-90 " + rotationY + " 0", step: 15, radius: 70});
+      cloneMixin({objectMixinId: mixinString, parentId: "stencils-parent-" + positionX, rotation: "-90 " + rotationY + " 0", step: 15, radius: 70});
 
       if (variantList[1] == "shared") {
         // add an additional marking to represent the opposite turn marking stencil (rotated 180º)
         var placedObjectEl = document.createElement("a-entity");
-        placedObjectEl.setAttribute("class", "markings-parent");
+        placedObjectEl.setAttribute("class", "stencils-parent");
         placedObjectEl.setAttribute("position", positionX + " 0.015 " + (-3 * isOutbound));  // position="1.043 0.100 -3.463"
-        placedObjectEl.setAttribute("id", "markings-parent-offset2-" + positionX);
+        placedObjectEl.setAttribute("id", "stencils-parent-offset2-" + positionX);
         // add the new elmement to DOM
         document.getElementById(streetElementId).appendChild(placedObjectEl);
-        cloneMixin({objectMixinId: mixinString, parentId: "markings-parent-offset2-" + positionX, rotation: "-90 " + (rotationY + 180) + " 0", step: 15, radius: 70});
+        cloneMixin({objectMixinId: mixinString, parentId: "stencils-parent-offset2-" + positionX, rotation: "-90 " + (rotationY + 180) + " 0", step: 15, radius: 70});
       }
     }
 
@@ -364,34 +364,33 @@ function processSegments(segments, streetElementId) {
 
       // make the parent for all the objects to be cloned
       var placedObjectEl = document.createElement("a-entity");
-      placedObjectEl.setAttribute("class", "markings-parent");
+      placedObjectEl.setAttribute("class", "stencils-parent");
       placedObjectEl.setAttribute("position", positionX + " 0.015 0");  // position="1.043 0.100 -3.463"
-      placedObjectEl.setAttribute("id", "markings-parent-" + positionX);
+      placedObjectEl.setAttribute("id", "stencils-parent-" + positionX);
       // add the new elmement to DOM
       document.getElementById(streetElementId).appendChild(placedObjectEl);
 
-      cloneMixin({objectMixinId: "markings stencil-bus", parentId: "markings-parent-" + positionX, rotation: "-90 " + rotationY + " 0", step: 50, radius: 70});
+      cloneMixin({objectMixinId: "stencils word-bus", parentId: "stencils-parent-" + positionX, rotation: "-90 " + rotationY + " 0", step: 50, radius: 70});
 
       // make the parent for all the objects to be cloned
       var placedObjectEl = document.createElement("a-entity");
-      placedObjectEl.setAttribute("class", "markings-parent");
+      placedObjectEl.setAttribute("class", "stencils-parent");
       placedObjectEl.setAttribute("position", positionX + " 0.015 10");  // position="1.043 0.100 -3.463"
-      placedObjectEl.setAttribute("id", "markings-parent-offset10-" + positionX);
+      placedObjectEl.setAttribute("id", "stencils-parent-offset10-" + positionX);
       // add the new elmement to DOM
       document.getElementById(streetElementId).appendChild(placedObjectEl);
 
-      cloneMixin({objectMixinId: "markings stencil-taxi", parentId: "markings-parent-offset10-" + positionX, rotation: "-90 " + rotationY + " 0", step: 50, radius: 70});
+      cloneMixin({objectMixinId: "stencils word-taxi", parentId: "stencils-parent-offset10-" + positionX, rotation: "-90 " + rotationY + " 0", step: 50, radius: 70});
 
       // make the parent for all the objects to be cloned
       var placedObjectEl = document.createElement("a-entity");
-      placedObjectEl.setAttribute("class", "markings-parent");
+      placedObjectEl.setAttribute("class", "stencils-parent");
       placedObjectEl.setAttribute("position", positionX + " 0.015 20");  // position="1.043 0.100 -3.463"
-      placedObjectEl.setAttribute("id", "markings-parent-offset20-" + positionX);
+      placedObjectEl.setAttribute("id", "stencils-parent-offset20-" + positionX);
       // add the new elmement to DOM
       document.getElementById(streetElementId).appendChild(placedObjectEl);
 
-      cloneMixin({objectMixinId: "markings stencil-only", parentId: "markings-parent-offset20-" + positionX, rotation: "-90 " + rotationY + " 0", step: 50, radius: 70});
-
+      cloneMixin({objectMixinId: "stencils word-only", parentId: "stencils-parent-offset20-" + positionX, rotation: "-90 " + rotationY + " 0", step: 50, radius: 70});
     };
 
     if (segments[i].type == "drive-lane") {
@@ -596,24 +595,6 @@ function processSegments(segments, streetElementId) {
 
     if (segments[i].type == "parking-lane") {
       mixinId = "drive-lane";
-
-      // var thisPositionX = positionX;
-      //
-      // if (positionX > streetWidth / 2) {thisPositionX = positionX - 0.4} else {thisPositionX = positionX + 0.4}
-      //
-      // console.log(thisPositionX);
-      //
-      // // make the parent for all the objects to be cloned
-      // var placedObjectEl = document.createElement("a-entity");
-      // placedObjectEl.setAttribute("class", "markings-parent");
-      // placedObjectEl.setAttribute("position", thisPositionX + " 0.015 0");  // position="1.043 0.100 -3.463"
-      // placedObjectEl.setAttribute("id", "markings-parent-" + positionX);
-      // // add the new elmement to DOM
-      // document.getElementById(streetElementId).appendChild(placedObjectEl);
-      //
-      //
-      // cloneMixin({objectMixinId: "markings parking-delimiter", parentId: "markings-parent-" + positionX, rotation: "-90 " + rotationY + " 0", step: 8, radius: 70});
-
     };
 
     if (isSidewalk(segments[i].type)) {
@@ -693,15 +674,15 @@ function processBuildings(streetObject, buildingElementId) {
 
       // make the parent for all the objects to be cloned
       var placedObjectEl = document.createElement("a-entity");
-      placedObjectEl.setAttribute("class", "markings-parent");
+      placedObjectEl.setAttribute("class", "stencils-parent");
       placedObjectEl.setAttribute("position", (objectPositionX + offset) + " -0.1 0");  // position="1.043 0.100 -3.463"
-      placedObjectEl.setAttribute("id", "markings-parent-" + positionX);
+      placedObjectEl.setAttribute("id", "stencils-parent-" + positionX);
       // add the new elmement to DOM
       document.getElementById(buildingElementId).appendChild(placedObjectEl);
 
       // clone a bunch of lamps under the parent
       var rotationCloneY = (side == "right") ? 180 : 0;
-      cloneMixin({objectMixinId: "markings perpendicular-stalls", parentId: "markings-parent-" + positionX, rotation: "-90 " + rotationCloneY + " 0", step: 10, radius: 75});
+      cloneMixin({objectMixinId: "stencils perpendicular-stalls", parentId: "stencils-parent-" + positionX, rotation: "-90 " + rotationCloneY + " 0", step: 10, radius: 75});
 
     }
 
