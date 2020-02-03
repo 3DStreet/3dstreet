@@ -69,43 +69,48 @@ function cloneMixin({objectMixinId="", parentId="", step=15, radius=60, rotation
   }
 }
 
+// this function takes a list of segments and adds lane markings or "separator segments"
+// these are 0 width segments inserted into the street json prior to rendering
+// the basic logic is: if there are two adjacent "lane-ish" segments, then add lane separators
 function insertSeparatorSegments(segments) {
-  // takes a list of segments
-  // if adjacent `*lane`, add separator
-  // OLD SEGMENTS
-  // console.log('Old segments', segments);
 
+  // first, let's define what is a lane that will likely need adajcent striping?
+  function isLaneIsh(typeString) {
+    return (typeString.slice(typeString.length - 4) == "lane" || typeString == "light-rail" || typeString == "streetcar")
+  }
+
+  // then let's go through the segments array and build a new one with inserted separators
   const newValues = segments.reduce((newArray, currentValue, currentIndex, arr) => {
-    // don't insert a lane marker for the first segment
+    // don't insert a lane marker before the first segment
     if (currentIndex == 0) { return newArray.concat(currentValue) }
 
     const previousValue = arr[currentIndex - 1];
 
-    function isLaneIsh(typeString) {
-      return (typeString.slice(typeString.length - 4) == "lane" || typeString == "light-rail" || typeString == "streetcar")
-    }
-
-    // if current AND previous segments have last 4 characters of `type` = "lane"
+    // if both adjacent lanes are "laneish"
     if (isLaneIsh(currentValue.type) && isLaneIsh(previousValue.type)) {
-      // add zero width separator segment
+      // if in doubt start with a solid line
       var variantString = "solid";
 
-      // if identical lane types are adjacent, then used dashed
+      // if adjacent lane types are identical, then used dashed lines
       if (currentValue.type == previousValue.type) { variantString = "dashed" }
 
       // Or, if either is a drive lane or turn lane then use dashed
+      // Using dash vs solid for turn lanes along approach to intersections may need to be user defined
       if ((currentValue.type == "drive-lane" && previousValue.type == "turn-lane") || (previousValue.type == "drive-lane" && currentValue.type == "turn-lane")) { variantString = "dashed" }
 
       // if adjacent segments in opposite directions then use double yellow
       if (currentValue.variantString.split("|")[0] !== previousValue.variantString.split("|")[0]) {
         variantString = "doubleyellow";
+        // TODO: if adjacenet segments are both bike lanes, then use yellow short dash
       }
+
+      // special case -- if either lanes are turn lane shared, then use solid and long dash
 
       newArray.push( {type: "separator", variantString: variantString, width: 0} )
     }
 
     // if a *lane segment and divider are adjacent, use a solid separator
-    if ((currentValue.type.slice(currentValue.type.length - 4) == "lane" && previousValue.type == "divider") || (previousValue.type.slice(previousValue.type.length - 4) == "lane" && currentValue.type == "divider")) {
+    if ((isLaneIsh(currentValue.type) && previousValue.type == "divider") || (isLaneIsh(previousValue.type) && currentValue.type == "divider")) {
       newArray.push( {type: "separator", variantString: "solid", width: 0} )
     }
 
@@ -169,6 +174,7 @@ function processSegments(segments, streetElementId) {
     // Note: segment 3d models are outbound by default
     // If segment variant inbound, rotate segment model by 180 degrees
     var rotationY = (variantList[0] == "inbound") ? 180 : 0;
+    var isOutbound = (variantList[0] == "outbound") ? 1 : -1;
 
     // the 3d model file name of a segment type is usually identical, let's start with that
     var mixinId = segments[i].type;
@@ -225,7 +231,6 @@ function processSegments(segments, streetElementId) {
         var mixinId = "surface-green bus-lane";
       }
 
-      var parityRail = (variantList[0] == "outbound") ? 1 : -1;
       var objectMixinId = (segments[i].type == "streetcar") ? "trolley" : "tram";
 
       // <a-curve id="track1">
@@ -239,9 +244,9 @@ function processSegments(segments, streetElementId) {
       var pathEl = document.createElement("a-curve");
       pathEl.setAttribute("id", "path-" + i);
       pathEl.innerHTML = `
-        <a-curve-point position="${positionX} 0 ${75 * parityRail}"></a-curve-point>
+        <a-curve-point position="${positionX} 0 ${75 * isOutbound}"></a-curve-point>
         <a-curve-point position="${positionX} 0 0"></a-curve-point>
-        <a-curve-point position="${positionX} 0 ${-75 * parityRail}"></a-curve-point>
+        <a-curve-point position="${positionX} 0 ${-75 * isOutbound}"></a-curve-point>
       `
       document.getElementById(streetElementId).appendChild(pathEl);
 
@@ -301,20 +306,18 @@ function processSegments(segments, streetElementId) {
       placedObjectEl.setAttribute("id", "markings-parent-" + positionX);
       // add the new elmement to DOM
       document.getElementById(streetElementId).appendChild(placedObjectEl);
-      cloneMixin({objectMixinId: mixinString, parentId: "markings-parent-" + positionX, rotation: "-90 " + rotationY + " 0", step: 10, radius: 70});
+      cloneMixin({objectMixinId: mixinString, parentId: "markings-parent-" + positionX, rotation: "-90 " + rotationY + " 0", step: 15, radius: 70});
 
       if (variantList[1] == "shared") {
         // add an additional marking to represent the opposite turn marking stencil (rotated 180º)
         var placedObjectEl = document.createElement("a-entity");
         placedObjectEl.setAttribute("class", "markings-parent");
-        placedObjectEl.setAttribute("position", positionX + " 0.015 2");  // position="1.043 0.100 -3.463"
+        placedObjectEl.setAttribute("position", positionX + " 0.015 " + (-3 * isOutbound));  // position="1.043 0.100 -3.463"
         placedObjectEl.setAttribute("id", "markings-parent-offset2-" + positionX);
         // add the new elmement to DOM
         document.getElementById(streetElementId).appendChild(placedObjectEl);
-        cloneMixin({objectMixinId: mixinString, parentId: "markings-parent-offset2-" + positionX, rotation: "-90 " + (rotationY + 180) + " 0", step: 10, radius: 70});
+        cloneMixin({objectMixinId: mixinString, parentId: "markings-parent-offset2-" + positionX, rotation: "-90 " + (rotationY + 180) + " 0", step: 15, radius: 70});
       }
-
-
     }
 
     if (segments[i].type == "divider" && variantList[0] == "bollard") {
