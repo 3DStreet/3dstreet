@@ -108,6 +108,11 @@ function insertSeparatorSegments(segments) {
       }
 
       // special case -- if either lanes are turn lane shared, then use solid and long dash
+      if (currentValue.type == "turn-lane" && currentValue.variantString.split("|")[1] == "shared") {
+        variantString = "soliddashedyellow";
+      } else if (previousValue.type == "turn-lane" && previousValue.variantString.split("|")[1] == "shared") {
+        variantString = "soliddashedyellowinverted";
+      }
 
       newArray.push( {type: "separator", variantString: variantString, width: 0} )
     }
@@ -602,6 +607,18 @@ function processSegments(segments, streetElementId) {
       scaleX = 1;
     };
 
+    if (segments[i].type == "separator" && variantList[0] == "soliddashedyellow") {
+      mixinId = "markings yellow solid-dashed";
+      positionY = positionY + 0.01; // make sure the lane marker is above the asphalt
+      scaleX = 1;
+    }
+
+    if (segments[i].type == "separator" && variantList[0] == "soliddashedyellowinverted") {
+      mixinId = "markings yellow solid-dashed";
+      positionY = positionY + 0.01; // make sure the lane marker is above the asphalt
+      scaleX = 1;
+      rotationY = "180";
+    }
 
     if (segments[i].type == "parking-lane") {
       mixinId = "drive-lane";
