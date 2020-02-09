@@ -434,7 +434,7 @@ function processSegments(segments, streetElementId) {
       document.getElementById(streetElementId).appendChild(placedObjectEl);
 
       var placedObjectEl = document.createElement("a-entity");
-      placedObjectEl.setAttribute("position", positionX + " 1.1 0.06");
+      placedObjectEl.setAttribute("position", positionX + " 1.2 0.06");
       placedObjectEl.setAttribute("geometry", "primitive: plane; width: 0.8; height: 1.6");
       placedObjectEl.setAttribute("material", "src:#wayfinding-map");
 
@@ -442,7 +442,7 @@ function processSegments(segments, streetElementId) {
       document.getElementById(streetElementId).appendChild(placedObjectEl);
 
       var placedObjectEl = document.createElement("a-entity");
-      placedObjectEl.setAttribute("position", positionX + " 1.1 -0.06");
+      placedObjectEl.setAttribute("position", positionX + " 1.2 -0.06");
       placedObjectEl.setAttribute("rotation", "0 180 0");
       placedObjectEl.setAttribute("geometry", "primitive: plane; width: 0.8; height: 1.6");
       placedObjectEl.setAttribute("material", "src:#wayfinding-map");
