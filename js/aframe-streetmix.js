@@ -424,21 +424,31 @@ function processSegments(segments, streetElementId) {
       document.getElementById(streetElementId).appendChild(placedObjectEl);
     };
 
-    if (segments[i].type == "sidewalk-wayfinding" && variantList[0] == "medium") {
-      mixinId = "sidewalk"; // this is the "ground, normal "
+    if (segments[i].type == "sidewalk-wayfinding") {
+      mixinId = "sidewalk"; // this is the "ground, normal"
 
       var placedObjectEl = document.createElement("a-entity");
-      placedObjectEl.setAttribute("class", segments[i].type);
-      placedObjectEl.setAttribute("scale", "0.1 0.13 0.1");
-      placedObjectEl.setAttribute("position", positionX + "0 0");
-      placedObjectEl.setAttribute("rotation", "0 270 0")
-      placedObjectEl.setAttribute("obj-model", "obj", "#pylon-obj");
-      placedObjectEl.setAttribute("id", streetElementId + segments[i].type)
+      placedObjectEl.setAttribute("position", positionX + " 1 0");
+      placedObjectEl.setAttribute("mixin", "wayfinding-box");
       // add the new elmement to DOM
       document.getElementById(streetElementId).appendChild(placedObjectEl);
-      // workaround to assign material: fetch the same element after added to DOM then change material SRC
-      placedObjectEl = document.getElementById(streetElementId + segments[i].type);
-      placedObjectEl.setAttribute("material", "src:#wayfinding");
+
+      var placedObjectEl = document.createElement("a-entity");
+      placedObjectEl.setAttribute("position", positionX + " 1.1 0.06");
+      placedObjectEl.setAttribute("geometry", "primitive: plane; width: 0.8; height: 1.6");
+      placedObjectEl.setAttribute("material", "src:#wayfinding-map");
+
+      // add the new elmement to DOM
+      document.getElementById(streetElementId).appendChild(placedObjectEl);
+
+      var placedObjectEl = document.createElement("a-entity");
+      placedObjectEl.setAttribute("position", positionX + " 1.1 -0.06");
+      placedObjectEl.setAttribute("rotation", "0 180 0");
+      placedObjectEl.setAttribute("geometry", "primitive: plane; width: 0.8; height: 1.6");
+      placedObjectEl.setAttribute("material", "src:#wayfinding-map");
+      // add the new elmement to DOM
+      document.getElementById(streetElementId).appendChild(placedObjectEl);
+
     };
 
     if (segments[i].type == "sidewalk-bench") {
