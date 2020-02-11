@@ -265,7 +265,7 @@ function processSegments(segments, streetElementId) {
       placedObjectEl.setAttribute("position", positionX + " 0 0");
       placedObjectEl.setAttribute("rotation", "0 " + rotationBusY + " 0");
       placedObjectEl.setAttribute("mixin", objectMixinId);
-      placedObjectEl.setAttribute("alongpath", "curve: #path-" + i + "; loop:true; dur:10000;")
+      placedObjectEl.setAttribute("alongpath", "curve: #path-" + i + "; loop:true; dur:20000;")
 
       // add the new elmement to DOM
       document.getElementById(streetElementId).appendChild(placedObjectEl);
