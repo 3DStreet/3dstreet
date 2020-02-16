@@ -3,6 +3,7 @@
     <script src="https://aframe.io/releases/1.0.4/aframe.min.js"></script>
     <script src="https://unpkg.com/aframe-atlas-uvs-component@2.1.0/dist/aframe-atlas-uvs-component.min.js"></script>
     <script src="https://unpkg.com/aframe-orbit-controls@1.2.0/dist/aframe-orbit-controls.min.js"></script>
+    <script src="https://raw.githack.com/fernandojsg/aframe-teleport-controls/master/dist/aframe-teleport-controls.min.js"></script>
 
     <!-- <script src="js/offline/aframe.min.js"></script>
     <script src="js/offline/aframe-atlas-uvs-component.min.js"></script>
@@ -163,13 +164,15 @@
         <image id="subtitle" src="materials/subtitle.png" />
       </a-assets>
 
-      <a-entity id="cam-parent">
+      <a-entity id="cameraRig">
         <a-entity id="camera" camera wasd-controls="enabled: false" orbit-controls="autoRotate: true;autoRotateSpeed:0.01;target: 0 0 0;initialPosition:0 4 15;minDistance:3;maxDistance:100;enableKeys:false"></a-entity>
+
+        <a-entity id="leftHand" hand-controls="hand: left; handModelStyle: lowPoly; color: #ccffcc" teleport-controls="cameraRig: #cameraRig; button: trigger"></a-entity>
+        <a-entity id="rightHand" hand-controls="hand: right; handModelStyle: lowPoly; color: #ccffcc" teleport-controls="cameraRig: #cameraRig; button: trigger"></a-entity>
       </a-entity>
 
-      <a-entity id="leftHand" hand-controls="hand: left; handModelStyle: lowPoly; color: #ffcccc"></a-entity>
-      <a-entity id="rightHand" hand-controls="hand: right; handModelStyle: lowPoly; color: #ffcccc"></a-entity>
-      
+      <a-entity class="playme" sound="src: #ambientmp3; loop: true;"></a-entity>
+
       <a-entity light="type: ambient; color: #FFF; intensity: 2"></a-entity>
       <a-entity light="type: directional; color: #FFF; intensity: 0.6" position="0.5 1 -1"></a-entity>
 
