@@ -1,10 +1,11 @@
 <html>
   <head>
-    <!-- <script src="https://aframe.io/releases/1.0.3/aframe.min.js"></script>
-    <script src="https://unpkg.com/aframe-atlas-uvs-component@2.1.0/dist/aframe-atlas-uvs-component.min.js"></script>
+    <!-- <script src="https://unpkg.com/aframe-atlas-uvs-component@2.1.0/dist/aframe-atlas-uvs-component.min.js"></script>
     <script src="https://unpkg.com/aframe-orbit-controls@1.2.0/dist/aframe-orbit-controls.min.js"></script> -->
 
-    <script src="js/offline/aframe.min.js"></script>
+    <script src="https://aframe.io/releases/1.0.4/aframe.min.js"></script>
+    <script src="https://raw.githack.com/fernandojsg/aframe-teleport-controls/master/dist/aframe-teleport-controls.min.js"></script>
+
     <script src="js/offline/aframe-atlas-uvs-component.min.js"></script>
     <script src="js/offline/aframe-orbit-controls.min.js"></script>
     <script src="js/offline/aframe-gridhelper-component.min.js"></script>
@@ -55,12 +56,17 @@
       <a-entity light="type: ambient; color: #FFF; intensity: 2"></a-entity>
       <a-entity light="type: directional; color: #FFF; intensity: 0.6" position="0.5 1 -1"></a-entity>
       <a-sky src="assets/sky14_brown.jpg" position="0 -10 0"></a-sky>
-      <a-entity id="cam-parent">
+
+      <a-entity id="cameraRig">
         <a-entity id="camera"
                   camera
                   wasd-controls="enabled: false"
                   orbit-controls="autoRotate: true;autoRotateSpeed:0.02;target: 0 3 0;initialPosition:3 4 8;minDistance:3;maxDistance:100;enableKeys:false"></a-entity>
+
+        <a-entity id="leftHand" hand-controls="hand: left; handModelStyle: lowPoly; color: #ccffcc" teleport-controls="cameraRig: #cameraRig; button: trigger"></a-entity>
+        <a-entity id="rightHand" hand-controls="hand: right; handModelStyle: lowPoly; color: #ccffcc" teleport-controls="cameraRig: #cameraRig; button: trigger"></a-entity>
       </a-entity>
+
 
       <a-entity id="signal-system-2" position="8 0 0">
         <a-entity class="mast" gltf-model="#mast-model"></a-entity>
