@@ -1,21 +1,17 @@
 <html>
   <head>
     <script src="https://aframe.io/releases/1.0.4/aframe.min.js"></script>
-    <script src="https://unpkg.com/aframe-atlas-uvs-component@2.1.0/dist/aframe-atlas-uvs-component.min.js"></script>
-    <script src="https://unpkg.com/aframe-orbit-controls@1.2.0/dist/aframe-orbit-controls.min.js"></script>
+    <script src="src/lib/aframe-atlas-uvs-component.min.js"></script>
+    <script src="src/lib/aframe-orbit-controls.min.js"></script>
     <script src="https://raw.githack.com/fernandojsg/aframe-teleport-controls/master/dist/aframe-teleport-controls.min.js"></script>
-
-    <!-- <script src="js/offline/aframe.min.js"></script>
-    <script src="js/offline/aframe-atlas-uvs-component.min.js"></script>
-    <script src="js/offline/aframe-orbit-controls.min.js"></script> -->
 
     <script src="https://unpkg.com/aframe-ground-component@0.0.4/dist/aframe-ground-component.min.js"></script>
     <script src="https://unpkg.com/aframe-alongpath-component@1.0.5/dist/aframe-alongpath-component.min.js"></script>
     <script src="https://unpkg.com/aframe-curve-component@0.1.3/dist/aframe-curve-component.min.js"></script>
 
-    <script src="js/streetmix-utils.js"></script>
-    <script src="js/aframe-streetmix.js"></script>
-    <script src="js/ocean-plane.js"></script>
+    <script src="src/streetmix-utils.js"></script>
+    <script src="src/aframe-streetmix.js"></script>
+    <script src="src/components/ocean-plane.js"></script>
 
     <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.4.1/css/bootstrap.min.css" integrity="sha384-Vkoo8x4CGsO3+Hhxv8T/Q5PaXtkKtu6ug5TOeNV6gBiFeWPGFN9MuhOf23Q9Ifjh" crossorigin="anonymous">
     <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/font-awesome/4.7.0/css/font-awesome.min.css">
@@ -52,7 +48,7 @@
             </form>
         </div>
     </nav>
-    <a-scene renderer="colorManagement: true; highRefreshRate: true; foveationLevel: 3; physicallyCorrectLights: true; logarithmicDepthBuffer: false;" fogoff="type: linear; color: #D5C69B; far: 200" gltf-model="dracoDecoderPath: js/;">
+    <a-scene renderer="colorManagement: true; highRefreshRate: true; foveationLevel: 3; physicallyCorrectLights: true; logarithmicDepthBuffer: false;" fogoff="type: linear; color: #D5C69B; far: 200" gltf-model="dracoDecoderPath: src/lib/;">
       <a-assets>
         <!-- sidewalk props -->
         <a-asset-item id="treemodel3" src="assets/objects/SM_Env_Tree_03.gltf"></a-asset-item>
