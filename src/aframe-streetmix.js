@@ -10,18 +10,6 @@ const initialState = {
 }
 const state = initialState;
 
-AFRAME.registerComponent('af', {
-  dependencies: ['material', 'geometry'],
-  init: function () {
-    // TODO: wait to fire this until material loaded event instead of setTimeout
-    // https://aframe.io/docs/1.0.0/components/visible.html#hiding-entity-until-texture-loaded
-    setTimeout(() => {
-      this.el.getObject3D('mesh').material.map.anisotropy = 4;
-      this.el.getObject3D('mesh').material.map.needsUpdate = true;
-    }, 5000);
-  },
-})
-
 // Width - These are the intended default widths of the models in meters.
 const defaultModelWidthsInMeters = {
   "bike-lane": 1.8,
