@@ -1,23 +1,28 @@
-file guide
-index.html -> 3d rendering of streetmix segments using low poly voxel graphics
-index-slide.html -> prototype oct 2019 for slide presentation changing viewpoints and perspective
-index-texture.html -> work in progress to provide better visual fidelity 3d rendering
+Restructure A-Frame project to match this guide:
+https://stackoverflow.com/questions/56712809/what-is-the-accepted-best-practice-method-to-structure-an-a-frame-projects-fi/56713402#56713402
+
+pathEl.innerHTML = `
+  <a-curve-point sound="src: #tram-pass-mp3; on: alongpath-trigger-activated;" position="${positionX} 0 ${75 * isOutbound}"></a-curve-point>
+  <a-curve-point position="${positionX} 0 0"></a-curve-point>
+  <a-curve-point position="${positionX} 0 ${-75 * isOutbound}"></a-curve-point>
+
+  var entity = document.querySelector('.playme');
+  entity.components.sound.playSound();
+
+https://stackoverflow.com/questions/57285828/a-frame-mute-all-sound-including-sound-component-on-button-click
 
 ### Useful tools
 https://glb-packer.glitch.me/
 
 ### Some notes on dimensions
 
-Each segment "type" is a separate model. The models are created using MagicaVoxel. Normally a MagicaVoxel voxel = 1 meter in A-Frame by default, however for this project each voxel represents 1 decimeter (1/10th of a meter). The app reduces the size of the model (scale * 0.1) to compensate.
+Default segment widths:
+* bike-lane 1.8m
+* drive-lane 3m
+* divider 0.3m
+* parking-lane 2.4m
 
-Default model widths:
-* bike-lane 1.8m (18 voxel units)
-* drive-lane 3m (30 voxel units)
-* divider 0.3m (3 voxel units) (double yellow lines)
-* parking-lane 2.4m (24 voxel units)
-
-
-### Harrison Street Segment size notes
+### 15th and Harrison Street Segment size notes
 15 sidewalk1
 8 parking
 5 bike lane
@@ -28,6 +33,7 @@ Default model widths:
 8 parking2
 10 sidewalk2
 
+Sources:
 https://striping.sfmta.com/drawings/H_Streets/Harrison%20St/Harrison%20st_str-8160.2%20(20th%20st%20to%2015th%20st).pdf
 https://www.sfmta.com/reports/striping-drawings
 
@@ -37,13 +43,15 @@ https://glitch.com/edit/#!/orbit-to-cam-position?path=POSITION-ROTATION.md:46:0
 https://stackoverflow.com/questions/29586422/three-js-ignore-parents-rotation
 https://stackoverflow.com/questions/15181351/keep-object-rotation-based-on-parent-other-object-coordinate-system-in-three-js
 
-
 orbit-to-cam-position
 
 Show
 POSITION-ROTATION.md
 Connected
 aframe.scene.camera.getposition,zoom,rotation camEl = scene. AFRAME.scenes[0].camera.position AFRAME.scenes[0].camera.quaternion
+
+
+### Animation notes (not used)
 
 AFRAME.scenes[0].camera.zoom remove attribute orbit-controls manually set camera position and rotation change rotation to euler convenience copy pasta for set 1 json with both
 
