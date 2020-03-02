@@ -1,16 +1,4 @@
 
-function openStreetmixURL() {
-  var streetURL = document.getElementById("input-url").value;
-  window.open(
-    streetURL, "_blank");
-}
-
-function openJSONURL() {
-  var streetURL = document.getElementById("input-url").value;
-  window.open(
-    streetmixUserToAPI(streetURL), "_blank");
-}
-
 function streetmixUserToAPI(userURL) {
   // this takes in a user facing Streetmix.net URL like https://streetmix.net/kfarr/3/a-frame-city-builder-street-only
   // and turns it into the API redirect URL like https://streetmix.net/api/v1/streets?namespacedId=3&creatorId=kfarr
@@ -40,3 +28,15 @@ function streetmixAPIToUser(APIURL) {
   var creatorId = getQueryVariable(queryString, "creatorId");
   return "https://streetmix.net/" + creatorId + "/" + namespacedId;
 };
+
+function openStreetmixURL() {
+  var streetURL = document.getElementById("input-url").value;
+  window.open(
+    streetURL, "_blank");
+}
+
+function openJSONURL() {
+  var streetURL = document.getElementById("input-url").value;
+  window.open(
+    streetmixUserToAPI(streetURL), "_blank");
+}
