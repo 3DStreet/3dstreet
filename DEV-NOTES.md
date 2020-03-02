@@ -1,19 +1,13 @@
-Restructure A-Frame project to match this guide:
-https://stackoverflow.com/questions/56712809/what-is-the-accepted-best-practice-method-to-structure-an-a-frame-projects-fi/56713402#56713402
-
-pathEl.innerHTML = `
-  <a-curve-point sound="src: #tram-pass-mp3; on: alongpath-trigger-activated;" position="${positionX} 0 ${75 * isOutbound}"></a-curve-point>
-  <a-curve-point position="${positionX} 0 0"></a-curve-point>
-  <a-curve-point position="${positionX} 0 ${-75 * isOutbound}"></a-curve-point>
-
-  var entity = document.querySelector('.playme');
-  entity.components.sound.playSound();
+### Audio Notes
+```
+var entity = document.querySelector('.playme');
+entity.components.sound.playSound();
+```
 
 https://stackoverflow.com/questions/57285828/a-frame-mute-all-sound-including-sound-component-on-button-click
 
 ### Useful tools
 https://glb-packer.glitch.me/
-
 
 ### Potential Backgrounds
 https://www.flickr.com/photos/sitoo/48130422838/
