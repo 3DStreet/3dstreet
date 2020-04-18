@@ -6,16 +6,16 @@
     <script src="https://raw.githack.com/fernandojsg/aframe-teleport-controls/master/dist/aframe-teleport-controls.min.js"></script>
 
     <script src="https://unpkg.com/aframe-ground-component@0.0.4/dist/aframe-ground-component.min.js"></script>
-    <script src="https://unpkg.com/aframe-alongpath-component@1.0.5/dist/aframe-alongpath-component.min.js"></script>
     <script src="https://unpkg.com/aframe-curve-component@0.1.3/dist/aframe-curve-component.min.js"></script>
 
     <script src="src/streetmix-utils.js"></script>
     <script src="src/aframe-streetmix.js"></script>
     <script src="src/components/ocean-plane.js"></script>
+    <script src="src/components/aframe-alongpath-component.js"></script>
     <script src="src/components/anisotropy.js"></script>
 
     <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.4.1/css/bootstrap.min.css" integrity="sha384-Vkoo8x4CGsO3+Hhxv8T/Q5PaXtkKtu6ug5TOeNV6gBiFeWPGFN9MuhOf23Q9Ifjh" crossorigin="anonymous">
-    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/font-awesome/4.7.0/css/font-awesome.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.13.0/css/all.min.css">
 
     <style>
       .rs-base {
@@ -36,13 +36,16 @@
                     <input id="input-url" type="text" class="form-control d-none d-lg-block" onfocus="this.select();" title="Paste in Streetmix.net URL such as 'https://streetmix.net/kfarr/3'" />
                     <span class="input-group-append">
                         <button class="btn btn-outline-light border" type="button" onclick="processURLChange()" title="Clear Scene and Re-Render">
-                            <i class="fa fa-refresh"></i>
+                            <i class="fa fa-sync"></i>
                         </button>
                         <button class="btn btn-outline-light border" type="button" onclick="openStreetmixURL()" title="Edit Street in Streetmix2D">
-                            <i class="fa fa-pencil"></i>
+                            <i class="fa fa-edit"></i>
                         </button>
                         <button class="btn btn-outline-light border" type="button" onclick="openJSONURL()" title="View Raw Streetmix JSON">
                             <i class="fa fa-code"></i>
+                        </button>
+                        <button class="btn btn-outline-light border" type="button" onclick="startAudio()" title="Play Audio">
+                            <i id="audio-icon" class="fa fa-volume-mute" style="color: pink"></i>
                         </button>
                     </span>
                 </div>
@@ -51,6 +54,10 @@
     </nav>
     <a-scene renderer="colorManagement: true; highRefreshRate: true; foveationLevel: 3; physicallyCorrectLights: true; logarithmicDepthBuffer: false;" fogoff="type: linear; color: #D5C69B; far: 200" gltf-model="dracoDecoderPath: src/lib/;">
       <a-assets>
+        <!-- audio -->
+        <audio id="ambientmp3" src="assets/audio/SSL_16_11_AMB_EXT_SF_ALAMO_SQ.mp3" preload="none"></audio>
+        <audio id="tram-pass-mp3" src="assets/audio/Tram-Pass-By-Fast-shortened.mp3" preload="auto"></audio>
+
         <!-- sidewalk props -->
         <a-asset-item id="treemodel3" src="assets/objects/SM_Env_Tree_03.gltf"></a-asset-item>
         <a-asset-item id="palmtreemodel" src="assets/objects/PalmTree.gltf"></a-asset-item>
@@ -134,7 +141,7 @@
         <!-- vehicles -->
         <a-mixin id="bus" gltf-model="#xd40" scale="1.55 1.55 1.55"></a-mixin>
         <a-mixin id="car" gltf-model="#carmodel"></a-mixin>
-        <a-mixin id="tram" gltf-model="#trammodel" scale="1 1 1"></a-mixin>
+        <a-mixin id="tram" gltf-model="#trammodel" sound="src: #tram-pass-mp3;positional:false;volume: 0.3"></a-mixin>
         <a-mixin id="trolley" gltf-model="#trolleymodel" scale="1 1 1"></a-mixin>
         <a-mixin id="bus-shadow" geometry="width: 12; height: 3; primitive: plane"  material="src: url(assets/materials/bus-shadow.png); alphaTest: 0;transparent:true; roughness: 1;" ></a-mixin>
         <a-mixin id="car-shadow" geometry="width: 4.7; height: 2.5; primitive: plane"  material="src: url(assets/materials/bus-shadow.png); alphaTest: 0;transparent:true; roughness: 1;" ></a-mixin>
@@ -227,4 +234,19 @@
 
     </a-scene>
   </body>
+  <script>
+    function startAudio() {
+      state.sounds.enabled = true;
+
+      var entity = document.querySelector('.playme');
+      entity.components.sound.playSound();
+
+      document.getElementById("audio-icon").setAttribute("class","fa fa-volume-up");
+      document.getElementById("audio-icon").setAttribute("style","color: lightgreen");
+    }
+    document.querySelector('a-scene').addEventListener('enter-vr', function () {
+      console.log("ENTERED VR");
+      startAudio();
+    });
+  </script>
 </html>

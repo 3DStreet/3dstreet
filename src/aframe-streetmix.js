@@ -5,10 +5,13 @@ const initialState = {
     paths: true,
   },
   textures: {
-    suffix: '-t1'
+    suffix: '-t1',
+  },
+  sounds: {
+    enabled: false,
   }
 }
-const state = initialState;
+var state = initialState;
 
 // Width - These are the intended default widths of the models in meters.
 const defaultModelWidthsInMeters = {
@@ -240,9 +243,9 @@ function processSegments(segments, streetElementId) {
       var pathEl = document.createElement("a-curve");
       pathEl.setAttribute("id", "path-" + i);
       pathEl.innerHTML = `
-        <a-curve-point position="${positionX} 0 ${75 * isOutbound}"></a-curve-point>
-        <a-curve-point position="${positionX} 0 0"></a-curve-point>
-        <a-curve-point position="${positionX} 0 ${-75 * isOutbound}"></a-curve-point>
+        <a-curve-point id="checkpoint1" position="${positionX} 0 ${75 * isOutbound}"></a-curve-point>
+        <a-curve-point id="checkpoint2" position="${positionX} 0 0"></a-curve-point>
+        <a-curve-point id="checkpoint3" position="${positionX} 0 ${-75 * isOutbound}"></a-curve-point>
       `
       document.getElementById(streetElementId).appendChild(pathEl);
 
@@ -258,6 +261,12 @@ function processSegments(segments, streetElementId) {
       // add the new elmement to DOM
       document.getElementById(streetElementId).appendChild(placedObjectEl);
 
+      placedObjectEl.addEventListener("movingstarted", function(e) {
+        console.log("movingstarted", e);
+        if (state.sounds.enabled) {
+          this.components.sound.playSound();
+        }
+      })
 
       // make the parent for all the objects to be cloned
       var placedObjectEl = document.createElement("a-entity");
