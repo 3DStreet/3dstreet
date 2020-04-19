@@ -5,7 +5,11 @@ function streetmixUserToAPI(userURL) {
   var pathArray = new URL(userURL).pathname.split( '/' );
   creatorId = pathArray[1];
   namespacedId = pathArray[2];
-  return "https://streetmix.net/api/v1/streets?namespacedId=" + namespacedId + "&creatorId=" + creatorId;
+  if (creatorId == "-") {
+    return "https://streetmix.net/api/v1/streets?namespacedId=" + namespacedId;
+  } else {
+    return "https://streetmix.net/api/v1/streets?namespacedId=" + namespacedId + "&creatorId=" + creatorId;
+  }
 };
 
 function streetmixAPIToUser(APIURL) {
@@ -26,6 +30,10 @@ function streetmixAPIToUser(APIURL) {
   var queryString = new URL(APIURL).search.substring(1);
   var namespacedId = getQueryVariable(queryString, "namespacedId");
   var creatorId = getQueryVariable(queryString, "creatorId");
+  if (typeof creatorId == 'undefined') {
+    creatorId = '-';
+  }
+
   return "https://streetmix.net/" + creatorId + "/" + namespacedId;
 };
 
