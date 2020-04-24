@@ -57,6 +57,7 @@
         <!-- audio -->
         <audio id="ambientmp3" src="assets/audio/SSL_16_11_AMB_EXT_SF_ALAMO_SQ.mp3" preload="none"></audio>
         <audio id="tram-pass-mp3" src="assets/audio/Tram-Pass-By-Fast-shortened.mp3" preload="auto"></audio>
+        <audio id="trolley-pass-mp3" src="assets/audio/Streetcar-passing.mp3" preload="auto"></audio>
 
         <!-- sidewalk props -->
         <a-asset-item id="treemodel3" src="assets/objects/SM_Env_Tree_03.gltf"></a-asset-item>
@@ -142,7 +143,7 @@
         <a-mixin id="bus" gltf-model="#xd40" scale="1.55 1.55 1.55"></a-mixin>
         <a-mixin id="car" gltf-model="#carmodel"></a-mixin>
         <a-mixin id="tram" gltf-model="#trammodel" sound="src: #tram-pass-mp3;positional:false;volume: 0.4"></a-mixin>
-        <a-mixin id="trolley" gltf-model="#trolleymodel" scale="1 1 1"></a-mixin>
+        <a-mixin id="trolley" gltf-model="#trolleymodel" sound="src: #trolley-pass-mp3;positional:false;volume: 0.4"scale="1 1 1"></a-mixin>
         <a-mixin id="bus-shadow" geometry="width: 12; height: 3; primitive: plane"  material="src: url(assets/materials/bus-shadow.png); alphaTest: 0;transparent:true; roughness: 1;" ></a-mixin>
         <a-mixin id="car-shadow" geometry="width: 4.7; height: 2.5; primitive: plane"  material="src: url(assets/materials/bus-shadow.png); alphaTest: 0;transparent:true; roughness: 1;" ></a-mixin>
 
