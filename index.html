@@ -96,11 +96,11 @@
         <a-mixin id="bus-lane-t0" geometry="width:3;height:150;primitive:plane" material="repeat:1.5 75;src:assets/materials/asphaltred1hd_Base_Color.jpg;normalTextureRepeat:1.5 75;normalMap:assets/materials/asphaltred1hd_Normal.jpg;"></a-mixin>
 
         <!-- optimized textures - used by default -->
-        <a-mixin id="drive-lane-t1" geometry="width:3;height:150;primitive:plane;segments-height:15" material="repeat:0.3 25;offset:0.55 0;src:assets/materials/TexturesCom_Roads0086_1_seamless_S_rotate.jpg;"></a-mixin>
-        <a-mixin id="bike-lane-t1" geometry="width:1.8;height:150;primitive:plane;segments-height:15" material="repeat:0.3 25;offset:0.55 0;roughness:1;metalness:0;src:assets/materials/TexturesCom_Roads0086_1_seamless_S_rotate.jpg;"></a-mixin>
-        <a-mixin id="sidewalk-t1" geometry="width:3;height:150;primitive:plane;segments-height:15" material="repeat:1.5 75;src:assets/materials/TexturesCom_FloorsRegular0301_1_seamless_S.jpg;"></a-mixin>
-        <a-mixin id="bus-lane-t1" geometry="width:3;height:150;primitive:plane;segments-height:15" material="repeat:0.3 25;offset:0.55 0;src:assets/materials/TexturesCom_Roads0086_1_seamless_S_rotate.jpg;"></a-mixin>
-        <a-mixin id="divider-t1" geometry="width:0.3;height:150;primitive:plane;segments-height:15" material="repeat:1 150;offset:0.415 0;normalTextureOffset:0.415 0;src:assets/materials/hatched_Base_Color.jpg;normalTextureRepeat:0.21 150;normalMap:assets/materials/hatched_Normal.jpg"></a-mixin>
+        <a-mixin id="drive-lane-t1" geometry="width:3;height:150;primitive:plane" material="repeat:0.3 25;offset:0.55 0;src:assets/materials/TexturesCom_Roads0086_1_seamless_S_rotate.jpg;"></a-mixin>
+        <a-mixin id="bike-lane-t1" geometry="width:1.8;height:150;primitive:plane" material="repeat:0.3 25;offset:0.55 0;roughness:1;metalness:0;src:assets/materials/TexturesCom_Roads0086_1_seamless_S_rotate.jpg;"></a-mixin>
+        <a-mixin id="sidewalk-t1" geometry="width:3;height:150;primitive:plane" material="repeat:1.5 75;src:assets/materials/TexturesCom_FloorsRegular0301_1_seamless_S.jpg;"></a-mixin>
+        <a-mixin id="bus-lane-t1" geometry="width:3;height:150;primitive:plane" material="repeat:0.3 25;offset:0.55 0;src:assets/materials/TexturesCom_Roads0086_1_seamless_S_rotate.jpg;"></a-mixin>
+        <a-mixin id="divider-t1" geometry="width:0.3;height:150;primitive:plane" material="repeat:1 150;offset:0.415 0;normalTextureOffset:0.415 0;src:assets/materials/hatched_Base_Color.jpg;normalTextureRepeat:0.21 150;normalMap:assets/materials/hatched_Normal.jpg"></a-mixin>
         <a-mixin id="safehit" gltf-model="#flexiguide-glb" scale="1 1 1"></a-mixin>
 
         <!-- lane separator markings atlas -->
@@ -141,7 +141,7 @@
         <!-- vehicles -->
         <a-mixin id="bus" gltf-model="#xd40" scale="1.55 1.55 1.55"></a-mixin>
         <a-mixin id="car" gltf-model="#carmodel"></a-mixin>
-        <a-mixin id="tram" gltf-model="#trammodel" sound="src: #tram-pass-mp3;positional:false;volume: 0.3"></a-mixin>
+        <a-mixin id="tram" gltf-model="#trammodel" sound="src: #tram-pass-mp3;positional:false;volume: 0.4"></a-mixin>
         <a-mixin id="trolley" gltf-model="#trolleymodel" scale="1 1 1"></a-mixin>
         <a-mixin id="bus-shadow" geometry="width: 12; height: 3; primitive: plane"  material="src: url(assets/materials/bus-shadow.png); alphaTest: 0;transparent:true; roughness: 1;" ></a-mixin>
         <a-mixin id="car-shadow" geometry="width: 4.7; height: 2.5; primitive: plane"  material="src: url(assets/materials/bus-shadow.png); alphaTest: 0;transparent:true; roughness: 1;" ></a-mixin>
@@ -175,7 +175,7 @@
         <a-entity id="rightHand" hand-controls="hand: right; handModelStyle: lowPoly; color: #ccffcc" teleport-controls="cameraRig: #cameraRig; button: trigger"></a-entity>
       </a-entity>
 
-      <a-entity class="playme" sound="src: #ambientmp3; loop: true;"></a-entity>
+      <a-entity class="playme" sound="src: #ambientmp3; positional: false; loop: true;"></a-entity>
 
       <a-entity light="type: ambient; color: #FFF; intensity: 2"></a-entity>
       <a-entity light="type: directional; color: #FFF; intensity: 0.6" position="0.5 1 -1"></a-entity>
@@ -236,16 +236,22 @@
   </body>
   <script>
     function startAudio() {
+      // set sounds enabled in global state
       state.sounds.enabled = true;
 
-      var entity = document.querySelector('.playme');
-      entity.components.sound.playSound();
+      // iterate through all entities with .playme class and start them playing
+      var entities = document.querySelectorAll('.playme'), i;
+      for (i = 0; i < entities.length; ++i) {
+        entities[i].components.sound.playSound();
+      }
 
+      // set 2D DOM toolbar volume icon to green to indicate state
       document.getElementById("audio-icon").setAttribute("class","fa fa-volume-up");
       document.getElementById("audio-icon").setAttribute("style","color: lightgreen");
     }
+
     document.querySelector('a-scene').addEventListener('enter-vr', function () {
-      console.log("ENTERED VR");
+      // console.log("ENTERED VR");
       startAudio();
     });
   </script>

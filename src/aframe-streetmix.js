@@ -264,6 +264,7 @@ function processSegments(segments, streetElementId) {
       placedObjectEl.addEventListener("movingstarted", function(e) {
         console.log("movingstarted", e);
         if (state.sounds.enabled) {
+          // this creates console error if the placedObjectEl does not have a sound associated
           this.components.sound.playSound();
         }
       })
