@@ -28,5 +28,8 @@ This is a component [originally written](https://samsunginter.net/a-frame-compon
 ### [components/gltf-part-reset.js](components/gltf-part-reset.js)
 `gltf-part-reset` is a slightly modified glTF loader component based on code from Mozilla Hubs that allows for resetting the relative location of a glTF part when loading individual parts from a larger glTF file.
 
+### [aframe-ground-component](https://github.com/kfarr/aframe-ground-component)
+`aframe-ground-component` is a modified version of the awesome [A-Frame Environment Component](https://github.com/supermedium/aframe-environment-component/) that removes removes environmental geometry and skybox while leaving just the ground. It also allows for reduction in triangle count to improve performance.
+
 ## Unmodified Components
 See [src/lib/](lib), included here to reduce fetching libraries remotely helpful for local development in bandwidth constricted environments.

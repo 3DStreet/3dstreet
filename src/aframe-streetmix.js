@@ -669,7 +669,7 @@ function processBuildings(streetObject, buildingElementId) {
       placedObjectEl.setAttribute("position", positionX + " -0.2 0");
       placedObjectEl.setAttribute("id", "ground-" + side);
       // add the new elmement to DOM
-      placedObjectEl.setAttribute("ground", "ground: flat; groundTexture: squares; groundColor: #32460a; groundColor2: #526117; groundYScale: 0.2");
+      placedObjectEl.setAttribute("ground", "ground: flat; groundTexture: squares; groundColor: #32460a; groundColor2: #526117; groundYScale: 0.2; resolution: 2;");
       document.getElementById(buildingElementId).appendChild(placedObjectEl);
     }
 
@@ -689,7 +689,7 @@ function processBuildings(streetObject, buildingElementId) {
       placedObjectEl.setAttribute("position", positionX + " -0.2 0");
       placedObjectEl.setAttribute("id", "ground-" + side);
       // add the new elmement to DOM
-      placedObjectEl.setAttribute("ground", "ground: flat; groundTexture: squares; groundColor: #292c2a; groundColor2: #343434; groundYScale: 0.2");
+      placedObjectEl.setAttribute("ground", "ground: flat; groundTexture: squares; groundColor: #292c2a; groundColor2: #343434; groundYScale: 0.2; resolution: 2;");
       document.getElementById(buildingElementId).appendChild(placedObjectEl);
 
     }
@@ -700,7 +700,7 @@ function processBuildings(streetObject, buildingElementId) {
       placedObjectEl.setAttribute("position", positionX + " -0.2 0");
       placedObjectEl.setAttribute("id", "ground-" + side);
       // add the new elmement to DOM
-      placedObjectEl.setAttribute("ground", "ground: flat; groundTexture: squares; groundColor: #292c2a; groundColor2: #343434; groundYScale: 0.2");
+      placedObjectEl.setAttribute("ground", "ground: flat; groundTexture: squares; groundColor: #292c2a; groundColor2: #343434; groundYScale: 0.2; resolution: 2;");
       document.getElementById(buildingElementId).appendChild(placedObjectEl);
 
       // place the parking stall stencils next
