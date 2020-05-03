@@ -749,7 +749,7 @@ function processBuildings(streetObject, buildingElementId) {
 
       // clone a bunch of lamps under the parent
       var rotationCloneY = (side == "right") ? -90 : 90;
-      cloneMixin({objectMixinId: "fence", parentId: "fence-parent-" + positionX, rotation: "0 " + rotationCloneY + " 0", step: 2.40, radius: 75});
+      cloneMixin({objectMixinId: "fence", parentId: "fence-parent-" + positionX, rotation: "0 " + rotationCloneY + " 0", step: 9.25, radius: 70});
 
     }
   })
