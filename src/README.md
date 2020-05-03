@@ -25,8 +25,8 @@ This is a component [originally written](https://samsunginter.net/a-frame-compon
 ### [components/car.js](components/car.js)
 `car` component ([original source](https://github.com/dala00/a-frame-car-sample/blob/master/index.html)) used here in some experiments and slightly modified to work with vehicles from this project.
 
-### [components/gltf-part-reset.js](components/gltf-part-reset.js)
-`gltf-part-reset` is a slightly modified glTF loader component based on code from Mozilla Hubs that allows for resetting the relative location of a glTF part when loading individual parts from a larger glTF file.
+### [components/gltf-part-draco.js](components/gltf-part-draco.js)
+`gltf-part-draco` is a slightly modified glTF loader component based on the [gltf-part component from Superframe repo](https://github.com/supermedium/superframe/tree/master/components/gltf-part) that adds support for selecting a glTF part when using Draco mesh compression on an A-Frame scene.
 
 ### [aframe-ground-component](https://github.com/kfarr/aframe-ground-component)
 `aframe-ground-component` is a modified version of the awesome [A-Frame Environment Component](https://github.com/supermedium/aframe-environment-component/) that removes removes environmental geometry and skybox while leaving just the ground. It also allows for reduction in triangle count to improve performance.

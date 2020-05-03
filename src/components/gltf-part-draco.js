@@ -74,6 +74,9 @@ AFRAME.registerComponent('gltf-part', {
 
     mesh = part.getObjectByProperty('type', 'Mesh').clone(true);
 
+    // for future reference, this discards translation from gltf parent node
+    // mesh.position.set ( 0, 0, 0 );
+
     if (this.data.buffer) {
       mesh.geometry = mesh.geometry.toNonIndexed();
       return mesh;
