@@ -3,6 +3,7 @@
     <script src="https://aframe.io/releases/1.0.4/aframe.min.js"></script>
     <script src="src/lib/aframe-atlas-uvs-component.min.js"></script>
     <script src="src/lib/aframe-orbit-controls.min.js"></script>
+    <script src="src/lib/aframe-cubemap-component.js"></script>
     <script src="https://raw.githack.com/fernandojsg/aframe-teleport-controls/master/dist/aframe-teleport-controls.min.js"></script>
 
     <script src="https://unpkg.com/aframe-ground-component@0.0.5/dist/aframe-ground-component.min.js"></script>
@@ -87,7 +88,7 @@
         <img id="stencils-atlas" src="assets/materials/stencils-atlas_2048.png" />
         <img id="markings-atlas" src="assets/materials/lane-markings-atlas_1024.png" />
 
-        <!-- the sky -->
+        <!-- sky - equirectangular still used for envmap -->
         <img id="sky" position="0 -140 0" src="assets/CGSkies_0343_doubled_2048.jpg" />
 
         <!-- raw photogrammetry textures - unused by default -->
@@ -181,11 +182,9 @@
       <a-entity light="type: ambient; color: #FFF; intensity: 2"></a-entity>
       <a-entity light="type: directional; color: #FFF; intensity: 0.6" position="0.5 1 -1"></a-entity>
 
-      <a-ocean-plane height="100" width="100" position="0 -1 0" material="sphericalEnvMap: #sky;">
-         <!-- <a-animation attribute="position" to="0 0 100" dur="2500" repeat="indefinitely" easing="linear"></a-animation> -->
-      </a-ocean-plane>
+      <a-ocean-plane height="100" width="100" position="0 -1 0" material="sphericalEnvMap: #sky;"></a-ocean-plane>
 
-      <a-sky position="0 0 0" rotation="0 240 0" material="fog: false;src:#sky"></a-sky>
+      <a-entity id="skybox" cubemap="folder: assets/images/skybox/"></a-entity>
 
       <a-entity id="street-parent" position="0 0 0" rotation="0 0 0">
         <a-entity id="streets"></a-entity>
