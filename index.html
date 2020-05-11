@@ -1,6 +1,8 @@
 <html>
   <head>
-    <script src="https://aframe.io/releases/1.0.4/aframe.min.js"></script>
+    <!-- <script src="https://aframe.io/releases/1.0.4/aframe.min.js"></script> -->
+    <script src="https://cdn.jsdelivr.net/gh/aframevr/aframe@710dfc0ab24c9bd86ff54f5a7e6f9b1f64920fa2/dist/aframe-master.min.js"></script>
+
     <script src="src/lib/aframe-atlas-uvs-component.min.js"></script>
     <script src="src/lib/aframe-orbit-controls.min.js"></script>
     <script src="src/lib/aframe-cubemap-component.js"></script>
@@ -55,6 +57,15 @@
     </nav>
     <a-scene renderer="colorManagement: true; highRefreshRate: true; foveationLevel: 3; physicallyCorrectLights: true; logarithmicDepthBuffer: false;" fogoff="type: linear; color: #D5C69B; far: 200" gltf-model="dracoDecoderPath: src/lib/;">
       <a-assets>
+        <a-cubemap id="skycube">
+          <img src="assets/images/skybox/posx.jpg">
+          <img src="assets/images/skybox/negx.jpg">
+          <img src="assets/images/skybox/posy.jpg">
+          <img src="assets/images/skybox/negy.jpg">
+          <img src="assets/images/skybox/posz.jpg">
+          <img src="assets/images/skybox/negz.jpg">
+        </a-cubemap>
+
         <!-- audio -->
         <audio id="ambientmp3" src="assets/audio/SSL_16_11_AMB_EXT_SF_ALAMO_SQ.mp3" preload="none"></audio>
         <audio id="tram-pass-mp3" src="assets/audio/Tram-Pass-By-Fast-shortened.mp3" preload="auto"></audio>
@@ -89,7 +100,7 @@
         <img id="markings-atlas" src="assets/materials/lane-markings-atlas_1024.png" />
 
         <!-- sky - equirectangular still used for envmap -->
-        <img id="sky" position="0 -140 0" src="assets/CGSkies_0343_doubled_2048.jpg" />
+        <!-- <img id="sky" position="0 -140 0" src="assets/CGSkies_0343_doubled_2048.jpg" /> -->
 
         <!-- raw photogrammetry textures - unused by default -->
         <a-mixin id="bike-lane-t0" geometry="width:1.8;height:150;primitive:plane" material="repeat:2 150;src:assets/materials/bikelane_Base_Color.jpg;normalTextureRepeat:2 150;normalMap:assets/materials/bikelane_Normal.jpg"></a-mixin>
@@ -182,7 +193,7 @@
       <a-entity light="type: ambient; color: #FFF; intensity: 2"></a-entity>
       <a-entity light="type: directional; color: #FFF; intensity: 0.6" position="0.5 1 -1"></a-entity>
 
-      <a-ocean-plane height="100" width="100" position="0 -1 0" material="sphericalEnvMap: #sky;"></a-ocean-plane>
+      <a-ocean-plane height="100" width="100" position="0 -1 0" material="envMap: #skycube;"></a-ocean-plane>
 
       <a-entity id="skybox" cubemap="folder: assets/images/skybox/"></a-entity>
 
