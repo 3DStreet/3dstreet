@@ -31,5 +31,8 @@ This is a component [originally written](https://samsunginter.net/a-frame-compon
 ### [aframe-ground-component](https://github.com/kfarr/aframe-ground-component)
 `aframe-ground-component` is a modified version of the awesome [A-Frame Environment Component](https://github.com/supermedium/aframe-environment-component/) that removes environmental geometry and skybox while leaving just the ground. It also allows for reduction in triangle count by manually specifying ground elevation resolution. See more info [here on the component doc page](https://github.com/kfarr/aframe-ground-component#parameters).
 
+### [aframe-cubemap-component](lib/aframe-cubemap-component.js)
+`aframe-cubemap-component` is a slightly modified version of [this original cubemap sky component](https://github.com/bryik/aframe-cubemap-component/) that adds support for [sRGBEncoding per this ticket](https://github.com/bryik/aframe-cubemap-component/issues/13).
+
 ## Unmodified Components
 See [src/lib/](lib), included here to reduce fetching libraries remotely helpful for local development in bandwidth constricted environments.
