@@ -7,7 +7,13 @@ entity.components.sound.playSound();
 https://stackoverflow.com/questions/57285828/a-frame-mute-all-sound-including-sound-component-on-button-click
 
 ### Useful tools
-https://glb-packer.glitch.me/
+https://glb-packer.glitch.me/ (combining gltf, glb, and textures)
+gltf pack (optimizing meshes): https://github.com/zeux/meshoptimizer/tree/master/gltf
+
+### PBR Texture Helpful notes:
+https://docs.blender.org/manual/en/2.80/addons/io_scene_gltf2.html
+https://forum.substance3d.com/index.php?topic=3243.0
+https://cgaxis.com/
 
 ### Potential Backgrounds
 https://www.flickr.com/photos/sitoo/48130422838/
