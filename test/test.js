@@ -3,7 +3,7 @@
 const rewire = require('rewire');
 const assert = require('assert');
 
-const app = rewire('../src/streetmix-utils');
+const app = rewire('../src/tested/streetmix-utils');
 const streetmixUserToAPI = app.__get__('streetmixUserToAPI');
 
 describe('StreetmixUtils', function () {
