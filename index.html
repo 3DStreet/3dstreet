@@ -12,7 +12,6 @@
     <script src="https://unpkg.com/aframe-ground-component@0.0.5/dist/aframe-ground-component.min.js"></script>
     <script src="https://unpkg.com/aframe-curve-component@0.1.3/dist/aframe-curve-component.min.js"></script>
 
-    <script src="src/streetmix-utils.js"></script>
     <script src="src/tested/streetmix-utils.js"></script>
     <script src="src/aframe-streetmix.js"></script>
     <script src="src/components/ocean-plane.js"></script>
@@ -42,10 +41,10 @@
                         <button class="btn btn-outline-light border" type="button" onclick="processURLChange()" title="Clear Scene and Re-Render">
                             <i class="fa fa-sync"></i>
                         </button>
-                        <button class="btn btn-outline-light border" type="button" onclick="openStreetmixURL()" title="Edit Street in Streetmix2D">
+                        <button class="btn btn-outline-light border" type="button" onclick="window.open(document.getElementById('input-url').value, '_blank');" title="Edit Street in Streetmix2D">
                             <i class="fa fa-edit"></i>
                         </button>
-                        <button class="btn btn-outline-light border" type="button" onclick="openJSONURL()" title="View Raw Streetmix JSON">
+                        <button class="btn btn-outline-light border" type="button" onclick="window.open(streetmixUserToAPI(document.getElementById('input-url').value), '_blank')" title="View Raw Streetmix JSON">
                             <i class="fa fa-code"></i>
                         </button>
                         <button class="btn btn-outline-light border" type="button" onclick="startAudio()" title="Play Audio">
