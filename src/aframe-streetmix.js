@@ -14,27 +14,29 @@ const initialState = {
 var state = initialState;
 
 // Width - These are the intended default widths of the models in meters.
+/* eslint-disable quote-props */
 const defaultModelWidthsInMeters = {
   'bike-lane': 1.8,
   'drive-lane': 3,
-  divider: 0.3,
+  'divider': 0.3,
   'parking-lane': 3,
-  sidewalk: 3,
+  'sidewalk': 3,
   'sidewalk-tree': 3,
   'turn-lane': 3,
   'bus-lane': 3,
   'light-rail': 3,
-  streetcar: 3,
+  'streetcar': 3,
   'sidewalk-wayfinding': 3,
   'sidewalk-lamp': 3,
   'sidewalk-bike-rack': 3,
   'sidewalk-bench': 3,
   'scooter-drop-zone': 3,
-  scooter: 1.8,
-  bikeshare: 3,
+  'scooter': 1.8,
+  'bikeshare': 3,
   'flex-zone-curb': 3,
   'transit-shelter': 3
 };
+/* eslint-enable quote-props */
 
 function isSidewalk (string) {
   // https://streetmix.net/api/v1/streets/3f1a9810-0a8f-11ea-adff-7fe273b63f1d
