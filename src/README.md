@@ -16,7 +16,7 @@ These are a handful of functions that help deal with Streetmix URLs:
 
 ## Modified Components from Elsewhere
 
-### [components/aframe-alongpath-component.js](components/aframe-alongpath-component.js)
+### [lib/aframe-alongpath-component.js](lib/aframe-alongpath-component.js)
 `alongpath` component modified to emit `movingstarted` each loop when `loop` = `true`, used in this project to trigger sound effects for passing vehicles. A [pull request has been filed with the original component](https://github.com/protyze/aframe-alongpath-component/pull/19).
 
 ### [components/ocean-plane.js](components/ocean-plane.js)
@@ -32,7 +32,7 @@ This is a component [originally written](https://samsunginter.net/a-frame-compon
 `aframe-ground-component` is a modified version of the awesome [A-Frame Environment Component](https://github.com/supermedium/aframe-environment-component/) that removes environmental geometry and skybox while leaving just the ground. It also allows for reduction in triangle count by manually specifying ground elevation resolution. See more info [here on the component doc page](https://github.com/kfarr/aframe-ground-component#parameters).
 
 ### [aframe-cubemap-component](lib/aframe-cubemap-component.js)
-`aframe-cubemap-component` is a slightly modified version of [this original cubemap sky component](https://github.com/bryik/aframe-cubemap-component/) that adds support for [sRGBEncoding per this ticket](https://github.com/bryik/aframe-cubemap-component/issues/13).
+`aframe-cubemap-component` is a local copy of [this original cubemap sky component](https://github.com/bryik/aframe-cubemap-component/).
 
 ## Unmodified Components
 See [src/lib/](lib), included here to reduce fetching libraries remotely helpful for local development in bandwidth constricted environments.
