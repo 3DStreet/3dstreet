@@ -4,7 +4,9 @@
   "description": "Streetmix3D creates 3D visualizations of your 2D [Streetmix.net](https://streetmix.net) streets using A-Frame and WebXR.",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "mocha",
+    "lint": "semistandard -v | snazzy",
+    "lint:fix": "semistandard --fix"
   },
   "repository": {
     "type": "git",
@@ -16,10 +18,16 @@
     "url": "https://github.com/kfarr/streetmix3d/issues"
   },
   "homepage": "https://github.com/kfarr/streetmix3d#readme",
-  "dependencies": {
+  "semistandard": {
+    "ignore": [
+      "/src/lib/"
+    ]
   },
+  "dependencies": {},
   "devDependencies": {
     "mocha": "^7.1.2",
-    "rewire": "^5.0.0"
+    "rewire": "^5.0.0",
+    "semistandard": "^14.2.0",
+    "snazzy": "^8.0.0"
   }
 }
