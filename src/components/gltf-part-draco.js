@@ -3,9 +3,9 @@ var MODELS = {};
 
 AFRAME.registerComponent('gltf-part', {
   schema: {
-    buffer: {default: true},
-    part: {type: 'string'},
-    src: {type: 'asset'}
+    buffer: { default: true },
+    part: { type: 'string' },
+    src: { type: 'asset' }
   },
 
   init: function () {
@@ -17,7 +17,7 @@ AFRAME.registerComponent('gltf-part', {
     if (!this.data.part && this.data.src) { return; }
     this.getModel(function (modelPart) {
       if (!modelPart) { return; }
-      el.setObject3D('mesh', modelPart)
+      el.setObject3D('mesh', modelPart);
       // el.emit('part-loaded', {format: 'gltf', part: self.modelPart});
     });
   },
