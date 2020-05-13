@@ -1,6 +1,4 @@
-/* global streetmixUserToAPI, streetmixAPIToUser */
-
-function streetmixUserToAPI (userURL) {
+function streetmixUserToAPI (userURL) { // eslint-disable-line no-unused-vars
   // this takes in a user facing Streetmix.net URL like https://streetmix.net/kfarr/3/a-frame-city-builder-street-only
   // and turns it into the API redirect URL like https://streetmix.net/api/v1/streets?namespacedId=3&creatorId=kfarr
   var pathArray = new URL(userURL).pathname.split('/');
@@ -13,7 +11,7 @@ function streetmixUserToAPI (userURL) {
   }
 }
 
-function streetmixAPIToUser (APIURL) {
+function streetmixAPIToUser (APIURL) { // eslint-disable-line no-unused-vars
   // this takes in a Streetmix.net API redirect URL like https://streetmix.net/api/v1/streets?namespacedId=3&creatorId=kfarr
   // and turns it into the user facing friendly Streetmix.net URL like https://streetmix.net/kfarr/3/a-frame-city-builder-street-only
 
