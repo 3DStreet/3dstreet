@@ -4,7 +4,7 @@
   "description": "Streetmix3D creates 3D visualizations of your 2D [Streetmix.net](https://streetmix.net) streets using A-Frame and WebXR.",
   "main": "index.js",
   "scripts": {
-    "test": "mocha",
+    "test": "mocha --recursive --full-trace",
     "lint": "semistandard -v | snazzy",
     "lint:fix": "semistandard --fix"
   },
@@ -25,6 +25,9 @@
   },
   "dependencies": {},
   "devDependencies": {
+    "approvals": "^3.0.5",
+    "jsdom": "^16.2.2",
+    "jsdom-global": "^3.0.2",
     "mocha": "^7.1.2",
     "rewire": "^5.0.0",
     "semistandard": "^14.2.0",
