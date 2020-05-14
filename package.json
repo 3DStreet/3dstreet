@@ -5,6 +5,7 @@
   "main": "index.js",
   "scripts": {
     "test": "mocha --recursive --full-trace",
+    "test:watch": "mocha --recursive --full-trace --watch",
     "lint": "semistandard -v | snazzy",
     "lint:fix": "semistandard --fix"
   },
