@@ -131,7 +131,7 @@ function calcStreetWidth (segments) {
   return cumulativeWidthInMeters;
 }
 
-function createBikeLaneStencilElement (positionX, elementId, parentElementId) {
+function createStencilParentElement (positionX, elementId, parentElementId) {
   // make the parent for all the objects to be cloned
   var placedObjectEl = document.createElement('a-entity');
   placedObjectEl.setAttribute('class', 'stencils-parent');
@@ -149,6 +149,23 @@ function getBikeLaneMixin (variant) {
     return 'surface-green bike-lane';
   }
   return 'bike-lane';
+}
+
+function getStencilsParentId (positionX) {
+  return 'stencils-parent-' + positionX;
+}
+
+function createChooChooElement (variantList, objectMixinId, positionX, curveId, streetElementId) {
+  var rotationBusY = (variantList[0] === 'inbound') ? 0 : 180;
+  var placedObjectEl = document.createElement('a-entity');
+  placedObjectEl.setAttribute('class', objectMixinId);
+  placedObjectEl.setAttribute('position', positionX + ' 0 0');
+  placedObjectEl.setAttribute('rotation', '0 ' + rotationBusY + ' 0');
+  placedObjectEl.setAttribute('mixin', objectMixinId);
+  placedObjectEl.setAttribute('alongpath', 'curve: ' + curveId + '; loop:true; dur:20000;');
+
+  // add the new elmement to DOM
+  document.getElementById(streetElementId).appendChild(placedObjectEl);
 }
 
 function processSegments (segments, streetElementId) {
@@ -201,30 +218,17 @@ function processSegments (segments, streetElementId) {
     // if type && variant2 then use model  ... there's definitely a better way to do this ...
 
     // sharrow variant not supported
-    if (segments[i].type == 'drive-lane' && variantList[1] == 'sharrow') {
-      const markerMixinId = variantList[1];
-      var mixinString = 'stencils ' + markerMixinId;
+    if (segments[i].type === 'drive-lane' && variantList[1] === 'sharrow') {
+      createStencilParentElement(positionX, getStencilsParentId(positionX), streetElementId);
 
-      // make the parent for all the objects to be cloned
-      var placedObjectEl = document.createElement('a-entity');
-      placedObjectEl.setAttribute('class', 'stencils-parent');
-      placedObjectEl.setAttribute('position', positionX + ' 0.015 0'); // position="1.043 0.100 -3.463"
-      placedObjectEl.setAttribute('id', 'stencils-parent-' + positionX);
-      // add the new elmement to DOM
-      document.getElementById(streetElementId).appendChild(placedObjectEl);
-
-      // Add another entry in the JSON output
-
-      cloneMixin({ objectMixinId: mixinString, parentId: 'stencils-parent-' + positionX, rotation: '-90 ' + rotationY + ' 0', step: 10, radius: 70 });
+      cloneMixin({ objectMixinId: 'stencils sharrow', parentId: getStencilsParentId(positionX), rotation: '-90 ' + rotationY + ' 0', step: 10, radius: 70 });
     }
 
     if (segments[i].type === 'bike-lane' || segments[i].type === 'scooter') {
-      const elementId = 'stencils-parent-' + positionX;
-
-      createBikeLaneStencilElement(positionX, elementId, streetElementId);
+      createStencilParentElement(positionX, getStencilsParentId(positionX), streetElementId);
       mixinId = getBikeLaneMixin(variantList[1]);
 
-      cloneMixin({ objectMixinId: 'stencils bike-lane', parentId: elementId, rotation: '-90 ' + rotationY + ' 0', step: 20, radius: 70 });
+      cloneMixin({ objectMixinId: 'stencils bike-lane', parentId: getStencilsParentId(positionX), rotation: '-90 ' + rotationY + ' 0', step: 20, radius: 70 });
     }
 
     if (segments[i].type == 'light-rail' || segments[i].type == 'streetcar') {
@@ -256,16 +260,7 @@ function processSegments (segments, streetElementId) {
       document.getElementById(streetElementId).appendChild(pathEl);
 
       // add choo choo
-      var rotationBusY = (variantList[0] == 'inbound') ? 0 : 180;
-      var placedObjectEl = document.createElement('a-entity');
-      placedObjectEl.setAttribute('class', objectMixinId);
-      placedObjectEl.setAttribute('position', positionX + ' 0 0');
-      placedObjectEl.setAttribute('rotation', '0 ' + rotationBusY + ' 0');
-      placedObjectEl.setAttribute('mixin', objectMixinId);
-      placedObjectEl.setAttribute('alongpath', 'curve: #path-' + i + '; loop:true; dur:20000;');
-
-      // add the new elmement to DOM
-      document.getElementById(streetElementId).appendChild(placedObjectEl);
+      createChooChooElement(variantList, objectMixinId, positionX, `#path-${i}`, streetElementId);
 
       placedObjectEl.addEventListener('movingstarted', function (e) {
         console.log('movingstarted', e);
