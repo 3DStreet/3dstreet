@@ -166,6 +166,14 @@ function createChooChooElement (variantList, objectMixinId, positionX, curveId, 
 
   // add the new elmement to DOM
   document.getElementById(streetElementId).appendChild(placedObjectEl);
+
+  placedObjectEl.addEventListener('movingstarted', function (e) { // TODO: figure out how to test/approve eventListeners as well
+    console.log('movingstarted', e);
+    if (state.sounds.enabled) {
+      // this creates console error if the placedObjectEl does not have a sound associated
+      this.components.sound.playSound();
+    }
+  });
 }
 
 function processSegments (segments, streetElementId) {
@@ -261,14 +269,6 @@ function processSegments (segments, streetElementId) {
 
       // add choo choo
       createChooChooElement(variantList, objectMixinId, positionX, `#path-${i}`, streetElementId);
-
-      placedObjectEl.addEventListener('movingstarted', function (e) {
-        console.log('movingstarted', e);
-        if (state.sounds.enabled) {
-          // this creates console error if the placedObjectEl does not have a sound associated
-          this.components.sound.playSound();
-        }
-      });
 
       // make the parent for all the objects to be cloned
       var placedObjectEl = document.createElement('a-entity');
