@@ -131,6 +131,26 @@ function calcStreetWidth (segments) {
   return cumulativeWidthInMeters;
 }
 
+function createBikeLaneStencilElement (positionX, elementId, parentElementId) {
+  // make the parent for all the objects to be cloned
+  var placedObjectEl = document.createElement('a-entity');
+  placedObjectEl.setAttribute('class', 'stencils-parent');
+  placedObjectEl.setAttribute('position', positionX + ' 0.015 0'); // position="1.043 0.100 -3.463"
+  placedObjectEl.setAttribute('id', elementId);
+  // add the new elmement to DOM
+  document.getElementById(parentElementId).appendChild(placedObjectEl);
+}
+
+function getBikeLaneMixin (variant) {
+  if (variant === 'red') {
+    return 'surface-red bike-lane';
+  }
+  if (variant === 'green') {
+    return 'surface-green bike-lane';
+  }
+  return 'bike-lane';
+}
+
 function processSegments (segments, streetElementId) {
   // takes a street's `segments` (array) from streetmix and a `streetElementId` (string) and places objects to make up a street with all segments
   segments = insertSeparatorSegments(segments);
@@ -193,28 +213,18 @@ function processSegments (segments, streetElementId) {
       // add the new elmement to DOM
       document.getElementById(streetElementId).appendChild(placedObjectEl);
 
+      // Add another entry in the JSON output
+
       cloneMixin({ objectMixinId: mixinString, parentId: 'stencils-parent-' + positionX, rotation: '-90 ' + rotationY + ' 0', step: 10, radius: 70 });
     }
 
-    if (segments[i].type == 'bike-lane' || segments[i].type == 'scooter') {
-      mixinId = 'bike-lane';
+    if (segments[i].type === 'bike-lane' || segments[i].type === 'scooter') {
+      const elementId = 'stencils-parent-' + positionX;
 
-      // make the parent for all the objects to be cloned
-      var placedObjectEl = document.createElement('a-entity');
-      placedObjectEl.setAttribute('class', 'stencils-parent');
-      placedObjectEl.setAttribute('position', positionX + ' 0.015 0'); // position="1.043 0.100 -3.463"
-      placedObjectEl.setAttribute('id', 'stencils-parent-' + positionX);
-      // add the new elmement to DOM
-      document.getElementById(streetElementId).appendChild(placedObjectEl);
+      createBikeLaneStencilElement(positionX, elementId, streetElementId);
+      mixinId = getBikeLaneMixin(variantList[1]);
 
-      if (variantList[1] == 'red') {
-        mixinId = 'surface-red bike-lane';
-      }
-      if (variantList[1] == 'green') {
-        mixinId = 'surface-green bike-lane';
-      }
-
-      cloneMixin({ objectMixinId: 'stencils bike-lane', parentId: 'stencils-parent-' + positionX, rotation: '-90 ' + rotationY + ' 0', step: 20, radius: 70 });
+      cloneMixin({ objectMixinId: 'stencils bike-lane', parentId: elementId, rotation: '-90 ' + rotationY + ' 0', step: 20, radius: 70 });
     }
 
     if (segments[i].type == 'light-rail' || segments[i].type == 'streetcar') {
@@ -229,10 +239,10 @@ function processSegments (segments, streetElementId) {
       var objectMixinId = (segments[i].type == 'streetcar') ? 'trolley' : 'tram';
 
       // <a-curve id="track1">
-		  //   <a-curve-point position="0 0 75" geometry="primitive:box; height:0.1; width:0.1; depth:0.1" material="color:#ff0000"></a-curve-point>
+      //   <a-curve-point position="0 0 75" geometry="primitive:box; height:0.1; width:0.1; depth:0.1" material="color:#ff0000"></a-curve-point>
       //   <a-curve-point position="0 0 0" geometry="primitive:box; height:0.1; width:0.1; depth:0.1" material="color:#ff0000"></a-curve-point>
       //   <a-curve-point position="0 0 -75" geometry="primitive:box; height:0.1; width:0.1; depth:0.1" material="color:#ff0000"></a-curve-point>
-  	  // </a-curve>
+      // </a-curve>
       //
       // <a-entity id="tram-instance1" mixin="tram" alongpath="curve: #track1; loop:true; dur:10000; rotate:false;" ></a-entity>
 
@@ -630,6 +640,7 @@ function processSegments (segments, streetElementId) {
     segmentEl.setAttribute('mixin', mixinId + state.textures.suffix); // append suffix to mixin id to specify texture index
 
     document.getElementById(streetElementId).appendChild(segmentEl);
+    // returns JSON output instead
   }
 }
 
