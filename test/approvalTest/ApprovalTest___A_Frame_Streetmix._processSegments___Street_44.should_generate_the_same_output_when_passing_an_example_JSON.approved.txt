@@ -1,0 +1,470 @@
+<a-entity scale="0.6096 1 1" position="0.9144000000000001 0 0" rotation="270 0 0" mixin="sidewalk-t1"></a-entity>
+<a-entity class="tree-parent" position="2.1336 0 7" id="tree-parent-2.1336">
+  <a-entity class="tree3" position="0 0 -60" mixin="tree3" rotation="0 180 0"></a-entity>
+  <a-entity class="tree3" position="0 0 -45" mixin="tree3" rotation="0 180 0"></a-entity>
+  <a-entity class="tree3" position="0 0 -30" mixin="tree3" rotation="0 180 0"></a-entity>
+  <a-entity class="tree3" position="0 0 -15" mixin="tree3" rotation="0 180 0"></a-entity>
+  <a-entity class="tree3" position="0 0 0" mixin="tree3" rotation="0 180 0"></a-entity>
+  <a-entity class="tree3" position="0 0 15" mixin="tree3" rotation="0 180 0"></a-entity>
+  <a-entity class="tree3" position="0 0 30" mixin="tree3" rotation="0 180 0"></a-entity>
+  <a-entity class="tree3" position="0 0 45" mixin="tree3" rotation="0 180 0"></a-entity>
+  <a-entity class="tree3" position="0 0 60" mixin="tree3" rotation="0 180 0"></a-entity>
+</a-entity>
+<a-entity scale="0.20320000000000002 1 1" position="2.1336 0 0" rotation="270 0 0" mixin="sidewalk-t1"></a-entity>
+<a-entity position="3.0480000000000005 1 0" mixin="wayfinding-box"></a-entity>
+<a-entity position="3.0480000000000005 1.2 0.06" geometry="primitive: plane; width: 0.8; height: 1.6" material="src:#wayfinding-map"></a-entity>
+<a-entity position="3.0480000000000005 1.2 -0.06" rotation="0 180 0" geometry="primitive: plane; width: 0.8; height: 1.6" material="src:#wayfinding-map"></a-entity>
+<a-entity scale="0.40640000000000004 1 1" position="3.0480000000000005 0 0" rotation="270 0 0" mixin="sidewalk-t1"></a-entity>
+<a-entity class="bench-parent" position="4.2672 0 3.5" id="bench-parent-4.2672">
+  <a-entity class="bench" position="0 0 -60" mixin="bench" rotation="0 90 0"></a-entity>
+  <a-entity class="bench" position="0 0 -45" mixin="bench" rotation="0 90 0"></a-entity>
+  <a-entity class="bench" position="0 0 -30" mixin="bench" rotation="0 90 0"></a-entity>
+  <a-entity class="bench" position="0 0 -15" mixin="bench" rotation="0 90 0"></a-entity>
+  <a-entity class="bench" position="0 0 0" mixin="bench" rotation="0 90 0"></a-entity>
+  <a-entity class="bench" position="0 0 15" mixin="bench" rotation="0 90 0"></a-entity>
+  <a-entity class="bench" position="0 0 30" mixin="bench" rotation="0 90 0"></a-entity>
+  <a-entity class="bench" position="0 0 45" mixin="bench" rotation="0 90 0"></a-entity>
+  <a-entity class="bench" position="0 0 60" mixin="bench" rotation="0 90 0"></a-entity>
+</a-entity>
+<a-entity scale="0.40640000000000004 1 1" position="4.2672 0 0" rotation="270 0 0" mixin="sidewalk-t1"></a-entity>
+<a-entity class="bikerack-parent" position="5.6388 0 -3.5" id="bikerack-parent-5.6388">
+  <a-entity class="bikerack" position="0 0 -60" mixin="bikerack" rotation="0 90 0"></a-entity>
+  <a-entity class="bikerack" position="0 0 -45" mixin="bikerack" rotation="0 90 0"></a-entity>
+  <a-entity class="bikerack" position="0 0 -30" mixin="bikerack" rotation="0 90 0"></a-entity>
+  <a-entity class="bikerack" position="0 0 -15" mixin="bikerack" rotation="0 90 0"></a-entity>
+  <a-entity class="bikerack" position="0 0 0" mixin="bikerack" rotation="0 90 0"></a-entity>
+  <a-entity class="bikerack" position="0 0 15" mixin="bikerack" rotation="0 90 0"></a-entity>
+  <a-entity class="bikerack" position="0 0 30" mixin="bikerack" rotation="0 90 0"></a-entity>
+  <a-entity class="bikerack" position="0 0 45" mixin="bikerack" rotation="0 90 0"></a-entity>
+  <a-entity class="bikerack" position="0 0 60" mixin="bikerack" rotation="0 90 0"></a-entity>
+</a-entity>
+<a-entity scale="0.508 1 1" position="5.6388 0 0" rotation="270 0 0" mixin="sidewalk-t1"></a-entity>
+<a-entity class="bikeshare" position="7.4676 0 0" id="bikeshare-7.4676" mixin="bikeshare" rotation="0 90 0"></a-entity>
+<a-entity scale="0.7111999999999999 1 1" position="7.4676 0 0" rotation="270 0 0" mixin="sidewalk-t1"></a-entity>
+<a-entity class="bus-stop" position="9.155999999999999 0 0" rotation="-90 180 0" mixin="bus-stop"></a-entity>
+<a-entity scale="0.9144000000000001 1 1" position="9.905999999999999 0 0" rotation="270 0 0" mixin="sidewalk-t1"></a-entity>
+<a-entity class="lamp-parent" position="11.5824 0 0" id="lamp-parent-11.5824">
+  <a-entity class="lamp-modern" position="0 0 -60" mixin="lamp-modern" rotation="0 -90 0"></a-entity>
+  <a-entity class="lamp-modern" position="0 0 -45" mixin="lamp-modern" rotation="0 -90 0"></a-entity>
+  <a-entity class="lamp-modern" position="0 0 -30" mixin="lamp-modern" rotation="0 -90 0"></a-entity>
+  <a-entity class="lamp-modern" position="0 0 -15" mixin="lamp-modern" rotation="0 -90 0"></a-entity>
+  <a-entity class="lamp-modern" position="0 0 0" mixin="lamp-modern" rotation="0 -90 0"></a-entity>
+  <a-entity class="lamp-modern" position="0 0 15" mixin="lamp-modern" rotation="0 -90 0"></a-entity>
+  <a-entity class="lamp-modern" position="0 0 30" mixin="lamp-modern" rotation="0 -90 0"></a-entity>
+  <a-entity class="lamp-modern" position="0 0 45" mixin="lamp-modern" rotation="0 -90 0"></a-entity>
+  <a-entity class="lamp-modern" position="0 0 60" mixin="lamp-modern" rotation="0 -90 0"></a-entity>
+</a-entity>
+<a-entity scale="0.20320000000000002 1 1" position="11.5824 0 0" rotation="270 0 0" mixin="sidewalk-t1"></a-entity>
+<a-entity class="bus" position="13.716000000000001 1.4 0" rotation="0 -90 0" mixin="bus"></a-entity>
+<a-entity class="bus-shadow" position="13.716000000000001 0.01 0" rotation="-90 -90 0" mixin="bus-shadow"></a-entity>
+<a-entity class="stencils-parent" position="13.716000000000001 0.015 0" id="stencils-parent-13.716000000000001">
+  <a-entity class="stencils word-bus" position="0 0 -70" mixin="stencils word-bus" rotation="-90 180 0"></a-entity>
+  <a-entity class="stencils word-bus" position="0 0 -20" mixin="stencils word-bus" rotation="-90 180 0"></a-entity>
+  <a-entity class="stencils word-bus" position="0 0 30" mixin="stencils word-bus" rotation="-90 180 0"></a-entity>
+</a-entity>
+<a-entity class="stencils-parent" position="13.716000000000001 0.015 10" id="stencils-parent-offset10-13.716000000000001">
+  <a-entity class="stencils word-taxi" position="0 0 -70" mixin="stencils word-taxi" rotation="-90 180 0"></a-entity>
+  <a-entity class="stencils word-taxi" position="0 0 -20" mixin="stencils word-taxi" rotation="-90 180 0"></a-entity>
+  <a-entity class="stencils word-taxi" position="0 0 30" mixin="stencils word-taxi" rotation="-90 180 0"></a-entity>
+</a-entity>
+<a-entity class="stencils-parent" position="13.716000000000001 0.015 20" id="stencils-parent-offset20-13.716000000000001">
+  <a-entity class="stencils word-only" position="0 0 -70" mixin="stencils word-only" rotation="-90 180 0"></a-entity>
+  <a-entity class="stencils word-only" position="0 0 -20" mixin="stencils word-only" rotation="-90 180 0"></a-entity>
+  <a-entity class="stencils word-only" position="0 0 30" mixin="stencils word-only" rotation="-90 180 0"></a-entity>
+</a-entity>
+<a-entity scale="1.2192 1 1" position="13.716000000000001 0 0" rotation="270 180 0" mixin="bus-lane-t1"></a-entity>
+<a-entity scale="1 1 1" position="15.5448 0.01 0" rotation="270 0 0" mixin="markings solid-stripe-t1"></a-entity>
+<a-entity class="stencils-parent" position="17.0688 0.015 0" id="stencils-parent-17.0688">
+  <a-entity class="stencils right" position="0 0 -70" mixin="stencils right" rotation="-90 180 0"></a-entity>
+  <a-entity class="stencils right" position="0 0 -55" mixin="stencils right" rotation="-90 180 0"></a-entity>
+  <a-entity class="stencils right" position="0 0 -40" mixin="stencils right" rotation="-90 180 0"></a-entity>
+  <a-entity class="stencils right" position="0 0 -25" mixin="stencils right" rotation="-90 180 0"></a-entity>
+  <a-entity class="stencils right" position="0 0 -10" mixin="stencils right" rotation="-90 180 0"></a-entity>
+  <a-entity class="stencils right" position="0 0 5" mixin="stencils right" rotation="-90 180 0"></a-entity>
+  <a-entity class="stencils right" position="0 0 20" mixin="stencils right" rotation="-90 180 0"></a-entity>
+  <a-entity class="stencils right" position="0 0 35" mixin="stencils right" rotation="-90 180 0"></a-entity>
+  <a-entity class="stencils right" position="0 0 50" mixin="stencils right" rotation="-90 180 0"></a-entity>
+  <a-entity class="stencils right" position="0 0 65" mixin="stencils right" rotation="-90 180 0"></a-entity>
+</a-entity>
+<a-entity scale="1.016 1 1" position="17.0688 0 0" rotation="270 180 0" mixin="drive-lane-t1"></a-entity>
+<a-entity scale="1 1 1" position="18.5928 0.01 0" rotation="270 0 0" mixin="markings dashed-stripe-t1"></a-entity>
+<a-entity class="stencils-parent" position="20.116799999999998 0.015 0" id="stencils-parent-20.116799999999998">
+  <a-entity class="stencils sharrow" position="0 0 -70" mixin="stencils sharrow" rotation="-90 180 0"></a-entity>
+  <a-entity class="stencils sharrow" position="0 0 -60" mixin="stencils sharrow" rotation="-90 180 0"></a-entity>
+  <a-entity class="stencils sharrow" position="0 0 -50" mixin="stencils sharrow" rotation="-90 180 0"></a-entity>
+  <a-entity class="stencils sharrow" position="0 0 -40" mixin="stencils sharrow" rotation="-90 180 0"></a-entity>
+  <a-entity class="stencils sharrow" position="0 0 -30" mixin="stencils sharrow" rotation="-90 180 0"></a-entity>
+  <a-entity class="stencils sharrow" position="0 0 -20" mixin="stencils sharrow" rotation="-90 180 0"></a-entity>
+  <a-entity class="stencils sharrow" position="0 0 -10" mixin="stencils sharrow" rotation="-90 180 0"></a-entity>
+  <a-entity class="stencils sharrow" position="0 0 0" mixin="stencils sharrow" rotation="-90 180 0"></a-entity>
+  <a-entity class="stencils sharrow" position="0 0 10" mixin="stencils sharrow" rotation="-90 180 0"></a-entity>
+  <a-entity class="stencils sharrow" position="0 0 20" mixin="stencils sharrow" rotation="-90 180 0"></a-entity>
+  <a-entity class="stencils sharrow" position="0 0 30" mixin="stencils sharrow" rotation="-90 180 0"></a-entity>
+  <a-entity class="stencils sharrow" position="0 0 40" mixin="stencils sharrow" rotation="-90 180 0"></a-entity>
+  <a-entity class="stencils sharrow" position="0 0 50" mixin="stencils sharrow" rotation="-90 180 0"></a-entity>
+  <a-entity class="stencils sharrow" position="0 0 60" mixin="stencils sharrow" rotation="-90 180 0"></a-entity>
+  <a-entity class="stencils sharrow" position="0 0 70" mixin="stencils sharrow" rotation="-90 180 0"></a-entity>
+</a-entity>
+<a-entity scale="1.016 1 1" position="20.116799999999998 0 0" rotation="270 180 0" mixin="drive-lane-t1"></a-entity>
+<a-entity scale="1 1 1" position="21.6408 0.01 0" rotation="270 0 0" mixin="markings dashed-stripe-t1"></a-entity>
+<a-entity class="stencils-parent" position="23.1648 0.015 0" id="stencils-parent-23.1648">
+  <a-entity class="stencils left" position="0 0 -70" mixin="stencils left" rotation="-90 180 0"></a-entity>
+  <a-entity class="stencils left" position="0 0 -55" mixin="stencils left" rotation="-90 180 0"></a-entity>
+  <a-entity class="stencils left" position="0 0 -40" mixin="stencils left" rotation="-90 180 0"></a-entity>
+  <a-entity class="stencils left" position="0 0 -25" mixin="stencils left" rotation="-90 180 0"></a-entity>
+  <a-entity class="stencils left" position="0 0 -10" mixin="stencils left" rotation="-90 180 0"></a-entity>
+  <a-entity class="stencils left" position="0 0 5" mixin="stencils left" rotation="-90 180 0"></a-entity>
+  <a-entity class="stencils left" position="0 0 20" mixin="stencils left" rotation="-90 180 0"></a-entity>
+  <a-entity class="stencils left" position="0 0 35" mixin="stencils left" rotation="-90 180 0"></a-entity>
+  <a-entity class="stencils left" position="0 0 50" mixin="stencils left" rotation="-90 180 0"></a-entity>
+  <a-entity class="stencils left" position="0 0 65" mixin="stencils left" rotation="-90 180 0"></a-entity>
+</a-entity>
+<a-entity scale="1.016 1 1" position="23.1648 0 0" rotation="270 180 0" mixin="drive-lane-t1"></a-entity>
+<a-entity scale="1 1 1" position="24.6888 0.01 0" rotation="270 0 0" mixin="markings solid-stripe-t1"></a-entity>
+<a-entity scale="2.032 1 1" position="24.9936 0 0" rotation="270 0 0" mixin="divider-t1"></a-entity>
+<a-entity scale="1 1 1" position="25.2984 0.01 0" rotation="270 0 0" mixin="markings solid-stripe-t1"></a-entity>
+<a-entity class="car" position="26.822400000000002 0 0" rotation="0 0 0" mixin="car"></a-entity>
+<a-entity class="car-shadow" position="26.822400000000002 0.01 0" rotation="-90 -90 0" mixin="car-shadow"></a-entity>
+<a-entity scale="1.016 1 1" position="26.822400000000002 0 0" rotation="270 180 0" mixin="drive-lane-t1"></a-entity>
+<a-entity scale="1 1 1" position="28.346400000000003 0.01 0" rotation="270 0 0" mixin="markings yellow solid-dashed-t1"></a-entity>
+<a-entity class="stencils-parent" position="29.870400000000004 0.015 0" id="stencils-parent-29.870400000000004">
+  <a-entity class="stencils left" position="0 0 -70" mixin="stencils left" rotation="-90 0 0"></a-entity>
+  <a-entity class="stencils left" position="0 0 -55" mixin="stencils left" rotation="-90 0 0"></a-entity>
+  <a-entity class="stencils left" position="0 0 -40" mixin="stencils left" rotation="-90 0 0"></a-entity>
+  <a-entity class="stencils left" position="0 0 -25" mixin="stencils left" rotation="-90 0 0"></a-entity>
+  <a-entity class="stencils left" position="0 0 -10" mixin="stencils left" rotation="-90 0 0"></a-entity>
+  <a-entity class="stencils left" position="0 0 5" mixin="stencils left" rotation="-90 0 0"></a-entity>
+  <a-entity class="stencils left" position="0 0 20" mixin="stencils left" rotation="-90 0 0"></a-entity>
+  <a-entity class="stencils left" position="0 0 35" mixin="stencils left" rotation="-90 0 0"></a-entity>
+  <a-entity class="stencils left" position="0 0 50" mixin="stencils left" rotation="-90 0 0"></a-entity>
+  <a-entity class="stencils left" position="0 0 65" mixin="stencils left" rotation="-90 0 0"></a-entity>
+</a-entity>
+<a-entity class="stencils-parent" position="29.870400000000004 0.015 -3" id="stencils-parent-offset2-29.870400000000004">
+  <a-entity class="stencils left" position="0 0 -70" mixin="stencils left" rotation="-90 180 0"></a-entity>
+  <a-entity class="stencils left" position="0 0 -55" mixin="stencils left" rotation="-90 180 0"></a-entity>
+  <a-entity class="stencils left" position="0 0 -40" mixin="stencils left" rotation="-90 180 0"></a-entity>
+  <a-entity class="stencils left" position="0 0 -25" mixin="stencils left" rotation="-90 180 0"></a-entity>
+  <a-entity class="stencils left" position="0 0 -10" mixin="stencils left" rotation="-90 180 0"></a-entity>
+  <a-entity class="stencils left" position="0 0 5" mixin="stencils left" rotation="-90 180 0"></a-entity>
+  <a-entity class="stencils left" position="0 0 20" mixin="stencils left" rotation="-90 180 0"></a-entity>
+  <a-entity class="stencils left" position="0 0 35" mixin="stencils left" rotation="-90 180 0"></a-entity>
+  <a-entity class="stencils left" position="0 0 50" mixin="stencils left" rotation="-90 180 0"></a-entity>
+  <a-entity class="stencils left" position="0 0 65" mixin="stencils left" rotation="-90 180 0"></a-entity>
+</a-entity>
+<a-entity scale="1.016 1 1" position="29.870400000000004 0 0" rotation="270 0 0" mixin="drive-lane-t1"></a-entity>
+<a-entity scale="1 1 1" position="31.394400000000005 0.01 0" rotation="270 180 0" mixin="markings yellow solid-dashed-t1"></a-entity>
+<a-entity class="car" position="32.918400000000005 0 0" rotation="0 180 0" mixin="car"></a-entity>
+<a-entity class="car-shadow" position="32.918400000000005 0.01 0" rotation="-90 90 0" mixin="car-shadow"></a-entity>
+<a-entity scale="1.016 1 1" position="32.918400000000005 0 0" rotation="270 0 0" mixin="drive-lane-t1"></a-entity>
+<a-entity class="lamp-parent" position="35.05200000000001 0 0" id="lamp-parent-35.05200000000001">
+  <a-entity class="lamp-modern" position="0 0 -60" mixin="lamp-modern" rotation="0 90 0"></a-entity>
+  <a-entity class="lamp-modern" position="0 0 -45" mixin="lamp-modern" rotation="0 90 0"></a-entity>
+  <a-entity class="lamp-modern" position="0 0 -30" mixin="lamp-modern" rotation="0 90 0"></a-entity>
+  <a-entity class="lamp-modern" position="0 0 -15" mixin="lamp-modern" rotation="0 90 0"></a-entity>
+  <a-entity class="lamp-modern" position="0 0 0" mixin="lamp-modern" rotation="0 90 0"></a-entity>
+  <a-entity class="lamp-modern" position="0 0 15" mixin="lamp-modern" rotation="0 90 0"></a-entity>
+  <a-entity class="lamp-modern" position="0 0 30" mixin="lamp-modern" rotation="0 90 0"></a-entity>
+  <a-entity class="lamp-modern" position="0 0 45" mixin="lamp-modern" rotation="0 90 0"></a-entity>
+  <a-entity class="lamp-modern" position="0 0 60" mixin="lamp-modern" rotation="0 90 0"></a-entity>
+  <a-entity class="lamp-modern" position="0 0 -60" mixin="lamp-modern" rotation="0 -90 0"></a-entity>
+  <a-entity class="lamp-modern" position="0 0 -45" mixin="lamp-modern" rotation="0 -90 0"></a-entity>
+  <a-entity class="lamp-modern" position="0 0 -30" mixin="lamp-modern" rotation="0 -90 0"></a-entity>
+  <a-entity class="lamp-modern" position="0 0 -15" mixin="lamp-modern" rotation="0 -90 0"></a-entity>
+  <a-entity class="lamp-modern" position="0 0 0" mixin="lamp-modern" rotation="0 -90 0"></a-entity>
+  <a-entity class="lamp-modern" position="0 0 15" mixin="lamp-modern" rotation="0 -90 0"></a-entity>
+  <a-entity class="lamp-modern" position="0 0 30" mixin="lamp-modern" rotation="0 -90 0"></a-entity>
+  <a-entity class="lamp-modern" position="0 0 45" mixin="lamp-modern" rotation="0 -90 0"></a-entity>
+  <a-entity class="lamp-modern" position="0 0 60" mixin="lamp-modern" rotation="0 -90 0"></a-entity>
+  <a-entity class="pride-flag" position="0.409 3.345 -60" mixin="pride-flag" rotation="0 0 0"></a-entity>
+  <a-entity class="pride-flag" position="0.409 3.345 -45" mixin="pride-flag" rotation="0 0 0"></a-entity>
+  <a-entity class="pride-flag" position="0.409 3.345 -30" mixin="pride-flag" rotation="0 0 0"></a-entity>
+  <a-entity class="pride-flag" position="0.409 3.345 -15" mixin="pride-flag" rotation="0 0 0"></a-entity>
+  <a-entity class="pride-flag" position="0.409 3.345 0" mixin="pride-flag" rotation="0 0 0"></a-entity>
+  <a-entity class="pride-flag" position="0.409 3.345 15" mixin="pride-flag" rotation="0 0 0"></a-entity>
+  <a-entity class="pride-flag" position="0.409 3.345 30" mixin="pride-flag" rotation="0 0 0"></a-entity>
+  <a-entity class="pride-flag" position="0.409 3.345 45" mixin="pride-flag" rotation="0 0 0"></a-entity>
+  <a-entity class="pride-flag" position="0.409 3.345 60" mixin="pride-flag" rotation="0 0 0"></a-entity>
+  <a-entity class="pride-flag" position="-0.409 3.345 -60" mixin="pride-flag" rotation="0 -180 0"></a-entity>
+  <a-entity class="pride-flag" position="-0.409 3.345 -45" mixin="pride-flag" rotation="0 -180 0"></a-entity>
+  <a-entity class="pride-flag" position="-0.409 3.345 -30" mixin="pride-flag" rotation="0 -180 0"></a-entity>
+  <a-entity class="pride-flag" position="-0.409 3.345 -15" mixin="pride-flag" rotation="0 -180 0"></a-entity>
+  <a-entity class="pride-flag" position="-0.409 3.345 0" mixin="pride-flag" rotation="0 -180 0"></a-entity>
+  <a-entity class="pride-flag" position="-0.409 3.345 15" mixin="pride-flag" rotation="0 -180 0"></a-entity>
+  <a-entity class="pride-flag" position="-0.409 3.345 30" mixin="pride-flag" rotation="0 -180 0"></a-entity>
+  <a-entity class="pride-flag" position="-0.409 3.345 45" mixin="pride-flag" rotation="0 -180 0"></a-entity>
+  <a-entity class="pride-flag" position="-0.409 3.345 60" mixin="pride-flag" rotation="0 -180 0"></a-entity>
+</a-entity>
+<a-entity scale="0.40640000000000004 1 1" position="35.05200000000001 0 0" rotation="270 0 0" mixin="sidewalk-t1"></a-entity>
+<a-entity scale="3.0480000000000005 1 1" position="36.11880000000001 0 0" rotation="270 0 0" mixin="divider-t1"></a-entity>
+<a-entity class="lamp-parent" position="37.18560000000001 0 0" id="lamp-parent-37.18560000000001">
+  <a-entity class="lamp-traditional" position="0 0 -60" mixin="lamp-traditional" rotation="0 0 0"></a-entity>
+  <a-entity class="lamp-traditional" position="0 0 -45" mixin="lamp-traditional" rotation="0 0 0"></a-entity>
+  <a-entity class="lamp-traditional" position="0 0 -30" mixin="lamp-traditional" rotation="0 0 0"></a-entity>
+  <a-entity class="lamp-traditional" position="0 0 -15" mixin="lamp-traditional" rotation="0 0 0"></a-entity>
+  <a-entity class="lamp-traditional" position="0 0 0" mixin="lamp-traditional" rotation="0 0 0"></a-entity>
+  <a-entity class="lamp-traditional" position="0 0 15" mixin="lamp-traditional" rotation="0 0 0"></a-entity>
+  <a-entity class="lamp-traditional" position="0 0 30" mixin="lamp-traditional" rotation="0 0 0"></a-entity>
+  <a-entity class="lamp-traditional" position="0 0 45" mixin="lamp-traditional" rotation="0 0 0"></a-entity>
+  <a-entity class="lamp-traditional" position="0 0 60" mixin="lamp-traditional" rotation="0 0 0"></a-entity>
+</a-entity>
+<a-entity scale="0.40640000000000004 1 1" position="37.18560000000001 0 0" rotation="270 0 0" mixin="sidewalk-t1"></a-entity>
+<a-curve id="path-26">
+  <a-curve-point id="checkpoint1" position="39.62400000000001 0 -75"></a-curve-point>
+  <a-curve-point id="checkpoint2" position="39.62400000000001 0 0"></a-curve-point>
+  <a-curve-point id="checkpoint3" position="39.62400000000001 0 75"></a-curve-point>
+</a-curve>
+<a-entity class="trolley" position="39.62400000000001 0 0" rotation="0 0 0" mixin="trolley" alongpath="curve: #path-26; loop:true; dur:20000;"></a-entity>
+<a-entity class="track-parent" position="39.62400000000001 -0.2 0" id="track-parent-39.62400000000001">
+  <a-entity class="track" position="0 0 -80" mixin="track" rotation="0 0 0"></a-entity>
+  <a-entity class="track" position="0 0 -59.75" mixin="track" rotation="0 0 0"></a-entity>
+  <a-entity class="track" position="0 0 -39.5" mixin="track" rotation="0 0 0"></a-entity>
+  <a-entity class="track" position="0 0 -19.25" mixin="track" rotation="0 0 0"></a-entity>
+  <a-entity class="track" position="0 0 1" mixin="track" rotation="0 0 0"></a-entity>
+  <a-entity class="track" position="0 0 21.25" mixin="track" rotation="0 0 0"></a-entity>
+  <a-entity class="track" position="0 0 41.5" mixin="track" rotation="0 0 0"></a-entity>
+  <a-entity class="track" position="0 0 61.75" mixin="track" rotation="0 0 0"></a-entity>
+</a-entity>
+<a-entity scale="1.2192 1 1" position="39.62400000000001 0 0" rotation="270 180 0" mixin="surface-green bus-lane-t1"></a-entity>
+<a-entity scale="1 1 1" position="41.45280000000001 0.01 0" rotation="270 0 0" mixin="markings solid-doubleyellow-t1"></a-entity>
+<a-curve id="path-28">
+  <a-curve-point id="checkpoint1" position="43.28160000000001 0 75"></a-curve-point>
+  <a-curve-point id="checkpoint2" position="43.28160000000001 0 0"></a-curve-point>
+  <a-curve-point id="checkpoint3" position="43.28160000000001 0 -75"></a-curve-point>
+</a-curve>
+<a-entity class="tram" position="43.28160000000001 0 0" rotation="0 180 0" mixin="tram" alongpath="curve: #path-28; loop:true; dur:20000;"></a-entity>
+<a-entity class="track-parent" position="43.28160000000001 -0.2 0" id="track-parent-43.28160000000001">
+  <a-entity class="track" position="0 0 -80" mixin="track" rotation="0 0 0"></a-entity>
+  <a-entity class="track" position="0 0 -59.75" mixin="track" rotation="0 0 0"></a-entity>
+  <a-entity class="track" position="0 0 -39.5" mixin="track" rotation="0 0 0"></a-entity>
+  <a-entity class="track" position="0 0 -19.25" mixin="track" rotation="0 0 0"></a-entity>
+  <a-entity class="track" position="0 0 1" mixin="track" rotation="0 0 0"></a-entity>
+  <a-entity class="track" position="0 0 21.25" mixin="track" rotation="0 0 0"></a-entity>
+  <a-entity class="track" position="0 0 41.5" mixin="track" rotation="0 0 0"></a-entity>
+  <a-entity class="track" position="0 0 61.75" mixin="track" rotation="0 0 0"></a-entity>
+</a-entity>
+<a-entity scale="1.2192 1 1" position="43.28160000000001 0 0" rotation="270 0 0" mixin="surface-red bus-lane-t1"></a-entity>
+<a-entity scale="1 1 1" position="45.11040000000001 0.01 0" rotation="270 0 0" mixin="markings solid-stripe-t1"></a-entity>
+<a-entity class="bus" position="46.939200000000014 1.4 0" rotation="0 90 0" mixin="bus"></a-entity>
+<a-entity class="bus-shadow" position="46.939200000000014 0.01 0" rotation="-90 90 0" mixin="bus-shadow"></a-entity>
+<a-entity class="stencils-parent" position="46.939200000000014 0.015 0" id="stencils-parent-46.939200000000014">
+  <a-entity class="stencils word-bus" position="0 0 -70" mixin="stencils word-bus" rotation="-90 0 0"></a-entity>
+  <a-entity class="stencils word-bus" position="0 0 -20" mixin="stencils word-bus" rotation="-90 0 0"></a-entity>
+  <a-entity class="stencils word-bus" position="0 0 30" mixin="stencils word-bus" rotation="-90 0 0"></a-entity>
+</a-entity>
+<a-entity class="stencils-parent" position="46.939200000000014 0.015 10" id="stencils-parent-offset10-46.939200000000014">
+  <a-entity class="stencils word-taxi" position="0 0 -70" mixin="stencils word-taxi" rotation="-90 0 0"></a-entity>
+  <a-entity class="stencils word-taxi" position="0 0 -20" mixin="stencils word-taxi" rotation="-90 0 0"></a-entity>
+  <a-entity class="stencils word-taxi" position="0 0 30" mixin="stencils word-taxi" rotation="-90 0 0"></a-entity>
+</a-entity>
+<a-entity class="stencils-parent" position="46.939200000000014 0.015 20" id="stencils-parent-offset20-46.939200000000014">
+  <a-entity class="stencils word-only" position="0 0 -70" mixin="stencils word-only" rotation="-90 0 0"></a-entity>
+  <a-entity class="stencils word-only" position="0 0 -20" mixin="stencils word-only" rotation="-90 0 0"></a-entity>
+  <a-entity class="stencils word-only" position="0 0 30" mixin="stencils word-only" rotation="-90 0 0"></a-entity>
+</a-entity>
+<a-entity scale="1.2192 1 1" position="46.939200000000014 0 0" rotation="270 0 0" mixin="surface-red bus-lane-t1"></a-entity>
+<a-entity class="lamp-parent" position="49.377600000000015 0 0" id="lamp-parent-49.377600000000015">
+  <a-entity class="lamp-modern" position="0 0 -60" mixin="lamp-modern" rotation="0 90 0"></a-entity>
+  <a-entity class="lamp-modern" position="0 0 -45" mixin="lamp-modern" rotation="0 90 0"></a-entity>
+  <a-entity class="lamp-modern" position="0 0 -30" mixin="lamp-modern" rotation="0 90 0"></a-entity>
+  <a-entity class="lamp-modern" position="0 0 -15" mixin="lamp-modern" rotation="0 90 0"></a-entity>
+  <a-entity class="lamp-modern" position="0 0 0" mixin="lamp-modern" rotation="0 90 0"></a-entity>
+  <a-entity class="lamp-modern" position="0 0 15" mixin="lamp-modern" rotation="0 90 0"></a-entity>
+  <a-entity class="lamp-modern" position="0 0 30" mixin="lamp-modern" rotation="0 90 0"></a-entity>
+  <a-entity class="lamp-modern" position="0 0 45" mixin="lamp-modern" rotation="0 90 0"></a-entity>
+  <a-entity class="lamp-modern" position="0 0 60" mixin="lamp-modern" rotation="0 90 0"></a-entity>
+  <a-entity class="pride-flag" position="-0.409 3.345 -60" mixin="pride-flag" rotation="0 -180 0"></a-entity>
+  <a-entity class="pride-flag" position="-0.409 3.345 -45" mixin="pride-flag" rotation="0 -180 0"></a-entity>
+  <a-entity class="pride-flag" position="-0.409 3.345 -30" mixin="pride-flag" rotation="0 -180 0"></a-entity>
+  <a-entity class="pride-flag" position="-0.409 3.345 -15" mixin="pride-flag" rotation="0 -180 0"></a-entity>
+  <a-entity class="pride-flag" position="-0.409 3.345 0" mixin="pride-flag" rotation="0 -180 0"></a-entity>
+  <a-entity class="pride-flag" position="-0.409 3.345 15" mixin="pride-flag" rotation="0 -180 0"></a-entity>
+  <a-entity class="pride-flag" position="-0.409 3.345 30" mixin="pride-flag" rotation="0 -180 0"></a-entity>
+  <a-entity class="pride-flag" position="-0.409 3.345 45" mixin="pride-flag" rotation="0 -180 0"></a-entity>
+  <a-entity class="pride-flag" position="-0.409 3.345 60" mixin="pride-flag" rotation="0 -180 0"></a-entity>
+</a-entity>
+<a-entity scale="0.40640000000000004 1 1" position="49.377600000000015 0 0" rotation="270 0 0" mixin="sidewalk-t1"></a-entity>
+<a-entity class="safehit-parent" position="50.292000000000016 0 0" id="safehit-parent-50.292000000000016">
+  <a-entity class="safehit" position="0 0 -70" mixin="safehit" rotation="0 0 0"></a-entity>
+  <a-entity class="safehit" position="0 0 -66" mixin="safehit" rotation="0 0 0"></a-entity>
+  <a-entity class="safehit" position="0 0 -62" mixin="safehit" rotation="0 0 0"></a-entity>
+  <a-entity class="safehit" position="0 0 -58" mixin="safehit" rotation="0 0 0"></a-entity>
+  <a-entity class="safehit" position="0 0 -54" mixin="safehit" rotation="0 0 0"></a-entity>
+  <a-entity class="safehit" position="0 0 -50" mixin="safehit" rotation="0 0 0"></a-entity>
+  <a-entity class="safehit" position="0 0 -46" mixin="safehit" rotation="0 0 0"></a-entity>
+  <a-entity class="safehit" position="0 0 -42" mixin="safehit" rotation="0 0 0"></a-entity>
+  <a-entity class="safehit" position="0 0 -38" mixin="safehit" rotation="0 0 0"></a-entity>
+  <a-entity class="safehit" position="0 0 -34" mixin="safehit" rotation="0 0 0"></a-entity>
+  <a-entity class="safehit" position="0 0 -30" mixin="safehit" rotation="0 0 0"></a-entity>
+  <a-entity class="safehit" position="0 0 -26" mixin="safehit" rotation="0 0 0"></a-entity>
+  <a-entity class="safehit" position="0 0 -22" mixin="safehit" rotation="0 0 0"></a-entity>
+  <a-entity class="safehit" position="0 0 -18" mixin="safehit" rotation="0 0 0"></a-entity>
+  <a-entity class="safehit" position="0 0 -14" mixin="safehit" rotation="0 0 0"></a-entity>
+  <a-entity class="safehit" position="0 0 -10" mixin="safehit" rotation="0 0 0"></a-entity>
+  <a-entity class="safehit" position="0 0 -6" mixin="safehit" rotation="0 0 0"></a-entity>
+  <a-entity class="safehit" position="0 0 -2" mixin="safehit" rotation="0 0 0"></a-entity>
+  <a-entity class="safehit" position="0 0 2" mixin="safehit" rotation="0 0 0"></a-entity>
+  <a-entity class="safehit" position="0 0 6" mixin="safehit" rotation="0 0 0"></a-entity>
+  <a-entity class="safehit" position="0 0 10" mixin="safehit" rotation="0 0 0"></a-entity>
+  <a-entity class="safehit" position="0 0 14" mixin="safehit" rotation="0 0 0"></a-entity>
+  <a-entity class="safehit" position="0 0 18" mixin="safehit" rotation="0 0 0"></a-entity>
+  <a-entity class="safehit" position="0 0 22" mixin="safehit" rotation="0 0 0"></a-entity>
+  <a-entity class="safehit" position="0 0 26" mixin="safehit" rotation="0 0 0"></a-entity>
+  <a-entity class="safehit" position="0 0 30" mixin="safehit" rotation="0 0 0"></a-entity>
+  <a-entity class="safehit" position="0 0 34" mixin="safehit" rotation="0 0 0"></a-entity>
+  <a-entity class="safehit" position="0 0 38" mixin="safehit" rotation="0 0 0"></a-entity>
+  <a-entity class="safehit" position="0 0 42" mixin="safehit" rotation="0 0 0"></a-entity>
+  <a-entity class="safehit" position="0 0 46" mixin="safehit" rotation="0 0 0"></a-entity>
+  <a-entity class="safehit" position="0 0 50" mixin="safehit" rotation="0 0 0"></a-entity>
+  <a-entity class="safehit" position="0 0 54" mixin="safehit" rotation="0 0 0"></a-entity>
+  <a-entity class="safehit" position="0 0 58" mixin="safehit" rotation="0 0 0"></a-entity>
+  <a-entity class="safehit" position="0 0 62" mixin="safehit" rotation="0 0 0"></a-entity>
+  <a-entity class="safehit" position="0 0 66" mixin="safehit" rotation="0 0 0"></a-entity>
+  <a-entity class="safehit" position="0 0 70" mixin="safehit" rotation="0 0 0"></a-entity>
+</a-entity>
+<a-entity scale="2.032 1 1" position="50.292000000000016 0 0" rotation="270 0 0" mixin="divider-t1"></a-entity>
+<a-entity class="lamp-parent" position="51.206400000000016 0 0" id="lamp-parent-51.206400000000016">
+  <a-entity class="lamp-modern" position="0 0 -60" mixin="lamp-modern" rotation="0 -90 0"></a-entity>
+  <a-entity class="lamp-modern" position="0 0 -45" mixin="lamp-modern" rotation="0 -90 0"></a-entity>
+  <a-entity class="lamp-modern" position="0 0 -30" mixin="lamp-modern" rotation="0 -90 0"></a-entity>
+  <a-entity class="lamp-modern" position="0 0 -15" mixin="lamp-modern" rotation="0 -90 0"></a-entity>
+  <a-entity class="lamp-modern" position="0 0 0" mixin="lamp-modern" rotation="0 -90 0"></a-entity>
+  <a-entity class="lamp-modern" position="0 0 15" mixin="lamp-modern" rotation="0 -90 0"></a-entity>
+  <a-entity class="lamp-modern" position="0 0 30" mixin="lamp-modern" rotation="0 -90 0"></a-entity>
+  <a-entity class="lamp-modern" position="0 0 45" mixin="lamp-modern" rotation="0 -90 0"></a-entity>
+  <a-entity class="lamp-modern" position="0 0 60" mixin="lamp-modern" rotation="0 -90 0"></a-entity>
+  <a-entity class="pride-flag" position="0.409 3.345 -60" mixin="pride-flag" rotation="0 0 0"></a-entity>
+  <a-entity class="pride-flag" position="0.409 3.345 -45" mixin="pride-flag" rotation="0 0 0"></a-entity>
+  <a-entity class="pride-flag" position="0.409 3.345 -30" mixin="pride-flag" rotation="0 0 0"></a-entity>
+  <a-entity class="pride-flag" position="0.409 3.345 -15" mixin="pride-flag" rotation="0 0 0"></a-entity>
+  <a-entity class="pride-flag" position="0.409 3.345 0" mixin="pride-flag" rotation="0 0 0"></a-entity>
+  <a-entity class="pride-flag" position="0.409 3.345 15" mixin="pride-flag" rotation="0 0 0"></a-entity>
+  <a-entity class="pride-flag" position="0.409 3.345 30" mixin="pride-flag" rotation="0 0 0"></a-entity>
+  <a-entity class="pride-flag" position="0.409 3.345 45" mixin="pride-flag" rotation="0 0 0"></a-entity>
+  <a-entity class="pride-flag" position="0.409 3.345 60" mixin="pride-flag" rotation="0 0 0"></a-entity>
+</a-entity>
+<a-entity scale="0.40640000000000004 1 1" position="51.206400000000016 0 0" rotation="270 0 0" mixin="sidewalk-t1"></a-entity>
+<a-entity class="stencils-parent" position="53.34000000000002 0.015 0" id="stencils-parent-53.34000000000002">
+  <a-entity class="stencils left" position="0 0 -70" mixin="stencils left" rotation="-90 0 0"></a-entity>
+  <a-entity class="stencils left" position="0 0 -55" mixin="stencils left" rotation="-90 0 0"></a-entity>
+  <a-entity class="stencils left" position="0 0 -40" mixin="stencils left" rotation="-90 0 0"></a-entity>
+  <a-entity class="stencils left" position="0 0 -25" mixin="stencils left" rotation="-90 0 0"></a-entity>
+  <a-entity class="stencils left" position="0 0 -10" mixin="stencils left" rotation="-90 0 0"></a-entity>
+  <a-entity class="stencils left" position="0 0 5" mixin="stencils left" rotation="-90 0 0"></a-entity>
+  <a-entity class="stencils left" position="0 0 20" mixin="stencils left" rotation="-90 0 0"></a-entity>
+  <a-entity class="stencils left" position="0 0 35" mixin="stencils left" rotation="-90 0 0"></a-entity>
+  <a-entity class="stencils left" position="0 0 50" mixin="stencils left" rotation="-90 0 0"></a-entity>
+  <a-entity class="stencils left" position="0 0 65" mixin="stencils left" rotation="-90 0 0"></a-entity>
+</a-entity>
+<a-entity scale="1.016 1 1" position="53.34000000000002 0 0" rotation="270 0 0" mixin="drive-lane-t1"></a-entity>
+<a-entity scale="1 1 1" position="54.86400000000002 0.01 0" rotation="270 0 0" mixin="markings dashed-stripe-t1"></a-entity>
+<a-entity class="stencils-parent" position="56.38800000000002 0.015 0" id="stencils-parent-56.38800000000002">
+  <a-entity class="stencils all" position="0 0 -70" mixin="stencils all" rotation="-90 0 0"></a-entity>
+  <a-entity class="stencils all" position="0 0 -55" mixin="stencils all" rotation="-90 0 0"></a-entity>
+  <a-entity class="stencils all" position="0 0 -40" mixin="stencils all" rotation="-90 0 0"></a-entity>
+  <a-entity class="stencils all" position="0 0 -25" mixin="stencils all" rotation="-90 0 0"></a-entity>
+  <a-entity class="stencils all" position="0 0 -10" mixin="stencils all" rotation="-90 0 0"></a-entity>
+  <a-entity class="stencils all" position="0 0 5" mixin="stencils all" rotation="-90 0 0"></a-entity>
+  <a-entity class="stencils all" position="0 0 20" mixin="stencils all" rotation="-90 0 0"></a-entity>
+  <a-entity class="stencils all" position="0 0 35" mixin="stencils all" rotation="-90 0 0"></a-entity>
+  <a-entity class="stencils all" position="0 0 50" mixin="stencils all" rotation="-90 0 0"></a-entity>
+  <a-entity class="stencils all" position="0 0 65" mixin="stencils all" rotation="-90 0 0"></a-entity>
+</a-entity>
+<a-entity scale="1.016 1 1" position="56.38800000000002 0 0" rotation="270 0 0" mixin="drive-lane-t1"></a-entity>
+<a-entity scale="1 1 1" position="57.91200000000002 0.01 0" rotation="270 0 0" mixin="markings dashed-stripe-t1"></a-entity>
+<a-entity class="stencils-parent" position="59.43600000000002 0.015 0" id="stencils-parent-59.43600000000002">
+  <a-entity class="stencils right" position="0 0 -70" mixin="stencils right" rotation="-90 0 0"></a-entity>
+  <a-entity class="stencils right" position="0 0 -55" mixin="stencils right" rotation="-90 0 0"></a-entity>
+  <a-entity class="stencils right" position="0 0 -40" mixin="stencils right" rotation="-90 0 0"></a-entity>
+  <a-entity class="stencils right" position="0 0 -25" mixin="stencils right" rotation="-90 0 0"></a-entity>
+  <a-entity class="stencils right" position="0 0 -10" mixin="stencils right" rotation="-90 0 0"></a-entity>
+  <a-entity class="stencils right" position="0 0 5" mixin="stencils right" rotation="-90 0 0"></a-entity>
+  <a-entity class="stencils right" position="0 0 20" mixin="stencils right" rotation="-90 0 0"></a-entity>
+  <a-entity class="stencils right" position="0 0 35" mixin="stencils right" rotation="-90 0 0"></a-entity>
+  <a-entity class="stencils right" position="0 0 50" mixin="stencils right" rotation="-90 0 0"></a-entity>
+  <a-entity class="stencils right" position="0 0 65" mixin="stencils right" rotation="-90 0 0"></a-entity>
+</a-entity>
+<a-entity scale="1.016 1 1" position="59.43600000000002 0 0" rotation="270 0 0" mixin="drive-lane-t1"></a-entity>
+<a-entity scale="1 1 1" position="60.96000000000002 0.01 0" rotation="270 0 0" mixin="markings solid-stripe-t1"></a-entity>
+<a-entity scale="0.7111999999999999 1 1" position="62.02680000000002 0 0" rotation="270 0 0" mixin="drive-lane-t1"></a-entity>
+<a-entity class="stencils-parent" position="63.855600000000024 0.015 0" id="stencils-parent-63.855600000000024">
+  <a-entity class="stencils bike-lane" position="0 0 -70" mixin="stencils bike-lane" rotation="-90 0 0"></a-entity>
+  <a-entity class="stencils bike-lane" position="0 0 -50" mixin="stencils bike-lane" rotation="-90 0 0"></a-entity>
+  <a-entity class="stencils bike-lane" position="0 0 -30" mixin="stencils bike-lane" rotation="-90 0 0"></a-entity>
+  <a-entity class="stencils bike-lane" position="0 0 -10" mixin="stencils bike-lane" rotation="-90 0 0"></a-entity>
+  <a-entity class="stencils bike-lane" position="0 0 10" mixin="stencils bike-lane" rotation="-90 0 0"></a-entity>
+  <a-entity class="stencils bike-lane" position="0 0 30" mixin="stencils bike-lane" rotation="-90 0 0"></a-entity>
+  <a-entity class="stencils bike-lane" position="0 0 50" mixin="stencils bike-lane" rotation="-90 0 0"></a-entity>
+  <a-entity class="stencils bike-lane" position="0 0 70" mixin="stencils bike-lane" rotation="-90 0 0"></a-entity>
+</a-entity>
+<a-entity scale="0.8466666666666667 1 1" position="63.855600000000024 0 0" rotation="270 0 0" mixin="bike-lane-t1"></a-entity>
+<a-entity class="lamp-parent" position="65.22720000000002 0 0" id="lamp-parent-65.22720000000002">
+  <a-entity class="lamp-modern" position="0 0 -60" mixin="lamp-modern" rotation="0 90 0"></a-entity>
+  <a-entity class="lamp-modern" position="0 0 -45" mixin="lamp-modern" rotation="0 90 0"></a-entity>
+  <a-entity class="lamp-modern" position="0 0 -30" mixin="lamp-modern" rotation="0 90 0"></a-entity>
+  <a-entity class="lamp-modern" position="0 0 -15" mixin="lamp-modern" rotation="0 90 0"></a-entity>
+  <a-entity class="lamp-modern" position="0 0 0" mixin="lamp-modern" rotation="0 90 0"></a-entity>
+  <a-entity class="lamp-modern" position="0 0 15" mixin="lamp-modern" rotation="0 90 0"></a-entity>
+  <a-entity class="lamp-modern" position="0 0 30" mixin="lamp-modern" rotation="0 90 0"></a-entity>
+  <a-entity class="lamp-modern" position="0 0 45" mixin="lamp-modern" rotation="0 90 0"></a-entity>
+  <a-entity class="lamp-modern" position="0 0 60" mixin="lamp-modern" rotation="0 90 0"></a-entity>
+  <a-entity class="lamp-modern" position="0 0 -60" mixin="lamp-modern" rotation="0 -90 0"></a-entity>
+  <a-entity class="lamp-modern" position="0 0 -45" mixin="lamp-modern" rotation="0 -90 0"></a-entity>
+  <a-entity class="lamp-modern" position="0 0 -30" mixin="lamp-modern" rotation="0 -90 0"></a-entity>
+  <a-entity class="lamp-modern" position="0 0 -15" mixin="lamp-modern" rotation="0 -90 0"></a-entity>
+  <a-entity class="lamp-modern" position="0 0 0" mixin="lamp-modern" rotation="0 -90 0"></a-entity>
+  <a-entity class="lamp-modern" position="0 0 15" mixin="lamp-modern" rotation="0 -90 0"></a-entity>
+  <a-entity class="lamp-modern" position="0 0 30" mixin="lamp-modern" rotation="0 -90 0"></a-entity>
+  <a-entity class="lamp-modern" position="0 0 45" mixin="lamp-modern" rotation="0 -90 0"></a-entity>
+  <a-entity class="lamp-modern" position="0 0 60" mixin="lamp-modern" rotation="0 -90 0"></a-entity>
+</a-entity>
+<a-entity scale="0.40640000000000004 1 1" position="65.22720000000002 0 0" rotation="270 0 0" mixin="sidewalk-t1"></a-entity>
+<a-entity scale="4.064 1 1" position="66.44640000000003 0 0" rotation="270 0 0" mixin="divider-t1"></a-entity>
+<a-entity scale="1 1 1" position="67.05600000000003 0.01 0" rotation="270 0 0" mixin="markings solid-stripe-t1"></a-entity>
+<a-entity class="stencils-parent" position="67.97040000000003 0.015 0" id="stencils-parent-67.97040000000003">
+  <a-entity class="stencils bike-lane" position="0 0 -70" mixin="stencils bike-lane" rotation="-90 180 0"></a-entity>
+  <a-entity class="stencils bike-lane" position="0 0 -50" mixin="stencils bike-lane" rotation="-90 180 0"></a-entity>
+  <a-entity class="stencils bike-lane" position="0 0 -30" mixin="stencils bike-lane" rotation="-90 180 0"></a-entity>
+  <a-entity class="stencils bike-lane" position="0 0 -10" mixin="stencils bike-lane" rotation="-90 180 0"></a-entity>
+  <a-entity class="stencils bike-lane" position="0 0 10" mixin="stencils bike-lane" rotation="-90 180 0"></a-entity>
+  <a-entity class="stencils bike-lane" position="0 0 30" mixin="stencils bike-lane" rotation="-90 180 0"></a-entity>
+  <a-entity class="stencils bike-lane" position="0 0 50" mixin="stencils bike-lane" rotation="-90 180 0"></a-entity>
+  <a-entity class="stencils bike-lane" position="0 0 70" mixin="stencils bike-lane" rotation="-90 180 0"></a-entity>
+</a-entity>
+<a-entity scale="1.016 1 1" position="67.97040000000003 0 0" rotation="270 180 0" mixin="surface-red bike-lane-t1"></a-entity>
+<a-entity scale="1 1 1" position="68.88480000000003 0.01 0" rotation="270 0 0" mixin="markings yellow short-dashed-stripe-t1"></a-entity>
+<a-entity class="stencils-parent" position="69.79920000000003 0.015 0" id="stencils-parent-69.79920000000003">
+  <a-entity class="stencils bike-lane" position="0 0 -70" mixin="stencils bike-lane" rotation="-90 0 0"></a-entity>
+  <a-entity class="stencils bike-lane" position="0 0 -50" mixin="stencils bike-lane" rotation="-90 0 0"></a-entity>
+  <a-entity class="stencils bike-lane" position="0 0 -30" mixin="stencils bike-lane" rotation="-90 0 0"></a-entity>
+  <a-entity class="stencils bike-lane" position="0 0 -10" mixin="stencils bike-lane" rotation="-90 0 0"></a-entity>
+  <a-entity class="stencils bike-lane" position="0 0 10" mixin="stencils bike-lane" rotation="-90 0 0"></a-entity>
+  <a-entity class="stencils bike-lane" position="0 0 30" mixin="stencils bike-lane" rotation="-90 0 0"></a-entity>
+  <a-entity class="stencils bike-lane" position="0 0 50" mixin="stencils bike-lane" rotation="-90 0 0"></a-entity>
+  <a-entity class="stencils bike-lane" position="0 0 70" mixin="stencils bike-lane" rotation="-90 0 0"></a-entity>
+</a-entity>
+<a-entity scale="1.016 1 1" position="69.79920000000003 0 0" rotation="270 0 0" mixin="surface-green bike-lane-t1"></a-entity>
+<a-entity class="lamp-parent" position="71.01840000000003 0 0" id="lamp-parent-71.01840000000003">
+  <a-entity class="lamp-modern" position="0 0 -60" mixin="lamp-modern" rotation="0 90 0"></a-entity>
+  <a-entity class="lamp-modern" position="0 0 -45" mixin="lamp-modern" rotation="0 90 0"></a-entity>
+  <a-entity class="lamp-modern" position="0 0 -30" mixin="lamp-modern" rotation="0 90 0"></a-entity>
+  <a-entity class="lamp-modern" position="0 0 -15" mixin="lamp-modern" rotation="0 90 0"></a-entity>
+  <a-entity class="lamp-modern" position="0 0 0" mixin="lamp-modern" rotation="0 90 0"></a-entity>
+  <a-entity class="lamp-modern" position="0 0 15" mixin="lamp-modern" rotation="0 90 0"></a-entity>
+  <a-entity class="lamp-modern" position="0 0 30" mixin="lamp-modern" rotation="0 90 0"></a-entity>
+  <a-entity class="lamp-modern" position="0 0 45" mixin="lamp-modern" rotation="0 90 0"></a-entity>
+  <a-entity class="lamp-modern" position="0 0 60" mixin="lamp-modern" rotation="0 90 0"></a-entity>
+</a-entity>
+<a-entity scale="0.20320000000000002 1 1" position="71.01840000000003 0 0" rotation="270 0 0" mixin="sidewalk-t1"></a-entity>
+<a-entity class="tree-parent" position="71.62800000000003 0 7" id="tree-parent-71.62800000000003">
+  <a-entity class="palm-tree" position="0 0 -60" mixin="palm-tree" rotation="0 180 0"></a-entity>
+  <a-entity class="palm-tree" position="0 0 -45" mixin="palm-tree" rotation="0 180 0"></a-entity>
+  <a-entity class="palm-tree" position="0 0 -30" mixin="palm-tree" rotation="0 180 0"></a-entity>
+  <a-entity class="palm-tree" position="0 0 -15" mixin="palm-tree" rotation="0 180 0"></a-entity>
+  <a-entity class="palm-tree" position="0 0 0" mixin="palm-tree" rotation="0 180 0"></a-entity>
+  <a-entity class="palm-tree" position="0 0 15" mixin="palm-tree" rotation="0 180 0"></a-entity>
+  <a-entity class="palm-tree" position="0 0 30" mixin="palm-tree" rotation="0 180 0"></a-entity>
+  <a-entity class="palm-tree" position="0 0 45" mixin="palm-tree" rotation="0 180 0"></a-entity>
+  <a-entity class="palm-tree" position="0 0 60" mixin="palm-tree" rotation="0 180 0"></a-entity>
+</a-entity>
+<a-entity scale="0.20320000000000002 1 1" position="71.62800000000003 0 0" rotation="270 0 0" mixin="sidewalk-t1"></a-entity>
+<a-entity scale="0.6096 1 1" position="72.84720000000003 0 0" rotation="270 0 0" mixin="sidewalk-t1"></a-entity>

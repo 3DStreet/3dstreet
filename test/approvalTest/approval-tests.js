@@ -2,6 +2,7 @@
 
 require('approvals').mocha();
 require('jsdom-global')();
+var pretty = require('pretty');
 
 const rewire = require('rewire');
 
@@ -12,171 +13,7 @@ app.__set__('isSidewalk', otherApp.__get__('isSidewalk')); // rewire isSidewalk
 const processSegments = app.__get__('processSegments');
 
 const sampleInput = `
-{
-  "id":"5043b130-44be-11ea-ae58-ad57273c416e",
-  "namespacedId":34,
-  "name":"Market Street at 11th w bikeshare",
-  "clientUpdatedAt":"2020-05-13T16:13:15.864Z",
-  "data":{
-    "street":{
-      "schemaVersion":22,
-      "width":101.33333333333333,
-      "id":"5043b130-44be-11ea-ae58-ad57273c416e",
-      "namespacedId":34,
-      "units":2,
-      "location":null,
-      "userUpdated":true,
-      "environment":"day",
-      "leftBuildingHeight":4,
-      "rightBuildingHeight":20,
-      "leftBuildingVariant":"narrow",
-      "rightBuildingVariant":"waterfront",
-      "segments":[
-        {
-          "type":"sidewalk",
-          "variantString":"dense",
-          "width":11.66667,
-          "randSeed":496622137
-        
-},
-        {
-          "type":"sidewalk-bench",
-          "variantString":"left",
-          "width":1
-        
-},
-        {
-          "type":"sidewalk-tree",
-          "variantString":"big",
-          "width":2
-        
-},
-        {
-          "type":"sidewalk-bike-rack",
-          "variantString":"right|sidewalk",
-          "width":6.66667
-        
-},
-        {
-          "type":"sidewalk-lamp",
-          "variantString":"both|traditional",
-          "width":2
-        
-},
-        {
-          "type":"bike-lane",
-          "variantString":"inbound|green|road",
-          "width":5
-        
-},
-        {
-          "type":"divider",
-          "variantString":"bollard",
-          "width":2
-        
-},
-        {
-          "type":"drive-lane",
-          "variantString":"inbound|car",
-          "width":10,
-          "randSeed":522044056
-        
-},
-        {
-          "type":"divider",
-          "variantString":"striped-buffer",
-          "width":1.66667
-        
-},
-        {
-          "type":"streetcar",
-          "variantString":"inbound|colored",
-          "width":12
-        
-},
-        {
-          "type":"light-rail",
-          "variantString":"outbound|colored",
-          "width":12
-        
-},
-        {
-          "type":"divider",
-          "variantString":"striped-buffer",
-          "width":1.66667
-        
-},
-        {
-          "type":"bike-lane",
-          "variantString":"outbound|green|road",
-          "width":5
-        
-},
-        {
-          "type":"divider",
-          "variantString":"bollard",
-          "width":2
-        
-},
-        {
-          "type":"turn-lane",
-          "variantString":"outbound|left-right-straight",
-          "width":10
-        
-},
-        {
-          "type":"sidewalk",
-          "variantString":"dense",
-          "width":1.66667,
-          "randSeed":706037020
-        
-},
-        {
-          "type":"sidewalk-lamp",
-          "variantString":"both|traditional",
-          "width":2
-        
-},
-        {
-          "type":"sidewalk-tree",
-          "variantString":"big",
-          "width":1
-        
-},
-        {
-          "type":"sidewalk-bench",
-          "variantString":"right",
-          "width":1
-        
-},
-        {
-          "type":"bikeshare",
-          "variantString":"left|sidewalk",
-          "width":7
-        
-},
-        {
-          "type":"sidewalk",
-          "variantString":"normal",
-          "width":9.33333,
-          "randSeed":401817574
-        
-}
-      
-],
-      "editCount":117
-    
-}
-  
-},
-  "createdAt":"2020-02-01T06:44:36.952Z",
-  "updatedAt":"2020-05-13T16:13:16.700Z",
-  "originalStreetId":"5e4d0430-448b-11ea-ae58-ad57273c416e",
-  "creator":{
-    "id":"kfarr"
-  
-}
-}
+{"id":"03923530-96d7-11ea-8f6a-5fbe8747064d","namespacedId":44,"name":"Streetmix3D All Segment Cases Test","clientUpdatedAt":"2020-05-15T18:29:04.491Z","data":{"street":{"schemaVersion":22,"width":232,"id":"03923530-96d7-11ea-8f6a-5fbe8747064d","namespacedId":44,"units":2,"location":null,"userUpdated":true,"environment":"day","leftBuildingHeight":4,"rightBuildingHeight":3,"leftBuildingVariant":"narrow","rightBuildingVariant":"wide","segments":[{"type":"sidewalk","variantString":"dense","width":6,"randSeed":36223137},{"type":"sidewalk-tree","variantString":"big","width":2},{"type":"sidewalk-wayfinding","variantString":"large","width":4},{"type":"sidewalk-bench","variantString":"left","width":4},{"type":"sidewalk-bike-rack","variantString":"right|sidewalk-parallel","width":5},{"type":"bikeshare","variantString":"left|road","width":7},{"type":"transit-shelter","variantString":"left|street-level","width":9},{"type":"sidewalk-lamp","variantString":"right|modern","width":2},{"type":"bus-lane","variantString":"inbound|shared","width":12},{"type":"turn-lane","variantString":"inbound|left","width":10},{"type":"drive-lane","variantString":"inbound|sharrow","width":10,"randSeed":102670651},{"type":"turn-lane","variantString":"inbound|right","width":10},{"type":"divider","variantString":"bush","width":2},{"type":"drive-lane","variantString":"inbound|car","width":10,"randSeed":807672430},{"type":"turn-lane","variantString":"outbound|shared","width":10},{"type":"drive-lane","variantString":"outbound|car","width":10,"randSeed":365422905},{"type":"sidewalk-lamp","variantString":"both|pride","width":4},{"type":"divider","variantString":"bush","width":3},{"type":"sidewalk-lamp","variantString":"both|traditional","width":4},{"type":"streetcar","variantString":"inbound|grass","width":12},{"type":"light-rail","variantString":"outbound|colored","width":12},{"type":"bus-lane","variantString":"outbound|colored","width":12},{"type":"sidewalk-lamp","variantString":"left|pride","width":4},{"type":"divider","variantString":"bollard","width":2},{"type":"sidewalk-lamp","variantString":"right|pride","width":4},{"type":"turn-lane","variantString":"outbound|left","width":10},{"type":"turn-lane","variantString":"outbound|left-right-straight","width":10},{"type":"turn-lane","variantString":"outbound|right","width":10},{"type":"parking-lane","variantString":"outbound|right","width":7},{"type":"scooter","variantString":"outbound|regular","width":5},{"type":"sidewalk-lamp","variantString":"both|modern","width":4},{"type":"divider","variantString":"planter-box","width":4},{"type":"bike-lane","variantString":"inbound|red|road","width":6},{"type":"bike-lane","variantString":"outbound|green|road","width":6},{"type":"sidewalk-lamp","variantString":"left|modern","width":2},{"type":"sidewalk-tree","variantString":"palm-tree","width":2},{"type":"sidewalk","variantString":"normal","width":6,"randSeed":419985576}],"editCount":61}},"createdAt":"2020-05-15T18:08:01.084Z","updatedAt":"2020-05-15T18:29:05.292Z","originalStreetId":null,"creator":{"id":"kfarr"}}
 `;
 
 function overrideMathRandomForTesting () {
@@ -191,7 +28,7 @@ function prepareParentElement (id) {
 }
 
 describe('ApprovalTest - A-Frame Streetmix', function () {
-  describe('#processSegments()', function () {
+  describe('#processSegments() Street 44', function () {
     it('should generate the same output when passing an example JSON', function () {
       const elementId = 'streets';
 
@@ -201,7 +38,7 @@ describe('ApprovalTest - A-Frame Streetmix', function () {
 
       processSegments(streetmixObject.data.street.segments, elementId);
 
-      this.verify(parentEl.innerHTML);
+      this.verify(pretty(parentEl.innerHTML));
     });
   });
 });
