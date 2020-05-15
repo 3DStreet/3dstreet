@@ -163,11 +163,12 @@ function createChooChooElement (variantList, objectMixinId, positionX, curveId, 
   placedObjectEl.setAttribute('rotation', '0 ' + rotationBusY + ' 0');
   placedObjectEl.setAttribute('mixin', objectMixinId);
   placedObjectEl.setAttribute('alongpath', 'curve: ' + curveId + '; loop:true; dur:20000;');
-
+  // placedObjectEl.setAttribute('soundwhenstart'); TODO: Use something like this to replace the addEventListener below
+  
   // add the new elmement to DOM
   document.getElementById(streetElementId).appendChild(placedObjectEl);
 
-  placedObjectEl.addEventListener('movingstarted', function (e) { // TODO: figure out how to test/approve eventListeners as well
+  placedObjectEl.addEventListener('movingstarted', function (e) {
     console.log('movingstarted', e);
     if (state.sounds.enabled) {
       // this creates console error if the placedObjectEl does not have a sound associated
@@ -230,16 +231,12 @@ function processSegments (segments, streetElementId) {
       createStencilParentElement(positionX, getStencilsParentId(positionX), streetElementId);
 
       cloneMixin({ objectMixinId: 'stencils sharrow', parentId: getStencilsParentId(positionX), rotation: '-90 ' + rotationY + ' 0', step: 10, radius: 70 });
-    }
-
-    if (segments[i].type === 'bike-lane' || segments[i].type === 'scooter') {
+    } else if (segments[i].type === 'bike-lane' || segments[i].type === 'scooter') {
       createStencilParentElement(positionX, getStencilsParentId(positionX), streetElementId);
       mixinId = getBikeLaneMixin(variantList[1]);
 
       cloneMixin({ objectMixinId: 'stencils bike-lane', parentId: getStencilsParentId(positionX), rotation: '-90 ' + rotationY + ' 0', step: 20, radius: 70 });
-    }
-
-    if (segments[i].type == 'light-rail' || segments[i].type == 'streetcar') {
+    } else if (segments[i].type === 'light-rail' || segments[i].type === 'streetcar') {
       mixinId = 'bus-lane';
       if (variantList[1] == 'colored') {
         var mixinId = 'surface-red bus-lane';
@@ -279,10 +276,8 @@ function processSegments (segments, streetElementId) {
       document.getElementById(streetElementId).appendChild(placedObjectEl);
 
       cloneMixin({ objectMixinId: 'track', parentId: 'track-parent-' + positionX, step: 20.25, radius: 80 });
-    }
+    } else if (segments[i].type === 'turn-lane') {     
 
-    // variant doesn't exist yet      if (segments[i].type == "turn-lane" && variantList[1] == "shared") {mixinId = "turn-lane-shared"};
-    if (segments[i].type == 'turn-lane') {
       mixinId = 'drive-lane'; // use normal drive lane road material
       var markerMixinId = variantList[1]; // set the mixin of the road markings to match the current variant name
 
@@ -323,9 +318,7 @@ function processSegments (segments, streetElementId) {
         document.getElementById(streetElementId).appendChild(placedObjectEl);
         cloneMixin({ objectMixinId: mixinString, parentId: 'stencils-parent-offset2-' + positionX, rotation: '-90 ' + (rotationY + 180) + ' 0', step: 15, radius: 70 });
       }
-    }
-
-    if (segments[i].type == 'divider' && variantList[0] == 'bollard') {
+    } else if (segments[i].type === 'divider' && variantList[0] === 'bollard') {
       mixinId = 'divider';
 
       // make some safehits
@@ -337,9 +330,7 @@ function processSegments (segments, streetElementId) {
       document.getElementById(streetElementId).appendChild(placedObjectEl);
 
       cloneMixin({ objectMixinId: 'safehit', parentId: 'safehit-parent-' + positionX, step: 4, radius: 70 });
-    }
-
-    if (segments[i].type == 'bus-lane') {
+    } else if (segments[i].type === 'bus-lane') {
       if (variantList[1] == 'colored') {
         var mixinId = 'surface-red bus-lane';
       }
@@ -393,9 +384,7 @@ function processSegments (segments, streetElementId) {
       document.getElementById(streetElementId).appendChild(placedObjectEl);
 
       cloneMixin({ objectMixinId: 'stencils word-only', parentId: 'stencils-parent-offset20-' + positionX, rotation: '-90 ' + rotationY + ' 0', step: 50, radius: 70 });
-    }
-
-    if (segments[i].type == 'drive-lane') {
+    } else if (segments[i].type === 'drive-lane') {
       var rotationBusY = (variantList[0] == 'inbound') ? 0 : 180;
       var placedObjectEl = document.createElement('a-entity');
       placedObjectEl.setAttribute('class', 'car');
@@ -415,9 +404,7 @@ function processSegments (segments, streetElementId) {
 
       // add the new elmement to DOM
       document.getElementById(streetElementId).appendChild(placedObjectEl);
-    }
-
-    if (segments[i].type == 'sidewalk-wayfinding') {
+    } else if (segments[i].type === 'sidewalk-wayfinding') {
       mixinId = 'sidewalk'; // this is the "ground, normal"
 
       var placedObjectEl = document.createElement('a-entity');
@@ -441,9 +428,7 @@ function processSegments (segments, streetElementId) {
       placedObjectEl.setAttribute('material', 'src:#wayfinding-map');
       // add the new elmement to DOM
       document.getElementById(streetElementId).appendChild(placedObjectEl);
-    }
-
-    if (segments[i].type == 'sidewalk-bench') {
+    } else if (segments[i].type === 'sidewalk-bench') {
       // sidewalk mixin as the segment surface - this doesn't look great (squished texture not made for this width)
       mixinId = 'sidewalk';
 
@@ -463,9 +448,7 @@ function processSegments (segments, streetElementId) {
         // `right` or `left` bench
         cloneMixin({ objectMixinId: 'bench', parentId: 'bench-parent-' + positionX, rotation: '0 ' + rotationCloneY + ' 0' });
       }
-    }
-
-    if (segments[i].type == 'sidewalk-bike-rack') {
+    } else if (segments[i].type === 'sidewalk-bike-rack') {
       // sidewalk mixin as the segment surface - this doesn't look great (squished texture not made for this width)
       mixinId = 'sidewalk';
 
@@ -480,9 +463,7 @@ function processSegments (segments, streetElementId) {
       var rotationCloneY = (variantList[1] == 'sidewalk-parallel') ? 90 : 0;
 
       cloneMixin({ objectMixinId: 'bikerack', parentId: 'bikerack-parent-' + positionX, rotation: '0 ' + rotationCloneY + ' 0' });
-    }
-
-    if (segments[i].type == 'bikeshare') {
+    } else if (segments[i].type === 'bikeshare') {
       // sidewalk mixin as the segment surface - this doesn't look great (squished texture not made for this width)
       mixinId = 'sidewalk';
 
@@ -497,9 +478,7 @@ function processSegments (segments, streetElementId) {
 
       // add the new elmement to DOM
       document.getElementById(streetElementId).appendChild(placedObjectEl);
-    }
-
-    if (segments[i].type == 'sidewalk-tree') {
+    } else if (segments[i].type === 'sidewalk-tree') {
       // sidewalk mixin as the segment surface - this doesn't look great (squished texture not made for this width)
       mixinId = 'sidewalk';
 
@@ -519,9 +498,7 @@ function processSegments (segments, streetElementId) {
 
       // clone a bunch of trees under the parent
       cloneMixin({ objectMixinId: objectMixinId, parentId: 'tree-parent-' + positionX, randomY: true });
-    }
-
-    if (segments[i].type == 'sidewalk-lamp' && (variantList[1] == 'modern' || variantList[1] == 'pride')) {
+    } else if (segments[i].type === 'sidewalk-lamp' && (variantList[1] === 'modern' || variantList[1] === 'pride')) {
       // sidewalk mixin as the segment surface - this doesn't look great (squished texture not made for this width)
       mixinId = 'sidewalk';
 
@@ -548,9 +525,7 @@ function processSegments (segments, streetElementId) {
       if (variantList[1] == 'pride' && (variantList[0] == 'left' || variantList[0] == 'both')) {
         cloneMixin({ objectMixinId: 'pride-flag', parentId: 'lamp-parent-' + positionX, rotation: '0 -180 0', positionXYString: '-0.409 3.345' });
       }
-    }
-
-    if (segments[i].type == 'sidewalk-lamp' && variantList[1] == 'traditional') {
+    } else if (segments[i].type === 'sidewalk-lamp' && variantList[1] === 'traditional') {
       // sidewalk mixin
       mixinId = 'sidewalk';
 
@@ -564,9 +539,7 @@ function processSegments (segments, streetElementId) {
 
       // clone a bunch of lamps under the parent
       cloneMixin({ objectMixinId: 'lamp-traditional', parentId: 'lamp-parent-' + positionX });
-    }
-
-    if (segments[i].type == 'transit-shelter') {
+    } else if (segments[i].type === 'transit-shelter') {
       var rotationBusStopY = (variantList[0] == 'right') ? 0 : 180;
       var parityBusStop = (variantList[0] == 'right') ? 1 : -1;
 
@@ -578,46 +551,32 @@ function processSegments (segments, streetElementId) {
 
       // add the new elmement to DOM
       document.getElementById(streetElementId).appendChild(placedObjectEl);
-    }
-
-    if (segments[i].type == 'separator' && variantList[0] == 'dashed') {
+    } else if (segments[i].type === 'separator' && variantList[0] === 'dashed') {
       mixinId = 'markings dashed-stripe';
       positionY = positionY + 0.01; // make sure the lane marker is above the asphalt
       scaleX = 1;
-    }
-
-    if (segments[i].type == 'separator' && variantList[0] == 'solid') {
+    } else if (segments[i].type === 'separator' && variantList[0] === 'solid') {
       mixinId = 'markings solid-stripe';
       positionY = positionY + 0.01; // make sure the lane marker is above the asphalt
       scaleX = 1;
-    }
-
-    if (segments[i].type == 'separator' && variantList[0] == 'doubleyellow') {
+    } else if (segments[i].type === 'separator' && variantList[0] === 'doubleyellow') {
       mixinId = 'markings solid-doubleyellow';
       positionY = positionY + 0.01; // make sure the lane marker is above the asphalt
       scaleX = 1;
-    }
-
-    if (segments[i].type == 'separator' && variantList[0] == 'shortdashedyellow') {
+    } else if (segments[i].type === 'separator' && variantList[0] === 'shortdashedyellow') {
       mixinId = 'markings yellow short-dashed-stripe';
       positionY = positionY + 0.01; // make sure the lane marker is above the asphalt
       scaleX = 1;
-    }
-
-    if (segments[i].type == 'separator' && variantList[0] == 'soliddashedyellow') {
+    } else if (segments[i].type === 'separator' && variantList[0] === 'soliddashedyellow') {
       mixinId = 'markings yellow solid-dashed';
       positionY = positionY + 0.01; // make sure the lane marker is above the asphalt
       scaleX = 1;
-    }
-
-    if (segments[i].type == 'separator' && variantList[0] == 'soliddashedyellowinverted') {
+    } else if (segments[i].type === 'separator' && variantList[0] === 'soliddashedyellowinverted') {
       mixinId = 'markings yellow solid-dashed';
       positionY = positionY + 0.01; // make sure the lane marker is above the asphalt
       scaleX = 1;
       rotationY = '180';
-    }
-
-    if (segments[i].type == 'parking-lane') {
+    } else if (segments[i].type === 'parking-lane') {
       mixinId = 'drive-lane';
     }
 
