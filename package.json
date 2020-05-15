@@ -4,7 +4,7 @@
   "description": "Streetmix3D creates 3D visualizations of your 2D [Streetmix.net](https://streetmix.net) streets using A-Frame and WebXR.",
   "main": "index.js",
   "scripts": {
-    "test": "mocha --recursive --full-trace",
+    "test": "nyc --reporter=lcov --reporter=text mocha --recursive --full-trace",
     "test:watch": "mocha --recursive --full-trace --watch",
     "lint": "semistandard -v | snazzy",
     "lint:tested": "semistandard -v 'src/tested/**/*.js' 'test/**/*.js' | snazzy",
@@ -31,6 +31,7 @@
     "jsdom": "^16.2.2",
     "jsdom-global": "^3.0.2",
     "mocha": "^7.1.2",
+    "nyc": "^15.0.1",
     "rewire": "^5.0.0",
     "semistandard": "^14.2.0",
     "snazzy": "^8.0.0"
