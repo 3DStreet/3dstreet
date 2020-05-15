@@ -7,6 +7,7 @@
     "test": "mocha --recursive --full-trace",
     "test:watch": "mocha --recursive --full-trace --watch",
     "lint": "semistandard -v | snazzy",
+    "lint:tested": "semistandard -v 'src/tested/**/*.js' 'test/**/*.js' | snazzy",
     "lint:fix": "semistandard --fix"
   },
   "repository": {
