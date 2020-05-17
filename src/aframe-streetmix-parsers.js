@@ -131,7 +131,6 @@ function calcStreetWidth (segments) {
   return cumulativeWidthInMeters;
 }
 
-
 function getStencilsParentId (positionX) {
   return 'stencils-parent-' + positionX;
 }
@@ -140,17 +139,17 @@ function getTracksParentId (positionX) {
   return 'track-parent-' + positionX;
 }
 
-function createStencilsParentElement (positionX, elementId, parentElementId) {
+function createStencilsParentElement (position, elementId, parentElementId) {
   // make the parent for all the objects to be cloned
   var placedObjectEl = document.createElement('a-entity');
   placedObjectEl.setAttribute('class', 'stencils-parent');
-  placedObjectEl.setAttribute('position', positionX + ' 0.015 0'); // position="1.043 0.100 -3.463"
+  placedObjectEl.setAttribute('position', position); // position="1.043 0.100 -3.463"
   placedObjectEl.setAttribute('id', elementId);
   // add the new elmement to DOM
   document.getElementById(parentElementId).appendChild(placedObjectEl);
 }
 
-function createTracksParentElement(positionX, elementId, parentElementId) {
+function createTracksParentElement (positionX, elementId, parentElementId) {
   var placedObjectEl = document.createElement('a-entity');
   placedObjectEl.setAttribute('class', 'track-parent');
   placedObjectEl.setAttribute('position', positionX + ' -0.2 0'); // position="1.043 0.100 -3.463"
@@ -170,10 +169,10 @@ function getBikeLaneMixin (variant) {
 }
 
 function getBusLaneMixin (variant) {
-  if (variant == 'colored') {
+  if (variant === 'colored') {
     return 'surface-red bus-lane';
   }
-  if (variant == 'grass') {
+  if (variant === 'grass') {
     return 'surface-green bus-lane';
   }
   return 'bus-lane';
@@ -250,10 +249,10 @@ function processSegments (segments, streetElementId) {
     // if type && variant2 then use model  ... there's definitely a better way to do this ...
 
     if (segments[i].type === 'drive-lane' && variantList[1] === 'sharrow') {
-      createStencilsParentElement(positionX, getStencilsParentId(positionX), streetElementId);
+      createStencilsParentElement(positionX + ' 0.015 0', getStencilsParentId(positionX), streetElementId);
       cloneMixin({ objectMixinId: 'stencils sharrow', parentId: getStencilsParentId(positionX), rotation: '-90 ' + rotationY + ' 0', step: 10, radius: 70 });
     } else if (segments[i].type === 'bike-lane' || segments[i].type === 'scooter') {
-      createStencilsParentElement(positionX, getStencilsParentId(positionX), streetElementId);
+      createStencilsParentElement(positionX + ' 0.015 0', getStencilsParentId(positionX), streetElementId);
       mixinId = getBikeLaneMixin(variantList[1]);
       cloneMixin({ objectMixinId: 'stencils bike-lane', parentId: getStencilsParentId(positionX), rotation: '-90 ' + rotationY + ' 0', step: 20, radius: 70 });
     } else if (segments[i].type === 'light-rail' || segments[i].type === 'streetcar') {
@@ -282,39 +281,26 @@ function processSegments (segments, streetElementId) {
 
       // Fix streetmix inbound turn lane orientation (change left to right)
       // Remove this when this ticket is resolved: https://github.com/streetmix/streetmix/issues/683
-      if (variantList[0] == 'inbound') {
+      if (variantList[0] === 'inbound') {
         markerMixinId = markerMixinId.replace(/left|right/g, function (m) {
           return m === 'left' ? 'right' : 'left';
         });
       }
-
-      if (variantList[1] == 'shared') {
+      if (variantList[1] === 'shared') {
         markerMixinId = 'left';
       }
-
-      if (variantList[1] == 'left-right-straight') {
+      if (variantList[1] === 'left-right-straight') {
         markerMixinId = 'all';
       }
-
       var mixinString = 'stencils ' + markerMixinId;
 
       // make the parent for all the objects to be cloned
-      var placedObjectEl = document.createElement('a-entity');
-      placedObjectEl.setAttribute('class', 'stencils-parent');
-      placedObjectEl.setAttribute('position', positionX + ' 0.015 0'); // position="1.043 0.100 -3.463"
-      placedObjectEl.setAttribute('id', 'stencils-parent-' + positionX);
-      // add the new elmement to DOM
-      document.getElementById(streetElementId).appendChild(placedObjectEl);
+      createStencilsParentElement(positionX + ' 0.015 0', getStencilsParentId(positionX), streetElementId);
       cloneMixin({ objectMixinId: mixinString, parentId: 'stencils-parent-' + positionX, rotation: '-90 ' + rotationY + ' 0', step: 15, radius: 70 });
 
-      if (variantList[1] == 'shared') {
+      if (variantList[1] === 'shared') {
         // add an additional marking to represent the opposite turn marking stencil (rotated 180º)
-        var placedObjectEl = document.createElement('a-entity');
-        placedObjectEl.setAttribute('class', 'stencils-parent');
-        placedObjectEl.setAttribute('position', positionX + ' 0.015 ' + (-3 * isOutbound)); // position="1.043 0.100 -3.463"
-        placedObjectEl.setAttribute('id', 'stencils-parent-offset2-' + positionX);
-        // add the new elmement to DOM
-        document.getElementById(streetElementId).appendChild(placedObjectEl);
+        createStencilsParentElement(positionX + ' 0.015 ' + (-3 * isOutbound), 'stencils-parent-offset2-' + positionX, streetElementId);
         cloneMixin({ objectMixinId: mixinString, parentId: 'stencils-parent-offset2-' + positionX, rotation: '-90 ' + (rotationY + 180) + ' 0', step: 15, radius: 70 });
       }
     } else if (segments[i].type === 'divider' && variantList[0] === 'bollard') {
@@ -330,7 +316,7 @@ function processSegments (segments, streetElementId) {
 
       cloneMixin({ objectMixinId: 'safehit', parentId: 'safehit-parent-' + positionX, step: 4, radius: 70 });
     } else if (segments[i].type === 'bus-lane') {
-      if (variantList[1] == 'colored') {
+      if (variantList[1] === 'colored') {
         var mixinId = 'surface-red bus-lane';
       }
 
@@ -354,34 +340,13 @@ function processSegments (segments, streetElementId) {
       // add the new elmement to DOM
       document.getElementById(streetElementId).appendChild(placedObjectEl);
 
-      // make the parent for all the objects to be cloned
-      var placedObjectEl = document.createElement('a-entity');
-      placedObjectEl.setAttribute('class', 'stencils-parent');
-      placedObjectEl.setAttribute('position', positionX + ' 0.015 0'); // position="1.043 0.100 -3.463"
-      placedObjectEl.setAttribute('id', 'stencils-parent-' + positionX);
-      // add the new elmement to DOM
-      document.getElementById(streetElementId).appendChild(placedObjectEl);
+      createStencilsParentElement(positionX + ' 0.015 0', getStencilsParentId(positionX), streetElementId);
+      cloneMixin({ objectMixinId: 'stencils word-bus', parentId: getStencilsParentId(positionX), rotation: '-90 ' + rotationY + ' 0', step: 50, radius: 70 });
 
-      cloneMixin({ objectMixinId: 'stencils word-bus', parentId: 'stencils-parent-' + positionX, rotation: '-90 ' + rotationY + ' 0', step: 50, radius: 70 });
-
-      // make the parent for all the objects to be cloned
-      var placedObjectEl = document.createElement('a-entity');
-      placedObjectEl.setAttribute('class', 'stencils-parent');
-      placedObjectEl.setAttribute('position', positionX + ' 0.015 10'); // position="1.043 0.100 -3.463"
-      placedObjectEl.setAttribute('id', 'stencils-parent-offset10-' + positionX);
-      // add the new elmement to DOM
-      document.getElementById(streetElementId).appendChild(placedObjectEl);
-
+      createStencilsParentElement(positionX + ' 0.015 10', 'stencils-parent-offset10-' + positionX, streetElementId);
       cloneMixin({ objectMixinId: 'stencils word-taxi', parentId: 'stencils-parent-offset10-' + positionX, rotation: '-90 ' + rotationY + ' 0', step: 50, radius: 70 });
 
-      // make the parent for all the objects to be cloned
-      var placedObjectEl = document.createElement('a-entity');
-      placedObjectEl.setAttribute('class', 'stencils-parent');
-      placedObjectEl.setAttribute('position', positionX + ' 0.015 20'); // position="1.043 0.100 -3.463"
-      placedObjectEl.setAttribute('id', 'stencils-parent-offset20-' + positionX);
-      // add the new elmement to DOM
-      document.getElementById(streetElementId).appendChild(placedObjectEl);
-
+      createStencilsParentElement(positionX + ' 0.015 20', 'stencils-parent-offset20-' + positionX, streetElementId);
       cloneMixin({ objectMixinId: 'stencils word-only', parentId: 'stencils-parent-offset20-' + positionX, rotation: '-90 ' + rotationY + ' 0', step: 50, radius: 70 });
     } else if (segments[i].type === 'drive-lane') {
       var rotationBusY = (variantList[0] == 'inbound') ? 0 : 180;
