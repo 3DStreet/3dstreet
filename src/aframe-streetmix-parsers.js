@@ -131,11 +131,29 @@ function calcStreetWidth (segments) {
   return cumulativeWidthInMeters;
 }
 
-function createStencilParentElement (positionX, elementId, parentElementId) {
+
+function getStencilsParentId (positionX) {
+  return 'stencils-parent-' + positionX;
+}
+
+function getTracksParentId (positionX) {
+  return 'track-parent-' + positionX;
+}
+
+function createStencilsParentElement (positionX, elementId, parentElementId) {
   // make the parent for all the objects to be cloned
   var placedObjectEl = document.createElement('a-entity');
   placedObjectEl.setAttribute('class', 'stencils-parent');
   placedObjectEl.setAttribute('position', positionX + ' 0.015 0'); // position="1.043 0.100 -3.463"
+  placedObjectEl.setAttribute('id', elementId);
+  // add the new elmement to DOM
+  document.getElementById(parentElementId).appendChild(placedObjectEl);
+}
+
+function createTracksParentElement(positionX, elementId, parentElementId) {
+  var placedObjectEl = document.createElement('a-entity');
+  placedObjectEl.setAttribute('class', 'track-parent');
+  placedObjectEl.setAttribute('position', positionX + ' -0.2 0'); // position="1.043 0.100 -3.463"
   placedObjectEl.setAttribute('id', elementId);
   // add the new elmement to DOM
   document.getElementById(parentElementId).appendChild(placedObjectEl);
@@ -151,8 +169,14 @@ function getBikeLaneMixin (variant) {
   return 'bike-lane';
 }
 
-function getStencilsParentId (positionX) {
-  return 'stencils-parent-' + positionX;
+function getBusLaneMixin (variant) {
+  if (variant == 'colored') {
+    return 'surface-red bus-lane';
+  }
+  if (variant == 'grass') {
+    return 'surface-green bus-lane';
+  }
+  return 'bus-lane';
 }
 
 function createChooChooElement (variantList, objectMixinId, positionX, curveId, streetElementId) {
@@ -164,10 +188,11 @@ function createChooChooElement (variantList, objectMixinId, positionX, curveId, 
   placedObjectEl.setAttribute('mixin', objectMixinId);
   placedObjectEl.setAttribute('alongpath', 'curve: ' + curveId + '; loop:true; dur:20000;');
   // placedObjectEl.setAttribute('soundwhenstart'); TODO: Use something like this to replace the addEventListener below
-  
+
   // add the new elmement to DOM
   document.getElementById(streetElementId).appendChild(placedObjectEl);
 
+  // TODO: move this addEventListener logic to a separate function, for add component on entity and parse later
   placedObjectEl.addEventListener('movingstarted', function (e) {
     console.log('movingstarted', e);
     if (state.sounds.enabled) {
@@ -177,43 +202,41 @@ function createChooChooElement (variantList, objectMixinId, positionX, curveId, 
   });
 }
 
+// offset to center the street around global x position of 0
+function centerStreetParentEntity (segments, streetElementId) {
+  const streetWidth = calcStreetWidth(segments);
+  const offset = 0 - streetWidth / 2;
+  document.getElementById(streetElementId).setAttribute('position', offset + ' 0 0');
+}
+
 function processSegments (segments, streetElementId) {
   // takes a street's `segments` (array) from streetmix and a `streetElementId` (string) and places objects to make up a street with all segments
   segments = insertSeparatorSegments(segments);
   // console.log(segments);
 
-  // TODO: extract to separate function - begin
   // offset to center the street around global x position of 0
-  const streetWidth = calcStreetWidth(segments);
-  const offset = 0 - streetWidth / 2;
-  document.getElementById(streetElementId).setAttribute('position', offset + ' 0 0');
-  // TODO: extract to separate function - end
+  centerStreetParentEntity(segments, streetElementId);
 
   var cumulativeWidthInMeters = 0;
   for (var i = 0; i < segments.length; i++) {
     var segmentType = segments[i].type;
     var segmentWidthInFeet = segments[i].width;
     var segmentWidthInMeters = segmentWidthInFeet * 0.3048;
-    console.log('Type: ' + segmentType + '; Width: ' + segmentWidthInFeet + 'ft / ' + segmentWidthInMeters + 'm');
+    // console.log('Type: ' + segmentType + '; Width: ' + segmentWidthInFeet + 'ft / ' + segmentWidthInMeters + 'm');
 
     var modelWidthInMeters = defaultModelWidthsInMeters[segmentType];
-    //    console.log("Model Default Width: " + modelWidthInMeters + "m");
 
     // what is "delta" between default width and requested width?
     // default * scale = requested :: scale = requested / default
     // For example: requested width = 2m, but default model width is 1.8. 2 / 1.8 = 1.111111111
     var scaleX = segmentWidthInMeters / modelWidthInMeters;
-    //    console.log("Scale: " + scaleX);
 
     cumulativeWidthInMeters = cumulativeWidthInMeters + segmentWidthInMeters;
-    //    console.log("Cumulative Street Width: " + cumulativeWidthInMeters + "m");
-
     var positionX = cumulativeWidthInMeters - (0.5 * segmentWidthInMeters);
     var positionY = 0;
 
     // get variantString
     var variantList = segments[i].variantString.split('|');
-    // console.log(variantList);
 
     // Note: segment 3d models are outbound by default
     // If segment variant inbound, rotate segment model by 180 degrees
@@ -226,35 +249,18 @@ function processSegments (segments, streetElementId) {
     // there are some cases to look at segment variants in order to find the right model
     // if type && variant2 then use model  ... there's definitely a better way to do this ...
 
-    // sharrow variant not supported
     if (segments[i].type === 'drive-lane' && variantList[1] === 'sharrow') {
-      createStencilParentElement(positionX, getStencilsParentId(positionX), streetElementId);
-
+      createStencilsParentElement(positionX, getStencilsParentId(positionX), streetElementId);
       cloneMixin({ objectMixinId: 'stencils sharrow', parentId: getStencilsParentId(positionX), rotation: '-90 ' + rotationY + ' 0', step: 10, radius: 70 });
     } else if (segments[i].type === 'bike-lane' || segments[i].type === 'scooter') {
-      createStencilParentElement(positionX, getStencilsParentId(positionX), streetElementId);
+      createStencilsParentElement(positionX, getStencilsParentId(positionX), streetElementId);
       mixinId = getBikeLaneMixin(variantList[1]);
-
       cloneMixin({ objectMixinId: 'stencils bike-lane', parentId: getStencilsParentId(positionX), rotation: '-90 ' + rotationY + ' 0', step: 20, radius: 70 });
     } else if (segments[i].type === 'light-rail' || segments[i].type === 'streetcar') {
-      mixinId = 'bus-lane';
-      if (variantList[1] == 'colored') {
-        var mixinId = 'surface-red bus-lane';
-      }
-      if (variantList[1] == 'grass') {
-        var mixinId = 'surface-green bus-lane';
-      }
+      mixinId = getBusLaneMixin(variantList[1]);
+      var objectMixinId = (segments[i].type === 'streetcar') ? 'trolley' : 'tram';
 
-      var objectMixinId = (segments[i].type == 'streetcar') ? 'trolley' : 'tram';
-
-      // <a-curve id="track1">
-      //   <a-curve-point position="0 0 75" geometry="primitive:box; height:0.1; width:0.1; depth:0.1" material="color:#ff0000"></a-curve-point>
-      //   <a-curve-point position="0 0 0" geometry="primitive:box; height:0.1; width:0.1; depth:0.1" material="color:#ff0000"></a-curve-point>
-      //   <a-curve-point position="0 0 -75" geometry="primitive:box; height:0.1; width:0.1; depth:0.1" material="color:#ff0000"></a-curve-point>
-      // </a-curve>
-      //
-      // <a-entity id="tram-instance1" mixin="tram" alongpath="curve: #track1; loop:true; dur:10000; rotate:false;" ></a-entity>
-
+      // TODO: split out curve creation into separate function
       var pathEl = document.createElement('a-curve');
       pathEl.setAttribute('id', 'path-' + i);
       pathEl.innerHTML = `
@@ -268,16 +274,9 @@ function processSegments (segments, streetElementId) {
       createChooChooElement(variantList, objectMixinId, positionX, `#path-${i}`, streetElementId);
 
       // make the parent for all the objects to be cloned
-      var placedObjectEl = document.createElement('a-entity');
-      placedObjectEl.setAttribute('class', 'track-parent');
-      placedObjectEl.setAttribute('position', positionX + ' -0.2 0'); // position="1.043 0.100 -3.463"
-      placedObjectEl.setAttribute('id', 'track-parent-' + positionX);
-      // add the new elmement to DOM
-      document.getElementById(streetElementId).appendChild(placedObjectEl);
-
-      cloneMixin({ objectMixinId: 'track', parentId: 'track-parent-' + positionX, step: 20.25, radius: 80 });
-    } else if (segments[i].type === 'turn-lane') {     
-
+      createTracksParentElement(positionX, getTracksParentId(positionX), streetElementId);
+      cloneMixin({ objectMixinId: 'track', parentId: getTracksParentId(positionX), step: 20.25, radius: 80 });
+    } else if (segments[i].type === 'turn-lane') {
       mixinId = 'drive-lane'; // use normal drive lane road material
       var markerMixinId = variantList[1]; // set the mixin of the road markings to match the current variant name
 
