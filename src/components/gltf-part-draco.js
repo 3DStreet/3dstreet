@@ -5,7 +5,9 @@ AFRAME.registerComponent('gltf-part', {
   schema: {
     buffer: { default: true },
     part: { type: 'string' },
-    src: { type: 'asset' }
+    src: { type: 'asset' },
+    resetPosition: { default: false },
+    originalPosition: { default: '0 0 0' }
   },
 
   init: function () {
@@ -14,10 +16,19 @@ AFRAME.registerComponent('gltf-part', {
 
   update: function () {
     var el = this.el;
+    var data = this.data;
     if (!this.data.part && this.data.src) { return; }
     this.getModel(function (modelPart) {
       if (!modelPart) { return; }
+      console.log(data.resetPosition);
+      if (data.resetPosition) {
+        el.setAttribute('originalPosition', modelPart.position.x + ' ' + modelPart.position.y + ' ' + modelPart.position.z
+        );
+        modelPart.position.set(0, 0, 0);
+      }
+
       el.setObject3D('mesh', modelPart);
+      el.setAttribute('position', el.getAttribute('originalPosition'));
       // el.emit('part-loaded', {format: 'gltf', part: self.modelPart});
     });
   },
@@ -73,9 +84,6 @@ AFRAME.registerComponent('gltf-part', {
     }
 
     mesh = part.getObjectByProperty('type', 'Mesh').clone(true);
-
-    // for future reference, this discards translation from gltf parent node
-    // mesh.position.set ( 0, 0, 0 );
 
     if (this.data.buffer) {
       mesh.geometry = mesh.geometry.toNonIndexed();
