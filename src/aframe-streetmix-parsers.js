@@ -158,7 +158,7 @@ function createTracksParentElement (positionX, elementId, parentElementId) {
   document.getElementById(parentElementId).appendChild(placedObjectEl);
 }
 
-function createSafehitsParentElement(positionX, parentElementId) {
+function createSafehitsParentElement (positionX, parentElementId) {
   var placedObjectEl = document.createElement('a-entity');
   placedObjectEl.setAttribute('class', 'safehit-parent');
   placedObjectEl.setAttribute('position', positionX + ' 0 0');
@@ -166,7 +166,6 @@ function createSafehitsParentElement(positionX, parentElementId) {
   // add the new elmement to DOM
   document.getElementById(parentElementId).appendChild(placedObjectEl);
 }
-
 
 function getBikeLaneMixin (variant) {
   if (variant === 'red') {
@@ -230,6 +229,54 @@ function createBusAndShadowElements (isOutbound, positionX, parentId) {
   document.getElementById(parentId).appendChild(placedObjectEl);
 }
 
+function createCarAndShadowElements (variantList, positionX, parentId) {
+  var rotationBusY = (variantList[0] == 'inbound') ? 0 : 180;
+  var placedObjectEl = document.createElement('a-entity');
+  placedObjectEl.setAttribute('class', 'car');
+  placedObjectEl.setAttribute('position', positionX + ' 0 0');
+  placedObjectEl.setAttribute('rotation', '0 ' + rotationBusY + ' 0');
+  placedObjectEl.setAttribute('mixin', 'car');
+  // add the new elmement to DOM
+  document.getElementById(parentId).appendChild(placedObjectEl);
+  rotationBusY = (variantList[0] == 'inbound') ? -90 : 90;
+  placedObjectEl = document.createElement('a-entity');
+  placedObjectEl.setAttribute('class', 'car-shadow');
+  placedObjectEl.setAttribute('position', positionX + ' 0.01 0');
+  placedObjectEl.setAttribute('rotation', '-90 ' + rotationBusY + ' 0');
+  placedObjectEl.setAttribute('mixin', 'car-shadow');
+  // add the new elmement to DOM
+  document.getElementById(parentId).appendChild(placedObjectEl);
+}
+
+function createWayfindingElements (positionX, parentId) {
+  var placedObjectEl = document.createElement('a-entity');
+  placedObjectEl.setAttribute('position', positionX + ' 1 0');
+  placedObjectEl.setAttribute('mixin', 'wayfinding-box');
+  document.getElementById(parentId).appendChild(placedObjectEl);
+
+  placedObjectEl = document.createElement('a-entity');
+  placedObjectEl.setAttribute('position', positionX + ' 1.2 0.06');
+  placedObjectEl.setAttribute('geometry', 'primitive: plane; width: 0.8; height: 1.6');
+  placedObjectEl.setAttribute('material', 'src:#wayfinding-map');
+  document.getElementById(parentId).appendChild(placedObjectEl);
+
+  placedObjectEl = document.createElement('a-entity');
+  placedObjectEl.setAttribute('position', positionX + ' 1.2 -0.06');
+  placedObjectEl.setAttribute('rotation', '0 180 0');
+  placedObjectEl.setAttribute('geometry', 'primitive: plane; width: 0.8; height: 1.6');
+  placedObjectEl.setAttribute('material', 'src:#wayfinding-map');
+  document.getElementById(parentId).appendChild(placedObjectEl);
+}
+
+function createBenchesParentElement (positionX, benchesParentId, parentId) {
+  var placedObjectEl = document.createElement('a-entity');
+  placedObjectEl.setAttribute('class', 'bench-parent');
+  placedObjectEl.setAttribute('position', positionX + ' 0 3.5');
+  placedObjectEl.setAttribute('id', benchesParentId);
+  // add the new elmement to DOM
+  document.getElementById(parentId).appendChild(placedObjectEl);
+}
+
 // offset to center the street around global x position of 0
 function centerStreetParentEntity (segments, streetElementId) {
   const streetWidth = calcStreetWidth(segments);
@@ -268,15 +315,13 @@ function processSegments (segments, streetElementId) {
 
     // Note: segment 3d models are outbound by default
     // If segment variant inbound, rotate segment model by 180 degrees
-    var rotationY = (variantList[0] == 'inbound') ? 180 : 0;
-    var isOutbound = (variantList[0] == 'outbound') ? 1 : -1;
+    var rotationY = (variantList[0] === 'inbound') ? 180 : 0;
+    var isOutbound = (variantList[0] === 'outbound') ? 1 : -1;
 
     // the 3d model file name of a segment type is usually identical, let's start with that
     var mixinId = segments[i].type;
 
-    // there are some cases to look at segment variants in order to find the right model
-    // if type && variant2 then use model  ... there's definitely a better way to do this ...
-
+    // look at segment type and variant(s) to determine specific cases
     if (segments[i].type === 'drive-lane' && variantList[1] === 'sharrow') {
       createStencilsParentElement(positionX + ' 0.015 0', getStencilsParentId(positionX), streetElementId);
       cloneMixin({ objectMixinId: 'stencils sharrow', parentId: getStencilsParentId(positionX), rotation: '-90 ' + rotationY + ' 0', step: 10, radius: 70 });
@@ -308,8 +353,7 @@ function processSegments (segments, streetElementId) {
       mixinId = 'drive-lane'; // use normal drive lane road material
       var markerMixinId = variantList[1]; // set the mixin of the road markings to match the current variant name
 
-      // Fix streetmix inbound turn lane orientation (change left to right)
-      // Remove this when this ticket is resolved: https://github.com/streetmix/streetmix/issues/683
+      // Fix streetmix inbound turn lane orientation (change left to right) per: https://github.com/streetmix/streetmix/issues/683
       if (variantList[0] === 'inbound') {
         markerMixinId = markerMixinId.replace(/left|right/g, function (m) {
           return m === 'left' ? 'right' : 'left';
@@ -339,8 +383,8 @@ function processSegments (segments, streetElementId) {
       createSafehitsParentElement(positionX, streetElementId);
       cloneMixin({ objectMixinId: 'safehit', parentId: 'safehit-parent-' + positionX, step: 4, radius: 70 });
     } else if (segments[i].type === 'bus-lane') {
-      mixinId = getBusLaneMixin(variantList[1])
-      
+      mixinId = getBusLaneMixin(variantList[1]);
+
       createBusAndShadowElements(isOutbound, positionX, streetElementId);
 
       createStencilsParentElement(positionX + ' 0.015 0', getStencilsParentId(positionX), streetElementId);
@@ -352,74 +396,22 @@ function processSegments (segments, streetElementId) {
       createStencilsParentElement(positionX + ' 0.015 20', 'stencils-parent-offset20-' + positionX, streetElementId);
       cloneMixin({ objectMixinId: 'stencils word-only', parentId: 'stencils-parent-offset20-' + positionX, rotation: '-90 ' + rotationY + ' 0', step: 50, radius: 70 });
     } else if (segments[i].type === 'drive-lane') {
-      var rotationBusY = (variantList[0] == 'inbound') ? 0 : 180;
-
-      var placedObjectEl = document.createElement('a-entity');
-      placedObjectEl.setAttribute('class', 'car');
-      placedObjectEl.setAttribute('position', positionX + ' 0 0');
-      placedObjectEl.setAttribute('rotation', '0 ' + rotationBusY + ' 0');
-      placedObjectEl.setAttribute('mixin', 'car');
-
-      // add the new elmement to DOM
-      document.getElementById(streetElementId).appendChild(placedObjectEl);
-
-      var rotationBusY = (variantList[0] == 'inbound') ? -90 : 90;
-      var placedObjectEl = document.createElement('a-entity');
-      placedObjectEl.setAttribute('class', 'car-shadow');
-      placedObjectEl.setAttribute('position', positionX + ' 0.01 0');
-      placedObjectEl.setAttribute('rotation', '-90 ' + rotationBusY + ' 0');
-      placedObjectEl.setAttribute('mixin', 'car-shadow');
-
-      // add the new elmement to DOM
-      document.getElementById(streetElementId).appendChild(placedObjectEl);
+      createCarAndShadowElements(variantList, positionX, streetElementId);
     } else if (segments[i].type === 'sidewalk-wayfinding') {
-      mixinId = 'sidewalk'; // this is the "ground, normal"
-
-      var placedObjectEl = document.createElement('a-entity');
-      placedObjectEl.setAttribute('position', positionX + ' 1 0');
-      placedObjectEl.setAttribute('mixin', 'wayfinding-box');
-      // add the new elmement to DOM
-      document.getElementById(streetElementId).appendChild(placedObjectEl);
-
-      var placedObjectEl = document.createElement('a-entity');
-      placedObjectEl.setAttribute('position', positionX + ' 1.2 0.06');
-      placedObjectEl.setAttribute('geometry', 'primitive: plane; width: 0.8; height: 1.6');
-      placedObjectEl.setAttribute('material', 'src:#wayfinding-map');
-
-      // add the new elmement to DOM
-      document.getElementById(streetElementId).appendChild(placedObjectEl);
-
-      var placedObjectEl = document.createElement('a-entity');
-      placedObjectEl.setAttribute('position', positionX + ' 1.2 -0.06');
-      placedObjectEl.setAttribute('rotation', '0 180 0');
-      placedObjectEl.setAttribute('geometry', 'primitive: plane; width: 0.8; height: 1.6');
-      placedObjectEl.setAttribute('material', 'src:#wayfinding-map');
-      // add the new elmement to DOM
-      document.getElementById(streetElementId).appendChild(placedObjectEl);
+      createWayfindingElements(positionX, streetElementId);
     } else if (segments[i].type === 'sidewalk-bench') {
-      // sidewalk mixin as the segment surface - this doesn't look great (squished texture not made for this width)
-      mixinId = 'sidewalk';
+      var benchesParentId = 'bench-parent-' + positionX;
+      // make the parent for all the benches
+      createBenchesParentElement(positionX, benchesParentId, streetElementId);
 
-      // make the parent for all the trees
-      var placedObjectEl = document.createElement('a-entity');
-      placedObjectEl.setAttribute('class', 'bench-parent');
-      placedObjectEl.setAttribute('position', positionX + ' 0 3.5');
-      placedObjectEl.setAttribute('id', 'bench-parent-' + positionX);
-      // add the new elmement to DOM
-      document.getElementById(streetElementId).appendChild(placedObjectEl);
-
-      var rotationCloneY = (variantList[0] == 'right') ? -90 : 90;
-
-      if (variantList[0] == 'center') {
+      var rotationCloneY = (variantList[0] === 'right') ? -90 : 90;
+      if (variantList[0] === 'center') {
         // nothing, oh my this gives me heartburn
       } else {
         // `right` or `left` bench
-        cloneMixin({ objectMixinId: 'bench', parentId: 'bench-parent-' + positionX, rotation: '0 ' + rotationCloneY + ' 0' });
+        cloneMixin({ objectMixinId: 'bench', parentId: benchesParentId, rotation: '0 ' + rotationCloneY + ' 0' });
       }
     } else if (segments[i].type === 'sidewalk-bike-rack') {
-      // sidewalk mixin as the segment surface - this doesn't look great (squished texture not made for this width)
-      mixinId = 'sidewalk';
-
       // make the parent for all the trees
       var placedObjectEl = document.createElement('a-entity');
       placedObjectEl.setAttribute('class', 'bikerack-parent');
@@ -432,9 +424,6 @@ function processSegments (segments, streetElementId) {
 
       cloneMixin({ objectMixinId: 'bikerack', parentId: 'bikerack-parent-' + positionX, rotation: '0 ' + rotationCloneY + ' 0' });
     } else if (segments[i].type === 'bikeshare') {
-      // sidewalk mixin as the segment surface - this doesn't look great (squished texture not made for this width)
-      mixinId = 'sidewalk';
-
       // make the parent for all the stations
       var placedObjectEl = document.createElement('a-entity');
       placedObjectEl.setAttribute('class', 'bikeshare');
@@ -447,9 +436,6 @@ function processSegments (segments, streetElementId) {
       // add the new elmement to DOM
       document.getElementById(streetElementId).appendChild(placedObjectEl);
     } else if (segments[i].type === 'sidewalk-tree') {
-      // sidewalk mixin as the segment surface - this doesn't look great (squished texture not made for this width)
-      mixinId = 'sidewalk';
-
       // make the parent for all the trees
       var placedObjectEl = document.createElement('a-entity');
       placedObjectEl.setAttribute('class', 'tree-parent');
@@ -467,9 +453,6 @@ function processSegments (segments, streetElementId) {
       // clone a bunch of trees under the parent
       cloneMixin({ objectMixinId: objectMixinId, parentId: 'tree-parent-' + positionX, randomY: true });
     } else if (segments[i].type === 'sidewalk-lamp' && (variantList[1] === 'modern' || variantList[1] === 'pride')) {
-      // sidewalk mixin as the segment surface - this doesn't look great (squished texture not made for this width)
-      mixinId = 'sidewalk';
-
       // make the parent for all the lamps
       var placedObjectEl = document.createElement('a-entity');
       placedObjectEl.setAttribute('class', 'lamp-parent');
@@ -494,9 +477,6 @@ function processSegments (segments, streetElementId) {
         cloneMixin({ objectMixinId: 'pride-flag', parentId: 'lamp-parent-' + positionX, rotation: '0 -180 0', positionXYString: '-0.409 3.345' });
       }
     } else if (segments[i].type === 'sidewalk-lamp' && variantList[1] === 'traditional') {
-      // sidewalk mixin
-      mixinId = 'sidewalk';
-
       // make the parent for all the lamps
       var placedObjectEl = document.createElement('a-entity');
       placedObjectEl.setAttribute('class', 'lamp-parent');
