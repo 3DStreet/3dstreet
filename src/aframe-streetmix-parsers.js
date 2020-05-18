@@ -158,6 +158,16 @@ function createTracksParentElement (positionX, elementId, parentElementId) {
   document.getElementById(parentElementId).appendChild(placedObjectEl);
 }
 
+function createSafehitsParentElement(positionX, parentElementId) {
+  var placedObjectEl = document.createElement('a-entity');
+  placedObjectEl.setAttribute('class', 'safehit-parent');
+  placedObjectEl.setAttribute('position', positionX + ' 0 0');
+  placedObjectEl.setAttribute('id', 'safehit-parent-' + positionX);
+  // add the new elmement to DOM
+  document.getElementById(parentElementId).appendChild(placedObjectEl);
+}
+
+
 function getBikeLaneMixin (variant) {
   if (variant === 'red') {
     return 'surface-red bike-lane';
@@ -178,7 +188,7 @@ function getBusLaneMixin (variant) {
   return 'bus-lane';
 }
 
-function createChooChooElement (variantList, objectMixinId, positionX, curveId, streetElementId) {
+function createChooChooElement (variantList, objectMixinId, positionX, curveId, parentId) {
   var rotationBusY = (variantList[0] === 'inbound') ? 0 : 180;
   var placedObjectEl = document.createElement('a-entity');
   placedObjectEl.setAttribute('class', objectMixinId);
@@ -189,7 +199,7 @@ function createChooChooElement (variantList, objectMixinId, positionX, curveId, 
   // placedObjectEl.setAttribute('soundwhenstart'); TODO: Use something like this to replace the addEventListener below
 
   // add the new elmement to DOM
-  document.getElementById(streetElementId).appendChild(placedObjectEl);
+  document.getElementById(parentId).appendChild(placedObjectEl);
 
   // TODO: move this addEventListener logic to a separate function, for add component on entity and parse later
   placedObjectEl.addEventListener('movingstarted', function (e) {
@@ -199,6 +209,25 @@ function createChooChooElement (variantList, objectMixinId, positionX, curveId, 
       this.components.sound.playSound();
     }
   });
+}
+
+function createBusAndShadowElements (isOutbound, positionX, parentId) {
+  var rotationBusY = isOutbound * 90;
+  var placedObjectEl = document.createElement('a-entity');
+  placedObjectEl.setAttribute('class', 'bus');
+  placedObjectEl.setAttribute('position', positionX + ' 1.4 0');
+  placedObjectEl.setAttribute('rotation', '0 ' + rotationBusY + ' 0');
+  placedObjectEl.setAttribute('mixin', 'bus');
+  // add the new elmement to DOM
+  document.getElementById(parentId).appendChild(placedObjectEl);
+
+  placedObjectEl = document.createElement('a-entity');
+  placedObjectEl.setAttribute('class', 'bus-shadow');
+  placedObjectEl.setAttribute('position', positionX + ' 0.01 0');
+  placedObjectEl.setAttribute('rotation', '-90 ' + rotationBusY + ' 0');
+  placedObjectEl.setAttribute('mixin', 'bus-shadow');
+  // add the new elmement to DOM
+  document.getElementById(parentId).appendChild(placedObjectEl);
 }
 
 // offset to center the street around global x position of 0
@@ -307,38 +336,12 @@ function processSegments (segments, streetElementId) {
       mixinId = 'divider';
 
       // make some safehits
-      var placedObjectEl = document.createElement('a-entity');
-      placedObjectEl.setAttribute('class', 'safehit-parent');
-      placedObjectEl.setAttribute('position', positionX + ' 0 0');
-      placedObjectEl.setAttribute('id', 'safehit-parent-' + positionX);
-      // add the new elmement to DOM
-      document.getElementById(streetElementId).appendChild(placedObjectEl);
-
+      createSafehitsParentElement(positionX, streetElementId);
       cloneMixin({ objectMixinId: 'safehit', parentId: 'safehit-parent-' + positionX, step: 4, radius: 70 });
     } else if (segments[i].type === 'bus-lane') {
-      if (variantList[1] === 'colored') {
-        var mixinId = 'surface-red bus-lane';
-      }
-
-      var rotationBusY = (variantList[0] == 'inbound') ? -90 : 90;
-      var placedObjectEl = document.createElement('a-entity');
-      placedObjectEl.setAttribute('class', 'bus');
-      placedObjectEl.setAttribute('position', positionX + ' 1.4 0');
-      placedObjectEl.setAttribute('rotation', '0 ' + rotationBusY + ' 0');
-      placedObjectEl.setAttribute('mixin', 'bus');
-
-      // add the new elmement to DOM
-      document.getElementById(streetElementId).appendChild(placedObjectEl);
-
-      var rotationBusY = (variantList[0] == 'inbound') ? -90 : 90;
-      var placedObjectEl = document.createElement('a-entity');
-      placedObjectEl.setAttribute('class', 'bus-shadow');
-      placedObjectEl.setAttribute('position', positionX + ' 0.01 0');
-      placedObjectEl.setAttribute('rotation', '-90 ' + rotationBusY + ' 0');
-      placedObjectEl.setAttribute('mixin', 'bus-shadow');
-
-      // add the new elmement to DOM
-      document.getElementById(streetElementId).appendChild(placedObjectEl);
+      mixinId = getBusLaneMixin(variantList[1])
+      
+      createBusAndShadowElements(isOutbound, positionX, streetElementId);
 
       createStencilsParentElement(positionX + ' 0.015 0', getStencilsParentId(positionX), streetElementId);
       cloneMixin({ objectMixinId: 'stencils word-bus', parentId: getStencilsParentId(positionX), rotation: '-90 ' + rotationY + ' 0', step: 50, radius: 70 });
@@ -350,6 +353,7 @@ function processSegments (segments, streetElementId) {
       cloneMixin({ objectMixinId: 'stencils word-only', parentId: 'stencils-parent-offset20-' + positionX, rotation: '-90 ' + rotationY + ' 0', step: 50, radius: 70 });
     } else if (segments[i].type === 'drive-lane') {
       var rotationBusY = (variantList[0] == 'inbound') ? 0 : 180;
+
       var placedObjectEl = document.createElement('a-entity');
       placedObjectEl.setAttribute('class', 'car');
       placedObjectEl.setAttribute('position', positionX + ' 0 0');
