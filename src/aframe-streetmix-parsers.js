@@ -140,12 +140,10 @@ function getTracksParentId (positionX) {
 }
 
 function createStencilsParentElement (position, elementId, parentElementId) {
-  // make the parent for all the objects to be cloned
   var placedObjectEl = document.createElement('a-entity');
   placedObjectEl.setAttribute('class', 'stencils-parent');
   placedObjectEl.setAttribute('position', position); // position="1.043 0.100 -3.463"
   placedObjectEl.setAttribute('id', elementId);
-  // add the new elmement to DOM
   document.getElementById(parentElementId).appendChild(placedObjectEl);
 }
 
@@ -154,7 +152,6 @@ function createTracksParentElement (positionX, elementId, parentElementId) {
   placedObjectEl.setAttribute('class', 'track-parent');
   placedObjectEl.setAttribute('position', positionX + ' -0.2 0'); // position="1.043 0.100 -3.463"
   placedObjectEl.setAttribute('id', elementId);
-  // add the new elmement to DOM
   document.getElementById(parentElementId).appendChild(placedObjectEl);
 }
 
@@ -163,7 +160,6 @@ function createSafehitsParentElement (positionX, parentElementId) {
   placedObjectEl.setAttribute('class', 'safehit-parent');
   placedObjectEl.setAttribute('position', positionX + ' 0 0');
   placedObjectEl.setAttribute('id', 'safehit-parent-' + positionX);
-  // add the new elmement to DOM
   document.getElementById(parentElementId).appendChild(placedObjectEl);
 }
 
@@ -188,13 +184,13 @@ function getBusLaneMixin (variant) {
 }
 
 function createChooChooElement (variantList, objectMixinId, positionX, curveId, parentId) {
-  var rotationBusY = (variantList[0] === 'inbound') ? 0 : 180;
+  var rotationY = (variantList[0] === 'inbound') ? 0 : 180;
   var placedObjectEl = document.createElement('a-entity');
   placedObjectEl.setAttribute('class', objectMixinId);
   placedObjectEl.setAttribute('position', positionX + ' 0 0');
-  placedObjectEl.setAttribute('rotation', '0 ' + rotationBusY + ' 0');
+  placedObjectEl.setAttribute('rotation', '0 ' + rotationY + ' 0');
   placedObjectEl.setAttribute('mixin', objectMixinId);
-  placedObjectEl.setAttribute('alongpath', 'curve: ' + curveId + '; loop:true; dur:20000;');
+  placedObjectEl.setAttribute('alongpath', 'curve: #' + curveId + '; loop:true; dur:20000;');
   // placedObjectEl.setAttribute('soundwhenstart'); TODO: Use something like this to replace the addEventListener below
 
   // add the new elmement to DOM
@@ -217,7 +213,6 @@ function createBusAndShadowElements (isOutbound, positionX, parentId) {
   placedObjectEl.setAttribute('position', positionX + ' 1.4 0');
   placedObjectEl.setAttribute('rotation', '0 ' + rotationBusY + ' 0');
   placedObjectEl.setAttribute('mixin', 'bus');
-  // add the new elmement to DOM
   document.getElementById(parentId).appendChild(placedObjectEl);
 
   placedObjectEl = document.createElement('a-entity');
@@ -225,7 +220,6 @@ function createBusAndShadowElements (isOutbound, positionX, parentId) {
   placedObjectEl.setAttribute('position', positionX + ' 0.01 0');
   placedObjectEl.setAttribute('rotation', '-90 ' + rotationBusY + ' 0');
   placedObjectEl.setAttribute('mixin', 'bus-shadow');
-  // add the new elmement to DOM
   document.getElementById(parentId).appendChild(placedObjectEl);
 }
 
@@ -236,15 +230,14 @@ function createCarAndShadowElements (variantList, positionX, parentId) {
   placedObjectEl.setAttribute('position', positionX + ' 0 0');
   placedObjectEl.setAttribute('rotation', '0 ' + rotationBusY + ' 0');
   placedObjectEl.setAttribute('mixin', 'car');
-  // add the new elmement to DOM
   document.getElementById(parentId).appendChild(placedObjectEl);
+
   rotationBusY = (variantList[0] == 'inbound') ? -90 : 90;
   placedObjectEl = document.createElement('a-entity');
   placedObjectEl.setAttribute('class', 'car-shadow');
   placedObjectEl.setAttribute('position', positionX + ' 0.01 0');
   placedObjectEl.setAttribute('rotation', '-90 ' + rotationBusY + ' 0');
   placedObjectEl.setAttribute('mixin', 'car-shadow');
-  // add the new elmement to DOM
   document.getElementById(parentId).appendChild(placedObjectEl);
 }
 
@@ -273,8 +266,62 @@ function createBenchesParentElement (positionX, benchesParentId, parentId) {
   placedObjectEl.setAttribute('class', 'bench-parent');
   placedObjectEl.setAttribute('position', positionX + ' 0 3.5');
   placedObjectEl.setAttribute('id', benchesParentId);
-  // add the new elmement to DOM
   document.getElementById(parentId).appendChild(placedObjectEl);
+}
+
+function createPathParentAndChildrenElements (pathId, positionX, isOutbound, parentId) {
+  var pathEl = document.createElement('a-curve');
+  pathEl.setAttribute('id', pathId);
+  pathEl.innerHTML = `
+        <a-curve-point id="checkpoint1" position="${positionX} 0 ${75 * isOutbound}"></a-curve-point>
+        <a-curve-point id="checkpoint2" position="${positionX} 0 0"></a-curve-point>
+        <a-curve-point id="checkpoint3" position="${positionX} 0 ${-75 * isOutbound}"></a-curve-point>
+      `;
+  document.getElementById(parentId).appendChild(pathEl);
+}
+
+function createBikeRacksParentElement (positionX, elementId, parentId) {
+  var placedObjectEl = document.createElement('a-entity');
+  placedObjectEl.setAttribute('class', 'bikerack-parent');
+  placedObjectEl.setAttribute('position', positionX + ' 0 -3.5');
+  placedObjectEl.setAttribute('id', elementId);
+  document.getElementById(parentId).appendChild(placedObjectEl);
+}
+
+function createBikeShareStationElement (positionX, variantList, parentId) {
+  var placedObjectEl = document.createElement('a-entity');
+  placedObjectEl.setAttribute('class', 'bikeshare');
+  placedObjectEl.setAttribute('position', positionX + ' 0 0');
+  placedObjectEl.setAttribute('id', 'bikeshare-' + positionX);
+  placedObjectEl.setAttribute('mixin', 'bikeshare');
+  var rotationCloneY = (variantList[0] === 'left') ? 90 : 270;
+  placedObjectEl.setAttribute('rotation', '0 ' + rotationCloneY + ' 0');
+  document.getElementById(parentId).appendChild(placedObjectEl);
+}
+
+function createTreesParentElement (positionX, treesParentId, parentId) {
+  var placedObjectEl = document.createElement('a-entity');
+  placedObjectEl.setAttribute('class', 'tree-parent');
+  placedObjectEl.setAttribute('position', positionX + ' 0 7');
+  placedObjectEl.setAttribute('id', treesParentId);
+  document.getElementById(parentId).appendChild(placedObjectEl);
+}
+
+function createLampsParentElement (positionX, lampsParentId, parentId) {
+  var placedObjectEl = document.createElement('a-entity');
+  placedObjectEl.setAttribute('class', 'lamp-parent');
+  placedObjectEl.setAttribute('position', positionX + ' 0 0'); // position="1.043 0.100 -3.463"
+  placedObjectEl.setAttribute('id', lampsParentId);
+  document.getElementById(parentId).appendChild(placedObjectEl);
+}
+
+function createBusStopElement (positionX, parityBusStop, rotationBusStopY, streetElementId) {
+  var placedObjectEl = document.createElement('a-entity');
+  placedObjectEl.setAttribute('class', 'bus-stop');
+  placedObjectEl.setAttribute('position', (positionX + (0.75 * parityBusStop)) + ' 0 0');
+  placedObjectEl.setAttribute('rotation', '-90 ' + rotationBusStopY + ' 0');
+  placedObjectEl.setAttribute('mixin', 'bus-stop');
+  document.getElementById(streetElementId).appendChild(placedObjectEl);
 }
 
 // offset to center the street around global x position of 0
@@ -282,6 +329,16 @@ function centerStreetParentEntity (segments, streetElementId) {
   const streetWidth = calcStreetWidth(segments);
   const offset = 0 - streetWidth / 2;
   document.getElementById(streetElementId).setAttribute('position', offset + ' 0 0');
+}
+
+function createSegmentElement (scaleX, positionX, positionY, rotationY, mixinId, parentId) {
+  var segmentEl = document.createElement('a-entity');
+  segmentEl.setAttribute('scale', scaleX + ' 1 1');
+  segmentEl.setAttribute('position', positionX + ' ' + positionY + ' 0');
+  // USE THESE 2 LINES FOR TEXTURE MODE:
+  segmentEl.setAttribute('rotation', '270 ' + rotationY + ' 0');
+  segmentEl.setAttribute('mixin', mixinId + state.textures.suffix); // append suffix to mixin id to specify texture index
+  document.getElementById(parentId).appendChild(segmentEl);
 }
 
 function processSegments (segments, streetElementId) {
@@ -333,18 +390,10 @@ function processSegments (segments, streetElementId) {
       mixinId = getBusLaneMixin(variantList[1]);
       var objectMixinId = (segments[i].type === 'streetcar') ? 'trolley' : 'tram';
 
-      // TODO: split out curve creation into separate function
-      var pathEl = document.createElement('a-curve');
-      pathEl.setAttribute('id', 'path-' + i);
-      pathEl.innerHTML = `
-        <a-curve-point id="checkpoint1" position="${positionX} 0 ${75 * isOutbound}"></a-curve-point>
-        <a-curve-point id="checkpoint2" position="${positionX} 0 0"></a-curve-point>
-        <a-curve-point id="checkpoint3" position="${positionX} 0 ${-75 * isOutbound}"></a-curve-point>
-      `;
-      document.getElementById(streetElementId).appendChild(pathEl);
+      var pathId = 'path-' + i;
+      createPathParentAndChildrenElements(pathId, positionX, isOutbound, streetElementId);
 
-      // add choo choo
-      createChooChooElement(variantList, objectMixinId, positionX, `#path-${i}`, streetElementId);
+      createChooChooElement(variantList, objectMixinId, positionX, pathId, streetElementId);
 
       // make the parent for all the objects to be cloned
       createTracksParentElement(positionX, getTracksParentId(positionX), streetElementId);
@@ -412,93 +461,54 @@ function processSegments (segments, streetElementId) {
         cloneMixin({ objectMixinId: 'bench', parentId: benchesParentId, rotation: '0 ' + rotationCloneY + ' 0' });
       }
     } else if (segments[i].type === 'sidewalk-bike-rack') {
-      // make the parent for all the trees
-      var placedObjectEl = document.createElement('a-entity');
-      placedObjectEl.setAttribute('class', 'bikerack-parent');
-      placedObjectEl.setAttribute('position', positionX + ' 0 -3.5');
-      placedObjectEl.setAttribute('id', 'bikerack-parent-' + positionX);
-      // add the new elmement to DOM
-      document.getElementById(streetElementId).appendChild(placedObjectEl);
+      // make the parent for all the bike racks
+      var bikeRacksParentId = 'bikerack-parent-' + positionX;
+      createBikeRacksParentElement(positionX, bikeRacksParentId, streetElementId);
 
-      var rotationCloneY = (variantList[1] == 'sidewalk-parallel') ? 90 : 0;
-
-      cloneMixin({ objectMixinId: 'bikerack', parentId: 'bikerack-parent-' + positionX, rotation: '0 ' + rotationCloneY + ' 0' });
+      var rotationCloneY = (variantList[1] === 'sidewalk-parallel') ? 90 : 0;
+      cloneMixin({ objectMixinId: 'bikerack', parentId: bikeRacksParentId, rotation: '0 ' + rotationCloneY + ' 0' });
     } else if (segments[i].type === 'bikeshare') {
       // make the parent for all the stations
-      var placedObjectEl = document.createElement('a-entity');
-      placedObjectEl.setAttribute('class', 'bikeshare');
-      placedObjectEl.setAttribute('position', positionX + ' 0 0');
-      placedObjectEl.setAttribute('id', 'bikeshare-' + positionX);
-      placedObjectEl.setAttribute('mixin', 'bikeshare');
-      var rotationCloneY = (variantList[0] == 'left') ? 90 : 270;
-      placedObjectEl.setAttribute('rotation', '0 ' + rotationCloneY + ' 0');
-
-      // add the new elmement to DOM
-      document.getElementById(streetElementId).appendChild(placedObjectEl);
+      createBikeShareStationElement(positionX, variantList, streetElementId);
     } else if (segments[i].type === 'sidewalk-tree') {
       // make the parent for all the trees
-      var placedObjectEl = document.createElement('a-entity');
-      placedObjectEl.setAttribute('class', 'tree-parent');
-      placedObjectEl.setAttribute('position', positionX + ' 0 7');
-      placedObjectEl.setAttribute('id', 'tree-parent-' + positionX);
-      // add the new elmement to DOM
-      document.getElementById(streetElementId).appendChild(placedObjectEl);
-
-      if (variantList[0] == 'palm-tree') {
+      var treesParentId = 'tree-parent-' + positionX;
+      createTreesParentElement(positionX, treesParentId, streetElementId);
+      if (variantList[0] === 'palm-tree') {
         objectMixinId = 'palm-tree';
       } else {
         objectMixinId = 'tree3';
       }
-
       // clone a bunch of trees under the parent
-      cloneMixin({ objectMixinId: objectMixinId, parentId: 'tree-parent-' + positionX, randomY: true });
+      cloneMixin({ objectMixinId: objectMixinId, parentId: treesParentId, randomY: true });
     } else if (segments[i].type === 'sidewalk-lamp' && (variantList[1] === 'modern' || variantList[1] === 'pride')) {
       // make the parent for all the lamps
-      var placedObjectEl = document.createElement('a-entity');
-      placedObjectEl.setAttribute('class', 'lamp-parent');
-      placedObjectEl.setAttribute('position', positionX + ' 0 0'); // position="1.043 0.100 -3.463"
-      placedObjectEl.setAttribute('id', 'lamp-parent-' + positionX);
-      // add the new elmement to DOM
-      document.getElementById(streetElementId).appendChild(placedObjectEl);
-
+      var lampsParentId = 'lamp-parent-' + positionX;
+      createLampsParentElement(positionX, lampsParentId, streetElementId);
       // clone a bunch of lamps under the parent
-      var rotationCloneY = (variantList[0] == 'right') ? -90 : 90;
-      cloneMixin({ objectMixinId: 'lamp-modern', parentId: 'lamp-parent-' + positionX, rotation: '0 ' + rotationCloneY + ' 0' });
-
-      if (variantList[0] == 'both') {
-        cloneMixin({ objectMixinId: 'lamp-modern', parentId: 'lamp-parent-' + positionX, rotation: '0 -90 0' });
+      var rotationCloneY = (variantList[0] === 'right') ? -90 : 90;
+      cloneMixin({ objectMixinId: 'lamp-modern', parentId: lampsParentId, rotation: '0 ' + rotationCloneY + ' 0' });
+      // if modern lamp variant is "both" then clone the lamps again rotated 180º
+      if (variantList[0] === 'both') {
+        cloneMixin({ objectMixinId: 'lamp-modern', parentId: lampsParentId, rotation: '0 -90 0' });
       }
-
-      if (variantList[1] == 'pride' && (variantList[0] == 'right' || variantList[0] == 'both')) {
-        cloneMixin({ objectMixinId: 'pride-flag', parentId: 'lamp-parent-' + positionX, positionXYString: '0.409 3.345' });
+      // add the pride flags
+      if (variantList[1] === 'pride' && (variantList[0] === 'right' || variantList[0] === 'both')) {
+        cloneMixin({ objectMixinId: 'pride-flag', parentId: lampsParentId, positionXYString: '0.409 3.345' });
       }
-
-      if (variantList[1] == 'pride' && (variantList[0] == 'left' || variantList[0] == 'both')) {
-        cloneMixin({ objectMixinId: 'pride-flag', parentId: 'lamp-parent-' + positionX, rotation: '0 -180 0', positionXYString: '-0.409 3.345' });
+      if (variantList[1] === 'pride' && (variantList[0] === 'left' || variantList[0] === 'both')) {
+        cloneMixin({ objectMixinId: 'pride-flag', parentId: lampsParentId, rotation: '0 -180 0', positionXYString: '-0.409 3.345' });
       }
     } else if (segments[i].type === 'sidewalk-lamp' && variantList[1] === 'traditional') {
       // make the parent for all the lamps
-      var placedObjectEl = document.createElement('a-entity');
-      placedObjectEl.setAttribute('class', 'lamp-parent');
-      placedObjectEl.setAttribute('position', positionX + ' 0 0'); // position="1.043 0.100 -3.463"
-      placedObjectEl.setAttribute('id', 'lamp-parent-' + positionX);
-      // add the new elmement to DOM
-      document.getElementById(streetElementId).appendChild(placedObjectEl);
-
+      var lampsParentId = 'lamp-parent-' + positionX;
+      createLampsParentElement(positionX, lampsParentId, streetElementId);
       // clone a bunch of lamps under the parent
-      cloneMixin({ objectMixinId: 'lamp-traditional', parentId: 'lamp-parent-' + positionX });
+      cloneMixin({ objectMixinId: 'lamp-traditional', parentId: lampsParentId });
     } else if (segments[i].type === 'transit-shelter') {
-      var rotationBusStopY = (variantList[0] == 'right') ? 0 : 180;
-      var parityBusStop = (variantList[0] == 'right') ? 1 : -1;
-
-      var placedObjectEl = document.createElement('a-entity');
-      placedObjectEl.setAttribute('class', 'bus-stop');
-      placedObjectEl.setAttribute('position', (positionX + (0.75 * parityBusStop)) + ' 0 0');
-      placedObjectEl.setAttribute('rotation', '-90 ' + rotationBusStopY + ' 0');
-      placedObjectEl.setAttribute('mixin', 'bus-stop');
-
-      // add the new elmement to DOM
-      document.getElementById(streetElementId).appendChild(placedObjectEl);
+      var rotationBusStopY = (variantList[0] === 'right') ? 0 : 180;
+      var parityBusStop = (variantList[0] === 'right') ? 1 : -1;
+      createBusStopElement(positionX, parityBusStop, rotationBusStopY, streetElementId);
     } else if (segments[i].type === 'separator' && variantList[0] === 'dashed') {
       mixinId = 'markings dashed-stripe';
       positionY = positionY + 0.01; // make sure the lane marker is above the asphalt
@@ -533,15 +543,7 @@ function processSegments (segments, streetElementId) {
     }
 
     // add new object
-    var segmentEl = document.createElement('a-entity');
-    segmentEl.setAttribute('scale', scaleX + ' 1 1');
-    segmentEl.setAttribute('position', positionX + ' ' + positionY + ' 0');
-
-    // USE THESE 2 LINES FOR TEXTURE MODE:
-    segmentEl.setAttribute('rotation', '270 ' + rotationY + ' 0');
-    segmentEl.setAttribute('mixin', mixinId + state.textures.suffix); // append suffix to mixin id to specify texture index
-
-    document.getElementById(streetElementId).appendChild(segmentEl);
+    createSegmentElement(scaleX, positionX, positionY, rotationY, mixinId, streetElementId);
     // returns JSON output instead
   }
 }
