@@ -8,7 +8,7 @@ function isSidewalk (string) { // eslint-disable-line no-unused-vars
 // generate a JSON array representing buildings
 // test createBuildingsArray(maxLength = 5) returns [{ tag: 'a-entity', mixin: 'SM3D_Bld_Mixed_Corner_4fl', position: '0 0 0' }]
 // test createBuildingsArray(maxLength = 10) returns [{ mixin: "SM3D_Bld_Mixed_Corner_4fl", position: "0 0 0", tag: "a-entity" }, {mixin: "SM3D_Bld_Mixed_Double_5fl", position: "0 0 5", tag: "a-entity"} ]
-function createBuildingsArray (maxLength = 150) {
+function createBuildingsArray (maxLength = 150) { // eslint-disable-line no-unused-vars
   const buildings = [
     { id: 'SM3D_Bld_Mixed_4fl', width: 5 },
     { id: 'SM3D_Bld_Mixed_Double_5fl', width: 10 },
