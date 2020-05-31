@@ -7,7 +7,7 @@ var pretty = require('pretty');
 const rewire = require('rewire');
 
 const app = rewire('../../src/aframe-streetmix-parsers');
-const otherApp = rewire('../../src/tested/aframe-streetmix-tested');
+const otherApp = rewire('../../src/tested/aframe-streetmix-parsers-tested');
 app.__set__('isSidewalk', otherApp.__get__('isSidewalk')); // rewire isSidewalk
 
 const processSegments = app.__get__('processSegments');
