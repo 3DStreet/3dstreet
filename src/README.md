@@ -2,11 +2,22 @@
 
 ## Original Libraries
 
-### [aframe-streetmix.js](aframe-streetmix.js)
-This is the meat of the project. It should eventually be refactored to be a standard A-Frame component instead of a set of spaghetti functions.
+### [aframe-streetmix-loaders.js](aframe-streetmix-loaders.js)
+* `loadStreet` - for a given streetmix streetURL load JSON from Streetmix, parse, and create dom elements
+* `initStreet` - run up on page load: check streetmix street URL from hash, load default if none, run `loadStreet` 
+* `locationHashChanged` - load new street when the url hash changes
+* `processURLChange` - load new street from URL hash (this looks similar to `locationHashChanged` and may be why it renders double trains from time to time?)
 
-### [streetmix-utils.js](streetmix-utils.js)
-These are a handful of functions that help deal with Streetmix URLs:
+### [aframe-streetmix-parsers.js](aframe-streetmix-parsers.js)
+* `processSegments` - take an array of streetmix segments and render them to the DOM - untested
+* Many other (untested) helper functions
+
+### [aframe-streetmix-parsers-tested.js](tested/aframe-streetmix-parsers-tested.js) - Now with tests!
+* `isSidewalk` - for a streetmix segment name passed as string, tell me if the segment is on a sidewalk?
+* `createBuildingsArray` - create an array of dictionaries that represent a psuedorandom block of buildings for use with `create-from-json`
+
+### [streetmix-utils.js](tested/streetmix-utils.js)
+These are a handful of functions ([and accompanying tests!](/test/streetmix-utils-test.js) that help deal with Streetmix URLs:
 * `streetmixUserToAPI(userURL)` takes a user facing Streetmix.net URL like `https://streetmix.net/kfarr/3/a-frame-city-builder-street-only` and turns it into the API redirect URL like `https://streetmix.net/api/v1/streets?namespacedId=3&creatorId=kfarr`
 * `streetmixAPIToUser(APIURL)` takes a Streetmix.net API redirect URL like `https://streetmix.net/api/v1/streets?namespacedId=3&creatorId=kfarr` and turns it into the user facing friendly Streetmix.net URL like `https://streetmix.net/kfarr/3/a-frame-city-builder-street-only`
 
