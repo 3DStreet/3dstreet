@@ -11,8 +11,29 @@ These are a handful of functions that help deal with Streetmix URLs:
 * `streetmixAPIToUser(APIURL)` takes a Streetmix.net API redirect URL like `https://streetmix.net/api/v1/streets?namespacedId=3&creatorId=kfarr` and turns it into the user facing friendly Streetmix.net URL like `https://streetmix.net/kfarr/3/a-frame-city-builder-street-only`
 
 ### [components/anisotropy.js](components/anisotropy.js)
-* `af` component is a simple function that sets anisotropy to a fixed value of `4` -- a reasonable default which is ignored if the OS / browser / device doesn't support it
+* `af` component sets anisotropy to a fixed value of `4` -- a reasonable default which is ignored if the OS / browser / device doesn't support it
 * `anisotropy` component is a work in progress to allow specifying the anisotropy value as a component attribute, not finished or tested
+
+### [components/create-from-json.js](components/create-from-json.js)
+* `create-from-json` component creates child nodes beneath the component's entity from a JSON string of an array of dictionaries that represent entities, for example:
+```
+<a-entity create-from-json='jsonString:
+  [
+    {"tag":"a-entity","mixin":"SM3D_Bld_Mixed_Corner_4fl","position":"0 0 0"},
+    {"tag":"a-entity","mixin":"SM3D_Bld_Mixed_Double_5fl","position":"0 0 5"}
+  ]
+  '>
+</a-entity>
+```
+which after being parsed turns into
+```
+<a-entity create-from-json=''>
+  <a-entity mixin="SM3D_Bld_Mixed_Corner_4fl" position=""></a-entity>
+  <a-entity mixin="SM3D_Bld_Mixed_Double_5fl" position="0 0 5"></a-entity>
+</a-entity>
+```
+* does not yet support recursive (children of children)
+* Requires [/src/tested/create-from-json-utils-tested.js](/src/tested/create-from-json-utils-tested.js) which includes 2 [unit tests](/test/create-from-json-utils-test.js)!
 
 ## Modified Components from Elsewhere
 
