@@ -8,7 +8,8 @@
     "test:watch": "mocha --recursive --full-trace --watch",
     "lint": "semistandard -v | snazzy",
     "lint:tested": "semistandard -v 'src/tested/**/*.js' 'test/**/*.js' | snazzy",
-    "lint:fix": "semistandard --fix"
+    "lint:fix": "semistandard --fix",
+    "start": "http-server"
   },
   "repository": {
     "type": "git",
@@ -28,6 +29,7 @@
   "dependencies": {},
   "devDependencies": {
     "approvals": "^3.0.5",
+    "http-server": "^0.12.3",
     "jsdom": "^16.2.2",
     "jsdom-global": "^3.0.2",
     "mocha": "^7.1.2",
