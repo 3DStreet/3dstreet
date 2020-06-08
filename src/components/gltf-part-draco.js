@@ -11,7 +11,9 @@ AFRAME.registerComponent('gltf-part', {
   },
 
   init: function () {
+    var data = this.data;
     this.dracoLoader = document.querySelector('a-scene').systems['gltf-model'].getDRACOLoader();
+    this.el.setAttribute('originalPosition', data.originalPosition ? data.originalPosition : '0 0 0');
   },
 
   update: function () {
