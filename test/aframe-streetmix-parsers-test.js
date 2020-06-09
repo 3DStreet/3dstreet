@@ -28,13 +28,13 @@ describe('A-Frame Streetmix Parsers', function () {
     it('createBuildingsArray(maxLength = 5) should return array with one dictionary for a-entity with mixin SM3D_Bld_Mixed_Corner_4fl', function () {
       assert.deepStrictEqual(
         createBuildingsArray(5),
-        [{ tag: 'a-entity', mixin: 'SM3D_Bld_Mixed_Corner_4fl', position: '0 0 0' }]
+        [{ tag: 'a-entity', mixin: 'SM3D_Bld_Mixed_Corner_4fl', position: '3.474045 0 0' }]
       );
     });
     it('createBuildingsArray(maxLength = 10) should return array with 2 dictionaries of a-entities', function () {
       assert.deepStrictEqual(
         createBuildingsArray(10),
-        [{ mixin: 'SM3D_Bld_Mixed_Corner_4fl', position: '0 0 0', tag: 'a-entity' }, { mixin: 'SM3D_Bld_Mixed_Double_5fl', position: '0 0 5', tag: 'a-entity' }]
+        [{ mixin: 'SM3D_Bld_Mixed_Corner_4fl', position: '3.474045 0 0', tag: 'a-entity' }, { mixin: 'SM3D_Bld_Mixed_Double_5fl', position: '12.40014 0 0', tag: 'a-entity' }]
       );
     });
   });
