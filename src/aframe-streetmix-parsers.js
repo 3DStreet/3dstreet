@@ -572,14 +572,13 @@ function processBuildings (streetObject, buildingElementId) {
     }
 
     if (currentValue == 'narrow' || currentValue == 'wide') {
-      // <a-entity id="blockinstance" mixin="block" position="-10.7 0 10" rotation="0 -90 0"></a-entity>
+      // make buildings
+      var buildingJSONString = JSON.stringify(createBuildingsArray(maxLength = 150));
       var placedObjectEl = document.createElement('a-entity');
-      placedObjectEl.setAttribute('position', (positionX + (-80 * sideMultiplier)) + ' 0 10');
+      placedObjectEl.setAttribute('position', (positionX + (sideMultiplier * -72)) + ' 0 ' + (sideMultiplier * 75));
       placedObjectEl.setAttribute('rotation', '0 ' + (90 * sideMultiplier) + ' 0');
-      //      sideMultiplier
+      placedObjectEl.setAttribute('create-from-json', 'jsonString', buildingJSONString);
       placedObjectEl.setAttribute('id', 'block-' + side);
-      // add the new elmement to DOM
-      placedObjectEl.setAttribute('mixin', 'block');
       document.getElementById(buildingElementId).appendChild(placedObjectEl);
 
       var placedObjectEl = document.createElement('a-entity');

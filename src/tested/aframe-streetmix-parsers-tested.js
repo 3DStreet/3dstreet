@@ -10,11 +10,11 @@ function isSidewalk (string) { // eslint-disable-line no-unused-vars
 // test createBuildingsArray(maxLength = 10) returns [{ mixin: "SM3D_Bld_Mixed_Corner_4fl", position: "0 0 0", tag: "a-entity" }, {mixin: "SM3D_Bld_Mixed_Double_5fl", position: "0 0 5", tag: "a-entity"} ]
 function createBuildingsArray (maxLength = 150) { // eslint-disable-line no-unused-vars
   const buildings = [
-    { id: 'SM3D_Bld_Mixed_4fl', width: 5 },
-    { id: 'SM3D_Bld_Mixed_Double_5fl', width: 10 },
-    { id: 'SM3D_Bld_Mixed_4fl_2', width: 5 },
-    { id: 'SM3D_Bld_Mixed_5fl', width: 5 },
-    { id: 'SM3D_Bld_Mixed_Corner_4fl', width: 5 }
+    { id: 'SM3D_Bld_Mixed_4fl', width: 5.25221 },
+    { id: 'SM3D_Bld_Mixed_Double_5fl', width: 10.9041 },
+    { id: 'SM3D_Bld_Mixed_4fl_2', width: 5.58889 },
+    { id: 'SM3D_Bld_Mixed_5fl', width: 6.47593 },
+    { id: 'SM3D_Bld_Mixed_Corner_4fl', width: 6.94809 }
   ];
 
   // psuedoRandom array of numbers 0-5 for placing buildings
@@ -31,7 +31,7 @@ function createBuildingsArray (maxLength = 150) { // eslint-disable-line no-unus
     var buildingEntity = {
       tag: 'a-entity',
       mixin: building.id,
-      position: '0 0 ' + length
+      position: '' + (length + building.width / 2) + ' 0 0'
     };
     buildingsArray.push(buildingEntity);
 

@@ -6,8 +6,7 @@ AFRAME.registerComponent('gltf-part', {
     buffer: { default: true },
     part: { type: 'string' },
     src: { type: 'asset' },
-    resetPosition: { default: false },
-    originalPosition: { default: '0 0 0' }
+    centerXZ: { default: false }
   },
 
   init: function () {
@@ -20,15 +19,14 @@ AFRAME.registerComponent('gltf-part', {
     if (!this.data.part && this.data.src) { return; }
     this.getModel(function (modelPart) {
       if (!modelPart) { return; }
-      console.log(data.resetPosition);
-      if (data.resetPosition) {
-        el.setAttribute('originalPosition', modelPart.position.x + ' ' + modelPart.position.y + ' ' + modelPart.position.z
-        );
-        modelPart.position.set(0, 0, 0);
+      if (data.centerXZ) {
+        // center all axes
+        modelPart.geometry.center();
+        // return y to original position
+        modelPart.position.y += modelPart.geometry.boundingBox.max.y;
       }
 
       el.setObject3D('mesh', modelPart);
-      el.setAttribute('position', el.getAttribute('originalPosition'));
       // el.emit('part-loaded', {format: 'gltf', part: self.modelPart});
     });
   },
@@ -60,13 +58,18 @@ AFRAME.registerComponent('gltf-part', {
       if (self.dracoLoader) {
         loader.setDRACOLoader(self.dracoLoader);
       }
-      loader.load(self.data.src, function (gltfModel) {
-        var model = gltfModel.scene || gltfModel.scenes[0];
-        MODELS[self.data.src] = model;
-        delete LOADING_MODELS[self.data.src];
-        cb(self.selectFromModel(model));
-        resolve(model);
-      }, function () { }, console.error);
+      loader.load(
+        self.data.src,
+        function (gltfModel) {
+          var model = gltfModel.scene || gltfModel.scenes[0];
+          MODELS[self.data.src] = model;
+          delete LOADING_MODELS[self.data.src];
+          cb(self.selectFromModel(model));
+          resolve(model);
+        },
+        function () {},
+        console.error
+      );
     });
   },
 
