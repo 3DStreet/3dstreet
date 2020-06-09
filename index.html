@@ -97,9 +97,7 @@
         <a-asset-item id="carmodel" src="assets/objects/SM_Veh_Car_Sedan_01.gltf"></a-asset-item>
 
         <!-- blocks -->
-        <a-asset-item id="blockmodel" src="assets/objects/scenesmall2.glb"></a-asset-item>
-
-        <a-asset-item id="blockmodel2" src="assets/objects/scenesmall3-selected-alltransforms-glass.gltf"></a-asset-item>
+        <a-asset-item id="blockmodel" src="assets/objects/scenesmall3-selected-alltransforms-glass.gltf"></a-asset-item>
 
         <a-asset-item id="fence-model" src="assets/objects/fence4/fence4.gltf"></a-asset-item>
         <a-asset-item id="seawall-model" src="assets/objects/seawall.gltf"></a-asset-item>
@@ -186,8 +184,11 @@
         <!-- buildings and blocks -->
         <a-mixin id="block" gltf-model="#blockmodel" scale="1 1 1"></a-mixin>
 
-        <a-mixin id="SM3D_Bld_Mixed_Corner_4fl" scale="1 1 1" rotation="0 0 0" gltf-part="src: #blockmodel2; part: SM3D_Bld_Mixed_Corner_4fl"></a-mixin>
-        <a-mixin id="SM3D_Bld_Mixed_Double_5fl" scale="1 1 1" rotation="0 0 0" gltf-part="src: #blockmodel2; part: SM3D_Bld_Mixed_Double_5fl"></a-mixin>
+        <a-mixin id="SM3D_Bld_Mixed_Corner_4fl" scale="1 1 1" rotation="0 0 0" gltf-part="src: #blockmodel; part: SM3D_Bld_Mixed_Corner_4fl; centerXZ: true;"></a-mixin>
+        <a-mixin id="SM3D_Bld_Mixed_Double_5fl" scale="1 1 1" rotation="0 0 0" gltf-part="src: #blockmodel; part: SM3D_Bld_Mixed_Double_5fl; centerXZ: true;"></a-mixin>
+        <a-mixin id="SM3D_Bld_Mixed_4fl_2" scale="1 1 1" rotation="0 0 0" gltf-part="src: #blockmodel; part: SM3D_Bld_Mixed_4fl_2; centerXZ: true"></a-mixin>
+        <a-mixin id="SM3D_Bld_Mixed_5fl" scale="1 1 1" rotation="0 0 0" gltf-part="src: #blockmodel; part: SM3D_Bld_Mixed_5fl; centerXZ: true"></a-mixin>
+        <a-mixin id="SM3D_Bld_Mixed_4fl" scale="1 1 1" rotation="0 0 0" gltf-part="src: #blockmodel; part: SM3D_Bld_Mixed_4fl; centerXZ: true"></a-mixin>
 
         <a-mixin id="seawall" gltf-model="#seawall-model" scale="1 1 1" rotation="0 0 0"></a-mixin>
         <a-mixin id="fence" gltf-model="#fence-model" scale="0.1 0.1 0.1"></a-mixin>
@@ -217,8 +218,6 @@
       </a-entity>
 
       <a-entity id="buildings"></a-entity>
-
-      <a-entity id="buildings2" create-from-json='jsonString: [{"mixin":"SM3D_Bld_Mixed_Corner_4fl","position":"0 0 0","tag":"a-entity"},{"mixin":"SM3D_Bld_Mixed_Double_5fl","position":"0 0 5","tag":"a-entity"}]'></a-entity>
 
       <!-- Below is helpful debugging code and some for future use -->
 
