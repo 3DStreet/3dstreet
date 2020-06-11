@@ -1,12 +1,28 @@
 var LOADING_MODELS = {};
 var MODELS = {};
 
+AFRAME.registerComponent('part-center', {
+  schema: {
+    excludeY: { default: false }
+  },
+  init: function () {
+    this.el.addEventListener('part-loaded', (event) => {
+      var modelPart = this.el.getObject3D('mesh');
+      // center all axes
+      modelPart.geometry.center();
+      if (this.data.excludeY) {
+        // return y to original position
+        modelPart.position.y += modelPart.geometry.boundingBox.max.y;
+      }
+    });
+  }
+});
+
 AFRAME.registerComponent('gltf-part', {
   schema: {
     buffer: { default: true },
     part: { type: 'string' },
-    src: { type: 'asset' },
-    centerXZ: { default: false }
+    src: { type: 'asset' }
   },
 
   init: function () {
@@ -19,15 +35,8 @@ AFRAME.registerComponent('gltf-part', {
     if (!this.data.part && this.data.src) { return; }
     this.getModel(function (modelPart) {
       if (!modelPart) { return; }
-      if (data.centerXZ) {
-        // center all axes
-        modelPart.geometry.center();
-        // return y to original position
-        modelPart.position.y += modelPart.geometry.boundingBox.max.y;
-      }
-
       el.setObject3D('mesh', modelPart);
-      // el.emit('part-loaded', {format: 'gltf', part: self.modelPart});
+      el.emit('part-loaded', { format: 'gltf', part: self.modelPart });
     });
   },
 
