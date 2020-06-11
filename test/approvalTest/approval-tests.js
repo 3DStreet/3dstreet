@@ -38,7 +38,7 @@ describe('ApprovalTest - A-Frame Streetmix', function () {
 
       processSegments(streetmixObject.data.street.segments, elementId);
 
-      this.verify(pretty(parentEl.innerHTML), { normalizeLineEndingsTo: '\r\n' });
+      this.verify(pretty(parentEl.innerHTML));
     });
   });
 });
