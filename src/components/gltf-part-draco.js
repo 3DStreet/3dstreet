@@ -1,6 +1,10 @@
 var LOADING_MODELS = {};
 var MODELS = {};
 
+// suggested tests:
+// make sample test project with these example cubes (https://stackoverflow.com/questions/61840351/)
+// test when used that the mesh is actually centered (located at 0,0,0)
+// test that Y value is original when excludeY is used
 AFRAME.registerComponent('part-center', {
   schema: {
     excludeY: { default: false }
@@ -18,6 +22,12 @@ AFRAME.registerComponent('part-center', {
   }
 });
 
+// suggested tests:
+// make component in sample test project with gltf-part with a known simple gltf test with these cubes (https://stackoverflow.com/questions/61840351/)
+// test if when object loaded it fires event
+// test that it loads all 3 cubes into the scene without specifying a part string
+// test with and without draco compression
+// test when part string provided it only renders 1 cube
 AFRAME.registerComponent('gltf-part', {
   schema: {
     buffer: { default: true },
