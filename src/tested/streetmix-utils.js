@@ -43,6 +43,5 @@ function calcStreetWidth (segments) { // eslint-disable-line no-unused-vars
     const segmentWidthInMeters = segmentWidthInFeet * 0.3048;
     cumulativeWidthInMeters = cumulativeWidthInMeters + segmentWidthInMeters;
   });
-  console.log(cumulativeWidthInMeters);
   return cumulativeWidthInMeters;
 }
