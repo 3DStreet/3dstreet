@@ -35,3 +35,14 @@ function streetmixAPIToUser (APIURL) { // eslint-disable-line no-unused-vars
 
   return 'https://streetmix.net/' + creatorId + '/' + namespacedId;
 }
+
+function calcStreetWidth (segments) { // eslint-disable-line no-unused-vars
+  var cumulativeWidthInMeters = 0;
+  segments.forEach((currentSegment) => {
+    const segmentWidthInFeet = currentSegment.width;
+    const segmentWidthInMeters = segmentWidthInFeet * 0.3048;
+    cumulativeWidthInMeters = cumulativeWidthInMeters + segmentWidthInMeters;
+  });
+  console.log(cumulativeWidthInMeters);
+  return cumulativeWidthInMeters;
+}

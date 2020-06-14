@@ -121,16 +121,6 @@ function insertSeparatorSegments (segments) {
   return newValues;
 }
 
-function calcStreetWidth (segments) {
-  var cumulativeWidthInMeters = 0;
-  segments.forEach((currentSegment) => {
-    const segmentWidthInFeet = currentSegment.width;
-    const segmentWidthInMeters = segmentWidthInFeet * 0.3048;
-    cumulativeWidthInMeters = cumulativeWidthInMeters + segmentWidthInMeters;
-  });
-  return cumulativeWidthInMeters;
-}
-
 function getStencilsParentId (positionX) {
   return 'stencils-parent-' + positionX;
 }
