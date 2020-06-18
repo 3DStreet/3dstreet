@@ -538,6 +538,8 @@ function processSegments (segments, streetElementId) {
   }
 }
 
+// test - for streetObject of street 44 and buildingElementId render 2 building sides
+// instead this function should output JSON, separate function to send the output to DOM
 function processBuildings (streetObject, buildingElementId) {
   // https://github.com/streetmix/illustrations/tree/master/images/buildings
   const buildingVariants = ['waterfront', 'grass', 'fence', 'parking-lot', 'residential', 'narrow', 'wide'];
@@ -565,6 +567,7 @@ function processBuildings (streetObject, buildingElementId) {
       // make buildings
       var buildingJSONString = JSON.stringify(createBuildingsArray(maxLength = 150));
       var placedObjectEl = document.createElement('a-entity');
+      // to center what is created by createBuildingsArray
       placedObjectEl.setAttribute('position', (positionX + (sideMultiplier * -72)) + ' 0 ' + (sideMultiplier * 75));
       placedObjectEl.setAttribute('rotation', '0 ' + (90 * sideMultiplier) + ' 0');
       placedObjectEl.setAttribute('create-from-json', 'jsonString', buildingJSONString);
