@@ -4,10 +4,12 @@ AFRAME.registerComponent('instanced-mesh', {
     retainChildren: { default: false }, // Not yet implemented
     inheritMat: { default: true },
     mergeInstances: { default: false }, // Not yet implemented
-    frustumCulled: { default: true }
+    frustumCulled: { default: true },
+    center: { default: false },
+    bottomAlign: { default: false }
   },
 
-  init: function () {      
+  init: function () {
   },
 
   update: function () {
@@ -59,6 +61,16 @@ AFRAME.registerComponent('instanced-mesh', {
       child = this.el.children[i];
       applyMatrix(i, matrix);
       amesh.setMatrixAt(i, matrix);
+
+      if (this.data.center) {
+        amesh.geometry.center();
+        if (this.data.bottomAlign) {
+          var box = new THREE.Box3().setFromObject(amesh);
+          var boundingBoxSize = box.max.sub(box.min);
+          var height = boundingBoxSize.y;
+          amesh.position.y = height / 2;
+        }
+      }
     }
     // frustumCulled
     amesh.frustumCulled = this.data.frustumCulled;
