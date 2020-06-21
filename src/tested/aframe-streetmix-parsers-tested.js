@@ -41,3 +41,29 @@ function createBuildingsArray (maxLength = 150) { // eslint-disable-line no-unus
 
   return buildingsArray;
 }
+
+function createClonedEntitiesArray ({ mixin = '', step = 15, radius = 60, rotation = '0 0 0', positionXYString = '0 0', randomY = false }) { // eslint-disable-line no-unused-vars
+  var clonedEntitiesArray = [];
+
+  for (var j = (radius * -1); j <= radius; j = j + step) {
+    var clonedEntity = {
+      tag: 'a-entity',
+      position: positionXYString + ' ' + j
+    };
+
+    if (mixin) {
+      clonedEntity.class = mixin;
+      clonedEntity.mixin = mixin;
+    }
+
+    if (randomY) {
+      clonedEntity.rotation = '0 ' + Math.floor(randomTestable() * 361) + ' 0'; // eslint-disable-line no-undef
+    } else {
+      clonedEntity.rotation = rotation;
+    }
+
+    clonedEntitiesArray.push(clonedEntity);
+  }
+
+  return clonedEntitiesArray;
+}

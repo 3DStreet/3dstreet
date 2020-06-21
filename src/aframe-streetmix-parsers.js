@@ -632,11 +632,14 @@ function processBuildings (streetObject, buildingElementId) {
       placedObjectEl.setAttribute('position', objectPositionX + ' 0 0'); // position="1.043 0.100 -3.463"
       placedObjectEl.setAttribute('id', 'fence-parent-' + positionX);
       // add the new elmement to DOM
-      document.getElementById(buildingElementId).appendChild(placedObjectEl);
 
-      // clone a bunch of lamps under the parent
+      // clone a bunch of fences under the parent
       var rotationCloneY = (side == 'right') ? -90 : 90;
-      cloneMixin({ objectMixinId: 'fence', parentId: 'fence-parent-' + positionX, rotation: '0 ' + rotationCloneY + ' 0', step: 9.25, radius: 70 });
+
+      //      cloneMixin({ objectMixinId: 'fence', parentId: 'fence-parent-' + positionX, rotation: '0 ' + rotationCloneY + ' 0', step: 9.25, radius: 70 });
+
+      var cloneMixinJSONString = JSON.stringify(createClonedEntitiesArray({ mixin: 'fence', rotation: '0 ' + rotationCloneY + ' 0', step: 9.25, radius: 70 }));
+      placedObjectEl.setAttribute('create-from-json', 'jsonString: ' + cloneMixinJSONString);
     }
   });
 }
