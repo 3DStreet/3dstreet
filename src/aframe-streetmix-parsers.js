@@ -640,6 +640,7 @@ function processBuildings (streetObject, buildingElementId) {
 
       var cloneMixinJSONString = JSON.stringify(createClonedEntitiesArray({ mixin: 'fence', rotation: '0 ' + rotationCloneY + ' 0', step: 9.25, radius: 70 }));
       placedObjectEl.setAttribute('create-from-json', 'jsonString: ' + cloneMixinJSONString);
+      document.getElementById(buildingElementId).appendChild(placedObjectEl);
     }
   });
 }
