@@ -10,7 +10,7 @@ AFRAME.registerComponent('part-center', {
     bottomAlign: { default: false }
   },
   init: function () {
-    this.el.addEventListener('part-loaded', (event) => {
+    this.el.addEventListener('model-loaded', (event) => {
       var modelPart = this.el.getObject3D('mesh');
       // center all axes
       modelPart.geometry.center();
@@ -49,7 +49,7 @@ AFRAME.registerComponent('gltf-part', {
     this.getModel(function (modelPart) {
       if (!modelPart) { return; }
       el.setObject3D('mesh', modelPart);
-      el.emit('part-loaded', { format: 'gltf', part: self.modelPart });
+      el.emit('model-loaded', { format: 'gltf', part: self.modelPart });
     });
   },
 

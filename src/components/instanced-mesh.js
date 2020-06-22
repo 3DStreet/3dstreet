@@ -42,7 +42,7 @@ AFRAME.registerComponent('instanced-mesh', {
     }
     var mesh = this.el.getObject3D('mesh');
     if (!mesh) {
-      this.el.addEventListener('part-loaded', e => {
+      this.el.addEventListener('model-loaded', e => {
         this.update.call(this, this.data);
       });
       return;
