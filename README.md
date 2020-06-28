@@ -53,8 +53,8 @@ Streetmix3D does not yet support all of the street `segments` found in Streetmix
 | parking-lot           | Yes | |    |
   | waterfront          | Yes | | Credit to [@Lady_Ada_King](https://twitter.com/Lady_Ada_King) for a-ocean-plane; @threejs for water normal jpeg; [cgskies](https://www.cgskies.com/) for sky image (paid [license](https://www.cgskies.com/about_legal.php)). Seawall Models: License [Sketchfab "Standard"](https://sketchfab.com/licenses) from [Polygon City Pack](https://sketchfab.com/3d-models/polygon-city-pack-preview-5a16f543d1054fbc9ce1cb17a2ba412e) |
 | residential          | No | | |
-| narrow          | Yes - partial | | Narrow and wide are the same thing |
-| wide          | Yes - partial | | Buildings: License [Sketchfab "Standard"](https://sketchfab.com/licenses) from [Polygon City Pack](https://sketchfab.com/3d-models/polygon-city-pack-preview-5a16f543d1054fbc9ce1cb17a2ba412e). Buildings do not fit entire size of block. |
+| narrow          | Yes - partial | | Buildings: License [Sketchfab "Standard"](https://sketchfab.com/licenses) from [Polygon City Pack](https://sketchfab.com/3d-models/polygon-city-pack-preview-5a16f543d1054fbc9ce1cb17a2ba412e). Does not support varying floors as specified by Streetmix JSON. |
+| wide          | Yes - partial | | Same as narrow. In the future this could include back alleyway, backyards, etc. |
 
 ### Helpful Streetmix debugging information
 Here are some tips and links from my experience "reverse engineering" Streetmix to get info out of their API.
