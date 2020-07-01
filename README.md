@@ -82,8 +82,14 @@ See [this link for more information](src/README.md) about the custom components 
 * Trolley: https://sketchfab.com/3d-models/neighborhood-trolley-3bc683cca6b84d8985cc0befe710b8fa
 
 ### Audio Credits
-* Ambient SF https://www.soundsnap.com/ssl_16_11_amb_ext_afternoon_alamo_square_painted_houses_park_with_birds_some_people_around_calm_city_san_francisco_st_wav
+* grass, wide, narrow building variants: Ambient SF https://www.soundsnap.com/ssl_16_11_amb_ext_afternoon_alamo_square_painted_houses_park_with_birds_some_people_around_calm_city_san_francisco_st_wav
+* fence variant - AMB_Suburbs_Afternoon_Woods_Spring_Small Field_Bird Chirps_Low Car Rumbles_Grass_Leaves Rustle_ST_MKH8050-30.mp3
+* parking-lot variant - "Parking lot ambience - long - looping.mp3" https://www.soundsnap.com/parking_lot_ambience_long_looping_wav
+* waterfront variant - UKdock4.mp3. - https://www.soundsnap.com/ukdock4
+* residential variant - suburbs - lawn mower, etc. - AMB_Suburbs_Spring_Day_Distant Lawnmowers_Birds_Distant Traffic_Distant Plastic Windmill Spin_Truck Pass By_Plane Overhead_MS_ST_MKH8050-30.mp3 - needs trimming https://www.soundsnap.com/amb_suburbs_spring_day_distant_lawnmowers_birds_distant_traffic_distant_plastic_windmill_spin_truck_pass_by_plane_overhead_ms_st 
 * Diesel idling bus https://www.soundsnap.com/turbodiesel_bus_riding_and_idling
+* Tram pass https://www.soundsnap.com/tram_pass_by_fast_wav
+* Historic streetcar pass https://www.soundsnap.com/streetcar_passing_by_smoothly
 
 <img src="https://raw.githubusercontent.com/kfarr/streetmix3d/master/assets/streetmix3d-banner.jpg" />
 
