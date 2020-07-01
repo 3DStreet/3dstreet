@@ -8,6 +8,7 @@ const app = rewire('../src/tested/aframe-streetmix-parsers-tested');
 const isSidewalk = app.__get__('isSidewalk');
 const createBuildingsArray = app.__get__('createBuildingsArray');
 const createClonedEntitiesArray = app.__get__('createClonedEntitiesArray');
+const getAmbientSoundJSON = app.__get__('getAmbientSoundJSON');
 
 describe('A-Frame Streetmix Parsers', function () {
   describe('#isSidewalk()', function () {
@@ -36,6 +37,38 @@ describe('A-Frame Streetmix Parsers', function () {
       assert.deepStrictEqual(
         createBuildingsArray(10),
         [{ mixin: 'SM3D_Bld_Mixed_Corner_4fl', position: '3.474045 0 0', tag: 'a-entity' }, { mixin: 'SM3D_Bld_Mixed_Double_5fl', position: '12.40014 0 0', tag: 'a-entity' }]
+      );
+    });
+  });
+
+  describe('#getAmbientSoundJSON()', function () {
+    it('getAmbientSoundJSON(["grass", "wide"]) should return array with one dictionary for a-entity with sound URL assets/audio/SSL_16_11_AMB_EXT_SF_ALAMO_SQ.mp3', function () {
+      assert.deepStrictEqual(
+        getAmbientSoundJSON(['grass', 'wide']),
+        [
+          {
+            tag: 'a-entity',
+            class: 'playme',
+            sound: 'src: url(assets/audio/SSL_16_11_AMB_EXT_SF_ALAMO_SQ.mp3); positional: false; loop: true'
+          }
+        ]
+      );
+    });
+    it('getAmbientSoundJSON(["narrow", "residential"]) should return array with 2 dictionaries of a-entities with sound component', function () {
+      assert.deepStrictEqual(
+        getAmbientSoundJSON(['narrow', 'residential']),
+        [
+          {
+            tag: 'a-entity',
+            class: 'playme',
+            sound: 'src: url(assets/audio/SSL_16_11_AMB_EXT_SF_ALAMO_SQ.mp3); positional: false; loop: true'
+          },
+          {
+            tag: 'a-entity',
+            class: 'playme',
+            sound: 'src: url(assets/audio/AMB_Suburbs_Spring_Day_Lawnmowers_Birds_MS_ST_MKH8050-30shortened.mp3); positional: false; loop: true'
+          }
+        ]
       );
     });
   });

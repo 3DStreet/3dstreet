@@ -67,3 +67,30 @@ function createClonedEntitiesArray ({ mixin = '', step = 15, radius = 60, rotati
 
   return clonedEntitiesArray;
 }
+
+function getAmbientSoundJSON (buildingsArray) { // eslint-disable-line no-unused-vars
+  const ambientSounds = {
+    fence: 'assets/audio/AMB_Suburbs_Afternoon_Woods_Spring_Small_ST_MKH8050-30shortened.mp3',
+    grass: 'assets/audio/SSL_16_11_AMB_EXT_SF_ALAMO_SQ.mp3',
+    'parking-lot': 'assets/audio/Parking_lot_ambience_looping.mp3',
+    waterfront: 'assets/audio/UKdock4.mp3',
+    residential: 'assets/audio/AMB_Suburbs_Spring_Day_Lawnmowers_Birds_MS_ST_MKH8050-30shortened.mp3',
+    narrow: 'assets/audio/SSL_16_11_AMB_EXT_SF_ALAMO_SQ.mp3',
+    wide: 'assets/audio/SSL_16_11_AMB_EXT_SF_ALAMO_SQ.mp3'
+  };
+
+  var soundsArray = [];
+  var prevURL = null;
+  buildingsArray.forEach((currentValue, index) => {
+    // <a-entity class="playme" sound="src: #ambientmp3; positional: false; loop: true;"></a-entity>
+    if (prevURL && (prevURL === ambientSounds[currentValue])) { return; }
+    var soundEntity = {
+      tag: 'a-entity',
+      class: 'playme',
+      sound: 'src: url(' + ambientSounds[currentValue] + '); positional: false; loop: true'
+    };
+    soundsArray.push(soundEntity);
+    prevURL = ambientSounds[currentValue];
+  });
+  return soundsArray;
+}
