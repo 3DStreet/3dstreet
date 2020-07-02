@@ -70,10 +70,10 @@ function createClonedEntitiesArray ({ mixin = '', step = 15, radius = 60, rotati
 
 function getAmbientSoundJSON (buildingsArray) { // eslint-disable-line no-unused-vars
   const ambientSounds = {
-    fence: 'assets/audio/AMB_Suburbs_Afternoon_Woods_Spring_Small_ST_MKH8050-30shortened.mp3',
-    grass: 'assets/audio/SSL_16_11_AMB_EXT_SF_ALAMO_SQ.mp3',
+    fence: 'assets/audio/AMB_Suburbs_Afternoon_Woods_Spring_Small_ST_MKH8050-30shortened_amplified.mp3',
+    grass: 'assets/audio/AMB_Suburbs_Afternoon_Woods_Spring_Small_ST_MKH8050-30shortened_amplified.mp3',
     'parking-lot': 'assets/audio/Parking_lot_ambience_looping.mp3',
-    waterfront: 'assets/audio/UKdock4.mp3',
+    waterfront: 'assets/audio/combined_UKdock4_and_water_pier_underneath_ambience.mp3',
     residential: 'assets/audio/AMB_Suburbs_Spring_Day_Lawnmowers_Birds_MS_ST_MKH8050-30shortened.mp3',
     narrow: 'assets/audio/SSL_16_11_AMB_EXT_SF_ALAMO_SQ.mp3',
     wide: 'assets/audio/SSL_16_11_AMB_EXT_SF_ALAMO_SQ.mp3'
