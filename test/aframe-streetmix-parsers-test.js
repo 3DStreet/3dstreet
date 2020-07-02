@@ -42,9 +42,9 @@ describe('A-Frame Streetmix Parsers', function () {
   });
 
   describe('#getAmbientSoundJSON()', function () {
-    it('getAmbientSoundJSON(["grass", "wide"]) should return array with one dictionary for a-entity with sound URL assets/audio/SSL_16_11_AMB_EXT_SF_ALAMO_SQ.mp3', function () {
+    it('getAmbientSoundJSON(["narrow", "wide"]) should return array with one dictionary for a-entity with sound URL assets/audio/SSL_16_11_AMB_EXT_SF_ALAMO_SQ.mp3', function () {
       assert.deepStrictEqual(
-        getAmbientSoundJSON(['grass', 'wide']),
+        getAmbientSoundJSON(['narrow', 'wide']),
         [
           {
             tag: 'a-entity',
