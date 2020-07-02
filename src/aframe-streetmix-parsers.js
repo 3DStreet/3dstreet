@@ -547,6 +547,14 @@ function processBuildings (streetObject, buildingElementId) {
   const buildingsArray = [streetObject.leftBuildingVariant, streetObject.rightBuildingVariant];
   // console.log(buildingsArray);
 
+  var ambientSoundJSONString = JSON.stringify(getAmbientSoundJSON(buildingsArray));
+  // console.log(ambientSoundJSONString);
+
+  var soundParentEl = document.createElement('a-entity');
+  soundParentEl.setAttribute('create-from-json', 'jsonString', ambientSoundJSONString);
+
+  document.getElementById(buildingElementId).appendChild(soundParentEl);
+
   buildingsArray.forEach((currentValue, index) => {
     const side = (index == 0) ? 'left' : 'right';
     const sideMultiplier = (side == 'left') ? -1 : 1;
