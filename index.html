@@ -1,7 +1,7 @@
 <html>
   <head>
     <!-- <script src="https://aframe.io/releases/1.0.4/aframe.min.js"></script> -->
-    <script src="https://cdn.jsdelivr.net/gh/aframevr/aframe@710dfc0ab24c9bd86ff54f5a7e6f9b1f64920fa2/dist/aframe-master.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/gh/aframevr/aframe@1f00d0beadf87bad7d275c174616e048f8b573fc/dist/aframe-master.min.js"></script>
 
     <script src="src/lib/aframe-atlas-uvs-component.min.js"></script>
     <script src="src/lib/aframe-orbit-controls.min.js"></script>
@@ -192,6 +192,10 @@
 
         <a-mixin id="seawall" gltf-model="#seawall-model" scale="1 1 1" rotation="0 0 0"></a-mixin>
         <a-mixin id="fence" gltf-model="#fence-model" scale="0.1 0.1 0.1"></a-mixin>
+
+        <a-mixin id="ground-grass" rotation="-90 0 0" geometry="primitive:plane;height:150;width:150" material="src:url(assets/materials/TexturesCom_Grass0052_1_seamless_S.jpg);repeat:5 5;roughness:1"></a-mixin>
+        <a-mixin id="ground-parking-lot" rotation="-90 0 0" geometry="primitive:plane;height:150;width:150" material="src:url(assets/materials/TexturesCom_Roads0111_1_seamless_S.jpg);repeat:2 4;roughness:1"></a-mixin>
+        <a-mixin id="ground-asphalt" rotation="-90 0 0" geometry="primitive:plane;height:150;width:150" material="src:url(assets/materials/TexturesCom_AsphaltDamaged0057_1_seamless_S.jpg);repeat:5 5;roughness:1"></a-mixin>
 
         <!-- ui / future use -->
         <image id="subtitle" src="assets/materials/subtitle.png" />
