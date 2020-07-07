@@ -68,6 +68,7 @@ function createClonedEntitiesArray ({ mixin = '', step = 15, radius = 60, rotati
   return clonedEntitiesArray;
 }
 
+// TODO: rename to createAmbientSoundsArray
 function getAmbientSoundJSON (buildingsArray) { // eslint-disable-line no-unused-vars
   const ambientSounds = {
     fence: 'assets/audio/AMB_Suburbs_Afternoon_Woods_Spring_Small_ST_MKH8050-30shortened_amplified.mp3',
@@ -93,4 +94,23 @@ function getAmbientSoundJSON (buildingsArray) { // eslint-disable-line no-unused
     prevURL = ambientSounds[currentValue];
   });
   return soundsArray;
+}
+
+// possible input values: grass, fence, narrow, wide, waterfront, residential, parking-lot
+function createGroundArray (buildingString) { // eslint-disable-line no-unused-vars
+  var groundArray = [];
+  var mixin = 'ground-grass'; // default output is grass ground type
+
+  if (buildingString === 'waterfront') { return groundArray; }
+  if (['narrow', 'wide'].includes(buildingString)) { mixin = 'ground-asphalt'; }
+  if (buildingString === 'parking-lot') { mixin = 'ground-parking-lot'; }
+
+  var groundEntity = {
+    tag: 'a-entity',
+    position: '0 -0.2 0',
+    mixin: mixin
+  };
+  groundArray.push(groundEntity);
+
+  return groundArray;
 }

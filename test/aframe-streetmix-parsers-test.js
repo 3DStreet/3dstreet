@@ -9,6 +9,7 @@ const isSidewalk = app.__get__('isSidewalk');
 const createBuildingsArray = app.__get__('createBuildingsArray');
 const createClonedEntitiesArray = app.__get__('createClonedEntitiesArray');
 const getAmbientSoundJSON = app.__get__('getAmbientSoundJSON');
+const createGroundArray = app.__get__('createGroundArray');
 
 describe('A-Frame Streetmix Parsers', function () {
   describe('#isSidewalk()', function () {
@@ -37,6 +38,33 @@ describe('A-Frame Streetmix Parsers', function () {
       assert.deepStrictEqual(
         createBuildingsArray(10),
         [{ mixin: 'SM3D_Bld_Mixed_Corner_4fl', position: '3.474045 0 0', tag: 'a-entity' }, { mixin: 'SM3D_Bld_Mixed_Double_5fl', position: '12.40014 0 0', tag: 'a-entity' }]
+      );
+    });
+  });
+
+  describe('#createGroundArray()', function () {
+    it('createGroundArray("grass") should return array with one dictionary for a-entity with mixin ground-grass', function () {
+      assert.deepStrictEqual(
+        createGroundArray('grass'),
+        [{ tag: 'a-entity', mixin: 'ground-grass', position: '0 -0.2 0' }]
+      );
+    });
+    it('createGroundArray("parking-lot") should return array with one dictionary for a-entity with mixin ground-parking-lot', function () {
+      assert.deepStrictEqual(
+        createGroundArray('parking-lot'),
+        [{ mixin: 'ground-parking-lot', position: '0 -0.2 0', tag: 'a-entity' }]
+      );
+    });
+    it('createGroundArray("jiberish") should return array with one dictionary for a-entity with mixin ground-grass', function () {
+      assert.deepStrictEqual(
+        createGroundArray('jiberish'),
+        [{ mixin: 'ground-grass', position: '0 -0.2 0', tag: 'a-entity' }]
+      );
+    });
+    it('createGroundArray("narrow") should return array with one dictionary for a-entity with mixin ground-asphalt', function () {
+      assert.deepStrictEqual(
+        createGroundArray('narrow'),
+        [{ mixin: 'ground-asphalt', position: '0 -0.2 0', tag: 'a-entity' }]
       );
     });
   });

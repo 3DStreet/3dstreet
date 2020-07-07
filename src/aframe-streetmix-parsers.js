@@ -548,30 +548,23 @@ function processBuildings (streetObject, buildingElementId) {
   // console.log(buildingsArray);
 
   var ambientSoundJSONString = JSON.stringify(getAmbientSoundJSON(buildingsArray));
-  // console.log(ambientSoundJSONString);
-
   var soundParentEl = document.createElement('a-entity');
   soundParentEl.setAttribute('create-from-json', 'jsonString', ambientSoundJSONString);
-
   document.getElementById(buildingElementId).appendChild(soundParentEl);
 
   buildingsArray.forEach((currentValue, index) => {
-    const side = (index == 0) ? 'left' : 'right';
-    const sideMultiplier = (side == 'left') ? -1 : 1;
+    const side = (index === 0) ? 'left' : 'right';
+    const sideMultiplier = (side === 'left') ? -1 : 1;
 
     const positionX = ((buildingLotWidth / 2) + (calcStreetWidth(streetObject.segments) / 2)) * sideMultiplier;
 
-    if (currentValue == 'grass' || currentValue == 'fence') {
-      var placedObjectEl = document.createElement('a-entity');
-      placedObjectEl.setAttribute('scale', '0.7425 1 0.7425');
-      placedObjectEl.setAttribute('position', positionX + ' -0.2 0');
-      placedObjectEl.setAttribute('id', 'ground-' + side);
-      // add the new elmement to DOM
-      placedObjectEl.setAttribute('ground', 'ground: flat; groundTexture: squares; groundColor: #32460a; groundColor2: #526117; groundYScale: 0.2; resolution: 2;');
-      document.getElementById(buildingElementId).appendChild(placedObjectEl);
-    }
+    var groundJSONString = JSON.stringify(createGroundArray(currentValue));
+    var groundParentEl = document.createElement('a-entity');
+    groundParentEl.setAttribute('create-from-json', 'jsonString', groundJSONString);
+    groundParentEl.setAttribute('position', positionX + ' 0 0');
+    document.getElementById(buildingElementId).appendChild(groundParentEl);
 
-    if (currentValue == 'narrow' || currentValue == 'wide') {
+    if (currentValue === 'narrow' || currentValue === 'wide') {
       // make buildings
       var buildingJSONString = JSON.stringify(createBuildingsArray(maxLength = 150));
       var placedObjectEl = document.createElement('a-entity');
@@ -581,43 +574,9 @@ function processBuildings (streetObject, buildingElementId) {
       placedObjectEl.setAttribute('create-from-json', 'jsonString', buildingJSONString);
       placedObjectEl.setAttribute('id', 'block-' + side);
       document.getElementById(buildingElementId).appendChild(placedObjectEl);
-
-      var placedObjectEl = document.createElement('a-entity');
-      placedObjectEl.setAttribute('scale', '0.7425 1 0.7425');
-      placedObjectEl.setAttribute('position', positionX + ' -0.2 0');
-      placedObjectEl.setAttribute('id', 'ground-' + side);
-      // add the new elmement to DOM
-      placedObjectEl.setAttribute('ground', 'ground: flat; groundTexture: squares; groundColor: #292c2a; groundColor2: #343434; groundYScale: 0.2; resolution: 2;');
-      document.getElementById(buildingElementId).appendChild(placedObjectEl);
     }
 
-    if (currentValue == 'parking-lot') {
-      var placedObjectEl = document.createElement('a-entity');
-      placedObjectEl.setAttribute('scale', '0.7425 1 0.7425');
-      placedObjectEl.setAttribute('position', positionX + ' -0.2 0');
-      placedObjectEl.setAttribute('id', 'ground-' + side);
-      // add the new elmement to DOM
-      placedObjectEl.setAttribute('ground', 'ground: flat; groundTexture: squares; groundColor: #292c2a; groundColor2: #343434; groundYScale: 0.2; resolution: 2;');
-      document.getElementById(buildingElementId).appendChild(placedObjectEl);
-
-      // place the parking stall stencils next
-      const objectPositionX = positionX - (sideMultiplier * buildingLotWidth / 2);
-      const offset = (side == 'right') ? 2.1 : -2.1;
-
-      // make the parent for all the objects to be cloned
-      var placedObjectEl = document.createElement('a-entity');
-      placedObjectEl.setAttribute('class', 'stencils-parent');
-      placedObjectEl.setAttribute('position', (objectPositionX + offset) + ' -0.1 0'); // position="1.043 0.100 -3.463"
-      placedObjectEl.setAttribute('id', 'stencils-parent-' + positionX);
-      // add the new elmement to DOM
-      document.getElementById(buildingElementId).appendChild(placedObjectEl);
-
-      // clone a bunch of lamps under the parent
-      var rotationCloneY = (side == 'right') ? 180 : 0;
-      cloneMixin({ objectMixinId: 'stencils perpendicular-stalls', parentId: 'stencils-parent-' + positionX, rotation: '-90 ' + rotationCloneY + ' 0', step: 10, radius: 75 });
-    }
-
-    if (currentValue == 'waterfront') {
+    if (currentValue === 'waterfront') {
       const objectPositionX = positionX - (sideMultiplier * buildingLotWidth / 2);
 
       var placedObjectEl = document.createElement('a-entity');
@@ -628,11 +587,11 @@ function processBuildings (streetObject, buildingElementId) {
       document.getElementById(buildingElementId).appendChild(placedObjectEl);
 
       // clone a bunch of seawalls under the parent
-      var rotationCloneY = (side == 'right') ? -90 : 90;
+      var rotationCloneY = (side === 'right') ? -90 : 90;
       cloneMixin({ objectMixinId: 'seawall', parentId: 'seawall-parent-' + positionX, rotation: '-90 ' + rotationCloneY + ' 0', step: 15, radius: 70 });
     }
 
-    if (currentValue == 'fence' || currentValue == 'parking-lot') {
+    if (currentValue === 'fence' || currentValue === 'parking-lot') {
       const objectPositionX = positionX - (sideMultiplier * buildingLotWidth / 2);
       // make the parent for all the objects to be cloned
       var placedObjectEl = document.createElement('a-entity');
@@ -642,7 +601,7 @@ function processBuildings (streetObject, buildingElementId) {
       // add the new elmement to DOM
 
       // clone a bunch of fences under the parent
-      var rotationCloneY = (side == 'right') ? -90 : 90;
+      var rotationCloneY = (side === 'right') ? -90 : 90;
 
       //      cloneMixin({ objectMixinId: 'fence', parentId: 'fence-parent-' + positionX, rotation: '0 ' + rotationCloneY + ' 0', step: 9.25, radius: 70 });
 
