@@ -48,13 +48,13 @@ Streetmix3D does not yet support all of the street `segments` found in Streetmix
 
 | [Streetmix Building](https://github.com/streetmix/streetmix/blob/master/assets/scripts/segments/buildings.js)              | Streetmix3D Support? | Supported Variants  | Notes |
 | ---------------------------- | --------- | ------ | ----- |
-| grass            | Yes       |     |  |
+| grass            | Yes       |     | https://www.textures.com/download/grass0052/12094 |
 | fence       | Yes       | |  Fence Model: Paid Royalty Free License [CGTrader.com T&Cs Paragraph 21](https://www.cgtrader.com/pages/terms-and-conditions) for [construction fence Low-poly 3D model](https://www.cgtrader.com/3d-models/exterior/street/construction-fence-f8cc10f2-cf56-4f1d-a87a-c60c41d50b02) |
-| parking-lot           | Yes | |    |
+| parking-lot           | Yes | |  https://www.textures.com/download/roads0111/53096  |
   | waterfront          | Yes | | Credit to [@Lady_Ada_King](https://twitter.com/Lady_Ada_King) for a-ocean-plane; @threejs for water normal jpeg; [cgskies](https://www.cgskies.com/) for sky image (paid [license](https://www.cgskies.com/about_legal.php)). Seawall Models: License [Sketchfab "Standard"](https://sketchfab.com/licenses) from [Polygon City Pack](https://sketchfab.com/3d-models/polygon-city-pack-preview-5a16f543d1054fbc9ce1cb17a2ba412e) |
 | residential          | No | | |
 | narrow          | Yes - partial | | Buildings: License [Sketchfab "Standard"](https://sketchfab.com/licenses) from [Polygon City Pack](https://sketchfab.com/3d-models/polygon-city-pack-preview-5a16f543d1054fbc9ce1cb17a2ba412e). Does not support varying floors as specified by Streetmix JSON. |
-| wide          | Yes - partial | | Same as narrow. In the future this could include back alleyway, backyards, etc. |
+| wide          | Yes - partial | | Same as narrow. In the future this could include back alleyway, backyards, etc. ; https://www.textures.com/download/asphaltdamaged0057/46489|
 
 ### Helpful Streetmix debugging information
 Here are some tips and links from my experience "reverse engineering" Streetmix to get info out of their API.
