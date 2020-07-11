@@ -42,6 +42,17 @@ function createBuildingsArray (maxLength = 150) { // eslint-disable-line no-unus
   return buildingsArray;
 }
 
+// for an array of buildings, remove entities except those that match the mixinId specified
+function filterBuildingsArrayByMixin (buildingsArray, mixinId) { // eslint-disable-line no-unused-vars
+  var filteredBuildingsArray = [];
+  buildingsArray.forEach((currentEntity, index) => {
+    if (currentEntity.mixin === mixinId) {
+      filteredBuildingsArray.push(currentEntity);
+    }
+  });
+  return filteredBuildingsArray;
+}
+
 function createClonedEntitiesArray ({ mixin = '', step = 15, radius = 60, rotation = '0 0 0', positionXYString = '0 0', randomY = false }) { // eslint-disable-line no-unused-vars
   var clonedEntitiesArray = [];
 

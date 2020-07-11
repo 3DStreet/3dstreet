@@ -10,6 +10,7 @@ const createBuildingsArray = app.__get__('createBuildingsArray');
 const createClonedEntitiesArray = app.__get__('createClonedEntitiesArray');
 const getAmbientSoundJSON = app.__get__('getAmbientSoundJSON');
 const createGroundArray = app.__get__('createGroundArray');
+const filterBuildingsArrayByMixin = app.__get__('filterBuildingsArrayByMixin');
 
 describe('A-Frame Streetmix Parsers', function () {
   describe('#isSidewalk()', function () {
@@ -39,6 +40,17 @@ describe('A-Frame Streetmix Parsers', function () {
         createBuildingsArray(10),
         [{ mixin: 'SM3D_Bld_Mixed_Corner_4fl', position: '3.474045 0 0', tag: 'a-entity' }, { mixin: 'SM3D_Bld_Mixed_Double_5fl', position: '12.40014 0 0', tag: 'a-entity' }]
       );
+    });
+  });
+
+  describe('#filterBuildingsArrayByMixin()', function () {
+    it('filterBuildingsArrayByMixin with createBuildingsArray(maxLength = 100) and mixinId = "SM3D_Bld_Mixed_Corner_4fl" should return dictionary with 5 items', function () {
+      var buildingsArray = createBuildingsArray(100);
+      assert.strictEqual(filterBuildingsArrayByMixin(buildingsArray, 'SM3D_Bld_Mixed_Corner_4fl').length, 5);
+    });
+    it('filterBuildingsArrayByMixin with createBuildingsArray(maxLength = 100) and mixinId = "asdfdsafwefqewf" should return dictionary with 0 items', function () {
+      var buildingsArray = createBuildingsArray(100);
+      assert.strictEqual(filterBuildingsArrayByMixin(buildingsArray, 'asdfdsafwefqewf').length, 0);
     });
   });
 
