@@ -49,6 +49,13 @@ which after being parsed turns into
 
 ## Modified Components from Elsewhere
 
+### [components/instanced-mesh.js](components/instanced-mesh.js)
+`instanced-mesh` component is a modified version of [EX3D/aframe-InstancedMesh](https://github.com/EX3D/aframe-InstancedMesh) which adds two additional properties:
+* `center`: (default: `false`) if `true` then [center each instance](https://threejs.org/docs/#api/en/core/Geometry.center) using axis aligned bounding box
+* `bottomAlign`: {default: `false`} if `true` and `center` = `true` then adjust `y` position of model to place on floor or ground.
+
+[See the original component repo for full documentation.](https://github.com/EX3D/aframe-InstancedMesh)
+
 ### [lib/aframe-alongpath-component.js](lib/aframe-alongpath-component.js)
 `alongpath` component modified to emit `movingstarted` each loop when `loop` = `true`, used in this project to trigger sound effects for passing vehicles. A [pull request has been filed with the original component](https://github.com/protyze/aframe-alongpath-component/pull/19).
 
