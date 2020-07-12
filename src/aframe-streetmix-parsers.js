@@ -566,14 +566,33 @@ function processBuildings (streetObject, buildingElementId) {
 
     if (currentValue === 'narrow' || currentValue === 'wide') {
       // make buildings
-      var buildingJSONString = JSON.stringify(createBuildingsArray(maxLength = 150));
-      var placedObjectEl = document.createElement('a-entity');
-      // to center what is created by createBuildingsArray
-      placedObjectEl.setAttribute('position', (positionX + (sideMultiplier * -72)) + ' 0 ' + (sideMultiplier * 75));
-      placedObjectEl.setAttribute('rotation', '0 ' + (90 * sideMultiplier) + ' 0');
-      placedObjectEl.setAttribute('create-from-json', 'jsonString', buildingJSONString);
-      placedObjectEl.setAttribute('id', 'block-' + side);
-      document.getElementById(buildingElementId).appendChild(placedObjectEl);
+      const buildingsArray = createBuildingsArray(maxLength = 150);
+
+      // TODO: this const should be a global variable as it's also used in aframe-streetmix-parsers-tested.js
+      const buildings = [
+        { id: 'SM3D_Bld_Mixed_4fl', width: 5.25221 },
+        { id: 'SM3D_Bld_Mixed_Double_5fl', width: 10.9041 },
+        { id: 'SM3D_Bld_Mixed_4fl_2', width: 5.58889 },
+        { id: 'SM3D_Bld_Mixed_5fl', width: 6.47593 },
+        { id: 'SM3D_Bld_Mixed_Corner_4fl', width: 6.94809 }
+      ];
+
+      // TODO: this should be converted to json with children instead of creating 5 parents
+      buildings.forEach((currentValue, index) => {
+        var filteredBuildingsArray = filterBuildingsArrayByMixin(buildingsArray, currentValue.id);
+        var removedMixinFilteredBuildingsArray = removePropertyFromArray(filteredBuildingsArray, 'mixin');
+        var buildingsInstancedChildrenJSONString = JSON.stringify(removedMixinFilteredBuildingsArray);
+
+        var placedObjectEl = document.createElement('a-entity');
+        // to center what is created by createBuildingsArray
+        placedObjectEl.setAttribute('position', (positionX + (sideMultiplier * -72)) + ' 0 ' + (sideMultiplier * 75));
+        placedObjectEl.setAttribute('rotation', '0 ' + (90 * sideMultiplier) + ' 0');
+        placedObjectEl.setAttribute('mixin', currentValue.id);
+        placedObjectEl.setAttribute('create-from-json', 'jsonString', buildingsInstancedChildrenJSONString);
+        placedObjectEl.setAttribute('instanced-mesh', 'inheritMat: false; frustumCulled: false; center: true; bottomAlign: true');
+        placedObjectEl.setAttribute('class', 'block-instance-' + side);
+        document.getElementById(buildingElementId).appendChild(placedObjectEl);
+      });
     }
 
     if (currentValue === 'waterfront') {
