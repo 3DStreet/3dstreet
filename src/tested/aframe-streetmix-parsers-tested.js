@@ -42,7 +42,7 @@ function createBuildingsArray (maxLength = 150) { // eslint-disable-line no-unus
   return buildingsArray;
 }
 
-// for an array of buildings, remove entities except those that match the mixinId specified
+// for an array of objects representing HTML, remove entities except those that match the mixinId specified
 function filterBuildingsArrayByMixin (buildingsArray, mixinId) { // eslint-disable-line no-unused-vars
   var filteredBuildingsArray = [];
   buildingsArray.forEach((currentEntity, index) => {
@@ -51,6 +51,14 @@ function filterBuildingsArrayByMixin (buildingsArray, mixinId) { // eslint-disab
     }
   });
   return filteredBuildingsArray;
+}
+
+// for an array of objects representing HTML, for each object remove the property matching the passed string `key`
+function removePropertyFromArray (htmlArray, key) { // eslint-disable-line no-unused-vars
+  htmlArray.forEach((currentEntity, index) => {
+    delete currentEntity[key];
+  });
+  return htmlArray;
 }
 
 function createClonedEntitiesArray ({ mixin = '', step = 15, radius = 60, rotation = '0 0 0', positionXYString = '0 0', randomY = false }) { // eslint-disable-line no-unused-vars

@@ -11,6 +11,7 @@ const createClonedEntitiesArray = app.__get__('createClonedEntitiesArray');
 const getAmbientSoundJSON = app.__get__('getAmbientSoundJSON');
 const createGroundArray = app.__get__('createGroundArray');
 const filterBuildingsArrayByMixin = app.__get__('filterBuildingsArrayByMixin');
+const removePropertyFromArray = app.__get__('removePropertyFromArray');
 
 describe('A-Frame Streetmix Parsers', function () {
   describe('#isSidewalk()', function () {
@@ -51,6 +52,14 @@ describe('A-Frame Streetmix Parsers', function () {
     it('filterBuildingsArrayByMixin with createBuildingsArray(maxLength = 100) and mixinId = "asdfdsafwefqewf" should return dictionary with 0 items', function () {
       var buildingsArray = createBuildingsArray(100);
       assert.strictEqual(filterBuildingsArrayByMixin(buildingsArray, 'asdfdsafwefqewf').length, 0);
+    });
+  });
+
+  describe('#removePropertyFromArray()', function () {
+    it('removePropertyFromArray should result in hasOwnProperty false for the removed property', function () {
+      var htmlArray = [{ tag: 'a-entity', mixin: 'test' }, { tag: 'a-entity', mixin: 'toast' }];
+      var updatedArray = removePropertyFromArray(htmlArray, 'mixin');
+      assert(!(Object.prototype.hasOwnProperty.call(updatedArray[0], 'mixin')));
     });
   });
 
