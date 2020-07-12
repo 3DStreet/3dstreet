@@ -5,6 +5,7 @@
 
     <script src="src/lib/aframe-orbit-controls.min.js"></script>
     <script src="src/lib/aframe-cubemap-component.js"></script>
+    <script src="src/tested/create-from-json-utils-tested.js"></script>
 
     <script src="src/components/ocean-plane.js"></script>
     <script src="src/components/anisotropy.js"></script>
@@ -56,28 +57,28 @@
       <a-entity id="skybox" cubemap="folder: assets/images/skybox/"></a-entity>
 
       <a-entity id="buildings">
-        <a-entity class="instances-parent" mixin="SM3D_Bld_Mixed_Corner_4fl" instanced-mesh="inheritMat: false; frustumCulled: false; center: true; bottomAlign: true">
-          <a-entity position="0 0 0"  scale="1 1 1" rotation="0 0 0" ></a-entity>
-          <a-entity position="10 0 0" scale="1 1 1" rotation="0 0 0" ></a-entity>
-          <a-entity position="20 0 0" scale="1 1 1" rotation="0 0 0" ></a-entity>       
-        </a-entity> 
+        <a-entity
+          mixin="SM3D_Bld_Mixed_Corner_4fl"
+          create-from-json='jsonString: [{"tag":"a-entity"}, {"tag":"a-entity", "position":"10 0 0"}, {"tag":"a-entity", "position":"20 0 0"}]'
+          instanced-mesh="inheritMat: false; frustumCulled: false; center: true; bottomAlign: true">
+        </a-entity>
         <a-entity class="instances-parent" mixin="SM3D_Bld_Mixed_Double_5fl" instanced-mesh="inheritMat: false; frustumCulled: false; center: true; bottomAlign: true">
-          <a-entity position="30 0 0"  scale="1 1 1" rotation="0 0 0" ></a-entity>
+          <a-entity position="30 0 0" scale="1 1 1" rotation="0 0 0" ></a-entity>
           <a-entity position="40 0 0" scale="1 1 1" rotation="0 0 0" ></a-entity>
           <a-entity position="50 0 0" scale="1 1 1" rotation="0 0 0" ></a-entity>       
-        </a-entity> 
+        </a-entity>
         <a-entity class="instances-parent" mixin="SM3D_Bld_Mixed_4fl_2" instanced-mesh="inheritMat: false; frustumCulled: false; center: true; bottomAlign: true">
-          <a-entity position="60 0 0"  scale="1 1 1" rotation="0 0 0" ></a-entity>
+          <a-entity position="60 0 0" scale="1 1 1" rotation="0 0 0" ></a-entity>
           <a-entity position="70 0 0" scale="1 1 1" rotation="0 0 0" ></a-entity>
           <a-entity position="80 0 0" scale="1 1 1" rotation="0 0 0" ></a-entity>       
         </a-entity> 
         <a-entity class="instances-parent" mixin="SM3D_Bld_Mixed_5fl" instanced-mesh="inheritMat: false; frustumCulled: false; center: true; bottomAlign: true">
-          <a-entity position="90 0 0"  scale="1 1 1" rotation="0 0 0" ></a-entity>
+          <a-entity position="90 0 0" scale="1 1 1" rotation="0 0 0" ></a-entity>
           <a-entity position="100 0 0" scale="1 1 1" rotation="0 0 0" ></a-entity>
           <a-entity position="110 0 0" scale="1 1 1" rotation="0 0 0" ></a-entity>       
         </a-entity> 
         <a-entity class="instances-parent" mixin="SM3D_Bld_Mixed_4fl" instanced-mesh="inheritMat: false; frustumCulled: false; center: true; bottomAlign: true">
-          <a-entity position="120 0 0"  scale="1 1 1" rotation="0 0 0" ></a-entity>
+          <a-entity position="120 0 0" scale="1 1 1" rotation="0 0 0" ></a-entity>
           <a-entity position="130 0 0" scale="1 1 1" rotation="0 0 0" ></a-entity>
           <a-entity position="140 0 0" scale="1 1 1" rotation="0 0 0" ></a-entity>       
         </a-entity> 
