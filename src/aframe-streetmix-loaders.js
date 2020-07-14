@@ -32,9 +32,20 @@ function loadStreet (streetURL) {
 }
 
 function initStreet () {
+  // Run processURLChange when Enter pressed on input field
+  // This function should probably be somewhere else
+  document.getElementById('input-url').onkeypress = function (e) {
+    if (!e) e = window.event;
+    var keyCode = e.keyCode || e.which;
+    if (keyCode == '13') {
+      // Enter pressed
+      processURLChange();
+    }
+  };
+
   // Is there a URL in the URL HASH?
   var streetURL = location.hash.substring(1);
-  console.log('hash check: ' + streetURL);
+  // console.log('hash check: ' + streetURL);
 
   if (streetURL) {
     var pathArray = new URL(streetURL).pathname.split('/');
@@ -48,25 +59,17 @@ function initStreet () {
 
     // REMOTE WITH REDIRECT:
     var streetURL = 'https://streetmix.net/api/v1/streets?namespacedId=3&creatorId=kfarr';
-
+    window.location.hash = '#' + streetmixAPIToUser(streetURL);
+    document.getElementById('input-url').value = streetmixAPIToUser(streetURL);
+    return;
     // DIRECT TO REMOTE FILE: - don't use this since it's hard to convert back to user friendly URL
     // var streetURL = 'https://streetmix.net/api/v1/streets/7a633310-e598-11e6-80db-ebe3de713876';
   }
 
-  console.log('streetURL check: ' + streetURL);
+  // console.log('streetURL check: ' + streetURL);
   loadStreet(streetURL);
   window.location.hash = '#' + streetmixAPIToUser(streetURL);
   document.getElementById('input-url').value = streetmixAPIToUser(streetURL);
-
-  // Run processURLChange when Enter pressed on input field
-  document.getElementById('input-url').onkeypress = function (e) {
-    if (!e) e = window.event;
-    var keyCode = e.keyCode || e.which;
-    if (keyCode == '13') {
-      // Enter pressed
-      processURLChange();
-    }
-  };
 }
 window.onload = initStreet; // TODO: move somewhere else (maybe index.html)
 
@@ -75,7 +78,7 @@ function locationHashChanged () {
   // check if valid hash
   // if yes, then clear old city // load new city with that hash
   var streetURL = location.hash.substring(1);
-  console.log('hash changed to: ' + streetURL);
+  // console.log('hash changed to: ' + streetURL);
 
   if (streetURL) {
     var pathArray = new URL(streetURL).pathname.split('/');
@@ -95,7 +98,7 @@ window.onhashchange = locationHashChanged; // TODO: move somewhere else (maybe i
 // Load new street from input-url value
 function processURLChange () {
   var streetURL = document.getElementById('input-url').value;
-  console.log('hash changed to: ' + streetURL);
+  // console.log('hash changed to: ' + streetURL);
 
   if (streetURL) {
     var pathArray = new URL(streetURL).pathname.split('/');
@@ -103,8 +106,6 @@ function processURLChange () {
     if (pathArray[1] != 'api') {
       streetURL = streetmixUserToAPI(streetURL);
     }
-
-    loadStreet(streetURL);
     window.location.hash = '#' + streetmixAPIToUser(streetURL);
   }
 }
