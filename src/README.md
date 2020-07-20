@@ -49,8 +49,8 @@ which after being parsed turns into
 
 ## Modified Components from Elsewhere
 
-### [components/instanced-mesh.js](components/instanced-mesh.js)
-`instanced-mesh` component is a modified version of [EX3D/aframe-InstancedMesh](https://github.com/EX3D/aframe-InstancedMesh) which adds two additional properties:
+### [components/instancedmesh.js](components/instancedmesh.js)
+`instancedmesh` component is a modified version of [EX3D/aframe-InstancedMesh](https://github.com/EX3D/aframe-InstancedMesh) which adds two additional properties:
 * `center`: (default: `false`) if `true` then [center each instance](https://threejs.org/docs/#api/en/core/Geometry.center) using axis aligned bounding box
 * `bottomAlign`: {default: `false`} if `true` and `center` = `true` then adjust `y` position of model to place on floor or ground.
 

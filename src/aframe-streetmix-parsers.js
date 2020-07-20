@@ -589,7 +589,7 @@ function processBuildings (streetObject, buildingElementId) {
         placedObjectEl.setAttribute('rotation', '0 ' + (90 * sideMultiplier) + ' 0');
         placedObjectEl.setAttribute('mixin', currentValue.id);
         placedObjectEl.setAttribute('create-from-json', 'jsonString', buildingsInstancedChildrenJSONString);
-        placedObjectEl.setAttribute('instanced-mesh', 'inheritMat: false; frustumCulled: false; center: true; bottomAlign: true');
+        placedObjectEl.setAttribute('instancedmesh', 'inheritMat: false; frustumCulled: false; center: true; bottomAlign: true');
         placedObjectEl.setAttribute('class', 'block-instance-' + side);
         document.getElementById(buildingElementId).appendChild(placedObjectEl);
       });

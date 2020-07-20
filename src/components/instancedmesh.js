@@ -1,4 +1,4 @@
-AFRAME.registerComponent('instanced-mesh', {
+AFRAME.registerComponent('instancedmesh', {
   schema: {
     retainParent: { default: false },
     retainChildren: { default: false }, // Not yet implemented
