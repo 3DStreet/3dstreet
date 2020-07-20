@@ -83,7 +83,7 @@ function locationHashChanged () {
   if (streetURL) {
     var pathArray = new URL(streetURL).pathname.split('/');
     // optimistically try to convert from streetmix URL to api url
-    if (pathArray[1] != 'api') {
+    if (pathArray[1] !== 'api') {
       streetURL = streetmixUserToAPI(streetURL);
     }
 
@@ -103,9 +103,11 @@ function processURLChange () {
   if (streetURL) {
     var pathArray = new URL(streetURL).pathname.split('/');
     // optimistically try to convert from streetmix URL to api url
-    if (pathArray[1] != 'api') {
+    if (pathArray[1] !== 'api') {
       streetURL = streetmixUserToAPI(streetURL);
     }
+    const isSame = (window.location.hash === '#' + streetmixAPIToUser(streetURL));
     window.location.hash = '#' + streetmixAPIToUser(streetURL);
+    if (isSame) { locationHashChanged(); }     // if identical, force run locationHashChanged function
   }
 }
