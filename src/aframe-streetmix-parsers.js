@@ -1,8 +1,8 @@
 // Orientation - default model orientation is "outbound" (away from camera)
 
 const initialState = {
-  layers: {
-    paths: true
+  instancing: {
+    enabled: true
   },
   textures: {
     suffix: '-t1'
@@ -577,22 +577,37 @@ function processBuildings (streetObject, buildingElementId) {
         { id: 'SM3D_Bld_Mixed_Corner_4fl', width: 6.94809 }
       ];
 
-      // TODO: this should be converted to json with children instead of creating 5 parents
-      buildings.forEach((currentValue, index) => {
-        var filteredBuildingsArray = filterBuildingsArrayByMixin(buildingsArray, currentValue.id);
-        var removedMixinFilteredBuildingsArray = removePropertyFromArray(filteredBuildingsArray, 'mixin');
-        var buildingsInstancedChildrenJSONString = JSON.stringify(removedMixinFilteredBuildingsArray);
+      if (state.instancing.enabled) {
+        // TODO: this should be converted to json with children instead of creating 5 parents
+        buildings.forEach((currentValue, index) => {
+          var filteredBuildingsArray = filterBuildingsArrayByMixin(buildingsArray, currentValue.id);
+          var removedMixinFilteredBuildingsArray = removePropertyFromArray(filteredBuildingsArray, 'mixin');
+          var buildingsInstancedChildrenJSONString = JSON.stringify(removedMixinFilteredBuildingsArray);
 
+          var placedObjectEl = document.createElement('a-entity');
+          // to center what is created by createBuildingsArray
+          placedObjectEl.setAttribute('position', (positionX + (sideMultiplier * -72)) + ' 0 ' + (sideMultiplier * 75));
+          placedObjectEl.setAttribute('rotation', '0 ' + (90 * sideMultiplier) + ' 0');
+          placedObjectEl.setAttribute('mixin', currentValue.id);
+          placedObjectEl.setAttribute('create-from-json', 'jsonString', buildingsInstancedChildrenJSONString);
+          placedObjectEl.setAttribute('instancedmesh', 'inheritMat: false; frustumCulled: false; center: true; bottomAlign: true');
+          placedObjectEl.setAttribute('class', 'block-instance-' + side);
+          document.getElementById(buildingElementId).appendChild(placedObjectEl);
+        });
+      } else {
+        var buildingJSONString = JSON.stringify(buildingsArray);
         var placedObjectEl = document.createElement('a-entity');
         // to center what is created by createBuildingsArray
         placedObjectEl.setAttribute('position', (positionX + (sideMultiplier * -72)) + ' 0 ' + (sideMultiplier * 75));
         placedObjectEl.setAttribute('rotation', '0 ' + (90 * sideMultiplier) + ' 0');
-        placedObjectEl.setAttribute('mixin', currentValue.id);
-        placedObjectEl.setAttribute('create-from-json', 'jsonString', buildingsInstancedChildrenJSONString);
-        placedObjectEl.setAttribute('instancedmesh', 'inheritMat: false; frustumCulled: false; center: true; bottomAlign: true');
-        placedObjectEl.setAttribute('class', 'block-instance-' + side);
+        placedObjectEl.setAttribute('create-from-json', 'jsonString', buildingJSONString);
+        placedObjectEl.setAttribute('id', 'block-' + side);
         document.getElementById(buildingElementId).appendChild(placedObjectEl);
-      });
+      }
+    }
+
+    if (currentValue === 'residential') {
+      
     }
 
     if (currentValue === 'waterfront') {
