@@ -108,6 +108,6 @@ function processURLChange () {
     }
     const isSame = (window.location.hash === '#' + streetmixAPIToUser(streetURL));
     window.location.hash = '#' + streetmixAPIToUser(streetURL);
-    if (isSame) { locationHashChanged(); }     // if identical, force run locationHashChanged function
+    if (isSame) { locationHashChanged(); } // if identical, force run locationHashChanged function
   }
 }

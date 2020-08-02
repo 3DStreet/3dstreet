@@ -606,10 +606,6 @@ function processBuildings (streetObject, buildingElementId) {
       }
     }
 
-    if (currentValue === 'residential') {
-      
-    }
-
     if (currentValue === 'waterfront') {
       const objectPositionX = positionX - (sideMultiplier * buildingLotWidth / 2);
 
