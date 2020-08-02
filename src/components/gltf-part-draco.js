@@ -12,6 +12,7 @@ AFRAME.registerComponent('part-center', {
   init: function () {
     this.el.addEventListener('model-loaded', (event) => {
       var modelPart = this.el.getObject3D('mesh');
+      modelPart.position.set ( 0, 0, 0 );
       // center all axes
       modelPart.geometry.center();
       if (this.data.bottomAlign) {
