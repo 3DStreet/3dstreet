@@ -606,6 +606,20 @@ function processBuildings (streetObject, buildingElementId) {
       }
     }
 
+    if (currentValue === 'residential') {
+      // make buildings
+      const buildingsArray = createBuildingsArray(maxLength = 150, buildingType = 'residential');
+
+      var buildingJSONString = JSON.stringify(buildingsArray);
+      var placedObjectEl = document.createElement('a-entity');
+      // to center what is created by createBuildingsArray
+      placedObjectEl.setAttribute('position', (positionX + (sideMultiplier * -64)) + ' -0.75 ' + (sideMultiplier * 75));
+      placedObjectEl.setAttribute('rotation', '0 ' + (90 * sideMultiplier) + ' 0');
+      placedObjectEl.setAttribute('create-from-json', 'jsonString', buildingJSONString);
+      placedObjectEl.setAttribute('id', 'suburbia-' + side);
+      document.getElementById(buildingElementId).appendChild(placedObjectEl);
+    }
+
     if (currentValue === 'waterfront') {
       const objectPositionX = positionX - (sideMultiplier * buildingLotWidth / 2);
 

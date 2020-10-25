@@ -8,19 +8,26 @@ function isSidewalk (string) { // eslint-disable-line no-unused-vars
 // generate a JSON array representing buildings
 // test createBuildingsArray(maxLength = 5) returns [{ tag: 'a-entity', mixin: 'SM3D_Bld_Mixed_Corner_4fl', position: '0 0 0' }]
 // test createBuildingsArray(maxLength = 10) returns [{ mixin: "SM3D_Bld_Mixed_Corner_4fl", position: "0 0 0", tag: "a-entity" }, {mixin: "SM3D_Bld_Mixed_Double_5fl", position: "0 0 5", tag: "a-entity"} ]
-function createBuildingsArray (maxLength = 150) { // eslint-disable-line no-unused-vars
-  const buildings = [
-    { id: 'SM3D_Bld_Mixed_4fl', width: 5.25221 },
-    { id: 'SM3D_Bld_Mixed_Double_5fl', width: 10.9041 },
-    { id: 'SM3D_Bld_Mixed_4fl_2', width: 5.58889 },
-    { id: 'SM3D_Bld_Mixed_5fl', width: 6.47593 },
-    { id: 'SM3D_Bld_Mixed_Corner_4fl', width: 6.94809 }
-  ];
+function createBuildingsArray (maxLength = 150, buildingType = 'narrow') { // eslint-disable-line no-unused-vars
+  var buildings, psuedoRandom;
+  if (buildingType === 'narrow' || buildingType === 'wide') {
+    buildings = [
+      { id: 'SM3D_Bld_Mixed_4fl', width: 5.25221 },
+      { id: 'SM3D_Bld_Mixed_Double_5fl', width: 10.9041 },
+      { id: 'SM3D_Bld_Mixed_4fl_2', width: 5.58889 },
+      { id: 'SM3D_Bld_Mixed_5fl', width: 6.47593 },
+      { id: 'SM3D_Bld_Mixed_Corner_4fl', width: 6.94809 }
+    ];
+    psuedoRandom = '41431323432402434130303230234102402341'; // 38 psuedorandom numbers 0-4, no identical units side-by-side
+  } else if (buildingType === 'residential') {
+    buildings = [
+      { id: 'SM_Bld_House_Preset_03_1800', width: 20 },
+      { id: 'SM_Bld_House_Preset_08_1809', width: 20 },
+      { id: 'SM_Bld_House_Preset_09_1845', width: 20 }
+    ];
+    psuedoRandom = '12021201210101212021201012012021201210'; // 38 psuedorandom numbers 0-2, no identical units side-by-side
+  }
 
-  // psuedoRandom array of numbers 0-5 for placing buildings
-  const psuedoRandom = '41431323432402434130303230234102402341';
-
-  // until row of buildings length is = or > maxLength
   var i = 0;
   var length = 0;
   var buildingsArray = [];
