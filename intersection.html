@@ -1,0 +1,305 @@
+<html>
+  <head>
+    <!-- <script src="https://aframe.io/releases/1.0.4/aframe.min.js"></script> -->
+    <script src="https://cdn.jsdelivr.net/gh/aframevr/aframe@1f00d0beadf87bad7d275c174616e048f8b573fc/dist/aframe-master.min.js"></script>
+
+    <script src="src/lib/aframe-atlas-uvs-component.min.js"></script>
+    <script src="src/lib/aframe-orbit-controls.min.js"></script>
+    <script src="src/lib/aframe-cubemap-component.js"></script>
+    <script src="src/lib/aframe-alongpath-component.js"></script>
+    <script src="https://raw.githack.com/fernandojsg/aframe-teleport-controls/master/dist/aframe-teleport-controls.min.js"></script>
+
+    <script src="https://unpkg.com/aframe-ground-component@0.0.5/dist/aframe-ground-component.min.js"></script>
+    <script src="https://unpkg.com/aframe-curve-component@0.1.3/dist/aframe-curve-component.min.js"></script>
+
+    <script src="src/tested/streetmix-utils.js"></script>
+    <script src="src/aframe-streetmix-parsers.js"></script>
+    <script src="src/aframe-streetmix-loaders.js"></script>
+    <script src="src/tested/aframe-streetmix-parsers-tested.js"></script>
+
+    <script src="src/components/ocean-plane.js"></script>
+    <script src="src/components/anisotropy.js"></script>
+
+    <script src="src/tested/create-from-json-utils-tested.js"></script>
+    <script src="src/components/create-from-json.js"></script>
+
+    <script src="src/components/gltf-part-draco.js"></script>
+    <script src="src/components/instancedmesh.js"></script>
+
+    <script src="src/components/street.js"></script>
+
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.4.1/css/bootstrap.min.css" integrity="sha384-Vkoo8x4CGsO3+Hhxv8T/Q5PaXtkKtu6ug5TOeNV6gBiFeWPGFN9MuhOf23Q9Ifjh" crossorigin="anonymous">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.13.0/css/all.min.css">
+
+    <style>
+      .rs-base {
+        left: 20px;
+        top: 80px;
+      }
+    </style>
+
+  </head>
+  <body>
+    <!-- https://www.codeply.com/go/sbfCXYgqoO -->
+    <nav class="navbar fixed-top navbar-expand navbar-dark bg-dark" >
+        <div class="d-flex flex-grow-1">
+            <a href="https://github.com/kfarr/streetmix3d/" class="navbar-brand" title="View Github README">Streetmix3D</a>
+            <form class="mr-2 my-auto w-100 d-inline-block order-1">
+                <div class="input-group">
+                    <!-- <input type="text" class="form-control border border-right-0" placeholder="Paste Streetmix URL" /> -->
+                    <input id="input-url" type="text" class="form-control d-none d-lg-block" onfocus="this.select();" title="Paste in Streetmix.net URL such as 'https://streetmix.net/kfarr/3'" />
+                    <span class="input-group-append">
+                        <button class="btn btn-outline-light border" type="button" onclick="processURLChange()" title="Clear Scene and Re-Render">
+                            <i class="fa fa-sync"></i>
+                        </button>
+                        <button class="btn btn-outline-light border" type="button" onclick="window.open(document.getElementById('input-url').value, '_blank');" title="Edit Street in Streetmix2D">
+                            <i class="fa fa-edit"></i>
+                        </button>
+                        <button class="btn btn-outline-light border" type="button" onclick="window.open(streetmixUserToAPI(document.getElementById('input-url').value), '_blank')" title="View Raw Streetmix JSON">
+                            <i class="fa fa-code"></i>
+                        </button>
+                        <button class="btn btn-outline-light border" type="button" onclick="startAudio()" title="Play Audio">
+                            <i id="audio-icon" class="fa fa-volume-mute" style="color: pink"></i>
+                        </button>
+                    </span>
+                </div>
+            </form>
+        </div>
+    </nav>
+    <a-scene renderer="colorManagement: true; highRefreshRate: true; foveationLevel: 3; physicallyCorrectLights: true; logarithmicDepthBuffer: false;" fogoff="type: linear; color: #D5C69B; far: 200" gltf-model="dracoDecoderPath: src/lib/;">
+      <a-assets>
+        <a-cubemap id="skycube">
+          <img src="assets/images/skybox/posx.jpg">
+          <img src="assets/images/skybox/negx.jpg">
+          <img src="assets/images/skybox/posy.jpg">
+          <img src="assets/images/skybox/negy.jpg">
+          <img src="assets/images/skybox/posz.jpg">
+          <img src="assets/images/skybox/negz.jpg">
+        </a-cubemap>
+
+        <!-- audio -->
+        <audio id="ambientmp3" src="assets/audio/SSL_16_11_AMB_EXT_SF_ALAMO_SQ.mp3" preload="none"></audio>
+        <audio id="tram-pass-mp3" src="assets/audio/Tram-Pass-By-Fast-shortened.mp3" preload="auto"></audio>
+        <audio id="trolley-pass-mp3" src="assets/audio/Streetcar-passing.mp3" preload="auto"></audio>
+
+        <!-- sidewalk props -->
+        <a-asset-item id="treemodel3" src="assets/objects/SM_Env_Tree_03.gltf"></a-asset-item>
+        <a-asset-item id="palmtreemodel" src="assets/objects/PalmTree.gltf"></a-asset-item>
+        <a-asset-item id="benchmodel" src="assets/objects/SM_Prop_ParkBench_02.gltf"></a-asset-item>
+        <a-asset-item id="bikerackmodel" src="assets/objects/bikerack.glb"></a-asset-item>
+        <a-asset-item id="bikesharemodel" src="assets/objects/bikeshare.glb"></a-asset-item>
+        <a-asset-item id="lamp-modern-glb" src="assets/objects/lamp-post-modern-centered.glb"></a-asset-item>
+        <a-asset-item id="lamp-traditional-glb" src="assets/objects/lamp-post-traditional.glb"></a-asset-item>
+        <a-asset-item id="bus-stop-glb" src="assets/objects/ccFO2EGGIq9-bus-stop.glb"></a-asset-item>
+        <img id="wayfinding-map" src="assets/objects/wayfinding.jpg" />
+
+        <!-- vehicles -->
+        <a-asset-item id="trammodel" src="assets/objects/tram_siemens_avenio.gltf"></a-asset-item>
+        <a-asset-item id="trolleymodel" src="assets/objects/godarvilletram.gltf"></a-asset-item>
+        <a-asset-item id="xd40" src="assets/objects/bus/xd40-draco.glb"></a-asset-item>
+        <a-asset-item id="carmodel" src="assets/objects/SM_Veh_Car_Sedan_01.gltf"></a-asset-item>
+
+        <!-- blocks -->
+        <a-asset-item id="blockmodel" src="assets/objects/scenesmall3-selected-alltransforms-glass.gltf"></a-asset-item>
+        <a-asset-item id="suburbiamodel" src="assets/objects/suburbia/suburbia-fixwindowuvs-only3-draco.glb"></a-asset-item>
+
+        <a-asset-item id="fence-model" src="assets/objects/fence4/fence4.gltf"></a-asset-item>
+        <a-asset-item id="seawall-model" src="assets/objects/seawall.gltf"></a-asset-item>
+
+        <!-- lane objects -->
+        <a-asset-item id="trackmodel" src="assets/objects/track.gltf"></a-asset-item>
+        <a-asset-item id="flexiguide-glb" src="assets/objects/flexiguide300.glb"></a-asset-item>
+        <img id="stencils-atlas" src="assets/materials/stencils-atlas_2048.png" />
+        <img id="markings-atlas" src="assets/materials/lane-markings-atlas_1024.png" />
+
+        <!-- sky - equirectangular still used for envmap -->
+        <!-- <img id="sky" position="0 -140 0" src="assets/CGSkies_0343_doubled_2048.jpg" /> -->
+
+        <!-- raw photogrammetry textures - unused by default -->
+        <a-mixin id="bike-lane-t0" geometry="width:1.8;height:150;primitive:plane" material="repeat:2 150;src:assets/materials/bikelane_Base_Color.jpg;normalTextureRepeat:2 150;normalMap:assets/materials/bikelane_Normal.jpg"></a-mixin>
+        <a-mixin id="sidewalk-t0" geometry="width:3;height:150;primitive:plane" material="repeat:1.5 75;src:assets/materials/sidewalkhd_Base_Color.jpg;normalTextureRepeat:1.5 75;normalMap:assets/materials/sidewalkhd_Normal.jpg;"></a-mixin>
+        <a-mixin id="drive-lane-t0" geometry="width:3;height:150;primitive:plane" material="repeat:1.5 75;src:assets/materials/asphalthd_Base_Color.jpg;normalTextureRepeat:1.5 75;normalMap:assets/materials/asphalthd_Normal.jpg;"></a-mixin>
+        <a-mixin id="bus-lane-t0" geometry="width:3;height:150;primitive:plane" material="repeat:1.5 75;src:assets/materials/asphaltred1hd_Base_Color.jpg;normalTextureRepeat:1.5 75;normalMap:assets/materials/asphaltred1hd_Normal.jpg;"></a-mixin>
+
+        <!-- optimized textures - used by default -->
+        <a-mixin id="drive-lane-t1" geometry="width:3;height:150;primitive:plane" material="repeat:0.3 25;offset:0.55 0;src:assets/materials/TexturesCom_Roads0086_1_seamless_S_rotate.jpg;"></a-mixin>
+        <a-mixin id="bike-lane-t1" geometry="width:1.8;height:150;primitive:plane" material="repeat:0.3 25;offset:0.55 0;roughness:1;metalness:0;src:assets/materials/TexturesCom_Roads0086_1_seamless_S_rotate.jpg;"></a-mixin>
+        <a-mixin id="sidewalk-t1" geometry="width:3;height:150;primitive:plane" material="repeat:1.5 75;src:assets/materials/TexturesCom_FloorsRegular0301_1_seamless_S.jpg;"></a-mixin>
+        <a-mixin id="bus-lane-t1" geometry="width:3;height:150;primitive:plane" material="repeat:0.3 25;offset:0.55 0;src:assets/materials/TexturesCom_Roads0086_1_seamless_S_rotate.jpg;"></a-mixin>
+        <a-mixin id="divider-t1" geometry="width:0.3;height:150;primitive:plane" material="repeat:1 150;offset:0.415 0;normalTextureOffset:0.415 0;src:assets/materials/hatched_Base_Color.jpg;normalTextureRepeat:0.21 150;normalMap:assets/materials/hatched_Normal.jpg"></a-mixin>
+        <img id="texture-intersection" src="assets/images/127_road-texture-seamless.jpg" />
+
+        <!-- lane separator markings atlas -->
+        <a-mixin id="markings" af atlas-uvs="totalRows: 1; totalColumns: 8; row: 1" scale="1 1 1" material="src: #markings-atlas;alphaTest: 0;transparent:true;repeat:1 25;" geometry="primitive: plane; buffer: false; skipCache: true; width:0.2; height:150;"></a-mixin>
+        <a-mixin id="solid-stripe-t1" atlas-uvs="column: 3"></a-mixin>
+        <a-mixin id="dashed-stripe-t1" atlas-uvs="column: 4"></a-mixin>
+        <a-mixin id="short-dashed-stripe-t1" atlas-uvs="column: 4" material="repeat:1 50;"></a-mixin>
+        <a-mixin id="solid-doubleyellow-t1" atlas-uvs="totalColumns: 4; column: 3" geometry="width: 0.5"></a-mixin>
+        <a-mixin id="solid-dashed-t1" atlas-uvs="totalColumns: 4; column: 2" geometry="width: 0.4"></a-mixin>
+
+        <!-- color modifier mixins -->
+        <a-mixin id="yellow" material="color:#f7d117"></a-mixin>
+        <a-mixin id="surface-green" material="color:#adff83"></a-mixin>
+        <a-mixin id="surface-red" material="color:#ff9393"></a-mixin>
+
+        <!-- stencils atlas -->
+        <a-mixin id="stencils" af atlas-uvs="totalRows: 4; totalColumns: 4" scale="2 2 2" material="src: #stencils-atlas;alphaTest: 0;transparent:true;" geometry="primitive: plane; buffer: false; skipCache: true"></a-mixin>
+        <a-mixin id="right" atlas-uvs="column: 3; row: 2"></a-mixin>
+        <a-mixin id="left" atlas-uvs="column: 3; row: 3"></a-mixin>
+        <a-mixin id="both" atlas-uvs="column: 2; row: 1"></a-mixin>
+        <a-mixin id="all" atlas-uvs="column: 3; row: 1"></a-mixin>
+        <a-mixin id="left-straight" atlas-uvs="column: 2; row: 3"></a-mixin>
+        <a-mixin id="right-straight" atlas-uvs="column: 2; row: 2"></a-mixin>
+        <a-mixin id="straight" atlas-uvs="column: 2; row: 4"></a-mixin>
+        <a-mixin id="sharrow" atlas-uvs="totalRows: 4; totalColumns: 8; column: 2; row: 3" scale="1.5 3 1"></a-mixin>
+        <a-mixin id="bike-lane" atlas-uvs="totalRows: 2; totalColumns: 8; column: 1; row: 2" scale="1 4 1"></a-mixin>
+        <a-mixin id="word-bus" atlas-uvs="totalRows: 8; totalColumns: 8; column: 1; row: 4" scale="3 3 3"></a-mixin>
+        <a-mixin id="word-lane" atlas-uvs="totalRows: 8; totalColumns: 8; column: 2; row: 4" scale="3 3 3"></a-mixin>
+        <a-mixin id="word-taxi" atlas-uvs="totalRows: 8; totalColumns: 8; column: 1; row: 3" scale="3 3 3"></a-mixin>
+        <a-mixin id="word-only" atlas-uvs="totalRows: 8; totalColumns: 8; column: 2; row: 3" scale="3 3 3"></a-mixin>
+        <a-mixin id="word-yield" atlas-uvs="totalRows: 8; totalColumns: 8; column: 1; row: 2" scale="3 3 3"></a-mixin>
+        <a-mixin id="word-slow" atlas-uvs="totalRows: 8; totalColumns: 8; column: 2; row: 2" scale="3 3 3"></a-mixin>
+        <a-mixin id="word-xing" atlas-uvs="totalRows: 8; totalColumns: 8; column: 1; row: 1" scale="3 3 3"></a-mixin>
+        <a-mixin id="word-stop" atlas-uvs="totalRows: 8; totalColumns: 8; column: 2; row: 1" scale="3 3 3"></a-mixin>
+        <a-mixin id="perpendicular-stalls" atlas-uvs="totalRows: 4; totalColumns: 8; column: 5; row: 4" scale="5 10 5"></a-mixin>
+        <a-mixin id="parking-delimiter" atlas-uvs="totalRows: 8; totalColumns: 8; column: 2; row: 7" scale="1.8 1.8 1.8"></a-mixin>
+
+        <!-- vehicles -->
+        <a-mixin id="bus" gltf-model="#xd40" scale="1.55 1.55 1.55"></a-mixin>
+        <a-mixin id="car" gltf-model="#carmodel"></a-mixin>
+        <a-mixin id="tram" gltf-model="#trammodel" sound="src: #tram-pass-mp3;positional:false;volume: 0.4"></a-mixin>
+        <a-mixin id="trolley" gltf-model="#trolleymodel" sound="src: #trolley-pass-mp3;positional:false;volume: 0.4"scale="1 1 1"></a-mixin>
+        <a-mixin id="bus-shadow" geometry="width: 12; height: 3; primitive: plane"  material="src: url(assets/materials/bus-shadow.png); alphaTest: 0;transparent:true; roughness: 1;" ></a-mixin>
+        <a-mixin id="car-shadow" geometry="width: 4.7; height: 2.5; primitive: plane"  material="src: url(assets/materials/bus-shadow.png); alphaTest: 0;transparent:true; roughness: 1;" ></a-mixin>
+
+        <!-- street props -->
+        <a-mixin id="tree3" gltf-model="#treemodel3" scale="1.25 1.25 1.25"></a-mixin>
+        <a-mixin id="palm-tree" gltf-model="#palmtreemodel" scale="1 1.5 1"></a-mixin>
+        <a-mixin id="bench" gltf-model="#benchmodel" scale="1 1 1"></a-mixin>
+        <a-mixin id="track" gltf-model="#trackmodel" scale="1 1 1"></a-mixin>
+        <a-mixin id="bikerack" gltf-model="#bikerackmodel" scale="0.25 0.25 0.25"></a-mixin>
+        <a-mixin id="bikeshare" gltf-model="#bikesharemodel" scale="1 1 1"></a-mixin>
+        <a-mixin id="lamp-modern" gltf-model="#lamp-modern-glb" scale="0.5 0.5 0.5"></a-mixin>
+        <a-mixin id="lamp-traditional" gltf-model="#lamp-traditional-glb" scale="0.2 0.2 0.2" ></a-mixin>
+        <a-mixin id="pride-flag" position="0.409 3.345 0" rotation="0 0 0" scale="0.5 0.75 0" geometry="width:2;height:2;primitive:plane" material="side:double; src:assets/materials/rainbow-flag-poles_512.png;transparent: true;"></a-mixin>
+        <a-mixin id="bus-stop" gltf-model="#bus-stop-glb" rotation="-90 0 0" scale="0.001 0.001 0.001" ></a-mixin>
+        <a-mixin id="wayfinding-box" geometry="primitive: box; height: 2; width: 0.84; depth: 0.1" material="color: gray"></a-asset-item>
+        <a-mixin id="safehit" gltf-model="#flexiguide-glb" scale="1 1 1"></a-mixin>
+
+        <!-- buildings and blocks -->
+        <a-mixin id="block" gltf-model="#blockmodel" scale="1 1 1"></a-mixin>
+        <a-mixin id="suburbia" gltf-model="#suburbiamodel" scale="1 1 1"></a-mixin>
+
+        <a-mixin id="SM3D_Bld_Mixed_Corner_4fl" scale="1 1 1" rotation="0 0 0" gltf-part="src: #blockmodel; part: SM3D_Bld_Mixed_Corner_4fl" part-center="bottomAlign: true"></a-mixin>
+        <a-mixin id="SM3D_Bld_Mixed_Double_5fl" scale="1 1 1" rotation="0 0 0" gltf-part="src: #blockmodel; part: SM3D_Bld_Mixed_Double_5fl" part-center="bottomAlign: true"></a-mixin>
+        <a-mixin id="SM3D_Bld_Mixed_4fl_2" scale="1 1 1" rotation="0 0 0" gltf-part="src: #blockmodel; part: SM3D_Bld_Mixed_4fl_2" part-center="bottomAlign: true"></a-mixin>
+        <a-mixin id="SM3D_Bld_Mixed_5fl" scale="1 1 1" rotation="0 0 0" gltf-part="src: #blockmodel; part: SM3D_Bld_Mixed_5fl" part-center="bottomAlign: true"></a-mixin>
+        <a-mixin id="SM3D_Bld_Mixed_4fl" scale="1 1 1" rotation="0 0 0" gltf-part="src: #blockmodel; part: SM3D_Bld_Mixed_4fl" part-center="bottomAlign: true"></a-mixin>
+
+        <a-mixin id="SM_Bld_House_Preset_03_1800" scale="1 1 1" rotation="0 0 0" gltf-part="src: #suburbiamodel; part: SM_Bld_House_Preset_03_1800" part-center="bottomAlign: true"></a-mixin>
+        <a-mixin id="SM_Bld_House_Preset_08_1809" scale="1 1 1" rotation="0 0 0" gltf-part="src: #suburbiamodel; part: SM_Bld_House_Preset_08_1809" part-center="bottomAlign: true"></a-mixin>
+        <a-mixin id="SM_Bld_House_Preset_09_1845" scale="1 1 1" rotation="0 0 0" gltf-part="src: #suburbiamodel; part: SM_Bld_House_Preset_09_1845" part-center="bottomAlign: true"></a-mixin>
+
+        <a-mixin id="seawall" gltf-model="#seawall-model" scale="1 1 1" rotation="0 0 0"></a-mixin>
+        <a-mixin id="fence" gltf-model="#fence-model" scale="0.1 0.1 0.1"></a-mixin>
+
+        <a-mixin id="ground-grass" rotation="-90 0 0" geometry="primitive:plane;height:150;width:150" material="src:url(assets/materials/TexturesCom_Grass0052_1_seamless_S.jpg);repeat:5 5;roughness:1"></a-mixin>
+        <a-mixin id="ground-parking-lot" rotation="-90 0 0" geometry="primitive:plane;height:150;width:150" material="src:url(assets/materials/TexturesCom_Roads0111_1_seamless_S.jpg);repeat:2 4;roughness:1"></a-mixin>
+        <a-mixin id="ground-asphalt" rotation="-90 0 0" geometry="primitive:plane;height:150;width:150" material="src:url(assets/materials/TexturesCom_AsphaltDamaged0057_1_seamless_S.jpg);repeat:5 5;roughness:1"></a-mixin>
+
+        <!-- ui / future use -->
+        <image id="subtitle" src="assets/materials/subtitle.png" />
+      </a-assets>
+
+      <a-entity id="cameraRig">
+        <a-entity id="camera" camera="far: 1000" wasd-controls="enabled: false" orbit-controls="autoRotate: true;autoRotateSpeed:0.01;target: 0 0 0;initialPosition:0 4 15;minDistance:3;maxDistance:100;enableKeys:false"></a-entity>
+
+        <a-entity id="leftHand" hand-controls="hand: left; handModelStyle: lowPoly; color: #ccffcc" teleport-controls="cameraRig: #cameraRig; button: trigger"></a-entity>
+        <a-entity id="rightHand" hand-controls="hand: right; handModelStyle: lowPoly; color: #ccffcc" teleport-controls="cameraRig: #cameraRig; button: trigger"></a-entity>
+      </a-entity>
+
+      <!-- <a-entity class="playme" sound="src: #ambientmp3; positional: false; loop: true;"></a-entity> -->
+
+      <a-entity light="type: ambient; color: #FFF; intensity: 2"></a-entity>
+      <a-entity light="type: directional; color: #FFF; intensity: 0.6" position="0.5 1 -1"></a-entity>
+
+      <a-ocean-plane height="100" width="100" position="0 -1 0" material="envMap: #skycube;"></a-ocean-plane>
+
+      <a-entity id="skybox" cubemap="folder: assets/images/skybox/"></a-entity>
+
+      <a-entity id="street-north" position="0 0 -100" rotation="0 0 0">
+        <a-entity id="segments-north" street="streetmixUrl: https://streetmix.net/api/v1/streets?namespacedId=3&creatorId=kfarr"></a-entity>
+      </a-entity>
+
+      <a-entity id="street-south" position="0 0 100">
+        <a-entity id="segments-south" street="streetmixUrl: https://streetmix.net/api/v1/streets?namespacedId=3&creatorId=kfarr"></a-entity>
+      </a-entity>
+
+      <a-entity id="intersection" af rotation="-90 0 0" position="-1.45" geometry="width:50;height:50;primitive:plane" material="repeat:1 1;offset:0 0;src:#texture-intersection"></a-entity>
+
+      <a-entity id="buildings"></a-entity>
+
+      <!-- Below is helpful debugging code and some for future use -->
+
+      <!-- <a-entity id="blockinstance" mixin="block" position="-10.7 0 10" rotation="0 -90 0"></a-entity> -->
+
+      <!-- Label text -->
+      <!-- <a-entity position="0 2 0" geometry="primitive: plane; width: 10; height: auto" material="src: #subtitle; alphaTest: 0.; transparent: true;"
+                text="color: yellow; align: left; value: San Francisco; width: 10; ">
+        <a-entity position="-5.1 0 0.001" geometry="primitive: plane; width: 0.1; height: 0.46" material="color: white;"></a-entity>
+      </a-entity>
+      <a-entity position="5 1 0" geometry="primitive: plane; width: 20; height: auto" material="src: #subtitle; alphaTest: 0.; transparent: true;"
+                text="color: yellow; align: left; value: Harrison Street; width: 20; ">
+        <a-entity position="-10.1 0 0.001" geometry="primitive: plane; width: 0.1; height: 0.92" material="color: white;"></a-entity>
+      </a-entity> -->
+
+      <!-- static entities for debugging textures without parsing json -->
+      <!-- <a-entity id="static-textured" position="0 0.1 0">
+        <a-entity class="sidewalk" mixin="sidewalk-t1" position="-5.521 0.21 -0.282" rotation="270 0 0"></a-entity>
+        <a-entity class="bike-lane" mixin="bike-lane-t1" position="-3.17 0.11 -0.282" rotation="270 0 0"> </a-entity>
+        <a-entity class="separator-dashed" mixin="separator-dashed-t1" position="-2.1 0.12 -0.282" rotation="270 0 0"> </a-entity>
+        <a-entity class="drive-lane" mixin="drive-lane-t1" position="-0.776 0.11 -0.285" rotation="270 0 0" ></a-entity>
+        <a-entity class="divider" mixin="divider-t1" position="0.869 0.11 -0.282" rotation="270 0 0" ></a-entity>
+        <a-entity class="drive-lane" mixin="drive-lane-t1" position="2.546 0.11 -0.285" rotation="270 0 0" ></a-entity>
+        <a-entity class="bike-lane" mixin="bike-lane-t1" position="4.967 0.11 -0.282" rotation="270 0 0"></a-entity>
+        <a-entity class="sidewalk" mixin="sidewalk-t1" position="7.318 0.21 -0.282" rotation="270 0 0"></a-entity>
+      </a-entity> -->
+
+      <!-- <a-entity position="0 1 0" mixin="wayfinding-box">
+        <a-entity position="0 0.1 0.06" geometry="primitive: plane; width: 0.8; height: 1.6" material="src:#wayfinding-map"></a-entity>
+        <a-entity position="0 0.1 -0.06" rotation="0 180 0" geometry="primitive: plane; width: 0.8; height: 1.6" material="src:#wayfinding-map"></a-entity>
+      </a-entity> -->
+
+      <!-- bounding boxes based on vehicle specs available online -->
+      <!-- <a-entity id="ford-crown-vic-bounding" geometry="depth: 5.3; height: 1.448; width: 1.99" position="0.92059 0.74 0"></a-entity>
+      <a-entity id="newflyer-XD40-bounding" geometry="depth: 12; height: 3.2; width: 2.59" position="-3.97 1.59 0"></a-entity>
+      <a-entity id="siemens-avenio-bounding" geometry="depth: 30; height: 3.4; width: 2.65" position="8.8 1.7 0"></a-entity> -->
+
+      <!-- <a-entity id="bus-stop-instance1" mixin="bus-stop"></a-entity> -->
+      <!-- <a-entity id="tram-instance1" mixin="tram" position="8.8 0 0"></a-entity> -->
+      <!-- <a-entity id="trolley-instance1" mixin="trolley" position="8.8 0 0"></a-entity> -->
+
+    </a-scene>
+  </body>
+  <script>
+    function startAudio() {
+      // set sounds enabled in global state
+      state.sounds.enabled = true;
+
+      // iterate through all entities with .playme class and start them playing
+      var entities = document.querySelectorAll('.playme'), i;
+      for (i = 0; i < entities.length; ++i) {
+        entities[i].components.sound.playSound();
+      }
+
+      // set 2D DOM toolbar volume icon to green to indicate state
+      document.getElementById("audio-icon").setAttribute("class","fa fa-volume-up");
+      document.getElementById("audio-icon").setAttribute("style","color: lightgreen");
+    }
+
+    document.querySelector('a-scene').addEventListener('enter-vr', function () {
+      // console.log("ENTERED VR");
+      startAudio();
+    });
+  </script>
+</html>
