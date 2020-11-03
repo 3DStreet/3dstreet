@@ -36,7 +36,7 @@ function initStreet () {
   // console.log('streetURL check: ' + streetURL);
   //  loadStreet(streetURL);
   document.querySelector('.set-from-input').setAttribute('street', 'streetmixURL', streetURL);
-  // instead set street component to this value 
+  // instead set street component to this value
 
   window.location.hash = '#' + streetmixAPIToUser(streetURL);
   document.getElementById('input-url').value = streetmixAPIToUser(streetURL);
