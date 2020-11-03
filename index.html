@@ -19,13 +19,10 @@
     <script src="src/components/street.js"></script>
 
     <script src="src/components/ocean-plane.js"></script>
-    <script src="src/components/anisotropy.js"></script>
+    <script src="https://unpkg.com/aframe-gltf-helpers@0.0.3/dist/aframe-gltf-helpers.min.js"></script>
 
     <script src="src/tested/create-from-json-utils-tested.js"></script>
     <script src="src/components/create-from-json.js"></script>
-
-    <script src="src/components/gltf-part-draco.js"></script>
-    <script src="src/components/instancedmesh.js"></script>
 
     <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.4.1/css/bootstrap.min.css" integrity="sha384-Vkoo8x4CGsO3+Hhxv8T/Q5PaXtkKtu6ug5TOeNV6gBiFeWPGFN9MuhOf23Q9Ifjh" crossorigin="anonymous">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.13.0/css/all.min.css">
@@ -99,7 +96,7 @@
         <a-asset-item id="carmodel" src="assets/objects/SM_Veh_Car_Sedan_01.gltf"></a-asset-item>
 
         <!-- blocks -->
-        <a-asset-item id="blockmodel" src="assets/objects/scenesmall3-selected-alltransforms-glass.gltf"></a-asset-item>
+        <a-asset-item id="blockmodel" src="assets/objects/buildings.glb"></a-asset-item>
         <a-asset-item id="suburbiamodel" src="assets/objects/suburbia/suburbia-fixwindowuvs-only3-draco.glb"></a-asset-item>
 
         <a-asset-item id="fence-model" src="assets/objects/fence4/fence4.gltf"></a-asset-item>
@@ -123,13 +120,13 @@
         <!-- optimized textures - used by default -->
         <a-mixin id="drive-lane-t1" geometry="width:3;height:150;primitive:plane" material="repeat:0.3 25;offset:0.55 0;src:assets/materials/TexturesCom_Roads0086_1_seamless_S_rotate.jpg;"></a-mixin>
         <a-mixin id="bike-lane-t1" geometry="width:1.8;height:150;primitive:plane" material="repeat:0.3 25;offset:0.55 0;roughness:1;metalness:0;src:assets/materials/TexturesCom_Roads0086_1_seamless_S_rotate.jpg;"></a-mixin>
-        <a-mixin id="sidewalk-t1" geometry="width:3;height:150;primitive:plane" material="repeat:1.5 75;src:assets/materials/TexturesCom_FloorsRegular0301_1_seamless_S.jpg;"></a-mixin>
+        <a-mixin id="sidewalk-t1" anisotropy geometry="width:3;height:150;primitive:plane" material="repeat:1.5 75;src:assets/materials/TexturesCom_FloorsRegular0301_1_seamless_S.jpg;"></a-mixin>
         <a-mixin id="bus-lane-t1" geometry="width:3;height:150;primitive:plane" material="repeat:0.3 25;offset:0.55 0;src:assets/materials/TexturesCom_Roads0086_1_seamless_S_rotate.jpg;"></a-mixin>
         <a-mixin id="divider-t1" geometry="width:0.3;height:150;primitive:plane" material="repeat:1 150;offset:0.415 0;normalTextureOffset:0.415 0;src:assets/materials/hatched_Base_Color.jpg;normalTextureRepeat:0.21 150;normalMap:assets/materials/hatched_Normal.jpg"></a-mixin>
         <a-mixin id="safehit" gltf-model="#flexiguide-glb" scale="1 1 1"></a-mixin>
 
         <!-- lane separator markings atlas -->
-        <a-mixin id="markings" af atlas-uvs="totalRows: 1; totalColumns: 8; row: 1" scale="1 1 1" material="src: #markings-atlas;alphaTest: 0;transparent:true;repeat:1 25;" geometry="primitive: plane; buffer: false; skipCache: true; width:0.2; height:150;"></a-mixin>
+        <a-mixin id="markings" anisotropy atlas-uvs="totalRows: 1; totalColumns: 8; row: 1" scale="1 1 1" material="src: #markings-atlas;alphaTest: 0;transparent:true;repeat:1 25;" geometry="primitive: plane; buffer: false; skipCache: true; width:0.2; height:150;"></a-mixin>
         <a-mixin id="solid-stripe-t1" atlas-uvs="column: 3"></a-mixin>
         <a-mixin id="dashed-stripe-t1" atlas-uvs="column: 4"></a-mixin>
         <a-mixin id="short-dashed-stripe-t1" atlas-uvs="column: 4" material="repeat:1 50;"></a-mixin>
@@ -142,7 +139,7 @@
         <a-mixin id="surface-red" material="color:#ff9393"></a-mixin>
 
         <!-- stencils atlas -->
-        <a-mixin id="stencils" af atlas-uvs="totalRows: 4; totalColumns: 4" scale="2 2 2" material="src: #stencils-atlas;alphaTest: 0;transparent:true;" geometry="primitive: plane; buffer: false; skipCache: true"></a-mixin>
+        <a-mixin id="stencils" anisotropy atlas-uvs="totalRows: 4; totalColumns: 4" scale="2 2 2" material="src: #stencils-atlas;alphaTest: 0;transparent:true;" geometry="primitive: plane; buffer: false; skipCache: true"></a-mixin>
         <a-mixin id="right" atlas-uvs="column: 3; row: 2"></a-mixin>
         <a-mixin id="left" atlas-uvs="column: 3; row: 3"></a-mixin>
         <a-mixin id="both" atlas-uvs="column: 2; row: 1"></a-mixin>
@@ -164,9 +161,9 @@
         <a-mixin id="parking-delimiter" atlas-uvs="totalRows: 8; totalColumns: 8; column: 2; row: 7" scale="1.8 1.8 1.8"></a-mixin>
 
         <!-- vehicles -->
-        <a-mixin id="bus" gltf-model="#xd40" scale="1.55 1.55 1.55"></a-mixin>
+        <a-mixin id="bus" anisotropy gltf-model="#xd40" scale="1.55 1.55 1.55"></a-mixin>
         <a-mixin id="car" gltf-model="#carmodel"></a-mixin>
-        <a-mixin id="tram" gltf-model="#trammodel" sound="src: #tram-pass-mp3;positional:false;volume: 0.4"></a-mixin>
+        <a-mixin id="tram" anisotropy gltf-model="#trammodel" sound="src: #tram-pass-mp3;positional:false;volume: 0.4"></a-mixin>
         <a-mixin id="trolley" gltf-model="#trolleymodel" sound="src: #trolley-pass-mp3;positional:false;volume: 0.4"scale="1 1 1"></a-mixin>
         <a-mixin id="bus-shadow" geometry="width: 12; height: 3; primitive: plane"  material="src: url(assets/materials/bus-shadow.png); alphaTest: 0;transparent:true; roughness: 1;" ></a-mixin>
         <a-mixin id="car-shadow" geometry="width: 4.7; height: 2.5; primitive: plane"  material="src: url(assets/materials/bus-shadow.png); alphaTest: 0;transparent:true; roughness: 1;" ></a-mixin>
@@ -188,15 +185,15 @@
         <a-mixin id="block" gltf-model="#blockmodel" scale="1 1 1"></a-mixin>
         <a-mixin id="suburbia" gltf-model="#suburbiamodel" scale="1 1 1"></a-mixin>
 
-        <a-mixin id="SM3D_Bld_Mixed_Corner_4fl" scale="1 1 1" rotation="0 0 0" gltf-part="src: #blockmodel; part: SM3D_Bld_Mixed_Corner_4fl" part-center="bottomAlign: true"></a-mixin>
-        <a-mixin id="SM3D_Bld_Mixed_Double_5fl" scale="1 1 1" rotation="0 0 0" gltf-part="src: #blockmodel; part: SM3D_Bld_Mixed_Double_5fl" part-center="bottomAlign: true"></a-mixin>
-        <a-mixin id="SM3D_Bld_Mixed_4fl_2" scale="1 1 1" rotation="0 0 0" gltf-part="src: #blockmodel; part: SM3D_Bld_Mixed_4fl_2" part-center="bottomAlign: true"></a-mixin>
-        <a-mixin id="SM3D_Bld_Mixed_5fl" scale="1 1 1" rotation="0 0 0" gltf-part="src: #blockmodel; part: SM3D_Bld_Mixed_5fl" part-center="bottomAlign: true"></a-mixin>
-        <a-mixin id="SM3D_Bld_Mixed_4fl" scale="1 1 1" rotation="0 0 0" gltf-part="src: #blockmodel; part: SM3D_Bld_Mixed_4fl" part-center="bottomAlign: true"></a-mixin>
+        <a-mixin id="SM3D_Bld_Mixed_Corner_4fl" scale="1 1 1" rotation="0 0 0" gltf-part-plus="src: #blockmodel; part: SM3D_Bld_Mixed_Corner_4fl" model-center="bottomAlign: true"></a-mixin>
+        <a-mixin id="SM3D_Bld_Mixed_Double_5fl" scale="1 1 1" rotation="0 0 0" gltf-part-plus="src: #blockmodel; part: SM3D_Bld_Mixed_Double_5fl" model-center="bottomAlign: true"></a-mixin>
+        <a-mixin id="SM3D_Bld_Mixed_4fl_2" scale="1 1 1" rotation="0 0 0" gltf-part-plus="src: #blockmodel; part: SM3D_Bld_Mixed_4fl_2" model-center="bottomAlign: true"></a-mixin>
+        <a-mixin id="SM3D_Bld_Mixed_5fl" scale="1 1 1" rotation="0 0 0" gltf-part-plus="src: #blockmodel; part: SM3D_Bld_Mixed_5fl" model-center="bottomAlign: true"></a-mixin>
+        <a-mixin id="SM3D_Bld_Mixed_4fl" scale="1 1 1" rotation="0 0 0" gltf-part-plus="src: #blockmodel; part: SM3D_Bld_Mixed_4fl" model-center="bottomAlign: true"></a-mixin>
 
-        <a-mixin id="SM_Bld_House_Preset_03_1800" scale="1 1 1" rotation="0 0 0" gltf-part="src: #suburbiamodel; part: SM_Bld_House_Preset_03_1800" part-center="bottomAlign: true"></a-mixin>
-        <a-mixin id="SM_Bld_House_Preset_08_1809" scale="1 1 1" rotation="0 0 0" gltf-part="src: #suburbiamodel; part: SM_Bld_House_Preset_08_1809" part-center="bottomAlign: true"></a-mixin>
-        <a-mixin id="SM_Bld_House_Preset_09_1845" scale="1 1 1" rotation="0 0 0" gltf-part="src: #suburbiamodel; part: SM_Bld_House_Preset_09_1845" part-center="bottomAlign: true"></a-mixin>
+        <a-mixin id="SM_Bld_House_Preset_03_1800" scale="1 1 1" rotation="0 0 0" gltf-part-plus="src: #suburbiamodel; part: SM_Bld_House_Preset_03_1800" model-center="bottomAlign: true"></a-mixin>
+        <a-mixin id="SM_Bld_House_Preset_08_1809" scale="1 1 1" rotation="0 0 0" gltf-part-plus="src: #suburbiamodel; part: SM_Bld_House_Preset_08_1809" model-center="bottomAlign: true"></a-mixin>
+        <a-mixin id="SM_Bld_House_Preset_09_1845" scale="1 1 1" rotation="0 0 0" gltf-part-plus="src: #suburbiamodel; part: SM_Bld_House_Preset_09_1845" model-center="bottomAlign: true"></a-mixin>
 
         <a-mixin id="seawall" gltf-model="#seawall-model" scale="1 1 1" rotation="0 0 0"></a-mixin>
         <a-mixin id="fence" gltf-model="#fence-model" scale="0.1 0.1 0.1"></a-mixin>

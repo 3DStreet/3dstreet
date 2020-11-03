@@ -2,7 +2,7 @@
 
 const initialState = {
   instancing: {
-    enabled: true
+    enabled: false
   },
   textures: {
     suffix: '-t1'
