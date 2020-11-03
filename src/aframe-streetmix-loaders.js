@@ -1,38 +1,5 @@
-function loadStreet (streetURL) {
-  // Erase existing street (if any)
-  // TODO: Remove all DOM logic from this function
-  var myNode = document.getElementById('streets');
-  myNode.innerHTML = '';
-
-  myNode = document.getElementById('buildings');
-  myNode.innerHTML = '';
-
-  // getjson replacement from http://youmightnotneedjquery.com/#json
-  var request = new XMLHttpRequest();
-  request.open('GET', streetURL, true);
-  request.onload = function () {
-    if (this.status >= 200 && this.status < 400) {
-      // Connection success
-      var streetmixObject = JSON.parse(this.response);
-      var streetObject = streetmixObject.data.street;
-      var streetmixSegments = streetmixObject.data.street.segments;
-      // TODO: return (and document) `streetmixObject` for more general usage, remove processSegments/Buildings from this function
-      processSegments(streetmixSegments, 'streets');
-      processBuildings(streetObject, 'buildings');
-    } else {
-      // We reached our target server, but it returned an error
-      console.log('Streetmix Loading Error: We reached our target server, but it returned an error');
-    }
-  };
-  request.onerror = function () {
-    // There was a connection error of some sort
-    console.log('Streetmix Loading Error: There was a connection error of some sort');
-  };
-  request.send();
-}
-
 function initStreet () {
-  // Run processURLChange when Enter pressed on input field
+// Run processURLChange when Enter pressed on input field
   // This function should probably be somewhere else
   document.getElementById('input-url').onkeypress = function (e) {
     if (!e) e = window.event;
@@ -50,7 +17,7 @@ function initStreet () {
   if (streetURL) {
     var pathArray = new URL(streetURL).pathname.split('/');
     // optimistically try to convert from streetmix URL to api url
-    if (pathArray[1] != 'api') {
+    if (pathArray[1] !== 'api') {
       streetURL = streetmixUserToAPI(streetURL);
     }
   } else { // DEFAULTS if no URL provided then here are some defaults to choose from:
@@ -67,7 +34,10 @@ function initStreet () {
   }
 
   // console.log('streetURL check: ' + streetURL);
-  loadStreet(streetURL);
+  //  loadStreet(streetURL);
+  document.querySelector('.set-from-input').setAttribute('street', 'streetmixURL', streetURL);
+  // instead set street component to this value 
+
   window.location.hash = '#' + streetmixAPIToUser(streetURL);
   document.getElementById('input-url').value = streetmixAPIToUser(streetURL);
 }
@@ -87,7 +57,8 @@ function locationHashChanged () {
       streetURL = streetmixUserToAPI(streetURL);
     }
 
-    loadStreet(streetURL);
+    // loadStreet(streetURL);
+    document.querySelector('.set-from-input').setAttribute('street', 'streetmixURL', streetURL);
 
     // update the user interface to show the new URL
     document.getElementById('input-url').value = streetmixAPIToUser(streetURL);
@@ -101,6 +72,7 @@ function processURLChange () {
   // console.log('hash changed to: ' + streetURL);
 
   if (streetURL) {
+    // for a given streetURL
     var pathArray = new URL(streetURL).pathname.split('/');
     // optimistically try to convert from streetmix URL to api url
     if (pathArray[1] !== 'api') {

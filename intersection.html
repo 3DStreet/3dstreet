@@ -228,11 +228,11 @@
       <a-entity id="skybox" cubemap="folder: assets/images/skybox/"></a-entity>
 
       <a-entity id="street-north" position="0 0 -100" rotation="0 0 0">
-        <a-entity id="segments-north" street="streetmixUrl: https://streetmix.net/api/v1/streets?namespacedId=3&creatorId=kfarr"></a-entity>
+        <a-entity id="segments-north" class="set-from-input" street="streetmixURL: https://streetmix.net/api/v1/streets?namespacedId=3&creatorId=kfarr"></a-entity>
       </a-entity>
 
       <a-entity id="street-south" position="0 0 100">
-        <a-entity id="segments-south" street="streetmixUrl: https://streetmix.net/api/v1/streets?namespacedId=3&creatorId=kfarr"></a-entity>
+        <a-entity id="segments-south" street="streetmixURL: https://streetmix.net/api/v1/streets?namespacedId=3&creatorId=kfarr"></a-entity>
       </a-entity>
 
       <a-entity id="intersection" af rotation="-90 0 0" position="-1.45" geometry="width:50;height:50;primitive:plane" material="repeat:1 1;offset:0 0;src:#texture-intersection"></a-entity>

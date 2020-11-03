@@ -16,6 +16,7 @@
     <script src="src/aframe-streetmix-parsers.js"></script>
     <script src="src/aframe-streetmix-loaders.js"></script>
     <script src="src/tested/aframe-streetmix-parsers-tested.js"></script>
+    <script src="src/components/street.js"></script>
 
     <script src="src/components/ocean-plane.js"></script>
     <script src="src/components/anisotropy.js"></script>
@@ -225,7 +226,7 @@
       <a-entity id="skybox" cubemap="folder: assets/images/skybox/"></a-entity>
 
       <a-entity id="street-parent" position="0 0 0" rotation="0 0 0">
-        <a-entity id="streets"></a-entity>
+        <a-entity class="set-from-input" id="streets"></a-entity>
       </a-entity>
 
       <a-entity id="buildings"></a-entity>

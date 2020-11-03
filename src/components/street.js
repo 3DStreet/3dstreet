@@ -2,16 +2,14 @@
 
 AFRAME.registerComponent('street', {
   schema: {
-    streetmixUrl: { type: 'string' }
+    streetmixURL: { type: 'string' }
   },
   update: function (oldData) {
     // fired once at start and at each subsequent change of a schema value
     var data = this.data;
     var el = this.el;
 
-    //   function loadStreet (streetURL) {
-    // Erase existing street (if any)
-    // var myNode = document.getElementById('streets');
+    // clear whatever is there
     el.innerHTML = '';
 
     // create new a-entity for buildings
@@ -20,7 +18,7 @@ AFRAME.registerComponent('street', {
 
     // getjson replacement from http://youmightnotneedjquery.com/#json
     var request = new XMLHttpRequest();
-    request.open('GET', data.streetmixUrl, true);
+    request.open('GET', data.streetmixURL, true);
     request.onload = function () {
       if (this.status >= 200 && this.status < 400) {
         // Connection success
@@ -29,7 +27,7 @@ AFRAME.registerComponent('street', {
         var streetmixSegments = streetmixObject.data.street.segments;
         // TODO: return (and document) `streetmixObject` for more general usage, remove processSegments/Buildings from this function
         processSegments(streetmixSegments, el.id);
-        // processBuildings(streetObject, 'buildings');
+        processBuildings(streetObject, 'buildings');
       } else {
         // We reached our target server, but it returned an error
         console.log('Streetmix Loading Error: We reached our target server, but it returned an error');
