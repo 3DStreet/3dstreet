@@ -3,31 +3,36 @@
     <!-- <script src="https://aframe.io/releases/1.0.4/aframe.min.js"></script> -->
     <script src="https://cdn.jsdelivr.net/gh/aframevr/aframe@1f00d0beadf87bad7d275c174616e048f8b573fc/dist/aframe-master.min.js"></script>
 
+    <!-- core street and buildings rendering -->
     <script src="src/lib/aframe-atlas-uvs-component.min.js"></script>
-    <script src="src/lib/aframe-orbit-controls.min.js"></script>
-    <script src="src/lib/aframe-cubemap-component.js"></script>
-    <script src="src/lib/aframe-alongpath-component.js"></script>
-    <script src="https://raw.githack.com/fernandojsg/aframe-teleport-controls/master/dist/aframe-teleport-controls.min.js"></script>
-
-    <script src="https://unpkg.com/aframe-ground-component@0.0.5/dist/aframe-ground-component.min.js"></script>
-    <script src="https://unpkg.com/aframe-curve-component@0.1.3/dist/aframe-curve-component.min.js"></script>
-
     <script src="src/tested/streetmix-utils.js"></script>
     <script src="src/aframe-streetmix-parsers.js"></script>
     <script src="src/aframe-streetmix-loaders.js"></script>
     <script src="src/tested/aframe-streetmix-parsers-tested.js"></script>
     <script src="src/components/street.js"></script>
     <script src="src/components/assets.js"></script>
-
-    <script src="src/components/ocean-plane.js"></script>
     <script src="https://unpkg.com/aframe-gltf-helpers@0.0.3/dist/aframe-gltf-helpers.min.js"></script>
-
     <script src="src/tested/create-from-json-utils-tested.js"></script>
     <script src="src/components/create-from-json.js"></script>
 
+    <!-- vehicle paths -->
+    <script src="src/lib/aframe-alongpath-component.js"></script>
+    <script src="https://unpkg.com/aframe-curve-component@0.1.3/dist/aframe-curve-component.min.js"></script>
+
+    <!-- user controls -->
+    <script src="https://raw.githack.com/fernandojsg/aframe-teleport-controls/master/dist/aframe-teleport-controls.min.js"></script>
+    <script src="src/lib/aframe-orbit-controls.min.js"></script>
+
+    <!-- ocean, ground, sky -->
+    <script src="https://unpkg.com/aframe-ground-component@0.0.5/dist/aframe-ground-component.min.js"></script>
+    <script src="src/components/ocean-plane.js"></script>
+    <script src="src/lib/aframe-cubemap-component.js"></script>
+
+    <!-- 2d ui toolbar -->
     <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.4.1/css/bootstrap.min.css" integrity="sha384-Vkoo8x4CGsO3+Hhxv8T/Q5PaXtkKtu6ug5TOeNV6gBiFeWPGFN9MuhOf23Q9Ifjh" crossorigin="anonymous">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.13.0/css/all.min.css">
 
+    <!-- move a-frame performance `stats` below toolbar -->
     <style>
       .rs-base {
         left: 20px;
@@ -37,7 +42,7 @@
 
   </head>
   <body>
-    <!-- https://www.codeply.com/go/sbfCXYgqoO -->
+    <!-- Original source https://www.codeply.com/go/sbfCXYgqoO -->
     <nav class="navbar fixed-top navbar-expand navbar-dark bg-dark" >
         <div class="d-flex flex-grow-1">
             <a href="https://github.com/kfarr/streetmix3d/" class="navbar-brand" title="View Github README">Streetmix3D</a>
