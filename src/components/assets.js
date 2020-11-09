@@ -39,6 +39,10 @@ document.addEventListener('DOMContentLoaded', function (event) {
           <audio id="ambientmp3" src="${assetUrl}assets/audio/SSL_16_11_AMB_EXT_SF_ALAMO_SQ.mp3" preload="none" crossorigin="anonymous"></audio>
           <audio id="tram-pass-mp3" src="${assetUrl}assets/audio/Tram-Pass-By-Fast-shortened.mp3" preload="auto" crossorigin="anonymous"></audio>
           <audio id="trolley-pass-mp3" src="${assetUrl}assets/audio/Streetcar-passing.mp3" preload="auto" crossorigin="anonymous"></audio>
+          <audio id="suburbs-mp3" src="${assetUrl}assets/audio/AMB_Suburbs_Afternoon_Woods_Spring_Small_ST_MKH8050-30shortened_amplified.mp3" preload="auto" crossorigin="anonymous"></audio>
+          <audio id="parking-lot-mp3" src="${assetUrl}assets/audio/Parking_lot_ambience_looping.mp3" preload="auto" crossorigin="anonymous"></audio>
+          <audio id="waterfront-mp3" src="${assetUrl}assets/audio/combined_UKdock4_and_water_pier_underneath_ambience.mp3" preload="auto" crossorigin="anonymous"></audio>
+          <audio id="suburbs2-mp3" src="${assetUrl}assets/audio/AMB_Suburbs_Spring_Day_Lawnmowers_Birds_MS_ST_MKH8050-30shortened.mp3" preload="auto" crossorigin="anonymous"></audio>
   
           <!-- sidewalk props -->
           <a-asset-item id="treemodel3" src="${assetUrl}assets/objects/SM_Env_Tree_03.gltf"></a-asset-item>
