@@ -91,14 +91,14 @@ describe('A-Frame Streetmix Parsers', function () {
   });
 
   describe('#getAmbientSoundJSON()', function () {
-    it('getAmbientSoundJSON(["narrow", "wide"]) should return array with one dictionary for a-entity with sound URL assets/audio/SSL_16_11_AMB_EXT_SF_ALAMO_SQ.mp3', function () {
+    it('getAmbientSoundJSON(["narrow", "wide"]) should return array with one dictionary for a-entity with sound src #ambientmp3', function () {
       assert.deepStrictEqual(
         getAmbientSoundJSON(['narrow', 'wide']),
         [
           {
             tag: 'a-entity',
             class: 'playme',
-            sound: 'src: url(assets/audio/SSL_16_11_AMB_EXT_SF_ALAMO_SQ.mp3); positional: false; loop: true'
+            sound: 'src: #ambientmp3; positional: false; loop: true'
           }
         ]
       );
@@ -110,12 +110,12 @@ describe('A-Frame Streetmix Parsers', function () {
           {
             tag: 'a-entity',
             class: 'playme',
-            sound: 'src: url(assets/audio/SSL_16_11_AMB_EXT_SF_ALAMO_SQ.mp3); positional: false; loop: true'
+            sound: 'src: #ambientmp3; positional: false; loop: true'
           },
           {
             tag: 'a-entity',
             class: 'playme',
-            sound: 'src: url(assets/audio/AMB_Suburbs_Spring_Day_Lawnmowers_Birds_MS_ST_MKH8050-30shortened.mp3); positional: false; loop: true'
+            sound: 'src: #suburbs2-mp3; positional: false; loop: true'
           }
         ]
       );
