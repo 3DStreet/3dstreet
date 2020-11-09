@@ -36,9 +36,9 @@ document.addEventListener('DOMContentLoaded', function (event) {
 
   const assetsInnerHTML = `
           <!-- audio -->
-          <audio id="ambientmp3" src="${assetUrl}assets/audio/SSL_16_11_AMB_EXT_SF_ALAMO_SQ.mp3" preload="none"></audio>
-          <audio id="tram-pass-mp3" src="${assetUrl}assets/audio/Tram-Pass-By-Fast-shortened.mp3" preload="auto"></audio>
-          <audio id="trolley-pass-mp3" src="${assetUrl}assets/audio/Streetcar-passing.mp3" preload="auto"></audio>
+          <audio id="ambientmp3" src="${assetUrl}assets/audio/SSL_16_11_AMB_EXT_SF_ALAMO_SQ.mp3" preload="none" crossorigin="anonymous"></audio>
+          <audio id="tram-pass-mp3" src="${assetUrl}assets/audio/Tram-Pass-By-Fast-shortened.mp3" preload="auto" crossorigin="anonymous"></audio>
+          <audio id="trolley-pass-mp3" src="${assetUrl}assets/audio/Streetcar-passing.mp3" preload="auto" crossorigin="anonymous"></audio>
   
           <!-- sidewalk props -->
           <a-asset-item id="treemodel3" src="${assetUrl}assets/objects/SM_Env_Tree_03.gltf"></a-asset-item>
@@ -49,7 +49,7 @@ document.addEventListener('DOMContentLoaded', function (event) {
           <a-asset-item id="lamp-modern-glb" src="${assetUrl}assets/objects/lamp-post-modern-centered.glb"></a-asset-item>
           <a-asset-item id="lamp-traditional-glb" src="${assetUrl}assets/objects/lamp-post-traditional.glb"></a-asset-item>
           <a-asset-item id="bus-stop-glb" src="${assetUrl}assets/objects/ccFO2EGGIq9-bus-stop.glb"></a-asset-item>
-          <img id="wayfinding-map" src="${assetUrl}assets/objects/wayfinding.jpg" />
+          <img id="wayfinding-map" src="${assetUrl}assets/objects/wayfinding.jpg" crossorigin="anonymous" />
   
           <!-- vehicles -->
           <a-asset-item id="trammodel" src="${assetUrl}assets/objects/tram_siemens_avenio.gltf"></a-asset-item>
@@ -67,8 +67,8 @@ document.addEventListener('DOMContentLoaded', function (event) {
           <!-- lane objects -->
           <a-asset-item id="trackmodel" src="${assetUrl}assets/objects/track.gltf"></a-asset-item>
           <a-asset-item id="flexiguide-glb" src="${assetUrl}assets/objects/flexiguide300.glb"></a-asset-item>
-          <img id="stencils-atlas" src="${assetUrl}assets/materials/stencils-atlas_2048.png" />
-          <img id="markings-atlas" src="${assetUrl}assets/materials/lane-markings-atlas_1024.png" />
+          <img id="stencils-atlas" src="${assetUrl}assets/materials/stencils-atlas_2048.png" crossorigin="anonymous" />
+          <img id="markings-atlas" src="${assetUrl}assets/materials/lane-markings-atlas_1024.png" crossorigin="anonymous" />
   
           <!-- optimized textures - used by default -->
           <a-mixin id="drive-lane-t1" geometry="width:3;height:150;primitive:plane" material="repeat:0.3 25;offset:0.55 0;src:${assetUrl}assets/materials/TexturesCom_Roads0086_1_seamless_S_rotate.jpg;"></a-mixin>
@@ -168,7 +168,7 @@ document.addEventListener('DOMContentLoaded', function (event) {
 /*
 Unused assets kept commented here for future reference
         <!-- sky - equirectangular still used for envmap -->
-        <!-- <img id="sky" position="0 -140 0" src="assets/CGSkies_0343_doubled_2048.jpg" /> -->
+        <!-- <img id="sky" position="0 -140 0" src="assets/CGSkies_0343_doubled_2048.jpg" crossorigin="anonymous" /> -->
 
         <!-- raw photogrammetry textures - unused by default -->
         <a-mixin id="bike-lane-t0" geometry="width:1.8;height:150;primitive:plane" material="repeat:2 150;src:assets/materials/bikelane_Base_Color.jpg;normalTextureRepeat:2 150;normalMap:assets/materials/bikelane_Normal.jpg"></a-mixin>
