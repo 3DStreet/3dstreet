@@ -13,7 +13,7 @@ document.addEventListener('DOMContentLoaded', function (event) {
   if (streetmixAssetsEl) {
     assetUrl = streetmixAssetsEl.getAttribute('streetmix-assets-url');
   }
-  console.log('Using assetUrl value: ', assetUrl);
+  console.log('Streetmix3D using assetUrl: ', assetUrl);
 
   const assetsInnerHTML = `
           <!-- audio -->

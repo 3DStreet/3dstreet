@@ -2,7 +2,8 @@
 
 AFRAME.registerComponent('street', {
   schema: {
-    streetmixURL: { type: 'string' }
+    streetmixURL: { type: 'string' },
+    buildings: { default: true }
   },
   update: function (oldData) {
     // fired once at start and at each subsequent change of a schema value
@@ -12,9 +13,12 @@ AFRAME.registerComponent('street', {
     // clear whatever is there
     el.innerHTML = '';
 
-    // create new a-entity for buildings
-    myNode = document.getElementById('buildings');
-    myNode.innerHTML = '';
+    // TODO: create new a-entity for buildings
+
+    if (data.buildings) {
+      var buildingsEl = document.getElementById('buildings');
+      buildingsEl.innerHTML = '';
+    }
 
     // getjson replacement from http://youmightnotneedjquery.com/#json
     var request = new XMLHttpRequest();
@@ -27,7 +31,10 @@ AFRAME.registerComponent('street', {
         var streetmixSegments = streetmixObject.data.street.segments;
         // TODO: return (and document) `streetmixObject` for more general usage, remove processSegments/Buildings from this function
         processSegments(streetmixSegments, el.id);
-        processBuildings(streetObject, 'buildings');
+
+        if (data.buildings) {
+          processBuildings(streetObject, buildingsEl);
+        }
       } else {
         // We reached our target server, but it returned an error
         console.log('Streetmix Loading Error: We reached our target server, but it returned an error');

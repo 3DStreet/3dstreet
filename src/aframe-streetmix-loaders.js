@@ -35,7 +35,8 @@ function initStreet () {
 
   // console.log('streetURL check: ' + streetURL);
   //  loadStreet(streetURL);
-  document.querySelector('.set-from-input').setAttribute('street', 'streetmixURL', streetURL);
+  document.querySelector('.set-from-input').setAttribute('street', 'streetmixURL: ' + streetURL + '; buildings: true;');
+
   // instead set street component to this value
 
   window.location.hash = '#' + streetmixAPIToUser(streetURL);
@@ -58,7 +59,7 @@ function locationHashChanged () {
     }
 
     // loadStreet(streetURL);
-    document.querySelector('.set-from-input').setAttribute('street', 'streetmixURL', streetURL);
+    document.querySelector('.set-from-input').setAttribute('street', 'streetmixURL: ' + streetURL + '; buildings: true;');
 
     // update the user interface to show the new URL
     document.getElementById('input-url').value = streetmixAPIToUser(streetURL);
