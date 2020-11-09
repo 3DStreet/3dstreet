@@ -1,5 +1,6 @@
 <html>
   <head>
+    <script src="src/components/assets.js"></script>
     <!-- <script src="https://aframe.io/releases/1.0.4/aframe.min.js"></script> -->
     <script src="https://cdn.jsdelivr.net/gh/aframevr/aframe@1f00d0beadf87bad7d275c174616e048f8b573fc/dist/aframe-master.min.js"></script>
 
@@ -10,10 +11,9 @@
     <script src="src/aframe-streetmix-loaders.js"></script>
     <script src="src/tested/aframe-streetmix-parsers-tested.js"></script>
     <script src="src/components/street.js"></script>
-    <script src="src/components/assets.js"></script>
-    <script src="https://unpkg.com/aframe-gltf-helpers@0.0.3/dist/aframe-gltf-helpers.min.js"></script>
     <script src="src/tested/create-from-json-utils-tested.js"></script>
     <script src="src/components/create-from-json.js"></script>
+    <script src="https://unpkg.com/aframe-gltf-helpers@0.0.3/dist/aframe-gltf-helpers.min.js"></script>
 
     <!-- vehicle paths -->
     <script src="src/lib/aframe-alongpath-component.js"></script>
@@ -70,6 +70,8 @@
     </nav>
     <a-scene renderer="colorManagement: true; highRefreshRate: true; foveationLevel: 3; physicallyCorrectLights: true; logarithmicDepthBuffer: false;" fogoff="type: linear; color: #D5C69B; far: 200" gltf-model="dracoDecoderPath: https://www.gstatic.com/draco/v1/decoders/;">
       <a-assets>
+        <!-- <a-asset streetmix-assets-url=""></a-asset> -->
+
         <a-cubemap id="skycube">
           <img src="assets/images/skybox/posx.jpg">
           <img src="assets/images/skybox/negx.jpg">
@@ -78,6 +80,7 @@
           <img src="assets/images/skybox/posz.jpg">
           <img src="assets/images/skybox/negz.jpg">
         </a-cubemap>
+
       </a-assets>
 
       <a-entity id="cameraRig">

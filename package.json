@@ -1,6 +1,6 @@
 {
   "name": "streetmix3d",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "description": "Streetmix3D creates 3D visualizations of your 2D [Streetmix.net](https://streetmix.net) streets using A-Frame and WebXR.",
   "main": "index.js",
   "scripts": {
@@ -15,7 +15,7 @@
     "type": "git",
     "url": "git+https://github.com/kfarr/streetmix3d.git"
   },
-  "author": "",
+  "author": "kieran.farr@gmail.com",
   "license": "MIT",
   "bugs": {
     "url": "https://github.com/kfarr/streetmix3d/issues"
