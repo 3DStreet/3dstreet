@@ -1,37 +1,18 @@
-/* global AFRAME */
-
-// doc assets
 document.addEventListener('DOMContentLoaded', function (event) {
+  var assetUrl = ''; // default is use current directory as root
+
   let assets = document.querySelector('a-assets');
-//   console.log('assets', assets);
-
-  // IF NO A-ASSETS, then create one
   if (!assets) {
-//     console.log('no assets exist');
-
     assets = document.createElement('a-assets');
     document.querySelector('a-scene').append(assets);
   }
 
-  var assetUrl = ''; // default is use current directory as root
-
-  // if asset component attribute value assetUrl   
+  // if asset component streetmix-assets-url, formatted like:
   // <a-asset-item streetmixAssets="assetUrl: https://unpkg.com/streetmix3d@0.0.1/"></a-asset>
   var streetmixAssetsEl = assets.querySelector('[streetmix-assets-url]');
-//   console.log('streetmixAssetsEl', streetmixAssetsEl);
-//   console.log('streetmixAssetsEl', streetmixAssetsEl.assetUrl);
-
   if (streetmixAssetsEl) {
     assetUrl = streetmixAssetsEl.getAttribute('streetmix-assets-url');
-//     console.log('New assetUrl=', assetUrl);
-  } else {
-//     console.log('NO streetmixAssetsEl found');
   }
-
-  // if (document.currentScript) {
-  //   assetUrl = document.currentScript.src.split('/').slice(0, 3).join('/');
-  // }
-
   console.log('Using assetUrl value: ', assetUrl);
 
   const assetsInnerHTML = `
@@ -166,8 +147,6 @@ document.addEventListener('DOMContentLoaded', function (event) {
   // insert the streetmix assets into the asset section
   assets.insertAdjacentHTML('beforeend', assetsInnerHTML);
 });
-
-
 
 /*
 Unused assets kept commented here for future reference
