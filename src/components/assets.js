@@ -1,21 +1,10 @@
-document.addEventListener('DOMContentLoaded', function (event) {
-  var assetUrl = ''; // default is use current directory as root
+/* global THREE */
 
-  let assets = document.querySelector('a-assets');
-  if (!assets) {
-    assets = document.createElement('a-assets');
-    document.querySelector('a-scene').append(assets);
-  }
-
-  // if asset component streetmix-assets-url, formatted like:
-  // <a-asset-item streetmixAssets="assetUrl: https://unpkg.com/streetmix3d@0.0.1/"></a-asset>
-  var streetmixAssetsEl = assets.querySelector('[streetmix-assets-url]');
-  if (streetmixAssetsEl) {
-    assetUrl = streetmixAssetsEl.getAttribute('streetmix-assets-url');
-  }
-  console.log('Streetmix3D using assetUrl: ', assetUrl);
-
-  const assetsInnerHTML = `
+(function () {
+  function buildAssetHTML (assetUrl) {
+    if (!assetUrl) assetUrl = 'https://unpkg.com/streetmix3d@0.0.4/';
+    console.log('Using streetmix assets from', assetUrl);
+    return `
           <!-- audio -->
           <audio id="ambientmp3" src="${assetUrl}assets/audio/SSL_16_11_AMB_EXT_SF_ALAMO_SQ.mp3" preload="none" crossorigin="anonymous"></audio>
           <audio id="tram-pass-mp3" src="${assetUrl}assets/audio/Tram-Pass-By-Fast-shortened.mp3" preload="auto" crossorigin="anonymous"></audio>
@@ -56,11 +45,15 @@ document.addEventListener('DOMContentLoaded', function (event) {
           <img id="markings-atlas" src="${assetUrl}assets/materials/lane-markings-atlas_1024.png" crossorigin="anonymous" />
   
           <!-- optimized textures - used by default -->
-          <a-mixin id="drive-lane-t1" geometry="width:3;height:150;primitive:plane" material="repeat:0.3 25;offset:0.55 0;src:${assetUrl}assets/materials/TexturesCom_Roads0086_1_seamless_S_rotate.jpg;"></a-mixin>
-          <a-mixin id="bike-lane-t1" geometry="width:1.8;height:150;primitive:plane" material="repeat:0.3 25;offset:0.55 0;roughness:1;metalness:0;src:${assetUrl}assets/materials/TexturesCom_Roads0086_1_seamless_S_rotate.jpg;"></a-mixin>
-          <a-mixin id="sidewalk-t1" anisotropy geometry="width:3;height:150;primitive:plane" material="repeat:1.5 75;src:${assetUrl}assets/materials/TexturesCom_FloorsRegular0301_1_seamless_S.jpg;"></a-mixin>
-          <a-mixin id="bus-lane-t1" geometry="width:3;height:150;primitive:plane" material="repeat:0.3 25;offset:0.55 0;src:${assetUrl}assets/materials/TexturesCom_Roads0086_1_seamless_S_rotate.jpg;"></a-mixin>
-          <a-mixin id="divider-t1" geometry="width:0.3;height:150;primitive:plane" material="repeat:1 150;offset:0.415 0;normalTextureOffset:0.415 0;src:${assetUrl}assets/materials/hatched_Base_Color.jpg;normalTextureRepeat:0.21 150;normalMap:${assetUrl}assets/materials/hatched_Normal.jpg"></a-mixin>
+          <img id="seamless-road" src="${assetUrl}assets/materials/TexturesCom_Roads0086_1_seamless_S_rotate.jpg" crossorigin="anonymous">
+          <img id="hatched-base" src="${assetUrl}assets/materials/hatched_Base_Color.jpg" crossorigin="anonymous">
+          <img id="hatched-normal" src="${assetUrl}assets/materials/hatched_Normal.jpg" crossorigin="anonymous">
+          <img id="seamless-sidewalk" src="${assetUrl}assets/materials/TexturesCom_FloorsRegular0301_1_seamless_S.jpg" crossorigin="anonymous">
+          <a-mixin id="drive-lane-t1" geometry="width:3;height:150;primitive:plane" material="repeat:0.3 25;offset:0.55 0;src:#seamless-road;"></a-mixin>
+          <a-mixin id="bike-lane-t1" geometry="width:1.8;height:150;primitive:plane" material="repeat:0.3 25;offset:0.55 0;roughness:1;metalness:0;src:#seamless-road;"></a-mixin>
+          <a-mixin id="sidewalk-t1" anisotropy geometry="width:3;height:150;primitive:plane" material="repeat:1.5 75;src:#seamless-sidewalk;"></a-mixin>
+          <a-mixin id="bus-lane-t1" geometry="width:3;height:150;primitive:plane" material="repeat:0.3 25;offset:0.55 0;src:#seamless-road;"></a-mixin>
+          <a-mixin id="divider-t1" geometry="width:0.3;height:150;primitive:plane" material="repeat:1 150;offset:0.415 0;normalTextureOffset:0.415 0;src:#hatched-base;normalTextureRepeat:0.21 150;normalMap:#hatched-normal"></a-mixin>
           <a-mixin id="safehit" gltf-model="#flexiguide-glb" scale="1 1 1"></a-mixin>
   
           <!-- lane separator markings atlas -->
@@ -103,8 +96,10 @@ document.addEventListener('DOMContentLoaded', function (event) {
           <a-mixin id="car" gltf-model="#carmodel"></a-mixin>
           <a-mixin id="tram" anisotropy gltf-model="#trammodel" sound="src: #tram-pass-mp3;positional:false;volume: 0.4"></a-mixin>
           <a-mixin id="trolley" gltf-model="#trolleymodel" sound="src: #trolley-pass-mp3;positional:false;volume: 0.4"scale="1 1 1"></a-mixin>
-          <a-mixin id="bus-shadow" geometry="width: 12; height: 3; primitive: plane"  material="src: url(${assetUrl}assets/materials/bus-shadow.png); alphaTest: 0;transparent:true; roughness: 1;" ></a-mixin>
-          <a-mixin id="car-shadow" geometry="width: 4.7; height: 2.5; primitive: plane"  material="src: url(${assetUrl}assets/materials/bus-shadow.png); alphaTest: 0;transparent:true; roughness: 1;" ></a-mixin>
+
+          <img id="shadow-texture" src="${assetUrl}assets/materials/bus-shadow.png" crossorigin="anonymous">
+          <a-mixin id="bus-shadow" geometry="width: 12; height: 3; primitive: plane"  material="src: #shadow-texture; alphaTest: 0;transparent:true; roughness: 1;" ></a-mixin>
+          <a-mixin id="car-shadow" geometry="width: 4.7; height: 2.5; primitive: plane"  material="src: #shadow-texture; alphaTest: 0;transparent:true; roughness: 1;" ></a-mixin>
   
           <!-- street props -->
           <a-mixin id="tree3" gltf-model="#treemodel3" scale="1.25 1.25 1.25"></a-mixin>
@@ -136,23 +131,128 @@ document.addEventListener('DOMContentLoaded', function (event) {
           <a-mixin id="seawall" gltf-model="#seawall-model" scale="1 1 1" rotation="0 0 0"></a-mixin>
           <a-mixin id="fence" gltf-model="#fence-model" scale="0.1 0.1 0.1"></a-mixin>
   
-          <a-mixin id="ground-grass" rotation="-90 0 0" geometry="primitive:plane;height:150;width:150" material="src:url(${assetUrl}assets/materials/TexturesCom_Grass0052_1_seamless_S.jpg);repeat:5 5;roughness:1"></a-mixin>
-          <a-mixin id="ground-parking-lot" rotation="-90 0 0" geometry="primitive:plane;height:150;width:150" material="src:url(${assetUrl}assets/materials/TexturesCom_Roads0111_1_seamless_S.jpg);repeat:2 4;roughness:1"></a-mixin>
-          <a-mixin id="ground-asphalt" rotation="-90 0 0" geometry="primitive:plane;height:150;width:150" material="src:url(${assetUrl}assets/materials/TexturesCom_AsphaltDamaged0057_1_seamless_S.jpg);repeat:5 5;roughness:1"></a-mixin>
+          <!-- grounds -->
+          <img id="grass-texture" src="${assetUrl}assets/materials/TexturesCom_Grass0052_1_seamless_S.jpg" crossorigin="anonymous">
+          <img id="parking-lot-texture" src="${assetUrl}assets/materials/TexturesCom_Roads0111_1_seamless_S.jpg" crossorigin="anonymous">
+          <img id="asphalt-texture" src="${assetUrl}assets/materials/TexturesCom_AsphaltDamaged0057_1_seamless_S.jpg" crossorigin="anonymous">
+
+          <a-mixin id="ground-grass" rotation="-90 0 0" geometry="primitive:plane;height:150;width:150" material="src:#grass-texture;repeat:5 5;roughness:1"></a-mixin>
+          <a-mixin id="ground-parking-lot" rotation="-90 0 0" geometry="primitive:plane;height:150;width:150" material="src:#parking-lot-texture;repeat:2 4;roughness:1"></a-mixin>
+          <a-mixin id="ground-asphalt" rotation="-90 0 0" geometry="primitive:plane;height:150;width:150" material="src:#asphalt-texture;repeat:5 5;roughness:1"></a-mixin>
   
           <!-- ui / future use -->
-          <image id="subtitle" src="${assetUrl}assets/materials/subtitle.png" />
+          <img id="subtitle" src="${assetUrl}assets/materials/subtitle.png" crossorigin="anonymous" />
   `;
+  }
 
-  // insert the streetmix assets into the asset section
-  assets.insertAdjacentHTML('beforeend', assetsInnerHTML);
-});
+  // Avoid adding everything twice
+  var alreadyAttached = false;
+
+  // Needed to masquerade as an a-assets element
+  var fileLoader = new THREE.FileLoader();
+
+  window.AFRAME.registerElement('streetmix-assets', {
+    prototype: Object.create(window.AFRAME.ANode.prototype, {
+      createdCallback: {
+        value: function () {
+        // Masquerade as a an a-asset-item so that a-assets will wait for it to load
+          this.setAttribute('src', '');
+          this.isAssetItem = true;
+
+          // Properties needed for compatibility with a-assets prototype
+          this.isAssets = true;
+          this.fileLoader = fileLoader;
+          this.timeout = null;
+        }
+      },
+      attachedCallback: {
+        value: function () {
+          if (alreadyAttached) return;
+          if (this.parentNode && this.parentNode.hasLoaded) console.warn('Assets have already loaded. streetmix-assets may have problems');
+
+          alreadyAttached = true;
+
+          // Set the innerHTML to all of the actual assets to inject
+          this.innerHTML = buildAssetHTML(this.getAttribute('url'));
+
+          var parent = this.parentNode;
+
+          // Copy the parent's timeout, so we don't give up too soon
+          this.setAttribute('timeout', parent.getAttribute('timeout'));
+
+          // Make the parent pretend to be a scene, since that's what a-assets expects
+          this.parentNode.isScene = true;
+
+          // Since we expect the parent element to be a-assets, this will invoke the a-asset attachedCallback,
+          // which handles waiting for all of the children to load. Since we're calling it with `this`, it
+          // will wait for the streetmix-assets's children to load
+          Object.getPrototypeOf(parent).attachedCallback.call(this);
+
+          // No more pretending needed
+          this.parentNode.isScene = false;
+        }
+      },
+      load: {
+        value: function () {
+        // Wait for children to load, just like a-assets
+          AFRAME.ANode.prototype.load.call(this, null, function waitOnFilter (el) {
+            return el.isAssetItem && el.hasAttribute('src');
+          });
+        }
+      }
+    })
+  });
+
+  window.addEventListener('DOMContentLoaded', (e) => {
+    if (alreadyAttached) return;
+    let assets = document.querySelector('a-assets');
+    if (!assets) {
+      assets = document.createElement('a-assets');
+    }
+
+    if (assets.hasLoaded) {
+      console.warn('Assets already loaded. May lead to bugs');
+    }
+
+    const streetMix = document.createElement('streetmix-assets');
+    assets.append(streetMix);
+    document.querySelector('a-scene').append(assets);
+  });
+
+  var domModifiedHandler = function (evt) {
+  // Only care about events affecting an a-scene
+    if (evt.target.nodeName !== 'A-SCENE') return;
+
+    // Try to find the a-assets element in the a-scene
+    let assets = evt.target.querySelector('a-assets');
+
+    if (!assets) {
+    // Create and add the assets if they don't already exist
+      assets = document.createElement('a-assets');
+      evt.target.append(assets);
+    }
+
+    // Already have the streetmix assets. No need to add them
+    if (assets.querySelector('streetmix-assets')) {
+      document.removeEventListener('DOMSubtreeModified', domModifiedHandler);
+      return;
+    }
+
+    // Create and add the custom streetmix-assets element
+    const streetMix = document.createElement('streetmix-assets');
+    assets.append(streetMix);
+
+    // Clean up by removing the event listener
+    document.removeEventListener('DOMSubtreeModified', domModifiedHandler);
+  };
+
+  document.addEventListener('DOMSubtreeModified', domModifiedHandler, false);
+})();
 
 /*
 Unused assets kept commented here for future reference
         <!-- sky - equirectangular still used for envmap -->
         <!-- <img id="sky" position="0 -140 0" src="assets/CGSkies_0343_doubled_2048.jpg" crossorigin="anonymous" /> -->
-
         <!-- raw photogrammetry textures - unused by default -->
         <a-mixin id="bike-lane-t0" geometry="width:1.8;height:150;primitive:plane" material="repeat:2 150;src:assets/materials/bikelane_Base_Color.jpg;normalTextureRepeat:2 150;normalMap:assets/materials/bikelane_Normal.jpg"></a-mixin>
         <a-mixin id="sidewalk-t0" geometry="width:3;height:150;primitive:plane" material="repeat:1.5 75;src:assets/materials/sidewalkhd_Base_Color.jpg;normalTextureRepeat:1.5 75;normalMap:assets/materials/sidewalkhd_Normal.jpg;"></a-mixin>
