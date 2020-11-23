@@ -9,8 +9,11 @@ const rewire = require('rewire');
 const app = rewire('../../src/aframe-streetmix-parsers');
 const processSegments = app.__get__('processSegments');
 
-const otherApp = rewire('../../src/tested/aframe-streetmix-parsers-tested');
-app.__set__('isSidewalk', otherApp.__get__('isSidewalk')); // rewire isSidewalk
+// const { processSegments } = require('../src/aframe-streetmix-parsers');
+// const { isSidewalk } = require('../src/tested/aframe-streetmix-parsers-tested');
+
+// const otherApp = rewire('../../src/tested/aframe-streetmix-parsers-tested');
+// app.__set__('isSidewalk', otherApp.__get__('isSidewalk')); // rewire isSidewalk
 
 const otherApp2 = rewire('../../src/tested/streetmix-utils');
 app.__set__('calcStreetWidth', otherApp2.__get__('calcStreetWidth')); // rewire calcStreetWidth

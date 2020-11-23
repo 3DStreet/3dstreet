@@ -8,6 +8,7 @@ function createElementFromObject (object = {}) { // eslint-disable-line no-unuse
   }
   return el;
 }
+module.exports.createElementFromObject = createElementFromObject;
 
 // return a parent element with children appended from the array of objects
 function appendChildElementsFromArray (array = [], parentEl) { // eslint-disable-line no-unused-vars
@@ -17,3 +18,4 @@ function appendChildElementsFromArray (array = [], parentEl) { // eslint-disable
   });
   return parentEl;
 }
+module.exports.appendChildElementsFromArray = appendChildElementsFromArray;

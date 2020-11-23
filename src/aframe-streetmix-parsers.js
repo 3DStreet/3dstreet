@@ -1,4 +1,6 @@
 // Orientation - default model orientation is "outbound" (away from camera)
+var streetmixParsersTested = require('./tested/aframe-streetmix-parsers-tested');
+var streetmixUtils = require('./tested/streetmix-utils');
 
 const initialState = {
   instancing: {
@@ -316,7 +318,7 @@ function createBusStopElement (positionX, parityBusStop, rotationBusStopY, stree
 
 // offset to center the street around global x position of 0
 function centerStreetParentEntity (segments, streetElementId) {
-  const streetWidth = calcStreetWidth(segments);
+  const streetWidth = streetmixUtils.calcStreetWidth(segments);
   const offset = 0 - streetWidth / 2;
   document.getElementById(streetElementId).setAttribute('position', offset + ' 0 0');
 }
@@ -528,7 +530,7 @@ function processSegments (segments, streetElementId) {
       mixinId = 'drive-lane';
     }
 
-    if (isSidewalk(segments[i].type)) {
+    if (streetmixParsersTested.isSidewalk(segments[i].type)) {
       mixinId = 'sidewalk';
     }
 
@@ -537,6 +539,7 @@ function processSegments (segments, streetElementId) {
     // returns JSON output instead
   }
 }
+module.exports.processSegments = processSegments;
 
 // test - for streetObject of street 44 and buildingElementId render 2 building sides
 // instead this function should output JSON, separate function to send the output to DOM
@@ -547,7 +550,7 @@ function processBuildings (streetObject, buildingElement) {
   const buildingsArray = [streetObject.leftBuildingVariant, streetObject.rightBuildingVariant];
   // console.log(buildingsArray);
 
-  var ambientSoundJSONString = JSON.stringify(getAmbientSoundJSON(buildingsArray));
+  var ambientSoundJSONString = JSON.stringify(streetmixParsersTested.getAmbientSoundJSON(buildingsArray));
   var soundParentEl = document.createElement('a-entity');
   soundParentEl.setAttribute('create-from-json', 'jsonString', ambientSoundJSONString);
   buildingElement.appendChild(soundParentEl);
@@ -556,9 +559,9 @@ function processBuildings (streetObject, buildingElement) {
     const side = (index === 0) ? 'left' : 'right';
     const sideMultiplier = (side === 'left') ? -1 : 1;
 
-    const positionX = ((buildingLotWidth / 2) + (calcStreetWidth(streetObject.segments) / 2)) * sideMultiplier;
+    const positionX = ((buildingLotWidth / 2) + (streetmixUtils.calcStreetWidth(streetObject.segments) / 2)) * sideMultiplier;
 
-    var groundJSONString = JSON.stringify(createGroundArray(currentValue));
+    var groundJSONString = JSON.stringify(streetmixParsersTested.createGroundArray(currentValue));
     var groundParentEl = document.createElement('a-entity');
     groundParentEl.setAttribute('create-from-json', 'jsonString', groundJSONString);
     groundParentEl.setAttribute('position', positionX + ' 0 0');
@@ -566,7 +569,7 @@ function processBuildings (streetObject, buildingElement) {
 
     if (currentValue === 'narrow' || currentValue === 'wide') {
       // make buildings
-      const buildingsArray = createBuildingsArray(maxLength = 150);
+      const buildingsArray = streetmixParsersTested.createBuildingsArray(maxLength = 150);
 
       // TODO: this const should be a global variable as it's also used in aframe-streetmix-parsers-tested.js
       const buildings = [
@@ -580,8 +583,8 @@ function processBuildings (streetObject, buildingElement) {
       if (state.instancing.enabled) {
         // TODO: this should be converted to json with children instead of creating 5 parents
         buildings.forEach((currentValue, index) => {
-          var filteredBuildingsArray = filterBuildingsArrayByMixin(buildingsArray, currentValue.id);
-          var removedMixinFilteredBuildingsArray = removePropertyFromArray(filteredBuildingsArray, 'mixin');
+          var filteredBuildingsArray = streetmixParsersTested.filterBuildingsArrayByMixin(buildingsArray, currentValue.id);
+          var removedMixinFilteredBuildingsArray = streetmixParsersTested.removePropertyFromArray(filteredBuildingsArray, 'mixin');
           var buildingsInstancedChildrenJSONString = JSON.stringify(removedMixinFilteredBuildingsArray);
 
           var placedObjectEl = document.createElement('a-entity');
@@ -608,7 +611,7 @@ function processBuildings (streetObject, buildingElement) {
 
     if (currentValue === 'residential') {
       // make buildings
-      const buildingsArray = createBuildingsArray(maxLength = 150, buildingType = 'residential');
+      const buildingsArray = streetmixParsersTested.createBuildingsArray(maxLength = 150, buildingType = 'residential');
 
       var buildingJSONString = JSON.stringify(buildingsArray);
       var placedObjectEl = document.createElement('a-entity');
@@ -649,9 +652,10 @@ function processBuildings (streetObject, buildingElement) {
 
       //      cloneMixin({ objectMixinId: 'fence', parentId: 'fence-parent-' + positionX, rotation: '0 ' + rotationCloneY + ' 0', step: 9.25, radius: 70 });
 
-      var cloneMixinJSONString = JSON.stringify(createClonedEntitiesArray({ mixin: 'fence', rotation: '0 ' + rotationCloneY + ' 0', step: 9.25, radius: 70 }));
+      var cloneMixinJSONString = JSON.stringify(streetmixParsersTested.createClonedEntitiesArray({ mixin: 'fence', rotation: '0 ' + rotationCloneY + ' 0', step: 9.25, radius: 70 }));
       placedObjectEl.setAttribute('create-from-json', 'jsonString: ' + cloneMixinJSONString);
       buildingElement.appendChild(placedObjectEl);
     }
   });
 }
+module.exports.processBuildings = processBuildings;

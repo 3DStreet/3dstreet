@@ -1,4 +1,5 @@
-// import { appendChildElementsFromArray } from '../tested/aframe-streetmix-parsers-tested.js';
+/* global AFRAME */
+var createFromJSONUtilsTested = require('../tested/create-from-json-utils-tested');
 
 // create elements from a JSON string
 AFRAME.registerComponent('create-from-json', {
@@ -14,6 +15,6 @@ AFRAME.registerComponent('create-from-json', {
         el.removeChild(el.lastChild);
       }
     }
-    appendChildElementsFromArray(JSON.parse(data.jsonString), el);
+    createFromJSONUtilsTested.appendChildElementsFromArray(JSON.parse(data.jsonString), el);
   }
 });

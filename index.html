@@ -2,22 +2,7 @@
   <head>
     <!-- <script src="https://aframe.io/releases/1.0.4/aframe.min.js"></script> -->
     <script src="https://cdn.jsdelivr.net/gh/aframevr/aframe@1f00d0beadf87bad7d275c174616e048f8b573fc/dist/aframe-master.min.js"></script>
-    <script src="src/components/assets.js"></script>
-
-    <!-- core street and buildings rendering -->
-    <script src="src/lib/aframe-atlas-uvs-component.min.js"></script>
-    <script src="src/tested/streetmix-utils.js"></script>
-    <script src="src/aframe-streetmix-parsers.js"></script>
-    <script src="src/aframe-streetmix-loaders.js"></script>
-    <script src="src/tested/aframe-streetmix-parsers-tested.js"></script>
-    <script src="src/components/street.js"></script>
-    <script src="src/tested/create-from-json-utils-tested.js"></script>
-    <script src="src/components/create-from-json.js"></script>
-    <script src="https://unpkg.com/aframe-gltf-helpers@0.0.3/dist/aframe-gltf-helpers.min.js"></script>
-
-    <!-- vehicle paths -->
-    <script src="src/lib/aframe-alongpath-component.js"></script>
-    <script src="https://unpkg.com/aframe-curve-component@0.1.3/dist/aframe-curve-component.min.js"></script>
+    <script src="./dist/aframe-street-component.js"></script>
 
     <!-- user controls -->
     <script src="https://raw.githack.com/fernandojsg/aframe-teleport-controls/master/dist/aframe-teleport-controls.min.js"></script>
@@ -39,7 +24,11 @@
         top: 80px;
       }
     </style>
+<script>
+  window.onload = window.streetmixLoaders.initStreet; // TODO: move somewhere else (maybe index.html)
+  window.onhashchange = window.streetmixLoaders.locationHashChanged; // TODO: move somewhere else (maybe index.html)
 
+</script>
   </head>
   <body>
     <!-- Original source https://www.codeply.com/go/sbfCXYgqoO -->
@@ -70,7 +59,7 @@
     </nav>
     <a-scene renderer="colorManagement: true; highRefreshRate: true; foveationLevel: 3; physicallyCorrectLights: true; logarithmicDepthBuffer: false;" fogoff="type: linear; color: #D5C69B; far: 200" gltf-model="dracoDecoderPath: https://www.gstatic.com/draco/v1/decoders/;">
       <a-assets>
-        <!-- <a-asset streetmix-assets-url=""></a-asset> -->
+        <streetmix-assets url="./"></streetmix-assets>
 
         <a-cubemap id="skycube">
           <img src="assets/images/skybox/posx.jpg">

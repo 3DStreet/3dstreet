@@ -1,44 +1,34 @@
 /* global describe, it */
 
-const rewire = require('rewire');
+const streetmixParsersTested = require('../src/tested/aframe-streetmix-parsers-tested');
 const assert = require('assert');
-
-const app = rewire('../src/tested/aframe-streetmix-parsers-tested');
-
-const isSidewalk = app.__get__('isSidewalk');
-const createBuildingsArray = app.__get__('createBuildingsArray');
-const createClonedEntitiesArray = app.__get__('createClonedEntitiesArray');
-const getAmbientSoundJSON = app.__get__('getAmbientSoundJSON');
-const createGroundArray = app.__get__('createGroundArray');
-const filterBuildingsArrayByMixin = app.__get__('filterBuildingsArrayByMixin');
-const removePropertyFromArray = app.__get__('removePropertyFromArray');
 
 describe('A-Frame Streetmix Parsers', function () {
   describe('#isSidewalk()', function () {
     it('should return true when provided a string that is exactly sidewalk', function () {
       assert.ok(
-        isSidewalk('sidewalk'));
+        streetmixParsersTested.isSidewalk('sidewalk'));
     });
     it('should return true when provided a string starting with sidewalk', function () {
       assert.ok(
-        isSidewalk('sidewalkgibberish'));
+        streetmixParsersTested.isSidewalk('sidewalkgibberish'));
     });
     it('should return true when provided a long string like scooter-drop-zone', function () {
       assert.ok(
-        isSidewalk('scooter-drop-zone'));
+        streetmixParsersTested.isSidewalk('scooter-drop-zone'));
     });
   });
 
   describe('#createBuildingsArray()', function () {
     it('createBuildingsArray(maxLength = 5) should return array with one dictionary for a-entity with mixin SM3D_Bld_Mixed_Corner_4fl', function () {
       assert.deepStrictEqual(
-        createBuildingsArray(5),
+        streetmixParsersTested.createBuildingsArray(5),
         [{ tag: 'a-entity', mixin: 'SM3D_Bld_Mixed_Corner_4fl', position: '3.474045 0 0' }]
       );
     });
     it('createBuildingsArray(maxLength = 10) should return array with 2 dictionaries of a-entities', function () {
       assert.deepStrictEqual(
-        createBuildingsArray(10),
+        streetmixParsersTested.createBuildingsArray(10),
         [{ mixin: 'SM3D_Bld_Mixed_Corner_4fl', position: '3.474045 0 0', tag: 'a-entity' }, { mixin: 'SM3D_Bld_Mixed_Double_5fl', position: '12.40014 0 0', tag: 'a-entity' }]
       );
     });
@@ -46,19 +36,19 @@ describe('A-Frame Streetmix Parsers', function () {
 
   describe('#filterBuildingsArrayByMixin()', function () {
     it('filterBuildingsArrayByMixin with createBuildingsArray(maxLength = 100) and mixinId = "SM3D_Bld_Mixed_Corner_4fl" should return dictionary with 5 items', function () {
-      var buildingsArray = createBuildingsArray(100);
-      assert.strictEqual(filterBuildingsArrayByMixin(buildingsArray, 'SM3D_Bld_Mixed_Corner_4fl').length, 5);
+      var buildingsArray = streetmixParsersTested.createBuildingsArray(100);
+      assert.strictEqual(streetmixParsersTested.filterBuildingsArrayByMixin(buildingsArray, 'SM3D_Bld_Mixed_Corner_4fl').length, 5);
     });
     it('filterBuildingsArrayByMixin with createBuildingsArray(maxLength = 100) and mixinId = "asdfdsafwefqewf" should return dictionary with 0 items', function () {
-      var buildingsArray = createBuildingsArray(100);
-      assert.strictEqual(filterBuildingsArrayByMixin(buildingsArray, 'asdfdsafwefqewf').length, 0);
+      var buildingsArray = streetmixParsersTested.createBuildingsArray(100);
+      assert.strictEqual(streetmixParsersTested.filterBuildingsArrayByMixin(buildingsArray, 'asdfdsafwefqewf').length, 0);
     });
   });
 
   describe('#removePropertyFromArray()', function () {
     it('removePropertyFromArray should result in hasOwnProperty false for the removed property', function () {
       var htmlArray = [{ tag: 'a-entity', mixin: 'test' }, { tag: 'a-entity', mixin: 'toast' }];
-      var updatedArray = removePropertyFromArray(htmlArray, 'mixin');
+      var updatedArray = streetmixParsersTested.removePropertyFromArray(htmlArray, 'mixin');
       assert(!(Object.prototype.hasOwnProperty.call(updatedArray[0], 'mixin')));
     });
   });
@@ -66,25 +56,25 @@ describe('A-Frame Streetmix Parsers', function () {
   describe('#createGroundArray()', function () {
     it('createGroundArray("grass") should return array with one dictionary for a-entity with mixin ground-grass', function () {
       assert.deepStrictEqual(
-        createGroundArray('grass'),
+        streetmixParsersTested.createGroundArray('grass'),
         [{ tag: 'a-entity', mixin: 'ground-grass', position: '0 -0.2 0' }]
       );
     });
     it('createGroundArray("parking-lot") should return array with one dictionary for a-entity with mixin ground-parking-lot', function () {
       assert.deepStrictEqual(
-        createGroundArray('parking-lot'),
+        streetmixParsersTested.createGroundArray('parking-lot'),
         [{ mixin: 'ground-parking-lot', position: '0 -0.2 0', tag: 'a-entity' }]
       );
     });
     it('createGroundArray("jiberish") should return array with one dictionary for a-entity with mixin ground-grass', function () {
       assert.deepStrictEqual(
-        createGroundArray('jiberish'),
+        streetmixParsersTested.createGroundArray('jiberish'),
         [{ mixin: 'ground-grass', position: '0 -0.2 0', tag: 'a-entity' }]
       );
     });
     it('createGroundArray("narrow") should return array with one dictionary for a-entity with mixin ground-asphalt', function () {
       assert.deepStrictEqual(
-        createGroundArray('narrow'),
+        streetmixParsersTested.createGroundArray('narrow'),
         [{ mixin: 'ground-asphalt', position: '0 -0.2 0', tag: 'a-entity' }]
       );
     });
@@ -93,7 +83,7 @@ describe('A-Frame Streetmix Parsers', function () {
   describe('#getAmbientSoundJSON()', function () {
     it('getAmbientSoundJSON(["narrow", "wide"]) should return array with one dictionary for a-entity with sound src #ambientmp3', function () {
       assert.deepStrictEqual(
-        getAmbientSoundJSON(['narrow', 'wide']),
+        streetmixParsersTested.getAmbientSoundJSON(['narrow', 'wide']),
         [
           {
             tag: 'a-entity',
@@ -105,7 +95,7 @@ describe('A-Frame Streetmix Parsers', function () {
     });
     it('getAmbientSoundJSON(["narrow", "residential"]) should return array with 2 dictionaries of a-entities with sound component', function () {
       assert.deepStrictEqual(
-        getAmbientSoundJSON(['narrow', 'residential']),
+        streetmixParsersTested.getAmbientSoundJSON(['narrow', 'residential']),
         [
           {
             tag: 'a-entity',
@@ -125,7 +115,7 @@ describe('A-Frame Streetmix Parsers', function () {
   describe('#createClonedEntitiesArray()', function () {
     it('get default output of 9 entities spaced 15m apart', function () {
       assert.deepStrictEqual(
-        createClonedEntitiesArray({}),
+        streetmixParsersTested.createClonedEntitiesArray({}),
         [
           { tag: 'a-entity', position: '0 0 -60', rotation: '0 0 0' },
           { tag: 'a-entity', position: '0 0 -45', rotation: '0 0 0' },
@@ -142,7 +132,7 @@ describe('A-Frame Streetmix Parsers', function () {
     it('create clone output for actual fence use case', function () {
       var rotationCloneY = -90;
       assert.deepStrictEqual(
-        createClonedEntitiesArray({ mixin: 'fence', rotation: '0 ' + rotationCloneY + ' 0', step: 9.25, radius: 70 }),
+        streetmixParsersTested.createClonedEntitiesArray({ mixin: 'fence', rotation: '0 ' + rotationCloneY + ' 0', step: 9.25, radius: 70 }),
         [
           { tag: 'a-entity', position: '0 0 -70', class: 'fence', mixin: 'fence', rotation: '0 -90 0' },
           { tag: 'a-entity', position: '0 0 -60.75', class: 'fence', mixin: 'fence', rotation: '0 -90 0' },

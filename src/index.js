@@ -1,4 +1,12 @@
 /* global AFRAME */
+var streetmixParsers = require('./aframe-streetmix-parsers');
+require('./assets.js');
+require('./aframe-streetmix-loaders');
+require('./components/create-from-json');
+require('./lib/aframe-alongpath-component');
+require('aframe-curve-component');
+require('aframe-atlas-uvs-component');
+require('aframe-gltf-helpers');
 
 AFRAME.registerComponent('street', {
   schema: {
@@ -30,10 +38,10 @@ AFRAME.registerComponent('street', {
         var streetObject = streetmixObject.data.street;
         var streetmixSegments = streetmixObject.data.street.segments;
         // TODO: return (and document) `streetmixObject` for more general usage, remove processSegments/Buildings from this function
-        processSegments(streetmixSegments, el.id);
+        streetmixParsers.processSegments(streetmixSegments, el.id);
 
         if (data.buildings) {
-          processBuildings(streetObject, buildingsEl);
+          streetmixParsers.processBuildings(streetObject, buildingsEl);
         }
       } else {
         // We reached our target server, but it returned an error

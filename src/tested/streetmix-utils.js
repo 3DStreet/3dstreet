@@ -10,6 +10,7 @@ function streetmixUserToAPI (userURL) { // eslint-disable-line no-unused-vars
     return 'https://streetmix.net/api/v1/streets?namespacedId=' + namespacedId + '&creatorId=' + creatorId;
   }
 }
+module.exports.streetmixUserToAPI = streetmixUserToAPI;
 
 function streetmixAPIToUser (APIURL) { // eslint-disable-line no-unused-vars
   // this takes in a Streetmix.net API redirect URL like https://streetmix.net/api/v1/streets?namespacedId=3&creatorId=kfarr
@@ -35,6 +36,7 @@ function streetmixAPIToUser (APIURL) { // eslint-disable-line no-unused-vars
 
   return 'https://streetmix.net/' + creatorId + '/' + namespacedId;
 }
+module.exports.streetmixAPIToUser = streetmixAPIToUser;
 
 function calcStreetWidth (segments) { // eslint-disable-line no-unused-vars
   var cumulativeWidthInMeters = 0;
@@ -45,3 +47,4 @@ function calcStreetWidth (segments) { // eslint-disable-line no-unused-vars
   });
   return cumulativeWidthInMeters;
 }
+module.exports.calcStreetWidth = calcStreetWidth;

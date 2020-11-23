@@ -4,6 +4,7 @@ function isSidewalk (string) { // eslint-disable-line no-unused-vars
   const sidewalkList = ['scooter-drop-zone', 'bikeshare', 'flex-zone-curb', 'transit-shelter'];
   return string.startsWith('sidewalk') || sidewalkList.includes(string);
 }
+module.exports.isSidewalk = isSidewalk;
 
 // generate a JSON array representing buildings
 // test createBuildingsArray(maxLength = 5) returns [{ tag: 'a-entity', mixin: 'SM3D_Bld_Mixed_Corner_4fl', position: '0 0 0' }]
@@ -48,6 +49,7 @@ function createBuildingsArray (maxLength = 150, buildingType = 'narrow') { // es
 
   return buildingsArray;
 }
+module.exports.createBuildingsArray = createBuildingsArray;
 
 // for an array of objects representing HTML, remove entities except those that match the mixinId specified
 function filterBuildingsArrayByMixin (buildingsArray, mixinId) { // eslint-disable-line no-unused-vars
@@ -59,6 +61,7 @@ function filterBuildingsArrayByMixin (buildingsArray, mixinId) { // eslint-disab
   });
   return filteredBuildingsArray;
 }
+module.exports.filterBuildingsArrayByMixin = filterBuildingsArrayByMixin;
 
 // for an array of objects representing HTML, for each object remove the property matching the passed string `key`
 function removePropertyFromArray (htmlArray, key) { // eslint-disable-line no-unused-vars
@@ -67,6 +70,7 @@ function removePropertyFromArray (htmlArray, key) { // eslint-disable-line no-un
   });
   return htmlArray;
 }
+module.exports.removePropertyFromArray = removePropertyFromArray;
 
 function createClonedEntitiesArray ({ mixin = '', step = 15, radius = 60, rotation = '0 0 0', positionXYString = '0 0', randomY = false }) { // eslint-disable-line no-unused-vars
   var clonedEntitiesArray = [];
@@ -93,6 +97,7 @@ function createClonedEntitiesArray ({ mixin = '', step = 15, radius = 60, rotati
 
   return clonedEntitiesArray;
 }
+module.exports.createClonedEntitiesArray = createClonedEntitiesArray;
 
 // TODO: rename to createAmbientSoundsArray
 function getAmbientSoundJSON (buildingsArray) { // eslint-disable-line no-unused-vars
@@ -121,6 +126,7 @@ function getAmbientSoundJSON (buildingsArray) { // eslint-disable-line no-unused
   });
   return soundsArray;
 }
+module.exports.getAmbientSoundJSON = getAmbientSoundJSON;
 
 // possible input values: grass, fence, narrow, wide, waterfront, residential, parking-lot
 function createGroundArray (buildingString) { // eslint-disable-line no-unused-vars
@@ -140,3 +146,4 @@ function createGroundArray (buildingString) { // eslint-disable-line no-unused-v
 
   return groundArray;
 }
+module.exports.createGroundArray = createGroundArray;

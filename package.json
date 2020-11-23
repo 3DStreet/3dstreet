@@ -1,20 +1,31 @@
 {
   "name": "streetmix3d",
-  "version": "0.0.5",
+  "version": "0.0.6",
   "description": "Streetmix3D creates 3D visualizations of your 2D [Streetmix.net](https://streetmix.net) streets using A-Frame and WebXR.",
-  "main": "index.js",
+  "main": "dist/aframe-street-component.js",
+  "unpkg": "dist/aframe-street-component.min.js",
   "scripts": {
+    "dev": "budo src/index.js:dist/aframe-street-component.min.js --port 7000 --live --open",
+    "dist": "webpack",
+    "prepublish": "npm run dist",
     "test": "nyc --reporter=lcov --reporter=text mocha --recursive --full-trace",
     "test:watch": "mocha --recursive --full-trace --watch",
     "lint": "semistandard -v | snazzy",
     "lint:tested": "semistandard -v 'src/tested/**/*.js' 'test/**/*.js' | snazzy",
     "lint:fix": "semistandard --fix",
-    "start": "http-server"
+    "start": "npm run dev"
   },
   "repository": {
     "type": "git",
     "url": "git+https://github.com/kfarr/streetmix3d.git"
   },
+  "keywords": [
+    "aframe",
+    "aframe-component",
+    "aframe-vr",
+    "vr",
+    "webxr"
+  ],
   "author": "kieran.farr@gmail.com",
   "license": "MIT",
   "bugs": {
@@ -23,13 +34,16 @@
   "homepage": "https://github.com/kfarr/streetmix3d#readme",
   "semistandard": {
     "ignore": [
-      "/src/lib/"
+      "/src/lib/",
+      "/dist/**"
     ]
   },
-  "dependencies": {},
   "devDependencies": {
+    "@babel/core": "^7.12.7",
+    "@babel/preset-env": "^7.12.7",
     "approvals": "^3.0.5",
-    "http-server": "^0.12.3",
+    "babel-loader": "^8.2.1",
+    "budo": "^11.6.4",
     "jsdom": "^16.2.2",
     "jsdom-global": "^3.0.2",
     "mocha": "^7.1.2",
@@ -37,6 +51,13 @@
     "pretty": "^2.0.0",
     "rewire": "^5.0.0",
     "semistandard": "^14.2.0",
-    "snazzy": "^8.0.0"
+    "snazzy": "^8.0.0",
+    "webpack": "^5.6.0",
+    "webpack-cli": "^4.2.0"
+  },
+  "dependencies": {
+    "aframe-atlas-uvs-component": "^2.1.0",
+    "aframe-curve-component": "^0.1.3",
+    "aframe-gltf-helpers": "0.0.3"
   }
 }
