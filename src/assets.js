@@ -1,4 +1,4 @@
-/* global THREE */
+/* global AFRAME, THREE */
 
 (function () {
   function buildAssetHTML (assetUrl) {
