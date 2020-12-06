@@ -5,7 +5,7 @@
   "main": "dist/aframe-street-component.js",
   "unpkg": "dist/aframe-street-component.min.js",
   "scripts": {
-    "dev": "budo src/index.js:dist/aframe-street-component.min.js --port 7000 --live --open",
+    "dev": "budo src/index.js:dist/aframe-street-component.js --port 7000 --live --open",
     "dist": "webpack",
     "prepublish": "npm run dist",
     "test": "nyc --reporter=lcov --reporter=text mocha --recursive --full-trace",
