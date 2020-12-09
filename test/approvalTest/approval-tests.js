@@ -35,7 +35,7 @@ function prepareParentElement (id) {
 
 describe('ApprovalTest - A-Frame Streetmix', function () {
   describe('#processSegments() Street 44', function () {
-    it('should generate the same output when passing an example JSON', function () {
+    xit('should generate the same output when passing an example JSON', function () {
       const elementId = 'streets';
 
       const parentEl = prepareParentElement(elementId);
