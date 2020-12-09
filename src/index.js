@@ -1,5 +1,6 @@
 /* global AFRAME */
 var streetmixParsers = require('./aframe-streetmix-parsers');
+var streetmixUtils = require('./tested/streetmix-utils');
 require('./assets.js');
 require('./aframe-streetmix-loaders'); // TODO: don't include this here
 require('./components/create-from-json');
@@ -12,8 +13,8 @@ AFRAME.registerComponent('street', {
   schema: {
     JSON: { type: 'string' },
     type: { default: 'streetmixSegmentsFeet' }, // alt: sharedRowMeters, streetmixJSONResponse
-    right: { default: '' },
-    left: { default: '' }
+    left: { default: '' },
+    right: { default: '' }
   },
   update: function (oldData) {
     // fired once at start and at each subsequent change of a schema value
@@ -23,23 +24,18 @@ AFRAME.registerComponent('street', {
     // clear whatever is there
     el.innerHTML = '';
 
-    // TODO: create new a-entity for buildings
-
-    // if (data.buildings) {
-    //   var buildingsEl = document.getElementById('buildings');
-    //   buildingsEl.innerHTML = '';
-    // }
-
     var streetmixSegments = JSON.parse(data.JSON);
     console.log(streetmixSegments);
     // var streetObject = streetmixObject.data.street;
     // var streetmixSegments = JSON.parse(data.JSON);
     // TODO: return (and document) `streetmixObject` for more general usage, remove processSegments/Buildings from this function
-    var streetEl = streetmixParsers.processSegments(streetmixSegments.streetmixSegmentsFeet);
+    const streetEl = streetmixParsers.processSegments(streetmixSegments.streetmixSegmentsFeet);
     this.el.append(streetEl);
 
-    if (data.buildings) {
-      var buildingsEl = streetmixParsers.processBuildings(streetObject);
+    if (data.left || data.right) {
+      const streetWidth = streetmixUtils.calcStreetWidth(streetmixSegments.streetmixSegmentsFeet);
+      const buildingsEl = streetmixParsers.processBuildings(data.left, data.right, streetWidth);
+      this.el.append(buildingsEl);
     }
   }
 });

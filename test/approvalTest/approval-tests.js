@@ -1,4 +1,4 @@
-/* global describe, it */
+/* global describe, xit */
 
 require('approvals').mocha();
 require('jsdom-global')();
