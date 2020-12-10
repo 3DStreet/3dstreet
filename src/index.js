@@ -1,4 +1,4 @@
-/* global AFRAME */
+/* global AFRAME, XMLHttpRequest */
 var streetmixParsers = require('./aframe-streetmix-parsers');
 var streetmixUtils = require('./tested/streetmix-utils');
 require('./assets.js');
@@ -16,19 +16,16 @@ AFRAME.registerComponent('street', {
     left: { default: '' },
     right: { default: '' }
   },
-  update: function (oldData) {
-    // fired once at start and at each subsequent change of a schema value
+  update: function (oldData) { // fired once at start and at each subsequent change of a schema value
     var data = this.data;
-    var el = this.el;
 
-    // clear whatever is there
-    el.innerHTML = '';
+    if (data.JSON.length === 0) {
+      if (oldData.JSON !== undefined && oldData.JSON.length === 0) { return; } // this has happened before, surpress console log
+      console.log('[street]', 'No JSON provided yet, but it might be set at runtime');
+      return;
+    }
 
-    var streetmixSegments = JSON.parse(data.JSON);
-    console.log(streetmixSegments);
-    // var streetObject = streetmixObject.data.street;
-    // var streetmixSegments = JSON.parse(data.JSON);
-    // TODO: return (and document) `streetmixObject` for more general usage, remove processSegments/Buildings from this function
+    const streetmixSegments = JSON.parse(data.JSON);
     const streetEl = streetmixParsers.processSegments(streetmixSegments.streetmixSegmentsFeet);
     this.el.append(streetEl);
 
@@ -40,37 +37,52 @@ AFRAME.registerComponent('street', {
   }
 });
 
-// assumes street is loaded as well
-// AFRAME.registerComponent('street-loader', {
-//   dependencies: ['street'],
-//   schema: {
-//     streetmixURL: { type: 'string' }
-//   },
-//   update: function (oldData) {
-//     // fired once at start and at each subsequent change of a schema value
-//     var data = this.data;
-//     var el = this.el;
+AFRAME.registerComponent('streetmix-loader', {
+  dependencies: ['street'],
+  schema: {
+    streetmixStreetURL: { type: 'string' },
+    streetmixAPIURL: { type: 'string' }
+  },
+  update: function (oldData) {
+    // fired once at start and at each subsequent change of a schema value
+    var data = this.data;
+    var el = this.el;
 
-//     // getjson replacement from http://youmightnotneedjquery.com/#json
-//     var request = new XMLHttpRequest();
-//     request.open('GET', data.streetmixURL, true);
-//     request.onload = function () {
-//       if (this.status >= 200 && this.status < 400) {
-//         // Connection success
-//         var streetmixObject = JSON.parse(this.response);
-//         console.log(streetmixObject);
-//         var streetObject = streetmixObject.data.street;
-//         var streetmixSegments = streetmixObject.data.street.segments;
-//         console.log(streetmixSegments);
-//       } else {
-//         // We reached our target server, but it returned an error
-//         console.log('Streetmix Loading Error: We reached our target server, but it returned an error');
-//       }
-//     };
-//     request.onerror = function () {
-//       // There was a connection error of some sort
-//       console.log('Streetmix Loading Error: There was a connection error of some sort');
-//     };
-//     request.send();
-//   }
-// });
+    // if no value for 'streetmixAPIURL' then let's see if there's a streetmixURL
+    if (data.streetmixAPIURL.length === 0) {
+      if (data.streetmixStreetURL.length > 0) {
+        const streetmixAPIURL = streetmixUtils.streetmixUserToAPI(data.streetmixStreetURL);
+        console.log('[streetmix-loader]', 'setting `streetmixAPIURL` to', streetmixAPIURL);
+        el.setAttribute('streetmix-loader', 'streetmixAPIURL', streetmixAPIURL);
+        return;
+      }
+      console.log('[streetmix-loader]', 'Neither `streetmixAPIURL` nor `streetmixStreetURL` properties provided, please provide at least one.');
+      return;
+    }
+
+    var request = new XMLHttpRequest();
+    console.log('[streetmix-loader]', 'GET ' + data.streetmixAPIURL);
+
+    request.open('GET', data.streetmixAPIURL, true);
+    request.onload = function () {
+      if (this.status >= 200 && this.status < 400) {
+        // Connection success
+        const streetmixResponseObject = JSON.parse(this.response);
+        const streetmixSegments = streetmixResponseObject.data.street.segments;
+        el.setAttribute('street', 'right', streetmixResponseObject.data.street.rightBuildingVariant);
+        el.setAttribute('street', 'left', streetmixResponseObject.data.street.leftBuildingVariant);
+        el.setAttribute('street', 'type', 'streetmixSegmentsFeet');
+        // set JSON attribute last or it messes things up
+        el.setAttribute('street', 'JSON', JSON.stringify({ streetmixSegmentsFeet: streetmixSegments }));
+      } else {
+        // We reached our target server, but it returned an error
+        console.log('[streetmix-loader]', 'Loading Error: We reached the target server, but it returned an error');
+      }
+    };
+    request.onerror = function () {
+      // There was a connection error of some sort
+      console.log('[streetmix-loader]', 'Loading Error: There was a connection error of some sort');
+    };
+    request.send();
+  }
+});

@@ -12,6 +12,16 @@ function streetmixUserToAPI (userURL) { // eslint-disable-line no-unused-vars
 }
 module.exports.streetmixUserToAPI = streetmixUserToAPI;
 
+function pathStartsWithAPI (urlString) {
+  // First, check the URL path to see if it starts with /api/
+  const url = document.createElement('a');
+  url.href = urlString;
+  const pathname = url.pathname;
+  const topDir = pathname.split('/')[1];
+  return (topDir === 'api');
+}
+module.exports.pathStartsWithAPI = pathStartsWithAPI;
+
 function streetmixAPIToUser (APIURL) { // eslint-disable-line no-unused-vars
   // this takes in a Streetmix.net API redirect URL like https://streetmix.net/api/v1/streets?namespacedId=3&creatorId=kfarr
   // and turns it into the user facing friendly Streetmix.net URL like https://streetmix.net/kfarr/3/a-frame-city-builder-street-only

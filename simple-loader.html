@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <script src="https://aframe.io/releases/1.1.0/aframe.min.js"></script>
+
+    <script src="./dist/aframe-street-component.js"></script>
+
+    <title>Street Component!</title>
+    
+  </head>  
+  <body>
+
+    <a-scene gltf-model="dracoDecoderPath: https://www.gstatic.com/draco/v1/decoders/;">
+      <a-assets>
+        <streetmix-assets url="./"></streetmix-assets>
+      </a-assets>
+
+      <a-entity id="test" rotation="0 90 0" street streetmix-loader="streetmixAPIURL: https://streetmix.net/api/v1/streets/7a633310-e598-11e6-80db-ebe3de713876"></a-entity>
+      <a-entity id="test2" street streetmix-loader="streetmixStreetURL: https://streetmix.net/kfarr/3/a-frame-city-builder-street-only" ></a-entity>
+
+    </a-scene>
+    
+    <!-- include the Glitch button to show what the webpage is about and
+          to make it easier for folks to view source and remix -->
+    <!-- <div class="glitchButton" style="position:fixed;top:20px;right:20px;"></div>
+    <script src="https://button.glitch.me/button.js" defer></script> -->
+  </body>
+</html>
+
+<!-- for later -- include in body -->
+   <script id="segments" type="application/json">
+      {
+      "segments": [
+        {
+          "width": 9,
+          "variantString": "inbound|left",
+          "type": "parking-lane"
+        },
+        {
+          "width": 5,
+          "variantString": "inbound|green",
+          "type": "bike-lane"
+        },
+        {
+          "width": 10.5,
+          "variantString": "inbound|car",
+          "type": "drive-lane"
+        },
+        {
+          "randSeed": 816290815,
+          "width": 1,
+          "variantString": "striped-buffer",
+          "type": "divider"
+        },
+        {
+          "width": 10.5,
+          "variantString": "outbound|car",
+          "type": "drive-lane"
+        },
+        {
+          "width": 5,
+          "variantString": "outbound|green",
+          "type": "bike-lane"
+        },
+        {
+          "width": 9,
+          "variantString": "outbound|right",
+          "type": "parking-lane"
+        }
+      ]
+      }
+    </script>

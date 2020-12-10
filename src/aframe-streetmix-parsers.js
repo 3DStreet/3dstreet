@@ -666,8 +666,6 @@ function processBuildings (left, right, streetWidth) {
 
       cloneMixinAsChildren({ objectMixinId: 'fence', parentEl: placedObjectEl, rotation: '0 ' + rotationCloneY + ' 0', step: 9.25, radius: 70 });
 
-      // const cloneMixinJSONString = JSON.stringify(streetmixParsersTested.createClonedEntitiesArray({ mixin: 'fence', rotation: '0 ' + rotationCloneY + ' 0', step: 9.25, radius: 70 }));
-      // placedObjectEl.setAttribute('create-from-json', 'jsonString: ' + cloneMixinJSONString);
       buildingElement.appendChild(placedObjectEl);
     }
   });
