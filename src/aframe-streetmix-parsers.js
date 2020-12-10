@@ -169,9 +169,6 @@ function createChooChooElement (variantList, objectMixinId, positionX) {
   placedObjectEl.setAttribute('rotation', '0 ' + rotationY + ' 0');
   placedObjectEl.setAttribute('mixin', objectMixinId);
 
-  // TODO: train motion temporarily disabled
-  // placedObjectEl.setAttribute('alongpath', 'curve: #' + curveId + '; loop:true; dur:20000;');
-
   return placedObjectEl;
 
   // TODO: train audio temporarily disabled
@@ -261,17 +258,6 @@ function createBenchesParentElement (positionX) {
   placedObjectEl.setAttribute('class', 'bench-parent');
   placedObjectEl.setAttribute('position', positionX + ' 0 3.5');
   return placedObjectEl;
-}
-
-function createPathParentAndChildrenElements (pathId, positionX, isOutbound) {
-  const pathEl = document.createElement('a-curve');
-  pathEl.setAttribute('id', pathId);
-  pathEl.innerHTML = `
-        <a-curve-point id="checkpoint1" position="${positionX} 0 ${75 * isOutbound}"></a-curve-point>
-        <a-curve-point id="checkpoint2" position="${positionX} 0 0"></a-curve-point>
-        <a-curve-point id="checkpoint3" position="${positionX} 0 ${-75 * isOutbound}"></a-curve-point>
-      `;
-  return pathEl;
 }
 
 function createBikeRacksParentElement (positionX) {
@@ -397,11 +383,6 @@ function processSegments (segments) {
       mixinId = getBusLaneMixin(variantList[1]);
       // get the mixin id for the vehicle (is it a trolley or a tram?)
       var objectMixinId = (segments[i].type === 'streetcar') ? 'trolley' : 'tram';
-      // get the ID for the path of the vehicle ???
-      var pathId = 'path-' + i;
-      // create an `a-curve` parent entity and 3 child `a-curve-point` entities at start, middle, and end of street length
-      // append pathParentAndChildrenElements to the current segment node
-      segmentParentEl.append(createPathParentAndChildrenElements(pathId, positionX, isOutbound));
       // create and append a train element
       segmentParentEl.append(createChooChooElement(variantList, objectMixinId, positionX));
       // make the parent for all the objects to be cloned
