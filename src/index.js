@@ -2,7 +2,6 @@
 var streetmixParsers = require('./aframe-streetmix-parsers');
 var streetmixUtils = require('./tested/streetmix-utils');
 require('./assets.js');
-require('./aframe-streetmix-loaders'); // TODO: don't include this here
 require('./components/create-from-json');
 require('./lib/aframe-alongpath-component');
 require('aframe-curve-component');

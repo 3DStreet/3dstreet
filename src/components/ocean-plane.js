@@ -1,3 +1,5 @@
+/* global AFRAME */
+
 // from https://samsunginter.net/a-frame-components/dist/ocean-plane.js
 // Requires a build from the latest a-frame master (August 2016, v0.3)
 

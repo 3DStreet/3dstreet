@@ -1,7 +1,6 @@
 <html>
   <head>
-    <!-- <script src="https://aframe.io/releases/1.0.4/aframe.min.js"></script> -->
-    <script src="https://cdn.jsdelivr.net/gh/aframevr/aframe@1f00d0beadf87bad7d275c174616e048f8b573fc/dist/aframe-master.min.js"></script>
+    <script src="https://aframe.io/releases/1.1.0/aframe.min.js"></script>
     <script src="./dist/aframe-street-component.js"></script>
 
     <!-- user controls -->
@@ -24,34 +23,31 @@
         top: 80px;
       }
     </style>
-<script>
-  window.onload = window.streetmixLoaders.initStreet; // TODO: move somewhere else (maybe index.html)
-  window.onhashchange = window.streetmixLoaders.locationHashChanged; // TODO: move somewhere else (maybe index.html)
 
-</script>
   </head>
   <body>
     <!-- Original source https://www.codeply.com/go/sbfCXYgqoO -->
     <nav class="navbar fixed-top navbar-expand navbar-dark bg-dark" >
         <div class="d-flex flex-grow-1">
             <a href="https://github.com/kfarr/streetmix3d/" class="navbar-brand" title="View Github README">Streetmix3D</a>
-            <form class="mr-2 my-auto w-100 d-inline-block order-1">
+            <form class="mr-2 my-auto w-100 d-inline-block order-1" onsubmit="location.href='#'+this.inputUrl.value; setTimeout(window.location.reload.bind(window.location));
+            " >
                 <div class="input-group">
                     <!-- <input type="text" class="form-control border border-right-0" placeholder="Paste Streetmix URL" /> -->
-                    <input id="input-url" type="text" class="form-control d-none d-lg-block" onfocus="this.select();" title="Paste in Streetmix.net URL such as 'https://streetmix.net/kfarr/3'" />
+                    <input id="inputUrl" value="" type="text" class="form-control d-none d-lg-block" onfocus="this.select();" title="Paste in Streetmix.net URL such as 'https://streetmix.net/kfarr/3'" />
                     <span class="input-group-append">
-                        <button class="btn btn-outline-light border" type="button" onclick="processURLChange()" title="Clear Scene and Re-Render">
+                        <button class="btn btn-outline-light border" type="submit" title="Clear Scene and Re-Render">
                             <i class="fa fa-sync"></i>
                         </button>
-                        <button class="btn btn-outline-light border" type="button" onclick="window.open(document.getElementById('input-url').value, '_blank');" title="Edit Street in Streetmix2D">
+                        <!-- <button class="btn btn-outline-light border" type="button" onclick="window.open(document.getElementById('input-url').value, '_blank');" title="Edit Street in Streetmix2D">
                             <i class="fa fa-edit"></i>
-                        </button>
-                        <button class="btn btn-outline-light border" type="button" onclick="window.open(streetmixUserToAPI(document.getElementById('input-url').value), '_blank')" title="View Raw Streetmix JSON">
+                        </button> -->
+                        <!-- <button class="btn btn-outline-light border" type="button" onclick="window.open(streetmixUserToAPI(document.getElementById('input-url').value), '_blank')" title="View Raw Streetmix JSON">
                             <i class="fa fa-code"></i>
-                        </button>
-                        <button class="btn btn-outline-light border" type="button" onclick="startAudio()" title="Play Audio">
+                        </button> -->
+                        <!-- <button class="btn btn-outline-light border" type="button" onclick="startAudio()" title="Play Audio">
                             <i id="audio-icon" class="fa fa-volume-mute" style="color: pink"></i>
-                        </button>
+                        </button> -->
                     </span>
                 </div>
             </form>
@@ -87,55 +83,46 @@
 
       <a-entity id="skybox" cubemap="folder: assets/images/skybox/"></a-entity>
 
-      <a-entity id="street-parent" position="0 0 0" rotation="0 0 0">
-        <a-entity class="set-from-input" id="streets"></a-entity>
-      </a-entity>
-
-      <a-entity id="buildings"></a-entity>
-
-      <!-- Below is helpful debugging code and some for future use -->
-
-      <!-- <a-entity id="blockinstance" mixin="block" position="-10.7 0 10" rotation="0 -90 0"></a-entity> -->
+      <a-entity id="street-parent" street streetmix-loader set-loader-from-hash="defaultURL: https://streetmix.net/kfarr/3"></a-entity>
 
       <!-- Label text -->
       <!-- <a-entity position="0 2 0" geometry="primitive: plane; width: 10; height: auto" material="src: #subtitle; alphaTest: 0.; transparent: true;"
                 text="color: yellow; align: left; value: San Francisco; width: 10; ">
-        <a-entity position="-5.1 0 0.001" geometry="primitive: plane; width: 0.1; height: 0.46" material="color: white;"></a-entity>
+      <a-entity position="-5.1 0 0.001" geometry="primitive: plane; width: 0.1; height: 0.46" material="color: white;"></a-entity>
       </a-entity>
       <a-entity position="5 1 0" geometry="primitive: plane; width: 20; height: auto" material="src: #subtitle; alphaTest: 0.; transparent: true;"
                 text="color: yellow; align: left; value: Harrison Street; width: 20; ">
-        <a-entity position="-10.1 0 0.001" geometry="primitive: plane; width: 0.1; height: 0.92" material="color: white;"></a-entity>
+      <a-entity position="-10.1 0 0.001" geometry="primitive: plane; width: 0.1; height: 0.92" material="color: white;"></a-entity>
       </a-entity> -->
 
-      <!-- static entities for debugging textures without parsing json -->
-      <!-- <a-entity id="static-textured" position="0 0.1 0">
-        <a-entity class="sidewalk" mixin="sidewalk-t1" position="-5.521 0.21 -0.282" rotation="270 0 0"></a-entity>
-        <a-entity class="bike-lane" mixin="bike-lane-t1" position="-3.17 0.11 -0.282" rotation="270 0 0"> </a-entity>
-        <a-entity class="separator-dashed" mixin="separator-dashed-t1" position="-2.1 0.12 -0.282" rotation="270 0 0"> </a-entity>
-        <a-entity class="drive-lane" mixin="drive-lane-t1" position="-0.776 0.11 -0.285" rotation="270 0 0" ></a-entity>
-        <a-entity class="divider" mixin="divider-t1" position="0.869 0.11 -0.282" rotation="270 0 0" ></a-entity>
-        <a-entity class="drive-lane" mixin="drive-lane-t1" position="2.546 0.11 -0.285" rotation="270 0 0" ></a-entity>
-        <a-entity class="bike-lane" mixin="bike-lane-t1" position="4.967 0.11 -0.282" rotation="270 0 0"></a-entity>
-        <a-entity class="sidewalk" mixin="sidewalk-t1" position="7.318 0.21 -0.282" rotation="270 0 0"></a-entity>
-      </a-entity> -->
-
-      <!-- <a-entity position="0 1 0" mixin="wayfinding-box">
-        <a-entity position="0 0.1 0.06" geometry="primitive: plane; width: 0.8; height: 1.6" material="src:#wayfinding-map"></a-entity>
-        <a-entity position="0 0.1 -0.06" rotation="0 180 0" geometry="primitive: plane; width: 0.8; height: 1.6" material="src:#wayfinding-map"></a-entity>
-      </a-entity> -->
-
-      <!-- bounding boxes based on vehicle specs available online -->
+      <!-- For debugging / validation: below are bounding boxes based on vehicle specs available online -->
       <!-- <a-entity id="ford-crown-vic-bounding" geometry="depth: 5.3; height: 1.448; width: 1.99" position="0.92059 0.74 0"></a-entity>
       <a-entity id="newflyer-XD40-bounding" geometry="depth: 12; height: 3.2; width: 2.59" position="-3.97 1.59 0"></a-entity>
       <a-entity id="siemens-avenio-bounding" geometry="depth: 30; height: 3.4; width: 2.65" position="8.8 1.7 0"></a-entity> -->
 
-      <!-- <a-entity id="bus-stop-instance1" mixin="bus-stop"></a-entity> -->
-      <!-- <a-entity id="tram-instance1" mixin="tram" position="8.8 0 0"></a-entity> -->
-      <!-- <a-entity id="trolley-instance1" mixin="trolley" position="8.8 0 0"></a-entity> -->
-
     </a-scene>
   </body>
   <script>
+    AFRAME.registerComponent('set-loader-from-hash', {
+      dependencies: ['streetmix-loader'],
+      schema: {
+        defaultURL: { type: 'string' }
+      },
+      init: function () {
+        // get hash from window
+        const streetURL = window.location.hash.substring(1);
+        if (streetURL !== undefined && streetURL.length > 0) {
+          console.log('[set-loader-from-hash]','Using URL from hash', streetURL)
+          this.el.setAttribute('streetmix-loader', 'streetmixStreetURL', streetURL);
+        } else {
+          console.log('[set-loader-from-hash]','Using default URL', this.data.defaultURL)
+          this.el.setAttribute('streetmix-loader', 'streetmixStreetURL', this.data.defaultURL);
+        }
+      }
+    });
+
+    window.onload = document.querySelector('#inputUrl').value = window.location.hash.substring(1);
+
     function startAudio() {
       // set sounds enabled in global state
       state.sounds.enabled = true;
