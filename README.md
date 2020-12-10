@@ -1,22 +1,22 @@
 
-# Streetmix3D
-### Try in your browser now: https://kfarr.github.io/streetmix3d/
+# 3DStreet
+### Try in your browser now: https://kfarr.github.io/3dstreet/
 
-Streetmix3D creates 3D visualizations of your 2D [Streetmix.net](https://streetmix.net) streets using A-Frame and WebXR.
+3DStreet creates 3D visualizations of your 2D [Streetmix.net](https://streetmix.net) streets using A-Frame and WebXR.
 
 <img src="https://raw.githubusercontent.com/kfarr/streetmix3d/master/assets/streetmix3d.jpg" />
 
-### How to make your own Streetmix3D street:
+### How to make your own 3D street:
 * First, use <a href="https://streetmix.net">Streetmix.net</a> to create a street design. (Streetmix is a tool that lets you design, remix, and share your neighborhood street. <a href="https://github.com/streetmix/streetmix/blob/master/README.md#about">More information about Streetmix here</a>.)
 * Then, save a Streetmix street using a Twitter account so that you have a unique URL for your street that looks something like this: `https://streetmix.net/kfarr/3/my-awesome-street-name`
-* Load https://kfarr.github.io/streetmix3d/, paste in your street URL, and press the magic green button.
-* See instant changes to your work: Switch back to a Streetmix.net tab, make changes to your street, then reload the Streetmix3D page to see the edits applied.
+* Load https://kfarr.github.io/3dstreet/, paste in your street URL, and press the magic green button.
+* See instant changes to your work: Switch back to a Streetmix.net tab, make changes to your street, then reload the 3DStreet page to see the edits applied.
 
 ### Streetmix Segment Support
 
-Streetmix3D does not yet support all of the street `segments` found in Streetmix. You may find some segments don't display at all or are missing 3D elements. Here is a complete list:
+3DStreet does not yet support all of the street `segments` found in Streetmix. You may find some segments don't display at all or are missing 3D elements. Here is a complete list:
 
-| [Streetmix Segment](https://github.com/streetmix/streetmix/blob/master/assets/scripts/segments/info.json)              | Streetmix3D Support? | Supported Variants  | Notes and Model Source |
+| [Streetmix Segment](https://github.com/streetmix/streetmix/blob/master/assets/scripts/segments/info.json)              | 3DStreet Support? | Supported Variants  | Notes and Model Source |
 | ---------------------------- | --------- | ------ | ----- |
 | sidewalk            | Yes - Partial       | `empty`    | All variants show empty sidewalk, no pedestrian 3d models or density variants. |
 | sidewalk-lamp       | Yes - All       | Variants: `right`, `left`, `both` Subvariants: `modern`, `traditional`, `pride`  | [Modern Lamp Post](https://poly.google.com/view/2DoFKofZE6H), License [Google Poly CC Attrib](https://support.google.com/poly/answer/7418679?hl=en); [Traditional Lamp Post](https://poly.google.com/view/ez9fM9NvtRB), License [Google Poly CC Attrib](https://support.google.com/poly/answer/7418679?hl=en) |
@@ -46,7 +46,7 @@ Streetmix3D does not yet support all of the street `segments` found in Streetmix
 
 "Buildings" are lots and/or objects rendered on either side of the street to add to the setting.
 
-| [Streetmix Building](https://github.com/streetmix/streetmix/blob/master/assets/scripts/segments/buildings.js)              | Streetmix3D Support? | Supported Variants  | Notes |
+| [Streetmix Building](https://github.com/streetmix/streetmix/blob/master/assets/scripts/segments/buildings.js)              | 3DStreet Support? | Supported Variants  | Notes |
 | ---------------------------- | --------- | ------ | ----- |
 | grass            | Yes       |     | https://www.textures.com/download/grass0052/12094 |
 | fence       | Yes       | |  Fence Model: Paid Royalty Free License [CGTrader.com T&Cs Paragraph 21](https://www.cgtrader.com/pages/terms-and-conditions) for [construction fence Low-poly 3D model](https://www.cgtrader.com/3d-models/exterior/street/construction-fence-f8cc10f2-cf56-4f1d-a87a-c60c41d50b02) |
@@ -65,7 +65,7 @@ https://github.com/streetmix/streetmix/blob/master/assets/scripts/segments/info.
 I learned a few things:
 * Each street has a unique UUID (such as `7a633310-e598-11e6-80db-ebe3de713876`) with its own corresponding API endpoint (such as https://streetmix.net/api/v1/streets/7a633310-e598-11e6-80db-ebe3de713876)
 * This UUID is not shown in the UI. It can be found by going to this URL and supplying the nameSpacedId and creatorId, such as: https://streetmix.net/api/v1/streets?namespacedId=3&creatorId=kfarr . This will redirect to the UUID API endpoint
-* I wrote a quick JS helper function that takes a user facing URL on Streetmix (such as https://streetmix.net/kfarr/3/a-frame-city-builder-street-only) and transforms it into the API Redirect to find the UUID endpoint. You can find the [helper function docs here](https://github.com/kfarr/streetmix3d/tree/master/src#streetmix-utilsjs).
+* I wrote a quick JS helper function that takes a user facing URL on Streetmix (such as https://streetmix.net/kfarr/3/a-frame-city-builder-street-only) and transforms it into the API Redirect to find the UUID endpoint. You can find the [helper function docs here](https://github.com/kfarr/3dstreet/tree/master/src#streetmix-utilsjs).
 
 ### Developer Docs
 See [this link for more information](src/README.md) about the custom components developed and modified for the project.
@@ -92,7 +92,7 @@ See [this link for more information](src/README.md) about the custom components 
 * Tram pass https://www.soundsnap.com/tram_pass_by_fast_wav
 * Historic streetcar pass https://www.soundsnap.com/streetcar_passing_by_smoothly
 
-<img src="https://raw.githubusercontent.com/kfarr/streetmix3d/master/assets/streetmix3d-banner.jpg" />
+<img src="https://raw.githubusercontent.com/kfarr/3dstreet/master/assets/streetmix3d-banner.jpg" />
 
 ### More Notes
 See [DEV-NOTES](/DEV-NOTES.md) for additional notes on future features and work in progress.
