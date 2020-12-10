@@ -3,7 +3,7 @@
 (function () {
   function buildAssetHTML (assetUrl) {
     if (!assetUrl) assetUrl = 'https://unpkg.com/streetmix3d@0.0.4/';
-    console.log('Using streetmix assets from', assetUrl);
+    console.log('[street]', 'Using street assets from', assetUrl);
     return `
           <!-- audio -->
           <audio id="ambientmp3" src="${assetUrl}assets/audio/SSL_16_11_AMB_EXT_SF_ALAMO_SQ.mp3" preload="none" crossorigin="anonymous"></audio>

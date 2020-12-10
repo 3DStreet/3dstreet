@@ -1,6 +1,6 @@
 {
   "name": "streetmix3d",
-  "version": "0.0.6",
+  "version": "0.0.7",
   "description": "Streetmix3D creates 3D visualizations of your 2D [Streetmix.net](https://streetmix.net) streets using A-Frame and WebXR.",
   "main": "dist/aframe-street-component.js",
   "unpkg": "dist/aframe-street-component.min.js",

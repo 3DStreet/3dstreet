@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="en">
   <head>
-    <script src="https://cdn.jsdelivr.net/gh/aframevr/aframe@1f00d0beadf87bad7d275c174616e048f8b573fc/dist/aframe-master.min.js"></script>
+    <script src="https://aframe.io/releases/1.1.0/aframe.min.js"></script>
 
     <script src="./dist/aframe-street-component.js"></script>
 
@@ -15,8 +15,152 @@
         <streetmix-assets url="./"></streetmix-assets>
       </a-assets>
 
-      <a-entity id="test" street="streetmixURL: https://streetmix.net/api/v1/streets/7a633310-e598-11e6-80db-ebe3de713876; buildings: false;"></a-entity>
-<!--       <a-entity id="buildings"></a-entity> -->
+      <!-- <a-entity id="test" street='JSON:
+        {
+          "streetmixSegmentsFeet": [
+            {
+              "width": 9,
+              "variantString": "inbound|left",
+              "type": "parking-lane"
+            },
+            {
+              "width": 6,
+              "variantString": "inbound|green",
+              "type": "bike-lane"
+            },
+            {
+              "width": 9,
+              "variantString": "inbound|green",
+              "type": "bike-lane"
+            },
+            {
+              "width": 10.5,
+              "variantString": "inbound|car",
+              "type": "drive-lane"
+            },
+            {
+              "randSeed": 816290815,
+              "width": 1,
+              "variantString": "striped-buffer",
+              "type": "divider"
+            },
+            {
+              "width": 10.5,
+              "variantString": "outbound|car",
+              "type": "drive-lane"
+            },
+            {
+              "width": 5,
+              "variantString": "outbound|green",
+              "type": "bike-lane"
+            },
+            {
+              "width": 9,
+              "variantString": "outbound|right",
+              "type": "parking-lane"
+            }
+          ]
+        }'></a-entity> -->
+
+        <a-entity id="test" street='left: narrow; right: fence; JSON:
+        {
+          "streetmixSegmentsFeet": [
+            {
+              "width": 9,
+              "variantString": "",
+              "type": "sidewalk-tree"
+            },
+            {
+              "width": 9,
+              "variantString": "right|traditional",
+              "type": "sidewalk-lamp"
+            },
+            {
+            "width": 9,
+            "variantString": "inbound|sharrow",
+            "type": "drive-lane"
+            },
+            {
+              "width": 9,
+              "variantString": "inbound|green",
+              "type": "bike-lane"
+            },
+            {
+              "width": 11,
+              "variantString": "inbound",
+              "type": "light-rail"
+            },
+            {
+              "width": 11,
+              "variantString": "inbound|shared",
+              "type": "turn-lane"
+            },
+            {
+              "width": 2,
+              "variantString": "bollard",
+              "type": "divider"
+            },
+            {
+              "width": 11,
+              "variantString": "outbound|colored",
+              "type": "streetcar"
+            },
+            {
+              "width": 11,
+              "variantString": "outbound|colored",
+              "type": "bus-lane"
+            },
+            {
+              "width": 11,
+              "variantString": "right",
+              "type": "transit-shelter"
+            },
+            {
+              "width": 9,
+              "variantString": "outbound",
+              "type": "drive-lane"
+            },
+            {
+              "width": 9,
+              "variantString": "outbound|right",
+              "type": "turn-lane"
+            },
+            {
+              "width": 9,
+              "variantString": "",
+              "type": "sidewalk-wayfinding"
+            },
+            {
+              "width": 3,
+              "variantString": "both|pride",
+              "type": "sidewalk-lamp"
+            },
+            {
+              "width": 4,
+              "variantString": "",
+              "type": "sidewalk-bench"
+            },
+            {
+              "width": 9,
+              "variantString": "ignore|sidewalk-parallel",
+              "type": "sidewalk-bike-rack"
+            },
+            {
+              "width": 9,
+              "variantString": "",
+              "type": "bikeshare"
+            },
+            {
+              "width": 9,
+              "variantString": "palm-tree",
+              "type": "sidewalk-tree"
+            }
+          ]
+        }'></a-entity>
+
+      <!-- <a-entity id="test" street="streetmixURL: https://streetmix.net/api/v1/streets/7a633310-e598-11e6-80db-ebe3de713876; buildings: false;"></a-entity> -->
+      <!-- <a-entity id="test" street-loader="streetmixURL: "></a-entity> -->
+
     </a-scene>
     
     <!-- include the Glitch button to show what the webpage is about and
