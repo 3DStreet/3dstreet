@@ -3,7 +3,6 @@
   "version": "0.1.0",
   "description": "Web-based 3D visualization of streets using A-Frame and WebXR",
   "main": "dist/aframe-street-component.js",
-  "unpkg": "dist/aframe-street-component.min.js",
   "scripts": {
     "dev": "budo src/index.js:dist/aframe-street-component.js --port 7000 --live --open",
     "dist": "webpack",
@@ -32,6 +31,11 @@
     "url": "https://github.com/kfarr/3dstreet/issues"
   },
   "homepage": "https://github.com/kfarr/3dstreet#readme",
+  "babel": {
+    "presets": [
+      "@babel/preset-env"
+    ]
+  },
   "semistandard": {
     "ignore": [
       "/src/lib/",
