@@ -1,3 +1,7 @@
+# DEV NOTES
+
+These is a place to save random notes like code snippets, links to assets, and other references. This doc might not be useful to anyone else :)
+
 ### Audio Notes
 ```
 var entity = document.querySelector('.playme');
@@ -70,9 +74,6 @@ CA MUTCD 2014 Ch 3b Page 79-80, 88 https://dot.ca.gov/-/media/dot-media/programs
 CA MUTCD 2014 Ch 9c 9C-3 Page 11 - https://dot.ca.gov/-/media/dot-media/programs/traffic-operations/documents/ca-mutcd/camutcd2014-chap9c-rev3-a11y.pdf
 City of Lodi PWD https://www.lodi.gov/DocumentCenter/View/2519/710-Pavement-Marking-Details-PDF
 
-### Potential collaborators
-https://www.linkedin.com/in/arturoparacuellos/
-https://www.linkedin.com/in/simonbruno77/
 ### Some notes on dimensions
 
 Default segment widths:
