@@ -1,0 +1,19 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <script src="https://aframe.io/releases/1.1.0/aframe.min.js"></script>
+    <script src="../dist/aframe-street-component.js"></script>
+
+    <title>Street Component!</title>
+  </head>  
+  <body>
+    <a-scene gltf-model="dracoDecoderPath: https://www.gstatic.com/draco/v1/decoders/;">
+      <a-assets>
+        <streetmix-assets url="../"></streetmix-assets>
+      </a-assets>
+
+      <a-entity id="mystreet" street streetmix-loader="streetmixAPIURL: https://streetmix.net/api/v1/streets/7a633310-e598-11e6-80db-ebe3de713876"></a-entity>
+
+    </a-scene>
+  </body>
+</html>

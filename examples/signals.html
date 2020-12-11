@@ -1,14 +1,12 @@
 <html>
   <head>
-    <!-- <script src="https://unpkg.com/aframe-atlas-uvs-component@2.1.0/dist/aframe-atlas-uvs-component.min.js"></script>
-    <script src="https://unpkg.com/aframe-orbit-controls@1.2.0/dist/aframe-orbit-controls.min.js"></script> -->
+    <script src="https://aframe.io/releases/1.1.0/aframe.min.js"></script>
 
-    <script src="https://aframe.io/releases/1.0.4/aframe.min.js"></script>
+    <script src="https://unpkg.com/aframe-atlas-uvs-component@2.1.0/dist/aframe-atlas-uvs-component.min.js"></script>
+    <script src="https://unpkg.com/aframe-orbit-controls@1.2.0/dist/aframe-orbit-controls.min.js"></script>
+
     <script src="https://raw.githack.com/fernandojsg/aframe-teleport-controls/master/dist/aframe-teleport-controls.min.js"></script>
-
-    <script src="js/offline/aframe-atlas-uvs-component.min.js"></script>
-    <script src="js/offline/aframe-orbit-controls.min.js"></script>
-    <script src="js/offline/aframe-gridhelper-component.min.js"></script>
+    <script src="https://raw.githack.com/dbradleyfl/aframe-gridhelper/master/dist/aframe-gridhelper-component.min.js"></script> 
 
     <script>
     AFRAME.registerComponent('flash', {
@@ -27,23 +25,22 @@
   <body>
     <a-scene gridhelper="size:30;divisions:60;colorGrid:#222222;colorCenterLine:#555555;"
              renderer="colorManagement: true; highRefreshRate: true; foveationLevel: 3; physicallyCorrectLights: true; logarithmicDepthBuffer: false;"
-             gltf-model="dracoDecoderPath: js/;"
-             inspector="url: js/offline/aframe-inspector.min.js">
+             gltf-model="dracoDecoderPath: https://www.gstatic.com/draco/v1/decoders/;">
       <a-assets>
-        <a-asset-item id="signal-model" src="assets/signals/signal.glb"></a-asset-item>
-        <a-asset-item id="pole-model" src="assets/signals/pole.glb"></a-asset-item>
-        <a-asset-item id="bracket-model" src="assets/signals/bracket.glb"></a-asset-item>
+        <a-asset-item id="signal-model" src="../assets/signals/signal.glb"></a-asset-item>
+        <a-asset-item id="pole-model" src="../assets/signals/pole.glb"></a-asset-item>
+        <a-asset-item id="bracket-model" src="../assets/signals/bracket.glb"></a-asset-item>
 
-        <a-asset-item id="mast-model" src="assets/signals/mast.glb"></a-asset-item>
-        <a-asset-item id="bracket-mast-side-model" src="assets/signals/bracket-mast-side.glb"></a-asset-item>
-        <a-asset-item id="bracket-mast-top-model" src="assets/signals/bracket-mast-top.glb"></a-asset-item>
-        <a-asset-item id="bracket-ped-model" src="assets/signals/bracket-ped.glb"></a-asset-item>
-        <a-asset-item id="signal-ped-model" src="assets/signals/signal-ped.glb"></a-asset-item>
+        <a-asset-item id="mast-model" src="../assets/signals/mast.glb"></a-asset-item>
+        <a-asset-item id="bracket-mast-side-model" src="../assets/signals/bracket-mast-side.glb"></a-asset-item>
+        <a-asset-item id="bracket-mast-top-model" src="../assets/signals/bracket-mast-top.glb"></a-asset-item>
+        <a-asset-item id="bracket-ped-model" src="../assets/signals/bracket-ped.glb"></a-asset-item>
+        <a-asset-item id="signal-ped-model" src="../assets/signals/signal-ped.glb"></a-asset-item>
 
-        <img id="lensflare-red" src="assets/signals/lensflare-red.png" />
-        <img id="signal-ped-off" src="assets/signals/signal-ped-off.jpg" />
+        <img id="lensflare-red" src="../assets/signals/lensflare-red.png" />
+        <img id="signal-ped-off" src="../assets/signals/signal-ped-off.jpg" />
 
-        <a-mixin id="signal-led" scale="0.3 0.3 0.3" atlas-uvs="totalRows: 3; totalColumns: 3" material="src: assets/signals/led-signal-atlas.jpg" geometry="primitive: plane; buffer: false; skipCache: true"></a-mixin>
+        <a-mixin id="signal-led" scale="0.3 0.3 0.3" atlas-uvs="totalRows: 3; totalColumns: 3" material="src: ../assets/signals/led-signal-atlas.jpg" geometry="primitive: plane; buffer: false; skipCache: true"></a-mixin>
         <a-mixin id="off" atlas-uvs="column: 2; row: 1"></a-entity>
         <a-mixin id="green-on" atlas-uvs="column: 1; row: 2"></a-entity>
         <a-mixin id="yellow-on" atlas-uvs="column: 2; row: 2"></a-entity>
@@ -55,7 +52,7 @@
 
       <a-entity light="type: ambient; color: #FFF; intensity: 2"></a-entity>
       <a-entity light="type: directional; color: #FFF; intensity: 0.6" position="0.5 1 -1"></a-entity>
-      <a-sky src="assets/sky14_brown.jpg" position="0 -10 0"></a-sky>
+      <a-sky src="../assets/sky14_brown.jpg" position="0 -10 0"></a-sky>
 
       <a-entity id="cameraRig">
         <a-entity id="camera"

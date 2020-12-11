@@ -3,7 +3,7 @@
   <head>
     <script src="https://aframe.io/releases/1.1.0/aframe.min.js"></script>
 
-    <script src="./dist/aframe-street-component.js"></script>
+    <script src="../dist/aframe-street-component.js"></script>
 
     <title>Street Component!</title>
     
@@ -12,7 +12,7 @@
 
     <a-scene gltf-model="dracoDecoderPath: https://www.gstatic.com/draco/v1/decoders/;">
       <a-assets>
-        <streetmix-assets url="./"></streetmix-assets>
+        <streetmix-assets url="../"></streetmix-assets>
       </a-assets>
 
       <!-- <a-entity id="test" street='JSON:
@@ -169,47 +169,3 @@
     <script src="https://button.glitch.me/button.js" defer></script> -->
   </body>
 </html>
-
-<!-- for later -- include in body -->
-   <script id="segments" type="application/json">
-      {
-      "segments": [
-        {
-          "width": 9,
-          "variantString": "inbound|left",
-          "type": "parking-lane"
-        },
-        {
-          "width": 5,
-          "variantString": "inbound|green",
-          "type": "bike-lane"
-        },
-        {
-          "width": 10.5,
-          "variantString": "inbound|car",
-          "type": "drive-lane"
-        },
-        {
-          "randSeed": 816290815,
-          "width": 1,
-          "variantString": "striped-buffer",
-          "type": "divider"
-        },
-        {
-          "width": 10.5,
-          "variantString": "outbound|car",
-          "type": "drive-lane"
-        },
-        {
-          "width": 5,
-          "variantString": "outbound|green",
-          "type": "bike-lane"
-        },
-        {
-          "width": 9,
-          "variantString": "outbound|right",
-          "type": "parking-lane"
-        }
-      ]
-      }
-    </script>

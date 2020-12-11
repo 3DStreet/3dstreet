@@ -3,7 +3,6 @@ var streetmixParsers = require('./aframe-streetmix-parsers');
 var streetmixUtils = require('./tested/streetmix-utils');
 require('./assets.js');
 require('./components/create-from-json');
-require('./lib/aframe-alongpath-component');
 require('aframe-atlas-uvs-component');
 require('aframe-gltf-helpers');
 
