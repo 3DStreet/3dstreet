@@ -1,7 +1,7 @@
 {
-  "name": "streetmix3d",
-  "version": "0.0.8",
-  "description": "Streetmix3D creates 3D visualizations of your 2D [Streetmix.net](https://streetmix.net) streets using A-Frame and WebXR.",
+  "name": "3dstreet",
+  "version": "0.1.0",
+  "description": "Web-based 3D visualization of streets using A-Frame and WebXR",
   "main": "dist/aframe-street-component.js",
   "unpkg": "dist/aframe-street-component.min.js",
   "scripts": {
@@ -17,7 +17,7 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/kfarr/streetmix3d.git"
+    "url": "git+https://github.com/kfarr/3dstreet.git"
   },
   "keywords": [
     "aframe",
@@ -29,9 +29,9 @@
   "author": "kieran.farr@gmail.com",
   "license": "MIT",
   "bugs": {
-    "url": "https://github.com/kfarr/streetmix3d/issues"
+    "url": "https://github.com/kfarr/3dstreet/issues"
   },
-  "homepage": "https://github.com/kfarr/streetmix3d#readme",
+  "homepage": "https://github.com/kfarr/3dstreet#readme",
   "semistandard": {
     "ignore": [
       "/src/lib/",
