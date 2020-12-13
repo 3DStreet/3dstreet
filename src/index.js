@@ -11,7 +11,9 @@ AFRAME.registerComponent('street', {
     JSON: { type: 'string' },
     type: { default: 'streetmixSegmentsFeet' }, // alt: sharedRowMeters, streetmixJSONResponse
     left: { default: '' },
-    right: { default: '' }
+    right: { default: '' },
+    showGround: { default: true },
+    showStriping: { default: true }
   },
   update: function (oldData) { // fired once at start and at each subsequent change of a schema value
     var data = this.data;
@@ -23,12 +25,12 @@ AFRAME.registerComponent('street', {
     }
 
     const streetmixSegments = JSON.parse(data.JSON);
-    const streetEl = streetmixParsers.processSegments(streetmixSegments.streetmixSegmentsFeet);
+    const streetEl = streetmixParsers.processSegments(streetmixSegments.streetmixSegmentsFeet, data.showStriping);
     this.el.append(streetEl);
 
     if (data.left || data.right) {
-      const streetWidth = streetmixUtils.calcStreetWidth(streetmixSegments.streetmixSegmentsFeet);
-      const buildingsEl = streetmixParsers.processBuildings(data.left, data.right, streetWidth);
+      const streetWidth = streetmixUtils.calcStreetWidth(streetmixSegments.streetmixSegmentsFeet, data.autoStriping);
+      const buildingsEl = streetmixParsers.processBuildings(data.left, data.right, streetWidth, data.showGround);
       this.el.append(buildingsEl);
     }
   }

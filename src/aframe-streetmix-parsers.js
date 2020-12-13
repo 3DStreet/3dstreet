@@ -321,9 +321,11 @@ function createSegmentElement (scaleX, positionX, positionY, rotationY, mixinId)
 
 // OLD: takes a street's `segments` (array) from streetmix and a `streetElementId` (string) and places objects to make up a street with all segments
 // NEW: takes a `segments` (array) from streetmix and return an element and its children which represent the 3D street scene
-function processSegments (segments) {
+function processSegments (segments, showStriping) {
   // add additional 0-width segments for stripes (painted markers)
-  segments = insertSeparatorSegments(segments);
+  if (showStriping) {
+    segments = insertSeparatorSegments(segments);
+  }
 
   // create and center offset to center the street around global x position of 0
   var streetParentEl = createCenteredStreetElement(segments);
@@ -561,7 +563,7 @@ function processSegments (segments) {
 module.exports.processSegments = processSegments;
 
 // test - for streetObject of street 44 and buildingElementId render 2 building sides
-function processBuildings (left, right, streetWidth) {
+function processBuildings (left, right, streetWidth, showGround) {
   const buildingElement = document.createElement('a-entity');
   buildingElement.classList.add('buildings-parent');
   // https://github.com/streetmix/illustrations/tree/master/images/buildings
@@ -583,12 +585,14 @@ function processBuildings (left, right, streetWidth) {
 
     const positionX = ((buildingLotWidth / 2) + (streetWidth / 2)) * sideMultiplier;
 
-    var groundJSONString = JSON.stringify(streetmixParsersTested.createGroundArray(currentValue));
-    var groundParentEl = document.createElement('a-entity');
-    groundParentEl.setAttribute('create-from-json', 'jsonString', groundJSONString);
-    groundParentEl.setAttribute('position', positionX + ' 0 0');
-    groundParentEl.classList.add('ground-' + side);
-    buildingElement.appendChild(groundParentEl);
+    if (showGround) {
+      var groundJSONString = JSON.stringify(streetmixParsersTested.createGroundArray(currentValue));
+      var groundParentEl = document.createElement('a-entity');
+      groundParentEl.setAttribute('create-from-json', 'jsonString', groundJSONString);
+      groundParentEl.setAttribute('position', positionX + ' 0 0');
+      groundParentEl.classList.add('ground-' + side);
+      buildingElement.appendChild(groundParentEl);
+    }
 
     if (currentValue === 'narrow' || currentValue === 'wide') {
       // make buildings
