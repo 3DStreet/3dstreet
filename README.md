@@ -2,10 +2,10 @@
 # 3DStreet
 ### Basic demo: https://kfarr.github.io/3dstreet/
 
-[![Version](http://img.shields.io/npm/v/aframe-street-component.svg?style=flat-square)](https://npmjs.org/package/aframe-street-component)
-[![License](http://img.shields.io/npm/l/aframe-street-component.svg?style=flat-square)](https://npmjs.org/package/aframe-street-component)
+[![Version](http://img.shields.io/npm/v/3dstreet.svg?style=flat-square)](https://npmjs.org/package/3dstreet)
+[![License](http://img.shields.io/npm/l/3dstreet.svg?style=flat-square)](https://npmjs.org/package/3dstreet)
 
-3DStreet creates 3D visualizations of your 2D [Streetmix.net](https://streetmix.net) streets using A-Frame and WebXR.
+3DStreet creates 3D visualizations of your 2D [Streetmix.net](https://streetmix.net) streets using A-Frame and WebXR. Developers can use the same core [`street` A-Frame component](#a-frame-street-component-api) of 3DStreet for their own projects.
 
 <img src="https://raw.githubusercontent.com/kfarr/streetmix3d/master/assets/streetmix3d.jpg" />
 
@@ -16,9 +16,10 @@
 * See your Streetmix street in 3D! See instant changes to your work: Switch back to a Streetmix.net tab, make changes to your street, then reload the 3DStreet page to see the edits applied.
 
 ### A-Frame `street` Component API
-3DStreets is built upon a custom A-Frame `street` component which is also available for you to customize for your own custom A-Frame street scenes. The `street` component takes a string of JSON and renders one or more "segments" (also known as lanes or slices) of a street and optionally buildings and ground to the left and right.
+3DStreet is built upon a custom A-Frame `street` component which is also available for you to customize for your own custom A-Frame street scenes. The `street` component takes a string of JSON and renders one or more "segments" (also known as lanes or slices) of a street and optionally buildings and ground to the left and right.
 
 | Property | Description | Default Value |
+| --------- | --------- | --------- |
 | JSON | A string of JSON containing an array one or more segments (also known as slices) representing cross-section parts of a street. See [basic-json.html](/examples/basic-json.html) for an example of proper usage | '' |
 | type | A string representing the formatting of the JSON passed in the `JSON` property |  'streetmixSegmentsFeet' |
 | left | A string to determine which [building variant](#list-of-streetmix-building-variants) to create for the left side of the street (heading outbound) | '' |
@@ -30,14 +31,17 @@
 A default Streetmix.net cross-section view is oriented to show vehicles heading away from you as "outbound". The `street` component follows this convention and when placed in a new A-Frame scene the default camera is looking toward the outbound direction of the generated street. The default rendering is 1:1 scale.
 
 ### A-Frame `streetmix-loader` Component API
-The `streetmix-loader` component requests a Streetmix API response when given a unique street URL and then passes the segments array JSON as a string to the `street` component (which is a dependency -- you must have the street component on the same entity as this component). 
+The `streetmix-loader` component requests a Streetmix API response when given a unique street URL and then passes the segments array JSON as a string to the `street` component (which is a dependency -- you must have the `street` component on the same entity as that of the `streetmix-loader` component). 
 
 | Property | Description | Default Value |
+| --------- | --------- | --------- |
 | streetmixStreetURL | A string representing a "user facing" Streetmix street URL such as https://streetmix.net/kfarr/3/ | '' |
-| streetmixAPIURL | A string representing the API URL such as https://streetmix.net/api/v1/streets/7a633310-e598-11e6-80db-ebe3de713876 | '' |
+| streetmixAPIURL | A string representing the Streetmix API street URL such as https://streetmix.net/api/v1/streets/7a633310-e598-11e6-80db-ebe3de713876 | '' |
+
 Either 1 of the 2 properties are required. If both are provided the component will use streetmixAPIURL value and ignore streetmixStreetURL.
 
 | Property | Description | Default Value |
+| --------- | --------- | --------- |
 | JSON | A string of JSON containing an array one or more segments (also known as slices) representing cross-section parts of a street. See [basic-json.html](/examples/basic-json.html) for an example of proper usage | '' |
 | type | A string representing the formatting of the JSON passed in the `JSON` property |  'streetmixSegmentsFeet' |
 | left | A string to determine which [building variant](#list-of-streetmix-building-variants) to create for the left side of the street (heading outbound) | '' |
@@ -80,7 +84,7 @@ Either 1 of the 2 properties are required. If both are provided the component wi
 "Buildings" are lots and/or objects rendered on either side of the street to add to the setting.
 
 | [Streetmix Building Variants](https://github.com/streetmix/streetmix/blob/master/assets/scripts/segments/buildings.js)              | 3DStreet Support? | Notes |
-| ---------------------------- | --------- | ------ | ----- |
+| ---------------------------- | --------- | ------ |
 | grass            | Yes       |  https://www.textures.com/download/grass0052/12094 |
 | fence       | Yes       | Fence Model: Paid Royalty Free License [CGTrader.com T&Cs Paragraph 21](https://www.cgtrader.com/pages/terms-and-conditions) for [construction fence Low-poly 3D model](https://www.cgtrader.com/3d-models/exterior/street/construction-fence-f8cc10f2-cf56-4f1d-a87a-c60c41d50b02) |
 | parking-lot           | Yes | https://www.textures.com/download/roads0111/53096  |
