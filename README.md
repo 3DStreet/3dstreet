@@ -1,6 +1,6 @@
 
 # 3DStreet
-### Basic demo: https://3dstreet.co/
+### Basic demo: http://3dstreet.co/
 
 [![Version](http://img.shields.io/npm/v/3dstreet.svg?style=flat-square)](https://npmjs.org/package/3dstreet)
 [![License](http://img.shields.io/npm/l/3dstreet.svg?style=flat-square)](https://npmjs.org/package/3dstreet)
