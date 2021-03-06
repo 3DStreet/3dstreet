@@ -15,8 +15,28 @@
 * Load https://kfarr.github.io/3dstreet/, paste in your street URL, and press enter or the refresh button.
 * See your Streetmix street in 3D! See instant changes to your work: Switch back to a Streetmix.net tab, make changes to your street, then reload the 3DStreet page to see the edits applied.
 
-### A-Frame `street` Component API
+## A-Frame component
 3DStreet is built upon a custom A-Frame `street` component which is also available for you to customize for your own custom A-Frame street scenes. The `street` component takes a string of JSON and renders one or more "segments" (also known as lanes or slices) of a street and optionally buildings and ground to the left and right.
+### Usage Example
+
+[![Remix](https://cloud.githubusercontent.com/assets/674727/24572421/688f7fc0-162d-11e7-8a35-b02bc050c043.jpg)](https://glitch.com/~3dstreet-simple) 
+
+```html
+<html>
+  <head>
+    <title>Street Component!</title>
+    <script src="https://aframe.io/releases/1.1.0/aframe.min.js"></script>
+    <script src="https://unpkg.com/3dstreet@0.1.1/dist/aframe-street-component.js"></script>
+  </head>  
+  <body>
+    <a-scene gltf-model="dracoDecoderPath: https://www.gstatic.com/draco/v1/decoders/;">
+      <a-entity id="mySimpleStreet" street streetmix-loader="streetmixStreetURL: https://streetmix.net/kfarr/3/" ></a-entity>
+    </a-scene>
+  </body>
+</html>
+```
+
+### A-Frame `street` Component API
 
 | Property | Description | Default Value |
 | --------- | --------- | --------- |
@@ -31,6 +51,7 @@
 A default Streetmix.net cross-section view is oriented to show vehicles heading away from you as "outbound". The `street` component follows this convention and when placed in a new A-Frame scene the default camera is looking toward the outbound direction of the generated street. The default rendering is 1:1 scale.
 
 ### A-Frame `streetmix-loader` Component API
+
 The `streetmix-loader` component requests a Streetmix API response when given a unique street URL and then passes the segments array JSON as a string to the `street` component (which is a dependency -- you must have the `street` component on the same entity as that of the `streetmix-loader` component). 
 
 | Property | Description | Default Value |
