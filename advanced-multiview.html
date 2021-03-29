@@ -1,22 +1,56 @@
 <!DOCTYPE html>
 <html>
   <head>
-    <script src="https://aframe.io/releases/1.1.0/aframe.min.js"></script>
+    <script src="https://aframe.io/releases/1.2.0/aframe.min.js"></script>
     <script src="./dist/aframe-street-component.js"></script>
     <script src="https://unpkg.com/aframe-presentation-component/dist/aframe-presentation-component.min.js"></script>
-
-    <!-- user controls -->
-    <!-- <script src="https://raw.githack.com/fernandojsg/aframe-teleport-controls/master/dist/aframe-teleport-controls.min.js"></script>
-    <script src="src/lib/aframe-orbit-controls.min.js"></script> -->
     <script src="https://raw.githack.com/dbradleyfl/aframe-gridhelper/master/dist/aframe-gridhelper-component.min.js"></script> 
 
     <!-- ocean, ground, sky -->
     <script src="src/components/ocean-plane.js"></script>
     <script src="src/lib/aframe-cubemap-component.js"></script>
+    <script>
+      AFRAME.registerComponent('forward', {
+        schema: {
+          speed: {default: 0.1},
+        },
 
+        init: function() {
+          var worldDirection = new THREE.Vector3();
+
+          this.el.object3D.getWorldDirection(worldDirection);
+    //          worldDirection.multiplyScalar(-1);
+
+            this.worldDirection = worldDirection;
+            console.log(this.worldDirection);
+          },
+
+          tick: function() {
+            var el = this.el;
+
+            var currentPosition = el.getAttribute('position');
+            var newPosition = this.worldDirection
+                              .clone()
+                              .multiplyScalar(this.data.speed)
+                              .add(currentPosition);
+            el.setAttribute('position', newPosition);
+          }
+        });
+      </script>
+      <script>
+        AFRAME.registerComponent('timed-inspector', {
+          init: function() {
+            this.data // seconds
+            setTimeout( function () {
+              window.postMessage('INJECT_AFRAME_INSPECTOR')
+            }, this.data * 1000)
+          }
+        });
+      </script>
     <!-- 2d ui toolbar -->
-    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.4.1/css/bootstrap.min.css" integrity="sha384-Vkoo8x4CGsO3+Hhxv8T/Q5PaXtkKtu6ug5TOeNV6gBiFeWPGFN9MuhOf23Q9Ifjh" crossorigin="anonymous">
+    <!-- <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.4.1/css/bootstrap.min.css" integrity="sha384-Vkoo8x4CGsO3+Hhxv8T/Q5PaXtkKtu6ug5TOeNV6gBiFeWPGFN9MuhOf23Q9Ifjh" crossorigin="anonymous"> 
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.13.0/css/all.min.css">
+    -->
 
     <!-- move a-frame performance `stats` below toolbar -->
     <style>
@@ -36,37 +70,13 @@
 
   </head>
   <body>
-    <!-- Original source https://www.codeply.com/go/sbfCXYgqoO -->
-    <nav class="navbar fixed-top navbar-expand navbar-dark bg-dark" >
-        <div class="d-flex flex-grow-1">
-            <a href="https://github.com/kfarr/3dstreet/" class="navbar-brand" title="View Github README">3DStreet</a>
-            <form class="mr-2 my-auto w-100 d-inline-block order-1" onsubmit="location.href='#'+this.inputUrl.value; setTimeout(window.location.reload.bind(window.location));" >
-                <div class="input-group">
-                    <!-- <input type="text" class="form-control border border-right-0" placeholder="Paste Streetmix URL" /> -->
-                    <input id="inputUrl" value="" type="text" class="form-control d-none d-lg-block" onfocus="this.select();" title="Paste in Streetmix.net URL such as 'https://streetmix.net/kfarr/3'" />
-                    <span class="input-group-append">
-                        <button class="btn btn-outline-light border" type="submit" title="Clear Scene and Re-Render">
-                            <i class="fa fa-sync"></i>
-                        </button>
-                        <!-- <button class="btn btn-outline-light border" type="button" onclick="window.open(document.getElementById('input-url').value, '_blank');" title="Edit Street in Streetmix2D">
-                            <i class="fa fa-edit"></i>
-                        </button> -->
-                        <!-- <button class="btn btn-outline-light border" type="button" onclick="window.open(streetmixUserToAPI(document.getElementById('input-url').value), '_blank')" title="View Raw Streetmix JSON">
-                            <i class="fa fa-code"></i>
-                        </button> -->
-                        <!-- <button class="btn btn-outline-light border" type="button" onclick="startAudio()" title="Play Audio">
-                            <i id="audio-icon" class="fa fa-volume-mute" style="color: pink"></i>
-                        </button> -->
-                    </span>
-                </div>
-            </form>
-        </div>
-    </nav>
     <a-scene 
     renderer="colorManagement: true; highRefreshRate: true; foveationLevel: 3; physicallyCorrectLights: true; logarithmicDepthBuffer: false;"
     fogoff="type: linear; color: #D5C69B; far: 200"
     gltf-model="dracoDecoderPath: https://www.gstatic.com/draco/v1/decoders/;"
-    gridhelper="size:1000;divisions:50;colorGrid:#c900c9;colorCenterLine:#c900c9;">
+    gridhelper="size:1000;divisions:50;colorGrid:#c900c9;colorCenterLine:#c900c9;"
+    background="color: black"
+    timed-inspector="5">
       <a-assets>
         <streetmix-assets url="./"></streetmix-assets>
 
@@ -84,10 +94,13 @@
         <a-slide>
           <a-slide-camera position="0 500 0" rotation="-90 0 0"></a-slide-camera>
           <!-- <a-slide-animation selector="#camera" animations="zoomin"></a-slide-animation> -->
+          <a-slide-visibility selector="#labelParent1" visibility="true"></a-slide-visibility>
         </a-slide>
         <a-slide>
           <a-slide-animation selector="#camera" animations="zoomout"></a-slide-animation>
           <a-slide-camera position="0 30 0" rotation="-90 0 0" duration="100"></a-slide-camera>
+          <a-slide-visibility selector="#labelParent2" visibility="true"></a-slide-visibility>
+
         </a-slide>
         <a-slide>
           <a-slide-camera position="0 10 25" rotation="-30 0 0" ></a-slide-camera>
@@ -100,7 +113,7 @@
       </a-presentation>
       <a-entity id="cameraRig">
         <a-entity id="camera" camera="far: 1000; zoom: 20" wasd-controls="enabled: false" 
-        animation__zoomin="property: camera.zoom; from: 1; to: 22; dur: 5000; easing: easeInOutQuad; "
+        animation__zoomin="property: camera.zoom; from: 1; to: 22; dur: 7000; easing: easeInOutQuad; "
         animation__zoominfast="property: camera.zoom; from: 1; to: 40; dur: 100; easing: linear; autoplay: false;"
         animation__zoomout="property: camera.zoom; from: 22; to: 1; dur: 100; easing: linear; autoplay: false;"
         ></a-entity>
@@ -111,16 +124,18 @@
       <!-- <a-entity class="playme" sound="src: #ambientmp3; positional: false; loop: true;"></a-entity> -->
 
       <a-entity light="type: ambient; color: #FFF; intensity: 2"></a-entity>
-      <a-entity light="type: directional; color: #FFF; intensity: 0.6" position="0.5 1 -1"></a-entity>
+      <a-entity light="type: directional; color: #FFF; intensity: 0.6; castShadow:true;" position="0.5 1 -1"></a-entity>
 
-      <a-ocean-plane height="100" width="100" position="0 -10 0" material="envMap: #skycube;"></a-ocean-plane>
+      <a-ocean-plane visible="false" height="100" width="100" position="0 -10 0" material="envMap: #skycube;"></a-ocean-plane>
 
-      <a-entity id="skybox" cubemap="folder: assets/images/skybox/"></a-entity>
+      <a-entity id="skybox" cubemap="folder: assets/images/skybox/"
+      animation="property: visible; from: false; to: true; dur: 3000;"
+      ></a-entity>
 
       <a-entity id="street-parent" street streetmix-loader set-loader-from-hash="defaultURL: https://streetmix.net/kfarr/3"></a-entity>
 
       <!-- Label text -->
-      <a-entity id="labelParent1" scale="3 3 3" position="-14 40 15" rotation="-90 0 0">
+      <a-entity id="labelParent1" scale="3 3 3" position="-14 40 15" rotation="-90 0 0" visible="false">
         <a-entity position="0 1 0" geometry="primitive: plane; width: 10; height: auto" material="src: #subtitle; alphaTest: 0.; transparent: true;"
                   text="color: white; align: left; value: Plan View (Isometric); width: 10; ">
           <a-entity position="-5.1 0 0.001" geometry="primitive: plane; width: 0.1; height: 0.46" material="color: #c900c9;"></a-entity>
@@ -132,7 +147,7 @@
       </a-entity>
 
       <!-- Label text -->
-      <a-entity id="labelParent2" scale="1 1 1" position="-5 23 5" rotation="-90 0 0">
+      <a-entity id="labelParent2" scale="1 1 1" position="-5 23 5" rotation="-90 0 0" visible="false">
         <a-entity position="0 1 0" geometry="primitive: plane; width: 10; height: auto" material="src: #subtitle; alphaTest: 0.; transparent: true;"
                   text="color: white; align: left; value: Plan View (Perspective); width: 10; ">
           <a-entity position="-5.1 0 0.001" geometry="primitive: plane; width: 0.1; height: 0.46" material="color: #c900c9;"></a-entity>
@@ -193,4 +208,5 @@
       startAudio();
     });
   </script>
+  <!-- <script src="https://cdn.jsdelivr.net/gh/aframevr/aframe-inspector@master/dist/aframe-inspector.js"></script> -->
 </html>
