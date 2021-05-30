@@ -71,7 +71,7 @@ Either 1 of the 2 properties are required. If both are provided the component wi
 | showGround | A boolean to determine if the ground associated with the specified building variant(s) in `left` and `right` should be created or not. | true |
 | showStriping | A boolean to determine if the lane stripings should be created or not. | true |
 
-### List of Streetmix Segment Types
+### List of Supported Segment Types
 
 3DStreet does not yet support all of the street `segments` found in Streetmix. You may find some segments don't display at all or are missing 3D elements. Here is a complete list:
 
@@ -101,7 +101,7 @@ Either 1 of the 2 properties are required. If both are provided the component wi
 | flex-zone | No |||
 | flex-zone-curb | No |||
 
-### List of Streetmix Building Variants
+### List of Building Variants
 
 "Buildings" are lots and/or objects rendered on either side of the street to add to the setting.
 
@@ -115,22 +115,17 @@ Either 1 of the 2 properties are required. If both are provided the component wi
 | narrow          | Yes - partial | | Buildings: License [Sketchfab "Standard"](https://sketchfab.com/licenses) from [Polygon City Pack](https://sketchfab.com/3d-models/polygon-city-pack-preview-5a16f543d1054fbc9ce1cb17a2ba412e). Does not support varying floors as specified by Streetmix JSON. |
 | wide          | Yes - partial | | Same as narrow. In the future this could include back alleyway, backyards, etc. ; https://www.textures.com/download/asphaltdamaged0057/46489|
 
-### Helpful Streetmix debugging information
-Here are some tips and links from my experience "reverse engineering" Streetmix to get info out of their API.
+### License
+The 3DStreet codebase is offered under the GNU Affero General Public License v3, as specified in [the LICENSE file](LICENSE).
 
-I heavily referenced this Streetmix page which outlines all the possible segments:
-https://github.com/streetmix/streetmix/blob/master/assets/scripts/segments/info.json
+Assets such as 3D models, textures, and audio are offered under the [Creative Commons By Attribution Non-Commercial License](https://creativecommons.org/licenses/by-nc/4.0/), unless a more specific license is specified for each asset in the documentation on this page.
 
-I learned a few things:
-* Each street has a unique UUID (such as `7a633310-e598-11e6-80db-ebe3de713876`) with its own corresponding API endpoint (such as https://streetmix.net/api/v1/streets/7a633310-e598-11e6-80db-ebe3de713876)
-* This UUID is not shown in the UI. It can be found by going to this URL and supplying the nameSpacedId and creatorId, such as: https://streetmix.net/api/v1/streets?namespacedId=3&creatorId=kfarr . This will redirect to the UUID API endpoint
-* I wrote a quick JS helper function that takes a user facing URL on Streetmix (such as https://streetmix.net/kfarr/3/a-frame-city-builder-street-only) and transforms it into the API Redirect to find the UUID endpoint. You can find the [helper function docs here](https://github.com/kfarr/3dstreet/tree/master/src#streetmix-utilsjs).
+Contact [k@3d.st](mailto:k@3d.st) for commercial licensing.
 
 ### Developer Docs
 See [this link for more information](src/README.md) about the custom components developed and modified for the project.
 
 ### Model Credits
-* Unless credited all models, materials and textures created by Kieran Farr, MIT License same as project repo
 * [Creative Commons Google Poly](https://support.google.com/poly/answer/7418679?hl=en)
 * Some city / car models https://sketchfab.com/3d-models/polygon-city-pack-preview-5a16f543d1054fbc9ce1cb17a2ba412e
 * Some road textures https://www.textures.com/download/roads0086/44877 https://www.textures.com/download/roads0122/55065
@@ -152,6 +147,3 @@ See [this link for more information](src/README.md) about the custom components 
 * Historic streetcar pass https://www.soundsnap.com/streetcar_passing_by_smoothly
 
 <img src="https://raw.githubusercontent.com/kfarr/3dstreet/master/assets/streetmix3d-banner.jpg" />
-
-### More Notes
-See [DEV-NOTES](/DEV-NOTES.md) for additional notes on future features and work in progress.
