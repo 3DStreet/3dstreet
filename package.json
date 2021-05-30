@@ -26,7 +26,7 @@
     "webxr"
   ],
   "author": "kieran.farr@gmail.com",
-  "license": "MIT",
+  "license": "AGPL-3.0",
   "bugs": {
     "url": "https://github.com/kfarr/3dstreet/issues"
   },
