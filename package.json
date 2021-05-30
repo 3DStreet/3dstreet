@@ -1,6 +1,6 @@
 {
   "name": "3dstreet",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "description": "Web-based 3D visualization of streets using A-Frame and WebXR",
   "main": "dist/aframe-street-component.js",
   "scripts": {
@@ -26,7 +26,7 @@
     "webxr"
   ],
   "author": "kieran.farr@gmail.com",
-  "license": "AGPL-3.0",
+  "license": "AGPLv3",
   "bugs": {
     "url": "https://github.com/kfarr/3dstreet/issues"
   },
