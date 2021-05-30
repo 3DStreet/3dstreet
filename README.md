@@ -4,6 +4,7 @@
 
 [![Version](http://img.shields.io/npm/v/3dstreet.svg?style=flat-square)](https://npmjs.org/package/3dstreet)
 [![License](http://img.shields.io/npm/l/3dstreet.svg?style=flat-square)](https://npmjs.org/package/3dstreet)
+![Build Status](https://github.com/kfarr/3dstreet/actions/workflows/ci-script.yaml/badge.svg)
 
 3DStreet creates 3D visualizations of your 2D [Streetmix.net](https://streetmix.net) streets using A-Frame and WebXR. Developers can use the same core [`street` A-Frame component](#a-frame-street-component-api) of 3DStreet for their own projects.
 
