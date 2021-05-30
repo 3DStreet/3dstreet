@@ -51,3 +51,17 @@ This is a component [originally written](https://samsunginter.net/a-frame-compon
 
 ## Unmodified Components
 See [src/lib/](lib), included here to reduce fetching libraries remotely helpful for local development in bandwidth constricted environments.
+
+## Helpful Streetmix debugging information
+Here are some tips and links from my experience "reverse engineering" Streetmix to get info out of their API.
+
+I heavily referenced this Streetmix page which outlines all the possible segments:
+https://github.com/streetmix/streetmix/blob/master/assets/scripts/segments/info.json
+
+I learned a few things:
+* Each street has a unique UUID (such as `7a633310-e598-11e6-80db-ebe3de713876`) with its own corresponding API endpoint (such as https://streetmix.net/api/v1/streets/7a633310-e598-11e6-80db-ebe3de713876)
+* This UUID is not shown in the UI. It can be found by going to this URL and supplying the nameSpacedId and creatorId, such as: https://streetmix.net/api/v1/streets?namespacedId=3&creatorId=kfarr . This will redirect to the UUID API endpoint
+* I wrote a quick JS helper function that takes a user facing URL on Streetmix (such as https://streetmix.net/kfarr/3/a-frame-city-builder-street-only) and transforms it into the API Redirect to find the UUID endpoint. You can find the [helper function docs here](https://github.com/kfarr/3dstreet/tree/master/src#streetmix-utilsjs).
+
+### More Notes
+See [DEV-NOTES](DEV-NOTES.md) for additional notes on future features and work in progress.
