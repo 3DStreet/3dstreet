@@ -1,6 +1,8 @@
 
 # 3DStreet
-### Basic demo: http://3dstreet.co/
+### Project site: https://3d.st/
+### Basic demo: https://github.3d.st/
+### Custom UI demo: https://app.3d.st/
 
 [![Version](http://img.shields.io/npm/v/3dstreet.svg)](https://npmjs.org/package/3dstreet)
 [![License](http://img.shields.io/npm/l/3dstreet.svg)](https://npmjs.org/package/3dstreet)
