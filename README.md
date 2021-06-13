@@ -64,15 +64,6 @@ The `streetmix-loader` component requests a Streetmix API response when given a 
 
 Either 1 of the 2 properties are required. If both are provided the component will use streetmixAPIURL value and ignore streetmixStreetURL.
 
-| Property | Description | Default Value |
-| --------- | --------- | --------- |
-| JSON | A string of JSON containing an array one or more segments (also known as slices) representing cross-section parts of a street. See [basic-json.html](/examples/basic-json.html) for an example of proper usage | '' |
-| type | A string representing the formatting of the JSON passed in the `JSON` property |  'streetmixSegmentsFeet' |
-| left | A string to determine which [building variant](#list-of-streetmix-building-variants) to create for the left side of the street (heading outbound) | '' |
-| right | A string to determine which building variant to create for the right side of the street (heading outbound). | '' |
-| showGround | A boolean to determine if the ground associated with the specified building variant(s) in `left` and `right` should be created or not. | true |
-| showStriping | A boolean to determine if the lane stripings should be created or not. | true |
-
 ### List of Supported Segment Types
 
 3DStreet does not yet support all of the street `segments` found in Streetmix. You may find some segments don't display at all or are missing 3D elements. Here is a complete list:
