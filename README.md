@@ -15,7 +15,7 @@
 ### Quick Start - How to make your own 3D street:
 * First, use <a href="https://streetmix.net">Streetmix.net</a> to create a street design. (Streetmix is a tool that lets you design, remix, and share your neighborhood street. <a href="https://github.com/streetmix/streetmix/blob/master/README.md#about">More information about Streetmix here</a>.)
 * Then, save a Streetmix street after making an account to generate a unique URL for your street looking something like this: `https://streetmix.net/kfarr/3/my-awesome-street-name`
-* Load https://kfarr.github.io/3dstreet/, paste in your street URL, and press enter or the refresh button.
+* Load https://github.3d.st/, paste in your street URL, and press enter or the refresh button.
 * See your Streetmix street in 3D! See instant changes to your work: Switch back to a Streetmix.net tab, make changes to your street, then reload the 3DStreet page to see the edits applied.
 
 ## A-Frame component
