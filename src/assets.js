@@ -2,7 +2,7 @@
 
 (function () {
   function buildAssetHTML (assetUrl) {
-    if (!assetUrl) assetUrl = 'https://unpkg.com/streetmix3d@0.0.4/';
+    if (!assetUrl) assetUrl = 'https://github.3d.st/';
     console.log('[street]', 'Using street assets from', assetUrl);
     return `
           <!-- audio -->
