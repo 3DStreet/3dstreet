@@ -309,9 +309,11 @@ function createCenteredStreetElement (segments) {
   return streetEl;
 }
 
-function createSegmentElement (scaleX, positionX, positionY, rotationY, mixinId) {
+function createSegmentElement (scaleX, positionX, positionY, rotationY, mixinId, length) {
   var segmentEl = document.createElement('a-entity');
-  segmentEl.setAttribute('scale', scaleX + ' 1 1');
+  segmentEl.setAttribute('scale', scaleX + ' 1 0.1');
+  console.log(length);
+  // segmentEl.setAttribute('geometry', 'height', length);
   segmentEl.setAttribute('position', positionX + ' ' + positionY + ' 0');
   // USE THESE 2 LINES FOR TEXTURE MODE:
   segmentEl.setAttribute('rotation', '270 ' + rotationY + ' 0');
@@ -321,7 +323,7 @@ function createSegmentElement (scaleX, positionX, positionY, rotationY, mixinId)
 
 // OLD: takes a street's `segments` (array) from streetmix and a `streetElementId` (string) and places objects to make up a street with all segments
 // NEW: takes a `segments` (array) from streetmix and return an element and its children which represent the 3D street scene
-function processSegments (segments, showStriping) {
+function processSegments (segments, showStriping, length) {
   // add additional 0-width segments for stripes (painted markers)
   if (showStriping) {
     segments = insertSeparatorSegments(segments);
@@ -553,7 +555,7 @@ function processSegments (segments, showStriping) {
     }
 
     // add new object
-    segmentParentEl.append(createSegmentElement(scaleX, positionX, positionY, rotationY, mixinId));
+    segmentParentEl.append(createSegmentElement(scaleX, positionX, positionY, rotationY, mixinId, length));
     // returns JSON output instead
     // append the new surfaceElement to the segmentParentEl
     streetParentEl.append(segmentParentEl);
