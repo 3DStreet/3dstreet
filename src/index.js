@@ -31,7 +31,7 @@ AFRAME.registerComponent('street', {
 
     if (data.left || data.right) {
       const streetWidth = streetmixUtils.calcStreetWidth(streetmixSegments.streetmixSegmentsFeet, data.autoStriping);
-      const buildingsEl = streetmixParsers.processBuildings(data.left, data.right, streetWidth, data.showGround);
+      const buildingsEl = streetmixParsers.processBuildings(data.left, data.right, streetWidth, data.showGround, data.length);
       this.el.append(buildingsEl);
     }
   }
