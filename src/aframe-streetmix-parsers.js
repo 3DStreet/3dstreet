@@ -327,7 +327,11 @@ function createSegmentElement (scaleX, positionX, positionY, rotationY, mixinId,
 // OLD: takes a street's `segments` (array) from streetmix and a `streetElementId` (string) and places objects to make up a street with all segments
 // NEW: takes a `segments` (array) from streetmix and return an element and its children which represent the 3D street scene
 function processSegments (segments, showStriping, length) {
-  const clonedObjectRadius = (length - 10) / 2;
+  var clonedObjectRadius = length / 2;
+  //  Adjust clonedObjectRadius so that objects do not repeat
+  if (length > 12) {
+    clonedObjectRadius = (length - 12) / 2;
+  }
   // add additional 0-width segments for stripes (painted markers)
   if (showStriping) {
     segments = insertSeparatorSegments(segments);
@@ -572,11 +576,13 @@ module.exports.processSegments = processSegments;
 // test - for streetObject of street 44 and buildingElementId render 2 building sides
 function processBuildings (left, right, streetWidth, showGround, length) {
   const buildingElement = document.createElement('a-entity');
-  const clonedObjectRadius = (length - 10) / 2;
+  // const clonedObjectRadius = (length - 12) / 2;
+  const clonedObjectRadius = 70;
   buildingElement.classList.add('buildings-parent');
   // https://github.com/streetmix/illustrations/tree/master/images/buildings
   // const buildingVariants = ['waterfront', 'grass', 'fence', 'parking-lot', 'residential', 'narrow', 'wide'];
-  const buildingLotWidth = length;
+  // const buildingLotWidth = length;
+  const buildingLotWidth = 150;
   const buildingsArray = [left, right];
   // console.log(buildingsArray);
 
