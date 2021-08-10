@@ -41,7 +41,8 @@ AFRAME.registerComponent('streetmix-loader', {
   dependencies: ['street'],
   schema: {
     streetmixStreetURL: { type: 'string' },
-    streetmixAPIURL: { type: 'string' }
+    streetmixAPIURL: { type: 'string' },
+    showBuildings: { default: true }
   },
   update: function (oldData) {
     // fired once at start and at each subsequent change of a schema value
@@ -69,8 +70,10 @@ AFRAME.registerComponent('streetmix-loader', {
         // Connection success
         const streetmixResponseObject = JSON.parse(this.response);
         const streetmixSegments = streetmixResponseObject.data.street.segments;
-        el.setAttribute('street', 'right', streetmixResponseObject.data.street.rightBuildingVariant);
-        el.setAttribute('street', 'left', streetmixResponseObject.data.street.leftBuildingVariant);
+        if (data.showBuildings) {
+          el.setAttribute('street', 'right', streetmixResponseObject.data.street.rightBuildingVariant);
+          el.setAttribute('street', 'left', streetmixResponseObject.data.street.leftBuildingVariant);
+        }
         el.setAttribute('street', 'type', 'streetmixSegmentsFeet');
         // set JSON attribute last or it messes things up
         el.setAttribute('street', 'JSON', JSON.stringify({ streetmixSegmentsFeet: streetmixSegments }));
