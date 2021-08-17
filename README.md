@@ -49,6 +49,7 @@
 | right | A string to determine which building variant to create for the right side of the street (heading outbound). | '' |
 | showGround | A boolean to determine if the ground associated with the specified building variant(s) in `left` and `right` should be created or not. | true |
 | showStriping | A boolean to determine if the lane stripings should be created or not. | true |
+| length | A number that sets the street's length in meters | 150 |
 
 #### Orientation and Scale
 A default Streetmix.net cross-section view is oriented to show vehicles heading away from you as "outbound". The `street` component follows this convention and when placed in a new A-Frame scene the default camera is looking toward the outbound direction of the generated street. The default rendering is 1:1 scale.
@@ -61,6 +62,7 @@ The `streetmix-loader` component requests a Streetmix API response when given a 
 | --------- | --------- | --------- |
 | streetmixStreetURL | A string representing a "user facing" Streetmix street URL such as https://streetmix.net/kfarr/3/ | '' |
 | streetmixAPIURL | A string representing the Streetmix API street URL such as https://streetmix.net/api/v1/streets/7a633310-e598-11e6-80db-ebe3de713876 | '' |
+| showBuildings | A Boolean that determines whether or not buildings are rendered | true |
 
 Either 1 of the 2 properties are required. If both are provided the component will use streetmixAPIURL value and ignore streetmixStreetURL.
 

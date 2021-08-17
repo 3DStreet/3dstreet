@@ -309,9 +309,14 @@ function createCenteredStreetElement (segments) {
   return streetEl;
 }
 
-function createSegmentElement (scaleX, positionX, positionY, rotationY, mixinId) {
+function createSegmentElement (scaleX, positionX, positionY, rotationY, mixinId, length) {
   var segmentEl = document.createElement('a-entity');
-  segmentEl.setAttribute('scale', scaleX + ' 1 1');
+  const scaleY = length / 150;
+  const scaleNew = scaleX + ' ' + scaleY + ' 1';
+  segmentEl.setAttribute('scale', scaleNew);
+  console.log(scaleNew);
+
+  // segmentEl.setAttribute('geometry', 'height', length);
   segmentEl.setAttribute('position', positionX + ' ' + positionY + ' 0');
   // USE THESE 2 LINES FOR TEXTURE MODE:
   segmentEl.setAttribute('rotation', '270 ' + rotationY + ' 0');
@@ -321,7 +326,12 @@ function createSegmentElement (scaleX, positionX, positionY, rotationY, mixinId)
 
 // OLD: takes a street's `segments` (array) from streetmix and a `streetElementId` (string) and places objects to make up a street with all segments
 // NEW: takes a `segments` (array) from streetmix and return an element and its children which represent the 3D street scene
-function processSegments (segments, showStriping) {
+function processSegments (segments, showStriping, length) {
+  var clonedObjectRadius = length / 2;
+  //  Adjust clonedObjectRadius so that objects do not repeat
+  if (length > 12) {
+    clonedObjectRadius = (length - 12) / 2;
+  }
   // add additional 0-width segments for stripes (painted markers)
   if (showStriping) {
     segments = insertSeparatorSegments(segments);
@@ -368,7 +378,7 @@ function processSegments (segments, showStriping) {
       // make a parent entity for the stencils
       const stencilsParentEl = createStencilsParentElement(positionX + ' 0.015 0');
       // clone a bunch of stencil entities (note: this is not draw call efficient)
-      cloneMixinAsChildren({ objectMixinId: 'stencils sharrow', parentEl: stencilsParentEl, rotation: '-90 ' + rotationY + ' 0', step: 10, radius: 70 });
+      cloneMixinAsChildren({ objectMixinId: 'stencils sharrow', parentEl: stencilsParentEl, rotation: '-90 ' + rotationY + ' 0', step: 10, radius: clonedObjectRadius });
       // add this stencil stuff to the segment parent
       segmentParentEl.append(stencilsParentEl);
     } else if (segments[i].type === 'bike-lane' || segments[i].type === 'scooter') {
@@ -377,7 +387,7 @@ function processSegments (segments, showStriping) {
       // get the mixin id for a bike lane
       mixinId = getBikeLaneMixin(variantList[1]);
       // clone a bunch of stencil entities (note: this is not draw call efficient)
-      cloneMixinAsChildren({ objectMixinId: 'stencils bike-lane', parentEl: stencilsParentEl, rotation: '-90 ' + rotationY + ' 0', step: 20, radius: 70 });
+      cloneMixinAsChildren({ objectMixinId: 'stencils bike-lane', parentEl: stencilsParentEl, rotation: '-90 ' + rotationY + ' 0', step: 20, radius: clonedObjectRadius });
       // add this stencil stuff to the segment parent
       segmentParentEl.append(stencilsParentEl);
     } else if (segments[i].type === 'light-rail' || segments[i].type === 'streetcar') {
@@ -389,7 +399,7 @@ function processSegments (segments, showStriping) {
       segmentParentEl.append(createChooChooElement(variantList, objectMixinId, positionX));
       // make the parent for all the objects to be cloned
       const tracksParentEl = createTracksParentElement(positionX);
-      cloneMixinAsChildren({ objectMixinId: 'track', parentEl: tracksParentEl, step: 20.25, radius: 80 });
+      cloneMixinAsChildren({ objectMixinId: 'track', parentEl: tracksParentEl, step: 20.25, radius: clonedObjectRadius });
       // add these trains to the segment parent
       segmentParentEl.append(tracksParentEl);
     } else if (segments[i].type === 'turn-lane') {
@@ -412,13 +422,13 @@ function processSegments (segments, showStriping) {
 
       // make the parent for all the objects to be cloned
       const stencilsParentEl = createStencilsParentElement(positionX + ' 0.015 0');
-      cloneMixinAsChildren({ objectMixinId: mixinString, parentEl: stencilsParentEl, rotation: '-90 ' + rotationY + ' 0', step: 15, radius: 70 });
+      cloneMixinAsChildren({ objectMixinId: mixinString, parentEl: stencilsParentEl, rotation: '-90 ' + rotationY + ' 0', step: 15, radius: clonedObjectRadius });
       // add this stencil stuff to the segment parent
       segmentParentEl.append(stencilsParentEl);
       if (variantList[1] === 'shared') {
         // add an additional marking to represent the opposite turn marking stencil (rotated 180º)
         const stencilsParentEl = createStencilsParentElement(positionX + ' 0.015 ' + (-3 * isOutbound));
-        cloneMixinAsChildren({ objectMixinId: mixinString, parentEl: stencilsParentEl, rotation: '-90 ' + (rotationY + 180) + ' 0', step: 15, radius: 70 });
+        cloneMixinAsChildren({ objectMixinId: mixinString, parentEl: stencilsParentEl, rotation: '-90 ' + (rotationY + 180) + ' 0', step: 15, radius: clonedObjectRadius });
         // add this stencil stuff to the segment parent
         segmentParentEl.append(stencilsParentEl);
       }
@@ -427,7 +437,7 @@ function processSegments (segments, showStriping) {
 
       // make some safehits
       const safehitsParentEl = createSafehitsParentElement(positionX);
-      cloneMixinAsChildren({ objectMixinId: 'safehit', parentEl: safehitsParentEl, step: 4, radius: 70 });
+      cloneMixinAsChildren({ objectMixinId: 'safehit', parentEl: safehitsParentEl, step: 4, radius: clonedObjectRadius });
       // add the safehits to the segment parent
       segmentParentEl.append(safehitsParentEl);
     } else if (segments[i].type === 'bus-lane') {
@@ -438,17 +448,17 @@ function processSegments (segments, showStriping) {
       let reusableObjectStencilsParentEl;
 
       reusableObjectStencilsParentEl = createStencilsParentElement(positionX + ' 0.015 0');
-      cloneMixinAsChildren({ objectMixinId: 'stencils word-bus', parentEl: reusableObjectStencilsParentEl, rotation: '-90 ' + rotationY + ' 0', step: 50, radius: 70 });
+      cloneMixinAsChildren({ objectMixinId: 'stencils word-bus', parentEl: reusableObjectStencilsParentEl, rotation: '-90 ' + rotationY + ' 0', step: 50, radius: clonedObjectRadius });
       // add this stencil stuff to the segment parent
       segmentParentEl.append(reusableObjectStencilsParentEl);
 
       reusableObjectStencilsParentEl = createStencilsParentElement(positionX + ' 0.015 10');
-      cloneMixinAsChildren({ objectMixinId: 'stencils word-taxi', parentEl: reusableObjectStencilsParentEl, rotation: '-90 ' + rotationY + ' 0', step: 50, radius: 70 });
+      cloneMixinAsChildren({ objectMixinId: 'stencils word-taxi', parentEl: reusableObjectStencilsParentEl, rotation: '-90 ' + rotationY + ' 0', step: 50, radius: clonedObjectRadius });
       // add this stencil stuff to the segment parent
       segmentParentEl.append(reusableObjectStencilsParentEl);
 
       reusableObjectStencilsParentEl = createStencilsParentElement(positionX + ' 0.015 20');
-      cloneMixinAsChildren({ objectMixinId: 'stencils word-only', parentEl: reusableObjectStencilsParentEl, rotation: '-90 ' + rotationY + ' 0', step: 50, radius: 70 });
+      cloneMixinAsChildren({ objectMixinId: 'stencils word-only', parentEl: reusableObjectStencilsParentEl, rotation: '-90 ' + rotationY + ' 0', step: 50, radius: clonedObjectRadius });
       // add this stencil stuff to the segment parent
       segmentParentEl.append(reusableObjectStencilsParentEl);
     } else if (segments[i].type === 'drive-lane') {
@@ -464,7 +474,7 @@ function processSegments (segments, showStriping) {
         // nothing, oh my this gives me heartburn
       } else {
         // `right` or `left` bench
-        cloneMixinAsChildren({ objectMixinId: 'bench', parentEl: benchesParentEl, rotation: '0 ' + rotationCloneY + ' 0' });
+        cloneMixinAsChildren({ objectMixinId: 'bench', parentEl: benchesParentEl, rotation: '0 ' + rotationCloneY + ' 0', radius: clonedObjectRadius });
         // add benches to the segment parent
         segmentParentEl.append(benchesParentEl);
       }
@@ -473,7 +483,7 @@ function processSegments (segments, showStriping) {
       const bikeRacksParentEl = createBikeRacksParentElement(positionX);
 
       const rotationCloneY = (variantList[1] === 'sidewalk-parallel') ? 90 : 0;
-      cloneMixinAsChildren({ objectMixinId: 'bikerack', parentEl: bikeRacksParentEl, rotation: '0 ' + rotationCloneY + ' 0' });
+      cloneMixinAsChildren({ objectMixinId: 'bikerack', parentEl: bikeRacksParentEl, rotation: '0 ' + rotationCloneY + ' 0', radius: clonedObjectRadius });
       // add bike racks to the segment parent
       segmentParentEl.append(bikeRacksParentEl);
     } else if (segments[i].type === 'bikeshare') {
@@ -488,32 +498,32 @@ function processSegments (segments, showStriping) {
         objectMixinId = 'tree3';
       }
       // clone a bunch of trees under the parent
-      cloneMixinAsChildren({ objectMixinId: objectMixinId, parentEl: treesParentEl, randomY: true });
+      cloneMixinAsChildren({ objectMixinId: objectMixinId, parentEl: treesParentEl, randomY: true, radius: clonedObjectRadius });
       segmentParentEl.append(treesParentEl);
     } else if (segments[i].type === 'sidewalk-lamp' && (variantList[1] === 'modern' || variantList[1] === 'pride')) {
       // make the parent for all the lamps
       const lampsParentEl = createLampsParentElement(positionX);
       // clone a bunch of lamps under the parent
       var rotationCloneY = (variantList[0] === 'right') ? -90 : 90;
-      cloneMixinAsChildren({ objectMixinId: 'lamp-modern', parentEl: lampsParentEl, rotation: '0 ' + rotationCloneY + ' 0' });
+      cloneMixinAsChildren({ objectMixinId: 'lamp-modern', parentEl: lampsParentEl, rotation: '0 ' + rotationCloneY + ' 0', radius: clonedObjectRadius });
       // if modern lamp variant is "both" then clone the lamps again rotated 180º
       segmentParentEl.append(lampsParentEl);
 
       if (variantList[0] === 'both') {
-        cloneMixinAsChildren({ objectMixinId: 'lamp-modern', parentEl: lampsParentEl, rotation: '0 -90 0' });
+        cloneMixinAsChildren({ objectMixinId: 'lamp-modern', parentEl: lampsParentEl, rotation: '0 -90 0', radius: clonedObjectRadius });
       }
       // add the pride flags
       if (variantList[1] === 'pride' && (variantList[0] === 'right' || variantList[0] === 'both')) {
-        cloneMixinAsChildren({ objectMixinId: 'pride-flag', parentEl: lampsParentEl, positionXYString: '0.409 3.345' });
+        cloneMixinAsChildren({ objectMixinId: 'pride-flag', parentEl: lampsParentEl, positionXYString: '0.409 3.345', radius: clonedObjectRadius });
       }
       if (variantList[1] === 'pride' && (variantList[0] === 'left' || variantList[0] === 'both')) {
-        cloneMixinAsChildren({ objectMixinId: 'pride-flag', parentEl: lampsParentEl, rotation: '0 -180 0', positionXYString: '-0.409 3.345' });
+        cloneMixinAsChildren({ objectMixinId: 'pride-flag', parentEl: lampsParentEl, rotation: '0 -180 0', positionXYString: '-0.409 3.345', radius: clonedObjectRadius });
       }
     } else if (segments[i].type === 'sidewalk-lamp' && variantList[1] === 'traditional') {
       // make the parent for all the lamps
       const lampsParentEl = createLampsParentElement(positionX);
       // clone a bunch of lamps under the parent
-      cloneMixinAsChildren({ objectMixinId: 'lamp-traditional', parentEl: lampsParentEl });
+      cloneMixinAsChildren({ objectMixinId: 'lamp-traditional', parentEl: lampsParentEl, radius: clonedObjectRadius });
       segmentParentEl.append(lampsParentEl);
     } else if (segments[i].type === 'transit-shelter') {
       var rotationBusStopY = (variantList[0] === 'right') ? 0 : 180;
@@ -553,7 +563,8 @@ function processSegments (segments, showStriping) {
     }
 
     // add new object
-    segmentParentEl.append(createSegmentElement(scaleX, positionX, positionY, rotationY, mixinId));
+    console.log('length', length);
+    segmentParentEl.append(createSegmentElement(scaleX, positionX, positionY, rotationY, mixinId, length));
     // returns JSON output instead
     // append the new surfaceElement to the segmentParentEl
     streetParentEl.append(segmentParentEl);
@@ -563,11 +574,14 @@ function processSegments (segments, showStriping) {
 module.exports.processSegments = processSegments;
 
 // test - for streetObject of street 44 and buildingElementId render 2 building sides
-function processBuildings (left, right, streetWidth, showGround) {
+function processBuildings (left, right, streetWidth, showGround, length) {
   const buildingElement = document.createElement('a-entity');
+  // const clonedObjectRadius = (length - 12) / 2;
+  const clonedObjectRadius = 70;
   buildingElement.classList.add('buildings-parent');
   // https://github.com/streetmix/illustrations/tree/master/images/buildings
   // const buildingVariants = ['waterfront', 'grass', 'fence', 'parking-lot', 'residential', 'narrow', 'wide'];
+  // const buildingLotWidth = length;
   const buildingLotWidth = 150;
   const buildingsArray = [left, right];
   // console.log(buildingsArray);
@@ -634,7 +648,7 @@ function processBuildings (left, right, streetWidth, showGround) {
 
       // clone a bunch of seawalls under the parent
       const rotationCloneY = (side === 'right') ? -90 : 90;
-      cloneMixinAsChildren({ objectMixinId: 'seawall', parentEl: placedObjectEl, rotation: '-90 ' + rotationCloneY + ' 0', step: 15, radius: 70 });
+      cloneMixinAsChildren({ objectMixinId: 'seawall', parentEl: placedObjectEl, rotation: '-90 ' + rotationCloneY + ' 0', step: 15, radius: clonedObjectRadius });
     }
 
     if (currentValue === 'fence' || currentValue === 'parking-lot') {
@@ -649,7 +663,7 @@ function processBuildings (left, right, streetWidth, showGround) {
       // clone a bunch of fences under the parent
       const rotationCloneY = (side === 'right') ? -90 : 90;
 
-      cloneMixinAsChildren({ objectMixinId: 'fence', parentEl: placedObjectEl, rotation: '0 ' + rotationCloneY + ' 0', step: 9.25, radius: 70 });
+      cloneMixinAsChildren({ objectMixinId: 'fence', parentEl: placedObjectEl, rotation: '0 ' + rotationCloneY + ' 0', step: 9.25, radius: clonedObjectRadius });
 
       buildingElement.appendChild(placedObjectEl);
     }
