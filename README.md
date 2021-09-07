@@ -54,6 +54,9 @@
 #### Orientation and Scale
 A default Streetmix.net cross-section view is oriented to show vehicles heading away from you as "outbound". The `street` component follows this convention and when placed in a new A-Frame scene the default camera is looking toward the outbound direction of the generated street. The default rendering is 1:1 scale.
 
+#### Automatic Asset Loading
+When `aframe-street-component.js` is included on a page it automatically loads 3D models and other assets using the A-Frame asset loader by adding them to the scene's `a-assets` block and defining mixins pointing to these assets. The `street` component itself simply places entities with appropriate mixin names. [For more information on the asset loader see this docs link](https://github.com/3DStreet/3dstreet/blob/main/src/README.md#assetsjs).
+
 ### A-Frame `streetmix-loader` Component API
 
 The `streetmix-loader` component requests a Streetmix API response when given a unique street URL and then passes the segments array JSON as a string to the `street` component (which is a dependency -- you must have the `street` component on the same entity as that of the `streetmix-loader` component). 
