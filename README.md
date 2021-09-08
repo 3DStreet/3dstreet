@@ -1,7 +1,7 @@
 
 # 3DStreet
 [![Version](http://img.shields.io/npm/v/3dstreet.svg)](https://npmjs.org/package/3dstreet)
-[![License](http://img.shields.io/npm/l/3dstreet.svg)](https://npmjs.org/package/3dstreet)
+[![License](http://img.shields.io/npm/l/3dstreet.svg)](LICENSE)
 ![Build Status](https://github.com/kfarr/3dstreet/actions/workflows/ci-script.yaml/badge.svg)
 
 ### Project site: https://3d.st/
