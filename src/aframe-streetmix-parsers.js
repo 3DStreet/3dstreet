@@ -141,6 +141,13 @@ function createSafehitsParentElement (positionX) {
   return placedObjectEl;
 }
 
+function createParentElement (positionX, className) {
+  const parentEl = document.createElement('a-entity');
+  parentEl.setAttribute('class', className);
+  parentEl.setAttribute('position', positionX + ' 0 0');
+  return parentEl;
+}
+
 function getBikeLaneMixin (variant) {
   if (variant === 'red') {
     return 'surface-red bike-lane';
@@ -440,6 +447,11 @@ function processSegments (segments, showStriping, length) {
       cloneMixinAsChildren({ objectMixinId: 'safehit', parentEl: safehitsParentEl, step: 4, radius: clonedObjectRadius });
       // add the safehits to the segment parent
       segmentParentEl.append(safehitsParentEl);
+    } else if (segments[i].type === 'divider' && variantList[0] === 'flowers') {
+      mixinId = 'grass';
+      const dividerParentEl = createParentElement(positionX, 'dividers-flowers-parent');
+      cloneMixinAsChildren({ objectMixinId: 'dividers-flowers', parentEl: dividerParentEl, step: 2, radius: clonedObjectRadius });
+      segmentParentEl.append(dividerParentEl);
     } else if (segments[i].type === 'bus-lane') {
       mixinId = getBusLaneMixin(variantList[1]);
 

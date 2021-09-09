@@ -34,7 +34,10 @@
           <!-- blocks -->
           <a-asset-item id="blockmodel" src="${assetUrl}assets/objects/buildings.glb"></a-asset-item>
           <a-asset-item id="suburbiamodel" src="${assetUrl}assets/objects/suburbia/suburbia-fixwindowuvs-only3-draco.glb"></a-asset-item>
-  
+          <a-asset-item id="dividers" src="${assetUrl}assets/objects/dividers.glb"></a-asset-item>
+
+
+
           <a-asset-item id="fence-model" src="${assetUrl}assets/objects/fence4/fence4.gltf"></a-asset-item>
           <a-asset-item id="seawall-model" src="${assetUrl}assets/objects/seawall.gltf"></a-asset-item>
   
@@ -55,7 +58,8 @@
           <a-mixin id="bus-lane-t1" geometry="width:3;height:150;primitive:plane" material="repeat:0.3 25;offset:0.55 0;src:#seamless-road;"></a-mixin>
           <a-mixin id="divider-t1" geometry="width:0.3;height:150;primitive:plane" material="repeat:1 150;offset:0.415 0;normalTextureOffset:0.415 0;src:#hatched-base;normalTextureRepeat:0.21 150;normalMap:#hatched-normal"></a-mixin>
           <a-mixin id="safehit" gltf-model="#flexiguide-glb" scale="1 1 1"></a-mixin>
-  
+          <a-mixin id="grass-t1" geometry="width:0.3;height:150;primitive:plane" material="repeat:1 150;offset:0.415 0;src:#grass-texture;"></a-mixin>
+
           <!-- lane separator markings atlas -->
           <a-mixin id="markings" anisotropy atlas-uvs="totalRows: 1; totalColumns: 8; row: 1" scale="1 1 1" material="src: #markings-atlas;alphaTest: 0;transparent:true;repeat:1 25;" geometry="primitive: plane; buffer: false; skipCache: true; width:0.2; height:150;"></a-mixin>
           <a-mixin id="solid-stripe-t1" atlas-uvs="column: 3"></a-mixin>
@@ -124,6 +128,8 @@
           <a-mixin id="SM3D_Bld_Mixed_5fl" scale="1 1 1" rotation="0 0 0" gltf-part-plus="src: #blockmodel; part: SM3D_Bld_Mixed_5fl" model-center="bottomAlign: true"></a-mixin>
           <a-mixin id="SM3D_Bld_Mixed_4fl" scale="1 1 1" rotation="0 0 0" gltf-part-plus="src: #blockmodel; part: SM3D_Bld_Mixed_4fl" model-center="bottomAlign: true"></a-mixin>
   
+          <amixin id="dividers-flowers" scale="1 1 1" rotation="0 0 0" gltf-part-plus="src: #dividers; part: flowers"></a-mixin>
+
           <a-mixin id="SM_Bld_House_Preset_03_1800" scale="1 1 1" rotation="0 0 0" gltf-part-plus="src: #suburbiamodel; part: SM_Bld_House_Preset_03_1800" model-center="bottomAlign: true"></a-mixin>
           <a-mixin id="SM_Bld_House_Preset_08_1809" scale="1 1 1" rotation="0 0 0" gltf-part-plus="src: #suburbiamodel; part: SM_Bld_House_Preset_08_1809" model-center="bottomAlign: true"></a-mixin>
           <a-mixin id="SM_Bld_House_Preset_09_1845" scale="1 1 1" rotation="0 0 0" gltf-part-plus="src: #suburbiamodel; part: SM_Bld_House_Preset_09_1845" model-center="bottomAlign: true"></a-mixin>
