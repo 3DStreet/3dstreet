@@ -450,7 +450,7 @@ function processSegments (segments, showStriping, length) {
     } else if (segments[i].type === 'divider' && variantList[0] === 'flowers') {
       mixinId = 'grass';
       const dividerParentEl = createParentElement(positionX, 'dividers-flowers-parent');
-      cloneMixinAsChildren({ objectMixinId: 'dividers-flowers', parentEl: dividerParentEl, step: 2, radius: clonedObjectRadius });
+      cloneMixinAsChildren({ objectMixinId: 'dividers-flowers', parentEl: dividerParentEl, step: 2.25, radius: clonedObjectRadius });
       segmentParentEl.append(dividerParentEl);
     } else if (segments[i].type === 'bus-lane') {
       mixinId = getBusLaneMixin(variantList[1]);
