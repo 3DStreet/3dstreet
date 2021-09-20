@@ -2,16 +2,6 @@
 var streetmixParsersTested = require('./tested/aframe-streetmix-parsers-tested');
 var streetmixUtils = require('./tested/streetmix-utils');
 
-const initialState = {
-  textures: {
-    suffix: '-t1'
-  },
-  sounds: {
-    enabled: false
-  }
-};
-var state = initialState;
-
 // Width - These are the intended default widths of the models in meters.
 /* eslint-disable quote-props */
 const defaultModelWidthsInMeters = {
@@ -177,17 +167,6 @@ function createChooChooElement (variantList, objectMixinId, positionX) {
   placedObjectEl.setAttribute('mixin', objectMixinId);
 
   return placedObjectEl;
-
-  // TODO: train audio temporarily disabled
-  // //  pathParentAndChildrenElements
-  // // TODO: move this addEventListener logic to a separate function, for add component on entity and parse later
-  // placedObjectEl.addEventListener('movingstarted', function (e) {
-  //   console.log('movingstarted', e);
-  //   if (state.sounds.enabled) {
-  //     // this creates console error if the placedObjectEl does not have a sound associated
-  //     this.components.sound.playSound();
-  //   }
-  // });
 }
 
 function createBusAndShadowElements (isOutbound, positionX) {
@@ -327,7 +306,7 @@ function createSegmentElement (scaleX, positionX, positionY, rotationY, mixinId,
   segmentEl.setAttribute('position', positionX + ' ' + positionY + ' 0');
   // USE THESE 2 LINES FOR TEXTURE MODE:
   segmentEl.setAttribute('rotation', '270 ' + rotationY + ' 0');
-  segmentEl.setAttribute('mixin', mixinId + state.textures.suffix); // append suffix to mixin id to specify texture index
+  segmentEl.setAttribute('mixin', mixinId); // append suffix to mixin id to specify texture index
   return segmentEl;
 }
 
@@ -394,7 +373,7 @@ function processSegments (segments, showStriping, length) {
       // get the mixin id for a bike lane
       mixinId = getBikeLaneMixin(variantList[1]);
       // clone a bunch of stencil entities (note: this is not draw call efficient)
-      cloneMixinAsChildren({ objectMixinId: 'stencils bike-lane', parentEl: stencilsParentEl, rotation: '-90 ' + rotationY + ' 0', step: 20, radius: clonedObjectRadius });
+      cloneMixinAsChildren({ objectMixinId: 'stencils bike-arrow', parentEl: stencilsParentEl, rotation: '-90 ' + rotationY + ' 0', step: 20, radius: clonedObjectRadius });
       // add this stencil stuff to the segment parent
       segmentParentEl.append(stencilsParentEl);
     } else if (segments[i].type === 'light-rail' || segments[i].type === 'streetcar') {
