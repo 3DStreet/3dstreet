@@ -5,14 +5,6 @@
     if (!assetUrl) assetUrl = 'https://github.3d.st/';
     console.log('[street]', 'Using street assets from', assetUrl);
     return `
-          <!-- audio -->
-          <audio id="ambientmp3" src="${assetUrl}assets/audio/SSL_16_11_AMB_EXT_SF_ALAMO_SQ.mp3" preload="none" crossorigin="anonymous"></audio>
-          <audio id="tram-pass-mp3" src="${assetUrl}assets/audio/Tram-Pass-By-Fast-shortened.mp3" preload="auto" crossorigin="anonymous"></audio>
-          <audio id="trolley-pass-mp3" src="${assetUrl}assets/audio/Streetcar-passing.mp3" preload="auto" crossorigin="anonymous"></audio>
-          <audio id="suburbs-mp3" src="${assetUrl}assets/audio/AMB_Suburbs_Afternoon_Woods_Spring_Small_ST_MKH8050-30shortened_amplified.mp3" preload="none" crossorigin="anonymous"></audio>
-          <audio id="parking-lot-mp3" src="${assetUrl}assets/audio/Parking_lot_ambience_looping.mp3" preload="none" crossorigin="anonymous"></audio>
-          <audio id="waterfront-mp3" src="${assetUrl}assets/audio/combined_UKdock4_and_water_pier_underneath_ambience.mp3" preload="none" crossorigin="anonymous"></audio>
-          <audio id="suburbs2-mp3" src="${assetUrl}assets/audio/AMB_Suburbs_Spring_Day_Lawnmowers_Birds_MS_ST_MKH8050-30shortened.mp3" preload="none" crossorigin="anonymous"></audio>
   
           <!-- sidewalk props -->
           <a-asset-item id="treemodel3" src="${assetUrl}assets/objects/SM_Env_Tree_03.gltf"></a-asset-item>
@@ -35,9 +27,6 @@
           <a-asset-item id="blockmodel" src="${assetUrl}assets/objects/buildings.glb"></a-asset-item>
           <a-asset-item id="suburbiamodel" src="${assetUrl}assets/objects/suburbia/suburbia-fixwindowuvs-only3-draco.glb"></a-asset-item>
           <a-asset-item id="dividers" src="${assetUrl}assets/objects/dividers.glb"></a-asset-item>
-
-
-
           <a-asset-item id="fence-model" src="${assetUrl}assets/objects/fence4/fence4.gltf"></a-asset-item>
           <a-asset-item id="seawall-model" src="${assetUrl}assets/objects/seawall.gltf"></a-asset-item>
   
@@ -98,8 +87,8 @@
           <!-- vehicles -->
           <a-mixin id="bus" anisotropy gltf-model="#xd40" scale="1.55 1.55 1.55"></a-mixin>
           <a-mixin id="car" gltf-model="#carmodel"></a-mixin>
-          <a-mixin id="tram" anisotropy gltf-model="#trammodel" sound="src: #tram-pass-mp3;positional:false;volume: 0.4"></a-mixin>
-          <a-mixin id="trolley" gltf-model="#trolleymodel" sound="src: #trolley-pass-mp3;positional:false;volume: 0.4"scale="1 1 1"></a-mixin>
+          <a-mixin id="tram" anisotropy gltf-model="#trammodel"></a-mixin>
+          <a-mixin id="trolley" gltf-model="#trolleymodel"></a-mixin>
 
           <img id="shadow-texture" src="${assetUrl}assets/materials/bus-shadow.png" crossorigin="anonymous">
           <a-mixin id="bus-shadow" geometry="width: 12; height: 3; primitive: plane"  material="src: #shadow-texture; alphaTest: 0;transparent:true; roughness: 1;" ></a-mixin>
@@ -264,4 +253,16 @@ Unused assets kept commented here for future reference
         <a-mixin id="sidewalk-t0" geometry="width:3;height:150;primitive:plane" material="repeat:1.5 75;src:assets/materials/sidewalkhd_Base_Color.jpg;normalTextureRepeat:1.5 75;normalMap:assets/materials/sidewalkhd_Normal.jpg;"></a-mixin>
         <a-mixin id="drive-lane-t0" geometry="width:3;height:150;primitive:plane" material="repeat:1.5 75;src:assets/materials/asphalthd_Base_Color.jpg;normalTextureRepeat:1.5 75;normalMap:assets/materials/asphalthd_Normal.jpg;"></a-mixin>
         <a-mixin id="bus-lane-t0" geometry="width:3;height:150;primitive:plane" material="repeat:1.5 75;src:assets/materials/asphaltred1hd_Base_Color.jpg;normalTextureRepeat:1.5 75;normalMap:assets/materials/asphaltred1hd_Normal.jpg;"></a-mixin>
+
+        <!-- audio -->
+        <audio id="ambientmp3" src="${assetUrl}assets/audio/SSL_16_11_AMB_EXT_SF_ALAMO_SQ.mp3" preload="none" crossorigin="anonymous"></audio>
+        <audio id="tram-pass-mp3" src="${assetUrl}assets/audio/Tram-Pass-By-Fast-shortened.mp3" preload="auto" crossorigin="anonymous"></audio>
+        <audio id="trolley-pass-mp3" src="${assetUrl}assets/audio/Streetcar-passing.mp3" preload="auto" crossorigin="anonymous"></audio>
+        <audio id="suburbs-mp3" src="${assetUrl}assets/audio/AMB_Suburbs_Afternoon_Woods_Spring_Small_ST_MKH8050-30shortened_amplified.mp3" preload="none" crossorigin="anonymous"></audio>
+        <audio id="parking-lot-mp3" src="${assetUrl}assets/audio/Parking_lot_ambience_looping.mp3" preload="none" crossorigin="anonymous"></audio>
+        <audio id="waterfront-mp3" src="${assetUrl}assets/audio/combined_UKdock4_and_water_pier_underneath_ambience.mp3" preload="none" crossorigin="anonymous"></audio>
+        <audio id="suburbs2-mp3" src="${assetUrl}assets/audio/AMB_Suburbs_Spring_Day_Lawnmowers_Birds_MS_ST_MKH8050-30shortened.mp3" preload="none" crossorigin="anonymous"></audio>
+
+        <a-mixin id="tram" anisotropy gltf-model="#trammodel" sound="src: #tram-pass-mp3;positional:false;volume: 0.4"></a-mixin>
+        <a-mixin id="trolley" gltf-model="#trolleymodel" sound="src: #trolley-pass-mp3;positional:false;volume: 0.4"scale="1 1 1"></a-mixin>
 */
