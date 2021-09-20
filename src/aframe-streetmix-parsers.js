@@ -300,13 +300,11 @@ function createSegmentElement (scaleX, positionX, positionY, rotationY, mixinId,
   const scaleY = length / 150;
   const scaleNew = scaleX + ' ' + scaleY + ' 1';
   segmentEl.setAttribute('scale', scaleNew);
-  console.log(scaleNew);
-
-  // segmentEl.setAttribute('geometry', 'height', length);
+  // segmentEl.setAttribute('geometry', 'height', length); // alternative to modifying scale
   segmentEl.setAttribute('position', positionX + ' ' + positionY + ' 0');
-  // USE THESE 2 LINES FOR TEXTURE MODE:
+
   segmentEl.setAttribute('rotation', '270 ' + rotationY + ' 0');
-  segmentEl.setAttribute('mixin', mixinId); // append suffix to mixin id to specify texture index
+  segmentEl.setAttribute('mixin', mixinId);
   return segmentEl;
 }
 
@@ -554,7 +552,6 @@ function processSegments (segments, showStriping, length) {
     }
 
     // add new object
-    console.log('length', length);
     segmentParentEl.append(createSegmentElement(scaleX, positionX, positionY, rotationY, mixinId, length));
     // returns JSON output instead
     // append the new surfaceElement to the segmentParentEl
