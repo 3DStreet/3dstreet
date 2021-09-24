@@ -117,15 +117,20 @@
           <a-mixin id="SM3D_Bld_Mixed_5fl" scale="1 1 1" rotation="0 0 0" gltf-part-plus="src: #blockmodel; part: SM3D_Bld_Mixed_5fl" model-center="bottomAlign: true"></a-mixin>
           <a-mixin id="SM3D_Bld_Mixed_4fl" scale="1 1 1" rotation="0 0 0" gltf-part-plus="src: #blockmodel; part: SM3D_Bld_Mixed_4fl" model-center="bottomAlign: true"></a-mixin>
   
-          <a-mixin id="dividers-flowers" scale="1 1 1" rotation="0 0 0" gltf-part-plus="src: #dividers; part: flowers"></a-mixin>
-
           <a-mixin id="SM_Bld_House_Preset_03_1800" scale="1 1 1" rotation="0 0 0" gltf-part-plus="src: #suburbiamodel; part: SM_Bld_House_Preset_03_1800" model-center="bottomAlign: true"></a-mixin>
           <a-mixin id="SM_Bld_House_Preset_08_1809" scale="1 1 1" rotation="0 0 0" gltf-part-plus="src: #suburbiamodel; part: SM_Bld_House_Preset_08_1809" model-center="bottomAlign: true"></a-mixin>
           <a-mixin id="SM_Bld_House_Preset_09_1845" scale="1 1 1" rotation="0 0 0" gltf-part-plus="src: #suburbiamodel; part: SM_Bld_House_Preset_09_1845" model-center="bottomAlign: true"></a-mixin>
   
           <a-mixin id="seawall" gltf-model="#seawall-model" scale="1 1 1" rotation="0 0 0"></a-mixin>
           <a-mixin id="fence" gltf-model="#fence-model" scale="0.1 0.1 0.1"></a-mixin>
-  
+
+          <!-- dividers -->
+          <a-mixin id="dividers-flowers" scale="1 1 1" rotation="0 0 0" gltf-part-plus="src: #dividers; part: flowers"></a-mixin>
+          <a-mixin id="dividers-planting-strip" scale="1 1 1" rotation="0 0 0" gltf-part-plus="src: #dividers; part: planting-strip"></a-mixin>
+          <a-mixin id="dividers-planter-box" scale="1 1 1" rotation="0 0 0" gltf-part-plus="src: #dividers; part: planter-box"></a-mixin>
+          <a-mixin id="dividers-bush" scale="1 1 1" rotation="0 0 0" gltf-part-plus="src: #dividers; part: bush"></a-mixin>
+          <a-mixin id="dividers-dome" scale="1 1 1" rotation="0 0 0" gltf-part-plus="src: #dividers; part: dome"></a-mixin>
+
           <!-- grounds -->
           <img id="grass-texture" src="${assetUrl}assets/materials/TexturesCom_Grass0052_1_seamless_S.jpg" crossorigin="anonymous">
           <img id="parking-lot-texture" src="${assetUrl}assets/materials/TexturesCom_Roads0111_1_seamless_S.jpg" crossorigin="anonymous">
