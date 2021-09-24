@@ -138,6 +138,12 @@ function createParentElement (positionX, className) {
   return parentEl;
 }
 
+function createDividerVariant(variantName, positionX, clonedObjectRadius, step=2.25) {
+  const dividerParentEl = createParentElement(positionX, `dividers-${variantName}-parent`);
+  cloneMixinAsChildren({ objectMixinId: `dividers-${variantName}`, parentEl: dividerParentEl, step: step, radius: clonedObjectRadius });
+  return dividerParentEl;
+}
+
 function getBikeLaneMixin (variant) {
   if (variant === 'red') {
     return 'surface-red bike-lane';
@@ -424,11 +430,27 @@ function processSegments (segments, showStriping, length) {
       cloneMixinAsChildren({ objectMixinId: 'safehit', parentEl: safehitsParentEl, step: 4, radius: clonedObjectRadius });
       // add the safehits to the segment parent
       segmentParentEl.append(safehitsParentEl);
+      
     } else if (segments[i].type === 'divider' && variantList[0] === 'flowers') {
-      mixinId = 'grass';
-      const dividerParentEl = createParentElement(positionX, 'dividers-flowers-parent');
-      cloneMixinAsChildren({ objectMixinId: 'dividers-flowers', parentEl: dividerParentEl, step: 2.25, radius: clonedObjectRadius });
-      segmentParentEl.append(dividerParentEl);
+      mixinId = "grass";
+      segmentParentEl.append(createDividerVariant("flowers", positionX, clonedObjectRadius, 2.25));
+
+    } else if (segments[i].type === 'divider' && variantList[0] === 'planting-strip') {
+      mixinId = "grass";
+      segmentParentEl.append(createDividerVariant("planting-strip", positionX, clonedObjectRadius, 2.25));
+
+    } else if (segments[i].type === 'divider' && variantList[0] === 'planter-box') {
+      mixinId = "grass";
+      segmentParentEl.append(createDividerVariant("planter-box", positionX, clonedObjectRadius, 2.25));
+
+    } else if (segments[i].type === 'divider' && variantList[0] === 'bush') {
+      mixinId = "grass";
+      segmentParentEl.append(createDividerVariant("bush", positionX, clonedObjectRadius, 2.25));
+
+    } else if (segments[i].type === 'divider' && variantList[0] === 'dome') {
+      mixinId = "divider";
+      segmentParentEl.append(createDividerVariant("dome", positionX, clonedObjectRadius, 2.25));
+
     } else if (segments[i].type === 'bus-lane') {
       mixinId = getBusLaneMixin(variantList[1]);
 
