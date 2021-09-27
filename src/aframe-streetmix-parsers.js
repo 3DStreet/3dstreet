@@ -362,7 +362,8 @@ function processSegments (segments, showStriping, length) {
 
     // the A-Frame mixin ID is often identical to the corresponding streetmix segment "type" by design, let's start with that
     var mixinId = segments[i].type;
-
+ console.log(segments[i].type)
+ console.log( variantList[0])
     // look at segment type and variant(s) to determine specific cases
     if (segments[i].type === 'drive-lane' && variantList[1] === 'sharrow') {
       // make a parent entity for the stencils
@@ -450,6 +451,23 @@ function processSegments (segments, showStriping, length) {
     } else if (segments[i].type === 'divider' && variantList[0] === 'dome') {
       mixinId = "divider";
       segmentParentEl.append(createDividerVariant("dome", positionX, clonedObjectRadius, 2.25));
+
+    } else if (segments[i].type === 'temporary' && variantList[0] === 'barricade') {
+      mixinId = "divider";
+      segmentParentEl.append(createDividerVariant("temporary-barricade", positionX, clonedObjectRadius, 2.25));
+
+    } else if (segments[i].type === 'temporary' && variantList[0] === 'traffic-cone') {
+      mixinId = "divider";
+      segmentParentEl.append(createDividerVariant("temporary-traffic-cone", positionX, clonedObjectRadius, 2.25));
+
+    } else if (segments[i].type === 'temporary' && variantList[0] === 'jersey-barrier-plastic') {
+      mixinId = "divider";
+      segmentParentEl.append(createDividerVariant("temporary-jersey-barrier-plastic", positionX, clonedObjectRadius, 2.25));
+
+    } else if (segments[i].type === 'temporary' && variantList[0] === 'jersey-barrier-concrete') {
+      mixinId = "grass";
+      segmentParentEl.append(createDividerVariant("temporary-jersey-barrier-concrete", positionX, clonedObjectRadius, 2.25));
+      
 
     } else if (segments[i].type === 'bus-lane') {
       mixinId = getBusLaneMixin(variantList[1]);
