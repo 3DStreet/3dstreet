@@ -23,7 +23,8 @@ const defaultModelWidthsInMeters = {
   'scooter': 1.8,
   'bikeshare': 3,
   'flex-zone-curb': 3,
-  'transit-shelter': 3
+  'transit-shelter': 3,
+  'temporary': 3
 };
 /* eslint-enable quote-props */
 
@@ -141,6 +142,12 @@ function createParentElement (positionX, className) {
 function createDividerVariant (variantName, positionX, clonedObjectRadius, step = 2.25) {
   const dividerParentEl = createParentElement(positionX, `dividers-${variantName}-parent`);
   cloneMixinAsChildren({ objectMixinId: `dividers-${variantName}`, parentEl: dividerParentEl, step: step, radius: clonedObjectRadius });
+  return dividerParentEl;
+}
+
+function createClonedVariants (variantName, positionX, clonedObjectRadius, step = 2.25) {
+  const dividerParentEl = createParentElement(positionX, `${variantName}-parent`);
+  cloneMixinAsChildren({ objectMixinId: variantName, parentEl: dividerParentEl, step: step, radius: clonedObjectRadius });
   return dividerParentEl;
 }
 
@@ -447,17 +454,17 @@ function processSegments (segments, showStriping, length) {
       mixinId = 'divider';
       segmentParentEl.append(createDividerVariant('dome', positionX, clonedObjectRadius, 2.25));
     } else if (segments[i].type === 'temporary' && variantList[0] === 'barricade') {
-      mixinId = 'divider';
-      segmentParentEl.append(createDividerVariant('temporary-barricade', positionX, clonedObjectRadius, 2.25));
+      mixinId = 'drive-lane';
+      segmentParentEl.append(createClonedVariants('temporary-barricade', positionX, clonedObjectRadius, 2.25));
     } else if (segments[i].type === 'temporary' && variantList[0] === 'traffic-cone') {
-      mixinId = 'divider';
-      segmentParentEl.append(createDividerVariant('temporary-traffic-cone', positionX, clonedObjectRadius, 2.25));
+      mixinId = 'drive-lane';
+      segmentParentEl.append(createClonedVariants('temporary-traffic-cone', positionX, clonedObjectRadius, 2.25));
     } else if (segments[i].type === 'temporary' && variantList[0] === 'jersey-barrier-plastic') {
-      mixinId = 'divider';
-      segmentParentEl.append(createDividerVariant('temporary-jersey-barrier-plastic', positionX, clonedObjectRadius, 2.25));
+      mixinId = 'drive-lane';
+      segmentParentEl.append(createClonedVariants('temporary-jersey-barrier-plastic', positionX, clonedObjectRadius, 2.25));
     } else if (segments[i].type === 'temporary' && variantList[0] === 'jersey-barrier-concrete') {
-      mixinId = 'grass';
-      segmentParentEl.append(createDividerVariant('temporary-jersey-barrier-concrete', positionX, clonedObjectRadius, 2.25));
+      mixinId = 'drive-lane';
+      segmentParentEl.append(createClonedVariants('temporary-jersey-barrier-concrete', positionX, clonedObjectRadius, 2.93));
     } else if (segments[i].type === 'bus-lane') {
       mixinId = getBusLaneMixin(variantList[1]);
 
