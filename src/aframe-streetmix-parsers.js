@@ -369,8 +369,7 @@ function processSegments (segments, showStriping, length) {
 
     // the A-Frame mixin ID is often identical to the corresponding streetmix segment "type" by design, let's start with that
     var mixinId = segments[i].type;
-    console.log(segments[i].type);
-    console.log(variantList[0]);
+
     // look at segment type and variant(s) to determine specific cases
     if (segments[i].type === 'drive-lane' && variantList[1] === 'sharrow') {
       // make a parent entity for the stencils
