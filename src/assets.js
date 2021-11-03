@@ -32,7 +32,7 @@
   
           <!-- lane objects -->
           <a-asset-item id="trackmodel" src="${assetUrl}assets/objects/track.gltf"></a-asset-item>
-          <a-asset-item id="flexiguide-glb" src="${assetUrl}assets/objects/flexiguide300.glb"></a-asset-item>
+          
           <img id="stencils-atlas" src="${assetUrl}assets/materials/stencils-atlas_2048.png" crossorigin="anonymous" />
           <img id="markings-atlas" src="${assetUrl}assets/materials/lane-markings-atlas_1024.png" crossorigin="anonymous" />
   
@@ -46,7 +46,6 @@
           <a-mixin id="sidewalk" anisotropy geometry="width:3;height:150;primitive:plane" material="repeat:1.5 75;src:#seamless-sidewalk;"></a-mixin>
           <a-mixin id="bus-lane" geometry="width:3;height:150;primitive:plane" material="repeat:0.3 25;offset:0.55 0;src:#seamless-road;"></a-mixin>
           <a-mixin id="divider" geometry="width:0.3;height:150;primitive:plane" material="repeat:1 150;offset:0.415 0;normalTextureOffset:0.415 0;src:#hatched-base;normalTextureRepeat:0.21 150;normalMap:#hatched-normal"></a-mixin>
-          <a-mixin id="safehit" gltf-model="#flexiguide-glb" scale="1 1 1"></a-mixin>
           <a-mixin id="grass" geometry="width:0.3;height:150;primitive:plane" material="repeat:1 150;offset:0.415 0;src:#grass-texture;"></a-mixin>
 
           <!-- lane separator markings atlas -->
@@ -130,7 +129,7 @@
           <a-mixin id="dividers-planter-box" scale="1 1 1" rotation="0 0 0" gltf-part-plus="src: #dividers; part: planter-box"></a-mixin>
           <a-mixin id="dividers-bush" scale="1 1 1" rotation="0 0 0" gltf-part-plus="src: #dividers; part: bush"></a-mixin>
           <a-mixin id="dividers-dome" scale="1 1 1" rotation="0 0 0" gltf-part-plus="src: #dividers; part: dome"></a-mixin>
-
+          <a-mixin id="safehit" scale="1 1 1" rotation="0 0 0" gltf-part-plus="src: #dividers; part: bollard"></a-mixin>
           <a-mixin id="temporary-barricade" scale="1 1 1" rotation="0 0 0" gltf-part-plus="src: #dividers; part: barricade"></a-mixin>
           <a-mixin id="temporary-traffic-cone" scale="1 1 1" rotation="0 0 0" gltf-part-plus="src: #dividers; part: traffic-cone"></a-mixin>
           <a-mixin id="temporary-jersey-barrier-plastic" scale="1 1 1" rotation="0 0 0" gltf-part-plus="src: #dividers; part: jersey-barrier-plastic"></a-mixin>

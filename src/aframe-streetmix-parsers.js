@@ -448,12 +448,12 @@ function processSegments (segments, showStriping, length) {
       mixinId = 'grass';
       segmentParentEl.append(createDividerVariant('planter-box', positionX, clonedObjectRadius, 2.25));
     } else if (segments[i].type === 'divider' && variantList[0] === 'palm-tree') {
-      mixinId = 'grass'; 
+      mixinId = 'grass';
       const treesParentEl = createTreesParentElement(positionX);
       cloneMixinAsChildren({ objectMixinId: 'palm-tree', parentEl: treesParentEl, randomY: true, radius: clonedObjectRadius });
       segmentParentEl.append(treesParentEl);
     } else if (segments[i].type === 'divider' && variantList[0] === 'big-tree') {
-      mixinId = 'grass'; 
+      mixinId = 'grass';
       const treesParentEl = createTreesParentElement(positionX);
       cloneMixinAsChildren({ objectMixinId: 'tree3', parentEl: treesParentEl, randomY: true, radius: clonedObjectRadius });
       segmentParentEl.append(treesParentEl);
