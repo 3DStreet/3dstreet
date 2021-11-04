@@ -368,7 +368,7 @@ function processSegments (segments, showStriping, length) {
     var isOutbound = (variantList[0] === 'outbound') ? 1 : -1;
 
     // the A-Frame mixin ID is often identical to the corresponding streetmix segment "type" by design, let's start with that
-    var mixinId = segments[i].type;
+    var groundMixinId = segments[i].type;
 
     // look at segment type and variant(s) to determine specific cases
     if (segments[i].type === 'drive-lane' && variantList[1] === 'sharrow') {
@@ -382,14 +382,14 @@ function processSegments (segments, showStriping, length) {
       // make a parent entity for the stencils
       const stencilsParentEl = createStencilsParentElement(positionX + ' 0.015 0');
       // get the mixin id for a bike lane
-      mixinId = getBikeLaneMixin(variantList[1]);
+      groundMixinId = getBikeLaneMixin(variantList[1]);
       // clone a bunch of stencil entities (note: this is not draw call efficient)
       cloneMixinAsChildren({ objectMixinId: 'stencils bike-arrow', parentEl: stencilsParentEl, rotation: '-90 ' + rotationY + ' 0', step: 20, radius: clonedObjectRadius });
       // add this stencil stuff to the segment parent
       segmentParentEl.append(stencilsParentEl);
     } else if (segments[i].type === 'light-rail' || segments[i].type === 'streetcar') {
       // get the mixin id for a bus lane
-      mixinId = getBusLaneMixin(variantList[1]);
+      groundMixinId = getBusLaneMixin(variantList[1]);
       // get the mixin id for the vehicle (is it a trolley or a tram?)
       var objectMixinId = (segments[i].type === 'streetcar') ? 'trolley' : 'tram';
       // create and append a train element
@@ -400,7 +400,7 @@ function processSegments (segments, showStriping, length) {
       // add these trains to the segment parent
       segmentParentEl.append(tracksParentEl);
     } else if (segments[i].type === 'turn-lane') {
-      mixinId = 'drive-lane'; // use normal drive lane road material
+      groundMixinId = 'drive-lane'; // use normal drive lane road material
       var markerMixinId = variantList[1]; // set the mixin of the road markings to match the current variant name
 
       // Fix streetmix inbound turn lane orientation (change left to right) per: https://github.com/streetmix/streetmix/issues/683
@@ -430,7 +430,7 @@ function processSegments (segments, showStriping, length) {
         segmentParentEl.append(stencilsParentEl);
       }
     } else if (segments[i].type === 'divider' && variantList[0] === 'bollard') {
-      mixinId = 'divider';
+      groundMixinId = 'divider';
 
       // make some safehits
       const safehitsParentEl = createSafehitsParentElement(positionX);
@@ -438,44 +438,44 @@ function processSegments (segments, showStriping, length) {
       // add the safehits to the segment parent
       segmentParentEl.append(safehitsParentEl);
     } else if (segments[i].type === 'divider' && variantList[0] === 'flowers') {
-      mixinId = 'grass';
+      groundMixinId = 'grass';
       segmentParentEl.append(createDividerVariant('flowers', positionX, clonedObjectRadius, 2.25));
     } else if (segments[i].type === 'divider' && variantList[0] === 'planting-strip') {
-      mixinId = 'grass';
+      groundMixinId = 'grass';
       segmentParentEl.append(createDividerVariant('planting-strip', positionX, clonedObjectRadius, 2.25));
     } else if (segments[i].type === 'divider' && variantList[0] === 'planter-box') {
-      mixinId = 'grass';
+      groundMixinId = 'grass';
       segmentParentEl.append(createDividerVariant('planter-box', positionX, clonedObjectRadius, 2.25));
     } else if (segments[i].type === 'divider' && variantList[0] === 'palm-tree') {
-      mixinId = 'grass';
+      groundMixinId = 'grass';
       const treesParentEl = createTreesParentElement(positionX);
       cloneMixinAsChildren({ objectMixinId: 'palm-tree', parentEl: treesParentEl, randomY: true, radius: clonedObjectRadius });
       segmentParentEl.append(treesParentEl);
     } else if (segments[i].type === 'divider' && variantList[0] === 'big-tree') {
-      mixinId = 'grass';
+      groundMixinId = 'grass';
       const treesParentEl = createTreesParentElement(positionX);
       cloneMixinAsChildren({ objectMixinId: 'tree3', parentEl: treesParentEl, randomY: true, radius: clonedObjectRadius });
       segmentParentEl.append(treesParentEl);
     } else if (segments[i].type === 'divider' && variantList[0] === 'bush') {
-      mixinId = 'grass';
+      groundMixinId = 'grass';
       segmentParentEl.append(createDividerVariant('bush', positionX, clonedObjectRadius, 2.25));
     } else if (segments[i].type === 'divider' && variantList[0] === 'dome') {
-      mixinId = 'divider';
+      groundMixinId = 'divider';
       segmentParentEl.append(createDividerVariant('dome', positionX, clonedObjectRadius, 2.25));
     } else if (segments[i].type === 'temporary' && variantList[0] === 'barricade') {
-      mixinId = 'drive-lane';
+      groundMixinId = 'drive-lane';
       segmentParentEl.append(createClonedVariants('temporary-barricade', positionX, clonedObjectRadius, 2.25));
     } else if (segments[i].type === 'temporary' && variantList[0] === 'traffic-cone') {
-      mixinId = 'drive-lane';
+      groundMixinId = 'drive-lane';
       segmentParentEl.append(createClonedVariants('temporary-traffic-cone', positionX, clonedObjectRadius, 2.25));
     } else if (segments[i].type === 'temporary' && variantList[0] === 'jersey-barrier-plastic') {
-      mixinId = 'drive-lane';
+      groundMixinId = 'drive-lane';
       segmentParentEl.append(createClonedVariants('temporary-jersey-barrier-plastic', positionX, clonedObjectRadius, 2.25));
     } else if (segments[i].type === 'temporary' && variantList[0] === 'jersey-barrier-concrete') {
-      mixinId = 'drive-lane';
+      groundMixinId = 'drive-lane';
       segmentParentEl.append(createClonedVariants('temporary-jersey-barrier-concrete', positionX, clonedObjectRadius, 2.93));
     } else if (segments[i].type === 'bus-lane') {
-      mixinId = getBusLaneMixin(variantList[1]);
+      groundMixinId = getBusLaneMixin(variantList[1]);
 
       segmentParentEl.append(createBusAndShadowElements(isOutbound, positionX));
 
@@ -564,40 +564,40 @@ function processSegments (segments, showStriping, length) {
       var parityBusStop = (variantList[0] === 'right') ? 1 : -1;
       segmentParentEl.append(createBusStopElement(positionX, parityBusStop, rotationBusStopY));
     } else if (segments[i].type === 'separator' && variantList[0] === 'dashed') {
-      mixinId = 'markings dashed-stripe';
+      groundMixinId = 'markings dashed-stripe';
       positionY = positionY + 0.01; // make sure the lane marker is above the asphalt
       scaleX = 1;
     } else if (segments[i].type === 'separator' && variantList[0] === 'solid') {
-      mixinId = 'markings solid-stripe';
+      groundMixinId = 'markings solid-stripe';
       positionY = positionY + 0.01; // make sure the lane marker is above the asphalt
       scaleX = 1;
     } else if (segments[i].type === 'separator' && variantList[0] === 'doubleyellow') {
-      mixinId = 'markings solid-doubleyellow';
+      groundMixinId = 'markings solid-doubleyellow';
       positionY = positionY + 0.01; // make sure the lane marker is above the asphalt
       scaleX = 1;
     } else if (segments[i].type === 'separator' && variantList[0] === 'shortdashedyellow') {
-      mixinId = 'markings yellow short-dashed-stripe';
+      groundMixinId = 'markings yellow short-dashed-stripe';
       positionY = positionY + 0.01; // make sure the lane marker is above the asphalt
       scaleX = 1;
     } else if (segments[i].type === 'separator' && variantList[0] === 'soliddashedyellow') {
-      mixinId = 'markings yellow solid-dashed';
+      groundMixinId = 'markings yellow solid-dashed';
       positionY = positionY + 0.01; // make sure the lane marker is above the asphalt
       scaleX = 1;
     } else if (segments[i].type === 'separator' && variantList[0] === 'soliddashedyellowinverted') {
-      mixinId = 'markings yellow solid-dashed';
+      groundMixinId = 'markings yellow solid-dashed';
       positionY = positionY + 0.01; // make sure the lane marker is above the asphalt
       scaleX = 1;
       rotationY = '180';
     } else if (segments[i].type === 'parking-lane') {
-      mixinId = 'drive-lane';
+      groundMixinId = 'drive-lane';
     }
 
     if (streetmixParsersTested.isSidewalk(segments[i].type)) {
-      mixinId = 'sidewalk';
+      groundMixinId = 'sidewalk';
     }
 
     // add new object
-    segmentParentEl.append(createSegmentElement(scaleX, positionX, positionY, rotationY, mixinId, length));
+    segmentParentEl.append(createSegmentElement(scaleX, positionX, positionY, rotationY, groundMixinId, length));
     // returns JSON output instead
     // append the new surfaceElement to the segmentParentEl
     streetParentEl.append(segmentParentEl);
