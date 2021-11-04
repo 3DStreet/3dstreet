@@ -445,7 +445,7 @@ function processSegments (segments, showStriping, length) {
       segmentParentEl.append(createDividerVariant('planting-strip', positionX, clonedObjectRadius, 2.25));
     } else if (segments[i].type === 'divider' && variantList[0] === 'planter-box') {
       groundMixinId = 'grass';
-      segmentParentEl.append(createDividerVariant('planter-box', positionX, clonedObjectRadius, 2.25));
+      segmentParentEl.append(createDividerVariant('planter-box', positionX, clonedObjectRadius, 2.45));
     } else if (segments[i].type === 'divider' && variantList[0] === 'palm-tree') {
       groundMixinId = 'grass';
       const treesParentEl = createTreesParentElement(positionX);
