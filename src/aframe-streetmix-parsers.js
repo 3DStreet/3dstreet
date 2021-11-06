@@ -151,6 +151,45 @@ function createClonedVariants (variantName, positionX, clonedObjectRadius, step 
   return dividerParentEl;
 }
 
+function getRandomIntInclusive(min, max) {
+  min = Math.ceil(min);
+  max = Math.floor(max);
+  return Math.floor(Math.random() * (max - min + 1) + min);
+}
+
+function getRandomArbitrary(min, max) {
+  return Math.random() * (max - min) + min;
+}
+
+function createSidewalkClonedVariants (BasePositionX, segmentWidthInMeters, clonedObjectRadius, density) {
+  var xValueRange = [-(.25*segmentWidthInMeters), (.25*segmentWidthInMeters)];
+  var zValueRange = [-30, 30];
+  var totalPedestrianNumber;
+  if (density === "sparse"){
+    totalPedestrianNumber = 5.0;
+  } else if (density = "normal") {
+    totalPedestrianNumber = 10.0;
+  } else {
+    totalPedestrianNumber = 15.0;
+  }
+  const dividerParentEl = createParentElement(BasePositionX, `${variantName}-parent`);
+  //Randomly generate avatars
+  for (let i = 0; i < totalPedestrianNumber; i++){
+    var variantName = "char" + String(getRandomIntInclusive(1,8));
+    var positionXYZString = getRandomArbitrary(xValueRange[0], xValueRange[1]) + ' 0 ' + getRandomArbitrary(zValueRange[0],zValueRange[1]);
+    var placedObjectEl = document.createElement('a-entity');
+    placedObjectEl.setAttribute('class', variantName);
+    placedObjectEl.setAttribute('position', positionXYZString);
+    placedObjectEl.setAttribute('mixin', variantName);
+    //Roughly 50% of traffic will be incoming
+    if (Math.random() < 0.5){
+      placedObjectEl.setAttribute('rotation', '0 180 0');
+    }
+    dividerParentEl.append(placedObjectEl);
+  }
+  return dividerParentEl;
+}
+
 function getBikeLaneMixin (variant) {
   if (variant === 'red') {
     return 'surface-red bike-lane';
@@ -497,6 +536,12 @@ function processSegments (segments, showStriping, length) {
       segmentParentEl.append(reusableObjectStencilsParentEl);
     } else if (segments[i].type === 'drive-lane') {
       segmentParentEl.append(createCarAndShadowElements(variantList, positionX));
+    } else if (segments[i].type === 'sidewalk' && variantList[0] === 'sparse') {
+      segmentParentEl.append(createSidewalkClonedVariants(positionX,segmentWidthInMeters, clonedObjectRadius, variantList[0]));
+    } else if (segments[i].type === 'sidewalk' && variantList[0] === 'normal') {
+      segmentParentEl.append(createSidewalkClonedVariants(positionX,segmentWidthInMeters, clonedObjectRadius, variantList[0]));
+    } else if (segments[i].type === 'sidewalk' && variantList[0] === 'dense') {
+      segmentParentEl.append(createSidewalkClonedVariants(positionX,segmentWidthInMeters, clonedObjectRadius, variantList[0]));
     } else if (segments[i].type === 'sidewalk-wayfinding') {
       segmentParentEl.append(createWayfindingElements(positionX));
     } else if (segments[i].type === 'sidewalk-bench') {
