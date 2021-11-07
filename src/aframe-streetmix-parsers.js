@@ -161,13 +161,19 @@ function getRandomArbitrary(min, max) {
   return Math.random() * (max - min) + min;
 }
 
-function createSidewalkClonedVariants (BasePositionX, segmentWidthInMeters, clonedObjectRadius, density) {
-  var xValueRange = [-(.25*segmentWidthInMeters), (.25*segmentWidthInMeters)];
-  var zValueRange = [-30, 30];
+function getZPositions(start, end, step) {
+  const len = Math.floor((end - start) / step) + 1
+  var arr = Array(len).fill().map((_, idx) => start + (idx * step))
+  return arr.sort( () => .5 - Math.random() );
+}
+
+function createSidewalkClonedVariants (BasePositionX, segmentWidthInMeters, density) {
+  var xValueRange = [-(.37*segmentWidthInMeters), (.37*segmentWidthInMeters)];
+  var zValueRange = getZPositions(-32,32,1.5);
   var totalPedestrianNumber;
   if (density === "sparse"){
     totalPedestrianNumber = 5.0;
-  } else if (density = "normal") {
+  } else if (density === "normal") {
     totalPedestrianNumber = 10.0;
   } else {
     totalPedestrianNumber = 15.0;
@@ -175,16 +181,14 @@ function createSidewalkClonedVariants (BasePositionX, segmentWidthInMeters, clon
   const dividerParentEl = createParentElement(BasePositionX, `${variantName}-parent`);
   //Randomly generate avatars
   for (let i = 0; i < totalPedestrianNumber; i++){
-    var variantName = "char" + String(getRandomIntInclusive(1,8));
-    var positionXYZString = getRandomArbitrary(xValueRange[0], xValueRange[1]) + ' 0 ' + getRandomArbitrary(zValueRange[0],zValueRange[1]);
+    var variantName = "char" + String(getRandomIntInclusive(1,16));
+    var positionXYZString = getRandomArbitrary(xValueRange[0], xValueRange[1]) + ' 0 ' + zValueRange.pop();
     var placedObjectEl = document.createElement('a-entity');
     placedObjectEl.setAttribute('class', variantName);
     placedObjectEl.setAttribute('position', positionXYZString);
     placedObjectEl.setAttribute('mixin', variantName);
     //Roughly 50% of traffic will be incoming
-    if (Math.random() < 0.5){
-      placedObjectEl.setAttribute('rotation', '0 180 0');
-    }
+    if (Math.random() < 0.5) placedObjectEl.setAttribute('rotation', '0 180 0');
     dividerParentEl.append(placedObjectEl);
   }
   return dividerParentEl;
@@ -536,12 +540,9 @@ function processSegments (segments, showStriping, length) {
       segmentParentEl.append(reusableObjectStencilsParentEl);
     } else if (segments[i].type === 'drive-lane') {
       segmentParentEl.append(createCarAndShadowElements(variantList, positionX));
-    } else if (segments[i].type === 'sidewalk' && variantList[0] === 'sparse') {
-      segmentParentEl.append(createSidewalkClonedVariants(positionX,segmentWidthInMeters, clonedObjectRadius, variantList[0]));
-    } else if (segments[i].type === 'sidewalk' && variantList[0] === 'normal') {
-      segmentParentEl.append(createSidewalkClonedVariants(positionX,segmentWidthInMeters, clonedObjectRadius, variantList[0]));
-    } else if (segments[i].type === 'sidewalk' && variantList[0] === 'dense') {
-      segmentParentEl.append(createSidewalkClonedVariants(positionX,segmentWidthInMeters, clonedObjectRadius, variantList[0]));
+    } else if (segments[i].type === 'sidewalk' && variantList[0] !== 'empty') {
+      //handles variantString with value sparse, normal, or dense sidewalk
+      segmentParentEl.append(createSidewalkClonedVariants(positionX,segmentWidthInMeters, variantList[0]));
     } else if (segments[i].type === 'sidewalk-wayfinding') {
       segmentParentEl.append(createWayfindingElements(positionX));
     } else if (segments[i].type === 'sidewalk-bench') {
