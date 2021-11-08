@@ -184,7 +184,6 @@ function createSidewalkClonedVariants (BasePositionX, segmentWidthInMeters, dens
     var variantName = "char" + String(getRandomIntInclusive(1,16));
     var positionXYZString = getRandomArbitrary(xValueRange[0], xValueRange[1]) + ' 0 ' + zValueRange.pop();
     var placedObjectEl = document.createElement('a-entity');
-    placedObjectEl.setAttribute('class', variantName);
     placedObjectEl.setAttribute('position', positionXYZString);
     placedObjectEl.setAttribute('mixin', variantName);
     //Roughly 50% of traffic will be incoming
