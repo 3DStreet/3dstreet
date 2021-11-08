@@ -167,16 +167,16 @@ function getZPositions(start, end, step) {
   return arr.sort( () => .5 - Math.random() );
 }
 
-function createSidewalkClonedVariants (BasePositionX, segmentWidthInMeters, density) {
+function createSidewalkClonedVariants (BasePositionX, segmentWidthInMeters, density, length) {
   var xValueRange = [-(.37*segmentWidthInMeters), (.37*segmentWidthInMeters)];
-  var zValueRange = getZPositions(-32,32,1.5);
+  var zValueRange = getZPositions((-0.5*length),(0.5*length),1.5);
   var totalPedestrianNumber;
   if (density === "sparse"){
-    totalPedestrianNumber = 5.0;
+    totalPedestrianNumber = parseInt(0.0625*length, 10);
   } else if (density === "normal") {
-    totalPedestrianNumber = 10.0;
+    totalPedestrianNumber = parseInt(0.125*length, 10);
   } else {
-    totalPedestrianNumber = 15.0;
+    totalPedestrianNumber = parseInt(0.25*length, 10);
   }
   const dividerParentEl = createParentElement(BasePositionX, `${variantName}-parent`);
   //Randomly generate avatars
@@ -542,7 +542,7 @@ function processSegments (segments, showStriping, length) {
       segmentParentEl.append(createCarAndShadowElements(variantList, positionX));
     } else if (segments[i].type === 'sidewalk' && variantList[0] !== 'empty') {
       //handles variantString with value sparse, normal, or dense sidewalk
-      segmentParentEl.append(createSidewalkClonedVariants(positionX,segmentWidthInMeters, variantList[0]));
+      segmentParentEl.append(createSidewalkClonedVariants(positionX,segmentWidthInMeters, variantList[0], length));
     } else if (segments[i].type === 'sidewalk-wayfinding') {
       segmentParentEl.append(createWayfindingElements(positionX));
     } else if (segments[i].type === 'sidewalk-bench') {
