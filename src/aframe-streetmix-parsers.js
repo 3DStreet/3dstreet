@@ -224,49 +224,31 @@ function createChooChooElement (variantList, objectMixinId, positionX) {
   return placedObjectEl;
 }
 
-function createBusAndShadowElements (isOutbound, positionX) {
-  const busAndShadowParentEl = document.createElement('a-entity');
+function createBusElement (isOutbound, positionX) {
+  const busParentEl = document.createElement('a-entity');
   const rotationY = isOutbound * 90;
 
   const busObjectEl = document.createElement('a-entity');
-  busObjectEl.setAttribute('class', 'bus');
   busObjectEl.setAttribute('position', positionX + ' 1.4 0');
   busObjectEl.setAttribute('rotation', '0 ' + rotationY + ' 0');
   busObjectEl.setAttribute('mixin', 'bus');
-  busAndShadowParentEl.append(busObjectEl);
+  busParentEl.append(busObjectEl);
 
-  const shadowObjectEl = document.createElement('a-entity');
-  shadowObjectEl.setAttribute('class', 'bus-shadow');
-  shadowObjectEl.setAttribute('position', positionX + ' 0.01 0');
-  shadowObjectEl.setAttribute('rotation', '-90 ' + rotationY + ' 0');
-  shadowObjectEl.setAttribute('mixin', 'bus-shadow');
-  busAndShadowParentEl.append(shadowObjectEl);
-
-  return busAndShadowParentEl;
+  return busParentEl;
 }
 
-function createCarAndShadowElements (variantList, positionX, parentId) {
-  const carAndShadowParentEl = document.createElement('a-entity');
+function createCarElement (variantList, positionX, parentId) {
+  const carParentEl = document.createElement('a-entity');
   let rotationY, reusableObjectEl;
 
   reusableObjectEl = document.createElement('a-entity');
   rotationY = (variantList[0] === 'inbound') ? 0 : 180;
-  reusableObjectEl.setAttribute('class', 'car');
   reusableObjectEl.setAttribute('position', positionX + ' 0 0');
   reusableObjectEl.setAttribute('rotation', '0 ' + rotationY + ' 0');
   reusableObjectEl.setAttribute('mixin', 'car');
-  carAndShadowParentEl.append(reusableObjectEl);
+  carParentEl.append(reusableObjectEl);
 
-  reusableObjectEl = document.createElement('a-entity');
-  rotationY = (variantList[0] === 'inbound') ? -90 : 90;
-  reusableObjectEl = document.createElement('a-entity');
-  reusableObjectEl.setAttribute('class', 'car-shadow');
-  reusableObjectEl.setAttribute('position', positionX + ' 0.01 0');
-  reusableObjectEl.setAttribute('rotation', '-90 ' + rotationY + ' 0');
-  reusableObjectEl.setAttribute('mixin', 'car-shadow');
-  carAndShadowParentEl.append(reusableObjectEl);
-
-  return carAndShadowParentEl;
+  return carParentEl;
 }
 
 function createWayfindingElements (positionX) {
@@ -519,7 +501,7 @@ function processSegments (segments, showStriping, length) {
     } else if (segments[i].type === 'bus-lane') {
       groundMixinId = getBusLaneMixin(variantList[1]);
 
-      segmentParentEl.append(createBusAndShadowElements(isOutbound, positionX));
+      segmentParentEl.append(createBusElement(isOutbound, positionX));
 
       let reusableObjectStencilsParentEl;
 
@@ -538,7 +520,7 @@ function processSegments (segments, showStriping, length) {
       // add this stencil stuff to the segment parent
       segmentParentEl.append(reusableObjectStencilsParentEl);
     } else if (segments[i].type === 'drive-lane') {
-      segmentParentEl.append(createCarAndShadowElements(variantList, positionX));
+      segmentParentEl.append(createCarElement(variantList, positionX));
     } else if (segments[i].type === 'sidewalk' && variantList[0] !== 'empty') {
       // handles variantString with value sparse, normal, or dense sidewalk
       segmentParentEl.append(createSidewalkClonedVariants(positionX, segmentWidthInMeters, variantList[0], length));

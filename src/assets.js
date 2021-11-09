@@ -109,10 +109,6 @@
           <a-mixin id="car" gltf-model="#carmodel"></a-mixin>
           <a-mixin id="tram" anisotropy gltf-model="#trammodel"></a-mixin>
           <a-mixin id="trolley" gltf-model="#trolleymodel"></a-mixin>
-
-          <img id="shadow-texture" src="${assetUrl}assets/materials/bus-shadow.png" crossorigin="anonymous">
-          <a-mixin id="bus-shadow" geometry="width: 12; height: 3; primitive: plane"  material="src: #shadow-texture; alphaTest: 0;transparent:true; roughness: 1;" ></a-mixin>
-          <a-mixin id="car-shadow" geometry="width: 4.7; height: 2.5; primitive: plane"  material="src: #shadow-texture; alphaTest: 0;transparent:true; roughness: 1;" ></a-mixin>
   
           <!-- street props -->
           <a-mixin id="tree3" gltf-model="#treemodel3" scale="1.25 1.25 1.25"></a-mixin>
