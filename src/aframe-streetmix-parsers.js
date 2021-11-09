@@ -151,6 +151,48 @@ function createClonedVariants (variantName, positionX, clonedObjectRadius, step 
   return dividerParentEl;
 }
 
+function getRandomIntInclusive(min, max) {
+  min = Math.ceil(min);
+  max = Math.floor(max);
+  return Math.floor(Math.random() * (max - min + 1) + min);
+}
+
+function getRandomArbitrary(min, max) {
+  return Math.random() * (max - min) + min;
+}
+
+function getZPositions(start, end, step) {
+  const len = Math.floor((end - start) / step) + 1
+  var arr = Array(len).fill().map((_, idx) => start + (idx * step))
+  return arr.sort( () => .5 - Math.random() );
+}
+
+function createSidewalkClonedVariants (BasePositionX, segmentWidthInMeters, density, length) {
+  var xValueRange = [-(.37*segmentWidthInMeters), (.37*segmentWidthInMeters)];
+  var zValueRange = getZPositions((-0.5*length),(0.5*length),1.5);
+  var totalPedestrianNumber;
+  if (density === "sparse"){
+    totalPedestrianNumber = parseInt(0.0625*length, 10);
+  } else if (density === "normal") {
+    totalPedestrianNumber = parseInt(0.125*length, 10);
+  } else {
+    totalPedestrianNumber = parseInt(0.25*length, 10);
+  }
+  const dividerParentEl = createParentElement(BasePositionX, `${variantName}-parent`);
+  //Randomly generate avatars
+  for (let i = 0; i < totalPedestrianNumber; i++){
+    var variantName = "char" + String(getRandomIntInclusive(1,16));
+    var positionXYZString = getRandomArbitrary(xValueRange[0], xValueRange[1]) + ' 0 ' + zValueRange.pop();
+    var placedObjectEl = document.createElement('a-entity');
+    placedObjectEl.setAttribute('position', positionXYZString);
+    placedObjectEl.setAttribute('mixin', variantName);
+    //Roughly 50% of traffic will be incoming
+    if (Math.random() < 0.5) placedObjectEl.setAttribute('rotation', '0 180 0');
+    dividerParentEl.append(placedObjectEl);
+  }
+  return dividerParentEl;
+}
+
 function getBikeLaneMixin (variant) {
   if (variant === 'red') {
     return 'surface-red bike-lane';
@@ -497,6 +539,9 @@ function processSegments (segments, showStriping, length) {
       segmentParentEl.append(reusableObjectStencilsParentEl);
     } else if (segments[i].type === 'drive-lane') {
       segmentParentEl.append(createCarAndShadowElements(variantList, positionX));
+    } else if (segments[i].type === 'sidewalk' && variantList[0] !== 'empty') {
+      //handles variantString with value sparse, normal, or dense sidewalk
+      segmentParentEl.append(createSidewalkClonedVariants(positionX,segmentWidthInMeters, variantList[0], length));
     } else if (segments[i].type === 'sidewalk-wayfinding') {
       segmentParentEl.append(createWayfindingElements(positionX));
     } else if (segments[i].type === 'sidewalk-bench') {

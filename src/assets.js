@@ -17,6 +17,27 @@
           <a-asset-item id="bus-stop-glb" src="${assetUrl}assets/objects/ccFO2EGGIq9-bus-stop.glb"></a-asset-item>
           <img id="wayfinding-map" src="${assetUrl}assets/objects/wayfinding.jpg" crossorigin="anonymous" />
   
+          <!-- human characters -->
+          <!-- TODO: use both character packs! add 1 more asset item and 8 more mixins -->
+          <a-asset-item id="humans" src="${assetUrl}assets/objects/humanoid/human-characters-poses-1.glb"></a-asset-item>
+          <a-mixin id="char1" gltf-part-plus="src: #humans; part: Character_1"></a-mixin>
+          <a-mixin id="char2" gltf-part-plus="src: #humans; part: Character_2"></a-mixin>
+          <a-mixin id="char3" gltf-part-plus="src: #humans; part: Character_3"></a-mixin>
+          <a-mixin id="char4" gltf-part-plus="src: #humans; part: Character_4"></a-mixin>
+          <a-mixin id="char5" gltf-part-plus="src: #humans; part: Character_5"></a-mixin>
+          <a-mixin id="char6" gltf-part-plus="src: #humans; part: Character_6"></a-mixin>
+          <a-mixin id="char7" gltf-part-plus="src: #humans; part: Character_7"></a-mixin>
+          <a-mixin id="char8" gltf-part-plus="src: #humans; part: Character_8"></a-mixin>
+          <a-asset-item id="humans2" src="${assetUrl}assets/objects/humanoid/human-characters-poses-2.glb"></a-asset-item>
+          <a-mixin id="char9" gltf-part-plus="src: #humans2; part: Character_9"></a-mixin>
+          <a-mixin id="char10" gltf-part-plus="src: #humans2; part: Character_10"></a-mixin>
+          <a-mixin id="char11" gltf-part-plus="src: #humans2; part: Character_11"></a-mixin>
+          <a-mixin id="char12" gltf-part-plus="src: #humans2; part: Character_12"></a-mixin>
+          <a-mixin id="char13" gltf-part-plus="src: #humans2; part: Character_13"></a-mixin>
+          <a-mixin id="char14" gltf-part-plus="src: #humans2; part: Character_14"></a-mixin>
+          <a-mixin id="char15" gltf-part-plus="src: #humans2; part: Character_15"></a-mixin>
+          <a-mixin id="char16" gltf-part-plus="src: #humans2; part: Character_16"></a-mixin>
+  
           <!-- vehicles -->
           <a-asset-item id="trammodel" src="${assetUrl}assets/objects/tram_siemens_avenio.gltf"></a-asset-item>
           <a-asset-item id="trolleymodel" src="${assetUrl}assets/objects/godarvilletram.gltf"></a-asset-item>
