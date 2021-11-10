@@ -555,6 +555,9 @@ function processSegments (segments, showStriping, length) {
       segmentParentEl.append(createMicrovanElement(variantList, positionX));
     } else if (segments[i].type === 'drive-lane' && variantList[1] === 'truck') {
       segmentParentEl.append(createTruckElement(variantList, positionX));
+    } else if (segments[i].type === 'drive-lane' && variantList[1] === 'pedestrian') {
+      //TODO: handle pedestrians in the street
+      segmentParentEl.append(createSidewalkClonedVariants(positionX, segmentWidthInMeters, "normal", length));
     } else if (segments[i].type === 'sidewalk' && variantList[0] !== 'empty') {
       // handles variantString with value sparse, normal, or dense sidewalk
       segmentParentEl.append(createSidewalkClonedVariants(positionX, segmentWidthInMeters, variantList[0], length));
