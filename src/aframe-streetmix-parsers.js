@@ -24,7 +24,8 @@ const defaultModelWidthsInMeters = {
   'bikeshare': 3,
   'flex-zone-curb': 3,
   'transit-shelter': 3,
-  'temporary': 3
+  'temporary': 3,
+  'food-truck': 3
 };
 /* eslint-enable quote-props */
 
@@ -283,6 +284,21 @@ function createTruckElement (variantList, positionX, parentId) {
   truckParentEl.append(reusableObjectEl);
 
   return truckParentEl;
+}
+
+function createFoodTruckElement (variantList, positionX, parentId, ) {
+  const foodTruckParentEl = document.createElement('a-entity');
+  let rotationY, reusableObjectEl;
+
+  reusableObjectEl = document.createElement('a-entity');
+  rotationY = (variantList[0] === 'left') ? 0 : 180;
+  reusableObjectEl.setAttribute('position', positionX + ' 0 0');
+  reusableObjectEl.setAttribute('rotation', '0 ' + rotationY + ' 0');
+  //TODO: update asset correctly 
+  reusableObjectEl.setAttribute('mixin', 'food-trailer');
+  foodTruckParentEl.append(reusableObjectEl);
+
+  return foodTruckParentEl;
 }
 
 function createWayfindingElements (positionX) {
@@ -561,6 +577,9 @@ function processSegments (segments, showStriping, length) {
       segmentParentEl.append(createTruckElement(variantList, positionX));
     } else if (segments[i].type === 'drive-lane' && variantList[1] === 'pedestrian') {
       segmentParentEl.append(createSidewalkClonedVariants(positionX, segmentWidthInMeters, "normal", length, variantList[0]));
+    } else if (segments[i].type === 'food-truck') {
+      groundMixinId = 'drive-lane';
+      segmentParentEl.append(createFoodTruckElement(variantList, positionX));
     } else if (segments[i].type === 'sidewalk' && variantList[0] !== 'empty') {
       // handles variantString with value sparse, normal, or dense sidewalk
       segmentParentEl.append(createSidewalkClonedVariants(positionX, segmentWidthInMeters, variantList[0], length));
