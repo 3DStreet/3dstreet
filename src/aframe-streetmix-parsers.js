@@ -25,7 +25,8 @@ const defaultModelWidthsInMeters = {
   'flex-zone-curb': 3,
   'transit-shelter': 3,
   'temporary': 3,
-  'food-truck': 3
+  'food-truck': 3,
+  'flex-zone': 3
 };
 /* eslint-enable quote-props */
 
@@ -264,14 +265,13 @@ function createMicrovanElement (variantList, positionX, parentId) {
   rotationY = (variantList[0] === 'inbound') ? 0 : 180;
   reusableObjectEl.setAttribute('position', positionX + ' 0 0');
   reusableObjectEl.setAttribute('rotation', '0 ' + rotationY + ' 0');
-  //TODO: update asset correctly 
   reusableObjectEl.setAttribute('mixin', 'suv');
   microvanParentEl.append(reusableObjectEl);
 
   return microvanParentEl;
 }
 
-function createTruckElement (variantList, positionX, parentId) {
+function createTruckElement (variantList, positionX) {
   const truckParentEl = document.createElement('a-entity');
   let rotationY, reusableObjectEl;
 
@@ -279,14 +279,13 @@ function createTruckElement (variantList, positionX, parentId) {
   rotationY = (variantList[0] === 'inbound') ? 0 : 180;
   reusableObjectEl.setAttribute('position', positionX + ' 0 0');
   reusableObjectEl.setAttribute('rotation', '0 ' + rotationY + ' 0');
-  //TODO: update asset correctly 
   reusableObjectEl.setAttribute('mixin', 'box-truck');
   truckParentEl.append(reusableObjectEl);
 
   return truckParentEl;
 }
 
-function createFoodTruckElement (variantList, positionX, parentId, ) {
+function createFoodTruckElement (variantList, positionX) {
   const foodTruckParentEl = document.createElement('a-entity');
   let rotationY, reusableObjectEl;
 
@@ -294,11 +293,30 @@ function createFoodTruckElement (variantList, positionX, parentId, ) {
   rotationY = (variantList[0] === 'left') ? 0 : 180;
   reusableObjectEl.setAttribute('position', positionX + ' 0 0');
   reusableObjectEl.setAttribute('rotation', '0 ' + rotationY + ' 0');
-  //TODO: update asset correctly 
   reusableObjectEl.setAttribute('mixin', 'food-trailer');
   foodTruckParentEl.append(reusableObjectEl);
 
   return foodTruckParentEl;
+}
+
+function createFlexZoneElement (variantList, positionX) {
+  console.log("here2");;
+  console.log(variantList);
+  const flexZoneParentEl = document.createElement('a-entity');
+  let rotationY, reusableObjectEl;
+
+  reusableObjectEl = document.createElement('a-entity');
+  rotationY = (variantList[1] === 'inbound') ? 0 : 180;
+  reusableObjectEl.setAttribute('position', positionX + ' 0 0');
+  reusableObjectEl.setAttribute('rotation', '0 ' + rotationY + ' 0');
+  if (variantList[0] === 'taxi') {
+    reusableObjectEl.setAttribute('mixin', 'sedan-taxi');
+  } else if (variantList[0] === 'rideshare') {
+    reusableObjectEl.setAttribute('mixin', 'sedan');
+  }
+  flexZoneParentEl.append(reusableObjectEl);
+
+  return flexZoneParentEl;
 }
 
 function createWayfindingElements (positionX) {
@@ -580,6 +598,10 @@ function processSegments (segments, showStriping, length) {
     } else if (segments[i].type === 'food-truck') {
       groundMixinId = 'drive-lane';
       segmentParentEl.append(createFoodTruckElement(variantList, positionX));
+    } else if (segments[i].type === 'flex-zone') {
+      console.log("here1")
+      groundMixinId = 'drive-lane';
+      segmentParentEl.append(createFlexZoneElement(variantList, positionX));
     } else if (segments[i].type === 'sidewalk' && variantList[0] !== 'empty') {
       // handles variantString with value sparse, normal, or dense sidewalk
       segmentParentEl.append(createSidewalkClonedVariants(positionX, segmentWidthInMeters, variantList[0], length));
