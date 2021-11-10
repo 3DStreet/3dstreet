@@ -243,46 +243,26 @@ function createBusElement (isOutbound, positionX) {
   return busParentEl;
 }
 
-function createCarElement (variantList, positionX, parentId) {
-  const carParentEl = document.createElement('a-entity');
+function createDriveLaneElement (variantList, positionX, segmentWidthInMeters, length) {
+  const vehicleParentEl = document.createElement('a-entity');
   let rotationY, reusableObjectEl;
 
   reusableObjectEl = document.createElement('a-entity');
   rotationY = (variantList[0] === 'inbound') ? 0 : 180;
   reusableObjectEl.setAttribute('position', positionX + ' 0 0');
   reusableObjectEl.setAttribute('rotation', '0 ' + rotationY + ' 0');
-  reusableObjectEl.setAttribute('mixin', 'car');
-  carParentEl.append(reusableObjectEl);
+  if (variantList[1] === 'car') {
+    reusableObjectEl.setAttribute('mixin', 'car');
+  } else if (variantList[1] === 'microvan') {
+    reusableObjectEl.setAttribute('mixin', 'suv');
+  } else if (variantList[1] === 'truck') {
+    reusableObjectEl.setAttribute('mixin', 'box-truck');
+  } else if (variantList[1] === 'pedestrian') {
+    return createSidewalkClonedVariants(positionX, segmentWidthInMeters, "normal", length, variantList[0]);
+  }
+  vehicleParentEl.append(reusableObjectEl);
 
-  return carParentEl;
-}
-
-function createMicrovanElement (variantList, positionX, parentId) {
-  const microvanParentEl = document.createElement('a-entity');
-  let rotationY, reusableObjectEl;
-
-  reusableObjectEl = document.createElement('a-entity');
-  rotationY = (variantList[0] === 'inbound') ? 0 : 180;
-  reusableObjectEl.setAttribute('position', positionX + ' 0 0');
-  reusableObjectEl.setAttribute('rotation', '0 ' + rotationY + ' 0');
-  reusableObjectEl.setAttribute('mixin', 'suv');
-  microvanParentEl.append(reusableObjectEl);
-
-  return microvanParentEl;
-}
-
-function createTruckElement (variantList, positionX) {
-  const truckParentEl = document.createElement('a-entity');
-  let rotationY, reusableObjectEl;
-
-  reusableObjectEl = document.createElement('a-entity');
-  rotationY = (variantList[0] === 'inbound') ? 0 : 180;
-  reusableObjectEl.setAttribute('position', positionX + ' 0 0');
-  reusableObjectEl.setAttribute('rotation', '0 ' + rotationY + ' 0');
-  reusableObjectEl.setAttribute('mixin', 'box-truck');
-  truckParentEl.append(reusableObjectEl);
-
-  return truckParentEl;
+  return vehicleParentEl;
 }
 
 function createFoodTruckElement (variantList, positionX) {
@@ -300,8 +280,6 @@ function createFoodTruckElement (variantList, positionX) {
 }
 
 function createFlexZoneElement (variantList, positionX) {
-  console.log("here2");;
-  console.log(variantList);
   const flexZoneParentEl = document.createElement('a-entity');
   let rotationY, reusableObjectEl;
 
@@ -587,19 +565,12 @@ function processSegments (segments, showStriping, length) {
       cloneMixinAsChildren({ objectMixinId: 'stencils word-only', parentEl: reusableObjectStencilsParentEl, rotation: '-90 ' + rotationY + ' 0', step: 50, radius: clonedObjectRadius });
       // add this stencil stuff to the segment parent
       segmentParentEl.append(reusableObjectStencilsParentEl);
-    } else if (segments[i].type === 'drive-lane' && variantList[1] === 'car') {
-      segmentParentEl.append(createCarElement(variantList, positionX));
-    } else if (segments[i].type === 'drive-lane' && variantList[1] === 'microvan') {
-      segmentParentEl.append(createMicrovanElement(variantList, positionX));
-    } else if (segments[i].type === 'drive-lane' && variantList[1] === 'truck') {
-      segmentParentEl.append(createTruckElement(variantList, positionX));
-    } else if (segments[i].type === 'drive-lane' && variantList[1] === 'pedestrian') {
-      segmentParentEl.append(createSidewalkClonedVariants(positionX, segmentWidthInMeters, "normal", length, variantList[0]));
+    } else if (segments[i].type === 'drive-lane') {
+      segmentParentEl.append(createDriveLaneElement(variantList, positionX,segmentWidthInMeters, length));
     } else if (segments[i].type === 'food-truck') {
       groundMixinId = 'drive-lane';
       segmentParentEl.append(createFoodTruckElement(variantList, positionX));
     } else if (segments[i].type === 'flex-zone') {
-      console.log("here1")
       groundMixinId = 'drive-lane';
       segmentParentEl.append(createFlexZoneElement(variantList, positionX));
     } else if (segments[i].type === 'sidewalk' && variantList[0] !== 'empty') {
