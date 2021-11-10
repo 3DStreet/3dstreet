@@ -251,6 +251,36 @@ function createCarElement (variantList, positionX, parentId) {
   return carParentEl;
 }
 
+function createMicrovanElement (variantList, positionX, parentId) {
+  const microvanParentEl = document.createElement('a-entity');
+  let rotationY, reusableObjectEl;
+
+  reusableObjectEl = document.createElement('a-entity');
+  rotationY = (variantList[0] === 'inbound') ? 0 : 180;
+  reusableObjectEl.setAttribute('position', positionX + ' 0 0');
+  reusableObjectEl.setAttribute('rotation', '0 ' + rotationY + ' 0');
+  //TODO: update asset correctly 
+  reusableObjectEl.setAttribute('mixin', 'suv');
+  microvanParentEl.append(reusableObjectEl);
+
+  return microvanParentEl;
+}
+
+function createTruckElement (variantList, positionX, parentId) {
+  const truckParentEl = document.createElement('a-entity');
+  let rotationY, reusableObjectEl;
+
+  reusableObjectEl = document.createElement('a-entity');
+  rotationY = (variantList[0] === 'inbound') ? 0 : 180;
+  reusableObjectEl.setAttribute('position', positionX + ' 0 0');
+  reusableObjectEl.setAttribute('rotation', '0 ' + rotationY + ' 0');
+  //TODO: update asset correctly 
+  reusableObjectEl.setAttribute('mixin', 'box-truck');
+  truckParentEl.append(reusableObjectEl);
+
+  return truckParentEl;
+}
+
 function createWayfindingElements (positionX) {
   const wayfindingParentEl = document.createElement('a-entity');
   let reusableObjectEl;
@@ -519,8 +549,12 @@ function processSegments (segments, showStriping, length) {
       cloneMixinAsChildren({ objectMixinId: 'stencils word-only', parentEl: reusableObjectStencilsParentEl, rotation: '-90 ' + rotationY + ' 0', step: 50, radius: clonedObjectRadius });
       // add this stencil stuff to the segment parent
       segmentParentEl.append(reusableObjectStencilsParentEl);
-    } else if (segments[i].type === 'drive-lane') {
+    } else if (segments[i].type === 'drive-lane' && variantList[1] === 'car') {
       segmentParentEl.append(createCarElement(variantList, positionX));
+    } else if (segments[i].type === 'drive-lane' && variantList[1] === 'microvan') {
+      segmentParentEl.append(createMicrovanElement(variantList, positionX));
+    } else if (segments[i].type === 'drive-lane' && variantList[1] === 'truck') {
+      segmentParentEl.append(createTruckElement(variantList, positionX));
     } else if (segments[i].type === 'sidewalk' && variantList[0] !== 'empty') {
       // handles variantString with value sparse, normal, or dense sidewalk
       segmentParentEl.append(createSidewalkClonedVariants(positionX, segmentWidthInMeters, variantList[0], length));
