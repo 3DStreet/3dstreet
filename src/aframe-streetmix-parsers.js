@@ -245,10 +245,9 @@ function createBusElement (isOutbound, positionX) {
 
 function createDriveLaneElement (variantList, positionX, segmentWidthInMeters, length) {
   const driveLaneParentEl = document.createElement('a-entity');
-  let rotationY, reusableObjectEl;
 
-  reusableObjectEl = document.createElement('a-entity');
-  rotationY = (variantList[0] === 'inbound') ? 0 : 180;
+  const reusableObjectEl = document.createElement('a-entity');
+  const rotationY = (variantList[0] === 'inbound') ? 0 : 180;
   reusableObjectEl.setAttribute('position', positionX + ' 0 0');
   reusableObjectEl.setAttribute('rotation', '0 ' + rotationY + ' 0');
   if (variantList[1] === 'car') {
@@ -258,7 +257,7 @@ function createDriveLaneElement (variantList, positionX, segmentWidthInMeters, l
   } else if (variantList[1] === 'truck') {
     reusableObjectEl.setAttribute('mixin', 'box-truck');
   } else if (variantList[1] === 'pedestrian') {
-    return createSidewalkClonedVariants(positionX, segmentWidthInMeters, "normal", length, variantList[0]);
+    return createSidewalkClonedVariants(positionX, segmentWidthInMeters, 'normal', length, variantList[0]);
   }
   driveLaneParentEl.append(reusableObjectEl);
 
@@ -267,10 +266,9 @@ function createDriveLaneElement (variantList, positionX, segmentWidthInMeters, l
 
 function createFoodTruckElement (variantList, positionX) {
   const foodTruckParentEl = document.createElement('a-entity');
-  let rotationY, reusableObjectEl;
 
-  reusableObjectEl = document.createElement('a-entity');
-  rotationY = (variantList[0] === 'left') ? 0 : 180;
+  const reusableObjectEl = document.createElement('a-entity');
+  const rotationY = (variantList[0] === 'left') ? 0 : 180;
   reusableObjectEl.setAttribute('position', positionX + ' 0 0');
   reusableObjectEl.setAttribute('rotation', '0 ' + rotationY + ' 0');
   reusableObjectEl.setAttribute('mixin', 'food-trailer');
@@ -281,10 +279,9 @@ function createFoodTruckElement (variantList, positionX) {
 
 function createFlexZoneElement (variantList, positionX) {
   const flexZoneParentEl = document.createElement('a-entity');
-  let rotationY, reusableObjectEl;
 
-  reusableObjectEl = document.createElement('a-entity');
-  rotationY = (variantList[1] === 'inbound') ? 0 : 180;
+  const reusableObjectEl = document.createElement('a-entity');
+  const rotationY = (variantList[1] === 'inbound') ? 0 : 180;
   reusableObjectEl.setAttribute('position', positionX + ' 0 0');
   reusableObjectEl.setAttribute('rotation', '0 ' + rotationY + ' 0');
   if (variantList[0] === 'taxi') {
@@ -566,7 +563,7 @@ function processSegments (segments, showStriping, length) {
       // add this stencil stuff to the segment parent
       segmentParentEl.append(reusableObjectStencilsParentEl);
     } else if (segments[i].type === 'drive-lane') {
-      segmentParentEl.append(createDriveLaneElement(variantList, positionX,segmentWidthInMeters, length));
+      segmentParentEl.append(createDriveLaneElement(variantList, positionX, segmentWidthInMeters, length));
     } else if (segments[i].type === 'food-truck') {
       groundMixinId = 'drive-lane';
       segmentParentEl.append(createFoodTruckElement(variantList, positionX));
