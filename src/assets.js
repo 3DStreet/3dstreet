@@ -18,7 +18,6 @@
           <img id="wayfinding-map" src="${assetUrl}assets/objects/wayfinding.jpg" crossorigin="anonymous" />
   
           <!-- human characters -->
-          <!-- TODO: use both character packs! add 1 more asset item and 8 more mixins -->
           <a-asset-item id="humans" src="${assetUrl}assets/objects/humanoid/human-characters-poses-1.glb"></a-asset-item>
           <a-mixin id="char1" gltf-part-plus="src: #humans; part: Character_1"></a-mixin>
           <a-mixin id="char2" gltf-part-plus="src: #humans; part: Character_2"></a-mixin>

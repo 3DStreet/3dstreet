@@ -244,7 +244,7 @@ function createBusElement (isOutbound, positionX) {
 }
 
 function createDriveLaneElement (variantList, positionX, segmentWidthInMeters, length) {
-  const vehicleParentEl = document.createElement('a-entity');
+  const driveLaneParentEl = document.createElement('a-entity');
   let rotationY, reusableObjectEl;
 
   reusableObjectEl = document.createElement('a-entity');
@@ -260,9 +260,9 @@ function createDriveLaneElement (variantList, positionX, segmentWidthInMeters, l
   } else if (variantList[1] === 'pedestrian') {
     return createSidewalkClonedVariants(positionX, segmentWidthInMeters, "normal", length, variantList[0]);
   }
-  vehicleParentEl.append(reusableObjectEl);
+  driveLaneParentEl.append(reusableObjectEl);
 
-  return vehicleParentEl;
+  return driveLaneParentEl;
 }
 
 function createFoodTruckElement (variantList, positionX) {
