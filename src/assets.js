@@ -112,7 +112,6 @@
   
           <!-- vehicles -->
           <a-mixin id="bus" anisotropy gltf-model="#xd40" scale="1.55 1.55 1.55"></a-mixin>
-          <a-mixin id="car" gltf-model="#carmodel"></a-mixin>
           <a-mixin id="tram" anisotropy gltf-model="#trammodel"></a-mixin>
           <a-mixin id="trolley" gltf-model="#trolleymodel"></a-mixin>
   

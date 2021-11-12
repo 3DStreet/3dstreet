@@ -251,7 +251,7 @@ function createDriveLaneElement (variantList, positionX, segmentWidthInMeters, l
   reusableObjectEl.setAttribute('position', positionX + ' 0 0');
   reusableObjectEl.setAttribute('rotation', '0 ' + rotationY + ' 0');
   if (variantList[1] === 'car') {
-    reusableObjectEl.setAttribute('mixin', 'car');
+    reusableObjectEl.setAttribute('mixin', 'sedan');
   } else if (variantList[1] === 'microvan') {
     reusableObjectEl.setAttribute('mixin', 'suv');
   } else if (variantList[1] === 'truck') {
