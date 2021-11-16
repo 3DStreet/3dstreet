@@ -24,4 +24,4 @@ You can also edits various properties of entities by using the controls in the w
 
 Notes for PR: 
 
-Since the current iteration of our technology revolves around our users ability to create street layouts in streetmix and import them into 3DStreet, it is important that we have a clear tutorial for how to navagate this inherently unintuative process. 
+Since the current iteration of our technology revolves around our users ability to create street layouts in streetmix and import them into 3DStreet, it is important that we have a clear tutorial for how to navigate this inherently unintuitive process. 
