@@ -10,7 +10,7 @@ The tutorial is broken up into three sections: _____, ______, ______ ....
 
 Streetmix is an interactive web app that makes street design intuitive and user-friendly. To get started, open up a web-browser and navigate to [https://streetmix.net/](https://streetmix.net/). You should see a 2D visualization of a city street. You page will look like:
 
-![image](https://user-images.githubusercontent.com/39531367/141907877-5c15351c-2413-475b-819a-63d2b09a8fac.png)
+![image](https://user-images.githubusercontent.com/39531367/141911663-41c75c6e-6d38-4e34-915f-714b2917012d.png)
 
 Notes for PR: 
 
