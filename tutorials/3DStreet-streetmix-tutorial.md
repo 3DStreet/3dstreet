@@ -12,6 +12,9 @@ Streetmix is an interactive web app that makes street design intuitive and user-
 
 ![image](https://user-images.githubusercontent.com/39531367/141911663-41c75c6e-6d38-4e34-915f-714b2917012d.png)
 
+There are a few simple ways to make this scene your own. In the bottom part of your screen there are various entities and areas that are available to add to your street. For instance, there is a 
+
+
 Notes for PR: 
 
 Since the current iteration of our technology revolves around our users ability to create street layouts in streetmix and import them into 3DStreet, it is important that we have a clear tutorial for how to navagate this inherently unintuative process. 
