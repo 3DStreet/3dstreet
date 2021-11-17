@@ -4,7 +4,10 @@
 
 3DStreet and Stretmix have a truly symbiotic relationship. When combined, you can use these platforms to create compelling and accurate 3D visualizations of streets in a matter of seconds. This tutorial will show you how to get started!
 
-The tutorial is broken up into three sections: _____, ______, ______ .... 
+The tutorial is broken up into three sections:
+- Building your street using streetmix
+- Viewing your streetmix street in 3D using 3dstreet
+- Final Thoughts
 
 ## Building your street using streetmix
 
@@ -16,11 +19,22 @@ As we can see above, streetmix includes a Wayfinding Sign. Let's start by adding
 
 ![image](https://user-images.githubusercontent.com/39531367/141921622-8416595b-89d2-4058-8d8b-384bf47db9dc.png)
 
-Streetmix also allows you to edit assets that have already been added to your street. For instance, you can remove entities by hovering over a segment and selecting remove.
+Streetmix also allows you to edit assets that have already been added to your street. For instance, you can remove entities by hovering over a segment and selecting remove. You can also edits various properties of entities by using the controls in the widget. On the right, we showcase how to change the direction that the cars in the parking lane are facing.
 
-![image](https://user-images.githubusercontent.com/39531367/141921901-c3057289-9e3f-41f8-b5c5-efb8f7dfced6.png)
+Removing Entities          |  Changing the Vehicle Direction
+:-------------------------:|:-------------------------:
+![image](https://user-images.githubusercontent.com/39531367/141921901-c3057289-9e3f-41f8-b5c5-efb8f7dfced6.png)  |  ![image](https://user-images.githubusercontent.com/39531367/142090051-8dcf4b9b-ee7e-48d1-acb6-044b0a3b247d.png)
 
-You can also edits various properties of entities by using the controls in the widget. 
+Keep experimenting with your streetmix street until you find a street layout that you love. Then, proceed to the next step!
+
+## Viewing your streetmix street in 3D using 3dstreet
+
+At 3dstreet, we worked hard to streamline the process of importing your streetmix street into 3dstreet. To get started, select the share dropdown menu in your streetmix window and copy the sharing link.
+
+![image](https://user-images.githubusercontent.com/39531367/142091286-a8653e6f-4f64-44dc-9920-33f23a4cf6ad.png)
+
+
+## Final Thoughts
 
 Notes for PR: 
 
