@@ -29,10 +29,13 @@ Keep experimenting with your streetmix street until you find a street layout tha
 
 ## Viewing your streetmix street in 3D using 3dstreet
 
-At 3dstreet, we worked hard to streamline the process of importing your streetmix street into 3dstreet. To get started, select the share dropdown menu in your streetmix window and copy the sharing link.
+At 3dstreet, we have worked hard to streamline the process of importing your streetmix street into 3dstreet. To get started, select the share dropdown menu in your streetmix window and copy the sharing link.
 
 ![image](https://user-images.githubusercontent.com/39531367/142091286-a8653e6f-4f64-44dc-9920-33f23a4cf6ad.png)
 
+Next, navagate to [https://github.3d.st/#https://streetmix.net/kfarr/3](https://github.3d.st/#https://streetmix.net/kfarr/3) or your locally hosted instance of 3dstreet. Enter your url into the search bar and refresh the scene. 
+
+![image](https://user-images.githubusercontent.com/39531367/142097255-daf93b77-1281-4aa8-a52c-b47c47496f59.png)
 
 ## Final Thoughts
 
