@@ -33,12 +33,16 @@ At 3dstreet, we have worked hard to streamline the process of importing your str
 
 ![image](https://user-images.githubusercontent.com/39531367/142091286-a8653e6f-4f64-44dc-9920-33f23a4cf6ad.png)
 
-Next, navagate to [https://github.3d.st/#https://streetmix.net/kfarr/3](https://github.3d.st/#https://streetmix.net/kfarr/3) or your locally hosted instance of 3dstreet. Enter your url into the search bar and refresh the scene. 
+Next, navagate to [https://github.3d.st/#https://streetmix.net/kfarr/3](https://github.3d.st/#https://streetmix.net/kfarr/3) or your locally hosted instance of 3dstreet. Enter your url into the search bar and refresh the scene or press enter. 
 
 ![image](https://user-images.githubusercontent.com/39531367/142097255-daf93b77-1281-4aa8-a52c-b47c47496f59.png)
+
+Enjoy your streetmix street in 3D! Feel free to share your street with freinds and family. If you would like to make instant changes to your work, simply edit your street in streetmix. Then, you can reload your 3dstreet page to see your edits applied. 
 
 ## Final Thoughts
 
 Notes for PR: 
 
 Since the current iteration of our technology revolves around our users ability to create street layouts in streetmix and import them into 3DStreet, it is important that we have a clear tutorial for how to navigate this inherently unintuitive process. 
+
+If you have any questions, comments, or concerns, do not hesitate to reach out to [@srothst1](https://github.com/srothst1) or [@kfarr](https://github.com/kfarr).
