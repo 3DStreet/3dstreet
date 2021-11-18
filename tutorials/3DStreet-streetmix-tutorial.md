@@ -37,6 +37,8 @@ Next, navigate to [https://github.3d.st/#https://streetmix.net/kfarr/3](https://
 
 ![image](https://user-images.githubusercontent.com/39531367/142097255-daf93b77-1281-4aa8-a52c-b47c47496f59.png)
 
+Alternatively, you can add `3d` to the end of your streetmix.net domain name to view your street using 3DStreet. For instance, the Streetmix URL `https://streetmix.net/kfarr/65/temp-barricade` can be changed to `https://streetmix3d.net/kfarr/65/temp-barricade` to view your street in 3D.
+
 Enjoy your Streetmix street in 3D! Feel free to share your street with friends and family. If you would like to make instant changes to your work, simply edit your street in Streetmix. Then, you can reload your 3DStreet page to see your edits applied. 
 
 ## Final Thoughts
