@@ -27,17 +27,11 @@ Removing Entities          |  Changing Parked Vehicle Orientation
 
 Keep experimenting with your Streetmix street until you find a street layout that you love. Then, proceed to the next section of this tutorial!
 
-## Viewing your Streetmix street in 3D using 3DStreet
+## Viewing your Streetmix street in 3D using 3DStreet - Just Add "3d"!
 
-At 3dstreet, we have worked hard to streamline the process of importing your Streetmix street into 3DStreet. To get started, select the share drop-down menu in your Streetmix window and copy the sharing link.
+At 3DStreet, we have worked hard to streamline the process of importing your Streetmix street into 3DStreet.
 
-![image](https://user-images.githubusercontent.com/39531367/142091286-a8653e6f-4f64-44dc-9920-33f23a4cf6ad.png)
-
-Next, navigate to [https://github.3d.st/#https://streetmix.net/kfarr/3](https://github.3d.st/#https://streetmix.net/kfarr/3) or your locally hosted instance of 3DStreet. Enter your URL into the search bar and refresh the scene or press enter. 
-
-![image](https://user-images.githubusercontent.com/39531367/142097255-daf93b77-1281-4aa8-a52c-b47c47496f59.png)
-
-Alternatively, you can add `3d` to the end of your streetmix.net domain name to view your street using 3DStreet. For instance, the Streetmix URL `https://streetmix.net/kfarr/65/temp-barricade` can be changed to `https://streetmix3d.net/kfarr/65/temp-barricade` to view your street in 3D.
+To bring any Streetmix scene into 3DStreet, add `3d` to the end of streetmix.net domain name in the URL bar of your browser to view your street using 3DStreet. (change streetmix.net to streetmix3d.net) For instance, the Streetmix URL `https://streetmix.net/kfarr/65/temp-barricade` can be changed to `https://streetmix3d.net/kfarr/65/temp-barricade` to view your street in 3D.
 
 Enjoy your Streetmix street in 3D! Feel free to share your street with friends and family. If you would like to make instant changes to your work, simply edit your street in Streetmix. Then, you can reload your 3DStreet page to see your edits applied. 
 
