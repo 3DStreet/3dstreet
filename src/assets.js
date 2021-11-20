@@ -45,7 +45,7 @@
           <a-mixin id="box-truck" gltf-part-plus="src: #vehicles; part: box-truck"></a-mixin>
           <a-mixin id="city-bus" gltf-part-plus="src: #vehicles; part: city-bus"></a-mixin>
           <a-mixin id="food-trailer" gltf-part-plus="src: #vehicles; part: food-trailer"></a-mixin>
-          <a-mixin id="sedan" gltf-part-plus="src: #vehicles; part: sedan"></a-mixin>
+          <a-mixin id="sedan" gltf-part-plus="src: #vehicles; part: sedan" glassreflection></a-mixin>
           <a-mixin id="sedan-taxi" gltf-part-plus="src: #vehicles; part: sedan-taxi"></a-mixin>
           <a-mixin id="suv" gltf-part-plus="src: #vehicles; part: suv"></a-mixin>
 
