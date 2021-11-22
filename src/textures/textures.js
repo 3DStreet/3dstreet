@@ -4,7 +4,7 @@ if (typeof AFRAME === 'undefined') {
 
 AFRAME.registerComponent("glassreflection", {
     init: function() {
-      console.log("glassreflection");
+      console.log("glassreflection active");
       var targetCube = new THREE.WebGLRenderTargetCube(512, 512);
       var renderer = this.el.sceneEl.renderer;
 
