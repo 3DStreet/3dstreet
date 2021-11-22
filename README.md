@@ -17,6 +17,7 @@
 * Then, save a Streetmix street after making an account to generate a unique URL for your street looking something like this: `https://streetmix.net/kfarr/3/my-awesome-street-name`
 * Load https://github.3d.st/, paste in your street URL, and press enter or the refresh button.
 * See your Streetmix street in 3D! See instant changes to your work: Switch back to a Streetmix.net tab, make changes to your street, then reload the 3DStreet page to see the edits applied.
+* For more information, please see our 3DStreet and Streetmix Tutorial (./3dstreet/tutorials/3DStreet-streetmix-tutorial.md).
 
 ## A-Frame component
 3DStreet is built upon a custom A-Frame `street` component which is also available for you to customize for your own custom A-Frame street scenes. The `street` component takes a string of JSON and renders one or more "segments" (also known as lanes or slices) of a street and optionally buildings and ground to the left and right.
