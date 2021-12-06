@@ -284,7 +284,7 @@ function createMicroMobilityElement (variantList, positionX, segmentType) {
   const rotationY = (variantList[0] === 'inbound') ? 0 : 180;
   reusableObjectEl.setAttribute('position', positionX + ' 0 0');
   reusableObjectEl.setAttribute('rotation', '0 ' + rotationY + ' 0');
-  if (segmentType === `bike-lane`) {
+  if (segmentType === 'bike-lane') {
     reusableObjectEl.setAttribute('mixin', 'Bicycle_1');
   } else {
     reusableObjectEl.setAttribute('mixin', 'ElectricScooter_1');
