@@ -49,6 +49,11 @@
           <a-mixin id="sedan-taxi" gltf-part-plus="src: #vehicles; part: sedan-taxi"></a-mixin>
           <a-mixin id="suv" gltf-part-plus="src: #vehicles; part: suv"></a-mixin>
 
+          <!-- micro mobility vehicles -->
+          <a-asset-item id="microMobilityDevices" src="${assetUrl}assets/objects/micro-mobility-devices_v01.glb"></a-asset-item>
+          <a-mixin id="Bicycle_1" gltf-part-plus="src: #microMobilityDevices; part: Bicycle_1"></a-mixin>
+          <a-mixin id="ElectricScooter_1" gltf-part-plus="src: #microMobilityDevices; part: ElectricScooter_1"></a-mixin>
+
           <!-- blocks -->
           <a-asset-item id="blockmodel" src="${assetUrl}assets/objects/buildings.glb"></a-asset-item>
           <a-asset-item id="suburbiamodel" src="${assetUrl}assets/objects/suburbia/suburbia-fixwindowuvs-only3-draco.glb"></a-asset-item>
