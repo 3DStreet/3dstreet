@@ -277,6 +277,23 @@ function createFoodTruckElement (variantList, positionX) {
   return foodTruckParentEl;
 }
 
+function createMicroMobilityElement (variantList, positionX, segmentType) {
+  const microMobilityParentEl = document.createElement('a-entity');
+
+  const reusableObjectEl = document.createElement('a-entity');
+  const rotationY = (variantList[0] === 'inbound') ? 0 : 180;
+  reusableObjectEl.setAttribute('position', positionX + ' 0 0');
+  reusableObjectEl.setAttribute('rotation', '0 ' + rotationY + ' 0');
+  if (segmentType === `bike-lane`) {
+    reusableObjectEl.setAttribute('mixin', 'Bicycle_1');
+  } else {
+    reusableObjectEl.setAttribute('mixin', 'ElectricScooter_1');
+  }
+  microMobilityParentEl.append(reusableObjectEl);
+
+  return microMobilityParentEl;
+}
+
 function createFlexZoneElement (variantList, positionX) {
   const flexZoneParentEl = document.createElement('a-entity');
 
@@ -454,6 +471,8 @@ function processSegments (segments, showStriping, length) {
       cloneMixinAsChildren({ objectMixinId: 'stencils bike-arrow', parentEl: stencilsParentEl, rotation: '-90 ' + rotationY + ' 0', step: 20, radius: clonedObjectRadius });
       // add this stencil stuff to the segment parent
       segmentParentEl.append(stencilsParentEl);
+      //TODO: add models here:
+      segmentParentEl.append(createMicroMobilityElement(variantList, positionX, segments[i].type));
     } else if (segments[i].type === 'light-rail' || segments[i].type === 'streetcar') {
       // get the mixin id for a bus lane
       groundMixinId = getBusLaneMixin(variantList[1]);
