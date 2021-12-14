@@ -26,7 +26,8 @@ const defaultModelWidthsInMeters = {
   'transit-shelter': 3,
   'temporary': 3,
   'food-truck': 3,
-  'flex-zone': 3
+  'flex-zone': 3,
+  'outdoor-dining': 3
 };
 /* eslint-enable quote-props */
 
@@ -616,6 +617,9 @@ function processSegments (segments, showStriping, length) {
       cloneMixinAsChildren({ objectMixinId: 'bikerack', parentEl: bikeRacksParentEl, rotation: '0 ' + rotationCloneY + ' 0', radius: clonedObjectRadius });
       // add bike racks to the segment parent
       segmentParentEl.append(bikeRacksParentEl);
+    } else if (segments[i].type === 'outdoor-dining') {
+      groundMixinId = (variantList[1] === 'road') ? 'drive-lane' : 'sidewalk';
+      //TODO: add the asset
     } else if (segments[i].type === 'bikeshare') {
       // make the parent for all the stations
       segmentParentEl.append(createBikeShareStationElement(positionX, variantList));
