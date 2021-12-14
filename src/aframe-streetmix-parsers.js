@@ -282,7 +282,7 @@ function createOutdoorDining (variantList, positionX) {
   const outdoorDiningParentEl = document.createElement('a-entity');
 
   const reusableObjectEl = document.createElement('a-entity');
-  const rotationY =  180;
+  const rotationY = 180;
   reusableObjectEl.setAttribute('position', positionX + ' 0 0');
   reusableObjectEl.setAttribute('rotation', '0 ' + rotationY + ' 0');
   reusableObjectEl.setAttribute('mixin', 'outdoor_dining');
