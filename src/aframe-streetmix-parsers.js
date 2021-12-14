@@ -599,7 +599,9 @@ function processSegments (segments, showStriping, length) {
 
       const rotationCloneY = (variantList[0] === 'right') ? -90 : 90;
       if (variantList[0] === 'center') {
-        // nothing, oh my this gives me heartburn
+        cloneMixinAsChildren({ objectMixinId: 'bench_orientation_center', parentEl: benchesParentEl, rotation: '0 ' + rotationCloneY + ' 0', radius: clonedObjectRadius });
+        // add benches to the segment parent
+        segmentParentEl.append(benchesParentEl);
       } else {
         // `right` or `left` bench
         cloneMixinAsChildren({ objectMixinId: 'bench', parentEl: benchesParentEl, rotation: '0 ' + rotationCloneY + ' 0', radius: clonedObjectRadius });
