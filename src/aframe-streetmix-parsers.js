@@ -278,6 +278,19 @@ function createFoodTruckElement (variantList, positionX) {
   return foodTruckParentEl;
 }
 
+function createOutdoorDining (variantList, positionX) {
+  const outdoorDiningParentEl = document.createElement('a-entity');
+
+  const reusableObjectEl = document.createElement('a-entity');
+  const rotationY =  180;
+  reusableObjectEl.setAttribute('position', positionX + ' 0 0');
+  reusableObjectEl.setAttribute('rotation', '0 ' + rotationY + ' 0');
+  reusableObjectEl.setAttribute('mixin', 'outdoor_dining');
+  outdoorDiningParentEl.append(reusableObjectEl);
+
+  return outdoorDiningParentEl;
+}
+
 function createMicroMobilityElement (variantList, positionX, segmentType) {
   const microMobilityParentEl = document.createElement('a-entity');
 
@@ -619,7 +632,7 @@ function processSegments (segments, showStriping, length) {
       segmentParentEl.append(bikeRacksParentEl);
     } else if (segments[i].type === 'outdoor-dining') {
       groundMixinId = (variantList[1] === 'road') ? 'drive-lane' : 'sidewalk';
-      //TODO: add the asset
+      segmentParentEl.append(createOutdoorDining(variantList, positionX));
     } else if (segments[i].type === 'bikeshare') {
       // make the parent for all the stations
       segmentParentEl.append(createBikeShareStationElement(positionX, variantList));
