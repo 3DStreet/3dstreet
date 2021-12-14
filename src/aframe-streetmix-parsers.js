@@ -26,7 +26,8 @@ const defaultModelWidthsInMeters = {
   'transit-shelter': 3,
   'temporary': 3,
   'food-truck': 3,
-  'flex-zone': 3
+  'flex-zone': 3,
+  'outdoor-dining': 3
 };
 /* eslint-enable quote-props */
 
@@ -275,6 +276,17 @@ function createFoodTruckElement (variantList, positionX) {
   foodTruckParentEl.append(reusableObjectEl);
 
   return foodTruckParentEl;
+}
+
+function createOutdoorDining (variantList, positionX) {
+  const outdoorDiningParentEl = document.createElement('a-entity');
+
+  const reusableObjectEl = document.createElement('a-entity');
+  reusableObjectEl.setAttribute('position', positionX + ' 0 0');
+  reusableObjectEl.setAttribute('mixin', 'outdoor_dining');
+  outdoorDiningParentEl.append(reusableObjectEl);
+
+  return outdoorDiningParentEl;
 }
 
 function createMicroMobilityElement (variantList, positionX, segmentType) {
@@ -599,7 +611,9 @@ function processSegments (segments, showStriping, length) {
 
       const rotationCloneY = (variantList[0] === 'right') ? -90 : 90;
       if (variantList[0] === 'center') {
-        // nothing, oh my this gives me heartburn
+        cloneMixinAsChildren({ objectMixinId: 'bench_orientation_center', parentEl: benchesParentEl, rotation: '0 ' + rotationCloneY + ' 0', radius: clonedObjectRadius });
+        // add benches to the segment parent
+        segmentParentEl.append(benchesParentEl);
       } else {
         // `right` or `left` bench
         cloneMixinAsChildren({ objectMixinId: 'bench', parentEl: benchesParentEl, rotation: '0 ' + rotationCloneY + ' 0', radius: clonedObjectRadius });
@@ -614,6 +628,9 @@ function processSegments (segments, showStriping, length) {
       cloneMixinAsChildren({ objectMixinId: 'bikerack', parentEl: bikeRacksParentEl, rotation: '0 ' + rotationCloneY + ' 0', radius: clonedObjectRadius });
       // add bike racks to the segment parent
       segmentParentEl.append(bikeRacksParentEl);
+    } else if (segments[i].type === 'outdoor-dining') {
+      groundMixinId = (variantList[1] === 'road') ? 'drive-lane' : 'sidewalk';
+      segmentParentEl.append(createOutdoorDining(variantList, positionX));
     } else if (segments[i].type === 'bikeshare') {
       // make the parent for all the stations
       segmentParentEl.append(createBikeShareStationElement(positionX, variantList));
