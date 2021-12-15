@@ -278,7 +278,7 @@ function createFoodTruckElement (variantList, positionX) {
   return foodTruckParentEl;
 }
 
-function createOutdoorDining (variantList, positionX) {
+function createOutdoorDining (positionX) {
   const outdoorDiningParentEl = document.createElement('a-entity');
 
   const reusableObjectEl = document.createElement('a-entity');
