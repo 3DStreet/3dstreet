@@ -631,6 +631,8 @@ function processSegments (segments, showStriping, length) {
     } else if (segments[i].type === 'outdoor-dining') {
       groundMixinId = (variantList[1] === 'road') ? 'drive-lane' : 'sidewalk';
       segmentParentEl.append(createOutdoorDining(variantList, positionX));
+    } else if (segments[i].type === 'parklet'){
+      console.log("parklet");
     } else if (segments[i].type === 'bikeshare') {
       // make the parent for all the stations
       segmentParentEl.append(createBikeShareStationElement(positionX, variantList));
