@@ -4,7 +4,7 @@ var streetmixUtils = require('./tested/streetmix-utils');
 require('./assets.js');
 require('./components/create-from-json');
 require('aframe-atlas-uvs-component');
-require('aframe-gltf-helpers');
+require('./lib/aframe-gltf-helpers.js');
 
 AFRAME.registerComponent('street', {
   schema: {
