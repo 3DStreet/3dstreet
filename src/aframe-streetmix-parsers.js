@@ -27,7 +27,8 @@ const defaultModelWidthsInMeters = {
   'temporary': 3,
   'food-truck': 3,
   'flex-zone': 3,
-  'outdoor-dining': 3
+  'outdoor-dining': 3,
+  'parklet': 3
 };
 /* eslint-enable quote-props */
 
@@ -633,6 +634,7 @@ function processSegments (segments, showStriping, length) {
       segmentParentEl.append(createOutdoorDining(variantList, positionX));
     } else if (segments[i].type === 'parklet'){
       console.log("parklet");
+      groundMixinId = 'drive-lane';
     } else if (segments[i].type === 'bikeshare') {
       // make the parent for all the stations
       segmentParentEl.append(createBikeShareStationElement(positionX, variantList));
