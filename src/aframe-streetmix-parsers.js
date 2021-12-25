@@ -373,6 +373,16 @@ function createBikeShareStationElement (positionX, variantList) {
   return placedObjectEl;
 }
 
+function createParkletElement (positionX, variantList) {
+  const placedObjectEl = document.createElement('a-entity');
+  placedObjectEl.setAttribute('class', 'parklet');
+  placedObjectEl.setAttribute('position', positionX + ' .02 0');
+  placedObjectEl.setAttribute('mixin', 'parklet');
+  const rotationY = (variantList[0] === 'left') ? 90 : 270;
+  placedObjectEl.setAttribute('rotation', '0 ' + rotationY + ' 0');
+  return placedObjectEl;
+}
+
 function createTreesParentElement (positionX) {
   const placedObjectEl = document.createElement('a-entity');
   placedObjectEl.setAttribute('class', 'tree-parent');
@@ -633,8 +643,8 @@ function processSegments (segments, showStriping, length) {
       groundMixinId = (variantList[1] === 'road') ? 'drive-lane' : 'sidewalk';
       segmentParentEl.append(createOutdoorDining(variantList, positionX));
     } else if (segments[i].type === 'parklet'){
-      console.log("parklet");
       groundMixinId = 'drive-lane';
+      segmentParentEl.append(createParkletElement(positionX, variantList));
     } else if (segments[i].type === 'bikeshare') {
       // make the parent for all the stations
       segmentParentEl.append(createBikeShareStationElement(positionX, variantList));
