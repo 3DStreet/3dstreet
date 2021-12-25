@@ -642,7 +642,7 @@ function processSegments (segments, showStriping, length) {
     } else if (segments[i].type === 'outdoor-dining') {
       groundMixinId = (variantList[1] === 'road') ? 'drive-lane' : 'sidewalk';
       segmentParentEl.append(createOutdoorDining(variantList, positionX));
-    } else if (segments[i].type === 'parklet'){
+    } else if (segments[i].type === 'parklet') {
       groundMixinId = 'drive-lane';
       segmentParentEl.append(createParkletElement(positionX, variantList));
     } else if (segments[i].type === 'bikeshare') {
