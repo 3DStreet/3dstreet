@@ -42,7 +42,8 @@ AFRAME.registerComponent('streetmix-loader', {
   schema: {
     streetmixStreetURL: { type: 'string' },
     streetmixAPIURL: { type: 'string' },
-    showBuildings: { default: true }
+    showBuildings: { default: true },
+    name: { default: '' }
   },
   update: function (oldData) {
     // fired once at start and at each subsequent change of a schema value
@@ -70,6 +71,8 @@ AFRAME.registerComponent('streetmix-loader', {
         // Connection success
         const streetmixResponseObject = JSON.parse(this.response);
         const streetmixSegments = streetmixResponseObject.data.street.segments;
+        const streetmixName = streetmixResponseObject.name;
+        el.setAttribute('streetmix-loader', 'name', streetmixName);
         if (data.showBuildings) {
           el.setAttribute('street', 'right', streetmixResponseObject.data.street.rightBuildingVariant);
           el.setAttribute('street', 'left', streetmixResponseObject.data.street.leftBuildingVariant);
