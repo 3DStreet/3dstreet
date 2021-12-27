@@ -648,6 +648,8 @@ function processSegments (segments, showStriping, length) {
     } else if (segments[i].type === 'bikeshare') {
       // make the parent for all the stations
       segmentParentEl.append(createBikeShareStationElement(positionX, variantList));
+    } else if (segments[i].type === 'utilities') {
+
     } else if (segments[i].type === 'sidewalk-tree') {
       // make the parent for all the trees
       const treesParentEl = createTreesParentElement(positionX);
