@@ -150,9 +150,9 @@ function createDividerVariant (variantName, positionX, clonedObjectRadius, step 
   return dividerParentEl;
 }
 
-function createClonedVariants (variantName, positionX, clonedObjectRadius, step = 2.25) {
+function createClonedVariants (variantName, positionX, clonedObjectRadius, step = 2.25, rotation = '0, 0, 0') {
   const dividerParentEl = createParentElement(positionX, `${variantName}-parent`);
-  cloneMixinAsChildren({ objectMixinId: variantName, parentEl: dividerParentEl, step: step, radius: clonedObjectRadius });
+  cloneMixinAsChildren({ objectMixinId: variantName, parentEl: dividerParentEl, step: step, radius: clonedObjectRadius, rotation: rotation });
   return dividerParentEl;
 }
 
@@ -650,7 +650,8 @@ function processSegments (segments, showStriping, length) {
       // make the parent for all the stations
       segmentParentEl.append(createBikeShareStationElement(positionX, variantList));
     } else if (segments[i].type === 'utilities') {
-
+      var rotation = (variantList[0] === 'right') ? '0 180 0' : '0 0 0';
+      segmentParentEl.append(createClonedVariants('utility_pole', positionX, clonedObjectRadius, 15, rotation));
     } else if (segments[i].type === 'sidewalk-tree') {
       // make the parent for all the trees
       const treesParentEl = createTreesParentElement(positionX);
