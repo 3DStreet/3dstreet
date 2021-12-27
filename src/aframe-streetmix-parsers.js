@@ -28,7 +28,8 @@ const defaultModelWidthsInMeters = {
   'food-truck': 3,
   'flex-zone': 3,
   'outdoor-dining': 3,
-  'parklet': 3
+  'parklet': 3,
+  'utilities': 3
 };
 /* eslint-enable quote-props */
 
