@@ -150,7 +150,7 @@ function createDividerVariant (variantName, positionX, clonedObjectRadius, step 
   return dividerParentEl;
 }
 
-function createClonedVariants (variantName, positionX, clonedObjectRadius, step = 2.25, rotation = '0, 0, 0') {
+function createClonedVariants (variantName, positionX, clonedObjectRadius, step = 2.25, rotation = '0 0 0') {
   const dividerParentEl = createParentElement(positionX, `${variantName}-parent`);
   cloneMixinAsChildren({ objectMixinId: variantName, parentEl: dividerParentEl, step: step, radius: clonedObjectRadius, rotation: rotation });
   return dividerParentEl;
