@@ -45,10 +45,17 @@ AFRAME.registerComponent('streetmix-loader', {
     showBuildings: { default: true },
     name: { default: '' }
   },
-  update: function (oldData) {
-    // fired once at start and at each subsequent change of a schema value
+  update: function (oldData) { // fired at start and at each subsequent change of any schema value
+    // This method may fire a few times when viewing a streetmix street in 3dstreet:
+    // First to find the proper path, once to actually load the street, and then subsequent updates such as street name
     var data = this.data;
     var el = this.el;
+
+    // if the loader has run once already, and upon update neither URL has changed, do not take action
+    if ((oldData.streetmixStreetURL === data.streetmixStreetURL) && (oldData.streetmixAPIURL === data.streetmixAPIURL)) {
+      // console.log('[streetmix-loader]', 'Neither streetmixStreetURL nor streetmixAPIURL have changed in this component data update, not reloading street.')
+      return;
+    }
 
     // if no value for 'streetmixAPIURL' then let's see if there's a streetmixURL
     if (data.streetmixAPIURL.length === 0) {
@@ -80,6 +87,7 @@ AFRAME.registerComponent('streetmix-loader', {
         el.setAttribute('street', 'type', 'streetmixSegmentsFeet');
         // set JSON attribute last or it messes things up
         el.setAttribute('street', 'JSON', JSON.stringify({ streetmixSegmentsFeet: streetmixSegments }));
+        el.emit('streetmix-loader-street-loaded');
       } else {
         // We reached our target server, but it returned an error
         console.log('[streetmix-loader]', 'Loading Error: We reached the target server, but it returned an error');
