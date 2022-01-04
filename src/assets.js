@@ -10,7 +10,6 @@
           <a-asset-item id="treemodel3" src="${assetUrl}assets/objects/SM_Env_Tree_03.gltf"></a-asset-item>
           <a-asset-item id="palmtreemodel" src="${assetUrl}assets/objects/PalmTree.gltf"></a-asset-item>
           <a-asset-item id="benchmodel" src="${assetUrl}assets/objects/SM_Prop_ParkBench_02.gltf"></a-asset-item>
-          <a-asset-item id="bikerackmodel" src="${assetUrl}assets/objects/bikerack.glb"></a-asset-item>
           <a-asset-item id="bikesharemodel" src="${assetUrl}assets/objects/bikeshare.glb"></a-asset-item>
           <a-asset-item id="lamp-modern-glb" src="${assetUrl}assets/objects/lamp-post-modern-centered.glb"></a-asset-item>
           <a-asset-item id="lamp-traditional-glb" src="${assetUrl}assets/objects/lamp-post-traditional.glb"></a-asset-item>
@@ -21,6 +20,7 @@
           <a-mixin id="bench_orientation_center" gltf-part-plus="src: #streetProps; part: bench_orientation_center"></a-mixin>
           <a-mixin id="parklet" gltf-part-plus="src: #streetProps; part: parklet"></a-mixin>
           <a-mixin id="utility_pole" gltf-part-plus="src: #streetProps; part: utility_pole"></a-mixin>
+          <a-mixin id="bikerack" gltf-part-plus="src: #streetProps; part: bike_rack"></a-mixin>
 
           <!-- human characters -->
           <a-asset-item id="humans" src="${assetUrl}assets/objects/humanoid/human-characters-poses-1.glb"></a-asset-item>
@@ -129,7 +129,6 @@
           <a-mixin id="palm-tree" gltf-model="#palmtreemodel" scale="1 1.5 1"></a-mixin>
           <a-mixin id="bench" gltf-model="#benchmodel" scale="1 1 1"></a-mixin>
           <a-mixin id="track" gltf-model="#trackmodel" scale="1 1 1"></a-mixin>
-          <a-mixin id="bikerack" gltf-model="#bikerackmodel" scale="0.25 0.25 0.25"></a-mixin>
           <a-mixin id="bikeshare" gltf-model="#bikesharemodel" scale="1 1 1"></a-mixin>
           <a-mixin id="lamp-modern" gltf-model="#lamp-modern-glb" scale="0.5 0.5 0.5"></a-mixin>
           <a-mixin id="lamp-traditional" gltf-model="#lamp-traditional-glb" scale="0.2 0.2 0.2" ></a-mixin>
