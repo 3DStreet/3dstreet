@@ -810,7 +810,7 @@ function processBuildings (left, right, streetWidth, showGround, length) {
 
       // clone a bunch of seawalls under the parent
       const rotationCloneY = (side === 'right') ? -90 : 90;
-      cloneMixinAsChildren({ objectMixinId: 'seawall', parentEl: placedObjectEl, rotation: '-90 ' + rotationCloneY + ' 0', step: 15, radius: clonedObjectRadius });
+      cloneMixinAsChildren({ objectMixinId: 'seawall', parentEl: placedObjectEl, rotation: '0 90 0' + rotationCloneY + ' 0', step: 15, radius: clonedObjectRadius });
     }
 
     if (currentValue === 'fence' || currentValue === 'parking-lot') {
