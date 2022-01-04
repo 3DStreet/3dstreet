@@ -17,7 +17,7 @@
           <a-mixin id="utility_pole" gltf-part-plus="src: #streetProps; part: utility_pole"></a-mixin>
           <a-mixin id="bikerack" gltf-part-plus="src: #streetProps; part: bike_rack";></a-mixin>
           <a-mixin id="bikeshare" gltf-part-plus="src: #streetProps; part: bike_share"></a-mixin>
-          <a-mixin id="lamp-traditional" gltf-part-plus="src: #streetProps; part: lamp_post_traditional"; scale="0.2 0.2 0.2"></a-mixin>
+          <a-mixin id="lamp-traditional" gltf-part-plus="src: #streetProps; part: lamp_post_traditional"; scale="2 2 2"></a-mixin>
           <a-mixin id="palm-tree" gltf-part-plus="src: #streetProps; part: palmtree"; scale="1 1.5 1"></a-mixin>
           <a-mixin id="bench" gltf-part-plus="src: #streetProps; part: park_bench"></a-mixin>
           <a-mixin id="seawall" gltf-part-plus="src: #streetProps; part: sea_wall"></a-mixin>
