@@ -21,6 +21,8 @@
           <a-mixin id="lamp-traditional" gltf-part-plus="src: #streetProps; part: lamp_post_traditional"; scale="0.2 0.2 0.2"></a-mixin>
           <a-mixin id="palm-tree" gltf-part-plus="src: #streetProps; part: palmtree"; scale="1 1.5 1"></a-mixin>
           <a-mixin id="bench" gltf-part-plus="src: #streetProps; part: park_bench"></a-mixin>
+          <a-mixin id="seawall" gltf-part-plus="src: #streetProps; part: sea_wall"></a-mixin>
+
           <!-- human characters -->
           <a-asset-item id="humans" src="${assetUrl}assets/objects/humanoid/human-characters-poses-1.glb"></a-asset-item>
           <a-mixin id="char1" gltf-part-plus="src: #humans; part: Character_1"></a-mixin>
@@ -63,7 +65,6 @@
           <a-asset-item id="suburbiamodel" src="${assetUrl}assets/objects/suburbia/suburbia-fixwindowuvs-only3-draco.glb"></a-asset-item>
           <a-asset-item id="dividers" src="${assetUrl}assets/objects/dividers.glb"></a-asset-item>
           <a-asset-item id="fence-model" src="${assetUrl}assets/objects/fence4/fence4.gltf"></a-asset-item>
-          <a-asset-item id="seawall-model" src="${assetUrl}assets/objects/seawall.gltf"></a-asset-item>
   
           <!-- lane objects -->
           <a-asset-item id="trackmodel" src="${assetUrl}assets/objects/track.gltf"></a-asset-item>
@@ -145,7 +146,6 @@
           <a-mixin id="SM_Bld_House_Preset_08_1809" scale="1 1 1" rotation="0 0 0" gltf-part-plus="src: #suburbiamodel; part: SM_Bld_House_Preset_08_1809" model-center="bottomAlign: true"></a-mixin>
           <a-mixin id="SM_Bld_House_Preset_09_1845" scale="1 1 1" rotation="0 0 0" gltf-part-plus="src: #suburbiamodel; part: SM_Bld_House_Preset_09_1845" model-center="bottomAlign: true"></a-mixin>
   
-          <a-mixin id="seawall" gltf-model="#seawall-model" scale="1 1 1" rotation="0 0 0"></a-mixin>
           <a-mixin id="fence" gltf-model="#fence-model" scale="0.1 0.1 0.1"></a-mixin>
 
           <!-- dividers -->
