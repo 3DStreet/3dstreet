@@ -22,6 +22,7 @@
           <a-mixin id="palm-tree" gltf-part-plus="src: #streetProps; part: palmtree"; scale="1 1.5 1"></a-mixin>
           <a-mixin id="bench" gltf-part-plus="src: #streetProps; part: park_bench"></a-mixin>
           <a-mixin id="seawall" gltf-part-plus="src: #streetProps; part: sea_wall"></a-mixin>
+          <a-mixin id="track" gltf-part-plus="src: #streetProps; part: track"></a-mixin>
 
           <!-- human characters -->
           <a-asset-item id="humans" src="${assetUrl}assets/objects/humanoid/human-characters-poses-1.glb"></a-asset-item>
@@ -65,10 +66,7 @@
           <a-asset-item id="suburbiamodel" src="${assetUrl}assets/objects/suburbia/suburbia-fixwindowuvs-only3-draco.glb"></a-asset-item>
           <a-asset-item id="dividers" src="${assetUrl}assets/objects/dividers.glb"></a-asset-item>
           <a-asset-item id="fence-model" src="${assetUrl}assets/objects/fence4/fence4.gltf"></a-asset-item>
-  
-          <!-- lane objects -->
-          <a-asset-item id="trackmodel" src="${assetUrl}assets/objects/track.gltf"></a-asset-item>
-          
+            
           <img id="stencils-atlas" src="${assetUrl}assets/materials/stencils-atlas_2048.png" crossorigin="anonymous" />
           <img id="markings-atlas" src="${assetUrl}assets/materials/lane-markings-atlas_1024.png" crossorigin="anonymous" />
   
@@ -126,7 +124,6 @@
   
           <!-- street props -->
           <a-mixin id="tree3" gltf-model="#treemodel3" scale="1.25 1.25 1.25"></a-mixin>
-          <a-mixin id="track" gltf-model="#trackmodel" scale="1 1 1"></a-mixin>
           <a-mixin id="lamp-modern" gltf-model="#lamp-modern-glb" scale="0.5 0.5 0.5"></a-mixin>
           <a-mixin id="pride-flag" position="0.409 3.345 0" rotation="0 0 0" scale="0.5 0.75 0" geometry="width:2;height:2;primitive:plane" material="side:double; src:${assetUrl}assets/materials/rainbow-flag-poles_512.png;transparent: true;"></a-mixin>
           <a-mixin id="bus-stop" gltf-model="#bus-stop-glb" rotation="-90 0 0" scale="0.001 0.001 0.001" ></a-mixin>
