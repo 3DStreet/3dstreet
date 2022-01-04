@@ -8,7 +8,6 @@
   
           <!-- sidewalk props -->
           <a-asset-item id="treemodel3" src="${assetUrl}assets/objects/SM_Env_Tree_03.gltf"></a-asset-item>
-          <a-asset-item id="palmtreemodel" src="${assetUrl}assets/objects/PalmTree.gltf"></a-asset-item>
           <a-asset-item id="benchmodel" src="${assetUrl}assets/objects/SM_Prop_ParkBench_02.gltf"></a-asset-item>
           <a-asset-item id="lamp-modern-glb" src="${assetUrl}assets/objects/lamp-post-modern-centered.glb"></a-asset-item>
           <a-asset-item id="bus-stop-glb" src="${assetUrl}assets/objects/ccFO2EGGIq9-bus-stop.glb"></a-asset-item>
@@ -21,6 +20,8 @@
           <a-mixin id="bikerack" gltf-part-plus="src: #streetProps; part: bike_rack"></a-mixin>
           <a-mixin id="bikeshare" gltf-part-plus="src: #streetProps; part: bike_share"></a-mixin>
           <a-mixin id="lamp-traditional" gltf-part-plus="src: #streetProps; part: lamp_post_traditional"; scale="0.2 0.2 0.2"></a-mixin>
+          <a-mixin id="palm-tree" gltf-part-plus="src: #streetProps; part: palmtree"; scale="1 1.5 1"></a-mixin>
+
           <!-- human characters -->
           <a-asset-item id="humans" src="${assetUrl}assets/objects/humanoid/human-characters-poses-1.glb"></a-asset-item>
           <a-mixin id="char1" gltf-part-plus="src: #humans; part: Character_1"></a-mixin>
@@ -125,7 +126,6 @@
   
           <!-- street props -->
           <a-mixin id="tree3" gltf-model="#treemodel3" scale="1.25 1.25 1.25"></a-mixin>
-          <a-mixin id="palm-tree" gltf-model="#palmtreemodel" scale="1 1.5 1"></a-mixin>
           <a-mixin id="bench" gltf-model="#benchmodel" scale="1 1 1"></a-mixin>
           <a-mixin id="track" gltf-model="#trackmodel" scale="1 1 1"></a-mixin>
           <a-mixin id="lamp-modern" gltf-model="#lamp-modern-glb" scale="0.5 0.5 0.5"></a-mixin>
