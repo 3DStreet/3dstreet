@@ -7,7 +7,6 @@
     return `
   
           <!-- sidewalk props -->
-          <a-asset-item id="lamp-modern-glb" src="${assetUrl}assets/objects/lamp-post-modern-centered.glb"></a-asset-item>
           <a-asset-item id="bus-stop-glb" src="${assetUrl}assets/objects/ccFO2EGGIq9-bus-stop.glb"></a-asset-item>
           <img id="wayfinding-map" src="${assetUrl}assets/objects/wayfinding.jpg" crossorigin="anonymous" />
           <a-asset-item id="streetProps" src="${assetUrl}assets/objects/street-props.glb"></a-asset-item>
@@ -15,14 +14,8 @@
           <a-mixin id="bench_orientation_center" gltf-part-plus="src: #streetProps; part: bench_orientation_center"></a-mixin>
           <a-mixin id="parklet" gltf-part-plus="src: #streetProps; part: parklet"></a-mixin>
           <a-mixin id="utility_pole" gltf-part-plus="src: #streetProps; part: utility_pole"></a-mixin>
-          <a-mixin id="bikerack" gltf-part-plus="src: #streetProps; part: bike_rack";></a-mixin>
-          <a-mixin id="bikeshare" gltf-part-plus="src: #streetProps; part: bike_share"></a-mixin>
-          <a-mixin id="lamp-traditional" gltf-part-plus="src: #streetProps; part: lamp_post_traditional"; scale="2 2 2"></a-mixin>
-          <a-mixin id="palm-tree" gltf-part-plus="src: #streetProps; part: palmtree"; scale="1 1.5 1"></a-mixin>
-          <a-mixin id="bench" gltf-part-plus="src: #streetProps; part: park_bench"></a-mixin>
-          <a-mixin id="seawall" gltf-part-plus="src: #streetProps; part: sea_wall"></a-mixin>
-          <a-mixin id="track" gltf-part-plus="src: #streetProps; part: track"></a-mixin>
-          <a-mixin id="tree3" gltf-part-plus="src: #streetProps; part: tree-01"; scale="1.25 1.25 1.25"></a-mixin>
+          <a-mixin id="lamp-modern" gltf-part-plus="src: #streetProps; part: street-light"></a-mixin>
+          <a-mixin id="lamp-modern-double" gltf-part-plus="src: #streetProps; part: street-light-double"></a-mixin>
 
           <!-- human characters -->
           <a-asset-item id="humans" src="${assetUrl}assets/objects/humanoid/human-characters-poses-1.glb"></a-asset-item>
@@ -123,7 +116,6 @@
           <a-mixin id="trolley" gltf-model="#trolleymodel"></a-mixin>
   
           <!-- street props -->
-          <a-mixin id="lamp-modern" gltf-model="#lamp-modern-glb" scale="0.5 0.5 0.5"></a-mixin>
           <a-mixin id="pride-flag" position="0.409 3.345 0" rotation="0 0 0" scale="0.5 0.75 0" geometry="width:2;height:2;primitive:plane" material="side:double; src:${assetUrl}assets/materials/rainbow-flag-poles_512.png;transparent: true;"></a-mixin>
           <a-mixin id="bus-stop" gltf-model="#bus-stop-glb" rotation="-90 0 0" scale="0.001 0.001 0.001" ></a-mixin>
           <a-mixin id="wayfinding-box" geometry="primitive: box; height: 2; width: 0.84; depth: 0.1" material="color: gray"></a-mixin>
