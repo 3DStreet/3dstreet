@@ -676,10 +676,10 @@ function processSegments (segments, showStriping, length) {
       }
       // Add the pride flags to the lamp posts
       if (variantList[1] === 'pride' && (variantList[0] === 'right' || variantList[0] === 'both')) {
-        cloneMixinAsChildren({ objectMixinId: 'pride-flag', parentEl: lampsParentEl, positionXYString: '0.409 3.345', radius: clonedObjectRadius });
+        cloneMixinAsChildren({ objectMixinId: 'pride-flag', parentEl: lampsParentEl, positionXYString: '0.409 5', radius: clonedObjectRadius });
       }
       if (variantList[1] === 'pride' && (variantList[0] === 'left' || variantList[0] === 'both')) {
-        cloneMixinAsChildren({ objectMixinId: 'pride-flag', parentEl: lampsParentEl, rotation: '0 -180 0', positionXYString: '-0.409 3.345', radius: clonedObjectRadius });
+        cloneMixinAsChildren({ objectMixinId: 'pride-flag', parentEl: lampsParentEl, rotation: '0 -180 0', positionXYString: '-0.409 5', radius: clonedObjectRadius });
       }
     } else if (segments[i].type === 'sidewalk-lamp' && variantList[1] === 'traditional') {
       // make the parent for all the lamps
