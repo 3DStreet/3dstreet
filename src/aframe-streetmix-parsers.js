@@ -664,9 +664,8 @@ function processSegments (segments, showStriping, length) {
       cloneMixinAsChildren({ objectMixinId: objectMixinId, parentEl: treesParentEl, randomY: true, radius: clonedObjectRadius });
       segmentParentEl.append(treesParentEl);
     } else if (segments[i].type === 'sidewalk-lamp' && (variantList[1] === 'modern' || variantList[1] === 'pride')) {
-      // make the parent for all the lamps
+      // Make the parent object for all the lamps
       const lampsParentEl = createLampsParentElement(positionX);
-
       if (variantList[0] === 'both') {
         cloneMixinAsChildren({ objectMixinId: 'lamp-modern-double', parentEl: lampsParentEl, rotation: '0 0 0', radius: clonedObjectRadius });
         segmentParentEl.append(lampsParentEl);
@@ -675,7 +674,7 @@ function processSegments (segments, showStriping, length) {
         cloneMixinAsChildren({ objectMixinId: 'lamp-modern', parentEl: lampsParentEl, rotation: '0 ' + rotationCloneY + ' 0', radius: clonedObjectRadius });
         segmentParentEl.append(lampsParentEl);
       }
-      // add the pride flags
+      // Add the pride flags to the lamp posts
       if (variantList[1] === 'pride' && (variantList[0] === 'right' || variantList[0] === 'both')) {
         cloneMixinAsChildren({ objectMixinId: 'pride-flag', parentEl: lampsParentEl, positionXYString: '0.409 3.345', radius: clonedObjectRadius });
       }
