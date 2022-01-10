@@ -29,7 +29,8 @@ const defaultModelWidthsInMeters = {
   'flex-zone': 3,
   'outdoor-dining': 3,
   'parklet': 3,
-  'utilities': 3
+  'utilities': 3,
+  'magic-carpet': 3
 };
 /* eslint-enable quote-props */
 
@@ -640,6 +641,9 @@ function processSegments (segments, showStriping, length) {
       cloneMixinAsChildren({ objectMixinId: 'bikerack', parentEl: bikeRacksParentEl, rotation: '0 ' + rotationCloneY + ' 0', radius: clonedObjectRadius });
       // add bike racks to the segment parent
       segmentParentEl.append(bikeRacksParentEl);
+    } else if (segments[i].type === 'magic-carpet') {
+      groundMixinId = 'drive-lane';
+      console.log("magic carpet");
     } else if (segments[i].type === 'outdoor-dining') {
       groundMixinId = (variantList[1] === 'road') ? 'drive-lane' : 'sidewalk';
       segmentParentEl.append(createOutdoorDining(positionX));
