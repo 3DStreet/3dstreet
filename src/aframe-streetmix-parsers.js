@@ -281,6 +281,23 @@ function createFoodTruckElement (variantList, positionX) {
   return foodTruckParentEl;
 }
 
+function createMagicCarpetElement (positionX) {
+  const magicCarpetParentEl = document.createElement('a-entity');
+
+  const reusableObjectEl_1 = document.createElement('a-entity');
+  reusableObjectEl_1.setAttribute('position', positionX + ' 0 0');
+  reusableObjectEl_1.setAttribute('rotation', '0 0 0');
+  reusableObjectEl_1.setAttribute('mixin', 'magic-carpet');
+  magicCarpetParentEl.append(reusableObjectEl_1);
+  const reusableObjectEl_2 = document.createElement('a-entity');
+  reusableObjectEl_2.setAttribute('position', positionX + ' 0 0');
+  reusableObjectEl_2.setAttribute('rotation', '0 0 0');
+  reusableObjectEl_2.setAttribute('mixin', 'Character_1_M');
+  magicCarpetParentEl.append(reusableObjectEl_2);
+
+  return magicCarpetParentEl;
+}
+
 function createOutdoorDining (positionX) {
   const outdoorDiningParentEl = document.createElement('a-entity');
 
@@ -644,6 +661,7 @@ function processSegments (segments, showStriping, length) {
     } else if (segments[i].type === 'magic-carpet') {
       groundMixinId = 'drive-lane';
       console.log("magic carpet");
+      segmentParentEl.append(createMagicCarpetElement(positionX));
     } else if (segments[i].type === 'outdoor-dining') {
       groundMixinId = (variantList[1] === 'road') ? 'drive-lane' : 'sidewalk';
       segmentParentEl.append(createOutdoorDining(positionX));
