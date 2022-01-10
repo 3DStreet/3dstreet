@@ -284,16 +284,16 @@ function createFoodTruckElement (variantList, positionX) {
 function createMagicCarpetElement (positionX) {
   const magicCarpetParentEl = document.createElement('a-entity');
 
-  const reusableObjectEl_1 = document.createElement('a-entity');
-  reusableObjectEl_1.setAttribute('position', positionX + ' 1.75 0');
-  reusableObjectEl_1.setAttribute('rotation', '0 0 0');
-  reusableObjectEl_1.setAttribute('mixin', 'magic-carpet');
-  magicCarpetParentEl.append(reusableObjectEl_1);
-  const reusableObjectEl_2 = document.createElement('a-entity');
-  reusableObjectEl_2.setAttribute('position', positionX + ' 1.75 0');
-  reusableObjectEl_2.setAttribute('rotation', '0 0 0');
-  reusableObjectEl_2.setAttribute('mixin', 'Character_1_M');
-  magicCarpetParentEl.append(reusableObjectEl_2);
+  const reusableObjectEl1 = document.createElement('a-entity');
+  reusableObjectEl1.setAttribute('position', positionX + ' 1.75 0');
+  reusableObjectEl1.setAttribute('rotation', '0 0 0');
+  reusableObjectEl1.setAttribute('mixin', 'magic-carpet');
+  magicCarpetParentEl.append(reusableObjectEl1);
+  const reusableObjectEl2 = document.createElement('a-entity');
+  reusableObjectEl2.setAttribute('position', positionX + ' 1.75 0');
+  reusableObjectEl2.setAttribute('rotation', '0 0 0');
+  reusableObjectEl2.setAttribute('mixin', 'Character_1_M');
+  magicCarpetParentEl.append(reusableObjectEl2);
 
   return magicCarpetParentEl;
 }
