@@ -660,7 +660,6 @@ function processSegments (segments, showStriping, length) {
       segmentParentEl.append(bikeRacksParentEl);
     } else if (segments[i].type === 'magic-carpet') {
       groundMixinId = 'drive-lane';
-      console.log("magic carpet");
       segmentParentEl.append(createMagicCarpetElement(positionX));
     } else if (segments[i].type === 'outdoor-dining') {
       groundMixinId = (variantList[1] === 'road') ? 'drive-lane' : 'sidewalk';
