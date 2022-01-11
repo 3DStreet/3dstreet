@@ -7,7 +7,6 @@
     return `
   
           <!-- sidewalk props -->
-          <a-asset-item id="bus-stop-glb" src="${assetUrl}assets/objects/ccFO2EGGIq9-bus-stop.glb"></a-asset-item>
           <img id="wayfinding-map" src="${assetUrl}assets/objects/wayfinding.jpg" crossorigin="anonymous" />
           <a-asset-item id="streetProps" src="${assetUrl}assets/objects/street-props.glb"></a-asset-item>
           <a-mixin id="outdoor_dining" gltf-part-plus="src: #streetProps; part: outdoor_dining"></a-mixin>
@@ -24,7 +23,7 @@
           <a-mixin id="seawall" gltf-part-plus="src: #streetProps; part: sea_wall"></a-mixin>
           <a-mixin id="track" gltf-part-plus="src: #streetProps; part: track"></a-mixin>
           <a-mixin id="tree3" gltf-part-plus="src: #streetProps; part: tree-01"; scale="1.25 1.25 1.25"></a-mixin>
-          <a-mixin id="transit-shelter" gltf-part-plus="src: #streetProps; part: transit-shelter-1"; scale="1.25 1.25 1.25"></a-mixin>
+          <a-mixin id="bus-stop" gltf-part-plus="src: #streetProps; part: transit-shelter-1"; scale="1.25 1.25 1.25"></a-mixin>
 
           <!-- human characters -->
           <a-asset-item id="humans" src="${assetUrl}assets/objects/humanoid/human-characters-poses-1.glb"></a-asset-item>
@@ -126,7 +125,6 @@
   
           <!-- street props -->
           <a-mixin id="pride-flag" position="0.409 3.345 0" rotation="0 0 0" scale="0.5 0.75 0" geometry="width:2;height:2;primitive:plane" material="side:double; src:${assetUrl}assets/materials/rainbow-flag-poles_512.png;transparent: true;"></a-mixin>
-          <a-mixin id="bus-stop" gltf-model="#bus-stop-glb" rotation="-90 0 0" scale="0.001 0.001 0.001" ></a-mixin>
           <a-mixin id="wayfinding-box" geometry="primitive: box; height: 2; width: 0.84; depth: 0.1" material="color: gray"></a-mixin>
   
           <!-- buildings and blocks -->
