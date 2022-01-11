@@ -416,11 +416,11 @@ function createLampsParentElement (positionX) {
   return placedObjectEl;
 }
 
-function createBusStopElement (positionX, parityBusStop, rotationBusStopY) {
+function createBusStopElement (positionX, rotationBusStopY) {
   const placedObjectEl = document.createElement('a-entity');
   placedObjectEl.setAttribute('class', 'bus-stop');
-  placedObjectEl.setAttribute('position', (positionX + (0.75 * parityBusStop)) + ' 0 0');
-  placedObjectEl.setAttribute('rotation', '-90 ' + rotationBusStopY + ' 0');
+  placedObjectEl.setAttribute('position', positionX + ' 0 0');
+  placedObjectEl.setAttribute('rotation', '0 ' + rotationBusStopY + ' 0');
   placedObjectEl.setAttribute('mixin', 'bus-stop');
   return placedObjectEl;
 }
@@ -709,9 +709,8 @@ function processSegments (segments, showStriping, length) {
       cloneMixinAsChildren({ objectMixinId: 'lamp-traditional', parentEl: lampsParentEl, radius: clonedObjectRadius });
       segmentParentEl.append(lampsParentEl);
     } else if (segments[i].type === 'transit-shelter') {
-      var rotationBusStopY = (variantList[0] === 'right') ? 0 : 180;
-      var parityBusStop = (variantList[0] === 'right') ? 1 : -1;
-      segmentParentEl.append(createBusStopElement(positionX, parityBusStop, rotationBusStopY));
+      var rotationBusStopY = (variantList[0] === 'left') ? 90 : 270;
+      segmentParentEl.append(createBusStopElement(positionX, rotationBusStopY));
     } else if (segments[i].type === 'separator' && variantList[0] === 'dashed') {
       groundMixinId = 'markings dashed-stripe';
       positionY = positionY + 0.01; // make sure the lane marker is above the asphalt
