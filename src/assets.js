@@ -24,6 +24,7 @@
           <a-mixin id="seawall" gltf-part-plus="src: #streetProps; part: sea_wall"></a-mixin>
           <a-mixin id="track" gltf-part-plus="src: #streetProps; part: track"></a-mixin>
           <a-mixin id="tree3" gltf-part-plus="src: #streetProps; part: tree-01"; scale="1.25 1.25 1.25"></a-mixin>
+          <a-mixin id="transit-shelter" gltf-part-plus="src: #streetProps; part: transit-shelter-1"; scale="1.25 1.25 1.25"></a-mixin>
 
           <!-- human characters -->
           <a-asset-item id="humans" src="${assetUrl}assets/objects/humanoid/human-characters-poses-1.glb"></a-asset-item>
