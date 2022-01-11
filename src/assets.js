@@ -15,15 +15,15 @@
           <a-mixin id="utility_pole" gltf-part-plus="src: #streetProps; part: utility_pole"></a-mixin>
           <a-mixin id="lamp-modern" gltf-part-plus="src: #streetProps; part: street-light"></a-mixin>
           <a-mixin id="lamp-modern-double" gltf-part-plus="src: #streetProps; part: street-light-double"></a-mixin>
-          <a-mixin id="bikerack" gltf-part-plus="src: #streetProps; part: bike_rack";></a-mixin>
+          <a-mixin id="bikerack" gltf-part-plus="src: #streetProps; part: bike_rack"></a-mixin>
           <a-mixin id="bikeshare" gltf-part-plus="src: #streetProps; part: bike_share"></a-mixin>
-          <a-mixin id="lamp-traditional" gltf-part-plus="src: #streetProps; part: lamp_post_traditional"; scale="2 2 2"></a-mixin>
-          <a-mixin id="palm-tree" gltf-part-plus="src: #streetProps; part: palmtree"; scale="1 1.5 1"></a-mixin>
+          <a-mixin id="lamp-traditional" gltf-part-plus="src: #streetProps; part: lamp_post_traditional" scale="2 2 2"></a-mixin>
+          <a-mixin id="palm-tree" gltf-part-plus="src: #streetProps; part: palmtree" scale="1 1.5 1"></a-mixin>
           <a-mixin id="bench" gltf-part-plus="src: #streetProps; part: park_bench"></a-mixin>
           <a-mixin id="seawall" gltf-part-plus="src: #streetProps; part: sea_wall"></a-mixin>
           <a-mixin id="track" gltf-part-plus="src: #streetProps; part: track"></a-mixin>
-          <a-mixin id="tree3" gltf-part-plus="src: #streetProps; part: tree-01"; scale="1.25 1.25 1.25"></a-mixin>
-          <a-mixin id="bus-stop" gltf-part-plus="src: #streetProps; part: transit-shelter-1"; scale="1.25 1.25 1.25"></a-mixin>
+          <a-mixin id="tree3" gltf-part-plus="src: #streetProps; part: tree-01" scale="1.25 1.25 1.25"></a-mixin>
+          <a-mixin id="bus-stop" gltf-part-plus="src: #streetProps; part: transit-shelter-1"></a-mixin>
 
           <!-- human characters -->
           <a-asset-item id="humans" src="${assetUrl}assets/objects/humanoid/human-characters-poses-1.glb"></a-asset-item>
