@@ -29,7 +29,8 @@ const defaultModelWidthsInMeters = {
   'flex-zone': 3,
   'outdoor-dining': 3,
   'parklet': 3,
-  'utilities': 3
+  'utilities': 3,
+  'magic-carpet': 3
 };
 /* eslint-enable quote-props */
 
@@ -278,6 +279,23 @@ function createFoodTruckElement (variantList, positionX) {
   foodTruckParentEl.append(reusableObjectEl);
 
   return foodTruckParentEl;
+}
+
+function createMagicCarpetElement (positionX) {
+  const magicCarpetParentEl = document.createElement('a-entity');
+
+  const reusableObjectEl1 = document.createElement('a-entity');
+  reusableObjectEl1.setAttribute('position', positionX + ' 1.75 0');
+  reusableObjectEl1.setAttribute('rotation', '0 0 0');
+  reusableObjectEl1.setAttribute('mixin', 'magic-carpet');
+  magicCarpetParentEl.append(reusableObjectEl1);
+  const reusableObjectEl2 = document.createElement('a-entity');
+  reusableObjectEl2.setAttribute('position', positionX + ' 1.75 0');
+  reusableObjectEl2.setAttribute('rotation', '0 0 0');
+  reusableObjectEl2.setAttribute('mixin', 'Character_1_M');
+  magicCarpetParentEl.append(reusableObjectEl2);
+
+  return magicCarpetParentEl;
 }
 
 function createOutdoorDining (positionX) {
@@ -640,6 +658,9 @@ function processSegments (segments, showStriping, length) {
       cloneMixinAsChildren({ objectMixinId: 'bikerack', parentEl: bikeRacksParentEl, rotation: '0 ' + rotationCloneY + ' 0', radius: clonedObjectRadius });
       // add bike racks to the segment parent
       segmentParentEl.append(bikeRacksParentEl);
+    } else if (segments[i].type === 'magic-carpet') {
+      groundMixinId = 'drive-lane';
+      segmentParentEl.append(createMagicCarpetElement(positionX));
     } else if (segments[i].type === 'outdoor-dining') {
       groundMixinId = (variantList[1] === 'road') ? 'drive-lane' : 'sidewalk';
       segmentParentEl.append(createOutdoorDining(positionX));
