@@ -12,24 +12,69 @@
     <script src="src/components/ocean-plane.js"></script>
     <script src="src/lib/aframe-cubemap-component.js"></script>
 
-    <!-- 2d ui toolbar -->
-    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.4.1/css/bootstrap.min.css" integrity="sha384-Vkoo8x4CGsO3+Hhxv8T/Q5PaXtkKtu6ug5TOeNV6gBiFeWPGFN9MuhOf23Q9Ifjh" crossorigin="anonymous">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.13.0/css/all.min.css">
-
     <!-- move a-frame performance `stats` below toolbar -->
     <style>
+      @import url('https://fonts.googleapis.com/css2?family=Rubik:wght@600&display=swap');
+      @import url('https://fonts.googleapis.com/css2?family=Rubik:wght@400&display=swap');
+
       .rs-base {
         left: 20px;
         top: 80px;
+      }
+
+      .navbar {
+        font-family: Rubik;
+        align-items: center;
+        background-color: #edebef;
+        color: #0f0a13;
+        display: flex;
+        flex-grow: 2;
+        height: 32px;
+        font-size: 9.33px;
+        justify-content: space-between;
+        left: 0;
+        margin: 0 auto;
+        right: 0;
+        top: 0;
+        zoom: 150%;
+        width: 100%;
+        z-index: 999999;
+        position: fixed;
+        justify-content: space-between;
+      }
+
+      .navbar a {
+        text-decoration: none;
+      }
+
+      .navbar-brand {
+        color: #4B3461;
+        font-size: 12px;
+        padding: 10px;
+        white-space: nowrap;
+        font-weight: 600;
+      }
+
+      .pill {
+        color: #398123;
+        font-size: 10px;
+        border-radius: 3px;
+        border: 1.5px solid #398123;
+        margin: 10px;
+        padding: 0px;
+        padding-right: 5px;
+        padding-left: 5px;
+        vertical-align: 25%;
       }
     </style>
 
   </head>
   <body>
+    
     <!-- Original source https://www.codeply.com/go/sbfCXYgqoO -->
-    <nav class="navbar fixed-top navbar-expand navbar-dark bg-dark" >
-        <div class="d-flex flex-grow-1">
-            <a href="https://github.com/kfarr/3dstreet/" class="navbar-brand" title="View Github README">3DStreet Open Source Reference Application</a>
+    <nav class="navbar" >
+            <span class="navbar-brand"><a href="https://3d.st"><h1 style="font-weight: 300">3D<span style="font-weight: 600">Street</span><span class="pill" >Viewer</span></h1></a></span>
+            <!-- <a href="https://github.com/kfarr/3dstreet/" class="navbar-brand" title="View Github README">3DStreet Open Source Reference Application</a> -->
             <form class="mr-2 my-auto w-100 d-inline-block order-1" onsubmit="location.href='#'+this.inputUrl.value; setTimeout(window.location.reload.bind(window.location));" >
                 <div class="input-group">
                     <!-- <input type="text" class="form-control border border-right-0" placeholder="Paste Streetmix URL" /> -->
@@ -50,7 +95,7 @@
                     </span>
                 </div>
             </form>
-        </div>
+            <span>Thing on the Right</span>
     </nav>
     <a-scene renderer="colorManagement: true; highRefreshRate: true; foveationLevel: 3; physicallyCorrectLights: true; logarithmicDepthBuffer: false;" fogoff="type: linear; color: #D5C69B; far: 200" gltf-model="dracoDecoderPath: https://www.gstatic.com/draco/versioned/decoders/1.4.3/">
       <a-assets>
