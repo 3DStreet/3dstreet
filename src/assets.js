@@ -67,7 +67,7 @@
 
           <!-- blocks -->
           <a-asset-item id="blockmodel" src="${assetUrl}assets/objects/buildings.glb"></a-asset-item>
-          <a-asset-item id="suburbiamodel" src="${assetUrl}assets/objects/suburbia/suburbia-fixwindowuvs-only3-draco.glb"></a-asset-item>
+          <a-asset-item id="suburbiamodel" src="${assetUrl}assets/objects/suburbia/suburban-houses.glb"></a-asset-item>
 
           <!-- buildings and blocks -->
           <a-mixin id="block" gltf-model="#blockmodel" scale="1 1 1"></a-mixin>
