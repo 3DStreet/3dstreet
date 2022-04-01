@@ -113,6 +113,7 @@
           <a-mixin id="yellow" material="color:#f7d117"></a-mixin>
           <a-mixin id="surface-green" material="color:#adff83"></a-mixin>
           <a-mixin id="surface-red" material="color:#ff9393"></a-mixin>
+          <a-mixin id="surface-dark" material="color:#8f8f8f"></a-mixin>
   
           <!-- stencils atlas -->
           <a-mixin id="stencils" anisotropy atlas-uvs="totalRows: 4; totalColumns: 4" scale="2 2 2" material="src: #stencils-atlas;alphaTest: 0;transparent:true;" geometry="primitive: plane; buffer: false; skipCache: true"></a-mixin>
