@@ -737,7 +737,7 @@ function processSegments (segments, showStriping, length) {
       scaleX = 1;
       rotationY = '180';
     } else if (segments[i].type === 'parking-lane') {
-      groundMixinId = 'drive-lane';
+      groundMixinId = 'drive-lane surface-dark';
     }
 
     if (streetmixParsersTested.isSidewalk(segments[i].type)) {
