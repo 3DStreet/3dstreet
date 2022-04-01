@@ -740,7 +740,7 @@ function processSegments (segments, showStriping, length) {
       groundMixinId = 'drive-lane surface-dark';
       // insert parking stencils
       reusableObjectStencilsParentEl = createStencilsParentElement(positionX + ' 0.015 0');
-      cloneMixinAsChildren({ objectMixinId: 'stencils parking-t', parentEl: reusableObjectStencilsParentEl, rotation: '0 ' + rotationY + ' 0', step: 5, radius: clonedObjectRadius });
+      cloneMixinAsChildren({ objectMixinId: 'stencils parking-t', parentEl: reusableObjectStencilsParentEl, rotation: '-90 ' + rotationY + ' 0', step: 5, radius: clonedObjectRadius });
       // add this stencil stuff to the segment parent
       segmentParentEl.append(reusableObjectStencilsParentEl);
     }
