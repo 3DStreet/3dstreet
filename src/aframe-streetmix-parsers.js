@@ -738,6 +738,11 @@ function processSegments (segments, showStriping, length) {
       rotationY = '180';
     } else if (segments[i].type === 'parking-lane') {
       groundMixinId = 'drive-lane surface-dark';
+      // insert parking stencils
+      reusableObjectStencilsParentEl = createStencilsParentElement(positionX + ' 0.015 0');
+      cloneMixinAsChildren({ objectMixinId: 'stencils parking-t', parentEl: reusableObjectStencilsParentEl, rotation: '0 ' + rotationY + ' 0', step: 5, radius: clonedObjectRadius });
+      // add this stencil stuff to the segment parent
+      segmentParentEl.append(reusableObjectStencilsParentEl);
     }
 
     if (streetmixParsersTested.isSidewalk(segments[i].type)) {
