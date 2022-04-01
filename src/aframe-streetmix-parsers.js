@@ -628,7 +628,7 @@ function processSegments (segments, showStriping, length) {
       groundMixinId = 'drive-lane';
       segmentParentEl.append(createFoodTruckElement(variantList, positionX));
     } else if (segments[i].type === 'flex-zone') {
-      groundMixinId = 'drive-lane';
+      groundMixinId = 'drive-lane surface-dark';
       segmentParentEl.append(createFlexZoneElement(variantList, positionX));
     } else if (segments[i].type === 'sidewalk' && variantList[0] !== 'empty') {
       // handles variantString with value sparse, normal, or dense sidewalk
