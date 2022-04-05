@@ -737,8 +737,6 @@ function processSegments (segments, showStriping, length) {
       scaleX = 1;
       rotationY = '180';
     } else if (segments[i].type === 'parking-lane') {
-      console.log(segmentWidthInMeters);
-      //TODO: ensure t is properly aligned on x axis (not in the middle of the lane) for segments of varying widths
       groundMixinId = 'drive-lane surface-dark';
       // insert parking stencils
       if (variantList[1] === 'left'){
