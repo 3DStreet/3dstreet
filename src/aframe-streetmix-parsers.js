@@ -737,13 +737,15 @@ function processSegments (segments, showStriping, length) {
       scaleX = 1;
       rotationY = '180';
     } else if (segments[i].type === 'parking-lane') {
+      console.log(segmentWidthInMeters);
+      //TODO: ensure t is properly aligned on x axis (not in the middle of the lane) for segments of varying widths
       groundMixinId = 'drive-lane surface-dark';
       // insert parking stencils
       if (variantList[1] === 'left'){
-        reusableObjectStencilsParentEl = createStencilsParentElement(positionX+0.55 + ' 0.015 0');
+        reusableObjectStencilsParentEl = createStencilsParentElement(positionX+(0.225*segmentWidthInMeters) + ' 0.015 0');
         cloneMixinAsChildren({ objectMixinId: 'stencils parking-t', parentEl: reusableObjectStencilsParentEl, rotation: '-90 ' + rotationY + ' 0', step: 5, radius: clonedObjectRadius });
       } else {
-        reusableObjectStencilsParentEl = createStencilsParentElement(positionX-0.55 + ' 0.015 0');
+        reusableObjectStencilsParentEl = createStencilsParentElement(positionX-(0.225*segmentWidthInMeters) + ' 0.015 0');
         cloneMixinAsChildren({ objectMixinId: 'stencils parking-t', parentEl: reusableObjectStencilsParentEl, rotation: '-90 ' + '0' + ' 0', step: 5, radius: clonedObjectRadius });
       }
       // add this stencil stuff to the segment parent
