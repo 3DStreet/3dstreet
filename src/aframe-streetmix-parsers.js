@@ -741,10 +741,10 @@ function processSegments (segments, showStriping, length) {
       // insert parking stencils
       if (variantList[1] === 'left'){
         reusableObjectStencilsParentEl = createStencilsParentElement(positionX+(0.225*segmentWidthInMeters) + ' 0.015 0');
-        cloneMixinAsChildren({ objectMixinId: 'stencils parking-t', parentEl: reusableObjectStencilsParentEl, rotation: '-90 ' + rotationY + ' 0', step: 5, radius: clonedObjectRadius });
+        cloneMixinAsChildren({ objectMixinId: 'stencils parking-t', parentEl: reusableObjectStencilsParentEl, rotation: '-90 ' + rotationY + ' 0', step: 6, radius: clonedObjectRadius });
       } else {
         reusableObjectStencilsParentEl = createStencilsParentElement(positionX-(0.225*segmentWidthInMeters) + ' 0.015 0');
-        cloneMixinAsChildren({ objectMixinId: 'stencils parking-t', parentEl: reusableObjectStencilsParentEl, rotation: '-90 ' + '0' + ' 0', step: 5, radius: clonedObjectRadius });
+        cloneMixinAsChildren({ objectMixinId: 'stencils parking-t', parentEl: reusableObjectStencilsParentEl, rotation: '-90 ' + '0' + ' 0', step: 6, radius: clonedObjectRadius });
       }
       // add this stencil stuff to the segment parent
       segmentParentEl.append(reusableObjectStencilsParentEl);
