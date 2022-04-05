@@ -739,8 +739,13 @@ function processSegments (segments, showStriping, length) {
     } else if (segments[i].type === 'parking-lane') {
       groundMixinId = 'drive-lane surface-dark';
       // insert parking stencils
-      reusableObjectStencilsParentEl = createStencilsParentElement(positionX + ' 0.015 0');
-      cloneMixinAsChildren({ objectMixinId: 'stencils parking-t', parentEl: reusableObjectStencilsParentEl, rotation: '-90 ' + rotationY + ' 0', step: 5, radius: clonedObjectRadius });
+      if (variantList[1] === 'left'){
+        reusableObjectStencilsParentEl = createStencilsParentElement(positionX+0.55 + ' 0.015 0');
+        cloneMixinAsChildren({ objectMixinId: 'stencils parking-t', parentEl: reusableObjectStencilsParentEl, rotation: '-90 ' + rotationY + ' 0', step: 5, radius: clonedObjectRadius });
+      } else {
+        reusableObjectStencilsParentEl = createStencilsParentElement(positionX-0.55 + ' 0.015 0');
+        cloneMixinAsChildren({ objectMixinId: 'stencils parking-t', parentEl: reusableObjectStencilsParentEl, rotation: '-90 ' + '0' + ' 0', step: 5, radius: clonedObjectRadius });
+      }
       // add this stencil stuff to the segment parent
       segmentParentEl.append(reusableObjectStencilsParentEl);
     }
