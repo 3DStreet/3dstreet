@@ -99,6 +99,9 @@ function insertSeparatorSegments (segments) {
         variantString = 'soliddashedyellowinverted';
       }
 
+      // if adjacent to parking lane with markings, do not draw white line
+      if (currentValue.type === 'parking-lane' || previousValue.type === 'parking-lane') { variantString = 'invisible' };
+
       newArray.push({ type: 'separator', variantString: variantString, width: 0 });
     }
 
@@ -737,12 +740,12 @@ function processSegments (segments, showStriping, length) {
       scaleX = 1;
       rotationY = '180';
     } else if (segments[i].type === 'parking-lane') {
-      groundMixinId = 'drive-lane surface-dark';
+      groundMixinId = 'bright-lane';
       if (variantList[1] === 'left'){
-        reusableObjectStencilsParentEl = createStencilsParentElement(positionX+(0.225*segmentWidthInMeters) + ' 0.015 0');
-        cloneMixinAsChildren({ objectMixinId: 'stencils parking-t', parentEl: reusableObjectStencilsParentEl, rotation: '-90 ' + rotationY + ' 0', step: 6, radius: clonedObjectRadius });
+        reusableObjectStencilsParentEl = createStencilsParentElement((positionX+segmentWidthInMeters/2-0.75) + ' 0.015 0');
+        cloneMixinAsChildren({ objectMixinId: 'stencils parking-t', parentEl: reusableObjectStencilsParentEl, rotation: '-90 ' + '180' + ' 0', step: 6, radius: clonedObjectRadius });
       } else {
-        reusableObjectStencilsParentEl = createStencilsParentElement(positionX-(0.225*segmentWidthInMeters) + ' 0.015 0');
+        reusableObjectStencilsParentEl = createStencilsParentElement((positionX-(segmentWidthInMeters/2)+0.75) + ' 0.015 0');
         cloneMixinAsChildren({ objectMixinId: 'stencils parking-t', parentEl: reusableObjectStencilsParentEl, rotation: '-90 ' + '0' + ' 0', step: 6, radius: clonedObjectRadius });
       }
       // add this stencil stuff to the segment parent
