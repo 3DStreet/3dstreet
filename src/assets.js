@@ -91,10 +91,12 @@
   
           <!-- optimized textures - used by default -->
           <img id="seamless-road" src="${assetUrl}assets/materials/TexturesCom_Roads0086_1_seamless_S_rotate.jpg" crossorigin="anonymous">
+          <img id="seamless-bright-road" src="${assetUrl}assets/materials/asphalthd_Base_Color.jpg" crossorigin="anonymous">
           <img id="hatched-base" src="${assetUrl}assets/materials/hatched_Base_Color.jpg" crossorigin="anonymous">
           <img id="hatched-normal" src="${assetUrl}assets/materials/hatched_Normal.jpg" crossorigin="anonymous">
           <img id="seamless-sidewalk" src="${assetUrl}assets/materials/TexturesCom_FloorsRegular0301_1_seamless_S.jpg" crossorigin="anonymous">
           <a-mixin id="drive-lane" geometry="width:3;height:150;primitive:plane" material="repeat:0.3 25;offset:0.55 0;src:#seamless-road;"></a-mixin>
+          <a-mixin id="bright-lane" geometry="width:3;height:150;primitive:plane" material="repeat:0.6 50;offset:0.55 0;src:#seamless-bright-road;color:#dddddd"></a-mixin>
           <a-mixin id="bike-lane" geometry="width:1.8;height:150;primitive:plane" material="repeat:0.3 25;offset:0.55 0;roughness:1;metalness:0;src:#seamless-road;"></a-mixin>
           <a-mixin id="sidewalk" anisotropy geometry="width:3;height:150;primitive:plane" material="repeat:1.5 75;src:#seamless-sidewalk;"></a-mixin>
           <a-mixin id="bus-lane" geometry="width:3;height:150;primitive:plane" material="repeat:0.3 25;offset:0.55 0;src:#seamless-road;"></a-mixin>
@@ -113,7 +115,6 @@
           <a-mixin id="yellow" material="color:#f7d117"></a-mixin>
           <a-mixin id="surface-green" material="color:#adff83"></a-mixin>
           <a-mixin id="surface-red" material="color:#ff9393"></a-mixin>
-          <a-mixin id="surface-dark" material="color:#8f8f8f"></a-mixin>
   
           <!-- stencils atlas -->
           <a-mixin id="stencils" anisotropy atlas-uvs="totalRows: 4; totalColumns: 4" scale="2 2 2" material="src: #stencils-atlas;alphaTest: 0;transparent:true;" geometry="primitive: plane; buffer: false; skipCache: true"></a-mixin>
@@ -135,7 +136,7 @@
           <a-mixin id="word-xing" atlas-uvs="totalRows: 8; totalColumns: 8; column: 1; row: 1" scale="3 3 3"></a-mixin>
           <a-mixin id="word-stop" atlas-uvs="totalRows: 8; totalColumns: 8; column: 2; row: 1" scale="3 3 3"></a-mixin>
           <a-mixin id="perpendicular-stalls" atlas-uvs="totalRows: 4; totalColumns: 8; column: 5; row: 4" scale="5 10 5"></a-mixin>
-          <a-mixin id="parking-delimiter" atlas-uvs="totalRows: 8; totalColumns: 8; column: 2; row: 7" scale="1.8 1.8 1.8"></a-mixin>
+          <a-mixin id="parking-t" atlas-uvs="totalRows: 8; totalColumns: 16; column: 4; row: 7" scale="1.5 2 2"></a-mixin>
   
           <!-- vehicles -->
           <a-mixin id="bus" anisotropy gltf-model="#xd40" scale="1.55 1.55 1.55"></a-mixin>
