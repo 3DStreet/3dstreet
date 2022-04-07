@@ -748,7 +748,7 @@ function processSegments (segments, showStriping, length) {
         reusableObjectStencilsParentEl = createStencilsParentElement((positionX-(segmentWidthInMeters/2)+0.75) + ' 0.015 0');
         cloneMixinAsChildren({ objectMixinId: 'stencils parking-t', parentEl: reusableObjectStencilsParentEl, rotation: '-90 ' + '0' + ' 0', step: 6, radius: clonedObjectRadius });
       }
-      // add this stencils to the segment parent
+      // add the stencils to the segment parent
       segmentParentEl.append(reusableObjectStencilsParentEl);
     }
 
