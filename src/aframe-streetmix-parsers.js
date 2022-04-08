@@ -741,6 +741,7 @@ function processSegments (segments, showStriping, length) {
       rotationY = '180';
     } else if (segments[i].type === 'parking-lane') {
       groundMixinId = 'bright-lane';
+      segmentParentEl.append(createDriveLaneElement(['inbound', 'car'], positionX, segmentWidthInMeters, length));
       if (variantList[1] === 'left'){
         reusableObjectStencilsParentEl = createStencilsParentElement((positionX+segmentWidthInMeters/2-0.75) + ' 0.015 0');
         cloneMixinAsChildren({ objectMixinId: 'stencils parking-t', parentEl: reusableObjectStencilsParentEl, rotation: '-90 ' + '180' + ' 0', step: 6, radius: clonedObjectRadius });
