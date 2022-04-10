@@ -25,7 +25,6 @@
       .navbar {
         font-family: Rubik;
         align-items: center;
-        background-color: #edebef;
         color: #0f0a13;
         display: flex;
         flex-grow: 2;
@@ -34,10 +33,9 @@
         justify-content: space-between;
         left: 0;
         margin: 0 auto;
-        right: 0;
-        top: 0;
+        right: 40%;
+        bottom: 0;
         zoom: 150%;
-        width: 100%;
         z-index: 999999;
         position: fixed;
         justify-content: space-between;
@@ -49,64 +47,169 @@
 
       .navbar-brand {
         color: #4B3461;
+        z-index: 999999;
         font-size: 12px;
         padding: 10px;
         white-space: nowrap;
         font-weight: 600;
       }
 
-      .pill {
-        color: #398123;
-        font-size: 10px;
-        border-radius: 3px;
-        border: 1.5px solid #398123;
-        margin: 10px;
-        padding: 0px;
-        padding-right: 5px;
-        padding-left: 5px;
-        vertical-align: 25%;
-      }
-
       .url-input {
         width: 90%;
+        background-color: #9956db;
         font-size: 12px;
         vertical-align: 15%;
       }
 
-      .url-form {
-        width: 90%;
-        white-space: nowrap;
-      }
-    </style>
+    .url-form {
+      width: 100%;
+      padding-left: 5%;
+      padding-bottom: 5%;
+      white-space: nowrap;
+    }
+
+    a:link { text-decoration: none; }
+    a:visited { text-decoration: none; }
+    a:hover { text-decoration: none; }
+    a:active { text-decoration: none; }
+
+    .textlarge {
+      color: #ffffff;
+      z-index: 999999;
+      font-family: Rubik;
+      font-size: 26px;
+      padding: 10px;
+      white-space: nowrap;
+      font-weight: 600;
+      top: 0px;
+      left: 20px;
+      position: absolute;
+    }
+
+    .pill {
+      font-family: Rubik;
+      color: #ffffff;
+      font-size: 12px;
+      z-index: 999999;
+      border-radius: 3px;
+      background-color: #8941FF;
+      margin: 5px;
+      padding: 0px;
+      padding-right: 5px;
+      padding-left: 5px;
+      bottom: 5px;
+      position: relative;
+    }
+
+    .inputBox {
+    background: transparent;
+    z-index: 999999;
+    width: 60%;
+    color: #ffffff;
+    border-color: transparent;
+    font-family: Rubik;
+    font-size: 20px;
+    position: absolute;
+    bottom: 20px;
+    left: 20px;
+    }
+    
+    .social {
+      font-family: Rubik;
+      color: #ffffff;
+      border-radius: 3px;
+      background-color: #3232327c;
+      position: absolute;
+      bottom: 55%;
+      right: -1px;
+      z-index: 999999;
+      zoom: 185%;
+      border: none;
+      padding: 0px 3px 0px 3px;
+      cursor: pointer;
+    }
+
+    .social:hover {
+      background-color: #8941FF;
+    }
+
+    .a-enter-vr-button {
+      font-family: Rubik;
+      color: #ffffff;
+      border-radius: 3px;
+      background-color: #2e2e2e33;
+      border-width: 0px;
+      position: fixed;
+      bottom: 50%;
+      right: -1px;
+      z-index: 999999;
+      zoom: 100%;
+    }
+
+    .a-enter-vr-button:hover {
+      background-color: #8941FF;
+    }
+
+  </style>
 
   </head>
   <body>
+    <!-- UI Elements  -->
+    <!-- 3D Street Logo -->
+    <a href="https://3d.st" style="z-index: 999999;">
+      <h1 class="textlarge" style="font-weight: 300;"> 3D
+      <span style="font-weight: 900">Street</span>
+      <span class="pill">viewer</span>
+      </h1>
+    </a>
+
+    <!-- Street Name HTML-->
+    <input class="inputBox" id="myInput">
+    <!-- Street Name Script-->
+    <script>
+      var input = document.getElementById("myInput");
+
+      function valueTitle() {
+        if (location.href.split("#")[1] != undefined){
+          return location.href.split("#")[1];
+        } else{
+          return "https://streetmix.net/kfarr/3"
+        } 
+      }
+
+      input.setAttribute("value",valueTitle());
     
-    <nav class="navbar" >
-            <span class="navbar-brand"><a href="https://3d.st"><h1 style="font-weight: 300">3D<span style="font-weight: 600">Street</span><span class="pill" >Viewer</span></h1></a></span>
-            <!-- <a href="https://github.com/kfarr/3dstreet/" class="navbar-brand" title="View Github README">3DStreet Open Source Reference Application</a> -->
-            <form class="url-form" onsubmit="location.href='#'+this.inputUrl.value; setTimeout(window.location.reload.bind(window.location));" >
-                <div class="">
-                    <!-- <input type="text" class="form-control border border-right-0" placeholder="Paste Streetmix URL" /> -->
-                    <input id="inputUrl" value="" type="text" class="url-input" onfocus="this.select();" title="Paste in Streetmix.net URL such as 'https://streetmix.net/kfarr/3'" />
-                    <span class="">
-                        <button class="" type="submit" title="Clear Scene and Re-Render">
-                          🔄
-                        </button>
-                        <!-- <button class="btn btn-outline-light border" type="button" onclick="window.open(document.getElementById('inputUrl').value, '_blank');" title="Edit Street in Streetmix2D">
-                            <i class="fa fa-edit"></i>
-                        </button> -->
-                        <!-- <button class="btn btn-outline-light border" type="button" onclick="window.open(streetmixUserToAPI(document.getElementById('inputUrl').value), '_blank')" title="View Raw Streetmix JSON">
-                            <i class="fa fa-code"></i>
-                        </button> -->
-                        <!-- <button class="btn btn-outline-light border" type="button" onclick="startAudio()" title="Play Audio">
-                            <i id="audio-icon" class="fa fa-volume-mute" style="color: pink"></i>
-                        </button> -->
-                    </span>
-                </div>
-            </form>
-    </nav>
-    <a-scene renderer="colorManagement: true; highRefreshRate: true; foveationLevel: 3; physicallyCorrectLights: true; logarithmicDepthBuffer: false;" fogoff="type: linear; color: #D5C69B; far: 200" gltf-model="dracoDecoderPath: https://www.gstatic.com/draco/versioned/decoders/1.4.3/">
+      input.addEventListener("keyup", function(event) {
+        if (event.keyCode === 13) {
+          console.log("hi")
+          location.href='#'+input.value;
+          setTimeout(window.location.reload.bind(window.location));
+          event.preventDefault();
+          this.blur();
+        }
+      });
+    </script>
+
+    <!-- Share Buttons HTML -->
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.6/css/bootstrap.min.css">
+    <button class="social" style="bottom: 60%;" onclick="screenshot()">
+      <i class="glyphicon glyphicon-camera"></i>
+    </button>
+    <button class="social" onclick="glTF()">
+      <i class="glyphicon glyphicon-download"></i>
+    </button>
+
+    <script>
+      function screenshot() {
+        document.querySelector('a-scene').components.screenshot.capture('perspective');
+      }
+      function glTF() {
+        alert(document.querySelector('a-scene').components.inspector);
+      }
+    </script>
+
+    <!-- A-Frame Scene  -->
+    <a-scene style="z-index: 0;" renderer="colorManagement: true; highRefreshRate: true; foveationLevel: 3; physicallyCorrectLights: true; logarithmicDepthBuffer: false;" fogoff="type: linear; color: #D5C69B; far: 200" gltf-model="dracoDecoderPath: https://www.gstatic.com/draco/versioned/decoders/1.4.3/">
       <a-assets>
         <streetmix-assets url="./"></streetmix-assets>
 
@@ -137,22 +240,6 @@
       <a-entity id="skybox" cubemap="folder: assets/images/skybox/"></a-entity>
 
       <a-entity id="street-parent" street streetmix-loader set-loader-from-hash="defaultURL: https://streetmix.net/kfarr/3"></a-entity>
-      <!-- <a-entity mixin="dividers-flowers" ></a-entity> -->
-      <!-- Label text -->
-      <!-- <a-entity position="0 2 0" geometry="primitive: plane; width: 10; height: auto" material="src: #subtitle; alphaTest: 0.; transparent: true;"
-                text="color: yellow; align: left; value: San Francisco; width: 10; ">
-      <a-entity position="-5.1 0 0.001" geometry="primitive: plane; width: 0.1; height: 0.46" material="color: white;"></a-entity>
-      </a-entity>
-      <a-entity position="5 1 0" geometry="primitive: plane; width: 20; height: auto" material="src: #subtitle; alphaTest: 0.; transparent: true;"
-                text="color: yellow; align: left; value: Harrison Street; width: 20; ">
-      <a-entity position="-10.1 0 0.001" geometry="primitive: plane; width: 0.1; height: 0.92" material="color: white;"></a-entity>
-      </a-entity> -->
-
-      <!-- For debugging / validation: below are bounding boxes based on vehicle specs available online -->
-      <!-- <a-entity id="ford-crown-vic-bounding" geometry="depth: 5.3; height: 1.448; width: 1.99" position="0.92059 0.74 0"></a-entity>
-      <a-entity id="newflyer-XD40-bounding" geometry="depth: 12; height: 3.2; width: 2.59" position="-3.97 1.59 0"></a-entity>
-      <a-entity id="siemens-avenio-bounding" geometry="depth: 30; height: 3.4; width: 2.65" position="8.8 1.7 0"></a-entity> -->
-
     </a-scene>
   </body>
   <script>
@@ -195,7 +282,7 @@
     }
 
     document.querySelector('a-scene').addEventListener('enter-vr', function () {
-      // console.log("ENTERED VR");
+      console.log("ENTERED VR");
       // startAudio();
     });
   </script>
