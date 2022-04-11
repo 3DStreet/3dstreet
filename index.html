@@ -168,7 +168,6 @@
     <!-- Street Name Script-->
     <script>
       var input = document.getElementById("myInput");
-
       function valueTitle() {
         if (location.href.split("#")[1] != undefined){
           return location.href.split("#")[1];
@@ -176,9 +175,7 @@
           return "https://streetmix.net/kfarr/3"
         } 
       }
-
       input.setAttribute("value",valueTitle());
-    
       input.addEventListener("keyup", function(event) {
         if (event.keyCode === 13) {
           console.log("hi")
