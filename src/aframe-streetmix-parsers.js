@@ -741,6 +741,7 @@ function processSegments (segments, showStriping, length) {
       rotationY = '180';
     } else if (segments[i].type === 'parking-lane') {
       groundMixinId = 'bright-lane';
+      //TODO: ensure that car is facing the correct direction
       segmentParentEl.append(createDriveLaneElement(['inbound', 'car'], positionX, segmentWidthInMeters, length));
       if (variantList[1] === 'left'){
         reusableObjectStencilsParentEl = createStencilsParentElement((positionX+segmentWidthInMeters/2-0.75) + ' 0.015 0');
