@@ -631,8 +631,20 @@ function processSegments (segments, showStriping, length) {
       groundMixinId = 'drive-lane';
       segmentParentEl.append(createFoodTruckElement(variantList, positionX));
     } else if (segments[i].type === 'flex-zone') {
-      groundMixinId = 'drive-lane surface-dark';
+      groundMixinId = 'bright-lane';
       segmentParentEl.append(createFlexZoneElement(variantList, positionX));
+
+      let reusableObjectStencilsParentEl;
+
+      reusableObjectStencilsParentEl = createStencilsParentElement(positionX + ' 0.015 5');
+      cloneMixinAsChildren({ objectMixinId: 'stencils word-loading', parentEl: reusableObjectStencilsParentEl, rotation: '-90 ' + rotationY + ' 0', step: 50, radius: clonedObjectRadius });
+      // add this stencil stuff to the segment parent
+      segmentParentEl.append(reusableObjectStencilsParentEl);
+
+      reusableObjectStencilsParentEl = createStencilsParentElement(positionX + ' 0.015 -5');
+      cloneMixinAsChildren({ objectMixinId: 'stencils word-only', parentEl: reusableObjectStencilsParentEl, rotation: '-90 ' + rotationY + ' 0', step: 50, radius: clonedObjectRadius });
+      // add this stencil stuff to the segment parent
+      segmentParentEl.append(reusableObjectStencilsParentEl);
     } else if (segments[i].type === 'sidewalk' && variantList[0] !== 'empty') {
       // handles variantString with value sparse, normal, or dense sidewalk
       segmentParentEl.append(createSidewalkClonedVariants(positionX, segmentWidthInMeters, variantList[0], length));
