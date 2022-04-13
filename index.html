@@ -120,10 +120,10 @@
       border-radius: 3px;
       background-color: #3232327c;
       position: absolute;
-      bottom: 55%;
+      top: 140px;
       right: -1px;
       z-index: 999999;
-      zoom: 185%;
+      zoom: 125%;
       border: none;
       padding: 0px 3px 0px 3px;
       cursor: pointer;
@@ -134,16 +134,7 @@
     }
 
     .a-enter-vr-button {
-      font-family: Rubik;
-      color: #ffffff;
-      border-radius: 3px;
-      background-color: #2e2e2e33;
-      border-width: 0px;
-      position: fixed;
-      bottom: 50%;
-      right: -1px;
-      z-index: 999999;
-      zoom: 100%;
+      visibility: hidden;
     }
 
     .a-enter-vr-button:hover {
@@ -188,20 +179,25 @@
     </script>
 
     <!-- Share Buttons HTML -->
-    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.6/css/bootstrap.min.css">
-    <button class="social" style="bottom: 60%;" onclick="screenshot()">
-      <i class="glyphicon glyphicon-camera"></i>
-    </button>
     <button class="social" onclick="glTF()">
-      <i class="glyphicon glyphicon-download"></i>
+      <img src="./assets/download.svg" />
+    </button>
+    <button class="social" style="top: 180px;" onclick="screenshot()">
+      <img src="./assets/camera.svg" />
+    </button>
+    <button class="social" style="top: 220px;" onclick="vrClick()">
+      <img src="./assets/vr.svg" />
     </button>
 
     <script>
+      function glTF() {
+        alert(document.querySelector('a-scene').components.inspector);
+      }
       function screenshot() {
         document.querySelector('a-scene').components.screenshot.capture('perspective');
       }
-      function glTF() {
-        alert(document.querySelector('a-scene').components.inspector);
+      function vrClick() {
+        document.getElementsByClassName('a-enter-vr-button')[0].click();
       }
     </script>
 
