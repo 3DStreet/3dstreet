@@ -179,10 +179,12 @@
     </script>
 
     <!-- Share Buttons HTML -->
-    <button class="social" onclick="glTF()">
+    <button class="social" onmouseout="downloadHoverOut(event)" onmouseover="downloadHoverOver(event)" onclick="glTF()">
+      <a id="downloadButton" style="position: relative; bottom:10px"></a>
       <img src="./assets/download.svg" />
     </button>
-    <button class="social" style="top: 180px;" onclick="screenshot()">
+    <button class="social" style="top: 180px;" onmouseout="cameraHoverOut(event)" onmouseover="cameraHoverOver(event)" onclick="screenshot()">
+      <a id="cameraButton" style="position: relative; bottom:10px"></a>
       <img src="./assets/camera.svg" />
     </button>
     <button class="social" style="top: 220px;" onmouseout="vrHoverOut(event)" onmouseover="vrHoverOver(event)" onclick="vrClick()">
@@ -194,8 +196,20 @@
       function glTF() {
         alert(document.querySelector('a-scene').components.inspector);
       }
+      function downloadHoverOver() {
+        document.getElementById('downloadButton').innerHTML = "Save the scene as a glTF";
+      }
+      function downloadHoverOut() {
+        document.getElementById('downloadButton').innerHTML = "";
+      }
       function screenshot() {
         document.querySelector('a-scene').components.screenshot.capture('perspective');
+      }
+      function cameraHoverOver() {
+        document.getElementById('cameraButton').innerHTML = "Save the scene as a PNG";
+      }
+      function cameraHoverOut() {
+        document.getElementById('cameraButton').innerHTML = "";
       }
       function vrClick() {
         document.getElementsByClassName('a-enter-vr-button')[0].click();
