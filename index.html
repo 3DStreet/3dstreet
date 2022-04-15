@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
   <head>
-    <script src="https://aframe.io/releases/1.2.0/aframe.min.js"></script>
+    <script src="https://aframe.io/releases/1.3.0/aframe.min.js"></script>
     <script src="./dist/aframe-street-component.js"></script>
 
     <!-- user controls -->
@@ -12,47 +12,220 @@
     <script src="src/components/ocean-plane.js"></script>
     <script src="src/lib/aframe-cubemap-component.js"></script>
 
-    <!-- 2d ui toolbar -->
-    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.4.1/css/bootstrap.min.css" integrity="sha384-Vkoo8x4CGsO3+Hhxv8T/Q5PaXtkKtu6ug5TOeNV6gBiFeWPGFN9MuhOf23Q9Ifjh" crossorigin="anonymous">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.13.0/css/all.min.css">
-
-    <!-- move a-frame performance `stats` below toolbar -->
+    <!-- Miscellaneous styles -->
     <style>
+      @import url('https://fonts.googleapis.com/css2?family=Rubik:wght@600&display=swap');
+      @import url('https://fonts.googleapis.com/css2?family=Rubik:wght@400&display=swap');
+
+      /* move a-frame performance `stats` below toolbar */
       .rs-base {
         left: 20px;
         top: 80px;
       }
-    </style>
 
+      .navbar {
+        font-family: Rubik;
+        align-items: center;
+        color: #0f0a13;
+        display: flex;
+        flex-grow: 2;
+        height: 32px;
+        font-size: 9.33px;
+        justify-content: space-between;
+        left: 0;
+        margin: 0 auto;
+        right: 40%;
+        bottom: 0;
+        zoom: 150%;
+        z-index: 999999;
+        position: fixed;
+        justify-content: space-between;
+      }
+
+      .navbar a {
+        text-decoration: none;
+      }
+
+      .navbar-brand {
+        color: #4B3461;
+        z-index: 999999;
+        font-size: 12px;
+        padding: 10px;
+        white-space: nowrap;
+        font-weight: 600;
+      }
+
+      .url-input {
+        width: 90%;
+        background-color: #9956db;
+        font-size: 12px;
+        vertical-align: 15%;
+      }
+
+      .url-form {
+        width: 100%;
+        padding-left: 5%;
+        padding-bottom: 5%;
+        white-space: nowrap;
+      }
+
+      a:link { text-decoration: none; }
+      a:visited { text-decoration: none; }
+      a:hover { text-decoration: none; }
+      a:active { text-decoration: none; }
+
+      .textlarge {
+        color: #ffffff;
+        z-index: 999999;
+        font-family: Rubik;
+        font-size: 26px;
+        padding: 10px;
+        white-space: nowrap;
+        font-weight: 600;
+        top: 0px;
+        left: 20px;
+        position: absolute;
+      }
+
+      .pill {
+        font-family: Rubik;
+        color: #ffffff;
+        font-size: 12px;
+        z-index: 999999;
+        border-radius: 3px;
+        background-color: #8941FF;
+        margin: 5px;
+        padding: 0px;
+        padding-right: 5px;
+        padding-left: 5px;
+        bottom: 5px;
+        position: relative;
+      }
+
+      .inputBox {
+      background: transparent;
+      z-index: 999999;
+      width: 40%;
+      color: #ffffff;
+      border-color: transparent;
+      font-family: Rubik;
+      font-size: 20px;
+      position: absolute;
+      bottom: 20px;
+      left: 20px;
+      }
+    
+      .social {
+        font-family: Rubik;
+        color: #ffffff;
+        border-radius: 3px;
+        background-color: #3232327c;
+        position: absolute;
+        top: 140px;
+        right: -1px;
+        z-index: 999999;
+        zoom: 110%;
+        border: none;
+        padding: 0px 3px 0px 3px;
+        cursor: pointer;
+      }
+
+      .social:hover {
+        background-color: #8941FF;
+      }
+
+      .a-enter-vr-button {
+        visibility: hidden;
+      }
+
+      .a-enter-vr-button:hover {
+        background-color: #8941FF;
+      }
+    </style>
   </head>
   <body>
-    <!-- Original source https://www.codeply.com/go/sbfCXYgqoO -->
-    <nav class="navbar fixed-top navbar-expand navbar-dark bg-dark" >
-        <div class="d-flex flex-grow-1">
-            <a href="https://github.com/kfarr/3dstreet/" class="navbar-brand" title="View Github README">3DStreet Open Source Reference Application</a>
-            <form class="mr-2 my-auto w-100 d-inline-block order-1" onsubmit="location.href='#'+this.inputUrl.value; setTimeout(window.location.reload.bind(window.location));" >
-                <div class="input-group">
-                    <!-- <input type="text" class="form-control border border-right-0" placeholder="Paste Streetmix URL" /> -->
-                    <input id="inputUrl" value="" type="text" class="form-control d-none d-lg-block" onfocus="this.select();" title="Paste in Streetmix.net URL such as 'https://streetmix.net/kfarr/3'" />
-                    <span class="input-group-append">
-                        <button class="btn btn-outline-light border" type="submit" title="Clear Scene and Re-Render">
-                            <i class="fa fa-sync"></i>
-                        </button>
-                        <!-- <button class="btn btn-outline-light border" type="button" onclick="window.open(document.getElementById('inputUrl').value, '_blank');" title="Edit Street in Streetmix2D">
-                            <i class="fa fa-edit"></i>
-                        </button> -->
-                        <!-- <button class="btn btn-outline-light border" type="button" onclick="window.open(streetmixUserToAPI(document.getElementById('inputUrl').value), '_blank')" title="View Raw Streetmix JSON">
-                            <i class="fa fa-code"></i>
-                        </button> -->
-                        <!-- <button class="btn btn-outline-light border" type="button" onclick="startAudio()" title="Play Audio">
-                            <i id="audio-icon" class="fa fa-volume-mute" style="color: pink"></i>
-                        </button> -->
-                    </span>
-                </div>
-            </form>
-        </div>
-    </nav>
-    <a-scene renderer="colorManagement: true; highRefreshRate: true; foveationLevel: 3; physicallyCorrectLights: true; logarithmicDepthBuffer: false;" fogoff="type: linear; color: #D5C69B; far: 200" gltf-model="dracoDecoderPath: https://www.gstatic.com/draco/versioned/decoders/1.4.3/">
+    <!-- UI Elements  -->
+    <!-- 3D Street Logo -->
+    <a href="https://3dstreet.org" style="z-index: 999999;">
+      <h1 class="textlarge" style="font-weight: 300;"> 3D
+      <span style="font-weight: 900">Street</span>
+      <span class="pill">viewer</span>
+      </h1>
+    </a>
+
+    <!-- Street Name HTML-->
+    <input class="inputBox" id="myInput">
+    <!-- Street Name Script-->
+    <script>
+      var input = document.getElementById("myInput");
+      function valueTitle() {
+        if (location.href.split("#")[1] != undefined){
+          return location.href.split("#")[1];
+        } else{
+          return "https://streetmix.net/kfarr/3"
+        } 
+      }
+      input.setAttribute("value",valueTitle());
+      input.addEventListener("keyup", function(event) {
+        if (event.keyCode === 13) {
+          console.log("hi")
+          location.href='#'+input.value;
+          setTimeout(window.location.reload.bind(window.location));
+          event.preventDefault();
+          this.blur();
+        }
+      });
+    </script>
+
+    <!-- Share Buttons HTML -->
+    <!-- <button class="social" onmouseout="downloadHoverOut(event)" onmouseover="downloadHoverOver(event)" onclick="glTF()">
+      <a id="downloadButton" style="font-family: Rubik; position: relative; bottom:10px"></a>
+      <img src="./assets/downloadW.svg" />
+    </button> -->
+    <button class="social" style="top: 190px;" onmouseout="cameraHoverOut(event)" onmouseover="cameraHoverOver(event)" onclick="screenshot()">
+      <a id="cameraButton" style="font-family: Rubik; position: relative; bottom:10px"></a>
+      <img src="./assets/cameraW.svg" />
+    </button>
+    <button class="social" style="top: 240px;" onmouseout="vrHoverOut(event)" onmouseover="vrHoverOver(event)" onclick="vrClick()">
+      <a id="vrButton" style="font-family: Rubik; position: relative; bottom:10px"></a>
+      <img src="./assets/vrW.svg" />
+    </button>
+
+    <!-- Share Buttons HTML Script -->
+    <script>
+      function glTF() {
+        alert(document.querySelector('a-scene').components.inspector);
+      }
+      function downloadHoverOver() {
+        document.getElementById('downloadButton').innerHTML = "Save the scene as a glTF";
+      }
+      function downloadHoverOut() {
+        document.getElementById('downloadButton').innerHTML = "";
+      }
+      function screenshot() {
+        AFRAME.scenes[0].setAttribute('screenshot','width',AFRAME.scenes[0].canvas.width)
+        AFRAME.scenes[0].setAttribute('screenshot','height',AFRAME.scenes[0].canvas.height)
+        document.querySelector('a-scene').components.screenshot.capture('perspective');
+      }
+      function cameraHoverOver() {
+        document.getElementById('cameraButton').innerHTML = "Save the scene as a PNG";
+      }
+      function cameraHoverOut() {
+        document.getElementById('cameraButton').innerHTML = "";
+      }
+      function vrClick() {
+        document.getElementsByClassName('a-enter-vr-button')[0].click();
+      }
+      function vrHoverOver() {
+        document.getElementById('vrButton').innerHTML = "Enter VR mode";
+      }
+      function vrHoverOut() {
+        document.getElementById('vrButton').innerHTML = "";
+      }
+    </script>
+
+    <!-- A-Frame Scene  -->
+    <a-scene style="z-index: 0;" renderer="colorManagement: true; highRefreshRate: true; foveationLevel: 3; physicallyCorrectLights: true; logarithmicDepthBuffer: false;" fogoff="type: linear; color: #D5C69B; far: 200" gltf-model="dracoDecoderPath: https://www.gstatic.com/draco/versioned/decoders/1.4.3/">
       <a-assets>
         <streetmix-assets url="./"></streetmix-assets>
 
@@ -83,22 +256,6 @@
       <a-entity id="skybox" cubemap="folder: assets/images/skybox/"></a-entity>
 
       <a-entity id="street-parent" street streetmix-loader set-loader-from-hash="defaultURL: https://streetmix.net/kfarr/3"></a-entity>
-      <!-- <a-entity mixin="dividers-flowers" ></a-entity> -->
-      <!-- Label text -->
-      <!-- <a-entity position="0 2 0" geometry="primitive: plane; width: 10; height: auto" material="src: #subtitle; alphaTest: 0.; transparent: true;"
-                text="color: yellow; align: left; value: San Francisco; width: 10; ">
-      <a-entity position="-5.1 0 0.001" geometry="primitive: plane; width: 0.1; height: 0.46" material="color: white;"></a-entity>
-      </a-entity>
-      <a-entity position="5 1 0" geometry="primitive: plane; width: 20; height: auto" material="src: #subtitle; alphaTest: 0.; transparent: true;"
-                text="color: yellow; align: left; value: Harrison Street; width: 20; ">
-      <a-entity position="-10.1 0 0.001" geometry="primitive: plane; width: 0.1; height: 0.92" material="color: white;"></a-entity>
-      </a-entity> -->
-
-      <!-- For debugging / validation: below are bounding boxes based on vehicle specs available online -->
-      <!-- <a-entity id="ford-crown-vic-bounding" geometry="depth: 5.3; height: 1.448; width: 1.99" position="0.92059 0.74 0"></a-entity>
-      <a-entity id="newflyer-XD40-bounding" geometry="depth: 12; height: 3.2; width: 2.59" position="-3.97 1.59 0"></a-entity>
-      <a-entity id="siemens-avenio-bounding" geometry="depth: 30; height: 3.4; width: 2.65" position="8.8 1.7 0"></a-entity> -->
-
     </a-scene>
   </body>
   <script>
@@ -141,7 +298,7 @@
     }
 
     document.querySelector('a-scene').addEventListener('enter-vr', function () {
-      // console.log("ENTERED VR");
+      console.log("ENTERED VR");
       // startAudio();
     });
   </script>
