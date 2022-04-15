@@ -4,9 +4,7 @@
 [![License](http://img.shields.io/npm/l/3dstreet.svg)](LICENSE)
 ![Build Status](https://github.com/3DStreet/3dstreet/actions/workflows/ci-script.yaml/badge.svg)
 
-### Project site: https://3d.st/
-### Basic demo: https://github.3d.st/
-### Custom UI demo: https://app.3d.st/
+### Project site: https://github.3dstreet.org/
 
 3DStreet creates 3D visualizations of your 2D [Streetmix.net](https://streetmix.net) streets using A-Frame and WebXR. Developers can use the same core [`street` A-Frame component](#a-frame-street-component-api) of 3DStreet for their own projects.
 
@@ -30,7 +28,7 @@
   <head>
     <title>Street Component!</title>
     <script src="https://aframe.io/releases/1.2.0/aframe.min.js"></script>
-    <script src="https://unpkg.com/3dstreet@0.2.12/dist/aframe-street-component.js"></script>
+    <script src="https://unpkg.com/3dstreet@0.2.14/dist/aframe-street-component.js"></script>
   </head>  
   <body>
     <a-scene gltf-model="dracoDecoderPath: https://www.gstatic.com/draco/v1/decoders/;">

@@ -99,6 +99,9 @@ function insertSeparatorSegments (segments) {
         variantString = 'soliddashedyellowinverted';
       }
 
+      // if adjacent to parking lane with markings, do not draw white line
+      if (currentValue.type === 'parking-lane' || previousValue.type === 'parking-lane') { variantString = 'invisible' };
+
       newArray.push({ type: 'separator', variantString: variantString, width: 0 });
     }
 
@@ -628,7 +631,7 @@ function processSegments (segments, showStriping, length) {
       groundMixinId = 'drive-lane';
       segmentParentEl.append(createFoodTruckElement(variantList, positionX));
     } else if (segments[i].type === 'flex-zone') {
-      groundMixinId = 'drive-lane';
+      groundMixinId = 'drive-lane surface-dark';
       segmentParentEl.append(createFlexZoneElement(variantList, positionX));
     } else if (segments[i].type === 'sidewalk' && variantList[0] !== 'empty') {
       // handles variantString with value sparse, normal, or dense sidewalk
@@ -737,7 +740,17 @@ function processSegments (segments, showStriping, length) {
       scaleX = 1;
       rotationY = '180';
     } else if (segments[i].type === 'parking-lane') {
-      groundMixinId = 'drive-lane';
+      groundMixinId = 'bright-lane';
+      segmentParentEl.append(createDriveLaneElement([variantList[0], 'car'], positionX, segmentWidthInMeters, length));
+      if (variantList[1] === 'left'){
+        reusableObjectStencilsParentEl = createStencilsParentElement((positionX+segmentWidthInMeters/2-0.75) + ' 0.015 0');
+        cloneMixinAsChildren({ objectMixinId: 'stencils parking-t', parentEl: reusableObjectStencilsParentEl, rotation: '-90 ' + '180' + ' 0', step: 6, radius: clonedObjectRadius });
+      } else {
+        reusableObjectStencilsParentEl = createStencilsParentElement((positionX-(segmentWidthInMeters/2)+0.75) + ' 0.015 0');
+        cloneMixinAsChildren({ objectMixinId: 'stencils parking-t', parentEl: reusableObjectStencilsParentEl, rotation: '-90 ' + '0' + ' 0', step: 6, radius: clonedObjectRadius });
+      }
+      // add the stencils to the segment parent
+      segmentParentEl.append(reusableObjectStencilsParentEl);
     }
 
     if (streetmixParsersTested.isSidewalk(segments[i].type)) {
