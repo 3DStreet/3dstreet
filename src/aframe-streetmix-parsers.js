@@ -493,8 +493,8 @@ function processSegments (segments, showStriping, length) {
 
     // Note: segment 3d models are outbound by default
     // If segment variant inbound, rotate segment model by 180 degrees
-    var rotationY = (variantList[0] === 'inbound') ? 180 : 0;
-    var isOutbound = (variantList[0] === 'outbound') ? 1 : -1;
+    var rotationY = (variantList[0] === 'inbound' || variantList[1] === 'inbound') ? 180 : 0;
+    var isOutbound = (variantList[0] === 'outbound' || variantList[1] === 'outbound') ? 1 : -1;
 
     // the A-Frame mixin ID is often identical to the corresponding streetmix segment "type" by design, let's start with that
     var groundMixinId = segments[i].type;
@@ -609,6 +609,7 @@ function processSegments (segments, showStriping, length) {
 
       segmentParentEl.append(createBusElement(isOutbound, positionX));
 
+      // create parent for the bus lane stencils to rotate the phrase instead of the word
       let reusableObjectStencilsParentEl;
 
       reusableObjectStencilsParentEl = createStencilsParentElement(positionX + ' 0.015 0');
