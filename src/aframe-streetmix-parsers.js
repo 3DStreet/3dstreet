@@ -61,7 +61,7 @@ function randomTestable () {
 function insertSeparatorSegments (segments) {
   // first, let's define what is a lane that will likely need adajcent striping?
   function isLaneIsh (typeString) {
-    return (typeString.slice(typeString.length - 4) === 'lane' || typeString === 'light-rail' || typeString === 'streetcar');
+    return (typeString.slice(typeString.length - 4) === 'lane' || typeString === 'light-rail' || typeString === 'streetcar' || typeString === 'flex-zone');
   }
 
   // then let's go through the segments array and build a new one with inserted separators
@@ -90,6 +90,9 @@ function insertSeparatorSegments (segments) {
         if (currentValue.type === 'bike-lane' && previousValue.type === 'bike-lane') {
           variantString = 'shortdashedyellow';
         }
+        if (currentValue.type === 'flex-zone' || previousValue.type === 'flex-zone') {
+          variantString = 'solid';
+        }
       }
 
       // special case -- if either lanes are turn lane shared, then use solid and long dash
@@ -100,7 +103,7 @@ function insertSeparatorSegments (segments) {
       }
 
       // if adjacent to parking lane with markings, do not draw white line
-      if (currentValue.type === 'parking-lane' || previousValue.type === 'parking-lane') { variantString = 'invisible' };
+      if (currentValue.type === 'parking-lane' || previousValue.type === 'parking-lane') { variantString = 'invisible'; }
 
       newArray.push({ type: 'separator', variantString: variantString, width: 0 });
     }
@@ -493,8 +496,8 @@ function processSegments (segments, showStriping, length) {
 
     // Note: segment 3d models are outbound by default
     // If segment variant inbound, rotate segment model by 180 degrees
-    var rotationY = (variantList[0] === 'inbound') ? 180 : 0;
-    var isOutbound = (variantList[0] === 'outbound') ? 1 : -1;
+    var rotationY = (variantList[0] === 'inbound' || variantList[1] === 'inbound') ? 180 : 0;
+    var isOutbound = (variantList[0] === 'outbound' || variantList[1] === 'outbound') ? 1 : -1;
 
     // the A-Frame mixin ID is often identical to the corresponding streetmix segment "type" by design, let's start with that
     var groundMixinId = segments[i].type;
@@ -609,6 +612,7 @@ function processSegments (segments, showStriping, length) {
 
       segmentParentEl.append(createBusElement(isOutbound, positionX));
 
+      // create parent for the bus lane stencils to rotate the phrase instead of the word
       let reusableObjectStencilsParentEl;
 
       reusableObjectStencilsParentEl = createStencilsParentElement(positionX + ' 0.015 0');
@@ -631,8 +635,20 @@ function processSegments (segments, showStriping, length) {
       groundMixinId = 'drive-lane';
       segmentParentEl.append(createFoodTruckElement(variantList, positionX));
     } else if (segments[i].type === 'flex-zone') {
-      groundMixinId = 'drive-lane surface-dark';
+      groundMixinId = 'bright-lane';
       segmentParentEl.append(createFlexZoneElement(variantList, positionX));
+
+      let reusableObjectStencilsParentEl;
+
+      reusableObjectStencilsParentEl = createStencilsParentElement(positionX + ' 0.015 5');
+      cloneMixinAsChildren({ objectMixinId: 'stencils word-loading-small', parentEl: reusableObjectStencilsParentEl, rotation: '-90 ' + rotationY + ' 0', step: 50, radius: clonedObjectRadius });
+      // add this stencil stuff to the segment parent
+      segmentParentEl.append(reusableObjectStencilsParentEl);
+
+      reusableObjectStencilsParentEl = createStencilsParentElement(positionX + ' 0.015 -5');
+      cloneMixinAsChildren({ objectMixinId: 'stencils word-only-small', parentEl: reusableObjectStencilsParentEl, rotation: '-90 ' + rotationY + ' 0', step: 50, radius: clonedObjectRadius });
+      // add this stencil stuff to the segment parent
+      segmentParentEl.append(reusableObjectStencilsParentEl);
     } else if (segments[i].type === 'sidewalk' && variantList[0] !== 'empty') {
       // handles variantString with value sparse, normal, or dense sidewalk
       segmentParentEl.append(createSidewalkClonedVariants(positionX, segmentWidthInMeters, variantList[0], length));
@@ -740,13 +756,15 @@ function processSegments (segments, showStriping, length) {
       scaleX = 1;
       rotationY = '180';
     } else if (segments[i].type === 'parking-lane') {
+      let reusableObjectStencilsParentEl;
+
       groundMixinId = 'bright-lane';
       segmentParentEl.append(createDriveLaneElement([variantList[0], 'car'], positionX, segmentWidthInMeters, length));
-      if (variantList[1] === 'left'){
-        reusableObjectStencilsParentEl = createStencilsParentElement((positionX+segmentWidthInMeters/2-0.75) + ' 0.015 0');
+      if (variantList[1] === 'left') {
+        reusableObjectStencilsParentEl = createStencilsParentElement((positionX + segmentWidthInMeters / 2 - 0.75) + ' 0.015 0');
         cloneMixinAsChildren({ objectMixinId: 'stencils parking-t', parentEl: reusableObjectStencilsParentEl, rotation: '-90 ' + '180' + ' 0', step: 6, radius: clonedObjectRadius });
       } else {
-        reusableObjectStencilsParentEl = createStencilsParentElement((positionX-(segmentWidthInMeters/2)+0.75) + ' 0.015 0');
+        reusableObjectStencilsParentEl = createStencilsParentElement((positionX - (segmentWidthInMeters / 2) + 0.75) + ' 0.015 0');
         cloneMixinAsChildren({ objectMixinId: 'stencils parking-t', parentEl: reusableObjectStencilsParentEl, rotation: '-90 ' + '0' + ' 0', step: 6, radius: clonedObjectRadius });
       }
       // add the stencils to the segment parent
