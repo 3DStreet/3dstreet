@@ -820,14 +820,36 @@ function processBuildings (left, right, streetWidth, showGround, length) {
       buildingElement.appendChild(groundParentEl);
     }
 
-    if (currentValue === 'narrow' || currentValue === 'wide') {
+    if (currentValue === 'narrow') {
       // make buildings
-      const buildingsArray = streetmixParsersTested.createBuildingsArray(buildingLotWidth);
+      const buildingsArray = streetmixParsersTested.createBuildingsArray(length);
 
       const buildingJSONString = JSON.stringify(buildingsArray);
       const placedObjectEl = document.createElement('a-entity');
       // to center what is created by createBuildingsArray
-      placedObjectEl.setAttribute('position', (positionX + (sideMultiplier * -72)) + ' 0 ' + (sideMultiplier * 75));
+      if (index===1) {
+        placedObjectEl.setAttribute('position', (positionX + (sideMultiplier * -72)) + ' 0 ' + (length/2));
+      } else {
+        placedObjectEl.setAttribute('position', (positionX + (sideMultiplier * -72)) + ' 0 ' + (-length/2));
+      }
+      placedObjectEl.setAttribute('rotation', '0 ' + (90 * sideMultiplier) + ' 0');
+      placedObjectEl.setAttribute('create-from-json', 'jsonString', buildingJSONString);
+      placedObjectEl.classList.add('block-' + side);
+      buildingElement.append(placedObjectEl);
+    }
+
+    if (currentValue === 'wide') {
+      // make buildings
+      const buildingsArray = streetmixParsersTested.createBuildingsArray(length);
+
+      const buildingJSONString = JSON.stringify(buildingsArray);
+      const placedObjectEl = document.createElement('a-entity');
+      // to center what is created by createBuildingsArray
+      if (index===1) {
+        placedObjectEl.setAttribute('position', (positionX + (sideMultiplier * -72)) + ' 0 ' + (length/2));
+      } else {
+        placedObjectEl.setAttribute('position', (positionX + (sideMultiplier * -72)) + ' 0 ' + (-length/2));
+      }
       placedObjectEl.setAttribute('rotation', '0 ' + (90 * sideMultiplier) + ' 0');
       placedObjectEl.setAttribute('create-from-json', 'jsonString', buildingJSONString);
       placedObjectEl.classList.add('block-' + side);
@@ -836,12 +858,16 @@ function processBuildings (left, right, streetWidth, showGround, length) {
 
     if (currentValue === 'residential') {
       // make buildings
-      const buildingsArray = streetmixParsersTested.createBuildingsArray(buildingLotWidth, 'residential');
+      const buildingsArray = streetmixParsersTested.createBuildingsArray(length, 'residential');
 
       const buildingJSONString = JSON.stringify(buildingsArray);
       const placedObjectEl = document.createElement('a-entity');
       // to center what is created by createBuildingsArray
-      placedObjectEl.setAttribute('position', (positionX + (sideMultiplier * -64)) + ' -0.75 ' + (sideMultiplier * 75));
+      if (index === 1){
+        placedObjectEl.setAttribute('position', (positionX + (sideMultiplier * -64)) + ' -0.75 ' + (length/2));
+      } else {
+        placedObjectEl.setAttribute('position', (positionX + (sideMultiplier * -64)) + ' -0.75 ' + (-length/2));
+      }
       placedObjectEl.setAttribute('rotation', '0 ' + (90 * sideMultiplier) + ' 0');
       placedObjectEl.setAttribute('create-from-json', 'jsonString', buildingJSONString);
       placedObjectEl.classList.add('suburbia-' + side);
@@ -853,14 +879,14 @@ function processBuildings (left, right, streetWidth, showGround, length) {
 
       const placedObjectEl = document.createElement('a-entity');
       placedObjectEl.setAttribute('class', 'seawall-parent');
-      placedObjectEl.setAttribute('position', objectPositionX + ' 0 10'); // position="1.043 0.100 -3.463"
+      placedObjectEl.setAttribute('position', objectPositionX + ' 0 7.5'); // position="1.043 0.100 -3.463"
       placedObjectEl.classList.add('seawall-parent-' + side);
       // add the new elmement to DOM
       buildingElement.appendChild(placedObjectEl);
 
       // clone a bunch of seawalls under the parent
       const rotationCloneY = (side === 'right') ? -90 : 90;
-      cloneMixinAsChildren({ objectMixinId: 'seawall', parentEl: placedObjectEl, rotation: '0 90 0' + rotationCloneY + ' 0', step: 15, radius: clonedObjectRadius });
+      cloneMixinAsChildren({ objectMixinId: 'seawall', parentEl: placedObjectEl, rotation: '0 ' + rotationCloneY + ' 0', step: 15, radius: length/2 });
     }
 
     if (currentValue === 'fence' || currentValue === 'parking-lot') {
@@ -868,14 +894,14 @@ function processBuildings (left, right, streetWidth, showGround, length) {
       // make the parent for all the objects to be cloned
       const placedObjectEl = document.createElement('a-entity');
       placedObjectEl.setAttribute('class', 'fence-parent');
-      placedObjectEl.setAttribute('position', objectPositionX + ' 0 0'); // position="1.043 0.100 -3.463"
+      placedObjectEl.setAttribute('position', objectPositionX + ' 0 4.625'); // position="1.043 0.100 -3.463"
       placedObjectEl.classList.add('fence-parent-' + positionX);
       // add the new elmement to DOM
 
       // clone a bunch of fences under the parent
       const rotationCloneY = (side === 'right') ? -90 : 90;
 
-      cloneMixinAsChildren({ objectMixinId: 'fence', parentEl: placedObjectEl, rotation: '0 ' + rotationCloneY + ' 0', step: 9.25, radius: clonedObjectRadius });
+      cloneMixinAsChildren({ objectMixinId: 'fence', parentEl: placedObjectEl, rotation: '0 ' + rotationCloneY + ' 0', step: 9.25, radius: length/2 });
 
       buildingElement.appendChild(placedObjectEl);
     }
