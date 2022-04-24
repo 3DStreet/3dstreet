@@ -788,15 +788,10 @@ module.exports.processSegments = processSegments;
 // test - for streetObject of street 44 and buildingElementId render 2 building sides
 function processBuildings (left, right, streetWidth, showGround, length) {
   const buildingElement = document.createElement('a-entity');
-  // const clonedObjectRadius = (length - 12) / 2;
   const clonedObjectRadius = 70;
   buildingElement.classList.add('buildings-parent');
-  // https://github.com/streetmix/illustrations/tree/master/images/buildings
-  // const buildingVariants = ['waterfront', 'grass', 'fence', 'parking-lot', 'residential', 'narrow', 'wide'];
-  // const buildingLotWidth = length;
   const buildingLotWidth = 150;
   const buildingsArray = [left, right];
-  // console.log(buildingsArray);
 
   // TODO: Sound temporarily disabled
   // var ambientSoundJSONString = JSON.stringify(streetmixParsersTested.getAmbientSoundJSON(buildingsArray));
@@ -824,12 +819,11 @@ function processBuildings (left, right, streetWidth, showGround, length) {
     }
 
     if (currentValue === 'narrow' || currentValue === 'wide') {
-      // make buildings
+      // Make buildings
       const buildingsArray = streetmixParsersTested.createBuildingsArray(0.975*length);
-
       const buildingJSONString = JSON.stringify(buildingsArray);
       const placedObjectEl = document.createElement('a-entity');
-      // to center what is created by createBuildingsArray
+      // Account for left and right facing buildings
       if (index === 1) {
         placedObjectEl.setAttribute('position', (positionX + (sideMultiplier * -72)) + ' 0 ' + (length/2));
       } else {
@@ -842,12 +836,11 @@ function processBuildings (left, right, streetWidth, showGround, length) {
     }
 
     if (currentValue === 'residential') {
-      // make buildings
+      // Make buildings
       const buildingsArray = streetmixParsersTested.createBuildingsArray(0.85*length, 'residential');
-
       const buildingJSONString = JSON.stringify(buildingsArray);
       const placedObjectEl = document.createElement('a-entity');
-      // to center what is created by createBuildingsArray
+      // Account for left and right facing buildings
       if (index === 1){
         placedObjectEl.setAttribute('position', (positionX + (sideMultiplier * -64)) + ' -0.75 ' + (length/2));
       } else {
@@ -861,14 +854,11 @@ function processBuildings (left, right, streetWidth, showGround, length) {
 
     if (currentValue === 'waterfront') {
       const objectPositionX = positionX - (sideMultiplier * buildingLotWidth / 2);
-
       const placedObjectEl = document.createElement('a-entity');
       placedObjectEl.setAttribute('class', 'seawall-parent');
       placedObjectEl.setAttribute('position', objectPositionX + ' 0 0'); // position="1.043 0.100 -3.463"
       placedObjectEl.classList.add('seawall-parent-' + side);
-      // add the new elmement to DOM
       buildingElement.appendChild(placedObjectEl);
-
       // clone a bunch of seawalls under the parent
       const rotationCloneY = (side === 'right') ? -90 : 90;
       cloneMixinAsChildren({ objectMixinId: 'seawall', parentEl: placedObjectEl, rotation: '0 ' + rotationCloneY + ' 0', step: 15, radius: 0.45*length });
@@ -881,13 +871,9 @@ function processBuildings (left, right, streetWidth, showGround, length) {
       placedObjectEl.setAttribute('class', 'fence-parent');
       placedObjectEl.setAttribute('position', objectPositionX + ' 0 4.625'); // position="1.043 0.100 -3.463"
       placedObjectEl.classList.add('fence-parent-' + positionX);
-      // add the new elmement to DOM
-
       // clone a bunch of fences under the parent
       const rotationCloneY = (side === 'right') ? -90 : 90;
-
       cloneMixinAsChildren({ objectMixinId: 'fence', parentEl: placedObjectEl, rotation: '0 ' + rotationCloneY + ' 0', step: 9.25, radius: 0.45*length });
-
       buildingElement.appendChild(placedObjectEl);
     }
   });
