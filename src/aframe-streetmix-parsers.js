@@ -812,14 +812,22 @@ function processBuildings (left, right, streetWidth, showGround, length) {
         let mixin = streetmixParsersTested.createGroundArray(currentValue)[0].mixin;
         repeat = length / 30;
         if (mixin == "ground-parking-lot"){
-          groundJSONString = '[{"tag":"a-entity","position":"0 -0.2 0","mixin":"' + mixin +  '","geometry":"primitive:plane;height:' + length + ';width:150","material":"repeat:2 ' + repeat + ';roughness:1"}]';
-        } else {
-          groundJSONString = '[{"tag":"a-entity","position":"0 -0.2 0","mixin":"' + mixin +  '","geometry":"primitive:plane;height:' + length + ';width:150"}]';
+          groundJSONString = '[{"tag":"a-entity","position":"0 -0.2 0","mixin":"' + mixin +  '","geometry":"primitive:plane;height:' + length + ';width:40","material":"repeat:.5 ' + repeat + ';roughness:1"}]';
+        }
+        else if (mixin == "ground-asphalt") {
+          groundJSONString = '[{"tag":"a-entity","position":"0 -0.2 0","mixin":"' + mixin +  '","geometry":"primitive:plane;height:' + length + ';width:40","material":"repeat:1 ' + repeat + ';roughness:1"}]';
+        }
+        else {
+          groundJSONString = '[{"tag":"a-entity","position":"0 -0.2 0","mixin":"' + mixin +  '","geometry":"primitive:plane;height:' + length + ';width:40"}]';
         }
       }
       var groundParentEl = document.createElement('a-entity');
       groundParentEl.setAttribute('create-from-json', 'jsonString', groundJSONString);
-      groundParentEl.setAttribute('position', positionX + ' 0 0');
+      if (side == "right"){
+        groundParentEl.setAttribute('position', positionX - 55 + ' 0 0');
+      } else {
+        groundParentEl.setAttribute('position', positionX + 55 + ' 0 0');
+      }
       groundParentEl.classList.add('ground-' + side);
       buildingElement.appendChild(groundParentEl);
     }
