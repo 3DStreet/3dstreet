@@ -813,11 +813,9 @@ function processBuildings (left, right, streetWidth, showGround, length) {
         repeat = length / 30;
         if (mixin == "ground-parking-lot"){
           groundJSONString = '[{"tag":"a-entity","position":"0 -0.2 0","mixin":"' + mixin +  '","geometry":"primitive:plane;height:' + length + ';width:40","material":"repeat:.5 ' + repeat + ';roughness:1"}]';
-        }
-        else if (mixin == "ground-asphalt") {
+        } else if (mixin == "ground-asphalt") {
           groundJSONString = '[{"tag":"a-entity","position":"0 -0.2 0","mixin":"' + mixin +  '","geometry":"primitive:plane;height:' + length + ';width:40","material":"repeat:1 ' + repeat + ';roughness:1"}]';
-        }
-        else {
+        } else {
           groundJSONString = '[{"tag":"a-entity","position":"0 -0.2 0","mixin":"' + mixin +  '","geometry":"primitive:plane;height:' + length + ';width:40"}]';
         }
       }
