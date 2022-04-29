@@ -809,7 +809,13 @@ function processBuildings (left, right, streetWidth, showGround, length) {
     if (showGround) {
       var groundJSONString = JSON.stringify(streetmixParsersTested.createGroundArray(currentValue));
       if ("[]" !== groundJSONString){
-        groundJSONString = '[{"tag":"a-entity","position":"0 -0.2 0","mixin":"' + streetmixParsersTested.createGroundArray(currentValue)[0].mixin +  '","geometry":"primitive:plane;height:' + length + ';width:150"}]';
+        let mixin = streetmixParsersTested.createGroundArray(currentValue)[0].mixin;
+        repeat = length / 30;
+        if (mixin == "ground-parking-lot"){
+          groundJSONString = '[{"tag":"a-entity","position":"0 -0.2 0","mixin":"' + mixin +  '","geometry":"primitive:plane;height:' + length + ';width:150","material":"repeat:2 ' + repeat + ';roughness:1"}]';
+        } else {
+          groundJSONString = '[{"tag":"a-entity","position":"0 -0.2 0","mixin":"' + mixin +  '","geometry":"primitive:plane;height:' + length + ';width:150"}]';
+        }
       }
       var groundParentEl = document.createElement('a-entity');
       groundParentEl.setAttribute('create-from-json', 'jsonString', groundJSONString);
