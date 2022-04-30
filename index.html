@@ -166,25 +166,25 @@
             <div class="street-wrapper">
                     <div  class="menu-wrapper">
                       <ul  class="top-menu">
-                        <li> <a href="perspective.html"> Perspective </a>
+                        <li onclick="perspectiveCamera()"> <a> Perspective </a>
                             <span class="menu-img-box">
                               <div class="menu-img" id="viewport1" style="border-style: solid; width: 200px; height:130px">
                               </div>
                             </span>
                         </li>
-                        <li> <a href="plan-view.html">Plan View </a>
+                        <li onclick="planViewCamera()"> <a>Plan View </a>
                             <span class="menu-img-box">
                               <div class="menu-img" id="viewport2" style="border-style: solid; width: 200px; height:130px">
                               </div>
                             </span> 
                           </li>
-                        <li> <a href="cross-section.html">Cross Section </a>
+                        <li onclick="crossSectionCamera()"> <a>Cross Section </a>
                             <span class="menu-img-box">
                               <div class="menu-img" id="viewport3" style="border-style: solid; width: 200px; height:130px">
                               </div>
                             </span>
                           </li>
-                        <li> <a href="side-view.html">Side View </a>
+                        <li onclick="sideViewCamera()"> <a>Side View </a>
                             <span class="menu-img-box"> 
                               <div class="menu-img" id="viewport4" style="border-style: solid; width: 200px; height:130px">
                               </div>
@@ -195,6 +195,32 @@
                     </div>
             </div>
     </header>
+    <script>
+      function perspectiveCamera() {
+        document.getElementById("camera").setAttribute('orbit-controls', "autoRotate: false;autoRotateSpeed:0.01;target: 0 0 0;enableKeys:false");
+        document.getElementById("camera").setAttribute('camera', "");
+        document.getElementById("camera").setAttribute('position', "-15 12 20");
+        document.getElementById("camera").setAttribute('rotation', "-15 -45 0");
+      }
+      function planViewCamera() {
+        document.getElementById("camera").setAttribute('orbit-controls', "autoRotate: false;autoRotateSpeed:0.01;target: 0 0 0;enableKeys:false");
+        document.getElementById("camera").setAttribute('camera', "");
+        document.getElementById("camera").setAttribute('position', "0 50 0");
+        document.getElementById("camera").setAttribute('rotation', "-90 0 0");
+      }
+      function crossSectionCamera() {
+        document.getElementById("camera").setAttribute('orbit-controls', "autoRotate: false;autoRotateSpeed:0.01;target: 0 0 0;enableKeys:false");
+        document.getElementById("camera").setAttribute('camera', "");
+        document.getElementById("camera").setAttribute('position', "0 5.6 -50");
+        document.getElementById("camera").setAttribute('rotation', "0 180 0");
+      }
+      function sideViewCamera() {
+        document.getElementById("camera").setAttribute('orbit-controls', "autoRotate: false;autoRotateSpeed:0.01;target: 0 0 0;enableKeys:false");
+        document.getElementById("camera").setAttribute('camera', "");
+        document.getElementById("camera").setAttribute('position', "-30 15 0");
+        document.getElementById("camera").setAttribute('rotation', "-18 -90 0");
+      }
+    </script>
 
     <div class="right-fixed">
       <ul class="right-menu">
