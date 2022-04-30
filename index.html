@@ -297,8 +297,12 @@
     </div>
 
     <div class="location" >
-        <p> <img src="assets/ui_assets/location.svg"> 17th Street between Folsom and Shotwell</p> 
+        <p id="location"><img src="assets/ui_assets/location.svg"> </p> 
     </div>
+    <script>
+      var locationString = (location.href.split("#")[1] != undefined) ? location.href.split("#")[1] : "https://streetmix.net/kfarr/3";
+      document.getElementById("location").innerHTML += locationString;
+    </script>
   </body>
   <script>
     AFRAME.registerComponent('set-loader-from-hash', {
