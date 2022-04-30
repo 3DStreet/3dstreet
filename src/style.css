@@ -118,7 +118,7 @@ body {
 	position: fixed;
 	right: 0;
 	margin-top: 40vh;
-    z-index: 999999;
+	z-index: 1;
 }
 
 .right-menu {
@@ -134,7 +134,7 @@ body {
 
 .right-menu li a {
 	background: rgba(50, 50, 50, 0.5);
-	padding: 16px;
+	padding: 0;
 	list-style: none;
 	margin: 10px 0;
 	border-radius: 12px 0 0 12px;
@@ -155,16 +155,15 @@ body {
 	text-align: left;
 	width: 200px;
 	letter-spacing: .5;
-	margin-right: -220px;
+	margin-right: -270px;
+	padding-left: 60px;
+	color: rgba(50, 50, 50, 0.5);
 }
 
 .right-menu li a:hover span {
-	transition: all .4s ease-in-out 0s;
 	margin-right: 0;
-}
-
-.right-menu li a:hover span {
-	transition: all .4s ease-in-out 0s;
+	padding-left: 0;
+	color: #fff;
 }
 
 .right-menu li a {
@@ -176,6 +175,13 @@ body {
 	vertical-align: middle;
 	width: 32px;
 	height: 32px;
+	z-index: 999;
+	padding: 16px;
+}
+
+.right-menu li a:hover img {
+	background: #6100FF;
+	z-index: 9999;
 }
 
 /********* location css *********/
