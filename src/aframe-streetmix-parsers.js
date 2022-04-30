@@ -788,7 +788,7 @@ module.exports.processSegments = processSegments;
 // test - for streetObject of street 44 and buildingElementId render 2 building sides
 function processBuildings (left, right, streetWidth, showGround, length) {
   const buildingElement = document.createElement('a-entity');
-  const clonedObjectRadius = 70;
+  const clonedObjectRadius = 0.45 * length;
   buildingElement.classList.add('buildings-parent');
   const buildingLotWidth = 150;
   const buildingsArray = [left, right];
@@ -808,20 +808,20 @@ function processBuildings (left, right, streetWidth, showGround, length) {
 
     if (showGround) {
       var groundJSONString = JSON.stringify(streetmixParsersTested.createGroundArray(currentValue));
-      if ("[]" !== groundJSONString){
-        let mixin = streetmixParsersTested.createGroundArray(currentValue)[0].mixin;
-        repeat = length / 30;
-        if (mixin == "ground-parking-lot"){
-          groundJSONString = '[{"tag":"a-entity","position":"0 -0.2 0","mixin":"' + mixin +  '","geometry":"primitive:plane;height:' + length + ';width:40","material":"repeat:.5 ' + repeat + ';roughness:1"}]';
-        } else if (mixin == "ground-asphalt") {
-          groundJSONString = '[{"tag":"a-entity","position":"0 -0.2 0","mixin":"' + mixin +  '","geometry":"primitive:plane;height:' + length + ';width:40","material":"repeat:1 ' + repeat + ';roughness:1"}]';
+      if (groundJSONString !== '[]') {
+        const mixin = streetmixParsersTested.createGroundArray(currentValue)[0].mixin;
+        const repeat = length / 30;
+        if (mixin === 'ground-parking-lot') {
+          groundJSONString = '[{"tag":"a-entity","position":"0 -0.2 0","mixin":"' + mixin + '","geometry":"primitive:plane;height:' + length + ';width:40","material":"repeat:.5 ' + repeat + ';roughness:1"}]';
+        } else if (mixin === 'ground-asphalt') {
+          groundJSONString = '[{"tag":"a-entity","position":"0 -0.2 0","mixin":"' + mixin + '","geometry":"primitive:plane;height:' + length + ';width:40","material":"repeat:1 ' + repeat + ';roughness:1"}]';
         } else {
-          groundJSONString = '[{"tag":"a-entity","position":"0 -0.2 0","mixin":"' + mixin +  '","geometry":"primitive:plane;height:' + length + ';width:40"}]';
+          groundJSONString = '[{"tag":"a-entity","position":"0 -0.2 0","mixin":"' + mixin + '","geometry":"primitive:plane;height:' + length + ';width:40"}]';
         }
       }
       var groundParentEl = document.createElement('a-entity');
       groundParentEl.setAttribute('create-from-json', 'jsonString', groundJSONString);
-      if (side == "right"){
+      if (side === 'right') {
         groundParentEl.setAttribute('position', positionX - 55 + ' 0 0');
       } else {
         groundParentEl.setAttribute('position', positionX + 55 + ' 0 0');
@@ -832,14 +832,14 @@ function processBuildings (left, right, streetWidth, showGround, length) {
 
     if (currentValue === 'narrow' || currentValue === 'wide') {
       // Make buildings
-      const buildingsArray = streetmixParsersTested.createBuildingsArray(0.975*length);
+      const buildingsArray = streetmixParsersTested.createBuildingsArray(0.975 * length);
       const buildingJSONString = JSON.stringify(buildingsArray);
       const placedObjectEl = document.createElement('a-entity');
       // Account for left and right facing buildings
       if (index === 1) {
-        placedObjectEl.setAttribute('position', (positionX + (sideMultiplier * -72)) + ' 0 ' + (length/2));
+        placedObjectEl.setAttribute('position', (positionX + (sideMultiplier * -72)) + ' 0 ' + (length / 2));
       } else {
-        placedObjectEl.setAttribute('position', (positionX + (sideMultiplier * -72)) + ' 0 ' + (-length/2));
+        placedObjectEl.setAttribute('position', (positionX + (sideMultiplier * -72)) + ' 0 ' + (-length / 2));
       }
       placedObjectEl.setAttribute('rotation', '0 ' + (90 * sideMultiplier) + ' 0');
       placedObjectEl.setAttribute('create-from-json', 'jsonString', buildingJSONString);
@@ -849,14 +849,14 @@ function processBuildings (left, right, streetWidth, showGround, length) {
 
     if (currentValue === 'residential') {
       // Make buildings
-      const buildingsArray = streetmixParsersTested.createBuildingsArray(0.85*length, 'residential');
+      const buildingsArray = streetmixParsersTested.createBuildingsArray(0.85 * length, 'residential');
       const buildingJSONString = JSON.stringify(buildingsArray);
       const placedObjectEl = document.createElement('a-entity');
       // Account for left and right facing buildings
-      if (index === 1){
-        placedObjectEl.setAttribute('position', (positionX + (sideMultiplier * -64)) + ' -0.75 ' + (length/2));
+      if (index === 1) {
+        placedObjectEl.setAttribute('position', (positionX + (sideMultiplier * -64)) + ' -0.75 ' + (length / 2));
       } else {
-        placedObjectEl.setAttribute('position', (positionX + (sideMultiplier * -64)) + ' -0.75 ' + (-length/2));
+        placedObjectEl.setAttribute('position', (positionX + (sideMultiplier * -64)) + ' -0.75 ' + (-length / 2));
       }
       placedObjectEl.setAttribute('rotation', '0 ' + (90 * sideMultiplier) + ' 0');
       placedObjectEl.setAttribute('create-from-json', 'jsonString', buildingJSONString);
@@ -873,7 +873,7 @@ function processBuildings (left, right, streetWidth, showGround, length) {
       buildingElement.appendChild(placedObjectEl);
       // clone a bunch of seawalls under the parent
       const rotationCloneY = (side === 'right') ? -90 : 90;
-      cloneMixinAsChildren({ objectMixinId: 'seawall', parentEl: placedObjectEl, rotation: '0 ' + rotationCloneY + ' 0', step: 15, radius: 0.45*length });
+      cloneMixinAsChildren({ objectMixinId: 'seawall', parentEl: placedObjectEl, rotation: '0 ' + rotationCloneY + ' 0', step: 15, radius: clonedObjectRadius });
     }
 
     if (currentValue === 'fence' || currentValue === 'parking-lot') {
@@ -885,7 +885,7 @@ function processBuildings (left, right, streetWidth, showGround, length) {
       placedObjectEl.classList.add('fence-parent-' + positionX);
       // clone a bunch of fences under the parent
       const rotationCloneY = (side === 'right') ? -90 : 90;
-      cloneMixinAsChildren({ objectMixinId: 'fence', parentEl: placedObjectEl, rotation: '0 ' + rotationCloneY + ' 0', step: 9.25, radius: 0.45*length });
+      cloneMixinAsChildren({ objectMixinId: 'fence', parentEl: placedObjectEl, rotation: '0 ' + rotationCloneY + ' 0', step: 9.25, radius: clonedObjectRadius });
       buildingElement.appendChild(placedObjectEl);
     }
   });
