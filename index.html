@@ -159,7 +159,7 @@
     <header class="header">
         <div class="header-wrapper">
             <div class="logo-wrapper">
-                <a class="logo-link" href="https://www.3dstreet.org/">
+                <a class="logo-link" href="https://www.3dstreet.org/" id="3dstreet-logo-length">
                     <img class="logo-img" alt="3dStreet" src="assets/ui_assets/logo.svg">
                 </a>
             </div>
@@ -178,7 +178,7 @@
                               </div>
                             </span> 
                           </li>
-                        <li class="active"> <a href="cross-section.html">Cross Section </a>
+                        <li> <a href="cross-section.html">Cross Section </a>
                             <span class="menu-img-box">
                               <div class="menu-img" id="viewport3" style="border-style: solid; width: 200px; height:130px">
                               </div>
@@ -218,16 +218,14 @@
       <a-scene style="z-index: 0;" renderer="colorManagement: true; highRefreshRate: true; foveationLevel: 3; physicallyCorrectLights: true; logarithmicDepthBuffer: false;" fogoff="type: linear; color: #D5C69B; far: 200" gltf-model="dracoDecoderPath: https://www.gstatic.com/draco/versioned/decoders/1.4.3/">
         <a-assets>
           <streetmix-assets url="./"></streetmix-assets>
-  
-          <a-cubemap id="skycube">
+          <!-- <a-cubemap id="skycube">
             <img src="assets/images/skybox/posx.jpg">
             <img src="assets/images/skybox/negx.jpg">
             <img src="assets/images/skybox/posy.jpg">
             <img src="assets/images/skybox/negy.jpg">
             <img src="assets/images/skybox/posz.jpg">
             <img src="assets/images/skybox/negz.jpg">
-          </a-cubemap>
-  
+          </a-cubemap> -->
         </a-assets>
     
         <a-entity id="cameraRig">
@@ -237,10 +235,10 @@
         </a-entity>
 
         <!-- Secondary cameras -->
-        <a-entity id="camera1" secondary-camera="outputElement:#viewport1" position="-8 1.6 0" rotation="0 -90 0"></a-entity>
-        <a-entity id="camera2" secondary-camera="outputElement:#viewport2" position="-8 1.6 0" rotation="0 -90 0"></a-entity>
-        <a-entity id="camera3" secondary-camera="outputElement:#viewport3" position="-8 1.6 0" rotation="0 -90 0"></a-entity>
-        <a-entity id="camera4" secondary-camera="outputElement:#viewport4" position="-8 1.6 0" rotation="0 -90 0"></a-entity>
+        <a-entity id="camera1" secondary-camera="outputElement:#viewport1" rotation="0 -90 0"></a-entity>
+        <a-entity id="camera2" secondary-camera="outputElement:#viewport2" rotation="0 90 0"></a-entity>
+        <a-entity id="camera3" secondary-camera="outputElement:#viewport3" rotation="0 90 0"></a-entity>
+        <a-entity id="camera4" secondary-camera="outputElement:#viewport4" rotation="0 -90 0"></a-entity>
     
         <a-entity light="type: ambient; color: #FFF; intensity: 2"></a-entity>
         <a-entity light="type: directional; color: #FFF; intensity: 0.6" position="0.5 1 -1"></a-entity>
