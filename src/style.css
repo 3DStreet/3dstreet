@@ -206,31 +206,10 @@ body {
 
 /********* conten css *********/
 
-.conten {
+.content {
 	min-height: 100vh;
 	background-size: cover;
 }
-
-.bg1 {
-  background-image: url('assets/bg1.png');
-}
-
-
-.bg2 {
-	background-image: url('assets/bg2.png');
-}
-
-
-.bg3 {
-	background-image: url('assets/bg3.png');
-}
-
-
-.bg4 {
-	background-image: url('assets/bg4.png');
-}
-
-
 
 /*********loading-popup**********/
 
