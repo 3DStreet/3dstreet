@@ -129,18 +129,25 @@ function getAmbientSoundJSON (buildingsArray) { // eslint-disable-line no-unused
 module.exports.getAmbientSoundJSON = getAmbientSoundJSON;
 
 // possible input values: grass, fence, narrow, wide, waterfront, residential, parking-lot
-function createGroundArray (buildingString) { // eslint-disable-line no-unused-vars
+function createGroundArray (buildingString, length) { // eslint-disable-line no-unused-vars
+  const repeatY = length / 30;
+  var repeatX = 1;
   var groundArray = [];
   var mixin = 'ground-grass'; // default output is grass ground type
 
   if (buildingString === 'waterfront') { return groundArray; }
   if (['narrow', 'wide'].includes(buildingString)) { mixin = 'ground-asphalt'; }
-  if (buildingString === 'parking-lot') { mixin = 'ground-parking-lot'; }
+  if (buildingString === 'parking-lot') {
+    mixin = 'ground-parking-lot';
+    repeatX = 0.5;
+  }
 
   var groundEntity = {
     tag: 'a-entity',
     position: '0 -0.2 0',
-    mixin: mixin
+    mixin: mixin,
+    geometry: 'height: ' + length + ';',
+    material: 'repeat: ' + repeatX + ' ' + repeatY + ';'
   };
   groundArray.push(groundEntity);
 
