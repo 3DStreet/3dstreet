@@ -12,251 +12,78 @@
     <script src="src/components/ocean-plane.js"></script>
     <script src="src/lib/aframe-cubemap-component.js"></script>
 
-    <!-- Miscellaneous styles -->
-    <style>
-      @import url('https://fonts.googleapis.com/css2?family=Rubik:wght@600&display=swap');
-      @import url('https://fonts.googleapis.com/css2?family=Rubik:wght@400&display=swap');
-
-      /* move a-frame performance `stats` below toolbar */
-      .rs-base {
-        left: 20px;
-        top: 80px;
-      }
-
-      .navbar {
-        font-family: Rubik;
-        align-items: center;
-        color: #0f0a13;
-        display: flex;
-        flex-grow: 2;
-        height: 32px;
-        font-size: 9.33px;
-        justify-content: space-between;
-        left: 0;
-        margin: 0 auto;
-        right: 40%;
-        bottom: 0;
-        zoom: 150%;
-        z-index: 999999;
-        position: fixed;
-        justify-content: space-between;
-      }
-
-      .navbar a {
-        text-decoration: none;
-      }
-
-      .navbar-brand {
-        color: #4B3461;
-        z-index: 999999;
-        font-size: 12px;
-        padding: 10px;
-        white-space: nowrap;
-        font-weight: 600;
-      }
-
-      .url-input {
-        width: 90%;
-        background-color: #9956db;
-        font-size: 12px;
-        vertical-align: 15%;
-      }
-
-      .url-form {
-        width: 100%;
-        padding-left: 5%;
-        padding-bottom: 5%;
-        white-space: nowrap;
-      }
-
-      a:link { text-decoration: none; }
-      a:visited { text-decoration: none; }
-      a:hover { text-decoration: none; }
-      a:active { text-decoration: none; }
-
-      .textlarge {
-        color: #ffffff;
-        z-index: 999999;
-        font-family: Rubik;
-        font-size: 26px;
-        padding: 10px;
-        white-space: nowrap;
-        font-weight: 600;
-        top: 0px;
-        left: 20px;
-        position: absolute;
-      }
-
-      .pill {
-        font-family: Rubik;
-        color: #ffffff;
-        font-size: 12px;
-        z-index: 999999;
-        border-radius: 3px;
-        background-color: #8941FF;
-        margin: 5px;
-        padding: 0px;
-        padding-right: 5px;
-        padding-left: 5px;
-        bottom: 5px;
-        position: relative;
-      }
-
-      .inputBox {
-      background: transparent;
-      z-index: 999999;
-      width: 40%;
-      color: #ffffff;
-      border-color: transparent;
-      font-family: Rubik;
-      font-size: 20px;
-      position: absolute;
-      bottom: 20px;
-      left: 20px;
-      }
-    
-      .social {
-        font-family: Rubik;
-        color: #ffffff;
-        border-radius: 3px;
-        background-color: #3232327c;
-        position: absolute;
-        top: 140px;
-        right: -1px;
-        z-index: 999999;
-        zoom: 110%;
-        border: none;
-        padding: 0px 3px 0px 3px;
-        cursor: pointer;
-      }
-
-      .social:hover {
-        background-color: #8941FF;
-      }
-
-      .a-enter-vr-button {
-        visibility: hidden;
-      }
-
-      .a-enter-vr-button:hover {
-        background-color: #8941FF;
-      }
-    </style>
+    <title>3DStreet</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="icon" type="image/x-icon" href="assets/ui_assets/favicon.ico">
+    <link rel="stylesheet" href="src/style.css">
   </head>
+
   <body>
-    <!-- UI Elements  -->
-    <!-- 3D Street Logo -->
-    <a href="https://3dstreet.org" style="z-index: 999999;">
-      <h1 class="textlarge" style="font-weight: 300;"> 3D
-      <span style="font-weight: 900">Street</span>
-      <span class="pill">viewer</span>
-      </h1>
-    </a>
+    <header class="header">
+        <div class="header-wrapper">
+            <div class="logo-wrapper">
+                <a class="logo-link" href="https://www.3dstreet.org/" id="3dstreet-logo-length">
+                    <img class="logo-img" alt="3DStreet Viewer" src="assets/ui_assets/logo-viewer.svg">
+                </a>
+            </div>
+    </header>
 
-    <!-- Street Name HTML-->
-    <input class="inputBox" id="myInput">
-    <!-- Street Name Script-->
+    <div class="right-fixed">
+      <ul class="right-menu">
+        <li onclick="screenshot()"> <a class="camera"  href="#"> <span> Capture image as PNG </span> <img src="assets/ui_assets/camera-icon.svg"> </a></li>
+        <li onclick="vrClick()"> <a class="vr" href="#"> <span class="vr">Enter VR mode</span> <img src="assets/ui_assets/vr-icon.svg"> </a></li>
+      </ul>
+    </div>
+
     <script>
-      var input = document.getElementById("myInput");
-      function valueTitle() {
-        if (location.href.split("#")[1] != undefined){
-          return location.href.split("#")[1];
-        } else{
-          return "https://streetmix.net/kfarr/3"
-        } 
-      }
-      input.setAttribute("value",valueTitle());
-      input.addEventListener("keyup", function(event) {
-        if (event.keyCode === 13) {
-          console.log("hi")
-          location.href='#'+input.value;
-          setTimeout(window.location.reload.bind(window.location));
-          event.preventDefault();
-          this.blur();
-        }
-      });
-    </script>
-
-    <!-- Share Buttons HTML -->
-    <!-- <button class="social" onmouseout="downloadHoverOut(event)" onmouseover="downloadHoverOver(event)" onclick="glTF()">
-      <a id="downloadButton" style="font-family: Rubik; position: relative; bottom:10px"></a>
-      <img src="./assets/downloadW.svg" />
-    </button> -->
-    <button class="social" style="top: 190px;" onmouseout="cameraHoverOut(event)" onmouseover="cameraHoverOver(event)" onclick="screenshot()">
-      <a id="cameraButton" style="font-family: Rubik; position: relative; bottom:10px"></a>
-      <img src="./assets/cameraW.svg" />
-    </button>
-    <button class="social" style="top: 240px;" onmouseout="vrHoverOut(event)" onmouseover="vrHoverOver(event)" onclick="vrClick()">
-      <a id="vrButton" style="font-family: Rubik; position: relative; bottom:10px"></a>
-      <img src="./assets/vrW.svg" />
-    </button>
-
-    <!-- Share Buttons HTML Script -->
-    <script>
-      function glTF() {
-        alert(document.querySelector('a-scene').components.inspector);
-      }
-      function downloadHoverOver() {
-        document.getElementById('downloadButton').innerHTML = "Save the scene as a glTF";
-      }
-      function downloadHoverOut() {
-        document.getElementById('downloadButton').innerHTML = "";
-      }
       function screenshot() {
         AFRAME.scenes[0].setAttribute('screenshot','width',AFRAME.scenes[0].canvas.width)
         AFRAME.scenes[0].setAttribute('screenshot','height',AFRAME.scenes[0].canvas.height)
         document.querySelector('a-scene').components.screenshot.capture('perspective');
       }
-      function cameraHoverOver() {
-        document.getElementById('cameraButton').innerHTML = "Save the scene as a PNG";
-      }
-      function cameraHoverOut() {
-        document.getElementById('cameraButton').innerHTML = "";
-      }
       function vrClick() {
         document.getElementsByClassName('a-enter-vr-button')[0].click();
       }
-      function vrHoverOver() {
-        document.getElementById('vrButton').innerHTML = "Enter VR mode";
-      }
-      function vrHoverOut() {
-        document.getElementById('vrButton').innerHTML = "";
-      }
     </script>
 
-    <!-- A-Frame Scene  -->
-    <a-scene style="z-index: 0;" renderer="colorManagement: true; highRefreshRate: true; foveationLevel: 3; physicallyCorrectLights: true; logarithmicDepthBuffer: false;" fogoff="type: linear; color: #D5C69B; far: 200" gltf-model="dracoDecoderPath: https://www.gstatic.com/draco/versioned/decoders/1.4.3/">
-      <a-assets>
-        <streetmix-assets url="./"></streetmix-assets>
+    <div class="content">
+      <a-scene style="z-index: 0;" renderer="colorManagement: true; highRefreshRate: true; foveationLevel: 3; physicallyCorrectLights: true; logarithmicDepthBuffer: false;" fogoff="type: linear; color: #D5C69B; far: 200" gltf-model="dracoDecoderPath: https://www.gstatic.com/draco/versioned/decoders/1.4.3/">
+        <a-assets>
+          <streetmix-assets url="./"></streetmix-assets>
+          <a-cubemap id="skycube">
+            <img src="assets/images/skybox/posx.jpg">
+            <img src="assets/images/skybox/negx.jpg">
+            <img src="assets/images/skybox/posy.jpg">
+            <img src="assets/images/skybox/negy.jpg">
+            <img src="assets/images/skybox/posz.jpg">
+            <img src="assets/images/skybox/negz.jpg">
+          </a-cubemap>
+        </a-assets>
+    
+        <a-entity id="cameraRig">
+          <a-entity id="camera" camera="far: 1000" wasd-controls="enabled: false" orbit-controls="autoRotate: true;autoRotateSpeed:0.01;target: 0 0 0;initialPosition:0 4 15;minDistance:3;maxDistance:100;enableKeys:false"></a-entity>
+          <a-entity id="leftHand" hand-controls="hand: left; handModelStyle: lowPoly; color: #ccffcc" teleport-controls="cameraRig: #cameraRig; button: trigger"></a-entity>
+          <a-entity id="rightHand" hand-controls="hand: right; handModelStyle: lowPoly; color: #ccffcc" teleport-controls="cameraRig: #cameraRig; button: trigger"></a-entity>
+        </a-entity>
+    
+        <a-entity light="type: ambient; color: #FFF; intensity: 2"></a-entity>
+        <a-entity light="type: directional; color: #FFF; intensity: 0.6" position="0.5 1 -1"></a-entity>
+  
+        <a-ocean-plane height="100" width="100" position="0 -1 0" material="envMap: #skycube;"></a-ocean-plane>
+  
+        <a-entity id="skybox" cubemap="folder: assets/images/skybox/"></a-entity>
+  
+        <a-entity id="street-parent" street streetmix-loader set-loader-from-hash="defaultURL: https://streetmix.net/kfarr/3"></a-entity>
+      </a-scene>
+    </div>
 
-        <a-cubemap id="skycube">
-          <img src="assets/images/skybox/posx.jpg">
-          <img src="assets/images/skybox/negx.jpg">
-          <img src="assets/images/skybox/posy.jpg">
-          <img src="assets/images/skybox/negy.jpg">
-          <img src="assets/images/skybox/posz.jpg">
-          <img src="assets/images/skybox/negz.jpg">
-        </a-cubemap>
-
-      </a-assets>
-
-      <a-entity id="cameraRig">
-        <a-entity id="camera" camera="far: 1000" wasd-controls="enabled: false" orbit-controls="autoRotate: true;autoRotateSpeed:0.01;target: 0 0 0;initialPosition:0 4 15;minDistance:3;maxDistance:100;enableKeys:false"></a-entity>
-        <a-entity id="leftHand" hand-controls="hand: left; handModelStyle: lowPoly; color: #ccffcc" teleport-controls="cameraRig: #cameraRig; button: trigger"></a-entity>
-        <a-entity id="rightHand" hand-controls="hand: right; handModelStyle: lowPoly; color: #ccffcc" teleport-controls="cameraRig: #cameraRig; button: trigger"></a-entity>
-      </a-entity>
-
-      <!-- <a-entity class="playme" sound="src: #ambientmp3; positional: false; loop: true;"></a-entity> -->
-
-      <a-entity light="type: ambient; color: #FFF; intensity: 2"></a-entity>
-      <a-entity light="type: directional; color: #FFF; intensity: 0.6" position="0.5 1 -1"></a-entity>
-
-      <a-ocean-plane height="100" width="100" position="0 -1 0" material="envMap: #skycube;"></a-ocean-plane>
-
-      <a-entity id="skybox" cubemap="folder: assets/images/skybox/"></a-entity>
-
-      <a-entity id="street-parent" street streetmix-loader set-loader-from-hash="defaultURL: https://streetmix.net/kfarr/3"></a-entity>
-    </a-scene>
+    <div class="location" >
+        <p id="location"><img src="assets/ui_assets/location.svg"> </p> 
+    </div>
+    <script>
+      var locationString = (location.href.split("#")[1] != undefined) ? location.href.split("#")[1] : "https://streetmix.net/kfarr/3";
+      document.getElementById("location").innerHTML += locationString;
+    </script>
   </body>
   <script>
     AFRAME.registerComponent('set-loader-from-hash', {
