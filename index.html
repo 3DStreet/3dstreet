@@ -255,7 +255,12 @@
 
       <a-entity id="skybox" cubemap="folder: assets/images/skybox/"></a-entity>
 
-      <a-entity id="street-parent" street streetmix-loader set-loader-from-hash="defaultURL: https://streetmix.net/kfarr/3"></a-entity>
+      <a-entity
+      position="0 0 0"
+      id="left_street"
+      street="length: 150"
+      streetmix-loader="streetmixStreetURL: https://streetmix.net/srothst1/4/3dstreet-demo-street"
+      ></a-entity>
     </a-scene>
   </body>
   <script>
