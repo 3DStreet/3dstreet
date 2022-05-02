@@ -142,7 +142,6 @@ function createGroundArray (buildingString, length) { // eslint-disable-line no-
     repeatX = 0.5;
   }
 
-
   var groundEntity = {
     tag: 'a-entity',
     position: '0 -0.2 0',
