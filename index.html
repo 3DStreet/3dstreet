@@ -12,144 +12,7 @@
     <script src="src/components/ocean-plane.js"></script>
     <script src="src/lib/aframe-cubemap-component.js"></script>
 
-    <!-- multi camera view -->
-    <script src="https://cdn.jsdelivr.net/gh/diarmidmackenzie/aframe-multi-camera@latest/aframe/cursor.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/gh/diarmidmackenzie/aframe-multi-camera@latest/src/multi-camera.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/gh/diarmidmackenzie/aframe-multi-camera@latest/src/viewpoint-selector.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/gh/diarmidmackenzie/aframe-multi-camera@latest/src/mirror.min.js"></script>	
-
-    <!-- Miscellaneous styles -->
-    <style>
-      @import url('https://fonts.googleapis.com/css2?family=Rubik:wght@600&display=swap');
-      @import url('https://fonts.googleapis.com/css2?family=Rubik:wght@400&display=swap');
-
-      /* move a-frame performance `stats` below toolbar */
-      .rs-base {
-        left: 20px;
-        top: 80px;
-      }
-
-      .navbar {
-        font-family: Rubik;
-        align-items: center;
-        color: #0f0a13;
-        display: flex;
-        flex-grow: 2;
-        height: 32px;
-        font-size: 9.33px;
-        justify-content: space-between;
-        left: 0;
-        margin: 0 auto;
-        right: 40%;
-        bottom: 0;
-        zoom: 150%;
-        z-index: 999999;
-        position: fixed;
-        justify-content: space-between;
-      }
-
-      .navbar a {
-        text-decoration: none;
-      }
-
-      .navbar-brand {
-        color: #4B3461;
-        z-index: 999999;
-        font-size: 12px;
-        padding: 10px;
-        white-space: nowrap;
-        font-weight: 600;
-      }
-
-      .url-input {
-        width: 90%;
-        background-color: #9956db;
-        font-size: 12px;
-        vertical-align: 15%;
-      }
-
-      .url-form {
-        width: 100%;
-        padding-left: 5%;
-        padding-bottom: 5%;
-        white-space: nowrap;
-      }
-
-      a:link { text-decoration: none; }
-      a:visited { text-decoration: none; }
-      a:hover { text-decoration: none; }
-      a:active { text-decoration: none; }
-
-      .textlarge {
-        color: #ffffff;
-        z-index: 999999;
-        font-family: Rubik;
-        font-size: 26px;
-        padding: 10px;
-        white-space: nowrap;
-        font-weight: 600;
-        top: 0px;
-        left: 20px;
-        position: absolute;
-      }
-
-      .pill {
-        font-family: Rubik;
-        color: #ffffff;
-        font-size: 12px;
-        z-index: 999999;
-        border-radius: 3px;
-        background-color: #8941FF;
-        margin: 5px;
-        padding: 0px;
-        padding-right: 5px;
-        padding-left: 5px;
-        bottom: 5px;
-        position: relative;
-      }
-
-      .inputBox {
-      background: transparent;
-      z-index: 999999;
-      width: 40%;
-      color: #ffffff;
-      border-color: transparent;
-      font-family: Rubik;
-      font-size: 20px;
-      position: absolute;
-      bottom: 20px;
-      left: 20px;
-      }
-    
-      .social {
-        font-family: Rubik;
-        color: #ffffff;
-        border-radius: 3px;
-        background-color: #3232327c;
-        position: absolute;
-        top: 140px;
-        right: -1px;
-        z-index: 999999;
-        zoom: 110%;
-        border: none;
-        padding: 0px 3px 0px 3px;
-        cursor: pointer;
-      }
-
-      .social:hover {
-        background-color: #8941FF;
-      }
-
-      .a-enter-vr-button {
-        visibility: hidden;
-      }
-
-      .a-enter-vr-button:hover {
-        background-color: #8941FF;
-      }
-    </style>
-
-    <title>3dStreet</title>
+    <title>3DStreet</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link rel="icon" type="image/x-icon" href="assets/ui_assets/favicon.ico">
     <link rel="stylesheet" href="src/style.css">
@@ -163,64 +26,7 @@
                     <img class="logo-img" alt="3dStreet" src="assets/ui_assets/logo.svg">
                 </a>
             </div>
-            <div class="street-wrapper">
-                    <div  class="menu-wrapper">
-                      <ul  class="top-menu">
-                        <li onclick="perspectiveCamera()"> <a> Perspective </a>
-                            <span class="menu-img-box">
-                              <div class="menu-img" id="viewport1" style="border-style: solid; width: 200px; height:130px">
-                              </div>
-                            </span>
-                        </li>
-                        <li onclick="planViewCamera()"> <a>Plan View </a>
-                            <span class="menu-img-box">
-                              <div class="menu-img" id="viewport2" style="border-style: solid; width: 200px; height:130px">
-                              </div>
-                            </span> 
-                          </li>
-                        <li onclick="crossSectionCamera()"> <a>Cross Section </a>
-                            <span class="menu-img-box">
-                              <div class="menu-img" id="viewport3" style="border-style: solid; width: 200px; height:130px">
-                              </div>
-                            </span>
-                          </li>
-                        <li onclick="sideViewCamera()"> <a>Side View </a>
-                            <span class="menu-img-box"> 
-                              <div class="menu-img" id="viewport4" style="border-style: solid; width: 200px; height:130px">
-                              </div>
-                            </span>
-                          </li>
-                        </ul>
-                        </div>
-                    </div>
-            </div>
     </header>
-    <script>
-      function perspectiveCamera() {
-        document.getElementById("camera").setAttribute('orbit-controls', "autoRotate: false;autoRotateSpeed:0.01;target: 0 0 0;enableKeys:false");
-        document.getElementById("camera").setAttribute('camera', "");
-        document.getElementById("camera").setAttribute('position', "-15 12 20");
-        document.getElementById("camera").setAttribute('rotation', "-15 -45 0");
-      }
-      function planViewCamera() {
-        document.getElementById("camera").setAttribute('orbit-controls', "autoRotate: false;autoRotateSpeed:0.01;target: 0 0 0;enableKeys:false");
-        document.getElementById("camera").setAttribute('camera', "");
-        document.getElementById("camera").setAttribute('position', "0 50 0");
-        document.getElementById("camera").setAttribute('rotation', "-90 0 0");
-      }
-      function crossSectionCamera() {
-        document.getElementById("camera").setAttribute('orbit-controls', "autoRotate: false;autoRotateSpeed:0.01;target: 0 0 0;enableKeys:false");
-        document.getElementById("camera").setAttribute('camera', "");
-        document.getElementById("camera").setAttribute('position', "0 5.6 -50");
-        document.getElementById("camera").setAttribute('rotation', "0 180 0");
-      }
-      function sideViewCamera() {
-        document.getElementById("camera").setAttribute('orbit-controls', "autoRotate: false;autoRotateSpeed:0.01;target: 0 0 0;enableKeys:false");
-        document.getElementById("camera").setAttribute('camera', "");
-        document.getElementById("camera").setAttribute('position', "-30 15 0");
-        document.getElementById("camera").setAttribute('rotation', "-18 -90 0");
-      }
-    </script>
 
     <div class="right-fixed">
       <ul class="right-menu">
@@ -244,14 +50,14 @@
       <a-scene style="z-index: 0;" renderer="colorManagement: true; highRefreshRate: true; foveationLevel: 3; physicallyCorrectLights: true; logarithmicDepthBuffer: false;" fogoff="type: linear; color: #D5C69B; far: 200" gltf-model="dracoDecoderPath: https://www.gstatic.com/draco/versioned/decoders/1.4.3/">
         <a-assets>
           <streetmix-assets url="./"></streetmix-assets>
-          <!-- <a-cubemap id="skycube">
+          <a-cubemap id="skycube">
             <img src="assets/images/skybox/posx.jpg">
             <img src="assets/images/skybox/negx.jpg">
             <img src="assets/images/skybox/posy.jpg">
             <img src="assets/images/skybox/negy.jpg">
             <img src="assets/images/skybox/posz.jpg">
             <img src="assets/images/skybox/negz.jpg">
-          </a-cubemap> -->
+          </a-cubemap>
         </a-assets>
     
         <a-entity id="cameraRig">
@@ -259,12 +65,6 @@
           <a-entity id="leftHand" hand-controls="hand: left; handModelStyle: lowPoly; color: #ccffcc" teleport-controls="cameraRig: #cameraRig; button: trigger"></a-entity>
           <a-entity id="rightHand" hand-controls="hand: right; handModelStyle: lowPoly; color: #ccffcc" teleport-controls="cameraRig: #cameraRig; button: trigger"></a-entity>
         </a-entity>
-
-        <!-- Secondary cameras -->
-        <a-entity id="camera1" secondary-camera="outputElement:#viewport1" position = "-15 12 20" rotation="-15 -45 0"></a-entity>
-        <a-entity id="camera2" secondary-camera="outputElement:#viewport2" position = "0 50 0" rotation="-90 0 0"></a-entity>
-        <a-entity id="camera3" secondary-camera="outputElement:#viewport3" position = "0 5.6 -50" rotation="0 180 0"></a-entity>
-        <a-entity id="camera4" secondary-camera="outputElement:#viewport4" position = "-30 15 0" rotation="-18 -90 0"></a-entity>
     
         <a-entity light="type: ambient; color: #FFF; intensity: 2"></a-entity>
         <a-entity light="type: directional; color: #FFF; intensity: 0.6" position="0.5 1 -1"></a-entity>
