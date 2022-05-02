@@ -23,7 +23,7 @@
         <div class="header-wrapper">
             <div class="logo-wrapper">
                 <a class="logo-link" href="https://www.3dstreet.org/" id="3dstreet-logo-length">
-                    <img class="logo-img" alt="3dStreet" src="assets/ui_assets/logo.svg">
+                    <img class="logo-img" alt="3DStreet Viewer" src="assets/ui_assets/logo-viewer.svg">
                 </a>
             </div>
     </header>
@@ -75,51 +75,6 @@
   
         <a-entity id="street-parent" street streetmix-loader set-loader-from-hash="defaultURL: https://streetmix.net/kfarr/3"></a-entity>
       </a-scene>
-      
-      <script>
-        AFRAME.registerComponent('set-loader-from-hash', {
-          dependencies: ['streetmix-loader'],
-          schema: {
-            defaultURL: { type: 'string' }
-          },
-          init: function () {
-            // get hash from window
-            const streetURL = window.location.hash.substring(1);
-            if (streetURL !== undefined && streetURL.length > 0) {
-              console.log('[set-loader-from-hash]','Using URL from hash', streetURL)
-              this.el.setAttribute('streetmix-loader', 'streetmixStreetURL', streetURL);
-            } else {
-              console.log('[set-loader-from-hash]','Using default URL', this.data.defaultURL)
-              this.el.setAttribute('streetmix-loader', 'streetmixStreetURL', this.data.defaultURL);
-            }
-          }
-        });
-    
-        window.onload = function () {
-          if (window.location.hash.substring(1).length === 0) window.location.hash = '#https://streetmix.net/kfarr/3';
-          document.querySelector('#inputUrl').value = window.location.hash.substring(1);
-        }
-    
-        function startAudio() {
-          // set sounds enabled in global state
-          state.sounds.enabled = true;
-    
-          // iterate through all entities with .playme class and start them playing
-          var entities = document.querySelectorAll('.playme'), i;
-          for (i = 0; i < entities.length; ++i) {
-            entities[i].components.sound.playSound();
-          }
-    
-          // set 2D DOM toolbar volume icon to green to indicate state
-          document.getElementById("audio-icon").setAttribute("class","fa fa-volume-up");
-          document.getElementById("audio-icon").setAttribute("style","color: lightgreen");
-        }
-    
-        document.querySelector('a-scene').addEventListener('enter-vr', function () {
-          console.log("ENTERED VR");
-          // startAudio();
-        });
-      </script>
     </div>
 
     <div class="location" >
