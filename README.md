@@ -4,16 +4,23 @@
 [![License](http://img.shields.io/npm/l/3dstreet.svg)](LICENSE)
 ![Build Status](https://github.com/3DStreet/3dstreet/actions/workflows/ci-script.yaml/badge.svg)
 
-### Project site: https://github.3dstreet.org/
-
 3DStreet creates 3D visualizations of your 2D [Streetmix.net](https://streetmix.net) streets using A-Frame and WebXR. Developers can use the same core [`street` A-Frame component](#a-frame-street-component-api) of 3DStreet for their own projects.
+
+### Online Tool
+
+|[Start 3DStreet](https://github.3dstreet.org/)|
+|---|
+
+_(or visit https://github.3dstreet.org)_
+
+
 
 <img src="https://raw.githubusercontent.com/kfarr/streetmix3d/master/assets/streetmix3d.jpg" />
 
 ### Quick Start - How to make your own 3D street:
 * First, use <a href="https://streetmix.net">Streetmix.net</a> to create a street design. (Streetmix is a tool that lets you design, remix, and share your neighborhood street. <a href="https://github.com/streetmix/streetmix/blob/master/README.md#about">More information about Streetmix here</a>.)
 * Then, save a Streetmix street after making an account to generate a unique URL for your street looking something like this: `https://streetmix.net/kfarr/3/my-awesome-street-name`
-* Load https://github.3d.st/, paste in your street URL, and press enter or the refresh button.
+* Load https://github.3dstreet.org/, paste in your street URL, and press enter or the refresh button.
 * See your Streetmix street in 3D! See instant changes to your work: Switch back to a Streetmix.net tab, make changes to your street, then reload the 3DStreet page to see the edits applied.
 * For more information, please see our [3DStreet and Streetmix Tutorial](/tutorials/3DStreet-streetmix-tutorial.md).
 
