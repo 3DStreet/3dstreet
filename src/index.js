@@ -100,3 +100,30 @@ AFRAME.registerComponent('streetmix-loader', {
     request.send();
   }
 });
+
+AFRAME.registerComponent('intersection', {
+  schema: {
+    position: { type: 'string', default: '0 0 0' },
+    scale: { type: 'string', default: '20 20' }
+  },
+  init: function() {
+    //TODO: account for invalid up user input
+    //TODO: account for sidewalks 
+    var data = this.data;
+    var el = this.el;
+
+    this.geometry = new THREE.PlaneGeometry(data.scale.split(' ')[0],data.scale.split(' ')[1],1,1);
+    this.material = new THREE.MeshStandardMaterial({color: '#FF0000'});
+    this.mesh = new THREE.Mesh(this.geometry, this.material);
+    el.setObject3D('mesh', this.mesh);
+
+    this.el.setAttribute('position', {x: data.position.split(' ')[0], y: data.position.split(' ')[1], z: data.position.split(' ')[2]});
+    this.el.setAttribute('rotation', '-90 0 0');
+    this.el.setAttribute('material', "src: ../assets/objects/intersection.jpeg");
+  },
+  update: function (oldData) {
+    //TODO: live updating of intersection asset
+    var data = this.data;
+    var el = this.el;
+  }
+});
