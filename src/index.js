@@ -104,11 +104,14 @@ AFRAME.registerComponent('streetmix-loader', {
 AFRAME.registerComponent('intersection', {
   schema: {
     position: { type: 'string', default: '0 0 0' },
-    scale: { type: 'string', default: '20 20' }
+    scale: { type: 'string', default: '20 20' },
+    crosswalk: { type: 'string', default: 'false' },
+    sidewalk: { type: 'string', default: '0 0 0 0' }
   },
   init: function() {
     //TODO: account for invalid up user input
-    //TODO: account for sidewalks 
+    //TODO: handle sidewalks
+    //TODO: clean up code
     var data = this.data;
     var el = this.el;
 
@@ -119,7 +122,42 @@ AFRAME.registerComponent('intersection', {
 
     this.el.setAttribute('position', {x: data.position.split(' ')[0], y: data.position.split(' ')[1], z: data.position.split(' ')[2]});
     this.el.setAttribute('rotation', '-90 0 0');
-    this.el.setAttribute('material', "src: ../assets/objects/intersection.jpeg");
+    if (data.crosswalk === 'true'){
+      this.el.setAttribute('material', "src: ../assets/objects/intersection.jpeg");
+    } else {
+      this.el.setAttribute('material', "src: https://github.3dstreet.org/assets/materials/TexturesCom_AsphaltDamaged0057_1_seamless_S.jpg");
+    }
+
+    const placedObjectEl = document.createElement('a-entity');
+    placedObjectEl.setAttribute('position', {x: data.position.split(' ')[0] + data.scale.split(' ')[0]/2 - 1.5, y: data.position.split(' ')[1], z: 0.15});
+    placedObjectEl.setAttribute('scale', 'x', data.sidewalk.split(' ')[0] * 0.3048);
+    placedObjectEl.setAttribute('scale', 'y', data.scale.split(' ')[1] / 150);
+    placedObjectEl.setAttribute('rotation', {x: 0, y: 0, z: 0});
+    placedObjectEl.setAttribute('mixin', 'sidewalk');
+    el.appendChild(placedObjectEl)
+    const sd2 = document.createElement('a-entity');
+    sd2.setAttribute('position', {x: data.position.split(' ')[0] - data.scale.split(' ')[0]/2 + 1.5, y: data.position.split(' ')[1], z: 0.15});
+    sd2.setAttribute('scale', 'x', data.sidewalk.split(' ')[1] * 0.3048);
+    sd2.setAttribute('scale', 'y', data.scale.split(' ')[1] / 150);
+    sd2.setAttribute('rotation', {x: 0, y: 0, z: 0});
+    sd2.setAttribute('mixin', 'sidewalk');
+    el.appendChild(sd2)
+    const sd3 = document.createElement('a-entity');
+    sd3.setAttribute('position', {x: data.position.split(' ')[0], y: data.position.split(' ')[1]  - data.scale.split(' ')[1]/2 + 1.5, z: 0.15});
+    sd3.setAttribute('scale', 'x', data.sidewalk.split(' ')[2] * 0.3048);
+    sd3.setAttribute('scale', 'y', data.scale.split(' ')[0] / 150);
+    sd3.setAttribute('rotation', {x: 0, y: 0, z: -90});
+    sd3.setAttribute('mixin', 'sidewalk');
+    el.appendChild(sd3)
+    const sd4 = document.createElement('a-entity');
+    var t = parseInt(data.position.split(' ')[1]) + parseInt(data.scale.split(' ')[1]) /2 - 1.5
+    sd4.setAttribute('position', {x: data.position.split(' ')[0], y: t, z: 0.15});
+    sd4.setAttribute('scale', 'x', data.sidewalk.split(' ')[3] * 0.3048);
+    sd4.setAttribute('scale', 'y', data.scale.split(' ')[0] / 150);
+    sd4.setAttribute('rotation', {x: 0, y: 0, z: -90});
+    sd4.setAttribute('mixin', 'sidewalk');
+    el.appendChild(sd4)
+
   },
   update: function (oldData) {
     //TODO: live updating of intersection asset
