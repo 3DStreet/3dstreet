@@ -109,9 +109,6 @@ AFRAME.registerComponent('intersection', {
     sidewalk: { type: 'string', default: '0 0 0 0' }
   },
   init: function() {
-    //TODO: account for invalid up user input
-    //TODO: handle sidewalks
-    //TODO: clean up code
     var data = this.data;
     var el = this.el;
 
