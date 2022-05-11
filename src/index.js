@@ -159,6 +159,16 @@ AFRAME.registerComponent('intersection', {
     sd4.setAttribute('mixin', 'sidewalk');
     el.appendChild(sd4)
 
+    const c1 = document.createElement('a-entity');
+    c1.setAttribute('position', {x: positionArray[0] + dimensionsArray[0]/2 - curbArray[0]*1.1, y: positionArray[1] + dimensionsArray[1]/2 - curbArray[0]*1.1, z: 0.15});
+    c1.setAttribute('rotation', {x: 90, y: -180, z: 0});
+    c1.setAttribute('scale', 'x', curbArray[0]* 0.3048);
+    c1.setAttribute('scale', 'z', curbArray[0]* 0.3048);
+    c1.setAttribute('mixin', 'corner_curb');
+    el.appendChild(c1)
+
+    //corner_curb
+
   },
   update: function (oldData) {
     //TODO: live updating of intersection asset
