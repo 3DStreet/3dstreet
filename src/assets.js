@@ -172,7 +172,7 @@
           <a-mixin id="ground-grass" rotation="-90 0 0" geometry="primitive:plane;height:150;width:40" material="src:#grass-texture;repeat:5 5;roughness:1"></a-mixin>
           <a-mixin id="ground-parking-lot" rotation="-90 0 0" geometry="primitive:plane;height:150;width:40" material="src:#parking-lot-texture;repeat:2 4;roughness:1"></a-mixin>
           <a-mixin id="ground-asphalt" rotation="-90 0 0" geometry="primitive:plane;height:150;width:40" material="src:#asphalt-texture;repeat:5 5;roughness:1"></a-mixin>
-          <a-mixin id="corner_curb" gltf-part-plus="src: #cornerCurb; part: corner_curb"></a-mixin>
+          <a-mixin id="corner_curb" gltf-part-plus="src: #cornerCurb; part: 1"></a-mixin>
   
           <!-- ui / future use -->
           <img id="subtitle" src="${assetUrl}assets/materials/subtitle.png" crossorigin="anonymous" />
