@@ -111,6 +111,8 @@ AFRAME.registerComponent('intersection', {
   init: function() {
     var data = this.data;
     var el = this.el;
+    const scaleArray = data.scale.split(' ');
+    const positionArray = data.position.split(' ');
 
     this.geometry = new THREE.PlaneGeometry(data.scale.split(' ')[0],data.scale.split(' ')[1],1,1);
     this.material = new THREE.MeshStandardMaterial({color: '#FF0000'});
