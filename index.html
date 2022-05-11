@@ -31,7 +31,7 @@
     <div class="right-fixed">
       <ul class="right-menu">
         <li onclick="screenshot()"> <a class="camera"  href="#"> <span> Capture image as PNG </span> <img src="assets/ui_assets/camera-icon.svg"> </a></li>
-        <li onclick="vrClick()"> <a class="vr" href="#"> <span class="vr">Enter VR mode</span> <img src="assets/ui_assets/vr-icon.svg"> </a></li>
+        <li> <a id="custom-enter-vr-button" class="vr" href="#"> <span class="vr">Enter VR mode</span> <img src="assets/ui_assets/vr-icon.svg"> </a></li>
       </ul>
     </div>
 
@@ -41,13 +41,10 @@
         AFRAME.scenes[0].setAttribute('screenshot','height',AFRAME.scenes[0].canvas.height)
         document.querySelector('a-scene').components.screenshot.capture('perspective');
       }
-      function vrClick() {
-        document.getElementsByClassName('a-enter-vr-button')[0].click();
-      }
     </script>
 
     <div class="content">
-      <a-scene style="z-index: 0;" renderer="colorManagement: true; highRefreshRate: true; foveationLevel: 3; physicallyCorrectLights: true; logarithmicDepthBuffer: false;" fogoff="type: linear; color: #D5C69B; far: 200" gltf-model="dracoDecoderPath: https://www.gstatic.com/draco/versioned/decoders/1.4.3/">
+      <a-scene vr-mode-ui="enterVRButton: #custom-enter-vr-button;" renderer="colorManagement: true; highRefreshRate: true; foveationLevel: 3; physicallyCorrectLights: true; logarithmicDepthBuffer: false;" fogoff="type: linear; color: #D5C69B; far: 200" gltf-model="dracoDecoderPath: https://www.gstatic.com/draco/versioned/decoders/1.4.3/">
         <a-assets>
           <streetmix-assets url="./"></streetmix-assets>
           <a-cubemap id="skycube">
