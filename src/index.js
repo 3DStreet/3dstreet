@@ -103,7 +103,7 @@ AFRAME.registerComponent('streetmix-loader', {
 
 AFRAME.registerComponent('intersection', {
   schema: {
-    position: { type: 'string', default: '0 0 0' },
+    position: { type: 'string', default: '20 20' },
     scale: { type: 'string', default: '20 20' },
     crosswalk: { type: 'string', default: 'false' },
     sidewalk: { type: 'string', default: '0 0 0 0' }
@@ -112,14 +112,15 @@ AFRAME.registerComponent('intersection', {
     var data = this.data;
     var el = this.el;
     const scaleArray = data.scale.split(' ').map((i) => Number(i));
-    const positionArray = data.position.split(' ');
+    const positionArray = data.position.split(' ').map((i) => Number(i));
+    const sidewalkArray = data.sidewalk.split(' ').map((i) => Number(i));
 
     this.geometry = new THREE.PlaneGeometry(scaleArray[0],scaleArray[1],1,1);
     this.material = new THREE.MeshStandardMaterial({color: '#FF0000'});
     this.mesh = new THREE.Mesh(this.geometry, this.material);
     el.setObject3D('mesh', this.mesh);
 
-    this.el.setAttribute('position', {x: data.position.split(' ')[0], y: data.position.split(' ')[1], z: data.position.split(' ')[2]});
+    this.el.setAttribute('position', {x: positionArray[0], y: positionArray[1], z: positionArray[2]});
     this.el.setAttribute('rotation', '-90 0 0');
     if (data.crosswalk === 'true'){
       this.el.setAttribute('material', "src: ../assets/objects/intersection.jpeg");
@@ -127,30 +128,30 @@ AFRAME.registerComponent('intersection', {
       this.el.setAttribute('material', "src: https://github.3dstreet.org/assets/materials/TexturesCom_AsphaltDamaged0057_1_seamless_S.jpg");
     }
 
-    const placedObjectEl = document.createElement('a-entity');
-    placedObjectEl.setAttribute('position', {x: data.position.split(' ')[0] + scaleArray[0]/2 - 1.5, y: data.position.split(' ')[1], z: 0.15});
-    placedObjectEl.setAttribute('scale', 'x', data.sidewalk.split(' ')[0] * 0.3048);
-    placedObjectEl.setAttribute('scale', 'y', scaleArray[1] / 150);
-    placedObjectEl.setAttribute('rotation', {x: 0, y: 0, z: 0});
-    placedObjectEl.setAttribute('mixin', 'sidewalk');
-    el.appendChild(placedObjectEl)
+    const sd1 = document.createElement('a-entity');
+    sd1.setAttribute('position', {x: positionArray[0] + scaleArray[0]/2 - 1.5, y: positionArray[1], z: 0.15});
+    sd1.setAttribute('scale', 'x', data.sidewalk.split(' ')[0] * 0.3048);
+    sd1.setAttribute('scale', 'y', scaleArray[1] / 150);
+    sd1.setAttribute('rotation', {x: 0, y: 0, z: 0});
+    sd1.setAttribute('mixin', 'sidewalk');
+    el.appendChild(sd1)
     const sd2 = document.createElement('a-entity');
-    sd2.setAttribute('position', {x: data.position.split(' ')[0] - scaleArray[0]/2 + 1.5, y: data.position.split(' ')[1], z: 0.15});
+    sd2.setAttribute('position', {x: positionArray[0] - scaleArray[0]/2 + 1.5, y: positionArray[1], z: 0.15});
     sd2.setAttribute('scale', 'x', data.sidewalk.split(' ')[1] * 0.3048);
     sd2.setAttribute('scale', 'y', scaleArray[1] / 150);
     sd2.setAttribute('rotation', {x: 0, y: 0, z: 0});
     sd2.setAttribute('mixin', 'sidewalk');
     el.appendChild(sd2)
     const sd3 = document.createElement('a-entity');
-    sd3.setAttribute('position', {x: data.position.split(' ')[0], y: data.position.split(' ')[1]  - data.scale.split(' ')[1]/2 + 1.5, z: 0.15});
+    sd3.setAttribute('position', {x: positionArray[0], y: positionArray[1]  - data.scale.split(' ')[1]/2 + 1.5, z: 0.15});
     sd3.setAttribute('scale', 'x', data.sidewalk.split(' ')[2] * 0.3048);
     sd3.setAttribute('scale', 'y', scaleArray[0] / 150);
     sd3.setAttribute('rotation', {x: 0, y: 0, z: -90});
     sd3.setAttribute('mixin', 'sidewalk');
     el.appendChild(sd3)
     const sd4 = document.createElement('a-entity');
-    var t = parseInt(data.position.split(' ')[1]) + parseInt(scaleArray[1]) /2 - 1.5
-    sd4.setAttribute('position', {x: data.position.split(' ')[0], y: t, z: 0.15});
+    var t = parseInt(positionArray[1]) + parseInt(scaleArray[1]) /2 - 1.5
+    sd4.setAttribute('position', {x: positionArray[0], y: t, z: 0.15});
     sd4.setAttribute('scale', 'x', data.sidewalk.split(' ')[3] * 0.3048);
     sd4.setAttribute('scale', 'y', scaleArray[0] / 150);
     sd4.setAttribute('rotation', {x: 0, y: 0, z: -90});
