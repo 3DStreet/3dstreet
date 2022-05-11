@@ -167,6 +167,14 @@ AFRAME.registerComponent('intersection', {
     c1.setAttribute('mixin', 'corner_curb');
     el.appendChild(c1)
 
+    const c2 = document.createElement('a-entity');
+    c2.setAttribute('position', {x: positionArray[0] - dimensionsArray[0]/2 + curbArray[0]*1.1, y: positionArray[1] - dimensionsArray[1]/2 + curbArray[0]*1.1, z: 0.15});
+    c2.setAttribute('rotation', {x: -90, y: 180, z: 180});
+    c2.setAttribute('scale', 'x', curbArray[0]* 0.3048);
+    c2.setAttribute('scale', 'z', curbArray[0]* 0.3048);
+    c2.setAttribute('mixin', 'corner_curb');
+    el.appendChild(c2)
+
     //corner_curb
 
   },
