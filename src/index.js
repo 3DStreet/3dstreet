@@ -111,10 +111,10 @@ AFRAME.registerComponent('intersection', {
   init: function() {
     var data = this.data;
     var el = this.el;
-    const scaleArray = data.scale.split(' ');
+    const scaleArray = data.scale.split(' ').map((i) => Number(i));
     const positionArray = data.position.split(' ');
 
-    this.geometry = new THREE.PlaneGeometry(data.scale.split(' ')[0],data.scale.split(' ')[1],1,1);
+    this.geometry = new THREE.PlaneGeometry(scaleArray[0],scaleArray[1],1,1);
     this.material = new THREE.MeshStandardMaterial({color: '#FF0000'});
     this.mesh = new THREE.Mesh(this.geometry, this.material);
     el.setObject3D('mesh', this.mesh);
@@ -128,31 +128,31 @@ AFRAME.registerComponent('intersection', {
     }
 
     const placedObjectEl = document.createElement('a-entity');
-    placedObjectEl.setAttribute('position', {x: data.position.split(' ')[0] + data.scale.split(' ')[0]/2 - 1.5, y: data.position.split(' ')[1], z: 0.15});
+    placedObjectEl.setAttribute('position', {x: data.position.split(' ')[0] + scaleArray[0]/2 - 1.5, y: data.position.split(' ')[1], z: 0.15});
     placedObjectEl.setAttribute('scale', 'x', data.sidewalk.split(' ')[0] * 0.3048);
-    placedObjectEl.setAttribute('scale', 'y', data.scale.split(' ')[1] / 150);
+    placedObjectEl.setAttribute('scale', 'y', scaleArray[1] / 150);
     placedObjectEl.setAttribute('rotation', {x: 0, y: 0, z: 0});
     placedObjectEl.setAttribute('mixin', 'sidewalk');
     el.appendChild(placedObjectEl)
     const sd2 = document.createElement('a-entity');
-    sd2.setAttribute('position', {x: data.position.split(' ')[0] - data.scale.split(' ')[0]/2 + 1.5, y: data.position.split(' ')[1], z: 0.15});
+    sd2.setAttribute('position', {x: data.position.split(' ')[0] - scaleArray[0]/2 + 1.5, y: data.position.split(' ')[1], z: 0.15});
     sd2.setAttribute('scale', 'x', data.sidewalk.split(' ')[1] * 0.3048);
-    sd2.setAttribute('scale', 'y', data.scale.split(' ')[1] / 150);
+    sd2.setAttribute('scale', 'y', scaleArray[1] / 150);
     sd2.setAttribute('rotation', {x: 0, y: 0, z: 0});
     sd2.setAttribute('mixin', 'sidewalk');
     el.appendChild(sd2)
     const sd3 = document.createElement('a-entity');
     sd3.setAttribute('position', {x: data.position.split(' ')[0], y: data.position.split(' ')[1]  - data.scale.split(' ')[1]/2 + 1.5, z: 0.15});
     sd3.setAttribute('scale', 'x', data.sidewalk.split(' ')[2] * 0.3048);
-    sd3.setAttribute('scale', 'y', data.scale.split(' ')[0] / 150);
+    sd3.setAttribute('scale', 'y', scaleArray[0] / 150);
     sd3.setAttribute('rotation', {x: 0, y: 0, z: -90});
     sd3.setAttribute('mixin', 'sidewalk');
     el.appendChild(sd3)
     const sd4 = document.createElement('a-entity');
-    var t = parseInt(data.position.split(' ')[1]) + parseInt(data.scale.split(' ')[1]) /2 - 1.5
+    var t = parseInt(data.position.split(' ')[1]) + parseInt(scaleArray[1]) /2 - 1.5
     sd4.setAttribute('position', {x: data.position.split(' ')[0], y: t, z: 0.15});
     sd4.setAttribute('scale', 'x', data.sidewalk.split(' ')[3] * 0.3048);
-    sd4.setAttribute('scale', 'y', data.scale.split(' ')[0] / 150);
+    sd4.setAttribute('scale', 'y', scaleArray[0] / 150);
     sd4.setAttribute('rotation', {x: 0, y: 0, z: -90});
     sd4.setAttribute('mixin', 'sidewalk');
     el.appendChild(sd4)
