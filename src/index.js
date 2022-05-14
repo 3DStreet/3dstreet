@@ -108,83 +108,83 @@ AFRAME.registerComponent('intersection', {
     sidewalk: { type: 'string', default: '0 0 0 0' },
     curb: { type: 'string', default: '0 0 0 0' }
   },
-  init: function() {
+  init: function () {
     var data = this.data;
     var el = this.el;
     const dimensionsArray = data.dimensions.split(' ').map((i) => Number(i));
-    const positionArray = [this.el.getAttribute("position").x, this.el.getAttribute("position").y, this.el.getAttribute("position").z];
+    const positionArray = [this.el.getAttribute('position').x, this.el.getAttribute('position').y, this.el.getAttribute('position').z];
     const sidewalkArray = data.sidewalk.split(' ').map((i) => Number(i));
     const curbArray = data.curb.split(' ').map((i) => Number(i));
 
-    this.geometry = new THREE.PlaneGeometry(dimensionsArray[0],dimensionsArray[1],1,1);
-    this.material = new THREE.MeshStandardMaterial({color: '#FF0000'});
+    this.geometry = new THREE.PlaneGeometry(dimensionsArray[0], dimensionsArray[1], 1, 1);
+    this.material = new THREE.MeshStandardMaterial({ color: '#FF0000' });
     this.mesh = new THREE.Mesh(this.geometry, this.material);
     el.setObject3D('mesh', this.mesh);
 
-    this.el.setAttribute('position', {x: positionArray[0], y: positionArray[1], z: positionArray[2]});
+    this.el.setAttribute('position', { x: positionArray[0], y: positionArray[1], z: positionArray[2] });
     this.el.setAttribute('rotation', '-90 0 0');
-    if (data.crosswalk === 'true'){
-      this.el.setAttribute('material', "src: ../assets/objects/intersection.jpeg");
+    if (data.crosswalk === 'true') {
+      this.el.setAttribute('material', 'src: ../assets/objects/intersection.jpeg');
     } else {
-      this.el.setAttribute('material', "src: https://github.3dstreet.org/assets/materials/TexturesCom_AsphaltDamaged0057_1_seamless_S.jpg");
+      this.el.setAttribute('material', 'src: https://github.3dstreet.org/assets/materials/TexturesCom_AsphaltDamaged0057_1_seamless_S.jpg');
     }
 
     const sd1 = document.createElement('a-entity');
-    sd1.setAttribute('position', {x: dimensionsArray[0]/2 - sidewalkArray[0]*0.45, z: 0.04});
+    sd1.setAttribute('position', { x: dimensionsArray[0] / 2 - sidewalkArray[0] * 0.45, z: 0.04 });
     sd1.setAttribute('scale', 'x', sidewalkArray[0] * 0.3048);
     sd1.setAttribute('scale', 'y', dimensionsArray[1] / 150);
-    sd1.setAttribute('rotation', {x: 0, y: 0, z: 0});
+    sd1.setAttribute('rotation', { x: 0, y: 0, z: 0 });
     sd1.setAttribute('mixin', 'sidewalk');
-    el.appendChild(sd1)
+    el.appendChild(sd1);
     const sd2 = document.createElement('a-entity');
-    sd2.setAttribute('position', {x:  - dimensionsArray[0]/2 + sidewalkArray[1]*0.45, z: 0.05});
+    sd2.setAttribute('position', { x: -dimensionsArray[0] / 2 + sidewalkArray[1] * 0.45, z: 0.05 });
     sd2.setAttribute('scale', 'x', sidewalkArray[1] * 0.3048);
     sd2.setAttribute('scale', 'y', dimensionsArray[1] / 150);
-    sd2.setAttribute('rotation', {x: 0, y: 0, z: 0});
+    sd2.setAttribute('rotation', { x: 0, y: 0, z: 0 });
     sd2.setAttribute('mixin', 'sidewalk');
-    el.appendChild(sd2)
+    el.appendChild(sd2);
     const sd3 = document.createElement('a-entity');
-    sd3.setAttribute('position', {y: - dimensionsArray[1]/2 + sidewalkArray[2]*0.45, z: 0.03});
+    sd3.setAttribute('position', { y: -dimensionsArray[1] / 2 + sidewalkArray[2] * 0.45, z: 0.03 });
     sd3.setAttribute('scale', 'x', sidewalkArray[2] * 0.3048);
     sd3.setAttribute('scale', 'y', dimensionsArray[0] / 150);
-    sd3.setAttribute('rotation', {x: 0, y: 0, z: -90});
+    sd3.setAttribute('rotation', { x: 0, y: 0, z: -90 });
     sd3.setAttribute('mixin', 'sidewalk');
-    el.appendChild(sd3)
+    el.appendChild(sd3);
     const sd4 = document.createElement('a-entity');
-    sd4.setAttribute('position', {y: dimensionsArray[1]/2 - sidewalkArray[3]*0.45, z: 0.03});
+    sd4.setAttribute('position', { y: dimensionsArray[1] / 2 - sidewalkArray[3] * 0.45, z: 0.03 });
     sd4.setAttribute('scale', 'x', sidewalkArray[3] * 0.3048);
     sd4.setAttribute('scale', 'y', dimensionsArray[0] / 150);
-    sd4.setAttribute('rotation', {x: 0, y: 0, z: -90});
+    sd4.setAttribute('rotation', { x: 0, y: 0, z: -90 });
     sd4.setAttribute('mixin', 'sidewalk');
-    el.appendChild(sd4)
+    el.appendChild(sd4);
 
     const c1 = document.createElement('a-entity');
-    c1.setAttribute('position', {x: dimensionsArray[0]/2 - curbArray[0]*1.1, y: dimensionsArray[1]/2 - curbArray[0]*1.1, z: 0.15});
-    c1.setAttribute('rotation', {x: 90, y: -180, z: 0});
-    c1.setAttribute('scale', 'x', curbArray[0]* 0.3048);
-    c1.setAttribute('scale', 'z', curbArray[0]* 0.3048);
+    c1.setAttribute('position', { x: dimensionsArray[0] / 2 - curbArray[0] * 1.1, y: dimensionsArray[1] / 2 - curbArray[0] * 1.1, z: 0.15 });
+    c1.setAttribute('rotation', { x: 90, y: -180, z: 0 });
+    c1.setAttribute('scale', 'x', curbArray[0] * 0.3048);
+    c1.setAttribute('scale', 'z', curbArray[0] * 0.3048);
     c1.setAttribute('mixin', 'corner_curb');
-    el.appendChild(c1)
+    el.appendChild(c1);
     const c2 = document.createElement('a-entity');
-    c2.setAttribute('position', {x: - dimensionsArray[0]/2 + curbArray[1]*1.1, y: - dimensionsArray[1]/2 + curbArray[1]*1.1, z: 0.15});
-    c2.setAttribute('rotation', {x: -90, y: 180, z: 180});
-    c2.setAttribute('scale', 'x', curbArray[1]* 0.3048);
-    c2.setAttribute('scale', 'z', curbArray[1]* 0.3048);
+    c2.setAttribute('position', { x: -dimensionsArray[0] / 2 + curbArray[1] * 1.1, y: -dimensionsArray[1] / 2 + curbArray[1] * 1.1, z: 0.15 });
+    c2.setAttribute('rotation', { x: -90, y: 180, z: 180 });
+    c2.setAttribute('scale', 'x', curbArray[1] * 0.3048);
+    c2.setAttribute('scale', 'z', curbArray[1] * 0.3048);
     c2.setAttribute('mixin', 'corner_curb');
-    el.appendChild(c2)
+    el.appendChild(c2);
     const c3 = document.createElement('a-entity');
-    c3.setAttribute('position', {x: dimensionsArray[0]/2 - curbArray[2]*1.1, y: - dimensionsArray[1]/2 + curbArray[2]*1.1, z: 0.15});
-    c3.setAttribute('rotation', {x: 0, y: -90, z: 90});
-    c3.setAttribute('scale', 'x', curbArray[2]* 0.3048);
-    c3.setAttribute('scale', 'z', curbArray[2]* 0.3048);
+    c3.setAttribute('position', { x: dimensionsArray[0] / 2 - curbArray[2] * 1.1, y: -dimensionsArray[1] / 2 + curbArray[2] * 1.1, z: 0.15 });
+    c3.setAttribute('rotation', { x: 0, y: -90, z: 90 });
+    c3.setAttribute('scale', 'x', curbArray[2] * 0.3048);
+    c3.setAttribute('scale', 'z', curbArray[2] * 0.3048);
     c3.setAttribute('mixin', 'corner_curb');
-    el.appendChild(c3)
+    el.appendChild(c3);
     const c4 = document.createElement('a-entity');
-    c4.setAttribute('position', {x: - dimensionsArray[0]/2 + curbArray[3]*1.1, y: dimensionsArray[1]/2 - curbArray[3]*1.1, z: 0.15});
-    c4.setAttribute('rotation', {x: 0, y: 90, z: -90});
-    c4.setAttribute('scale', 'x', curbArray[3]* 0.3048);
-    c4.setAttribute('scale', 'z', curbArray[3]* 0.3048);
+    c4.setAttribute('position', { x: -dimensionsArray[0] / 2 + curbArray[3] * 1.1, y: dimensionsArray[1] / 2 - curbArray[3] * 1.1, z: 0.15 });
+    c4.setAttribute('rotation', { x: 0, y: 90, z: -90 });
+    c4.setAttribute('scale', 'x', curbArray[3] * 0.3048);
+    c4.setAttribute('scale', 'z', curbArray[3] * 0.3048);
     c4.setAttribute('mixin', 'corner_curb');
-    el.appendChild(c4)
+    el.appendChild(c4);
   }
 });
