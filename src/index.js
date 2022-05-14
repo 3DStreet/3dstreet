@@ -103,7 +103,6 @@ AFRAME.registerComponent('streetmix-loader', {
 
 AFRAME.registerComponent('intersection', {
   schema: {
-    position: { type: 'string', default: '20 20' },
     dimensions: { type: 'string', default: '20 20' },
     crosswalk: { type: 'string', default: 'false' },
     sidewalk: { type: 'string', default: '0 0 0 0' },
@@ -113,10 +112,9 @@ AFRAME.registerComponent('intersection', {
     var data = this.data;
     var el = this.el;
     const dimensionsArray = data.dimensions.split(' ').map((i) => Number(i));
-    const positionArray = data.position.split(' ').map((i) => Number(i));
+    const positionArray = [this.el.getAttribute("position").x, this.el.getAttribute("position").y, this.el.getAttribute("position").z];
     const sidewalkArray = data.sidewalk.split(' ').map((i) => Number(i));
     const curbArray = data.curb.split(' ').map((i) => Number(i));
-    //positionArray = [this.el.getAttribute("position").x, this.el.getAttribute("position").y, this.el.getAttribute("position").z];
 
     this.geometry = new THREE.PlaneGeometry(dimensionsArray[0],dimensionsArray[1],1,1);
     this.material = new THREE.MeshStandardMaterial({color: '#FF0000'});
@@ -188,10 +186,5 @@ AFRAME.registerComponent('intersection', {
     c4.setAttribute('scale', 'z', curbArray[3]* 0.3048);
     c4.setAttribute('mixin', 'corner_curb');
     el.appendChild(c4)
-  },
-  update: function (oldData) {
-    //TODO: live updating of intersection asset
-    var data = this.data;
-    var el = this.el;
   }
 });
