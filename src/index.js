@@ -161,39 +161,33 @@ AFRAME.registerComponent('intersection', {
     el.appendChild(sd4)
 
     const c1 = document.createElement('a-entity');
-    c1.setAttribute('position', {x: positionArray[0] + dimensionsArray[0]/2 - curbArray[0]*1.1, y: positionArray[1] + dimensionsArray[1]/2 - curbArray[0]*1.1, z: 0.15});
+    c1.setAttribute('position', {x: dimensionsArray[0]/2 - curbArray[0]*1.1, y: dimensionsArray[1]/2 - curbArray[0]*1.1, z: 0.15});
     c1.setAttribute('rotation', {x: 90, y: -180, z: 0});
     c1.setAttribute('scale', 'x', curbArray[0]* 0.3048);
     c1.setAttribute('scale', 'z', curbArray[0]* 0.3048);
     c1.setAttribute('mixin', 'corner_curb');
     el.appendChild(c1)
-
     const c2 = document.createElement('a-entity');
-    c2.setAttribute('position', {x: positionArray[0] - dimensionsArray[0]/2 + curbArray[1]*1.1, y: positionArray[1] - dimensionsArray[1]/2 + curbArray[1]*1.1, z: 0.15});
+    c2.setAttribute('position', {x: - dimensionsArray[0]/2 + curbArray[1]*1.1, y: - dimensionsArray[1]/2 + curbArray[1]*1.1, z: 0.15});
     c2.setAttribute('rotation', {x: -90, y: 180, z: 180});
     c2.setAttribute('scale', 'x', curbArray[1]* 0.3048);
     c2.setAttribute('scale', 'z', curbArray[1]* 0.3048);
     c2.setAttribute('mixin', 'corner_curb');
     el.appendChild(c2)
-
     const c3 = document.createElement('a-entity');
-    c3.setAttribute('position', {x: positionArray[0] + dimensionsArray[0]/2 - curbArray[2]*1.1, y: positionArray[1] - dimensionsArray[1]/2 + curbArray[2]*1.1, z: 0.15});
+    c3.setAttribute('position', {x: dimensionsArray[0]/2 - curbArray[2]*1.1, y: - dimensionsArray[1]/2 + curbArray[2]*1.1, z: 0.15});
     c3.setAttribute('rotation', {x: 0, y: -90, z: 90});
     c3.setAttribute('scale', 'x', curbArray[2]* 0.3048);
     c3.setAttribute('scale', 'z', curbArray[2]* 0.3048);
     c3.setAttribute('mixin', 'corner_curb');
     el.appendChild(c3)
-
     const c4 = document.createElement('a-entity');
-    c4.setAttribute('position', {x: positionArray[0] - dimensionsArray[0]/2 + curbArray[3]*1.1, y: positionArray[1] + dimensionsArray[1]/2 - curbArray[3]*1.1, z: 0.15});
+    c4.setAttribute('position', {x: - dimensionsArray[0]/2 + curbArray[3]*1.1, y: dimensionsArray[1]/2 - curbArray[3]*1.1, z: 0.15});
     c4.setAttribute('rotation', {x: 0, y: 90, z: -90});
     c4.setAttribute('scale', 'x', curbArray[3]* 0.3048);
     c4.setAttribute('scale', 'z', curbArray[3]* 0.3048);
     c4.setAttribute('mixin', 'corner_curb');
     el.appendChild(c4)
-
-    //corner_curb
-
   },
   update: function (oldData) {
     //TODO: live updating of intersection asset
