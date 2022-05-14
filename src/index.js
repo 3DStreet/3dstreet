@@ -116,6 +116,7 @@ AFRAME.registerComponent('intersection', {
     const positionArray = data.position.split(' ').map((i) => Number(i));
     const sidewalkArray = data.sidewalk.split(' ').map((i) => Number(i));
     const curbArray = data.curb.split(' ').map((i) => Number(i));
+    //positionArray = [this.el.getAttribute("position").x, this.el.getAttribute("position").y, this.el.getAttribute("position").z];
 
     this.geometry = new THREE.PlaneGeometry(dimensionsArray[0],dimensionsArray[1],1,1);
     this.material = new THREE.MeshStandardMaterial({color: '#FF0000'});
@@ -131,28 +132,28 @@ AFRAME.registerComponent('intersection', {
     }
 
     const sd1 = document.createElement('a-entity');
-    sd1.setAttribute('position', {x: positionArray[0] + dimensionsArray[0]/2 - sidewalkArray[0]*0.45, y: positionArray[1], z: 0.04});
+    sd1.setAttribute('position', {x: dimensionsArray[0]/2 - sidewalkArray[0]*0.45, z: 0.04});
     sd1.setAttribute('scale', 'x', sidewalkArray[0] * 0.3048);
     sd1.setAttribute('scale', 'y', dimensionsArray[1] / 150);
     sd1.setAttribute('rotation', {x: 0, y: 0, z: 0});
     sd1.setAttribute('mixin', 'sidewalk');
     el.appendChild(sd1)
     const sd2 = document.createElement('a-entity');
-    sd2.setAttribute('position', {x: positionArray[0] - dimensionsArray[0]/2 + sidewalkArray[1]*0.45, y: positionArray[1], z: 0.05});
+    sd2.setAttribute('position', {x:  - dimensionsArray[0]/2 + sidewalkArray[1]*0.45, z: 0.05});
     sd2.setAttribute('scale', 'x', sidewalkArray[1] * 0.3048);
     sd2.setAttribute('scale', 'y', dimensionsArray[1] / 150);
     sd2.setAttribute('rotation', {x: 0, y: 0, z: 0});
     sd2.setAttribute('mixin', 'sidewalk');
     el.appendChild(sd2)
     const sd3 = document.createElement('a-entity');
-    sd3.setAttribute('position', {x: positionArray[0], y: positionArray[1]  - dimensionsArray[1]/2 + sidewalkArray[2]*0.45, z: 0.03});
+    sd3.setAttribute('position', {y: - dimensionsArray[1]/2 + sidewalkArray[2]*0.45, z: 0.03});
     sd3.setAttribute('scale', 'x', sidewalkArray[2] * 0.3048);
     sd3.setAttribute('scale', 'y', dimensionsArray[0] / 150);
     sd3.setAttribute('rotation', {x: 0, y: 0, z: -90});
     sd3.setAttribute('mixin', 'sidewalk');
     el.appendChild(sd3)
     const sd4 = document.createElement('a-entity');
-    sd4.setAttribute('position', {x: positionArray[0], y: positionArray[1]  + dimensionsArray[1]/2 - sidewalkArray[3]*0.45, z: 0.03});
+    sd4.setAttribute('position', {y: dimensionsArray[1]/2 - sidewalkArray[3]*0.45, z: 0.03});
     sd4.setAttribute('scale', 'x', sidewalkArray[3] * 0.3048);
     sd4.setAttribute('scale', 'y', dimensionsArray[0] / 150);
     sd4.setAttribute('rotation', {x: 0, y: 0, z: -90});
