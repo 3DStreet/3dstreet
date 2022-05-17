@@ -144,7 +144,12 @@
           <a-mixin id="bus" anisotropy gltf-model="#xd40" scale="1.55 1.55 1.55"></a-mixin>
           <a-mixin id="tram" anisotropy gltf-model="#trammodel"></a-mixin>
           <a-mixin id="trolley" gltf-model="#trolleymodel"></a-mixin>
-  
+
+          <!-- intersection props -->
+          <a-asset-item id="signalsystem" src="${assetUrl}assets/signals/signalsystem.glb"></a-asset-item>
+          <a-mixin id="signalsystem1" gltf-part-plus="src: #signalsystem; part: signalsystem1"></a-mixin>
+          <a-mixin id="signalsystem2" gltf-part-plus="src: #signalsystem; part: signalsystem1"></a-mixin>
+          
           <!-- street props -->
           <a-mixin id="pride-flag" position="0.409 3.345 0" rotation="0 0 0" scale="0.5 0.75 0" geometry="width:2;height:2;primitive:plane" material="side:double; src:${assetUrl}assets/materials/rainbow-flag-poles_512.png;transparent: true;"></a-mixin>
           <a-mixin id="wayfinding-box" geometry="primitive: box; height: 2; width: 0.84; depth: 0.1" material="color: gray"></a-mixin>
