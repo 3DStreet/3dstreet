@@ -4,6 +4,17 @@ function createElementFromObject (object = {}) { // eslint-disable-line no-unuse
   const el = document.createElement(object.tag);
   delete object.tag;
   for (const [key, value] of Object.entries(object)) {
+    if (value == 'SM_Bld_House_Preset_08_1809'){
+      var driveway = document.createElement('a-plane');
+      driveway.setAttribute('position', 'x', -6.25);
+      driveway.setAttribute('position', 'y', 0.6);
+      driveway.setAttribute('position', 'z', -8.75);
+      driveway.setAttribute('rotation', '-90 0 0');
+      driveway.setAttribute('src', '#asphalt-texture');
+      driveway.setAttribute('width', 4);
+      driveway.setAttribute('height', 4.6);
+      el.appendChild(driveway);
+    }
     el.setAttribute(key, value);
   }
   return el;
