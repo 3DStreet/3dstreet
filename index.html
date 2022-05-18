@@ -66,28 +66,20 @@
     </header>
     <script>
       function perspectiveCamera() {
-        document.getElementById("camera").setAttribute('orbit-controls', "autoRotate: false;autoRotateSpeed:0.01;target: 0 0 0;enableKeys:false");
-        document.getElementById("camera").setAttribute('camera', "");
-        document.getElementById("camera").setAttribute('position', "-15 12 20");
-        document.getElementById("camera").setAttribute('rotation', "-15 -45 0");
+        document.getElementById("camera").removeAttribute('orbit-controls');
+        document.getElementById("camera").setAttribute('orbit-controls', 'autoRotate: false;target: 0 0 0;initialPosition:-15 12 20;minDistance:3;maxDistance:100;enableKeys:false');
       }
       function planViewCamera() {
-        document.getElementById("camera").setAttribute('orbit-controls', "autoRotate: false;autoRotateSpeed:0.01;target: 0 0 0;enableKeys:false");
-        document.getElementById("camera").setAttribute('camera', "");
-        document.getElementById("camera").setAttribute('position', "0 50 0");
-        document.getElementById("camera").setAttribute('rotation', "-90 0 0");
+        document.getElementById("camera").removeAttribute('orbit-controls');
+        document.getElementById("camera").setAttribute('orbit-controls', 'autoRotate: false;target: 0 0 0;initialPosition:0 50 0;minDistance:3;maxDistance:100;enableKeys:false');
       }
       function crossSectionCamera() {
-        document.getElementById("camera").setAttribute('orbit-controls', "autoRotate: false;autoRotateSpeed:0.01;target: 0 0 0;enableKeys:false");
-        document.getElementById("camera").setAttribute('camera', "");
-        document.getElementById("camera").setAttribute('position', "0 5.6 -50");
-        document.getElementById("camera").setAttribute('rotation', "0 180 0");
+        document.getElementById("camera").removeAttribute('orbit-controls');
+        document.getElementById("camera").setAttribute('orbit-controls', 'autoRotate: false;target: 0 0 0;initialPosition:0 5.6 -50;minDistance:3;maxDistance:100;enableKeys:false');
       }
       function sideViewCamera() {
-        document.getElementById("camera").setAttribute('orbit-controls', "autoRotate: false;autoRotateSpeed:0.01;target: 0 0 0;enableKeys:false");
-        document.getElementById("camera").setAttribute('camera', "");
-        document.getElementById("camera").setAttribute('position', "-30 15 0");
-        document.getElementById("camera").setAttribute('rotation', "-18 -90 0");
+        document.getElementById("camera").removeAttribute('orbit-controls');
+        document.getElementById("camera").setAttribute('orbit-controls', 'autoRotate: false;target: 0 0 0;initialPosition:-30 15 0;minDistance:3;maxDistance:100;enableKeys:false');
       }
     </script>
 
