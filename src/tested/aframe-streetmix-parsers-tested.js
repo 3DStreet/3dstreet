@@ -45,6 +45,7 @@ function createBuildingsArray (maxLength = 150, buildingType = 'narrow') { // es
     if (buildingEntity.mixin === 'SM_Bld_House_Preset_08_1809') {
       buildingEntity.child = {
         tag: 'a-plane',
+        class: 'driveway',
         position: '-6.25 0.6 -8.75',
         rotation: '-90 0 0',
         src: '#asphalt-texture',
@@ -56,6 +57,7 @@ function createBuildingsArray (maxLength = 150, buildingType = 'narrow') { // es
     if (buildingEntity.mixin === 'SM_Bld_House_Preset_09_1845') {
       buildingEntity.child = {
         tag: 'a-plane',
+        class: 'driveway',
         position: '-2.5 0.6 -7',
         rotation: '-90 0 0',
         src: '#asphalt-texture',
