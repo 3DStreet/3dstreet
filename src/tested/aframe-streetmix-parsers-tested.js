@@ -41,6 +41,28 @@ function createBuildingsArray (maxLength = 150, buildingType = 'narrow') { // es
       mixin: building.id,
       position: '' + (length + building.width / 2) + ' 0 0'
     };
+
+    if (buildingEntity.mixin === 'SM_Bld_House_Preset_08_1809') {
+      buildingEntity.child = {
+        tag: 'a-plane',
+        position: '-6.25 0.6 -8.75',
+        rotation: '-90 0 0',
+        src: '#asphalt-texture',
+        width: 4,
+        height: 4.6
+      };
+    }
+
+    if (buildingEntity.mixin === 'SM_Bld_House_Preset_09_1845') {
+      buildingEntity.child = {
+        tag: 'a-plane',
+        position: '-2.5 0.6 -7',
+        rotation: '-90 0 0',
+        src: '#asphalt-texture',
+        width: 4,
+        height: 8
+      };
+    }
     buildingsArray.push(buildingEntity);
 
     length += building.width;
