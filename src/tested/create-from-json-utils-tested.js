@@ -14,6 +14,16 @@ function createElementFromObject (object = {}) { // eslint-disable-line no-unuse
       driveway.setAttribute('width', 4);
       driveway.setAttribute('height', 4.6);
       el.appendChild(driveway);
+    } else if (value == 'SM_Bld_House_Preset_09_1845') {
+      var driveway = document.createElement('a-plane');
+      driveway.setAttribute('position', 'x', -2.5);
+      driveway.setAttribute('position', 'y', 0.6);
+      driveway.setAttribute('position', 'z', -7);
+      driveway.setAttribute('rotation', '-90 0 0');
+      driveway.setAttribute('src', '#asphalt-texture');
+      driveway.setAttribute('width', 4);
+      driveway.setAttribute('height', 8);
+      el.appendChild(driveway);
     }
     el.setAttribute(key, value);
   }
