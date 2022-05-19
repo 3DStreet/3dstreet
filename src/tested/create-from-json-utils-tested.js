@@ -5,7 +5,6 @@ function createElementFromObject (object = {}) { // eslint-disable-line no-unuse
   delete object.tag;
   for (const [key, value] of Object.entries(object)) {
     if (key === 'child') {
-      console.log('child', value, value.tag);
       var childEl = document.createElement(value.tag);
       for (const [childKey, childValue] of Object.entries(value)) {
         childEl.setAttribute(childKey, childValue);
