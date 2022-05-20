@@ -104,7 +104,6 @@ AFRAME.registerComponent('streetmix-loader', {
 AFRAME.registerComponent('intersection', {
   schema: {
     dimensions: { type: 'string', default: '20 20' },
-    crosswalk: { type: 'string', default: 'false' },
     sidewalk: { type: 'string', default: '0 0 0 0' },
     curb: { type: 'string', default: '0 0 0 0' }
   },
@@ -123,11 +122,7 @@ AFRAME.registerComponent('intersection', {
 
     this.el.setAttribute('position', { x: positionArray[0], y: positionArray[1], z: positionArray[2] });
     this.el.setAttribute('rotation', '-90 0 0');
-    if (data.crosswalk === 'true') {
-      this.el.setAttribute('material', 'src: ../assets/objects/intersection.jpeg');
-    } else {
-      this.el.setAttribute('material', 'src: https://github.3dstreet.org/assets/materials/TexturesCom_AsphaltDamaged0057_1_seamless_S.jpg');
-    }
+    this.el.setAttribute('material', 'src: https://github.3dstreet.org/assets/materials/TexturesCom_AsphaltDamaged0057_1_seamless_S.jpg');
 
     const sd1 = document.createElement('a-entity');
     sd1.setAttribute('position', { x: dimensionsArray[0] / 2 - sidewalkArray[0] * 0.45, z: 0.04 });
