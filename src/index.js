@@ -1,4 +1,4 @@
-/* global AFRAME, XMLHttpRequest */
+/* global AFRAME, THREE, XMLHttpRequest */
 var streetmixParsers = require('./aframe-streetmix-parsers');
 var streetmixUtils = require('./tested/streetmix-utils');
 require('./assets.js');
@@ -131,7 +131,7 @@ AFRAME.registerComponent('intersection', {
     this.el.setAttribute('material', 'src: ./assets/materials/TexturesCom_AsphaltDamaged0057_1_seamless_S.jpg');
 
     const sd1 = document.createElement('a-entity');
-    sd1.setAttribute('position', { x: dimensionsArray[0] / 2 - sidewalkArray[0]  / 2, z: 0.04 });
+    sd1.setAttribute('position', { x: dimensionsArray[0] / 2 - sidewalkArray[0] / 2, z: 0.04 });
     sd1.setAttribute('scale', 'x', sidewalkArray[0] / 3);
     sd1.setAttribute('scale', 'y', dimensionsArray[1] / 150);
     sd1.setAttribute('rotation', { x: 0, y: 0, z: 0 });
