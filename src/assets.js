@@ -139,12 +139,13 @@
           <a-mixin id="word-loading-small" atlas-uvs="totalRows: 8; totalColumns: 4; column: 4; row: 1" scale="2.75 1.75 2.75"></a-mixin>
           <a-mixin id="perpendicular-stalls" atlas-uvs="totalRows: 4; totalColumns: 8; column: 5; row: 4" scale="5 10 5"></a-mixin>
           <a-mixin id="parking-t" atlas-uvs="totalRows: 8; totalColumns: 16; column: 4; row: 7" scale="1.5 2 2"></a-mixin>
+          <a-mixin id="crosswalk-zebra" atlas-uvs="totalRows: 2; totalColumns: 4; column: 4; row: 2" scale="2 6 1"></a-mixin>
   
           <!-- vehicles -->
           <a-mixin id="bus" anisotropy gltf-model="#xd40" scale="1.55 1.55 1.55"></a-mixin>
           <a-mixin id="tram" anisotropy gltf-model="#trammodel"></a-mixin>
           <a-mixin id="trolley" gltf-model="#trolleymodel"></a-mixin>
-  
+          
           <!-- street props -->
           <a-mixin id="pride-flag" position="0.409 3.345 0" rotation="0 0 0" scale="0.5 0.75 0" geometry="width:2;height:2;primitive:plane" material="side:double; src:${assetUrl}assets/materials/rainbow-flag-poles_512.png;transparent: true;"></a-mixin>
           <a-mixin id="wayfinding-box" geometry="primitive: box; height: 2; width: 0.84; depth: 0.1" material="color: gray"></a-mixin>
