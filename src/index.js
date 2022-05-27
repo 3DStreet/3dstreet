@@ -191,17 +191,24 @@ AFRAME.registerComponent('intersection', {
 
     if (stopsignArray[0]){
       const ss1 = document.createElement('a-entity');
-      ss1.setAttribute('position', { x: dimensionsArray[0] / 2,y: dimensionsArray[1] / 4, z: 0.04 });
+      ss1.setAttribute('position', { x: dimensionsArray[0] / 2,y: dimensionsArray[1] / 3, z: 0.03 });
       ss1.setAttribute('rotation', { x: 0, y: 90, z: 90 });
       ss1.setAttribute('mixin', 'stop_sign');
       el.appendChild(ss1);
     }
     if (stopsignArray[1]) {
       const ss2 = document.createElement('a-entity');
-      ss2.setAttribute('position', { x: -dimensionsArray[0] / 2,y: -dimensionsArray[1] / 4, z: 0.05 });
+      ss2.setAttribute('position', { x: -dimensionsArray[0] / 2,y: -dimensionsArray[1] / 3, z: 0.03 });
       ss2.setAttribute('rotation', { x: 0, y: -90, z: -90 });
       ss2.setAttribute('mixin', 'stop_sign');
       el.appendChild(ss2);
+    }
+    if (stopsignArray[2]){
+      const ss3 = document.createElement('a-entity');
+      ss3.setAttribute('position', { x: -dimensionsArray[0] / 3,y: dimensionsArray[1] / 2, z: 0.03 });
+      ss3.setAttribute('rotation', { x: -90, y: 90, z: 90 });
+      ss3.setAttribute('mixin', 'stop_sign');
+      el.appendChild(ss3);
     }
   }
 });
