@@ -196,5 +196,12 @@ AFRAME.registerComponent('intersection', {
       ss1.setAttribute('mixin', 'stop_sign');
       el.appendChild(ss1);
     }
+    if (stopsignArray[1]) {
+      const ss2 = document.createElement('a-entity');
+      ss2.setAttribute('position', { x: -dimensionsArray[0] / 2,y: -dimensionsArray[1] / 4, z: 0.05 });
+      ss2.setAttribute('rotation', { x: 0, y: -90, z: -90 });
+      ss2.setAttribute('mixin', 'stop_sign');
+      el.appendChild(ss2);
+    }
   }
 });
