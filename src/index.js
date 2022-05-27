@@ -108,7 +108,8 @@ AFRAME.registerComponent('intersection', {
     northeastcurb: { type: 'string', default: '0 0' },
     southwestcurb: { type: 'string', default: '0 0' },
     southeastcurb: { type: 'string', default: '0 0' },
-    northwestcurb: { type: 'string', default: '0 0' }
+    northwestcurb: { type: 'string', default: '0 0' },
+    stopsign: { type: 'string', default: '0 0 0 0' }
   },
   init: function () {
     var data = this.data;
@@ -120,6 +121,7 @@ AFRAME.registerComponent('intersection', {
     const southwestcurbArray = data.southwestcurb.split(' ').map((i) => Number(i));
     const southeastcurbArray = data.southeastcurb.split(' ').map((i) => Number(i));
     const northwestcurbArray = data.northwestcurb.split(' ').map((i) => Number(i));
+    const stopsignArray = data.stopsign.split(' ').map((i) => Number(i));
 
     this.geometry = new THREE.PlaneGeometry(dimensionsArray[0], dimensionsArray[1], 1, 1);
     this.material = new THREE.MeshStandardMaterial({ color: '#FF0000' });
