@@ -188,5 +188,11 @@ AFRAME.registerComponent('intersection', {
     c4.setAttribute('scale', 'y', northwestcurbArray[1] / 150);
     c4.setAttribute('mixin', 'sidewalk');
     el.appendChild(c4);
+
+    const ss1 = document.createElement('a-entity');
+    ss1.setAttribute('position', { x: dimensionsArray[0] / 2,y: dimensionsArray[1] / 4, z: 0.04 });
+    ss1.setAttribute('rotation', { x: 0, y: 90, z: 90 });
+    ss1.setAttribute('mixin', 'stop_sign');
+    el.appendChild(ss1);
   }
 });
