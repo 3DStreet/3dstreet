@@ -5,10 +5,11 @@
     if (!assetUrl) assetUrl = 'https://github.3dstreet.org/';
     console.log('[street]', 'Using street assets from', assetUrl);
     return `
-  
           <!-- sidewalk props -->
           <img id="wayfinding-map" src="${assetUrl}assets/objects/wayfinding.jpg" crossorigin="anonymous" />
           <a-asset-item id="streetProps" src="${assetUrl}assets/objects/street-props.glb"></a-asset-item>
+          <a-asset-item id="stopsign" src="${assetUrl}assets/signals/stop-sign.glb"></a-asset-item>
+          <a-mixin id="stop_sign" gltf-part-plus="src: #stopsign; part: stop-sign"></a-mixin>
           <a-mixin id="outdoor_dining" gltf-part-plus="src: #streetProps; part: outdoor_dining"></a-mixin>
           <a-mixin id="bench_orientation_center" gltf-part-plus="src: #streetProps; part: bench_orientation_center"></a-mixin>
           <a-mixin id="parklet" gltf-part-plus="src: #streetProps; part: parklet"></a-mixin>
