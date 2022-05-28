@@ -109,7 +109,8 @@ AFRAME.registerComponent('intersection', {
     southwestcurb: { type: 'string', default: '0 0' },
     southeastcurb: { type: 'string', default: '0 0' },
     northwestcurb: { type: 'string', default: '0 0' },
-    stopsign: { type: 'string', default: '0 0 0 0' }
+    stopsign: { type: 'string', default: '0 0 0 0' },
+    trafficsignal: { type: 'string', default: '0 0 0 0' }
   },
   init: function () {
     var data = this.data;
@@ -122,6 +123,7 @@ AFRAME.registerComponent('intersection', {
     const southeastcurbArray = data.southeastcurb.split(' ').map((i) => Number(i));
     const northwestcurbArray = data.northwestcurb.split(' ').map((i) => Number(i));
     const stopsignArray = data.stopsign.split(' ').map((i) => Number(i));
+    const trafficsignalArray = data.trafficsignal.split(' ').map((i) => Number(i));
 
     this.geometry = new THREE.PlaneGeometry(dimensionsArray[0], dimensionsArray[1], 1, 1);
     this.material = new THREE.MeshStandardMaterial({ color: '#FF0000' });
@@ -216,6 +218,19 @@ AFRAME.registerComponent('intersection', {
       ss4.setAttribute('rotation', { x: 90, y: -90, z: -90 });
       ss4.setAttribute('mixin', 'stop_sign');
       el.appendChild(ss4);
+    }
+
+    if (trafficsignalArray[0]){
+      const ts1 = document.createElement('a-entity');
+      ts1.setAttribute('position', { x: dimensionsArray[0] / 2,y: -dimensionsArray[1] / 3, z: 0.03 });
+      ts1.setAttribute('rotation', { x: 30, y: 90, z: 90 });
+      ts1.setAttribute('mixin', 'signal_left');
+      el.appendChild(ts1);
+      const ts2 = document.createElement('a-entity');
+      ts2.setAttribute('position', { x: dimensionsArray[0] / 2,y: dimensionsArray[1] / 3, z: 0.03 });
+      ts2.setAttribute('rotation', { x: 0, y: 90, z: 90 });
+      ts2.setAttribute('mixin', 'signal_right');
+      el.appendChild(ts2);
     }
   }
 });
