@@ -222,15 +222,51 @@ AFRAME.registerComponent('intersection', {
 
     if (trafficsignalArray[0]){
       const ts1 = document.createElement('a-entity');
-      ts1.setAttribute('position', { x: dimensionsArray[0] / 2,y: -dimensionsArray[1] / 3, z: 0.03 });
-      ts1.setAttribute('rotation', { x: 30, y: 90, z: 90 });
+      ts1.setAttribute('position', { x: dimensionsArray[0] / 2,y: dimensionsArray[1] / 3, z: 0.03 });
+      ts1.setAttribute('rotation', { x: 210, y: 90, z: 90 });
       ts1.setAttribute('mixin', 'signal_left');
       el.appendChild(ts1);
       const ts2 = document.createElement('a-entity');
-      ts2.setAttribute('position', { x: dimensionsArray[0] / 2,y: dimensionsArray[1] / 3, z: 0.03 });
-      ts2.setAttribute('rotation', { x: 0, y: 90, z: 90 });
+      ts2.setAttribute('position', { x: dimensionsArray[0] / 2,y: -dimensionsArray[1] / 3, z: 0.03 });
+      ts2.setAttribute('rotation', { x: 180, y: 90, z: 90 });
       ts2.setAttribute('mixin', 'signal_right');
       el.appendChild(ts2);
+    }
+    if (trafficsignalArray[1]){
+      const ts3 = document.createElement('a-entity');
+      ts3.setAttribute('position', { x: -dimensionsArray[0] / 2,y: -dimensionsArray[1] / 3, z: 0.03 });
+      ts3.setAttribute('rotation', { x: 30, y: 90, z: 90 });
+      ts3.setAttribute('mixin', 'signal_left');
+      el.appendChild(ts3);
+      const ts4 = document.createElement('a-entity');
+      ts4.setAttribute('position', { x: -dimensionsArray[0] / 2,y: dimensionsArray[1] / 3, z: 0.03 });;
+      ts4.setAttribute('rotation', { x: 0, y: 90, z: 90 });
+      ts4.setAttribute('mixin', 'signal_right');
+      el.appendChild(ts4);
+    }
+    if (trafficsignalArray[2]){
+      const ts5 = document.createElement('a-entity');
+      ts5.setAttribute('position', { x: -dimensionsArray[0] / 3,y: dimensionsArray[1] / 2, z: 0.03 });
+      ts5.setAttribute('rotation', { x: 120, y: 90, z: 90 });
+      ts5.setAttribute('mixin', 'signal_left');
+      el.appendChild(ts5);
+      const ts6 = document.createElement('a-entity');
+      ts6.setAttribute('position', { x: dimensionsArray[0] / 3,y: dimensionsArray[1] / 2, z: 0.03 });;
+      ts6.setAttribute('rotation', { x: 90, y: 90, z: 90 });
+      ts6.setAttribute('mixin', 'signal_right');
+      el.appendChild(ts6);
+    }
+    if (trafficsignalArray[3]){
+      const ts7 = document.createElement('a-entity');
+      ts7.setAttribute('position', { x: dimensionsArray[0] / 3,y: -dimensionsArray[1] / 2, z: 0.03 });
+      ts7.setAttribute('rotation', { x: -60, y: 90, z: 90 });
+      ts7.setAttribute('mixin', 'signal_left');
+      el.appendChild(ts7);
+      const ts8 = document.createElement('a-entity');
+      ts8.setAttribute('position', { x: -dimensionsArray[0] / 3,y: -dimensionsArray[1] / 2, z: 0.03 });;
+      ts8.setAttribute('rotation', { x: -90, y: 90, z: 90 });
+      ts8.setAttribute('mixin', 'signal_right');
+      el.appendChild(ts8);
     }
   }
 });
