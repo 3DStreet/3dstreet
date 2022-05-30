@@ -110,7 +110,8 @@ AFRAME.registerComponent('intersection', {
     southeastcurb: { type: 'string', default: '0 0' },
     northwestcurb: { type: 'string', default: '0 0' },
     stopsign: { type: 'string', default: '0 0 0 0' },
-    trafficsignal: { type: 'string', default: '0 0 0 0' }
+    trafficsignal: { type: 'string', default: '0 0 0 0' },
+    crosswalk: { type: 'string', default: '0 0 0 0' }
   },
   init: function () {
     var data = this.data;
@@ -124,6 +125,7 @@ AFRAME.registerComponent('intersection', {
     const northwestcurbArray = data.northwestcurb.split(' ').map((i) => Number(i));
     const stopsignArray = data.stopsign.split(' ').map((i) => Number(i));
     const trafficsignalArray = data.trafficsignal.split(' ').map((i) => Number(i));
+    const crosswalklArray = data.crosswalk.split(' ').map((i) => Number(i));
 
     this.geometry = new THREE.PlaneGeometry(dimensionsArray[0], dimensionsArray[1], 1, 1);
     this.material = new THREE.MeshStandardMaterial({ color: '#FF0000' });
@@ -267,6 +269,15 @@ AFRAME.registerComponent('intersection', {
       ts8.setAttribute('rotation', { x: -90, y: 90, z: 90 });
       ts8.setAttribute('mixin', 'signal_right');
       el.appendChild(ts8);
+    }
+
+    if (crosswalklArray[0]){
+      const cw1 = document.createElement('a-entity');
+      cw1.setAttribute('position', { x: dimensionsArray[0] / 2, z: 0.04 });
+      cw1.setAttribute('rotation', { x: 0, y: 0, z: 180 });
+      //cw1.setAttribute('geometry', { height: 18, width: 3}); //THIS LINE CAUSES AN ERROR
+      cw1.setAttribute('mixin', 'markings crosswalk-zebra');
+      el.appendChild(cw1);
     }
   }
 });
