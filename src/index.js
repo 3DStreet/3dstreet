@@ -273,11 +273,35 @@ AFRAME.registerComponent('intersection', {
 
     if (crosswalklArray[0]){
       const cw1 = document.createElement('a-entity');
-      cw1.setAttribute('position', { x: dimensionsArray[0] / 2, z: 0.04 });
+      cw1.setAttribute('position', { x: dimensionsArray[0] / 2 - 2, z: 0.01 });
       cw1.setAttribute('rotation', { x: 0, y: 0, z: 180 });
-      //cw1.setAttribute('geometry', { height: 18, width: 3}); //THIS LINE CAUSES AN ERROR
+      cw1.setAttribute('scale', {y: dimensionsArray[1] / 12 });
       cw1.setAttribute('mixin', 'markings crosswalk-zebra');
       el.appendChild(cw1);
+    }
+    if (crosswalklArray[1]){
+      const cw2 = document.createElement('a-entity');
+      cw2.setAttribute('position', { x: -dimensionsArray[0] / 2 + 2, z: 0.01 });
+      cw2.setAttribute('rotation', { x: 0, y: 0, z: 180 });
+      cw2.setAttribute('scale', {y: dimensionsArray[1] / 12 });
+      cw2.setAttribute('mixin', 'markings crosswalk-zebra');
+      el.appendChild(cw2);
+    }
+    if (crosswalklArray[2]){
+      const cw3 = document.createElement('a-entity');
+      cw3.setAttribute('position', {y: -dimensionsArray[1] / 2 + 2, z: 0.01 });
+      cw3.setAttribute('rotation', { x: 0, y: 0, z: 90 });
+      cw3.setAttribute('scale', {y: dimensionsArray[0] / 12 });
+      cw3.setAttribute('mixin', 'markings crosswalk-zebra');
+      el.appendChild(cw3);
+    }
+    if (crosswalklArray[3]){
+      const cw4 = document.createElement('a-entity');
+      cw4.setAttribute('position', {y: dimensionsArray[1] / 2 - 2, z: 0.01 });
+      cw4.setAttribute('rotation', { x: 0, y: 0, z: 90 });
+      cw4.setAttribute('scale', {y: dimensionsArray[0] / 12 });
+      cw4.setAttribute('mixin', 'markings crosswalk-zebra');
+      el.appendChild(cw4);
     }
   }
 });
