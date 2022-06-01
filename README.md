@@ -57,6 +57,20 @@ _(or visit https://github.3dstreet.org)_
 | showStriping | A boolean to determine if the lane stripings should be created or not. | true |
 | length | A number that sets the street's length in meters | 150 |
 
+### A-Frame `intersection` Component API
+
+| Property | Description | Default Value |
+| --------- | --------- | --------- |
+| dimensions |  | '20 20' |
+| sidewalk |  |  '0 0 0 0' |
+| northeastcurb |  | '0 0' |
+| southwestcurb |  | '0 0' |
+| southeastcurb |  | '0 0' |
+| northwestcurb |  | '0 0' |
+| stopsign |  | '0 0 0 0' |
+| trafficsignal |  | '0 0 0 0' |
+| crosswalk |  | '0 0 0 0' |
+
 #### Orientation and Scale
 A default Streetmix.net cross-section view is oriented to show vehicles heading away from you as "outbound". The `street` component follows this convention and when placed in a new A-Frame scene the default camera is looking toward the outbound direction of the generated street. The default rendering is 1:1 scale.
 
