@@ -61,15 +61,15 @@ _(or visit https://github.3dstreet.org)_
 
 | Property | Description | Default Value |
 | --------- | --------- | --------- |
-| dimensions |  | '20 20' |
-| sidewalk |  |  '0 0 0 0' |
-| northeastcurb |  | '0 0' |
-| southwestcurb |  | '0 0' |
-| southeastcurb |  | '0 0' |
-| northwestcurb |  | '0 0' |
-| stopsign |  | '0 0 0 0' |
-| trafficsignal |  | '0 0 0 0' |
-| crosswalk |  | '0 0 0 0' |
+| dimensions | Specifies the width and depth of the intersection. First value represents width, second value represents depth. | '20 20' |
+| sidewalk | Sets the width of the sidewalk at each side of the intersection. Values are set in the order of west, east, north, south. |  '0 0 0 0' |
+| northeastcurb | Sets the curb dimensions for the north east curb. Values are updated as width, then depth. | '0 0' |
+| southwestcurb | Sets the curb dimensions for the south west curb. Values are updated as width, then depth.  | '0 0' |
+| southeastcurb | Sets the curb dimensions for the south east curb. Values are updated as width, then depth. | '0 0' |
+| northwestcurb | Sets the curb dimensions for the north west curb. Values are updated as width, then depth. | '0 0' |
+| stopsign | Sets if each side of the intersection has a stop sign. Values are set in the order of east, west,north, south. 0 is false, 1 is true. | '0 0 0 0' |
+| trafficsignal | Sets if each side of the intersection has a traffic signal. Values are set in the order of east, west, north, south. 0 is false, 1 is true. | '0 0 0 0' |
+| crosswalk | ​​Sets if each side of the intersection has a crosswalk. Values are set in the order of east, west, north, south. 0 is false, 1 is true. | '0 0 0 0' |
 
 #### Orientation and Scale
 A default Streetmix.net cross-section view is oriented to show vehicles heading away from you as "outbound". The `street` component follows this convention and when placed in a new A-Frame scene the default camera is looking toward the outbound direction of the generated street. The default rendering is 1:1 scale.
