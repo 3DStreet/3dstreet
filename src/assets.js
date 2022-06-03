@@ -11,9 +11,9 @@
           <a-asset-item id="stopsign" src="${assetUrl}assets/signals/stop-sign.glb"></a-asset-item>
           <a-asset-item id="signal1" src="${assetUrl}assets/signals/signal1.glb"></a-asset-item>
           <a-asset-item id="signal2" src="${assetUrl}assets/signals/signal2.glb"></a-asset-item>
-          <a-mixin id="signal_left" gltf-part-plus="src: #signal1; part: signal1"></a-mixin>
-          <a-mixin id="signal_right" gltf-part-plus="src: #signal2; part: signal2"></a-mixin>
-          <a-mixin id="stop_sign" gltf-part-plus="src: #stopsign; part: stop-sign"></a-mixin>
+          <a-mixin id="signal_left" gltf-model="#signal1"></a-mixin>
+          <a-mixin id="signal_right" gltf-model="#signal2"></a-mixin>
+          <a-mixin id="stop_sign" gltf-model="#stopsign"></a-mixin>
           <a-mixin id="outdoor_dining" gltf-part-plus="src: #streetProps; part: outdoor_dining"></a-mixin>
           <a-mixin id="bench_orientation_center" gltf-part-plus="src: #streetProps; part: bench_orientation_center"></a-mixin>
           <a-mixin id="parklet" gltf-part-plus="src: #streetProps; part: parklet"></a-mixin>
