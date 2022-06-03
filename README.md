@@ -47,6 +47,8 @@ _(or visit https://github.3dstreet.org)_
 
 ### A-Frame `street` Component API
 
+The `street` component creates a street made up of one or more segments as children of the entity it's attached to. It may also create buildings, ground, and place models in the scene using mixins. Creating the JSON array of segments by hand is cumbersome and typically the `streetmix-loader` component (below) is also used on the same entity to populate the street JSON from a Streetmix.net street.
+
 | Property | Description | Default Value |
 | --------- | --------- | --------- |
 | JSON | A string of JSON containing an array one or more segments (also known as slices) representing cross-section parts of a street. See [basic-json.html](/examples/basic-json.html) for an example of proper usage | '' |
@@ -57,11 +59,21 @@ _(or visit https://github.3dstreet.org)_
 | showStriping | A boolean to determine if the lane stripings should be created or not. | true |
 | length | A number that sets the street's length in meters | 150 |
 
-#### Orientation and Scale
-A default Streetmix.net cross-section view is oriented to show vehicles heading away from you as "outbound". The `street` component follows this convention and when placed in a new A-Frame scene the default camera is looking toward the outbound direction of the generated street. The default rendering is 1:1 scale.
+### A-Frame `intersection` Component API
 
-#### Automatic Asset Loading
-When `aframe-street-component.js` is included on a page it automatically loads 3D models and other assets using the A-Frame asset loader by adding them to the scene's `a-assets` block and defining mixins pointing to these assets. The `street` component itself simply places entities with appropriate mixin names. [For more information on the asset loader see this docs link](https://github.com/3DStreet/3dstreet/blob/main/src/README.md#assetsjs).
+The `intersection` component creates an intersection surface with options for adding curbs, sidewalks, crosswalks, stop signs, and traffic signals.
+
+| Property | Description | Default Value |
+| --------- | --------- | --------- |
+| dimensions | Specifies the width and depth of the intersection. First value represents width, second value represents depth. | '20 20' |
+| sidewalk | Sets the width of the sidewalk at each side of the intersection. Values are set in the order of west, east, north, south. |  '0 0 0 0' |
+| northeastcurb | Sets the curb dimensions for the north east curb. Values are updated as width, then depth. | '0 0' |
+| southwestcurb | Sets the curb dimensions for the south west curb. Values are updated as width, then depth.  | '0 0' |
+| southeastcurb | Sets the curb dimensions for the south east curb. Values are updated as width, then depth. | '0 0' |
+| northwestcurb | Sets the curb dimensions for the north west curb. Values are updated as width, then depth. | '0 0' |
+| stopsign | Sets if each side of the intersection has a stop sign. Values are set in the order of east, west, north, south. 0 is false, 1 is true. | '0 0 0 0' |
+| trafficsignal | Sets if each side of the intersection has a traffic signal. Values are set in the order of east, west, north, south. 0 is false, 1 is true. | '0 0 0 0' |
+| crosswalk | ​​Sets if each side of the intersection has a crosswalk. Values are set in the order of east, west, north, south. 0 is false, 1 is true. | '0 0 0 0' |
 
 ### A-Frame `streetmix-loader` Component API
 
@@ -74,6 +86,12 @@ The `streetmix-loader` component requests a Streetmix API response when given a 
 | showBuildings | A Boolean that determines whether or not buildings are rendered | true |
 
 Either 1 of the 2 properties are required. If both are provided the component will use streetmixAPIURL value and ignore streetmixStreetURL.
+
+#### Orientation and Scale
+A default Streetmix.net cross-section view is oriented to show vehicles heading away from you as "outbound". The `street` component follows this convention and when placed in a new A-Frame scene the default camera is looking toward the outbound direction of the generated street. The default rendering is 1:1 scale.
+
+#### Automatic Asset Loading
+When `aframe-street-component.js` is included on a page it automatically loads 3D models and other assets using the A-Frame asset loader by adding them to the scene's `a-assets` block and defining mixins pointing to these assets. The `street` component itself simply places entities with appropriate mixin names. [For more information on the asset loader see this docs link](https://github.com/3DStreet/3dstreet/blob/main/src/README.md#assetsjs).
 
 ### List of Supported Segment Types
 

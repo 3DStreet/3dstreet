@@ -108,7 +108,10 @@ AFRAME.registerComponent('intersection', {
     northeastcurb: { type: 'string', default: '0 0' },
     southwestcurb: { type: 'string', default: '0 0' },
     southeastcurb: { type: 'string', default: '0 0' },
-    northwestcurb: { type: 'string', default: '0 0' }
+    northwestcurb: { type: 'string', default: '0 0' },
+    stopsign: { type: 'string', default: '0 0 0 0' },
+    trafficsignal: { type: 'string', default: '0 0 0 0' },
+    crosswalk: { type: 'string', default: '0 0 0 0' }
   },
   init: function () {
     var data = this.data;
@@ -120,6 +123,9 @@ AFRAME.registerComponent('intersection', {
     const southwestcurbArray = data.southwestcurb.split(' ').map((i) => Number(i));
     const southeastcurbArray = data.southeastcurb.split(' ').map((i) => Number(i));
     const northwestcurbArray = data.northwestcurb.split(' ').map((i) => Number(i));
+    const stopsignArray = data.stopsign.split(' ').map((i) => Number(i));
+    const trafficsignalArray = data.trafficsignal.split(' ').map((i) => Number(i));
+    const crosswalklArray = data.crosswalk.split(' ').map((i) => Number(i));
 
     this.geometry = new THREE.PlaneGeometry(dimensionsArray[0], dimensionsArray[1], 1, 1);
     this.material = new THREE.MeshStandardMaterial({ color: '#FF0000' });
@@ -186,5 +192,116 @@ AFRAME.registerComponent('intersection', {
     c4.setAttribute('scale', 'y', northwestcurbArray[1] / 150);
     c4.setAttribute('mixin', 'sidewalk');
     el.appendChild(c4);
+
+    if (stopsignArray[0]){
+      const ss1 = document.createElement('a-entity');
+      ss1.setAttribute('position', { x: dimensionsArray[0] / 2,y: dimensionsArray[1] / 3, z: 0.03 });
+      ss1.setAttribute('rotation', { x: 0, y: 90, z: 90 });
+      ss1.setAttribute('mixin', 'stop_sign');
+      el.appendChild(ss1);
+    }
+    if (stopsignArray[1]) {
+      const ss2 = document.createElement('a-entity');
+      ss2.setAttribute('position', { x: -dimensionsArray[0] / 2,y: -dimensionsArray[1] / 3, z: 0.03 });
+      ss2.setAttribute('rotation', { x: 0, y: -90, z: -90 });
+      ss2.setAttribute('mixin', 'stop_sign');
+      el.appendChild(ss2);
+    }
+    if (stopsignArray[2]){
+      const ss3 = document.createElement('a-entity');
+      ss3.setAttribute('position', { x: -dimensionsArray[0] / 3,y: dimensionsArray[1] / 2, z: 0.03 });
+      ss3.setAttribute('rotation', { x: -90, y: 90, z: 90 });
+      ss3.setAttribute('mixin', 'stop_sign');
+      el.appendChild(ss3);
+    }
+    if (stopsignArray[3]){
+      const ss4 = document.createElement('a-entity');
+      ss4.setAttribute('position', { x: dimensionsArray[0] / 3,y: -dimensionsArray[1] / 2, z: 0.03 });
+      ss4.setAttribute('rotation', { x: 90, y: -90, z: -90 });
+      ss4.setAttribute('mixin', 'stop_sign');
+      el.appendChild(ss4);
+    }
+
+    if (trafficsignalArray[0]){
+      const ts1 = document.createElement('a-entity');
+      ts1.setAttribute('position', { x: dimensionsArray[0] / 2,y: dimensionsArray[1] / 3, z: 0.03 });
+      ts1.setAttribute('rotation', { x: 210, y: 90, z: 90 });
+      ts1.setAttribute('mixin', 'signal_left');
+      el.appendChild(ts1);
+      const ts2 = document.createElement('a-entity');
+      ts2.setAttribute('position', { x: dimensionsArray[0] / 2,y: -dimensionsArray[1] / 3, z: 0.03 });
+      ts2.setAttribute('rotation', { x: 180, y: 90, z: 90 });
+      ts2.setAttribute('mixin', 'signal_right');
+      el.appendChild(ts2);
+    }
+    if (trafficsignalArray[1]){
+      const ts3 = document.createElement('a-entity');
+      ts3.setAttribute('position', { x: -dimensionsArray[0] / 2,y: -dimensionsArray[1] / 3, z: 0.03 });
+      ts3.setAttribute('rotation', { x: 30, y: 90, z: 90 });
+      ts3.setAttribute('mixin', 'signal_left');
+      el.appendChild(ts3);
+      const ts4 = document.createElement('a-entity');
+      ts4.setAttribute('position', { x: -dimensionsArray[0] / 2,y: dimensionsArray[1] / 3, z: 0.03 });;
+      ts4.setAttribute('rotation', { x: 0, y: 90, z: 90 });
+      ts4.setAttribute('mixin', 'signal_right');
+      el.appendChild(ts4);
+    }
+    if (trafficsignalArray[2]){
+      const ts5 = document.createElement('a-entity');
+      ts5.setAttribute('position', { x: -dimensionsArray[0] / 3,y: dimensionsArray[1] / 2, z: 0.03 });
+      ts5.setAttribute('rotation', { x: 120, y: 90, z: 90 });
+      ts5.setAttribute('mixin', 'signal_left');
+      el.appendChild(ts5);
+      const ts6 = document.createElement('a-entity');
+      ts6.setAttribute('position', { x: dimensionsArray[0] / 3,y: dimensionsArray[1] / 2, z: 0.03 });;
+      ts6.setAttribute('rotation', { x: 90, y: 90, z: 90 });
+      ts6.setAttribute('mixin', 'signal_right');
+      el.appendChild(ts6);
+    }
+    if (trafficsignalArray[3]){
+      const ts7 = document.createElement('a-entity');
+      ts7.setAttribute('position', { x: dimensionsArray[0] / 3,y: -dimensionsArray[1] / 2, z: 0.03 });
+      ts7.setAttribute('rotation', { x: -60, y: 90, z: 90 });
+      ts7.setAttribute('mixin', 'signal_left');
+      el.appendChild(ts7);
+      const ts8 = document.createElement('a-entity');
+      ts8.setAttribute('position', { x: -dimensionsArray[0] / 3,y: -dimensionsArray[1] / 2, z: 0.03 });;
+      ts8.setAttribute('rotation', { x: -90, y: 90, z: 90 });
+      ts8.setAttribute('mixin', 'signal_right');
+      el.appendChild(ts8);
+    }
+
+    if (crosswalklArray[0]){
+      const cw1 = document.createElement('a-entity');
+      cw1.setAttribute('position', { x: dimensionsArray[0] / 2 - 2, z: 0.013 });
+      cw1.setAttribute('rotation', { x: 0, y: 0, z: 180 });
+      cw1.setAttribute('scale', {y: dimensionsArray[1] / 12 });
+      cw1.setAttribute('mixin', 'markings crosswalk-zebra');
+      el.appendChild(cw1);
+    }
+    if (crosswalklArray[1]){
+      const cw2 = document.createElement('a-entity');
+      cw2.setAttribute('position', { x: -dimensionsArray[0] / 2 + 2, z: 0.012 });
+      cw2.setAttribute('rotation', { x: 0, y: 0, z: 180 });
+      cw2.setAttribute('scale', {y: dimensionsArray[1] / 12 });
+      cw2.setAttribute('mixin', 'markings crosswalk-zebra');
+      el.appendChild(cw2);
+    }
+    if (crosswalklArray[2]){
+      const cw3 = document.createElement('a-entity');
+      cw3.setAttribute('position', {y: -dimensionsArray[1] / 2 + 2, z: 0.011 });
+      cw3.setAttribute('rotation', { x: 0, y: 0, z: 90 });
+      cw3.setAttribute('scale', {y: dimensionsArray[0] / 12 });
+      cw3.setAttribute('mixin', 'markings crosswalk-zebra');
+      el.appendChild(cw3);
+    }
+    if (crosswalklArray[3]){
+      const cw4 = document.createElement('a-entity');
+      cw4.setAttribute('position', {y: dimensionsArray[1] / 2 - 2, z: 0.01 });
+      cw4.setAttribute('rotation', { x: 0, y: 0, z: 90 });
+      cw4.setAttribute('scale', {y: dimensionsArray[0] / 12 });
+      cw4.setAttribute('mixin', 'markings crosswalk-zebra');
+      el.appendChild(cw4);
+    }
   }
 });
