@@ -196,7 +196,7 @@ function createSidewalkClonedVariants (BasePositionX, segmentWidthInMeters, dens
     var variantName = (animated == 'true') ? 'a_char' + String(getRandomIntInclusive(1, 8)) : 'char' + String(getRandomIntInclusive(1, 16));
     var positionXYZString = getRandomArbitrary(xValueRange[0], xValueRange[1]) + ' 0 ' + zValueRange.pop();
     var placedObjectEl = document.createElement('a-entity');
-    var duration = getRandomArbitrary(10000, 25000);
+    var duration = getRandomArbitrary(50000, 55000);
     var animationDirection = 'inbound';
     placedObjectEl.setAttribute('position', positionXYZString);
     placedObjectEl.setAttribute('mixin', variantName);
