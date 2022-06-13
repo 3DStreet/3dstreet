@@ -197,12 +197,19 @@ function createSidewalkClonedVariants (BasePositionX, segmentWidthInMeters, dens
     var positionXYZString = getRandomArbitrary(xValueRange[0], xValueRange[1]) + ' 0 ' + zValueRange.pop();
     var placedObjectEl = document.createElement('a-entity');
     var duration = getRandomArbitrary(10000, 25000);
+    var animationDirection = 'inbound';
     placedObjectEl.setAttribute('position', positionXYZString);
     placedObjectEl.setAttribute('mixin', variantName);
     // Roughly 50% of traffic will be incoming
     if (Math.random() < 0.5 && direction === 'random') {
       placedObjectEl.setAttribute('rotation', '0 180 0');
-      if (animated == 'true') {
+      animationDirection = 'outbound';
+    } else if (direction === 'outbound') {
+      placedObjectEl.setAttribute('rotation', '0 180 0');
+      animationDirection = 'outbound';
+    }
+    if (animated === 'true') {
+      if (animationDirection === 'outbound'){
         placedObjectEl.setAttribute('animation__1', 'property', 'position');
         placedObjectEl.setAttribute('animation__1', 'to', {z: -length/2});
         placedObjectEl.setAttribute('animation__1', 'dur', duration);
@@ -216,32 +223,13 @@ function createSidewalkClonedVariants (BasePositionX, segmentWidthInMeters, dens
         placedObjectEl.setAttribute('animation__2', 'dur', 2*duration);
         placedObjectEl.setAttribute('animation__2', 'easing', 'linear');
         placedObjectEl.setAttribute('animation__2', 'loop', 'true');
-      }
-    } else if (direction === 'outbound') {
-      placedObjectEl.setAttribute('rotation', '0 180 0');
-      if (animated == 'true') {
+      } else {
         placedObjectEl.setAttribute('animation__1', 'property', 'position');
         placedObjectEl.setAttribute('animation__1', 'to', {z: length/2});
         placedObjectEl.setAttribute('animation__1', 'dur', duration);
         placedObjectEl.setAttribute('animation__1', 'easing', 'linear');
         placedObjectEl.setAttribute('animation__1', 'loop', 'false');
-  
-        placedObjectEl.setAttribute('animation__2', 'property', 'position');
-        placedObjectEl.setAttribute('animation__2', 'from', {x: 0, y: 0, z: -length/2});
-        placedObjectEl.setAttribute('animation__2', 'to', {x: 0, y: 0, z: length/2});
-        placedObjectEl.setAttribute('animation__2', 'delay', duration);
-        placedObjectEl.setAttribute('animation__2', 'dur', 2*duration);
-        placedObjectEl.setAttribute('animation__2', 'easing', 'linear');
-        placedObjectEl.setAttribute('animation__2', 'loop', 'true');
-      }
-    } else {
-      if (animated == 'true') {
-        placedObjectEl.setAttribute('animation__1', 'property', 'position');
-        placedObjectEl.setAttribute('animation__1', 'to', {z: length/2});
-        placedObjectEl.setAttribute('animation__1', 'dur', duration);
-        placedObjectEl.setAttribute('animation__1', 'easing', 'linear');
-        placedObjectEl.setAttribute('animation__1', 'loop', 'false');
-  
+
         placedObjectEl.setAttribute('animation__2', 'property', 'position');
         placedObjectEl.setAttribute('animation__2', 'from', {x: 0, y: 0, z: -length/2});
         placedObjectEl.setAttribute('animation__2', 'to', {x: 0, y: 0, z: length/2});
