@@ -49,6 +49,24 @@
           <a-mixin id="char14" gltf-part-plus="src: #humans2; part: Character_14"></a-mixin>
           <a-mixin id="char15" gltf-part-plus="src: #humans2; part: Character_15"></a-mixin>
           <a-mixin id="char16" gltf-part-plus="src: #humans2; part: Character_16"></a-mixin>
+          
+          <a-asset-item id="character1walk" src="${assetUrl}assets/objects/humanoid/character-1-walk.glb"></a-asset-item>
+          <a-mixin id="a_char1" gltf-model="#character1walk" animation-mixer></a-mixin>
+          
+          <a-asset-item id="character2walk" src="${assetUrl}assets/objects/humanoid/character-2-walk.glb"></a-asset-item>
+          <a-mixin id="a_char2" gltf-model="#character2walk" animation-mixer></a-mixin>
+          <a-asset-item id="character3walk" src="${assetUrl}assets/objects/humanoid/character-3-walk.glb"></a-asset-item>
+          <a-mixin id="a_char3" gltf-model="#character3walk" animation-mixer></a-mixin>
+          <a-asset-item id="character4walk" src="${assetUrl}assets/objects/humanoid/character-4-walk.glb"></a-asset-item>
+          <a-mixin id="a_char4" gltf-model="#character4walk" animation-mixer></a-mixin>
+          <a-asset-item id="character5walk" src="${assetUrl}assets/objects/humanoid/character-5-walk.glb"></a-asset-item>
+          <a-mixin id="a_char5" gltf-model="#character5walk" animation-mixer></a-mixin>
+          <a-asset-item id="character6walk" src="${assetUrl}assets/objects/humanoid/character-6-walk.glb"></a-asset-item>
+          <a-mixin id="a_char6" gltf-model="#character6walk" animation-mixer></a-mixin>
+          <a-asset-item id="character7walk" src="${assetUrl}assets/objects/humanoid/character-7-walk.glb"></a-asset-item>
+          <a-mixin id="a_char7" gltf-model="#character7walk" animation-mixer></a-mixin>
+          <a-asset-item id="character8walk" src="${assetUrl}assets/objects/humanoid/character-8-walk.glb"></a-asset-item>
+          <a-mixin id="a_char8" gltf-model="#character8walk" animation-mixer></a-mixin>
   
           <!-- vehicles -->
           <a-asset-item id="trammodel" src="${assetUrl}assets/objects/tram_siemens_avenio.gltf"></a-asset-item>
