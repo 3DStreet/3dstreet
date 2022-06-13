@@ -209,34 +209,26 @@ function createSidewalkClonedVariants (BasePositionX, segmentWidthInMeters, dens
       animationDirection = 'outbound';
     }
     if (animated === 'true') {
+      placedObjectEl.setAttribute('animation__1', 'property', 'position');
+      placedObjectEl.setAttribute('animation__1', 'easing', 'linear');
+      placedObjectEl.setAttribute('animation__1', 'loop', 'false');
+      placedObjectEl.setAttribute('animation__2', 'property', 'position');
+      placedObjectEl.setAttribute('animation__2', 'easing', 'linear');
+      placedObjectEl.setAttribute('animation__2', 'loop', 'true');
       if (animationDirection === 'outbound'){
-        placedObjectEl.setAttribute('animation__1', 'property', 'position');
         placedObjectEl.setAttribute('animation__1', 'to', {z: -length/2});
         placedObjectEl.setAttribute('animation__1', 'dur', duration);
-        placedObjectEl.setAttribute('animation__1', 'easing', 'linear');
-        placedObjectEl.setAttribute('animation__1', 'loop', 'false');
-  
-        placedObjectEl.setAttribute('animation__2', 'property', 'position');
         placedObjectEl.setAttribute('animation__2', 'from', {x: 0, y: 0, z: length/2});
         placedObjectEl.setAttribute('animation__2', 'to', {x: 0, y: 0, z: -length/2});
         placedObjectEl.setAttribute('animation__2', 'delay', duration);
         placedObjectEl.setAttribute('animation__2', 'dur', 2*duration);
-        placedObjectEl.setAttribute('animation__2', 'easing', 'linear');
-        placedObjectEl.setAttribute('animation__2', 'loop', 'true');
       } else {
-        placedObjectEl.setAttribute('animation__1', 'property', 'position');
         placedObjectEl.setAttribute('animation__1', 'to', {z: length/2});
         placedObjectEl.setAttribute('animation__1', 'dur', duration);
-        placedObjectEl.setAttribute('animation__1', 'easing', 'linear');
-        placedObjectEl.setAttribute('animation__1', 'loop', 'false');
-
-        placedObjectEl.setAttribute('animation__2', 'property', 'position');
         placedObjectEl.setAttribute('animation__2', 'from', {x: 0, y: 0, z: -length/2});
         placedObjectEl.setAttribute('animation__2', 'to', {x: 0, y: 0, z: length/2});
         placedObjectEl.setAttribute('animation__2', 'delay', duration);
         placedObjectEl.setAttribute('animation__2', 'dur', 2*duration);
-        placedObjectEl.setAttribute('animation__2', 'easing', 'linear');
-        placedObjectEl.setAttribute('animation__2', 'loop', 'true');
       }
     }
     dividerParentEl.append(placedObjectEl);
