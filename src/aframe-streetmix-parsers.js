@@ -194,9 +194,11 @@ function createSidewalkClonedVariants (BasePositionX, segmentWidthInMeters, dens
   // Randomly generate avatars
   for (let i = 0; i < totalPedestrianNumber; i++) {
     var variantName = (animated == 'true') ? 'a_char' + String(getRandomIntInclusive(1, 8)) : 'char' + String(getRandomIntInclusive(1, 16));
-    var positionXYZString = getRandomArbitrary(xValueRange[0], xValueRange[1]) + ' 0 ' + zValueRange.pop();
+    var xVal = getRandomArbitrary(xValueRange[0], xValueRange[1]);
+    var positionXYZString = xVal + ' 0 ' + zValueRange.pop();
     var placedObjectEl = document.createElement('a-entity');
-    var duration = getRandomArbitrary(50000, 55000);
+    //TODO: set duration smarter
+    var duration = getRandomArbitrary(10000, 15000);
     var animationDirection = 'inbound';
     placedObjectEl.setAttribute('position', positionXYZString);
     placedObjectEl.setAttribute('mixin', variantName);
@@ -218,15 +220,15 @@ function createSidewalkClonedVariants (BasePositionX, segmentWidthInMeters, dens
       if (animationDirection === 'outbound'){
         placedObjectEl.setAttribute('animation__1', 'to', {z: -length/2});
         placedObjectEl.setAttribute('animation__1', 'dur', duration);
-        placedObjectEl.setAttribute('animation__2', 'from', {x: 0, y: 0, z: length/2});
-        placedObjectEl.setAttribute('animation__2', 'to', {x: 0, y: 0, z: -length/2});
+        placedObjectEl.setAttribute('animation__2', 'from', {x: xVal, y: 0, z: length/2});
+        placedObjectEl.setAttribute('animation__2', 'to', {x: xVal, y: 0, z: -length/2});
         placedObjectEl.setAttribute('animation__2', 'delay', duration);
         placedObjectEl.setAttribute('animation__2', 'dur', 2*duration);
       } else {
         placedObjectEl.setAttribute('animation__1', 'to', {z: length/2});
         placedObjectEl.setAttribute('animation__1', 'dur', duration);
-        placedObjectEl.setAttribute('animation__2', 'from', {x: 0, y: 0, z: -length/2});
-        placedObjectEl.setAttribute('animation__2', 'to', {x: 0, y: 0, z: length/2});
+        placedObjectEl.setAttribute('animation__2', 'from', {x: xVal, y: 0, z: -length/2});
+        placedObjectEl.setAttribute('animation__2', 'to', {x: xVal, y: 0, z: length/2});
         placedObjectEl.setAttribute('animation__2', 'delay', duration);
         placedObjectEl.setAttribute('animation__2', 'dur', 2*duration);
       }
