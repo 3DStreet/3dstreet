@@ -195,11 +195,14 @@ function createSidewalkClonedVariants (BasePositionX, segmentWidthInMeters, dens
   for (let i = 0; i < totalPedestrianNumber; i++) {
     var variantName = (animated == 'true') ? 'a_char' + String(getRandomIntInclusive(1, 8)) : 'char' + String(getRandomIntInclusive(1, 16));
     var xVal = getRandomArbitrary(xValueRange[0], xValueRange[1]);
-    var positionXYZString = xVal + ' 0 ' + zValueRange.pop();
+    var zVal = zValueRange.pop();
+    var positionXYZString = xVal + ' 0 ' + zVal;
     var placedObjectEl = document.createElement('a-entity');
-    //TODO: set duration smarter
-    var duration = getRandomArbitrary(10000, 15000);
+    var totalStreetDuration = (length / 1.4) * 1000;
     var animationDirection = 'inbound';
+    var startingDistanceToTravel;
+    var startingDuration;
+
     placedObjectEl.setAttribute('position', positionXYZString);
     placedObjectEl.setAttribute('mixin', variantName);
     // Roughly 50% of traffic will be incoming
@@ -210,6 +213,15 @@ function createSidewalkClonedVariants (BasePositionX, segmentWidthInMeters, dens
       placedObjectEl.setAttribute('rotation', '0 180 0');
       animationDirection = 'outbound';
     }
+
+    if (animationDirection == 'outbound'){
+      startingDistanceToTravel = Math.abs(-length/2 - zVal);
+    } else {
+      startingDistanceToTravel = Math.abs(length/2 - zVal);
+    }
+
+    startingDuration = (startingDistanceToTravel / 1.4) * 1000;
+
     if (animated === 'true') {
       placedObjectEl.setAttribute('animation__1', 'property', 'position');
       placedObjectEl.setAttribute('animation__1', 'easing', 'linear');
@@ -219,18 +231,18 @@ function createSidewalkClonedVariants (BasePositionX, segmentWidthInMeters, dens
       placedObjectEl.setAttribute('animation__2', 'loop', 'true');
       if (animationDirection === 'outbound'){
         placedObjectEl.setAttribute('animation__1', 'to', {z: -length/2});
-        placedObjectEl.setAttribute('animation__1', 'dur', duration);
+        placedObjectEl.setAttribute('animation__1', 'dur', startingDuration);
         placedObjectEl.setAttribute('animation__2', 'from', {x: xVal, y: 0, z: length/2});
         placedObjectEl.setAttribute('animation__2', 'to', {x: xVal, y: 0, z: -length/2});
-        placedObjectEl.setAttribute('animation__2', 'delay', duration);
-        placedObjectEl.setAttribute('animation__2', 'dur', 2*duration);
+        placedObjectEl.setAttribute('animation__2', 'delay', startingDuration);
+        placedObjectEl.setAttribute('animation__2', 'dur', totalStreetDuration);
       } else {
         placedObjectEl.setAttribute('animation__1', 'to', {z: length/2});
-        placedObjectEl.setAttribute('animation__1', 'dur', duration);
+        placedObjectEl.setAttribute('animation__1', 'dur', startingDuration);
         placedObjectEl.setAttribute('animation__2', 'from', {x: xVal, y: 0, z: -length/2});
         placedObjectEl.setAttribute('animation__2', 'to', {x: xVal, y: 0, z: length/2});
-        placedObjectEl.setAttribute('animation__2', 'delay', duration);
-        placedObjectEl.setAttribute('animation__2', 'dur', 2*duration);
+        placedObjectEl.setAttribute('animation__2', 'delay', startingDuration);
+        placedObjectEl.setAttribute('animation__2', 'dur', totalStreetDuration);
       }
     }
     dividerParentEl.append(placedObjectEl);
