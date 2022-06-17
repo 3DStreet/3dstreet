@@ -294,7 +294,17 @@ function createBusElement (isOutbound, positionX) {
   return busParentEl;
 }
 
-function createDriveLaneElement (variantList, positionX, segmentWidthInMeters, length) {
+function createDriveLaneElement (variantList, positionX, segmentWidthInMeters, length, animated = 'false') {
+  var totalStreetDuration = (length / 5) * 1000;
+  var animationDirection = variantList[0];
+  var startingDistanceToTravel;
+  var startingDuration;
+  if (animationDirection == 'outbound'){
+    startingDistanceToTravel = Math.abs(-length/2 - 0);
+  } else {
+    startingDistanceToTravel = Math.abs(length/2 - 0);
+  }
+  startingDuration = (startingDistanceToTravel / 5) * 1000;
   const driveLaneParentEl = document.createElement('a-entity');
 
   const reusableObjectEl = document.createElement('a-entity');
@@ -308,8 +318,33 @@ function createDriveLaneElement (variantList, positionX, segmentWidthInMeters, l
   } else if (variantList[1] === 'truck') {
     reusableObjectEl.setAttribute('mixin', 'box-truck');
   } else if (variantList[1] === 'pedestrian') {
-    return createSidewalkClonedVariants(positionX, segmentWidthInMeters, 'normal', length, variantList[0]);
+    return createSidewalkClonedVariants(positionX, segmentWidthInMeters, 'normal', length, variantList[0],animated);
   }
+
+  if (animated === 'true') {
+    reusableObjectEl.setAttribute('animation__1', 'property', 'position');
+    reusableObjectEl.setAttribute('animation__1', 'easing', 'linear');
+    reusableObjectEl.setAttribute('animation__1', 'loop', 'false');
+    reusableObjectEl.setAttribute('animation__2', 'property', 'position');
+    reusableObjectEl.setAttribute('animation__2', 'easing', 'linear');
+    reusableObjectEl.setAttribute('animation__2', 'loop', 'true');
+    if (animationDirection === 'outbound'){
+      reusableObjectEl.setAttribute('animation__1', 'to', {z: -length/2});
+      reusableObjectEl.setAttribute('animation__1', 'dur', startingDuration);
+      reusableObjectEl.setAttribute('animation__2', 'from', {x: positionX, y: 0, z: length/2});
+      reusableObjectEl.setAttribute('animation__2', 'to', {x: positionX, y: 0, z: -length/2});
+      reusableObjectEl.setAttribute('animation__2', 'delay', startingDuration);
+      reusableObjectEl.setAttribute('animation__2', 'dur', totalStreetDuration);
+    } else {
+      reusableObjectEl.setAttribute('animation__1', 'to', {z: length/2});
+      reusableObjectEl.setAttribute('animation__1', 'dur', startingDuration);
+      reusableObjectEl.setAttribute('animation__2', 'from', {x: positionX, y: 0, z: -length/2});
+      reusableObjectEl.setAttribute('animation__2', 'to', {x: positionX, y: 0, z: length/2});
+      reusableObjectEl.setAttribute('animation__2', 'delay', startingDuration);
+      reusableObjectEl.setAttribute('animation__2', 'dur', totalStreetDuration);
+    }
+  }
+
   driveLaneParentEl.append(reusableObjectEl);
 
   return driveLaneParentEl;
@@ -671,7 +706,8 @@ function processSegments (segments, showStriping, length) {
       // add this stencil stuff to the segment parent
       segmentParentEl.append(reusableObjectStencilsParentEl);
     } else if (segments[i].type === 'drive-lane') {
-      segmentParentEl.append(createDriveLaneElement(variantList, positionX, segmentWidthInMeters, length));
+      var isAnimated = (variantList[2] == 'animated') ? 'true' : 'false';
+      segmentParentEl.append(createDriveLaneElement(variantList, positionX, segmentWidthInMeters, length, isAnimated));
     } else if (segments[i].type === 'food-truck') {
       groundMixinId = 'drive-lane';
       segmentParentEl.append(createFoodTruckElement(variantList, positionX));
