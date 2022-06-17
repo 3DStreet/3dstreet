@@ -179,7 +179,7 @@ function getZPositions (start, end, step) {
   return arr.sort(() => 0.5 - Math.random());
 }
 
-function createSidewalkClonedVariants (BasePositionX, segmentWidthInMeters, density, length, direction = 'random') {
+function createSidewalkClonedVariants (BasePositionX, segmentWidthInMeters, density, length, direction = 'random', animated = 'false') {
   var xValueRange = [-(0.37 * segmentWidthInMeters), (0.37 * segmentWidthInMeters)];
   var zValueRange = getZPositions((-0.5 * length), (0.5 * length), 1.5);
   var totalPedestrianNumber;
@@ -193,16 +193,57 @@ function createSidewalkClonedVariants (BasePositionX, segmentWidthInMeters, dens
   const dividerParentEl = createParentElement(BasePositionX, 'pedestrians-parent');
   // Randomly generate avatars
   for (let i = 0; i < totalPedestrianNumber; i++) {
-    var variantName = 'char' + String(getRandomIntInclusive(1, 16));
-    var positionXYZString = getRandomArbitrary(xValueRange[0], xValueRange[1]) + ' 0 ' + zValueRange.pop();
+    var variantName = (animated == 'true') ? 'a_char' + String(getRandomIntInclusive(1, 8)) : 'char' + String(getRandomIntInclusive(1, 16));
+    var xVal = getRandomArbitrary(xValueRange[0], xValueRange[1]);
+    var zVal = zValueRange.pop();
+    var positionXYZString = xVal + ' 0 ' + zVal;
     var placedObjectEl = document.createElement('a-entity');
+    var totalStreetDuration = (length / 1.4) * 1000;
+    var animationDirection = 'inbound';
+    var startingDistanceToTravel;
+    var startingDuration;
+
     placedObjectEl.setAttribute('position', positionXYZString);
     placedObjectEl.setAttribute('mixin', variantName);
     // Roughly 50% of traffic will be incoming
     if (Math.random() < 0.5 && direction === 'random') {
       placedObjectEl.setAttribute('rotation', '0 180 0');
+      animationDirection = 'outbound';
     } else if (direction === 'outbound') {
       placedObjectEl.setAttribute('rotation', '0 180 0');
+      animationDirection = 'outbound';
+    }
+
+    if (animationDirection == 'outbound'){
+      startingDistanceToTravel = Math.abs(-length/2 - zVal);
+    } else {
+      startingDistanceToTravel = Math.abs(length/2 - zVal);
+    }
+
+    startingDuration = (startingDistanceToTravel / 1.4) * 1000;
+
+    if (animated === 'true') {
+      placedObjectEl.setAttribute('animation__1', 'property', 'position');
+      placedObjectEl.setAttribute('animation__1', 'easing', 'linear');
+      placedObjectEl.setAttribute('animation__1', 'loop', 'false');
+      placedObjectEl.setAttribute('animation__2', 'property', 'position');
+      placedObjectEl.setAttribute('animation__2', 'easing', 'linear');
+      placedObjectEl.setAttribute('animation__2', 'loop', 'true');
+      if (animationDirection === 'outbound'){
+        placedObjectEl.setAttribute('animation__1', 'to', {z: -length/2});
+        placedObjectEl.setAttribute('animation__1', 'dur', startingDuration);
+        placedObjectEl.setAttribute('animation__2', 'from', {x: xVal, y: 0, z: length/2});
+        placedObjectEl.setAttribute('animation__2', 'to', {x: xVal, y: 0, z: -length/2});
+        placedObjectEl.setAttribute('animation__2', 'delay', startingDuration);
+        placedObjectEl.setAttribute('animation__2', 'dur', totalStreetDuration);
+      } else {
+        placedObjectEl.setAttribute('animation__1', 'to', {z: length/2});
+        placedObjectEl.setAttribute('animation__1', 'dur', startingDuration);
+        placedObjectEl.setAttribute('animation__2', 'from', {x: xVal, y: 0, z: -length/2});
+        placedObjectEl.setAttribute('animation__2', 'to', {x: xVal, y: 0, z: length/2});
+        placedObjectEl.setAttribute('animation__2', 'delay', startingDuration);
+        placedObjectEl.setAttribute('animation__2', 'dur', totalStreetDuration);
+      }
     }
     dividerParentEl.append(placedObjectEl);
   }
@@ -651,7 +692,8 @@ function processSegments (segments, showStriping, length) {
       segmentParentEl.append(reusableObjectStencilsParentEl);
     } else if (segments[i].type === 'sidewalk' && variantList[0] !== 'empty') {
       // handles variantString with value sparse, normal, or dense sidewalk
-      segmentParentEl.append(createSidewalkClonedVariants(positionX, segmentWidthInMeters, variantList[0], length));
+      const isAnimated = variantList[1] == 'animated' ? 'true' : 'false';
+      segmentParentEl.append(createSidewalkClonedVariants(positionX, segmentWidthInMeters, variantList[0], length,'random',isAnimated));
     } else if (segments[i].type === 'sidewalk-wayfinding') {
       segmentParentEl.append(createWayfindingElements(positionX));
     } else if (segments[i].type === 'sidewalk-bench') {

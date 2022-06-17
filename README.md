@@ -93,6 +93,18 @@ A default Streetmix.net cross-section view is oriented to show vehicles heading 
 #### Automatic Asset Loading
 When `aframe-street-component.js` is included on a page it automatically loads 3D models and other assets using the A-Frame asset loader by adding them to the scene's `a-assets` block and defining mixins pointing to these assets. The `street` component itself simply places entities with appropriate mixin names. [For more information on the asset loader see this docs link](https://github.com/3DStreet/3dstreet/blob/main/src/README.md#assetsjs).
 
+### Additional variant strings
+
+- The word `animated` can be added to the variantString of the type `sidewalk` to make the pedestrians animated. Here is an example of how this can be implemented:
+```
+{
+  "width": 9,
+  "variantString": "normal|animated",
+  "type": "sidewalk"
+}
+```
+Please see `animated.html` for a demo.
+
 ### List of Supported Segment Types
 
 3DStreet does not yet support all of the street `segments` found in Streetmix. You may find some segments don't display at all or are missing 3D elements. Here is a complete list:
