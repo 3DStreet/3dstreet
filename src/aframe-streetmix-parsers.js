@@ -179,7 +179,7 @@ function getZPositions (start, end, step) {
   return arr.sort(() => 0.5 - Math.random());
 }
 
-function createSidewalkClonedVariants (BasePositionX, segmentWidthInMeters, density, length, direction = 'random', animated = 'false') {
+function createSidewalkClonedVariants (BasePositionX, segmentWidthInMeters, density, length, direction = 'random', animated = false) {
   var xValueRange = [-(0.37 * segmentWidthInMeters), (0.37 * segmentWidthInMeters)];
   var zValueRange = getZPositions((-0.5 * length), (0.5 * length), 1.5);
   var totalPedestrianNumber;
@@ -193,7 +193,7 @@ function createSidewalkClonedVariants (BasePositionX, segmentWidthInMeters, dens
   const dividerParentEl = createParentElement(BasePositionX, 'pedestrians-parent');
   // Randomly generate avatars
   for (let i = 0; i < totalPedestrianNumber; i++) {
-    var variantName = (animated === 'true') ? 'a_char' + String(getRandomIntInclusive(1, 8)) : 'char' + String(getRandomIntInclusive(1, 16));
+    var variantName = (animated === true) ? 'a_char' + String(getRandomIntInclusive(1, 8)) : 'char' + String(getRandomIntInclusive(1, 16));
     var xVal = getRandomArbitrary(xValueRange[0], xValueRange[1]);
     var zVal = zValueRange.pop();
     var positionXYZString = xVal + ' 0 ' + zVal;
@@ -222,7 +222,7 @@ function createSidewalkClonedVariants (BasePositionX, segmentWidthInMeters, dens
 
     startingDuration = (startingDistanceToTravel / 1.4) * 1000;
 
-    if (animated === 'true') {
+    if (animated) {
       placedObjectEl.setAttribute('animation__1', 'property', 'position');
       placedObjectEl.setAttribute('animation__1', 'easing', 'linear');
       placedObjectEl.setAttribute('animation__1', 'loop', 'false');
@@ -294,7 +294,7 @@ function createBusElement (isOutbound, positionX) {
   return busParentEl;
 }
 
-function createDriveLaneElement (variantList, positionX, segmentWidthInMeters, length, animated = 'false') {
+function createDriveLaneElement (variantList, positionX, segmentWidthInMeters, length, animated = false) {
   var speed = 10; // meters per second
   var totalStreetDuration = (length / speed) * 1000; // time in milliseconds
   var animationDirection = variantList[0];
@@ -322,7 +322,7 @@ function createDriveLaneElement (variantList, positionX, segmentWidthInMeters, l
     return createSidewalkClonedVariants(positionX, segmentWidthInMeters, 'normal', length, variantList[0], animated);
   }
 
-  if (animated === 'true') {
+  if (animated) {
     reusableObjectEl.setAttribute('animation__1', 'property', 'position');
     reusableObjectEl.setAttribute('animation__1', 'easing', 'linear');
     reusableObjectEl.setAttribute('animation__1', 'loop', 'false');
@@ -707,7 +707,7 @@ function processSegments (segments, showStriping, length) {
       // add this stencil stuff to the segment parent
       segmentParentEl.append(reusableObjectStencilsParentEl);
     } else if (segments[i].type === 'drive-lane') {
-      var isAnimated = (variantList[2] === 'animated') ? 'true' : 'false';
+      var isAnimated = (variantList[2] === 'animated') ? true : false;
       segmentParentEl.append(createDriveLaneElement(variantList, positionX, segmentWidthInMeters, length, isAnimated));
     } else if (segments[i].type === 'food-truck') {
       groundMixinId = 'drive-lane';
@@ -729,7 +729,7 @@ function processSegments (segments, showStriping, length) {
       segmentParentEl.append(reusableObjectStencilsParentEl);
     } else if (segments[i].type === 'sidewalk' && variantList[0] !== 'empty') {
       // handles variantString with value sparse, normal, or dense sidewalk
-      const isAnimated = variantList[1] === 'animated' ? 'true' : 'false';
+      const isAnimated = variantList[1] === 'animated' ? true : false;
       segmentParentEl.append(createSidewalkClonedVariants(positionX, segmentWidthInMeters, variantList[0], length, 'random', isAnimated));
     } else if (segments[i].type === 'sidewalk-wayfinding') {
       segmentParentEl.append(createWayfindingElements(positionX));
