@@ -295,7 +295,8 @@ function createBusElement (isOutbound, positionX) {
 }
 
 function createDriveLaneElement (variantList, positionX, segmentWidthInMeters, length, animated = 'false') {
-  var totalStreetDuration = (length / 5) * 1000;
+  var speed = 10; // meters per second
+  var totalStreetDuration = (length / speed) * 1000; // time in milliseconds
   var animationDirection = variantList[0];
   var startingDistanceToTravel;
   var startingDuration;
@@ -304,7 +305,7 @@ function createDriveLaneElement (variantList, positionX, segmentWidthInMeters, l
   } else {
     startingDistanceToTravel = Math.abs(length/2 - 0);
   }
-  startingDuration = (startingDistanceToTravel / 5) * 1000;
+  startingDuration = (startingDistanceToTravel / speed) * 1000;
   const driveLaneParentEl = document.createElement('a-entity');
 
   const reusableObjectEl = document.createElement('a-entity');
