@@ -187,6 +187,9 @@
           <a-mixin id="temporary-jersey-barrier-plastic" scale="1 1 1" rotation="0 0 0" gltf-part-plus="src: #dividers; part: jersey-barrier-plastic"></a-mixin>
           <a-mixin id="temporary-jersey-barrier-concrete" scale="1 1 1" rotation="0 0 0" gltf-part-plus="src: #dividers; part: jersey-barrier-concrete"></a-mixin>
 
+          <!-- sky -->
+          <img id="sky" src="${assetUrl}assets/CGSkies_0343_doubled_2048.jpg" crossorigin="anonymous" />
+
           <!-- grounds -->
           <img id="grass-texture" src="${assetUrl}assets/materials/TexturesCom_Grass0052_1_seamless_S.jpg" crossorigin="anonymous">
           <img id="parking-lot-texture" src="${assetUrl}assets/materials/TexturesCom_Roads0111_1_seamless_S.jpg" crossorigin="anonymous">
