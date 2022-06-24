@@ -63,13 +63,8 @@
           <a-entity id="leftHand" hand-controls="hand: left; handModelStyle: lowPoly; color: #ccffcc" teleport-controls="cameraRig: #cameraRig; button: trigger"></a-entity>
           <a-entity id="rightHand" hand-controls="hand: right; handModelStyle: lowPoly; color: #ccffcc" teleport-controls="cameraRig: #cameraRig; button: trigger"></a-entity>
         </a-entity>
-    
-        <a-entity light="type: ambient; color: #FFF; intensity: 2"></a-entity>
-        <a-entity light="type: directional; color: #FFF; intensity: 0.6" position="0.5 1 -1"></a-entity>
-  
-        <a-ocean-plane height="100" width="100" position="0 -1 0" material="envMap: #skycube;"></a-ocean-plane>
-  
-        <a-entity id="skybox" cubemap="folder: assets/images/skybox/"></a-entity>
+
+        <a-entity street-environment="preset: night;"></a-entity>
   
         <a-entity id="street-parent" street streetmix-loader set-loader-from-hash="defaultURL: https://streetmix.net/kfarr/3"></a-entity>
       </a-scene>
