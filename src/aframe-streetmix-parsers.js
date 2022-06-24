@@ -527,6 +527,25 @@ function createSegmentElement (scaleX, positionX, positionY, rotationY, mixinId,
 
   segmentEl.setAttribute('rotation', '270 ' + rotationY + ' 0');
   segmentEl.setAttribute('mixin', mixinId);
+  //TODO: create a new mixin object that acts as a curb
+  if (mixinId == 'sidewalk'){
+    alert('sidewalk');
+    alert(scaleX)
+    var leftCurb = document.createElement('a-entity');
+    leftCurb.setAttribute('id', "left curb");
+    leftCurb.setAttribute('scale', {x: 0.25 / (3 * scaleX)});
+    leftCurb.setAttribute('position', {x: -(scaleX*3)*0.5, z: -(0.25 / (3 * scaleX))*0.5*3});
+    leftCurb.setAttribute('rotation', {y: -90});
+    leftCurb.setAttribute('mixin', mixinId);
+    segmentEl.appendChild(leftCurb);
+    var rightCurb = document.createElement('a-entity');
+    rightCurb.setAttribute('id', "left curb");
+    rightCurb.setAttribute('scale', {x: 0.25 / (3 * scaleX)});
+    rightCurb.setAttribute('position', {x: (scaleX*3)*0.5, z: -(0.25 / (3 * scaleX))*0.5*3});
+    rightCurb.setAttribute('rotation', {y: 90});
+    rightCurb.setAttribute('mixin', mixinId);
+    segmentEl.appendChild(rightCurb);
+  }
   return segmentEl;
 }
 
