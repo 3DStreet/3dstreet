@@ -121,11 +121,32 @@
           street="length: 150"
           streetmix-loader="streetmixStreetURL: https://streetmix.net/kfarr/82/16th-st-harrison-st-sf-ca; showBuildings: false;"
         ></a-entity>
-        <a-entity
-          id="intersection"
-          position="-9.917 -0.3 -4.057"
-          intersection="dimensions: 27.5 24.384;northeastcurb: 4.572 4.572;southwestcurb: 4.572 4.572;southeastcurb: 4.572 4.572;northwestcurb: 4.572 4.572;trafficsignal: 1 1 1 1;crosswalk: 1 1 1 1"
-        ></a-entity>
+
+        <a-entity id="intersection" position="-9.917 0.591 -4.057">
+          <a-entity
+            intersection="dimensions: 27.5 24.384;northeastcurb: 4.572 4.572;southwestcurb: 4.572 4.572;southeastcurb: 4.572 4.572;northwestcurb: 4.572 4.572;trafficsignal: 1 1 1 1;crosswalk: 1 1 1 1"
+          ></a-entity>
+          <a-entity class="zoneNW" position="10.482 0.04 8.788">
+            <a-entity class="striping" mixin="stencils painted-safety-zone" rotation="-90 180 90" ></a-entity>
+            <a-entity mixin="safehit" position="-3.481 0 -1.766"></a-entity>
+            <a-entity mixin="safehit" position="-2 0 -3.239"></a-entity>
+          </a-entity>
+          <a-entity class="zoneSW" position="11.36 0.04 -9.028" rotation="0 90 0">
+            <a-entity class="striping" mixin="stencils painted-safety-zone" rotation="-90 180 90" ></a-entity>
+            <a-entity mixin="safehit" position="-3.481 0 -1.766"></a-entity>
+            <a-entity mixin="safehit" position="-2 0 -3.239"></a-entity>
+          </a-entity>
+          <a-entity class="zoneSE" position="-9 0.04 -9.028" rotation="0 180 0">
+            <a-entity class="striping" mixin="stencils painted-safety-zone" rotation="-90 180 90" ></a-entity>
+            <a-entity mixin="safehit" position="-3.481 0 -1.766"></a-entity>
+            <a-entity mixin="safehit" position="-2 0 -3.239"></a-entity>
+          </a-entity>
+          <a-entity class="zoneNE" position="-10 0.04 8.788" rotation="0 270 0">
+            <a-entity class="striping" mixin="stencils painted-safety-zone" rotation="-90 180 90" ></a-entity>
+            <a-entity mixin="safehit" position="-3.481 0 -1.766"></a-entity>
+            <a-entity mixin="safehit" position="-2 0 -3.239"></a-entity>
+          </a-entity>
+        </a-entity>
 
         <a-entity
           position="-9.23383 0.591 -31.340"
@@ -142,7 +163,6 @@
           street="length: 30"
           streetmix-loader="streetmixStreetURL: https://streetmix.net/scott/31/south-van-ness-idea-short-term; showBuildings: false;"
         ></a-entity>
-        <a-entity mixin="stencils painted-safety-zone" rotation="-90 180 90" position="0.499 0.36 4.813"></a-entity>
         <a-entity
           id="cesium-ion-scan"
           position="-16.246 12.7 1.748"
