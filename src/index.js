@@ -134,7 +134,7 @@ AFRAME.registerComponent('intersection', {
 
     this.el.setAttribute('position', { x: positionArray[0], y: positionArray[1], z: positionArray[2] });
     this.el.setAttribute('rotation', '-90 0 0');
-    this.el.setAttribute('material', 'src: ./assets/materials/TexturesCom_AsphaltDamaged0057_1_seamless_S.jpg');
+    this.el.setAttribute('material', 'src: #asphalt-texture; repeat:5 5; roughness:1');
 
     const sd1 = document.createElement('a-entity');
     sd1.setAttribute('position', { x: dimensionsArray[0] / 2 - sidewalkArray[0] / 2, z: 0.04 });
