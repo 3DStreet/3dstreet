@@ -71,7 +71,7 @@
           <!-- vehicles -->
           <a-asset-item id="trammodel" src="${assetUrl}assets/objects/tram_siemens_avenio.gltf"></a-asset-item>
           <a-asset-item id="trolleymodel" src="${assetUrl}assets/objects/godarvilletram.gltf"></a-asset-item>
-          <a-asset-item id="xd40" src="${assetUrl}assets/objects/bus/xd40-draco.glb"></a-asset-item>
+          <a-asset-item id="xd40" src="${assetUrl}assets/objects/bus-new-flyer-xd40.glb"></a-asset-item>
           <a-asset-item id="vehicles" src="${assetUrl}assets/objects/vehicles.glb"></a-asset-item>
           <a-mixin id="box-truck" gltf-part-plus="src: #vehicles; part: box-truck"></a-mixin>
           <a-mixin id="city-bus" gltf-part-plus="src: #vehicles; part: city-bus"></a-mixin>
@@ -187,6 +187,10 @@
           <a-mixin id="temporary-traffic-cone" scale="1 1 1" rotation="0 0 0" gltf-part-plus="src: #dividers; part: traffic-cone"></a-mixin>
           <a-mixin id="temporary-jersey-barrier-plastic" scale="1 1 1" rotation="0 0 0" gltf-part-plus="src: #dividers; part: jersey-barrier-plastic"></a-mixin>
           <a-mixin id="temporary-jersey-barrier-concrete" scale="1 1 1" rotation="0 0 0" gltf-part-plus="src: #dividers; part: jersey-barrier-concrete"></a-mixin>
+
+          <!-- sky -->
+          <img id="sky" src="${assetUrl}assets/CGSkies_0343_doubled_2048.jpg" crossorigin="anonymous" />
+          <img id="sky-night" src="${assetUrl}assets/images/AdobeStock_286725174-min.jpeg" crossorigin="anonymous" />
 
           <!-- grounds -->
           <img id="grass-texture" src="${assetUrl}assets/materials/TexturesCom_Grass0052_1_seamless_S.jpg" crossorigin="anonymous">

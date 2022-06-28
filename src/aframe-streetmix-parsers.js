@@ -286,7 +286,7 @@ function createBusElement (isOutbound, positionX) {
   const rotationY = isOutbound * 90;
 
   const busObjectEl = document.createElement('a-entity');
-  busObjectEl.setAttribute('position', positionX + ' 1.4 0');
+  busObjectEl.setAttribute('position', positionX + ' 0 0');
   busObjectEl.setAttribute('rotation', '0 ' + rotationY + ' 0');
   busObjectEl.setAttribute('mixin', 'bus');
   busParentEl.append(busObjectEl);

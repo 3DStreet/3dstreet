@@ -305,3 +305,46 @@ AFRAME.registerComponent('intersection', {
     }
   }
 });
+
+AFRAME.registerComponent('street-environment', {
+  schema: {
+    preset: { type: 'string', default: 'day', oneOf: ['day', 'night'] }
+  },
+  init: function () {
+    var data = this.data;
+    var el = this.el;
+    if (data.preset === 'night') {
+      const light = document.createElement('a-entity');
+      light.setAttribute('id', 'light');
+      light.setAttribute('light', { type: 'ambient', color: '#FFF', intensity: 0.5 });
+      el.appendChild(light);
+      const light2 = document.createElement('a-entity');
+      light2.setAttribute('id', 'light');
+      light2.setAttribute('position', { x: 0.5, y: 1, z: -1 });
+      light2.setAttribute('light', { type: 'directional', color: '#FFF', intensity: 0.15 });
+      el.appendChild(light2);
+      const sky = document.createElement('a-sky');
+      sky.setAttribute('id', 'sky');
+      sky.setAttribute('color', '#444');
+      sky.setAttribute('src', '#sky-night');
+
+      el.appendChild(sky);
+    } else { // day
+      // TODO: create a parent with children
+      const light = document.createElement('a-entity');
+      light.setAttribute('id', 'light');
+      light.setAttribute('light', { type: 'ambient', color: '#FFF', intensity: 2 });
+      el.appendChild(light);
+      const light2 = document.createElement('a-entity');
+      light2.setAttribute('id', 'light');
+      light2.setAttribute('position', { x: 0.5, y: 1, z: -1 });
+      light2.setAttribute('light', { type: 'directional', color: '#FFF', intensity: 0.6 });
+      el.appendChild(light2);
+      const sky = document.createElement('a-sky');
+      sky.setAttribute('id', 'sky');
+      sky.setAttribute('src', '#sky');
+      sky.setAttribute('rotation', '0 255 0');
+      el.appendChild(sky);
+    }
+  }
+});
