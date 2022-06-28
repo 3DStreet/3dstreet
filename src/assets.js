@@ -163,6 +163,7 @@
           <a-mixin id="word-loading-small" atlas-uvs="totalRows: 8; totalColumns: 4; column: 4; row: 1" scale="2.75 1.75 2.75"></a-mixin>
           <a-mixin id="perpendicular-stalls" atlas-uvs="totalRows: 4; totalColumns: 8; column: 5; row: 4" scale="5 10 5"></a-mixin>
           <a-mixin id="parking-t" atlas-uvs="totalRows: 8; totalColumns: 16; column: 4; row: 7" scale="1.5 2 2"></a-mixin>
+          <a-mixin id="painted-safety-zone" atlas-uvs="totalRows: 4; totalColumns: 4; column: 4; row: 4" scale="8 8 8"></a-mixin>
   
           <!-- vehicles -->
           <a-mixin id="bus" anisotropy gltf-model="#xd40" scale="1.55 1.55 1.55"></a-mixin>
