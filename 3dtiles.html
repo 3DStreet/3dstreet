@@ -6,155 +6,179 @@
 
     <!-- user controls -->
     <script src="https://raw.githack.com/fernandojsg/aframe-teleport-controls/master/dist/aframe-teleport-controls.min.js"></script>
-    <script src="src/lib/aframe-orbit-controls.min.js"></script>
-
-    <!-- ocean, ground, sky -->
-    <script src="src/components/ocean-plane.js"></script>
-    <script src="src/lib/aframe-cubemap-component.js"></script>
+    <script src="https://github.3dstreet.org/src/lib/aframe-orbit-controls.min.js"></script>
 
     <!-- 3dtiles -->
     <script src="https://cdn.jsdelivr.net/npm/three@0.133.0/examples/js/utils/WorkerPool.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/three@0.133.0/examples/js/loaders/KTX2Loader.js"></script>
-    <!-- <script src="https://cdn.jsdelivr.net/npm/aframe-loader-3dtiles-component/dist/aframe-loader-3dtiles-component.min.js"></script> -->
-
-    <script src="https://cdn.jsdelivr.net/gh/nytimes/aframe-loader-3dtiles-component@aframe13/dist/aframe-loader-3dtiles-component.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/aframe-loader-3dtiles-component/dist/aframe-loader-3dtiles-component.min.js"></script>
 
     <title>3DStreet</title>
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <link rel="icon" type="image/x-icon" href="assets/ui_assets/favicon.ico">
-    <link rel="stylesheet" href="src/style.css">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link rel="icon" type="image/x-icon" href="https://github.3dstreet.org/assets/ui_assets/favicon.ico" />
+    <link rel="stylesheet" href="https://github.3dstreet.org/src/style.css" />
   </head>
 
   <body>
     <header class="header">
-        <div class="header-wrapper">
-            <div class="logo-wrapper">
-                <a class="logo-link" href="https://www.3dstreet.org/" id="3dstreet-logo-length">
-                    <img class="logo-img" alt="3DStreet Viewer" src="assets/ui_assets/logo-viewer.svg">
-                </a>
-            </div>
+      <div class="header-wrapper">
+        <div class="logo-wrapper">
+          <a
+            class="logo-link"
+            href="https://www.3dstreet.org/"
+            id="3dstreet-logo-length"
+          >
+            <img
+              class="logo-img"
+              alt="3DStreet Viewer"
+              src="https://github.3dstreet.org/assets/ui_assets/logo-viewer.svg"
+            />
+          </a>
+        </div>
+      </div>
     </header>
 
     <div class="right-fixed">
       <ul class="right-menu">
-        <li onclick="screenshot()"> <a class="camera"  href="#"> <span> Capture image as PNG </span> <img src="assets/ui_assets/camera-icon.svg"> </a></li>
-        <li> <a id="custom-enter-vr-button" class="vr" href="#"> <span class="vr">Enter VR mode</span> <img src="assets/ui_assets/vr-icon.svg"> </a></li>
+        <li onclick="screenshot()">
+          <a class="camera" href="#">
+            <span> Capture image as PNG </span>
+            <img src="https://github.3dstreet.org/assets/ui_assets/camera-icon.svg" />
+          </a>
+        </li>
+        <li>
+          <a id="custom-enter-vr-button" class="vr" href="#">
+            <span class="vr">Enter VR mode</span>
+            <img src="https://github.3dstreet.org/assets/ui_assets/vr-icon.svg" />
+          </a>
+        </li>
       </ul>
     </div>
 
     <script>
       function screenshot() {
-        AFRAME.scenes[0].setAttribute('screenshot','width',AFRAME.scenes[0].canvas.width)
-        AFRAME.scenes[0].setAttribute('screenshot','height',AFRAME.scenes[0].canvas.height)
-        document.querySelector('a-scene').components.screenshot.capture('perspective');
+        AFRAME.scenes[0].setAttribute(
+          "screenshot",
+          "width",
+          AFRAME.scenes[0].canvas.width
+        );
+        AFRAME.scenes[0].setAttribute(
+          "screenshot",
+          "height",
+          AFRAME.scenes[0].canvas.height
+        );
+        document
+          .querySelector("a-scene")
+          .components.screenshot.capture("perspective");
       }
     </script>
 
     <div class="content">
-      <a-scene vr-mode-ui="enterVRButton: #custom-enter-vr-button;" renderer="colorManagement: true; physicallyCorrectLights: true;" gltf-model="dracoDecoderPath: https://www.gstatic.com/draco/versioned/decoders/1.4.3/">
+      <a-scene
+        vr-mode-ui="enterVRButton: #custom-enter-vr-button;"
+        renderer="colorManagement: true; physicallyCorrectLights: true;"
+        gltf-model="dracoDecoderPath: https://www.gstatic.com/draco/versioned/decoders/1.4.3/"
+      >
         <a-assets>
           <streetmix-assets url="./"></streetmix-assets>
-          <a-cubemap id="skycube">
-            <img src="assets/images/skybox/posx.jpg">
-            <img src="assets/images/skybox/negx.jpg">
-            <img src="assets/images/skybox/posy.jpg">
-            <img src="assets/images/skybox/negy.jpg">
-            <img src="assets/images/skybox/posz.jpg">
-            <img src="assets/images/skybox/negz.jpg">
-          </a-cubemap>
         </a-assets>
-    
         <a-entity id="cameraRig">
-          <a-entity id="camera" camera="far: 1000" wasd-controls="enabled: false" orbit-controls="autoRotate: true;autoRotateSpeed:0.01;target: 0 0 0;initialPosition:0 4 15;minDistance:3;maxDistance:100;enableKeys:false"></a-entity>
-          <a-entity id="leftHand" hand-controls="hand: left; handModelStyle: lowPoly; color: #ccffcc" teleport-controls="cameraRig: #cameraRig; button: trigger"></a-entity>
-          <a-entity id="rightHand" hand-controls="hand: right; handModelStyle: lowPoly; color: #ccffcc" teleport-controls="cameraRig: #cameraRig; button: trigger"></a-entity>
+          <a-entity
+            id="camera"
+            camera="far: 1000"
+            wasd-controls="enabled: false"
+            orbit-controls="autoRotate: true;autoRotateSpeed:0.01;target: 0 0 0;initialPosition:0 4 15;minDistance:3;maxDistance:100;enableKeys:false"
+          ></a-entity>
+          <a-entity
+            id="leftHand"
+            hand-controls="hand: left; handModelStyle: lowPoly; color: #ccffcc"
+            teleport-controls="cameraRig: #cameraRig; button: trigger"
+          ></a-entity>
+          <a-entity
+            id="rightHand"
+            hand-controls="hand: right; handModelStyle: lowPoly; color: #ccffcc"
+            teleport-controls="cameraRig: #cameraRig; button: trigger"
+          ></a-entity>
         </a-entity>
-    
+
         <a-entity light="type: ambient; color: #FFF; intensity: 2"></a-entity>
-        <a-entity light="type: directional; color: #FFF; intensity: 0.6" position="0.5 1 -1"></a-entity>
-  
-        <!-- <a-ocean-plane height="100" width="100" position="0 -10 0" material="envMap: #skycube;"></a-ocean-plane> -->
-  
-        <!-- <a-entity id="skybox" cubemap="folder: assets/images/skybox/"></a-entity> -->
+        <a-entity
+          light="type: directional; color: #FFF; intensity: 0.6"
+          position="0.5 1 -1"
+        ></a-entity>
 
         <a-entity
-          position="-98.34 0.591 -4.17918"
-          rotation="0 90 0"
-          id="west_street"
-          street="length: 150"
-          streetmix-loader="streetmixStreetURL: https://streetmix.net/kfarr/82/16th-st-harrison-st-sf-ca; showBuildings: false;"
-        ></a-entity>
-        <a-entity
-          position="78.955 5.37 -4.17918"
-          rotation="-3.63 90 0"
+          position="-96.980 0.591 -4.17918"
+          rotation="0 -90 0"
           id="east_street"
           street="length: 150"
           streetmix-loader="streetmixStreetURL: https://streetmix.net/kfarr/82/16th-st-harrison-st-sf-ca; showBuildings: false;"
         ></a-entity>
-        <a-entity id="intersection" position="-9.620 0.591 -4.17918" intersection="dimensions: 27.5 24.384;northeastcurb: 4.572 4.572;southwestcurb: 4.572 4.572;southeastcurb: 4.572 4.572;northwestcurb: 4.572 4.572;trafficsignal: 1 1 1 1;crosswalk: 1 1 1 1"></a-entity>
-        
+        <a-entity
+          position="78.165 0.591 -4.17918"
+          rotation="0 -90 0"
+          id="west_street"
+          street="length: 150"
+          streetmix-loader="streetmixStreetURL: https://streetmix.net/kfarr/82/16th-st-harrison-st-sf-ca; showBuildings: false;"
+        ></a-entity>
+
+        <a-entity id="intersection" position="-9.917 0.591 -4.057">
+          <a-entity
+            intersection="dimensions: 27.5 24.384;northeastcurb: 4.572 4.572;southwestcurb: 4.572 4.572;southeastcurb: 4.572 4.572;northwestcurb: 4.572 4.572;trafficsignal: 1 1 1 1;crosswalk: 1 1 1 1"
+          ></a-entity>
+          <a-entity class="zoneNW" position="10.482 0.04 8.788">
+            <a-entity class="striping" mixin="stencils painted-safety-zone" rotation="-90 180 90" ></a-entity>
+            <a-entity mixin="safehit" position="-3.481 0 -1.766"></a-entity>
+            <a-entity mixin="safehit" position="-2 0 -3.239"></a-entity>
+          </a-entity>
+          <a-entity class="zoneSW" position="11.36 0.04 -9.028" rotation="0 90 0">
+            <a-entity class="striping" mixin="stencils painted-safety-zone" rotation="-90 180 90" ></a-entity>
+            <a-entity mixin="safehit" position="-3.481 0 -1.766"></a-entity>
+            <a-entity mixin="safehit" position="-2 0 -3.239"></a-entity>
+          </a-entity>
+          <a-entity class="zoneSE" position="-9 0.04 -9.028" rotation="0 180 0">
+            <a-entity class="striping" mixin="stencils painted-safety-zone" rotation="-90 180 90" ></a-entity>
+            <a-entity mixin="safehit" position="-3.481 0 -1.766"></a-entity>
+            <a-entity mixin="safehit" position="-2 0 -3.239"></a-entity>
+          </a-entity>
+          <a-entity class="zoneNE" position="-10 0.04 8.788" rotation="0 270 0">
+            <a-entity class="striping" mixin="stencils painted-safety-zone" rotation="-90 180 90" ></a-entity>
+            <a-entity mixin="safehit" position="-3.481 0 -1.766"></a-entity>
+            <a-entity mixin="safehit" position="-2 0 -3.239"></a-entity>
+          </a-entity>
+        </a-entity>
+
+        <a-entity
+          position="-9.23383 0.591 -31.340"
+          rotation="0 0 0"
+          id="south_street"
+          street="length: 30"
+          streetmix-loader="streetmixStreetURL: https://streetmix.net/scott/31/south-van-ness-idea-short-term; showBuildings: false;"
+        ></a-entity>
+
+        <a-entity
+          position="-9.23383 0.591 23.009"
+          rotation="0 180 0"
+          id="north_street"
+          street="length: 30"
+          streetmix-loader="streetmixStreetURL: https://streetmix.net/scott/31/south-van-ness-idea-short-term; showBuildings: false;"
+        ></a-entity>
         <a-entity
           id="cesium-ion-scan"
-          position="13.248 9.680 10.140"
-          rotation="-90 -3.79 0"
-          loader-3dtiles="url: https://assets.cesium.com/1054529/tileset.json?v=3;
+          position="-16.246 12.7 1.748"
+          rotation="-90 0 -0.82"
+          loader-3dtiles="url: https://assets.cesium.com/1149944/tileset.json?v=3;
         cesiumIONToken: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJqdGkiOiI3YTYyYTIzNS0yODg0LTRhZWQtYjYxNS1iNWNhZGZhNmY3OTgiLCJpZCI6MTcwNjEsInNjb3BlcyI6WyJhc3IiLCJnYyJdLCJpYXQiOjE1NzE1OTcxNzZ9.R8mKo-NizcmOjCN_4dQyd5xO4X655CZZMXa9B5sECyU;"
-          scale="1 1 1"
+          scale="1.33 1.33 1.33"
         ></a-entity>
-        <!-- <a-entity id="street-parent" street streetmix-loader set-loader-from-hash="defaultURL: https://streetmix.net/kfarr/3"></a-entity> -->
+
       </a-scene>
     </div>
 
-    <div class="location" >
-        <p id="location"><img src="assets/ui_assets/location.svg"> </p> 
+    <div class="location">
+      <p id="location"><img src="https://github.3dstreet.org/assets/ui_assets/location.svg" />16th and South Van Ness, San Francisco, CA</p>
     </div>
-    <script>
-      var locationString = (location.href.split("#")[1] != undefined) ? location.href.split("#")[1] : "https://streetmix.net/kfarr/3";
-      document.getElementById("location").innerHTML += locationString;
-    </script>
+
   </body>
-  <script>
-    AFRAME.registerComponent('set-loader-from-hash', {
-      dependencies: ['streetmix-loader'],
-      schema: {
-        defaultURL: { type: 'string' }
-      },
-      init: function () {
-        // get hash from window
-        const streetURL = window.location.hash.substring(1);
-        if (streetURL !== undefined && streetURL.length > 0) {
-          console.log('[set-loader-from-hash]','Using URL from hash', streetURL)
-          this.el.setAttribute('streetmix-loader', 'streetmixStreetURL', streetURL);
-        } else {
-          console.log('[set-loader-from-hash]','Using default URL', this.data.defaultURL)
-          this.el.setAttribute('streetmix-loader', 'streetmixStreetURL', this.data.defaultURL);
-        }
-      }
-    });
-
-    window.onload = function () {
-      if (window.location.hash.substring(1).length === 0) window.location.hash = '#https://streetmix.net/kfarr/3';
-      document.querySelector('#inputUrl').value = window.location.hash.substring(1);
-    }
-
-    function startAudio() {
-      // set sounds enabled in global state
-      state.sounds.enabled = true;
-
-      // iterate through all entities with .playme class and start them playing
-      var entities = document.querySelectorAll('.playme'), i;
-      for (i = 0; i < entities.length; ++i) {
-        entities[i].components.sound.playSound();
-      }
-
-      // set 2D DOM toolbar volume icon to green to indicate state
-      document.getElementById("audio-icon").setAttribute("class","fa fa-volume-up");
-      document.getElementById("audio-icon").setAttribute("style","color: lightgreen");
-    }
-
-    document.querySelector('a-scene').addEventListener('enter-vr', function () {
-      console.log("ENTERED VR");
-      // startAudio();
-    });
-  </script>
+ 
 </html>
