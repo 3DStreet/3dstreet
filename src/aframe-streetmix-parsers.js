@@ -529,8 +529,6 @@ function createSegmentElement (scaleX, positionX, positionY, rotationY, mixinId,
 
   //TODO: create a new mixin object that acts as a curb
   if (mixinId == 'sidewalk'){
-    alert(scaleX*3*3.28084*0.5);
-    alert(positionX);
     var leftCurb = document.createElement('a-entity');
     leftCurb.setAttribute('id', "left curb");
     //-(scaleX*3*3.28084)*0.5
