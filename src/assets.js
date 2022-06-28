@@ -71,7 +71,7 @@
           <!-- vehicles -->
           <a-asset-item id="trammodel" src="${assetUrl}assets/objects/tram_siemens_avenio.gltf"></a-asset-item>
           <a-asset-item id="trolleymodel" src="${assetUrl}assets/objects/godarvilletram.gltf"></a-asset-item>
-          <a-asset-item id="xd40" src="${assetUrl}assets/objects/bus/xd40-draco.glb"></a-asset-item>
+          <a-asset-item id="xd40" src="${assetUrl}assets/objects/bus-new-flyer-xd40.glb"></a-asset-item>
           <a-asset-item id="vehicles" src="${assetUrl}assets/objects/vehicles.glb"></a-asset-item>
           <a-mixin id="box-truck" gltf-part-plus="src: #vehicles; part: box-truck"></a-mixin>
           <a-mixin id="city-bus" gltf-part-plus="src: #vehicles; part: city-bus"></a-mixin>
