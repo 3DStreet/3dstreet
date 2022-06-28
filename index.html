@@ -48,14 +48,6 @@
       <a-scene vr-mode-ui="enterVRButton: #custom-enter-vr-button;" renderer="colorManagement: true; highRefreshRate: true; foveationLevel: 3; physicallyCorrectLights: true; logarithmicDepthBuffer: false;" fogoff="type: linear; color: #D5C69B; far: 200" gltf-model="dracoDecoderPath: https://www.gstatic.com/draco/versioned/decoders/1.4.3/">
         <a-assets>
           <streetmix-assets url="./"></streetmix-assets>
-          <a-cubemap id="skycube">
-            <img src="assets/images/skybox/posx.jpg">
-            <img src="assets/images/skybox/negx.jpg">
-            <img src="assets/images/skybox/posy.jpg">
-            <img src="assets/images/skybox/negy.jpg">
-            <img src="assets/images/skybox/posz.jpg">
-            <img src="assets/images/skybox/negz.jpg">
-          </a-cubemap>
         </a-assets>
     
         <a-entity id="cameraRig">
@@ -64,7 +56,7 @@
           <a-entity id="rightHand" hand-controls="hand: right; handModelStyle: lowPoly; color: #ccffcc" teleport-controls="cameraRig: #cameraRig; button: trigger"></a-entity>
         </a-entity>
 
-        <a-entity street-environment="preset: night;"></a-entity>
+        <a-entity street-environment="preset: day;"></a-entity>
   
         <a-entity id="street-parent" street streetmix-loader set-loader-from-hash="defaultURL: https://streetmix.net/kfarr/3"></a-entity>
       </a-scene>
