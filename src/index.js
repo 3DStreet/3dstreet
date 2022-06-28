@@ -314,7 +314,6 @@ AFRAME.registerComponent('street-environment', {
     var data = this.data;
     var el = this.el;
     if (data.preset === 'night'){
-      console.log("night");
       const light = document.createElement('a-entity');
       light.setAttribute('id', 'light');
       light.setAttribute('light', {type: 'ambient', color: '#FFF', intensity: 0.5});
@@ -326,12 +325,12 @@ AFRAME.registerComponent('street-environment', {
       el.appendChild(light2);
       const sky = document.createElement('a-sky');
       sky.setAttribute('id', 'sky');
-      sky.setAttribute('color','#88c');
-      sky.setAttribute('src','#whyyy');
+      sky.setAttribute('src','#sky-night');
+      sky.setAttribute('rotation','0 0 270');
+
       el.appendChild(sky);
-    } else {
+    } else { //day
       //TODO: create a parent with children
-      console.log("day");
       const light = document.createElement('a-entity');
       light.setAttribute('id', 'light');
       light.setAttribute('light', {type: 'ambient', color: '#FFF', intensity: 2});
@@ -343,8 +342,8 @@ AFRAME.registerComponent('street-environment', {
       el.appendChild(light2);
       const sky = document.createElement('a-sky');
       sky.setAttribute('id', 'sky');
-      sky.setAttribute('color','#6EBAA7');
       sky.setAttribute('src','#sky');
+      sky.setAttribute('rotation','0 255 0');
       el.appendChild(sky);
     }
   }
