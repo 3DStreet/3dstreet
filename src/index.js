@@ -325,8 +325,8 @@ AFRAME.registerComponent('street-environment', {
       el.appendChild(light2);
       const sky = document.createElement('a-sky');
       sky.setAttribute('id', 'sky');
+      sky.setAttribute('color','#444')
       sky.setAttribute('src','#sky-night');
-      sky.setAttribute('rotation','0 0 270');
 
       el.appendChild(sky);
     } else { //day

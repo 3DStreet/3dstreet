@@ -190,7 +190,7 @@
 
           <!-- sky -->
           <img id="sky" src="${assetUrl}assets/CGSkies_0343_doubled_2048.jpg" crossorigin="anonymous" />
-          <img id="sky-night" src="${assetUrl}assets/images/kisspng-space-skybox-texture-mapping-cube-mapping-night-sky.jpg" crossorigin="anonymous" />
+          <img id="sky-night" src="${assetUrl}assets/images/AdobeStock_286725174-min.jpeg" crossorigin="anonymous" />
 
           <!-- grounds -->
           <img id="grass-texture" src="${assetUrl}assets/materials/TexturesCom_Grass0052_1_seamless_S.jpg" crossorigin="anonymous">
