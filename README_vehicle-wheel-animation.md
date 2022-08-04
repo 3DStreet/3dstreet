@@ -15,8 +15,8 @@ The `wheel` is use to animate the wheels of the vehicles.
 
 | Property | Description | Default Value |
 | --------- | --------- | --------- |
-| speed | A float representing the speed of the vehicle|
-| wheelDiameter | A float representing the diameter of the vehicle|
+| speed | A float representing the speed of the vehicle| 1 |
+| wheelDiameter | A float representing the diameter of the vehicle| 1 |
 
 
 
