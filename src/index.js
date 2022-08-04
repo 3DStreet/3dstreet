@@ -386,9 +386,9 @@ AFRAME.registerComponent("wheel", {
     let distx = speed*0.003;
     let t = (distx/dist)*(2*Math.PI);
     
-    if (this.main_bone) {
-      this.main_bone.position.z += distx;
-      }
+    // if (this.main_bone) {
+    //   this.main_bone.position.z += distx;
+    //   }
     if (this.wheel_F_L) {
       this.wheel_F_L.rotateY(t);
     }
