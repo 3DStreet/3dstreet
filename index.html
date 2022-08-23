@@ -47,7 +47,8 @@
     <div class="content">
       <a-scene vr-mode-ui="enterVRButton: #custom-enter-vr-button;" renderer="colorManagement: true; highRefreshRate: true; foveationLevel: 3; physicallyCorrectLights: true; logarithmicDepthBuffer: false;" fogoff="type: linear; color: #D5C69B; far: 200" gltf-model="dracoDecoderPath: https://www.gstatic.com/draco/versioned/decoders/1.4.3/">
         <a-assets>
-          <streetmix-assets url="//assets.3dstreet.app/"></streetmix-assets>
+          <!-- uncomment the line below to load assets from local submodule  -->
+          <!-- <streetmix-assets url="./assets/"></streetmix-assets> -->
         </a-assets>
     
         <a-entity id="cameraRig">
