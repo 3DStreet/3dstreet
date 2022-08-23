@@ -1,10 +1,10 @@
 {
   "name": "3dstreet",
-  "version": "0.3.1",
+  "version": "0.3.2",
   "description": "Web-based 3D visualization of streets using A-Frame and WebXR",
   "main": "dist/aframe-street-component.js",
   "scripts": {
-    "dev": "budo src/index.js:dist/aframe-street-component.js --port 7000 --live",
+    "dev": "budo src/index.js:dist/aframe-street-component.js --port 7001 --live",
     "dist": "webpack",
     "prepublish": "npm run dist",
     "test": "nyc --reporter=lcov --reporter=text mocha --recursive --full-trace",

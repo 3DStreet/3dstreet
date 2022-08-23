@@ -34,8 +34,8 @@ _(or visit https://github.3dstreet.org)_
 <html>
   <head>
     <title>Street Component!</title>
-    <script src="https://aframe.io/releases/1.2.0/aframe.min.js"></script>
-    <script src="https://unpkg.com/3dstreet@0.3.1/dist/aframe-street-component.js"></script>
+    <script src="https://aframe.io/releases/1.3.0/aframe.min.js"></script>
+    <script src="https://unpkg.com/3dstreet@0.3.2/dist/aframe-street-component.js"></script>
   </head>  
   <body>
     <a-scene gltf-model="dracoDecoderPath: https://www.gstatic.com/draco/v1/decoders/;">
