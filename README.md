@@ -15,7 +15,7 @@ _(or visit https://github.3dstreet.org)_
 
 
 
-<img src="https://raw.githubusercontent.com/kfarr/streetmix3d/master/assets/streetmix3d.jpg" />
+<img src="https://raw.githubusercontent.com/kfarr/streetmix3d/master/ui_assets/streetmix3d.jpg" />
 
 ### Quick Start - How to make your own 3D street:
 * First, use <a href="https://streetmix.net">Streetmix.net</a> to create a street design. (Streetmix is a tool that lets you design, remix, and share your neighborhood street. <a href="https://github.com/streetmix/streetmix/blob/master/README.md#about">More information about Streetmix here</a>.)
@@ -180,4 +180,4 @@ See [this link for more information](src/README.md) about the custom components 
 * Tram pass https://www.soundsnap.com/tram_pass_by_fast_wav
 * Historic streetcar pass https://www.soundsnap.com/streetcar_passing_by_smoothly
 
-<img src="https://raw.githubusercontent.com/kfarr/3dstreet/master/assets/streetmix3d-banner.jpg" />
+<img src="https://raw.githubusercontent.com/kfarr/3dstreet/master/ui_assets/streetmix3d-banner.jpg" />
