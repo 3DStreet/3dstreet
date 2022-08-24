@@ -83,6 +83,18 @@
           <a-mixin id="Character_1_M" gltf-part-plus="src: #magic-carpet-glb; part: Character_1_M"></a-mixin>
           <a-mixin id="magic-carpet" gltf-part-plus="src: #magic-carpet-glb; part: magic-carpet"></a-mixin>
 
+          <!-- vehicles rigged -->
+          <a-asset-item id="sedan-rigged" src="${assetUrl}assets/objects/vehicles-rig/sedan-rig.glb"></a-asset-item>
+          <a-mixin id="sedan-rig" gltf-model="#sedan-rigged" ></a-mixin>
+          <a-asset-item id="bus-rigged" src="${assetUrl}assets/objects/vehicles-rig/city-bus-rig.glb"></a-asset-item>
+          <a-mixin id="bus-rig" gltf-model="#bus-rigged" ></a-mixin>
+          <a-asset-item id="sedan-taxi-rigged" src="${assetUrl}assets/objects/vehicles-rig/sedan-taxi-rig.glb"></a-asset-item>
+          <a-mixin id="sedan-taxi-rig" gltf-model="#sedan-taxi-rigged" ></a-mixin>
+          <a-asset-item id="suv-rigged" src="${assetUrl}assets/objects/vehicles-rig/suv-rig.glb"></a-asset-item>
+          <a-mixin id="suv-rig" gltf-model="#suv-rigged" ></a-mixin>
+          <a-asset-item id="box-truck-rigged" src="${assetUrl}assets/objects/vehicles-rig/box-truck-rig.glb"></a-asset-item>
+          <a-mixin id="box-truck-rig" gltf-model="#box-truck-rigged" ></a-mixin>
+
           <!-- micro mobility vehicles -->
           <a-asset-item id="microMobilityDevices" src="${assetUrl}objects/micro-mobility-devices_v01.glb"></a-asset-item>
           <a-mixin id="Bicycle_1" gltf-part-plus="src: #microMobilityDevices; part: Bicycle_1"></a-mixin>

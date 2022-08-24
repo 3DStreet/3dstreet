@@ -295,7 +295,7 @@ function createBusElement (isOutbound, positionX) {
 }
 
 function createDriveLaneElement (variantList, positionX, segmentWidthInMeters, length, animated = false) {
-  var speed = 10; // meters per second
+  var speed = 5; // meters per second
   var totalStreetDuration = (length / speed) * 1000; // time in milliseconds
   var animationDirection = variantList[0];
   var startingDistanceToTravel;
@@ -313,11 +313,15 @@ function createDriveLaneElement (variantList, positionX, segmentWidthInMeters, l
   reusableObjectEl.setAttribute('position', positionX + ' 0 0');
   reusableObjectEl.setAttribute('rotation', '0 ' + rotationY + ' 0');
   if (variantList[1] === 'car') {
-    reusableObjectEl.setAttribute('mixin', 'sedan');
+    reusableObjectEl.setAttribute('mixin', 'sedan-rig');
+    reusableObjectEl.setAttribute('wheel', {speed:speed, wheelDiameter:0.76});
+    
   } else if (variantList[1] === 'microvan') {
-    reusableObjectEl.setAttribute('mixin', 'suv');
+    reusableObjectEl.setAttribute('mixin', 'suv-rig');
+    reusableObjectEl.setAttribute('wheel', {speed:speed, wheelDiameter:0.84});
   } else if (variantList[1] === 'truck') {
-    reusableObjectEl.setAttribute('mixin', 'box-truck');
+    reusableObjectEl.setAttribute('mixin', 'box-truck-rig');
+    reusableObjectEl.setAttribute('wheel', {speed:speed, wheelDiameter:1.05});
   } else if (variantList[1] === 'pedestrian') {
     return createSidewalkClonedVariants(positionX, segmentWidthInMeters, 'normal', length, variantList[0], animated);
   }
