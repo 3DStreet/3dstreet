@@ -553,7 +553,7 @@ function createSegmentElement (scaleX, positionX, positionY, rotationY, mixinId,
 
 // OLD: takes a street's `segments` (array) from streetmix and a `streetElementId` (string) and places objects to make up a street with all segments
 // NEW: takes a `segments` (array) from streetmix and return an element and its children which represent the 3D street scene
-function processSegments (segments, showStriping, length, showVehicles) {
+function processSegments (segments, showStriping, length, globalAnimated, showVehicles) {
   var clonedObjectRadius = length / 2;
   //  Adjust clonedObjectRadius so that objects do not repeat
   if (length > 12) {
@@ -728,7 +728,7 @@ function processSegments (segments, showStriping, length, showVehicles) {
       // add this stencil stuff to the segment parent
       segmentParentEl.append(reusableObjectStencilsParentEl);
     } else if (segments[i].type === 'drive-lane') {
-      var isAnimated = (variantList[2] === 'animated');
+      var isAnimated = (variantList[2] === 'animated') && globalAnimated;
       segmentParentEl.append(createDriveLaneElement(variantList, positionX, segmentWidthInMeters, length, isAnimated, showVehicles));
     } else if (segments[i].type === 'food-truck') {
       groundMixinId = 'drive-lane';
@@ -750,7 +750,7 @@ function processSegments (segments, showStriping, length, showVehicles) {
       segmentParentEl.append(reusableObjectStencilsParentEl);
     } else if (segments[i].type === 'sidewalk' && variantList[0] !== 'empty') {
       // handles variantString with value sparse, normal, or dense sidewalk
-      const isAnimated = variantList[1] === 'animated';
+      const isAnimated = (variantList[1] === 'animated') && globalAnimated;
       segmentParentEl.append(createSidewalkClonedVariants(positionX, segmentWidthInMeters, variantList[0], length, 'random', isAnimated));
     } else if (segments[i].type === 'sidewalk-wayfinding') {
       segmentParentEl.append(createWayfindingElements(positionX));
