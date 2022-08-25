@@ -728,7 +728,7 @@ function processSegments (segments, showStriping, length, globalAnimated, showVe
       // add this stencil stuff to the segment parent
       segmentParentEl.append(reusableObjectStencilsParentEl);
     } else if (segments[i].type === 'drive-lane') {
-      var isAnimated = (variantList[2] === 'animated') && globalAnimated;
+      var isAnimated = (variantList[2] === 'animated') || globalAnimated;
       segmentParentEl.append(createDriveLaneElement(variantList, positionX, segmentWidthInMeters, length, isAnimated, showVehicles));
     } else if (segments[i].type === 'food-truck') {
       groundMixinId = 'drive-lane';
@@ -750,7 +750,7 @@ function processSegments (segments, showStriping, length, globalAnimated, showVe
       segmentParentEl.append(reusableObjectStencilsParentEl);
     } else if (segments[i].type === 'sidewalk' && variantList[0] !== 'empty') {
       // handles variantString with value sparse, normal, or dense sidewalk
-      const isAnimated = (variantList[1] === 'animated') && globalAnimated;
+      const isAnimated = (variantList[1] === 'animated') || globalAnimated;
       segmentParentEl.append(createSidewalkClonedVariants(positionX, segmentWidthInMeters, variantList[0], length, 'random', isAnimated));
     } else if (segments[i].type === 'sidewalk-wayfinding') {
       segmentParentEl.append(createWayfindingElements(positionX));
