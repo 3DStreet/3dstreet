@@ -14,7 +14,7 @@ AFRAME.registerComponent('street', {
     right: { default: '' },
     showGround: { default: true },
     showStriping: { default: true },
-    showVehicles: {default: true},
+    showVehicles: { default: true },
     length: { default: 150 }
   },
   update: function (oldData) { // fired once at start and at each subsequent change of a schema value

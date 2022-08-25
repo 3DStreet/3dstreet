@@ -429,7 +429,7 @@ function createMicroMobilityElement (variantList, positionX, segmentType, showVe
 
 function createFlexZoneElement (variantList, positionX, showVehicles = true) {
   if (!showVehicles) {
-    return
+    return;
   }
   const flexZoneParentEl = document.createElement('a-entity');
 
