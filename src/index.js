@@ -14,6 +14,8 @@ AFRAME.registerComponent('street', {
     right: { default: '' },
     showGround: { default: true },
     showStriping: { default: true },
+    showVehicles: { default: true },
+    globalAnimated: { default: false },
     length: { default: 150 }
   },
   update: function (oldData) { // fired once at start and at each subsequent change of a schema value
@@ -26,7 +28,7 @@ AFRAME.registerComponent('street', {
     }
 
     const streetmixSegments = JSON.parse(data.JSON);
-    const streetEl = streetmixParsers.processSegments(streetmixSegments.streetmixSegmentsFeet, data.showStriping, data.length);
+    const streetEl = streetmixParsers.processSegments(streetmixSegments.streetmixSegmentsFeet, data.showStriping, data.length, data.globalAnimated, data.showVehicles);
     this.el.append(streetEl);
 
     if (data.left || data.right) {
