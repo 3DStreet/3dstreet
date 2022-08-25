@@ -385,6 +385,7 @@ AFRAME.registerComponent('wheel', {
     const distx = speed * 0.003;
     const t = (distx / dist) * (2 * Math.PI);
 
+    // uncomment to move vehicle forward
     // if (this.main_bone) {
     //   this.main_bone.position.z += distx;
     //   }
