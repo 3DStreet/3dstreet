@@ -14,7 +14,7 @@
 
     <title>3DStreet</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <link rel="icon" type="image/x-icon" href="assets/ui_assets/favicon.ico">
+    <link rel="icon" type="image/x-icon" href="ui_assets/favicon.ico">
     <link rel="stylesheet" href="src/style.css">
   </head>
 
@@ -23,15 +23,15 @@
         <div class="header-wrapper">
             <div class="logo-wrapper">
                 <a class="logo-link" href="https://www.3dstreet.org/" id="3dstreet-logo-length">
-                    <img class="logo-img" alt="3DStreet Viewer" src="assets/ui_assets/logo-viewer.svg">
+                    <img class="logo-img" alt="3DStreet Viewer" src="ui_assets/logo-viewer.svg">
                 </a>
             </div>
     </header>
 
     <div class="right-fixed">
       <ul class="right-menu">
-        <li onclick="screenshot()"> <a class="camera"  href="#"> <span> Capture image as PNG </span> <img src="assets/ui_assets/camera-icon.svg"> </a></li>
-        <li> <a id="custom-enter-vr-button" class="vr" href="#"> <span class="vr">Enter VR mode</span> <img src="assets/ui_assets/vr-icon.svg"> </a></li>
+        <li onclick="screenshot()"> <a class="camera"  href="#"> <span> Capture image as PNG </span> <img src="ui_assets/camera-icon.svg"> </a></li>
+        <li> <a id="custom-enter-vr-button" class="vr" href="#"> <span class="vr">Enter VR mode</span> <img src="ui_assets/vr-icon.svg"> </a></li>
       </ul>
     </div>
 
@@ -46,8 +46,8 @@
     <div class="content">
       <a-scene vr-mode-ui="enterVRButton: #custom-enter-vr-button;" renderer="colorManagement: true; highRefreshRate: true; foveationLevel: 3; physicallyCorrectLights: true; logarithmicDepthBuffer: false;" fogoff="type: linear; color: #D5C69B; far: 200" gltf-model="dracoDecoderPath: https://www.gstatic.com/draco/versioned/decoders/1.4.3/">
         <a-assets>
-          <streetmix-assets url="./"></streetmix-assets>
           <a-cubemap id="skycube">
+            <streetmix-assets url="assets/"></streetmix-assets>
             <img src="assets/images/skybox/posx.jpg">
             <img src="assets/images/skybox/negx.jpg">
             <img src="assets/images/skybox/posy.jpg">
@@ -92,7 +92,7 @@
     </div>
 
     <div class="location" >
-        <p id="location"><img src="assets/ui_assets/location.svg"> </p> 
+        <p id="location"><img src="ui_assets/location.svg"> </p> 
     </div>
     <script>
       var locationString = (location.href.split("#")[1] != undefined) ? location.href.split("#")[1] : "https://streetmix.net/kfarr/3";
