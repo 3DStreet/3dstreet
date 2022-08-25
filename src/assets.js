@@ -84,15 +84,15 @@
           <a-mixin id="magic-carpet" gltf-part-plus="src: #magic-carpet-glb; part: magic-carpet"></a-mixin>
 
           <!-- vehicles rigged -->
-          <a-asset-item id="sedan-rigged" src="${assetUrl}assets/objects/vehicles-rig/sedan-rig.glb"></a-asset-item>
+          <a-asset-item id="sedan-rigged" src="${assetUrl}objects/vehicles-rig/sedan-rig.glb"></a-asset-item>
           <a-mixin id="sedan-rig" gltf-model="#sedan-rigged" ></a-mixin>
-          <a-asset-item id="bus-rigged" src="${assetUrl}assets/objects/vehicles-rig/city-bus-rig.glb"></a-asset-item>
+          <a-asset-item id="bus-rigged" src="${assetUrl}objects/vehicles-rig/city-bus-rig.glb"></a-asset-item>
           <a-mixin id="bus-rig" gltf-model="#bus-rigged" ></a-mixin>
-          <a-asset-item id="sedan-taxi-rigged" src="${assetUrl}assets/objects/vehicles-rig/sedan-taxi-rig.glb"></a-asset-item>
+          <a-asset-item id="sedan-taxi-rigged" src="${assetUrl}objects/vehicles-rig/sedan-taxi-rig.glb"></a-asset-item>
           <a-mixin id="sedan-taxi-rig" gltf-model="#sedan-taxi-rigged" ></a-mixin>
-          <a-asset-item id="suv-rigged" src="${assetUrl}assets/objects/vehicles-rig/suv-rig.glb"></a-asset-item>
+          <a-asset-item id="suv-rigged" src="${assetUrl}objects/vehicles-rig/suv-rig.glb"></a-asset-item>
           <a-mixin id="suv-rig" gltf-model="#suv-rigged" ></a-mixin>
-          <a-asset-item id="box-truck-rigged" src="${assetUrl}assets/objects/vehicles-rig/box-truck-rig.glb"></a-asset-item>
+          <a-asset-item id="box-truck-rigged" src="${assetUrl}objects/vehicles-rig/box-truck-rig.glb"></a-asset-item>
           <a-mixin id="box-truck-rig" gltf-model="#box-truck-rigged" ></a-mixin>
 
           <!-- micro mobility vehicles -->
@@ -183,7 +183,7 @@
           <a-mixin id="trolley" gltf-model="#trolleymodel"></a-mixin>
           
           <!-- street props -->
-          <a-mixin id="pride-flag" position="0.409 3.345 0" rotation="0 0 0" scale="0.5 0.75 0" geometry="width:2;height:2;primitive:plane" material="side:double; src:${assetUrl}assets/materials/rainbow-flag-poles_512.png;transparent: true;"></a-mixin>
+          <a-mixin id="pride-flag" position="0.409 3.345 0" rotation="0 0 0" scale="0.5 0.75 0" geometry="width:2;height:2;primitive:plane" material="side:double; src:${assetUrl}materials/rainbow-flag-poles_512.png;transparent: true;"></a-mixin>
           <a-mixin id="wayfinding-box" geometry="primitive: box; height: 2; width: 0.84; depth: 0.1" material="color: gray"></a-mixin>
   
           <a-mixin id="fence" gltf-model="#fence-model" scale="0.1 0.1 0.1"></a-mixin>
@@ -327,10 +327,10 @@ Unused assets kept commented here for future reference
         <!-- sky - equirectangular still used for envmap -->
         <!-- <img id="sky" position="0 -140 0" src="CGSkies_0343_doubled_2048.jpg" crossorigin="anonymous" /> -->
         <!-- raw photogrammetry textures - unused by default -->
-        <a-mixin id="bike-lane-t0" geometry="width:1.8;height:150;primitive:plane" material="repeat:2 150;src:materials/bikelane_Base_Color.jpg;normalTextureRepeat:2 150;normalMap:assets/materials/bikelane_Normal.jpg"></a-mixin>
-        <a-mixin id="sidewalk-t0" geometry="width:3;height:150;primitive:plane" material="repeat:1.5 75;src:materials/sidewalkhd_Base_Color.jpg;normalTextureRepeat:1.5 75;normalMap:assets/materials/sidewalkhd_Normal.jpg;"></a-mixin>
-        <a-mixin id="drive-lane-t0" geometry="width:3;height:150;primitive:plane" material="repeat:1.5 75;src:materials/asphalthd_Base_Color.jpg;normalTextureRepeat:1.5 75;normalMap:assets/materials/asphalthd_Normal.jpg;"></a-mixin>
-        <a-mixin id="bus-lane-t0" geometry="width:3;height:150;primitive:plane" material="repeat:1.5 75;src:materials/asphaltred1hd_Base_Color.jpg;normalTextureRepeat:1.5 75;normalMap:assets/materials/asphaltred1hd_Normal.jpg;"></a-mixin>
+        <a-mixin id="bike-lane-t0" geometry="width:1.8;height:150;primitive:plane" material="repeat:2 150;src:materials/bikelane_Base_Color.jpg;normalTextureRepeat:2 150;normalMap:materials/bikelane_Normal.jpg"></a-mixin>
+        <a-mixin id="sidewalk-t0" geometry="width:3;height:150;primitive:plane" material="repeat:1.5 75;src:materials/sidewalkhd_Base_Color.jpg;normalTextureRepeat:1.5 75;normalMap:materials/sidewalkhd_Normal.jpg;"></a-mixin>
+        <a-mixin id="drive-lane-t0" geometry="width:3;height:150;primitive:plane" material="repeat:1.5 75;src:materials/asphalthd_Base_Color.jpg;normalTextureRepeat:1.5 75;normalMap:materials/asphalthd_Normal.jpg;"></a-mixin>
+        <a-mixin id="bus-lane-t0" geometry="width:3;height:150;primitive:plane" material="repeat:1.5 75;src:materials/asphaltred1hd_Base_Color.jpg;normalTextureRepeat:1.5 75;normalMap:materials/asphaltred1hd_Normal.jpg;"></a-mixin>
 
         <!-- audio -->
         <audio id="ambientmp3" src="${assetUrl}audio/SSL_16_11_AMB_EXT_SF_ALAMO_SQ.mp3" preload="none" crossorigin="anonymous"></audio>

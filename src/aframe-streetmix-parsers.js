@@ -314,14 +314,13 @@ function createDriveLaneElement (variantList, positionX, segmentWidthInMeters, l
   reusableObjectEl.setAttribute('rotation', '0 ' + rotationY + ' 0');
   if (variantList[1] === 'car') {
     reusableObjectEl.setAttribute('mixin', 'sedan-rig');
-    reusableObjectEl.setAttribute('wheel', {speed:speed, wheelDiameter:0.76});
-    
+    reusableObjectEl.setAttribute('wheel', { speed: speed, wheelDiameter: 0.76 });
   } else if (variantList[1] === 'microvan') {
     reusableObjectEl.setAttribute('mixin', 'suv-rig');
-    reusableObjectEl.setAttribute('wheel', {speed:speed, wheelDiameter:0.84});
+    reusableObjectEl.setAttribute('wheel', { speed: speed, wheelDiameter: 0.84 });
   } else if (variantList[1] === 'truck') {
     reusableObjectEl.setAttribute('mixin', 'box-truck-rig');
-    reusableObjectEl.setAttribute('wheel', {speed:speed, wheelDiameter:1.05});
+    reusableObjectEl.setAttribute('wheel', { speed: speed, wheelDiameter: 1.05 });
   } else if (variantList[1] === 'pedestrian') {
     return createSidewalkClonedVariants(positionX, segmentWidthInMeters, 'normal', length, variantList[0], animated);
   }
