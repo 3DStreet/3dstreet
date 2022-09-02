@@ -37,6 +37,16 @@
     </div>
 
     <script>
+      if (typeof navigator.xr === 'undefined') {
+        document.getElementById("custom-enter-vr-button").style.visibility = "hidden";
+      } else {
+        navigator.xr.isSessionSupported('immersive-vr').then((supported) => {
+          if (!supported) {
+            document.getElementById("custom-enter-vr-button").style.visibility = "hidden";
+          }
+        });
+      }
+
       function screenshot() {
         AFRAME.scenes[0].setAttribute('screenshot','width',AFRAME.scenes[0].canvas.width)
         AFRAME.scenes[0].setAttribute('screenshot','height',AFRAME.scenes[0].canvas.height)
