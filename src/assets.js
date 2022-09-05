@@ -95,6 +95,34 @@
           <a-asset-item id="box-truck-rigged" src="${assetUrl}objects/vehicles-rig/box-truck-rig.glb"></a-asset-item>
           <a-mixin id="box-truck-rig" gltf-model="#box-truck-rigged" ></a-mixin>
 
+          <!-- loud bicycle pack -->
+          <a-asset-item id="cyclist-cargo-asset" src="${assetUrl}sets/cargo-bike-animation/gltf-exports/meshopt/cargo_bike_animation_v1.glb"></a-asset-item>
+          <a-asset-item id="cyclist1-asset" src="${assetUrl}sets/cyclist-animation/gltf-exports/meshopt/cyclist-1-animation-v1.glb"></a-asset-item>
+          <a-asset-item id="cyclist2-asset" src="${assetUrl}sets/cyclist-animation/gltf-exports/meshopt/cyclist-2-animation-v1.glb"></a-asset-item>
+          <a-asset-item id="cyclist3-asset" src="${assetUrl}sets/cyclist-animation/gltf-exports/meshopt/cyclist-3-animation-v1.glb"></a-asset-item>
+          <a-asset-item id="cyclist-kid-asset" src="${assetUrl}sets/cyclist-animation/gltf-exports/meshopt/Kid_cyclist_animation_v01.glb"></a-asset-item>
+          <a-asset-item id="cyclist-dutch-asset" src="${assetUrl}sets/cyclist-animation/gltf-exports/meshopt/Dutch_cyclist_animation_v01.glb"></a-asset-item>
+          <a-asset-item id="loud-bicycle-mini-asset" src="${assetUrl}sets/cycle-horn/gltf-exports/meshopt/loud-bicycle-mini-horn.glb"></a-asset-item>
+          <a-asset-item id="loud-bicycle-classic-asset" src="${assetUrl}sets/cycle-horn/gltf-exports/meshopt/loud-bicycle-classic-horn.glb"></a-asset-item>
+          <a-asset-item id="building-school-asset" src="${assetUrl}sets/school-building/gltf-exports/meshopt/school-building.glb"></a-asset-item>
+          <a-asset-item id="building-bar-asset" src="${assetUrl}sets/irish-bar-building/gltf-exports/meshopt/irish-bar-building.glb"></a-asset-item>
+          <a-asset-item id="vehicle-bmw-m2-asset" src="${assetUrl}sets/vehicles-rig/meshopt/BMW_m2-rig.glb"></a-asset-item>
+          <a-asset-item id="prop-banner-wfh-asset" src="${assetUrl}sets/wfh-banner/gltf-exports/meshopt/wfh-banner.glb"></a-asset-item>
+          <a-asset-item id="prop-raygun-asset" src="${assetUrl}sets/ray-gun/gltf-exports/meshopt/rayGun.glb"></a-asset-item>
+          <a-mixin id="cyclist-cargo" gltf-model="#cyclist-cargo-asset"></a-mixin>
+          <a-mixin id="cyclist1" gltf-model="#cyclist1-asset"></a-mixin>
+          <a-mixin id="cyclist2" gltf-model="#cyclist2-asset"></a-mixin>
+          <a-mixin id="cyclist3" gltf-model="#cyclist3-asset"></a-mixin>
+          <a-mixin id="cyclist-kid" gltf-model="#cyclist-kid-asset"></a-mixin>
+          <a-mixin id="cyclist-dutch" gltf-model="#cyclist-dutch-asset"></a-mixin>
+          <a-mixin id="loud-bicycle-mini" gltf-model="#loud-bicycle-mini-asset"></a-mixin>
+          <a-mixin id="loud-bicycle-classic" gltf-model="#loud-bicycle-classic-asset"></a-mixin>
+          <a-mixin id="building-school" gltf-model="#building-school-asset"></a-mixin>
+          <a-mixin id="building-bar" gltf-model="#building-bar-asset"></a-mixin>
+          <a-mixin id="vehicle-bmw-m2" gltf-model="#vehicle-bmw-m2-asset"></a-mixin>
+          <a-mixin id="prop-banner-wfh" gltf-model="#prop-banner-wfh-asset"></a-mixin>
+          <a-mixin id="prop-raygun" gltf-model="#prop-raygun-asset"></a-mixin>
+
           <!-- micro mobility vehicles -->
           <a-asset-item id="microMobilityDevices" src="${assetUrl}objects/micro-mobility-devices_v01.glb"></a-asset-item>
           <a-mixin id="Bicycle_1" gltf-part-plus="src: #microMobilityDevices; part: Bicycle_1"></a-mixin>
