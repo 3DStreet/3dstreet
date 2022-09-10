@@ -37,6 +37,16 @@
     </div>
 
     <script>
+      // only show VR button if headset connected
+      AFRAME.registerComponent('vr-mode-ui-if-headset', {
+        dependencies: ['vr-mode-ui'],
+        init: function () {
+          if (!AFRAME.utils.device.checkHeadsetConnected()) {
+            this.el.setAttribute('vr-mode-ui', 'enabled', false);
+          }
+        }
+      })
+
       function screenshot() {
         AFRAME.scenes[0].setAttribute('screenshot','width',AFRAME.scenes[0].canvas.width)
         AFRAME.scenes[0].setAttribute('screenshot','height',AFRAME.scenes[0].canvas.height)
@@ -45,7 +55,7 @@
     </script>
 
     <div class="content">
-      <a-scene vr-mode-ui="enterVRButton: #custom-enter-vr-button;" renderer="colorManagement: true; highRefreshRate: true; foveationLevel: 3; physicallyCorrectLights: true; logarithmicDepthBuffer: false;" fogoff="type: linear; color: #D5C69B; far: 200" gltf-model="dracoDecoderPath: https://www.gstatic.com/draco/versioned/decoders/1.4.3/">
+      <a-scene vr-mode-ui="enterVRButton: #custom-enter-vr-button;" vr-mode-ui-if-headset renderer="colorManagement: true; highRefreshRate: true; foveationLevel: 3; physicallyCorrectLights: true; logarithmicDepthBuffer: false;" fogoff="type: linear; color: #D5C69B; far: 200" gltf-model="dracoDecoderPath: https://www.gstatic.com/draco/versioned/decoders/1.4.3/">
         <a-assets>
           <!-- uncomment the line below to load assets from local submodule  -->
           <!-- <streetmix-assets url="./assets/"></streetmix-assets> -->
