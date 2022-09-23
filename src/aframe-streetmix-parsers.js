@@ -547,26 +547,6 @@ function createSegmentElement (scaleX, positionX, positionY, rotationY, mixinId,
   segmentEl.setAttribute('position', positionX + ' ' + positionY + ' 0');
   segmentEl.setAttribute('rotation', '270 ' + rotationY + ' 0');
   segmentEl.setAttribute('mixin', mixinId);
-
-  //TODO: create a new mixin object that acts as a curb
-  if (mixinId == 'sidewalk'){
-    var leftCurb = document.createElement('a-entity');
-    leftCurb.setAttribute('id', "left curb");
-    //-(scaleX*3*3.28084)*0.5
-    leftCurb.setAttribute('position', 'x', -(scaleX*3*0.5));
-    leftCurb.setAttribute('scale', 'x', 1 / 6);
-    leftCurb.setAttribute('rotation', {y: -90});
-    leftCurb.setAttribute('mixin', mixinId);
-    segmentEl.appendChild(leftCurb);
-    var rightCurb = document.createElement('a-entity');
-    rightCurb.setAttribute('id', "left curb");
-    //-(scaleX*3*3.28084)*0.5
-    rightCurb.setAttribute('position', 'x', (scaleX*3*0.5));
-    rightCurb.setAttribute('scale', 'x', 1 / 6);
-    rightCurb.setAttribute('rotation', {y: -90});
-    rightCurb.setAttribute('mixin', mixinId);
-    segmentEl.appendChild(rightCurb);
-  }
   return segmentEl;
 }
 
@@ -892,6 +872,16 @@ function processSegments (segments, showStriping, length, globalAnimated, showVe
 
     if (streetmixParsersTested.isSidewalk(segments[i].type)) {
       groundMixinId = 'sidewalk';
+    }
+
+    if (groundMixinId == 'sidewalk'){
+      const concreteBlock = document.createElement('a-entity');
+      concreteBlock.setAttribute('geometry','type: box');
+      concreteBlock.setAttribute('geometry','height: 0.4');
+      concreteBlock.setAttribute('geometry','width', segmentWidthInMeters);
+      concreteBlock.setAttribute('geometry','depth', length);
+      concreteBlock.setAttribute('position', 'x', positionX);
+      segmentParentEl.appendChild(concreteBlock);
     }
 
     // add new object
