@@ -14,6 +14,8 @@ AFRAME.registerComponent('street', {
     right: { default: '' },
     showGround: { default: true },
     showStriping: { default: true },
+    showVehicles: { default: true },
+    globalAnimated: { default: false },
     length: { default: 150 }
   },
   update: function (oldData) { // fired once at start and at each subsequent change of a schema value
@@ -26,7 +28,7 @@ AFRAME.registerComponent('street', {
     }
 
     const streetmixSegments = JSON.parse(data.JSON);
-    const streetEl = streetmixParsers.processSegments(streetmixSegments.streetmixSegmentsFeet, data.showStriping, data.length);
+    const streetEl = streetmixParsers.processSegments(streetmixSegments.streetmixSegmentsFeet, data.showStriping, data.length, data.globalAnimated, data.showVehicles);
     this.el.append(streetEl);
 
     if (data.left || data.right) {
@@ -345,6 +347,69 @@ AFRAME.registerComponent('street-environment', {
       sky.setAttribute('src', '#sky');
       sky.setAttribute('rotation', '0 255 0');
       el.appendChild(sky);
+    }
+  }
+});
+
+// Vehicle wheel Animation
+AFRAME.registerComponent('wheel', {
+  schema: {
+    speed: { type: 'number', default: 1 },
+    wheelDiameter: { type: 'number', default: 1 }
+  },
+
+  init: function () {
+    const el = this.el;
+    const self = this;
+    el.addEventListener('model-loaded', (e) => {
+      const vehicle = el.getObject3D('mesh');
+      if (!vehicle) {
+        return;
+      }
+
+      self.wheel_F_L = vehicle.getObjectByName('wheel_F_L');
+      self.wheel_F_R = vehicle.getObjectByName('wheel_F_R');
+      self.wheel_B_L = vehicle.getObjectByName('wheel_B_L');
+      self.wheel_B_R = vehicle.getObjectByName('wheel_B_R');
+
+      // For Truck exrta Wheels
+      self.wheel_B_L_2 = vehicle.getObjectByName('wheel_B_L_2');
+      self.wheel_B_R_2 = vehicle.getObjectByName('wheel_B_R_2');
+
+      self.main_bone = vehicle.getObjectByName('main_bone');
+    });
+  },
+  tick: function () {
+    const speed = this.data.speed;
+    const wheelDiameter = this.data.wheelDiameter;
+
+    const dist = Math.PI * wheelDiameter;
+    const distx = speed * 0.003;
+    const t = (distx / dist) * (2 * Math.PI);
+
+    // uncomment to move vehicle forward
+    // if (this.main_bone) {
+    //   this.main_bone.position.z += distx;
+    //   }
+    if (this.wheel_F_L) {
+      this.wheel_F_L.rotateY(t);
+    }
+    if (this.wheel_F_R) {
+      this.wheel_F_R.rotateY(t);
+    }
+    if (this.wheel_B_L) {
+      this.wheel_B_L.rotateY(t);
+    }
+
+    if (this.wheel_B_L_2) {
+      this.wheel_B_L_2.rotateY(t);
+    }
+
+    if (this.wheel_B_R_2) {
+      this.wheel_B_R_2.rotateY(t);
+    }
+    if (this.wheel_B_R) {
+      this.wheel_B_R.rotateY(t);
     }
   }
 });

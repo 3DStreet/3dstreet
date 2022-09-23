@@ -1,17 +1,3 @@
-Copyright (c) 2017-2021 Kieran Farr
-
-The current codebase, and all future modifications to it, are made available
-to you under the GNU Affero General Public License v3, as specified below.
-
-This AGPL v3 License only applies to the codebase of 3DStreet.
-Other assets such as 3D models, textures, and audio have their own licenses.
-See README.md for a full list of these assets and their respective licenses.
-
-The original license for the 3DStreet codebase was the MIT license. For more
-information about the change in license, please see:
-https://github.com/kfarr/3dstreet/issues/89
-
-------------------------------------------------------------------------------
                     GNU AFFERO GENERAL PUBLIC LICENSE
                        Version 3, 19 November 2007
 
@@ -647,8 +633,8 @@ the "copyright" line and a pointer to where the full notice is found.
     Copyright (C) <year>  <name of author>
 
     This program is free software: you can redistribute it and/or modify
-    it under the terms of the GNU Affero General Public License as published by
-    the Free Software Foundation, either version 3 of the License, or
+    it under the terms of the GNU Affero General Public License as published
+    by the Free Software Foundation, either version 3 of the License, or
     (at your option) any later version.
 
     This program is distributed in the hope that it will be useful,

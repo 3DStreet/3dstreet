@@ -15,7 +15,7 @@ _(or visit https://github.3dstreet.org)_
 
 
 
-<img src="https://raw.githubusercontent.com/kfarr/streetmix3d/master/assets/streetmix3d.jpg" />
+<img src="https://raw.githubusercontent.com/kfarr/streetmix3d/master/ui_assets/streetmix3d.jpg" />
 
 ### Quick Start - How to make your own 3D street:
 * First, use <a href="https://streetmix.net">Streetmix.net</a> to create a street design. (Streetmix is a tool that lets you design, remix, and share your neighborhood street. <a href="https://github.com/streetmix/streetmix/blob/master/README.md#about">More information about Streetmix here</a>.)
@@ -34,8 +34,8 @@ _(or visit https://github.3dstreet.org)_
 <html>
   <head>
     <title>Street Component!</title>
-    <script src="https://aframe.io/releases/1.2.0/aframe.min.js"></script>
-    <script src="https://unpkg.com/3dstreet@0.2.15/dist/aframe-street-component.js"></script>
+    <script src="https://aframe.io/releases/1.3.0/aframe.min.js"></script>
+    <script src="https://unpkg.com/3dstreet@0.3.2/dist/aframe-street-component.js"></script>
   </head>  
   <body>
     <a-scene gltf-model="dracoDecoderPath: https://www.gstatic.com/draco/v1/decoders/;">
@@ -86,6 +86,10 @@ The `streetmix-loader` component requests a Streetmix API response when given a 
 | showBuildings | A Boolean that determines whether or not buildings are rendered | true |
 
 Either 1 of the 2 properties are required. If both are provided the component will use streetmixAPIURL value and ignore streetmixStreetURL.
+
+
+
+
 
 #### Orientation and Scale
 A default Streetmix.net cross-section view is oriented to show vehicles heading away from you as "outbound". The `street` component follows this convention and when placed in a new A-Frame scene the default camera is looking toward the outbound direction of the generated street. The default rendering is 1:1 scale.
@@ -180,4 +184,4 @@ See [this link for more information](src/README.md) about the custom components 
 * Tram pass https://www.soundsnap.com/tram_pass_by_fast_wav
 * Historic streetcar pass https://www.soundsnap.com/streetcar_passing_by_smoothly
 
-<img src="https://raw.githubusercontent.com/kfarr/3dstreet/master/assets/streetmix3d-banner.jpg" />
+<img src="https://raw.githubusercontent.com/kfarr/3dstreet/master/ui_assets/streetmix3d-banner.jpg" />
