@@ -384,7 +384,7 @@ AFRAME.registerComponent('wheel', {
     const wheelDiameter = this.data.wheelDiameter;
 
     const dist = Math.PI * wheelDiameter;
-    const distx = speed * 0.003;
+    const distx = speed * 0.003 *3;
     const t = (distx / dist) * (2 * Math.PI);
 
     // uncomment to move vehicle forward
