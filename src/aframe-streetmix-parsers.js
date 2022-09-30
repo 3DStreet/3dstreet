@@ -538,13 +538,18 @@ function createCenteredStreetElement (segments) {
   return streetEl;
 }
 
-function createSegmentElement (scaleX, positionX, positionY, rotationY, mixinId, length) {
+function createSegmentElement (scaleX, positionX, positionY, rotationY, mixinId, length, repeatCount) {
   var segmentEl = document.createElement('a-entity');
   const scaleY = length / 150;
+
   const scaleNew = scaleX + ' ' + scaleY + ' 1';
   segmentEl.setAttribute('scale', scaleNew);
   // segmentEl.setAttribute('geometry', 'height', length); // alternative to modifying scale
   segmentEl.setAttribute('position', positionX + ' ' + positionY + ' 0');
+
+  if (repeatCount) {    
+    segmentEl.setAttribute('material', `repeat: 1 ${repeatCount}`);
+  }
 
   segmentEl.setAttribute('rotation', '270 ' + rotationY + ' 0');
   segmentEl.setAttribute('mixin', mixinId);
@@ -599,6 +604,9 @@ function processSegments (segments, showStriping, length, globalAnimated, showVe
 
     // the A-Frame mixin ID is often identical to the corresponding streetmix segment "type" by design, let's start with that
     var groundMixinId = segments[i].type;
+
+    // repeat value for material property
+    let repeatCount;
 
     // look at segment type and variant(s) to determine specific cases
     if (segments[i].type === 'drive-lane' && variantList[1] === 'sharrow') {
@@ -834,6 +842,8 @@ function processSegments (segments, showStriping, length, globalAnimated, showVe
       groundMixinId = 'markings dashed-stripe';
       positionY = positionY + 0.01; // make sure the lane marker is above the asphalt
       scaleX = 1;
+      // for all markings material property repeat = "1 25". So every 150/25=6 meters put a dash
+      repeatCount = parseInt(length/6);
     } else if (segments[i].type === 'separator' && variantList[0] === 'solid') {
       groundMixinId = 'markings solid-stripe';
       positionY = positionY + 0.01; // make sure the lane marker is above the asphalt
@@ -876,7 +886,7 @@ function processSegments (segments, showStriping, length, globalAnimated, showVe
     }
 
     // add new object
-    segmentParentEl.append(createSegmentElement(scaleX, positionX, positionY, rotationY, groundMixinId, length));
+    segmentParentEl.append(createSegmentElement(scaleX, positionX, positionY, rotationY, groundMixinId, length, repeatCount));
     // returns JSON output instead
     // append the new surfaceElement to the segmentParentEl
     streetParentEl.append(segmentParentEl);
