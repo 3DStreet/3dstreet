@@ -31,11 +31,13 @@ AFRAME.registerComponent('wheel', {
   tick: function (t,dt) {
     const speed = this.data.speed/1000; //speed per millisecond
     const wheelDiameter = this.data.wheelDiameter;
-    // console.log(speed);
+  
 
-    let distance = speed * t ;
-    let angle = (distance/(Math.PI*wheelDiameter))*2*Math.PI;
-    let rateOfRotation = angle/t;
+    // let distance = speed * t ;
+    // let angle = (distance/(Math.PI*wheelDiameter))*2*Math.PI;
+    // let rateOfRotation = angle/t;
+
+    let rateOfRotation = (2*(speed/wheelDiameter));
 
     if (this.main_bone) {
       this.main_bone.translateY(speed);

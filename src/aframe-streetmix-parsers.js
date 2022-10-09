@@ -304,7 +304,7 @@ function createDriveLaneElement (variantList, positionX, segmentWidthInMeters, l
   if (!showVehicles) {
     return;
   }
-  var speed = 5; // meters per second
+  var speed = 0.5; // meters per second
   var totalStreetDuration = (length / speed) * 1000; // time in milliseconds
   var animationDirection = variantList[0];
   var startingDistanceToTravel;
