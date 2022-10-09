@@ -29,37 +29,36 @@ AFRAME.registerComponent('wheel', {
     });
   },
   tick: function (t,dt) {
-    const speed = this.data.speed;
+    const speed = this.data.speed/1000; //speed per millisecond
     const wheelDiameter = this.data.wheelDiameter;
+    // console.log(speed);
 
-    const dist = Math.PI * wheelDiameter;
-    const distx = speed/1000;
-    const r = (distx / dist) * (2 * Math.PI);
-
-    // console.log(t);
+    let distance = speed * t ;
+    let angle = (distance/(Math.PI*wheelDiameter))*2*Math.PI;
+    let rateOfRotation = angle/t;
 
     if (this.main_bone) {
-      this.main_bone.translateY(distx);
+      this.main_bone.translateY(speed);
     }
     if (this.wheel_F_L) {
-      this.wheel_F_L.rotateY(r);
+      this.wheel_F_L.rotateY(rateOfRotation);
     }
     if (this.wheel_F_R) {
-      this.wheel_F_R.rotateY(r);
+      this.wheel_F_R.rotateY(rateOfRotation);
     }
     if (this.wheel_B_L) {
-      this.wheel_B_L.rotateY(r);
+      this.wheel_B_L.rotateY(rateOfRotation);
     }
 
     if (this.wheel_B_L_2) {
-      this.wheel_B_L_2.rotateY(r);
+      this.wheel_B_L_2.rotateY(rateOfRotation);
     }
 
     if (this.wheel_B_R_2) {
-      this.wheel_B_R_2.rotateY(r);
+      this.wheel_B_R_2.rotateY(rateOfRotation);
     }
     if (this.wheel_B_R) {
-      this.wheel_B_R.rotateY(r);
+      this.wheel_B_R.rotateY(rateOfRotation);
     }
   }
 });
