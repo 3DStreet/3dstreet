@@ -33,7 +33,7 @@ AFRAME.registerComponent('wheel', {
     const wheelDiameter = this.data.wheelDiameter;
 
     const dist = Math.PI * wheelDiameter;
-    const distx = speed * 0.003;
+    const distx = speed/1000;
     const t = (distx / dist) * (2 * Math.PI);
 
     if (this.main_bone) {
