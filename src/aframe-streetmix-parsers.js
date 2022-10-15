@@ -49,7 +49,6 @@ function cloneMixinAsChildren ({ objectMixinId = '', parentEl = null, step = 15,
     parentEl.append(placedObjectEl);
     // could be good to use geometry merger https://github.com/supermedium/superframe/tree/master/components/geometry-merger
   }
-
 }
 
 function randomTestable () {
@@ -548,7 +547,7 @@ function createSegmentElement (scaleX, positionX, positionY, rotationY, mixinId,
   // segmentEl.setAttribute('geometry', 'height', length); // alternative to modifying scale
   segmentEl.setAttribute('position', positionX + ' ' + positionY + ' 0');
 
-  if (repeatCount.length != 0) {    
+  if (repeatCount.length !== 0) {
     segmentEl.setAttribute('material', `repeat: ${repeatCount[0]} ${repeatCount[1]}`);
   }
 
@@ -606,8 +605,8 @@ function processSegments (segments, showStriping, length, globalAnimated, showVe
     // the A-Frame mixin ID is often identical to the corresponding streetmix segment "type" by design, let's start with that
     var groundMixinId = segments[i].type;
 
-    // repeat value for material property
-    let repeatCount = [];
+    // repeat value for material property - repeatCount[0] is x texture repeat and repeatCount[1] is y texture repeat
+    const repeatCount = [];
 
     // look at segment type and variant(s) to determine specific cases
     if (segments[i].type === 'drive-lane' && variantList[1] === 'sharrow') {
@@ -848,7 +847,7 @@ function processSegments (segments, showStriping, length, globalAnimated, showVe
       scaleX = 1;
       // for all markings material property repeat = "1 25". So every 150/25=6 meters put a dash
       repeatCount[0] = 1;
-      repeatCount[1] = parseInt(length/6);
+      repeatCount[1] = parseInt(length / 6);
     } else if (segments[i].type === 'separator' && variantList[0] === 'solid') {
       groundMixinId = 'markings solid-stripe';
       positionY = positionY + 0.01; // make sure the lane marker is above the asphalt
@@ -863,7 +862,7 @@ function processSegments (segments, showStriping, length, globalAnimated, showVe
       scaleX = 1;
       // for short-dashed-stripe every 3 meters put a dash
       repeatCount[0] = 1;
-      repeatCount[1] = parseInt(length/3);
+      repeatCount[1] = parseInt(length / 3);
     } else if (segments[i].type === 'separator' && variantList[0] === 'soliddashedyellow') {
       groundMixinId = 'markings yellow solid-dashed';
       positionY = positionY + 0.01; // make sure the lane marker is above the asphalt
@@ -874,7 +873,7 @@ function processSegments (segments, showStriping, length, globalAnimated, showVe
       scaleX = 1;
       rotationY = '180';
       repeatCount[0] = 1;
-      repeatCount[1] = parseInt(length/6);
+      repeatCount[1] = parseInt(length / 6);
     } else if (segments[i].type === 'parking-lane') {
       let reusableObjectStencilsParentEl;
 
@@ -895,7 +894,7 @@ function processSegments (segments, showStriping, length, globalAnimated, showVe
       groundMixinId = 'sidewalk';
       repeatCount[0] = 1.5;
       // every 2 meters repeat sidewalk texture
-      repeatCount[1] = parseInt(length/2);
+      repeatCount[1] = parseInt(length / 2);
     }
 
     // add new object
