@@ -372,23 +372,16 @@ AFRAME.registerComponent('wheel', {
       self.wheel_B_L = vehicle.getObjectByName('wheel_B_L');
       self.wheel_B_R = vehicle.getObjectByName('wheel_B_R');
 
-      // For Truck exrta Wheels
+      // For Truck extra Wheels
       self.wheel_B_L_2 = vehicle.getObjectByName('wheel_B_L_2');
       self.wheel_B_R_2 = vehicle.getObjectByName('wheel_B_R_2');
-
-      self.main_bone = vehicle.getObjectByName('main_bone');
     });
   },
-  tick: function (t,dt) {
-    const speed = this.data.speed/1000;
+  tick: function (t, dt) {
+    const speed = this.data.speed / 1000;
     const wheelDiameter = this.data.wheelDiameter;
-   
-    // let distance = speed * t ;
-    // let wheelRotations = distance/Math.PI*wheelDiameter;
-    // let angle = (wheelRotations)*2*Math.PI;
-    // let rateOfRotation = (angle/t);
-    // Simplified Formula
-    let rateOfRotation = (2*(speed/wheelDiameter))*dt;
+
+    const rateOfRotation = (2 * (speed / wheelDiameter)) * dt;
 
     if (this.wheel_F_L) {
       this.wheel_F_L.rotateY(rateOfRotation);
