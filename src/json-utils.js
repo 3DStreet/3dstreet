@@ -45,7 +45,7 @@ function getAttributes(entity) {
     elemObj['components'] = {};
     for (let attrName in attributes) {
       const attr = attributes[attrName];
-      elemObj['components'][attr.name] = attr.nodeValue;
+      elemObj['components'][attr.name] = entity.getAttribute(attr.name);
     }
   }
   return elemObj;
