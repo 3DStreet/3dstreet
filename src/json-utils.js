@@ -30,44 +30,79 @@ function getElementData(entity) {
 
 function getAttributes(entity) {
   let elemObj = {};
-  let attributes = Array.from(entity.attributes).filter(attr =>
-      !(attr.name == 'id' || attr.name == 'class')
-    );
+
   if (entity.id) {
     elemObj['id'] = entity.id;
   }
   if (entity.className) {
-    elemObj['class'] = entity.className;
+    // convert from DOMTokenList to Array
+    elemObj['class'] = Array.from(entity.classList);
   }
+
   elemObj['element'] = entity.tagName.toLowerCase();
 
-  if (attributes) {
+  const entityComponents = entity.components;
+  if (entityComponents) {
     elemObj['components'] = {};
-    for (let attrName in attributes) {
-      const attr = attributes[attrName];
-      elemObj['components'][attr.name] = entity.getAttribute(attr.name);
+    for (let componentName in entityComponents) {
+      const component = entityComponents[componentName];
+      const modifiedProperty = getModifiedProperties(entity, componentName);
+      if (!isEmpty(modifiedProperty)) {
+        elemObj['components'][componentName] = modifiedProperty;     
+      }
+
     }
   }
   return elemObj;
 }
 
-function createEntities(EntitiesJSON) {
-  const entitiesData = EntitiesJSON.data;
+function isEmpty(object) {
+  return Object.keys(object).length === 0;
+}
 
-  // trick to create nodeList with entities to return as result
-  const entityElements = document.createElement('a-entity');
+function getModifiedProperties(entity, componentName) {
+  let data = entity.components[componentName].data;
+  let defaultData = entity.components[componentName].schema;
 
-  for (let entityData of entitiesData) {
-    entityElements.appendChild(createEntity(entityData))
+  // If its single-property like position, rotation, etc
+  if (!entity.components[componentName].hasOwnProperty('schema')) {
+    let defaultValue = defaultData.default;
+    let currentValue = data;
+    if ((currentValue || defaultValue) && currentValue !== defaultValue) {
+      return data;
+    }
   }
 
-  return entityElements;
+  let diff = {};
+  for (let key in data) {
+
+    let defaultValue = defaultData[key].default;
+    let currentValue = data[key];
+
+    // Some parameters could be null and '' like mergeTo
+    if ((currentValue || defaultValue) && currentValue !== defaultValue) {
+      diff[key] = data[key];
+    }
+  }
+  return diff;
+}
+
+function createEntities(entitiesData, parentEl) {
+  for (let entityData of entitiesData) {
+    createEntity(entityData, parentEl);
+  }
 }
 
 /*
 Add a new entity with a list of components and children (if exists)
  * @param {object} entityData Entity definition to add:
- *   {element: 'a-entity', components: {geometry: 'primitive:box'}}
+ *   {
+ *    element: 'a-entity', 
+ *    id: 'id', 
+ *    class: {Array} of element classes,
+ *    children: {Array} of entities, 
+ *    components: {geometry: 'primitive:box', ...}
+ *   }
  * @param {Element} parentEl the parent element to which the Entity will be added
  * @return {Element} Entity created
 */
@@ -83,18 +118,26 @@ function createEntity(entityData, parentEl) {
     entity.setAttribute("id", entityData.id);
   }
   if (entityData.class) {
-    entity.setAttribute("className", entityData.class);
+    entity.classList.add(...entityData.class);
   }
 
   if (parentEl) {
     parentEl.appendChild(entity);
   }
 
+  // Ensure the components are loaded before update the UI
+  /* ***add this later with Events.js***
+
+  entity.addEventListener('loaded', () => {
+    Events.emit('entitycreated', entity);
+  });
+  */
+
   if (entityData.children) {
     let childrenEntities = entityData.children;
-    childrenEntities.forEach(childEntityData => {
+    for (childEntityData of childrenEntities) {
       createEntity(childEntityData, entity);
-    });
+    }
   }
 
   return entity;
