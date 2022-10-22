@@ -60,12 +60,16 @@ function isEmpty(object) {
   return Object.keys(object).length === 0;
 }
 
+function isSingleProperty(schema) {
+  return AFRAME.schema.isSingleProperty(schema);
+}
+
 function getModifiedProperties(entity, componentName) {
   let data = entity.components[componentName].data;
   let defaultData = entity.components[componentName].schema;
 
   // If its single-property like position, rotation, etc
-  if (!entity.components[componentName].hasOwnProperty('schema')) {
+  if (isSingleProperty(defaultData)) {
     let defaultValue = defaultData.default;
     let currentValue = data;
     if ((currentValue || defaultValue) && currentValue !== defaultValue) {
