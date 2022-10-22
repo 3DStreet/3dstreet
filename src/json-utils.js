@@ -84,7 +84,7 @@ function getModifiedProperties(entity, componentName) {
     let currentValue = data[key];
 
     // Some parameters could be null and '' like mergeTo
-    if ((currentValue || defaultValue) && currentValue !== defaultValue) {
+    if ((currentValue || defaultValue) && !AFRAME.utils.deepEqual(currentValue, defaultValue)) {
       diff[key] = data[key];
     }
   }
