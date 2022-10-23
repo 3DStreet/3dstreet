@@ -20,24 +20,24 @@ describe('A-Frame Streetmix Parsers', function () {
   });
 
   describe('#createBuildingsArray()', function () {
-    it('createBuildingsArray(maxLength = 5) should return array with one dictionary for a-entity with mixin SM3D_Bld_Mixed_Corner_4fl', function () {
+    it('createBuildingsArray(maxLength = 5) should return empty array', function () {
       assert.deepStrictEqual(
         streetmixParsersTested.createBuildingsArray(5),
-        [{ tag: 'a-entity', mixin: 'SM3D_Bld_Mixed_Corner_4fl', position: '3.474045 0 0' }]
+        []
       );
     });
-    it('createBuildingsArray(maxLength = 10) should return array with 2 dictionaries of a-entities', function () {
+    it('createBuildingsArray(maxLength = 10) should return array with 1 dictionary of a-entities', function () {
       assert.deepStrictEqual(
         streetmixParsersTested.createBuildingsArray(10),
-        [{ mixin: 'SM3D_Bld_Mixed_Corner_4fl', position: '3.474045 0 0', tag: 'a-entity' }, { mixin: 'SM3D_Bld_Mixed_Double_5fl', position: '12.40014 0 0', tag: 'a-entity' }]
+        [{ mixin: 'SM3D_Bld_Mixed_Corner_4fl', position: '3.474045 0 0', tag: 'a-entity' }]
       );
     });
   });
 
   describe('#filterBuildingsArrayByMixin()', function () {
-    it('filterBuildingsArrayByMixin with createBuildingsArray(maxLength = 100) and mixinId = "SM3D_Bld_Mixed_Corner_4fl" should return dictionary with 5 items', function () {
+    it('filterBuildingsArrayByMixin with createBuildingsArray(maxLength = 100) and mixinId = "SM3D_Bld_Mixed_Corner_4fl" should return dictionary with 4 items', function () {
       var buildingsArray = streetmixParsersTested.createBuildingsArray(100);
-      assert.strictEqual(streetmixParsersTested.filterBuildingsArrayByMixin(buildingsArray, 'SM3D_Bld_Mixed_Corner_4fl').length, 5);
+      assert.strictEqual(streetmixParsersTested.filterBuildingsArrayByMixin(buildingsArray, 'SM3D_Bld_Mixed_Corner_4fl').length, 4);
     });
     it('filterBuildingsArrayByMixin with createBuildingsArray(maxLength = 100) and mixinId = "asdfdsafwefqewf" should return dictionary with 0 items', function () {
       var buildingsArray = streetmixParsersTested.createBuildingsArray(100);
