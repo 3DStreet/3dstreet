@@ -1,3 +1,5 @@
+/* global AFRAME */
+
 /*
 Takes one or more elements (from a DOM queryselector call)
 and returns a Javascript object
@@ -30,6 +32,7 @@ function getElementData (entity) {
 
 function getAttributes (entity) {
   const elemObj = {};
+  elemObj['element'] = entity.tagName.toLowerCase();
 
   if (entity.id) {
     elemObj['id'] = entity.id;
@@ -38,8 +41,9 @@ function getAttributes (entity) {
     // convert from DOMTokenList to Array
     elemObj['class'] = Array.from(entity.classList);
   }
-
-  elemObj['element'] = entity.tagName.toLowerCase();
+  if (entity.getAttribute('mixin')) {
+    elemObj['mixin'] = entity.getAttribute('mixin');
+  }
 
   const entityComponents = entity.components;
   if (entityComponents) {
