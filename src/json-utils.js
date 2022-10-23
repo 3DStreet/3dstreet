@@ -1,4 +1,4 @@
-/* global AFRAME */
+/* global AFRAME, Node */
 
 /*
 Takes one or more elements (from a DOM queryselector call)
@@ -81,7 +81,6 @@ function getModifiedProperties (entity, componentName) {
 
   const diff = {};
   for (const key in data) {
-
     const defaultValue = defaultData[key].default;
     const currentValue = data[key];
 
