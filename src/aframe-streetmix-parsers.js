@@ -547,7 +547,7 @@ function createSegmentElement (scaleX, positionX, positionY, rotationY, mixinId,
   // segmentEl.setAttribute('geometry', 'height', length); // alternative to modifying scale
   segmentEl.setAttribute('position', positionX + ' ' + positionY + ' 0');
 
-  if (repeatCount) {    
+  if (repeatCount) {
     segmentEl.setAttribute('material', `repeat: 1 ${repeatCount}`);
   }
 
@@ -843,7 +843,7 @@ function processSegments (segments, showStriping, length, globalAnimated, showVe
       positionY = positionY + 0.01; // make sure the lane marker is above the asphalt
       scaleX = 1;
       // for all markings material property repeat = "1 25". So every 150/25=6 meters put a dash
-      repeatCount = parseInt(length/6);
+      repeatCount = parseInt(length / 6);
     } else if (segments[i].type === 'separator' && variantList[0] === 'solid') {
       groundMixinId = 'markings solid-stripe';
       positionY = positionY + 0.01; // make sure the lane marker is above the asphalt
