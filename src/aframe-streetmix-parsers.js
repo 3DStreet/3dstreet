@@ -932,7 +932,7 @@ function processBuildings (left, right, streetWidth, showGround, length) {
 
     if (currentValue === 'narrow' || currentValue === 'wide') {
       // Make buildings
-      const buildingsArray = streetmixParsersTested.createBuildingsArray(0.975 * length);
+      const buildingsArray = streetmixParsersTested.createBuildingsArray(length);
       const buildingJSONString = JSON.stringify(buildingsArray);
       const placedObjectEl = document.createElement('a-entity');
       // Account for left and right facing buildings
@@ -949,7 +949,7 @@ function processBuildings (left, right, streetWidth, showGround, length) {
 
     if (currentValue === 'residential') {
       // Make buildings
-      const buildingsArray = streetmixParsersTested.createBuildingsArray(0.85 * length, 'residential');
+      const buildingsArray = streetmixParsersTested.createBuildingsArray(length, 'residential');
       const buildingJSONString = JSON.stringify(buildingsArray);
       const placedObjectEl = document.createElement('a-entity');
       // Account for left and right facing buildings
