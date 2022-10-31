@@ -64,15 +64,15 @@ function isSingleProperty (schema) {
 
 // a list of component:value pairs to exclude from the JSON string.
 // * - remove component with any value
-// {"propName": "attribute": "..."} - remove attribute from component
-removeProps = {
+// "propName": {"attribute": "..."} - remove attribute from component
+let removeProps = {
   "src": {},
   "normalMap": {},
   "create-from-json": "*",
   "street": {"JSON": "*"}
 };
 // a list of component_name:new_component_name pairs to rename in JSON string
-renameProps = {
+let renameProps = {
   "streetmix-loader": "not-streetmix-loader",
   "street": "not-street"
 };
