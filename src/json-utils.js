@@ -62,6 +62,70 @@ function isSingleProperty (schema) {
   return AFRAME.schema.isSingleProperty(schema);
 }
 
+// a list of component:value pairs to exclude from the JSON string.
+// * - remove component with any value
+// {"propName": "attribute": "..."} - remove attribute from component
+removeProps = {
+  "src": {},
+  "normalMap": {},
+  "create-from-json": "*",
+  "street": {"JSON": "*"}
+};
+// a list of component_name:new_component_name pairs to rename in JSON string
+renameProps = {
+  "streetmix-loader": "not-streetmix-loader",
+  "street": "not-street"
+};
+
+function filterJSONstreet (removeProps, renameProps, streetJSON) {
+
+  function removeValueCheck(removeVal, value) {
+    //console.error(removeVal, value, AFRAME.utils.deepEqual(removeVal, value))
+    if (AFRAME.utils.deepEqual(removeVal, value) || removeVal == "*") {
+      return true;
+    }
+    return undefined;
+  }
+
+  let stringJSON = JSON.stringify(streetJSON, function replacer(key, value) {
+    
+    for (removeKey in removeProps) {
+      // check for removing components
+      if (key == removeKey) {
+        const removeVal = removeProps[removeKey];
+        // check for deleting component's attribute
+        if (typeof removeVal == 'object' && !isEmpty(removeVal)) {
+          // remove attribute in component
+          const compAttributes = value;
+
+          const attrNames = Object.keys(removeVal);
+          for (attrName of attrNames) {
+            const attrVal = removeVal[attrName];
+            if (compAttributes.hasOwnProperty(attrName) && 
+              removeValueCheck(attrVal, compAttributes[attrName])) {  
+              delete value[attrName];     
+            }            
+          }           
+        } 
+       
+        // for other cases
+        if (removeValueCheck(removeVal, value)) {
+          return undefined;
+        }
+      } 
+    }
+ 
+    return value;
+  });
+  // rename components
+  for (renameKey in renameProps) {
+    //console.log(renameKey)
+    const reKey = new RegExp(`"${renameKey}":`);
+    stringJSON = stringJSON.replace(reKey, `"${renameProps[renameKey]}":`);
+  }  
+  return stringJSON;
+}
+
 function getModifiedProperties (entity, componentName) {
   const data = entity.components[componentName].data;
   const defaultData = entity.components[componentName].schema;
