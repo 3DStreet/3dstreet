@@ -54,12 +54,12 @@ function getAttributes (entity) {
   return elemObj;
 }
 
-function isEmpty (object) {
-  return Object.keys(object).length === 0;
-}
-
 function isSingleProperty (schema) {
   return AFRAME.schema.isSingleProperty(schema);
+}
+
+function isEmpty (object) {
+  return Object.keys(object).length === 0;
 }
 
 // a list of component:value pairs to exclude from the JSON string.
@@ -192,12 +192,9 @@ function createEntity (entityData, parentEl) {
   }
 
   // Ensure the components are loaded before update the UI
-  /* ***add this later with import Events.js***
-
   entity.addEventListener('loaded', () => {
-    Events.emit('entitycreated', entity);
+    entity.emit('entitycreated', {}, false);
   });
-  */
 
   if (entityData.children) {
     const childrenEntities = entityData.children;
