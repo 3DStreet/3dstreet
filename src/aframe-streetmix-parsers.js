@@ -196,7 +196,8 @@ function createSidewalkClonedVariants (BasePositionX, segmentWidthInMeters, dens
     var variantName = (animated === true) ? 'a_char' + String(getRandomIntInclusive(1, 8)) : 'char' + String(getRandomIntInclusive(1, 16));
     var xVal = getRandomArbitrary(xValueRange[0], xValueRange[1]);
     var zVal = zValueRange.pop();
-    var positionXYZString = xVal + ' 0 ' + zVal;
+    // y = 0.2 for sidewalk elevation
+    var positionXYZString = xVal + ' 0.2 ' + zVal;
     var placedObjectEl = document.createElement('a-entity');
     var totalStreetDuration = (length / 1.4) * 1000;
     var animationDirection = 'inbound';
@@ -475,7 +476,8 @@ function createWayfindingElements (positionX) {
 function createBenchesParentElement (positionX) {
   const placedObjectEl = document.createElement('a-entity');
   placedObjectEl.setAttribute('class', 'bench-parent');
-  placedObjectEl.setAttribute('position', positionX + ' 0 3.5');
+  // y = 0.2 for sidewalk elevation
+  placedObjectEl.setAttribute('position', positionX + ' 0.2 3.5');
   return placedObjectEl;
 }
 
@@ -509,14 +511,16 @@ function createParkletElement (positionX, variantList) {
 function createTreesParentElement (positionX) {
   const placedObjectEl = document.createElement('a-entity');
   placedObjectEl.setAttribute('class', 'tree-parent');
-  placedObjectEl.setAttribute('position', positionX + ' 0 7');
+  // y = 0.2 for sidewalk elevation
+  placedObjectEl.setAttribute('position', positionX + ' 0.2 7');
   return placedObjectEl;
 }
 
 function createLampsParentElement (positionX) {
   const placedObjectEl = document.createElement('a-entity');
   placedObjectEl.setAttribute('class', 'lamp-parent');
-  placedObjectEl.setAttribute('position', positionX + ' 0 0'); // position="1.043 0.100 -3.463"
+  // y = 0.2 for sidewalk elevation
+  placedObjectEl.setAttribute('position', positionX + ' 0.2 0'); // position="1.043 0.100 -3.463"
   return placedObjectEl;
 }
 
@@ -543,10 +547,18 @@ function createSegmentElement (scaleX, positionX, positionY, rotationY, mixinId,
   const scaleY = length / 150;
   const scaleNew = scaleX + ' ' + scaleY + ' 1';
   segmentEl.setAttribute('scale', scaleNew);
-  // segmentEl.setAttribute('geometry', 'height', length); // alternative to modifying scale
+
+  if (mixinId == 'sidewalk'){
+    segmentEl.setAttribute('geometry', 'primitive', 'box');
+    segmentEl.setAttribute('geometry','height: 0.4');
+    segmentEl.setAttribute('geometry','depth', length);
+  } else {
+    // segmentEl.setAttribute('geometry', 'height', length); // alternative to modifying scale
+    segmentEl.setAttribute('rotation', '270 ' + rotationY + ' 0');
+  }
   segmentEl.setAttribute('position', positionX + ' ' + positionY + ' 0');
-  segmentEl.setAttribute('rotation', '270 ' + rotationY + ' 0');
-  segmentEl.setAttribute('mixin', mixinId);
+  segmentEl.setAttribute('mixin', mixinId);    
+
   return segmentEl;
 }
 
@@ -790,7 +802,10 @@ function processSegments (segments, showStriping, length, globalAnimated, showVe
       segmentParentEl.append(createBikeShareStationElement(positionX, variantList));
     } else if (segments[i].type === 'utilities') {
       var rotation = (variantList[0] === 'right') ? '0 180 0' : '0 0 0';
-      segmentParentEl.append(createClonedVariants('utility_pole', positionX, clonedObjectRadius, 15, rotation));
+      const utilitiyPoleElems = createClonedVariants('utility_pole', positionX, clonedObjectRadius, 15, rotation);
+      //console.log(utilitiyPoleElems.object3D.position.y)
+      //utilitiyPoleElems.object3D.position.y += 0.2;
+      segmentParentEl.append(utilitiyPoleElems);
     } else if (segments[i].type === 'sidewalk-tree') {
       // make the parent for all the trees
       const treesParentEl = createTreesParentElement(positionX);
@@ -872,16 +887,6 @@ function processSegments (segments, showStriping, length, globalAnimated, showVe
 
     if (streetmixParsersTested.isSidewalk(segments[i].type)) {
       groundMixinId = 'sidewalk';
-    }
-
-    if (groundMixinId == 'sidewalk'){
-      const concreteBlock = document.createElement('a-entity');
-      concreteBlock.setAttribute('geometry','type: box');
-      concreteBlock.setAttribute('geometry','height: 0.4');
-      concreteBlock.setAttribute('geometry','width', segmentWidthInMeters);
-      concreteBlock.setAttribute('geometry','depth', length);
-      concreteBlock.setAttribute('position', 'x', positionX);
-      segmentParentEl.appendChild(concreteBlock);
     }
 
     // add new object
