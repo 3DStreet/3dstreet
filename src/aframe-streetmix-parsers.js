@@ -549,19 +549,18 @@ function createSegmentElement (scaleX, positionX, positionY, rotationY, mixinId,
   const scalePlane = scaleX + ' ' + scaleY + ' 1';
   const scaleBox = scaleX + ' 1 1';
 
-  if (mixinId == 'sidewalk'){
+  if (mixinId === 'sidewalk') {
     segmentEl.setAttribute('geometry', 'primitive', 'box');
-    segmentEl.setAttribute('geometry','height: 0.4');
-    segmentEl.setAttribute('geometry','depth', length);
+    segmentEl.setAttribute('geometry', 'height: 0.4');
+    segmentEl.setAttribute('geometry', 'depth', length);
     segmentEl.setAttribute('scale', scaleBox);
-
   } else {
     // segmentEl.setAttribute('geometry', 'height', length); // alternative to modifying scale
     segmentEl.setAttribute('rotation', '270 ' + rotationY + ' 0');
     segmentEl.setAttribute('scale', scalePlane);
   }
   segmentEl.setAttribute('position', positionX + ' ' + positionY + ' 0');
-  segmentEl.setAttribute('mixin', mixinId);    
+  segmentEl.setAttribute('mixin', mixinId);
 
   if (repeatCount.length !== 0) {
     segmentEl.setAttribute('material', `repeat: ${repeatCount[0]} ${repeatCount[1]}`);
@@ -816,10 +815,8 @@ function processSegments (segments, showStriping, length, globalAnimated, showVe
       segmentParentEl.append(createBikeShareStationElement(positionX, variantList));
     } else if (segments[i].type === 'utilities') {
       var rotation = (variantList[0] === 'right') ? '0 180 0' : '0 0 0';
-      const utilitiyPoleElems = createClonedVariants('utility_pole', positionX, clonedObjectRadius, 15, rotation);
-      //console.log(utilitiyPoleElems.object3D.position.y)
-      //utilitiyPoleElems.object3D.position.y += 0.2;
-      segmentParentEl.append(utilitiyPoleElems);
+      const utilityPoleElems = createClonedVariants('utility_pole', positionX, clonedObjectRadius, 15, rotation);
+      segmentParentEl.append(utilityPoleElems);
     } else if (segments[i].type === 'sidewalk-tree') {
       // make the parent for all the trees
       const treesParentEl = createTreesParentElement(positionX);
