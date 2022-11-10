@@ -546,16 +546,19 @@ function createSegmentElement (scaleX, positionX, positionY, rotationY, mixinId,
   var segmentEl = document.createElement('a-entity');
   const scaleY = length / 150;
 
-  const scaleNew = scaleX + ' ' + scaleY + ' 1';
-  segmentEl.setAttribute('scale', scaleNew);
+  const scalePlane = scaleX + ' ' + scaleY + ' 1';
+  const scaleBox = scaleX + ' 1 1';
 
   if (mixinId == 'sidewalk'){
     segmentEl.setAttribute('geometry', 'primitive', 'box');
     segmentEl.setAttribute('geometry','height: 0.4');
     segmentEl.setAttribute('geometry','depth', length);
+    segmentEl.setAttribute('scale', scaleBox);
+
   } else {
     // segmentEl.setAttribute('geometry', 'height', length); // alternative to modifying scale
     segmentEl.setAttribute('rotation', '270 ' + rotationY + ' 0');
+    segmentEl.setAttribute('scale', scalePlane);
   }
   segmentEl.setAttribute('position', positionX + ' ' + positionY + ' 0');
   segmentEl.setAttribute('mixin', mixinId);    
