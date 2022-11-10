@@ -305,7 +305,7 @@ function createDriveLaneElement (variantList, positionX, segmentWidthInMeters, l
   if (!showVehicles) {
     return;
   }
-  var speed = 5; // meters per second
+  var speed = 0.5; // meters per second
   var totalStreetDuration = (length / speed) * 1000; // time in milliseconds
   var animationDirection = variantList[0];
   var startingDistanceToTravel;
@@ -542,9 +542,10 @@ function createCenteredStreetElement (segments) {
   return streetEl;
 }
 
-function createSegmentElement (scaleX, positionX, positionY, rotationY, mixinId, length) {
+function createSegmentElement (scaleX, positionX, positionY, rotationY, mixinId, length, repeatCount) {
   var segmentEl = document.createElement('a-entity');
   const scaleY = length / 150;
+
   const scaleNew = scaleX + ' ' + scaleY + ' 1';
   segmentEl.setAttribute('scale', scaleNew);
 
@@ -559,6 +560,12 @@ function createSegmentElement (scaleX, positionX, positionY, rotationY, mixinId,
   segmentEl.setAttribute('position', positionX + ' ' + positionY + ' 0');
   segmentEl.setAttribute('mixin', mixinId);    
 
+  if (repeatCount.length !== 0) {
+    segmentEl.setAttribute('material', `repeat: ${repeatCount[0]} ${repeatCount[1]}`);
+  }
+
+  segmentEl.setAttribute('rotation', '270 ' + rotationY + ' 0');
+  segmentEl.setAttribute('mixin', mixinId);
   return segmentEl;
 }
 
@@ -610,6 +617,9 @@ function processSegments (segments, showStriping, length, globalAnimated, showVe
 
     // the A-Frame mixin ID is often identical to the corresponding streetmix segment "type" by design, let's start with that
     var groundMixinId = segments[i].type;
+
+    // repeat value for material property - repeatCount[0] is x texture repeat and repeatCount[1] is y texture repeat
+    const repeatCount = [];
 
     // look at segment type and variant(s) to determine specific cases
     if (segments[i].type === 'drive-lane' && variantList[1] === 'sharrow') {
@@ -673,12 +683,13 @@ function processSegments (segments, showStriping, length, globalAnimated, showVe
       }
     } else if (segments[i].type === 'divider' && variantList[0] === 'bollard') {
       groundMixinId = 'divider';
-
       // make some safehits
       const safehitsParentEl = createSafehitsParentElement(positionX);
       cloneMixinAsChildren({ objectMixinId: 'safehit', parentEl: safehitsParentEl, step: 4, radius: clonedObjectRadius });
       // add the safehits to the segment parent
       segmentParentEl.append(safehitsParentEl);
+      repeatCount[0] = 1;
+      repeatCount[1] = parseInt(length);
     } else if (segments[i].type === 'divider' && variantList[0] === 'flowers') {
       groundMixinId = 'grass';
       segmentParentEl.append(createDividerVariant('flowers', positionX, clonedObjectRadius, 2.25));
@@ -704,6 +715,8 @@ function processSegments (segments, showStriping, length, globalAnimated, showVe
     } else if (segments[i].type === 'divider' && variantList[0] === 'dome') {
       groundMixinId = 'divider';
       segmentParentEl.append(createDividerVariant('dome', positionX, clonedObjectRadius, 2.25));
+      repeatCount[0] = 1;
+      repeatCount[1] = parseInt(length);
     } else if (segments[i].type === 'temporary' && variantList[0] === 'barricade') {
       groundMixinId = 'drive-lane';
       segmentParentEl.append(createClonedVariants('temporary-barricade', positionX, clonedObjectRadius, 2.25));
@@ -848,6 +861,9 @@ function processSegments (segments, showStriping, length, globalAnimated, showVe
       groundMixinId = 'markings dashed-stripe';
       positionY = positionY + 0.01; // make sure the lane marker is above the asphalt
       scaleX = 1;
+      // for all markings material property repeat = "1 25". So every 150/25=6 meters put a dash
+      repeatCount[0] = 1;
+      repeatCount[1] = parseInt(length / 6);
     } else if (segments[i].type === 'separator' && variantList[0] === 'solid') {
       groundMixinId = 'markings solid-stripe';
       positionY = positionY + 0.01; // make sure the lane marker is above the asphalt
@@ -860,6 +876,9 @@ function processSegments (segments, showStriping, length, globalAnimated, showVe
       groundMixinId = 'markings yellow short-dashed-stripe';
       positionY = positionY + 0.01; // make sure the lane marker is above the asphalt
       scaleX = 1;
+      // for short-dashed-stripe every 3 meters put a dash
+      repeatCount[0] = 1;
+      repeatCount[1] = parseInt(length / 3);
     } else if (segments[i].type === 'separator' && variantList[0] === 'soliddashedyellow') {
       groundMixinId = 'markings yellow solid-dashed';
       positionY = positionY + 0.01; // make sure the lane marker is above the asphalt
@@ -869,6 +888,8 @@ function processSegments (segments, showStriping, length, globalAnimated, showVe
       positionY = positionY + 0.01; // make sure the lane marker is above the asphalt
       scaleX = 1;
       rotationY = '180';
+      repeatCount[0] = 1;
+      repeatCount[1] = parseInt(length / 6);
     } else if (segments[i].type === 'parking-lane') {
       let reusableObjectStencilsParentEl;
 
@@ -887,10 +908,13 @@ function processSegments (segments, showStriping, length, globalAnimated, showVe
 
     if (streetmixParsersTested.isSidewalk(segments[i].type)) {
       groundMixinId = 'sidewalk';
+      repeatCount[0] = 1.5;
+      // every 2 meters repeat sidewalk texture
+      repeatCount[1] = parseInt(length / 2);
     }
 
     // add new object
-    segmentParentEl.append(createSegmentElement(scaleX, positionX, positionY, rotationY, groundMixinId, length));
+    segmentParentEl.append(createSegmentElement(scaleX, positionX, positionY, rotationY, groundMixinId, length, repeatCount));
     // returns JSON output instead
     // append the new surfaceElement to the segmentParentEl
     streetParentEl.append(segmentParentEl);
@@ -936,7 +960,7 @@ function processBuildings (left, right, streetWidth, showGround, length) {
 
     if (currentValue === 'narrow' || currentValue === 'wide') {
       // Make buildings
-      const buildingsArray = streetmixParsersTested.createBuildingsArray(0.975 * length);
+      const buildingsArray = streetmixParsersTested.createBuildingsArray(length);
       const buildingJSONString = JSON.stringify(buildingsArray);
       const placedObjectEl = document.createElement('a-entity');
       // Account for left and right facing buildings
@@ -953,7 +977,7 @@ function processBuildings (left, right, streetWidth, showGround, length) {
 
     if (currentValue === 'residential') {
       // Make buildings
-      const buildingsArray = streetmixParsersTested.createBuildingsArray(0.85 * length, 'residential');
+      const buildingsArray = streetmixParsersTested.createBuildingsArray(length, 'residential');
       const buildingJSONString = JSON.stringify(buildingsArray);
       const placedObjectEl = document.createElement('a-entity');
       // Account for left and right facing buildings

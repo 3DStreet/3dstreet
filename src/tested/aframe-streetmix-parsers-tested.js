@@ -65,7 +65,9 @@ function createBuildingsArray (maxLength = 150, buildingType = 'narrow') { // es
         height: 8
       };
     }
-    buildingsArray.push(buildingEntity);
+    if (building.width + length <= maxLength) {
+      buildingsArray.push(buildingEntity);
+    }
 
     length += building.width;
     i++;

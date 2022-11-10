@@ -372,44 +372,36 @@ AFRAME.registerComponent('wheel', {
       self.wheel_B_L = vehicle.getObjectByName('wheel_B_L');
       self.wheel_B_R = vehicle.getObjectByName('wheel_B_R');
 
-      // For Truck exrta Wheels
+      // For Truck extra Wheels
       self.wheel_B_L_2 = vehicle.getObjectByName('wheel_B_L_2');
       self.wheel_B_R_2 = vehicle.getObjectByName('wheel_B_R_2');
-
-      self.main_bone = vehicle.getObjectByName('main_bone');
     });
   },
-  tick: function () {
-    const speed = this.data.speed;
+  tick: function (t, dt) {
+    const speed = this.data.speed / 1000;
     const wheelDiameter = this.data.wheelDiameter;
 
-    const dist = Math.PI * wheelDiameter;
-    const distx = speed * 0.003;
-    const t = (distx / dist) * (2 * Math.PI);
+    const rateOfRotation = (2 * (speed / wheelDiameter)) * dt;
 
-    // uncomment to move vehicle forward
-    // if (this.main_bone) {
-    //   this.main_bone.position.z += distx;
-    //   }
     if (this.wheel_F_L) {
-      this.wheel_F_L.rotateY(t);
+      this.wheel_F_L.rotateY(rateOfRotation);
     }
     if (this.wheel_F_R) {
-      this.wheel_F_R.rotateY(t);
+      this.wheel_F_R.rotateY(rateOfRotation);
     }
     if (this.wheel_B_L) {
-      this.wheel_B_L.rotateY(t);
+      this.wheel_B_L.rotateY(rateOfRotation);
     }
 
     if (this.wheel_B_L_2) {
-      this.wheel_B_L_2.rotateY(t);
+      this.wheel_B_L_2.rotateY(rateOfRotation);
     }
 
     if (this.wheel_B_R_2) {
-      this.wheel_B_R_2.rotateY(t);
+      this.wheel_B_R_2.rotateY(rateOfRotation);
     }
     if (this.wheel_B_R) {
-      this.wheel_B_R.rotateY(t);
+      this.wheel_B_R.rotateY(rateOfRotation);
     }
   }
 });
