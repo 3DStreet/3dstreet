@@ -564,8 +564,6 @@ function createSegmentElement (scaleX, positionX, positionY, rotationY, mixinId,
     segmentEl.setAttribute('material', `repeat: ${repeatCount[0]} ${repeatCount[1]}`);
   }
 
-  segmentEl.setAttribute('rotation', '270 ' + rotationY + ' 0');
-  segmentEl.setAttribute('mixin', mixinId);
   return segmentEl;
 }
 
