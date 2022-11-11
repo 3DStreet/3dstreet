@@ -906,7 +906,7 @@ function processSegments (segments, showStriping, length, globalAnimated, showVe
 
     if (streetmixParsersTested.isSidewalk(segments[i].type)) {
       groundMixinId = 'sidewalk';
-      repeatCount[0] = 1.5;
+      repeatCount[0] = segmentWidthInMeters / 1.5;
       // every 2 meters repeat sidewalk texture
       repeatCount[1] = parseInt(length / 2);
     }
