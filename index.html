@@ -32,6 +32,8 @@
     <div class="right-fixed">
       <ul class="right-menu">
         <li onclick="screenshot()"> <a class="camera"  href="#"> <span> Capture image as PNG </span> <img src="ui_assets/camera-icon.svg"> </a></li>
+        <li onclick="inputStreetmix()"> <a class="load"  href="#"> <span> Load Streetmix URL </span> <img src="ui_assets/streetmix-logo.svg"> </a></li>
+        <li onclick="console.log('boo')"> <a class="load"  href="#"> <span> Load JSON String </span> <img src="ui_assets/download-icon.svg"> </a></li>
         <li> <a id="custom-enter-vr-button" class="vr" href="#"> <span class="vr">Enter VR mode</span> <img src="ui_assets/vr-icon.svg"> </a></li>
       </ul>
     </div>
@@ -69,17 +71,20 @@
 
         <a-entity street-environment="preset: day;"></a-entity>
   
-        <a-entity id="street-parent" street streetmix-loader set-loader-from-hash="defaultURL: https://streetmix.net/kfarr/3"></a-entity>
+        <a-entity id="street-container">
+          <a-entity id="default-street" street="length: 20" streetmix-loader set-loader-from-hash></a-entity>
+        </a-entity>
+
       </a-scene>
     </div>
-
+<!-- 
     <div class="location" >
         <p id="location"><img src="ui_assets/location.svg"> </p> 
-    </div>
-    <script>
+    </div> -->
+    <!-- <script>
       var locationString = (location.href.split("#")[1] != undefined) ? location.href.split("#")[1] : "https://streetmix.net/kfarr/3";
       document.getElementById("location").innerHTML += locationString;
-    </script>
+    </script> -->
   </body>
   <script>
     AFRAME.registerComponent('set-loader-from-hash', {
@@ -93,16 +98,28 @@
         if (streetURL !== undefined && streetURL.length > 0) {
           console.log('[set-loader-from-hash]','Using URL from hash', streetURL)
           this.el.setAttribute('streetmix-loader', 'streetmixStreetURL', streetURL);
-        } else {
-          console.log('[set-loader-from-hash]','Using default URL', this.data.defaultURL)
-          this.el.setAttribute('streetmix-loader', 'streetmixStreetURL', this.data.defaultURL);
-        }
+        } 
+        // else {
+        //   console.log('[set-loader-from-hash]','Using default URL', this.data.defaultURL)
+        //   this.el.setAttribute('streetmix-loader', 'streetmixStreetURL', this.data.defaultURL);
+        // }
       }
     });
 
-    window.onload = function () {
-      if (window.location.hash.substring(1).length === 0) window.location.hash = '#https://streetmix.net/kfarr/3';
-      document.querySelector('#inputUrl').value = window.location.hash.substring(1);
+    function inputStreetmix() {
+      streetmixURL = prompt("Please enter a Streetmix URL", "https://streetmix.net/kfarr/3/example-street");
+      setTimeout(function() {
+        window.location.hash = streetmixURL;
+      })
+
+      streetContainerEl = document.getElementById('street-container');
+
+      while (streetContainerEl.firstChild) {
+        streetContainerEl.removeChild(streetContainerEl.lastChild);
+      }
+
+      streetContainerEl.innerHTML = '<a-entity street streetmix-loader="streetmixStreetURL: '+streetmixURL+'""></a-entity>';
+
     }
 
     function startAudio() {
