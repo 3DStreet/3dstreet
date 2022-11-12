@@ -926,6 +926,7 @@ function processBuildings (left, right, streetWidth, showGround, length) {
   const buildingElement = document.createElement('a-entity');
   const clonedObjectRadius = 0.45 * length;
   buildingElement.classList.add('buildings-parent');
+  buildingElement.setAttribute('position', "0 0.2 0");
   const buildingLotWidth = 150;
   const buildingsArray = [left, right];
 
@@ -948,9 +949,9 @@ function processBuildings (left, right, streetWidth, showGround, length) {
       var groundParentEl = document.createElement('a-entity');
       groundParentEl.setAttribute('create-from-json', 'jsonString', groundJSONString);
       if (side === 'right') {
-        groundParentEl.setAttribute('position', positionX - 55 + ' 0 0');
+        groundParentEl.setAttribute('position', positionX - 55 + ' 0.2 0');
       } else {
-        groundParentEl.setAttribute('position', positionX + 55 + ' 0 0');
+        groundParentEl.setAttribute('position', positionX + 55 + ' 0.2 0');
       }
       groundParentEl.classList.add('ground-' + side);
       buildingElement.appendChild(groundParentEl);
@@ -980,13 +981,15 @@ function processBuildings (left, right, streetWidth, showGround, length) {
       const placedObjectEl = document.createElement('a-entity');
       // Account for left and right facing buildings
       if (index === 1) {
-        placedObjectEl.setAttribute('position', (positionX + (sideMultiplier * -64)) + ' -0.75 ' + (length / 2));
+        placedObjectEl.setAttribute('position', (positionX + (sideMultiplier * -64)) + ' -0.58 ' + (length / 2));
       } else {
-        placedObjectEl.setAttribute('position', (positionX + (sideMultiplier * -64)) + ' -0.75 ' + (-length / 2));
+        placedObjectEl.setAttribute('position', (positionX + (sideMultiplier * -64)) + ' -0.58 ' + (-length / 2));
       }
       placedObjectEl.setAttribute('rotation', '0 ' + (90 * sideMultiplier) + ' 0');
       placedObjectEl.setAttribute('create-from-json', 'jsonString', buildingJSONString);
       placedObjectEl.classList.add('suburbia-' + side);
+      //the grass should be slightly lower than the path - 0.17 instead of 0.2 for other buildings
+      buildingElement.setAttribute('position', '0 0.17 0');
       buildingElement.append(placedObjectEl);
     }
 
