@@ -554,6 +554,12 @@ function createSegmentElement (scaleX, positionX, positionY, rotationY, mixinId,
     segmentEl.setAttribute('geometry', 'height: 0.4');
     segmentEl.setAttribute('geometry', 'depth', length);
     segmentEl.setAttribute('scale', scaleBox);
+  } else if (mixinId.match('lane')) {
+    positionY -= 0.1;
+    segmentEl.setAttribute('geometry', 'primitive', 'box');
+    segmentEl.setAttribute('geometry', 'height: 0.2');
+    segmentEl.setAttribute('geometry', 'depth', length);
+    segmentEl.setAttribute('scale', scaleBox); 
   } else {
     // segmentEl.setAttribute('geometry', 'height', length); // alternative to modifying scale
     segmentEl.setAttribute('rotation', '270 ' + rotationY + ' 0');
