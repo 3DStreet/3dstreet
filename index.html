@@ -117,20 +117,30 @@
       streetContainerEl.innerHTML = '<a-entity street streetmix-loader="streetmixStreetURL: '+streetmixURL+'""></a-entity>';
     }
 
+    function getValidJSON(stringJSON) {
+      // Preserve newlines, etc. - use valid JSON
+      // Remove non-printable and other non-valid JSON characters
+      return stringJSON.replace(/\'/g, "")
+                       .replace(/\n/g, "")
+                       .replace(/[\u0000-\u0019]+/g,"");
+    }
     
     function inputJSON() {
       streetJSONString = prompt("Please paste 3DStreet JSON string");
+      const validJSONString = getValidJSON(streetJSONString);
 
       streetContainerEl = document.getElementById('street-container');
 
       while (streetContainerEl.firstChild) {
         streetContainerEl.removeChild(streetContainerEl.lastChild);
       }
-      var streetObject = JSON.parse(streetJSONString);
-      console.log('string', streetJSONString)
+
+      console.log('string', validJSONString)
+      var streetObject = JSON.parse(validJSONString);
+      
       console.log('object', streetObject)
 
-      createEntities(streetObject, streetContainerEl);
+      createEntities(streetObject.data, streetContainerEl);
 
     }
 
