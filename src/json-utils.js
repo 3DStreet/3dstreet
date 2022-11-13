@@ -4,7 +4,7 @@
 Takes one or more elements (from a DOM queryselector call)
 and returns a Javascript object
 */
-export function convertToObject (entity) {
+function convertToObject (entity) {
   const data = [];
   if (entity.length) {
     for (const entry of entity) {
@@ -92,7 +92,7 @@ function getModifiedProperties (entity, componentName) {
   return diff;
 }
 
-export function createEntities (entitiesData, parentEl) {
+function createEntities (entitiesData, parentEl) {
   for (const entityData of entitiesData) {
     createEntity(entityData, parentEl);
   }
