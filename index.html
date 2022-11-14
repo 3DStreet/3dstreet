@@ -35,6 +35,7 @@
         <li onclick="screenshot()"> <a class="camera"  href="#"> <span> Capture image as PNG </span> <img src="ui_assets/camera-icon.svg"> </a></li>
         <li onclick="inputStreetmix()"> <a class="load"  href="#"> <span> Load Streetmix URL </span> <img src="ui_assets/streetmix-logo.svg"> </a></li>
         <li onclick="inputJSON()"> <a class="load"  href="#"> <span> Load JSON String </span> <img src="ui_assets/download-icon.svg"> </a></li>
+        <li><a class="load"> <label for="inputfile"> <input type="file" id="inputfile" style="display:none" accept=".js, .json, .txt"> <span> Load JSON File </span></label> <img src="ui_assets/download-icon.svg"></a></li>
         <li> <a id="custom-enter-vr-button" class="vr" href="#"> <span class="vr">Enter VR mode</span> <img src="ui_assets/vr-icon.svg"> </a></li>
       </ul>
     </div>
@@ -125,8 +126,7 @@
                        .replace(/[\u0000-\u0019]+/g,"");
     }
     
-    function inputJSON() {
-      streetJSONString = prompt("Please paste 3DStreet JSON string");
+    function createElementsFromJSON(streetJSONString) {
       const validJSONString = getValidJSON(streetJSONString);
 
       streetContainerEl = document.getElementById('street-container');
@@ -135,14 +135,33 @@
         streetContainerEl.removeChild(streetContainerEl.lastChild);
       }
 
-      console.log('string', validJSONString)
+      //console.log('string', validJSONString)
       var streetObject = JSON.parse(validJSONString);
       
-      console.log('object', streetObject)
+      //console.log('object', streetObject)
 
       createEntities(streetObject.data, streetContainerEl);
 
     }
+
+    function inputJSON() {
+      const stringJSON = prompt("Please paste 3DStreet JSON string");
+      if (stringJSON) {
+        createElementsFromJSON(stringJSON);
+      }      
+    }
+
+    function fileJSON() {
+      let reader=new FileReader();
+      reader.onload=function(){
+        createElementsFromJSON(reader.result);
+      }
+        
+      reader.readAsText(this.files[0]);
+    }
+
+    document.getElementById('inputfile')
+            .addEventListener('change', fileJSON);
 
     function startAudio() {
       // set sounds enabled in global state
