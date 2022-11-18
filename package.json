@@ -45,21 +45,22 @@
   "devDependencies": {
     "@babel/core": "^7.12.7",
     "@babel/preset-env": "^7.12.7",
-    "approvals": "^3.0.5",
+    "approvals": "^6.0.0",
     "babel-loader": "^8.2.1",
     "budo": "^11.6.4",
     "jsdom": "^16.2.2",
     "jsdom-global": "^3.0.2",
-    "mocha": "^7.1.2",
+    "mocha": "^10.1.0",
     "nyc": "^15.0.1",
     "pretty": "^2.0.0",
     "rewire": "^5.0.0",
     "semistandard": "^14.2.0",
     "snazzy": "^8.0.0",
-    "webpack": "^5.6.0",
+    "webpack": "^5.75.0",
     "webpack-cli": "^4.2.0"
   },
   "dependencies": {
-    "aframe-atlas-uvs-component": "^3.0.0"
+    "aframe-atlas-uvs-component": "^3.0.0",
+    "latest": "^0.2.0"
   }
 }
