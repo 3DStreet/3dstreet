@@ -1,6 +1,6 @@
-@import url('https://fonts.googleapis.com/css2?family=Work+Sans:wght@300;400;500;600;700;800&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Lato:wght@400;500');
 html {
-	font-family: 'Rubik', sans-serif;
+	font-family: 'Lato', sans-serif;
 }
 
 * {
@@ -9,7 +9,7 @@ html {
 }
 
 body {
-	font-family: 'Rubik', sans-serif;
+	font-family: 'Lato', sans-serif;
 	background-color: #C4C4C4;
 	color: #283237;
 	padding: 0;
