@@ -1,26 +1,38 @@
 <!DOCTYPE html>
 <html>
   <head>
+    <!-- aframe -->
     <script src="https://aframe.io/releases/1.3.0/aframe.min.js"></script>
+
+    <!-- 3dstreet -->
     <script src="./dist/aframe-street-component.js"></script>
+
+    <!-- user controls - vr teleport -->
+    <script src="https://raw.githack.com/fernandojsg/aframe-teleport-controls/master/dist/aframe-teleport-controls.min.js"></script>
+
+    <!-- user controls - cursor teleport -->
+    <script src="./src/lib/aframe-cursor-teleport-component.min.js"></script>
+
+    <!-- gltf-animation -->
     <script src="//cdn.8thwall.com/web/aframe/aframe-extras-6.1.1.min.js"></script>
+
+    <!-- mapbox -->
+    <script src="https://unpkg.com/aframe-mapbox-component/dist/aframe-mapbox-component.min.js"></script>
+
+    <!-- save / load -->
     <script src="./src/json-utils.js"></script>
 
-    <!-- user controls -->
-    <script src="https://raw.githack.com/fernandojsg/aframe-teleport-controls/master/dist/aframe-teleport-controls.min.js"></script>
-    <script src="src/lib/aframe-orbit-controls.min.js"></script>
-
-    <!-- ocean, ground, sky -->
-    <script src="src/components/ocean-plane.js"></script>
-    <script src="src/lib/aframe-cubemap-component.js"></script>
+    <!-- ocean -->
+    <script src="./src/components/ocean-plane.js"></script>
 
     <title>3DStreet</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link rel="icon" type="image/x-icon" href="ui_assets/favicon.ico">
-    <link rel="stylesheet" href="src/style.css">
+    <link rel="stylesheet" href="src/viewer-styles.css">
   </head>
 
   <body>
+     <!-- viewer ui start -->
     <header class="header">
         <div class="header-wrapper">
             <div class="logo-wrapper">
@@ -28,6 +40,7 @@
                     <img class="logo-img" alt="3DStreet Viewer" src="ui_assets/logo-viewer.svg">
                 </a>
             </div>
+        </div>
     </header>
 
     <div class="right-fixed">
@@ -40,24 +53,6 @@
       </ul>
     </div>
 
-    <script>
-      // only show VR button if headset connected
-      AFRAME.registerComponent('vr-mode-ui-if-headset', {
-        dependencies: ['vr-mode-ui'],
-        init: function () {
-          if (!AFRAME.utils.device.checkHeadsetConnected()) {
-            this.el.setAttribute('vr-mode-ui', 'enabled', false);
-          }
-        }
-      })
-
-      function screenshot() {
-        AFRAME.scenes[0].setAttribute('screenshot','width',AFRAME.scenes[0].canvas.width)
-        AFRAME.scenes[0].setAttribute('screenshot','height',AFRAME.scenes[0].canvas.height)
-        document.querySelector('a-scene').components.screenshot.capture('perspective');
-      }
-    </script>
-
     <div class="content">
       <a-scene vr-mode-ui="enterVRButton: #custom-enter-vr-button;" vr-mode-ui-if-headset renderer="colorManagement: true; highRefreshRate: true; foveationLevel: 3; physicallyCorrectLights: true; logarithmicDepthBuffer: false;" fogoff="type: linear; color: #D5C69B; far: 200" gltf-model="dracoDecoderPath: https://www.gstatic.com/draco/versioned/decoders/1.4.3/">
         <a-assets>
@@ -65,10 +60,10 @@
           <!-- <streetmix-assets url="./assets/"></streetmix-assets> -->
         </a-assets>
     
-        <a-entity id="cameraRig">
-          <a-entity id="camera" camera="far: 1000" wasd-controls="enabled: false" orbit-controls="autoRotate: true;autoRotateSpeed:0.01;target: 0 0 0;initialPosition:0 4 15;minDistance:3;maxDistance:100;enableKeys:false"></a-entity>
-          <a-entity id="leftHand" hand-controls="hand: left; handModelStyle: lowPoly; color: #ccffcc" teleport-controls="cameraRig: #cameraRig; button: trigger"></a-entity>
-          <a-entity id="rightHand" hand-controls="hand: right; handModelStyle: lowPoly; color: #ccffcc" teleport-controls="cameraRig: #cameraRig; button: trigger"></a-entity>
+        <a-entity id="cameraRig" cursor-teleport="cameraRig: #cameraRig; cameraHead: #camera;" look-controls="reverseMouseDrag: true" wasd-controls="enabled: true">
+          <a-entity id="camera" camera="near: 1; far: 1000" position="0 1.6 0" ></a-entity>
+          <a-entity id="leftHand" hand-controls="hand: left; handModelStyle: lowPoly; color: #ffccff" teleport-controls="cameraRig: #cameraRig; button: trigger"></a-entity>
+          <a-entity id="rightHand" hand-controls="hand: right; handModelStyle: lowPoly; color: #ffccff" teleport-controls="cameraRig: #cameraRig; button: trigger"></a-entity>
         </a-entity>
 
         <a-entity street-environment="preset: day;"></a-entity>
@@ -89,6 +84,22 @@
     </script> -->
   </body>
   <script>
+    // only show VR button if headset connected
+    AFRAME.registerComponent('vr-mode-ui-if-headset', {
+      dependencies: ['vr-mode-ui'],
+      init: function () {
+        if (!AFRAME.utils.device.checkHeadsetConnected()) {
+          this.el.setAttribute('vr-mode-ui', 'enabled', false);
+        }
+      }
+    })
+
+    function screenshot() {
+      AFRAME.scenes[0].setAttribute('screenshot','width',AFRAME.scenes[0].canvas.width)
+      AFRAME.scenes[0].setAttribute('screenshot','height',AFRAME.scenes[0].canvas.height)
+      document.querySelector('a-scene').components.screenshot.capture('perspective');
+    }
+
     AFRAME.registerComponent('set-loader-from-hash', {
       dependencies: ['streetmix-loader'],
       schema: {
