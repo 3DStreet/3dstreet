@@ -60,28 +60,22 @@
           <!-- <streetmix-assets url="./assets/"></streetmix-assets> -->
         </a-assets>
     
-        <a-entity id="cameraRig" cursor-teleport="cameraRig: #cameraRig; cameraHead: #camera;" look-controls="reverseMouseDrag: true" wasd-controls="enabled: true">
+        <a-entity id="cameraRig" data-layer-name="Viewer" cursor-teleport="cameraRig: #cameraRig; cameraHead: #camera;" look-controls="reverseMouseDrag: true" wasd-controls="enabled: true">
           <a-entity id="camera" camera="near: 1; far: 1000" position="0 1.6 0" ></a-entity>
           <a-entity id="leftHand" hand-controls="hand: left; handModelStyle: lowPoly; color: #ffccff" teleport-controls="cameraRig: #cameraRig; button: trigger"></a-entity>
           <a-entity id="rightHand" hand-controls="hand: right; handModelStyle: lowPoly; color: #ffccff" teleport-controls="cameraRig: #cameraRig; button: trigger"></a-entity>
         </a-entity>
 
-        <a-entity street-environment="preset: day;"></a-entity>
+        <a-entity id="environment" data-layer-name="Environment" street-environment="preset: day;"></a-entity>
 
-        <a-entity id="street-container">
+        <a-entity id="street-container" data-layer-name="3D Street Layers" data-layer-show-children>
           <a-entity id="default-street" street streetmix-loader set-loader-from-hash></a-entity>
         </a-entity>
 
+        <a-entity id="layers-2d" data-layer-name="2D Street Layers" data-layer-show-children>
+
       </a-scene>
     </div>
-<!-- 
-    <div class="location" >
-        <p id="location"><img src="ui_assets/location.svg"> Welcome Street</p> 
-    </div> -->
-    <!-- <script>
-      var locationString = (location.href.split("#")[1] != undefined) ? location.href.split("#")[1] : "https://streetmix.net/kfarr/3";
-      document.getElementById("location").innerHTML += locationString;
-    </script> -->
   </body>
   <script>
     // only show VR button if headset connected
@@ -93,12 +87,6 @@
         }
       }
     })
-
-    function screenshot() {
-      AFRAME.scenes[0].setAttribute('screenshot','width',AFRAME.scenes[0].canvas.width)
-      AFRAME.scenes[0].setAttribute('screenshot','height',AFRAME.scenes[0].canvas.height)
-      document.querySelector('a-scene').components.screenshot.capture('perspective');
-    }
 
     AFRAME.registerComponent('set-loader-from-hash', {
       dependencies: ['streetmix-loader'],
@@ -119,6 +107,12 @@
       }
     });
 
+    function screenshot() {
+      AFRAME.scenes[0].setAttribute('screenshot','width',AFRAME.scenes[0].canvas.width)
+      AFRAME.scenes[0].setAttribute('screenshot','height',AFRAME.scenes[0].canvas.height)
+      document.querySelector('a-scene').components.screenshot.capture('perspective');
+    }
+
     function inputStreetmix() {
       streetmixURL = prompt("Please enter a Streetmix URL", "https://streetmix.net/kfarr/3/example-street");
       setTimeout(function() { window.location.hash = streetmixURL; });
@@ -129,6 +123,7 @@
       streetContainerEl.innerHTML = '<a-entity street streetmix-loader="streetmixStreetURL: '+streetmixURL+'""></a-entity>';
     }
 
+    // JSON loading starts here
     function getValidJSON(stringJSON) {
       // Preserve newlines, etc. - use valid JSON
       // Remove non-printable and other non-valid JSON characters
@@ -139,20 +134,12 @@
     
     function createElementsFromJSON(streetJSONString) {
       const validJSONString = getValidJSON(streetJSONString);
-
       streetContainerEl = document.getElementById('street-container');
-
       while (streetContainerEl.firstChild) {
         streetContainerEl.removeChild(streetContainerEl.lastChild);
       }
-
-      //console.log('string', validJSONString)
       var streetObject = JSON.parse(validJSONString);
-      
-      //console.log('object', streetObject)
-
       createEntities(streetObject.data, streetContainerEl);
-
     }
 
     function inputJSON() {
@@ -167,31 +154,10 @@
       reader.onload=function(){
         createElementsFromJSON(reader.result);
       }
-        
       reader.readAsText(this.files[0]);
     }
 
     document.getElementById('inputfile')
             .addEventListener('change', fileJSON);
-
-    function startAudio() {
-      // set sounds enabled in global state
-      state.sounds.enabled = true;
-
-      // iterate through all entities with .playme class and start them playing
-      var entities = document.querySelectorAll('.playme'), i;
-      for (i = 0; i < entities.length; ++i) {
-        entities[i].components.sound.playSound();
-      }
-
-      // set 2D DOM toolbar volume icon to green to indicate state
-      document.getElementById("audio-icon").setAttribute("class","fa fa-volume-up");
-      document.getElementById("audio-icon").setAttribute("style","color: lightgreen");
-    }
-
-    document.querySelector('a-scene').addEventListener('enter-vr', function () {
-      console.log("ENTERED VR");
-      // startAudio();
-    });
   </script>
 </html>
