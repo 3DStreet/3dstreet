@@ -33,15 +33,11 @@
 
   <body>
     <!-- viewer ui start -->
-    <header class="header">
-        <div class="header-wrapper">
-            <div class="logo-wrapper">
-                <a class="logo-link" href="https://www.3dstreet.org/" id="3dstreet-logo-length">
-                    <img class="logo-img" alt="3DStreet Viewer" src="ui_assets/logo-viewer.svg">
-                </a>
-            </div>
-        </div>
-    </header>
+    <div class="viewer-header-wrapper">
+      <button class="viewer-logo-start-editor-button" onclick="startEditor()">
+        <img class="viewer-logo-img" alt="3DStreet Viewer" src="ui_assets/3DStreet-Viewer-Start-Editor.svg">
+      </button>
+    </div>
 
     <div class="right-fixed">
       <ul class="right-menu">
@@ -53,7 +49,13 @@
       </ul>
     </div>
 
-    <a-scene vr-mode-ui="enterVRButton: #custom-enter-vr-button;" vr-mode-ui-if-headset renderer="colorManagement: true; highRefreshRate: true; foveationLevel: 3; physicallyCorrectLights: true; logarithmicDepthBuffer: false;" fogoff="type: linear; color: #D5C69B; far: 200" gltf-model="dracoDecoderPath: https://www.gstatic.com/draco/versioned/decoders/1.4.3/">
+    <a-scene
+      vr-mode-ui="enterVRButton: #custom-enter-vr-button;"
+      vr-mode-ui-if-headset
+      renderer="colorManagement: true; physicallyCorrectLights: true;"
+      gltf-model="dracoDecoderPath: https://www.gstatic.com/draco/versioned/decoders/1.4.3/"
+      inspector="url: //3dstreet.app/dist/3dstreet-editor.js"
+      >
       <a-assets>
         <!-- uncomment the line below to load assets from local submodule  -->
         <!-- <streetmix-assets url="./assets/"></streetmix-assets> -->
@@ -74,7 +76,6 @@
       <a-entity id="layers-2d" data-layer-name="2D Street Layers" data-layer-show-children>
 
     </a-scene>
-    
   </body>
   <script>
     // only show VR button if headset connected
@@ -112,6 +113,16 @@
       document.querySelector('a-scene').components.screenshot.capture('perspective');
     }
 
+    function startEditor() {
+      var sceneEl = document.querySelector('a-scene');
+      sceneEl.components.inspector.openInspector();
+      document.querySelector('.viewer-header-wrapper').style.display = 'none';
+    }
+    // uncomment the below to autostart the editor within 2 seconds of page load
+    // setTimeout(() => {
+    //   startEditor();
+    // }, "2000")
+    
     function inputStreetmix() {
       streetmixURL = prompt("Please enter a Streetmix URL", "https://streetmix.net/kfarr/3/example-street");
       setTimeout(function() { window.location.hash = streetmixURL; });
