@@ -204,13 +204,6 @@ body {
 	vertical-align: middle;
 }
 
-/********* conten css *********/
-
-.content {
-	min-height: 100vh;
-	background-size: cover;
-}
-
 /*********loading-popup**********/
 
 .loading-popup {

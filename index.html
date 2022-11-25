@@ -32,7 +32,7 @@
   </head>
 
   <body>
-     <!-- viewer ui start -->
+    <!-- viewer ui start -->
     <header class="header">
         <div class="header-wrapper">
             <div class="logo-wrapper">
@@ -53,29 +53,28 @@
       </ul>
     </div>
 
-    <div class="content">
-      <a-scene vr-mode-ui="enterVRButton: #custom-enter-vr-button;" vr-mode-ui-if-headset renderer="colorManagement: true; highRefreshRate: true; foveationLevel: 3; physicallyCorrectLights: true; logarithmicDepthBuffer: false;" fogoff="type: linear; color: #D5C69B; far: 200" gltf-model="dracoDecoderPath: https://www.gstatic.com/draco/versioned/decoders/1.4.3/">
-        <a-assets>
-          <!-- uncomment the line below to load assets from local submodule  -->
-          <!-- <streetmix-assets url="./assets/"></streetmix-assets> -->
-        </a-assets>
+    <a-scene vr-mode-ui="enterVRButton: #custom-enter-vr-button;" vr-mode-ui-if-headset renderer="colorManagement: true; highRefreshRate: true; foveationLevel: 3; physicallyCorrectLights: true; logarithmicDepthBuffer: false;" fogoff="type: linear; color: #D5C69B; far: 200" gltf-model="dracoDecoderPath: https://www.gstatic.com/draco/versioned/decoders/1.4.3/">
+      <a-assets>
+        <!-- uncomment the line below to load assets from local submodule  -->
+        <!-- <streetmix-assets url="./assets/"></streetmix-assets> -->
+      </a-assets>
+  
+      <a-entity id="cameraRig" data-layer-name="Viewer" cursor-teleport="cameraRig: #cameraRig; cameraHead: #camera;" look-controls="reverseMouseDrag: true" wasd-controls="enabled: true">
+        <a-entity id="camera" camera="near: 1; far: 1000" position="0 1.6 0" ></a-entity>
+        <a-entity id="leftHand" hand-controls="hand: left; handModelStyle: lowPoly; color: #ffccff" teleport-controls="cameraRig: #cameraRig; button: trigger"></a-entity>
+        <a-entity id="rightHand" hand-controls="hand: right; handModelStyle: lowPoly; color: #ffccff" teleport-controls="cameraRig: #cameraRig; button: trigger"></a-entity>
+      </a-entity>
+
+      <a-entity id="environment" data-layer-name="Environment" street-environment="preset: day;"></a-entity>
+
+      <a-entity id="street-container" data-layer-name="3D Street Layers" data-layer-show-children>
+        <a-entity id="default-street" street streetmix-loader set-loader-from-hash></a-entity>
+      </a-entity>
+
+      <a-entity id="layers-2d" data-layer-name="2D Street Layers" data-layer-show-children>
+
+    </a-scene>
     
-        <a-entity id="cameraRig" data-layer-name="Viewer" cursor-teleport="cameraRig: #cameraRig; cameraHead: #camera;" look-controls="reverseMouseDrag: true" wasd-controls="enabled: true">
-          <a-entity id="camera" camera="near: 1; far: 1000" position="0 1.6 0" ></a-entity>
-          <a-entity id="leftHand" hand-controls="hand: left; handModelStyle: lowPoly; color: #ffccff" teleport-controls="cameraRig: #cameraRig; button: trigger"></a-entity>
-          <a-entity id="rightHand" hand-controls="hand: right; handModelStyle: lowPoly; color: #ffccff" teleport-controls="cameraRig: #cameraRig; button: trigger"></a-entity>
-        </a-entity>
-
-        <a-entity id="environment" data-layer-name="Environment" street-environment="preset: day;"></a-entity>
-
-        <a-entity id="street-container" data-layer-name="3D Street Layers" data-layer-show-children>
-          <a-entity id="default-street" street streetmix-loader set-loader-from-hash></a-entity>
-        </a-entity>
-
-        <a-entity id="layers-2d" data-layer-name="2D Street Layers" data-layer-show-children>
-
-      </a-scene>
-    </div>
   </body>
   <script>
     // only show VR button if headset connected
