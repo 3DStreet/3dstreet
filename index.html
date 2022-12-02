@@ -1,34 +1,43 @@
 <!DOCTYPE html>
 <html>
   <head>
+    <!-- aframe -->
     <script src="https://aframe.io/releases/1.3.0/aframe.min.js"></script>
+
+    <!-- 3dstreet -->
     <script src="./dist/aframe-street-component.js"></script>
+
+    <!-- user controls - vr teleport -->
+    <script src="https://raw.githack.com/fernandojsg/aframe-teleport-controls/master/dist/aframe-teleport-controls.min.js"></script>
+
+    <!-- user controls - cursor teleport -->
+    <script src="./src/lib/aframe-cursor-teleport-component.min.js"></script>
+
+    <!-- gltf-animation -->
     <script src="//cdn.8thwall.com/web/aframe/aframe-extras-6.1.1.min.js"></script>
+
+    <!-- mapbox -->
+    <script src="https://unpkg.com/aframe-mapbox-component/dist/aframe-mapbox-component.min.js"></script>
+
+    <!-- save / load -->
     <script src="./src/json-utils.js"></script>
 
-    <!-- user controls -->
-    <script src="https://raw.githack.com/fernandojsg/aframe-teleport-controls/master/dist/aframe-teleport-controls.min.js"></script>
-    <script src="src/lib/aframe-orbit-controls.min.js"></script>
-
-    <!-- ocean, ground, sky -->
-    <script src="src/components/ocean-plane.js"></script>
-    <script src="src/lib/aframe-cubemap-component.js"></script>
+    <!-- ocean -->
+    <script src="./src/components/ocean-plane.js"></script>
 
     <title>3DStreet</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link rel="icon" type="image/x-icon" href="ui_assets/favicon.ico">
-    <link rel="stylesheet" href="src/style.css">
+    <link rel="stylesheet" href="src/viewer-styles.css">
   </head>
 
   <body>
-    <header class="header">
-        <div class="header-wrapper">
-            <div class="logo-wrapper">
-                <a class="logo-link" href="https://www.3dstreet.org/" id="3dstreet-logo-length">
-                    <img class="logo-img" alt="3DStreet Viewer" src="ui_assets/logo-viewer.svg">
-                </a>
-            </div>
-    </header>
+    <!-- viewer ui start -->
+    <div class="viewer-header-wrapper">
+      <button class="viewer-logo-start-editor-button" onclick="startEditor()">
+        <img class="viewer-logo-img" alt="3DStreet Viewer" src="ui_assets/3DStreet-Viewer-Start-Editor.svg">
+      </button>
+    </div>
 
     <div class="right-fixed">
       <ul class="right-menu">
@@ -40,55 +49,45 @@
       </ul>
     </div>
 
-    <script>
-      // only show VR button if headset connected
-      AFRAME.registerComponent('vr-mode-ui-if-headset', {
-        dependencies: ['vr-mode-ui'],
-        init: function () {
-          if (!AFRAME.utils.device.checkHeadsetConnected()) {
-            this.el.setAttribute('vr-mode-ui', 'enabled', false);
-          }
-        }
-      })
+    <a-scene
+      vr-mode-ui="enterVRButton: #custom-enter-vr-button;"
+      vr-mode-ui-if-headset
+      renderer="colorManagement: true; physicallyCorrectLights: true;"
+      gltf-model="dracoDecoderPath: https://www.gstatic.com/draco/versioned/decoders/1.4.3/"
+      inspector="url: //3dstreet.app/dist/3dstreet-editor.js"
+      >
+      <a-assets>
+        <!-- uncomment the line below to load assets from local submodule  -->
+        <!-- <streetmix-assets url="./assets/"></streetmix-assets> -->
+      </a-assets>
+  
+      <a-entity id="cameraRig" position="0 10 30" data-layer-name="Viewer" cursor-teleport="cameraRig: #cameraRig; cameraHead: #camera;" look-controls="reverseMouseDrag: true" wasd-controls="enabled: true">
+        <a-entity id="camera" camera="near: 1; far: 1000" position="0 1.6 0" ></a-entity>
+        <a-entity id="leftHand" hand-controls="hand: left; handModelStyle: lowPoly; color: #ffccff" teleport-controls="cameraRig: #cameraRig; button: trigger"></a-entity>
+        <a-entity id="rightHand" hand-controls="hand: right; handModelStyle: lowPoly; color: #ffccff" teleport-controls="cameraRig: #cameraRig; button: trigger"></a-entity>
+      </a-entity>
 
-      function screenshot() {
-        AFRAME.scenes[0].setAttribute('screenshot','width',AFRAME.scenes[0].canvas.width)
-        AFRAME.scenes[0].setAttribute('screenshot','height',AFRAME.scenes[0].canvas.height)
-        document.querySelector('a-scene').components.screenshot.capture('perspective');
-      }
-    </script>
+      <a-entity id="environment" data-layer-name="Environment" street-environment="preset: day;"></a-entity>
 
-    <div class="content">
-      <a-scene vr-mode-ui="enterVRButton: #custom-enter-vr-button;" vr-mode-ui-if-headset renderer="colorManagement: true; highRefreshRate: true; foveationLevel: 3; physicallyCorrectLights: true; logarithmicDepthBuffer: false;" fogoff="type: linear; color: #D5C69B; far: 200" gltf-model="dracoDecoderPath: https://www.gstatic.com/draco/versioned/decoders/1.4.3/">
-        <a-assets>
-          <!-- uncomment the line below to load assets from local submodule  -->
-          <!-- <streetmix-assets url="./assets/"></streetmix-assets> -->
-        </a-assets>
-    
-        <a-entity id="cameraRig">
-          <a-entity id="camera" camera="far: 1000" wasd-controls="enabled: false" orbit-controls="autoRotate: true;autoRotateSpeed:0.01;target: 0 0 0;initialPosition:0 4 15;minDistance:3;maxDistance:100;enableKeys:false"></a-entity>
-          <a-entity id="leftHand" hand-controls="hand: left; handModelStyle: lowPoly; color: #ccffcc" teleport-controls="cameraRig: #cameraRig; button: trigger"></a-entity>
-          <a-entity id="rightHand" hand-controls="hand: right; handModelStyle: lowPoly; color: #ccffcc" teleport-controls="cameraRig: #cameraRig; button: trigger"></a-entity>
-        </a-entity>
+      <a-entity id="street-container" data-layer-name="3D Street Layers" data-layer-show-children>
+        <a-entity id="default-street" street streetmix-loader set-loader-from-hash></a-entity>
+      </a-entity>
 
-        <a-entity street-environment="preset: day;"></a-entity>
+      <a-entity id="layers-2d" data-layer-name="2D Street Layers" data-layer-show-children>
 
-        <a-entity id="street-container">
-          <a-entity id="default-street" street streetmix-loader set-loader-from-hash></a-entity>
-        </a-entity>
-
-      </a-scene>
-    </div>
-<!-- 
-    <div class="location" >
-        <p id="location"><img src="ui_assets/location.svg"> Welcome Street</p> 
-    </div> -->
-    <!-- <script>
-      var locationString = (location.href.split("#")[1] != undefined) ? location.href.split("#")[1] : "https://streetmix.net/kfarr/3";
-      document.getElementById("location").innerHTML += locationString;
-    </script> -->
+    </a-scene>
   </body>
   <script>
+    // only show VR button if headset connected
+    AFRAME.registerComponent('vr-mode-ui-if-headset', {
+      dependencies: ['vr-mode-ui'],
+      init: function () {
+        if (!AFRAME.utils.device.checkHeadsetConnected()) {
+          this.el.setAttribute('vr-mode-ui', 'enabled', false);
+        }
+      }
+    })
+
     AFRAME.registerComponent('set-loader-from-hash', {
       dependencies: ['streetmix-loader'],
       schema: {
@@ -108,6 +107,22 @@
       }
     });
 
+    function screenshot() {
+      AFRAME.scenes[0].setAttribute('screenshot','width',AFRAME.scenes[0].canvas.width)
+      AFRAME.scenes[0].setAttribute('screenshot','height',AFRAME.scenes[0].canvas.height)
+      document.querySelector('a-scene').components.screenshot.capture('perspective');
+    }
+
+    function startEditor() {
+      var sceneEl = document.querySelector('a-scene');
+      sceneEl.components.inspector.openInspector();
+      document.querySelector('.viewer-header-wrapper').style.display = 'none';
+    }
+    // uncomment the below to autostart the editor within 2 seconds of page load
+    // setTimeout(() => {
+    //   startEditor();
+    // }, "2000")
+    
     function inputStreetmix() {
       streetmixURL = prompt("Please enter a Streetmix URL", "https://streetmix.net/kfarr/3/example-street");
       setTimeout(function() { window.location.hash = streetmixURL; });
@@ -118,6 +133,7 @@
       streetContainerEl.innerHTML = '<a-entity street streetmix-loader="streetmixStreetURL: '+streetmixURL+'""></a-entity>';
     }
 
+    // JSON loading starts here
     function getValidJSON(stringJSON) {
       // Preserve newlines, etc. - use valid JSON
       // Remove non-printable and other non-valid JSON characters
@@ -128,20 +144,12 @@
     
     function createElementsFromJSON(streetJSONString) {
       const validJSONString = getValidJSON(streetJSONString);
-
       streetContainerEl = document.getElementById('street-container');
-
       while (streetContainerEl.firstChild) {
         streetContainerEl.removeChild(streetContainerEl.lastChild);
       }
-
-      //console.log('string', validJSONString)
       var streetObject = JSON.parse(validJSONString);
-      
-      //console.log('object', streetObject)
-
       createEntities(streetObject.data, streetContainerEl);
-
     }
 
     function inputJSON() {
@@ -156,31 +164,10 @@
       reader.onload=function(){
         createElementsFromJSON(reader.result);
       }
-        
       reader.readAsText(this.files[0]);
     }
 
     document.getElementById('inputfile')
             .addEventListener('change', fileJSON);
-
-    function startAudio() {
-      // set sounds enabled in global state
-      state.sounds.enabled = true;
-
-      // iterate through all entities with .playme class and start them playing
-      var entities = document.querySelectorAll('.playme'), i;
-      for (i = 0; i < entities.length; ++i) {
-        entities[i].components.sound.playSound();
-      }
-
-      // set 2D DOM toolbar volume icon to green to indicate state
-      document.getElementById("audio-icon").setAttribute("class","fa fa-volume-up");
-      document.getElementById("audio-icon").setAttribute("style","color: lightgreen");
-    }
-
-    document.querySelector('a-scene').addEventListener('enter-vr', function () {
-      console.log("ENTERED VR");
-      // startAudio();
-    });
   </script>
 </html>
