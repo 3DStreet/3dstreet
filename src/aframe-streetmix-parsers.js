@@ -559,7 +559,7 @@ function createSegmentElement (scaleX, positionX, positionY, rotationY, mixinId,
     segmentEl.setAttribute('geometry', 'primitive', 'box');
     segmentEl.setAttribute('geometry', 'height: 0.2');
     segmentEl.setAttribute('geometry', 'depth', length);
-    segmentEl.setAttribute('scale', scaleBox); 
+    segmentEl.setAttribute('scale', scaleBox);
   } else {
     // segmentEl.setAttribute('geometry', 'height', length); // alternative to modifying scale
     segmentEl.setAttribute('rotation', '270 ' + rotationY + ' 0');
@@ -932,7 +932,7 @@ function processBuildings (left, right, streetWidth, showGround, length) {
   const buildingElement = document.createElement('a-entity');
   const clonedObjectRadius = 0.45 * length;
   buildingElement.classList.add('buildings-parent');
-  buildingElement.setAttribute('position', "0 0.2 0");
+  buildingElement.setAttribute('position', '0 0.2 0');
   const buildingLotWidth = 150;
   const buildingsArray = [left, right];
 
@@ -994,7 +994,7 @@ function processBuildings (left, right, streetWidth, showGround, length) {
       placedObjectEl.setAttribute('rotation', '0 ' + (90 * sideMultiplier) + ' 0');
       placedObjectEl.setAttribute('create-from-json', 'jsonString', buildingJSONString);
       placedObjectEl.classList.add('suburbia-' + side);
-      //the grass should be slightly lower than the path - 0.17 instead of 0.2 for other buildings
+      // the grass should be slightly lower than the path - 0.17 instead of 0.2 for other buildings
       buildingElement.setAttribute('position', '0 0.17 0');
       buildingElement.append(placedObjectEl);
     }
