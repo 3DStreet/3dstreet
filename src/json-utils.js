@@ -103,7 +103,7 @@ function filterJSONstreet (removeProps, renameProps, streetJSON) {
           const attrNames = Object.keys(removeVal);
           for (var attrName of attrNames) {
             const attrVal = removeVal[attrName];
-            if (compAttributes.hasOwnProperty(attrName) &&
+            if (Object.prototype.hasOwnProperty.call(compAttributes, attrName) &&
               removeValueCheck(attrVal, compAttributes[attrName])) {
               delete value[attrName];
             }
