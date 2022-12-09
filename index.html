@@ -57,8 +57,12 @@
       inspector="url: //3dstreet.app/dist/3dstreet-editor.js"
       >
       <a-assets>
-        <!-- uncomment the line below to load assets from local submodule and/or specify custom asset loading categories -->
-        <!-- <streetmix-assets url="./assets/" categories="sidewalk-props people vehicles buildings optimized-textures lane-separator sky grounds vehicles-big dividers street-props color-modifier"></streetmix-assets>   -->
+        <!-- uncomment the line below to load assets from local github submodule -->
+        <!-- <streetmix-assets url="./assets/"></streetmix-assets>   -->
+        <!-- uncomment the line below to load all possible asset categories -->
+        <!-- <streetmix-assets categories="sidewalk-props people people-rigged vehicles vehicles-rigged buildings intersection-props segment-textures segment-colors lane-separator stencils vehicles-transit dividers sky grounds"></streetmix-assets>   -->
+        <!-- a reduced set of assets for non-animated streetmix streets without intersections -->
+        <streetmix-assets categories="sidewalk-props people vehicles buildings segment-textures segment-colors lane-separator stencils vehicles-transit dividers sky grounds"></streetmix-assets>  
       </a-assets>
   
       <a-entity id="cameraRig" position="0 10 30" data-layer-name="Viewer" cursor-teleport="cameraRig: #cameraRig; cameraHead: #camera;" look-controls="reverseMouseDrag: true" wasd-controls="enabled: true">
