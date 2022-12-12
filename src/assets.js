@@ -259,7 +259,7 @@
   // Needed to masquerade as an a-assets element
   var fileLoader = new THREE.FileLoader();
 
-  window.AFRAME.registerElement('streetmix-assets', {
+  window.AFRAME.registerElement('street-assets', {
     prototype: Object.create(window.AFRAME.ANode.prototype, {
       createdCallback: {
         value: function () {
@@ -276,7 +276,7 @@
       attachedCallback: {
         value: function () {
           if (alreadyAttached) return;
-          if (this.parentNode && this.parentNode.hasLoaded) console.warn('Assets have already loaded. streetmix-assets may have problems');
+          if (this.parentNode && this.parentNode.hasLoaded) console.warn('Assets have already loaded. street-assets may have problems');
 
           alreadyAttached = true;
 
@@ -293,7 +293,7 @@
 
           // Since we expect the parent element to be a-assets, this will invoke the a-asset attachedCallback,
           // which handles waiting for all of the children to load. Since we're calling it with `this`, it
-          // will wait for the streetmix-assets's children to load
+          // will wait for the street-assets's children to load
           Object.getPrototypeOf(parent).attachedCallback.call(this);
 
           // No more pretending needed
@@ -322,7 +322,7 @@
       console.warn('Assets already loaded. May lead to bugs');
     }
 
-    const streetMix = document.createElement('streetmix-assets');
+    const streetMix = document.createElement('street-assets');
     assets.append(streetMix);
     document.querySelector('a-scene').append(assets);
   });
@@ -341,13 +341,13 @@
     }
 
     // Already have the streetmix assets. No need to add them
-    if (assets.querySelector('streetmix-assets')) {
+    if (assets.querySelector('street-assets')) {
       document.removeEventListener('DOMSubtreeModified', domModifiedHandler);
       return;
     }
 
-    // Create and add the custom streetmix-assets element
-    const streetMix = document.createElement('streetmix-assets');
+    // Create and add the custom street-assets element
+    const streetMix = document.createElement('street-assets');
     assets.append(streetMix);
 
     // Clean up by removing the event listener
