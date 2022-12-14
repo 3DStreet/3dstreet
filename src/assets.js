@@ -99,13 +99,10 @@
       `,
       buildings: `
         <!-- blocks -->
-        <a-asset-item id="blockmodel" src="${assetUrl}objects/buildings.glb"></a-asset-item>
+        <a-asset-item id="blockmodel" src="${assetUrl}sets/buildings/gltf-exports/draco/buildings.glb"></a-asset-item>
         <a-asset-item id="suburbiamodel" src="${assetUrl}objects/suburbia/suburban-houses.glb"></a-asset-item>
 
         <!-- buildings and blocks -->
-        <a-mixin id="block" gltf-model="#blockmodel" scale="1 1 1"></a-mixin>
-        <a-mixin id="suburbia" gltf-model="#suburbiamodel" scale="1 1 1"></a-mixin>
-
         <a-mixin id="SM3D_Bld_Mixed_Corner_4fl" scale="1 1 1" rotation="0 0 0" gltf-part-plus="src: #blockmodel; part: SM3D_Bld_Mixed_Corner_4fl"></a-mixin>
         <a-mixin id="SM3D_Bld_Mixed_Double_5fl" scale="1 1 1" rotation="0 0 0" gltf-part-plus="src: #blockmodel; part: SM3D_Bld_Mixed_Double_5fl"></a-mixin>
         <a-mixin id="SM3D_Bld_Mixed_4fl_2" scale="1 1 1" rotation="0 0 0" gltf-part-plus="src: #blockmodel; part: SM3D_Bld_Mixed_4fl_2"></a-mixin>
