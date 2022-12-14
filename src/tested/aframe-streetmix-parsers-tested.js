@@ -13,11 +13,11 @@ function createBuildingsArray (maxLength = 150, buildingType = 'narrow') { // es
   var buildings, psuedoRandom;
   if (buildingType === 'narrow' || buildingType === 'wide') {
     buildings = [
-      { id: 'SM3D_Bld_Mixed_4fl', width: 5.25221 },
+      { id: 'SM3D_Bld_Mixed_4fl', width: 5.251 },
       { id: 'SM3D_Bld_Mixed_Double_5fl', width: 10.9041 },
-      { id: 'SM3D_Bld_Mixed_4fl_2', width: 5.58889 },
-      { id: 'SM3D_Bld_Mixed_5fl', width: 6.47593 },
-      { id: 'SM3D_Bld_Mixed_Corner_4fl', width: 6.94809 }
+      { id: 'SM3D_Bld_Mixed_4fl_2', width: 5.309 },
+      { id: 'SM3D_Bld_Mixed_5fl', width: 5.903 },
+      { id: 'SM3D_Bld_Mixed_Corner_4fl', width: 5.644 }
     ];
     psuedoRandom = '41431323432402434130303230234102402341'; // 38 psuedorandom numbers 0-4, no identical units side-by-side
   } else if (buildingType === 'residential') {

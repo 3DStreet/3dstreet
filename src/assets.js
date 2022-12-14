@@ -99,23 +99,20 @@
       `,
       buildings: `
         <!-- blocks -->
-        <a-asset-item id="blockmodel" src="${assetUrl}objects/buildings.glb"></a-asset-item>
+        <a-asset-item id="blockmodel" src="${assetUrl}sets/buildings/gltf-exports/draco/buildings.glb"></a-asset-item>
         <a-asset-item id="suburbiamodel" src="${assetUrl}objects/suburbia/suburban-houses.glb"></a-asset-item>
 
         <!-- buildings and blocks -->
-        <a-mixin id="block" gltf-model="#blockmodel" scale="1 1 1"></a-mixin>
-        <a-mixin id="suburbia" gltf-model="#suburbiamodel" scale="1 1 1"></a-mixin>
+        <a-mixin id="SM3D_Bld_Mixed_Corner_4fl" scale="1 1 1" rotation="0 0 0" gltf-part-plus="src: #blockmodel; part: SM3D_Bld_Mixed_Corner_4fl"></a-mixin>
+        <a-mixin id="SM3D_Bld_Mixed_Double_5fl" scale="1 1 1" rotation="0 0 0" gltf-part-plus="src: #blockmodel; part: SM3D_Bld_Mixed_Double_5fl"></a-mixin>
+        <a-mixin id="SM3D_Bld_Mixed_4fl_2" scale="1 1 1" rotation="0 0 0" gltf-part-plus="src: #blockmodel; part: SM3D_Bld_Mixed_4fl_2"></a-mixin>
+        <a-mixin id="SM3D_Bld_Mixed_5fl" scale="1 1 1" rotation="0 0 0" gltf-part-plus="src: #blockmodel; part: SM3D_Bld_Mixed_5fl"></a-mixin>
+        <a-mixin id="SM3D_Bld_Mixed_4fl" scale="1 1 1" rotation="0 0 0" gltf-part-plus="src: #blockmodel; part: SM3D_Bld_Mixed_4fl"></a-mixin>
 
-        <a-mixin id="SM3D_Bld_Mixed_Corner_4fl" scale="1 1 1" rotation="0 0 0" gltf-part-plus="src: #blockmodel; part: SM3D_Bld_Mixed_Corner_4fl" model-center="bottomAlign: true"></a-mixin>
-        <a-mixin id="SM3D_Bld_Mixed_Double_5fl" scale="1 1 1" rotation="0 0 0" gltf-part-plus="src: #blockmodel; part: SM3D_Bld_Mixed_Double_5fl" model-center="bottomAlign: true"></a-mixin>
-        <a-mixin id="SM3D_Bld_Mixed_4fl_2" scale="1 1 1" rotation="0 0 0" gltf-part-plus="src: #blockmodel; part: SM3D_Bld_Mixed_4fl_2" model-center="bottomAlign: true"></a-mixin>
-        <a-mixin id="SM3D_Bld_Mixed_5fl" scale="1 1 1" rotation="0 0 0" gltf-part-plus="src: #blockmodel; part: SM3D_Bld_Mixed_5fl" model-center="bottomAlign: true"></a-mixin>
-        <a-mixin id="SM3D_Bld_Mixed_4fl" scale="1 1 1" rotation="0 0 0" gltf-part-plus="src: #blockmodel; part: SM3D_Bld_Mixed_4fl" model-center="bottomAlign: true"></a-mixin>
-
-        <a-mixin id="SM_Bld_House_Preset_03_1800" scale="1 1 1" rotation="0 0 0" gltf-part-plus="src: #suburbiamodel; part: suburban-house_1" model-center="bottomAlign: true"></a-mixin>
-        <a-mixin id="SM_Bld_House_Preset_08_1809" scale="1 1 1" rotation="0 0 0" gltf-part-plus="src: #suburbiamodel; part: suburban-house_3" model-center="bottomAlign: true"></a-mixin>
-        <a-mixin id="SM_Bld_House_Preset_09_1845" scale="1 1 1" rotation="0 0 0" gltf-part-plus="src: #suburbiamodel; part: suburban-house_2" model-center="bottomAlign: true"></a-mixin>
-      `,
+        <a-mixin id="SM_Bld_House_Preset_03_1800" scale="1 1 1" rotation="0 0 0" gltf-part-plus="src: #suburbiamodel; part: suburban-house_1"></a-mixin>
+        <a-mixin id="SM_Bld_House_Preset_08_1809" scale="1 1 1" rotation="0 0 0" gltf-part-plus="src: #suburbiamodel; part: suburban-house_3"></a-mixin>
+        <a-mixin id="SM_Bld_House_Preset_09_1845" scale="1 1 1" rotation="0 0 0" gltf-part-plus="src: #suburbiamodel; part: suburban-house_2"></a-mixin>
+`,
       'intersection-props': `
         <a-asset-item id="stopsign" src="${assetUrl}signals/stop-sign.glb"></a-asset-item>
         <a-asset-item id="signal1" src="${assetUrl}signals/signal1.glb"></a-asset-item>
@@ -248,7 +245,7 @@
   // Needed to masquerade as an a-assets element
   var fileLoader = new THREE.FileLoader();
 
-  window.AFRAME.registerElement('streetmix-assets', {
+  window.AFRAME.registerElement('street-assets', {
     prototype: Object.create(window.AFRAME.ANode.prototype, {
       createdCallback: {
         value: function () {
@@ -265,7 +262,7 @@
       attachedCallback: {
         value: function () {
           if (alreadyAttached) return;
-          if (this.parentNode && this.parentNode.hasLoaded) console.warn('Assets have already loaded. streetmix-assets may have problems');
+          if (this.parentNode && this.parentNode.hasLoaded) console.warn('Assets have already loaded. street-assets may have problems');
 
           alreadyAttached = true;
 
@@ -282,7 +279,7 @@
 
           // Since we expect the parent element to be a-assets, this will invoke the a-asset attachedCallback,
           // which handles waiting for all of the children to load. Since we're calling it with `this`, it
-          // will wait for the streetmix-assets's children to load
+          // will wait for the street-assets's children to load
           Object.getPrototypeOf(parent).attachedCallback.call(this);
 
           // No more pretending needed
@@ -311,7 +308,7 @@
       console.warn('Assets already loaded. May lead to bugs');
     }
 
-    const streetMix = document.createElement('streetmix-assets');
+    const streetMix = document.createElement('street-assets');
     assets.append(streetMix);
     document.querySelector('a-scene').append(assets);
   });
@@ -330,13 +327,13 @@
     }
 
     // Already have the streetmix assets. No need to add them
-    if (assets.querySelector('streetmix-assets')) {
+    if (assets.querySelector('street-assets')) {
       document.removeEventListener('DOMSubtreeModified', domModifiedHandler);
       return;
     }
 
-    // Create and add the custom streetmix-assets element
-    const streetMix = document.createElement('streetmix-assets');
+    // Create and add the custom street-assets element
+    const streetMix = document.createElement('street-assets');
     assets.append(streetMix);
 
     // Clean up by removing the event listener
