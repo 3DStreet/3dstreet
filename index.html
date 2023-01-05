@@ -153,7 +153,7 @@
         streetContainerEl.removeChild(streetContainerEl.lastChild);
       }
       var streetObject = JSON.parse(validJSONString);
-      createEntities(streetObject.data, streetContainerEl);
+      createEntities(streetObject.data[0].children, streetContainerEl);
     }
 
     function inputJSON() {

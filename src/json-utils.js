@@ -4,7 +4,7 @@
 Takes one or more elements (from a DOM queryselector call)
 and returns a Javascript object
 */
-function convertToObject (entity) {
+function convertDOMElToObject (entity) {
   const data = [];
   if (entity.length) {
     for (const entry of entity) {
@@ -41,22 +41,45 @@ function getAttributes (entity) {
     // convert from DOMTokenList to Array
     elemObj['class'] = Array.from(entity.classList);
   }
-  if (entity.getAttribute('mixin')) {
-    elemObj['mixin'] = entity.getAttribute('mixin');
-  }
 
   const entityComponents = entity.components;
+
   if (entityComponents) {
     elemObj['components'] = {};
     for (const componentName in entityComponents) {
-      const modifiedProperty = getModifiedProperties(entity, componentName);
-      if (!isEmpty(modifiedProperty)) {
-        elemObj['components'][componentName] = modifiedProperty;
+      const modifiedProperty = getModifiedProperty(entity, componentName);
+      if (modifiedProperty && !isEmpty(modifiedProperty)) {
+        elemObj['components'][componentName] = toPropString(modifiedProperty);
       }
     }
   }
   return elemObj;
 }
+
+function toPropString(propData) {
+  if (typeof propData == 'string' || typeof propData == 'number' || typeof propData == 'boolean') {
+    return (propData).toString();
+  }
+  if (propData.isVector3 || propData.isVector2 || propData.isVector4 || 
+    propData.hasOwnProperty('x') && propData.hasOwnProperty('y')) {
+    return AFRAME.utils.coordinates.stringify(propData);
+  }
+  if (typeof propData == 'object') {
+    return Object.entries(propData).map(
+        ([key, value]) => {
+          if (key == 'src') {
+            if (value.id) {
+              return `${key}: #${value.id}`;
+            } else {
+              return `${key}: ${value}`;
+            }
+          } else {
+            return `${key}: ${toPropString(value)}`;
+          }
+        }
+      ).join("; ");    
+  }  
+} 
 
 function isSingleProperty (schema) {
   return AFRAME.schema.isSingleProperty(schema);
@@ -94,6 +117,7 @@ function filterJSONstreet (removeProps, renameProps, streetJSON) {
     for (var removeKey in removeProps) {
       // check for removing components
       if (key === removeKey) {
+
         const removeVal = removeProps[removeKey];
         // check for deleting component's attribute
         if (typeof removeVal === 'object' && !isEmpty(removeVal)) {
@@ -109,7 +133,6 @@ function filterJSONstreet (removeProps, renameProps, streetJSON) {
             }
           }
         }
-
         // for other cases
         if (removeValueCheck(removeVal, value)) {
           return undefined;
@@ -128,8 +151,19 @@ function filterJSONstreet (removeProps, renameProps, streetJSON) {
   return stringJSON;
 }
 
-function getModifiedProperties (entity, componentName) {
-  const data = entity.components[componentName].data;
+function getModifiedProperty (entity, componentName) {
+  //const data = entity.components[componentName].data;
+  const data = AFRAME.utils.entity.getComponentProperty(entity, componentName);
+
+  // if it is element's attribute
+  if (!entity.components[componentName]) {
+    if (!['id', 'class', 'tag', 'mixin'].includes(componentName)) {
+      return data;
+    } else {
+      return null;
+    }
+  }
+
   const defaultData = entity.components[componentName].schema;
 
   // If its single-property like position, rotation, etc
@@ -155,8 +189,8 @@ function getModifiedProperties (entity, componentName) {
 }
 
 function createEntities (entitiesData, parentEl) {
-  for (const entityData of entitiesData) {
-    createEntity(entityData, parentEl);
+  for (const entityData of entitiesData) {   
+    createEntityFromObj(entityData, parentEl);
   }
 }
 
@@ -164,26 +198,28 @@ function createEntities (entitiesData, parentEl) {
 Add a new entity with a list of components and children (if exists)
  * @param {object} entityData Entity definition to add:
  *   {
- *    element: 'a-entity',
- *    id: 'id',
+ *    element: String ('a-entity' for Example),
+ *    id: String,
  *    class: {Array} of element classes,
+ *    mixin: String,
  *    children: {Array} of entities,
  *    components: {geometry: 'primitive:box', ...}
  *   }
  * @param {Element} parentEl the parent element to which the Entity will be added
  * @return {Element} Entity created
 */
-function createEntity (entityData, parentEl) {
+function createEntityFromObj (entityData, parentEl) {
+
   const entity = document.createElement(entityData.element);
 
-  // load default attributes
+  // load attributes
   for (const attr in entityData.components) {
     entity.setAttribute(attr, entityData.components[attr]);
   }
-
   if (entityData.id) {
     entity.setAttribute('id', entityData.id);
   }
+
   if (entityData.class) {
     entity.classList.add(...entityData.class);
   }
@@ -198,11 +234,8 @@ function createEntity (entityData, parentEl) {
   });
 
   if (entityData.children) {
-    const childrenEntities = entityData.children;
-    for (const childEntityData of childrenEntities) {
-      createEntity(childEntityData, entity);
+    for (const childEntityData of entityData.children) {
+      createEntityFromObj(childEntityData, entity);
     }
   }
-
-  return entity;
 }
