@@ -77,8 +77,8 @@ function toPropString(propData) {
             return `${key}: ${toPropString(value)}`;
           }
         }
-      ).join("; ");    
-  }  
+      ).join("; ");
+  }
 } 
 
 function isSingleProperty (schema) {
