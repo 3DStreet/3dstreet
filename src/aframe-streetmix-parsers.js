@@ -211,7 +211,7 @@ function createSidewalkClonedVariants (BasePositionX, segmentWidthInMeters, dens
       placedObjectEl.setAttribute('rotation', '0 180 0');
       animationDirection = 'outbound';
     } else if (direction === 'outbound') {
-      placedObjectEl.setAttribute('rotation', '0 180 0');
+      placedObjectEl.setAttribute('rotation', '0 0 0');
       animationDirection = 'outbound';
     }
 
@@ -271,7 +271,35 @@ function getBusLaneMixin (variant) {
   return 'bus-lane';
 }
 
-function createChooChooElement (variantList, objectMixinId, positionX, showVehicles) {
+function getDimensions(object3d) {
+    var box = new THREE.Box3().setFromObject( object3d );
+    var x = box.max.x - box.min.x 
+    var y = box.max.y - box.min.y 
+    var z = box.max.z - box.min.z 
+
+    return {x,y,z}
+}
+
+function getStartEndPoint(streetLength, objectLength) {
+  // get the start and end position for placing an object on a line
+  // computed by length of the street and object's length
+  const start = -0.5 * streetLength + objectLength / 2;
+  const end = 0.5 * streetLength - objectLength / 2;
+  return {start, end}
+}
+
+function randomPosition(object, axis, length) {
+  // place randomly an element on a line length='length' on the axis 'axis'
+  //const object = model.target.object3D;
+  console.log(object)
+  const XYZsize = getDimensions(object);
+  const {start, end} = getStartEndPoint(length, XYZsize[axis]);
+  newPosition = getRandomArbitrary(start, end);
+  object.position[axis] = newPosition; 
+  return newPosition;
+}
+
+function createChooChooElement (variantList, objectMixinId, positionX, length, showVehicles) {
   if (!showVehicles) {
     return;
   }
@@ -279,13 +307,15 @@ function createChooChooElement (variantList, objectMixinId, positionX, showVehic
   const placedObjectEl = document.createElement('a-entity');
   placedObjectEl.setAttribute('class', objectMixinId);
   placedObjectEl.setAttribute('position', positionX + ' 0 0');
-  placedObjectEl.setAttribute('rotation', '0 ' + rotationY + ' 0');
+  placedObjectEl.setAttribute('rotation', '0 ' + rotationY + ' 0'); 
   placedObjectEl.setAttribute('mixin', objectMixinId);
-
+  placedObjectEl.addEventListener('model-loaded', (model) => {
+    randomPosition(model.target.object3D, 'z', length);
+  });
   return placedObjectEl;
 }
 
-function createBusElement (isOutbound, positionX, showVehicles) {
+function createBusElement (isOutbound, positionX, length, showVehicles) {
   if (!showVehicles) {
     return;
   }
@@ -296,6 +326,9 @@ function createBusElement (isOutbound, positionX, showVehicles) {
   busObjectEl.setAttribute('position', positionX + ' 0 0');
   busObjectEl.setAttribute('rotation', '0 ' + rotationY + ' 0');
   busObjectEl.setAttribute('mixin', 'bus');
+  busObjectEl.addEventListener('model-loaded', (model) => {
+    randomPosition(model.target.object3D, 'z', length);
+  });
   busParentEl.append(busObjectEl);
 
   return busParentEl;
@@ -334,31 +367,35 @@ function createDriveLaneElement (variantList, positionX, segmentWidthInMeters, l
   } else if (variantList[1] === 'pedestrian') {
     return createSidewalkClonedVariants(positionX, segmentWidthInMeters, 'normal', length, variantList[0], animated);
   }
-
-  if (animated) {
-    reusableObjectEl.setAttribute('animation__1', 'property', 'position');
-    reusableObjectEl.setAttribute('animation__1', 'easing', 'linear');
-    reusableObjectEl.setAttribute('animation__1', 'loop', 'false');
-    reusableObjectEl.setAttribute('animation__2', 'property', 'position');
-    reusableObjectEl.setAttribute('animation__2', 'easing', 'linear');
-    reusableObjectEl.setAttribute('animation__2', 'loop', 'true');
-    if (animationDirection === 'outbound') {
-      reusableObjectEl.setAttribute('animation__1', 'to', { z: -length / 2 });
-      reusableObjectEl.setAttribute('animation__1', 'dur', startingDuration);
-      reusableObjectEl.setAttribute('animation__2', 'from', { x: positionX, y: 0, z: length / 2 });
-      reusableObjectEl.setAttribute('animation__2', 'to', { x: positionX, y: 0, z: -length / 2 });
-      reusableObjectEl.setAttribute('animation__2', 'delay', startingDuration);
-      reusableObjectEl.setAttribute('animation__2', 'dur', totalStreetDuration);
-    } else {
-      reusableObjectEl.setAttribute('animation__1', 'to', { z: length / 2 });
-      reusableObjectEl.setAttribute('animation__1', 'dur', startingDuration);
-      reusableObjectEl.setAttribute('animation__2', 'from', { x: positionX, y: 0, z: -length / 2 });
-      reusableObjectEl.setAttribute('animation__2', 'to', { x: positionX, y: 0, z: length / 2 });
-      reusableObjectEl.setAttribute('animation__2', 'delay', startingDuration);
-      reusableObjectEl.setAttribute('animation__2', 'dur', totalStreetDuration);
-    }
-  }
-
+  reusableObjectEl.addEventListener('model-loaded', (model) => {
+    positionZ = randomPosition(model.target.object3D, 'z', length);
+  
+    if (animated) {
+      console.log("animated", length)
+      reusableObjectEl.setAttribute('animation__1', 'property', 'position');
+      reusableObjectEl.setAttribute('animation__1', 'easing', 'linear');
+      reusableObjectEl.setAttribute('animation__1', 'loop', 'false');
+      reusableObjectEl.setAttribute('animation__2', 'property', 'position');
+      reusableObjectEl.setAttribute('animation__2', 'easing', 'linear');
+      reusableObjectEl.setAttribute('animation__2', 'loop', 'true');
+      if (animationDirection === 'outbound') {
+        reusableObjectEl.setAttribute('animation__1', 'to', { z: -length / 2 });
+        reusableObjectEl.setAttribute('animation__1', 'dur', startingDuration);
+        reusableObjectEl.setAttribute('animation__2', 'from', { x: positionX, y: 0, z: length / 2 });
+        reusableObjectEl.setAttribute('animation__2', 'to', { x: positionX, y: 0, z: -length / 2 });
+        reusableObjectEl.setAttribute('animation__2', 'delay', startingDuration);
+        reusableObjectEl.setAttribute('animation__2', 'dur', totalStreetDuration);
+      } else {
+        reusableObjectEl.setAttribute('animation__1', 'to', { z: length / 2 });
+        reusableObjectEl.setAttribute('animation__1', 'dur', startingDuration);
+        reusableObjectEl.setAttribute('animation__2', 'from', { x: positionX, y: 0, z: -length / 2 });
+        reusableObjectEl.setAttribute('animation__2', 'to', { x: positionX, y: 0, z: length / 2 });
+        reusableObjectEl.setAttribute('animation__2', 'delay', startingDuration);
+        reusableObjectEl.setAttribute('animation__2', 'dur', totalStreetDuration);
+      }
+    }    
+  })
+  
   driveLaneParentEl.append(reusableObjectEl);
 
   return driveLaneParentEl;
@@ -372,6 +409,9 @@ function createFoodTruckElement (variantList, positionX) {
   reusableObjectEl.setAttribute('position', positionX + ' 0 0');
   reusableObjectEl.setAttribute('rotation', '0 ' + rotationY + ' 0');
   reusableObjectEl.setAttribute('mixin', 'food-trailer');
+  reusableObjectEl.addEventListener('model-loaded', (model) => {
+    randomPosition(model.target.object3D, 'z', length);
+  });
   foodTruckParentEl.append(reusableObjectEl);
 
   return foodTruckParentEl;
@@ -397,18 +437,21 @@ function createMagicCarpetElement (positionX, showVehicles) {
   return magicCarpetParentEl;
 }
 
-function createOutdoorDining (positionX) {
+function createOutdoorDining (positionX, length) {
   const outdoorDiningParentEl = document.createElement('a-entity');
 
   const reusableObjectEl = document.createElement('a-entity');
   reusableObjectEl.setAttribute('position', positionX + ' 0 0');
   reusableObjectEl.setAttribute('mixin', 'outdoor_dining');
+  reusableObjectEl.addEventListener('model-loaded', (model) => {
+    randomPosition(model.target.object3D, 'z', length);
+  });
   outdoorDiningParentEl.append(reusableObjectEl);
 
   return outdoorDiningParentEl;
 }
 
-function createMicroMobilityElement (variantList, positionX, segmentType, showVehicles) {
+function createMicroMobilityElement (variantList, positionX, segmentType, length, showVehicles) {
   if (!showVehicles) {
     return;
   }
@@ -423,12 +466,15 @@ function createMicroMobilityElement (variantList, positionX, segmentType, showVe
   } else {
     reusableObjectEl.setAttribute('mixin', 'ElectricScooter_1');
   }
+  reusableObjectEl.addEventListener('model-loaded', (model) => {
+    randomPosition(model.target.object3D, 'z', length);
+  });
   microMobilityParentEl.append(reusableObjectEl);
 
   return microMobilityParentEl;
 }
 
-function createFlexZoneElement (variantList, positionX, showVehicles = true) {
+function createFlexZoneElement (variantList, positionX, length, showVehicles = true) {
   if (!showVehicles) {
     return;
   }
@@ -443,6 +489,9 @@ function createFlexZoneElement (variantList, positionX, showVehicles = true) {
   } else if (variantList[0] === 'rideshare') {
     reusableObjectEl.setAttribute('mixin', 'sedan');
   }
+  reusableObjectEl.addEventListener('model-loaded', (model) => {
+    randomPosition(model.target.object3D, 'z', length);
+  });
   flexZoneParentEl.append(reusableObjectEl);
 
   return flexZoneParentEl;
@@ -644,14 +693,14 @@ function processSegments (segments, showStriping, length, globalAnimated, showVe
       cloneMixinAsChildren({ objectMixinId: 'stencils bike-arrow', parentEl: stencilsParentEl, rotation: '-90 ' + rotationY + ' 0', step: 20, radius: clonedObjectRadius });
       // add this stencil stuff to the segment parent
       segmentParentEl.append(stencilsParentEl);
-      segmentParentEl.append(createMicroMobilityElement(variantList, positionX, segments[i].type, showVehicles));
+      segmentParentEl.append(createMicroMobilityElement(variantList, positionX, segments[i].type, length, showVehicles));
     } else if (segments[i].type === 'light-rail' || segments[i].type === 'streetcar') {
       // get the mixin id for a bus lane
       groundMixinId = getBusLaneMixin(variantList[1]);
       // get the mixin id for the vehicle (is it a trolley or a tram?)
       var objectMixinId = (segments[i].type === 'streetcar') ? 'trolley' : 'tram';
       // create and append a train element
-      segmentParentEl.append(createChooChooElement(variantList, objectMixinId, positionX, showVehicles));
+      segmentParentEl.append(createChooChooElement(variantList, objectMixinId, positionX, length, showVehicles));
       // make the parent for all the objects to be cloned
       const tracksParentEl = createTracksParentElement(positionX);
       cloneMixinAsChildren({ objectMixinId: 'track', parentEl: tracksParentEl, step: 20.25, radius: clonedObjectRadius });
@@ -738,7 +787,7 @@ function processSegments (segments, showStriping, length, globalAnimated, showVe
     } else if (segments[i].type === 'bus-lane') {
       groundMixinId = getBusLaneMixin(variantList[1]);
 
-      segmentParentEl.append(createBusElement(isOutbound, positionX, showVehicles));
+      segmentParentEl.append(createBusElement(isOutbound, positionX, length, showVehicles));
 
       // create parent for the bus lane stencils to rotate the phrase instead of the word
       let reusableObjectStencilsParentEl;
@@ -765,7 +814,7 @@ function processSegments (segments, showStriping, length, globalAnimated, showVe
       segmentParentEl.append(createFoodTruckElement(variantList, positionX));
     } else if (segments[i].type === 'flex-zone') {
       groundMixinId = 'bright-lane';
-      segmentParentEl.append(createFlexZoneElement(variantList, positionX, showVehicles));
+      segmentParentEl.append(createFlexZoneElement(variantList, positionX, length, showVehicles));
 
       let reusableObjectStencilsParentEl;
 
@@ -812,7 +861,7 @@ function processSegments (segments, showStriping, length, globalAnimated, showVe
       segmentParentEl.append(createMagicCarpetElement(positionX, showVehicles));
     } else if (segments[i].type === 'outdoor-dining') {
       groundMixinId = (variantList[1] === 'road') ? 'drive-lane' : 'sidewalk';
-      segmentParentEl.append(createOutdoorDining(positionX));
+      segmentParentEl.append(createOutdoorDining(positionX, length));
     } else if (segments[i].type === 'parklet') {
       groundMixinId = 'drive-lane';
       segmentParentEl.append(createParkletElement(positionX, variantList));

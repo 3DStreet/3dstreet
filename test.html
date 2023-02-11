@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <script src="https://aframe.io/releases/1.3.0/aframe.min.js"></script>
+
+    <script src="../dist/aframe-street-component.js"></script>
+
+    <!-- user controls - vr teleport -->
+    <script src="https://raw.githack.com/fernandojsg/aframe-teleport-controls/master/dist/aframe-teleport-controls.min.js"></script>
+
+    <!-- user controls - cursor teleport -->
+    <script src="./src/lib/aframe-cursor-teleport-component.min.js"></script>
+
+    <!-- mapbox -->
+    <script src="https://unpkg.com/aframe-mapbox-component/dist/aframe-mapbox-component.min.js"></script>
+
+    <script src="//cdn.8thwall.com/web/aframe/aframe-extras-6.1.1.min.js"></script>
+
+    <title>Street Component!</title>
+    
+  </head>  
+  <body>
+    <!-- viewer ui start -->
+    <div class="viewer-header-wrapper">
+      <button class="viewer-logo-start-editor-button" onclick="startEditor()">
+        <img class="viewer-logo-img" alt="3DStreet Viewer" src="ui_assets/3DStreet-Viewer-Start-Editor.svg">
+      </button>
+    </div>
+
+    <div class="right-fixed">
+      <ul class="right-menu">
+        <li onclick="screenshot()"> <a class="camera"  href="#"> <span> Capture image as PNG </span> <img src="ui_assets/camera-icon.svg"> </a></li>
+        <li onclick="inputStreetmix()"> <a class="load"  href="#"> <span> Load Streetmix URL </span> <img src="ui_assets/streetmix-logo.svg"> </a></li>
+        <!-- <li onclick="inputJSON()"> <a class="load"  href="#"> <span> Load JSON String </span> <img src="assets/ui_assets/upload-icon.svg"> </a></li> -->
+        <li><a class="load"> <label for="inputfile" style="display: inherit; align-items: center; cursor: pointer"> <input type="file" id="inputfile" style="display:none" accept=".js, .json, .txt"> <span> Load JSON File </span> <img src="ui_assets/upload-icon.svg"></label></a></li>
+        <li> <a id="custom-enter-vr-button" class="vr" href="#"> <span class="vr">Enter VR mode</span> <img src="ui_assets/vr-icon.svg"> </a></li>
+      </ul>
+    </div>
+
+    <a-scene       
+      vr-mode-ui="enterVRButton: #custom-enter-vr-button;"
+      vr-mode-ui-if-headset
+      renderer="colorManagement: true; physicallyCorrectLights: true;"
+      gltf-model="dracoDecoderPath: https://www.gstatic.com/draco/versioned/decoders/1.4.3/"
+      inspector="url: //3dstreet.app/dist/3dstreet-editor.js"
+ >
+      <a-assets>
+        <!-- <streetmix-assets url="assets/"></streetmix-assets> -->
+      </a-assets>
+        <a-entity id="test" street='length: 150; left: narrow; right: fence; JSON:
+        {
+          "streetmixSegmentsFeet": [
+          {
+            "width": 9,
+            "variantString": "empty",
+            "type": "sidewalk"
+          },
+          {
+            "width": 9,
+            "variantString": "outbound",
+            "type": "drive-lane"
+          },
+          {
+            "width": 9,
+            "variantString": "outbound|pedestrian|animated",
+            "type": "drive-lane"
+          },
+          {
+            "width": 9,
+            "variantString": "outbound|car|animated",
+            "type": "drive-lane"
+          },
+          {
+            "width": 9,
+            "variantString": "outbound|sharrow|animated",
+            "type": "drive-lane"
+          },
+          {
+            "width": 9,
+            "variantString": "outbound|microvan|animated",
+            "type": "drive-lane"
+          },
+          {
+            "width": 9,
+            "variantString": "inbound|truck|animated",
+            "type": "drive-lane"
+            },
+          {
+            "width": 9,
+            "variantString": "dense|animated",
+            "type": "sidewalk"
+          },
+          {
+            "width": 4,
+            "variantString": "empty",
+            "type": "sidewalk"
+          }
+          ]
+        }'></a-entity>
+
+    </a-scene>    
+  </body>
+</html>
