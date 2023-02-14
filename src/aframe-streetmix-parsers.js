@@ -465,7 +465,7 @@ function createMicroMobilityElement (variantList, positionX, segmentType, length
   } else {
     reusableObjectEl.setAttribute('mixin', 'ElectricScooter_1');
   }
-  const bicycleLength = 2.03;
+  const bikeLength = 2.03;
   const positionZ = randomPosition(reusableObjectEl, 'z', length, bikeLength);
   reusableObjectEl.setAttribute('position', positionX + ' 0 ' + positionZ);
   microMobilityParentEl.append(reusableObjectEl);
