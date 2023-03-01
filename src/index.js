@@ -129,7 +129,11 @@ AFRAME.registerComponent('intersection', {
     const trafficsignalArray = data.trafficsignal.split(' ').map((i) => Number(i));
     const crosswalklArray = data.crosswalk.split(' ').map((i) => Number(i));
 
-    this.geometry = new THREE.PlaneGeometry(dimensionsArray[0], dimensionsArray[1], 1, 1);
+    const intersectWidth = dimensionsArray[0];
+    const intersectDepth = dimensionsArray[1];
+
+    this.el.setAttribute('geometry', 'primitive', 'plane')
+    this.geometry = new THREE.PlaneGeometry(intersectWidth, intersectDepth, 1, 1);
     this.material = new THREE.MeshStandardMaterial({ color: '#FF0000' });
     this.mesh = new THREE.Mesh(this.geometry, this.material);
     el.setObject3D('mesh', this.mesh);
@@ -138,87 +142,96 @@ AFRAME.registerComponent('intersection', {
     this.el.setAttribute('rotation', '-90 0 0');
     this.el.setAttribute('material', 'src: #asphalt-texture; repeat:5 5; roughness:1');
 
-    const sd1 = document.createElement('a-entity');
-    sd1.setAttribute('position', { x: dimensionsArray[0] / 2 - sidewalkArray[0] / 2, z: 0.04 });
-    sd1.setAttribute('scale', 'x', sidewalkArray[0] / 3);
-    sd1.setAttribute('scale', 'y', dimensionsArray[1] / 150);
-    sd1.setAttribute('rotation', { x: 0, y: 0, z: 0 });
-    sd1.setAttribute('mixin', 'sidewalk');
-    el.appendChild(sd1);
-    const sd2 = document.createElement('a-entity');
-    sd2.setAttribute('position', { x: -dimensionsArray[0] / 2 + sidewalkArray[1] / 2, z: 0.05 });
-    sd2.setAttribute('scale', 'x', sidewalkArray[1] / 3);
-    sd2.setAttribute('scale', 'y', dimensionsArray[1] / 150);
-    sd2.setAttribute('rotation', { x: 0, y: 0, z: 0 });
-    sd2.setAttribute('mixin', 'sidewalk');
-    el.appendChild(sd2);
-    const sd3 = document.createElement('a-entity');
-    sd3.setAttribute('position', { y: -dimensionsArray[1] / 2 + sidewalkArray[2] / 2, z: 0.03 });
-    sd3.setAttribute('scale', 'x', sidewalkArray[2] / 3);
-    sd3.setAttribute('scale', 'y', dimensionsArray[0] / 150);
-    sd3.setAttribute('rotation', { x: 0, y: 0, z: -90 });
-    sd3.setAttribute('mixin', 'sidewalk');
-    el.appendChild(sd3);
-    const sd4 = document.createElement('a-entity');
-    sd4.setAttribute('position', { y: dimensionsArray[1] / 2 - sidewalkArray[3] / 2, z: 0.03 });
-    sd4.setAttribute('scale', 'x', sidewalkArray[3] / 3);
-    sd4.setAttribute('scale', 'y', dimensionsArray[0] / 150);
-    sd4.setAttribute('rotation', { x: 0, y: 0, z: -90 });
-    sd4.setAttribute('mixin', 'sidewalk');
-    el.appendChild(sd4);
+    function createSidewalkElem(parentEl, elLength, elWidth, posVec, scaleVec, rotationVec={x: 0, y: 0, z: 0}) {
+      let sd = document.createElement('a-entity');
+      let repeatCountInter = [];
+      repeatCountInter[0] = elWidth / 1.5;
+      // every 2 meters repeat sidewalk texture
+      repeatCountInter[1] = parseInt(elLength / 2);
 
-    const c1 = document.createElement('a-entity');
-    c1.setAttribute('position', { x: dimensionsArray[0] / 2 - northeastcurbArray[0] / 2, y: dimensionsArray[1] / 2 - northeastcurbArray[1] / 2, z: 0.022 });
-    c1.setAttribute('scale', 'x', northeastcurbArray[0] / 3);
-    c1.setAttribute('scale', 'y', northeastcurbArray[1] / 150);
-    c1.setAttribute('mixin', 'sidewalk');
-    el.appendChild(c1);
+      sd.setAttribute('geometry', 'primitive', 'box');
+      sd.setAttribute('geometry', 'height: 0.4');
+      sd.setAttribute('position', posVec);
+      sd.setAttribute('scale', scaleVec);
+      sd.setAttribute('geometry', 'depth', elLength);
+      sd.setAttribute('rotation', rotationVec);
+      sd.setAttribute('mixin', 'sidewalk');
+      sd.setAttribute('material', `repeat: ${repeatCountInter[0]} ${repeatCountInter[1]}`);
+      parentEl.appendChild(sd);
+    }
 
-    const c2 = document.createElement('a-entity');
-    c2.setAttribute('position', { x: -dimensionsArray[0] / 2 + southwestcurbArray[0] / 2, y: -dimensionsArray[1] / 2 + southwestcurbArray[1] / 2, z: 0.022 });
-    c2.setAttribute('scale', 'x', southwestcurbArray[0] / 3);
-    c2.setAttribute('scale', 'y', southwestcurbArray[1] / 150);
-    c2.setAttribute('mixin', 'sidewalk');
-    el.appendChild(c2);
+    //sidewalk 1 (west)
+    let positionVec = { x: intersectWidth / 2 - sidewalkArray[0] / 2, z: 0.03 };
+    let scaleVec = { x: sidewalkArray[0] / 3, y: 1, z: 1 };
+    let rotationVec = { x: 90, y: 0, z: 0 };
+    createSidewalkElem(el, intersectDepth, sidewalkArray[0], positionVec, scaleVec, rotationVec);
 
-    const c3 = document.createElement('a-entity');
-    c3.setAttribute('position', { x: dimensionsArray[0] / 2 - southeastcurbArray[0] / 2, y: -dimensionsArray[1] / 2 + southeastcurbArray[1] / 2, z: 0.022 });
-    c3.setAttribute('scale', 'x', southeastcurbArray[0] / 3);
-    c3.setAttribute('scale', 'y', southeastcurbArray[1] / 150);
-    c3.setAttribute('mixin', 'sidewalk');
-    el.appendChild(c3);
+    //sidewalk 2 (east)
+    positionVec = { x: -intersectWidth / 2 + sidewalkArray[1] / 2, z: 0.03 };
+    scaleVec = { x: sidewalkArray[1] / 3, y: 1, z: 1 };
+    rotationVec = { x: 90, y: 0, z: 0 };
+    createSidewalkElem(el, intersectDepth, sidewalkArray[1], positionVec, scaleVec, rotationVec);
 
-    const c4 = document.createElement('a-entity');
-    c4.setAttribute('position', { x: -dimensionsArray[0] / 2 + northwestcurbArray[0] / 2, y: dimensionsArray[1] / 2 - northwestcurbArray[1] / 2, z: 0.022 });
-    c4.setAttribute('scale', 'x', northwestcurbArray[0] / 3);
-    c4.setAttribute('scale', 'y', northwestcurbArray[1] / 150);
-    c4.setAttribute('mixin', 'sidewalk');
-    el.appendChild(c4);
+    //sidewalk 3 (north)
+    positionVec = { y: -intersectDepth / 2 + sidewalkArray[2] / 2, z: 0.01 };
+    scaleVec = { x: sidewalkArray[2] / 3, y: 1, z: 1 };
+    rotationVec = { x: 0, y: 90, z: -90 };
+    createSidewalkElem(el, intersectWidth, sidewalkArray[2], positionVec, scaleVec, rotationVec);
+
+    //sidewalk 4 (south)
+    positionVec = { y: intersectDepth / 2 - sidewalkArray[3] / 2, z: 0.01 };
+    scaleVec = { x: sidewalkArray[3] / 3, y: 1, z: 1 };
+    rotationVec = { x: 0, y: 90, z: -90 };
+    createSidewalkElem(el, intersectWidth, sidewalkArray[3], positionVec, scaleVec, rotationVec);
+
+    // north east curb
+    positionVec = { x: intersectWidth / 2 - northeastcurbArray[0] / 2, y: intersectDepth / 2 - northeastcurbArray[1] / 2, z: 0.022 };
+    scaleVec = { x: northeastcurbArray[0] / 3, y: 1, z: 1 };
+    rotationVec = { x: 0, y: 90, z: -90 };
+    createSidewalkElem(el, northeastcurbArray[0], northeastcurbArray[1], positionVec, scaleVec, rotationVec);
+
+    // south west curb
+    positionVec = { x: -intersectWidth / 2 + southwestcurbArray[0] / 2, y: -intersectDepth / 2 + southwestcurbArray[1] / 2, z: 0.022 };
+    scaleVec = { x: southwestcurbArray[0] / 3, y: 1, z: 1 };
+    rotationVec = { x: 0, y: 90, z: -90 };
+    createSidewalkElem(el, southwestcurbArray[0], southwestcurbArray[1], positionVec, scaleVec, rotationVec);
+
+    // south east curb
+    positionVec = { x: intersectWidth / 2 - southeastcurbArray[0] / 2, y: -intersectDepth / 2 + southeastcurbArray[1] / 2, z: 0.022 };
+    scaleVec = { x: southeastcurbArray[0] / 3, y: 1, z: 1 };
+    rotationVec = { x: 0, y: 90, z: -90 };
+    createSidewalkElem(el, southeastcurbArray[0], southeastcurbArray[1], positionVec, scaleVec, rotationVec);
+
+    // north west curb
+    positionVec = { x: -intersectWidth / 2 + northwestcurbArray[0] / 2, y: intersectDepth / 2 - northwestcurbArray[1] / 2, z: 0.022 };
+    scaleVec = { x: northwestcurbArray[0] / 3, y: 1, z: 1 };
+    rotationVec = { x: 0, y: 90, z: -90 };
+    createSidewalkElem(el, northwestcurbArray[0], northwestcurbArray[1], positionVec, scaleVec, rotationVec);
 
     if (stopsignArray[0]) {
       const ss1 = document.createElement('a-entity');
-      ss1.setAttribute('position', { x: dimensionsArray[0] / 2, y: dimensionsArray[1] / 3, z: 0.03 });
+      ss1.setAttribute('position', { x: intersectWidth / 2, y: intersectDepth / 3, z: 0.03 });
       ss1.setAttribute('rotation', { x: 0, y: 90, z: 90 });
       ss1.setAttribute('mixin', 'stop_sign');
       el.appendChild(ss1);
     }
     if (stopsignArray[1]) {
       const ss2 = document.createElement('a-entity');
-      ss2.setAttribute('position', { x: -dimensionsArray[0] / 2, y: -dimensionsArray[1] / 3, z: 0.03 });
+      ss2.setAttribute('position', { x: -intersectWidth / 2, y: -intersectDepth / 3, z: 0.03 });
       ss2.setAttribute('rotation', { x: 0, y: -90, z: -90 });
       ss2.setAttribute('mixin', 'stop_sign');
       el.appendChild(ss2);
     }
     if (stopsignArray[2]) {
       const ss3 = document.createElement('a-entity');
-      ss3.setAttribute('position', { x: -dimensionsArray[0] / 3, y: dimensionsArray[1] / 2, z: 0.03 });
+      ss3.setAttribute('position', { x: -intersectWidth / 3, y: intersectDepth / 2, z: 0.03 });
       ss3.setAttribute('rotation', { x: -90, y: 90, z: 90 });
       ss3.setAttribute('mixin', 'stop_sign');
       el.appendChild(ss3);
     }
     if (stopsignArray[3]) {
       const ss4 = document.createElement('a-entity');
-      ss4.setAttribute('position', { x: dimensionsArray[0] / 3, y: -dimensionsArray[1] / 2, z: 0.03 });
+      ss4.setAttribute('position', { x: intersectWidth / 3, y: -intersectDepth / 2, z: 0.03 });
       ss4.setAttribute('rotation', { x: 90, y: -90, z: -90 });
       ss4.setAttribute('mixin', 'stop_sign');
       el.appendChild(ss4);
@@ -226,48 +239,48 @@ AFRAME.registerComponent('intersection', {
 
     if (trafficsignalArray[0]) {
       const ts1 = document.createElement('a-entity');
-      ts1.setAttribute('position', { x: dimensionsArray[0] / 2, y: dimensionsArray[1] / 3, z: 0.03 });
+      ts1.setAttribute('position', { x: intersectWidth / 2, y: intersectDepth / 3, z: 0.03 });
       ts1.setAttribute('rotation', { x: 210, y: 90, z: 90 });
       ts1.setAttribute('mixin', 'signal_left');
       el.appendChild(ts1);
       const ts2 = document.createElement('a-entity');
-      ts2.setAttribute('position', { x: dimensionsArray[0] / 2, y: -dimensionsArray[1] / 3, z: 0.03 });
+      ts2.setAttribute('position', { x: intersectWidth / 2, y: -intersectDepth / 3, z: 0.03 });
       ts2.setAttribute('rotation', { x: 180, y: 90, z: 90 });
       ts2.setAttribute('mixin', 'signal_right');
       el.appendChild(ts2);
     }
     if (trafficsignalArray[1]) {
       const ts3 = document.createElement('a-entity');
-      ts3.setAttribute('position', { x: -dimensionsArray[0] / 2, y: -dimensionsArray[1] / 3, z: 0.03 });
+      ts3.setAttribute('position', { x: -intersectWidth / 2, y: -intersectDepth / 3, z: 0.03 });
       ts3.setAttribute('rotation', { x: 30, y: 90, z: 90 });
       ts3.setAttribute('mixin', 'signal_left');
       el.appendChild(ts3);
       const ts4 = document.createElement('a-entity');
-      ts4.setAttribute('position', { x: -dimensionsArray[0] / 2, y: dimensionsArray[1] / 3, z: 0.03 });
+      ts4.setAttribute('position', { x: -intersectWidth / 2, y: intersectDepth / 3, z: 0.03 });
       ts4.setAttribute('rotation', { x: 0, y: 90, z: 90 });
       ts4.setAttribute('mixin', 'signal_right');
       el.appendChild(ts4);
     }
     if (trafficsignalArray[2]) {
       const ts5 = document.createElement('a-entity');
-      ts5.setAttribute('position', { x: -dimensionsArray[0] / 3, y: dimensionsArray[1] / 2, z: 0.03 });
+      ts5.setAttribute('position', { x: -intersectWidth / 3, y: intersectDepth / 2, z: 0.03 });
       ts5.setAttribute('rotation', { x: 120, y: 90, z: 90 });
       ts5.setAttribute('mixin', 'signal_left');
       el.appendChild(ts5);
       const ts6 = document.createElement('a-entity');
-      ts6.setAttribute('position', { x: dimensionsArray[0] / 3, y: dimensionsArray[1] / 2, z: 0.03 });
+      ts6.setAttribute('position', { x: intersectWidth / 3, y: intersectDepth / 2, z: 0.03 });
       ts6.setAttribute('rotation', { x: 90, y: 90, z: 90 });
       ts6.setAttribute('mixin', 'signal_right');
       el.appendChild(ts6);
     }
     if (trafficsignalArray[3]) {
       const ts7 = document.createElement('a-entity');
-      ts7.setAttribute('position', { x: dimensionsArray[0] / 3, y: -dimensionsArray[1] / 2, z: 0.03 });
+      ts7.setAttribute('position', { x: intersectWidth / 3, y: -intersectDepth / 2, z: 0.03 });
       ts7.setAttribute('rotation', { x: -60, y: 90, z: 90 });
       ts7.setAttribute('mixin', 'signal_left');
       el.appendChild(ts7);
       const ts8 = document.createElement('a-entity');
-      ts8.setAttribute('position', { x: -dimensionsArray[0] / 3, y: -dimensionsArray[1] / 2, z: 0.03 });
+      ts8.setAttribute('position', { x: -intersectWidth / 3, y: -intersectDepth / 2, z: 0.03 });
       ts8.setAttribute('rotation', { x: -90, y: 90, z: 90 });
       ts8.setAttribute('mixin', 'signal_right');
       el.appendChild(ts8);
@@ -275,33 +288,33 @@ AFRAME.registerComponent('intersection', {
 
     if (crosswalklArray[0]) {
       const cw1 = document.createElement('a-entity');
-      cw1.setAttribute('position', { x: dimensionsArray[0] / 2 - 2, z: 0.013 });
+      cw1.setAttribute('position', { x: intersectWidth / 2 - 2, z: 0.013 });
       cw1.setAttribute('rotation', { x: 0, y: 0, z: 180 });
-      cw1.setAttribute('scale', { y: dimensionsArray[1] / 12 });
+      cw1.setAttribute('scale', { y: intersectDepth / 12 });
       cw1.setAttribute('mixin', 'markings crosswalk-zebra');
       el.appendChild(cw1);
     }
     if (crosswalklArray[1]) {
       const cw2 = document.createElement('a-entity');
-      cw2.setAttribute('position', { x: -dimensionsArray[0] / 2 + 2, z: 0.012 });
+      cw2.setAttribute('position', { x: -intersectWidth / 2 + 2, z: 0.012 });
       cw2.setAttribute('rotation', { x: 0, y: 0, z: 180 });
-      cw2.setAttribute('scale', { y: dimensionsArray[1] / 12 });
+      cw2.setAttribute('scale', { y: intersectDepth / 12 });
       cw2.setAttribute('mixin', 'markings crosswalk-zebra');
       el.appendChild(cw2);
     }
     if (crosswalklArray[2]) {
       const cw3 = document.createElement('a-entity');
-      cw3.setAttribute('position', { y: -dimensionsArray[1] / 2 + 2, z: 0.011 });
+      cw3.setAttribute('position', { y: -intersectDepth / 2 + 2, z: 0.011 });
       cw3.setAttribute('rotation', { x: 0, y: 0, z: 90 });
-      cw3.setAttribute('scale', { y: dimensionsArray[0] / 12 });
+      cw3.setAttribute('scale', { y: intersectWidth / 12 });
       cw3.setAttribute('mixin', 'markings crosswalk-zebra');
       el.appendChild(cw3);
     }
     if (crosswalklArray[3]) {
       const cw4 = document.createElement('a-entity');
-      cw4.setAttribute('position', { y: dimensionsArray[1] / 2 - 2, z: 0.01 });
+      cw4.setAttribute('position', { y: intersectDepth / 2 - 2, z: 0.01 });
       cw4.setAttribute('rotation', { x: 0, y: 0, z: 90 });
-      cw4.setAttribute('scale', { y: dimensionsArray[0] / 12 });
+      cw4.setAttribute('scale', { y: intersectWidth / 12 });
       cw4.setAttribute('mixin', 'markings crosswalk-zebra');
       el.appendChild(cw4);
     }
