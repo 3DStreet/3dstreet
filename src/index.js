@@ -164,27 +164,37 @@ AFRAME.registerComponent('intersection', {
     // describe sidewalk parameters
     const sidewalkParams = {
       "west": {
-        "positionVec": { x: intersectWidth / 2 - sidewalkArray[0] / 2, z: 0.03 },
+        "positionVec": { x: intersectWidth / 2 - sidewalkArray[0] / 2},
         "rotationVec": { x: 90, y: 0, z: 0 },
         "length": intersectDepth,
         "width": sidewalkArray[0]
       },
       "east": {
-        "positionVec": { x: -intersectWidth / 2 + sidewalkArray[1] / 2, z: 0.03 },
+        "positionVec": { x: -intersectWidth / 2 + sidewalkArray[1] / 2},
         "rotationVec": { x: 90, y: 0, z: 0 },
         "length": intersectDepth,
         "width": sidewalkArray[1]
       },
       "north": {
-        "positionVec": { y: -intersectDepth / 2 + sidewalkArray[2] / 2, z: 0.01 },
+        "positionVec": { 
+          y: -intersectDepth / 2 + sidewalkArray[2] / 2, 
+          // add x offset to avoid sidewalk's element overlap
+          x: sidewalkArray[1] / 2 - sidewalkArray[0] / 2
+        },
         "rotationVec": { x: 0, y: 90, z: -90 },
-        "length": intersectWidth,
+        // minus the width of the crossing sidewalk
+        "length": intersectWidth - sidewalkArray[1] - sidewalkArray[0],
         "width": sidewalkArray[2]      
       },
       "south": {
-        "positionVec": { y: intersectDepth / 2 - sidewalkArray[3] / 2, z: 0.01 },
+        "positionVec": { 
+          y: intersectDepth / 2 - sidewalkArray[3] / 2, 
+          // add x offset to avoid sidewalk's element overlap
+          x: sidewalkArray[1] / 2 - sidewalkArray[0] / 2
+        },
         "rotationVec": { x: 0, y: 90, z: -90 },
-        "length": intersectWidth,
+        // minus the width of the crossing sidewalk
+        "length": intersectWidth - sidewalkArray[1] - sidewalkArray[0],
         "width": sidewalkArray[3]
       }
     }
@@ -201,25 +211,25 @@ AFRAME.registerComponent('intersection', {
     // describe curb parameters
     const curbParams = {
       "northeast": {
-        "positionVec": { x: intersectWidth / 2 - northeastcurbArray[0] / 2, y: intersectDepth / 2 - northeastcurbArray[1] / 2, z: 0.022 },
+        "positionVec": { x: intersectWidth / 2 - northeastcurbArray[0] / 2, y: intersectDepth / 2 - northeastcurbArray[1] / 2},
         "rotationVec": { x: 0, y: 90, z: -90 },
         "length": northeastcurbArray[0],
         "width": northeastcurbArray[1]
       },
       "southwest": {
-        "positionVec": { x: -intersectWidth / 2 + southwestcurbArray[0] / 2, y: -intersectDepth / 2 + southwestcurbArray[1] / 2, z: 0.022 },
+        "positionVec": { x: -intersectWidth / 2 + southwestcurbArray[0] / 2, y: -intersectDepth / 2 + southwestcurbArray[1] / 2},
         "rotationVec": { x: 0, y: 90, z: -90 },
         "length": southwestcurbArray[0],
         "width": southwestcurbArray[1]
       },
       "southeast": {
-        "positionVec": { x: intersectWidth / 2 - southeastcurbArray[0] / 2, y: -intersectDepth / 2 + southeastcurbArray[1] / 2, z: 0.022 },
+        "positionVec": { x: intersectWidth / 2 - southeastcurbArray[0] / 2, y: -intersectDepth / 2 + southeastcurbArray[1] / 2},
         "rotationVec": { x: 0, y: 90, z: -90 },
         "length": southeastcurbArray[0],
         "width": southeastcurbArray[1]    
       },
       "northwest": {
-        "positionVec": { x: -intersectWidth / 2 + northwestcurbArray[0] / 2, y: intersectDepth / 2 - northwestcurbArray[1] / 2, z: 0.022 },
+        "positionVec": { x: -intersectWidth / 2 + northwestcurbArray[0] / 2, y: intersectDepth / 2 - northwestcurbArray[1] / 2},
         "rotationVec": { x: 0, y: 90, z: -90 },
         "length": northwestcurbArray[0],
         "width": northwestcurbArray[1]
@@ -233,31 +243,6 @@ AFRAME.registerComponent('intersection', {
       }
     }
 
-/*
-    // north east curb
-    positionVec = { x: intersectWidth / 2 - northeastcurbArray[0] / 2, y: intersectDepth / 2 - northeastcurbArray[1] / 2, z: 0.022 };
-    scaleVec = { x: northeastcurbArray[0] / 3, y: 1, z: 1 };
-    rotationVec = { x: 0, y: 90, z: -90 };
-    createSidewalkElem(northeastcurbArray[0], northeastcurbArray[1], positionVec, scaleVec, rotationVec);
-
-    // south west curb
-    positionVec = { x: -intersectWidth / 2 + southwestcurbArray[0] / 2, y: -intersectDepth / 2 + southwestcurbArray[1] / 2, z: 0.022 };
-    scaleVec = { x: southwestcurbArray[0] / 3, y: 1, z: 1 };
-    rotationVec = { x: 0, y: 90, z: -90 };
-    createSidewalkElem(southwestcurbArray[0], southwestcurbArray[1], positionVec, scaleVec, rotationVec);
-
-    // south east curb
-    positionVec = { x: intersectWidth / 2 - southeastcurbArray[0] / 2, y: -intersectDepth / 2 + southeastcurbArray[1] / 2, z: 0.022 };
-    scaleVec = { x: southeastcurbArray[0] / 3, y: 1, z: 1 };
-    rotationVec = { x: 0, y: 90, z: -90 };
-    createSidewalkElem(southeastcurbArray[0], southeastcurbArray[1], positionVec, scaleVec, rotationVec);
-
-    // north west curb
-    positionVec = { x: -intersectWidth / 2 + northwestcurbArray[0] / 2, y: intersectDepth / 2 - northwestcurbArray[1] / 2, z: 0.022 };
-    scaleVec = { x: northwestcurbArray[0] / 3, y: 1, z: 1 };
-    rotationVec = { x: 0, y: 90, z: -90 };
-    createSidewalkElem(northwestcurbArray[0], northwestcurbArray[1], positionVec, scaleVec, rotationVec);
-*/
     if (stopsignArray[0]) {
       const ss1 = document.createElement('a-entity');
       ss1.setAttribute('position', { x: intersectWidth / 2, y: intersectDepth / 3, z: 0.03 });
