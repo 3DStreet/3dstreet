@@ -73,7 +73,6 @@
         <a-mixin id="box-truck" gltf-part-plus="src: #vehicles; part: box-truck"></a-mixin>
         <a-mixin id="city-bus" gltf-part-plus="src: #vehicles; part: city-bus"></a-mixin>
         <a-mixin id="food-trailer" gltf-part-plus="src: #vehicles; part: food-trailer"></a-mixin>
-        <a-mixin id="sedan" gltf-part-plus="src: #vehicles; part: sedan"></a-mixin>
         <a-mixin id="sedan-taxi" gltf-part-plus="src: #vehicles; part: sedan-taxi"></a-mixin>
         <a-mixin id="suv" gltf-part-plus="src: #vehicles; part: suv"></a-mixin>
         <a-asset-item id="magic-carpet-glb" src="${assetUrl}sets/magic-carpet/gltf-exports/draco/magic-carpet.glb"></a-asset-item>
@@ -86,7 +85,7 @@
       `,
       'vehicles-rigged': `
         <!-- vehicles rigged -->
-        <a-asset-item id="sedan-rigged" src="${assetUrl}sets/vehicles-rig/gltf-exports/draco/sedan-rig.glb"></a-asset-item>
+        <a-asset-item id="sedan-rigged" src="${assetUrl}sets/vehicles-rig/gltf-exports/draco/toyota-prius-rig.glb"></a-asset-item>
         <a-mixin id="sedan-rig" gltf-model="#sedan-rigged" ></a-mixin>
         <a-asset-item id="bus-rigged" src="${assetUrl}sets/vehicles-rig/gltf-exports/draco/city-bus-rig.glb"></a-asset-item>
         <a-mixin id="bus-rig" gltf-model="#bus-rigged" ></a-mixin>
@@ -94,7 +93,7 @@
         <a-mixin id="sedan-taxi-rig" gltf-model="#sedan-taxi-rigged" ></a-mixin>
         <a-asset-item id="suv-rigged" src="${assetUrl}sets/vehicles-rig/gltf-exports/draco/suv-rig.glb"></a-asset-item>
         <a-mixin id="suv-rig" gltf-model="#suv-rigged" ></a-mixin>
-        <a-asset-item id="box-truck-rigged" src="${assetUrl}sets/vehicles-rig/gltf-exports/draco/box-truck-rig.glb"></a-asset-item>
+        <a-asset-item id="box-truck-rigged" src="${assetUrl}sets/vehicles-rig/gltf-exports/draco/isuzu-truck-rig.glb"></a-asset-item>
         <a-mixin id="box-truck-rig" gltf-model="#box-truck-rigged" ></a-mixin>
       `,
       buildings: `
@@ -359,5 +358,10 @@ Unused assets kept commented here for future reference
 
         <!-- ui / future use -->
         <img id="subtitle" src="${assetUrl}materials/subtitle.png" crossorigin="anonymous" />
+
+        <!-- old vehicles -->
+        <a-mixin id="sedan" gltf-part-plus="src: #vehicles; part: sedan"></a-mixin>
+        <a-asset-item id="sedan-rigged" src="${assetUrl}sets/vehicles-rig/gltf-exports/draco/sedan-rig.glb"></a-asset-item>
+        <a-mixin id="sedan-rig" gltf-model="#sedan-rigged" ></a-mixin>
 
 */
