@@ -116,7 +116,7 @@ AFRAME.registerComponent('gltf-part-plus', {
     return mesh;
   }
 });
-
+/*
 AFRAME.registerComponent('model-center', {
   schema: {
     bottomAlign: { default: false }
@@ -195,7 +195,7 @@ AFRAME.registerComponent('anisotropy', {
     // });
   }
 });
-
+*/
 // original source: https://github.com/EX3D/aframe-InstancedMesh/blob/master/instancedmesh.js
 AFRAME.registerComponent('instancedmesh', {
   schema: {
