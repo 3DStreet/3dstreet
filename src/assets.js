@@ -360,8 +360,8 @@ Unused assets kept commented here for future reference
         <img id="subtitle" src="${assetUrl}materials/subtitle.png" crossorigin="anonymous" />
 
         <!-- old vehicles -->
-        <a-mixin id="sedan" gltf-part-plus="src: #vehicles; part: sedan"></a-mixin>
-        <a-asset-item id="sedan-rigged" src="${assetUrl}sets/vehicles-rig/gltf-exports/draco/sedan-rig.glb"></a-asset-item>
-        <a-mixin id="sedan-rig" gltf-model="#sedan-rigged" ></a-mixin>
+        <a-mixin id="old-sedan" gltf-part-plus="src: #vehicles; part: sedan"></a-mixin>
+        <a-asset-item id="old-sedan-rigged" src="${assetUrl}sets/vehicles-rig/gltf-exports/draco/sedan-rig.glb"></a-asset-item>
+        <a-mixin id="old-sedan-rig" gltf-model="#sedan-rigged" ></a-mixin>
 
 */
