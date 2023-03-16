@@ -485,7 +485,7 @@ function createFlexZoneElement (variantList, positionX, length, showVehicles = t
   if (variantList[0] === 'taxi') {
     reusableObjectEl.setAttribute('mixin', 'sedan-taxi');
   } else if (variantList[0] === 'rideshare') {
-    reusableObjectEl.setAttribute('mixin', 'sedan');
+    reusableObjectEl.setAttribute('mixin', 'sedan-rig');
   }
   const positionZ = randomPosition(reusableObjectEl, 'z', length, 5);
   reusableObjectEl.setAttribute('position', positionX + ' 0 ' + positionZ);
