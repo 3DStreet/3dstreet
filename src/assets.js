@@ -9,44 +9,44 @@
         <!-- sidewalk props -->
         <img id="wayfinding-map" src="${assetUrl}objects/wayfinding.jpg" crossorigin="anonymous" />
         <a-asset-item id="streetProps" src="${assetUrl}sets/street-props/gltf-exports/draco/street-props.glb"></a-asset-item>
-        <a-mixin id="outdoor_dining" gltf-part-plus="src: #streetProps; part: outdoor_dining"></a-mixin>
-        <a-mixin id="bench_orientation_center" gltf-part-plus="src: #streetProps; part: bench_orientation_center"></a-mixin>
-        <a-mixin id="parklet" gltf-part-plus="src: #streetProps; part: parklet"></a-mixin>
-        <a-mixin id="utility_pole" gltf-part-plus="src: #streetProps; part: utility_pole"></a-mixin>
-        <a-mixin id="lamp-modern" gltf-part-plus="src: #streetProps; part: street-light"></a-mixin>
-        <a-mixin id="lamp-modern-double" gltf-part-plus="src: #streetProps; part: street-light-double"></a-mixin>
-        <a-mixin id="bikerack" gltf-part-plus="src: #streetProps; part: bike_rack"></a-mixin>
-        <a-mixin id="bikeshare" gltf-part-plus="src: #streetProps; part: bike_share"></a-mixin>
-        <a-mixin id="lamp-traditional" gltf-part-plus="src: #streetProps; part: lamp_post_traditional" scale="2 2 2"></a-mixin>
-        <a-mixin id="palm-tree" gltf-part-plus="src: #streetProps; part: palmtree" scale="1 1.5 1"></a-mixin>
-        <a-mixin id="bench" gltf-part-plus="src: #streetProps; part: park_bench"></a-mixin>
-        <a-mixin id="seawall" gltf-part-plus="src: #streetProps; part: sea_wall"></a-mixin>
-        <a-mixin id="track" gltf-part-plus="src: #streetProps; part: track"></a-mixin>
-        <a-mixin id="tree3" gltf-part-plus="src: #streetProps; part: tree-01" scale="1.25 1.25 1.25"></a-mixin>
-        <a-mixin id="bus-stop" gltf-part-plus="src: #streetProps; part: transit-shelter-1"></a-mixin>
+        <a-mixin id="outdoor_dining" gltf-part="src: #streetProps; part: outdoor_dining"></a-mixin>
+        <a-mixin id="bench_orientation_center" gltf-part="src: #streetProps; part: bench_orientation_center"></a-mixin>
+        <a-mixin id="parklet" gltf-part="src: #streetProps; part: parklet"></a-mixin>
+        <a-mixin id="utility_pole" gltf-part="src: #streetProps; part: utility_pole"></a-mixin>
+        <a-mixin id="lamp-modern" gltf-part="src: #streetProps; part: street-light"></a-mixin>
+        <a-mixin id="lamp-modern-double" gltf-part="src: #streetProps; part: street-light-double"></a-mixin>
+        <a-mixin id="bikerack" gltf-part="src: #streetProps; part: bike_rack"></a-mixin>
+        <a-mixin id="bikeshare" gltf-part="src: #streetProps; part: bike_share"></a-mixin>
+        <a-mixin id="lamp-traditional" gltf-part="src: #streetProps; part: lamp_post_traditional" scale="2 2 2"></a-mixin>
+        <a-mixin id="palm-tree" gltf-part="src: #streetProps; part: palmtree" scale="1 1.5 1"></a-mixin>
+        <a-mixin id="bench" gltf-part="src: #streetProps; part: park_bench"></a-mixin>
+        <a-mixin id="seawall" gltf-part="src: #streetProps; part: sea_wall"></a-mixin>
+        <a-mixin id="track" gltf-part="src: #streetProps; part: track"></a-mixin>
+        <a-mixin id="tree3" gltf-part="src: #streetProps; part: tree-01" scale="1.25 1.25 1.25"></a-mixin>
+        <a-mixin id="bus-stop" gltf-part="src: #streetProps; part: transit-shelter-1"></a-mixin>
         <a-mixin id="pride-flag" position="0.409 3.345 0" rotation="0 0 0" scale="0.5 0.75 0" geometry="width:2;height:2;primitive:plane" material="side:double; src:${assetUrl}materials/rainbow-flag-poles_512.png;transparent: true;"></a-mixin>
         <a-mixin id="wayfinding-box" geometry="primitive: box; height: 2; width: 0.84; depth: 0.1" material="color: gray"></a-mixin>
       `,
       people: `
         <!-- human characters -->
         <a-asset-item id="humans" src="${assetUrl}sets/human-characters-poses-1/gltf-exports/draco/human-characters-poses-1.glb"></a-asset-item>
-        <a-mixin id="char1" gltf-part-plus="src: #humans; part: Character_1"></a-mixin>
-        <a-mixin id="char2" gltf-part-plus="src: #humans; part: Character_2"></a-mixin>
-        <a-mixin id="char3" gltf-part-plus="src: #humans; part: Character_3"></a-mixin>
-        <a-mixin id="char4" gltf-part-plus="src: #humans; part: Character_4"></a-mixin>
-        <a-mixin id="char5" gltf-part-plus="src: #humans; part: Character_5"></a-mixin>
-        <a-mixin id="char6" gltf-part-plus="src: #humans; part: Character_6"></a-mixin>
-        <a-mixin id="char7" gltf-part-plus="src: #humans; part: Character_7"></a-mixin>
-        <a-mixin id="char8" gltf-part-plus="src: #humans; part: Character_8"></a-mixin>
+        <a-mixin id="char1" gltf-part="src: #humans; part: Character_1"></a-mixin>
+        <a-mixin id="char2" gltf-part="src: #humans; part: Character_2"></a-mixin>
+        <a-mixin id="char3" gltf-part="src: #humans; part: Character_3"></a-mixin>
+        <a-mixin id="char4" gltf-part="src: #humans; part: Character_4"></a-mixin>
+        <a-mixin id="char5" gltf-part="src: #humans; part: Character_5"></a-mixin>
+        <a-mixin id="char6" gltf-part="src: #humans; part: Character_6"></a-mixin>
+        <a-mixin id="char7" gltf-part="src: #humans; part: Character_7"></a-mixin>
+        <a-mixin id="char8" gltf-part="src: #humans; part: Character_8"></a-mixin>
         <a-asset-item id="humans2" src="${assetUrl}sets/human-characters-poses-2/gltf-exports/draco/human-characters-poses-2.glb"></a-asset-item>
-        <a-mixin id="char9" gltf-part-plus="src: #humans2; part: Character_9"></a-mixin>
-        <a-mixin id="char10" gltf-part-plus="src: #humans2; part: Character_10"></a-mixin>
-        <a-mixin id="char11" gltf-part-plus="src: #humans2; part: Character_11"></a-mixin>
-        <a-mixin id="char12" gltf-part-plus="src: #humans2; part: Character_12"></a-mixin>
-        <a-mixin id="char13" gltf-part-plus="src: #humans2; part: Character_13"></a-mixin>
-        <a-mixin id="char14" gltf-part-plus="src: #humans2; part: Character_14"></a-mixin>
-        <a-mixin id="char15" gltf-part-plus="src: #humans2; part: Character_15"></a-mixin>
-        <a-mixin id="char16" gltf-part-plus="src: #humans2; part: Character_16"></a-mixin>
+        <a-mixin id="char9" gltf-part="src: #humans2; part: Character_9"></a-mixin>
+        <a-mixin id="char10" gltf-part="src: #humans2; part: Character_10"></a-mixin>
+        <a-mixin id="char11" gltf-part="src: #humans2; part: Character_11"></a-mixin>
+        <a-mixin id="char12" gltf-part="src: #humans2; part: Character_12"></a-mixin>
+        <a-mixin id="char13" gltf-part="src: #humans2; part: Character_13"></a-mixin>
+        <a-mixin id="char14" gltf-part="src: #humans2; part: Character_14"></a-mixin>
+        <a-mixin id="char15" gltf-part="src: #humans2; part: Character_15"></a-mixin>
+        <a-mixin id="char16" gltf-part="src: #humans2; part: Character_16"></a-mixin>
       `,
       'people-rigged': `          
         <a-asset-item id="character1walk" src="${assetUrl}sets/human-characters-animation-seperated/gltf-exports/draco/character-1-walk.glb"></a-asset-item>
@@ -70,19 +70,19 @@
       vehicles: `
         <!-- vehicles -->
         <a-asset-item id="vehicles" src="${assetUrl}sets/vehicles/gltf-exports/draco/vehicles.glb"></a-asset-item>
-        <a-mixin id="box-truck" gltf-part-plus="src: #vehicles; part: box-truck"></a-mixin>
-        <a-mixin id="city-bus" gltf-part-plus="src: #vehicles; part: city-bus"></a-mixin>
-        <a-mixin id="food-trailer" gltf-part-plus="src: #vehicles; part: food-trailer"></a-mixin>
-        <a-mixin id="sedan" gltf-part-plus="src: #vehicles; part: sedan"></a-mixin>
-        <a-mixin id="sedan-taxi" gltf-part-plus="src: #vehicles; part: sedan-taxi"></a-mixin>
-        <a-mixin id="suv" gltf-part-plus="src: #vehicles; part: suv"></a-mixin>
+        <a-mixin id="box-truck" gltf-part="src: #vehicles; part: box-truck"></a-mixin>
+        <a-mixin id="city-bus" gltf-part="src: #vehicles; part: city-bus"></a-mixin>
+        <a-mixin id="food-trailer" gltf-part="src: #vehicles; part: food-trailer"></a-mixin>
+        <a-mixin id="sedan" gltf-part="src: #vehicles; part: sedan"></a-mixin>
+        <a-mixin id="sedan-taxi" gltf-part="src: #vehicles; part: sedan-taxi"></a-mixin>
+        <a-mixin id="suv" gltf-part="src: #vehicles; part: suv"></a-mixin>
         <a-asset-item id="magic-carpet-glb" src="${assetUrl}sets/magic-carpet/gltf-exports/draco/magic-carpet.glb"></a-asset-item>
-        <a-mixin id="Character_1_M" gltf-part-plus="src: #magic-carpet-glb; part: Character_1_M"></a-mixin>
-        <a-mixin id="magic-carpet" gltf-part-plus="src: #magic-carpet-glb; part: magic-carpet"></a-mixin>
+        <a-mixin id="Character_1_M" gltf-part="src: #magic-carpet-glb; part: Character_1_M"></a-mixin>
+        <a-mixin id="magic-carpet" gltf-part="src: #magic-carpet-glb; part: magic-carpet"></a-mixin>
         <!-- micro mobility vehicles -->
         <a-asset-item id="microMobilityDevices" src="${assetUrl}sets/micro-mobility-devices/gltf-exports/draco/micro-mobility-devices_v01.glb"></a-asset-item>
-        <a-mixin id="Bicycle_1" gltf-part-plus="src: #microMobilityDevices; part: Bicycle_1"></a-mixin>
-        <a-mixin id="ElectricScooter_1" gltf-part-plus="src: #microMobilityDevices; part: ElectricScooter_1"></a-mixin>
+        <a-mixin id="Bicycle_1" gltf-part="src: #microMobilityDevices; part: Bicycle_1"></a-mixin>
+        <a-mixin id="ElectricScooter_1" gltf-part="src: #microMobilityDevices; part: ElectricScooter_1"></a-mixin>
       `,
       'vehicles-rigged': `
         <!-- vehicles rigged -->
@@ -103,15 +103,15 @@
         <a-asset-item id="suburbiamodel" src="${assetUrl}sets/suburban-houses/gltf-exports/draco/suburban-houses.glb"></a-asset-item>
 
         <!-- buildings and blocks -->
-        <a-mixin id="SM3D_Bld_Mixed_Corner_4fl" scale="1 1 1" rotation="0 0 0" gltf-part-plus="src: #blockmodel; part: SM3D_Bld_Mixed_Corner_4fl"></a-mixin>
-        <a-mixin id="SM3D_Bld_Mixed_Double_5fl" scale="1 1 1" rotation="0 0 0" gltf-part-plus="src: #blockmodel; part: SM3D_Bld_Mixed_Double_5fl"></a-mixin>
-        <a-mixin id="SM3D_Bld_Mixed_4fl_2" scale="1 1 1" rotation="0 0 0" gltf-part-plus="src: #blockmodel; part: SM3D_Bld_Mixed_4fl_2"></a-mixin>
-        <a-mixin id="SM3D_Bld_Mixed_5fl" scale="1 1 1" rotation="0 0 0" gltf-part-plus="src: #blockmodel; part: SM3D_Bld_Mixed_5fl"></a-mixin>
-        <a-mixin id="SM3D_Bld_Mixed_4fl" scale="1 1 1" rotation="0 0 0" gltf-part-plus="src: #blockmodel; part: SM3D_Bld_Mixed_4fl"></a-mixin>
+        <a-mixin id="SM3D_Bld_Mixed_Corner_4fl" scale="1 1 1" rotation="0 0 0" gltf-part="src: #blockmodel; part: SM3D_Bld_Mixed_Corner_4fl"></a-mixin>
+        <a-mixin id="SM3D_Bld_Mixed_Double_5fl" scale="1 1 1" rotation="0 0 0" gltf-part="src: #blockmodel; part: SM3D_Bld_Mixed_Double_5fl"></a-mixin>
+        <a-mixin id="SM3D_Bld_Mixed_4fl_2" scale="1 1 1" rotation="0 0 0" gltf-part="src: #blockmodel; part: SM3D_Bld_Mixed_4fl_2"></a-mixin>
+        <a-mixin id="SM3D_Bld_Mixed_5fl" scale="1 1 1" rotation="0 0 0" gltf-part="src: #blockmodel; part: SM3D_Bld_Mixed_5fl"></a-mixin>
+        <a-mixin id="SM3D_Bld_Mixed_4fl" scale="1 1 1" rotation="0 0 0" gltf-part="src: #blockmodel; part: SM3D_Bld_Mixed_4fl"></a-mixin>
 
-        <a-mixin id="SM_Bld_House_Preset_03_1800" scale="1 1 1" rotation="0 0 0" gltf-part-plus="src: #suburbiamodel; part: suburban-house_1"></a-mixin>
-        <a-mixin id="SM_Bld_House_Preset_08_1809" scale="1 1 1" rotation="0 0 0" gltf-part-plus="src: #suburbiamodel; part: suburban-house_3"></a-mixin>
-        <a-mixin id="SM_Bld_House_Preset_09_1845" scale="1 1 1" rotation="0 0 0" gltf-part-plus="src: #suburbiamodel; part: suburban-house_2"></a-mixin>
+        <a-mixin id="SM_Bld_House_Preset_03_1800" scale="1 1 1" rotation="0 0 0" gltf-part="src: #suburbiamodel; part: suburban-house_1"></a-mixin>
+        <a-mixin id="SM_Bld_House_Preset_08_1809" scale="1 1 1" rotation="0 0 0" gltf-part="src: #suburbiamodel; part: suburban-house_3"></a-mixin>
+        <a-mixin id="SM_Bld_House_Preset_09_1845" scale="1 1 1" rotation="0 0 0" gltf-part="src: #suburbiamodel; part: suburban-house_2"></a-mixin>
 `,
       'intersection-props': `
         <a-asset-item id="stopsign" src="${assetUrl}sets/road-signs/gltf-exports/draco/stop-sign.glb"></a-asset-item>
@@ -192,16 +192,16 @@
       dividers: `
         <!-- dividers -->
         <a-asset-item id="dividers" src="${assetUrl}sets/dividers/gltf-exports/draco/dividers.glb"></a-asset-item>        
-        <a-mixin id="dividers-flowers" scale="1 1 1" rotation="0 0 0" gltf-part-plus="src: #dividers; part: flowers"></a-mixin>
-        <a-mixin id="dividers-planting-strip" scale="1 1 1" rotation="0 0 0" gltf-part-plus="src: #dividers; part: planting-strip"></a-mixin>
-        <a-mixin id="dividers-planter-box" scale="1 1 1" rotation="0 0 0" gltf-part-plus="src: #dividers; part: planter-box"></a-mixin>
-        <a-mixin id="dividers-bush" scale="1 1 1" rotation="0 0 0" gltf-part-plus="src: #dividers; part: bush"></a-mixin>
-        <a-mixin id="dividers-dome" scale="1 1 1" rotation="0 0 0" gltf-part-plus="src: #dividers; part: dome"></a-mixin>
-        <a-mixin id="safehit" scale="1 1 1" rotation="0 0 0" gltf-part-plus="src: #dividers; part: bollard"></a-mixin>
-        <a-mixin id="temporary-barricade" scale="1 1 1" rotation="0 0 0" gltf-part-plus="src: #dividers; part: barricade"></a-mixin>
-        <a-mixin id="temporary-traffic-cone" scale="1 1 1" rotation="0 0 0" gltf-part-plus="src: #dividers; part: traffic-cone"></a-mixin>
-        <a-mixin id="temporary-jersey-barrier-plastic" scale="1 1 1" rotation="0 0 0" gltf-part-plus="src: #dividers; part: jersey-barrier-plastic"></a-mixin>
-        <a-mixin id="temporary-jersey-barrier-concrete" scale="1 1 1" rotation="0 0 0" gltf-part-plus="src: #dividers; part: jersey-barrier-concrete"></a-mixin>
+        <a-mixin id="dividers-flowers" scale="1 1 1" rotation="0 0 0" gltf-part="src: #dividers; part: flowers"></a-mixin>
+        <a-mixin id="dividers-planting-strip" scale="1 1 1" rotation="0 0 0" gltf-part="src: #dividers; part: planting-strip"></a-mixin>
+        <a-mixin id="dividers-planter-box" scale="1 1 1" rotation="0 0 0" gltf-part="src: #dividers; part: planter-box"></a-mixin>
+        <a-mixin id="dividers-bush" scale="1 1 1" rotation="0 0 0" gltf-part="src: #dividers; part: bush"></a-mixin>
+        <a-mixin id="dividers-dome" scale="1 1 1" rotation="0 0 0" gltf-part="src: #dividers; part: dome"></a-mixin>
+        <a-mixin id="safehit" scale="1 1 1" rotation="0 0 0" gltf-part="src: #dividers; part: bollard"></a-mixin>
+        <a-mixin id="temporary-barricade" scale="1 1 1" rotation="0 0 0" gltf-part="src: #dividers; part: barricade"></a-mixin>
+        <a-mixin id="temporary-traffic-cone" scale="1 1 1" rotation="0 0 0" gltf-part="src: #dividers; part: traffic-cone"></a-mixin>
+        <a-mixin id="temporary-jersey-barrier-plastic" scale="1 1 1" rotation="0 0 0" gltf-part="src: #dividers; part: jersey-barrier-plastic"></a-mixin>
+        <a-mixin id="temporary-jersey-barrier-concrete" scale="1 1 1" rotation="0 0 0" gltf-part="src: #dividers; part: jersey-barrier-concrete"></a-mixin>
       `,
       sky: `
         <!-- sky -->

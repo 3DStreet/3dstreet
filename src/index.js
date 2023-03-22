@@ -2,10 +2,10 @@
 var streetmixParsers = require('./aframe-streetmix-parsers');
 var streetmixUtils = require('./tested/streetmix-utils');
 require('./components/anisotropy');
+require('./components/gltf-part');
 require('./assets.js');
 require('./components/create-from-json');
 require('aframe-atlas-uvs-component');
-require('./lib/aframe-gltf-helpers.js');
 
 AFRAME.registerComponent('street', {
   schema: {
