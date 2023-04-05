@@ -99,6 +99,7 @@
       buildings: `
         <!-- blocks -->
         <a-asset-item id="blockmodel" src="${assetUrl}sets/buildings/gltf-exports/draco/buildings.glb"></a-asset-item>
+        <a-asset-item id="archedmodel" src="${assetUrl}sets/arcade-style-buildings/gltf-exports/draco/arched-buildings.glb"></a-asset-item>
         <a-asset-item id="suburbiamodel" src="${assetUrl}sets/suburban-houses/gltf-exports/draco/suburban-houses.glb"></a-asset-item>
 
         <!-- buildings and blocks -->
@@ -108,9 +109,16 @@
         <a-mixin id="SM3D_Bld_Mixed_5fl" scale="1 1 1" rotation="0 0 0" gltf-part="src: #blockmodel; part: SM3D_Bld_Mixed_5fl"></a-mixin>
         <a-mixin id="SM3D_Bld_Mixed_4fl" scale="1 1 1" rotation="0 0 0" gltf-part="src: #blockmodel; part: SM3D_Bld_Mixed_4fl"></a-mixin>
 
+        <!-- suburban buildings -->
         <a-mixin id="SM_Bld_House_Preset_03_1800" scale="1 1 1" rotation="0 0 0" gltf-part="src: #suburbiamodel; part: suburban-house_1"></a-mixin>
         <a-mixin id="SM_Bld_House_Preset_08_1809" scale="1 1 1" rotation="0 0 0" gltf-part="src: #suburbiamodel; part: suburban-house_3"></a-mixin>
         <a-mixin id="SM_Bld_House_Preset_09_1845" scale="1 1 1" rotation="0 0 0" gltf-part="src: #suburbiamodel; part: suburban-house_2"></a-mixin>
+
+        <!-- arched style buildings -->
+        <a-mixin id="arched-building-01" scale="1 1 1" rotation="0 0 0" gltf-part="src: #archedmodel; part: arched-building-01"></a-mixin>
+        <a-mixin id="arched-building-02" scale="1 1 1" rotation="0 0 0" gltf-part="src: #archedmodel; part: arched-building-02"></a-mixin>
+        <a-mixin id="arched-building-03" scale="1 1 1" rotation="0 0 0" gltf-part="src: #archedmodel; part: arched-building-03"></a-mixin>
+        <a-mixin id="arched-building-04" scale="1 1 1" rotation="0 0 0" gltf-part="src: #archedmodel; part: arched-building-04"></a-mixin>
 `,
       'intersection-props': `
         <a-asset-item id="stopsign" src="${assetUrl}sets/road-signs/gltf-exports/draco/stop-sign.glb"></a-asset-item>

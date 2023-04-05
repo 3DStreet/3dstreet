@@ -989,6 +989,21 @@ function processBuildings (left, right, streetWidth, showGround, length) {
   // soundParentEl.setAttribute('create-from-json', 'jsonString', ambientSoundJSONString);
   // buildingElement.appendChild(soundParentEl);
 
+  function createBuilding(buildingType, className, buildingPos, sideMultiplier) {
+    // Make buildings
+    const buildingsArray = streetmixParsersTested.createBuildingsArray(length, buildingType);
+    const buildingJSONString = JSON.stringify(buildingsArray);
+    const placedObjectEl = document.createElement('a-entity');
+
+    placedObjectEl.setAttribute('rotation', '0 ' + (90 * sideMultiplier) + ' 0');
+    placedObjectEl.setAttribute('create-from-json', 'jsonString', buildingJSONString);
+    
+    buildingElement.append(placedObjectEl); 
+    placedObjectEl.classList.add(className);
+    placedObjectEl.setAttribute('position', buildingPos);
+    buildingElement.append(placedObjectEl);
+  }
+
   buildingsArray.forEach((currentValue, index) => {
     if (currentValue.length === 0) { return; } // if empty string then skip
     const side = (index === 0) ? 'left' : 'right';
@@ -1010,41 +1025,31 @@ function processBuildings (left, right, streetWidth, showGround, length) {
       buildingElement.appendChild(groundParentEl);
     }
 
-    if (currentValue === 'narrow' || currentValue === 'wide') {
-      // Make buildings
-      const buildingsArray = streetmixParsersTested.createBuildingsArray(length);
-      const buildingJSONString = JSON.stringify(buildingsArray);
-      const placedObjectEl = document.createElement('a-entity');
-      // Account for left and right facing buildings
-      if (index === 1) {
-        placedObjectEl.setAttribute('position', (positionX + (sideMultiplier * -72)) + ' 0 ' + (length / 2));
-      } else {
-        placedObjectEl.setAttribute('position', (positionX + (sideMultiplier * -72)) + ' 0 ' + (-length / 2));
-      }
-      placedObjectEl.setAttribute('rotation', '0 ' + (90 * sideMultiplier) + ' 0');
-      placedObjectEl.setAttribute('create-from-json', 'jsonString', buildingJSONString);
-      placedObjectEl.classList.add('block-' + side);
-      buildingElement.append(placedObjectEl);
+    // make building
+    const buildingPos = { 
+      x: positionX,
+      y: 0,
+      z: (index === 1) ? length / 2 : -length / 2
     }
+    let className = 'block-' + side;
 
-    if (currentValue === 'residential') {
-      // Make buildings
-      const buildingsArray = streetmixParsersTested.createBuildingsArray(length, 'residential');
-      const buildingJSONString = JSON.stringify(buildingsArray);
-      const placedObjectEl = document.createElement('a-entity');
-      // Account for left and right facing buildings
-      if (index === 1) {
-        placedObjectEl.setAttribute('position', (positionX + (sideMultiplier * -64)) + ' -0.58 ' + (length / 2));
-      } else {
-        placedObjectEl.setAttribute('position', (positionX + (sideMultiplier * -64)) + ' -0.58 ' + (-length / 2));
-      }
-      placedObjectEl.setAttribute('rotation', '0 ' + (90 * sideMultiplier) + ' 0');
-      placedObjectEl.setAttribute('create-from-json', 'jsonString', buildingJSONString);
-      placedObjectEl.classList.add('suburbia-' + side);
-      // the grass should be slightly lower than the path - 0.17 instead of 0.2 for other buildings
-      buildingElement.setAttribute('position', '0 0.17 0');
-      buildingElement.append(placedObjectEl);
-    }
+    switch (currentValue) { 
+      case 'narrow':
+      case 'wide':
+        buildingPos.x += sideMultiplier * (-72);
+        break;
+      case 'residential': 
+        buildingPos.x += sideMultiplier * (-64);
+        buildingPos.y = -0.58;
+        className = 'suburbia-' + side;
+        // the grass should be slightly lower than the path - 0.17 instead of 0.2 for other buildings
+        buildingElement.setAttribute('position', '0 0.17 0');
+        break;
+      case 'arcade': 
+        buildingPos.x += sideMultiplier * (-70.5);
+        className = 'arcade-' + side;
+    }     
+    createBuilding(currentValue, className, buildingPos, sideMultiplier);
 
     if (currentValue === 'waterfront') {
       const objectPositionX = positionX - (sideMultiplier * buildingLotWidth / 2);
