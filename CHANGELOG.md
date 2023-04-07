@@ -15,9 +15,16 @@ Never too late to start a changelog, eh?
 * asset upgrades and new assets
 * switch to draco for most assets
 * cursor teleport or WASD on desktop browsers (instead of orbit controls)
- 
+* barely working save / load
+* vehicle wheel animation support
+* basic character animation support
+* simple day / night environment component
+* [basic ui for loading streets and scenes (right-side)](https://github.com/3DStreet/3dstreet/pull/219)
+
 ### Fixed
 * segments beneath street level have closed geometry
+* [fix building position exceeds length](https://github.com/3DStreet/3dstreet/pull/208)
+* lane marking proportions for non-default street lengths
  
 ## 0.3.2
 
