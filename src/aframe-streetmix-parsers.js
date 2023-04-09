@@ -637,14 +637,14 @@ function createCenteredStreetElement (segments) {
   return streetEl;
 }
 
-function createSegmentElement (scaleX, positionX, positionY, rotationY, mixinId, length, repeatCount) {
+function createSegmentElement (scaleX, positionX, positionY, rotationY, mixinId, length, repeatCount, elevation = 0) {
   var segmentEl = document.createElement('a-entity');
   const scaleY = length / 150;
 
   const scalePlane = scaleX + ' ' + scaleY + ' 1';
   const scaleBox = scaleX + ' 1 1';
 
-  if (mixinId === 'sidewalk') {
+  if (mixinId === 'sidewalk' || elevation === 1) {
     segmentEl.setAttribute('geometry', 'primitive', 'box');
     segmentEl.setAttribute('geometry', 'height: 0.4');
     segmentEl.setAttribute('geometry', 'depth', length);
@@ -1014,8 +1014,11 @@ function processSegments (segments, showStriping, length, globalAnimated, showVe
       repeatCount[1] = parseInt(length / 2);
     }
 
+    // elevation property from streetmix segment
+    const elevation = segments[i].elevation;
+
     // add new object
-    segmentParentEl.append(createSegmentElement(scaleX, positionX, positionY, rotationY, groundMixinId, length, repeatCount));
+    segmentParentEl.append(createSegmentElement(scaleX, positionX, positionY, rotationY, groundMixinId, length, repeatCount, elevation));
     // returns JSON output instead
     // append the new surfaceElement to the segmentParentEl
     streetParentEl.append(segmentParentEl);
