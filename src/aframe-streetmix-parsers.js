@@ -294,9 +294,9 @@ function randomPosition (entity, axis, length, objSizeAttr = undefined) {
   // place randomly an element on a line length='length' on the axis 'axis'
   // Need to call from 'model-loaded' event if objSizeAttr is undefined
   // existEnts - array with existing entities (for prevent intersection)
-  let newObject = entity.object3D;
+  const newObject = entity.object3D;
   const objSize = objSizeAttr || getDimensions(newObject)[axis];
-  const {start, end} = getStartEndPosition(length, objSize);
+  const { start, end } = getStartEndPosition(length, objSize);
   const setFunc = `set${axis.toUpperCase()}`;
   const newPosition = getRandomArbitrary(start, end);
   newObject.position[setFunc](newPosition);
@@ -336,7 +336,7 @@ function createBusElement (isOutbound, positionX, length, showVehicles) {
   return busParentEl;
 }
 
-function getRandInd(arr) {
+function getRandInd (arr) {
   return Math.floor(Math.random() * arr.length);
 }
 
@@ -344,7 +344,7 @@ function createDriveLaneElement (variantList, positionX, segmentWidthInMeters, s
   if (!showVehicles) {
     return;
   }
-  var speed = animated ? 0.5: 0; // meters per second
+  var speed = animated ? 0.5 : 0; // meters per second
   var totalStreetDuration = (streetLength / speed) * 1000; // time in milliseconds
   var animationDirection = variantList[0];
   var startingDistanceToTravel;
@@ -360,35 +360,35 @@ function createDriveLaneElement (variantList, positionX, segmentWidthInMeters, s
 
   if (variantList[1] === 'pedestrian') {
     return createSidewalkClonedVariants(positionX, segmentWidthInMeters, 'normal', streetLength, variantList[0], animated);
-  } 
+  }
 
   const carParams = {
-    'car': {
+    car: {
       mixin: 'sedan-rig',
       wheelDiameter: 0.76,
       length: 5.17
     },
-    'microvan': {
+    microvan: {
       mixin: 'suv-rig',
       wheelDiameter: 0.84,
       length: 5
     },
-    'truck': {
+    truck: {
       mixin: 'box-truck-rig',
       wheelDiameter: 1.05,
       length: 6.95
-    }    
+    }
   };
 
-  function createCar(positionZ=undefined) {
+  function createCar (positionZ = undefined) {
     carType = variantList[1];
 
     const params = carParams[carType];
 
     const reusableObjectEl = document.createElement('a-entity');
-    reusableObjectEl.setAttribute('rotation', '0 ' + rotationY + ' 0');    
+    reusableObjectEl.setAttribute('rotation', '0 ' + rotationY + ' 0');
     reusableObjectEl.setAttribute('mixin', params['mixin']);
-    reusableObjectEl.setAttribute('wheel', 
+    reusableObjectEl.setAttribute('wheel',
       { speed: speed, wheelDiameter: params['wheelDiameter'] }
     );
     reusableObjectEl.setAttribute('length', params['length']);
@@ -422,22 +422,22 @@ function createDriveLaneElement (variantList, positionX, segmentWidthInMeters, s
         reusableObjectEl.setAttribute('animation__2', 'delay', startingDuration);
         reusableObjectEl.setAttribute('animation__2', 'dur', totalStreetDuration);
       }
-    }    
+    }
     driveLaneParentEl.append(reusableObjectEl);
     return reusableObjectEl;
   }
 
   const carLength = carStep || carParams[variantList[1]]['length'];
-  const offset = - streetLength / 2 + carLength / 2;
+  const offset = -streetLength / 2 + carLength / 2;
   // create one or more randomly placed cars
-  if (count > 1) {    
+  if (count > 1) {
     const allPlaces = getZPositions(
-      - streetLength / 2 + carLength / 2, 
-      streetLength / 2 - carLength / 2, 
+      -streetLength / 2 + carLength / 2,
+      streetLength / 2 - carLength / 2,
       carLength
-      );
+    );
     const randPlaces = allPlaces.slice(0, count);
-    
+
     randPlaces.forEach(placeInd => {
       const newCar = createCar();
       const maxDist = carStep - parseFloat(newCar.getAttribute('length')) - 0.2;
