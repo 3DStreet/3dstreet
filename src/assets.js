@@ -224,6 +224,7 @@
         <a-mixin id="ground-grass" rotation="-90 0 0" geometry="primitive:plane;height:150;width:40" material="src:#grass-texture;repeat:5 5;roughness:1"></a-mixin>
         <a-mixin id="ground-parking-lot" rotation="-90 0 0" geometry="primitive:plane;height:150;width:40" material="src:#parking-lot-texture;repeat:2 4;roughness:1"></a-mixin>
         <a-mixin id="ground-asphalt" rotation="-90 0 0" geometry="primitive:plane;height:150;width:40" material="src:#asphalt-texture;repeat:5 5;roughness:1"></a-mixin>
+        <a-mixin id="ground-tiled-concrete" anisotropy rotation="-90 0 0" geometry="primitive:plane;height:150;width:40" material="src:#seamless-sidewalk;repeat:5 5;roughness:1"></a-mixin>
 
         <a-asset-item id="fence-model" src="${assetUrl}sets/fences/gltf-exports/draco/fence4.glb"></a-asset-item>
         <a-mixin id="fence" gltf-model="#fence-model" scale="0.1 0.1 0.1"></a-mixin>

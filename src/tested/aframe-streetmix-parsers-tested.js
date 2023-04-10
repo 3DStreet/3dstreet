@@ -34,7 +34,7 @@ function createBuildingsArray (maxLength = 150, buildingType = 'narrow') { // es
       { id: 'arched-building-03', width: 13.191 },
       { id: 'arched-building-04', width: 15.191 }
     ];
-    psuedoRandom = '03120223130210321203123023103201232013'; // 38 psuedorandom numbers 0-3, no identical units side-by-side    
+    psuedoRandom = '03120223130210321203123023103201232013'; // 38 psuedorandom numbers 0-3, no identical units side-by-side
   }
 
   var i = 0;
@@ -164,7 +164,7 @@ module.exports.getAmbientSoundJSON = getAmbientSoundJSON;
 
 // possible input values: grass, fence, narrow, wide, waterfront, residential, parking-lot
 function createGroundArray (buildingString, length) { // eslint-disable-line no-unused-vars
-  const repeatY = length / 30;
+  var repeatY = length / 30;
   var repeatX = 1;
   var groundArray = [];
   var mixin = 'ground-grass'; // default output is grass ground type
@@ -175,7 +175,11 @@ function createGroundArray (buildingString, length) { // eslint-disable-line no-
     mixin = 'ground-parking-lot';
     repeatX = 0.5;
   }
-
+  if (buildingString === 'arcade') {
+    mixin = 'ground-tiled-concrete';
+    repeatY = length / 2;
+    repeatX = 20;
+  }
   var groundEntity = {
     tag: 'a-entity',
     position: '0 -0.2 0',
