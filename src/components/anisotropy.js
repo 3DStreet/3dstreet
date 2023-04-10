@@ -1,3 +1,5 @@
+/* global AFRAME */
+
 AFRAME.registerComponent('anisotropy', {
   schema: { default: 0 }, // default 0 will apply max anisotropy according to hardware
   dependencies: ['material', 'geometry'],
