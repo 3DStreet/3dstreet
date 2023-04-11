@@ -3,6 +3,8 @@ var streetmixParsers = require('./aframe-streetmix-parsers');
 var streetmixUtils = require('./tested/streetmix-utils');
 require('./components/anisotropy');
 require('./components/gltf-part');
+require('./lib/aframe-cursor-teleport-component.min.js');
+require('./lib/animation-mixer.js');
 // require('./assets.js');
 require('./components/create-from-json');
 require('aframe-atlas-uvs-component');
