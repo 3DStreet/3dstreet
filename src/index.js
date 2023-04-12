@@ -5,6 +5,7 @@ require('./components/anisotropy');
 require('./components/gltf-part');
 require('./lib/aframe-cursor-teleport-component.min.js');
 require('./lib/animation-mixer.js');
+// require('./assets.js');
 require('./assetsv2.js');
 require('./components/create-from-json');
 require('aframe-atlas-uvs-component');
