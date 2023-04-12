@@ -1,97 +1,18 @@
 /* global THREE, AFRAME, customElements */
 
-const ANode = AFRAME.ANode
-const bind = AFRAME.bind
+const ANode = AFRAME.ANode;
 
-// Avoid adding everything twice
-var alreadyAttached = false;
-
-// Needed to masquerade as an a-assets element
-var fileLoader = new THREE.FileLoader();
-
-console.log(ANode)
 class StreetAssets extends ANode {
-  constructor() {
+  constructor () {
     super();
-    console.log('StreetAssets constructor fired')
-    // Masquerade as a an a-asset-item so that a-assets will wait for it to load
     this.isAssetItem = true;
-
-    // Properties needed for compatibility with a-assets prototype
-    this.isAssets = true;
-    this.fileLoader = fileLoader;
-    this.timeout = null;
-  }
-
-  onReadyStateChange () {
-    if (document.readyState === 'complete') {
-      console.log('onReadyStateChange')
-      this.doConnectedCallback();
-    }
   }
 
   connectedCallback () {
-
-    console.log('connectedCallback constructor fired')
-    // this.setAttribute('src', '');
-
-    // Defer if DOM is not ready.
-    if (document.readyState !== 'complete') {
-        console.log("document readyState !== complete");
-        console.log(Object.getPrototypeOf(this))
-        console.log(this.onReadyStateChange)
-        document.addEventListener('readystatechange', this.onReadyStateChange.bind(this));
-        return;
-    }
-    
-    this.doConnectedCallback();
-  }
-
-  doConnectedCallback () {
-    console.log('doConnectedCallback')
-    var parent = this.parentNode;
-    var self = this;
-
-    // Check if already attached or parent node already loaded
-    if (alreadyAttached) {
-      console.log('already attached')
-      return;
-    }
- 
-    if (parent && parent.hasLoaded) console.warn('Assets have already loaded. street-assets may have problems');
-
-    // Set the innerHTML to all of the actual assets to inject
-    // this.innerHTML = `
-    // <a-mixin id="box-truck-rig" gltf-model="#box-truck-rigged" ></a-mixin>
-    // <a-asset-item id="box-truck-rigged" src="https://assets.3dstreet.app/sets/vehicles-rig/gltf-exports/draco/isuzu-truck-rig.glb"></a-asset-item>
-    // `
-
-    this.innerHTML = buildAssetHTML()
-    alreadyAttached = true;
-
-    // Make the parent pretend to be a scene, since that's what a-assets expects
-    parent.isScene = true;
-
-    // Since we expect the parent element to be a-assets, this will invoke the a-asset attachedCallback,
-    // which handles waiting for all of the children to load. Since we're calling it with `this`, it
-    // will wait for the street-assets's children to load
-    super.doConnectedCallback.call(self);
-    super.load.call(self);
-
-    // No more pretending needed
-    parent.isScene = false;
-}
-
-  disconnectedCallback () {
-    super.disconnectedCallback();
-    if (this.timeout) { clearTimeout(this.timeout); }
-  }
-
-  load () {
-    // Wait for children to load, just like a-assets
-    super.load.call(this, null, function waitOnFilter (el) {
-      return el.isAssetItem && el.hasAttribute('src');
-    });
+    const self = this;
+    // var categories = this.getAttribute('categories');
+    this.insertAdjacentHTML('afterend', buildAssetHTML())
+    ANode.prototype.load.call(self);
   }
 }
 
