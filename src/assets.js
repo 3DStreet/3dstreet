@@ -1,11 +1,10 @@
-/* global AFRAME, THREE */
+/* global AFRAME, customElements */
 
-(function () {
-  function buildAssetHTML (assetUrl, categories) {
-    if (!assetUrl) assetUrl = 'https://assets.3dstreet.app/';
-    console.log('[street]', 'Using street assets from', assetUrl);
-    var assetsObj = {
-      'sidewalk-props': `
+function buildAssetHTML (assetUrl, categories) {
+  if (!assetUrl) assetUrl = 'https://assets.3dstreet.app/';
+  console.log('[street]', 'Using street assets from', assetUrl);
+  var assetsObj = {
+    'sidewalk-props': `
         <!-- sidewalk props -->
         <img id="wayfinding-map" src="${assetUrl}objects/wayfinding.jpg" crossorigin="anonymous" />
         <a-asset-item id="streetProps" src="${assetUrl}sets/street-props/gltf-exports/draco/street-props.glb"></a-asset-item>
@@ -27,7 +26,7 @@
         <a-mixin id="pride-flag" position="0.409 3.345 0" rotation="0 0 0" scale="0.5 0.75 0" geometry="width:2;height:2;primitive:plane" material="side:double; src:${assetUrl}materials/rainbow-flag-poles_512.png;transparent: true;"></a-mixin>
         <a-mixin id="wayfinding-box" geometry="primitive: box; height: 2; width: 0.84; depth: 0.1" material="color: gray"></a-mixin>
       `,
-      people: `
+    people: `
         <!-- human characters -->
         <a-asset-item id="humans" src="${assetUrl}sets/human-characters-poses-1/gltf-exports/draco/human-characters-poses-1.glb"></a-asset-item>
         <a-mixin id="char1" gltf-part="src: #humans; part: Character_1"></a-mixin>
@@ -48,7 +47,7 @@
         <a-mixin id="char15" gltf-part="src: #humans2; part: Character_15"></a-mixin>
         <a-mixin id="char16" gltf-part="src: #humans2; part: Character_16"></a-mixin>
       `,
-      'people-rigged': `          
+    'people-rigged': `          
         <a-asset-item id="character1walk" src="${assetUrl}sets/human-characters-animation-seperated/gltf-exports/draco/character-1-walk.glb"></a-asset-item>
         <a-mixin id="a_char1" gltf-model="#character1walk" animation-mixer></a-mixin>
         
@@ -67,7 +66,7 @@
         <a-asset-item id="character8walk" src="${assetUrl}sets/human-characters-animation-seperated/gltf-exports/draco/character-8-walk.glb"></a-asset-item>
         <a-mixin id="a_char8" gltf-model="#character8walk" animation-mixer></a-mixin>
       `,
-      vehicles: `
+    vehicles: `
         <!-- vehicles -->
         <a-asset-item id="vehicles" src="${assetUrl}sets/vehicles/gltf-exports/draco/vehicles.glb"></a-asset-item>
         <a-mixin id="box-truck" gltf-part="src: #vehicles; part: box-truck"></a-mixin>
@@ -83,7 +82,7 @@
         <a-mixin id="Bicycle_1" gltf-part="src: #microMobilityDevices; part: Bicycle_1"></a-mixin>
         <a-mixin id="ElectricScooter_1" gltf-part="src: #microMobilityDevices; part: ElectricScooter_1"></a-mixin>
       `,
-      'vehicles-rigged': `
+    'vehicles-rigged': `
         <!-- vehicles rigged -->
         <a-asset-item id="sedan-rigged" src="${assetUrl}sets/vehicles-rig/gltf-exports/draco/toyota-prius-rig.glb"></a-asset-item>
         <a-mixin id="sedan-rig" gltf-model="#sedan-rigged" ></a-mixin>
@@ -96,7 +95,7 @@
         <a-asset-item id="box-truck-rigged" src="${assetUrl}sets/vehicles-rig/gltf-exports/draco/isuzu-truck-rig.glb"></a-asset-item>
         <a-mixin id="box-truck-rig" gltf-model="#box-truck-rigged" ></a-mixin>
       `,
-      buildings: `
+    buildings: `
         <!-- blocks -->
         <a-asset-item id="blockmodel" src="${assetUrl}sets/buildings/gltf-exports/draco/buildings.glb"></a-asset-item>
         <a-asset-item id="archedmodel" src="${assetUrl}sets/arcade-style-buildings/gltf-exports/draco/arched-buildings.glb"></a-asset-item>
@@ -120,7 +119,7 @@
         <a-mixin id="arched-building-03" scale="1 1 1" rotation="0 0 0" gltf-part="src: #archedmodel; part: arched-building-03"></a-mixin>
         <a-mixin id="arched-building-04" scale="1 1 1" rotation="0 0 0" gltf-part="src: #archedmodel; part: arched-building-04"></a-mixin>
 `,
-      'intersection-props': `
+    'intersection-props': `
         <a-asset-item id="stopsign" src="${assetUrl}sets/road-signs/gltf-exports/draco/stop-sign.glb"></a-asset-item>
         <a-asset-item id="signal1" src="${assetUrl}sets/signals/gltf-exports/draco/signal1.glb"></a-asset-item>
         <a-asset-item id="signal2" src="${assetUrl}sets/signals/gltf-exports/draco/signal2.glb"></a-asset-item>
@@ -128,7 +127,7 @@
         <a-mixin id="signal_right" gltf-model="#signal2"></a-mixin>
         <a-mixin id="stop_sign" gltf-model="#stopsign"></a-mixin>
       `,
-      'segment-textures': `  
+    'segment-textures': `  
         <!-- segment mixins with textures -->
         <img id="seamless-road" src="${assetUrl}materials/TexturesCom_Roads0086_1_seamless_S_rotate.jpg" crossorigin="anonymous">
         <img id="seamless-bright-road" src="${assetUrl}materials/asphalthd_Base_Color.jpg" crossorigin="anonymous">
@@ -143,13 +142,13 @@
         <a-mixin id="divider" geometry="width:0.3;height:150;primitive:plane" material="repeat:1 150;offset:0.415 0;normalTextureOffset:0.415 0;src:#hatched-base;normalTextureRepeat:0.21 150;normalMap:#hatched-normal"></a-mixin>
         <a-mixin id="grass" geometry="width:0.3;height:150;primitive:plane" material="repeat:1 150;offset:0.415 0;src:#grass-texture;"></a-mixin>
       `,
-      'segment-colors': `  
+    'segment-colors': `  
         <!-- segment color modifier mixins -->
         <a-mixin id="yellow" material="color:#f7d117"></a-mixin>
         <a-mixin id="surface-green" material="color:#adff83"></a-mixin>
         <a-mixin id="surface-red" material="color:#ff9393"></a-mixin>
       `,
-      'lane-separator': `
+    'lane-separator': `
         <!-- lane separator markings -->
         <img id="markings-atlas" src="${assetUrl}materials/lane-markings-atlas_1024.png" crossorigin="anonymous" /> 
         <a-mixin id="markings" anisotropy atlas-uvs="totalRows: 1; totalColumns: 8; row: 1" scale="1 1 1" material="src: #markings-atlas;alphaTest: 0;transparent:true;repeat:1 25;" geometry="primitive: plane; buffer: false; skipCache: true; width:0.2; height:150;"></a-mixin>
@@ -160,7 +159,7 @@
         <a-mixin id="solid-dashed" atlas-uvs="totalColumns: 4; column: 2" geometry="width: 0.4"></a-mixin>
         <a-mixin id="crosswalk-zebra" atlas-uvs="totalColumns: 4; column: 4" geometry="width: 2; height: 12"  material="repeat: 1 2"></a-mixin>
       `,
-      stencils: `  
+    stencils: `  
         <!-- stencil markings -->
         <img id="stencils-atlas" src="${assetUrl}materials/stencils-atlas_2048.png" crossorigin="anonymous" />
         <a-mixin id="stencils" anisotropy atlas-uvs="totalRows: 4; totalColumns: 4" scale="2 2 2" material="src: #stencils-atlas;alphaTest: 0;transparent:true;" geometry="primitive: plane; buffer: false; skipCache: true"></a-mixin>
@@ -187,7 +186,7 @@
         <a-mixin id="parking-t" atlas-uvs="totalRows: 8; totalColumns: 16; column: 4; row: 7" scale="1.5 2 2"></a-mixin>
         <a-mixin id="painted-safety-zone" atlas-uvs="totalRows: 4; totalColumns: 4; column: 4; row: 4" scale="8 8 8"></a-mixin>
       `,
-      'vehicles-transit': `
+    'vehicles-transit': `
         <!-- vehicles-transit -->
         <a-asset-item id="trammodel" src="${assetUrl}objects/tram_siemens_avenio.gltf"></a-asset-item>
         <a-asset-item id="trolleymodel" src="${assetUrl}objects/godarvilletram.gltf"></a-asset-item>
@@ -196,7 +195,7 @@
         <a-mixin id="tram" anisotropy gltf-model="#trammodel"></a-mixin>
         <a-mixin id="trolley" gltf-model="#trolleymodel"></a-mixin>
       `,
-      dividers: `
+    dividers: `
         <!-- dividers -->
         <a-asset-item id="dividers" src="${assetUrl}sets/dividers/gltf-exports/draco/dividers.glb"></a-asset-item>        
         <a-mixin id="dividers-flowers" scale="1 1 1" rotation="0 0 0" gltf-part="src: #dividers; part: flowers"></a-mixin>
@@ -210,12 +209,12 @@
         <a-mixin id="temporary-jersey-barrier-plastic" scale="1 1 1" rotation="0 0 0" gltf-part="src: #dividers; part: jersey-barrier-plastic"></a-mixin>
         <a-mixin id="temporary-jersey-barrier-concrete" scale="1 1 1" rotation="0 0 0" gltf-part="src: #dividers; part: jersey-barrier-concrete"></a-mixin>
       `,
-      sky: `
+    sky: `
         <!-- sky -->
         <img id="sky" src="${assetUrl}CGSkies_0343_doubled_2048.jpg" crossorigin="anonymous" />
         <img id="sky-night" src="${assetUrl}images/AdobeStock_286725174-min.jpeg" crossorigin="anonymous" />
       `,
-      grounds: `
+    grounds: `
         <!-- grounds -->
         <img id="grass-texture" src="${assetUrl}materials/TexturesCom_Grass0052_1_seamless_S.jpg" crossorigin="anonymous">
         <img id="parking-lot-texture" src="${assetUrl}materials/TexturesCom_Roads0111_1_seamless_S.jpg" crossorigin="anonymous">
@@ -230,126 +229,69 @@
         <a-mixin id="fence" gltf-model="#fence-model" scale="0.1 0.1 0.1"></a-mixin>
       ` };
 
-    if (categories) {
-      const categoryAttrArray = categories.split(' ');
-      const categoryExistsArray = Object.keys(assetsObj)
-        .filter(key => categoryAttrArray.includes(key));
-      let assetsHTML = '';
-      for (const assetName in assetsObj) {
-        if (categoryExistsArray.includes(assetName)) {
-          assetsHTML += assetsObj[assetName];
-        }
+  if (categories) {
+    const categoryAttrArray = categories.split(' ');
+    const categoryExistsArray = Object.keys(assetsObj)
+      .filter(key => categoryAttrArray.includes(key));
+    let assetsHTML = '';
+    for (const assetName in assetsObj) {
+      if (categoryExistsArray.includes(assetName)) {
+        assetsHTML += assetsObj[assetName];
       }
-      return assetsHTML;
-    } else {
-      const allHTMLAssets = Object.values(assetsObj).join('');
-      return allHTMLAssets;
     }
+    return assetsHTML;
+  } else {
+    const allHTMLAssets = Object.values(assetsObj).join('');
+    return allHTMLAssets;
+  }
+}
+
+class StreetAssets extends AFRAME.ANode {
+  constructor () {
+    super();
+    this.isAssetItem = true;
   }
 
-  // Avoid adding everything twice
-  var alreadyAttached = false;
+  connectedCallback () {
+    const self = this;
+    var categories = this.getAttribute('categories');
+    var assetUrl = this.getAttribute('url');
+    this.insertAdjacentHTML('afterend', buildAssetHTML(assetUrl, categories));
+    AFRAME.ANode.prototype.load.call(self);
+  }
+}
+customElements.define('street-assets', StreetAssets);
 
-  // Needed to masquerade as an a-assets element
-  var fileLoader = new THREE.FileLoader();
-
-  window.AFRAME.registerElement('street-assets', {
-    prototype: Object.create(window.AFRAME.ANode.prototype, {
-      createdCallback: {
-        value: function () {
-        // Masquerade as a an a-asset-item so that a-assets will wait for it to load
-          this.setAttribute('src', '');
-          this.isAssetItem = true;
-
-          // Properties needed for compatibility with a-assets prototype
-          this.isAssets = true;
-          this.fileLoader = fileLoader;
-          this.timeout = null;
-        }
-      },
-      attachedCallback: {
-        value: function () {
-          if (alreadyAttached) return;
-          if (this.parentNode && this.parentNode.hasLoaded) console.warn('Assets have already loaded. street-assets may have problems');
-
-          alreadyAttached = true;
-
-          // Set the innerHTML to all of the actual assets to inject
-          this.innerHTML = buildAssetHTML(this.getAttribute('url'), this.getAttribute('categories'));
-
-          var parent = this.parentNode;
-
-          // Copy the parent's timeout, so we don't give up too soon
-          this.setAttribute('timeout', parent.getAttribute('timeout'));
-
-          // Make the parent pretend to be a scene, since that's what a-assets expects
-          this.parentNode.isScene = true;
-
-          // Since we expect the parent element to be a-assets, this will invoke the a-asset attachedCallback,
-          // which handles waiting for all of the children to load. Since we're calling it with `this`, it
-          // will wait for the street-assets's children to load
-          Object.getPrototypeOf(parent).attachedCallback.call(this);
-
-          // No more pretending needed
-          this.parentNode.isScene = false;
-        }
-      },
-      load: {
-        value: function () {
-        // Wait for children to load, just like a-assets
-          AFRAME.ANode.prototype.load.call(this, null, function waitOnFilter (el) {
-            return el.isAssetItem && el.hasAttribute('src');
-          });
-        }
-      }
-    })
-  });
-
-  window.addEventListener('DOMContentLoaded', (e) => {
-    if (alreadyAttached) return;
-    let assets = document.querySelector('a-assets');
-    if (!assets) {
-      assets = document.createElement('a-assets');
-    }
-
-    if (assets.hasLoaded) {
-      console.warn('Assets already loaded. May lead to bugs');
-    }
-
-    const streetMix = document.createElement('street-assets');
-    assets.append(streetMix);
-    document.querySelector('a-scene').append(assets);
-  });
-
-  var domModifiedHandler = function (evt) {
+// add street-assets to scene if it doesn't already exist
+var domModifiedHandler = function (evt) {
   // Only care about events affecting an a-scene
-    if (evt.target.nodeName !== 'A-SCENE') return;
+  if (evt.target.nodeName !== 'A-SCENE') return;
 
-    // Try to find the a-assets element in the a-scene
-    let assets = evt.target.querySelector('a-assets');
+  // Try to find the a-assets element in the a-scene
+  let assets = evt.target.querySelector('a-assets');
 
-    if (!assets) {
-    // Create and add the assets if they don't already exist
-      assets = document.createElement('a-assets');
-      evt.target.append(assets);
-    }
+  if (!assets) {
+    // attempt to create and add the assets if they don't already exist
+    // TODO: this doesn't work well with images, so scenes must include <a-assets></a-assets> to run correctly
+    assets = document.createElement('a-assets');
+    evt.target.append(assets);
+  }
 
-    // Already have the streetmix assets. No need to add them
-    if (assets.querySelector('street-assets')) {
-      document.removeEventListener('DOMSubtreeModified', domModifiedHandler);
-      return;
-    }
-
-    // Create and add the custom street-assets element
-    const streetMix = document.createElement('street-assets');
-    assets.append(streetMix);
-
-    // Clean up by removing the event listener
+  // Already have the streetmix assets. No need to add them
+  if (assets.querySelector('street-assets')) {
     document.removeEventListener('DOMSubtreeModified', domModifiedHandler);
-  };
+    return;
+  }
 
-  document.addEventListener('DOMSubtreeModified', domModifiedHandler, false);
-})();
+  // Create and add the custom street-assets element
+  const streetAssets = document.createElement('street-assets');
+  assets.append(streetAssets);
+
+  // Clean up by removing the event listener
+  document.removeEventListener('DOMSubtreeModified', domModifiedHandler);
+};
+
+document.addEventListener('DOMSubtreeModified', domModifiedHandler, false);
 
 /*
 Unused assets kept commented here for future reference
