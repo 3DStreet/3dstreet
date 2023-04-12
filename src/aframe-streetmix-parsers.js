@@ -12,6 +12,7 @@ const defaultModelWidthsInMeters = {
   'sidewalk': 3,
   'sidewalk-tree': 3,
   'turn-lane': 3,
+  'brt-station': 3,
   'bus-lane': 3,
   'light-rail': 3,
   'streetcar': 3,
@@ -580,6 +581,15 @@ function createBusStopElement (positionX, rotationBusStopY) {
   return placedObjectEl;
 }
 
+function createBrtStationElement(positionX) {
+  const placedObjectEl = document.createElement('a-entity');
+  placedObjectEl.setAttribute('class', 'brt-station');
+  placedObjectEl.setAttribute('position', positionX + ' 0 0');
+  placedObjectEl.setAttribute('mixin', 'brt-station');
+  placedObjectEl.setAttribute('scale', "0.93");
+  return placedObjectEl;
+}
+
 // offset to center the street around global x position of 0
 function createCenteredStreetElement (segments) {
   const streetEl = document.createElement('a-entity');
@@ -908,6 +918,8 @@ function processSegments (segments, showStriping, length, globalAnimated, showVe
     } else if (segments[i].type === 'transit-shelter') {
       var rotationBusStopY = (variantList[0] === 'left') ? 90 : 270;
       segmentParentEl.append(createBusStopElement(positionX, rotationBusStopY));
+    } else if (segments[i].type === 'brt-station') {
+      segmentParentEl.append(createBrtStationElement(positionX));
     } else if (segments[i].type === 'separator' && variantList[0] === 'dashed') {
       groundMixinId = 'markings dashed-stripe';
       positionY = positionY + 0.01; // make sure the lane marker is above the asphalt
