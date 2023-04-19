@@ -20,6 +20,7 @@ Never too late to start a changelog, eh?
 * basic character animation support
 * simple day / night environment component
 * [basic ui for loading streets and scenes (right-side)](https://github.com/3DStreet/3dstreet/pull/219)
+* support for a-frame 1.4; updated asset loader
 
 ### Fixed
 * segments beneath street level have closed geometry
