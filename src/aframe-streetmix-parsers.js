@@ -14,6 +14,7 @@ const defaultModelWidthsInMeters = {
   'turn-lane': 3,
   'brt-station': 3,
   'bus-lane': 3,
+  'brt-lane': 3,
   'light-rail': 3,
   'streetcar': 3,
   'sidewalk-wayfinding': 3,
@@ -263,7 +264,7 @@ function getBikeLaneMixin (variant) {
 }
 
 function getBusLaneMixin (variant) {
-  if (variant === 'colored') {
+  if (variant === 'colored' | variant === 'red') {
     return 'surface-red bus-lane';
   }
   if (variant === 'grass') {
@@ -792,7 +793,7 @@ function processSegments (segments, showStriping, length, globalAnimated, showVe
     } else if (segments[i].type === 'temporary' && variantList[0] === 'jersey-barrier-concrete') {
       groundMixinId = 'drive-lane';
       segmentParentEl.append(createClonedVariants('temporary-jersey-barrier-concrete', positionX, clonedObjectRadius, 2.93));
-    } else if (segments[i].type === 'bus-lane') {
+    } else if (segments[i].type === 'bus-lane' || segments[i].type === 'brt-lane') {
       groundMixinId = getBusLaneMixin(variantList[1]);
 
       segmentParentEl.append(createBusElement(isOutbound, positionX, length, showVehicles));
