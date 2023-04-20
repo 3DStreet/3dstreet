@@ -586,7 +586,7 @@ function createBrtStationElement(positionX) {
   placedObjectEl.setAttribute('class', 'brt-station');
   placedObjectEl.setAttribute('position', positionX + ' 0 0');
   placedObjectEl.setAttribute('mixin', 'brt-station');
-  placedObjectEl.setAttribute('scale', "0.93");
+  placedObjectEl.setAttribute('scale', "0.75");
   return placedObjectEl;
 }
 
