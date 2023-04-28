@@ -175,6 +175,10 @@ function getRandomArbitrary (min, max) {
   return Math.random() * (max - min) + min;
 }
 
+function getRandomElem (arr) {
+  return arr[getRandomIntInclusive(0, arr.length - 1)];
+}
+
 function getZPositions (start, end, step) {
   const len = Math.floor((end - start) / step) + 1;
   var arr = Array(len).fill().map((_, idx) => start + (idx * step));
@@ -336,114 +340,125 @@ function createBusElement (isOutbound, positionX, length, showVehicles) {
   return busParentEl;
 }
 
-function getRandInd (arr) {
-  return Math.floor(Math.random() * arr.length);
-}
-
 function createDriveLaneElement (variantList, positionX, segmentWidthInMeters, streetLength, animated = false, showVehicles = true, count = 1, carStep = undefined) {
   if (!showVehicles) {
     return;
   }
-  var speed = animated ? 0.5 : 0; // meters per second
-  var totalStreetDuration = (streetLength / speed) * 1000; // time in milliseconds
-  var animationDirection = variantList[0];
-  var startingDistanceToTravel;
-  var startingDuration;
-  if (animationDirection === 'outbound') {
-    startingDistanceToTravel = Math.abs(-streetLength / 2 - 0);
-  } else {
-    startingDistanceToTravel = Math.abs(streetLength / 2 - 0);
-  }
-  startingDuration = (startingDistanceToTravel / speed) * 1000;
-  const driveLaneParentEl = document.createElement('a-entity');
-  const rotationY = (variantList[0] === 'inbound') ? 0 : 180;
+  let speed = 0;
+
+  const rotationVariants = {
+    inbound: 0,
+    outbound: 180,
+    sideways: 90
+  };
+  let rotationY = rotationVariants[variantList[0]];
 
   if (variantList[1] === 'pedestrian') {
     return createSidewalkClonedVariants(positionX, segmentWidthInMeters, 'normal', streetLength, variantList[0], animated);
+  }
+
+  const driveLaneParentEl = document.createElement('a-entity');
+
+  if (variantList.length == 1) {
+    // if there is no cars
+    return driveLaneParentEl;
   }
 
   const carParams = {
     car: {
       mixin: 'sedan-rig',
       wheelDiameter: 0.76,
-      length: 5.17
+      length: 5.17,
+      width: 2
     },
     microvan: {
       mixin: 'suv-rig',
       wheelDiameter: 0.84,
-      length: 5
+      length: 5,
+      width: 2
     },
     truck: {
       mixin: 'box-truck-rig',
       wheelDiameter: 1.05,
-      length: 6.95
+      length: 6.95,
+      width: 2.5
     }
   };
+  const carTypes = Object.keys(carParams);
 
-  function createCar (positionZ = undefined) {
-    carType = variantList[1];
-
+  function createCar (positionZ = undefined, carType = 'car') {
     const params = carParams[carType];
 
-    const reusableObjectEl = document.createElement('a-entity');
-    reusableObjectEl.setAttribute('rotation', '0 ' + rotationY + ' 0');
-    reusableObjectEl.setAttribute('mixin', params['mixin']);
-    reusableObjectEl.setAttribute('wheel',
-      { speed: speed, wheelDiameter: params['wheelDiameter'] }
-    );
-    reusableObjectEl.setAttribute('length', params['length']);
-
-    if (!positionZ) {
-      positionZ = randomPosition(reusableObjectEl, 'z', streetLength, params['length']);
+    if (variantList[0] === 'sideways') {
+      // the car can be parked backwards or forwards
+      rotationY = getRandomElem([90, -90]);
     }
-    reusableObjectEl.setAttribute('position', positionX + ' 0 ' + positionZ);
+    const reusableObjectEl = document.createElement('a-entity');
+
+    positionZ = positionZ ?? randomPosition(reusableObjectEl, 'z', streetLength, params['length']);
+    reusableObjectEl.setAttribute('mixin', params['mixin']);
+    reusableObjectEl.object3D.rotation.set(0, THREE.MathUtils.degToRad(rotationY), 0);
+    reusableObjectEl.object3D.position.set(positionX, 0, positionZ);
 
     if (animated) {
-      reusableObjectEl.setAttribute('animation__1', 'property', 'position');
-      reusableObjectEl.setAttribute('animation__1', 'easing', 'linear');
-      reusableObjectEl.setAttribute('animation__1', 'loop', 'false');
-      reusableObjectEl.setAttribute('animation__2', 'property', 'position');
-      reusableObjectEl.setAttribute('animation__2', 'easing', 'linear');
-      reusableObjectEl.setAttribute('animation__2', 'loop', 'true');
-      if (animationDirection === 'outbound') {
-        reusableObjectEl.setAttribute('animation__1', 'from', { x: positionX, y: 0, z: positionZ });
-        reusableObjectEl.setAttribute('animation__1', 'to', { z: -streetLength / 2 });
-        reusableObjectEl.setAttribute('animation__1', 'dur', startingDuration);
-        reusableObjectEl.setAttribute('animation__2', 'from', { x: positionX, y: 0, z: streetLength / 2 });
-        reusableObjectEl.setAttribute('animation__2', 'to', { x: positionX, y: 0, z: -streetLength / 2 });
-        reusableObjectEl.setAttribute('animation__2', 'delay', startingDuration);
-        reusableObjectEl.setAttribute('animation__2', 'dur', totalStreetDuration);
-      } else {
-        reusableObjectEl.setAttribute('animation__1', 'from', { x: positionX, y: 0, z: positionZ });
-        reusableObjectEl.setAttribute('animation__1', 'to', { z: streetLength / 2 });
-        reusableObjectEl.setAttribute('animation__1', 'dur', startingDuration);
-        reusableObjectEl.setAttribute('animation__2', 'from', { x: positionX, y: 0, z: -streetLength / 2 });
-        reusableObjectEl.setAttribute('animation__2', 'to', { x: positionX, y: 0, z: streetLength / 2 });
-        reusableObjectEl.setAttribute('animation__2', 'delay', startingDuration);
-        reusableObjectEl.setAttribute('animation__2', 'dur', totalStreetDuration);
-      }
+      speed = 0.5; // meters per second
+      reusableObjectEl.setAttribute('wheel',
+        { speed: speed, wheelDiameter: params['wheelDiameter'] }
+      );
+      const totalStreetDuration = (streetLength / speed) * 1000; // time in milliseconds
+      const animationDirection = variantList[0];
+      const halfStreet = (animationDirection === 'outbound')
+        ? -streetLength / 2
+        : streetLength / 2;
+      const startingDistanceToTravel = halfStreet;
+
+      const startingDuration = (startingDistanceToTravel / speed) * 1000;
+      const animationAttrs_1 = {
+        property: 'position',
+        easing: 'linear',
+        loop: 'false',
+        from: { x: positionX, y: 0, z: positionZ },
+        to: { z: halfStreet },
+        dur: startingDuration
+      };
+      const animationAttrs_2 = {
+        property: 'position',
+        easing: 'linear',
+        loop: 'true',
+        from: { x: positionX, y: 0, z: -halfStreet },
+        to: { x: positionX, y: 0, z: halfStreet },
+        delay: startingDuration,
+        dur: totalStreetDuration
+      };
+      reusableObjectEl.setAttribute('animation__1', animationAttrs_1);
+      reusableObjectEl.setAttribute('animation__2', animationAttrs_2);
     }
     driveLaneParentEl.append(reusableObjectEl);
     return reusableObjectEl;
   }
 
-  const carLength = carStep || carParams[variantList[1]]['length'];
-  const offset = -streetLength / 2 + carLength / 2;
   // create one or more randomly placed cars
+  const halfStreet = streetLength / 2;
+  const halfParkingLength = carStep / 2;
   if (count > 1) {
     const allPlaces = getZPositions(
-      -streetLength / 2 + carLength / 2,
-      streetLength / 2 - carLength / 2,
-      carLength
+      -halfStreet + halfParkingLength,
+      halfStreet - halfParkingLength,
+      carStep
     );
     const randPlaces = allPlaces.slice(0, count);
+    const carSizeZ = (variantList[0] == 'sideways') ? 'width' : 'length';
+    const carSizeValueZ = carParams[variantList[1]][carSizeZ];
 
-    randPlaces.forEach(placeInd => {
-      const newCar = createCar();
-      const maxDist = carStep - parseFloat(newCar.getAttribute('length')) - 0.2;
-      // Math.random is for randomly displacement in a parking space (+/- maxDist)
-      const positionZ = placeInd - 0.5 + maxDist * 2 * Math.random();
-      newCar.setAttribute('position', 'z', positionZ);
+    randPlaces.forEach(randPositionZ => {
+      const maxDist = (carStep - carSizeValueZ - 0.2);
+      // randOffset is for randomly displacement in a parking space (+/- maxDist)
+      const randOffset = -maxDist / 2 + maxDist * Math.random();
+      if (maxDist > 0) {
+        // if the car fits in the parking space
+        const positionZ = randPositionZ + randOffset;
+        createCar(positionZ, variantList[1]);
+      }
     });
   } else {
     createCar();
@@ -996,14 +1011,15 @@ function processSegments (segments, showStriping, length, globalAnimated, showVe
 
       groundMixinId = 'bright-lane';
       const carCount = 5;
-      const carStep = 6;
+      const carStep = (variantList[0] == 'sideways') ? 3 : 6;
+      const clonedStencilRadius = length / 2 - carStep;
       segmentParentEl.append(createDriveLaneElement([variantList[0], 'car'], positionX, segmentWidthInMeters, length, false, showVehicles, carCount, carStep));
       if (variantList[1] === 'left') {
         reusableObjectStencilsParentEl = createStencilsParentElement((positionX + segmentWidthInMeters / 2 - 0.75) + ' 0.015 0');
-        cloneMixinAsChildren({ objectMixinId: 'stencils parking-t', parentEl: reusableObjectStencilsParentEl, rotation: '-90 ' + '180' + ' 0', step: 6, radius: clonedObjectRadius });
+        cloneMixinAsChildren({ objectMixinId: 'stencils parking-t', parentEl: reusableObjectStencilsParentEl, rotation: '-90 ' + '180' + ' 0', step: carStep, radius: clonedStencilRadius });
       } else {
         reusableObjectStencilsParentEl = createStencilsParentElement((positionX - (segmentWidthInMeters / 2) + 0.75) + ' 0.015 0');
-        cloneMixinAsChildren({ objectMixinId: 'stencils parking-t', parentEl: reusableObjectStencilsParentEl, rotation: '-90 ' + '0' + ' 0', step: 6, radius: clonedObjectRadius });
+        cloneMixinAsChildren({ objectMixinId: 'stencils parking-t', parentEl: reusableObjectStencilsParentEl, rotation: '-90 ' + '0' + ' 0', step: carStep, radius: clonedStencilRadius });
       }
       // add the stencils to the segment parent
       segmentParentEl.append(reusableObjectStencilsParentEl);
