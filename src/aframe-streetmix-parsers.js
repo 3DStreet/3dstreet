@@ -184,14 +184,14 @@ function getZPositions (start, end, step) {
 function createSidewalkClonedVariants (BasePositionX, segmentWidthInMeters, density, length, direction = 'random', animated = false) {
   var xValueRange = [-(0.37 * segmentWidthInMeters), (0.37 * segmentWidthInMeters)];
   var zValueRange = getZPositions((-0.5 * length), (0.5 * length), 1.5);
-  var totalPedestrianNumber;
-  if (density === 'sparse') {
-    totalPedestrianNumber = parseInt(0.0625 * length, 10);
-  } else if (density === 'normal') {
-    totalPedestrianNumber = parseInt(0.125 * length, 10);
-  } else {
-    totalPedestrianNumber = parseInt(0.25 * length, 10);
-  }
+  const densityFactors = {
+    empty: 0,  
+    sparse: 0.0625,
+    normal: 0.125,
+    dense: 0.25
+  };
+  const totalPedestrianNumber = parseInt(densityFactors[density] * length, 10);
+
   const dividerParentEl = createParentElement(BasePositionX, 'pedestrians-parent');
   // Randomly generate avatars
   for (let i = 0; i < totalPedestrianNumber; i++) {
