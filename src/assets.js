@@ -94,6 +94,7 @@ function buildAssetHTML (assetUrl, categories) {
         <a-mixin id="suv-rig" gltf-model="#suv-rigged" ></a-mixin>
         <a-asset-item id="box-truck-rigged" src="${assetUrl}sets/vehicles-rig/gltf-exports/draco/isuzu-truck-rig.glb"></a-asset-item>
         <a-mixin id="box-truck-rig" gltf-model="#box-truck-rigged" ></a-mixin>
+        <a-mixin id="fire-truck-rig" gltf-model="url(${assetUrl}sets/vehicles-rig/gltf-exports/draco/fire-truck-pumper-rig.glb)"></a-mixin>
       `,
     buildings: `
         <!-- blocks -->
