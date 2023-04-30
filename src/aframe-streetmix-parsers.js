@@ -345,16 +345,29 @@ function createDriveLaneElement (variantList, positionX, segmentWidthInMeters, s
     return;
   }
   let speed = 0;
+  const [lineVariant, direction, carType] = variantList;
 
   const rotationVariants = {
     inbound: 0,
     outbound: 180,
-    sideways: 90
+    sideways: {
+      left: -90,
+      right: 90 
+    },
+    'angled-front-left': -60,
+    'angled-front-right': 60,
+    'angled-rear-left': -120,
+    'angled-rear-right': 120
   };
-  let rotationY = rotationVariants[variantList[0]];
+  let rotationY;
+  if (lineVariant == 'sideways') {
+    rotationY = rotationVariants['sideways'][direction];
+  } else {
+    rotationY = rotationVariants[lineVariant];
+  }
 
-  if (variantList[1] === 'pedestrian') {
-    return createSidewalkClonedVariants(positionX, segmentWidthInMeters, 'normal', streetLength, variantList[0], animated);
+  if (carType === 'pedestrian') {
+    return createSidewalkClonedVariants(positionX, segmentWidthInMeters, 'normal', streetLength, lineVariant, animated);
   }
 
   const driveLaneParentEl = document.createElement('a-entity');
@@ -389,10 +402,6 @@ function createDriveLaneElement (variantList, positionX, segmentWidthInMeters, s
   function createCar (positionZ = undefined, carType = 'car') {
     const params = carParams[carType];
 
-    if (variantList[0] === 'sideways') {
-      // the car can be parked backwards or forwards
-      rotationY = getRandomElem([90, -90]);
-    }
     const reusableObjectEl = document.createElement('a-entity');
 
     positionZ = positionZ ?? randomPosition(reusableObjectEl, 'z', streetLength, params['length']);
@@ -406,7 +415,7 @@ function createDriveLaneElement (variantList, positionX, segmentWidthInMeters, s
         { speed: speed, wheelDiameter: params['wheelDiameter'] }
       );
       const totalStreetDuration = (streetLength / speed) * 1000; // time in milliseconds
-      const animationDirection = variantList[0];
+      const animationDirection = lineVariant;
       const halfStreet = (animationDirection === 'outbound')
         ? -streetLength / 2
         : streetLength / 2;
@@ -447,8 +456,8 @@ function createDriveLaneElement (variantList, positionX, segmentWidthInMeters, s
       carStep
     );
     const randPlaces = allPlaces.slice(0, count);
-    const carSizeZ = (variantList[0] == 'sideways') ? 'width' : 'length';
-    const carSizeValueZ = carParams[variantList[1]][carSizeZ];
+    const carSizeZ = (lineVariant == 'sideways') ? 'width' : 'length';
+    const carSizeValueZ = carParams[carType][carSizeZ];
 
     randPlaces.forEach(randPositionZ => {
       const maxDist = (carStep - carSizeValueZ - 0.2);
@@ -457,7 +466,7 @@ function createDriveLaneElement (variantList, positionX, segmentWidthInMeters, s
       if (maxDist > 0) {
         // if the car fits in the parking space
         const positionZ = randPositionZ + randOffset;
-        createCar(positionZ, variantList[1]);
+        createCar(positionZ, carType);
       }
     });
   } else {
@@ -1013,7 +1022,7 @@ function processSegments (segments, showStriping, length, globalAnimated, showVe
       const carCount = 5;
       const carStep = (variantList[0] == 'sideways') ? 3 : 6;
       const clonedStencilRadius = length / 2 - carStep;
-      segmentParentEl.append(createDriveLaneElement([variantList[0], 'car'], positionX, segmentWidthInMeters, length, false, showVehicles, carCount, carStep));
+      segmentParentEl.append(createDriveLaneElement([...variantList, 'car'], positionX, segmentWidthInMeters, length, false, showVehicles, carCount, carStep));
       if (variantList[1] === 'left') {
         reusableObjectStencilsParentEl = createStencilsParentElement((positionX + segmentWidthInMeters / 2 - 0.75) + ' 0.015 0');
         cloneMixinAsChildren({ objectMixinId: 'stencils parking-t', parentEl: reusableObjectStencilsParentEl, rotation: '-90 ' + '180' + ' 0', step: carStep, radius: clonedStencilRadius });
