@@ -181,7 +181,7 @@ function getZPositions (start, end, step) {
   return arr.sort(() => 0.5 - Math.random());
 }
 
-function addLinearStreetAnimation(reusableObjectEl, speed, streetLength, xPos, yVal = 0, zPos, direction) {
+function addLinearStreetAnimation (reusableObjectEl, speed, streetLength, xPos, yVal = 0, zPos, direction) {
   const totalStreetDuration = (streetLength / speed) * 1000; // time in milliseconds
   const halfStreet = (direction === 'outbound')
     ? -streetLength / 2
@@ -209,14 +209,14 @@ function addLinearStreetAnimation(reusableObjectEl, speed, streetLength, xPos, y
   reusableObjectEl.setAttribute('animation__1', animationAttrs_1);
   reusableObjectEl.setAttribute('animation__2', animationAttrs_2);
 
-  return reusableObjectEl;  
+  return reusableObjectEl;
 }
 
 function createSidewalkClonedVariants (BasePositionX, segmentWidthInMeters, density, streetLength, direction = 'random', animated = false) {
   const xValueRange = [-(0.37 * segmentWidthInMeters), (0.37 * segmentWidthInMeters)];
   const zValueRange = getZPositions((-0.5 * streetLength), (0.5 * streetLength), 1.5);
   const densityFactors = {
-    empty: 0,  
+    empty: 0,
     sparse: 0.0625,
     normal: 0.125,
     dense: 0.25
@@ -240,12 +240,12 @@ function createSidewalkClonedVariants (BasePositionX, segmentWidthInMeters, dens
     if (Math.random() < 0.5 && direction === 'random') {
       placedObjectEl.object3D.rotation.set(0, Math.PI, 0);
       animationDirection = 'outbound';
-    } else { 
+    } else {
       placedObjectEl.object3D.rotation.set(0, 0, 0);
     }
 
     if (animated) {
-      addLinearStreetAnimation(placedObjectEl, 1.4, streetLength, xVal, yVal, zVal, animationDirection);     
+      addLinearStreetAnimation(placedObjectEl, 1.4, streetLength, xVal, yVal, zVal, animationDirection);
     }
     dividerParentEl.append(placedObjectEl);
   }
