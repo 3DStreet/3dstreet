@@ -321,12 +321,12 @@ function createChooChooElement (variantList, objectMixinId, positionX, length, s
   return placedObjectEl;
 }
 
-function createBusElement (isOutbound, positionX, length, showVehicles) {
+function createBusElement (variantList, positionX, length, showVehicles) {
   if (!showVehicles) {
     return;
   }
+  const rotationY = (variantList[0] === 'inbound') ? 0 : 180;
   const busParentEl = document.createElement('a-entity');
-  const rotationY = isOutbound;
   const busLength = 12;
   const busObjectEl = document.createElement('a-entity');
   busObjectEl.setAttribute('rotation', '0 ' + rotationY + ' 0');
@@ -845,7 +845,7 @@ function processSegments (segments, showStriping, length, globalAnimated, showVe
     } else if (segments[i].type === 'bus-lane' || segments[i].type === 'brt-lane') {
       groundMixinId = getBusLaneMixin(variantList[1]);
 
-      segmentParentEl.append(createBusElement(isOutbound, positionX, length, showVehicles));
+      segmentParentEl.append(createBusElement(variantList, positionX, length, showVehicles));
 
       // create parent for the bus lane stencils to rotate the phrase instead of the word
       let reusableObjectStencilsParentEl;
