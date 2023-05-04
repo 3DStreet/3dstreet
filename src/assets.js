@@ -70,7 +70,6 @@ function buildAssetHTML (assetUrl, categories) {
         <!-- vehicles -->
         <a-asset-item id="vehicles" src="${assetUrl}sets/vehicles/gltf-exports/draco/vehicles.glb"></a-asset-item>
         <a-mixin id="box-truck" gltf-part="src: #vehicles; part: box-truck"></a-mixin>
-        <a-mixin id="city-bus" gltf-part="src: #vehicles; part: city-bus"></a-mixin>
         <a-mixin id="food-trailer" gltf-part="src: #vehicles; part: food-trailer"></a-mixin>
         <a-mixin id="sedan-taxi" gltf-part="src: #vehicles; part: sedan-taxi"></a-mixin>
         <a-mixin id="suv" gltf-part="src: #vehicles; part: suv"></a-mixin>
@@ -191,8 +190,8 @@ function buildAssetHTML (assetUrl, categories) {
         <!-- vehicles-transit -->
         <a-asset-item id="trammodel" src="${assetUrl}objects/tram_siemens_avenio.gltf"></a-asset-item>
         <a-asset-item id="trolleymodel" src="${assetUrl}objects/godarvilletram.gltf"></a-asset-item>
-        <a-asset-item id="xd40" src="${assetUrl}sets/flyer-bus/gltf-exports/draco/flyer-bus.glb"></a-asset-item>
-        <a-mixin id="bus" anisotropy gltf-model="#xd40" scale="1.55 1.55 1.55"></a-mixin>
+        <a-asset-item id="xd40" src="${assetUrl}sets/flyer-bus/gltf-exports/draco/new-flyer-bus.glb"></a-asset-item>
+        <a-mixin id="bus" anisotropy gltf-model="#xd40"></a-mixin>
         <a-mixin id="tram" anisotropy gltf-model="#trammodel"></a-mixin>
         <a-mixin id="trolley" gltf-model="#trolleymodel"></a-mixin>
       `,

@@ -324,7 +324,7 @@ function createBusElement (isOutbound, positionX, length, showVehicles) {
     return;
   }
   const busParentEl = document.createElement('a-entity');
-  const rotationY = isOutbound * 90;
+  const rotationY = isOutbound;
   const busLength = 12;
   const busObjectEl = document.createElement('a-entity');
   busObjectEl.setAttribute('rotation', '0 ' + rotationY + ' 0');
