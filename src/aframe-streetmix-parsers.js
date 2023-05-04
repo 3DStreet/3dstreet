@@ -1,3 +1,5 @@
+/* global THREE */
+
 // Orientation - default model orientation is "outbound" (away from camera)
 var streetmixParsersTested = require('./tested/aframe-streetmix-parsers-tested');
 var streetmixUtils = require('./tested/streetmix-utils');
@@ -273,32 +275,33 @@ function getBusLaneMixin (variant) {
   return 'bus-lane';
 }
 
-function getDimensions(object3d) {
-    var box = new THREE.Box3().setFromObject( object3d );
-    var x = box.max.x - box.min.x 
-    var y = box.max.y - box.min.y 
-    var z = box.max.z - box.min.z 
+function getDimensions (object3d) {
+  var box = new THREE.Box3().setFromObject(object3d);
+  var x = box.max.x - box.min.x;
+  var y = box.max.y - box.min.y;
+  var z = box.max.z - box.min.z;
 
-    return {x,y,z}
+  return { x, y, z };
 }
 
-function getStartEndPosition(streetLength, objectLength) {
+function getStartEndPosition (streetLength, objectLength) {
   // get the start and end position for placing an object on a line
   // computed by length of the street and object's length
   const start = -0.5 * streetLength + 0.5 * objectLength;
   const end = 0.5 * streetLength - 0.5 * objectLength;
-  return {start, end}
+  return { start, end };
 }
 
-function randomPosition(entity, axis, length, objSizeAttr=undefined) {
+function randomPosition (entity, axis, length, objSizeAttr = undefined) {
   // place randomly an element on a line length='length' on the axis 'axis'
   // Need to call from 'model-loaded' event if objSizeAttr is undefined
-  let object = entity.object3D;
-  const objSize = objSizeAttr || getDimensions(object)[axis];
-  const {start, end} = getStartEndPosition(length, objSize);
-  const newPosition = getRandomArbitrary(start, end);
+  // existEnts - array with existing entities (for prevent intersection)
+  const newObject = entity.object3D;
+  const objSize = objSizeAttr || getDimensions(newObject)[axis];
+  const { start, end } = getStartEndPosition(length, objSize);
   const setFunc = `set${axis.toUpperCase()}`;
-  entity.object3D.position[setFunc](newPosition);
+  const newPosition = getRandomArbitrary(start, end);
+  newObject.position[setFunc](newPosition);
   return newPosition;
 }
 
@@ -310,11 +313,11 @@ function createChooChooElement (variantList, objectMixinId, positionX, length, s
   const placedObjectEl = document.createElement('a-entity');
   placedObjectEl.setAttribute('class', objectMixinId);
   placedObjectEl.setAttribute('position', positionX + ' 0 0');
-  placedObjectEl.setAttribute('rotation', '0 ' + rotationY + ' 0'); 
+  placedObjectEl.setAttribute('rotation', '0 ' + rotationY + ' 0');
   placedObjectEl.setAttribute('mixin', objectMixinId);
   placedObjectEl.addEventListener('model-loaded', (model) => {
     randomPosition(model.target, 'z', length);
-  }, {once : true});
+  }, { once: true });
   return placedObjectEl;
 }
 
@@ -323,83 +326,130 @@ function createBusElement (isOutbound, positionX, length, showVehicles) {
     return;
   }
   const busParentEl = document.createElement('a-entity');
-  const rotationY = isOutbound * 90;
+  const rotationY = isOutbound;
   const busLength = 12;
   const busObjectEl = document.createElement('a-entity');
   busObjectEl.setAttribute('rotation', '0 ' + rotationY + ' 0');
   busObjectEl.setAttribute('mixin', 'bus');
   const positionZ = randomPosition(busObjectEl, 'z', length, busLength);
-  busObjectEl.setAttribute('position', positionX + ' 0 ' + positionZ);    
+  busObjectEl.setAttribute('position', positionX + ' 0 ' + positionZ);
   busParentEl.append(busObjectEl);
 
   return busParentEl;
 }
 
-function createDriveLaneElement (variantList, positionX, segmentWidthInMeters, length, animated = false, showVehicles = true) {
+function getRandInd (arr) {
+  return Math.floor(Math.random() * arr.length);
+}
+
+function createDriveLaneElement (variantList, positionX, segmentWidthInMeters, streetLength, animated = false, showVehicles = true, count = 1, carStep = undefined) {
   if (!showVehicles) {
     return;
   }
-  var speed = animated ? 0.5: 0; // meters per second
-  var totalStreetDuration = (length / speed) * 1000; // time in milliseconds
+  var speed = animated ? 0.5 : 0; // meters per second
+  var totalStreetDuration = (streetLength / speed) * 1000; // time in milliseconds
   var animationDirection = variantList[0];
   var startingDistanceToTravel;
   var startingDuration;
   if (animationDirection === 'outbound') {
-    startingDistanceToTravel = Math.abs(-length / 2 - 0);
+    startingDistanceToTravel = Math.abs(-streetLength / 2 - 0);
   } else {
-    startingDistanceToTravel = Math.abs(length / 2 - 0);
+    startingDistanceToTravel = Math.abs(streetLength / 2 - 0);
   }
   startingDuration = (startingDistanceToTravel / speed) * 1000;
   const driveLaneParentEl = document.createElement('a-entity');
-
-  // size by Z (length) in meters
-  let carLength = 5;
-  const reusableObjectEl = document.createElement('a-entity');
   const rotationY = (variantList[0] === 'inbound') ? 0 : 180;
-  reusableObjectEl.setAttribute('rotation', '0 ' + rotationY + ' 0');
-  if (variantList[1] === 'car') {
-    reusableObjectEl.setAttribute('mixin', 'sedan-rig');
-    reusableObjectEl.setAttribute('wheel', { speed: speed, wheelDiameter: 0.76 });
-    carLength = 5.17;
-  } else if (variantList[1] === 'microvan') {
-    reusableObjectEl.setAttribute('mixin', 'suv-rig');
-    reusableObjectEl.setAttribute('wheel', { speed: speed, wheelDiameter: 0.84 });
-  } else if (variantList[1] === 'truck') {
-    reusableObjectEl.setAttribute('mixin', 'box-truck-rig');
-    reusableObjectEl.setAttribute('wheel', { speed: speed, wheelDiameter: 1.05 });
-    carLength = 6.95;
-  } else if (variantList[1] === 'pedestrian') {
-    return createSidewalkClonedVariants(positionX, segmentWidthInMeters, 'normal', length, variantList[0], animated);
+
+  if (variantList[1] === 'pedestrian') {
+    return createSidewalkClonedVariants(positionX, segmentWidthInMeters, 'normal', streetLength, variantList[0], animated);
   }
-  const positionZ = randomPosition(reusableObjectEl, 'z', length, carLength);  
-  reusableObjectEl.setAttribute('position', positionX + ' 0 ' + positionZ);
-  if (animated) {
-    reusableObjectEl.setAttribute('animation__1', 'property', 'position');
-    reusableObjectEl.setAttribute('animation__1', 'easing', 'linear');
-    reusableObjectEl.setAttribute('animation__1', 'loop', 'false');
-    reusableObjectEl.setAttribute('animation__2', 'property', 'position');
-    reusableObjectEl.setAttribute('animation__2', 'easing', 'linear');
-    reusableObjectEl.setAttribute('animation__2', 'loop', 'true');
-    if (animationDirection === 'outbound') {
-      reusableObjectEl.setAttribute('animation__1', 'from', { x: positionX, y: 0, z: positionZ });
-      reusableObjectEl.setAttribute('animation__1', 'to', { z: -length / 2 });
-      reusableObjectEl.setAttribute('animation__1', 'dur', startingDuration);
-      reusableObjectEl.setAttribute('animation__2', 'from', { x: positionX, y: 0, z: length / 2 });
-      reusableObjectEl.setAttribute('animation__2', 'to', { x: positionX, y: 0, z: -length / 2 });
-      reusableObjectEl.setAttribute('animation__2', 'delay', startingDuration);
-      reusableObjectEl.setAttribute('animation__2', 'dur', totalStreetDuration);
-    } else {
-      reusableObjectEl.setAttribute('animation__1', 'from', { x: positionX, y: 0, z: positionZ });
-      reusableObjectEl.setAttribute('animation__1', 'to', { z: length / 2 });
-      reusableObjectEl.setAttribute('animation__1', 'dur', startingDuration);
-      reusableObjectEl.setAttribute('animation__2', 'from', { x: positionX, y: 0, z: -length / 2 });
-      reusableObjectEl.setAttribute('animation__2', 'to', { x: positionX, y: 0, z: length / 2 });
-      reusableObjectEl.setAttribute('animation__2', 'delay', startingDuration);
-      reusableObjectEl.setAttribute('animation__2', 'dur', totalStreetDuration);
+
+  const carParams = {
+    car: {
+      mixin: 'sedan-rig',
+      wheelDiameter: 0.76,
+      length: 5.17
+    },
+    microvan: {
+      mixin: 'suv-rig',
+      wheelDiameter: 0.84,
+      length: 5
+    },
+    truck: {
+      mixin: 'box-truck-rig',
+      wheelDiameter: 1.05,
+      length: 6.95
     }
-  }    
-  
-  driveLaneParentEl.append(reusableObjectEl);
+  };
+
+  function createCar (positionZ = undefined) {
+    carType = variantList[1];
+
+    const params = carParams[carType];
+
+    const reusableObjectEl = document.createElement('a-entity');
+    reusableObjectEl.setAttribute('rotation', '0 ' + rotationY + ' 0');
+    reusableObjectEl.setAttribute('mixin', params['mixin']);
+    reusableObjectEl.setAttribute('wheel',
+      { speed: speed, wheelDiameter: params['wheelDiameter'] }
+    );
+    reusableObjectEl.setAttribute('length', params['length']);
+
+    if (!positionZ) {
+      positionZ = randomPosition(reusableObjectEl, 'z', streetLength, params['length']);
+    }
+    reusableObjectEl.setAttribute('position', positionX + ' 0 ' + positionZ);
+
+    if (animated) {
+      reusableObjectEl.setAttribute('animation__1', 'property', 'position');
+      reusableObjectEl.setAttribute('animation__1', 'easing', 'linear');
+      reusableObjectEl.setAttribute('animation__1', 'loop', 'false');
+      reusableObjectEl.setAttribute('animation__2', 'property', 'position');
+      reusableObjectEl.setAttribute('animation__2', 'easing', 'linear');
+      reusableObjectEl.setAttribute('animation__2', 'loop', 'true');
+      if (animationDirection === 'outbound') {
+        reusableObjectEl.setAttribute('animation__1', 'from', { x: positionX, y: 0, z: positionZ });
+        reusableObjectEl.setAttribute('animation__1', 'to', { z: -streetLength / 2 });
+        reusableObjectEl.setAttribute('animation__1', 'dur', startingDuration);
+        reusableObjectEl.setAttribute('animation__2', 'from', { x: positionX, y: 0, z: streetLength / 2 });
+        reusableObjectEl.setAttribute('animation__2', 'to', { x: positionX, y: 0, z: -streetLength / 2 });
+        reusableObjectEl.setAttribute('animation__2', 'delay', startingDuration);
+        reusableObjectEl.setAttribute('animation__2', 'dur', totalStreetDuration);
+      } else {
+        reusableObjectEl.setAttribute('animation__1', 'from', { x: positionX, y: 0, z: positionZ });
+        reusableObjectEl.setAttribute('animation__1', 'to', { z: streetLength / 2 });
+        reusableObjectEl.setAttribute('animation__1', 'dur', startingDuration);
+        reusableObjectEl.setAttribute('animation__2', 'from', { x: positionX, y: 0, z: -streetLength / 2 });
+        reusableObjectEl.setAttribute('animation__2', 'to', { x: positionX, y: 0, z: streetLength / 2 });
+        reusableObjectEl.setAttribute('animation__2', 'delay', startingDuration);
+        reusableObjectEl.setAttribute('animation__2', 'dur', totalStreetDuration);
+      }
+    }
+    driveLaneParentEl.append(reusableObjectEl);
+    return reusableObjectEl;
+  }
+
+  const carLength = carStep || carParams[variantList[1]]['length'];
+  const offset = -streetLength / 2 + carLength / 2;
+  // create one or more randomly placed cars
+  if (count > 1) {
+    const allPlaces = getZPositions(
+      -streetLength / 2 + carLength / 2,
+      streetLength / 2 - carLength / 2,
+      carLength
+    );
+    const randPlaces = allPlaces.slice(0, count);
+
+    randPlaces.forEach(placeInd => {
+      const newCar = createCar();
+      const maxDist = carStep - parseFloat(newCar.getAttribute('length')) - 0.2;
+      // Math.random is for randomly displacement in a parking space (+/- maxDist)
+      const positionZ = placeInd - 0.5 + maxDist * 2 * Math.random();
+      newCar.setAttribute('position', 'z', positionZ);
+    });
+  } else {
+    createCar();
+  }
 
   return driveLaneParentEl;
 }
@@ -414,7 +464,7 @@ function createFoodTruckElement (variantList, positionX, length) {
   reusableObjectEl.setAttribute('mixin', 'food-trailer');
   reusableObjectEl.addEventListener('model-loaded', (model) => {
     randomPosition(model.target, 'z', length);
-  }, {once : true});
+  }, { once: true });
   foodTruckParentEl.append(reusableObjectEl);
 
   return foodTruckParentEl;
@@ -599,14 +649,14 @@ function createCenteredStreetElement (segments) {
   return streetEl;
 }
 
-function createSegmentElement (scaleX, positionX, positionY, rotationY, mixinId, length, repeatCount) {
+function createSegmentElement (scaleX, positionX, positionY, rotationY, mixinId, length, repeatCount, elevation = 0) {
   var segmentEl = document.createElement('a-entity');
   const scaleY = length / 150;
 
   const scalePlane = scaleX + ' ' + scaleY + ' 1';
   const scaleBox = scaleX + ' 1 1';
 
-  if (mixinId === 'sidewalk') {
+  if (mixinId === 'sidewalk' || elevation === 1) {
     segmentEl.setAttribute('geometry', 'primitive', 'box');
     segmentEl.setAttribute('geometry', 'height: 0.4');
     segmentEl.setAttribute('geometry', 'depth', length);
@@ -957,7 +1007,9 @@ function processSegments (segments, showStriping, length, globalAnimated, showVe
       let reusableObjectStencilsParentEl;
 
       groundMixinId = 'bright-lane';
-      segmentParentEl.append(createDriveLaneElement([variantList[0], 'car'], positionX, segmentWidthInMeters, length, false, showVehicles));
+      const carCount = 5;
+      const carStep = 6;
+      segmentParentEl.append(createDriveLaneElement([variantList[0], 'car'], positionX, segmentWidthInMeters, length, false, showVehicles, carCount, carStep));
       if (variantList[1] === 'left') {
         reusableObjectStencilsParentEl = createStencilsParentElement((positionX + segmentWidthInMeters / 2 - 0.75) + ' 0.015 0');
         cloneMixinAsChildren({ objectMixinId: 'stencils parking-t', parentEl: reusableObjectStencilsParentEl, rotation: '-90 ' + '180' + ' 0', step: 6, radius: clonedObjectRadius });
@@ -976,8 +1028,11 @@ function processSegments (segments, showStriping, length, globalAnimated, showVe
       repeatCount[1] = parseInt(length / 2);
     }
 
+    // elevation property from streetmix segment
+    const elevation = segments[i].elevation;
+
     // add new object
-    segmentParentEl.append(createSegmentElement(scaleX, positionX, positionY, rotationY, groundMixinId, length, repeatCount));
+    segmentParentEl.append(createSegmentElement(scaleX, positionX, positionY, rotationY, groundMixinId, length, repeatCount, elevation));
     // returns JSON output instead
     // append the new surfaceElement to the segmentParentEl
     streetParentEl.append(segmentParentEl);
@@ -1001,6 +1056,21 @@ function processBuildings (left, right, streetWidth, showGround, length) {
   // soundParentEl.setAttribute('create-from-json', 'jsonString', ambientSoundJSONString);
   // buildingElement.appendChild(soundParentEl);
 
+  function createBuilding (buildingType, className, buildingPos, sideMultiplier) {
+    // Make buildings
+    const buildingsArray = streetmixParsersTested.createBuildingsArray(length, buildingType);
+    const buildingJSONString = JSON.stringify(buildingsArray);
+    const placedObjectEl = document.createElement('a-entity');
+
+    placedObjectEl.setAttribute('rotation', '0 ' + (90 * sideMultiplier) + ' 0');
+    placedObjectEl.setAttribute('create-from-json', 'jsonString', buildingJSONString);
+
+    buildingElement.append(placedObjectEl);
+    placedObjectEl.classList.add(className);
+    placedObjectEl.setAttribute('position', buildingPos);
+    buildingElement.append(placedObjectEl);
+  }
+
   buildingsArray.forEach((currentValue, index) => {
     if (currentValue.length === 0) { return; } // if empty string then skip
     const side = (index === 0) ? 'left' : 'right';
@@ -1022,41 +1092,31 @@ function processBuildings (left, right, streetWidth, showGround, length) {
       buildingElement.appendChild(groundParentEl);
     }
 
-    if (currentValue === 'narrow' || currentValue === 'wide') {
-      // Make buildings
-      const buildingsArray = streetmixParsersTested.createBuildingsArray(length);
-      const buildingJSONString = JSON.stringify(buildingsArray);
-      const placedObjectEl = document.createElement('a-entity');
-      // Account for left and right facing buildings
-      if (index === 1) {
-        placedObjectEl.setAttribute('position', (positionX + (sideMultiplier * -72)) + ' 0 ' + (length / 2));
-      } else {
-        placedObjectEl.setAttribute('position', (positionX + (sideMultiplier * -72)) + ' 0 ' + (-length / 2));
-      }
-      placedObjectEl.setAttribute('rotation', '0 ' + (90 * sideMultiplier) + ' 0');
-      placedObjectEl.setAttribute('create-from-json', 'jsonString', buildingJSONString);
-      placedObjectEl.classList.add('block-' + side);
-      buildingElement.append(placedObjectEl);
-    }
+    // make building
+    const buildingPos = {
+      x: positionX,
+      y: 0,
+      z: (index === 1) ? length / 2 : -length / 2
+    };
+    let className = 'block-' + side;
 
-    if (currentValue === 'residential') {
-      // Make buildings
-      const buildingsArray = streetmixParsersTested.createBuildingsArray(length, 'residential');
-      const buildingJSONString = JSON.stringify(buildingsArray);
-      const placedObjectEl = document.createElement('a-entity');
-      // Account for left and right facing buildings
-      if (index === 1) {
-        placedObjectEl.setAttribute('position', (positionX + (sideMultiplier * -64)) + ' -0.58 ' + (length / 2));
-      } else {
-        placedObjectEl.setAttribute('position', (positionX + (sideMultiplier * -64)) + ' -0.58 ' + (-length / 2));
-      }
-      placedObjectEl.setAttribute('rotation', '0 ' + (90 * sideMultiplier) + ' 0');
-      placedObjectEl.setAttribute('create-from-json', 'jsonString', buildingJSONString);
-      placedObjectEl.classList.add('suburbia-' + side);
-      // the grass should be slightly lower than the path - 0.17 instead of 0.2 for other buildings
-      buildingElement.setAttribute('position', '0 0.17 0');
-      buildingElement.append(placedObjectEl);
+    switch (currentValue) {
+      case 'narrow':
+      case 'wide':
+        buildingPos.x += sideMultiplier * (-72);
+        break;
+      case 'residential':
+        buildingPos.x += sideMultiplier * (-64);
+        buildingPos.y = -0.58;
+        className = 'suburbia-' + side;
+        // the grass should be slightly lower than the path - 0.17 instead of 0.2 for other buildings
+        buildingElement.setAttribute('position', '0 0.17 0');
+        break;
+      case 'arcade':
+        buildingPos.x += sideMultiplier * (-70.5);
+        className = 'arcade-' + side;
     }
+    createBuilding(currentValue, className, buildingPos, sideMultiplier);
 
     if (currentValue === 'waterfront') {
       const objectPositionX = positionX - (sideMultiplier * buildingLotWidth / 2);

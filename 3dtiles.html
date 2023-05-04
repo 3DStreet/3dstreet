@@ -1,12 +1,10 @@
 <!DOCTYPE html>
 <html>
   <head>
-    <script src="https://aframe.io/releases/1.3.0/aframe.min.js"></script>
+    <script src="https://aframe.io/releases/1.4.2/aframe.min.js"></script>
     <script src="./dist/aframe-street-component.js"></script>
 
     <!-- user controls -->
-    <script src="https://raw.githack.com/fernandojsg/aframe-teleport-controls/master/dist/aframe-teleport-controls.min.js"></script>
-    <script src="https://github.3dstreet.org/src/lib/aframe-orbit-controls.min.js"></script>
 
     <!-- 3dtiles -->
     <script src="https://cdn.jsdelivr.net/npm/three@0.133.0/examples/js/utils/WorkerPool.js"></script>
@@ -16,7 +14,7 @@
     <title>3DStreet</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <link rel="icon" type="image/x-icon" href="https://github.3dstreet.org/ui_assets/favicon.ico" />
-    <link rel="stylesheet" href="https://github.3dstreet.org/src/style.css" />
+    <link rel="stylesheet" href="src/viewer-styles.css">
   </head>
 
   <body>
@@ -83,24 +81,12 @@
           <!-- uncomment the line below to load assets from local submodule  -->
           <!-- <streetmix-assets url="./assets/"></streetmix-assets> -->
         </a-assets>
-        <a-entity id="cameraRig">
-          <a-entity
-            id="camera"
-            camera="far: 1000"
-            wasd-controls="enabled: false"
-            orbit-controls="autoRotate: true;autoRotateSpeed:0.01;target: 0 0 0;initialPosition:0 4 15;minDistance:3;maxDistance:100;enableKeys:false"
-          ></a-entity>
-          <a-entity
-            id="leftHand"
-            hand-controls="hand: left; handModelStyle: lowPoly; color: #ccffcc"
-            teleport-controls="cameraRig: #cameraRig; button: trigger"
-          ></a-entity>
-          <a-entity
-            id="rightHand"
-            hand-controls="hand: right; handModelStyle: lowPoly; color: #ccffcc"
-            teleport-controls="cameraRig: #cameraRig; button: trigger"
-          ></a-entity>
-        </a-entity>
+      <a-entity id="cameraRig" position="0 10 30" data-layer-name="Viewer" cursor-teleport="cameraRig: #cameraRig; cameraHead: #camera;" look-controls="reverseMouseDrag: true" wasd-controls="enabled: true">
+        <a-entity id="camera" camera="far: 1000" position="0 1.6 0" ></a-entity>
+        <a-entity id="leftHand" hand-controls="hand: left; handModelStyle: lowPoly; color: #ffccff"></a-entity>
+        <a-entity id="rightHand" hand-controls="hand: right; handModelStyle: lowPoly; color: #ffccff"></a-entity>
+      </a-entity>
+
 
         <a-entity light="type: ambient; color: #FFF; intensity: 2"></a-entity>
         <a-entity
@@ -168,7 +154,7 @@
           id="cesium-ion-scan"
           position="-16.246 12.7 1.748"
           rotation="-90 0 -0.82"
-          loader-3dtiles="url: https://assets.cesium.com/1149944/tileset.json?v=3;
+          loader-3dtiles="url: https://assets.ion.cesium.com/1149944/tileset.json?v=3;
         cesiumIONToken: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJqdGkiOiI3YTYyYTIzNS0yODg0LTRhZWQtYjYxNS1iNWNhZGZhNmY3OTgiLCJpZCI6MTcwNjEsInNjb3BlcyI6WyJhc3IiLCJnYyJdLCJpYXQiOjE1NzE1OTcxNzZ9.R8mKo-NizcmOjCN_4dQyd5xO4X655CZZMXa9B5sECyU;"
           scale="1.33 1.33 1.33"
         ></a-entity>

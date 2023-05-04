@@ -56,30 +56,30 @@ function getAttributes (entity) {
   return elemObj;
 }
 
-function toPropString(propData) {
-  if (typeof propData == 'string' || typeof propData == 'number' || typeof propData == 'boolean') {
+function toPropString (propData) {
+  if (typeof propData === 'string' || typeof propData === 'number' || typeof propData === 'boolean') {
     return (propData).toString();
   }
-  if (propData.isVector3 || propData.isVector2 || propData.isVector4 || 
+  if (propData.isVector3 || propData.isVector2 || propData.isVector4 ||
     propData.hasOwnProperty('x') && propData.hasOwnProperty('y')) {
     return AFRAME.utils.coordinates.stringify(propData);
   }
-  if (typeof propData == 'object') {
+  if (typeof propData === 'object') {
     return Object.entries(propData).map(
-        ([key, value]) => {
-          if (key == 'src') {
-            if (value.id) {
-              return `${key}: #${value.id}`;
-            } else {
-              return `${key}: ${value}`;
-            }
+      ([key, value]) => {
+        if (key == 'src') {
+          if (value.id) {
+            return `${key}: #${value.id}`;
           } else {
-            return `${key}: ${toPropString(value)}`;
+            return `${key}: ${value}`;
           }
+        } else {
+          return `${key}: ${toPropString(value)}`;
         }
-      ).join("; ");
+      }
+    ).join('; ');
   }
-} 
+}
 
 function isSingleProperty (schema) {
   return AFRAME.schema.isSingleProperty(schema);
@@ -117,7 +117,6 @@ function filterJSONstreet (removeProps, renameProps, streetJSON) {
     for (var removeKey in removeProps) {
       // check for removing components
       if (key === removeKey) {
-
         const removeVal = removeProps[removeKey];
         // check for deleting component's attribute
         if (typeof removeVal === 'object' && !isEmpty(removeVal)) {
@@ -152,7 +151,7 @@ function filterJSONstreet (removeProps, renameProps, streetJSON) {
 }
 
 function getModifiedProperty (entity, componentName) {
-  //const data = entity.components[componentName].data;
+  // const data = entity.components[componentName].data;
   const data = AFRAME.utils.entity.getComponentProperty(entity, componentName);
 
   // if it is element's attribute
@@ -189,7 +188,7 @@ function getModifiedProperty (entity, componentName) {
 }
 
 function createEntities (entitiesData, parentEl) {
-  for (const entityData of entitiesData) {   
+  for (const entityData of entitiesData) {
     createEntityFromObj(entityData, parentEl);
   }
 }
@@ -209,7 +208,6 @@ Add a new entity with a list of components and children (if exists)
  * @return {Element} Entity created
 */
 function createEntityFromObj (entityData, parentEl) {
-
   const entity = document.createElement(entityData.element);
 
   // load attributes

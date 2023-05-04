@@ -3,6 +3,8 @@ var streetmixParsers = require('./aframe-streetmix-parsers');
 var streetmixUtils = require('./tested/streetmix-utils');
 require('./components/anisotropy');
 require('./components/gltf-part');
+require('./lib/aframe-cursor-teleport-component.min.js');
+require('./lib/animation-mixer.js');
 require('./assets.js');
 require('./components/create-from-json');
 require('aframe-atlas-uvs-component');
@@ -133,7 +135,7 @@ AFRAME.registerComponent('intersection', {
     const intersectWidth = dimensionsArray[0];
     const intersectDepth = dimensionsArray[1];
 
-    this.el.setAttribute('geometry', 'primitive', 'plane')
+    this.el.setAttribute('geometry', 'primitive', 'plane');
     this.geometry = new THREE.PlaneGeometry(intersectWidth, intersectDepth, 1, 1);
     this.material = new THREE.MeshStandardMaterial({ color: '#FF0000' });
     this.mesh = new THREE.Mesh(this.geometry, this.material);
@@ -143,9 +145,9 @@ AFRAME.registerComponent('intersection', {
     this.el.setAttribute('rotation', '-90 0 0');
     this.el.setAttribute('material', 'src: #asphalt-texture; repeat:5 5; roughness:1');
 
-    function createSidewalkElem({length, width, positionVec, scaleVec={x: 1, y: 1, z: 1}, rotationVec}) {
-      let sd = document.createElement('a-entity');
-      let repeatCountInter = [];
+    function createSidewalkElem ({ length, width, positionVec, scaleVec = { x: 1, y: 1, z: 1 }, rotationVec }) {
+      const sd = document.createElement('a-entity');
+      const repeatCountInter = [];
       repeatCountInter[0] = width / 2;
       // every 2 meters repeat sidewalk texture
       repeatCountInter[1] = parseInt(length / 2);
@@ -164,80 +166,80 @@ AFRAME.registerComponent('intersection', {
 
     // describe sidewalk parameters
     const sidewalkParams = {
-      "west": {
-        "positionVec": { x: intersectWidth / 2 - sidewalkArray[0] / 2},
-        "rotationVec": { x: 90, y: 0, z: 0 },
-        "length": intersectDepth,
-        "width": sidewalkArray[0]
+      west: {
+        positionVec: { x: intersectWidth / 2 - sidewalkArray[0] / 2 },
+        rotationVec: { x: 90, y: 0, z: 0 },
+        length: intersectDepth,
+        width: sidewalkArray[0]
       },
-      "east": {
-        "positionVec": { x: -intersectWidth / 2 + sidewalkArray[1] / 2},
-        "rotationVec": { x: 90, y: 0, z: 0 },
-        "length": intersectDepth,
-        "width": sidewalkArray[1]
+      east: {
+        positionVec: { x: -intersectWidth / 2 + sidewalkArray[1] / 2 },
+        rotationVec: { x: 90, y: 0, z: 0 },
+        length: intersectDepth,
+        width: sidewalkArray[1]
       },
-      "north": {
-        "positionVec": { 
-          y: -intersectDepth / 2 + sidewalkArray[2] / 2, 
+      north: {
+        positionVec: {
+          y: -intersectDepth / 2 + sidewalkArray[2] / 2,
           // add x offset to avoid sidewalk's element overlap
           x: sidewalkArray[1] / 2 - sidewalkArray[0] / 2
         },
-        "rotationVec": { x: 0, y: 90, z: -90 },
+        rotationVec: { x: 0, y: 90, z: -90 },
         // minus the width of the crossing sidewalk
-        "length": intersectWidth - sidewalkArray[1] - sidewalkArray[0],
-        "width": sidewalkArray[2]      
+        length: intersectWidth - sidewalkArray[1] - sidewalkArray[0],
+        width: sidewalkArray[2]
       },
-      "south": {
-        "positionVec": { 
-          y: intersectDepth / 2 - sidewalkArray[3] / 2, 
+      south: {
+        positionVec: {
+          y: intersectDepth / 2 - sidewalkArray[3] / 2,
           // add x offset to avoid sidewalk's element overlap
           x: sidewalkArray[1] / 2 - sidewalkArray[0] / 2
         },
-        "rotationVec": { x: 0, y: 90, z: -90 },
+        rotationVec: { x: 0, y: 90, z: -90 },
         // minus the width of the crossing sidewalk
-        "length": intersectWidth - sidewalkArray[1] - sidewalkArray[0],
-        "width": sidewalkArray[3]
+        length: intersectWidth - sidewalkArray[1] - sidewalkArray[0],
+        width: sidewalkArray[3]
       }
-    }
+    };
 
-    //create sidewalks if they are given in sidewalkArray
+    // create sidewalks if they are given in sidewalkArray
     const selectedSidewalks = Object.keys(sidewalkParams)
-          .filter((el, ind)=> sidewalkArray[ind]);
+      .filter((el, ind) => sidewalkArray[ind]);
 
     selectedSidewalks.forEach((sidewalkName, ind) => {
       const params = sidewalkParams[sidewalkName];
       createSidewalkElem(params);
-    })
+    });
 
     // describe curb parameters
     const curbParams = {
-      "northeast": {
-        "positionVec": { x: intersectWidth / 2 - northeastcurbArray[0] / 2, y: intersectDepth / 2 - northeastcurbArray[1] / 2},
-        "rotationVec": { x: 0, y: 90, z: -90 },
-        "length": northeastcurbArray[0],
-        "width": northeastcurbArray[1]
+      northeast: {
+        positionVec: { x: intersectWidth / 2 - northeastcurbArray[0] / 2, y: intersectDepth / 2 - northeastcurbArray[1] / 2 },
+        rotationVec: { x: 0, y: 90, z: -90 },
+        length: northeastcurbArray[0],
+        width: northeastcurbArray[1]
       },
-      "southwest": {
-        "positionVec": { x: -intersectWidth / 2 + southwestcurbArray[0] / 2, y: -intersectDepth / 2 + southwestcurbArray[1] / 2},
-        "rotationVec": { x: 0, y: 90, z: -90 },
-        "length": southwestcurbArray[0],
-        "width": southwestcurbArray[1]
+      southwest: {
+        positionVec: { x: -intersectWidth / 2 + southwestcurbArray[0] / 2, y: -intersectDepth / 2 + southwestcurbArray[1] / 2 },
+        rotationVec: { x: 0, y: 90, z: -90 },
+        length: southwestcurbArray[0],
+        width: southwestcurbArray[1]
       },
-      "southeast": {
-        "positionVec": { x: intersectWidth / 2 - southeastcurbArray[0] / 2, y: -intersectDepth / 2 + southeastcurbArray[1] / 2},
-        "rotationVec": { x: 0, y: 90, z: -90 },
-        "length": southeastcurbArray[0],
-        "width": southeastcurbArray[1]    
+      southeast: {
+        positionVec: { x: intersectWidth / 2 - southeastcurbArray[0] / 2, y: -intersectDepth / 2 + southeastcurbArray[1] / 2 },
+        rotationVec: { x: 0, y: 90, z: -90 },
+        length: southeastcurbArray[0],
+        width: southeastcurbArray[1]
       },
-      "northwest": {
-        "positionVec": { x: -intersectWidth / 2 + northwestcurbArray[0] / 2, y: intersectDepth / 2 - northwestcurbArray[1] / 2},
-        "rotationVec": { x: 0, y: 90, z: -90 },
-        "length": northwestcurbArray[0],
-        "width": northwestcurbArray[1]
+      northwest: {
+        positionVec: { x: -intersectWidth / 2 + northwestcurbArray[0] / 2, y: intersectDepth / 2 - northwestcurbArray[1] / 2 },
+        rotationVec: { x: 0, y: 90, z: -90 },
+        length: northwestcurbArray[0],
+        width: northwestcurbArray[1]
       }
-    }    
-    
-    //create curbs if they are given
+    };
+
+    // create curbs if they are given
     for (const [curbName, params] of Object.entries(curbParams)) {
       if (data[`${curbName}curb`] !== '0 0') {
         createSidewalkElem(params);
