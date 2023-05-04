@@ -632,7 +632,7 @@ function createBusStopElement (positionX, rotationBusStopY) {
   return placedObjectEl;
 }
 
-function createBrtStationElement(positionX) {
+function createBrtStationElement (positionX) {
   const placedObjectEl = document.createElement('a-entity');
   placedObjectEl.setAttribute('class', 'brt-station');
   placedObjectEl.setAttribute('position', positionX + ' 0 0');
