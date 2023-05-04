@@ -8,6 +8,8 @@ function buildAssetHTML (assetUrl, categories) {
         <!-- sidewalk props -->
         <img id="wayfinding-map" src="${assetUrl}objects/wayfinding.jpg" crossorigin="anonymous" />
         <a-asset-item id="streetProps" src="${assetUrl}sets/street-props/gltf-exports/draco/street-props.glb"></a-asset-item>
+        <a-asset-item id="brt-station-model" src="${assetUrl}sets/brt-station/gltf-exports/draco/brt-station.glb"></a-asset-item>
+        <a-mixin id="brt-station" gltf-model="#brt-station-model" ></a-mixin>
         <a-mixin id="outdoor_dining" gltf-part="src: #streetProps; part: outdoor_dining"></a-mixin>
         <a-mixin id="bench_orientation_center" gltf-part="src: #streetProps; part: bench_orientation_center"></a-mixin>
         <a-mixin id="parklet" gltf-part="src: #streetProps; part: parklet"></a-mixin>

@@ -14,7 +14,9 @@ const defaultModelWidthsInMeters = {
   'sidewalk': 3,
   'sidewalk-tree': 3,
   'turn-lane': 3,
+  'brt-station': 3,
   'bus-lane': 3,
+  'brt-lane': 3,
   'light-rail': 3,
   'streetcar': 3,
   'sidewalk-wayfinding': 3,
@@ -264,7 +266,7 @@ function getBikeLaneMixin (variant) {
 }
 
 function getBusLaneMixin (variant) {
-  if (variant === 'colored') {
+  if (variant === 'colored' | variant === 'red') {
     return 'surface-red bus-lane';
   }
   if (variant === 'grass') {
@@ -319,12 +321,12 @@ function createChooChooElement (variantList, objectMixinId, positionX, length, s
   return placedObjectEl;
 }
 
-function createBusElement (isOutbound, positionX, length, showVehicles) {
+function createBusElement (variantList, positionX, length, showVehicles) {
   if (!showVehicles) {
     return;
   }
+  const rotationY = (variantList[0] === 'inbound') ? 0 : 180;
   const busParentEl = document.createElement('a-entity');
-  const rotationY = isOutbound;
   const busLength = 12;
   const busObjectEl = document.createElement('a-entity');
   busObjectEl.setAttribute('rotation', '0 ' + rotationY + ' 0');
@@ -630,6 +632,14 @@ function createBusStopElement (positionX, rotationBusStopY) {
   return placedObjectEl;
 }
 
+function createBrtStationElement (positionX) {
+  const placedObjectEl = document.createElement('a-entity');
+  placedObjectEl.setAttribute('class', 'brt-station');
+  placedObjectEl.setAttribute('position', positionX + ' 0 0');
+  placedObjectEl.setAttribute('mixin', 'brt-station');
+  return placedObjectEl;
+}
+
 // offset to center the street around global x position of 0
 function createCenteredStreetElement (segments) {
   const streetEl = document.createElement('a-entity');
@@ -832,10 +842,10 @@ function processSegments (segments, showStriping, length, globalAnimated, showVe
     } else if (segments[i].type === 'temporary' && variantList[0] === 'jersey-barrier-concrete') {
       groundMixinId = 'drive-lane';
       segmentParentEl.append(createClonedVariants('temporary-jersey-barrier-concrete', positionX, clonedObjectRadius, 2.93));
-    } else if (segments[i].type === 'bus-lane') {
+    } else if (segments[i].type === 'bus-lane' || segments[i].type === 'brt-lane') {
       groundMixinId = getBusLaneMixin(variantList[1]);
 
-      segmentParentEl.append(createBusElement(isOutbound, positionX, length, showVehicles));
+      segmentParentEl.append(createBusElement(variantList, positionX, length, showVehicles));
 
       // create parent for the bus lane stencils to rotate the phrase instead of the word
       let reusableObjectStencilsParentEl;
@@ -958,6 +968,8 @@ function processSegments (segments, showStriping, length, globalAnimated, showVe
     } else if (segments[i].type === 'transit-shelter') {
       var rotationBusStopY = (variantList[0] === 'left') ? 90 : 270;
       segmentParentEl.append(createBusStopElement(positionX, rotationBusStopY));
+    } else if (segments[i].type === 'brt-station') {
+      segmentParentEl.append(createBrtStationElement(positionX));
     } else if (segments[i].type === 'separator' && variantList[0] === 'dashed') {
       groundMixinId = 'markings dashed-stripe';
       positionY = positionY + 0.01; // make sure the lane marker is above the asphalt
