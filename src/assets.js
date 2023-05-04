@@ -87,8 +87,6 @@ function buildAssetHTML (assetUrl, categories) {
         <!-- vehicles rigged -->
         <a-asset-item id="sedan-rigged" src="${assetUrl}sets/vehicles-rig/gltf-exports/draco/toyota-prius-rig.glb"></a-asset-item>
         <a-mixin id="sedan-rig" gltf-model="#sedan-rigged" ></a-mixin>
-        <a-asset-item id="bus-rigged" src="${assetUrl}sets/vehicles-rig/gltf-exports/draco/city-bus-rig.glb"></a-asset-item>
-        <a-mixin id="bus-rig" gltf-model="#bus-rigged" ></a-mixin>
         <a-asset-item id="sedan-taxi-rigged" src="${assetUrl}sets/vehicles-rig/gltf-exports/draco/sedan-taxi-rig.glb"></a-asset-item>
         <a-mixin id="sedan-taxi-rig" gltf-model="#sedan-taxi-rigged" ></a-mixin>
         <a-asset-item id="suv-rigged" src="${assetUrl}sets/vehicles-rig/gltf-exports/draco/suv-rig.glb"></a-asset-item>
