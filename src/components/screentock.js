@@ -14,10 +14,10 @@
 //   AFRAME.scenes[0].setAttribute('screentock', 'takeScreenshot', true);
 // }
 
-takeScreenshotNow = function(filename, type, imgElement) {
+takeScreenshotNow = function (filename, type, imgElement) {
   var renderer = AFRAME.scenes[0].renderer;
 
-  function downloadImageDataURL(filename, dataURL) {
+  function downloadImageDataURL (filename, dataURL) {
     var element = document.createElement('a');
     var url = dataURL.replace(/^data:image\/[^;]/, 'data:application/octet-stream');
     element.setAttribute('href', url);
@@ -30,28 +30,28 @@ takeScreenshotNow = function(filename, type, imgElement) {
   var saveFilename = filename + '.' + type;
 
   if (type == 'img') {
-    imgElement.src = renderer.domElement.toDataURL()
+    imgElement.src = renderer.domElement.toDataURL();
     return;
   }
   if (type == 'png') {
-      downloadImageDataURL(saveFilename, renderer.domElement.toDataURL('image/png'));
+    downloadImageDataURL(saveFilename, renderer.domElement.toDataURL('image/png'));
   } else {
-      downloadImageDataURL(saveFilename, renderer.domElement.toDataURL('image/jpeg', 0.95));
+    downloadImageDataURL(saveFilename, renderer.domElement.toDataURL('image/jpeg', 0.95));
   }
-}
+};
 
 AFRAME.registerComponent('screentock', {
-    schema: {
-      takeScreenshot: { type: 'boolean', default: false },
-      filename: {type: 'string', default: 'screenshot' },
-      type: {type: 'string', default: 'jpg'}, // png, jpg, img
-      imgElementSelector: {type: 'selector'}
-    },
-    tock: function () {
-      // this should be paused when not in use. could be throttled too
-      if (this.data.takeScreenshot) {
-        this.el.setAttribute('screentock', 'takeScreenshot', false);
-        takeScreenshotNow(this.data.filename, this.data.type, this.data.imgElementSelector)
-      }
+  schema: {
+    takeScreenshot: { type: 'boolean', default: false },
+    filename: { type: 'string', default: 'screenshot' },
+    type: { type: 'string', default: 'jpg' }, // png, jpg, img
+    imgElementSelector: { type: 'selector' }
+  },
+  tock: function () {
+    // this should be paused when not in use. could be throttled too
+    if (this.data.takeScreenshot) {
+      this.el.setAttribute('screentock', 'takeScreenshot', false);
+      takeScreenshotNow(this.data.filename, this.data.type, this.data.imgElementSelector);
     }
-  })
+  }
+});
