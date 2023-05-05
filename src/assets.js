@@ -245,7 +245,7 @@ function buildAssetHTML (assetUrl, categories) {
         <a-mixin id="prop-banner-wfh" gltf-model="url(${assetUrl}sets/wfh-banner/gltf-exports/draco/wfh-banner.glb)"></a-mixin>
         <a-mixin id="prop-raygun" gltf-model="url(${assetUrl}sets/ray-gun/gltf-exports/draco/rayGun.glb)"></a-mixin>
         <a-mixin id="prop-co2-scrubber" gltf-model="url(${assetUrl}sets/c02-scrubber/gltf-exports/draco/co2-scrubber.glb)"></a-mixin>
-    `  };
+    ` };
 
   if (categories) {
     const categoryAttrArray = categories.split(' ');
