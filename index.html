@@ -32,7 +32,7 @@
 
     <div class="right-fixed">
       <ul class="right-menu">
-        <li onclick="screenshot()"> <a class="camera"  href="#"> <span> Capture image as PNG </span> <img src="ui_assets/camera-icon.svg"> </a></li>
+        <li onclick="buttonScreenshotTock()"> <a class="camera"  href="#"> <span> Capture image as PNG </span> <img src="ui_assets/camera-icon.svg"> </a></li>
         <li onclick="inputStreetmix()"> <a class="load"  href="#"> <span> Load Streetmix URL </span> <img src="ui_assets/streetmix-logo.svg"> </a></li>
         <!-- <li onclick="inputJSON()"> <a class="load"  href="#"> <span> Load JSON String </span> <img src="assets/ui_assets/upload-icon.svg"> </a></li> -->
         <li><a class="load"> <label for="inputfile" style="display: inherit; align-items: center; cursor: pointer"> <input type="file" id="inputfile" style="display:none" accept=".js, .json, .txt"> <span> Load JSON File </span> <img src="ui_assets/upload-icon.svg"></label></a></li>
@@ -102,12 +102,10 @@
       }
     });
 
-    function screenshot() {
-      AFRAME.scenes[0].setAttribute('screenshot','width',AFRAME.scenes[0].canvas.width)
-      AFRAME.scenes[0].setAttribute('screenshot','height',AFRAME.scenes[0].canvas.height)
-      document.querySelector('a-scene').components.screenshot.capture('perspective');
+    function buttonScreenshotTock() {
+      AFRAME.scenes[0].setAttribute('screentock', 'type', 'jpg');
+      AFRAME.scenes[0].setAttribute('screentock', 'takeScreenshot', true);
     }
-
     function startEditor() {
       var sceneEl = document.querySelector('a-scene');
       sceneEl.components.inspector.openInspector();
