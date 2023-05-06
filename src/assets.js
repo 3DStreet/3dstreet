@@ -240,7 +240,7 @@ function buildAssetHTML (assetUrl, categories) {
         <a-mixin id="loud-bicycle-classic" gltf-model="url(${assetUrl}sets/cycle-horn/gltf-exports/draco/loud-bicycle-classic-horn.glb)"></a-mixin>
         <a-mixin id="building-school" gltf-model="url(${assetUrl}sets/school-building/gltf-exports/draco/school-building.glb)"></a-mixin>
         <a-mixin id="building-bar" gltf-model="url(${assetUrl}sets/irish-bar-building/gltf-exports/draco/irish-bar-building.glb)"></a-mixin>
-        <a-mixin id="vehicle-bmw-m2" gltf-model="url(${assetUrl}sets/vehicles-rig/draco/BMW_m2-rig.glb)"></a-mixin>
+        <a-mixin id="vehicle-bmw-m2" gltf-model="url(${assetUrl}sets/vehicles-rig/gltf-exports/draco/BWM_m2-rig.glb)"></a-mixin>
         <a-mixin id="prop-suburban-houses" gltf-model="url(${assetUrl}sets/suburban-houses/gltf-exports/draco/suburban-houses.glb)"></a-mixin>
         <a-mixin id="prop-banner-wfh" gltf-model="url(${assetUrl}sets/wfh-banner/gltf-exports/draco/wfh-banner.glb)"></a-mixin>
         <a-mixin id="prop-raygun" gltf-model="url(${assetUrl}sets/ray-gun/gltf-exports/draco/rayGun.glb)"></a-mixin>
