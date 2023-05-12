@@ -181,7 +181,7 @@ function getZPositions (start, end, step) {
   return arr.sort(() => 0.5 - Math.random());
 }
 
-function addLinearStreetAnimation (reusableObjectEl, speed, streetLength, xPos, yVal = 0, zPos, direction) {
+function addLinearStreetAnimation (reusableObjectEl, speed, streetLength, xPos, yPos = 0, zPos, direction) {
   const totalStreetDuration = (streetLength / speed) * 1000; // time in milliseconds
   const halfStreet = (direction === 'outbound')
     ? -streetLength / 2
@@ -193,7 +193,7 @@ function addLinearStreetAnimation (reusableObjectEl, speed, streetLength, xPos, 
     property: 'position',
     easing: 'linear',
     loop: 'false',
-    from: { x: xPos, y: yVal, z: zPos },
+    from: { x: xPos, y: yPos, z: zPos },
     to: { z: halfStreet },
     dur: startingDuration
   };
@@ -201,11 +201,12 @@ function addLinearStreetAnimation (reusableObjectEl, speed, streetLength, xPos, 
     property: 'position',
     easing: 'linear',
     loop: 'true',
-    from: { x: xPos, y: yVal, z: -halfStreet },
-    to: { x: xPos, y: yVal, z: halfStreet },
+    from: { x: xPos, y: yPos, z: -halfStreet },
+    to: { z: halfStreet },
     delay: startingDuration,
     dur: totalStreetDuration
   };
+
   reusableObjectEl.setAttribute('animation__1', animationAttrs_1);
   reusableObjectEl.setAttribute('animation__2', animationAttrs_2);
 
@@ -222,7 +223,6 @@ function createSidewalkClonedVariants (BasePositionX, segmentWidthInMeters, dens
     dense: 0.25
   };
   const totalPedestrianNumber = parseInt(densityFactors[density] * streetLength, 10);
-
   const dividerParentEl = createParentElement(BasePositionX, 'pedestrians-parent');
   // Randomly generate avatars
   for (let i = 0; i < totalPedestrianNumber; i++) {
@@ -233,15 +233,14 @@ function createSidewalkClonedVariants (BasePositionX, segmentWidthInMeters, dens
     // y = 0.2 for sidewalk elevation
     const placedObjectEl = document.createElement('a-entity');
     let animationDirection = 'inbound';
-
-    placedObjectEl.object3D.position.set(xVal, yVal, zVal);
+    placedObjectEl.setAttribute('position', `${xVal}' '${yVal}' '${zVal}`);
     placedObjectEl.setAttribute('mixin', variantName);
     // Roughly 50% of traffic will be incoming
     if (Math.random() < 0.5 && direction === 'random') {
-      placedObjectEl.object3D.rotation.set(0, Math.PI, 0);
+      placedObjectEl.setAttribute('rotation', '0 180 0');
       animationDirection = 'outbound';
     } else {
-      placedObjectEl.object3D.rotation.set(0, 0, 0);
+      placedObjectEl.setAttribute('rotation', '0 0 0')
     }
 
     if (animated) {
