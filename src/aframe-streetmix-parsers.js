@@ -340,12 +340,46 @@ function createBusElement (isOutbound, positionX, length, showVehicles) {
   return busParentEl;
 }
 
+function addLinearStreetAnimation(reusableObjectEl, speed, streetLength, xPos, yVal = 0, zPos, direction) {
+  const totalStreetDuration = (streetLength / speed) * 1000; // time in milliseconds
+  const halfStreet = (direction === 'outbound')
+    ? -streetLength / 2
+    : streetLength / 2;
+  const startingDistanceToTravel = Math.abs(halfStreet - zPos);
+  const startingDuration = (startingDistanceToTravel / speed) * 1000;
+
+  const animationAttrs_1 = {
+    property: 'position',
+    easing: 'linear',
+    loop: 'false',
+    from: { x: xPos, y: yVal, z: zPos },
+    to: { z: halfStreet },
+    dur: startingDuration
+  };
+  const animationAttrs_2 = {
+    property: 'position',
+    easing: 'linear',
+    loop: 'true',
+    from: { x: xPos, y: yVal, z: -halfStreet },
+    to: { x: xPos, y: yVal, z: halfStreet },
+    delay: startingDuration,
+    dur: totalStreetDuration
+  };
+  reusableObjectEl.setAttribute('animation__1', animationAttrs_1);
+  reusableObjectEl.setAttribute('animation__2', animationAttrs_2);
+
+  return reusableObjectEl;  
+}
+
 function createDriveLaneElement (variantList, positionX, segmentWidthInMeters, streetLength, animated = false, showVehicles = true, count = 1, carStep = undefined) {
   if (!showVehicles) {
     return;
   }
   let speed = 0;
-  const [lineVariant, direction, carType] = variantList;
+  let [lineVariant, direction, carType] = variantList;  
+  if (variantList.length === 2) {
+    carType = direction;
+  }
 
   const rotationVariants = {
     inbound: 0,
@@ -397,59 +431,36 @@ function createDriveLaneElement (variantList, positionX, segmentWidthInMeters, s
       width: 2.5
     }
   };
-  const carTypes = Object.keys(carParams);
 
   function createCar (positionZ = undefined, carType = 'car') {
     const params = carParams[carType];
 
     const reusableObjectEl = document.createElement('a-entity');
-
-    positionZ = positionZ ?? randomPosition(reusableObjectEl, 'z', streetLength, params['length']);
+    reusableObjectEl.object3D.position.setX(positionX);
+    if (positionZ) {
+      reusableObjectEl.object3D.position.setZ(positionZ);
+    } else {
+      randomPosition(reusableObjectEl, 'z', streetLength, params['length']);
+    }
     reusableObjectEl.setAttribute('mixin', params['mixin']);
     reusableObjectEl.object3D.rotation.set(0, THREE.MathUtils.degToRad(rotationY), 0);
-    reusableObjectEl.object3D.position.set(positionX, 0, positionZ);
 
     if (animated) {
-      speed = 0.5; // meters per second
+      speed = 5; // meters per second
       reusableObjectEl.setAttribute('wheel',
         { speed: speed, wheelDiameter: params['wheelDiameter'] }
       );
-      const totalStreetDuration = (streetLength / speed) * 1000; // time in milliseconds
-      const animationDirection = lineVariant;
-      const halfStreet = (animationDirection === 'outbound')
-        ? -streetLength / 2
-        : streetLength / 2;
-      const startingDistanceToTravel = halfStreet;
-
-      const startingDuration = (startingDistanceToTravel / speed) * 1000;
-      const animationAttrs_1 = {
-        property: 'position',
-        easing: 'linear',
-        loop: 'false',
-        from: { x: positionX, y: 0, z: positionZ },
-        to: { z: halfStreet },
-        dur: startingDuration
-      };
-      const animationAttrs_2 = {
-        property: 'position',
-        easing: 'linear',
-        loop: 'true',
-        from: { x: positionX, y: 0, z: -halfStreet },
-        to: { x: positionX, y: 0, z: halfStreet },
-        delay: startingDuration,
-        dur: totalStreetDuration
-      };
-      reusableObjectEl.setAttribute('animation__1', animationAttrs_1);
-      reusableObjectEl.setAttribute('animation__2', animationAttrs_2);
+      addLinearStreetAnimation(reusableObjectEl, speed, streetLength, positionX, 0, positionZ, direction);
     }
     driveLaneParentEl.append(reusableObjectEl);
     return reusableObjectEl;
   }
 
   // create one or more randomly placed cars
-  const halfStreet = streetLength / 2;
-  const halfParkingLength = carStep / 2;
+
   if (count > 1) {
+    const halfStreet = streetLength / 2;
+    const halfParkingLength = carStep / 2;
     const allPlaces = getZPositions(
       -halfStreet + halfParkingLength,
       halfStreet - halfParkingLength,
