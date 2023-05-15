@@ -36,12 +36,18 @@ const defaultModelWidthsInMeters = {
 };
 /* eslint-enable quote-props */
 
-function cloneMixinAsChildren ({ objectMixinId = '', parentEl = null, step = 15, radius = 60, rotation = '0 0 0', positionXYString = '0 0', randomY = false }) {
-  for (var j = (radius * -1); j <= radius; j = j + step) {
-    var placedObjectEl = document.createElement('a-entity');
+function cloneMixinAsChildren ({ objectMixinId = '', parentEl = null, step = 15, radius = 60, rotation = '0 0 0', positionXYString = '0 0', length = undefined, randomY = false }) {
+  for (let j = (radius * -1); j <= radius; j = j + step) {
+    const placedObjectEl = document.createElement('a-entity');
+
     placedObjectEl.setAttribute('class', objectMixinId);
-    placedObjectEl.setAttribute('position', positionXYString + ' ' + j);
+    placedObjectEl.setAttribute('position', positionXYString + ' ' + j);    
     placedObjectEl.setAttribute('mixin', objectMixinId);
+    if (length) {      
+      placedObjectEl.addEventListener('loaded', (evt) => {       
+        placedObjectEl.setAttribute('geometry', 'height', length);
+      });
+    }
     if (randomY) {
       placedObjectEl.setAttribute('rotation', '0 ' + Math.floor(randomTestable() * 361) + ' 0');
     } else {
@@ -50,6 +56,7 @@ function cloneMixinAsChildren ({ objectMixinId = '', parentEl = null, step = 15,
     // add the new elmement to DOM
     parentEl.append(placedObjectEl);
     // could be good to use geometry merger https://github.com/supermedium/superframe/tree/master/components/geometry-merger
+     
   }
 }
 
@@ -460,14 +467,14 @@ function createDriveLaneElement (variantList, positionX, segmentWidthInMeters, s
 
   if (count > 1) {
     const halfStreet = streetLength / 2;
-    const halfParkingLength = carStep / 2;
+    const halfParkingLength = carStep / 2 + carStep;
     const allPlaces = getZPositions(
       -halfStreet + halfParkingLength,
       halfStreet - halfParkingLength,
       carStep
     );
     const randPlaces = allPlaces.slice(0, count);
-    const carSizeZ = (lineVariant == 'sideways') ? 'width' : 'length';
+    const carSizeZ = (lineVariant == 'sideways' || lineVariant.includes('angled')) ? 'width' : 'length';
     const carSizeValueZ = carParams[carType][carSizeZ];
 
     randPlaces.forEach(randPositionZ => {
@@ -1031,15 +1038,22 @@ function processSegments (segments, showStriping, length, globalAnimated, showVe
 
       groundMixinId = 'bright-lane';
       const carCount = 5;
-      const carStep = (variantList[0] == 'sideways') ? 3 : 6;
+      const carStep = ((variantList[0] == 'sideways') || variantList[0].includes('angled')) ? 3 : 6;
       const clonedStencilRadius = length / 2 - carStep;
+      const rotationVars = {
+        'angled-front-left': 30,
+        'angled-front-right': -30,
+        'angled-rear-left': -30,
+        'angled-rear-right': 30
+      }
+      const markingsRotZ = (variantList[0].includes('angled')) ? rotationVars[variantList[0]] : '0';
       segmentParentEl.append(createDriveLaneElement([...variantList, 'car'], positionX, segmentWidthInMeters, length, false, showVehicles, carCount, carStep));
       if (variantList[1] === 'left') {
-        reusableObjectStencilsParentEl = createStencilsParentElement((positionX + segmentWidthInMeters / 2 - 0.75) + ' 0.015 0');
-        cloneMixinAsChildren({ objectMixinId: 'stencils parking-t', parentEl: reusableObjectStencilsParentEl, rotation: '-90 ' + '180' + ' 0', step: carStep, radius: clonedStencilRadius });
+        reusableObjectStencilsParentEl = createStencilsParentElement((positionX ) + ' 0.015 0');
+        cloneMixinAsChildren({ objectMixinId: 'markings solid-stripe', parentEl: reusableObjectStencilsParentEl, rotation: '-90 ' + '90 ' + markingsRotZ, length: segmentWidthInMeters, step: carStep, radius: clonedStencilRadius });
       } else {
-        reusableObjectStencilsParentEl = createStencilsParentElement((positionX - (segmentWidthInMeters / 2) + 0.75) + ' 0.015 0');
-        cloneMixinAsChildren({ objectMixinId: 'stencils parking-t', parentEl: reusableObjectStencilsParentEl, rotation: '-90 ' + '0' + ' 0', step: carStep, radius: clonedStencilRadius });
+        reusableObjectStencilsParentEl = createStencilsParentElement((positionX ) + ' 0.015 0');
+        cloneMixinAsChildren({ objectMixinId: 'markings solid-stripe', parentEl: reusableObjectStencilsParentEl, rotation: '-90 ' + '90 ' + markingsRotZ, length: segmentWidthInMeters, step: carStep, radius: clonedStencilRadius });
       }
       // add the stencils to the segment parent
       segmentParentEl.append(reusableObjectStencilsParentEl);
