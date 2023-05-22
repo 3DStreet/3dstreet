@@ -39,15 +39,16 @@ const defaultModelWidthsInMeters = {
 function cloneMixinAsChildren ({ objectMixinId = '', parentEl = null, step = 15, radius = 60, rotation = '0 0 0', positionXYString = '0 0', length = undefined, randomY = false }) {
   for (let j = (radius * -1); j <= radius; j = j + step) {
     const placedObjectEl = document.createElement('a-entity');
-
+    placedObjectEl.setAttribute('mixin', objectMixinId);
     placedObjectEl.setAttribute('class', objectMixinId);
     placedObjectEl.setAttribute('position', positionXYString + ' ' + j);    
-    placedObjectEl.setAttribute('mixin', objectMixinId);
-    if (length) {      
-      placedObjectEl.addEventListener('loaded', (evt) => {       
-        placedObjectEl.setAttribute('geometry', 'height', length);
+    if (length) {    
+      placedObjectEl.addEventListener('loaded', (evt) => {
+        evt.target.setAttribute('geometry', 'height', length); 
+        evt.target.setAttribute('atlas-uvs', 'column');
       });
     }
+
     if (randomY) {
       placedObjectEl.setAttribute('rotation', '0 ' + Math.floor(randomTestable() * 361) + ' 0');
     } else {
