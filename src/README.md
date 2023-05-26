@@ -1,5 +1,40 @@
 # Source File Description
 
+### Screentock component
+
+A Screentock component for [A-Frame](https://aframe.io), which allows you to take screenshots of your A-Frame scene.
+
+#### Properties
+
+| Property       | Description                                             | Type     | Default Value |
+| -------------- | ------------------------------------------------------- | -------- | ------------- |
+| takeScreenshot           | A flag to take a screenshot of the scene when set to true | boolean | false         |
+| filename                 | The name of the saved screenshot file                   | string   | screenshot    |
+| type                     | The file format of the saved screenshot (jpg, png, or img) | string   | jpg           |
+| imgElementSelector       | A selector to specify the element for the screenshot image data to be copied to | selector |               |
+
+#### Usage
+
+##### HTML
+```html
+<head>
+  <title>My A-Frame Scene</title>
+  <script src="https://aframe.io/releases/1.4.2/aframe.min.js"></script>
+  <script src="path/to/aframe-screentock-component.min.js"></script>
+</head>
+
+<body>
+  <a-scene screentock>
+    <a-entity geometry="primitive: box" material="color: #C03546"></a-entity>
+  </a-scene>
+</body>
+```
+
+##### JavaScript
+```javascript
+AFRAME.scenes[0].setAttribute('screentock', 'takeScreenshot', true);
+```
+
 ### [index.js](index.js)
 * The `street` component places a street in an A-Frame scene from a list of segments in a JSON blob. See the [`street` component documentation](https://github.com/3DStreet/3dstreet#a-frame-component) for more details.
 * The `streetmix-loader` component uses a streetmix URL to supply a JSON blob for a `street` component on the same entity. See the [`streetmix-loader` component documentation](https://github.com/3DStreet/3dstreet#a-frame-streetmix-loader-component-api) for more details.

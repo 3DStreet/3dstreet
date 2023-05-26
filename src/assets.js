@@ -8,6 +8,8 @@ function buildAssetHTML (assetUrl, categories) {
         <!-- sidewalk props -->
         <img id="wayfinding-map" src="${assetUrl}objects/wayfinding.jpg" crossorigin="anonymous" />
         <a-asset-item id="streetProps" src="${assetUrl}sets/street-props/gltf-exports/draco/street-props.glb"></a-asset-item>
+        <a-asset-item id="brt-station-model" src="${assetUrl}sets/brt-station/gltf-exports/draco/brt-station.glb"></a-asset-item>
+        <a-mixin id="brt-station" gltf-model="#brt-station-model" ></a-mixin>
         <a-mixin id="outdoor_dining" gltf-part="src: #streetProps; part: outdoor_dining"></a-mixin>
         <a-mixin id="bench_orientation_center" gltf-part="src: #streetProps; part: bench_orientation_center"></a-mixin>
         <a-mixin id="parklet" gltf-part="src: #streetProps; part: parklet"></a-mixin>
@@ -70,7 +72,6 @@ function buildAssetHTML (assetUrl, categories) {
         <!-- vehicles -->
         <a-asset-item id="vehicles" src="${assetUrl}sets/vehicles/gltf-exports/draco/vehicles.glb"></a-asset-item>
         <a-mixin id="box-truck" gltf-part="src: #vehicles; part: box-truck"></a-mixin>
-        <a-mixin id="city-bus" gltf-part="src: #vehicles; part: city-bus"></a-mixin>
         <a-mixin id="food-trailer" gltf-part="src: #vehicles; part: food-trailer"></a-mixin>
         <a-mixin id="sedan-taxi" gltf-part="src: #vehicles; part: sedan-taxi"></a-mixin>
         <a-mixin id="suv" gltf-part="src: #vehicles; part: suv"></a-mixin>
@@ -86,8 +87,6 @@ function buildAssetHTML (assetUrl, categories) {
         <!-- vehicles rigged -->
         <a-asset-item id="sedan-rigged" src="${assetUrl}sets/vehicles-rig/gltf-exports/draco/toyota-prius-rig.glb"></a-asset-item>
         <a-mixin id="sedan-rig" gltf-model="#sedan-rigged" ></a-mixin>
-        <a-asset-item id="bus-rigged" src="${assetUrl}sets/vehicles-rig/gltf-exports/draco/city-bus-rig.glb"></a-asset-item>
-        <a-mixin id="bus-rig" gltf-model="#bus-rigged" ></a-mixin>
         <a-asset-item id="sedan-taxi-rigged" src="${assetUrl}sets/vehicles-rig/gltf-exports/draco/sedan-taxi-rig.glb"></a-asset-item>
         <a-mixin id="sedan-taxi-rig" gltf-model="#sedan-taxi-rigged" ></a-mixin>
         <a-asset-item id="suv-rigged" src="${assetUrl}sets/vehicles-rig/gltf-exports/draco/suv-rig.glb"></a-asset-item>
@@ -191,8 +190,8 @@ function buildAssetHTML (assetUrl, categories) {
         <!-- vehicles-transit -->
         <a-asset-item id="trammodel" src="${assetUrl}objects/tram_siemens_avenio.gltf"></a-asset-item>
         <a-asset-item id="trolleymodel" src="${assetUrl}objects/godarvilletram.gltf"></a-asset-item>
-        <a-asset-item id="xd40" src="${assetUrl}sets/flyer-bus/gltf-exports/draco/flyer-bus.glb"></a-asset-item>
-        <a-mixin id="bus" anisotropy gltf-model="#xd40" scale="1.55 1.55 1.55"></a-mixin>
+        <a-asset-item id="xd40" src="${assetUrl}sets/flyer-bus/gltf-exports/draco/new-flyer-bus.glb"></a-asset-item>
+        <a-mixin id="bus" anisotropy gltf-model="#xd40"></a-mixin>
         <a-mixin id="tram" anisotropy gltf-model="#trammodel"></a-mixin>
         <a-mixin id="trolley" gltf-model="#trolleymodel"></a-mixin>
       `,
@@ -228,7 +227,25 @@ function buildAssetHTML (assetUrl, categories) {
 
         <a-asset-item id="fence-model" src="${assetUrl}sets/fences/gltf-exports/draco/fence4.glb"></a-asset-item>
         <a-mixin id="fence" gltf-model="#fence-model" scale="0.1 0.1 0.1"></a-mixin>
-      ` };
+      `,
+    'loud-bicycle': `
+        <!-- loud-bicycle-game -->
+        <a-mixin id="cyclist-cargo" gltf-model="url(${assetUrl}sets/cargo-bike-animation/gltf-exports/draco/cargo_bike_animation_v1.glb)"></a-mixin>
+        <a-mixin id="cyclist1" gltf-model="url(${assetUrl}sets/cyclist-animation/gltf-exports/draco/cyclist-1-animation-v1.glb)"></a-mixin>
+        <a-mixin id="cyclist2" gltf-model="url(${assetUrl}sets/cyclist-animation/gltf-exports/draco/cyclist-2-animation-v1.glb)"></a-mixin>
+        <a-mixin id="cyclist3" gltf-model="url(${assetUrl}sets/cyclist-animation/gltf-exports/draco/cyclist-3-animation-v1.glb)"></a-mixin>
+        <a-mixin id="cyclist-kid" gltf-model="url(${assetUrl}sets/cyclist-animation/gltf-exports/draco/Kid_cyclist_animation_v01.glb)"></a-mixin>
+        <a-mixin id="cyclist-dutch" gltf-model="url(${assetUrl}sets/cyclist-animation/gltf-exports/draco/Dutch_cyclist_animation_v01.glb)"></a-mixin>
+        <a-mixin id="loud-bicycle-mini" gltf-model="url(${assetUrl}sets/cycle-horn/gltf-exports/draco/loud-bicycle-mini-horn.glb)"></a-mixin>
+        <a-mixin id="loud-bicycle-classic" gltf-model="url(${assetUrl}sets/cycle-horn/gltf-exports/draco/loud-bicycle-classic-horn.glb)"></a-mixin>
+        <a-mixin id="building-school" gltf-model="url(${assetUrl}sets/school-building/gltf-exports/draco/school-building.glb)"></a-mixin>
+        <a-mixin id="building-bar" gltf-model="url(${assetUrl}sets/irish-bar-building/gltf-exports/draco/irish-bar-building.glb)"></a-mixin>
+        <a-mixin id="vehicle-bmw-m2" gltf-model="url(${assetUrl}sets/vehicles-rig/gltf-exports/draco/BWM_m2-rig.glb)"></a-mixin>
+        <a-mixin id="prop-suburban-houses" gltf-model="url(${assetUrl}sets/suburban-houses/gltf-exports/draco/suburban-houses.glb)"></a-mixin>
+        <a-mixin id="prop-banner-wfh" gltf-model="url(${assetUrl}sets/wfh-banner/gltf-exports/draco/wfh-banner.glb)"></a-mixin>
+        <a-mixin id="prop-raygun" gltf-model="url(${assetUrl}sets/ray-gun/gltf-exports/draco/rayGun.glb)"></a-mixin>
+        <a-mixin id="prop-co2-scrubber" gltf-model="url(${assetUrl}sets/c02-scrubber/gltf-exports/draco/co2-scrubber.glb)"></a-mixin>
+    ` };
 
   if (categories) {
     const categoryAttrArray = categories.split(' ');
