@@ -195,38 +195,6 @@ function getZPositions (start, end, step) {
   return arr.sort(() => 0.5 - Math.random());
 }
 
-function addLinearStreetAnimation (reusableObjectEl, speed, streetLength, xPos, yPos = 0, zPos, direction) {
-  const totalStreetDuration = (streetLength / speed) * 1000; // time in milliseconds
-  const halfStreet = (direction === 'outbound')
-    ? -streetLength / 2
-    : streetLength / 2;
-  const startingDistanceToTravel = Math.abs(halfStreet - zPos);
-  const startingDuration = (startingDistanceToTravel / speed) * 1000;
-
-  const animationAttrs_1 = {
-    property: 'position',
-    easing: 'linear',
-    loop: 'false',
-    from: { x: xPos, y: yPos, z: zPos },
-    to: { z: halfStreet },
-    dur: startingDuration
-  };
-  const animationAttrs_2 = {
-    property: 'position',
-    easing: 'linear',
-    loop: 'true',
-    from: { x: xPos, y: yPos, z: -halfStreet },
-    to: { z: halfStreet },
-    delay: startingDuration,
-    dur: totalStreetDuration
-  };
-
-  reusableObjectEl.setAttribute('animation__1', animationAttrs_1);
-  reusableObjectEl.setAttribute('animation__2', animationAttrs_2);
-
-  return reusableObjectEl;
-}
-
 function createSidewalkClonedVariants (BasePositionX, segmentWidthInMeters, density, streetLength, direction = 'random', animated = false) {
   const xValueRange = [-(0.37 * segmentWidthInMeters), (0.37 * segmentWidthInMeters)];
   const zValueRange = getZPositions((-0.5 * streetLength), (0.5 * streetLength), 1.5);
