@@ -43,10 +43,10 @@ function cloneMixinAsChildren ({ objectMixinId = '', parentEl = null, step = 15,
     const placedObjectEl = document.createElement('a-entity');
     placedObjectEl.setAttribute('mixin', objectMixinId);
     placedObjectEl.setAttribute('class', objectMixinId);
-    placedObjectEl.setAttribute('position', positionXYString + ' ' + j);    
-    if (length) {    
+    placedObjectEl.setAttribute('position', positionXYString + ' ' + j);
+    if (length) {
       placedObjectEl.addEventListener('loaded', (evt) => {
-        evt.target.setAttribute('geometry', 'height', length); 
+        evt.target.setAttribute('geometry', 'height', length);
         evt.target.setAttribute('atlas-uvs', 'column');
       });
     }
@@ -59,7 +59,6 @@ function cloneMixinAsChildren ({ objectMixinId = '', parentEl = null, step = 15,
     // add the new elmement to DOM
     parentEl.append(placedObjectEl);
     // could be good to use geometry merger https://github.com/supermedium/superframe/tree/master/components/geometry-merger
-     
   }
 }
 
@@ -222,7 +221,7 @@ function createSidewalkClonedVariants (BasePositionX, segmentWidthInMeters, dens
       placedObjectEl.setAttribute('rotation', '0 180 0');
       animationDirection = 'outbound';
     } else {
-      placedObjectEl.setAttribute('rotation', '0 0 0')
+      placedObjectEl.setAttribute('rotation', '0 0 0');
     }
 
     if (animated) {
@@ -317,7 +316,7 @@ function createBusElement (variantList, positionX, length, showVehicles) {
   return busParentEl;
 }
 
-function addLinearStreetAnimation(reusableObjectEl, speed, streetLength, xPos, yVal = 0, zPos, direction) {
+function addLinearStreetAnimation (reusableObjectEl, speed, streetLength, xPos, yVal = 0, zPos, direction) {
   const totalStreetDuration = (streetLength / speed) * 1000; // time in milliseconds
   const halfStreet = (direction === 'outbound')
     ? -streetLength / 2
@@ -345,7 +344,7 @@ function addLinearStreetAnimation(reusableObjectEl, speed, streetLength, xPos, y
   reusableObjectEl.setAttribute('animation__1', animationAttrs_1);
   reusableObjectEl.setAttribute('animation__2', animationAttrs_2);
 
-  return reusableObjectEl;  
+  return reusableObjectEl;
 }
 
 function createDriveLaneElement (variantList, positionX, segmentWidthInMeters, streetLength, animated = false, showVehicles = true, count = 1, carStep = undefined) {
@@ -353,7 +352,7 @@ function createDriveLaneElement (variantList, positionX, segmentWidthInMeters, s
     return;
   }
   let speed = 0;
-  let [lineVariant, direction, carType] = variantList;  
+  let [lineVariant, direction, carType] = variantList;
   if (variantList.length === 2) {
     carType = direction;
   }
@@ -363,7 +362,7 @@ function createDriveLaneElement (variantList, positionX, segmentWidthInMeters, s
     outbound: 180,
     sideways: {
       left: -90,
-      right: 90 
+      right: 90
     },
     'angled-front-left': -60,
     'angled-front-right': 60,
@@ -1025,14 +1024,14 @@ function processSegments (segments, showStriping, length, globalAnimated, showVe
         'angled-front-right': -30,
         'angled-rear-left': -30,
         'angled-rear-right': 30
-      }
+      };
       const markingsRotZ = (variantList[0].includes('angled')) ? rotationVars[variantList[0]] : '0';
       segmentParentEl.append(createDriveLaneElement([...variantList, 'car'], positionX, segmentWidthInMeters, length, false, showVehicles, carCount, carStep));
       if (variantList[1] === 'left') {
-        reusableObjectStencilsParentEl = createStencilsParentElement((positionX ) + ' 0.015 0');
+        reusableObjectStencilsParentEl = createStencilsParentElement((positionX) + ' 0.015 0');
         cloneMixinAsChildren({ objectMixinId: 'markings solid-stripe', parentEl: reusableObjectStencilsParentEl, rotation: '-90 ' + '90 ' + markingsRotZ, length: segmentWidthInMeters, step: carStep, radius: clonedStencilRadius });
       } else {
-        reusableObjectStencilsParentEl = createStencilsParentElement((positionX ) + ' 0.015 0');
+        reusableObjectStencilsParentEl = createStencilsParentElement((positionX) + ' 0.015 0');
         cloneMixinAsChildren({ objectMixinId: 'markings solid-stripe', parentEl: reusableObjectStencilsParentEl, rotation: '-90 ' + '90 ' + markingsRotZ, length: segmentWidthInMeters, step: carStep, radius: clonedStencilRadius });
       }
       // add the stencils to the segment parent
