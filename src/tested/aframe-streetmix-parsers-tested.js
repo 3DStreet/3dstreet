@@ -35,6 +35,8 @@ function createBuildingsArray (maxLength = 150, buildingType = 'narrow') { // es
       { id: 'arched-building-04', width: 15.191 }
     ];
     psuedoRandom = '03120223130210321203123023103201232013'; // 38 psuedorandom numbers 0-3, no identical units side-by-side
+  } else {
+    return [];
   }
 
   var i = 0;
