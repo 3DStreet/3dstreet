@@ -1,5 +1,5 @@
 /* global AFRAME, Node */
-
+/* version: 1.0 */
 /*
 Takes one or more elements (from a DOM queryselector call)
 and returns a Javascript object
@@ -13,7 +13,11 @@ function convertDOMElToObject (entity) {
   } else {
     data.push(getElementData(entity));
   }
-  return { data: data };
+  return { 
+    title: 'scene',
+    version: '1.0',
+    data: data 
+  };
 }
 
 function getElementData (entity) {
@@ -41,15 +45,26 @@ function getAttributes (entity) {
     // convert from DOMTokenList to Array
     elemObj['class'] = Array.from(entity.classList);
   }
-
+  if (entity.getAttribute('mixin')) {
+    elemObj['mixin'] = entity.getAttribute('mixin');
+  }  
   const entityComponents = entity.components;
 
   if (entityComponents) {
+    const geometryAttr = entity.getAttribute('geometry');
+    if (geometryAttr && geometryAttr.primitive) {
+      elemObj['primitive'] = geometryAttr.primitive;
+    }
+
     elemObj['components'] = {};
     for (const componentName in entityComponents) {
       const modifiedProperty = getModifiedProperty(entity, componentName);
-      if (modifiedProperty && !isEmpty(modifiedProperty)) {
-        elemObj['components'][componentName] = toPropString(modifiedProperty);
+      if (modifiedProperty) {
+        if (isEmpty(modifiedProperty)) {
+          elemObj['components'][componentName] = '';
+        } else {
+          elemObj['components'][componentName] = toPropString(modifiedProperty);         
+        }
       }
     }
   }
@@ -143,15 +158,66 @@ function filterJSONstreet (removeProps, renameProps, streetJSON) {
   });
   // rename components
   for (var renameKey in renameProps) {
-    // console.log(renameKey)
     const reKey = new RegExp(`"${renameKey}":`);
     stringJSON = stringJSON.replace(reKey, `"${renameProps[renameKey]}":`);
   }
   return stringJSON;
 }
 
+/**
+ * function from 3dstreet-editor/src/lib/entity.js
+ * Gets the value for a component or component's property coming from mixins of
+ * an element.
+ *
+ * If the component or component's property is not provided by mixins, the
+ * functions will return `undefined`.
+ *
+ * @param {Component} component      Component to be found.
+ * @param {string}    [propertyName] If provided, component's property to be
+ *                                   found.
+ * @param {Element}   source         Element owning the component.
+ * @return                           The value of the component or components'
+ *                                   property coming from mixins of the source.
+ */
+function getMixedValue(component, propertyName, source) {
+  var value;
+  var reversedMixins = source.mixinEls.reverse();
+  for (var i = 0; value === undefined && i < reversedMixins.length; i++) {
+    var mixin = reversedMixins[i];
+    /* eslint-disable-next-line no-prototype-builtins */
+    if (mixin.attributes.hasOwnProperty(component.name)) {
+      if (!propertyName) {
+        value = mixin.getAttribute(component.name);
+      } else {
+        value = mixin.getAttribute(component.name)[propertyName];
+      }
+    }
+  }
+  return [component.name, value];
+}
+
+function shallowEqual(object1, object2) {
+  if (typeof object1 === 'string' && typeof object2 === 'string' ||
+    typeof object1 === 'number' && typeof object2 === 'number') {
+    return object1 === object2;
+  }
+  const keys1 = Object.keys(object1);
+  const keys2 = Object.keys(object2);
+
+  if (keys1.length !== keys2.length) {
+    return false;
+  }
+
+  for (let key of keys1) {
+    if (object1[key] !== object2[key]) {
+      return false;
+    }
+  }
+
+  return true;
+}
+
 function getModifiedProperty (entity, componentName) {
-  // const data = entity.components[componentName].data;
   const data = AFRAME.utils.entity.getComponentProperty(entity, componentName);
 
   // if it is element's attribute
@@ -165,11 +231,28 @@ function getModifiedProperty (entity, componentName) {
 
   const defaultData = entity.components[componentName].schema;
 
+  // component's data, that exists in the element's mixin
+  const [mixinCompName, mixinsData] = getMixedValue(entity.components[componentName], null, entity);
+
+  const mixinSkipProps = ['src', 'atlas-uvs', 'gltf-model', 'gltf-part'];
+  if (mixinsData && mixinSkipProps.includes(mixinCompName)) {
+    // skip properties, if they exists in element's mixin
+    return null;
+  } 
+
   // If its single-property like position, rotation, etc
   if (isSingleProperty(defaultData)) {
+
     const defaultValue = defaultData.default;
     const currentValue = data;
-    if ((currentValue || defaultValue) && currentValue !== defaultValue) {
+    if (mixinsData && shallowEqual(mixinsData, currentValue)) {
+      // property will be get from mixin
+      return null;
+    }
+
+    if ((currentValue || defaultValue) && 
+      currentValue !== defaultValue
+      ) {
       return data;
     }
   }
@@ -177,17 +260,21 @@ function getModifiedProperty (entity, componentName) {
   const diff = {};
   for (const key in data) {
     const defaultValue = defaultData[key].default;
-    const currentValue = data[key];
+    const currentValue = data[key];  
 
+    if (mixinsData && mixinsData[key] && shallowEqual(mixinsData[key], data[key])) {
+      continue;
+    }
     // Some parameters could be null and '' like mergeTo
     if ((currentValue || defaultValue) && !AFRAME.utils.deepEqual(currentValue, defaultValue)) {
       diff[key] = data[key];
-    }
+    }    
   }
+
   return diff;
 }
 
-function createEntities (entitiesData, parentEl) {
+function createEntities (entitiesData, parentEl) { 
   for (const entityData of entitiesData) {
     createEntityFromObj(entityData, parentEl);
   }
@@ -210,10 +297,15 @@ Add a new entity with a list of components and children (if exists)
 function createEntityFromObj (entityData, parentEl) {
   const entity = document.createElement(entityData.element);
 
-  // load attributes
-  for (const attr in entityData.components) {
-    entity.setAttribute(attr, entityData.components[attr]);
+  if (parentEl) {
+    parentEl.appendChild(entity);
+  }  
+  
+  if (entityData['primitive']) {
+    //define a primitive in advance to apply other primitive-specific geometry properties
+    entity.setAttribute('geometry', 'primitive', entityData['primitive']);  
   }
+
   if (entityData.id) {
     entity.setAttribute('id', entityData.id);
   }
@@ -222,13 +314,18 @@ function createEntityFromObj (entityData, parentEl) {
     entity.classList.add(...entityData.class);
   }
 
-  if (parentEl) {
-    parentEl.appendChild(entity);
-  }
-
-  // Ensure the components are loaded before update the UI
   entity.addEventListener('loaded', () => {
-    entity.emit('entitycreated', {}, false);
+    // load attributes
+    for (const attr in entityData.components) {
+      entity.setAttribute(attr, entityData.components[attr]);
+    }    
+
+    if (entityData.mixin) {
+      entity.setAttribute('mixin', entityData.mixin);
+    }  
+    // Ensure the components are loaded before update the UI
+    entity.emit('entitycreated', { element: entityData.element, components: entity.components}, false);
+    
   });
 
   if (entityData.children) {
@@ -236,4 +333,5 @@ function createEntityFromObj (entityData, parentEl) {
       createEntityFromObj(childEntityData, entity);
     }
   }
+ 
 }
