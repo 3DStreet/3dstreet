@@ -1,5 +1,5 @@
 /* global AFRAME, Node */
-/* version: 1.0 */
+
 /*
 Takes one or more elements (from a DOM queryselector call)
 and returns a Javascript object
@@ -13,11 +13,7 @@ function convertDOMElToObject (entity) {
   } else {
     data.push(getElementData(entity));
   }
-  return {
-    title: 'scene',
-    version: '1.0',
-    data: data
-  };
+  return { data: data };
 }
 
 function getElementData (entity) {
@@ -46,6 +42,7 @@ function getAttributes (entity) {
     elemObj['class'] = Array.from(entity.classList);
   }
   if (entity.getAttribute('mixin')) {
+    // convert from DOMTokenList to Array
     elemObj['mixin'] = entity.getAttribute('mixin');
   }
   const entityComponents = entity.components;
@@ -59,12 +56,8 @@ function getAttributes (entity) {
     elemObj['components'] = {};
     for (const componentName in entityComponents) {
       const modifiedProperty = getModifiedProperty(entity, componentName);
-      if (modifiedProperty) {
-        if (isEmpty(modifiedProperty)) {
-          elemObj['components'][componentName] = '';
-        } else {
-          elemObj['components'][componentName] = toPropString(modifiedProperty);
-        }
+      if (modifiedProperty && !isEmpty(modifiedProperty)) {
+        elemObj['components'][componentName] = toPropString(modifiedProperty);
       }
     }
   }
@@ -158,66 +151,15 @@ function filterJSONstreet (removeProps, renameProps, streetJSON) {
   });
   // rename components
   for (var renameKey in renameProps) {
+    // console.log(renameKey)
     const reKey = new RegExp(`"${renameKey}":`);
     stringJSON = stringJSON.replace(reKey, `"${renameProps[renameKey]}":`);
   }
   return stringJSON;
 }
 
-/**
- * function from 3dstreet-editor/src/lib/entity.js
- * Gets the value for a component or component's property coming from mixins of
- * an element.
- *
- * If the component or component's property is not provided by mixins, the
- * functions will return `undefined`.
- *
- * @param {Component} component      Component to be found.
- * @param {string}    [propertyName] If provided, component's property to be
- *                                   found.
- * @param {Element}   source         Element owning the component.
- * @return                           The value of the component or components'
- *                                   property coming from mixins of the source.
- */
-function getMixedValue (component, propertyName, source) {
-  var value;
-  var reversedMixins = source.mixinEls.reverse();
-  for (var i = 0; value === undefined && i < reversedMixins.length; i++) {
-    var mixin = reversedMixins[i];
-    /* eslint-disable-next-line no-prototype-builtins */
-    if (mixin.attributes.hasOwnProperty(component.name)) {
-      if (!propertyName) {
-        value = mixin.getAttribute(component.name);
-      } else {
-        value = mixin.getAttribute(component.name)[propertyName];
-      }
-    }
-  }
-  return [component.name, value];
-}
-
-function shallowEqual (object1, object2) {
-  if (typeof object1 === 'string' && typeof object2 === 'string' ||
-    typeof object1 === 'number' && typeof object2 === 'number') {
-    return object1 === object2;
-  }
-  const keys1 = Object.keys(object1);
-  const keys2 = Object.keys(object2);
-
-  if (keys1.length !== keys2.length) {
-    return false;
-  }
-
-  for (const key of keys1) {
-    if (object1[key] !== object2[key]) {
-      return false;
-    }
-  }
-
-  return true;
-}
-
 function getModifiedProperty (entity, componentName) {
+  // const data = entity.components[componentName].data;
   const data = AFRAME.utils.entity.getComponentProperty(entity, componentName);
 
   // if it is element's attribute
@@ -231,27 +173,11 @@ function getModifiedProperty (entity, componentName) {
 
   const defaultData = entity.components[componentName].schema;
 
-  // component's data, that exists in the element's mixin
-  const [mixinCompName, mixinsData] = getMixedValue(entity.components[componentName], null, entity);
-
-  const mixinSkipProps = ['src', 'atlas-uvs', 'gltf-model', 'gltf-part'];
-  if (mixinsData && mixinSkipProps.includes(mixinCompName)) {
-    // skip properties, if they exists in element's mixin
-    return null;
-  }
-
   // If its single-property like position, rotation, etc
   if (isSingleProperty(defaultData)) {
     const defaultValue = defaultData.default;
     const currentValue = data;
-    if (mixinsData && shallowEqual(mixinsData, currentValue)) {
-      // property will be get from mixin
-      return null;
-    }
-
-    if ((currentValue || defaultValue) &&
-      currentValue !== defaultValue
-    ) {
+    if ((currentValue || defaultValue) && currentValue !== defaultValue) {
       return data;
     }
   }
@@ -261,15 +187,11 @@ function getModifiedProperty (entity, componentName) {
     const defaultValue = defaultData[key].default;
     const currentValue = data[key];
 
-    if (mixinsData && mixinsData[key] && shallowEqual(mixinsData[key], data[key])) {
-      continue;
-    }
     // Some parameters could be null and '' like mergeTo
     if ((currentValue || defaultValue) && !AFRAME.utils.deepEqual(currentValue, defaultValue)) {
       diff[key] = data[key];
     }
   }
-
   return diff;
 }
 
