@@ -8,7 +8,7 @@
     <script src="./dist/aframe-street-component.js"></script>
 
     <!-- mapbox -->
-    <script src="https://unpkg.com/aframe-mapbox-component/dist/aframe-mapbox-component.min.js"></script>
+    <script src="https://github.3dstreet.org/src/lib/aframe-mapbox-component.min.js"></script>
 
     <!-- save / load -->
     <script src="./src/json-utils.js"></script>
@@ -32,11 +32,11 @@
 
     <div class="right-fixed">
       <ul class="right-menu">
-        <li onclick="buttonScreenshotTock()"> <a class="camera"  href="#"> <span> Capture image as PNG </span> <img src="ui_assets/camera-icon.svg"> </a></li>
-        <li onclick="inputStreetmix()"> <a class="load"  href="#"> <span> Load Streetmix URL </span> <img src="ui_assets/streetmix-logo.svg"> </a></li>
+        <li onclick="screenshot()"> <a class="camera"  href="#"> <span> Capture image as PNG </span> <img src="//github.3dstreet.org/ui_assets/camera-icon.svg"> </a></li>
+        <li onclick="inputStreetmix()"> <a class="load"  href="#"> <span> Load Streetmix URL </span> <img src="//github.3dstreet.org/ui_assets/streetmix-logo.svg"> </a></li>
         <!-- <li onclick="inputJSON()"> <a class="load"  href="#"> <span> Load JSON String </span> <img src="assets/ui_assets/upload-icon.svg"> </a></li> -->
-        <li><a class="load"> <label for="inputfile" style="display: inherit; align-items: center; cursor: pointer"> <input type="file" id="inputfile" style="display:none" accept=".js, .json, .txt"> <span> Load JSON File </span> <img src="ui_assets/upload-icon.svg"></label></a></li>
-        <li> <a id="custom-enter-vr-button" class="vr" href="#"> <span class="vr">Enter VR mode</span> <img src="ui_assets/vr-icon.svg"> </a></li>
+        <li><a class="load"> <label for="inputfile" style="display: inherit; align-items: center; cursor: pointer"> <input type="file" id="inputfile" style="display:none" accept=".js, .json, .txt"> <span> Load JSON File </span> <img src="//github.3dstreet.org/ui_assets/upload-icon.svg"></label></a></li>
+        <li> <a id="custom-enter-vr-button" class="vr" href="#"> <span class="vr">Enter VR mode</span> <img src="//github.3dstreet.org/ui_assets/vr-icon.svg"> </a></li>
       </ul>
     </div>
 
@@ -55,20 +55,72 @@
         <street-assets categories="loud-bicycle sidewalk-props people vehicles vehicles-rigged buildings segment-textures segment-colors lane-separator stencils vehicles-transit dividers sky grounds"></street-assets>
       </a-assets>
   
-      <a-entity id="cameraRig" position="0 10 30" data-layer-name="Viewer" cursor-teleport="cameraRig: #cameraRig; cameraHead: #camera;" look-controls="reverseMouseDrag: true" wasd-controls="enabled: true">
-        <a-entity id="camera" camera="far: 1000" position="0 1.6 0" ></a-entity>
-        <a-entity id="leftHand" hand-controls="hand: left; handModelStyle: lowPoly; color: #ffccff"></a-entity>
-        <a-entity id="rightHand" hand-controls="hand: right; handModelStyle: lowPoly; color: #ffccff"></a-entity>
+      <a-entity id="cameraRig" data-layer-name="Viewer" cursor-teleport="cameraRig: #cameraRig; cameraHead: #camera;" look-controls="reverseMouseDrag: true" wasd-controls="enabled: true">
+        <a-entity id="camera" camera="near: 1; far: 1000" position="0 1.6 0"></a-entity>
+        <a-entity id="leftHand" hand-controls="hand: left; handModelStyle: lowPoly; color: #ffccff" teleport-controls="cameraRig: #cameraRig; button: trigger"></a-entity>
+        <a-entity id="rightHand" hand-controls="hand: right; handModelStyle: lowPoly; color: #ffccff" teleport-controls="cameraRig: #cameraRig; button: trigger"></a-entity>
       </a-entity>
 
       <a-entity id="environment" data-layer-name="Environment" street-environment="preset: day;"></a-entity>
 
       <a-entity id="street-container" data-layer-name="3D Street Layers" data-layer-show-children>
-        <a-entity id="default-street" street streetmix-loader set-loader-from-hash></a-entity>
+        <a-entity
+          data-layer-name="16th Street West of SVN"
+          position="-96.980 0 -4.17918"
+          rotation="0 90 0"
+          id="east_street"
+          street="length: 150"
+          streetmix-loader="streetmixStreetURL: https://streetmix.net/kfarr/82/16th-st-harrison-st-sf-ca; showBuildings: false;"
+        ></a-entity>
+        <a-entity
+          data-layer-name="16th Street East of SVN"
+          position="78.165 0 -4.17918"
+          rotation="0 90 0"
+          id="west_street"
+          street="length: 150"
+          streetmix-loader="streetmixStreetURL: https://streetmix.net/kfarr/82/16th-st-harrison-st-sf-ca; showBuildings: false;"
+        ></a-entity>
+
+        <a-entity data-layer-name="16th & Harrison St Intersection" id="intersection" position="-9.917 0 -4.057">
+          <a-entity
+            intersection="dimensions: 27.5 24.384;northeastcurb: 4.572 4.572;southwestcurb: 4.572 4.572;southeastcurb: 4.572 4.572;northwestcurb: 4.572 4.572;trafficsignal: 1 1 1 1;crosswalk: 1 1 1 1"
+          ></a-entity>
+        </a-entity>
+
+        <a-entity
+          data-layer-name="SVN North of 16th St"
+          position="-9.23383 0 -31.340"
+          rotation="0 0 0"
+          id="south_street"
+          street="length: 30"
+          streetmix-loader="streetmixStreetURL: https://streetmix.net/scott/31/south-van-ness-idea-short-term; showBuildings: false;"
+        ></a-entity>
+
+        <a-entity
+          data-layer-name="SVN South of 16th St"
+          position="-9.23383 0 23.009"
+          rotation="0 180 0"
+          id="north_street"
+          street="length: 30"
+          streetmix-loader="streetmixStreetURL: https://streetmix.net/scott/31/south-van-ness-idea-short-term; showBuildings: false;"
+        ></a-entity>
+
       </a-entity>
 
       <a-entity id="layers-2d" data-layer-name="2D Street Layers" data-layer-show-children>
-
+        <a-entity
+          data-layer-name="Mapbox Satellite Streets"
+          geometry="primitive: plane; width: 512; height: 512;"
+          material="color: #ffffff; shader: flat; side: both; transparent: true;"
+          mapbox="center: -122.417490, 37.765190; zoom: 18; 
+            accessToken: pk.eyJ1IjoibWF0dHJlIiwiYSI6IjRpa3ItcWcifQ.s0AGgKi0ai23K5OJvkEFnA;
+            style: mapbox://styles/mapbox/satellite-streets-v11;
+            pxToWorldRatio: 4;"
+          position="-7 -1 -2"
+          rotation="-90 -4.25 0"
+          anisotropy
+        ></a-entity>
+      </a-entity>
     </a-scene>
   </body>
   <script>
@@ -93,7 +145,7 @@
         if (streetURL !== undefined && streetURL.length > 0) {
           console.log('[set-loader-from-hash]','Using URL from hash', streetURL)
           this.el.setAttribute('streetmix-loader', 'streetmixStreetURL', streetURL);
-        } 
+        }
         // else {
         //   console.log('[set-loader-from-hash]','Using default URL', this.data.defaultURL)
         //   this.el.setAttribute('streetmix-loader', 'streetmixStreetURL', this.data.defaultURL);
@@ -101,20 +153,26 @@
       }
     });
 
-    function buttonScreenshotTock() {
-      AFRAME.scenes[0].setAttribute('screentock', 'type', 'jpg');
-      AFRAME.scenes[0].setAttribute('screentock', 'takeScreenshot', true);
+    function screenshot() {
+      AFRAME.scenes[0].setAttribute('screenshot','width',AFRAME.scenes[0].canvas.width)
+      AFRAME.scenes[0].setAttribute('screenshot','height',AFRAME.scenes[0].canvas.height)
+      document.querySelector('a-scene').components.screenshot.capture('perspective');
     }
+
     function startEditor() {
       var sceneEl = document.querySelector('a-scene');
       sceneEl.components.inspector.openInspector();
       document.querySelector('.viewer-header-wrapper').style.display = 'none';
     }
-    // uncomment the below to autostart the editor within 2 seconds of page load
-    // setTimeout(() => {
-    //   startEditor();
-    // }, "2000")
-    
+
+    AFRAME.registerComponent('timed-inspector', {
+      init: function() {
+        setTimeout( function () {
+          window.postMessage('INJECT_AFRAME_INSPECTOR')
+        }, this.data * 1000)
+      }
+    });    
+
     function inputStreetmix() {
       streetmixURL = prompt("Please enter a Streetmix URL", "https://streetmix.net/kfarr/3/example-street");
       setTimeout(function() { window.location.hash = streetmixURL; });
@@ -141,7 +199,7 @@
         streetContainerEl.removeChild(streetContainerEl.lastChild);
       }
       var streetObject = JSON.parse(validJSONString);
-      createEntities(streetObject.data[0].children, streetContainerEl);
+      createEntities(streetObject.data, streetContainerEl);
     }
 
     function inputJSON() {
@@ -161,5 +219,18 @@
 
     document.getElementById('inputfile')
             .addEventListener('change', fileJSON);
+  </script>
+  <!-- <script src="./dist/3dstreet-editor.js"></script> -->
+
+  <!-- Google Analytics - Global site tag (gtag.js) -->
+  <script async src="https://www.googletagmanager.com/gtag/js?id=G-T65XPDLZ3F"></script>
+  <script>
+    window.dataLayer = window.dataLayer || [];
+    function gtag(){dataLayer.push(arguments);}
+    gtag('js', new Date());
+
+    gtag('config', 'G-T65XPDLZ3F');
+
+    gtag('event', 'ga_init');
   </script>
 </html>
