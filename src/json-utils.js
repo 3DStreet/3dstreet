@@ -13,10 +13,10 @@ function convertDOMElToObject (entity) {
   } else {
     data.push(getElementData(entity));
   }
-  return { 
+  return {
     title: 'scene',
     version: '1.0',
-    data: data 
+    data: data
   };
 }
 
@@ -47,7 +47,7 @@ function getAttributes (entity) {
   }
   if (entity.getAttribute('mixin')) {
     elemObj['mixin'] = entity.getAttribute('mixin');
-  }  
+  }
   const entityComponents = entity.components;
 
   if (entityComponents) {
@@ -63,7 +63,7 @@ function getAttributes (entity) {
         if (isEmpty(modifiedProperty)) {
           elemObj['components'][componentName] = '';
         } else {
-          elemObj['components'][componentName] = toPropString(modifiedProperty);         
+          elemObj['components'][componentName] = toPropString(modifiedProperty);
         }
       }
     }
@@ -179,7 +179,7 @@ function filterJSONstreet (removeProps, renameProps, streetJSON) {
  * @return                           The value of the component or components'
  *                                   property coming from mixins of the source.
  */
-function getMixedValue(component, propertyName, source) {
+function getMixedValue (component, propertyName, source) {
   var value;
   var reversedMixins = source.mixinEls.reverse();
   for (var i = 0; value === undefined && i < reversedMixins.length; i++) {
@@ -196,7 +196,7 @@ function getMixedValue(component, propertyName, source) {
   return [component.name, value];
 }
 
-function shallowEqual(object1, object2) {
+function shallowEqual (object1, object2) {
   if (typeof object1 === 'string' && typeof object2 === 'string' ||
     typeof object1 === 'number' && typeof object2 === 'number') {
     return object1 === object2;
@@ -208,7 +208,7 @@ function shallowEqual(object1, object2) {
     return false;
   }
 
-  for (let key of keys1) {
+  for (const key of keys1) {
     if (object1[key] !== object2[key]) {
       return false;
     }
@@ -238,11 +238,10 @@ function getModifiedProperty (entity, componentName) {
   if (mixinsData && mixinSkipProps.includes(mixinCompName)) {
     // skip properties, if they exists in element's mixin
     return null;
-  } 
+  }
 
   // If its single-property like position, rotation, etc
   if (isSingleProperty(defaultData)) {
-
     const defaultValue = defaultData.default;
     const currentValue = data;
     if (mixinsData && shallowEqual(mixinsData, currentValue)) {
@@ -250,9 +249,9 @@ function getModifiedProperty (entity, componentName) {
       return null;
     }
 
-    if ((currentValue || defaultValue) && 
+    if ((currentValue || defaultValue) &&
       currentValue !== defaultValue
-      ) {
+    ) {
       return data;
     }
   }
@@ -260,7 +259,7 @@ function getModifiedProperty (entity, componentName) {
   const diff = {};
   for (const key in data) {
     const defaultValue = defaultData[key].default;
-    const currentValue = data[key];  
+    const currentValue = data[key];
 
     if (mixinsData && mixinsData[key] && shallowEqual(mixinsData[key], data[key])) {
       continue;
@@ -268,13 +267,13 @@ function getModifiedProperty (entity, componentName) {
     // Some parameters could be null and '' like mergeTo
     if ((currentValue || defaultValue) && !AFRAME.utils.deepEqual(currentValue, defaultValue)) {
       diff[key] = data[key];
-    }    
+    }
   }
 
   return diff;
 }
 
-function createEntities (entitiesData, parentEl) { 
+function createEntities (entitiesData, parentEl) {
   for (const entityData of entitiesData) {
     createEntityFromObj(entityData, parentEl);
   }
@@ -299,11 +298,11 @@ function createEntityFromObj (entityData, parentEl) {
 
   if (parentEl) {
     parentEl.appendChild(entity);
-  }  
-  
+  }
+
   if (entityData['primitive']) {
-    //define a primitive in advance to apply other primitive-specific geometry properties
-    entity.setAttribute('geometry', 'primitive', entityData['primitive']);  
+    // define a primitive in advance to apply other primitive-specific geometry properties
+    entity.setAttribute('geometry', 'primitive', entityData['primitive']);
   }
 
   if (entityData.id) {
@@ -318,14 +317,13 @@ function createEntityFromObj (entityData, parentEl) {
     // load attributes
     for (const attr in entityData.components) {
       entity.setAttribute(attr, entityData.components[attr]);
-    }    
+    }
 
     if (entityData.mixin) {
       entity.setAttribute('mixin', entityData.mixin);
-    }  
+    }
     // Ensure the components are loaded before update the UI
-    entity.emit('entitycreated', { element: entityData.element, components: entity.components}, false);
-    
+    entity.emit('entitycreated', { element: entityData.element, components: entity.components }, false);
   });
 
   if (entityData.children) {
@@ -333,5 +331,4 @@ function createEntityFromObj (entityData, parentEl) {
       createEntityFromObj(childEntityData, entity);
     }
   }
- 
 }

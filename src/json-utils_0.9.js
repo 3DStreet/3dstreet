@@ -44,7 +44,7 @@ function getAttributes (entity) {
   if (entity.getAttribute('mixin')) {
     // convert from DOMTokenList to Array
     elemObj['mixin'] = entity.getAttribute('mixin');
-  }  
+  }
   const entityComponents = entity.components;
 
   if (entityComponents) {
@@ -195,7 +195,7 @@ function getModifiedProperty (entity, componentName) {
   return diff;
 }
 
-function createEntities (entitiesData, parentEl) { 
+function createEntities (entitiesData, parentEl) {
   for (const entityData of entitiesData) {
     createEntityFromObj(entityData, parentEl);
   }
@@ -220,11 +220,11 @@ function createEntityFromObj (entityData, parentEl) {
 
   if (parentEl) {
     parentEl.appendChild(entity);
-  }  
-  
+  }
+
   if (entityData['primitive']) {
-    //define a primitive in advance to apply other primitive-specific geometry properties
-    entity.setAttribute('geometry', 'primitive', entityData['primitive']);  
+    // define a primitive in advance to apply other primitive-specific geometry properties
+    entity.setAttribute('geometry', 'primitive', entityData['primitive']);
   }
 
   if (entityData.id) {
@@ -239,14 +239,13 @@ function createEntityFromObj (entityData, parentEl) {
     // load attributes
     for (const attr in entityData.components) {
       entity.setAttribute(attr, entityData.components[attr]);
-    }    
+    }
 
     if (entityData.mixin) {
       entity.setAttribute('mixin', entityData.mixin);
-    }  
+    }
     // Ensure the components are loaded before update the UI
-    entity.emit('entitycreated', { element: entityData.element, components: entity.components}, false);
-    
+    entity.emit('entitycreated', { element: entityData.element, components: entity.components }, false);
   });
 
   if (entityData.children) {
@@ -254,5 +253,4 @@ function createEntityFromObj (entityData, parentEl) {
       createEntityFromObj(childEntityData, entity);
     }
   }
- 
 }

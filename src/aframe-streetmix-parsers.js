@@ -242,7 +242,7 @@ function createSidewalkClonedVariants (BasePositionX, segmentWidthInMeters, dens
       placedObjectEl.setAttribute('rotation', '0 180 0');
       animationDirection = 'outbound';
     } else {
-      placedObjectEl.setAttribute('rotation', '0 0 0')
+      placedObjectEl.setAttribute('rotation', '0 0 0');
     }
 
     if (animated) {
