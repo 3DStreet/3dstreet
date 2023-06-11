@@ -70,11 +70,6 @@ function buildAssetHTML (assetUrl, categories) {
       `,
     vehicles: `
         <!-- vehicles -->
-        <a-asset-item id="vehicles" src="${assetUrl}sets/vehicles/gltf-exports/draco/vehicles.glb"></a-asset-item>
-        <a-mixin id="box-truck" gltf-part="src: #vehicles; part: box-truck"></a-mixin>
-        <a-mixin id="food-trailer" gltf-part="src: #vehicles; part: food-trailer"></a-mixin>
-        <a-mixin id="sedan-taxi" gltf-part="src: #vehicles; part: sedan-taxi"></a-mixin>
-        <a-mixin id="suv" gltf-part="src: #vehicles; part: suv"></a-mixin>
         <a-asset-item id="magic-carpet-glb" src="${assetUrl}sets/magic-carpet/gltf-exports/draco/magic-carpet.glb"></a-asset-item>
         <a-mixin id="Character_1_M" gltf-part="src: #magic-carpet-glb; part: Character_1_M"></a-mixin>
         <a-mixin id="magic-carpet" gltf-part="src: #magic-carpet-glb; part: magic-carpet"></a-mixin>
