@@ -70,11 +70,6 @@ function buildAssetHTML (assetUrl, categories) {
       `,
     vehicles: `
         <!-- vehicles -->
-        <a-asset-item id="vehicles" src="${assetUrl}sets/vehicles/gltf-exports/draco/vehicles.glb"></a-asset-item>
-        <a-mixin id="box-truck" gltf-part="src: #vehicles; part: box-truck"></a-mixin>
-        <a-mixin id="food-trailer" gltf-part="src: #vehicles; part: food-trailer"></a-mixin>
-        <a-mixin id="sedan-taxi" gltf-part="src: #vehicles; part: sedan-taxi"></a-mixin>
-        <a-mixin id="suv" gltf-part="src: #vehicles; part: suv"></a-mixin>
         <a-asset-item id="magic-carpet-glb" src="${assetUrl}sets/magic-carpet/gltf-exports/draco/magic-carpet.glb"></a-asset-item>
         <a-mixin id="Character_1_M" gltf-part="src: #magic-carpet-glb; part: Character_1_M"></a-mixin>
         <a-mixin id="magic-carpet" gltf-part="src: #magic-carpet-glb; part: magic-carpet"></a-mixin>
@@ -85,14 +80,11 @@ function buildAssetHTML (assetUrl, categories) {
       `,
     'vehicles-rigged': `
         <!-- vehicles rigged -->
-        <a-asset-item id="sedan-rigged" src="${assetUrl}sets/vehicles-rig/gltf-exports/draco/toyota-prius-rig.glb"></a-asset-item>
-        <a-mixin id="sedan-rig" gltf-model="#sedan-rigged" ></a-mixin>
-        <a-asset-item id="sedan-taxi-rigged" src="${assetUrl}sets/vehicles-rig/gltf-exports/draco/sedan-taxi-rig.glb"></a-asset-item>
-        <a-mixin id="sedan-taxi-rig" gltf-model="#sedan-taxi-rigged" ></a-mixin>
-        <a-asset-item id="suv-rigged" src="${assetUrl}sets/vehicles-rig/gltf-exports/draco/suv-rig.glb"></a-asset-item>
-        <a-mixin id="suv-rig" gltf-model="#suv-rigged" ></a-mixin>
-        <a-asset-item id="box-truck-rigged" src="${assetUrl}sets/vehicles-rig/gltf-exports/draco/isuzu-truck-rig.glb"></a-asset-item>
-        <a-mixin id="box-truck-rig" gltf-model="#box-truck-rigged" ></a-mixin>
+        <a-mixin id="sedan-rig" gltf-model="url(${assetUrl}sets/vehicles-rig/gltf-exports/draco/toyota-prius-rig.glb)" ></a-mixin>
+        <a-mixin id="sedan-taxi-rig" gltf-model="url(${assetUrl}sets/vehicles-rig/gltf-exports/draco/sedan-taxi-rig.glb)"></a-mixin>
+        <a-mixin id="suv-rig" gltf-model="url(${assetUrl}sets/vehicles-rig/gltf-exports/draco/suv-rig.glb)"></a-mixin>
+        <a-mixin id="box-truck-rig" gltf-model="url(${assetUrl}sets/vehicles-rig/gltf-exports/draco/isuzu-truck-rig.glb)"></a-mixin>
+        <a-mixin id="food-trailer-rig" gltf-model="url(${assetUrl}sets/vehicles-rig/gltf-exports/draco/food-trailer-rig.glb)"></a-mixin>
         <a-mixin id="fire-truck-rig" gltf-model="url(${assetUrl}sets/vehicles-rig/gltf-exports/draco/fire-truck-pumper-rig.glb)"></a-mixin>
       `,
     buildings: `

@@ -470,7 +470,7 @@ function createFoodTruckElement (variantList, positionX, length) {
   const rotationY = (variantList[0] === 'left') ? 0 : 180;
   reusableObjectEl.setAttribute('position', positionX + ' 0 0');
   reusableObjectEl.setAttribute('rotation', '0 ' + rotationY + ' 0');
-  reusableObjectEl.setAttribute('mixin', 'food-trailer');
+  reusableObjectEl.setAttribute('mixin', 'food-trailer-rig');
   reusableObjectEl.addEventListener('model-loaded', (model) => {
     randomPosition(model.target, 'z', length);
   }, { once: true });
