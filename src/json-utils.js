@@ -6,13 +6,16 @@ and returns a Javascript object
 */
 function convertDOMElToObject (entity) {
   const data = [];
-  if (entity.length) {
-    for (const entry of entity) {
-      data.push(getElementData(entry));
+  const environmentElement = document.querySelector('#environment');
+  const sceneEntities = [entity, environmentElement];
+
+  for (const entry of sceneEntities) {
+    const entityData = getElementData(entry);
+    if (entityData) {
+      data.push(entityData);
     }
-  } else {
-    data.push(getElementData(entity));
   }
+
   return { 
     title: 'scene',
     version: '1.0',
@@ -21,6 +24,9 @@ function convertDOMElToObject (entity) {
 }
 
 function getElementData (entity) {
+  if (!entity.isEntity) {
+    return;
+  }
   const elementTree = getAttributes(entity);
   const children = entity.childNodes;
   if (children.length) {
@@ -36,7 +42,8 @@ function getElementData (entity) {
 
 function getAttributes (entity) {
   const elemObj = {};
-  elemObj['element'] = entity.tagName.toLowerCase();
+
+  elemObj['element'] = entity.tagName.toLowerCase();  
 
   if (entity.id) {
     elemObj['id'] = entity.id;
@@ -111,7 +118,8 @@ const removeProps = {
   src: {},
   normalMap: {},
   'create-from-json': '*',
-  street: { JSON: '*' }
+  street: { JSON: '*' },
+  'street-environment': '*'
 };
 // a list of component_name:new_component_name pairs to rename in JSON string
 const renameProps = {
@@ -121,7 +129,6 @@ const renameProps = {
 
 function filterJSONstreet (removeProps, renameProps, streetJSON) {
   function removeValueCheck (removeVal, value) {
-    // console.error(removeVal, value, AFRAME.utils.deepEqual(removeVal, value))
     if (AFRAME.utils.deepEqual(removeVal, value) || removeVal === '*') {
       return true;
     }
@@ -256,7 +263,6 @@ function getModifiedProperty (entity, componentName) {
       return data;
     }
   }
-
   const diff = {};
   for (const key in data) {
     const defaultValue = defaultData[key].default;
@@ -270,13 +276,13 @@ function getModifiedProperty (entity, componentName) {
       diff[key] = data[key];
     }    
   }
-
   return diff;
 }
 
 function createEntities (entitiesData, parentEl) { 
+  const sceneElement = document.querySelector('a-scene');
   for (const entityData of entitiesData) {
-    createEntityFromObj(entityData, parentEl);
+    createEntityFromObj(entityData, sceneElement);
   }
 }
 
@@ -299,8 +305,8 @@ function createEntityFromObj (entityData, parentEl) {
 
   if (parentEl) {
     parentEl.appendChild(entity);
-  }  
-  
+  }
+
   if (entityData['primitive']) {
     //define a primitive in advance to apply other primitive-specific geometry properties
     entity.setAttribute('geometry', 'primitive', entityData['primitive']);  
@@ -325,13 +331,11 @@ function createEntityFromObj (entityData, parentEl) {
     }  
     // Ensure the components are loaded before update the UI
     entity.emit('entitycreated', { element: entityData.element, components: entity.components}, false);
-    
-  });
 
-  if (entityData.children) {
-    for (const childEntityData of entityData.children) {
-      createEntityFromObj(childEntityData, entity);
-    }
-  }
- 
+    if (entityData.children) {
+      for (const childEntityData of entityData.children) {
+        createEntityFromObj(childEntityData, entity);
+      }
+    }    
+  }); 
 }
