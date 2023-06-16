@@ -369,11 +369,11 @@ AFRAME.registerComponent('street-environment', {
     var el = this.el;
     if (data.preset === 'night') {
       const light = document.createElement('a-entity');
-      light.setAttribute('id', 'light');
+      light.setAttribute('id', 'light1');
       light.setAttribute('light', { type: 'ambient', color: '#FFF', intensity: 0.5 });
       el.appendChild(light);
       const light2 = document.createElement('a-entity');
-      light2.setAttribute('id', 'light');
+      light2.setAttribute('id', 'light2');
       light2.setAttribute('position', { x: 0.5, y: 1, z: -1 });
       light2.setAttribute('light', { type: 'directional', color: '#FFF', intensity: 0.15 });
       el.appendChild(light2);
@@ -386,11 +386,11 @@ AFRAME.registerComponent('street-environment', {
     } else { // day
       // TODO: create a parent with children
       const light = document.createElement('a-entity');
-      light.setAttribute('id', 'light');
+      light.setAttribute('id', 'light1');
       light.setAttribute('light', { type: 'ambient', color: '#FFF', intensity: 2 });
       el.appendChild(light);
       const light2 = document.createElement('a-entity');
-      light2.setAttribute('id', 'light');
+      light2.setAttribute('id', 'light2');
       light2.setAttribute('position', { x: 0.5, y: 1, z: -1 });
       light2.setAttribute('light', { type: 'directional', color: '#FFF', intensity: 0.6 });
       el.appendChild(light2);
