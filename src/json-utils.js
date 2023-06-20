@@ -110,6 +110,7 @@ function isEmpty (object) {
 const removeProps = {
   src: {},
   normalMap: {},
+  'set-loader-from-hash': '*',
   'create-from-json': '*',
   street: { JSON: '*' }
 };
@@ -323,7 +324,7 @@ function createEntityFromObj (entityData, parentEl) {
       entity.setAttribute('mixin', entityData.mixin);
     }
     // Ensure the components are loaded before update the UI
-    entity.emit('entitycreated', { element: entityData.element, components: entity.components }, false);
+    entity.emit('entitycreated', {}, false);
   });
 
   if (entityData.children) {

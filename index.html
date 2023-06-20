@@ -87,17 +87,41 @@
       schema: {
         defaultURL: { type: 'string' }
       },
-      init: function () {
+      init: async function () {
         // get hash from window
         const streetURL = window.location.hash.substring(1);
-        if (streetURL !== undefined && streetURL.length > 0) {
+        if (!streetURL) {
+          return;
+        }
+        if (streetURL.includes('streetmix')) {
           console.log('[set-loader-from-hash]','Using URL from hash', streetURL)
           this.el.setAttribute('streetmix-loader', 'streetmixStreetURL', streetURL);
-        } 
+        } else {
+          // try to load JSON file from remote resource
+          const jsonData = await this.fetchJSON(streetURL);
+          createElementsFromJSON(jsonData);
+        }
         // else {
         //   console.log('[set-loader-from-hash]','Using default URL', this.data.defaultURL)
         //   this.el.setAttribute('streetmix-loader', 'streetmixStreetURL', this.data.defaultURL);
         // }
+      },
+      fetchJSON: async function (request) {
+        try {
+          const response = await fetch(request, {
+            mode: "no-cors",
+            credentials: "omit"
+          });
+          const contentType = response.headers.get("content-type");
+          if (!contentType || !contentType.includes("application/json")) {
+            console.log("Oops, we haven't got JSON!");
+          }
+          const jsonData = await response.json();
+          console.log("Loading scene from JSON file");
+          return jsonData;
+        } catch (error) {
+          console.error("Error:", error);
+        }
       }
     });
 
@@ -134,14 +158,21 @@
                        .replace(/[\u0000-\u0019]+/g,"");
     }
     
-    function createElementsFromJSON(streetJSONString) {
-      const validJSONString = getValidJSON(streetJSONString);
+    function createElementsFromJSON(streetJSON) {
+      let streetObject = {};
+      if (typeof streetJSON == 'string') {
+        const validJSONString = getValidJSON(streetJSON);
+        streetObject = JSON.parse(validJSONString);
+      } else if (typeof streetJSON == 'object') {
+        streetObject = streetJSON;
+      }
+      
       streetContainerEl = document.getElementById('street-container');
       while (streetContainerEl.firstChild) {
         streetContainerEl.removeChild(streetContainerEl.lastChild);
       }
-      var streetObject = JSON.parse(validJSONString);
-      createEntities(streetObject.data[0].children, streetContainerEl);
+      
+      createEntities(streetObject.data, streetContainerEl);
     }
 
     function inputJSON() {
