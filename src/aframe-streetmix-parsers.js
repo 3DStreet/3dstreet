@@ -44,10 +44,11 @@ function cloneMixinAsChildren ({ objectMixinId = '', parentEl = null, step = 15,
     placedObjectEl.setAttribute('mixin', objectMixinId);
     placedObjectEl.setAttribute('class', objectMixinId);
     placedObjectEl.setAttribute('position', positionXYString + ' ' + j);
+
     if (length) {
       placedObjectEl.addEventListener('loaded', (evt) => {
         evt.target.setAttribute('geometry', 'height', length);
-        evt.target.setAttribute('atlas-uvs', 'column');
+        evt.target.setAttribute('atlas-uvs', 'c', 1);
       });
     }
 
@@ -1016,23 +1017,48 @@ function processSegments (segments, showStriping, length, globalAnimated, showVe
       let reusableObjectStencilsParentEl;
 
       groundMixinId = 'bright-lane';
+      let parkingMixin = 'stencils parking-t';
+
       const carCount = 5;
-      const carStep = ((variantList[0] == 'sideways') || variantList[0].includes('angled')) ? 3 : 6;
-      const clonedStencilRadius = length / 2 - carStep;
+      let carStep = 6;
+
       const rotationVars = {
+        'outbound': 90,
+        'inbound': 90,
+        'sideways': 0,
         'angled-front-left': 30,
         'angled-front-right': -30,
         'angled-rear-left': -30,
         'angled-rear-right': 30
       };
-      const markingsRotZ = (variantList[0].includes('angled')) ? rotationVars[variantList[0]] : '0';
+      let markingsRotZ = rotationVars[variantList[0]];
+      let markingLength;
+
+      // calculate position X and rotation Z for T-markings
+      let markingPosX = segmentWidthInMeters / 2;
+      if (markingsRotZ == 90 && variantList[1] == 'right') {
+        markingsRotZ = -90;
+        markingPosX = -markingPosX + 0.75;
+      } else {
+        markingPosX = markingPosX - 0.75;
+      }
+
+      if ((variantList[0] == 'sideways') || variantList[0].includes('angled')) {
+        carStep = 3;
+        markingLength = segmentWidthInMeters;
+        markingPosX = 0;
+        parkingMixin = 'markings solid-stripe';
+      }
+      markingPosXY = markingPosX + ' 0';
+      const clonedStencilRadius = length / 2 - carStep;
+      
       segmentParentEl.append(createDriveLaneElement([...variantList, 'car'], positionX, segmentWidthInMeters, length, false, showVehicles, carCount, carStep));
       if (variantList[1] === 'left') {
         reusableObjectStencilsParentEl = createStencilsParentElement((positionX) + ' 0.015 0');
-        cloneMixinAsChildren({ objectMixinId: 'markings solid-stripe', parentEl: reusableObjectStencilsParentEl, rotation: '-90 ' + '90 ' + markingsRotZ, length: segmentWidthInMeters, step: carStep, radius: clonedStencilRadius });
+        cloneMixinAsChildren({ objectMixinId: parkingMixin, parentEl: reusableObjectStencilsParentEl, positionXYString: markingPosXY, rotation: '-90 ' + '90 ' + markingsRotZ, length: markingLength, step: carStep, radius: clonedStencilRadius });
       } else {
         reusableObjectStencilsParentEl = createStencilsParentElement((positionX) + ' 0.015 0');
-        cloneMixinAsChildren({ objectMixinId: 'markings solid-stripe', parentEl: reusableObjectStencilsParentEl, rotation: '-90 ' + '90 ' + markingsRotZ, length: segmentWidthInMeters, step: carStep, radius: clonedStencilRadius });
+        cloneMixinAsChildren({ objectMixinId: parkingMixin, parentEl: reusableObjectStencilsParentEl, positionXYString: markingPosXY, rotation: '-90 ' + '90 ' + markingsRotZ, length: markingLength, step: carStep, radius: clonedStencilRadius });
       }
       // add the stencils to the segment parent
       segmentParentEl.append(reusableObjectStencilsParentEl);
