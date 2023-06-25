@@ -276,6 +276,12 @@ function getModifiedProperty (entity, componentName) {
 
 function createEntities (entitiesData, parentEl) {
   for (const entityData of entitiesData) {
+    if (entityData.id === 'street-container' && 
+    entityData.children &&
+    entityData.children[0].id === 'default-street' && 
+    entityData.children[0].components.hasOwnProperty('set-loader-from-hash')) {
+      delete entityData.children[0].components['set-loader-from-hash'];
+    }
     createEntityFromObj(entityData, parentEl);
   }
 }
