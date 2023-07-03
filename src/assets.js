@@ -70,11 +70,6 @@ function buildAssetHTML (assetUrl, categories) {
       `,
     vehicles: `
         <!-- vehicles -->
-        <a-asset-item id="vehicles" src="${assetUrl}sets/vehicles/gltf-exports/draco/vehicles.glb"></a-asset-item>
-        <a-mixin id="box-truck" gltf-part="src: #vehicles; part: box-truck"></a-mixin>
-        <a-mixin id="food-trailer" gltf-part="src: #vehicles; part: food-trailer"></a-mixin>
-        <a-mixin id="sedan-taxi" gltf-part="src: #vehicles; part: sedan-taxi"></a-mixin>
-        <a-mixin id="suv" gltf-part="src: #vehicles; part: suv"></a-mixin>
         <a-asset-item id="magic-carpet-glb" src="${assetUrl}sets/magic-carpet/gltf-exports/draco/magic-carpet.glb"></a-asset-item>
         <a-mixin id="Character_1_M" gltf-part="src: #magic-carpet-glb; part: Character_1_M"></a-mixin>
         <a-mixin id="magic-carpet" gltf-part="src: #magic-carpet-glb; part: magic-carpet"></a-mixin>
@@ -85,14 +80,11 @@ function buildAssetHTML (assetUrl, categories) {
       `,
     'vehicles-rigged': `
         <!-- vehicles rigged -->
-        <a-asset-item id="sedan-rigged" src="${assetUrl}sets/vehicles-rig/gltf-exports/draco/toyota-prius-rig.glb"></a-asset-item>
-        <a-mixin id="sedan-rig" gltf-model="#sedan-rigged" ></a-mixin>
-        <a-asset-item id="sedan-taxi-rigged" src="${assetUrl}sets/vehicles-rig/gltf-exports/draco/sedan-taxi-rig.glb"></a-asset-item>
-        <a-mixin id="sedan-taxi-rig" gltf-model="#sedan-taxi-rigged" ></a-mixin>
-        <a-asset-item id="suv-rigged" src="${assetUrl}sets/vehicles-rig/gltf-exports/draco/suv-rig.glb"></a-asset-item>
-        <a-mixin id="suv-rig" gltf-model="#suv-rigged" ></a-mixin>
-        <a-asset-item id="box-truck-rigged" src="${assetUrl}sets/vehicles-rig/gltf-exports/draco/isuzu-truck-rig.glb"></a-asset-item>
-        <a-mixin id="box-truck-rig" gltf-model="#box-truck-rigged" ></a-mixin>
+        <a-mixin id="sedan-rig" gltf-model="url(${assetUrl}sets/vehicles-rig/gltf-exports/draco/toyota-prius-rig.glb)" ></a-mixin>
+        <a-mixin id="sedan-taxi-rig" gltf-model="url(${assetUrl}sets/vehicles-rig/gltf-exports/draco/sedan-taxi-rig.glb)"></a-mixin>
+        <a-mixin id="suv-rig" gltf-model="url(${assetUrl}sets/vehicles-rig/gltf-exports/draco/suv-rig.glb)"></a-mixin>
+        <a-mixin id="box-truck-rig" gltf-model="url(${assetUrl}sets/vehicles-rig/gltf-exports/draco/isuzu-truck-rig.glb)"></a-mixin>
+        <a-mixin id="food-trailer-rig" gltf-model="url(${assetUrl}sets/vehicles-rig/gltf-exports/draco/food-trailer-rig.glb)"></a-mixin>
         <a-mixin id="fire-truck-rig" gltf-model="url(${assetUrl}sets/vehicles-rig/gltf-exports/draco/fire-truck-pumper-rig.glb)"></a-mixin>
       `,
     buildings: `
@@ -152,8 +144,8 @@ function buildAssetHTML (assetUrl, categories) {
         <!-- lane separator markings -->
         <img id="markings-atlas" src="${assetUrl}materials/lane-markings-atlas_1024.png" crossorigin="anonymous" /> 
         <a-mixin id="markings" anisotropy atlas-uvs="totalRows: 1; totalColumns: 8; row: 1" scale="1 1 1" material="src: #markings-atlas;alphaTest: 0;transparent:true;repeat:1 25;" geometry="primitive: plane; buffer: false; skipCache: true; width:0.2; height:150;"></a-mixin>
-        <a-mixin id="solid-stripe" atlas-uvs="column: 3"></a-mixin>
-        <a-mixin id="dashed-stripe" atlas-uvs="column: 4"></a-mixin>
+        <a-mixin id="solid-stripe" atlas-uvs="column: 3; row: 1" material="repeat:1 5;"></a-mixin>
+        <a-mixin id="dashed-stripe" atlas-uvs="column: 4; row: 1"></a-mixin>
         <a-mixin id="short-dashed-stripe" atlas-uvs="column: 4" material="repeat:1 50;"></a-mixin>
         <a-mixin id="solid-doubleyellow" atlas-uvs="totalColumns: 4; column: 3" geometry="width: 0.5"></a-mixin>
         <a-mixin id="solid-dashed" atlas-uvs="totalColumns: 4; column: 2" geometry="width: 0.4"></a-mixin>
@@ -162,7 +154,7 @@ function buildAssetHTML (assetUrl, categories) {
     stencils: `  
         <!-- stencil markings -->
         <img id="stencils-atlas" src="${assetUrl}materials/stencils-atlas_2048.png" crossorigin="anonymous" />
-        <a-mixin id="stencils" anisotropy atlas-uvs="totalRows: 4; totalColumns: 4" scale="2 2 2" material="src: #stencils-atlas;alphaTest: 0;transparent:true;" geometry="primitive: plane; buffer: false; skipCache: true"></a-mixin>
+        <a-mixin id="stencils" anisotropy atlas-uvs="totalRows: 4; totalColumns: 4" scale="2 2 2" material="src: #stencils-atlas;alphaTest: 0;transparent:true;" geometry="primitive: plane; buffer: false; skipCache: true;"></a-mixin>
         <a-mixin id="right" atlas-uvs="column: 3; row: 2"></a-mixin>
         <a-mixin id="left" atlas-uvs="column: 3; row: 3"></a-mixin>
         <a-mixin id="both" atlas-uvs="column: 2; row: 1"></a-mixin>
@@ -188,7 +180,7 @@ function buildAssetHTML (assetUrl, categories) {
       `,
     'vehicles-transit': `
         <!-- vehicles-transit -->
-        <a-asset-item id="trammodel" src="${assetUrl}objects/tram_siemens_avenio.gltf"></a-asset-item>
+        <a-asset-item id="trammodel" src="${assetUrl}sets/light-rail-vehicle/gltf-exports/draco/light-rail-vehicle-v02.glb"></a-asset-item>
         <a-asset-item id="trolleymodel" src="${assetUrl}objects/godarvilletram.gltf"></a-asset-item>
         <a-asset-item id="xd40" src="${assetUrl}sets/flyer-bus/gltf-exports/draco/new-flyer-bus.glb"></a-asset-item>
         <a-mixin id="bus" anisotropy gltf-model="#xd40"></a-mixin>

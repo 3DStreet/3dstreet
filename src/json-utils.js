@@ -116,6 +116,7 @@ function isEmpty (object) {
 const removeProps = {
   src: {},
   normalMap: {},
+  'set-loader-from-hash': '*',
   'create-from-json': '*',
   street: { JSON: '*' },
   'street-environment': '*'
@@ -280,6 +281,12 @@ function getModifiedProperty (entity, componentName) {
 function createEntities (entitiesData, parentEl) { 
   const sceneElement = document.querySelector('a-scene');
   for (const entityData of entitiesData) {
+    if (entityData.id === 'street-container' &&
+    entityData.children &&
+    entityData.children[0].id === 'default-street' &&
+    entityData.children[0].components.hasOwnProperty('set-loader-from-hash')) {
+      delete entityData.children[0].components['set-loader-from-hash'];
+    }
     createEntityFromObj(entityData, sceneElement);
   }
 }
@@ -328,7 +335,9 @@ function createEntityFromObj (entityData, parentEl) {
       entity.setAttribute('mixin', entityData.mixin);
     }
     // Ensure the components are loaded before update the UI
-    entity.emit('entitycreated', { element: entityData.element, components: entity.components}, false);
+
+    entity.emit('entitycreated', {}, false);
+  });
 
     if (entityData.children) {
       for (const childEntityData of entityData.children) {
