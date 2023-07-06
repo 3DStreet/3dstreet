@@ -26,9 +26,11 @@ function getElementData (entity) {
   if (!entity.isEntity) {
     return;
   }
+  // node id's that should save without child nodes
+  const skipChildrenNodes = ['environment'];
   const elementTree = getAttributes(entity);
   const children = entity.childNodes;
-  if (children.length) {
+  if (children.length && !skipChildrenNodes.includes(elementTree.id)) {
     elementTree['children'] = [];
     for (const child of children) {
       if (child.nodeType === Node.ELEMENT_NODE) {
@@ -54,6 +56,7 @@ function getAttributes (entity) {
   if (entity.getAttribute('mixin')) {
     elemObj['mixin'] = entity.getAttribute('mixin');
   }
+
   const entityComponents = entity.components;
 
   if (entityComponents) {
@@ -118,8 +121,7 @@ const removeProps = {
   normalMap: {},
   'set-loader-from-hash': '*',
   'create-from-json': '*',
-  street: { JSON: '*' },
-  'street-environment': '*'
+  street: { JSON: '*' }
 };
 // a list of component_name:new_component_name pairs to rename in JSON string
 const renameProps = {
@@ -280,6 +282,7 @@ function getModifiedProperty (entity, componentName) {
 
 function createEntities (entitiesData, parentEl) { 
   const sceneElement = document.querySelector('a-scene');
+  const removeEntities = ['environment', 'layers-2d'];
   for (const entityData of entitiesData) {
     if (entityData.id === 'street-container' &&
     entityData.children &&
@@ -287,6 +290,18 @@ function createEntities (entitiesData, parentEl) {
     entityData.children[0].components.hasOwnProperty('set-loader-from-hash')) {
       delete entityData.children[0].components['set-loader-from-hash'];
     }
+
+    const sceneChildElement = document.getElementById(entityData.id);
+    if (sceneChildElement) {
+      if (removeEntities.includes(entityData.id)) {
+        // remove existing elements from scene
+        sceneChildElement.remove();
+      } else {
+        // or save link to the element
+        entityData.entityElement = sceneChildElement;
+      }
+    }
+
     createEntityFromObj(entityData, sceneElement);
   }
 }
@@ -306,9 +321,9 @@ Add a new entity with a list of components and children (if exists)
  * @return {Element} Entity created
 */
 function createEntityFromObj (entityData, parentEl) {
-  const entity = document.createElement(entityData.element);
+  const entity = entityData.entityElement || document.createElement(entityData.element);
 
-  if (parentEl) {
+  if (!entity.parentEl && parentEl) {
     parentEl.appendChild(entity);
   }
 
@@ -316,7 +331,7 @@ function createEntityFromObj (entityData, parentEl) {
     // define a primitive in advance to apply other primitive-specific geometry properties
     entity.setAttribute('geometry', 'primitive', entityData['primitive']);
   }
-
+  
   if (entityData.id) {
     entity.setAttribute('id', entityData.id);
   }
@@ -339,10 +354,9 @@ function createEntityFromObj (entityData, parentEl) {
     entity.emit('entitycreated', {}, false);
   });
 
-    if (entityData.children) {
-      for (const childEntityData of entityData.children) {
-        createEntityFromObj(childEntityData, entity);
-      }
-    }    
-  }); 
-}
+  if (entityData.children) {
+    for (const childEntityData of entityData.children) {
+      createEntityFromObj(childEntityData, entity);
+    }
+  }    
+} 
