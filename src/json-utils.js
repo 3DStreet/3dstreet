@@ -287,7 +287,7 @@ function createEntities (entitiesData, parentEl) {
     entityData.children[0].components.hasOwnProperty('set-loader-from-hash')) {
       delete entityData.children[0].components['set-loader-from-hash'];
     }
-    createEntityFromObj(entityData, sceneElement);
+    createEntityFromObj(entityData, parentEl);
   }
 }
 
@@ -339,10 +339,10 @@ function createEntityFromObj (entityData, parentEl) {
     entity.emit('entitycreated', {}, false);
   });
 
-    if (entityData.children) {
-      for (const childEntityData of entityData.children) {
-        createEntityFromObj(childEntityData, entity);
-      }
-    }    
-  }); 
+  if (entityData.children) {
+    for (const childEntityData of entityData.children) {
+      createEntityFromObj(childEntityData, entity);
+    }
+  }
 }
+
