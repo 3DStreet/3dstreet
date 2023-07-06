@@ -56,7 +56,9 @@ function getAttributes (entity) {
   if (entity.getAttribute('mixin')) {
     elemObj['mixin'] = entity.getAttribute('mixin');
   }
-
+  if (entity.getAttribute('data-layer-name')) {
+    elemObj['data-layer-name'] = entity.getAttribute('data-layer-name');
+  }  
   const entityComponents = entity.components;
 
   if (entityComponents) {
@@ -338,6 +340,10 @@ function createEntityFromObj (entityData, parentEl) {
 
   if (entityData.class) {
     entity.classList.add(...entityData.class);
+  }
+  
+  if (entityData['data-layer-name']) {
+    entity.setAttribute('data-layer-name', entityData['data-layer-name']);
   }
 
   entity.addEventListener('loaded', () => {
