@@ -44,7 +44,7 @@ function getElementData (entity) {
 function getAttributes (entity) {
   const elemObj = {};
 
-  elemObj['element'] = entity.tagName.toLowerCase();  
+  elemObj['element'] = entity.tagName.toLowerCase();
 
   if (entity.id) {
     elemObj['id'] = entity.id;
@@ -58,7 +58,7 @@ function getAttributes (entity) {
   }
   if (entity.getAttribute('data-layer-name')) {
     elemObj['data-layer-name'] = entity.getAttribute('data-layer-name');
-  }  
+  }
   const entityComponents = entity.components;
 
   if (entityComponents) {
@@ -282,7 +282,7 @@ function getModifiedProperty (entity, componentName) {
   return diff;
 }
 
-function createEntities (entitiesData, parentEl) { 
+function createEntities (entitiesData, parentEl) {
   const sceneElement = document.querySelector('a-scene');
   const removeEntities = ['environment', 'layers-2d'];
   for (const entityData of entitiesData) {
@@ -333,7 +333,7 @@ function createEntityFromObj (entityData, parentEl) {
     // define a primitive in advance to apply other primitive-specific geometry properties
     entity.setAttribute('geometry', 'primitive', entityData['primitive']);
   }
-  
+
   if (entityData.id) {
     entity.setAttribute('id', entityData.id);
   }
@@ -341,7 +341,7 @@ function createEntityFromObj (entityData, parentEl) {
   if (entityData.class) {
     entity.classList.add(...entityData.class);
   }
-  
+
   if (entityData['data-layer-name']) {
     entity.setAttribute('data-layer-name', entityData['data-layer-name']);
   }
@@ -364,5 +364,5 @@ function createEntityFromObj (entityData, parentEl) {
     for (const childEntityData of entityData.children) {
       createEntityFromObj(childEntityData, entity);
     }
-  }    
-} 
+  }
+}

@@ -368,17 +368,17 @@ AFRAME.registerComponent('street-environment', {
     const sky = this.sky;
     const light1 = this.light1;
     const light2 = this.light2;
-  
+
     if (this.data.preset === 'night') {
-      light1.setAttribute('light', 'intensity', 0.5 );
-      light2.setAttribute('light', 'intensity', 0.15 );
+      light1.setAttribute('light', 'intensity', 0.5);
+      light2.setAttribute('light', 'intensity', 0.15);
       sky.setAttribute('color', '#444');
       sky.setAttribute('src', '#sky-night');
       sky.setAttribute('rotation', '0 0 0');
     } else { // day
       // TODO: create a parent with children
-      light1.setAttribute('light', 'intensity', 2 );
-      light2.setAttribute('light', 'intensity', 0.6 );
+      light1.setAttribute('light', 'intensity', 2);
+      light2.setAttribute('light', 'intensity', 0.6);
       sky.setAttribute('color', '#FFF');
       sky.setAttribute('src', '#sky');
       sky.setAttribute('rotation', '0 255 0');
@@ -386,26 +386,26 @@ AFRAME.registerComponent('street-environment', {
   },
   init: function () {
     const el = this.el;
-    
+
     this.light1 = document.createElement('a-entity');
     const light1 = this.light1;
     light1.setAttribute('id', 'env-light1');
-    light1.setAttribute('light', { type: 'ambient', color: '#FFF'});
+    light1.setAttribute('light', { type: 'ambient', color: '#FFF' });
     el.appendChild(light1);
 
     this.light2 = document.createElement('a-entity');
     const light2 = this.light2;
     light2.setAttribute('id', 'env-light2');
     light2.setAttribute('position', { x: 0.5, y: 1, z: -1 });
-    light2.setAttribute('light', { type: 'directional', color: '#FFF'});
+    light2.setAttribute('light', { type: 'directional', color: '#FFF' });
     el.appendChild(light2);
 
     this.sky = document.createElement('a-sky');
     const sky = this.sky;
     sky.setAttribute('id', 'env-sky');
-    el.appendChild(sky);     
+    el.appendChild(sky);
   },
-  update: function (oldData) { 
+  update: function (oldData) {
     this.setEnvOption();
   }
 });
