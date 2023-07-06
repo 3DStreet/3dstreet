@@ -364,42 +364,49 @@ AFRAME.registerComponent('street-environment', {
   schema: {
     preset: { type: 'string', default: 'day', oneOf: ['day', 'night'] }
   },
-  init: function () {
-    var data = this.data;
-    var el = this.el;
-    if (data.preset === 'night') {
-      const light = document.createElement('a-entity');
-      light.setAttribute('id', 'light1');
-      light.setAttribute('light', { type: 'ambient', color: '#FFF', intensity: 0.5 });
-      el.appendChild(light);
-      const light2 = document.createElement('a-entity');
-      light2.setAttribute('id', 'light2');
-      light2.setAttribute('position', { x: 0.5, y: 1, z: -1 });
-      light2.setAttribute('light', { type: 'directional', color: '#FFF', intensity: 0.15 });
-      el.appendChild(light2);
-      const sky = document.createElement('a-sky');
-      sky.setAttribute('id', 'sky');
+  setEnvOption: function () {
+    const sky = this.sky;
+    const light1 = this.light1;
+    const light2 = this.light2;
+  
+    if (this.data.preset === 'night') {
+      light1.setAttribute('light', 'intensity', 0.5 );
+      light2.setAttribute('light', 'intensity', 0.15 );
       sky.setAttribute('color', '#444');
       sky.setAttribute('src', '#sky-night');
-
-      el.appendChild(sky);
+      sky.setAttribute('rotation', '0 0 0');
     } else { // day
       // TODO: create a parent with children
-      const light = document.createElement('a-entity');
-      light.setAttribute('id', 'light1');
-      light.setAttribute('light', { type: 'ambient', color: '#FFF', intensity: 2 });
-      el.appendChild(light);
-      const light2 = document.createElement('a-entity');
-      light2.setAttribute('id', 'light2');
-      light2.setAttribute('position', { x: 0.5, y: 1, z: -1 });
-      light2.setAttribute('light', { type: 'directional', color: '#FFF', intensity: 0.6 });
-      el.appendChild(light2);
-      const sky = document.createElement('a-sky');
-      sky.setAttribute('id', 'sky');
+      light1.setAttribute('light', 'intensity', 2 );
+      light2.setAttribute('light', 'intensity', 0.6 );
+      sky.setAttribute('color', '#FFF');
       sky.setAttribute('src', '#sky');
       sky.setAttribute('rotation', '0 255 0');
-      el.appendChild(sky);
     }
+  },
+  init: function () {
+    const el = this.el;
+    
+    this.light1 = document.createElement('a-entity');
+    const light1 = this.light1;
+    light1.setAttribute('id', 'env-light1');
+    light1.setAttribute('light', { type: 'ambient', color: '#FFF'});
+    el.appendChild(light1);
+
+    this.light2 = document.createElement('a-entity');
+    const light2 = this.light2;
+    light2.setAttribute('id', 'env-light2');
+    light2.setAttribute('position', { x: 0.5, y: 1, z: -1 });
+    light2.setAttribute('light', { type: 'directional', color: '#FFF'});
+    el.appendChild(light2);
+
+    this.sky = document.createElement('a-sky');
+    const sky = this.sky;
+    sky.setAttribute('id', 'env-sky');
+    el.appendChild(sky);     
+  },
+  update: function (oldData) { 
+    this.setEnvOption();
   }
 });
 
