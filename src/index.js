@@ -403,6 +403,7 @@ AFRAME.registerComponent('street-environment', {
     this.sky = document.createElement('a-sky');
     const sky = this.sky;
     sky.setAttribute('id', 'env-sky');
+    sky.setAttribute('data-ignore-raycaster', '');
     el.appendChild(sky);
   },
   update: function (oldData) {
