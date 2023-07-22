@@ -6,6 +6,7 @@ require('./components/gltf-part');
 require('./lib/aframe-cursor-teleport-component.min.js');
 require('./lib/animation-mixer.js');
 require('./assets.js');
+require('./components/notify.js');
 require('./components/create-from-json');
 require('./components/screentock.js');
 require('aframe-atlas-uvs-component');

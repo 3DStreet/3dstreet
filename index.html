@@ -13,6 +13,9 @@
     <!-- save / load -->
     <script src="./src/json-utils.js"></script>
 
+    <!-- save / load 
+    <script src="./src/lib/notyf.min.js"></script>-->
+
     <!-- ocean -->
     <script src="./src/components/ocean-plane.js"></script>
 
@@ -45,6 +48,7 @@
       vr-mode-ui-if-headset
       renderer="colorManagement: true; physicallyCorrectLights: true;"
       inspector="url: //3dstreet.app/dist/3dstreet-editor.js"
+      notify
       >
       <a-assets>
         <!-- uncomment the line below to load assets from local github submodule -->
@@ -176,6 +180,7 @@
       }
       
       createEntities(streetObject.data, streetContainerEl);
+      //AFRAME.scenes[0]
     }
 
     function inputJSON() {
