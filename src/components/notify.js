@@ -10,38 +10,50 @@ AFRAME.registerComponent('notify', {
       default: {
         // x: left | center | right
         // y: top | center | bottom
-        x: 'right',
+        x: 'center',
         y: 'bottom'
       } 
     },
     dismissible: { type: 'boolean', default: false },
-    errorMsg: {type: 'string', default: ''},
-    successMsg: {type: 'string', default: ''}
+    type: {type: 'string', default: 'info'},
+    message: {type: 'string', default: ''}
   },
   init: function () {
     this.notify = new Notyf({
+      types: [
+        {
+          type: 'info',
+          background: 'blue',
+          icon: false
+        }
+      ],
        // Set your global Notyf configuration here
       duration: this.data.duration,
       ripple: this.data.ripple,
       position: this.data.position,
       dismissible: this.data.dismissible
     });
+    this.types = this.notify.options.types.map(messType => messType.type);
   },
-  successMsg: function (messageText) {
-    if (messageText) this.notify.success(messageText);
-  },
-  errorMsg: function (messageText) {
-    if (messageText) this.notify.error(messageText);
+  message: function (messageText, messageType = 'info') {
+    if (messageText && this.types.includes(messageType)) {
+      this.notify.open({
+        type: messageType,
+        message: messageText
+      });
+    }
   },
   update: function (oldData) {
-    const newErrorMsg = this.data.errorMsg;
-    const newSuccessMsg = this.data.successMsg;
     // If `oldData` is empty, then this means we're in the initialization process.
     // No need to update.
     if (Object.keys(oldData).length === 0) { return; }
-    this.successMsg(newSuccessMsg);
-    this.errorMsg(newErrorMsg);
-    this.data.errorMsg = '';
-    this.data.successMsg = '';
+
+    const newMessage = this.data.message;
+    const messageType = this.data.type;
+
+    if (newMessage && this.types.includes(messageType)) {
+      this.message(newMessage, messageType);
+      this.data.message = '';      
+    }
   }
 });
