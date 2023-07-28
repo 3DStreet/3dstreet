@@ -5,18 +5,18 @@ AFRAME.registerComponent('notify', {
   schema: {
     duration: { type: 'number', default: 2000 },
     ripple: { type: 'boolean', default: true },
-    position: { 
-      type: 'string', 
+    position: {
+      type: 'string',
       default: {
         // x: left | center | right
         // y: top | center | bottom
         x: 'center',
         y: 'bottom'
-      } 
+      }
     },
     dismissible: { type: 'boolean', default: false },
-    type: {type: 'string', default: 'info'},
-    message: {type: 'string', default: ''}
+    type: { type: 'string', default: 'info' },
+    message: { type: 'string', default: '' }
   },
   init: function () {
     this.notify = new Notyf({
@@ -27,7 +27,7 @@ AFRAME.registerComponent('notify', {
           icon: false
         }
       ],
-       // Set your global Notyf configuration here
+      // Set your global Notyf configuration here
       duration: this.data.duration,
       ripple: this.data.ripple,
       position: this.data.position,
@@ -53,7 +53,7 @@ AFRAME.registerComponent('notify', {
 
     if (newMessage && this.types.includes(messageType)) {
       this.message(newMessage, messageType);
-      this.data.message = '';      
+      this.data.message = '';
     }
   }
 });
