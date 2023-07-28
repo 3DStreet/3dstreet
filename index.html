@@ -177,7 +177,7 @@
       }
       
       createEntities(streetObject.data, streetContainerEl);
-      //AFRAME.scenes[0]
+      AFRAME.scenes[0].components['notify'].message('Scene loaded from JSON', 'success')
     }
 
     function inputJSON() {
