@@ -45,6 +45,7 @@
       vr-mode-ui-if-headset
       renderer="colorManagement: true; physicallyCorrectLights: true;"
       inspector="url: //3dstreet.app/dist/3dstreet-editor.js"
+      notify
       >
       <a-assets>
         <!-- uncomment the line below to load assets from local github submodule -->
@@ -176,6 +177,7 @@
       }
       
       createEntities(streetObject.data, streetContainerEl);
+      AFRAME.scenes[0].components['notify'].message('Scene loaded from JSON', 'success')
     }
 
     function inputJSON() {
