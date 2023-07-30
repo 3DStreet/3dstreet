@@ -7,7 +7,8 @@ and returns a Javascript object
 function convertDOMElToObject (entity) {
   const data = [];
   const environmentElement = document.querySelector('#environment');
-  const sceneEntities = [entity, environmentElement];
+  const layers2DElement = document.querySelector('#layers-2d');  
+  const sceneEntities = [entity, environmentElement, layers2DElement];
 
   for (const entry of sceneEntities) {
     const entityData = getElementData(entry);
@@ -83,7 +84,8 @@ function getAttributes (entity) {
 }
 
 function toPropString (propData) {
-  if (typeof propData === 'string' || typeof propData === 'number' || typeof propData === 'boolean') {
+  if (typeof propData === 'string' || typeof propData === 'number' || typeof propData === 'boolean'
+    || Array.isArray(propData)) {
     return (propData).toString();
   }
   if (propData.isVector3 || propData.isVector2 || propData.isVector4 ||
