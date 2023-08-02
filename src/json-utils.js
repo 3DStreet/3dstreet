@@ -169,8 +169,8 @@ function filterJSONstreet (removeProps, renameProps, streetJSON) {
   });
   // rename components
   for (var renameKey in renameProps) {
-    const reKey = new RegExp(`"${renameKey}":`);
-    stringJSON = stringJSON.replace(reKey, `"${renameProps[renameKey]}":`);
+    const reKey = new RegExp(`"${renameKey}":`, 'g');
+    stringJSON = stringJSON.replaceAll(reKey, `"${renameProps[renameKey]}":`);
   }
   return stringJSON;
 }
@@ -250,7 +250,6 @@ function getModifiedProperty (entity, componentName) {
     // skip properties, if they exists in element's mixin
     return null;
   }
-
   // If its single-property like position, rotation, etc
   if (isSingleProperty(defaultData)) {
     const defaultValue = defaultData.default;
