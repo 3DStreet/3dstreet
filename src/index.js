@@ -1,5 +1,5 @@
 /* global AFRAME, THREE, XMLHttpRequest */
-console.log(`3DStreet Version: ${VERSION}, Commit Date: ${COMMIT_DATE}, Commit Hash: ${COMMIT_HASH}`);
+console.log(`3DStreet Version: ${VERSION} (Date: ${new Date(COMMIT_DATE).toISOString().split('T')[0]}, Commit Hash: #${COMMIT_HASH})`);
 var streetmixParsers = require('./aframe-streetmix-parsers');
 var streetmixUtils = require('./tested/streetmix-utils');
 require('./components/anisotropy');
