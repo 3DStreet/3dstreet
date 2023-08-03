@@ -1,4 +1,5 @@
 /* global AFRAME, THREE, XMLHttpRequest */
+console.log(`3DStreet version: ${VERSION}`);
 var streetmixParsers = require('./aframe-streetmix-parsers');
 var streetmixUtils = require('./tested/streetmix-utils');
 require('./components/anisotropy');
