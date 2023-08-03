@@ -413,7 +413,7 @@ function createDriveLaneElement (variantList, positionX, segmentWidthInMeters, s
     const params = carParams[carType];
 
     const reusableObjectEl = document.createElement('a-entity');
-    
+
     if (!positionZ) {
       positionZ = randomPosition(reusableObjectEl, 'z', streetLength, params['length']);
     }
