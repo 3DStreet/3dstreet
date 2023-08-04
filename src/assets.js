@@ -154,7 +154,7 @@ function buildAssetHTML (assetUrl, categories) {
     stencils: `  
         <!-- stencil markings -->
         <img id="stencils-atlas" src="${assetUrl}materials/stencils-atlas_2048.png" crossorigin="anonymous" />
-        <a-mixin id="stencils" anisotropy atlas-uvs="totalRows: 4; totalColumns: 4" scale="2 2 2" material="src: #stencils-atlas;alphaTest: 0;transparent:true;" geometry="primitive: plane; buffer: false; skipCache: true;"></a-mixin>
+        <a-mixin id="stencils" atlas-uvs="totalRows: 4; totalColumns: 4" scale="2 2 2" material="src: #stencils-atlas;alphaTest: 0;transparent:true;" geometry="primitive: plane; buffer: false; skipCache: true;"></a-mixin>
         <a-mixin id="right" atlas-uvs="column: 3; row: 2"></a-mixin>
         <a-mixin id="left" atlas-uvs="column: 3; row: 3"></a-mixin>
         <a-mixin id="both" atlas-uvs="column: 2; row: 1"></a-mixin>
@@ -183,8 +183,8 @@ function buildAssetHTML (assetUrl, categories) {
         <a-asset-item id="trammodel" src="${assetUrl}sets/light-rail-vehicle/gltf-exports/draco/light-rail-vehicle-v02.glb"></a-asset-item>
         <a-asset-item id="trolleymodel" src="${assetUrl}objects/godarvilletram.gltf"></a-asset-item>
         <a-asset-item id="xd40" src="${assetUrl}sets/flyer-bus/gltf-exports/draco/new-flyer-bus.glb"></a-asset-item>
-        <a-mixin id="bus" anisotropy gltf-model="#xd40"></a-mixin>
-        <a-mixin id="tram" anisotropy gltf-model="#trammodel"></a-mixin>
+        <a-mixin id="bus" gltf-model="#xd40"></a-mixin>
+        <a-mixin id="tram" gltf-model="#trammodel"></a-mixin>
         <a-mixin id="trolley" gltf-model="#trolleymodel"></a-mixin>
       `,
     dividers: `
@@ -215,7 +215,7 @@ function buildAssetHTML (assetUrl, categories) {
         <a-mixin id="ground-grass" rotation="-90 0 0" geometry="primitive:plane;height:150;width:40" material="src:#grass-texture;repeat:5 5;roughness:1"></a-mixin>
         <a-mixin id="ground-parking-lot" rotation="-90 0 0" geometry="primitive:plane;height:150;width:40" material="src:#parking-lot-texture;repeat:2 4;roughness:1"></a-mixin>
         <a-mixin id="ground-asphalt" rotation="-90 0 0" geometry="primitive:plane;height:150;width:40" material="src:#asphalt-texture;repeat:5 5;roughness:1"></a-mixin>
-        <a-mixin id="ground-tiled-concrete" anisotropy rotation="-90 0 0" geometry="primitive:plane;height:150;width:40" material="src:#seamless-sidewalk;repeat:5 5;roughness:1"></a-mixin>
+        <a-mixin id="ground-tiled-concrete" rotation="-90 0 0" geometry="primitive:plane;height:150;width:40" material="src:#seamless-sidewalk;repeat:5 5;roughness:1"></a-mixin>
 
         <a-asset-item id="fence-model" src="${assetUrl}sets/fences/gltf-exports/draco/fence4.glb"></a-asset-item>
         <a-mixin id="fence" gltf-model="#fence-model" scale="0.1 0.1 0.1"></a-mixin>
@@ -314,7 +314,7 @@ Unused assets kept commented here for future reference
         <audio id="waterfront-mp3" src="${assetUrl}audio/combined_UKdock4_and_water_pier_underneath_ambience.mp3" preload="none" crossorigin="anonymous"></audio>
         <audio id="suburbs2-mp3" src="${assetUrl}audio/AMB_Suburbs_Spring_Day_Lawnmowers_Birds_MS_ST_MKH8050-30shortened.mp3" preload="none" crossorigin="anonymous"></audio>
         <!-- vehicle mixins with audio included -->
-        <a-mixin id="tram" anisotropy gltf-model="#trammodel" sound="src: #tram-pass-mp3;positional:false;volume: 0.4"></a-mixin>
+        <a-mixin id="tram" gltf-model="#trammodel" sound="src: #tram-pass-mp3;positional:false;volume: 0.4"></a-mixin>
         <a-mixin id="trolley" gltf-model="#trolleymodel" sound="src: #trolley-pass-mp3;positional:false;volume: 0.4"scale="1 1 1"></a-mixin>
 
         <!-- ui / future use -->

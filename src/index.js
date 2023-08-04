@@ -1,7 +1,6 @@
 /* global AFRAME, THREE, XMLHttpRequest */
 var streetmixParsers = require('./aframe-streetmix-parsers');
 var streetmixUtils = require('./tested/streetmix-utils');
-require('./components/anisotropy');
 require('./components/gltf-part');
 require('./lib/aframe-cursor-teleport-component.min.js');
 require('./lib/animation-mixer.js');

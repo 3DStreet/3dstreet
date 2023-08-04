@@ -43,7 +43,7 @@
     <a-scene
       vr-mode-ui="enterVRButton: #custom-enter-vr-button;"
       vr-mode-ui-if-headset
-      renderer="colorManagement: true; physicallyCorrectLights: true;"
+      renderer="colorManagement: true; physicallyCorrectLights: true; anisotropy: 16"
       inspector="url: //3dstreet.app/dist/3dstreet-editor.js"
       >
       <a-assets>
@@ -118,7 +118,6 @@
             pxToWorldRatio: 4;"
           position="-7 -1 -2"
           rotation="-90 -4.25 0"
-          anisotropy
         ></a-entity>
       </a-entity>
     </a-scene>
