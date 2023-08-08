@@ -7,8 +7,8 @@ and returns a Javascript object
 function convertDOMElToObject (entity) {
   const data = [];
   const environmentElement = document.querySelector('#environment');
-  const layers2DElement = document.querySelector('#layers-2d');
-  const sceneEntities = [entity, environmentElement, layers2DElement];
+  const referenceEntities = document.querySelector('#reference-layers');
+  const sceneEntities = [entity, environmentElement, referenceEntities];
 
   for (const entry of sceneEntities) {
     const entityData = getElementData(entry);
@@ -285,7 +285,7 @@ function getModifiedProperty (entity, componentName) {
 
 function createEntities (entitiesData, parentEl) {
   const sceneElement = document.querySelector('a-scene');
-  const removeEntities = ['environment', 'layers-2d'];
+  const removeEntities = ['environment', 'reference-layers'];
   for (const entityData of entitiesData) {
     if (entityData.id === 'street-container' &&
     entityData.children &&
