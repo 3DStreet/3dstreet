@@ -15,7 +15,7 @@ module.exports = {
     ]
   },
   optimization: {
-    minimizer: [new TerserPlugin({ extractComments: false })],
+    minimizer: [new TerserPlugin({ extractComments: false })]
   },
   plugins: [
     new webpack.DefinePlugin({
