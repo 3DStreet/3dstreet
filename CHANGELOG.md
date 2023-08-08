@@ -5,24 +5,42 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
  
-## [Unreleased - to be 0.4.1] - TBD
+## 0.4.1 - 2023-08-08
+
+### What's Changed
+
+### Major improvements
+* v2 save / load - ability to edit a 3DStreet JSON file previously saved including environment and reference layers
+* ability to load 3DStreet json file from third-party path (precursor to cloud)
+* ability to update night / day live (street-environment component)
+* improve asset loading - lazy load vehicles (only load vehicles when needed for scene)
 
 ### Changes and additions
-* v2 save / load - includes environment
-* ability to update night / day live (street-environment component)
-* ability to load json file from third-party path (precursor to cloud)
-* improve asset loading - lazy load vehicles (only load vehicles when needed for scene)
-* new LRV
-* new bus model
-* [Improved screenshot capture and capture modal (editor)](https://github.com/3DStreet/3dstreet/pull/277)
-* [Improved support for varying levels of pedestrian densiy on sidewalk segments](https://github.com/3DStreet/3dstreet/pull/276)
+* Sidewalk segment variants by @Algorush in https://github.com/3DStreet/3dstreet/pull/276
+* add perpendicular parking option by @Algorush in https://github.com/3DStreet/3dstreet/pull/273
+* New Screentock component by @kfarr in https://github.com/3DStreet/3dstreet/pull/277
+* support new LRV by @kfarr in https://github.com/3DStreet/3dstreet/pull/289
+* Lazy load rigged vehicles by @kfarr in https://github.com/3DStreet/3dstreet/pull/296
+* Add first version to load JSON from URL by @Algorush in https://github.com/3DStreet/3dstreet/pull/304
+* add update environment option by @Algorush in https://github.com/3DStreet/3dstreet/pull/307
+* add environment node support by @Algorush in https://github.com/3DStreet/3dstreet/pull/300
+* add attribute to ignore raycaster on env-sky element by @Algorush in https://github.com/3DStreet/3dstreet/pull/312
+* Notification component by @Algorush in https://github.com/3DStreet/3dstreet/pull/319
+* add layers-2d node support to save/load by @Algorush in https://github.com/3DStreet/3dstreet/pull/320
+* rename layers-2 entity by @Algorush in https://github.com/3DStreet/3dstreet/pull/326
+* fewer pedestrians in 'sparse' mode by @Algorush in https://github.com/3DStreet/3dstreet/pull/328
+* Add console log for npm version number and github hash by @sweep-ai in https://github.com/3DStreet/3dstreet/pull/324
+* brt station segment support by @Algorush https://github.com/3DStreet/3dstreet/pull/268
 
 ### Fixed
-* ability to edit a street previously saved
-* restore parallel parking t stencil
-* fix empty lot / parking lot variants showing
-* [Add perpindicular parking option](https://github.com/3DStreet/3dstreet/pull/273)
-* [brt station support](https://github.com/3DStreet/3dstreet/pull/268)
+* fix NaN issue with pedestrians by @Algorush in https://github.com/3DStreet/3dstreet/pull/283
+* fix empty building variant showing by @Algorush in https://github.com/3DStreet/3dstreet/pull/285
+* Save load fixing by @Algorush in https://github.com/3DStreet/3dstreet/pull/287
+* Save load fixing by @Algorush in https://github.com/3DStreet/3dstreet/pull/310
+* fix saving issue by @Algorush in https://github.com/3DStreet/3dstreet/pull/321
+* return parking-t mixin by @Algorush in https://github.com/3DStreet/3dstreet/pull/302
+
+**Full Changelog**: https://github.com/3DStreet/3dstreet/compare/0.4.0...0.4.1
 
 ## 0.4.0 - 2023-05-04
 
