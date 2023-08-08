@@ -1,10 +1,5 @@
 /* global AFRAME, THREE, XMLHttpRequest */
-if (typeof VERSION === 'undefined') { var VERSION = 'local'; }
-if (VERSION !== 'local') {
-  console.log(`3DStreet Version: ${VERSION} (Date: ${new Date(COMMIT_DATE).toISOString().split('T')[0]}, Commit Hash: #${COMMIT_HASH})`);
-} else {
-  console.log('Running in local development environment');
-}
+if (typeof VERSION !== 'undefined') { console.log(`3DStreet Version: ${VERSION} (Date: ${new Date(COMMIT_DATE).toISOString().split('T')[0]}, Commit Hash: #${COMMIT_HASH})`); }
 var streetmixParsers = require('./aframe-streetmix-parsers');
 var streetmixUtils = require('./tested/streetmix-utils');
 require('./components/anisotropy');
