@@ -1,4 +1,5 @@
 const path = require('path');
+const webpack = require('webpack');
 const TerserPlugin = require('terser-webpack-plugin');
 
 module.exports = {
@@ -14,6 +15,17 @@ module.exports = {
     ]
   },
   optimization: {
-    minimizer: [new TerserPlugin({ extractComments: false })],
-  }
+    minimizer: [new TerserPlugin({ extractComments: false })]
+  },
+  plugins: [
+    new webpack.DefinePlugin({
+      VERSION: JSON.stringify(process.env.npm_package_version)
+    }),
+    new webpack.DefinePlugin({
+      COMMIT_DATE: JSON.stringify(require('child_process').execSync('git log -1 --format=%cd').toString().trim())
+    }),
+    new webpack.DefinePlugin({
+      COMMIT_HASH: JSON.stringify(require('child_process').execSync('git rev-parse --short HEAD').toString().trim())
+    })
+  ]
 };
