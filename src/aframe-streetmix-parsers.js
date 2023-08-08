@@ -200,7 +200,7 @@ function createSidewalkClonedVariants (BasePositionX, segmentWidthInMeters, dens
   const zValueRange = getZPositions((-0.5 * streetLength), (0.5 * streetLength), 1.5);
   const densityFactors = {
     empty: 0,
-    sparse: 0.0625,
+    sparse: 0.03,
     normal: 0.125,
     dense: 0.25
   };
