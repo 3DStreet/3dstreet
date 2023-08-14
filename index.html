@@ -60,6 +60,7 @@
         <a-entity id="camera" camera="far: 1000" position="0 1.6 0" ></a-entity>
         <a-entity id="leftHand" hand-controls="hand: left; handModelStyle: lowPoly; color: #ffccff"></a-entity>
         <a-entity id="rightHand" hand-controls="hand: right; handModelStyle: lowPoly; color: #ffccff"></a-entity>
+        <a-entity id="screenshot" class="no-pause" screentock visible="false"></a-entity>
       </a-entity>
 
       <a-entity id="environment" data-layer-name="Environment" street-environment="preset: day;"></a-entity>
@@ -130,9 +131,12 @@
     });
 
     function buttonScreenshotTock() {
-      AFRAME.scenes[0].setAttribute('screentock', 'type', 'jpg');
-      AFRAME.scenes[0].setAttribute('screentock', 'takeScreenshot', true);
+      const screenshotEl = document.getElementById('screenshot');
+      screenshotEl.play(); // double check playing in case we're in editor mode
+      screenshotEl.setAttribute('screentock', 'type', 'jpg');
+      screenshotEl.setAttribute('screentock', 'takeScreenshot', true);
     }
+
     function startEditor() {
       var sceneEl = document.querySelector('a-scene');
       sceneEl.components.inspector.openInspector();
