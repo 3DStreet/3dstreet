@@ -2,7 +2,6 @@
 if (typeof VERSION !== 'undefined') { console.log(`3DStreet Version: ${VERSION} (Date: ${new Date(COMMIT_DATE).toISOString().split('T')[0]}, Commit Hash: #${COMMIT_HASH})`); }
 var streetmixParsers = require('./aframe-streetmix-parsers');
 var streetmixUtils = require('./tested/streetmix-utils');
-require('./components/anisotropy');
 require('./components/gltf-part');
 require('./lib/aframe-cursor-teleport-component.min.js');
 require('./lib/animation-mixer.js');
