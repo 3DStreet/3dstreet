@@ -128,7 +128,7 @@ AFRAME.registerComponent('intersection', {
     // remove all child nodes if exists
     while (el.firstChild) {
       el.removeChild(el.lastChild);
-    }    
+    }
     const dimensionsArray = data.dimensions.split(' ').map((i) => Number(i));
     const positionArray = [this.el.getAttribute('position').x, this.el.getAttribute('position').y, this.el.getAttribute('position').z];
     const sidewalkArray = data.sidewalk.split(' ').map((i) => Number(i));
@@ -144,7 +144,7 @@ AFRAME.registerComponent('intersection', {
     const intersectDepth = dimensionsArray[1];
 
     this.el.setAttribute('geometry', `primitive:box; width: ${intersectWidth}; height: ${intersectDepth}; depth:0.2`);
-    this.el.setAttribute('position', { x: positionArray[0], y: - 0.1, z: positionArray[2] });
+    this.el.setAttribute('position', { x: positionArray[0], y: -0.1, z: positionArray[2] });
     this.el.setAttribute('rotation', '-90 0 0');
     this.el.setAttribute('material', 'src: #asphalt-texture; repeat:5 5; roughness:1');
 
