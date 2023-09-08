@@ -130,7 +130,8 @@ const removeProps = {
 // a list of component_name:new_component_name pairs to rename in JSON string
 const renameProps = {
   'streetmix-loader': 'not-streetmix-loader',
-  street: 'not-street'
+  street: 'not-street',
+  intersection: 'not-intersection'
 };
 
 function filterJSONstreet (removeProps, renameProps, streetJSON) {
