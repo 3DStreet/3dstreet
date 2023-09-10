@@ -88,6 +88,12 @@ AFRAME.registerComponent('streetmix-loader', {
         const streetmixSegments = streetmixResponseObject.data.street.segments;
         const streetmixName = streetmixResponseObject.name;
         el.setAttribute('streetmix-loader', 'name', streetmixName);
+
+        let currentSceneTitle = AFRAME.scenes[0].getAttribute('metadata', 'sceneTitle');
+        if (!currentSceneTitle) {  // only set title from streetmix if none exists
+            AFRAME.scenes[0].setAttribute('metadata', 'sceneTitle', streetmixName);
+        }
+
         if (data.showBuildings) {
           el.setAttribute('street', 'right', streetmixResponseObject.data.street.rightBuildingVariant);
           el.setAttribute('street', 'left', streetmixResponseObject.data.street.leftBuildingVariant);
