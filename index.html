@@ -46,6 +46,7 @@
       renderer="colorManagement: true; physicallyCorrectLights: true;"
       inspector="url: //3dstreet.app/dist/3dstreet-editor.js"
       notify
+      metadata
       >
       <a-assets>
         <!-- uncomment the line below to load assets from local github submodule -->
@@ -109,6 +110,11 @@
         // }
       },
       fetchJSON: function (requestURL) {
+        let sceneId = getUUIDFromPath(requestURL);
+            if (sceneId) {
+              console.log('sceneId from fetchJSON from url hash loader', sceneId);
+              AFRAME.scenes[0].setAttribute('metadata', 'sceneId', sceneId);
+            }
         const request = new XMLHttpRequest();
         request.open('GET', requestURL, true);
         request.onload = function () {
@@ -120,6 +126,11 @@
             
             console.log('[set-loader-from-hash]', '200 response received and JSON parsed, now createElementsFromJSON');
             createElementsFromJSON(jsonData);
+            let sceneId = getUUIDFromPath(requestURL);
+            if (sceneId) {
+              console.log('sceneId from fetchJSON from url hash loader', sceneId);
+              AFRAME.scenes[0].setAttribute('metadata', 'sceneId', sceneId);
+            }
           }
         };
         request.onerror = function () {
@@ -142,11 +153,36 @@
       sceneEl.components.inspector.openInspector();
       document.querySelector('.viewer-header-wrapper').style.display = 'none';
     }
-    // uncomment the below to autostart the editor within 2 seconds of page load
-    // setTimeout(() => {
-    //   startEditor();
-    // }, "2000")
     
+    AFRAME.registerComponent('timed-inspector', {
+      init: function() {
+        setTimeout( function () {
+          window.postMessage('INJECT_AFRAME_INSPECTOR')
+        }, this.data * 1000)
+      }
+    });  
+  
+    AFRAME.registerComponent('metadata', {
+      schema: {
+        sceneTitle: {default: ''},
+        sceneId: {default: ''}
+      },
+      init: function() {
+      }
+    })
+
+    function getUUIDFromPath(path) {
+      // UUID regex pattern: [0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}
+      const uuidPattern = /[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/;
+
+      const match = path.match(uuidPattern);
+      if (match) {
+        return match[0];
+      }
+
+      return null; // return null or whatever default value you prefer if no UUID found
+    }
+
     function inputStreetmix() {
       streetmixURL = prompt("Please enter a Streetmix URL", "https://streetmix.net/kfarr/3/example-street");
       setTimeout(function() { window.location.hash = streetmixURL; });
@@ -154,6 +190,8 @@
       while (streetContainerEl.firstChild) {
         streetContainerEl.removeChild(streetContainerEl.lastChild);
       }
+      AFRAME.scenes[0].setAttribute('metadata', 'sceneId', '');
+      AFRAME.scenes[0].setAttribute('metadata', 'sceneTitle', '');
       streetContainerEl.innerHTML = '<a-entity street streetmix-loader="streetmixStreetURL: '+streetmixURL+'""></a-entity>';
     }
 
@@ -175,6 +213,12 @@
         streetObject = streetJSON;
       }
       
+      let sceneTitle = streetObject.title;
+      if (sceneTitle) {
+        console.log('sceneTitle from createElementsFromJSON', sceneTitle);
+        AFRAME.scenes[0].setAttribute('metadata', 'sceneTitle', sceneTitle);
+      }
+
       streetContainerEl = document.getElementById('street-container');
       while (streetContainerEl.firstChild) {
         streetContainerEl.removeChild(streetContainerEl.lastChild);
@@ -194,6 +238,8 @@
     function fileJSON() {
       let reader=new FileReader();
       reader.onload=function(){
+        AFRAME.scenes[0].setAttribute('metadata', 'sceneId', '');
+        AFRAME.scenes[0].setAttribute('metadata', 'sceneTitle', '');
         createElementsFromJSON(reader.result);
       }
       reader.readAsText(this.files[0]);

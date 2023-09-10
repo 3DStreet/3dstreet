@@ -87,11 +87,13 @@ AFRAME.registerComponent('streetmix-loader', {
         const streetmixResponseObject = JSON.parse(this.response);
         const streetmixSegments = streetmixResponseObject.data.street.segments;
         const streetmixName = streetmixResponseObject.name;
+        console.log('streetmixName', streetmixName)
         el.setAttribute('streetmix-loader', 'name', streetmixName);
 
-        let currentSceneTitle = AFRAME.scenes[0].getAttribute('metadata', 'sceneTitle');
+        let currentSceneTitle = AFRAME.scenes[0].getAttribute('metadata').sceneTitle;
         if (!currentSceneTitle) {  // only set title from streetmix if none exists
-            AFRAME.scenes[0].setAttribute('metadata', 'sceneTitle', streetmixName);
+          AFRAME.scenes[0].setAttribute('metadata', 'sceneTitle', streetmixName);
+          console.log('therefore setting metadata sceneTitle as streetmixName', streetmixName)
         }
 
         if (data.showBuildings) {
