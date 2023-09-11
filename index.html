@@ -46,6 +46,7 @@
       renderer="colorManagement: true; physicallyCorrectLights: true;"
       inspector="url: //3dstreet.app/dist/3dstreet-editor.js"
       notify
+      metadata
       >
       <a-assets>
         <!-- uncomment the line below to load assets from local github submodule -->
@@ -74,6 +75,10 @@
     </a-scene>
   </body>
   <script>
+
+    document.getElementById('inputfile')
+            .addEventListener('change', fileJSON);
+
     // only show VR button if headset connected
     AFRAME.registerComponent('vr-mode-ui-if-headset', {
       dependencies: ['vr-mode-ui'],
@@ -83,52 +88,6 @@
         }
       }
     })
-
-    AFRAME.registerComponent('set-loader-from-hash', {
-      dependencies: ['streetmix-loader'],
-      schema: {
-        defaultURL: { type: 'string' }
-      },
-      init: function () {
-        // get hash from window
-        const streetURL = window.location.hash.substring(1);
-        if (!streetURL) {
-          return;
-        }
-        if (streetURL.includes('//streetmix.net')) {
-          console.log('[set-loader-from-hash]','Set streetmix-loader streetmixStreetURL to', streetURL)
-          this.el.setAttribute('streetmix-loader', 'streetmixStreetURL', streetURL);
-        } else {
-          // try to load JSON file from remote resource
-          console.log('[set-loader-from-hash]','Load 3DStreet scene with fetchJSON from', streetURL)
-          this.fetchJSON(streetURL);
-        }
-        // else {
-        //   console.log('[set-loader-from-hash]','Using default URL', this.data.defaultURL)
-        //   this.el.setAttribute('streetmix-loader', 'streetmixStreetURL', this.data.defaultURL);
-        // }
-      },
-      fetchJSON: function (requestURL) {
-        const request = new XMLHttpRequest();
-        request.open('GET', requestURL, true);
-        request.onload = function () {
-          if (this.status >= 200 && this.status < 400) {
-            // Connection success
-            // remove 'set-loader-from-hash' component from json data
-            const jsonData = JSON.parse(this.response, 
-              (key, value) => (key === 'set-loader-from-hash') ? undefined : value );
-            
-            console.log('[set-loader-from-hash]', '200 response received and JSON parsed, now createElementsFromJSON');
-            createElementsFromJSON(jsonData);
-          }
-        };
-        request.onerror = function () {
-          // There was a connection error of some sort
-          console.log('Loading Error: There was a connection error during JSON loading');
-        };
-        request.send();
-      }
-    });
 
     function buttonScreenshotTock() {
       const screenshotEl = document.getElementById('screenshot');
@@ -142,64 +101,14 @@
       sceneEl.components.inspector.openInspector();
       document.querySelector('.viewer-header-wrapper').style.display = 'none';
     }
-    // uncomment the below to autostart the editor within 2 seconds of page load
-    // setTimeout(() => {
-    //   startEditor();
-    // }, "2000")
     
-    function inputStreetmix() {
-      streetmixURL = prompt("Please enter a Streetmix URL", "https://streetmix.net/kfarr/3/example-street");
-      setTimeout(function() { window.location.hash = streetmixURL; });
-      streetContainerEl = document.getElementById('street-container');
-      while (streetContainerEl.firstChild) {
-        streetContainerEl.removeChild(streetContainerEl.lastChild);
+    AFRAME.registerComponent('timed-inspector', {
+      init: function() {
+        setTimeout( function () {
+          window.postMessage('INJECT_AFRAME_INSPECTOR')
+        }, this.data * 1000)
       }
-      streetContainerEl.innerHTML = '<a-entity street streetmix-loader="streetmixStreetURL: '+streetmixURL+'""></a-entity>';
-    }
-
-    // JSON loading starts here
-    function getValidJSON(stringJSON) {
-      // Preserve newlines, etc. - use valid JSON
-      // Remove non-printable and other non-valid JSON characters
-      return stringJSON.replace(/\'/g, "")
-                       .replace(/\n/g, "")
-                       .replace(/[\u0000-\u0019]+/g,"");
-    }
-    
-    function createElementsFromJSON(streetJSON) {
-      let streetObject = {};
-      if (typeof streetJSON == 'string') {
-        const validJSONString = getValidJSON(streetJSON);
-        streetObject = JSON.parse(validJSONString);
-      } else if (typeof streetJSON == 'object') {
-        streetObject = streetJSON;
-      }
-      
-      streetContainerEl = document.getElementById('street-container');
-      while (streetContainerEl.firstChild) {
-        streetContainerEl.removeChild(streetContainerEl.lastChild);
-      }
-      
-      createEntities(streetObject.data, streetContainerEl);
-      AFRAME.scenes[0].components['notify'].message('Scene loaded from JSON', 'success')
-    }
-
-    function inputJSON() {
-      const stringJSON = prompt("Please paste 3DStreet JSON string");
-      if (stringJSON) {
-        createElementsFromJSON(stringJSON);
-      }      
-    }
-
-    function fileJSON() {
-      let reader=new FileReader();
-      reader.onload=function(){
-        createElementsFromJSON(reader.result);
-      }
-      reader.readAsText(this.files[0]);
-    }
-
-    document.getElementById('inputfile')
-            .addEventListener('change', fileJSON);
+    });  
+  
   </script>
 </html>

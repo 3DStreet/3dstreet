@@ -18,6 +18,14 @@ body {
 	margin: 0;
 }
 
+/* notification hack */
+.notyf__message { font-size: 20px !important; }
+
+/* notification width hack */
+.notyf__toast {
+    max-width: 66.66vw !important; /* 2/3rds of viewport width */
+    width: auto !important; /* Resetting any specific width, if set */
+}
 
 /********* viewer header css *********/
 
