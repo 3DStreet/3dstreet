@@ -5,28 +5,30 @@
     <script src="https://aframe.io/releases/1.4.2/aframe.min.js"></script>
 
     <!-- 3dstreet -->
-    <script src="./dist/aframe-street-component.js"></script>
+    <script src="https://github.3dstreet.org/dist/aframe-street-component.js"></script>
+
+    <!-- user controls - vr teleport -->
 
     <!-- mapbox -->
     <script src="https://github.3dstreet.org/src/lib/aframe-mapbox-component.min.js"></script>
 
     <!-- save / load -->
-    <script src="./src/json-utils.js"></script>
-
+    <script src="https://github.3dstreet.org/src/json-utils.js"></script>
+    
     <!-- ocean -->
-    <script src="./src/components/ocean-plane.js"></script>
+    <script src="https://github.3dstreet.org/src/components/ocean-plane.js"></script>
 
     <title>3DStreet</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <link rel="icon" type="image/x-icon" href="ui_assets/favicon.ico">
-    <link rel="stylesheet" href="src/viewer-styles.css">
+    <link rel="icon" type="image/x-icon" href="assets/ui_assets/favicon.ico">
+    <link rel="stylesheet" href="//github.3dstreet.org/src/viewer-styles.css">
   </head>
 
   <body>
     <!-- viewer ui start -->
     <div class="viewer-header-wrapper">
       <button class="viewer-logo-start-editor-button" onclick="startEditor()">
-        <img class="viewer-logo-img" alt="3DStreet Viewer" src="ui_assets/3DStreet-Viewer-Start-Editor.svg">
+        <img class="viewer-logo-img" alt="3DStreet Viewer" src="./assets/3DStreet-Viewer-Start-Editor.svg">
       </button>
     </div>
 
@@ -44,15 +46,14 @@
       vr-mode-ui="enterVRButton: #custom-enter-vr-button;"
       vr-mode-ui-if-headset
       renderer="colorManagement: true; physicallyCorrectLights: true;"
+      gltf-model="dracoDecoderPath: https://www.gstatic.com/draco/versioned/decoders/1.4.3/"
       inspector="url: //3dstreet.app/dist/3dstreet-editor.js"
+      timed-inspector="2"
+      notify
       >
       <a-assets>
-        <!-- uncomment the line below to load assets from local github submodule -->
-        <!-- <street-assets url="./assets/"></street-assets>   -->
-        <!-- uncomment the line below to load all possible asset categories -->
-        <!-- <street-assets categories="sidewalk-props people people-rigged vehicles vehicles-rigged buildings intersection-props segment-textures segment-colors lane-separator stencils vehicles-transit dividers sky grounds"></street-assets>   -->
-        <!-- a reduced set of assets for non-animated streetmix streets without intersections -->
-        <street-assets categories="loud-bicycle sidewalk-props people vehicles vehicles-rigged buildings segment-textures segment-colors lane-separator stencils vehicles-transit dividers sky grounds"></street-assets>
+        <!-- you can specify a custom asset path using below syntax  -->
+        <!-- <streetmix-assets url="./assets/"></streetmix-assets> -->
       </a-assets>
   
       <a-entity id="cameraRig" data-layer-name="Viewer" cursor-teleport="cameraRig: #cameraRig; cameraHead: #camera;" look-controls="reverseMouseDrag: true" wasd-controls="enabled: true">
@@ -70,15 +71,15 @@
           rotation="0 90 0"
           id="east_street"
           street="length: 150"
-          streetmix-loader="streetmixStreetURL: https://streetmix.net/kfarr/82/16th-st-harrison-st-sf-ca; showBuildings: false;"
-        ></a-entity>
+          streetmix-loader="streetmixStreetURL: https://streetmix.net/kfarr/82/16th-st-harrison-st-sf-ca; showBuildings: true;"
+          ></a-entity>
         <a-entity
           data-layer-name="16th Street East of SVN"
           position="78.165 0 -4.17918"
           rotation="0 90 0"
           id="west_street"
           street="length: 150"
-          streetmix-loader="streetmixStreetURL: https://streetmix.net/kfarr/82/16th-st-harrison-st-sf-ca; showBuildings: false;"
+          streetmix-loader="streetmixStreetURL: https://streetmix.net/kfarr/82/16th-st-harrison-st-sf-ca; showBuildings: true;"
         ></a-entity>
 
         <a-entity data-layer-name="16th & Harrison St Intersection" id="intersection" position="-9.917 0 -4.057">
@@ -108,18 +109,8 @@
       </a-entity>
 
       <a-entity id="reference-layers" data-layer-name="Reference Layers" data-layer-show-children>
-        <a-entity
-          data-layer-name="Mapbox Satellite Streets"
-          geometry="primitive: plane; width: 512; height: 512;"
-          material="color: #ffffff; shader: flat; side: both; transparent: true;"
-          mapbox="center: -122.417490, 37.765190; zoom: 18; 
-            accessToken: pk.eyJ1IjoibWF0dHJlIiwiYSI6IjRpa3ItcWcifQ.s0AGgKi0ai23K5OJvkEFnA;
-            style: mapbox://styles/mapbox/satellite-streets-v11;
-            pxToWorldRatio: 4;"
-          position="-7 -1 -2"
-          rotation="-90 -4.25 0"
-          anisotropy
-        ></a-entity>
+
+        
       </a-entity>
     </a-scene>
   </body>

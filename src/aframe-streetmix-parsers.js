@@ -200,7 +200,7 @@ function createSidewalkClonedVariants (BasePositionX, segmentWidthInMeters, dens
   const zValueRange = getZPositions((-0.5 * streetLength), (0.5 * streetLength), 1.5);
   const densityFactors = {
     empty: 0,
-    sparse: 0.0625,
+    sparse: 0.03,
     normal: 0.125,
     dense: 0.25
   };
@@ -413,14 +413,13 @@ function createDriveLaneElement (variantList, positionX, segmentWidthInMeters, s
     const params = carParams[carType];
 
     const reusableObjectEl = document.createElement('a-entity');
-    reusableObjectEl.object3D.position.setX(positionX);
-    if (positionZ) {
-      reusableObjectEl.object3D.position.setZ(positionZ);
-    } else {
-      randomPosition(reusableObjectEl, 'z', streetLength, params['length']);
+
+    if (!positionZ) {
+      positionZ = randomPosition(reusableObjectEl, 'z', streetLength, params['length']);
     }
+    reusableObjectEl.setAttribute('position', `${positionX} 0 ${positionZ}`);
     reusableObjectEl.setAttribute('mixin', params['mixin']);
-    reusableObjectEl.object3D.rotation.set(0, THREE.MathUtils.degToRad(rotationY), 0);
+    reusableObjectEl.setAttribute('rotation', `0 ${rotationY} 0`);
 
     if (animated) {
       speed = 5; // meters per second

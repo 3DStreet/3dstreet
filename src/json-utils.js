@@ -7,7 +7,8 @@ and returns a Javascript object
 function convertDOMElToObject (entity) {
   const data = [];
   const environmentElement = document.querySelector('#environment');
-  const sceneEntities = [entity, environmentElement];
+  const referenceEntities = document.querySelector('#reference-layers');
+  const sceneEntities = [entity, environmentElement, referenceEntities];
 
   for (const entry of sceneEntities) {
     const entityData = getElementData(entry);
@@ -83,7 +84,8 @@ function getAttributes (entity) {
 }
 
 function toPropString (propData) {
-  if (typeof propData === 'string' || typeof propData === 'number' || typeof propData === 'boolean') {
+  if (typeof propData === 'string' || typeof propData === 'number' || typeof propData === 'boolean' ||
+    Array.isArray(propData)) {
     return (propData).toString();
   }
   if (propData.isVector3 || propData.isVector2 || propData.isVector4 ||
@@ -128,7 +130,8 @@ const removeProps = {
 // a list of component_name:new_component_name pairs to rename in JSON string
 const renameProps = {
   'streetmix-loader': 'not-streetmix-loader',
-  street: 'not-street'
+  street: 'not-street',
+  intersection: 'not-intersection'
 };
 
 function filterJSONstreet (removeProps, renameProps, streetJSON) {
@@ -169,8 +172,8 @@ function filterJSONstreet (removeProps, renameProps, streetJSON) {
   });
   // rename components
   for (var renameKey in renameProps) {
-    const reKey = new RegExp(`"${renameKey}":`);
-    stringJSON = stringJSON.replace(reKey, `"${renameProps[renameKey]}":`);
+    const reKey = new RegExp(`"${renameKey}":`, 'g');
+    stringJSON = stringJSON.replaceAll(reKey, `"${renameProps[renameKey]}":`);
   }
   return stringJSON;
 }
@@ -250,7 +253,6 @@ function getModifiedProperty (entity, componentName) {
     // skip properties, if they exists in element's mixin
     return null;
   }
-
   // If its single-property like position, rotation, etc
   if (isSingleProperty(defaultData)) {
     const defaultValue = defaultData.default;
@@ -284,7 +286,7 @@ function getModifiedProperty (entity, componentName) {
 
 function createEntities (entitiesData, parentEl) {
   const sceneElement = document.querySelector('a-scene');
-  const removeEntities = ['environment', 'layers-2d'];
+  const removeEntities = ['environment', 'reference-layers'];
   for (const entityData of entitiesData) {
     if (entityData.id === 'street-container' &&
     entityData.children &&
@@ -365,4 +367,151 @@ function createEntityFromObj (entityData, parentEl) {
       createEntityFromObj(childEntityData, entity);
     }
   }
+}
+
+/*
+  Code imported from index.html, mix of save load utils and some ui functions
+*/
+
+
+AFRAME.registerComponent('metadata', {
+  schema: {
+    sceneTitle: {default: ''},
+    sceneId: {default: ''}
+  },
+  init: function() {
+  }
+})
+
+AFRAME.registerComponent('set-loader-from-hash', {
+  dependencies: ['streetmix-loader'],
+  schema: {
+    defaultURL: { type: 'string' }
+  },
+  init: function () {
+    // get hash from window
+    const streetURL = window.location.hash.substring(1);
+    if (!streetURL) {
+      return;
+    }
+    if (streetURL.includes('//streetmix.net')) {
+      console.log('[set-loader-from-hash]','Set streetmix-loader streetmixStreetURL to', streetURL)
+      this.el.setAttribute('streetmix-loader', 'streetmixStreetURL', streetURL);
+    } else {
+      // try to load JSON file from remote resource
+      console.log('[set-loader-from-hash]','Load 3DStreet scene with fetchJSON from', streetURL)
+      this.fetchJSON(streetURL);
+    }
+    // else {
+    //   console.log('[set-loader-from-hash]','Using default URL', this.data.defaultURL)
+    //   this.el.setAttribute('streetmix-loader', 'streetmixStreetURL', this.data.defaultURL);
+    // }
+  },
+  fetchJSON: function (requestURL) {
+    let sceneId = getUUIDFromPath(requestURL);
+        if (sceneId) {
+          console.log('sceneId from fetchJSON from url hash loader', sceneId);
+          AFRAME.scenes[0].setAttribute('metadata', 'sceneId', sceneId);
+        }
+    const request = new XMLHttpRequest();
+    request.open('GET', requestURL, true);
+    request.onload = function () {
+      if (this.status >= 200 && this.status < 400) {
+        // Connection success
+        // remove 'set-loader-from-hash' component from json data
+        const jsonData = JSON.parse(this.response, 
+          (key, value) => (key === 'set-loader-from-hash') ? undefined : value );
+        
+        console.log('[set-loader-from-hash]', '200 response received and JSON parsed, now createElementsFromJSON');
+        createElementsFromJSON(jsonData);
+        let sceneId = getUUIDFromPath(requestURL);
+        if (sceneId) {
+          console.log('sceneId from fetchJSON from url hash loader', sceneId);
+          AFRAME.scenes[0].setAttribute('metadata', 'sceneId', sceneId);
+        }
+      }
+    };
+    request.onerror = function () {
+      // There was a connection error of some sort
+      console.log('Loading Error: There was a connection error during JSON loading');
+    };
+    request.send();
+  }
+});
+
+function getUUIDFromPath(path) {
+  // UUID regex pattern: [0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}
+  const uuidPattern = /[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/;
+
+  const match = path.match(uuidPattern);
+  if (match) {
+    return match[0];
+  }
+
+  return null; // return null or whatever default value you prefer if no UUID found
+}
+
+// this use os text input prompt, delete current scene, then load streetmix file
+function inputStreetmix() {
+  streetmixURL = prompt("Please enter a Streetmix URL", "https://streetmix.net/kfarr/3/example-street");
+  setTimeout(function() { window.location.hash = streetmixURL; });
+  streetContainerEl = document.getElementById('street-container');
+  while (streetContainerEl.firstChild) {
+    streetContainerEl.removeChild(streetContainerEl.lastChild);
+  }
+  AFRAME.scenes[0].setAttribute('metadata', 'sceneId', '');
+  AFRAME.scenes[0].setAttribute('metadata', 'sceneTitle', '');
+  streetContainerEl.innerHTML = '<a-entity street streetmix-loader="streetmixStreetURL: '+streetmixURL+'""></a-entity>';
+}
+
+// JSON loading starts here
+function getValidJSON(stringJSON) {
+  // Preserve newlines, etc. - use valid JSON
+  // Remove non-printable and other non-valid JSON characters
+  return stringJSON.replace(/\'/g, "")
+                   .replace(/\n/g, "")
+                   .replace(/[\u0000-\u0019]+/g,"");
+}
+
+function createElementsFromJSON(streetJSON) {
+  let streetObject = {};
+  if (typeof streetJSON == 'string') {
+    const validJSONString = getValidJSON(streetJSON);
+    streetObject = JSON.parse(validJSONString);
+  } else if (typeof streetJSON == 'object') {
+    streetObject = streetJSON;
+  }
+  
+  let sceneTitle = streetObject.title;
+  if (sceneTitle) {
+    console.log('sceneTitle from createElementsFromJSON', sceneTitle);
+    AFRAME.scenes[0].setAttribute('metadata', 'sceneTitle', sceneTitle);
+  }
+
+  streetContainerEl = document.getElementById('street-container');
+  while (streetContainerEl.firstChild) {
+    streetContainerEl.removeChild(streetContainerEl.lastChild);
+  }
+  
+  createEntities(streetObject.data, streetContainerEl);
+  AFRAME.scenes[0].components['notify'].message('Scene loaded from JSON', 'success')
+}
+
+// viewer widget click to paste json string of 3dstreet scene
+function inputJSON() {
+  const stringJSON = prompt("Please paste 3DStreet JSON string");
+  if (stringJSON) {
+    createElementsFromJSON(stringJSON);
+  }      
+}
+
+// handle viewer widget click to open 3dstreet json scene
+function fileJSON() {
+  let reader=new FileReader();
+  reader.onload=function(){
+    AFRAME.scenes[0].setAttribute('metadata', 'sceneId', '');
+    AFRAME.scenes[0].setAttribute('metadata', 'sceneTitle', '');
+    createElementsFromJSON(reader.result);
+  }
+  reader.readAsText(this.files[0]);
 }
