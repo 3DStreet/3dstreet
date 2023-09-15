@@ -12,6 +12,70 @@ require('./components/create-from-json');
 require('./components/screentock.js');
 require('aframe-atlas-uvs-component');
 
+AFRAME.registerSystem('json-3dstreet', {
+  schema: {
+    jsonURL: { type: 'string' }
+  },
+  init: function() {},
+  loadFromURL: function (fileURL) {
+    // load JSON file from URL
+    console.log(fileURL)
+    const request = new XMLHttpRequest();
+    request.open('GET', fileURL, true);
+    request.onload = function () {
+      if (this.status >= 200 && this.status < 400) {
+        // Connection success
+        // remove 'set-loader-from-hash' component from json data
+        const jsonData = JSON.parse(this.response, (key, value) =>
+          key === 'set-loader-from-hash' ? undefined : value
+        );
+
+        console.log(
+          '[set-loader-from-hash]',
+          '200 response received and JSON parsed, now createElementsFromJSON'
+        );
+        createElementsFromJSON(jsonData);
+        let sceneId = getUUIDFromPath(fileURL);
+        if (sceneId) {
+          console.log('sceneId from fetchJSON from url hash loader', sceneId);
+          AFRAME.scenes[0].setAttribute('metadata', 'sceneId', sceneId);
+        }
+      } else if (this.status === 404) {
+        console.error(
+          '[set-loader-from-hash] Error trying to load scene: Resource not found.'
+        );
+        AFRAME.scenes[0].components['notify'].message(
+          'Error trying to load scene: Resource not found.',
+          'error'
+        );
+      }
+    };
+    request.onerror = function () {
+      // There was a connection error of some sort
+      console.error(
+        'Loading Error: There was a connection error during JSON loading'
+      );
+      AFRAME.scenes[0].components['notify'].message(
+        'Could not fetch scene.',
+        'error'
+      );
+    };
+    request.send();
+
+  },
+  update: function (oldData) {
+    // If `oldData` is empty, then this means we're in the initialization process.
+    // No need to update.
+    if (Object.keys(oldData).length === 0) { return; }
+
+    const jsonURL = this.data.jsonURL;
+
+    if (jsonURL) {
+      this.loadFromURL(jsonURL);
+    }
+  }
+});
+
 AFRAME.registerComponent('street', {
   schema: {
     JSON: { type: 'string' },

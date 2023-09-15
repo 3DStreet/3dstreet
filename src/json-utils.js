@@ -437,59 +437,16 @@ AFRAME.registerComponent('set-loader-from-hash', {
         // try to load JSON file from remote resource
         console.log(
           '[set-loader-from-hash]',
-          'Load 3DStreet scene with fetchJSON from',
+          'Load 3DStreet scene from',
           streetURL
         );
-        this.fetchJSON(streetURL);
+        AFRAME.scenes[0].setAttribute('json-3dstreet', `jsonURL: ${streetURL}`);
       }
       // else {
       //   console.log('[set-loader-from-hash]','Using default URL', this.data.defaultURL)
       //   this.el.setAttribute('streetmix-loader', 'streetmixStreetURL', this.data.defaultURL);
       // }
     }
-  },
-  fetchJSON: function (requestURL) {
-    const request = new XMLHttpRequest();
-    request.open('GET', requestURL, true);
-    request.onload = function () {
-      if (this.status >= 200 && this.status < 400) {
-        // Connection success
-        // remove 'set-loader-from-hash' component from json data
-        const jsonData = JSON.parse(this.response, (key, value) =>
-          key === 'set-loader-from-hash' ? undefined : value
-        );
-
-        console.log(
-          '[set-loader-from-hash]',
-          '200 response received and JSON parsed, now createElementsFromJSON'
-        );
-        createElementsFromJSON(jsonData);
-        let sceneId = getUUIDFromPath(requestURL);
-        if (sceneId) {
-          console.log('sceneId from fetchJSON from url hash loader', sceneId);
-          AFRAME.scenes[0].setAttribute('metadata', 'sceneId', sceneId);
-        }
-      } else if (this.status === 404) {
-        console.error(
-          '[set-loader-from-hash] Error trying to load scene: Resource not found.'
-        );
-        AFRAME.scenes[0].components['notify'].message(
-          'Error trying to load scene: Resource not found.',
-          'error'
-        );
-      }
-    };
-    request.onerror = function () {
-      // There was a connection error of some sort
-      console.error(
-        'Loading Error: There was a connection error during JSON loading'
-      );
-      AFRAME.scenes[0].components['notify'].message(
-        'Could not fetch scene.',
-        'error'
-      );
-    };
-    request.send();
   }
 });
 
