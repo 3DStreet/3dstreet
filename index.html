@@ -16,6 +16,11 @@
     <!-- ocean -->
     <script src="./src/components/ocean-plane.js"></script>
 
+    <!-- orbit controls -->
+    <!-- <script src="./src/lib/aframe-orbit-controls.min.js"></script> -->
+    <script src="./src/lib/orbit-camera.js"></script>
+
+
     <title>3DStreet</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link rel="icon" type="image/x-icon" href="ui_assets/favicon.ico">
@@ -54,20 +59,24 @@
         <!-- uncomment the line below to load all possible asset categories -->
         <!-- <street-assets categories="sidewalk-props people people-rigged vehicles vehicles-rigged buildings intersection-props segment-textures segment-colors lane-separator stencils vehicles-transit dividers sky grounds"></street-assets>   -->
         <!-- a reduced set of assets for non-animated streetmix streets without intersections -->
-        <street-assets categories="loud-bicycle sidewalk-props people vehicles vehicles-rigged buildings segment-textures segment-colors lane-separator stencils vehicles-transit dividers sky grounds"></street-assets>
+        <street-assets categories="loud-bicycle sidewalk-props people-rigged vehicles vehicles-rigged buildings segment-textures segment-colors lane-separator stencils vehicles-transit dividers sky grounds"></street-assets>
       </a-assets>
-  
-      <a-entity id="cameraRig" position="0 10 30" data-layer-name="Viewer" cursor-teleport="cameraRig: #cameraRig; cameraHead: #camera;" look-controls="reverseMouseDrag: true" wasd-controls="enabled: true">
-        <a-entity id="camera" camera="far: 1000" position="0 1.6 0" ></a-entity>
-        <a-entity id="leftHand" hand-controls="hand: left; handModelStyle: lowPoly; color: #ffccff"></a-entity>
-        <a-entity id="rightHand" hand-controls="hand: right; handModelStyle: lowPoly; color: #ffccff"></a-entity>
-        <a-entity id="screenshot" class="no-pause" screentock visible="false"></a-entity>
+
+      <a-entity
+      id="selfie-stick"
+      position="0 0 25"
+      rotation="45 40 20"
+      orbit-camera="startingPitch: -30"
+      >
+        <a-entity id="camera-rig" position="0 0 20">
+          <a-entity camera></a-entity>
+        </a-entity>
       </a-entity>
 
       <a-entity id="environment" data-layer-name="Environment" street-environment="preset: day;"></a-entity>
 
       <a-entity id="street-container" data-layer-name="3D Street Layers" data-layer-show-children>
-        <a-entity id="default-street" street streetmix-loader set-loader-from-hash></a-entity>
+        <a-entity id="default-street" street="length: 60; globalAnimated: true" streetmix-loader set-loader-from-hash></a-entity>
       </a-entity>
 
       <a-entity id="reference-layers" data-layer-name="Reference Layers" data-layer-show-children>
