@@ -133,7 +133,7 @@ const removeProps = {
   normalMap: {},
   'set-loader-from-hash': '*',
   'create-from-json': '*',
-  street: { JSON: '*' }
+  street: '*'
 };
 // a list of component_name:new_component_name pairs to rename in JSON string
 const renameProps = {
