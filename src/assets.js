@@ -202,8 +202,8 @@ function buildAssetHTML (assetUrl, categories) {
         <a-mixin id="temporary-jersey-barrier-concrete" scale="1 1 1" rotation="0 0 0" gltf-part="src: #dividers; part: jersey-barrier-concrete"></a-mixin>
       `,
     sky: `
-        <!-- sky -->
-        <img id="sky" src="${assetUrl}CGSkies_0343_doubled_2048.jpg" crossorigin="anonymous" />
+        <!-- sky  -->
+        <img id="sky" src="${assetUrl}images/skies/2048-polyhaven-wasteland_clouds_puresky.jpeg" crossorigin="anonymous" />
         <img id="sky-night" src="${assetUrl}images/AdobeStock_286725174-min.jpeg" crossorigin="anonymous" />
       `,
     grounds: `
