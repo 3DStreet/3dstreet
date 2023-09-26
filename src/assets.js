@@ -129,7 +129,7 @@ function buildAssetHTML (assetUrl, categories) {
         <a-mixin shadow="cast: false" id="drive-lane" geometry="width:3;height:150;primitive:plane" material="repeat:0.3 25;offset:0.55 0;src:#seamless-road;"></a-mixin>
         <a-mixin shadow="cast: false" id="bright-lane" geometry="width:3;height:150;primitive:plane" material="repeat:0.6 50;offset:0.55 0;src:#seamless-bright-road;color:#dddddd"></a-mixin>
         <a-mixin shadow="cast: false" id="bike-lane" geometry="width:1.8;height:150;primitive:plane" material="repeat:0.3 25;offset:0.55 0;roughness:1;metalness:0;src:#seamless-road;"></a-mixin>
-        <a-mixin shadow="cast: false" id="sidewalk" anisotropy geometry="width:3;height:150;primitive:plane" material="repeat:1.5 75;src:#seamless-sidewalk;"></a-mixin>
+        <a-mixin shadow id="sidewalk" anisotropy geometry="width:3;height:150;primitive:plane" material="repeat:1.5 75;src:#seamless-sidewalk;"></a-mixin>
         <a-mixin shadow="cast: false" id="bus-lane" geometry="width:3;height:150;primitive:plane" material="repeat:0.3 25;offset:0.55 0;src:#seamless-road;"></a-mixin>
         <a-mixin shadow="cast: false" id="divider" geometry="width:0.3;height:150;primitive:plane" material="repeat:1 150;offset:0.415 0;normalTextureOffset:0.415 0;src:#hatched-base;normalTextureRepeat:0.21 150;normalMap:#hatched-normal"></a-mixin>
         <a-mixin shadow="cast: false" id="grass" geometry="width:0.3;height:150;primitive:plane" material="repeat:1 150;offset:0.415 0;src:#grass-texture;"></a-mixin>
