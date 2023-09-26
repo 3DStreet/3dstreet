@@ -441,6 +441,14 @@ AFRAME.registerComponent('set-loader-from-hash', {
           'streetmixStreetURL',
           streetURL
         );
+      } else if (streetURL.startsWith('streetmix-json:')){
+
+        const JSONString = decodeURIComponent(streetURL.split('streetmix-json:')[1]);
+        console.log(JSONString)
+        const streetmixJSON = JSON.parse(JSONString);
+        console.log(streetmixJSON);
+        this.el.setAttribute('streetmix-loader', 'streetmixJSON', streetmixJSON);
+        
       } else {
         // try to load JSON file from remote resource
         console.log(

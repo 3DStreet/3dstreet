@@ -51,13 +51,48 @@ AFRAME.registerComponent('streetmix-loader', {
     streetmixStreetURL: { type: 'string' },
     streetmixAPIURL: { type: 'string' },
     showBuildings: { default: true },
-    name: { default: '' }
+    name: { default: '' },
+    streetmixJSON: { type: 'string', default: '' }
+  },
+  loadFromJSON: function (streetmixResponseObject) {
+    if (!streetmixResponseObject) {
+      console.log("No JSON provided")
+      return;
+    }
+    const data = this.data;
+    const el = this.el;
+    const streetmixSegments = streetmixResponseObject.data.street.segments;
+    const streetmixName = streetmixResponseObject.name;
+    console.log('streetmixName', streetmixName);
+    el.setAttribute('streetmix-loader', 'name', streetmixName);
+
+    const currentSceneTitle = AFRAME.scenes[0].getAttribute('metadata').sceneTitle;
+    if (!currentSceneTitle) { // only set title from streetmix if none exists
+      AFRAME.scenes[0].setAttribute('metadata', 'sceneTitle', streetmixName);
+      console.log('therefore setting metadata sceneTitle as streetmixName', streetmixName);
+    }
+
+    if (data.showBuildings) {
+      el.setAttribute('street', 'right', streetmixResponseObject.data.street.rightBuildingVariant);
+      el.setAttribute('street', 'left', streetmixResponseObject.data.street.leftBuildingVariant);
+    }
+    el.setAttribute('street', 'type', 'streetmixSegmentsFeet');
+    // set JSON attribute last or it messes things up
+    el.setAttribute('street', 'JSON', JSON.stringify({ streetmixSegmentsFeet: streetmixSegments }));
+    el.emit('streetmix-loader-street-loaded');
   },
   update: function (oldData) { // fired at start and at each subsequent change of any schema value
     // This method may fire a few times when viewing a streetmix street in 3dstreet:
     // First to find the proper path, once to actually load the street, and then subsequent updates such as street name
     var data = this.data;
     var el = this.el;
+
+    // load street from provided JSON with streetmix format
+    if (data.streetmixJSON !== '') {
+      this.loadFromJSON(data.streetmixJSON);
+      data.streetmixJSON == '';
+      return;
+    }
 
     // if the loader has run once already, and upon update neither URL has changed, do not take action
     if ((oldData.streetmixStreetURL === data.streetmixStreetURL) && (oldData.streetmixAPIURL === data.streetmixAPIURL)) {
@@ -85,29 +120,11 @@ AFRAME.registerComponent('streetmix-loader', {
       if (this.status >= 200 && this.status < 400) {
         // Connection success
         const streetmixResponseObject = JSON.parse(this.response);
-        const streetmixSegments = streetmixResponseObject.data.street.segments;
-        const streetmixName = streetmixResponseObject.name;
-        console.log('streetmixName', streetmixName);
-        el.setAttribute('streetmix-loader', 'name', streetmixName);
-
-        const currentSceneTitle = AFRAME.scenes[0].getAttribute('metadata').sceneTitle;
-        if (!currentSceneTitle) { // only set title from streetmix if none exists
-          AFRAME.scenes[0].setAttribute('metadata', 'sceneTitle', streetmixName);
-          console.log('therefore setting metadata sceneTitle as streetmixName', streetmixName);
-        }
-
-        if (data.showBuildings) {
-          el.setAttribute('street', 'right', streetmixResponseObject.data.street.rightBuildingVariant);
-          el.setAttribute('street', 'left', streetmixResponseObject.data.street.leftBuildingVariant);
-        }
-        el.setAttribute('street', 'type', 'streetmixSegmentsFeet');
-        // set JSON attribute last or it messes things up
-        el.setAttribute('street', 'JSON', JSON.stringify({ streetmixSegmentsFeet: streetmixSegments }));
-        el.emit('streetmix-loader-street-loaded');
+        this.loadFromJSON(streetmixResponseObject);
       } else {
         // We reached our target server, but it returned an error
         console.log('[streetmix-loader]', 'Loading Error: We reached the target server, but it returned an error');
-      }
+      }        
     };
     request.onerror = function () {
       // There was a connection error of some sort
