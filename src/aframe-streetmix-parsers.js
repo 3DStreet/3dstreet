@@ -1114,6 +1114,17 @@ function processSegments (segments, showStriping, length, globalAnimated, showVe
     // append the new surfaceElement to the segmentParentEl
     streetParentEl.append(segmentParentEl);
   }
+  // create new brown box to represent ground underneath street
+  let dirtBox = document.createElement('a-box');
+  const xPos = cumulativeWidthInMeters / 2;
+  console.log('xPos', xPos)
+  console.log('`${xPos} -1.1 0`', `${xPos} -1.1 0`)
+  dirtBox.setAttribute('position', `${xPos} -1.1 0`); // what is x? x = 0 - cumulativeWidthInMeters / 2
+  dirtBox.setAttribute('height', 2);   // height is 2 meters from y of -0.1 to -y of 2.1
+  dirtBox.setAttribute('width', cumulativeWidthInMeters); 
+  dirtBox.setAttribute('depth', length - 0.2);   // depth is length - 0.1 on each side
+  dirtBox.setAttribute('material', 'color: #664B00;');
+  streetParentEl.append(dirtBox);
   return streetParentEl;
 }
 module.exports.processSegments = processSegments;
