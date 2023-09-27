@@ -62,17 +62,20 @@
         <street-assets categories="loud-bicycle sidewalk-props people-rigged vehicles vehicles-rigged buildings segment-textures segment-colors lane-separator stencils vehicles-transit dividers sky grounds"></street-assets>
       </a-assets>
 
-      <a-entity
-      id="selfie-stick"
-      position="0 0 25"
-      rotation="45 40 20"
-      orbit-camera="startingPitch: -30"
-      >
-        <a-entity id="camera-rig" position="0 0 20">
-          <a-entity camera></a-entity>
+      <a-entity data-layer-name="Viewer" data-viewer-type="orbit">
+        <a-entity
+        id="selfie-stick"
+        position="0 0 20"
+        rotation="45 40 20"
+        orbit-camera="startingPitch: -30"
+        >
+          <a-entity id="camera-rig" position="0 0 20">
+            <a-entity camera></a-entity>
+            <a-entity id="screenshot" class="no-pause" screentock visible="false"></a-entity>
+          </a-entity>
         </a-entity>
       </a-entity>
-
+      
       <a-entity id="environment" data-layer-name="Environment" street-environment="preset: day;"></a-entity>
 
       <!-- <a-entity position="-60 56 -16" light="intensity: 2.2; castShadow: true; shadowCameraBottom: -20; shadowCameraLeft: -30; shadowCameraRight: 40; shadowCameraTop: 30; shadowMapHeight: 1024; shadowMapWidth: 1024" visible=""></a-entity> -->
