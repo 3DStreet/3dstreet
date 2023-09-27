@@ -115,12 +115,14 @@ AFRAME.registerComponent('streetmix-loader', {
     var request = new XMLHttpRequest();
     console.log('[streetmix-loader]', 'GET ' + data.streetmixAPIURL);
 
+    // for using inside request callback function 
+    const loadFromJSON = this.loadFromJSON.bind(this);
     request.open('GET', data.streetmixAPIURL, true);
     request.onload = function () {
       if (this.status >= 200 && this.status < 400) {
         // Connection success
         const streetmixResponseObject = JSON.parse(this.response);
-        this.loadFromJSON(streetmixResponseObject);
+        loadFromJSON(streetmixResponseObject);
       } else {
         // We reached our target server, but it returned an error
         console.log('[streetmix-loader]', 'Loading Error: We reached the target server, but it returned an error');
