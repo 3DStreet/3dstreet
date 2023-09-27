@@ -530,7 +530,7 @@ function inputStreetmix() {
   AFRAME.scenes[0].setAttribute('metadata', 'sceneId', '');
   AFRAME.scenes[0].setAttribute('metadata', 'sceneTitle', '');
   streetContainerEl.innerHTML =
-    '<a-entity street streetmix-loader="streetmixStreetURL: ' +
+    '<a-entity street="length: 60; globalAnimated: true;" streetmix-loader="streetmixStreetURL: ' +
     streetmixURL +
     '""></a-entity>';
 }
