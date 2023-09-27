@@ -142,10 +142,46 @@ function createStencilsParentElement (position) {
   return placedObjectEl;
 }
 
-function createTracksParentElement (positionX) {
+function createRailsElement(length, positionX) {
+  const placedObjectEl = document.createElement('a-entity');
+  const railsGeometry = {
+    "primitive": "box",
+    "depth": length,
+    "width": 0.1,
+    "height": 0.2,
+
+  }
+  const railsMaterial = {
+    "color": "#8f8f8f",
+    "metalness": 1,
+    "emissive": "#828282",
+    "EmissiveIntensity": 0.5,
+    "roughness": 0.1,
+    "envMap": "#sky"
+  }
+  placedObjectEl.setAttribute('geometry', railsGeometry);
+  placedObjectEl.setAttribute('material', railsMaterial);
+  placedObjectEl.setAttribute('class', 'rails');
+  placedObjectEl.setAttribute('shadow', 'recieve:true; cast: true');
+  placedObjectEl.setAttribute('position', positionX + ' 0.2 0'); // position="1.043 0.100 -3.463"
+
+  return placedObjectEl;
+
+}
+
+function createTracksParentElement (positionX, length, objectMixinId) {
   const placedObjectEl = document.createElement('a-entity');
   placedObjectEl.setAttribute('class', 'track-parent');
   placedObjectEl.setAttribute('position', positionX + ' -0.2 0'); // position="1.043 0.100 -3.463"
+  // add rails
+  const railsWidth = {
+    "tram": 0.93,
+    "trolley": 0.5
+  }
+  const railsPosX = railsWidth[objectMixinId];
+  placedObjectEl.append(createRailsElement(length, railsPosX));
+  placedObjectEl.append(createRailsElement(length, -railsPosX));
+
   return placedObjectEl;
 }
 
@@ -769,8 +805,7 @@ function processSegments (segments, showStriping, length, globalAnimated, showVe
       // create and append a train element
       segmentParentEl.append(createChooChooElement(variantList, objectMixinId, positionX, length, showVehicles));
       // make the parent for all the objects to be cloned
-      const tracksParentEl = createTracksParentElement(positionX);
-      cloneMixinAsChildren({ objectMixinId: 'track', parentEl: tracksParentEl, step: 20.25, radius: clonedObjectRadius });
+      const tracksParentEl = createTracksParentElement(positionX, length, objectMixinId);
       // add these trains to the segment parent
       segmentParentEl.append(tracksParentEl);
     } else if (segments[i].type === 'turn-lane') {
