@@ -175,8 +175,8 @@ function createTracksParentElement (positionX, length, objectMixinId) {
   placedObjectEl.setAttribute('position', positionX + ' -0.2 0'); // position="1.043 0.100 -3.463"
   // add rails
   const railsWidth = {
-    "tram": 0.93,
-    "trolley": 0.5
+    "tram": 0.7175, // standard gauge 1,435 mm
+    "trolley": 0.5335 // sf cable car rail gauge 1,067 mm
   }
   const railsPosX = railsWidth[objectMixinId];
   placedObjectEl.append(createRailsElement(length, railsPosX));
