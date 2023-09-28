@@ -89,8 +89,9 @@ AFRAME.registerComponent('streetmix-loader', {
 
     // load street from provided JSON with streetmix format
     if (data.streetmixJSON !== '') {
-      this.loadFromJSON(data.streetmixJSON);
-      data.streetmixJSON == '';
+      const newStreetmixJSON = data.streetmixJSON;
+      el.setAttribute('streetmix-loader', 'streetmixJSON', '');
+      this.loadFromJSON(newStreetmixJSON);
       return;
     }
 
