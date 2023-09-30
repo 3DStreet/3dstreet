@@ -137,3 +137,31 @@ body {
 	background: #6100FF;
 	z-index: 9999;
 }
+
+/**** Label CSS ****/
+
+.overlay {
+	overflow: hidden;
+	position: absolute; 
+	bottom: 50px; /* Adjust this value to your desired y position from the bottom */
+	display: inline-flex;
+	align-items: flex-end;
+	justify-content: flex-start; /* Align the content to the left */
+	z-index: 10;
+}
+
+.overlay::before {
+	content: "";
+	display: block;
+	height: 90px;
+	width: 1px; 
+	background-color: white;
+	margin-right: 10px; /* Adds some distance between the line and the text */
+}
+
+.measure-text {
+	display: inline-block;
+	white-space: nowrap; /* Prevents the text from wrapping to the next line */
+	color: white;
+	white-space: pre;
+}

@@ -1110,6 +1110,45 @@ function processSegments (segments, showStriping, length, globalAnimated, showVe
 
     // add new object
     segmentParentEl.append(createSegmentElement(scaleX, positionX, positionY, rotationY, groundMixinId, length, repeatCount, elevation));
+
+    // create label element and accompanying div for each segment (but not separator segments)
+    function createLabelElement (positionX, segmentType, segmentWidthInMeters, segmentWidthInFeet, length, i) {
+      if (segmentType != 'separator') {
+        let labelBox = document.createElement('a-box');
+        labelBox.setAttribute('position', `${positionX - segmentWidthInMeters / 2} 0 ${length / 2}`); // this places a small box on the left-most side of the segment
+        labelBox.setAttribute('height', 0.1);   
+        labelBox.setAttribute('width', 0.1); 
+        labelBox.setAttribute('depth', 0.1);   
+        labelBox.setAttribute('material', 'color: #AA00AA;');
+        labelBox.setAttribute('screen-position');
+        labelBox.setAttribute('output-screen-position-labels', `i: ${i};`);
+        labelBox.setAttribute('data-segmentType', segmentType);
+        labelBox.setAttribute('data-segmentWidthInMeters', segmentWidthInMeters.toFixed(1));
+        labelBox.setAttribute('data-segmentWidthInFeet', segmentWidthInFeet.toFixed(1));
+        streetParentEl.append(labelBox);
+        // create corresponding DOM element
+
+        let labelDiv = document.createElement('div');
+        labelDiv.setAttribute('class', 'overlay');
+        labelDiv.setAttribute('id', 'label-' + i);
+
+        let labelSpan = document.createElement('span');
+        labelSpan.setAttribute('class', 'measure-text');
+
+        labelDiv.append(labelSpan);
+
+        streetParentEl.append(labelDiv);
+        
+        // <div class="overlay" id="label-0">
+        //   <span class="measure-text">Lorem ipsum 50ft</span>
+        // </div>
+        
+      }
+    }
+
+    // add label object
+    segmentParentEl.append(createLabelElement(positionX, segmentType, segmentWidthInMeters, segmentWidthInFeet, length, i))
+
     // returns JSON output instead
     // append the new surfaceElement to the segmentParentEl
     streetParentEl.append(segmentParentEl);

@@ -19,6 +19,7 @@
     <!-- orbit controls -->
     <!-- <script src="./src/lib/aframe-orbit-controls.min.js"></script> -->
     <script src="./src/lib/orbit-camera.js"></script>
+    <script src="./src/lib/screen-position.js"></script>
 
 
     <title>3DStreet</title>
@@ -75,10 +76,8 @@
           </a-entity>
         </a-entity>
       </a-entity>
-      
-      <a-entity id="environment" data-layer-name="Environment" street-environment="preset: day;"></a-entity>
 
-      <!-- <a-entity position="-60 56 -16" light="intensity: 2.2; castShadow: true; shadowCameraBottom: -20; shadowCameraLeft: -30; shadowCameraRight: 40; shadowCameraTop: 30; shadowMapHeight: 1024; shadowMapWidth: 1024" visible=""></a-entity> -->
+      <a-entity id="environment" data-layer-name="Environment" street-environment="preset: day;"></a-entity>
 
       <a-entity id="street-container" data-layer-name="3D Street Layers" data-layer-show-children>
         <a-entity id="default-street" street="length: 60; globalAnimated: true" streetmix-loader set-loader-from-hash></a-entity>
