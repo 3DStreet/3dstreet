@@ -374,7 +374,8 @@ AFRAME.registerComponent('intersection', {
 
 AFRAME.registerComponent('street-environment', {
   schema: {
-    preset: { type: 'string', default: 'day', oneOf: ['day', 'night'] }
+    preset: { type: 'string', default: 'day', oneOf: ['day', 'night', 'color'] },
+    backgroundColor: { type: 'color', default: '#FFF' }
   },
   setEnvOption: function () {
     const sky = this.sky;
@@ -384,21 +385,26 @@ AFRAME.registerComponent('street-environment', {
     if (this.data.preset === 'night') {
       light1.setAttribute('light', 'intensity', 0.5);
       light2.setAttribute('light', 'intensity', 0.15);
+      sky.setAttribute('visible', true);
       sky.setAttribute('color', '#444');
       sky.setAttribute('src', '#sky-night');
       sky.setAttribute('rotation', '0 0 0');
-    } else { // day
+    } else if (this.data.preset === 'day') {
       // TODO: create a parent with children
       light1.setAttribute('light', 'intensity', 2);
       light2.setAttribute('light', 'intensity', 0.6);
+      sky.setAttribute('visible', true);
       sky.setAttribute('color', '#FFF');
       sky.setAttribute('src', '#sky');
       sky.setAttribute('rotation', '0 255 0');
+    } else { // color
+      sky.setAttribute('visible', false);
+      this.scene.setAttribute('background', 'color', this.data.backgroundColor);
     }
   },
   init: function () {
     const el = this.el;
-
+    this.scene = document.querySelector('a-scene');
     this.light1 = document.createElement('a-entity');
     const light1 = this.light1;
     light1.setAttribute('id', 'env-light1');
