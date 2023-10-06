@@ -410,8 +410,24 @@ AFRAME.registerComponent('metadata', {
     sceneTitle: { default: '' },
     sceneId: { default: '' }
   },
+  init: function () { },
+  update: function (oldData) {
+    const sceneTitle = this.data.sceneTitle;
+    if (sceneTitle !== oldData.sceneTitle) {
+      this.el.emit('newTitle', {sceneTitle: sceneTitle});
+    }  
+  }
+});
+
+AFRAME.registerComponent('scene-title', {
+  schema: {
+    titleText: { default: '' }
+  },
   init: function () {
     this.titleElement = undefined;
+    this.el.addEventListener('newTitle', (evt) => {
+      this.el.setAttribute('scene-title', 'titleText', evt.detail.sceneTitle);
+    });
   },
   createTitleElement: function (titleText) {
     const titleDiv = this.titleElement = document.createElement('div');
@@ -428,10 +444,10 @@ AFRAME.registerComponent('metadata', {
     // No need to update.
     if (Object.keys(oldData).length === 0) { return; }
 
-    const titleText = this.data.sceneTitle;
+    const titleText = this.data.titleText;
     const titleElement = this.titleElement;
 
-    if (titleText !== oldData.sceneTitle) {
+    if (titleText !== oldData.titleText) {
       if (!titleElement) {
         this.createTitleElement(titleText);
       } else {
