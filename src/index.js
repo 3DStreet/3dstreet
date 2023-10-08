@@ -2,6 +2,7 @@
 if (typeof VERSION !== 'undefined') { console.log(`3DStreet Version: ${VERSION} (Date: ${new Date(COMMIT_DATE).toISOString().split('T')[0]}, Commit Hash: #${COMMIT_HASH})`); }
 var streetmixParsers = require('./aframe-streetmix-parsers');
 var streetmixUtils = require('./tested/streetmix-utils');
+const jsonUtils = require('./json-utils.js');
 require('./components/anisotropy');
 require('./components/gltf-part');
 require('./lib/aframe-cursor-teleport-component.min.js');
@@ -12,6 +13,10 @@ require('./components/create-from-json');
 require('./components/screentock.js');
 require('aframe-atlas-uvs-component');
 
+/*
+load JSON file with 3d-street data from URL.
+3D scene elements will be loaded as children of a-scene
+*/
 AFRAME.registerSystem('json-3dstreet', {
   schema: {
     jsonURL: { type: 'string' }
@@ -34,8 +39,8 @@ AFRAME.registerSystem('json-3dstreet', {
           '[set-loader-from-hash]',
           '200 response received and JSON parsed, now createElementsFromJSON'
         );
-        createElementsFromJSON(jsonData);
-        let sceneId = getUUIDFromPath(fileURL);
+        jsonUtils.createElementsFromJSON(jsonData);
+        let sceneId = jsonUtils.getUUIDFromPath(fileURL);
         if (sceneId) {
           console.log('sceneId from fetchJSON from url hash loader', sceneId);
           AFRAME.scenes[0].setAttribute('metadata', 'sceneId', sceneId);

@@ -10,9 +10,6 @@
     <!-- mapbox -->
     <script src="./src/lib/aframe-mapbox-component.min.js"></script>
 
-    <!-- save / load -->
-    <script src="./src/json-utils.js"></script>
-
     <!-- ocean -->
     <script src="./src/components/ocean-plane.js"></script>
 
@@ -35,7 +32,7 @@
         <li onclick="buttonScreenshotTock()"> <a class="camera"  href="#"> <span> Capture image as PNG </span> <img src="ui_assets/camera-icon.svg"> </a></li>
         <li onclick="inputStreetmix()"> <a class="load"  href="#"> <span> Load Streetmix URL </span> <img src="ui_assets/streetmix-logo.svg"> </a></li>
         <!-- <li onclick="inputJSON()"> <a class="load"  href="#"> <span> Load JSON String </span> <img src="assets/ui_assets/upload-icon.svg"> </a></li> -->
-        <li><a class="load"> <label for="inputfile" style="display: inherit; align-items: center; cursor: pointer"> <input type="file" id="inputfile" style="display:none" accept=".js, .json, .txt"> <span> Load JSON File </span> <img src="ui_assets/upload-icon.svg"></label></a></li>
+        <li><a class="load"> <label for="inputfile" style="display: inherit; align-items: center; cursor: pointer"> <input type="file" id="inputfile" style="display:none" accept=".js, .json, .txt" onchange="fileJSON"> <span> Load JSON File </span> <img src="ui_assets/upload-icon.svg"></label></a></li>
         <li> <a id="custom-enter-vr-button" class="vr" href="#"> <span class="vr">Enter VR mode</span> <img src="ui_assets/vr-icon.svg"> </a></li>
       </ul>
     </div>
@@ -75,9 +72,6 @@
     </a-scene>
   </body>
   <script>
-
-    document.getElementById('inputfile')
-            .addEventListener('change', fileJSON);
 
     // only show VR button if headset connected
     AFRAME.registerComponent('vr-mode-ui-if-headset', {

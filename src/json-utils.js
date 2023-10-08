@@ -305,8 +305,27 @@ function getModifiedProperty(entity, componentName) {
   return diff;
 }
 
-function createEntities(entitiesData, parentEl) {
+function prepareStreetContainer() {
+  let streetContainerEl = document.getElementById('street-container');
+  if (streetContainerEl) {
+    while (streetContainerEl.firstChild) {
+      streetContainerEl.removeChild(streetContainerEl.lastChild);
+    }
+  } else {
+    streetContainerEl = document.createElement('a-entity');
+    streetContainerEl.setAttribute('id', 'street-container');
+    streetContainerEl.setAttribute('data-layer-name', '3D Street Layers');
+    streetContainerEl.setAttribute('data-layer-show-children');
+    AFRAME.scenes[0].appendChild(streetContainerEl);
+  }  
+  return streetContainerEl;
+}
+
+function createEntities(entitiesData) {
   const sceneElement = document.querySelector('a-scene');
+
+  prepareStreetContainer();
+
   const removeEntities = ['environment', 'reference-layers'];
   for (const entityData of entitiesData) {
     if (
@@ -463,6 +482,8 @@ function getUUIDFromPath(path) {
   return null; // return null or whatever default value you prefer if no UUID found
 }
 
+module.exports.getUUIDFromPath = getUUIDFromPath;
+
 // this use os text input prompt, delete current scene, then load streetmix file
 function inputStreetmix() {
   streetmixURL = prompt(
@@ -472,10 +493,11 @@ function inputStreetmix() {
   setTimeout(function () {
     window.location.hash = streetmixURL;
   });
-  streetContainerEl = document.getElementById('street-container');
+  const streetContainerEl = document.getElementById('street-container');
   while (streetContainerEl.firstChild) {
     streetContainerEl.removeChild(streetContainerEl.lastChild);
   }
+
   AFRAME.scenes[0].setAttribute('metadata', 'sceneId', '');
   AFRAME.scenes[0].setAttribute('metadata', 'sceneTitle', '');
   streetContainerEl.innerHTML =
@@ -483,6 +505,8 @@ function inputStreetmix() {
     streetmixURL +
     '""></a-entity>';
 }
+
+module.exports.inputStreetmix = inputStreetmix;
 
 // JSON loading starts here
 function getValidJSON(stringJSON) {
@@ -509,17 +533,15 @@ function createElementsFromJSON(streetJSON) {
     AFRAME.scenes[0].setAttribute('metadata', 'sceneTitle', sceneTitle);
   }
 
-  streetContainerEl = document.getElementById('street-container');
-  while (streetContainerEl.firstChild) {
-    streetContainerEl.removeChild(streetContainerEl.lastChild);
-  }
+  createEntities(streetObject.data);
 
-  createEntities(streetObject.data, streetContainerEl);
   AFRAME.scenes[0].components['notify'].message(
     'Scene loaded from JSON',
     'success'
   );
 }
+
+module.exports.createElementsFromJSON = createElementsFromJSON;
 
 // viewer widget click to paste json string of 3dstreet scene
 function inputJSON() {
@@ -528,6 +550,8 @@ function inputJSON() {
     createElementsFromJSON(stringJSON);
   }
 }
+
+module.exports.inputJSON = inputJSON;
 
 // handle viewer widget click to open 3dstreet json scene
 function fileJSON() {
@@ -539,3 +563,5 @@ function fileJSON() {
   };
   reader.readAsText(this.files[0]);
 }
+
+module.exports.fileJSON = fileJSON;
