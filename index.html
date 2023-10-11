@@ -17,8 +17,24 @@
     <script src="./src/components/ocean-plane.js"></script>
 
     <!-- vr teleport controls -->
-    <script src="https://cdn.jsdelivr.net/npm/aframe-blink-controls/dist/aframe-blink-controls.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/aframe-blink-controls@0.4.3/dist/aframe-blink-controls.min.js"></script>
 
+    <script>
+      window.addEventListener("DOMContentLoaded", function() {
+        const sceneEl = document.querySelector("a-scene");
+        sceneEl.addEventListener("enter-vr", function() {
+          document.querySelector('#cameraRig').removeAttribute('look-controls')
+          document.querySelector('#cameraRig').removeAttribute('wasd-controls')
+          document.querySelector('#cameraRig').removeAttribute('cursor-teleport')
+          document.querySelector('#cameraRig').setAttribute('position', '0 0 0')
+        });
+        sceneEl.addEventListener("exit-vr", function() {
+          document.querySelector('#cameraRig').setAttribute('cursor-teleport', "cameraRig: #cameraRig; cameraHead: #camera;")
+          document.querySelector('#cameraRig').setAttribute('look-controls', "reverseMouseDrag: true;")
+          document.querySelector('#cameraRig').setAttribute('wasd-controls', "enabled: true")
+        });
+      })
+    </script>
     <title>3DStreet</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link rel="icon" type="image/x-icon" href="ui_assets/favicon.ico">
