@@ -34,7 +34,11 @@ AFRAME.registerComponent('street', {
     }
 
     const streetmixSegments = JSON.parse(data.JSON);
+    const streetParent = this.el.querySelector('.street-parent');
     const streetEl = streetmixParsers.processSegments(streetmixSegments.streetmixSegmentsFeet, data.showStriping, data.length, data.globalAnimated, data.showVehicles);
+    if (streetParent) {
+      streetParent.remove();
+    }
     this.el.append(streetEl);
 
     if (data.left || data.right) {
