@@ -62,8 +62,8 @@
   
       <a-entity id="cameraRig" position="0 10 30" data-layer-name="Viewer" cursor-teleport="cameraRig: #cameraRig; cameraHead: #camera;" look-controls="reverseMouseDrag: true" wasd-controls="enabled: true">
         <a-entity id="camera" camera="far: 1000" position="0 1.6 0" ></a-entity>
-        <a-entity id="leftHand" hand-controls="hand: left; handModelStyle: lowPoly; color: #ffccff" blink-controls></a-entity>
-        <a-entity id="rightHand" hand-controls="hand: right; handModelStyle: lowPoly; color: #ffccff" blink-controls></a-entity>
+        <a-entity id="leftHand" oculus-touch-controls="hand: left;" blink-controls="cameraRig: #cameraRig; teleportOrigin: #camera; button: trigger"></a-entity>
+        <a-entity id="rightHand"  oculus-touch-controls="hand: right" blink-controls="cameraRig: #cameraRig; teleportOrigin: #camera;"></a-entity>
         <a-entity id="screenshot" class="no-pause" screentock visible="false"></a-entity>
       </a-entity>
 
