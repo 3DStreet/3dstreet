@@ -133,7 +133,7 @@ const removeProps = {
   normalMap: {},
   'set-loader-from-hash': '*',
   'create-from-json': '*',
-  street: '*'
+  street: {JSON: '*'}
 };
 // a list of component_name:new_component_name pairs to rename in JSON string
 const renameProps = {
@@ -151,15 +151,15 @@ function filterJSONstreet(removeProps, renameProps, streetJSON) {
   }
 
   let stringJSON = JSON.stringify(streetJSON, function replacer(key, value) {
+    const compAttributes = AFRAME.utils.styleParser.parse(value);
     for (var removeKey in removeProps) {
       // check for removing components
       if (key === removeKey) {
         const removeVal = removeProps[removeKey];
         // check for deleting component's attribute
         if (typeof removeVal === 'object' && !isEmpty(removeVal)) {
-          // remove attribute in component
-          const compAttributes = value;
 
+          // remove attribute in component
           const attrNames = Object.keys(removeVal);
           for (var attrName of attrNames) {
             const attrVal = removeVal[attrName];
@@ -167,9 +167,10 @@ function filterJSONstreet(removeProps, renameProps, streetJSON) {
               Object.prototype.hasOwnProperty.call(compAttributes, attrName) &&
               removeValueCheck(attrVal, compAttributes[attrName])
             ) {
-              delete value[attrName];
+              delete compAttributes[attrName];
             }
           }
+
         }
         // for other cases
         if (removeValueCheck(removeVal, value)) {
@@ -178,7 +179,7 @@ function filterJSONstreet(removeProps, renameProps, streetJSON) {
       }
     }
 
-    return value;
+    return compAttributes;
   });
   // rename components
   for (var renameKey in renameProps) {
