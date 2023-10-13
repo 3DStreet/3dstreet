@@ -117,16 +117,53 @@ AFRAME.registerComponent('street', {
 AFRAME.registerComponent('streetmix-loader', {
   dependencies: ['street'],
   schema: {
+    inputStreetmix: { type: 'string' },
     streetmixStreetURL: { type: 'string' },
     streetmixAPIURL: { type: 'string' },
     showBuildings: { default: true },
     name: { default: '' }
   },
+  prepareStreetElements: function() {
+    const streetContainerEl = jsonUtils.prepareStreetContainer();
+
+    let defaultStreet = streetContainerEl.querySelector('#default-street');
+    if (!defaultStreet) {
+      defaultStreet = document.createElement("a-entity");
+      streetContainerEl.appendChild(defaultStreet);
+      defaultStreet.setAttribute('id', 'default-street');
+    } 
+    this.defaultStreet = defaultStreet;
+  },
+  // this use os text input prompt, delete current scene, then load streetmix file
+  inputStreetmix: function () {
+    streetmixURL = prompt(
+      'Please enter a Streetmix URL',
+      'https://streetmix.net/kfarr/3/example-street'
+    );
+    setTimeout(function () {
+      window.location.hash = streetmixURL;
+    });
+
+    AFRAME.scenes[0].setAttribute('metadata', 'sceneId', '');
+    AFRAME.scenes[0].setAttribute('metadata', 'sceneTitle', '');
+
+    this.prepareStreetElements();
+    this.defaultStreet.setAttribute('streetmix-loader', 'streetmixStreetURL', streetmixURL);
+
+  },
   update: function (oldData) { // fired at start and at each subsequent change of any schema value
     // This method may fire a few times when viewing a streetmix street in 3dstreet:
     // First to find the proper path, once to actually load the street, and then subsequent updates such as street name
     var data = this.data;
-    var el = this.el;
+
+    this.prepareStreetElements();
+    const el = this.defaultStreet;
+
+    if ((data.inputStreetmix !== '') && (data.streetmixStreetURL === '') && (data.streetmixAPIURL === '')) {
+      this.inputStreetmix();
+      data.inputStreetmix = '';
+      return;
+    }
 
     // if the loader has run once already, and upon update neither URL has changed, do not take action
     if ((oldData.streetmixStreetURL === data.streetmixStreetURL) && (oldData.streetmixAPIURL === data.streetmixAPIURL)) {

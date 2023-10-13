@@ -321,6 +321,8 @@ function prepareStreetContainer() {
   return streetContainerEl;
 }
 
+module.exports.prepareStreetContainer = prepareStreetContainer;
+
 function createEntities(entitiesData) {
   const sceneElement = document.querySelector('a-scene');
 
@@ -483,30 +485,6 @@ function getUUIDFromPath(path) {
 }
 
 module.exports.getUUIDFromPath = getUUIDFromPath;
-
-// this use os text input prompt, delete current scene, then load streetmix file
-function inputStreetmix() {
-  streetmixURL = prompt(
-    'Please enter a Streetmix URL',
-    'https://streetmix.net/kfarr/3/example-street'
-  );
-  setTimeout(function () {
-    window.location.hash = streetmixURL;
-  });
-  const streetContainerEl = document.getElementById('street-container');
-  while (streetContainerEl.firstChild) {
-    streetContainerEl.removeChild(streetContainerEl.lastChild);
-  }
-
-  AFRAME.scenes[0].setAttribute('metadata', 'sceneId', '');
-  AFRAME.scenes[0].setAttribute('metadata', 'sceneTitle', '');
-  streetContainerEl.innerHTML =
-    '<a-entity street streetmix-loader="streetmixStreetURL: ' +
-    streetmixURL +
-    '""></a-entity>';
-}
-
-module.exports.inputStreetmix = inputStreetmix;
 
 // JSON loading starts here
 function getValidJSON(stringJSON) {
