@@ -71,7 +71,7 @@ body {
 .right-fixed {
 	position: fixed;
 	right: 0;
-	margin-top: 40vh;
+	margin-top: 22.5vh;
 	z-index: 1;
 }
 
