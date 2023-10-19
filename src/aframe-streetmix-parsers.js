@@ -528,7 +528,7 @@ function createMicroMobilityElement (variantList, positionX, segmentType, length
   }
   const bikeLength = 2.03;
   const positionZ = randomPosition(reusableObjectEl, 'z', length, bikeLength);
-  reusableObjectEl.setAttribute('position', positionX + ' 0 ' + positionZ);
+  reusableObjectEl.setAttribute('position', positionX + ' 0.2 ' + positionZ);
   microMobilityParentEl.append(reusableObjectEl);
 
   return microMobilityParentEl;
