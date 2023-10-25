@@ -30,7 +30,7 @@
     <div class="right-fixed">
       <ul class="right-menu">
         <li onclick="buttonScreenshotTock()"> <a class="camera"  href="#"> <span> Capture image as PNG </span> <img src="ui_assets/camera-icon.svg"> </a></li>
-        <li onclick="document.querySelector('#default-street').addEventListener('loaded', (evt)=> {evt.target.setAttribute('streetmix-loader', 'inputStreetmix')})"> <a class="load"  href="#"> <span> Load Streetmix URL </span> <img src="ui_assets/streetmix-logo.svg"> </a></li>
+        <li> <a class="load"  href="#"> <span> Load Streetmix URL </span> <img src="ui_assets/streetmix-logo.svg"> </a></li>
         <!-- <li onclick="inputJSON()"> <a class="load"  href="#"> <span> Load JSON String </span> <img src="assets/ui_assets/upload-icon.svg"> </a></li> -->
         <li><a class="load"> <label for="inputfile" style="display: inherit; align-items: center; cursor: pointer"> <input type="file" id="inputfile" style="display:none" accept=".js, .json, .txt"> <span> Load JSON File </span> <img src="ui_assets/upload-icon.svg"></label></a></li>
         <li> <a id="custom-enter-vr-button" class="vr" href="#"> <span class="vr">Enter VR mode</span> <img src="ui_assets/vr-icon.svg"> </a></li>
@@ -72,6 +72,18 @@
     </a-scene>
   </body>
   <script>
+
+    document.querySelector('.load').addEventListener('click', ()=> {
+      const defaultStreetElem = document.getElementById('default-street');
+      if (defaultStreetElem) {
+        const streetmixURL = prompt(
+          'Please enter a Streetmix URL',
+          'https://streetmix.net/kfarr/3/example-street'
+        );
+        // set inputStreetmix attribute with any value to call input prompt
+        defaultStreetElem.setAttribute('streetmix-loader', 'inputStreetmix', streetmixURL);
+      }
+    });
 
     // only show VR button if headset connected
     AFRAME.registerComponent('vr-mode-ui-if-headset', {

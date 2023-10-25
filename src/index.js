@@ -22,6 +22,17 @@ AFRAME.registerSystem('json-3dstreet', {
     jsonURL: { type: 'string' }
   },
   init: function() {},
+  fileJSON: function () {
+      // handle viewer widget click to open 3dstreet json scene
+      let reader = new FileReader();
+      reader.onload = function () {
+        AFRAME.scenes[0].setAttribute('metadata', 'sceneId', '');
+        AFRAME.scenes[0].setAttribute('metadata', 'sceneTitle', '');
+        createElementsFromJSON(reader.result);
+      };
+      reader.readAsText(this.files[0]);
+    
+  },
   loadFromURL: function (fileURL) {
     // load JSON file from URL
     console.log(fileURL)
@@ -123,23 +134,20 @@ AFRAME.registerComponent('streetmix-loader', {
     showBuildings: { default: true },
     name: { default: '' }
   },
-  prepareStreetElements: function() {
+  createStreetElements: function() {
     const streetContainerEl = jsonUtils.prepareStreetContainer();
 
-    let defaultStreet = streetContainerEl.querySelector('#default-street');
+    const defaultStreet = streetContainerEl.querySelector('#default-street');
     if (!defaultStreet) {
       defaultStreet = document.createElement("a-entity");
       streetContainerEl.appendChild(defaultStreet);
       defaultStreet.setAttribute('id', 'default-street');
     } 
-    this.defaultStreet = defaultStreet;
+    return
   },
-  // this use os text input prompt, delete current scene, then load streetmix file
-  inputStreetmix: function () {
-    streetmixURL = prompt(
-      'Please enter a Streetmix URL',
-      'https://streetmix.net/kfarr/3/example-street'
-    );
+  // load streetmix street from input prompt, delete current scene, then load streetmix file
+  setURLFromPrompt: function () {
+    const streetmixURL = this.data.inputStreetmix;
     setTimeout(function () {
       window.location.hash = streetmixURL;
     });
@@ -147,43 +155,28 @@ AFRAME.registerComponent('streetmix-loader', {
     AFRAME.scenes[0].setAttribute('metadata', 'sceneId', '');
     AFRAME.scenes[0].setAttribute('metadata', 'sceneTitle', '');
 
-    this.prepareStreetElements();
-    this.defaultStreet.setAttribute('streetmix-loader', 'streetmixStreetURL', streetmixURL);
+    this.data.streetmixStreetURL = streetmixURL;
+    this.data.streetmixAPIURL = '';
+    this.data.inputStreetmix = '';
 
   },
-  update: function (oldData) { // fired at start and at each subsequent change of any schema value
-    // This method may fire a few times when viewing a streetmix street in 3dstreet:
-    // First to find the proper path, once to actually load the street, and then subsequent updates such as street name
-    var data = this.data;
-
-    this.prepareStreetElements();
-    const el = this.defaultStreet;
-
-    if ((data.inputStreetmix !== '') && (data.streetmixStreetURL === '') && (data.streetmixAPIURL === '')) {
-      this.inputStreetmix();
-      data.inputStreetmix = '';
-      return;
-    }
-
-    // if the loader has run once already, and upon update neither URL has changed, do not take action
-    if ((oldData.streetmixStreetURL === data.streetmixStreetURL) && (oldData.streetmixAPIURL === data.streetmixAPIURL)) {
-      // console.log('[streetmix-loader]', 'Neither streetmixStreetURL nor streetmixAPIURL have changed in this component data update, not reloading street.')
-      return;
-    }
+  create3DStreet: function () {
+    // create 3dStreet object from streetmix JSON, received via URL
+    const data = this.data;
+    const el = this.el;
 
     // if no value for 'streetmixAPIURL' then let's see if there's a streetmixURL
     if (data.streetmixAPIURL.length === 0) {
       if (data.streetmixStreetURL.length > 0) {
-        const streetmixAPIURL = streetmixUtils.streetmixUserToAPI(data.streetmixStreetURL);
-        console.log('[streetmix-loader]', 'setting `streetmixAPIURL` to', streetmixAPIURL);
-        el.setAttribute('streetmix-loader', 'streetmixAPIURL', streetmixAPIURL);
+        data.streetmixAPIURL = streetmixUtils.streetmixUserToAPI(data.streetmixStreetURL);
+        console.log('[streetmix-loader]', 'setting `streetmixAPIURL` to', data.streetmixAPIURL);
+      } else {
+        console.log('[streetmix-loader]', 'Neither `streetmixAPIURL` nor `streetmixStreetURL` properties provided, please provide at least one.');
         return;
       }
-      console.log('[streetmix-loader]', 'Neither `streetmixAPIURL` nor `streetmixStreetURL` properties provided, please provide at least one.');
-      return;
     }
 
-    var request = new XMLHttpRequest();
+    const request = new XMLHttpRequest();
     console.log('[streetmix-loader]', 'GET ' + data.streetmixAPIURL);
 
     request.open('GET', data.streetmixAPIURL, true);
@@ -194,7 +187,8 @@ AFRAME.registerComponent('streetmix-loader', {
         const streetmixSegments = streetmixResponseObject.data.street.segments;
         const streetmixName = streetmixResponseObject.name;
         console.log('streetmixName', streetmixName);
-        el.setAttribute('streetmix-loader', 'name', streetmixName);
+        //el.setAttribute('streetmix-loader', 'name', streetmixName);
+        data.name = streetmixName;
 
         const currentSceneTitle = AFRAME.scenes[0].getAttribute('metadata').sceneTitle;
         if (!currentSceneTitle) { // only set title from streetmix if none exists
@@ -219,7 +213,22 @@ AFRAME.registerComponent('streetmix-loader', {
       // There was a connection error of some sort
       console.log('[streetmix-loader]', 'Loading Error: There was a connection error of some sort');
     };
-    request.send();
+    request.send();  
+  },
+  update: function (oldData) { // fired at start and at each subsequent change of any schema value
+    // This method may fire a few times when viewing a streetmix street in 3dstreet:
+    // First to find the proper path, once to actually load the street, and then subsequent updates such as street name
+    if (this.data.inputStreetmix !== '') {
+      this.setURLFromPrompt();
+    }
+
+    // if the loader has run once already, and upon update neither URL has changed, do not take action
+    if ((oldData.streetmixStreetURL === this.data.streetmixStreetURL) && (oldData.streetmixAPIURL === this.data.streetmixAPIURL)) {
+      // console.log('[streetmix-loader]', 'Neither streetmixStreetURL nor streetmixAPIURL have changed in this component data update, not reloading street.')
+      return;
+    }
+    this.create3DStreet();
+
   }
 });
 
