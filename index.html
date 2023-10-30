@@ -16,6 +16,27 @@
     <!-- ocean -->
     <script src="./src/components/ocean-plane.js"></script>
 
+    <!-- vr teleport controls -->
+    <script src="https://cdn.jsdelivr.net/npm/aframe-blink-controls@0.4.3/dist/aframe-blink-controls.min.js"></script>
+
+    <script>
+      // this makes the same camera rig setup work in VR and desktop modes
+      // this could be a new component, such as "swap desktop and vr controls" and put in init section
+      window.addEventListener("DOMContentLoaded", function() {
+        const sceneEl = document.querySelector("a-scene");
+        sceneEl.addEventListener("enter-vr", function() {
+          document.querySelector('#cameraRig').removeAttribute('look-controls')
+          document.querySelector('#cameraRig').removeAttribute('wasd-controls')
+          document.querySelector('#cameraRig').removeAttribute('cursor-teleport')
+          document.querySelector('#cameraRig').setAttribute('position', '0 0 0')
+        });
+        sceneEl.addEventListener("exit-vr", function() {
+          document.querySelector('#cameraRig').setAttribute('cursor-teleport', "cameraRig: #cameraRig; cameraHead: #camera;")
+          document.querySelector('#cameraRig').setAttribute('look-controls', "reverseMouseDrag: true;")
+          document.querySelector('#cameraRig').setAttribute('wasd-controls', "enabled: true")
+        });
+      })
+    </script>
     <title>3DStreet</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link rel="icon" type="image/x-icon" href="ui_assets/favicon.ico">
@@ -36,17 +57,19 @@
         <li onclick="inputStreetmix()"> <a class="load"  href="#"> <span> Load Streetmix URL </span> <img src="ui_assets/streetmix-logo.svg"> </a></li>
         <!-- <li onclick="inputJSON()"> <a class="load"  href="#"> <span> Load JSON String </span> <img src="assets/ui_assets/upload-icon.svg"> </a></li> -->
         <li><a class="load"> <label for="inputfile" style="display: inherit; align-items: center; cursor: pointer"> <input type="file" id="inputfile" style="display:none" accept=".js, .json, .txt"> <span> Load JSON File </span> <img src="ui_assets/upload-icon.svg"></label></a></li>
-        <li> <a id="custom-enter-vr-button" class="vr" href="#"> <span class="vr">Enter VR mode</span> <img src="ui_assets/vr-icon.svg"> </a></li>
+        <li> <a id="custom-enter-vr-button" class="vr" href="#"> <span class="vr">Enter VR mode</span> <img src="ui_assets/vr.svg"> </a></li>
+        <li> <a id="custom-enter-ar-button" class="ar" href="#"> <span class="ar">Enter AR mode</span> <img src="ui_assets/ar.svg"> </a></li>
       </ul>
     </div>
 
     <a-scene
-      vr-mode-ui="enterVRButton: #custom-enter-vr-button;"
+      vr-mode-ui="enterVRButton: #custom-enter-vr-button; enterARButton: #custom-enter-ar-button;"
       vr-mode-ui-if-headset
       renderer="colorManagement: true; physicallyCorrectLights: true;"
       inspector="url: //3dstreet.app/dist/3dstreet-editor.js"
       notify
       metadata
+      scene-title
       >
       <a-assets>
         <!-- uncomment the line below to load assets from local github submodule -->
@@ -59,8 +82,8 @@
   
       <a-entity id="cameraRig" position="0 10 30" data-layer-name="Viewer" cursor-teleport="cameraRig: #cameraRig; cameraHead: #camera;" look-controls="reverseMouseDrag: true" wasd-controls="enabled: true">
         <a-entity id="camera" camera="far: 1000" position="0 1.6 0" ></a-entity>
-        <a-entity id="leftHand" hand-controls="hand: left; handModelStyle: lowPoly; color: #ffccff"></a-entity>
-        <a-entity id="rightHand" hand-controls="hand: right; handModelStyle: lowPoly; color: #ffccff"></a-entity>
+        <a-entity id="leftHand" hand-controls="hand: left;" blink-controls="cameraRig: #cameraRig; teleportOrigin: #camera; rotateOnTeleport:false;"></a-entity>
+        <a-entity id="rightHand"  hand-controls="hand: right" blink-controls="cameraRig: #cameraRig; teleportOrigin: #camera; rotateOnTeleport:false;"></a-entity>
         <a-entity id="screenshot" class="no-pause" screentock visible="false"></a-entity>
       </a-entity>
 
