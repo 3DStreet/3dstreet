@@ -377,12 +377,13 @@ AFRAME.registerComponent('intersection', {
 
 AFRAME.registerComponent('street-environment', {
   schema: {
-    preset: { type: 'string', default: 'day', oneOf: ['day', 'night'] }
+    preset: { type: 'string', default: 'day', oneOf: ['day', 'night', 'sunny-morning', 'cloudy-afternoon', 'sunny-afternoon', 'sunny-noon', 'foggy', 'cloudy'] }
   },
   setEnvOption: function () {
     const sky = this.sky;
     const light1 = this.light1;
     const light2 = this.light2;
+    const assetsPathRoot = '//assets.3dstreet.app/';
 
     if (this.data.preset === 'night') {
       light1.setAttribute('light', 'intensity', 0.5);
@@ -390,13 +391,55 @@ AFRAME.registerComponent('street-environment', {
       sky.setAttribute('color', '#444');
       sky.setAttribute('src', '#sky-night');
       sky.setAttribute('rotation', '0 0 0');
-    } else { // day
+    } else if (this.data.preset === 'day') { // day
       // TODO: create a parent with children
       light1.setAttribute('light', 'intensity', 2);
       light2.setAttribute('light', 'intensity', 0.6);
       sky.setAttribute('color', '#FFF');
       sky.setAttribute('src', '#sky');
       sky.setAttribute('rotation', '0 255 0');
+    } else if (this.data.preset === 'sunny-morning') {
+      // copied from day
+      light1.setAttribute('light', 'intensity', 2);
+      light2.setAttribute('light', 'intensity', 0.6);
+      sky.setAttribute('color', '#FFF');
+      sky.setAttribute('src', `url(${assetsPathRoot}images/skies/2048-polyhaven-qwantani_puresky-sdr.jpeg)`);
+      sky.setAttribute('rotation', '0 0 0');
+    } else if (this.data.preset === 'cloudy-afternoon') {
+      // copied from sunny-morning
+      light1.setAttribute('light', 'intensity', 2);
+      light2.setAttribute('light', 'intensity', 0.6);
+      sky.setAttribute('color', '#FFF');
+      sky.setAttribute('src', `url(${assetsPathRoot}images/skies/2048-kloofendal_48d_partly_cloudy_puresky-sdr.jpeg)`);
+      sky.setAttribute('rotation', '0 0 0');
+    } else if (this.data.preset === 'sunny-afternoon') {
+       // copied from sunny-morning
+       light1.setAttribute('light', 'intensity', 2);
+       light2.setAttribute('light', 'intensity', 0.6);
+       sky.setAttribute('color', '#FFF');
+       sky.setAttribute('src', `url(${assetsPathRoot}images/skies/2048-kloofendal_43d_clear_puresky-sdr.jpeg)`);
+       sky.setAttribute('rotation', '0 0 0');
+    } else if (this.data.preset === 'sunny-noon') {
+      // copied from sunny-morning
+      light1.setAttribute('light', 'intensity', 2);
+      light2.setAttribute('light', 'intensity', 0.6);
+      sky.setAttribute('color', '#FFF');
+      sky.setAttribute('src', `url(${assetsPathRoot}images/skies/2048-kloppenheim_05_puresky-sdr.jpeg)`);
+      sky.setAttribute('rotation', '0 0 0');
+    } else if (this.data.preset === 'foggy') {
+      // copied from sunny-morning
+      light1.setAttribute('light', 'intensity', 2);
+      light2.setAttribute('light', 'intensity', 0.6);
+      sky.setAttribute('color', '#FFF');
+      sky.setAttribute('src', `url(${assetsPathRoot}images/skies/2048-kloofendal_misty_morning_puresky-sdr.jpeg)`);
+      sky.setAttribute('rotation', '0 0 0');
+    } else if (this.data.preset === 'cloudy') {
+      // copied from sunny-morning
+      light1.setAttribute('light', 'intensity', 2);
+      light2.setAttribute('light', 'intensity', 0.6);
+      sky.setAttribute('color', '#FFF');
+      sky.setAttribute('src', `url(${assetsPathRoot}images/skies/2048-mud_road_puresky-sdr.jpeg)`);
+      sky.setAttribute('rotation', '0 0 0');
     }
   },
   init: function () {

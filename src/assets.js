@@ -204,7 +204,7 @@ function buildAssetHTML (assetUrl, categories) {
       `,
     sky: `
         <!-- sky -->
-        <img id="sky" src="${assetUrl}CGSkies_0343_doubled_2048.jpg" crossorigin="anonymous" />
+        <img id="sky" src="${assetUrl}images/skies/2048-polyhaven-wasteland_clouds_puresky.jpeg" crossorigin="anonymous" />
         <img id="sky-night" src="${assetUrl}images/AdobeStock_286725174-min.jpeg" crossorigin="anonymous" />
       `,
     grounds: `
