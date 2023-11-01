@@ -56,6 +56,7 @@ function createBuildingsArray (maxLength = 150, buildingType = 'narrow') { // es
       buildingEntity.child = {
         tag: 'a-plane',
         class: 'driveway',
+        material: 'roughness:0.8',
         position: '-6.25 0.6 -8.75',
         rotation: '-90 0 0',
         src: '#asphalt-texture',
@@ -68,6 +69,7 @@ function createBuildingsArray (maxLength = 150, buildingType = 'narrow') { // es
       buildingEntity.child = {
         tag: 'a-plane',
         class: 'driveway',
+        material: 'roughness:0.8',
         position: '-2.5 0.6 -7',
         rotation: '-90 0 0',
         src: '#asphalt-texture',
