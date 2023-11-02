@@ -1106,6 +1106,7 @@ function processSegments (segments, showStriping, length, globalAnimated, showVe
     // append the new surfaceElement to the segmentParentEl
     streetParentEl.append(segmentParentEl);
     segmentParentEl.setAttribute('position', segmentPositionX + ' 0 0');
+    segmentParentEl.setAttribute('data-layer-name', 'Segment: ' + segments[i].type + ', ' + variantList[0])
   }
   // create new brown box to represent ground underneath street
   let dirtBox = document.createElement('a-box');
@@ -1117,6 +1118,7 @@ function processSegments (segments, showStriping, length, globalAnimated, showVe
   dirtBox.setAttribute('width', cumulativeWidthInMeters); 
   dirtBox.setAttribute('depth', length - 0.2);   // depth is length - 0.1 on each side
   dirtBox.setAttribute('material', 'color: #664B00;');
+  dirtBox.setAttribute('data-layer-name', 'Underground');
   streetParentEl.append(dirtBox);
   return streetParentEl;
 }
