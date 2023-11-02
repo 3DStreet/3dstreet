@@ -761,7 +761,8 @@ function processSegments (segments, showStriping, length, globalAnimated, showVe
     var scaleX = segmentWidthInMeters / modelWidthInMeters;
 
     cumulativeWidthInMeters = cumulativeWidthInMeters + segmentWidthInMeters;
-    var positionX = cumulativeWidthInMeters - (0.5 * segmentWidthInMeters);
+    var realPositionX = cumulativeWidthInMeters - (0.5 * segmentWidthInMeters);
+    const positionX = 0;
     var positionY = 0;
 
     // get variantString
@@ -1112,6 +1113,7 @@ function processSegments (segments, showStriping, length, globalAnimated, showVe
     // returns JSON output instead
     // append the new surfaceElement to the segmentParentEl
     streetParentEl.append(segmentParentEl);
+    segmentParentEl.setAttribute('position', realPositionX + ' 0 0');
   }
   // create new brown box to represent ground underneath street
   let dirtBox = document.createElement('a-box');
