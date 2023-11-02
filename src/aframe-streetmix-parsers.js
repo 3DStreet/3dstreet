@@ -142,10 +142,45 @@ function createStencilsParentElement (position) {
   return placedObjectEl;
 }
 
-function createTracksParentElement (positionX) {
+function createRailsElement(length, positionX) {
+  const placedObjectEl = document.createElement('a-entity');
+  const railsGeometry = {
+    "primitive": "box",
+    "depth": length,
+    "width": 0.1,
+    "height": 0.2,
+
+  }
+  const railsMaterial = { // TODO: Add environment map for reflection on metal rails
+    "color": "#8f8f8f",
+    "metalness": 1,
+    "emissive": "#828282",
+    "emissiveIntensity": 0.5,
+    "roughness": 0.1
+  }
+  placedObjectEl.setAttribute('geometry', railsGeometry);
+  placedObjectEl.setAttribute('material', railsMaterial);
+  placedObjectEl.setAttribute('class', 'rails');
+  placedObjectEl.setAttribute('shadow', 'recieve:true; cast: true');
+  placedObjectEl.setAttribute('position', positionX + ' 0.2 0'); // position="1.043 0.100 -3.463"
+
+  return placedObjectEl;
+
+}
+
+function createTracksParentElement (positionX, length, objectMixinId) {
   const placedObjectEl = document.createElement('a-entity');
   placedObjectEl.setAttribute('class', 'track-parent');
   placedObjectEl.setAttribute('position', positionX + ' -0.2 0'); // position="1.043 0.100 -3.463"
+  // add rails
+  const railsWidth = { // width as measured from center of rail, so 1/2 actual width
+    "tram": 0.7175, // standard gauge 1,435 mm
+    "trolley": 0.5335 // sf cable car rail gauge 1,067 mm
+  }
+  const railsPosX = railsWidth[objectMixinId];
+  placedObjectEl.append(createRailsElement(length, railsPosX));
+  placedObjectEl.append(createRailsElement(length, -railsPosX));
+
   return placedObjectEl;
 }
 
@@ -769,8 +804,7 @@ function processSegments (segments, showStriping, length, globalAnimated, showVe
       // create and append a train element
       segmentParentEl.append(createChooChooElement(variantList, objectMixinId, positionX, length, showVehicles));
       // make the parent for all the objects to be cloned
-      const tracksParentEl = createTracksParentElement(positionX);
-      cloneMixinAsChildren({ objectMixinId: 'track', parentEl: tracksParentEl, step: 20.25, radius: clonedObjectRadius });
+      const tracksParentEl = createTracksParentElement(positionX, length, objectMixinId);
       // add these trains to the segment parent
       segmentParentEl.append(tracksParentEl);
     } else if (segments[i].type === 'turn-lane') {
