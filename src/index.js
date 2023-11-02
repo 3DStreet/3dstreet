@@ -393,11 +393,14 @@ AFRAME.registerComponent('street-environment', {
       sky.setAttribute('rotation', '0 0 0');
     } else if (this.data.preset === 'day') { // day
       // TODO: create a parent with children
-      light1.setAttribute('light', 'intensity', 2);
-      light2.setAttribute('light', 'intensity', 0.6);
+      light1.setAttribute('light', 'intensity', 0.8);
       sky.setAttribute('color', '#FFF');
       sky.setAttribute('src', '#sky');
-      sky.setAttribute('rotation', '0 255 0');
+      sky.setAttribute('rotation', '0 20 0');
+
+      light2.setAttribute('light', 'intensity: 2.2; castShadow: true; shadowCameraBottom: -20; shadowCameraLeft: -30; shadowCameraRight: 40; shadowCameraTop: 30; shadowMapHeight: 2048; shadowMapWidth: 2048');
+      light2.setAttribute('position', '-60 56 -16');
+
     } else if (this.data.preset === 'sunny-morning') {
       // copied from day
       light1.setAttribute('light', 'intensity', 2);
