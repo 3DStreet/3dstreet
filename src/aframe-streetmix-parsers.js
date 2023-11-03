@@ -735,6 +735,7 @@ function processSegments (segments, showStriping, length, globalAnimated, showVe
   // create and center offset to center the street around global x position of 0
   var streetParentEl = createCenteredStreetElement(segments);
   streetParentEl.classList.add('street-parent');
+  streetParentEl.setAttribute('data-layer-name', 'Street Segment Container');
 
   var cumulativeWidthInMeters = 0;
   for (var i = 0; i < segments.length; i++) {
