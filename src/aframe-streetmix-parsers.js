@@ -1078,7 +1078,7 @@ function processSegments (segments, showStriping, length, globalAnimated, showVe
       markingPosXY = markingPosX + ' 0';
       const clonedStencilRadius = length / 2 - carStep;
 
-      segmentParentEl.append(createDriveLaneElement([...variantList, 'car'], positionX, segmentWidthInMeters, length, false, showVehicles, carCount, carStep));
+      segmentParentEl.append(createDriveLaneElement([...variantList, 'car'], segmentWidthInMeters, length, false, showVehicles, carCount, carStep));
       if (variantList[1] === 'left') {
         reusableObjectStencilsParentEl = createStencilsParentElement('0 0.015 0');
         cloneMixinAsChildren({ objectMixinId: parkingMixin, parentEl: reusableObjectStencilsParentEl, positionXYString: markingPosXY, rotation: '-90 ' + '90 ' + markingsRotZ, length: markingLength, step: carStep, radius: clonedStencilRadius });
