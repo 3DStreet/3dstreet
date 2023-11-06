@@ -388,6 +388,7 @@ function createDriveLaneElement (variantList, segmentWidthInMeters, streetLength
   let [lineVariant, direction, carType] = variantList;
   if (variantList.length === 2) {
     carType = direction;
+    direction = lineVariant;
   }
 
   const rotationVariants = {
@@ -438,6 +439,13 @@ function createDriveLaneElement (variantList, segmentWidthInMeters, streetLength
       wheelDiameter: 1.05,
       length: 6.95,
       width: 2.5
+    },
+    // autonomous vehicle
+    av: {
+      mixin: 'self-driving-cruise-car-rig',
+      wheelDiameter: 0.76,
+      length: 5.17,
+      width: 2      
     }
   };
 
@@ -489,7 +497,7 @@ function createDriveLaneElement (variantList, segmentWidthInMeters, streetLength
       }
     });
   } else {
-    createCar();
+    createCar(undefined, carType);
   }
 
   return driveLaneParentEl;
