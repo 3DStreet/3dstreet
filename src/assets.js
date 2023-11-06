@@ -32,23 +32,23 @@ function buildAssetHTML (assetUrl, categories) {
     people: `
         <!-- human characters -->
         <a-asset-item id="humans" src="${assetUrl}sets/human-characters-poses-1/gltf-exports/draco/human-characters-poses-1.glb"></a-asset-item>
-        <a-mixin id="char1" gltf-part="src: #humans; part: Character_1"></a-mixin>
-        <a-mixin id="char2" gltf-part="src: #humans; part: Character_2"></a-mixin>
-        <a-mixin id="char3" gltf-part="src: #humans; part: Character_3"></a-mixin>
-        <a-mixin id="char4" gltf-part="src: #humans; part: Character_4"></a-mixin>
-        <a-mixin id="char5" gltf-part="src: #humans; part: Character_5"></a-mixin>
-        <a-mixin id="char6" gltf-part="src: #humans; part: Character_6"></a-mixin>
-        <a-mixin id="char7" gltf-part="src: #humans; part: Character_7"></a-mixin>
-        <a-mixin id="char8" gltf-part="src: #humans; part: Character_8"></a-mixin>
+        <a-mixin shadow id="char1" gltf-part="src: #humans; part: Character_1"></a-mixin>
+        <a-mixin shadow id="char2" gltf-part="src: #humans; part: Character_2"></a-mixin>
+        <a-mixin shadow id="char3" gltf-part="src: #humans; part: Character_3"></a-mixin>
+        <a-mixin shadow id="char4" gltf-part="src: #humans; part: Character_4"></a-mixin>
+        <a-mixin shadow id="char5" gltf-part="src: #humans; part: Character_5"></a-mixin>
+        <a-mixin shadow id="char6" gltf-part="src: #humans; part: Character_6"></a-mixin>
+        <a-mixin shadow id="char7" gltf-part="src: #humans; part: Character_7"></a-mixin>
+        <a-mixin shadow id="char8" gltf-part="src: #humans; part: Character_8"></a-mixin>
         <a-asset-item id="humans2" src="${assetUrl}sets/human-characters-poses-2/gltf-exports/draco/human-characters-poses-2.glb"></a-asset-item>
-        <a-mixin id="char9" gltf-part="src: #humans2; part: Character_9"></a-mixin>
-        <a-mixin id="char10" gltf-part="src: #humans2; part: Character_10"></a-mixin>
-        <a-mixin id="char11" gltf-part="src: #humans2; part: Character_11"></a-mixin>
-        <a-mixin id="char12" gltf-part="src: #humans2; part: Character_12"></a-mixin>
-        <a-mixin id="char13" gltf-part="src: #humans2; part: Character_13"></a-mixin>
-        <a-mixin id="char14" gltf-part="src: #humans2; part: Character_14"></a-mixin>
-        <a-mixin id="char15" gltf-part="src: #humans2; part: Character_15"></a-mixin>
-        <a-mixin id="char16" gltf-part="src: #humans2; part: Character_16"></a-mixin>
+        <a-mixin shadow id="char9" gltf-part="src: #humans2; part: Character_9"></a-mixin>
+        <a-mixin shadow id="char10" gltf-part="src: #humans2; part: Character_10"></a-mixin>
+        <a-mixin shadow id="char11" gltf-part="src: #humans2; part: Character_11"></a-mixin>
+        <a-mixin shadow id="char12" gltf-part="src: #humans2; part: Character_12"></a-mixin>
+        <a-mixin shadow id="char13" gltf-part="src: #humans2; part: Character_13"></a-mixin>
+        <a-mixin shadow id="char14" gltf-part="src: #humans2; part: Character_14"></a-mixin>
+        <a-mixin shadow id="char15" gltf-part="src: #humans2; part: Character_15"></a-mixin>
+        <a-mixin shadow id="char16" gltf-part="src: #humans2; part: Character_16"></a-mixin>
       `,
     'people-rigged': `          
         <a-asset-item id="character1walk" src="${assetUrl}sets/human-characters-animation-seperated/gltf-exports/draco/character-1-walk.glb"></a-asset-item>
