@@ -377,12 +377,13 @@ AFRAME.registerComponent('intersection', {
 
 AFRAME.registerComponent('street-environment', {
   schema: {
-    preset: { type: 'string', default: 'day', oneOf: ['day', 'night'] }
+    preset: { type: 'string', default: 'day', oneOf: ['day', 'night', 'sunny-morning', 'cloudy-afternoon', 'sunny-afternoon', 'sunny-noon', 'foggy', 'cloudy'] }
   },
   setEnvOption: function () {
     const sky = this.sky;
     const light1 = this.light1;
     const light2 = this.light2;
+    const assetsPathRoot = '//assets.3dstreet.app/';
 
     if (this.data.preset === 'night') {
       light1.setAttribute('light', 'intensity', 0.5);
@@ -390,13 +391,53 @@ AFRAME.registerComponent('street-environment', {
       sky.setAttribute('color', '#444');
       sky.setAttribute('src', '#sky-night');
       sky.setAttribute('rotation', '0 0 0');
-    } else { // day
+    } else if (this.data.preset === 'day') { // day
       // TODO: create a parent with children
+      light1.setAttribute('light', 'intensity', 0.8);
+      sky.setAttribute('color', '#FFF');
+      sky.setAttribute('src', '#sky');
+      sky.setAttribute('rotation', '0 20 0');
+      light2.setAttribute('light', 'intensity: 2.2; castShadow: true; shadowCameraBottom: -20; shadowCameraLeft: -30; shadowCameraRight: 40; shadowCameraTop: 30; shadowMapHeight: 2048; shadowMapWidth: 2048');
+      light2.setAttribute('position', '-40 56 -16');
+    } else if (this.data.preset === 'sunny-morning') {
+      light1.setAttribute('light', 'intensity', 0.8);
+      light2.setAttribute('light', 'intensity: 2.2; castShadow: true; shadowCameraBottom: -20; shadowCameraLeft: -30; shadowCameraRight: 40; shadowCameraTop: 30; shadowMapHeight: 2048; shadowMapWidth: 2048');
+      light2.setAttribute('position', '-60 56 -16');
+      sky.setAttribute('color', '#FFF');
+      sky.setAttribute('src', `url(${assetsPathRoot}images/skies/2048-polyhaven-qwantani_puresky-sdr.jpeg)`);
+      sky.setAttribute('rotation', '0 0 0');
+    } else if (this.data.preset === 'cloudy-afternoon') {
       light1.setAttribute('light', 'intensity', 2);
       light2.setAttribute('light', 'intensity', 0.6);
       sky.setAttribute('color', '#FFF');
-      sky.setAttribute('src', '#sky');
-      sky.setAttribute('rotation', '0 255 0');
+      sky.setAttribute('src', `url(${assetsPathRoot}images/skies/2048-mud_road_puresky-sdr.jpeg)`);
+      sky.setAttribute('rotation', '0 0 0');
+    } else if (this.data.preset === 'sunny-afternoon') {
+       light1.setAttribute('light', 'intensity', 2);
+       light2.setAttribute('light', 'intensity: 2.2; castShadow: true; shadowCameraBottom: -20; shadowCameraLeft: -30; shadowCameraRight: 40; shadowCameraTop: 30; shadowMapHeight: 2048; shadowMapWidth: 2048');
+       light2.setAttribute('position', '60 56 -16');
+       sky.setAttribute('color', '#FFF');
+       sky.setAttribute('src', `url(${assetsPathRoot}images/skies/2048-kloofendal_43d_clear_puresky-sdr.jpeg)`);
+       sky.setAttribute('rotation', '0 0 0');
+    } else if (this.data.preset === 'sunny-noon') {
+      light1.setAttribute('light', 'intensity', 2);
+      light2.setAttribute('light', 'intensity: 2.2; castShadow: true; shadowCameraBottom: -20; shadowCameraLeft: -30; shadowCameraRight: 40; shadowCameraTop: 30; shadowMapHeight: 2048; shadowMapWidth: 2048');
+      light2.setAttribute('position', '5 56 -16');
+      sky.setAttribute('color', '#FFF');
+      sky.setAttribute('src', `url(${assetsPathRoot}images/skies/2048-kloppenheim_05_puresky-sdr.jpeg)`);
+      sky.setAttribute('rotation', '0 0 0');
+    } else if (this.data.preset === 'foggy') {
+      light1.setAttribute('light', 'intensity', 2);
+      light2.setAttribute('light', 'intensity: 0.6; castShadow: false;');
+      sky.setAttribute('color', '#FFF');
+      sky.setAttribute('src', `url(${assetsPathRoot}images/skies/2048-kloofendal_misty_morning_puresky-sdr.jpeg)`);
+      sky.setAttribute('rotation', '0 0 0');
+    } else if (this.data.preset === 'cloudy') {
+      light1.setAttribute('light', 'intensity', 2);
+      light2.setAttribute('light', 'intensity', 0.6);
+      sky.setAttribute('color', '#FFF');
+      sky.setAttribute('src', `url(${assetsPathRoot}images/skies/2048-kloofendal_48d_partly_cloudy_puresky-sdr.jpeg)`);
+      sky.setAttribute('rotation', '0 0 0');
     }
   },
   init: function () {
@@ -411,8 +452,8 @@ AFRAME.registerComponent('street-environment', {
     this.light2 = document.createElement('a-entity');
     const light2 = this.light2;
     light2.setAttribute('id', 'env-light2');
-    light2.setAttribute('position', { x: 0.5, y: 1, z: -1 });
-    light2.setAttribute('light', { type: 'directional', color: '#FFF' });
+    light2.setAttribute('position', '-60 56 -16');
+    light2.setAttribute('light', 'intensity: 2.2; castShadow: true; shadowCameraBottom: -20; shadowCameraLeft: -30; shadowCameraRight: 40; shadowCameraTop: 30; shadowMapHeight: 2048; shadowMapWidth: 2048');
     el.appendChild(light2);
 
     this.sky = document.createElement('a-sky');
