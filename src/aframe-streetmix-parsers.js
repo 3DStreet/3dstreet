@@ -442,6 +442,13 @@ function createDriveLaneElement (variantList, positionX, segmentWidthInMeters, s
       wheelDiameter: 1.05,
       length: 6.95,
       width: 2.5
+    },
+    // autonomous vehicle
+    av: {
+      mixin: 'self-driving-cruise-car-rig',
+      wheelDiameter: 0.76,
+      length: 5.17,
+      width: 2      
     }
   };
 
@@ -493,7 +500,7 @@ function createDriveLaneElement (variantList, positionX, segmentWidthInMeters, s
       }
     });
   } else {
-    createCar();
+    createCar(undefined, carType);
   }
 
   return driveLaneParentEl;
