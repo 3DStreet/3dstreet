@@ -391,6 +391,7 @@ function createDriveLaneElement (variantList, positionX, segmentWidthInMeters, s
   let [lineVariant, direction, carType] = variantList;
   if (variantList.length === 2) {
     carType = direction;
+    direction = lineVariant;
   }
 
   const rotationVariants = {
