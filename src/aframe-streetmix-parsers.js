@@ -1128,6 +1128,7 @@ function processBuildings (left, right, streetWidth, showGround, length) {
     return placedObjectEl;
   }
 
+  // possible 'block' type input values: grass, fence, narrow, wide, waterfront, residential, parking-lot
   buildingsArray.forEach((currentValue, index) => {
     if (currentValue.length === 0) { return; } // if empty string then skip
     const side = (index === 0) ? 'left' : 'right';
@@ -1136,6 +1137,7 @@ function processBuildings (left, right, streetWidth, showGround, length) {
     const positionX = ((buildingLotWidth / 2) + (streetWidth / 2)) * sideMultiplier;
 
     if (showGround) {
+      // TODO: consider rewriting this using simple box instead of this json plane method
       var groundJSONString = JSON.stringify(streetmixParsersTested.createGroundArray(currentValue, length));
 
       var groundParentEl = document.createElement('a-entity');
@@ -1146,6 +1148,7 @@ function processBuildings (left, right, streetWidth, showGround, length) {
         groundParentEl.setAttribute('position', positionX + 55 + ' 0.2 0');
       }
       groundParentEl.classList.add('ground-' + side);
+      groundParentEl.setAttribute('data-layer-name', 'Ground ' + side + ': ' + currentValue);
       buildingElement.appendChild(groundParentEl);
     }
 
