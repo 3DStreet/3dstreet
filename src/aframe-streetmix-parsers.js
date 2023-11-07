@@ -4,40 +4,6 @@
 var streetmixParsersTested = require('./tested/aframe-streetmix-parsers-tested');
 var streetmixUtils = require('./tested/streetmix-utils');
 
-// Width - These are the intended default widths of the models in meters.
-/* eslint-disable quote-props */
-const defaultModelWidthsInMeters = {
-  'bike-lane': 1.8,
-  'drive-lane': 3,
-  'divider': 0.3,
-  'parking-lane': 3,
-  'sidewalk': 3,
-  'sidewalk-tree': 3,
-  'turn-lane': 3,
-  'brt-station': 3,
-  'bus-lane': 3,
-  'brt-lane': 3,
-  'light-rail': 3,
-  'streetcar': 3,
-  'sidewalk-wayfinding': 3,
-  'sidewalk-lamp': 3,
-  'sidewalk-bike-rack': 3,
-  'sidewalk-bench': 3,
-  'scooter-drop-zone': 3,
-  'scooter': 1.8,
-  'bikeshare': 3,
-  'flex-zone-curb': 3,
-  'transit-shelter': 3,
-  'temporary': 3,
-  'food-truck': 3,
-  'flex-zone': 3,
-  'outdoor-dining': 3,
-  'parklet': 3,
-  'utilities': 3,
-  'magic-carpet': 3
-};
-/* eslint-enable quote-props */
-
 function cloneMixinAsChildren ({ objectMixinId = '', parentEl = null, step = 15, radius = 60, rotation = '0 0 0', positionXYString = '0 0', length = undefined, randomY = false }) {
   for (let j = (radius * -1); j <= radius; j = j + step) {
     const placedObjectEl = document.createElement('a-entity');
@@ -694,28 +660,40 @@ function createCenteredStreetElement (segments) {
   return streetEl;
 }
 
-function createSegmentElement (segmentWidthInMeters, scaleX, positionY, rotationY, mixinId, length, repeatCount, elevation = 0) {
+function createSegmentElement (segmentWidthInMeters, positionY, mixinId, length, repeatCount, elevation = 0) {
   var segmentEl = document.createElement('a-entity');
-  const scaleY = length / 150;
-
-  const scalePlane = scaleX + ' ' + scaleY + ' 1';
 
   if (mixinId === 'sidewalk' || elevation === 1) {
     segmentEl.setAttribute('geometry', 'primitive', 'box');
     segmentEl.setAttribute('geometry', 'height: 0.4');
     segmentEl.setAttribute('geometry', 'depth', length);
     segmentEl.setAttribute('geometry', 'width', segmentWidthInMeters);
-  } else if (mixinId.match('lane')) {
+  } else {  // else if (mixinId.match('lane')) {
     positionY -= 0.1;
     segmentEl.setAttribute('geometry', 'primitive', 'box');
     segmentEl.setAttribute('geometry', 'height: 0.2');
     segmentEl.setAttribute('geometry', 'depth', length);
     segmentEl.setAttribute('geometry', 'width', segmentWidthInMeters);
-  } else {
-    // segmentEl.setAttribute('geometry', 'height', length); // alternative to modifying scale
-    segmentEl.setAttribute('rotation', '270 ' + rotationY + ' 0');
-    segmentEl.setAttribute('scale', scalePlane);
   }
+  
+  segmentEl.setAttribute('position', '0 ' + positionY + ' 0');
+  segmentEl.setAttribute('mixin', mixinId);
+
+  if (repeatCount.length !== 0) {
+    segmentEl.setAttribute('material', `repeat: ${repeatCount[0]} ${repeatCount[1]}`);
+  }
+
+  return segmentEl;
+}
+
+function createSeparatorElement (positionY, rotationY, mixinId, length, repeatCount, elevation = 0) {
+  var segmentEl = document.createElement('a-entity');
+  const scaleY = length / 150;
+  const scalePlane = '1 ' + scaleY + ' 1';
+
+  segmentEl.setAttribute('rotation', '270 ' + rotationY + ' 0');
+  segmentEl.setAttribute('scale', scalePlane);
+
   segmentEl.setAttribute('position', '0 ' + positionY + ' 0');
   segmentEl.setAttribute('mixin', mixinId);
 
@@ -749,17 +727,9 @@ function processSegments (segments, showStriping, length, globalAnimated, showVe
     var segmentParentEl = document.createElement('a-entity');
     segmentParentEl.classList.add('segment-parent-' + i);
 
-    var segmentType = segments[i].type;
     var segmentWidthInFeet = segments[i].width;
     var segmentWidthInMeters = segmentWidthInFeet * 0.3048;
-    // console.log('Type: ' + segmentType + '; Width: ' + segmentWidthInFeet + 'ft / ' + segmentWidthInMeters + 'm');
-
-    var modelWidthInMeters = defaultModelWidthsInMeters[segmentType];
-
-    // what is "delta" between default width and requested width?
-    // default * scale = requested :: scale = requested / default
-    // For example: requested width = 2m, but default model width is 1.8. 2 / 1.8 = 1.111111111
-    var scaleX = segmentWidthInMeters / modelWidthInMeters;
+    // console.log('Type: ' + segments[i].type + '; Width: ' + segmentWidthInFeet + 'ft / ' + segmentWidthInMeters + 'm');
 
     cumulativeWidthInMeters = cumulativeWidthInMeters + segmentWidthInMeters;
     var segmentPositionX = cumulativeWidthInMeters - (0.5 * segmentWidthInMeters);
@@ -1017,33 +987,27 @@ function processSegments (segments, showStriping, length, globalAnimated, showVe
     } else if (segments[i].type === 'separator' && variantList[0] === 'dashed') {
       groundMixinId = 'markings dashed-stripe';
       positionY = positionY + 0.01; // make sure the lane marker is above the asphalt
-      scaleX = 1;
       // for all markings material property repeat = "1 25". So every 150/25=6 meters put a dash
       repeatCount[0] = 1;
       repeatCount[1] = parseInt(length / 6);
     } else if (segments[i].type === 'separator' && variantList[0] === 'solid') {
       groundMixinId = 'markings solid-stripe';
       positionY = positionY + 0.01; // make sure the lane marker is above the asphalt
-      scaleX = 1;
     } else if (segments[i].type === 'separator' && variantList[0] === 'doubleyellow') {
       groundMixinId = 'markings solid-doubleyellow';
       positionY = positionY + 0.01; // make sure the lane marker is above the asphalt
-      scaleX = 1;
     } else if (segments[i].type === 'separator' && variantList[0] === 'shortdashedyellow') {
       groundMixinId = 'markings yellow short-dashed-stripe';
       positionY = positionY + 0.01; // make sure the lane marker is above the asphalt
-      scaleX = 1;
       // for short-dashed-stripe every 3 meters put a dash
       repeatCount[0] = 1;
       repeatCount[1] = parseInt(length / 3);
     } else if (segments[i].type === 'separator' && variantList[0] === 'soliddashedyellow') {
       groundMixinId = 'markings yellow solid-dashed';
       positionY = positionY + 0.01; // make sure the lane marker is above the asphalt
-      scaleX = 1;
     } else if (segments[i].type === 'separator' && variantList[0] === 'soliddashedyellowinverted') {
       groundMixinId = 'markings yellow solid-dashed';
       positionY = positionY + 0.01; // make sure the lane marker is above the asphalt
-      scaleX = 1;
       rotationY = '180';
       repeatCount[0] = 1;
       repeatCount[1] = parseInt(length / 6);
@@ -1109,7 +1073,12 @@ function processSegments (segments, showStriping, length, globalAnimated, showVe
     const elevation = segments[i].elevation;
 
     // add new object
-    segmentParentEl.append(createSegmentElement(segmentWidthInMeters, scaleX, positionY, rotationY, groundMixinId, length, repeatCount, elevation));
+    if (segments[i].type !== 'separator') {
+      segmentParentEl.append(createSegmentElement(segmentWidthInMeters, positionY, groundMixinId, length, repeatCount, elevation));
+    } else {
+      segmentParentEl.append(createSeparatorElement(positionY, rotationY, groundMixinId, length, repeatCount, elevation));
+
+    }
     // returns JSON output instead
     // append the new surfaceElement to the segmentParentEl
     streetParentEl.append(segmentParentEl);
