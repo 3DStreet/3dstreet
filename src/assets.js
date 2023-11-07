@@ -87,7 +87,7 @@ function buildAssetHTML (assetUrl, categories) {
         <a-mixin shadow id="box-truck-rig" gltf-model="url(${assetUrl}sets/vehicles-rig/gltf-exports/draco/isuzu-truck-rig.glb)"></a-mixin>
         <a-mixin shadow id="food-trailer-rig" gltf-model="url(${assetUrl}sets/vehicles-rig/gltf-exports/draco/food-trailer-rig.glb)"></a-mixin>
         <a-mixin shadow id="fire-truck-rig" gltf-model="url(${assetUrl}sets/vehicles-rig/gltf-exports/draco/fire-truck-pumper-rig.glb)"></a-mixin>
-        <a-mixin id="self-driving-cruise-car-rig" gltf-model="url(${assetUrl}sets/vehicles-rig/gltf-exports/draco/self-driving-cruise-car-rig.glb)"></a-mixin>
+        <a-mixin shadow id="self-driving-cruise-car-rig" gltf-model="url(${assetUrl}sets/vehicles-rig/gltf-exports/draco/self-driving-cruise-car-rig.glb)"></a-mixin>
       `,
     buildings: `
         <!-- blocks -->
