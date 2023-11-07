@@ -720,7 +720,7 @@ function processSegments (segments, showStriping, length, globalAnimated, showVe
   // create and center offset to center the street around global x position of 0
   var streetParentEl = createCenteredStreetElement(segments);
   streetParentEl.classList.add('street-parent');
-  streetParentEl.setAttribute('data-layer-name', 'Street Segment Container');
+  streetParentEl.setAttribute('data-layer-name', 'Street Segments Container');
 
   var cumulativeWidthInMeters = 0;
   for (var i = 0; i < segments.length; i++) {
@@ -1106,6 +1106,7 @@ function processBuildings (left, right, streetWidth, showGround, length) {
   const buildingElement = document.createElement('a-entity');
   const clonedObjectRadius = 0.45 * length;
   buildingElement.classList.add('buildings-parent');
+  buildingElement.setAttribute('data-layer-name', 'Buildings & Blocks  Container');
   buildingElement.setAttribute('position', '0 0.2 0');
   const buildingLotWidth = 150;
   const buildingsArray = [left, right];
@@ -1116,7 +1117,7 @@ function processBuildings (left, right, streetWidth, showGround, length) {
   // soundParentEl.setAttribute('create-from-json', 'jsonString', ambientSoundJSONString);
   // buildingElement.appendChild(soundParentEl);
 
-  function createBuilding (buildingType, className, buildingPos, sideMultiplier) {
+  function createBuilding (buildingType, sideMultiplier) {
     // Make buildings
     const buildingsArray = streetmixParsersTested.createBuildingsArray(length, buildingType);
     const buildingJSONString = JSON.stringify(buildingsArray);
@@ -1124,11 +1125,7 @@ function processBuildings (left, right, streetWidth, showGround, length) {
 
     placedObjectEl.setAttribute('rotation', '0 ' + (90 * sideMultiplier) + ' 0');
     placedObjectEl.setAttribute('create-from-json', 'jsonString', buildingJSONString);
-
-    buildingElement.append(placedObjectEl);
-    placedObjectEl.classList.add(className);
-    placedObjectEl.setAttribute('position', buildingPos);
-    buildingElement.append(placedObjectEl);
+    return placedObjectEl;
   }
 
   buildingsArray.forEach((currentValue, index) => {
@@ -1158,7 +1155,6 @@ function processBuildings (left, right, streetWidth, showGround, length) {
       y: 0,
       z: (index === 1) ? length / 2 : -length / 2
     };
-    let className = 'block-' + side;
 
     switch (currentValue) {
       case 'narrow':
@@ -1168,15 +1164,18 @@ function processBuildings (left, right, streetWidth, showGround, length) {
       case 'residential':
         buildingPos.x += sideMultiplier * (-64);
         buildingPos.y = -0.58;
-        className = 'suburbia-' + side;
         // the grass should be slightly lower than the path - 0.17 instead of 0.2 for other buildings
         buildingElement.setAttribute('position', '0 0.17 0');
         break;
       case 'arcade':
         buildingPos.x += sideMultiplier * (-70.5);
-        className = 'arcade-' + side;
     }
-    createBuilding(currentValue, className, buildingPos, sideMultiplier);
+    let newBuildings = createBuilding(currentValue, sideMultiplier);
+    newBuildings.setAttribute('data-layer-name', 'Buildings ' + side + ': ' + currentValue);
+
+    newBuildings.setAttribute('position', buildingPos);
+    buildingElement.append(newBuildings);
+
 
     if (currentValue === 'waterfront') {
       const objectPositionX = positionX - (sideMultiplier * buildingLotWidth / 2);
