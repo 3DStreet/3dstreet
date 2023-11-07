@@ -668,7 +668,7 @@ function createSegmentElement (segmentWidthInMeters, positionY, mixinId, length,
     segmentEl.setAttribute('geometry', 'height: 0.4');
     segmentEl.setAttribute('geometry', 'depth', length);
     segmentEl.setAttribute('geometry', 'width', segmentWidthInMeters);
-  } else {  // else if (mixinId.match('lane')) {
+  } else {  // else if *lane or divider or temporary
     positionY -= 0.1;
     segmentEl.setAttribute('geometry', 'primitive', 'box');
     segmentEl.setAttribute('geometry', 'height: 0.2');
