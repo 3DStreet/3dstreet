@@ -694,24 +694,23 @@ function createCenteredStreetElement (segments) {
   return streetEl;
 }
 
-function createSegmentElement (scaleX, positionY, rotationY, mixinId, length, repeatCount, elevation = 0) {
+function createSegmentElement (segmentWidthInMeters, scaleX, positionY, rotationY, mixinId, length, repeatCount, elevation = 0) {
   var segmentEl = document.createElement('a-entity');
   const scaleY = length / 150;
 
   const scalePlane = scaleX + ' ' + scaleY + ' 1';
-  const scaleBox = scaleX + ' 1 1';
 
   if (mixinId === 'sidewalk' || elevation === 1) {
     segmentEl.setAttribute('geometry', 'primitive', 'box');
     segmentEl.setAttribute('geometry', 'height: 0.4');
     segmentEl.setAttribute('geometry', 'depth', length);
-    segmentEl.setAttribute('scale', scaleBox);
+    segmentEl.setAttribute('geometry', 'width', segmentWidthInMeters);
   } else if (mixinId.match('lane')) {
     positionY -= 0.1;
     segmentEl.setAttribute('geometry', 'primitive', 'box');
     segmentEl.setAttribute('geometry', 'height: 0.2');
     segmentEl.setAttribute('geometry', 'depth', length);
-    segmentEl.setAttribute('scale', scaleBox);
+    segmentEl.setAttribute('geometry', 'width', segmentWidthInMeters);
   } else {
     // segmentEl.setAttribute('geometry', 'height', length); // alternative to modifying scale
     segmentEl.setAttribute('rotation', '270 ' + rotationY + ' 0');
@@ -1110,7 +1109,7 @@ function processSegments (segments, showStriping, length, globalAnimated, showVe
     const elevation = segments[i].elevation;
 
     // add new object
-    segmentParentEl.append(createSegmentElement(scaleX, positionY, rotationY, groundMixinId, length, repeatCount, elevation));
+    segmentParentEl.append(createSegmentElement(segmentWidthInMeters, scaleX, positionY, rotationY, groundMixinId, length, repeatCount, elevation));
     // returns JSON output instead
     // append the new surfaceElement to the segmentParentEl
     streetParentEl.append(segmentParentEl);
