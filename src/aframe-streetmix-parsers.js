@@ -258,7 +258,7 @@ function createSidewalkClonedVariants (segmentWidthInMeters, density, elevationP
     }
 
     if (animated) {
-      addLinearStreetAnimation(placedObjectEl, 1.4, streetLength, xVal, yVal, zVal, animationDirection);
+      addLinearStreetAnimation(placedObjectEl, 1.4, streetLength, xVal, elevationPosY, zVal, animationDirection);
     }
     dividerParentEl.append(placedObjectEl);
   }
@@ -713,6 +713,27 @@ function createSegmentElement (scaleX, positionY, rotationY, mixinId, length, re
     segmentEl.setAttribute('geometry', 'height', height);
     segmentEl.setAttribute('geometry', 'depth', length);
     segmentEl.setAttribute('scale', scaleBox);
+  } else if (mixinId.match('lane')) {
+    positionY -= 0.1;
+    segmentEl.setAttribute('geometry', 'primitive', 'box');
+    segmentEl.setAttribute('geometry', 'height: 0.2');
+    segmentEl.setAttribute('geometry', 'depth', length);
+    segmentEl.setAttribute('scale', scaleBox);
+  } else if (mixinId.match('stripe')) { // these are often "separators" that are planes "on top of" the lanes
+    // segmentEl.setAttribute('geometry', 'height', length); // alternative to modifying scale
+    segmentEl.setAttribute('rotation', '270 ' + rotationY + ' 0');
+    segmentEl.setAttribute('scale', scalePlane);
+    positionY += 0.11;
+  } else if (mixinId === 'divider') {
+    // segmentEl.setAttribute('geometry', 'height', length); // alternative to modifying scale
+    segmentEl.setAttribute('rotation', '270 ' + rotationY + ' 0');
+    segmentEl.setAttribute('scale', scalePlane);
+    positionY += 0.1;
+  } else if (mixinId === 'grass') {
+    // segmentEl.setAttribute('geometry', 'height', length); // alternative to modifying scale
+    segmentEl.setAttribute('rotation', '270 ' + rotationY + ' 0');
+    segmentEl.setAttribute('scale', scalePlane);
+    positionY += 0.2;
   } else {
     // segmentEl.setAttribute('geometry', 'height', length); // alternative to modifying scale
     segmentEl.setAttribute('rotation', '270 ' + rotationY + ' 0');
@@ -862,7 +883,9 @@ function processSegments (segments, showStriping, length, globalAnimated, showVe
       groundMixinId = 'grass';
       segmentParentEl.append(createDividerVariant('planting-strip', clonedObjectRadius, 2.25));
     } else if (segments[i].type === 'divider' && variantList[0] === 'planter-box') {
-      groundMixinId = 'grass';
+      groundMixinId = 'divider';
+      repeatCount[0] = 1;
+      repeatCount[1] = parseInt(length);
       segmentParentEl.append(createDividerVariant('planter-box', clonedObjectRadius, 2.45));
     } else if (segments[i].type === 'divider' && variantList[0] === 'palm-tree') {
       groundMixinId = 'grass';
