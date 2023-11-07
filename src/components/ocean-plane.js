@@ -14,12 +14,55 @@ AFRAME.registerComponent('wobble-normal', {
   }
 });
 
+AFRAME.registerComponent('wobble-geometry', {
+  schema: {
+    // Wave amplitude and variance.
+    amplitude: {default: 0.1},
+    amplitudeVariance: {default: 0.3},
+
+    // Wave speed and variance.
+    speed: {default: 0.25},
+    speedVariance: {default: 2},
+  },
+  play: function () {
+    let data = this.data;
+    let geometry = this.geometry = this.el.object3D.children[0].geometry;
+
+    console.log(this.el.object3D.children[0].geometry)
+    this.waves = [];
+    const posAttribute = geometry.getAttribute('position');
+    console.log(posAttribute)
+    for (let i = 0; i < posAttribute.count; i++) {
+      this.waves.push({
+        z: posAttribute.getZ(i),
+        ang: Math.random() * Math.PI * 2,
+        amp: data.amplitude + Math.random() * data.amplitudeVariance,
+        speed: (data.speed + Math.random() * data.speedVariance) / 1000 // radians / frame
+      });
+    }
+  },
+  tick: function (t, dt) {
+    if (!dt) return;
+
+    const posAttribute = this.geometry.getAttribute('position');
+    for (let i = 0; i < posAttribute.count; i++){
+      const vprops = this.waves[i];
+      const value = vprops.z + Math.sin(vprops.ang) * vprops.amp;
+      posAttribute.setZ(i, value);
+      vprops.ang += vprops.speed * dt;
+    }
+    posAttribute.needsUpdate = true;
+  }
+});
+
 AFRAME.registerPrimitive('a-ocean-plane', {
   defaultComponents: {
     geometry: {
       primitive: 'plane',
       height: 1000,
-      width: 1000
+      width: 1000,
+      segmentsHeight: 100,
+      segmentsWidth: 100
     },
     rotation: '-90 0 0',
     material: {
@@ -33,6 +76,7 @@ AFRAME.registerPrimitive('a-ocean-plane', {
       normalScale: '0.5 0.5',
       opacity: 0.8
     },
-    'wobble-normal': {}
+    'wobble-normal': {},
+    'wobble-geometry': {},
   }
 });
