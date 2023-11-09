@@ -71,7 +71,7 @@ body {
 .right-fixed {
 	position: fixed;
 	right: 0;
-	margin-top: 40vh;
+	margin-top: 22.5vh;
 	z-index: 1;
 }
 
@@ -136,4 +136,23 @@ body {
 .right-menu li a:hover img {
 	background: #6100FF;
 	z-index: 9999;
+}
+
+/********* scene title css *********/
+
+#sceneTitle {
+	position: fixed;
+	color: white;
+	font-size: 20px;
+	font-family: Lato;
+	font-weight: 400;
+	word-wrap: break-word;
+	bottom: 43px;
+	pointer-events: none;
+    z-index: 2;
+    width: 100%;
+    text-align: center;
+    height: 26px;
+	overflow: hidden;
+	text-overflow: ellipsis;
 }

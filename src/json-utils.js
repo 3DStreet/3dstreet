@@ -1,5 +1,38 @@
 /* global AFRAME, Node */
 /* version: 1.0 */
+
+var STREET = {};
+STREET.utils = {};
+
+function getSceneUuidFromURLHash() {
+  const currentHash = window.location.hash;
+  const match = currentHash.match(/#\/scenes\/([a-zA-Z0-9-]+)\.json/);
+  return match && match[1] ? match[1] : null;
+}
+
+function getCurrentSceneId() {
+  let currentSceneId = AFRAME.scenes[0].getAttribute('metadata').sceneId;
+  console.log('currentSceneId from scene metadata', currentSceneId);
+  const urlSceneId = getSceneUuidFromURLHash();
+  console.log('urlSceneId', urlSceneId);
+  if (!currentSceneId) {
+    console.log('no currentSceneId from state');
+    if (urlSceneId) {
+      currentSceneId = urlSceneId;
+      console.log('setting currentSceneId to urlSceneId');
+    }
+  }
+  return currentSceneId;
+}
+STREET.utils.getCurrentSceneId = getCurrentSceneId;
+
+getCurrentSceneTitle = () => {
+  let currentSceneTitle = AFRAME.scenes[0].getAttribute('metadata').sceneTitle;
+  console.log('currentSceneTitle', currentSceneTitle);
+  return currentSceneTitle;
+};
+STREET.utils.getCurrentSceneTitle = getCurrentSceneTitle;
+
 /*
 Takes one or more elements (from a DOM queryselector call)
 and returns a Javascript object
@@ -133,7 +166,7 @@ const removeProps = {
   normalMap: {},
   'set-loader-from-hash': '*',
   'create-from-json': '*',
-  street: { JSON: '*' }
+  street: {JSON: '*'}
 };
 // a list of component_name:new_component_name pairs to rename in JSON string
 const renameProps = {
@@ -151,15 +184,15 @@ function filterJSONstreet(removeProps, renameProps, streetJSON) {
   }
 
   let stringJSON = JSON.stringify(streetJSON, function replacer(key, value) {
+    const compAttributes = AFRAME.utils.styleParser.parse(value);
     for (var removeKey in removeProps) {
       // check for removing components
       if (key === removeKey) {
         const removeVal = removeProps[removeKey];
         // check for deleting component's attribute
         if (typeof removeVal === 'object' && !isEmpty(removeVal)) {
-          // remove attribute in component
-          const compAttributes = value;
 
+          // remove attribute in component
           const attrNames = Object.keys(removeVal);
           for (var attrName of attrNames) {
             const attrVal = removeVal[attrName];
@@ -167,9 +200,10 @@ function filterJSONstreet(removeProps, renameProps, streetJSON) {
               Object.prototype.hasOwnProperty.call(compAttributes, attrName) &&
               removeValueCheck(attrVal, compAttributes[attrName])
             ) {
-              delete value[attrName];
+              delete compAttributes[attrName];
             }
           }
+
         }
         // for other cases
         if (removeValueCheck(removeVal, value)) {
@@ -178,7 +212,7 @@ function filterJSONstreet(removeProps, renameProps, streetJSON) {
       }
     }
 
-    return value;
+    return compAttributes;
   });
   // rename components
   for (var renameKey in renameProps) {
@@ -410,7 +444,53 @@ AFRAME.registerComponent('metadata', {
     sceneTitle: { default: '' },
     sceneId: { default: '' }
   },
-  init: function () {}
+  init: function () {},
+  update: function (oldData) {
+    const sceneTitle = this.data.sceneTitle;
+    if (sceneTitle !== oldData.sceneTitle) {
+      this.el.emit('newTitle', { sceneTitle: sceneTitle });
+    }
+  }
+});
+
+AFRAME.registerComponent('scene-title', {
+  schema: {
+    titleText: { default: '' }
+  },
+  init: function () {
+    this.titleElement = undefined;
+    this.el.addEventListener('newTitle', (evt) => {
+      this.el.setAttribute('scene-title', 'titleText', evt.detail.sceneTitle);
+    });
+  },
+  createTitleElement: function (titleText) {
+    const titleDiv = (this.titleElement = document.createElement('div'));
+    const newContent = document.createTextNode(titleText);
+    titleDiv.setAttribute('id', 'sceneTitle');
+    titleDiv.appendChild(newContent);
+    document.body.append(titleDiv);
+  },
+  updateTitleText: function (titleText) {
+    this.titleElement.textContent = titleText;
+  },
+  update: function (oldData) {
+    // If `oldData` is empty, then this means we're in the initialization process.
+    // No need to update.
+    if (Object.keys(oldData).length === 0) {
+      return;
+    }
+
+    const titleText = this.data.titleText;
+    const titleElement = this.titleElement;
+
+    if (titleText !== oldData.titleText) {
+      if (!titleElement) {
+        this.createTitleElement(titleText);
+      } else {
+        this.updateTitleText(titleText);
+      }
+    }
+  }
 });
 
 AFRAME.registerComponent('set-loader-from-hash', {
