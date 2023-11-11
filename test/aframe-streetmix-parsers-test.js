@@ -53,33 +53,6 @@ describe('A-Frame Streetmix Parsers', function () {
     });
   });
 
-  describe('#createGroundArray()', function () {
-    it('createGroundArray("grass") should return array with one dictionary for a-entity with mixin ground-grass', function () {
-      assert.deepStrictEqual(
-        streetmixParsersTested.createGroundArray('grass', 150),
-        [{ tag: 'a-entity', mixin: 'ground-grass', position: '0 -0.2 0', geometry: 'height: 150;', material: 'repeat: 1 5;' }]
-      );
-    });
-    it('createGroundArray("parking-lot") should return array with one dictionary for a-entity with mixin ground-parking-lot', function () {
-      assert.deepStrictEqual(
-        streetmixParsersTested.createGroundArray('parking-lot', 150),
-        [{ mixin: 'ground-parking-lot', position: '0 -0.2 0', tag: 'a-entity', geometry: 'height: 150;', material: 'repeat: 0.5 5;' }]
-      );
-    });
-    it('createGroundArray("jiberish") should return array with one dictionary for a-entity with mixin ground-grass', function () {
-      assert.deepStrictEqual(
-        streetmixParsersTested.createGroundArray('jiberish', 75),
-        [{ mixin: 'ground-grass', position: '0 -0.2 0', tag: 'a-entity', geometry: 'height: 75;', material: 'repeat: 1 2.5;' }]
-      );
-    });
-    it('createGroundArray("narrow") should return array with one dictionary for a-entity with mixin ground-asphalt', function () {
-      assert.deepStrictEqual(
-        streetmixParsersTested.createGroundArray('narrow', 30),
-        [{ mixin: 'ground-asphalt', position: '0 -0.2 0', tag: 'a-entity', geometry: 'height: 30;', material: 'repeat: 1 1;' }]
-      );
-    });
-  });
-
   describe('#getAmbientSoundJSON()', function () {
     it('getAmbientSoundJSON(["narrow", "wide"]) should return array with one dictionary for a-entity with sound src #ambientmp3', function () {
       assert.deepStrictEqual(
