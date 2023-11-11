@@ -1125,24 +1125,33 @@ function processBuildings (left, right, streetWidth, showGround, length) {
     return placedObjectEl;
   }
 
-  // possible 'block' type input values: grass, fence, narrow, wide, waterfront, residential, parking-lot
+  // possible 'block' type input values: grass, fence, narrow, wide, waterfront, residential, parking-lot, (new: archway, wall sp?)
   buildingsArray.forEach((currentValue, index) => {
     if (currentValue.length === 0) { return; } // if empty string then skip
     const side = (index === 0) ? 'left' : 'right';
     const sideMultiplier = (side === 'left') ? -1 : 1;
 
-    const groundPositionX = ((length / 2) + (streetWidth / 2)) * sideMultiplier;
+    const groundPositionX = ((length / 4) + (streetWidth / 2)) * sideMultiplier;
     const buildingPositionX = ((150 / 2) + (streetWidth / 2)) * sideMultiplier;
 
     // this is the logic to make the ground box
     if (showGround) {
+      const variantToMaterialMapping = {
+        grass: 'ground-grass-material',
+        fence: 'ground-grass-material',
+        'parking-lot': 'ground-parking-lot-material',
+        residential: 'ground-grass-material',
+        narrow: 'ground-asphalt-material',
+        wide: 'ground-asphalt-material',
+      }
+
       if (currentValue === 'waterfront') {
         var groundParentEl = document.createElement('a-ocean-box');
         groundParentEl.setAttribute('geometry',
           {
             primitive: 'box',
             depth: length,
-            width: length,
+            width: length / 2,
             height: 2,
             segmentsHeight: 1,
             segmentsDepth: 10,
@@ -1153,11 +1162,13 @@ function processBuildings (left, right, streetWidth, showGround, length) {
         var groundParentEl = document.createElement('a-box');
         groundParentEl.setAttribute('depth', length);
         groundParentEl.setAttribute('height', 2);
-        groundParentEl.setAttribute('width', length);
+        groundParentEl.setAttribute('width', length / 2);
         groundParentEl.setAttribute('shadow', '');
-        groundParentEl.setAttribute('material', 'src:#grass-texture;repeat:5 5;roughness:0.8;');
+        // groundParentEl.setAttribute('material', 'src:#grass-texture;repeat:5 5;roughness:0.8;');
+        groundParentEl.setAttribute('mixin', variantToMaterialMapping[currentValue]); // case grass, fence
         groundParentEl.setAttribute('position', { y: -1 });
       }
+
 
       if (side === 'right') {
         // groundParentEl.setAttribute('position', groundPositionX + ' -1 0');
@@ -1201,7 +1212,7 @@ function processBuildings (left, right, streetWidth, showGround, length) {
       const objectPositionX = buildingPositionX - (sideMultiplier * 150 / 2);
       const placedObjectEl = document.createElement('a-entity');
       placedObjectEl.setAttribute('class', 'seawall-parent');
-      placedObjectEl.setAttribute('position', objectPositionX + ' 0 0'); // position="1.043 0.100 -3.463"
+      placedObjectEl.setAttribute('position', objectPositionX + ' 0 4.5'); // position="1.043 0.100 -3.463"
       placedObjectEl.classList.add('seawall-parent-' + side);
       buildingElement.appendChild(placedObjectEl);
       // clone a bunch of seawalls under the parent
