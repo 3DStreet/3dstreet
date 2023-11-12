@@ -1143,6 +1143,8 @@ function processBuildings (left, right, streetWidth, showGround, length) {
         residential: 'ground-grass-material',
         narrow: 'ground-asphalt-material',
         wide: 'ground-asphalt-material',
+        arcade: 'ground-tiled-concrete-material',
+        'compound-wall': 'ground-asphalt-material'
       }
 
       if (currentValue === 'waterfront') {
@@ -1208,15 +1210,22 @@ function processBuildings (left, right, streetWidth, showGround, length) {
     newBuildings.setAttribute('position', buildingPos);
     buildingElement.append(newBuildings);
 
-    if (currentValue === 'waterfront') {
+    if (currentValue === 'waterfront' || currentValue === 'compound-wall') {
       const objectPositionX = buildingPositionX - (sideMultiplier * 150 / 2);
       const placedObjectEl = document.createElement('a-entity');
       placedObjectEl.setAttribute('class', 'seawall-parent');
-      placedObjectEl.setAttribute('position', objectPositionX + ' 0 4.5'); // position="1.043 0.100 -3.463"
+      placedObjectEl.setAttribute('position', {x: objectPositionX, z: 4.5}); // position="1.043 0.100 -3.463"
+      let rotationCloneY;
+      if (currentValue === 'compound-wall') {
+        placedObjectEl.setAttribute('position', {y: 3});
+        placedObjectEl.setAttribute('position', {x: objectPositionX + 1.5 * sideMultiplier});
+        rotationCloneY = (side === 'left') ? 90 : -90;
+      } else {
+        rotationCloneY = (side === 'left') ? -90 : 90;
+      }
       placedObjectEl.classList.add('seawall-parent-' + side);
       buildingElement.appendChild(placedObjectEl);
       // clone a bunch of seawalls under the parent
-      const rotationCloneY = (side === 'left') ? -90 : 90;
       cloneMixinAsChildren({ objectMixinId: 'seawall', parentEl: placedObjectEl, rotation: '0 ' + rotationCloneY + ' 0', step: 15, radius: clonedObjectRadius });
     }
 

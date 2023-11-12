@@ -217,7 +217,7 @@ function buildAssetHTML (assetUrl, categories) {
         <a-mixin shadow id="ground-grass-material" material="src:#grass-texture;repeat:2.5 5;roughness:${surfacesRoughness}"></a-mixin>
         <a-mixin shadow id="ground-parking-lot-material" material="src:#parking-lot-texture;repeat:.5 2;roughness:${surfacesRoughness}"></a-mixin>
         <a-mixin shadow id="ground-asphalt-material" material="src:#asphalt-texture;repeat:5 5;roughness:${surfacesRoughness}"></a-mixin>
-        <a-mixin shadow id="ground-tiled-concrete-material" material="src:#seamless-sidewalk;repeat:5 5;roughness:${surfacesRoughness}"></a-mixin>
+        <a-mixin shadow id="ground-tiled-concrete-material" material="src:#seamless-sidewalk;repeat:10 20;roughness:${surfacesRoughness}"></a-mixin>
 
         <a-asset-item id="fence-model" src="${assetUrl}sets/fences/gltf-exports/draco/fence4.glb"></a-asset-item>
         <a-mixin shadow id="fence" gltf-model="#fence-model" scale="0.1 0.1 0.1"></a-mixin>
