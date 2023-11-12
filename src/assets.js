@@ -214,13 +214,13 @@ function buildAssetHTML (assetUrl, categories) {
         <img id="parking-lot-texture" src="${assetUrl}materials/TexturesCom_Roads0111_1_seamless_S.jpg" crossorigin="anonymous">
         <img id="asphalt-texture" src="${assetUrl}materials/TexturesCom_AsphaltDamaged0057_1_seamless_S.jpg" crossorigin="anonymous">
 
-        <a-mixin shadow id="ground-grass" rotation="-90 0 0" geometry="primitive:plane;height:150;width:40" material="src:#grass-texture;repeat:5 5;roughness:${surfacesRoughness}"></a-mixin>
-        <a-mixin shadow id="ground-parking-lot" rotation="-90 0 0" geometry="primitive:plane;height:150;width:40" material="src:#parking-lot-texture;repeat:2 4;roughness:${surfacesRoughness}"></a-mixin>
-        <a-mixin shadow id="ground-asphalt" rotation="-90 0 0" geometry="primitive:plane;height:150;width:40" material="src:#asphalt-texture;repeat:5 5;roughness:${surfacesRoughness}"></a-mixin>
-        <a-mixin shadow id="ground-tiled-concrete" anisotropy rotation="-90 0 0" geometry="primitive:plane;height:150;width:40" material="src:#seamless-sidewalk;repeat:5 5;roughness:${surfacesRoughness}"></a-mixin>
+        <a-mixin shadow id="ground-grass-material" material="src:#grass-texture;repeat:2.5 5;roughness:${surfacesRoughness}"></a-mixin>
+        <a-mixin shadow id="ground-parking-lot-material" material="src:#parking-lot-texture;repeat:.5 2;roughness:${surfacesRoughness}"></a-mixin>
+        <a-mixin shadow id="ground-asphalt-material" material="src:#asphalt-texture;repeat:5 5;roughness:${surfacesRoughness}"></a-mixin>
+        <a-mixin shadow id="ground-tiled-concrete-material" material="src:#seamless-sidewalk;repeat:10 20;roughness:${surfacesRoughness}"></a-mixin>
 
-        <a-asset-item shadow id="fence-model" src="${assetUrl}sets/fences/gltf-exports/draco/fence4.glb"></a-asset-item>
-        <a-mixin id="fence" gltf-model="#fence-model" scale="0.1 0.1 0.1"></a-mixin>
+        <a-asset-item id="fence-model" src="${assetUrl}sets/fences/gltf-exports/draco/fence4.glb"></a-asset-item>
+        <a-mixin shadow id="fence" gltf-model="#fence-model" scale="0.1 0.1 0.1"></a-mixin>
       `,
     'loud-bicycle': `
         <!-- loud-bicycle-game -->

@@ -108,22 +108,22 @@ function createStencilsParentElement (position) {
   return placedObjectEl;
 }
 
-function createRailsElement(length, railsPosX) {
+function createRailsElement (length, railsPosX) {
   const placedObjectEl = document.createElement('a-entity');
   const railsGeometry = {
-    "primitive": "box",
-    "depth": length,
-    "width": 0.1,
-    "height": 0.2,
+    primitive: 'box',
+    depth: length,
+    width: 0.1,
+    height: 0.2
 
-  }
+  };
   const railsMaterial = { // TODO: Add environment map for reflection on metal rails
-    "color": "#8f8f8f",
-    "metalness": 1,
-    "emissive": "#828282",
-    "emissiveIntensity": 0.5,
-    "roughness": 0.1
-  }
+    color: '#8f8f8f',
+    metalness: 1,
+    emissive: '#828282',
+    emissiveIntensity: 0.5,
+    roughness: 0.1
+  };
   placedObjectEl.setAttribute('geometry', railsGeometry);
   placedObjectEl.setAttribute('material', railsMaterial);
   placedObjectEl.setAttribute('class', 'rails');
@@ -131,7 +131,6 @@ function createRailsElement(length, railsPosX) {
   placedObjectEl.setAttribute('position', railsPosX + ' 0.2 0'); // position="1.043 0.100 -3.463"
 
   return placedObjectEl;
-
 }
 
 function createTracksParentElement (length, objectMixinId) {
@@ -140,9 +139,9 @@ function createTracksParentElement (length, objectMixinId) {
   placedObjectEl.setAttribute('position', '0 -0.2 0'); // position="1.043 0.100 -3.463"
   // add rails
   const railsWidth = { // width as measured from center of rail, so 1/2 actual width
-    "tram": 0.7175, // standard gauge 1,435 mm
-    "trolley": 0.5335 // sf cable car rail gauge 1,067 mm
-  }
+    tram: 0.7175, // standard gauge 1,435 mm
+    trolley: 0.5335 // sf cable car rail gauge 1,067 mm
+  };
   const railsPosX = railsWidth[objectMixinId];
   placedObjectEl.append(createRailsElement(length, railsPosX));
   placedObjectEl.append(createRailsElement(length, -railsPosX));
@@ -411,7 +410,7 @@ function createDriveLaneElement (variantList, segmentWidthInMeters, streetLength
       mixin: 'self-driving-cruise-car-rig',
       wheelDiameter: 0.76,
       length: 5.17,
-      width: 2      
+      width: 2
     }
   };
 
@@ -1083,23 +1082,22 @@ function processSegments (segments, showStriping, length, globalAnimated, showVe
       segmentParentEl.append(createSegmentElement(segmentWidthInMeters, positionY, groundMixinId, length, repeatCount, elevation));
     } else {
       segmentParentEl.append(createSeparatorElement(positionY, rotationY, groundMixinId, length, repeatCount, elevation));
-
     }
     // returns JSON output instead
     // append the new surfaceElement to the segmentParentEl
     streetParentEl.append(segmentParentEl);
     segmentParentEl.setAttribute('position', segmentPositionX + ' 0 0');
-    segmentParentEl.setAttribute('data-layer-name', 'Segment: ' + segments[i].type + ', ' + variantList[0])
+    segmentParentEl.setAttribute('data-layer-name', 'Segment: ' + segments[i].type + ', ' + variantList[0]);
   }
   // create new brown box to represent ground underneath street
-  let dirtBox = document.createElement('a-box');
+  const dirtBox = document.createElement('a-box');
   const xPos = cumulativeWidthInMeters / 2;
-  console.log('xPos', xPos)
-  console.log('`${xPos} -1.1 0`', `${xPos} -1.1 0`)
+  console.log('xPos', xPos);
+  console.log('`${xPos} -1.1 0`', `${xPos} -1.1 0`);
   dirtBox.setAttribute('position', `${xPos} -1.1 0`); // what is x? x = 0 - cumulativeWidthInMeters / 2
-  dirtBox.setAttribute('height', 2);   // height is 2 meters from y of -0.1 to -y of 2.1
-  dirtBox.setAttribute('width', cumulativeWidthInMeters); 
-  dirtBox.setAttribute('depth', length - 0.2);   // depth is length - 0.1 on each side
+  dirtBox.setAttribute('height', 2); // height is 2 meters from y of -0.1 to -y of 2.1
+  dirtBox.setAttribute('width', cumulativeWidthInMeters);
+  dirtBox.setAttribute('depth', length - 0.2); // depth is length - 0.1 on each side
   dirtBox.setAttribute('material', 'color: #664B00;');
   dirtBox.setAttribute('data-layer-name', 'Underground');
   streetParentEl.append(dirtBox);
@@ -1114,7 +1112,6 @@ function processBuildings (left, right, streetWidth, showGround, length) {
   buildingElement.classList.add('buildings-parent');
   buildingElement.setAttribute('data-layer-name', 'Buildings & Blocks  Container');
   buildingElement.setAttribute('position', '0 0.2 0');
-  const buildingLotWidth = 150;
   const buildingsArray = [left, right];
 
   // TODO: Sound temporarily disabled
@@ -1134,24 +1131,58 @@ function processBuildings (left, right, streetWidth, showGround, length) {
     return placedObjectEl;
   }
 
-  // possible 'block' type input values: grass, fence, narrow, wide, waterfront, residential, parking-lot
+  // possible 'block' type input values: grass, fence, narrow, wide, waterfront, residential, parking-lot, (new: archway, wall sp?)
   buildingsArray.forEach((currentValue, index) => {
     if (currentValue.length === 0) { return; } // if empty string then skip
     const side = (index === 0) ? 'left' : 'right';
     const sideMultiplier = (side === 'left') ? -1 : 1;
 
-    const positionX = ((buildingLotWidth / 2) + (streetWidth / 2)) * sideMultiplier;
+    const groundPositionX = ((length / 4) + (streetWidth / 2)) * sideMultiplier;
+    const buildingPositionX = ((150 / 2) + (streetWidth / 2)) * sideMultiplier;
 
+    // this is the logic to make the ground box
     if (showGround) {
-      // TODO: consider rewriting this using simple box instead of this json plane method
-      var groundJSONString = JSON.stringify(streetmixParsersTested.createGroundArray(currentValue, length));
+      const variantToMaterialMapping = {
+        grass: 'ground-grass-material',
+        fence: 'ground-grass-material',
+        'parking-lot': 'ground-parking-lot-material',
+        residential: 'ground-grass-material',
+        narrow: 'ground-asphalt-material',
+        wide: 'ground-asphalt-material',
+        arcade: 'ground-tiled-concrete-material',
+        'compound-wall': 'ground-asphalt-material'
+      }
 
-      var groundParentEl = document.createElement('a-entity');
-      groundParentEl.setAttribute('create-from-json', 'jsonString', groundJSONString);
-      if (side === 'right') {
-        groundParentEl.setAttribute('position', positionX - 55 + ' 0.2 0');
+      if (currentValue === 'waterfront') {
+        var groundParentEl = document.createElement('a-ocean-box');
+        groundParentEl.setAttribute('geometry',
+          {
+            primitive: 'box',
+            depth: length,
+            width: length / 2,
+            height: 2,
+            segmentsHeight: 1,
+            segmentsDepth: 10,
+            segmentsWidth: 10
+          });
+        groundParentEl.setAttribute('position', { y: -3 });
       } else {
-        groundParentEl.setAttribute('position', positionX + 55 + ' 0.2 0');
+        var groundParentEl = document.createElement('a-box');
+        groundParentEl.setAttribute('depth', length);
+        groundParentEl.setAttribute('height', 2);
+        groundParentEl.setAttribute('width', length / 2);
+        groundParentEl.setAttribute('shadow', '');
+        // groundParentEl.setAttribute('material', 'src:#grass-texture;repeat:5 5;roughness:0.8;');
+        groundParentEl.setAttribute('mixin', variantToMaterialMapping[currentValue]); // case grass, fence
+        groundParentEl.setAttribute('position', { y: -1 });
+      }
+
+
+      if (side === 'right') {
+        // groundParentEl.setAttribute('position', groundPositionX + ' -1 0');
+        groundParentEl.setAttribute('position', { x: groundPositionX });
+      } else {
+        groundParentEl.setAttribute('position', { x: groundPositionX });
       }
       groundParentEl.classList.add('ground-' + side);
       groundParentEl.setAttribute('data-layer-name', 'Ground ' + side + ': ' + currentValue);
@@ -1160,7 +1191,7 @@ function processBuildings (left, right, streetWidth, showGround, length) {
 
     // make building
     const buildingPos = {
-      x: positionX,
+      x: buildingPositionX,
       y: 0,
       z: (index === 1) ? length / 2 : -length / 2
     };
@@ -1179,32 +1210,38 @@ function processBuildings (left, right, streetWidth, showGround, length) {
       case 'arcade':
         buildingPos.x += sideMultiplier * (-70.5);
     }
-    let newBuildings = createBuilding(currentValue, sideMultiplier);
+    const newBuildings = createBuilding(currentValue, sideMultiplier);
     newBuildings.setAttribute('data-layer-name', 'Buildings ' + side + ': ' + currentValue);
 
     newBuildings.setAttribute('position', buildingPos);
     buildingElement.append(newBuildings);
 
-
-    if (currentValue === 'waterfront') {
-      const objectPositionX = positionX - (sideMultiplier * buildingLotWidth / 2);
+    if (currentValue === 'waterfront' || currentValue === 'compound-wall') {
+      const objectPositionX = buildingPositionX - (sideMultiplier * 150 / 2);
       const placedObjectEl = document.createElement('a-entity');
       placedObjectEl.setAttribute('class', 'seawall-parent');
-      placedObjectEl.setAttribute('position', objectPositionX + ' 0 0'); // position="1.043 0.100 -3.463"
+      placedObjectEl.setAttribute('position', {x: objectPositionX, z: 4.5}); // position="1.043 0.100 -3.463"
+      let rotationCloneY;
+      if (currentValue === 'compound-wall') {
+        placedObjectEl.setAttribute('position', {y: 3});
+        placedObjectEl.setAttribute('position', {x: objectPositionX + 1.5 * sideMultiplier});
+        rotationCloneY = (side === 'left') ? 90 : -90;
+      } else {
+        rotationCloneY = (side === 'left') ? -90 : 90;
+      }
       placedObjectEl.classList.add('seawall-parent-' + side);
       buildingElement.appendChild(placedObjectEl);
       // clone a bunch of seawalls under the parent
-      const rotationCloneY = (side === 'left') ? -90 : 90;
       cloneMixinAsChildren({ objectMixinId: 'seawall', parentEl: placedObjectEl, rotation: '0 ' + rotationCloneY + ' 0', step: 15, radius: clonedObjectRadius });
     }
 
     if (currentValue === 'fence' || currentValue === 'parking-lot') {
-      const objectPositionX = positionX - (sideMultiplier * buildingLotWidth / 2);
+      const objectPositionX = buildingPositionX - (sideMultiplier * 150 / 2);
       // make the parent for all the objects to be cloned
       const placedObjectEl = document.createElement('a-entity');
       placedObjectEl.setAttribute('class', 'fence-parent');
       placedObjectEl.setAttribute('position', objectPositionX + ' 0 4.625'); // position="1.043 0.100 -3.463"
-      placedObjectEl.classList.add('fence-parent-' + positionX);
+      placedObjectEl.classList.add('fence-parent-' + buildingPositionX);
       // clone a bunch of fences under the parent
       const rotationCloneY = (side === 'right') ? -90 : 90;
       cloneMixinAsChildren({ objectMixinId: 'fence', parentEl: placedObjectEl, rotation: '0 ' + rotationCloneY + ' 0', step: 9.25, radius: clonedObjectRadius });
