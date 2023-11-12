@@ -28,14 +28,56 @@ AFRAME.registerComponent('screentock', {
     // hide helpers
     toggleHelpers(false);
 
-    function downloadImage (filename, dataURL) { 
-      downloadImageDataURL(filename, dataURL);
-      // show helpers
-      toggleHelpers(true);
-    }
-
     function toggleHelpers(show) {
       if (inspector && inspector.opened) inspector.sceneHelpers.visible = show;
+    }
+
+    function createCanvasWithScreenshot(aframeCanvas) {
+      let screenshotCanvas = document.querySelector('#screenshotCanvas');
+      if (!screenshotCanvas) {
+        screenshotCanvas = document.createElement('canvas');
+        screenshotCanvas.id = 'screenshotCanvas';
+        screenshotCanvas.hidden = true;
+        document.body.appendChild(screenshotCanvas);
+      }
+      screenshotCanvas.width = aframeCanvas.width;
+      screenshotCanvas.height = aframeCanvas.height;      
+      const ctxScreenshot = screenshotCanvas.getContext("2d");
+
+      // draw image from Aframe canvas to screenshot canvas
+      ctxScreenshot.drawImage(aframeCanvas, 0, 0);
+      // add scene title to screenshot
+      addTitleToCanvas(ctxScreenshot, screenshotCanvas.width, screenshotCanvas.height);
+      // add 3DStreet logo
+      addLogoToCanvas(ctxScreenshot);
+      return screenshotCanvas;
+    }
+
+    function addTitleToCanvas (ctx, screenWidth, screenHeight) {
+      ctx.font = "25px Lato";
+      ctx.textAlign = 'center';
+      ctx.fillStyle = '#FFF';
+      ctx.fillText(STREET.utils.getCurrentSceneTitle(), 
+        screenWidth - screenWidth/2, 
+        screenHeight - 43);
+    }
+
+    function addLogoToCanvas (ctx) {
+      ctx.font = "lighter 40px sans-serif";
+      ctx.textAlign = 'left';
+      ctx.fillStyle = '#FFF';
+      ctx.fillText('3D', 
+        50, 
+        80);
+      ctx.font = "Bolder 40px sans-serif";
+      ctx.textAlign = 'left';
+      ctx.fillStyle = '#FFF';
+      ctx.fillText('Street', 
+        100, 
+        80);
+
+      //const logoImg = document.querySelector('img.viewer-logo-img');
+      //ctx.drawImage(logoImg, 0, 0, 250, 43, 40, 40, 250, 43);
     }
 
     function downloadImageDataURL (filename, dataURL) {
@@ -50,17 +92,21 @@ AFRAME.registerComponent('screentock', {
     }
     const saveFilename = filename + '.' + type;
     
+    // render one frame
     renderer.render(AFRAME.scenes[0].object3D, AFRAME.scenes[0].camera);
+    const screenshotCanvas = createCanvasWithScreenshot(renderer.domElement);
 
     if (type == 'img') {
       imgElement.src = renderer.domElement.toDataURL();
       return;
     }
     if (type == 'png') {
-      downloadImage(saveFilename, renderer.domElement.toDataURL('image/png'));
+      downloadImageDataURL(saveFilename, screenshotCanvas.toDataURL('image/png'));
     } else {
-      downloadImage(saveFilename, renderer.domElement.toDataURL('image/jpeg', 0.95));
+      downloadImageDataURL(saveFilename, screenshotCanvas.toDataURL('image/jpeg', 0.95));
     }
+    // show helpers
+    toggleHelpers(true);
   },
   update: function () {
     // this should be paused when not in use. could be throttled too
