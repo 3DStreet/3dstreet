@@ -19,19 +19,19 @@ load JSON file with 3d-street data from URL.
 */
 AFRAME.registerSystem('json-3dstreet', {
   schema: {
-    jsonURL: { type: 'string' }
+    jsonURL: { type: 'string' },
+    inputFileID: { type: 'string'}
   },
   init: function() {},
-  fileJSON: function () {
-      // handle viewer widget click to open 3dstreet json scene
-      let reader = new FileReader();
-      reader.onload = function () {
-        AFRAME.scenes[0].setAttribute('metadata', 'sceneId', '');
-        AFRAME.scenes[0].setAttribute('metadata', 'sceneTitle', '');
-        createElementsFromJSON(reader.result);
-      };
-      reader.readAsText(this.files[0]);
-    
+  readFromInput: function () {
+    // handle viewer widget click to open 3dstreet json scene
+    let reader = new FileReader();
+    reader.onload = function () {
+      AFRAME.scenes[0].setAttribute('metadata', 'sceneId', '');
+      AFRAME.scenes[0].setAttribute('metadata', 'sceneTitle', '');
+      jsonUtils.createElementsFromJSON(reader.result);
+    };
+    reader.readAsText(this.files[0]);
   },
   loadFromURL: function (fileURL) {
     // load JSON file from URL
@@ -85,10 +85,14 @@ AFRAME.registerSystem('json-3dstreet', {
     if (Object.keys(oldData).length === 0) { return; }
 
     const jsonURL = this.data.jsonURL;
+    const inputFileID = this.data.inputFileID;
 
     if (jsonURL) {
       this.loadFromURL(jsonURL);
-    }
+      this.data.jsonURL = '';
+    } else if (inputFileID) {
+      document.getElementById(inputFileID).addEventListener('change', this.readFromInput);    
+    }   
   }
 });
 
