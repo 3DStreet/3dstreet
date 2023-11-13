@@ -159,3 +159,6 @@ body.aframe-inspector-opened .right-fixed {
 	overflow: hidden;
 	text-overflow: ellipsis;
 }
+body.aframe-inspector-opened #sceneTitle {
+	display: none;
+}
