@@ -1,8 +1,15 @@
 # How to contribute to 3DStreet
 
-We welcome community contributions to 3dstreet.
+We welcome community contributions to 3DStreet.
 
-## Instructions
+## Release checklist for this repo:
+- Bump the version on package.json
+- Re-run npm run dist (rerun the build, it hardcodes the version into global var used for console log)
+- Commit this all to the repo
+- How to make a tag and release?
+- Then to run npm publish after all github version stuff works
+
+## Contribution Instructions
 * fork the repo
 * make your contribution
 * make sure to do check for linting and unit test:
@@ -15,7 +22,7 @@ We welcome community contributions to 3dstreet.
 * Either change your code so that the test passes once again, or
 * You might need to update the tests
 
-### About 3dstreet test
+### About 3DStreet test
 
 A small portion of 3dstreet code is tested. All of this code lives in this directory [/src/tested/](https://github.com/3DStreet/3dstreet/tree/main/src/tested)
 
