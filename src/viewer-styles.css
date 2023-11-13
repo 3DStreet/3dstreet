@@ -74,6 +74,9 @@ body {
 	margin-top: 22.5vh;
 	z-index: 1;
 }
+body.aframe-inspector-opened .right-fixed {
+	display: none;
+}
 
 .right-menu {
 	padding-left: 0;
