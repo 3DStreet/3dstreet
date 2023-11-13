@@ -5,6 +5,19 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
  
+## 0.4.2 - 2023-11-12
+
+### What's Changed
+
+### Major improvements
+* Internal release and bugfixes prior to 0.5.0 release (no new user-facing features)
+* metadata component support for title and sceneId
+* notification framework
+* STREET global
+* screenshot (screentock)
+* Modern VR UI controls (second try since long ago, but v1 for blink controls)
+* bugfixes for save / load: mapbox, intersection, not storing extra street json
+
 ## 0.4.1 - 2023-08-08
 
 ### What's Changed
