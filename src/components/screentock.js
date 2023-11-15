@@ -21,7 +21,7 @@ AFRAME.registerComponent('screentock', {
     type: { type: 'string', default: 'jpg' }, // png, jpg, img
     imgElementSelector: { type: 'selector' }
   },
-  takeScreenshotNow: function (filename, type, imgElement) {
+  takeScreenshotNow: async function (filename, type, imgElement) {
     const inspector = AFRAME.INSPECTOR;
     const renderer = AFRAME.scenes[0].renderer;
 
@@ -32,7 +32,7 @@ AFRAME.registerComponent('screentock', {
       if (inspector && inspector.opened) inspector.sceneHelpers.visible = show;
     }
 
-    function createCanvasWithScreenshot(aframeCanvas) {
+    const createCanvasWithScreenshot = async (aframeCanvas) => {
       let screenshotCanvas = document.querySelector('#screenshotCanvas');
       if (!screenshotCanvas) {
         screenshotCanvas = document.createElement('canvas');
@@ -49,7 +49,7 @@ AFRAME.registerComponent('screentock', {
       // add scene title to screenshot
       addTitleToCanvas(ctxScreenshot, screenshotCanvas.width, screenshotCanvas.height);
       // add 3DStreet logo
-      addLogoToCanvas(ctxScreenshot);
+      await addLogoToCanvas(ctxScreenshot);
       return screenshotCanvas;
     }
 
@@ -62,25 +62,25 @@ AFRAME.registerComponent('screentock', {
         screenHeight - 43);
     }
 
-    function addLogoToCanvas (ctx) {
-      ctx.font = "lighter 40px sans-serif";
-      ctx.textAlign = 'left';
-      ctx.fillStyle = '#FFF';
-      ctx.fillText('3D', 
-        50, 
-        80);
-      ctx.font = "Bolder 40px sans-serif";
-      ctx.textAlign = 'left';
-      ctx.fillStyle = '#FFF';
-      ctx.fillText('Street', 
-        100, 
-        80);
+    const addLogoToCanvas = async (ctx) => {
+      
+      const logoImg = document.querySelector('img.viewer-logo-img') 
+      const logoSVG = document.querySelector('#aframeInspector #logoImg svg');
 
-      //const logoImg = document.querySelector('img.viewer-logo-img');
-      //ctx.drawImage(logoImg, 0, 0, 250, 43, 40, 40, 250, 43);
+      if (logoImg) {
+        ctx.drawImage(logoImg, 0, 0, 135, 43, 40, 30, 135, 43);
+      } else if (logoSVG) {
+        const image = new Image();
+        image.src = `data:image/svg+xml;base64,${window.btoa(logoSVG.outerHTML)}`;
+        await new Promise((resolve) => {
+          image.onload = resolve;
+        });
+
+        ctx.drawImage(image, 0, 0, 135, 23, 40, 40, 135, 23);
+      }      
     }
 
-    function downloadImageDataURL (filename, dataURL) {
+    function downloadImageDataURL (filename, dataURL, scnrenshotCanvas) {
       const element = document.createElement('a');
       const url = dataURL.replace(/^data:image\/[^;]/, 'data:application/octet-stream');
       element.setAttribute('href', url);
@@ -90,11 +90,12 @@ AFRAME.registerComponent('screentock', {
       element.click();
       document.body.removeChild(element);
     }
+
     const saveFilename = filename + '.' + type;
     
     // render one frame
     renderer.render(AFRAME.scenes[0].object3D, AFRAME.scenes[0].camera);
-    const screenshotCanvas = createCanvasWithScreenshot(renderer.domElement);
+    const screenshotCanvas = await createCanvasWithScreenshot(renderer.domElement);
 
     if (type == 'img') {
       imgElement.src = renderer.domElement.toDataURL();
