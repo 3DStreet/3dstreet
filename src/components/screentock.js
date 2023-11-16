@@ -30,6 +30,12 @@ AFRAME.registerComponent('screentock', {
 
     function toggleHelpers(show) {
       if (inspector && inspector.opened) inspector.sceneHelpers.visible = show;
+      if (show) {
+        document.querySelector('#cameraRig')
+          .setAttribute('cursor-teleport', "cameraRig: #cameraRig; cameraHead: #camera;");
+      } else {
+        document.querySelector('#cameraRig').removeAttribute('cursor-teleport');
+      }
     }
 
     const createCanvasWithScreenshot = async (aframeCanvas) => {
@@ -109,7 +115,11 @@ AFRAME.registerComponent('screentock', {
     // show helpers
     toggleHelpers(true);
   },
-  update: function () {
+  update: function (oldData) {
+    // If `oldData` is empty, then this means we're in the initialization process.
+    // No need to update.
+    if (Object.keys(oldData).length === 0) { return; }
+    
     // this should be paused when not in use. could be throttled too
     if (this.data.takeScreenshot) {
       this.data.takeScreenshot = false;
