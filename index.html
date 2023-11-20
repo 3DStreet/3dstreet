@@ -44,7 +44,6 @@
       inspector="url: //3dstreet.app/dist/3dstreet-editor.js"
       notify
       metadata
-      json-3dstreet='inputfileID: inputfile'
       >
       <a-assets>
         <!-- uncomment the line below to load assets from local github submodule -->
@@ -80,7 +79,6 @@
           'Please enter a Streetmix URL',
           'https://streetmix.net/kfarr/3/example-street'
         );
-        // set inputStreetmix attribute with any value to call input prompt
         defaultStreetElem.setAttribute('streetmix-loader', 'inputStreetmix', streetmixURL);
       }
     });

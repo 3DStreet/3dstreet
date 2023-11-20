@@ -305,40 +305,11 @@ function getModifiedProperty(entity, componentName) {
   return diff;
 }
 
-function prepareStreetContainer() {
-  let streetContainerEl = document.getElementById('street-container');
-  if (streetContainerEl) {
-    while (streetContainerEl.firstChild) {
-      streetContainerEl.removeChild(streetContainerEl.lastChild);
-    }
-  } else {
-    streetContainerEl = document.createElement('a-entity');
-    streetContainerEl.setAttribute('id', 'street-container');
-    streetContainerEl.setAttribute('data-layer-name', '3D Street Layers');
-    streetContainerEl.setAttribute('data-layer-show-children');
-    AFRAME.scenes[0].appendChild(streetContainerEl);
-  }  
-  return streetContainerEl;
-}
-
-module.exports.prepareStreetContainer = prepareStreetContainer;
-
 function createEntities(entitiesData) {
   const sceneElement = document.querySelector('a-scene');
 
-  prepareStreetContainer();
-
-  const removeEntities = ['environment', 'reference-layers'];
+  const removeEntities = ['environment', 'reference-layers', 'street-container'];
   for (const entityData of entitiesData) {
-    if (
-      entityData.id === 'street-container' &&
-      entityData.children &&
-      entityData.children[0].id === 'default-street' &&
-      entityData.children[0].components.hasOwnProperty('set-loader-from-hash')
-    ) {
-      delete entityData.children[0].components['set-loader-from-hash'];
-    }
-
     const sceneChildElement = document.getElementById(entityData.id);
     if (sceneChildElement) {
       if (removeEntities.includes(entityData.id)) {
