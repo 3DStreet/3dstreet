@@ -503,15 +503,29 @@ function createMagicCarpetElement (showVehicles) {
   return magicCarpetParentEl;
 }
 
+function randPlacedElements(streetLength, objLength, count) {
+  const placeLength = objLength / 2 + objLength;
+  const allPlaces = getZPositions(
+    -streetLength / 2 + placeLength / 2,
+    streetLength / 2 - placeLength / 2,
+    placeLength
+  );
+  return allPlaces.slice(0, count); 
+}
+
 function createOutdoorDining (length, posY) {
   const outdoorDiningParentEl = document.createElement('a-entity');
-
-  const reusableObjectEl = document.createElement('a-entity');
-  reusableObjectEl.setAttribute('mixin', 'outdoor_dining');
   const outdorDiningLength = 2.27;
-  const positionZ = randomPosition(reusableObjectEl, 'z', length, outdorDiningLength);
-  reusableObjectEl.setAttribute('position', {y: posY, z: positionZ});
-  outdoorDiningParentEl.append(reusableObjectEl);
+
+  const randPlaces = randPlacedElements(length, outdorDiningLength, 5);
+  randPlaces.forEach(randPosZ => {
+    const reusableObjectEl = document.createElement('a-entity');
+    reusableObjectEl.setAttribute('mixin', 'outdoor_dining');  
+
+    //const positionZ = randomPosition(reusableObjectEl, 'z', length, outdorDiningLength);
+    reusableObjectEl.setAttribute('position', {y: posY, z: randPosZ});
+    outdoorDiningParentEl.append(reusableObjectEl);    
+  });
 
   return outdoorDiningParentEl;
 }
@@ -522,18 +536,23 @@ function createMicroMobilityElement (variantList, segmentType, posY = 0, length,
   }
   const microMobilityParentEl = document.createElement('a-entity');
 
-  const reusableObjectEl = document.createElement('a-entity');
-  const rotationY = (variantList[0] === 'inbound') ? 0 : 180;
-  reusableObjectEl.setAttribute('rotation', '0 ' + rotationY + ' 0');
-  if (segmentType === 'bike-lane') {
-    reusableObjectEl.setAttribute('mixin', 'Bicycle_1');
-  } else {
-    reusableObjectEl.setAttribute('mixin', 'ElectricScooter_1');
-  }
   const bikeLength = 2.03;
-  const positionZ = randomPosition(reusableObjectEl, 'z', length, bikeLength);
-  reusableObjectEl.setAttribute('position', {y: posY, z: positionZ});
-  microMobilityParentEl.append(reusableObjectEl);
+  const bikeCount = getRandomIntInclusive(2, 5);
+  const randPlaces = randPlacedElements(length, bikeLength, bikeCount);
+  randPlaces.forEach(randPosZ => {
+    const reusableObjectEl = document.createElement('a-entity');
+    const rotationY = (variantList[0] === 'inbound') ? 0 : 180;
+    reusableObjectEl.setAttribute('rotation', '0 ' + rotationY + ' 0');
+    if (segmentType === 'bike-lane') {
+      reusableObjectEl.setAttribute('mixin', 'Bicycle_1');
+    } else {
+      reusableObjectEl.setAttribute('mixin', 'ElectricScooter_1');
+    }
+    
+    reusableObjectEl.setAttribute('position', {y: posY, z: randPosZ});
+    microMobilityParentEl.append(reusableObjectEl);
+  });
+
 
   return microMobilityParentEl;
 }
@@ -543,19 +562,21 @@ function createFlexZoneElement (variantList, length, showVehicles = true) {
     return;
   }
   const flexZoneParentEl = document.createElement('a-entity');
-
-  const reusableObjectEl = document.createElement('a-entity');
-  const rotationY = (variantList[1] === 'inbound') ? 0 : 180;
-  reusableObjectEl.setAttribute('rotation', '0 ' + rotationY + ' 0');
-  if (variantList[0] === 'taxi') {
-    reusableObjectEl.setAttribute('mixin', 'sedan-taxi');
-  } else if (variantList[0] === 'rideshare') {
-    reusableObjectEl.setAttribute('mixin', 'sedan-rig');
-  }
-  const positionZ = randomPosition(reusableObjectEl, 'z', length, 5);
-  reusableObjectEl.setAttribute('position', '0 0 ' + positionZ);
-
-  flexZoneParentEl.append(reusableObjectEl);
+  const carLength = 5;
+  const carCount = getRandomIntInclusive(2, 4);
+  const randPlaces = randPlacedElements(length, carLength, carCount);
+  randPlaces.forEach(randPosZ => {
+    const reusableObjectEl = document.createElement('a-entity');
+    const rotationY = (variantList[1] === 'inbound') ? 0 : 180;
+    reusableObjectEl.setAttribute('rotation', '0 ' + rotationY + ' 0');
+    if (variantList[0] === 'taxi') {
+      reusableObjectEl.setAttribute('mixin', 'sedan-taxi-rig');
+    } else if (variantList[0] === 'rideshare') {
+      reusableObjectEl.setAttribute('mixin', 'sedan-rig');
+    }
+    reusableObjectEl.setAttribute('position', {z: randPosZ});
+    flexZoneParentEl.append(reusableObjectEl);
+  });
 
   return flexZoneParentEl;
 }
@@ -610,14 +631,21 @@ function createBikeShareStationElement (variantList, posY) {
   return placedObjectEl;
 }
 
-function createParkletElement (variantList) {
-  const placedObjectEl = document.createElement('a-entity');
-  placedObjectEl.setAttribute('class', 'parklet');
-  placedObjectEl.setAttribute('position', '0 .02 0');
-  placedObjectEl.setAttribute('mixin', 'parklet');
-  const rotationY = (variantList[0] === 'left') ? 90 : 270;
-  placedObjectEl.setAttribute('rotation', '0 ' + rotationY + ' 0');
-  return placedObjectEl;
+function createParkletElement (length, variantList) {
+  const parkletParent = document.createElement('a-entity');
+  const parkletLength = 4.03;
+  const parkletCount = 3;
+  const randPlaces = randPlacedElements(length, parkletLength, parkletCount);
+  randPlaces.forEach(randPosZ => {
+    const placedObjectEl = document.createElement('a-entity');
+    placedObjectEl.setAttribute('class', 'parklet');
+    placedObjectEl.setAttribute('position', {x: 0, y: 0.02, z: randPosZ});
+    placedObjectEl.setAttribute('mixin', 'parklet');
+    const rotationY = (variantList[0] === 'left') ? 90 : 270;
+    placedObjectEl.setAttribute('rotation', {y: rotationY});
+    parkletParent.append(placedObjectEl);
+  });
+  return parkletParent;
 }
 
 function createTreesParentElement () {
@@ -887,8 +915,10 @@ function processSegments (segments, showStriping, length, globalAnimated, showVe
       // add this stencil stuff to the segment parent
       segmentParentEl.append(reusableObjectStencilsParentEl);
     } else if (segments[i].type === 'drive-lane') {
-      var isAnimated = (variantList[2] === 'animated') || globalAnimated;
-      segmentParentEl.append(createDriveLaneElement(variantList, segmentWidthInMeters, length, isAnimated, showVehicles));
+      const isAnimated = (variantList[2] === 'animated') || globalAnimated;
+      const count = getRandomIntInclusive(2, 3);
+      const carStep = 7;
+      segmentParentEl.append(createDriveLaneElement(variantList, segmentWidthInMeters, length, isAnimated, showVehicles, count, carStep));
     } else if (segments[i].type === 'food-truck') {
       groundMixinId = 'drive-lane';
       segmentParentEl.append(createFoodTruckElement(variantList, length));
@@ -944,7 +974,7 @@ function processSegments (segments, showStriping, length, globalAnimated, showVe
       segmentParentEl.append(createOutdoorDining(length, elevationPosY));
     } else if (segments[i].type === 'parklet') {
       groundMixinId = 'drive-lane';
-      segmentParentEl.append(createParkletElement(variantList));
+      segmentParentEl.append(createParkletElement(length, variantList));
     } else if (segments[i].type === 'bikeshare') {
       // make the parent for all the stations
       segmentParentEl.append(createBikeShareStationElement(variantList, elevationPosY));
