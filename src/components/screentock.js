@@ -104,7 +104,7 @@ AFRAME.registerComponent('screentock', {
     const screenshotCanvas = await createCanvasWithScreenshot(renderer.domElement);
 
     if (type == 'img') {
-      imgElement.src = renderer.domElement.toDataURL();
+      imgElement.src = screenshotCanvas.toDataURL();
       return;
     }
     if (type == 'png') {
