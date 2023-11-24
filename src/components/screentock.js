@@ -74,7 +74,7 @@ AFRAME.registerComponent('screentock', {
       const logoSVG = document.querySelector('#aframeInspector #logoImg svg');
 
       if (logoImg) {
-        ctx.drawImage(logoImg, 0, 0, 135, 43, 40, 30, 135, 43);
+        ctx.drawImage(logoImg, 0, 0, 135, 43, 40, 30, 270, 86);
       } else if (logoSVG) {
         const image = new Image();
         image.src = `data:image/svg+xml;base64,${window.btoa(logoSVG.outerHTML)}`;
@@ -82,7 +82,7 @@ AFRAME.registerComponent('screentock', {
           image.onload = resolve;
         });
 
-        ctx.drawImage(image, 0, 0, 135, 23, 40, 40, 135, 23);
+        ctx.drawImage(image, 0, 0, 135, 23, 40, 40, 270, 86);
       }      
     }
 
