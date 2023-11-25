@@ -19,6 +19,7 @@ AFRAME.registerComponent('screentock', {
     takeScreenshot: { type: 'boolean', default: false },
     filename: { type: 'string', default: 'screenshot' },
     type: { type: 'string', default: 'jpg' }, // png, jpg, img
+    addLogoAndTitle: { type: 'boolean', default: true },
     imgElementSelector: { type: 'selector' }
   },
   takeScreenshotNow: async function (filename, type, imgElement) {
@@ -52,10 +53,14 @@ AFRAME.registerComponent('screentock', {
 
       // draw image from Aframe canvas to screenshot canvas
       ctxScreenshot.drawImage(aframeCanvas, 0, 0);
-      // add scene title to screenshot
-      addTitleToCanvas(ctxScreenshot, screenshotCanvas.width, screenshotCanvas.height);
-      // add 3DStreet logo
-      await addLogoToCanvas(ctxScreenshot);
+
+      if (this.data.addLogoAndTitle) {
+        // add scene title to screenshot
+        addTitleToCanvas(ctxScreenshot, screenshotCanvas.width, screenshotCanvas.height);
+        // add 3DStreet logo
+        await addLogoToCanvas(ctxScreenshot);        
+      }
+
       return screenshotCanvas;
     }
 
@@ -124,6 +129,6 @@ AFRAME.registerComponent('screentock', {
     if (this.data.takeScreenshot) {
       this.data.takeScreenshot = false;
       this.takeScreenshotNow(this.data.filename, this.data.type, this.data.imgElementSelector);
-    }   
+    }
   }
 });
