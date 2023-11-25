@@ -87,7 +87,7 @@ AFRAME.registerComponent('screentock', {
           image.onload = resolve;
         });
 
-        ctx.drawImage(image, 0, 0, 135, 23, 40, 40, 270, 86);
+        ctx.drawImage(image, 0, 0, 135, 23, 40, 40, 270, 46);
       }      
     }
 
