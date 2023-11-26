@@ -530,7 +530,7 @@ function createOutdoorDining (length, posY) {
   return outdoorDiningParentEl;
 }
 
-function createMicroMobilityElement (variantList, segmentType, posY = 0, length, showVehicles) {
+function createMicroMobilityElement (variantList, segmentType, posY = 0, length, showVehicles, animated = false) {
   if (!showVehicles) {
     return;
   }
@@ -538,18 +538,31 @@ function createMicroMobilityElement (variantList, segmentType, posY = 0, length,
 
   const bikeLength = 2.03;
   const bikeCount = getRandomIntInclusive(2, 5);
+
+  const cyclistMixins = ['cyclist-cargo', 'cyclist1', 'cyclist2', 
+    'cyclist3', 'cyclist-dutch', 'cyclist-kid'];
+
+  const countCyclist = cyclistMixins.length;
+  let mixinId = 'Bicycle_1';
   const randPlaces = randPlacedElements(length, bikeLength, bikeCount);
   randPlaces.forEach(randPosZ => {
     const reusableObjectEl = document.createElement('a-entity');
     const rotationY = (variantList[0] === 'inbound') ? 0 : 180;
     reusableObjectEl.setAttribute('rotation', '0 ' + rotationY + ' 0');
-    if (segmentType === 'bike-lane') {
-      reusableObjectEl.setAttribute('mixin', 'Bicycle_1');
-    } else {
-      reusableObjectEl.setAttribute('mixin', 'ElectricScooter_1');
-    }
-    
     reusableObjectEl.setAttribute('position', {y: posY, z: randPosZ});
+    
+      if (animated) {        
+        reusableObjectEl.setAttribute('animation-mixer', '');
+        const speed = 5;
+        addLinearStreetAnimation(reusableObjectEl, speed, length, 0, posY, randPosZ, variantList[0]);        
+      }
+    if (segmentType === 'bike-lane') {
+      mixinId = cyclistMixins[getRandomIntInclusive(0, countCyclist)];
+    } else {
+      mixinId = 'ElectricScooter_1';
+    }
+
+    reusableObjectEl.setAttribute('mixin', mixinId);
     microMobilityParentEl.append(reusableObjectEl);
   });
 
@@ -802,7 +815,7 @@ function processSegments (segments, showStriping, length, globalAnimated, showVe
       cloneMixinAsChildren({ objectMixinId: 'stencils bike-arrow', parentEl: stencilsParentEl, rotation: '-90 ' + rotationY + ' 0', step: 20, radius: clonedObjectRadius });
       // add this stencil stuff to the segment parent
       segmentParentEl.append(stencilsParentEl);
-      segmentParentEl.append(createMicroMobilityElement(variantList, segments[i].type, elevationPosY, length, showVehicles));
+      segmentParentEl.append(createMicroMobilityElement(variantList, segments[i].type, elevationPosY, length, showVehicles, globalAnimated));
     } else if (segments[i].type === 'light-rail' || segments[i].type === 'streetcar') {
       // get the mixin id for a bus lane
       groundMixinId = getBusLaneMixin(variantList[1]);
