@@ -1,0 +1,173 @@
+.loader__wrapper {
+  width: 100vw;
+  height: 100vh;
+  background: rgba(14, 14, 14, 0.69);
+
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.loader {
+  display: flex;
+  align-items: center;
+  flex-direction: column;
+  position: relative;
+  z-index: 999999;
+
+}
+
+.road {
+  width: 320px;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding-top: 12px;
+
+  border-top: 4px solid #fff;
+
+  color: #fff;
+  font-weight: normal;
+}
+
+/* ENTITIES */
+
+/*
+  entities width = 1050px
+  loader width = 320px
+  animation-duration = 5840ms 
+*/
+.entities {
+  position: absolute;
+  bottom: 40px;
+  right: 0;
+
+  /* 730px = 1050px - 320px */
+  clip-path: inset(0 0px 0 730px);
+  transform: translateX(0px);
+  animation: topMoving 5840ms linear infinite;
+}
+
+@keyframes topMoving {
+  0% {
+    clip-path: inset(0 0px 0 730px);
+    transform: translateX(0px);
+  }
+  100% {
+    clip-path: inset(0 730px 0 0px);
+    transform: translateX(730px);
+  }
+}
+
+/* TRANSPORT */
+.transport {
+  position: absolute;
+  left: 0;
+  top: 2px;
+}
+
+.wrapper__transport {
+  display: flex;
+  align-items: flex-end;
+  position: relative;
+}
+
+.wrapper__transport img {
+  position: absolute;
+}
+
+/* BIKE */
+.transport .bike {
+  position: absolute;
+  animation: bike 5840ms linear infinite;
+}
+
+@keyframes bike {
+  0% {
+    left: -27px;
+    clip-path: inset(0 0 0 100%);
+  }
+  4% {
+    left: 0px;
+    clip-path: inset(0 0 0 0);
+  }
+  32% {
+    left: 294px;
+    clip-path: inset(0 0 0 0);
+  }
+  36% {
+    clip-path: inset(0 100% 0 0);
+    left: 320px;
+  }
+  100% {
+    clip-path: inset(0 100% 0 0);
+    left: 320px;
+  }
+}
+
+/* BUS */
+.transport .bus {
+  position: absolute;
+  animation: bus 5840ms linear infinite;
+}
+
+@keyframes bus {
+  0% {
+    left: -36px;
+    clip-path: inset(0 0 0 100%);
+  }
+  8% {
+    left: -36px;
+    clip-path: inset(0 0 0 100%);
+  }
+  12% {
+    left: 0px;
+    clip-path: inset(0 0 0 0);
+  }
+  44% {
+    left: 284px;
+    clip-path: inset(0 0 0 0);
+  }
+  48% {
+    clip-path: inset(0 100% 0 0);
+    left: 320px;
+  }
+  100% {
+    clip-path: inset(0 100% 0 0);
+    left: 320px;
+  }
+}
+
+/* CAR */
+.transport .car {
+  position: absolute;
+  animation: car 5840ms linear infinite;
+}
+
+@keyframes car {
+  0% {
+    left: -30px;
+    clip-path: inset(0 0 0 100%);
+  }
+  20% {
+    left: -30px;
+    clip-path: inset(0 0 0 100%);
+  }
+  24% {
+    left: 0px;
+    clip-path: inset(0 0 0 0);
+  }
+  76% {
+    left: 290px;
+    clip-path: inset(0 0 0 0);
+  }
+  80% {
+    clip-path: inset(0 100% 0 0);
+    left: 320px;
+  }
+  100% {
+    clip-path: inset(0 100% 0 0);
+    left: 320px;
+  }
+}
