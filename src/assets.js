@@ -241,35 +241,37 @@ function buildAssetHTML (assetUrl, categories) {
         <a-mixin id="prop-co2-scrubber" gltf-model="url(${assetUrl}sets/c02-scrubber/gltf-exports/draco/co2-scrubber.glb)"></a-mixin>
     ` };
 
-  function parseHtmlToList (html) {
+  function addCategoryNamesToMixins (html, categoryName) {
     const parser = new DOMParser();
     const doc = parser.parseFromString(html, 'text/html');
     const mixinNodes = doc.querySelectorAll('a-mixin');
-    return Array.from(mixinNodes, node => node.id );
+    mixinNodes.forEach(mixinNode => {
+        mixinNode.setAttribute('category', categoryName);
+    });
+    return doc.documentElement.innerHTML;
   }
 
   // JSON with grouped mixin id's. Used to create grouped mixins in Editor right panel
   const groupedAssetsJSON = {};
-  let categoryExistsArray = Object.keys(assetsObj);
+  let existsCategoryArray = Object.keys(assetsObj);
 
   if (categories) {
+    // if there is a categories attribute, then use the categories from it
     const categoryAttrArray = categories.split(' ');
-    categoryExistsArray = 
-      categoryExistsArray.filter(key => categoryAttrArray.includes(key));
+    existsCategoryArray = 
+      existsCategoryArray.filter(key => categoryAttrArray.includes(key));
   }
 
   let assetsHTML = '';
   let assetsCategoryHTML = '';
   let mixinList = [];
-  for (const assetName in assetsObj) {
-    if (categoryExistsArray.includes(assetName)) {
-      const assetsCategoryHTML = assetsObj[assetName];
-      assetsHTML += assetsCategoryHTML;
-      mixinList = parseHtmlToList(assetsCategoryHTML);
-      groupedAssetsJSON[assetName] = mixinList;      
+  for (const categoryName in assetsObj) {
+    if (existsCategoryArray.includes(categoryName)) {
+      const assetsCategoryHTML = assetsObj[categoryName];
+      assetsHTML += addCategoryNamesToMixins(assetsCategoryHTML, categoryName);
     }
   }
-  return [groupedAssetsJSON, assetsHTML];
+  return assetsHTML;
 
 }
 
@@ -283,12 +285,9 @@ class StreetAssets extends AFRAME.ANode {
     const self = this;
     var categories = this.getAttribute('categories');
     var assetUrl = this.getAttribute('url');
-    const [groupedAssetsJSON, assetsHTML] = buildAssetHTML(assetUrl, categories);
+    const assetsHTML = buildAssetHTML(assetUrl, categories);
     this.insertAdjacentHTML('afterend', assetsHTML);
 
-    // add grouped assets info
-    const jsonAssetsString = JSON.stringify(groupedAssetsJSON);
-    this.setAttribute('grouped-assets', jsonAssetsString);
     AFRAME.ANode.prototype.load.call(self);
   }
 }
