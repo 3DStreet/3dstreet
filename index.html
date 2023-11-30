@@ -2,7 +2,7 @@
 <html>
   <head>
     <!-- aframe -->
-    <script src="https://aframe.io/releases/1.4.2/aframe.min.js"></script>
+    <script src="https://aframe.io/releases/1.5.0/aframe.min.js"></script>
 
     <!-- 3dstreet -->
     <script src="./dist/aframe-street-component.js"></script>
@@ -74,14 +74,10 @@
         <li onclick="inputStreetmix()"> <a class="load"  href="#"> <span> Load Streetmix URL </span> <img src="ui_assets/streetmix-logo.svg"> </a></li>
         <!-- <li onclick="inputJSON()"> <a class="load"  href="#"> <span> Load JSON String </span> <img src="assets/ui_assets/upload-icon.svg"> </a></li> -->
         <li><a class="load"> <label for="inputfile" style="display: inherit; align-items: center; cursor: pointer"> <input type="file" id="inputfile" style="display:none" accept=".js, .json, .txt"> <span> Load JSON File </span> <img src="ui_assets/upload-icon.svg"></label></a></li>
-        <li> <a id="custom-enter-vr-button" class="vr" href="#"> <span class="vr">Enter VR mode</span> <img src="ui_assets/vr.svg"> </a></li>
-        <li> <a id="custom-enter-ar-button" class="ar" href="#"> <span class="ar">Enter AR mode</span> <img src="ui_assets/ar.svg"> </a></li>
       </ul>
     </div>
 
     <a-scene
-      vr-mode-ui="enterVRButton: #custom-enter-vr-button; enterARButton: #custom-enter-ar-button;"
-      vr-mode-ui-if-headset
       renderer="colorManagement: true; physicallyCorrectLights: true;"
       inspector="url: //3dstreet.app/dist/3dstreet-editor.js"
       notify
@@ -131,16 +127,6 @@
 
     document.getElementById('inputfile')
             .addEventListener('change', fileJSON);
-
-    // only show VR button if headset connected
-    AFRAME.registerComponent('vr-mode-ui-if-headset', {
-      dependencies: ['vr-mode-ui'],
-      init: function () {
-        if (!AFRAME.utils.device.checkHeadsetConnected()) {
-          this.el.setAttribute('vr-mode-ui', 'enabled', false);
-        }
-      }
-    })
 
     function buttonScreenshotTock() {
       const screenshotEl = document.getElementById('screenshot');
