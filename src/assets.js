@@ -214,6 +214,13 @@ function buildAssetHTML (assetUrl, categories) {
         <img id="parking-lot-texture" src="${assetUrl}materials/TexturesCom_Roads0111_1_seamless_S.jpg" crossorigin="anonymous">
         <img id="asphalt-texture" src="${assetUrl}materials/TexturesCom_AsphaltDamaged0057_1_seamless_S.jpg" crossorigin="anonymous">
 
+        <!-- legacy plane-based grounds for compatibility with 0.4.2 and earlier scenes, not used for new streets -->
+        <a-mixin shadow id="ground-grass" rotation="-90 0 0" geometry="primitive:plane;height:150;width:40" material="src:#grass-texture;repeat:5 5;roughness:1"></a-mixin>
+        <a-mixin shadow id="ground-parking-lot" rotation="-90 0 0" geometry="primitive:plane;height:150;width:40" material="src:#parking-lot-texture;repeat:2 4;roughness:1"></a-mixin>
+        <a-mixin shadow id="ground-asphalt" rotation="-90 0 0" geometry="primitive:plane;height:150;width:40" material="src:#asphalt-texture;repeat:5 5;roughness:1"></a-mixin>
+        <a-mixin shadow id="ground-tiled-concrete" anisotropy rotation="-90 0 0" geometry="primitive:plane;height:150;width:40" material="src:#seamless-sidewalk;repeat:5 5;roughness:1"></a-mixin>
+
+        <!-- new grounds for 0.4.4 and later --> 
         <a-mixin shadow id="ground-grass-material" material="src:#grass-texture;repeat:2.5 5;roughness:${surfacesRoughness}"></a-mixin>
         <a-mixin shadow id="ground-parking-lot-material" material="src:#parking-lot-texture;repeat:.5 2;roughness:${surfacesRoughness}"></a-mixin>
         <a-mixin shadow id="ground-asphalt-material" material="src:#asphalt-texture;repeat:5 5;roughness:${surfacesRoughness}"></a-mixin>
