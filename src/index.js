@@ -4,6 +4,7 @@ if (typeof VERSION !== 'undefined') { console.log(`3DStreet Version: ${VERSION} 
 var streetmixParsers = require('./aframe-streetmix-parsers');
 var streetmixUtils = require('./tested/streetmix-utils');
 require('./components/gltf-part');
+require('./components/ocean');
 require('./lib/aframe-cursor-teleport-component.min.js');
 require('./lib/animation-mixer.js');
 require('./assets.js');
