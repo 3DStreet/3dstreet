@@ -12,14 +12,14 @@ function getSceneUuidFromURLHash() {
 
 function getCurrentSceneId() {
   let currentSceneId = AFRAME.scenes[0].getAttribute('metadata').sceneId;
-  console.log('currentSceneId from scene metadata', currentSceneId);
+  // console.log('currentSceneId from scene metadata', currentSceneId);
   const urlSceneId = getSceneUuidFromURLHash();
-  console.log('urlSceneId', urlSceneId);
+  // console.log('urlSceneId', urlSceneId);
   if (!currentSceneId) {
-    console.log('no currentSceneId from state');
+    // console.log('no currentSceneId from state');
     if (urlSceneId) {
       currentSceneId = urlSceneId;
-      console.log('setting currentSceneId to urlSceneId');
+      // console.log('setting currentSceneId to urlSceneId');
     }
   }
   return currentSceneId;
