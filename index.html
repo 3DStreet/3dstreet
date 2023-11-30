@@ -44,6 +44,23 @@
   </head>
 
   <body>
+    <!-- loading animation start -->
+    <div class="loader__wrapper">
+      <div class="loader">
+        <div class="entities">
+          <img src="./ui_assets/loader/entities.svg" alt="entities" />
+        </div>
+        <div class="transport">
+          <div class="wrapper__transport">
+            <img src="./ui_assets/loader/car.svg" class="car" alt="car" />
+            <img src="./ui_assets/loader/bus.svg" class="bus" alt="bus" />
+            <img src="./ui_assets/loader/bike.svg" class="bike" alt="bike" />
+          </div>
+        </div>
+        <div class="road">Loading 3DStreet</div>
+      </div>
+    </div>
+
     <!-- viewer ui start -->
     <div class="viewer-header-wrapper">
       <button class="viewer-logo-start-editor-button" onclick="startEditor()">
@@ -98,6 +115,18 @@
 
     </a-scene>
   </body>
+  <script>
+    /* loading animation script */
+    document.addEventListener('DOMContentLoaded', function () {
+      const scene = document.querySelector('a-scene');
+      const splash = document.querySelector('.loader__wrapper');
+      scene.addEventListener('loaded', function (e) {
+        setTimeout(() => {
+          splash.style.display = 'none';
+        }, 1000);        
+      });
+    });
+  </script>
   <script>
 
     document.getElementById('inputfile')
