@@ -22,7 +22,7 @@ AFRAME.registerComponent('street', {
     showStriping: { default: true },
     showVehicles: { default: true },
     globalAnimated: { default: false },
-    length: { default: 150 }
+    length: { default: 60 } // new default of 60 from 0.4.4
   },
   update: function (oldData) { // fired once at start and at each subsequent change of a schema value
     var data = this.data;
