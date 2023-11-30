@@ -56,6 +56,7 @@ function createBuildingsArray (maxLength = 150, buildingType = 'narrow') { // es
       buildingEntity.child = {
         tag: 'a-plane',
         class: 'driveway',
+        material: 'roughness:0.8',
         position: '-6.25 0.6 -8.75',
         rotation: '-90 0 0',
         src: '#asphalt-texture',
@@ -68,6 +69,7 @@ function createBuildingsArray (maxLength = 150, buildingType = 'narrow') { // es
       buildingEntity.child = {
         tag: 'a-plane',
         class: 'driveway',
+        material: 'roughness:0.8',
         position: '-2.5 0.6 -7',
         rotation: '-90 0 0',
         src: '#asphalt-texture',
@@ -163,34 +165,3 @@ function getAmbientSoundJSON (buildingsArray) { // eslint-disable-line no-unused
   return soundsArray;
 }
 module.exports.getAmbientSoundJSON = getAmbientSoundJSON;
-
-// possible input values: grass, fence, narrow, wide, waterfront, residential, parking-lot
-function createGroundArray (buildingString, length) { // eslint-disable-line no-unused-vars
-  var repeatY = length / 30;
-  var repeatX = 1;
-  var groundArray = [];
-  var mixin = 'ground-grass'; // default output is grass ground type
-
-  if (buildingString === 'waterfront') { return groundArray; }
-  if (['narrow', 'wide', 'arcade'].includes(buildingString)) { mixin = 'ground-asphalt'; }
-  if (buildingString === 'parking-lot') {
-    mixin = 'ground-parking-lot';
-    repeatX = 0.5;
-  }
-  if (buildingString === 'arcade') {
-    mixin = 'ground-tiled-concrete';
-    repeatY = length / 2;
-    repeatX = 20;
-  }
-  var groundEntity = {
-    tag: 'a-entity',
-    position: '0 -0.2 0',
-    mixin: mixin,
-    geometry: 'height: ' + length + ';',
-    material: 'repeat: ' + repeatX + ' ' + repeatY + ';'
-  };
-  groundArray.push(groundEntity);
-
-  return groundArray;
-}
-module.exports.createGroundArray = createGroundArray;
