@@ -158,7 +158,7 @@ The 3DStreet codebase is offered under the GNU Affero General Public License v3,
 
 Assets such as 3D models, textures, and audio are offered under the [Creative Commons By Attribution Non-Commercial License](https://creativecommons.org/licenses/by-nc/4.0/), unless a more specific license is specified for each asset in the documentation on this page.
 
-Contact [k@3d.st](mailto:k@3d.st) for commercial licensing.
+Contact [kieran@3dstreet.org](mailto:kieran@3dstreet.org) for commercial licensing.
 
 ### Developer Docs
 See [this link for more information](src/README.md) about the custom components developed and modified for the project.
@@ -183,5 +183,8 @@ See [this link for more information](src/README.md) about the custom components 
 * Diesel idling bus https://www.soundsnap.com/turbodiesel_bus_riding_and_idling
 * Tram pass https://www.soundsnap.com/tram_pass_by_fast_wav
 * Historic streetcar pass https://www.soundsnap.com/streetcar_passing_by_smoothly
+
+### Skybox credits
+* Most skybox images (c) Polyhaven CC0 license polyhaven.com [individual credits](https://github.com/3DStreet/3dstreet/issues/360#issue-1910580549)
 
 <img src="https://raw.githubusercontent.com/kfarr/3dstreet/master/ui_assets/streetmix3d-banner.jpg" />

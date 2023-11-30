@@ -1,6 +1,6 @@
 {
   "name": "3dstreet",
-  "version": "0.4.1",
+  "version": "0.4.4",
   "description": "Web-based 3D visualization of streets using A-Frame and WebXR",
   "main": "dist/aframe-street-component.js",
   "scripts": {
@@ -62,6 +62,7 @@
   },
   "dependencies": {
     "aframe-atlas-uvs-component": "^3.0.0",
+    "babel-polyfill": "^6.26.0",
     "latest": "^0.2.0"
   }
 }
