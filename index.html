@@ -78,11 +78,11 @@
         <!-- uncomment the line below to load all possible asset categories -->
         <!-- <street-assets categories="sidewalk-props people people-rigged vehicles vehicles-rigged buildings intersection-props segment-textures segment-colors lane-separator stencils vehicles-transit dividers sky grounds"></street-assets>   -->
         <!-- a reduced set of assets for non-animated streetmix streets without intersections -->
-        <street-assets categories="loud-bicycle sidewalk-props people people-rigged vehicles vehicles-rigged buildings segment-textures segment-colors lane-separator stencils vehicles-transit dividers sky grounds"></street-assets>
+        <street-assets categories="loud-bicycle sidewalk-props people vehicles vehicles-rigged buildings segment-textures segment-colors lane-separator stencils vehicles-transit dividers sky grounds"></street-assets>
       </a-assets>
   
       <a-entity id="street-container" data-layer-name="3D Street Layers" data-layer-show-children>
-        <a-entity id="default-street" street="length: 60; globalAnimated: true;" streetmix-loader set-loader-from-hash></a-entity>
+        <a-entity id="default-street" street streetmix-loader set-loader-from-hash></a-entity>
       </a-entity>
 
       <a-entity id="reference-layers" data-layer-name="Reference Layers" data-layer-show-children></a-entity>
