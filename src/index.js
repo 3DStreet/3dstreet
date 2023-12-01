@@ -100,7 +100,7 @@ AFRAME.registerComponent('streetmix-loader', {
           console.log('therefore setting metadata sceneTitle as streetmixName', streetmixName);
         }
 
-        el.setAttribute('data-layer-name', 'Streetmix: ' + streetmixName);
+        el.setAttribute('data-layer-name', 'Streetmix • ' + streetmixName);
 
         if (data.showBuildings) {
           el.setAttribute('street', 'right', streetmixResponseObject.data.street.rightBuildingVariant);
