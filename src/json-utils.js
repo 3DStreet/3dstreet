@@ -318,7 +318,12 @@ function getModifiedProperty(entity, componentName) {
   }
   const diff = {};
   for (const key in data) {
-    const defaultValue = defaultData[key].default;
+    let defaultValue
+    try {
+      defaultValue = defaultData[key].default;
+    } catch {
+      defaultValue = '';
+    }
     const currentValue = data[key];
 
     if (
