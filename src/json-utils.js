@@ -298,7 +298,7 @@ function getModifiedProperty(entity, componentName) {
     entity
   );
 
-  const mixinSkipProps = ['src', 'atlas-uvs', 'gltf-model', 'gltf-part'];
+  const mixinSkipProps = ['src', 'atlas-uvs', 'gltf-model', 'gltf-part', 'shadow'];
   if (mixinsData && mixinSkipProps.includes(mixinCompName)) {
     // skip properties, if they exists in element's mixin
     return null;
@@ -318,6 +318,9 @@ function getModifiedProperty(entity, componentName) {
   }
   const diff = {};
   for (const key in data) {
+    console.log('defaultData', defaultData);
+    console.log('defaultData', defaultData);
+    console.log('key', key);
     const defaultValue = defaultData[key].default;
     const currentValue = data[key];
 

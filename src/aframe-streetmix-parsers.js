@@ -1117,7 +1117,7 @@ function processSegments (segments, showStriping, length, globalAnimated, showVe
     // append the new surfaceElement to the segmentParentEl
     streetParentEl.append(segmentParentEl);
     segmentParentEl.setAttribute('position', segmentPositionX + ' 0 0');
-    segmentParentEl.setAttribute('data-layer-name', 'Segment: ' + segments[i].type + ', ' + variantList[0]);
+    segmentParentEl.setAttribute('data-layer-name', 'Segment ' + segments[i].type + ', ' + variantList[0]);
   }
   // create new brown box to represent ground underneath street
   const dirtBox = document.createElement('a-box');
@@ -1215,7 +1215,7 @@ function processBuildings (left, right, streetWidth, showGround, length) {
         groundParentEl.setAttribute('position', { x: groundPositionX });
       }
       groundParentEl.classList.add('ground-' + side);
-      groundParentEl.setAttribute('data-layer-name', 'Ground ' + side + ': ' + currentValue);
+      groundParentEl.setAttribute('data-layer-name', 'Ground ' + side + ' ' + currentValue);
       buildingElement.appendChild(groundParentEl);
     }
 
@@ -1241,7 +1241,7 @@ function processBuildings (left, right, streetWidth, showGround, length) {
         buildingPos.x += sideMultiplier * (-70.5);
     }
     const newBuildings = createBuilding(currentValue, sideMultiplier);
-    newBuildings.setAttribute('data-layer-name', 'Buildings ' + side + ': ' + currentValue);
+    newBuildings.setAttribute('data-layer-name', 'Buildings ' + side + ' ' + currentValue);
 
     newBuildings.setAttribute('position', buildingPos);
     buildingElement.append(newBuildings);
