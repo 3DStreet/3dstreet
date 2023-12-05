@@ -127,7 +127,7 @@ function createRailsElement (length, railsPosX) {
   placedObjectEl.setAttribute('geometry', railsGeometry);
   placedObjectEl.setAttribute('material', railsMaterial);
   placedObjectEl.setAttribute('class', 'rails');
-  placedObjectEl.setAttribute('shadow', 'recieve:true; cast: true');
+  placedObjectEl.setAttribute('shadow', 'receive:true; cast: true');
   placedObjectEl.setAttribute('position', railsPosX + ' 0.2 0'); // position="1.043 0.100 -3.463"
 
   return placedObjectEl;
