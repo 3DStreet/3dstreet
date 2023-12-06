@@ -214,13 +214,12 @@ function createSidewalkClonedVariants (segmentWidthInMeters, density, elevationP
     // y = 0.2 for sidewalk elevation
     const placedObjectEl = document.createElement('a-entity');
     let animationDirection = 'inbound';
+    placedObjectEl.setAttribute('position', {x: xVal, y: yVal, z: zVal});
     placedObjectEl.setAttribute('mixin', variantName);
     // Roughly 50% of traffic will be incoming
     if (Math.random() < 0.5 && direction === 'random') {
       placedObjectEl.setAttribute('rotation', '0 180 0');
       animationDirection = 'outbound';
-    } else {
-      placedObjectEl.setAttribute('rotation', '0 0 0');
     }
 
     if (animated) {
