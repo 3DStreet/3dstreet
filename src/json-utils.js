@@ -318,12 +318,8 @@ function getModifiedProperty(entity, componentName) {
   }
   const diff = {};
   for (const key in data) {
-    let defaultValue
-    try {
-      defaultValue = defaultData[key].default;
-    } catch {
-      defaultValue = '';
-    }
+    // in case the property value is not in schema, but needs to be saved
+    const defaultValue = (defaultData[key]) ? defaultData[key].default : '';
     const currentValue = data[key];
 
     if (
