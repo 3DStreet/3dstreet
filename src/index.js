@@ -1,9 +1,10 @@
 /* global AFRAME, THREE, XMLHttpRequest */
+require("babel-polyfill");
 if (typeof VERSION !== 'undefined') { console.log(`3DStreet Version: ${VERSION} (Date: ${new Date(COMMIT_DATE).toISOString().split('T')[0]}, Commit Hash: #${COMMIT_HASH})`); }
 var streetmixParsers = require('./aframe-streetmix-parsers');
 var streetmixUtils = require('./tested/streetmix-utils');
-require('./components/anisotropy');
 require('./components/gltf-part');
+require('./components/ocean');
 require('./lib/aframe-cursor-teleport-component.min.js');
 require('./lib/animation-mixer.js');
 require('./assets.js');
@@ -22,7 +23,7 @@ AFRAME.registerComponent('street', {
     showStriping: { default: true },
     showVehicles: { default: true },
     globalAnimated: { default: false },
-    length: { default: 150 }
+    length: { default: 60 } // new default of 60 from 0.4.4
   },
   update: function (oldData) { // fired once at start and at each subsequent change of a schema value
     var data = this.data;
@@ -99,7 +100,7 @@ AFRAME.registerComponent('streetmix-loader', {
           console.log('therefore setting metadata sceneTitle as streetmixName', streetmixName);
         }
 
-        el.setAttribute('data-layer-name', 'Streetmix: ' + streetmixName);
+        el.setAttribute('data-layer-name', 'Streetmix • ' + streetmixName);
 
         if (data.showBuildings) {
           el.setAttribute('street', 'right', streetmixResponseObject.data.street.rightBuildingVariant);

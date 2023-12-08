@@ -12,14 +12,14 @@ function getSceneUuidFromURLHash() {
 
 function getCurrentSceneId() {
   let currentSceneId = AFRAME.scenes[0].getAttribute('metadata').sceneId;
-  console.log('currentSceneId from scene metadata', currentSceneId);
+  // console.log('currentSceneId from scene metadata', currentSceneId);
   const urlSceneId = getSceneUuidFromURLHash();
-  console.log('urlSceneId', urlSceneId);
+  // console.log('urlSceneId', urlSceneId);
   if (!currentSceneId) {
-    console.log('no currentSceneId from state');
+    // console.log('no currentSceneId from state');
     if (urlSceneId) {
       currentSceneId = urlSceneId;
-      console.log('setting currentSceneId to urlSceneId');
+      // console.log('setting currentSceneId to urlSceneId');
     }
   }
   return currentSceneId;
@@ -298,7 +298,7 @@ function getModifiedProperty(entity, componentName) {
     entity
   );
 
-  const mixinSkipProps = ['src', 'atlas-uvs', 'gltf-model', 'gltf-part'];
+  const mixinSkipProps = ['src', 'atlas-uvs', 'gltf-model', 'gltf-part', 'shadow'];
   if (mixinsData && mixinSkipProps.includes(mixinCompName)) {
     // skip properties, if they exists in element's mixin
     return null;
@@ -318,7 +318,8 @@ function getModifiedProperty(entity, componentName) {
   }
   const diff = {};
   for (const key in data) {
-    const defaultValue = defaultData[key].default;
+    // in case the property value is not in schema, but needs to be saved
+    const defaultValue = (defaultData[key]) ? defaultData[key].default : '';
     const currentValue = data[key];
 
     if (
