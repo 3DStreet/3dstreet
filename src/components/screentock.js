@@ -105,11 +105,10 @@ AFRAME.registerComponent('screentock', {
 
     if (type == 'img') {
       imgElement.src = screenshotCanvas.toDataURL();
-      return;
     }
     if (type == 'png') {
       downloadImageDataURL(saveFilename, screenshotCanvas.toDataURL('image/png'));
-    } else {
+    } else if (type == 'jpg') {
       downloadImageDataURL(saveFilename, screenshotCanvas.toDataURL('image/jpeg', 0.95));
     }
     // show helpers
