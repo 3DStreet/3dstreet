@@ -1,8 +1,23 @@
 # How to contribute to 3DStreet
 
-We welcome community contributions to 3dstreet.
+We welcome community contributions to 3DStreet.
 
-## Instructions
+## Release checklist for this repo:
+- After all testing is done and things work well enough for a release.
+- Bump the version on package.json & package-lock.json (for example from 0.4.2 to 0.4.4)
+- Re-run npm run dist (rerun the build, it hardcodes the version into global var used for console log)
+- Commit this all to the repo
+- Use command line to create new tag for new version `git tag 0.4.4` and `git push --tags`
+- Create a new release here: https://github.com/3DStreet/3dstreet/releases/new. Choose the tag you just created. (If needed for the title simply use the new version such as "0.4.4")
+- Click to automatically "generate release notes." Consider summarizing a few key changes to put at the top.
+- Use those summaries to update CHANGELOG.md in this repo with "Major improvement" changes summary and link to the new release for detailed changes
+- Update https://www.3dstreet.org/docs/development/releases/ with summary of major improvements and linking back to the new release on github.
+- Then to run npm publish after all github version stuff works
+
+## Updating assets submodule:
+- from the repo's root directory run `git submodule update --remote` to update the assets submodule
+
+## Contribution Instructions
 * fork the repo
 * make your contribution
 * make sure to do check for linting and unit test:
@@ -15,7 +30,7 @@ We welcome community contributions to 3dstreet.
 * Either change your code so that the test passes once again, or
 * You might need to update the tests
 
-### About 3dstreet test
+### About 3DStreet test
 
 A small portion of 3dstreet code is tested. All of this code lives in this directory [/src/tested/](https://github.com/3DStreet/3dstreet/tree/main/src/tested)
 
