@@ -34,6 +34,17 @@ AFRAME.registerComponent('notify', {
       dismissible: this.data.dismissible
     });
     this.types = this.notify.options.types.map(messType => messType.type);
+    
+    // add notify methods to STREET global objects
+    if (STREET) {
+      STREET.notify = {};
+      STREET.notify.successMessage = (messageText) => {
+        this.message(messageText, 'success');
+      }
+      STREET.notify.errorMessage = (messageText)=> {
+        this.message(messageText, 'error');
+      }
+    }
   },
   message: function (messageText, messageType = 'info') {
     if (messageText && this.types.includes(messageType)) {

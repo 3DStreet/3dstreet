@@ -562,10 +562,7 @@ AFRAME.registerComponent('set-loader-from-hash', {
         console.error(
           '[set-loader-from-hash] Error trying to load scene: Resource not found.'
         );
-        AFRAME.scenes[0].components['notify'].message(
-          'Error trying to load scene: Resource not found.',
-          'error'
-        );
+        STREET.notify.errorMessage('Error trying to load scene: Resource not found.');
       }
     };
     request.onerror = function () {
@@ -573,10 +570,7 @@ AFRAME.registerComponent('set-loader-from-hash', {
       console.error(
         'Loading Error: There was a connection error during JSON loading'
       );
-      AFRAME.scenes[0].components['notify'].message(
-        'Could not fetch scene.',
-        'error'
-      );
+      STREET.notify.errorMessage('Could not fetch scene.');
     };
     request.send();
   }
@@ -647,10 +641,7 @@ function createElementsFromJSON(streetJSON) {
   }
 
   createEntities(streetObject.data, streetContainerEl);
-  AFRAME.scenes[0].components['notify'].message(
-    'Scene loaded from JSON',
-    'success'
-  );
+  STREET.notify.successMessage('Scene loaded from JSON');
 }
 
 // viewer widget click to paste json string of 3dstreet scene
