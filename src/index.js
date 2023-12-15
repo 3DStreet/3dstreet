@@ -25,8 +25,37 @@ AFRAME.registerComponent('street', {
     globalAnimated: { default: false },
     length: { default: 60 } // new default of 60 from 0.4.4
   },
+  toggleGlobalAnimation: function () {
+    const globalAnimated = this.data.globalAnimated;
+    const animatedElements = document.querySelectorAll('a-entity[animation__1]');
+    animatedElements.forEach(animatedElem => {
+      // hook to toggle animations that bypass play/pause events that are called by the inspector
+      animatedElem.components.animation__1.initialized = globalAnimated;
+    });
+
+    // toggle animations for elements with animation-mixer component
+    const animationMixerElements = document.querySelectorAll('a-entity[animation-mixer]');
+    animationMixerElements.forEach(animatedElem => {  
+      if (globalAnimated) {
+        animatedElem.components['animation-mixer'].playAction();
+      } else {
+        animatedElem.components['animation-mixer'].stopAction();
+      }
+    });
+
+    // toggle wheel animation for all elements with wheel component
+    const wheelElements = document.querySelectorAll('a-entity[wheel]');
+    wheelElements.forEach(wheelElem => {
+      wheelElem.components['wheel'].data.isActive = globalAnimated;
+    });    
+  },
   update: function (oldData) { // fired once at start and at each subsequent change of a schema value
     var data = this.data;
+
+    if (data.globalAnimated !== oldData.globalAnimated && oldData.JSON === data.JSON) {
+      this.toggleGlobalAnimation();
+      return;
+    }
 
     if (data.JSON.length === 0) {
       if (oldData.JSON !== undefined && oldData.JSON.length === 0) { return; } // this has happened before, surpress console log
@@ -486,7 +515,8 @@ AFRAME.registerComponent('street-environment', {
 AFRAME.registerComponent('wheel', {
   schema: {
     speed: { type: 'number', default: 1 },
-    wheelDiameter: { type: 'number', default: 1 }
+    wheelDiameter: { type: 'number', default: 1 },
+    isActive: { type: 'boolean', default: true}
   },
 
   init: function () {
@@ -509,6 +539,8 @@ AFRAME.registerComponent('wheel', {
     });
   },
   tick: function (t, dt) {
+    if (!this.data.isActive) return;
+
     const speed = this.data.speed / 1000;
     const wheelDiameter = this.data.wheelDiameter;
 
