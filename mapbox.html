@@ -52,14 +52,6 @@
         <street-assets categories="loud-bicycle sidewalk-props people vehicles vehicles-rigged buildings segment-textures segment-colors lane-separator stencils vehicles-transit dividers sky grounds"></street-assets>
       </a-assets>
   
-      <a-entity id="cameraRig" data-layer-name="Viewer" cursor-teleport="cameraRig: #cameraRig; cameraHead: #camera;" look-controls="reverseMouseDrag: true" wasd-controls="enabled: true">
-        <a-entity id="camera" camera="near: 1; far: 1000" position="0 1.6 0"></a-entity>
-        <a-entity id="leftHand" hand-controls="hand: left; handModelStyle: lowPoly; color: #ffccff" teleport-controls="cameraRig: #cameraRig; button: trigger"></a-entity>
-        <a-entity id="rightHand" hand-controls="hand: right; handModelStyle: lowPoly; color: #ffccff" teleport-controls="cameraRig: #cameraRig; button: trigger"></a-entity>
-      </a-entity>
-
-      <a-entity id="environment" data-layer-name="Environment" street-environment="preset: day;"></a-entity>
-
       <a-entity id="street-container" data-layer-name="3D Street Layers" data-layer-show-children>
         <a-entity
           data-layer-name="16th Street West of SVN"
@@ -101,6 +93,15 @@
           street="length: 30"
           streetmix-loader="streetmixStreetURL: https://streetmix.net/scott/31/south-van-ness-idea-short-term; showBuildings: false;"
         ></a-entity>
+
+        <a-entity id="environment" data-layer-name="Environment" street-environment="preset: day;"></a-entity>
+  
+        <a-entity id="cameraRig" position="0 10 30" data-layer-name="Viewer" cursor-teleport="cameraRig: #cameraRig; cameraHead: #camera;" look-controls="reverseMouseDrag: true" wasd-controls="enabled: true">
+          <a-entity id="camera" camera="far: 1000" position="0 1.6 0" ></a-entity>
+          <a-entity id="leftHand" hand-controls="hand: left;" blink-controls="cameraRig: #cameraRig; teleportOrigin: #camera; rotateOnTeleport:false;"></a-entity>
+          <a-entity id="rightHand"  hand-controls="hand: right" blink-controls="cameraRig: #cameraRig; teleportOrigin: #camera; rotateOnTeleport:false;"></a-entity>
+          <a-entity id="screenshot" class="no-pause" screentock visible="false"></a-entity>
+        </a-entity>
 
       </a-entity>
 
