@@ -87,6 +87,7 @@ function buildAssetHTML (assetUrl, categories) {
         <a-mixin shadow id="box-truck-rig" gltf-model="url(${assetUrl}sets/vehicles-rig/gltf-exports/draco/isuzu-truck-rig.glb)"></a-mixin>
         <a-mixin shadow id="food-trailer-rig" gltf-model="url(${assetUrl}sets/vehicles-rig/gltf-exports/draco/food-trailer-rig.glb)"></a-mixin>
         <a-mixin shadow id="fire-truck-rig" gltf-model="url(${assetUrl}sets/vehicles-rig/gltf-exports/draco/fire-truck-pumper-rig.glb)"></a-mixin>
+        <a-mixin shadow id="fire-ladder-rig" gltf-model="url(${assetUrl}sets/vehicles/gltf-exports/draco/fire_truck_ladder.glb)"></a-mixin>
         <a-mixin shadow id="self-driving-cruise-car-rig" gltf-model="url(${assetUrl}sets/vehicles-rig/gltf-exports/draco/self-driving-cruise-car-rig.glb)"></a-mixin>
       `,
     buildings: `
@@ -253,7 +254,7 @@ function buildAssetHTML (assetUrl, categories) {
     const doc = parser.parseFromString(html, 'text/html');
     const mixinNodes = doc.querySelectorAll('a-mixin');
     mixinNodes.forEach(mixinNode => {
-        mixinNode.setAttribute('category', categoryName);
+      mixinNode.setAttribute('category', categoryName);
     });
     return doc.documentElement.innerHTML;
   }
@@ -265,13 +266,13 @@ function buildAssetHTML (assetUrl, categories) {
   if (categories) {
     // if there is a categories attribute, then use the categories from it
     const categoryAttrArray = categories.split(' ');
-    existsCategoryArray = 
+    existsCategoryArray =
       existsCategoryArray.filter(key => categoryAttrArray.includes(key));
   }
 
   let assetsHTML = '';
-  let assetsCategoryHTML = '';
-  let mixinList = [];
+  const assetsCategoryHTML = '';
+  const mixinList = [];
   for (const categoryName in assetsObj) {
     if (existsCategoryArray.includes(categoryName)) {
       const assetsCategoryHTML = assetsObj[categoryName];
@@ -279,7 +280,6 @@ function buildAssetHTML (assetUrl, categories) {
     }
   }
   return assetsHTML;
-
 }
 
 class StreetAssets extends AFRAME.ANode {
