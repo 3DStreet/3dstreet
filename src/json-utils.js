@@ -108,7 +108,7 @@ function getAttributes (entity) {
         if (isEmpty(modifiedProperty)) {
           elemObj['components'][componentName] = '';
         } else {
-          elemObj['components'][componentName] = toPropString(modifiedProperty);
+          elemObj['components'][componentName] = toPropString(componentName, modifiedProperty);
         }
       }
     }
@@ -116,7 +116,14 @@ function getAttributes (entity) {
   return elemObj;
 }
 
-function toPropString (propData) {
+// properties or attributes that should be stored as a string in saved JSON
+const propsToString = ["mapbox"];
+
+function toPropString (componentName, propData) {
+  if (propsToString.includes(componentName)) {
+    // return a string if key is an attribute or property listed in the propsToString array
+    return AFRAME.utils.styleParser.stringify(propData);
+  }
   if (
     typeof propData === 'string' ||
     typeof propData === 'number' ||
@@ -143,7 +150,7 @@ function toPropString (propData) {
             return `${key}: ${value}`;
           }
         } else {
-          return `${key}: ${toPropString(value)}`;
+          return `${key}: ${toPropString(key, value)}`;
         }
       })
       .join('; ');
@@ -184,6 +191,10 @@ function filterJSONstreet (removeProps, renameProps, streetJSON) {
   }
 
   let stringJSON = JSON.stringify(streetJSON, function replacer (key, value) {
+    if (propsToString.includes(key)) {
+      // don't parse if key is an attribute or property listed in the propsToString array
+      return value;
+    }
     const compAttributes = AFRAME.utils.styleParser.parse(value);
     for (var removeKey in removeProps) {
       // check for removing components
