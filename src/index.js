@@ -42,7 +42,7 @@ AFRAME.registerComponent('street', {
     if (streetParent) {
       streetParent.remove();
     }
-    const buildingParent = this.el.querySelector('buildings-parent');
+    const buildingParent = this.el.querySelector('.buildings-parent');
     if (buildingParent) {
       buildingParent.remove();
     }
