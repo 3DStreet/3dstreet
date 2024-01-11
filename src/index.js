@@ -468,7 +468,14 @@ AFRAME.registerComponent('street-environment', {
     const light2 = this.light2;
     light2.setAttribute('id', 'env-light2');
     light2.setAttribute('position', '-60 56 -16');
-    light2.setAttribute('light', 'intensity: 2.2; castShadow: true; shadowCameraAutomatic: #default-street; shadowMapHeight: 2048; shadowMapWidth: 2048');
+    // set shadow camera sizes
+    defaultStreet = document.getElementById('default-street');
+    const streetLength = defaultStreet.getAttribute('street').length ?? 150;
+    // use half the street size + additional 10 meters to account for camera tilt
+    const halfCameraSize = streetLength / 2 + 10;
+
+    light2.setAttribute('light', `intensity: 2.2; castShadow: true; shadowMapHeight: 2048; shadowMapWidth: 2048;shadowCameraBottom: -${halfCameraSize}; shadowCameraLeft: -${halfCameraSize}; shadowCameraRight: ${halfCameraSize}; shadowCameraTop: ${halfCameraSize};`);
+    
     el.appendChild(light2);
 
     this.sky = document.createElement('a-sky');
