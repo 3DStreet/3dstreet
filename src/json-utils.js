@@ -116,15 +116,7 @@ function getAttributes (entity) {
   return elemObj;
 }
 
-// properties or attributes that should be stored as a string in saved JSON
-// to prevent parsing and splitting URL 
-const propsToString = ["mapbox", "streetmixStreetURL", "streetmixAPIURL"];
-
 function toPropString (componentName, propData) {
-  if (propsToString.includes(componentName)) {
-    // return a string if key is an attribute or property listed in the propsToString array
-    return AFRAME.utils.styleParser.stringify(propData);
-  }
   if (
     typeof propData === 'string' ||
     typeof propData === 'number' ||
@@ -182,6 +174,10 @@ const renameProps = {
   street: 'not-street',
   intersection: 'not-intersection'
 };
+
+// properties or attributes that should be stored as a string in saved JSON
+// to prevent parsing and splitting URL 
+const propsToString = ["mapbox", "streetmixStreetURL", "streetmixAPIURL"];
 
 function filterJSONstreet (removeProps, renameProps, streetJSON) {
   function removeValueCheck (removeVal, value) {
