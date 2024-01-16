@@ -117,7 +117,8 @@ function getAttributes (entity) {
 }
 
 // properties or attributes that should be stored as a string in saved JSON
-const propsToString = ["mapbox"];
+// to prevent parsing and splitting URL 
+const propsToString = ["mapbox", "streetmixStreetURL", "streetmixAPIURL"];
 
 function toPropString (componentName, propData) {
   if (propsToString.includes(componentName)) {
