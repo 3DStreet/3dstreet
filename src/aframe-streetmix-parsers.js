@@ -912,17 +912,17 @@ function processSegments (segments, showStriping, length, globalAnimated, showVe
       let reusableObjectStencilsParentEl;
 
       reusableObjectStencilsParentEl = createStencilsParentElement({ y: elevationPosY + 0.015 });
-      cloneMixinAsChildren({ objectMixinId: 'stencils word-bus', parentEl: reusableObjectStencilsParentEl, rotation: '-90 ' + rotationY + ' 0', step: 50, radius: clonedObjectRadius });
+      cloneMixinAsChildren({ objectMixinId: 'stencils hash-left', parentEl: reusableObjectStencilsParentEl, rotation: '-90 ' + rotationY + ' 0', step: 50, radius: clonedObjectRadius });
       // add this stencil stuff to the segment parent
       segmentParentEl.append(reusableObjectStencilsParentEl);
 
       reusableObjectStencilsParentEl = createStencilsParentElement({ y: elevationPosY + 0.015, z: 10 });
-      cloneMixinAsChildren({ objectMixinId: 'stencils word-taxi', parentEl: reusableObjectStencilsParentEl, rotation: '-90 ' + rotationY + ' 0', step: 50, radius: clonedObjectRadius });
+      cloneMixinAsChildren({ objectMixinId: 'stencils hash-right', parentEl: reusableObjectStencilsParentEl, rotation: '-90 ' + rotationY + ' 0', step: 50, radius: clonedObjectRadius });
       // add this stencil stuff to the segment parent
       segmentParentEl.append(reusableObjectStencilsParentEl);
 
       reusableObjectStencilsParentEl = createStencilsParentElement({ y: elevationPosY + 0.015, z: 20 });
-      cloneMixinAsChildren({ objectMixinId: 'stencils word-only', parentEl: reusableObjectStencilsParentEl, rotation: '-90 ' + rotationY + ' 0', step: 50, radius: clonedObjectRadius });
+      cloneMixinAsChildren({ objectMixinId: 'stencils hash-chevron', parentEl: reusableObjectStencilsParentEl, rotation: '-90 ' + rotationY + ' 0', step: 50, radius: clonedObjectRadius });
       // add this stencil stuff to the segment parent
       segmentParentEl.append(reusableObjectStencilsParentEl);
     } else if (segments[i].type === 'drive-lane') {

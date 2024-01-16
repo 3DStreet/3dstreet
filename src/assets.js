@@ -180,6 +180,9 @@ function buildAssetHTML (assetUrl, categories) {
         <a-mixin id="perpendicular-stalls" atlas-uvs="totalRows: 4; totalColumns: 8; column: 5; row: 4" scale="5 10 5"></a-mixin>
         <a-mixin id="parking-t" atlas-uvs="totalRows: 8; totalColumns: 16; column: 4; row: 7" scale="1.5 2 2"></a-mixin>
         <a-mixin id="painted-safety-zone" atlas-uvs="totalRows: 4; totalColumns: 4; column: 4; row: 4" scale="8 8 8"></a-mixin>
+        <a-mixin id="hash-left" atlas-uvs="totalRows: 4; totalColumns: 8; column: 7; row: 2" scale="3 6 3"></a-mixin>
+        <a-mixin id="hash-right" atlas-uvs="totalRows: 4; totalColumns: 8; column: 8; row: 2" scale="3 6 3"></a-mixin>
+        <a-mixin id="hash-chevron" atlas-uvs="totalRows: 4; totalColumns: 4; column: 4; row: 2" scale="3 3 3"></a-mixin>
       `,
     'vehicles-transit': `
         <!-- vehicles-transit -->
