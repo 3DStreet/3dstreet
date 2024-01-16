@@ -287,12 +287,12 @@ function createChooChooElement (variantList, objectMixinId, length, showVehicles
   }
   const rotationY = (variantList[0] === 'inbound') ? 0 : 180;
   const placedObjectEl = document.createElement('a-entity');
-  placedObjectEl.setAttribute('class', objectMixinId);
+  const tramLength = 23;
   placedObjectEl.setAttribute('rotation', '0 ' + rotationY + ' 0');
   placedObjectEl.setAttribute('mixin', objectMixinId);
-  placedObjectEl.addEventListener('model-loaded', (model) => {
-    randomPosition(model.target, 'z', length);
-  }, { once: true });
+  placedObjectEl.setAttribute('class', objectMixinId);
+  const positionZ = randomPosition(placedObjectEl, 'z', length, tramLength);
+  placedObjectEl.setAttribute('position', '0 0 ' + positionZ);
   return placedObjectEl;
 }
 
@@ -471,12 +471,13 @@ function createFoodTruckElement (variantList, length) {
   const foodTruckParentEl = document.createElement('a-entity');
 
   const reusableObjectEl = document.createElement('a-entity');
+  const foodTruckLength = 7;
   const rotationY = (variantList[0] === 'left') ? 0 : 180;
   reusableObjectEl.setAttribute('rotation', '0 ' + rotationY + ' 0');
   reusableObjectEl.setAttribute('mixin', 'food-trailer-rig');
-  reusableObjectEl.addEventListener('model-loaded', (model) => {
-    randomPosition(model.target, 'z', length);
-  }, { once: true });
+
+  const positionZ = randomPosition(reusableObjectEl, 'z', length, foodTruckLength);
+  reusableObjectEl.setAttribute('positon', '0 0 ' + positionZ);
   foodTruckParentEl.append(reusableObjectEl);
 
   return foodTruckParentEl;
