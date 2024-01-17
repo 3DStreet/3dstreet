@@ -108,7 +108,7 @@ function getAttributes (entity) {
         if (isEmpty(modifiedProperty)) {
           elemObj['components'][componentName] = '';
         } else {
-          elemObj['components'][componentName] = toPropString(componentName, modifiedProperty);
+          elemObj['components'][componentName] = toPropString(modifiedProperty);
         }
       }
     }
@@ -116,7 +116,7 @@ function getAttributes (entity) {
   return elemObj;
 }
 
-function toPropString (componentName, propData) {
+function toPropString (propData) {
   if (
     typeof propData === 'string' ||
     typeof propData === 'number' ||
@@ -143,7 +143,7 @@ function toPropString (componentName, propData) {
             return `${key}: ${value}`;
           }
         } else {
-          return `${key}: ${toPropString(key, value)}`;
+          return `${key}: ${toPropString(value)}`;
         }
       })
       .join('; ');
@@ -174,10 +174,6 @@ const renameProps = {
   street: 'not-street',
   intersection: 'not-intersection'
 };
-
-// properties or attributes that should be stored as a string in saved JSON
-// to prevent parsing and splitting URL 
-const propsToString = ["mapbox", "streetmixStreetURL", "streetmixAPIURL"];
 
 function filterJSONstreet (removeProps, renameProps, streetJSON) {
   function removeValueCheck (removeVal, value) {
