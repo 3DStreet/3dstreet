@@ -864,7 +864,7 @@ function processSegments (segments, showStriping, length, globalAnimated, showVe
       // add the safehits to the segment parent
       segmentParentEl.append(safehitsParentEl);
       repeatCount[0] = 1;
-      repeatCount[1] = parseInt(length);
+      repeatCount[1] = parseInt(length) / 4;
     } else if (segments[i].type === 'divider' && variantList[0] === 'flowers') {
       groundMixinId = 'grass';
       segmentParentEl.append(createDividerVariant('flowers', clonedObjectRadius, 2.25));
@@ -891,7 +891,11 @@ function processSegments (segments, showStriping, length, globalAnimated, showVe
       groundMixinId = 'divider';
       segmentParentEl.append(createDividerVariant('dome', clonedObjectRadius, 2.25));
       repeatCount[0] = 1;
-      repeatCount[1] = parseInt(length);
+      repeatCount[1] = parseInt(length) / 4;
+    } else if (segments[i].type === 'divider') {
+      groundMixinId = 'divider';
+      repeatCount[0] = 1;
+      repeatCount[1] = parseInt(length) / 4;
     } else if (segments[i].type === 'temporary' && variantList[0] === 'barricade') {
       groundMixinId = 'drive-lane';
       segmentParentEl.append(createClonedVariants('temporary-barricade', clonedObjectRadius, 2.25));
