@@ -53,7 +53,6 @@ function buildAssetHTML (assetUrl, categories) {
     'people-rigged': `          
         <a-asset-item id="character1walk" src="${assetUrl}sets/human-characters-animation-seperated/gltf-exports/draco/character-1-walk.glb"></a-asset-item>
         <a-mixin shadow id="a_char1" gltf-model="#character1walk" animation-mixer></a-mixin>
-        
         <a-asset-item id="character2walk" src="${assetUrl}sets/human-characters-animation-seperated/gltf-exports/draco/character-2-walk.glb"></a-asset-item>
         <a-mixin shadow id="a_char2" gltf-model="#character2walk" animation-mixer></a-mixin>
         <a-asset-item id="character3walk" src="${assetUrl}sets/human-characters-animation-seperated/gltf-exports/draco/character-3-walk.glb"></a-asset-item>
@@ -68,6 +67,22 @@ function buildAssetHTML (assetUrl, categories) {
         <a-mixin shadow id="a_char7" gltf-model="#character7walk" animation-mixer></a-mixin>
         <a-asset-item id="character8walk" src="${assetUrl}sets/human-characters-animation-seperated/gltf-exports/draco/character-8-walk.glb"></a-asset-item>
         <a-mixin shadow id="a_char8" gltf-model="#character8walk" animation-mixer></a-mixin>
+        <a-asset-item id="character9walk" src="${assetUrl}sets/human-characters-animation-seperated/gltf-exports/draco/character-9-walk.glb"></a-asset-item>
+        <a-mixin shadow id="a_char9" gltf-model="#character9walk" animation-mixer></a-mixin>
+        <a-asset-item id="character10walk" src="${assetUrl}sets/human-characters-animation-seperated/gltf-exports/draco/character-10-baby-stroller-walk.glb"></a-asset-item>
+        <a-mixin shadow id="a_char10" gltf-model="#character10walk" animation-mixer></a-mixin>
+        <a-asset-item id="character11walk" src="${assetUrl}sets/human-characters-animation-seperated/gltf-exports/draco/character-11-wheel-chair.glb"></a-asset-item>
+        <a-mixin shadow id="a_char11" gltf-model="#character11walk" animation-mixer></a-mixin>
+        <a-asset-item id="character12walk" src="${assetUrl}sets/human-characters-animation-seperated/gltf-exports/draco/character-12-walker-walk.glb"></a-asset-item>
+        <a-mixin shadow id="a_char12" gltf-model="#character12walk" animation-mixer></a-mixin>
+        <a-asset-item id="character13walk" src="${assetUrl}sets/human-characters-animation-seperated/gltf-exports/draco/character-13-kid-scooter.glb"></a-asset-item>
+        <a-mixin shadow id="a_char13" gltf-model="#character13walk" animation-mixer></a-mixin>
+        <a-asset-item id="character14walk" src="${assetUrl}sets/human-characters-animation-seperated/gltf-exports/draco/character-14-kid-walk.glb"></a-asset-item>
+        <a-mixin shadow id="a_char14" gltf-model="#character14walk" animation-mixer></a-mixin>
+        <a-asset-item id="character15walk" src="${assetUrl}sets/human-characters-animation-seperated/gltf-exports/draco/character-15-blind-cane-walk.glb"></a-asset-item>
+        <a-mixin shadow id="a_char15" gltf-model="#character15walk" animation-mixer></a-mixin>
+        <a-asset-item id="character16walk" src="${assetUrl}sets/human-characters-animation-seperated/gltf-exports/draco/character-16-cart-walk.glb"></a-asset-item>
+        <a-mixin shadow id="a_char16" gltf-model="#character16walk" animation-mixer></a-mixin>
       `,
     vehicles: `
         <!-- vehicles -->
