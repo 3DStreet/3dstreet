@@ -207,7 +207,7 @@ function createSidewalkClonedVariants (segmentWidthInMeters, density, elevationP
   dividerParentEl.setAttribute('position', { y: elevationPosY });
   // Randomly generate avatars
   for (let i = 0; i < totalPedestrianNumber; i++) {
-    const variantName = (animated === true) ? 'a_char' + String(getRandomIntInclusive(1, 8)) : 'char' + String(getRandomIntInclusive(1, 16));
+    const variantName = 'a_char' + String(getRandomIntInclusive(1, 16));
     const xVal = getRandomArbitrary(xValueRange[0], xValueRange[1]);
     const zVal = zValueRange.pop();
     const yVal = 0;
