@@ -224,6 +224,9 @@ function createSidewalkClonedVariants (segmentWidthInMeters, density, elevationP
 
     if (animated) {
       addLinearStreetAnimation(placedObjectEl, 1.4, streetLength, xVal, yVal, zVal, animationDirection);
+    } else {
+      // solution for pause animation-mixer animation from donmccurdy
+      placedObjectEl.setAttribute('animation-mixer', {timeScale: 0});
     }
     dividerParentEl.append(placedObjectEl);
   }
