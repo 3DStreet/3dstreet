@@ -241,7 +241,7 @@ function createSidewalkClonedVariants (segmentWidthInMeters, density, elevationP
     }
 
     if (animated) {
-      const speed = charSpeed[variantName] ?? 1.4;
+      const speed = charSpeed[variantName] || 1.4;
       addLinearStreetAnimation(placedObjectEl, speed, streetLength, xVal, yVal, zVal, animationDirection);
     } else {
       // solution for pause animation-mixer animation from donmccurdy
