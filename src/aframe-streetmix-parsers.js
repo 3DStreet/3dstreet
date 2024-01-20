@@ -202,6 +202,24 @@ function createSidewalkClonedVariants (segmentWidthInMeters, density, elevationP
     normal: 0.125,
     dense: 0.25
   };
+
+  // the speed for some pedestrian models is different
+  const charSpeed = {
+    // baby-stroller-walk
+    a_char10: 1,
+    // wheel-chair
+    a_char11: 1,
+    // walker-walk
+    a_char12: 0.2,
+    // kid-scooter
+    a_char13: 2,
+    // kid-walk
+    a_char14: 0.8,
+    // blind-cane-walk
+    a_char15: 1,
+    // cart-walk
+    a_char16: 1.2
+  }
   const totalPedestrianNumber = parseInt(densityFactors[density] * streetLength, 10);
   const dividerParentEl = createParentElement('pedestrians-parent');
   dividerParentEl.setAttribute('position', { y: elevationPosY });
@@ -223,7 +241,8 @@ function createSidewalkClonedVariants (segmentWidthInMeters, density, elevationP
     }
 
     if (animated) {
-      addLinearStreetAnimation(placedObjectEl, 1.4, streetLength, xVal, yVal, zVal, animationDirection);
+      const speed = charSpeed[variantName] ?? 1.4;
+      addLinearStreetAnimation(placedObjectEl, speed, streetLength, xVal, yVal, zVal, animationDirection);
     } else {
       // solution for pause animation-mixer animation from donmccurdy
       placedObjectEl.setAttribute('animation-mixer', {timeScale: 0});
