@@ -137,8 +137,12 @@ function toPropString (propData) {
     return Object.entries(propData)
       .map(([key, value]) => {
         if (key == 'src') {
-          if (value.id) {
+          if (value.id && value.src.includes('assets.3dstreet.app')) {
+            // asset came from 3dstreet
             return `${key}: #${value.id}`;
+          } else if (value.src && !value.src.includes('assets.3dstreet.app')) {
+            // asset came from external sources
+            return `${key}: ${value.src}`;
           } else {
             return `${key}: ${value}`;
           }
