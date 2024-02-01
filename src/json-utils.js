@@ -613,6 +613,8 @@ function inputStreetmix () {
     '""></a-entity>';
 }
 
+STREET.utils.inputStreetmix = inputStreetmix;
+
 // JSON loading starts here
 function getValidJSON (stringJSON) {
   // Preserve newlines, etc. - use valid JSON
