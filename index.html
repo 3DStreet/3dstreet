@@ -10,9 +10,6 @@
     <!-- mapbox -->
     <script src="./src/lib/aframe-mapbox-component.min.js"></script>
 
-    <!-- save / load -->
-    <script src="./src/json-utils.js"></script>
-
     <!-- vr teleport controls -->
     <script src="https://cdn.jsdelivr.net/npm/aframe-blink-controls@0.4.3/dist/aframe-blink-controls.min.js"></script>
 
@@ -123,7 +120,7 @@
   <script>
 
     document.getElementById('inputfile')
-            .addEventListener('change', fileJSON);
+            .addEventListener('change', STREET.utils.fileJSON);
 
     function buttonScreenshotTock() {
       const screenshotEl = document.getElementById('screenshot');

@@ -1,8 +1,9 @@
 /* global AFRAME, Node */
 /* version: 1.0 */
 
-var STREET = {};
+window.STREET = {};
 STREET.utils = {};
+
 
 function getSceneUuidFromURLHash () {
   const currentHash = window.location.hash;
@@ -55,6 +56,8 @@ function convertDOMElToObject (entity) {
     data: data
   };
 }
+
+STREET.utils.convertDOMElToObject = convertDOMElToObject;
 
 function getElementData (entity) {
   if (!entity.isEntity) {
@@ -219,6 +222,8 @@ function filterJSONstreet (removeProps, renameProps, streetJSON) {
   }
   return stringJSON;
 }
+
+STREET.utils.filterJSONstreet = filterJSONstreet;
 
 /**
  * function from 3dstreet-editor/src/lib/entity.js
@@ -642,6 +647,8 @@ function createElementsFromJSON (streetJSON) {
   STREET.notify.successMessage('Scene loaded from JSON');
 }
 
+STREET.utils.createElementsFromJSON = createElementsFromJSON;
+
 // viewer widget click to paste json string of 3dstreet scene
 function inputJSON () {
   const stringJSON = prompt('Please paste 3DStreet JSON string');
@@ -660,3 +667,6 @@ function fileJSON () {
   };
   reader.readAsText(this.files[0]);
 }
+
+// temporarily place the UI function in utils, which is used in index.html.
+STREET.utils.fileJSON = fileJSON;
