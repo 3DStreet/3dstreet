@@ -371,6 +371,8 @@ function createEntities (entitiesData, parentEl) {
   }
 }
 
+STREET.utils.createEntities = createEntities;
+
 /*
 Add a new entity with a list of components and children (if exists)
  * @param {object} entityData Entity definition to add:
