@@ -178,7 +178,7 @@ const renameProps = {
   intersection: 'not-intersection'
 };
 
-function filterJSONstreet (removeProps, renameProps, streetJSON) {
+function filterJSONstreet (streetJSON) {
   function removeValueCheck (removeVal, value) {
     if (AFRAME.utils.deepEqual(removeVal, value) || removeVal === '*') {
       return true;
