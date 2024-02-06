@@ -88,7 +88,7 @@
         <!-- uncomment the line below to load all possible asset categories -->
         <!-- <street-assets categories="sidewalk-props people people-rigged vehicles vehicles-rigged buildings intersection-props segment-textures segment-colors lane-separator stencils vehicles-transit dividers sky grounds"></street-assets>   -->
         <!-- a reduced set of assets for non-animated streetmix streets without intersections -->
-        <street-assets categories="loud-bicycle sidewalk-props people vehicles vehicles-rigged buildings segment-textures segment-colors lane-separator stencils vehicles-transit dividers sky grounds"></street-assets>
+        <street-assets categories="loud-bicycle sidewalk-props people-rigged vehicles vehicles-rigged buildings segment-textures segment-colors lane-separator stencils vehicles-transit dividers sky grounds"></street-assets>
       </a-assets>
   
       <a-entity id="street-container" data-layer-name="3D Street Layers" data-layer-show-children>
@@ -137,7 +137,7 @@
       sceneEl.components.inspector.openInspector();
       document.querySelector('.viewer-header-wrapper').style.display = 'none';
     }
-    
+
     AFRAME.registerComponent('timed-inspector', {
       init: function() {
         setTimeout( function () {

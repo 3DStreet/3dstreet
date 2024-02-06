@@ -11,6 +11,7 @@ require('./assets.js');
 require('./components/notify.js');
 require('./components/create-from-json');
 require('./components/screentock.js');
+require('./components/automation.js');
 require('aframe-atlas-uvs-component');
 
 AFRAME.registerComponent('street', {
