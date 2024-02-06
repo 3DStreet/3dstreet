@@ -11,6 +11,7 @@ require('./assets.js');
 require('./components/notify.js');
 require('./components/create-from-json');
 require('./components/screentock.js');
+require('./components/automation.js');
 require('aframe-atlas-uvs-component');
 
 AFRAME.registerComponent('street', {
@@ -22,24 +23,34 @@ AFRAME.registerComponent('street', {
     showGround: { default: true },
     showStriping: { default: true },
     showVehicles: { default: true },
-    globalAnimated: { default: false },
+    globalAnimated: { default: true },
     length: { default: 60 } // new default of 60 from 0.4.4
   },
-  toggleGlobalAnimation: function () {
-    const globalAnimated = this.data.globalAnimated;
-    const animatedElements = document.querySelectorAll('a-entity[animation__1]');
+  init: function () {
+    this.asceneElem = document.querySelector('a-scene');
+  },
+  toggleGlobalAnimation: function (globalAnimated) {
+    const animatedElements = document.querySelectorAll('a-entity[animation__1], a-entity[animation__2]');
     animatedElements.forEach(animatedElem => {
+      const elemComponents = animatedElem.components;
       // hook to toggle animations that bypass play/pause events that are called by the inspector
-      animatedElem.components.animation__1.initialized = globalAnimated;
+      if (elemComponents['animation__1']) {
+        elemComponents['animation__1'].initialized = globalAnimated;
+      };
+      if (elemComponents['animation__2']) {
+        elemComponents['animation__2'].initialized = globalAnimated;       
+      }
     });
 
     // toggle animations for elements with animation-mixer component
     const animationMixerElements = document.querySelectorAll('a-entity[animation-mixer]');
     animationMixerElements.forEach(animatedElem => {  
       if (globalAnimated) {
-        animatedElem.components['animation-mixer'].playAction();
+        // use solution for play/pause animation-mixer from donmccurdy
+        animatedElem.setAttribute('animation-mixer', {timeScale: 1});
       } else {
-        animatedElem.components['animation-mixer'].stopAction();
+        // pause animation-mixer
+        animatedElem.setAttribute('animation-mixer', {timeScale: 0});
       }
     });
 
@@ -50,10 +61,13 @@ AFRAME.registerComponent('street', {
     });    
   },
   update: function (oldData) { // fired once at start and at each subsequent change of a schema value
-    var data = this.data;
+    const data = this.data;
 
-    if (data.globalAnimated !== oldData.globalAnimated && oldData.JSON === data.JSON) {
-      this.toggleGlobalAnimation();
+    const changedData = AFRAME.utils.diff(data, oldData);
+
+    if (Object.keys(changedData).length == 1 && changedData.hasOwnProperty('globalAnimated')) {
+      // if only globalAnimated option is changed
+      this.toggleGlobalAnimation(data.globalAnimated);
       return;
     }
 
