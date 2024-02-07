@@ -10,7 +10,6 @@ We welcome community contributions to 3DStreet.
 - Use command line to create new tag for new version `git tag 0.4.4` and `git push --tags`
 - Create a new release here: https://github.com/3DStreet/3dstreet/releases/new. Choose the tag you just created. (If needed for the title simply use the new version such as "0.4.4")
 - Click to automatically "generate release notes." Consider summarizing a few key changes to put at the top.
-- Use those summaries to update CHANGELOG.md in this repo with "Major improvement" changes summary and link to the new release for detailed changes
 - Update https://www.3dstreet.org/docs/development/releases/ with summary of major improvements and linking back to the new release on github.
 - Then to run npm publish after all github version stuff works
 

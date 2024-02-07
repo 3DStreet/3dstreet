@@ -1,5 +1,5 @@
 /* global AFRAME, THREE, XMLHttpRequest */
-require("babel-polyfill");
+require('babel-polyfill');
 if (typeof VERSION !== 'undefined') { console.log(`3DStreet Version: ${VERSION} (Date: ${new Date(COMMIT_DATE).toISOString().split('T')[0]}, Commit Hash: #${COMMIT_HASH})`); }
 var streetmixParsers = require('./aframe-streetmix-parsers');
 var streetmixUtils = require('./tested/streetmix-utils');
@@ -53,6 +53,18 @@ AFRAME.registerComponent('street', {
     }
 
     const streetmixSegments = JSON.parse(data.JSON);
+
+    // remove .street-parent and .buildings-parent elements, if they exists, with old scene elements.
+    // Because they will be created next in the processSegments and processBuildings functions
+    const streetParent = this.el.querySelector('.street-parent');
+    if (streetParent) {
+      streetParent.remove();
+    }
+    const buildingParent = this.el.querySelector('.buildings-parent');
+    if (buildingParent) {
+      buildingParent.remove();
+    }
+
     const streetEl = streetmixParsers.processSegments(streetmixSegments.streetmixSegmentsFeet, data.showStriping, data.length, data.globalAnimated, data.showVehicles);
     this.el.append(streetEl);
 
@@ -111,7 +123,7 @@ AFRAME.registerComponent('streetmix-loader', {
 
         let currentSceneTitle;
         if (AFRAME.scenes[0] && AFRAME.scenes[0].getAttribute('metadata')) {
-            currentSceneTitle = AFRAME.scenes[0].getAttribute('metadata').sceneTitle;
+          currentSceneTitle = AFRAME.scenes[0].getAttribute('metadata').sceneTitle;
         }
         if (!currentSceneTitle) { // only set title from streetmix if none exists
           AFRAME.scenes[0].setAttribute('metadata', 'sceneTitle', streetmixName);
@@ -439,13 +451,13 @@ AFRAME.registerComponent('street-environment', {
       sky.setAttribute('src', `url(${assetsPathRoot}images/skies/2048-mud_road_puresky-sdr.jpeg)`);
       sky.setAttribute('rotation', '0 0 0');
     } else if (this.data.preset === 'sunny-afternoon') {
-       light1.setAttribute('light', 'intensity', 2);
-       light2.setAttribute('light', 'intensity: 2.2; castShadow: true; shadowCameraBottom: -20; shadowCameraLeft: -30; shadowCameraRight: 40; shadowCameraTop: 30; shadowMapHeight: 2048; shadowMapWidth: 2048');
-       light2.setAttribute('position', '60 56 -16');
-       sky.setAttribute('visible', true);
-       sky.setAttribute('color', '#FFF');
-       sky.setAttribute('src', `url(${assetsPathRoot}images/skies/2048-kloofendal_43d_clear_puresky-sdr.jpeg)`);
-       sky.setAttribute('rotation', '0 0 0');
+      light1.setAttribute('light', 'intensity', 2);
+      light2.setAttribute('light', 'intensity: 2.2; castShadow: true; shadowCameraBottom: -20; shadowCameraLeft: -30; shadowCameraRight: 40; shadowCameraTop: 30; shadowMapHeight: 2048; shadowMapWidth: 2048');
+      light2.setAttribute('position', '60 56 -16');
+      sky.setAttribute('visible', true);
+      sky.setAttribute('color', '#FFF');
+      sky.setAttribute('src', `url(${assetsPathRoot}images/skies/2048-kloofendal_43d_clear_puresky-sdr.jpeg)`);
+      sky.setAttribute('rotation', '0 0 0');
     } else if (this.data.preset === 'sunny-noon') {
       light1.setAttribute('light', 'intensity', 2);
       light2.setAttribute('light', 'intensity: 2.2; castShadow: true; shadowCameraBottom: -20; shadowCameraLeft: -30; shadowCameraRight: 40; shadowCameraTop: 30; shadowMapHeight: 2048; shadowMapWidth: 2048');
@@ -467,7 +479,7 @@ AFRAME.registerComponent('street-environment', {
       sky.setAttribute('visible', true);
       sky.setAttribute('color', '#FFF');
       sky.setAttribute('src', `url(${assetsPathRoot}images/skies/2048-kloofendal_48d_partly_cloudy_puresky-sdr.jpeg)`);
-      sky.setAttribute('rotation', '0 0 0');      
+      sky.setAttribute('rotation', '0 0 0');
     } else { // color
       sky.setAttribute('visible', false);
       this.scene.setAttribute('background', 'color', this.data.backgroundColor);

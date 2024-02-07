@@ -87,6 +87,7 @@ function buildAssetHTML (assetUrl, categories) {
         <a-mixin shadow id="box-truck-rig" gltf-model="url(${assetUrl}sets/vehicles-rig/gltf-exports/draco/isuzu-truck-rig.glb)"></a-mixin>
         <a-mixin shadow id="food-trailer-rig" gltf-model="url(${assetUrl}sets/vehicles-rig/gltf-exports/draco/food-trailer-rig.glb)"></a-mixin>
         <a-mixin shadow id="fire-truck-rig" gltf-model="url(${assetUrl}sets/vehicles-rig/gltf-exports/draco/fire-truck-pumper-rig.glb)"></a-mixin>
+        <a-mixin shadow id="fire-ladder-rig" gltf-model="url(${assetUrl}sets/vehicles/gltf-exports/draco/fire_truck_ladder.glb)"></a-mixin>
         <a-mixin shadow id="self-driving-cruise-car-rig" gltf-model="url(${assetUrl}sets/vehicles-rig/gltf-exports/draco/self-driving-cruise-car-rig.glb)"></a-mixin>
       `,
     buildings: `
@@ -125,15 +126,15 @@ function buildAssetHTML (assetUrl, categories) {
         <!-- segment mixins with textures -->
         <img id="seamless-road" src="${assetUrl}materials/TexturesCom_Roads0086_1_seamless_S_rotate.jpg" crossorigin="anonymous">
         <img id="seamless-bright-road" src="${assetUrl}materials/asphalthd_Base_Color.jpg" crossorigin="anonymous">
-        <img id="hatched-base" src="${assetUrl}materials/hatched_Base_Color.jpg" crossorigin="anonymous">
-        <img id="hatched-normal" src="${assetUrl}materials/hatched_Normal.jpg" crossorigin="anonymous">
         <img id="seamless-sidewalk" src="${assetUrl}materials/TexturesCom_FloorsRegular0301_1_seamless_S.jpg" crossorigin="anonymous">
+        <img id="hatched-base" src="${assetUrl}materials/seamless-lane-with-hatch-half.jpg" crossorigin="anonymous">
+        <img id="hatched-normal" src="${assetUrl}materials/seamless-lane-with-hatch-half.jpg" crossorigin="anonymous">
         <a-mixin shadow="cast: false" id="drive-lane" geometry="width:3;height:150;primitive:plane" material="roughness:${surfacesRoughness};repeat:0.3 25;offset:0.55 0;src:#seamless-road;"></a-mixin>
         <a-mixin shadow="cast: false" id="bright-lane" geometry="width:3;height:150;primitive:plane" material="roughness:${surfacesRoughness};repeat:0.6 50;offset:0.55 0;src:#seamless-bright-road;color:#dddddd"></a-mixin>
         <a-mixin shadow="cast: false" id="bike-lane" geometry="width:1.8;height:150;primitive:plane" material="roughness:${surfacesRoughness};repeat:0.3 25;offset:0.55 0;metalness:0;src:#seamless-road;"></a-mixin>
         <a-mixin shadow id="sidewalk" anisotropy geometry="width:3;height:150;primitive:plane" material="roughness:${surfacesRoughness};repeat:1.5 75;src:#seamless-sidewalk;"></a-mixin>
         <a-mixin shadow="cast: false" id="bus-lane" geometry="width:3;height:150;primitive:plane" material="roughness:${surfacesRoughness};repeat:0.3 25;offset:0.55 0;src:#seamless-road;"></a-mixin>
-        <a-mixin shadow="cast: false" id="divider" geometry="width:0.3;height:150;primitive:plane" material="roughness:${surfacesRoughness};repeat:1 150;offset:0.415 0;normalTextureOffset:0.415 0;src:#hatched-base;normalTextureRepeat:0.21 150;normalMap:#hatched-normal"></a-mixin>
+        <a-mixin shadow="cast: false" id="divider" geometry="width:0.3;height:150;primitive:plane" material="roughness:${surfacesRoughness};src:#hatched-base;"></a-mixin>
         <a-mixin shadow="cast: false" id="grass" geometry="width:0.3;height:150;primitive:plane" material="roughness:${surfacesRoughness};repeat:1 150;offset:0.415 0;src:#grass-texture;"></a-mixin>
       `,
     'segment-colors': `  
@@ -179,6 +180,9 @@ function buildAssetHTML (assetUrl, categories) {
         <a-mixin id="perpendicular-stalls" atlas-uvs="totalRows: 4; totalColumns: 8; column: 5; row: 4" scale="5 10 5"></a-mixin>
         <a-mixin id="parking-t" atlas-uvs="totalRows: 8; totalColumns: 16; column: 4; row: 7" scale="1.5 2 2"></a-mixin>
         <a-mixin id="painted-safety-zone" atlas-uvs="totalRows: 4; totalColumns: 4; column: 4; row: 4" scale="8 8 8"></a-mixin>
+        <a-mixin id="hash-left" atlas-uvs="totalRows: 4; totalColumns: 8; column: 7; row: 2" scale="3 6 3"></a-mixin>
+        <a-mixin id="hash-right" atlas-uvs="totalRows: 4; totalColumns: 8; column: 8; row: 2" scale="3 6 3"></a-mixin>
+        <a-mixin id="hash-chevron" atlas-uvs="totalRows: 4; totalColumns: 4; column: 4; row: 2" scale="3 3 3"></a-mixin>
       `,
     'vehicles-transit': `
         <!-- vehicles-transit -->
@@ -231,38 +235,54 @@ function buildAssetHTML (assetUrl, categories) {
       `,
     'loud-bicycle': `
         <!-- loud-bicycle-game -->
-        <a-mixin id="cyclist-cargo" gltf-model="url(${assetUrl}sets/cargo-bike-animation/gltf-exports/draco/cargo_bike_animation_v1.glb)"></a-mixin>
-        <a-mixin id="cyclist1" gltf-model="url(${assetUrl}sets/cyclist-animation/gltf-exports/draco/cyclist-1-animation-v1.glb)"></a-mixin>
-        <a-mixin id="cyclist2" gltf-model="url(${assetUrl}sets/cyclist-animation/gltf-exports/draco/cyclist-2-animation-v1.glb)"></a-mixin>
-        <a-mixin id="cyclist3" gltf-model="url(${assetUrl}sets/cyclist-animation/gltf-exports/draco/cyclist-3-animation-v1.glb)"></a-mixin>
-        <a-mixin id="cyclist-kid" gltf-model="url(${assetUrl}sets/cyclist-animation/gltf-exports/draco/Kid_cyclist_animation_v01.glb)"></a-mixin>
-        <a-mixin id="cyclist-dutch" gltf-model="url(${assetUrl}sets/cyclist-animation/gltf-exports/draco/Dutch_cyclist_animation_v01.glb)"></a-mixin>
-        <a-mixin id="loud-bicycle-mini" gltf-model="url(${assetUrl}sets/cycle-horn/gltf-exports/draco/loud-bicycle-mini-horn.glb)"></a-mixin>
-        <a-mixin id="loud-bicycle-classic" gltf-model="url(${assetUrl}sets/cycle-horn/gltf-exports/draco/loud-bicycle-classic-horn.glb)"></a-mixin>
-        <a-mixin id="building-school" gltf-model="url(${assetUrl}sets/school-building/gltf-exports/draco/school-building.glb)"></a-mixin>
-        <a-mixin id="building-bar" gltf-model="url(${assetUrl}sets/irish-bar-building/gltf-exports/draco/irish-bar-building.glb)"></a-mixin>
-        <a-mixin id="vehicle-bmw-m2" gltf-model="url(${assetUrl}sets/vehicles-rig/gltf-exports/draco/BWM_m2-rig.glb)"></a-mixin>
-        <a-mixin id="prop-suburban-houses" gltf-model="url(${assetUrl}sets/suburban-houses/gltf-exports/draco/suburban-houses.glb)"></a-mixin>
-        <a-mixin id="prop-banner-wfh" gltf-model="url(${assetUrl}sets/wfh-banner/gltf-exports/draco/wfh-banner.glb)"></a-mixin>
-        <a-mixin id="prop-raygun" gltf-model="url(${assetUrl}sets/ray-gun/gltf-exports/draco/rayGun.glb)"></a-mixin>
-        <a-mixin id="prop-co2-scrubber" gltf-model="url(${assetUrl}sets/c02-scrubber/gltf-exports/draco/co2-scrubber.glb)"></a-mixin>
+        <a-mixin shadow id="cyclist-cargo" gltf-model="url(${assetUrl}sets/cargo-bike-animation/gltf-exports/draco/cargo_bike_animation_v1.glb)"></a-mixin>
+        <a-mixin shadow id="cyclist1" gltf-model="url(${assetUrl}sets/cyclist-animation/gltf-exports/draco/cyclist-1-animation-v1.glb)"></a-mixin>
+        <a-mixin shadow id="cyclist2" gltf-model="url(${assetUrl}sets/cyclist-animation/gltf-exports/draco/cyclist-2-animation-v1.glb)"></a-mixin>
+        <a-mixin shadow id="cyclist3" gltf-model="url(${assetUrl}sets/cyclist-animation/gltf-exports/draco/cyclist-3-animation-v1.glb)"></a-mixin>
+        <a-mixin shadow id="cyclist-kid" gltf-model="url(${assetUrl}sets/cyclist-animation/gltf-exports/draco/Kid_cyclist_animation_v01.glb)"></a-mixin>
+        <a-mixin shadow id="cyclist-dutch" gltf-model="url(${assetUrl}sets/cyclist-animation/gltf-exports/draco/Dutch_cyclist_animation_v01.glb)"></a-mixin>
+        <a-mixin shadow id="loud-bicycle-mini" gltf-model="url(${assetUrl}sets/cycle-horn/gltf-exports/draco/loud-bicycle-mini-horn.glb)"></a-mixin>
+        <a-mixin shadow id="loud-bicycle-classic" gltf-model="url(${assetUrl}sets/cycle-horn/gltf-exports/draco/loud-bicycle-classic-horn.glb)"></a-mixin>
+        <a-mixin shadow id="building-school" gltf-model="url(${assetUrl}sets/school-building/gltf-exports/draco/school-building.glb)"></a-mixin>
+        <a-mixin shadow id="building-bar" gltf-model="url(${assetUrl}sets/irish-bar-building/gltf-exports/draco/irish-bar-building.glb)"></a-mixin>
+        <a-mixin shadow id="vehicle-bmw-m2" gltf-model="url(${assetUrl}sets/vehicles-rig/gltf-exports/draco/BWM_m2-rig.glb)"></a-mixin>
+        <a-mixin shadow id="prop-suburban-houses" gltf-model="url(${assetUrl}sets/suburban-houses/gltf-exports/draco/suburban-houses.glb)"></a-mixin>
+        <a-mixin shadow id="prop-banner-wfh" gltf-model="url(${assetUrl}sets/wfh-banner/gltf-exports/draco/wfh-banner.glb)"></a-mixin>
+        <a-mixin shadow id="prop-raygun" gltf-model="url(${assetUrl}sets/ray-gun/gltf-exports/draco/rayGun.glb)"></a-mixin>
+        <a-mixin shadow id="prop-co2-scrubber" gltf-model="url(${assetUrl}sets/c02-scrubber/gltf-exports/draco/co2-scrubber.glb)"></a-mixin>
     ` };
 
-  if (categories) {
-    const categoryAttrArray = categories.split(' ');
-    const categoryExistsArray = Object.keys(assetsObj)
-      .filter(key => categoryAttrArray.includes(key));
-    let assetsHTML = '';
-    for (const assetName in assetsObj) {
-      if (categoryExistsArray.includes(assetName)) {
-        assetsHTML += assetsObj[assetName];
-      }
-    }
-    return assetsHTML;
-  } else {
-    const allHTMLAssets = Object.values(assetsObj).join('');
-    return allHTMLAssets;
+  function addCategoryNamesToMixins (html, categoryName) {
+    const parser = new DOMParser();
+    const doc = parser.parseFromString(html, 'text/html');
+    const mixinNodes = doc.querySelectorAll('a-mixin');
+    mixinNodes.forEach(mixinNode => {
+      mixinNode.setAttribute('category', categoryName);
+    });
+    return doc.documentElement.innerHTML;
   }
+
+  // JSON with grouped mixin id's. Used to create grouped mixins in Editor right panel
+  const groupedAssetsJSON = {};
+  let existsCategoryArray = Object.keys(assetsObj);
+
+  if (categories) {
+    // if there is a categories attribute, then use the categories from it
+    const categoryAttrArray = categories.split(' ');
+    existsCategoryArray =
+      existsCategoryArray.filter(key => categoryAttrArray.includes(key));
+  }
+
+  let assetsHTML = '';
+  const assetsCategoryHTML = '';
+  const mixinList = [];
+  for (const categoryName in assetsObj) {
+    if (existsCategoryArray.includes(categoryName)) {
+      const assetsCategoryHTML = assetsObj[categoryName];
+      assetsHTML += addCategoryNamesToMixins(assetsCategoryHTML, categoryName);
+    }
+  }
+  return assetsHTML;
 }
 
 class StreetAssets extends AFRAME.ANode {
@@ -275,7 +295,9 @@ class StreetAssets extends AFRAME.ANode {
     const self = this;
     var categories = this.getAttribute('categories');
     var assetUrl = this.getAttribute('url');
-    this.insertAdjacentHTML('afterend', buildAssetHTML(assetUrl, categories));
+    const assetsHTML = buildAssetHTML(assetUrl, categories);
+    this.insertAdjacentHTML('afterend', assetsHTML);
+
     AFRAME.ANode.prototype.load.call(self);
   }
 }
