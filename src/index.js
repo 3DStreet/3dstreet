@@ -30,35 +30,10 @@ AFRAME.registerComponent('street', {
     this.asceneElem = document.querySelector('a-scene');
   },
   toggleGlobalAnimation: function (globalAnimated) {
-    const animatedElements = document.querySelectorAll('a-entity[animation__1], a-entity[animation__2]');
+    const animatedElements = document.querySelectorAll('a-entity[automation-element]');
     animatedElements.forEach(animatedElem => {
-      const elemComponents = animatedElem.components;
-      // hook to toggle animations that bypass play/pause events that are called by the inspector
-      if (elemComponents['animation__1']) {
-        elemComponents['animation__1'].initialized = globalAnimated;
-      };
-      if (elemComponents['animation__2']) {
-        elemComponents['animation__2'].initialized = globalAnimated;       
-      }
+      animatedElem.setAttribute('automation-element', `enabled: ${globalAnimated}`);
     });
-
-    // toggle animations for elements with animation-mixer component
-    const animationMixerElements = document.querySelectorAll('a-entity[animation-mixer]');
-    animationMixerElements.forEach(animatedElem => {  
-      if (globalAnimated) {
-        // use solution for play/pause animation-mixer from donmccurdy
-        animatedElem.setAttribute('animation-mixer', {timeScale: 1});
-      } else {
-        // pause animation-mixer
-        animatedElem.setAttribute('animation-mixer', {timeScale: 0});
-      }
-    });
-
-    // toggle wheel animation for all elements with wheel component
-    const wheelElements = document.querySelectorAll('a-entity[wheel]');
-    wheelElements.forEach(wheelElem => {
-      wheelElem.components['wheel'].data.isActive = globalAnimated;
-    });    
   },
   update: function (oldData) { // fired once at start and at each subsequent change of a schema value
     const data = this.data;
