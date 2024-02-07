@@ -1,7 +1,7 @@
 /* global AFRAME */
 
 /*
-The animation-element component controls all animation of the elements
+The automation-element component controls all animation of the element
 */
 AFRAME.registerComponent('automation-element', {
   schema: {
@@ -56,14 +56,33 @@ AFRAME.registerComponent('automation-element', {
       to: halfStreet,
       dur: totalStreetDuration,
       startEvents: 'animationcomplete__1'
-      //startEvents: 'startAnim2'
     };    
     el.setAttribute('animation__1', animationAttrs_1);
     el.setAttribute('animation__2', animationAttrs_2);
   },
   animationCompleteEvent: function (evt) {
     const elem = evt.target;
-    //this.el.parentEl.emit('addInBuffer', {uuid: elem.uuid});
+  },
+  toggleAnimation: function (enabled) {
+    const el = this.el;
+    const elemComponents = el.components;
+    if (elemComponents['animation__1']) {
+      // toggle animations that bypass play/pause events that are called by the aframe-inspector
+      elemComponents['animation__1'].initialized = enabled;
+    };
+    if (elemComponents['animation__2']) {
+      elemComponents['animation__2'].initialized = enabled;
+    }
+    if (enabled) {
+      // enable animation-mixer
+      if (this.data.mixer) el.setAttribute('animation-mixer', {timeScale: 1});
+    } else {
+      // disable animation-mixer
+      if (this.data.mixer) el.setAttribute('animation-mixer', {timeScale: 0});
+    }
+    if (elemComponents['wheel']) {
+      elemComponents['wheel'].data.isActive = enabled;
+    }
   },
   update: function (oldData) {
     // If `oldData` is empty, then this means we're in the initialization process.
@@ -71,8 +90,15 @@ AFRAME.registerComponent('automation-element', {
     if (Object.keys(oldData).length === 0) { return; }
 
     const changedData = AFRAME.utils.diff(this.data, oldData);
+    const changedKeysNumber = Object.keys(changedData).length;
+    
+    if (changedData.hasOwnProperty('enabled')) {
+      this.toggleAnimation(changedData.enabled);
+      // if only 'enabled' data changed
+      if (changedKeysNumber == 1) return;
+    } 
 
-    if (Object.keys(changedData).length > 0) {
+    if (changedKeysNumber > 0) {
       this.addLinearAnimation();
     }
   }
