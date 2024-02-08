@@ -532,7 +532,14 @@ function createMicroMobilityElement (variantList, segmentType, posY = 0, length,
     if (animated) {
       reusableObjectEl.setAttribute('animation-mixer', '');
       const speed = 5;
-      addLinearStreetAnimation(reusableObjectEl, speed, length, 0, posY, randPosZ, variantList[0]);
+      reusableObjectEl.setAttribute('automation-element', {
+        zPos: randPosZ, 
+        direction: variantList[0], 
+        speed: speed, 
+        streetLength: length,
+        mixer: true
+      });
+
     }
     if (segmentType === 'bike-lane') {
       mixinId = cyclistMixins[getRandomIntInclusive(0, countCyclist)];
