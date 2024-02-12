@@ -1,5 +1,4 @@
 /* global AFRAME */
-
 /*
 The automation-element component controls all animation of the element
 */
@@ -15,6 +14,32 @@ AFRAME.registerComponent('automation-element', {
   init: function () {
     const el = this.el;
     this.addLinearAnimation();
+    // save position after pause animation (switch to Editor mode)
+    let animPausePos = new THREE.Vector3;
+    // flag to skip initial animation play
+    let firstPlayFlag = true;
+
+    el.addEventListener('play', (evt) => {
+      if (!firstPlayFlag && !el.object3D.position.equals(animPausePos)) {
+        // the object's position has been changed in the Editor. Update animation
+        this.addLinearAnimation();
+      }
+      firstPlayFlag = false;
+    });
+    el.addEventListener('pause', () => {
+      // save position while animation pause (switch to the Editor mode)
+      const pos = el.object3D.position;
+      animPausePos.copy(pos);
+    });
+    el.addEventListener('animationcomplete', () => {
+      // move the object to the beginning of the path
+      let pos = el.object3D.position;
+      pos.z = -pos.z;
+      el.setAttribute('position', pos);
+      el.removeAttribute('animation');
+      // change animtaion settings
+      this.addLinearAnimation();
+    });
   },
   addLinearAnimation: function () {
     const el = this.el;
@@ -22,6 +47,7 @@ AFRAME.registerComponent('automation-element', {
     const speed = this.data.speed;
     const direction = this.data.direction;
     const zPos = el.object3D.position.z;
+    //const zPos = this.data.zPos;
 
     const totalStreetDuration = (streetLength / speed) * 1000; // time in milliseconds
 
@@ -45,41 +71,19 @@ AFRAME.registerComponent('automation-element', {
       to: halfStreet,
       dur: startingDuration
     }; 
-    // Animation parameters for the next animation cycle. 
-    // They can be changed when changing position of the object in the editor
-    const animationAttrs_2 = {
-      property: 'object3D.position.z',
-      autoplay: false,
-      easing: 'linear',
-      loop: 'true',
-      from: -halfStreet,
-      to: halfStreet,
-      dur: totalStreetDuration,
-      startEvents: 'animationcomplete__1'
-    };    
-    el.setAttribute('animation__1', animationAttrs_1);
-    el.setAttribute('animation__2', animationAttrs_2);
-  },
-  animationCompleteEvent: function (evt) {
-    const elem = evt.target;
+ 
+    el.setAttribute('animation', animationAttrs_1);    
   },
   toggleAnimation: function (enabled) {
     const el = this.el;
     const elemComponents = el.components;
-    if (elemComponents['animation__1']) {
+    if (elemComponents['animation']) {
       // toggle animations that bypass play/pause events that are called by the aframe-inspector
-      elemComponents['animation__1'].initialized = enabled;
+      elemComponents['animation'].initialized = enabled;
     };
-    if (elemComponents['animation__2']) {
-      elemComponents['animation__2'].initialized = enabled;
-    }
-    if (enabled) {
-      // enable animation-mixer
-      if (this.data.mixer) el.setAttribute('animation-mixer', {timeScale: 1});
-    } else {
-      // disable animation-mixer
-      if (this.data.mixer) el.setAttribute('animation-mixer', {timeScale: 0});
-    }
+
+    if (this.data.mixer) el.setAttribute('animation-mixer', {timeScale: 1 * enabled});
+    
     if (elemComponents['wheel']) {
       elemComponents['wheel'].data.isActive = enabled;
     }
