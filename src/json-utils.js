@@ -211,7 +211,7 @@ function filterJSONstreet (removeProps, renameProps, streetJSON) {
       }
     }
 
-    return compAttributes ?? value;
+    return compAttributes || value;
   });
   // rename components
   for (var renameKey in renameProps) {
