@@ -13,10 +13,13 @@ AFRAME.registerComponent('svg-extruder', {
 
     el.addEventListener('materialtextureloaded', () => {
       // fix texture properties to correctly show texture for extruded mesh
-      const texture = el.getObject3D('mesh').material.map;        
-      texture.wraps = texture.wrapt = THREE.repeatwrapping;
-      texture.repeat.set( 1 / 100, 1 / 100 );
-      texture.offset.set( 0.1, 0.5 );
+      const extrudedMesh = el.getObject3D('mesh');
+      if (extrudedMesh && extrudedMesh.material) {
+        const texture = extrudedMesh.material.map;        
+        texture.wraps = texture.wrapt = THREE.repeatwrapping;
+        texture.repeat.set( 1 / 100, 1 / 100 );
+        texture.offset.set( 0.1, 0.5 );
+      }
     });
 
     if (svgString) {
