@@ -9,54 +9,86 @@ AFRAME.registerComponent('svg-extruder', {
   init: function () {
     const el = this.el;
     const svgString = this.data.svgString;
+    this.loader = new SVGLoader();
+
+    el.addEventListener('materialtextureloaded', () => {
+      // fix texture properties to correctly show texture for extruded mesh
+      const texture = el.getObject3D('mesh').material.map;        
+      texture.wraps = texture.wrapt = THREE.repeatwrapping;
+      texture.repeat.set( 1 / 100, 1 / 100 );
+      texture.offset.set( 0.1, 0.5 );
+    });
 
     if (svgString) {
       this.extrudeFromSVG(svgString);
+      el.setAttribute('material', 'src:#grass-texture;repeat:5 5;roughness:1'); 
+      el.setAttribute('scale', '0.05 0.05 0.05');
+      el.setAttribute('shadow', 'cast: true; receive: true');
     }
   },
   extrudeFromSVG: function (svgString) {
     const depth = this.data.depth;
     const el = this.el;
-    const loader = new SVGLoader();
-    const svgData = loader.parse(svgString);
-    const svgGroup = new THREE.Group();
-    const updateMap = [];
-    const fillMaterial = new THREE.MeshBasicMaterial({ color: "#F3FBFB" });
+    const svgData = this.loader.parse(svgString);
+    const fillMaterial = new THREE.MeshStandardMaterial({ color: "#F3FBFB" });
     const stokeMaterial = new THREE.LineBasicMaterial({
       color: "#00A5E6",
     });
 
-    svgGroup.scale.y *= -1;
+    const extrudeSettings = {
+      depth: depth,
+      bevelEnabled: false
+    };
+
+    //svgGroup.scale.y *= -1;
+    let shapeIndex = 0;
+
+    const shapeGeometryArray = [];
+
     svgData.paths.forEach((path) => {
       const shapes = SVGLoader.createShapes(path);
 
       shapes.forEach((shape) => {
-        const meshGeometry = new THREE.ExtrudeGeometry(shape, {
-          depth: depth,
-          bevelEnabled: false,
-        });
-        const linesGeometry = new THREE.EdgesGeometry(meshGeometry);
-        const mesh = new THREE.Mesh(meshGeometry, fillMaterial);
-        const lines = new THREE.LineSegments(linesGeometry, stokeMaterial);
+        const geometry = new THREE.ExtrudeGeometry(shape, extrudeSettings);
+        shapeGeometryArray.push(geometry);
 
-        updateMap.push({ shape, mesh, lines });
-        svgGroup.add(mesh, lines);
+        const linesGeometry = new THREE.EdgesGeometry(geometry);
+        const lines = new THREE.LineSegments(linesGeometry, stokeMaterial);
+        
+        el.setObject3D('lines' + shapeIndex, lines);
+        lines.name = 'lines' + shapeIndex;
+        shapeIndex += 1;
       });
     });
 
-    const box = new THREE.Box3().setFromObject(svgGroup);
+    // Merge array of extruded geometries into the mergedGeometry
+    const mergedGeometry = 
+      THREE.BufferGeometryUtils.mergeBufferGeometries(shapeGeometryArray);
+
+    mergedGeometry.computeVertexNormals();
+
+    // Finally, create a mesh with the merged geometry
+    const mergedMesh = new THREE.Mesh(mergedGeometry, fillMaterial);
+
+    // remove existing mesh from entity
+    el.removeObject3D('mesh');
+    
+    el.setObject3D('mesh', mergedMesh);
+
+    const box = new THREE.Box3().setFromObject(mergedMesh);
     const size = box.getSize(new THREE.Vector3());
-    const yOffset = size.y / -2;
+
+    const zOffset = size.y / -2;
     const xOffset = size.x / -2;
 
-    // Offset all of group's elements, to center them
-    svgGroup.children.forEach((item) => {
+    // Offset all of extruded elements, to center them
+    el.object3D.children.forEach((item) => {
       item.position.x = xOffset;
-      item.position.y = yOffset;
+      item.position.y = zOffset;
     });
-    svgGroup.rotateX(-Math.PI / 2);
 
-    el.setObject3D('mesh', svgGroup);
+    el.object3D.rotateX(Math.PI / 2);
+
   },
   update: function (oldData) {
     // If `oldData` is empty, then this means we're in the initialization process.
