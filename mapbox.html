@@ -98,16 +98,16 @@
           streetmix-loader="streetmixStreetURL: https://streetmix.net/scott/31/south-van-ness-idea-short-term; showBuildings: false;"
         ></a-entity>
 
-        <a-entity id="environment" data-layer-name="Environment" street-environment="preset: day;"></a-entity>
-  
-        <a-entity id="cameraRig" position="0 10 30" data-layer-name="Viewer" cursor-teleport="cameraRig: #cameraRig; cameraHead: #camera;" look-controls="reverseMouseDrag: true" wasd-controls="enabled: true">
-          <a-entity id="camera" camera="far: 1000" position="0 1.6 0" ></a-entity>
-          <a-entity id="leftHand" hand-controls="hand: left;" blink-controls="cameraRig: #cameraRig; teleportOrigin: #camera; rotateOnTeleport:false;"></a-entity>
-          <a-entity id="rightHand"  hand-controls="hand: right" blink-controls="cameraRig: #cameraRig; teleportOrigin: #camera; rotateOnTeleport:false;"></a-entity>
-          <a-entity id="screenshot" class="no-pause" screentock visible="false"></a-entity>
-        </a-entity>
-
       </a-entity>
+
+      <a-entity id="cameraRig" position="0 10 30" data-layer-name="Viewer" cursor-teleport="cameraRig: #cameraRig; cameraHead: #camera;" look-controls="reverseMouseDrag: true" wasd-controls="enabled: true">
+        <a-entity id="camera" camera="far: 1000" position="0 1.6 0" ></a-entity>
+        <a-entity id="leftHand" hand-controls="hand: left;" blink-controls="cameraRig: #cameraRig; teleportOrigin: #camera; rotateOnTeleport:false;"></a-entity>
+        <a-entity id="rightHand"  hand-controls="hand: right" blink-controls="cameraRig: #cameraRig; teleportOrigin: #camera; rotateOnTeleport:false;"></a-entity>
+        <a-entity id="screenshot" class="no-pause" screentock visible="false"></a-entity>
+      </a-entity>
+
+      <a-entity id="environment" data-layer-name="Environment" street-environment="preset: day;"></a-entity>
 
       <a-entity id="reference-layers" data-layer-name="Reference Layers" data-layer-show-children>
         <a-entity
@@ -126,39 +126,14 @@
     </a-scene>
   </body>
   <script>
-    // only show VR button if headset connected
-    AFRAME.registerComponent('vr-mode-ui-if-headset', {
-      dependencies: ['vr-mode-ui'],
-      init: function () {
-        if (!AFRAME.utils.device.checkHeadsetConnected()) {
-          this.el.setAttribute('vr-mode-ui', 'enabled', false);
-        }
-      }
-    })
+    document.getElementById('inputfile')
+            .addEventListener('change', fileJSON);
 
-    AFRAME.registerComponent('set-loader-from-hash', {
-      dependencies: ['streetmix-loader'],
-      schema: {
-        defaultURL: { type: 'string' }
-      },
-      init: function () {
-        // get hash from window
-        const streetURL = window.location.hash.substring(1);
-        if (streetURL !== undefined && streetURL.length > 0) {
-          console.log('[set-loader-from-hash]','Using URL from hash', streetURL)
-          this.el.setAttribute('streetmix-loader', 'streetmixStreetURL', streetURL);
-        }
-        // else {
-        //   console.log('[set-loader-from-hash]','Using default URL', this.data.defaultURL)
-        //   this.el.setAttribute('streetmix-loader', 'streetmixStreetURL', this.data.defaultURL);
-        // }
-      }
-    });
-
-    function screenshot() {
-      AFRAME.scenes[0].setAttribute('screenshot','width',AFRAME.scenes[0].canvas.width)
-      AFRAME.scenes[0].setAttribute('screenshot','height',AFRAME.scenes[0].canvas.height)
-      document.querySelector('a-scene').components.screenshot.capture('perspective');
+    function buttonScreenshotTock() {
+      const screenshotEl = document.getElementById('screenshot');
+      screenshotEl.play(); // double check playing in case we're in editor mode
+      screenshotEl.setAttribute('screentock', 'type', 'jpg');
+      screenshotEl.setAttribute('screentock', 'takeScreenshot', true);
     }
 
     function startEditor() {
@@ -166,63 +141,15 @@
       sceneEl.components.inspector.openInspector();
       document.querySelector('.viewer-header-wrapper').style.display = 'none';
     }
-
+    
     AFRAME.registerComponent('timed-inspector', {
       init: function() {
         setTimeout( function () {
           window.postMessage('INJECT_AFRAME_INSPECTOR')
         }, this.data * 1000)
       }
-    });    
-
-    function inputStreetmix() {
-      streetmixURL = prompt("Please enter a Streetmix URL", "https://streetmix.net/kfarr/3/example-street");
-      setTimeout(function() { window.location.hash = streetmixURL; });
-      streetContainerEl = document.getElementById('street-container');
-      while (streetContainerEl.firstChild) {
-        streetContainerEl.removeChild(streetContainerEl.lastChild);
-      }
-      streetContainerEl.innerHTML = '<a-entity street streetmix-loader="streetmixStreetURL: '+streetmixURL+'""></a-entity>';
-    }
-
-    // JSON loading starts here
-    function getValidJSON(stringJSON) {
-      // Preserve newlines, etc. - use valid JSON
-      // Remove non-printable and other non-valid JSON characters
-      return stringJSON.replace(/\'/g, "")
-                       .replace(/\n/g, "")
-                       .replace(/[\u0000-\u0019]+/g,"");
-    }
-    
-    function createElementsFromJSON(streetJSONString) {
-      const validJSONString = getValidJSON(streetJSONString);
-      streetContainerEl = document.getElementById('street-container');
-      while (streetContainerEl.firstChild) {
-        streetContainerEl.removeChild(streetContainerEl.lastChild);
-      }
-      var streetObject = JSON.parse(validJSONString);
-      createEntities(streetObject.data, streetContainerEl);
-    }
-
-    function inputJSON() {
-      const stringJSON = prompt("Please paste 3DStreet JSON string");
-      if (stringJSON) {
-        createElementsFromJSON(stringJSON);
-      }      
-    }
-
-    function fileJSON() {
-      let reader=new FileReader();
-      reader.onload=function(){
-        createElementsFromJSON(reader.result);
-      }
-      reader.readAsText(this.files[0]);
-    }
-
-    document.getElementById('inputfile')
-            .addEventListener('change', fileJSON);
+    });  
   </script>
-  <!-- <script src="./dist/3dstreet-editor.js"></script> -->
 
   <!-- Google Analytics - Global site tag (gtag.js) -->
   <script async src="https://www.googletagmanager.com/gtag/js?id=G-T65XPDLZ3F"></script>

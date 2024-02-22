@@ -184,10 +184,11 @@ function filterJSONstreet (removeProps, renameProps, streetJSON) {
   }
 
   let stringJSON = JSON.stringify(streetJSON, function replacer (key, value) {
-    const compAttributes = AFRAME.utils.styleParser.parse(value);
+    let compAttributes;
     for (var removeKey in removeProps) {
       // check for removing components
       if (key === removeKey) {
+        compAttributes = AFRAME.utils.styleParser.parse(value);
         const removeVal = removeProps[removeKey];
         // check for deleting component's attribute
         if (typeof removeVal === 'object' && !isEmpty(removeVal)) {
@@ -210,7 +211,7 @@ function filterJSONstreet (removeProps, renameProps, streetJSON) {
       }
     }
 
-    return compAttributes;
+    return compAttributes || value;
   });
   // rename components
   for (var renameKey in renameProps) {
