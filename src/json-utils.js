@@ -2,6 +2,7 @@
 /* version: 1.0 */
 
 var STREET = {};
+var assetsUrl;
 STREET.utils = {};
 
 function getSceneUuidFromURLHash () {
@@ -42,6 +43,9 @@ function convertDOMElToObject (entity) {
   const environmentElement = document.querySelector('#environment');
   const referenceEntities = document.querySelector('#reference-layers');
   const sceneEntities = [entity, environmentElement, referenceEntities];
+
+  // get assets url address
+  assetsUrl = document.querySelector('street-assets').getAttribute('url');
 
   for (const entry of sceneEntities) {
     const entityData = getElementData(entry);
@@ -137,8 +141,12 @@ function toPropString (propData) {
     return Object.entries(propData)
       .map(([key, value]) => {
         if (key == 'src') {
-          if (value.id) {
+          if (value.id && value.src.includes(assetsUrl)) {
+            // asset came from 3dstreet
             return `${key}: #${value.id}`;
+          } else if (value.src && !value.src.includes(assetsUrl)) {
+            // asset came from external sources
+            return `${key}: ${value.src}`;
           } else {
             return `${key}: ${value}`;
           }
