@@ -15,16 +15,16 @@ AFRAME.registerComponent('svg-extruder', {
       // fix texture properties to correctly show texture for extruded mesh
       const extrudedMesh = el.getObject3D('mesh');
       if (extrudedMesh && extrudedMesh.material) {
-        const texture = extrudedMesh.material.map;        
+        const texture = extrudedMesh.material.map;
         texture.wraps = texture.wrapt = THREE.repeatwrapping;
-        texture.repeat.set( 1 / 100, 1 / 100 );
-        texture.offset.set( 0.1, 0.5 );
+        texture.repeat.set(1 / 100, 1 / 100);
+        texture.offset.set(0.1, 0.5);
       }
     });
 
     if (svgString) {
       this.extrudeFromSVG(svgString);
-      el.setAttribute('material', 'src:#grass-texture;repeat:5 5;roughness:1'); 
+      el.setAttribute('material', 'src:#grass-texture;repeat:5 5;roughness:1');
       el.setAttribute('scale', '0.05 0.05 0.05');
       el.setAttribute('shadow', 'cast: true; receive: true');
     }
@@ -33,9 +33,9 @@ AFRAME.registerComponent('svg-extruder', {
     const depth = this.data.depth;
     const el = this.el;
     const svgData = this.loader.parse(svgString);
-    const fillMaterial = new THREE.MeshStandardMaterial({ color: "#F3FBFB" });
+    const fillMaterial = new THREE.MeshStandardMaterial({ color: '#F3FBFB' });
     const stokeMaterial = new THREE.LineBasicMaterial({
-      color: "#00A5E6",
+      color: '#00A5E6'
     });
 
     const extrudeSettings = {
@@ -43,7 +43,7 @@ AFRAME.registerComponent('svg-extruder', {
       bevelEnabled: false
     };
 
-    //svgGroup.scale.y *= -1;
+    // svgGroup.scale.y *= -1;
     let shapeIndex = 0;
 
     const shapeGeometryArray = [];
@@ -57,7 +57,7 @@ AFRAME.registerComponent('svg-extruder', {
 
         const linesGeometry = new THREE.EdgesGeometry(geometry);
         const lines = new THREE.LineSegments(linesGeometry, stokeMaterial);
-        
+
         el.setObject3D('lines' + shapeIndex, lines);
         lines.name = 'lines' + shapeIndex;
         shapeIndex += 1;
@@ -65,7 +65,7 @@ AFRAME.registerComponent('svg-extruder', {
     });
 
     // Merge array of extruded geometries into the mergedGeometry
-    const mergedGeometry = 
+    const mergedGeometry =
       THREE.BufferGeometryUtils.mergeBufferGeometries(shapeGeometryArray);
 
     mergedGeometry.computeVertexNormals();
@@ -75,7 +75,7 @@ AFRAME.registerComponent('svg-extruder', {
 
     // remove existing mesh from entity
     el.removeObject3D('mesh');
-    
+
     el.setObject3D('mesh', mergedMesh);
 
     const box = new THREE.Box3().setFromObject(mergedMesh);
@@ -91,7 +91,6 @@ AFRAME.registerComponent('svg-extruder', {
     });
 
     el.object3D.rotateX(Math.PI / 2);
-
   },
   update: function (oldData) {
     // If `oldData` is empty, then this means we're in the initialization process.
@@ -99,7 +98,7 @@ AFRAME.registerComponent('svg-extruder', {
     if (Object.keys(oldData).length === 0) { return; }
 
     const svgString = this.data.svgString;
-    
+
     if (svgString) {
       this.extrudeFromSVG(svgString);
     }
