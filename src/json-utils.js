@@ -1,7 +1,7 @@
 /* global AFRAME, Node */
 /* version: 1.0 */
 
-var STREET = {};
+window.STREET = {};
 var assetsUrl;
 STREET.utils = {};
 
@@ -59,6 +59,8 @@ function convertDOMElToObject (entity) {
     data: data
   };
 }
+
+STREET.utils.convertDOMElToObject = convertDOMElToObject;
 
 function getElementData (entity) {
   if (!entity.isEntity) {
@@ -183,7 +185,7 @@ const renameProps = {
   intersection: 'not-intersection'
 };
 
-function filterJSONstreet (removeProps, renameProps, streetJSON) {
+function filterJSONstreet (streetJSON) {
   function removeValueCheck (removeVal, value) {
     if (AFRAME.utils.deepEqual(removeVal, value) || removeVal === '*') {
       return true;
@@ -228,6 +230,8 @@ function filterJSONstreet (removeProps, renameProps, streetJSON) {
   }
   return stringJSON;
 }
+
+STREET.utils.filterJSONstreet = filterJSONstreet;
 
 /**
  * function from 3dstreet-editor/src/lib/entity.js
@@ -374,6 +378,8 @@ function createEntities (entitiesData, parentEl) {
     createEntityFromObj(entityData, sceneElement);
   }
 }
+
+STREET.utils.createEntities = createEntities;
 
 /*
 Add a new entity with a list of components and children (if exists)
@@ -559,7 +565,7 @@ AFRAME.registerComponent('set-loader-from-hash', {
           '[set-loader-from-hash]',
           '200 response received and JSON parsed, now createElementsFromJSON'
         );
-        createElementsFromJSON(jsonData);
+        STREET.utils.createElementsFromJSON(jsonData);
         const sceneId = getUUIDFromPath(requestURL);
         if (sceneId) {
           console.log('sceneId from fetchJSON from url hash loader', sceneId);
@@ -617,6 +623,8 @@ function inputStreetmix () {
     '""></a-entity>';
 }
 
+STREET.utils.inputStreetmix = inputStreetmix;
+
 // JSON loading starts here
 function getValidJSON (stringJSON) {
   // Preserve newlines, etc. - use valid JSON
@@ -651,6 +659,8 @@ function createElementsFromJSON (streetJSON) {
   STREET.notify.successMessage('Scene loaded from JSON');
 }
 
+STREET.utils.createElementsFromJSON = createElementsFromJSON;
+
 // viewer widget click to paste json string of 3dstreet scene
 function inputJSON () {
   const stringJSON = prompt('Please paste 3DStreet JSON string');
@@ -669,3 +679,6 @@ function fileJSON () {
   };
   reader.readAsText(this.files[0]);
 }
+
+// temporarily place the UI function in utils, which is used in index.html.
+STREET.utils.fileJSON = fileJSON;

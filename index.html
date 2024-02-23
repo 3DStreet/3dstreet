@@ -10,9 +10,6 @@
     <!-- mapbox -->
     <script src="./src/lib/aframe-mapbox-component.min.js"></script>
 
-    <!-- save / load -->
-    <script src="./src/json-utils.js"></script>
-
     <!-- vr teleport controls -->
     <script src="https://cdn.jsdelivr.net/npm/aframe-blink-controls@0.4.3/dist/aframe-blink-controls.min.js"></script>
 
@@ -68,7 +65,7 @@
     <div class="right-fixed">
       <ul class="right-menu">
         <li onclick="buttonScreenshotTock()"> <a class="camera"  href="#"> <span> Capture image as PNG </span> <img src="ui_assets/camera-icon.svg"> </a></li>
-        <li onclick="inputStreetmix()"> <a class="load"  href="#"> <span> Load Streetmix URL </span> <img src="ui_assets/streetmix-logo.svg"> </a></li>
+        <li onclick="STREET.utils.inputStreetmix()"> <a class="load"  href="#"> <span> Load Streetmix URL </span> <img src="ui_assets/streetmix-logo.svg"> </a></li>
         <!-- <li onclick="inputJSON()"> <a class="load"  href="#"> <span> Load JSON String </span> <img src="assets/ui_assets/upload-icon.svg"> </a></li> -->
         <li><a class="load"> <label for="inputfile" style="display: inherit; align-items: center; cursor: pointer"> <input type="file" id="inputfile" style="display:none" accept=".js, .json, .txt"> <span> Load JSON File </span> <img src="ui_assets/upload-icon.svg"></label></a></li>
       </ul>
@@ -123,7 +120,7 @@
   <script>
 
     document.getElementById('inputfile')
-            .addEventListener('change', fileJSON);
+            .addEventListener('change', STREET.utils.fileJSON);
 
     function buttonScreenshotTock() {
       const screenshotEl = document.getElementById('screenshot');
