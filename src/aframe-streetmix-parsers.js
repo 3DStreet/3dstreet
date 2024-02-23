@@ -287,12 +287,12 @@ function createChooChooElement (variantList, objectMixinId, length, showVehicles
   }
   const rotationY = (variantList[0] === 'inbound') ? 0 : 180;
   const placedObjectEl = document.createElement('a-entity');
-  placedObjectEl.setAttribute('class', objectMixinId);
+  const tramLength = 23;
   placedObjectEl.setAttribute('rotation', '0 ' + rotationY + ' 0');
   placedObjectEl.setAttribute('mixin', objectMixinId);
-  placedObjectEl.addEventListener('model-loaded', (model) => {
-    randomPosition(model.target, 'z', length);
-  }, { once: true });
+  placedObjectEl.setAttribute('class', objectMixinId);
+  const positionZ = randomPosition(placedObjectEl, 'z', length, tramLength);
+  placedObjectEl.setAttribute('position', '0 0 ' + positionZ);
   return placedObjectEl;
 }
 
@@ -471,12 +471,13 @@ function createFoodTruckElement (variantList, length) {
   const foodTruckParentEl = document.createElement('a-entity');
 
   const reusableObjectEl = document.createElement('a-entity');
+  const foodTruckLength = 7;
   const rotationY = (variantList[0] === 'left') ? 0 : 180;
   reusableObjectEl.setAttribute('rotation', '0 ' + rotationY + ' 0');
   reusableObjectEl.setAttribute('mixin', 'food-trailer-rig');
-  reusableObjectEl.addEventListener('model-loaded', (model) => {
-    randomPosition(model.target, 'z', length);
-  }, { once: true });
+
+  const positionZ = randomPosition(reusableObjectEl, 'z', length, foodTruckLength);
+  reusableObjectEl.setAttribute('positon', '0 0 ' + positionZ);
   foodTruckParentEl.append(reusableObjectEl);
 
   return foodTruckParentEl;
@@ -863,7 +864,7 @@ function processSegments (segments, showStriping, length, globalAnimated, showVe
       // add the safehits to the segment parent
       segmentParentEl.append(safehitsParentEl);
       repeatCount[0] = 1;
-      repeatCount[1] = parseInt(length);
+      repeatCount[1] = parseInt(length) / 4;
     } else if (segments[i].type === 'divider' && variantList[0] === 'flowers') {
       groundMixinId = 'grass';
       segmentParentEl.append(createDividerVariant('flowers', clonedObjectRadius, 2.25));
@@ -890,7 +891,11 @@ function processSegments (segments, showStriping, length, globalAnimated, showVe
       groundMixinId = 'divider';
       segmentParentEl.append(createDividerVariant('dome', clonedObjectRadius, 2.25));
       repeatCount[0] = 1;
-      repeatCount[1] = parseInt(length);
+      repeatCount[1] = parseInt(length) / 4;
+    } else if (segments[i].type === 'divider') {
+      groundMixinId = 'divider';
+      repeatCount[0] = 1;
+      repeatCount[1] = parseInt(length) / 4;
     } else if (segments[i].type === 'temporary' && variantList[0] === 'barricade') {
       groundMixinId = 'drive-lane';
       segmentParentEl.append(createClonedVariants('temporary-barricade', clonedObjectRadius, 2.25));

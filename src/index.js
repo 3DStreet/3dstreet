@@ -36,6 +36,18 @@ AFRAME.registerComponent('street', {
     }
 
     const streetmixSegments = JSON.parse(data.JSON);
+
+    // remove .street-parent and .buildings-parent elements, if they exists, with old scene elements.
+    // Because they will be created next in the processSegments and processBuildings functions
+    const streetParent = this.el.querySelector('.street-parent');
+    if (streetParent) {
+      streetParent.remove();
+    }
+    const buildingParent = this.el.querySelector('.buildings-parent');
+    if (buildingParent) {
+      buildingParent.remove();
+    }
+
     const streetEl = streetmixParsers.processSegments(streetmixSegments.streetmixSegmentsFeet, data.showStriping, data.length, data.globalAnimated, data.showVehicles);
     this.el.append(streetEl);
 
