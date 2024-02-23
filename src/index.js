@@ -6,6 +6,7 @@ var streetmixUtils = require('./tested/streetmix-utils');
 require('./json-utils.js');
 require('./components/gltf-part');
 require('./components/ocean');
+require('./components/svg-extruder.js');
 require('./lib/aframe-cursor-teleport-component.min.js');
 require('./lib/animation-mixer.js');
 require('./assets.js');
