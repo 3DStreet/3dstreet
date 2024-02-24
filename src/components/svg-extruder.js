@@ -14,6 +14,8 @@ AFRAME.registerComponent('svg-extruder', {
     this.stokeMaterial = new THREE.LineBasicMaterial({
       color: '#00A5E6'
     });
+    // fix texture scale for extruded geometry
+    el.setAttribute('material', 'repeat: 0.01 0.01');
     // set scale for extruded svg
     el.setAttribute('scale', '0.05 0.05 0.05');
     el.setAttribute('shadow', 'cast: true; receive: true');
@@ -90,7 +92,7 @@ AFRAME.registerComponent('svg-extruder', {
       this.extrudeFromSVG(svgString);
       if (!el.getAttribute('material')) {
         // applies the default mixin material grass. If the element's material is not set via setAttribute
-        el.setAttribute('material', 'src:#grass-texture;repeat:0.01 0.01;roughness:1');
+        el.setAttribute('material', 'src:#grass-texture;roughness:1');
       }
     }
   }
