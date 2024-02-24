@@ -17,7 +17,6 @@ AFRAME.registerComponent('svg-extruder', {
     // fix texture scale for extruded geometry
     el.setAttribute('material', 'repeat: 0.01 0.01');
     // set scale for extruded svg
-    el.setAttribute('scale', '0.05 0.05 0.05');
     el.setAttribute('shadow', 'cast: true; receive: true');
   },
   extrudeFromSVG: function (svgString) {
@@ -90,6 +89,9 @@ AFRAME.registerComponent('svg-extruder', {
 
     if (svgString) {
       this.extrudeFromSVG(svgString);
+      if (!el.getAttribute('scale')) {
+        el.setAttribute('scale', '0.05 0.05 0.05');
+      }
       if (!el.getAttribute('material')) {
         // applies the default mixin material grass. If the element's material is not set via setAttribute
         el.setAttribute('material', 'src:#grass-texture;roughness:1');
