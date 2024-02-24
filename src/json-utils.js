@@ -143,12 +143,13 @@ function toPropString (propData) {
     return Object.entries(propData)
       .map(([key, value]) => {
         if (key == 'src') {
-          if (value.id && value.src.includes(assetsUrl)) {
-            // asset came from 3dstreet
-            return `${key}: #${value.id}`;
-          } else if (value.src && !value.src.includes(assetsUrl)) {
-            // asset came from external sources
+          // checking to ensure the object's src value is correctly stored
+          if (value.src && !value.src.includes(assetsUrl)) {
+            // asset came from external sources. So need to save it src value if it has
             return `${key}: ${value.src}`;
+          } else if (value.id) {
+            // asset came from 3dstreet. So it has id for link to it
+            return `${key}: #${value.id}`;
           } else {
             return `${key}: ${value}`;
           }
