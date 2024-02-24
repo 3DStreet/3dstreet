@@ -1,7 +1,7 @@
 /* global AFRAME, customElements */
 
 function buildAssetHTML (assetUrl, categories) {
-  if (!assetUrl) assetUrl = 'https://assets.3dstreet.app/';
+  // if (!assetUrl) assetUrl = 'https://assets.3dstreet.app/';
   console.log('[street]', 'Using street assets from', assetUrl);
   const surfacesRoughness = 0.8;
   var assetsObj = {
@@ -295,7 +295,12 @@ class StreetAssets extends AFRAME.ANode {
     const self = this;
     var categories = this.getAttribute('categories');
     var assetUrl = this.getAttribute('url');
+    if (!assetUrl) {
+      assetUrl = 'https://assets.3dstreet.app/';
+      this.setAttribute('url', assetUrl);
+    }
     const assetsHTML = buildAssetHTML(assetUrl, categories);
+
     this.insertAdjacentHTML('afterend', assetsHTML);
 
     AFRAME.ANode.prototype.load.call(self);

@@ -1,7 +1,8 @@
 /* global AFRAME, Node */
 /* version: 1.0 */
 
-var STREET = {};
+window.STREET = {};
+var assetsUrl;
 STREET.utils = {};
 
 function getSceneUuidFromURLHash () {
@@ -43,6 +44,9 @@ function convertDOMElToObject (entity) {
   const referenceEntities = document.querySelector('#reference-layers');
   const sceneEntities = [entity, environmentElement, referenceEntities];
 
+  // get assets url address
+  assetsUrl = document.querySelector('street-assets').getAttribute('url');
+
   for (const entry of sceneEntities) {
     const entityData = getElementData(entry);
     if (entityData) {
@@ -55,6 +59,8 @@ function convertDOMElToObject (entity) {
     data: data
   };
 }
+
+STREET.utils.convertDOMElToObject = convertDOMElToObject;
 
 function getElementData (entity) {
   if (!entity.isEntity) {
@@ -137,7 +143,12 @@ function toPropString (propData) {
     return Object.entries(propData)
       .map(([key, value]) => {
         if (key == 'src') {
-          if (value.id) {
+          // checking to ensure the object's src value is correctly stored
+          if (value.src && !value.src.includes(assetsUrl)) {
+            // asset came from external sources. So need to save it src value if it has
+            return `${key}: ${value.src}`;
+          } else if (value.id) {
+            // asset came from 3dstreet. So it has id for link to it
             return `${key}: #${value.id}`;
           } else {
             return `${key}: ${value}`;
@@ -175,7 +186,7 @@ const renameProps = {
   intersection: 'not-intersection'
 };
 
-function filterJSONstreet (removeProps, renameProps, streetJSON) {
+function filterJSONstreet (streetJSON) {
   function removeValueCheck (removeVal, value) {
     if (AFRAME.utils.deepEqual(removeVal, value) || removeVal === '*') {
       return true;
@@ -184,10 +195,11 @@ function filterJSONstreet (removeProps, renameProps, streetJSON) {
   }
 
   let stringJSON = JSON.stringify(streetJSON, function replacer (key, value) {
-    const compAttributes = AFRAME.utils.styleParser.parse(value);
+    let compAttributes;
     for (var removeKey in removeProps) {
       // check for removing components
       if (key === removeKey) {
+        compAttributes = AFRAME.utils.styleParser.parse(value);
         const removeVal = removeProps[removeKey];
         // check for deleting component's attribute
         if (typeof removeVal === 'object' && !isEmpty(removeVal)) {
@@ -210,7 +222,7 @@ function filterJSONstreet (removeProps, renameProps, streetJSON) {
       }
     }
 
-    return compAttributes;
+    return compAttributes || value;
   });
   // rename components
   for (var renameKey in renameProps) {
@@ -219,6 +231,8 @@ function filterJSONstreet (removeProps, renameProps, streetJSON) {
   }
   return stringJSON;
 }
+
+STREET.utils.filterJSONstreet = filterJSONstreet;
 
 /**
  * function from 3dstreet-editor/src/lib/entity.js
@@ -365,6 +379,8 @@ function createEntities (entitiesData, parentEl) {
     createEntityFromObj(entityData, sceneElement);
   }
 }
+
+STREET.utils.createEntities = createEntities;
 
 /*
 Add a new entity with a list of components and children (if exists)
@@ -550,7 +566,7 @@ AFRAME.registerComponent('set-loader-from-hash', {
           '[set-loader-from-hash]',
           '200 response received and JSON parsed, now createElementsFromJSON'
         );
-        createElementsFromJSON(jsonData);
+        STREET.utils.createElementsFromJSON(jsonData);
         const sceneId = getUUIDFromPath(requestURL);
         if (sceneId) {
           console.log('sceneId from fetchJSON from url hash loader', sceneId);
@@ -608,6 +624,8 @@ function inputStreetmix () {
     '""></a-entity>';
 }
 
+STREET.utils.inputStreetmix = inputStreetmix;
+
 // JSON loading starts here
 function getValidJSON (stringJSON) {
   // Preserve newlines, etc. - use valid JSON
@@ -642,6 +660,8 @@ function createElementsFromJSON (streetJSON) {
   STREET.notify.successMessage('Scene loaded from JSON');
 }
 
+STREET.utils.createElementsFromJSON = createElementsFromJSON;
+
 // viewer widget click to paste json string of 3dstreet scene
 function inputJSON () {
   const stringJSON = prompt('Please paste 3DStreet JSON string');
@@ -660,3 +680,6 @@ function fileJSON () {
   };
   reader.readAsText(this.files[0]);
 }
+
+// temporarily place the UI function in utils, which is used in index.html.
+STREET.utils.fileJSON = fileJSON;
