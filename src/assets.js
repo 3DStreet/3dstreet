@@ -187,7 +187,7 @@ function buildAssetHTML (assetUrl, categories) {
     'vehicles-transit': `
         <!-- vehicles-transit -->
         <a-asset-item id="trammodel" src="${assetUrl}sets/light-rail-vehicle/gltf-exports/draco/light-rail-vehicle-v02.glb"></a-asset-item>
-        <a-asset-item id="trolleymodel" src="${assetUrl}objects/godarvilletram.gltf"></a-asset-item>
+        <a-asset-item id="trolleymodel" src="${assetUrl}sets/sanfrancisco-cablecar/gltf-exports/draco/sanfrancisco-cablecar_v01.glb"></a-asset-item>
         <a-asset-item id="xd40" src="${assetUrl}sets/flyer-bus/gltf-exports/draco/new-flyer-bus.glb"></a-asset-item>
         <a-mixin shadow id="bus" anisotropy gltf-model="#xd40"></a-mixin>
         <a-mixin shadow id="tram" anisotropy gltf-model="#trammodel"></a-mixin>
