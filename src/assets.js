@@ -186,13 +186,10 @@ function buildAssetHTML (assetUrl, categories) {
       `,
     'vehicles-transit': `
         <!-- vehicles-transit -->
-        <a-asset-item id="trammodel" src="${assetUrl}sets/light-rail-vehicle/gltf-exports/draco/light-rail-vehicle-v02.glb"></a-asset-item>
-        <a-asset-item id="trolleymodel" src="${assetUrl}sets/sanfrancisco-cablecar/gltf-exports/draco/sanfrancisco-cablecar_v01.glb"></a-asset-item>
-        <a-asset-item id="xd40" src="${assetUrl}sets/flyer-bus/gltf-exports/draco/new-flyer-bus.glb"></a-asset-item>
-        <a-mixin shadow id="bus" anisotropy gltf-model="#xd40"></a-mixin>
-        <a-mixin shadow id="tram" anisotropy gltf-model="#trammodel"></a-mixin>
-        <a-mixin shadow id="trolley" gltf-model="#trolleymodel"></a-mixin>
-      `,
+        <a-mixin shadow id="bus" anisotropy gltf-model="url(${assetUrl}sets/flyer-bus/gltf-exports/draco/new-flyer-bus.glb)"></a-mixin>
+        <a-mixin shadow id="tram" anisotropy gltf-model="url(${assetUrl}sets/light-rail-vehicle/gltf-exports/draco/light-rail-vehicle-v02.glb)"></a-mixin>
+        <a-mixin shadow id="trolley" gltf-model="url(${assetUrl}sets/sanfrancisco-cablecar/gltf-exports/draco/sanfrancisco-cablecar_v01.glb)"></a-mixin>
+        `,
     dividers: `
         <!-- dividers -->
         <a-asset-item id="dividers" src="${assetUrl}sets/dividers/gltf-exports/draco/dividers.glb"></a-asset-item>        
