@@ -37,19 +37,18 @@ AFRAME.registerComponent('svg-extruder', {
       shapes.forEach((shape) => {
         const geometry = new THREE.ExtrudeGeometry(shape, extrudeSettings);
         shapeGeometryArray.push(geometry);
-
       });
     });
 
     // Merge array of extruded geometries into the mergedGeometry
     const mergedGeometry =
       THREE.BufferGeometryUtils.mergeBufferGeometries(shapeGeometryArray);
-    
+
     mergedGeometry.computeBoundingBox();
     mergedGeometry.computeVertexNormals();
     mergedGeometry.center();
     mergedGeometry.rotateX(Math.PI / 2);
-    mergedGeometry.scale(0.05,0.05,0.05)
+    mergedGeometry.scale(0.05, 0.05, 0.05);
 
     const linesGeometry = new THREE.EdgesGeometry(mergedGeometry);
     const lines = new THREE.LineSegments(linesGeometry, this.stokeMaterial);
@@ -62,12 +61,11 @@ AFRAME.registerComponent('svg-extruder', {
     // remove existing mesh from entity
     el.removeObject3D('mesh');
     el.setObject3D('mesh', mergedMesh);
-
   },
   update: function (oldData) {
     // If `oldData` is empty, then this means we're in the initialization process.
     // No need to update.
-    //if (Object.keys(oldData).length === 0) { return; }
+    // if (Object.keys(oldData).length === 0) { return; }
 
     const el = this.el;
     const svgString = this.data.svgString;
