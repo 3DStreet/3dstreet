@@ -1,6 +1,6 @@
 /* global AFRAME, THREE, XMLHttpRequest */
 require('babel-polyfill');
-if (typeof VERSION !== 'undefined') { console.log(`3DStreet Version: ${VERSION} (Date: ${new Date(COMMIT_DATE).toISOString().split('T')[0]}, Commit Hash: #${COMMIT_HASH})`); }
+if (typeof VERSION !== 'undefined') { console.log(`3DStreet Version: ${VERSION}`); }
 var streetmixParsers = require('./aframe-streetmix-parsers');
 var streetmixUtils = require('./tested/streetmix-utils');
 require('./json-utils_1.1.js');
