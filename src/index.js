@@ -100,7 +100,10 @@ AFRAME.registerComponent('streetmix-loader', {
       if (this.status >= 200 && this.status < 400) {
         // Connection success
         const streetmixResponseObject = JSON.parse(this.response);
-        const streetmixSegments = streetmixResponseObject.data.street.segments;
+        // convert units of measurement if necessary
+        const streetData = streetmixUtils.convertStreetValues(streetmixResponseObject.data.street);
+        const streetmixSegments = streetData.segments;
+
         const streetmixName = streetmixResponseObject.name;
         console.log('streetmixName', streetmixName);
         el.setAttribute('streetmix-loader', 'name', streetmixName);
@@ -117,8 +120,8 @@ AFRAME.registerComponent('streetmix-loader', {
         el.setAttribute('data-layer-name', 'Streetmix • ' + streetmixName);
 
         if (data.showBuildings) {
-          el.setAttribute('street', 'right', streetmixResponseObject.data.street.rightBuildingVariant);
-          el.setAttribute('street', 'left', streetmixResponseObject.data.street.leftBuildingVariant);
+          el.setAttribute('street', 'right', streetData.rightBuildingVariant);
+          el.setAttribute('street', 'left', streetData.leftBuildingVariant);
         }
         el.setAttribute('street', 'type', 'streetmixSegmentsFeet');
         // set JSON attribute last or it messes things up

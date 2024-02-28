@@ -769,8 +769,7 @@ function processSegments (segments, showStriping, length, globalAnimated, showVe
     var segmentParentEl = document.createElement('a-entity');
     segmentParentEl.classList.add('segment-parent-' + i);
 
-    var segmentWidthInFeet = segments[i].width;
-    var segmentWidthInMeters = segmentWidthInFeet * 0.3048;
+    var segmentWidthInMeters = segments[i].width;
     // console.log('Type: ' + segments[i].type + '; Width: ' + segmentWidthInFeet + 'ft / ' + segmentWidthInMeters + 'm');
 
     cumulativeWidthInMeters = cumulativeWidthInMeters + segmentWidthInMeters;
