@@ -18,7 +18,7 @@ require('aframe-atlas-uvs-component');
 AFRAME.registerComponent('street', {
   schema: {
     JSON: { type: 'string' },
-    type: { default: 'streetmixSegmentsFeet' }, // alt: sharedRowMeters, streetmixJSONResponse
+    type: { default: 'streetmixSegmentsMetric' }, // alt: sharedRowMeters, streetmixJSONResponse
     left: { default: '' },
     right: { default: '' },
     showGround: { default: true },
@@ -49,11 +49,11 @@ AFRAME.registerComponent('street', {
       buildingParent.remove();
     }
 
-    const streetEl = streetmixParsers.processSegments(streetmixSegments.streetmixSegmentsFeet, data.showStriping, data.length, data.globalAnimated, data.showVehicles);
+    const streetEl = streetmixParsers.processSegments(streetmixSegments.streetmixSegmentsMetric, data.showStriping, data.length, data.globalAnimated, data.showVehicles);
     this.el.append(streetEl);
 
     if (data.left || data.right) {
-      const streetWidth = streetmixUtils.calcStreetWidth(streetmixSegments.streetmixSegmentsFeet, data.autoStriping);
+      const streetWidth = streetmixUtils.calcStreetWidth(streetmixSegments.streetmixSegmentsMetric, data.autoStriping);
       const buildingsEl = streetmixParsers.processBuildings(data.left, data.right, streetWidth, data.showGround, data.length);
       this.el.append(buildingsEl);
     }
@@ -123,9 +123,9 @@ AFRAME.registerComponent('streetmix-loader', {
           el.setAttribute('street', 'right', streetData.rightBuildingVariant);
           el.setAttribute('street', 'left', streetData.leftBuildingVariant);
         }
-        el.setAttribute('street', 'type', 'streetmixSegmentsFeet');
+        el.setAttribute('street', 'type', 'streetmixSegmentsMetric');
         // set JSON attribute last or it messes things up
-        el.setAttribute('street', 'JSON', JSON.stringify({ streetmixSegmentsFeet: streetmixSegments }));
+        el.setAttribute('street', 'JSON', JSON.stringify({ streetmixSegmentsMetric: streetmixSegments }));
         el.emit('streetmix-loader-street-loaded');
       } else {
         // We reached our target server, but it returned an error
