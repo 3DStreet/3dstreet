@@ -48,15 +48,6 @@ function streetmixAPIToUser (APIURL) { // eslint-disable-line no-unused-vars
 }
 module.exports.streetmixAPIToUser = streetmixAPIToUser;
 
-function calcStreetWidth (segments) { // eslint-disable-line no-unused-vars
-  var cumulativeWidthInMeters = 0;
-  segments.forEach((currentSegment) => {
-    cumulativeWidthInMeters = cumulativeWidthInMeters + currentSegment.width;
-  });
-  return cumulativeWidthInMeters;
-}
-module.exports.calcStreetWidth = calcStreetWidth;
-
 // convert all feet values to meters for schemaVersion < 30
 function convertStreetValues (streetData) {
   if (streetData.schemaVersion < 30) {

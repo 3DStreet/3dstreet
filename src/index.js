@@ -53,7 +53,8 @@ AFRAME.registerComponent('street', {
     this.el.append(streetEl);
 
     if (data.left || data.right) {
-      const streetWidth = streetmixUtils.calcStreetWidth(streetmixSegments.streetmixSegmentsMetric, data.autoStriping);
+      const streetWidth = streetmixSegments.streetmixSegmentsMetric.reduce(
+        (streetWidth, segmentData) => streetWidth + segmentData.width, 0);
       const buildingsEl = streetmixParsers.processBuildings(data.left, data.right, streetWidth, data.showGround, data.length);
       this.el.append(buildingsEl);
     }

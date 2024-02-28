@@ -695,7 +695,8 @@ function createBrtStationElement () {
 // offset to center the street around global x position of 0
 function createCenteredStreetElement (segments) {
   const streetEl = document.createElement('a-entity');
-  const streetWidth = streetmixUtils.calcStreetWidth(segments);
+  const streetWidth = segments.reduce(
+    (streetWidth, segmentData) => streetWidth + segmentData.width, 0);
   const offset = 0 - streetWidth / 2;
   streetEl.setAttribute('position', offset + ' 0 0');
   return streetEl;
