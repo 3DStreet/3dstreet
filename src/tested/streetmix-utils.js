@@ -54,7 +54,7 @@ function convertStreetValues (streetData) {
     // convert width from feet to meters
     streetData.segments.forEach((segmentData) => {
       segmentData.width *= 0.3048;
-    })
+    });
     if (streetData.width) streetData.width *= 0.3048;
   }
   return streetData;
