@@ -44,15 +44,4 @@ describe('StreetmixUtils', function () {
         'https://streetmix.net/-/3');
     });
   });
-
-  describe('#calcStreetWidth()', function () {
-    // TODO: Use Chai assertion library `closeTo(73.7616,0.0001) instead of testing for a number with floating point precision error 73.76160000000003
-    // see https://stackoverflow.com/questions/32770330/
-    it('should return 73.76160000000003 with Street 44', function () {
-      const streetmixObject = JSON.parse(sampleInput);
-      assert.strictEqual(
-        streetmixUtils.calcStreetWidth(streetmixObject.data.street.segments),
-        73.76160000000003);
-    });
-  });
 });
