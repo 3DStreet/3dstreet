@@ -418,7 +418,6 @@ function createDriveLaneElement (variantList, segmentWidthInMeters, streetLength
   if (!carParams[carType]) {
     carType = 'car';
   }
-  
   function createCar (positionZ = undefined, carType = 'car') {
     const params = carParams[carType];
 
@@ -957,7 +956,7 @@ function processSegments (segments, showStriping, length, globalAnimated, showVe
     } else if (segments[i].type === 'drive-lane') {
       const isAnimated = (variantList[2] === 'animated') || globalAnimated;
       const count = getRandomIntInclusive(2, 3);
-      const carStep = 7;
+      const carStep = 7.3;
       segmentParentEl.append(createDriveLaneElement(variantList, segmentWidthInMeters, length, isAnimated, showVehicles, count, carStep));
     } else if (segments[i].type === 'food-truck') {
       groundMixinId = 'drive-lane';

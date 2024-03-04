@@ -1,7 +1,7 @@
 {
   "sidewalk": ["empty", "sparse", "normal", "dense"],
   "bus-lane": ["inbound|colored|typical", "outbound|colored|typical", "inbound|regular|typical", "outbound|regular|typical"],
-  "drive-lane": ["inbound|car","outbound|car", "outbound|av", "inbound|av", "outbound|pedestrian", "inbound|pedestrian"],
+  "drive-lane": ["inbound|car","outbound|car", "inbound|truck","outbound|truck", "outbound|av", "inbound|av", "outbound|pedestrian", "inbound|pedestrian"],
   "light-rail": ["inbound|regular", "inbound|colored", "inbound|grass", "outbound|regular", "outbound|colored", "outbound|grass"],
   "streetcar": ["inbound|regular", "inbound|colored", "inbound|grass", "outbound|regular", "outbound|colored", "outbound|grass"],
   "turn-lane": ["inbound|left", "inbound|right", "inbound|left-right-straight", "inbound|shared", "inbound|both", "inbound|left-straight", "inbound|right-straight", "inbound|straight", "outbound|left", "outbound|right", "outbound|left-right-straight", "outbound|shared", "outbound|both", "outbound|left-straight", "outbound|right-straight", "outbound|straight"],
