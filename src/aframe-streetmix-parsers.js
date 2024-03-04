@@ -374,11 +374,11 @@ function createDriveLaneElement (variantList, segmentWidthInMeters, streetLength
   } else {
     rotationY = rotationVariants[lineVariant];
   }
-  /*
+  
   if (carType === 'pedestrian') {
-    return createSidewalkClonedVariants(segmentWidthInMeters, 'normal', streetLength, lineVariant, animated);
+    return createSidewalkClonedVariants(segmentWidthInMeters, 'normal', 0, streetLength, direction, animated);
   }
-*/
+
   const driveLaneParentEl = document.createElement('a-entity');
 
   if (variantList.length == 1) {
@@ -413,7 +413,12 @@ function createDriveLaneElement (variantList, segmentWidthInMeters, streetLength
       width: 2
     }
   };
-
+    
+  // default drive-lane variant if selected variant (carType) is not supported
+  if (!carParams[carType]) {
+    carType = 'car';
+  }
+  
   function createCar (positionZ = undefined, carType = 'car') {
     const params = carParams[carType];
 
@@ -449,6 +454,7 @@ function createDriveLaneElement (variantList, segmentWidthInMeters, streetLength
     );
     const randPlaces = allPlaces.slice(0, count);
     const carSizeZ = (lineVariant == 'sideways' || lineVariant.includes('angled')) ? 'width' : 'length';
+
     const carSizeValueZ = carParams[carType][carSizeZ];
 
     randPlaces.forEach(randPositionZ => {
