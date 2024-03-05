@@ -196,6 +196,7 @@ function getZPositions (start, end, step) {
 function createSidewalkClonedVariants (segmentWidthInMeters, density, elevationPosY = 0, streetLength, direction = 'random', animated = false) {
   const xValueRange = [-(0.37 * segmentWidthInMeters), (0.37 * segmentWidthInMeters)];
   const zValueRange = getZPositions((-0.5 * streetLength), (0.5 * streetLength), 1.5);
+
   const densityFactors = {
     empty: 0,
     sparse: 0.03,
@@ -207,7 +208,7 @@ function createSidewalkClonedVariants (segmentWidthInMeters, density, elevationP
   dividerParentEl.setAttribute('position', { y: elevationPosY });
   // Randomly generate avatars
   for (let i = 0; i < totalPedestrianNumber; i++) {
-    const variantName = (animated === true) ? 'a_char' + String(getRandomIntInclusive(1, 8)) : 'char' + String(getRandomIntInclusive(1, 16));
+    const variantName = 'a_char' + String(getRandomIntInclusive(1, 8));
     const xVal = getRandomArbitrary(xValueRange[0], xValueRange[1]);
     const zVal = zValueRange.pop();
     const yVal = 0;
@@ -216,14 +217,21 @@ function createSidewalkClonedVariants (segmentWidthInMeters, density, elevationP
     let animationDirection = 'inbound';
     placedObjectEl.setAttribute('position', { x: xVal, y: yVal, z: zVal });
     placedObjectEl.setAttribute('mixin', variantName);
+    placedObjectEl.setAttribute('position', { x: xVal, y: yVal, z: zVal });
     // Roughly 50% of traffic will be incoming
     if (Math.random() < 0.5 && direction === 'random') {
       placedObjectEl.setAttribute('rotation', '0 180 0');
       animationDirection = 'outbound';
     }
 
-    if (animated) {
-      addLinearStreetAnimation(placedObjectEl, 1.4, streetLength, xVal, yVal, zVal, animationDirection);
+    if (animated) {      
+      placedObjectEl.setAttribute('automation-element', {
+        zPos: zVal, 
+        direction: animationDirection, 
+        speed: 1.4, 
+        streetLength: streetLength,
+        mixer: true
+      });
     }
     dividerParentEl.append(placedObjectEl);
   }
@@ -313,37 +321,6 @@ function createBusElement (variantList, length, showVehicles) {
   return busParentEl;
 }
 
-function addLinearStreetAnimation (reusableObjectEl, speed, streetLength, xPos, yVal = 0, zPos, direction) {
-  const totalStreetDuration = (streetLength / speed) * 1000; // time in milliseconds
-  const halfStreet = (direction === 'outbound')
-    ? -streetLength / 2
-    : streetLength / 2;
-  const startingDistanceToTravel = Math.abs(halfStreet - zPos);
-  const startingDuration = (startingDistanceToTravel / speed) * 1000;
-
-  const animationAttrs_1 = {
-    property: 'position',
-    easing: 'linear',
-    loop: 'false',
-    from: { x: xPos, y: yVal, z: zPos },
-    to: { z: halfStreet },
-    dur: startingDuration
-  };
-  const animationAttrs_2 = {
-    property: 'position',
-    easing: 'linear',
-    loop: 'true',
-    from: { x: xPos, y: yVal, z: -halfStreet },
-    to: { x: xPos, y: yVal, z: halfStreet },
-    delay: startingDuration,
-    dur: totalStreetDuration
-  };
-  reusableObjectEl.setAttribute('animation__1', animationAttrs_1);
-  reusableObjectEl.setAttribute('animation__2', animationAttrs_2);
-
-  return reusableObjectEl;
-}
-
 function createDriveLaneElement (variantList, segmentWidthInMeters, streetLength, animated = false, showVehicles = true, count = 1, carStep = undefined) {
   if (!showVehicles) {
     return;
@@ -373,11 +350,7 @@ function createDriveLaneElement (variantList, segmentWidthInMeters, streetLength
   } else {
     rotationY = rotationVariants[lineVariant];
   }
-  /*
-  if (carType === 'pedestrian') {
-    return createSidewalkClonedVariants(segmentWidthInMeters, 'normal', streetLength, lineVariant, animated);
-  }
-*/
+
   const driveLaneParentEl = document.createElement('a-entity');
 
   if (variantList.length == 1) {
@@ -430,7 +403,12 @@ function createDriveLaneElement (variantList, segmentWidthInMeters, streetLength
       reusableObjectEl.setAttribute('wheel',
         { speed: speed, wheelDiameter: params['wheelDiameter'] }
       );
-      addLinearStreetAnimation(reusableObjectEl, speed, streetLength, 0, 0, positionZ, direction);
+      reusableObjectEl.setAttribute('automation-element', {
+        zPos: positionZ, 
+        direction: direction, 
+        speed: speed, 
+        streetLength: streetLength
+      });
     }
     driveLaneParentEl.append(reusableObjectEl);
     return reusableObjectEl;
@@ -554,7 +532,14 @@ function createMicroMobilityElement (variantList, segmentType, posY = 0, length,
     if (animated) {
       reusableObjectEl.setAttribute('animation-mixer', '');
       const speed = 5;
-      addLinearStreetAnimation(reusableObjectEl, speed, length, 0, posY, randPosZ, variantList[0]);
+      reusableObjectEl.setAttribute('automation-element', {
+        zPos: randPosZ, 
+        direction: variantList[0], 
+        speed: speed, 
+        streetLength: length,
+        mixer: true
+      });
+
     }
     if (segmentType === 'bike-lane') {
       mixinId = cyclistMixins[getRandomIntInclusive(0, countCyclist)];

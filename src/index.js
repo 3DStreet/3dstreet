@@ -13,6 +13,7 @@ require('./assets.js');
 require('./components/notify.js');
 require('./components/create-from-json');
 require('./components/screentock.js');
+require('./components/automation.js');
 require('aframe-atlas-uvs-component');
 
 AFRAME.registerComponent('street', {
@@ -24,11 +25,28 @@ AFRAME.registerComponent('street', {
     showGround: { default: true },
     showStriping: { default: true },
     showVehicles: { default: true },
-    globalAnimated: { default: false },
+    globalAnimated: { default: true },
     length: { default: 60 } // new default of 60 from 0.4.4
   },
+  init: function () {
+    this.asceneElem = document.querySelector('a-scene');
+  },
+  toggleGlobalAnimation: function (globalAnimated) {
+    const animatedElements = document.querySelectorAll('a-entity[automation-element]');
+    animatedElements.forEach(animatedElem => {
+      animatedElem.setAttribute('automation-element', `enabled: ${globalAnimated}`);
+    });
+  },
   update: function (oldData) { // fired once at start and at each subsequent change of a schema value
-    var data = this.data;
+    const data = this.data;
+
+    const changedData = AFRAME.utils.diff(data, oldData);
+
+    if (Object.keys(changedData).length == 1 && changedData.hasOwnProperty('globalAnimated')) {
+      // if only globalAnimated option is changed
+      this.toggleGlobalAnimation(data.globalAnimated);
+      return;
+    }
 
     if (data.JSON.length === 0) {
       if (oldData.JSON !== undefined && oldData.JSON.length === 0) { return; } // this has happened before, surpress console log
@@ -504,7 +522,8 @@ AFRAME.registerComponent('street-environment', {
 AFRAME.registerComponent('wheel', {
   schema: {
     speed: { type: 'number', default: 1 },
-    wheelDiameter: { type: 'number', default: 1 }
+    wheelDiameter: { type: 'number', default: 1 },
+    isActive: { type: 'boolean', default: true}
   },
 
   init: function () {
@@ -527,6 +546,8 @@ AFRAME.registerComponent('wheel', {
     });
   },
   tick: function (t, dt) {
+    if (!this.data.isActive) return;
+
     const speed = this.data.speed / 1000;
     const wheelDiameter = this.data.wheelDiameter;
 
