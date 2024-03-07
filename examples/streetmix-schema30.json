@@ -1,0 +1,131 @@
+{
+    "id": "e81a809f-ea83-4305-821a-d7f492b477a5",
+    "namespacedId": 127,
+    "name": null,
+    "clientUpdatedAt": "2024-02-21T16:58:07.098Z",
+    "data": {
+        "street": {
+            "schemaVersion": 30,
+            "showAnalytics": true,
+            "width": 24,
+            "id": "e81a809f-ea83-4305-821a-d7f492b477a5",
+            "namespacedId": 127,
+            "units": 0,
+            "location": null,
+            "userUpdated": false,
+            "skybox": "day",
+            "leftBuildingHeight": 4,
+            "rightBuildingHeight": 3,
+            "leftBuildingVariant": "narrow",
+            "rightBuildingVariant": "wide",
+            "segments": [
+                {
+                    "id": "4VHYS597H_ZDBm1YGkW6I",
+                    "type": "sidewalk",
+                    "variantString": "dense",
+                    "width": 1.5,
+                    "elevation": 1
+                },
+                {
+                    "id": "I9IExckD8iAZpiBrpRA3e",
+                    "type": "sidewalk-tree",
+                    "variantString": "big",
+                    "width": 0.5,
+                    "elevation": 1
+                },
+                {
+                    "id": "SpEJIzR_rVMvHN_d66_T0",
+                    "type": "outdoor-dining",
+                    "variantString": "occupied|sidewalk",
+                    "width": 2,
+                    "elevation": 1
+                },
+                {
+                    "id": "JK6XXk_VS9PLUQT9it4kV",
+                    "type": "sidewalk-lamp",
+                    "variantString": "both|modern",
+                    "width": 0.5,
+                    "elevation": 1
+                },
+                {
+                    "id": "7j_mA-OBIaRDBkImeoqB9",
+                    "type": "drive-lane",
+                    "variantString": "inbound|car",
+                    "width": 3,
+                    "elevation": 0
+                },
+                {
+                    "id": "cFcvE0xwauxXYxxuKovh8",
+                    "type": "divider",
+                    "variantString": "flowers",
+                    "width": 0.9,
+                    "elevation": 1
+                },
+                {
+                    "id": "qQAQ2YJe68Bk-AJrLQsnL",
+                    "type": "turn-lane",
+                    "variantString": "inbound|left",
+                    "width": 3,
+                    "elevation": 0
+                },
+                {
+                    "id": "RV2ES5oN-l5cX6HEcuO_4",
+                    "type": "drive-lane",
+                    "variantString": "inbound|car",
+                    "width": 3,
+                    "elevation": 0
+                },
+                {
+                    "id": "hgkP5jfxdGrbnTg-T_0kG",
+                    "type": "brt-lane",
+                    "variantString": "inbound|regular",
+                    "width": 3,
+                    "elevation": 0
+                },
+                {
+                    "id": "FZqcZStwnCLvSHQXN9nR_",
+                    "type": "bike-lane",
+                    "variantString": "twoway-left|green|road",
+                    "width": 1.7,
+                    "elevation": 0
+                },
+                {
+                    "id": "dOchWivQ6-DhdUgPDHLKX",
+                    "type": "sidewalk-lamp",
+                    "variantString": "both|traditional",
+                    "width": 0.5,
+                    "elevation": 1
+                },
+                {
+                    "id": "-XZJ2Yoj4HQzublfBd33L",
+                    "type": "sidewalk-tree",
+                    "variantString": "big",
+                    "width": 0.5,
+                    "elevation": 1
+                },
+                {
+                    "id": "CU3l7mrUVCVmz98U7OS6l",
+                    "type": "sidewalk-wayfinding",
+                    "variantString": "large",
+                    "width": 0.5,
+                    "elevation": 1
+                },
+                {
+                    "id": "Nc3gI1apBIzMde5kUhEfb",
+                    "type": "sidewalk",
+                    "variantString": "dense",
+                    "width": 1.6,
+                    "elevation": 1
+                }
+            ],
+            "editCount": 379
+        }
+    },
+    "createdAt": "2024-02-14T23:21:25.449Z",
+    "updatedAt": "2024-02-21T16:58:07.614Z",
+    "originalStreetId": "19a9d2e7-3faa-4944-bdf9-87c401c5d42f",
+    "creatorId": "saikofish",
+    "creator": {
+        "id": "saikofish"
+    }
+}

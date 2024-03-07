@@ -3,6 +3,7 @@
 // Orientation - default model orientation is "outbound" (away from camera)
 var streetmixParsersTested = require('./tested/aframe-streetmix-parsers-tested');
 var streetmixUtils = require('./tested/streetmix-utils');
+var segmentsVariants = require('./segments-variants.json');
 
 function cloneMixinAsChildren ({ objectMixinId = '', parentEl = null, step = 15, radius = 60, rotation = '0 0 0', positionXYString = '0 0', length = undefined, randomY = false }) {
   for (let j = (radius * -1); j <= radius; j = j + step) {
@@ -373,11 +374,11 @@ function createDriveLaneElement (variantList, segmentWidthInMeters, streetLength
   } else {
     rotationY = rotationVariants[lineVariant];
   }
-  /*
+
   if (carType === 'pedestrian') {
-    return createSidewalkClonedVariants(segmentWidthInMeters, 'normal', streetLength, lineVariant, animated);
+    return createSidewalkClonedVariants(segmentWidthInMeters, 'normal', 0, streetLength, direction, animated);
   }
-*/
+
   const driveLaneParentEl = document.createElement('a-entity');
 
   if (variantList.length == 1) {
@@ -413,6 +414,10 @@ function createDriveLaneElement (variantList, segmentWidthInMeters, streetLength
     }
   };
 
+  // default drive-lane variant if selected variant (carType) is not supported
+  if (!carParams[carType]) {
+    carType = 'car';
+  }
   function createCar (positionZ = undefined, carType = 'car') {
     const params = carParams[carType];
 
@@ -448,6 +453,7 @@ function createDriveLaneElement (variantList, segmentWidthInMeters, streetLength
     );
     const randPlaces = allPlaces.slice(0, count);
     const carSizeZ = (lineVariant == 'sideways' || lineVariant.includes('angled')) ? 'width' : 'length';
+
     const carSizeValueZ = carParams[carType][carSizeZ];
 
     randPlaces.forEach(randPositionZ => {
@@ -695,7 +701,8 @@ function createBrtStationElement () {
 // offset to center the street around global x position of 0
 function createCenteredStreetElement (segments) {
   const streetEl = document.createElement('a-entity');
-  const streetWidth = streetmixUtils.calcStreetWidth(segments);
+  const streetWidth = segments.reduce(
+    (streetWidth, segmentData) => streetWidth + segmentData.width, 0);
   const offset = 0 - streetWidth / 2;
   streetEl.setAttribute('position', offset + ' 0 0');
   return streetEl;
@@ -746,6 +753,20 @@ function createSeparatorElement (positionY, rotationY, mixinId, length, repeatCo
   return segmentEl;
 }
 
+// show warning message if segment or variantString are not supported
+function supportCheck (segmentType, segmentVariantString) {
+  if (segmentType == 'separator') return;
+  // variants supported in 3DStreet
+  const supportedVariants = segmentsVariants[segmentType];
+  if (!supportedVariants) {
+    STREET.notify.warningMessage(`The '${segmentType}' segment type is not yet supported in 3DStreet`);
+    console.log(`The '${segmentType}' segment type is not yet supported in 3DStreet`);
+  } else if (!supportedVariants.includes(segmentVariantString)) {
+    STREET.notify.warningMessage(`The '${segmentVariantString}' variant of segment '${segmentType}' is not yet supported in 3DStreet`);
+    console.log(`The '${segmentVariantString}' variant of segment '${segmentType}' is not yet supported in 3DStreet`);
+  }
+}
+
 // OLD: takes a street's `segments` (array) from streetmix and a `streetElementId` (string) and places objects to make up a street with all segments
 // NEW: takes a `segments` (array) from streetmix and return an element and its children which represent the 3D street scene
 function processSegments (segments, showStriping, length, globalAnimated, showVehicles) {
@@ -769,8 +790,7 @@ function processSegments (segments, showStriping, length, globalAnimated, showVe
     var segmentParentEl = document.createElement('a-entity');
     segmentParentEl.classList.add('segment-parent-' + i);
 
-    var segmentWidthInFeet = segments[i].width;
-    var segmentWidthInMeters = segmentWidthInFeet * 0.3048;
+    var segmentWidthInMeters = segments[i].width;
     // console.log('Type: ' + segments[i].type + '; Width: ' + segmentWidthInFeet + 'ft / ' + segmentWidthInMeters + 'm');
 
     cumulativeWidthInMeters = cumulativeWidthInMeters + segmentWidthInMeters;
@@ -779,6 +799,9 @@ function processSegments (segments, showStriping, length, globalAnimated, showVe
 
     // get variantString
     var variantList = segments[i].variantString.split('|');
+
+    // show warning message if segment or variantString are not supported
+    supportCheck(segments[i].type, segments[i].variantString);
 
     // elevation property from streetmix segment
     const elevation = segments[i].elevation;
@@ -933,7 +956,7 @@ function processSegments (segments, showStriping, length, globalAnimated, showVe
     } else if (segments[i].type === 'drive-lane') {
       const isAnimated = (variantList[2] === 'animated') || globalAnimated;
       const count = getRandomIntInclusive(2, 3);
-      const carStep = 7;
+      const carStep = 7.3;
       segmentParentEl.append(createDriveLaneElement(variantList, segmentWidthInMeters, length, isAnimated, showVehicles, count, carStep));
     } else if (segments[i].type === 'food-truck') {
       groundMixinId = 'drive-lane';
