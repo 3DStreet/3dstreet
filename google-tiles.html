@@ -7,8 +7,8 @@
     <!-- 3dstreet -->
     <script src="./dist/aframe-street-component.js"></script>
 
-    <!-- mapbox -->
-    <script src="./src/lib/aframe-loader-3dtiles-component.min.js"></script>
+    <!-- aframe-loader-3dtiles-component for google 3d tiles -->
+    <script src="./src/lib/aframe-loader-3dtiles-component.js"></script>
 
     <!-- vr teleport controls -->
     <script src="https://cdn.jsdelivr.net/npm/aframe-blink-controls@0.4.3/dist/aframe-blink-controls.min.js"></script>
@@ -115,7 +115,7 @@
             maximumSSE: 48; 
             cameraEl: #camera"
           anisotropy
-        ></a-entity>        
+        ></a-entity>
       </a-entity>
 
       <a-entity id="environment" data-layer-name="Environment" street-environment="preset: day;"></a-entity>
