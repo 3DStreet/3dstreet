@@ -25,6 +25,11 @@ AFRAME.registerComponent('notify', {
           type: 'info',
           background: 'blue',
           icon: false
+        },
+        {
+          type: 'warning',
+          background: 'orange',
+          icon: false
         }
       ],
       // Set your global Notyf configuration here
@@ -43,6 +48,9 @@ AFRAME.registerComponent('notify', {
       };
       STREET.notify.errorMessage = (messageText) => {
         this.message(messageText, 'error');
+      };
+      STREET.notify.warningMessage = (messageText) => {
+        this.message(messageText, 'warning');
       };
     }
   },
