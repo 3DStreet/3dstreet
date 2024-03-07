@@ -18,7 +18,7 @@ require('aframe-atlas-uvs-component');
 AFRAME.registerComponent('street', {
   schema: {
     JSON: { type: 'string' },
-    type: { default: 'streetmixSegmentsFeet' }, // alt: sharedRowMeters, streetmixJSONResponse
+    type: { default: 'streetmixSegmentsMetric' }, // alt: sharedRowMeters, streetmixJSONResponse
     left: { default: '' },
     right: { default: '' },
     showGround: { default: true },
@@ -49,11 +49,12 @@ AFRAME.registerComponent('street', {
       buildingParent.remove();
     }
 
-    const streetEl = streetmixParsers.processSegments(streetmixSegments.streetmixSegmentsFeet, data.showStriping, data.length, data.globalAnimated, data.showVehicles);
+    const streetEl = streetmixParsers.processSegments(streetmixSegments.streetmixSegmentsMetric, data.showStriping, data.length, data.globalAnimated, data.showVehicles);
     this.el.append(streetEl);
 
     if (data.left || data.right) {
-      const streetWidth = streetmixUtils.calcStreetWidth(streetmixSegments.streetmixSegmentsFeet, data.autoStriping);
+      const streetWidth = streetmixSegments.streetmixSegmentsMetric.reduce(
+        (streetWidth, segmentData) => streetWidth + segmentData.width, 0);
       const buildingsEl = streetmixParsers.processBuildings(data.left, data.right, streetWidth, data.showGround, data.length);
       this.el.append(buildingsEl);
     }
@@ -100,7 +101,10 @@ AFRAME.registerComponent('streetmix-loader', {
       if (this.status >= 200 && this.status < 400) {
         // Connection success
         const streetmixResponseObject = JSON.parse(this.response);
-        const streetmixSegments = streetmixResponseObject.data.street.segments;
+        // convert units of measurement if necessary
+        const streetData = streetmixUtils.convertStreetValues(streetmixResponseObject.data.street);
+        const streetmixSegments = streetData.segments;
+
         const streetmixName = streetmixResponseObject.name;
         console.log('streetmixName', streetmixName);
         el.setAttribute('streetmix-loader', 'name', streetmixName);
@@ -117,12 +121,12 @@ AFRAME.registerComponent('streetmix-loader', {
         el.setAttribute('data-layer-name', 'Streetmix • ' + streetmixName);
 
         if (data.showBuildings) {
-          el.setAttribute('street', 'right', streetmixResponseObject.data.street.rightBuildingVariant);
-          el.setAttribute('street', 'left', streetmixResponseObject.data.street.leftBuildingVariant);
+          el.setAttribute('street', 'right', streetData.rightBuildingVariant);
+          el.setAttribute('street', 'left', streetData.leftBuildingVariant);
         }
-        el.setAttribute('street', 'type', 'streetmixSegmentsFeet');
+        el.setAttribute('street', 'type', 'streetmixSegmentsMetric');
         // set JSON attribute last or it messes things up
-        el.setAttribute('street', 'JSON', JSON.stringify({ streetmixSegmentsFeet: streetmixSegments }));
+        el.setAttribute('street', 'JSON', JSON.stringify({ streetmixSegmentsMetric: streetmixSegments }));
         el.emit('streetmix-loader-street-loaded');
       } else {
         // We reached our target server, but it returned an error

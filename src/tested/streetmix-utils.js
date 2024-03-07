@@ -48,13 +48,15 @@ function streetmixAPIToUser (APIURL) { // eslint-disable-line no-unused-vars
 }
 module.exports.streetmixAPIToUser = streetmixAPIToUser;
 
-function calcStreetWidth (segments) { // eslint-disable-line no-unused-vars
-  var cumulativeWidthInMeters = 0;
-  segments.forEach((currentSegment) => {
-    const segmentWidthInFeet = currentSegment.width;
-    const segmentWidthInMeters = segmentWidthInFeet * 0.3048;
-    cumulativeWidthInMeters = cumulativeWidthInMeters + segmentWidthInMeters;
-  });
-  return cumulativeWidthInMeters;
+// convert all feet values to meters for schemaVersion < 30
+function convertStreetValues (streetData) {
+  if (streetData.schemaVersion < 30) {
+    // convert width from feet to meters
+    streetData.segments.forEach((segmentData) => {
+      segmentData.width *= 0.3048;
+    });
+    if (streetData.width) streetData.width *= 0.3048;
+  }
+  return streetData;
 }
-module.exports.calcStreetWidth = calcStreetWidth;
+module.exports.convertStreetValues = convertStreetValues;
