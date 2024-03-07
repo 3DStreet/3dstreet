@@ -13,7 +13,7 @@
   "sidewalk-bench": ["left", "right", "center"],
   "sidewalk-bike-rack":["left|sidewalk-parallel", "right|sidewalk-parallel", "left|sidewalk", "right|sidewalk"],
   "magic-carpet": ["aladdin"],
-  "outdoor-dining": ["empty"],
+  "outdoor-dining": ["empty|sidewalk", "empty|road"],
   "parklet": ["left", "right"],
   "bikeshare": ["left|road", "right|road", "left|sidewalk", "right|sidewalk"],
   "utilities": ["left", "right"],
