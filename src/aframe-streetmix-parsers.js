@@ -374,7 +374,7 @@ function createDriveLaneElement (variantList, segmentWidthInMeters, streetLength
   } else {
     rotationY = rotationVariants[lineVariant];
   }
-  
+
   if (carType === 'pedestrian') {
     return createSidewalkClonedVariants(segmentWidthInMeters, 'normal', 0, streetLength, direction, animated);
   }
@@ -413,7 +413,7 @@ function createDriveLaneElement (variantList, segmentWidthInMeters, streetLength
       width: 2
     }
   };
-    
+
   // default drive-lane variant if selected variant (carType) is not supported
   if (!carParams[carType]) {
     carType = 'car';
@@ -754,13 +754,13 @@ function createSeparatorElement (positionY, rotationY, mixinId, length, repeatCo
 }
 
 // show warning message if segment or variantString are not supported
-function supportCheck(segmentType, segmentVariantString) {
+function supportCheck (segmentType, segmentVariantString) {
   if (segmentType == 'separator') return;
   // variants supported in 3DStreet
   const supportedVariants = segmentsVariants[segmentType];
   if (!supportedVariants) {
     STREET.notify.warningMessage(`The '${segmentType}' segment type is not yet supported in 3DStreet`);
-    console.log(`The '${segmentType}' segment type is not yet supported in 3DStreet`)
+    console.log(`The '${segmentType}' segment type is not yet supported in 3DStreet`);
   } else if (!supportedVariants.includes(segmentVariantString)) {
     STREET.notify.warningMessage(`The '${segmentVariantString}' variant of segment '${segmentType}' is not yet supported in 3DStreet`);
     console.log(`The '${segmentVariantString}' variant of segment '${segmentType}' is not yet supported in 3DStreet`);
