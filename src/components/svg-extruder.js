@@ -24,10 +24,6 @@ AFRAME.registerComponent('svg-extruder', {
     const lineColor = data.lineColor;
     this.loader = new SVGLoader();
 
-    this.stokeMaterial = new THREE.LineBasicMaterial({
-      color: lineColor
-    });
-
     el.removeAttribute('material');
     el.setAttribute('shadow', 'cast: true; receive: true');
   },
@@ -123,9 +119,13 @@ AFRAME.registerComponent('svg-extruder', {
 
     const mergedGeometry = this.mergedGeometryFromArray(extrudedGeometryArray);
 
+    const stokeMaterial = new THREE.LineBasicMaterial({
+      color: data.lineColor
+    });
+
     // create edges geometries and line segments from mergedGeometry
     const linesGeometry = new THREE.EdgesGeometry(mergedGeometry);
-    const lines = new THREE.LineSegments(linesGeometry, this.stokeMaterial);
+    const lines = new THREE.LineSegments(linesGeometry, stokeMaterial);
 
     el.setObject3D('lines', lines);
 
