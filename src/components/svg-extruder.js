@@ -140,10 +140,13 @@ AFRAME.registerComponent('svg-extruder', {
     el.setObject3D('mesh', mergedMesh);
 
     //el.setAttribute('material', `src:${data.bevelSrc};roughness:1;repeat: 0.1 0.1`);
-
+    
+    const topElement = this.el.children[0];
     if (data.topElement) {
       // create entity from shapes for top level of extruded geometry
       this.createTopEntity(topGeometryArray);    
+    } else if (topElement) {
+      el.removeChild(topElement);
     }
 
   },
