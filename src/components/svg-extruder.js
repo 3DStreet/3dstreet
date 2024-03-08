@@ -28,6 +28,7 @@ AFRAME.registerComponent('svg-extruder', {
       color: lineColor
     });
 
+    el.removeAttribute('material');
     el.setAttribute('shadow', 'cast: true; receive: true');
   },
   createTopEntity: function (topGeometryArray) {
