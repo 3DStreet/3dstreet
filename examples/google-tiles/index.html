@@ -5,9 +5,12 @@
     <title>A-Frame 3D Tiles Component - Basic example</title>
     <meta name="description" content="Basic example for 3D Tiles component showing google 3d Tiles."></meta>
     <script src="https://aframe.io/releases/1.5.0/aframe.min.js"></script>
-    <script src="../../src/lib/aframe-loader-3dtiles-component.js"></script>
-        <!-- vr teleport controls -->
-    <script src="https://cdn.jsdelivr.net/npm/aframe-blink-controls@0.4.3/dist/aframe-blink-controls.min.js"></script>
+
+    <!-- 3d tiles -->
+    <script src="/src/lib/aframe-loader-3dtiles-component.js"></script>
+
+        <!-- vr teleport controls -->
+    <!-- --><script src="https://cdn.jsdelivr.net/npm/aframe-blink-controls@0.4.3/dist/aframe-blink-controls.min.js"></script> 
     <style>
       #guide {
         position: fixed;
@@ -31,16 +34,15 @@
       <a-entity camera="fov:45; near:1; far: 1000" look-controls="reverseMouseDrag: true" wasd-controls="enabled: true" id="camera" cursor-teleport="cameraRig: #camera; cameraHead: #camera;"></a-entity>
       <a-entity
         id="tileset"
-        position="-1.5 10 -28"
-        rotation="-90 0 90"
-        scale="2 2 2"
         loader-3dtiles="
           url: https://tile.googleapis.com/v1/3dtiles/root.json; 
-          lat: 35.6586; 
-          long: 139.7454; 
-          height: -16; 
+          lat: 37.77522354250163;
+          long: -122.41931773049723;
+          height: -16.5;
           googleApiKey: AIzaSyAQshwLVKTpwTfPJxFEkEzOdP_cgmixTCQ;
+          geoTransform: WGS84Cartesian;
           maximumSSE: 48; 
+          maximumMem: 400;
           cameraEl: #camera"
       >
       </a-entity>
@@ -54,13 +56,15 @@
     </a>
     <div id="guide">
       <span id="example-desc">
-        <b>Freeman Alley, New York.</b> Captured using iPhone 12 Pro Max and processed via RealityCapture.
+        <b>Google 3D Tiles example.</b>
       </span>
       <p>Use arrow/WASD keys to move around and click and drag to turn/rotate the camera.</p>
       <p>
-        <u>Available URL parameters:</u>
+        <u>Available component parameters:</u>
         <ul>
-          <li><b>tilesetUrl</b>: Load another tileset json.</li>
+          <li><b>lat, long</b>: coordinates of Google Map.</li>
+          <li><b>height</b>: camera height.</li>
+          <li><b>googleApiKey</b>: Google Api Key.</li>
         </ul>
       </p>
     </div>
