@@ -575,7 +575,7 @@ AFRAME.registerComponent('set-loader-from-hash', {
       successMessage
     );
     STREET.utils.createElementsFromJSON(jsonData);
-    const sceneId = getUUIDFromPath(requestURL);
+    
     if (sceneId) {
       console.log('sceneId from fetchJSON from url hash loader', sceneId);
       AFRAME.scenes[0].setAttribute('metadata', 'sceneId', sceneId);
@@ -593,7 +593,7 @@ AFRAME.registerComponent('set-loader-from-hash', {
         const successMessage = 
           '200 response received and JSON parsed, now createElementsFromJSON';
         createStreetFromJSONData(this.response, successMessage);
-
+        const sceneId = getUUIDFromPath(requestURL);
       } else if (this.status === 404) {
         console.error(
           '[set-loader-from-hash] Error trying to load scene: Resource not found.'
