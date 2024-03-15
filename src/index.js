@@ -421,11 +421,11 @@ AFRAME.registerComponent('street-environment', {
       sky.setAttribute('color', '#FFF');
       sky.setAttribute('src', '#sky');
       sky.setAttribute('rotation', '0 20 0');
-      light2.setAttribute('light', 'intensity: 2.2; castShadow: true; shadowCameraBottom: -20; shadowCameraLeft: -30; shadowCameraRight: 40; shadowCameraTop: 30; shadowMapHeight: 2048; shadowMapWidth: 2048');
+      light2.setAttribute('light', 'intensity: 2.2; castShadow: true; shadowMapHeight: 2048; shadowMapWidth: 2048');
       light2.setAttribute('position', '-40 56 -16');
     } else if (this.data.preset === 'sunny-morning') {
       light1.setAttribute('light', 'intensity', 0.8);
-      light2.setAttribute('light', 'intensity: 2.2; castShadow: true; shadowCameraBottom: -20; shadowCameraLeft: -30; shadowCameraRight: 40; shadowCameraTop: 30; shadowMapHeight: 2048; shadowMapWidth: 2048');
+      light2.setAttribute('light', 'intensity: 2.2; castShadow: true; shadowMapHeight: 2048; shadowMapWidth: 2048');
       light2.setAttribute('position', '-60 56 -16');
       sky.setAttribute('visible', true);
       sky.setAttribute('color', '#FFF');
@@ -440,7 +440,7 @@ AFRAME.registerComponent('street-environment', {
       sky.setAttribute('rotation', '0 0 0');
     } else if (this.data.preset === 'sunny-afternoon') {
       light1.setAttribute('light', 'intensity', 2);
-      light2.setAttribute('light', 'intensity: 2.2; castShadow: true; shadowCameraBottom: -20; shadowCameraLeft: -30; shadowCameraRight: 40; shadowCameraTop: 30; shadowMapHeight: 2048; shadowMapWidth: 2048');
+      light2.setAttribute('light', 'intensity: 2.2; castShadow: true; shadowMapHeight: 2048; shadowMapWidth: 2048');
       light2.setAttribute('position', '60 56 -16');
       sky.setAttribute('visible', true);
       sky.setAttribute('color', '#FFF');
@@ -448,7 +448,7 @@ AFRAME.registerComponent('street-environment', {
       sky.setAttribute('rotation', '0 0 0');
     } else if (this.data.preset === 'sunny-noon') {
       light1.setAttribute('light', 'intensity', 2);
-      light2.setAttribute('light', 'intensity: 2.2; castShadow: true; shadowCameraBottom: -20; shadowCameraLeft: -30; shadowCameraRight: 40; shadowCameraTop: 30; shadowMapHeight: 2048; shadowMapWidth: 2048');
+      light2.setAttribute('light', 'intensity: 2.2; castShadow: true; shadowMapHeight: 2048; shadowMapWidth: 2048');
       light2.setAttribute('position', '5 56 -16');
       sky.setAttribute('visible', true);
       sky.setAttribute('color', '#FFF');
@@ -486,7 +486,14 @@ AFRAME.registerComponent('street-environment', {
     const light2 = this.light2;
     light2.setAttribute('id', 'env-light2');
     light2.setAttribute('position', '-60 56 -16');
-    light2.setAttribute('light', 'intensity: 2.2; castShadow: true; shadowCameraBottom: -20; shadowCameraLeft: -30; shadowCameraRight: 40; shadowCameraTop: 30; shadowMapHeight: 2048; shadowMapWidth: 2048');
+    // set shadow camera sizes
+    defaultStreet = document.getElementById('default-street');
+    const streetLength = defaultStreet.getAttribute('street').length ?? 150;
+    // use half the street size + additional 10 meters to account for camera tilt
+    const halfCameraSize = streetLength / 2 + 10;
+
+    light2.setAttribute('light', `intensity: 2.2; castShadow: true; shadowMapHeight: 2048; shadowMapWidth: 2048;shadowCameraBottom: -${halfCameraSize}; shadowCameraLeft: -${halfCameraSize}; shadowCameraRight: ${halfCameraSize}; shadowCameraTop: ${halfCameraSize};`);
+    
     el.appendChild(light2);
 
     this.sky = document.createElement('a-sky');
