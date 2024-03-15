@@ -543,6 +543,11 @@ AFRAME.registerComponent('set-loader-from-hash', {
         const streetmixJSON = JSON.parse(JSONString);
         console.log(streetmixJSON);
         this.el.setAttribute('streetmix-loader', 'streetmixJSON', streetmixJSON);
+      } else if (streetURL.startsWith('3dstreet-json:')){
+
+        const JSONString = decodeURIComponent(streetURL.split('3dstreet-json:')[1]);
+        console.log(JSONString)
+        this.createStreetFromJSONData(JSONString);
       } else {
         // try to load JSON file from remote resource
         console.log(
