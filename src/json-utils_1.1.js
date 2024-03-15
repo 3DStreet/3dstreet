@@ -536,6 +536,13 @@ AFRAME.registerComponent('set-loader-from-hash', {
           'streetmixStreetURL',
           streetURL
         );
+      } else if (streetURL.startsWith('streetmix-json:')){
+
+        const JSONString = decodeURIComponent(streetURL.split('streetmix-json:')[1]);
+        console.log(JSONString)
+        const streetmixJSON = JSON.parse(JSONString);
+        console.log(streetmixJSON);
+        this.el.setAttribute('streetmix-loader', 'streetmixJSON', streetmixJSON);
       } else {
         // try to load JSON file from remote resource
         console.log(
@@ -551,27 +558,37 @@ AFRAME.registerComponent('set-loader-from-hash', {
       // }
     }
   },
+  // parse JSON street data from string and create Street elements
+  createStreetFromJSONData: function (stringJSONData, successMessage) {
+    // remove 'set-loader-from-hash' component from json data
+    const jsonData = JSON.parse(stringJSONData, (key, value) =>
+      key === 'set-loader-from-hash' ? undefined : value
+    );
+
+    console.log(
+      '[set-loader-from-hash]',
+      successMessage
+    );
+    STREET.utils.createElementsFromJSON(jsonData);
+    const sceneId = getUUIDFromPath(requestURL);
+    if (sceneId) {
+      console.log('sceneId from fetchJSON from url hash loader', sceneId);
+      AFRAME.scenes[0].setAttribute('metadata', 'sceneId', sceneId);
+    }
+  },
   fetchJSON: function (requestURL) {
     const request = new XMLHttpRequest();
     request.open('GET', requestURL, true);
+
+    const createStreetFromJSONData = this.createStreetFromJSONData;
+
     request.onload = function () {
       if (this.status >= 200 && this.status < 400) {
         // Connection success
-        // remove 'set-loader-from-hash' component from json data
-        const jsonData = JSON.parse(this.response, (key, value) =>
-          key === 'set-loader-from-hash' ? undefined : value
-        );
+        const successMessage = 
+          '200 response received and JSON parsed, now createElementsFromJSON';
+        createStreetFromJSONData(this.response, successMessage);
 
-        console.log(
-          '[set-loader-from-hash]',
-          '200 response received and JSON parsed, now createElementsFromJSON'
-        );
-        STREET.utils.createElementsFromJSON(jsonData);
-        const sceneId = getUUIDFromPath(requestURL);
-        if (sceneId) {
-          console.log('sceneId from fetchJSON from url hash loader', sceneId);
-          AFRAME.scenes[0].setAttribute('metadata', 'sceneId', sceneId);
-        }
       } else if (this.status === 404) {
         console.error(
           '[set-loader-from-hash] Error trying to load scene: Resource not found.'
