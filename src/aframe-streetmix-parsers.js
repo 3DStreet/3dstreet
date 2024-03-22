@@ -236,6 +236,9 @@ function getBikeLaneMixin (variant) {
   if (variant === 'red') {
     return 'surface-red bike-lane';
   }
+  if (variant === 'blue') {
+    return 'surface-blue bike-lane';
+  }
   if (variant === 'green') {
     return 'surface-green bike-lane';
   }
@@ -246,6 +249,9 @@ function getBusLaneMixin (variant) {
   if (variant === 'colored' | variant === 'red') {
     return 'surface-red bus-lane';
   }
+  if (variant === 'blue') {
+    return 'surface-blue bus-lane';
+  }  
   if (variant === 'grass') {
     return 'surface-green bus-lane';
   }
