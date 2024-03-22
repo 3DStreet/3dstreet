@@ -10,7 +10,8 @@ StreetPlanType1:
 		"type": StreetmixType, 
 		"variantString": StreetmixVariantString,
 		"variantStringAdd": get parameter values from this list and generate variantString,
-		"nameToVariantMap": mapping rule StreetPlan O1-Name -> VariantString
+		"nameToVariantMap": mapping rule StreetPlan O1-Name -> VariantString,
+		"tagToVariantMap": mapping rule StreetPlan O1-Tags -> VariantString,		
 		"names": names (StreetPlan O1-Name) for this Streetmix Segment type
 		},
 	--- or ---
@@ -23,33 +24,37 @@ StreetPlanType1:
 */
 const mapping = {
 	"Walkways": {
-		"Trees": "sidewalk-tree",
-		"pedestrian": "sidewalk",
-		"Benchs": "sidewalk-bench",
-		"Tables": "outdoor-dining"
+		"Trees": {"type": "sidewalk-tree", "variantString": "big"},
+		"pedestrian": {"type": "sidewalk", "variantString": "dense"},
+		"Benchs": {"type": "sidewalk-bench", "variantStringAdd": "side" },
+		"Tables": {"type": "outdoor-dining", "variantString": "occupied|sidewalk"}
 	},
 	"Furniture": {
-		"Trees": "sidewalk-tree",
-		"season_tree": "sidewalk-tree",
-		"Shelters": "transit-shelter",
+		"Trees": {"type": "sidewalk-tree", "variantString": "big"},
+		"season_tree": {"type": "sidewalk-tree", "variantString": "big"},
+		"Shelters": { "type": "transit-shelter", "variantString": "street-level", "variantStringAdd": "side|variantString" },
 		"planter": {"type": "divider", "variantString": "planting-strip"},
-		"Pedestrian": "sidewalk",
-		"Benchs": "sidewalk-bench",
-		"Tables": "outdoor-dining",
-		"BikeRacks": "sidewalk-bike-rack"
+		"Pedestrian": {"type": "sidewalk", "variantString": "dense"},
+		"Benchs": {"type": "sidewalk-bench", "variantStringAdd": "side" },
+		"Tables": {"type": "outdoor-dining", "variantString": "occupied|sidewalk"},
+		"BikeRacks": {"type": "sidewalk-bike-rack", "variantString": "sidewalk-parallel", "variantStringAdd": "side|variantString" },
 	},
 	"Curbside": {
-		"Lights": "sidewalk-lamp",
-		"Shelters": "transit-shelter",
-		"Poles": "utilities",
-		"Benchs": "sidewalk-bench",
-		"BikeRacks": "sidewalk-bike-rack"
+		"Lights": {"type": "sidewalk-lamp", "tagToVariantMap": {
+				"Historic Lights": "traditional",
+				"Regular Lights": "modern"
+			}, "variantStringAdd": "side|variantString" 
+		},
+		"Shelters": { "type": "transit-shelter", "variantString": "street-level", "variantStringAdd": "side|variantString" },
+		"Poles": { "type": "utilities", "variantStringAdd": "side" },
+		"Benchs": {"type": "sidewalk-bench", "variantStringAdd": "side" },
+		"BikeRacks": {"type": "sidewalk-bike-rack", "variantString": "sidewalk-parallel", "variantStringAdd": "side|variantString" },
 	},
 	"BikesPaths": {
-		"Bikes": "bike-lane"
+		"Bikes": {"type": "bike-lane", "variantString": "sidewalk", "variantStringAdd": "direction|material|variantString"}
 	},
 	"Gutter": {
-		"Gutter": "temporary"
+		"Gutter": {"type":"divider","variantString":"median"}
 	},
 	"Transit": {
 		"Transit": [
@@ -59,12 +64,12 @@ const mapping = {
 			{ "tag": "Rail Vehicles", "type": "light-rail", "names": ["UTA LightRail"], "variantStringAdd": "direction" }, 
 			// there are only reversed light rail vehicles in Streetplan
 			{ "tag": "Rail Vehicles Reversed", "type": "light-rail", "variantStringAdd": "direction" }, 
-			{ "tag": "Bus Vehicles", "type": "bus-lane", "variantStringAdd": "direction" }
+			{ "tag": "Bus Vehicles", "type": "bus-lane", "variantString": "typical", "variantStringAdd": "direction|material|variantString" }
 		]
 	},
 	"Cars": {
-		"Autos": {"type": "drive-lane", "variantString": "car"},
-		"Truck": {"type": "drive-lane", "variantString": "truck"}
+		"Autos": {"type": "drive-lane", "variantString": "car", "variantStringAdd": "direction|variantString"},
+		"Truck": {"type": "drive-lane", "variantString": "truck", "variantStringAdd": "direction|variantString"}
 	},
 	"Parking": {
 		"Parallel": 
@@ -85,7 +90,7 @@ const mapping = {
 		"tree": {"type": "divider", "variantString": "palm-tree"},
 		"season_tree": {"type": "divider", "variantString": "big-tree"},
 		"median": {"type": "divider", "variantString": "planting-strip"},
-		"Autos": {"type": "drive-lane", "variantString": "car"},
+		"Autos": {},
 		"AngleNormal": {},
 		"Purpendicular": {"type": "parking-lane", "variantString": "sideways", "variantStringAdd": "side"},
 		"planter": {"type": "divider", "variantString": "planting-strip"}
@@ -93,6 +98,7 @@ const mapping = {
 }
 // copy repeating rules
 mapping["Buffers"]["AngleNormal"] = mapping["Parking"]["AngleNormal"];
+mapping["Buffers"]["Autos"] = mapping["Cars"]["Autos"];
 mapping["Median/Buffer"] = mapping["Buffers"];
 
 const directionMap = {
@@ -103,14 +109,24 @@ const directionMap = {
 	"NA": ""
 }
 
+const materialMap = {
+	"Asphalt Black": "regular",
+	"Asphalt Blue": "blue",
+	"Asphalt Red 1": "red",
+	"Asphalt Red 2": "red",
+	"Asphalt Green": "green",
+	"Asphalt Old": "regular",
+	"Grass": "grass",
+	"Grass Dead": "grass"
+}
 
 // StreetMix variantString often has additional parameters via |, for example: taxi|outbound|right
-// generate a streetMix variantString from the listed parameters in variantStringAdd
+// generate a streetMix like variantString from the listed parameters in variantStringAdd
 function generateVariantString(variantStringKeys, streetmixData) {
-
-	return streetmixData['variantString'] += variantStringKeys.split('|').reduce(
-		(wholeString, currKey) => wholeString += streetmixData[currKey]
-	, '');
+	const variantString = variantStringKeys.split('|')
+		.map((currKey) => streetmixData[currKey])
+		.join('|');
+	return variantString;
 }
 
 function getDataFromSubtypeMap(convertRule, streetmixData, streetplanData) {
@@ -121,7 +137,8 @@ function getDataFromSubtypeMap(convertRule, streetmixData, streetplanData) {
 	} else if (Array.isArray(convertRule)) {
 		// in this case, different segment subtype options 
 		// are associated with the different Streetmix types
-		// find Streetmix segment data by Streetplan tag and names(?)
+
+		// find the desired Streetmix segment data from the array by Streetplan tag and names(?)
 		const variantData = convertRule.find((element) => {
 			const tagValMatches = element['tag'] === streetplanData['O1-Tags'];
 			if (tagValMatches && element['names']) {
@@ -129,10 +146,19 @@ function getDataFromSubtypeMap(convertRule, streetmixData, streetplanData) {
 			}
 			return tagValMatches;
 		});
+
+		streetmixData['variantString'] = '';
+
+		const variantString = variantData['variantString'];
+		if (variantString && typeof variantString === 'string') {
+			streetmixData['variantString'] = variantString;
+		} 
+
+		// generate a streetMix like variantString from the listed parameter values
 		streetmixData['type'] = variantData['type'];
 		const variantStringKeys = variantData['variantStringAdd'];
 		if (variantStringKeys) {
-			streetmixData['variantString'] += generateVariantString(variantStringKeys, streetmixData);
+			streetmixData['variantString'] = generateVariantString(variantStringKeys, streetmixData);
 		}
 	} else if (typeof convertRule === 'object') {
 		// in this case, different variants of the segment subtype 
@@ -146,14 +172,22 @@ function getDataFromSubtypeMap(convertRule, streetmixData, streetplanData) {
 			streetmixData['variantString'] = variantString;
 		} 
 
-		// get variantString from "O1-Name" (StreetPlan Object Name) -> variantString mapping data
+		// get variantString from {"O1-Name" (StreetPlan Object Name) : variantString} mapping data
 		const nameToVariantMap = convertRule['nameToVariantMap'];
 		if (nameToVariantMap && nameToVariantMap[streetplanData['O1-Name']]) {
 			streetmixData['variantString'] = nameToVariantMap[streetplanData['O1-Name']];
 		}
 
-		if (convertRule['variantStringAdd']) {
-			streetmixData['variantString'] += generateVariantString(convertRule['variantStringAdd'], streetmixData);
+		// get variantString from {"O1-Tags" (StreetPlan Tag) : variantString} mapping data
+		const tagToVariantMap = convertRule['tagToVariantMap'];
+		if (tagToVariantMap && tagToVariantMap[streetplanData['O1-Tags']]) {
+			streetmixData['variantString'] = tagToVariantMap[streetplanData['O1-Tags']];
+		}
+
+		// generate a streetMix like variantString from the listed parameter values
+		const variantStringKeys = convertRule['variantStringAdd'];
+		if (variantStringKeys) {
+			streetmixData['variantString'] = generateVariantString(variantStringKeys, streetmixData);
 		}
 	}
 
@@ -176,6 +210,9 @@ function convertSegment(data) {
 	streetmixData['direction'] = directionMap[data['Direction']];
 	if (data['side']) {
 		streetmixData['side'] = data['side'];
+	}
+	if (data['Material']) {
+		streetmixData['material'] = materialMap[data['Material']];
 	}
 
 	if (subtypeMap) {
