@@ -24,12 +24,14 @@ StreetPlanType1:
 */
 const mapping = {
 	"Walkways": {
+		"": {"type": "sidewalk", "variantString": "empty"},
 		"Trees": {"type": "sidewalk-tree", "variantString": "big"},
 		"pedestrian": {"type": "sidewalk", "variantString": "dense"},
 		"Benchs": {"type": "sidewalk-bench", "variantStringAdd": "side" },
 		"Tables": {"type": "outdoor-dining", "variantString": "occupied|sidewalk"}
 	},
 	"Furniture": {
+		"": {"type": "sidewalk", "variantString": "empty"},
 		"Trees": {"type": "sidewalk-tree", "variantString": "big"},
 		"season_tree": {"type": "sidewalk-tree", "variantString": "big"},
 		"Shelters": { "type": "transit-shelter", "variantString": "street-level", "variantStringAdd": "side|variantString" },
@@ -40,6 +42,7 @@ const mapping = {
 		"BikeRacks": {"type": "sidewalk-bike-rack", "variantString": "sidewalk-parallel", "variantStringAdd": "side|variantString" },
 	},
 	"Curbside": {
+		"": {"type": "sidewalk", "variantString": "empty"},
 		"Lights": {"type": "sidewalk-lamp", "tagToVariantMap": {
 				"Historic Lights": "traditional",
 				"Regular Lights": "modern"
@@ -51,27 +54,32 @@ const mapping = {
 		"BikeRacks": {"type": "sidewalk-bike-rack", "variantString": "sidewalk-parallel", "variantStringAdd": "side|variantString" },
 	},
 	"BikesPaths": {
+		"": {"type": "bike-lane", "variantString": "sidewalk"},
 		"Bikes": {"type": "bike-lane", "variantString": "sidewalk", "variantStringAdd": "direction|material|variantString"}
 	},
 	"Gutter": {
+		"":  {"type":"divider","variantString":"median"},
 		"Gutter": {"type":"divider","variantString":"median"}
 	},
 	"Transit": {
+		"": { "tag": "Bus Vehicles", "type": "bus-lane", "variantString": "typical", "variantStringAdd": "direction|material|variantString" },
 		"Transit": [
 			{ "tag": "Rail Vehicles", "type": "streetcar", "names": 
 				["StreetCar Yellow", "StreetCar Blue", "StreetCar Red 1", "StreetCar Red 2"], 
-				"variantStringAdd": "direction" },
-			{ "tag": "Rail Vehicles", "type": "light-rail", "names": ["UTA LightRail"], "variantStringAdd": "direction" }, 
+				"variantStringAdd": "direction|material" },
+			{ "tag": "Rail Vehicles", "type": "light-rail", "names": ["UTA LightRail"], "variantStringAdd": "direction|material" }, 
 			// there are only reversed light rail vehicles in Streetplan
-			{ "tag": "Rail Vehicles Reversed", "type": "light-rail", "variantStringAdd": "direction" }, 
+			{ "tag": "Rail Vehicles Reversed", "type": "light-rail", "variantStringAdd": "direction|material" }, 
 			{ "tag": "Bus Vehicles", "type": "bus-lane", "variantString": "typical", "variantStringAdd": "direction|material|variantString" }
 		]
 	},
 	"Cars": {
+		"": {"type": "drive-lane", "variantString": "car", "variantStringAdd": "direction|variantString"},
 		"Autos": {"type": "drive-lane", "variantString": "car", "variantStringAdd": "direction|variantString"},
 		"Truck": {"type": "drive-lane", "variantString": "truck", "variantStringAdd": "direction|variantString"}
 	},
 	"Parking": {
+		"": {"tag": "Parking - Parallel", "type": "parking-lane", "variantStringAdd": "direction|side"},
 		"Parallel": 
 			{"tag": "Parking - Parallel", "type": "parking-lane", "variantStringAdd": "direction|side"}
 		,
@@ -86,6 +94,7 @@ const mapping = {
 			}
 	},
 	"Buffers": {
+		"": {"type":"divider","variantString":"median"},
 		"Trees": {"type": "divider", "variantString": "big-tree"},
 		"tree": {"type": "divider", "variantString": "palm-tree"},
 		"season_tree": {"type": "divider", "variantString": "big-tree"},
