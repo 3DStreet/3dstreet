@@ -3,7 +3,7 @@
 // Orientation - default model orientation is "outbound" (away from camera)
 var streetmixParsersTested = require('./tested/aframe-streetmix-parsers-tested');
 var streetmixUtils = require('./tested/streetmix-utils');
-var segmentsVariants = require('./segments-variants.json');
+var { segmentVariants } = require('./segments-variants.js');
 
 function cloneMixinAsChildren ({ objectMixinId = '', parentEl = null, step = 15, radius = 60, rotation = '0 0 0', positionXYString = '0 0', length = undefined, randomY = false }) {
   for (let j = (radius * -1); j <= radius; j = j + step) {
@@ -757,7 +757,7 @@ function createSeparatorElement (positionY, rotationY, mixinId, length, repeatCo
 function supportCheck (segmentType, segmentVariantString) {
   if (segmentType == 'separator') return;
   // variants supported in 3DStreet
-  const supportedVariants = segmentsVariants[segmentType];
+  const supportedVariants = segmentVariants[segmentType];
   if (!supportedVariants) {
     STREET.notify.warningMessage(`The '${segmentType}' segment type is not yet supported in 3DStreet`);
     console.log(`The '${segmentType}' segment type is not yet supported in 3DStreet`);
