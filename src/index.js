@@ -11,6 +11,7 @@ require('./lib/aframe-cursor-teleport-component.min.js');
 require('./lib/animation-mixer.js');
 require('./assets.js');
 require('./components/notify.js');
+require('./components/streetplan-loader');
 require('./components/create-from-json');
 require('./components/screentock.js');
 require('aframe-atlas-uvs-component');
