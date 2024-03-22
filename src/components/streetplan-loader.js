@@ -56,7 +56,10 @@ AFRAME.registerComponent('streetplan-loader', {
     const el = this.el;
 
     /*  ***** debugging *****  */
-    this.streetplanResponseParse(exampleJSON);
+    setTimeout(()=> {
+      this.streetplanResponseParse(exampleJSON);
+    }, 1000);
+    
     return;
 
     // load from URL encoded Streetplan JSON
