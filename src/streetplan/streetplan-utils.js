@@ -21,7 +21,13 @@ function convertStreetStruct (streetProject) {
     newStruct.segments = Object.values(streetProject[streetplanName][streetplanAltName].segments);
 
     convertStreetValues(newStruct);
-    convertSegmentData(newStruct.segments);
+
+    // remove buildings and setback for now. To add them in another place
+    newStruct.segments = convertSegmentData(newStruct.segments)
+      .filter((segmentData) => {
+        return !["Buildings", "setback"].includes(segmentData['type'])
+      });
+
     console.log("TEST. Converted JSON structure: ", newStruct)
 
     return newStruct;
@@ -30,5 +36,5 @@ function convertStreetStruct (streetProject) {
 module.exports.convertStreetStruct = convertStreetStruct;
 
 function convertSegmentData (segments) {
-	segments.forEach(mappingUtils.convertSegment);
+	return segments.map(mappingUtils.convertSegment);
 }
