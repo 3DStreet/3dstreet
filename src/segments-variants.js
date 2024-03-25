@@ -16,7 +16,7 @@ const segmentVariants = {
   "bike-lane": ["inbound|green|sidewalk", "inbound|green|road", "outbound|green|sidewalk", "outbound|green|road", "inbound|regular|sidewalk", "inbound|regular|road", "outbound|regular|sidewalk", "outbound|regular|road", "inbound|red|sidewalk", "inbound|red|road", "outbound|red|sidewalk", "outbound|red|road"],
   "scooter": ["inbound|regular", "inbound|green", "inbound|red", "outbound|regular", "outbound|green", "outbound|red"],
   // road segments
-  "bus-lane": ["inbound|colored|typical", "outbound|colored|typical", "inbound|regular|typical", "outbound|regular|typical"],
+  "bus-lane": ["inbound|colored|typical", "outbound|colored|typical", "inbound|regular|typical", "outbound|regular|typical", "inbound|red|typical", "outbound|red|typical"],
   "drive-lane": ["inbound|car","outbound|car", "inbound|truck","outbound|truck", "outbound|av", "inbound|av", "outbound|pedestrian", "inbound|pedestrian", "inbound|sharrow", "outbound|sharrow"],
   "turn-lane": ["inbound|left", "inbound|right", "inbound|left-right-straight", "inbound|shared", "inbound|both", "inbound|left-straight", "inbound|right-straight", "inbound|straight", "outbound|left", "outbound|right", "outbound|left-right-straight", "outbound|shared", "outbound|both", "outbound|left-straight", "outbound|right-straight", "outbound|straight"],
   "parking-lane": ["sideways|right", "sideways|left", "inbound|right", "inbound|left", "outbound|left", "outbound|right", "angled-front-left|left", "angled-front-right|left", "angled-rear-left|left", "angled-rear-right|left", "angled-front-left|right", "angled-front-right|right", "angled-rear-left|right", "angled-rear-right|right"],
