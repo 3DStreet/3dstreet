@@ -1,15 +1,19 @@
-// conversion map StreetPan -> Streetmix
-// sidewalk segment types mapping
+// conversion map StreetPan -> Streetmix sidewalk segment types mapping
 /*
 StreetPlanType1:
  {
-	StreetPlanSubtype: StreetmixType,
+	StreetPlanSubtype: <String> StreetmixType,
 	--- or ---
-	StreetPlanSubtype: {
+	StreetPlanSubtype: <Object> {
 		"tag": StreetPlanTag, 
 		"type": StreetmixType, 
-		"variantString": StreetmixVariantString,
-		"variantStringAdd": get parameter values from this list and generate variantString,
+		"variantString": Streetmix VariantString, can be formed based on other Streetplan parameters 
+		(Name or Tag) or be constant, like: 'sidewalk',
+
+		"variantStringAdd": get parameter values from this list and generate variantString.
+		Often variantString looks like this: 'outbound|regular|road' - example for bike-path. 
+		variantStringAdd will be: 'direction|material|variantString',
+
 		"nameToVariantMap": mapping rule StreetPlan O1-Name -> VariantString,
 		"tagToVariantMap": mapping rule StreetPlan O1-Tags -> VariantString,		
 		"names": names (StreetPlan O1-Name) for this Streetmix Segment type
@@ -17,12 +21,18 @@ StreetPlanType1:
 	--- or ---
 	// for one (O1-Tags) there can be different streetmix segment types, 
 	// which are determined by the name (O1-Name)
-	StreetPlanSubtype: [
+	StreetPlanSubtype: <Array> [
 		different options of tags (O1-Tags) and streetMix data for each
 	]
  }
 */
 const mapping = {
+	"Setback": {
+		"": {"type": "sidewalk", "variantString": "empty"},
+		"Trees": {"type": "sidewalk-tree", "variantString": "big"},
+		"tree": {"type": "divider", "variantString": "palm-tree"},
+		"Benchs": {"type": "sidewalk-bench", "variantStringAdd": "side" },
+	},
 	"Walkways": {
 		"": {"type": "sidewalk", "variantString": "empty"},
 		"Trees": {"type": "sidewalk-tree", "variantString": "big"},
@@ -35,11 +45,7 @@ const mapping = {
 		"Trees": {"type": "sidewalk-tree", "variantString": "big"},
 		"season_tree": {"type": "sidewalk-tree", "variantString": "big"},
 		"Shelters": { "type": "transit-shelter", "variantString": "street-level", "variantStringAdd": "side|variantString" },
-		"planter": {"type": "divider", "variantString": "planting-strip"},
 		"Pedestrian": {"type": "sidewalk", "variantString": "dense"},
-		"Benchs": {"type": "sidewalk-bench", "variantStringAdd": "side" },
-		"Tables": {"type": "outdoor-dining", "variantString": "occupied|sidewalk"},
-		"BikeRacks": {"type": "sidewalk-bike-rack", "variantString": "sidewalk-parallel", "variantStringAdd": "side|variantString" },
 	},
 	"Curbside": {
 		"": {"type": "sidewalk", "variantString": "empty"},
@@ -48,10 +54,12 @@ const mapping = {
 				"Regular Lights": "modern"
 			}, "variantStringAdd": "side|variantString" 
 		},
-		"Shelters": { "type": "transit-shelter", "variantString": "street-level", "variantStringAdd": "side|variantString" },
 		"Poles": { "type": "utilities", "variantStringAdd": "side" },
-		"Benchs": {"type": "sidewalk-bench", "variantStringAdd": "side" },
-		"BikeRacks": {"type": "sidewalk-bike-rack", "variantString": "sidewalk-parallel", "variantStringAdd": "side|variantString" },
+		"BikeRacks": {"type": "sidewalk-bike-rack", "nameToVariantMap": {
+			"Sideview Modern": "sidewalk-parallel",
+			"Sideview": "sidewalk-parallel",
+			"NYC Bike Rack": "sidewalk",
+		}, "variantStringAdd": "side|variantString" },
 	},
 	"BikesPaths": {
 		"": {"type": "bike-lane", "variantString": "sidewalk"},
@@ -91,7 +99,8 @@ const mapping = {
 				"Away, R. Park, Head In": "angled-rear-right"
 				},
 				"variantStringAdd": "side"
-			}
+			},
+		"Perpendicular": {"type": "parking-lane", "variantString": "sideways", "variantStringAdd": "variantString|side"},
 	},
 	"Buffers": {
 		"": {"type":"divider","variantString":"median"},
@@ -99,16 +108,34 @@ const mapping = {
 		"tree": {"type": "divider", "variantString": "palm-tree"},
 		"season_tree": {"type": "divider", "variantString": "big-tree"},
 		"median": {"type": "divider", "variantString": "planting-strip"},
-		"Autos": {},
-		"AngleNormal": {},
-		"Purpendicular": {"type": "parking-lane", "variantString": "sideways", "variantStringAdd": "side"},
 		"planter": {"type": "divider", "variantString": "planting-strip"}
 	}
 }
 // copy repeating rules
 mapping["Buffers"]["AngleNormal"] = mapping["Parking"]["AngleNormal"];
 mapping["Buffers"]["Autos"] = mapping["Cars"]["Autos"];
+mapping["Buffers"]["Purpendicular"] = mapping["Parking"]["Perpendicular"];
 mapping["Median/Buffer"] = mapping["Buffers"];
+mapping["Setback"]["tree"] = mapping["Buffers"]["tree"];
+mapping["Setback"]["Trees"] = mapping["Buffers"]["Trees"];
+mapping["Setback"]["season_tree"] = mapping["Buffers"]["season_tree"];
+// fix for typo Purpendicular
+mapping["Parking"]["Purpendicular"] = mapping["Parking"]["Perpendicular"];
+mapping["Setback"]["Purpendicular"] = mapping["Parking"]["Perpendicular"];
+mapping["Setback"]["AngleNormal"] = mapping["Parking"]["AngleNormal"];
+mapping["Setback"]["planter"] = mapping["Buffers"]["planter"];
+mapping["Setback"]["BikeRacks"] = mapping["Curbside"]["BikeRacks"];
+mapping["Setback"]["Tables"] = mapping["Walkways"]["Tables"];
+mapping["Setback"]["Poles"] = mapping["Curbside"]["Poles"];
+
+mapping["Curbside"]["Shelters"] = mapping["Furniture"]["Shelters"];
+mapping["Curbside"]["Benchs"] = mapping["Walkways"]["Benchs"];
+
+mapping["Furniture"]["planter"] = mapping["Buffers"]["planter"];
+mapping["Furniture"]["Benchs"] = mapping["Walkways"]["Benchs"];
+mapping["Furniture"]["BikeRacks"] = mapping["Curbside"]["BikeRacks"];
+mapping["Furniture"]["Tables"] = mapping["Walkways"]["Tables"];
+
 
 const directionMap = {
 	"Coming": "inbound",
