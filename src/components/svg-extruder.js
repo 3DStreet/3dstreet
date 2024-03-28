@@ -11,11 +11,11 @@ AFRAME.registerComponent('svg-extruder', {
     bevelOffset: { type: 'number', default: 1 },
     bevelSegments: { type: 'number', default: 1 },
     topElement: { type: 'boolean', default: false },
-    color: { type: 'color', default: 'white'},
-    src: { type: 'string', default: '#grass-texture'},
-    bevelColor: { type: 'color', default: 'grey'},
-    bevelSrc: { type: 'string', default: ''},
-    lineColor: { type: 'color', default: 'black'}
+    color: { type: 'color', default: 'white' },
+    src: { type: 'string', default: '#grass-texture' },
+    bevelColor: { type: 'color', default: 'grey' },
+    bevelSrc: { type: 'string', default: '' },
+    lineColor: { type: 'color', default: 'black' }
   },
   init: function () {
     const data = this.data;
@@ -43,31 +43,30 @@ AFRAME.registerComponent('svg-extruder', {
     mergedGeometry.translate(0, 0.15, 0);
 
     // create a mesh with the shape geometry
-    const mergedShapeMesh = new THREE.Mesh(mergedGeometry, 
+    const mergedShapeMesh = new THREE.Mesh(mergedGeometry,
       this.materialFromSrc(data.src, data.color));
 
     if (topElement.getObject3D('mesh')) {
       topElement.removeObject3D('mesh');
-    }   
+    }
     topElement.setObject3D('mesh', mergedShapeMesh);
 
-    //topElement.setAttribute('material', `src:${data.src};roughness:1;repeat: 0.01 0.01`);
-    
+    // topElement.setAttribute('material', `src:${data.src};roughness:1;repeat: 0.01 0.01`);
   },
   materialFromSrc: function (imgSrc, color) {
     let texture = null;
     // create material with texture from img element with id imgSrc
-    const textureImg = (imgSrc !== '') ? document.querySelector(imgSrc): null;  
+    const textureImg = (imgSrc !== '') ? document.querySelector(imgSrc) : null;
     if (textureImg) {
       // create texture from img element
-      texture = new THREE.Texture(textureImg); 
+      texture = new THREE.Texture(textureImg);
 
       texture.encoding = THREE.sRGBEncoding;
 
       // set repeat property for texture
       texture.wrapS = THREE.RepeatWrapping;
       texture.wrapT = THREE.RepeatWrapping;
-      texture.repeat.set(0.01, 0.01);             
+      texture.repeat.set(0.01, 0.01);
     }
 
     const material = new THREE.MeshStandardMaterial({
@@ -110,7 +109,7 @@ AFRAME.registerComponent('svg-extruder', {
       const shapes = SVGLoader.createShapes(path);
 
       shapes.forEach((shape) => {
-        const topGeometry = new THREE.ExtrudeGeometry(shape, {depth: 1, bevelEnabled: false});
+        const topGeometry = new THREE.ExtrudeGeometry(shape, { depth: 1, bevelEnabled: false });
         const geometry = new THREE.ExtrudeGeometry(shape, extrudeSettings);
         topGeometryArray.push(topGeometry);
         extrudedGeometryArray.push(geometry);
@@ -130,9 +129,9 @@ AFRAME.registerComponent('svg-extruder', {
     el.setObject3D('lines', lines);
 
     // Finally, create a mesh with the merged geometry
-    const mergedMesh = new THREE.Mesh(mergedGeometry, 
+    const mergedMesh = new THREE.Mesh(mergedGeometry,
       this.materialFromSrc(data.bevelSrc, data.bevelColor)
-      );
+    );
 
     // remove existing mesh from entity
     if (el.getObject3D('mesh')) {
@@ -140,21 +139,20 @@ AFRAME.registerComponent('svg-extruder', {
     }
     el.setObject3D('mesh', mergedMesh);
 
-    //el.setAttribute('material', `src:${data.bevelSrc};roughness:1;repeat: 0.1 0.1`);
-    
+    // el.setAttribute('material', `src:${data.bevelSrc};roughness:1;repeat: 0.1 0.1`);
+
     const topElement = this.el.children[0];
     if (data.topElement) {
       // create entity from shapes for top level of extruded geometry
-      this.createTopEntity(topGeometryArray);    
+      this.createTopEntity(topGeometryArray);
     } else if (topElement) {
       el.removeChild(topElement);
     }
-
   },
   update: function (oldData) {
     // If `oldData` is empty, then this means we're in the initialization process.
     // No need to update.
-    //if (Object.keys(oldData).length === 0) { return; }
+    // if (Object.keys(oldData).length === 0) { return; }
 
     const el = this.el;
     const svgString = this.data.svgString;
