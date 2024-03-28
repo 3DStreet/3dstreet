@@ -536,6 +536,18 @@ AFRAME.registerComponent('set-loader-from-hash', {
           'streetmixStreetURL',
           streetURL
         );
+      } else if (streetURL.startsWith('streetmix-json:')){
+
+        const JSONString = decodeURIComponent(streetURL.split('streetmix-json:')[1]);
+        console.log(JSONString)
+        const streetmixJSON = JSON.parse(JSONString);
+        console.log(streetmixJSON);
+        this.el.setAttribute('streetmix-loader', 'streetmixJSON', streetmixJSON);
+      } else if (streetURL.startsWith('3dstreet-json:')){
+
+        const JSONString = decodeURIComponent(streetURL.split('3dstreet-json:')[1]);
+        console.log(JSONString)
+        this.createStreetFromJSONData(JSONString);
       } else {
         // try to load JSON file from remote resource
         console.log(
@@ -551,22 +563,31 @@ AFRAME.registerComponent('set-loader-from-hash', {
       // }
     }
   },
+  // parse JSON street data from string and create Street elements
+  createStreetFromJSONData: function (stringJSONData, successMessage) {
+    // remove 'set-loader-from-hash' component from json data
+    const jsonData = JSON.parse(stringJSONData, (key, value) =>
+      key === 'set-loader-from-hash' ? undefined : value
+    );
+
+    console.log(
+      '[set-loader-from-hash]',
+      successMessage
+    );
+    STREET.utils.createElementsFromJSON(jsonData);
+  },
   fetchJSON: function (requestURL) {
     const request = new XMLHttpRequest();
     request.open('GET', requestURL, true);
+
+    const createStreetFromJSONData = this.createStreetFromJSONData;
+
     request.onload = function () {
       if (this.status >= 200 && this.status < 400) {
         // Connection success
-        // remove 'set-loader-from-hash' component from json data
-        const jsonData = JSON.parse(this.response, (key, value) =>
-          key === 'set-loader-from-hash' ? undefined : value
-        );
-
-        console.log(
-          '[set-loader-from-hash]',
-          '200 response received and JSON parsed, now createElementsFromJSON'
-        );
-        STREET.utils.createElementsFromJSON(jsonData);
+        const successMessage = 
+          '200 response received and JSON parsed, now createElementsFromJSON';
+        createStreetFromJSONData(this.response, successMessage);
         const sceneId = getUUIDFromPath(requestURL);
         if (sceneId) {
           console.log('sceneId from fetchJSON from url hash loader', sceneId);
