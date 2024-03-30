@@ -11,10 +11,10 @@ AFRAME.registerComponent('svg-extruder', {
     bevelOffset: { type: 'number', default: 1 },
     bevelSegments: { type: 'number', default: 1 },
     topElement: { type: 'boolean', default: false },
-    color: { type: 'color', default: 'white' },
-    src: { type: 'string', default: '#grass-texture' },
-    bevelColor: { type: 'color', default: 'grey' },
-    bevelSrc: { type: 'string', default: '' },
+    topColor: { type: 'color', default: 'white' },
+    topSrc: { type: 'string', default: '#grass-texture' },
+    color: { type: 'color', default: 'grey' },
+    src: { type: 'string', default: '' },
     lineColor: { type: 'color', default: 'black' }
   },
   init: function () {
@@ -44,7 +44,7 @@ AFRAME.registerComponent('svg-extruder', {
 
     // create a mesh with the shape geometry
     const mergedShapeMesh = new THREE.Mesh(mergedGeometry,
-      this.materialFromSrc(data.src, data.color));
+      this.materialFromSrc(data.topSrc, data.topColor));
 
     if (topElement.getObject3D('mesh')) {
       topElement.removeObject3D('mesh');
@@ -130,7 +130,7 @@ AFRAME.registerComponent('svg-extruder', {
 
     // Finally, create a mesh with the merged geometry
     const mergedMesh = new THREE.Mesh(mergedGeometry,
-      this.materialFromSrc(data.bevelSrc, data.bevelColor)
+      this.materialFromSrc(data.src, data.color)
     );
 
     // remove existing mesh from entity
@@ -139,7 +139,7 @@ AFRAME.registerComponent('svg-extruder', {
     }
     el.setObject3D('mesh', mergedMesh);
 
-    // el.setAttribute('material', `src:${data.bevelSrc};roughness:1;repeat: 0.1 0.1`);
+    // el.setAttribute('material', `src:${data.src};roughness:1;repeat: 0.1 0.1`);
 
     const topElement = this.el.children[0];
     if (data.topElement) {
