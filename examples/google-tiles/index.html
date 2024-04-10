@@ -9,7 +9,7 @@
 
     <!-- mapbox and google tiles -->
     <script src="/src/lib/aframe-mapbox-component.min.js"></script>
-    <script src="/src/lib/aframe-loader-3dtiles-component.js"></script>
+    <script src="/src/lib/aframe-loader-3dtiles-component.min.js"></script>
 
     <!-- vr teleport controls -->
     <script src="https://cdn.jsdelivr.net/npm/aframe-blink-controls@0.4.3/dist/aframe-blink-controls.min.js"></script>
@@ -103,6 +103,7 @@
       <a-entity id="reference-layers" data-layer-name="Reference Layers" data-layer-show-children>
         <a-entity
         id="tileset"
+        data-no-pause
         loader-3dtiles="
           url: https://tile.googleapis.com/v1/3dtiles/root.json; 
           lat: 37.77522354250163;
