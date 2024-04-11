@@ -38,7 +38,7 @@ AFRAME.registerComponent('streetplan-loader', {
       console.log('therefore setting metadata sceneTitle as streetplanName', streetplanName);
     }
 
-    el.setAttribute('data-layer-name', 'Streetplan • ' + streetplanName);
+    el.setAttribute('data-layer-name', 'StreetPlan â€¢ ' + streetplanName);
 
     if (data.showBuildings) {
       el.setAttribute('street', 'right', streetData.rightBuildingVariant);
@@ -52,15 +52,15 @@ AFRAME.registerComponent('streetplan-loader', {
   update: function (oldData) { // fired at start and at each subsequent change of any schema value
     // This method may fire a few times when viewing a streetmix street in 3dstreet:
     // First to find the proper path, once to actually load the street, and then subsequent updates such as street name
+    const that = this;
     const data = this.data;
     const el = this.el;
 
-    /*  ***** debugging *****  */
-    setTimeout(()=> {
-      this.streetplanResponseParse(exampleJSON);
-    }, 1000);
-    
-    return;
+    // /*  ***** debugging *****  */
+    // setTimeout(()=> {
+    //   this.streetplanResponseParse(exampleJSON);
+    // }, 1000);
+    // return;
 
     // load from URL encoded Streetplan JSON
     if (data.streetplanEncJSON) {
@@ -83,7 +83,7 @@ AFRAME.registerComponent('streetplan-loader', {
       if (this.status >= 200 && this.status < 400) {
         // Connection success
         const streetplanResponseObject = JSON.parse(this.response);
-        this.streetplanResponseParse(streetplanResponseObject);
+        that.streetplanResponseParse(streetplanResponseObject);
       } else {
         // We reached our target server, but it returned an error
         console.log('[streetplan-loader]', 'Loading Error: We reached the target server, but it returned an error');

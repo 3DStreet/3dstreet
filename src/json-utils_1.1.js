@@ -536,16 +536,16 @@ AFRAME.registerComponent('set-loader-from-hash', {
           'streetmixStreetURL',
           streetURL
         );
-      } else if (streetURL.startsWith('streetplanJSON:')) {
+      } else if (streetURL.includes('streetplan.net')) {
         // load from Streetplan encoded JSON in URL
         console.log(
           '[set-loader-from-hash]',
-          'Set streetplan-loader streetplanEncJSON to',
+          'Set streetplan-loader streetplanAPIURL to',
           streetURL
         );
         this.el.setAttribute(
           'streetplan-loader',
-          'streetplanEncJSON',
+          'streetplanAPIURL',
           streetURL
         );
       } else {
