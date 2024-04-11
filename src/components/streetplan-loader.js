@@ -26,7 +26,7 @@ AFRAME.registerComponent('streetplan-loader', {
     const streetplanAltName = streetData.altName;
 
     console.log('streetplanName', streetplanName);
-    //el.setAttribute('streetplan-loader', 'name', streetplanName);
+    // el.setAttribute('streetplan-loader', 'name', streetplanName);
 
     let currentSceneTitle;
     const sceneEl = this.el.sceneEl;

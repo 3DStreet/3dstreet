@@ -251,7 +251,7 @@ function getBusLaneMixin (variant) {
   }
   if (variant === 'blue') {
     return 'surface-blue bus-lane';
-  }  
+  }
   if (variant === 'grass') {
     return 'surface-green bus-lane';
   }
@@ -804,7 +804,7 @@ function processSegments (segments, showStriping, length, globalAnimated, showVe
     var positionY = 0;
 
     // get variantString
-    var variantList = segments[i].variantString ? segments[i].variantString.split('|'): "";
+    var variantList = segments[i].variantString ? segments[i].variantString.split('|') : '';
 
     // show warning message if segment or variantString are not supported
     supportCheck(segments[i].type, segments[i].variantString);
