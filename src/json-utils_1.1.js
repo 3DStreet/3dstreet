@@ -509,7 +509,6 @@ AFRAME.registerComponent('scene-title', {
 });
 
 AFRAME.registerComponent('set-loader-from-hash', {
-  dependencies: ['streetmix-loader'],
   schema: {
     defaultURL: { type: 'string' }
   },
@@ -536,7 +535,7 @@ AFRAME.registerComponent('set-loader-from-hash', {
           'streetmixStreetURL',
           streetURL
         );
-      } else if (streetURL.includes('streetplan.net')) {
+      } else if (streetURL.includes('streetplan.net/')) {
         // load from Streetplan encoded JSON in URL
         console.log(
           '[set-loader-from-hash]',
