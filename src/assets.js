@@ -142,6 +142,7 @@ function buildAssetHTML (assetUrl, categories) {
         <a-mixin id="yellow" material="color:#f7d117"></a-mixin>
         <a-mixin id="surface-green" material="color:#adff83"></a-mixin>
         <a-mixin id="surface-red" material="color:#ff9393"></a-mixin>
+        <a-mixin id="surface-blue" material="color:#00b6b6"></a-mixin>
       `,
     'lane-separator': `
         <!-- lane separator markings -->

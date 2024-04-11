@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <!-- aframe -->
+    <script src="https://aframe.io/releases/1.5.0/aframe.min.js"></script>
+
+    <!-- 3dstreet -->
+    <script src="./dist/aframe-street-component.js"></script>
+
+    <!-- mapbox -->
+    <script src="./src/lib/aframe-mapbox-component.min.js"></script>
+
+    <!-- vr teleport controls -->
+    <script src="https://cdn.jsdelivr.net/npm/aframe-blink-controls@0.4.3/dist/aframe-blink-controls.min.js"></script>
+
+    <script>
+      // this makes the same camera rig setup work in VR and desktop modes
+      // this could be a new component, such as "swap desktop and vr controls" and put in init section
+      window.addEventListener("DOMContentLoaded", function() {
+        const sceneEl = document.querySelector("a-scene");
+        sceneEl.addEventListener("enter-vr", function() {
+          document.querySelector('#cameraRig').removeAttribute('look-controls')
+          document.querySelector('#cameraRig').removeAttribute('wasd-controls')
+          document.querySelector('#cameraRig').removeAttribute('cursor-teleport')
+          document.querySelector('#cameraRig').setAttribute('position', '0 0 0')
+        });
+        sceneEl.addEventListener("exit-vr", function() {
+          document.querySelector('#cameraRig').setAttribute('cursor-teleport', "cameraRig: #cameraRig; cameraHead: #camera;")
+          document.querySelector('#cameraRig').setAttribute('look-controls', "reverseMouseDrag: true;")
+          document.querySelector('#cameraRig').setAttribute('wasd-controls', "enabled: true")
+        });
+      })
+    </script>
+    <title>3DStreet</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="icon" type="image/x-icon" href="ui_assets/favicon.ico">
+    <link rel="stylesheet" href="src/viewer-styles.css">
+  </head>
+
+  <body>
+    <!-- loading animation start -->
+    <div class="loader__wrapper">
+      <div class="loader">
+        <div class="entities">
+          <img src="./ui_assets/loader/entities.svg" alt="entities" />
+        </div>
+        <div class="transport">
+          <div class="wrapper__transport">
+            <img src="./ui_assets/loader/car.svg" class="car" alt="car" />
+            <img src="./ui_assets/loader/bus.svg" class="bus" alt="bus" />
+            <img src="./ui_assets/loader/bike.svg" class="bike" alt="bike" />
+          </div>
+        </div>
+        <div class="road">Loading 3DStreet</div>
+      </div>
+    </div>
+
+    <!-- viewer ui start -->
+    <div class="viewer-header-wrapper">
+      <button class="viewer-logo-start-editor-button" onclick="startEditor()">
+        <img class="viewer-logo-img" alt="3DStreet Viewer" src="ui_assets/3DStreet-Viewer-Start-Editor.svg">
+      </button>
+    </div>
+
+    <div class="right-fixed">
+      <ul class="right-menu">
+        <li onclick="buttonScreenshotTock()"> <a class="camera"  href="#"> <span> Capture image as PNG </span> <img src="ui_assets/camera-icon.svg"> </a></li>
+        <li onclick="STREET.utils.inputStreetmix()"> <a class="load"  href="#"> <span> Load Streetmix URL </span> <img src="ui_assets/streetmix-logo.svg"> </a></li>
+        <!-- <li onclick="inputJSON()"> <a class="load"  href="#"> <span> Load JSON String </span> <img src="assets/ui_assets/upload-icon.svg"> </a></li> -->
+        <li><a class="load"> <label for="inputfile" style="display: inherit; align-items: center; cursor: pointer"> <input type="file" id="inputfile" style="display:none" accept=".js, .json, .txt"> <span> Load JSON File </span> <img src="ui_assets/upload-icon.svg"></label></a></li>
+      </ul>
+    </div>
+
+    <a-scene
+      renderer="colorManagement: true; physicallyCorrectLights: true; anisotropy: 16;"
+      inspector="url: //3dstreet.app/dist/3dstreet-editor.js"
+      notify
+      metadata
+      scene-title
+      reflection
+      >
+      <a-assets>
+        <!-- uncomment the line below to load assets from local github submodule -->
+        <!-- <street-assets url="./assets/"></street-assets>   -->
+        <!-- uncomment the line below to load all possible asset categories -->
+        <!-- <street-assets categories="sidewalk-props people people-rigged vehicles vehicles-rigged buildings intersection-props segment-textures segment-colors lane-separator stencils vehicles-transit dividers sky grounds"></street-assets>   -->
+        <!-- a reduced set of assets for non-animated streetmix streets without intersections -->
+        <street-assets categories="loud-bicycle sidewalk-props people vehicles vehicles-rigged buildings segment-textures segment-colors lane-separator stencils vehicles-transit dividers sky grounds"></street-assets>
+      </a-assets>
+  
+      <a-entity id="street-container" data-layer-name="3D Street Layers" data-layer-show-children>
+        <a-entity id="default-street" street streetplan-loader="NOTstreetplanAPIURL: https://api.allorigins.win/raw?url=https://upd.streetplan.net/streets-3d-data/79303" set-loader-from-hash></a-entity>
+      </a-entity>
+
+      <a-entity id="reference-layers" data-layer-name="Reference Layers" data-layer-show-children></a-entity>
+
+      <a-entity id="environment" data-layer-name="Environment" street-environment="preset: day;"></a-entity>
+
+      <a-entity id="cameraRig" position="0 10 30" data-layer-name="Viewer" cursor-teleport="cameraRig: #cameraRig; cameraHead: #camera;" look-controls="reverseMouseDrag: true" wasd-controls="enabled: true">
+        <a-entity id="camera" camera="far: 1000" position="0 1.6 0" ></a-entity>
+        <a-entity id="leftHand" hand-controls="hand: left;" blink-controls="cameraRig: #cameraRig; teleportOrigin: #camera; rotateOnTeleport:false;"></a-entity>
+        <a-entity id="rightHand"  hand-controls="hand: right" blink-controls="cameraRig: #cameraRig; teleportOrigin: #camera; rotateOnTeleport:false;"></a-entity>
+        <a-entity id="screenshot" class="no-pause" screentock visible="false"></a-entity>
+      </a-entity>
+
+    </a-scene>
+  </body>
+  <script>
+    /* loading animation script */
+    document.addEventListener('DOMContentLoaded', function () {
+      const scene = document.querySelector('a-scene');
+      const splash = document.querySelector('.loader__wrapper');
+      scene.addEventListener('loaded', function (e) {
+        setTimeout(() => {
+          splash.style.display = 'none';
+        }, 1000);        
+      });
+    });
+  </script>
+  <script>
+
+    document.getElementById('inputfile')
+            .addEventListener('change', STREET.utils.fileJSON);
+
+    function buttonScreenshotTock() {
+      const screenshotEl = document.getElementById('screenshot');
+      screenshotEl.play(); // double check playing in case we're in editor mode
+      screenshotEl.setAttribute('screentock', 'type', 'jpg');
+      screenshotEl.setAttribute('screentock', 'takeScreenshot', true);
+    }
+
+    function startEditor() {
+      var sceneEl = document.querySelector('a-scene');
+      sceneEl.components.inspector.openInspector();
+      document.querySelector('.viewer-header-wrapper').style.display = 'none';
+    }
+    
+    AFRAME.registerComponent('timed-inspector', {
+      init: function() {
+        setTimeout( function () {
+          window.postMessage('INJECT_AFRAME_INSPECTOR')
+        }, this.data * 1000)
+      }
+    });  
+  
+  </script>
+</html>

@@ -509,7 +509,6 @@ AFRAME.registerComponent('scene-title', {
 });
 
 AFRAME.registerComponent('set-loader-from-hash', {
-  dependencies: ['streetmix-loader'],
   schema: {
     defaultURL: { type: 'string' }
   },
@@ -534,6 +533,18 @@ AFRAME.registerComponent('set-loader-from-hash', {
         this.el.setAttribute(
           'streetmix-loader',
           'streetmixStreetURL',
+          streetURL
+        );
+      } else if (streetURL.includes('streetplan.net/')) {
+        // load from Streetplan encoded JSON in URL
+        console.log(
+          '[set-loader-from-hash]',
+          'Set streetplan-loader streetplanAPIURL to',
+          streetURL
+        );
+        this.el.setAttribute(
+          'streetplan-loader',
+          'streetplanAPIURL',
           streetURL
         );
       } else {
