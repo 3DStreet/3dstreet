@@ -10,9 +10,6 @@
     <!-- mapbox -->
     <script src="https://github.3dstreet.org/src/lib/aframe-mapbox-component.min.js"></script>
 
-    <!-- save / load -->
-    <script src="./src/json-utils.js"></script>
-
     <title>3DStreet</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link rel="icon" type="image/x-icon" href="ui_assets/favicon.ico">
@@ -126,8 +123,9 @@
     </a-scene>
   </body>
   <script>
+
     document.getElementById('inputfile')
-            .addEventListener('change', fileJSON);
+            .addEventListener('change', STREET.utils.fileJSON);
 
     function buttonScreenshotTock() {
       const screenshotEl = document.getElementById('screenshot');
@@ -149,6 +147,7 @@
         }, this.data * 1000)
       }
     });  
+    
   </script>
 
   <!-- Google Analytics - Global site tag (gtag.js) -->
