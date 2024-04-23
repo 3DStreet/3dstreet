@@ -1,45 +1,76 @@
 /* global AFRAME, THREE */
 /* 3DStreet utils functions */
 
+function checkOrCreateEntity(elementId, outerHTML) {
+	// clear old element data and replace with new HTML string
+	let newElement = document.getElementById(elementId);
+	if (!newElement) {
+		newElement = document.createElement('a-entity');
+		newElement.id = elementId;
+		AFRAME.scenes[0].appendChild(newElement);
+	}
+	if (outerHTML.length > 0) {
+		// replace element HTML data
+		newElement.outerHTML = outerHTML;
+	}
+	return newElement;
+}
+
 /* 
 clear old scene elements and data. Create blank scene 
 */
-function newScene() {
-	
+function newScene(clearMetaData=true, clearUrlHash=true) {
+
+    const environmentHTML = 
+    `<a-entity id="environment" data-layer-name="Environment" street-environment="preset: day;"></a-entity>`;
+
+    const referenceLayersHTML = 
+    `<a-entity id="reference-layers" data-layer-name="Reference Layers" data-layer-show-children></a-entity>`;
+
 	const streetContainerEl = document.querySelector("#street-container");
 	const environmentEl = document.querySelector("#environment");
 	const referenceLayersEl = document.querySelector("#reference-layers");
 
 	// clear street-container element
-	while (streetContainerEl.firstChild) {
-		streetContainerEl.removeChild(streetContainerEl.lastChild);
+	const streetContainerArray = Array.from(streetContainerEl.children);
+	for (childEl of streetContainerArray) {
+		if (childEl.id !== 'default-street') {
+			streetContainerEl.removeChild(childEl);
+		} else {
+			// clear default-street element
+			const defaultStreet = childEl;
+			const defaultStreetArray = Array.from(defaultStreet.children);
+			for (defaultStreetChild of defaultStreetArray) {
+				defaultStreet.removeChild(defaultStreetChild);
+			}
+			defaultStreet.removeAttribute('street');
+			defaultStreet.removeAttribute('streetmix-loader');
+		}
 	}
-	//	streetContainerEl.innerHTML = '';
-	// create default-street element
-	const defaultStreet = document.createElement("a-entity");
-	defaultStreet.id = "default-street";
-	streetContainerEl.appendChild(defaultStreet);
 
-	// clear environment element
-	while (environmentEl.firstChild) {
-		environmentEl.removeChild(environmentEl.lastChild);
-	}	
-	// set default preset:day  
-	environmentEl.setAttribute('street-environment', 'preset', 'day');
-
-	// clear reference layers
-	while (referenceLayersEl.firstChild) {
-		referenceLayersEl.removeChild(referenceLayersEl.lastChild);
+	if (!streetContainerEl.querySelector("#default-street")) {
+		// create default-street element
+		const defaultStreet = document.createElement("a-entity");
+		defaultStreet.id = "default-street";
+		streetContainerEl.appendChild(defaultStreet);
+		defaultStreet.setAttribute('set-loader-from-hash');
 	}
+
+	checkOrCreateEntity("environment", environmentHTML);
+	checkOrCreateEntity("reference-layers", referenceLayersHTML);
 
 	// clear metadata
-	AFRAME.scenes[0].setAttribute('metadata', 'sceneId', '');
-	AFRAME.scenes[0].setAttribute('metadata', 'sceneTitle', '');
+	if (clearMetaData) {
+		AFRAME.scenes[0].setAttribute('metadata', 'sceneId', '');
+		AFRAME.scenes[0].setAttribute('metadata', 'sceneTitle', '');
+	}
 
 	// clear url hash
-	setTimeout(function () {
-		window.location.hash = '';
-	});
+	if (clearUrlHash) {
+		setTimeout(function () {
+			window.location.hash = '';
+		});		
+	}	
 }
 
 STREET.utils.newScene = newScene;
