@@ -60,7 +60,7 @@ function newScene(clearMetaData=true, clearUrlHash=true, addDefaultStreet=true) 
 	checkOrCreateEntity("reference-layers", referenceLayersHTML);
 
 	// update sceneGraph
-	Events.emit('entitycreated', streetContainerEl.sceneEl);
+	streetContainerEl.emit('entitycreated', streetContainerEl.sceneEl);
 
 	// clear metadata
 	if (clearMetaData) {
