@@ -19,7 +19,7 @@ function checkOrCreateEntity(elementId, outerHTML) {
 /* 
 clear old scene elements and data. Create blank scene 
 */
-function newScene(clearMetaData=true, clearUrlHash=true) {
+function newScene(clearMetaData=true, clearUrlHash=true, addDefaultStreet=true) {
 
     const environmentHTML = 
     `<a-entity id="environment" data-layer-name="Environment" street-environment="preset: day;"></a-entity>`;
@@ -34,7 +34,7 @@ function newScene(clearMetaData=true, clearUrlHash=true) {
 	// clear street-container element
 	const streetContainerArray = Array.from(streetContainerEl.children);
 	for (childEl of streetContainerArray) {
-		if (childEl.id !== 'default-street') {
+		if (!addDefaultStreet || childEl.id !== 'default-street') {
 			streetContainerEl.removeChild(childEl);
 		} else {
 			// clear default-street element
@@ -48,7 +48,7 @@ function newScene(clearMetaData=true, clearUrlHash=true) {
 		}
 	}
 
-	if (!streetContainerEl.querySelector("#default-street")) {
+	if (!streetContainerEl.querySelector("#default-street") && addDefaultStreet) {
 		// create default-street element
 		const defaultStreet = document.createElement("a-entity");
 		defaultStreet.id = "default-street";
@@ -58,6 +58,9 @@ function newScene(clearMetaData=true, clearUrlHash=true) {
 
 	checkOrCreateEntity("environment", environmentHTML);
 	checkOrCreateEntity("reference-layers", referenceLayersHTML);
+
+	// update sceneGraph
+	Events.emit('entitycreated', streetContainerEl.sceneEl);
 
 	// clear metadata
 	if (clearMetaData) {
