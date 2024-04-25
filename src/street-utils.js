@@ -43,6 +43,8 @@ function newScene(clearMetaData=true, clearUrlHash=true, addDefaultStreet=true) 
 			for (defaultStreetChild of defaultStreetArray) {
 				defaultStreet.removeChild(defaultStreetChild);
 			}
+			// clear data from previous scene
+			defaultStreet.removeAttribute('data-layer-name');
 			defaultStreet.removeAttribute('street');
 			defaultStreet.removeAttribute('streetmix-loader');
 		}
@@ -59,8 +61,10 @@ function newScene(clearMetaData=true, clearUrlHash=true, addDefaultStreet=true) 
 	checkOrCreateEntity("environment", environmentHTML);
 	checkOrCreateEntity("reference-layers", referenceLayersHTML);
 
-	// update sceneGraph
-	streetContainerEl.emit('entitycreated', streetContainerEl.sceneEl);
+	if (AFRAME.INSPECTOR && AFRAME.INSPECTOR.opened) {
+		// update sceneGraph
+		
+	}
 
 	// clear metadata
 	if (clearMetaData) {
