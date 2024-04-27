@@ -815,6 +815,9 @@ function processSegments (segments, showStriping, length, globalAnimated, showVe
     elevationLevels = [0, 0.2, 0.4];
     const elevationPosY = elevationLevels[elevation];
 
+    // add y elevation position as a data attribute to segment entity
+    segmentParentEl.setAttribute('data-elevation-posY', elevationPosY);
+
     // Note: segment 3d models are outbound by default
     // If segment variant inbound, rotate segment model by 180 degrees
     var rotationY = (variantList[0] === 'inbound' || variantList[1] === 'inbound') ? 180 : 0;
