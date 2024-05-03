@@ -4,7 +4,7 @@ if (typeof VERSION !== 'undefined') { console.log(`3DStreet Version: ${VERSION}`
 var streetmixParsers = require('./aframe-streetmix-parsers');
 var streetmixUtils = require('./tested/streetmix-utils');
 require('./json-utils_1.1.js');
-require('./street-utils.js');
+var streetUtils = require('./street-utils.js');
 require('./components/gltf-part');
 require('./components/ocean');
 require('./components/svg-extruder.js');
@@ -29,8 +29,49 @@ AFRAME.registerComponent('street', {
     globalAnimated: { default: false },
     length: { default: 60 } // new default of 60 from 0.4.4
   },
+  init: function () {
+    // flag to determine init component load
+    this._initLoad = true;
+  },
+  toggleEntitiesVisibillity: function (entitiesArray, visible) {
+    entitiesArray.forEach(entity => entity.setAttribute('visible', visible));
+  },
+  toggleVehicles: function (showVehicles) {
+    const vehicleEntities = streetUtils.getVehicleEntities();
+    this.toggleEntitiesVisibillity(vehicleEntities, showVehicles);
+  },
+  toggleGround: function (showGround) {
+    const groundEntities = Array.from(document.querySelectorAll('.ground-left, .ground-right'));
+    this.toggleEntitiesVisibillity(groundEntities, showGround);
+  },
+  toggleStriping: function (showStriping) {
+    const stripingEntities = streetUtils.getStripingEntities();
+    this.toggleEntitiesVisibillity(stripingEntities, showStriping);
+  },
   update: function (oldData) { // fired once at start and at each subsequent change of a schema value
+
+    // do not call the update function when the component is initially loaded and sourceType is jsonFile
+    if (STREET.sourceType === 'jsonFile' && this._initLoad) {
+      this._initLoad = false;
+      return;
+    }
+
     var data = this.data;
+
+    if (data.showGround !== oldData.showGround) {
+      this.toggleGround(data.showGround);
+      return;
+    }
+
+    if (data.showVehicles !== oldData.showVehicles) {
+      this.toggleVehicles(data.showVehicles);
+      return;
+    }
+
+    if (data.showStriping !== oldData.showStriping) {
+      this.toggleStriping(data.showStriping);
+      return;
+    }
 
     if (data.JSON.length === 0) {
       if (oldData.JSON !== undefined && oldData.JSON.length === 0) { return; } // this has happened before, surpress console log
@@ -78,6 +119,9 @@ AFRAME.registerComponent('streetmix-loader', {
     var data = this.data;
     var el = this.el;
 
+    // do not call update function while loading scene from JSON file
+    if (STREET.sourceType === 'jsonFile') return;
+
     // if the loader has run once already, and upon update neither URL has changed, do not take action
     if ((oldData.streetmixStreetURL === data.streetmixStreetURL) && (oldData.streetmixAPIURL === data.streetmixAPIURL)) {
       // console.log('[streetmix-loader]', 'Neither streetmixStreetURL nor streetmixAPIURL have changed in this component data update, not reloading street.')
@@ -122,7 +166,7 @@ AFRAME.registerComponent('streetmix-loader', {
           console.log('therefore setting metadata sceneTitle as streetmixName', streetmixName);
         }
 
-        el.setAttribute('data-layer-name', 'Streetmix â€¢ ' + streetmixName);
+        el.setAttribute('data-layer-name', 'Streetmix • ' + streetmixName);
 
         if (data.showBuildings) {
           el.setAttribute('street', 'right', streetData.rightBuildingVariant);
@@ -160,6 +204,9 @@ AFRAME.registerComponent('intersection', {
   init: function () {
     var data = this.data;
     var el = this.el;
+
+    // do not call init method while loading scene from JSON file
+    if (STREET.sourceType === 'jsonFile') return;
 
     // remove all child nodes if exists
     while (el.firstChild) {
