@@ -100,21 +100,11 @@
         <a-entity id="rightHand"  hand-controls="hand: right" blink-controls="cameraRig: #cameraRig; teleportOrigin: #camera; rotateOnTeleport:false;"></a-entity>
         <a-entity id="screenshot" class="no-pause" screentock visible="false"></a-entity>
       </a-entity>
-      <a-entity id="reference-layers" data-layer-name="Reference Layers" data-layer-show-children>
-        <a-entity
-        id="tileset"
-        loader-3dtiles="
-          url: https://tile.googleapis.com/v1/3dtiles/root.json; 
-          lat: 37.77522354250163;
-          long: -122.41931773049723;
-          height: -16.5;
-          googleApiKey: AIzaSyAQshwLVKTpwTfPJxFEkEzOdP_cgmixTCQ;
-          geoTransform: WGS84Cartesian;
-          maximumSSE: 48;
-          maximumMem: 400;
-          cameraEl: #camera">
-        </a-entity>
-      
+      <a-entity id="reference-layers" data-layer-name="Reference Layers" data-layer-show-children street-geo="
+        latitude: 37.77522354250163;
+        longitude: -122.41931773049723;
+        maps: google3d
+      " >      
       </a-entity>
 
       <a-entity id="environment" data-layer-name="Environment" street-environment="preset: day;"></a-entity>
