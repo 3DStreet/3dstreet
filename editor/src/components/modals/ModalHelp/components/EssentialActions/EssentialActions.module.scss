@@ -1,0 +1,55 @@
+@use '../../../../../style/variables.scss';
+
+.essentialActionsWrapper {
+  display: flex;
+  flex-flow: row wrap;
+  row-gap: 2.5rem;
+  column-gap: 2rem;
+  width: 100%;
+  max-width: 698px;
+  padding: 0px 14px 0 4px;
+  .action {
+    display: flex;
+    flex-direction: column;
+    row-gap: 20px;
+    width: calc(50% - 1rem);
+    h3,
+    p {
+      margin: 0 !important;
+    }
+    .text {
+      display: flex;
+      flex-direction: column;
+      row-gap: 12px;
+      width: 100%;
+      h3.actionTitle {
+        font-size: 1rem;
+        line-height: 1.1875rem;
+        font-weight: 600;
+      }
+      p.actionDescription {
+        font-size: 0.75rem;
+        line-height: 0.9rem;
+        font-weight: 500;
+      }
+    }
+    .icons {
+      display: flex;
+      flex-direction: column;
+      row-gap: 1.25rem;
+      width: 100%;
+      .itemsRow {
+        display: flex;
+        column-gap: 0.75rem;
+        row-gap: 0.75rem;
+        align-items: center;
+        width: 100%;
+        span {
+          font-size: 1rem;
+          line-height: 1.2rem;
+          font-weight: 400;
+        }
+      }
+    }
+  }
+}

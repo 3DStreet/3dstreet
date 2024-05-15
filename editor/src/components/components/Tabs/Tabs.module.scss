@@ -1,0 +1,78 @@
+@use '../../../style/variables.scss';
+
+.wrapper {
+  display: flex;
+  align-items: center;
+  width: fit-content;
+  column-gap: 12px;
+  margin: 14px auto 0;
+  background: rgba(55, 55, 55, 0.4);
+  border-radius: 16px;
+  padding: 8px 12px;
+
+  .activeTab,
+  .inactiveTab {
+    display: block;
+    position: relative;
+    border: unset;
+    outline: unset;
+    background-color: transparent;
+
+    margin: 0;
+    padding: 8.5px 12px;
+    border-radius: 11px;
+    border: 1px solid transparent;
+
+    font-size: 16px;
+    line-height: 19.2px;
+    font-weight: 400;
+
+    transition: 0.3s ease-out;
+  }
+
+  .inactiveTab {
+    color: variables.$white;
+
+    &:hover {
+      cursor: pointer;
+      background-color: rgba($color: variables.$gray-500, $alpha: 0.4);
+    }
+
+    &:focus-visible {
+      border-radius: 0;
+      border: 1px solid variables.$white;
+    }
+
+    &:active {
+      color: variables.$white;
+      transition: all 0.3s;
+    }
+
+    &.disabled {
+      color: variables.$gray-500;
+      transition: all 0.3s;
+      cursor: not-allowed;
+    }
+  }
+
+  .activeTab {
+    color: variables.$white;
+    background-color: variables.$gray-500 !important;
+
+    &:focus-visible {
+      border-radius: 11px;
+      border: 1px solid variables.$white;
+      background-color: variables.$black-400;
+    }
+
+    &:active {
+      background-color: variables.$black-700;
+      transition: all 0.3s;
+    }
+
+    &.disabled {
+      background-color: rgba(50, 50, 50, 0.6);
+      color: variables.$gray-500;
+    }
+  }
+}

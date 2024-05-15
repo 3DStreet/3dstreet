@@ -1,0 +1,24 @@
+@use '../../style/variables.scss';
+
+.close {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: absolute;
+  top: 1.3438rem;
+  right: 1.3438rem;
+  width: 32px;
+  height: 32px;
+  &:hover {
+    border-radius: 50%;
+    cursor: pointer;
+    background-color: rgba(50, 50, 50, 0.6);
+    transition: all 0.3s;
+  }
+  &:active {
+    background-color: variables.$black-600;
+    span {
+      background-color: variables.$lightgray-200;
+    }
+  }
+}

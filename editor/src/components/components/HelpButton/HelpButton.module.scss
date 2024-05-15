@@ -1,0 +1,23 @@
+@use '../../../style/variables.scss';
+
+.wrapper {
+  .helpButton {
+    position: absolute;
+    left: 32px;
+    border: unset;
+    bottom: 31px;
+    border-radius: 50%;
+    width: 43px;
+    height: 43px;
+    background-color: variables.$purple;
+    padding: 0 !important;
+
+    &:hover {
+      background-color: variables.$purple-100;
+    }
+
+    &:active {
+      background-color: variables.$purple-200;
+    }
+  }
+}

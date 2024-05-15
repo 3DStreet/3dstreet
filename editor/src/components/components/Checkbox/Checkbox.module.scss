@@ -1,0 +1,126 @@
+@use '../../../style/variables.scss';
+
+.wrapper {
+  display: flex;
+  column-gap: 0.75rem;
+  align-items: flex-start;
+  width: fit-content;
+
+  .checkboxContainer {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 20px;
+    min-width: 20px;
+    height: 20px;
+    min-height: 20px;
+
+    .checkbox {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 15px;
+      height: 15px;
+      border: 1.5px solid variables.$lightgray-400;
+      border-radius: 3px;
+      transition: all 0.2s;
+
+      .checkedIcon {
+        opacity: 1;
+        visibility: visible;
+        transition: all 0.2s;
+
+        path {
+          stroke: variables.$lightgray-400;
+          transition: all 0.2s;
+        }
+      }
+
+      .uncheckedIcon {
+        opacity: 0;
+        visibility: hidden;
+        transition: all 0.2s;
+      }
+
+      &:hover {
+        transition: all 0.2s;
+        border-color: variables.$white;
+        cursor: pointer;
+
+        .uncheckedIcon {
+          transition: all 0.2s;
+          opacity: 0.2;
+          color: variables.$black;
+          visibility: visible;
+
+          path {
+            transition: all 0.2s;
+            stroke: variables.$white;
+          }
+        }
+
+        .checkedIcon path {
+          transition: all 0.2s;
+          stroke: variables.$white;
+        }
+      }
+
+      &:active {
+        transition: all 0.2s;
+        border-color: #00000020;
+
+        .checkedIcon,
+        .uncheckedIcon {
+          transition: all 0.2s;
+          visibility: visible;
+          opacity: 0.2;
+
+          path {
+            transition: all 0.2s;
+            stroke: variables.$black;
+          }
+        }
+      }
+    }
+
+    .disabledCheckbox,
+    .disabledCheckbox:hover,
+    .disabledCheckbox:active {
+      border-color: variables.$gray-700;
+      transition: all 0.2s;
+
+      .checkedIcon {
+        opacity: 1;
+
+        path {
+          transition: all 0.2s;
+          stroke: variables.$gray-700;
+        }
+      }
+
+      .uncheckedIcon {
+        visibility: hidden;
+        opacity: 0;
+      }
+    }
+  }
+
+  .label {
+    display: flex;
+    justify-content: flex-start;
+    font-size: 1rem;
+    line-height: 1.1875rem;
+    font-weight: 400;
+    color: variables.$white;
+    transition: all 0.2s;
+
+    &:hover {
+      cursor: pointer;
+    }
+  }
+
+  .disabledLabel {
+    transition: all 0.3;
+    color: variables.$gray-700;
+  }
+}
