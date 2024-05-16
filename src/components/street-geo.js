@@ -11,36 +11,60 @@ AFRAME.registerComponent('street-geo', {
     maps: { type: 'array', default: [] }
   },
 
-  init: function () {
+  update: function (oldData) {
     const data = this.data;
     const el = this.el;
-    
-    // create Mapbox 2D
-    if (data.maps.includes('mapbox2d')) {
-    	const centerValue = `${data.longitude}, ${data.latitude}`;  	
+    const mapTypes = {
+    	// <mapName> : <function that creates and return map element>
+    	'mapbox2d': this.createMapbox2dElement.bind(this), 
+    	'google3d': this.createGoogle3dElement.bind(this)
+    };
+    const updatedData = AFRAME.utils.diff(data, oldData);
 
-		const mapboxElement = document.createElement('a-entity');
-		mapboxElement.setAttribute('data-layer-name', 'Mapbox Satellite Streets');
-		mapboxElement.setAttribute('geometry', 'primitive: plane; width: 512; height: 512;');
-		mapboxElement.setAttribute('material', 'color: #ffffff; shader: flat; side: both; transparent: true;');
-		//mapboxElement.setAttribute('position', '-7 -1 -2');
-        mapboxElement.setAttribute('rotation', '-90 -4.25 0');
-        mapboxElement.setAttribute('anisotropy', '');
-		mapboxElement.setAttribute('mapbox', {
+    for (const mapType in mapTypes) {
+    	const createElementFunction = mapTypes[mapType];
+	    // create Map element and save a link to it in this[mapType]
+	    if (data.maps.includes(mapType) && !this[mapType]) {
+	    	this[mapType] = createElementFunction();
+	    } else if (data.maps.includes(mapType) && (updatedData.longitude || updatedData.latitude)) {
+	    	// call update map function with name: <mapType>Update
+	    	this[mapType + 'Update'].bind(this)();
+	    } else if (this[mapType] && !data.maps.includes(mapType)) {
+	    	// remove element from DOM and from this object
+	    	this.el.removeChild(this[mapType]);
+	    	this[mapType] = null;
+	    }    	
+    }
+  },
+  createMapbox2dElement: function () {
+    const data = this.data;
+    const el = this.el;
+
+		const mapbox2dElement = document.createElement('a-entity');
+		mapbox2dElement.setAttribute('data-layer-name', 'Mapbox Satellite Streets');
+		mapbox2dElement.setAttribute('geometry', 'primitive: plane; width: 512; height: 512;');
+		mapbox2dElement.setAttribute('material', 'color: #ffffff; shader: flat; side: both; transparent: true;');
+		//mapbox2dElement.setAttribute('position', '-7 -1 -2');
+		mapbox2dElement.setAttribute('rotation', '-90 -4.25 0');
+		mapbox2dElement.setAttribute('anisotropy', '');
+		mapbox2dElement.setAttribute('mapbox', {
 				accessToken: MAPBOX_ACCESS_TOKEN_VALUE,
-				center: centerValue,
+				center: `${data.longitude}, ${data.latitude}`,
 				zoom: 15,
 				style: 'mapbox://styles/mapbox/satellite-streets-v11',
 				pxToWorldRatio: 4
 			});
-		mapboxElement.classList.add('autocreated');
-		el.appendChild(mapboxElement);
-    }
+		mapbox2dElement.classList.add('autocreated');
+		el.appendChild(mapbox2dElement);
+		return mapbox2dElement;    
+  },
+  createGoogle3dElement: function () {
+    const data = this.data;
+    const el = this.el;
 
-    // create Google 3D Tiles
-    if (data.maps.includes('google3d')) {
-		const tilesElement = document.createElement('a-entity');
-		tilesElement.setAttribute('loader-3dtiles', {
+		const google3dElement = document.createElement('a-entity');
+		google3dElement.setAttribute('data-layer-name', 'Google 3D Tiles');
+		google3dElement.setAttribute('loader-3dtiles', {
 			url: 'https://tile.googleapis.com/v1/3dtiles/root.json',
 			long: data.longitude,
 			lat: data.latitude,
@@ -51,12 +75,25 @@ AFRAME.registerComponent('street-geo', {
             maximumMem: 400,
             cameraEl: '#camera'
 		});
-		tilesElement.classList.add('autocreated');
-		el.appendChild(tilesElement);
-    }
+		google3dElement.classList.add('autocreated');
+		el.appendChild(google3dElement);
+		return google3dElement;
   },
+  google3dUpdate: function () {
+  	const data = this.data;
+  	this.google3d.setAttribute('loader-3dtiles', {
+  		lat: data.latitude, 
+  		long: data.longitude
+  	});
+  },
+  mapbox2dUpdate: function () {
+		const data = this.data;
+		this.mapbox2d.setAttribute('mapbox', {
+			center: `${data.longitude}, ${data.latitude}`
+		});
 
-  remove: function () {
+  },
+  removeChildMaps: function () {
     const children = this.el.querySelectorAll('.autocreated');
     children.forEach(child => child.parentNode.removeChild(child));
   }
