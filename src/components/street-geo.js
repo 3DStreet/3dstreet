@@ -10,19 +10,23 @@ AFRAME.registerComponent('street-geo', {
     elevation: { type: 'number', default: 0 },
     maps: { type: 'array', default: [] }
   },
-
+  init: function () {
+  	/* 
+	  	Function names for the given function types must have the following format:
+	  	create function: <mapType>Create,
+	  	update function: <mapType>Update,
+  	*/
+    this.mapTypes = ['mapbox2d', 'google3d'];  	
+  },
   update: function (oldData) {
     const data = this.data;
     const el = this.el;
-    const mapTypes = {
-    	// <mapName> : <function that creates and return map element>
-    	'mapbox2d': this.createMapbox2dElement.bind(this), 
-    	'google3d': this.createGoogle3dElement.bind(this)
-    };
+
     const updatedData = AFRAME.utils.diff(data, oldData);
 
-    for (const mapType in mapTypes) {
-    	const createElementFunction = mapTypes[mapType];
+    for (const mapType of this.mapTypes) {
+    	// create map function with name: <mapType>Create
+    	const createElementFunction = this[mapType + 'Create'].bind(this);
 	    // create Map element and save a link to it in this[mapType]
 	    if (data.maps.includes(mapType) && !this[mapType]) {
 	    	this[mapType] = createElementFunction();
@@ -36,7 +40,7 @@ AFRAME.registerComponent('street-geo', {
 	    }    	
     }
   },
-  createMapbox2dElement: function () {
+  mapbox2dCreate: function () {
     const data = this.data;
     const el = this.el;
 
@@ -58,7 +62,7 @@ AFRAME.registerComponent('street-geo', {
 		el.appendChild(mapbox2dElement);
 		return mapbox2dElement;    
   },
-  createGoogle3dElement: function () {
+  google3dCreate: function () {
     const data = this.data;
     const el = this.el;
 
