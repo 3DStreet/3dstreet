@@ -3,10 +3,21 @@ const webpack = require('webpack');
 const TerserPlugin = require('terser-webpack-plugin');
 
 module.exports = {
-  entry: './src/index.js',
+  mode: 'development',
+  devServer: {
+    hot: true,
+    liveReload: false,
+    port: 3333,
+    static: {
+      directory: '.'
+    }
+  },
+  entry: {
+    core: { import: './src/index.js', filename: 'dist/aframe-street-component.js' },
+    editor: { import: './src/editor/index.js', filename: 'dist/3dstreet-editor.js'}
+  },
   output: {
     path: path.resolve(__dirname, 'dist'),
-    filename: 'aframe-street-component.js',
     libraryTarget: 'umd'
   },
   module: {
