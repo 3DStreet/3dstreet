@@ -1,16 +1,23 @@
+const webpack = require('webpack');
 const path = require('path');
 const MiniCssExtractPlugin = require('mini-css-extract-plugin');
 const Dotenv = require('dotenv-webpack');
 const { CleanWebpackPlugin } = require('clean-webpack-plugin');
-const HtmlWebpackPlugin = require('html-webpack-plugin');
 
 module.exports = {
   mode: 'production',
-  entry: './src/index.js',
+  devtool: 'source-map',
+  entry: {
+    core: { import: './src/index.js', filename: 'dist/aframe-street-component.js' },
+    editor: { import: './src/editor/index.js', filename: 'dist/3dstreet-editor.js'}
+  },
   output: {
     path: path.join(__dirname, 'dist'),
-    filename: '3dstreet-editor.js',
-    publicPath: '/'
+    libraryTarget: 'umd'
+  },
+  externals: {
+    // Stubs out `import ... from 'three'` so it returns `import ... from window.THREE` effectively using THREE global variable that is defined by AFRAME.
+    three: 'THREE'
   },
   plugins: [
     new CleanWebpackPlugin(),
@@ -21,8 +28,8 @@ module.exports = {
     new Dotenv({
       path: './config/.env.production'
     }),
-    new HtmlWebpackPlugin({
-      template: '/public/index.html'
+    new webpack.DefinePlugin({
+      VERSION: JSON.stringify(process.env.npm_package_version)
     })
   ],
   module: {
@@ -76,26 +83,6 @@ module.exports = {
         ]
       },
       {
-        test: /\.styl$/,
-        exclude: /node_modules/,
-        use: [
-          'style-loader',
-          {
-            loader: 'css-loader',
-            options: { url: false }
-          },
-          {
-            loader: 'postcss-loader',
-            options: {
-              postcssOptions: {
-                plugins: ['autoprefixer']
-              }
-            }
-          },
-          'stylus-loader'
-        ]
-      },
-      {
         test: /\.(png|jpe?g|gif)$/i,
         use: [
           {
@@ -107,6 +94,5 @@ module.exports = {
         ]
       }
     ]
-  },
-  devtool: 'source-map'
+  }
 };

@@ -89,26 +89,6 @@ module.exports = {
         ]
       },
       {
-        test: /\.styl$/,
-        exclude: /node_modules/,
-        use: [
-          'style-loader',
-          {
-            loader: 'css-loader',
-            options: { url: false }
-          },
-          {
-            loader: 'postcss-loader',
-            options: {
-              postcssOptions: {
-                plugins: ['autoprefixer']
-              }
-            }
-          },
-          'stylus-loader'
-        ]
-      },
-      {
         test: /\.(png|jpe?g|gif)$/i,
         use: [
           {
