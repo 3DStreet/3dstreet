@@ -4,7 +4,7 @@ import classNames from 'classnames';
 import { Button } from '../Button';
 import { Chevron24Down, Load24Icon, Plus20Circle } from '../../../icons';
 import { Dropdown } from '../Dropdown';
-import CardPlaceholder from '../../../../assets/card-placeholder.svg';
+import CardPlaceholder from '../../../../../ui_assets/card-placeholder.svg';
 import { cardsData } from './cardsData';
 import {
   createSvgExtrudedEntity,
@@ -14,7 +14,7 @@ import {
   createCustomModel,
   createPrimitiveGeometry
 } from './createLayerFunctions';
-import Events from '/src/lib/Events';
+import Events from '../../../lib/Events';
 
 const AddLayerPanel = ({ onClose, isAddLayerPanelOpen }) => {
   const [selectedOption, setSelectedOption] = useState(null);

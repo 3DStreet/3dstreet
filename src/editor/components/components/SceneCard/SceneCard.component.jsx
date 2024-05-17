@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import ScenePlaceholder from '../../../../assets/ScenePlaceholder.svg';
+import ScenePlaceholder from '../../../../../ui_assets/ScenePlaceholder.svg';
 import styles from './SceneCard.module.scss';
 import { formatDistanceToNow } from 'date-fns';
 import { DropdownIcon } from '../../../icons';
@@ -182,7 +182,7 @@ const SceneCard = ({
               <div className={styles.userBlock}>
                 <div className={styles.userName}>
                   {/* Placeholder for username + thumbnail support */}
-                  {/* <img src={'../../../../assets/avatar.svg'} alt="avatar" /> */}
+                  {/* <img src={'../../../../../ui_assets/avatar.svg'} alt="avatar" /> */}
                   {/* <p>User Name</p> */}
                   <p>
                     <LastModified timestamp={scene.data().updateTimestamp} />

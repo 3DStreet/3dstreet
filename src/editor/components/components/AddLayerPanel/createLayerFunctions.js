@@ -1,4 +1,4 @@
-import Events from '/src/lib/Events';
+import Events from '../../../lib/Events';
 
 function createSvgExtrudedEntity() {
   // This component accepts a svgString and creates a new entity with geometry extruded
