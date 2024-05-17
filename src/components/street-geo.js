@@ -41,10 +41,10 @@ AFRAME.registerComponent('street-geo', {
 
     for (const mapType of this.mapTypes) {
       // create map function with name: <mapType>Create
-      const createElementFunction = this[mapType + 'Create'].bind(this);
+      const createMapFunction = this[mapType + 'Create'].bind(this);
       if (data.maps.includes(mapType) && !this[mapType]) {
         // create Map element and save a link to it in this[mapType]
-        this[mapType] = createElementFunction();
+        this[mapType] = createMapFunction();
       } else if (data.maps.includes(mapType) && (updatedData.longitude || updatedData.latitude || updatedData.elevation)) {
         // call update map function with name: <mapType>Update
         this[mapType + 'Update'].bind(this)();
