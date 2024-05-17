@@ -16,13 +16,14 @@ AFRAME.registerComponent('street-geo', {
 	  	create function: <mapType>Create,
 	  	update function: <mapType>Update,
   	*/
-    this.mapTypes = ['mapbox2d', 'google3d'];  	
+    this.mapTypes = ['mapbox2d', 'google3d'];  
+    this.elevationHeightConstant = 32.49158;	
   },
   update: function (oldData) {
     const data = this.data;
     const el = this.el;
 
-    const updatedData = AFRAME.utils.diff(data, oldData);
+    const updatedData = AFRAME.utils.diff(oldData, data);
 
     for (const mapType of this.mapTypes) {
     	// create map function with name: <mapType>Create
@@ -30,7 +31,7 @@ AFRAME.registerComponent('street-geo', {
 	    // create Map element and save a link to it in this[mapType]
 	    if (data.maps.includes(mapType) && !this[mapType]) {
 	    	this[mapType] = createElementFunction();
-	    } else if (data.maps.includes(mapType) && (updatedData.longitude || updatedData.latitude)) {
+	    } else if (data.maps.includes(mapType) && (updatedData.longitude || updatedData.latitude || updatedData.elevation)) {
 	    	// call update map function with name: <mapType>Update
 	    	this[mapType + 'Update'].bind(this)();
 	    } else if (this[mapType] && !data.maps.includes(mapType)) {
@@ -72,7 +73,7 @@ AFRAME.registerComponent('street-geo', {
 			url: 'https://tile.googleapis.com/v1/3dtiles/root.json',
 			long: data.longitude,
 			lat: data.latitude,
-			height: -16.5,
+			height: data.elevation - this.elevationHeightConstant ?? -26,
 			googleApiKey: GOOGLE_API_KEY,
 			geoTransform: 'WGS84Cartesian',
             maximumSSE: 48,
@@ -87,7 +88,8 @@ AFRAME.registerComponent('street-geo', {
   	const data = this.data;
   	this.google3d.setAttribute('loader-3dtiles', {
   		lat: data.latitude, 
-  		long: data.longitude
+  		long: data.longitude,
+  		height: data.elevation - this.elevationHeightConstant ?? -26,
   	});
   },
   mapbox2dUpdate: function () {
