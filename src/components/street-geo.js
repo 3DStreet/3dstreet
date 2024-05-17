@@ -73,7 +73,7 @@ AFRAME.registerComponent('street-geo', {
 			url: 'https://tile.googleapis.com/v1/3dtiles/root.json',
 			long: data.longitude,
 			lat: data.latitude,
-			height: data.elevation - this.elevationHeightConstant ?? -26,
+			height: data.elevation - this.elevationHeightConstant,
 			googleApiKey: GOOGLE_API_KEY,
 			geoTransform: 'WGS84Cartesian',
             maximumSSE: 48,
@@ -89,7 +89,7 @@ AFRAME.registerComponent('street-geo', {
   	this.google3d.setAttribute('loader-3dtiles', {
   		lat: data.latitude, 
   		long: data.longitude,
-  		height: data.elevation - this.elevationHeightConstant ?? -26,
+  		height: data.elevation - this.elevationHeightConstant,
   	});
   },
   mapbox2dUpdate: function () {
