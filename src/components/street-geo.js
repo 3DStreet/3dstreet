@@ -2,7 +2,21 @@
 const MAPBOX_ACCESS_TOKEN_VALUE = 'pk.eyJ1Ijoia2llcmFuZmFyciIsImEiOiJjazB0NWh2YncwOW9rM25sd2p0YTlxemk2In0.mLl4sNGDFbz_QXk0GIK02Q';
 const GOOGLE_API_KEY = 'AIzaSyAQshwLVKTpwTfPJxFEkEzOdP_cgmixTCQ';
 
-
+/*
+ * Street-geo component
+ *
+ *  the component accept longitude, latitude, elevation and an array of map types to indicate 
+ *  which child maps to spawn. Possible values for maps array: 'mapbox2d', 'google3d'.
+ *  The component assigns the class 'autocreated' to its child elements.
+ *  All attribute values can be changed at runtime and the component will update 
+ *  the child elements (map entities) and their corresponding parameters.
+ *  The 'elevation' attribute is only used for the 'google3d' tiles element for now.
+ *  
+ *  to add support for a new map type, you need to take the following steps:
+ *  - add map name to this.mapTypes variable
+ *  - add creating function with name: <mapName>Create
+ *  - add update function with name: <mapName>Update
+ */
 AFRAME.registerComponent('street-geo', {
   schema: {
     longitude: { type: 'number', default: 0 },
@@ -28,8 +42,8 @@ AFRAME.registerComponent('street-geo', {
     for (const mapType of this.mapTypes) {
       // create map function with name: <mapType>Create
       const createElementFunction = this[mapType + 'Create'].bind(this);
-      // create Map element and save a link to it in this[mapType]
       if (data.maps.includes(mapType) && !this[mapType]) {
+        // create Map element and save a link to it in this[mapType]
         this[mapType] = createElementFunction();
       } else if (data.maps.includes(mapType) && (updatedData.longitude || updatedData.latitude || updatedData.elevation)) {
         // call update map function with name: <mapType>Update
