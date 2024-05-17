@@ -98,9 +98,5 @@ AFRAME.registerComponent('street-geo', {
       center: `${data.longitude}, ${data.latitude}`
     });
 
-  },
-  removeChildMaps: function () {
-    const children = this.el.querySelectorAll('.autocreated');
-    children.forEach(child => child.parentNode.removeChild(child));
   }
 });
