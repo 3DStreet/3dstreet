@@ -8,8 +8,8 @@ module.exports = {
   mode: 'production',
   devtool: 'source-map',
   entry: {
-    core: { import: './src/index.js', filename: 'dist/aframe-street-component.js' },
-    editor: { import: './src/editor/index.js', filename: 'dist/3dstreet-editor.js'}
+    core: { import: './src/index.js', filename: 'aframe-street-component.js' },
+    editor: { import: './src/editor/index.js', filename: '3dstreet-editor.js'}
   },
   output: {
     path: path.join(__dirname, 'dist'),
