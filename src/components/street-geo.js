@@ -16,6 +16,8 @@ const GOOGLE_API_KEY = 'AIzaSyAQshwLVKTpwTfPJxFEkEzOdP_cgmixTCQ';
  *  - add map name to this.mapTypes variable
  *  - add creating function with name: <mapName>Create
  *  - add update function with name: <mapName>Update
+ *
+ * It is assumed that the appropriate libraries for all map types are loaded in advance.
  */
 AFRAME.registerComponent('street-geo', {
   schema: {
