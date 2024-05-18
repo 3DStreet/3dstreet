@@ -116,7 +116,10 @@ function create3DTiles() {
     create3DtilesElement();
   } else {
     loadScript(
-      'https://cdn.jsdelivr.net/npm/3dstreet@0.4.12/src/lib/aframe-loader-3dtiles-component.min.js',
+      new URL(
+        '/src/lib/aframe-loader-3dtiles-component.min.js',
+        import.meta.url
+      ),
       create3DtilesElement
     );
   }
