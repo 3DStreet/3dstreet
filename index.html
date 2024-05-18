@@ -10,10 +10,11 @@
     <!-- mapbox -->
     <script src="./src/lib/aframe-mapbox-component.min.js"></script>
 
-    <!-- vr teleport controls -->
+    <!-- viewer controls - vr teleport -->
     <script src="https://cdn.jsdelivr.net/npm/aframe-blink-controls@0.4.3/dist/aframe-blink-controls.min.js"></script>
 
     <script>
+      // TODO: This should be inside of Viewer Wrapper component logic
       // this makes the same camera rig setup work in VR and desktop modes
       // this could be a new component, such as "swap desktop and vr controls" and put in init section
       window.addEventListener("DOMContentLoaded", function() {
@@ -32,7 +33,7 @@
       })
     </script>
     <title>3DStreet</title>
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <link rel="icon" type="image/x-icon" href="ui_assets/favicon.ico">
     <link rel="stylesheet" href="src/viewer-styles.css">
   </head>
@@ -72,34 +73,44 @@
     </div>
 
     <a-scene
-      renderer="colorManagement: true; physicallyCorrectLights: true; anisotropy: 16;"
-      inspector="url: /dist/3dstreet-editor.js"
+      renderer="colorManagement: true; physicallyCorrectLights: true; anisotropy: 16; logarithmicDepthBuffer: true;"
+      inspector="url: ./dist/3dstreet-editor.js"
+      timed-inspector="1"
+      loading-screen="enabled: false"
       notify
       metadata
       scene-title
       reflection
       >
       <a-assets>
+        <!-- TODO: Add this to repo documentation  -->
+        <!-- you can specify a custom asset path using below syntax  -->
+
         <!-- uncomment the line below to load assets from local github submodule -->
         <!-- <street-assets url="./assets/"></street-assets>   -->
+
+        <!-- you can specify a subset of categories of objects to load using below syntax  -->
+
         <!-- uncomment the line below to load all possible asset categories -->
         <!-- <street-assets categories="sidewalk-props people people-rigged vehicles vehicles-rigged buildings intersection-props segment-textures segment-colors lane-separator stencils vehicles-transit dividers sky grounds"></street-assets>   -->
+
         <!-- a reduced set of assets for non-animated streetmix streets without intersections -->
-        <street-assets categories="loud-bicycle sidewalk-props people vehicles vehicles-rigged buildings segment-textures segment-colors lane-separator stencils vehicles-transit dividers sky grounds"></street-assets>
+        <!-- <street-assets categories="loud-bicycle sidewalk-props people vehicles vehicles-rigged buildings segment-textures segment-colors lane-separator stencils vehicles-transit dividers sky grounds"></street-assets> -->
+
       </a-assets>
-  
-      <a-entity id="street-container" data-layer-name="3D Street Layers" data-layer-show-children>
+
+      <a-entity id="street-container" data-layer-name="User Layers" data-layer-show-children>
         <a-entity id="default-street" street streetmix-loader set-loader-from-hash></a-entity>
       </a-entity>
 
-      <a-entity id="reference-layers" data-layer-name="Reference Layers" data-layer-show-children></a-entity>
+      <a-entity id="reference-layers" data-layer-name="Geospatial Layers" data-layer-show-children></a-entity>
 
       <a-entity id="environment" data-layer-name="Environment" street-environment="preset: day;"></a-entity>
 
-      <a-entity id="cameraRig" position="0 10 30" data-layer-name="Viewer" cursor-teleport="cameraRig: #cameraRig; cameraHead: #camera;" look-controls="reverseMouseDrag: true" wasd-controls="enabled: true">
+      <a-entity id="cameraRig" data-layer-name="Viewer" cursor-teleport="cameraRig: #cameraRig; cameraHead: #camera;" look-controls="reverseMouseDrag: true" wasd-controls="enabled: true">
         <a-entity id="camera" camera="far: 1000" position="0 1.6 0" ></a-entity>
         <a-entity id="leftHand" hand-controls="hand: left;" blink-controls="cameraRig: #cameraRig; teleportOrigin: #camera; rotateOnTeleport:false;"></a-entity>
-        <a-entity id="rightHand"  hand-controls="hand: right" blink-controls="cameraRig: #cameraRig; teleportOrigin: #camera; rotateOnTeleport:false;"></a-entity>
+        <a-entity id="rightHand" hand-controls="hand: right" blink-controls="cameraRig: #cameraRig; teleportOrigin: #camera; rotateOnTeleport:false;"></a-entity>
         <a-entity id="screenshot" class="no-pause" screentock visible="false"></a-entity>
       </a-entity>
 
@@ -120,7 +131,7 @@
   <script>
 
     document.getElementById('inputfile')
-            .addEventListener('change', STREET.utils.fileJSON);
+        .addEventListener('change', STREET.utils.fileJSON);
 
     function buttonScreenshotTock() {
       const screenshotEl = document.getElementById('screenshot');
@@ -136,12 +147,12 @@
     }
     
     AFRAME.registerComponent('timed-inspector', {
-      init: function() {
-        setTimeout( function () {
-          window.postMessage('INJECT_AFRAME_INSPECTOR')
-        }, this.data * 1000)
+      init: function () {
+        setTimeout(function () {
+          window.postMessage('INJECT_AFRAME_INSPECTOR');
+        }, this.data * 1000);
       }
-    });  
-  
+    });
   </script>
+  <!-- <script src="./dist/3dstreet-editor.js"></script> -->
 </html>
