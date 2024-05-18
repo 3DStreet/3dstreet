@@ -4,6 +4,11 @@ const MiniCssExtractPlugin = require('mini-css-extract-plugin');
 const Dotenv = require('dotenv-webpack');
 
 module.exports = {
+  performance: {
+    maxAssetSize: 1468006, // 1.4 MiB
+    maxEntrypointSize: 1468006, // 1.4 MiB
+    hints: 'error'
+  },
   mode: 'production',
   devtool: 'source-map',
   entry: {
