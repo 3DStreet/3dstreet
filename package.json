@@ -68,7 +68,7 @@
     "lint-staged": "^13.0.3",
     "mocha": "^10.4.0",
     "nyc": "^15.1.0",
-    "prettier": "^2.7.1",
+    "prettier": "^3.1.0",
     "pretty": "^2.0.0",
     "resolve-url-loader": "^5.0.0",
     "rewire": "^7.0.0",
