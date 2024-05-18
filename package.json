@@ -78,12 +78,12 @@
     "webpack": "^5.91.0",
     "webpack-cli": "^5.1.4",
     "webpack-dev-server": "^5.0.4",
-    "mocha": "^10.1.0",
-    "nyc": "^15.0.1",
-    "jsdom": "^16.2.2",
+    "mocha": "^10.4.0",
+    "nyc": "^15.1.0",
+    "jsdom": "^24.0.0",
     "jsdom-global": "^3.0.2",
-    "approvals": "^6.0.0",
-    "rewire": "^5.0.0"
+    "approvals": "^7.1.0",
+    "rewire": "^7.0.0"
   },
   "keywords": [
     "3d",
