@@ -1,2 +1,3 @@
 /src/lib/
-/dist/**
+/src/editor/lib/
+/dist/
