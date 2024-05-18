@@ -1,5 +1,3 @@
-let expect = chai.expect;
-
 describe('street-geo component', function() {
   let el;
 
