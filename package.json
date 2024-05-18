@@ -105,10 +105,5 @@
   ],
   "lint-staged": {
     "*.js*": "prettier --write"
-  },
-  "eslintConfig": {
-    "extends": [
-      "plugin:storybook/recommended"
-    ]
   }
 }
