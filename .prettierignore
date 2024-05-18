@@ -1,2 +1,2 @@
-editor/src/lib/TransformControls.js
-dist
+src/editor/lib/TransformControls.js
+src/lib/
