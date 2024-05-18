@@ -95,7 +95,9 @@
     "wysiwyg"
   ],
   "lint-staged": {
-    "*.js": "prettier --write",
-    "*.jsx": "prettier --write"
+    "*.{js,jsx}": [
+      "prettier --write",
+      "eslint"
+    ]
   }
 }
