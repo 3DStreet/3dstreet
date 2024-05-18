@@ -2,7 +2,6 @@ const webpack = require('webpack');
 const path = require('path');
 const MiniCssExtractPlugin = require('mini-css-extract-plugin');
 const Dotenv = require('dotenv-webpack');
-const { CleanWebpackPlugin } = require('clean-webpack-plugin');
 
 module.exports = {
   mode: 'production',
@@ -12,6 +11,7 @@ module.exports = {
     editor: { import: './src/editor/index.js', filename: '3dstreet-editor.js' }
   },
   output: {
+    clean: true,
     path: path.join(__dirname, 'dist'),
     libraryTarget: 'umd'
   },
@@ -20,7 +20,6 @@ module.exports = {
     three: 'THREE'
   },
   plugins: [
-    new CleanWebpackPlugin(),
     new MiniCssExtractPlugin({
       filename: '[name].[contenthash].css',
       chunkFilename: '[id].[contenthash].css'
