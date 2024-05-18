@@ -1,6 +1,7 @@
 const webpack = require('webpack');
 const path = require('path');
 const Dotenv = require('dotenv-webpack');
+const CopyWebpackPlugin = require('copy-webpack-plugin');
 
 module.exports = {
   mode: 'development',
@@ -31,6 +32,13 @@ module.exports = {
     }),
     new webpack.DefinePlugin({
       VERSION: JSON.stringify(process.env.npm_package_version)
+    }),
+    new CopyWebpackPlugin({
+      patterns: [
+        { from: 'src/lib/aframe-mapbox-component.min.js' },
+        { from: 'src/notyf.min.css' },
+        { from: 'src/viewer-styles.css' }
+      ]
     })
   ],
   module: {

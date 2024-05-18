@@ -7,3 +7,6 @@ gh-pages/
 npm-debug.log*
 build/
 *.sw[pomn]
+dist/aframe-mapbox-component.min.js
+dist/notyf.min.css
+dist/viewer-styles.css
