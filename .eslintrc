@@ -1,14 +1,21 @@
 {
-  "extends": ["eslint:recommended", "plugin:react/recommended", "plugin:react/jsx-runtime", "standard", "plugin:storybook/recommended"],
+  "extends": ["eslint:recommended", "plugin:react/recommended", "plugin:react/jsx-runtime", "plugin:react-hooks/recommended", "standard", "plugin:storybook/recommended"],
   "rules": {
+    "dot-notation": "off",
+    "indent": "off",
     "multiline-ternary": "off",
     "no-console": "off",
     "no-lone-blocks": "off",
-    "no-var": "off",
-    "object-shorthand": "off",
+    "no-mixed-spaces-and-tabs": "off",
+    "no-tabs": "off",
     "no-useless-return": "off",
+    "no-var": "off",
+    "object-curly-newline": "off",
+    "object-shorthand": "off",
     "prefer-const": "off",
+    "quotes": "off",
     "react/jsx-indent-props": [2, 2],
+    "react/prop-types": "off",
     "semi": [2, "always"],
     "space-before-function-paren": "off"
   },
@@ -19,6 +26,7 @@
   },
   "globals": {
     "AFRAME": true,
+    "STREET": true,
     "THREE": true
   },
   "parser": "@babel/eslint-parser",

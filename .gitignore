@@ -7,3 +7,8 @@ gh-pages/
 npm-debug.log*
 build/
 *.sw[pomn]
+# That's /src/lib/aframe-loader-3dtiles-component.min.js
+dist/48406973e3ad4d65cbdd.js*
+dist/aframe-mapbox-component.min.js
+dist/notyf.min.css
+dist/viewer-styles.css

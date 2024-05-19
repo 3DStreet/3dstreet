@@ -34,3 +34,6 @@ jobs:
 
       - name: Check Build
         run: npm run dist
+
+      - name: Tests
+        run: npm run test

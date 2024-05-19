@@ -8,7 +8,7 @@
     <script src="./dist/aframe-street-component.js"></script>
 
     <!-- mapbox -->
-    <script src="./src/lib/aframe-mapbox-component.min.js"></script>
+    <script src="./dist/aframe-mapbox-component.min.js"></script>
 
     <!-- viewer controls - vr teleport -->
     <script src="https://cdn.jsdelivr.net/npm/aframe-blink-controls@0.4.3/dist/aframe-blink-controls.min.js"></script>
@@ -35,7 +35,7 @@
     <title>3DStreet</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <link rel="icon" type="image/x-icon" href="ui_assets/favicon.ico">
-    <link rel="stylesheet" href="src/viewer-styles.css">
+    <link rel="stylesheet" href="./dist/viewer-styles.css">
   </head>
 
   <body>
@@ -124,7 +124,7 @@
       scene.addEventListener('loaded', function (e) {
         setTimeout(() => {
           splash.style.display = 'none';
-        }, 1000);        
+        }, 1000);
       });
     });
   </script>
@@ -145,7 +145,7 @@
       sceneEl.components.inspector.openInspector();
       document.querySelector('.viewer-header-wrapper').style.display = 'none';
     }
-    
+
     AFRAME.registerComponent('timed-inspector', {
       init: function () {
         setTimeout(function () {

@@ -1,7 +1,7 @@
 const webpack = require('webpack');
 const path = require('path');
-const MiniCssExtractPlugin = require('mini-css-extract-plugin');
 const Dotenv = require('dotenv-webpack');
+const CopyWebpackPlugin = require('copy-webpack-plugin');
 
 module.exports = {
   mode: 'development',
@@ -16,7 +16,7 @@ module.exports = {
   devtool: 'source-map',
   entry: {
     core: { import: './src/index.js', filename: 'aframe-street-component.js' },
-    editor: { import: './src/editor/index.js', filename: '3dstreet-editor.js'}
+    editor: { import: './src/editor/index.js', filename: '3dstreet-editor.js' }
   },
   output: {
     path: path.join(__dirname, 'dist'),
@@ -27,15 +27,18 @@ module.exports = {
     three: 'THREE'
   },
   plugins: [
-    new MiniCssExtractPlugin({
-      filename: '[name].css',
-      chunkFilename: '[id].css'
-    }),
     new Dotenv({
       path: './config/.env.development'
     }),
     new webpack.DefinePlugin({
       VERSION: JSON.stringify(process.env.npm_package_version)
+    }),
+    new CopyWebpackPlugin({
+      patterns: [
+        { from: 'src/lib/aframe-mapbox-component.min.js' },
+        { from: 'src/notyf.min.css' },
+        { from: 'src/viewer-styles.css' }
+      ]
     })
   ],
   module: {
@@ -53,7 +56,7 @@ module.exports = {
       },
       {
         test: /\.css$/,
-        use: ['style-loader', 'css-loader', 'postcss-loader']
+        use: ['style-loader', 'css-loader']
       },
       {
         test: /\.module\.scss$/,
@@ -90,14 +93,10 @@ module.exports = {
       },
       {
         test: /\.(png|jpe?g|gif)$/i,
-        use: [
-          {
-            loader: 'file-loader',
-            options: {
-              name: 'images/[name].[ext]'
-            }
-          }
-        ]
+        type: 'asset/resource',
+        generator: {
+          filename: 'images/[name].[ext]'
+        }
       }
     ]
   }
