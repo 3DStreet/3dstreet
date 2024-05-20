@@ -10,7 +10,10 @@ module.exports = {
     liveReload: false,
     port: 3333,
     static: {
-      directory: '.'
+      directory: '.',
+      watch: {
+        ignored: ['.*', '**/node_modules']
+      }
     }
   },
   devtool: 'source-map',
