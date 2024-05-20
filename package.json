@@ -61,6 +61,7 @@
     "webpack-cli": "^4.7.0"
   },
   "dependencies": {
+    "aframe": "^1.5.0",
     "aframe-atlas-uvs-component": "^3.0.0",
     "babel-polyfill": "^6.26.0",
     "latest": "^0.2.0"
