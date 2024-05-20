@@ -30,7 +30,7 @@ AFRAME.registerComponent('wheel', {
     const speed = this.data.speed / 1000; // speed per millisecond
     const wheelDiameter = this.data.wheelDiameter;
 
-    const rateOfRotation = (2 * (speed / wheelDiameter));
+    const rateOfRotation = 2 * (speed / wheelDiameter);
 
     if (this.wheel_F_L) {
       this.wheel_F_L.rotateY(rateOfRotation);

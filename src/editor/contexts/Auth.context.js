@@ -18,15 +18,14 @@ const AuthProvider = ({ children }) => {
         setCurrentUser(null);
         return;
       }
-      
+
       localStorage.setItem('token', await user.getIdToken());
-      
+
       const isPro = await isUserPro(user);
       const isBeta = await isUserBeta(user);
       const enrichedUser = { ...user, isPro, isBeta };
 
       setCurrentUser(enrichedUser);
-
     };
 
     const unsubscribe = auth.onAuthStateChanged((user) => {

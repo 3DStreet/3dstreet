@@ -3,15 +3,15 @@ const isUserPro = async (user) => {
     try {
       await user.getIdToken(true);
       const idTokenResult = await user.getIdTokenResult();
-      if (idTokenResult.claims.plan === "PRO") {
-        console.log("PRO PLAN USER");
+      if (idTokenResult.claims.plan === 'PRO') {
+        console.log('PRO PLAN USER');
         return true;
       } else {
-        console.log("FREE PLAN USER");
+        console.log('FREE PLAN USER');
         return false;
       }
     } catch (error) {
-      console.error("Error checking PRO plan:", error);
+      console.error('Error checking PRO plan:', error);
       return false;
     }
   } else {
@@ -26,14 +26,14 @@ const isUserBeta = async (user) => {
       await user.getIdToken(true);
       const idTokenResult = await user.getIdTokenResult();
       if (idTokenResult.claims.beta) {
-        console.log("BETA USER");
+        console.log('BETA USER');
         return true;
       } else {
-        console.log("NOT BETA USER");
+        console.log('NOT BETA USER');
         return false;
       }
     } catch (error) {
-      console.error("Error checking BETA status:", error);
+      console.error('Error checking BETA status:', error);
       return false;
     }
   } else {
@@ -42,7 +42,4 @@ const isUserBeta = async (user) => {
   }
 };
 
-export {
-  isUserPro,
-  isUserBeta
-};
+export { isUserPro, isUserBeta };

@@ -43,8 +43,10 @@ AFRAME.registerComponent('svg-extruder', {
     mergedGeometry.translate(0, 0.15, 0);
 
     // create a mesh with the shape geometry
-    const mergedShapeMesh = new THREE.Mesh(mergedGeometry,
-      this.materialFromSrc(data.topSrc, data.topColor));
+    const mergedShapeMesh = new THREE.Mesh(
+      mergedGeometry,
+      this.materialFromSrc(data.topSrc, data.topColor)
+    );
 
     if (topElement.getObject3D('mesh')) {
       topElement.removeObject3D('mesh');
@@ -56,7 +58,7 @@ AFRAME.registerComponent('svg-extruder', {
   materialFromSrc: function (imgSrc, color) {
     let texture = null;
     // create material with texture from img element with id imgSrc
-    const textureImg = (imgSrc !== '') ? document.querySelector(imgSrc) : null;
+    const textureImg = imgSrc !== '' ? document.querySelector(imgSrc) : null;
     if (textureImg) {
       // create texture from img element
       texture = new THREE.Texture(textureImg);
@@ -70,7 +72,9 @@ AFRAME.registerComponent('svg-extruder', {
     }
 
     const material = new THREE.MeshStandardMaterial({
-      color: color, map: texture, roughness: 1
+      color: color,
+      map: texture,
+      roughness: 1
     });
     if (material.map) material.map.needsUpdate = true;
     return material;
@@ -109,7 +113,10 @@ AFRAME.registerComponent('svg-extruder', {
       const shapes = SVGLoader.createShapes(path);
 
       shapes.forEach((shape) => {
-        const topGeometry = new THREE.ExtrudeGeometry(shape, { depth: 1, bevelEnabled: false });
+        const topGeometry = new THREE.ExtrudeGeometry(shape, {
+          depth: 1,
+          bevelEnabled: false
+        });
         const geometry = new THREE.ExtrudeGeometry(shape, extrudeSettings);
         topGeometryArray.push(topGeometry);
         extrudedGeometryArray.push(geometry);
@@ -129,7 +136,8 @@ AFRAME.registerComponent('svg-extruder', {
     el.setObject3D('lines', lines);
 
     // Finally, create a mesh with the merged geometry
-    const mergedMesh = new THREE.Mesh(mergedGeometry,
+    const mergedMesh = new THREE.Mesh(
+      mergedGeometry,
       this.materialFromSrc(data.src, data.color)
     );
 
@@ -158,5 +166,4 @@ AFRAME.registerComponent('svg-extruder', {
     const svgString = this.data.svgString;
     if (svgString) this.extrudeFromSVG(svgString);
   }
-
 });

@@ -277,8 +277,7 @@ export default class Main extends Component {
           <div id="layerWithCategory">
             <AddLayerButton onClick={this.toggleAddLayerPanel} />
           </div>
-          )
-        }
+        )}
         {this.state.isAddLayerPanelOpen && (
           <AddLayerPanel
             onClose={this.toggleAddLayerPanel}

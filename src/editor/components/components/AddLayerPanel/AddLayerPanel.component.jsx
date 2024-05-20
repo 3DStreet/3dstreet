@@ -233,10 +233,11 @@ const AddLayerPanel = ({ onClose, isAddLayerPanelOpen }) => {
       inSegment = true;
     } else if (
       // if there is no segment-parent for element then let Ancestor will be .buildings-parent or .street-parent
-      element.classList.contains('street-parent') || 
+      element.classList.contains('street-parent') ||
       element.classList.contains('buildings-parent') ||
       // if we are not in the #street-container and this is the scene child element
-      element.parentEl.isScene) {
+      element.parentEl.isScene
+    ) {
       ancestorOfSelectedEl = element;
       inSegment = false;
     } else if (element.parentEl) {
@@ -255,7 +256,6 @@ const AddLayerPanel = ({ onClose, isAddLayerPanelOpen }) => {
   };
 
   const cardMouseEnter = (mixinId) => {
-
     preEntity.setAttribute('mixin', mixinId);
     const selectedElement = AFRAME.INSPECTOR.selected?.el;
     if (selectedElement) {
@@ -271,7 +271,11 @@ const AddLayerPanel = ({ onClose, isAddLayerPanelOpen }) => {
       if (inSegment) {
         preEntity.setAttribute('position', selectedObjPos);
       } else {
-        preEntity.setAttribute('position', {x: selectedObjPos.x, y: 0.2, z: selectedObjPos.z});
+        preEntity.setAttribute('position', {
+          x: selectedObjPos.x,
+          y: 0.2,
+          z: selectedObjPos.z
+        });
       }
     }
   };
@@ -327,7 +331,9 @@ const AddLayerPanel = ({ onClose, isAddLayerPanelOpen }) => {
   };
   return (
     <div
-      className={classNames(styles.panel, { [styles.open]: isAddLayerPanelOpen })}
+      className={classNames(styles.panel, {
+        [styles.open]: isAddLayerPanelOpen
+      })}
     >
       <Button onClick={onClose} variant="custom" className={styles.closeButton}>
         <Chevron24Down />
