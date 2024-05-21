@@ -2,14 +2,14 @@
 mappingUtils = require('./conversion-map.js');
 
 // convert width from feet to meters
-function convertStreetValues (streetData) {
+function convertStreetValues(streetData) {
   streetData.segments.forEach((segmentData) => {
     segmentData.width *= 0.3048;
   });
 }
 
 // convert street structure to look like Streetmix JSON Schema
-function convertStreetStruct (streetProject) {
+function convertStreetStruct(streetProject) {
   const newStruct = {};
   const streetplanName = Object.keys(streetProject)[0];
   // streetplan alternative name
@@ -18,15 +18,18 @@ function convertStreetStruct (streetProject) {
   newStruct.altName = streetplanAltName;
 
   // remove segment indexes
-  newStruct.segments = Object.values(streetProject[streetplanName][streetplanAltName].segments);
+  newStruct.segments = Object.values(
+    streetProject[streetplanName][streetplanAltName].segments
+  );
 
   convertStreetValues(newStruct);
 
   // remove buildings and setback for now. To add them in another place
-  newStruct.segments = convertSegmentData(newStruct.segments)
-    .filter((segmentData) => {
+  newStruct.segments = convertSegmentData(newStruct.segments).filter(
+    (segmentData) => {
       return !['Buildings', 'setback'].includes(segmentData['type']);
-    });
+    }
+  );
 
   console.log('TEST. Converted JSON structure: ', newStruct);
 
@@ -35,6 +38,6 @@ function convertStreetStruct (streetProject) {
 
 module.exports.convertStreetStruct = convertStreetStruct;
 
-function convertSegmentData (segments) {
+function convertSegmentData(segments) {
   return segments.map(mappingUtils.convertSegment);
 }

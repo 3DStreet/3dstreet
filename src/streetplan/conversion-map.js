@@ -44,12 +44,17 @@ const mapping = {
     '': { type: 'sidewalk', variantString: 'empty' },
     Trees: { type: 'sidewalk-tree', variantString: 'big' },
     season_tree: { type: 'sidewalk-tree', variantString: 'big' },
-    Shelters: { type: 'transit-shelter', variantString: 'street-level', variantStringAdd: 'side|variantString' },
+    Shelters: {
+      type: 'transit-shelter',
+      variantString: 'street-level',
+      variantStringAdd: 'side|variantString'
+    },
     Pedestrian: { type: 'sidewalk', variantString: 'dense' }
   },
   Curbside: {
     '': { type: 'sidewalk', variantString: 'empty' },
-    Lights: { type: 'sidewalk-lamp',
+    Lights: {
+      type: 'sidewalk-lamp',
       tagToVariantMap: {
         'Historic Lights': 'traditional',
         'Regular Lights': 'modern'
@@ -57,57 +62,111 @@ const mapping = {
       variantStringAdd: 'side|variantString'
     },
     Poles: { type: 'utilities', variantStringAdd: 'side' },
-    BikeRacks: { type: 'sidewalk-bike-rack',
+    BikeRacks: {
+      type: 'sidewalk-bike-rack',
       nameToVariantMap: {
         'Sideview Modern': 'sidewalk-parallel',
         Sideview: 'sidewalk-parallel',
         'NYC Bike Rack': 'sidewalk'
       },
-      variantStringAdd: 'side|variantString' }
+      variantStringAdd: 'side|variantString'
+    }
   },
   BikesPaths: {
     '': { type: 'bike-lane', variantString: 'sidewalk' },
-    Bikes: { type: 'bike-lane', variantString: 'sidewalk', variantStringAdd: 'direction|material|variantString' }
+    Bikes: {
+      type: 'bike-lane',
+      variantString: 'sidewalk',
+      variantStringAdd: 'direction|material|variantString'
+    }
   },
   Gutter: {
     '': { type: 'divider', variantString: 'median' },
     Gutter: { type: 'divider', variantString: 'median' }
   },
   Transit: {
-    '': { tag: 'Bus Vehicles', type: 'bus-lane', variantString: 'typical', variantStringAdd: 'direction|material|variantString' },
+    '': {
+      tag: 'Bus Vehicles',
+      type: 'bus-lane',
+      variantString: 'typical',
+      variantStringAdd: 'direction|material|variantString'
+    },
     Transit: [
-      { tag: 'Rail Vehicles',
+      {
+        tag: 'Rail Vehicles',
         type: 'streetcar',
-        names:
-				['StreetCar Yellow', 'StreetCar Blue', 'StreetCar Red 1', 'StreetCar Red 2'],
-        variantStringAdd: 'direction|material' },
-      { tag: 'Rail Vehicles', type: 'light-rail', names: ['UTA LightRail'], variantStringAdd: 'direction|material' },
+        names: [
+          'StreetCar Yellow',
+          'StreetCar Blue',
+          'StreetCar Red 1',
+          'StreetCar Red 2'
+        ],
+        variantStringAdd: 'direction|material'
+      },
+      {
+        tag: 'Rail Vehicles',
+        type: 'light-rail',
+        names: ['UTA LightRail'],
+        variantStringAdd: 'direction|material'
+      },
       // there are only reversed light rail vehicles in Streetplan
-      { tag: 'Rail Vehicles Reversed', type: 'light-rail', variantStringAdd: 'direction|material' },
-      { tag: 'Bus Vehicles', type: 'bus-lane', variantString: 'typical', variantStringAdd: 'direction|material|variantString' }
+      {
+        tag: 'Rail Vehicles Reversed',
+        type: 'light-rail',
+        variantStringAdd: 'direction|material'
+      },
+      {
+        tag: 'Bus Vehicles',
+        type: 'bus-lane',
+        variantString: 'typical',
+        variantStringAdd: 'direction|material|variantString'
+      }
     ]
   },
   Cars: {
-    '': { type: 'drive-lane', variantString: 'car', variantStringAdd: 'direction|variantString' },
-    Autos: { type: 'drive-lane', variantString: 'car', variantStringAdd: 'direction|variantString' },
-    Truck: { type: 'drive-lane', variantString: 'truck', variantStringAdd: 'direction|variantString' }
+    '': {
+      type: 'drive-lane',
+      variantString: 'car',
+      variantStringAdd: 'direction|variantString'
+    },
+    Autos: {
+      type: 'drive-lane',
+      variantString: 'car',
+      variantStringAdd: 'direction|variantString'
+    },
+    Truck: {
+      type: 'drive-lane',
+      variantString: 'truck',
+      variantStringAdd: 'direction|variantString'
+    }
   },
   Parking: {
-    '': { tag: 'Parking - Parallel', type: 'parking-lane', variantStringAdd: 'direction|side' },
-    Parallel:
-			{ tag: 'Parking - Parallel', type: 'parking-lane', variantStringAdd: 'direction|side' },
-    AngleNormal:
-			{ tag: 'Parking - Angle',
-			  type: 'parking-lane',
-			  nameToVariantMap: {
-			  'Away, L. Park, Head In': 'angled-rear-left',
-			  'Toward, R. Park, Head In': 'angled-front-right',
-			  'Toward, L. Park, Head In': 'angled-front-left',
-			  'Away, R. Park, Head In': 'angled-rear-right'
-			  },
-			  variantStringAdd: 'side'
-			},
-    Perpendicular: { type: 'parking-lane', variantString: 'sideways', variantStringAdd: 'variantString|side' }
+    '': {
+      tag: 'Parking - Parallel',
+      type: 'parking-lane',
+      variantStringAdd: 'direction|side'
+    },
+    Parallel: {
+      tag: 'Parking - Parallel',
+      type: 'parking-lane',
+      variantStringAdd: 'direction|side'
+    },
+    AngleNormal: {
+      tag: 'Parking - Angle',
+      type: 'parking-lane',
+      nameToVariantMap: {
+        'Away, L. Park, Head In': 'angled-rear-left',
+        'Toward, R. Park, Head In': 'angled-front-right',
+        'Toward, L. Park, Head In': 'angled-front-left',
+        'Away, R. Park, Head In': 'angled-rear-right'
+      },
+      variantStringAdd: 'side'
+    },
+    Perpendicular: {
+      type: 'parking-lane',
+      variantString: 'sideways',
+      variantStringAdd: 'variantString|side'
+    }
   },
   Buffers: {
     '': { type: 'divider', variantString: 'median' },
@@ -164,14 +223,15 @@ const materialMap = {
 
 // StreetMix variantString often has additional parameters via |, for example: taxi|outbound|right
 // generate a streetMix like variantString from the listed parameters in variantStringAdd
-function generateVariantString (variantStringKeys, streetmixData) {
-  const variantString = variantStringKeys.split('|')
+function generateVariantString(variantStringKeys, streetmixData) {
+  const variantString = variantStringKeys
+    .split('|')
     .map((currKey) => streetmixData[currKey])
     .join('|');
   return variantString;
 }
 
-function getDataFromSubtypeMap (convertRule, streetmixData, streetplanData) {
+function getDataFromSubtypeMap(convertRule, streetmixData, streetplanData) {
   if (typeof convertRule === 'string') {
     // convertRule is a Streetmix type.
     // Later will add another options for this case
@@ -200,7 +260,10 @@ function getDataFromSubtypeMap (convertRule, streetmixData, streetplanData) {
     streetmixData['type'] = variantData['type'];
     const variantStringKeys = variantData['variantStringAdd'];
     if (variantStringKeys) {
-      streetmixData['variantString'] = generateVariantString(variantStringKeys, streetmixData);
+      streetmixData['variantString'] = generateVariantString(
+        variantStringKeys,
+        streetmixData
+      );
     }
   } else if (typeof convertRule === 'object') {
     // in this case, different variants of the segment subtype
@@ -217,19 +280,24 @@ function getDataFromSubtypeMap (convertRule, streetmixData, streetplanData) {
     // get variantString from {"O1-Name" (StreetPlan Object Name) : variantString} mapping data
     const nameToVariantMap = convertRule['nameToVariantMap'];
     if (nameToVariantMap && nameToVariantMap[streetplanData['O1-Name']]) {
-      streetmixData['variantString'] = nameToVariantMap[streetplanData['O1-Name']];
+      streetmixData['variantString'] =
+        nameToVariantMap[streetplanData['O1-Name']];
     }
 
     // get variantString from {"O1-Tags" (StreetPlan Tag) : variantString} mapping data
     const tagToVariantMap = convertRule['tagToVariantMap'];
     if (tagToVariantMap && tagToVariantMap[streetplanData['O1-Tags']]) {
-      streetmixData['variantString'] = tagToVariantMap[streetplanData['O1-Tags']];
+      streetmixData['variantString'] =
+        tagToVariantMap[streetplanData['O1-Tags']];
     }
 
     // generate a streetMix like variantString from the listed parameter values
     const variantStringKeys = convertRule['variantStringAdd'];
     if (variantStringKeys) {
-      streetmixData['variantString'] = generateVariantString(variantStringKeys, streetmixData);
+      streetmixData['variantString'] = generateVariantString(
+        variantStringKeys,
+        streetmixData
+      );
     }
   }
 
@@ -237,7 +305,7 @@ function getDataFromSubtypeMap (convertRule, streetmixData, streetplanData) {
 }
 
 // convert streetPlan segment data to Streetmix segment data
-function convertSegment (data) {
+function convertSegment(data) {
   let streetmixData = {};
   // streetmix variantString
   const variantString = '';
@@ -263,13 +331,17 @@ function convertSegment (data) {
       streetmixData = getDataFromSubtypeMap(convertRule, streetmixData, data);
     } else {
       streetmixData['type'] = streetplanType;
-		    // STREET.notify.warningMessage(`The '${streetplanSubtype}' subtype of StreetPlan segment '${segmentType}' is not yet supported in 3DStreet`);
-		    console.log(`The '${streetplanSubtype}' subtype of StreetPlan segment '${streetplanType}' is not yet supported in 3DStreet`);
+      // STREET.notify.warningMessage(`The '${streetplanSubtype}' subtype of StreetPlan segment '${segmentType}' is not yet supported in 3DStreet`);
+      console.log(
+        `The '${streetplanSubtype}' subtype of StreetPlan segment '${streetplanType}' is not yet supported in 3DStreet`
+      );
     }
   } else {
     streetmixData['type'] = streetplanType;
-	    // STREET.notify.warningMessage(`The '${streetplanType}' StreetPlan segment type is not yet supported in 3DStreet`);
-	    console.log(`The '${streetplanType}' StreetPlan segment type is not yet supported in 3DStreet`);
+    // STREET.notify.warningMessage(`The '${streetplanType}' StreetPlan segment type is not yet supported in 3DStreet`);
+    console.log(
+      `The '${streetplanType}' StreetPlan segment type is not yet supported in 3DStreet`
+    );
   }
   return streetmixData;
 }

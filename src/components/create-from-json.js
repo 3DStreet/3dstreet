@@ -15,6 +15,9 @@ AFRAME.registerComponent('create-from-json', {
         el.removeChild(el.lastChild);
       }
     }
-    createFromJSONUtilsTested.appendChildElementsFromArray(JSON.parse(data.jsonString), el);
+    createFromJSONUtilsTested.appendChildElementsFromArray(
+      JSON.parse(data.jsonString),
+      el
+    );
   }
 });

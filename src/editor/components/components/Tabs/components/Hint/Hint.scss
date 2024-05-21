@@ -1,0 +1,46 @@
+@use '../../../../../style/variables.scss';
+
+// need to be global for working with Tab component
+
+.wrapper {
+  position: absolute;
+  top: 50px;
+  min-width: 150px;
+  max-width: 245px;
+  display: flex;
+  visibility: hidden;
+  opacity: 0;
+  justify-content: flex-start;
+  align-items: flex-start;
+  transition: all 0.3s;
+  background-color: rgba(55, 55, 55, 0.8);
+  padding: 6px 8px;
+  border-radius: 8px;
+
+  span {
+    position: relative;
+    display: flex;
+    width: 100%;
+    font-size: 12px;
+    line-height: 14.4px;
+    font-weight: 500;
+    color: variables.$white;
+
+    &::before {
+      position: absolute;
+      top: -12px;
+      left: calc(50% - 3px);
+      display: block;
+      content: '';
+      width: 12px;
+      height: 6px;
+      background-color: rgba(55, 55, 55, 0.8);
+      clip-path: polygon(50% 0%, 0% 100%, 100% 100%);
+    }
+  }
+
+  &.hintVisible {
+    visibility: visible;
+    opacity: 1;
+  }
+}

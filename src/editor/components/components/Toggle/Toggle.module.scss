@@ -1,0 +1,146 @@
+@use '../../../style/variables.scss';
+
+.wrapper {
+  display: flex;
+  align-items: center;
+  column-gap: 0.75rem;
+  width: fit-content;
+
+  .label {
+    display: flex;
+    font-size: 1rem;
+    line-height: 1.1875rem;
+    font-weight: 400;
+    color: variables.$white;
+    transition: all 0.3s;
+  }
+
+  .disabledLabel {
+    transition: all 0.3s;
+    color: variables.$gray-700;
+  }
+
+  .toggleContainer {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 40px;
+    min-width: 40px;
+    height: 40px;
+    min-height: 40px;
+
+    .toggle {
+      position: relative;
+      display: flex;
+      width: 100%;
+      height: 20px;
+      border: 1px solid variables.$lightgray-400;
+      border-radius: 10px;
+      box-sizing: border-box;
+
+      .switcher {
+        position: absolute;
+        top: 0;
+        bottom: 0;
+        left: 0;
+        margin: auto 0;
+        display: flex;
+        width: 13.33px;
+        height: 13.33px;
+        border-radius: 50%;
+      }
+
+      &:hover {
+        cursor: pointer;
+      }
+    }
+
+    .activeToggle {
+      background-color: variables.$lightgray-400;
+      transition: all 0.3s;
+
+      .switcher {
+        transform: translateX(22.33px);
+        transition: all 0.3s;
+        background-color: variables.$darkpurple-100;
+      }
+
+      &:hover {
+        transition: all 0.3s;
+        background-color: variables.$white;
+        border-color: variables.$white;
+      }
+
+      &:active {
+        transition: all 0.3s;
+        background-color: #00000020;
+        border-color: #00000020;
+      }
+    }
+
+    .inactiveToggle {
+      background-color: transparent;
+      transition: all 0.3s;
+
+      .switcher {
+        transform: translateX(3.33px);
+        transition: all 0.3s;
+        background-color: variables.$lightgray-400;
+      }
+
+      &:hover {
+        transition: all 0.3s;
+        border-color: variables.$white;
+
+        .switcher {
+          transition: all 0.3s;
+          background-color: variables.$white;
+        }
+      }
+
+      &:active {
+        transition: all 0.3s;
+        border-color: #00000020;
+
+        .switcher {
+          transition: all 0.3s;
+          background-color: #00000020;
+        }
+      }
+    }
+
+    .disabledActiveToggle,
+    .disabledActiveToggle:hover,
+    .disabledActiveToggle:active {
+      transition: all 0.3s;
+      background-color: variables.$gray-700;
+      border-color: variables.$gray-700;
+
+      .switcher {
+        transition: all 0.3s;
+        background-color: variables.$black-800;
+      }
+
+      &:hover {
+        cursor: not-allowed;
+      }
+    }
+
+    .disabledInactiveToggle,
+    .disabledInactiveToggle:hover,
+    .disabledInactiveToggle:active {
+      transition: all 0.3s;
+      background-color: transparent;
+      border-color: variables.$gray-700;
+
+      .switcher {
+        transition: all 0.3s;
+        background-color: variables.$gray-700;
+      }
+
+      &:hover {
+        cursor: not-allowed;
+      }
+    }
+  }
+}

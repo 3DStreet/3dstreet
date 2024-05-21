@@ -1,6 +1,6 @@
 /* global AFRAME, customElements */
 
-function buildAssetHTML (assetUrl, categories) {
+function buildAssetHTML(assetUrl, categories) {
   // if (!assetUrl) assetUrl = 'https://assets.3dstreet.app/';
   console.log('[street]', 'Using street assets from', assetUrl);
   const surfacesRoughness = 0.8;
@@ -248,13 +248,14 @@ function buildAssetHTML (assetUrl, categories) {
         <a-mixin shadow id="prop-banner-wfh" gltf-model="url(${assetUrl}sets/wfh-banner/gltf-exports/draco/wfh-banner.glb)"></a-mixin>
         <a-mixin shadow id="prop-raygun" gltf-model="url(${assetUrl}sets/ray-gun/gltf-exports/draco/rayGun.glb)"></a-mixin>
         <a-mixin shadow id="prop-co2-scrubber" gltf-model="url(${assetUrl}sets/c02-scrubber/gltf-exports/draco/co2-scrubber.glb)"></a-mixin>
-    ` };
+    `
+  };
 
-  function addCategoryNamesToMixins (html, categoryName) {
+  function addCategoryNamesToMixins(html, categoryName) {
     const parser = new DOMParser();
     const doc = parser.parseFromString(html, 'text/html');
     const mixinNodes = doc.querySelectorAll('a-mixin');
-    mixinNodes.forEach(mixinNode => {
+    mixinNodes.forEach((mixinNode) => {
       mixinNode.setAttribute('category', categoryName);
     });
     return doc.documentElement.innerHTML;
@@ -267,8 +268,9 @@ function buildAssetHTML (assetUrl, categories) {
   if (categories) {
     // if there is a categories attribute, then use the categories from it
     const categoryAttrArray = categories.split(' ');
-    existsCategoryArray =
-      existsCategoryArray.filter(key => categoryAttrArray.includes(key));
+    existsCategoryArray = existsCategoryArray.filter((key) =>
+      categoryAttrArray.includes(key)
+    );
   }
 
   let assetsHTML = '';
@@ -284,12 +286,12 @@ function buildAssetHTML (assetUrl, categories) {
 }
 
 class StreetAssets extends AFRAME.ANode {
-  constructor () {
+  constructor() {
     super();
     this.isAssetItem = true;
   }
 
-  connectedCallback () {
+  connectedCallback() {
     const self = this;
     var categories = this.getAttribute('categories');
     var assetUrl = this.getAttribute('url');

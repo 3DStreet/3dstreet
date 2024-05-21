@@ -1,0 +1,71 @@
+@use './variables.scss';
+
+#viewportBar {
+  align-items: center;
+  color: variables.$lightgray-100;
+  position: fixed;
+  display: flex;
+  flex-grow: 2;
+  height: 48px;
+  font-size: 20px;
+  justify-content: center;
+  left: 0;
+  margin: 0 auto;
+  right: 0;
+  top: 36px;
+}
+.toolbarButtons {
+  display: none;
+  position: relative;
+  * {
+    margin-left: 0;
+    padding: 8px;
+    vertical-align: middle;
+  }
+  a.button {
+    margin: 0 6px 0 0;
+    &:not(.active):hover {
+      background-color: variables.$darkgray-600;
+    }
+  }
+  .active {
+    background-color: variables.$blue-100;
+    color: variables.$white;
+    &:hover {
+      color: variables.$white !important;
+    }
+  }
+}
+.local-transform {
+  padding-left: 10px;
+  label {
+    color: variables.$lightgray;
+    padding-left: 5px;
+  }
+  a.button {
+    padding-top: 0;
+  }
+}
+#cameraSelect {
+  cursor: pointer;
+  width: 200px;
+  .select__dropdown-indicator {
+    padding-left: 3px;
+    padding-right: 3px;
+  }
+}
+#cameraToolbar {
+  &:has(> .select__menu) {
+    background: variables.$darkgray-300 !important;
+  }
+  &.open .select__dropdown-indicator {
+    background-image: url(variables.$selectDropdownIndicatorActive);
+  }
+}
+#viewportHud {
+  display: none;
+
+  @media (min-width: 1024px) {
+    display: block;
+  }
+}

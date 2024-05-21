@@ -1,7 +1,16 @@
-function isSidewalk (string) { // eslint-disable-line no-unused-vars
+function isSidewalk(string) {
+  // eslint-disable-line no-unused-vars
   // https://streetmix.net/api/v1/streets/3f1a9810-0a8f-11ea-adff-7fe273b63f1d
   //  return if string sidewalk* or "scooter-drop-zone", bikeshare, flex-zone-curb, transit-shelter
-  const sidewalkList = ['utilities', 'scooter-drop-zone', 'bikeshare', 'flex-zone-curb', 'transit-shelter', 'brt-station', 'street-vendor'];
+  const sidewalkList = [
+    'utilities',
+    'scooter-drop-zone',
+    'bikeshare',
+    'flex-zone-curb',
+    'transit-shelter',
+    'brt-station',
+    'street-vendor'
+  ];
   return string.startsWith('sidewalk') || sidewalkList.includes(string);
 }
 module.exports.isSidewalk = isSidewalk;
@@ -9,7 +18,8 @@ module.exports.isSidewalk = isSidewalk;
 // generate a JSON array representing buildings
 // test createBuildingsArray(maxLength = 5) returns [{ tag: 'a-entity', mixin: 'SM3D_Bld_Mixed_Corner_4fl', position: '0 0 0' }]
 // test createBuildingsArray(maxLength = 10) returns [{ mixin: "SM3D_Bld_Mixed_Corner_4fl", position: "0 0 0", tag: "a-entity" }, {mixin: "SM3D_Bld_Mixed_Double_5fl", position: "0 0 5", tag: "a-entity"} ]
-function createBuildingsArray (maxLength = 150, buildingType = 'narrow') { // eslint-disable-line no-unused-vars
+function createBuildingsArray(maxLength = 150, buildingType = 'narrow') {
+  // eslint-disable-line no-unused-vars
   var buildings, psuedoRandom;
   if (buildingType === 'narrow' || buildingType === 'wide') {
     buildings = [
@@ -90,7 +100,8 @@ function createBuildingsArray (maxLength = 150, buildingType = 'narrow') { // es
 module.exports.createBuildingsArray = createBuildingsArray;
 
 // for an array of objects representing HTML, remove entities except those that match the mixinId specified
-function filterBuildingsArrayByMixin (buildingsArray, mixinId) { // eslint-disable-line no-unused-vars
+function filterBuildingsArrayByMixin(buildingsArray, mixinId) {
+  // eslint-disable-line no-unused-vars
   var filteredBuildingsArray = [];
   buildingsArray.forEach((currentEntity, index) => {
     if (currentEntity.mixin === mixinId) {
@@ -102,7 +113,8 @@ function filterBuildingsArrayByMixin (buildingsArray, mixinId) { // eslint-disab
 module.exports.filterBuildingsArrayByMixin = filterBuildingsArrayByMixin;
 
 // for an array of objects representing HTML, for each object remove the property matching the passed string `key`
-function removePropertyFromArray (htmlArray, key) { // eslint-disable-line no-unused-vars
+function removePropertyFromArray(htmlArray, key) {
+  // eslint-disable-line no-unused-vars
   htmlArray.forEach((currentEntity, index) => {
     delete currentEntity[key];
   });
@@ -110,10 +122,18 @@ function removePropertyFromArray (htmlArray, key) { // eslint-disable-line no-un
 }
 module.exports.removePropertyFromArray = removePropertyFromArray;
 
-function createClonedEntitiesArray ({ mixin = '', step = 15, radius = 60, rotation = '0 0 0', positionXYString = '0 0', randomY = false }) { // eslint-disable-line no-unused-vars
+function createClonedEntitiesArray({
+  mixin = '',
+  step = 15,
+  radius = 60,
+  rotation = '0 0 0',
+  positionXYString = '0 0',
+  randomY = false
+}) {
+  // eslint-disable-line no-unused-vars
   var clonedEntitiesArray = [];
 
-  for (var j = (radius * -1); j <= radius; j = j + step) {
+  for (var j = radius * -1; j <= radius; j = j + step) {
     var clonedEntity = {
       tag: 'a-entity',
       position: positionXYString + ' ' + j
@@ -138,7 +158,8 @@ function createClonedEntitiesArray ({ mixin = '', step = 15, radius = 60, rotati
 module.exports.createClonedEntitiesArray = createClonedEntitiesArray;
 
 // TODO: rename to createAmbientSoundsArray
-function getAmbientSoundJSON (buildingsArray) { // eslint-disable-line no-unused-vars
+function getAmbientSoundJSON(buildingsArray) {
+  // eslint-disable-line no-unused-vars
   const ambientSounds = {
     fence: '#suburbs-mp3',
     grass: '#suburbs-mp3',
@@ -153,11 +174,16 @@ function getAmbientSoundJSON (buildingsArray) { // eslint-disable-line no-unused
   var prevURL = null;
   buildingsArray.forEach((currentValue, index) => {
     // <a-entity class="playme" sound="src: #ambientmp3; positional: false; loop: true;"></a-entity>
-    if (prevURL && (prevURL === ambientSounds[currentValue])) { return; }
+    if (prevURL && prevURL === ambientSounds[currentValue]) {
+      return;
+    }
     var soundEntity = {
       tag: 'a-entity',
       class: 'playme',
-      sound: 'src: ' + ambientSounds[currentValue] + '; positional: false; loop: true'
+      sound:
+        'src: ' +
+        ambientSounds[currentValue] +
+        '; positional: false; loop: true'
     };
     soundsArray.push(soundEntity);
     prevURL = ambientSounds[currentValue];

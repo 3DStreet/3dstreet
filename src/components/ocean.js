@@ -7,10 +7,14 @@ AFRAME.registerComponent('wobble-normal', {
   schema: {},
   tick: function (t) {
     if (!this.el.components.material.material.normalMap) return;
-    this.el.components.material.material.normalMap.offset.x += 0.0001 * Math.sin(t / 10000);
-    this.el.components.material.material.normalMap.offset.y += 0.0001 * Math.cos(t / 8000);
-    this.el.components.material.material.normalScale.x = 0.5 + 0.5 * Math.cos(t / 1000);
-    this.el.components.material.material.normalScale.x = 0.5 + 0.5 * Math.sin(t / 1200);
+    this.el.components.material.material.normalMap.offset.x +=
+      0.0001 * Math.sin(t / 10000);
+    this.el.components.material.material.normalMap.offset.y +=
+      0.0001 * Math.cos(t / 8000);
+    this.el.components.material.material.normalScale.x =
+      0.5 + 0.5 * Math.cos(t / 1000);
+    this.el.components.material.material.normalScale.x =
+      0.5 + 0.5 * Math.sin(t / 1200);
   }
 });
 
@@ -26,7 +30,7 @@ AFRAME.registerComponent('wobble-geometry', {
   },
   play: function () {
     const data = this.data;
-    const geometry = this.geometry = this.el.object3D.children[0].geometry;
+    const geometry = (this.geometry = this.el.object3D.children[0].geometry);
 
     console.log(this.el.object3D.children[0].geometry);
     this.waves = [];
@@ -93,7 +97,7 @@ AFRAME.registerComponent('wobble-geometry-box', {
   },
   play: function () {
     const data = this.data;
-    const geometry = this.geometry = this.el.object3D.children[0].geometry;
+    const geometry = (this.geometry = this.el.object3D.children[0].geometry);
 
     this.waves = [];
     const posAttribute = geometry.getAttribute('position');
