@@ -1,0 +1,117 @@
+@use '../../../style/variables.scss';
+
+.modalWrapper {
+  position: relative;
+  width: 90vw;
+  margin: auto auto;
+  height: 100%;
+
+  .contentWrapper {
+    display: flex;
+    flex-direction: column;
+    justify-content: start;
+    width: 100%;
+    height: 100%;
+
+    .loadMore {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+
+      .button {
+        width: 200px;
+        height: 48px;
+        font-size: 18px !important;
+      }
+    }
+
+    .loadingSpinner {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      margin: auto;
+      .spinner {
+        animation: spin 2s linear infinite;
+      }
+
+      @keyframes spin {
+        0% {
+          transform: rotate(0deg);
+        }
+        100% {
+          transform: rotate(360deg);
+        }
+      }
+    }
+
+    .signInFirst {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      flex-direction: column;
+      width: 100%;
+      min-height: 100%;
+      row-gap: 28px;
+      height: calc(80vh - 240px);
+
+      .title {
+        font-size: 24px;
+        font-weight: 500;
+      }
+
+      .buttons {
+        display: flex;
+        column-gap: 24px;
+      }
+    }
+
+    .loadingSpinner {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      margin: auto;
+      .spinner {
+        animation: spin 2s linear infinite;
+      }
+
+      @keyframes spin {
+        0% {
+          transform: rotate(0deg);
+        }
+        100% {
+          transform: rotate(360deg);
+        }
+      }
+    }
+
+    .loadMore {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+
+      .button {
+        width: 200px;
+        height: 48px;
+        font-size: 18px !important;
+      }
+    }
+  }
+
+  .header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin: 32px 0px 0px;
+
+    .tabs {
+      margin: 0px;
+    }
+
+    .buttons {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      column-gap: 16px;
+    }
+  }
+}

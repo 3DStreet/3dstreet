@@ -1,0 +1,65 @@
+@use './variables.scss';
+.Select-control {
+  background-color: variables.$black !important;
+  border: none;
+  border-radius: 0;
+  color: variables.$blue-100;
+}
+.Select-menu-outer {
+  border: none;
+}
+.Select-menu-outer .is-focused {
+  background-color: variables.$blue-100 !important;
+  color: variables.$lightgray-100;
+}
+.Select-option {
+  background-color: variables.$black !important;
+}
+.select-widget {
+  display: inline-block;
+  width: 157px;
+}
+.Select-placeholder,
+.Select--single > .Select-control .Select-value {
+  color: variables.$blue-100 !important;
+}
+.Select-value-label {
+  color: variables.$blue-100 !important;
+}
+
+/* Dropdown menu */
+.dropbtn {
+  border: none;
+  color: variables.$lightgray-100;
+  cursor: pointer;
+}
+.dropdown {
+  display: inline-block;
+  position: relative;
+}
+.dropdown-content {
+  background-color: variables.$white-200;
+  box-shadow: 0 8px 16px 0 rgba(0, 0, 0, 0.2);
+  display: none;
+  left: 8px;
+  min-width: 38px;
+  position: absolute;
+  z-index: 999;
+}
+.dropdown-content a {
+  background-color: variables.$black-500;
+  color: variables.$gray-600;
+  display: block;
+  padding: 10px 14px;
+  text-decoration: none;
+}
+.dropdown-content a:hover {
+  background-color: variables.$aqua-100;
+  color: variables.$lightgray-100;
+}
+.dropdownhover .dropdown-content {
+  display: block;
+}
+.dropdownhover .dropbtn {
+  color: variables.$blue-100;
+}

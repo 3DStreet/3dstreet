@@ -1,0 +1,311 @@
+@use '../../../style/variables.scss';
+
+.wrapper {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  max-width: 200px;
+  row-gap: 0.25rem;
+
+  .label {
+    font-size: 0.875rem;
+    line-height: 1.0625rem;
+    font-weight: 500;
+    color: variables.$lightgray-500;
+    transition: all 0.3s;
+  }
+
+  .disabledLabel {
+    color: variables.$gray-800;
+    transition: all 0.3s;
+  }
+
+  .dropdown {
+    position: relative;
+    display: flex;
+    width: 100%;
+    transition: all 0.3s;
+
+    .selector {
+      display: flex;
+      align-items: center;
+      column-gap: 0.5rem;
+      width: 100%;
+      padding: 8px 13px 8px 15px;
+      border: 1px solid variables.$purple-400;
+      border-radius: 10px;
+      background-color: rgba(50, 50, 50, 0.8);
+      outline: unset;
+      transition: all 0.3s;
+
+      &:hover {
+        transition: all 0.3s;
+        cursor: pointer;
+        border-color: variables.$purple-500;
+        background-color: variables.$darkgray-300;
+
+        .icon svg {
+          transition: all 0.3s;
+          fill: variables.$gray-300;
+
+          * {
+            transition: all 0.3s;
+            fill: variables.$gray-300;
+          }
+        }
+
+        .selectedOptionLabel {
+          transition: all 0.3s;
+          color: variables.$gray-300;
+        }
+
+        > svg {
+          transition: all 0.3s;
+          stroke: variables.$white;
+
+          * {
+            stroke: variables.$white;
+          }
+        }
+      }
+
+      &:focus {
+        transition: all 0.3s;
+        cursor: pointer;
+        border-color: variables.$purple-700;
+        background-color: variables.$darkgray-300;
+        outline: unset;
+
+        .icon svg {
+          transition: all 0.3s;
+          fill: variables.$white;
+
+          * {
+            transition: all 0.3s;
+            fill: variables.$white;
+          }
+        }
+
+        .selectedOptionLabel {
+          transition: all 0.3s;
+          color: variables.$white;
+        }
+
+        > svg {
+          transition: all 0.3s;
+          stroke: variables.$white;
+
+          * {
+            stroke: variables.$white;
+          }
+        }
+      }
+
+      &:active {
+        transition: all 0.3s;
+        cursor: pointer;
+        border-color: variables.$purple-400;
+        background-color: rgba(50, 50, 50, 0.8);
+
+        .icon svg {
+          transition: all 0.3s;
+          fill: variables.$white;
+
+          * {
+            transition: all 0.3s;
+            fill: variables.$white;
+          }
+        }
+
+        .selectedOptionLabel {
+          transition: all 0.3s;
+          color: variables.$white;
+        }
+
+        > svg {
+          transition: all 0.3s;
+          stroke: variables.$white;
+
+          * {
+            stroke: variables.$white;
+          }
+        }
+      }
+
+      &:disabled {
+        transition: all 0.3s;
+        cursor: not-allowed;
+        border-color: variables.$darkpurple;
+        background-color: rgba(50, 50, 50, 0.8);
+
+        .icon svg {
+          transition: all 0.3s;
+          fill: variables.$gray-500;
+
+          * {
+            transition: all 0.3s;
+            fill: variables.$gray-500;
+          }
+        }
+
+        .selectedOptionLabel {
+          transition: all 0.3s;
+          color: variables.$gray-500;
+        }
+
+        > svg {
+          transition: all 0.3s;
+          stroke: variables.$gray-500;
+
+          * {
+            stroke: variables.$gray-500;
+          }
+        }
+      }
+
+      .icon {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: 20px;
+        height: 20px;
+
+        svg {
+          transition: all 0.3s;
+          fill: variables.$lightgray-200;
+
+          * {
+            transition: all 0.3s;
+            fill: variables.$lightgray-200;
+          }
+        }
+      }
+
+      .selectedOptionLabel {
+        display: flex;
+        width: 100%;
+        max-width: 100%;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        color: variables.$lightgray-200;
+        transition: all 0.3s;
+      }
+
+      > svg {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: 20px;
+        height: 20px;
+        transition: all 0.3s;
+        stroke: variables.$gray-500;
+
+        * {
+          stroke: variables.$gray-500;
+        }
+      }
+    }
+
+    .selectorWithOpenedMenu {
+      transition: all 0.3s;
+      border-color: variables.$purple-700;
+      background-color: variables.$darkgray-300;
+
+      > svg {
+        transition: all 0.3s;
+        stroke: variables.$white;
+
+        * {
+          stroke: variables.$white;
+        }
+      }
+    }
+
+    .optionsMenu {
+      position: absolute;
+      top: 56px;
+      left: 0;
+      z-index: 10;
+      display: flex;
+      flex-direction: column;
+      width: calc(100% - 2px);
+      border: 1px solid variables.$purple-700;
+      border-radius: 8px;
+      overflow: hidden;
+
+      .optionItem {
+        display: flex;
+        width: 100%;
+        padding: 8px 20px;
+        background-color: variables.$darkgray-300;
+        transition: all 0.3s;
+        border: unset;
+        outline: unset;
+
+        &:hover {
+          transition: all 0.3s;
+          cursor: pointer;
+          background-color: variables.$darkgray-800;
+
+          .optionItemLabel {
+            transition: all 0.3s;
+            color: variables.$white;
+          }
+        }
+
+        &:active {
+          transition: all 0.3s;
+          background-color: variables.$black;
+
+          .optionItemLabel {
+            transition: all 0.3s;
+            color: variables.$white;
+          }
+        }
+
+        &:focus {
+          transition: all 0.3s;
+          background-color: variables.$black-600;
+
+          .optionItemLabel {
+            transition: all 0.3s;
+            color: variables.$white;
+          }
+        }
+
+        &:disabled {
+          transition: all 0.3s;
+          background-color: variables.$black;
+          cursor: not-allowed;
+
+          .optionItemLabel {
+            transition: all 0.3s;
+            color: variables.$gray-500;
+          }
+        }
+
+        .optionItemLabel {
+          display: flex;
+          width: 100%;
+          max-width: 100%;
+          overflow: hidden;
+          text-overflow: ellipsis;
+          white-space: nowrap;
+          color: variables.$lightgray-500;
+          transition: all 0.3s;
+        }
+      }
+
+      .selectedItem {
+        transition: all 0.3s;
+        background-color: variables.$black;
+
+        .optionItemLabel {
+          transition: all 0.3s;
+          color: variables.$white;
+        }
+      }
+    }
+  }
+}

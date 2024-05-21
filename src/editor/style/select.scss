@@ -1,0 +1,191 @@
+@use './variables.scss';
+[class^='select-single'] {
+  color: variables.$white;
+  font-weight: 400;
+  font-size: 16px;
+  line-height: 19px;
+  padding: 0px;
+}
+[class^='select-single']:hover {
+  cursor: pointer;
+  [class^='select-single__single-value'] {
+    color: variables.$gray-300;
+  }
+  [class^='select-single__indicator'] {
+    * {
+      fill: variables.$white;
+    }
+  }
+  [class^='select-single__indicator']:active {
+    [class^='select-single__single-value'] {
+      color: variables.$white;
+    }
+    [class^='select-single__indicator'] {
+      * {
+        fill: variables.$white;
+      }
+    }
+  }
+}
+[class^='select-single__control'] {
+  background: rgba(50, 50, 50, 0.8);
+  border: 1px solid variables.$purple-400;
+  border-radius: 10px;
+  padding: 12px 16px;
+  height: 48px;
+}
+[class^='select-single__control']:hover {
+  border: 1px solid variables.$purple-500;
+}
+[class^='select-single__value-container'],
+[class^='select-single__input-container'] {
+  padding: 0;
+  margin: 0;
+}
+[class^='select-single__indicator-separator'] {
+  display: none;
+}
+[class^='select-single__indicator'] {
+  * {
+    fill: variables.$white;
+  }
+}
+[class^='select-single__menu'] {
+  background: variables.$darkgray-300;
+  border-radius: 8px;
+}
+[class^='select-single__option'] {
+  padding: 8px;
+  background: variables.$darkgray-300;
+}
+[class^='select-single__option']:hover {
+  background: variables.$darkgray-800;
+  cursor: pointer;
+}
+.select-single__option--is-focused {
+  background: variables.$darkgray-800;
+}
+[class^='select-single__menu-list'] {
+  border: 1px solid variables.$purple-700;
+}
+.select-single__control--is-focused {
+  border: 1px solid variables.$purple-700 !important;
+  box-shadow: none;
+  .select-single__single-value {
+    color: variables.$lightgray-200 !important;
+  }
+  svg {
+    * {
+      fill: variables.$white;
+    }
+  }
+}
+.select-single__control--is-disabled {
+  background: rgba(50, 50, 50, 0.8);
+  border: 1px solid variables.$darkpurple !important;
+  box-shadow: none;
+  .select-single__single-value {
+    color: variables.$gray-500 !important;
+  }
+  svg {
+    * {
+      fill: variables.$gray-500;
+    }
+  }
+}
+.select__control {
+  border: 0;
+  border-radius: 0;
+  cursor: pointer;
+  min-height: 26px;
+  font-family: variables.$mainFont;
+}
+.select__indicator {
+  height: 26px;
+}
+.select__indicator-separator {
+  display: none;
+}
+.select__menu {
+  margin-top: 18px;
+  padding: 0px;
+  border: 1px solid variables.$purple-500;
+  border-radius: 10px;
+  background: variables.$darkgray-300;
+  font-family: variables.$mainFont;
+  font-size: 18px !important;
+  overflow: hidden;
+}
+.select__menu-list {
+  padding-top: 0px;
+  padding-bottom: 0px;
+}
+.select__control {
+  background: variables.$bgalphadark;
+}
+.select__option {
+  height: 51px;
+  padding: 16px 20px;
+}
+.select__placeholder,
+.select__menu {
+  color: variables.$white;
+}
+.select__single-value {
+  color: variables.$blue-100;
+}
+.select__control--is-focused {
+  box-shadow: none !important;
+  background: variables.$darkgray-200;
+}
+.select__option {
+  cursor: pointer;
+}
+.select__clear-indicator {
+  display: none;
+}
+.select__label {
+  font-size: 11px;
+}
+.select__option--is-focused {
+  background: variables.$black;
+}
+.select__menu .select__option--is-selected {
+  background: variables.$black;
+}
+.select__value-container {
+  height: 26px;
+  position: static;
+  padding: 2px 8px;
+  &.select__value-container--is-multi {
+    height: auto;
+    padding: 6px;
+  }
+}
+.select__dropdown-indicator {
+  padding: 3px 8px;
+  background-image: url(variables.$selectDropdownIndicator);
+  background-repeat: no-repeat;
+  background-position: center;
+  width: 12px;
+}
+.select__dropdown-indicator:active {
+  background-image: url(variables.$selectDropdownIndicatorActive);
+}
+.select__dropdown-indicator svg {
+  display: none;
+}
+.select__multi-value {
+  background: variables.$darkgray-100;
+  color: variables.$blue-100;
+}
+.select__multi-value__label {
+  color: variables.$blue-100;
+}
+.select__value-container--is-multi > :last-child {
+  display: none;
+}
+.select__multi-value__remove:hover {
+  color: variables.$white;
+  background: variables.$darkgray-100;
+}

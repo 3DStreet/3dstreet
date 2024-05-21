@@ -18,9 +18,13 @@ AFRAME.registerComponent('gltf-part', {
 
   update: function () {
     var el = this.el;
-    if (!this.data.part && this.data.src) { return; }
+    if (!this.data.part && this.data.src) {
+      return;
+    }
     this.getModel(function (modelPart) {
-      if (!modelPart) { return; }
+      if (!modelPart) {
+        return;
+      }
       el.setObject3D('mesh', modelPart);
     });
   },
@@ -52,13 +56,18 @@ AFRAME.registerComponent('gltf-part', {
       if (self.dracoLoader) {
         loader.setDRACOLoader(self.dracoLoader);
       }
-      loader.load(self.data.src, function (gltfModel) {
-        var model = gltfModel.scene || gltfModel.scenes[0];
-        MODELS[self.data.src] = model;
-        delete LOADING_MODELS[self.data.src];
-        cb(self.selectFromModel(model));
-        resolve(model);
-      }, function () { }, console.error);
+      loader.load(
+        self.data.src,
+        function (gltfModel) {
+          var model = gltfModel.scene || gltfModel.scenes[0];
+          MODELS[self.data.src] = model;
+          delete LOADING_MODELS[self.data.src];
+          cb(self.selectFromModel(model));
+          resolve(model);
+        },
+        function () {},
+        console.error
+      );
     });
   },
 

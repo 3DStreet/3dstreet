@@ -1,4 +1,5 @@
-function streetmixUserToAPI (userURL) { // eslint-disable-line no-unused-vars
+function streetmixUserToAPI(userURL) {
+  // eslint-disable-line no-unused-vars
   // this takes in a user facing Streetmix.net URL like https://streetmix.net/kfarr/3/a-frame-city-builder-street-only
   // and turns it into the API redirect URL like https://streetmix.net/api/v1/streets?namespacedId=3&creatorId=kfarr
   var pathArray = new URL(userURL).pathname.split('/');
@@ -7,27 +8,33 @@ function streetmixUserToAPI (userURL) { // eslint-disable-line no-unused-vars
   if (creatorId === '-') {
     return 'https://streetmix.net/api/v1/streets?namespacedId=' + namespacedId;
   } else {
-    return 'https://streetmix.net/api/v1/streets?namespacedId=' + namespacedId + '&creatorId=' + creatorId;
+    return (
+      'https://streetmix.net/api/v1/streets?namespacedId=' +
+      namespacedId +
+      '&creatorId=' +
+      creatorId
+    );
   }
 }
 module.exports.streetmixUserToAPI = streetmixUserToAPI;
 
-function pathStartsWithAPI (urlString) {
+function pathStartsWithAPI(urlString) {
   // First, check the URL path to see if it starts with /api/
   const url = document.createElement('a');
   url.href = urlString;
   const pathname = url.pathname;
   const topDir = pathname.split('/')[1];
-  return (topDir === 'api');
+  return topDir === 'api';
 }
 module.exports.pathStartsWithAPI = pathStartsWithAPI;
 
-function streetmixAPIToUser (APIURL) { // eslint-disable-line no-unused-vars
+function streetmixAPIToUser(APIURL) {
+  // eslint-disable-line no-unused-vars
   // this takes in a Streetmix.net API redirect URL like https://streetmix.net/api/v1/streets?namespacedId=3&creatorId=kfarr
   // and turns it into the user facing friendly Streetmix.net URL like https://streetmix.net/kfarr/3/a-frame-city-builder-street-only
 
   // modified from: https://stackoverflow.com/questions/2090551/parse-query-string-in-javascript
-  function getQueryVariable (queryString, variable) {
+  function getQueryVariable(queryString, variable) {
     var vars = queryString.split('&');
     for (var i = 0; i < vars.length; i++) {
       var pair = vars[i].split('=');
@@ -49,7 +56,7 @@ function streetmixAPIToUser (APIURL) { // eslint-disable-line no-unused-vars
 module.exports.streetmixAPIToUser = streetmixAPIToUser;
 
 // convert all feet values to meters for schemaVersion < 30
-function convertStreetValues (streetData) {
+function convertStreetValues(streetData) {
   if (streetData.schemaVersion < 30) {
     // convert width from feet to meters
     streetData.segments.forEach((segmentData) => {
