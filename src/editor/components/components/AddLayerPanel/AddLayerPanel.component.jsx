@@ -1,11 +1,11 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import styles from './AddLayerPanel.module.scss';
 import classNames from 'classnames';
 import { Button } from '../Button';
 import { Chevron24Down, Load24Icon, Plus20Circle } from '../../../icons';
 import { Dropdown } from '../Dropdown';
 import CardPlaceholder from '../../../../../ui_assets/card-placeholder.svg';
-import { cardsData } from './cardsData';
+import { LayersOptions } from './LayersOptions.js';
 import {
   createSvgExtrudedEntity,
   createMapbox,
@@ -17,7 +17,8 @@ import {
 import Events from '../../../lib/Events';
 
 const AddLayerPanel = ({ onClose, isAddLayerPanelOpen }) => {
-  const [selectedOption, setSelectedOption] = useState(null);
+  // set the first Layers option when opening the panel
+  const [selectedOption, setSelectedOption] = useState(LayersOptions[0].value);
   const [groupedMixins, setGroupedMixins] = useState([]);
 
   useEffect(() => {
@@ -60,62 +61,6 @@ const AddLayerPanel = ({ onClose, isAddLayerPanelOpen }) => {
     }
     return groupedArray;
   };
-
-  const options = [
-    {
-      value: 'Layers: Streets & Intersections',
-      label: 'Layers: Streets & Intersections',
-      onClick: () => console.log('Layers: Streets & Intersections')
-    },
-    {
-      value: 'Models: Personal Vehicles',
-      label: 'Models: Personal Vehicles',
-      mixinGroups: ['vehicles', 'vehicles-rigged'],
-      onClick: () => console.log('Models: Personal Vehicles')
-    },
-    {
-      value: 'Models: Transit Vehicles',
-      label: 'Models: Transit Vehicles',
-      mixinGroups: ['vehicles-transit'],
-      onClick: () => console.log('Models: Transit Vehicles')
-    },
-    {
-      value: 'Models: Utility Vehicles',
-      label: 'Models: Utility Vehicles',
-      mixinGroups: ['vehicles-rigged'],
-      onClick: () => console.log('Models: Utility Vehicles')
-    },
-    {
-      value: 'Models: Characters',
-      label: 'Models: Characters',
-      mixinGroups: ['people', 'people-rigged'],
-      onClick: () => console.log('Models: Characters')
-    },
-    {
-      value: 'Models: Street Props',
-      label: 'Models: Street Props',
-      mixinGroups: ['sidewalk-props', 'intersection-props'],
-      onClick: () => console.log('Models: Street Props')
-    },
-    {
-      value: 'Models: dividers',
-      label: 'Models: dividers',
-      mixinGroups: ['dividers'],
-      onClick: () => console.log('Models: dividers')
-    },
-    {
-      value: 'Models: Buildings',
-      label: 'Models: Buildings',
-      mixinGroups: ['buildings'],
-      onClick: () => console.log('Models: Buildings')
-    },
-    {
-      value: 'Models: stencils',
-      label: 'Models: stencils',
-      mixinGroups: ['stencils'],
-      onClick: () => console.log('Models: stencils')
-    }
-  ];
 
   // data for layers cards
   const layersData = [
@@ -178,7 +123,7 @@ const AddLayerPanel = ({ onClose, isAddLayerPanelOpen }) => {
   // get array with objects data (cardsData) from mixinGroups of selectedOption
   const getSelectedMixinCards = (selectedOption) => {
     if (!selectedOption) return [];
-    const selectedOptionData = options.find(
+    const selectedOptionData = LayersOptions.find(
       (option) => option.value === selectedOption
     );
     const selectedMixinGroupNames = selectedOptionData.mixinGroups;
@@ -195,7 +140,7 @@ const AddLayerPanel = ({ onClose, isAddLayerPanelOpen }) => {
   };
 
   let selectedCards;
-  if (selectedOption == 'Layers: Streets & Intersections') {
+  if (selectedOption === 'Layers: Streets & Intersections') {
     selectedCards = layersData;
   } else {
     selectedCards = getSelectedMixinCards(selectedOption);
@@ -222,8 +167,8 @@ const AddLayerPanel = ({ onClose, isAddLayerPanelOpen }) => {
 
   /*
     get the ancestor of element in which the added elements will be placed, inside the .custom-group
-    in this order: 
-    - ancestor with class segment-parent-..., 
+    in this order:
+    - ancestor with class segment-parent-...,
     - elements .street-parent/.buildings-parent,
     - or if the element is a child of a-scene
   */
@@ -345,7 +290,7 @@ const AddLayerPanel = ({ onClose, isAddLayerPanelOpen }) => {
         </div>
         <Dropdown
           placeholder="Layers: Maps & Reference"
-          options={options}
+          options={LayersOptions}
           onSelect={handleSelect}
           selectedOptionValue={selectedOption}
           className={styles.dropdown}
