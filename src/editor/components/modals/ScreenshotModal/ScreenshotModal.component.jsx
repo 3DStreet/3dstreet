@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import styles from './ScreenshotModal.module.scss';
 
 import {
@@ -18,7 +18,7 @@ import { db, storage } from '../../../services/firebase';
 import { Button, Dropdown, Input } from '../../components';
 import Toolbar from '../../scenegraph/Toolbar';
 import Modal from '../Modal.jsx';
-import { loginHandler } from '../SignInModal';
+// import { loginHandler } from '../SignInModal';
 
 export const uploadThumbnailImage = async (uploadedFirstTime) => {
   try {
@@ -103,7 +103,7 @@ const saveScreenshot = async (value) => {
   const screenshotEl = document.getElementById('screenshot');
   screenshotEl.play();
 
-  if (value == 'img') {
+  if (value === 'img') {
     screenshotEl.setAttribute(
       'screentock',
       'imgElementSelector',
@@ -122,7 +122,7 @@ function ScreenshotModal({ isOpen, onClose }) {
 
   const sceneId = STREET.utils.getCurrentSceneId();
   let currentUrl;
-  if (!!sceneId) {
+  if (sceneId) {
     currentUrl = 'https://3dstreet.app/#/scenes/' + sceneId + '.json';
   } else {
     currentUrl = window.location.href;
@@ -165,7 +165,7 @@ function ScreenshotModal({ isOpen, onClose }) {
     try {
       const sceneId = STREET.utils.getCurrentSceneId();
       let updatedUrl;
-      if (!!sceneId) {
+      if (sceneId) {
         updatedUrl = 'https://3dstreet.app/#/scenes/' + sceneId + '.json';
       } else {
         updatedUrl = window.location.href;

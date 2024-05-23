@@ -262,7 +262,6 @@ function buildAssetHTML(assetUrl, categories) {
   }
 
   // JSON with grouped mixin id's. Used to create grouped mixins in Editor right panel
-  const groupedAssetsJSON = {};
   let existsCategoryArray = Object.keys(assetsObj);
 
   if (categories) {
@@ -274,8 +273,6 @@ function buildAssetHTML(assetUrl, categories) {
   }
 
   let assetsHTML = '';
-  const assetsCategoryHTML = '';
-  const mixinList = [];
   for (const categoryName in assetsObj) {
     if (existsCategoryArray.includes(categoryName)) {
       const assetsCategoryHTML = assetsObj[categoryName];

@@ -1,4 +1,3 @@
-import React from 'react';
 import classNames from 'classnames';
 import { arrayOf, bool, func, shape, string } from 'prop-types';
 import styles from './Tabs.module.scss';

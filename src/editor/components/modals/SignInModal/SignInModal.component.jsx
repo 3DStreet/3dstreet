@@ -1,4 +1,3 @@
-import React, { useCallback } from 'react';
 import { GoogleSignInButtonSVG } from '../../../icons';
 import Modal from '../Modal.jsx';
 import styles from './SignInModal.module.scss';
@@ -22,6 +21,7 @@ const SignInModal = ({ isOpen, onClose }) => (
             className={styles.docsLink}
             href="https://www.3dstreet.org/docs/3dstreet-editor/saving-and-loading-scenes/#3dstreet-cloud-account"
             target="_blank"
+            rel="noreferrer"
           >
             This is beta software which may not work as expected.{' '}
           </a>

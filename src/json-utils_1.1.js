@@ -27,7 +27,7 @@ function getCurrentSceneId() {
 }
 STREET.utils.getCurrentSceneId = getCurrentSceneId;
 
-getCurrentSceneTitle = () => {
+const getCurrentSceneTitle = () => {
   const currentSceneTitle =
     AFRAME.scenes[0].getAttribute('metadata').sceneTitle;
   console.log('currentSceneTitle', currentSceneTitle);
@@ -136,14 +136,14 @@ function toPropString(propData) {
     propData.isVector3 ||
     propData.isVector2 ||
     propData.isVector4 ||
-    (propData.hasOwnProperty('x') && propData.hasOwnProperty('y'))
+    (propData['x'] && propData['y'])
   ) {
     return AFRAME.utils.coordinates.stringify(propData);
   }
   if (typeof propData === 'object') {
     return Object.entries(propData)
       .map(([key, value]) => {
-        if (key == 'src') {
+        if (key === 'src') {
           // checking to ensure the object's src value is correctly stored
           if (value.src && !value.src.includes(assetsUrl)) {
             // asset came from external sources. So need to save it src value if it has
@@ -367,7 +367,7 @@ function createEntities(entitiesData, parentEl) {
       entityData.id === 'street-container' &&
       entityData.children &&
       entityData.children[0].id === 'default-street' &&
-      entityData.children[0].components.hasOwnProperty('set-loader-from-hash')
+      entityData.children[0].components['set-loader-from-hash']
     ) {
       delete entityData.children[0].components['set-loader-from-hash'];
     }
@@ -625,14 +625,14 @@ function getUUIDFromPath(path) {
 
 // this use os text input prompt, delete current scene, then load streetmix file
 function inputStreetmix() {
-  streetmixURL = prompt(
+  const streetmixURL = prompt(
     'Please enter a Streetmix URL',
     'https://streetmix.net/kfarr/3/example-street'
   );
   setTimeout(function () {
     window.location.hash = streetmixURL;
   });
-  streetContainerEl = document.getElementById('street-container');
+  const streetContainerEl = document.getElementById('street-container');
   while (streetContainerEl.firstChild) {
     streetContainerEl.removeChild(streetContainerEl.lastChild);
   }
@@ -651,9 +651,9 @@ function getValidJSON(stringJSON) {
   // Preserve newlines, etc. - use valid JSON
   // Remove non-printable and other non-valid JSON characters
   return stringJSON
-    .replace(/\'/g, '')
+    .replace(/'/g, '')
     .replace(/\n/g, '')
-    .replace(/[\u0000-\u0019]+/g, '');
+    .replace(/[\u0000-\u0019]+/g, ''); // eslint-disable-line no-control-regex
 }
 
 function createElementsFromJSON(streetJSON) {
@@ -671,7 +671,7 @@ function createElementsFromJSON(streetJSON) {
     AFRAME.scenes[0].setAttribute('metadata', 'sceneTitle', sceneTitle);
   }
 
-  streetContainerEl = document.getElementById('street-container');
+  const streetContainerEl = document.getElementById('street-container');
   while (streetContainerEl.firstChild) {
     streetContainerEl.removeChild(streetContainerEl.lastChild);
   }
@@ -681,14 +681,6 @@ function createElementsFromJSON(streetJSON) {
 }
 
 STREET.utils.createElementsFromJSON = createElementsFromJSON;
-
-// viewer widget click to paste json string of 3dstreet scene
-function inputJSON() {
-  const stringJSON = prompt('Please paste 3DStreet JSON string');
-  if (stringJSON) {
-    createElementsFromJSON(stringJSON);
-  }
-}
 
 // handle viewer widget click to open 3dstreet json scene
 function fileJSON() {

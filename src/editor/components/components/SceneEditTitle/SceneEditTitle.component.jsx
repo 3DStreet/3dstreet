@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import styles from './SceneEditTitle.module.scss';
 import { CheckMark32Icon, Cross32Icon, Edit32Icon } from '../../../icons';
 import { updateSceneIdAndTitle } from '../../../api/scene';
@@ -60,7 +60,7 @@ const SceneEditTitle = ({ sceneData }) => {
           <input
             className={styles.title}
             value={title}
-            onChange={handleChange}
+            // onChange={handleChange}
             onKeyDown={handleKeyDown}
           />
           <div className={styles.buttons}>

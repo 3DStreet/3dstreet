@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import ScenePlaceholder from '../../../../../ui_assets/ScenePlaceholder.svg';
 import styles from './SceneCard.module.scss';
 import { formatDistanceToNow } from 'date-fns';

@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useAuthContext } from '../../../contexts';
 import { Button, SceneCard, Tabs } from '../../components';
 import Modal from '../Modal.jsx';
