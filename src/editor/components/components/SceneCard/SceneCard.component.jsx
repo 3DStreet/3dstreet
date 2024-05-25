@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, useCallback } from 'react';
 import ScenePlaceholder from '../../../../../ui_assets/ScenePlaceholder.svg';
 import styles from './SceneCard.module.scss';
 import { formatDistanceToNow } from 'date-fns';
@@ -112,24 +112,27 @@ const SceneCard = ({
     }
   };
 
-  const handleClickOutside = (event) => {
-    if (showMenu !== null) {
-      const menuRef = menuRefs.current[showMenu];
-      const isClickInsideMenu = menuRef && menuRef.contains(event.target);
-      const isClickOnToggle = event.target.closest('.menu-toggle');
-      const isClickOnMenuItem = event.target.closest('.menu-item');
-      if (!isClickInsideMenu && !isClickOnToggle && !isClickOnMenuItem) {
-        setShowMenu(null);
+  const handleClickOutside = useCallback(
+    (event) => {
+      if (showMenu !== null) {
+        const menuRef = menuRefs.current[showMenu];
+        const isClickInsideMenu = menuRef && menuRef.contains(event.target);
+        const isClickOnToggle = event.target.closest('.menu-toggle');
+        const isClickOnMenuItem = event.target.closest('.menu-item');
+        if (!isClickInsideMenu && !isClickOnToggle && !isClickOnMenuItem) {
+          setShowMenu(null);
+        }
       }
-    }
-  };
+    },
+    [showMenu]
+  );
 
   useEffect(() => {
     document.addEventListener('mousedown', handleClickOutside);
     return () => {
       document.removeEventListener('mousedown', handleClickOutside);
     };
-  }, [showMenu]);
+  }, [handleClickOutside]);
 
   return (
     <div className={styles.wrapper}>

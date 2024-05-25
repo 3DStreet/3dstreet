@@ -7,7 +7,7 @@
     "start": "webpack serve --config webpack.config.js --open --progress",
     "start:prod": "serve public -l 3333",
     "dist": "webpack --config webpack.prod.config.js --progress",
-    "lint": "eslint 'src/**/*.js' 'src/**/*.jsx'",
+    "lint": "eslint --ext .js,.jsx src",
     "lint:fix": "eslint 'src/**/*.js' 'src/**/*.jsx' --fix",
     "prefirebase": "cp -R assets public && cp -R ui_assets public && cp index.html public && cp -R dist public",
     "prepare": "husky install",

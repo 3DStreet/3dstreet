@@ -1,4 +1,3 @@
-import React from 'react';
 import { EditorLogo, ViewerLogo } from './logos.jsx';
 
 import { Button } from '../Button';

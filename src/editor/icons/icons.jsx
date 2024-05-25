@@ -1,5 +1,3 @@
-import React from 'react';
-
 const Camera32Icon = () => (
   <svg
     width="32"

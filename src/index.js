@@ -1,7 +1,9 @@
-/* global AFRAME, THREE, XMLHttpRequest */
+/* global AFRAME, XMLHttpRequest, VERSION */
+
 if (typeof VERSION !== 'undefined') {
   console.log(`3DStreet Version: ${VERSION}`);
 }
+
 var streetmixParsers = require('./aframe-streetmix-parsers');
 var streetmixUtils = require('./tested/streetmix-utils');
 require('./json-utils_1.1.js');

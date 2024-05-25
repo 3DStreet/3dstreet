@@ -1,4 +1,3 @@
-import React from 'react';
 import { bool, func, node, number, string } from 'prop-types';
 
 import classNames from 'classnames';
@@ -46,8 +45,8 @@ const Button = ({
     tabIndex={0}
     disabled={disabled}
     id={id}
-    leadingicon={leadingicon}
-    trailingicon={trailingicon}
+    data-leadingicon={leadingicon}
+    data-trailingicon={trailingicon}
   >
     {leadingicon && <div className={styles.icon}>{leadingicon}</div>}
     {children}

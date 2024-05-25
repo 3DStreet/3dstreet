@@ -1,4 +1,3 @@
-import React from 'react';
 import { Logo } from './Logo.component';
 import { action } from '@storybook/addon-actions';
 

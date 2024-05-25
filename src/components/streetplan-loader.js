@@ -1,6 +1,5 @@
-/* global AFRAME, THREE, XMLHttpRequest */
+/* global AFRAME, XMLHttpRequest */
 var streetplanUtils = require('../streetplan/streetplan-utils.js');
-var exampleJSON = require('../streetplan/exampleJSON.json');
 
 AFRAME.registerComponent('streetplan-loader', {
   dependencies: ['street'],
@@ -23,10 +22,9 @@ AFRAME.registerComponent('streetplan-loader', {
 
     const streetplanName = streetData.name;
     // streetplan alternative name
-    const streetplanAltName = streetData.altName;
+    // const streetplanAltName = streetData.altName;
 
     console.log('streetplanName', streetplanName);
-    // el.setAttribute('streetplan-loader', 'name', streetplanName);
 
     let currentSceneTitle;
     const sceneEl = this.el.sceneEl;
@@ -63,17 +61,10 @@ AFRAME.registerComponent('streetplan-loader', {
     // First to find the proper path, once to actually load the street, and then subsequent updates such as street name
     const that = this;
     const data = this.data;
-    const el = this.el;
-
-    // /*  ***** debugging *****  */
-    // setTimeout(()=> {
-    //   this.streetplanResponseParse(exampleJSON);
-    // }, 1000);
-    // return;
 
     // load from URL encoded Streetplan JSON
     if (data.streetplanEncJSON) {
-      const streetplanJSON = decodeURIComponent(encodedString);
+      const streetplanJSON = decodeURIComponent(data.streetplanEncJSON);
       this.streetplanResponseParse(JSON.parse(streetplanJSON));
       return;
     }

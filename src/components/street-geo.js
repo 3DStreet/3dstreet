@@ -1,17 +1,18 @@
-/* global AFRAME, THREE */
-const MAPBOX_ACCESS_TOKEN_VALUE = 'pk.eyJ1Ijoia2llcmFuZmFyciIsImEiOiJjazB0NWh2YncwOW9rM25sd2p0YTlxemk2In0.mLl4sNGDFbz_QXk0GIK02Q';
+/* global AFRAME */
+const MAPBOX_ACCESS_TOKEN_VALUE =
+  'pk.eyJ1Ijoia2llcmFuZmFyciIsImEiOiJjazB0NWh2YncwOW9rM25sd2p0YTlxemk2In0.mLl4sNGDFbz_QXk0GIK02Q';
 const GOOGLE_API_KEY = 'AIzaSyAQshwLVKTpwTfPJxFEkEzOdP_cgmixTCQ';
 
 /*
  * Street-geo component
  *
- *  the component accept longitude, latitude, elevation and an array of map types to indicate 
+ *  the component accept longitude, latitude, elevation and an array of map types to indicate
  *  which child maps to spawn. Possible values for maps array: 'mapbox2d', 'google3d'.
  *  The component assigns the class 'autocreated' to its child elements.
- *  All attribute values can be changed at runtime and the component will update 
+ *  All attribute values can be changed at runtime and the component will update
  *  the child elements (map entities) and their corresponding parameters.
  *  The 'elevation' attribute is only used for the 'google3d' tiles element for now.
- *  
+ *
  *  to add support for a new map type, you need to take the following steps:
  *  - add map name to this.mapTypes variable
  *  - add creating function with name: <mapName>Create
@@ -27,17 +28,16 @@ AFRAME.registerComponent('street-geo', {
     maps: { type: 'array', default: [] }
   },
   init: function () {
-    /* 
+    /*
       Function names for the given function types must have the following format:
       create function: <mapType>Create,
       update function: <mapType>Update,
     */
-    this.mapTypes = ['mapbox2d', 'google3d'];  
-    this.elevationHeightConstant = 32.49158;  
+    this.mapTypes = ['mapbox2d', 'google3d'];
+    this.elevationHeightConstant = 32.49158;
   },
   update: function (oldData) {
     const data = this.data;
-    const el = this.el;
 
     const updatedData = AFRAME.utils.diff(oldData, data);
 
@@ -47,14 +47,17 @@ AFRAME.registerComponent('street-geo', {
       if (data.maps.includes(mapType) && !this[mapType]) {
         // create Map element and save a link to it in this[mapType]
         this[mapType] = createMapFunction();
-      } else if (data.maps.includes(mapType) && (updatedData.longitude || updatedData.latitude || updatedData.elevation)) {
+      } else if (
+        data.maps.includes(mapType) &&
+        (updatedData.longitude || updatedData.latitude || updatedData.elevation)
+      ) {
         // call update map function with name: <mapType>Update
         this[mapType + 'Update'].bind(this)();
       } else if (this[mapType] && !data.maps.includes(mapType)) {
         // remove element from DOM and from this object
         this.el.removeChild(this[mapType]);
         this[mapType] = null;
-      }     
+      }
     }
   },
   mapbox2dCreate: function () {
@@ -63,9 +66,14 @@ AFRAME.registerComponent('street-geo', {
 
     const mapbox2dElement = document.createElement('a-entity');
     mapbox2dElement.setAttribute('data-layer-name', 'Mapbox Satellite Streets');
-    mapbox2dElement.setAttribute('geometry', 'primitive: plane; width: 512; height: 512;');
-    mapbox2dElement.setAttribute('material', 'color: #ffffff; shader: flat; side: both; transparent: true;');
-    //mapbox2dElement.setAttribute('position', '-7 -1 -2');
+    mapbox2dElement.setAttribute(
+      'geometry',
+      'primitive: plane; width: 512; height: 512;'
+    );
+    mapbox2dElement.setAttribute(
+      'material',
+      'color: #ffffff; shader: flat; side: both; transparent: true;'
+    );
     mapbox2dElement.setAttribute('rotation', '-90 -4.25 0');
     mapbox2dElement.setAttribute('anisotropy', '');
     mapbox2dElement.setAttribute('mapbox', {
@@ -77,7 +85,7 @@ AFRAME.registerComponent('street-geo', {
     });
     mapbox2dElement.classList.add('autocreated');
     el.appendChild(mapbox2dElement);
-    return mapbox2dElement;    
+    return mapbox2dElement;
   },
   google3dCreate: function () {
     const data = this.data;
@@ -92,9 +100,9 @@ AFRAME.registerComponent('street-geo', {
       height: data.elevation - this.elevationHeightConstant,
       googleApiKey: GOOGLE_API_KEY,
       geoTransform: 'WGS84Cartesian',
-        maximumSSE: 48,
-        maximumMem: 400,
-        cameraEl: '#camera'
+      maximumSSE: 48,
+      maximumMem: 400,
+      cameraEl: '#camera'
     });
     google3dElement.classList.add('autocreated');
     el.appendChild(google3dElement);
@@ -103,9 +111,9 @@ AFRAME.registerComponent('street-geo', {
   google3dUpdate: function () {
     const data = this.data;
     this.google3d.setAttribute('loader-3dtiles', {
-      lat: data.latitude, 
+      lat: data.latitude,
       long: data.longitude,
-      height: data.elevation - this.elevationHeightConstant,
+      height: data.elevation - this.elevationHeightConstant
     });
   },
   mapbox2dUpdate: function () {
@@ -113,6 +121,5 @@ AFRAME.registerComponent('street-geo', {
     this.mapbox2d.setAttribute('mapbox', {
       center: `${data.longitude}, ${data.latitude}`
     });
-
   }
 });
