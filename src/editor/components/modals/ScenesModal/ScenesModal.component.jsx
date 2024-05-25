@@ -85,7 +85,7 @@ const ScenesModal = ({ isOpen, onClose, initialTab = 'owner', delay }) => {
 
       return () => clearTimeout(timeoutId);
     }
-  }, []);
+  }, [delay]);
 
   useEffect(() => {
     if (!isOpen) {
@@ -134,7 +134,7 @@ const ScenesModal = ({ isOpen, onClose, initialTab = 'owner', delay }) => {
     };
 
     fetchData();
-  }, [isOpen, currentUser, selectedTab]);
+  }, [isOpen, currentUser, selectedTab]); // eslint-disable-line
 
   const fetchUserScenes = async () => {
     return await getUserScenes(currentUser?.uid);

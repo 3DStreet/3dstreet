@@ -15,7 +15,7 @@ import { useEffect } from 'react';
  */
 const Hint = ({ hint, tab }) => {
   useEffect(() => {
-    const hintElement = document?.getElementById(tab.concat('Tab'));
+    const hintElement = document.getElementById(tab.concat('Tab'));
 
     hintElement &&
       !hintElement.hasAttribute('style') &&
@@ -23,7 +23,7 @@ const Hint = ({ hint, tab }) => {
         'style',
         `left: calc(50% - ${hintElement.clientWidth / 2}px)`
       );
-  }, [document]);
+  }, [tab]);
 
   return (
     <div id={tab.concat('Tab')} className={'wrapper'}>
