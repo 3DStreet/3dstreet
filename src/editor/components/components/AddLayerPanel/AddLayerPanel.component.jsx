@@ -6,6 +6,7 @@ import { Chevron24Down, Load24Icon, Plus20Circle } from '../../../icons';
 import { Dropdown } from '../Dropdown';
 import CardPlaceholder from '../../../../../ui_assets/card-placeholder.svg';
 import { LayersOptions } from './LayersOptions.js';
+
 import {
   createSvgExtrudedEntity,
   createMapbox,
