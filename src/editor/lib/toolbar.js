@@ -45,6 +45,7 @@ export function fileJSON(event) {
 
   reader.onload = function () {
     STREET.utils.createElementsFromJSON(reader.result);
+    const streetContainerEl = document.getElementById('street-container');
     // update sceneGraph
     Events.emit('entitycreated', streetContainerEl.sceneEl);
   };

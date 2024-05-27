@@ -18,10 +18,7 @@ AFRAME.registerComponent('svg-extruder', {
     lineColor: { type: 'color', default: 'black' }
   },
   init: function () {
-    const data = this.data;
     const el = this.el;
-    const svgString = data.svgString;
-    const lineColor = data.lineColor;
     this.loader = new SVGLoader();
 
     el.removeAttribute('material');
@@ -162,7 +159,6 @@ AFRAME.registerComponent('svg-extruder', {
     // No need to update.
     // if (Object.keys(oldData).length === 0) { return; }
 
-    const el = this.el;
     const svgString = this.data.svgString;
     if (svgString) this.extrudeFromSVG(svgString);
   }

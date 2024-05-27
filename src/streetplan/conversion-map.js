@@ -307,8 +307,6 @@ function getDataFromSubtypeMap(convertRule, streetmixData, streetplanData) {
 // convert streetPlan segment data to Streetmix segment data
 function convertSegment(data) {
   let streetmixData = {};
-  // streetmix variantString
-  const variantString = '';
   const streetplanType = data['Type'];
   const streetplanSubtype = data['Subtype'];
   // mapping rule for current Streetplan subtypes

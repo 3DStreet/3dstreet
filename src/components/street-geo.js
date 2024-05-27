@@ -57,7 +57,6 @@ AFRAME.registerComponent('street-geo', {
       'material',
       'color: #ffffff; shader: flat; side: both; transparent: true;'
     );
-    // mapbox2dElement.setAttribute('position', '-7 -1 -2');
     mapbox2dElement.setAttribute('rotation', '-90 -4.25 0');
     mapbox2dElement.setAttribute('anisotropy', '');
     mapbox2dElement.setAttribute('mapbox', {

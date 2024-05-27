@@ -14,7 +14,6 @@ import Events from '../../lib/Events';
 import Clipboard from 'clipboard';
 import { saveBlob } from '../../lib/utils';
 import GLTFIcon from '../../../../ui_assets/gltf.svg';
-import Mixins from './Mixins';
 
 // @todo Take this out and use updateEntity?
 function changeId(componentName, value) {
