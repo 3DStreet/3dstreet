@@ -1,5 +1,5 @@
 // utils for StreetPlan parsing
-mappingUtils = require('./conversion-map.js');
+const mappingUtils = require('./conversion-map.js');
 
 // convert width from feet to meters
 function convertStreetValues(streetData) {

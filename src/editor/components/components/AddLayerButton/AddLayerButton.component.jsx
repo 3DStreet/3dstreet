@@ -1,4 +1,3 @@
-import React from 'react';
 import styles from './AddLayerButton.module.scss';
 import { Button } from '../Button';
 import { Circle20Icon } from '../../../icons';

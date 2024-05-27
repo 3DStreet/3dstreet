@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useAuthContext } from '../../../contexts';
 import { Button, SceneCard, Tabs } from '../../components';
 import Modal from '../Modal.jsx';
@@ -85,7 +85,7 @@ const ScenesModal = ({ isOpen, onClose, initialTab = 'owner', delay }) => {
 
       return () => clearTimeout(timeoutId);
     }
-  }, []);
+  }, [delay]);
 
   useEffect(() => {
     if (!isOpen) {
@@ -134,7 +134,7 @@ const ScenesModal = ({ isOpen, onClose, initialTab = 'owner', delay }) => {
     };
 
     fetchData();
-  }, [isOpen, currentUser, selectedTab]);
+  }, [isOpen, currentUser, selectedTab]); // eslint-disable-line
 
   const fetchUserScenes = async () => {
     return await getUserScenes(currentUser?.uid);

@@ -1,4 +1,3 @@
-import React from 'react';
 import styles from './ProfileButton.module.scss';
 
 import { Button } from '../Button';

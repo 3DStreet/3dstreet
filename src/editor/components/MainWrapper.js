@@ -1,4 +1,3 @@
-import React from 'react';
 import { useAuthContext } from '../contexts/index.js';
 import Main from './Main';
 

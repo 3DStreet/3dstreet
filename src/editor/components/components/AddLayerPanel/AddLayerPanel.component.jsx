@@ -1,11 +1,10 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import styles from './AddLayerPanel.module.scss';
 import classNames from 'classnames';
 import { Button } from '../Button';
 import { Chevron24Down, Load24Icon, Plus20Circle } from '../../../icons';
 import { Dropdown } from '../Dropdown';
 import CardPlaceholder from '../../../../../ui_assets/card-placeholder.svg';
-import { cardsData } from './cardsData';
 import {
   createSvgExtrudedEntity,
   createMapbox,
@@ -195,7 +194,7 @@ const AddLayerPanel = ({ onClose, isAddLayerPanelOpen }) => {
   };
 
   let selectedCards;
-  if (selectedOption == 'Layers: Streets & Intersections') {
+  if (selectedOption === 'Layers: Streets & Intersections') {
     selectedCards = layersData;
   } else {
     selectedCards = getSelectedMixinCards(selectedOption);
@@ -222,8 +221,8 @@ const AddLayerPanel = ({ onClose, isAddLayerPanelOpen }) => {
 
   /*
     get the ancestor of element in which the added elements will be placed, inside the .custom-group
-    in this order: 
-    - ancestor with class segment-parent-..., 
+    in this order:
+    - ancestor with class segment-parent-...,
     - elements .street-parent/.buildings-parent,
     - or if the element is a child of a-scene
   */

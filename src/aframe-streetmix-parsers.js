@@ -2,7 +2,6 @@
 
 // Orientation - default model orientation is "outbound" (away from camera)
 var streetmixParsersTested = require('./tested/aframe-streetmix-parsers-tested');
-var streetmixUtils = require('./tested/streetmix-utils');
 var { segmentVariants } = require('./segments-variants.js');
 
 function cloneMixinAsChildren({
@@ -265,10 +264,6 @@ function getRandomArbitrary(min, max) {
   return Math.random() * (max - min) + min;
 }
 
-function getRandomElem(arr) {
-  return arr[getRandomIntInclusive(0, arr.length - 1)];
-}
-
 function getZPositions(start, end, step) {
   const len = Math.floor((end - start) / step) + 1;
   var arr = Array(len)
@@ -451,7 +446,7 @@ function addLinearStreetAnimation(
   const startingDistanceToTravel = Math.abs(halfStreet - zPos);
   const startingDuration = (startingDistanceToTravel / speed) * 1000;
 
-  const animationAttrs_1 = {
+  const animationAttrs1 = {
     property: 'position',
     easing: 'linear',
     loop: 'false',
@@ -459,7 +454,7 @@ function addLinearStreetAnimation(
     to: { z: halfStreet },
     dur: startingDuration
   };
-  const animationAttrs_2 = {
+  const animationAttrs2 = {
     property: 'position',
     easing: 'linear',
     loop: 'true',
@@ -468,8 +463,8 @@ function addLinearStreetAnimation(
     delay: startingDuration,
     dur: totalStreetDuration
   };
-  reusableObjectEl.setAttribute('animation__1', animationAttrs_1);
-  reusableObjectEl.setAttribute('animation__2', animationAttrs_2);
+  reusableObjectEl.setAttribute('animation__1', animationAttrs1);
+  reusableObjectEl.setAttribute('animation__2', animationAttrs2);
 
   return reusableObjectEl;
 }
@@ -506,7 +501,7 @@ function createDriveLaneElement(
     'angled-rear-right': 120
   };
   let rotationY;
-  if (lineVariant == 'sideways') {
+  if (lineVariant === 'sideways') {
     rotationY = rotationVariants['sideways'][direction];
   } else {
     rotationY = rotationVariants[lineVariant];
@@ -525,7 +520,7 @@ function createDriveLaneElement(
 
   const driveLaneParentEl = document.createElement('a-entity');
 
-  if (variantList.length == 1) {
+  if (variantList.length === 1) {
     // if there is no cars
     return driveLaneParentEl;
   }
@@ -611,7 +606,7 @@ function createDriveLaneElement(
     );
     const randPlaces = allPlaces.slice(0, count);
     const carSizeZ =
-      lineVariant == 'sideways' || lineVariant.includes('angled')
+      lineVariant === 'sideways' || lineVariant.includes('angled')
         ? 'width'
         : 'length';
 
@@ -971,7 +966,7 @@ function createSeparatorElement(
 
 // show warning message if segment or variantString are not supported
 function supportCheck(segmentType, segmentVariantString) {
-  if (segmentType == 'separator') return;
+  if (segmentType === 'separator') return;
   // variants supported in 3DStreet
   const supportedVariants = segmentVariants[segmentType];
   if (!supportedVariants) {
@@ -1038,7 +1033,7 @@ function processSegments(
     // elevation property from streetmix segment
     const elevation = segments[i].elevation;
 
-    elevationLevels = [0, 0.2, 0.4];
+    const elevationLevels = [0, 0.2, 0.4];
     const elevationPosY = elevationLevels[elevation];
 
     // add y elevation position as a data attribute to segment entity
@@ -1614,20 +1609,20 @@ function processSegments(
 
       // calculate position X and rotation Z for T-markings
       let markingPosX = segmentWidthInMeters / 2;
-      if (markingsRotZ == 90 && variantList[1] == 'right') {
+      if (markingsRotZ === 90 && variantList[1] === 'right') {
         markingsRotZ = -90;
         markingPosX = -markingPosX + 0.75;
       } else {
         markingPosX = markingPosX - 0.75;
       }
 
-      if (variantList[0] == 'sideways' || variantList[0].includes('angled')) {
+      if (variantList[0] === 'sideways' || variantList[0].includes('angled')) {
         carStep = 3;
         markingLength = segmentWidthInMeters;
         markingPosX = 0;
         parkingMixin = 'markings solid-stripe';
       }
-      markingPosXY = markingPosX + ' 0';
+      const markingPosXY = markingPosX + ' 0';
       const clonedStencilRadius = length / 2 - carStep;
 
       segmentParentEl.append(
@@ -1715,8 +1710,6 @@ function processSegments(
   // create new brown box to represent ground underneath street
   const dirtBox = document.createElement('a-box');
   const xPos = cumulativeWidthInMeters / 2;
-  console.log('xPos', xPos);
-  console.log('`${xPos} -1.1 0`', `${xPos} -1.1 0`);
   dirtBox.setAttribute('position', `${xPos} -1.1 0`); // what is x? x = 0 - cumulativeWidthInMeters / 2
   dirtBox.setAttribute('height', 2); // height is 2 meters from y of -0.1 to -y of 2.1
   dirtBox.setAttribute('width', cumulativeWidthInMeters);
@@ -1788,8 +1781,9 @@ function processBuildings(left, right, streetWidth, showGround, length) {
         'compound-wall': 'ground-asphalt-material'
       };
 
+      let groundParentEl;
       if (currentValue === 'waterfront') {
-        var groundParentEl = document.createElement('a-ocean-box');
+        groundParentEl = document.createElement('a-ocean-box');
         groundParentEl.setAttribute('geometry', {
           primitive: 'box',
           depth: length,
@@ -1801,7 +1795,7 @@ function processBuildings(left, right, streetWidth, showGround, length) {
         });
         groundParentEl.setAttribute('position', { y: -3 });
       } else {
-        var groundParentEl = document.createElement('a-box');
+        groundParentEl = document.createElement('a-box');
         groundParentEl.setAttribute('depth', length);
         groundParentEl.setAttribute('height', 2);
         groundParentEl.setAttribute('width', length / 2);

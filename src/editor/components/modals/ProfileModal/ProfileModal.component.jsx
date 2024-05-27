@@ -1,4 +1,3 @@
-import React from 'react';
 import styles from './ProfileModal.module.scss';
 
 import Modal from '../Modal.jsx';
@@ -6,7 +5,6 @@ import { Button } from '../../components';
 import { useAuthContext } from '../../../contexts';
 import { signOut } from 'firebase/auth';
 import { auth } from '../../../services/firebase';
-import { Download32Icon } from './icons.jsx';
 
 const ProfileModal = ({ isOpen, onClose }) => {
   const { currentUser, setCurrentUser } = useAuthContext();
@@ -16,11 +14,11 @@ const ProfileModal = ({ isOpen, onClose }) => {
     await signOut(auth);
     setCurrentUser(null);
   };
-
+  /*
   const editProfileHandler = () => {
     // TODO: navigate to edit section
   };
-
+*/
   return (
     <Modal
       className={styles.modalWrapper}
