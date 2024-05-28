@@ -1,6 +1,7 @@
 /* eslint-disable react/no-danger */
+import { nanoid } from 'nanoid';
 import Events from './Events';
-import { equal } from './utils';
+import { equal, saveBlob } from './utils';
 
 /**
  * Update a component.
@@ -169,9 +170,13 @@ export function getEntityClipboardRepresentation(entity) {
  * primitive attributes, mixins and defaults.
  *
  * @param {Element} entity Root of the DOM hierarchy.
+ * @param {Function} filterFunc Function to filter out nodes from the serialization
  * @return {Element}        Copy of the DOM hierarchy ready for serialization.
  */
-function prepareForSerialization(entity) {
+// add default function to filterFunc
+export function prepareForSerialization(entity, filterFunc = () => true) {
+  if (!filterFunc(entity)) return null;
+
   var clone = entity.cloneNode(false);
   var children = entity.childNodes;
   for (var i = 0, l = children.length; i < l; i++) {
@@ -182,7 +187,7 @@ function prepareForSerialization(entity) {
         !child.hasAttribute('data-aframe-inspector') &&
         !child.hasAttribute('data-aframe-canvas'))
     ) {
-      clone.appendChild(prepareForSerialization(children[i]));
+      clone.appendChild(prepareForSerialization(children[i], filterFunc));
     }
   }
   optimizeComponents(clone, entity);
@@ -201,6 +206,16 @@ function optimizeComponents(copy, source) {
   var setAttribute = HTMLElement.prototype.setAttribute;
   var components = source.components || {};
   Object.keys(components).forEach(function (name) {
+    if (blacklistedComponentProperties.components.includes(name)) {
+      copy.removeAttribute(name);
+      return;
+    }
+    for (const suffix of blacklistedComponentProperties.componentSuffixes) {
+      if (name.endsWith(suffix)) {
+        copy.removeAttribute(name);
+        return;
+      }
+    }
     var component = components[name];
     var result = getImplicitValue(component, source);
     var isInherited = result[1];
@@ -489,6 +504,19 @@ function getUniqueId(baseId) {
   return baseId + '-' + i;
 }
 
+/**
+ * Create a unique id that can be used on a DOM element.
+ * @return {string} Valid Id
+ */
+export function createUniqueId() {
+  let id = nanoid();
+  do {
+    id = nanoid();
+    // be sure to not return an id starting with a number
+  } while (/^\d/.test(id));
+  return id;
+}
+
 export function getComponentClipboardRepresentation(entity, componentName) {
   /**
    * Get the list of modified properties
@@ -582,12 +610,24 @@ export function printEntity(entity, onDoubleClick) {
 
 /**
  * Helper function to add a new entity with a list of components
- * @param  {object} definition Entity definition to add:
- *   {element: 'a-entity', components: {geometry: 'primitive:box'}}
+ * @param  {object} definition Entity definition to add, only components is required:
+ *   {element: 'a-entity', id: "hbiuSdYL2", class: "box", components: {geometry: 'primitive:box'}}
  * @return {Element} Entity created
  */
 export function createEntity(definition, cb) {
-  const entity = document.createElement(definition.element);
+  const entity = document.createElement(definition.element || 'a-entity');
+  if (definition.id) {
+    entity.id = definition.id;
+  } else {
+    entity.id = createUniqueId();
+  }
+
+  // set class, mixin, data attributes
+  for (const attribute of NOT_COMPONENTS) {
+    if (attribute !== 'id' && definition[attribute]) {
+      entity.setAttribute(attribute, definition[attribute]);
+    }
+  }
 
   // load default attributes
   for (let attr in definition.components) {
@@ -595,12 +635,170 @@ export function createEntity(definition, cb) {
   }
 
   // Ensure the components are loaded before update the UI
-  entity.addEventListener('loaded', () => {
-    Events.emit('entitycreated', entity);
-    cb(entity);
-  });
+  entity.addEventListener(
+    'loaded',
+    () => {
+      Events.emit('entitycreated', entity);
+      cb(entity);
+    },
+    { once: true }
+  );
 
-  AFRAME.scenes[0].appendChild(entity);
+  document.getElementById('scene-container').appendChild(entity);
 
   return entity;
+}
+
+const NOT_COMPONENTS = ['id', 'class', 'mixin', 'data-layer-name'];
+
+export function elementToJson(element) {
+  const obj = {};
+
+  if (element.tagName !== 'A-ENTITY') {
+    obj.element = element.tagName.toLowerCase();
+  }
+
+  if (element.attributes.length > 0) {
+    const components = {};
+
+    for (const attribute of element.attributes) {
+      if (
+        attribute.value === '' &&
+        (attribute.name === 'position' ||
+          attribute.name === 'rotation' ||
+          attribute.name === 'scale')
+      ) {
+        continue;
+      }
+
+      if (NOT_COMPONENTS.includes(attribute.name)) {
+        obj[attribute.name] = attribute.value;
+        continue;
+      }
+
+      /* if int has more then 6 decimal round it for position rotation and scale */
+      if (
+        attribute.name === 'position' ||
+        attribute.name === 'rotation' ||
+        attribute.name === 'scale'
+      ) {
+        const values = attribute.value.split(' ').map(parseFloat);
+        const roundedValues = values.map((v) => Math.round(v * 1000) / 1000);
+        components[attribute.name] = roundedValues.join(' ');
+        continue;
+      }
+
+      components[attribute.name] = attribute.value;
+    }
+
+    obj.components = components;
+  }
+
+  if (element.childNodes.length > 0) {
+    const children = [];
+
+    for (const child of element.childNodes) {
+      if (child.nodeType === Node.ELEMENT_NODE) {
+        children.push(elementToJson(child));
+      }
+    }
+
+    if (children.length > 0) {
+      obj.children = children;
+    }
+  }
+
+  return obj;
+}
+
+const blacklistedEntityProperties = {
+  id: [],
+  classList: ['autocreated'],
+  tagName: [],
+  attributes: []
+};
+
+const blacklistedComponentProperties = {
+  components: [],
+  componentSuffixes: ['autocreated']
+};
+
+function isBlacklisted(entity) {
+  if (entity.id) {
+    if (blacklistedEntityProperties.id.includes(entity.id)) return true;
+  }
+
+  if (entity.tagName) {
+    if (
+      blacklistedEntityProperties.tagName.includes(entity.tagName.toLowerCase())
+    ) {
+      return true;
+    }
+  }
+
+  if (entity.classList) {
+    for (const className of entity.classList) {
+      if (blacklistedEntityProperties.classList.includes(className)) {
+        return true;
+      }
+    }
+  }
+
+  if (entity.attributes) {
+    for (const attribute of entity.attributes) {
+      if (blacklistedEntityProperties.attributes.includes(attribute.name)) {
+        return true;
+      }
+    }
+  }
+
+  return false;
+}
+
+export function exportSceneToObject(rootEntity, existingJSON = undefined) {
+  const newJSON =
+    existingJSON !== undefined ? structuredClone(existingJSON) : {};
+  if (!newJSON.children) {
+    newJSON.children = [];
+  }
+
+  const idsSaved = [];
+  rootEntity.childNodes.forEach((entity) => {
+    if (entity.nodeType !== Node.ELEMENT_NODE) return;
+    // set an id on the entity if we had none
+    if (!entity.id) entity.id = createUniqueId();
+    idsSaved.push(entity.id);
+    // prepare entity for serialization and check if it's blacklisted
+    const preparedElement = prepareForSerialization(
+      entity,
+      (e) => !isBlacklisted(e)
+    );
+    if (!preparedElement) return;
+    // convert entity to JSON
+    const jsonEntity = elementToJson(preparedElement);
+    // if an entity of newJSON already has the same id, replace it by the new one, otherwise add the new entity
+    const index = newJSON.children.findIndex((e) => e.id === jsonEntity.id);
+    if (index !== -1) {
+      newJSON.children.splice(index, 1, jsonEntity);
+    } else {
+      newJSON.children.push(jsonEntity);
+    }
+  });
+
+  // remove entities that doesn't exist in the current scene
+  newJSON.children = newJSON.children.filter(
+    (entity) => idsSaved.indexOf(entity.id) > -1
+  );
+
+  return newJSON;
+}
+
+export function exportSceneToJSON(rootEntity, existingJSON = undefined) {
+  const obj = exportSceneToObject(rootEntity, existingJSON);
+  const sceneJSON = JSON.stringify(obj, null, 2);
+  return sceneJSON;
+}
+
+export function downloadJSON(jsonString, filename) {
+  saveBlob(new Blob([jsonString], { type: 'application/json' }), filename);
 }
