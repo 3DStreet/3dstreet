@@ -1,7 +1,7 @@
 /* eslint-disable react/no-danger */
 import { nanoid } from 'nanoid';
 import Events from './Events';
-import { equal } from './utils';
+import { equal, saveBlob } from './utils';
 
 /**
  * Update a component.
@@ -178,9 +178,13 @@ export function getEntityClipboardRepresentation(entity) {
  * primitive attributes, mixins and defaults.
  *
  * @param {Element} entity Root of the DOM hierarchy.
+ * @param {Function} filterFunc Function to filter out nodes from the serialization
  * @return {Element}        Copy of the DOM hierarchy ready for serialization.
  */
-export function prepareForSerialization(entity) {
+// add default function to filterFunc
+export function prepareForSerialization(entity, filterFunc = () => true) {
+  if (!filterFunc(entity)) return null;
+
   var clone = entity.cloneNode(false);
   var children = entity.childNodes;
   for (var i = 0, l = children.length; i < l; i++) {
@@ -191,7 +195,7 @@ export function prepareForSerialization(entity) {
         !child.hasAttribute('data-aframe-inspector') &&
         !child.hasAttribute('data-aframe-canvas'))
     ) {
-      clone.appendChild(prepareForSerialization(children[i]));
+      clone.appendChild(prepareForSerialization(children[i], filterFunc));
     }
   }
   optimizeComponents(clone, entity);
@@ -209,12 +213,29 @@ function optimizeComponents(copy, source) {
   var removeAttribute = HTMLElement.prototype.removeAttribute;
   var setAttribute = HTMLElement.prototype.setAttribute;
   var components = source.components || {};
+  for (const blacklistedAttribute of blacklistedComponentProperties.attributes) {
+    if (source.hasAttribute(blacklistedAttribute)) {
+      copy.removeAttribute(blacklistedAttribute);
+    }
+  }
   Object.keys(components).forEach(function (name) {
+    if (blacklistedComponentProperties.components.includes(name)) {
+      copy.removeAttribute(name);
+      return;
+    }
+    for (const suffix of blacklistedComponentProperties.componentSuffixes) {
+      if (name.endsWith(suffix)) {
+        copy.removeAttribute(name);
+        return;
+      }
+    }
     var component = components[name];
     var result = getImplicitValue(component, source);
     var isInherited = result[1];
     var implicitValue = result[0];
-    var currentValue = source.getAttribute(name);
+    // Use getDOMAttribute instead of getAttribute so we we don't get some properties that are modified
+    // on material-values this.data based on gltf material values just to show the correct values in the inspector.
+    var currentValue = source.getDOMAttribute(name);
     var optimalUpdate = getOptimalUpdate(
       component,
       implicitValue,
@@ -658,4 +679,170 @@ export function createEntity(definition, cb, parentEl = undefined) {
   }
 
   return entity;
+}
+
+/**
+ *
+ * @param {Entity} element
+ * @returns {EntityObject}
+ */
+export function elementToObject(element) {
+  const obj = {};
+
+  if (element.tagName !== 'A-ENTITY') {
+    obj.element = element.tagName.toLowerCase();
+  }
+
+  if (element.attributes.length > 0) {
+    const components = {};
+
+    for (const attribute of element.attributes) {
+      if (
+        attribute.value === '' &&
+        (attribute.name === 'position' ||
+          attribute.name === 'rotation' ||
+          attribute.name === 'scale')
+      ) {
+        continue;
+      }
+
+      if (
+        NOT_COMPONENTS.includes(attribute.name) ||
+        attribute.name.startsWith('data-')
+      ) {
+        obj[attribute.name] = attribute.value;
+        continue;
+      }
+
+      /* if int has more then 6 decimal round it for position rotation and scale */
+      if (
+        attribute.name === 'position' ||
+        attribute.name === 'rotation' ||
+        attribute.name === 'scale'
+      ) {
+        const values = attribute.value.split(' ').map(parseFloat);
+        const roundedValues = values.map((v) => Math.round(v * 1000) / 1000);
+        components[attribute.name] = roundedValues.join(' ');
+        continue;
+      }
+
+      components[attribute.name] = attribute.value;
+    }
+
+    obj.components = components;
+  }
+
+  if (element.childNodes.length > 0) {
+    const children = [];
+
+    for (const child of element.childNodes) {
+      if (child.nodeType === Node.ELEMENT_NODE) {
+        children.push(elementToObject(child));
+      }
+    }
+
+    if (children.length > 0) {
+      obj.children = children;
+    }
+  }
+
+  return obj;
+}
+
+const blacklistedEntityProperties = {
+  id: [],
+  classList: ['autocreated'],
+  tagName: [],
+  attributes: []
+};
+
+const blacklistedComponentProperties = {
+  attributes: ['draggable', 'data-ignore-raycaster'],
+  components: [],
+  componentSuffixes: ['autocreated']
+};
+
+export function isBlacklisted(entity) {
+  if (entity.id) {
+    if (blacklistedEntityProperties.id.includes(entity.id)) return true;
+  }
+
+  if (entity.tagName) {
+    if (
+      blacklistedEntityProperties.tagName.includes(entity.tagName.toLowerCase())
+    ) {
+      return true;
+    }
+  }
+
+  if (entity.classList) {
+    for (const className of entity.classList) {
+      if (blacklistedEntityProperties.classList.includes(className)) {
+        return true;
+      }
+    }
+  }
+
+  if (entity.attributes) {
+    for (const attribute of entity.attributes) {
+      if (blacklistedEntityProperties.attributes.includes(attribute.name)) {
+        return true;
+      }
+    }
+  }
+
+  return false;
+}
+/**
+ *
+ * @param {Entity} rootEntity
+ * @param {EntityObject} existingJSON
+ * @returns {EntityObject}
+ */
+export function exportSceneToObject(rootEntity, existingJSON = undefined) {
+  const newJSON =
+    existingJSON !== undefined ? structuredClone(existingJSON) : {};
+  if (!newJSON.children) {
+    newJSON.children = [];
+  }
+
+  const idsSaved = [];
+  rootEntity.childNodes.forEach((entity) => {
+    if (entity.nodeType !== Node.ELEMENT_NODE) return;
+    // set an id on the entity if we had none
+    if (!entity.id) entity.id = createUniqueId();
+    idsSaved.push(entity.id);
+    // prepare entity for serialization and check if it's blacklisted
+    const preparedElement = prepareForSerialization(
+      entity,
+      (e) => !isBlacklisted(e)
+    );
+    if (!preparedElement) return;
+    // convert entity to object
+    const entityObj = elementToObject(preparedElement);
+    // if an entity of newJSON already has the same id, replace it by the new one, otherwise add the new entity
+    const index = newJSON.children.findIndex((e) => e.id === entityObj.id);
+    if (index !== -1) {
+      newJSON.children.splice(index, 1, entityObj);
+    } else {
+      newJSON.children.push(entityObj);
+    }
+  });
+
+  // remove entities that doesn't exist in the current scene
+  newJSON.children = newJSON.children.filter(
+    (entity) => idsSaved.indexOf(entity.id) > -1
+  );
+
+  return newJSON;
+}
+
+export function exportSceneToJSON(rootEntity, existingJSON = undefined) {
+  const obj = exportSceneToObject(rootEntity, existingJSON);
+  const sceneJSON = JSON.stringify(obj, null, 2);
+  return sceneJSON;
+}
+
+export function downloadJSON(jsonString, filename) {
+  saveBlob(new Blob([jsonString], { type: 'application/json' }), filename);
 }
