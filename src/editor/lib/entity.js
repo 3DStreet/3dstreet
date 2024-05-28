@@ -644,7 +644,7 @@ export function createEntity(definition, cb) {
     { once: true }
   );
 
-  document.getElementById('scene-container').appendChild(entity);
+  document.getElementById('street-container').appendChild(entity);
 
   return entity;
 }
