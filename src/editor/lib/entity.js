@@ -128,10 +128,14 @@ export function cloneEntity(entity) {
   entity.flushToDOM();
 
   const clone = prepareForSerialization(entity);
-  clone.addEventListener('loaded', function () {
-    AFRAME.INSPECTOR.selectEntity(clone);
-    Events.emit('entityclone');
-  });
+  clone.addEventListener(
+    'loaded',
+    function () {
+      AFRAME.INSPECTOR.selectEntity(clone);
+      Events.emit('entityclone', clone);
+    },
+    { once: true }
+  );
 
   // Get a valid unique ID for the entity
   if (entity.id) {
