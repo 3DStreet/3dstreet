@@ -20,7 +20,7 @@ import { uploadThumbnailImage } from '../modals/ScreenshotModal/ScreenshotModal.
 import { sendMetric } from '../../services/ga.js';
 import posthog from 'posthog-js';
 import { UndoRedo } from '../components/UndoRedo';
-// const LOCALSTORAGE_MOCAP_UI = "aframeinspectormocapuienabled";
+import { downloadJSON, exportSceneToJSON } from '../../lib/entity.js';
 
 function filterHelpers(scene, visible) {
   scene.traverse((o) => {
@@ -128,7 +128,7 @@ export default class Toolbar extends Component {
     }
   };
 
-  static convertToObject = () => {
+  static convertToObjectOld = () => {
     try {
       posthog.capture('convert_to_json_clicked', {
         scene_id: STREET.utils.getCurrentSceneId()
@@ -147,6 +147,23 @@ export default class Toolbar extends Component {
 
       link.click();
       link.remove();
+      STREET.notify.successMessage('3DStreet JSON file saved successfully.');
+    } catch (error) {
+      STREET.notify.errorMessage(
+        `Error trying to save 3DStreet JSON file. Error: ${error}`
+      );
+      console.error(error);
+    }
+  };
+
+  static convertToObject = () => {
+    try {
+      const rootEntity = document.getElementById('street-container');
+      const exportedScene = exportSceneToJSON(rootEntity, {
+        title: STREET.utils.getCurrentSceneTitle()
+      });
+      // download the file
+      downloadJSON(exportedScene, 'data.json');
       STREET.notify.successMessage('3DStreet JSON file saved successfully.');
     } catch (error) {
       STREET.notify.errorMessage(
