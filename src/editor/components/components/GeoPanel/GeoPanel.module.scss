@@ -1,0 +1,17 @@
+@use '../../../style/variables.scss';
+
+.geo {
+  display: flex;
+  column-gap: 24px;
+  position: absolute;
+  bottom: 32px;
+  left: 32px;
+
+  & > img {
+    cursor: pointer;
+  }
+
+  & > p {
+    font-size: 16px !important;
+  }
+}
