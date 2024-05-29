@@ -67,6 +67,7 @@ AFRAME.registerComponent('street-geo', {
       pxToWorldRatio: 4
     });
     mapbox2dElement.classList.add('autocreated');
+    mapbox2dElement.setAttribute('data-ignore-raycaster', '');
     el.appendChild(mapbox2dElement);
     return mapbox2dElement;
   },
@@ -75,6 +76,7 @@ AFRAME.registerComponent('street-geo', {
     const el = this.el;
 
     const google3dElement = document.createElement('a-entity');
+    google3dElement.setAttribute('data-no-pause', '');
     google3dElement.setAttribute('data-layer-name', 'Google 3D Tiles');
     google3dElement.setAttribute('loader-3dtiles', {
       url: 'https://tile.googleapis.com/v1/3dtiles/root.json',
@@ -88,6 +90,7 @@ AFRAME.registerComponent('street-geo', {
       cameraEl: '#camera'
     });
     google3dElement.classList.add('autocreated');
+    google3dElement.setAttribute('data-ignore-raycaster', '');
     el.appendChild(google3dElement);
     return google3dElement;
   },
