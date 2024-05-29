@@ -12,6 +12,7 @@ import { Button, ProfileButton, ScreenshotButton } from '../components';
 import { SavingModal } from '../modals/SavingModal';
 import { uploadThumbnailImage } from '../modals/ScreenshotModal/ScreenshotModal.component.jsx';
 import { sendMetric } from '../../services/ga.js';
+import { downloadJSON, exportSceneToJSON } from '../../lib/entity.js';
 
 // const LOCALSTORAGE_MOCAP_UI = "aframeinspectormocapuienabled";
 
@@ -121,7 +122,7 @@ export default class Toolbar extends Component {
     }
   };
 
-  static convertToObject = () => {
+  static convertToObjectOld = () => {
     try {
       const entity = document.getElementById('street-container');
 
@@ -137,6 +138,23 @@ export default class Toolbar extends Component {
 
       link.click();
       link.remove();
+      STREET.notify.successMessage('3DStreet JSON file saved successfully.');
+    } catch (error) {
+      STREET.notify.errorMessage(
+        `Error trying to save 3DStreet JSON file. Error: ${error}`
+      );
+      console.error(error);
+    }
+  };
+
+  static convertToObject = () => {
+    try {
+      const rootEntity = document.getElementById('street-container');
+      const exportedScene = exportSceneToJSON(rootEntity, {
+        title: STREET.utils.getCurrentSceneTitle()
+      });
+      // download the file
+      downloadJSON(exportedScene, 'data.json');
       STREET.notify.successMessage('3DStreet JSON file saved successfully.');
     } catch (error) {
       STREET.notify.errorMessage(
