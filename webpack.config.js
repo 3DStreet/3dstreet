@@ -22,6 +22,7 @@ module.exports = {
     editor: { import: './src/editor/index.js', filename: '3dstreet-editor.js' }
   },
   output: {
+    publicPath: '/dist/',
     path: path.join(__dirname, 'dist'),
     libraryTarget: 'umd'
   },
