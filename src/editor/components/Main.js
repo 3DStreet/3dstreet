@@ -210,7 +210,7 @@ export default class Main extends Component {
     const scene = this.state.sceneEl;
     const isEditor = !!this.state.inspectorEnabled;
     const sceneData = AFRAME.scenes[0].getAttribute('metadata', 'sceneTitle');
-    const isProUser = currentUser && currentUser.isBeta;
+    const isProUser = currentUser && currentUser.isPro;
 
     return (
       <div>
@@ -272,7 +272,7 @@ export default class Main extends Component {
             <HelpButton />
           </div>
         )}
-        {isProUser && this.state.inspectorEnabled && (
+        {this.state.inspectorEnabled && (
           <div id="geo">
             <GeoPanel />
           </div>

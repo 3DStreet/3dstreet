@@ -12,7 +12,7 @@ import GeoImg from '../../../../../ui_assets/geo.png';
 
 const GeoModal = ({ isOpen, onClose }) => {
   const { currentUser } = useAuthContext();
-  const isProUser = currentUser && currentUser.isBeta;
+  const isProUser = currentUser && currentUser.isPro;
   const [markerPosition, setMarkerPosition] = useState({
     lat: 0,
     lng: 0,
@@ -50,27 +50,23 @@ const GeoModal = ({ isOpen, onClose }) => {
   });
 
   const onSaveHandler = () => {
-    if (!isProUser) {
-      onClose();
-    } else {
-      const latitude = markerPosition.lat;
-      const longitude = markerPosition.lng;
-      const elevation = markerPosition.elevation;
-      AFRAME.scenes[0].setAttribute('metadata', 'coord', {
-        latitude: latitude,
-        longitude: longitude,
-        elevation: elevation
-      });
-      const geoLayer = document.getElementById('reference-layers');
-      geoLayer.setAttribute(
-        'street-geo',
-        `latitude: ${latitude}; longitude: ${longitude}; elevation: ${elevation}`
-      );
-      // this line needs to update 3D tiles from the Editor. Need to delete after updating aframe-loaders-3dtiles-component
-      geoLayer.play();
+    const latitude = markerPosition.lat;
+    const longitude = markerPosition.lng;
+    const elevation = markerPosition.elevation;
+    AFRAME.scenes[0].setAttribute('metadata', 'coord', {
+      latitude: latitude,
+      longitude: longitude,
+      elevation: elevation
+    });
+    const geoLayer = document.getElementById('reference-layers');
+    geoLayer.setAttribute(
+      'street-geo',
+      `latitude: ${latitude}; longitude: ${longitude}; elevation: ${elevation}`
+    );
+    // this line needs to update 3D tiles from the Editor. Need to delete after updating aframe-loaders-3dtiles-component
+    geoLayer.play();
 
-      onClose();
-    }
+    onClose();
   };
 
   return (
