@@ -1,7 +1,7 @@
 import { useState, useCallback, useEffect } from 'react';
 
 import styles from './GeoModal.module.scss';
-import { Copy32Icon, Mangnifier20Icon } from '../../../icons';
+import { Mangnifier20Icon } from '../../../icons';
 
 import Modal from '../Modal.jsx';
 import { Button, Input } from '../../components/index.js';
@@ -75,9 +75,8 @@ const GeoModal = ({ isOpen, onClose }) => {
     >
       <div className={styles.wrapper}>
         <div className={styles.header}>
-          <img src={GeoImg} alt="geo" />
-          <p>Scene Location</p>
-          <p className={styles.badge}>Pro</p>
+          <img src={GeoImg} alt="geo" style={{ objectFit: 'contain' }} />
+          <h3>Scene Location</h3>
         </div>
         <Input
           leadingIcon={<Mangnifier20Icon />}
@@ -103,20 +102,11 @@ const GeoModal = ({ isOpen, onClose }) => {
 
         <div className={styles.sceneGeo}>
           <div>
-            <p>Current Centerpoint</p>
+            <p>Centerpoint</p>
             <Input
               leadingIcon={<p className={styles.iconGeo}>Lat, Long</p>}
-              tailingIcon={<Copy32Icon className={styles.copyIcon} />}
               value={`${markerPosition.lat}, ${markerPosition.lng}`}
               placeholder="None"
-            ></Input>
-          </div>
-          <div>
-            <p>New Centerpoint</p>
-            <Input
-              leadingIcon={<p className={styles.iconGeo}>Lat, Long</p>}
-              tailingIcon={<Copy32Icon className={styles.copyIcon} />}
-              placeholder="0, 0"
             ></Input>
           </div>
         </div>
