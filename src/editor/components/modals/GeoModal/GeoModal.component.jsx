@@ -3,7 +3,6 @@ import { useState, useCallback, useEffect } from 'react';
 import styles from './GeoModal.module.scss';
 import { Copy32Icon, Mangnifier20Icon } from '../../../icons';
 
-import { useAuthContext } from '../../../contexts/index.js';
 import Modal from '../Modal.jsx';
 import { Button, Input } from '../../components/index.js';
 import { GoogleMap, useJsApiLoader, Marker } from '@react-google-maps/api';
@@ -11,8 +10,6 @@ import { DownloadIcon } from '../../../icons/icons.jsx';
 import GeoImg from '../../../../../ui_assets/geo.png';
 
 const GeoModal = ({ isOpen, onClose }) => {
-  const { currentUser } = useAuthContext();
-  const isProUser = currentUser && currentUser.isPro;
   const [markerPosition, setMarkerPosition] = useState({
     lat: 0,
     lng: 0,
@@ -129,14 +126,11 @@ const GeoModal = ({ isOpen, onClose }) => {
             Cancel
           </Button>
           <Button
-            trailingicon={
-              isProUser ? <></> : <span className={styles.locked}>🔒</span>
-            }
             leadingicon={<DownloadIcon />}
             variant={'filled'}
             onClick={onSaveHandler}
           >
-            Update with 3D Map
+            Update Scene Location
           </Button>
         </div>
       </div>
