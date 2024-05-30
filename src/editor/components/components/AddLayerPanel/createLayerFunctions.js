@@ -28,8 +28,16 @@ function createMapbox() {
   // This component accepts a long / lat and renders a plane with dimensions that
   // (should be) at a correct scale.
   const geoLayer = document.getElementById('reference-layers');
-  const latitude = 37.76519;
-  const longitude = -122.41749;
+  let latitude = 0;
+  let longitude = 0;
+  // get coordinate data in this format: {latitude: ..., longitude: ...}
+  const coord = AFRAME.scenes[0].getAttribute('metadata')['coord'];
+
+  if (coord) {
+    latitude = roundToSix(parseFloat(coord.latitude));
+    longitude = roundToSix(parseFloat(coord.longitude));
+  }
+
   geoLayer.setAttribute(
     'street-geo',
     `
@@ -74,6 +82,10 @@ function loadScript(url, callback) {
   document.head.appendChild(script);
 }
 
+const roundToSix = (num) => {
+  return Math.round(num * 1e6) / 1e6;
+};
+
 function create3DTiles() {
   // This code snippet adds an entity to load and display 3d tiles from
   // Google Maps Tiles API 3D Tiles endpoint. This will break your scene
@@ -81,9 +93,18 @@ function create3DTiles() {
 
   const create3DtilesElement = () => {
     const geoLayer = document.getElementById('reference-layers');
-    const latitude = 37.76519;
-    const longitude = -122.41749;
-    const elevation = 16;
+    let latitude = 0;
+    let longitude = 0;
+    let elevation = 0;
+    // get coordinate data in this format: {latitude: ..., longitude: ..., elevation: ...}
+    const coord = AFRAME.scenes[0].getAttribute('metadata')['coord'];
+
+    if (coord) {
+      latitude = roundToSix(parseFloat(coord.latitude));
+      longitude = roundToSix(parseFloat(coord.longitude));
+      elevation = parseFloat(coord.elevation) || 0;
+    }
+
     geoLayer.setAttribute(
       'street-geo',
       `
