@@ -1,25 +1,57 @@
+import { useState, useCallback, useEffect } from 'react';
+
 import styles from './GeoModal.module.scss';
 import { Copy32Icon, Mangnifier20Icon } from '../../../icons';
 
 import { useAuthContext } from '../../../contexts/index.js';
 import Modal from '../Modal.jsx';
 import { Button, Input } from '../../components/index.js';
-import { GoogleMap, useJsApiLoader } from '@react-google-maps/api';
+import { GoogleMap, useJsApiLoader, Marker } from '@react-google-maps/api';
 import { DownloadIcon } from '../../../icons/icons.jsx';
 import GeoImg from '../../../../../ui_assets/geo.png';
-import Events from '../../../lib/Events.js';
 
 const GeoModal = ({ isOpen, onClose }) => {
   const { currentUser } = useAuthContext();
+  const isProUser = currentUser && currentUser.isBeta;
+  const [markerPosition, setMarkerPosition] = useState({
+    lat: 0,
+    lng: 0,
+    elevation: 0
+  });
+
+  const roundToSix = (num) => {
+    return Math.round(num * 1e6) / 1e6;
+  };
+
+  useEffect(() => {
+    // get coordinate data in this format: {latitude: ..., longitude: ..., elevation: ...}
+    const coord = AFRAME.scenes[0].getAttribute('metadata', 'coord');
+    if (coord) {
+      const lat = roundToSix(parseFloat(coord.latitude));
+      const lng = roundToSix(parseFloat(coord.longitude));
+      const elevation = parseFloat(coord.elevation) || 0;
+
+      if (!isNaN(lat) && !isNaN(lng)) {
+        setMarkerPosition({ lat, lng, elevation });
+      }
+    }
+  }, []);
+
+  const onMapClick = useCallback((event) => {
+    setMarkerPosition((prev) => ({
+      ...prev,
+      lat: roundToSix(event.latLng.lat()),
+      lng: roundToSix(event.latLng.lng())
+    }));
+  }, []);
 
   const { isLoaded } = useJsApiLoader({
     googleMapsApiKey: 'AIzaSyCwldpJKOZ1yh_FT8NrUPuPeMedEy1R2jw'
   });
 
   const onSaveHandler = () => {
-    if (!currentUser?.isPremium) {
+    if (!isProUser) {
       onClose();
-      Events.emit('openpaymentmodel');
     }
   };
 
@@ -48,9 +80,14 @@ const GeoModal = ({ isOpen, onClose }) => {
               borderRadius: 4,
               border: '1px solid #8965EF'
             }}
-            center={{ lat: 0, lng: 0 }}
+            center={{ lat: markerPosition.lat, lng: markerPosition.lng }}
             zoom={1}
-          />
+            onClick={onMapClick}
+          >
+            <Marker
+              position={{ lat: markerPosition.lat, lng: markerPosition.lng }}
+            />
+          </GoogleMap>
         )}
 
         <div className={styles.sceneGeo}>
@@ -59,6 +96,7 @@ const GeoModal = ({ isOpen, onClose }) => {
             <Input
               leadingIcon={<p className={styles.iconGeo}>Lat, Long</p>}
               tailingIcon={<Copy32Icon className={styles.copyIcon} />}
+              value={`${markerPosition.lat}, ${markerPosition.lng}`}
               placeholder="None"
             ></Input>
           </div>
@@ -73,14 +111,12 @@ const GeoModal = ({ isOpen, onClose }) => {
         </div>
 
         <div className={styles.controlButtons}>
-          <Button variant={'ghost'}>Cancel</Button>
+          <Button variant={'ghost'} onClick={onClose}>
+            Cancel
+          </Button>
           <Button
             trailingicon={
-              currentUser?.isPremium ? (
-                <></>
-              ) : (
-                <span className={styles.locked}>🔒</span>
-              )
+              isProUser ? <></> : <span className={styles.locked}>🔒</span>
             }
             leadingicon={<DownloadIcon />}
             variant={'filled'}
