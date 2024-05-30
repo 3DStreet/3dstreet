@@ -25,7 +25,7 @@ const GeoModal = ({ isOpen, onClose }) => {
 
   useEffect(() => {
     // get coordinate data in this format: {latitude: ..., longitude: ..., elevation: ...}
-    const coord = AFRAME.scenes[0].getAttribute('metadata', 'coord');
+    const coord = AFRAME.scenes[0].getAttribute('metadata')['coord'];
     if (coord) {
       const lat = roundToSix(parseFloat(coord.latitude));
       const lng = roundToSix(parseFloat(coord.longitude));
