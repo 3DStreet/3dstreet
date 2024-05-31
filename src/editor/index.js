@@ -8,6 +8,7 @@ import { initCameras } from './lib/cameras';
 import { createEntity } from './lib/entity';
 import { Shortcuts } from './lib/shortcuts';
 import { Viewport } from './lib/viewport';
+import { firebaseConfig } from './services/firebase.js';
 import './style/index.scss';
 import ReactGA from 'react-ga4';
 
@@ -322,7 +323,7 @@ Inspector.prototype = {
   }
 };
 
-ReactGA.initialize(process.env.FIREBASE_MEASUREMENT_ID);
+ReactGA.initialize(firebaseConfig.measurementId);
 const inspector = (AFRAME.INSPECTOR = new Inspector());
 
 export { inspector };
