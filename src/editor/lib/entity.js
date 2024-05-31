@@ -750,7 +750,7 @@ export function elementToObject(element) {
 }
 
 const blacklistedEntityProperties = {
-  id: [],
+  id: ['environment'],
   classList: ['autocreated'],
   tagName: [],
   attributes: []
