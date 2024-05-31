@@ -43,7 +43,7 @@ const GeoModal = ({ isOpen, onClose }) => {
   }, []);
 
   const { isLoaded } = useJsApiLoader({
-    googleMapsApiKey: 'AIzaSyCwldpJKOZ1yh_FT8NrUPuPeMedEy1R2jw'
+    googleMapsApiKey: process.env.FIREBASE_API_KEY
   });
 
   const onSaveHandler = () => {
