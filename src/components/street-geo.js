@@ -57,12 +57,12 @@ AFRAME.registerComponent('street-geo', {
       'material',
       'color: #ffffff; shader: flat; side: both; transparent: true;'
     );
-    mapbox2dElement.setAttribute('rotation', '-90 -4.25 0');
+    mapbox2dElement.setAttribute('rotation', '-90 -90 0');
     mapbox2dElement.setAttribute('anisotropy', '');
     mapbox2dElement.setAttribute('mapbox', {
       accessToken: MAPBOX_ACCESS_TOKEN_VALUE,
       center: `${data.longitude}, ${data.latitude}`,
-      zoom: 15,
+      zoom: 18,
       style: 'mapbox://styles/mapbox/satellite-streets-v11',
       pxToWorldRatio: 4
     });
