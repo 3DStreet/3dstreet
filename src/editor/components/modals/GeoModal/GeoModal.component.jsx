@@ -3,6 +3,7 @@ import { useState, useCallback, useEffect } from 'react';
 import styles from './GeoModal.module.scss';
 import { Mangnifier20Icon } from '../../../icons';
 
+import { firebaseConfig } from '../../../services/firebase.js';
 import Modal from '../Modal.jsx';
 import { Button, Input } from '../../components/index.js';
 import { GoogleMap, useJsApiLoader, Marker } from '@react-google-maps/api';
@@ -43,7 +44,7 @@ const GeoModal = ({ isOpen, onClose }) => {
   }, []);
 
   const { isLoaded } = useJsApiLoader({
-    googleMapsApiKey: process.env.FIREBASE_API_KEY
+    googleMapsApiKey: firebaseConfig.apiKey
   });
 
   const onSaveHandler = () => {
