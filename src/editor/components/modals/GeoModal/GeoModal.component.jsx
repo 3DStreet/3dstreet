@@ -11,8 +11,8 @@ import GeoImg from '../../../../../ui_assets/geo.png';
 
 const GeoModal = ({ isOpen, onClose }) => {
   const [markerPosition, setMarkerPosition] = useState({
-    lat: 0,
-    lng: 0,
+    lat: 37.7637072, // lat: 37.76370724481858, lng: -122.41517686259827
+    lng: -122.4151768,
     elevation: 0
   });
 
@@ -91,8 +91,10 @@ const GeoModal = ({ isOpen, onClose }) => {
               border: '1px solid #8965EF'
             }}
             center={{ lat: markerPosition.lat, lng: markerPosition.lng }}
-            zoom={1}
+            zoom={20}
             onClick={onMapClick}
+            options={{ streetViewControl: false, mapTypeId: 'satellite' }}
+            tilt={0}
           >
             <Marker
               position={{ lat: markerPosition.lat, lng: markerPosition.lng }}
