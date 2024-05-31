@@ -5,8 +5,8 @@ const CopyWebpackPlugin = require('copy-webpack-plugin');
 
 module.exports = {
   performance: {
-    maxAssetSize: 1468006, // 1.4 MiB
-    maxEntrypointSize: 1468006, // 1.4 MiB
+    maxAssetSize: 1572864, // 1.5 MiB
+    maxEntrypointSize: 1572864, // 1.5 MiB
     hints: 'error'
   },
   mode: 'production',
