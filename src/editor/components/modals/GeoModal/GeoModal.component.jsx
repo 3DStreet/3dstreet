@@ -16,16 +16,16 @@ const GeoModal = ({ isOpen, onClose }) => {
     elevation: 0
   });
 
-  const roundToSix = (num) => {
-    return Math.round(num * 1e6) / 1e6;
+  const roundCoord = (num) => {
+    return Math.round(num * 1e7) / 1e7;
   };
 
   useEffect(() => {
     // get coordinate data in this format: {latitude: ..., longitude: ..., elevation: ...}
     const coord = AFRAME.scenes[0].getAttribute('metadata')['coord'];
     if (coord) {
-      const lat = roundToSix(parseFloat(coord.latitude));
-      const lng = roundToSix(parseFloat(coord.longitude));
+      const lat = roundCoord(parseFloat(coord.latitude));
+      const lng = roundCoord(parseFloat(coord.longitude));
       const elevation = parseFloat(coord.elevation) || 0;
 
       if (!isNaN(lat) && !isNaN(lng)) {
@@ -37,8 +37,8 @@ const GeoModal = ({ isOpen, onClose }) => {
   const onMapClick = useCallback((event) => {
     setMarkerPosition((prev) => ({
       ...prev,
-      lat: roundToSix(event.latLng.lat()),
-      lng: roundToSix(event.latLng.lng())
+      lat: roundCoord(event.latLng.lat()),
+      lng: roundCoord(event.latLng.lng())
     }));
   }, []);
 

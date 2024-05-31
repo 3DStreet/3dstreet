@@ -34,8 +34,8 @@ function createMapbox() {
   const coord = AFRAME.scenes[0].getAttribute('metadata')['coord'];
 
   if (coord) {
-    latitude = roundToSix(parseFloat(coord.latitude));
-    longitude = roundToSix(parseFloat(coord.longitude));
+    latitude = roundCoord(parseFloat(coord.latitude));
+    longitude = roundCoord(parseFloat(coord.longitude));
   }
 
   geoLayer.setAttribute(
@@ -82,8 +82,8 @@ function loadScript(url, callback) {
   document.head.appendChild(script);
 }
 
-const roundToSix = (num) => {
-  return Math.round(num * 1e6) / 1e6;
+const roundCoord = (num) => {
+  return Math.round(num * 1e7) / 1e7;
 };
 
 function create3DTiles() {
@@ -100,8 +100,8 @@ function create3DTiles() {
     const coord = AFRAME.scenes[0].getAttribute('metadata')['coord'];
 
     if (coord) {
-      latitude = roundToSix(parseFloat(coord.latitude));
-      longitude = roundToSix(parseFloat(coord.longitude));
+      latitude = roundCoord(parseFloat(coord.latitude));
+      longitude = roundCoord(parseFloat(coord.longitude));
       elevation = parseFloat(coord.elevation) || 0;
     }
 
