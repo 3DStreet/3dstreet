@@ -114,12 +114,12 @@ const GeoModal = ({ isOpen, onClose }) => {
         </div>
 
         <div className={styles.controlButtons}>
-          <Button variant={'ghost'} onClick={onClose}>
+          <Button variant="ghost" onClick={onClose}>
             Cancel
           </Button>
           <Button
             leadingicon={<DownloadIcon />}
-            variant={'filled'}
+            variant="filled"
             onClick={onSaveHandler}
           >
             Update Scene Location
