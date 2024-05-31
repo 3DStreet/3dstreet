@@ -288,6 +288,7 @@ const AddLayerPanel = ({ onClose, isAddLayerPanelOpen }) => {
         <div className={styles.button}>
           <Plus20Circle />
           <p className={styles.buttonLabel}>Add New Entity</p>
+          <p className={styles.badge}>Pro</p>
         </div>
         <Dropdown
           placeholder="Layers: Maps & Reference"
