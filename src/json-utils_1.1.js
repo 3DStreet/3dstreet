@@ -136,7 +136,7 @@ function toPropString(propData) {
     propData.isVector3 ||
     propData.isVector2 ||
     propData.isVector4 ||
-    (propData['x'] && propData['y'])
+    (propData.hasOwnProperty('x') && propData.hasOwnProperty('y')) // eslint-disable-line
   ) {
     return AFRAME.utils.coordinates.stringify(propData);
   }
