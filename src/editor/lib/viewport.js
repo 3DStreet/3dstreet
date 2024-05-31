@@ -196,8 +196,12 @@ export function Viewport(inspector) {
     transformControls.setMode(mode);
   });
 
-  Events.on('snapchanged', (dist) => {
+  Events.on('translationsnapchanged', (dist) => {
     transformControls.setTranslationSnap(dist);
+  });
+
+  Events.on('rotationsnapchanged', (dist) => {
+    transformControls.setRotationSnap(dist);
   });
 
   Events.on('transformspacechanged', (space) => {
@@ -211,6 +215,15 @@ export function Viewport(inspector) {
       if (object.el.getObject3D('mesh')) {
         selectionBox.setFromObject(object);
         selectionBox.visible = true;
+      } else if (object.el.hasAttribute('gltf-model')) {
+        object.el.addEventListener(
+          'model-loaded',
+          () => {
+            selectionBox.setFromObject(object);
+            selectionBox.visible = true;
+          },
+          { once: true }
+        );
       }
 
       transformControls.attach(object);
