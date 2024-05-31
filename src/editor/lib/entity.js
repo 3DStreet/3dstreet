@@ -712,7 +712,7 @@ export function elementToJson(element) {
 }
 
 const blacklistedEntityProperties = {
-  id: [],
+  id: ['environment', 'reference-layers'],
   classList: ['autocreated'],
   tagName: [],
   attributes: []
