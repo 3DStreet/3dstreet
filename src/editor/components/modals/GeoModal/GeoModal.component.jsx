@@ -50,6 +50,20 @@ const GeoModal = ({ isOpen, onClose }) => {
     }));
   }, []);
 
+  const handleCoordinateChange = (value) => {
+    const [newLat, newLng] = value
+      .split(',')
+      .map((coord) => parseFloat(coord.trim()));
+
+    if (!isNaN(newLat) && !isNaN(newLng)) {
+      setMarkerPosition({
+        lat: roundCoord(newLat),
+        lng: roundCoord(newLng),
+        height: markerPosition.height
+      });
+    }
+  };
+
   const onSaveHandler = () => {
     const latitude = markerPosition.lat;
     const longitude = markerPosition.lng;
@@ -113,6 +127,7 @@ const GeoModal = ({ isOpen, onClose }) => {
               leadingIcon={<p className={styles.iconGeo}>Lat, Long</p>}
               value={`${markerPosition.lat}, ${markerPosition.lng}`}
               placeholder="None"
+              onChange={handleCoordinateChange}
             ></Input>
           </div>
         </div>
