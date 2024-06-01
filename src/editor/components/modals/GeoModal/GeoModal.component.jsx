@@ -11,6 +11,10 @@ import { DownloadIcon } from '../../../icons/icons.jsx';
 import GeoImg from '../../../../../ui_assets/geo.png';
 
 const GeoModal = ({ isOpen, onClose }) => {
+  const { isLoaded } = useJsApiLoader({
+    googleMapsApiKey: firebaseConfig.apiKey
+  });
+
   const [markerPosition, setMarkerPosition] = useState({
     lat: 37.7637072, // lat: 37.76370724481858, lng: -122.41517686259827
     lng: -122.4151768,
@@ -22,18 +26,21 @@ const GeoModal = ({ isOpen, onClose }) => {
   };
 
   useEffect(() => {
-    // get coordinate data in this format: {latitude: ..., longitude: ..., elevation: ...}
-    const coord = AFRAME.scenes[0].getAttribute('metadata')['coord'];
-    if (coord) {
-      const lat = roundCoord(parseFloat(coord.latitude));
-      const lng = roundCoord(parseFloat(coord.longitude));
-      const elevation = parseFloat(coord.elevation) || 0;
+    if (isOpen) {
+      // get coordinate data in this format: {latitude: ..., longitude: ..., elevation: ...}
+      const metadata = AFRAME.scenes[0].getAttribute('metadata');
+      if (metadata && metadata['coord']) {
+        const coord = metadata['coord'];
+        const lat = roundCoord(parseFloat(coord.latitude));
+        const lng = roundCoord(parseFloat(coord.longitude));
+        const elevation = parseFloat(coord.elevation) || 0;
 
-      if (!isNaN(lat) && !isNaN(lng)) {
-        setMarkerPosition({ lat, lng, elevation });
+        if (!isNaN(lat) && !isNaN(lng)) {
+          setMarkerPosition({ lat, lng, elevation });
+        }
       }
     }
-  }, []);
+  }, [isOpen]);
 
   const onMapClick = useCallback((event) => {
     setMarkerPosition((prev) => ({
@@ -42,10 +49,6 @@ const GeoModal = ({ isOpen, onClose }) => {
       lng: roundCoord(event.latLng.lng())
     }));
   }, []);
-
-  const { isLoaded } = useJsApiLoader({
-    googleMapsApiKey: firebaseConfig.apiKey
-  });
 
   const onSaveHandler = () => {
     const latitude = markerPosition.lat;
