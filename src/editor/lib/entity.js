@@ -128,10 +128,14 @@ export function cloneEntity(entity) {
   entity.flushToDOM();
 
   const clone = prepareForSerialization(entity);
-  clone.addEventListener('loaded', function () {
-    AFRAME.INSPECTOR.selectEntity(clone);
-    Events.emit('entityclone');
-  });
+  clone.addEventListener(
+    'loaded',
+    function () {
+      AFRAME.INSPECTOR.selectEntity(clone);
+      Events.emit('entityclone', clone);
+    },
+    { once: true }
+  );
 
   // Get a valid unique ID for the entity
   if (entity.id) {
@@ -165,7 +169,7 @@ export function getEntityClipboardRepresentation(entity) {
  * primitive attributes, mixins and defaults.
  *
  * @param {Element} entity Root of the DOM hierarchy.
- * @return {Elment}        Copy of the DOM hierarchy ready for serialization.
+ * @return {Element}        Copy of the DOM hierarchy ready for serialization.
  */
 function prepareForSerialization(entity) {
   var clone = entity.cloneNode(false);
@@ -514,9 +518,7 @@ export function getComponentClipboardRepresentation(entity, componentName) {
   }
 
   const diff = getModifiedProperties(entity, componentName);
-  const attributes = AFRAME.utils.styleParser
-    .stringify(diff)
-    .replace(/;|:/g, '$& ');
+  const attributes = AFRAME.utils.styleParser.stringify(diff);
   return `${componentName}="${attributes}"`;
 }
 
@@ -593,10 +595,14 @@ export function createEntity(definition, cb) {
   }
 
   // Ensure the components are loaded before update the UI
-  entity.addEventListener('loaded', () => {
-    Events.emit('entitycreated', entity);
-    cb(entity);
-  });
+  entity.addEventListener(
+    'loaded',
+    () => {
+      Events.emit('entitycreated', entity);
+      cb(entity);
+    },
+    { once: true }
+  );
 
   AFRAME.scenes[0].appendChild(entity);
 
