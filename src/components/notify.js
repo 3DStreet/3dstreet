@@ -38,7 +38,7 @@ AFRAME.registerComponent('notify', {
       position: this.data.position,
       dismissible: this.data.dismissible
     });
-    this.types = this.notify.options.types.map(messType => messType.type);
+    this.types = this.notify.options.types.map((messType) => messType.type);
 
     // add notify methods to STREET global objects
     if (STREET) {
@@ -65,7 +65,9 @@ AFRAME.registerComponent('notify', {
   update: function (oldData) {
     // If `oldData` is empty, then this means we're in the initialization process.
     // No need to update.
-    if (Object.keys(oldData).length === 0) { return; }
+    if (Object.keys(oldData).length === 0) {
+      return;
+    }
 
     const newMessage = this.data.message;
     const messageType = this.data.type;

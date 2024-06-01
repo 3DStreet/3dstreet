@@ -1,0 +1,124 @@
+@import url('https://fonts.googleapis.com/css2?family=Lato:wght@400;500');
+html {
+  font-family: 'Lato', sans-serif;
+}
+
+* {
+  padding: 0;
+  margin: 0;
+}
+
+body {
+  background-color: #c4c4c4;
+  color: #283237;
+}
+
+/********* viewer header css *********/
+
+.viewer-header-wrapper {
+  background-color: transparent;
+  width: 100%;
+  padding: 0px 0;
+  position: fixed;
+  top: 39px;
+  left: 40px;
+  z-index: 9;
+}
+
+.viewer-header-wrapper {
+  width: 100%;
+  display: inline-flex;
+  align-items: center;
+}
+
+.viewer-logo-img {
+  height: 43px;
+  width: 370px;
+}
+
+.viewer-logo-start-editor-button {
+  border: none;
+  background: none;
+  cursor: pointer;
+}
+
+.viewer-logo-start-editor-button:hover,
+.viewer-logo-start-editor-button.hover {
+  transition: all 0.25s ease-in-out 0s;
+  -webkit-filter: brightness(0.75);
+  -moz-filter: brightness(0.75);
+  -ms-filter: brightness(0.75);
+  filter: brightness(0.75);
+}
+
+/********* right menu css *********/
+
+.right-fixed {
+  position: fixed;
+  right: 0;
+  margin-top: 40vh;
+  z-index: 1;
+}
+
+.right-menu {
+  padding-left: 0;
+  text-align: right;
+}
+
+.right-menu li {
+  list-style: none;
+  margin-right: 0;
+  position: relative;
+}
+
+.right-menu li a {
+  background: rgba(50, 50, 50, 0.5);
+  padding: 0;
+  list-style: none;
+  margin: 10px 0;
+  border-radius: 12px 0 0 12px;
+  display: inline-flex;
+  font-size: 18px;
+  align-items: center;
+  transition: all 0.4s ease-in-out 0s;
+}
+
+.right-menu li a:hover {
+  background: #6100ff;
+}
+
+.right-menu li a span {
+  margin-left: 16px;
+  transition: all 0.4s ease-in-out 0s;
+  text-align: left;
+  width: 200px;
+  letter-spacing: 0.5px;
+  font-size: 18px;
+  margin-right: -270px;
+  padding-left: 60px;
+  color: rgba(50, 50, 50, 0.5);
+}
+
+.right-menu li a:hover span {
+  margin-right: 0;
+  padding-left: 0;
+  color: #fff;
+}
+
+.right-menu li a {
+  color: #fff;
+  text-decoration: none;
+}
+
+.right-menu li a img {
+  vertical-align: middle;
+  width: 32px;
+  height: 32px;
+  z-index: 999;
+  padding: 16px;
+}
+
+.right-menu li a:hover img {
+  background: #6100ff;
+  z-index: 9;
+}

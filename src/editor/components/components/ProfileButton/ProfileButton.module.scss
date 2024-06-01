@@ -1,0 +1,21 @@
+@use '../../../style/variables.scss';
+
+.profileButton {
+  border: unset;
+  border-radius: 50%;
+  width: 43px;
+  height: 43px;
+  background-color: variables.$purple;
+  padding: 0 !important;
+  &:hover {
+    background-color: variables.$purple-100;
+  }
+  &:active {
+    background-color: variables.$purple-200;
+  }
+}
+.photoURL {
+  width: 43px;
+  height: 43px;
+  border-radius: 18px;
+}

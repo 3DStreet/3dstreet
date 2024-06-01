@@ -1,0 +1,67 @@
+@use '../../../style/variables.scss';
+
+#cameraToolbar {
+  margin-left: 5px;
+  align-items: center;
+  display: flex;
+  column-gap: 12px;
+  background: rgba(55, 55, 55, 0.4);
+  border-radius: 16px;
+  padding: 8px 12px;
+  transition: 0.2s ease-in-out;
+  &:hover {
+    background: rgba(55, 55, 55, 0.6);
+  }
+  button {
+    position: relative;
+    border: unset;
+    outline: unset;
+    background-color: transparent;
+    padding: 8.5px 12px;
+    color: variables.$white;
+    border-radius: 11px;
+    transition: all 0.3s;
+    font-size: 16px;
+    line-height: 19.2px;
+    font-weight: 400;
+    &:hover {
+      cursor: pointer;
+      background-color: rgba(50, 50, 50, 0.6);
+      transition: all 0.3s;
+    }
+    &:active {
+      background-color: variables.$black-600;
+      color: variables.$lightgray-200;
+      transition: all 0.3s;
+    }
+    &:hover .wrapper {
+      visibility: visible; // need to be global for working with Tab component over wrapper class
+      opacity: 1;
+      transition: all 0.3s;
+    }
+  }
+  .selectedCamera {
+    background-color: variables.$darkgray-300;
+    transition: all 0.3s;
+  }
+  a {
+    margin-right: 10px;
+  }
+  .select__control {
+    background: none;
+    font-size: 18px;
+    padding: 2px 15px 2px 6px;
+  }
+  .select__single-value {
+    color: variables.$white;
+    &:hover {
+      color: variables.$blue-100;
+    }
+  }
+  @media screen and (max-width: 1024px) {
+    #cameraToolbar {
+      padding: 8px;
+      margin-left: 64px;
+    }
+  }
+}

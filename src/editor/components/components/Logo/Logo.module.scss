@@ -1,0 +1,26 @@
+@use '../../../style/variables.scss';
+
+.wrapper {
+  position: absolute;
+  display: flex;
+  top: 36px;
+  left: 40px;
+  z-index: 10;
+  display: flex;
+  width: fit-content;
+  align-items: center;
+  column-gap: 1.5rem;
+}
+
+@media screen and (max-width: 1268px) {
+  .wrapper {
+    column-gap: 0rem;
+    flex-direction: column;
+    row-gap: 12px;
+    left: 20px;
+    top: 24px;
+    .btn {
+      width: 100%;
+    }
+  }
+}

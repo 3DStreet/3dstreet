@@ -5,13 +5,13 @@ window.STREET = {};
 var assetsUrl;
 STREET.utils = {};
 
-function getSceneUuidFromURLHash () {
+function getSceneUuidFromURLHash() {
   const currentHash = window.location.hash;
   const match = currentHash.match(/#\/scenes\/([a-zA-Z0-9-]+)\.json/);
   return match && match[1] ? match[1] : null;
 }
 
-function getCurrentSceneId () {
+function getCurrentSceneId() {
   let currentSceneId = AFRAME.scenes[0].getAttribute('metadata').sceneId;
   // console.log('currentSceneId from scene metadata', currentSceneId);
   const urlSceneId = getSceneUuidFromURLHash();
@@ -27,8 +27,9 @@ function getCurrentSceneId () {
 }
 STREET.utils.getCurrentSceneId = getCurrentSceneId;
 
-getCurrentSceneTitle = () => {
-  const currentSceneTitle = AFRAME.scenes[0].getAttribute('metadata').sceneTitle;
+const getCurrentSceneTitle = () => {
+  const currentSceneTitle =
+    AFRAME.scenes[0].getAttribute('metadata').sceneTitle;
   console.log('currentSceneTitle', currentSceneTitle);
   return currentSceneTitle;
 };
@@ -38,7 +39,7 @@ STREET.utils.getCurrentSceneTitle = getCurrentSceneTitle;
 Takes one or more elements (from a DOM queryselector call)
 and returns a Javascript object
 */
-function convertDOMElToObject (entity) {
+function convertDOMElToObject(entity) {
   const data = [];
   const environmentElement = document.querySelector('#environment');
   const referenceEntities = document.querySelector('#reference-layers');
@@ -62,7 +63,7 @@ function convertDOMElToObject (entity) {
 
 STREET.utils.convertDOMElToObject = convertDOMElToObject;
 
-function getElementData (entity) {
+function getElementData(entity) {
   if (!entity.isEntity) {
     return;
   }
@@ -81,7 +82,7 @@ function getElementData (entity) {
   return elementTree;
 }
 
-function getAttributes (entity) {
+function getAttributes(entity) {
   const elemObj = {};
 
   elemObj['element'] = entity.tagName.toLowerCase();
@@ -122,7 +123,7 @@ function getAttributes (entity) {
   return elemObj;
 }
 
-function toPropString (propData) {
+function toPropString(propData) {
   if (
     typeof propData === 'string' ||
     typeof propData === 'number' ||
@@ -135,14 +136,14 @@ function toPropString (propData) {
     propData.isVector3 ||
     propData.isVector2 ||
     propData.isVector4 ||
-    (propData.hasOwnProperty('x') && propData.hasOwnProperty('y'))
+    (propData.hasOwnProperty('x') && propData.hasOwnProperty('y')) // eslint-disable-line
   ) {
     return AFRAME.utils.coordinates.stringify(propData);
   }
   if (typeof propData === 'object') {
     return Object.entries(propData)
       .map(([key, value]) => {
-        if (key == 'src') {
+        if (key === 'src') {
           // checking to ensure the object's src value is correctly stored
           if (value.src && !value.src.includes(assetsUrl)) {
             // asset came from external sources. So need to save it src value if it has
@@ -161,11 +162,11 @@ function toPropString (propData) {
   }
 }
 
-function isSingleProperty (schema) {
+function isSingleProperty(schema) {
   return AFRAME.schema.isSingleProperty(schema);
 }
 
-function isEmpty (object) {
+function isEmpty(object) {
   return Object.keys(object).length === 0;
 }
 
@@ -186,15 +187,15 @@ const renameProps = {
   intersection: 'not-intersection'
 };
 
-function filterJSONstreet (streetJSON) {
-  function removeValueCheck (removeVal, value) {
+function filterJSONstreet(streetJSON) {
+  function removeValueCheck(removeVal, value) {
     if (AFRAME.utils.deepEqual(removeVal, value) || removeVal === '*') {
       return true;
     }
     return undefined;
   }
 
-  let stringJSON = JSON.stringify(streetJSON, function replacer (key, value) {
+  let stringJSON = JSON.stringify(streetJSON, function replacer(key, value) {
     let compAttributes;
     for (var removeKey in removeProps) {
       // check for removing components
@@ -249,7 +250,7 @@ STREET.utils.filterJSONstreet = filterJSONstreet;
  * @return                           The value of the component or components'
  *                                   property coming from mixins of the source.
  */
-function getMixedValue (component, propertyName, source) {
+function getMixedValue(component, propertyName, source) {
   var value;
   var reversedMixins = source.mixinEls.reverse();
   for (var i = 0; value === undefined && i < reversedMixins.length; i++) {
@@ -266,7 +267,7 @@ function getMixedValue (component, propertyName, source) {
   return [component.name, value];
 }
 
-function shallowEqual (object1, object2) {
+function shallowEqual(object1, object2) {
   if (
     (typeof object1 === 'string' && typeof object2 === 'string') ||
     (typeof object1 === 'number' && typeof object2 === 'number')
@@ -289,7 +290,7 @@ function shallowEqual (object1, object2) {
   return true;
 }
 
-function getModifiedProperty (entity, componentName) {
+function getModifiedProperty(entity, componentName) {
   const data = AFRAME.utils.entity.getComponentProperty(entity, componentName);
 
   // if it is element's attribute
@@ -310,7 +311,13 @@ function getModifiedProperty (entity, componentName) {
     entity
   );
 
-  const mixinSkipProps = ['src', 'atlas-uvs', 'gltf-model', 'gltf-part', 'shadow'];
+  const mixinSkipProps = [
+    'src',
+    'atlas-uvs',
+    'gltf-model',
+    'gltf-part',
+    'shadow'
+  ];
   if (mixinsData && mixinSkipProps.includes(mixinCompName)) {
     // skip properties, if they exists in element's mixin
     return null;
@@ -331,7 +338,7 @@ function getModifiedProperty (entity, componentName) {
   const diff = {};
   for (const key in data) {
     // in case the property value is not in schema, but needs to be saved
-    const defaultValue = (defaultData[key]) ? defaultData[key].default : '';
+    const defaultValue = defaultData[key] ? defaultData[key].default : '';
     const currentValue = data[key];
 
     if (
@@ -352,7 +359,7 @@ function getModifiedProperty (entity, componentName) {
   return diff;
 }
 
-function createEntities (entitiesData, parentEl) {
+function createEntities(entitiesData, parentEl) {
   const sceneElement = document.querySelector('a-scene');
   const removeEntities = ['environment', 'reference-layers'];
   for (const entityData of entitiesData) {
@@ -360,7 +367,7 @@ function createEntities (entitiesData, parentEl) {
       entityData.id === 'street-container' &&
       entityData.children &&
       entityData.children[0].id === 'default-street' &&
-      entityData.children[0].components.hasOwnProperty('set-loader-from-hash')
+      entityData.children[0].components['set-loader-from-hash']
     ) {
       delete entityData.children[0].components['set-loader-from-hash'];
     }
@@ -396,7 +403,7 @@ Add a new entity with a list of components and children (if exists)
  * @param {Element} parentEl the parent element to which the Entity will be added
  * @return {Element} Entity created
 */
-function createEntityFromObj (entityData, parentEl) {
+function createEntityFromObj(entityData, parentEl) {
   const entity =
     entityData.entityElement || document.createElement(entityData.element);
 
@@ -593,7 +600,9 @@ AFRAME.registerComponent('set-loader-from-hash', {
         console.error(
           '[set-loader-from-hash] Error trying to load scene: Resource not found.'
         );
-        STREET.notify.errorMessage('Error trying to load scene: Resource not found.');
+        STREET.notify.errorMessage(
+          'Error trying to load scene: Resource not found.'
+        );
       }
     };
     request.onerror = function () {
@@ -607,7 +616,7 @@ AFRAME.registerComponent('set-loader-from-hash', {
   }
 });
 
-function getUUIDFromPath (path) {
+function getUUIDFromPath(path) {
   // UUID regex pattern: [0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}
   const uuidPattern =
     /[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/;
@@ -621,8 +630,8 @@ function getUUIDFromPath (path) {
 }
 
 // this use os text input prompt, delete current scene, then load streetmix file
-function inputStreetmix () {
-  streetmixURL = prompt(
+function inputStreetmix() {
+  const streetmixURL = prompt(
     'Please enter a Streetmix URL',
     'https://streetmix.net/kfarr/3/example-street'
   );
@@ -633,25 +642,32 @@ function inputStreetmix () {
   setTimeout(function () {
     window.location.hash = streetmixURL;
   });
-  
-  defaultStreetEl = document.getElementById('default-street');
-  defaultStreetEl.setAttribute('streetmix-loader', 'streetmixStreetURL', streetmixURL);
 
+  const streetContainerEl = document.getElementById('street-container');
+  while (streetContainerEl.firstChild) {
+    streetContainerEl.removeChild(streetContainerEl.lastChild);
+  }
+  AFRAME.scenes[0].setAttribute('metadata', 'sceneId', '');
+  AFRAME.scenes[0].setAttribute('metadata', 'sceneTitle', '');
+  streetContainerEl.innerHTML =
+    '<a-entity street streetmix-loader="streetmixStreetURL: ' +
+    streetmixURL +
+    '""></a-entity>';
 }
 
 STREET.utils.inputStreetmix = inputStreetmix;
 
 // JSON loading starts here
-function getValidJSON (stringJSON) {
+function getValidJSON(stringJSON) {
   // Preserve newlines, etc. - use valid JSON
   // Remove non-printable and other non-valid JSON characters
   return stringJSON
-    .replace(/\'/g, '')
+    .replace(/'/g, '')
     .replace(/\n/g, '')
-    .replace(/[\u0000-\u0019]+/g, '');
+    .replace(/[\u0000-\u0019]+/g, ''); // eslint-disable-line no-control-regex
 }
 
-function createElementsFromJSON (streetJSON) {
+function createElementsFromJSON(streetJSON) {
   let streetObject = {};
   if (typeof streetJSON === 'string') {
     const validJSONString = getValidJSON(streetJSON);
@@ -670,7 +686,10 @@ function createElementsFromJSON (streetJSON) {
     AFRAME.scenes[0].setAttribute('metadata', 'sceneTitle', sceneTitle);
   }
 
-  streetContainerEl = document.getElementById('street-container');
+  const streetContainerEl = document.getElementById('street-container');
+  while (streetContainerEl.firstChild) {
+    streetContainerEl.removeChild(streetContainerEl.lastChild);
+  }
 
   createEntities(streetObject.data, streetContainerEl);
   STREET.notify.successMessage('Scene loaded from JSON');
@@ -678,16 +697,8 @@ function createElementsFromJSON (streetJSON) {
 
 STREET.utils.createElementsFromJSON = createElementsFromJSON;
 
-// viewer widget click to paste json string of 3dstreet scene
-function inputJSON () {
-  const stringJSON = prompt('Please paste 3DStreet JSON string');
-  if (stringJSON) {
-    createElementsFromJSON(stringJSON);
-  }
-}
-
 // handle viewer widget click to open 3dstreet json scene
-function fileJSON () {
+function fileJSON() {
   const reader = new FileReader();
   reader.onload = function () {
     createElementsFromJSON(reader.result);

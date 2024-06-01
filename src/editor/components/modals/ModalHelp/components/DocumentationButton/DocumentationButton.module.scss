@@ -1,0 +1,7 @@
+@use '../../../../../style/variables.scss';
+
+.docsButtonWrapper {
+  display: flex;
+  align-items: center;
+  column-gap: 16px;
+}

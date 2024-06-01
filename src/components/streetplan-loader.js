@@ -1,6 +1,5 @@
-/* global AFRAME, THREE, XMLHttpRequest */
+/* global AFRAME, XMLHttpRequest */
 var streetplanUtils = require('../streetplan/streetplan-utils.js');
-var exampleJSON = require('../streetplan/exampleJSON.json');
 
 AFRAME.registerComponent('streetplan-loader', {
   dependencies: ['street'],
@@ -23,19 +22,22 @@ AFRAME.registerComponent('streetplan-loader', {
 
     const streetplanName = streetData.name;
     // streetplan alternative name
-    const streetplanAltName = streetData.altName;
+    // const streetplanAltName = streetData.altName;
 
     console.log('streetplanName', streetplanName);
-    // el.setAttribute('streetplan-loader', 'name', streetplanName);
 
     let currentSceneTitle;
     const sceneEl = this.el.sceneEl;
     if (sceneEl && sceneEl.getAttribute('metadata')) {
       currentSceneTitle = sceneEl.getAttribute('metadata').sceneTitle;
     }
-    if (!currentSceneTitle) { // only set title from streetplan if none exists
+    if (!currentSceneTitle) {
+      // only set title from streetplan if none exists
       sceneEl.setAttribute('metadata', 'sceneTitle', streetplanName);
-      console.log('therefore setting metadata sceneTitle as streetplanName', streetplanName);
+      console.log(
+        'therefore setting metadata sceneTitle as streetplanName',
+        streetplanName
+      );
     }
 
     el.setAttribute('data-layer-name', 'StreetPlan • ' + streetplanName);
@@ -46,31 +48,32 @@ AFRAME.registerComponent('streetplan-loader', {
     }
     el.setAttribute('street', 'type', 'streetmixSegmentsMetric');
     // set JSON attribute last or it messes things up
-    el.setAttribute('street', 'JSON', JSON.stringify({ streetmixSegmentsMetric: streetplanSegments }));
+    el.setAttribute(
+      'street',
+      'JSON',
+      JSON.stringify({ streetmixSegmentsMetric: streetplanSegments })
+    );
     el.emit('streetplan-loader-street-loaded');
   },
-  update: function (oldData) { // fired at start and at each subsequent change of any schema value
+  update: function (oldData) {
+    // fired at start and at each subsequent change of any schema value
     // This method may fire a few times when viewing a streetmix street in 3dstreet:
     // First to find the proper path, once to actually load the street, and then subsequent updates such as street name
     const that = this;
     const data = this.data;
-    const el = this.el;
-
-    // /*  ***** debugging *****  */
-    // setTimeout(()=> {
-    //   this.streetplanResponseParse(exampleJSON);
-    // }, 1000);
-    // return;
 
     // load from URL encoded Streetplan JSON
     if (data.streetplanEncJSON) {
-      const streetplanJSON = decodeURIComponent(encodedString);
+      const streetplanJSON = decodeURIComponent(data.streetplanEncJSON);
       this.streetplanResponseParse(JSON.parse(streetplanJSON));
       return;
     }
 
     // if the loader has run once already, and upon update neither URL has changed, do not take action
-    if ((oldData.streetplanStreetURL === data.streetplanStreetURL) && (oldData.streetplanAPIURL === data.streetplanAPIURL)) {
+    if (
+      oldData.streetplanStreetURL === data.streetplanStreetURL &&
+      oldData.streetplanAPIURL === data.streetplanAPIURL
+    ) {
       // console.log('[streetmix-loader]', 'Neither streetplanStreetURL nor streetplanAPIURL have changed in this component data update, not reloading street.')
       return;
     }
@@ -86,12 +89,18 @@ AFRAME.registerComponent('streetplan-loader', {
         that.streetplanResponseParse(streetplanResponseObject);
       } else {
         // We reached our target server, but it returned an error
-        console.log('[streetplan-loader]', 'Loading Error: We reached the target server, but it returned an error');
+        console.log(
+          '[streetplan-loader]',
+          'Loading Error: We reached the target server, but it returned an error'
+        );
       }
     };
     request.onerror = function () {
       // There was a connection error of some sort
-      console.log('[streetplan-loader]', 'Loading Error: There was a connection error of some sort');
+      console.log(
+        '[streetplan-loader]',
+        'Loading Error: There was a connection error of some sort'
+      );
     };
     request.send();
   }

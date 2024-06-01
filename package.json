@@ -1,68 +1,104 @@
 {
   "name": "3dstreet",
-  "version": "0.4.14",
+  "version": "0.4.15",
   "description": "Web-based 3D visualization of streets using A-Frame and WebXR",
-  "main": "dist/aframe-street-component.js",
+  "main": "dist/3dstreet-editor.js",
   "scripts": {
-    "dev": "budo src/index.js:dist/aframe-street-component.js --port 7001 --live",
-    "dist": "webpack",
+    "start": "webpack serve --config webpack.config.js --open --progress",
+    "start:prod": "serve public -l 3333",
+    "dist": "webpack --config webpack.prod.config.js --progress",
+    "lint": "eslint --ext .js,.jsx src",
+    "lint:fix": "eslint 'src/**/*.js' 'src/**/*.jsx' --fix",
+    "prefirebase": "cp -R assets public && cp -R ui_assets public && cp index.html public && cp -R dist public",
+    "prepare": "husky install",
     "prepublish": "npm run dist",
-    "test": "nyc --reporter=lcov --reporter=text mocha --recursive --full-trace",
-    "test:watch": "mocha --recursive --full-trace --watch",
-    "lint": "semistandard -v | snazzy",
-    "lint:tested": "semistandard -v 'src/tested/**/*.js' 'test/**/*.js' | snazzy",
-    "lint:fix": "semistandard --fix",
-    "start": "npm run dev"
+    "test": "nyc --reporter=lcov --reporter=text mocha --recursive --full-trace test/*.test.js",
+    "test:watch": "mocha --recursive --full-trace --watch test/*.test.js",
+    "prettier": "prettier --write 'src/**/*.js' 'src/**/*.jsx'",
+    "deploy": "npm run prefirebase && cd public && firebase deploy --only hosting:app3dstreet",
+    "storybook": "storybook dev -p 6006",
+    "build-storybook": "storybook build"
   },
-  "repository": {
-    "type": "git",
-    "url": "git+https://github.com/kfarr/3dstreet.git"
-  },
-  "keywords": [
-    "aframe",
-    "aframe-component",
-    "aframe-vr",
-    "vr",
-    "webxr"
-  ],
+  "repository": "3dstreet/3dstreet",
   "author": "kieran.farr@gmail.com",
+  "homepage": "https://github.com/3dstreet/3dstreet/",
   "license": "AGPLv3",
-  "bugs": {
-    "url": "https://github.com/kfarr/3dstreet/issues"
-  },
-  "homepage": "https://github.com/kfarr/3dstreet#readme",
-  "babel": {
-    "presets": [
-      "@babel/preset-env"
-    ]
-  },
-  "semistandard": {
-    "ignore": [
-      "/src/lib/",
-      "/dist/**"
-    ]
-  },
-  "devDependencies": {
-    "@babel/core": "^7.12.7",
-    "@babel/preset-env": "^7.12.7",
-    "approvals": "^6.0.0",
-    "babel-loader": "^8.2.1",
-    "budo": "^11.6.4",
-    "jsdom": "^16.2.2",
-    "jsdom-global": "^3.0.2",
-    "mocha": "^10.1.0",
-    "nyc": "^15.0.1",
-    "pretty": "^2.0.0",
-    "rewire": "^5.0.0",
-    "semistandard": "^14.2.0",
-    "snazzy": "^8.0.0",
-    "terser-webpack-plugin": "^5.3.9",
-    "webpack": "^5.75.0",
-    "webpack-cli": "^4.7.0"
-  },
   "dependencies": {
     "aframe-atlas-uvs-component": "^3.0.0",
-    "babel-polyfill": "^6.26.0",
-    "latest": "^0.2.0"
+    "classnames": "^2.3.2",
+    "clipboard": "^2.0.11",
+    "date-fns": "^2.30.0",
+    "firebase": "^9.23.0",
+    "lodash-es": "^4.17.21",
+    "prop-types": "^15.8.1",
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0",
+    "react-ga4": "^2.1.0",
+    "react-select": "^5.4.0",
+    "three": "0.145.0",
+    "uuid": "^9.0.0"
+  },
+  "devDependencies": {
+    "@babel/eslint-parser": "^7.24.5",
+    "@babel/preset-env": "^7.24.0",
+    "@babel/preset-react": "^7.23.3",
+    "@storybook/addon-essentials": "^7.6.3",
+    "@storybook/addon-interactions": "^7.6.3",
+    "@storybook/addon-links": "^7.6.3",
+    "@storybook/addon-onboarding": "^1.0.9",
+    "@storybook/addon-styling-webpack": "^0.0.5",
+    "@storybook/blocks": "^7.6.3",
+    "@storybook/react": "^7.6.3",
+    "@storybook/react-webpack5": "^7.6.3",
+    "@storybook/test": "^7.6.3",
+    "@types/uuid": "^9.0.0",
+    "approvals": "^7.1.0",
+    "babel-loader": "^9.1.3",
+    "copy-webpack-plugin": "^12.0.2",
+    "css-loader": "^6.10.0",
+    "css-minimizer-webpack-plugin": "^6.0.0",
+    "dotenv-webpack": "^8.0.1",
+    "eslint": "^8.57.0",
+    "eslint-config-standard": "^17.1.0",
+    "eslint-plugin-react": "^7.33.1",
+    "eslint-plugin-react-hooks": "^4.6.0",
+    "eslint-plugin-storybook": "^0.6.15",
+    "husky": "^8.0.1",
+    "jsdom": "^24.0.0",
+    "jsdom-global": "^3.0.2",
+    "lint-staged": "^13.0.3",
+    "mocha": "^10.4.0",
+    "nyc": "^15.1.0",
+    "prettier": "^3.1.0",
+    "pretty": "^2.0.0",
+    "resolve-url-loader": "^5.0.0",
+    "rewire": "^7.0.0",
+    "sass": "^1.69.5",
+    "sass-loader": "^13.3.2",
+    "serve": "^14.2.1",
+    "storybook": "^7.6.3",
+    "style-loader": "^3.3.4",
+    "webpack": "^5.91.0",
+    "webpack-cli": "^5.1.4",
+    "webpack-dev-server": "^5.0.4"
+  },
+  "keywords": [
+    "3d",
+    "aframe",
+    "editor",
+    "inspector",
+    "three.js",
+    "tool",
+    "unity",
+    "vr",
+    "virtualreality",
+    "webvr",
+    "wysiwyg"
+  ],
+  "lint-staged": {
+    "*.{js,jsx}": [
+      "prettier --write",
+      "eslint"
+    ]
   }
 }

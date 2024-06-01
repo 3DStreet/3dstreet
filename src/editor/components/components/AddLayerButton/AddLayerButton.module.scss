@@ -1,0 +1,15 @@
+@use '../../../style/variables.scss';
+
+.wrapper {
+  .button {
+    position: absolute;
+    transform: translateX(-50%);
+    left: 50%;
+    border: unset;
+    bottom: 0px;
+    width: 64px;
+    height: 40px;
+    padding: 4px 20px 4px 20px;
+    border-radius: 8px 8px 0px 0px;
+  }
+}

@@ -1,0 +1,416 @@
+@use './variables.scss';
+
+.components {
+  color: variables.$lightgray-100;
+  width: 364px;
+}
+div.vec2,
+div.vec3,
+div.vec4 {
+  display: inline;
+}
+.vec2 input.number,
+.vec3 input.number {
+  width: 40px;
+}
+.vec4 input.number {
+  width: 34px;
+}
+.collapsible-header {
+  align-items: center;
+  display: flex;
+  justify-content: space-between;
+  .entityPrint {
+    color: variables.$white;
+  }
+}
+.componentTitle span {
+  max-width: 200px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  text-transform: capitalize;
+  white-space: nowrap;
+  color: variables.$white;
+  font-weight: 500;
+  vertical-align: bottom !important;
+}
+.collapsible .static {
+  cursor: pointer;
+  height: 16px;
+  padding: 20px 10px 12px 0px;
+  vertical-align: bottom;
+  font-size: 16px;
+  &:hover {
+    background: variables.$darkgray-500;
+  }
+}
+.collapsible.component ~ .collapsible.component {
+  border-top: 1px solid variables.$darkgray-700;
+  width: 348px;
+}
+.collapsible:first-child {
+  border-bottom: 1px solid variables.$lightgray-200;
+}
+.collapsible:last-child {
+  border-bottom: none;
+}
+.collapsible .menu {
+  text-align: right;
+}
+.collapsible .menuafter {
+  color: variables.$lightgray-300;
+  content: '\2807';
+  font-size: 12px;
+  padding: 5px;
+  text-align: right;
+}
+.collapsible .static {
+  margin: 0;
+}
+.collapsible .content {
+  margin-bottom: 20px;
+}
+.collapsible .static .collapse-button {
+  border: 6px solid transparent;
+  float: left;
+  height: 0;
+  margin-right: 10px;
+  margin-left: 2px;
+  width: 0;
+}
+.collapsible.collapsed .static .collapse-button {
+  border-left-color: variables.$lightgray-100;
+  margin-top: 4px;
+}
+.collapsible:not(.collapsed) .static .collapse-button {
+  border-top-color: variables.$lightgray-100;
+  margin-top: 7px;
+}
+.details .propertyRow {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  column-gap: 12px;
+}
+.details .propertyRow .text {
+  max-width: 100px;
+  min-width: 100px;
+  word-wrap: break-word;
+}
+.details .propertyRow input {
+  width: 100% !important;
+}
+.details .propertyRow .inputBlock {
+  margin-right: 12px;
+  width: 100%;
+}
+.details .propertyRow .select-widget {
+  width: 100%;
+  margin-right: 12px;
+}
+.details .propertyRow .vec2 {
+  justify-content: start;
+}
+.details .propertyRow .vec2 .inputBlock {
+  width: 100%;
+}
+.propertyRow {
+  font-size: 14px;
+  min-height: 30px;
+  margin-top: 20px;
+  > input.string,
+  > input.number,
+  > .inputBlock > input.number,
+  .texture input {
+    padding-left: 8px;
+    box-sizing: border-box;
+    padding: 12px 16px !important;
+    background: rgba(50, 50, 50, 0.8);
+    border: 1px solid variables.$purple-400;
+    border-radius: 10px;
+    box-sizing: border-box;
+    white-space: nowrap;
+  }
+  > input.number,
+  > .inputBlock > input.number {
+    width: 228px;
+  }
+  > input.string,
+  .texture input {
+    width: 348px;
+  }
+  .select__menu {
+    margin-top: 8px;
+  }
+  .select-widget {
+    display: block;
+  }
+  .select__single-value {
+    color: variables.$white;
+  }
+  .select__control {
+    padding: 12px 16px !important;
+    background: rgba(50, 50, 50, 0.8);
+    border: 1px solid variables.$purple-400;
+    border-radius: 10px;
+    box-sizing: border-box;
+    white-space: nowrap;
+  }
+  .checkboxAnim {
+    position: relative;
+    display: inline-block;
+    float: right;
+    width: 40px;
+    height: 20px;
+    margin: 2px 5px;
+    border: 1px solid variables.$lightgray-400;
+    border-radius: 10px;
+    box-sizing: border-box;
+    cursor: pointer;
+    &.checked {
+      background: variables.$lightgray-400;
+    }
+    input {
+      background: none;
+    }
+    label {
+      display: block;
+      width: 13.3px;
+      height: 13.3px;
+      border-radius: 50%;
+      transition: all 0.5s ease;
+      cursor: pointer;
+      position: absolute;
+      top: 3px;
+      left: 3.3px;
+      background: variables.$lightgray-400;
+    }
+    input[type='checkbox']:checked + label {
+      left: 22px;
+      background: variables.$darkgray-800;
+    }
+  }
+  .text {
+    color: variables.$white !important;
+    font-weight: 400;
+    font-size: 16px;
+    text-transform: capitalize;
+    margin-bottom: 4px;
+    display: block;
+  }
+  .vec2 {
+    width: 348px;
+    display: flex;
+    flex-direction: row;
+    justify-content: space-between;
+    align-content: center;
+    align-items: center;
+    margin-top: 4px;
+    .name {
+      width: 100px;
+    }
+    .inputBlock {
+      width: 108px;
+      height: 48px;
+      padding: 12px 16px;
+      background: rgba(50, 50, 50, 0.8);
+      border: 1px solid variables.$purple-400;
+      border-radius: 10px;
+      box-sizing: border-box;
+      white-space: nowrap;
+      span {
+        width: 9px;
+        height: 19px;
+        line-height: 19px;
+        margin-right: 8px;
+        font-weight: 400;
+        font-size: 16px;
+        color: variables.$lightgray-200;
+        text-transform: uppercase;
+      }
+    }
+  }
+  .vec3 {
+    width: 348px;
+    display: flex;
+    flex-direction: row;
+    column-gap: 12px;
+    align-content: center;
+    align-items: center;
+    margin-top: 4px;
+    .name {
+      width: 100px;
+    }
+    .inputBlock {
+      width: 108px;
+      height: 48px;
+      padding: 12px 16px;
+      background: rgba(50, 50, 50, 0.8);
+      border: 1px solid variables.$purple-400;
+      border-radius: 10px;
+      box-sizing: border-box;
+      white-space: nowrap;
+      span {
+        width: 9px;
+        height: 19px;
+        line-height: 19px;
+        margin-right: 8px;
+        font-weight: 400;
+        font-size: 16px;
+        color: variables.$lightgray-200;
+        text-transform: uppercase;
+      }
+      .number {
+        width: 56px;
+        color: variables.$lightgray-500;
+        font-weight: 400;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        display: inline-block;
+        vertical-align: middle;
+        padding: 0px;
+      }
+    }
+  }
+  .map_value {
+    margin: 0 0 0 5px;
+    width: 68px;
+  }
+  .Select-control {
+    font-size: 11px;
+    height: 24px;
+  }
+  .Select-placeholder,
+  .Select--single > .Select-control .Select-value {
+    line-height: 19px;
+  }
+  .Select-input {
+    height: 22px;
+  }
+  input[type='text'],
+  input[type='number'],
+  input.string,
+  input.number {
+    box-sizing: border-box;
+    align-items: center;
+    font-style: normal;
+    font-weight: 400;
+    font-size: 16px;
+    line-height: 19px;
+    color: variables.$white;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    &:last-child {
+      padding-right: 0;
+    }
+  }
+  .color_value {
+    margin: 0 0 0 5px;
+    width: 68px;
+    letter-spacing: 1px;
+  }
+}
+.propertyRowDefined .text {
+  color: variables.$white-100;
+  font-weight: 500;
+}
+.components * {
+  vertical-align: middle;
+}
+span.subcomponent {
+  color: variables.$lightgray-700;
+  float: none !important;
+  margin-left: 10px;
+  vertical-align: top !important;
+}
+a.help-link {
+  opacity: 0.4;
+}
+a.help-linkhover {
+  opacity: 1;
+}
+#addComponentContainer {
+  align-items: center;
+  display: none;
+  flex-direction: column;
+  justify-content: center;
+  padding: 20px 10px;
+  background: variables.$darkgray-200;
+  #addComponent {
+    text-align: left;
+    width: 200px;
+    .select__control {
+      background: variables.$black-100;
+      height: 35px;
+      color: variables.$blue-100;
+    }
+    .option {
+      display: flex;
+      justify-content: space-between;
+      span {
+        color: variables.$blue-100;
+      }
+    }
+  }
+  #addComponentHeader {
+    font-size: 15px;
+    margin: 5px 0 10px 0;
+  }
+}
+.Select-menu-outer .is-focused span {
+  color: variables.$white;
+}
+.component-title {
+  align-items: center;
+  display: flex;
+}
+#componentEntityHeader {
+  display: block !important;
+  width: 348px;
+  .collapsible-header {
+    bottom: 4px;
+    position: relative;
+  }
+  .collapse-button {
+    display: none;
+  }
+  .static {
+    height: 13px;
+    display: none;
+  }
+  .entityPrint {
+    font-size: 15px;
+    padding-left: 5px;
+  }
+  .entityName {
+    max-width: 160px;
+    top: 0;
+  }
+  .entityIcons {
+    color: variables.$white-100;
+  }
+}
+#mixinSelect {
+  width: 348px;
+}
+.propertyRow .texture {
+  display: flex;
+  input {
+    margin-left: 0;
+    width: 120px;
+  }
+}
+#componentEntityHeader .gltfIcon img {
+  top: 0;
+}
+.fa {
+  color: variables.$lightgray-100;
+  &:hover {
+    color: variables.$blue-100;
+  }
+}
+.fa-clipboard,
+.fa-trash-o {
+  display: none;
+}

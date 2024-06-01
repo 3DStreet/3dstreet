@@ -1,0 +1,229 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <!-- aframe -->
+    <script src="https://aframe.io/releases/1.3.0/aframe.min.js"></script>
+
+    <!-- 3dstreet -->
+    <script src="https://github.3dstreet.org/dist/aframe-street-component.js"></script>
+
+    <!-- user controls -->
+    <script src="https://raw.githack.com/fernandojsg/aframe-teleport-controls/master/dist/aframe-teleport-controls.min.js"></script>
+    <script src="./dist/aframe-cursor-teleport-component.min.js"></script>
+
+    <!-- 3dtiles -->
+    <script src="https://cdn.jsdelivr.net/npm/three@0.133.0/examples/js/utils/WorkerPool.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.133.0/examples/js/loaders/KTX2Loader.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/aframe-loader-3dtiles-component/dist/aframe-loader-3dtiles-component.min.js"></script>
+
+    <script src="https://unpkg.com/aframe-mapbox-component/dist/aframe-mapbox-component.min.js"></script>
+
+    <title>3DStreet • 16th and South Van Ness, San Francisco, CA</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link rel="icon" type="image/x-icon" href="assets/ui_assets/favicon.ico" />
+  </head>
+
+  <body>
+    <a-scene
+      vr-mode-ui-if-headset
+      renderer="colorManagement: true; physicallyCorrectLights: true;"
+      gltf-model="dracoDecoderPath: https://www.gstatic.com/draco/versioned/decoders/1.4.3/"
+    >
+      <a-assets> </a-assets>
+
+      <a-entity
+        id="cameraRig"
+        data-layer-name="Viewer"
+        cursor-teleport="cameraRig: #cameraRig; cameraHead: #camera;"
+        look-controls="reverseMouseDrag: true"
+        wasd-controls="enabled: true"
+      >
+        <a-entity
+          id="camera"
+          camera="near: 1; far: 1000"
+          position="0 1.6 0"
+        ></a-entity>
+        <a-entity
+          id="leftHand"
+          hand-controls="hand: left; handModelStyle: lowPoly; color: #ffccff"
+          teleport-controls="cameraRig: #cameraRig; button: trigger"
+        ></a-entity>
+        <a-entity
+          id="rightHand"
+          hand-controls="hand: right; handModelStyle: lowPoly; color: #ffccff"
+          teleport-controls="cameraRig: #cameraRig; button: trigger"
+        ></a-entity>
+      </a-entity>
+
+      <a-entity
+        id="environment"
+        data-layer-name="Environment"
+        street-environment="preset: day;"
+      ></a-entity>
+
+      <a-entity
+        id="street-container"
+        data-layer-name="3D Street Layers"
+        data-layer-show-children
+      >
+        <a-entity
+          data-layer-name="16th Street West of SVN"
+          position="-96.980 0 -4.17918"
+          rotation="0 90 0"
+          id="east_street"
+          street="length: 150"
+          streetmix-loader="streetmixStreetURL: https://streetmix.net/kfarr/82/16th-st-harrison-st-sf-ca; showBuildings: false;"
+        ></a-entity>
+        <a-entity
+          data-layer-name="16th Street East of SVN"
+          position="78.165 0 -4.17918"
+          rotation="0 90 0"
+          id="west_street"
+          street="length: 150"
+          streetmix-loader="streetmixStreetURL: https://streetmix.net/kfarr/82/16th-st-harrison-st-sf-ca; showBuildings: false;"
+        ></a-entity>
+
+        <a-entity
+          data-layer-name="16th & Harrison St Intersection"
+          id="intersection"
+          position="-9.917 0 -4.057"
+        >
+          <a-entity
+            intersection="dimensions: 27.5 24.384;northeastcurb: 4.572 4.572;southwestcurb: 4.572 4.572;southeastcurb: 4.572 4.572;northwestcurb: 4.572 4.572;trafficsignal: 1 1 1 1;crosswalk: 1 1 1 1"
+          ></a-entity>
+        </a-entity>
+
+        <a-entity
+          data-layer-name="SVN North of 16th St"
+          position="-9.23383 0 -31.340"
+          rotation="0 0 0"
+          id="south_street"
+          street="length: 30"
+          streetmix-loader="streetmixStreetURL: https://streetmix.net/scott/31/south-van-ness-idea-short-term; showBuildings: false;"
+        ></a-entity>
+
+        <a-entity
+          data-layer-name="SVN South of 16th St"
+          position="-9.23383 0 23.009"
+          rotation="0 180 0"
+          id="north_street"
+          street="length: 30"
+          streetmix-loader="streetmixStreetURL: https://streetmix.net/scott/31/south-van-ness-idea-short-term; showBuildings: false;"
+        ></a-entity>
+      </a-entity>
+
+      <a-entity id="imagery" data-layer-name="Imagery" data-layer-show-children>
+        <a-entity
+          data-layer-name="3D Scan - 16th and SVN June 2022"
+          visible="false"
+          id="cesium-ion-scan"
+          position="-2.5 12.7 -9"
+          rotation="-90 180 -0.82"
+          loader-3dtiles="url: https://assets.cesium.com/1149944/tileset.json?v=3;
+          cesiumIONToken: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJqdGkiOiI3YTYyYTIzNS0yODg0LTRhZWQtYjYxNS1iNWNhZGZhNmY3OTgiLCJpZCI6MTcwNjEsInNjb3BlcyI6WyJhc3IiLCJnYyJdLCJpYXQiOjE1NzE1OTcxNzZ9.R8mKo-NizcmOjCN_4dQyd5xO4X655CZZMXa9B5sECyU;"
+          scale="1.33 1.33 1.33"
+        ></a-entity>
+
+        <a-entity
+          data-layer-name="Map"
+          geometry="primitive: plane; width: 512; height: 512;"
+          material="color: #ffffff; shader: flat; side: both; transparent: true;"
+          mapbox="center: -122.417490, 37.765190; zoom: 18; 
+            accessToken: pk.eyJ1IjoibWF0dHJlIiwiYSI6IjRpa3ItcWcifQ.s0AGgKi0ai23K5OJvkEFnA;
+            style: mapbox://styles/mapbox/satellite-streets-v11;
+            pxToWorldRatio: 4;"
+          position="-7 -1 -2"
+          rotation="-90 -4.25 0"
+        ></a-entity>
+      </a-entity>
+
+      <!-- <a-entity id="street-parent" street streetmix-loader set-loader-from-hash="defaultURL: https://streetmix.net/kfarr/3"></a-entity> -->
+    </a-scene>
+
+    <script>
+      var locationString =
+        location.href.split('#')[1] != undefined
+          ? location.href.split('#')[1]
+          : 'https://streetmix.net/kfarr/3';
+      document.getElementById('location').innerHTML += locationString;
+    </script>
+  </body>
+  <script>
+    // only show VR button if headset connected
+    AFRAME.registerComponent('vr-mode-ui-if-headset', {
+      dependencies: ['vr-mode-ui'],
+      init: function () {
+        if (!AFRAME.utils.device.checkHeadsetConnected()) {
+          this.el.setAttribute('vr-mode-ui', 'enabled', false);
+        }
+      }
+    });
+
+    AFRAME.registerComponent('set-loader-from-hash', {
+      dependencies: ['streetmix-loader'],
+      schema: {
+        defaultURL: { type: 'string' }
+      },
+      init: function () {
+        // get hash from window
+        const streetURL = window.location.hash.substring(1);
+        if (streetURL !== undefined && streetURL.length > 0) {
+          console.log(
+            '[set-loader-from-hash]',
+            'Using URL from hash',
+            streetURL
+          );
+          this.el.setAttribute(
+            'streetmix-loader',
+            'streetmixStreetURL',
+            streetURL
+          );
+        } else {
+          console.log(
+            '[set-loader-from-hash]',
+            'Using default URL',
+            this.data.defaultURL
+          );
+          this.el.setAttribute(
+            'streetmix-loader',
+            'streetmixStreetURL',
+            this.data.defaultURL
+          );
+        }
+      }
+    });
+
+    window.onload = function () {
+      if (window.location.hash.substring(1).length === 0)
+        window.location.hash = '#https://streetmix.net/kfarr/3';
+      document.querySelector('#inputUrl').value =
+        window.location.hash.substring(1);
+    };
+
+    function startAudio() {
+      // set sounds enabled in global state
+      state.sounds.enabled = true;
+
+      // iterate through all entities with .playme class and start them playing
+      var entities = document.querySelectorAll('.playme'),
+        i;
+      for (i = 0; i < entities.length; ++i) {
+        entities[i].components.sound.playSound();
+      }
+
+      // set 2D DOM toolbar volume icon to green to indicate state
+      document
+        .getElementById('audio-icon')
+        .setAttribute('class', 'fa fa-volume-up');
+      document
+        .getElementById('audio-icon')
+        .setAttribute('style', 'color: lightgreen');
+    }
+
+    document.querySelector('a-scene').addEventListener('enter-vr', function () {
+      console.log('ENTERED VR');
+      // startAudio();
+    });
+  </script>
+  <script src="./dist/3dstreet-editor.js"></script>
+</html>
