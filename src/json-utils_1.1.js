@@ -524,7 +524,7 @@ AFRAME.registerComponent('set-loader-from-hash', {
   },
   play: function () {
     // using play instead of init method so scene loads before setting its metadata component
-    if (!this.runOnce) {      
+    if (!this.runOnce) {
       this.runOnce = true;
       // get hash from window
       const streetURL = window.location.hash.substring(1);
