@@ -1,13 +1,12 @@
 import { useState, useCallback, useEffect } from 'react';
 
 import styles from './GeoModal.module.scss';
-import { Mangnifier20Icon } from '../../../icons';
+import { Mangnifier20Icon, Save24Icon } from '../../../icons';
 
 import { firebaseConfig } from '../../../services/firebase.js';
 import Modal from '../Modal.jsx';
 import { Button, Input } from '../../components/index.js';
 import { GoogleMap, useJsApiLoader, Marker } from '@react-google-maps/api';
-import { DownloadIcon } from '../../../icons/icons.jsx';
 import GeoImg from '../../../../../ui_assets/geo.png';
 
 const GeoModal = ({ isOpen, onClose }) => {
@@ -137,7 +136,7 @@ const GeoModal = ({ isOpen, onClose }) => {
             Cancel
           </Button>
           <Button
-            leadingicon={<DownloadIcon />}
+            leadingicon={<Save24Icon />}
             variant="filled"
             onClick={onSaveHandler}
           >
