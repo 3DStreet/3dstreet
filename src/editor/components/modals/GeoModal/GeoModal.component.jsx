@@ -18,7 +18,7 @@ const GeoModal = ({ isOpen, onClose }) => {
   const [markerPosition, setMarkerPosition] = useState({
     lat: 37.7637072, // lat: 37.76370724481858, lng: -122.41517686259827
     lng: -122.4151768,
-    elevation: 0
+    elevation: 10
   });
 
   const roundCoord = (num) => {
