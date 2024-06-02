@@ -1,7 +1,7 @@
 import { useState, useCallback, useEffect } from 'react';
 
 import styles from './GeoModal.module.scss';
-import { Mangnifier20Icon } from '../../../icons';
+import { Mangnifier20Icon, Save24Icon } from '../../../icons';
 
 import { firebaseConfig } from '../../../services/firebase.js';
 import Modal from '../Modal.jsx';
@@ -12,7 +12,6 @@ import {
   Marker,
   Autocomplete
 } from '@react-google-maps/api';
-import { DownloadIcon } from '../../../icons/icons.jsx';
 import GeoImg from '../../../../../ui_assets/geo.png';
 
 const GeoModal = ({ isOpen, onClose }) => {
@@ -23,7 +22,7 @@ const GeoModal = ({ isOpen, onClose }) => {
   const [markerPosition, setMarkerPosition] = useState({
     lat: 37.7637072, // lat: 37.76370724481858, lng: -122.41517686259827
     lng: -122.4151768,
-    elevation: 0
+    elevation: 10
   });
 
   const [autocomplete, setAutocomplete] = useState(null);
@@ -180,7 +179,7 @@ const GeoModal = ({ isOpen, onClose }) => {
             Cancel
           </Button>
           <Button
-            leadingicon={<DownloadIcon />}
+            leadingicon={<Save24Icon />}
             variant="filled"
             onClick={onSaveHandler}
           >
