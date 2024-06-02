@@ -13,6 +13,8 @@ import TransformToolbar from './viewport/TransformToolbar';
 import { injectCSS } from '../lib/utils';
 import { SignInModal } from './modals/SignInModal';
 import { ProfileModal } from './modals/ProfileModal';
+import { firebaseConfig } from '../services/firebase.js';
+import { LoadScript } from '@react-google-maps/api';
 import { GeoModal } from './modals/GeoModal';
 import { ScenesModal } from './modals/ScenesModal';
 import { SceneEditTitle } from './components/SceneEditTitle';
@@ -258,10 +260,15 @@ export default class Main extends Component {
           isOpen={this.state.isProfileModalOpened}
           onClose={this.onCloseProfileModal}
         />
-        <GeoModal
-          isOpen={this.state.isGeoModalOpened}
-          onClose={this.onCloseGeoModal}
-        />
+        <LoadScript
+          googleMapsApiKey={firebaseConfig.apiKey}
+          libraries={['places']}
+        >
+          <GeoModal
+            isOpen={this.state.isGeoModalOpened}
+            onClose={this.onCloseGeoModal}
+          />
+        </LoadScript>
         <ModalTextures
           isOpen={this.state.isModalTexturesOpen}
           selectedTexture={this.state.selectedTexture}

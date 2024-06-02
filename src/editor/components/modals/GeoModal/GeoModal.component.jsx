@@ -6,7 +6,12 @@ import { Mangnifier20Icon } from '../../../icons';
 import { firebaseConfig } from '../../../services/firebase.js';
 import Modal from '../Modal.jsx';
 import { Button, Input } from '../../components/index.js';
-import { GoogleMap, useJsApiLoader, Marker } from '@react-google-maps/api';
+import {
+  GoogleMap,
+  useJsApiLoader,
+  Marker,
+  Autocomplete
+} from '@react-google-maps/api';
 import { DownloadIcon } from '../../../icons/icons.jsx';
 import GeoImg from '../../../../../ui_assets/geo.png';
 
@@ -20,6 +25,8 @@ const GeoModal = ({ isOpen, onClose }) => {
     lng: -122.4151768,
     elevation: 0
   });
+
+  const [autocomplete, setAutocomplete] = useState(null);
 
   const roundCoord = (num) => {
     return Math.round(num * 1e7) / 1e7;
@@ -64,6 +71,34 @@ const GeoModal = ({ isOpen, onClose }) => {
     }
   };
 
+  const onAutocompleteLoad = useCallback((autocompleteInstance) => {
+    setAutocomplete(autocompleteInstance);
+  }, []);
+
+  const onPlaceChanged = useCallback(() => {
+    if (autocomplete !== null) {
+      const place = autocomplete.getPlace();
+      if (place && place.geometry) {
+        const location = {
+          lat: place.geometry.location.lat(),
+          lng: place.geometry.location.lng(),
+          height: 0
+        };
+        setMarkerPosition(location);
+      }
+    } else {
+      console.log('Autocomplete is not loaded yet!');
+    }
+  }, [autocomplete]);
+
+  const onCloseCheck = (evt) => {
+    // do not close geoModal when clicking on a list with suggestions for addresses
+    const autocompleteContatiner = document.querySelector('.pac-container');
+    if (autocompleteContatiner.children.length === 0) {
+      onClose();
+    }
+  };
+
   const onSaveHandler = () => {
     const latitude = markerPosition.lat;
     const longitude = markerPosition.lng;
@@ -88,7 +123,7 @@ const GeoModal = ({ isOpen, onClose }) => {
     <Modal
       className={styles.modalWrapper}
       isOpen={isOpen}
-      onClose={onClose}
+      onClose={onCloseCheck}
       extraCloseKeyCode={72}
     >
       <div className={styles.wrapper}>
@@ -96,28 +131,36 @@ const GeoModal = ({ isOpen, onClose }) => {
           <img src={GeoImg} alt="geo" style={{ objectFit: 'contain' }} />
           <h3>Scene Location</h3>
         </div>
-        <Input
-          leadingIcon={<Mangnifier20Icon />}
-          placeholder="Search for a location"
-        ></Input>
         {isLoaded && (
-          <GoogleMap
-            mapContainerStyle={{
-              width: '100%',
-              minHeight: '350px',
-              borderRadius: 4,
-              border: '1px solid #8965EF'
-            }}
-            center={{ lat: markerPosition.lat, lng: markerPosition.lng }}
-            zoom={20}
-            onClick={onMapClick}
-            options={{ streetViewControl: false, mapTypeId: 'satellite' }}
-            tilt={0}
-          >
-            <Marker
-              position={{ lat: markerPosition.lat, lng: markerPosition.lng }}
-            />
-          </GoogleMap>
+          <>
+            <Autocomplete
+              onLoad={onAutocompleteLoad}
+              onPlaceChanged={onPlaceChanged}
+            >
+              <Input
+                leadingIcon={<Mangnifier20Icon />}
+                placeholder="Search for a location"
+                onChange={(value) => {}}
+              />
+            </Autocomplete>
+            <GoogleMap
+              mapContainerStyle={{
+                width: '100%',
+                minHeight: '350px',
+                borderRadius: 4,
+                border: '1px solid #8965EF'
+              }}
+              center={{ lat: markerPosition.lat, lng: markerPosition.lng }}
+              zoom={20}
+              onClick={onMapClick}
+              options={{ streetViewControl: false, mapTypeId: 'satellite' }}
+              tilt={0}
+            >
+              <Marker
+                position={{ lat: markerPosition.lat, lng: markerPosition.lng }}
+              />
+            </GoogleMap>
+          </>
         )}
 
         <div className={styles.sceneGeo}>
