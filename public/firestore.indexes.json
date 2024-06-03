@@ -1,4 +1,19 @@
 {
-  "indexes": [],
+  "indexes": [
+    {
+      "collectionGroup": "scenes",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "author",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "updateTimestamp",
+          "order": "DESCENDING"
+        }
+      ]
+    }
+  ],
   "fieldOverrides": []
 }
