@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import styles from './SceneEditTitle.module.scss';
-import { CheckMark32Icon, Cross32Icon, Edit32Icon } from '../../../icons';
+import { CheckMark32Icon, Cross32Icon } from '../../../icons';
 import { updateSceneIdAndTitle } from '../../../api/scene';
 
 const SceneEditTitle = ({ sceneData }) => {
@@ -77,11 +77,6 @@ const SceneEditTitle = ({ sceneData }) => {
           <p className={styles.title} onClick={handleEditClick}>
             {title}
           </p>
-          {!editMode && (
-            <div className={styles.editButton} onClick={handleEditClick}>
-              <Edit32Icon />
-            </div>
-          )}
         </div>
       )}
     </div>

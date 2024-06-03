@@ -7,13 +7,16 @@
   display: flex;
   justify-content: center;
   align-items: center;
+  background: rgba(50, 50, 50, 0.8);
+  padding: 8px 12px;
+  border-radius: 12px;
 
   .title {
-    width: 300px;
+    max-width: 50vw;
     text-overflow: ellipsis;
     overflow: hidden;
-    height: 24px;
-    font-size: 20px !important;
+    height: 20px;
+    font-size: 16px !important;
     white-space: nowrap;
     cursor: pointer;
   }
