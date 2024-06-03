@@ -36,7 +36,8 @@ const Button = ({
   disabled,
   id,
   leadingicon,
-  trailingicon
+  trailingicon,
+  ...props
 }) => (
   <button
     className={classNames(styles.buttonWrapper, variants[variant], className)}
@@ -47,6 +48,7 @@ const Button = ({
     id={id}
     data-leadingicon={leadingicon}
     data-trailingicon={trailingicon}
+    {...props}
   >
     {leadingicon && <div className={styles.icon}>{leadingicon}</div>}
     {children}

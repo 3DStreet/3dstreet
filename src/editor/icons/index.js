@@ -24,5 +24,8 @@ export {
   GoogleSignInButtonSVG,
   Chevron24Down,
   Plus20Circle,
-  QR32Icon
+  QR32Icon,
+  Circle20Icon,
+  Action24,
+  DownloadIcon
 } from './icons.jsx';

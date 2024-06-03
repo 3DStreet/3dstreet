@@ -17,11 +17,13 @@ import { LoadScript } from '@react-google-maps/api';
 import { GeoModal } from './modals/GeoModal';
 import { ActionBar } from './components/ActionBar';
 import { ScenesModal } from './modals/ScenesModal';
+import { PaymentModal } from './modals/PaymentModal';
 import { SceneEditTitle } from './components/SceneEditTitle';
 import { AddLayerPanel } from './components/AddLayerPanel';
 THREE.ImageUtils.crossOrigin = '';
 
 const isStreetLoaded = window.location.hash.length;
+const isPaymentModalOpened = window.location.hash.includes('/modal/payment');
 
 export default class Main extends Component {
   constructor(props) {
@@ -35,6 +37,8 @@ export default class Main extends Component {
       isAddLayerPanelOpen: false,
       isGeoModalOpened: false,
       isScenesModalOpened: !isStreetLoaded,
+      isPaymentModalOpened: isPaymentModalOpened,
+      isScenesModalOpened: !isStreetLoaded && !isPaymentModalOpened,
       sceneEl: AFRAME.scenes[0],
       visible: {
         scenegraph: true,
@@ -115,6 +119,9 @@ export default class Main extends Component {
     });
     Events.on('opengeomodal', () => {
       this.setState({ isGeoModalOpened: true });
+    })
+    Events.on('openpaymentmodel', () => {
+      this.setState({ isPaymentModalOpened: true });
     });
   }
 
@@ -153,6 +160,9 @@ export default class Main extends Component {
 
   onCloseGeoModal = () => {
     this.setState({ isGeoModalOpened: false });
+
+  onClosePaymentModal = () => {
+    this.setState({ isPaymentModalOpened: false });
   };
 
   toggleEdit = () => {
@@ -243,6 +253,10 @@ export default class Main extends Component {
           isOpen={this.state.isSignInModalOpened}
           onClose={this.onCloseSignInModal}
         />
+        <PaymentModal
+          isOpen={this.state.isPaymentModalOpened}
+          onClose={this.onClosePaymentModal}
+        />
         <ScenesModal
           isOpen={this.state.isScenesModalOpened}
           onClose={this.onCloseScenesModal}
@@ -267,11 +281,7 @@ export default class Main extends Component {
           selectedTexture={this.state.selectedTexture}
           onClose={this.onModalTextureOnClose}
         />
-        {this.state.inspectorEnabled && (
-          <div id="help">
-            <HelpButton />
-          </div>
-        )}
+
         {this.state.inspectorEnabled && (
           <div id="geo">
             <GeoPanel />
@@ -300,7 +310,16 @@ export default class Main extends Component {
             <Compass32Icon />
           </Button>
         )}
+<<<<<<< HEAD
         {this.state.inspectorEnabled && this.state.isAddLayerPanelOpen && (
+=======
+        {this.state.inspectorEnabled && (
+          <div id="layerWithCategory">
+            <AddLayerButton onClick={this.toggleAddLayerPanel} />
+          </div>
+        )}
+        {this.state.isAddLayerPanelOpen && (
+>>>>>>> c80f984 (feat: billing features)
           <AddLayerPanel
             onClose={this.toggleAddLayerPanel}
             isAddLayerPanelOpen={this.state.isAddLayerPanelOpen}
