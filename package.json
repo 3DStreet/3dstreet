@@ -9,7 +9,7 @@
     "dist": "webpack --config webpack.prod.config.js --progress",
     "dist:staging": "cross-env DEPLOY_ENV=development webpack --config webpack.prod.config.js --progress",
     "lint": "eslint --ext .js,.jsx src",
-    "lint:fix": "eslint 'src/**/*.js' 'src/**/*.jsx' --fix",
+    "lint:fix": "eslint --ext .js,.jsx --fix src",
     "prefirebase": "cp -R assets public && cp -R ui_assets public && cp index.html public && cp -R dist public",
     "prepare": "husky install",
     "prepublish": "npm run dist",
