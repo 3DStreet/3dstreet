@@ -10,11 +10,21 @@ import Events from '../../../lib/Events';
  */
 const GeoPanel = () => {
   const onClick = () => Events.emit('opengeomodal');
+  const metadata = AFRAME.scenes[0].getAttribute('metadata');
+  let coordinateInfo;
+  if (metadata && metadata['coord']) {
+    const coord = metadata['coord'];
+    coordinateInfo = `Latitude: ${coord.latitude}, longitude: ${coord.longitude}, elevation: ${coord.elevation}`;
+  }
 
   return (
     <div className={styles.geo}>
       <img src={GeoImg} onClick={onClick} alt="geo" />
-      <p>San Francisco, California at Market and Van Ness Streets</p>
+      {coordinateInfo ? (
+        <p>{coordinateInfo}</p>
+      ) : (
+        <a onClick={onClick}>Click to set location</a>
+      )}
     </div>
   );
 };
