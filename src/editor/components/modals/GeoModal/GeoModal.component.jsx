@@ -21,10 +21,9 @@ const GeoModal = ({ isOpen, onClose }) => {
 
   const [markerPosition, setMarkerPosition] = useState({
     lat: 37.7637072, // lat: 37.76370724481858, lng: -122.41517686259827
-    lng: -122.4151768,
-    elevation: 10
+    lng: -122.4151768
   });
-
+  const [elevation, setElevation] = useState(10);
   const [autocomplete, setAutocomplete] = useState(null);
 
   const roundCoord = (num) => {
@@ -42,18 +41,20 @@ const GeoModal = ({ isOpen, onClose }) => {
         const elevation = parseFloat(coord.elevation) || 0;
 
         if (!isNaN(lat) && !isNaN(lng)) {
-          setMarkerPosition({ lat, lng, elevation });
+          setMarkerPosition({ lat, lng });
+        }
+        if (!isNaN(elevation)) {
+          setElevation(elevation);
         }
       }
     }
   }, [isOpen]);
 
   const onMapClick = useCallback((event) => {
-    setMarkerPosition((prev) => ({
-      ...prev,
+    setMarkerPosition({
       lat: roundCoord(event.latLng.lat()),
       lng: roundCoord(event.latLng.lng())
-    }));
+    });
   }, []);
 
   const handleCoordinateChange = (value) => {
@@ -64,10 +65,14 @@ const GeoModal = ({ isOpen, onClose }) => {
     if (!isNaN(newLat) && !isNaN(newLng)) {
       setMarkerPosition({
         lat: roundCoord(newLat),
-        lng: roundCoord(newLng),
-        height: markerPosition.height
+        lng: roundCoord(newLng)
       });
     }
+  };
+
+  const handleElevationChange = (value) => {
+    const newElevation = parseFloat(value) || 0;
+    setElevation(newElevation);
   };
 
   const onAutocompleteLoad = useCallback((autocompleteInstance) => {
@@ -80,8 +85,7 @@ const GeoModal = ({ isOpen, onClose }) => {
       if (place && place.geometry) {
         const location = {
           lat: place.geometry.location.lat(),
-          lng: place.geometry.location.lng(),
-          height: 0
+          lng: place.geometry.location.lng()
         };
         setMarkerPosition(location);
       }
@@ -101,7 +105,6 @@ const GeoModal = ({ isOpen, onClose }) => {
   const onSaveHandler = () => {
     const latitude = markerPosition.lat;
     const longitude = markerPosition.lng;
-    const elevation = markerPosition.elevation;
     AFRAME.scenes[0].setAttribute('metadata', 'coord', {
       latitude: latitude,
       longitude: longitude,
@@ -170,6 +173,15 @@ const GeoModal = ({ isOpen, onClose }) => {
               value={`${markerPosition.lat}, ${markerPosition.lng}`}
               placeholder="None"
               onChange={handleCoordinateChange}
+            ></Input>
+          </div>
+          <div>
+            <p>Elevation</p>
+            <Input
+              leadingIcon={<p className={styles.iconGeo}>Height</p>}
+              value={elevation}
+              placeholder="None"
+              onChange={handleElevationChange}
             ></Input>
           </div>
         </div>
