@@ -271,24 +271,35 @@ export default class Toolbar extends Component {
   //   AFRAME.INSPECTOR.close();
   // }
 
-  static exportSceneToGLTF() {
+  static async convertSceneToGLTFBlob() {
+    const scene = AFRAME.scenes[0].object3D;
+
+    try {
+      filterHelpers(scene, false);
+      const buffer = await AFRAME.INSPECTOR.exporters.gltf.parseAsync(scene, {
+        binary: true
+      });
+
+      const blobGlTFScene = new Blob([buffer], {
+        type: 'application/octet-stream'
+      });
+
+      return blobGlTFScene;
+    } catch (error) {
+      console.error(error);
+    } finally {
+      filterHelpers(scene, true);
+    }
+  }
+
+  static async exportGLTFScene() {
     try {
       sendMetric('SceneGraph', 'exportGLTF');
       const sceneName = getSceneName(AFRAME.scenes[0]);
-      const scene = AFRAME.scenes[0].object3D;
-      filterHelpers(scene, false);
-      AFRAME.INSPECTOR.exporters.gltf.parse(
-        scene,
-        function (buffer) {
-          filterHelpers(scene, true);
-          const blob = new Blob([buffer], { type: 'application/octet-stream' });
-          saveBlob(blob, sceneName + '.glb');
-        },
-        function (error) {
-          console.error(error);
-        },
-        { binary: true }
-      );
+
+      const blob = await this.convertSceneToGLTFBlob();
+      saveBlob(blob, sceneName + '.glb');
+
       STREET.notify.successMessage('3DStreet scene exported as glTF file.');
     } catch (error) {
       STREET.notify.errorMessage(
