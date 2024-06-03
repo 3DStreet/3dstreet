@@ -3,8 +3,8 @@
 
 <head>
   <!-- aframe -->
-  <script src="https://aframe.io/releases/1.5.0/aframe.min.js"></script>
   <script src="https://launchar.app/sdk/v1?key=vDhrPJN2RAYrTKXak3LYKFPnPGKYAzKK&redirect=true"></script>
+  <script src="https://aframe.io/releases/1.5.0/aframe.min.js"></script>
 
   <!-- 3dstreet -->
   <script src="./dist/aframe-street-component.js"></script>
@@ -65,18 +65,18 @@
     </button>
   </div>
 
-  <div class="right-fixed">
+  <!-- <div class="right-fixed">
     <ul class="right-menu">
       <li onclick="buttonScreenshotTock()"> <a class="camera" href="#"> <span> Capture image as PNG </span> <img
             src="ui_assets/camera-icon.svg"> </a></li>
       <li onclick="STREET.utils.inputStreetmix()"> <a class="load" href="#"> <span> Load Streetmix URL </span> <img
             src="ui_assets/streetmix-logo.svg"> </a></li>
-      <!-- <li onclick="inputJSON()"> <a class="load"  href="#"> <span> Load JSON String </span> <img src="assets/ui_assets/upload-icon.svg"> </a></li> -->
+      <li onclick="inputJSON()"> <a class="load"  href="#"> <span> Load JSON String </span> <img src="assets/ui_assets/upload-icon.svg"> </a></li>
       <li><a class="load"> <label for="inputfile" style="display: inherit; align-items: center; cursor: pointer"> <input
               type="file" id="inputfile" style="display:none" accept=".js, .json, .txt"> <span> Load JSON File </span>
             <img src="ui_assets/upload-icon.svg"></label></a></li>
     </ul>
-  </div>
+  </div> -->
 
   <a-scene
     renderer="colorManagement: true; physicallyCorrectLights: true; anisotropy: 16; logarithmicDepthBuffer: true;"
@@ -134,15 +134,15 @@
 </script>
 <script>
 
-  document.getElementById('inputfile')
-    .addEventListener('change', STREET.utils.fileJSON);
+  // document.getElementById('inputfile')
+  //   .addEventListener('change', STREET.utils.fileJSON);
 
-  function buttonScreenshotTock() {
-    const screenshotEl = document.getElementById('screenshot');
-    screenshotEl.play(); // double check playing in case we're in editor mode
-    screenshotEl.setAttribute('screentock', 'type', 'jpg');
-    screenshotEl.setAttribute('screentock', 'takeScreenshot', true);
-  }
+  // function buttonScreenshotTock() {
+  //   const screenshotEl = document.getElementById('screenshot');
+  //   screenshotEl.play(); // double check playing in case we're in editor mode
+  //   screenshotEl.setAttribute('screentock', 'type', 'jpg');
+  //   screenshotEl.setAttribute('screentock', 'takeScreenshot', true);
+  // }
 
   function startEditor() {
     var sceneEl = document.querySelector('a-scene');
@@ -150,11 +150,16 @@
     document.querySelector('.viewer-header-wrapper').style.display = 'none';
   }
 
+  // launch the inspector in x seconds if ?viewer querystring NOT present
   AFRAME.registerComponent('timed-inspector', {
     init: function () {
-      setTimeout(function () {
-        window.postMessage('INJECT_AFRAME_INSPECTOR');
-      }, this.data * 1000);
+      const urlParams = new URLSearchParams(window.location.search);
+      const viewerParam = urlParams.get('viewer');
+      if (!viewerParam) {
+        setTimeout(function () {
+          window.postMessage('INJECT_AFRAME_INSPECTOR');
+        }, this.data * 1000);
+      }
     }
   });
 </script>
