@@ -35,6 +35,11 @@ const getCurrentSceneTitle = () => {
 };
 STREET.utils.getCurrentSceneTitle = getCurrentSceneTitle;
 
+const getGeoData = () => {
+  const currentGeoCoord = AFRAME.scenes[0].getAttribute('metadata').coord;
+  return currentGeoCoord;
+};
+
 /*
 Takes one or more elements (from a DOM queryselector call)
 and returns a Javascript object
@@ -44,6 +49,7 @@ function convertDOMElToObject(entity) {
   const environmentElement = document.querySelector('#environment');
   const referenceEntities = document.querySelector('#reference-layers');
   const sceneEntities = [entity, environmentElement, referenceEntities];
+  const geoData = getGeoData();
 
   // get assets url address
   assetsUrl = document.querySelector('street-assets').getAttribute('url');
@@ -54,9 +60,11 @@ function convertDOMElToObject(entity) {
       data.push(entityData);
     }
   }
+
   return {
     title: 'scene',
     version: '1.0',
+    geoData: geoData,
     data: data
   };
 }
@@ -669,6 +677,11 @@ function createElementsFromJSON(streetJSON) {
   if (sceneTitle) {
     console.log('sceneTitle from createElementsFromJSON', sceneTitle);
     AFRAME.scenes[0].setAttribute('metadata', 'sceneTitle', sceneTitle);
+  }
+
+  const geoData = streetObject['geoData'];
+  if (geoData) {
+    AFRAME.scenes[0].setAttribute('metadata', 'coord', geoData);
   }
 
   const streetContainerEl = document.getElementById('street-container');
