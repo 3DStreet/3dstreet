@@ -1,7 +1,8 @@
 /* global AFRAME */
+import { firebaseConfig } from '../editor/services/firebase.js';
+
 const MAPBOX_ACCESS_TOKEN_VALUE =
   'pk.eyJ1Ijoia2llcmFuZmFyciIsImEiOiJjazB0NWh2YncwOW9rM25sd2p0YTlxemk2In0.mLl4sNGDFbz_QXk0GIK02Q';
-const GOOGLE_API_KEY = 'AIzaSyAQshwLVKTpwTfPJxFEkEzOdP_cgmixTCQ';
 
 AFRAME.registerComponent('street-geo', {
   schema: {
@@ -83,7 +84,7 @@ AFRAME.registerComponent('street-geo', {
       long: data.longitude,
       lat: data.latitude,
       height: data.elevation - this.elevationHeightConstant,
-      googleApiKey: GOOGLE_API_KEY,
+      googleApiKey: firebaseConfig.apiKey,
       geoTransform: 'WGS84Cartesian',
       maximumSSE: 48,
       maximumMem: 400,
