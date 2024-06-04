@@ -14,14 +14,14 @@ const GeoPanel = () => {
   let coordinateInfo;
   if (metadata && metadata['coord']) {
     const coord = metadata['coord'];
-    coordinateInfo = `Latitude: ${coord.latitude}, longitude: ${coord.longitude}, elevation: ${coord.elevation}`;
+    coordinateInfo = `Latitude: ${coord.latitude}, Longitude: ${coord.longitude}, Elevation: ${coord.elevation}m`;
   }
 
   return (
     <div className={styles.geo}>
       <img src={GeoImg} onClick={onClick} alt="geo" />
       {coordinateInfo ? (
-        <p>{coordinateInfo}</p>
+        <a onClick={onClick}>{coordinateInfo}</a>
       ) : (
         <a onClick={onClick}>Click to set location</a>
       )}

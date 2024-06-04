@@ -12,3 +12,4 @@ dist/48406973e3ad4d65cbdd.js*
 dist/aframe-mapbox-component.min.js
 dist/notyf.min.css
 dist/viewer-styles.css
+/public/assets
