@@ -123,6 +123,7 @@ const GeoModal = ({ isOpen, onClose }) => {
         <div className={styles.header}>
           <img src={GeoImg} alt="geo" style={{ objectFit: 'contain' }} />
           <h3>Scene Location</h3>
+          <p className={styles.badge}>Pro</p>
         </div>
         {isLoaded && (
           <>
