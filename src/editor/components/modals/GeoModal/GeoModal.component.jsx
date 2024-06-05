@@ -129,7 +129,7 @@ const GeoModal = ({ isOpen, onClose }) => {
             <GoogleMap
               mapContainerStyle={{
                 width: '100%',
-                minHeight: '350px',
+                minHeight: '200px',
                 borderRadius: 4,
                 border: '1px solid #8965EF'
               }}
