@@ -54,6 +54,7 @@ function convertDOMElToObject(entity) {
       data.push(entityData);
     }
   }
+
   return {
     title: 'scene',
     version: '1.0',
