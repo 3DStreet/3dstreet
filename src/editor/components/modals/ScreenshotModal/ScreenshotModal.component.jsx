@@ -9,7 +9,7 @@ import {
   updateDoc
 } from 'firebase/firestore';
 
-import { signIn } from '../../../api';
+import { signIn, uploadGlbScene } from '../../../api';
 import { getDownloadURL, ref, uploadBytes } from 'firebase/storage';
 import PropTypes from 'prop-types';
 import { useAuthContext } from '../../../contexts';
@@ -18,7 +18,6 @@ import { db, storage } from '../../../services/firebase';
 import { Button, Dropdown, Input } from '../../components';
 import Toolbar from '../../scenegraph/Toolbar';
 import Modal from '../Modal.jsx';
-// import { loginHandler } from '../SignInModal';
 
 export const uploadThumbnailImage = async (uploadedFirstTime) => {
   try {
@@ -99,6 +98,22 @@ export const uploadThumbnailImage = async (uploadedFirstTime) => {
   }
 };
 
+const uploadGlbToCloud = async (sceneId) => {
+  try {
+    uploadGlbScene(await Toolbar.convertSceneToGLTFBlob(), sceneId);
+  } catch (error) {
+    console.error('Error uploading and updating Firestore:', error);
+
+    let errorMessage = `Error updating scene thumbnail: ${error}`;
+    if (error.code === 'storage/unauthorized') {
+      errorMessage =
+        'Error updating glb file: only the scene author may upload glb file. Save this scene as your own for uploading.';
+    }
+
+    AFRAME.scenes[0].components['notify'].message(errorMessage, 'error');
+  }
+};
+
 const saveScreenshot = async (value) => {
   const screenshotEl = document.getElementById('screenshot');
   screenshotEl.play();
@@ -148,7 +163,12 @@ function ScreenshotModal({ isOpen, onClose }) {
     {
       value: 'GLB glTF',
       label: 'GLB glTF',
-      onClick: Toolbar.exportSceneToGLTF
+      onClick: () => Toolbar.exportGLTFScene()
+    },
+    {
+      value: 'Upload glTF to cloud',
+      label: 'Upload glTF to cloud',
+      onClick: () => uploadGlbToCloud(sceneId)
     },
     {
       value: '.3dstreet.json',

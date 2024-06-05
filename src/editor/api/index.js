@@ -3,7 +3,8 @@ export {
   updateScene,
   isSceneAuthor,
   getCommunityScenes,
-  checkIfImagePathIsEmpty
+  checkIfImagePathIsEmpty,
+  uploadGlbScene
 } from './scene';
 
 export { signIn } from './auth';
