@@ -108,8 +108,6 @@ const GeoModal = ({ isOpen, onClose }) => {
       'street-geo',
       `latitude: ${latitude}; longitude: ${longitude}; elevation: ${elevation}`
     );
-    // this line needs to update 3D tiles from the Editor. Need to delete after updating aframe-loaders-3dtiles-component
-    geoLayer.play();
 
     onClose();
   };

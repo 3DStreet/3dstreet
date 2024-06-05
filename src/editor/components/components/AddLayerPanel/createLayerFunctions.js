@@ -98,9 +98,6 @@ function create3DTiles() {
       latitude: ${latitude}; longitude: ${longitude}; elevation: ${elevation}; maps: google3d
     `
     );
-    // this line needs to load tiles from the Editor. Need to delete after updating aframe-loaders-3dtiles-component
-    geoLayer.play();
-
     // update sceneGraph
     Events.emit('entitycreated', geoLayer);
   };
