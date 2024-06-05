@@ -1,7 +1,7 @@
 import { useState, useCallback, useEffect } from 'react';
 
 import styles from './GeoModal.module.scss';
-import { Mangnifier20Icon, Save24Icon } from '../../../icons';
+import { Mangnifier20Icon, Save24Icon, QR32Icon } from '../../../icons';
 
 import { firebaseConfig } from '../../../services/firebase.js';
 import Modal from '../Modal.jsx';
@@ -180,6 +180,13 @@ const GeoModal = ({ isOpen, onClose }) => {
         <div className={styles.controlButtons}>
           <Button variant="ghost" onClick={onClose}>
             Cancel
+          </Button>
+          <Button
+            leadingicon={<QR32Icon />}
+            variant="filled"
+            onClick={onSaveHandler}
+          >
+            Create Augmented Reality QR Code
           </Button>
           <Button
             leadingicon={<Save24Icon />}
