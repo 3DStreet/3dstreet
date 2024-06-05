@@ -1,4 +1,8 @@
+<<<<<<< HEAD
 import { Button, HelpButton, GeoPanel, Logo, ZoomButtons } from './components';
+=======
+import { Button, Logo, ZoomButtons } from './components';
+>>>>>>> ea502ad (fix: linting)
 import { CameraToolbar } from './viewport';
 import { Compass32Icon } from '../icons';
 import { Component } from 'react';
@@ -310,16 +314,12 @@ export default class Main extends Component {
             <Compass32Icon />
           </Button>
         )}
-<<<<<<< HEAD
-        {this.state.inspectorEnabled && this.state.isAddLayerPanelOpen && (
-=======
         {this.state.inspectorEnabled && (
           <div id="layerWithCategory">
             <AddLayerButton onClick={this.toggleAddLayerPanel} />
           </div>
         )}
-        {this.state.isAddLayerPanelOpen && (
->>>>>>> c80f984 (feat: billing features)
+        {this.state.inspectorEnabled && this.state.isAddLayerPanelOpen && (
           <AddLayerPanel
             onClose={this.toggleAddLayerPanel}
             isAddLayerPanelOpen={this.state.isAddLayerPanelOpen}

@@ -1,5 +1,4 @@
 import { httpsCallable } from 'firebase/functions';
-import React from 'react';
 import styles from './PaymentModal.module.scss';
 
 import { loadStripe } from '@stripe/stripe-js';

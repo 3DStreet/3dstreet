@@ -1,4 +1,3 @@
-import React from 'react';
 import styles from './ProfileModal.module.scss';
 
 import Modal from '../Modal.jsx';
