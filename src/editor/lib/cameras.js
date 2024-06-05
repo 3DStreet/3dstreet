@@ -118,4 +118,5 @@ function setOrthoCamera(camera, dir, ratio) {
   camera.bottom = info.bottom || -40;
   camera.position.copy(info.position);
   camera.rotation.copy(info.rotation);
+  camera.updateProjectionMatrix();
 }
