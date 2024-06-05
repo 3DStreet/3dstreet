@@ -1,5 +1,3 @@
-import React from 'react';
-
 const Download32Icon = (
   <svg
     width="32"

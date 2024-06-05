@@ -1,4 +1,4 @@
-import { Button, HelpButton, Logo, ZoomButtons } from './components';
+import { Button, Logo, ZoomButtons } from './components';
 import { CameraToolbar } from './viewport';
 import { Compass32Icon } from '../icons';
 import { Component } from 'react';
@@ -207,7 +207,6 @@ export default class Main extends Component {
   }
 
   render() {
-    const { currentUser } = this.props;
     const scene = this.state.sceneEl;
     const isEditor = !!this.state.inspectorEnabled;
     const sceneData = AFRAME.scenes[0].getAttribute('metadata', 'sceneTitle');
