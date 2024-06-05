@@ -10,11 +10,21 @@ import Events from '../../../lib/Events';
  */
 const GeoPanel = () => {
   const onClick = () => Events.emit('opengeomodal');
-  const metadata = AFRAME.scenes[0].getAttribute('metadata');
-  let coordinateInfo;
-  if (metadata && metadata['coord']) {
-    const coord = metadata['coord'];
-    coordinateInfo = `Latitude: ${coord.latitude}, Longitude: ${coord.longitude}, Elevation: ${coord.elevation}m`;
+
+  let latitude = 0;
+  let longitude = 0;
+  let elevation = 0;
+  let coordinateInfo = null;
+
+  const streetGeo = document
+    .getElementById('reference-layers')
+    ?.getAttribute('street-geo');
+
+  if (streetGeo && streetGeo['latitude'] && streetGeo['longitude']) {
+    latitude = streetGeo['latitude'];
+    longitude = streetGeo['longitude'];
+    elevation = streetGeo['elevation'] || 0;
+    coordinateInfo = `Latitude: ${latitude}, Longitude: ${longitude}, Elevation: ${elevation}m`;
   }
 
   return (
