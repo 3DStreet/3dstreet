@@ -9,7 +9,7 @@ import {
   updateDoc
 } from 'firebase/firestore';
 
-import { signIn } from '../../../api';
+import { signIn, uploadGlbScene } from '../../../api';
 import { getDownloadURL, ref, uploadBytes } from 'firebase/storage';
 import PropTypes from 'prop-types';
 import { useAuthContext } from '../../../contexts';
@@ -18,7 +18,6 @@ import { db, storage } from '../../../services/firebase';
 import { Button, Dropdown, Input } from '../../components';
 import Toolbar from '../../scenegraph/Toolbar';
 import Modal from '../Modal.jsx';
-import { uploadGlbScene } from '../../../api';
 
 export const uploadThumbnailImage = async (uploadedFirstTime) => {
   try {
