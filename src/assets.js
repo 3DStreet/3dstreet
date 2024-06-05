@@ -189,7 +189,7 @@ function buildAssetHTML(assetUrl, categories) {
     'vehicles-transit': `
         <!-- vehicles-transit -->
         <a-mixin shadow id="bus" anisotropy gltf-model="url(${assetUrl}sets/flyer-bus/gltf-exports/draco/new-flyer-bus.glb)"></a-mixin>
-        <a-mixin shadow id="tram" anisotropy gltf-model="url(${assetUrl}sets/light-rail-vehicle/gltf-exports/draco/light-rail-vehicle-v02.glb)"></a-mixin>
+        <a-mixin shadow id="tram" anisotropy gltf-model="url(${assetUrl}sets/light-rail-vehicle/gltf-exports/draco/light_rail_vehicle.glb)"></a-mixin>
         <a-mixin shadow id="trolley" gltf-model="url(${assetUrl}sets/sanfrancisco-cablecar/gltf-exports/draco/sanfrancisco-cablecar_v01.glb)"></a-mixin>
         `,
     dividers: `
