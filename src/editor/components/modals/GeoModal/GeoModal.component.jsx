@@ -13,6 +13,7 @@ import {
   Autocomplete
 } from '@react-google-maps/api';
 import GeoImg from '../../../../../ui_assets/geo.png';
+import { roundCoord } from '../../../../../src/utils.js';
 
 const GeoModal = ({ isOpen, onClose }) => {
   const { isLoaded } = useJsApiLoader({
@@ -26,19 +27,16 @@ const GeoModal = ({ isOpen, onClose }) => {
   const [elevation, setElevation] = useState(10);
   const [autocomplete, setAutocomplete] = useState(null);
 
-  const roundCoord = (num) => {
-    return Math.round(num * 1e7) / 1e7;
-  };
-
   useEffect(() => {
     if (isOpen) {
-      // get coordinate data in this format: {latitude: ..., longitude: ..., elevation: ...}
-      const metadata = AFRAME.scenes[0].getAttribute('metadata');
-      if (metadata && metadata['coord']) {
-        const coord = metadata['coord'];
-        const lat = roundCoord(parseFloat(coord.latitude));
-        const lng = roundCoord(parseFloat(coord.longitude));
-        const elevation = parseFloat(coord.elevation) || 0;
+      const streetGeo = document
+        .getElementById('reference-layers')
+        ?.getAttribute('street-geo');
+
+      if (streetGeo && streetGeo['latitude'] && streetGeo['longitude']) {
+        const lat = roundCoord(parseFloat(streetGeo['latitude']));
+        const lng = roundCoord(parseFloat(streetGeo['longitude']));
+        const elevation = parseFloat(streetGeo['elevation']) || 0;
 
         if (!isNaN(lat) && !isNaN(lng)) {
           setMarkerPosition({ lat, lng });
@@ -105,11 +103,6 @@ const GeoModal = ({ isOpen, onClose }) => {
   const onSaveHandler = () => {
     const latitude = markerPosition.lat;
     const longitude = markerPosition.lng;
-    AFRAME.scenes[0].setAttribute('metadata', 'coord', {
-      latitude: latitude,
-      longitude: longitude,
-      elevation: elevation
-    });
     const geoLayer = document.getElementById('reference-layers');
     geoLayer.setAttribute(
       'street-geo',

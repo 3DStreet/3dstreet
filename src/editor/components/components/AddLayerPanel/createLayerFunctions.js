@@ -1,4 +1,5 @@
 import Events from '../../../lib/Events';
+import { loadScript, roundCoord } from '../../../../../src/utils.js';
 
 function createSvgExtrudedEntity() {
   // This component accepts a svgString and creates a new entity with geometry extruded
@@ -30,12 +31,13 @@ function createMapbox() {
   const geoLayer = document.getElementById('reference-layers');
   let latitude = 0;
   let longitude = 0;
-  // get coordinate data in this format: {latitude: ..., longitude: ...}
-  const coord = AFRAME.scenes[0].getAttribute('metadata')['coord'];
+  const streetGeo = document
+    .getElementById('reference-layers')
+    ?.getAttribute('street-geo');
 
-  if (coord) {
-    latitude = roundCoord(parseFloat(coord.latitude));
-    longitude = roundCoord(parseFloat(coord.longitude));
+  if (streetGeo && streetGeo['latitude'] && streetGeo['longitude']) {
+    latitude = roundCoord(parseFloat(streetGeo['latitude']));
+    longitude = roundCoord(parseFloat(streetGeo['longitude']));
   }
 
   geoLayer.setAttribute(
@@ -70,22 +72,6 @@ function createStreetmixStreet() {
   }
 }
 
-function loadScript(url, callback) {
-  const script = document.createElement('script');
-  script.type = 'text/javascript';
-  script.src = url;
-
-  script.onload = function () {
-    callback();
-  };
-
-  document.head.appendChild(script);
-}
-
-const roundCoord = (num) => {
-  return Math.round(num * 1e7) / 1e7;
-};
-
 function create3DTiles() {
   // This code snippet adds an entity to load and display 3d tiles from
   // Google Maps Tiles API 3D Tiles endpoint. This will break your scene
@@ -96,13 +82,14 @@ function create3DTiles() {
     let latitude = 0;
     let longitude = 0;
     let elevation = 0;
-    // get coordinate data in this format: {latitude: ..., longitude: ..., elevation: ...}
-    const coord = AFRAME.scenes[0].getAttribute('metadata')['coord'];
+    const streetGeo = document
+      .getElementById('reference-layers')
+      ?.getAttribute('street-geo');
 
-    if (coord) {
-      latitude = roundCoord(parseFloat(coord.latitude));
-      longitude = roundCoord(parseFloat(coord.longitude));
-      elevation = parseFloat(coord.elevation) || 0;
+    if (streetGeo && streetGeo['latitude'] && streetGeo['longitude']) {
+      latitude = roundCoord(parseFloat(streetGeo['latitude']));
+      longitude = roundCoord(parseFloat(streetGeo['longitude']));
+      elevation = parseFloat(streetGeo['elevation']) || 0;
     }
 
     geoLayer.setAttribute(

@@ -1,5 +1,6 @@
 /* global AFRAME */
 import { firebaseConfig } from '../editor/services/firebase.js';
+import { loadScript } from '../utils.js';
 
 const MAPBOX_ACCESS_TOKEN_VALUE =
   'pk.eyJ1Ijoia2llcmFuZmFyciIsImEiOiJjazB0NWh2YncwOW9rM25sd2p0YTlxemk2In0.mLl4sNGDFbz_QXk0GIK02Q';
@@ -76,24 +77,36 @@ AFRAME.registerComponent('street-geo', {
     const data = this.data;
     const el = this.el;
 
-    const google3dElement = document.createElement('a-entity');
-    google3dElement.setAttribute('data-no-pause', '');
-    google3dElement.setAttribute('data-layer-name', 'Google 3D Tiles');
-    google3dElement.setAttribute('loader-3dtiles', {
-      url: 'https://tile.googleapis.com/v1/3dtiles/root.json',
-      long: data.longitude,
-      lat: data.latitude,
-      height: data.elevation - this.elevationHeightConstant,
-      googleApiKey: firebaseConfig.apiKey,
-      geoTransform: 'WGS84Cartesian',
-      maximumSSE: 48,
-      maximumMem: 400,
-      cameraEl: '#camera'
-    });
-    google3dElement.classList.add('autocreated');
-    google3dElement.setAttribute('data-ignore-raycaster', '');
-    el.appendChild(google3dElement);
-    return google3dElement;
+    const create3DtilesElement = () => {
+      const google3dElement = document.createElement('a-entity');
+      google3dElement.setAttribute('data-no-pause', '');
+      google3dElement.setAttribute('data-layer-name', 'Google 3D Tiles');
+      google3dElement.setAttribute('loader-3dtiles', {
+        url: 'https://tile.googleapis.com/v1/3dtiles/root.json',
+        long: data.longitude,
+        lat: data.latitude,
+        height: data.elevation - this.elevationHeightConstant,
+        googleApiKey: firebaseConfig.apiKey,
+        geoTransform: 'WGS84Cartesian',
+        maximumSSE: 16,
+        maximumMem: 400,
+        cameraEl: '#camera'
+      });
+      google3dElement.classList.add('autocreated');
+      google3dElement.setAttribute('data-ignore-raycaster', '');
+      el.appendChild(google3dElement);
+      return google3dElement;
+    };
+
+    // check whether the library has been imported. Download if not
+    if (AFRAME.components['loader-3dtiles']) {
+      return create3DtilesElement();
+    } else {
+      return loadScript(
+        new URL('/src/lib/aframe-loader-3dtiles-component.js', import.meta.url),
+        create3DtilesElement
+      );
+    }
   },
   google3dUpdate: function () {
     const data = this.data;
