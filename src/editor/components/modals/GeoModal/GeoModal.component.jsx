@@ -142,20 +142,10 @@ const GeoModal = ({ isOpen, onClose }) => {
         </div>
         {isLoaded && (
           <>
-            <Autocomplete
-              onLoad={onAutocompleteLoad}
-              onPlaceChanged={onPlaceChanged}
-            >
-              <Input
-                leadingIcon={<Mangnifier20Icon />}
-                placeholder="Search for a location"
-                onChange={(value) => {}}
-              />
-            </Autocomplete>
             <GoogleMap
               mapContainerStyle={{
                 width: '100%',
-                minHeight: '350px',
+                minHeight: '200px',
                 borderRadius: 4,
                 border: '1px solid #8965EF'
               }}
@@ -171,7 +161,16 @@ const GeoModal = ({ isOpen, onClose }) => {
             </GoogleMap>
           </>
         )}
-
+        <Autocomplete
+          onLoad={onAutocompleteLoad}
+          onPlaceChanged={onPlaceChanged}
+        >
+          <Input
+            leadingIcon={<Mangnifier20Icon />}
+            placeholder="Search for a location"
+            onChange={(value) => {}}
+          />
+        </Autocomplete>
         <div className={styles.sceneGeo}>
           <div>
             <p>Centerpoint</p>
