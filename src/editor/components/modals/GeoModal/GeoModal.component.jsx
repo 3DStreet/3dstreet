@@ -48,11 +48,33 @@ const GeoModal = ({ isOpen, onClose }) => {
     }
   }, [isOpen]);
 
+  const requestAndSetElevation = (lat, lng) => {
+    // request and set elevation for location with coordinates: lat, lng
+    const elevationService = new window.google.maps.ElevationService();
+    elevationService.getElevationForLocations(
+      {
+        locations: [{ lat, lng }]
+      },
+      (results, status) => {
+        if (status === 'OK' && results[0]) {
+          setElevation(results[0].elevation.toFixed(2));
+        }
+      }
+    );
+  };
+
+  const setMarkerPositionAndElevation = useCallback((lat, lng) => {
+    if (!isNaN(lat) && !isNaN(lng)) {
+      setMarkerPosition({
+        lat: roundCoord(lat),
+        lng: roundCoord(lng)
+      });
+      requestAndSetElevation(lat, lng);
+    }
+  }, []);
+
   const onMapClick = useCallback((event) => {
-    setMarkerPosition({
-      lat: roundCoord(event.latLng.lat()),
-      lng: roundCoord(event.latLng.lng())
-    });
+    setMarkerPositionAndElevation(event.latLng.lat(), event.latLng.lng());
   }, []);
 
   const handleCoordinateChange = (value) => {
@@ -60,12 +82,7 @@ const GeoModal = ({ isOpen, onClose }) => {
       .split(',')
       .map((coord) => parseFloat(coord.trim()));
 
-    if (!isNaN(newLat) && !isNaN(newLng)) {
-      setMarkerPosition({
-        lat: roundCoord(newLat),
-        lng: roundCoord(newLng)
-      });
-    }
+    setMarkerPositionAndElevation(newLat, newLng);
   };
 
   const handleElevationChange = (value) => {
@@ -81,11 +98,10 @@ const GeoModal = ({ isOpen, onClose }) => {
     if (autocomplete !== null) {
       const place = autocomplete.getPlace();
       if (place && place.geometry) {
-        const location = {
-          lat: place.geometry.location.lat(),
-          lng: place.geometry.location.lng()
-        };
-        setMarkerPosition(location);
+        setMarkerPositionAndElevation(
+          place.geometry.location.lat(),
+          place.geometry.location.lng()
+        );
       }
     } else {
       console.log('Autocomplete is not loaded yet!');
