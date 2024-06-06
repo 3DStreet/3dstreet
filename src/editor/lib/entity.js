@@ -622,10 +622,17 @@ export function createEntity(definition, cb) {
     entity.id = createUniqueId();
   }
 
-  // set class, mixin, data attributes
+  // set class, mixin
   for (const attribute of NOT_COMPONENTS) {
     if (attribute !== 'id' && definition[attribute]) {
       entity.setAttribute(attribute, definition[attribute]);
+    }
+  }
+
+  // set data attributes
+  for (const key in definition) {
+    if (key.startsWith('data-')) {
+      entity.setAttribute(key, definition[key]);
     }
   }
 
@@ -649,7 +656,7 @@ export function createEntity(definition, cb) {
   return entity;
 }
 
-const NOT_COMPONENTS = ['id', 'class', 'mixin', 'data-layer-name'];
+const NOT_COMPONENTS = ['id', 'class', 'mixin'];
 
 export function elementToJson(element) {
   const obj = {};
@@ -671,7 +678,10 @@ export function elementToJson(element) {
         continue;
       }
 
-      if (NOT_COMPONENTS.includes(attribute.name)) {
+      if (
+        NOT_COMPONENTS.includes(attribute.name) ||
+        attribute.name.startsWith('data-')
+      ) {
         obj[attribute.name] = attribute.value;
         continue;
       }
