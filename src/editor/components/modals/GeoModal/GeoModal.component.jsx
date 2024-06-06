@@ -100,6 +100,19 @@ const GeoModal = ({ isOpen, onClose }) => {
     }
   };
 
+  const onQRHandler = () => {
+    let currentSceneId = STREET.utils.getCurrentSceneId();
+    const PROTOCOL = 'https://';
+    const HOSTNAME = window.location.host; // such as 'dev-3dstreet.web.app'
+    const QUERYSTRING = '?viewer=ar';
+    const HASH = '#/scenes/' + currentSceneId + '.json';
+    const AR_URL = PROTOCOL + HOSTNAME + QUERYSTRING + HASH;
+    const APPCLIP_PREFIX = 'https://launchar.app/l/gy8Ma2?url='; // via https://launchar.app/projects/
+    const APPCLIP_URL = APPCLIP_PREFIX + encodeURIComponent(AR_URL);
+
+    prompt('Make QR Code from this URL:', APPCLIP_URL);
+  };
+
   const onSaveHandler = () => {
     const latitude = markerPosition.lat;
     const longitude = markerPosition.lng;
@@ -184,7 +197,7 @@ const GeoModal = ({ isOpen, onClose }) => {
           <Button
             leadingicon={<QR32Icon />}
             variant="filled"
-            onClick={onSaveHandler}
+            onClick={onQRHandler}
           >
             Create Augmented Reality QR Code
           </Button>
