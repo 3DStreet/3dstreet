@@ -65,7 +65,7 @@ function convertDOMElToObject(entity) {
 STREET.utils.convertDOMElToObject = convertDOMElToObject;
 
 function getElementData(entity) {
-  if (!entity.isEntity) {
+  if (!entity.isEntity || entity.classList.contains('autocreated')) {
     return;
   }
   // node id's that should save without child nodes
@@ -73,12 +73,14 @@ function getElementData(entity) {
   const elementTree = getAttributes(entity);
   const children = entity.childNodes;
   if (children.length && !skipChildrenNodes.includes(elementTree.id)) {
-    elementTree['children'] = [];
+    const savedChildren = [];
     for (const child of children) {
       if (child.nodeType === Node.ELEMENT_NODE) {
-        elementTree['children'].push(getElementData(child));
+        const elementData = getElementData(child);
+        if (elementData) savedChildren.push(elementData);
       }
     }
+    if (savedChildren) elementTree['children'] = savedChildren;
   }
   return elementTree;
 }
