@@ -41,7 +41,7 @@ const SceneEditTitle = ({ sceneData }) => {
       {
         <div className={styles.readOnly}>
           <p className={styles.title} onClick={handleEditClick}>
-            {title || 'New Scene'}
+            {title || 'Untitled'}
           </p>
         </div>
       }

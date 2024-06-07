@@ -146,7 +146,6 @@ const GeoModal = ({ isOpen, onClose }) => {
       className={styles.modalWrapper}
       isOpen={isOpen}
       onClose={onCloseCheck}
-      extraCloseKeyCode={72}
     >
       <div className={styles.wrapper}>
         <div className={styles.header}>

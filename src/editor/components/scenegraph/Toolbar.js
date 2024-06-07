@@ -157,8 +157,23 @@ export default class Toolbar extends Component {
         Events.emit('opensigninmodal');
         return;
       }
-      // determine what is the currentSceneId?
-      // how: first check state, if not there then use URL hash, otherwise null
+
+      // check if the user is not pro, and if the geospatial has array of values of mapbox
+      const streetGeo = document
+        .getElementById('reference-layers')
+        ?.getAttribute('street-geo');
+      if (
+        !this.props.currentUser.isPro &&
+        streetGeo &&
+        streetGeo['latitude'] &&
+        streetGeo['longitude']
+      ) {
+        STREET.notify.errorMessage(
+          `Geospatial Pro account required to save 3DStreet Cloud scenes with 'longitude' and 'latitude' geolocation. You may download a '.3dstreet.json' file instead.`
+        );
+        return;
+      }
+
       let currentSceneId = STREET.utils.getCurrentSceneId();
       let currentSceneTitle = STREET.utils.getCurrentSceneTitle();
 
