@@ -12,6 +12,7 @@
 	border-radius: 50%;
 	cursor: pointer;
 	transition: background-color 0.3s ease;
+	z-index: 999999;
 }
 
 .play-button::before {
@@ -27,6 +28,19 @@
 
 .play-button:hover {
 	background-color: #333333;
+}
+
+#ar-overlay {
+	position: absolute;
+	left: 6px;
+	top: 6px;
+	padding: 6px;
+	/*
+	text-shadow: 0 0 5px white;
+	*/
+	max-width: 350px;
+	background-color: rgba(255, 255, 255, 0.7);
+	z-index: 999
 }
 
 html {
