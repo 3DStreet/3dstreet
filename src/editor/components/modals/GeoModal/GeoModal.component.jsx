@@ -14,6 +14,7 @@ import {
 } from '@react-google-maps/api';
 import GeoImg from '../../../../../ui_assets/geo.png';
 import { roundCoord } from '../../../../../src/utils.js';
+import { QrCode } from '../../components/QrCode/QrCode.component.jsx';
 
 const GeoModal = ({ isOpen, onClose }) => {
   const { isLoaded } = useJsApiLoader({
@@ -26,6 +27,7 @@ const GeoModal = ({ isOpen, onClose }) => {
   });
   const [elevation, setElevation] = useState(10);
   const [autocomplete, setAutocomplete] = useState(null);
+  const [qrCodeUrl, setQrCodeUrl] = useState(null);
 
   useEffect(() => {
     if (isOpen) {
@@ -125,8 +127,14 @@ const GeoModal = ({ isOpen, onClose }) => {
     const AR_URL = PROTOCOL + HOSTNAME + QUERYSTRING + HASH;
     const APPCLIP_PREFIX = 'https://launchar.app/l/gy8Ma2?url='; // via https://launchar.app/projects/
     const APPCLIP_URL = APPCLIP_PREFIX + encodeURIComponent(AR_URL);
-
-    prompt('Make QR Code from this URL:', APPCLIP_URL);
+    setQrCodeUrl(APPCLIP_URL);
+    setTimeout(
+      () =>
+        document
+          .getElementById('qrCodeContainer')
+          ?.scrollIntoView({ behavior: 'smooth' }),
+      100
+    );
   };
 
   const onSaveHandler = () => {
@@ -205,17 +213,26 @@ const GeoModal = ({ isOpen, onClose }) => {
           </div>
         </div>
 
+        {qrCodeUrl && (
+          <div className={styles.qrCodeContainer} id="qrCodeContainer">
+            <QrCode url={qrCodeUrl} />
+            <div>Click on the QR Code to download it</div>
+          </div>
+        )}
+
         <div className={styles.controlButtons}>
           <Button variant="ghost" onClick={onClose}>
             Cancel
           </Button>
-          <Button
-            leadingicon={<QR32Icon />}
-            variant="filled"
-            onClick={onQRHandler}
-          >
-            Create Augmented Reality QR Code
-          </Button>
+          {!qrCodeUrl && (
+            <Button
+              leadingicon={<QR32Icon />}
+              variant="filled"
+              onClick={onQRHandler}
+            >
+              Create Augmented Reality QR Code
+            </Button>
+          )}
           <Button
             leadingicon={<Save24Icon />}
             variant="filled"

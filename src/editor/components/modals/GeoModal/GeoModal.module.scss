@@ -57,6 +57,13 @@
       }
     }
 
+    .qrCodeContainer {
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+    }
+
     .controlButtons {
       display: flex;
       justify-content: space-between;
