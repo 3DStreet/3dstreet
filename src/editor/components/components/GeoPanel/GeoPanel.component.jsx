@@ -1,6 +1,7 @@
 import GeoImg from '../../../../../ui_assets/geo.png';
 import styles from './GeoPanel.module.scss';
 import Events from '../../../lib/Events';
+import { useAuthContext } from '../../../contexts/index.js';
 
 /**
  * GeoPanel component.
@@ -10,6 +11,7 @@ import Events from '../../../lib/Events';
  */
 const GeoPanel = () => {
   const onClick = () => Events.emit('opengeomodal');
+  const { currentUser } = useAuthContext();
 
   let latitude = 0;
   let longitude = 0;
@@ -29,11 +31,17 @@ const GeoPanel = () => {
 
   return (
     <div className={styles.geo}>
-      <img src={GeoImg} onClick={onClick} alt="geo" />
-      {coordinateInfo ? (
-        <a onClick={onClick}>{coordinateInfo}</a>
+      {currentUser?.isPro ? (
+        <>
+          <img src={GeoImg} onClick={onClick} alt="geo" />
+          {coordinateInfo ? (
+            <a onClick={onClick}>{coordinateInfo}</a>
+          ) : (
+            <a onClick={onClick}>Click to set location</a>
+          )}
+        </>
       ) : (
-        <a onClick={onClick}>Click to set location</a>
+        <></>
       )}
     </div>
   );
