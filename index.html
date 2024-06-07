@@ -3,7 +3,7 @@
 
 <head>
   <!-- aframe -->
-  <script src="https://launchar.app/sdk/v1?key=5FXAKdmPAUHi5QV6zkUt8wPkBl6Wa4p6&redirect=true"></script>
+  <script src="https://launchar.app/sdk/v1?key=vDhrPJN2RAYrTKXak3LYKFPnPGKYAzKK&redirect=true"></script>
   <script src="https://aframe.io/releases/1.5.0/aframe.min.js"></script>
 
   <!-- 3dstreet -->
@@ -23,7 +23,7 @@
     })
   </script> -->
 
-  <script>
+  <!-- <script>
     // TODO: This should be inside of Viewer Wrapper component logic
     // this makes the same camera rig setup work in VR and desktop modes
     // this could be a new component, such as "swap desktop and vr controls" and put in init section
@@ -40,7 +40,7 @@
         document.querySelector('#cameraRig').setAttribute('look-controls', "reverseMouseDrag: true;")
         document.querySelector('#cameraRig').setAttribute('wasd-controls', "enabled: true")
       });
-    })
+    }) -->
   </script>
   <title>3DStreet</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
@@ -132,7 +132,8 @@
     renderer="colorManagement: true; physicallyCorrectLights: true; anisotropy: 16; logarithmicDepthBuffer: true;"
     inspector="url: ./dist/3dstreet-editor.js" timed-inspector="1" loading-screen="enabled: false" notify metadata
     scene-title reflection device-orientation-permission-ui="enabled: false"
-    webxr="requiredFeatures:hit-test,local-floor;referenceSpaceType:local-floor;" xr-mode-ui="XRMode: ar">
+    webxr="requiredFeatures:hit-test,local-floor;referenceSpaceType:local-floor;"
+    xr-mode-ui="enterARButton: #play-button; XRMode: ar;">
     <a-assets>
       <!-- TODO: Add this to repo documentation  -->
       <!-- you can specify a custom asset path using below syntax  -->
