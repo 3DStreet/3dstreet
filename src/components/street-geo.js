@@ -21,6 +21,9 @@ AFRAME.registerComponent('street-geo', {
     this.mapTypes = ['mapbox2d', 'google3d'];
     this.elevationHeightConstant = 32.49158;
 
+    const urlParams = new URLSearchParams(window.location.search);
+    this.isAR = urlParams.get('viewer') === 'ar';
+
     for (const mapType of this.mapTypes) {
       // initialize create and update functions
       this[mapType + 'Create'].bind(this);
@@ -35,7 +38,9 @@ AFRAME.registerComponent('street-geo', {
     for (const mapType of this.mapTypes) {
       if (data.maps.includes(mapType) && !this[mapType]) {
         // create Map element and save a link to it in this[mapType]
-        this[mapType + 'Create']();
+        if (!this.isAR) {
+          this[mapType + 'Create']();
+        }
       } else if (
         data.maps.includes(mapType) &&
         (updatedData.longitude || updatedData.latitude || updatedData.elevation)

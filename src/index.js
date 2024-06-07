@@ -578,6 +578,8 @@ AFRAME.registerComponent('street-environment', {
     const light2 = this.light2;
     const assetsPathRoot = '//assets.3dstreet.app/';
 
+    sky.setAttribute('hide-on-enter-ar', '');
+
     if (this.data.preset === 'night') {
       light1.setAttribute('light', 'intensity', 0.5);
       light2.setAttribute('light', 'intensity', 0.15);
