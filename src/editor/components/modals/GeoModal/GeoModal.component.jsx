@@ -75,7 +75,7 @@ const GeoModal = ({ isOpen, onClose }) => {
 
   const onMapClick = useCallback((event) => {
     setMarkerPositionAndElevation(event.latLng.lat(), event.latLng.lng());
-  }, []);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleCoordinateChange = (value) => {
     const [newLat, newLng] = value
@@ -106,7 +106,7 @@ const GeoModal = ({ isOpen, onClose }) => {
     } else {
       console.log('Autocomplete is not loaded yet!');
     }
-  }, [autocomplete]);
+  }, [autocomplete]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const onCloseCheck = (evt) => {
     // do not close geoModal when clicking on a list with suggestions for addresses
