@@ -11,6 +11,7 @@ import { Viewport } from './lib/viewport';
 import { firebaseConfig } from './services/firebase.js';
 import './style/index.scss';
 import ReactGA from 'react-ga4';
+import posthog from 'posthog-js';
 
 function Inspector() {
   this.assetsLoader = new AssetsLoader();
@@ -328,5 +329,10 @@ Inspector.prototype = {
 
 ReactGA.initialize(firebaseConfig.measurementId);
 const inspector = (AFRAME.INSPECTOR = new Inspector());
+
+posthog.init('phc_Yclai3qykyFi8AEFOrZsh6aS78SSooLzpDz9wQ9YAH9', {
+  api_host: 'https://us.i.posthog.com',
+  person_profiles: 'identified_only' // or 'always' to create profiles for anonymous users as well
+});
 
 export { inspector };
