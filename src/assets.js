@@ -88,7 +88,9 @@ function buildAssetHTML(assetUrl, categories) {
         <a-mixin shadow id="food-trailer-rig" gltf-model="url(${assetUrl}sets/vehicles-rig/gltf-exports/draco/food-trailer-rig.glb)"></a-mixin>
         <a-mixin shadow id="fire-truck-rig" gltf-model="url(${assetUrl}sets/vehicles-rig/gltf-exports/draco/fire-truck-pumper-rig.glb)"></a-mixin>
         <a-mixin shadow id="fire-ladder-rig" gltf-model="url(${assetUrl}sets/vehicles/gltf-exports/draco/fire_truck_ladder.glb)"></a-mixin>
+        <a-mixin shadow id="trash-truck-side-loading" gltf-model="url(${assetUrl}sets/vehicles/gltf-exports/draco/trash-truck-side-loading.glb)"></a-mixin>
         <a-mixin shadow id="self-driving-cruise-car-rig" gltf-model="url(${assetUrl}sets/vehicles-rig/gltf-exports/draco/self-driving-cruise-car-rig.glb)"></a-mixin>
+        <a-mixin shadow id="self-driving-waymo-car" gltf-model="url(${assetUrl}sets/vehicles/gltf-exports/draco/waymo-self-driving-car.glb)"></a-mixin>
       `,
     buildings: `
         <!-- blocks -->
@@ -188,11 +190,11 @@ function buildAssetHTML(assetUrl, categories) {
     'vehicles-transit': `
         <!-- vehicles-transit -->
         <a-mixin shadow id="bus" anisotropy gltf-model="url(${assetUrl}sets/flyer-bus/gltf-exports/draco/new-flyer-bus.glb)"></a-mixin>
-        <a-mixin shadow id="tram" anisotropy gltf-model="url(${assetUrl}sets/light-rail-vehicle/gltf-exports/draco/light-rail-vehicle-v02.glb)"></a-mixin>
+        <a-mixin shadow id="tram" anisotropy gltf-model="url(${assetUrl}sets/light-rail-vehicle/gltf-exports/draco/light_rail_vehicle.glb)"></a-mixin>
         <a-mixin shadow id="trolley" gltf-model="url(${assetUrl}sets/sanfrancisco-cablecar/gltf-exports/draco/sanfrancisco-cablecar_v01.glb)"></a-mixin>
         `,
     dividers: `
-        <!-- dividers -->
+        <!-- dividers - aka street design elements -->
         <a-asset-item id="dividers" src="${assetUrl}sets/dividers/gltf-exports/draco/dividers.glb"></a-asset-item>        
         <a-mixin shadow id="dividers-flowers" scale="1 1 1" rotation="0 0 0" gltf-part="src: #dividers; part: flowers"></a-mixin>
         <a-mixin shadow id="dividers-planting-strip" scale="1 1 1" rotation="0 0 0" gltf-part="src: #dividers; part: planting-strip"></a-mixin>
@@ -204,6 +206,12 @@ function buildAssetHTML(assetUrl, categories) {
         <a-mixin shadow id="temporary-traffic-cone" scale="1 1 1" rotation="0 0 0" gltf-part="src: #dividers; part: traffic-cone"></a-mixin>
         <a-mixin shadow id="temporary-jersey-barrier-plastic" scale="1 1 1" rotation="0 0 0" gltf-part="src: #dividers; part: jersey-barrier-plastic"></a-mixin>
         <a-mixin shadow id="temporary-jersey-barrier-concrete" scale="1 1 1" rotation="0 0 0" gltf-part="src: #dividers; part: jersey-barrier-concrete"></a-mixin>
+        <a-mixin shadow id="street-element-crosswalk-raised" scale="1 1 1" rotation="0 0 0" gltf-model="url(${assetUrl}sets/uoregon/gltf-exports/draco/crosswalk-raised.glb)"></a-mixin>
+        <a-mixin shadow id="street-element-traffic-island-end-rounded" scale="1.5 1.5 1.5" rotation="0 0 0" gltf-model="url(${assetUrl}sets/uoregon/gltf-exports/draco/curb-island-end-rounded.glb)"></a-mixin>
+        <a-mixin shadow id="street-element-sign-warning-ped-rrfb" scale="1.5 1.5 1.5" rotation="0 0 0" gltf-model="url(${assetUrl}sets/uoregon/gltf-exports/draco/sign-warning-ped-rrfb.glb)"></a-mixin>
+        <a-mixin shadow id="street-element-traffic-post-k71" scale="1 1 1" rotation="0 0 0" gltf-model="url(${assetUrl}sets/uoregon/gltf-exports/draco/traffic-post-k71.glb)"></a-mixin>
+        <a-mixin shadow id="street-element-traffic-island" scale="1.5 1.5 1.5" rotation="0 0 0" gltf-model="url(${assetUrl}sets/uoregon/gltf-exports/draco/curb-traffic-island.glb)"></a-mixin>
+        <a-mixin shadow id="street-element-speed-hump" scale="1.5 1.5 1.5" rotation="0 0 0" gltf-model="url(${assetUrl}sets/uoregon/gltf-exports/draco/speed-hump.glb)"></a-mixin>
       `,
     sky: `
         <!-- sky -->

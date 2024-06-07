@@ -54,6 +54,7 @@ function convertDOMElToObject(entity) {
       data.push(entityData);
     }
   }
+
   return {
     title: 'scene',
     version: '1.0',
@@ -68,7 +69,7 @@ function getElementData(entity) {
     return;
   }
   // node id's that should save without child nodes
-  const skipChildrenNodes = ['environment'];
+  const skipChildrenNodes = ['environment', 'reference-layers'];
   const elementTree = getAttributes(entity);
   const children = entity.childNodes;
   if (children.length && !skipChildrenNodes.includes(elementTree.id)) {

@@ -1,4 +1,5 @@
 import Events from '../../../lib/Events';
+import { loadScript, roundCoord } from '../../../../../src/utils.js';
 
 function createSvgExtrudedEntity() {
   // This component accepts a svgString and creates a new entity with geometry extruded
@@ -27,22 +28,25 @@ function createSvgExtrudedEntity() {
 function createMapbox() {
   // This component accepts a long / lat and renders a plane with dimensions that
   // (should be) at a correct scale.
-  const newEl = document.createElement('a-entity');
-  newEl.setAttribute('geometry', 'primitive: plane; width: 512; height: 512;');
-  newEl.setAttribute('rotation', '-90 0 0');
-  newEl.setAttribute(
-    'mapbox',
-    `center: -122.417490, 37.765190; 
-		zoom: 18; 
-		accessToken: pk.eyJ1Ijoia2llcmFuZmFyciIsImEiOiJjazB0NWh2YncwOW9rM25sd2p0YTlxemk2In0.mLl4sNGDFbz_QXk0GIK02Q; 
-		style: mapbox://styles/mapbox/satellite-streets-v11; 
-		pxToWorldRatio: 4;`
+  const geoLayer = document.getElementById('reference-layers');
+  let latitude = 0;
+  let longitude = 0;
+  const streetGeo = document
+    .getElementById('reference-layers')
+    ?.getAttribute('street-geo');
+
+  if (streetGeo && streetGeo['latitude'] && streetGeo['longitude']) {
+    latitude = roundCoord(parseFloat(streetGeo['latitude']));
+    longitude = roundCoord(parseFloat(streetGeo['longitude']));
+  }
+
+  geoLayer.setAttribute(
+    'street-geo',
+    `
+    latitude: ${latitude}; longitude: ${longitude}; maps: mapbox2d
+    `
   );
-  newEl.setAttribute('data-layer-name', 'Aerial Imagery • Mapbox Satellite');
-  const parentEl = document.querySelector('#reference-layers');
-  parentEl.appendChild(newEl);
-  // update sceneGraph
-  Events.emit('entitycreated', newEl);
+  Events.emit('entitycreated', geoLayer);
 }
 
 function createStreetmixStreet() {
@@ -68,50 +72,36 @@ function createStreetmixStreet() {
   }
 }
 
-function loadScript(url, callback) {
-  const script = document.createElement('script');
-  script.type = 'text/javascript';
-  script.src = url;
-
-  script.onload = function () {
-    callback();
-  };
-
-  document.head.appendChild(script);
-}
-
 function create3DTiles() {
-  const create3DtilesElement = () => {
-    const newEl = document.createElement('a-entity');
-    newEl.setAttribute('data-no-pause', '');
-    newEl.setAttribute('id', 'tileset');
-    newEl.setAttribute('data-layer-name', 'Aerial Imagery • Google 3D Tiles');
-    newEl.setAttribute(
-      'loader-3dtiles',
-      `
-		    lat: 37.77522354250163;
-		    long: -122.41931773049723;
-		    height: -16.5;
-		    url: https://tile.googleapis.com/v1/3dtiles/root.json; 
-		    googleApiKey: AIzaSyAQshwLVKTpwTfPJxFEkEzOdP_cgmixTCQ; 
-		    geoTransform: WGS84Cartesian; 
-		    maximumSSE: 48; 
-		    maximumMem: 400;
-		    cameraEl: #camera
-		`
-    );
+  // This code snippet adds an entity to load and display 3d tiles from
+  // Google Maps Tiles API 3D Tiles endpoint. This will break your scene
+  // and you cannot save it yet, so beware before testing.
 
-    const refLayers = document.querySelector('#reference-layers');
-    // remove all reference elements
-    while (refLayers.firstChild) {
-      refLayers.removeChild(refLayers.firstChild);
+  const create3DtilesElement = () => {
+    const geoLayer = document.getElementById('reference-layers');
+    let latitude = 0;
+    let longitude = 0;
+    let elevation = 0;
+    const streetGeo = document
+      .getElementById('reference-layers')
+      ?.getAttribute('street-geo');
+
+    if (streetGeo && streetGeo['latitude'] && streetGeo['longitude']) {
+      latitude = roundCoord(parseFloat(streetGeo['latitude']));
+      longitude = roundCoord(parseFloat(streetGeo['longitude']));
+      elevation = parseFloat(streetGeo['elevation']) || 0;
     }
-    refLayers.appendChild(newEl);
-    document.querySelector('#tileset').play();
+
+    geoLayer.setAttribute(
+      'street-geo',
+      `
+      latitude: ${latitude}; longitude: ${longitude}; elevation: ${elevation}; maps: google3d
+    `
+    );
     // update sceneGraph
-    Events.emit('entitycreated', newEl);
+    Events.emit('entitycreated', geoLayer);
   };
-  // This code snippet adds an entity to load and display 3d tiles from Google Maps Tiles API 3D Tiles endpoint. This will break your scene and you cannot save it yet, so beware before testing.
+
   if (AFRAME.components['loader-3dtiles']) {
     create3DtilesElement();
   } else {
