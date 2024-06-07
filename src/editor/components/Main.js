@@ -1,4 +1,4 @@
-import { Button, HelpButton, Logo, ZoomButtons } from './components';
+import { Button, Logo, ZoomButtons } from './components';
 import { CameraToolbar } from './viewport';
 import { Compass32Icon } from '../icons';
 import { Component } from 'react';
@@ -14,6 +14,7 @@ import { injectCSS } from '../lib/utils';
 import { SignInModal } from './modals/SignInModal';
 import { ProfileModal } from './modals/ProfileModal';
 import { ScenesModal } from './modals/ScenesModal';
+import { PaymentModal } from './modals/PaymentModal';
 import { SceneEditTitle } from './components/SceneEditTitle';
 import { AddLayerButton } from './components/AddLayerButton';
 import { AddLayerPanel } from './components/AddLayerPanel';
@@ -24,6 +25,7 @@ injectCSS(
 );
 
 const isStreetLoaded = window.location.hash.length;
+const isPaymentModalOpened = window.location.hash.includes('/modal/payment');
 
 export default class Main extends Component {
   constructor(props) {
@@ -35,7 +37,8 @@ export default class Main extends Component {
       isSignInModalOpened: false,
       isProfileModalOpened: false,
       isAddLayerPanelOpen: false,
-      isScenesModalOpened: !isStreetLoaded,
+      isPaymentModalOpened: isPaymentModalOpened,
+      isScenesModalOpened: !isStreetLoaded && !isPaymentModalOpened,
       sceneEl: AFRAME.scenes[0],
       visible: {
         scenegraph: true,
@@ -114,6 +117,9 @@ export default class Main extends Component {
     Events.on('openprofilemodal', () => {
       this.setState({ isProfileModalOpened: true });
     });
+    Events.on('openpaymentmodel', () => {
+      this.setState({ isPaymentModalOpened: true });
+    });
   }
 
   onCloseHelpModal = (value) => {
@@ -147,6 +153,10 @@ export default class Main extends Component {
 
   onCloseProfileModal = () => {
     this.setState({ isProfileModalOpened: false });
+  };
+
+  onClosePaymentModal = () => {
+    this.setState({ isPaymentModalOpened: false });
   };
 
   toggleEdit = () => {
@@ -197,7 +207,6 @@ export default class Main extends Component {
   }
 
   render() {
-    const { currentUser } = this.props;
     const scene = this.state.sceneEl;
     const isEditor = !!this.state.inspectorEnabled;
     const sceneData = AFRAME.scenes[0].getAttribute('metadata', 'sceneTitle');
@@ -238,6 +247,10 @@ export default class Main extends Component {
           isOpen={this.state.isSignInModalOpened}
           onClose={this.onCloseSignInModal}
         />
+        <PaymentModal
+          isOpen={this.state.isPaymentModalOpened}
+          onClose={this.onClosePaymentModal}
+        />
         <ScenesModal
           isOpen={this.state.isScenesModalOpened}
           onClose={this.onCloseScenesModal}
@@ -253,11 +266,7 @@ export default class Main extends Component {
           selectedTexture={this.state.selectedTexture}
           onClose={this.onModalTextureOnClose}
         />
-        {this.state.inspectorEnabled && (
-          <div id="help">
-            <HelpButton />
-          </div>
-        )}
+
         {this.state.inspectorEnabled && (
           <div id="scene-title">
             <SceneEditTitle sceneData={sceneData} />
@@ -273,12 +282,12 @@ export default class Main extends Component {
             <Compass32Icon />
           </Button>
         )}
-        {currentUser && currentUser.isBeta && this.state.inspectorEnabled && (
+        {this.state.inspectorEnabled && (
           <div id="layerWithCategory">
             <AddLayerButton onClick={this.toggleAddLayerPanel} />
           </div>
         )}
-        {this.state.inspectorEnabled && this.state.isAddLayerPanelOpen && (
+        {this.state.isAddLayerPanelOpen && (
           <AddLayerPanel
             onClose={this.toggleAddLayerPanel}
             isAddLayerPanelOpen={this.state.isAddLayerPanelOpen}

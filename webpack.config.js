@@ -2,11 +2,11 @@ const webpack = require('webpack');
 const path = require('path');
 const Dotenv = require('dotenv-webpack');
 const CopyWebpackPlugin = require('copy-webpack-plugin');
+const ReactRefreshPlugin = require('@pmmmwh/react-refresh-webpack-plugin');
 
 module.exports = {
   mode: 'development',
   devServer: {
-    hot: true,
     liveReload: false,
     port: 3333,
     static: {
@@ -34,6 +34,7 @@ module.exports = {
     new Dotenv({
       path: './config/.env.development'
     }),
+    new ReactRefreshPlugin(),
     new webpack.DefinePlugin({
       VERSION: JSON.stringify(process.env.npm_package_version)
     }),
