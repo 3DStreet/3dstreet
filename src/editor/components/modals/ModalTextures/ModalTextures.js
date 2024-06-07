@@ -1,8 +1,8 @@
 import React from 'react';
 import PropTypes from 'prop-types';
-import Events from '../../lib/Events';
-import Modal from './Modal.jsx';
-import { insertNewAsset } from '../../lib/assetsUtils';
+import Events from '../../../lib/Events.js';
+import Modal from '../Modal.jsx';
+import { insertNewAsset } from '../../../lib/assetsUtils.js';
 
 function getFilename(url, converted = false) {
   var filename = url.split('/').pop();
@@ -29,7 +29,7 @@ function getValidId(name) {
     .toLowerCase();
 }
 
-export default class ModalTextures extends React.Component {
+class ModalTextures extends React.Component {
   static propTypes = {
     isOpen: PropTypes.bool,
     onClose: PropTypes.func,
@@ -426,3 +426,5 @@ export default class ModalTextures extends React.Component {
     );
   }
 }
+
+export { ModalTextures };

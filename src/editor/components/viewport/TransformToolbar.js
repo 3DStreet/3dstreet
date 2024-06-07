@@ -9,7 +9,7 @@ var TransformButtons = [
   { value: 'scale', icon: 'fa-expand' }
 ];
 
-export default class TransformToolbar extends React.Component {
+class TransformToolbar extends React.Component {
   constructor(props) {
     super(props);
     this.state = {
@@ -93,3 +93,5 @@ export default class TransformToolbar extends React.Component {
     );
   }
 }
+
+export { TransformToolbar };

@@ -9,7 +9,7 @@ import { Cloud24Icon, RemixIcon, Save24Icon, Upload24Icon } from '../../icons';
 import Events from '../../lib/Events';
 import { saveBlob } from '../../lib/utils';
 import { Button, ProfileButton, ScreenshotButton } from '../components';
-import { SavingModal } from '../modals/SavingModal';
+import { SavingModal } from '../modals';
 import { uploadThumbnailImage } from '../modals/ScreenshotModal/ScreenshotModal.component.jsx';
 import { sendMetric } from '../../services/ga.js';
 

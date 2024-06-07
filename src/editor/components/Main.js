@@ -1,22 +1,24 @@
-import { Button, HelpButton, Logo, ZoomButtons } from './components';
-import { CameraToolbar } from './viewport';
-import { Compass32Icon } from '../icons';
 import { Component } from 'react';
-import ComponentsSidebar from './components/Sidebar';
+import { Compass32Icon } from '../icons';
 import Events from '../lib/Events';
-import { ModalHelp } from './modals/ModalHelp';
-import ModalTextures from './modals/ModalTextures';
+import { Button, HelpButton, Logo, ZoomButtons } from './components';
+import ComponentsSidebar from './components/Sidebar';
+import {
+  ModalHelp,
+  ModalTextures,
+  ProfileModal,
+  ScenesModal,
+  ScreenshotModal,
+  SignInModal
+} from './modals';
 import SceneGraph from './scenegraph/SceneGraph';
-import { ScreenshotModal } from './modals/ScreenshotModal';
-import TransformToolbar from './viewport/TransformToolbar';
+import { CameraToolbar, TransformToolbar } from './viewport';
 // import ViewportHUD from "./viewport/ViewportHUD";
 import { injectCSS } from '../lib/utils';
-import { SignInModal } from './modals/SignInModal';
-import { ProfileModal } from './modals/ProfileModal';
-import { ScenesModal } from './modals/ScenesModal';
-import { SceneEditTitle } from './components/SceneEditTitle';
 import { AddLayerButton } from './components/AddLayerButton';
 import { AddLayerPanel } from './components/AddLayerPanel';
+import { SceneEditTitle } from './components/SceneEditTitle';
+
 THREE.ImageUtils.crossOrigin = '';
 // Megahack to include font-awesome.
 injectCSS(
