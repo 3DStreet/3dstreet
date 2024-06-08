@@ -80,7 +80,7 @@ function getElementData(entity) {
         if (elementData) savedChildren.push(elementData);
       }
     }
-    if (savedChildren) elementTree['children'] = savedChildren;
+    if (savedChildren.length > 0) elementTree['children'] = savedChildren;
   }
   return elementTree;
 }
