@@ -56,7 +56,7 @@ function convertDOMElToObject(entity) {
   }
 
   return {
-    title: 'scene',
+    title: STREET.utils.getCurrentSceneTitle(),
     version: '1.0',
     data: data
   };
@@ -492,6 +492,11 @@ AFRAME.registerComponent('scene-title', {
     titleDiv.setAttribute('id', 'sceneTitle');
     titleDiv.appendChild(newContent);
     document.body.append(titleDiv);
+    // update title if we are in Editor mode now
+    if (AFRAME.INSPECTOR && AFRAME.INSPECTOR.opened) {
+      const sceneTitleEditor = document.querySelector('#scene-title p');
+      sceneTitleEditor.textContent = titleText;
+    }
   },
   updateTitleText: function (titleText) {
     this.titleElement.textContent = titleText;
