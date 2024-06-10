@@ -56,7 +56,7 @@ function convertDOMElToObject(entity) {
   }
 
   return {
-    title: 'scene',
+    title: STREET.utils.getCurrentSceneTitle(),
     version: '1.0',
     data: data
   };
