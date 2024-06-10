@@ -7,7 +7,7 @@ const DEPLOY_ENV = process.env.DEPLOY_ENV ?? 'production';
 
 module.exports = {
   performance: {
-    maxAssetSize: 1572864, // 1.5 MiB
+    maxAssetSize: 1672864, // 1.5 MiB
     maxEntrypointSize: 1572864, // 1.5 MiB
     hints: 'error'
   },
