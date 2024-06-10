@@ -69,7 +69,7 @@ function getElementData(entity) {
     return;
   }
   // node id's that should save without child nodes
-  const skipChildrenNodes = ['environment', 'reference-layers'];
+  const skipChildrenNodes = ['environment'];
   const elementTree = getAttributes(entity);
   const children = entity.childNodes;
   if (children.length && !skipChildrenNodes.includes(elementTree.id)) {
@@ -80,7 +80,7 @@ function getElementData(entity) {
         if (elementData) savedChildren.push(elementData);
       }
     }
-    if (savedChildren) elementTree['children'] = savedChildren;
+    if (savedChildren.length > 0) elementTree['children'] = savedChildren;
   }
   return elementTree;
 }
