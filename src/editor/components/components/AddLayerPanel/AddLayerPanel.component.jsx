@@ -1,10 +1,14 @@
 import { useState, useEffect } from 'react';
+import { useAuthContext } from '../../../contexts/index.js';
+
 import styles from './AddLayerPanel.module.scss';
 import classNames from 'classnames';
 import { Button } from '../Button';
 import { Chevron24Down, Load24Icon, Plus20Circle } from '../../../icons';
 import { Dropdown } from '../Dropdown';
 import CardPlaceholder from '../../../../../ui_assets/card-placeholder.svg';
+import LockedCard from '../../../../../ui_assets/locked-card.svg';
+
 import { LayersOptions } from './LayersOptions.js';
 
 import {
@@ -17,10 +21,11 @@ import {
 } from './createLayerFunctions';
 import Events from '../../../lib/Events';
 
-const AddLayerPanel = ({ onClose, isAddLayerPanelOpen, currentUser }) => {
+const AddLayerPanel = ({ onClose, isAddLayerPanelOpen }) => {
   // set the first Layers option when opening the panel
   const [selectedOption, setSelectedOption] = useState(LayersOptions[0].value);
   const [groupedMixins, setGroupedMixins] = useState([]);
+  const { currentUser } = useAuthContext();
   const isProUser = currentUser && currentUser.isPro;
 
   useEffect(() => {
@@ -70,6 +75,7 @@ const AddLayerPanel = ({ onClose, isAddLayerPanelOpen, currentUser }) => {
       name: 'Mapbox',
       img: '',
       icon: '',
+      requiresPro: true,
       description:
         'Create entity with mapbox component, that accepts a long / lat and renders a plane with dimensions that (should be) at a correct scale.',
       id: 1,
@@ -79,6 +85,7 @@ const AddLayerPanel = ({ onClose, isAddLayerPanelOpen, currentUser }) => {
       name: 'Street from streetmixStreet',
       img: '',
       icon: '',
+      requiresPro: true,
       description:
         'Create an additional Streetmix street in your 3DStreet scene without replacing any existing streets.',
       id: 2,
@@ -88,6 +95,7 @@ const AddLayerPanel = ({ onClose, isAddLayerPanelOpen, currentUser }) => {
       name: 'Entity from extruded SVG',
       img: '',
       icon: '',
+      requiresPro: true,
       description:
         'Create entity with svg-extruder component, that accepts a svgString and creates a new entity with geometry extruded from the svg and applies the default mixin material grass.',
       id: 3,
@@ -97,6 +105,7 @@ const AddLayerPanel = ({ onClose, isAddLayerPanelOpen, currentUser }) => {
       name: '3D Tiles',
       img: '',
       icon: '',
+      requiresPro: true,
       description:
         'Adds an entity to load and display 3d tiles from Google Maps Tiles API 3D Tiles endpoint. This will break your scene and you cannot save it yet, so beware before testing.',
       id: 4,
@@ -105,6 +114,7 @@ const AddLayerPanel = ({ onClose, isAddLayerPanelOpen, currentUser }) => {
     {
       name: 'Create custom model',
       img: '',
+      requiresPro: true,
       icon: '',
       description:
         'Create entity with model from path for a glTF (or Glb) file hosted on any publicly accessible HTTP server.',
@@ -114,6 +124,7 @@ const AddLayerPanel = ({ onClose, isAddLayerPanelOpen, currentUser }) => {
     {
       name: 'Create primitive geometry',
       img: '',
+      requiresPro: true,
       icon: '',
       description:
         'Create entity with A-Frame primitive geometry. Geometry type could be changed in properties panel.',
@@ -143,11 +154,7 @@ const AddLayerPanel = ({ onClose, isAddLayerPanelOpen, currentUser }) => {
 
   let selectedCards;
   if (selectedOption === 'Pro Layers') {
-    if (isProUser) {
-      selectedCards = layersData;
-    } else {
-      selectedCards = null;
-    }
+    selectedCards = layersData;
   } else {
     selectedCards = getSelectedMixinCards(selectedOption);
   }
@@ -273,8 +280,12 @@ const AddLayerPanel = ({ onClose, isAddLayerPanelOpen, currentUser }) => {
     Events.emit('entitycreated', newEntity);
   };
 
-  const cardClick = (card) => {
-    if (card.mixinId) {
+  const cardClick = (card, isProUser) => {
+    if (card.requiresPro && !isProUser) {
+      STREET.notify.errorMessage(
+        `A Pro account is required for this entity. Please contact kieran.farr@gmail.com for pro access.`
+      );
+    } else if (card.mixinId) {
       createEntity(card.mixinId);
     } else if (card.handlerFunction) {
       card.handlerFunction();
@@ -304,24 +315,26 @@ const AddLayerPanel = ({ onClose, isAddLayerPanelOpen, currentUser }) => {
         />
       </div>
       <div className={styles.cards}>
-        {selectedOption === 'Pro Layers' && !isProUser ? (
-          <div>
-            Sign up for pro to get access to geospatial and custom layers. Email{' '}
-            <a href="mailto:kieran.fafr@gmail.com?subject=Signing Up For Pro">
-              kieran.fafr@gmail.com
-            </a>{' '}
-            to sign up.
-          </div>
-        ) : (
-          selectedCards?.map((card) => (
-            <div
-              key={card.id}
-              className={styles.card}
-              onMouseEnter={() => card.mixinId && cardMouseEnter(card.mixinId)}
-              onMouseLeave={() => card.mixinId && cardMouseLeave(card.mixinId)}
-              onClick={() => cardClick(card)}
-              title={card.description}
-            >
+        {selectedCards?.map((card) => (
+          <div
+            key={card.id}
+            className={styles.card}
+            onMouseEnter={() => card.mixinId && cardMouseEnter(card.mixinId)}
+            onMouseLeave={() => card.mixinId && cardMouseLeave(card.mixinId)}
+            onClick={() => cardClick(card, isProUser)}
+            title={card.description}
+          >
+            {' '}
+            {card.requiresPro && !isProUser ? (
+              <div
+                className={styles.img}
+                style={{
+                  backgroundImage: `url(${LockedCard})`,
+                  backgroundSize: 'cover',
+                  backgroundPosition: 'center'
+                }}
+              />
+            ) : (
               <div
                 className={styles.img}
                 style={{
@@ -330,13 +343,13 @@ const AddLayerPanel = ({ onClose, isAddLayerPanelOpen, currentUser }) => {
                   backgroundPosition: 'center'
                 }}
               />
-              <div className={styles.body}>
-                {card.icon ? <img src={card.icon} /> : <Load24Icon />}
-                <p className={styles.description}>{card.name}</p>
-              </div>
+            )}
+            <div className={styles.body}>
+              {card.icon ? <img src={card.icon} /> : <Load24Icon />}
+              <p className={styles.description}>{card.name}</p>
             </div>
-          ))
-        )}
+          </div>
+        ))}
       </div>
     </div>
   );

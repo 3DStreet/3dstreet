@@ -208,7 +208,6 @@ export default class Main extends Component {
   }
 
   render() {
-    const { currentUser } = this.props;
     const scene = this.state.sceneEl;
     const isEditor = !!this.state.inspectorEnabled;
     const sceneData = AFRAME.scenes[0].getAttribute('metadata', 'sceneTitle');
@@ -307,7 +306,6 @@ export default class Main extends Component {
           <AddLayerPanel
             onClose={this.toggleAddLayerPanel}
             isAddLayerPanelOpen={this.state.isAddLayerPanelOpen}
-            currentUser={currentUser}
           />
         )}
       </div>
