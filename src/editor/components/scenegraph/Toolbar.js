@@ -368,13 +368,12 @@ export default class Toolbar extends Component {
     return (
       <div id="toolbar">
         <div className="toolbarActions">
-          {this.state.showSaveBtn &&
-          !!this.props.isAuthor &&
-          this.props.currentUser ? (
+          {this.state.showSaveBtn && this.props.currentUser ? (
             <div className="saveButtonWrapper" ref={this.saveButtonRef}>
               <Button
                 className={'actionBtn'}
                 onClick={this.toggleSaveActionState.bind(this)}
+                disabled={!this.props.isAuthor}
               >
                 <div
                   className="iconContainer"
@@ -439,7 +438,7 @@ export default class Toolbar extends Component {
               >
                 <RemixIcon />
               </div>
-              <div className={'innerText'}>Remix</div>
+              <div className={'innerText'}>Save</div>
             </Button>
           )}
           {this.state.showLoadBtn && (
