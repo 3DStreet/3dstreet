@@ -13,6 +13,12 @@ const SceneEditTitle = ({ sceneData }) => {
     }
   }, [sceneData?.sceneTitle, sceneData?.sceneId, sceneId]);
 
+  useEffect(() => {
+    AFRAME.scenes[0].addEventListener('newTitle', (event) => {
+      setTitle(event.detail.sceneTitle ?? '');
+    });
+  }, []);
+
   const handleEditClick = () => {
     const newTitle = prompt('Edit the title:', title);
 

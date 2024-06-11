@@ -1,6 +1,5 @@
 /* global AFRAME, Node */
 /* version: 1.0 */
-
 window.STREET = {};
 var assetsUrl;
 STREET.utils = {};
