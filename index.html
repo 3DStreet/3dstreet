@@ -3,7 +3,7 @@
 
 <head>
   <!-- aframe -->
-  <script src="https://launchar.app/sdk/v1?key=5FXAKdmPAUHi5QV6zkUt8wPkBl6Wa4p6&redirect=true"></script>
+  <script src="https://launchar.app/sdk/v1?key=vDhrPJN2RAYrTKXak3LYKFPnPGKYAzKK&redirect=true"></script>
   <script src="https://aframe.io/releases/1.5.0/aframe.min.js"></script>
 
   <!-- 3dstreet -->
@@ -23,7 +23,7 @@
     })
   </script> -->
 
-  <script>
+  <!-- <script>
     // TODO: This should be inside of Viewer Wrapper component logic
     // this makes the same camera rig setup work in VR and desktop modes
     // this could be a new component, such as "swap desktop and vr controls" and put in init section
@@ -40,7 +40,7 @@
         document.querySelector('#cameraRig').setAttribute('look-controls', "reverseMouseDrag: true;")
         document.querySelector('#cameraRig').setAttribute('wasd-controls', "enabled: true")
       });
-    })
+    }) -->
   </script>
   <title>3DStreet</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
@@ -73,6 +73,48 @@
     </button>
   </div>
 
+  <!-- viewer AR mode start -->
+  <div id="ar-overlay" draggable="false" style="visibility: hidden">
+    <span id="greeting">3DStreet AR Viewer</span>
+    <button id="exit-ar">EXIT AR MODE</button>
+    <span style="display: block">
+      <p>Absolute Compass: <span id="compass">x</span></p>
+      <span>Compass Updates</span>
+      <button id="pause" onclick="window.pauseCompass = true;">
+        STOP
+      </button>
+      <button id="unpause" onclick="window.pauseCompass = false;">
+        START
+      </button>
+    </span>
+    <span style="display: block">
+      <span>Scene Y Rotation</span>
+      <button id="decreaseRotationY" onclick="modifyRotationY(-1);">
+        -1º Yaw
+      </button>
+      <button id="decreaseRotationY" onclick="modifyRotationY(-10);">
+        -10º Yaw
+      </button>
+      <button id="increaseRotationY" onclick="modifyRotationY(1);">
+        +1º Yaw
+      </button>
+      <button id="increaseRotationY" onclick="modifyRotationY(1);">
+        +10º Yaw
+      </button>
+    </span>
+    <span style="display: block">
+      <span>Scene Y Position</span>
+      <button id="decreasePositionY" onclick="modifyPositionY(-0.1);">
+        -10cm Y
+      </button>
+      <button id="increasePositionY" onclick="modifyPositionY(0.1);">
+        +10cm Y
+      </button>
+    </span>
+  </div>
+
+  <div id="play-button" onclick="compassPermission();" class="play-button"></div>
+
   <!-- <div class="right-fixed">
     <ul class="right-menu">
       <li onclick="buttonScreenshotTock()"> <a class="camera" href="#"> <span> Capture image as PNG </span> <img
@@ -90,7 +132,8 @@
     renderer="colorManagement: true; physicallyCorrectLights: true; anisotropy: 16; logarithmicDepthBuffer: true;"
     inspector="url: ./dist/3dstreet-editor.js" timed-inspector="1" loading-screen="enabled: false" notify metadata
     scene-title reflection device-orientation-permission-ui="enabled: false"
-    webxr="requiredFeatures:hit-test,local-floor;referenceSpaceType:local-floor;" xr-mode-ui="XRMode: ar">
+    webxr="requiredFeatures:hit-test,local-floor;referenceSpaceType:local-floor;"
+    xr-mode-ui="enterARButton: #play-button; XRMode: ar;">
     <a-assets>
       <!-- TODO: Add this to repo documentation  -->
       <!-- you can specify a custom asset path using below syntax  -->
@@ -171,6 +214,108 @@
     }
   });
 </script>
-<!-- <script src="./dist/3dstreet-editor.js"></script> -->
+<script>
+  function compassPermission() {
+    document.getElementById("ar-overlay").style.visibility = "visible";
+
+    window.initialHeading = 0;
+    window.pauseCompass = false;
+
+    window.modifyRotationY = function (deltaDegrees) {
+      const currentDegrees = document
+        .getElementById("street-container")
+        .getAttribute("rotation").y;
+      const newDegrees = currentDegrees + deltaDegrees;
+      document
+        .getElementById("street-container")
+        .setAttribute("rotation", "y", newDegrees);
+    };
+
+    window.modifyPositionY = function (deltaY) {
+      const currentY = document
+        .getElementById("street-container")
+        .getAttribute("position").y;
+      const newY = currentY + deltaY;
+      document
+        .getElementById("street-container")
+        .setAttribute("position", "y", newY);
+    };
+
+    // compassHeading sould be a value between [0, 360] where 0 is north
+    // (this is absolute relative to the device owner, completely separate from immersive session coordinates)
+    function compassCallback(compassHeading) {
+      if (window.initialHeading === 0) {
+        window.initialHeading =
+          AFRAME.scenes[0].camera.el.getAttribute("rotation").y;
+      }
+
+      let alphaHeading =
+        AFRAME.scenes[0].camera.el.getAttribute("rotation").y -
+        window.initialHeading;
+      let deltaHeading = compassHeading + alphaHeading;
+
+      document.getElementById("compass").textContent =
+        "compassHeading: " + compassHeading.toFixed(2) + "º ";
+
+      if (!window.pauseCompass) {
+        document
+          .getElementById("street-container")
+          .setAttribute("rotation", "0 " + deltaHeading + " 0");
+      }
+    }
+
+    startCompassListener(compassCallback);
+
+    function startCompassListener(callback) {
+      if (!window["DeviceOrientationEvent"]) {
+        console.warn("DeviceOrientation API not available");
+        return;
+      }
+      let absoluteListener = (e) => {
+        if (
+          !e.absolute ||
+          e.alpha == null ||
+          e.beta == null ||
+          e.gamma == null
+        )
+          return;
+        let compass = -(e.alpha + (e.beta * e.gamma) / 90);
+        compass -= Math.floor(compass / 360) * 360; // Wrap into range [0,360].
+        window.removeEventListener("deviceorientation", webkitListener);
+        callback(compass);
+      };
+      let webkitListener = (e) => {
+        let compass = e.webkitCompassHeading;
+        if (compass != null && !isNaN(compass)) {
+          callback(compass);
+          window.removeEventListener(
+            "deviceorientationabsolute",
+            absoluteListener
+          );
+        }
+      };
+
+      function addListeners() {
+        // Add both listeners, and if either succeeds then remove the other one.
+        window.addEventListener(
+          "deviceorientationabsolute",
+          absoluteListener
+        );
+        window.addEventListener("deviceorientation", webkitListener);
+      }
+
+      if (
+        typeof DeviceOrientationEvent["requestPermission"] === "function"
+      ) {
+        DeviceOrientationEvent["requestPermission"]().then((response) => {
+          if (response == "granted") {
+            addListeners();
+          } else
+            console.warn("Permission for DeviceMotionEvent not granted");
+        });
+      } else addListeners();
+    }
+  }
+</script>
 
 </html>
