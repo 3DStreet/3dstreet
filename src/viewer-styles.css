@@ -18,6 +18,32 @@ body {
 	margin: 0;
 }
 
+/* maps copyright notice */
+#map-data-attribution {
+	position: absolute;
+	bottom: 0;
+	left: 0;
+	font-size: 10px;
+	background-color: rgba(0, 0, 0, 0.3);
+	color: #bebebe;
+	z-index: 1;
+}
+
+#map-logo {
+	display: inline;
+	font-style: normal;
+	font-size: 10px;
+	line-height: 10px;
+	color: #bebebe;
+}
+
+#map-copyright {
+	display: inline-block;
+	line-height: 10px;
+	color: #bebebe;
+
+}
+
 /* notification hack */
 .notyf__message {
 	font-size: 20px !important;

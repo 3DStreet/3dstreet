@@ -2,7 +2,6 @@ const webpack = require('webpack');
 const path = require('path');
 const Dotenv = require('dotenv-webpack');
 const CopyWebpackPlugin = require('copy-webpack-plugin');
-const ReactRefreshWebpackPlugin = require('@pmmmwh/react-refresh-webpack-plugin');
 
 module.exports = {
   mode: 'development',
@@ -23,8 +22,6 @@ module.exports = {
       import: ['./src/editor/index.js'],
       filename: '3dstreet-editor.js'
     },
-    // react-refresh doesn't work with multiple entry points so we use the production build of aframe-street-component.js in development,
-    // you will need to run `npm run dist` to see your changes or uncomment temporarily the following line and run `npm start` again.
     core: { import: './src/index.js', filename: 'aframe-street-component.js' }
   },
   output: {
@@ -37,7 +34,6 @@ module.exports = {
     three: 'THREE'
   },
   plugins: [
-    new ReactRefreshWebpackPlugin(),
     new Dotenv({
       path: './config/.env.development'
     }),
@@ -58,10 +54,7 @@ module.exports = {
         test: /\.jsx?$/,
         exclude: /node_modules/,
         use: {
-          loader: 'babel-loader',
-          options: {
-            plugins: ['react-refresh/babel']
-          }
+          loader: 'babel-loader'
         }
       },
       {
