@@ -56,7 +56,7 @@ function convertDOMElToObject(entity) {
   }
 
   return {
-    title: 'scene',
+    title: STREET.utils.getCurrentSceneTitle(),
     version: '1.0',
     data: data
   };
@@ -69,7 +69,7 @@ function getElementData(entity) {
     return;
   }
   // node id's that should save without child nodes
-  const skipChildrenNodes = ['environment', 'reference-layers'];
+  const skipChildrenNodes = ['environment'];
   const elementTree = getAttributes(entity);
   const children = entity.childNodes;
   if (children.length && !skipChildrenNodes.includes(elementTree.id)) {
