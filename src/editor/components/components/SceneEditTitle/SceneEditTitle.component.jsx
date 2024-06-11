@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import styles from './SceneEditTitle.module.scss';
 import { updateSceneIdAndTitle } from '../../../api/scene';
+import Events from '../../../lib/Events';
 
 const SceneEditTitle = ({ sceneData }) => {
   const [title, setTitle] = useState(sceneData?.sceneTitle);
@@ -12,6 +13,15 @@ const SceneEditTitle = ({ sceneData }) => {
       setTitle(sceneData.sceneTitle);
     }
   }, [sceneData?.sceneTitle, sceneData?.sceneId, sceneId]);
+
+  useEffect(() => {
+    const handleNewTitleEvent = (newTitle) => {
+      setTitle(newTitle);
+      saveNewTitle(newTitle);
+    };
+
+    Events.on('newtitle', handleNewTitleEvent);
+  }, []);
 
   const handleEditClick = () => {
     const newTitle = prompt('Edit the title:', title);
