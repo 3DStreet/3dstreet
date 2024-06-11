@@ -1,7 +1,5 @@
 /* global AFRAME, Node */
 /* version: 1.0 */
-import Events from './editor/lib/Events';
-
 window.STREET = {};
 var assetsUrl;
 STREET.utils = {};
@@ -495,8 +493,6 @@ AFRAME.registerComponent('scene-title', {
     titleDiv.setAttribute('id', 'sceneTitle');
     titleDiv.appendChild(newContent);
     document.body.append(titleDiv);
-    // update scene title in Editor mode
-    Events.emit('entityupdate', this.el);
   },
   updateTitleText: function (titleText) {
     this.titleElement.textContent = titleText;

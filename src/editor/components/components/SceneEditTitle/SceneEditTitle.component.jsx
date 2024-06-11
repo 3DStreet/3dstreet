@@ -1,7 +1,6 @@
 import { useEffect, useState } from 'react';
 import styles from './SceneEditTitle.module.scss';
 import { updateSceneIdAndTitle } from '../../../api/scene';
-import Events from '../../../lib/Events';
 
 const SceneEditTitle = ({ sceneData }) => {
   const [title, setTitle] = useState(sceneData?.sceneTitle);
@@ -15,12 +14,9 @@ const SceneEditTitle = ({ sceneData }) => {
   }, [sceneData?.sceneTitle, sceneData?.sceneId, sceneId]);
 
   useEffect(() => {
-    const handleNewTitleEvent = (newTitle) => {
-      setTitle(newTitle);
-      saveNewTitle(newTitle);
-    };
-
-    Events.on('newtitle', handleNewTitleEvent);
+    AFRAME.scenes[0].addEventListener('newTitle', (event) => {
+      setTitle(event.detail.sceneTitle ?? '');
+    });
   }, []);
 
   const handleEditClick = () => {
