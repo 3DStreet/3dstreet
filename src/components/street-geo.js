@@ -51,6 +51,10 @@ AFRAME.registerComponent('street-geo', {
         // remove element from DOM and from this object
         this.el.removeChild(this[mapType]);
         this[mapType] = null;
+        if (mapType === 'google3d') {
+          document.getElementById('map-data-attribution').style.visibility =
+            'hidden';
+        }
       }
     }
   },
@@ -100,12 +104,15 @@ AFRAME.registerComponent('street-geo', {
         geoTransform: 'WGS84Cartesian',
         maximumSSE: 16,
         maximumMem: 400,
-        cameraEl: '#camera'
+        cameraEl: '#camera',
+        copyrightEl: '#map-copyright'
       });
       google3dElement.classList.add('autocreated');
       google3dElement.setAttribute('data-ignore-raycaster', '');
       el.appendChild(google3dElement);
       self['google3d'] = google3dElement;
+      document.getElementById('map-data-attribution').style.visibility =
+        'visible';
     };
 
     // check whether the library has been imported. Download if not
