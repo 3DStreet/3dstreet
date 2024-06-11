@@ -30,6 +30,9 @@ AFRAME.registerComponent('street-geo', {
       this[mapType + 'Update'].bind(this);
     }
   },
+  remove: function () {
+    document.getElementById('map-data-attribution').style.visibility = 'hidden';
+  },
   update: function (oldData) {
     const data = this.data;
 
@@ -85,6 +88,7 @@ AFRAME.registerComponent('street-geo', {
     mapbox2dElement.setAttribute('data-ignore-raycaster', '');
     el.appendChild(mapbox2dElement);
     this['mapbox2d'] = mapbox2dElement;
+    document.getElementById('map-data-attribution').style.visibility = 'hidden';
   },
   google3dCreate: function () {
     const data = this.data;
