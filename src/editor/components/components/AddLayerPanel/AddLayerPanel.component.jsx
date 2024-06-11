@@ -306,7 +306,11 @@ const AddLayerPanel = ({ onClose, isAddLayerPanelOpen, currentUser }) => {
       <div className={styles.cards}>
         {selectedOption === 'Pro Layers' && !isProUser ? (
           <div>
-            Sign up for pro to get access to geospatial and custom layers
+            Sign up for pro to get access to geospatial and custom layers. Email{' '}
+            <a href="mailto:kieran.fafr@gmail.com?subject=Signing Up For Pro">
+              kieran.fafr@gmail.com
+            </a>{' '}
+            to sign up.
           </div>
         ) : (
           selectedCards?.map((card) => (

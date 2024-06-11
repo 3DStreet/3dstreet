@@ -1,14 +1,14 @@
 const LayersOptions = [
   {
-    value: 'Pro Layers',
-    label: 'Pro Layers',
-    onClick: () => console.log('Layers: Streets & Intersections')
-  },
-  {
     value: 'Models: Personal Vehicles',
     label: 'Models: Personal Vehicles',
     mixinGroups: ['vehicles', 'vehicles-rigged'],
     onClick: () => console.log('Models: Personal Vehicles')
+  },
+  {
+    value: 'Pro Layers',
+    label: 'Pro Layers',
+    onClick: () => console.log('Layers: Streets & Intersections')
   },
   {
     value: 'Models: Transit Vehicles',
