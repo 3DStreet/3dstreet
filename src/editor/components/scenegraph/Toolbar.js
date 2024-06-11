@@ -5,7 +5,7 @@ import {
   isSceneAuthor,
   checkIfImagePathIsEmpty
 } from '../../api/scene';
-import { Cloud24Icon, RemixIcon, Save24Icon, Upload24Icon } from '../../icons';
+import { Cloud24Icon, Save24Icon, Upload24Icon } from '../../icons';
 import Events from '../../lib/Events';
 import { saveBlob } from '../../lib/utils';
 import { Button, ProfileButton, ScreenshotButton } from '../components';
@@ -436,7 +436,7 @@ export default class Toolbar extends Component {
                   margin: '-2.5px 0px -2.5px -2px'
                 }}
               >
-                <RemixIcon />
+                <Save24Icon />
               </div>
               <div className={'innerText'}>Save</div>
             </Button>
