@@ -17,10 +17,11 @@ import {
 } from './createLayerFunctions';
 import Events from '../../../lib/Events';
 
-const AddLayerPanel = ({ onClose, isAddLayerPanelOpen }) => {
+const AddLayerPanel = ({ onClose, isAddLayerPanelOpen, currentUser }) => {
   // set the first Layers option when opening the panel
   const [selectedOption, setSelectedOption] = useState(LayersOptions[0].value);
   const [groupedMixins, setGroupedMixins] = useState([]);
+  const isProUser = currentUser && currentUser.isPro;
 
   useEffect(() => {
     // call getGroupedMixinOptions once time for getting mixinGroups
@@ -141,8 +142,12 @@ const AddLayerPanel = ({ onClose, isAddLayerPanelOpen }) => {
   };
 
   let selectedCards;
-  if (selectedOption === 'Layers: Streets & Intersections') {
-    selectedCards = layersData;
+  if (selectedOption === 'Pro Layers') {
+    if (isProUser) {
+      selectedCards = layersData;
+    } else {
+      selectedCards = null;
+    }
   } else {
     selectedCards = getSelectedMixinCards(selectedOption);
   }
@@ -288,7 +293,6 @@ const AddLayerPanel = ({ onClose, isAddLayerPanelOpen }) => {
         <div className={styles.button}>
           <Plus20Circle />
           <p className={styles.buttonLabel}>Add New Entity</p>
-          <p className={styles.badge}>Pro</p>
         </div>
         <Dropdown
           placeholder="Layers: Maps & Reference"
@@ -300,29 +304,35 @@ const AddLayerPanel = ({ onClose, isAddLayerPanelOpen }) => {
         />
       </div>
       <div className={styles.cards}>
-        {selectedCards?.map((card) => (
-          <div
-            key={card.id}
-            className={styles.card}
-            onMouseEnter={() => card.mixinId && cardMouseEnter(card.mixinId)}
-            onMouseLeave={() => card.mixinId && cardMouseLeave(card.mixinId)}
-            onClick={() => cardClick(card)}
-            title={card.description}
-          >
-            <div
-              className={styles.img}
-              style={{
-                backgroundImage: `url(${card.img || CardPlaceholder})`,
-                backgroundSize: 'cover',
-                backgroundPosition: 'center'
-              }}
-            />
-            <div className={styles.body}>
-              {card.icon ? <img src={card.icon} /> : <Load24Icon />}
-              <p className={styles.description}>{card.name}</p>
-            </div>
+        {selectedOption === 'Pro Layers' && !isProUser ? (
+          <div>
+            Sign up for pro to get access to geospatial and custom layers
           </div>
-        ))}
+        ) : (
+          selectedCards?.map((card) => (
+            <div
+              key={card.id}
+              className={styles.card}
+              onMouseEnter={() => card.mixinId && cardMouseEnter(card.mixinId)}
+              onMouseLeave={() => card.mixinId && cardMouseLeave(card.mixinId)}
+              onClick={() => cardClick(card)}
+              title={card.description}
+            >
+              <div
+                className={styles.img}
+                style={{
+                  backgroundImage: `url(${card.img || CardPlaceholder})`,
+                  backgroundSize: 'cover',
+                  backgroundPosition: 'center'
+                }}
+              />
+              <div className={styles.body}>
+                {card.icon ? <img src={card.icon} /> : <Load24Icon />}
+                <p className={styles.description}>{card.name}</p>
+              </div>
+            </div>
+          ))
+        )}
       </div>
     </div>
   );

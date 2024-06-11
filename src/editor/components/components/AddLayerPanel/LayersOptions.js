@@ -1,7 +1,7 @@
 const LayersOptions = [
   {
-    value: 'Layers: Streets & Intersections',
-    label: 'Layers: Streets & Intersections',
+    value: 'Pro Layers',
+    label: 'Pro Layers',
     onClick: () => console.log('Layers: Streets & Intersections')
   },
   {
