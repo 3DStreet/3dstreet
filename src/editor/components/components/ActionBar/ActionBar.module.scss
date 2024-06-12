@@ -1,0 +1,22 @@
+@use '../../../style/variables.scss';
+
+.wrapper {
+    position: absolute;
+    background: rgba(55, 55, 55, 0.4);
+    transform: translateX(-50%);
+    bottom: 15%;
+    left: 50%;
+    border: unset;
+    height: 40px;
+    border-radius: 16px;
+    align-items: center;
+    display: flex;
+    column-gap: 8px;
+    padding: 8px 12px;
+    transition: 0.2s ease-in-out;
+    &:hover {
+      background: rgba(55, 55, 55, 0.6);
+    }
+  
+  ;
+}
