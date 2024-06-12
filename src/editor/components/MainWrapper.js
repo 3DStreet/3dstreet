@@ -1,9 +1,7 @@
-import { useAuthContext } from '../contexts/index.js';
 import Main from './Main';
 
 const MainWrapper = (props) => {
-  const { currentUser } = useAuthContext();
-  return <Main {...props} currentUser={currentUser} />;
+  return <Main {...props} />;
 };
 
 export default MainWrapper;
