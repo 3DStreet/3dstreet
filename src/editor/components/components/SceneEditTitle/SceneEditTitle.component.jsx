@@ -32,7 +32,9 @@ const SceneEditTitle = ({ sceneData }) => {
 
   const saveNewTitle = async (newTitle) => {
     try {
-      await updateSceneIdAndTitle(sceneData?.sceneId, newTitle);
+      if (sceneData?.sceneId) {
+        await updateSceneIdAndTitle(sceneData?.sceneId, newTitle);
+      }
       AFRAME.scenes[0].setAttribute('metadata', 'sceneTitle', newTitle);
       AFRAME.scenes[0].setAttribute('metadata', 'sceneId', sceneData?.sceneId);
       STREET.notify.successMessage(`New scene title saved: ${newTitle}`);
