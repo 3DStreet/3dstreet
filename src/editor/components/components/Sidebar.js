@@ -24,6 +24,15 @@ export default class Sidebar extends React.Component {
   }
 
   componentDidMount() {
+    Events.on('entityupdate', (detail) => {
+      if (detail.entity !== this.props.entity) {
+        return;
+      }
+      if (detail.component === 'mixin') {
+        this.forceUpdate();
+      }
+    });
+
     Events.on('componentremove', (event) => {
       this.forceUpdate();
     });
