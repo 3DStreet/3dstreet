@@ -115,9 +115,13 @@ AFRAME.registerComponent('street-geo', {
 
       if (AFRAME.INSPECTOR && AFRAME.INSPECTOR.opened) {
         // emit play event to start loading tiles in Editor mode
-        google3dElement.addEventListener('loaded', () => {
-          google3dElement.play();
-        });
+        google3dElement.addEventListener(
+          'loaded',
+          () => {
+            google3dElement.play();
+          },
+          { once: true }
+        );
       }
       google3dElement.setAttribute('data-ignore-raycaster', '');
       el.appendChild(google3dElement);
