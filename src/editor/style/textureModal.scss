@@ -32,7 +32,9 @@
   animation-duration: 0.2s;
   animation-name: animatetop;
   background-color: rgb(34, 34, 34);
-  box-shadow: 0 4px 8px 0 rgba(0, 0, 0, 0.5), 0 6px 20px 0 rgba(0, 0, 0, 0.5);
+  box-shadow:
+    0 4px 8px 0 rgba(0, 0, 0, 0.5),
+    0 6px 20px 0 rgba(0, 0, 0, 0.5);
   margin: auto;
   padding: 0;
   border-radius: 12px;

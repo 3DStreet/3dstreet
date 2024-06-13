@@ -76,8 +76,16 @@ body.aframe-inspector-opened {
   }
 
   code {
-    font-family: Consolas, Andale Mono, Monaco, Lucida Console, Liberation Mono,
-      DejaVu Sans Mono, Bitstream Vera Sans Mono, Courier New, monospace;
+    font-family:
+      Consolas,
+      Andale Mono,
+      Monaco,
+      Lucida Console,
+      Liberation Mono,
+      DejaVu Sans Mono,
+      Bitstream Vera Sans Mono,
+      Courier New,
+      monospace;
   }
 
   textarea {
@@ -158,7 +166,9 @@ body.aframe-inspector-opened {
 
   input,
   .texture canvas {
-    transition: 0.1s background-color ease-in-out, 0.1s border-color ease-in-out,
+    transition:
+      0.1s background-color ease-in-out,
+      0.1s border-color ease-in-out,
       0.1s color ease-in-out;
   }
 
