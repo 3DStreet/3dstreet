@@ -15,14 +15,14 @@ const ActionBar = ({ handleAddClick, isAddLayerPanelOpen }) => {
   return (
     <div>
       {!isAddLayerPanelOpen && (
-        <div className={styles.wrapper} id="findme">
-          <button type="button" onClick={handleSelectClick} key="handButton">
+        <div className={styles.wrapper}>
+          <button type="button" onClick={handleSelectClick}>
             <ArrowDown24Icon />
           </button>
-          <button type="button" onClick={handleHandClick} key="handButton">
+          <button type="button" onClick={handleHandClick}>
             <ArrowDown24Icon />
           </button>
-          <button type="button" onClick={handleAddClick} key="addLayerButton">
+          <button type="button" onClick={handleAddClick}>
             <Circle20Icon />
           </button>
         </div>

@@ -283,7 +283,7 @@ export default class Main extends Component {
           </div>
         )}
         {this.state.inspectorEnabled && (
-          <div id="scene-title">
+          <div id="action-bar">
             <ActionBar
               handleAddClick={this.toggleAddLayerPanel}
               isAddLayerPanelOpen={this.state.isAddLayerPanelOpen}

@@ -192,6 +192,7 @@ Inspector.prototype = {
 
     Events.on('hidecursor', () => {
       this.cursor.pause();
+      this.selectEntity(null);
     });
     Events.on('showcursor', () => {
       this.cursor.play();
