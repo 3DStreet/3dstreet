@@ -3,10 +3,12 @@ const path = require('path');
 const Dotenv = require('dotenv-webpack');
 const CopyWebpackPlugin = require('copy-webpack-plugin');
 
+const DEPLOY_ENV = process.env.DEPLOY_ENV ?? 'production';
+
 module.exports = {
   performance: {
-    maxAssetSize: 1468006, // 1.4 MiB
-    maxEntrypointSize: 1468006, // 1.4 MiB
+    maxAssetSize: 1572864, // 1.5 MiB
+    maxEntrypointSize: 1572864, // 1.5 MiB
     hints: 'error'
   },
   mode: 'production',
@@ -26,14 +28,19 @@ module.exports = {
   },
   plugins: [
     new Dotenv({
-      path: './config/.env.production'
+      path: `./config/.env.${DEPLOY_ENV}`
     }),
     new webpack.DefinePlugin({
       VERSION: JSON.stringify(process.env.npm_package_version)
     }),
     new CopyWebpackPlugin({
       patterns: [
-        { from: 'src/lib/aframe-mapbox-component.min.js' },
+        {
+          from: 'src/lib/aframe-mapbox-component.min.js',
+          info: {
+            minimized: true
+          }
+        },
         { from: 'src/notyf.min.css' },
         { from: 'src/viewer-styles.css' }
       ]

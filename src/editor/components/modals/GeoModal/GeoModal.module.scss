@@ -1,0 +1,76 @@
+@use '../../../style/variables.scss';
+
+.modalWrapper {
+  position: relative;
+
+  .wrapper {
+    display: flex;
+    flex-direction: column;
+    row-gap: 36px;
+    width: 650px;
+
+    .header {
+      position: absolute;
+      top: 16px;
+      left: 32px;
+      display: flex;
+      align-items: center;
+      column-gap: 8px;
+
+      .badge {
+        background-color: #774dee;
+        padding: 6px 12px;
+        border-radius: 8px;
+      }
+
+      & > img {
+        width: 32px;
+        height: 32px;
+      }
+    }
+
+    .sceneGeo {
+      display: flex;
+      flex-direction: column;
+      row-gap: 16px;
+
+      .iconGeo {
+        font-size: 8px !important;
+        color: #b6b6b6;
+      }
+
+      .copyIcon {
+        width: 20px !important;
+        height: 20px !important;
+        * {
+          fill: #fff !important;
+        }
+      }
+
+      & > div {
+        display: flex;
+        align-items: center;
+
+        & > p {
+          width: 250px;
+        }
+      }
+    }
+
+    .qrCodeContainer {
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+    }
+
+    .controlButtons {
+      display: flex;
+      justify-content: space-between;
+
+      .locked {
+        font-size: 28px;
+      }
+    }
+  }
+}

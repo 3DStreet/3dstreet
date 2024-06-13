@@ -18,8 +18,11 @@ module.exports = {
   },
   devtool: 'source-map',
   entry: {
-    core: { import: './src/index.js', filename: 'aframe-street-component.js' },
-    editor: { import: './src/editor/index.js', filename: '3dstreet-editor.js' }
+    editor: {
+      import: ['./src/editor/index.js'],
+      filename: '3dstreet-editor.js'
+    },
+    core: { import: './src/index.js', filename: 'aframe-street-component.js' }
   },
   output: {
     publicPath: '/dist/',

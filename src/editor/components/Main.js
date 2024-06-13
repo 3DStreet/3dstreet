@@ -1,4 +1,4 @@
-import { Button, HelpButton, Logo, ZoomButtons } from './components';
+import { Button, HelpButton, GeoPanel, Logo, ZoomButtons } from './components';
 import { CameraToolbar } from './viewport';
 import { Compass32Icon } from '../icons';
 import { Component } from 'react';
@@ -13,6 +13,9 @@ import TransformToolbar from './viewport/TransformToolbar';
 import { injectCSS } from '../lib/utils';
 import { SignInModal } from './modals/SignInModal';
 import { ProfileModal } from './modals/ProfileModal';
+import { firebaseConfig } from '../services/firebase.js';
+import { LoadScript } from '@react-google-maps/api';
+import { GeoModal } from './modals/GeoModal';
 import { ScenesModal } from './modals/ScenesModal';
 import { SceneEditTitle } from './components/SceneEditTitle';
 import { AddLayerButton } from './components/AddLayerButton';
@@ -35,6 +38,7 @@ export default class Main extends Component {
       isSignInModalOpened: false,
       isProfileModalOpened: false,
       isAddLayerPanelOpen: false,
+      isGeoModalOpened: false,
       isScenesModalOpened: !isStreetLoaded,
       sceneEl: AFRAME.scenes[0],
       visible: {
@@ -114,6 +118,9 @@ export default class Main extends Component {
     Events.on('openprofilemodal', () => {
       this.setState({ isProfileModalOpened: true });
     });
+    Events.on('opengeomodal', () => {
+      this.setState({ isGeoModalOpened: true });
+    });
   }
 
   onCloseHelpModal = (value) => {
@@ -147,6 +154,10 @@ export default class Main extends Component {
 
   onCloseProfileModal = () => {
     this.setState({ isProfileModalOpened: false });
+  };
+
+  onCloseGeoModal = () => {
+    this.setState({ isGeoModalOpened: false });
   };
 
   toggleEdit = () => {
@@ -197,7 +208,6 @@ export default class Main extends Component {
   }
 
   render() {
-    const { currentUser } = this.props;
     const scene = this.state.sceneEl;
     const isEditor = !!this.state.inspectorEnabled;
     const sceneData = AFRAME.scenes[0].getAttribute('metadata', 'sceneTitle');
@@ -248,6 +258,15 @@ export default class Main extends Component {
           isOpen={this.state.isProfileModalOpened}
           onClose={this.onCloseProfileModal}
         />
+        <LoadScript
+          googleMapsApiKey={firebaseConfig.apiKey}
+          libraries={['places']}
+        >
+          <GeoModal
+            isOpen={this.state.isGeoModalOpened}
+            onClose={this.onCloseGeoModal}
+          />
+        </LoadScript>
         <ModalTextures
           isOpen={this.state.isModalTexturesOpen}
           selectedTexture={this.state.selectedTexture}
@@ -256,6 +275,11 @@ export default class Main extends Component {
         {this.state.inspectorEnabled && (
           <div id="help">
             <HelpButton />
+          </div>
+        )}
+        {this.state.inspectorEnabled && (
+          <div id="geo">
+            <GeoPanel />
           </div>
         )}
         {this.state.inspectorEnabled && (
@@ -273,7 +297,7 @@ export default class Main extends Component {
             <Compass32Icon />
           </Button>
         )}
-        {currentUser && currentUser.isBeta && this.state.inspectorEnabled && (
+        {this.state.inspectorEnabled && (
           <div id="layerWithCategory">
             <AddLayerButton onClick={this.toggleAddLayerPanel} />
           </div>

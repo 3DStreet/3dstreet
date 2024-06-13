@@ -14,11 +14,10 @@ export function Viewport(inspector) {
   const mouseCursor = initRaycaster(inspector);
   const sceneEl = inspector.sceneEl;
 
-  let originalCamera = inspector.cameras.original;
   sceneEl.addEventListener('camera-set-active', (event) => {
     // If we're in edit mode, save the newly active camera and activate when exiting.
     if (inspector.opened) {
-      originalCamera = event.detail.cameraEl;
+      inspector.cameras.original = event.detail.cameraEl;
     }
   });
 
@@ -107,8 +106,6 @@ export function Viewport(inspector) {
 
     updateHelpers(object);
 
-    Events.emit('refreshsidebarobject3d', object);
-
     // Emit update event for watcher.
     let component;
     let value;
@@ -136,8 +133,6 @@ export function Viewport(inspector) {
       property: '',
       value: value
     });
-
-    Events.emit('entitytransformed', transformControls.object.el);
   });
 
   transformControls.addEventListener('mouseDown', () => {
