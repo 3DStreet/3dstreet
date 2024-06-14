@@ -106,7 +106,7 @@
       "prettier --write",
       "eslint"
     ],
-    "*.{scss}": [
+    "*.scss": [
       "prettier --write"
     ]
   }
