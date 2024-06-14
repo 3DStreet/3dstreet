@@ -1,64 +1,68 @@
 /* global AFRAME */
 /* 3DStreet utils functions */
 
-function checkOrCreateEntity(elementId, outerHTML) {
-  // clear old element data and replace with new HTML string
-  let newElement = document.getElementById(elementId);
+/*
+ * create element with provided Id, clear old element data and replace with new HTML string
+ */
+function checkOrCreateEntity(elementId, parentEl, layerName = null) {
+  let newElement = parentEl.querySelector(`#${elementId}`);
   if (!newElement) {
+    // create element
     newElement = document.createElement('a-entity');
     newElement.id = elementId;
-    AFRAME.scenes[0].appendChild(newElement);
+    parentEl.appendChild(newElement);
+  } else {
+    // or remove all childs
+    while (newElement.firstChild) {
+      newElement.removeChild(newElement.lastChild);
+    }
   }
-  if (outerHTML.length > 0) {
-    // replace element HTML data
-    newElement.outerHTML = outerHTML;
+  if (layerName) {
+    newElement.setAttribute('data-layer-name', layerName);
   }
   return newElement;
 }
 
 /*
-clear old scene elements and data. Create blank scene
-*/
+ * clear old scene elements and data. Create blank scene
+ */
 function newScene(
   clearMetaData = true,
   clearUrlHash = true,
   addDefaultStreet = true
 ) {
-  const environmentHTML = `<a-entity id="environment" data-layer-name="Environment" street-environment="preset: day;"></a-entity>`;
+  const environmentEl = checkOrCreateEntity(
+    'environment',
+    AFRAME.scenes[0],
+    'Environment'
+  );
+  environmentEl.removeAttribute('street-environment');
+  environmentEl.setAttribute('street-environment', 'preset', 'day');
+  const geoLayer = checkOrCreateEntity(
+    'reference-layers',
+    AFRAME.scenes[0],
+    'Geospatial Layers'
+  );
+  geoLayer.removeAttribute('street-geo');
+  const streetContainerEl = checkOrCreateEntity(
+    'street-container',
+    AFRAME.scenes[0],
+    'User Layers'
+  );
 
-  const referenceLayersHTML = `<a-entity id="reference-layers" data-layer-name="Reference Layers" data-layer-show-children></a-entity>`;
-
-  const streetContainerEl = document.querySelector('#street-container');
-
-  // clear street-container element
-  const streetContainerArray = Array.from(streetContainerEl.children);
-  for (var childEl of streetContainerArray) {
-    if (!addDefaultStreet || childEl.id !== 'default-street') {
-      streetContainerEl.removeChild(childEl);
-    } else {
-      // clear default-street element
-      const defaultStreet = childEl;
-      const defaultStreetArray = Array.from(defaultStreet.children);
-      for (var defaultStreetChild of defaultStreetArray) {
-        defaultStreet.removeChild(defaultStreetChild);
-      }
-      // clear data from previous scene
-      defaultStreet.removeAttribute('data-layer-name');
-      defaultStreet.removeAttribute('street');
-      defaultStreet.removeAttribute('streetmix-loader');
-    }
-  }
-
-  if (!streetContainerEl.querySelector('#default-street') && addDefaultStreet) {
+  if (addDefaultStreet) {
     // create default-street element
-    const defaultStreet = document.createElement('a-entity');
-    defaultStreet.id = 'default-street';
-    streetContainerEl.appendChild(defaultStreet);
-    defaultStreet.setAttribute('set-loader-from-hash');
+    const defaultStreetEl = checkOrCreateEntity(
+      'default-street',
+      streetContainerEl
+    );
+    defaultStreetEl.setAttribute('set-loader-from-hash', '');
+    defaultStreetEl.setAttribute('street', '');
+    // clear data from previous scene
+    defaultStreetEl.removeAttribute('data-layer-name');
+    defaultStreetEl.removeAttribute('street');
+    defaultStreetEl.removeAttribute('streetmix-loader');
   }
-
-  checkOrCreateEntity('environment', environmentHTML);
-  checkOrCreateEntity('reference-layers', referenceLayersHTML);
 
   if (AFRAME.INSPECTOR && AFRAME.INSPECTOR.opened) {
     // update sceneGraph
