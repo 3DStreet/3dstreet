@@ -373,7 +373,6 @@ export default class Toolbar extends Component {
               <Button
                 className={'actionBtn'}
                 onClick={this.toggleSaveActionState.bind(this)}
-                disabled={!this.props.isAuthor}
               >
                 <div
                   className="iconContainer"
@@ -392,7 +391,7 @@ export default class Toolbar extends Component {
                   <Button
                     variant="white"
                     onClick={this.cloudSaveHandler}
-                    disabled={this.state.isSavingScene}
+                    disabled={this.state.isSavingScene || !this.props.isAuthor}
                   >
                     <div
                       className="icon"
