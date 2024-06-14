@@ -10,7 +10,6 @@ import SceneGraph from './scenegraph/SceneGraph';
 import { ScreenshotModal } from './modals/ScreenshotModal';
 import TransformToolbar from './viewport/TransformToolbar';
 // import ViewportHUD from "./viewport/ViewportHUD";
-import { injectCSS } from '../lib/utils';
 import { SignInModal } from './modals/SignInModal';
 import { ProfileModal } from './modals/ProfileModal';
 import { firebaseConfig } from '../services/firebase.js';
@@ -21,10 +20,6 @@ import { ScenesModal } from './modals/ScenesModal';
 import { SceneEditTitle } from './components/SceneEditTitle';
 import { AddLayerPanel } from './components/AddLayerPanel';
 THREE.ImageUtils.crossOrigin = '';
-// Megahack to include font-awesome.
-injectCSS(
-  'https://maxcdn.bootstrapcdn.com/font-awesome/4.5.0/css/font-awesome.min.css'
-);
 
 const isStreetLoaded = window.location.hash.length;
 
