@@ -58,7 +58,8 @@ export default class Toolbar extends Component {
       savedNewDocument: false,
       isSavingScene: false,
       pendingSceneSave: false,
-      signInSuccess: false
+      signInSuccess: false,
+      isAuthor: props.isAuthor
     };
     this.saveButtonRef = React.createRef();
   }
@@ -244,7 +245,7 @@ export default class Toolbar extends Component {
       );
       console.error(error);
     } finally {
-      this.setState({ isSavingScene: false });
+      this.setState({ isSavingScene: false, isAuthor: true });
     }
   };
 
@@ -391,7 +392,7 @@ export default class Toolbar extends Component {
                   <Button
                     variant="white"
                     onClick={this.cloudSaveHandler}
-                    disabled={this.state.isSavingScene || !this.props.isAuthor}
+                    disabled={this.state.isSavingScene || !this.state.isAuthor}
                   >
                     <div
                       className="icon"
