@@ -1,3 +1,4 @@
+import classNames from 'classnames';
 import styles from './ScreenshotButton.module.scss';
 
 import { Button } from '../Button';
@@ -16,11 +17,10 @@ class ScreenshotButton extends Component {
     const onClick = () => Events.emit('openscreenshotmodal');
     return (
       <Button
-        className={styles.screenshotButton}
-        type="button"
+        variant="toolbtn"
+        className={classNames('ph-no-capture', styles.screenshotButton)}
         onClick={onClick}
         key="screenshotButton"
-        variant={'toolbtn'}
       >
         {ScreenshotIcon}
         <div className={styles.innerText}>Share</div>
