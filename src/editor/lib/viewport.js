@@ -6,6 +6,48 @@ import { initRaycaster } from './raycaster';
 import Events from './Events';
 import { sendMetric } from '../services/ga.js';
 
+const auxEuler = new THREE.Euler();
+const auxPosition = new THREE.Vector3();
+const auxScale = new THREE.Vector3();
+const auxQuaternion = new THREE.Quaternion();
+const identityQuaternion = new THREE.Quaternion();
+const auxMatrix = new THREE.Matrix4();
+
+class MyBoxHelper extends THREE.BoxHelper {
+  update() {
+    // Bounding box is created axis-aligned AABB.
+    // If there's any rotation the box will have the wrong size.
+    // It undoes the local entity rotation and then restores so box has the expected size.
+    // We also undo the parent world rotation.
+    if (this.object !== undefined) {
+      auxEuler.copy(this.object.rotation);
+      this.object.rotation.set(0, 0, 0);
+
+      this.object.parent.matrixWorld.decompose(
+        auxPosition,
+        auxQuaternion,
+        auxScale
+      );
+      auxMatrix.compose(auxPosition, identityQuaternion, auxScale);
+      this.object.parent.matrixWorld.copy(auxMatrix);
+    }
+
+    super.update();
+
+    // Restore rotations.
+    if (this.object !== undefined) {
+      this.object.parent.matrixWorld.compose(
+        auxPosition,
+        auxQuaternion,
+        auxScale
+      );
+      this.object.rotation.copy(auxEuler);
+      this.rotation.copy(auxEuler);
+      this.updateMatrix();
+    }
+  }
+}
+
 /**
  * Transform controls stuff mostly.
  */
@@ -27,7 +69,7 @@ export function Viewport(inspector) {
   grid.visible = false;
   sceneHelpers.add(grid);
 
-  const selectionBox = new THREE.BoxHelper();
+  const selectionBox = new MyBoxHelper();
   selectionBox.material.depthTest = false;
   selectionBox.material.transparent = true;
   selectionBox.material.color.set(0x1faaf2);
@@ -35,7 +77,7 @@ export function Viewport(inspector) {
   sceneHelpers.add(selectionBox);
 
   // hoverBox BoxHelper version
-  const hoverBox = new THREE.BoxHelper();
+  const hoverBox = new MyBoxHelper();
   hoverBox.material.depthTest = false;
   hoverBox.material.transparent = true;
   hoverBox.material.color.set(0xff0000);
