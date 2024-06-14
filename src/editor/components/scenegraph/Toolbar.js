@@ -169,7 +169,7 @@ export default class Toolbar extends Component {
         streetGeo['longitude']
       ) {
         STREET.notify.errorMessage(
-          `Geospatial Pro account required to save 3DStreet Cloud scenes with 'longitude' and 'latitude' geolocation. You may download a '.3dstreet.json' file instead.`
+          `Pro account required to save scenes with geolocation, contact kieran@3dstreet.org for access`
         );
         return;
       }

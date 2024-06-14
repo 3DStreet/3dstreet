@@ -283,7 +283,7 @@ const AddLayerPanel = ({ onClose, isAddLayerPanelOpen }) => {
   const cardClick = (card, isProUser) => {
     if (card.requiresPro && !isProUser) {
       STREET.notify.errorMessage(
-        `A Pro account is required for this entity. Please contact kieran.farr@gmail.com for pro access.`
+        `Pro account required to add this layer, contact kieran@3dstreet.org for access`
       );
     } else if (card.mixinId) {
       createEntity(card.mixinId);
