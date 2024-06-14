@@ -194,6 +194,7 @@ Inspector.prototype = {
     Events.on('hidecursor', () => {
       this.cursor.pause();
       this.selectEntity(null);
+      this.sceneEl.canvas.classList.remove('a-mouse-cursor-hover');
     });
     Events.on('showcursor', () => {
       this.cursor.play();
