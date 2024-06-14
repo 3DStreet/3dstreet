@@ -23,7 +23,6 @@ export {
   LayersIcon,
   GoogleSignInButtonSVG,
   Chevron24Down,
-  Circle20Icon,
   Plus20Circle,
   QR32Icon
 } from './icons.jsx';
