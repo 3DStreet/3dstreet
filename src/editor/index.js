@@ -191,6 +191,14 @@ Inspector.prototype = {
       this.selectEntity(entity, false);
     });
 
+    Events.on('hidecursor', () => {
+      this.cursor.pause();
+      this.selectEntity(null);
+    });
+    Events.on('showcursor', () => {
+      this.cursor.play();
+    });
+
     Events.on('inspectortoggle', (active) => {
       this.inspectorActive = active;
       this.sceneHelpers.visible = this.inspectorActive;
