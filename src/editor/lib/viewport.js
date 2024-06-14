@@ -8,6 +8,8 @@ import { sendMetric } from '../services/ga.js';
 
 const auxEuler = new THREE.Euler();
 const auxPosition = new THREE.Vector3();
+const auxLocalPosition = new THREE.Vector3();
+const origin = new THREE.Vector3();
 const auxScale = new THREE.Vector3();
 const auxQuaternion = new THREE.Quaternion();
 const identityQuaternion = new THREE.Quaternion();
@@ -21,14 +23,16 @@ class MyBoxHelper extends THREE.BoxHelper {
     // We also undo the parent world rotation.
     if (this.object !== undefined) {
       auxEuler.copy(this.object.rotation);
+      auxLocalPosition.copy(this.object.position);
       this.object.rotation.set(0, 0, 0);
+      this.object.position.set(0, 0, 0);
 
       this.object.parent.matrixWorld.decompose(
         auxPosition,
         auxQuaternion,
         auxScale
       );
-      auxMatrix.compose(auxPosition, identityQuaternion, auxScale);
+      auxMatrix.compose(origin, identityQuaternion, auxScale);
       this.object.parent.matrixWorld.copy(auxMatrix);
     }
 
@@ -42,7 +46,9 @@ class MyBoxHelper extends THREE.BoxHelper {
         auxScale
       );
       this.object.rotation.copy(auxEuler);
+      this.object.position.copy(auxLocalPosition);
       this.rotation.copy(auxEuler);
+      this.object.getWorldPosition(this.position);
       this.updateMatrix();
     }
   }
