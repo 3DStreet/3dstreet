@@ -540,8 +540,6 @@ AFRAME.registerComponent('set-loader-from-hash', {
           streetURL
         );
 
-        STREET.utils.newScene(true, false);
-
         this.el.setAttribute(
           'streetmix-loader',
           'streetmixStreetURL',
@@ -554,8 +552,6 @@ AFRAME.registerComponent('set-loader-from-hash', {
           'Set streetplan-loader streetplanAPIURL to',
           streetURL
         );
-
-        STREET.utils.newScene(true, false);
 
         this.el.setAttribute(
           'streetplan-loader',
@@ -645,16 +641,12 @@ function inputStreetmix() {
     window.location.hash = streetmixURL;
   });
 
-  const streetContainerEl = document.getElementById('street-container');
-  while (streetContainerEl.firstChild) {
-    streetContainerEl.removeChild(streetContainerEl.lastChild);
-  }
-  AFRAME.scenes[0].setAttribute('metadata', 'sceneId', '');
-  AFRAME.scenes[0].setAttribute('metadata', 'sceneTitle', '');
-  streetContainerEl.innerHTML =
-    '<a-entity street streetmix-loader="streetmixStreetURL: ' +
-    streetmixURL +
-    '""></a-entity>';
+  const defaultStreetEl = document.getElementById('default-street');
+  defaultStreetEl.setAttribute(
+    'streetmix-loader',
+    'streetmixStreetURL',
+    streetmixURL
+  );
 }
 
 STREET.utils.inputStreetmix = inputStreetmix;
@@ -689,9 +681,6 @@ function createElementsFromJSON(streetJSON) {
   }
 
   const streetContainerEl = document.getElementById('street-container');
-  while (streetContainerEl.firstChild) {
-    streetContainerEl.removeChild(streetContainerEl.lastChild);
-  }
 
   createEntities(streetObject.data, streetContainerEl);
   STREET.notify.successMessage('Scene loaded from JSON');
