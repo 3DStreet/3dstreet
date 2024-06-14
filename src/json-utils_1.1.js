@@ -672,7 +672,7 @@ function createElementsFromJSON(streetJSON) {
 
   // clrear scene data, create new blank scene.
   // clearMetadata = true, clearUrlHash = true, addDefaultStreet = false
-  STREET.utils.newScene(true, false, false);
+  STREET.utils.newScene(true, true, false);
 
   const sceneTitle = streetObject.title;
   if (sceneTitle) {
