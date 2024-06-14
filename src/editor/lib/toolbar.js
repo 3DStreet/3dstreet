@@ -14,7 +14,6 @@ export function inputStreetmix() {
     window.location.hash = streetmixURL;
   });
 
-  const streetContainerEl = document.getElementById('street-container');
   const defaultStreetEl = document.getElementById('default-street');
   defaultStreetEl.setAttribute(
     'streetmix-loader',
@@ -23,15 +22,15 @@ export function inputStreetmix() {
   );
 
   // update sceneGraph
-  Events.emit('entitycreated', streetContainerEl.sceneEl);
+  Events.emit('entitycreated', defaultStreetEl.sceneEl);
 }
 
 export function createElementsForScenesFromJSON(streetData) {
-  const streetContainerEl = document.getElementById('street-container');
+  // clrear scene data, create new blank scene.
+  // clearMetadata = true, clearUrlHash = false, addDefaultStreet = false
+  STREET.utils.newScene(true, true, false);
 
-  while (streetContainerEl.firstChild) {
-    streetContainerEl.removeChild(streetContainerEl.lastChild);
-  }
+  const streetContainerEl = document.getElementById('street-container');
 
   if (!Array.isArray(streetData)) {
     console.error('Invalid data format. Expected an array.');
