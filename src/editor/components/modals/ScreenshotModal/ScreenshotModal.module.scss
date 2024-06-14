@@ -40,7 +40,10 @@
           .button {
             padding: 0px 10px 0px 0px !important;
             cursor: pointer;
-            transition: filter 0.2s, transform 0.2s, box-shadow 0.2s;
+            transition:
+              filter 0.2s,
+              transform 0.2s,
+              box-shadow 0.2s;
             filter: brightness(85%);
 
             svg {

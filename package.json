@@ -15,7 +15,7 @@
     "prepublish": "npm run dist",
     "test": "nyc --reporter=lcov --reporter=text mocha --recursive --full-trace test/*.test.js",
     "test:watch": "mocha --recursive --full-trace --watch test/*.test.js",
-    "prettier": "prettier --write 'src/**/*.js' 'src/**/*.jsx'",
+    "prettier": "prettier --write 'src/**/*.js' 'src/**/*.jsx' 'src/**/*.scss'",
     "deploy": "npm run dist && npm run prefirebase && cd public && firebase use dstreet-305604 && firebase deploy --only hosting:app3dstreet",
     "deploy:staging": "npm run dist:staging && npm run prefirebase && cd public && firebase use dev-3dstreet && firebase deploy --only hosting:dev-3dstreet",
     "storybook": "storybook dev -p 6006",
@@ -103,6 +103,9 @@
     "*.{js,jsx}": [
       "prettier --write",
       "eslint"
+    ],
+    "*.{scss}": [
+      "prettier --write"
     ]
   }
 }
