@@ -87,7 +87,7 @@ export function Viewport(inspector) {
   hoverBox.material.depthTest = false;
   hoverBox.material.transparent = true;
   hoverBox.material.color.set(0xff0000);
-  hoverBox.visible = true;
+  hoverBox.visible = false;
   sceneHelpers.add(hoverBox);
 
   // hoverBoxFill - Mesh with BoxGeometry and Semi-transparent Material
@@ -102,7 +102,7 @@ export function Viewport(inspector) {
     hoverBoxFillGeometry,
     hoverBoxFillMaterial
   );
-  hoverBoxFill.visible = true;
+  hoverBoxFill.visible = false;
   sceneHelpers.add(hoverBoxFill);
 
   // Create global instances of Box3 and Vector3
