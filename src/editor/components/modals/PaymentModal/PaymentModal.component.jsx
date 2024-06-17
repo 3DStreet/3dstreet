@@ -42,24 +42,17 @@ const PaymentModal = ({ isOpen, onClose }) => {
           </li>
           <li>
             <CheckMark32Icon />
-            Google Maps 3D Tiles
+            Integrated 2D & 3D Maps
           </li>
           <li>
             <CheckMark32Icon />
-            Augmented Reality (QR Anchor)
+            Advanced Street Geometry
           </li>
           <li>
             <CheckMark32Icon />
-            Custom SVG Paths
-          </li>
-          <li>
-            <CheckMark32Icon />
-            Mapbox Layers
+            GLTF Export and Augmented Reality
           </li>
         </ul>
-        <Button className={styles.learnMoreBtn} variant="ghost">
-          Learn more
-        </Button>
       </div>
       <div className={styles.rightCol}>
         {currentUser ? (
