@@ -6,7 +6,7 @@ import { initRaycaster } from './raycaster';
 import Events from './Events';
 import { sendMetric } from '../services/ga.js';
 
-// variables used by MyBoxHelper
+// variables used by OrientedBoxHelper
 const auxEuler = new THREE.Euler();
 const auxPosition = new THREE.Vector3();
 const auxLocalPosition = new THREE.Vector3();
@@ -19,7 +19,7 @@ const tempBox3 = new THREE.Box3();
 const tempVector3Size = new THREE.Vector3();
 const tempVector3Center = new THREE.Vector3();
 
-class MyBoxHelper extends THREE.BoxHelper {
+class OrientedBoxHelper extends THREE.BoxHelper {
   constructor(object, color = 0xffff00, fill = false) {
     super(object, color);
     this.material.linewidth = 3;
@@ -112,14 +112,14 @@ export function Viewport(inspector) {
   grid.visible = false;
   sceneHelpers.add(grid);
 
-  const selectionBox = new MyBoxHelper(undefined, 0x1faaf2);
+  const selectionBox = new OrientedBoxHelper(undefined, 0x1faaf2);
   selectionBox.material.depthTest = false;
   selectionBox.material.transparent = true;
   selectionBox.visible = false;
   sceneHelpers.add(selectionBox);
 
   // hoverBox BoxHelper version
-  const hoverBox = new MyBoxHelper(undefined, 0xff0000, true);
+  const hoverBox = new OrientedBoxHelper(undefined, 0xff0000, true);
   hoverBox.material.depthTest = false;
   hoverBox.material.transparent = true;
   hoverBox.visible = false;
