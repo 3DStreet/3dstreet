@@ -438,14 +438,14 @@
       };
 
       this.handleGizmos = {
-        X: [
-          [
-            new THREE.Line(
-              new CircleGeometry(1, 'x', 0.5),
-              new GizmoLineMaterial({ color: 0xff0000 })
-            )
-          ]
-        ],
+        // X: [
+        //   [
+        //     new THREE.Line(
+        //       new CircleGeometry(1, 'x', 0.5),
+        //       new GizmoLineMaterial({ color: 0xff0000 })
+        //     )
+        //   ]
+        // ],
 
         Y: [
           [
@@ -456,32 +456,32 @@
           ]
         ],
 
-        Z: [
-          [
-            new THREE.Line(
-              new CircleGeometry(1, 'z', 0.5),
-              new GizmoLineMaterial({ color: 0x0000ff })
-            )
-          ]
-        ],
+        // Z: [
+        //   [
+        //     new THREE.Line(
+        //       new CircleGeometry(1, 'z', 0.5),
+        //       new GizmoLineMaterial({ color: 0x0000ff })
+        //     )
+        //   ]
+        // ],
 
-        E: [
-          [
-            new THREE.Line(
-              new CircleGeometry(1.25, 'z', 1),
-              new GizmoLineMaterial({ color: 0xcccc00 })
-            )
-          ]
-        ],
+        // E: [
+        //   [
+        //     new THREE.Line(
+        //       new CircleGeometry(1.25, 'z', 1),
+        //       new GizmoLineMaterial({ color: 0xcccc00 })
+        //     )
+        //   ]
+        // ],
 
-        XYZE: [
-          [
-            new THREE.Line(
-              new CircleGeometry(1, 'z', 1),
-              new GizmoLineMaterial({ color: 0x787878 })
-            )
-          ]
-        ]
+        // XYZE: [
+        //   [
+        //     new THREE.Line(
+        //       new CircleGeometry(1, 'z', 1),
+        //       new GizmoLineMaterial({ color: 0x787878 })
+        //     )
+        //   ]
+        // ]
       };
 
       this.pickerGizmos = {
