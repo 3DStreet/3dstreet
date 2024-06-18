@@ -1,8 +1,4 @@
-<<<<<<< HEAD
 import { Button, HelpButton, GeoPanel, Logo, ZoomButtons } from './components';
-=======
-import { Button, Logo, ZoomButtons } from './components';
->>>>>>> ea502ad (fix: linting)
 import { CameraToolbar } from './viewport';
 import { Compass32Icon } from '../icons';
 import { Component } from 'react';
@@ -42,7 +38,6 @@ export default class Main extends Component {
       isGeoModalOpened: false,
       isScenesModalOpened: !isStreetLoaded,
       isPaymentModalOpened: isPaymentModalOpened,
-      isScenesModalOpened: !isStreetLoaded && !isPaymentModalOpened,
       sceneEl: AFRAME.scenes[0],
       visible: {
         scenegraph: true,
@@ -123,7 +118,7 @@ export default class Main extends Component {
     });
     Events.on('opengeomodal', () => {
       this.setState({ isGeoModalOpened: true });
-    })
+    });
     Events.on('openpaymentmodel', () => {
       this.setState({ isPaymentModalOpened: true });
     });
@@ -164,6 +159,7 @@ export default class Main extends Component {
 
   onCloseGeoModal = () => {
     this.setState({ isGeoModalOpened: false });
+  };
 
   onClosePaymentModal = () => {
     this.setState({ isPaymentModalOpened: false });
@@ -285,7 +281,11 @@ export default class Main extends Component {
           selectedTexture={this.state.selectedTexture}
           onClose={this.onModalTextureOnClose}
         />
-
+        {this.state.inspectorEnabled && (
+          <div id="help">
+            <HelpButton />
+          </div>
+        )}
         {this.state.inspectorEnabled && (
           <div id="geo">
             <GeoPanel />
@@ -313,11 +313,6 @@ export default class Main extends Component {
           <Button id={'resetZoomButton'}>
             <Compass32Icon />
           </Button>
-        )}
-        {this.state.inspectorEnabled && (
-          <div id="layerWithCategory">
-            <AddLayerButton onClick={this.toggleAddLayerPanel} />
-          </div>
         )}
         {this.state.inspectorEnabled && this.state.isAddLayerPanelOpen && (
           <AddLayerPanel
