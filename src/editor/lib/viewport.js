@@ -76,7 +76,7 @@ class MyBoxHelper extends THREE.BoxHelper {
       );
       this.object.rotation.copy(auxEuler);
       this.object.position.copy(auxLocalPosition);
-      this.rotation.copy(auxEuler);
+      this.object.getWorldQuaternion(this.quaternion);
       this.object.getWorldPosition(this.position);
       this.updateMatrix();
     }
