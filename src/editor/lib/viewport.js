@@ -81,6 +81,14 @@ class MyBoxHelper extends THREE.BoxHelper {
       this.updateMatrix();
     }
   }
+
+  dispose() {
+    super.dispose();
+    if (this.boxFill) {
+      this.boxFill.geometry.dispose();
+      this.boxFill.material.dispose();
+    }
+  }
 }
 
 /**
