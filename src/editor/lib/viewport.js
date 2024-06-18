@@ -22,7 +22,7 @@ const tempVector3Center = new THREE.Vector3();
 class MyBoxHelper extends THREE.BoxHelper {
   constructor(object, color = 0xffff00, fill = false) {
     super(object, color);
-    this.material.linewidth = 2;
+    this.material.linewidth = 3;
     if (fill) {
       // Mesh with BoxGeometry and Semi-transparent Material
       const boxFillGeometry = new THREE.BoxGeometry(1, 1, 1);
