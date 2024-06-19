@@ -168,9 +168,7 @@ export default class Toolbar extends Component {
         streetGeo['latitude'] &&
         streetGeo['longitude']
       ) {
-        STREET.notify.errorMessage(
-          `Pro account required to save scenes with geolocation, contact kieran@3dstreet.org for access`
-        );
+        Events.emit('openpaymentmodal');
         return;
       }
 

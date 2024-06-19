@@ -119,7 +119,7 @@ export default class Main extends Component {
     Events.on('opengeomodal', () => {
       this.setState({ isGeoModalOpened: true });
     });
-    Events.on('openpaymentmodel', () => {
+    Events.on('openpaymentmodal', () => {
       this.setState({ isPaymentModalOpened: true });
     });
   }

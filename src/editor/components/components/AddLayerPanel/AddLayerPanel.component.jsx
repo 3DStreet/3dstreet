@@ -282,7 +282,7 @@ const AddLayerPanel = ({ onClose, isAddLayerPanelOpen }) => {
 
   const cardClick = (card, isProUser) => {
     if (card.requiresPro && !isProUser) {
-      Events.emit('openpaymentmodel');
+      Events.emit('openpaymentmodal');
     } else if (card.mixinId) {
       createEntity(card.mixinId);
     } else if (card.handlerFunction) {

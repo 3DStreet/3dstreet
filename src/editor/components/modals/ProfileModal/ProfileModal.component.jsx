@@ -86,7 +86,7 @@ const ProfileModal = ({ isOpen, onClose }) => {
                 <Button
                   onClick={() => {
                     onClose();
-                    Events.emit('openpaymentmodel');
+                    Events.emit('openpaymentmodal');
                   }}
                   type="filled"
                   target="_blank"
