@@ -22,7 +22,7 @@ export function inputStreetmix() {
   );
 
   // update sceneGraph
-  Events.emit('entitycreated', defaultStreetEl.sceneEl);
+  Events.emit('updatescenegraph');
 }
 
 export function createElementsForScenesFromJSON(streetData) {
@@ -45,9 +45,8 @@ export function fileJSON(event) {
 
   reader.onload = function () {
     STREET.utils.createElementsFromJSON(reader.result);
-    const streetContainerEl = document.getElementById('street-container');
     // update sceneGraph
-    Events.emit('entitycreated', streetContainerEl.sceneEl);
+    Events.emit('updatescenegraph');
   };
 
   reader.readAsText(event.target.files[0]);
