@@ -64,10 +64,6 @@ function newScene(
     defaultStreetEl.removeAttribute('streetmix-loader');
   }
 
-  if (AFRAME.INSPECTOR && AFRAME.INSPECTOR.opened) {
-    // update sceneGraph
-  }
-
   // clear metadata
   if (clearMetaData) {
     AFRAME.scenes[0].setAttribute('metadata', 'sceneId', '');
