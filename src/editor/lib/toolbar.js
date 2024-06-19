@@ -6,7 +6,7 @@ export function inputStreetmix() {
     'https://streetmix.net/kfarr/3/example-street'
   );
 
-  // clrear scene data, create new blank scene.
+  // clear scene data, create new blank scene.
   // clearMetadata = true, clearUrlHash = false
   STREET.utils.newScene(true, false);
 
@@ -26,7 +26,7 @@ export function inputStreetmix() {
 }
 
 export function createElementsForScenesFromJSON(streetData) {
-  // clrear scene data, create new blank scene.
+  // clear scene data, create new blank scene.
   // clearMetadata = true, clearUrlHash = false, addDefaultStreet = false
   STREET.utils.newScene(true, true, false);
 

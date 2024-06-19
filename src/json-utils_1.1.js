@@ -633,7 +633,7 @@ function inputStreetmix() {
     'Please enter a Streetmix URL',
     'https://streetmix.net/kfarr/3/example-street'
   );
-  // clrear scene data, create new blank scene.
+  // clear scene data, create new blank scene.
   // clearMetadata = true, clearUrlHash = false
   STREET.utils.newScene(true, false);
 
@@ -670,7 +670,7 @@ function createElementsFromJSON(streetJSON) {
     streetObject = streetJSON;
   }
 
-  // clrear scene data, create new blank scene.
+  // clear scene data, create new blank scene.
   // clearMetadata = true, clearUrlHash = true, addDefaultStreet = false
   STREET.utils.newScene(true, true, false);
 
