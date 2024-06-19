@@ -25,5 +25,6 @@ export {
   GoogleSignInButtonSVG,
   Chevron24Down,
   Plus20Circle,
-  QR32Icon
+  QR32Icon,
+  ScreenshotIcon
 } from './icons.jsx';

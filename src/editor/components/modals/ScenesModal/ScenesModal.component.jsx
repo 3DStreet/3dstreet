@@ -214,12 +214,12 @@ const ScenesModal = ({ isOpen, onClose, initialTab = 'owner', delay }) => {
                   inputStreetmix();
                   onClose(); // Close the modal
                 }}
-                leadingicon={<Load24Icon />}
+                leadingIcon={<Load24Icon />}
               >
                 Load from Streetmix
               </Button>
               <Button
-                leadingicon={<Upload24Icon />}
+                leadingIcon={<Upload24Icon />}
                 className={styles.uploadBtn}
               >
                 <label

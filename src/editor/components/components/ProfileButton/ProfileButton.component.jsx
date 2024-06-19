@@ -14,7 +14,7 @@ import { useAuthContext } from '../../../contexts';
 const ProfileButton = () => {
   const { currentUser } = useAuthContext();
 
-  const onClick = async () => {
+  const onClick = () => {
     if (currentUser) {
       return Events.emit('openprofilemodal');
     }
@@ -25,10 +25,8 @@ const ProfileButton = () => {
   return (
     <Button
       className={styles.profileButton}
-      type="button"
       onClick={onClick}
-      key="profileButton"
-      variant={'toolbtn'}
+      variant="toolbtn"
     >
       {currentUser ? (
         <img
