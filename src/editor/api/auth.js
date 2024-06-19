@@ -13,6 +13,10 @@ const signIn = async () => {
     // first signIn to ga
     if (user.metadata.creationTime !== user.metadata.lastSignInTime) return;
     sendMetric('Auth', 'newAccountCreation');
+    posthog.capture('user_signed_up', {
+      email: user.email,
+      name: user.displayName
+    });
   } catch (error) {
     console.error(error);
   }
