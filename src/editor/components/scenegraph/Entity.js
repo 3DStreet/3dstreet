@@ -4,6 +4,8 @@ import PropTypes from 'prop-types';
 import classNames from 'classnames';
 import Events from '../../lib/Events';
 import { printEntity, removeEntity, cloneEntity } from '../../lib/entity';
+import { AwesomeIcon } from '../components/AwesomeIcon';
+import { faCaretDown, faCaretRight } from '@fortawesome/free-solid-svg-icons';
 
 export default class Entity extends React.Component {
   static propTypes = {
@@ -81,10 +83,14 @@ export default class Entity extends React.Component {
             evt.stopPropagation();
             this.props.toggleExpandedCollapsed(entity);
           }}
-          className={`collapsespace fa ${
-            isExpanded ? 'fa-caret-down' : 'fa-caret-right'
-          }`}
-        />
+          className="collapsespace"
+        >
+          {isExpanded ? (
+            <AwesomeIcon icon={faCaretDown} size={16} />
+          ) : (
+            <AwesomeIcon icon={faCaretRight} size={16} />
+          )}
+        </span>
       );
     } else {
       collapse = <span className="collapsespace" />;

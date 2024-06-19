@@ -32,7 +32,9 @@
     display: flex;
     row-gap: 8px;
     cursor: pointer;
-    transition: filter 0.2s, transform 0.2s;
+    transition:
+      filter 0.2s,
+      transform 0.2s;
 
     .check {
       filter: brightness(90%);
@@ -77,7 +79,9 @@
     justify-content: center;
     align-items: center;
     cursor: pointer;
-    transition: filter 0.2s, transform 0.2s;
+    transition:
+      filter 0.2s,
+      transform 0.2s;
     filter: brightness(90%);
 
     &:hover {

@@ -447,30 +447,6 @@ const GoogleSignInButtonSVG = ({ className }) => (
   </svg>
 );
 
-const Circle20Icon = ({ className }) => (
-  <svg
-    width="21"
-    height="20"
-    viewBox="0 0 21 20"
-    fill="none"
-    xmlns="http://www.w3.org/2000/svg"
-    className={className}
-  >
-    <path
-      fillRule="evenodd"
-      clipRule="evenodd"
-      d="M10.5 3.5C6.91015 3.5 4 6.41015 4 10C4 13.5898 6.91015 16.5 10.5 16.5C14.0899 16.5 17 13.5899 17 10C17 6.41015 14.0899 3.5 10.5 3.5ZM10.5 2C6.08172 2 2.5 5.58172 2.5 10C2.5 14.4183 6.08172 18 10.5 18C14.9183 18 18.5 14.4183 18.5 10C18.5 5.58172 14.9183 2 10.5 2Z"
-      fill="white"
-    />
-    <path
-      fillRule="evenodd"
-      clipRule="evenodd"
-      d="M10.5 14.25C10.0858 14.25 9.75 13.9142 9.75 13.5L9.75 10.75L7 10.75C6.58579 10.75 6.25 10.4142 6.25 10C6.25 9.58579 6.58579 9.25 7 9.25L9.75 9.25L9.75 6.5C9.75 6.08579 10.0858 5.75 10.5 5.75C10.9142 5.75 11.25 6.08579 11.25 6.5L11.25 9.25L14 9.25C14.4142 9.25 14.75 9.58579 14.75 10C14.75 10.4142 14.4142 10.75 14 10.75L11.25 10.75L11.25 13.5C11.25 13.9142 10.9142 14.25 10.5 14.25Z"
-      fill="#DBDBDB"
-    />
-  </svg>
-);
-
 const Chevron24Down = ({ className }) => (
   <svg
     xmlns="http://www.w3.org/2000/svg"
@@ -550,7 +526,6 @@ export {
   ArrowRightIcon,
   LayersIcon,
   GoogleSignInButtonSVG,
-  Circle20Icon,
   Chevron24Down,
   Plus20Circle,
   QR32Icon

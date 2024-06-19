@@ -122,7 +122,7 @@
 
     <a-entity id="environment" data-layer-name="Environment" street-environment="preset: day;"></a-entity>
 
-    <a-entity id="cameraRig" data-layer-name="Viewer" cursor-teleport="cameraRig: #cameraRig; cameraHead: #camera;"
+    <a-entity id="cameraRig" class="ph-no-capture" data-layer-name="Viewer" cursor-teleport="cameraRig: #cameraRig; cameraHead: #camera;"
       look-controls="reverseMouseDrag: true" wasd-controls="enabled: true">
       <a-entity id="camera" camera="far: 1000" position="0 1.6 0"></a-entity>
       <a-entity id="leftHand" hand-controls="hand: left;"

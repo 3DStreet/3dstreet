@@ -4,7 +4,7 @@ import { useAuthContext } from '../../../contexts/index.js';
 import styles from './AddLayerPanel.module.scss';
 import classNames from 'classnames';
 import { Button } from '../Button';
-import { Chevron24Down, Load24Icon, Plus20Circle } from '../../../icons';
+import { Chevron24Down, Plus20Circle } from '../../../icons';
 import { Dropdown } from '../Dropdown';
 import CardPlaceholder from '../../../../../ui_assets/card-placeholder.svg';
 import LockedCard from '../../../../../ui_assets/locked-card.svg';
@@ -283,7 +283,7 @@ const AddLayerPanel = ({ onClose, isAddLayerPanelOpen }) => {
   const cardClick = (card, isProUser) => {
     if (card.requiresPro && !isProUser) {
       STREET.notify.errorMessage(
-        `A Pro account is required for this entity. Please contact kieran.farr@gmail.com for pro access.`
+        `Pro account required to add this layer, contact kieran@3dstreet.org for access`
       );
     } else if (card.mixinId) {
       createEntity(card.mixinId);
@@ -345,7 +345,7 @@ const AddLayerPanel = ({ onClose, isAddLayerPanelOpen }) => {
               />
             )}
             <div className={styles.body}>
-              {card.icon ? <img src={card.icon} /> : <Load24Icon />}
+              {card.icon ? <img src={card.icon} /> : ''}
               <p className={styles.description}>{card.name}</p>
             </div>
           </div>

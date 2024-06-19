@@ -11,6 +11,7 @@ import { Viewport } from './lib/viewport';
 import { firebaseConfig } from './services/firebase.js';
 import './style/index.scss';
 import ReactGA from 'react-ga4';
+import posthog from 'posthog-js';
 
 function Inspector() {
   this.assetsLoader = new AssetsLoader();
@@ -190,6 +191,19 @@ Inspector.prototype = {
       this.selectEntity(entity, false);
     });
 
+    Events.on('hidecursor', () => {
+      // Disable raycaster before pausing the cursor entity to properly clear the current intersection,
+      // having back the move cursor and so we have the correct pointer cursor when we enable
+      // it again and hover to the previous hovered entity.
+      this.cursor.setAttribute('raycaster', 'enabled', false);
+      this.cursor.pause();
+      this.selectEntity(null);
+    });
+    Events.on('showcursor', () => {
+      this.cursor.play();
+      this.cursor.setAttribute('raycaster', 'enabled', true);
+    });
+
     Events.on('inspectortoggle', (active) => {
       this.inspectorActive = active;
       this.sceneHelpers.visible = this.inspectorActive;
@@ -328,5 +342,10 @@ Inspector.prototype = {
 
 ReactGA.initialize(firebaseConfig.measurementId);
 const inspector = (AFRAME.INSPECTOR = new Inspector());
+
+posthog.init('phc_Yclai3qykyFi8AEFOrZsh6aS78SSooLzpDz9wQ9YAH9', {
+  api_host: 'https://us.i.posthog.com',
+  person_profiles: 'identified_only' // or 'always' to create profiles for anonymous users as well
+});
 
 export { inspector };
