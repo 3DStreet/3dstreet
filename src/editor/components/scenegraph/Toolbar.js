@@ -380,11 +380,13 @@ export default class Toolbar extends Component {
     return (
       <div id="toolbar">
         <div className="toolbarActions">
-          <div>
-            <Button leadingIcon={<Edit24Icon />} onClick={this.newHandler}>
-              <div className="hideInLowResolution">New</div>
-            </Button>
-          </div>
+          {this.props.currentUser?.isPro && (
+            <div>
+              <Button leadingIcon={<Edit24Icon />} onClick={this.newHandler}>
+                <div className="hideInLowResolution">New</div>
+              </Button>
+            </div>
+          )}
           {this.state.showSaveBtn && this.props.currentUser ? (
             <div className="saveButtonWrapper" ref={this.saveButtonRef}>
               <Button
