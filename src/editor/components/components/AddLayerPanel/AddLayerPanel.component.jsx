@@ -282,9 +282,7 @@ const AddLayerPanel = ({ onClose, isAddLayerPanelOpen }) => {
 
   const cardClick = (card, isProUser) => {
     if (card.requiresPro && !isProUser) {
-      STREET.notify.errorMessage(
-        `Pro account required to add this layer, contact kieran@3dstreet.org for access`
-      );
+      Events.emit('openpaymentmodel');
     } else if (card.mixinId) {
       createEntity(card.mixinId);
     } else if (card.handlerFunction) {
