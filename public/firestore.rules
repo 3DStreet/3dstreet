@@ -25,10 +25,6 @@ service firebase.storage {
   }
 }
 
-function isPublicAccess() {
-  return request.auth == null;
-}
-
 function isImageUnderSizeLimit() {
   return resource.size < 100 * 1024 && resource.contentType.matches('image/.*');
 }
