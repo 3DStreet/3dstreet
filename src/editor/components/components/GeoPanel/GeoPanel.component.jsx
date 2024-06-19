@@ -1,7 +1,7 @@
 import GeoImg from '../../../../../ui_assets/geo.png';
 import styles from './GeoPanel.module.scss';
 import Events from '../../../lib/Events';
-import { useAuthContext } from '../../../contexts/index.js';
+import { useAuthContext, useGeoContext } from '../../../contexts/index.js';
 
 /**
  * GeoPanel component.
@@ -12,21 +12,11 @@ import { useAuthContext } from '../../../contexts/index.js';
 const GeoPanel = () => {
   const onClick = () => Events.emit('opengeomodal');
   const { currentUser } = useAuthContext();
-
-  let latitude = 0;
-  let longitude = 0;
-  let elevation = 0;
+  const streetGeo = useGeoContext();
   let coordinateInfo = null;
 
-  const streetGeo = document
-    .getElementById('reference-layers')
-    ?.getAttribute('street-geo');
-
-  if (streetGeo && streetGeo['latitude'] && streetGeo['longitude']) {
-    latitude = streetGeo['latitude'];
-    longitude = streetGeo['longitude'];
-    elevation = streetGeo['elevation'] || 0;
-    coordinateInfo = `Latitude: ${latitude}, Longitude: ${longitude}, Elevation: ${elevation}m`;
+  if (streetGeo) {
+    coordinateInfo = `Latitude: ${streetGeo.latitude}, Longitude: ${streetGeo.longitude}, Elevation: ${streetGeo.elevation}m`;
   }
 
   return (
