@@ -5,7 +5,7 @@ import {
   isSceneAuthor,
   checkIfImagePathIsEmpty
 } from '../../api/scene';
-import { Cloud24Icon, Save24Icon, Upload24Icon } from '../../icons';
+import { Cloud24Icon, Save24Icon, Upload24Icon, Edit24Icon } from '../../icons';
 import Events from '../../lib/Events';
 import { saveBlob } from '../../lib/utils';
 import { Button, ProfileButton, ScreenshotButton } from '../components';
@@ -148,6 +148,10 @@ export default class Toolbar extends Component {
 
   cloudSaveAsHandler = async () => {
     this.cloudSaveHandler({ doSaveAs: true });
+  };
+
+  newHandler = async () => {
+    STREET.utils.newScene();
   };
 
   cloudSaveHandler = async ({ doSaveAs = false }) => {
@@ -368,6 +372,20 @@ export default class Toolbar extends Component {
     return (
       <div id="toolbar">
         <div className="toolbarActions">
+          <div>
+            <Button className={'actionBtn'} onClick={this.newHandler}>
+              <div
+                className="iconContainer"
+                style={{
+                  display: 'flex',
+                  margin: '-2.5px 0px -2.5px -2px'
+                }}
+              >
+                <Edit24Icon />
+              </div>
+              <div className={'innerText'}>New</div>
+            </Button>
+          </div>
           {this.state.showSaveBtn && this.props.currentUser ? (
             <div className="saveButtonWrapper" ref={this.saveButtonRef}>
               <Button
