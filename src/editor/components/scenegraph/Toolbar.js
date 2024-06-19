@@ -156,7 +156,7 @@ export default class Toolbar extends Component {
     this.cloudSaveHandler({ doSaveAs: true });
   };
 
-  newHandler = async () => {
+  newHandler = () => {
     STREET.utils.newScene();
   };
 
