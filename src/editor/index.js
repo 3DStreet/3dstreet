@@ -192,11 +192,16 @@ Inspector.prototype = {
     });
 
     Events.on('hidecursor', () => {
+      // Disable raycaster before pausing the cursor entity to properly clear the current intersection,
+      // having back the move cursor and so we have the correct pointer cursor when we enable
+      // it again and hover to the previous hovered entity.
+      this.cursor.setAttribute('raycaster', 'enabled', false);
       this.cursor.pause();
       this.selectEntity(null);
     });
     Events.on('showcursor', () => {
       this.cursor.play();
+      this.cursor.setAttribute('raycaster', 'enabled', true);
     });
 
     Events.on('inspectortoggle', (active) => {
