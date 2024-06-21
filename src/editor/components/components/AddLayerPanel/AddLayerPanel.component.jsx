@@ -10,6 +10,7 @@ import CardPlaceholder from '../../../../../ui_assets/card-placeholder.svg';
 import LockedCard from '../../../../../ui_assets/locked-card.svg';
 
 import { LayersOptions } from './LayersOptions.js';
+import posthog from 'posthog-js';
 
 import {
   createSvgExtrudedEntity,
@@ -281,6 +282,11 @@ const AddLayerPanel = ({ onClose, isAddLayerPanelOpen }) => {
   };
 
   const cardClick = (card, isProUser) => {
+    posthog.capture('add_layer', {
+      layer: card.name,
+      requiresPro: card.requiresPro,
+      isProUser: isProUser
+    });
     if (card.requiresPro && !isProUser) {
       STREET.notify.errorMessage(
         `Pro account required to add this layer, contact kieran@3dstreet.org for access`

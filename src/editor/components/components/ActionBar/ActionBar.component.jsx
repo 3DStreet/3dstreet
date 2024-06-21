@@ -9,6 +9,7 @@ import Events from '../../../lib/Events';
 import styles from './ActionBar.module.scss';
 import { Button } from '../Button';
 import { useState } from 'react';
+import posthog from 'posthog-js';
 
 const ActionBar = ({ handleAddClick, isAddLayerPanelOpen }) => {
   const [cursorEnabled, setCursorEnabled] = useState(
@@ -17,11 +18,13 @@ const ActionBar = ({ handleAddClick, isAddLayerPanelOpen }) => {
 
   const handleHandClick = () => {
     Events.emit('hidecursor');
+    posthog.capture('hand_clicked');
     setCursorEnabled(false);
   };
 
   const handleSelectClick = () => {
     Events.emit('showcursor');
+    posthog.capture('select_clicked');
     setCursorEnabled(true);
   };
 
