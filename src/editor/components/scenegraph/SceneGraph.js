@@ -103,7 +103,9 @@ export default class SceneGraph extends React.Component {
         if (this.props.onChange) {
           this.props.onChange(entity);
         }
-        posthog.capture('entity_selected', { entity: entity.tagName });
+        posthog.capture('entity_selected', {
+          entity: entity.getAttribute('mixin')
+        });
         Events.emit('entityselect', entity, true);
         found = true;
       }
