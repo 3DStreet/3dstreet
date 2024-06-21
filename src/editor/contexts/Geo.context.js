@@ -18,7 +18,16 @@ export const GeoProvider = ({ children }) => {
         setInfo(null);
       }
     };
+
+    const listenerNewScene = () => {
+      const streetGeo = document
+        .getElementById('reference-layers')
+        ?.getAttribute('street-geo');
+      listener({ detail: streetGeo });
+    };
+
     AFRAME.scenes[0].addEventListener('newGeo', listener);
+    AFRAME.scenes[0].addEventListener('newScene', listenerNewScene);
 
     return () => AFRAME.scenes[0].removeEventListener('newGeo', listener);
   }, []);
