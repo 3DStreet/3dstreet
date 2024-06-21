@@ -29,7 +29,10 @@ export const GeoProvider = ({ children }) => {
     AFRAME.scenes[0].addEventListener('newGeo', listener);
     AFRAME.scenes[0].addEventListener('newScene', listenerNewScene);
 
-    return () => AFRAME.scenes[0].removeEventListener('newGeo', listener);
+    return () => {
+      AFRAME.scenes[0].removeEventListener('newGeo', listener);
+      AFRAME.scenes[0].removeEventListener('newScene', listenerNewScene);
+    };
   }, []);
 
   return <GeoContext.Provider value={info}>{children}</GeoContext.Provider>;
