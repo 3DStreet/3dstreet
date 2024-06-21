@@ -19,6 +19,8 @@ import { ActionBar } from './components/ActionBar';
 import { ScenesModal } from './modals/ScenesModal';
 import { SceneEditTitle } from './components/SceneEditTitle';
 import { AddLayerPanel } from './components/AddLayerPanel';
+import posthog from 'posthog-js';
+
 THREE.ImageUtils.crossOrigin = '';
 
 const isStreetLoaded = window.location.hash.length;
@@ -96,24 +98,31 @@ export default class Main extends Component {
       this.setState({ entity: entity });
     });
     Events.on('inspectortoggle', (enabled) => {
+      posthog.capture('inspector_toggled', { enabled: enabled });
       this.setState({ inspectorEnabled: enabled });
     });
     Events.on('openhelpmodal', () => {
+      posthog.capture('help_modal_opened');
       this.setState({ isHelpOpen: true });
     });
     Events.on('openscreenshotmodal', () => {
+      posthog.capture('screenshot_modal_opened');
       this.setState({ isScreenshotOpen: true });
     });
     Events.on('opensigninmodal', () => {
+      posthog.capture('signin_modal_opened');
       this.setState({ isSignInModalOpened: true });
     });
     Events.on('openscenesmodal', () => {
+      posthog.capture('scenes_modal_opened');
       this.setState({ isScenesModalOpened: true });
     });
     Events.on('openprofilemodal', () => {
+      posthog.capture('profile_modal_opened');
       this.setState({ isProfileModalOpened: true });
     });
     Events.on('opengeomodal', () => {
+      posthog.capture('geo_modal_opened');
       this.setState({ isGeoModalOpened: true });
     });
   }
@@ -123,6 +132,7 @@ export default class Main extends Component {
   };
 
   toggleAddLayerPanel = () => {
+    posthog.capture('add_layer_panel_opened');
     this.setState((prevState) => ({
       isAddLayerPanelOpen: !prevState.isAddLayerPanelOpen
     }));

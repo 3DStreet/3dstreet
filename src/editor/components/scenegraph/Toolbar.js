@@ -18,7 +18,7 @@ import { Button, ProfileButton } from '../components';
 import { SavingModal } from '../modals/SavingModal';
 import { uploadThumbnailImage } from '../modals/ScreenshotModal/ScreenshotModal.component.jsx';
 import { sendMetric } from '../../services/ga.js';
-
+import posthog from 'posthog-js';
 // const LOCALSTORAGE_MOCAP_UI = "aframeinspectormocapuienabled";
 
 function filterHelpers(scene, visible) {
@@ -165,6 +165,16 @@ export default class Toolbar extends Component {
   cloudSaveHandler = async ({ doSaveAs = false }) => {
     try {
       // if there is no current user, show sign in modal
+      let currentSceneId = STREET.utils.getCurrentSceneId();
+      let currentSceneTitle = STREET.utils.getCurrentSceneTitle();
+
+      posthog.capture('save_scene_clicked', {
+        save_as: doSaveAs,
+        user_id: this.props.currentUser ? this.props.currentUser.uid : null,
+        scene_id: currentSceneId,
+        scene_title: currentSceneTitle
+      });
+
       if (!this.props.currentUser) {
         Events.emit('opensigninmodal');
         return;
@@ -185,9 +195,6 @@ export default class Toolbar extends Component {
         );
         return;
       }
-
-      let currentSceneId = STREET.utils.getCurrentSceneId();
-      let currentSceneTitle = STREET.utils.getCurrentSceneTitle();
 
       // if owner != doc.id then doSaveAs = true;
       const isCurrentUserTheSceneAuthor = await isSceneAuthor({
@@ -261,6 +268,7 @@ export default class Toolbar extends Component {
   };
 
   handleRemixClick = () => {
+    posthog.capture('remix_scene_clicked');
     if (!this.props.currentUser) {
       this.setState({ pendingSceneSave: true });
       Events.emit('opensigninmodal');

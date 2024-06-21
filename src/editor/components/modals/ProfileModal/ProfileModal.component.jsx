@@ -5,13 +5,14 @@ import { Button } from '../../components';
 import { useAuthContext } from '../../../contexts';
 import { signOut } from 'firebase/auth';
 import { auth } from '../../../services/firebase';
-
+import posthog from 'posthog-js';
 const ProfileModal = ({ isOpen, onClose }) => {
   const { currentUser, setCurrentUser } = useAuthContext();
 
   const logOutHandler = async () => {
     onClose();
     await signOut(auth);
+    posthog.reset();
     setCurrentUser(null);
   };
   /*
