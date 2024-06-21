@@ -27,10 +27,8 @@ const ProfileButton = () => {
   return (
     <Button
       className={styles.profileButton}
-      type="button"
       onClick={onClick}
-      key="profileButton"
-      variant={'toolbtn'}
+      variant="toolbtn"
     >
       {currentUser ? (
         <img

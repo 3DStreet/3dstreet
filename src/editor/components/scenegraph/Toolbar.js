@@ -5,10 +5,16 @@ import {
   isSceneAuthor,
   checkIfImagePathIsEmpty
 } from '../../api/scene';
-import { Cloud24Icon, Save24Icon, Upload24Icon } from '../../icons';
+import {
+  Cloud24Icon,
+  Save24Icon,
+  ScreenshotIcon,
+  Upload24Icon,
+  Edit24Icon
+} from '../../icons';
 import Events from '../../lib/Events';
 import { saveBlob } from '../../lib/utils';
-import { Button, ProfileButton, ScreenshotButton } from '../components';
+import { Button, ProfileButton } from '../components';
 import { SavingModal } from '../modals/SavingModal';
 import { uploadThumbnailImage } from '../modals/ScreenshotModal/ScreenshotModal.component.jsx';
 import { sendMetric } from '../../services/ga.js';
@@ -148,6 +154,12 @@ export default class Toolbar extends Component {
 
   cloudSaveAsHandler = async () => {
     this.cloudSaveHandler({ doSaveAs: true });
+  };
+
+  newHandler = () => {
+    AFRAME.INSPECTOR.selectEntity(null);
+    STREET.utils.newScene();
+    Events.emit('updatescenegraph');
   };
 
   cloudSaveHandler = async ({ doSaveAs = false }) => {
@@ -376,106 +388,72 @@ export default class Toolbar extends Component {
     return (
       <div id="toolbar">
         <div className="toolbarActions">
+          {this.props.currentUser?.isPro && (
+            <div>
+              <Button leadingIcon={<Edit24Icon />} onClick={this.newHandler}>
+                <div className="hideInLowResolution">New</div>
+              </Button>
+            </div>
+          )}
           {this.state.showSaveBtn && this.props.currentUser ? (
             <div className="saveButtonWrapper" ref={this.saveButtonRef}>
               <Button
-                className={'actionBtn'}
+                leadingIcon={<Save24Icon />}
                 onClick={this.toggleSaveActionState.bind(this)}
               >
-                <div
-                  className="iconContainer"
-                  style={{
-                    display: 'flex',
-                    margin: '-2.5px 0px -2.5px -2px'
-                  }}
-                >
-                  <Save24Icon />
-                </div>
-                <div className={'innerText'}>Save</div>
+                <div className="hideInLowResolution">Save</div>
               </Button>
               {this.state.isSavingScene && <SavingModal />}
               {this.state.isSaveActionActive && (
                 <div className="dropdownedButtons">
                   <Button
+                    leadingIcon={<Cloud24Icon />}
                     variant="white"
                     onClick={this.cloudSaveHandler}
                     disabled={this.state.isSavingScene || !this.props.isAuthor}
                   >
-                    <div
-                      className="icon"
-                      style={{
-                        display: 'flex',
-                        margin: '-2.5px 0px -2.5px -2px'
-                      }}
-                    >
-                      <Cloud24Icon />
-                    </div>
-                    Save
+                    <div>Save</div>
                   </Button>
                   <Button
+                    leadingIcon={<Cloud24Icon />}
                     variant="white"
                     onClick={this.cloudSaveAsHandler}
                     disabled={this.state.isSavingScene}
                   >
-                    <div
-                      className="icon"
-                      style={{
-                        display: 'flex',
-                        margin: '-2.5px 0px -2.5px -2px'
-                      }}
-                    >
-                      <Cloud24Icon />
-                    </div>
-                    Save As...
+                    <div>Save As...</div>
                   </Button>
                 </div>
               )}
             </div>
           ) : (
             <Button
+              leadingIcon={<Save24Icon />}
               onClick={this.handleRemixClick}
               disabled={this.state.isSavingScene}
             >
-              <div
-                className="icon"
-                style={{
-                  display: 'flex',
-                  margin: '-2.5px 0px -2.5px -2px'
-                }}
-              >
-                <Save24Icon />
-              </div>
-              <div className={'innerText'}>Save</div>
+              <div className="hideInLowResolution">Save</div>
             </Button>
           )}
           {this.state.showLoadBtn && (
             <Button
-              className={'actionBtn'}
+              leadingIcon={<Upload24Icon />}
               onClick={() => Events.emit('openscenesmodal')}
             >
-              <div
-                className="iconContainer"
-                style={{
-                  display: 'flex',
-                  margin: '-2.5px 0px -2.5px -2px'
-                }}
-              >
-                <Upload24Icon />
-              </div>
-              <div className={'innerText'}>Open</div>
+              <div className="hideInLowResolution">Open</div>
             </Button>
           )}
-          <div
-            onClick={() =>
+          <Button
+            leadingIcon={<ScreenshotIcon />}
+            onClick={() => {
               this.setState((prevState) => ({
                 ...prevState,
                 isCapturingScreen: true
-              }))
-            }
-            className={'cameraButton'}
+              }));
+              Events.emit('openscreenshotmodal');
+            }}
           >
-            <ScreenshotButton />
-          </div>
+            <div className="hideInLowResolution">Share</div>
+          </Button>
           <div
             onClick={() =>
               this.setState((prevState) => ({

@@ -1,7 +1,7 @@
 import { createRoot } from 'react-dom/client';
 import { GLTFExporter } from 'three/examples/jsm/exporters/GLTFExporter';
 import MainWrapper from './components/MainWrapper';
-import { AuthProvider } from './contexts';
+import { AuthProvider, GeoProvider } from './contexts';
 import Events from './lib/Events';
 import { AssetsLoader } from './lib/assetsLoader';
 import { initCameras } from './lib/cameras';
@@ -76,7 +76,9 @@ Inspector.prototype = {
     const root = createRoot(div);
     root.render(
       <AuthProvider>
-        <MainWrapper />
+        <GeoProvider>
+          <MainWrapper />
+        </GeoProvider>
       </AuthProvider>
     );
 
