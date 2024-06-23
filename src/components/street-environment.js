@@ -25,6 +25,7 @@ AFRAME.registerComponent('street-environment', {
     const light2 = this.light2;
     const assetsPathRoot = '//assets.3dstreet.app/';
 
+    sky.setAttribute('radius', 5000);
     sky.setAttribute('hide-on-enter-ar', '');
 
     if (this.data.preset === 'night') {
