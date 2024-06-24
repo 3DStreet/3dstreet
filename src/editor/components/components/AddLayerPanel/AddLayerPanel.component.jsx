@@ -74,8 +74,8 @@ const AddLayerPanel = ({ onClose, isAddLayerPanelOpen }) => {
   const layersData = [
     {
       name: 'Mapbox',
-      img: '',
-      icon: '',
+      img: 'ui_assets/cards/mapbox2d.jpg',
+      icon: 'ui_assets/cards/icons/mapbox24.png',
       requiresPro: true,
       description:
         'Create entity with mapbox component, that accepts a long / lat and renders a plane with dimensions that (should be) at a correct scale.',
@@ -83,9 +83,9 @@ const AddLayerPanel = ({ onClose, isAddLayerPanelOpen }) => {
       handlerFunction: createMapbox
     },
     {
-      name: 'Street from streetmixStreet',
-      img: '',
-      icon: '',
+      name: 'Street from Streetmix URL',
+      img: 'ui_assets/cards/streetmix.jpg',
+      icon: 'ui_assets/cards/icons/streetmix24.png',
       requiresPro: true,
       description:
         'Create an additional Streetmix street in your 3DStreet scene without replacing any existing streets.',
@@ -104,8 +104,8 @@ const AddLayerPanel = ({ onClose, isAddLayerPanelOpen }) => {
     },
     {
       name: '3D Tiles',
-      img: '',
-      icon: '',
+      img: 'ui_assets/cards/google3d.jpg',
+      icon: 'ui_assets/cards/icons/google24.png',
       requiresPro: true,
       description:
         'Adds an entity to load and display 3d tiles from Google Maps Tiles API 3D Tiles endpoint. This will break your scene and you cannot save it yet, so beware before testing.',
