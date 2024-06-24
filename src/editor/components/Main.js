@@ -84,6 +84,14 @@ export default class Main extends Component {
       '.viewer-logo-start-editor-button'
     );
     htmlEditorButton && htmlEditorButton.remove();
+
+    const isStreetMix = window.location.href.includes('streetmix');
+    if (isStreetMix) {
+      STREET.notify.warningMessage(
+        'Hit save if you want to save changes to the scene. Otherwise changes will be lost'
+      );
+    }
+
     Events.on(
       'opentexturesmodal',
       function (selectedTexture, textureOnClose) {
