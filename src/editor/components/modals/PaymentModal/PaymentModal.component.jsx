@@ -12,9 +12,7 @@ import { functions } from '../../../services/firebase.js';
 let stripePromise;
 const getStripe = () => {
   if (!stripePromise) {
-    stripePromise = loadStripe(
-      'pk_test_51PAsDFP2BZd7kkhq6uIm5LRHQQCR2qBppnVwMA1vAokzkgjlngXgAgfaz1jexz1IbqoE2WjEQSWxjTpdeDNeJZSP00PqhX34fp'
-    );
+    stripePromise = loadStripe(process.env.STRIPE_PUBLISHABLE_KEY);
   }
 
   return stripePromise;
@@ -74,13 +72,16 @@ const PaymentModal = ({ isOpen, onClose }) => {
                       'createStripeSession'
                     )({
                       line_items: [
-                        { price: 'price_1PAsLrP2BZd7kkhqoVPaJOT3', quantity: 1 }
+                        { price: 'price_1PVKKsA638v2qJqBw2E7cY3S', quantity: 1 }
                       ],
                       mode: 'subscription',
                       success_url: `${location.origin}/#/modal/payment`,
                       cancel_url: `${location.origin}/#/modal/payment`,
-                      metadata: {
-                        userId: currentUser.uid
+                      metadata: { userId: currentUser.uid },
+                      subscription_data: {
+                        metadata: {
+                          userId: currentUser.uid
+                        }
                       }
                     });
 
