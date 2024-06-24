@@ -73,7 +73,7 @@ const AddLayerPanel = ({ onClose, isAddLayerPanelOpen }) => {
   // data for layers cards
   const layersData = [
     {
-      name: 'Mapbox',
+      name: 'Mapbox 2D Aerial',
       img: 'ui_assets/cards/mapbox2d.jpg',
       icon: 'ui_assets/cards/icons/mapbox24.png',
       requiresPro: true,
@@ -103,7 +103,7 @@ const AddLayerPanel = ({ onClose, isAddLayerPanelOpen }) => {
       handlerFunction: createSvgExtrudedEntity
     },
     {
-      name: '3D Tiles',
+      name: 'Google Maps 3D Tiles',
       img: 'ui_assets/cards/google3d.jpg',
       icon: 'ui_assets/cards/icons/google24.png',
       requiresPro: true,
@@ -113,7 +113,7 @@ const AddLayerPanel = ({ onClose, isAddLayerPanelOpen }) => {
       handlerFunction: create3DTiles
     },
     {
-      name: 'Create custom model',
+      name: 'glTF model from URL',
       img: '',
       requiresPro: true,
       icon: '',
