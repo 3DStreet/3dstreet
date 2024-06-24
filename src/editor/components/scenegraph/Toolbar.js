@@ -129,6 +129,9 @@ export default class Toolbar extends Component {
 
   static convertToObject = () => {
     try {
+      posthog.capture('convert_to_json_clicked', {
+        scene_id: STREET.utils.getCurrentSceneId()
+      });
       const entity = document.getElementById('street-container');
 
       const data = STREET.utils.convertDOMElToObject(entity);
@@ -311,6 +314,10 @@ export default class Toolbar extends Component {
       sendMetric('SceneGraph', 'exportGLTF');
       const sceneName = getSceneName(AFRAME.scenes[0]);
       const scene = AFRAME.scenes[0].object3D;
+      posthog.capture('export_scene_to_gltf_clicked', {
+        scene_id: STREET.utils.getCurrentSceneId()
+      });
+
       filterHelpers(scene, false);
       AFRAME.INSPECTOR.exporters.gltf.parse(
         scene,

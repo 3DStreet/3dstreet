@@ -1,6 +1,5 @@
 import { useEffect, useState } from 'react';
 import styles from './ScreenshotModal.module.scss';
-
 import {
   collection,
   doc,
@@ -18,6 +17,7 @@ import { db, storage } from '../../../services/firebase';
 import { Button, Dropdown, Input } from '../../components';
 import Toolbar from '../../scenegraph/Toolbar';
 import Modal from '../Modal.jsx';
+import posthog from 'posthog-js';
 // import { loginHandler } from '../SignInModal';
 
 export const uploadThumbnailImage = async (uploadedFirstTime) => {
@@ -110,6 +110,11 @@ const saveScreenshot = async (value) => {
       '#screentock-destination'
     );
   }
+
+  posthog.capture('screenshot_taken', {
+    type: value,
+    scene_id: STREET.utils.getCurrentSceneId()
+  });
 
   screenshotEl.setAttribute('screentock', 'type', value);
   screenshotEl.setAttribute('screentock', 'takeScreenshot', true);
