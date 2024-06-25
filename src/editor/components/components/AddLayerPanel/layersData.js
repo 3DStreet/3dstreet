@@ -4,7 +4,8 @@ import {
   createStreetmixStreet,
   create3DTiles,
   createCustomModel,
-  createPrimitiveGeometry
+  createPrimitiveGeometry,
+  createIntersection
 } from './createLayerFunctions';
 
 // data for PRO layers cards
@@ -68,6 +69,16 @@ const layersData = [
       'Create entity with A-Frame primitive geometry. Geometry type could be changed in properties panel.',
     id: 6,
     handlerFunction: createPrimitiveGeometry
+  },
+  {
+    name: 'Create intersection',
+    img: '',
+    requiresPro: true,
+    icon: '',
+    description:
+      'Create intersection entity. Parameters of intersection component could be changed in properties panel.',
+    id: 7,
+    handlerFunction: createIntersection
   }
 ];
 

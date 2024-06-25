@@ -149,11 +149,22 @@ function createPrimitiveGeometry() {
   Events.emit('entitycreated', newEl);
 }
 
+function createIntersection() {
+  const newEl = document.createElement('a-entity');
+  newEl.setAttribute('intersection', '');
+  newEl.setAttribute('data-layer-name', 'Street intersection');
+  const parentEl = document.querySelector('#street-container');
+  parentEl.appendChild(newEl);
+  // update sceneGraph
+  Events.emit('entitycreated', newEl);
+}
+
 export {
   createSvgExtrudedEntity,
   createMapbox,
   createStreetmixStreet,
   create3DTiles,
   createCustomModel,
-  createPrimitiveGeometry
+  createPrimitiveGeometry,
+  createIntersection
 };
