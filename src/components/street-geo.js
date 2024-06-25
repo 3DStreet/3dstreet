@@ -35,6 +35,7 @@ AFRAME.registerComponent('street-geo', {
   },
   update: function (oldData) {
     const data = this.data;
+    this.el.sceneEl.emit('newGeo', data);
 
     const updatedData = AFRAME.utils.diff(oldData, data);
 

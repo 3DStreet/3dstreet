@@ -13,6 +13,7 @@ export {
   Cloud24Icon,
   Mangnifier20Icon,
   Edit32Icon,
+  Edit24Icon,
   CheckMark32Icon,
   Copy32Icon,
   DropdownIcon,
@@ -24,5 +25,6 @@ export {
   GoogleSignInButtonSVG,
   Chevron24Down,
   Plus20Circle,
-  QR32Icon
+  QR32Icon,
+  ScreenshotIcon
 } from './icons.jsx';
