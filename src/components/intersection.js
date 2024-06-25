@@ -11,7 +11,7 @@ AFRAME.registerComponent('intersection', {
     trafficsignal: { type: 'string', default: '0 0 0 0' },
     crosswalk: { type: 'string', default: '0 0 0 0' }
   },
-  init: function () {
+  update: function () {
     var data = this.data;
     var el = this.el;
 
