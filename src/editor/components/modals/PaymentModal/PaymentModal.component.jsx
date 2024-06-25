@@ -1,10 +1,11 @@
 import { httpsCallable } from 'firebase/functions';
 import styles from './PaymentModal.module.scss';
+import { useState } from 'react';
 
 import { loadStripe } from '@stripe/stripe-js';
 import PaymentPlaceholderImg from '../../../../../ui_assets/payment-placeholder.png';
 import { useAuthContext } from '../../../contexts/index.js';
-import { CheckMark32Icon } from '../../../icons/icons.jsx';
+import { CheckMark32Icon, Loader } from '../../../icons';
 import { Button } from '../../components/index.js';
 import Modal from '../Modal.jsx';
 import { functions } from '../../../services/firebase.js';
@@ -20,6 +21,41 @@ const getStripe = () => {
 
 const PaymentModal = ({ isOpen, onClose }) => {
   const { currentUser } = useAuthContext();
+  const [isLoading, setIsLoading] = useState(false);
+
+  const isSucess = window.location.hash.includes('/success');
+  if (isSucess) {
+    STREET.notify.successMessage('Thank you for subscribing!');
+  }
+
+  const startCheckout = async () => {
+    setIsLoading(true);
+    try {
+      const {
+        data: { id }
+      } = await httpsCallable(
+        functions,
+        'createStripeSession'
+      )({
+        line_items: [{ price: 'price_1PVKKsA638v2qJqBw2E7cY3S', quantity: 1 }],
+        mode: 'subscription',
+        success_url: `${location.origin}/#/modal/payment/success`,
+        cancel_url: `${location.origin}/#/modal/payment`,
+        metadata: { userId: currentUser.uid },
+        subscription_data: {
+          metadata: {
+            userId: currentUser.uid
+          }
+        }
+      });
+
+      const stripe = await getStripe();
+      await stripe.redirectToCheckout({ sessionId: id });
+    } catch (error) {
+      console.log(error);
+    }
+    setIsLoading(false);
+  };
 
   return (
     <Modal
@@ -59,43 +95,24 @@ const PaymentModal = ({ isOpen, onClose }) => {
               className={styles.paymentPlaceholder}
               src={PaymentPlaceholderImg}
             />
-            {currentUser.isPremium ? (
+            {currentUser.isPro ? (
               <CheckMark32Icon />
             ) : (
-              <Button
-                onClick={async () => {
-                  try {
-                    const {
-                      data: { id }
-                    } = await httpsCallable(
-                      functions,
-                      'createStripeSession'
-                    )({
-                      line_items: [
-                        { price: 'price_1PVKKsA638v2qJqBw2E7cY3S', quantity: 1 }
-                      ],
-                      mode: 'subscription',
-                      success_url: `${location.origin}/#/modal/payment`,
-                      cancel_url: `${location.origin}/#/modal/payment`,
-                      metadata: { userId: currentUser.uid },
-                      subscription_data: {
-                        metadata: {
-                          userId: currentUser.uid
-                        }
-                      }
-                    });
-
-                    const stripe = await getStripe();
-                    await stripe.redirectToCheckout({ sessionId: id });
-                  } catch (error) {
-                    console.log(error);
-                  }
-                }}
-                className={styles.checkoutWithBtn}
-                variant="filled"
-              >
-                Checkout with Stripe
-              </Button>
+              <>
+                {isLoading ? (
+                  <div className={styles.loadingSpinner}>
+                    <Loader className={styles.spinner} />
+                  </div>
+                ) : (
+                  <Button
+                    onClick={startCheckout}
+                    className={styles.checkoutWithBtn}
+                    variant="filled"
+                  >
+                    Checkout with Stripe
+                  </Button>
+                )}
+              </>
             )}
           </>
         ) : (

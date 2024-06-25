@@ -162,6 +162,7 @@ export default class Main extends Component {
   };
 
   onClosePaymentModal = () => {
+    window.location.hash = '#';
     this.setState({ isPaymentModalOpened: false });
   };
 

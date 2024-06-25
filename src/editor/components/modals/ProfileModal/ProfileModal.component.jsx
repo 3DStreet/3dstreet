@@ -55,10 +55,10 @@ const ProfileModal = ({ isOpen, onClose }) => {
           </div>
           <hr />
 
-          {currentUser?.isPremium ? (
+          {currentUser?.isPro ? (
             <div className={styles.manageBillingCard}>
               <p>
-                <Action24 /> SubscriptionPlan: Geospatial Pro
+                <Action24 /> Plan: Geospatial Pro
               </p>
               <Button variant="ghost" className={styles.manageSubscription}>
                 Manage subscription
@@ -92,10 +92,6 @@ const ProfileModal = ({ isOpen, onClose }) => {
                   target="_blank"
                 >
                   Subscribe
-                </Button>
-
-                <Button type="outline" disabled>
-                  Manage billing
                 </Button>
               </div>
             </div>
