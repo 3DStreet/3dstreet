@@ -19,6 +19,7 @@ import { SavingModal } from '../modals/SavingModal';
 import { uploadThumbnailImage } from '../modals/ScreenshotModal/ScreenshotModal.component.jsx';
 import { sendMetric } from '../../services/ga.js';
 import posthog from 'posthog-js';
+import { UndoRedo } from '../components/UndoRedo/UndoRedo.component.jsx';
 // const LOCALSTORAGE_MOCAP_UI = "aframeinspectormocapuienabled";
 
 function filterHelpers(scene, visible) {
@@ -473,6 +474,9 @@ export default class Toolbar extends Component {
           >
             <ProfileButton />
           </div>
+        </div>
+        <div className="undoRedoActions">
+          <UndoRedo />
         </div>
       </div>
     );
