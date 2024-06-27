@@ -37,12 +37,12 @@ exports.createStripeSession = functions.https.onCall(async (data, context) => {
   const stripe = require('stripe')('sk_test_30qcK5wZwyN1q6NMKIirvyD7');
 
   // get stripeCustomerID if it exists
-  const collectionRef = this.db.collection("userProfile");
+  const collectionRef = admin.firestore().collection("userProfile");
   const querySnapshot = await collectionRef.where("userId", "==", data.metadata.userId).get();
   let stripeCustomerId = null;
   querySnapshot.forEach((doc) => {
     stripeCustomerId = doc.data().stripeCustomerId;
-    break; // only need the first one
+    return; // only need the first one
   });
   // update data to include stripeCustomerID (data.customer)
 
@@ -76,7 +76,7 @@ exports.createStripeBillingPortal = functions.https.onCall(async (data, context)
   return {
     url: session.url
   };
-}
+});
 
 
 exports.stripeWebhook = functions.https.onRequest(async (req, res) => {

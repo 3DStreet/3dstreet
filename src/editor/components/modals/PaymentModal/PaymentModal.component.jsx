@@ -42,7 +42,6 @@ const PaymentModal = ({ isOpen, onClose }) => {
         success_url: `${location.origin}/#/modal/payment/success`,
         cancel_url: `${location.origin}/#/modal/payment`,
         metadata: { userId: currentUser.uid },
-        customer: currentUser.stripeCustomerId,
         subscription_data: {
           metadata: {
             userId: currentUser.uid
