@@ -4,9 +4,10 @@ import Modal from '../Modal.jsx';
 import { Button } from '../../components';
 import { useAuthContext } from '../../../contexts';
 import { signOut } from 'firebase/auth';
-import { auth } from '../../../services/firebase';
+import { auth, functions } from '../../../services/firebase';
 import Events from '../../../lib/Events.js';
 import { Action24 } from '../../../icons/icons.jsx';
+import { httpsCallable } from 'firebase/functions';
 
 const ProfileModal = ({ isOpen, onClose }) => {
   const { currentUser, setCurrentUser } = useAuthContext();
@@ -15,6 +16,21 @@ const ProfileModal = ({ isOpen, onClose }) => {
     onClose();
     await signOut(auth);
     setCurrentUser(null);
+  };
+
+  const manageSubscription = async () => {
+    const {
+      data: { url }
+    } = await httpsCallable(
+      functions,
+      'createStripeBillingPortal'
+    )({
+      customer_id: currentUser.stripeUserId,
+      return_url: `${location.origin}/#/modal/payment`
+    });
+
+    window.open(url, '_blank');
+    // Replace 'https://example.com' with your desired URL
   };
 
   return (
@@ -60,7 +76,11 @@ const ProfileModal = ({ isOpen, onClose }) => {
               <p>
                 <Action24 /> Plan: Geospatial Pro
               </p>
-              <Button variant="ghost" className={styles.manageSubscription}>
+              <Button
+                variant="ghost"
+                className={styles.manageSubscription}
+                onClick={manageSubscription}
+              >
                 Manage subscription
               </Button>
             </div>

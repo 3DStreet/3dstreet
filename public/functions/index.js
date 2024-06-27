@@ -36,12 +36,48 @@ exports.getScene = functions.https.onRequest(async (req, res) => {
 exports.createStripeSession = functions.https.onCall(async (data, context) => {
   const stripe = require('stripe')('sk_test_30qcK5wZwyN1q6NMKIirvyD7');
 
+  // get stripeCustomerID if it exists
+  const collectionRef = this.db.collection("userProfile");
+  const querySnapshot = await collectionRef.where("userId", "==", data.metadata.userId).get();
+  let stripeCustomerId = null;
+  querySnapshot.forEach((doc) => {
+    stripeCustomerId = doc.data().stripeCustomerId;
+    break; // only need the first one
+  });
+  // update data to include stripeCustomerID (data.customer)
+
+  if (stripeCustomerId) {
+    data.customer = stripeCustomerId;
+  }
   const session = await stripe.checkout.sessions.create(data);
+
+  if (!stripeCustomerId) {
+    // add stripeCustomerId to userProfile
+    await admin.firestore().collection('userProfile').doc().set({
+      userId: data.metadata.userId,
+      stripeCustomerId: session.customer
+    });
+  }
+  // add stuff to firebase (customer ID)
 
   return {
     id: session.id
   };
 });
+
+exports.createStripeBillingPortal = functions.https.onCall(async (data, context) => {
+  const stripe = require('stripe')('sk_test_30qcK5wZwyN1q6NMKIirvyD7');
+
+  const session = await stripe.billingPortal.sessions.create({
+    customer: data.customer_id,
+    return_url: data.return_url
+  });
+
+  return {
+    url: session.url
+  };
+}
+
 
 exports.stripeWebhook = functions.https.onRequest(async (req, res) => {
   const stripe = require('stripe')('sk_test_30qcK5wZwyN1q6NMKIirvyD7');
