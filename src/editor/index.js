@@ -219,6 +219,10 @@ Inspector.prototype = {
       });
     });
 
+    this.sceneEl.addEventListener('newScene', () => {
+      this.history.clear();
+    });
+
     document.addEventListener('child-detached', (event) => {
       var entity = event.detail.el;
       AFRAME.INSPECTOR.removeObject(entity.object3D);
