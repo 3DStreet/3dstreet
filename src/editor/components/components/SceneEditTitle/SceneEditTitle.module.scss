@@ -1,0 +1,113 @@
+@use '../../../style/variables.scss';
+
+.wrapper {
+  position: absolute;
+  left: 110px;
+  bottom: 34px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  background: rgba(50, 50, 50, 0.8);
+  padding: 8px 12px;
+  border-radius: 12px;
+
+  .title {
+    max-width: 50vw;
+    text-overflow: ellipsis;
+    overflow: hidden;
+    height: 20px;
+    font-size: 16px !important;
+    white-space: nowrap;
+    cursor: pointer;
+  }
+
+  .edit {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+  }
+
+  .buttons {
+    display: flex;
+    row-gap: 8px;
+    cursor: pointer;
+    transition:
+      filter 0.2s,
+      transform 0.2s;
+
+    .check {
+      filter: brightness(90%);
+      &:hover {
+        filter: brightness(100%);
+      }
+
+      &:focus {
+        outline: none;
+      }
+
+      &:active {
+        filter: brightness(90%);
+        box-shadow: none;
+      }
+    }
+
+    .cross {
+      filter: brightness(90%);
+      &:hover {
+        filter: brightness(100%);
+      }
+
+      &:focus {
+        outline: none;
+      }
+
+      &:active {
+        filter: brightness(90%);
+        box-shadow: none;
+      }
+    }
+
+    svg {
+      width: 32px;
+      height: 32px;
+    }
+  }
+
+  .readOnly {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    cursor: pointer;
+    transition:
+      filter 0.2s,
+      transform 0.2s;
+    filter: brightness(90%);
+
+    &:hover {
+      filter: brightness(100%);
+    }
+
+    &:focus {
+      outline: none;
+    }
+
+    &:active {
+      filter: brightness(90%);
+      box-shadow: none;
+    }
+  }
+}
+
+input {
+  background: none !important;
+  color: variables.$white !important;
+  font-size: 20px;
+  user-select: text;
+}
+
+input::selection {
+  background-color: variables.$purple;
+  opacity: 0.4;
+  color: variables.$white;
+}

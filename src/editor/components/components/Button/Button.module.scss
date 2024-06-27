@@ -1,0 +1,198 @@
+@use '../../../style/variables.scss';
+
+.buttonWrapper {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  column-gap: 8px;
+  width: fit-content;
+  height: 43px;
+  padding: 11px 15px !important;
+  border-radius: 18px;
+  border: 1px solid transparent;
+  outline: unset;
+  background-color: transparent;
+  font-size: 16px !important;
+  line-height: 19px;
+  font-weight: 500;
+  transition: all 0.3s;
+
+  svg path {
+    transition: all 0.3s;
+  }
+
+  &:focus {
+    outline: none;
+  }
+
+  &:hover {
+    cursor: pointer;
+  }
+
+  &:disabled {
+    cursor: not-allowed;
+  }
+}
+
+.filledButton {
+  background-color: variables.$purple;
+  color: variables.$white;
+
+  &:hover {
+    background-color: variables.$purple-100;
+    transition: all 0.3s;
+  }
+
+  &:active {
+    background-color: variables.$purple-200;
+    color: variables.$lightgray-200;
+    transition: all 0.3s;
+  }
+
+  &:disabled {
+    background-color: rgba(237, 235, 239, 0.5);
+    color: rgba(50, 50, 50, 0.4);
+    transition: all 0.3s;
+  }
+
+  &:focus {
+    border: 1px solid variables.$white;
+  }
+
+  &.icon {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    width: 24px;
+    height: 24px;
+  }
+}
+
+.outlinedButton {
+  background-color: transparent;
+  color: variables.$purple;
+  border-color: variables.$purple;
+
+  &:hover {
+    color: variables.$purple-100;
+    border-color: variables.$purple-100;
+    transition: all 0.3s;
+  }
+
+  &:active {
+    color: variables.$purple-200;
+    border-color: variables.$purple-200;
+    transition: all 0.3s;
+  }
+
+  &:focus {
+    border: 1px solid variables.$white;
+  }
+
+  &:disabled {
+    color: rgba(237, 235, 239, 0.5);
+    border-color: rgba(237, 235, 239, 0.5);
+    transition: all 0.3s;
+  }
+}
+
+.ghostButton {
+  color: variables.$purple;
+
+  &:hover {
+    color: variables.$purple-100;
+    transition: all 0.3s;
+  }
+
+  &:active {
+    color: variables.$purple-200;
+    transition: all 0.3s;
+  }
+
+  &:disabled {
+    color: rgba(237, 235, 239, 0.5);
+    transition: all 0.3s;
+  }
+}
+
+.toolButton {
+  background-color: rgba(50, 50, 50, 0.8);
+  color: variables.$white;
+
+  &:hover {
+    background-color: variables.$black-400;
+    transition: all 0.3s;
+  }
+
+  &:active {
+    background-color: variables.$black-700;
+    color: variables.$lightgray-200;
+    transition: all 0.3s;
+  }
+
+  &:disabled {
+    background-color: rgba(50, 50, 50, 0.6);
+    color: variables.$gray-500;
+    transition: all 0.3s;
+  }
+}
+
+.whiteButton {
+  background-color: variables.$lightgray-500;
+  color: variables.$gray-200;
+  border-radius: 18px;
+  box-shadow: 0px 7px 3px 0px rgba(0, 0, 0, 0.32);
+
+  &:active {
+    border: 1px solid variables.$white;
+    background-color: variables.$lightgray-400;
+  }
+
+  &:focus {
+    border: 1px solid variables.$white;
+  }
+
+  &:hover {
+    background-color: variables.$white;
+    transition: all 0.3s;
+  }
+
+  &:disabled {
+    background-color: variables.$gray-500;
+    color: rgba(50, 50, 50, 0.4);
+    transition: all 0.3s;
+  }
+}
+
+.customButton {
+  background-color: rgba(50, 50, 50, 0.8);
+  color: #dbdbdb;
+  border-radius: 10px;
+
+  &:active {
+    background-color: #282828;
+  }
+
+  &:focus {
+    border: 1px solid #fff;
+    background-color: #2d2d2d;
+  }
+
+  &:hover {
+    background-color: #2d2d2d;
+    transition: all 0.3s;
+  }
+
+  &:disabled {
+    color: #474747;
+    transition: all 0.3s;
+  }
+}
+
+.icon {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  width: 24px;
+  height: 24px;
+}

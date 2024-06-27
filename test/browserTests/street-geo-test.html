@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+  <meta charset="utf-8">
+  <title>Mocha Tests</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/mocha/9.0.2/mocha.min.css">
+</head>
+
+<body>
+  <div id="mocha"></div>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/mocha/9.0.2/mocha.min.js"></script>
+  <script src="https://www.chaijs.com/chai.js"></script>
+  <script src="https://aframe.io/releases/1.5.0/aframe.min.js"></script>
+  <script src="/src/lib/aframe-loader-3dtiles-component.min.js"></script>
+  <script src="/src/lib/aframe-mapbox-component.min.js"></script>
+  <script src="/src/components/street-geo.js"></script>
+
+  <script type="module">
+    window.expect = chai.expect;
+    mocha.setup('bdd');
+    mocha.run();
+  </script>
+
+  <script type="module" src="/test/browserTests/street-geo-test-bdd.mjs"></script>
+
+</body>
+
+</html>

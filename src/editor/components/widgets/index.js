@@ -1,0 +1,9 @@
+export { default as BooleanWidget } from './BooleanWidget';
+export { default as ColorWidget } from './ColorWidget';
+export { default as InputWidget } from './InputWidget';
+export { default as NumberWidget } from './NumberWidget';
+export { default as SelectWidget } from './SelectWidget';
+export { default as TextureWidget } from './TextureWidget';
+export { default as Vec4Widget } from './Vec4Widget';
+export { default as Vec3Widget } from './Vec3Widget';
+export { default as Vec2Widget } from './Vec2Widget';

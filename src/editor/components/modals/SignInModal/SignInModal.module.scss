@@ -1,0 +1,79 @@
+@use '../../../style/variables.scss';
+
+.modalWrapper {
+  position: relative;
+  width: 476px;
+  margin: auto auto;
+}
+
+.contentWrapper {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  row-gap: 28px;
+  padding: 0px 14px 0px 4px;
+
+  .title {
+    position: absolute;
+    top: 22px;
+    left: 40px;
+    font-size: 24px !important;
+  }
+
+  .content {
+    display: flex;
+    flex-direction: column;
+    row-gap: 16px;
+    margin-top: 38px;
+
+    .p1 {
+      font-size: 16px !important;
+      font-weight: 600;
+
+      a {
+        color: variables.$purple;
+        text-decoration: none;
+        font-size: 16px !important;
+      }
+    }
+
+    .p2 {
+      color: variables.$lightgray-400;
+
+      * {
+        font-size: 14px;
+        font-weight: 500;
+      }
+
+      a {
+        color: variables.$purple;
+        text-decoration: none;
+      }
+    }
+  }
+
+  .signInButton {
+    cursor: pointer;
+    background-color: transparent;
+    border: none;
+    cursor: pointer;
+    transition:
+      filter 0.2s,
+      transform 0.2s,
+      box-shadow 0.2s;
+
+    &:hover {
+      filter: brightness(85%);
+      box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+    }
+
+    &:focus {
+      outline: none;
+    }
+
+    &:active {
+      filter: brightness(70%);
+      box-shadow: none;
+    }
+  }
+}

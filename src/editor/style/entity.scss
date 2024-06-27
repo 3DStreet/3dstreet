@@ -1,0 +1,26 @@
+@use './variables.scss';
+
+.entityPrint {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  line-height: 16.8px;
+}
+
+.entityName {
+  width: 230px;
+  position: relative;
+  white-space: nowrap;
+  font-style: normal;
+  font-weight: 500;
+  font-size: 14px;
+  line-height: 14px;
+  color: variables.$white;
+}
+
+[data-entity-name-type='class'] {
+  color: variables.$white;
+}
+
+[data-entity-name-type='mixin'] {
+  color: variables.$orange-100;
+}

@@ -1,0 +1,29 @@
+@use '../../../style/variables.scss';
+
+.geo {
+  display: flex;
+  column-gap: 24px;
+  position: absolute;
+  bottom: 32px;
+  left: 32px;
+
+  & > img {
+    cursor: pointer;
+  }
+
+  & > p,
+  & > a {
+    margin-top: 8px;
+    font-size: 16px !important;
+    max-width: 80vw;
+    text-overflow: ellipsis;
+    overflow: hidden;
+    white-space: nowrap;
+  }
+  & > a {
+    filter: brightness(90%);
+  }
+  & > a:hover {
+    filter: brightness(100%);
+  }
+}

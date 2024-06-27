@@ -1,0 +1,92 @@
+@use '../../../style/variables.scss';
+
+.panel {
+  position: fixed;
+  left: 0;
+  bottom: -100%;
+  width: 100%;
+  height: 260px;
+  background: rgba(34, 34, 34, 1);
+  box-shadow: 2px 0 5px rgba(0, 0, 0, 0.2);
+  width: calc(100% - 82px);
+  transition: transform 0.3s ease-in-out;
+  z-index: 100;
+  padding: 0px 40px 20px 42px;
+  margin: 0 auto;
+  overflow-y: scroll;
+
+  .badge {
+    background-color: #774dee;
+    padding: 6px 12px;
+    border-radius: 8px;
+  }
+
+  &.open {
+    bottom: 0;
+  }
+
+  .dropdown {
+    min-width: 285px;
+    height: 36px !important;
+    padding: 10px;
+  }
+
+  .button {
+    display: flex;
+    align-items: center;
+    column-gap: 8px;
+  }
+
+  .buttonLabel {
+    font-size: 18px !important;
+    line-height: 21.6px;
+    color: variables.$white;
+  }
+
+  .header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 24px;
+    margin-top: -30px;
+  }
+
+  .cards {
+    display: flex;
+    column-gap: 24px;
+    flex-wrap: wrap;
+    row-gap: 30px;
+
+    .card {
+      .img {
+        margin-bottom: 15px;
+        object-fit: cover;
+        width: 206px;
+        height: 114px;
+      }
+      cursor: pointer;
+    }
+
+    .body {
+      display: flex;
+      align-items: center;
+      column-gap: 15px;
+    }
+
+    .description {
+      color: rgba(182, 182, 182, 1);
+    }
+  }
+
+  .closeButton {
+    position: sticky;
+    width: 64px;
+    height: 40px;
+    transform: translateX(-50%);
+    top: 0px;
+    left: 50%;
+    cursor: pointer;
+    padding: 4px 20px 4px 20px;
+    border-radius: 0px 0px 8px 8px;
+  }
+}

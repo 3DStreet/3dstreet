@@ -1,0 +1,26 @@
+@use '../../../style/variables.scss';
+
+.wrapper {
+  position: absolute;
+  transform: translateX(-50%);
+  bottom: 15%;
+  left: 50%;
+  border: unset;
+  height: 40px;
+  border-radius: 16px;
+  align-items: center;
+  display: flex;
+  column-gap: 8px;
+  padding: 8px 12px;
+  transition: 0.2s ease-in-out;
+
+  button {
+    border-radius: 50%;
+    width: 43px;
+    height: 43px;
+
+    &.active {
+      border: 1px solid variables.$white;
+    }
+  }
+}

@@ -1,0 +1,112 @@
+@use '../../../style/variables.scss';
+
+.screenshotModalWrapper {
+  position: absolute;
+  top: 115px;
+  left: 0;
+  right: 0;
+  width: 80vw;
+  height: 90vh;
+  overflow-y: scroll;
+
+  .wrapper {
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    row-gap: 8px;
+
+    .header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      width: 100%;
+      .forms {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        width: 100%;
+
+        .inputContainer {
+          display: flex;
+          align-items: center;
+          width: 50%;
+
+          .input {
+            border: none;
+            background: none;
+          }
+
+          .button {
+            padding: 0px 10px 0px 0px !important;
+            cursor: pointer;
+            transition:
+              filter 0.2s,
+              transform 0.2s,
+              box-shadow 0.2s;
+            filter: brightness(85%);
+
+            svg {
+              width: 30px;
+              height: 30px;
+            }
+            &:hover {
+              filter: brightness(100%);
+              box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+            }
+
+            &:focus {
+              outline: none;
+            }
+
+            &:active {
+              filter: brightness(70%);
+              box-shadow: none;
+            }
+          }
+        }
+
+        .dropdown {
+          max-width: fit-content;
+        }
+      }
+    }
+    .imageWrapper {
+      justify-content: center;
+      display: flex;
+      height: fit-content;
+      position: relative;
+      width: fit-content;
+      max-height: calc(100% - 44px - 24px);
+
+      .screenshotWrapper {
+        height: fit-content;
+        max-width: 100%;
+        max-height: 100%;
+      }
+
+      .screenshotWrapper,
+      .screenshotWrapper img {
+        width: 100%;
+        height: 100%;
+        object-fit: contain;
+      }
+
+      .thumbnailButton {
+        position: absolute !important;
+        bottom: 16px;
+        right: 16px;
+      }
+    }
+  }
+}
+
+.inputContainer .input {
+  height: 43px;
+  border: none;
+  background: none;
+  padding: 0px;
+  color: variables.$white;
+  display: flex;
+  justify-content: center;
+}
