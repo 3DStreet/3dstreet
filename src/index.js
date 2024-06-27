@@ -39,29 +39,30 @@ AFRAME.registerComponent('street', {
     this._initLoad = true;
   },
   toggleEntitiesVisibillity: function (entitiesArray, visible) {
-    entitiesArray.forEach(entity => entity.setAttribute('visible', visible));
+    entitiesArray.forEach((entity) => entity.setAttribute('visible', visible));
   },
   toggleVehicles: function (showVehicles) {
     const vehicleEntities = streetUtils.getVehicleEntities();
     this.toggleEntitiesVisibillity(vehicleEntities, showVehicles);
   },
   toggleGround: function (showGround) {
-    const groundEntities = Array.from(document.querySelectorAll('.ground-left, .ground-right'));
+    const groundEntities = Array.from(
+      document.querySelectorAll('.ground-left, .ground-right')
+    );
     this.toggleEntitiesVisibillity(groundEntities, showGround);
   },
   toggleStriping: function (showStriping) {
     const stripingEntities = streetUtils.getStripingEntities();
     this.toggleEntitiesVisibillity(stripingEntities, showStriping);
   },
-  update: function (oldData) { // fired once at start and at each subsequent change of a schema value
-
+  update: function (oldData) {
     // do not call the update function when the component is initially loaded and sourceType is jsonFile
     if (STREET.sourceType === 'jsonFile' && this._initLoad) {
       this._initLoad = false;
       return;
     }
 
-    var data = this.data;
+    const data = this.data;
 
     if (data.showGround !== oldData.showGround) {
       this.toggleGround(data.showGround);
@@ -141,8 +142,8 @@ AFRAME.registerComponent('streetmix-loader', {
     // fired at start and at each subsequent change of any schema value
     // This method may fire a few times when viewing a streetmix street in 3dstreet:
     // First to find the proper path, once to actually load the street, and then subsequent updates such as street name
-    var data = this.data;
-    var el = this.el;
+    const data = this.data;
+    const el = this.el;
 
     // do not call update function while loading scene from JSON file
     if (STREET.sourceType === 'jsonFile') return;
@@ -177,7 +178,7 @@ AFRAME.registerComponent('streetmix-loader', {
       return;
     }
 
-    var request = new XMLHttpRequest();
+    const request = new XMLHttpRequest();
     console.log('[streetmix-loader]', 'GET ' + data.streetmixAPIURL);
 
     request.open('GET', data.streetmixAPIURL, true);
