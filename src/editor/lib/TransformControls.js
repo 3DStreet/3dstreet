@@ -1296,28 +1296,28 @@
         // Trim decimals.
         if (_mode === 'translate') {
           scope.object.position.x = parseFloat(
-            scope.object.position.x.toFixed(5)
+            scope.object.position.x.toFixed(3)
           );
           scope.object.position.y = parseFloat(
-            scope.object.position.y.toFixed(5)
+            scope.object.position.y.toFixed(3)
           );
           scope.object.position.z = parseFloat(
-            scope.object.position.z.toFixed(5)
+            scope.object.position.z.toFixed(3)
           );
         } else if (_mode === 'rotate') {
           scope.object.rotation.x = parseFloat(
-            scope.object.rotation.x.toFixed(5)
+            scope.object.rotation.x.toFixed(3)
           );
           scope.object.rotation.y = parseFloat(
-            scope.object.rotation.y.toFixed(5)
+            scope.object.rotation.y.toFixed(3)
           );
           scope.object.rotation.z = parseFloat(
-            scope.object.rotation.z.toFixed(5)
+            scope.object.rotation.z.toFixed(3)
           );
         } else {
-          scope.object.scale.x = parseFloat(scope.object.scale.x.toFixed(5));
-          scope.object.scale.y = parseFloat(scope.object.scale.y.toFixed(5));
-          scope.object.scale.z = parseFloat(scope.object.scale.z.toFixed(5));
+          scope.object.scale.x = parseFloat(scope.object.scale.x.toFixed(3));
+          scope.object.scale.y = parseFloat(scope.object.scale.y.toFixed(3));
+          scope.object.scale.z = parseFloat(scope.object.scale.z.toFixed(3));
         }
 
         scope.update();
