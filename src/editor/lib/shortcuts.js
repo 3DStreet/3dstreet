@@ -9,9 +9,6 @@ import { getOS } from './utils';
 const os = getOS();
 
 function shouldCaptureKeyEvent(event) {
-  if (event.metaKey) {
-    return false;
-  }
   return (
     event.target.closest('#cameraToolbar') ||
     (event.target.tagName !== 'INPUT' && event.target.tagName !== 'TEXTAREA')
@@ -128,7 +125,6 @@ export const Shortcuts = {
     if (!shouldCaptureKeyEvent(event) || !AFRAME.INSPECTOR.opened) {
       return;
     }
-
     if (
       (event.ctrlKey && os !== 'macos') ||
       (event.metaKey && os === 'macos')
