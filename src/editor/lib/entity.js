@@ -1,13 +1,13 @@
 /* eslint-disable react/no-danger */
 import Events from './Events';
+import { EntityUpdateCommand } from './commands';
 import { equal } from './utils';
 
 /**
  * Update a component.
  *
  * @param {Element} entity - Entity to modify.
- * @param {string} component - Name of the component.
- * @param {string} property - Property name.
+ * @param {string} propertyName - component or component.property
  * @param {string|number} value - New value.
  */
 export function updateEntity(entity, propertyName, value) {
@@ -16,32 +16,16 @@ export function updateEntity(entity, propertyName, value) {
   if (propertyName.indexOf('.') !== -1) {
     // Multi-prop
     splitName = propertyName.split('.');
-
-    if (value === null || value === undefined) {
-      // Remove property.
-      var parameters = entity.getAttribute(splitName[0]);
-      delete parameters[splitName[1]];
-      entity.setAttribute(splitName[0], parameters);
-    } else {
-      // Set property.
-      entity.setAttribute(splitName[0], splitName[1], value);
-    }
-  } else {
-    if (value === null || value === undefined) {
-      // Remove property.
-      entity.removeAttribute(propertyName);
-    } else {
-      // Set property.
-      entity.setAttribute(propertyName, value);
-    }
   }
 
-  Events.emit('entityupdate', {
-    component: splitName ? splitName[0] : propertyName,
-    entity: entity,
-    property: splitName ? splitName[1] : '',
-    value: value
-  });
+  AFRAME.INSPECTOR.execute(
+    new EntityUpdateCommand(AFRAME.INSPECTOR, {
+      entity: entity,
+      component: splitName ? splitName[0] : propertyName,
+      property: splitName ? splitName[1] : '',
+      value: value
+    })
+  );
 }
 
 /**
