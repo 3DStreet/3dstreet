@@ -89,7 +89,7 @@ Inspector.prototype = {
     this.sceneHelpers.userData.source = 'INSPECTOR';
     this.sceneHelpers.visible = true;
     this.inspectorActive = false;
-    this.debugUndoRedo = true;
+    this.debugUndoRedo = false;
 
     this.viewport = new Viewport(this);
     Events.emit('windowresize');
