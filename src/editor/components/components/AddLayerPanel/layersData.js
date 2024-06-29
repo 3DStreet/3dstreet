@@ -5,7 +5,8 @@ import {
   create3DTiles,
   createCustomModel,
   createPrimitiveGeometry,
-  createIntersection
+  createIntersection,
+  createSplatObject
 } from './createLayerFunctions';
 
 // data for PRO layers cards
@@ -79,6 +80,16 @@ const layersData = [
       'Create intersection entity. Parameters of intersection component could be changed in properties panel.',
     id: 7,
     handlerFunction: createIntersection
+  },
+  {
+    name: 'Splat model from URL',
+    img: '',
+    requiresPro: true,
+    icon: '',
+    description:
+      'Create entity with model from path for a Splat (.splat) file hosted on any publicly accessible HTTP server.',
+    id: 8,
+    handlerFunction: createSplatObject
   }
 ];
 
