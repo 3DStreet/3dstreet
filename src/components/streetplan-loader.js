@@ -78,6 +78,8 @@ AFRAME.registerComponent('streetplan-loader', {
       return;
     }
 
+    STREET.sourceType = 'streetplanURL'; // it also could be jsonFile/streetmixURL
+
     var request = new XMLHttpRequest();
     console.log('[streetplan-loader]', 'GET ' + data.streetplanAPIURL);
 

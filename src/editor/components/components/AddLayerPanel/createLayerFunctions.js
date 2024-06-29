@@ -149,11 +149,58 @@ function createPrimitiveGeometry() {
   Events.emit('entitycreated', newEl);
 }
 
+function createIntersection() {
+  const newEl = document.createElement('a-entity');
+  newEl.setAttribute('intersection', '');
+  newEl.setAttribute('data-layer-name', 'Street intersection');
+  const parentEl = document.querySelector('#street-container');
+  parentEl.appendChild(newEl);
+  // update sceneGraph
+  Events.emit('entitycreated', newEl);
+}
+
+function createSplatObject() {
+  // accepts a path for a .splat file hosted on any publicly accessible HTTP server.
+  // Then create entity with model from that path by using gaussian_splatting component
+  const modelUrl = prompt(
+    'Please enter a URL to custom Splat model',
+    'https://cdn.glitch.me/f80a77a3-62a6-4024-9bef-a6b523d1abc0/gs_Bioswale3_treat.splat'
+  );
+  const createSplatElement = () => {
+    if (modelUrl && modelUrl !== '') {
+      const newEl = document.createElement('a-entity');
+      newEl.classList.add('splat-model');
+      newEl.setAttribute('data-no-pause', '');
+      newEl.setAttribute('gaussian_splatting', `src: ${modelUrl}`);
+      newEl.setAttribute('data-layer-name', 'Splat Model • My Custom Object');
+      newEl.play();
+      const parentEl = document.querySelector('#street-container');
+      parentEl.appendChild(newEl);
+      // update sceneGraph
+      Events.emit('entitycreated', newEl);
+    }
+  };
+
+  if (AFRAME.components['gaussian_splatting']) {
+    createSplatElement();
+  } else {
+    loadScript(
+      new URL(
+        '/src/lib/aframe-gaussian-splatting-component.min.js',
+        import.meta.url
+      ),
+      createSplatElement
+    );
+  }
+}
+
 export {
   createSvgExtrudedEntity,
   createMapbox,
   createStreetmixStreet,
   create3DTiles,
   createCustomModel,
-  createPrimitiveGeometry
+  createPrimitiveGeometry,
+  createIntersection,
+  createSplatObject
 };

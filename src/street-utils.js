@@ -81,3 +81,24 @@ function newScene(
 }
 
 STREET.utils.newScene = newScene;
+
+function getVehicleEntities() {
+	return getEntitiesByCategories(['vehicles', 'vehicles-rigged', 'vehicles-transit', 'cyclists']);
+}
+
+module.exports.getVehicleEntities = getVehicleEntities;
+
+function getStripingEntities() {
+	return getEntitiesByCategories(['lane-separator']);
+}
+
+module.exports.getStripingEntities = getStripingEntities;
+
+function getEntitiesByCategories(categoriesArray) {
+	// get entity Nodes by array of their mixin categories
+	const queryForCategoriesMixins = categoriesArray.map(categoryName => `a-mixin[category="${categoryName}"]`).join(',');
+	const allCategoriesMixins = document.querySelectorAll(queryForCategoriesMixins);
+	const categoriesMixinIds = Array.from(allCategoriesMixins).map(el => el.id);
+	const queryForAllElements = categoriesMixinIds.map(mixinId => `a-entity[mixin~="${mixinId}"]`).join(',');
+	return document.querySelectorAll(queryForAllElements);
+}
