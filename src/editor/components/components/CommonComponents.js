@@ -6,7 +6,6 @@ import PropertyRow from './PropertyRow';
 import Collapsible from '../Collapsible';
 import classnames from 'classnames';
 import {
-  updateEntity,
   getEntityClipboardRepresentation,
   printEntity
 } from '../../lib/entity';
@@ -67,10 +66,8 @@ export default class CommonComponents extends React.Component {
       }
       return (
         <PropertyRow
-          onChange={updateEntity}
           key={componentName}
           name={componentName}
-          showHelp={true}
           schema={schema}
           data={data}
           isSingle={true}

@@ -79,11 +79,23 @@ export default class Main extends Component {
     });
   }
 
+  handleStreetMixURL() {
+    const isStreetMix = window.location.hash.includes('streetmix');
+    if (isStreetMix) {
+      STREET.notify.warningMessage(
+        'Hit save if you want to save changes to the scene. Otherwise changes will be lost'
+      );
+    }
+  }
+
   componentDidMount() {
     const htmlEditorButton = document?.querySelector(
       '.viewer-logo-start-editor-button'
     );
     htmlEditorButton && htmlEditorButton.remove();
+
+    this.handleStreetMixURL();
+    window.addEventListener('hashchange', this.handleStreetMixURL);
     Events.on(
       'opentexturesmodal',
       function (selectedTexture, textureOnClose) {
