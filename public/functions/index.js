@@ -59,8 +59,21 @@ exports.createStripeSession = functions.https.onCall(async (data, context) => {
 exports.createStripeBillingPortal = functions.https.onCall(async (data, context) => {
   const stripe = require('stripe')('sk_test_30qcK5wZwyN1q6NMKIirvyD7');
 
+  const collectionRef = admin.firestore().collection("userProfile");
+  const querySnapshot = await collectionRef.where("userId", "==", data.user_id).get();
+  let stripeCustomerId = null;
+  querySnapshot.forEach((doc) => {
+    stripeCustomerId = doc.data().stripeCustomerId;
+    return; // only need the first one
+  });
+  // update data to include stripeCustomerID (data.customer)
+
+  if (!stripeCustomerId) {
+    return;
+  }
+
   const session = await stripe.billingPortal.sessions.create({
-    customer: data.customer_id,
+    customer: stripeCustomerId,
     return_url: data.return_url
   });
 

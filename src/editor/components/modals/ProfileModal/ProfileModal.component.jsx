@@ -25,7 +25,7 @@ const ProfileModal = ({ isOpen, onClose }) => {
       functions,
       'createStripeBillingPortal'
     )({
-      customer_id: currentUser.stripeUserId,
+      user_id: currentUser.uid,
       return_url: `${location.origin}/#/modal/payment`
     });
 
