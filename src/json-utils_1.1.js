@@ -183,8 +183,7 @@ const removeProps = {
   street: { JSON: '*' }
 };
 // a list of component_name:new_component_name pairs to rename in JSON string
-const renameProps = {
-};
+const renameProps = {};
 
 function filterJSONstreet(streetJSON) {
   function removeValueCheck(removeVal, value) {
@@ -634,8 +633,6 @@ function inputStreetmix() {
   // clearMetadata = true, clearUrlHash = false
   STREET.utils.newScene(true, false);
 
-  STREET.sourceType = 'streetmixURL'; // it also could be jsonFile/streetplanURL
-
   setTimeout(function () {
     window.location.hash = streetmixURL;
   });
@@ -672,8 +669,6 @@ function createElementsFromJSON(streetJSON) {
   // clear scene data, create new blank scene.
   // clearMetadata = true, clearUrlHash = true, addDefaultStreet = false
   STREET.utils.newScene(true, true, false);
-
-  STREET.sourceType = 'jsonFile'; // it also could be streetmix/streetplan
 
   const sceneTitle = streetObject.title;
   if (sceneTitle) {

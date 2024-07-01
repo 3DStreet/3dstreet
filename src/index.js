@@ -32,11 +32,8 @@ AFRAME.registerComponent('street', {
     showStriping: { default: true },
     showVehicles: { default: true },
     globalAnimated: { default: false },
-    length: { default: 60 } // new default of 60 from 0.4.4
-  },
-  init: function () {
-    // flag to determine init component load
-    this._initLoad = true;
+    length: { default: 60 }, // new default of 60 from 0.4.4
+    synchronized: { default: false }
   },
   toggleEntitiesVisibillity: function (entitiesArray, visible) {
     entitiesArray.forEach((entity) => entity.setAttribute('visible', visible));
@@ -56,12 +53,6 @@ AFRAME.registerComponent('street', {
     this.toggleEntitiesVisibillity(stripingEntities, showStriping);
   },
   update: function (oldData) {
-    // do not call the update function when the component is initially loaded and sourceType is jsonFile
-    if (STREET.sourceType === 'jsonFile' && this._initLoad) {
-      this._initLoad = false;
-      return;
-    }
-
     const data = this.data;
 
     if (data.showGround !== oldData.showGround) {
@@ -76,6 +67,11 @@ AFRAME.registerComponent('street', {
 
     if (data.showStriping !== oldData.showStriping) {
       this.toggleStriping(data.showStriping);
+      return;
+    }
+
+    // do not call the update function when the data.synchronized is set to true
+    if (data.synchronized) {
       return;
     }
 
@@ -127,6 +123,8 @@ AFRAME.registerComponent('street', {
       );
       this.el.append(buildingsEl);
     }
+    // the scene has been loaded, set the synchronized flag
+    this.data.synchronized = true;
   }
 });
 
@@ -136,7 +134,8 @@ AFRAME.registerComponent('streetmix-loader', {
     streetmixStreetURL: { type: 'string' },
     streetmixAPIURL: { type: 'string' },
     showBuildings: { default: true },
-    name: { default: '' }
+    name: { default: '' },
+    synchronized: { default: false }
   },
   update: function (oldData) {
     // fired at start and at each subsequent change of any schema value
@@ -145,8 +144,8 @@ AFRAME.registerComponent('streetmix-loader', {
     const data = this.data;
     const el = this.el;
 
-    // do not call update function while loading scene from JSON file
-    if (STREET.sourceType === 'jsonFile') return;
+    // do not call the update function when the data.synchronized is set to true
+    if (data.synchronized) return;
 
     // if the loader has run once already, and upon update neither URL has changed, do not take action
     if (
@@ -215,7 +214,7 @@ AFRAME.registerComponent('streetmix-loader', {
           );
         }
 
-        el.setAttribute('data-layer-name', 'Streetmix ? ' + streetmixName);
+        el.setAttribute('data-layer-name', 'Streetmix � ' + streetmixName);
 
         if (data.showBuildings) {
           el.setAttribute('street', 'right', streetData.rightBuildingVariant);
@@ -229,6 +228,8 @@ AFRAME.registerComponent('streetmix-loader', {
           JSON.stringify({ streetmixSegmentsMetric: streetmixSegments })
         );
         el.emit('streetmix-loader-street-loaded');
+        // the streetmix data has been loaded, set the synchronized flag
+        data.synchronized = true;
       } else {
         // We reached our target server, but it returned an error
         console.log(
@@ -263,9 +264,6 @@ AFRAME.registerComponent('intersection', {
   init: function () {
     var data = this.data;
     var el = this.el;
-
-    // do not call init method while loading scene from JSON file
-    if (STREET.sourceType === 'jsonFile') return;
 
     // remove all child nodes if exists
     while (el.firstChild) {
