@@ -2,17 +2,21 @@
 #toolbar {
   position: fixed;
   top: 36px;
-  right: 40px;
+  right: 32px;
   height: 43px;
   width: fit-content;
   z-index: 10;
+  .undoRedoActions {
+    padding-top: 12px;
+  }
+  .undoRedoActions,
   .toolbarActions {
     width: fit-content;
     height: 43px;
     display: flex;
-    justify-content: space-between;
+    justify-content: flex-end;
     align-items: center;
-    column-gap: 12px;
+    gap: 12px;
   }
   .saveButtonWrapper {
     position: relative;
@@ -386,9 +390,9 @@
     margin: 10px;
   }
 }
-@media screen and (max-width: 1024px) {
+@media screen and (max-width: 1400px) {
   #toolbar {
-    right: 24px;
+    max-width: 300px;
     .hideInLowResolution {
       display: none !important;
     }

@@ -9,9 +9,6 @@ import { getOS } from './utils';
 const os = getOS();
 
 function shouldCaptureKeyEvent(event) {
-  if (event.metaKey) {
-    return false;
-  }
   return (
     event.target.closest('#cameraToolbar') ||
     (event.target.tagName !== 'INPUT' && event.target.tagName !== 'TEXTAREA')
@@ -128,11 +125,22 @@ export const Shortcuts = {
     if (!shouldCaptureKeyEvent(event) || !AFRAME.INSPECTOR.opened) {
       return;
     }
-
     if (
-      (event.ctrlKey && os === 'windows') ||
+      (event.ctrlKey && os !== 'macos') ||
       (event.metaKey && os === 'macos')
     ) {
+      // ctrl+z: undo
+      // ctrl+shift+z: redo
+      if (event.keyCode === 90) {
+        event.preventDefault(); // Prevent browser specific hotkeys
+        event.stopPropagation();
+        if (event.shiftKey) {
+          AFRAME.INSPECTOR.redo();
+        } else {
+          AFRAME.INSPECTOR.undo();
+        }
+      }
+
       if (
         AFRAME.INSPECTOR.selectedEntity &&
         document.activeElement.tagName !== 'INPUT'
