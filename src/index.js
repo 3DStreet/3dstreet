@@ -57,17 +57,14 @@ AFRAME.registerComponent('street', {
 
     if (data.showGround !== oldData.showGround) {
       this.toggleGround(data.showGround);
-      return;
     }
 
     if (data.showVehicles !== oldData.showVehicles) {
       this.toggleVehicles(data.showVehicles);
-      return;
     }
 
     if (data.showStriping !== oldData.showStriping) {
       this.toggleStriping(data.showStriping);
-      return;
     }
 
     // do not call the update function when the data.synchronize is set to false
