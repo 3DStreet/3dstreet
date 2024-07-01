@@ -51,15 +51,6 @@ exports.createStripeSession = functions.https.onCall(async (data, context) => {
   }
   const session = await stripe.checkout.sessions.create(data);
 
-  if (!stripeCustomerId) {
-    // add stripeCustomerId to userProfile
-    await admin.firestore().collection('userProfile').doc().set({
-      userId: data.metadata.userId,
-      stripeCustomerId: session.customer
-    });
-  }
-  // add stuff to firebase (customer ID)
-
   return {
     id: session.id
   };
@@ -94,18 +85,30 @@ exports.stripeWebhook = functions.https.onRequest(async (req, res) => {
     return res.send(err).sendStatus(400);
   }
 
-  const dataObject = event.data.object;
-  await admin.firestore().collection('orders').doc().set({
-    checkoutSessionId: dataObject.id,
-    paymentStatus: dataObject.payment_status,
-    userId: dataObject.metadata.userId
+  const checkoutSession = event.data.object;
+
+  const collectionRef = admin.firestore().collection("userProfile");
+  const querySnapshot = await collectionRef.where("userId", "==", checkoutSession.metadata.userId).get();
+  let stripeCustomerId = null;
+  querySnapshot.forEach((doc) => {
+    stripeCustomerId = doc.data().stripeCustomerId;
+    return; // only need the first one
   });
+  // update data to include stripeCustomerID (data.customer)
+
+  if (!stripeCustomerId) {
+    // add stripeCustomerId to userProfile
+    await admin.firestore().collection('userProfile').doc().set({
+      userId: checkoutSession.metadata.userId,
+      stripeCustomerId: checkoutSession.customer
+    });
+  }
 
   // Set custom user claims on this update.
   const customClaims = {
     plan: 'PRO'
   };
-  await getAuth().setCustomUserClaims(dataObject.metadata.userId, customClaims);
+  await getAuth().setCustomUserClaims(checkoutSession.metadata.userId, customClaims);
 
   return res.sendStatus(200);
 });
