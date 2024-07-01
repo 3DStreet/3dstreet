@@ -7,7 +7,7 @@ if (typeof VERSION !== 'undefined') {
 var streetmixParsers = require('./aframe-streetmix-parsers');
 var streetmixUtils = require('./tested/streetmix-utils');
 require('./json-utils_1.1.js');
-require('./street-utils.js');
+var streetUtils = require('./street-utils.js');
 require('./components/gltf-part');
 require('./components/ocean');
 require('./components/svg-extruder.js');
@@ -32,11 +32,45 @@ AFRAME.registerComponent('street', {
     showStriping: { default: true },
     showVehicles: { default: true },
     globalAnimated: { default: false },
-    length: { default: 60 } // new default of 60 from 0.4.4
+    length: { default: 60 }, // new default of 60 from 0.4.4
+    synchronize: { default: true }
+  },
+  toggleEntitiesVisibillity: function (entitiesArray, visible) {
+    entitiesArray.forEach((entity) => entity.setAttribute('visible', visible));
+  },
+  toggleVehicles: function (showVehicles) {
+    const vehicleEntities = streetUtils.getVehicleEntities();
+    this.toggleEntitiesVisibillity(vehicleEntities, showVehicles);
+  },
+  toggleGround: function (showGround) {
+    const groundEntities = Array.from(
+      document.querySelectorAll('.ground-left, .ground-right')
+    );
+    this.toggleEntitiesVisibillity(groundEntities, showGround);
+  },
+  toggleStriping: function (showStriping) {
+    const stripingEntities = streetUtils.getStripingEntities();
+    this.toggleEntitiesVisibillity(stripingEntities, showStriping);
   },
   update: function (oldData) {
-    // fired once at start and at each subsequent change of a schema value
-    var data = this.data;
+    const data = this.data;
+
+    if (data.showGround !== oldData.showGround) {
+      this.toggleGround(data.showGround);
+    }
+
+    if (data.showVehicles !== oldData.showVehicles) {
+      this.toggleVehicles(data.showVehicles);
+    }
+
+    if (data.showStriping !== oldData.showStriping) {
+      this.toggleStriping(data.showStriping);
+    }
+
+    // do not call the update function when the data.synchronize is set to false
+    if (!data.synchronize) {
+      return;
+    }
 
     if (data.JSON.length === 0) {
       if (oldData.JSON !== undefined && oldData.JSON.length === 0) {
@@ -86,6 +120,8 @@ AFRAME.registerComponent('street', {
       );
       this.el.append(buildingsEl);
     }
+    // the scene has been loaded, set the synchronize flag
+    this.el.setAttribute('street', 'synchronize', false);
   }
 });
 
@@ -95,14 +131,18 @@ AFRAME.registerComponent('streetmix-loader', {
     streetmixStreetURL: { type: 'string' },
     streetmixAPIURL: { type: 'string' },
     showBuildings: { default: true },
-    name: { default: '' }
+    name: { default: '' },
+    synchronize: { default: true }
   },
   update: function (oldData) {
     // fired at start and at each subsequent change of any schema value
     // This method may fire a few times when viewing a streetmix street in 3dstreet:
     // First to find the proper path, once to actually load the street, and then subsequent updates such as street name
-    var data = this.data;
-    var el = this.el;
+    const data = this.data;
+    const el = this.el;
+
+    // do not call the update function when the data.synchronize is set to false
+    if (!data.synchronize) return;
 
     // if the loader has run once already, and upon update neither URL has changed, do not take action
     if (
@@ -134,7 +174,7 @@ AFRAME.registerComponent('streetmix-loader', {
       return;
     }
 
-    var request = new XMLHttpRequest();
+    const request = new XMLHttpRequest();
     console.log('[streetmix-loader]', 'GET ' + data.streetmixAPIURL);
 
     request.open('GET', data.streetmixAPIURL, true);
@@ -185,6 +225,8 @@ AFRAME.registerComponent('streetmix-loader', {
           JSON.stringify({ streetmixSegmentsMetric: streetmixSegments })
         );
         el.emit('streetmix-loader-street-loaded');
+        // the streetmix data has been loaded, set the synchronize flag to false
+        el.setAttribute('streetmix-loader', 'synchronize', false);
       } else {
         // We reached our target server, but it returned an error
         console.log(
