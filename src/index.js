@@ -33,7 +33,7 @@ AFRAME.registerComponent('street', {
     showVehicles: { default: true },
     globalAnimated: { default: false },
     length: { default: 60 }, // new default of 60 from 0.4.4
-    synchronized: { default: false }
+    synchronize: { default: true }
   },
   toggleEntitiesVisibillity: function (entitiesArray, visible) {
     entitiesArray.forEach((entity) => entity.setAttribute('visible', visible));
@@ -70,8 +70,8 @@ AFRAME.registerComponent('street', {
       return;
     }
 
-    // do not call the update function when the data.synchronized is set to true
-    if (data.synchronized) {
+    // do not call the update function when the data.synchronize is set to false
+    if (!data.synchronize) {
       return;
     }
 
@@ -123,8 +123,8 @@ AFRAME.registerComponent('street', {
       );
       this.el.append(buildingsEl);
     }
-    // the scene has been loaded, set the synchronized flag
-    this.data.synchronized = true;
+    // the scene has been loaded, set the synchronize flag
+    this.el.setAttribute('street', 'synchronize', false);
   }
 });
 
@@ -135,7 +135,7 @@ AFRAME.registerComponent('streetmix-loader', {
     streetmixAPIURL: { type: 'string' },
     showBuildings: { default: true },
     name: { default: '' },
-    synchronized: { default: false }
+    synchronize: { default: true }
   },
   update: function (oldData) {
     // fired at start and at each subsequent change of any schema value
@@ -144,8 +144,8 @@ AFRAME.registerComponent('streetmix-loader', {
     const data = this.data;
     const el = this.el;
 
-    // do not call the update function when the data.synchronized is set to true
-    if (data.synchronized) return;
+    // do not call the update function when the data.synchronize is set to false
+    if (!data.synchronize) return;
 
     // if the loader has run once already, and upon update neither URL has changed, do not take action
     if (
@@ -214,7 +214,7 @@ AFRAME.registerComponent('streetmix-loader', {
           );
         }
 
-        el.setAttribute('data-layer-name', 'Streetmix � ' + streetmixName);
+        el.setAttribute('data-layer-name', 'Streetmix • ' + streetmixName);
 
         if (data.showBuildings) {
           el.setAttribute('street', 'right', streetData.rightBuildingVariant);
@@ -228,8 +228,8 @@ AFRAME.registerComponent('streetmix-loader', {
           JSON.stringify({ streetmixSegmentsMetric: streetmixSegments })
         );
         el.emit('streetmix-loader-street-loaded');
-        // the streetmix data has been loaded, set the synchronized flag
-        data.synchronized = true;
+        // the streetmix data has been loaded, set the synchronize flag to false
+        el.setAttribute('streetmix-loader', 'synchronize', false);
       } else {
         // We reached our target server, but it returned an error
         console.log(
