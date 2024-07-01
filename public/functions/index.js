@@ -82,6 +82,46 @@ exports.createStripeBillingPortal = functions.https.onCall(async (data, context)
   };
 });
 
+exports.handleSubscriptionWebhook = functions.https.onRequest(async (req, res) => {
+  const stripe = require('stripe')('sk_test_30qcK5wZwyN1q6NMKIirvyD7');
+  let event;
+
+  try {
+    event = stripe.webhooks.constructEvent(
+      req.rawBody,
+      req.headers['stripe-signature'],
+      'whsec_AyE73MHOKyGhvPWxKV9V1hhnA4J2pYbJ'
+    );
+  } catch (err) {
+    console.error('⚠️ Webhook signature verification failed.');
+    return res.send(err).sendStatus(400);
+  }
+
+  const subscription = event.data.object;
+
+  const collectionRef = admin.firestore().collection("userProfile");
+  const querySnapshot = await collectionRef.where("stripeCustomerId", "==", subscription.customer).get();
+  let userId = null;
+  querySnapshot.forEach((doc) => {
+    userId = doc.data().userId;
+    return; // only need the first one
+  });
+
+  if (!userId) {
+    // add stripeCustomerId to userProfile
+    return res.sendStatus(500);
+  }
+
+  // Set custom user claims on this update.
+  const customClaims = {
+    plan: ''
+  };
+  await getAuth().setCustomUserClaims(userId, customClaims);
+
+  return res.sendStatus(200);
+
+
+});
 
 exports.stripeWebhook = functions.https.onRequest(async (req, res) => {
   const stripe = require('stripe')('sk_test_30qcK5wZwyN1q6NMKIirvyD7');
