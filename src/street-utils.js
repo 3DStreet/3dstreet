@@ -56,8 +56,6 @@ function newScene(
       'default-street',
       streetContainerEl
     );
-    defaultStreetEl.setAttribute('set-loader-from-hash', '');
-    defaultStreetEl.setAttribute('street', '');
     // clear data from previous scene
     defaultStreetEl.removeAttribute('data-layer-name');
     defaultStreetEl.removeAttribute('street');
