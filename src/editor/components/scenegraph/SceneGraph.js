@@ -7,6 +7,8 @@ import Events from '../../lib/Events';
 import Entity from './Entity';
 import { ToolbarWrapper } from './ToolbarWrapper';
 import { LayersIcon, ArrowLeftIcon } from '../../icons';
+import posthog from 'posthog-js';
+
 export default class SceneGraph extends React.Component {
   static propTypes = {
     id: PropTypes.string,
@@ -49,6 +51,7 @@ export default class SceneGraph extends React.Component {
   componentDidMount() {
     this.setFirstLevelEntities();
     this.rebuildEntityOptions();
+    Events.on('updatescenegraph', this.rebuildEntityOptions);
     Events.on('entityidchange', this.rebuildEntityOptions);
     Events.on('entitycreated', this.rebuildEntityOptions);
     Events.on('entityclone', this.rebuildEntityOptions);
@@ -101,6 +104,9 @@ export default class SceneGraph extends React.Component {
         if (this.props.onChange) {
           this.props.onChange(entity);
         }
+        posthog.capture('entity_selected', {
+          entity: entity.getAttribute('mixin')
+        });
         Events.emit('entityselect', entity, true);
         found = true;
       }

@@ -8,6 +8,7 @@ import { auth, functions } from '../../../services/firebase';
 import Events from '../../../lib/Events.js';
 import { Action24 } from '../../../icons/icons.jsx';
 import { httpsCallable } from 'firebase/functions';
+import posthog from 'posthog-js';
 
 const ProfileModal = ({ isOpen, onClose }) => {
   const { currentUser, setCurrentUser } = useAuthContext();
@@ -15,6 +16,7 @@ const ProfileModal = ({ isOpen, onClose }) => {
   const logOutHandler = async () => {
     onClose();
     await signOut(auth);
+    posthog.reset();
     setCurrentUser(null);
   };
 

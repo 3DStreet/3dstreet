@@ -3,7 +3,7 @@
 
 <head>
   <!-- aframe -->
-  <script src="https://launchar.app/sdk/v1?key=5FXAKdmPAUHi5QV6zkUt8wPkBl6Wa4p6&redirect=true"></script>
+  <script src="https://launchar.app/sdk/v1?key=vDhrPJN2RAYrTKXak3LYKFPnPGKYAzKK&redirect=true"></script>
   <script src="https://aframe.io/releases/1.5.0/aframe.min.js"></script>
 
   <!-- 3dstreet -->
@@ -122,9 +122,10 @@
 
     <a-entity id="environment" data-layer-name="Environment" street-environment="preset: day;"></a-entity>
 
-    <a-entity id="cameraRig" class="ph-no-capture" data-layer-name="Viewer" cursor-teleport="cameraRig: #cameraRig; cameraHead: #camera;"
-      look-controls="reverseMouseDrag: true" wasd-controls="enabled: true">
-      <a-entity id="camera" camera="far: 1000" position="0 1.6 0"></a-entity>
+    <a-entity id="cameraRig" class="ph-no-capture" data-layer-name="Viewer"
+      cursor-teleport="cameraRig: #cameraRig; cameraHead: #camera;" look-controls="reverseMouseDrag: true"
+      wasd-controls="enabled: true">
+      <a-entity id="camera" position="0 1.6 0"></a-entity>
       <a-entity id="leftHand" hand-controls="hand: left;"
         blink-controls="cameraRig: #cameraRig; teleportOrigin: #camera; rotateOnTeleport:false;"></a-entity>
       <a-entity id="rightHand" hand-controls="hand: right"

@@ -20,6 +20,8 @@ import { ScenesModal } from './modals/ScenesModal';
 import { PaymentModal } from './modals/PaymentModal';
 import { SceneEditTitle } from './components/SceneEditTitle';
 import { AddLayerPanel } from './components/AddLayerPanel';
+import posthog from 'posthog-js';
+
 THREE.ImageUtils.crossOrigin = '';
 
 const isStreetLoaded = window.location.hash.length;
@@ -80,11 +82,23 @@ export default class Main extends Component {
     });
   }
 
+  handleStreetMixURL() {
+    const isStreetMix = window.location.hash.includes('streetmix');
+    if (isStreetMix) {
+      STREET.notify.warningMessage(
+        'Hit save if you want to save changes to the scene. Otherwise changes will be lost'
+      );
+    }
+  }
+
   componentDidMount() {
     const htmlEditorButton = document?.querySelector(
       '.viewer-logo-start-editor-button'
     );
     htmlEditorButton && htmlEditorButton.remove();
+
+    this.handleStreetMixURL();
+    window.addEventListener('hashchange', this.handleStreetMixURL);
     Events.on(
       'opentexturesmodal',
       function (selectedTexture, textureOnClose) {
@@ -99,24 +113,31 @@ export default class Main extends Component {
       this.setState({ entity: entity });
     });
     Events.on('inspectortoggle', (enabled) => {
+      posthog.capture('inspector_toggled', { enabled: enabled });
       this.setState({ inspectorEnabled: enabled });
     });
     Events.on('openhelpmodal', () => {
+      posthog.capture('help_modal_opened');
       this.setState({ isHelpOpen: true });
     });
     Events.on('openscreenshotmodal', () => {
+      posthog.capture('screenshot_modal_opened');
       this.setState({ isScreenshotOpen: true });
     });
     Events.on('opensigninmodal', () => {
+      posthog.capture('signin_modal_opened');
       this.setState({ isSignInModalOpened: true });
     });
     Events.on('openscenesmodal', () => {
+      posthog.capture('scenes_modal_opened');
       this.setState({ isScenesModalOpened: true });
     });
     Events.on('openprofilemodal', () => {
+      posthog.capture('profile_modal_opened');
       this.setState({ isProfileModalOpened: true });
     });
     Events.on('opengeomodal', () => {
+      posthog.capture('geo_modal_opened');
       this.setState({ isGeoModalOpened: true });
     });
     Events.on('openpaymentmodal', () => {
@@ -129,6 +150,7 @@ export default class Main extends Component {
   };
 
   toggleAddLayerPanel = () => {
+    posthog.capture('add_layer_panel_opened');
     this.setState((prevState) => ({
       isAddLayerPanelOpen: !prevState.isAddLayerPanelOpen
     }));

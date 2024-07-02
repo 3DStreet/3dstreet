@@ -2,21 +2,21 @@
 #toolbar {
   position: fixed;
   top: 36px;
-  right: 40px;
+  right: 32px;
   height: 43px;
   width: fit-content;
   z-index: 10;
-  .actionBtn {
-    margin: -2.5px 0px -2.5px -2px;
-    display: flex;
+  .undoRedoActions {
+    padding-top: 12px;
   }
+  .undoRedoActions,
   .toolbarActions {
     width: fit-content;
     height: 43px;
     display: flex;
-    justify-content: space-between;
+    justify-content: flex-end;
     align-items: center;
-    column-gap: 12px;
+    gap: 12px;
   }
   .saveButtonWrapper {
     position: relative;
@@ -38,7 +38,6 @@
     align-items: center;
     column-gap: 12px;
   }
-  .cameraButton,
   .closeButton {
     border-radius: 22px;
   }
@@ -79,12 +78,9 @@
     display: flex;
     flex-direction: column;
     align-items: flex-start;
-    padding: 2px;
   }
   .layer:not(.active):hover {
-    border: 2px solid variables.$purple-900;
-    padding: 0px;
-    box-sizing: border-box;
+    outline: 2px solid variables.$purple-900;
     > div:first-child {
       background: none;
     }
@@ -394,22 +390,10 @@
     margin: 10px;
   }
 }
-@media screen and (max-width: 1024px) {
+@media screen and (max-width: 1400px) {
   #toolbar {
-    right: 24px;
-    .actionBtn {
-      width: 43px;
-      height: 43px;
-      border-radius: 22px;
-      .iconContainter {
-        margin: 0;
-      }
-      svg {
-        width: 24px !important;
-        height: 24px !important;
-      }
-    }
-    .innerText {
+    max-width: 300px;
+    .hideInLowResolution {
       display: none !important;
     }
   }

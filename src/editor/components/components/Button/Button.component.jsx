@@ -1,4 +1,4 @@
-import { bool, func, node, number, string } from 'prop-types';
+import { bool, element, func, node, number, string } from 'prop-types';
 
 import classNames from 'classnames';
 import styles from './Button.module.scss';
@@ -21,10 +21,12 @@ const variants = {
  *  className?: string;
  *  onClick?: () => void;
  *  type?: string;
- *  children?: Element;
+ *  children?: Node;
  *  variant?: string;
  *  disabled?: boolean;
  *  id?: string | number;
+ *  leadingIcon?: Element;
+ *  trailingIcon?: Element;
  * }} props
  */
 const Button = ({
@@ -35,9 +37,8 @@ const Button = ({
   variant = 'filled',
   disabled,
   id,
-  leadingicon,
-  trailingicon,
-  ...props
+  leadingIcon,
+  trailingIcon
 }) => (
   <button
     className={classNames(styles.buttonWrapper, variants[variant], className)}
@@ -46,13 +47,10 @@ const Button = ({
     tabIndex={0}
     disabled={disabled}
     id={id}
-    data-leadingicon={leadingicon}
-    data-trailingicon={trailingicon}
-    {...props}
   >
-    {leadingicon && <div className={styles.icon}>{leadingicon}</div>}
+    {leadingIcon && <div className={styles.icon}>{leadingIcon}</div>}
     {children}
-    {trailingicon && <div className={styles.icon}>{trailingicon}</div>}
+    {trailingIcon && <div className={styles.icon}>{trailingIcon}</div>}
   </button>
 );
 
@@ -63,7 +61,9 @@ Button.propTypes = {
   children: node,
   variant: string,
   disabled: bool,
-  id: string || number
+  id: string || number,
+  leadingIcon: element,
+  trailingIcon: element
 };
 
 export { Button };

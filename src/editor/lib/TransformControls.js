@@ -438,14 +438,14 @@
       };
 
       this.handleGizmos = {
-        X: [
-          [
-            new THREE.Line(
-              new CircleGeometry(1, 'x', 0.5),
-              new GizmoLineMaterial({ color: 0xff0000 })
-            )
-          ]
-        ],
+        // X: [
+        //   [
+        //     new THREE.Line(
+        //       new CircleGeometry(1, 'x', 0.5),
+        //       new GizmoLineMaterial({ color: 0xff0000 })
+        //     )
+        //   ]
+        // ],
 
         Y: [
           [
@@ -456,45 +456,45 @@
           ]
         ],
 
-        Z: [
-          [
-            new THREE.Line(
-              new CircleGeometry(1, 'z', 0.5),
-              new GizmoLineMaterial({ color: 0x0000ff })
-            )
-          ]
-        ],
+        // Z: [
+        //   [
+        //     new THREE.Line(
+        //       new CircleGeometry(1, 'z', 0.5),
+        //       new GizmoLineMaterial({ color: 0x0000ff })
+        //     )
+        //   ]
+        // ],
 
-        E: [
-          [
-            new THREE.Line(
-              new CircleGeometry(1.25, 'z', 1),
-              new GizmoLineMaterial({ color: 0xcccc00 })
-            )
-          ]
-        ],
+        // E: [
+        //   [
+        //     new THREE.Line(
+        //       new CircleGeometry(1.25, 'z', 1),
+        //       new GizmoLineMaterial({ color: 0xcccc00 })
+        //     )
+        //   ]
+        // ],
 
-        XYZE: [
-          [
-            new THREE.Line(
-              new CircleGeometry(1, 'z', 1),
-              new GizmoLineMaterial({ color: 0x787878 })
-            )
-          ]
-        ]
+        // XYZE: [
+        //   [
+        //     new THREE.Line(
+        //       new CircleGeometry(1, 'z', 1),
+        //       new GizmoLineMaterial({ color: 0x787878 })
+        //     )
+        //   ]
+        // ]
       };
 
       this.pickerGizmos = {
-        X: [
-          [
-            new THREE.Mesh(
-              new THREE.TorusGeometry(1, 0.12, 4, 12, Math.PI),
-              pickerMaterial
-            ),
-            [0, 0, 0],
-            [0, -Math.PI / 2, -Math.PI / 2]
-          ]
-        ],
+        // X: [
+        //   [
+        //     new THREE.Mesh(
+        //       new THREE.TorusGeometry(1, 0.12, 4, 12, Math.PI),
+        //       pickerMaterial
+        //     ),
+        //     [0, 0, 0],
+        //     [0, -Math.PI / 2, -Math.PI / 2]
+        //   ]
+        // ],
 
         Y: [
           [
@@ -507,37 +507,37 @@
           ]
         ],
 
-        Z: [
-          [
-            new THREE.Mesh(
-              new THREE.TorusGeometry(1, 0.12, 4, 12, Math.PI),
-              pickerMaterial
-            ),
-            [0, 0, 0],
-            [0, 0, -Math.PI / 2]
-          ]
-        ],
+        // Z: [
+        //   [
+        //     new THREE.Mesh(
+        //       new THREE.TorusGeometry(1, 0.12, 4, 12, Math.PI),
+        //       pickerMaterial
+        //     ),
+        //     [0, 0, 0],
+        //     [0, 0, -Math.PI / 2]
+        //   ]
+        // ],
 
-        E: [
-          [
-            new THREE.Mesh(
-              new THREE.TorusGeometry(1.25, 0.12, 2, 24),
-              pickerMaterial
-            )
-          ]
-        ],
+        // E: [
+        //   [
+        //     new THREE.Mesh(
+        //       new THREE.TorusGeometry(1.25, 0.12, 2, 24),
+        //       pickerMaterial
+        //     )
+        //   ]
+        // ],
 
-        XYZE: [
-          [
-            new THREE.Mesh(
-              new THREE.TorusGeometry(1, 0.12, 2, 24),
-              pickerMaterial
-            )
-          ]
-        ]
+        // XYZE: [
+        //   [
+        //     new THREE.Mesh(
+        //       new THREE.TorusGeometry(1, 0.12, 2, 24),
+        //       pickerMaterial
+        //     )
+        //   ]
+        // ]
       };
 
-      this.pickerGizmos.XYZE[0][0].visible = false; // disable XYZE picker gizmo
+      // this.pickerGizmos.XYZE[0][0].visible = false; // disable XYZE picker gizmo
 
       this.init();
     }
@@ -1296,28 +1296,28 @@
         // Trim decimals.
         if (_mode === 'translate') {
           scope.object.position.x = parseFloat(
-            scope.object.position.x.toFixed(5)
+            scope.object.position.x.toFixed(3)
           );
           scope.object.position.y = parseFloat(
-            scope.object.position.y.toFixed(5)
+            scope.object.position.y.toFixed(3)
           );
           scope.object.position.z = parseFloat(
-            scope.object.position.z.toFixed(5)
+            scope.object.position.z.toFixed(3)
           );
         } else if (_mode === 'rotate') {
           scope.object.rotation.x = parseFloat(
-            scope.object.rotation.x.toFixed(5)
+            scope.object.rotation.x.toFixed(3)
           );
           scope.object.rotation.y = parseFloat(
-            scope.object.rotation.y.toFixed(5)
+            scope.object.rotation.y.toFixed(3)
           );
           scope.object.rotation.z = parseFloat(
-            scope.object.rotation.z.toFixed(5)
+            scope.object.rotation.z.toFixed(3)
           );
         } else {
-          scope.object.scale.x = parseFloat(scope.object.scale.x.toFixed(5));
-          scope.object.scale.y = parseFloat(scope.object.scale.y.toFixed(5));
-          scope.object.scale.z = parseFloat(scope.object.scale.z.toFixed(5));
+          scope.object.scale.x = parseFloat(scope.object.scale.x.toFixed(3));
+          scope.object.scale.y = parseFloat(scope.object.scale.y.toFixed(3));
+          scope.object.scale.z = parseFloat(scope.object.scale.z.toFixed(3));
         }
 
         scope.update();

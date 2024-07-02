@@ -5,6 +5,92 @@ import EditorControls from './EditorControls.js';
 import { initRaycaster } from './raycaster';
 import Events from './Events';
 import { sendMetric } from '../services/ga.js';
+import { EntityUpdateCommand } from './commands/EntityUpdateCommand.js';
+
+// variables used by OrientedBoxHelper
+const auxEuler = new THREE.Euler();
+const auxPosition = new THREE.Vector3();
+const auxLocalPosition = new THREE.Vector3();
+const origin = new THREE.Vector3();
+const auxScale = new THREE.Vector3();
+const auxQuaternion = new THREE.Quaternion();
+const identityQuaternion = new THREE.Quaternion();
+const auxMatrix = new THREE.Matrix4();
+const tempBox3 = new THREE.Box3();
+const tempVector3Size = new THREE.Vector3();
+const tempVector3Center = new THREE.Vector3();
+
+class OrientedBoxHelper extends THREE.BoxHelper {
+  constructor(object, color = 0xffff00, fill = false) {
+    super(object, color);
+    this.material.linewidth = 3;
+    if (fill) {
+      // Mesh with BoxGeometry and Semi-transparent Material
+      const boxFillGeometry = new THREE.BoxGeometry(1, 1, 1);
+      const boxFillMaterial = new THREE.MeshBasicMaterial({
+        color: color,
+        transparent: true,
+        opacity: 0.3,
+        depthTest: false
+      });
+      const boxFill = new THREE.Mesh(boxFillGeometry, boxFillMaterial);
+      this.boxFill = boxFill;
+      this.add(boxFill);
+    }
+  }
+
+  update() {
+    // Bounding box is created axis-aligned AABB.
+    // If there's any rotation the box will have the wrong size.
+    // It undoes the local entity rotation and then restores so box has the expected size.
+    // We also undo the parent world rotation.
+    if (this.object !== undefined) {
+      auxEuler.copy(this.object.rotation);
+      auxLocalPosition.copy(this.object.position);
+      this.object.rotation.set(0, 0, 0);
+      this.object.position.set(0, 0, 0);
+
+      this.object.parent.matrixWorld.decompose(
+        auxPosition,
+        auxQuaternion,
+        auxScale
+      );
+      auxMatrix.compose(origin, identityQuaternion, auxScale);
+      this.object.parent.matrixWorld.copy(auxMatrix);
+      if (this.boxFill) {
+        tempBox3.setFromObject(this.object);
+        tempBox3.getSize(tempVector3Size);
+        tempBox3.getCenter(tempVector3Center);
+        this.boxFill.position.copy(tempVector3Center);
+        this.boxFill.scale.copy(tempVector3Size);
+      }
+    }
+
+    super.update();
+
+    // Restore rotations.
+    if (this.object !== undefined) {
+      this.object.parent.matrixWorld.compose(
+        auxPosition,
+        auxQuaternion,
+        auxScale
+      );
+      this.object.rotation.copy(auxEuler);
+      this.object.position.copy(auxLocalPosition);
+      this.object.getWorldQuaternion(this.quaternion);
+      this.object.getWorldPosition(this.position);
+      this.updateMatrix();
+    }
+  }
+
+  dispose() {
+    super.dispose();
+    if (this.boxFill) {
+      this.boxFill.geometry.dispose();
+      this.boxFill.material.dispose();
+    }
+  }
+}
 
 /**
  * Transform controls stuff mostly.
@@ -27,59 +113,27 @@ export function Viewport(inspector) {
   grid.visible = false;
   sceneHelpers.add(grid);
 
-  const selectionBox = new THREE.BoxHelper();
+  const selectionBox = new OrientedBoxHelper(undefined, 0x1faaf2);
   selectionBox.material.depthTest = false;
   selectionBox.material.transparent = true;
-  selectionBox.material.color.set(0x1faaf2);
   selectionBox.visible = false;
   sceneHelpers.add(selectionBox);
 
   // hoverBox BoxHelper version
-  const hoverBox = new THREE.BoxHelper();
+  const hoverBox = new OrientedBoxHelper(undefined, 0xff0000, true);
   hoverBox.material.depthTest = false;
   hoverBox.material.transparent = true;
-  hoverBox.material.color.set(0xff0000);
-  hoverBox.visible = true;
+  hoverBox.visible = false;
   sceneHelpers.add(hoverBox);
-
-  // hoverBoxFill - Mesh with BoxGeometry and Semi-transparent Material
-  const hoverBoxFillGeometry = new THREE.BoxGeometry(1, 1, 1);
-  const hoverBoxFillMaterial = new THREE.MeshBasicMaterial({
-    color: 0xff0000,
-    transparent: true,
-    opacity: 0.3,
-    depthTest: false
-  });
-  const hoverBoxFill = new THREE.Mesh(
-    hoverBoxFillGeometry,
-    hoverBoxFillMaterial
-  );
-  hoverBoxFill.visible = true;
-  sceneHelpers.add(hoverBoxFill);
-
-  // Create global instances of Box3 and Vector3
-  const tempBox3 = new THREE.Box3();
-  const tempVector3Size = new THREE.Vector3();
-  const tempVector3Center = new THREE.Vector3();
 
   Events.on('raycastermouseenter', (el) => {
     // update hoverBox to match el.object3D bounding box
     hoverBox.visible = true;
     hoverBox.setFromObject(el.object3D);
-    // update hoverBoxFill to match el.object3D bounding box
-    el.object3D.updateMatrixWorld();
-    tempBox3.setFromObject(el.object3D);
-    tempBox3.getSize(tempVector3Size);
-    tempBox3.getCenter(tempVector3Center);
-    hoverBoxFill.visible = true;
-    hoverBoxFill.position.copy(tempVector3Center);
-    hoverBoxFill.scale.copy(tempVector3Size);
-    hoverBoxFill.geometry.attributes.position.needsUpdate = true;
   });
 
   Events.on('raycastermouseleave', (el) => {
     hoverBox.visible = false;
-    hoverBoxFill.visible = false;
   });
 
   function updateHelpers(object) {
@@ -123,16 +177,14 @@ export function Viewport(inspector) {
       value = `${object.scale.x} ${object.scale.y} ${object.scale.z}`;
     }
 
-    // We need to call setAttribute for component attrValue to be up to date,
-    // so that entity.flushToDOM() works correctly when duplicating an entity.
-    transformControls.object.el.setAttribute(component, value);
-
-    Events.emit('entityupdate', {
-      component: component,
-      entity: transformControls.object.el,
-      property: '',
-      value: value
-    });
+    inspector.execute(
+      new EntityUpdateCommand(inspector, {
+        component: component,
+        entity: transformControls.object.el,
+        property: '',
+        value: value
+      })
+    );
   });
 
   transformControls.addEventListener('mouseDown', () => {
@@ -149,7 +201,6 @@ export function Viewport(inspector) {
     if (inspector.selectedEntity.object3DMap.mesh) {
       selectionBox.setFromObject(inspector.selected);
       hoverBox.visible = false;
-      hoverBoxFill.visible = false;
     }
   });
 
@@ -250,7 +301,6 @@ export function Viewport(inspector) {
       ) {
         selectionBox.setFromObject(object);
         hoverBox.visible = false;
-        hoverBoxFill.visible = false;
       }
     }
 

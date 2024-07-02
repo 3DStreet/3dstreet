@@ -13,6 +13,7 @@ export {
   Cloud24Icon,
   Mangnifier20Icon,
   Edit32Icon,
+  Edit24Icon,
   CheckMark32Icon,
   Copy32Icon,
   DropdownIcon,
@@ -26,5 +27,6 @@ export {
   Plus20Circle,
   QR32Icon,
   Action24,
-  DownloadIcon
+  DownloadIcon,
+  ScreenshotIcon
 } from './icons.jsx';

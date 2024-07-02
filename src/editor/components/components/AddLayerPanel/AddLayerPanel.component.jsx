@@ -4,12 +4,13 @@ import { useAuthContext } from '../../../contexts/index.js';
 import styles from './AddLayerPanel.module.scss';
 import classNames from 'classnames';
 import { Button } from '../Button';
-import { Chevron24Down, Load24Icon, Plus20Circle } from '../../../icons';
+import { Chevron24Down, Plus20Circle } from '../../../icons';
 import { Dropdown } from '../Dropdown';
 import CardPlaceholder from '../../../../../ui_assets/card-placeholder.svg';
 import LockedCard from '../../../../../ui_assets/locked-card.svg';
 
 import { LayersOptions } from './LayersOptions.js';
+import posthog from 'posthog-js';
 
 import {
   createSvgExtrudedEntity,
@@ -72,9 +73,9 @@ const AddLayerPanel = ({ onClose, isAddLayerPanelOpen }) => {
   // data for layers cards
   const layersData = [
     {
-      name: 'Mapbox',
-      img: '',
-      icon: '',
+      name: 'Mapbox 2D Aerial',
+      img: 'ui_assets/cards/mapbox2d.jpg',
+      icon: 'ui_assets/cards/icons/mapbox24.png',
       requiresPro: true,
       description:
         'Create entity with mapbox component, that accepts a long / lat and renders a plane with dimensions that (should be) at a correct scale.',
@@ -82,9 +83,9 @@ const AddLayerPanel = ({ onClose, isAddLayerPanelOpen }) => {
       handlerFunction: createMapbox
     },
     {
-      name: 'Street from streetmixStreet',
-      img: '',
-      icon: '',
+      name: 'Street from Streetmix URL',
+      img: 'ui_assets/cards/streetmix.jpg',
+      icon: 'ui_assets/cards/icons/streetmix24.png',
       requiresPro: true,
       description:
         'Create an additional Streetmix street in your 3DStreet scene without replacing any existing streets.',
@@ -102,9 +103,9 @@ const AddLayerPanel = ({ onClose, isAddLayerPanelOpen }) => {
       handlerFunction: createSvgExtrudedEntity
     },
     {
-      name: '3D Tiles',
-      img: '',
-      icon: '',
+      name: 'Google Maps 3D Tiles',
+      img: 'ui_assets/cards/google3d.jpg',
+      icon: 'ui_assets/cards/icons/google24.png',
       requiresPro: true,
       description:
         'Adds an entity to load and display 3d tiles from Google Maps Tiles API 3D Tiles endpoint. This will break your scene and you cannot save it yet, so beware before testing.',
@@ -112,7 +113,7 @@ const AddLayerPanel = ({ onClose, isAddLayerPanelOpen }) => {
       handlerFunction: create3DTiles
     },
     {
-      name: 'Create custom model',
+      name: 'glTF model from URL',
       img: '',
       requiresPro: true,
       icon: '',
@@ -281,6 +282,11 @@ const AddLayerPanel = ({ onClose, isAddLayerPanelOpen }) => {
   };
 
   const cardClick = (card, isProUser) => {
+    posthog.capture('add_layer', {
+      layer: card.name,
+      requiresPro: card.requiresPro,
+      isProUser: isProUser
+    });
     if (card.requiresPro && !isProUser) {
       Events.emit('openpaymentmodal');
     } else if (card.mixinId) {
@@ -343,7 +349,7 @@ const AddLayerPanel = ({ onClose, isAddLayerPanelOpen }) => {
               />
             )}
             <div className={styles.body}>
-              {card.icon ? <img src={card.icon} /> : <Load24Icon />}
+              {card.icon ? <img src={card.icon} /> : ''}
               <p className={styles.description}>{card.name}</p>
             </div>
           </div>
