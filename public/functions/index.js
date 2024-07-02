@@ -36,9 +36,10 @@ exports.getScene = functions
   });
 
 exports.createStripeSession = functions
+  .runWith({ secrets: ["STRIPE_SECRET_KEY"] })
   .https
   .onCall(async (data, context) => {
-    const stripe = require('stripe')('sk_test_30qcK5wZwyN1q6NMKIirvyD7');
+    const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
 
     // get stripeCustomerID if it exists
     const collectionRef = admin.firestore().collection("userProfile");
@@ -61,9 +62,10 @@ exports.createStripeSession = functions
   });
 
 exports.createStripeBillingPortal = functions
+  .runWith({ secrets: ["STRIPE_SECRET_KEY"] })
   .https
   .onCall(async (data, context) => {
-    const stripe = require('stripe')('sk_test_30qcK5wZwyN1q6NMKIirvyD7');
+    const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
 
     const collectionRef = admin.firestore().collection("userProfile");
     const querySnapshot = await collectionRef.where("userId", "==", data.user_id).get();
@@ -88,10 +90,12 @@ exports.createStripeBillingPortal = functions
     };
   });
 
+// function to respond webhook from Stripe customer.subscription.deleted
 exports.handleSubscriptionWebhook = functions
+  .runWith({ secrets: ["STRIPE_SECRET_KEY"] })
   .https
   .onRequest(async (req, res) => {
-    const stripe = require('stripe')('sk_test_30qcK5wZwyN1q6NMKIirvyD7');
+    const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
     let event;
 
     try {
@@ -132,9 +136,10 @@ exports.handleSubscriptionWebhook = functions
   });
 
 exports.stripeWebhook = functions
+  .runWith({ secrets: ["STRIPE_SECRET_KEY"] })
   .https
   .onRequest(async (req, res) => {
-    const stripe = require('stripe')('sk_test_30qcK5wZwyN1q6NMKIirvyD7');
+    const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
     let event;
 
     try {
