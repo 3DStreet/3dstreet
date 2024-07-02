@@ -6,7 +6,6 @@ const CopyWebpackPlugin = require('copy-webpack-plugin');
 module.exports = {
   mode: 'development',
   devServer: {
-    hot: true,
     liveReload: false,
     port: 3333,
     static: {

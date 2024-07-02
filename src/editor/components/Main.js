@@ -17,6 +17,7 @@ import { LoadScript } from '@react-google-maps/api';
 import { GeoModal } from './modals/GeoModal';
 import { ActionBar } from './components/ActionBar';
 import { ScenesModal } from './modals/ScenesModal';
+import { PaymentModal } from './modals/PaymentModal';
 import { SceneEditTitle } from './components/SceneEditTitle';
 import { AddLayerPanel } from './components/AddLayerPanel';
 import posthog from 'posthog-js';
@@ -24,6 +25,7 @@ import posthog from 'posthog-js';
 THREE.ImageUtils.crossOrigin = '';
 
 const isStreetLoaded = window.location.hash.length;
+const isPaymentModalOpened = window.location.hash.includes('/modal/payment');
 
 export default class Main extends Component {
   constructor(props) {
@@ -37,6 +39,7 @@ export default class Main extends Component {
       isAddLayerPanelOpen: false,
       isGeoModalOpened: false,
       isScenesModalOpened: !isStreetLoaded,
+      isPaymentModalOpened: isPaymentModalOpened,
       sceneEl: AFRAME.scenes[0],
       visible: {
         scenegraph: true,
@@ -137,6 +140,9 @@ export default class Main extends Component {
       posthog.capture('geo_modal_opened');
       this.setState({ isGeoModalOpened: true });
     });
+    Events.on('openpaymentmodal', () => {
+      this.setState({ isPaymentModalOpened: true });
+    });
   }
 
   onCloseHelpModal = (value) => {
@@ -175,6 +181,11 @@ export default class Main extends Component {
 
   onCloseGeoModal = () => {
     this.setState({ isGeoModalOpened: false });
+  };
+
+  onClosePaymentModal = () => {
+    window.location.hash = '#';
+    this.setState({ isPaymentModalOpened: false });
   };
 
   toggleEdit = () => {
@@ -264,6 +275,10 @@ export default class Main extends Component {
         <SignInModal
           isOpen={this.state.isSignInModalOpened}
           onClose={this.onCloseSignInModal}
+        />
+        <PaymentModal
+          isOpen={this.state.isPaymentModalOpened}
+          onClose={this.onClosePaymentModal}
         />
         <ScenesModal
           isOpen={this.state.isScenesModalOpened}

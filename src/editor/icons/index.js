@@ -26,5 +26,7 @@ export {
   Chevron24Down,
   Plus20Circle,
   QR32Icon,
+  Action24,
+  DownloadIcon,
   ScreenshotIcon
 } from './icons.jsx';
