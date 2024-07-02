@@ -37,7 +37,7 @@ const PaymentModal = ({ isOpen, onClose }) => {
         functions,
         'createStripeSession'
       )({
-        line_items: [{ price: 'price_1PVKKsA638v2qJqBw2E7cY3S', quantity: 1 }],
+        line_items: [{ price: process.env.STRIPE_PRICE_ID, quantity: 1 }],
         mode: 'subscription',
         success_url: `${location.origin}/#/modal/payment/success`,
         cancel_url: `${location.origin}/#/modal/payment`,
