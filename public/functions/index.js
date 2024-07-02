@@ -90,9 +90,9 @@ exports.createStripeBillingPortal = functions
     };
   });
 
-// function to respond webhook from Stripe customer.subscription.deleted
+// function for Stripe webhook customer.subscription.deleted
 exports.handleSubscriptionWebhook = functions
-  .runWith({ secrets: ["STRIPE_SECRET_KEY"] })
+  .runWith({ secrets: ["STRIPE_SECRET_KEY", "STRIPE_WEBHOOK_SECRET_SUBSCRIPTION"] })
   .https
   .onRequest(async (req, res) => {
     const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
@@ -102,7 +102,7 @@ exports.handleSubscriptionWebhook = functions
       event = stripe.webhooks.constructEvent(
         req.rawBody,
         req.headers['stripe-signature'],
-        'whsec_AyE73MHOKyGhvPWxKV9V1hhnA4J2pYbJ'
+        process.env.STRIPE_WEBHOOK_SECRET_SUBSCRIPTION
       );
     } catch (err) {
       console.error('⚠️ Webhook signature verification failed.');
@@ -135,8 +135,9 @@ exports.handleSubscriptionWebhook = functions
 
   });
 
+// function for Stripe webhook checkout.session.completed
 exports.stripeWebhook = functions
-  .runWith({ secrets: ["STRIPE_SECRET_KEY"] })
+  .runWith({ secrets: ["STRIPE_SECRET_KEY", "STRIPE_WEBHOOK_SECRET_CHECKOUT"] })
   .https
   .onRequest(async (req, res) => {
     const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
@@ -146,7 +147,7 @@ exports.stripeWebhook = functions
       event = stripe.webhooks.constructEvent(
         req.rawBody,
         req.headers['stripe-signature'],
-        'whsec_6Em4oxFarrevhzxWdj8AKClmDBorBfaf'
+        process.env.STRIPE_WEBHOOK_SECRET_CHECKOUT
       );
     } catch (err) {
       console.error('⚠️ Webhook signature verification failed.');
