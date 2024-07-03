@@ -1,4 +1,5 @@
 import styles from './ProfileModal.module.scss';
+import { useState } from 'react';
 
 import Modal from '../Modal.jsx';
 import { Button } from '../../components';
@@ -6,12 +7,13 @@ import { useAuthContext } from '../../../contexts';
 import { signOut } from 'firebase/auth';
 import { auth, functions } from '../../../services/firebase';
 import Events from '../../../lib/Events.js';
-import { Action24 } from '../../../icons/icons.jsx';
+import { Action24, Loader } from '../../../icons';
 import { httpsCallable } from 'firebase/functions';
 import posthog from 'posthog-js';
 
 const ProfileModal = ({ isOpen, onClose }) => {
   const { currentUser, setCurrentUser } = useAuthContext();
+  const [isLoading, setIsLoading] = useState(false);
 
   const logOutHandler = async () => {
     onClose();
@@ -21,6 +23,7 @@ const ProfileModal = ({ isOpen, onClose }) => {
   };
 
   const manageSubscription = async () => {
+    setIsLoading(true);
     const {
       data: { url }
     } = await httpsCallable(
@@ -30,7 +33,7 @@ const ProfileModal = ({ isOpen, onClose }) => {
       user_id: currentUser.uid,
       return_url: `${location.origin}/#/modal/payment`
     });
-
+    setIsLoading(false);
     window.open(url, '_blank');
     // Replace 'https://example.com' with your desired URL
   };
@@ -78,13 +81,21 @@ const ProfileModal = ({ isOpen, onClose }) => {
               <p>
                 <Action24 /> Plan: Geospatial Pro
               </p>
-              <Button
-                variant="ghost"
-                className={styles.manageSubscription}
-                onClick={manageSubscription}
-              >
-                Manage subscription
-              </Button>
+              <div>
+                {isLoading ? (
+                  <div className={styles.loadingSpinner}>
+                    <Loader className={styles.spinner} />
+                  </div>
+                ) : (
+                  <Button
+                    variant="ghost"
+                    className={styles.manageSubscription}
+                    onClick={manageSubscription}
+                  >
+                    Manage subscription
+                  </Button>
+                )}
+              </div>
             </div>
           ) : (
             <div className={styles.subscribeCard}>
