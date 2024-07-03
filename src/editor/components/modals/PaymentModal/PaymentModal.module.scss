@@ -36,6 +36,29 @@
       padding: 0 !important;
       margin-top: 40px;
     }
+
+    .paymentButton {
+      padding: 32px !important;
+    }
+  }
+
+  .loadingSpinner {
+    display: flex;
+    margin: auto;
+
+    .spinner {
+      animation: spin 2s linear infinite;
+    }
+
+    @keyframes spin {
+      0% {
+        transform: rotate(0deg);
+      }
+
+      100% {
+        transform: rotate(360deg);
+      }
+    }
   }
 
   .rightCol {
@@ -78,25 +101,6 @@
       & > p {
         font-size: 24px !important;
         font-weight: 500;
-      }
-    }
-
-    .loadingSpinner {
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      margin: auto;
-      .spinner {
-        animation: spin 2s linear infinite;
-      }
-
-      @keyframes spin {
-        0% {
-          transform: rotate(0deg);
-        }
-        100% {
-          transform: rotate(360deg);
-        }
       }
     }
   }

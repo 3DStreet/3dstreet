@@ -3,7 +3,6 @@ import styles from './PaymentModal.module.scss';
 import { useState } from 'react';
 
 import { loadStripe } from '@stripe/stripe-js';
-import PaymentPlaceholderImg from '../../../../../ui_assets/payment-placeholder.png';
 import { useAuthContext } from '../../../contexts/index.js';
 import { CheckMark32Icon, Loader } from '../../../icons';
 import { Button } from '../../components/index.js';
@@ -86,41 +85,34 @@ const PaymentModal = ({ isOpen, onClose }) => {
             <CheckMark32Icon />
             GLTF Export and Augmented Reality
           </li>
-        </ul>
-      </div>
-      <div className={styles.rightCol}>
-        {currentUser ? (
-          <>
-            <img
-              className={styles.paymentPlaceholder}
-              src={PaymentPlaceholderImg}
-            />
-            {currentUser.isPro ? (
-              <CheckMark32Icon />
-            ) : (
-              <>
-                {isLoading ? (
-                  <div className={styles.loadingSpinner}>
-                    <Loader className={styles.spinner} />
-                  </div>
+          <li>&nbsp;</li>
+          <li>
+            {currentUser ? (
+              <div className="paymentButton">
+                {currentUser.isPro ? (
+                  <CheckMark32Icon />
                 ) : (
-                  <Button
-                    onClick={startCheckout}
-                    className={styles.checkoutWithBtn}
-                    variant="filled"
-                  >
-                    Checkout with Stripe
-                  </Button>
+                  <div>
+                    {isLoading ? (
+                      <div className={styles.loadingSpinner}>
+                        <Loader className={styles.spinner} />
+                      </div>
+                    ) : (
+                      <Button onClick={startCheckout} variant="filled">
+                        Checkout with Stripe
+                      </Button>
+                    )}
+                  </div>
                 )}
-              </>
+              </div>
+            ) : (
+              <div className={styles.unAuth}>
+                <p>To upgrade you have to sign in:</p>
+                <Button variant="filled">Sign in to 3DStreet Cloud</Button>
+              </div>
             )}
-          </>
-        ) : (
-          <div className={styles.unAuth}>
-            <p>To upgrade you have to sign in:</p>
-            <Button variant="filled">Sign in to 3DStreet Cloud</Button>
-          </div>
-        )}
+          </li>
+        </ul>
       </div>
     </Modal>
   );
