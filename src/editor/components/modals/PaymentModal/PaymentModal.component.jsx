@@ -22,11 +22,6 @@ const PaymentModal = ({ isOpen, onClose }) => {
   const { currentUser } = useAuthContext();
   const [isLoading, setIsLoading] = useState(false);
 
-  const isSucess = window.location.hash.includes('/success');
-  if (isSucess) {
-    STREET.notify.successMessage('Thank you for subscribing!');
-  }
-
   const startCheckout = async () => {
     setIsLoading(true);
     try {
@@ -90,7 +85,9 @@ const PaymentModal = ({ isOpen, onClose }) => {
             {currentUser ? (
               <div className="paymentButton">
                 {currentUser.isPro ? (
-                  <CheckMark32Icon />
+                  <li>
+                    <h3>🎉 Congrats! Thank you for your subscription.</h3>
+                  </li>
                 ) : (
                   <div>
                     {isLoading ? (
