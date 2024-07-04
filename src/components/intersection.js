@@ -74,6 +74,7 @@ AFRAME.registerComponent('intersection', {
       sd.setAttribute('scale', scaleVec);
       sd.setAttribute('rotation', rotationVec);
       sd.setAttribute('mixin', 'sidewalk');
+      sd.classList.add('autocreated');
       sd.setAttribute(
         'material',
         `repeat: ${repeatCountInter[0]} ${repeatCountInter[1]}`
@@ -224,6 +225,7 @@ AFRAME.registerComponent('intersection', {
       stopSignEl.setAttribute('position', params['position']);
       stopSignEl.setAttribute('rotation', params['rotation']);
       stopSignEl.setAttribute('mixin', 'stop_sign');
+      stopSignEl.classList.add('autocreated');
       return stopSignEl;
     }
 
@@ -318,6 +320,7 @@ AFRAME.registerComponent('intersection', {
         trafficSignalEl.setAttribute('position', params[side].position);
         trafficSignalEl.setAttribute('rotation', params[side].rotation);
         trafficSignalEl.setAttribute('mixin', `signal_${side}`);
+        trafficSignalEl.classList.add('autocreated');
         el.appendChild(trafficSignalEl);
       });
     }
@@ -335,6 +338,7 @@ AFRAME.registerComponent('intersection', {
       cw1.setAttribute('rotation', { x: 0, y: 0, z: 180 });
       cw1.setAttribute('scale', { y: intersectDepth / 12 });
       cw1.setAttribute('mixin', 'markings crosswalk-zebra');
+      cw1.classList.add('autocreated');
       el.appendChild(cw1);
     }
     if (crosswalklArray[1]) {
@@ -343,6 +347,7 @@ AFRAME.registerComponent('intersection', {
       cw2.setAttribute('rotation', { x: 0, y: 0, z: 180 });
       cw2.setAttribute('scale', { y: intersectDepth / 12 });
       cw2.setAttribute('mixin', 'markings crosswalk-zebra');
+      cw2.classList.add('autocreated');
       el.appendChild(cw2);
     }
     if (crosswalklArray[2]) {
@@ -351,6 +356,7 @@ AFRAME.registerComponent('intersection', {
       cw3.setAttribute('rotation', { x: 0, y: 0, z: 90 });
       cw3.setAttribute('scale', { y: intersectWidth / 12 });
       cw3.setAttribute('mixin', 'markings crosswalk-zebra');
+      cw3.classList.add('autocreated');
       el.appendChild(cw3);
     }
     if (crosswalklArray[3]) {
@@ -359,6 +365,7 @@ AFRAME.registerComponent('intersection', {
       cw4.setAttribute('rotation', { x: 0, y: 0, z: 90 });
       cw4.setAttribute('scale', { y: intersectWidth / 12 });
       cw4.setAttribute('mixin', 'markings crosswalk-zebra');
+      cw4.classList.add('autocreated');
       el.appendChild(cw4);
     }
   }
