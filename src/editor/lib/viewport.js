@@ -214,7 +214,7 @@ export function Viewport(inspector) {
   Events.on('cameratoggle', (data) => {
     controls.setCamera(data.camera);
     transformControls.setCamera(data.camera);
-
+    cameraResize();
     // quick solution to change 3d tiles camera
     const tilesElem = document.querySelector('a-entity[loader-3dtiles]');
     if (tilesElem) {
@@ -312,11 +312,25 @@ export function Viewport(inspector) {
     updateHelpers(object);
   });
 
-  Events.on('windowresize', () => {
-    camera.aspect =
+  function cameraResize() {
+    const activeCmera = inspector.camera;
+    const aspect =
       inspector.container.offsetWidth / inspector.container.offsetHeight;
-    camera.updateProjectionMatrix();
-  });
+    activeCmera.aspect = aspect;
+    if (inspector.opened) {
+      if (activeCmera.isOrthographicCamera) {
+        const frustumSize = activeCmera.top - activeCmera.bottom;
+        activeCmera.left = (-frustumSize * aspect) / 2;
+        activeCmera.right = (frustumSize * aspect) / 2;
+        activeCmera.top = frustumSize / 2;
+        activeCmera.bottom = -frustumSize / 2;
+      }
+      controls.setAspectRatio(sceneEl.canvas.width / sceneEl.canvas.height);
+      activeCmera.updateProjectionMatrix();
+    }
+  }
+
+  window.addEventListener('resize', cameraResize);
 
   Events.on('gridvisibilitychanged', (showGrid) => {
     grid.visible = showGrid;
