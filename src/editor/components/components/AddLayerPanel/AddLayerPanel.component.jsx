@@ -10,6 +10,7 @@ import CardPlaceholder from '../../../../../ui_assets/card-placeholder.svg';
 import LockedCard from '../../../../../ui_assets/locked-card.svg';
 
 import { LayersOptions } from './LayersOptions.js';
+import mixinCatalog from '../../../../catalog.json';
 import posthog from 'posthog-js';
 
 import {
@@ -41,23 +42,43 @@ const AddLayerPanel = ({ onClose, isAddLayerPanelOpen }) => {
     const groupedArray = [];
     let categoryName, mixinId;
 
+    // convert the mixins array into an object with mixins for faster access by index
+    const mixinCatalogObj = mixinCatalog.reduce((obj, item) => {
+      obj[item.id] = item;
+      return obj;
+    }, {});
+
     const groupedObject = {};
     let index = 0;
     for (const mixinEl of mixinElements) {
       categoryName = mixinEl.getAttribute('category');
       if (!categoryName) continue;
-      mixinId = mixinEl.id;
+
       if (!groupedObject[categoryName]) {
         groupedObject[categoryName] = [];
       }
-      groupedObject[categoryName].push({
+      // get mixin data from mixin catalog and push it to object with grouped mixins
+      mixinId = mixinEl.id;
+      const mixinDataFromCatalog = mixinCatalogObj[mixinId];
+      let mixinImg = '';
+      let mixinName = '';
+      let mixinDescr = '';
+
+      if (mixinDataFromCatalog) {
+        mixinImg = mixinDataFromCatalog.img;
+        mixinName = mixinDataFromCatalog.name;
+        mixinDescr = mixinDataFromCatalog.description;
+      }
+      const mixinData = {
         // here could be data from dataCards JSON file
-        img: '',
+        img: mixinImg,
         icon: '',
         mixinId: mixinId,
-        name: mixinId,
+        name: mixinName || mixinId,
+        description: mixinDescr,
         id: index
-      });
+      };
+      groupedObject[categoryName].push(mixinData);
       index += 1;
     }
 

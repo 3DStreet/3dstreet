@@ -183,11 +183,7 @@ const removeProps = {
   street: { JSON: '*' }
 };
 // a list of component_name:new_component_name pairs to rename in JSON string
-const renameProps = {
-  'streetmix-loader': 'not-streetmix-loader',
-  street: 'not-street',
-  intersection: 'not-intersection'
-};
+const renameProps = {};
 
 function filterJSONstreet(streetJSON) {
   function removeValueCheck(removeVal, value) {
