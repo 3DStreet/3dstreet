@@ -1,13 +1,19 @@
 import styles from './ProfileModal.module.scss';
+import { useState } from 'react';
 
 import Modal from '../Modal.jsx';
 import { Button } from '../../components';
 import { useAuthContext } from '../../../contexts';
 import { signOut } from 'firebase/auth';
-import { auth } from '../../../services/firebase';
+import { auth, functions } from '../../../services/firebase';
+import Events from '../../../lib/Events.js';
+import { Action24, Loader } from '../../../icons';
+import { httpsCallable } from 'firebase/functions';
 import posthog from 'posthog-js';
+
 const ProfileModal = ({ isOpen, onClose }) => {
   const { currentUser, setCurrentUser } = useAuthContext();
+  const [isLoading, setIsLoading] = useState(false);
 
   const logOutHandler = async () => {
     onClose();
@@ -15,11 +21,23 @@ const ProfileModal = ({ isOpen, onClose }) => {
     posthog.reset();
     setCurrentUser(null);
   };
-  /*
-  const editProfileHandler = () => {
-    // TODO: navigate to edit section
+
+  const manageSubscription = async () => {
+    setIsLoading(true);
+    const {
+      data: { url }
+    } = await httpsCallable(
+      functions,
+      'createStripeBillingPortal'
+    )({
+      user_id: currentUser.uid,
+      return_url: `${location.origin}/#/modal/payment`
+    });
+    setIsLoading(false);
+    window.open(url, '_blank');
+    // Replace 'https://example.com' with your desired URL
   };
-*/
+
   return (
     <Modal
       className={styles.modalWrapper}
@@ -28,7 +46,7 @@ const ProfileModal = ({ isOpen, onClose }) => {
       extraCloseKeyCode={72}
     >
       <div className={styles.contentWrapper}>
-        <h2 className={styles.title}>Account</h2>
+        <h2 className={styles.title}>3DStreet Cloud Account</h2>
         <div className={styles.content}>
           <div className={styles.header}>
             <div className={styles.profile}>
@@ -56,92 +74,61 @@ const ProfileModal = ({ isOpen, onClose }) => {
               </Button>
             </div>
           </div>
-          {/* <div className={styles.scenesWrapper}>
-            <h3>Recent scenes</h3>
-            <div className={styles.scenes}>
-              <div className={styles.dropzone}>
-                <div className={styles.icon}>{Download32Icon}</div>
-                <span className={styles.main}>Drag a file over here or</span>
-                <a className={styles.streetmix}>Import Streetmix</a>
-                <a className={styles.json}>Import 3DStreet JSON</a>
-              </div>
-              <div role="button" tabIndex={0} className={styles.scene}>
-                <img className={styles.img} src="" alt="" />
-                <span className={styles.name}>Scene Name</span>
-                <span className={styles.date}>Last opened 2 days ago</span>
-              </div>
-              <div role="button" tabIndex={0} className={styles.scene}>
-                <img className={styles.img} src="" alt="" />
-                <span className={styles.name}>Scene Name</span>
-                <span className={styles.date}>Last opened 2 days ago</span>
-              </div>
-              <div role="button" tabIndex={0} className={styles.scene}>
-                <img className={styles.img} src="" alt="" />
-                <span className={styles.name}>Scene Name</span>
-                <span className={styles.date}>Last opened 2 days ago</span>
-              </div>
-              <div role="button" tabIndex={0} className={styles.scene}>
-                <img className={styles.img} src="" alt="" />
-                <span className={styles.name}>Scene Name</span>
-                <span className={styles.date}>Last opened 2 days ago</span>
-              </div>
-              <div role="button" tabIndex={0} className={styles.scene}>
-                <img className={styles.img} src="" alt="" />
-                <span className={styles.name}>Scene Name</span>
-                <span className={styles.date}>Last opened 2 days ago</span>
-              </div>
-              <div role="button" tabIndex={0} className={styles.scene}>
-                <img className={styles.img} src="" alt="" />
-                <span className={styles.name}>Scene Name</span>
-                <span className={styles.date}>Last opened 2 days ago</span>
-              </div>
-              <div role="button" tabIndex={0} className={styles.scene}>
-                <img className={styles.img} src="" alt="" />
-                <span className={styles.name}>Scene Name</span>
-                <span className={styles.date}>Last opened 2 days ago</span>
-              </div>
-              <div role="button" tabIndex={0} className={styles.scene}>
-                <img className={styles.img} src="" alt="" />
-                <span className={styles.name}>Scene Name</span>
-                <span className={styles.date}>Last opened 2 days ago</span>
-              </div>
-              <div role="button" tabIndex={0} className={styles.scene}>
-                <img className={styles.img} src="" alt="" />
-                <span className={styles.name}>Scene Name</span>
-                <span className={styles.date}>Last opened 2 days ago</span>
-              </div>
-              <div role="button" tabIndex={0} className={styles.scene}>
-                <img className={styles.img} src="" alt="" />
-                <span className={styles.name}>Scene Name</span>
-                <span className={styles.date}>Last opened 2 days ago</span>
-              </div>
-              <div role="button" tabIndex={0} className={styles.scene}>
-                <img className={styles.img} src="" alt="" />
-                <span className={styles.name}>Scene Name</span>
-                <span className={styles.date}>Last opened 2 days ago</span>
-              </div>
-              <div role="button" tabIndex={0} className={styles.scene}>
-                <img className={styles.img} src="" alt="" />
-                <span className={styles.name}>Scene Name</span>
-                <span className={styles.date}>Last opened 2 days ago</span>
-              </div>
-              <div role="button" tabIndex={0} className={styles.scene}>
-                <img className={styles.img} src="" alt="" />
-                <span className={styles.name}>Scene Name</span>
-                <span className={styles.date}>Last opened 2 days ago</span>
-              </div>
-              <div role="button" tabIndex={0} className={styles.scene}>
-                <img className={styles.img} src="" alt="" />
-                <span className={styles.name}>Scene Name</span>
-                <span className={styles.date}>Last opened 2 days ago</span>
-              </div>
-              <div role="button" tabIndex={0} className={styles.scene}>
-                <img className={styles.img} src="" alt="" />
-                <span className={styles.name}>Scene Name</span>
-                <span className={styles.date}>Last opened 2 days ago</span>
+          <hr />
+
+          {currentUser?.isPro ? (
+            <div className={styles.manageBillingCard}>
+              <p>
+                <Action24 /> Plan: Geospatial Pro
+              </p>
+              <div>
+                {isLoading ? (
+                  <div className={styles.loadingSpinner}>
+                    <Loader className={styles.spinner} />
+                  </div>
+                ) : (
+                  <Button
+                    variant="ghost"
+                    className={styles.manageSubscription}
+                    onClick={manageSubscription}
+                  >
+                    Manage subscription
+                  </Button>
+                )}
               </div>
             </div>
-          </div> */}
+          ) : (
+            <div className={styles.subscribeCard}>
+              <div className={styles.about}>
+                <h3 className={styles.cardTitle}>
+                  Unlock Geospatial Features with 3DStreet Pro
+                </h3>
+                <span>
+                  Create with geospatial maps and share your vision in augmented
+                  reality with 3DStreet Pro.
+                </span>
+              </div>
+
+              <div className={styles.controlButtons}>
+                {/* <a
+                href="http://"
+                target="_blank"
+                rel="noopener noreferrer"
+                > */}
+
+                <Button
+                  onClick={() => {
+                    onClose();
+                    Events.emit('openpaymentmodal');
+                  }}
+                  type="filled"
+                  target="_blank"
+                >
+                  Subscribe
+                </Button>
+              </div>
+            </div>
+          )}
         </div>
       </div>
     </Modal>
