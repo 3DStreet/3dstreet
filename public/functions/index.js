@@ -53,6 +53,8 @@ exports.createStripeSession = functions
 
     if (stripeCustomerId) {
       data.customer = stripeCustomerId;
+    } else {
+      data.customer_email = data.metadata.customer_email;
     }
     const session = await stripe.checkout.sessions.create(data);
 

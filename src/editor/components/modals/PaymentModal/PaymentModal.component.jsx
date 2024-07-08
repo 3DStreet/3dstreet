@@ -38,7 +38,8 @@ const PaymentModal = ({ isOpen, onClose }) => {
         metadata: { userId: currentUser.uid },
         subscription_data: {
           metadata: {
-            userId: currentUser.uid
+            userId: currentUser.uid,
+            customer_email: currentUser.email
           }
         }
       });
