@@ -11,6 +11,7 @@ import LockedCard from '../../../../../ui_assets/locked-card.svg';
 
 import { layersData } from './layersData.js';
 import { LayersOptions } from './LayersOptions.js';
+import mixinCatalog from '../../../../catalog.json';
 import posthog from 'posthog-js';
 import Events from '../../../lib/Events';
 
@@ -33,23 +34,43 @@ const AddLayerPanel = ({ onClose, isAddLayerPanelOpen }) => {
     const groupedArray = [];
     let categoryName, mixinId;
 
+    // convert the mixins array into an object with mixins for faster access by index
+    const mixinCatalogObj = mixinCatalog.reduce((obj, item) => {
+      obj[item.id] = item;
+      return obj;
+    }, {});
+
     const groupedObject = {};
     let index = 0;
     for (const mixinEl of mixinElements) {
       categoryName = mixinEl.getAttribute('category');
       if (!categoryName) continue;
-      mixinId = mixinEl.id;
+
       if (!groupedObject[categoryName]) {
         groupedObject[categoryName] = [];
       }
-      groupedObject[categoryName].push({
+      // get mixin data from mixin catalog and push it to object with grouped mixins
+      mixinId = mixinEl.id;
+      const mixinDataFromCatalog = mixinCatalogObj[mixinId];
+      let mixinImg = '';
+      let mixinName = '';
+      let mixinDescr = '';
+
+      if (mixinDataFromCatalog) {
+        mixinImg = mixinDataFromCatalog.img;
+        mixinName = mixinDataFromCatalog.name;
+        mixinDescr = mixinDataFromCatalog.description;
+      }
+      const mixinData = {
         // here could be data from dataCards JSON file
-        img: '',
+        img: mixinImg,
         icon: '',
         mixinId: mixinId,
-        name: mixinId,
+        name: mixinName || mixinId,
+        description: mixinDescr,
         id: index
-      });
+      };
+      groupedObject[categoryName].push(mixinData);
       index += 1;
     }
 
@@ -216,9 +237,7 @@ const AddLayerPanel = ({ onClose, isAddLayerPanelOpen }) => {
       isProUser: isProUser
     });
     if (card.requiresPro && !isProUser) {
-      STREET.notify.errorMessage(
-        `Pro account required to add this layer, contact kieran@3dstreet.org for access`
-      );
+      Events.emit('openpaymentmodal');
     } else if (card.mixinId) {
       createEntity(card.mixinId);
     } else if (card.handlerFunction) {

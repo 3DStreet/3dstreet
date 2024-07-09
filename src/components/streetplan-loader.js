@@ -8,7 +8,8 @@ AFRAME.registerComponent('streetplan-loader', {
     streetplanAPIURL: { type: 'string' },
     streetplanEncJSON: { type: 'string' },
     showBuildings: { default: true },
-    name: { default: '' }
+    name: { default: '' },
+    synchronize: { default: false }
   },
   streetplanResponseParse: function (streetplanResponseObject) {
     const el = this.el;
@@ -62,6 +63,9 @@ AFRAME.registerComponent('streetplan-loader', {
     const that = this;
     const data = this.data;
 
+    // do not call the update function when the data.synchronize is set to false
+    if (!data.synchronize) return;
+
     // load from URL encoded Streetplan JSON
     if (data.streetplanEncJSON) {
       const streetplanJSON = decodeURIComponent(data.streetplanEncJSON);
@@ -78,8 +82,6 @@ AFRAME.registerComponent('streetplan-loader', {
       return;
     }
 
-    STREET.sourceType = 'streetplanURL'; // it also could be jsonFile/streetmixURL
-
     var request = new XMLHttpRequest();
     console.log('[streetplan-loader]', 'GET ' + data.streetplanAPIURL);
 
@@ -89,6 +91,8 @@ AFRAME.registerComponent('streetplan-loader', {
         // Connection success
         const streetplanResponseObject = JSON.parse(this.response);
         that.streetplanResponseParse(streetplanResponseObject);
+        // the streetplan data has been loaded, set the synchronize flag to false
+        that.el.setAttribute('streetplan-loader', 'synchronize', false);
       } else {
         // We reached our target server, but it returned an error
         console.log(
