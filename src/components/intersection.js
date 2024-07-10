@@ -4,13 +4,13 @@ AFRAME.registerComponent('intersection', {
     dimensions: { type: 'string', default: '20 20' },
     // cardinal direction order for sidewalk, stopsign, crosswalk: west, east, north, south
     sidewalk: { type: 'string', default: '0 0 0 0' },
-    northeastcurb: { type: 'string', default: '0 0' },
-    southwestcurb: { type: 'string', default: '0 0' },
-    southeastcurb: { type: 'string', default: '0 0' },
-    northwestcurb: { type: 'string', default: '0 0' },
+    northeastcurb: { type: 'string', default: '4 4' },
+    southwestcurb: { type: 'string', default: '4 4' },
+    southeastcurb: { type: 'string', default: '4 4' },
+    northwestcurb: { type: 'string', default: '4 4' },
     stopsign: { type: 'string', default: '0 0 0 0' },
-    trafficsignal: { type: 'string', default: '0 0 0 0' },
-    crosswalk: { type: 'string', default: '0 0 0 0' }
+    trafficsignal: { type: 'string', default: '1 1 1 1' },
+    crosswalk: { type: 'string', default: '2 2 2 2' }
   },
   update: function () {
     var data = this.data;
@@ -48,8 +48,6 @@ AFRAME.registerComponent('intersection', {
       'geometry',
       `primitive:box; width: ${intersectWidth}; height: ${intersectDepth}; depth:0.2`
     );
-    this.el.object3D.position.setY(-0.1);
-    this.el.setAttribute('rotation', '-90 0 0');
     this.el.setAttribute(
       'material',
       'src: #asphalt-texture; repeat:5 5; roughness:1'

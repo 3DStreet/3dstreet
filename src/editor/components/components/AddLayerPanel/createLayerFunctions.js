@@ -152,7 +152,8 @@ function createPrimitiveGeometry() {
 function createIntersection() {
   const newEl = document.createElement('a-entity');
   newEl.setAttribute('intersection', '');
-  newEl.setAttribute('data-layer-name', 'Street intersection');
+  newEl.setAttribute('data-layer-name', 'Street • Intersection 90º');
+  newEl.setAttribute('rotation', '-90 -90 0');
   const parentEl = document.querySelector('#street-container');
   parentEl.appendChild(newEl);
   // update sceneGraph
