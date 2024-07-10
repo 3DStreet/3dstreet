@@ -85,9 +85,7 @@ const PaymentModal = ({ isOpen, onClose }) => {
             {currentUser ? (
               <div className="paymentButton">
                 {currentUser.isPro ? (
-                  <li>
-                    <h3>🎉 Congrats! Thank you for your subscription.</h3>
-                  </li>
+                  <h3>🎉 Congrats! Thank you for your subscription.</h3>
                 ) : (
                   <div>
                     {isLoading ? (
