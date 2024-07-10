@@ -137,7 +137,7 @@ function createCustomModel() {
 function createPrimitiveGeometry() {
   const newEl = document.createElement('a-entity');
   newEl.setAttribute('geometry', 'primitive: circle; radius: 50;');
-  newEl.setAttribute('rotation', '-90 0 0');
+  newEl.setAttribute('rotation', '-90 -90 0');
   newEl.setAttribute(
     'data-layer-name',
     'Plane Geometry • Traffic Circle Asphalt'
