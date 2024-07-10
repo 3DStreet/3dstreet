@@ -60,7 +60,8 @@ AFRAME.registerComponent('intersection', {
       width,
       positionVec,
       scaleVec = { x: 1, y: 1, z: 1 },
-      rotationVec
+      rotationVec,
+      displayName
     }) {
       const sd = document.createElement('a-entity');
       // every 2 meters repeat sidewalk texture
@@ -79,6 +80,7 @@ AFRAME.registerComponent('intersection', {
         'material',
         `repeat: ${repeatCountInter[0]} ${repeatCountInter[1]}`
       );
+      sd.setAttribute('data-layer-name', 'Sidewalk • ' + displayName);
       el.appendChild(sd);
     }
 
@@ -88,13 +90,15 @@ AFRAME.registerComponent('intersection', {
         positionVec: { x: intersectWidth / 2 - sidewalkArray[0] / 2, z: 0.1 },
         rotationVec: { x: 90, y: 0, z: 0 },
         length: intersectDepth,
-        width: sidewalkArray[0]
+        width: sidewalkArray[0],
+        displayName: 'West'
       },
       east: {
         positionVec: { x: -intersectWidth / 2 + sidewalkArray[1] / 2, z: 0.1 },
         rotationVec: { x: 90, y: 0, z: 0 },
         length: intersectDepth,
-        width: sidewalkArray[1]
+        width: sidewalkArray[1],
+        displayName: 'East'
       },
       north: {
         positionVec: {
@@ -106,7 +110,8 @@ AFRAME.registerComponent('intersection', {
         rotationVec: { x: 0, y: 90, z: -90 },
         // minus the width of the crossing sidewalk
         length: intersectWidth - sidewalkArray[1] - sidewalkArray[0],
-        width: sidewalkArray[2]
+        width: sidewalkArray[2],
+        displayName: 'North'
       },
       south: {
         positionVec: {
@@ -118,7 +123,8 @@ AFRAME.registerComponent('intersection', {
         rotationVec: { x: 0, y: 90, z: -90 },
         // minus the width of the crossing sidewalk
         length: intersectWidth - sidewalkArray[1] - sidewalkArray[0],
-        width: sidewalkArray[3]
+        width: sidewalkArray[3],
+        displayName: 'South'
       }
     };
 
@@ -142,7 +148,8 @@ AFRAME.registerComponent('intersection', {
         },
         rotationVec: { x: 0, y: 90, z: -90 },
         length: northeastcurbArray[0],
-        width: northeastcurbArray[1]
+        width: northeastcurbArray[1],
+        displayName: 'Northeast'
       },
       southwest: {
         positionVec: {
@@ -152,7 +159,8 @@ AFRAME.registerComponent('intersection', {
         },
         rotationVec: { x: 0, y: 90, z: -90 },
         length: southwestcurbArray[0],
-        width: southwestcurbArray[1]
+        width: southwestcurbArray[1],
+        displayName: 'Southwest'
       },
       southeast: {
         positionVec: {
@@ -162,7 +170,8 @@ AFRAME.registerComponent('intersection', {
         },
         rotationVec: { x: 0, y: 90, z: -90 },
         length: southeastcurbArray[0],
-        width: southeastcurbArray[1]
+        width: southeastcurbArray[1],
+        displayName: 'Southeast'
       },
       northwest: {
         positionVec: {
@@ -172,7 +181,8 @@ AFRAME.registerComponent('intersection', {
         },
         rotationVec: { x: 0, y: 90, z: -90 },
         length: northwestcurbArray[0],
-        width: northwestcurbArray[1]
+        width: northwestcurbArray[1],
+        displayName: 'Northwest'
       }
     };
 
@@ -226,6 +236,7 @@ AFRAME.registerComponent('intersection', {
       stopSignEl.setAttribute('rotation', params['rotation']);
       stopSignEl.setAttribute('mixin', 'stop_sign');
       stopSignEl.classList.add('autocreated');
+      stopSignEl.setAttribute('data-layer-name', 'Traffic Control • Stop Sign');
       return stopSignEl;
     }
 
@@ -321,6 +332,10 @@ AFRAME.registerComponent('intersection', {
         trafficSignalEl.setAttribute('rotation', params[side].rotation);
         trafficSignalEl.setAttribute('mixin', `signal_${side}`);
         trafficSignalEl.classList.add('autocreated');
+        trafficSignalEl.setAttribute(
+          'data-layer-name',
+          'Traffic Signal • ' + direction + ' ' + side
+        );
         el.appendChild(trafficSignalEl);
       });
     }
@@ -338,6 +353,7 @@ AFRAME.registerComponent('intersection', {
       cw1.setAttribute('rotation', { x: 0, y: 0, z: 180 });
       cw1.setAttribute('scale', { y: intersectDepth / 12 });
       cw1.setAttribute('mixin', 'markings crosswalk-zebra');
+      cw1.setAttribute('data-layer-name', 'Crosswalk • East');
       cw1.classList.add('autocreated');
       el.appendChild(cw1);
     }
@@ -347,6 +363,7 @@ AFRAME.registerComponent('intersection', {
       cw2.setAttribute('rotation', { x: 0, y: 0, z: 180 });
       cw2.setAttribute('scale', { y: intersectDepth / 12 });
       cw2.setAttribute('mixin', 'markings crosswalk-zebra');
+      cw2.setAttribute('data-layer-name', 'Crosswalk • West');
       cw2.classList.add('autocreated');
       el.appendChild(cw2);
     }
@@ -356,12 +373,14 @@ AFRAME.registerComponent('intersection', {
       cw3.setAttribute('rotation', { x: 0, y: 0, z: 90 });
       cw3.setAttribute('scale', { y: intersectWidth / 12 });
       cw3.setAttribute('mixin', 'markings crosswalk-zebra');
+      cw3.setAttribute('data-layer-name', 'Crosswalk • Zebra (Continental)');
       cw3.classList.add('autocreated');
       el.appendChild(cw3);
     }
     if (crosswalklArray[3]) {
       const cw4 = document.createElement('a-entity');
       cw4.setAttribute('position', { y: intersectDepth / 2 - 2, z: 0.11 });
+      cw4.setAttribute('data-layer-name', 'Crosswalk • Zebra (Continental)');
       cw4.setAttribute('rotation', { x: 0, y: 0, z: 90 });
       cw4.setAttribute('scale', { y: intersectWidth / 12 });
       cw4.setAttribute('mixin', 'markings crosswalk-zebra');
