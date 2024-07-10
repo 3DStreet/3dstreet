@@ -8,6 +8,7 @@ import { CheckMark32Icon, Loader } from '../../../icons';
 import { Button } from '../../components/index.js';
 import Modal from '../Modal.jsx';
 import { functions } from '../../../services/firebase.js';
+import posthog from 'posthog-js';
 
 let stripePromise;
 const getStripe = () => {
@@ -22,7 +23,12 @@ const PaymentModal = ({ isOpen, onClose }) => {
   const { currentUser } = useAuthContext();
   const [isLoading, setIsLoading] = useState(false);
 
+  if (currentUser?.isPro) {
+    posthog.capture('checkout_finished');
+  }
+
   const startCheckout = async () => {
+    posthog.capture('start_checkout');
     setIsLoading(true);
     try {
       const {
