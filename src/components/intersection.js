@@ -11,9 +11,9 @@ AFRAME.registerComponent('intersection', {
     trafficsignal: { type: 'string', default: '0 0 0 0' },
     crosswalk: { type: 'string', default: '0 0 0 0' }
   },
-  init: function () {
-    var data = this.data;
-    var el = this.el;
+  update: function () {
+    const data = this.data;
+    const el = this.el;
 
     // remove all child nodes if exists
     while (el.firstChild) {
@@ -334,20 +334,20 @@ AFRAME.registerComponent('intersection', {
       el.appendChild(cw2);
     }
     if (crosswalklArray[2]) {
-      const cw3 = document.createElement('a-entity');
-      cw3.setAttribute('position', { y: -intersectDepth / 2 + 2, z: 0.11 });
-      cw3.setAttribute('rotation', { x: 0, y: 0, z: 90 });
-      cw3.setAttribute('scale', { y: intersectWidth / 12 });
-      cw3.setAttribute('mixin', 'markings crosswalk-zebra');
-      el.appendChild(cw3);
-    }
-    if (crosswalklArray[3]) {
       const cw4 = document.createElement('a-entity');
       cw4.setAttribute('position', { y: intersectDepth / 2 - 2, z: 0.11 });
       cw4.setAttribute('rotation', { x: 0, y: 0, z: 90 });
       cw4.setAttribute('scale', { y: intersectWidth / 12 });
       cw4.setAttribute('mixin', 'markings crosswalk-zebra');
       el.appendChild(cw4);
+    }
+    if (crosswalklArray[3]) {
+      const cw3 = document.createElement('a-entity');
+      cw3.setAttribute('position', { y: -intersectDepth / 2 + 2, z: 0.11 });
+      cw3.setAttribute('rotation', { x: 0, y: 0, z: 90 });
+      cw3.setAttribute('scale', { y: intersectWidth / 12 });
+      cw3.setAttribute('mixin', 'markings crosswalk-zebra');
+      el.appendChild(cw3);
     }
   }
 });

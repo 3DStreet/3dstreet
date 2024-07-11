@@ -20,6 +20,7 @@ require('aframe-atlas-uvs-component');
 require('./components/streetplan-loader');
 require('./components/street-geo.js');
 require('./components/intersection.js');
+require('./components/auto-intersection.js');
 
 AFRAME.registerComponent('street', {
   schema: {
