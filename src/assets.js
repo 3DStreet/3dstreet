@@ -134,7 +134,7 @@ function buildAssetHTML(assetUrl, categories) {
         <a-mixin shadow="cast: false" id="drive-lane" geometry="width:3;height:150;primitive:plane" material="roughness:${surfacesRoughness};repeat:0.3 25;offset:0.55 0;src:#seamless-road;"></a-mixin>
         <a-mixin shadow="cast: false" id="bright-lane" geometry="width:3;height:150;primitive:plane" material="roughness:${surfacesRoughness};repeat:0.6 50;offset:0.55 0;src:#seamless-bright-road;color:#dddddd"></a-mixin>
         <a-mixin shadow="cast: false" id="bike-lane" geometry="width:1.8;height:150;primitive:plane" material="roughness:${surfacesRoughness};repeat:0.3 25;offset:0.55 0;metalness:0;src:#seamless-road;"></a-mixin>
-        <a-mixin shadow id="sidewalk" anisotropy geometry="width:3;height:150;primitive:plane" material="roughness:${surfacesRoughness};repeat:1.5 75;src:#seamless-sidewalk;"></a-mixin>
+        <a-mixin shadow id="sidewalk" geometry="width:3;height:150;primitive:plane" material="roughness:${surfacesRoughness};repeat:1.5 75;src:#seamless-sidewalk;"></a-mixin>
         <a-mixin shadow="cast: false" id="bus-lane" geometry="width:3;height:150;primitive:plane" material="roughness:${surfacesRoughness};repeat:0.3 25;offset:0.55 0;src:#seamless-road;"></a-mixin>
         <a-mixin shadow="cast: false" id="divider" geometry="width:0.3;height:150;primitive:plane" material="roughness:${surfacesRoughness};src:#hatched-base;"></a-mixin>
         <a-mixin shadow="cast: false" id="grass" geometry="width:0.3;height:150;primitive:plane" material="roughness:${surfacesRoughness};repeat:1 150;offset:0.415 0;src:#grass-texture;"></a-mixin>
@@ -148,19 +148,18 @@ function buildAssetHTML(assetUrl, categories) {
       `,
     'lane-separator': `
         <!-- lane separator markings -->
-        <img id="markings-atlas" src="${assetUrl}materials/lane-markings-atlas_1024.png" crossorigin="anonymous" /> 
-        <a-mixin shadow="cast: false" id="markings" anisotropy atlas-uvs="totalRows: 1; totalColumns: 8; row: 1" scale="1 1 1" material="src: #markings-atlas;alphaTest: 0;transparent:true;repeat:1 25;" geometry="primitive: plane; buffer: false; skipCache: true; width:0.2; height:150;"></a-mixin>
-        <a-mixin shadow="cast: false" id="solid-stripe" atlas-uvs="column: 3; row: 1" material="repeat:1 5;"></a-mixin>
-        <a-mixin shadow="cast: false" id="dashed-stripe" atlas-uvs="column: 4; row: 1"></a-mixin>
-        <a-mixin shadow="cast: false" id="short-dashed-stripe" atlas-uvs="column: 4" material="repeat:1 50;"></a-mixin>
-        <a-mixin shadow="cast: false" id="solid-doubleyellow" atlas-uvs="totalColumns: 4; column: 3" geometry="width: 0.5"></a-mixin>
-        <a-mixin shadow="cast: false" id="solid-dashed" atlas-uvs="totalColumns: 4; column: 2" geometry="width: 0.4"></a-mixin>
-        <a-mixin shadow="cast: false" id="crosswalk-zebra" atlas-uvs="totalColumns: 4; column: 4" geometry="width: 2; height: 12"  material="repeat: 1 2"></a-mixin>
+        <img id="markings-atlas" src="${assetUrl}materials/lane-markings-atlas_1024.png" crossorigin="anonymous" />
+        <a-mixin shadow="cast: false" id="solid-stripe" atlas-uvs="totalRows: 1; totalColumns: 8; column: 3; row: 1" material="src: #markings-atlas;alphaTest: 0;transparent:true;repeat:1 5;" geometry="primitive: plane; buffer: false; skipCache: true; width:0.2; height:150;"></a-mixin>
+        <a-mixin shadow="cast: false" id="dashed-stripe" atlas-uvs="totalRows: 1; totalColumns: 8; column: 4; row: 1" material="src: #markings-atlas;alphaTest: 0;transparent:true;repeat:1 25;" geometry="primitive: plane; buffer: false; skipCache: true; width:0.2; height:150;"></a-mixin>
+        <a-mixin shadow="cast: false"="short-dashed-stripe" atlas-uvs="totalRows: 1; totalColumns: 8; column: 4; row: 1" material="src: #markings-atlas;alphaTest: 0;transparent:true;repeat:1 50;" geometry="primitive: plane; buffer: false; skipCache: true; width:0.2; height:150;"></a-mixin>
+        <a-mixin shadow="cast: false" id="solid-doubleyellow" atlas-uvs="totalRows: 1; totalColumns: 4; column: 3; row: 1" material="src: #markings-atlas;alphaTest: 0;transparent:true;repeat:1 25;"geometry="primitive: plane; buffer: false; skipCache: true; width:0.5; height:150;"></a-mixin>
+        <a-mixin shadow="cast: false" id="solid-dashed" atlas-uvs="totalRows: 1; totalColumns: 4; column: 2; row: 1" material="src: #markings-atlas;alphaTest: 0;transparent:true;repeat:1 25;" geometry="primitive: plane; buffer: false; skipCache: true; width:0.4; height:150;"></a-mixin>
+        <a-mixin shadow="cast: false" id="crosswalk-zebra" atlas-uvs="totalRows: 1; totalColumns: 4; column: 4; row: 1" material="src: #markings-atlas;alphaTest: 0;transparent:true;repeat:1 2;" geometry="primitive: plane; buffer: false; skipCache: true; width:2; height:12;"></a-mixin>
       `,
     stencils: `  
         <!-- stencil markings -->
         <img id="stencils-atlas" src="${assetUrl}materials/stencils-atlas_2048.png" crossorigin="anonymous" />
-        <a-mixin shadow="cast: false" id="stencils" anisotropy atlas-uvs="totalRows: 4; totalColumns: 4" scale="2 2 2" material="src: #stencils-atlas;alphaTest: 0;transparent:true;" geometry="primitive: plane; buffer: false; skipCache: true;"></a-mixin>
+        <a-mixin shadow="cast: false" id="stencils" atlas-uvs="totalRows: 4; totalColumns: 4" scale="2 2 2" material="src: #stencils-atlas;alphaTest: 0;transparent:true;" geometry="primitive: plane; buffer: false; skipCache: true;"></a-mixin>
         <a-mixin id="right" atlas-uvs="column: 3; row: 2"></a-mixin>
         <a-mixin id="left" atlas-uvs="column: 3; row: 3"></a-mixin>
         <a-mixin id="both" atlas-uvs="column: 2; row: 1"></a-mixin>
@@ -189,8 +188,8 @@ function buildAssetHTML(assetUrl, categories) {
       `,
     'vehicles-transit': `
         <!-- vehicles-transit -->
-        <a-mixin shadow id="bus" anisotropy gltf-model="url(${assetUrl}sets/flyer-bus/gltf-exports/draco/new-flyer-bus.glb)"></a-mixin>
-        <a-mixin shadow id="tram" anisotropy gltf-model="url(${assetUrl}sets/light-rail-vehicle/gltf-exports/draco/light_rail_vehicle.glb)"></a-mixin>
+        <a-mixin shadow id="bus" gltf-model="url(${assetUrl}sets/flyer-bus/gltf-exports/draco/new-flyer-bus.glb)"></a-mixin>
+        <a-mixin shadow id="tram" gltf-model="url(${assetUrl}sets/light-rail-vehicle/gltf-exports/draco/light_rail_vehicle.glb)"></a-mixin>
         <a-mixin shadow id="trolley" gltf-model="url(${assetUrl}sets/sanfrancisco-cablecar/gltf-exports/draco/sanfrancisco-cablecar_v01.glb)"></a-mixin>
         `,
     dividers: `
@@ -228,7 +227,7 @@ function buildAssetHTML(assetUrl, categories) {
         <a-mixin shadow id="ground-grass" rotation="-90 0 0" geometry="primitive:plane;height:150;width:40" material="src:#grass-texture;repeat:5 5;roughness:1"></a-mixin>
         <a-mixin shadow id="ground-parking-lot" rotation="-90 0 0" geometry="primitive:plane;height:150;width:40" material="src:#parking-lot-texture;repeat:2 4;roughness:1"></a-mixin>
         <a-mixin shadow id="ground-asphalt" rotation="-90 0 0" geometry="primitive:plane;height:150;width:40" material="src:#asphalt-texture;repeat:5 5;roughness:1"></a-mixin>
-        <a-mixin shadow id="ground-tiled-concrete" anisotropy rotation="-90 0 0" geometry="primitive:plane;height:150;width:40" material="src:#seamless-sidewalk;repeat:5 5;roughness:1"></a-mixin>
+        <a-mixin shadow id="ground-tiled-concrete" rotation="-90 0 0" geometry="primitive:plane;height:150;width:40" material="src:#seamless-sidewalk;repeat:5 5;roughness:1"></a-mixin>
 
         <!-- new grounds for 0.4.4 and later --> 
         <a-mixin shadow id="ground-grass-material" material="src:#grass-texture;repeat:2.5 5;roughness:${surfacesRoughness}"></a-mixin>
@@ -357,7 +356,7 @@ Unused assets kept commented here for future reference
         <audio id="waterfront-mp3" src="${assetUrl}audio/combined_UKdock4_and_water_pier_underneath_ambience.mp3" preload="none" crossorigin="anonymous"></audio>
         <audio id="suburbs2-mp3" src="${assetUrl}audio/AMB_Suburbs_Spring_Day_Lawnmowers_Birds_MS_ST_MKH8050-30shortened.mp3" preload="none" crossorigin="anonymous"></audio>
         <!-- vehicle mixins with audio included -->
-        <a-mixin id="tram" anisotropy gltf-model="#trammodel" sound="src: #tram-pass-mp3;positional:false;volume: 0.4"></a-mixin>
+        <a-mixin id="tram" gltf-model="#trammodel" sound="src: #tram-pass-mp3;positional:false;volume: 0.4"></a-mixin>
         <a-mixin id="trolley" gltf-model="#trolleymodel" sound="src: #trolley-pass-mp3;positional:false;volume: 0.4"scale="1 1 1"></a-mixin>
 
         <!-- ui / future use -->
