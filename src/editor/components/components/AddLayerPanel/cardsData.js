@@ -1,8 +1,8 @@
 const mixinsData = {
-  mixinId1: {
-    img: '',
+  bicycle_1: {
+    img: 'ui_assets/cards/models/bicycle_1.jpg',
     icon: '',
-    description: 'Description',
+    description: "Bicycle, it's a bike!",
     id: 1
   },
   mixinId2: {

@@ -1,0 +1,107 @@
+@use '../../../style/variables.scss';
+
+.modalWrapper {
+  & > div {
+    display: flex;
+    row-gap: 64px;
+  }
+
+  .paymentDetails {
+    display: flex;
+    flex-direction: column;
+    max-width: 460px;
+
+    ul {
+      list-style-type: none;
+      margin-top: 32px;
+    }
+
+    li {
+      display: flex;
+      align-items: center;
+      column-gap: 16px;
+
+      svg {
+        width: 24px;
+        height: 24px;
+
+        & {
+          stroke: #0eaf00;
+          fill: #0eaf00;
+        }
+      }
+    }
+
+    .learnMoreBtn {
+      padding: 0 !important;
+      margin-top: 40px;
+    }
+
+    .paymentButton {
+      padding: 32px !important;
+    }
+  }
+
+  .loadingSpinner {
+    display: flex;
+    margin: auto;
+
+    .spinner {
+      animation: spin 2s linear infinite;
+    }
+
+    @keyframes spin {
+      0% {
+        transform: rotate(0deg);
+      }
+
+      100% {
+        transform: rotate(360deg);
+      }
+    }
+  }
+
+  .rightCol {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    position: relative;
+    width: 380px;
+    height: 350px;
+
+    & > svg {
+      position: absolute;
+      width: 100%;
+      height: 100%;
+
+      * {
+        stroke: #0eaf00;
+        fill: #0eaf00;
+      }
+    }
+
+    .checkoutWithBtn {
+      position: absolute;
+    }
+
+    .paymentPlaceholder {
+      width: 100%;
+      height: 100%;
+      border-radius: 12px;
+      opacity: 0.3;
+    }
+
+    .unAuth {
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      row-gap: 16px;
+
+      & > p {
+        font-size: 24px !important;
+        font-weight: 500;
+      }
+    }
+  }
+}

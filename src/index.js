@@ -7,6 +7,7 @@ if (typeof VERSION !== 'undefined') {
 var streetmixParsers = require('./aframe-streetmix-parsers');
 var streetmixUtils = require('./tested/streetmix-utils');
 require('./json-utils_1.1.js');
+var streetUtils = require('./street-utils.js');
 require('./components/gltf-part');
 require('./components/ocean');
 require('./components/svg-extruder.js');
@@ -21,6 +22,7 @@ require('./components/streetplan-loader');
 require('./components/street-geo.js');
 require('./components/intersection.js');
 require('./components/auto-intersection.js');
+require('./components/street-environment.js');
 
 AFRAME.registerComponent('street', {
   schema: {
@@ -32,11 +34,45 @@ AFRAME.registerComponent('street', {
     showStriping: { default: true },
     showVehicles: { default: true },
     globalAnimated: { default: false },
-    length: { default: 60 } // new default of 60 from 0.4.4
+    length: { default: 60 }, // new default of 60 from 0.4.4
+    synchronize: { default: true }
+  },
+  toggleEntitiesVisibillity: function (entitiesArray, visible) {
+    entitiesArray.forEach((entity) => entity.setAttribute('visible', visible));
+  },
+  toggleVehicles: function (showVehicles) {
+    const vehicleEntities = streetUtils.getVehicleEntities();
+    this.toggleEntitiesVisibillity(vehicleEntities, showVehicles);
+  },
+  toggleGround: function (showGround) {
+    const groundEntities = Array.from(
+      document.querySelectorAll('.ground-left, .ground-right')
+    );
+    this.toggleEntitiesVisibillity(groundEntities, showGround);
+  },
+  toggleStriping: function (showStriping) {
+    const stripingEntities = streetUtils.getStripingEntities();
+    this.toggleEntitiesVisibillity(stripingEntities, showStriping);
   },
   update: function (oldData) {
-    // fired once at start and at each subsequent change of a schema value
-    var data = this.data;
+    const data = this.data;
+
+    if (data.showGround !== oldData.showGround) {
+      this.toggleGround(data.showGround);
+    }
+
+    if (data.showVehicles !== oldData.showVehicles) {
+      this.toggleVehicles(data.showVehicles);
+    }
+
+    if (data.showStriping !== oldData.showStriping) {
+      this.toggleStriping(data.showStriping);
+    }
+
+    // do not call the update function when the data.synchronize is set to false
+    if (!data.synchronize) {
+      return;
+    }
 
     if (data.JSON.length === 0) {
       if (oldData.JSON !== undefined && oldData.JSON.length === 0) {
@@ -52,7 +88,8 @@ AFRAME.registerComponent('street', {
     const streetmixSegments = JSON.parse(data.JSON);
 
     // remove .street-parent and .buildings-parent elements, if they exists, with old scene elements.
-    // Because they will be created next in the processSegments and processBuildings functions
+    // Because they will be created next in the processSegments and processBuildings functions.
+    // This is also necessary when changing the parameters of the street component to reload the scene.
     const streetParent = this.el.querySelector('.street-parent');
     if (streetParent) {
       streetParent.remove();
@@ -85,6 +122,8 @@ AFRAME.registerComponent('street', {
       );
       this.el.append(buildingsEl);
     }
+    // the scene has been loaded, set the synchronize flag
+    this.el.setAttribute('street', 'synchronize', false);
   }
 });
 
@@ -94,14 +133,18 @@ AFRAME.registerComponent('streetmix-loader', {
     streetmixStreetURL: { type: 'string' },
     streetmixAPIURL: { type: 'string' },
     showBuildings: { default: true },
-    name: { default: '' }
+    name: { default: '' },
+    synchronize: { default: true }
   },
   update: function (oldData) {
     // fired at start and at each subsequent change of any schema value
     // This method may fire a few times when viewing a streetmix street in 3dstreet:
     // First to find the proper path, once to actually load the street, and then subsequent updates such as street name
-    var data = this.data;
-    var el = this.el;
+    const data = this.data;
+    const el = this.el;
+
+    // do not call the update function when the data.synchronize is set to false
+    if (!data.synchronize) return;
 
     // if the loader has run once already, and upon update neither URL has changed, do not take action
     if (
@@ -133,7 +176,7 @@ AFRAME.registerComponent('streetmix-loader', {
       return;
     }
 
-    var request = new XMLHttpRequest();
+    const request = new XMLHttpRequest();
     console.log('[streetmix-loader]', 'GET ' + data.streetmixAPIURL);
 
     request.open('GET', data.streetmixAPIURL, true);
@@ -149,6 +192,7 @@ AFRAME.registerComponent('streetmix-loader', {
 
         const streetmixName = streetmixResponseObject.name;
         console.log('streetmixName', streetmixName);
+
         el.setAttribute('streetmix-loader', 'name', streetmixName);
 
         let currentSceneTitle;
@@ -183,6 +227,8 @@ AFRAME.registerComponent('streetmix-loader', {
           JSON.stringify({ streetmixSegmentsMetric: streetmixSegments })
         );
         el.emit('streetmix-loader-street-loaded');
+        // the streetmix data has been loaded, set the synchronize flag to false
+        el.setAttribute('streetmix-loader', 'synchronize', false);
       } else {
         // We reached our target server, but it returned an error
         console.log(
@@ -199,160 +245,6 @@ AFRAME.registerComponent('streetmix-loader', {
       );
     };
     request.send();
-  }
-});
-
-AFRAME.registerComponent('street-environment', {
-  schema: {
-    preset: {
-      type: 'string',
-      default: 'day',
-      oneOf: [
-        'day',
-        'night',
-        'color',
-        'sunny-morning',
-        'cloudy-afternoon',
-        'sunny-afternoon',
-        'sunny-noon',
-        'foggy',
-        'cloudy'
-      ]
-    },
-    backgroundColor: { type: 'color', default: '#FFF' }
-  },
-  setEnvOption: function () {
-    const sky = this.sky;
-    const light1 = this.light1;
-    const light2 = this.light2;
-    const assetsPathRoot = '//assets.3dstreet.app/';
-
-    sky.setAttribute('hide-on-enter-ar', '');
-
-    if (this.data.preset === 'night') {
-      light1.setAttribute('light', 'intensity', 0.5);
-      light2.setAttribute('light', 'intensity', 0.15);
-      sky.setAttribute('visible', true);
-      sky.setAttribute('color', '#444');
-      sky.setAttribute('src', '#sky-night');
-      sky.setAttribute('rotation', '0 0 0');
-    } else if (this.data.preset === 'day') {
-      // TODO: create a parent with children
-      light1.setAttribute('light', 'intensity', 0.8);
-      sky.setAttribute('visible', true);
-      sky.setAttribute('color', '#FFF');
-      sky.setAttribute('src', '#sky');
-      sky.setAttribute('rotation', '0 20 0');
-      light2.setAttribute(
-        'light',
-        'intensity: 2.2; castShadow: true; shadowCameraBottom: -20; shadowCameraLeft: -30; shadowCameraRight: 40; shadowCameraTop: 30; shadowMapHeight: 2048; shadowMapWidth: 2048'
-      );
-      light2.setAttribute('position', '-40 56 -16');
-    } else if (this.data.preset === 'sunny-morning') {
-      light1.setAttribute('light', 'intensity', 0.8);
-      light2.setAttribute(
-        'light',
-        'intensity: 2.2; castShadow: true; shadowCameraBottom: -20; shadowCameraLeft: -30; shadowCameraRight: 40; shadowCameraTop: 30; shadowMapHeight: 2048; shadowMapWidth: 2048'
-      );
-      light2.setAttribute('position', '-60 56 -16');
-      sky.setAttribute('visible', true);
-      sky.setAttribute('color', '#FFF');
-      sky.setAttribute(
-        'src',
-        `url(${assetsPathRoot}images/skies/2048-polyhaven-qwantani_puresky-sdr.jpeg)`
-      );
-      sky.setAttribute('rotation', '0 0 0');
-    } else if (this.data.preset === 'cloudy-afternoon') {
-      light1.setAttribute('light', 'intensity', 2);
-      light2.setAttribute('light', 'intensity', 0.6);
-      sky.setAttribute('visible', true);
-      sky.setAttribute('color', '#FFF');
-      sky.setAttribute(
-        'src',
-        `url(${assetsPathRoot}images/skies/2048-mud_road_puresky-sdr.jpeg)`
-      );
-      sky.setAttribute('rotation', '0 0 0');
-    } else if (this.data.preset === 'sunny-afternoon') {
-      light1.setAttribute('light', 'intensity', 2);
-      light2.setAttribute(
-        'light',
-        'intensity: 2.2; castShadow: true; shadowCameraBottom: -20; shadowCameraLeft: -30; shadowCameraRight: 40; shadowCameraTop: 30; shadowMapHeight: 2048; shadowMapWidth: 2048'
-      );
-      light2.setAttribute('position', '60 56 -16');
-      sky.setAttribute('visible', true);
-      sky.setAttribute('color', '#FFF');
-      sky.setAttribute(
-        'src',
-        `url(${assetsPathRoot}images/skies/2048-kloofendal_43d_clear_puresky-sdr.jpeg)`
-      );
-      sky.setAttribute('rotation', '0 0 0');
-    } else if (this.data.preset === 'sunny-noon') {
-      light1.setAttribute('light', 'intensity', 2);
-      light2.setAttribute(
-        'light',
-        'intensity: 2.2; castShadow: true; shadowCameraBottom: -20; shadowCameraLeft: -30; shadowCameraRight: 40; shadowCameraTop: 30; shadowMapHeight: 2048; shadowMapWidth: 2048'
-      );
-      light2.setAttribute('position', '5 56 -16');
-      sky.setAttribute('visible', true);
-      sky.setAttribute('color', '#FFF');
-      sky.setAttribute(
-        'src',
-        `url(${assetsPathRoot}images/skies/2048-kloppenheim_05_puresky-sdr.jpeg)`
-      );
-      sky.setAttribute('rotation', '0 0 0');
-    } else if (this.data.preset === 'foggy') {
-      light1.setAttribute('light', 'intensity', 2);
-      light2.setAttribute('light', 'intensity: 0.6; castShadow: false;');
-      sky.setAttribute('visible', true);
-      sky.setAttribute('color', '#FFF');
-      sky.setAttribute(
-        'src',
-        `url(${assetsPathRoot}images/skies/2048-kloofendal_misty_morning_puresky-sdr.jpeg)`
-      );
-      sky.setAttribute('rotation', '0 0 0');
-    } else if (this.data.preset === 'cloudy') {
-      light1.setAttribute('light', 'intensity', 2);
-      light2.setAttribute('light', 'intensity', 0.6);
-      sky.setAttribute('visible', true);
-      sky.setAttribute('color', '#FFF');
-      sky.setAttribute(
-        'src',
-        `url(${assetsPathRoot}images/skies/2048-kloofendal_48d_partly_cloudy_puresky-sdr.jpeg)`
-      );
-      sky.setAttribute('rotation', '0 0 0');
-    } else {
-      // color
-      sky.setAttribute('visible', false);
-      this.scene.setAttribute('background', 'color', this.data.backgroundColor);
-    }
-  },
-  init: function () {
-    const el = this.el;
-    this.scene = document.querySelector('a-scene');
-    this.light1 = document.createElement('a-entity');
-    const light1 = this.light1;
-    light1.setAttribute('id', 'env-light1');
-    light1.setAttribute('light', { type: 'ambient', color: '#FFF' });
-    el.appendChild(light1);
-
-    this.light2 = document.createElement('a-entity');
-    const light2 = this.light2;
-    light2.setAttribute('id', 'env-light2');
-    light2.setAttribute('position', '-60 56 -16');
-    light2.setAttribute(
-      'light',
-      'intensity: 2.2; castShadow: true; shadowCameraBottom: -20; shadowCameraLeft: -30; shadowCameraRight: 40; shadowCameraTop: 30; shadowMapHeight: 2048; shadowMapWidth: 2048'
-    );
-    el.appendChild(light2);
-
-    this.sky = document.createElement('a-sky');
-    const sky = this.sky;
-    sky.setAttribute('id', 'env-sky');
-    sky.setAttribute('data-ignore-raycaster', '');
-    el.appendChild(sky);
-  },
-  update: function (oldData) {
-    this.setEnvOption();
   }
 });
 

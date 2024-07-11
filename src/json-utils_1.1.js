@@ -183,11 +183,7 @@ const removeProps = {
   street: { JSON: '*' }
 };
 // a list of component_name:new_component_name pairs to rename in JSON string
-const renameProps = {
-  'streetmix-loader': 'not-streetmix-loader',
-  street: 'not-street',
-  intersection: 'not-intersection'
-};
+const renameProps = {};
 
 function filterJSONstreet(streetJSON) {
   function removeValueCheck(removeVal, value) {
@@ -539,6 +535,7 @@ AFRAME.registerComponent('set-loader-from-hash', {
           'Set streetmix-loader streetmixStreetURL to',
           streetURL
         );
+
         this.el.setAttribute(
           'streetmix-loader',
           'streetmixStreetURL',
@@ -551,6 +548,7 @@ AFRAME.registerComponent('set-loader-from-hash', {
           'Set streetplan-loader streetplanAPIURL to',
           streetURL
         );
+
         this.el.setAttribute(
           'streetplan-loader',
           'streetplanAPIURL',
@@ -631,19 +629,20 @@ function inputStreetmix() {
     'Please enter a Streetmix URL',
     'https://streetmix.net/kfarr/3/example-street'
   );
+  // clear scene data, create new blank scene.
+  // clearMetadata = true, clearUrlHash = false
+  STREET.utils.newScene(true, false);
+
   setTimeout(function () {
     window.location.hash = streetmixURL;
   });
-  const streetContainerEl = document.getElementById('street-container');
-  while (streetContainerEl.firstChild) {
-    streetContainerEl.removeChild(streetContainerEl.lastChild);
-  }
-  AFRAME.scenes[0].setAttribute('metadata', 'sceneId', '');
-  AFRAME.scenes[0].setAttribute('metadata', 'sceneTitle', '');
-  streetContainerEl.innerHTML =
-    '<a-entity street streetmix-loader="streetmixStreetURL: ' +
-    streetmixURL +
-    '""></a-entity>';
+
+  const defaultStreetEl = document.getElementById('default-street');
+  defaultStreetEl.setAttribute(
+    'streetmix-loader',
+    'streetmixStreetURL',
+    streetmixURL
+  );
 }
 
 STREET.utils.inputStreetmix = inputStreetmix;
@@ -667,6 +666,10 @@ function createElementsFromJSON(streetJSON) {
     streetObject = streetJSON;
   }
 
+  // clear scene data, create new blank scene.
+  // clearMetadata = true, clearUrlHash = true, addDefaultStreet = false
+  STREET.utils.newScene(true, true, false);
+
   const sceneTitle = streetObject.title;
   if (sceneTitle) {
     console.log('sceneTitle from createElementsFromJSON', sceneTitle);
@@ -674,9 +677,6 @@ function createElementsFromJSON(streetJSON) {
   }
 
   const streetContainerEl = document.getElementById('street-container');
-  while (streetContainerEl.firstChild) {
-    streetContainerEl.removeChild(streetContainerEl.lastChild);
-  }
 
   createEntities(streetObject.data, streetContainerEl);
   STREET.notify.successMessage('Scene loaded from JSON');
@@ -688,8 +688,6 @@ STREET.utils.createElementsFromJSON = createElementsFromJSON;
 function fileJSON() {
   const reader = new FileReader();
   reader.onload = function () {
-    AFRAME.scenes[0].setAttribute('metadata', 'sceneId', '');
-    AFRAME.scenes[0].setAttribute('metadata', 'sceneTitle', '');
     createElementsFromJSON(reader.result);
   };
   reader.readAsText(this.files[0]);

@@ -226,7 +226,7 @@ const GeoModal = ({ isOpen, onClose }) => {
           </Button>
           {!qrCodeUrl && (
             <Button
-              leadingicon={<QR32Icon />}
+              leadingIcon={<QR32Icon />}
               variant="filled"
               onClick={onQRHandler}
             >
@@ -234,7 +234,7 @@ const GeoModal = ({ isOpen, onClose }) => {
             </Button>
           )}
           <Button
-            leadingicon={<Save24Icon />}
+            leadingIcon={<Save24Icon />}
             variant="filled"
             onClick={onSaveHandler}
           >

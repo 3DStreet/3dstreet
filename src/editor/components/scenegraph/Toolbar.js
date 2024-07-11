@@ -5,14 +5,21 @@ import {
   isSceneAuthor,
   checkIfImagePathIsEmpty
 } from '../../api/scene';
-import { Cloud24Icon, Save24Icon, Upload24Icon } from '../../icons';
+import {
+  Cloud24Icon,
+  Save24Icon,
+  ScreenshotIcon,
+  Upload24Icon,
+  Edit24Icon
+} from '../../icons';
 import Events from '../../lib/Events';
 import { saveBlob } from '../../lib/utils';
-import { Button, ProfileButton, ScreenshotButton } from '../components';
+import { Button, ProfileButton } from '../components';
 import { SavingModal } from '../modals/SavingModal';
 import { uploadThumbnailImage } from '../modals/ScreenshotModal/ScreenshotModal.component.jsx';
 import { sendMetric } from '../../services/ga.js';
-
+import posthog from 'posthog-js';
+import { UndoRedo } from '../components/UndoRedo/UndoRedo.component.jsx';
 // const LOCALSTORAGE_MOCAP_UI = "aframeinspectormocapuienabled";
 
 function filterHelpers(scene, visible) {
@@ -123,6 +130,9 @@ export default class Toolbar extends Component {
 
   static convertToObject = () => {
     try {
+      posthog.capture('convert_to_json_clicked', {
+        scene_id: STREET.utils.getCurrentSceneId()
+      });
       const entity = document.getElementById('street-container');
 
       const data = STREET.utils.convertDOMElToObject(entity);
@@ -150,9 +160,25 @@ export default class Toolbar extends Component {
     this.cloudSaveHandler({ doSaveAs: true });
   };
 
+  newHandler = () => {
+    AFRAME.INSPECTOR.selectEntity(null);
+    STREET.utils.newScene();
+    Events.emit('updatescenegraph');
+  };
+
   cloudSaveHandler = async ({ doSaveAs = false }) => {
     try {
       // if there is no current user, show sign in modal
+      let currentSceneId = STREET.utils.getCurrentSceneId();
+      let currentSceneTitle = STREET.utils.getCurrentSceneTitle();
+
+      posthog.capture('save_scene_clicked', {
+        save_as: doSaveAs,
+        user_id: this.props.currentUser ? this.props.currentUser.uid : null,
+        scene_id: currentSceneId,
+        scene_title: currentSceneTitle
+      });
+
       if (!this.props.currentUser) {
         Events.emit('opensigninmodal');
         return;
@@ -168,14 +194,9 @@ export default class Toolbar extends Component {
         streetGeo['latitude'] &&
         streetGeo['longitude']
       ) {
-        STREET.notify.errorMessage(
-          `Pro account required to save scenes with geolocation, contact kieran@3dstreet.org for access`
-        );
+        Events.emit('openpaymentmodal');
         return;
       }
-
-      let currentSceneId = STREET.utils.getCurrentSceneId();
-      let currentSceneTitle = STREET.utils.getCurrentSceneTitle();
 
       // if owner != doc.id then doSaveAs = true;
       const isCurrentUserTheSceneAuthor = await isSceneAuthor({
@@ -249,6 +270,7 @@ export default class Toolbar extends Component {
   };
 
   handleRemixClick = () => {
+    posthog.capture('remix_scene_clicked');
     if (!this.props.currentUser) {
       this.setState({ pendingSceneSave: true });
       Events.emit('opensigninmodal');
@@ -291,6 +313,10 @@ export default class Toolbar extends Component {
       sendMetric('SceneGraph', 'exportGLTF');
       const sceneName = getSceneName(AFRAME.scenes[0]);
       const scene = AFRAME.scenes[0].object3D;
+      posthog.capture('export_scene_to_gltf_clicked', {
+        scene_id: STREET.utils.getCurrentSceneId()
+      });
+
       filterHelpers(scene, false);
       AFRAME.INSPECTOR.exporters.gltf.parse(
         scene,
@@ -336,6 +362,7 @@ export default class Toolbar extends Component {
     if (this.state.isPlaying) {
       AFRAME.scenes[0].pause();
       this.setState((prevState) => ({ ...prevState, isPlaying: false }));
+      Events.emit('sceneplayingtoggle', false);
       AFRAME.scenes[0].isPlaying = true;
       document.getElementById('aframeInspectorMouseCursor').play();
       return;
@@ -343,6 +370,7 @@ export default class Toolbar extends Component {
     AFRAME.scenes[0].isPlaying = false;
     AFRAME.scenes[0].play();
     this.setState((prevState) => ({ ...prevState, isPlaying: true }));
+    Events.emit('sceneplayingtoggle', true);
   };
 
   toggleSaveActionState = () => {
@@ -368,106 +396,72 @@ export default class Toolbar extends Component {
     return (
       <div id="toolbar">
         <div className="toolbarActions">
+          {this.props.currentUser?.isPro && (
+            <div>
+              <Button leadingIcon={<Edit24Icon />} onClick={this.newHandler}>
+                <div className="hideInLowResolution">New</div>
+              </Button>
+            </div>
+          )}
           {this.state.showSaveBtn && this.props.currentUser ? (
             <div className="saveButtonWrapper" ref={this.saveButtonRef}>
               <Button
-                className={'actionBtn'}
+                leadingIcon={<Save24Icon />}
                 onClick={this.toggleSaveActionState.bind(this)}
               >
-                <div
-                  className="iconContainer"
-                  style={{
-                    display: 'flex',
-                    margin: '-2.5px 0px -2.5px -2px'
-                  }}
-                >
-                  <Save24Icon />
-                </div>
-                <div className={'innerText'}>Save</div>
+                <div className="hideInLowResolution">Save</div>
               </Button>
               {this.state.isSavingScene && <SavingModal />}
               {this.state.isSaveActionActive && (
                 <div className="dropdownedButtons">
                   <Button
+                    leadingIcon={<Cloud24Icon />}
                     variant="white"
                     onClick={this.cloudSaveHandler}
                     disabled={this.state.isSavingScene || !this.props.isAuthor}
                   >
-                    <div
-                      className="icon"
-                      style={{
-                        display: 'flex',
-                        margin: '-2.5px 0px -2.5px -2px'
-                      }}
-                    >
-                      <Cloud24Icon />
-                    </div>
-                    Save
+                    <div>Save</div>
                   </Button>
                   <Button
+                    leadingIcon={<Cloud24Icon />}
                     variant="white"
                     onClick={this.cloudSaveAsHandler}
                     disabled={this.state.isSavingScene}
                   >
-                    <div
-                      className="icon"
-                      style={{
-                        display: 'flex',
-                        margin: '-2.5px 0px -2.5px -2px'
-                      }}
-                    >
-                      <Cloud24Icon />
-                    </div>
-                    Save As...
+                    <div>Save As...</div>
                   </Button>
                 </div>
               )}
             </div>
           ) : (
             <Button
+              leadingIcon={<Save24Icon />}
               onClick={this.handleRemixClick}
               disabled={this.state.isSavingScene}
             >
-              <div
-                className="icon"
-                style={{
-                  display: 'flex',
-                  margin: '-2.5px 0px -2.5px -2px'
-                }}
-              >
-                <Save24Icon />
-              </div>
-              <div className={'innerText'}>Save</div>
+              <div className="hideInLowResolution">Save</div>
             </Button>
           )}
           {this.state.showLoadBtn && (
             <Button
-              className={'actionBtn'}
+              leadingIcon={<Upload24Icon />}
               onClick={() => Events.emit('openscenesmodal')}
             >
-              <div
-                className="iconContainer"
-                style={{
-                  display: 'flex',
-                  margin: '-2.5px 0px -2.5px -2px'
-                }}
-              >
-                <Upload24Icon />
-              </div>
-              <div className={'innerText'}>Open</div>
+              <div className="hideInLowResolution">Open</div>
             </Button>
           )}
-          <div
-            onClick={() =>
+          <Button
+            leadingIcon={<ScreenshotIcon />}
+            onClick={() => {
               this.setState((prevState) => ({
                 ...prevState,
                 isCapturingScreen: true
-              }))
-            }
-            className={'cameraButton'}
+              }));
+              Events.emit('openscreenshotmodal');
+            }}
           >
-            <ScreenshotButton />
-          </div>
+            <div className="hideInLowResolution">Share</div>
+          </Button>
           <div
             onClick={() =>
               this.setState((prevState) => ({
@@ -478,6 +472,9 @@ export default class Toolbar extends Component {
           >
             <ProfileButton />
           </div>
+        </div>
+        <div className="undoRedoActions">
+          <UndoRedo />
         </div>
       </div>
     );

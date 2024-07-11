@@ -12,6 +12,7 @@ import { getCommunityScenes, getUserScenes } from '../../../api/scene';
 import Events from '../../../lib/Events';
 import { Load24Icon, Loader, Upload24Icon } from '../../../icons';
 import { signIn } from '../../../api';
+import posthog from 'posthog-js';
 
 const SCENES_PER_PAGE = 20;
 const tabs = [
@@ -39,6 +40,10 @@ const ScenesModal = ({ isOpen, onClose, initialTab = 'owner', delay }) => {
   const [selectedTab, setSelectedTab] = useState(initialTab);
 
   const handleSceneClick = (scene, event) => {
+    posthog.capture('scene_opened', {
+      scene_id: scene.id,
+      scene_title: scene.title
+    });
     let sceneData = scene.data();
     if (!sceneData || !sceneData.data) {
       STREET.notify.errorMessage(
@@ -214,12 +219,12 @@ const ScenesModal = ({ isOpen, onClose, initialTab = 'owner', delay }) => {
                   inputStreetmix();
                   onClose(); // Close the modal
                 }}
-                leadingicon={<Load24Icon />}
+                leadingIcon={<Load24Icon />}
               >
                 Load from Streetmix
               </Button>
               <Button
-                leadingicon={<Upload24Icon />}
+                leadingIcon={<Upload24Icon />}
                 className={styles.uploadBtn}
               >
                 <label

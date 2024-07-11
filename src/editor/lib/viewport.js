@@ -5,6 +5,7 @@ import EditorControls from './EditorControls.js';
 import { initRaycaster } from './raycaster';
 import Events from './Events';
 import { sendMetric } from '../services/ga.js';
+import { EntityUpdateCommand } from './commands/EntityUpdateCommand.js';
 
 // variables used by OrientedBoxHelper
 const auxEuler = new THREE.Euler();
@@ -176,16 +177,14 @@ export function Viewport(inspector) {
       value = `${object.scale.x} ${object.scale.y} ${object.scale.z}`;
     }
 
-    // We need to call setAttribute for component attrValue to be up to date,
-    // so that entity.flushToDOM() works correctly when duplicating an entity.
-    transformControls.object.el.setAttribute(component, value);
-
-    Events.emit('entityupdate', {
-      component: component,
-      entity: transformControls.object.el,
-      property: '',
-      value: value
-    });
+    inspector.execute(
+      new EntityUpdateCommand(inspector, {
+        component: component,
+        entity: transformControls.object.el,
+        property: '',
+        value: value
+      })
+    );
   });
 
   transformControls.addEventListener('mouseDown', () => {

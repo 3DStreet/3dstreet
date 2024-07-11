@@ -1,11 +1,12 @@
 import { createRoot } from 'react-dom/client';
 import { GLTFExporter } from 'three/examples/jsm/exporters/GLTFExporter';
 import MainWrapper from './components/MainWrapper';
-import { AuthProvider } from './contexts';
+import { AuthProvider, GeoProvider } from './contexts';
 import Events from './lib/Events';
 import { AssetsLoader } from './lib/assetsLoader';
 import { initCameras } from './lib/cameras';
 import { createEntity } from './lib/entity';
+import { History } from './lib/history';
 import { Shortcuts } from './lib/shortcuts';
 import { Viewport } from './lib/viewport';
 import { firebaseConfig } from './services/firebase.js';
@@ -16,7 +17,7 @@ import posthog from 'posthog-js';
 function Inspector() {
   this.assetsLoader = new AssetsLoader();
   this.exporters = { gltf: new GLTFExporter() };
-  this.history = require('./lib/history');
+  this.history = new History();
   this.isFirstOpen = true;
   this.modules = {};
   this.on = Events.on;
@@ -76,7 +77,9 @@ Inspector.prototype = {
     const root = createRoot(div);
     root.render(
       <AuthProvider>
-        <MainWrapper />
+        <GeoProvider>
+          <MainWrapper />
+        </GeoProvider>
       </AuthProvider>
     );
 
@@ -86,6 +89,7 @@ Inspector.prototype = {
     this.sceneHelpers.userData.source = 'INSPECTOR';
     this.sceneHelpers.visible = true;
     this.inspectorActive = false;
+    this.debugUndoRedo = false;
 
     this.viewport = new Viewport(this);
     Events.emit('windowresize');
@@ -215,10 +219,26 @@ Inspector.prototype = {
       });
     });
 
+    this.sceneEl.addEventListener('newScene', () => {
+      this.history.clear();
+    });
+
     document.addEventListener('child-detached', (event) => {
       var entity = event.detail.el;
       AFRAME.INSPECTOR.removeObject(entity.object3D);
     });
+  },
+
+  execute: function (cmd, optionalName) {
+    this.history.execute(cmd, optionalName);
+  },
+
+  undo: function () {
+    this.history.undo();
+  },
+
+  redo: function () {
+    this.history.redo();
   },
 
   selectById: function (id) {

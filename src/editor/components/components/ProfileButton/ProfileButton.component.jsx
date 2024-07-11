@@ -4,6 +4,7 @@ import { Button } from '../Button';
 import Events from '../../../lib/Events.js';
 import { Profile32Icon } from './icons.jsx';
 import { useAuthContext } from '../../../contexts';
+import posthog from 'posthog-js';
 
 /**
  * ProfileButton component.
@@ -15,6 +16,7 @@ const ProfileButton = () => {
   const { currentUser } = useAuthContext();
 
   const onClick = async () => {
+    posthog.capture('profile_button_clicked', { is_logged_in: !!currentUser });
     if (currentUser) {
       return Events.emit('openprofilemodal');
     }
@@ -25,10 +27,8 @@ const ProfileButton = () => {
   return (
     <Button
       className={styles.profileButton}
-      type="button"
       onClick={onClick}
-      key="profileButton"
-      variant={'toolbtn'}
+      variant="toolbtn"
     >
       {currentUser ? (
         <img
