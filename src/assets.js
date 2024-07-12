@@ -149,42 +149,41 @@ function buildAssetHTML(assetUrl, categories) {
     'lane-separator': `
         <!-- lane separator markings -->
         <img id="markings-atlas" src="${assetUrl}materials/lane-markings-atlas_1024.png" crossorigin="anonymous" />
-        <a-mixin shadow="cast: false" id="solid-stripe" atlas-uvs="totalRows: 1; totalColumns: 8; column: 3; row: 1" material="src: #markings-atlas;alphaTest: 0;transparent:true;repeat:1 5;" geometry="primitive: plane; buffer: false; skipCache: true; width:0.2; height:150;"></a-mixin>
-        <a-mixin shadow="cast: false" id="dashed-stripe" atlas-uvs="totalRows: 1; totalColumns: 8; column: 4; row: 1" material="src: #markings-atlas;alphaTest: 0;transparent:true;repeat:1 25;" geometry="primitive: plane; buffer: false; skipCache: true; width:0.2; height:150;"></a-mixin>
-        <a-mixin shadow="cast: false" id="short-dashed-stripe" atlas-uvs="totalRows: 1; totalColumns: 8; column: 4; row: 1" material="src: #markings-atlas;alphaTest: 0;transparent:true;repeat:1 50;" geometry="primitive: plane; buffer: false; skipCache: true; width:0.2; height:150;"></a-mixin>
-        <a-mixin shadow="cast: false" id="solid-doubleyellow" atlas-uvs="totalRows: 1; totalColumns: 4; column: 3; row: 1" material="src: #markings-atlas;alphaTest: 0;transparent:true;repeat:1 25;"geometry="primitive: plane; buffer: false; skipCache: true; width:0.5; height:150;"></a-mixin>
-        <a-mixin shadow="cast: false" id="solid-dashed" atlas-uvs="totalRows: 1; totalColumns: 4; column: 2; row: 1" material="src: #markings-atlas;alphaTest: 0;transparent:true;repeat:1 25;" geometry="primitive: plane; buffer: false; skipCache: true; width:0.4; height:150;"></a-mixin>
-        <a-mixin shadow="cast: false" id="crosswalk-zebra" atlas-uvs="totalRows: 1; totalColumns: 4; column: 4; row: 1" material="src: #markings-atlas;alphaTest: 0;transparent:true;repeat:1 2;" geometry="primitive: plane; buffer: false; skipCache: true; width:2; height:12;"></a-mixin>
+        <a-mixin shadow="cast: false" id="solid-stripe" atlas-uvs="totalRows: 1; totalColumns: 8; column: 3; row: 1" material="src: #markings-atlas;alphaTest: 0;transparent:true;repeat:1 5;" geometry="primitive: plane; width:0.2; height:150;"></a-mixin>
+        <a-mixin shadow="cast: false" id="dashed-stripe" atlas-uvs="totalRows: 1; totalColumns: 8; column: 4; row: 1" material="src: #markings-atlas;alphaTest: 0;transparent:true;repeat:1 25;" geometry="primitive: plane; width:0.2; height:150;"></a-mixin>
+        <a-mixin shadow="cast: false" id="short-dashed-stripe" atlas-uvs="totalRows: 1; totalColumns: 8; column: 4; row: 1" material="src: #markings-atlas;alphaTest: 0;transparent:true;repeat:1 50;" geometry="primitive: plane; width:0.2; height:150;"></a-mixin>
+        <a-mixin shadow="cast: false" id="solid-doubleyellow" atlas-uvs="totalRows: 1; totalColumns: 4; column: 3; row: 1" material="src: #markings-atlas;alphaTest: 0;transparent:true;repeat:1 25;"geometry="primitive: plane; width:0.5; height:150;"></a-mixin>
+        <a-mixin shadow="cast: false" id="solid-dashed" atlas-uvs="totalRows: 1; totalColumns: 4; column: 2; row: 1" material="src: #markings-atlas;alphaTest: 0;transparent:true;repeat:1 25;" geometry="primitive: plane; width:0.4; height:150;"></a-mixin>
+        <a-mixin shadow="cast: false" id="crosswalk-zebra" atlas-uvs="totalRows: 1; totalColumns: 4; column: 4; row: 1" material="src: #markings-atlas;alphaTest: 0;transparent:true;repeat:1 2;" geometry="primitive: plane; width:2; height:12;"></a-mixin>
       `,
     stencils: `  
         <!-- stencil markings -->
         <img id="stencils-atlas" src="${assetUrl}materials/stencils-atlas_2048.png" crossorigin="anonymous" />
-        <a-mixin shadow="cast: false" id="stencils" atlas-uvs="totalRows: 4; totalColumns: 4" scale="2 2 2" material="src: #stencils-atlas;alphaTest: 0;transparent:true;" geometry="primitive: plane; buffer: false; skipCache: true;"></a-mixin>
-        <a-mixin id="right" atlas-uvs="column: 3; row: 2"></a-mixin>
-        <a-mixin id="left" atlas-uvs="column: 3; row: 3"></a-mixin>
-        <a-mixin id="both" atlas-uvs="column: 2; row: 1"></a-mixin>
-        <a-mixin id="all" atlas-uvs="column: 3; row: 1"></a-mixin>
-        <a-mixin id="left-straight" atlas-uvs="column: 2; row: 3"></a-mixin>
-        <a-mixin id="right-straight" atlas-uvs="column: 2; row: 2"></a-mixin>
-        <a-mixin id="straight" atlas-uvs="column: 2; row: 4"></a-mixin>
-        <a-mixin id="sharrow" atlas-uvs="totalRows: 4; totalColumns: 8; column: 2; row: 3" scale="1.5 3 1"></a-mixin>
-        <a-mixin id="bike-arrow" atlas-uvs="totalRows: 2; totalColumns: 8; column: 1; row: 2" scale="1 4 1"></a-mixin>
-        <a-mixin id="word-bus" atlas-uvs="totalRows: 8; totalColumns: 8; column: 1; row: 4" scale="3 3 3"></a-mixin>
-        <a-mixin id="word-lane" atlas-uvs="totalRows: 8; totalColumns: 8; column: 2; row: 4" scale="3 3 3"></a-mixin>
-        <a-mixin id="word-taxi" atlas-uvs="totalRows: 8; totalColumns: 8; column: 1; row: 3" scale="3 3 3"></a-mixin>
-        <a-mixin id="word-only" atlas-uvs="totalRows: 8; totalColumns: 8; column: 2; row: 3" scale="3 3 3"></a-mixin>
-        <a-mixin id="word-only-small" atlas-uvs="totalRows: 8; totalColumns: 8; column: 2; row: 3" scale="2.5 2 2.5"></a-mixin>
-        <a-mixin id="word-yield" atlas-uvs="totalRows: 8; totalColumns: 8; column: 1; row: 2" scale="3 3 3"></a-mixin>
-        <a-mixin id="word-slow" atlas-uvs="totalRows: 8; totalColumns: 8; column: 2; row: 2" scale="3 3 3"></a-mixin>
-        <a-mixin id="word-xing" atlas-uvs="totalRows: 8; totalColumns: 8; column: 1; row: 1" scale="3 3 3"></a-mixin>
-        <a-mixin id="word-stop" atlas-uvs="totalRows: 8; totalColumns: 8; column: 2; row: 1" scale="3 3 3"></a-mixin>
-        <a-mixin id="word-loading-small" atlas-uvs="totalRows: 8; totalColumns: 4; column: 4; row: 1" scale="2.75 1.75 2.75"></a-mixin>
-        <a-mixin id="perpendicular-stalls" atlas-uvs="totalRows: 4; totalColumns: 8; column: 5; row: 4" scale="5 10 5"></a-mixin>
-        <a-mixin id="parking-t" atlas-uvs="totalRows: 8; totalColumns: 16; column: 4; row: 7" scale="1.5 2 2"></a-mixin>
-        <a-mixin id="painted-safety-zone" atlas-uvs="totalRows: 4; totalColumns: 4; column: 4; row: 4" scale="8 8 8"></a-mixin>
-        <a-mixin id="hash-left" atlas-uvs="totalRows: 4; totalColumns: 8; column: 7; row: 2" scale="3 6 3"></a-mixin>
-        <a-mixin id="hash-right" atlas-uvs="totalRows: 4; totalColumns: 8; column: 8; row: 2" scale="3 6 3"></a-mixin>
-        <a-mixin id="hash-chevron" atlas-uvs="totalRows: 4; totalColumns: 4; column: 4; row: 2" scale="3 3 3"></a-mixin>
+        <a-mixin shadow="cast: false" id="right" atlas-uvs="totalRows: 4; totalColumns: 4; column: 3; row: 2" scale="2 2 2" geometry="primitive: plane;" material="src: #stencils-atlas;alphaTest: 0;transparent:true;"></a-mixin>
+        <a-mixin shadow="cast: false" id="left" atlas-uvs="totalRows: 4; totalColumns: 4; column: 3; row: 3" scale="2 2 2" geometry="primitive: plane;" material="src: #stencils-atlas;alphaTest: 0;transparent:true;"></a-mixin>
+        <a-mixin shadow="cast: false" id="both" atlas-uvs="totalRows: 4; totalColumns: 4; column: 2; row: 1" scale="2 2 2" geometry="primitive: plane;" material="src: #stencils-atlas;alphaTest: 0;transparent:true;"></a-mixin>
+        <a-mixin shadow="cast: false" id="all" atlas-uvs="totalRows: 4; totalColumns: 4; column: 3; row: 1" scale="2 2 2" geometry="primitive: plane;" material="src: #stencils-atlas;alphaTest: 0;transparent:true;"></a-mixin>
+        <a-mixin shadow="cast: false" id="left-straight" atlas-uvs="totalRows: 4; totalColumns: 4; column: 2; row: 3" scale="2 2 2" geometry="primitive: plane;" material="src: #stencils-atlas;alphaTest: 0;transparent:true;"></a-mixin>
+        <a-mixin shadow="cast: false" id="right-straight" atlas-uvs="totalRows: 4; totalColumns: 4; column: 2; row: 2" scale="2 2 2" geometry="primitive: plane;" material="src: #stencils-atlas;alphaTest: 0;transparent:true;"></a-mixin>
+        <a-mixin shadow="cast: false" id="straight" atlas-uvs="totalRows: 4; totalColumns: 4; column: 2; row: 4" scale="2 2 2" geometry="primitive: plane;" material="src: #stencils-atlas;alphaTest: 0;transparent:true;"></a-mixin>
+        <a-mixin shadow="cast: false" id="sharrow" atlas-uvs="totalRows: 4; totalColumns: 8; column: 2; row: 3" scale="1.5 3 1" geometry="primitive: plane;" material="src: #stencils-atlas;alphaTest: 0;transparent:true;"></a-mixin>
+        <a-mixin shadow="cast: false" id="bike-arrow" atlas-uvs="totalRows: 2; totalColumns: 8; column: 1; row: 2" scale="1 4 1" geometry="primitive: plane;" material="src: #stencils-atlas;alphaTest: 0;transparent:true;"></a-mixin>
+        <a-mixin shadow="cast: false" id="word-bus" atlas-uvs="totalRows: 8; totalColumns: 8; column: 1; row: 4" scale="3 3 3" geometry="primitive: plane;" material="src: #stencils-atlas;alphaTest: 0;transparent:true;"></a-mixin>
+        <a-mixin shadow="cast: false" id="word-lane" atlas-uvs="totalRows: 8; totalColumns: 8; column: 2; row: 4" scale="3 3 3" geometry="primitive: plane;" material="src: #stencils-atlas;alphaTest: 0;transparent:true;"></a-mixin>
+        <a-mixin shadow="cast: false" id="word-taxi" atlas-uvs="totalRows: 8; totalColumns: 8; column: 1; row: 3" scale="3 3 3" geometry="primitive: plane;" material="src: #stencils-atlas;alphaTest: 0;transparent:true;"></a-mixin>
+        <a-mixin shadow="cast: false" id="word-only" atlas-uvs="totalRows: 8; totalColumns: 8; column: 2; row: 3" scale="3 3 3" geometry="primitive: plane;" material="src: #stencils-atlas;alphaTest: 0;transparent:true;"></a-mixin>
+        <a-mixin shadow="cast: false" id="word-only-small" atlas-uvs="totalRows: 8; totalColumns: 8; column: 2; row: 3" scale="2.5 2 2.5" geometry="primitive: plane;" material="src: #stencils-atlas;alphaTest: 0;transparent:true;"></a-mixin>
+        <a-mixin shadow="cast: false" id="word-yield" atlas-uvs="totalRows: 8; totalColumns: 8; column: 1; row: 2" scale="3 3 3" geometry="primitive: plane;" material="src: #stencils-atlas;alphaTest: 0;transparent:true;"></a-mixin>
+        <a-mixin shadow="cast: false" id="word-slow" atlas-uvs="totalRows: 8; totalColumns: 8; column: 2; row: 2" scale="3 3 3" geometry="primitive: plane;" material="src: #stencils-atlas;alphaTest: 0;transparent:true;"></a-mixin>
+        <a-mixin shadow="cast: false" id="word-xing" atlas-uvs="totalRows: 8; totalColumns: 8; column: 1; row: 1" scale="3 3 3" geometry="primitive: plane;" material="src: #stencils-atlas;alphaTest: 0;transparent:true;"></a-mixin>
+        <a-mixin shadow="cast: false" id="word-stop" atlas-uvs="totalRows: 8; totalColumns: 8; column: 2; row: 1" scale="3 3 3" geometry="primitive: plane;" material="src: #stencils-atlas;alphaTest: 0;transparent:true;"></a-mixin>
+        <a-mixin shadow="cast: false" id="word-loading-small" atlas-uvs="totalRows: 8; totalColumns: 4; column: 4; row: 1" scale="2.75 1.75 2.75" geometry="primitive: plane;" material="src: #stencils-atlas;alphaTest: 0;transparent:true;"></a-mixin>
+        <a-mixin shadow="cast: false" id="perpendicular-stalls" atlas-uvs="totalRows: 4; totalColumns: 8; column: 5; row: 4" scale="5 10 5" geometry="primitive: plane;" material="src: #stencils-atlas;alphaTest: 0;transparent:true;"></a-mixin>
+        <a-mixin shadow="cast: false" id="parking-t" atlas-uvs="totalRows: 8; totalColumns: 16; column: 4; row: 7" scale="1.5 2 2" geometry="primitive: plane;" material="src: #stencils-atlas;alphaTest: 0;transparent:true;"></a-mixin>
+        <a-mixin shadow="cast: false" id="painted-safety-zone" atlas-uvs="totalRows: 4; totalColumns: 4; column: 4; row: 4" scale="8 8 8" geometry="primitive: plane;" material="src: #stencils-atlas;alphaTest: 0;transparent:true;"></a-mixin>
+        <a-mixin shadow="cast: false" id="hash-left" atlas-uvs="totalRows: 4; totalColumns: 8; column: 7; row: 2" scale="3 6 3" geometry="primitive: plane;" material="src: #stencils-atlas;alphaTest: 0;transparent:true;"></a-mixin>
+        <a-mixin shadow="cast: false" id="hash-right" atlas-uvs="totalRows: 4; totalColumns: 8; column: 8; row: 2" scale="3 6 3" geometry="primitive: plane;" material="src: #stencils-atlas;alphaTest: 0;transparent:true;"></a-mixin>
+        <a-mixin shadow="cast: false" id="hash-chevron" atlas-uvs="totalRows: 4; totalColumns: 4; column: 4; row: 2" scale="3 3 3" geometry="primitive: plane;" material="src: #stencils-atlas;alphaTest: 0;transparent:true;"></a-mixin>
       `,
     'vehicles-transit': `
         <!-- vehicles-transit -->
