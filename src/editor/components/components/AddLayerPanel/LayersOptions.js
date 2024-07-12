@@ -35,8 +35,8 @@ const LayersOptions = [
     onClick: () => console.log('Models: Street Props')
   },
   {
-    value: 'Models: dividers',
-    label: 'Models: dividers',
+    value: 'Models: Dividers & Traffic Control',
+    label: 'Models: Dividers & Traffic Control',
     mixinGroups: ['dividers'],
     onClick: () => console.log('Models: dividers')
   },
