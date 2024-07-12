@@ -291,7 +291,7 @@ const AddLayerPanel = ({ onClose, isAddLayerPanelOpen }) => {
       }
       customGroupEl.appendChild(newEntity);
     } else {
-      const streetContainer = document.querySelector('street-container');
+      const streetContainer = document.querySelector('#street-container');
       // apppend element as a child of street-container
       if (streetContainer) {
         streetContainer.appendChild(newEntity);
