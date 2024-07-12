@@ -141,7 +141,6 @@ function buildAssetHTML(assetUrl, categories) {
       `,
     'segment-colors': `  
         <!-- segment color modifier mixins -->
-        <a-mixin id="yellow" material="color:#f7d117"></a-mixin>
         <a-mixin id="surface-green" material="color:#adff83"></a-mixin>
         <a-mixin id="surface-red" material="color:#ff9393"></a-mixin>
         <a-mixin id="surface-blue" material="color:#00b6b6"></a-mixin>
@@ -149,18 +148,22 @@ function buildAssetHTML(assetUrl, categories) {
     'lane-separator': `
         <!-- lane separator markings -->
         <img id="markings-atlas" src="${assetUrl}materials/lane-markings-atlas_1024.png" crossorigin="anonymous" />
+        <a-mixin id="markings"></a-mixin>
         <a-mixin shadow="cast: false" id="solid-stripe" atlas-uvs="totalRows: 1; totalColumns: 8; column: 3; row: 1" material="src: #markings-atlas;alphaTest: 0;transparent:true;repeat:1 5;" geometry="primitive: plane; width:0.2; height:150;"></a-mixin>
         <a-mixin shadow="cast: false" id="dashed-stripe" atlas-uvs="totalRows: 1; totalColumns: 8; column: 4; row: 1" material="src: #markings-atlas;alphaTest: 0;transparent:true;repeat:1 25;" geometry="primitive: plane; width:0.2; height:150;"></a-mixin>
         <a-mixin shadow="cast: false" id="short-dashed-stripe" atlas-uvs="totalRows: 1; totalColumns: 8; column: 4; row: 1" material="src: #markings-atlas;alphaTest: 0;transparent:true;repeat:1 50;" geometry="primitive: plane; width:0.2; height:150;"></a-mixin>
+        <a-mixin shadow="cast: false" id="short-dashed-stripe-yellow" atlas-uvs="totalRows: 1; totalColumns: 8; column: 4; row: 1" material="src: #markings-atlas;alphaTest: 0;transparent:true;repeat:1 50;color:#f7d117;" geometry="primitive: plane; width:0.2; height:150;"></a-mixin>
         <a-mixin shadow="cast: false" id="solid-doubleyellow" atlas-uvs="totalRows: 1; totalColumns: 4; column: 3; row: 1" material="src: #markings-atlas;alphaTest: 0;transparent:true;repeat:1 25;"geometry="primitive: plane; width:0.5; height:150;"></a-mixin>
         <a-mixin shadow="cast: false" id="solid-dashed" atlas-uvs="totalRows: 1; totalColumns: 4; column: 2; row: 1" material="src: #markings-atlas;alphaTest: 0;transparent:true;repeat:1 25;" geometry="primitive: plane; width:0.4; height:150;"></a-mixin>
+        <a-mixin shadow="cast: false" id="solid-dashed-yellow" atlas-uvs="totalRows: 1; totalColumns: 4; column: 2; row: 1" material="src: #markings-atlas;alphaTest: 0;transparent:true;repeat:1 25;color:#f7d117;" geometry="primitive: plane; width:0.4; height:150;"></a-mixin>
         <a-mixin shadow="cast: false" id="crosswalk-zebra" atlas-uvs="totalRows: 1; totalColumns: 4; column: 4; row: 1" material="src: #markings-atlas;alphaTest: 0;transparent:true;repeat:1 2;" geometry="primitive: plane; width:2; height:12;"></a-mixin>
       `,
     stencils: `  
         <!-- stencil markings -->
         <img id="stencils-atlas" src="${assetUrl}materials/stencils-atlas_2048.png" crossorigin="anonymous" />
+        <a-mixin id="stencils"></a-mixin>
         <a-mixin shadow="cast: false" id="right" atlas-uvs="totalRows: 4; totalColumns: 4; column: 3; row: 2" scale="2 2 2" geometry="primitive: plane;" material="src: #stencils-atlas;alphaTest: 0;transparent:true;"></a-mixin>
-        <a-mixin shadow="cast: false" id="left" atlas-uvs="totalRows: 4; totalColumns: 4; column: 3; row: 3" scale="2 2 2" geometry="primitive: plane;" material="src: #stencils-atlas;alphaTest: 0;transparent:true;"></a-mixin>
+        <a-mixin shadow="cast: false" id="left" atlas-uvs="totalRows: 4; totalColumns: 4; column: 3; row: 3" scale="2 2 2" geometry="primitive: plane;" material="src: #stencils-atlas;alphaTest: 0;transparent:true;" ></a-mixin>
         <a-mixin shadow="cast: false" id="both" atlas-uvs="totalRows: 4; totalColumns: 4; column: 2; row: 1" scale="2 2 2" geometry="primitive: plane;" material="src: #stencils-atlas;alphaTest: 0;transparent:true;"></a-mixin>
         <a-mixin shadow="cast: false" id="all" atlas-uvs="totalRows: 4; totalColumns: 4; column: 3; row: 1" scale="2 2 2" geometry="primitive: plane;" material="src: #stencils-atlas;alphaTest: 0;transparent:true;"></a-mixin>
         <a-mixin shadow="cast: false" id="left-straight" atlas-uvs="totalRows: 4; totalColumns: 4; column: 2; row: 3" scale="2 2 2" geometry="primitive: plane;" material="src: #stencils-atlas;alphaTest: 0;transparent:true;"></a-mixin>
