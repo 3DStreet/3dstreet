@@ -1,7 +1,8 @@
 import {
   faHand,
   faHandPointer,
-  faPlusSquare
+  faPlusSquare,
+  faImage
 } from '@fortawesome/free-regular-svg-icons';
 import { AwesomeIcon } from '../AwesomeIcon';
 import classNames from 'classnames';
@@ -28,6 +29,19 @@ const ActionBar = ({ handleAddClick, isAddLayerPanelOpen }) => {
     setCursorEnabled(true);
   };
 
+  const handleCameraCLick = () => {
+    Events.emit('camera_clicked');
+    const screenshotEl = document.getElementById('screenshot');
+    screenshotEl.play();
+
+    posthog.capture('screenshot_taken', {
+      scene_id: STREET.utils.getCurrentSceneId()
+    });
+
+    screenshotEl.setAttribute('screentock', 'type', 'png');
+    screenshotEl.setAttribute('screentock', 'takeScreenshot', true);
+  };
+
   return (
     <div>
       {!isAddLayerPanelOpen && (
@@ -48,6 +62,9 @@ const ActionBar = ({ handleAddClick, isAddLayerPanelOpen }) => {
           </Button>
           <Button variant="toolbtn" onClick={handleAddClick}>
             <AwesomeIcon icon={faPlusSquare} />
+          </Button>
+          <Button variant="toolbtn" onClick={handleCameraCLick}>
+            <AwesomeIcon icon={faImage} />
           </Button>
         </div>
       )}
