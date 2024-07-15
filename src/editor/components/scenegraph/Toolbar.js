@@ -343,21 +343,6 @@ export default class Toolbar extends Component {
     Events.emit('entitycreate', { element: 'a-entity', components: {} });
   }
 
-  /**
-   * Try to write changes with aframe-inspector-watcher.
-   */
-  writeChanges = () => {
-    const xhr = new XMLHttpRequest();
-    xhr.open('POST', 'http://localhost:51234/save');
-    xhr.onerror = () => {
-      alert(
-        'aframe-watcher not running. This feature requires a companion service running locally. npm install aframe-watcher to save changes back to file. Read more at supermedium.com/aframe-watcher'
-      );
-    };
-    xhr.setRequestHeader('Content-Type', 'application/json');
-    xhr.send(JSON.stringify(AFRAME.INSPECTOR.history.updates));
-  };
-
   toggleScenePlaying = () => {
     if (this.state.isPlaying) {
       AFRAME.scenes[0].pause();
@@ -387,12 +372,6 @@ export default class Toolbar extends Component {
   };
 
   render() {
-    // const watcherClassNames = classNames({
-    //   button: true,
-    //   fa: true,
-    //   'fa-save': true
-    // });
-    // const watcherTitle = 'Write changes with aframe-watcher.';
     return (
       <div id="toolbar">
         <div className="toolbarActions">
