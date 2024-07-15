@@ -41,7 +41,10 @@ export class EntityUpdateCommand extends Command {
     this.component = payload.component;
     this.property = payload.property;
 
-    const component = AFRAME.components[payload.component];
+    const component = this.entity.components[payload.component];
+    // Don't use AFRAME.components[payload.component] here, but use this.entity.components[payload.component] so we have the dynamic schema,
+    // important for material or geometry components like for example modifying material metalness,
+    // otherwise component.schema[payload.property] would be undefined.
     if (component) {
       if (payload.property) {
         if (component.schema[payload.property]) {
