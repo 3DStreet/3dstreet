@@ -52,7 +52,7 @@ export class EntityUpdateCommand extends Command {
             payload.value
           );
           this.oldValue = component.schema[payload.property].stringify(
-            payload.entity.getAttribute(payload.component, payload.property)
+            payload.entity.getAttribute(payload.component)[payload.property]
           );
           if (this.editor.debugUndoRedo) {
             console.log(this.component, this.oldValue, this.newValue);
