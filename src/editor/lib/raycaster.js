@@ -44,8 +44,6 @@ export function initRaycaster(inspector) {
   mouseCursor.addEventListener('click', handleClick);
   mouseCursor.addEventListener('mouseenter', onMouseEnter);
   mouseCursor.addEventListener('mouseleave', onMouseLeave);
-  inspector.container.addEventListener('mousedown', onMouseDown);
-  inspector.container.addEventListener('mouseup', onMouseUp);
   // inspector.container.addEventListener('dblclick', onDoubleClick);
 
   inspector.sceneEl.canvas.addEventListener('mouseleave', () => {
@@ -53,10 +51,6 @@ export function initRaycaster(inspector) {
       Events.emit('raycastermouseleave', null);
     });
   });
-
-  const onDownPosition = new THREE.Vector2();
-  const onUpPosition = new THREE.Vector2();
-  // const onDoubleClickPosition = new THREE.Vector2();
 
   function onMouseEnter() {
     Events.emit(
@@ -73,50 +67,13 @@ export function initRaycaster(inspector) {
   }
 
   function handleClick(evt) {
-    // Check to make sure not dragging.
-    const DRAG_THRESHOLD = 0.03;
-    if (onDownPosition.distanceTo(onUpPosition) >= DRAG_THRESHOLD) {
-      return;
-    }
-    inspector.selectEntity(evt.detail.intersectedEl);
-  }
-
-  function onMouseDown(event) {
-    if (event instanceof CustomEvent) {
-      return;
-    }
-    event.preventDefault();
-    const array = getMousePosition(
-      inspector.container,
-      event.clientX,
-      event.clientY
-    );
-    onDownPosition.fromArray(array);
-  }
-
-  function onMouseUp(event) {
-    if (event instanceof CustomEvent) {
-      return;
-    }
-    event.preventDefault();
-    const array = getMousePosition(
-      inspector.container,
-      event.clientX,
-      event.clientY
-    );
-    onUpPosition.fromArray(array);
+    Events.emit('raycasterclick', evt.detail.intersectedEl);
   }
 
   /**
    * Focus on double click.
    */
   // function onDoubleClick(event) {
-  //   const array = getMousePosition(
-  //     inspector.container,
-  //     event.clientX,
-  //     event.clientY
-  //   );
-  //   onDoubleClickPosition.fromArray(array);
   //   const intersectedEl = mouseCursor.components.cursor.intersectedEl;
   //   if (!intersectedEl) {
   //     return;
@@ -128,18 +85,11 @@ export function initRaycaster(inspector) {
     el: mouseCursor,
     enable: () => {
       mouseCursor.setAttribute('raycaster', 'enabled', true);
-      inspector.container.addEventListener('mousedown', onMouseDown);
-      inspector.container.addEventListener('mouseup', onMouseUp);
+      // inspector.container.addEventListener('dblclick', onDoubleClick);
     },
     disable: () => {
       mouseCursor.setAttribute('raycaster', 'enabled', false);
-      inspector.container.removeEventListener('mousedown', onMouseDown);
-      inspector.container.removeEventListener('mouseup', onMouseUp);
+      // inspector.container.removeEventListener('dblclick', onDoubleClick);
     }
   };
-}
-
-function getMousePosition(dom, x, y) {
-  const rect = dom.getBoundingClientRect();
-  return [(x - rect.left) / rect.width, (y - rect.top) / rect.height];
 }
