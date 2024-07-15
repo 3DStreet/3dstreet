@@ -54,9 +54,15 @@ export class EntityUpdateCommand extends Command {
           this.oldValue = component.schema[payload.property].stringify(
             payload.entity.getAttribute(payload.component)[payload.property]
           );
-          if (this.editor.debugUndoRedo) {
-            console.log(this.component, this.oldValue, this.newValue);
-          }
+        } else {
+          // Just in case dynamic schema is not properly updated and we set an unknown property. I don't think this should happen.
+          this.newValue = payload.value;
+          this.oldValue = payload.entity.getAttribute(payload.component)[
+            payload.property
+          ];
+        }
+        if (this.editor.debugUndoRedo) {
+          console.log(this.component, this.oldValue, this.newValue);
         }
       } else {
         this.newValue = component.schema.stringify(payload.value);
