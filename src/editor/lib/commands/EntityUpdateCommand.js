@@ -87,6 +87,13 @@ export class EntityUpdateCommand extends Command {
   }
 
   undo() {
+    if (
+      this.editor.selectedEntity &&
+      this.editor.selectedEntity !== this.entity
+    ) {
+      // If the selected entity is not the entity we are undoing, select the entity.
+      this.editor.selectEntity(this.entity);
+    }
     updateEntity(this.entity, this.component, this.property, this.oldValue);
     Events.emit('entityupdate', {
       entity: this.entity,
