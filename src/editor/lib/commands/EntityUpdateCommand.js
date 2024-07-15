@@ -32,10 +32,7 @@ export class EntityUpdateCommand extends Command {
 
     this.type = 'EntityUpdateCommand';
     this.name = 'Update Entity';
-    this.updatable =
-      payload.component === 'position' ||
-      payload.component === 'rotation' ||
-      payload.component === 'scale';
+    this.updatable = true;
 
     this.entity = payload.entity;
     this.component = payload.component;
