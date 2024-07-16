@@ -136,15 +136,6 @@ export function Viewport(inspector) {
     hoverBox.visible = false;
   });
 
-  let lastControlsEventTime = 0;
-  Events.on('raycasterclick', (el) => {
-    if (Date.now() - lastControlsEventTime < 500) {
-      // Ignore click if we used EditorControls or TransformControls in the last 500ms.
-      return;
-    }
-    inspector.selectEntity(el);
-  });
-
   function updateHelpers(object) {
     object.traverse((node) => {
       if (inspector.helpers[node.uuid] && inspector.helpers[node.uuid].update) {
@@ -160,7 +151,6 @@ export function Viewport(inspector) {
   );
   transformControls.size = 0.75;
   transformControls.addEventListener('objectChange', (evt) => {
-    lastControlsEventTime = Date.now();
     const object = transformControls.object;
     if (object === undefined) {
       return;
@@ -224,9 +214,6 @@ export function Viewport(inspector) {
   controls.rotationSpeed = 0.0035;
   controls.zoomSpeed = 0.05;
   controls.setAspectRatio(sceneEl.canvas.width / sceneEl.canvas.height);
-  controls.addEventListener('change', () => {
-    lastControlsEventTime = Date.now();
-  });
 
   Events.on('cameratoggle', (data) => {
     controls.setCamera(data.camera);
