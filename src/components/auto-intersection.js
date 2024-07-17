@@ -1,6 +1,5 @@
 /* global AFRAME */
 AFRAME.registerComponent('auto-intersection', {
-  dependencies: ['intersection'],
   schema: {
     // selectors of street elements for create intersection
     northStreet: { type: 'selector' },
@@ -10,25 +9,70 @@ AFRAME.registerComponent('auto-intersection', {
   },
   update: function () {
     const el = this.el;
-    const intersectionProps = this.calculateDataForIntersection();
+    // cardinal order in the intersection component schema
+    this.cardinalOrder = ['east', 'west', 'north', 'south'];
+
+    const intersectionProps = (this.intersectionProps =
+      this.calculateDataForIntersection());
     el.setAttribute('intersection', intersectionProps);
+    this.alignStreetsToIntersection();
+  },
+  alignStreetsToIntersection: function () {
+    const dimensions = this.dimensions;
+    const interDimensions = this.intersectionProps.dimensions.split(' ');
+    const data = this.data;
+    const interElPos = this.el.getAttribute('position');
+    let newPos;
+    for (const streetDirection of this.cardinalOrder) {
+      // streetDirection = east, west, north, south
+      if (dimensions[streetDirection].total) {
+        const streetEl = data[streetDirection + 'Street'];
+        const length = streetEl.getAttribute('street').length;
+
+        switch (streetDirection) {
+          case 'north':
+            newPos = {
+              x: interElPos.x,
+              z: interElPos.z - interDimensions[1] / 2 - length / 2
+            };
+            break;
+          case 'south':
+            newPos = {
+              x: interElPos.x,
+              z: interElPos.z + interDimensions[1] / 2 + length / 2
+            };
+            break;
+          case 'west':
+            newPos = {
+              x: interElPos.x - interDimensions[0] / 2 - length / 2,
+              z: interElPos.z
+            };
+            break;
+          case 'east':
+            newPos = {
+              x: interElPos.x + interDimensions[0] / 2 + length / 2,
+              z: interElPos.z
+            };
+            break;
+        }
+        streetEl.setAttribute('position', newPos);
+      }
+    }
   },
   // calculate all properties in string format for the intersection component
   calculateDataForIntersection() {
     const data = this.data;
-
-    // cardinal directions clockwise
-    const cardinal = ['north', 'east', 'south', 'west'];
+    const cardinalOrder = this.cardinalOrder;
 
     // dimensions of the left, right sidewalk pedestrian parts of the street
     // (with sidewalk segment types) and total street width
-    const dimensions = {
+    const dimensions = (this.dimensions = {
       north: {},
       east: {},
       south: {},
       west: {}
-    };
-    cardinal.forEach((cardinalDir) => {
+    });
+    cardinalOrder.forEach((cardinalDir) => {
       const sideStreetEl = data[cardinalDir + 'Street'];
       const streetParent = sideStreetEl
         ? sideStreetEl.querySelector('.street-parent')
@@ -72,17 +116,17 @@ AFRAME.registerComponent('auto-intersection', {
 
     // get sidewalk values (string) for the intersection component
     const interSidewalk = [
-      data['westStreet']
+      !data['eastStreet']
         ? curbSizes['northeast'][0] || curbSizes['southeast'][0]
         : 0,
-      data['eastStreet']
+      !data['westStreet']
         ? curbSizes['northwest'][0] || curbSizes['southwest'][0]
         : 0,
-      data['northStreet']
-        ? curbSizes['southeast'][1] || curbSizes['southwest'][1]
-        : 0,
-      data['southStreet']
+      !data['northStreet']
         ? curbSizes['northwest'][1] || curbSizes['northeast'][1]
+        : 0,
+      !data['southStreet']
+        ? curbSizes['southeast'][1] || curbSizes['southwest'][1]
         : 0
     ].join(' ');
 
@@ -92,9 +136,6 @@ AFRAME.registerComponent('auto-intersection', {
       dimensions['north'].total || dimensions['south'].total,
       dimensions['west'].total || dimensions['east'].total
     ].join(' ');
-
-    // cardinal order in the intersection component schema
-    const cardinalOrder = ['east', 'west', 'north', 'south'];
 
     // get data for stopsignals, trafficsignal, crosswalk
     const interStreetProps = cardinalOrder
