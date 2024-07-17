@@ -2,6 +2,7 @@
 AFRAME.registerComponent('intersection', {
   schema: {
     dimensions: { type: 'string', default: '20 20' },
+    // cardinal direction order for sidewalk, stopsign, crosswalk: west, east, north, south
     sidewalk: { type: 'string', default: '0 0 0 0' },
     northeastcurb: { type: 'string', default: '0 0' },
     southwestcurb: { type: 'string', default: '0 0' },
@@ -9,22 +10,32 @@ AFRAME.registerComponent('intersection', {
     northwestcurb: { type: 'string', default: '0 0' },
     stopsign: { type: 'string', default: '0 0 0 0' },
     trafficsignal: { type: 'string', default: '0 0 0 0' },
-    crosswalk: { type: 'string', default: '0 0 0 0' }
+    crosswalk: { type: 'string', default: '0 0 0 0' },
+    synchronize: { default: true }
   },
   update: function () {
     const data = this.data;
     const el = this.el;
 
+    // do not call the update function when the data.synchronize is set to false
+    if (!data.synchronize) return;
+
+    this.createIntersectionElements();
+
+    // the intersecton elements has been created, set the synchronize flag to false
+    el.setAttribute('intersection', 'synchronize', false);
+  },
+  createIntersectionElements: function () {
+    const data = this.data;
+    const el = this.el;
+    const directionOrder = ['west', 'east', 'north', 'south'];
+
     // remove all child nodes if exists
     while (el.firstChild) {
       el.removeChild(el.lastChild);
     }
+
     const dimensionsArray = data.dimensions.split(' ').map((i) => Number(i));
-    const positionArray = [
-      this.el.getAttribute('position').x,
-      this.el.getAttribute('position').y,
-      this.el.getAttribute('position').z
-    ];
     const sidewalkArray = data.sidewalk.split(' ').map((i) => Number(i));
     const northeastcurbArray = data.northeastcurb
       .split(' ')
@@ -51,11 +62,7 @@ AFRAME.registerComponent('intersection', {
       'geometry',
       `primitive:box; width: ${intersectWidth}; height: ${intersectDepth}; depth:0.2`
     );
-    this.el.setAttribute('position', {
-      x: positionArray[0],
-      y: -0.1,
-      z: positionArray[2]
-    });
+    this.el.object3D.position.setY(-0.1);
     this.el.setAttribute('rotation', '-90 0 0');
     this.el.setAttribute(
       'material',
@@ -67,26 +74,27 @@ AFRAME.registerComponent('intersection', {
       width,
       positionVec,
       scaleVec = { x: 1, y: 1, z: 1 },
-      rotationVec
+      rotationVec,
+      displayName
     }) {
       const sd = document.createElement('a-entity');
-      const repeatCountInter = [];
-      repeatCountInter[0] = width / 2;
       // every 2 meters repeat sidewalk texture
-      repeatCountInter[1] = parseInt(length / 2);
+      const repeatCountInter = [width / 2, parseInt(length / 2)];
 
-      sd.setAttribute('geometry', 'primitive', 'box');
-      sd.setAttribute('geometry', 'height: 0.4');
+      sd.setAttribute(
+        'geometry',
+        `primitive:box; depth: ${length}; width: ${width}; height: 0.4`
+      );
       sd.setAttribute('position', positionVec);
       sd.setAttribute('scale', scaleVec);
-      sd.setAttribute('geometry', 'depth', length);
-      sd.setAttribute('geometry', 'width', width);
       sd.setAttribute('rotation', rotationVec);
       sd.setAttribute('mixin', 'sidewalk');
+      sd.classList.add('autocreated');
       sd.setAttribute(
         'material',
         `repeat: ${repeatCountInter[0]} ${repeatCountInter[1]}`
       );
+      sd.setAttribute('data-layer-name', 'Sidewalk � ' + displayName);
       el.appendChild(sd);
     }
 
@@ -96,37 +104,41 @@ AFRAME.registerComponent('intersection', {
         positionVec: { x: intersectWidth / 2 - sidewalkArray[0] / 2, z: 0.1 },
         rotationVec: { x: 90, y: 0, z: 0 },
         length: intersectDepth,
-        width: sidewalkArray[0]
+        width: sidewalkArray[0],
+        displayName: 'West'
       },
       east: {
         positionVec: { x: -intersectWidth / 2 + sidewalkArray[1] / 2, z: 0.1 },
         rotationVec: { x: 90, y: 0, z: 0 },
         length: intersectDepth,
-        width: sidewalkArray[1]
+        width: sidewalkArray[1],
+        displayName: 'East'
       },
       north: {
         positionVec: {
-          y: -intersectDepth / 2 + sidewalkArray[2] / 2,
           // add x offset to avoid sidewalk's element overlap
           x: sidewalkArray[1] / 2 - sidewalkArray[0] / 2,
+          y: -intersectDepth / 2 + sidewalkArray[2] / 2,
           z: 0.1
         },
         rotationVec: { x: 0, y: 90, z: -90 },
         // minus the width of the crossing sidewalk
         length: intersectWidth - sidewalkArray[1] - sidewalkArray[0],
-        width: sidewalkArray[2]
+        width: sidewalkArray[2],
+        displayName: 'North'
       },
       south: {
         positionVec: {
-          y: intersectDepth / 2 - sidewalkArray[3] / 2,
           // add x offset to avoid sidewalk's element overlap
           x: sidewalkArray[1] / 2 - sidewalkArray[0] / 2,
+          y: intersectDepth / 2 - sidewalkArray[3] / 2,
           z: 0.1
         },
         rotationVec: { x: 0, y: 90, z: -90 },
         // minus the width of the crossing sidewalk
         length: intersectWidth - sidewalkArray[1] - sidewalkArray[0],
-        width: sidewalkArray[3]
+        width: sidewalkArray[3],
+        displayName: 'South'
       }
     };
 
@@ -150,7 +162,8 @@ AFRAME.registerComponent('intersection', {
         },
         rotationVec: { x: 0, y: 90, z: -90 },
         length: northeastcurbArray[0],
-        width: northeastcurbArray[1]
+        width: northeastcurbArray[1],
+        displayName: 'Northeast'
       },
       southwest: {
         positionVec: {
@@ -160,7 +173,8 @@ AFRAME.registerComponent('intersection', {
         },
         rotationVec: { x: 0, y: 90, z: -90 },
         length: southwestcurbArray[0],
-        width: southwestcurbArray[1]
+        width: southwestcurbArray[1],
+        displayName: 'Southwest'
       },
       southeast: {
         positionVec: {
@@ -170,7 +184,8 @@ AFRAME.registerComponent('intersection', {
         },
         rotationVec: { x: 0, y: 90, z: -90 },
         length: southeastcurbArray[0],
-        width: southeastcurbArray[1]
+        width: southeastcurbArray[1],
+        displayName: 'Southeast'
       },
       northwest: {
         positionVec: {
@@ -180,7 +195,8 @@ AFRAME.registerComponent('intersection', {
         },
         rotationVec: { x: 0, y: 90, z: -90 },
         length: northwestcurbArray[0],
-        width: northwestcurbArray[1]
+        width: northwestcurbArray[1],
+        displayName: 'Northwest'
       }
     };
 
@@ -191,131 +207,159 @@ AFRAME.registerComponent('intersection', {
       }
     }
 
-    if (stopsignArray[0]) {
-      const ss1 = document.createElement('a-entity');
-      ss1.setAttribute('position', {
-        x: intersectWidth / 2,
-        y: intersectDepth / 3,
-        z: 0.1
-      });
-      ss1.setAttribute('rotation', { x: 0, y: 90, z: 90 });
-      ss1.setAttribute('mixin', 'stop_sign');
-      el.appendChild(ss1);
-    }
-    if (stopsignArray[1]) {
-      const ss2 = document.createElement('a-entity');
-      ss2.setAttribute('position', {
-        x: -intersectWidth / 2,
-        y: -intersectDepth / 3,
-        z: 0.1
-      });
-      ss2.setAttribute('rotation', { x: 0, y: -90, z: -90 });
-      ss2.setAttribute('mixin', 'stop_sign');
-      el.appendChild(ss2);
-    }
-    if (stopsignArray[2]) {
-      const ss3 = document.createElement('a-entity');
-      ss3.setAttribute('position', {
-        x: -intersectWidth / 3,
-        y: intersectDepth / 2,
-        z: 0.1
-      });
-      ss3.setAttribute('rotation', { x: -90, y: 90, z: 90 });
-      ss3.setAttribute('mixin', 'stop_sign');
-      el.appendChild(ss3);
-    }
-    if (stopsignArray[3]) {
-      const ss4 = document.createElement('a-entity');
-      ss4.setAttribute('position', {
-        x: intersectWidth / 3,
-        y: -intersectDepth / 2,
-        z: 0.1
-      });
-      ss4.setAttribute('rotation', { x: 90, y: -90, z: -90 });
-      ss4.setAttribute('mixin', 'stop_sign');
-      el.appendChild(ss4);
+    // describe stop signals parameters
+    const stopsignals = {
+      west: {
+        position: {
+          x: intersectWidth / 2,
+          y: intersectDepth / 3,
+          z: 0.1
+        },
+        rotation: { x: 0, y: 90, z: 90 }
+      },
+      east: {
+        position: {
+          x: -intersectWidth / 2,
+          y: -intersectDepth / 3,
+          z: 0.1
+        },
+        rotation: { x: 0, y: -90, z: -90 }
+      },
+      north: {
+        position: {
+          x: -intersectWidth / 3,
+          y: intersectDepth / 2,
+          z: 0.1
+        },
+        rotation: { x: -90, y: 90, z: 90 }
+      },
+      south: {
+        position: {
+          x: intersectWidth / 3,
+          y: -intersectDepth / 2,
+          z: 0.1
+        },
+        rotation: { x: 90, y: -90, z: -90 }
+      }
+    };
+
+    function createStopSignal(direction) {
+      const stopSignEl = document.createElement('a-entity');
+      const params = stopsignals[direction];
+      stopSignEl.setAttribute('position', params['position']);
+      stopSignEl.setAttribute('rotation', params['rotation']);
+      stopSignEl.setAttribute('mixin', 'stop_sign');
+      stopSignEl.classList.add('autocreated');
+      stopSignEl.setAttribute('data-layer-name', 'Traffic Control � Stop Sign');
+      return stopSignEl;
     }
 
-    if (trafficsignalArray[0]) {
-      const ts1 = document.createElement('a-entity');
-      ts1.setAttribute('position', {
-        x: intersectWidth / 2,
-        y: intersectDepth / 3,
-        z: 0.3
+    // create stop signals
+    directionOrder.forEach((direction, index) => {
+      if (stopsignArray[index]) {
+        const stopSignEl = createStopSignal(direction);
+        el.appendChild(stopSignEl);
+      }
+    });
+
+    // describe traffic signals parameters
+    const trafficSignals = {
+      west: {
+        left: {
+          position: {
+            x: intersectWidth / 2,
+            y: intersectDepth / 3,
+            z: 0.3
+          },
+          rotation: { x: 210, y: 90, z: 90 }
+        },
+        right: {
+          position: {
+            x: intersectWidth / 2,
+            y: -intersectDepth / 3,
+            z: 0.3
+          },
+          rotation: { x: 180, y: 90, z: 90 }
+        }
+      },
+      east: {
+        left: {
+          position: {
+            x: -intersectWidth / 2,
+            y: -intersectDepth / 3,
+            z: 0.3
+          },
+          rotation: { x: 210, y: 90, z: 90 }
+        },
+        right: {
+          position: {
+            x: -intersectWidth / 2,
+            y: intersectDepth / 3,
+            z: 0.3
+          },
+          rotation: { x: 0, y: 90, z: 90 }
+        }
+      },
+      north: {
+        left: {
+          position: {
+            x: -intersectWidth / 3,
+            y: intersectDepth / 2,
+            z: 0.1
+          },
+          rotation: { x: 120, y: 90, z: 90 }
+        },
+        right: {
+          position: {
+            x: intersectWidth / 3,
+            y: intersectDepth / 2,
+            z: 0.1
+          },
+          rotation: { x: 90, y: 90, z: 90 }
+        }
+      },
+      south: {
+        left: {
+          position: {
+            x: intersectWidth / 3,
+            y: -intersectDepth / 2,
+            z: 0.1
+          },
+          rotation: { x: -60, y: 90, z: 90 }
+        },
+        right: {
+          position: {
+            x: -intersectWidth / 3,
+            y: -intersectDepth / 2,
+            z: 0.1
+          },
+          rotation: { x: -90, y: 90, z: 90 }
+        }
+      }
+    };
+
+    function createTrafficSignals(direction) {
+      const params = trafficSignals[direction];
+      ['left', 'right'].forEach((side) => {
+        const trafficSignalEl = document.createElement('a-entity');
+        trafficSignalEl.setAttribute('position', params[side].position);
+        trafficSignalEl.setAttribute('rotation', params[side].rotation);
+        trafficSignalEl.setAttribute('mixin', `signal_${side}`);
+        trafficSignalEl.classList.add('autocreated');
+        trafficSignalEl.setAttribute(
+          'data-layer-name',
+          'Traffic Signal � ' + direction + ' ' + side
+        );
+        el.appendChild(trafficSignalEl);
       });
-      ts1.setAttribute('rotation', { x: 210, y: 90, z: 90 });
-      ts1.setAttribute('mixin', 'signal_left');
-      el.appendChild(ts1);
-      const ts2 = document.createElement('a-entity');
-      ts2.setAttribute('position', {
-        x: intersectWidth / 2,
-        y: -intersectDepth / 3,
-        z: 0.3
-      });
-      ts2.setAttribute('rotation', { x: 180, y: 90, z: 90 });
-      ts2.setAttribute('mixin', 'signal_right');
-      el.appendChild(ts2);
     }
-    if (trafficsignalArray[1]) {
-      const ts3 = document.createElement('a-entity');
-      ts3.setAttribute('position', {
-        x: -intersectWidth / 2,
-        y: -intersectDepth / 3,
-        z: 0.3
-      });
-      ts3.setAttribute('rotation', { x: 30, y: 90, z: 90 });
-      ts3.setAttribute('mixin', 'signal_left');
-      el.appendChild(ts3);
-      const ts4 = document.createElement('a-entity');
-      ts4.setAttribute('position', {
-        x: -intersectWidth / 2,
-        y: intersectDepth / 3,
-        z: 0.3
-      });
-      ts4.setAttribute('rotation', { x: 0, y: 90, z: 90 });
-      ts4.setAttribute('mixin', 'signal_right');
-      el.appendChild(ts4);
-    }
-    if (trafficsignalArray[2]) {
-      const ts5 = document.createElement('a-entity');
-      ts5.setAttribute('position', {
-        x: -intersectWidth / 3,
-        y: intersectDepth / 2,
-        z: 0.1
-      });
-      ts5.setAttribute('rotation', { x: 120, y: 90, z: 90 });
-      ts5.setAttribute('mixin', 'signal_left');
-      el.appendChild(ts5);
-      const ts6 = document.createElement('a-entity');
-      ts6.setAttribute('position', {
-        x: intersectWidth / 3,
-        y: intersectDepth / 2,
-        z: 0.1
-      });
-      ts6.setAttribute('rotation', { x: 90, y: 90, z: 90 });
-      ts6.setAttribute('mixin', 'signal_right');
-      el.appendChild(ts6);
-    }
-    if (trafficsignalArray[3]) {
-      const ts7 = document.createElement('a-entity');
-      ts7.setAttribute('position', {
-        x: intersectWidth / 3,
-        y: -intersectDepth / 2,
-        z: 0.1
-      });
-      ts7.setAttribute('rotation', { x: -60, y: 90, z: 90 });
-      ts7.setAttribute('mixin', 'signal_left');
-      el.appendChild(ts7);
-      const ts8 = document.createElement('a-entity');
-      ts8.setAttribute('position', {
-        x: -intersectWidth / 3,
-        y: -intersectDepth / 2,
-        z: 0.1
-      });
-      ts8.setAttribute('rotation', { x: -90, y: 90, z: 90 });
-      ts8.setAttribute('mixin', 'signal_right');
-      el.appendChild(ts8);
-    }
+
+    // create traffic signals
+    directionOrder.forEach((direction, index) => {
+      if (trafficsignalArray[index]) {
+        createTrafficSignals(direction);
+      }
+    });
 
     if (crosswalklArray[0]) {
       const cw1 = document.createElement('a-entity');
@@ -323,6 +367,8 @@ AFRAME.registerComponent('intersection', {
       cw1.setAttribute('rotation', { x: 0, y: 0, z: 180 });
       cw1.setAttribute('scale', { y: intersectDepth / 12 });
       cw1.setAttribute('mixin', 'markings crosswalk-zebra');
+      cw1.setAttribute('data-layer-name', 'Crosswalk � East');
+      cw1.classList.add('autocreated');
       el.appendChild(cw1);
     }
     if (crosswalklArray[1]) {
@@ -331,14 +377,18 @@ AFRAME.registerComponent('intersection', {
       cw2.setAttribute('rotation', { x: 0, y: 0, z: 180 });
       cw2.setAttribute('scale', { y: intersectDepth / 12 });
       cw2.setAttribute('mixin', 'markings crosswalk-zebra');
+      cw2.setAttribute('data-layer-name', 'Crosswalk � West');
+      cw2.classList.add('autocreated');
       el.appendChild(cw2);
     }
     if (crosswalklArray[2]) {
       const cw4 = document.createElement('a-entity');
       cw4.setAttribute('position', { y: intersectDepth / 2 - 2, z: 0.11 });
+      cw4.setAttribute('data-layer-name', 'Crosswalk � Zebra (Continental)');
       cw4.setAttribute('rotation', { x: 0, y: 0, z: 90 });
       cw4.setAttribute('scale', { y: intersectWidth / 12 });
       cw4.setAttribute('mixin', 'markings crosswalk-zebra');
+      cw4.classList.add('autocreated');
       el.appendChild(cw4);
     }
     if (crosswalklArray[3]) {
@@ -347,6 +397,8 @@ AFRAME.registerComponent('intersection', {
       cw3.setAttribute('rotation', { x: 0, y: 0, z: 90 });
       cw3.setAttribute('scale', { y: intersectWidth / 12 });
       cw3.setAttribute('mixin', 'markings crosswalk-zebra');
+      cw3.setAttribute('data-layer-name', 'Crosswalk � Zebra (Continental)');
+      cw3.classList.add('autocreated');
       el.appendChild(cw3);
     }
   }
