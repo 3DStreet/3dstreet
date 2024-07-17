@@ -92,7 +92,6 @@ Inspector.prototype = {
     this.debugUndoRedo = false;
 
     this.viewport = new Viewport(this);
-    Events.emit('windowresize');
 
     this.sceneEl.object3D.traverse((node) => {
       this.addHelper(node);

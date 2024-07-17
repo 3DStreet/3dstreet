@@ -214,7 +214,7 @@ export function Viewport(inspector) {
   Events.on('cameratoggle', (data) => {
     controls.setCamera(data.camera);
     transformControls.setCamera(data.camera);
-    cameraResize();
+    updateAspectRatio();
     // quick solution to change 3d tiles camera
     const tilesElem = document.querySelector('a-entity[loader-3dtiles]');
     if (tilesElem) {
@@ -312,25 +312,32 @@ export function Viewport(inspector) {
     updateHelpers(object);
   });
 
-  function cameraResize() {
-    const activeCmera = inspector.camera;
+  function updateAspectRatio() {
+    if (!inspector.opened) return;
+    // Modifying aspect for perspective camera is done by aframe a-scene.resize function
+    // when the perspective camera is the active camera, so we actually do it a second time here,
+    // but we need to modify it ourself when we switch from ortho camera to perspective camera (updateAspectRatio() is called in cameratoggle handler).
+    const camera = inspector.camera;
     const aspect =
       inspector.container.offsetWidth / inspector.container.offsetHeight;
-    activeCmera.aspect = aspect;
-    if (inspector.opened) {
-      if (activeCmera.isOrthographicCamera) {
-        const frustumSize = activeCmera.top - activeCmera.bottom;
-        activeCmera.left = (-frustumSize * aspect) / 2;
-        activeCmera.right = (frustumSize * aspect) / 2;
-        activeCmera.top = frustumSize / 2;
-        activeCmera.bottom = -frustumSize / 2;
-      }
-      controls.setAspectRatio(sceneEl.canvas.width / sceneEl.canvas.height);
-      activeCmera.updateProjectionMatrix();
+    if (camera.isPerspectiveCamera) {
+      camera.aspect = aspect;
+    } else if (camera.isOrthographicCamera) {
+      const frustumSize = camera.top - camera.bottom;
+      camera.left = (-frustumSize * aspect) / 2;
+      camera.right = (frustumSize * aspect) / 2;
+      camera.top = frustumSize / 2;
+      camera.bottom = -frustumSize / 2;
     }
+
+    controls.setAspectRatio(aspect); // for zoom in/out to work correctly for orthographic camera
+    camera.updateProjectionMatrix();
+
+    const cameraHelper = inspector.helpers[camera.uuid];
+    if (cameraHelper) cameraHelper.update();
   }
 
-  window.addEventListener('resize', cameraResize);
+  inspector.sceneEl.addEventListener('rendererresize', updateAspectRatio);
 
   Events.on('gridvisibilitychanged', (showGrid) => {
     grid.visible = showGrid;
