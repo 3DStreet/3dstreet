@@ -10,7 +10,7 @@ AFRAME.registerComponent('intersection', {
     northwestcurb: { type: 'string', default: '4 4' },
     stopsign: { type: 'string', default: '0 0 0 0' },
     trafficsignal: { type: 'string', default: '1 1 1 1' },
-    crosswalk: { type: 'string', default: '2 2 2 2' }
+    crosswalk: { type: 'string', default: '1 1 1 1' }
   },
   update: function () {
     var data = this.data;
