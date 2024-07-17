@@ -141,6 +141,7 @@ export default class Main extends Component {
       this.setState({ isGeoModalOpened: true });
     });
     Events.on('openpaymentmodal', () => {
+      posthog.capture('payment_modal_opened');
       this.setState({ isPaymentModalOpened: true });
     });
   }

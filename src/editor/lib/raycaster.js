@@ -46,7 +46,6 @@ export function initRaycaster(inspector) {
   mouseCursor.addEventListener('mouseleave', onMouseLeave);
   inspector.container.addEventListener('mousedown', onMouseDown);
   inspector.container.addEventListener('mouseup', onMouseUp);
-  // inspector.container.addEventListener('dblclick', onDoubleClick);
 
   inspector.sceneEl.canvas.addEventListener('mouseleave', () => {
     setTimeout(() => {
@@ -56,7 +55,6 @@ export function initRaycaster(inspector) {
 
   const onDownPosition = new THREE.Vector2();
   const onUpPosition = new THREE.Vector2();
-  // const onDoubleClickPosition = new THREE.Vector2();
 
   function onMouseEnter() {
     Events.emit(
@@ -74,11 +72,9 @@ export function initRaycaster(inspector) {
 
   function handleClick(evt) {
     // Check to make sure not dragging.
-    const DRAG_THRESHOLD = 0.03;
-    if (onDownPosition.distanceTo(onUpPosition) >= DRAG_THRESHOLD) {
-      return;
+    if (onDownPosition.distanceTo(onUpPosition) === 0) {
+      inspector.selectEntity(evt.detail.intersectedEl);
     }
-    inspector.selectEntity(evt.detail.intersectedEl);
   }
 
   function onMouseDown(event) {
@@ -106,23 +102,6 @@ export function initRaycaster(inspector) {
     );
     onUpPosition.fromArray(array);
   }
-
-  /**
-   * Focus on double click.
-   */
-  // function onDoubleClick(event) {
-  //   const array = getMousePosition(
-  //     inspector.container,
-  //     event.clientX,
-  //     event.clientY
-  //   );
-  //   onDoubleClickPosition.fromArray(array);
-  //   const intersectedEl = mouseCursor.components.cursor.intersectedEl;
-  //   if (!intersectedEl) {
-  //     return;
-  //   }
-  //   Events.emit('objectfocus', intersectedEl.object3D);
-  // }
 
   return {
     el: mouseCursor,

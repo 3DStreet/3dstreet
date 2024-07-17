@@ -32,16 +32,16 @@ export class EntityUpdateCommand extends Command {
 
     this.type = 'EntityUpdateCommand';
     this.name = 'Update Entity';
-    this.updatable =
-      payload.component === 'position' ||
-      payload.component === 'rotation' ||
-      payload.component === 'scale';
+    this.updatable = true;
 
     this.entity = payload.entity;
     this.component = payload.component;
     this.property = payload.property;
 
-    const component = AFRAME.components[payload.component];
+    const component = this.entity.components[payload.component];
+    // Don't use AFRAME.components[payload.component] here, but use this.entity.components[payload.component] so we have the dynamic schema,
+    // important for material or geometry components like for example modifying material metalness,
+    // otherwise component.schema[payload.property] would be undefined.
     if (component) {
       if (payload.property) {
         if (component.schema[payload.property]) {
@@ -49,11 +49,17 @@ export class EntityUpdateCommand extends Command {
             payload.value
           );
           this.oldValue = component.schema[payload.property].stringify(
-            payload.entity.getAttribute(payload.component, payload.property)
+            payload.entity.getAttribute(payload.component)[payload.property]
           );
-          if (this.editor.debugUndoRedo) {
-            console.log(this.component, this.oldValue, this.newValue);
-          }
+        } else {
+          // Just in case dynamic schema is not properly updated and we set an unknown property. I don't think this should happen.
+          this.newValue = payload.value;
+          this.oldValue = payload.entity.getAttribute(payload.component)[
+            payload.property
+          ];
+        }
+        if (this.editor.debugUndoRedo) {
+          console.log(this.component, this.oldValue, this.newValue);
         }
       } else {
         this.newValue = component.schema.stringify(payload.value);
@@ -87,6 +93,13 @@ export class EntityUpdateCommand extends Command {
   }
 
   undo() {
+    if (
+      this.editor.selectedEntity &&
+      this.editor.selectedEntity !== this.entity
+    ) {
+      // If the selected entity is not the entity we are undoing, select the entity.
+      this.editor.selectEntity(this.entity);
+    }
     updateEntity(this.entity, this.component, this.property, this.oldValue);
     Events.emit('entityupdate', {
       entity: this.entity,

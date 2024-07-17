@@ -13,6 +13,7 @@ require('./components/ocean');
 require('./components/svg-extruder.js');
 require('./lib/aframe-cursor-teleport-component.min.js');
 require('./lib/animation-mixer.js');
+require('./lib/aframe-gaussian-splatting-component.min.js');
 require('./assets.js');
 require('./components/notify.js');
 require('./components/create-from-json');
@@ -23,6 +24,7 @@ require('./components/street-geo.js');
 require('./components/intersection.js');
 require('./components/auto-intersection.js');
 require('./components/street-environment.js');
+require('./components/intersection.js');
 
 AFRAME.registerComponent('street', {
   schema: {
