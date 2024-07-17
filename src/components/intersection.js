@@ -10,17 +10,32 @@ AFRAME.registerComponent('intersection', {
     northwestcurb: { type: 'string', default: '4 4' },
     stopsign: { type: 'string', default: '0 0 0 0' },
     trafficsignal: { type: 'string', default: '1 1 1 1' },
-    crosswalk: { type: 'string', default: '2 2 2 2' }
+    crosswalk: { type: 'string', default: '2 2 2 2' },
+    synchronize: { default: true }
   },
   update: function () {
-    var data = this.data;
-    var el = this.el;
+    const data = this.data;
+    const el = this.el;
+
+    // do not call the update function when the data.synchronize is set to false
+    if (!data.synchronize) return;
+
+    this.createIntersectionElements();
+
+    // the intersecton elements has been created, set the synchronize flag to false
+    el.setAttribute('intersection', 'synchronize', false);
+  },
+  createIntersectionElements: function () {
+    const data = this.data;
+    const el = this.el;
+
     const directionOrder = ['west', 'east', 'north', 'south'];
 
     // remove all child nodes if exists
     while (el.firstChild) {
       el.removeChild(el.lastChild);
     }
+
     const dimensionsArray = data.dimensions.split(' ').map((i) => Number(i));
     const sidewalkArray = data.sidewalk.split(' ').map((i) => Number(i));
     const northeastcurbArray = data.northeastcurb
@@ -48,6 +63,10 @@ AFRAME.registerComponent('intersection', {
       'geometry',
       `primitive:box; width: ${intersectWidth}; height: ${intersectDepth}; depth:0.2`
     );
+
+    this.el.object3D.position.setY(-0.1);
+    this.el.setAttribute('rotation', '-90 0 0');
+
     this.el.setAttribute(
       'material',
       'src: #asphalt-texture; repeat:5 5; roughness:1'
@@ -366,16 +385,6 @@ AFRAME.registerComponent('intersection', {
       el.appendChild(cw2);
     }
     if (crosswalklArray[2]) {
-      const cw3 = document.createElement('a-entity');
-      cw3.setAttribute('position', { y: -intersectDepth / 2 + 2, z: 0.11 });
-      cw3.setAttribute('rotation', { x: 0, y: 0, z: 90 });
-      cw3.setAttribute('scale', { y: intersectWidth / 12 });
-      cw3.setAttribute('mixin', 'markings crosswalk-zebra');
-      cw3.setAttribute('data-layer-name', 'Crosswalk • Zebra (Continental)');
-      cw3.classList.add('autocreated');
-      el.appendChild(cw3);
-    }
-    if (crosswalklArray[3]) {
       const cw4 = document.createElement('a-entity');
       cw4.setAttribute('position', { y: intersectDepth / 2 - 2, z: 0.11 });
       cw4.setAttribute('data-layer-name', 'Crosswalk • Zebra (Continental)');
@@ -384,6 +393,16 @@ AFRAME.registerComponent('intersection', {
       cw4.setAttribute('mixin', 'markings crosswalk-zebra');
       cw4.classList.add('autocreated');
       el.appendChild(cw4);
+    }
+    if (crosswalklArray[3]) {
+      const cw3 = document.createElement('a-entity');
+      cw3.setAttribute('position', { y: -intersectDepth / 2 + 2, z: 0.11 });
+      cw3.setAttribute('rotation', { x: 0, y: 0, z: 90 });
+      cw3.setAttribute('scale', { y: intersectWidth / 12 });
+      cw3.setAttribute('mixin', 'markings crosswalk-zebra');
+      cw3.setAttribute('data-layer-name', 'Crosswalk • Zebra (Continental)');
+      cw3.classList.add('autocreated');
+      el.appendChild(cw3);
     }
   }
 });

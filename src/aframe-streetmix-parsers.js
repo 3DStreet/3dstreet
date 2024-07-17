@@ -1702,6 +1702,9 @@ function processSegments(
     // append the new surfaceElement to the segmentParentEl
     streetParentEl.append(segmentParentEl);
     segmentParentEl.setAttribute('position', segmentPositionX + ' 0 0');
+    segmentParentEl.setAttribute('data-type', segments[i].type);
+    segmentParentEl.setAttribute('data-variant', variantList.join('|'));
+    segmentParentEl.setAttribute('data-width', segments[i].width);
     segmentParentEl.setAttribute(
       'data-layer-name',
       'Segment • ' + segments[i].type + ', ' + variantList[0]

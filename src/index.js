@@ -21,6 +21,8 @@ require('./components/screentock.js');
 require('aframe-atlas-uvs-component');
 require('./components/streetplan-loader');
 require('./components/street-geo.js');
+require('./components/intersection.js');
+require('./components/auto-intersection.js');
 require('./components/street-environment.js');
 require('./components/intersection.js');
 

@@ -1,5 +1,5 @@
 src/editor/lib/TransformControls.js
 src/lib/
-public
-dist
+public/
+dist/
 .storybook/
