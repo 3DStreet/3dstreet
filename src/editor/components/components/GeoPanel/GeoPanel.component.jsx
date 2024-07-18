@@ -10,8 +10,15 @@ import { useAuthContext, useGeoContext } from '../../../contexts/index.js';
  * @category Components.
  */
 const GeoPanel = () => {
-  const onClick = () => Events.emit('opengeomodal');
   const { currentUser } = useAuthContext();
+  const onClick = () => {
+    if (currentUser.isPro) {
+      Events.emit('opengeomodal');
+    } else {
+      Events.emit('openpaymentmodal');
+    }
+  };
+
   const streetGeo = useGeoContext();
   let coordinateInfo = null;
 
@@ -21,18 +28,15 @@ const GeoPanel = () => {
 
   return (
     <div className={styles.geo}>
-      {currentUser?.isPro ? (
-        <>
-          <img src={GeoImg} onClick={onClick} alt="geo" />
-          {coordinateInfo ? (
-            <a onClick={onClick}>{coordinateInfo}</a>
-          ) : (
-            <a onClick={onClick}>Click to set location</a>
-          )}
-        </>
-      ) : (
-        <></>
-      )}
+      <>
+        <img src={GeoImg} onClick={onClick} alt="geo" />
+        {coordinateInfo ? (
+          <a onClick={onClick}>{coordinateInfo}</a>
+        ) : (
+          <a onClick={onClick}>Click to set location</a>
+        )}
+      </>
+      )
     </div>
   );
 };
