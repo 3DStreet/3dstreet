@@ -237,6 +237,7 @@ const AddLayerPanel = ({ onClose, isAddLayerPanelOpen }) => {
       isProUser: isProUser
     });
     if (card.requiresPro && !isProUser) {
+      Events.emit('hideAddLayerPanel');
       Events.emit('openpaymentmodal');
     } else if (card.mixinId) {
       createEntity(card.mixinId);
