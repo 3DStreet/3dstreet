@@ -1,4 +1,5 @@
 import debounce from 'lodash-es/debounce';
+import { currentOrthoDir } from './cameras';
 
 /**
  * @author qiao / https://github.com/qiao
@@ -105,10 +106,6 @@ THREE.EditorControls = function (_object, domElement) {
   };
 
   this.zoom = function (delta) {
-    if (!sessionStorage.getItem('initialZoomObject')) {
-      sessionStorage.setItem('initialZoomObject', JSON.stringify(object));
-    }
-
     var distance = object.position.distanceTo(center);
 
     delta.multiplyScalar(distance * scope.zoomSpeed);
@@ -379,30 +376,27 @@ THREE.EditorControls = function (_object, domElement) {
   const zoomOutStop = () => clearInterval(zoomOutInterval);
 
   const resetZoom = () => {
-    const initialObject = JSON.parse(
-      sessionStorage.getItem('initialZoomObject')
-    )?.object;
-
-    if (initialObject) {
-      initialObject.position = new THREE.Vector3().set(0, 10, 0);
-
-      if (this.isOrthographic) {
-        object.left = initialObject.left;
-        object.bottom = initialObject.bottom;
-        object.right = initialObject.right;
-        object.top = initialObject.top;
+    if (this.isOrthographic) {
+      const sceneEl = AFRAME.scenes[0];
+      const ratio = sceneEl.canvas.width / sceneEl.canvas.height;
+      object.left = -40 * ratio;
+      object.right = 40 * ratio;
+      object.top = 40;
+      object.bottom = -40;
+      if (currentOrthoDir === 'top') {
         object.position.set(0, 10, 0);
-        if (object.left >= -0.0001) {
-          return;
-        }
-        object.updateProjectionMatrix();
-      } else {
-        object.rotation.set(-0.4, 0, 0);
-        object.position.set(0, 15, 30);
       }
-
-      scope.dispatchChange();
+      if (currentOrthoDir === 'front') {
+        object.position.set(0, 0, 10);
+      }
+      object.updateProjectionMatrix();
+    } else {
+      object.position.set(0, 15, 30);
+      object.lookAt(new THREE.Vector3(0, 1.6, -1));
+      object.updateMatrixWorld();
     }
+
+    scope.dispatchChange();
   };
 
   setTimeout(() => {

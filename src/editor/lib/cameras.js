@@ -1,7 +1,7 @@
 import Events from './Events';
 
 // Save ortho camera FOV / position before switching to restore later.
-let currentOrthoDir = '';
+export let currentOrthoDir = '';
 const orthoCameraMemory = {
   left: { position: new THREE.Vector3(-10, 0, 0), rotation: new THREE.Euler() },
   right: { position: new THREE.Vector3(10, 0, 0), rotation: new THREE.Euler() },
