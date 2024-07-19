@@ -144,6 +144,9 @@ export default class Main extends Component {
       posthog.capture('payment_modal_opened');
       this.setState({ isPaymentModalOpened: true });
     });
+    Events.on('hideAddLayerPanel', () => {
+      this.setState({ isAddLayerPanelOpen: false });
+    });
   }
 
   onCloseHelpModal = (value) => {
