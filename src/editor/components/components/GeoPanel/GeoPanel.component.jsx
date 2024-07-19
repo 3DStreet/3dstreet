@@ -2,7 +2,7 @@ import GeoImg from '../../../../../ui_assets/geo.png';
 import styles from './GeoPanel.module.scss';
 import Events from '../../../lib/Events';
 import { useAuthContext, useGeoContext } from '../../../contexts/index.js';
-
+import posthog from 'posthog-js';
 /**
  * GeoPanel component.
  *
@@ -12,6 +12,7 @@ import { useAuthContext, useGeoContext } from '../../../contexts/index.js';
 const GeoPanel = () => {
   const { currentUser } = useAuthContext();
   const onClick = () => {
+    posthog.capture('geo_panel_clicked');
     if (currentUser.isPro) {
       Events.emit('opengeomodal');
     } else {
