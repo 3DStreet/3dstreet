@@ -266,7 +266,7 @@ THREE.EditorControls = function (_object, domElement) {
 
     document
       .getElementById('resetZoomButton')
-      .removeEventListener('pointerdown', resetZoom);
+      .removeEventListener('pointerdown', this.resetZoom);
   };
 
   domElement.addEventListener('contextmenu', contextmenu, false);
@@ -375,7 +375,7 @@ THREE.EditorControls = function (_object, domElement) {
   };
   const zoomOutStop = () => clearInterval(zoomOutInterval);
 
-  const resetZoom = () => {
+  this.resetZoom = () => {
     if (this.isOrthographic) {
       const sceneEl = AFRAME.scenes[0];
       const ratio = sceneEl.canvas.width / sceneEl.canvas.height;
@@ -412,7 +412,7 @@ THREE.EditorControls = function (_object, domElement) {
     zoomOutButton.addEventListener('pointerup', zoomOutStop);
     zoomOutButton.addEventListener('pointerleave', zoomOutStop);
 
-    resetZoomButton.addEventListener('pointerdown', resetZoom);
+    resetZoomButton.addEventListener('pointerdown', this.resetZoom);
   }, 1);
 };
 
