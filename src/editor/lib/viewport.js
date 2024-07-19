@@ -128,6 +128,7 @@ export function Viewport(inspector) {
 
   Events.on('raycastermouseenter', (el) => {
     // update hoverBox to match el.object3D bounding box
+    if (el === inspector.selectedEntity) return;
     hoverBox.visible = true;
     hoverBox.setFromObject(el.object3D);
   });
@@ -260,6 +261,7 @@ export function Viewport(inspector) {
   });
 
   Events.on('objectselect', (object) => {
+    hoverBox.visible = false;
     selectionBox.visible = false;
     transformControls.detach();
     if (object && object.el) {
