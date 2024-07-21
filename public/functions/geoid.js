@@ -283,10 +283,10 @@ function loadGeoidModel(filepath) {
     });
 };
 
-const geoidFilePath = 'EGM84-30.pgm'; // Replace with the actual path to your PGM file
-loadGeoidModel(geoidFilePath).then(getGeoidHeight => {
-    const geoidHeight = getGeoidHeight(48.4069835, -114.3008482, true);
-    console.log(geoidHeight);
-}).catch(err => {
-    console.error(err);
-});
+// function that takes in lat, long, and returns the height
+async function getGeoidHeightFromPGM(geoidFilePath, lat, long) {
+    const geoidModel = await loadGeoidModel(geoidFilePath);
+    const geoidHeight = geoidModel(lat, long, true);
+    return geoidHeight;
+};
+exports.getGeoidHeightFromPGM = getGeoidHeightFromPGM;

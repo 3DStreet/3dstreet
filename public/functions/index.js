@@ -2,6 +2,18 @@ const functions = require('firebase-functions');
 const admin = require('firebase-admin');
 admin.initializeApp();
 const { getAuth } = require('firebase-admin/auth');
+const { getGeoidHeightFromPGM } = require('./geoid.js');
+
+exports.getGeoidHeight = functions
+  .https
+  .onRequest(async (request, response) => {
+    const lat = parseFloat(request.query.lat);
+    const lon = parseFloat(request.query.lon);
+    const geoidFilePath = 'EGM96-15.pgm';
+    const height = await getGeoidHeightFromPGM(geoidFilePath, lat, lon);
+    // return json response with fields geoidModel, lat, lon, geoidHeight
+    response.json({ geoidModel: geoidFilePath, lat: lat, lon: lon, geoidHeight: height });
+  });
 
 exports.getScene = functions
   .https
