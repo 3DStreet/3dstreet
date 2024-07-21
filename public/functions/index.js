@@ -9,7 +9,7 @@ exports.getGeoidHeight = functions
   .onRequest(async (request, response) => {
     const lat = parseFloat(request.query.lat);
     const lon = parseFloat(request.query.lon);
-    const geoidFilePath = 'EGM96-15.pgm';
+    const geoidFilePath = 'EGM96-15.pgm'; // Converted from USA NGA data under Public Domain license.
     const height = await getGeoidHeightFromPGM(geoidFilePath, lat, lon);
     // return json response with fields geoidModel, lat, lon, geoidHeight
     response.json({ geoidModel: geoidFilePath, lat: lat, lon: lon, geoidHeight: height });
