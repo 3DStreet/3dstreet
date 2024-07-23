@@ -3,7 +3,8 @@ import { useState, useCallback, useEffect } from 'react';
 import styles from './GeoModal.module.scss';
 import { Mangnifier20Icon, Save24Icon, QR32Icon } from '../../../icons';
 
-import { firebaseConfig } from '../../../services/firebase.js';
+import { httpsCallable } from 'firebase/functions';
+import { firebaseConfig, functions } from '../../../services/firebase.js';
 import Modal from '../Modal.jsx';
 import { Button, Input } from '../../components/index.js';
 import {
@@ -50,20 +51,21 @@ const GeoModal = ({ isOpen, onClose }) => {
     }
   }, [isOpen]);
 
-  const requestAndSetElevation = (lat, lng) => {
-    // call the new firebase cloud function getGeoidHeight
+  const requestAndSetElevation = async (lat, lng) => {
     // request and set elevation for location with coordinates: lat, lng
-    const elevationService = new window.google.maps.ElevationService();
-    elevationService.getElevationForLocations(
-      {
-        locations: [{ lat, lng }]
-      },
-      (results, status) => {
-        if (status === 'OK' && results[0]) {
-          setElevation(results[0].elevation.toFixed(2));
-        }
-      }
-    );
+    const getGeoidHeight = httpsCallable(functions, 'getGeoidHeight');
+    getGeoidHeight({ lat: lat, lon: lng })
+      .then((result) => {
+        const ellipsoidalHeight = result.data.ellipsoidalHeight;
+        setElevation(ellipsoidalHeight);
+      })
+      .catch((error) => {
+        // Getting the Error details.
+        const code = error.code;
+        const message = error.message;
+        const details = error.details;
+        console.error(code, message, details);
+      });
   };
 
   const setMarkerPositionAndElevation = useCallback((lat, lng) => {

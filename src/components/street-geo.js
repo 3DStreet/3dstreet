@@ -19,7 +19,7 @@ AFRAME.registerComponent('street-geo', {
       update function: <mapType>Update,
     */
     this.mapTypes = ['mapbox2d', 'google3d'];
-    this.elevationHeightConstant = 32.49158;
+    this.elevationHeightConstant = 0; // formerly 32.49158
 
     const urlParams = new URLSearchParams(window.location.search);
     this.isAR = urlParams.get('viewer') === 'ar';

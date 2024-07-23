@@ -18,7 +18,8 @@
     "deploy": "npm run dist && npm run prefirebase && cd public && firebase use dstreet-305604 && firebase deploy --only hosting:app3dstreet",
     "deploy:staging": "npm run dist:staging && npm run prefirebase && cd public && firebase use dev-3dstreet && firebase deploy --only hosting:dev-3dstreet",
     "storybook": "storybook dev -p 6006",
-    "build-storybook": "storybook build"
+    "build-storybook": "storybook build",
+    "emulator": "npm run dist:staging && npm run prefirebase && cd public && firebase emulators:start"
   },
   "repository": "3dstreet/3dstreet",
   "author": "kieran.farr@gmail.com",

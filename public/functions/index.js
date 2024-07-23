@@ -8,9 +8,9 @@ const { Client: GoogleMapsClient } = require("@googlemaps/google-maps-services-j
 exports.getGeoidHeight = functions
   .runWith({ secrets: ["GOOGLE_MAPS_ELEVATION_API_KEY"] })
   .https
-  .onRequest(async (request, response) => {
-    const lat = parseFloat(request.query.lat);
-    const lon = parseFloat(request.query.lon);
+  .onCall(async (data, context) => {
+    const lat = parseFloat(data.lat);
+    const lon = parseFloat(data.lon);
     const geoidFilePath = 'EGM96-15.pgm'; // Converted from USA NGA data under Public Domain license.
     const geoidHeight = await getGeoidHeightFromPGM(geoidFilePath, lat, lon);
     const client = new GoogleMapsClient({});
@@ -31,7 +31,7 @@ exports.getGeoidHeight = functions
         console.log(e.response.data.error_message);
       });
     // return json response with fields geoidModel, lat, lon, geoidHeight
-    response.json({
+    return {
       lat: lat,
       lon: lon,
       geoidHeight: geoidHeight,
@@ -40,7 +40,7 @@ exports.getGeoidHeight = functions
       orthographicSource: 'Google Maps Elevation Service',
       ellipsoidalHeight: geoidHeight + orthographicHeight,
       ellipsoidalSource: 'Calculated: ellipsoidalHeight = geoidHeight + orthographicHeight'
-    });
+    };
   });
 
 exports.getScene = functions
