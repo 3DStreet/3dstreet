@@ -29,6 +29,7 @@ const GeoModal = ({ isOpen, onClose }) => {
   const [elevation, setElevation] = useState(10);
   const [autocomplete, setAutocomplete] = useState(null);
   const [qrCodeUrl, setQrCodeUrl] = useState(null);
+  const [heightData, setHeightData] = useState(null);
 
   useEffect(() => {
     if (isOpen) {
@@ -56,8 +57,8 @@ const GeoModal = ({ isOpen, onClose }) => {
     const getGeoidHeight = httpsCallable(functions, 'getGeoidHeight');
     getGeoidHeight({ lat: lat, lon: lng })
       .then((result) => {
-        const ellipsoidalHeight = result.data.ellipsoidalHeight;
-        setElevation(ellipsoidalHeight);
+        setHeightData(result.data);
+        setElevation(result.data.orthometricHeight);
       })
       .catch((error) => {
         // Getting the Error details.
@@ -146,7 +147,7 @@ const GeoModal = ({ isOpen, onClose }) => {
     const geoLayer = document.getElementById('reference-layers');
     geoLayer.setAttribute(
       'street-geo',
-      `latitude: ${latitude}; longitude: ${longitude}; elevation: ${elevation}`
+      `latitude: ${latitude}; longitude: ${longitude}; ellipsoidalHeight: ${heightData?.ellipsoidalHeight}; orthometricHeight: ${heightData?.orthometricHeight}; geoidHeight: ${heightData?.geoidHeight}`
     );
 
     onClose();
@@ -208,7 +209,12 @@ const GeoModal = ({ isOpen, onClose }) => {
           <div>
             <p>Elevation</p>
             <Input
-              leadingIcon={<p className={styles.iconGeo}>Height</p>}
+              leadingIcon={
+                <p className={styles.iconGeo}>
+                  Orthometric
+                  <br /> Height
+                </p>
+              }
               value={elevation}
               placeholder="None"
               onChange={handleElevationChange}

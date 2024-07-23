@@ -15,7 +15,7 @@ exports.getGeoidHeight = functions
     const geoidHeight = await getGeoidHeightFromPGM(geoidFilePath, lat, lon);
     const client = new GoogleMapsClient({});
 
-    let orthographicHeight = null;
+    let orthometricHeight = null;
     await client
       .elevation({
         params: {
@@ -25,7 +25,7 @@ exports.getGeoidHeight = functions
         timeout: 1000, // milliseconds
       })
       .then((r) => {
-        orthographicHeight = r.data.results[0].elevation;
+        orthometricHeight = r.data.results[0].elevation;
       })
       .catch((e) => {
         console.log(e.response.data.error_message);
@@ -36,10 +36,10 @@ exports.getGeoidHeight = functions
       lon: lon,
       geoidHeight: geoidHeight,
       geoidSource: geoidFilePath,
-      orthographicHeight: orthographicHeight,
-      orthographicSource: 'Google Maps Elevation Service',
-      ellipsoidalHeight: geoidHeight + orthographicHeight,
-      ellipsoidalSource: 'Calculated: ellipsoidalHeight = geoidHeight + orthographicHeight'
+      orthometricHeight: orthometricHeight,
+      orthometricSource: 'Google Maps Elevation Service',
+      ellipsoidalHeight: geoidHeight + orthometricHeight,
+      ellipsoidalSource: 'Calculated: ellipsoidalHeight = geoidHeight + orthometricHeight'
     };
   });
 
