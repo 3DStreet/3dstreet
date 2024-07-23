@@ -51,6 +51,7 @@ const GeoModal = ({ isOpen, onClose }) => {
   }, [isOpen]);
 
   const requestAndSetElevation = (lat, lng) => {
+    // call the new firebase cloud function getGeoidHeight
     // request and set elevation for location with coordinates: lat, lng
     const elevationService = new window.google.maps.ElevationService();
     elevationService.getElevationForLocations(

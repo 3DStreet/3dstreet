@@ -3,16 +3,44 @@ const admin = require('firebase-admin');
 admin.initializeApp();
 const { getAuth } = require('firebase-admin/auth');
 const { getGeoidHeightFromPGM } = require('./geoid.js');
+const { Client: GoogleMapsClient } = require("@googlemaps/google-maps-services-js");
 
 exports.getGeoidHeight = functions
+  .runWith({ secrets: ["GOOGLE_MAPS_ELEVATION_API_KEY"] })
   .https
   .onRequest(async (request, response) => {
     const lat = parseFloat(request.query.lat);
     const lon = parseFloat(request.query.lon);
     const geoidFilePath = 'EGM96-15.pgm'; // Converted from USA NGA data under Public Domain license.
-    const height = await getGeoidHeightFromPGM(geoidFilePath, lat, lon);
+    const geoidHeight = await getGeoidHeightFromPGM(geoidFilePath, lat, lon);
+    const client = new GoogleMapsClient({});
+
+    let orthographicHeight = null;
+    await client
+      .elevation({
+        params: {
+          locations: [{ lat: lat, lng: lon }],
+          key: process.env.GOOGLE_MAPS_ELEVATION_API_KEY,
+        },
+        timeout: 1000, // milliseconds
+      })
+      .then((r) => {
+        orthographicHeight = r.data.results[0].elevation;
+      })
+      .catch((e) => {
+        console.log(e.response.data.error_message);
+      });
     // return json response with fields geoidModel, lat, lon, geoidHeight
-    response.json({ geoidModel: geoidFilePath, lat: lat, lon: lon, geoidHeight: height });
+    response.json({
+      lat: lat,
+      lon: lon,
+      geoidHeight: geoidHeight,
+      geoidSource: geoidFilePath,
+      orthographicHeight: orthographicHeight,
+      orthographicSource: 'Google Maps Elevation Service',
+      ellipsoidalHeight: geoidHeight + orthographicHeight,
+      ellipsoidalSource: 'Calculated: ellipsoidalHeight = geoidHeight + orthographicHeight'
+    });
   });
 
 exports.getScene = functions
