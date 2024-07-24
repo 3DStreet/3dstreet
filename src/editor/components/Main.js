@@ -20,6 +20,8 @@ import { ScenesModal } from './modals/ScenesModal';
 import { PaymentModal } from './modals/PaymentModal';
 import { SceneEditTitle } from './components/SceneEditTitle';
 import { AddLayerPanel } from './components/AddLayerPanel';
+import { removeEntity } from '../lib/entity.js';
+
 import posthog from 'posthog-js';
 
 THREE.ImageUtils.crossOrigin = '';
@@ -38,6 +40,7 @@ export default class Main extends Component {
       isProfileModalOpened: false,
       isAddLayerPanelOpen: false,
       isGeoModalOpened: false,
+      geoEnabled: false,
       isScenesModalOpened: !isStreetLoaded,
       isPaymentModalOpened: isPaymentModalOpened,
       sceneEl: AFRAME.scenes[0],
@@ -172,6 +175,7 @@ export default class Main extends Component {
   };
 
   onCloseSignInModal = () => {
+    console.log('closed');
     this.setState({ isSignInModalOpened: false });
   };
 
@@ -183,13 +187,32 @@ export default class Main extends Component {
     this.setState({ isProfileModalOpened: false });
   };
 
-  onCloseGeoModal = () => {
-    this.setState({ isGeoModalOpened: false });
+  onCloseGeoModal = (user) => {
+    console.log('im running geo');
+    if (!user) {
+      this.setState({ isSignInModalOpened: true });
+    } else if (user && !user.isPro) {
+      this.setState({
+        isGeoModalOpened: false,
+        isPaymentModalOpened: true,
+        geoEnabled: true
+      });
+    }
   };
 
-  onClosePaymentModal = () => {
+  onClosePaymentModal = (user) => {
+    console.log('im running');
+
     window.location.hash = '#';
     this.setState({ isPaymentModalOpened: false });
+    if (!user.isPro && this.state.geoEnabled) {
+      STREET.notify.warningMessage('geospatial features require pro plan');
+      const element = document.querySelector(
+        '[data-layer-name="Google 3D Tiles"]'
+      );
+      removeEntity(element, true);
+      this.setState({ geoEnabled: false });
+    }
   };
 
   toggleEdit = () => {

@@ -1,11 +1,12 @@
 import { useState, useCallback, useEffect } from 'react';
+import { useAuthContext } from '../../../contexts/index.js';
 
 import styles from './GeoModal.module.scss';
 import { Mangnifier20Icon, Save24Icon, QR32Icon } from '../../../icons';
 
 import { firebaseConfig } from '../../../services/firebase.js';
 import Modal from '../Modal.jsx';
-import { Button, Input } from '../../components/index.js';
+import { Button, Input, Toggle } from '../../components/index.js';
 import {
   GoogleMap,
   useJsApiLoader,
@@ -15,12 +16,17 @@ import {
 import GeoImg from '../../../../../ui_assets/geo.png';
 import { roundCoord } from '../../../../../src/utils.js';
 import { QrCode } from '../../components/QrCode/QrCode.component.jsx';
+import {
+  create3DTiles,
+  createMapbox
+} from '../../components/AddLayerPanel/createLayerFunctions.js';
 
 const GeoModal = ({ isOpen, onClose }) => {
   const { isLoaded } = useJsApiLoader({
     googleMapsApiKey: firebaseConfig.apiKey
   });
 
+  const { currentUser } = useAuthContext();
   const [markerPosition, setMarkerPosition] = useState({
     lat: 37.7637072, // lat: 37.76370724481858, lng: -122.41517686259827
     lng: -122.4151768
@@ -28,6 +34,7 @@ const GeoModal = ({ isOpen, onClose }) => {
   const [elevation, setElevation] = useState(10);
   const [autocomplete, setAutocomplete] = useState(null);
   const [qrCodeUrl, setQrCodeUrl] = useState(null);
+  const [is3D, setIs3D] = useState(true);
 
   useEffect(() => {
     if (isOpen) {
@@ -92,6 +99,9 @@ const GeoModal = ({ isOpen, onClose }) => {
     setElevation(newElevation);
   };
 
+  const handle3DToggle = (value) => {
+    setIs3D(value);
+  };
   const onAutocompleteLoad = useCallback((autocompleteInstance) => {
     setAutocomplete(autocompleteInstance);
   }, []);
@@ -111,10 +121,11 @@ const GeoModal = ({ isOpen, onClose }) => {
   }, [autocomplete]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const onCloseCheck = (evt) => {
+    console.log('running check');
     // do not close geoModal when clicking on a list with suggestions for addresses
     const autocompleteContatiner = document.querySelector('.pac-container');
     if (autocompleteContatiner.children.length === 0) {
-      onClose();
+      onClose(currentUser);
     }
   };
 
@@ -145,8 +156,13 @@ const GeoModal = ({ isOpen, onClose }) => {
       'street-geo',
       `latitude: ${latitude}; longitude: ${longitude}; elevation: ${elevation}`
     );
-
-    onClose();
+    if (is3D) {
+      create3DTiles();
+    } else {
+      createMapbox();
+    }
+    console.log(currentUser);
+    onClose(currentUser);
   };
 
   return (
@@ -211,6 +227,14 @@ const GeoModal = ({ isOpen, onClose }) => {
               onChange={handleElevationChange}
             ></Input>
           </div>
+          <div>
+            <p>3D Enabled</p>
+            <Toggle
+              status={is3D}
+              onChange={handle3DToggle}
+              label={{ text: 'Google 3D Tiles' }}
+            />
+          </div>
         </div>
 
         {qrCodeUrl && (
@@ -238,7 +262,7 @@ const GeoModal = ({ isOpen, onClose }) => {
             variant="filled"
             onClick={onSaveHandler}
           >
-            Update Scene Location
+            Update Scene
           </Button>
         </div>
       </div>

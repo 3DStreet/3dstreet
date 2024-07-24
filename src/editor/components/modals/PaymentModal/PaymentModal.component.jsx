@@ -58,12 +58,15 @@ const PaymentModal = ({ isOpen, onClose }) => {
     setIsLoading(false);
   };
 
+  const closeWrapper = () => {
+    onClose(currentUser);
+  };
+
   return (
     <Modal
       className={styles.modalWrapper}
       isOpen={isOpen}
-      onClose={onClose}
-      extraCloseKeyCode={72}
+      onClose={closeWrapper}
     >
       <div className={styles.paymentDetails}>
         <h3>Unlock Geospatial Features with 3DStreet Pro</h3>

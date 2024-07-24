@@ -36,6 +36,7 @@ const AuthProvider = ({ children }) => {
     };
 
     const unsubscribe = auth.onAuthStateChanged((user) => {
+      console.log('auth changed');
       fetchUserData(user);
     });
 

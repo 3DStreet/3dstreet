@@ -98,6 +98,7 @@ function create3DTiles() {
       latitude: ${latitude}; longitude: ${longitude}; elevation: ${elevation}; maps: google3d
     `
     );
+    console.log(geoLayer);
     // update sceneGraph
     Events.emit('entitycreated', geoLayer);
   };

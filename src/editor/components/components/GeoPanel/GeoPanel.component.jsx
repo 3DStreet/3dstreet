@@ -12,13 +12,14 @@ import posthog from 'posthog-js';
 const GeoPanel = () => {
   const { currentUser } = useAuthContext();
   const onClick = () => {
-    posthog.capture('geo_panel_clicked');
+    posthog.capture('geo_panel_clicked', { user_id: currentUser?.uid });
     if (!currentUser) {
+      STREET.notify.warningMessage(
+        'Please sign in to use geospatial features.'
+      );
       Events.emit('opensigninmodal');
-    } else if (currentUser.isPro) {
-      Events.emit('opengeomodal');
     } else {
-      Events.emit('openpaymentmodal');
+      Events.emit('opengeomodal');
     }
   };
 
