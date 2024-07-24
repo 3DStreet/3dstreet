@@ -24,7 +24,7 @@ const GeoPanel = () => {
   let coordinateInfo = null;
 
   if (streetGeo) {
-    coordinateInfo = `Latitude: ${streetGeo.latitude}, Longitude: ${streetGeo.longitude}, Elevation: ${streetGeo.elevation}m`;
+    coordinateInfo = `Latitude: ${streetGeo.latitude}, Longitude: ${streetGeo.longitude}, Elevation: ${streetGeo.ellipsoidalHeight}m`;
   }
 
   return (
@@ -37,7 +37,6 @@ const GeoPanel = () => {
           <a onClick={onClick}>Click to set location</a>
         )}
       </>
-      )
     </div>
   );
 };

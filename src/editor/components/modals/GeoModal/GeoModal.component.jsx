@@ -26,7 +26,7 @@ const GeoModal = ({ isOpen, onClose }) => {
     lat: 37.7637072, // lat: 37.76370724481858, lng: -122.41517686259827
     lng: -122.4151768
   });
-  const [elevation, setElevation] = useState(10);
+  const [elevation, setElevation] = useState(null);
   const [autocomplete, setAutocomplete] = useState(null);
   const [qrCodeUrl, setQrCodeUrl] = useState(null);
   const [heightData, setHeightData] = useState(null);
@@ -40,13 +40,13 @@ const GeoModal = ({ isOpen, onClose }) => {
       if (streetGeo && streetGeo['latitude'] && streetGeo['longitude']) {
         const lat = roundCoord(parseFloat(streetGeo['latitude']));
         const lng = roundCoord(parseFloat(streetGeo['longitude']));
-        const elevation = parseFloat(streetGeo['elevation']) || 0;
+        const ellipsoidalHeight = parseFloat(streetGeo['ellipsoidalHeight']);
 
         if (!isNaN(lat) && !isNaN(lng)) {
           setMarkerPosition({ lat, lng });
         }
-        if (!isNaN(elevation)) {
-          setElevation(elevation);
+        if (!isNaN(ellipsoidalHeight)) {
+          setElevation(ellipsoidalHeight);
         }
       }
     }
@@ -58,7 +58,7 @@ const GeoModal = ({ isOpen, onClose }) => {
     getGeoidHeight({ lat: lat, lon: lng })
       .then((result) => {
         setHeightData(result.data);
-        setElevation(result.data.orthometricHeight);
+        setElevation(result.data.ellipsoidalHeight);
       })
       .catch((error) => {
         // Getting the Error details.
@@ -147,7 +147,7 @@ const GeoModal = ({ isOpen, onClose }) => {
     const geoLayer = document.getElementById('reference-layers');
     geoLayer.setAttribute(
       'street-geo',
-      `latitude: ${latitude}; longitude: ${longitude}; ellipsoidalHeight: ${heightData?.ellipsoidalHeight}; orthometricHeight: ${heightData?.orthometricHeight}; geoidHeight: ${heightData?.geoidHeight}`
+      `latitude: ${latitude}; longitude: ${longitude}; ellipsoidalHeight: ${elevation}; orthometricHeight: ${heightData?.orthometricHeight}; geoidHeight: ${heightData?.geoidHeight}`
     );
 
     onClose();
@@ -211,7 +211,7 @@ const GeoModal = ({ isOpen, onClose }) => {
             <Input
               leadingIcon={
                 <p className={styles.iconGeo}>
-                  Orthometric
+                  Ellipsoidal
                   <br /> Height
                 </p>
               }
