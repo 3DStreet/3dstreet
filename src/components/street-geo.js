@@ -50,7 +50,9 @@ AFRAME.registerComponent('street-geo', {
         }
       } else if (
         data.maps.includes(mapType) &&
-        (updatedData.longitude || updatedData.latitude || updatedData.elevation)
+        (updatedData.longitude ||
+          updatedData.latitude ||
+          updatedData.ellipsoidalHeight)
       ) {
         // call update map function with name: <mapType>Update
         this[mapType + 'Update']();
