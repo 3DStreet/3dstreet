@@ -23,7 +23,7 @@ const PaymentModal = ({ isOpen, onClose }) => {
   const { currentUser } = useAuthContext();
   const [isLoading, setIsLoading] = useState(false);
 
-  if (location.pathname.includes('success')) {
+  if (location.hash.includes('success')) {
     posthog.capture('checkout_finished');
   }
 
