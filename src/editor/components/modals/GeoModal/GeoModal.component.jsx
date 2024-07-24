@@ -26,7 +26,7 @@ const GeoModal = ({ isOpen, onClose }) => {
     lat: 37.7637072, // lat: 37.76370724481858, lng: -122.41517686259827
     lng: -122.4151768
   });
-  const [elevation, setElevation] = useState(null);
+  const [elevation, setElevation] = useState(0);
   const [autocomplete, setAutocomplete] = useState(null);
   const [qrCodeUrl, setQrCodeUrl] = useState(null);
   const [heightData, setHeightData] = useState(null);
