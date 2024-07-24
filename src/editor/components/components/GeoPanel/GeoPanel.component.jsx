@@ -31,15 +31,12 @@ const GeoPanel = () => {
 
   return (
     <div className={styles.geo}>
-      <>
-        <img src={GeoImg} onClick={onClick} alt="geo" />
-        {coordinateInfo ? (
-          <a onClick={onClick}>{coordinateInfo}</a>
-        ) : (
-          <a onClick={onClick}>Click to set location</a>
-        )}
-      </>
-      )
+      <img src={GeoImg} onClick={onClick} alt="geo" />
+      {coordinateInfo ? (
+        <a onClick={onClick}>{coordinateInfo}</a>
+      ) : (
+        <a onClick={onClick}>Click to set location</a>
+      )}
     </div>
   );
 };
