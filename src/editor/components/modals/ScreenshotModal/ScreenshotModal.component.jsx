@@ -15,8 +15,9 @@ import { useAuthContext } from '../../../contexts';
 import { Copy32Icon, Save24Icon } from '../../../icons';
 import { db, storage } from '../../../services/firebase';
 import { Button, Dropdown, Input } from '../../components';
-import Toolbar from '../../scenegraph/Toolbar';
 import Modal from '../Modal.jsx';
+import { convertToObject, exportSceneToGLTF } from '../../../lib/converters.js';
+
 import posthog from 'posthog-js';
 // import { loginHandler } from '../SignInModal';
 
@@ -153,12 +154,12 @@ function ScreenshotModal({ isOpen, onClose }) {
     {
       value: 'GLB glTF',
       label: 'GLB glTF',
-      onClick: Toolbar.exportSceneToGLTF
+      onClick: exportSceneToGLTF
     },
     {
       value: '.3dstreet.json',
       label: '.3dstreet.json',
-      onClick: Toolbar.convertToObject
+      onClick: convertToObject
     }
   ];
 

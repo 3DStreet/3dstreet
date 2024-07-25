@@ -1,5 +1,4 @@
-import { Button, HelpButton, GeoPanel, Logo, ZoomButtons } from './components';
-import { CameraToolbar } from './viewport';
+import { Button, HelpButton, GeoPanel, ZoomButtons } from './components';
 import { Compass32Icon } from '../icons';
 import { Component } from 'react';
 import ComponentsSidebar from './components/Sidebar';
@@ -18,8 +17,8 @@ import { GeoModal } from './modals/GeoModal';
 import { ActionBar } from './components/ActionBar';
 import { ScenesModal } from './modals/ScenesModal';
 import { PaymentModal } from './modals/PaymentModal';
-import { SceneEditTitle } from './components/SceneEditTitle';
 import { AddLayerPanel } from './components/AddLayerPanel';
+import { ToolbarWrapper } from './components/Toolbar/index.js';
 import posthog from 'posthog-js';
 
 THREE.ImageUtils.crossOrigin = '';
@@ -246,7 +245,11 @@ export default class Main extends Component {
 
     return (
       <div>
-        <Logo onToggleEdit={this.toggleEdit} isEditor={isEditor} />
+        <ToolbarWrapper
+          onToggleEdit={this.toggleEdit}
+          isEditor={isEditor}
+          sceneData={sceneData}
+        />
         {this.renderSceneGraphToggle()}
         {this.renderComponentsToggle()}
         {isEditor && (
@@ -257,7 +260,6 @@ export default class Main extends Component {
               visible={this.state.visible.scenegraph}
             />
             <div id="viewportBar">
-              <CameraToolbar />
               <TransformToolbar />
             </div>
             <div id="rightPanel">
@@ -324,11 +326,6 @@ export default class Main extends Component {
               handleAddClick={this.toggleAddLayerPanel}
               isAddLayerPanelOpen={this.state.isAddLayerPanelOpen}
             />
-          </div>
-        )}
-        {this.state.inspectorEnabled && (
-          <div id="scene-title">
-            <SceneEditTitle sceneData={sceneData} />
           </div>
         )}
         {this.state.inspectorEnabled && (

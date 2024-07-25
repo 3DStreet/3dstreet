@@ -5,7 +5,7 @@ import PropTypes from 'prop-types';
 import React from 'react';
 import Events from '../../lib/Events';
 import Entity from './Entity';
-import { ToolbarWrapper } from './ToolbarWrapper';
+import { ToolbarWrapper } from '../components/Toolbar';
 import { LayersIcon, ArrowLeftIcon } from '../../icons';
 import posthog from 'posthog-js';
 
@@ -384,7 +384,6 @@ export default class SceneGraph extends React.Component {
     return (
       <div id="scenegraph" className="scenegraph">
         <div className="scenegraph-toolbar">
-          <ToolbarWrapper />
           <div className="search">
             <input
               id="filter"

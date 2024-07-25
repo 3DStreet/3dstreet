@@ -4,56 +4,27 @@ import {
   updateScene,
   isSceneAuthor,
   checkIfImagePathIsEmpty
-} from '../../api/scene';
+} from '../../../api/scene.js';
 import {
   Cloud24Icon,
   Save24Icon,
   ScreenshotIcon,
   Upload24Icon,
   Edit24Icon
-} from '../../icons';
-import Events from '../../lib/Events';
-import { saveBlob } from '../../lib/utils';
-import { Button, ProfileButton } from '../components';
-import { SavingModal } from '../modals/SavingModal';
-import { uploadThumbnailImage } from '../modals/ScreenshotModal/ScreenshotModal.component.jsx';
-import { sendMetric } from '../../services/ga.js';
+} from '../../../icons/index.js';
+import Events from '../../../lib/Events.js';
+import { Button, ProfileButton, Logo } from '../index.js';
+import { SavingModal } from '../../modals/SavingModal/index.js';
+import { uploadThumbnailImage } from '../../modals/ScreenshotModal/ScreenshotModal.component.jsx';
+import { sendMetric } from '../../../services/ga.js';
 import posthog from 'posthog-js';
-import { UndoRedo } from '../components/UndoRedo/UndoRedo.component.jsx';
-// const LOCALSTORAGE_MOCAP_UI = "aframeinspectormocapuienabled";
-
-function filterHelpers(scene, visible) {
-  scene.traverse((o) => {
-    if (o.userData.source === 'INSPECTOR') {
-      o.visible = visible;
-    }
-  });
-}
-
-function getSceneName(scene) {
-  return scene.id || slugify(window.location.host + window.location.pathname);
-}
-
-/**
- * Slugify the string removing non-word chars and spaces
- * @param  {string} text String to slugify
- * @return {string}      Slugified string
- */
-function slugify(text) {
-  return text
-    .toString()
-    .toLowerCase()
-    .replace(/\s+/g, '-') // Replace spaces with -
-    .replace(/[^\w-]+/g, '-') // Replace all non-word chars with -
-    .replace(/--+/g, '-') // Replace multiple - with single -
-    .replace(/^-+/, '') // Trim - from start of text
-    .replace(/-+$/, ''); // Trim - from end of text
-}
-
+import { UndoRedo } from '../UndoRedo/UndoRedo.component.jsx';
+import { SceneEditTitle } from '../SceneEditTitle';
+import { CameraToolbar } from '../../viewport';
 /**
  * Tools and actions.
  */
-export default class Toolbar extends Component {
+class Toolbar extends Component {
   constructor(props) {
     super(props);
     this.state = {
@@ -125,34 +96,6 @@ export default class Toolbar extends Component {
       !this.saveButtonRef.current.contains(event.target)
     ) {
       this.setState({ isSaveActionActive: false });
-    }
-  };
-
-  static convertToObject = () => {
-    try {
-      posthog.capture('convert_to_json_clicked', {
-        scene_id: STREET.utils.getCurrentSceneId()
-      });
-      const entity = document.getElementById('street-container');
-
-      const data = STREET.utils.convertDOMElToObject(entity);
-
-      const jsonString = `data:text/json;chatset=utf-8,${encodeURIComponent(
-        STREET.utils.filterJSONstreet(data)
-      )}`;
-
-      const link = document.createElement('a');
-      link.href = jsonString;
-      link.download = 'data.json';
-
-      link.click();
-      link.remove();
-      STREET.notify.successMessage('3DStreet JSON file saved successfully.');
-    } catch (error) {
-      STREET.notify.errorMessage(
-        `Error trying to save 3DStreet JSON file. Error: ${error}`
-      );
-      console.error(error);
     }
   };
 
@@ -308,37 +251,6 @@ export default class Toolbar extends Component {
   //   AFRAME.INSPECTOR.close();
   // }
 
-  static exportSceneToGLTF() {
-    try {
-      sendMetric('SceneGraph', 'exportGLTF');
-      const sceneName = getSceneName(AFRAME.scenes[0]);
-      const scene = AFRAME.scenes[0].object3D;
-      posthog.capture('export_scene_to_gltf_clicked', {
-        scene_id: STREET.utils.getCurrentSceneId()
-      });
-
-      filterHelpers(scene, false);
-      AFRAME.INSPECTOR.exporters.gltf.parse(
-        scene,
-        function (buffer) {
-          filterHelpers(scene, true);
-          const blob = new Blob([buffer], { type: 'application/octet-stream' });
-          saveBlob(blob, sceneName + '.glb');
-        },
-        function (error) {
-          console.error(error);
-        },
-        { binary: true }
-      );
-      STREET.notify.successMessage('3DStreet scene exported as glTF file.');
-    } catch (error) {
-      STREET.notify.errorMessage(
-        `Error while trying to save glTF file. Error: ${error}`
-      );
-      console.error(error);
-    }
-  }
-
   addEntity() {
     Events.emit('entitycreate', { element: 'a-entity', components: {} });
   }
@@ -375,13 +287,16 @@ export default class Toolbar extends Component {
     return (
       <div id="toolbar">
         <div className="toolbarActions">
-          {this.props.currentUser?.isPro && (
-            <div>
-              <Button leadingIcon={<Edit24Icon />} onClick={this.newHandler}>
-                <div className="hideInLowResolution">New</div>
-              </Button>
-            </div>
-          )}
+          <Logo />
+          <SceneEditTitle sceneData={this.props.sceneData} />
+
+          <div id="scene-title"></div>
+
+          <div>
+            <Button leadingIcon={<Edit24Icon />} onClick={this.newHandler}>
+              <div className="hideInLowResolution">New</div>
+            </Button>
+          </div>
           {this.state.showSaveBtn && this.props.currentUser ? (
             <div className="saveButtonWrapper" ref={this.saveButtonRef}>
               <Button
@@ -429,6 +344,10 @@ export default class Toolbar extends Component {
               <div className="hideInLowResolution">Open</div>
             </Button>
           )}
+          <CameraToolbar
+            onToggleEdit={this.props.onToggleEdit}
+            isEditor={this.props.isEditor}
+          />
           <Button
             leadingIcon={<ScreenshotIcon />}
             onClick={() => {
@@ -459,3 +378,5 @@ export default class Toolbar extends Component {
     );
   }
 }
+
+export { Toolbar };

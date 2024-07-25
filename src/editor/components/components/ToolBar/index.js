@@ -1,12 +1,12 @@
 import { useEffect, useState } from 'react';
-import { useAuthContext } from '../../contexts';
-import Toolbar from './Toolbar';
-import { isSceneAuthor } from '../../api';
+import { useAuthContext } from '../../../contexts';
+import { Toolbar } from './Toolbar.component.jsx';
+import { isSceneAuthor } from '../../../api';
 
-function ToolbarWrapper() {
+function ToolbarWrapper({ onToggleEdit, isEditor, sceneData }) {
   const { currentUser } = useAuthContext();
   const [isAuthor, setIsAuthor] = useState(false);
-  const currentSceneId = STREET.utils.getCurrentSceneId();
+  const currentSceneId = sceneData?.sceneId;
   useEffect(() => {
     async function checkAuthorship() {
       if (currentUser && currentUser.uid && currentSceneId) {
@@ -25,7 +25,15 @@ function ToolbarWrapper() {
     checkAuthorship();
   }, [currentUser, currentSceneId]);
 
-  return <Toolbar currentUser={currentUser} isAuthor={isAuthor} />;
+  return (
+    <Toolbar
+      currentUser={currentUser}
+      isAuthor={isAuthor}
+      onToggleEdit={onToggleEdit}
+      isEditor={isEditor}
+      sceneData={sceneData}
+    />
+  );
 }
 
 export { ToolbarWrapper };

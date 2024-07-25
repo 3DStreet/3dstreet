@@ -1,7 +1,3 @@
-import { EditorLogo, ViewerLogo } from './logos.jsx';
-
-import { Button } from '../Button';
-import PropTypes from 'prop-types';
 import styles from './Logo.module.scss';
 
 /**
@@ -10,20 +6,10 @@ import styles from './Logo.module.scss';
  * @author Oleksii Medvediev
  * @category Components
  */
-const Logo = ({ onToggleEdit, isEditor }) => (
+const Logo = () => (
   <div className={styles.wrapper}>
-    <div className={styles.logo} id="logoImg">
-      {isEditor ? <EditorLogo /> : <ViewerLogo />}
-    </div>
-    <Button onClick={onToggleEdit} className={styles.btn}>
-      {isEditor ? 'Enter Viewer mode' : 'Enter Editor mode'}
-    </Button>
+    <img src="ui_assets/favicon.ico" alt="3DStreet Logo" />
   </div>
 );
-
-Logo.propTypes = {
-  onToggleEdit: PropTypes.func,
-  isEditor: PropTypes.bool
-};
 
 export { Logo };

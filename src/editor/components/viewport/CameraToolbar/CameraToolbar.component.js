@@ -6,6 +6,8 @@ import Events from '../../../lib/Events.js';
 import classNames from 'classnames';
 import { Hint } from '../../components/Tabs/components/index.js';
 
+import { Button } from '../../components';
+
 const options = [
   {
     value: 'perspective',
@@ -35,10 +37,13 @@ const options = [
 ];
 
 class CameraToolbar extends Component {
-  state = {
-    selectedCamera: 'perspective',
-    areChangesEmitted: false
-  };
+  constructor(props) {
+    super(props);
+    this.state = {
+      selectedCamera: 'perspective',
+      areChangesEmitted: false
+    };
+  }
 
   componentDidMount() {
     setTimeout(() => {
@@ -90,6 +95,9 @@ class CameraToolbar extends Component {
             <Hint hint={hint} tab={value} />
           </button>
         ))}
+        <Button onClick={this.props.onToggleEdit}>
+          {this.props.isEditor ? 'Enter Viewer mode' : 'Enter Editor mode'}
+        </Button>
       </div>
     );
   }
