@@ -7,8 +7,8 @@ const MAPBOX_ACCESS_TOKEN_VALUE =
 
 AFRAME.registerComponent('street-geo', {
   schema: {
-    longitude: { type: 'number', default: null },
-    latitude: { type: 'number', default: null },
+    longitude: { type: 'number', default: 0 },
+    latitude: { type: 'number', default: 0 },
     elevation: { type: 'number', default: null }, // deprecated
     orthometricHeight: { type: 'number', default: null },
     geoidHeight: { type: 'number', default: null },

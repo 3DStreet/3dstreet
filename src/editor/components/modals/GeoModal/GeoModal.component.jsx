@@ -52,7 +52,7 @@ const GeoModal = ({ isOpen, onClose }) => {
     }
   }, [isOpen]);
 
-  const requestAndSetElevation = async (lat, lng) => {
+  const requestAndSetElevation = (lat, lng) => {
     // request and set elevation for location with coordinates: lat, lng
     const getGeoidHeight = httpsCallable(functions, 'getGeoidHeight');
     getGeoidHeight({ lat: lat, lon: lng })
