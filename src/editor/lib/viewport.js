@@ -216,6 +216,10 @@ export function Viewport(inspector) {
   controls.zoomSpeed = 0.05;
   controls.setAspectRatio(sceneEl.canvas.width / sceneEl.canvas.height);
 
+  sceneEl.addEventListener('newScene', () => {
+    controls.resetZoom();
+  });
+
   Events.on('cameratoggle', (data) => {
     controls.setCamera(data.camera);
     transformControls.setCamera(data.camera);

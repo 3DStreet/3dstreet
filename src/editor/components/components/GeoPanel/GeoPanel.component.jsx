@@ -13,7 +13,9 @@ const GeoPanel = () => {
   const { currentUser } = useAuthContext();
   const onClick = () => {
     posthog.capture('geo_panel_clicked');
-    if (currentUser.isPro) {
+    if (!currentUser) {
+      Events.emit('opensigninmodal');
+    } else if (currentUser.isPro) {
       Events.emit('opengeomodal');
     } else {
       Events.emit('openpaymentmodal');
@@ -29,14 +31,12 @@ const GeoPanel = () => {
 
   return (
     <div className={styles.geo}>
-      <>
-        <img src={GeoImg} onClick={onClick} alt="geo" />
-        {coordinateInfo ? (
-          <a onClick={onClick}>{coordinateInfo}</a>
-        ) : (
-          <a onClick={onClick}>Click to set location</a>
-        )}
-      </>
+      <img src={GeoImg} onClick={onClick} alt="geo" />
+      {coordinateInfo ? (
+        <a onClick={onClick}>{coordinateInfo}</a>
+      ) : (
+        <a onClick={onClick}>Click to set location</a>
+      )}
     </div>
   );
 };
