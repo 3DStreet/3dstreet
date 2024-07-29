@@ -16,7 +16,7 @@ AFRAME.registerComponent('street-geo', {
     maps: {
       type: 'string',
       default: 'google3d',
-      oneOf: ['google3d', 'mapbox2d']
+      oneOf: ['google3d', 'mapbox2d', 'osm3d']
     }
   },
   init: function () {
@@ -175,6 +175,72 @@ AFRAME.registerComponent('street-geo', {
     const data = this.data;
     this.mapbox2d.setAttribute('mapbox', {
       center: `${data.longitude}, ${data.latitude}`
+    });
+  },
+  osm3dCreate: function () {
+    const data = this.data;
+    const el = this.el;
+    const self = this;
+
+    const createOsm3dElement = () => {
+      const osm3dElement = document.createElement('a-entity');
+      osm3dElement.setAttribute('data-no-pause', '');
+      osm3dElement.setAttribute('data-layer-name', 'OpenStreetMap 3D + 2D');
+      osm3dElement.setAttribute('osm-tiles', {
+        lon: data.longitude,
+        lat: data.latitude,
+        radius_m: 2000,
+        trackId: 'camera'
+      });
+      osm3dElement.setAttribute('rotation', '-90 -90 0');
+      osm3dElement.setAttribute('data-ignore-raycaster', '');
+
+      const osm3dBuildingElement = document.createElement('a-entity');
+      osm3dBuildingElement.setAttribute('osm-geojson', {
+        lon: data.longitude,
+        lat: data.latitude,
+        radius_m: 500,
+        trackId: 'camera'
+      });
+      osm3dBuildingElement.classList.add('autocreated');
+      osm3dBuildingElement.setAttribute('rotation', '0 -90 0');
+      osm3dBuildingElement.setAttribute('data-ignore-raycaster', '');
+
+      if (AFRAME.INSPECTOR && AFRAME.INSPECTOR.opened) {
+        // emit play event to start loading tiles in Editor mode
+        osm3dElement.addEventListener(
+          'loaded',
+          () => {
+            osm3dElement.play();
+            osm3dBuildingElement.play();
+          },
+          { once: true }
+        );
+      }
+      el.appendChild(osm3dBuildingElement);
+      el.appendChild(osm3dElement);
+
+      self['osm3d'] = osm3dElement;
+      self['osm3dBuilding'] = osm3dBuildingElement;
+      document.getElementById('map-data-attribution').style.visibility =
+        'visible';
+    };
+
+    // check whether the library has been imported. Download if not
+    if (AFRAME.components['osm-tiles']) {
+      createOsm3dElement();
+    } else {
+      loadScript(
+        new URL('/src/lib/osm-tiles-geojson.js', import.meta.url),
+        createOsm3dElement
+      );
+    }
+  },
+  osm3dUpdate: function () {
+    const data = this.data;
+    this.osm3d.setAttribute('osm-tiles', {
+      lon: data.longitude,
+      lat: data.latitude
     });
   }
 });
