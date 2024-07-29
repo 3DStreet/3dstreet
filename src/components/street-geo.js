@@ -25,7 +25,6 @@ AFRAME.registerComponent('street-geo', {
       create function: <mapType>Create,
       update function: <mapType>Update,
     */
-    // this.mapTypes = ['mapbox2d', 'google3d']; // deprecated
     this.mapTypes = this.el.components['street-geo'].schema.maps.oneOf;
     this.elevationHeightConstant = 32.49158; // deprecated
 
