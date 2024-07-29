@@ -3,7 +3,8 @@ import { useState, useCallback, useEffect } from 'react';
 import styles from './GeoModal.module.scss';
 import { Mangnifier20Icon, Save24Icon, QR32Icon } from '../../../icons';
 
-import { firebaseConfig } from '../../../services/firebase.js';
+import { httpsCallable } from 'firebase/functions';
+import { firebaseConfig, functions } from '../../../services/firebase.js';
 import Modal from '../Modal.jsx';
 import { Button, Input } from '../../components/index.js';
 import {
@@ -25,9 +26,10 @@ const GeoModal = ({ isOpen, onClose }) => {
     lat: 37.7637072, // lat: 37.76370724481858, lng: -122.41517686259827
     lng: -122.4151768
   });
-  const [elevation, setElevation] = useState(10);
+  const [elevation, setElevation] = useState(0);
   const [autocomplete, setAutocomplete] = useState(null);
   const [qrCodeUrl, setQrCodeUrl] = useState(null);
+  const [heightData, setHeightData] = useState(null);
 
   useEffect(() => {
     if (isOpen) {
@@ -38,13 +40,13 @@ const GeoModal = ({ isOpen, onClose }) => {
       if (streetGeo && streetGeo['latitude'] && streetGeo['longitude']) {
         const lat = roundCoord(parseFloat(streetGeo['latitude']));
         const lng = roundCoord(parseFloat(streetGeo['longitude']));
-        const elevation = parseFloat(streetGeo['elevation']) || 0;
+        const ellipsoidalHeight = parseFloat(streetGeo['ellipsoidalHeight']);
 
         if (!isNaN(lat) && !isNaN(lng)) {
           setMarkerPosition({ lat, lng });
         }
-        if (!isNaN(elevation)) {
-          setElevation(elevation);
+        if (!isNaN(ellipsoidalHeight)) {
+          setElevation(ellipsoidalHeight);
         }
       }
     }
@@ -52,17 +54,19 @@ const GeoModal = ({ isOpen, onClose }) => {
 
   const requestAndSetElevation = (lat, lng) => {
     // request and set elevation for location with coordinates: lat, lng
-    const elevationService = new window.google.maps.ElevationService();
-    elevationService.getElevationForLocations(
-      {
-        locations: [{ lat, lng }]
-      },
-      (results, status) => {
-        if (status === 'OK' && results[0]) {
-          setElevation(results[0].elevation.toFixed(2));
-        }
-      }
-    );
+    const getGeoidHeight = httpsCallable(functions, 'getGeoidHeight');
+    getGeoidHeight({ lat: lat, lon: lng })
+      .then((result) => {
+        setHeightData(result.data);
+        setElevation(result.data.ellipsoidalHeight);
+      })
+      .catch((error) => {
+        // Getting the Error details.
+        const code = error.code;
+        const message = error.message;
+        const details = error.details;
+        console.error(code, message, details);
+      });
   };
 
   const setMarkerPositionAndElevation = useCallback((lat, lng) => {
@@ -143,7 +147,7 @@ const GeoModal = ({ isOpen, onClose }) => {
     const geoLayer = document.getElementById('reference-layers');
     geoLayer.setAttribute(
       'street-geo',
-      `latitude: ${latitude}; longitude: ${longitude}; elevation: ${elevation}`
+      `latitude: ${latitude}; longitude: ${longitude}; ellipsoidalHeight: ${elevation}; orthometricHeight: ${heightData?.orthometricHeight}; geoidHeight: ${heightData?.geoidHeight}`
     );
 
     onClose();
@@ -205,7 +209,12 @@ const GeoModal = ({ isOpen, onClose }) => {
           <div>
             <p>Elevation</p>
             <Input
-              leadingIcon={<p className={styles.iconGeo}>Height</p>}
+              leadingIcon={
+                <p className={styles.iconGeo}>
+                  Ellipsoidal
+                  <br /> Height
+                </p>
+              }
               value={elevation}
               placeholder="None"
               onChange={handleElevationChange}

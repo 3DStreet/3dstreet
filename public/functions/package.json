@@ -14,9 +14,11 @@
   },
   "main": "index.js",
   "dependencies": {
+    "@googlemaps/google-maps-services-js": "^3.4.0",
     "firebase-admin": "^12.1.1",
     "firebase-functions": "^5.0.1",
-    "stripe": "^8.4.0"
+    "stripe": "^8.4.0",
+    "core-js": "^3.6.5"
   },
   "devDependencies": {
     "eslint": "^8.9.0",

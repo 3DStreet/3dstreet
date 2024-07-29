@@ -26,7 +26,7 @@ const GeoPanel = () => {
   let coordinateInfo = null;
 
   if (streetGeo) {
-    coordinateInfo = `Latitude: ${streetGeo.latitude}, Longitude: ${streetGeo.longitude}, Elevation: ${streetGeo.elevation}m`;
+    coordinateInfo = `Latitude: ${streetGeo.latitude}, Longitude: ${streetGeo.longitude}, Elevation: ${streetGeo.ellipsoidalHeight}m`;
   }
 
   return (

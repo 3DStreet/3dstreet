@@ -9,7 +9,10 @@ AFRAME.registerComponent('street-geo', {
   schema: {
     longitude: { type: 'number', default: 0 },
     latitude: { type: 'number', default: 0 },
-    elevation: { type: 'number', default: 0 },
+    elevation: { type: 'number', default: null }, // deprecated
+    orthometricHeight: { type: 'number', default: null },
+    geoidHeight: { type: 'number', default: null },
+    ellipsoidalHeight: { type: 'number', default: null },
     maps: { type: 'array', default: [] }
   },
   init: function () {
@@ -47,7 +50,9 @@ AFRAME.registerComponent('street-geo', {
         }
       } else if (
         data.maps.includes(mapType) &&
-        (updatedData.longitude || updatedData.latitude || updatedData.elevation)
+        (updatedData.longitude ||
+          updatedData.latitude ||
+          updatedData.ellipsoidalHeight)
       ) {
         // call update map function with name: <mapType>Update
         this[mapType + 'Update']();
@@ -95,6 +100,10 @@ AFRAME.registerComponent('street-geo', {
     const data = this.data;
     const el = this.el;
     const self = this;
+    // if data.ellipsoidalHeight, use it, otherwise use data.elevation less constant (deprecated)
+    const height = data.ellipsoidalHeight
+      ? data.ellipsoidalHeight
+      : data.elevation - this.elevationHeightConstant;
 
     const create3DtilesElement = () => {
       const google3dElement = document.createElement('a-entity');
@@ -104,7 +113,8 @@ AFRAME.registerComponent('street-geo', {
         url: 'https://tile.googleapis.com/v1/3dtiles/root.json',
         long: data.longitude,
         lat: data.latitude,
-        height: data.elevation - this.elevationHeightConstant,
+        // set this to ellipsoidalHeight
+        height: height,
         googleApiKey: firebaseConfig.apiKey,
         geoTransform: 'WGS84Cartesian',
         maximumSSE: 16,
@@ -146,10 +156,15 @@ AFRAME.registerComponent('street-geo', {
   },
   google3dUpdate: function () {
     const data = this.data;
+    // if data.ellipsoidalHeight, use it, otherwise use data.elevation less constant (deprecated)
+    const height = data.ellipsoidalHeight
+      ? data.ellipsoidalHeight
+      : data.elevation - this.elevationHeightConstant;
+
     this.google3d.setAttribute('loader-3dtiles', {
       lat: data.latitude,
       long: data.longitude,
-      height: data.elevation - this.elevationHeightConstant
+      height: height
     });
   },
   mapbox2dUpdate: function () {
