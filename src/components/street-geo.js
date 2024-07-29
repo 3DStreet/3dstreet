@@ -13,7 +13,11 @@ AFRAME.registerComponent('street-geo', {
     orthometricHeight: { type: 'number', default: null },
     geoidHeight: { type: 'number', default: null },
     ellipsoidalHeight: { type: 'number', default: null },
-    maps: { type: 'array', default: [] }
+    maps: {
+      type: 'string',
+      default: 'google3d',
+      oneOf: ['google3d', 'mapbox2d']
+    }
   },
   init: function () {
     /*
@@ -21,8 +25,9 @@ AFRAME.registerComponent('street-geo', {
       create function: <mapType>Create,
       update function: <mapType>Update,
     */
-    this.mapTypes = ['mapbox2d', 'google3d'];
-    this.elevationHeightConstant = 32.49158;
+    // this.mapTypes = ['mapbox2d', 'google3d']; // deprecated
+    this.mapTypes = this.el.components['street-geo'].schema.maps.oneOf;
+    this.elevationHeightConstant = 32.49158; // deprecated
 
     const urlParams = new URLSearchParams(window.location.search);
     this.isAR = urlParams.get('viewer') === 'ar';
@@ -43,20 +48,20 @@ AFRAME.registerComponent('street-geo', {
     const updatedData = AFRAME.utils.diff(oldData, data);
 
     for (const mapType of this.mapTypes) {
-      if (data.maps.includes(mapType) && !this[mapType]) {
+      if (data.maps === mapType && !this[mapType]) {
         // create Map element and save a link to it in this[mapType]
         if (!this.isAR) {
           this[mapType + 'Create']();
         }
       } else if (
-        data.maps.includes(mapType) &&
+        data.maps === mapType &&
         (updatedData.longitude ||
           updatedData.latitude ||
           updatedData.ellipsoidalHeight)
       ) {
         // call update map function with name: <mapType>Update
         this[mapType + 'Update']();
-      } else if (this[mapType] && !data.maps.includes(mapType)) {
+      } else if (this[mapType] && data.maps !== mapType) {
         // remove element from DOM and from this object
         this.el.removeChild(this[mapType]);
         this[mapType] = null;
