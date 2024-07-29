@@ -116,11 +116,11 @@ AFRAME.registerComponent('street-geo', {
         // set this to ellipsoidalHeight
         height: height,
         googleApiKey: firebaseConfig.apiKey,
-        geoTransform: 'WGS84Cartesian',
         maximumSSE: 16,
         maximumMem: 400,
         cameraEl: '#camera',
-        copyrightEl: '#map-copyright'
+        copyrightEl: '#map-copyright',
+        distanceScale: 0.5
       });
       google3dElement.classList.add('autocreated');
 
