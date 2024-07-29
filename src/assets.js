@@ -360,7 +360,7 @@ function startObserving() {
 }
 
 // Wait for the DOM to be fully loaded before starting the observer
-if (document.readyState === 'loading') {
+if (document.readyState !== 'complete') {
   document.addEventListener('DOMContentLoaded', startObserving);
 } else {
   // DOMContentLoaded has already fired
