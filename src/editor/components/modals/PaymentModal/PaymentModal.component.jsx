@@ -44,7 +44,7 @@ const PaymentModal = ({ isOpen, onClose }) => {
         metadata: { userId: currentUser.uid },
         allow_promotion_codes: true,
         subscription_data: {
-          trial_period_days: 30,
+          trial_period_days: 7,
           metadata: {
             userId: currentUser.uid
           }
