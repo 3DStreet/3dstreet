@@ -1548,25 +1548,25 @@ function processSegments(
       segments[i].type === 'separator' &&
       variantList[0] === 'dashed'
     ) {
-      groundMixinId = 'markings dashed-stripe';
+      groundMixinId = 'dashed-stripe';
       positionY = elevationPosY + 0.01; // make sure the lane marker is above the asphalt
       // for all markings material property repeat = "1 25". So every 150/25=6 meters put a dash
       repeatCount[0] = 1;
       repeatCount[1] = parseInt(length / 6);
     } else if (segments[i].type === 'separator' && variantList[0] === 'solid') {
-      groundMixinId = 'markings solid-stripe';
+      groundMixinId = 'solid-stripe';
       positionY = elevationPosY + 0.01; // make sure the lane marker is above the asphalt
     } else if (
       segments[i].type === 'separator' &&
       variantList[0] === 'doubleyellow'
     ) {
-      groundMixinId = 'markings solid-doubleyellow';
+      groundMixinId = 'solid-doubleyellow';
       positionY = elevationPosY + 0.01; // make sure the lane marker is above the asphalt
     } else if (
       segments[i].type === 'separator' &&
       variantList[0] === 'shortdashedyellow'
     ) {
-      groundMixinId = 'markings yellow short-dashed-stripe';
+      groundMixinId = 'short-dashed-stripe-yellow';
       positionY = elevationPosY + 0.01; // make sure the lane marker is above the asphalt
       // for short-dashed-stripe every 3 meters put a dash
       repeatCount[0] = 1;
@@ -1575,13 +1575,13 @@ function processSegments(
       segments[i].type === 'separator' &&
       variantList[0] === 'soliddashedyellow'
     ) {
-      groundMixinId = 'markings yellow solid-dashed';
+      groundMixinId = 'solid-dashed-yellow';
       positionY = elevationPosY + 0.01; // make sure the lane marker is above the asphalt
     } else if (
       segments[i].type === 'separator' &&
       variantList[0] === 'soliddashedyellowinverted'
     ) {
-      groundMixinId = 'markings yellow solid-dashed';
+      groundMixinId = 'solid-dashed-yellow';
       positionY = elevationPosY + 0.01; // make sure the lane marker is above the asphalt
       rotationY = '180';
       repeatCount[0] = 1;
@@ -1620,7 +1620,7 @@ function processSegments(
         carStep = 3;
         markingLength = segmentWidthInMeters;
         markingPosX = 0;
-        parkingMixin = 'markings solid-stripe';
+        parkingMixin = 'solid-stripe';
       }
       const markingPosXY = markingPosX + ' 0';
       const clonedStencilRadius = length / 2 - carStep;

@@ -41,6 +41,12 @@ const LayersOptions = [
     onClick: () => console.log('Models: dividers')
   },
   {
+    value: 'Markings: Stencils & Striping',
+    label: 'Markings: Stencils & Striping',
+    mixinGroups: ['lane-separator', 'stencils'],
+    onClick: () => console.log('Models: striping & stencils')
+  },
+  {
     value: 'Models: Buildings',
     label: 'Models: Buildings',
     mixinGroups: ['buildings'],
