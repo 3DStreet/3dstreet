@@ -39,7 +39,6 @@ const GeoPanel = () => {
           <a onClick={onClick}>Click to set location</a>
         )}
       </>
-      )
     </div>
   );
 };

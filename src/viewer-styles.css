@@ -1,6 +1,10 @@
 @import url("notyf.min.css");
 @import url('https://fonts.googleapis.com/css2?family=Lato:wght@400;500');
 
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
 html {
 	font-family: 'Lato', sans-serif;
 }

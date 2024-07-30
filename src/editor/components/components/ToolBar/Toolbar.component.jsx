@@ -285,69 +285,76 @@ class Toolbar extends Component {
 
   render() {
     return (
-      <div id="toolbar">
-        <div className="toolbarActions">
-          <Logo />
-          <SceneEditTitle sceneData={this.props.sceneData} />
-
-          <div id="scene-title"></div>
-
-          <div>
-            <Button leadingIcon={<Edit24Icon />} onClick={this.newHandler}>
-              <div className="hideInLowResolution">New</div>
+      <div className="flex items-center justify-between">
+        <div>
+          <div className="flex items-center space-x-4">
+            <Logo />
+            <SceneEditTitle sceneData={this.props.sceneData} />
+            <Button
+              size="sm"
+              className="mr-2 h-4 w-4"
+              leadingIcon={<Edit24Icon />}
+              onClick={this.newHandler}
+            >
+              <span className="hidden sm:inline">New</span>
             </Button>
-          </div>
-          {this.state.showSaveBtn && this.props.currentUser ? (
-            <div className="saveButtonWrapper" ref={this.saveButtonRef}>
+            {this.state.showSaveBtn && this.props.currentUser ? (
+              <div ref={this.saveButtonRef}>
+                <Button
+                  leadingIcon={<Save24Icon />}
+                  onClick={this.toggleSaveActionState.bind(this)}
+                >
+                  <div className="hideInLowResolution">Save</div>
+                </Button>
+                {this.state.isSavingScene && <SavingModal />}
+                {this.state.isSaveActionActive && (
+                  <div>
+                    <Button
+                      leadingIcon={<Cloud24Icon />}
+                      variant="white"
+                      onClick={this.cloudSaveHandler}
+                      disabled={
+                        this.state.isSavingScene || !this.props.isAuthor
+                      }
+                    >
+                      <div>Save</div>
+                    </Button>
+                    <Button
+                      leadingIcon={<Cloud24Icon />}
+                      variant="white"
+                      onClick={this.cloudSaveAsHandler}
+                      disabled={this.state.isSavingScene}
+                    >
+                      <div>Save As...</div>
+                    </Button>
+                  </div>
+                )}
+              </div>
+            ) : (
               <Button
                 leadingIcon={<Save24Icon />}
-                onClick={this.toggleSaveActionState.bind(this)}
+                onClick={this.handleRemixClick}
+                disabled={this.state.isSavingScene}
               >
                 <div className="hideInLowResolution">Save</div>
               </Button>
-              {this.state.isSavingScene && <SavingModal />}
-              {this.state.isSaveActionActive && (
-                <div className="dropdownedButtons">
-                  <Button
-                    leadingIcon={<Cloud24Icon />}
-                    variant="white"
-                    onClick={this.cloudSaveHandler}
-                    disabled={this.state.isSavingScene || !this.props.isAuthor}
-                  >
-                    <div>Save</div>
-                  </Button>
-                  <Button
-                    leadingIcon={<Cloud24Icon />}
-                    variant="white"
-                    onClick={this.cloudSaveAsHandler}
-                    disabled={this.state.isSavingScene}
-                  >
-                    <div>Save As...</div>
-                  </Button>
-                </div>
-              )}
-            </div>
-          ) : (
-            <Button
-              leadingIcon={<Save24Icon />}
-              onClick={this.handleRemixClick}
-              disabled={this.state.isSavingScene}
-            >
-              <div className="hideInLowResolution">Save</div>
-            </Button>
-          )}
-          {this.state.showLoadBtn && (
-            <Button
-              leadingIcon={<Upload24Icon />}
-              onClick={() => Events.emit('openscenesmodal')}
-            >
-              <div className="hideInLowResolution">Open</div>
-            </Button>
-          )}
-          <CameraToolbar
-            onToggleEdit={this.props.onToggleEdit}
-            isEditor={this.props.isEditor}
-          />
+            )}
+            {this.state.showLoadBtn && (
+              <Button
+                leadingIcon={<Upload24Icon />}
+                onClick={() => Events.emit('openscenesmodal')}
+              >
+                <div className="hideInLowResolution">Open</div>
+              </Button>
+            )}
+          </div>
+          <div className="flex items-center space-x-2">
+            <CameraToolbar
+              onToggleEdit={this.props.onToggleEdit}
+              isEditor={this.props.isEditor}
+            />
+          </div>
+
           <Button
             leadingIcon={<ScreenshotIcon />}
             onClick={() => {

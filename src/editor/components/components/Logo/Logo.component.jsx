@@ -1,5 +1,3 @@
-import styles from './Logo.module.scss';
-
 /**
  * Logo component.
  *
@@ -7,7 +5,7 @@ import styles from './Logo.module.scss';
  * @category Components
  */
 const Logo = () => (
-  <div className={styles.wrapper}>
+  <div>
     <img src="ui_assets/favicon.ico" alt="3DStreet Logo" />
   </div>
 );

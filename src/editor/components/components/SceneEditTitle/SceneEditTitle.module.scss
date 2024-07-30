@@ -1,12 +1,6 @@
 @use '../../../style/variables.scss';
 
 .wrapper {
-  position: absolute;
-  left: 96px;
-  top: 36px;
-  display: flex;
-  justify-content: center;
-  align-items: center;
   background: rgba(50, 50, 50, 0.8);
   padding: 8px 12px;
   border-radius: 12px;

@@ -7,7 +7,6 @@ import { ModalHelp } from './modals/ModalHelp';
 import ModalTextures from './modals/ModalTextures';
 import SceneGraph from './scenegraph/SceneGraph';
 import { ScreenshotModal } from './modals/ScreenshotModal';
-import TransformToolbar from './viewport/TransformToolbar';
 // import ViewportHUD from "./viewport/ViewportHUD";
 import { SignInModal } from './modals/SignInModal';
 import { ProfileModal } from './modals/ProfileModal';
@@ -245,23 +244,22 @@ export default class Main extends Component {
 
     return (
       <div>
-        <ToolbarWrapper
-          onToggleEdit={this.toggleEdit}
-          isEditor={isEditor}
-          sceneData={sceneData}
-        />
+        <div className="fixed top-0 left-0 p-8">
+          <ToolbarWrapper
+            onToggleEdit={this.toggleEdit}
+            isEditor={isEditor}
+            sceneData={sceneData}
+          />
+        </div>
         {this.renderSceneGraphToggle()}
         {this.renderComponentsToggle()}
         {isEditor && (
-          <div id="inspectorContainer">
+          <div>
             <SceneGraph
               scene={scene}
               selectedEntity={this.state.entity}
               visible={this.state.visible.scenegraph}
             />
-            <div id="viewportBar">
-              <TransformToolbar />
-            </div>
             <div id="rightPanel">
               <ComponentsSidebar
                 entity={this.state.entity}

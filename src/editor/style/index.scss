@@ -1,5 +1,8 @@
 @use './variables.scss';
 @import '../normalize.css';
+@import 'tailwindcss/base';
+@import 'tailwindcss/components';
+@import 'tailwindcss/utilities';
 
 body.aframe-inspector-opened,
 .toggle-edit {
