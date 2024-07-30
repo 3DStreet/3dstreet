@@ -315,38 +315,57 @@ class StreetAssets extends AFRAME.ANode {
   }
 }
 customElements.define('street-assets', StreetAssets);
-
-// add street-assets to scene if it doesn't already exist
-var domModifiedHandler = function (evt) {
-  // Only care about events affecting an a-scene
-  if (evt.target.nodeName !== 'A-SCENE') return;
-
-  // Try to find the a-assets element in the a-scene
-  let assets = evt.target.querySelector('a-assets');
+// Function to add street-assets if it doesn't already exist
+function addStreetAssets(scene) {
+  let assets = scene.querySelector('a-assets');
 
   if (!assets) {
-    // attempt to create and add the assets if they don't already exist
-    // TODO: this doesn't work well with images, so scenes must include <a-assets></a-assets> to run correctly
     assets = document.createElement('a-assets');
-    evt.target.append(assets);
+    scene.appendChild(assets);
   }
 
-  // Already have the streetmix assets. No need to add them
-  if (assets.querySelector('street-assets')) {
-    document.removeEventListener('DOMSubtreeModified', domModifiedHandler);
-    return;
+  if (!assets.querySelector('street-assets')) {
+    const streetAssets = document.createElement('street-assets');
+    assets.appendChild(streetAssets);
   }
+}
 
-  // Create and add the custom street-assets element
-  const streetAssets = document.createElement('street-assets');
-  assets.append(streetAssets);
+// Set up the MutationObserver
+const observer = new MutationObserver((mutations) => {
+  for (const mutation of mutations) {
+    if (mutation.type === 'childList') {
+      const addedNodes = mutation.addedNodes;
+      for (const node of addedNodes) {
+        if (node.nodeName === 'A-SCENE') {
+          addStreetAssets(node);
+          // We've found and processed an a-scene, so we can disconnect the observer
+          observer.disconnect();
+          return;
+        }
+      }
+    }
+  }
+});
 
-  // Clean up by removing the event listener
-  document.removeEventListener('DOMSubtreeModified', domModifiedHandler);
-};
+// Function to start observing
+function startObserving() {
+  // Immediate check in case the a-scene is already in the DOM
+  const existingScene = document.querySelector('a-scene');
+  if (existingScene) {
+    addStreetAssets(existingScene);
+  } else {
+    // Start observing the document with the configured parameters
+    observer.observe(document.body, { childList: true, subtree: true });
+  }
+}
 
-document.addEventListener('DOMSubtreeModified', domModifiedHandler, false);
-
+// Wait for the DOM to be fully loaded before starting the observer
+if (document.readyState !== 'complete') {
+  document.addEventListener('DOMContentLoaded', startObserving);
+} else {
+  // DOMContentLoaded has already fired
+  startObserving();
+}
 /*
 Unused assets kept commented here for future reference
         <!-- audio -->
