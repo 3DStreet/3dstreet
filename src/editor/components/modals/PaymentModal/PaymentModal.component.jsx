@@ -44,6 +44,7 @@ const PaymentModal = ({ isOpen, onClose }) => {
         metadata: { userId: currentUser.uid },
         allow_promotion_codes: true,
         subscription_data: {
+          trial_period_days: 7,
           metadata: {
             userId: currentUser.uid
           }
@@ -66,7 +67,7 @@ const PaymentModal = ({ isOpen, onClose }) => {
       extraCloseKeyCode={72}
     >
       <div className={styles.paymentDetails}>
-        <h3>Unlock Geospatial Features with 3DStreet Pro</h3>
+        <h3>Unlock Geospatial Features with a free 7 day trial</h3>
         <h2>
           Create with geospatial maps and share your vision in augmented reality
           with 3DStreet Pro.
@@ -101,7 +102,7 @@ const PaymentModal = ({ isOpen, onClose }) => {
                       </div>
                     ) : (
                       <Button onClick={startCheckout} variant="filled">
-                        Checkout with Stripe
+                        Try Now
                       </Button>
                     )}
                   </div>
