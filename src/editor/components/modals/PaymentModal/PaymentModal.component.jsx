@@ -67,7 +67,7 @@ const PaymentModal = ({ isOpen, onClose }) => {
       extraCloseKeyCode={72}
     >
       <div className={styles.paymentDetails}>
-        <h3>Unlock Geospatial Features with a free 30 day trial</h3>
+        <h3>Unlock Geospatial Features with a free 7 day trial</h3>
         <h2>
           Create with geospatial maps and share your vision in augmented reality
           with 3DStreet Pro.
