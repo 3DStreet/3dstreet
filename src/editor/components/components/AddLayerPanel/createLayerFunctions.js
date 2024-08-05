@@ -81,7 +81,7 @@ function create3DTiles() {
     const geoLayer = document.getElementById('reference-layers');
     let latitude = 0;
     let longitude = 0;
-    let elevation = 0;
+    let ellipsoidalHeight = 0;
     const streetGeo = document
       .getElementById('reference-layers')
       ?.getAttribute('street-geo');
@@ -89,13 +89,13 @@ function create3DTiles() {
     if (streetGeo && streetGeo['latitude'] && streetGeo['longitude']) {
       latitude = roundCoord(parseFloat(streetGeo['latitude']));
       longitude = roundCoord(parseFloat(streetGeo['longitude']));
-      elevation = parseFloat(streetGeo['elevation']) || 0;
+      ellipsoidalHeight = parseFloat(streetGeo['ellipsoidalHeight']) || 0;
     }
 
     geoLayer.setAttribute(
       'street-geo',
       `
-      latitude: ${latitude}; longitude: ${longitude}; elevation: ${elevation}; maps: google3d
+      latitude: ${latitude}; longitude: ${longitude}; ellipsoidalHeight: ${ellipsoidalHeight}; maps: google3d
     `
     );
     // update sceneGraph

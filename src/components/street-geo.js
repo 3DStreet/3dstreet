@@ -9,8 +9,15 @@ AFRAME.registerComponent('street-geo', {
   schema: {
     longitude: { type: 'number', default: 0 },
     latitude: { type: 'number', default: 0 },
-    elevation: { type: 'number', default: 0 },
-    maps: { type: 'array', default: [] }
+    elevation: { type: 'number', default: null }, // deprecated
+    orthometricHeight: { type: 'number', default: null },
+    geoidHeight: { type: 'number', default: null },
+    ellipsoidalHeight: { type: 'number', default: null },
+    maps: {
+      type: 'string',
+      default: 'google3d',
+      oneOf: ['google3d', 'mapbox2d']
+    }
   },
   init: function () {
     /*
@@ -18,8 +25,8 @@ AFRAME.registerComponent('street-geo', {
       create function: <mapType>Create,
       update function: <mapType>Update,
     */
-    this.mapTypes = ['mapbox2d', 'google3d'];
-    this.elevationHeightConstant = 32.49158;
+    this.mapTypes = this.el.components['street-geo'].schema.maps.oneOf;
+    this.elevationHeightConstant = 32.49158; // deprecated
 
     const urlParams = new URLSearchParams(window.location.search);
     this.isAR = urlParams.get('viewer') === 'ar';
@@ -40,18 +47,20 @@ AFRAME.registerComponent('street-geo', {
     const updatedData = AFRAME.utils.diff(oldData, data);
 
     for (const mapType of this.mapTypes) {
-      if (data.maps.includes(mapType) && !this[mapType]) {
+      if (data.maps === mapType && !this[mapType]) {
         // create Map element and save a link to it in this[mapType]
         if (!this.isAR) {
           this[mapType + 'Create']();
         }
       } else if (
-        data.maps.includes(mapType) &&
-        (updatedData.longitude || updatedData.latitude || updatedData.elevation)
+        data.maps === mapType &&
+        (updatedData.longitude ||
+          updatedData.latitude ||
+          updatedData.ellipsoidalHeight)
       ) {
         // call update map function with name: <mapType>Update
         this[mapType + 'Update']();
-      } else if (this[mapType] && !data.maps.includes(mapType)) {
+      } else if (this[mapType] && data.maps !== mapType) {
         // remove element from DOM and from this object
         this.el.removeChild(this[mapType]);
         this[mapType] = null;
@@ -95,6 +104,10 @@ AFRAME.registerComponent('street-geo', {
     const data = this.data;
     const el = this.el;
     const self = this;
+    // if data.ellipsoidalHeight, use it, otherwise use data.elevation less constant (deprecated)
+    const height = data.ellipsoidalHeight
+      ? data.ellipsoidalHeight
+      : data.elevation - this.elevationHeightConstant;
 
     const create3DtilesElement = () => {
       const google3dElement = document.createElement('a-entity');
@@ -104,13 +117,14 @@ AFRAME.registerComponent('street-geo', {
         url: 'https://tile.googleapis.com/v1/3dtiles/root.json',
         long: data.longitude,
         lat: data.latitude,
-        height: data.elevation - this.elevationHeightConstant,
+        // set this to ellipsoidalHeight
+        height: height,
         googleApiKey: firebaseConfig.apiKey,
-        geoTransform: 'WGS84Cartesian',
         maximumSSE: 16,
         maximumMem: 400,
         cameraEl: '#camera',
-        copyrightEl: '#map-copyright'
+        copyrightEl: '#map-copyright',
+        distanceScale: 0.5
       });
       google3dElement.classList.add('autocreated');
 
@@ -146,10 +160,15 @@ AFRAME.registerComponent('street-geo', {
   },
   google3dUpdate: function () {
     const data = this.data;
+    // if data.ellipsoidalHeight, use it, otherwise use data.elevation less constant (deprecated)
+    const height = data.ellipsoidalHeight
+      ? data.ellipsoidalHeight
+      : data.elevation - this.elevationHeightConstant;
+
     this.google3d.setAttribute('loader-3dtiles', {
       lat: data.latitude,
       long: data.longitude,
-      height: data.elevation - this.elevationHeightConstant
+      height: height
     });
   },
   mapbox2dUpdate: function () {

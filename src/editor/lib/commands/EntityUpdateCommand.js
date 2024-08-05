@@ -38,10 +38,13 @@ export class EntityUpdateCommand extends Command {
     this.component = payload.component;
     this.property = payload.property;
 
-    const component = this.entity.components[payload.component];
-    // Don't use AFRAME.components[payload.component] here, but use this.entity.components[payload.component] so we have the dynamic schema,
-    // important for material or geometry components like for example modifying material metalness,
-    // otherwise component.schema[payload.property] would be undefined.
+    const component =
+      this.entity.components[payload.component] ??
+      AFRAME.components[payload.component];
+    // First try to get `this.entity.components[payload.component]` to have the dynamic schema, and fallback to `AFRAME.components[payload.component]` if not found.
+    // This is to properly stringify some properties that uses for example vec2 or vec3 on material component.
+    // This is important to fallback to `AFRAME.components[payload.component]` for primitive components position rotation and scale
+    // that may not have been created initially on the entity.
     if (component) {
       if (payload.property) {
         if (component.schema[payload.property]) {
