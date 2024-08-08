@@ -341,7 +341,7 @@ export default class Main extends Component {
             <Compass32Icon />
           </Button>
         )}
-        {this.state.inspectorEnabled && this.state.isAddLayerPanelOpen && (
+        {this.state.inspectorEnabled && (
           <AddLayerPanel
             onClose={this.toggleAddLayerPanel}
             isAddLayerPanelOpen={this.state.isAddLayerPanelOpen}
