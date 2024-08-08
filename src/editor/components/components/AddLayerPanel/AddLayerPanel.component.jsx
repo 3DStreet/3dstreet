@@ -122,6 +122,10 @@ const getSegmentElevationPosY = (ancestorEl) => {
 };
 
 const createEntity = (mixinId) => {
+  const previewEntity = document.getElementById('previewEntity');
+  if (previewEntity) {
+    previewEntity.setAttribute('visible', false);
+  }
   console.log('create entity: ', mixinId);
   const newEntity = document.createElement('a-entity');
   newEntity.setAttribute('mixin', mixinId);
@@ -191,33 +195,37 @@ const AddLayerPanel = ({ onClose, isAddLayerPanelOpen }) => {
 
   /* create and preview entity events */
 
-  // entity preview element
-  let preEntity = document.createElement('a-entity');
-
-  preEntity.setAttribute('visible', false);
-
-  AFRAME.scenes[0].appendChild(preEntity);
-
   const cardMouseEnter = (mixinId) => {
-    preEntity.setAttribute('mixin', mixinId);
     const selectedElement = AFRAME.INSPECTOR.selectedEntity;
     if (selectedElement) {
       const [ancestorEl, inSegment] = getAncestorEl(selectedElement);
       // avoid adding preview element inside the direct ancestor of a-scene: #environment, #reference, ...
       if (ancestorEl.parentEl.isScene) return;
-      selectedElement.object3D.getWorldPosition(preEntity.object3D.position);
-      preEntity.setAttribute('visible', true);
+      let previewEntity = document.getElementById('previewEntity');
+      if (!previewEntity) {
+        previewEntity = document.createElement('a-entity');
+        previewEntity.setAttribute('id', 'previewEntity');
+        AFRAME.scenes[0].appendChild(previewEntity);
+      }
+      previewEntity.setAttribute('mixin', mixinId);
+      selectedElement.object3D.getWorldPosition(
+        previewEntity.object3D.position
+      );
+      previewEntity.setAttribute('visible', true);
       if (inSegment) {
         // get elevation position Y from attribute of segment element
         const segmentElevationPosY = getSegmentElevationPosY(ancestorEl);
         // set position y by elevation level of segment
-        preEntity.object3D.position.setY(segmentElevationPosY);
+        previewEntity.object3D.position.setY(segmentElevationPosY);
       }
     }
   };
 
   const cardMouseLeave = (mixinId) => {
-    preEntity.setAttribute('visible', false);
+    const previewEntity = document.getElementById('previewEntity');
+    if (previewEntity) {
+      previewEntity.setAttribute('visible', false);
+    }
   };
 
   const cardClick = (card, isProUser) => {
