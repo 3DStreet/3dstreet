@@ -14,6 +14,7 @@ import { LayersOptions } from './LayersOptions.js';
 import mixinCatalog from '../../../../catalog.json';
 import posthog from 'posthog-js';
 import Events from '../../../lib/Events';
+import pickPointOnGroundPlane from '../../../lib/pick-point-on-ground-plane';
 
 // get all mixin data divided into groups, from a-mixin DOM elements
 const getGroupedMixinOptions = () => {
@@ -170,6 +171,12 @@ const createEntity = (mixinId) => {
       entityToMove.object3D.parent.worldToLocal(entityToMove.object3D.position);
     }
   } else {
+    const position = pickPointOnGroundPlane({
+      normalizedX: 0,
+      normalizedY: -0.1,
+      camera: AFRAME.INSPECTOR.camera
+    });
+    newEntity.setAttribute('position', position);
     const streetContainer = document.querySelector('#street-container');
     // apppend element as a child of street-container
     if (streetContainer) {
@@ -237,7 +244,12 @@ const AddLayerPanel = ({ onClose, isAddLayerPanelOpen }) => {
         );
       }
     } else {
-      previewEntity.object3D.position.set(0, 0, 0);
+      const position = pickPointOnGroundPlane({
+        normalizedX: 0,
+        normalizedY: -0.1,
+        camera: AFRAME.INSPECTOR.camera
+      });
+      previewEntity.setAttribute('position', position);
     }
   };
 
