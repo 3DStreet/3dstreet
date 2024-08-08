@@ -139,28 +139,28 @@ const createEntity = (mixinId) => {
   if (selectedElement && !ancestorEl.parentEl.isScene) {
     // append element as a child of the entity with .custom-group class.
     let customGroupEl = ancestorEl.querySelector('.custom-group');
+    let entityToMove;
     if (!customGroupEl) {
       customGroupEl = document.createElement('a-entity');
       // .custom-group entity is a child of segment or .street-parent/.buildings-parent elements
       ancestorEl.appendChild(customGroupEl);
       customGroupEl.classList.add('custom-group');
-
-      if (inSegment) {
-        // get elevation position Y from attribute of segment element
-        const segmentElevationPosY = getSegmentElevationPosY(ancestorEl);
-        // set position y by elevation level of segment
-        customGroupEl.setAttribute('position', { y: segmentElevationPosY });
-      } else {
-        // if we are creating element not inside segment-parent
-        selectedElement.object3D.getWorldPosition(
-          customGroupEl.object3D.position
-        );
-        customGroupEl.object3D.parent.worldToLocal(
-          customGroupEl.object3D.position
-        );
-      }
+      entityToMove = customGroupEl;
+    } else {
+      entityToMove = newEntity;
     }
     customGroupEl.appendChild(newEntity);
+
+    if (inSegment) {
+      // get elevation position Y from attribute of segment element
+      const segmentElevationPosY = getSegmentElevationPosY(ancestorEl);
+      // set position y by elevation level of segment
+      entityToMove.setAttribute('position', { y: segmentElevationPosY });
+    } else {
+      // if we are creating element not inside segment-parent
+      selectedElement.object3D.getWorldPosition(entityToMove.object3D.position);
+      entityToMove.object3D.parent.worldToLocal(entityToMove.object3D.position);
+    }
   } else {
     const streetContainer = document.querySelector('#street-container');
     // apppend element as a child of street-container
