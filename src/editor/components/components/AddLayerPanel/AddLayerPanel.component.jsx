@@ -129,6 +129,14 @@ const createEntity = (mixinId) => {
   console.log('create entity: ', mixinId);
   const newEntity = document.createElement('a-entity');
   newEntity.setAttribute('mixin', mixinId);
+  newEntity.addEventListener(
+    'loaded',
+    () => {
+      Events.emit('entitycreated', newEntity);
+      AFRAME.INSPECTOR.selectEntity(newEntity);
+    },
+    { once: true }
+  );
 
   const selectedElement = AFRAME.INSPECTOR.selectedEntity;
   const [ancestorEl, inSegment] = selectedElement
@@ -170,7 +178,6 @@ const createEntity = (mixinId) => {
       AFRAME.scenes[0].appendChild(newEntity);
     }
   }
-  Events.emit('entitycreated', newEntity);
 };
 
 const AddLayerPanel = ({ onClose, isAddLayerPanelOpen }) => {
