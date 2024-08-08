@@ -131,7 +131,9 @@ const createEntity = (mixinId) => {
   newEntity.setAttribute('mixin', mixinId);
 
   const selectedElement = AFRAME.INSPECTOR.selectedEntity;
-  const [ancestorEl, inSegment] = getAncestorEl(selectedElement);
+  const [ancestorEl, inSegment] = selectedElement
+    ? getAncestorEl(selectedElement)
+    : [undefined, false];
 
   // avoid adding new element inside the direct ancestor of a-scene: #environment, #reference, ...
   if (selectedElement && !ancestorEl.parentEl.isScene) {
