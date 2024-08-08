@@ -201,28 +201,36 @@ const AddLayerPanel = ({ onClose, isAddLayerPanelOpen }) => {
   /* create and preview entity events */
 
   const cardMouseEnter = (mixinId) => {
+    let previewEntity = document.getElementById('previewEntity');
+    if (!previewEntity) {
+      previewEntity = document.createElement('a-entity');
+      previewEntity.setAttribute('id', 'previewEntity');
+      AFRAME.scenes[0].appendChild(previewEntity);
+    }
+    previewEntity.setAttribute('mixin', mixinId);
+    previewEntity.setAttribute('visible', true);
+
     const selectedElement = AFRAME.INSPECTOR.selectedEntity;
-    if (selectedElement) {
-      const [ancestorEl, inSegment] = getAncestorEl(selectedElement);
-      // avoid adding preview element inside the direct ancestor of a-scene: #environment, #reference, ...
-      if (ancestorEl.parentEl.isScene) return;
-      let previewEntity = document.getElementById('previewEntity');
-      if (!previewEntity) {
-        previewEntity = document.createElement('a-entity');
-        previewEntity.setAttribute('id', 'previewEntity');
-        AFRAME.scenes[0].appendChild(previewEntity);
-      }
-      previewEntity.setAttribute('mixin', mixinId);
-      selectedElement.object3D.getWorldPosition(
-        previewEntity.object3D.position
-      );
-      previewEntity.setAttribute('visible', true);
+    const [ancestorEl, inSegment] = selectedElement
+      ? getAncestorEl(selectedElement)
+      : [undefined, false];
+
+    // avoid adding new element inside the direct ancestor of a-scene: #environment, #reference, ...
+    if (selectedElement && !ancestorEl.parentEl.isScene) {
       if (inSegment) {
         // get elevation position Y from attribute of segment element
         const segmentElevationPosY = getSegmentElevationPosY(ancestorEl);
         // set position y by elevation level of segment
-        previewEntity.object3D.position.setY(segmentElevationPosY);
+        ancestorEl.object3D.getWorldPosition(previewEntity.object3D.position);
+        previewEntity.object3D.position.y += segmentElevationPosY;
+      } else {
+        // if we are creating element not inside segment-parent
+        selectedElement.object3D.getWorldPosition(
+          previewEntity.object3D.position
+        );
       }
+    } else {
+      previewEntity.object3D.position.set(0, 0, 0);
     }
   };
 
