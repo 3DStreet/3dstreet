@@ -155,6 +155,9 @@ const createEntity = (mixinId) => {
         selectedElement.object3D.getWorldPosition(
           customGroupEl.object3D.position
         );
+        customGroupEl.object3D.parent.worldToLocal(
+          customGroupEl.object3D.position
+        );
       }
     }
     customGroupEl.appendChild(newEntity);
