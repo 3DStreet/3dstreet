@@ -224,6 +224,18 @@ const cardMouseEnter = (mixinId) => {
     previewEntity = document.createElement('a-entity');
     previewEntity.setAttribute('id', 'previewEntity');
     AFRAME.scenes[0].appendChild(previewEntity);
+    const dropCursorEntity = document.createElement('a-entity');
+    dropCursorEntity.innerHTML = `
+      <a-ring id="drop-cursor" rotation="-90 0 0" radius-inner="0.2" radius-outer="0.3">
+        <a-ring color="yellow" radius-inner="0.4" radius-outer="0.5"
+          animation="property: scale; from: 1 1 1; to: 2 2 2; loop: true; dir: alternate"></a-ring>
+        <a-ring color="yellow" radius-inner="0.6" radius-outer="0.7"
+          animation="property: scale; from: 1 1 1; to: 3 3 3; loop: true; dir: alternate"></a-ring>
+        <a-entity class="drop-cursor-arrow" rotation="90 0 0">
+          <a-cylinder color="yellow" position="0 5.25 0" radius="0.05" height="2.5"></a-cylinder>
+          <a-cone color="yellow" position="0 4 0" radius-top="0.5" radius-bottom="0" height="1"></a-cone>
+      </a-ring>`;
+    previewEntity.appendChild(dropCursorEntity);
   }
   previewEntity.setAttribute('mixin', mixinId);
   previewEntity.setAttribute('visible', true);
