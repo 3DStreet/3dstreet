@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useAuthContext } from '../../../contexts/index.js';
 
 import styles from './AddLayerPanel.module.scss';
@@ -15,6 +15,80 @@ import mixinCatalog from '../../../../catalog.json';
 import posthog from 'posthog-js';
 import Events from '../../../lib/Events';
 
+// get all mixin data divided into groups, from a-mixin DOM elements
+const getGroupedMixinOptions = () => {
+  const mixinElements = document.querySelectorAll('a-mixin');
+  const groupedArray = [];
+  let categoryName, mixinId;
+
+  // convert the mixins array into an object with mixins for faster access by index
+  const mixinCatalogObj = {};
+  for (const item of mixinCatalog) {
+    mixinCatalogObj[item.id] = item;
+  }
+
+  const groupedObject = {};
+  let index = 0;
+  for (const mixinEl of mixinElements) {
+    categoryName = mixinEl.getAttribute('category');
+    if (!categoryName) continue;
+
+    if (!groupedObject[categoryName]) {
+      groupedObject[categoryName] = [];
+    }
+    // get mixin data from mixin catalog and push it to object with grouped mixins
+    mixinId = mixinEl.id;
+    const mixinDataFromCatalog = mixinCatalogObj[mixinId];
+    let mixinImg = '';
+    let mixinName = '';
+    let mixinDescr = '';
+
+    if (mixinDataFromCatalog) {
+      mixinImg = mixinDataFromCatalog.img;
+      mixinName = mixinDataFromCatalog.name;
+      mixinDescr = mixinDataFromCatalog.description;
+    }
+    const mixinData = {
+      // here could be data from dataCards JSON file
+      img: mixinImg,
+      icon: '',
+      mixinId: mixinId,
+      name: mixinName || mixinId,
+      description: mixinDescr,
+      id: index
+    };
+    groupedObject[categoryName].push(mixinData);
+    index += 1;
+  }
+
+  for (const [categoryName, options] of Object.entries(groupedObject)) {
+    groupedArray.push({
+      label: categoryName,
+      options: options
+    });
+  }
+  return groupedArray;
+};
+
+// get array with objects data (cardsData) from mixinGroups of selectedOption
+const getSelectedMixinCards = (groupedMixins, selectedOption) => {
+  if (!selectedOption) return [];
+  const selectedOptionData = LayersOptions.find(
+    (option) => option.value === selectedOption
+  );
+  const selectedMixinGroupNames = selectedOptionData.mixinGroups;
+
+  // there are no mixin groups
+  if (!selectedMixinGroupNames) return [];
+
+  // filter selected mixin groups from all mixin groups (groupedMixins)
+  const cardsData = groupedMixins
+    .filter((group) => selectedMixinGroupNames.includes(group.label))
+    .flatMap((mixinGroup) => mixinGroup.options);
+
+  return cardsData;
+};
+
 const AddLayerPanel = ({ onClose, isAddLayerPanelOpen }) => {
   // set the first Layers option when opening the panel
   const [selectedOption, setSelectedOption] = useState(LayersOptions[0].value);
@@ -28,86 +102,13 @@ const AddLayerPanel = ({ onClose, isAddLayerPanelOpen }) => {
     setGroupedMixins(data);
   }, []);
 
-  // get all mixin data divided into groups, from a-mixin DOM elements
-  const getGroupedMixinOptions = () => {
-    const mixinElements = document.querySelectorAll('a-mixin');
-    const groupedArray = [];
-    let categoryName, mixinId;
-
-    // convert the mixins array into an object with mixins for faster access by index
-    const mixinCatalogObj = {};
-    for (const item of mixinCatalog) {
-      mixinCatalogObj[item.id] = item;
+  const selectedCards = useMemo(() => {
+    if (selectedOption === 'Pro Layers') {
+      return layersData;
+    } else {
+      return getSelectedMixinCards(groupedMixins, selectedOption);
     }
-
-    const groupedObject = {};
-    let index = 0;
-    for (const mixinEl of mixinElements) {
-      categoryName = mixinEl.getAttribute('category');
-      if (!categoryName) continue;
-
-      if (!groupedObject[categoryName]) {
-        groupedObject[categoryName] = [];
-      }
-      // get mixin data from mixin catalog and push it to object with grouped mixins
-      mixinId = mixinEl.id;
-      const mixinDataFromCatalog = mixinCatalogObj[mixinId];
-      let mixinImg = '';
-      let mixinName = '';
-      let mixinDescr = '';
-
-      if (mixinDataFromCatalog) {
-        mixinImg = mixinDataFromCatalog.img;
-        mixinName = mixinDataFromCatalog.name;
-        mixinDescr = mixinDataFromCatalog.description;
-      }
-      const mixinData = {
-        // here could be data from dataCards JSON file
-        img: mixinImg,
-        icon: '',
-        mixinId: mixinId,
-        name: mixinName || mixinId,
-        description: mixinDescr,
-        id: index
-      };
-      groupedObject[categoryName].push(mixinData);
-      index += 1;
-    }
-
-    for (const [categoryName, options] of Object.entries(groupedObject)) {
-      groupedArray.push({
-        label: categoryName,
-        options: options
-      });
-    }
-    return groupedArray;
-  };
-
-  // get array with objects data (cardsData) from mixinGroups of selectedOption
-  const getSelectedMixinCards = (selectedOption) => {
-    if (!selectedOption) return [];
-    const selectedOptionData = LayersOptions.find(
-      (option) => option.value === selectedOption
-    );
-    const selectedMixinGroupNames = selectedOptionData.mixinGroups;
-
-    // there are no mixin groups
-    if (!selectedMixinGroupNames) return [];
-
-    // filter selected mixin groups from all mixin groups (groupedMixins)
-    const cardsData = groupedMixins
-      .filter((group) => selectedMixinGroupNames.includes(group.label))
-      .flatMap((mixinGroup) => mixinGroup.options);
-
-    return cardsData;
-  };
-
-  let selectedCards;
-  if (selectedOption === 'Pro Layers') {
-    selectedCards = layersData;
-  } else {
-    selectedCards = getSelectedMixinCards(selectedOption);
-  }
+  }, [groupedMixins, selectedOption]);
 
   const handleSelect = (value) => {
     setSelectedOption(value);
