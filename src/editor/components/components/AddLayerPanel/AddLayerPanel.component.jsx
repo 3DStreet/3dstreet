@@ -35,10 +35,10 @@ const AddLayerPanel = ({ onClose, isAddLayerPanelOpen }) => {
     let categoryName, mixinId;
 
     // convert the mixins array into an object with mixins for faster access by index
-    const mixinCatalogObj = mixinCatalog.reduce((obj, item) => {
-      obj[item.id] = item;
-      return obj;
-    }, {});
+    const mixinCatalogObj = {};
+    for (const item of mixinCatalog) {
+      mixinCatalogObj[item.id] = item;
+    }
 
     const groupedObject = {};
     let index = 0;
@@ -74,10 +74,10 @@ const AddLayerPanel = ({ onClose, isAddLayerPanelOpen }) => {
       index += 1;
     }
 
-    for (const categoryName of Object.keys(groupedObject)) {
+    for (const [categoryName, options] of Object.entries(groupedObject)) {
       groupedArray.push({
         label: categoryName,
-        options: groupedObject[categoryName]
+        options: options
       });
     }
     return groupedArray;
