@@ -116,7 +116,7 @@ const getAncestorEl = (element) => {
 };
 
 const getSegmentElevationPosY = (ancestorEl) => {
-  if (ancestorEl && ancestorEl.hasAttribute('data-elevation-posY')) {
+  if (ancestorEl.hasAttribute('data-elevation-posY')) {
     return ancestorEl.getAttribute('data-elevation-posY');
   } else return 0; // default value
 };
@@ -146,7 +146,9 @@ const createEntity = (mixinId) => {
         customGroupEl.setAttribute('position', { y: segmentElevationPosY });
       } else {
         // if we are creating element not inside segment-parent
-        // customGroupEl.setAttribute('position', selectedObjPos);
+        selectedElement.object3D.getWorldPosition(
+          customGroupEl.object3D.position
+        );
       }
     }
     customGroupEl.appendChild(newEntity);
@@ -191,7 +193,6 @@ const AddLayerPanel = ({ onClose, isAddLayerPanelOpen }) => {
 
   // entity preview element
   let preEntity = document.createElement('a-entity');
-  let selectedObjPos = new THREE.Vector3();
 
   preEntity.setAttribute('visible', false);
 
@@ -200,24 +201,17 @@ const AddLayerPanel = ({ onClose, isAddLayerPanelOpen }) => {
   const cardMouseEnter = (mixinId) => {
     preEntity.setAttribute('mixin', mixinId);
     const selectedElement = AFRAME.INSPECTOR.selectedEntity;
-    const [ancestorEl, inSegment] = getAncestorEl(selectedElement);
-    // avoid adding preview element inside the direct ancestor of a-scene: #environment, #reference, ...
-    if (ancestorEl.parentEl.isScene) return;
-
     if (selectedElement) {
-      selectedElement.object3D.getWorldPosition(selectedObjPos);
-      // get elevation position Y from attribute of segment element
-      const segmentElevationPosY = getSegmentElevationPosY(ancestorEl);
+      const [ancestorEl, inSegment] = getAncestorEl(selectedElement);
+      // avoid adding preview element inside the direct ancestor of a-scene: #environment, #reference, ...
+      if (ancestorEl.parentEl.isScene) return;
+      selectedElement.object3D.getWorldPosition(preEntity.object3D.position);
       preEntity.setAttribute('visible', true);
-      selectedObjPos.setY(segmentElevationPosY);
       if (inSegment) {
-        preEntity.setAttribute('position', selectedObjPos);
-      } else {
-        preEntity.setAttribute('position', {
-          x: selectedObjPos.x,
-          y: 0.2,
-          z: selectedObjPos.z
-        });
+        // get elevation position Y from attribute of segment element
+        const segmentElevationPosY = getSegmentElevationPosY(ancestorEl);
+        // set position y by elevation level of segment
+        preEntity.object3D.position.setY(segmentElevationPosY);
       }
     }
   };
