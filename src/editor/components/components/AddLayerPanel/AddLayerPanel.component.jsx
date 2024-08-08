@@ -119,18 +119,13 @@ const AddLayerPanel = ({ onClose, isAddLayerPanelOpen }) => {
   // entity preview element
   let preEntity = document.createElement('a-entity');
   let selectedObjPos = new THREE.Vector3();
-  let segmentElevationPosY = 0;
-  // ancestor element in which the added elements will be placed, inside the .custom-group
-  let ancestorOfSelectedEl;
-  // a flag indicating that the preview entity is inside one of the segments (segment-parent-0, ...)
-  let inSegment = false;
 
   preEntity.setAttribute('visible', false);
 
   AFRAME.scenes[0].appendChild(preEntity);
 
   /*
-    get the ancestor of element in which the added elements will be placed, inside the .custom-group
+    get the ancestor element in which the added elements will be placed, inside the .custom-group
     in this order:
     - ancestor with class segment-parent-...,
     - elements .street-parent/.buildings-parent,
@@ -138,8 +133,9 @@ const AddLayerPanel = ({ onClose, isAddLayerPanelOpen }) => {
   */
   const getAncestorEl = (element) => {
     if (element.className.includes('segment-parent')) {
-      ancestorOfSelectedEl = element;
-      inSegment = true;
+      // a flag indicating that the preview entity is inside one of the segments (segment-parent-0, ...)
+      const inSegment = true;
+      return [element, inSegment];
     } else if (
       // if there is no segment-parent for element then let Ancestor will be .buildings-parent or .street-parent
       element.classList.contains('street-parent') ||
@@ -147,34 +143,30 @@ const AddLayerPanel = ({ onClose, isAddLayerPanelOpen }) => {
       // if we are not in the #street-container and this is the scene child element
       element.parentEl.isScene
     ) {
-      ancestorOfSelectedEl = element;
-      inSegment = false;
+      const inSegment = false;
+      return [element, inSegment];
     } else if (element.parentEl) {
-      getAncestorEl(element.parentEl);
+      return getAncestorEl(element.parentEl);
     }
   };
 
-  const getSegmentElevationPosY = (element) => {
-    getAncestorEl(element);
-    if (
-      ancestorOfSelectedEl &&
-      ancestorOfSelectedEl.hasAttribute('data-elevation-posY')
-    ) {
-      return ancestorOfSelectedEl.getAttribute('data-elevation-posY');
+  const getSegmentElevationPosY = (ancestorEl) => {
+    if (ancestorEl && ancestorEl.hasAttribute('data-elevation-posY')) {
+      return ancestorEl.getAttribute('data-elevation-posY');
     } else return 0; // default value
   };
 
   const cardMouseEnter = (mixinId) => {
     preEntity.setAttribute('mixin', mixinId);
-    const selectedElement = AFRAME.INSPECTOR.selected?.el;
+    const selectedElement = AFRAME.INSPECTOR.selectedEntity;
+    const [ancestorEl, inSegment] = getAncestorEl(selectedElement);
+    // avoid adding preview element inside the direct ancestor of a-scene: #environment, #reference, ...
+    if (ancestorEl.parentEl.isScene) return;
+
     if (selectedElement) {
       selectedElement.object3D.getWorldPosition(selectedObjPos);
       // get elevation position Y from attribute of segment element
-      segmentElevationPosY = getSegmentElevationPosY(selectedElement);
-
-      // avoid adding preview element inside the direct ancestor of a-scene: #environment, #reference, ...
-      if (ancestorOfSelectedEl.parentEl.isScene) return;
-
+      const segmentElevationPosY = getSegmentElevationPosY(ancestorEl);
       preEntity.setAttribute('visible', true);
       selectedObjPos.setY(segmentElevationPosY);
       if (inSegment) {
@@ -193,24 +185,27 @@ const AddLayerPanel = ({ onClose, isAddLayerPanelOpen }) => {
     preEntity.setAttribute('visible', false);
   };
 
-  const createEntity = (mixinId, parentEl) => {
+  const createEntity = (mixinId) => {
     console.log('create entity: ', mixinId);
     const newEntity = document.createElement('a-entity');
     newEntity.setAttribute('mixin', mixinId);
 
-    const selectedElement = AFRAME.INSPECTOR.selected?.el;
+    const selectedElement = AFRAME.INSPECTOR.selectedEntity;
+    const [ancestorEl, inSegment] = getAncestorEl(selectedElement);
 
     // avoid adding new element inside the direct ancestor of a-scene: #environment, #reference, ...
-    if (selectedElement && !ancestorOfSelectedEl.parentEl.isScene) {
+    if (selectedElement && !ancestorEl.parentEl.isScene) {
       // append element as a child of the entity with .custom-group class.
-      let customGroupEl = ancestorOfSelectedEl.querySelector('.custom-group');
+      let customGroupEl = ancestorEl.querySelector('.custom-group');
       if (!customGroupEl) {
         customGroupEl = document.createElement('a-entity');
         // .custom-group entity is a child of segment or .street-parent/.buildings-parent elements
-        ancestorOfSelectedEl.appendChild(customGroupEl);
+        ancestorEl.appendChild(customGroupEl);
         customGroupEl.classList.add('custom-group');
 
         if (inSegment) {
+          // get elevation position Y from attribute of segment element
+          const segmentElevationPosY = getSegmentElevationPosY(ancestorEl);
           // set position y by elevation level of segment
           customGroupEl.setAttribute('position', { y: segmentElevationPosY });
         } else {
