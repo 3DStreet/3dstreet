@@ -270,7 +270,7 @@ const AddLayerPanel = ({ onClose, isAddLayerPanelOpen }) => {
         />
       </div>
       <div className={styles.cards}>
-        {selectedCards?.map((card) => (
+        {selectedCards.map((card) => (
           <div
             key={card.id}
             className={styles.card}
@@ -279,7 +279,6 @@ const AddLayerPanel = ({ onClose, isAddLayerPanelOpen }) => {
             onClick={() => cardClick(card, isProUser)}
             title={card.description}
           >
-            {' '}
             {card.requiresPro && !isProUser ? (
               <div
                 className={styles.img}
@@ -300,7 +299,7 @@ const AddLayerPanel = ({ onClose, isAddLayerPanelOpen }) => {
               />
             )}
             <div className={styles.body}>
-              {card.icon ? <img src={card.icon} /> : ''}
+              {card.icon ? <img src={card.icon} /> : null}
               <p className={styles.description}>{card.name}</p>
             </div>
           </div>
