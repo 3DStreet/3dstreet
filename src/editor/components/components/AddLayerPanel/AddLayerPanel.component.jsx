@@ -1,4 +1,5 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import { useAuthContext } from '../../../contexts/index.js';
 
 import styles from './AddLayerPanel.module.scss';
@@ -15,6 +16,10 @@ import mixinCatalog from '../../../../catalog.json';
 import posthog from 'posthog-js';
 import Events from '../../../lib/Events';
 import pickPointOnGroundPlane from '../../../lib/pick-point-on-ground-plane';
+
+// Create an empty image
+const emptyImg = new Image();
+emptyImg.src = 'data:image/gif;base64,R0lGODlhAQABAAD/ACwAAAAAAQABAAACADs=';
 
 // get all mixin data divided into groups, from a-mixin DOM elements
 const getGroupedMixinOptions = () => {
@@ -122,6 +127,32 @@ const getSegmentElevationPosY = (ancestorEl) => {
   } else return 0; // default value
 };
 
+const createEntityOnPosition = (mixinId, position) => {
+  const previewEntity = document.getElementById('previewEntity');
+  if (previewEntity) {
+    previewEntity.setAttribute('visible', false);
+  }
+  console.log('create entity: ', mixinId);
+  const newEntity = document.createElement('a-entity');
+  newEntity.setAttribute('mixin', mixinId);
+  newEntity.addEventListener(
+    'loaded',
+    () => {
+      Events.emit('entitycreated', newEntity);
+      AFRAME.INSPECTOR.selectEntity(newEntity);
+    },
+    { once: true }
+  );
+  newEntity.setAttribute('position', position);
+  const streetContainer = document.querySelector('#street-container');
+  // apppend element as a child of street-container
+  if (streetContainer) {
+    streetContainer.appendChild(newEntity);
+  } else {
+    AFRAME.scenes[0].appendChild(newEntity);
+  }
+};
+
 const createEntity = (mixinId) => {
   const previewEntity = document.getElementById('previewEntity');
   if (previewEntity) {
@@ -187,6 +218,52 @@ const createEntity = (mixinId) => {
   }
 };
 
+const cardMouseEnter = (mixinId) => {
+  let previewEntity = document.getElementById('previewEntity');
+  if (!previewEntity) {
+    previewEntity = document.createElement('a-entity');
+    previewEntity.setAttribute('id', 'previewEntity');
+    AFRAME.scenes[0].appendChild(previewEntity);
+  }
+  previewEntity.setAttribute('mixin', mixinId);
+  previewEntity.setAttribute('visible', true);
+
+  const selectedElement = AFRAME.INSPECTOR.selectedEntity;
+  const [ancestorEl, inSegment] = selectedElement
+    ? getAncestorEl(selectedElement)
+    : [undefined, false];
+
+  // avoid adding new element inside the direct ancestor of a-scene: #environment, #reference, ...
+  if (selectedElement && !ancestorEl.parentEl.isScene) {
+    if (inSegment) {
+      // get elevation position Y from attribute of segment element
+      const segmentElevationPosY = getSegmentElevationPosY(ancestorEl);
+      // set position y by elevation level of segment
+      ancestorEl.object3D.getWorldPosition(previewEntity.object3D.position);
+      previewEntity.object3D.position.y += segmentElevationPosY;
+    } else {
+      // if we are creating element not inside segment-parent
+      selectedElement.object3D.getWorldPosition(
+        previewEntity.object3D.position
+      );
+    }
+  } else {
+    const position = pickPointOnGroundPlane({
+      normalizedX: 0,
+      normalizedY: -0.1,
+      camera: AFRAME.INSPECTOR.camera
+    });
+    previewEntity.setAttribute('position', position);
+  }
+};
+
+const cardMouseLeave = (mixinId) => {
+  const previewEntity = document.getElementById('previewEntity');
+  if (previewEntity) {
+    previewEntity.setAttribute('visible', false);
+  }
+};
+
 const AddLayerPanel = ({ onClose, isAddLayerPanelOpen }) => {
   // set the first Layers option when opening the panel
   const [selectedOption, setSelectedOption] = useState(LayersOptions[0].value);
@@ -212,54 +289,6 @@ const AddLayerPanel = ({ onClose, isAddLayerPanelOpen }) => {
     setSelectedOption(value);
   };
 
-  /* create and preview entity events */
-
-  const cardMouseEnter = (mixinId) => {
-    let previewEntity = document.getElementById('previewEntity');
-    if (!previewEntity) {
-      previewEntity = document.createElement('a-entity');
-      previewEntity.setAttribute('id', 'previewEntity');
-      AFRAME.scenes[0].appendChild(previewEntity);
-    }
-    previewEntity.setAttribute('mixin', mixinId);
-    previewEntity.setAttribute('visible', true);
-
-    const selectedElement = AFRAME.INSPECTOR.selectedEntity;
-    const [ancestorEl, inSegment] = selectedElement
-      ? getAncestorEl(selectedElement)
-      : [undefined, false];
-
-    // avoid adding new element inside the direct ancestor of a-scene: #environment, #reference, ...
-    if (selectedElement && !ancestorEl.parentEl.isScene) {
-      if (inSegment) {
-        // get elevation position Y from attribute of segment element
-        const segmentElevationPosY = getSegmentElevationPosY(ancestorEl);
-        // set position y by elevation level of segment
-        ancestorEl.object3D.getWorldPosition(previewEntity.object3D.position);
-        previewEntity.object3D.position.y += segmentElevationPosY;
-      } else {
-        // if we are creating element not inside segment-parent
-        selectedElement.object3D.getWorldPosition(
-          previewEntity.object3D.position
-        );
-      }
-    } else {
-      const position = pickPointOnGroundPlane({
-        normalizedX: 0,
-        normalizedY: -0.1,
-        camera: AFRAME.INSPECTOR.camera
-      });
-      previewEntity.setAttribute('position', position);
-    }
-  };
-
-  const cardMouseLeave = (mixinId) => {
-    const previewEntity = document.getElementById('previewEntity');
-    if (previewEntity) {
-      previewEntity.setAttribute('visible', false);
-    }
-  };
-
   const cardClick = (card, isProUser) => {
     posthog.capture('add_layer', {
       layer: card.name,
@@ -275,12 +304,102 @@ const AddLayerPanel = ({ onClose, isAddLayerPanelOpen }) => {
       card.handlerFunction();
     }
   };
+
+  const dropPlaneEl = useRef(null);
+
+  function fadeInDropPlane() {
+    let planeEl = document.getElementById('dropPlane');
+    if (!planeEl) {
+      planeEl = document.createElement('a-plane');
+      planeEl.setAttribute('id', 'dropPlane');
+      planeEl.setAttribute('position', '0 0.001 0');
+      planeEl.setAttribute('rotation', '-90 0 0');
+      planeEl.setAttribute('width', '200');
+      planeEl.setAttribute('height', '200');
+      planeEl.setAttribute('material', 'color: #1faaf2; opacity: 0.5');
+      planeEl.setAttribute('data-ignore-raycaster', '');
+      AFRAME.scenes[0].appendChild(planeEl);
+    }
+    planeEl.setAttribute('visible', 'true');
+    dropPlaneEl.current.style.display = 'block';
+    dropPlaneEl.current.style.opacity = '0';
+  }
+
+  function fadeOutDropPlane() {
+    const planeEl = document.getElementById('dropPlane');
+    if (planeEl) {
+      planeEl.setAttribute('visible', 'false');
+    }
+    dropPlaneEl.current.style.display = 'none';
+    dropPlaneEl.current.style.opacity = '0';
+  }
+
+  const onItemDragOver = (e) => {
+    if (e.preventDefault) e.preventDefault(); // Necessary. Allows us to drop.
+    if (e.dataTransfer) {
+      e.dataTransfer.dropEffect = 'move'; // See the section on the DataTransfer object.
+    }
+
+    const previewEntity = document.getElementById('previewEntity');
+    if (previewEntity) {
+      previewEntity.setAttribute('visible', true); // we need to set it to true because it's set to false in cardMouseLeave
+      const position = pickPointOnGroundPlane({
+        x: e.clientX,
+        y: e.clientY,
+        canvas: AFRAME.scenes[0].canvas,
+        camera: AFRAME.INSPECTOR.camera
+      });
+      previewEntity.object3D.position.copy(position);
+    }
+
+    return false;
+  };
+
+  const onItemDrop = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+
+    // hide dropPlaneEl
+    fadeOutDropPlane();
+
+    // get picking point
+    const position = pickPointOnGroundPlane({
+      x: e.clientX,
+      y: e.clientY,
+      canvas: AFRAME.scenes[0].canvas,
+      camera: AFRAME.INSPECTOR.camera
+    });
+
+    // get item data
+    if (e.dataTransfer) {
+      const mixinId = e.dataTransfer.getData('text/plain');
+      createEntityOnPosition(mixinId, position);
+    }
+
+    return false;
+  };
+
   return (
     <div
       className={classNames(styles.panel, {
         [styles.open]: isAddLayerPanelOpen
       })}
     >
+      {createPortal(
+        <div
+          ref={dropPlaneEl}
+          onDragOver={onItemDragOver}
+          onDrop={onItemDrop}
+          style={{
+            display: 'none',
+            position: 'absolute',
+            inset: '0px',
+            userSelect: 'none',
+            pointerEvents: 'auto'
+          }}
+        ></div>,
+        document.body
+      )}
       <Button onClick={onClose} variant="custom" className={styles.closeButton}>
         <Chevron24Down />
       </Button>
@@ -305,6 +424,23 @@ const AddLayerPanel = ({ onClose, isAddLayerPanelOpen }) => {
             className={styles.card}
             onMouseEnter={() => card.mixinId && cardMouseEnter(card.mixinId)}
             onMouseLeave={() => card.mixinId && cardMouseLeave(card.mixinId)}
+            draggable={true}
+            onDragStart={(e) => {
+              e.stopPropagation();
+              fadeInDropPlane();
+              if (e.dataTransfer && card.mixinId) {
+                e.dataTransfer.effectAllowed = 'move';
+                e.dataTransfer.setData('text/plain', card.mixinId);
+                // Set the empty image as the drag image
+                e.dataTransfer.setDragImage(emptyImg, 0, 0);
+              }
+              return false;
+            }}
+            onDragEnd={(e) => {
+              e.stopPropagation();
+              fadeOutDropPlane();
+              return false;
+            }}
             onClick={() => cardClick(card, isProUser)}
             title={card.description}
           >
