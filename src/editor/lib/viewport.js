@@ -275,8 +275,11 @@ export function Viewport(inspector) {
       } else if (object.el.hasAttribute('gltf-model')) {
         const listener = (event) => {
           if (event.target !== object.el) return; // we got an event for a child, ignore
-          selectionBox.setFromObject(object);
-          selectionBox.visible = true;
+          // Some models have a wrong bounding box if we don't wait a bit
+          setTimeout(() => {
+            selectionBox.setFromObject(object);
+            selectionBox.visible = true;
+          }, 20);
           object.el.removeEventListener('model-loaded', listener);
         };
         object.el.addEventListener('model-loaded', listener);
