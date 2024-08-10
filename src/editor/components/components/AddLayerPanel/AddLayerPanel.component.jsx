@@ -130,7 +130,7 @@ const getSegmentElevationPosY = (ancestorEl) => {
 const createEntityOnPosition = (mixinId, position) => {
   const previewEntity = document.getElementById('previewEntity');
   if (previewEntity) {
-    previewEntity.setAttribute('visible', false);
+    previewEntity.remove();
   }
   console.log('create entity: ', mixinId);
   const newEntity = document.createElement('a-entity');
@@ -156,7 +156,7 @@ const createEntityOnPosition = (mixinId, position) => {
 const createEntity = (mixinId) => {
   const previewEntity = document.getElementById('previewEntity');
   if (previewEntity) {
-    previewEntity.setAttribute('visible', false);
+    previewEntity.remove();
   }
   console.log('create entity: ', mixinId);
   const newEntity = document.createElement('a-entity');
@@ -238,7 +238,6 @@ const cardMouseEnter = (mixinId) => {
     previewEntity.appendChild(dropCursorEntity);
   }
   previewEntity.setAttribute('mixin', mixinId);
-  previewEntity.setAttribute('visible', true);
 
   const selectedElement = AFRAME.INSPECTOR.selectedEntity;
   const [ancestorEl, inSegment] = selectedElement
@@ -270,9 +269,10 @@ const cardMouseEnter = (mixinId) => {
 };
 
 const cardMouseLeave = (mixinId) => {
+  // Note that this is not called when dragging, that's what we want.
   const previewEntity = document.getElementById('previewEntity');
   if (previewEntity) {
-    previewEntity.setAttribute('visible', false);
+    previewEntity.remove();
   }
 };
 
