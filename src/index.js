@@ -1,9 +1,5 @@
 /* global AFRAME, XMLHttpRequest, VERSION */
-
-if (typeof VERSION !== 'undefined') {
-  console.log(`3DStreet Version: ${VERSION}`);
-}
-
+import 'aframe-extras/controls/index.js';
 var streetmixParsers = require('./aframe-streetmix-parsers');
 var streetmixUtils = require('./tested/streetmix-utils');
 require('./json-utils_1.1.js');
@@ -23,6 +19,10 @@ require('./components/streetplan-loader');
 require('./components/street-geo.js');
 require('./components/street-environment.js');
 require('./components/intersection.js');
+
+if (typeof VERSION !== 'undefined') {
+  console.log(`3DStreet Version: ${VERSION}`);
+}
 
 AFRAME.registerComponent('street', {
   schema: {
