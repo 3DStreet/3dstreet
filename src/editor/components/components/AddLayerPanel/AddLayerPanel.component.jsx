@@ -9,13 +9,27 @@ import { Chevron24Down, Plus20Circle } from '../../../icons';
 import { Dropdown } from '../Dropdown';
 import CardPlaceholder from '../../../../../ui_assets/card-placeholder.svg';
 import LockedCard from '../../../../../ui_assets/locked-card.svg';
-
-import { layersData } from './layersData.js';
-import { LayersOptions } from './LayersOptions.js';
 import mixinCatalog from '../../../../catalog.json';
 import posthog from 'posthog-js';
 import Events from '../../../lib/Events';
 import pickPointOnGroundPlane from '../../../lib/pick-point-on-ground-plane';
+import { layersData } from './layersData.js';
+import { LayersOptions } from './LayersOptions.js';
+import * as layerFunctions from './createLayerFunctions';
+
+// which layer functions are available
+const enabledFunctionNames = [
+  'createSvgExtrudedEntity',
+  'createMapbox',
+  'createStreetmixStreet',
+  'create3DTiles',
+  'createCustomModel',
+  'createPrimitiveGeometry',
+  'createIntersection'
+];
+const layerFunctionsObject = Object.fromEntries(
+  enabledFunctionNames.map((name) => [name, layerFunctions[name]])
+);
 
 // Create an empty image
 const emptyImg = new Image();
@@ -237,6 +251,19 @@ const cardMouseEnter = (mixinId) => {
       </a-ring>`;
     previewEntity.appendChild(dropCursorEntity);
   }
+
+  if (!mixinId) {
+    // in the case of layers like streets, intersections, etc.
+    // console.log('mixinId is not defined');
+    const position = pickPointOnGroundPlane({
+      normalizedX: 0,
+      normalizedY: -0.1,
+      camera: AFRAME.INSPECTOR.camera
+    });
+    previewEntity.setAttribute('position', position);
+    return;
+  }
+
   previewEntity.setAttribute('mixin', mixinId);
 
   const selectedElement = AFRAME.INSPECTOR.selectedEntity;
@@ -384,8 +411,23 @@ const AddLayerPanel = ({ onClose, isAddLayerPanelOpen }) => {
 
     // get item data
     if (e.dataTransfer) {
-      const mixinId = e.dataTransfer.getData('text/plain');
-      createEntityOnPosition(mixinId, position);
+      console.log('e.dataTransfer', e.dataTransfer);
+      const transferredData = JSON.parse(
+        e.dataTransfer.getData('application/json')
+      );
+      console.log('mixinId', transferredData.mixinId);
+      if (transferredData.mixinId) {
+        createEntityOnPosition(transferredData.mixinId, position);
+      } else if (transferredData.handlerFunctionName) {
+        console.log('handlerFunctionName', transferredData.handlerFunctionName);
+        if (layerFunctionsObject[transferredData.handlerFunctionName]) {
+          layerFunctionsObject[transferredData.handlerFunctionName](position);
+        } else {
+          console.error(
+            `Function ${transferredData.handlerFunctionName} not found`
+          );
+        }
+      }
     }
 
     return false;
@@ -434,15 +476,22 @@ const AddLayerPanel = ({ onClose, isAddLayerPanelOpen }) => {
           <div
             key={card.id}
             className={styles.card}
-            onMouseEnter={() => card.mixinId && cardMouseEnter(card.mixinId)}
-            onMouseLeave={() => card.mixinId && cardMouseLeave(card.mixinId)}
+            onMouseEnter={() => cardMouseEnter(card.mixinId)}
+            onMouseLeave={() => cardMouseLeave(card.mixinId)}
             draggable={true}
             onDragStart={(e) => {
+              const transferData = {
+                mixinId: card?.mixinId,
+                handlerFunctionName: card?.handlerFunction?.name
+              };
               e.stopPropagation();
               fadeInDropPlane();
-              if (e.dataTransfer && card.mixinId) {
+              if (e.dataTransfer) {
                 e.dataTransfer.effectAllowed = 'move';
-                e.dataTransfer.setData('text/plain', card.mixinId);
+                console.log('transferData', transferData);
+                const dataToTransfer = JSON.stringify(transferData);
+                console.log('dataToTransfer', dataToTransfer);
+                e.dataTransfer.setData('application/json', dataToTransfer);
                 // Set the empty image as the drag image
                 e.dataTransfer.setDragImage(emptyImg, 0, 0);
               }
