@@ -1,6 +1,5 @@
 import Events from '../../../lib/Events';
 import { loadScript, roundCoord } from '../../../../../src/utils.js';
-import pickPointOnGroundPlane from '../../../lib/pick-point-on-ground-plane';
 
 function createSvgExtrudedEntity() {
   // This component accepts a svgString and creates a new entity with geometry extruded
@@ -56,7 +55,7 @@ function createMapbox() {
   Events.emit('entitycreated', geoLayer);
 }
 
-function createStreetmixStreet() {
+function createStreetmixStreet(position) {
   // This code snippet allows the creation of an additional Streetmix street
   // in your 3DStreet scene without replacing any existing streets.
   const streetmixURL = prompt(
@@ -67,13 +66,11 @@ function createStreetmixStreet() {
     const newEl = document.createElement('a-entity');
     newEl.setAttribute('id', streetmixURL);
     // position the street further from the current one so as not to overlap each other
-    // newEl.setAttribute('position', '0 0 -20');
-    const position = pickPointOnGroundPlane({
-      normalizedX: 0,
-      normalizedY: -0.1,
-      camera: AFRAME.INSPECTOR.camera
-    });
-    newEl.setAttribute('position', position);
+    if (position) {
+      newEl.setAttribute('position', position);
+    } else {
+      newEl.setAttribute('position', '0 0 -20');
+    }
 
     newEl.setAttribute(
       'streetmix-loader',

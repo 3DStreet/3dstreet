@@ -146,7 +146,7 @@ const createEntityOnPosition = (mixinId, position) => {
   if (previewEntity) {
     previewEntity.remove();
   }
-  console.log('create entity: ', mixinId);
+  // console.log('create entity: ', mixinId);
   const newEntity = document.createElement('a-entity');
   newEntity.setAttribute('mixin', mixinId);
   newEntity.addEventListener(
@@ -172,7 +172,7 @@ const createEntity = (mixinId) => {
   if (previewEntity) {
     previewEntity.remove();
   }
-  console.log('create entity: ', mixinId);
+  // console.log('create entity: ', mixinId);
   const newEntity = document.createElement('a-entity');
   newEntity.setAttribute('mixin', mixinId);
   newEntity.addEventListener(
@@ -411,15 +411,12 @@ const AddLayerPanel = ({ onClose, isAddLayerPanelOpen }) => {
 
     // get item data
     if (e.dataTransfer) {
-      console.log('e.dataTransfer', e.dataTransfer);
       const transferredData = JSON.parse(
         e.dataTransfer.getData('application/json')
       );
-      console.log('mixinId', transferredData.mixinId);
       if (transferredData.mixinId) {
         createEntityOnPosition(transferredData.mixinId, position);
       } else if (transferredData.handlerFunctionName) {
-        console.log('handlerFunctionName', transferredData.handlerFunctionName);
         if (layerFunctionsObject[transferredData.handlerFunctionName]) {
           layerFunctionsObject[transferredData.handlerFunctionName](position);
         } else {
@@ -488,10 +485,10 @@ const AddLayerPanel = ({ onClose, isAddLayerPanelOpen }) => {
               fadeInDropPlane();
               if (e.dataTransfer) {
                 e.dataTransfer.effectAllowed = 'move';
-                console.log('transferData', transferData);
-                const dataToTransfer = JSON.stringify(transferData);
-                console.log('dataToTransfer', dataToTransfer);
-                e.dataTransfer.setData('application/json', dataToTransfer);
+                e.dataTransfer.setData(
+                  'application/json',
+                  JSON.stringify(transferData)
+                );
                 // Set the empty image as the drag image
                 e.dataTransfer.setDragImage(emptyImg, 0, 0);
               }
