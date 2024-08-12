@@ -1,6 +1,6 @@
 /* eslint-disable no-unused-vars, react/no-danger */
 import classNames from 'classnames';
-import debounce from 'lodash-es/debounce';
+import { cloneDeep, debounce } from 'lodash-es';
 import PropTypes from 'prop-types';
 import React from 'react';
 import Events from '../../lib/Events';
@@ -33,18 +33,14 @@ export default class SceneGraph extends React.Component {
       filteredEntities: [],
       selectedIndex: -1,
       leftBarHide: false,
-      initiallyExpandedEntities: [],
       secondLvlEntitiesExpanded: true,
-      firstLevelEntities: []
+      firstLevelEntities: [],
+      scene: props.scene
     };
 
     this.rebuildEntityOptions = debounce(
       this.rebuildEntityOptions.bind(this),
       1000
-    );
-    this.updateFilteredEntities = debounce(
-      this.updateFilteredEntities.bind(this),
-      500
     );
   }
 
@@ -120,7 +116,7 @@ export default class SceneGraph extends React.Component {
   rebuildEntityOptions = () => {
     const entities = [{ depth: 0, entity: this.props.scene }];
 
-    function treeIterate(element, depth) {
+    function treeIterate(element, parent, depth) {
       if (!element) {
         return;
       }
@@ -140,12 +136,15 @@ export default class SceneGraph extends React.Component {
 
         entities.push({ entity: entity, depth: depth });
 
-        treeIterate(entity, depth);
+        treeIterate(entity, element, depth);
       }
     }
-    treeIterate(this.props.scene, 0);
 
+    treeIterate(this.props.scene, null, 0);
+
+    console.log(entities);
     this.setState({
+      scene: this.props.scene,
       entities: entities,
       filteredEntities: this.getFilteredEntities(this.state.filter, entities)
     });
@@ -154,51 +153,6 @@ export default class SceneGraph extends React.Component {
   selectIndex = (index) => {
     if (index >= 0 && index < this.state.entities.length) {
       this.selectEntity(this.state.entities[index].entity);
-    }
-  };
-
-  onFilterKeyUp = (event) => {
-    if (event.keyCode === 27) {
-      this.clearFilter();
-    }
-  };
-
-  onKeyDown = (event) => {
-    switch (event.keyCode) {
-      case 37: // left
-      case 38: // up
-      case 39: // right
-      case 40: // down
-        event.preventDefault();
-        event.stopPropagation();
-        break;
-    }
-  };
-
-  onKeyUp = (event) => {
-    if (this.props.selectedEntity === null) {
-      return;
-    }
-
-    switch (event.keyCode) {
-      case 37: // left
-        if (this.isExpanded(this.props.selectedEntity)) {
-          this.toggleExpandedCollapsed(this.props.selectedEntity);
-        }
-        break;
-      case 38: // up
-        this.selectIndex(
-          this.previousExpandedIndexTo(this.state.selectedIndex)
-        );
-        break;
-      case 39: // right
-        if (!this.isExpanded(this.props.selectedEntity)) {
-          this.toggleExpandedCollapsed(this.props.selectedEntity);
-        }
-        break;
-      case 40: // down
-        this.selectIndex(this.nextExpandedIndexTo(this.state.selectedIndex));
-        break;
     }
   };
 
@@ -259,47 +213,6 @@ export default class SceneGraph extends React.Component {
     this.setState({ expandedElements: this.state.expandedElements });
   };
 
-  previousExpandedIndexTo = (i) => {
-    for (let prevIter = i - 1; prevIter >= 0; prevIter--) {
-      const prevEl = this.state.entities[prevIter].entity;
-      if (this.isVisibleInSceneGraph(prevEl)) {
-        return prevIter;
-      }
-    }
-    return -1;
-  };
-
-  nextExpandedIndexTo = (i) => {
-    for (
-      let nextIter = i + 1;
-      nextIter < this.state.entities.length;
-      nextIter++
-    ) {
-      const nextEl = this.state.entities[nextIter].entity;
-      if (this.isVisibleInSceneGraph(nextEl)) {
-        return nextIter;
-      }
-    }
-    return -1;
-  };
-
-  onChangeFilter = (evt) => {
-    const filter = evt.target.value;
-    this.setState({ filter: filter });
-    this.updateFilteredEntities(filter);
-  };
-
-  updateFilteredEntities(filter) {
-    this.setState({
-      filteredEntities: this.getFilteredEntities(filter)
-    });
-  }
-
-  clearFilter = () => {
-    this.setState({ filter: '' });
-    this.updateFilteredEntities('');
-  };
-
   toggleLeftBar = () => {
     this.setState({ leftBarHide: !this.state.leftBarHide });
   };
@@ -320,6 +233,7 @@ export default class SceneGraph extends React.Component {
     let layerEntities = [];
     let resultEntities = [];
     // let activeLayer = false;
+    console.log(entityOptions);
     for (let i = 1; i < entityOptions.length; i++) {
       const entityOption = entityOptions[i];
       const entity = (
@@ -362,10 +276,52 @@ export default class SceneGraph extends React.Component {
         layerEntities = [];
       }
     }
+    console.log(resultEntities);
     return resultEntities;
   };
 
+  shouldRenderEntity = (entity) => {
+    return filterEntity(entity, this.state.filter);
+  };
+
+  renderSceneNodes = (node, depth = 0) => {
+    if (!node) return null;
+    if (
+      node.dataset.isInspector ||
+      !node.isEntity ||
+      node.isInspector ||
+      'aframeInspector' in node.dataset
+    ) {
+      return null;
+    }
+    const children = node.children || [];
+    const renderedChildren = [];
+
+    for (let i = 0; i < children.length; i++) {
+      renderedChildren.push(this.renderSceneNodes(children[i], depth + 1));
+    }
+
+    return (
+      <div key={node.id} className={`node depth-${depth}`}>
+        <div>
+          <Entity
+            entity={node}
+            depth={depth}
+            isFiltering={!!this.state.filter}
+            isExpanded={this.isExpanded(node)}
+            isSelected={this.props.selectedEntity === node}
+            selectEntity={this.selectEntity}
+            toggleExpandedCollapsed={this.toggleExpandedCollapsed}
+          >
+            <div className="node-children">{renderedChildren}</div>
+          </Entity>
+        </div>
+      </div>
+    );
+  };
+
   render() {
+    console.log('rerender');
     // To hide the SceneGraph we have to hide its parent too (#left-sidebar).
     if (!this.props.visible) {
       return null;
@@ -377,25 +333,10 @@ export default class SceneGraph extends React.Component {
       hide: this.state.leftBarHide
     });
 
-    const clearFilter = this.state.filter ? (
-      <a onClick={this.clearFilter} className="button fa fa-times" />
-    ) : null;
-
     return (
       <div id="scenegraph" className="scenegraph">
         <div className="scenegraph-toolbar">
           <ToolbarWrapper />
-          <div className="search">
-            <input
-              id="filter"
-              placeholder="Search..."
-              onChange={this.onChangeFilter}
-              onKeyUp={this.onFilterKeyUp}
-              value={this.state.filter}
-            />
-            {clearFilter}
-            {!this.state.filter && <span className="fa fa-search" />}
-          </div>
         </div>
         <div
           className={className}
@@ -416,7 +357,9 @@ export default class SceneGraph extends React.Component {
               <span>Layers</span>
             </div>
           </div>
-          <div className="layers">{this.renderEntities()}</div>
+          <div className="layers">
+            {this.renderSceneNodes(this.state.scene)}
+          </div>
         </div>
       </div>
     );

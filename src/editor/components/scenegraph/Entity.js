@@ -16,17 +16,12 @@ export default class Entity extends React.Component {
     isSelected: PropTypes.bool,
     selectEntity: PropTypes.func,
     toggleExpandedCollapsed: PropTypes.func,
-    isInitiallyExpanded: PropTypes.bool,
-    initiallyExpandEntity: PropTypes.func
+    children: PropTypes.node
   };
 
   constructor(props) {
     super(props);
     this.state = {};
-  }
-
-  componentDidMount() {
-    !this.props.isInitiallyExpanded && this.props.initiallyExpandEntity();
   }
 
   onClick = (evt) => {
@@ -52,6 +47,7 @@ export default class Entity extends React.Component {
     const isFiltering = this.props.isFiltering;
     const isExpanded = this.props.isExpanded;
     const entity = this.props.entity;
+    console.log(entity);
     const tagName = entity.tagName.toLowerCase();
 
     // Clone and remove buttons if not a-scene.
@@ -118,21 +114,24 @@ export default class Entity extends React.Component {
     });
 
     return (
-      <div className={className} onClick={this.onClick}>
-        <span>
-          <span
-            style={{
-              width: `${30 * (this.props.depth - 1)}px`
-            }}
-          />
-          {visibilityButton}
-          {printEntity(entity, this.onDoubleClick)}
-          {collapse}
-        </span>
-        <span className="entityActions">
-          {cloneButton}
-          {removeButton}
-        </span>
+      <div>
+        <div className={className} onClick={this.onClick}>
+          <span>
+            <span
+              style={{
+                width: `${30 * (this.props.depth - 1)}px`
+              }}
+            />
+            {visibilityButton}
+            {printEntity(entity, this.onDoubleClick)}
+            {collapse}
+          </span>
+          <span className="entityActions">
+            {cloneButton}
+            {removeButton}
+          </span>
+        </div>
+        {isExpanded ? this.props.children : null}
       </div>
     );
   }
