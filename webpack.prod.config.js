@@ -2,7 +2,7 @@ const webpack = require('webpack');
 const path = require('path');
 const Dotenv = require('dotenv-webpack');
 const CopyWebpackPlugin = require('copy-webpack-plugin');
-
+const TerserPlugin = require('terser-webpack-plugin');
 const DEPLOY_ENV = process.env.DEPLOY_ENV ?? 'production';
 
 module.exports = {
@@ -103,6 +103,25 @@ module.exports = {
           filename: 'images/[name].[ext]'
         }
       }
+    ]
+  },
+  optimization: {
+    minimize: true,
+    minimizer: [
+      new TerserPlugin({
+        terserOptions: {
+          mangle: {
+            reserved: [
+              'createSvgExtrudedEntity',
+              'createStreetmixStreet',
+              'createCustomModel',
+              'createPrimitiveGeometry',
+              'createIntersection',
+              'createSplatObject'
+            ] // keep full names for drag-and-drop functions
+          }
+        }
+      })
     ]
   }
 };
