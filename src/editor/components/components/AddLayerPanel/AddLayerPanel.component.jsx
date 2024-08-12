@@ -146,7 +146,6 @@ const createEntityOnPosition = (mixinId, position) => {
   if (previewEntity) {
     previewEntity.remove();
   }
-  // console.log('create entity: ', mixinId);
   const newEntity = document.createElement('a-entity');
   newEntity.setAttribute('mixin', mixinId);
   newEntity.addEventListener(
@@ -172,7 +171,6 @@ const createEntity = (mixinId) => {
   if (previewEntity) {
     previewEntity.remove();
   }
-  // console.log('create entity: ', mixinId);
   const newEntity = document.createElement('a-entity');
   newEntity.setAttribute('mixin', mixinId);
   newEntity.addEventListener(
@@ -253,8 +251,6 @@ const cardMouseEnter = (mixinId) => {
   }
 
   if (!mixinId) {
-    // in the case of layers like streets, intersections, etc.
-    // console.log('mixinId is not defined');
     const position = pickPointOnGroundPlane({
       normalizedX: 0,
       normalizedY: -0.1,
