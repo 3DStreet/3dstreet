@@ -231,7 +231,7 @@ AFRAME.registerComponent('street-geo', {
       createOsm3dElement();
     } else {
       loadScript(
-        new URL('/src/lib/osm-tiles-geojson.js', import.meta.url),
+        new URL('/src/lib/osm4vr.min.js', import.meta.url),
         createOsm3dElement
       );
     }
