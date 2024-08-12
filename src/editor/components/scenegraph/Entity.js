@@ -3,9 +3,15 @@ import React from 'react';
 import PropTypes from 'prop-types';
 import classNames from 'classnames';
 import Events from '../../lib/Events';
-import { printEntity, removeEntity, cloneEntity } from '../../lib/entity';
+import {
+  printEntity,
+  removeEntity,
+  cloneEntity,
+  getEntityDisplayName
+} from '../../lib/entity';
 import { AwesomeIcon } from '../components/AwesomeIcon';
 import { faCaretDown, faCaretRight } from '@fortawesome/free-solid-svg-icons';
+import posthog from 'posthog-js';
 
 export default class Entity extends React.Component {
   static propTypes = {
@@ -15,18 +21,25 @@ export default class Entity extends React.Component {
     isFiltering: PropTypes.bool,
     isSelected: PropTypes.bool,
     selectEntity: PropTypes.func,
-    toggleExpandedCollapsed: PropTypes.func,
     children: PropTypes.node
   };
 
   constructor(props) {
     super(props);
-    this.state = {};
+    this.state = {
+      isExpanded: false,
+      isSelected: false
+    };
   }
 
   onClick = (evt) => {
+    const entity = this.props.entity;
     if (!evt.target.classList.contains('fa')) {
-      this.props.selectEntity(this.props.entity);
+      this.setState({ isSelected: true });
+      posthog.capture('entity_selected', {
+        entity: getEntityDisplayName(entity)
+      });
+      Events.emit('entityselect', entity, true);
     }
   };
 
@@ -45,9 +58,8 @@ export default class Entity extends React.Component {
 
   render() {
     const isFiltering = this.props.isFiltering;
-    const isExpanded = this.props.isExpanded;
+    const isExpanded = this.state.isExpanded;
     const entity = this.props.entity;
-    console.log(entity);
     const tagName = entity.tagName.toLowerCase();
 
     // Clone and remove buttons if not a-scene.
@@ -77,7 +89,7 @@ export default class Entity extends React.Component {
         <span
           onClick={(evt) => {
             evt.stopPropagation();
-            this.props.toggleExpandedCollapsed(entity);
+            this.setState({ isExpanded: !isExpanded });
           }}
           className="collapsespace"
         >
@@ -119,7 +131,7 @@ export default class Entity extends React.Component {
           <span>
             <span
               style={{
-                width: `${30 * (this.props.depth - 1)}px`
+                width: `${30 * this.props.depth}px`
               }}
             />
             {visibilityButton}
