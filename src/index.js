@@ -1,4 +1,5 @@
 /* global AFRAME, XMLHttpRequest, VERSION */
+import 'aframe-cursor-teleport-component';
 import 'aframe-extras/controls/index.js';
 var streetmixParsers = require('./aframe-streetmix-parsers');
 var streetmixUtils = require('./tested/streetmix-utils');
@@ -7,7 +8,6 @@ var streetUtils = require('./street-utils.js');
 require('./components/gltf-part');
 require('./components/ocean');
 require('./components/svg-extruder.js');
-require('./lib/aframe-cursor-teleport-component.min.js');
 require('./lib/animation-mixer.js');
 require('./lib/aframe-gaussian-splatting-component.min.js');
 require('./assets.js');
