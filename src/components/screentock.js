@@ -30,16 +30,6 @@ AFRAME.registerComponent('screentock', {
 
     function toggleHelpers(show) {
       if (inspector && inspector.opened) inspector.sceneHelpers.visible = show;
-      if (show) {
-        document
-          .querySelector('#cameraRig')
-          .setAttribute(
-            'cursor-teleport',
-            'cameraRig: #cameraRig; cameraHead: #camera;'
-          );
-      } else {
-        document.querySelector('#cameraRig').removeAttribute('cursor-teleport');
-      }
     }
 
     const createCanvasWithScreenshot = async (aframeCanvas) => {
