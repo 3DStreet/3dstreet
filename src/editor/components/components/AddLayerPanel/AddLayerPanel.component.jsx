@@ -250,45 +250,38 @@ const cardMouseEnter = (mixinId) => {
     previewEntity.appendChild(dropCursorEntity);
   }
 
-  if (!mixinId) {
-    const position = pickPointOnGroundPlane({
-      normalizedX: 0,
-      normalizedY: -0.1,
-      camera: AFRAME.INSPECTOR.camera
-    });
-    previewEntity.setAttribute('position', position);
-    return;
-  }
+  if (mixinId) {
+    previewEntity.setAttribute('mixin', mixinId);
 
-  previewEntity.setAttribute('mixin', mixinId);
+    const selectedElement = AFRAME.INSPECTOR.selectedEntity;
+    const [ancestorEl, inSegment] = selectedElement
+      ? getAncestorEl(selectedElement)
+      : [undefined, false];
 
-  const selectedElement = AFRAME.INSPECTOR.selectedEntity;
-  const [ancestorEl, inSegment] = selectedElement
-    ? getAncestorEl(selectedElement)
-    : [undefined, false];
-
-  // avoid adding new element inside the direct ancestor of a-scene: #environment, #reference, ...
-  if (selectedElement && !ancestorEl.parentEl.isScene) {
-    if (inSegment) {
-      // get elevation position Y from attribute of segment element
-      const segmentElevationPosY = getSegmentElevationPosY(ancestorEl);
-      // set position y by elevation level of segment
-      ancestorEl.object3D.getWorldPosition(previewEntity.object3D.position);
-      previewEntity.object3D.position.y += segmentElevationPosY;
-    } else {
-      // if we are creating element not inside segment-parent
-      selectedElement.object3D.getWorldPosition(
-        previewEntity.object3D.position
-      );
+    // avoid adding new element inside the direct ancestor of a-scene: #environment, #reference, ...
+    if (selectedElement && !ancestorEl.parentEl.isScene) {
+      if (inSegment) {
+        // get elevation position Y from attribute of segment element
+        const segmentElevationPosY = getSegmentElevationPosY(ancestorEl);
+        // set position y by elevation level of segment
+        ancestorEl.object3D.getWorldPosition(previewEntity.object3D.position);
+        previewEntity.object3D.position.y += segmentElevationPosY;
+      } else {
+        // if we are creating element not inside segment-parent
+        selectedElement.object3D.getWorldPosition(
+          previewEntity.object3D.position
+        );
+      }
+      return;
     }
-  } else {
-    const position = pickPointOnGroundPlane({
-      normalizedX: 0,
-      normalizedY: -0.1,
-      camera: AFRAME.INSPECTOR.camera
-    });
-    previewEntity.setAttribute('position', position);
   }
+
+  const position = pickPointOnGroundPlane({
+    normalizedX: 0,
+    normalizedY: -0.1,
+    camera: AFRAME.INSPECTOR.camera
+  });
+  previewEntity.setAttribute('position', position);
 };
 
 const cardMouseLeave = (mixinId) => {
