@@ -1,6 +1,6 @@
 /* eslint-disable no-unused-vars, react/no-danger */
 import classNames from 'classnames';
-import { cloneDeep, debounce } from 'lodash-es';
+import { debounce } from 'lodash-es';
 import PropTypes from 'prop-types';
 import React from 'react';
 import Events from '../../lib/Events';
@@ -16,10 +16,12 @@ export default class SceneGraph extends React.Component {
     id: PropTypes.string,
     onChange: PropTypes.func,
     scene: PropTypes.object,
+    selectedEntity: PropTypes.object,
     visible: PropTypes.bool
   };
 
   static defaultProps = {
+    selectedEntity: '',
     id: 'left-sidebar'
   };
 
@@ -69,9 +71,12 @@ export default class SceneGraph extends React.Component {
   };
 
   renderSceneNodes = (nodes, depth = 0) => {
-    if (!nodes || nodes.length === 0) return null;
+    if (!nodes || nodes.length === 0) {
+      return { renderedChildren: null, isExpanded: false };
+    }
 
     const renderedNodes = [];
+    let isExpanded = false;
 
     for (let i = 0; i < nodes.length; i++) {
       const node = nodes[i];
@@ -81,15 +86,20 @@ export default class SceneGraph extends React.Component {
       }
 
       const children = node.children || [];
-      const renderedChildren = this.renderSceneNodes(
-        Array.from(children),
-        depth + 1
-      );
+      const { renderedChildren, isExpanded: childIsExpanded } =
+        this.renderSceneNodes(Array.from(children), depth + 1);
 
+      const isSelected = node === this.props.selectedEntity;
+      isExpanded = isExpanded || isSelected || childIsExpanded;
       renderedNodes.push(
         <div key={node.id} className={`node depth-${depth}`}>
           <div>
-            <Entity entity={node} depth={depth}>
+            <Entity
+              entity={node}
+              depth={depth}
+              isExpanded={isExpanded}
+              isSelected={isSelected}
+            >
               <div className="node-children">{renderedChildren}</div>
             </Entity>
           </div>
@@ -97,7 +107,7 @@ export default class SceneGraph extends React.Component {
       );
     }
 
-    return renderedNodes;
+    return { renderedChildren: renderedNodes, isExpanded };
   };
 
   render() {
@@ -137,28 +147,10 @@ export default class SceneGraph extends React.Component {
             </div>
           </div>
           <div className="layers">
-            {this.renderSceneNodes(this.state.scene.children)}
+            {this.renderSceneNodes(this.state.scene.children).renderedChildren}
           </div>
         </div>
       </div>
     );
   }
-}
-
-function filterEntity(entity, filter) {
-  if (!filter) {
-    return true;
-  }
-
-  // Check if the ID, tagName, class, selector includes the filter.
-  if (
-    entity.id.toUpperCase().indexOf(filter.toUpperCase()) !== -1 ||
-    entity.tagName.toUpperCase().indexOf(filter.toUpperCase()) !== -1 ||
-    entity.classList.contains(filter) ||
-    entity.matches(filter)
-  ) {
-    return true;
-  }
-
-  return false;
 }

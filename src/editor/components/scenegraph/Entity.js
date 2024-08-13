@@ -20,16 +20,30 @@ export default class Entity extends React.Component {
     isExpanded: PropTypes.bool,
     isFiltering: PropTypes.bool,
     isSelected: PropTypes.bool,
-    selectEntity: PropTypes.func,
+    selectedEntity: PropTypes.object,
     children: PropTypes.node
   };
 
   constructor(props) {
     super(props);
     this.state = {
-      isExpanded: false,
-      isSelected: false
+      isExpanded: this.props.isExpanded,
+      isSelected: this.props.isSelected
     };
+  }
+
+  componentDidUpdate(prevProps) {
+    if (prevProps.isSelected !== this.props.isSelected) {
+      this.setState({ isSelected: this.props.isSelected });
+    }
+
+    // update expand if entity is selected elsewhere
+    if (
+      prevProps.isExpanded !== this.props.isExpanded &&
+      this.props.isExpanded
+    ) {
+      this.setState({ isExpanded: this.props.isExpanded });
+    }
   }
 
   onClick = (evt) => {
@@ -58,8 +72,8 @@ export default class Entity extends React.Component {
 
   render() {
     const isFiltering = this.props.isFiltering;
-    const isExpanded = this.state.isExpanded;
     const entity = this.props.entity;
+    const isExpanded = this.state.isExpanded;
     const tagName = entity.tagName.toLowerCase();
 
     // Clone and remove buttons if not a-scene.
@@ -119,7 +133,7 @@ export default class Entity extends React.Component {
 
     // Class name.
     const className = classNames({
-      active: this.props.isSelected,
+      active: this.state.isSelected,
       entity: true,
       novisible: !visible,
       option: true
