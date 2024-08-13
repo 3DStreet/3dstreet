@@ -51,6 +51,10 @@ export default class SceneGraph extends React.Component {
     });
   }
 
+  toggleLeftBar = () => {
+    this.setState({ leftBarHide: !this.state.leftBarHide });
+  };
+
   rebuildEntityOptions = () => {
     this.setState({
       scene: this.props.scene
