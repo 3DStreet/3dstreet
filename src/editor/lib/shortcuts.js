@@ -161,13 +161,6 @@ export const Shortcuts = {
           cloneEntity(AFRAME.INSPECTOR.entityToCopy);
         }
       }
-
-      // s: focus search input
-      if (event.keyCode === 83) {
-        event.preventDefault();
-        event.stopPropagation();
-        document.getElementById('filter').focus();
-      }
     }
 
     // º: toggle sidebars visibility
