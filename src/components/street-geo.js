@@ -68,6 +68,9 @@ AFRAME.registerComponent('street-geo', {
           document.getElementById('map-data-attribution').style.visibility =
             'hidden';
         }
+        if (mapType === 'osm3d') {
+          this.el.removeChild(this['osm3dBuilding']);
+        }
       }
     }
   },
@@ -184,8 +187,7 @@ AFRAME.registerComponent('street-geo', {
 
     const createOsm3dElement = () => {
       const osm3dElement = document.createElement('a-entity');
-      osm3dElement.setAttribute('data-no-pause', '');
-      osm3dElement.setAttribute('data-layer-name', 'OpenStreetMap 3D + 2D');
+      osm3dElement.setAttribute('data-layer-name', 'OpenStreetMap 2D Tiles');
       osm3dElement.setAttribute('osm-tiles', {
         lon: data.longitude,
         lat: data.latitude,
@@ -193,17 +195,24 @@ AFRAME.registerComponent('street-geo', {
         trackId: 'camera'
       });
       osm3dElement.setAttribute('rotation', '-90 -90 0');
+      osm3dElement.setAttribute('data-no-pause', '');
+      osm3dElement.classList.add('autocreated');
       osm3dElement.setAttribute('data-ignore-raycaster', '');
 
       const osm3dBuildingElement = document.createElement('a-entity');
+      osm3dBuildingElement.setAttribute(
+        'data-layer-name',
+        'OpenStreetMap 3D Buildings'
+      );
       osm3dBuildingElement.setAttribute('osm-geojson', {
         lon: data.longitude,
         lat: data.latitude,
         radius_m: 500,
         trackId: 'camera'
       });
-      osm3dBuildingElement.classList.add('autocreated');
       osm3dBuildingElement.setAttribute('rotation', '0 -90 0');
+      osm3dBuildingElement.setAttribute('data-no-pause', '');
+      osm3dBuildingElement.classList.add('autocreated');
       osm3dBuildingElement.setAttribute('data-ignore-raycaster', '');
 
       if (AFRAME.INSPECTOR && AFRAME.INSPECTOR.opened) {
@@ -217,8 +226,8 @@ AFRAME.registerComponent('street-geo', {
           { once: true }
         );
       }
-      el.appendChild(osm3dBuildingElement);
       el.appendChild(osm3dElement);
+      el.appendChild(osm3dBuildingElement);
 
       self['osm3d'] = osm3dElement;
       self['osm3dBuilding'] = osm3dBuildingElement;
