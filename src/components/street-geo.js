@@ -51,6 +51,8 @@ AFRAME.registerComponent('street-geo', {
         // create Map element and save a link to it in this[mapType]
         if (!this.isAR) {
           this[mapType + 'Create']();
+          document.getElementById('map-data-attribution').style.visibility =
+            'visible';
         }
       } else if (
         data.maps === mapType &&
@@ -64,10 +66,6 @@ AFRAME.registerComponent('street-geo', {
         // remove element from DOM and from this object
         this.el.removeChild(this[mapType]);
         this[mapType] = null;
-        if (mapType === 'google3d') {
-          document.getElementById('map-data-attribution').style.visibility =
-            'hidden';
-        }
         if (mapType === 'osm3d') {
           this.el.removeChild(this['osm3dBuilding']);
         }
@@ -101,7 +99,7 @@ AFRAME.registerComponent('street-geo', {
     mapbox2dElement.setAttribute('data-ignore-raycaster', '');
     el.appendChild(mapbox2dElement);
     this['mapbox2d'] = mapbox2dElement;
-    document.getElementById('map-data-attribution').style.visibility = 'hidden';
+    document.getElementById('map-copyright').textContent = 'MapBox';
   },
   google3dCreate: function () {
     const data = this.data;
@@ -144,8 +142,6 @@ AFRAME.registerComponent('street-geo', {
       google3dElement.setAttribute('data-ignore-raycaster', '');
       el.appendChild(google3dElement);
       self['google3d'] = google3dElement;
-      document.getElementById('map-data-attribution').style.visibility =
-        'visible';
     };
 
     // check whether the library has been imported. Download if not
@@ -231,8 +227,7 @@ AFRAME.registerComponent('street-geo', {
 
       self['osm3d'] = osm3dElement;
       self['osm3dBuilding'] = osm3dBuildingElement;
-      document.getElementById('map-data-attribution').style.visibility =
-        'visible';
+      document.getElementById('map-copyright').textContent = 'OpenStreetMap';
     };
 
     // check whether the library has been imported. Download if not
