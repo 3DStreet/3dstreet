@@ -188,7 +188,8 @@ AFRAME.registerComponent('street-geo', {
         lon: data.longitude,
         lat: data.latitude,
         radius_m: 2000,
-        trackId: 'camera'
+        trackId: 'camera',
+        url: 'https://tile.openstreetmap.org/'
       });
       osm3dElement.setAttribute('rotation', '-90 -90 0');
       osm3dElement.setAttribute('data-no-pause', '');
