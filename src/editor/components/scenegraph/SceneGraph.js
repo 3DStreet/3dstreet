@@ -132,7 +132,6 @@ export default class SceneGraph extends React.Component {
   };
 
   render() {
-    console.log(this.state.scene.children);
     // To hide the SceneGraph we have to hide its parent too (#left-sidebar).
     if (!this.props.visible) {
       return null;
