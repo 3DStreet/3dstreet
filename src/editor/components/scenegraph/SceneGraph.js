@@ -114,7 +114,25 @@ export default class SceneGraph extends React.Component {
     return { renderedChildren: renderedNodes, isExpanded };
   };
 
+  orderSceneGraph = (nodes) => {
+    const orderedScene = [];
+
+    for (let i = 0; i < nodes.length; i++) {
+      const node = nodes[i];
+      if (node.id === 'reference-layers') {
+        orderedScene.unshift(node);
+      } else if (node.id === 'environment') {
+        orderedScene.splice(1, 0, node);
+      } else {
+        orderedScene.push(node);
+      }
+    }
+
+    return orderedScene;
+  };
+
   render() {
+    console.log(this.state.scene.children);
     // To hide the SceneGraph we have to hide its parent too (#left-sidebar).
     if (!this.props.visible) {
       return null;
@@ -151,7 +169,11 @@ export default class SceneGraph extends React.Component {
             </div>
           </div>
           <div className="layers">
-            {this.renderSceneNodes(this.state.scene.children).renderedChildren}
+            {
+              this.renderSceneNodes(
+                this.orderSceneGraph(this.state.scene.children)
+              ).renderedChildren
+            }
           </div>
         </div>
       </div>
