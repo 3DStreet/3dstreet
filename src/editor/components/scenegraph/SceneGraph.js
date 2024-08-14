@@ -96,7 +96,7 @@ export default class SceneGraph extends React.Component {
       const isSelected = node === this.props.selectedEntity;
       isExpanded = isExpanded || isSelected || childIsExpanded;
       renderedNodes.push(
-        <div key={node.id} className={`node depth-${depth}`}>
+        <div key={`${i}.${depth}.${node.id}`} className={`node depth-${depth}`}>
           <div>
             <Entity
               entity={node}
