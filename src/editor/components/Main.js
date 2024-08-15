@@ -4,7 +4,6 @@ import { Compass32Icon } from '../icons';
 import { Component } from 'react';
 import ComponentsSidebar from './components/Sidebar';
 import Events from '../lib/Events';
-import { ModalHelp } from './modals/ModalHelp';
 import ModalTextures from './modals/ModalTextures';
 import SceneGraph from './scenegraph/SceneGraph';
 import { ScreenshotModal } from './modals/ScreenshotModal';
@@ -116,10 +115,6 @@ export default class Main extends Component {
       posthog.capture('inspector_toggled', { enabled: enabled });
       this.setState({ inspectorEnabled: enabled });
     });
-    Events.on('openhelpmodal', () => {
-      posthog.capture('help_modal_opened');
-      this.setState({ isHelpOpen: true });
-    });
     Events.on('openscreenshotmodal', () => {
       posthog.capture('screenshot_modal_opened');
       this.setState({ isScreenshotOpen: true });
@@ -148,10 +143,6 @@ export default class Main extends Component {
       this.setState({ isAddLayerPanelOpen: false });
     });
   }
-
-  onCloseHelpModal = (value) => {
-    this.setState({ isHelpOpen: false });
-  };
 
   toggleAddLayerPanel = () => {
     posthog.capture('add_layer_panel_opened');
@@ -268,10 +259,6 @@ export default class Main extends Component {
             </div>
           </div>
         )}
-        <ModalHelp
-          isOpen={this.state.isHelpOpen}
-          onClose={this.onCloseHelpModal}
-        />
         <ScreenshotModal
           isOpen={this.state.isScreenshotOpen}
           onClose={this.onCloseScreenshotModal}
