@@ -15,10 +15,8 @@ const GeoPanel = () => {
     posthog.capture('geo_panel_clicked');
     if (!currentUser) {
       Events.emit('opensigninmodal');
-    } else if (currentUser.isPro) {
-      Events.emit('opengeomodal');
     } else {
-      Events.emit('openpaymentmodal');
+      Events.emit('opengeomodal');
     }
   };
 
