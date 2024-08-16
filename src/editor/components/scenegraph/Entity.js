@@ -3,15 +3,9 @@ import React from 'react';
 import PropTypes from 'prop-types';
 import classNames from 'classnames';
 import Events from '../../lib/Events';
-import {
-  printEntity,
-  removeEntity,
-  cloneEntity,
-  getEntityDisplayName
-} from '../../lib/entity';
+import { printEntity, removeEntity, cloneEntity } from '../../lib/entity';
 import { AwesomeIcon } from '../components/AwesomeIcon';
 import { faCaretDown, faCaretRight } from '@fortawesome/free-solid-svg-icons';
-import posthog from 'posthog-js';
 
 export default class Entity extends React.Component {
   static propTypes = {
@@ -20,60 +14,27 @@ export default class Entity extends React.Component {
     isExpanded: PropTypes.bool,
     isFiltering: PropTypes.bool,
     isSelected: PropTypes.bool,
-    selectedEntity: PropTypes.object,
-    children: PropTypes.node
+    selectEntity: PropTypes.func,
+    toggleExpandedCollapsed: PropTypes.func
   };
 
-  constructor(props) {
-    super(props);
-    this.state = {
-      isExpanded: this.props.isExpanded,
-      isSelected: this.props.isSelected
-    };
-  }
-
-  componentDidUpdate(prevProps) {
-    if (prevProps.isSelected !== this.props.isSelected) {
-      this.setState({ isSelected: this.props.isSelected });
-    }
-
-    // update expand if entity is selected elsewhere
-    if (
-      prevProps.isExpanded !== this.props.isExpanded &&
-      this.props.isExpanded
-    ) {
-      this.setState({ isExpanded: this.props.isExpanded });
-    }
-  }
-
-  onClick = (evt) => {
-    const entity = this.props.entity;
-    if (!evt.target.classList.contains('fa')) {
-      this.setState({ isSelected: true });
-      posthog.capture('entity_selected', {
-        entity: getEntityDisplayName(entity)
-      });
-      Events.emit('entityselect', entity, true);
-    }
-  };
+  onClick = () => this.props.selectEntity(this.props.entity);
 
   onDoubleClick = () => Events.emit('objectfocus', this.props.entity.object3D);
 
-  toggleVisibility = (evt) => {
+  toggleVisibility = () => {
     const entity = this.props.entity;
     const visible =
       entity.tagName.toLowerCase() === 'a-scene'
         ? entity.object3D.visible
         : entity.getAttribute('visible');
     entity.setAttribute('visible', !visible);
-    // manually call render function
-    this.forceUpdate();
   };
 
   render() {
     const isFiltering = this.props.isFiltering;
+    const isExpanded = this.props.isExpanded;
     const entity = this.props.entity;
-    const isExpanded = this.state.isExpanded;
     const tagName = entity.tagName.toLowerCase();
 
     // Clone and remove buttons if not a-scene.
@@ -101,10 +62,7 @@ export default class Entity extends React.Component {
     if (entity.children.length > 0 && !isFiltering) {
       collapse = (
         <span
-          onClick={(evt) => {
-            evt.stopPropagation();
-            this.setState({ isExpanded: !isExpanded });
-          }}
+          onClick={() => this.props.toggleExpandedCollapsed(entity)}
           className="collapsespace"
         >
           {isExpanded ? (
@@ -133,31 +91,28 @@ export default class Entity extends React.Component {
 
     // Class name.
     const className = classNames({
-      active: this.state.isSelected,
+      active: this.props.isSelected,
       entity: true,
       novisible: !visible,
       option: true
     });
 
     return (
-      <div>
-        <div className={className} onClick={this.onClick}>
-          <span>
-            <span
-              style={{
-                width: `${30 * this.props.depth}px`
-              }}
-            />
-            {visibilityButton}
-            {printEntity(entity, this.onDoubleClick)}
-            {collapse}
-          </span>
-          <span className="entityActions">
-            {cloneButton}
-            {removeButton}
-          </span>
-        </div>
-        {isExpanded ? this.props.children : null}
+      <div className={className} onClick={this.onClick}>
+        <span>
+          <span
+            style={{
+              width: `${30 * (this.props.depth - 1)}px`
+            }}
+          />
+          {visibilityButton}
+          {printEntity(entity, this.onDoubleClick)}
+          {collapse}
+        </span>
+        <span className="entityActions">
+          {cloneButton}
+          {removeButton}
+        </span>
       </div>
     );
   }
