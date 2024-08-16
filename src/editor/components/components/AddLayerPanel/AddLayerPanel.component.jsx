@@ -9,13 +9,27 @@ import { Chevron24Down, Plus20Circle } from '../../../icons';
 import { Dropdown } from '../Dropdown';
 import CardPlaceholder from '../../../../../ui_assets/card-placeholder.svg';
 import LockedCard from '../../../../../ui_assets/locked-card.svg';
-
-import { layersData } from './layersData.js';
-import { LayersOptions } from './LayersOptions.js';
 import mixinCatalog from '../../../../catalog.json';
 import posthog from 'posthog-js';
 import Events from '../../../lib/Events';
 import pickPointOnGroundPlane from '../../../lib/pick-point-on-ground-plane';
+import { layersData } from './layersData.js';
+import { LayersOptions } from './LayersOptions.js';
+import * as layerFunctions from './createLayerFunctions';
+
+// which layer functions are available
+const enabledFunctionNames = [
+  'createSvgExtrudedEntity',
+  'createMapbox',
+  'createStreetmixStreet',
+  'create3DTiles',
+  'createCustomModel',
+  'createPrimitiveGeometry',
+  'createIntersection'
+];
+const layerFunctionsObject = Object.fromEntries(
+  enabledFunctionNames.map((name) => [name, layerFunctions[name]])
+);
 
 // Create an empty image
 const emptyImg = new Image();
@@ -130,9 +144,8 @@ const getSegmentElevationPosY = (ancestorEl) => {
 const createEntityOnPosition = (mixinId, position) => {
   const previewEntity = document.getElementById('previewEntity');
   if (previewEntity) {
-    previewEntity.setAttribute('visible', false);
+    previewEntity.remove();
   }
-  console.log('create entity: ', mixinId);
   const newEntity = document.createElement('a-entity');
   newEntity.setAttribute('mixin', mixinId);
   newEntity.addEventListener(
@@ -156,9 +169,8 @@ const createEntityOnPosition = (mixinId, position) => {
 const createEntity = (mixinId) => {
   const previewEntity = document.getElementById('previewEntity');
   if (previewEntity) {
-    previewEntity.setAttribute('visible', false);
+    previewEntity.remove();
   }
-  console.log('create entity: ', mixinId);
   const newEntity = document.createElement('a-entity');
   newEntity.setAttribute('mixin', mixinId);
   newEntity.addEventListener(
@@ -237,42 +249,46 @@ const cardMouseEnter = (mixinId) => {
       </a-ring>`;
     previewEntity.appendChild(dropCursorEntity);
   }
-  previewEntity.setAttribute('mixin', mixinId);
-  previewEntity.setAttribute('visible', true);
 
-  const selectedElement = AFRAME.INSPECTOR.selectedEntity;
-  const [ancestorEl, inSegment] = selectedElement
-    ? getAncestorEl(selectedElement)
-    : [undefined, false];
+  if (mixinId) {
+    previewEntity.setAttribute('mixin', mixinId);
 
-  // avoid adding new element inside the direct ancestor of a-scene: #environment, #reference, ...
-  if (selectedElement && !ancestorEl.parentEl.isScene) {
-    if (inSegment) {
-      // get elevation position Y from attribute of segment element
-      const segmentElevationPosY = getSegmentElevationPosY(ancestorEl);
-      // set position y by elevation level of segment
-      ancestorEl.object3D.getWorldPosition(previewEntity.object3D.position);
-      previewEntity.object3D.position.y += segmentElevationPosY;
-    } else {
-      // if we are creating element not inside segment-parent
-      selectedElement.object3D.getWorldPosition(
-        previewEntity.object3D.position
-      );
+    const selectedElement = AFRAME.INSPECTOR.selectedEntity;
+    const [ancestorEl, inSegment] = selectedElement
+      ? getAncestorEl(selectedElement)
+      : [undefined, false];
+
+    // avoid adding new element inside the direct ancestor of a-scene: #environment, #reference, ...
+    if (selectedElement && !ancestorEl.parentEl.isScene) {
+      if (inSegment) {
+        // get elevation position Y from attribute of segment element
+        const segmentElevationPosY = getSegmentElevationPosY(ancestorEl);
+        // set position y by elevation level of segment
+        ancestorEl.object3D.getWorldPosition(previewEntity.object3D.position);
+        previewEntity.object3D.position.y += segmentElevationPosY;
+      } else {
+        // if we are creating element not inside segment-parent
+        selectedElement.object3D.getWorldPosition(
+          previewEntity.object3D.position
+        );
+      }
+      return;
     }
-  } else {
-    const position = pickPointOnGroundPlane({
-      normalizedX: 0,
-      normalizedY: -0.1,
-      camera: AFRAME.INSPECTOR.camera
-    });
-    previewEntity.setAttribute('position', position);
   }
+
+  const position = pickPointOnGroundPlane({
+    normalizedX: 0,
+    normalizedY: -0.1,
+    camera: AFRAME.INSPECTOR.camera
+  });
+  previewEntity.setAttribute('position', position);
 };
 
 const cardMouseLeave = (mixinId) => {
+  // Note that this is not called when dragging, that's what we want.
   const previewEntity = document.getElementById('previewEntity');
   if (previewEntity) {
-    previewEntity.setAttribute('visible', false);
+    previewEntity.remove();
   }
 };
 
@@ -384,8 +400,20 @@ const AddLayerPanel = ({ onClose, isAddLayerPanelOpen }) => {
 
     // get item data
     if (e.dataTransfer) {
-      const mixinId = e.dataTransfer.getData('text/plain');
-      createEntityOnPosition(mixinId, position);
+      const transferredData = JSON.parse(
+        e.dataTransfer.getData('application/json')
+      );
+      if (transferredData.mixinId) {
+        createEntityOnPosition(transferredData.mixinId, position);
+      } else if (transferredData.handlerFunctionName) {
+        if (layerFunctionsObject[transferredData.handlerFunctionName]) {
+          layerFunctionsObject[transferredData.handlerFunctionName](position);
+        } else {
+          console.error(
+            `Function ${transferredData.handlerFunctionName} not found`
+          );
+        }
+      }
     }
 
     return false;
@@ -434,15 +462,22 @@ const AddLayerPanel = ({ onClose, isAddLayerPanelOpen }) => {
           <div
             key={card.id}
             className={styles.card}
-            onMouseEnter={() => card.mixinId && cardMouseEnter(card.mixinId)}
-            onMouseLeave={() => card.mixinId && cardMouseLeave(card.mixinId)}
+            onMouseEnter={() => cardMouseEnter(card.mixinId)}
+            onMouseLeave={() => cardMouseLeave(card.mixinId)}
             draggable={true}
             onDragStart={(e) => {
+              const transferData = {
+                mixinId: card?.mixinId,
+                handlerFunctionName: card?.handlerFunction?.name
+              };
               e.stopPropagation();
               fadeInDropPlane();
-              if (e.dataTransfer && card.mixinId) {
+              if (e.dataTransfer) {
                 e.dataTransfer.effectAllowed = 'move';
-                e.dataTransfer.setData('text/plain', card.mixinId);
+                e.dataTransfer.setData(
+                  'application/json',
+                  JSON.stringify(transferData)
+                );
                 // Set the empty image as the drag image
                 e.dataTransfer.setDragImage(emptyImg, 0, 0);
               }

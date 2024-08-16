@@ -1,9 +1,6 @@
 /* global AFRAME, XMLHttpRequest, VERSION */
-
-if (typeof VERSION !== 'undefined') {
-  console.log(`3DStreet Version: ${VERSION}`);
-}
-
+import 'aframe-cursor-teleport-component';
+import 'aframe-extras/controls/index.js';
 var streetmixParsers = require('./aframe-streetmix-parsers');
 var streetmixUtils = require('./tested/streetmix-utils');
 require('./json-utils_1.1.js');
@@ -11,7 +8,6 @@ var streetUtils = require('./street-utils.js');
 require('./components/gltf-part');
 require('./components/ocean');
 require('./components/svg-extruder.js');
-require('./lib/aframe-cursor-teleport-component.min.js');
 require('./lib/animation-mixer.js');
 require('./lib/aframe-gaussian-splatting-component.min.js');
 require('./assets.js');
@@ -23,6 +19,10 @@ require('./components/streetplan-loader');
 require('./components/street-geo.js');
 require('./components/street-environment.js');
 require('./components/intersection.js');
+
+if (typeof VERSION !== 'undefined') {
+  console.log(`3DStreet Version: ${VERSION}`);
+}
 
 AFRAME.registerComponent('street', {
   schema: {

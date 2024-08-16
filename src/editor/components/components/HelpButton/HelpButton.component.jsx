@@ -2,7 +2,6 @@ import styles from './HelpButton.module.scss';
 
 import { Button } from '../Button';
 import { Component } from 'react';
-import Events from '../../../lib/Events.js';
 import { QuestionMark } from './icons.jsx';
 
 /**
@@ -13,7 +12,12 @@ import { QuestionMark } from './icons.jsx';
  */
 class HelpButton extends Component {
   render() {
-    const onClick = () => Events.emit('openhelpmodal');
+    const onClick = () => {
+      window.open(
+        'https://www.3dstreet.org/docs/3dstreet-editor/mouse-and-touch-controls',
+        '_blank'
+      );
+    };
 
     return (
       <div className={styles.wrapper}>
