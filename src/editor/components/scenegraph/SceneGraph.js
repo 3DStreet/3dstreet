@@ -134,7 +134,10 @@ export default class SceneGraph extends React.Component {
     this.setState({
       entities: entities,
       expandedElements: orderedLayers.reduce((expandedElements, layer) => {
-        if (expandedElements.get(layer) === undefined) {
+        if (
+          expandedElements.get(layer) === undefined &&
+          layer.id === 'street-container'
+        ) {
           return expandedElements.set(layer, true);
         } else {
           return expandedElements;
