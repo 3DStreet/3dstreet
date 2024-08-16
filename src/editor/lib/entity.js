@@ -473,20 +473,6 @@ function getUniqueId(baseId) {
   return baseId + '-' + i;
 }
 
-function getEntityType(entity) {
-  let entityName = entity.id;
-  let type = 'id';
-  if (!entity.isScene && !entityName && entity.getAttribute('class')) {
-    entityName = entity.getAttribute('class').split(' ')[0];
-    type = 'class';
-  } else if (!entity.isScene && !entityName && entity.getAttribute('mixin')) {
-    entityName = entity.getAttribute('mixin').split(' ')[0];
-    type = 'mixin';
-  }
-
-  return type;
-}
-
 export function getComponentClipboardRepresentation(entity, componentName) {
   /**
    * Get the list of modified properties
@@ -562,16 +548,11 @@ export function printEntity(entity, onDoubleClick) {
     icons += `&nbsp;<i class="fa ${ICONS[objType]}" title="${objType}"></i>`;
   }
 
-  let type = getEntityType(entity);
   // Custom display name for a layer if available, otherwise use entity name or tag
   let displayName = getEntityDisplayName(entity);
   return (
     <span className="entityPrint" onDoubleClick={onDoubleClick}>
-      {displayName && (
-        <span className="entityName" data-entity-name-type={type}>
-          &nbsp;{displayName}
-        </span>
-      )}
+      {displayName && <span className="entityName">&nbsp;{displayName}</span>}
       {!!icons && (
         <span
           className="entityIcons"
