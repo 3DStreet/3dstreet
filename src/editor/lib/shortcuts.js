@@ -70,11 +70,6 @@ export const Shortcuts = {
       Events.emit('togglemotioncapture');
     }
 
-    // n: new entity
-    if (keyCode === 78) {
-      Events.emit('entitycreate', { element: 'a-entity', components: {} });
-    }
-
     // backspace & supr: remove selected entity
     if (keyCode === 8 || keyCode === 46) {
       removeSelectedEntity();
