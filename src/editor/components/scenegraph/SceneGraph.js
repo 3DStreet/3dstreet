@@ -14,16 +14,13 @@ const HIDDEN_IDS = ['previewEntity'];
 
 export default class SceneGraph extends React.Component {
   static propTypes = {
-    id: PropTypes.string,
-    onChange: PropTypes.func,
     scene: PropTypes.object,
     selectedEntity: PropTypes.object,
     visible: PropTypes.bool
   };
 
   static defaultProps = {
-    selectedEntity: '',
-    id: 'left-sidebar'
+    selectedEntity: ''
   };
 
   constructor(props) {
@@ -67,12 +64,9 @@ export default class SceneGraph extends React.Component {
     for (let i = 0; i < this.state.entities.length; i++) {
       const entityOption = this.state.entities[i];
       if (entityOption.entity === entity) {
-        this.setState({ selectedEntity: entity, selectedIndex: i });
+        this.setState({ selectedIndex: i });
         // Make sure selected value is visible in scenegraph
         this.expandToRoot(entity);
-        if (this.props.onChange) {
-          this.props.onChange(entity);
-        }
         posthog.capture('entity_selected', {
           entity: getEntityDisplayName(entity)
         });
@@ -82,7 +76,7 @@ export default class SceneGraph extends React.Component {
     }
 
     if (!found) {
-      this.setState({ selectedEntity: null, selectedIndex: -1 });
+      this.setState({ selectedIndex: -1 });
     }
   };
 
