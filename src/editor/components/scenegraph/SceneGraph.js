@@ -55,10 +55,6 @@ export default class SceneGraph extends React.Component {
     }
   }
 
-  toggleLeftBar = () => {
-    this.setState({ leftBarHide: !this.state.leftBarHide });
-  };
-
   selectEntity = (entity) => {
     let found = false;
     for (let i = 0; i < this.state.entities.length; i++) {
@@ -233,6 +229,10 @@ export default class SceneGraph extends React.Component {
       }
     }
     return -1;
+  };
+
+  toggleLeftBar = () => {
+    this.setState({ leftBarHide: !this.state.leftBarHide });
   };
 
   renderEntities = () => {
