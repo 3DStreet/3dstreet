@@ -60,7 +60,12 @@ export default class SceneGraph extends React.Component {
     for (let i = 0; i < this.state.entities.length; i++) {
       const entityOption = this.state.entities[i];
       if (entityOption.entity === entity) {
-        this.setState({ selectedIndex: i });
+        this.setState({ selectedIndex: i }, () => {
+          // TODO need to fix the css for the scrollbar to start after the Layers title
+          // document
+          //   .getElementById('sgnode' + i)
+          //   ?.scrollIntoView({ behavior: 'smooth' });
+        });
         // Make sure selected value is visible in scenegraph
         this.expandToRoot(entity);
         posthog.capture('entity_selected', {
@@ -100,7 +105,11 @@ export default class SceneGraph extends React.Component {
           continue;
         }
 
-        entities.push({ entity: entity, depth: depth });
+        entities.push({
+          entity: entity,
+          depth: depth,
+          id: 'sgnode' + entities.length
+        });
 
         treeIterate(entity, depth);
       }

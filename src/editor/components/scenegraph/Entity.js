@@ -9,6 +9,7 @@ import { faCaretDown, faCaretRight } from '@fortawesome/free-solid-svg-icons';
 
 export default class Entity extends React.Component {
   static propTypes = {
+    id: PropTypes.string,
     depth: PropTypes.number,
     entity: PropTypes.object,
     isExpanded: PropTypes.bool,
@@ -98,7 +99,7 @@ export default class Entity extends React.Component {
     });
 
     return (
-      <div className={className} onClick={this.onClick}>
+      <div className={className} onClick={this.onClick} id={this.props.id}>
         <span>
           <span
             style={{
