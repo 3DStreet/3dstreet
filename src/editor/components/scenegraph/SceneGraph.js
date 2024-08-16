@@ -61,10 +61,9 @@ export default class SceneGraph extends React.Component {
       const entityOption = this.state.entities[i];
       if (entityOption.entity === entity) {
         this.setState({ selectedIndex: i }, () => {
-          // TODO need to fix the css for the scrollbar to start after the Layers title
-          // document
-          //   .getElementById('sgnode' + i)
-          //   ?.scrollIntoView({ behavior: 'smooth' });
+          document
+            .getElementById('sgnode' + i)
+            ?.scrollIntoView({ behavior: 'smooth' });
         });
         // Make sure selected value is visible in scenegraph
         this.expandToRoot(entity);
