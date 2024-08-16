@@ -122,7 +122,7 @@ export default class SceneGraph extends React.Component {
 
     treeIterate({ children: orderedLayers }, 0);
 
-    this.setState((prevState) => ({
+    this.setState({
       entities: entities,
       expandedElements: orderedLayers.reduce((expandedElements, layer) => {
         if (expandedElements.get(layer) === undefined) {
@@ -130,8 +130,8 @@ export default class SceneGraph extends React.Component {
         } else {
           return expandedElements;
         }
-      }, prevState.expandedElements)
-    }));
+      }, this.state.expandedElements)
+    });
   };
 
   selectIndex = (index) => {
