@@ -125,7 +125,11 @@ export default class SceneGraph extends React.Component {
     this.setState((prevState) => ({
       entities: entities,
       expandedElements: orderedLayers.reduce((expandedElements, layer) => {
-        return expandedElements.set(layer, true);
+        if (expandedElements.get(layer) === undefined) {
+          return expandedElements.set(layer, true);
+        } else {
+          return expandedElements;
+        }
       }, prevState.expandedElements)
     }));
   };
