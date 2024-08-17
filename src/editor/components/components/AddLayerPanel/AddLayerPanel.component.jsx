@@ -15,21 +15,6 @@ import Events from '../../../lib/Events';
 import pickPointOnGroundPlane from '../../../lib/pick-point-on-ground-plane';
 import { layersData } from './layersData.js';
 import { LayersOptions } from './LayersOptions.js';
-import * as layerFunctions from './createLayerFunctions';
-
-// which layer functions are available
-const enabledFunctionNames = [
-  'createSvgExtrudedEntity',
-  'createMapbox',
-  'createStreetmixStreet',
-  'create3DTiles',
-  'createCustomModel',
-  'createPrimitiveGeometry',
-  'createIntersection'
-];
-const layerFunctionsObject = Object.fromEntries(
-  enabledFunctionNames.map((name) => [name, layerFunctions[name]])
-);
 
 // Create an empty image
 const emptyImg = new Image();
@@ -405,14 +390,10 @@ const AddLayerPanel = ({ onClose, isAddLayerPanelOpen }) => {
       );
       if (transferredData.mixinId) {
         createEntityOnPosition(transferredData.mixinId, position);
-      } else if (transferredData.handlerFunctionName) {
-        if (layerFunctionsObject[transferredData.handlerFunctionName]) {
-          layerFunctionsObject[transferredData.handlerFunctionName](position);
-        } else {
-          console.error(
-            `Function ${transferredData.handlerFunctionName} not found`
-          );
-        }
+      } else if (transferredData.layerCardId) {
+        layersData
+          .find((card) => card.id === transferredData.layerCardId)
+          ?.handlerFunction(position);
       }
     }
 
@@ -467,8 +448,8 @@ const AddLayerPanel = ({ onClose, isAddLayerPanelOpen }) => {
             draggable={true}
             onDragStart={(e) => {
               const transferData = {
-                mixinId: card?.mixinId,
-                handlerFunctionName: card?.handlerFunction?.name
+                mixinId: card.mixinId,
+                layerCardId: card.handlerFunction ? card.id : undefined
               };
               e.stopPropagation();
               fadeInDropPlane();
