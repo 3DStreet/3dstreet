@@ -19,6 +19,7 @@ require('./components/streetplan-loader');
 require('./components/street-geo.js');
 require('./components/street-environment.js');
 require('./components/intersection.js');
+require('./components/clipping-box.js');
 
 if (typeof VERSION !== 'undefined') {
   console.log(`3DStreet Version: ${VERSION}`);

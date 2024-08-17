@@ -7,17 +7,19 @@ const MAPBOX_ACCESS_TOKEN_VALUE =
 
 AFRAME.registerComponent('street-geo', {
   schema: {
+    maps: {
+      type: 'string',
+      default: 'google3d',
+      oneOf: ['google3d', 'mapbox2d', 'osm3d']
+    },
     longitude: { type: 'number', default: 0 },
     latitude: { type: 'number', default: 0 },
     elevation: { type: 'number', default: null }, // deprecated
     orthometricHeight: { type: 'number', default: null },
     geoidHeight: { type: 'number', default: null },
     ellipsoidalHeight: { type: 'number', default: null },
-    maps: {
-      type: 'string',
-      default: 'google3d',
-      oneOf: ['google3d', 'mapbox2d', 'osm3d']
-    }
+    clippingEnabled: { type: 'boolean', default: true },
+    clippingSource: { type: 'string', default: '#clip-box' }
   },
   init: function () {
     /*
@@ -140,6 +142,14 @@ AFRAME.registerComponent('street-geo', {
         );
       }
       google3dElement.setAttribute('data-ignore-raycaster', '');
+
+      if (data.clippingEnabled) {
+        google3dElement.setAttribute(
+          'clipping-box',
+          'sourceBoxSelector: ' + data.clippingSource
+        );
+      }
+
       el.appendChild(google3dElement);
       self['google3d'] = google3dElement;
     };
