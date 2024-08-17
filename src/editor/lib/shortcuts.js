@@ -70,11 +70,6 @@ export const Shortcuts = {
       Events.emit('togglemotioncapture');
     }
 
-    // n: new entity
-    if (keyCode === 78) {
-      Events.emit('entitycreate', { element: 'a-entity', components: {} });
-    }
-
     // backspace & supr: remove selected entity
     if (keyCode === 8 || keyCode === 46) {
       removeSelectedEntity();
@@ -160,13 +155,6 @@ export const Shortcuts = {
         if (event.keyCode === 86) {
           cloneEntity(AFRAME.INSPECTOR.entityToCopy);
         }
-      }
-
-      // s: focus search input
-      if (event.keyCode === 83) {
-        event.preventDefault();
-        event.stopPropagation();
-        document.getElementById('filter').focus();
       }
     }
 

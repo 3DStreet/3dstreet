@@ -9,43 +9,27 @@ import { faCaretDown, faCaretRight } from '@fortawesome/free-solid-svg-icons';
 
 export default class Entity extends React.Component {
   static propTypes = {
+    id: PropTypes.string,
     depth: PropTypes.number,
     entity: PropTypes.object,
     isExpanded: PropTypes.bool,
     isFiltering: PropTypes.bool,
     isSelected: PropTypes.bool,
     selectEntity: PropTypes.func,
-    toggleExpandedCollapsed: PropTypes.func,
-    isInitiallyExpanded: PropTypes.bool,
-    initiallyExpandEntity: PropTypes.func
+    toggleExpandedCollapsed: PropTypes.func
   };
 
-  constructor(props) {
-    super(props);
-    this.state = {};
-  }
-
-  componentDidMount() {
-    !this.props.isInitiallyExpanded && this.props.initiallyExpandEntity();
-  }
-
-  onClick = (evt) => {
-    if (!evt.target.classList.contains('fa')) {
-      this.props.selectEntity(this.props.entity);
-    }
-  };
+  onClick = () => this.props.selectEntity(this.props.entity);
 
   onDoubleClick = () => Events.emit('objectfocus', this.props.entity.object3D);
 
-  toggleVisibility = (evt) => {
+  toggleVisibility = () => {
     const entity = this.props.entity;
     const visible =
       entity.tagName.toLowerCase() === 'a-scene'
         ? entity.object3D.visible
         : entity.getAttribute('visible');
     entity.setAttribute('visible', !visible);
-    // manually call render function
-    this.forceUpdate();
   };
 
   render() {
@@ -79,10 +63,7 @@ export default class Entity extends React.Component {
     if (entity.children.length > 0 && !isFiltering) {
       collapse = (
         <span
-          onClick={(evt) => {
-            evt.stopPropagation();
-            this.props.toggleExpandedCollapsed(entity);
-          }}
+          onClick={() => this.props.toggleExpandedCollapsed(entity)}
           className="collapsespace"
         >
           {isExpanded ? (
@@ -118,7 +99,7 @@ export default class Entity extends React.Component {
     });
 
     return (
-      <div className={className} onClick={this.onClick}>
+      <div className={className} onClick={this.onClick} id={this.props.id}>
         <span>
           <span
             style={{

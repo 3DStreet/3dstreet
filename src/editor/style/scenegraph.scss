@@ -64,7 +64,9 @@
   padding-top: 32px;
   width: auto;
   .layers {
-    margin-top: 84px;
+    margin-top: 72px;
+    overflow-y: auto;
+    height: 512px; // 584px - 72px
   }
   .layersBlock {
     display: flex;
@@ -73,7 +75,8 @@
   }
   .layer {
     width: 100%;
-    margin-top: 12px;
+    margin-top: 6px;
+    margin-bottom: 6px;
     overflow: hidden;
     display: flex;
     flex-direction: column;
@@ -267,7 +270,7 @@
     cursor: default;
     font-size: 16px;
     outline: none;
-    overflow-y: auto;
+    overflow-y: hidden;
     overflow-x: hidden;
     position: absolute;
     top: 80px;
@@ -279,15 +282,7 @@
     border-bottom-right-radius: 8px;
     border-top-right-radius: 8px;
     #layers-title {
-      width: 372px;
-      background: variables.$darkgray-800;
-      display: flex;
-      flex-direction: row;
       justify-content: flex-start;
-      align-items: center;
-      align-self: start;
-      position: fixed;
-      z-index: 1;
       border-top-right-radius: 8px;
       #toggle-leftbar {
         width: 56px;

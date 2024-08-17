@@ -506,6 +506,25 @@ export function getComponentClipboardRepresentation(entity, componentName) {
   return `${componentName}="${attributes}"`;
 }
 
+export function getEntityDisplayName(entity) {
+  let entityName = entity.id;
+  if (!entity.isScene && !entityName && entity.getAttribute('class')) {
+    entityName = entity.getAttribute('class').split(' ')[0];
+  } else if (!entity.isScene && !entityName && entity.getAttribute('mixin')) {
+    entityName = entity.getAttribute('mixin').split(' ')[0];
+  }
+  // Custom display name for a layer if available, otherwise use entity name or tag
+  let displayName = entity.getAttribute('data-layer-name');
+  if (!displayName) {
+    displayName = entityName;
+  }
+  if (!displayName) {
+    displayName = entity.tagName.toLowerCase();
+  }
+
+  return displayName;
+}
+
 /**
  * Entity representation.
  */
@@ -529,31 +548,11 @@ export function printEntity(entity, onDoubleClick) {
     icons += `&nbsp;<i class="fa ${ICONS[objType]}" title="${objType}"></i>`;
   }
 
-  // Name.
-  let entityName = entity.id;
-  let type = 'id';
-  if (!entity.isScene && !entityName && entity.getAttribute('class')) {
-    entityName = entity.getAttribute('class').split(' ')[0];
-    type = 'class';
-  } else if (!entity.isScene && !entityName && entity.getAttribute('mixin')) {
-    entityName = entity.getAttribute('mixin').split(' ')[0];
-    type = 'mixin';
-  }
   // Custom display name for a layer if available, otherwise use entity name or tag
-  let displayName = entity.getAttribute('data-layer-name');
-  if (!displayName) {
-    displayName = entityName;
-  }
-  if (!displayName) {
-    displayName = entity.tagName.toLowerCase();
-  }
+  let displayName = getEntityDisplayName(entity);
   return (
     <span className="entityPrint" onDoubleClick={onDoubleClick}>
-      {displayName && (
-        <span className="entityName" data-entity-name-type={type}>
-          &nbsp;{displayName}
-        </span>
-      )}
+      {displayName && <span className="entityName">&nbsp;{displayName}</span>}
       {!!icons && (
         <span
           className="entityIcons"
