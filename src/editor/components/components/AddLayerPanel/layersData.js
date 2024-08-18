@@ -8,6 +8,19 @@ import {
   createIntersection
 } from './createLayerFunctions';
 
+const streetLayersData = [
+  {
+    name: 'Street from Streetmix URL',
+    img: 'ui_assets/cards/streetmix.jpg',
+    icon: 'ui_assets/cards/icons/streetmix24.png',
+    requiresPro: false,
+    description:
+      'Create an additional Streetmix street in your 3DStreet scene without replacing any existing streets.',
+    id: 1,
+    handlerFunction: createStreetmixStreet
+  }
+];
+
 // data for PRO layers cards
 const layersData = [
   {
@@ -82,4 +95,4 @@ const layersData = [
   }
 ];
 
-export { layersData };
+export { layersData, streetLayersData };

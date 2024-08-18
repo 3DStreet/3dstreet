@@ -1,50 +1,50 @@
 const LayersOptions = [
   {
-    value: 'Models: Personal Vehicles',
-    label: 'Models: Personal Vehicles',
-    mixinGroups: ['vehicles', 'vehicles-rigged'],
-    onClick: () => console.log('Models: Personal Vehicles')
+    value: 'Street Layers',
+    label: 'Street Layers',
+    onClick: () => {}
+  },
+  {
+    value: 'Dividers & Traffic Control',
+    label: 'Dividers & Traffic Control',
+    mixinGroups: ['dividers'],
+    onClick: () => {}
+  },
+  {
+    value: 'Motor Vehicles',
+    label: 'Motor Vehicles',
+    mixinGroups: ['vehicles-rigged', 'vehicles-transit'],
+    onClick: () => {}
+  },
+  {
+    value: 'People Power Vehicles',
+    label: 'People Power Vehicles',
+    mixinGroups: ['vehicles', 'cyclists'],
+    onClick: () => {}
   },
   {
     value: 'Pro Layers',
     label: 'Pro Layers',
-    onClick: () => console.log('Layers: Streets & Intersections')
+    onClick: () => {}
   },
   {
-    value: 'Models: Transit Vehicles',
-    label: 'Models: Transit Vehicles',
-    mixinGroups: ['vehicles-transit'],
-    onClick: () => console.log('Models: Transit Vehicles')
+    value: 'Characters',
+    label: 'Characters',
+    mixinGroups: ['people'],
+    onClick: () => {}
   },
   {
-    value: 'Models: Utility Vehicles',
-    label: 'Models: Utility Vehicles',
-    mixinGroups: ['vehicles-rigged'],
-    onClick: () => console.log('Models: Utility Vehicles')
-  },
-  {
-    value: 'Models: Characters',
-    label: 'Models: Characters',
-    mixinGroups: ['people', 'people-rigged'],
-    onClick: () => console.log('Models: Characters')
-  },
-  {
-    value: 'Models: Street Props',
-    label: 'Models: Street Props',
+    value: 'Sidewalk Props',
+    label: 'Sidewalk Props',
     mixinGroups: ['sidewalk-props', 'intersection-props'],
-    onClick: () => console.log('Models: Street Props')
+    onClick: () => {}
   },
-  {
-    value: 'Models: Dividers & Traffic Control',
-    label: 'Models: Dividers & Traffic Control',
-    mixinGroups: ['dividers'],
-    onClick: () => console.log('Models: dividers')
-  },
+
   {
     value: 'Models: Buildings',
     label: 'Models: Buildings',
     mixinGroups: ['buildings'],
-    onClick: () => console.log('Models: Buildings')
+    onClick: () => {}
   }
 ];
 

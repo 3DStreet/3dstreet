@@ -13,7 +13,7 @@ import mixinCatalog from '../../../../catalog.json';
 import posthog from 'posthog-js';
 import Events from '../../../lib/Events';
 import pickPointOnGroundPlane from '../../../lib/pick-point-on-ground-plane';
-import { layersData } from './layersData.js';
+import { layersData, streetLayersData } from './layersData.js';
 import { LayersOptions } from './LayersOptions.js';
 
 // Create an empty image
@@ -293,6 +293,8 @@ const AddLayerPanel = ({ onClose, isAddLayerPanelOpen }) => {
   const selectedCards = useMemo(() => {
     if (selectedOption === 'Pro Layers') {
       return layersData;
+    } else if (selectedOption === 'Street Layers') {
+      return streetLayersData;
     } else {
       return getSelectedMixinCards(groupedMixins, selectedOption);
     }
