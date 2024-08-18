@@ -5,7 +5,12 @@ import {
   create3DTiles,
   createCustomModel,
   createPrimitiveGeometry,
-  createIntersection
+  createIntersection,
+  create40ftRightOfWay,
+  create60ftRightOfWay,
+  create80ftRightOfWay,
+  create94ftRightOfWay,
+  create150ftRightOfWay
 } from './createLayerFunctions';
 
 const streetLayersData = [
@@ -13,11 +18,50 @@ const streetLayersData = [
     name: 'Street from Streetmix URL',
     img: 'ui_assets/cards/streetmix.jpg',
     icon: 'ui_assets/cards/icons/streetmix24.png',
-    requiresPro: false,
     description:
       'Create an additional Streetmix street in your 3DStreet scene without replacing any existing streets.',
     id: 1,
     handlerFunction: createStreetmixStreet
+  },
+  {
+    name: '40ft RoW / 24ft Roadway Width',
+    img: 'ui_assets/cards/streetmix.jpg',
+    icon: 'ui_assets/cards/icons/streetmix24.png',
+    description: 'Premade Street 40ft Right of Way / 24ft Roadway Width',
+    id: 2,
+    handlerFunction: create40ftRightOfWay
+  },
+  {
+    name: '60ft RoW / 36ft Roadway Width',
+    img: 'ui_assets/cards/streetmix.jpg',
+    icon: 'ui_assets/cards/icons/streetmix24.png',
+    description: 'Premade Street 60ft Right of Way / 36ft Roadway Width',
+    id: 3,
+    handlerFunction: create60ftRightOfWay
+  },
+  {
+    name: '80ft RoW / 56ft Roadway Width',
+    img: 'ui_assets/cards/streetmix.jpg',
+    icon: 'ui_assets/cards/icons/streetmix24.png',
+    description: 'Premade Street 80ft Right of Way / 56ft Roadway Width',
+    id: 4,
+    handlerFunction: create80ftRightOfWay
+  },
+  {
+    name: '94ft RoW / 70ft Roadway Width',
+    img: 'ui_assets/cards/streetmix.jpg',
+    icon: 'ui_assets/cards/icons/streetmix24.png',
+    description: 'Premade Street 94ft Right of Way / 70ft Roadway Width',
+    id: 5,
+    handlerFunction: create94ftRightOfWay
+  },
+  {
+    name: '150ft RoW / 124ft Roadway Width',
+    img: 'ui_assets/cards/streetmix.jpg',
+    icon: 'ui_assets/cards/icons/streetmix24.png',
+    description: 'Premade Street 150ft Right of Way / 124ft Roadway Width',
+    id: 6,
+    handlerFunction: create150ftRightOfWay
   }
 ];
 

@@ -55,13 +55,15 @@ function createMapbox() {
   Events.emit('entitycreated', geoLayer);
 }
 
-function createStreetmixStreet(position) {
+function createStreetmixStreet(position, streetmixURL) {
   // This code snippet allows the creation of an additional Streetmix street
   // in your 3DStreet scene without replacing any existing streets.
-  const streetmixURL = prompt(
-    'Please enter a Streetmix URL',
-    'https://streetmix.net/kfarr/3/3dstreet-demo-street'
-  );
+  if (streetmixURL === undefined) {
+    streetmixURL = prompt(
+      'Please enter a Streetmix URL',
+      'https://streetmix.net/kfarr/3/3dstreet-demo-street'
+    );
+  }
   if (streetmixURL && streetmixURL !== '') {
     const newEl = document.createElement('a-entity');
     newEl.setAttribute('id', streetmixURL);
@@ -81,6 +83,37 @@ function createStreetmixStreet(position) {
     // update sceneGraph
     Events.emit('entitycreated', newEl);
   }
+}
+
+function create40ftRightOfWay(position) {
+  createStreetmixStreet(
+    position,
+    'https://streetmix.net/3dstreetapp/1/40ft-right-of-way-24ft-road-width'
+  );
+}
+function create60ftRightOfWay(position) {
+  createStreetmixStreet(
+    position,
+    'https://streetmix.net/3dstreetapp/2/60ft-right-of-way-36ft-road-width'
+  );
+}
+function create80ftRightOfWay(position) {
+  createStreetmixStreet(
+    position,
+    'https://streetmix.net/3dstreetapp/3/80ft-right-of-way-56ft-road-width'
+  );
+}
+function create94ftRightOfWay(position) {
+  createStreetmixStreet(
+    position,
+    'https://streetmix.net/3dstreetapp/4/94ft-right-of-way-70ft-road-width'
+  );
+}
+function create150ftRightOfWay(position) {
+  createStreetmixStreet(
+    position,
+    'https://streetmix.net/3dstreetapp/5/150ft-right-of-way-124ft-road-width'
+  );
 }
 
 function create3DTiles() {
@@ -225,5 +258,10 @@ export {
   createCustomModel,
   createPrimitiveGeometry,
   createIntersection,
-  createSplatObject
+  createSplatObject,
+  create40ftRightOfWay,
+  create60ftRightOfWay,
+  create80ftRightOfWay,
+  create94ftRightOfWay,
+  create150ftRightOfWay
 };
