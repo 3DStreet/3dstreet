@@ -18,7 +18,6 @@ export default class Sidebar extends React.Component {
   constructor(props) {
     super(props);
     this.state = {
-      open: false,
       rightBarHide: false
     };
   }
@@ -44,10 +43,6 @@ export default class Sidebar extends React.Component {
 
   toggleRightBar = () => {
     this.setState({ rightBarHide: !this.state.rightBarHide });
-  };
-
-  handleToggle = () => {
-    this.setState({ open: !this.state.open });
     sendMetric('Components', 'toggleSidebar');
   };
 
