@@ -1,7 +1,7 @@
 import Events from '../../../lib/Events';
 import { loadScript, roundCoord } from '../../../../../src/utils.js';
 
-function createSvgExtrudedEntity() {
+export function createSvgExtrudedEntity() {
   // This component accepts a svgString and creates a new entity with geometry extruded
   // from the svg and applies the default mixin material grass.
   const svgString = prompt(
@@ -31,7 +31,7 @@ function createSvgExtrudedEntity() {
   }
 }
 
-function createMapbox() {
+export function createMapbox() {
   // This component accepts a long / lat and renders a plane with dimensions that
   // (should be) at a correct scale.
   const geoLayer = document.getElementById('reference-layers');
@@ -55,7 +55,7 @@ function createMapbox() {
   Events.emit('entitycreated', geoLayer);
 }
 
-function createStreetmixStreet(position, streetmixURL) {
+export function createStreetmixStreet(position, streetmixURL) {
   // This code snippet allows the creation of an additional Streetmix street
   // in your 3DStreet scene without replacing any existing streets.
   if (streetmixURL === undefined) {
@@ -85,38 +85,38 @@ function createStreetmixStreet(position, streetmixURL) {
   }
 }
 
-function create40ftRightOfWay(position) {
+export function create40ftRightOfWay(position) {
   createStreetmixStreet(
     position,
     'https://streetmix.net/3dstreetapp/1/40ft-right-of-way-24ft-road-width'
   );
 }
-function create60ftRightOfWay(position) {
+export function create60ftRightOfWay(position) {
   createStreetmixStreet(
     position,
     'https://streetmix.net/3dstreetapp/2/60ft-right-of-way-36ft-road-width'
   );
 }
-function create80ftRightOfWay(position) {
+export function create80ftRightOfWay(position) {
   createStreetmixStreet(
     position,
     'https://streetmix.net/3dstreetapp/3/80ft-right-of-way-56ft-road-width'
   );
 }
-function create94ftRightOfWay(position) {
+export function create94ftRightOfWay(position) {
   createStreetmixStreet(
     position,
     'https://streetmix.net/3dstreetapp/4/94ft-right-of-way-70ft-road-width'
   );
 }
-function create150ftRightOfWay(position) {
+export function create150ftRightOfWay(position) {
   createStreetmixStreet(
     position,
     'https://streetmix.net/3dstreetapp/5/150ft-right-of-way-124ft-road-width'
   );
 }
 
-function create3DTiles() {
+export function create3DTiles() {
   // This code snippet adds an entity to load and display 3d tiles from
   // Google Maps Tiles API 3D Tiles endpoint. This will break your scene
   // and you cannot save it yet, so beware before testing.
@@ -159,7 +159,7 @@ function create3DTiles() {
   }
 }
 
-function createCustomModel() {
+export function createCustomModel() {
   // accepts a path for a glTF (or glb) file hosted on any publicly accessible HTTP server.
   // Then create entity with model from that path by using gltf-model component
   const modelUrl = prompt(
@@ -184,7 +184,7 @@ function createCustomModel() {
   }
 }
 
-function createPrimitiveGeometry() {
+export function createPrimitiveGeometry() {
   const newEl = document.createElement('a-entity');
   newEl.setAttribute('geometry', 'primitive: circle; radius: 50;');
   newEl.setAttribute('rotation', '-90 -90 0');
@@ -205,7 +205,7 @@ function createPrimitiveGeometry() {
   parentEl.appendChild(newEl);
 }
 
-function createIntersection() {
+export function createIntersection() {
   const newEl = document.createElement('a-entity');
   newEl.setAttribute('intersection', '');
   newEl.setAttribute('data-layer-name', 'Street • Intersection 90º');
@@ -222,7 +222,7 @@ function createIntersection() {
   parentEl.appendChild(newEl);
 }
 
-function createSplatObject() {
+export function createSplatObject() {
   // accepts a path for a .splat file hosted on any publicly accessible HTTP server.
   // Then create entity with model from that path by using gaussian_splatting component
   const modelUrl = prompt(
@@ -249,19 +249,3 @@ function createSplatObject() {
     parentEl.appendChild(newEl);
   }
 }
-
-export {
-  createSvgExtrudedEntity,
-  createMapbox,
-  createStreetmixStreet,
-  create3DTiles,
-  createCustomModel,
-  createPrimitiveGeometry,
-  createIntersection,
-  createSplatObject,
-  create40ftRightOfWay,
-  create60ftRightOfWay,
-  create80ftRightOfWay,
-  create94ftRightOfWay,
-  create150ftRightOfWay
-};

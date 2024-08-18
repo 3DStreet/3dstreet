@@ -13,7 +13,7 @@ import {
   create150ftRightOfWay
 } from './createLayerFunctions';
 
-const streetLayersData = [
+export const streetLayersData = [
   {
     name: 'Street from Streetmix URL',
     img: 'ui_assets/cards/streetmix.jpg',
@@ -66,7 +66,7 @@ const streetLayersData = [
 ];
 
 // data for PRO layers cards
-const layersData = [
+export const layersData = [
   {
     name: 'Mapbox 2D Aerial',
     img: 'ui_assets/cards/mapbox2d.jpg',
@@ -138,5 +138,3 @@ const layersData = [
     handlerFunction: createIntersection
   }
 ];
-
-export { layersData, streetLayersData };
