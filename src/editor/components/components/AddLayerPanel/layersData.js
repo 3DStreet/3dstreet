@@ -10,7 +10,8 @@ import {
   create60ftRightOfWay,
   create80ftRightOfWay,
   create94ftRightOfWay,
-  create150ftRightOfWay
+  create150ftRightOfWay,
+  createAIModel
 } from './createLayerFunctions';
 
 const streetLayersData = [
@@ -67,6 +68,16 @@ const streetLayersData = [
 
 // data for PRO layers cards
 const layersData = [
+  {
+    name: 'Supermedium AI Model Generator',
+    img: '',
+    icon: '',
+    requiresPro: true,
+    description:
+      'Create entity with supermedium ai-model component that accepts a prompt and creates a new entity using AI.',
+    id: 0,
+    handlerFunction: createAIModel
+  },
   {
     name: 'Mapbox 2D Aerial',
     img: 'ui_assets/cards/mapbox2d.jpg',

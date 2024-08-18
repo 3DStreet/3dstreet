@@ -55,6 +55,34 @@ function createMapbox() {
   Events.emit('entitycreated', geoLayer);
 }
 
+function createAIModel(position) {
+  // This code snippet allows the creation of an additional Streetmix street
+  // in your 3DStreet scene without replacing any existing streets.
+  const modelPrompt = window.prompt(
+    'Please enter a prompt',
+    'a pirate bollard'
+  );
+
+  if (modelPrompt && modelPrompt !== '') {
+    const newEl = document.createElement('a-entity');
+    newEl.setAttribute('data-layer-name', 'AI Model • ' + modelPrompt);
+    newEl.setAttribute('shadow', '');
+
+    newEl.setAttribute('ai-model', 'apiKey: kfarr4919; prompt: ' + modelPrompt);
+    // position the street further from the current one so as not to overlap each other
+    if (position) {
+      newEl.setAttribute('position', position);
+    } else {
+      newEl.setAttribute('position', '0 0 -20');
+    }
+
+    const parentEl = document.querySelector('#street-container');
+    parentEl.appendChild(newEl);
+    // update sceneGraph
+    Events.emit('entitycreated', newEl);
+  }
+}
+
 function createStreetmixStreet(position, streetmixURL) {
   // This code snippet allows the creation of an additional Streetmix street
   // in your 3DStreet scene without replacing any existing streets.
@@ -263,5 +291,6 @@ export {
   create60ftRightOfWay,
   create80ftRightOfWay,
   create94ftRightOfWay,
-  create150ftRightOfWay
+  create150ftRightOfWay,
+  createAIModel
 };
