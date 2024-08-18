@@ -346,10 +346,11 @@ body.aframe-inspector-opened {
   }
 
   .scroll {
-    height: 100%;
+    padding: 0 0 0 20px;
+    margin-top: 72px;
     overflow-y: auto;
     overflow-x: hidden;
-    padding: 72px 0 0 20px;
+    height: 512px; // 584px - 72px
   }
 
   #sidebar-buttons {
