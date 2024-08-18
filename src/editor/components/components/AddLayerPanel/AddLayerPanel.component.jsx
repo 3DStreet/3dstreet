@@ -393,7 +393,7 @@ const AddLayerPanel = ({ onClose, isAddLayerPanelOpen }) => {
       if (transferredData.mixinId) {
         createEntityOnPosition(transferredData.mixinId, position);
       } else if (transferredData.layerCardId) {
-        layersData
+        selectedCards
           .find((card) => card.id === transferredData.layerCardId)
           ?.handlerFunction(position);
       }
