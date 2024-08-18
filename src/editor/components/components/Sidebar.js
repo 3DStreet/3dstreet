@@ -22,25 +22,42 @@ export default class Sidebar extends React.Component {
     };
   }
 
+  onEntityUpdate = (detail) => {
+    if (detail.entity !== this.props.entity) {
+      return;
+    }
+    if (detail.component === 'mixin') {
+      this.forceUpdate();
+    }
+  };
+
+  onComponentRemove = (detail) => {
+    if (detail.entity !== this.props.entity) {
+      return;
+    }
+    this.forceUpdate();
+  };
+
+  onComponentAdd = (detail) => {
+    if (detail.entity !== this.props.entity) {
+      return;
+    }
+    this.forceUpdate();
+  };
+
   componentDidMount() {
-    Events.on('entityupdate', (detail) => {
-      if (detail.entity !== this.props.entity) {
-        return;
-      }
-      if (detail.component === 'mixin') {
-        this.forceUpdate();
-      }
-    });
-
-    Events.on('componentremove', (event) => {
-      this.forceUpdate();
-    });
-    Events.on('componentadd', (event) => {
-      this.forceUpdate();
-    });
+    Events.on('entityupdate', this.onEntityUpdate);
+    Events.on('componentremove', this.onComponentRemove);
+    Events.on('componentadd', this.onComponentAdd);
   }
-  // additional toggle for hide/show panel by clicking the button
 
+  componentWillUnmount() {
+    Events.off('entityupdate', this.onEntityUpdate);
+    Events.off('componentremove', this.onComponentRemove);
+    Events.off('componentadd', this.onComponentAdd);
+  }
+
+  // additional toggle for hide/show panel by clicking the button
   toggleRightBar = () => {
     this.setState({ rightBarHide: !this.state.rightBarHide });
     sendMetric('Components', 'toggleSidebar');
