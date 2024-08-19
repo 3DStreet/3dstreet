@@ -10,7 +10,7 @@ import { getEntityDisplayName } from '../../lib/entity';
 import posthog from 'posthog-js';
 
 const HIDDEN_CLASSES = ['teleportRay', 'hitEntity'];
-const HIDDEN_IDS = ['previewEntity'];
+const HIDDEN_IDS = ['dropPlane', 'previewEntity'];
 
 export default class SceneGraph extends React.Component {
   static propTypes = {
