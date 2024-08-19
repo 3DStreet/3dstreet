@@ -1,6 +1,5 @@
-import { Button, HelpButton, GeoPanel, Logo, ZoomButtons } from './components';
+import { HelpButton, GeoPanel, Logo, ZoomButtons } from './components';
 import { CameraToolbar } from './viewport';
-import { Compass32Icon } from '../icons';
 import { Component } from 'react';
 import ComponentsSidebar from './components/Sidebar';
 import Events from '../lib/Events';
@@ -319,14 +318,9 @@ export default class Main extends Component {
           </div>
         )}
         {this.state.inspectorEnabled && (
-          <div id={'zoom-buttons'}>
+          <div id="zoom-buttons">
             <ZoomButtons />
           </div>
-        )}
-        {this.state.inspectorEnabled && (
-          <Button id={'resetZoomButton'}>
-            <Compass32Icon />
-          </Button>
         )}
         {this.state.inspectorEnabled && (
           <AddLayerPanel
