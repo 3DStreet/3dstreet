@@ -28,18 +28,20 @@ export default class CommonComponents extends React.Component {
     entity: PropTypes.object
   };
 
+  onEntityUpdate = (detail) => {
+    if (detail.entity !== this.props.entity) {
+      return;
+    }
+    if (
+      DEFAULT_COMPONENTS.indexOf(detail.component) !== -1 ||
+      detail.component === 'mixin'
+    ) {
+      this.forceUpdate();
+    }
+  };
+
   componentDidMount() {
-    Events.on('entityupdate', (detail) => {
-      if (detail.entity !== this.props.entity) {
-        return;
-      }
-      if (
-        DEFAULT_COMPONENTS.indexOf(detail.component) !== -1 ||
-        detail.component === 'mixin'
-      ) {
-        this.forceUpdate();
-      }
-    });
+    Events.on('entityupdate', this.onEntityUpdate);
 
     var clipboard = new Clipboard('[data-action="copy-entity-to-clipboard"]', {
       text: (trigger) => {
@@ -49,6 +51,10 @@ export default class CommonComponents extends React.Component {
     clipboard.on('error', (e) => {
       // @todo Show the error on the UI
     });
+  }
+
+  componentWillUnmount() {
+    Events.off('entityupdate', this.onEntityUpdate);
   }
 
   renderCommonAttributes() {
