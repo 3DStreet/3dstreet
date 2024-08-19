@@ -294,11 +294,7 @@ export default class Main extends Component {
           selectedTexture={this.state.selectedTexture}
           onClose={this.onModalTextureOnClose}
         />
-        {this.state.inspectorEnabled && (
-          <div id="help">
-            <HelpButton />
-          </div>
-        )}
+
         {this.state.inspectorEnabled && (
           <div id="geo">
             <GeoPanel />
@@ -318,8 +314,9 @@ export default class Main extends Component {
           </div>
         )}
         {this.state.inspectorEnabled && (
-          <div id="zoom-buttons">
+          <div id="zoom-help-buttons">
             <ZoomButtons />
+            <HelpButton />
           </div>
         )}
         {this.state.inspectorEnabled && (

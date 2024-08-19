@@ -509,6 +509,16 @@ body.aframe-inspector-opened {
   }
 }
 
+#zoom-help-buttons {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  position: absolute;
+  right: 28px;
+  bottom: 62px;
+  z-index: 1;
+}
+
 .outliner {
   color: variables.$lightgray-100;
   cursor: default;

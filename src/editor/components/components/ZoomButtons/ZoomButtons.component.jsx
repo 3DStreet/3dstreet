@@ -17,6 +17,7 @@ class ZoomButtons extends Component {
         <Button
           id="resetZoomButton"
           className={styles.resetZoomButton}
+          variant="toolbtn"
           onPointerDown={() => {
             AFRAME.INSPECTOR.controls.resetZoom();
           }}
