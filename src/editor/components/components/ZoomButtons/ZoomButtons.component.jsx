@@ -28,7 +28,6 @@ class ZoomButtons extends Component {
           <Button
             id="zoomInButton"
             className={classNames(styles.btn, styles.plusButton)}
-            type="button"
             variant="primary"
             onPointerDown={() => {
               AFRAME.INSPECTOR.controls.zoomInStart();
@@ -43,7 +42,6 @@ class ZoomButtons extends Component {
           <Button
             id="zoomOutButton"
             className={classNames(styles.btn, styles.minusButton)}
-            type="button"
             variant="primary"
             onPointerDown={() => {
               AFRAME.INSPECTOR.controls.zoomOutStart();
