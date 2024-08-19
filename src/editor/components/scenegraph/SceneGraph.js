@@ -10,7 +10,7 @@ import { getEntityDisplayName } from '../../lib/entity';
 import posthog from 'posthog-js';
 
 const HIDDEN_CLASSES = ['teleportRay', 'hitEntity'];
-const HIDDEN_IDS = ['previewEntity'];
+const HIDDEN_IDS = ['dropPlane', 'previewEntity'];
 
 export default class SceneGraph extends React.Component {
   static propTypes = {
@@ -33,17 +33,27 @@ export default class SceneGraph extends React.Component {
     };
   }
 
+  onMixinUpdate = (detail) => {
+    if (detail.component === 'mixin') {
+      this.rebuildEntityOptions();
+    }
+  };
+
   componentDidMount() {
     this.rebuildEntityOptions();
     Events.on('updatescenegraph', this.rebuildEntityOptions);
     Events.on('entityidchange', this.rebuildEntityOptions);
     Events.on('entitycreated', this.rebuildEntityOptions);
     Events.on('entityclone', this.rebuildEntityOptions);
-    Events.on('entityupdate', (detail) => {
-      if (detail.component === 'mixin') {
-        this.rebuildEntityOptions();
-      }
-    });
+    Events.on('entityupdate', this.onMixinUpdate);
+  }
+
+  componentWillUnmount() {
+    Events.off('updatescenegraph', this.rebuildEntityOptions);
+    Events.off('entityidchange', this.rebuildEntityOptions);
+    Events.off('entitycreated', this.rebuildEntityOptions);
+    Events.off('entityclone', this.rebuildEntityOptions);
+    Events.off('entityupdate', this.onMixinUpdate);
   }
 
   /**

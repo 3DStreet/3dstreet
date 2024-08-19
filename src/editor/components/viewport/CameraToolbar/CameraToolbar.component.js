@@ -40,6 +40,10 @@ class CameraToolbar extends Component {
     areChangesEmitted: false
   };
 
+  onCameraToggle = (data) => {
+    this.setState({ selectedCamera: data.value });
+  };
+
   componentDidMount() {
     setTimeout(() => {
       this.setInitialCamera();
@@ -47,9 +51,7 @@ class CameraToolbar extends Component {
   }
 
   componentWillUnmount() {
-    clearTimeout(() => {
-      this.setInitialCamera();
-    }, 1);
+    Events.off('cameratoggle', this.onCameraToggle);
   }
 
   setInitialCamera = () => {
@@ -61,9 +63,7 @@ class CameraToolbar extends Component {
       this.handleCameraChange(selectedOption);
     }
 
-    Events.on('cameratoggle', (data) =>
-      this.setState({ selectedCamera: data.value })
-    );
+    Events.on('cameratoggle', this.onCameraToggle);
   };
 
   handleCameraChange(option) {

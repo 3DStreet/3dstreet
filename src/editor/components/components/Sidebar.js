@@ -18,36 +18,48 @@ export default class Sidebar extends React.Component {
   constructor(props) {
     super(props);
     this.state = {
-      open: false,
       rightBarHide: false
     };
   }
 
-  componentDidMount() {
-    Events.on('entityupdate', (detail) => {
-      if (detail.entity !== this.props.entity) {
-        return;
-      }
-      if (detail.component === 'mixin') {
-        this.forceUpdate();
-      }
-    });
-
-    Events.on('componentremove', (event) => {
+  onEntityUpdate = (detail) => {
+    if (detail.entity !== this.props.entity) {
+      return;
+    }
+    if (detail.component === 'mixin') {
       this.forceUpdate();
-    });
-    Events.on('componentadd', (event) => {
-      this.forceUpdate();
-    });
-  }
-  // additional toggle for hide/show panel by clicking the button
-
-  toggleRightBar = () => {
-    this.setState({ rightBarHide: !this.state.rightBarHide });
+    }
   };
 
-  handleToggle = () => {
-    this.setState({ open: !this.state.open });
+  onComponentRemove = (detail) => {
+    if (detail.entity !== this.props.entity) {
+      return;
+    }
+    this.forceUpdate();
+  };
+
+  onComponentAdd = (detail) => {
+    if (detail.entity !== this.props.entity) {
+      return;
+    }
+    this.forceUpdate();
+  };
+
+  componentDidMount() {
+    Events.on('entityupdate', this.onEntityUpdate);
+    Events.on('componentremove', this.onComponentRemove);
+    Events.on('componentadd', this.onComponentAdd);
+  }
+
+  componentWillUnmount() {
+    Events.off('entityupdate', this.onEntityUpdate);
+    Events.off('componentremove', this.onComponentRemove);
+    Events.off('componentadd', this.onComponentAdd);
+  }
+
+  // additional toggle for hide/show panel by clicking the button
+  toggleRightBar = () => {
+    this.setState({ rightBarHide: !this.state.rightBarHide });
     sendMetric('Components', 'toggleSidebar');
   };
 
