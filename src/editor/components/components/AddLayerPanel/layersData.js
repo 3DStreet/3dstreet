@@ -14,7 +14,6 @@ const layersData = [
     name: 'Mapbox 2D Aerial',
     img: 'ui_assets/cards/mapbox2d.jpg',
     icon: 'ui_assets/cards/icons/mapbox24.png',
-    requiresPro: true,
     description:
       'Create entity with mapbox component, that accepts a long / lat and renders a plane with dimensions that (should be) at a correct scale.',
     id: 1,
@@ -44,7 +43,6 @@ const layersData = [
     name: 'Google Maps 3D Tiles',
     img: 'ui_assets/cards/google3d.jpg',
     icon: 'ui_assets/cards/icons/google24.png',
-    requiresPro: true,
     description:
       'Adds an entity to load and display 3d tiles from Google Maps Tiles API 3D Tiles endpoint. This will break your scene and you cannot save it yet, so beware before testing.',
     id: 4,

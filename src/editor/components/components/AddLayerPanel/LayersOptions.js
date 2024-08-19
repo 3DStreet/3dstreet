@@ -6,8 +6,8 @@ const LayersOptions = [
     onClick: () => console.log('Models: Personal Vehicles')
   },
   {
-    value: 'Pro Layers',
-    label: 'Pro Layers',
+    value: 'Street Layers',
+    label: 'Street Layers',
     onClick: () => console.log('Layers: Streets & Intersections')
   },
   {

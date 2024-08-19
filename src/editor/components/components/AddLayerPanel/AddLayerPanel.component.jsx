@@ -291,7 +291,7 @@ const AddLayerPanel = ({ onClose, isAddLayerPanelOpen }) => {
   }, []);
 
   const selectedCards = useMemo(() => {
-    if (selectedOption === 'Pro Layers') {
+    if (selectedOption === 'Street Layers') {
       return layersData;
     } else {
       return getSelectedMixinCards(groupedMixins, selectedOption);

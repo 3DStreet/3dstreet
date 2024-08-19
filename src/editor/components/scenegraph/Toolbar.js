@@ -184,20 +184,6 @@ export default class Toolbar extends Component {
         return;
       }
 
-      // check if the user is not pro, and if the geospatial has array of values of mapbox
-      const streetGeo = document
-        .getElementById('reference-layers')
-        ?.getAttribute('street-geo');
-      if (
-        !this.props.currentUser.isPro &&
-        streetGeo &&
-        streetGeo['latitude'] &&
-        streetGeo['longitude']
-      ) {
-        Events.emit('openpaymentmodal');
-        return;
-      }
-
       // if owner != doc.id then doSaveAs = true;
       const isCurrentUserTheSceneAuthor = await isSceneAuthor({
         sceneId: currentSceneId,
