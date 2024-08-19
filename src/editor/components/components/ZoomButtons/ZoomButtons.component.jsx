@@ -14,7 +14,13 @@ class ZoomButtons extends Component {
   render() {
     return (
       <>
-        <Button id="resetZoomButton" className={styles.resetZoomButton}>
+        <Button
+          id="resetZoomButton"
+          className={styles.resetZoomButton}
+          onPointerDown={() => {
+            AFRAME.INSPECTOR.controls.resetZoom();
+          }}
+        >
           <Compass32Icon />
         </Button>
         <div className={styles.wrapper}>
@@ -23,12 +29,30 @@ class ZoomButtons extends Component {
             className={classNames(styles.btn, styles.plusButton)}
             type="button"
             variant="primary"
+            onPointerDown={() => {
+              AFRAME.INSPECTOR.controls.zoomInStart();
+            }}
+            onPointerUp={() => {
+              AFRAME.INSPECTOR.controls.zoomInStop();
+            }}
+            onPointerLeave={() => {
+              AFRAME.INSPECTOR.controls.zoomInStop();
+            }}
           />
           <Button
             id="zoomOutButton"
             className={classNames(styles.btn, styles.minusButton)}
             type="button"
             variant="primary"
+            onPointerDown={() => {
+              AFRAME.INSPECTOR.controls.zoomOutStart();
+            }}
+            onPointerUp={() => {
+              AFRAME.INSPECTOR.controls.zoomOutStop();
+            }}
+            onPointerLeave={() => {
+              AFRAME.INSPECTOR.controls.zoomOutStop();
+            }}
           />
         </div>
       </>
