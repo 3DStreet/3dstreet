@@ -509,27 +509,14 @@ body.aframe-inspector-opened {
   }
 }
 
-#resetZoomButton {
-  position: absolute !important;
-  right: 35px;
-  bottom: 188px;
-  padding: 0 !important;
-  border-radius: 50% !important;
-  width: 43px;
-  height: 43px;
-  background: rgba(50, 50, 50, 0.8);
-
-  &:hover {
-    background: variables.$darkgray-300;
-
-    svg > path:first-child {
-      fill: variables.$white;
-    }
-
-    svg > path:last-child {
-      stroke: variables.$white;
-    }
-  }
+#zoom-help-buttons {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  position: absolute;
+  right: 28px;
+  bottom: 62px;
+  z-index: 1;
 }
 
 .outliner {

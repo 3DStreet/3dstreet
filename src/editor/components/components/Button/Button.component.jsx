@@ -20,6 +20,9 @@ const variants = {
  * @param {{
  *  className?: string;
  *  onClick?: () => void;
+ *  onPointerDown?: () => void;
+ *  onPointerUp?: () => void;
+ *  onPointerLeave?: () => void;
  *  type?: string;
  *  children?: Node;
  *  variant?: string;
@@ -32,6 +35,9 @@ const variants = {
 const Button = ({
   className,
   onClick,
+  onPointerDown,
+  onPointerUp,
+  onPointerLeave,
   type = 'button',
   children,
   variant = 'filled',
@@ -43,6 +49,9 @@ const Button = ({
   <button
     className={classNames(styles.buttonWrapper, variants[variant], className)}
     onClick={onClick}
+    onPointerDown={onPointerDown}
+    onPointerUp={onPointerUp}
+    onPointerLeave={onPointerLeave}
     type={type}
     tabIndex={0}
     disabled={disabled}
@@ -57,6 +66,9 @@ const Button = ({
 Button.propTypes = {
   className: string,
   onClick: func,
+  onPointerDown: func,
+  onPointerUp: func,
+  onPointerLeave: func,
   type: string,
   children: node,
   variant: string,
