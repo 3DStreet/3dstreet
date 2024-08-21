@@ -10,6 +10,9 @@ import posthog from 'posthog-js';
 const signIn = async () => {
   try {
     const { user } = await signInWithPopup(auth, new GoogleAuthProvider());
+    STREET.notify.successMessage(
+      `Successful login with Google authentication.`
+    );
     // first signIn to ga
     if (user.metadata.creationTime !== user.metadata.lastSignInTime) return;
     sendMetric('Auth', 'newAccountCreation');
@@ -40,6 +43,9 @@ const signInMicrosoft = async () => {
   try {
     const provider = new OAuthProvider('microsoft.com');
     const { user } = await signInWithPopup(auth, provider);
+    STREET.notify.successMessage(
+      `Successful login with Microsoft authentication.`
+    );
     // first signIn to ga
     if (user.metadata.creationTime !== user.metadata.lastSignInTime) return;
     sendMetric('Auth', 'newAccountCreation');
