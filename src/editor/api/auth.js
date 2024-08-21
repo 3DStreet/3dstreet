@@ -18,7 +18,21 @@ const signIn = async () => {
       name: user.displayName
     });
   } catch (error) {
-    console.error(error);
+    // handle specific error for `auth/account-exists-with-different-credential`
+    if (error.code === 'auth/account-exists-with-different-credential') {
+      // handle the error
+      STREET.notify.errorMessage(
+        `Cannot use Google login with your email, try using Microsoft login instead.`
+      );
+      console.log(
+        'Cannot use Google login with your email, try using Microsoft login instead.'
+      );
+    } else {
+      STREET.notify.errorMessage(
+        `Unexpected error using Google for login: ${error}.`
+      );
+      console.error(error);
+    }
   }
 };
 
@@ -34,7 +48,21 @@ const signInMicrosoft = async () => {
       name: user.displayName
     });
   } catch (error) {
-    console.error(error);
+    // handle specific error for `auth/account-exists-with-different-credential`
+    if (error.code === 'auth/account-exists-with-different-credential') {
+      // handle the error
+      STREET.notify.errorMessage(
+        `Cannot use Microsoft login with your email, try using Google login instead.`
+      );
+      console.log(
+        'Cannot use Microsoft login with your email, try using Google login instead.'
+      );
+    } else {
+      STREET.notify.errorMessage(
+        `Unexpected error using Microsoft for login: ${error}.`
+      );
+      console.error(error);
+    }
   }
 };
 
