@@ -52,7 +52,7 @@ The `street` component creates a street made up of one or more segments as child
 | Property | Description | Default Value |
 | --------- | --------- | --------- |
 | JSON | A string of JSON containing an array one or more segments (also known as slices) representing cross-section parts of a street. See [basic-json.html](/examples/basic-json.html) for an example of proper usage | '' |
-| type | A string representing the formatting of the JSON passed in the `JSON` property |  'streetmixSegmentsFeet' |
+| type | A string representing the formatting of the JSON passed in the `JSON` property |  'streetmixSegmentsMetric' |
 | left | A string to determine which [building variant](#list-of-streetmix-building-variants) to create for the left side of the street (heading outbound) | '' |
 | right | A string to determine which building variant to create for the right side of the street (heading outbound). | '' |
 | showGround | A boolean to determine if the ground associated with the specified building variant(s) in `left` and `right` should be created or not. | true |
@@ -85,11 +85,7 @@ The `streetmix-loader` component requests a Streetmix API response when given a 
 | streetmixAPIURL | A string representing the Streetmix API street URL such as https://streetmix.net/api/v1/streets/7a633310-e598-11e6-80db-ebe3de713876 | '' |
 | showBuildings | A Boolean that determines whether or not buildings are rendered | true |
 
-Either 1 of the 2 properties are required. If both are provided the component will use streetmixAPIURL value and ignore streetmixStreetURL.
-
-
-
-
+Either 1 of streetmixStreetURL or streetmixAPIURL properties are required. If both are provided the component will use streetmixAPIURL value and ignore streetmixStreetURL.
 
 #### Orientation and Scale
 A default Streetmix.net cross-section view is oriented to show vehicles heading away from you as "outbound". The `street` component follows this convention and when placed in a new A-Frame scene the default camera is looking toward the outbound direction of the generated street. The default rendering is 1:1 scale.
