@@ -1,13 +1,18 @@
 const LayersOptions = [
   {
+    value: 'Dividers & Traffic Control',
+    label: '🚧 Dividers & Traffic Control',
+    mixinGroups: ['dividers'],
+    onClick: () => {}
+  },
+  {
     value: 'Street Layers',
     label: '🛣️ Street Layers',
     onClick: () => {}
   },
   {
-    value: 'Dividers & Traffic Control',
-    label: '🚧 Dividers & Traffic Control',
-    mixinGroups: ['dividers'],
+    value: 'Pro Layers',
+    label: '🌏 Pro Layers',
     onClick: () => {}
   },
   {
@@ -20,11 +25,6 @@ const LayersOptions = [
     value: 'People Power Vehicles',
     label: '🚲 People Power Vehicles',
     mixinGroups: ['vehicles', 'cyclists'],
-    onClick: () => {}
-  },
-  {
-    value: 'Pro Layers',
-    label: '🌏 Pro Layers',
     onClick: () => {}
   },
   {
