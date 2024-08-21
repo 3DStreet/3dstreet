@@ -243,30 +243,6 @@ THREE.EditorControls = function (_object, domElement) {
 
     domElement.removeEventListener('touchstart', touchStart, false);
     domElement.removeEventListener('touchmove', touchMove, false);
-
-    document
-      .getElementById('zoomInButton')
-      .removeEventListener('pointerdown', zoomInStart);
-    document
-      .getElementById('zoomInButton')
-      .removeEventListener('pointerup', zoomInStop);
-    document
-      .getElementById('zoomInButton')
-      .removeEventListener('pointerleave', zoomInStop);
-
-    document
-      .getElementById('zoomOutButton')
-      .removeEventListener('pointerdown', zoomOutStart);
-    document
-      .getElementById('zoomOutButton')
-      .removeEventListener('pointerup', zoomOutStop);
-    document
-      .getElementById('zoomOutButton')
-      .removeEventListener('pointerleave', zoomOutStop);
-
-    document
-      .getElementById('resetZoomButton')
-      .removeEventListener('pointerdown', this.resetZoom);
   };
 
   domElement.addEventListener('contextmenu', contextmenu, false);
@@ -365,15 +341,15 @@ THREE.EditorControls = function (_object, domElement) {
   let zoomInInterval;
   let zoomOutInterval;
 
-  const zoomInStart = () => {
+  this.zoomInStart = () => {
     zoomInInterval = setInterval(() => scope.zoom(delta.set(0, 0, -1)), 50);
   };
-  const zoomInStop = () => clearInterval(zoomInInterval);
+  this.zoomInStop = () => clearInterval(zoomInInterval);
 
-  const zoomOutStart = () => {
+  this.zoomOutStart = () => {
     zoomOutInterval = setInterval(() => scope.zoom(delta.set(0, 0, 1)), 50);
   };
-  const zoomOutStop = () => clearInterval(zoomOutInterval);
+  this.zoomOutStop = () => clearInterval(zoomOutInterval);
 
   this.resetZoom = () => {
     if (this.isOrthographic) {
@@ -398,22 +374,6 @@ THREE.EditorControls = function (_object, domElement) {
 
     scope.dispatchChange();
   };
-
-  setTimeout(() => {
-    const zoomInButton = document.getElementById('zoomInButton');
-    const zoomOutButton = document.getElementById('zoomOutButton');
-    const resetZoomButton = document.getElementById('resetZoomButton');
-
-    zoomInButton.addEventListener('pointerdown', zoomInStart);
-    zoomInButton.addEventListener('pointerup', zoomInStop);
-    zoomInButton.addEventListener('pointerleave', zoomInStop);
-
-    zoomOutButton.addEventListener('pointerdown', zoomOutStart);
-    zoomOutButton.addEventListener('pointerup', zoomOutStop);
-    zoomOutButton.addEventListener('pointerleave', zoomOutStop);
-
-    resetZoomButton.addEventListener('pointerdown', this.resetZoom);
-  }, 1);
 };
 
 THREE.EditorControls.prototype = Object.create(THREE.EventDispatcher.prototype);

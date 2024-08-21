@@ -211,6 +211,7 @@ export function Viewport(inspector) {
 
   // Controls need to be added *after* main logic.
   const controls = new THREE.EditorControls(camera, inspector.container);
+  inspector.controls = controls; // used in ZoomButtons component
   controls.center.set(0, 1.6, 0);
   controls.rotationSpeed = 0.0035;
   controls.zoomSpeed = 0.05;

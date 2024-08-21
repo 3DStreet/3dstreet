@@ -21,13 +21,7 @@ class HelpButton extends Component {
 
     return (
       <div className={styles.wrapper}>
-        <Button
-          className={styles.helpButton}
-          type="button"
-          onClick={onClick}
-          key="helpButton"
-          variant={'toolbtn'}
-        >
+        <Button onClick={onClick} variant="toolbtn">
           {QuestionMark}
         </Button>
       </div>
