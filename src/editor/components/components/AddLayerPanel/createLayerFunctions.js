@@ -55,7 +55,7 @@ export function createMapbox() {
   Events.emit('entitycreated', geoLayer);
 }
 
-export function createStreetmixStreet(position, streetmixURL) {
+export function createStreetmixStreet(position, streetmixURL, hideBuildings) {
   // This code snippet allows the creation of an additional Streetmix street
   // in your 3DStreet scene without replacing any existing streets.
   if (streetmixURL === undefined) {
@@ -76,7 +76,7 @@ export function createStreetmixStreet(position, streetmixURL) {
 
     newEl.setAttribute(
       'streetmix-loader',
-      `streetmixStreetURL: ${streetmixURL}`
+      `streetmixStreetURL: ${streetmixURL}; showBuildings: ${!hideBuildings}`
     );
     const parentEl = document.querySelector('#street-container');
     parentEl.appendChild(newEl);
@@ -88,31 +88,36 @@ export function createStreetmixStreet(position, streetmixURL) {
 export function create40ftRightOfWay(position) {
   createStreetmixStreet(
     position,
-    'https://streetmix.net/3dstreetapp/1/40ft-right-of-way-24ft-road-width'
+    'https://streetmix.net/3dstreetapp/1/40ft-right-of-way-24ft-road-width',
+    true
   );
 }
 export function create60ftRightOfWay(position) {
   createStreetmixStreet(
     position,
-    'https://streetmix.net/3dstreetapp/2/60ft-right-of-way-36ft-road-width'
+    'https://streetmix.net/3dstreetapp/2/60ft-right-of-way-36ft-road-width',
+    true
   );
 }
 export function create80ftRightOfWay(position) {
   createStreetmixStreet(
     position,
-    'https://streetmix.net/3dstreetapp/3/80ft-right-of-way-56ft-road-width'
+    'https://streetmix.net/3dstreetapp/3/80ft-right-of-way-56ft-road-width',
+    true
   );
 }
 export function create94ftRightOfWay(position) {
   createStreetmixStreet(
     position,
-    'https://streetmix.net/3dstreetapp/4/94ft-right-of-way-70ft-road-width'
+    'https://streetmix.net/3dstreetapp/4/94ft-right-of-way-70ft-road-width',
+    true
   );
 }
 export function create150ftRightOfWay(position) {
   createStreetmixStreet(
     position,
-    'https://streetmix.net/3dstreetapp/5/150ft-right-of-way-124ft-road-width'
+    'https://streetmix.net/3dstreetapp/5/150ft-right-of-way-124ft-road-width',
+    true
   );
 }
 
