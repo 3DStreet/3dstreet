@@ -1,7 +1,7 @@
-import { GoogleSignInButtonSVG } from '../../../icons';
+import { GoogleSignInButtonSVG, SignInMicrosoftIconSVG } from '../../../icons';
 import Modal from '../Modal.jsx';
 import styles from './SignInModal.module.scss';
-import { signIn } from '../../../api';
+import { signIn, signInMicrosoft } from '../../../api';
 
 const SignInModal = ({ isOpen, onClose }) => (
   <Modal
@@ -36,6 +36,16 @@ const SignInModal = ({ isOpen, onClose }) => (
         className={styles.signInButton}
       >
         <GoogleSignInButtonSVG />
+      </div>
+      <div
+        onClick={() => {
+          signInMicrosoft();
+          onClose();
+        }}
+        alt="Sign In with Microsoft Button"
+        className={styles.signInButton}
+      >
+        <SignInMicrosoftIconSVG />
       </div>
     </div>
   </Modal>
