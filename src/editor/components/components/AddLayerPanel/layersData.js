@@ -78,14 +78,14 @@ export const layersData = [
     handlerFunction: createMapbox
   },
   {
-    name: 'Street from Streetmix URL',
-    img: 'ui_assets/cards/streetmix.jpg',
-    icon: 'ui_assets/cards/icons/streetmix24.png',
+    name: 'Google Maps 3D Tiles',
+    img: 'ui_assets/cards/google3d.jpg',
+    icon: 'ui_assets/cards/icons/google24.png',
     requiresPro: true,
     description:
-      'Create an additional Streetmix street in your 3DStreet scene without replacing any existing streets.',
+      'Adds an entity to load and display 3d tiles from Google Maps Tiles API 3D Tiles endpoint. This will break your scene and you cannot save it yet, so beware before testing.',
     id: 2,
-    handlerFunction: createStreetmixStreet
+    handlerFunction: create3DTiles
   },
   {
     name: 'Entity from extruded SVG',
@@ -98,23 +98,13 @@ export const layersData = [
     handlerFunction: createSvgExtrudedEntity
   },
   {
-    name: 'Google Maps 3D Tiles',
-    img: 'ui_assets/cards/google3d.jpg',
-    icon: 'ui_assets/cards/icons/google24.png',
-    requiresPro: true,
-    description:
-      'Adds an entity to load and display 3d tiles from Google Maps Tiles API 3D Tiles endpoint. This will break your scene and you cannot save it yet, so beware before testing.',
-    id: 4,
-    handlerFunction: create3DTiles
-  },
-  {
     name: 'glTF model from URL',
     img: '',
     requiresPro: true,
     icon: '',
     description:
       'Create entity with model from path for a glTF (or Glb) file hosted on any publicly accessible HTTP server.',
-    id: 5,
+    id: 4,
     handlerFunction: createCustomModel
   },
   {
@@ -124,7 +114,7 @@ export const layersData = [
     icon: '',
     description:
       'Create entity with A-Frame primitive geometry. Geometry type could be changed in properties panel.',
-    id: 6,
+    id: 5,
     handlerFunction: createPrimitiveGeometry
   },
   {
@@ -134,7 +124,7 @@ export const layersData = [
     icon: '',
     description:
       'Create intersection entity. Parameters of intersection component could be changed in properties panel.',
-    id: 7,
+    id: 6,
     handlerFunction: createIntersection
   }
 ];
