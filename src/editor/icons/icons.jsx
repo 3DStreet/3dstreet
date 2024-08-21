@@ -614,7 +614,7 @@ const SignInMicrosoftIconSVG = () => (
     height="41"
     viewBox="0 0 215 41"
   >
-    <title>MS-SymbolLockup</title>
+    <title>Sign in with Microsoft Icon</title>
     <rect width="215" height="41" fill="#fff" />
     <path d="M214,1V40H1V1H214m1-1H0V41H215V0Z" fill="#8c8c8c" />
     <path
