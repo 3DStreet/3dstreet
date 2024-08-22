@@ -18,6 +18,7 @@ import { ScenesModal } from './modals/ScenesModal';
 import { PaymentModal } from './modals/PaymentModal';
 import { SceneEditTitle } from './components/SceneEditTitle';
 import { AddLayerPanel } from './components/AddLayerPanel';
+import { IntroModal } from './modals/IntroModal';
 import posthog from 'posthog-js';
 
 THREE.ImageUtils.crossOrigin = '';
@@ -36,6 +37,7 @@ export default class Main extends Component {
       isProfileModalOpened: false,
       isAddLayerPanelOpen: false,
       isGeoModalOpened: false,
+      isIntroModalOpened: false,
       isScenesModalOpened: !isStreetLoaded,
       isPaymentModalOpened: isPaymentModalOpened,
       sceneEl: AFRAME.scenes[0],
@@ -83,6 +85,10 @@ export default class Main extends Component {
   handleStreetMixURL() {
     const isStreetMix = window.location.hash.includes('streetmix');
     if (isStreetMix) {
+      const shownIntro = localStorage.getItem('shownIntro');
+      if (!shownIntro) {
+        this.setState({ isIntroModalOpened: true });
+      }
       STREET.notify.warningMessage(
         'Hit save if you want to save changes to the scene. Otherwise changes will be lost'
       );
@@ -96,7 +102,7 @@ export default class Main extends Component {
     htmlEditorButton && htmlEditorButton.remove();
 
     this.handleStreetMixURL();
-    window.addEventListener('hashchange', this.handleStreetMixURL);
+    window.addEventListener('hashchange', () => this.handleStreetMixURL());
     Events.on(
       'opentexturesmodal',
       function (selectedTexture, textureOnClose) {
@@ -175,6 +181,11 @@ export default class Main extends Component {
 
   onCloseGeoModal = () => {
     this.setState({ isGeoModalOpened: false });
+  };
+
+  onCloseIntroModal = () => {
+    this.setState({ isIntroModalOpened: false });
+    localStorage.setItem('shownIntro', true);
   };
 
   onClosePaymentModal = () => {
@@ -279,6 +290,10 @@ export default class Main extends Component {
         <ProfileModal
           isOpen={this.state.isProfileModalOpened}
           onClose={this.onCloseProfileModal}
+        />
+        <IntroModal
+          isOpen={this.state.isIntroModalOpened}
+          onClose={this.onCloseIntroModal}
         />
         <LoadScript
           googleMapsApiKey={firebaseConfig.apiKey}
