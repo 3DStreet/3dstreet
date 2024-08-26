@@ -41,7 +41,7 @@ export function removeEntity(entity, force) {
       force === true ||
       confirm(
         'Do you really want to remove entity `' +
-          (entity.id || entity.tagName) +
+          getEntityDisplayName(entity) +
           '`?'
       )
     ) {
@@ -519,7 +519,7 @@ export function getComponentClipboardRepresentation(entity, componentName) {
 }
 
 export function getEntityDisplayName(entity) {
-  let entityName = entity.id;
+  let entityName = '';
   if (!entity.isScene && !entityName && entity.getAttribute('class')) {
     entityName = entity.getAttribute('class').split(' ')[0];
   } else if (!entity.isScene && !entityName && entity.getAttribute('mixin')) {
