@@ -1,5 +1,6 @@
 import Events from '../Events';
 import { Command } from '../command.js';
+import { createUniqueId } from '../entity.js';
 
 const NOT_COMPONENTS = ['id', 'class', 'mixin'];
 
@@ -27,6 +28,8 @@ export class EntityCreateCommand extends Command {
     // Set id
     if (definition.id) {
       entity.id = definition.id;
+    } else {
+      this.entity.id = createUniqueId();
     }
 
     // Set class, mixin
