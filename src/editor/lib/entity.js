@@ -1,6 +1,6 @@
 /* eslint-disable react/no-danger */
 import Events from './Events';
-import { EntityUpdateCommand } from './commands';
+import { EntityUpdateCommand, EntityRemoveCommand } from './commands';
 import { equal } from './utils';
 
 /**
@@ -44,16 +44,13 @@ export function removeEntity(entity, force) {
           '`?'
       )
     ) {
-      var closest = findClosestEntity(entity);
-      AFRAME.INSPECTOR.removeObject(entity.object3D);
-      entity.parentNode.removeChild(entity);
-      AFRAME.INSPECTOR.selectEntity(closest);
-      Events.emit('entityremoved', entity);
+      const command = new EntityRemoveCommand(AFRAME.INSPECTOR, entity);
+      AFRAME.INSPECTOR.execute(command);
     }
   }
 }
 
-function findClosestEntity(entity) {
+export function findClosestEntity(entity) {
   // First we try to find the after the entity
   var nextEntity = entity.nextElementSibling;
   while (nextEntity && (!nextEntity.isEntity || nextEntity.isInspector)) {
@@ -156,7 +153,7 @@ export function getEntityClipboardRepresentation(entity) {
  * @param {Element} entity Root of the DOM hierarchy.
  * @return {Element}        Copy of the DOM hierarchy ready for serialization.
  */
-function prepareForSerialization(entity) {
+export function prepareForSerialization(entity) {
   var clone = entity.cloneNode(false);
   var children = entity.childNodes;
   for (var i = 0, l = children.length; i < l; i++) {
