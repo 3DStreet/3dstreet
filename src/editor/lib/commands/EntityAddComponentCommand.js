@@ -1,5 +1,6 @@
 import Events from '../Events';
 import { Command } from '../command.js';
+import { createUniqueId } from '../entity.js';
 
 export class EntityAddComponentCommand extends Command {
   constructor(editor, entity, componentName, componentData) {
@@ -10,6 +11,9 @@ export class EntityAddComponentCommand extends Command {
     this.updatable = false;
 
     this.entity = entity;
+    if (!this.entity.id) {
+      this.entity.id = createUniqueId();
+    }
     this.componentName = componentName;
     this.componentData = componentData;
   }
@@ -23,6 +27,11 @@ export class EntityAddComponentCommand extends Command {
   }
 
   undo() {
+    // Get again the entity from id, the entity may have been recreated if it was removed then undone.
+    const entity = document.getElementById(this.entity.id);
+    if (this.entity !== entity) {
+      this.entity = entity;
+    }
     this.entity.removeAttribute(this.componentName);
     Events.emit('componentremove', {
       entity: this.entity,

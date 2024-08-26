@@ -1,5 +1,6 @@
 import Events from '../Events';
 import { Command } from '../command.js';
+import { createUniqueId } from '../entity.js';
 
 function updateEntity(entity, component, property, value) {
   if (property) {
@@ -35,6 +36,9 @@ export class EntityUpdateCommand extends Command {
     this.updatable = true;
 
     this.entity = payload.entity;
+    if (!this.entity.id) {
+      this.entity.id = createUniqueId();
+    }
     this.component = payload.component;
     this.property = payload.property;
 
@@ -96,6 +100,11 @@ export class EntityUpdateCommand extends Command {
   }
 
   undo() {
+    // Get again the entity from id, the entity may have been recreated if it was removed then undone.
+    const entity = document.getElementById(this.entity.id);
+    if (this.entity !== entity) {
+      this.entity = entity;
+    }
     if (
       this.editor.selectedEntity &&
       this.editor.selectedEntity !== this.entity
