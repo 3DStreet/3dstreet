@@ -1,4 +1,3 @@
-import Events from '../../../lib/Events';
 import { loadScript, roundCoord } from '../../../../../src/utils.js';
 import {
   EntityAddComponentCommand,
@@ -80,23 +79,21 @@ export function createStreetmixStreet(position, streetmixURL, hideBuildings) {
       'https://streetmix.net/kfarr/3/3dstreet-demo-street'
     );
   }
+  // position the street further from the current one so as not to overlap each other
   if (streetmixURL && streetmixURL !== '') {
-    const newEl = document.createElement('a-entity');
-    newEl.setAttribute('id', streetmixURL);
-    // position the street further from the current one so as not to overlap each other
-    if (position) {
-      newEl.setAttribute('position', position);
-    } else {
-      newEl.setAttribute('position', '0 0 -20');
-    }
+    const definition = {
+      id: streetmixURL,
+      components: {
+        position: position ?? '0 0 -20',
+        'streetmix-loader': {
+          streetmixStreetURL: streetmixURL,
+          showBuildings: !hideBuildings
+        }
+      }
+    };
 
-    newEl.setAttribute(
-      'streetmix-loader',
-      `streetmixStreetURL: ${streetmixURL}; showBuildings: ${!hideBuildings}`
-    );
-    const parentEl = document.querySelector('#street-container');
-    parentEl.appendChild(newEl);
-    Events.emit('entitycreated', newEl);
+    const command = new EntityCreateCommand(AFRAME.INSPECTOR, definition);
+    AFRAME.INSPECTOR.execute(command);
   }
 }
 
