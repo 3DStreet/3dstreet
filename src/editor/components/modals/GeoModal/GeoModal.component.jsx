@@ -26,10 +26,8 @@ const GeoModal = ({ isOpen, onClose }) => {
     lat: 37.7637072, // lat: 37.76370724481858, lng: -122.41517686259827
     lng: -122.4151768
   });
-  const [elevation, setElevation] = useState(0);
   const [autocomplete, setAutocomplete] = useState(null);
   const [qrCodeUrl, setQrCodeUrl] = useState(null);
-  const [heightData, setHeightData] = useState(null);
 
   useEffect(() => {
     if (isOpen) {
@@ -40,33 +38,23 @@ const GeoModal = ({ isOpen, onClose }) => {
       if (streetGeo && streetGeo['latitude'] && streetGeo['longitude']) {
         const lat = roundCoord(parseFloat(streetGeo['latitude']));
         const lng = roundCoord(parseFloat(streetGeo['longitude']));
-        const ellipsoidalHeight = parseFloat(streetGeo['ellipsoidalHeight']);
 
         if (!isNaN(lat) && !isNaN(lng)) {
           setMarkerPosition({ lat, lng });
-        }
-        if (!isNaN(ellipsoidalHeight)) {
-          setElevation(ellipsoidalHeight);
         }
       }
     }
   }, [isOpen]);
 
-  const requestAndSetElevation = (lat, lng) => {
-    // request and set elevation for location with coordinates: lat, lng
-    const getGeoidHeight = httpsCallable(functions, 'getGeoidHeight');
-    getGeoidHeight({ lat: lat, lon: lng })
-      .then((result) => {
-        setHeightData(result.data);
-        setElevation(result.data.ellipsoidalHeight);
-      })
-      .catch((error) => {
-        // Getting the Error details.
-        const code = error.code;
-        const message = error.message;
-        const details = error.details;
-        console.error(code, message, details);
-      });
+  const requestAndSetElevation = async (lat, lng) => {
+    try {
+      const getGeoidHeight = httpsCallable(functions, 'getGeoidHeight');
+      const result = await getGeoidHeight({ lat: lat, lon: lng });
+      return result.data;
+    } catch (error) {
+      console.error(error.code, error.message, error.details);
+      return null;
+    }
   };
 
   const setMarkerPositionAndElevation = useCallback((lat, lng) => {
@@ -75,7 +63,6 @@ const GeoModal = ({ isOpen, onClose }) => {
         lat: roundCoord(lat),
         lng: roundCoord(lng)
       });
-      requestAndSetElevation(lat, lng);
     }
   }, []);
 
@@ -89,11 +76,6 @@ const GeoModal = ({ isOpen, onClose }) => {
       .map((coord) => parseFloat(coord.trim()));
 
     setMarkerPositionAndElevation(newLat, newLng);
-  };
-
-  const handleElevationChange = (value) => {
-    const newElevation = parseFloat(value) || 0;
-    setElevation(newElevation);
   };
 
   const onAutocompleteLoad = useCallback((autocompleteInstance) => {
@@ -141,14 +123,21 @@ const GeoModal = ({ isOpen, onClose }) => {
     );
   };
 
-  const onSaveHandler = () => {
+  const onSaveHandler = async () => {
     const latitude = markerPosition.lat;
     const longitude = markerPosition.lng;
-    const geoLayer = document.getElementById('reference-layers');
-    geoLayer.setAttribute(
-      'street-geo',
-      `latitude: ${latitude}; longitude: ${longitude}; ellipsoidalHeight: ${elevation}; orthometricHeight: ${heightData?.orthometricHeight}; geoidHeight: ${heightData?.geoidHeight}`
-    );
+    const data = await requestAndSetElevation(latitude, longitude);
+
+    if (data) {
+      console.log(`latitude: ${latitude}, longitude: ${longitude}`);
+      console.log(`elevation: ${data.ellipsoidalHeight}`);
+
+      const geoLayer = document.getElementById('reference-layers');
+      geoLayer.setAttribute(
+        'street-geo',
+        `latitude: ${latitude}; longitude: ${longitude}; ellipsoidalHeight: ${data.ellipsoidalHeight}; orthometricHeight: ${data.orthometricHeight}; geoidHeight: ${data.geoidHeight}`
+      );
+    }
 
     onClose();
   };
@@ -204,20 +193,6 @@ const GeoModal = ({ isOpen, onClose }) => {
               value={`${markerPosition.lat}, ${markerPosition.lng}`}
               placeholder="None"
               onChange={handleCoordinateChange}
-            ></Input>
-          </div>
-          <div>
-            <p>Elevation</p>
-            <Input
-              leadingIcon={
-                <p className={styles.iconGeo}>
-                  Ellipsoidal
-                  <br /> Height
-                </p>
-              }
-              value={elevation}
-              placeholder="None"
-              onChange={handleElevationChange}
             ></Input>
           </div>
         </div>
