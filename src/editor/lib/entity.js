@@ -1,4 +1,5 @@
 /* eslint-disable react/no-danger */
+import { nanoid } from 'nanoid';
 import Events from './Events';
 import { EntityUpdateCommand, EntityRemoveCommand } from './commands';
 import { equal } from './utils';
@@ -469,6 +470,19 @@ function getUniqueId(baseId) {
   }
 
   return baseId + '-' + i;
+}
+
+/**
+￼ * Create a unique id that can be used on a DOM element.
+￼ * @return {string} Valid Id
+￼ */
+export function createUniqueId() {
+  let id = nanoid();
+  do {
+    id = nanoid();
+    // be sure to not return an id starting with a number
+  } while (/^\d/.test(id));
+  return id;
 }
 
 export function getComponentClipboardRepresentation(entity, componentName) {
