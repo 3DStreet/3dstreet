@@ -339,10 +339,6 @@ export default class Toolbar extends Component {
     }
   }
 
-  addEntity() {
-    Events.emit('entitycreate', { element: 'a-entity', components: {} });
-  }
-
   toggleScenePlaying = () => {
     if (this.state.isPlaying) {
       AFRAME.scenes[0].pause();
