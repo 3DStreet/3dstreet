@@ -48,6 +48,7 @@ export function removeEntity(entity, force) {
       AFRAME.INSPECTOR.removeObject(entity.object3D);
       entity.parentNode.removeChild(entity);
       AFRAME.INSPECTOR.selectEntity(closest);
+      Events.emit('entityremoved', entity);
     }
   }
 }
