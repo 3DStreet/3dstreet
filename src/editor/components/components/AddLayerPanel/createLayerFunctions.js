@@ -1,6 +1,10 @@
 import Events from '../../../lib/Events';
 import { loadScript, roundCoord } from '../../../../../src/utils.js';
-import { EntityCreateCommand } from '../../../lib/commands';
+import {
+  EntityAddComponentCommand,
+  EntityCreateCommand,
+  EntityUpdateCommand
+} from '../../../lib/commands';
 
 export function createSvgExtrudedEntity() {
   // This component accepts a svgString and creates a new entity with geometry extruded
@@ -28,7 +32,6 @@ export function createSvgExtrudedEntity() {
     );
   }
 }
-
 export function createMapbox() {
   // This component accepts a long / lat and renders a plane with dimensions that
   // (should be) at a correct scale.
@@ -44,13 +47,28 @@ export function createMapbox() {
     longitude = roundCoord(parseFloat(streetGeo['longitude']));
   }
 
-  geoLayer.setAttribute(
-    'street-geo',
-    `
-    latitude: ${latitude}; longitude: ${longitude}; maps: mapbox2d
-    `
-  );
-  Events.emit('entitycreated', geoLayer);
+  if (streetGeo) {
+    AFRAME.INSPECTOR.execute(
+      new EntityUpdateCommand(AFRAME.INSPECTOR, {
+        entity: geoLayer,
+        component: 'street-geo',
+        property: '',
+        value: {
+          latitude: latitude,
+          longitude: longitude,
+          maps: 'mapbox2d'
+        }
+      })
+    );
+  } else {
+    AFRAME.INSPECTOR.execute(
+      new EntityAddComponentCommand(AFRAME.INSPECTOR, geoLayer, 'street-geo', {
+        latitude: latitude,
+        longitude: longitude,
+        maps: 'mapbox2d'
+      })
+    );
+  }
 }
 
 export function createStreetmixStreet(position, streetmixURL, hideBuildings) {
@@ -78,7 +96,6 @@ export function createStreetmixStreet(position, streetmixURL, hideBuildings) {
     );
     const parentEl = document.querySelector('#street-container');
     parentEl.appendChild(newEl);
-    // update sceneGraph
     Events.emit('entitycreated', newEl);
   }
 }
@@ -129,9 +146,7 @@ export function create3DTiles() {
     let latitude = 0;
     let longitude = 0;
     let ellipsoidalHeight = 0;
-    const streetGeo = document
-      .getElementById('reference-layers')
-      ?.getAttribute('street-geo');
+    const streetGeo = geoLayer?.getAttribute('street-geo');
 
     if (streetGeo && streetGeo['latitude'] && streetGeo['longitude']) {
       latitude = roundCoord(parseFloat(streetGeo['latitude']));
@@ -139,14 +154,35 @@ export function create3DTiles() {
       ellipsoidalHeight = parseFloat(streetGeo['ellipsoidalHeight']) || 0;
     }
 
-    geoLayer.setAttribute(
-      'street-geo',
-      `
-      latitude: ${latitude}; longitude: ${longitude}; ellipsoidalHeight: ${ellipsoidalHeight}; maps: google3d
-    `
-    );
-    // update sceneGraph
-    Events.emit('entitycreated', geoLayer);
+    if (streetGeo) {
+      AFRAME.INSPECTOR.execute(
+        new EntityUpdateCommand(AFRAME.INSPECTOR, {
+          entity: geoLayer,
+          component: 'street-geo',
+          property: '',
+          value: {
+            latitude: latitude,
+            longitude: longitude,
+            ellipsoidalHeight: ellipsoidalHeight,
+            maps: 'google3d'
+          }
+        })
+      );
+    } else {
+      AFRAME.INSPECTOR.execute(
+        new EntityAddComponentCommand(
+          AFRAME.INSPECTOR,
+          geoLayer,
+          'street-geo',
+          {
+            latitude: latitude,
+            longitude: longitude,
+            ellipsoidalHeight: ellipsoidalHeight,
+            maps: 'google3d'
+          }
+        )
+      );
+    }
   };
 
   if (AFRAME.components['loader-3dtiles']) {
