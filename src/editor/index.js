@@ -5,7 +5,6 @@ import { AuthProvider, GeoProvider } from './contexts';
 import Events from './lib/Events';
 import { AssetsLoader } from './lib/assetsLoader';
 import { initCameras } from './lib/cameras';
-import { createEntity } from './lib/entity';
 import { History } from './lib/history';
 import { Shortcuts } from './lib/shortcuts';
 import { Viewport } from './lib/viewport';
@@ -13,6 +12,7 @@ import { firebaseConfig } from './services/firebase.js';
 import './style/index.scss';
 import ReactGA from 'react-ga4';
 import posthog from 'posthog-js';
+import { EntityCreateCommand } from './lib/commands';
 
 function Inspector() {
   this.assetsLoader = new AssetsLoader();
@@ -214,9 +214,7 @@ Inspector.prototype = {
     });
 
     Events.on('entitycreate', (definition) => {
-      createEntity(definition, (entity) => {
-        this.selectEntity(entity);
-      });
+      this.execute(new EntityCreateCommand(this, definition));
     });
 
     this.sceneEl.addEventListener('newScene', () => {
