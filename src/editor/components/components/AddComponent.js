@@ -1,8 +1,8 @@
 import React from 'react';
 import PropTypes from 'prop-types';
-import Events from '../../lib/Events';
 import Select from 'react-select';
 import { sendMetric } from '../../services/ga';
+import { EntityAddComponentCommand } from '../../lib/commands';
 
 export default class AddComponent extends React.Component {
   static propTypes = {
@@ -25,8 +25,14 @@ export default class AddComponent extends React.Component {
       componentName = id ? `${componentName}__${id}` : componentName;
     }
 
-    entity.setAttribute(componentName, '');
-    Events.emit('componentadd', { entity: entity, component: componentName });
+    const command = new EntityAddComponentCommand(
+      AFRAME.INSPECTOR,
+      entity,
+      componentName,
+      ''
+    );
+    AFRAME.INSPECTOR.execute(command);
+
     sendMetric('Components', 'addComponent', componentName);
   };
 

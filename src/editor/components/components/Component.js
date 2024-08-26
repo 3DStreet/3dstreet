@@ -6,6 +6,7 @@ import PropertyRow from './PropertyRow';
 import React from 'react';
 import { getComponentClipboardRepresentation } from '../../lib/entity';
 import { sendMetric } from '../../services/ga';
+import { EntityRemoveComponentCommand } from '../../lib/commands';
 
 const isSingleProperty = AFRAME.schema.isSingleProperty;
 
@@ -81,11 +82,12 @@ export default class Component extends React.Component {
     if (
       confirm('Do you really want to remove component `' + componentName + '`?')
     ) {
-      this.props.entity.removeAttribute(componentName);
-      Events.emit('componentremove', {
-        entity: this.props.entity,
-        component: componentName
-      });
+      const command = new EntityRemoveComponentCommand(
+        AFRAME.INSPECTOR,
+        this.props.entity,
+        componentName
+      );
+      AFRAME.INSPECTOR.execute(command);
       sendMetric('Components', 'removeComponent', componentName);
     }
   };
