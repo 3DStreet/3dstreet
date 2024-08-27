@@ -236,7 +236,7 @@ Inspector.prototype = {
       console.error(`Command ${cmdName} not found`);
       return;
     }
-    this.history.execute(new Cmd(this, payload), optionalName);
+    return this.history.execute(new Cmd(this, payload), optionalName);
   },
 
   undo: function () {
