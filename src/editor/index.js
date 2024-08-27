@@ -161,7 +161,7 @@ Inspector.prototype = {
     }
 
     // Update helper visibilities.
-    for (let id in this.helpers) {
+    for (const id in this.helpers) {
       this.helpers[id].visible = false;
     }
 
@@ -181,7 +181,7 @@ Inspector.prototype = {
   initEvents: function () {
     window.addEventListener('keydown', (evt) => {
       // Alt + Ctrl + i: Shorcut to toggle the inspector
-      var shortcutPressed =
+      const shortcutPressed =
         evt.keyCode === 73 &&
         ((evt.ctrlKey && evt.altKey) || evt.getModifierState('AltGraph'));
       if (shortcutPressed) {
@@ -223,7 +223,7 @@ Inspector.prototype = {
     });
 
     document.addEventListener('child-detached', (event) => {
-      var entity = event.detail.el;
+      const entity = event.detail.el;
       AFRAME.INSPECTOR.removeObject(entity.object3D);
     });
   },
