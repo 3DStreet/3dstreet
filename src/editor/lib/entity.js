@@ -29,6 +29,8 @@ export function updateEntity(entity, component, property, value) {
       entity.setAttribute(component, value);
     }
   }
+
+  Events.emit('entityupdate', { entity, component, property, value });
 }
 
 /**

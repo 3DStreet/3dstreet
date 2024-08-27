@@ -1,4 +1,3 @@
-import Events from '../Events';
 import { Command } from '../command.js';
 import { createUniqueId, updateEntity } from '../entity.js';
 
@@ -71,12 +70,6 @@ export class EntityUpdateCommand extends Command {
       );
     }
     updateEntity(this.entity, this.component, this.property, this.newValue);
-    Events.emit('entityupdate', {
-      entity: this.entity,
-      component: this.component,
-      property: this.property,
-      value: this.newValue
-    });
   }
 
   undo() {
@@ -93,12 +86,6 @@ export class EntityUpdateCommand extends Command {
       this.editor.selectEntity(this.entity);
     }
     updateEntity(this.entity, this.component, this.property, this.oldValue);
-    Events.emit('entityupdate', {
-      entity: this.entity,
-      component: this.component,
-      property: this.property,
-      value: this.oldValue
-    });
   }
 
   update(command) {
