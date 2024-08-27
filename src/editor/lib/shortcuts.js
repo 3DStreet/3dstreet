@@ -65,11 +65,6 @@ export const Shortcuts = {
       Events.emit('togglegrid');
     }
 
-    // m: motion capture
-    if (keyCode === 77) {
-      Events.emit('togglemotioncapture');
-    }
-
     // backspace & supr: remove selected entity
     if (keyCode === 8 || keyCode === 46) {
       removeSelectedEntity();
