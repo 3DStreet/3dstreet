@@ -11,10 +11,10 @@ const NOT_COMPONENTS = ['id', 'class', 'mixin'];
  * @return {Element} Entity created
  */
 export class EntityCreateCommand extends Command {
+  static type = 'entitycreate';
   constructor(editor, definition) {
     super(editor);
 
-    this.type = 'entitycreate';
     this.name = 'Create Entity';
     this.definition = definition;
     this.entity = null;

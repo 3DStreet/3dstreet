@@ -12,7 +12,7 @@ import { firebaseConfig } from './services/firebase.js';
 import './style/index.scss';
 import ReactGA from 'react-ga4';
 import posthog from 'posthog-js';
-import { EntityCreateCommand } from './lib/commands';
+import { commandsByType } from './lib/commands/index.js';
 
 function Inspector() {
   this.assetsLoader = new AssetsLoader();
@@ -214,7 +214,10 @@ Inspector.prototype = {
     });
 
     Events.on('entitycreate', (definition) => {
-      this.execute(new EntityCreateCommand(this, definition));
+      console.warn(
+        'You should call AFRAME.INSPECTOR.execute("entitycreate", definition) instead of Events.emit("entitycreate", definition)'
+      );
+      this.execute('entitycreate', definition);
     });
 
     this.sceneEl.addEventListener('newScene', () => {
@@ -227,8 +230,13 @@ Inspector.prototype = {
     });
   },
 
-  execute: function (cmd, optionalName) {
-    this.history.execute(cmd, optionalName);
+  execute: function (cmdName, payload, optionalName) {
+    const Cmd = commandsByType.get(cmdName);
+    if (!Cmd) {
+      console.error(`Command ${cmdName} not found`);
+      return;
+    }
+    this.history.execute(new Cmd(this, payload), optionalName);
   },
 
   undo: function () {

@@ -1,7 +1,6 @@
 /* eslint-disable react/no-danger */
 import { nanoid } from 'nanoid';
 import Events from './Events';
-import { EntityUpdateCommand, EntityRemoveCommand } from './commands';
 import { equal } from './utils';
 
 /**
@@ -19,14 +18,12 @@ export function updateEntity(entity, propertyName, value) {
     splitName = propertyName.split('.');
   }
 
-  AFRAME.INSPECTOR.execute(
-    new EntityUpdateCommand(AFRAME.INSPECTOR, {
-      entity: entity,
-      component: splitName ? splitName[0] : propertyName,
-      property: splitName ? splitName[1] : '',
-      value: value
-    })
-  );
+  AFRAME.INSPECTOR.execute('entityupdate', {
+    entity: entity,
+    component: splitName ? splitName[0] : propertyName,
+    property: splitName ? splitName[1] : '',
+    value: value
+  });
 }
 
 /**
@@ -45,8 +42,7 @@ export function removeEntity(entity, force) {
           '`?'
       )
     ) {
-      const command = new EntityRemoveCommand(AFRAME.INSPECTOR, entity);
-      AFRAME.INSPECTOR.execute(command);
+      AFRAME.INSPECTOR.execute('entityremove', entity);
     }
   }
 }

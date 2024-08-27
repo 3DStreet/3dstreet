@@ -1,9 +1,4 @@
 import { loadScript, roundCoord } from '../../../../../src/utils.js';
-import {
-  ComponentAddCommand,
-  EntityCreateCommand,
-  EntityUpdateCommand
-} from '../../../lib/commands';
 
 export function createSvgExtrudedEntity() {
   // This component accepts a svgString and creates a new entity with geometry extruded
@@ -26,9 +21,7 @@ export function createSvgExtrudedEntity() {
         'data-layer-name': 'SVG Path • My Custom Path'
       }
     };
-    AFRAME.INSPECTOR.execute(
-      new EntityCreateCommand(AFRAME.INSPECTOR, definition)
-    );
+    AFRAME.INSPECTOR.execute('entitycreate', definition);
   }
 }
 export function createMapbox() {
@@ -47,30 +40,26 @@ export function createMapbox() {
   }
 
   if (streetGeo) {
-    AFRAME.INSPECTOR.execute(
-      new EntityUpdateCommand(AFRAME.INSPECTOR, {
-        entity: geoLayer,
-        component: 'street-geo',
-        property: '',
-        value: {
-          latitude: latitude,
-          longitude: longitude,
-          maps: 'mapbox2d'
-        }
-      })
-    );
+    AFRAME.INSPECTOR.execute('entityupdate', {
+      entity: geoLayer,
+      component: 'street-geo',
+      property: '',
+      value: {
+        latitude: latitude,
+        longitude: longitude,
+        maps: 'mapbox2d'
+      }
+    });
   } else {
-    AFRAME.INSPECTOR.execute(
-      new ComponentAddCommand(AFRAME.INSPECTOR, {
-        entity: geoLayer,
-        component: 'street-geo',
-        value: {
-          latitude: latitude,
-          longitude: longitude,
-          maps: 'mapbox2d'
-        }
-      })
-    );
+    AFRAME.INSPECTOR.execute('componentadd', {
+      entity: geoLayer,
+      component: 'street-geo',
+      value: {
+        latitude: latitude,
+        longitude: longitude,
+        maps: 'mapbox2d'
+      }
+    });
   }
 }
 
@@ -96,8 +85,7 @@ export function createStreetmixStreet(position, streetmixURL, hideBuildings) {
       }
     };
 
-    const command = new EntityCreateCommand(AFRAME.INSPECTOR, definition);
-    AFRAME.INSPECTOR.execute(command);
+    AFRAME.INSPECTOR.execute('entitycreate', definition);
   }
 }
 
@@ -156,32 +144,28 @@ export function create3DTiles() {
     }
 
     if (streetGeo) {
-      AFRAME.INSPECTOR.execute(
-        new EntityUpdateCommand(AFRAME.INSPECTOR, {
-          entity: geoLayer,
-          component: 'street-geo',
-          property: '',
-          value: {
-            latitude: latitude,
-            longitude: longitude,
-            ellipsoidalHeight: ellipsoidalHeight,
-            maps: 'google3d'
-          }
-        })
-      );
+      AFRAME.INSPECTOR.execute('entityupdate', {
+        entity: geoLayer,
+        component: 'street-geo',
+        property: '',
+        value: {
+          latitude: latitude,
+          longitude: longitude,
+          ellipsoidalHeight: ellipsoidalHeight,
+          maps: 'google3d'
+        }
+      });
     } else {
-      AFRAME.INSPECTOR.execute(
-        new ComponentAddCommand(AFRAME.INSPECTOR, {
-          entity: geoLayer,
-          component: 'street-geo',
-          value: {
-            latitude: latitude,
-            longitude: longitude,
-            ellipsoidalHeight: ellipsoidalHeight,
-            maps: 'google3d'
-          }
-        })
-      );
+      AFRAME.INSPECTOR.execute('componentadd', {
+        entity: geoLayer,
+        component: 'street-geo',
+        value: {
+          latitude: latitude,
+          longitude: longitude,
+          ellipsoidalHeight: ellipsoidalHeight,
+          maps: 'google3d'
+        }
+      });
     }
   };
 
@@ -213,9 +197,7 @@ export function createCustomModel() {
         'data-layer-name': 'glTF Model • My Custom Object'
       }
     };
-    AFRAME.INSPECTOR.execute(
-      new EntityCreateCommand(AFRAME.INSPECTOR, definition)
-    );
+    AFRAME.INSPECTOR.execute('entitycreate', definition);
   }
 }
 
@@ -228,9 +210,7 @@ export function createPrimitiveGeometry() {
       material: 'src: #asphalt-texture; repeat: 5 5;'
     }
   };
-  AFRAME.INSPECTOR.execute(
-    new EntityCreateCommand(AFRAME.INSPECTOR, definition)
-  );
+  AFRAME.INSPECTOR.execute('entitycreate', definition);
 }
 
 export function createIntersection() {
@@ -241,9 +221,7 @@ export function createIntersection() {
       rotation: '-90 -90 0'
     }
   };
-  AFRAME.INSPECTOR.execute(
-    new EntityCreateCommand(AFRAME.INSPECTOR, definition)
-  );
+  AFRAME.INSPECTOR.execute('entitycreate', definition);
 }
 
 export function createSplatObject() {
@@ -263,9 +241,7 @@ export function createSplatObject() {
         gaussian_splatting: `src: ${modelUrl}`
       }
     };
-    const entity = AFRAME.INSPECTOR.execute(
-      new EntityCreateCommand(AFRAME.INSPECTOR, definition)
-    );
+    const entity = AFRAME.INSPECTOR.execute('entitycreate', definition);
     entity.play();
   }
 }

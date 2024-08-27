@@ -3,10 +3,10 @@ import { Command } from '../command.js';
 import { findClosestEntity, prepareForSerialization } from '../entity.js';
 
 export class EntityRemoveCommand extends Command {
+  static type = 'entityremove';
   constructor(editor, entity) {
     super(editor);
 
-    this.type = 'entityremove';
     this.name = 'Remove Entity';
     this.updatable = false;
 

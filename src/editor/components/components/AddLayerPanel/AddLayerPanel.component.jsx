@@ -15,7 +15,6 @@ import Events from '../../../lib/Events';
 import pickPointOnGroundPlane from '../../../lib/pick-point-on-ground-plane';
 import { layersData, streetLayersData } from './layersData.js';
 import { LayersOptions } from './LayersOptions.js';
-import { EntityCreateCommand } from '../../../lib/commands/EntityCreateCommand.js';
 
 // Create an empty image
 const emptyImg = new Image();
@@ -132,13 +131,12 @@ const createEntityOnPosition = (mixinId, position) => {
   if (previewEntity) {
     previewEntity.remove();
   }
-  const command = new EntityCreateCommand(AFRAME.INSPECTOR, {
+  AFRAME.INSPECTOR.execute('entitycreate', {
     mixin: mixinId,
     components: {
       position: position
     }
   });
-  AFRAME.INSPECTOR.execute(command);
 };
 
 const createEntity = (mixinId) => {
@@ -203,8 +201,7 @@ const createEntity = (mixinId) => {
     });
     newEntityObject.components.position = position;
   }
-  const command = new EntityCreateCommand(AFRAME.INSPECTOR, newEntityObject);
-  AFRAME.INSPECTOR.execute(command);
+  AFRAME.INSPECTOR.execute('entitycreate', newEntityObject);
 };
 
 const cardMouseEnter = (mixinId) => {

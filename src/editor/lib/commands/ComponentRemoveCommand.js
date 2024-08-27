@@ -3,10 +3,10 @@ import { Command } from '../command.js';
 import { createUniqueId } from '../entity.js';
 
 export class ComponentRemoveCommand extends Command {
+  static type = 'componentremove';
   constructor(editor, payload) {
     super(editor);
 
-    this.type = 'componentremove';
     this.name = 'Remove Component';
     this.updatable = false;
 
