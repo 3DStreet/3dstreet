@@ -1,26 +1,6 @@
 import Events from '../Events';
 import { Command } from '../command.js';
-import { createUniqueId } from '../entity.js';
-
-function updateEntity(entity, component, property, value) {
-  if (property) {
-    if (value === null || value === undefined) {
-      // Remove property.
-      entity.removeAttribute(component, property);
-    } else {
-      // Set property.
-      entity.setAttribute(component, property, value);
-    }
-  } else {
-    if (value === null || value === undefined) {
-      // Remove component.
-      entity.removeAttribute(component);
-    } else {
-      // Set component.
-      entity.setAttribute(component, value);
-    }
-  }
-}
+import { createUniqueId, updateEntity } from '../entity.js';
 
 /**
  * @param editor Editor

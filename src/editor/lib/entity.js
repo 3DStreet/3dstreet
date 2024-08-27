@@ -7,23 +7,28 @@ import { equal } from './utils';
  * Update a component.
  *
  * @param {Element} entity - Entity to modify.
- * @param {string} propertyName - component or component.property
+ * @param {string} component - component name
+ * @param {string} property - property name, use empty string if component is not a multi-property
  * @param {string|number} value - New value.
  */
-export function updateEntity(entity, propertyName, value) {
-  var splitName;
-
-  if (propertyName.indexOf('.') !== -1) {
-    // Multi-prop
-    splitName = propertyName.split('.');
+export function updateEntity(entity, component, property, value) {
+  if (property) {
+    if (value === null || value === undefined) {
+      // Remove property.
+      entity.removeAttribute(component, property);
+    } else {
+      // Set property.
+      entity.setAttribute(component, property, value);
+    }
+  } else {
+    if (value === null || value === undefined) {
+      // Remove component.
+      entity.removeAttribute(component);
+    } else {
+      // Set component.
+      entity.setAttribute(component, value);
+    }
   }
-
-  AFRAME.INSPECTOR.execute('entityupdate', {
-    entity: entity,
-    component: splitName ? splitName[0] : propertyName,
-    property: splitName ? splitName[1] : '',
-    value: value
-  });
 }
 
 /**
