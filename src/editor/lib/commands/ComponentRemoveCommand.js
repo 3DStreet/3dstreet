@@ -1,13 +1,13 @@
-import Events from '../Events';
+import Events from '../Events.js';
 import { Command } from '../command.js';
 import { createUniqueId } from '../entity.js';
 
-export class EntityAddComponentCommand extends Command {
-  constructor(editor, entity, componentName, componentData) {
+export class ComponentRemoveCommand extends Command {
+  constructor(editor, entity, componentName) {
     super(editor);
 
-    this.type = 'EntityAddComponentCommand';
-    this.name = 'Add Component';
+    this.type = 'componentremove';
+    this.name = 'Remove Component';
     this.updatable = false;
 
     this.entity = entity;
@@ -15,12 +15,12 @@ export class EntityAddComponentCommand extends Command {
       this.entity.id = createUniqueId();
     }
     this.componentName = componentName;
-    this.componentData = componentData;
+    this.componentData = entity.getAttribute(componentName);
   }
 
   execute() {
-    this.entity.setAttribute(this.componentName, this.componentData);
-    Events.emit('componentadd', {
+    this.entity.removeAttribute(this.componentName);
+    Events.emit('componentremove', {
       entity: this.entity,
       component: this.componentName
     });
@@ -32,8 +32,8 @@ export class EntityAddComponentCommand extends Command {
     if (this.entity !== entity) {
       this.entity = entity;
     }
-    this.entity.removeAttribute(this.componentName);
-    Events.emit('componentremove', {
+    this.entity.setAttribute(this.componentName, this.componentData);
+    Events.emit('componentadd', {
       entity: this.entity,
       component: this.componentName
     });

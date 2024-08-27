@@ -2,7 +2,7 @@ import React from 'react';
 import PropTypes from 'prop-types';
 import Select from 'react-select';
 import { sendMetric } from '../../services/ga';
-import { EntityAddComponentCommand } from '../../lib/commands';
+import { ComponentAddCommand } from '../../lib/commands';
 
 export default class AddComponent extends React.Component {
   static propTypes = {
@@ -25,7 +25,7 @@ export default class AddComponent extends React.Component {
       componentName = id ? `${componentName}__${id}` : componentName;
     }
 
-    const command = new EntityAddComponentCommand(
+    const command = new ComponentAddCommand(
       AFRAME.INSPECTOR,
       entity,
       componentName,

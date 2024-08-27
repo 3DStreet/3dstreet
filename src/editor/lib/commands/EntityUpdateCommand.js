@@ -31,7 +31,7 @@ export class EntityUpdateCommand extends Command {
   constructor(editor, payload) {
     super(editor);
 
-    this.type = 'EntityUpdateCommand';
+    this.type = 'entityupdate';
     this.name = 'Update Entity';
     this.updatable = true;
 

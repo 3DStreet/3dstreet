@@ -14,7 +14,7 @@ export class EntityCreateCommand extends Command {
   constructor(editor, definition) {
     super(editor);
 
-    this.type = 'EntityCreateCommand';
+    this.type = 'entitycreate';
     this.name = 'Create Entity';
     this.definition = definition;
     this.entity = null;

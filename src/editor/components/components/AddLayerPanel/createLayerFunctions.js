@@ -1,6 +1,6 @@
 import { loadScript, roundCoord } from '../../../../../src/utils.js';
 import {
-  EntityAddComponentCommand,
+  ComponentAddCommand,
   EntityCreateCommand,
   EntityUpdateCommand
 } from '../../../lib/commands';
@@ -61,7 +61,7 @@ export function createMapbox() {
     );
   } else {
     AFRAME.INSPECTOR.execute(
-      new EntityAddComponentCommand(AFRAME.INSPECTOR, geoLayer, 'street-geo', {
+      new ComponentAddCommand(AFRAME.INSPECTOR, geoLayer, 'street-geo', {
         latitude: latitude,
         longitude: longitude,
         maps: 'mapbox2d'
@@ -167,17 +167,12 @@ export function create3DTiles() {
       );
     } else {
       AFRAME.INSPECTOR.execute(
-        new EntityAddComponentCommand(
-          AFRAME.INSPECTOR,
-          geoLayer,
-          'street-geo',
-          {
-            latitude: latitude,
-            longitude: longitude,
-            ellipsoidalHeight: ellipsoidalHeight,
-            maps: 'google3d'
-          }
-        )
+        new ComponentAddCommand(AFRAME.INSPECTOR, geoLayer, 'street-geo', {
+          latitude: latitude,
+          longitude: longitude,
+          ellipsoidalHeight: ellipsoidalHeight,
+          maps: 'google3d'
+        })
       );
     }
   };

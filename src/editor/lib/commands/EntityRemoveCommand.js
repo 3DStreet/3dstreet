@@ -6,7 +6,7 @@ export class EntityRemoveCommand extends Command {
   constructor(editor, entity) {
     super(editor);
 
-    this.type = 'EntityRemoveCommand';
+    this.type = 'entityremove';
     this.name = 'Remove Entity';
     this.updatable = false;
 
