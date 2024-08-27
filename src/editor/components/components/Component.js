@@ -82,11 +82,10 @@ export default class Component extends React.Component {
     if (
       confirm('Do you really want to remove component `' + componentName + '`?')
     ) {
-      const command = new ComponentRemoveCommand(
-        AFRAME.INSPECTOR,
-        this.props.entity,
-        componentName
-      );
+      const command = new ComponentRemoveCommand(AFRAME.INSPECTOR, {
+        entity: this.props.entity,
+        component: componentName
+      });
       AFRAME.INSPECTOR.execute(command);
       sendMetric('Components', 'removeComponent', componentName);
     }

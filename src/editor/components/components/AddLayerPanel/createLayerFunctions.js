@@ -61,10 +61,14 @@ export function createMapbox() {
     );
   } else {
     AFRAME.INSPECTOR.execute(
-      new ComponentAddCommand(AFRAME.INSPECTOR, geoLayer, 'street-geo', {
-        latitude: latitude,
-        longitude: longitude,
-        maps: 'mapbox2d'
+      new ComponentAddCommand(AFRAME.INSPECTOR, {
+        entity: geoLayer,
+        component: 'street-geo',
+        value: {
+          latitude: latitude,
+          longitude: longitude,
+          maps: 'mapbox2d'
+        }
       })
     );
   }
@@ -167,11 +171,15 @@ export function create3DTiles() {
       );
     } else {
       AFRAME.INSPECTOR.execute(
-        new ComponentAddCommand(AFRAME.INSPECTOR, geoLayer, 'street-geo', {
-          latitude: latitude,
-          longitude: longitude,
-          ellipsoidalHeight: ellipsoidalHeight,
-          maps: 'google3d'
+        new ComponentAddCommand(AFRAME.INSPECTOR, {
+          entity: geoLayer,
+          component: 'street-geo',
+          value: {
+            latitude: latitude,
+            longitude: longitude,
+            ellipsoidalHeight: ellipsoidalHeight,
+            maps: 'google3d'
+          }
         })
       );
     }

@@ -3,26 +3,27 @@ import { Command } from '../command.js';
 import { createUniqueId } from '../entity.js';
 
 export class ComponentAddCommand extends Command {
-  constructor(editor, entity, componentName, componentData) {
+  constructor(editor, payload) {
     super(editor);
 
     this.type = 'componentadd';
     this.name = 'Add Component';
     this.updatable = false;
 
-    this.entity = entity;
+    this.entity = payload.entity;
     if (!this.entity.id) {
       this.entity.id = createUniqueId();
     }
-    this.componentName = componentName;
-    this.componentData = componentData;
+    this.component = payload.component;
+    this.value = payload.value;
   }
 
   execute() {
-    this.entity.setAttribute(this.componentName, this.componentData);
+    this.entity.setAttribute(this.component, this.value);
     Events.emit('componentadd', {
       entity: this.entity,
-      component: this.componentName
+      component: this.component,
+      value: this.value
     });
   }
 
@@ -32,10 +33,10 @@ export class ComponentAddCommand extends Command {
     if (this.entity !== entity) {
       this.entity = entity;
     }
-    this.entity.removeAttribute(this.componentName);
+    this.entity.removeAttribute(this.component);
     Events.emit('componentremove', {
       entity: this.entity,
-      component: this.componentName
+      component: this.component
     });
   }
 }

@@ -25,12 +25,11 @@ export default class AddComponent extends React.Component {
       componentName = id ? `${componentName}__${id}` : componentName;
     }
 
-    const command = new ComponentAddCommand(
-      AFRAME.INSPECTOR,
+    const command = new ComponentAddCommand(AFRAME.INSPECTOR, {
       entity,
-      componentName,
-      ''
-    );
+      component: componentName,
+      value: ''
+    });
     AFRAME.INSPECTOR.execute(command);
 
     sendMetric('Components', 'addComponent', componentName);
