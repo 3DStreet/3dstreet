@@ -6,4 +6,4 @@ export {
   checkIfImagePathIsEmpty
 } from './scene';
 
-export { signIn } from './auth';
+export { signIn, signInMicrosoft } from './auth';
