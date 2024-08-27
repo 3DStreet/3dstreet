@@ -10,6 +10,8 @@ import { Component } from 'react';
  */
 class SavingModal extends Component {
   render() {
+    const { action = 'Saving' } = this.props;
+
     return (
       <div className={styles.savingModalWrapper}>
         <div className={styles.preloaderBox}>
@@ -34,7 +36,7 @@ class SavingModal extends Component {
             </defs>
           </svg>
         </div>
-        <span className={styles.action}>Saving ...</span>
+        <span className={styles.action}>{action} ...</span>
       </div>
     );
   }
