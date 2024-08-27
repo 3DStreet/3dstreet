@@ -28,5 +28,6 @@ export {
   QR32Icon,
   Action24,
   DownloadIcon,
-  ScreenshotIcon
+  ScreenshotIcon,
+  SignInMicrosoftIconSVG
 } from './icons.jsx';
