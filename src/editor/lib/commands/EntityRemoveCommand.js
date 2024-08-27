@@ -24,7 +24,6 @@ export class EntityRemoveCommand extends Command {
     const clone = prepareForSerialization(this.entity);
 
     // Remove entity
-    this.editor.removeObject(this.entity.object3D);
     this.entity.parentNode.removeChild(this.entity);
     Events.emit('entityremoved', this.entity);
 

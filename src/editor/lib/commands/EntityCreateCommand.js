@@ -32,7 +32,6 @@ export class EntityCreateCommand extends Command {
   undo() {
     if (this.entity) {
       this.editor.selectEntity(null);
-      this.editor.removeObject(this.entity.object3D);
       this.entity.parentNode.removeChild(this.entity);
       Events.emit('entityremoved', this.entity);
       this.entity = null;
