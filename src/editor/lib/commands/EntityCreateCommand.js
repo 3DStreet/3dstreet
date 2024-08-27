@@ -75,6 +75,7 @@ export class EntityCreateCommand extends Command {
       this.editor.removeObject(this.entity.object3D);
       this.entity.parentNode.removeChild(this.entity);
       Events.emit('entityremoved', this.entity);
+      this.entity = null;
     }
   }
 }
