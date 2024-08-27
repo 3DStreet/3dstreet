@@ -1,4 +1,5 @@
 import { useState, useCallback, useEffect } from 'react';
+import { SavingModal } from '../SavingModal/SavingModal.component.jsx';
 
 import styles from './GeoModal.module.scss';
 import { Mangnifier20Icon, Save24Icon, QR32Icon } from '../../../icons';
@@ -28,6 +29,7 @@ const GeoModal = ({ isOpen, onClose }) => {
   });
   const [autocomplete, setAutocomplete] = useState(null);
   const [qrCodeUrl, setQrCodeUrl] = useState(null);
+  const [isWorking, setIsWorking] = useState(false);
 
   useEffect(() => {
     if (isOpen) {
@@ -124,6 +126,7 @@ const GeoModal = ({ isOpen, onClose }) => {
   };
 
   const onSaveHandler = async () => {
+    setIsWorking(true);
     const latitude = markerPosition.lat;
     const longitude = markerPosition.lng;
     const data = await requestAndSetElevation(latitude, longitude);
@@ -139,94 +142,104 @@ const GeoModal = ({ isOpen, onClose }) => {
       );
     }
 
+    // Simulate a delay to show the working state (remove this in production)
+    await new Promise((resolve) => setTimeout(resolve, 1000));
+
+    setIsWorking(false);
     onClose();
   };
 
   return (
-    <Modal
-      className={styles.modalWrapper}
-      isOpen={isOpen}
-      onClose={onCloseCheck}
-    >
-      <div className={styles.wrapper}>
-        <div className={styles.header}>
-          <img src={GeoImg} alt="geo" style={{ objectFit: 'contain' }} />
-          <h3>Scene Location</h3>
-          <p className={styles.badge}>Pro</p>
-        </div>
-        {isLoaded && (
-          <>
-            <GoogleMap
-              mapContainerStyle={{
-                width: '100%',
-                minHeight: '200px',
-                borderRadius: 4,
-                border: '1px solid #8965EF'
-              }}
-              center={{ lat: markerPosition.lat, lng: markerPosition.lng }}
-              zoom={20}
-              onClick={onMapClick}
-              options={{ streetViewControl: false, mapTypeId: 'satellite' }}
-              tilt={0}
-            >
-              <Marker
-                position={{ lat: markerPosition.lat, lng: markerPosition.lng }}
-              />
-            </GoogleMap>
-          </>
-        )}
-        <Autocomplete
-          onLoad={onAutocompleteLoad}
-          onPlaceChanged={onPlaceChanged}
-        >
-          <Input
-            leadingIcon={<Mangnifier20Icon />}
-            placeholder="Search for a location"
-            onChange={(value) => {}}
-          />
-        </Autocomplete>
-        <div className={styles.sceneGeo}>
-          <div>
-            <p>Centerpoint</p>
-            <Input
-              leadingIcon={<p className={styles.iconGeo}>Lat, Long</p>}
-              value={`${markerPosition.lat}, ${markerPosition.lng}`}
-              placeholder="None"
-              onChange={handleCoordinateChange}
-            ></Input>
+    <>
+      <Modal
+        className={styles.modalWrapper}
+        isOpen={isOpen}
+        onClose={onCloseCheck}
+      >
+        <div className={styles.wrapper}>
+          <div className={styles.header}>
+            <img src={GeoImg} alt="geo" style={{ objectFit: 'contain' }} />
+            <h3>Scene Location</h3>
+            <p className={styles.badge}>Pro</p>
           </div>
-        </div>
-
-        {qrCodeUrl && (
-          <div className={styles.qrCodeContainer} id="qrCodeContainer">
-            <QrCode url={qrCodeUrl} />
-            <div>Click on the QR Code to download it</div>
-          </div>
-        )}
-
-        <div className={styles.controlButtons}>
-          <Button variant="ghost" onClick={onClose}>
-            Cancel
-          </Button>
-          {!qrCodeUrl && (
-            <Button
-              leadingIcon={<QR32Icon />}
-              variant="filled"
-              onClick={onQRHandler}
-            >
-              Create Augmented Reality QR Code
-            </Button>
+          {isLoaded && (
+            <>
+              <GoogleMap
+                mapContainerStyle={{
+                  width: '100%',
+                  minHeight: '200px',
+                  borderRadius: 4,
+                  border: '1px solid #8965EF'
+                }}
+                center={{ lat: markerPosition.lat, lng: markerPosition.lng }}
+                zoom={20}
+                onClick={onMapClick}
+                options={{ streetViewControl: false, mapTypeId: 'satellite' }}
+                tilt={0}
+              >
+                <Marker
+                  position={{
+                    lat: markerPosition.lat,
+                    lng: markerPosition.lng
+                  }}
+                />
+              </GoogleMap>
+            </>
           )}
-          <Button
-            leadingIcon={<Save24Icon />}
-            variant="filled"
-            onClick={onSaveHandler}
+          <Autocomplete
+            onLoad={onAutocompleteLoad}
+            onPlaceChanged={onPlaceChanged}
           >
-            Update Scene Location
-          </Button>
+            <Input
+              leadingIcon={<Mangnifier20Icon />}
+              placeholder="Search for a location"
+              onChange={(value) => {}}
+            />
+          </Autocomplete>
+          <div className={styles.sceneGeo}>
+            <div>
+              <p>Centerpoint</p>
+              <Input
+                leadingIcon={<p className={styles.iconGeo}>Lat, Long</p>}
+                value={`${markerPosition.lat}, ${markerPosition.lng}`}
+                placeholder="None"
+                onChange={handleCoordinateChange}
+              ></Input>
+            </div>
+          </div>
+
+          {qrCodeUrl && (
+            <div className={styles.qrCodeContainer} id="qrCodeContainer">
+              <QrCode url={qrCodeUrl} />
+              <div>Click on the QR Code to download it</div>
+            </div>
+          )}
+
+          <div className={styles.controlButtons}>
+            <Button variant="ghost" onClick={onClose}>
+              Cancel
+            </Button>
+            {!qrCodeUrl && (
+              <Button
+                leadingIcon={<QR32Icon />}
+                variant="filled"
+                onClick={onQRHandler}
+              >
+                Create Augmented Reality QR Code
+              </Button>
+            )}
+            <Button
+              leadingIcon={<Save24Icon />}
+              variant="filled"
+              onClick={onSaveHandler}
+            >
+              Update Scene Location
+            </Button>
+          </div>
         </div>
-      </div>
-    </Modal>
+      </Modal>
+      {isWorking && <SavingModal action="Working" />}
+    </>
   );
 };
 
