@@ -142,9 +142,6 @@ const GeoModal = ({ isOpen, onClose }) => {
       );
     }
 
-    // Simulate a delay to show the working state (remove this in production)
-    await new Promise((resolve) => setTimeout(resolve, 1000));
-
     setIsWorking(false);
     onClose();
   };
