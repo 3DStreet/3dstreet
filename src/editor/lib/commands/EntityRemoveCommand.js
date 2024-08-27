@@ -43,8 +43,8 @@ export class EntityRemoveCommand extends Command {
     this.entity.addEventListener(
       'loaded',
       () => {
-        this.editor.selectEntity(this.entity);
         Events.emit('entitycreated', this.entity);
+        this.editor.selectEntity(this.entity);
       },
       { once: true }
     );

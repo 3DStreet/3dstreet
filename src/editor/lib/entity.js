@@ -469,9 +469,9 @@ function getUniqueId(baseId) {
 }
 
 /**
-￼ * Create a unique id that can be used on a DOM element.
-￼ * @return {string} Valid Id
-￼ */
+ * Create a unique id that can be used on a DOM element.
+ * @return {string} Valid Id
+ */
 export function createUniqueId() {
   let id = nanoid();
   do {
@@ -569,4 +569,61 @@ export function printEntity(entity, onDoubleClick) {
       )}
     </span>
   );
+}
+
+const NOT_COMPONENTS = ['id', 'class', 'mixin'];
+
+/**
+ * Helper function to add a new entity with a list of components
+ * @param  {object} definition Entity definition to add, only components is required:
+ *   {element: 'a-entity', id: "hbiuSdYL2", class: "box", components: {geometry: 'primitive:box'}}
+ * @param  {function} cb Callback to call when the entity is created
+ * @param  {Element} parentEl Element to append the entity to
+ * @return {Element} Entity created
+ */
+export function createEntity(definition, cb, parentEl = undefined) {
+  const entity = document.createElement(definition.element || 'a-entity');
+  if (definition.id) {
+    entity.id = definition.id;
+  } else {
+    entity.id = createUniqueId();
+  }
+
+  // Set class, mixin
+  for (const attribute of NOT_COMPONENTS) {
+    if (attribute !== 'id' && definition[attribute]) {
+      entity.setAttribute(attribute, definition[attribute]);
+    }
+  }
+
+  // Set data attributes
+  for (const key in definition) {
+    if (key.startsWith('data-')) {
+      entity.setAttribute(key, definition[key]);
+    }
+  }
+
+  // Set components
+  for (const componentName in definition.components) {
+    const componentValue = definition.components[componentName];
+    entity.setAttribute(componentName, componentValue);
+  }
+
+  // Ensure the components are loaded before update the UI
+  entity.addEventListener(
+    'loaded',
+    () => {
+      Events.emit('entitycreated', entity);
+      cb(entity);
+    },
+    { once: true }
+  );
+
+  if (parentEl) {
+    parentEl.appendChild(entity);
+  } else {
+    document.getElementById('street-container').appendChild(entity);
+  }
+
+  return entity;
 }
