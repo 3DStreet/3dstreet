@@ -65,9 +65,15 @@ AFRAME.registerComponent('street-geo', {
       } else if (this[mapType] && data.maps !== mapType) {
         // remove element from DOM and from this object
         this.el.removeChild(this[mapType]);
+        if (AFRAME.INSPECTOR?.opened) {
+          AFRAME.INSPECTOR.emit('entityremoved', this[mapType]);
+        }
         this[mapType] = null;
         if (mapType === 'osm3d') {
           this.el.removeChild(this['osm3dBuilding']);
+          if (AFRAME.INSPECTOR?.opened) {
+            AFRAME.INSPECTOR.emit('entityremoved', this['osm3dBuilding']);
+          }
         }
       }
     }
@@ -97,6 +103,15 @@ AFRAME.registerComponent('street-geo', {
     });
     mapbox2dElement.classList.add('autocreated');
     mapbox2dElement.setAttribute('data-ignore-raycaster', '');
+    if (AFRAME.INSPECTOR?.opened) {
+      mapbox2dElement.addEventListener(
+        'loaded',
+        () => {
+          AFRAME.INSPECTOR.emit('entitycreated', mapbox2dElement);
+        },
+        { once: true }
+      );
+    }
     el.appendChild(mapbox2dElement);
     this['mapbox2d'] = mapbox2dElement;
     document.getElementById('map-copyright').textContent = 'MapBox';
@@ -129,11 +144,12 @@ AFRAME.registerComponent('street-geo', {
       });
       google3dElement.classList.add('autocreated');
 
-      if (AFRAME.INSPECTOR && AFRAME.INSPECTOR.opened) {
-        // emit play event to start loading tiles in Editor mode
+      if (AFRAME.INSPECTOR?.opened) {
         google3dElement.addEventListener(
           'loaded',
           () => {
+            AFRAME.INSPECTOR.emit('entitycreated', google3dElement);
+            // emit play event to start loading tiles in Editor mode
             google3dElement.play();
           },
           { once: true }
@@ -212,12 +228,23 @@ AFRAME.registerComponent('street-geo', {
       osm3dBuildingElement.classList.add('autocreated');
       osm3dBuildingElement.setAttribute('data-ignore-raycaster', '');
 
-      if (AFRAME.INSPECTOR && AFRAME.INSPECTOR.opened) {
-        // emit play event to start loading tiles in Editor mode
+      if (AFRAME.INSPECTOR?.opened) {
         osm3dElement.addEventListener(
           'loaded',
           () => {
+            AFRAME.INSPECTOR.emit('entitycreated', osm3dElement);
+            // emit play event to start loading tiles in Editor mode
             osm3dElement.play();
+          },
+          { once: true }
+        );
+      }
+      if (AFRAME.INSPECTOR?.opened) {
+        osm3dBuildingElement.addEventListener(
+          'loaded',
+          () => {
+            AFRAME.INSPECTOR.emit('entitycreated', osm3dBuildingElement);
+            // emit play event to start loading tiles in Editor mode
             osm3dBuildingElement.play();
           },
           { once: true }
