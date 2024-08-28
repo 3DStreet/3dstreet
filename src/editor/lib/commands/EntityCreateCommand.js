@@ -1,4 +1,3 @@
-import Events from '../Events';
 import { Command } from '../command.js';
 import { createEntity } from '../entity.js';
 
@@ -40,7 +39,6 @@ export class EntityCreateCommand extends Command {
     if (entity) {
       this.editor.selectEntity(null);
       entity.parentNode.removeChild(entity);
-      Events.emit('entityremoved', entity);
     }
   }
 }

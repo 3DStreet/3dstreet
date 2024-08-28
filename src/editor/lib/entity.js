@@ -118,7 +118,6 @@ export function cloneEntity(entity) {
     'loaded',
     function () {
       AFRAME.INSPECTOR.selectEntity(clone);
-      Events.emit('entityclone', clone);
     },
     { once: true }
   );
@@ -620,7 +619,6 @@ export function createEntity(definition, cb, parentEl = undefined) {
   entity.addEventListener(
     'loaded',
     () => {
-      Events.emit('entitycreated', entity);
       cb(entity);
     },
     { once: true }

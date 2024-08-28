@@ -1,4 +1,3 @@
-import Events from '../Events';
 import { Command } from '../command.js';
 import { findClosestEntity, prepareForSerialization } from '../entity.js';
 
@@ -25,7 +24,6 @@ export class EntityRemoveCommand extends Command {
 
     // Remove entity
     this.entity.parentNode.removeChild(this.entity);
-    Events.emit('entityremoved', this.entity);
 
     // Replace this.entity by clone
     this.entity = clone;
@@ -42,7 +40,6 @@ export class EntityRemoveCommand extends Command {
     this.entity.addEventListener(
       'loaded',
       () => {
-        Events.emit('entitycreated', this.entity);
         this.editor.selectEntity(this.entity);
       },
       { once: true }

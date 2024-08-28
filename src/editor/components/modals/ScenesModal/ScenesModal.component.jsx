@@ -9,7 +9,6 @@ import {
   inputStreetmix
 } from '../../../lib/toolbar';
 import { getCommunityScenes, getUserScenes } from '../../../api/scene';
-import Events from '../../../lib/Events';
 import { Load24Icon, Loader, Upload24Icon } from '../../../icons';
 import { signIn } from '../../../api';
 import posthog from 'posthog-js';
@@ -68,7 +67,6 @@ const ScenesModal = ({ isOpen, onClose, initialTab = 'owner', delay }) => {
       AFRAME.scenes[0].setAttribute('metadata', 'sceneId', sceneId);
       AFRAME.scenes[0].setAttribute('metadata', 'sceneTitle', sceneTitle);
 
-      Events.emit('updatescenegraph');
       STREET.notify.successMessage('Scene loaded from 3DStreet Cloud.');
       onClose();
     }
