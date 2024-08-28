@@ -19,12 +19,17 @@ export class EntityCreateCommand extends Command {
   }
 
   execute() {
-    const definition = this.definition;
+    let definition = this.definition;
     const callback = (entity) => {
       this.editor.selectEntity(entity);
     };
     const parentEl =
       this.definition.parentEl ?? document.querySelector('#street-container');
+    // If we undo and redo, use the previous id so next redo actions (for example entityupdate to move the position) works correctly
+    if (this.entityId) {
+      definition = { ...this.definition, id: this.entityId };
+    }
+
     const entity = createEntity(definition, callback, parentEl);
     this.entityId = entity.id;
     return entity;
