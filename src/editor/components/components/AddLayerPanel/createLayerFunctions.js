@@ -30,9 +30,7 @@ export function createMapbox() {
   const geoLayer = document.getElementById('reference-layers');
   let latitude = 0;
   let longitude = 0;
-  const streetGeo = document
-    .getElementById('reference-layers')
-    ?.getAttribute('street-geo');
+  const streetGeo = geoLayer?.getAttribute('street-geo');
 
   if (streetGeo && streetGeo['latitude'] && streetGeo['longitude']) {
     latitude = roundCoord(parseFloat(streetGeo['latitude']));
