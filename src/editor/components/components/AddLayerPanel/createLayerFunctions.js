@@ -41,7 +41,6 @@ export function createMapbox() {
     AFRAME.INSPECTOR.execute('entityupdate', {
       entity: geoLayer,
       component: 'street-geo',
-      property: '',
       value: {
         latitude: latitude,
         longitude: longitude,
@@ -145,7 +144,6 @@ export function create3DTiles() {
       AFRAME.INSPECTOR.execute('entityupdate', {
         entity: geoLayer,
         component: 'street-geo',
-        property: '',
         value: {
           latitude: latitude,
           longitude: longitude,

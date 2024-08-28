@@ -180,7 +180,6 @@ export function Viewport(inspector) {
     inspector.execute('entityupdate', {
       component: component,
       entity: transformControls.object.el,
-      property: '',
       value: value
     });
   });

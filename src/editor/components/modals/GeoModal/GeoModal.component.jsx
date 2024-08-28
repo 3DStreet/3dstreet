@@ -148,7 +148,6 @@ const GeoModal = ({ isOpen, onClose }) => {
         AFRAME.INSPECTOR.execute('entityupdate', {
           entity: geoLayer,
           component: 'street-geo',
-          property: '',
           value
         });
       } else {

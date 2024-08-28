@@ -19,7 +19,7 @@ export class EntityUpdateCommand extends Command {
       this.entity.id = createUniqueId();
     }
     this.component = payload.component;
-    this.property = payload.property;
+    this.property = payload.property ?? '';
 
     const component =
       this.entity.components[payload.component] ??
@@ -48,10 +48,15 @@ export class EntityUpdateCommand extends Command {
           console.log(this.component, this.oldValue, this.newValue);
         }
       } else {
-        this.newValue = component.schema.stringify(payload.value);
-        this.oldValue = component.schema.stringify(
-          payload.entity.getAttribute(payload.component)
-        );
+        // If component.schema.stringify is undefined then it's multi-property component and value is an object.
+        this.newValue = component.schema.stringify
+          ? component.schema.stringify(payload.value)
+          : payload.value;
+        this.oldValue = component.schema.stringify
+          ? component.schema.stringify(
+              payload.entity.getAttribute(payload.component)
+            )
+          : payload.entity.getAttribute(payload.component);
         if (this.editor.debugUndoRedo) {
           console.log(this.component, this.oldValue, this.newValue);
         }
