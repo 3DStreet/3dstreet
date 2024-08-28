@@ -1,4 +1,5 @@
 import { useState, useCallback, useEffect } from 'react';
+import { SavingModal } from '../SavingModal/SavingModal.component.jsx';
 
 import styles from './GeoModal.module.scss';
 import { Mangnifier20Icon, Save24Icon, QR32Icon } from '../../../icons';
@@ -26,10 +27,9 @@ const GeoModal = ({ isOpen, onClose }) => {
     lat: 37.7637072, // lat: 37.76370724481858, lng: -122.41517686259827
     lng: -122.4151768
   });
-  const [elevation, setElevation] = useState(0);
   const [autocomplete, setAutocomplete] = useState(null);
   const [qrCodeUrl, setQrCodeUrl] = useState(null);
-  const [heightData, setHeightData] = useState(null);
+  const [isWorking, setIsWorking] = useState(false);
 
   useEffect(() => {
     if (isOpen) {
@@ -40,33 +40,23 @@ const GeoModal = ({ isOpen, onClose }) => {
       if (streetGeo && streetGeo['latitude'] && streetGeo['longitude']) {
         const lat = roundCoord(parseFloat(streetGeo['latitude']));
         const lng = roundCoord(parseFloat(streetGeo['longitude']));
-        const ellipsoidalHeight = parseFloat(streetGeo['ellipsoidalHeight']);
 
         if (!isNaN(lat) && !isNaN(lng)) {
           setMarkerPosition({ lat, lng });
-        }
-        if (!isNaN(ellipsoidalHeight)) {
-          setElevation(ellipsoidalHeight);
         }
       }
     }
   }, [isOpen]);
 
-  const requestAndSetElevation = (lat, lng) => {
-    // request and set elevation for location with coordinates: lat, lng
-    const getGeoidHeight = httpsCallable(functions, 'getGeoidHeight');
-    getGeoidHeight({ lat: lat, lon: lng })
-      .then((result) => {
-        setHeightData(result.data);
-        setElevation(result.data.ellipsoidalHeight);
-      })
-      .catch((error) => {
-        // Getting the Error details.
-        const code = error.code;
-        const message = error.message;
-        const details = error.details;
-        console.error(code, message, details);
-      });
+  const requestAndSetElevation = async (lat, lng) => {
+    try {
+      const getGeoidHeight = httpsCallable(functions, 'getGeoidHeight');
+      const result = await getGeoidHeight({ lat: lat, lon: lng });
+      return result.data;
+    } catch (error) {
+      console.error(error.code, error.message, error.details);
+      return null;
+    }
   };
 
   const setMarkerPositionAndElevation = useCallback((lat, lng) => {
@@ -75,7 +65,6 @@ const GeoModal = ({ isOpen, onClose }) => {
         lat: roundCoord(lat),
         lng: roundCoord(lng)
       });
-      requestAndSetElevation(lat, lng);
     }
   }, []);
 
@@ -89,11 +78,6 @@ const GeoModal = ({ isOpen, onClose }) => {
       .map((coord) => parseFloat(coord.trim()));
 
     setMarkerPositionAndElevation(newLat, newLng);
-  };
-
-  const handleElevationChange = (value) => {
-    const newElevation = parseFloat(value) || 0;
-    setElevation(newElevation);
   };
 
   const onAutocompleteLoad = useCallback((autocompleteInstance) => {
@@ -141,117 +125,118 @@ const GeoModal = ({ isOpen, onClose }) => {
     );
   };
 
-  const onSaveHandler = () => {
+  const onSaveHandler = async () => {
+    setIsWorking(true);
     const latitude = markerPosition.lat;
     const longitude = markerPosition.lng;
-    const geoLayer = document.getElementById('reference-layers');
-    geoLayer.setAttribute(
-      'street-geo',
-      `latitude: ${latitude}; longitude: ${longitude}; ellipsoidalHeight: ${elevation}; orthometricHeight: ${heightData?.orthometricHeight}; geoidHeight: ${heightData?.geoidHeight}`
-    );
+    const data = await requestAndSetElevation(latitude, longitude);
 
+    if (data) {
+      console.log(`latitude: ${latitude}, longitude: ${longitude}`);
+      console.log(`elevation: ${data.ellipsoidalHeight}`);
+
+      const geoLayer = document.getElementById('reference-layers');
+      geoLayer.setAttribute(
+        'street-geo',
+        `latitude: ${latitude}; longitude: ${longitude}; ellipsoidalHeight: ${data.ellipsoidalHeight}; orthometricHeight: ${data.orthometricHeight}; geoidHeight: ${data.geoidHeight}`
+      );
+    }
+
+    setIsWorking(false);
     onClose();
   };
 
   return (
-    <Modal
-      className={styles.modalWrapper}
-      isOpen={isOpen}
-      onClose={onCloseCheck}
-    >
-      <div className={styles.wrapper}>
-        <div className={styles.header}>
-          <img src={GeoImg} alt="geo" style={{ objectFit: 'contain' }} />
-          <h3>Scene Location</h3>
-          <p className={styles.badge}>Pro</p>
-        </div>
-        {isLoaded && (
-          <>
-            <GoogleMap
-              mapContainerStyle={{
-                width: '100%',
-                minHeight: '200px',
-                borderRadius: 4,
-                border: '1px solid #8965EF'
-              }}
-              center={{ lat: markerPosition.lat, lng: markerPosition.lng }}
-              zoom={20}
-              onClick={onMapClick}
-              options={{ streetViewControl: false, mapTypeId: 'satellite' }}
-              tilt={0}
-            >
-              <Marker
-                position={{ lat: markerPosition.lat, lng: markerPosition.lng }}
-              />
-            </GoogleMap>
-          </>
-        )}
-        <Autocomplete
-          onLoad={onAutocompleteLoad}
-          onPlaceChanged={onPlaceChanged}
-        >
-          <Input
-            leadingIcon={<Mangnifier20Icon />}
-            placeholder="Search for a location"
-            onChange={(value) => {}}
-          />
-        </Autocomplete>
-        <div className={styles.sceneGeo}>
-          <div>
-            <p>Centerpoint</p>
-            <Input
-              leadingIcon={<p className={styles.iconGeo}>Lat, Long</p>}
-              value={`${markerPosition.lat}, ${markerPosition.lng}`}
-              placeholder="None"
-              onChange={handleCoordinateChange}
-            ></Input>
+    <>
+      <Modal
+        className={styles.modalWrapper}
+        isOpen={isOpen}
+        onClose={onCloseCheck}
+      >
+        <div className={styles.wrapper}>
+          <div className={styles.header}>
+            <img src={GeoImg} alt="geo" style={{ objectFit: 'contain' }} />
+            <h3>Scene Location</h3>
+            <p className={styles.badge}>Pro</p>
           </div>
-          <div>
-            <p>Elevation</p>
-            <Input
-              leadingIcon={
-                <p className={styles.iconGeo}>
-                  Ellipsoidal
-                  <br /> Height
-                </p>
-              }
-              value={elevation}
-              placeholder="None"
-              onChange={handleElevationChange}
-            ></Input>
-          </div>
-        </div>
-
-        {qrCodeUrl && (
-          <div className={styles.qrCodeContainer} id="qrCodeContainer">
-            <QrCode url={qrCodeUrl} />
-            <div>Click on the QR Code to download it</div>
-          </div>
-        )}
-
-        <div className={styles.controlButtons}>
-          <Button variant="ghost" onClick={onClose}>
-            Cancel
-          </Button>
-          {!qrCodeUrl && (
-            <Button
-              leadingIcon={<QR32Icon />}
-              variant="filled"
-              onClick={onQRHandler}
-            >
-              Create Augmented Reality QR Code
-            </Button>
+          {isLoaded && (
+            <>
+              <GoogleMap
+                mapContainerStyle={{
+                  width: '100%',
+                  minHeight: '200px',
+                  borderRadius: 4,
+                  border: '1px solid #8965EF'
+                }}
+                center={{ lat: markerPosition.lat, lng: markerPosition.lng }}
+                zoom={20}
+                onClick={onMapClick}
+                options={{ streetViewControl: false, mapTypeId: 'satellite' }}
+                tilt={0}
+              >
+                <Marker
+                  position={{
+                    lat: markerPosition.lat,
+                    lng: markerPosition.lng
+                  }}
+                />
+              </GoogleMap>
+            </>
           )}
-          <Button
-            leadingIcon={<Save24Icon />}
-            variant="filled"
-            onClick={onSaveHandler}
+          <Autocomplete
+            onLoad={onAutocompleteLoad}
+            onPlaceChanged={onPlaceChanged}
           >
-            Update Scene Location
-          </Button>
+            <Input
+              leadingIcon={<Mangnifier20Icon />}
+              placeholder="Search for a location"
+              onChange={(value) => {}}
+            />
+          </Autocomplete>
+          <div className={styles.sceneGeo}>
+            <div>
+              <p>Centerpoint</p>
+              <Input
+                leadingIcon={<p className={styles.iconGeo}>Lat, Long</p>}
+                value={`${markerPosition.lat}, ${markerPosition.lng}`}
+                placeholder="None"
+                onChange={handleCoordinateChange}
+              ></Input>
+            </div>
+          </div>
+
+          {qrCodeUrl && (
+            <div className={styles.qrCodeContainer} id="qrCodeContainer">
+              <QrCode url={qrCodeUrl} />
+              <div>Click on the QR Code to download it</div>
+            </div>
+          )}
+
+          <div className={styles.controlButtons}>
+            <Button variant="ghost" onClick={onClose}>
+              Cancel
+            </Button>
+            {!qrCodeUrl && (
+              <Button
+                leadingIcon={<QR32Icon />}
+                variant="filled"
+                onClick={onQRHandler}
+              >
+                Create Augmented Reality QR Code
+              </Button>
+            )}
+            <Button
+              leadingIcon={<Save24Icon />}
+              variant="filled"
+              onClick={onSaveHandler}
+            >
+              Update Scene Location
+            </Button>
+          </div>
         </div>
-      </div>
-    </Modal>
+      </Modal>
+      {isWorking && <SavingModal action="Working" />}
+    </>
   );
 };
 
