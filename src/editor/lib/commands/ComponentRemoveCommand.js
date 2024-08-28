@@ -10,33 +10,35 @@ export class ComponentRemoveCommand extends Command {
     this.name = 'Remove Component';
     this.updatable = false;
 
-    this.entity = payload.entity;
-    if (!this.entity.id) {
-      this.entity.id = createUniqueId();
+    const entity = payload.entity;
+    if (!entity.id) {
+      entity.id = createUniqueId();
     }
+    this.entityId = entity.id;
     this.component = payload.component;
-    this.value = this.entity.getAttribute(this.component);
+    this.value = entity.getAttribute(this.component);
   }
 
   execute() {
-    this.entity.removeAttribute(this.component);
-    Events.emit('componentremove', {
-      entity: this.entity,
-      component: this.component
-    });
+    const entity = document.getElementById(this.entityId);
+    if (entity) {
+      entity.removeAttribute(this.component);
+      Events.emit('componentremove', {
+        entity,
+        component: this.component
+      });
+    }
   }
 
   undo() {
-    // Get again the entity from id, the entity may have been recreated if it was removed then undone.
-    const entity = document.getElementById(this.entity.id);
-    if (this.entity !== entity) {
-      this.entity = entity;
+    const entity = document.getElementById(this.entityId);
+    if (entity) {
+      entity.setAttribute(this.component, this.value);
+      Events.emit('componentadd', {
+        entity,
+        component: this.component,
+        value: this.value
+      });
     }
-    this.entity.setAttribute(this.component, this.value);
-    Events.emit('componentadd', {
-      entity: this.entity,
-      component: this.component,
-      value: this.value
-    });
   }
 }

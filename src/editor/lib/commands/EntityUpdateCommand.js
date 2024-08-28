@@ -14,17 +14,18 @@ export class EntityUpdateCommand extends Command {
     this.name = 'Update Entity';
     this.updatable = true;
 
-    this.entity = payload.entity;
-    if (!this.entity.id) {
-      this.entity.id = createUniqueId();
+    const entity = payload.entity;
+    if (!entity.id) {
+      entity.id = createUniqueId();
     }
+    this.entityId = entity.id;
     this.component = payload.component;
     this.property = payload.property ?? '';
 
     const component =
-      this.entity.components[payload.component] ??
+      entity.components[payload.component] ??
       AFRAME.components[payload.component];
-    // First try to get `this.entity.components[payload.component]` to have the dynamic schema, and fallback to `AFRAME.components[payload.component]` if not found.
+    // First try to get `entity.components[payload.component]` to have the dynamic schema, and fallback to `AFRAME.components[payload.component]` if not found.
     // This is to properly stringify some properties that uses for example vec2 or vec3 on material component.
     // This is important to fallback to `AFRAME.components[payload.component]` for primitive components position rotation and scale
     // that may not have been created initially on the entity.
@@ -65,32 +66,30 @@ export class EntityUpdateCommand extends Command {
   }
 
   execute() {
-    if (this.editor.debugUndoRedo) {
-      console.log(
-        'execute',
-        this.entity,
-        this.component,
-        this.property,
-        this.newValue
-      );
+    const entity = document.getElementById(this.entityId);
+    if (entity) {
+      if (this.editor.debugUndoRedo) {
+        console.log(
+          'execute',
+          entity,
+          this.component,
+          this.property,
+          this.newValue
+        );
+      }
+      updateEntity(entity, this.component, this.property, this.newValue);
     }
-    updateEntity(this.entity, this.component, this.property, this.newValue);
   }
 
   undo() {
-    // Get again the entity from id, the entity may have been recreated if it was removed then undone.
-    const entity = document.getElementById(this.entity.id);
-    if (this.entity !== entity) {
-      this.entity = entity;
+    const entity = document.getElementById(this.entityId);
+    if (entity) {
+      if (this.editor.selectedEntity && this.editor.selectedEntity !== entity) {
+        // If the selected entity is not the entity we are undoing, select the entity.
+        this.editor.selectEntity(entity);
+      }
+      updateEntity(entity, this.component, this.property, this.oldValue);
     }
-    if (
-      this.editor.selectedEntity &&
-      this.editor.selectedEntity !== this.entity
-    ) {
-      // If the selected entity is not the entity we are undoing, select the entity.
-      this.editor.selectEntity(this.entity);
-    }
-    updateEntity(this.entity, this.component, this.property, this.oldValue);
   }
 
   update(command) {

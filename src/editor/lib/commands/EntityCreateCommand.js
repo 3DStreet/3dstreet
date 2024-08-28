@@ -15,7 +15,7 @@ export class EntityCreateCommand extends Command {
     this.type = 'entitycreate';
     this.name = 'Create Entity';
     this.definition = definition;
-    this.entity = null;
+    this.entityId = null;
   }
 
   execute() {
@@ -25,16 +25,17 @@ export class EntityCreateCommand extends Command {
     };
     const parentEl =
       this.definition.parentEl ?? document.querySelector('#street-container');
-    this.entity = createEntity(definition, callback, parentEl);
-    return this.entity;
+    const entity = createEntity(definition, callback, parentEl);
+    this.entityId = entity.id;
+    return entity;
   }
 
   undo() {
-    if (this.entity) {
+    const entity = document.getElementById(this.entityId);
+    if (entity) {
       this.editor.selectEntity(null);
-      this.entity.parentNode.removeChild(this.entity);
-      Events.emit('entityremoved', this.entity);
-      this.entity = null;
+      entity.parentNode.removeChild(entity);
+      Events.emit('entityremoved', entity);
     }
   }
 }
