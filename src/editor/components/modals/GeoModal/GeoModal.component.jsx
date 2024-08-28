@@ -136,10 +136,28 @@ const GeoModal = ({ isOpen, onClose }) => {
       console.log(`elevation: ${data.ellipsoidalHeight}`);
 
       const geoLayer = document.getElementById('reference-layers');
-      geoLayer.setAttribute(
-        'street-geo',
-        `latitude: ${latitude}; longitude: ${longitude}; ellipsoidalHeight: ${data.ellipsoidalHeight}; orthometricHeight: ${data.orthometricHeight}; geoidHeight: ${data.geoidHeight}`
-      );
+      const value = {
+        latitude: latitude,
+        longitude: longitude,
+        ellipsoidalHeight: data.ellipsoidalHeight,
+        orthometricHeight: data.orthometricHeight,
+        geoidHeight: data.geoidHeight
+      };
+
+      if (geoLayer.hasAttribute('street-geo')) {
+        AFRAME.INSPECTOR.execute('entityupdate', {
+          entity: geoLayer,
+          component: 'street-geo',
+          property: '',
+          value
+        });
+      } else {
+        AFRAME.INSPECTOR.execute('componentadd', {
+          entity: geoLayer,
+          component: 'street-geo',
+          value
+        });
+      }
     }
 
     setIsWorking(false);
