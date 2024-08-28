@@ -8,8 +8,8 @@ import { equal } from './utils';
  *
  * @param {Element} entity - Entity to modify.
  * @param {string} component - component name
- * @param {string} property - property name, use empty string if component is not a multi-property
- * @param {string|number} value - New value.
+ * @param {string} property - property name, use empty string if component is single property or if value is an object
+ * @param {string|number|object} value - New value.
  */
 export function updateEntity(entity, component, property, value) {
   if (property) {
