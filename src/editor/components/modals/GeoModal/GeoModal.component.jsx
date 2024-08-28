@@ -1,5 +1,5 @@
 import { useState, useCallback, useEffect } from 'react';
-import { SavingModal } from '../SavingModal/SavingModal.component.jsx';
+import { SavingModal } from '../SavingModal';
 
 import styles from './GeoModal.module.scss';
 import { Mangnifier20Icon, Save24Icon, QR32Icon } from '../../../icons';
@@ -16,7 +16,7 @@ import {
 } from '@react-google-maps/api';
 import GeoImg from '../../../../../ui_assets/geo.png';
 import { roundCoord } from '../../../../../src/utils.js';
-import { QrCode } from '../../components/QrCode/QrCode.component.jsx';
+import { QrCode } from '../../components/QrCode';
 
 const GeoModal = ({ isOpen, onClose }) => {
   const { isLoaded } = useJsApiLoader({
