@@ -7,10 +7,10 @@ import { createUniqueId, updateEntity } from '../entity.js';
  * @constructor
  */
 export class EntityUpdateCommand extends Command {
-  static type = 'entityupdate';
   constructor(editor, payload) {
     super(editor);
 
+    this.type = 'entityupdate';
     this.name = 'Update Entity';
     this.updatable = true;
 

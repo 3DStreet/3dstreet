@@ -3,10 +3,10 @@ import { Command } from '../command.js';
 import { createUniqueId } from '../entity.js';
 
 export class ComponentAddCommand extends Command {
-  static type = 'componentadd';
   constructor(editor, payload) {
     super(editor);
 
+    this.type = 'componentadd';
     this.name = 'Add Component';
     this.updatable = false;
 
