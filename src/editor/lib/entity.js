@@ -108,26 +108,49 @@ function insertAfter(newNode, referenceNode) {
 
 /**
  * Clone an entity, inserting it after the cloned one.
- * @param  {Element} entity Entity to clone
+ * @param {Element} entity Entity to clone
+ * @returns {Element} The clone
  */
 export function cloneEntity(entity) {
+  return AFRAME.INSPECTOR.execute('entityclone', entity);
+}
+
+/**
+ * Clone an entity, inserting it after the cloned one. This is the implementation of the entityclone command.
+ * @param {Element} entity Entity to clone
+ * @param {string|undefined} newId The new id to use for the clone
+ * @returns {Element} The clone
+ */
+export function cloneEntityImpl(entity, newId = undefined) {
   entity.flushToDOM();
 
   const clone = prepareForSerialization(entity);
   clone.addEventListener(
     'loaded',
     function () {
-      AFRAME.INSPECTOR.selectEntity(clone);
       Events.emit('entityclone', clone);
+      AFRAME.INSPECTOR.selectEntity(clone);
     },
     { once: true }
   );
 
-  // Get a valid unique ID for the entity
-  if (entity.id) {
-    clone.id = getUniqueId(entity.id);
+  if (newId) {
+    clone.id = newId;
+  } else {
+    if (entity.id) {
+      if (entity.id.length === 21) {
+        // nanoid generated id, create a new one
+        clone.id = createUniqueId();
+      } else {
+        // Get a valid unique ID for the entity
+        clone.id = getUniqueId(entity.id);
+      }
+    } else {
+      entity.id = createUniqueId();
+    }
   }
   insertAfter(clone, entity);
+  return clone;
 }
 
 /**

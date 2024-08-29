@@ -38,9 +38,9 @@ export class EntityCreateCommand extends Command {
   undo() {
     const entity = document.getElementById(this.entityId);
     if (entity) {
-      this.editor.selectEntity(null);
       entity.parentNode.removeChild(entity);
       Events.emit('entityremoved', entity);
+      this.editor.selectEntity(null);
     }
   }
 }

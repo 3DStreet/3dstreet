@@ -30,7 +30,7 @@ export class EntityRemoveCommand extends Command {
     // Replace this.entity by clone
     this.entity = clone;
 
-    AFRAME.INSPECTOR.selectEntity(closest);
+    this.editor.selectEntity(closest);
   }
 
   undo() {
