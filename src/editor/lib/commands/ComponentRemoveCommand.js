@@ -16,7 +16,13 @@ export class ComponentRemoveCommand extends Command {
     }
     this.entityId = entity.id;
     this.component = payload.component;
-    this.value = entity.getAttribute(this.component);
+
+    const component =
+      entity.components[payload.component] ??
+      AFRAME.components[payload.component];
+    this.value = component.isSingleProperty
+      ? component.schema.stringify(entity.getAttribute(payload.component))
+      : entity.getDOMAttribute(payload.component);
   }
 
   execute() {

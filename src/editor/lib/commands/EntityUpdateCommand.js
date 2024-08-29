@@ -49,15 +49,14 @@ export class EntityUpdateCommand extends Command {
           console.log(this.component, this.oldValue, this.newValue);
         }
       } else {
-        // If component.schema.stringify is undefined then it's multi-property component and value is an object.
-        this.newValue = component.schema.stringify
+        this.newValue = component.isSingleProperty
           ? component.schema.stringify(payload.value)
           : payload.value;
-        this.oldValue = component.schema.stringify
+        this.oldValue = component.isSingleProperty
           ? component.schema.stringify(
               payload.entity.getAttribute(payload.component)
             )
-          : payload.entity.getAttribute(payload.component);
+          : payload.entity.getDOMAttribute(payload.component);
         if (this.editor.debugUndoRedo) {
           console.log(this.component, this.oldValue, this.newValue);
         }
