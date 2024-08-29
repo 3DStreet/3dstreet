@@ -330,34 +330,6 @@ a.help-link {
 a.help-linkhover {
   opacity: 1;
 }
-#addComponentContainer {
-  align-items: center;
-  display: none;
-  flex-direction: column;
-  justify-content: center;
-  padding: 20px 10px;
-  background: variables.$darkgray-200;
-  #addComponent {
-    text-align: left;
-    width: 200px;
-    .select__control {
-      background: variables.$black-100;
-      height: 35px;
-      color: variables.$blue-100;
-    }
-    .option {
-      display: flex;
-      justify-content: space-between;
-      span {
-        color: variables.$blue-100;
-      }
-    }
-  }
-  #addComponentHeader {
-    font-size: 15px;
-    margin: 5px 0 10px 0;
-  }
-}
 .Select-menu-outer .is-focused span {
   color: variables.$white;
 }

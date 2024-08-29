@@ -26,6 +26,7 @@ export default class PropertyRow extends React.Component {
     entity: PropTypes.object.isRequired,
     isSingle: PropTypes.bool.isRequired,
     name: PropTypes.string.isRequired,
+    label: PropTypes.string,
     schema: PropTypes.object.isRequired
   };
 
@@ -127,7 +128,7 @@ export default class PropertyRow extends React.Component {
     return (
       <div className={className}>
         <label htmlFor={this.id} className="text" title={title}>
-          {props.name}
+          {props.label || props.name}
         </label>
         {this.getWidget(props.schema.type)}
       </div>
