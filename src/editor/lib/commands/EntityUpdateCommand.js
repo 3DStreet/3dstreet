@@ -56,7 +56,7 @@ export class EntityUpdateCommand extends Command {
           ? component.schema.stringify(
               payload.entity.getAttribute(payload.component)
             )
-          : payload.entity.getDOMAttribute(payload.component);
+          : structuredClone(payload.entity.getDOMAttribute(payload.component));
         if (this.editor.debugUndoRedo) {
           console.log(this.component, this.oldValue, this.newValue);
         }

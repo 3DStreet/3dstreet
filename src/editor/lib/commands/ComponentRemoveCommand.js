@@ -22,7 +22,7 @@ export class ComponentRemoveCommand extends Command {
       AFRAME.components[payload.component];
     this.value = component.isSingleProperty
       ? component.schema.stringify(entity.getAttribute(payload.component))
-      : entity.getDOMAttribute(payload.component);
+      : structuredClone(entity.getDOMAttribute(payload.component));
   }
 
   execute() {
