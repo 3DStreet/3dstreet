@@ -129,11 +129,11 @@ AFRAME.registerComponent('street-geo', {
       });
       google3dElement.classList.add('autocreated');
 
-      if (AFRAME.INSPECTOR && AFRAME.INSPECTOR.opened) {
-        // emit play event to start loading tiles in Editor mode
+      if (AFRAME.INSPECTOR?.opened) {
         google3dElement.addEventListener(
           'loaded',
           () => {
+            // emit play event to start loading tiles in Editor mode
             google3dElement.play();
           },
           { once: true }
@@ -212,12 +212,21 @@ AFRAME.registerComponent('street-geo', {
       osm3dBuildingElement.classList.add('autocreated');
       osm3dBuildingElement.setAttribute('data-ignore-raycaster', '');
 
-      if (AFRAME.INSPECTOR && AFRAME.INSPECTOR.opened) {
-        // emit play event to start loading tiles in Editor mode
+      if (AFRAME.INSPECTOR?.opened) {
         osm3dElement.addEventListener(
           'loaded',
           () => {
+            // emit play event to start loading tiles in Editor mode
             osm3dElement.play();
+          },
+          { once: true }
+        );
+      }
+      if (AFRAME.INSPECTOR?.opened) {
+        osm3dBuildingElement.addEventListener(
+          'loaded',
+          () => {
+            // emit play event to start loading tiles in Editor mode
             osm3dBuildingElement.play();
           },
           { once: true }

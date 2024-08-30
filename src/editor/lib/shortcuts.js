@@ -65,11 +65,6 @@ export const Shortcuts = {
       Events.emit('togglegrid');
     }
 
-    // m: motion capture
-    if (keyCode === 77) {
-      Events.emit('togglemotioncapture');
-    }
-
     // backspace & supr: remove selected entity
     if (keyCode === 8 || keyCode === 46) {
       removeSelectedEntity();
@@ -120,6 +115,7 @@ export const Shortcuts = {
     if (!shouldCaptureKeyEvent(event) || !AFRAME.INSPECTOR.opened) {
       return;
     }
+
     if (
       (event.ctrlKey && os !== 'macos') ||
       (event.metaKey && os === 'macos')

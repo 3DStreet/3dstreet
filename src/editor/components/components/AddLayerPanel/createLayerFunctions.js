@@ -1,4 +1,3 @@
-import Events from '../../../lib/Events';
 import { loadScript, roundCoord } from '../../../../../src/utils.js';
 
 export function createSvgExtrudedEntity() {
@@ -15,44 +14,38 @@ export function createSvgExtrudedEntity() {
         </svg>`
   );
   if (svgString && svgString !== '') {
-    const newEl = document.createElement('a-entity');
-    newEl.setAttribute('svg-extruder', `svgString: ${svgString}`);
-    newEl.setAttribute('data-layer-name', 'SVG Path • My Custom Path');
-    const parentEl = document.querySelector('#street-container');
-    newEl.addEventListener(
-      'loaded',
-      () => {
-        Events.emit('entitycreated', newEl);
-        AFRAME.INSPECTOR.selectEntity(newEl);
-      },
-      { once: true }
-    );
-    parentEl.appendChild(newEl);
+    const definition = {
+      element: 'a-entity',
+      components: {
+        'svg-extruder': `svgString: ${svgString}`,
+        'data-layer-name': 'SVG Path • My Custom Path'
+      }
+    };
+    AFRAME.INSPECTOR.execute('entitycreate', definition);
   }
 }
-
 export function createMapbox() {
   // This component accepts a long / lat and renders a plane with dimensions that
   // (should be) at a correct scale.
   const geoLayer = document.getElementById('reference-layers');
   let latitude = 0;
   let longitude = 0;
-  const streetGeo = document
-    .getElementById('reference-layers')
-    ?.getAttribute('street-geo');
+  const streetGeo = geoLayer?.getAttribute('street-geo');
 
   if (streetGeo && streetGeo['latitude'] && streetGeo['longitude']) {
     latitude = roundCoord(parseFloat(streetGeo['latitude']));
     longitude = roundCoord(parseFloat(streetGeo['longitude']));
   }
 
-  geoLayer.setAttribute(
-    'street-geo',
-    `
-    latitude: ${latitude}; longitude: ${longitude}; maps: mapbox2d
-    `
-  );
-  Events.emit('entitycreated', geoLayer);
+  AFRAME.INSPECTOR.execute(streetGeo ? 'entityupdate' : 'componentadd', {
+    entity: geoLayer,
+    component: 'street-geo',
+    value: {
+      latitude: latitude,
+      longitude: longitude,
+      maps: 'mapbox2d'
+    }
+  });
 }
 
 export function createStreetmixStreet(position, streetmixURL, hideBuildings) {
@@ -64,24 +57,20 @@ export function createStreetmixStreet(position, streetmixURL, hideBuildings) {
       'https://streetmix.net/kfarr/3/3dstreet-demo-street'
     );
   }
+  // position the street further from the current one so as not to overlap each other
   if (streetmixURL && streetmixURL !== '') {
-    const newEl = document.createElement('a-entity');
-    newEl.setAttribute('id', streetmixURL);
-    // position the street further from the current one so as not to overlap each other
-    if (position) {
-      newEl.setAttribute('position', position);
-    } else {
-      newEl.setAttribute('position', '0 0 -20');
-    }
+    const definition = {
+      id: streetmixURL,
+      components: {
+        position: position ?? '0 0 -20',
+        'streetmix-loader': {
+          streetmixStreetURL: streetmixURL,
+          showBuildings: !hideBuildings
+        }
+      }
+    };
 
-    newEl.setAttribute(
-      'streetmix-loader',
-      `streetmixStreetURL: ${streetmixURL}; showBuildings: ${!hideBuildings}`
-    );
-    const parentEl = document.querySelector('#street-container');
-    parentEl.appendChild(newEl);
-    // update sceneGraph
-    Events.emit('entitycreated', newEl);
+    AFRAME.INSPECTOR.execute('entitycreate', definition);
   }
 }
 
@@ -131,9 +120,7 @@ export function create3DTiles() {
     let latitude = 0;
     let longitude = 0;
     let ellipsoidalHeight = 0;
-    const streetGeo = document
-      .getElementById('reference-layers')
-      ?.getAttribute('street-geo');
+    const streetGeo = geoLayer?.getAttribute('street-geo');
 
     if (streetGeo && streetGeo['latitude'] && streetGeo['longitude']) {
       latitude = roundCoord(parseFloat(streetGeo['latitude']));
@@ -141,14 +128,16 @@ export function create3DTiles() {
       ellipsoidalHeight = parseFloat(streetGeo['ellipsoidalHeight']) || 0;
     }
 
-    geoLayer.setAttribute(
-      'street-geo',
-      `
-      latitude: ${latitude}; longitude: ${longitude}; ellipsoidalHeight: ${ellipsoidalHeight}; maps: google3d
-    `
-    );
-    // update sceneGraph
-    Events.emit('entitycreated', geoLayer);
+    AFRAME.INSPECTOR.execute(streetGeo ? 'entityupdate' : 'componentadd', {
+      entity: geoLayer,
+      component: 'street-geo',
+      value: {
+        latitude: latitude,
+        longitude: longitude,
+        ellipsoidalHeight: ellipsoidalHeight,
+        maps: 'google3d'
+      }
+    });
   };
 
   if (AFRAME.components['loader-3dtiles']) {
@@ -172,59 +161,38 @@ export function createCustomModel() {
     'https://cdn.glitch.global/690c7ea3-3f1c-434b-8b8d-3907b16de83c/Mission_Bay_school_low_poly_model_v03_draco.glb'
   );
   if (modelUrl && modelUrl !== '') {
-    const newEl = document.createElement('a-entity');
-    newEl.classList.add('custom-model');
-    newEl.setAttribute('gltf-model', `url(${modelUrl})`);
-    newEl.setAttribute('data-layer-name', 'glTF Model • My Custom Object');
-    const parentEl = document.querySelector('#street-container');
-    newEl.addEventListener(
-      'loaded',
-      () => {
-        Events.emit('entitycreated', newEl);
-        AFRAME.INSPECTOR.selectEntity(newEl);
-      },
-      { once: true }
-    );
-    parentEl.appendChild(newEl);
+    const definition = {
+      class: 'custom-model',
+      components: {
+        'gltf-model': `url(${modelUrl})`,
+        'data-layer-name': 'glTF Model • My Custom Object'
+      }
+    };
+    AFRAME.INSPECTOR.execute('entitycreate', definition);
   }
 }
 
 export function createPrimitiveGeometry() {
-  const newEl = document.createElement('a-entity');
-  newEl.setAttribute('geometry', 'primitive: circle; radius: 50;');
-  newEl.setAttribute('rotation', '-90 -90 0');
-  newEl.setAttribute(
-    'data-layer-name',
-    'Plane Geometry • Traffic Circle Asphalt'
-  );
-  newEl.setAttribute('material', 'src: #asphalt-texture; repeat: 5 5;');
-  const parentEl = document.querySelector('#street-container');
-  newEl.addEventListener(
-    'loaded',
-    () => {
-      Events.emit('entitycreated', newEl);
-      AFRAME.INSPECTOR.selectEntity(newEl);
-    },
-    { once: true }
-  );
-  parentEl.appendChild(newEl);
+  const definition = {
+    'data-layer-name': 'Plane Geometry • Traffic Circle Asphalt',
+    components: {
+      geometry: 'primitive: circle; radius: 50;',
+      rotation: '-90 -90 0',
+      material: 'src: #asphalt-texture; repeat: 5 5;'
+    }
+  };
+  AFRAME.INSPECTOR.execute('entitycreate', definition);
 }
 
 export function createIntersection() {
-  const newEl = document.createElement('a-entity');
-  newEl.setAttribute('intersection', '');
-  newEl.setAttribute('data-layer-name', 'Street • Intersection 90º');
-  newEl.setAttribute('rotation', '-90 -90 0');
-  const parentEl = document.querySelector('#street-container');
-  newEl.addEventListener(
-    'loaded',
-    () => {
-      Events.emit('entitycreated', newEl);
-      AFRAME.INSPECTOR.selectEntity(newEl);
-    },
-    { once: true }
-  );
-  parentEl.appendChild(newEl);
+  const definition = {
+    'data-layer-name': 'Street • Intersection 90º',
+    components: {
+      intersection: '',
+      rotation: '-90 -90 0'
+    }
+  };
+  AFRAME.INSPECTOR.execute('entitycreate', definition);
 }
 
 export function createSplatObject() {
@@ -236,21 +204,15 @@ export function createSplatObject() {
   );
 
   if (modelUrl && modelUrl !== '') {
-    const newEl = document.createElement('a-entity');
-    newEl.classList.add('splat-model');
-    newEl.setAttribute('data-no-pause', '');
-    newEl.setAttribute('gaussian_splatting', `src: ${modelUrl}`);
-    newEl.setAttribute('data-layer-name', 'Splat Model • My Custom Object');
-    newEl.play();
-    const parentEl = document.querySelector('#street-container');
-    newEl.addEventListener(
-      'loaded',
-      () => {
-        Events.emit('entitycreated', newEl);
-        AFRAME.INSPECTOR.selectEntity(newEl);
-      },
-      { once: true }
-    );
-    parentEl.appendChild(newEl);
+    const definition = {
+      class: 'splat-model',
+      'data-layer-name': 'Splat Model • My Custom Object',
+      'data-no-pause': '',
+      components: {
+        gaussian_splatting: `src: ${modelUrl}`
+      }
+    };
+    const entity = AFRAME.INSPECTOR.execute('entitycreate', definition);
+    entity.play();
   }
 }

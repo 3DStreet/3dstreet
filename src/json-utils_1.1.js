@@ -443,9 +443,6 @@ function createEntityFromObj(entityData, parentEl) {
     if (entityData.mixin) {
       entity.setAttribute('mixin', entityData.mixin);
     }
-    // Ensure the components are loaded before update the UI
-
-    entity.emit('entitycreated', {}, false);
   });
 
   if (entityData.children) {

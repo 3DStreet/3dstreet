@@ -1,5 +1,5 @@
 import { useState, useCallback, useEffect } from 'react';
-import { SavingModal } from '../SavingModal/SavingModal.component.jsx';
+import { SavingModal } from '../SavingModal';
 
 import styles from './GeoModal.module.scss';
 import { Mangnifier20Icon, Save24Icon, QR32Icon } from '../../../icons';
@@ -16,7 +16,7 @@ import {
 } from '@react-google-maps/api';
 import GeoImg from '../../../../../ui_assets/geo.png';
 import { roundCoord } from '../../../../../src/utils.js';
-import { QrCode } from '../../components/QrCode/QrCode.component.jsx';
+import { QrCode } from '../../components/QrCode';
 
 const GeoModal = ({ isOpen, onClose }) => {
   const { isLoaded } = useJsApiLoader({
@@ -136,9 +136,19 @@ const GeoModal = ({ isOpen, onClose }) => {
       console.log(`elevation: ${data.ellipsoidalHeight}`);
 
       const geoLayer = document.getElementById('reference-layers');
-      geoLayer.setAttribute(
-        'street-geo',
-        `latitude: ${latitude}; longitude: ${longitude}; ellipsoidalHeight: ${data.ellipsoidalHeight}; orthometricHeight: ${data.orthometricHeight}; geoidHeight: ${data.geoidHeight}`
+      AFRAME.INSPECTOR.execute(
+        geoLayer.hasAttribute('street-geo') ? 'entityupdate' : 'componentadd',
+        {
+          entity: geoLayer,
+          component: 'street-geo',
+          value: {
+            latitude: latitude,
+            longitude: longitude,
+            ellipsoidalHeight: data.ellipsoidalHeight,
+            orthometricHeight: data.orthometricHeight,
+            geoidHeight: data.geoidHeight
+          }
+        }
       );
     }
 

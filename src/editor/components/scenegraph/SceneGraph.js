@@ -1,5 +1,6 @@
 /* eslint-disable no-unused-vars, react/no-danger */
 import classNames from 'classnames';
+import debounce from 'lodash-es/debounce';
 import PropTypes from 'prop-types';
 import React from 'react';
 import Events from '../../lib/Events';
@@ -9,7 +10,7 @@ import { LayersIcon, ArrowLeftIcon } from '../../icons';
 import { getEntityDisplayName } from '../../lib/entity';
 import posthog from 'posthog-js';
 
-const HIDDEN_CLASSES = ['teleportRay', 'hitEntity'];
+const HIDDEN_CLASSES = ['teleportRay', 'hitEntity', 'hideFromSceneGraph'];
 const HIDDEN_IDS = ['dropPlane', 'previewEntity'];
 
 export default class SceneGraph extends React.Component {
@@ -31,6 +32,11 @@ export default class SceneGraph extends React.Component {
       leftBarHide: false,
       selectedIndex: -1
     };
+
+    this.rebuildEntityOptions = debounce(
+      this.rebuildEntityOptions.bind(this),
+      0
+    );
   }
 
   onMixinUpdate = (detail) => {
@@ -39,21 +45,31 @@ export default class SceneGraph extends React.Component {
     }
   };
 
+  onChildAttachedDetached = (event) => {
+    if (this.includeInSceneGraph(event.detail.el)) {
+      this.rebuildEntityOptions();
+    }
+  };
+
   componentDidMount() {
     this.rebuildEntityOptions();
-    Events.on('updatescenegraph', this.rebuildEntityOptions);
     Events.on('entityidchange', this.rebuildEntityOptions);
-    Events.on('entitycreated', this.rebuildEntityOptions);
-    Events.on('entityclone', this.rebuildEntityOptions);
     Events.on('entityupdate', this.onMixinUpdate);
+    document.addEventListener('child-attached', this.onChildAttachedDetached);
+    document.addEventListener('child-detached', this.onChildAttachedDetached);
   }
 
   componentWillUnmount() {
-    Events.off('updatescenegraph', this.rebuildEntityOptions);
     Events.off('entityidchange', this.rebuildEntityOptions);
-    Events.off('entitycreated', this.rebuildEntityOptions);
-    Events.off('entityclone', this.rebuildEntityOptions);
     Events.off('entityupdate', this.onMixinUpdate);
+    document.removeEventListener(
+      'child-attached',
+      this.onChildAttachedDetached
+    );
+    document.removeEventListener(
+      'child-detached',
+      this.onChildAttachedDetached
+    );
   }
 
   /**
@@ -90,10 +106,21 @@ export default class SceneGraph extends React.Component {
     }
   };
 
+  includeInSceneGraph = (element) => {
+    return !(
+      element.dataset.isInspector ||
+      !element.isEntity ||
+      element.isInspector ||
+      'aframeInspector' in element.dataset ||
+      HIDDEN_CLASSES.includes(element.className) ||
+      HIDDEN_IDS.includes(element.id)
+    );
+  };
+
   rebuildEntityOptions = () => {
     const entities = [];
 
-    function treeIterate(element, depth) {
+    const treeIterate = (element, depth) => {
       if (!element) {
         return;
       }
@@ -102,15 +129,7 @@ export default class SceneGraph extends React.Component {
       for (let i = 0; i < element.children.length; i++) {
         let entity = element.children[i];
 
-        if (
-          entity.dataset.isInspector ||
-          !entity.isEntity ||
-          entity.isInspector ||
-          'aframeInspector' in entity.dataset ||
-          HIDDEN_CLASSES.includes(entity.className) ||
-          HIDDEN_IDS.includes(entity.id) ||
-          (depth === 1 && !entity.id)
-        ) {
+        if (!this.includeInSceneGraph(entity) || (depth === 1 && !entity.id)) {
           continue;
         }
 
@@ -122,7 +141,7 @@ export default class SceneGraph extends React.Component {
 
         treeIterate(entity, depth);
       }
-    }
+    };
     const layers = this.props.scene.children;
     const orderedLayers = [];
 

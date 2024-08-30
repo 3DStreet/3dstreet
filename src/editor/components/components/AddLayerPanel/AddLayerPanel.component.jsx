@@ -131,24 +131,12 @@ const createEntityOnPosition = (mixinId, position) => {
   if (previewEntity) {
     previewEntity.remove();
   }
-  const newEntity = document.createElement('a-entity');
-  newEntity.setAttribute('mixin', mixinId);
-  newEntity.addEventListener(
-    'loaded',
-    () => {
-      Events.emit('entitycreated', newEntity);
-      AFRAME.INSPECTOR.selectEntity(newEntity);
-    },
-    { once: true }
-  );
-  newEntity.setAttribute('position', position);
-  const streetContainer = document.querySelector('#street-container');
-  // apppend element as a child of street-container
-  if (streetContainer) {
-    streetContainer.appendChild(newEntity);
-  } else {
-    AFRAME.scenes[0].appendChild(newEntity);
-  }
+  AFRAME.INSPECTOR.execute('entitycreate', {
+    mixin: mixinId,
+    components: {
+      position: position
+    }
+  });
 };
 
 const createEntity = (mixinId) => {
@@ -156,16 +144,10 @@ const createEntity = (mixinId) => {
   if (previewEntity) {
     previewEntity.remove();
   }
-  const newEntity = document.createElement('a-entity');
-  newEntity.setAttribute('mixin', mixinId);
-  newEntity.addEventListener(
-    'loaded',
-    () => {
-      Events.emit('entitycreated', newEntity);
-      AFRAME.INSPECTOR.selectEntity(newEntity);
-    },
-    { once: true }
-  );
+  const newEntityObject = {
+    mixin: mixinId,
+    components: {}
+  };
 
   const selectedElement = AFRAME.INSPECTOR.selectedEntity;
   const [ancestorEl, inSegment] = selectedElement
@@ -176,27 +158,40 @@ const createEntity = (mixinId) => {
   if (selectedElement && !ancestorEl.parentEl.isScene) {
     // append element as a child of the entity with .custom-group class.
     let customGroupEl = ancestorEl.querySelector('.custom-group');
-    let entityToMove;
+    let customGroupCreated = false;
     if (!customGroupEl) {
       customGroupEl = document.createElement('a-entity');
       // .custom-group entity is a child of segment or .street-parent/.buildings-parent elements
       ancestorEl.appendChild(customGroupEl);
       customGroupEl.classList.add('custom-group');
-      entityToMove = customGroupEl;
-    } else {
-      entityToMove = newEntity;
+      customGroupCreated = true;
     }
-    customGroupEl.appendChild(newEntity);
+    newEntityObject.parentEl = customGroupEl;
 
     if (inSegment) {
       // get elevation position Y from attribute of segment element
       const segmentElevationPosY = getSegmentElevationPosY(ancestorEl);
       // set position y by elevation level of segment
-      entityToMove.setAttribute('position', { y: segmentElevationPosY });
+      if (customGroupCreated) {
+        customGroupEl.setAttribute('position', { y: segmentElevationPosY });
+        newEntityObject.components.position = { x: 0, y: 0, z: 0 };
+      } else {
+        newEntityObject.components.position = {
+          x: 0,
+          y: segmentElevationPosY,
+          z: 0
+        };
+      }
     } else {
       // if we are creating element not inside segment-parent
-      selectedElement.object3D.getWorldPosition(entityToMove.object3D.position);
-      entityToMove.object3D.parent.worldToLocal(entityToMove.object3D.position);
+      const pos = new THREE.Vector3();
+      selectedElement.object3D.getWorldPosition(pos);
+      if (customGroupCreated) {
+        customGroupEl.object3D.parent.worldToLocal(pos);
+      } else {
+        customGroupEl.object3D.worldToLocal(pos);
+      }
+      newEntityObject.components.position = { x: pos.x, y: pos.y, z: pos.z };
     }
   } else {
     const position = pickPointOnGroundPlane({
@@ -204,15 +199,9 @@ const createEntity = (mixinId) => {
       normalizedY: -0.1,
       camera: AFRAME.INSPECTOR.camera
     });
-    newEntity.setAttribute('position', position);
-    const streetContainer = document.querySelector('#street-container');
-    // apppend element as a child of street-container
-    if (streetContainer) {
-      streetContainer.appendChild(newEntity);
-    } else {
-      AFRAME.scenes[0].appendChild(newEntity);
-    }
+    newEntityObject.components.position = position;
   }
+  AFRAME.INSPECTOR.execute('entitycreate', newEntityObject);
 };
 
 const cardMouseEnter = (mixinId) => {
@@ -222,15 +211,16 @@ const cardMouseEnter = (mixinId) => {
     previewEntity.setAttribute('id', 'previewEntity');
     AFRAME.scenes[0].appendChild(previewEntity);
     const dropCursorEntity = document.createElement('a-entity');
+    dropCursorEntity.classList.add('hideFromSceneGraph');
     dropCursorEntity.innerHTML = `
-      <a-ring id="drop-cursor" rotation="-90 0 0" radius-inner="0.2" radius-outer="0.3">
-        <a-ring color="yellow" radius-inner="0.4" radius-outer="0.5"
+      <a-ring class="hideFromSceneGraph" id="drop-cursor" rotation="-90 0 0" radius-inner="0.2" radius-outer="0.3">
+        <a-ring class="hideFromSceneGraph" color="yellow" radius-inner="0.4" radius-outer="0.5"
           animation="property: scale; from: 1 1 1; to: 2 2 2; loop: true; dir: alternate"></a-ring>
-        <a-ring color="yellow" radius-inner="0.6" radius-outer="0.7"
+        <a-ring class="hideFromSceneGraph" color="yellow" radius-inner="0.6" radius-outer="0.7"
           animation="property: scale; from: 1 1 1; to: 3 3 3; loop: true; dir: alternate"></a-ring>
-        <a-entity class="drop-cursor-arrow" rotation="90 0 0">
-          <a-cylinder color="yellow" position="0 5.25 0" radius="0.05" height="2.5"></a-cylinder>
-          <a-cone color="yellow" position="0 4 0" radius-top="0.5" radius-bottom="0" height="1"></a-cone>
+        <a-entity class="hideFromSceneGraph" rotation="90 0 0">
+          <a-cylinder class="hideFromSceneGraph" color="yellow" position="0 5.25 0" radius="0.05" height="2.5"></a-cylinder>
+          <a-cone class="hideFromSceneGraph" color="yellow" position="0 4 0" radius-top="0.5" radius-bottom="0" height="1"></a-cone>
       </a-ring>`;
     previewEntity.appendChild(dropCursorEntity);
   }
