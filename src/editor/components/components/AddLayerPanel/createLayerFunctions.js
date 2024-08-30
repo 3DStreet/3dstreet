@@ -37,27 +37,15 @@ export function createMapbox() {
     longitude = roundCoord(parseFloat(streetGeo['longitude']));
   }
 
-  if (streetGeo) {
-    AFRAME.INSPECTOR.execute('entityupdate', {
-      entity: geoLayer,
-      component: 'street-geo',
-      value: {
-        latitude: latitude,
-        longitude: longitude,
-        maps: 'mapbox2d'
-      }
-    });
-  } else {
-    AFRAME.INSPECTOR.execute('componentadd', {
-      entity: geoLayer,
-      component: 'street-geo',
-      value: {
-        latitude: latitude,
-        longitude: longitude,
-        maps: 'mapbox2d'
-      }
-    });
-  }
+  AFRAME.INSPECTOR.execute(streetGeo ? 'entityupdate' : 'componentadd', {
+    entity: geoLayer,
+    component: 'street-geo',
+    value: {
+      latitude: latitude,
+      longitude: longitude,
+      maps: 'mapbox2d'
+    }
+  });
 }
 
 export function createStreetmixStreet(position, streetmixURL, hideBuildings) {
