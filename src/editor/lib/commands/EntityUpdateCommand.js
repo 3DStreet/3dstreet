@@ -45,7 +45,7 @@ export class EntityUpdateCommand extends Command {
             payload.property
           ];
         }
-        if (this.editor.debugUndoRedo) {
+        if (this.editor.config.debugUndoRedo) {
           console.log(this.component, this.oldValue, this.newValue);
         }
       } else {
@@ -57,7 +57,7 @@ export class EntityUpdateCommand extends Command {
               payload.entity.getAttribute(payload.component)
             )
           : structuredClone(payload.entity.getDOMAttribute(payload.component));
-        if (this.editor.debugUndoRedo) {
+        if (this.editor.config.debugUndoRedo) {
           console.log(this.component, this.oldValue, this.newValue);
         }
       }
@@ -67,7 +67,7 @@ export class EntityUpdateCommand extends Command {
   execute() {
     const entity = document.getElementById(this.entityId);
     if (entity) {
-      if (this.editor.debugUndoRedo) {
+      if (this.editor.config.debugUndoRedo) {
         console.log(
           'execute',
           entity,
@@ -92,7 +92,7 @@ export class EntityUpdateCommand extends Command {
   }
 
   update(command) {
-    if (this.editor.debugUndoRedo) {
+    if (this.editor.config.debugUndoRedo) {
       console.log('update', command);
     }
     this.newValue = command.newValue;
