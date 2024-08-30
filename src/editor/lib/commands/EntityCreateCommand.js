@@ -2,12 +2,6 @@ import Events from '../Events';
 import { Command } from '../command.js';
 import { createEntity } from '../entity.js';
 
-/**
- * Helper function to add a new entity with a list of components
- * @param  {object} definition Entity definition to add, only components is required:
- *   {element: 'a-entity', id: "hbiuSdYL2", class: "box", components: {geometry: 'primitive:box'}}
- * @return {Element} Entity created
- */
 export class EntityCreateCommand extends Command {
   constructor(editor, definition) {
     super(editor);
