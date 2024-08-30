@@ -652,7 +652,9 @@ export function createEntity(definition, cb, parentEl = undefined) {
   if (parentEl) {
     parentEl.appendChild(entity);
   } else {
-    document.getElementById('street-container').appendChild(entity);
+    document
+      .querySelector(AFRAME.INSPECTOR.config.defaultParent)
+      .appendChild(entity);
   }
 
   return entity;

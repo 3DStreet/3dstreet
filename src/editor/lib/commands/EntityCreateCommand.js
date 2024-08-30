@@ -24,7 +24,8 @@ export class EntityCreateCommand extends Command {
       this.editor.selectEntity(entity);
     };
     const parentEl =
-      this.definition.parentEl ?? document.querySelector('#street-container');
+      this.definition.parentEl ??
+      document.querySelector(this.editor.config.defaultParent);
     // If we undo and redo, use the previous id so next redo actions (for example entityupdate to move the position) works correctly
     if (this.entityId) {
       definition = { ...this.definition, id: this.entityId };

@@ -5,6 +5,7 @@ import { AuthProvider, GeoProvider } from './contexts';
 import Events from './lib/Events';
 import { AssetsLoader } from './lib/assetsLoader';
 import { initCameras } from './lib/cameras';
+import { Config } from './lib/config';
 import { History } from './lib/history';
 import { Shortcuts } from './lib/shortcuts';
 import { Viewport } from './lib/viewport';
@@ -17,6 +18,7 @@ import { commandsByType } from './lib/commands/index.js';
 function Inspector() {
   this.assetsLoader = new AssetsLoader();
   this.exporters = { gltf: new GLTFExporter() };
+  this.config = new Config();
   this.history = new History();
   this.isFirstOpen = true;
   this.modules = {};
