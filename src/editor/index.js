@@ -211,13 +211,6 @@ Inspector.prototype = {
       this.sceneHelpers.visible = this.inspectorActive;
     });
 
-    Events.on('entitycreate', (definition) => {
-      console.warn(
-        'You should call AFRAME.INSPECTOR.execute("entitycreate", definition) instead of Events.emit("entitycreate", definition)'
-      );
-      this.execute('entitycreate', definition);
-    });
-
     this.sceneEl.addEventListener('newScene', () => {
       this.history.clear();
     });
