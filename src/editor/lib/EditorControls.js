@@ -61,6 +61,9 @@ THREE.EditorControls = function (_object, domElement) {
   }, 100);
 
   this.focus = function (target) {
+    if (this.isOrthographic) {
+      return;
+    }
     var distance;
 
     box.setFromObject(target);
