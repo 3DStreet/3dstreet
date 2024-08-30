@@ -32,7 +32,9 @@ export default class ComponentsContainer extends React.Component {
     return (
       <div className="components">
         <CommonComponents entity={entity} />
-        <AdvancedComponents entity={entity} />
+        <div className="advancedComponentsContainer">
+          <AdvancedComponents entity={entity} />
+        </div>
       </div>
     );
   }
