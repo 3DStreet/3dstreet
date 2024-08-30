@@ -140,29 +140,16 @@ export function create3DTiles() {
       ellipsoidalHeight = parseFloat(streetGeo['ellipsoidalHeight']) || 0;
     }
 
-    if (streetGeo) {
-      AFRAME.INSPECTOR.execute('entityupdate', {
-        entity: geoLayer,
-        component: 'street-geo',
-        value: {
-          latitude: latitude,
-          longitude: longitude,
-          ellipsoidalHeight: ellipsoidalHeight,
-          maps: 'google3d'
-        }
-      });
-    } else {
-      AFRAME.INSPECTOR.execute('componentadd', {
-        entity: geoLayer,
-        component: 'street-geo',
-        value: {
-          latitude: latitude,
-          longitude: longitude,
-          ellipsoidalHeight: ellipsoidalHeight,
-          maps: 'google3d'
-        }
-      });
-    }
+    AFRAME.INSPECTOR.execute(streetGeo ? 'entityupdate' : 'componentadd', {
+      entity: geoLayer,
+      component: 'street-geo',
+      value: {
+        latitude: latitude,
+        longitude: longitude,
+        ellipsoidalHeight: ellipsoidalHeight,
+        maps: 'google3d'
+      }
+    });
   };
 
   if (AFRAME.components['loader-3dtiles']) {
