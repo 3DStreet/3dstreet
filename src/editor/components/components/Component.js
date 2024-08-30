@@ -81,8 +81,7 @@ export default class Component extends React.Component {
     if (
       confirm('Do you really want to remove component `' + componentName + '`?')
     ) {
-      this.props.entity.removeAttribute(componentName);
-      Events.emit('componentremove', {
+      AFRAME.INSPECTOR.execute('componentremove', {
         entity: this.props.entity,
         component: componentName
       });

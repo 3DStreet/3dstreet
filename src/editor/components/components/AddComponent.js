@@ -1,6 +1,5 @@
 import React from 'react';
 import PropTypes from 'prop-types';
-import Events from '../../lib/Events';
 import Select from 'react-select';
 import { sendMetric } from '../../services/ga';
 
@@ -25,8 +24,12 @@ export default class AddComponent extends React.Component {
       componentName = id ? `${componentName}__${id}` : componentName;
     }
 
-    entity.setAttribute(componentName, '');
-    Events.emit('componentadd', { entity: entity, component: componentName });
+    AFRAME.INSPECTOR.execute('componentadd', {
+      entity,
+      component: componentName,
+      value: ''
+    });
+
     sendMetric('Components', 'addComponent', componentName);
   };
 

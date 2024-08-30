@@ -23,7 +23,7 @@ export class History {
       lastCmd &&
       lastCmd.updatable &&
       cmd.updatable &&
-      lastCmd.entity === cmd.entity &&
+      lastCmd.entityId === cmd.entityId &&
       lastCmd.type === cmd.type &&
       lastCmd.component === cmd.component &&
       lastCmd.property === cmd.property;

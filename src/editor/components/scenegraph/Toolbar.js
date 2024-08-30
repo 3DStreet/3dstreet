@@ -19,7 +19,7 @@ import { SavingModal } from '../modals/SavingModal';
 import { uploadThumbnailImage } from '../modals/ScreenshotModal/ScreenshotModal.component.jsx';
 import { sendMetric } from '../../services/ga.js';
 import posthog from 'posthog-js';
-import { UndoRedo } from '../components/UndoRedo/UndoRedo.component.jsx';
+import { UndoRedo } from '../components/UndoRedo';
 // const LOCALSTORAGE_MOCAP_UI = "aframeinspectormocapuienabled";
 
 function filterHelpers(scene, visible) {
@@ -163,7 +163,6 @@ export default class Toolbar extends Component {
   newHandler = () => {
     AFRAME.INSPECTOR.selectEntity(null);
     STREET.utils.newScene();
-    Events.emit('updatescenegraph');
   };
 
   cloudSaveHandler = async ({ doSaveAs = false }) => {
@@ -337,10 +336,6 @@ export default class Toolbar extends Component {
       );
       console.error(error);
     }
-  }
-
-  addEntity() {
-    Events.emit('entitycreate', { element: 'a-entity', components: {} });
   }
 
   toggleScenePlaying = () => {
