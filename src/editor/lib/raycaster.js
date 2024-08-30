@@ -38,6 +38,7 @@ export function initRaycaster(inspector) {
   mouseCursor.addEventListener('mouseleave', onMouseLeave);
   inspector.container.addEventListener('mousedown', onMouseDown);
   inspector.container.addEventListener('mouseup', onMouseUp);
+  inspector.container.addEventListener('dblclick', onDoubleClick);
 
   inspector.sceneEl.canvas.addEventListener('mouseleave', () => {
     setTimeout(() => {
@@ -95,17 +96,30 @@ export function initRaycaster(inspector) {
     onUpPosition.fromArray(array);
   }
 
+  /**
+   * Focus on double click.
+   */
+  function onDoubleClick(event) {
+    const intersectedEl = mouseCursor.components.cursor.intersectedEl;
+    if (!intersectedEl) {
+      return;
+    }
+    Events.emit('objectfocus', intersectedEl.object3D);
+  }
+
   return {
     el: mouseCursor,
     enable: () => {
       mouseCursor.setAttribute('raycaster', 'enabled', true);
       inspector.container.addEventListener('mousedown', onMouseDown);
       inspector.container.addEventListener('mouseup', onMouseUp);
+      inspector.container.addEventListener('dblclick', onDoubleClick);
     },
     disable: () => {
       mouseCursor.setAttribute('raycaster', 'enabled', false);
       inspector.container.removeEventListener('mousedown', onMouseDown);
       inspector.container.removeEventListener('mouseup', onMouseUp);
+      inspector.container.removeEventListener('dblclick', onDoubleClick);
     }
   };
 }
