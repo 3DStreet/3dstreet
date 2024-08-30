@@ -20,9 +20,6 @@ function Inspector() {
   this.history = new History();
   this.isFirstOpen = true;
   this.modules = {};
-  this.on = Events.on.bind(Events);
-  this.emit = Events.emit.bind(Events);
-  this.off = Events.off.bind(Events);
   this.opened = false;
 
   // Wait for stuff.
