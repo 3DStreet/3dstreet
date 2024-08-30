@@ -66,6 +66,10 @@ THREE.EditorControls = function (_object, domElement) {
     }
     var distance;
 
+    // Save current camera position/quaternion
+    scope.transitionCamPosStart.copy(object.position);
+    scope.transitionCamQuaternionStart.copy(object.quaternion);
+
     box.setFromObject(target);
 
     if (box.isEmpty() === false && !isNaN(box.min.x)) {
@@ -88,8 +92,64 @@ THREE.EditorControls = function (_object, domElement) {
 
     object.lookAt(pos);
 
-    scope.dispatchEvent(changeEvent);
+    // Save end camera position/quaternion
+    scope.transitionCamPosEnd.copy(object.position);
+    scope.transitionCamQuaternionEnd.copy(object.quaternion);
+    // Restore camera position/quaternion and start transition
+    object.position.copy(scope.transitionCamPosStart);
+    object.quaternion.copy(scope.transitionCamQuaternionStart);
+    scope.transitionSpeed = 0.001;
+    scope.transitionProgress = 0;
+    scope.transitioning = true;
+    // The changeEvent is emitted at the end of the transition below
   };
+
+  function easeInOutQuad(t) {
+    return t < 0.5 ? 2 * t * t : -1 + (4 - 2 * t) * t;
+  }
+
+  this.transitioning = false;
+  this.transitionProgress = 0;
+  this.transitionCamPosStart = new THREE.Vector3();
+  this.transitionCamPosEnd = new THREE.Vector3();
+  this.transitionCamQuaternionStart = new THREE.Quaternion();
+  this.transitionCamQuaternionEnd = new THREE.Quaternion();
+  this.transitionSpeed = 0.001;
+  this.fakeComponent = {
+    isPlaying: true,
+    el: { isPlaying: true },
+    tick: (t, delta) => {
+      if (scope.enabled === false) return;
+      if (this.transitioning) {
+        this.transitionProgress += delta * this.transitionSpeed;
+        const easeInOutTransitionProgress = easeInOutQuad(
+          this.transitionProgress
+        );
+
+        // Set camera position
+        object.position.lerpVectors(
+          this.transitionCamPosStart,
+          this.transitionCamPosEnd,
+          easeInOutTransitionProgress
+        );
+
+        object.quaternion.slerpQuaternions(
+          this.transitionCamQuaternionStart,
+          this.transitionCamQuaternionEnd,
+          easeInOutTransitionProgress
+        );
+
+        if (this.transitionProgress >= 1) {
+          this.transitioning = false;
+          object.position.copy(this.transitionCamPosEnd);
+          object.quaternion.copy(this.transitionCamQuaternionEnd);
+          scope.dispatchEvent(changeEvent);
+        }
+      }
+    }
+  };
+  // Register the tick function with the render loop
+  AFRAME.scenes[0].addBehavior(this.fakeComponent);
 
   this.pan = function (delta) {
     var distance;
