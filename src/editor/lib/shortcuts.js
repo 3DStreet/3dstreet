@@ -115,6 +115,7 @@ export const Shortcuts = {
     if (!shouldCaptureKeyEvent(event) || !AFRAME.INSPECTOR.opened) {
       return;
     }
+
     if (
       (event.ctrlKey && os !== 'macos') ||
       (event.metaKey && os === 'macos')
