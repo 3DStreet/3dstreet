@@ -118,7 +118,6 @@ export default class SceneGraph extends React.Component {
   };
 
   rebuildEntityOptions = () => {
-    console.log('rebuilding entity options');
     const entities = [];
 
     const treeIterate = (element, depth) => {
