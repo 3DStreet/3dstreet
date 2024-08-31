@@ -286,7 +286,10 @@ export function Viewport(inspector) {
         object.el.addEventListener('model-loaded', listener);
       }
 
-      transformControls.attach(object);
+      if (inspector.cursor.isPlaying) {
+        // Only show transform controls when we are in pointer mode
+        transformControls.attach(object);
+      }
     }
   });
 
