@@ -721,7 +721,11 @@ export function elementToObject(element) {
         attribute.name === 'scale'
       ) {
         const values = attribute.value.split(' ').map(parseFloat);
-        const roundedValues = values.map((v) => Math.round(v * 1000) / 1000);
+        /// Round rotation values to 1 degree, position and scale to 0.001
+        const precision = attribute.name === 'rotation' ? 1 : 1000;
+        const roundedValues = values.map(
+          (v) => Math.round(v * precision) / precision
+        );
         components[attribute.name] = roundedValues.join(' ');
         continue;
       }
