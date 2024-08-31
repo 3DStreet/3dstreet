@@ -28,12 +28,7 @@ export const Shortcuts = {
 
     var keyCode = event.keyCode;
 
-    // h: help
-    if (keyCode === 72) {
-      Events.emit('openhelpmodal');
-    }
-
-    // esc: unselect entity
+    // esc: close inspector
     if (keyCode === 27) {
       if (this.inspector.selectedEntity) {
         this.inspector.selectEntity(null);
