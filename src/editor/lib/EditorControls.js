@@ -1,4 +1,3 @@
-import debounce from 'lodash-es/debounce';
 import { currentOrthoDir } from './cameras';
 
 /**
@@ -55,10 +54,6 @@ THREE.EditorControls = function (_object, domElement) {
   // events
 
   var changeEvent = { type: 'change' };
-
-  this.dispatchChange = debounce(() => {
-    scope.dispatchEvent(changeEvent);
-  }, 100);
 
   this.focus = function (target) {
     if (this.isOrthographic) {
@@ -165,7 +160,7 @@ THREE.EditorControls = function (_object, domElement) {
     object.position.add(delta);
     center.add(delta);
 
-    scope.dispatchChange();
+    scope.dispatchEvent(changeEvent);
   };
 
   var ratio = 1;
@@ -201,7 +196,7 @@ THREE.EditorControls = function (_object, domElement) {
       object.position.add(delta);
     }
 
-    scope.dispatchChange();
+    scope.dispatchEvent(changeEvent);
   };
 
   this.rotate = function (delta) {
@@ -224,7 +219,7 @@ THREE.EditorControls = function (_object, domElement) {
 
     object.lookAt(center);
 
-    scope.dispatchChange();
+    scope.dispatchEvent(changeEvent);
   };
 
   // mouse
@@ -440,7 +435,7 @@ THREE.EditorControls = function (_object, domElement) {
       object.updateMatrixWorld();
     }
 
-    scope.dispatchChange();
+    scope.dispatchEvent(changeEvent);
   };
 };
 
