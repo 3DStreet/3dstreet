@@ -1,4 +1,3 @@
-import debounce from 'lodash-es/debounce';
 import { currentOrthoDir } from './cameras';
 
 /**
@@ -56,10 +55,6 @@ THREE.EditorControls = function (_object, domElement) {
 
   var changeEvent = { type: 'change' };
 
-  this.dispatchChange = debounce(() => {
-    scope.dispatchEvent(changeEvent);
-  }, 100);
-
   this.focus = function (target) {
     if (this.isOrthographic) {
       return;
@@ -101,7 +96,6 @@ THREE.EditorControls = function (_object, domElement) {
     scope.transitionSpeed = 0.001;
     scope.transitionProgress = 0;
     scope.transitioning = true;
-    // The changeEvent is emitted at the end of the transition below
   };
 
   function easeInOutQuad(t) {
@@ -144,8 +138,8 @@ THREE.EditorControls = function (_object, domElement) {
           this.transitioning = false;
           object.position.copy(this.transitionCamPosEnd);
           object.quaternion.copy(this.transitionCamQuaternionEnd);
-          scope.dispatchEvent(changeEvent);
         }
+        scope.dispatchEvent(changeEvent);
       }
     }
   };
@@ -171,7 +165,7 @@ THREE.EditorControls = function (_object, domElement) {
     object.position.add(delta);
     center.add(delta);
 
-    scope.dispatchChange();
+    scope.dispatchEvent(changeEvent);
   };
 
   var ratio = 1;
@@ -207,7 +201,7 @@ THREE.EditorControls = function (_object, domElement) {
       object.position.add(delta);
     }
 
-    scope.dispatchChange();
+    scope.dispatchEvent(changeEvent);
   };
 
   this.rotate = function (delta) {
@@ -230,7 +224,7 @@ THREE.EditorControls = function (_object, domElement) {
 
     object.lookAt(center);
 
-    scope.dispatchChange();
+    scope.dispatchEvent(changeEvent);
   };
 
   // mouse
@@ -446,7 +440,7 @@ THREE.EditorControls = function (_object, domElement) {
       object.updateMatrixWorld();
     }
 
-    scope.dispatchChange();
+    scope.dispatchEvent(changeEvent);
   };
 };
 
