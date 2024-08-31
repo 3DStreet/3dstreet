@@ -60,7 +60,7 @@ export const Shortcuts = {
       Events.emit('togglegrid');
     }
 
-    // backspace & supr: remove selected entity
+    // backspace & delete: remove selected entity
     if (keyCode === 8 || keyCode === 46) {
       removeSelectedEntity();
     }
@@ -131,12 +131,6 @@ export const Shortcuts = {
         AFRAME.INSPECTOR.selectedEntity &&
         document.activeElement.tagName !== 'INPUT'
       ) {
-        // x: cut selected entity
-        if (event.keyCode === 88) {
-          AFRAME.INSPECTOR.entityToCopy = AFRAME.INSPECTOR.selectedEntity;
-          removeSelectedEntity(true);
-        }
-
         // c: copy selected entity
         if (event.keyCode === 67) {
           AFRAME.INSPECTOR.entityToCopy = AFRAME.INSPECTOR.selectedEntity;
@@ -149,7 +143,7 @@ export const Shortcuts = {
       }
     }
 
-    // º: toggle sidebars visibility
+    // 0: toggle sidebars visibility
     if (event.keyCode === 48) {
       Events.emit('togglesidebar', { which: 'all' });
       event.preventDefault();
