@@ -34,7 +34,6 @@ AFRAME.registerComponent('street-environment', {
       'data-layer-name',
       'Directional Light • Shadow Caster'
     );
-    this.setEnvOption();
   },
 
   update: function (oldData) {
