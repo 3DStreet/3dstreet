@@ -17,7 +17,7 @@ AFRAME.registerComponent('street-environment', {
         'cloudy'
       ]
     },
-    backgroundColor: { type: 'color', default: '#FFF' }
+    backgroundColor: { type: 'color', default: '#555555' }
   },
 
   init: function () {
@@ -99,6 +99,7 @@ AFRAME.registerComponent('street-environment', {
         );
         break;
       default: // 'color'
+        this.setLights(0.8, 2.2);
         scene.background = new THREE.Color(this.data.backgroundColor);
         scene.environment = null;
     }
