@@ -116,8 +116,9 @@ THREE.EditorControls = function (_object, domElement) {
   this.transitionCamQuaternionEnd = new THREE.Quaternion();
   this.transitionSpeed = 0.001;
   this.fakeComponent = {
-    isPlaying: true,
+    name: 'inspector-editor-controls',
     el: { isPlaying: true },
+    isPlaying: true,
     tick: (t, delta) => {
       if (scope.enabled === false) return;
       if (this.transitioning) {
@@ -149,7 +150,12 @@ THREE.EditorControls = function (_object, domElement) {
     }
   };
   // Register the tick function with the render loop
-  AFRAME.scenes[0].addBehavior(this.fakeComponent);
+  const sceneEl = AFRAME.scenes[0];
+  if (sceneEl.componentOrder) {
+    // aframe 1.6.0 an above
+    sceneEl.componentOrder.push(this.fakeComponent.name);
+  }
+  sceneEl.addBehavior(this.fakeComponent);
 
   this.pan = function (delta) {
     var distance;
