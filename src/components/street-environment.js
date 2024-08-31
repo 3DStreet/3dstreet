@@ -26,9 +26,14 @@ AFRAME.registerComponent('street-environment', {
     this.light1 =
       this.el.sceneEl.querySelector('#env-light1') ||
       this.createLight('env-light1', { type: 'ambient', color: '#FFF' });
+    this.light1.setAttribute('data-layer-name', 'Ambient Light');
     this.light2 =
       this.el.sceneEl.querySelector('#env-light2') ||
       this.createLight('env-light2', { type: 'directional', castShadow: true });
+    this.light2.setAttribute(
+      'data-layer-name',
+      'Directional Light • Shadow Caster'
+    );
     this.setEnvOption();
   },
 
@@ -102,14 +107,9 @@ AFRAME.registerComponent('street-environment', {
 
   setLights: function (intensity1, intensity2) {
     this.light1.setAttribute('light', 'intensity', intensity1);
-    this.light1.setAttribute('data-layer-name', 'Ambient Light');
     this.light2.setAttribute(
       'light',
       `intensity: ${intensity2}; castShadow: true; shadowCameraBottom: -20; shadowCameraLeft: -30; shadowCameraRight: 40; shadowCameraTop: 30; shadowMapHeight: 2048; shadowMapWidth: 2048`
-    );
-    this.light2.setAttribute(
-      'data-layer-name',
-      'Directional Light • Shadow Caster'
     );
   },
 
