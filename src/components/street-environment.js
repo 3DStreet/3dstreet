@@ -99,9 +99,12 @@ AFRAME.registerComponent('street-environment', {
         );
         break;
       default: // 'color'
-        this.setLights(0.8, 2.2);
-        scene.background = new THREE.Color(this.data.backgroundColor);
-        scene.environment = null;
+        // extra delay just in case a background texture is still being set from a previous operation
+        setTimeout(() => {
+          this.setLights(0.8, 2.2);
+          scene.background = new THREE.Color(this.data.backgroundColor);
+          scene.environment = null;
+        }, 250);
     }
   },
 
