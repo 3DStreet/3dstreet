@@ -52,7 +52,7 @@ AFRAME.registerComponent('street-environment', {
         this.setBackground(
           `${assetsPathRoot}images/skies/2048-polyhaven-wasteland_clouds_puresky.jpeg`
         );
-        this.light2.setAttribute('position', '40 56 16');
+        this.light2.setAttribute('position', '-40 56 -43');
         break;
       case 'sunny-morning':
         this.setLights(0.8, 2.2);
@@ -102,9 +102,14 @@ AFRAME.registerComponent('street-environment', {
 
   setLights: function (intensity1, intensity2) {
     this.light1.setAttribute('light', 'intensity', intensity1);
+    this.light1.setAttribute('data-layer-name', 'Ambient Light');
     this.light2.setAttribute(
       'light',
       `intensity: ${intensity2}; castShadow: true; shadowCameraBottom: -20; shadowCameraLeft: -30; shadowCameraRight: 40; shadowCameraTop: 30; shadowMapHeight: 2048; shadowMapWidth: 2048`
+    );
+    this.light2.setAttribute(
+      'data-layer-name',
+      'Directional Light • Shadow Caster'
     );
   },
 
