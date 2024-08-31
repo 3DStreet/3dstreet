@@ -21,7 +21,7 @@ AFRAME.registerComponent('street-environment', {
   },
 
   init: function () {
-    this.el.sceneEl.renderer.outputEncoding = THREE.sRGBEncoding;
+    this.el.sceneEl.renderer.outputColorSpace = THREE.SRGBColorSpace;
     this.textureLoader = new THREE.TextureLoader();
     this.light1 =
       this.el.sceneEl.querySelector('#env-light1') ||
@@ -112,7 +112,7 @@ AFRAME.registerComponent('street-environment', {
     const scene = this.el.sceneEl.object3D;
     this.textureLoader.load(imagePath, (texture) => {
       texture.mapping = THREE.EquirectangularReflectionMapping;
-      texture.encoding = THREE.sRGBEncoding;
+      texture.colorSpace = THREE.SRGBColorSpace;
       scene.background = texture;
       scene.environment = texture;
     });
