@@ -37,7 +37,7 @@ function newScene(
     'Environment'
   );
   environmentEl.removeAttribute('street-environment');
-  environmentEl.setAttribute('street-environment', 'preset', 'day');
+  environmentEl.setAttribute('street-environment');
   const geoLayer = checkOrCreateEntity(
     'reference-layers',
     AFRAME.scenes[0],
