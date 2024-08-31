@@ -96,7 +96,6 @@ THREE.EditorControls = function (_object, domElement) {
     scope.transitionSpeed = 0.001;
     scope.transitionProgress = 0;
     scope.transitioning = true;
-    // The changeEvent is emitted at the end of the transition below
   };
 
   function easeInOutQuad(t) {
@@ -138,8 +137,8 @@ THREE.EditorControls = function (_object, domElement) {
           this.transitioning = false;
           object.position.copy(this.transitionCamPosEnd);
           object.quaternion.copy(this.transitionCamQuaternionEnd);
-          scope.dispatchEvent(changeEvent);
         }
+        scope.dispatchEvent(changeEvent);
       }
     }
   };
