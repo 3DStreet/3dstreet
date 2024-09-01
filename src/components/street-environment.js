@@ -98,12 +98,9 @@ AFRAME.registerComponent('street-environment', {
         );
         break;
       default: // 'color'
-        // extra delay just in case a background texture is still being set from a previous operation
-        setTimeout(() => {
-          this.setLights(0.8, 2.2);
-          scene.background = new THREE.Color(this.data.backgroundColor);
-          scene.environment = null;
-        }, 250);
+        this.setLights(0.8, 2.2);
+        scene.background = new THREE.Color(this.data.backgroundColor);
+        scene.environment = null;
     }
   },
 
@@ -118,10 +115,18 @@ AFRAME.registerComponent('street-environment', {
   setBackground: function (imagePath) {
     const scene = this.el.sceneEl.object3D;
     this.textureLoader.load(imagePath, (texture) => {
-      texture.mapping = THREE.EquirectangularReflectionMapping;
-      texture.colorSpace = THREE.SRGBColorSpace;
-      scene.background = texture;
-      scene.environment = texture;
+      // If we changed to color preset in the meantime, ignore this texture
+      if (this.data.preset === 'color') {
+        texture.dispose();
+      } else {
+        if (scene.background?.isTexture) {
+          scene.background.dispose();
+        }
+        texture.mapping = THREE.EquirectangularReflectionMapping;
+        texture.colorSpace = THREE.SRGBColorSpace;
+        scene.background = texture;
+        scene.environment = texture;
+      }
     });
   },
 
