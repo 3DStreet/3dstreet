@@ -40,12 +40,7 @@ const ProfileModal = ({ isOpen, onClose }) => {
   };
 
   return (
-    <Modal
-      className={styles.modalWrapper}
-      isOpen={isOpen}
-      onClose={onClose}
-      extraCloseKeyCode={72}
-    >
+    <Modal className={styles.modalWrapper} isOpen={isOpen} onClose={onClose}>
       <div className={styles.contentWrapper}>
         <h2 className={styles.title}>3DStreet Cloud Account</h2>
         <div className={styles.content}>
