@@ -671,14 +671,6 @@ span {
   background-color: variables.$purple-200;
 }
 
-.outliner.hide #layers-title:active span {
-  display: block;
-  font-size: 18px;
-  color: variables.$lightgray-200;
-  background-position: left;
-  background-image: url(variables.$iconLayersActive) !important;
-}
-
 .outliner.hide #toggle-rightbar {
   background: rgba(50, 50, 50, 0.5) !important;
   backdrop-filter: blur(24px);
