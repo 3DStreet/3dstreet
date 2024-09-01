@@ -102,6 +102,9 @@ function getAttributes(entity) {
   if (entity.getAttribute('data-layer-name')) {
     elemObj['data-layer-name'] = entity.getAttribute('data-layer-name');
   }
+  if (entity.getAttribute('visible') === false) {
+    elemObj['visible'] = false;
+  }
   const entityComponents = entity.components;
 
   if (entityComponents) {
@@ -432,6 +435,10 @@ function createEntityFromObj(entityData, parentEl) {
 
   if (entityData['data-layer-name']) {
     entity.setAttribute('data-layer-name', entityData['data-layer-name']);
+  }
+
+  if (entityData['visible'] === false) {
+    entity.setAttribute('visible', false);
   }
 
   entity.addEventListener('loaded', () => {
