@@ -21,7 +21,6 @@ AFRAME.registerComponent('street-environment', {
   },
 
   init: function () {
-    this.el.sceneEl.renderer.outputColorSpace = THREE.SRGBColorSpace;
     this.textureLoader = new THREE.TextureLoader();
     this.light1 =
       this.el.sceneEl.querySelector('#env-light1') ||
