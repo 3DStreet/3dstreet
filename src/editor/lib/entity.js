@@ -699,7 +699,8 @@ export function elementToObject(element) {
     for (const attribute of element.attributes) {
       if (
         attribute.value === '' &&
-        (attribute.name === 'position' ||
+        (attribute.name === 'visible' ||
+          attribute.name === 'position' ||
           attribute.name === 'rotation' ||
           attribute.name === 'scale')
       ) {
