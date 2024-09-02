@@ -108,7 +108,11 @@ AFRAME.registerComponent('street-environment', {
     const scene = this.el.sceneEl.object3D;
     this.textureLoader.load(imagePath, (texture) => {
       // If we changed to color preset in the meantime or we switched to an other image, ignore this texture
-      if (this.data.preset === 'color' || imagePath !== this.backgroundImage) {
+      if (
+        this.data.preset === 'color' ||
+        imagePath !== this.backgroundImage ||
+        this.el.parentNode === null
+      ) {
         texture.dispose();
       } else {
         if (scene.background?.isTexture) {
