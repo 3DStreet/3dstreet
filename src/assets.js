@@ -28,7 +28,13 @@ function buildAssetHTML(assetUrl, categories) {
         <a-mixin shadow id="bus-stop" gltf-part="src: #streetProps; part: transit-shelter-1"></a-mixin>
         <a-mixin shadow id="pride-flag" position="0.409 3.345 0" rotation="0 0 0" scale="0.5 0.75 0" geometry="width:2;height:2;primitive:plane" material="side:double; src:${assetUrl}materials/rainbow-flag-poles_512.png;transparent: true;"></a-mixin>
         <a-mixin shadow id="wayfinding-box" geometry="primitive: box; height: 2; width: 0.84; depth: 0.1" material="color: gray"></a-mixin>
-      `,
+        <a-mixin shadow id="trash-bin" gltf-model="url(${assetUrl}sets/uoregon/gltf-exports/draco/bin.glb)"></a-mixin>
+        <a-mixin shadow id="lending-library" gltf-model="url(${assetUrl}sets/uoregon/gltf-exports/draco/lending-library.glb)"></a-mixin>
+        <a-mixin shadow id="residential-mailbox" gltf-model="url(${assetUrl}sets/uoregon/gltf-exports/draco/residential-mailbox.glb)"></a-mixin>
+        <a-mixin shadow id="USPS-mailbox" gltf-model="url(${assetUrl}sets/uoregon/gltf-exports/draco/USPS-mailbox.glb)"></a-mixin>
+        <a-mixin shadow id="picnic-bench" gltf-model="url(${assetUrl}sets/uoregon/gltf-exports/draco/picnic-bench.glb)"></a-mixin>
+        <a-mixin shadow id="large-parklet" gltf-model="url(${assetUrl}sets/uoregon/gltf-exports/draco/large-parklet-seating.glb)"></a-mixin>
+        `,
     people: `
         <!-- human characters -->
         <a-asset-item id="humans" src="${assetUrl}sets/human-characters-poses-1/gltf-exports/draco/human-characters-poses-1.glb"></a-asset-item>
@@ -213,6 +219,8 @@ function buildAssetHTML(assetUrl, categories) {
         <a-mixin shadow id="street-element-traffic-island" scale="1.5 1.5 1.5" rotation="0 0 0" gltf-model="url(${assetUrl}sets/uoregon/gltf-exports/draco/curb-traffic-island.glb)"></a-mixin>
         <a-mixin shadow id="street-element-speed-hump" scale="1.5 1.5 1.5" rotation="0 0 0" gltf-model="url(${assetUrl}sets/uoregon/gltf-exports/draco/speed-hump.glb)"></a-mixin>
         <a-mixin shadow id="crosswalk-zebra-box" geometry="primitive: box; height: 0.1; width: 2; depth: 10" material="src: url(${assetUrl}materials/markings-crosswalk.png)"></a-mixin>
+        <a-mixin shadow id="traffic-calming-bumps" gltf-model="url(${assetUrl}sets/uoregon/gltf-exports/draco/traffic-calming-bumps.glb)"></a-mixin>
+        <a-mixin shadow id="corner-island" gltf-model="url(${assetUrl}sets/uoregon/gltf-exports/draco/corner-island.glb)"></a-mixin>
         `,
     sky: `
         <!-- sky -->
