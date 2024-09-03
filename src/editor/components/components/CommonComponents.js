@@ -7,15 +7,6 @@ import Events from '../../lib/Events';
 import Clipboard from 'clipboard';
 import { saveBlob } from '../../lib/utils';
 
-// @todo Take this out and use updateEntity?
-// function changeId(componentName, value) {
-//   var entity = AFRAME.INSPECTOR.selectedEntity;
-//   if (entity.id !== value) {
-//     entity.id = value;
-//     Events.emit('entityidchange', entity);
-//   }
-// }
-
 export default class CommonComponents extends React.Component {
   static propTypes = {
     entity: PropTypes.object
@@ -97,36 +88,6 @@ export default class CommonComponents extends React.Component {
     if (!entity) {
       return <div />;
     }
-    // const entityButtons = (
-    //   <div>
-    //     <a
-    //       title="Export entity to GLTF"
-    //       className="gltfIcon"
-    //       onClick={(event) => {
-    //         this.exportToGLTF();
-    //         event.preventDefault();
-    //         event.stopPropagation();
-    //       }}
-    //     >
-    //       <img src={GLTFIcon} />
-    //     </a>
-    //     <a
-    //       title="Copy entity HTML to clipboard"
-    //       data-action="copy-entity-to-clipboard"
-    //       className="button fa fa-clipboard"
-    //     />
-    //   </div>
-    // );
-
-    // const classNameID = classnames({
-    //   propertyRow: true,
-    //   hide: true
-    // });
-
-    // const classNameClass = classnames({
-    //   propertyRow: true,
-    //   hide: true
-    // });
 
     return (
       <div className="collapsible-content">{this.renderCommonAttributes()}</div>
