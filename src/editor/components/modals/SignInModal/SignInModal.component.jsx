@@ -4,12 +4,7 @@ import styles from './SignInModal.module.scss';
 import { signIn, signInMicrosoft } from '../../../api';
 
 const SignInModal = ({ isOpen, onClose }) => (
-  <Modal
-    className={styles.modalWrapper}
-    isOpen={isOpen}
-    onClose={onClose}
-    extraCloseKeyCode={72}
-  >
+  <Modal className={styles.modalWrapper} isOpen={isOpen} onClose={onClose}>
     <div className={styles.contentWrapper}>
       <h2 className={styles.title}>Sign in to 3DStreet Cloud</h2>
       <div className={styles.content}>

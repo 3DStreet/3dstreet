@@ -60,12 +60,7 @@ const PaymentModal = ({ isOpen, onClose }) => {
   };
 
   return (
-    <Modal
-      className={styles.modalWrapper}
-      isOpen={isOpen}
-      onClose={onClose}
-      extraCloseKeyCode={72}
-    >
+    <Modal className={styles.modalWrapper} isOpen={isOpen} onClose={onClose}>
       <div className={styles.paymentDetails}>
         <h3>Unlock Geospatial Features with a free 30 day trial</h3>
         <h2>

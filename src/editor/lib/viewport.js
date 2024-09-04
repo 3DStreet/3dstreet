@@ -212,6 +212,10 @@ export function Viewport(inspector) {
   controls.rotationSpeed = 0.0035;
   controls.zoomSpeed = 0.05;
   controls.setAspectRatio(sceneEl.canvas.width / sceneEl.canvas.height);
+  controls.addEventListener('change', () => {
+    transformControls.update(true); // true is updateScale
+    Events.emit('camerachanged');
+  });
 
   sceneEl.addEventListener('newScene', () => {
     controls.resetZoom();
@@ -282,13 +286,15 @@ export function Viewport(inspector) {
         object.el.addEventListener('model-loaded', listener);
       }
 
-      transformControls.attach(object);
+      if (inspector.cursor.isPlaying) {
+        // Only show transform controls when we are in pointer mode
+        transformControls.attach(object);
+      }
     }
   });
 
   Events.on('objectfocus', (object) => {
     controls.focus(object);
-    transformControls.update();
   });
 
   Events.on('geometrychanged', (object) => {

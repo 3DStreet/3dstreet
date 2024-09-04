@@ -1,4 +1,3 @@
-import debounce from 'lodash-es/debounce';
 import { currentOrthoDir } from './cameras';
 
 /**
@@ -56,10 +55,6 @@ THREE.EditorControls = function (_object, domElement) {
 
   var changeEvent = { type: 'change' };
 
-  this.dispatchChange = debounce(() => {
-    scope.dispatchEvent(changeEvent);
-  }, 100);
-
   this.focus = function (target) {
     if (this.isOrthographic) {
       return;
@@ -101,7 +96,6 @@ THREE.EditorControls = function (_object, domElement) {
     scope.transitionSpeed = 0.001;
     scope.transitionProgress = 0;
     scope.transitioning = true;
-    // The changeEvent is emitted at the end of the transition below
   };
 
   function easeInOutQuad(t) {
@@ -116,8 +110,9 @@ THREE.EditorControls = function (_object, domElement) {
   this.transitionCamQuaternionEnd = new THREE.Quaternion();
   this.transitionSpeed = 0.001;
   this.fakeComponent = {
-    isPlaying: true,
+    name: 'inspector-editor-controls',
     el: { isPlaying: true },
+    isPlaying: true,
     tick: (t, delta) => {
       if (scope.enabled === false) return;
       if (this.transitioning) {
@@ -143,13 +138,18 @@ THREE.EditorControls = function (_object, domElement) {
           this.transitioning = false;
           object.position.copy(this.transitionCamPosEnd);
           object.quaternion.copy(this.transitionCamQuaternionEnd);
-          scope.dispatchEvent(changeEvent);
         }
+        scope.dispatchEvent(changeEvent);
       }
     }
   };
   // Register the tick function with the render loop
-  AFRAME.scenes[0].addBehavior(this.fakeComponent);
+  const sceneEl = AFRAME.scenes[0];
+  if (sceneEl.componentOrder) {
+    // aframe 1.6.0 an above
+    sceneEl.componentOrder.push(this.fakeComponent.name);
+  }
+  sceneEl.addBehavior(this.fakeComponent);
 
   this.pan = function (delta) {
     var distance;
@@ -165,7 +165,7 @@ THREE.EditorControls = function (_object, domElement) {
     object.position.add(delta);
     center.add(delta);
 
-    scope.dispatchChange();
+    scope.dispatchEvent(changeEvent);
   };
 
   var ratio = 1;
@@ -201,7 +201,7 @@ THREE.EditorControls = function (_object, domElement) {
       object.position.add(delta);
     }
 
-    scope.dispatchChange();
+    scope.dispatchEvent(changeEvent);
   };
 
   this.rotate = function (delta) {
@@ -224,7 +224,7 @@ THREE.EditorControls = function (_object, domElement) {
 
     object.lookAt(center);
 
-    scope.dispatchChange();
+    scope.dispatchEvent(changeEvent);
   };
 
   // mouse
@@ -440,7 +440,7 @@ THREE.EditorControls = function (_object, domElement) {
       object.updateMatrixWorld();
     }
 
-    scope.dispatchChange();
+    scope.dispatchEvent(changeEvent);
   };
 };
 
