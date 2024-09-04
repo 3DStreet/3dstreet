@@ -1,4 +1,4 @@
-/* global AFRAME */
+/* global AFRAME, THREE */
 
 AFRAME.registerComponent('street-environment', {
   schema: {
@@ -17,140 +17,120 @@ AFRAME.registerComponent('street-environment', {
         'cloudy'
       ]
     },
-    backgroundColor: { type: 'color', default: '#FFF' }
+    backgroundColor: { type: 'color', default: '#555555' }
   },
-  setEnvOption: function () {
-    const sky = this.sky;
-    const light1 = this.light1;
-    const light2 = this.light2;
-    const assetsPathRoot = '//assets.3dstreet.app/';
 
-    sky.setAttribute('radius', 5000);
-    sky.setAttribute('hide-on-enter-ar', '');
-
-    if (this.data.preset === 'night') {
-      light1.setAttribute('light', 'intensity', 0.5);
-      light2.setAttribute('light', 'intensity', 0.15);
-      sky.setAttribute('visible', true);
-      sky.setAttribute('color', '#444');
-      sky.setAttribute('src', '#sky-night');
-      sky.setAttribute('rotation', '0 0 0');
-    } else if (this.data.preset === 'day') {
-      // TODO: create a parent with children
-      light1.setAttribute('light', 'intensity', 0.8);
-      sky.setAttribute('visible', true);
-      sky.setAttribute('color', '#FFF');
-      sky.setAttribute('src', '#sky');
-      sky.setAttribute('rotation', '0 20 0');
-      light2.setAttribute(
-        'light',
-        'intensity: 2.2; castShadow: true; shadowCameraBottom: -20; shadowCameraLeft: -30; shadowCameraRight: 40; shadowCameraTop: 30; shadowMapHeight: 2048; shadowMapWidth: 2048'
-      );
-      light2.setAttribute('position', '-40 56 -16');
-    } else if (this.data.preset === 'sunny-morning') {
-      light1.setAttribute('light', 'intensity', 0.8);
-      light2.setAttribute(
-        'light',
-        'intensity: 2.2; castShadow: true; shadowCameraBottom: -20; shadowCameraLeft: -30; shadowCameraRight: 40; shadowCameraTop: 30; shadowMapHeight: 2048; shadowMapWidth: 2048'
-      );
-      light2.setAttribute('position', '-60 56 -16');
-      sky.setAttribute('visible', true);
-      sky.setAttribute('color', '#FFF');
-      sky.setAttribute(
-        'src',
-        `url(${assetsPathRoot}images/skies/2048-polyhaven-qwantani_puresky-sdr.jpeg)`
-      );
-      sky.setAttribute('rotation', '0 0 0');
-    } else if (this.data.preset === 'cloudy-afternoon') {
-      light1.setAttribute('light', 'intensity', 2);
-      light2.setAttribute('light', 'intensity', 0.6);
-      sky.setAttribute('visible', true);
-      sky.setAttribute('color', '#FFF');
-      sky.setAttribute(
-        'src',
-        `url(${assetsPathRoot}images/skies/2048-mud_road_puresky-sdr.jpeg)`
-      );
-      sky.setAttribute('rotation', '0 0 0');
-    } else if (this.data.preset === 'sunny-afternoon') {
-      light1.setAttribute('light', 'intensity', 2);
-      light2.setAttribute(
-        'light',
-        'intensity: 2.2; castShadow: true; shadowCameraBottom: -20; shadowCameraLeft: -30; shadowCameraRight: 40; shadowCameraTop: 30; shadowMapHeight: 2048; shadowMapWidth: 2048'
-      );
-      light2.setAttribute('position', '60 56 -16');
-      sky.setAttribute('visible', true);
-      sky.setAttribute('color', '#FFF');
-      sky.setAttribute(
-        'src',
-        `url(${assetsPathRoot}images/skies/2048-kloofendal_43d_clear_puresky-sdr.jpeg)`
-      );
-      sky.setAttribute('rotation', '0 0 0');
-    } else if (this.data.preset === 'sunny-noon') {
-      light1.setAttribute('light', 'intensity', 2);
-      light2.setAttribute(
-        'light',
-        'intensity: 2.2; castShadow: true; shadowCameraBottom: -20; shadowCameraLeft: -30; shadowCameraRight: 40; shadowCameraTop: 30; shadowMapHeight: 2048; shadowMapWidth: 2048'
-      );
-      light2.setAttribute('position', '5 56 -16');
-      sky.setAttribute('visible', true);
-      sky.setAttribute('color', '#FFF');
-      sky.setAttribute(
-        'src',
-        `url(${assetsPathRoot}images/skies/2048-kloppenheim_05_puresky-sdr.jpeg)`
-      );
-      sky.setAttribute('rotation', '0 0 0');
-    } else if (this.data.preset === 'foggy') {
-      light1.setAttribute('light', 'intensity', 2);
-      light2.setAttribute('light', 'intensity: 0.6; castShadow: false;');
-      sky.setAttribute('visible', true);
-      sky.setAttribute('color', '#FFF');
-      sky.setAttribute(
-        'src',
-        `url(${assetsPathRoot}images/skies/2048-kloofendal_misty_morning_puresky-sdr.jpeg)`
-      );
-      sky.setAttribute('rotation', '0 0 0');
-    } else if (this.data.preset === 'cloudy') {
-      light1.setAttribute('light', 'intensity', 2);
-      light2.setAttribute('light', 'intensity', 0.6);
-      sky.setAttribute('visible', true);
-      sky.setAttribute('color', '#FFF');
-      sky.setAttribute(
-        'src',
-        `url(${assetsPathRoot}images/skies/2048-kloofendal_48d_partly_cloudy_puresky-sdr.jpeg)`
-      );
-      sky.setAttribute('rotation', '0 0 0');
-    } else {
-      // color
-      sky.setAttribute('visible', false);
-      this.scene.setAttribute('background', 'color', this.data.backgroundColor);
-    }
-  },
   init: function () {
-    const el = this.el;
-    this.scene = document.querySelector('a-scene');
-    this.light1 = document.createElement('a-entity');
-    const light1 = this.light1;
-    light1.setAttribute('id', 'env-light1');
-    light1.setAttribute('light', { type: 'ambient', color: '#FFF' });
-    el.appendChild(light1);
-
-    this.light2 = document.createElement('a-entity');
-    const light2 = this.light2;
-    light2.setAttribute('id', 'env-light2');
-    light2.setAttribute('position', '-60 56 -16');
-    light2.setAttribute(
-      'light',
-      'intensity: 2.2; castShadow: true; shadowCameraBottom: -20; shadowCameraLeft: -30; shadowCameraRight: 40; shadowCameraTop: 30; shadowMapHeight: 2048; shadowMapWidth: 2048'
+    this.textureLoader = new THREE.TextureLoader();
+    this.light1 =
+      this.el.sceneEl.querySelector('#env-light1') ||
+      this.createLight('env-light1', { type: 'ambient', color: '#FFF' });
+    this.light1.setAttribute('data-layer-name', 'Ambient Light');
+    this.light2 =
+      this.el.sceneEl.querySelector('#env-light2') ||
+      this.createLight('env-light2', { type: 'directional', castShadow: true });
+    this.light2.setAttribute(
+      'data-layer-name',
+      'Directional Light • Shadow Caster'
     );
-    el.appendChild(light2);
-
-    this.sky = document.createElement('a-sky');
-    const sky = this.sky;
-    sky.setAttribute('id', 'env-sky');
-    sky.setAttribute('data-ignore-raycaster', '');
-    el.appendChild(sky);
   },
+
   update: function (oldData) {
     this.setEnvOption();
+  },
+
+  setEnvOption: function () {
+    const assetsPathRoot = '//assets.3dstreet.app/';
+    const scene = this.el.sceneEl.object3D;
+
+    switch (this.data.preset) {
+      case 'night':
+        this.setLights(0.5, 0.15);
+        this.backgroundImage = `${assetsPathRoot}images/AdobeStock_286725174-min.jpeg`;
+        this.setBackground(this.backgroundImage);
+        break;
+      case 'day':
+        this.setLights(0.8, 2.2);
+        this.backgroundImage = `${assetsPathRoot}images/skies/2048-polyhaven-wasteland_clouds_puresky.jpeg`;
+        this.setBackground(this.backgroundImage);
+        this.light2.setAttribute('position', '-40 56 -43');
+        break;
+      case 'sunny-morning':
+        this.setLights(0.8, 2.2);
+        this.backgroundImage = `${assetsPathRoot}images/skies/2048-polyhaven-qwantani_puresky-sdr.jpeg`;
+        this.setBackground(this.backgroundImage);
+        this.light2.setAttribute('position', '-60 56 -16');
+        break;
+      case 'cloudy-afternoon':
+        this.setLights(2, 0.6);
+        this.backgroundImage = `${assetsPathRoot}images/skies/2048-mud_road_puresky-sdr.jpeg`;
+        this.setBackground(this.backgroundImage);
+        break;
+      case 'sunny-afternoon':
+        this.setLights(2, 2.2);
+        this.backgroundImage = `${assetsPathRoot}images/skies/2048-kloofendal_43d_clear_puresky-sdr.jpeg`;
+        this.setBackground(this.backgroundImage);
+        this.light2.setAttribute('position', '60 56 -16');
+        break;
+      case 'sunny-noon':
+        this.setLights(2, 2.2);
+        this.backgroundImage = `${assetsPathRoot}images/skies/2048-kloppenheim_05_puresky-sdr.jpeg`;
+        this.setBackground(this.backgroundImage);
+        this.light2.setAttribute('position', '5 56 -16');
+        break;
+      case 'foggy':
+        this.setLights(2, 0.6);
+        this.backgroundImage = `${assetsPathRoot}images/skies/2048-kloofendal_misty_morning_puresky-sdr.jpeg`;
+        this.setBackground(this.backgroundImage);
+        this.light2.setAttribute('light', 'castShadow', false);
+        break;
+      case 'cloudy':
+        this.setLights(2, 0.6);
+        this.backgroundImage = `${assetsPathRoot}images/skies/2048-kloofendal_48d_partly_cloudy_puresky-sdr.jpeg`;
+        this.setBackground(this.backgroundImage);
+        break;
+      default: // 'color'
+        this.setLights(0.8, 2.2);
+        scene.background = new THREE.Color(this.data.backgroundColor);
+        scene.environment = null;
+    }
+  },
+
+  setLights: function (intensity1, intensity2) {
+    this.light1.setAttribute('light', 'intensity', intensity1);
+    this.light2.setAttribute(
+      'light',
+      `intensity: ${intensity2}; castShadow: true; shadowCameraBottom: -20; shadowCameraLeft: -30; shadowCameraRight: 40; shadowCameraTop: 30; shadowMapHeight: 2048; shadowMapWidth: 2048`
+    );
+  },
+
+  setBackground: function (imagePath) {
+    const scene = this.el.sceneEl.object3D;
+    this.textureLoader.load(imagePath, (texture) => {
+      // If we changed to color preset in the meantime or we switched to an other image, ignore this texture
+      if (
+        this.data.preset === 'color' ||
+        imagePath !== this.backgroundImage ||
+        this.el.parentNode === null
+      ) {
+        texture.dispose();
+      } else {
+        if (scene.background?.isTexture) {
+          scene.background.dispose();
+        }
+        texture.mapping = THREE.EquirectangularReflectionMapping;
+        texture.colorSpace = THREE.SRGBColorSpace;
+        scene.background = texture;
+        scene.environment = texture;
+      }
+    });
+  },
+
+  createLight: function (id, attributes) {
+    const light = document.createElement('a-entity');
+    light.setAttribute('id', id);
+    light.setAttribute('light', attributes);
+    this.el.appendChild(light);
+    return light;
   }
 });

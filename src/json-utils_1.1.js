@@ -645,6 +645,7 @@ function inputStreetmix() {
     'streetmixStreetURL',
     streetmixURL
   );
+  AFRAME.scenes[0].emit('newScene');
 }
 
 STREET.utils.inputStreetmix = inputStreetmix;
@@ -682,6 +683,7 @@ function createElementsFromJSON(streetJSON) {
 
   createEntities(streetObject.data, streetContainerEl);
   STREET.notify.successMessage('Scene loaded from JSON');
+  AFRAME.scenes[0].emit('newScene');
 }
 
 STREET.utils.createElementsFromJSON = createElementsFromJSON;

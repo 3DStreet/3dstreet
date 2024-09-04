@@ -184,7 +184,6 @@ const ScenesModal = ({ isOpen, onClose, initialTab = 'owner', delay }) => {
       className={styles.modalWrapper}
       isOpen={isOpen}
       onClose={onClose}
-      extraCloseKeyCode={72}
       currentUser={currentUser}
       selectedTab={selectedTab}
       title="Open scene"

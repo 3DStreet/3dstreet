@@ -163,6 +163,7 @@ export default class Toolbar extends Component {
   newHandler = () => {
     AFRAME.INSPECTOR.selectEntity(null);
     STREET.utils.newScene();
+    AFRAME.scenes[0].emit('newScene');
   };
 
   cloudSaveHandler = async ({ doSaveAs = false }) => {
@@ -370,13 +371,11 @@ export default class Toolbar extends Component {
     return (
       <div id="toolbar">
         <div className="toolbarActions">
-          {this.props.currentUser?.isPro && (
-            <div>
-              <Button leadingIcon={<Edit24Icon />} onClick={this.newHandler}>
-                <div className="hideInLowResolution">New</div>
-              </Button>
-            </div>
-          )}
+          <div>
+            <Button leadingIcon={<Edit24Icon />} onClick={this.newHandler}>
+              <div className="hideInLowResolution">New</div>
+            </Button>
+          </div>
           {this.state.showSaveBtn && this.props.currentUser ? (
             <div className="saveButtonWrapper" ref={this.saveButtonRef}>
               <Button
