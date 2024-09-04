@@ -3,7 +3,7 @@ import PropTypes from 'prop-types';
 import Component from './Component';
 import DEFAULT_COMPONENTS from './DefaultComponents';
 import { Button } from '../components';
-
+import posthog from 'posthog-js';
 const AdvancedComponents = ({ entity }) => {
   const [showAdvanced, setShowAdvanced] = useState(false);
 
@@ -14,6 +14,7 @@ const AdvancedComponents = ({ entity }) => {
   });
 
   const toggleAdvanced = () => {
+    posthog.capture('toggleAdvanced', { showAdvanced });
     setShowAdvanced(!showAdvanced);
   };
 

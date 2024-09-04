@@ -3,9 +3,11 @@ import { Button } from '../components';
 import Events from '../../lib/Events';
 import AdvancedComponents from './AdvancedComponents';
 import PropertyRow from './PropertyRow';
+import posthog from 'posthog-js';
 
 const GeoSidebar = ({ entity }) => {
   const openGeoModal = () => {
+    posthog.capture('openGeoModalFromSidebar');
     Events.emit('opengeomodal', { entity });
   };
 
@@ -16,6 +18,21 @@ const GeoSidebar = ({ entity }) => {
     <div className="geo-sidebar">
       <div className="geo-controls">
         <div className="details">
+          <div className="propertyRow">
+            {entity && entity.components && entity.components['street-geo'] ? (
+              <>
+                <Button variant="toolbtn" onClick={openGeoModal}>
+                  Change Location
+                </Button>
+              </>
+            ) : (
+              <div>
+                <Button variant="toolbtn" onClick={openGeoModal}>
+                  Set Location
+                </Button>
+              </div>
+            )}
+          </div>
           {component && component.schema && component.data && (
             <PropertyRow
               key="maps"
@@ -28,22 +45,11 @@ const GeoSidebar = ({ entity }) => {
               entity={entity}
             />
           )}
-          <div className="propertyRow">
-            {entity && entity.components && entity.components['street-geo'] ? (
-              <>
-                <Button variant="toolbtn" onClick={openGeoModal}>
-                  Change Location
-                </Button>
-                <AdvancedComponents entity={entity} />
-              </>
-            ) : (
-              <div>
-                <Button variant="toolbtn" onClick={openGeoModal}>
-                  Set Location
-                </Button>
-              </div>
-            )}
-          </div>
+          {entity && entity.components && entity.components['street-geo'] && (
+            <div className="propertyRow">
+              <AdvancedComponents entity={entity} />
+            </div>
+          )}
         </div>
       </div>
     </div>
