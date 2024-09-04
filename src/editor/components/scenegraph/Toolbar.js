@@ -163,6 +163,7 @@ export default class Toolbar extends Component {
   newHandler = () => {
     AFRAME.INSPECTOR.selectEntity(null);
     STREET.utils.newScene();
+    AFRAME.scenes[0].emit('newScene');
   };
 
   cloudSaveHandler = async ({ doSaveAs = false }) => {

@@ -29,7 +29,11 @@ export default class Entity extends React.Component {
       entity.tagName.toLowerCase() === 'a-scene'
         ? entity.object3D.visible
         : entity.getAttribute('visible');
-    entity.setAttribute('visible', !visible);
+    AFRAME.INSPECTOR.execute('entityupdate', {
+      entity,
+      component: 'visible',
+      value: !visible
+    });
   };
 
   render() {
