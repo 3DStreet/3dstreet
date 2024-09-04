@@ -39,8 +39,8 @@ export default class SceneGraph extends React.Component {
     );
   }
 
-  onMixinUpdate = (detail) => {
-    if (detail.component === 'mixin') {
+  onEntityUpdate = (detail) => {
+    if (detail.component === 'mixin' || detail.component === 'visible') {
       this.rebuildEntityOptions();
     }
   };
@@ -54,14 +54,14 @@ export default class SceneGraph extends React.Component {
   componentDidMount() {
     this.rebuildEntityOptions();
     Events.on('entityidchange', this.rebuildEntityOptions);
-    Events.on('entityupdate', this.onMixinUpdate);
+    Events.on('entityupdate', this.onEntityUpdate);
     document.addEventListener('child-attached', this.onChildAttachedDetached);
     document.addEventListener('child-detached', this.onChildAttachedDetached);
   }
 
   componentWillUnmount() {
     Events.off('entityidchange', this.rebuildEntityOptions);
-    Events.off('entityupdate', this.onMixinUpdate);
+    Events.off('entityupdate', this.onEntityUpdate);
     document.removeEventListener(
       'child-attached',
       this.onChildAttachedDetached
