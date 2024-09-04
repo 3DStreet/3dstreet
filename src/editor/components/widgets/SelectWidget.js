@@ -39,6 +39,7 @@ export default class SelectWidget extends React.Component {
     const options = this.props.options.map((value) => {
       return { value: value, label: value };
     });
+    console.log(options);
 
     return (
       <Select

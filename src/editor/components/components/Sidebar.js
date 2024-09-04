@@ -9,6 +9,8 @@ import capitalize from 'lodash-es/capitalize';
 import classnames from 'classnames';
 import { ArrowRightIcon, LayersIcon } from '../../icons';
 import { sendMetric } from '../../services/ga';
+import GeoSidebar from './GeoSidebar'; // Make sure to create and import this new component
+
 export default class Sidebar extends React.Component {
   static propTypes = {
     entity: PropTypes.object,
@@ -66,7 +68,6 @@ export default class Sidebar extends React.Component {
   render() {
     const entity = this.props.entity;
     const visible = this.props.visible;
-    // Rightbar class names
     const className = classnames({
       outliner: true,
       hide: this.state.rightBarHide
@@ -91,22 +92,28 @@ export default class Sidebar extends React.Component {
                 </div>
               </div>
               <div className="scroll">
-                {!!entity.mixinEls.length && <Mixins entity={entity} />}
-                <div id="sidebar-buttons">
-                  <Button
-                    variant={'toolbtn'}
-                    onClick={() => cloneEntity(entity)}
-                  >
-                    Duplicate
-                  </Button>
-                  <Button
-                    variant={'toolbtn'}
-                    onClick={() => removeSelectedEntity()}
-                  >
-                    Delete
-                  </Button>
-                </div>
-                <ComponentsContainer entity={entity} />
+                {entity.id !== 'reference-layers' ? (
+                  <>
+                    {!!entity.mixinEls.length && <Mixins entity={entity} />}
+                    <div id="sidebar-buttons">
+                      <Button
+                        variant={'toolbtn'}
+                        onClick={() => cloneEntity(entity)}
+                      >
+                        Duplicate
+                      </Button>
+                      <Button
+                        variant={'toolbtn'}
+                        onClick={() => removeSelectedEntity()}
+                      >
+                        Delete
+                      </Button>
+                    </div>
+                    <ComponentsContainer entity={entity} />
+                  </>
+                ) : (
+                  <GeoSidebar entity={entity} />
+                )}
               </div>
             </>
           ) : (
