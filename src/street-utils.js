@@ -74,8 +74,6 @@ function newScene(
       window.location.hash = '';
     });
   }
-
-  AFRAME.scenes[0].emit('newScene');
 }
 
 STREET.utils.newScene = newScene;
