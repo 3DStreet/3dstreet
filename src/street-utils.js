@@ -31,19 +31,23 @@ function newScene(
   clearUrlHash = true,
   addDefaultStreet = true
 ) {
-  const environmentEl = checkOrCreateEntity(
+  let environmentEl = document.getElementById('environment');
+  if (environmentEl) environmentEl.removeAttribute('street-environment');
+  environmentEl = checkOrCreateEntity(
     'environment',
     AFRAME.scenes[0],
     'Environment'
   );
-  // Use third param clobber to true to reset to default values
-  environmentEl.setAttribute('street-environment', '', true);
-  const geoLayer = checkOrCreateEntity(
+  environmentEl.setAttribute('street-environment', '');
+
+  let geoLayer = document.getElementById('reference-layers');
+  if (geoLayer) geoLayer.removeAttribute('street-geo');
+  geoLayer = checkOrCreateEntity(
     'reference-layers',
     AFRAME.scenes[0],
     'Geospatial Layers'
   );
-  geoLayer.removeAttribute('street-geo');
+
   const streetContainerEl = checkOrCreateEntity(
     'street-container',
     AFRAME.scenes[0],
