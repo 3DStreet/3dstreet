@@ -37,7 +37,7 @@ function newScene(
     'Environment'
   );
   // Use third param clobber to true to reset to default values
-  environmentEl.setAttribute('street-environment', 'day', true);
+  environmentEl.setAttribute('street-environment', '', true);
   const geoLayer = checkOrCreateEntity(
     'reference-layers',
     AFRAME.scenes[0],
