@@ -22,13 +22,15 @@ AFRAME.registerComponent('street-environment', {
 
   init: function () {
     this.textureLoader = new THREE.TextureLoader();
-    this.light1 =
-      this.el.sceneEl.querySelector('#env-light1') ||
-      this.createLight('env-light1', { type: 'ambient', color: '#FFF' });
+    this.light1 = this.createLight('env-light1', {
+      type: 'ambient',
+      color: '#FFF'
+    });
     this.light1.setAttribute('data-layer-name', 'Ambient Light');
-    this.light2 =
-      this.el.sceneEl.querySelector('#env-light2') ||
-      this.createLight('env-light2', { type: 'directional', castShadow: true });
+    this.light2 = this.createLight('env-light2', {
+      type: 'directional',
+      castShadow: true
+    });
     this.light2.setAttribute(
       'data-layer-name',
       'Directional Light • Shadow Caster'
@@ -132,5 +134,10 @@ AFRAME.registerComponent('street-environment', {
     light.setAttribute('light', attributes);
     this.el.appendChild(light);
     return light;
+  },
+
+  remove() {
+    this.light1.remove();
+    this.light2.remove();
   }
 });
