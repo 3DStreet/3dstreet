@@ -223,8 +223,10 @@ function buildAssetHTML(assetUrl, categories) {
     grounds: `
         <!-- grounds -->
         <img id="grass-texture" src="${assetUrl}materials/TexturesCom_Grass0052_1_seamless_S.jpg" crossorigin="anonymous">
+        <img id="compacted-gravel-texture" src="${assetUrl}materials/compacted-gravel_color.webp" crossorigin="anonymous">
         <img id="parking-lot-texture" src="${assetUrl}materials/TexturesCom_Roads0111_1_seamless_S.jpg" crossorigin="anonymous">
         <img id="asphalt-texture" src="${assetUrl}materials/TexturesCom_AsphaltDamaged0057_1_seamless_S.jpg" crossorigin="anonymous">
+        <img id="sandy-asphalt-texture" src="${assetUrl}materials/sandy-asphalt-texture_color.webp" crossorigin="anonymous">
 
         <!-- legacy plane-based grounds for compatibility with 0.4.2 and earlier scenes, not used for new streets -->
         <a-mixin shadow id="ground-grass" rotation="-90 0 0" geometry="primitive:plane;height:150;width:40" material="src:#grass-texture;repeat:5 5;roughness:1"></a-mixin>
