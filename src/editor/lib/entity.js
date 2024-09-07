@@ -249,6 +249,17 @@ function optimizeComponents(copy, source) {
       var value = stringifyComponentValue(schema, optimalUpdate);
       setAttribute.call(copy, name, value);
     }
+
+    // Remove special components if they use the default value
+    if (
+      value === '' &&
+      (name === 'visible' ||
+        name === 'position' ||
+        name === 'rotation' ||
+        name === 'scale')
+    ) {
+      removeAttribute.call(copy, name);
+    }
   });
 }
 
@@ -697,16 +708,6 @@ export function elementToObject(element) {
     const components = {};
 
     for (const attribute of element.attributes) {
-      if (
-        attribute.value === '' &&
-        (attribute.name === 'visible' ||
-          attribute.name === 'position' ||
-          attribute.name === 'rotation' ||
-          attribute.name === 'scale')
-      ) {
-        continue;
-      }
-
       if (
         NOT_COMPONENTS.includes(attribute.name) ||
         attribute.name.startsWith('data-')
