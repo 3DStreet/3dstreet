@@ -214,6 +214,20 @@ export default class Toolbar extends Component {
 
       // we want to save, so if we *still* have no sceneID at this point, then create a new one
       if (!currentSceneId || !!doSaveAs) {
+        // ask user for scene title here currentSceneTitle
+        let newSceneTitle = prompt('Scene Title:', currentSceneTitle);
+
+        if (!newSceneTitle) {
+          newSceneTitle = currentSceneTitle;
+        } else {
+          currentSceneTitle = newSceneTitle;
+        }
+        AFRAME.scenes[0].setAttribute(
+          'metadata',
+          'sceneTitle',
+          currentSceneTitle
+        );
+
         console.log(
           'no urlSceneId or doSaveAs is true, therefore generate new one'
         );
