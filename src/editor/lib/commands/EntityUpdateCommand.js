@@ -61,6 +61,16 @@ export class EntityUpdateCommand extends Command {
           console.log(this.component, this.oldValue, this.newValue);
         }
       }
+    } else if (
+      this.component === 'id' ||
+      this.component === 'class' ||
+      this.component === 'mixin'
+    ) {
+      this.newValue = payload.value;
+      this.oldValue = payload.entity.getAttribute(this.component);
+      if (this.editor.config.debugUndoRedo) {
+        console.log(this.component, this.oldValue, this.newValue);
+      }
     }
   }
 
@@ -76,7 +86,21 @@ export class EntityUpdateCommand extends Command {
           this.newValue
         );
       }
+
+      // If we set a single mixin, remove the current mixin first so that it removes the gltf-model
+      // component, then set the new mixin that will load a new gltf model.
+      // If we don't remove first, sometimes a newly selected model won't load.
+      if (
+        this.component === 'mixin' &&
+        this.newValue &&
+        this.newValue.indexOf(' ') === -1
+      ) {
+        entity.setAttribute('mixin', '');
+      }
       updateEntity(entity, this.component, this.property, this.newValue);
+      if (this.component === 'id') {
+        this.entityId = this.newValue;
+      }
     }
   }
 
@@ -87,7 +111,17 @@ export class EntityUpdateCommand extends Command {
         // If the selected entity is not the entity we are undoing, select the entity.
         this.editor.selectEntity(entity);
       }
+      if (
+        this.component === 'mixin' &&
+        this.oldValue &&
+        this.oldValue.indexOf(' ') === -1
+      ) {
+        entity.setAttribute('mixin', '');
+      }
       updateEntity(entity, this.component, this.property, this.oldValue);
+      if (this.component === 'id') {
+        this.entityId = this.oldValue;
+      }
     }
   }
 

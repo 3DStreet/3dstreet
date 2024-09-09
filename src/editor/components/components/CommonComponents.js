@@ -18,6 +18,8 @@ export default class CommonComponents extends React.Component {
     }
     if (
       DEFAULT_COMPONENTS.indexOf(detail.component) !== -1 ||
+      detail.component === 'id' ||
+      detail.component === 'class' ||
       detail.component === 'mixin'
     ) {
       this.forceUpdate();
