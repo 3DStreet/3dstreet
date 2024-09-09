@@ -28,7 +28,7 @@ export const Shortcuts = {
 
     var keyCode = event.keyCode;
 
-    // esc: close inspector
+    // esc: unselect entity
     if (keyCode === 27) {
       if (this.inspector.selectedEntity) {
         this.inspector.selectEntity(null);

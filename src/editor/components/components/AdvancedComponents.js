@@ -9,7 +9,6 @@ const AdvancedComponents = ({ entity }) => {
 
   const components = entity ? entity.components : {};
   const definedComponents = Object.keys(components).filter((key) => {
-    console.log(key);
     return DEFAULT_COMPONENTS.indexOf(key) === -1;
   });
 

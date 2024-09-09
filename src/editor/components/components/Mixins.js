@@ -15,6 +15,23 @@ export default class Mixin extends React.Component {
     this.state = { mixins: this.getMixinValue() };
   }
 
+  onEntityUpdate = (detail) => {
+    if (detail.entity !== this.props.entity) {
+      return;
+    }
+    if (detail.component === 'mixin') {
+      this.setState({ mixins: this.getMixinValue() });
+    }
+  };
+
+  componentDidMount() {
+    Events.on('entityupdate', this.onEntityUpdate);
+  }
+
+  componentWillUnmount() {
+    Events.off('entityupdate', this.onEntityUpdate);
+  }
+
   componentDidUpdate(prevProps, prevState) {
     if (this.props.entity === prevProps.entity) {
       return;
@@ -58,11 +75,9 @@ export default class Mixin extends React.Component {
     const entity = this.props.entity;
     this.setState({ mixins: value });
     const mixinStr = value.map((v) => v.value).join(' ');
-    entity.setAttribute('mixin', mixinStr);
-    Events.emit('entityupdate', {
+    AFRAME.INSPECTOR.execute('entityupdate', {
       component: 'mixin',
       entity: entity,
-      property: '',
       value: mixinStr
     });
     sendMetric('Components', 'addMixin');
@@ -72,15 +87,9 @@ export default class Mixin extends React.Component {
     const entity = this.props.entity;
     this.setState({ mixins: value });
     const mixinStr = value.value;
-    // Remove the current mixin first so that it removes the gltf-model
-    // component, then set the new mixin that will load a new gltf model.
-    // If we don't remove first, sometimes a newly selected model won't load.
-    entity.setAttribute('mixin', '');
-    entity.setAttribute('mixin', value.value);
-    Events.emit('entityupdate', {
+    AFRAME.INSPECTOR.execute('entityupdate', {
       component: 'mixin',
       entity: entity,
-      property: '',
       value: mixinStr
     });
     sendMetric('Components', 'addMixin');
