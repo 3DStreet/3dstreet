@@ -217,9 +217,7 @@ export default class Toolbar extends Component {
         // ask user for scene title here currentSceneTitle
         let newSceneTitle = prompt('Scene Title:', currentSceneTitle);
 
-        if (!newSceneTitle) {
-          newSceneTitle = currentSceneTitle;
-        } else {
+        if (newSceneTitle) {
           currentSceneTitle = newSceneTitle;
         }
         AFRAME.scenes[0].setAttribute(
