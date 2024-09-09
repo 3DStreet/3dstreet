@@ -60,12 +60,12 @@ export default class Toolbar extends Component {
       // isPlaying: false,
       isSaveActionActive: false,
       isCapturingScreen: false,
-      showSaveBtn: true,
       showLoadBtn: true,
       savedNewDocument: false,
       isSavingScene: false,
       pendingSceneSave: false,
-      signInSuccess: false
+      signInSuccess: false,
+      isAuthor: props.isAuthor
     };
     this.saveButtonRef = React.createRef();
   }
@@ -76,7 +76,12 @@ export default class Toolbar extends Component {
   }
 
   componentDidUpdate(prevProps) {
+    if (prevProps.isAuthor !== this.props.isAuthor) {
+      this.setState({ isAuthor: this.props.isAuthor });
+    }
     if (this.props.currentUser !== prevProps.currentUser) {
+      console.log('component updated');
+      console.log(this.props);
       this.setState({ currentUser: this.props.currentUser });
 
       if (this.state.pendingSceneSave && this.props.currentUser) {
@@ -86,7 +91,6 @@ export default class Toolbar extends Component {
           this.cloudSaveHandler({ doSaveAs: true })
             .then(() => {
               // The promise from cloudSaveHandler has resolved, now update the state.
-              this.setState({ showSaveBtn: true });
             })
             .catch((error) => {
               // Handle any errors here
@@ -210,6 +214,18 @@ export default class Toolbar extends Component {
 
       // we want to save, so if we *still* have no sceneID at this point, then create a new one
       if (!currentSceneId || !!doSaveAs) {
+        // ask user for scene title here currentSceneTitle
+        let newSceneTitle = prompt('Scene Title:', currentSceneTitle);
+
+        if (newSceneTitle) {
+          currentSceneTitle = newSceneTitle;
+        }
+        AFRAME.scenes[0].setAttribute(
+          'metadata',
+          'sceneTitle',
+          currentSceneTitle
+        );
+
         console.log(
           'no urlSceneId or doSaveAs is true, therefore generate new one'
         );
@@ -257,7 +273,7 @@ export default class Toolbar extends Component {
           'Scene saved to 3DStreet Cloud in existing file.'
         );
       }
-
+      this.setState({ isAuthor: true });
       sendMetric('SaveSceneAction', doSaveAs ? 'saveAs' : 'save');
     } catch (error) {
       STREET.notify.errorMessage(
@@ -376,7 +392,7 @@ export default class Toolbar extends Component {
               <div className="hideInLowResolution">New</div>
             </Button>
           </div>
-          {this.state.showSaveBtn && this.props.currentUser ? (
+          {this.props.currentUser ? (
             <div className="saveButtonWrapper" ref={this.saveButtonRef}>
               <Button
                 leadingIcon={<Save24Icon />}
@@ -391,7 +407,7 @@ export default class Toolbar extends Component {
                     leadingIcon={<Cloud24Icon />}
                     variant="white"
                     onClick={this.cloudSaveHandler}
-                    disabled={this.state.isSavingScene || !this.props.isAuthor}
+                    disabled={this.state.isSavingScene || !this.state.isAuthor}
                   >
                     <div>Save</div>
                   </Button>

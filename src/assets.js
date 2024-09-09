@@ -28,7 +28,13 @@ function buildAssetHTML(assetUrl, categories) {
         <a-mixin shadow id="bus-stop" gltf-part="src: #streetProps; part: transit-shelter-1"></a-mixin>
         <a-mixin shadow id="pride-flag" position="0.409 3.345 0" rotation="0 0 0" scale="0.5 0.75 0" geometry="width:2;height:2;primitive:plane" material="side:double; src:${assetUrl}materials/rainbow-flag-poles_512.png;transparent: true;"></a-mixin>
         <a-mixin shadow id="wayfinding-box" geometry="primitive: box; height: 2; width: 0.84; depth: 0.1" material="color: gray"></a-mixin>
-      `,
+        <a-mixin shadow id="trash-bin" gltf-model="url(${assetUrl}sets/uoregon/gltf-exports/draco/bin.glb)"></a-mixin>
+        <a-mixin shadow id="lending-library" gltf-model="url(${assetUrl}sets/uoregon/gltf-exports/draco/lending-library.glb)"></a-mixin>
+        <a-mixin shadow id="residential-mailbox" gltf-model="url(${assetUrl}sets/uoregon/gltf-exports/draco/residential-mailbox.glb)"></a-mixin>
+        <a-mixin shadow id="USPS-mailbox" gltf-model="url(${assetUrl}sets/uoregon/gltf-exports/draco/USPS-mailbox.glb)"></a-mixin>
+        <a-mixin shadow id="picnic-bench" gltf-model="url(${assetUrl}sets/uoregon/gltf-exports/draco/picnic-bench.glb)"></a-mixin>
+        <a-mixin shadow id="large-parklet" gltf-model="url(${assetUrl}sets/uoregon/gltf-exports/draco/large-parklet-seating.glb)"></a-mixin>
+        `,
     people: `
         <!-- human characters -->
         <a-asset-item id="humans" src="${assetUrl}sets/human-characters-poses-1/gltf-exports/draco/human-characters-poses-1.glb"></a-asset-item>
@@ -127,11 +133,13 @@ function buildAssetHTML(assetUrl, categories) {
     'segment-textures': `  
         <!-- segment mixins with textures -->
         <img id="seamless-road" src="${assetUrl}materials/TexturesCom_Roads0086_1_seamless_S_rotate.jpg" crossorigin="anonymous">
+        <img id="seamless-sandy-road" src="${assetUrl}materials/TexturesCom_Roads0086_1_seamless_S_rotate-sandy.webp" crossorigin="anonymous">
         <img id="seamless-bright-road" src="${assetUrl}materials/asphalthd_Base_Color.jpg" crossorigin="anonymous">
         <img id="seamless-sidewalk" src="${assetUrl}materials/TexturesCom_FloorsRegular0301_1_seamless_S.jpg" crossorigin="anonymous">
         <img id="hatched-base" src="${assetUrl}materials/seamless-lane-with-hatch-half.jpg" crossorigin="anonymous">
         <img id="hatched-normal" src="${assetUrl}materials/seamless-lane-with-hatch-half.jpg" crossorigin="anonymous">
         <a-mixin shadow="cast: false" id="drive-lane" geometry="width:3;height:150;primitive:plane" material="roughness:${surfacesRoughness};repeat:0.3 25;offset:0.55 0;src:#seamless-road;"></a-mixin>
+        <a-mixin shadow="cast: false" id="sandy-lane" geometry="width:3;height:150;primitive:plane" material="roughness:${surfacesRoughness};repeat:0.3 5;offset:0.55 0;src:#seamless-sandy-road;"></a-mixin>
         <a-mixin shadow="cast: false" id="bright-lane" geometry="width:3;height:150;primitive:plane" material="roughness:${surfacesRoughness};repeat:0.6 50;offset:0.55 0;src:#seamless-bright-road;color:#dddddd"></a-mixin>
         <a-mixin shadow="cast: false" id="bike-lane" geometry="width:1.8;height:150;primitive:plane" material="roughness:${surfacesRoughness};repeat:0.3 25;offset:0.55 0;metalness:0;src:#seamless-road;"></a-mixin>
         <a-mixin shadow id="sidewalk" anisotropy geometry="width:3;height:150;primitive:plane" material="roughness:${surfacesRoughness};repeat:1.5 75;src:#seamless-sidewalk;"></a-mixin>
@@ -214,6 +222,8 @@ function buildAssetHTML(assetUrl, categories) {
         <a-mixin shadow id="street-element-traffic-island" scale="1.5 1.5 1.5" rotation="0 0 0" gltf-model="url(${assetUrl}sets/uoregon/gltf-exports/draco/curb-traffic-island.glb)"></a-mixin>
         <a-mixin shadow id="street-element-speed-hump" scale="1.5 1.5 1.5" rotation="0 0 0" gltf-model="url(${assetUrl}sets/uoregon/gltf-exports/draco/speed-hump.glb)"></a-mixin>
         <a-mixin shadow id="crosswalk-zebra-box" geometry="primitive: box; height: 0.1; width: 2; depth: 10" material="src: url(${assetUrl}materials/markings-crosswalk.png)"></a-mixin>
+        <a-mixin shadow id="traffic-calming-bumps" gltf-model="url(${assetUrl}sets/uoregon/gltf-exports/draco/traffic-calming-bumps.glb)"></a-mixin>
+        <a-mixin shadow id="corner-island" gltf-model="url(${assetUrl}sets/uoregon/gltf-exports/draco/corner-island.glb)"></a-mixin>
         `,
     sky: `
         <!-- sky -->
@@ -223,8 +233,10 @@ function buildAssetHTML(assetUrl, categories) {
     grounds: `
         <!-- grounds -->
         <img id="grass-texture" src="${assetUrl}materials/TexturesCom_Grass0052_1_seamless_S.jpg" crossorigin="anonymous">
+        <img id="compacted-gravel-texture" src="${assetUrl}materials/compacted-gravel_color.webp" crossorigin="anonymous">
         <img id="parking-lot-texture" src="${assetUrl}materials/TexturesCom_Roads0111_1_seamless_S.jpg" crossorigin="anonymous">
         <img id="asphalt-texture" src="${assetUrl}materials/TexturesCom_AsphaltDamaged0057_1_seamless_S.jpg" crossorigin="anonymous">
+        <img id="sandy-asphalt-texture" src="${assetUrl}materials/sandy-asphalt-texture_color.webp" crossorigin="anonymous">
 
         <!-- legacy plane-based grounds for compatibility with 0.4.2 and earlier scenes, not used for new streets -->
         <a-mixin shadow id="ground-grass" rotation="-90 0 0" geometry="primitive:plane;height:150;width:40" material="src:#grass-texture;repeat:5 5;roughness:1"></a-mixin>
