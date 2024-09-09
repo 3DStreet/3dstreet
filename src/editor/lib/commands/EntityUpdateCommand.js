@@ -61,11 +61,8 @@ export class EntityUpdateCommand extends Command {
           console.log(this.component, this.oldValue, this.newValue);
         }
       }
-    } else if (
-      this.component === 'id' ||
-      this.component === 'class' ||
-      this.component === 'mixin'
-    ) {
+    } else {
+      // id, class, mixin, data attributes
       this.newValue = payload.value;
       this.oldValue = payload.entity.getAttribute(this.component);
       if (this.editor.config.debugUndoRedo) {
