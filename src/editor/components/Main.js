@@ -26,6 +26,9 @@ THREE.ImageUtils.crossOrigin = '';
 const isStreetLoaded = window.location.hash.length;
 const isPaymentModalOpened = window.location.hash.includes('/modal/payment');
 
+// Define the libraries array as a constant outside of the component
+const GOOGLE_MAPS_LIBRARIES = ['places'];
+
 export default class Main extends Component {
   constructor(props) {
     super(props);
@@ -297,7 +300,7 @@ export default class Main extends Component {
         />
         <LoadScript
           googleMapsApiKey={firebaseConfig.apiKey}
-          libraries={['places']}
+          libraries={GOOGLE_MAPS_LIBRARIES}
         >
           <GeoModal
             isOpen={this.state.isGeoModalOpened}
