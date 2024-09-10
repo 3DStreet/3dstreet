@@ -91,6 +91,7 @@ export default class SceneGraph extends React.Component {
       if (entityOption.entity === entity) {
         this.setState({ selectedIndex: i });
         setTimeout(() => {
+          // wait 500ms to allow user to double click on entity
           document
             .getElementById('sgnode' + i)
             ?.scrollIntoView({ behavior: 'smooth' });
