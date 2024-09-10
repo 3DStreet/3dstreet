@@ -89,11 +89,12 @@ export default class SceneGraph extends React.Component {
     for (let i = 0; i < this.state.entities.length; i++) {
       const entityOption = this.state.entities[i];
       if (entityOption.entity === entity) {
-        this.setState({ selectedIndex: i }, () => {
+        this.setState({ selectedIndex: i });
+        setTimeout(() => {
           document
             .getElementById('sgnode' + i)
             ?.scrollIntoView({ behavior: 'smooth' });
-        });
+        }, 500);
         // Make sure selected value is visible in scenegraph
         this.expandToRoot(entity);
         posthog.capture('entity_selected', {
