@@ -1,4 +1,4 @@
-import { bool, element, func, node, number, string } from 'prop-types';
+import { bool, element, func, node, number, object, string } from 'prop-types';
 
 import classNames from 'classnames';
 import styles from './Button.module.scss';
@@ -19,6 +19,7 @@ const variants = {
  * @category Components
  * @param {{
  *  className?: string;
+ *  style?: object;
  *  onClick?: () => void;
  *  onPointerDown?: () => void;
  *  onPointerUp?: () => void;
@@ -34,6 +35,7 @@ const variants = {
  */
 const Button = ({
   className,
+  style,
   onClick,
   onPointerDown,
   onPointerUp,
@@ -48,6 +50,7 @@ const Button = ({
 }) => (
   <button
     className={classNames(styles.buttonWrapper, variants[variant], className)}
+    style={style}
     onClick={onClick}
     onPointerDown={onPointerDown}
     onPointerUp={onPointerUp}
@@ -65,6 +68,7 @@ const Button = ({
 
 Button.propTypes = {
   className: string,
+  style: object,
   onClick: func,
   onPointerDown: func,
   onPointerUp: func,
