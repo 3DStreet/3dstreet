@@ -103,7 +103,12 @@ export default class Entity extends React.Component {
     });
 
     return (
-      <div className={className} onClick={this.onClick} id={this.props.id}>
+      <div
+        className={className}
+        onClick={this.onClick}
+        onDoubleClick={this.onDoubleClick}
+        id={this.props.id}
+      >
         <span>
           <span
             style={{
@@ -111,7 +116,7 @@ export default class Entity extends React.Component {
             }}
           />
           {visibilityButton}
-          {printEntity(entity, this.onDoubleClick)}
+          {printEntity(entity)}
           {collapse}
         </span>
         <span className="entityActions">

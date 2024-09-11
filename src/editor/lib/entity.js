@@ -572,7 +572,7 @@ const ICONS = {
   light: 'fa-lightbulb-o',
   text: 'fa-font'
 };
-export function printEntity(entity, onDoubleClick) {
+export function printEntity(entity) {
   if (!entity) {
     return '';
   }
@@ -589,7 +589,7 @@ export function printEntity(entity, onDoubleClick) {
   // Custom display name for a layer if available, otherwise use entity name or tag
   let displayName = getEntityDisplayName(entity);
   return (
-    <span className="entityPrint" onDoubleClick={onDoubleClick}>
+    <span className="entityPrint">
       {displayName && <span className="entityName">&nbsp;{displayName}</span>}
       {!!icons && (
         <span
