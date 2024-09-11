@@ -48,7 +48,7 @@ const ActionBar = ({ handleAddClick, isAddLayerPanelOpen }) => {
             className={classNames({ [styles.active]: !cursorEnabled })}
             onClick={handleHandClick}
           >
-            <AwesomeIcon icon={faHand} />
+            <AwesomeIcon icon={faHand} size="2x" />
           </Button>
           <Button
             variant="toolbtn"
@@ -57,7 +57,7 @@ const ActionBar = ({ handleAddClick, isAddLayerPanelOpen }) => {
             })}
             onClick={() => changeTransformMode('translate')}
           >
-            <Translate24Icon />
+            <Translate24Icon className={styles.largeIcon} />
           </Button>
           <Button
             variant="toolbtn"
@@ -66,10 +66,10 @@ const ActionBar = ({ handleAddClick, isAddLayerPanelOpen }) => {
             })}
             onClick={() => changeTransformMode('rotate')}
           >
-            <Rotate24Icon />
+            <Rotate24Icon className={styles.largeIcon} />
           </Button>
           <Button variant="toolbtn" onClick={handleAddClick}>
-            <AwesomeIcon icon={faPlusSquare} />
+            <AwesomeIcon icon={faPlusSquare} size="2x" />
           </Button>
         </div>
       )}

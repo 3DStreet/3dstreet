@@ -6,7 +6,7 @@
   bottom: 15%;
   left: 50%;
   border: unset;
-  height: 40px;
+  height: auto; // Changed from fixed height
   border-radius: 16px;
   align-items: center;
   display: flex;
@@ -16,11 +16,19 @@
 
   button {
     border-radius: 50%;
-    width: 43px;
-    height: 43px;
+    width: 56px; // Increased from 43px
+    height: 56px; // Increased from 43px
+    display: flex;
+    justify-content: center;
+    align-items: center;
 
     &.active {
       border: 1px solid variables.$white;
     }
+  }
+
+  .largeIcon {
+    width: 48px; // Adjusted from 64px
+    height: 48px; // Adjusted from 64px
   }
 }
