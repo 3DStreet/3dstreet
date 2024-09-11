@@ -29,5 +29,7 @@ export {
   Action24,
   DownloadIcon,
   ScreenshotIcon,
-  SignInMicrosoftIconSVG
+  SignInMicrosoftIconSVG,
+  Rotate24Icon,
+  Translate24Icon
 } from './icons.jsx';
