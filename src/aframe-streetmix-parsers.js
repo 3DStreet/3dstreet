@@ -300,7 +300,7 @@ function createSidewalkClonedVariants(
     10
   );
   const dividerParentEl = createParentElement('pedestrians-parent');
-  dividerParentEl.object3D.position.setY(elevationPosY);
+  dividerParentEl.setAttribute('position', { y: elevationPosY });
   // Randomly generate avatars
   for (let i = 0; i < totalPedestrianNumber; i++) {
     const variantName =
@@ -690,8 +690,7 @@ function createOutdoorDining(length, posY) {
     reusableObjectEl.setAttribute('mixin', 'outdoor_dining');
 
     // const positionZ = randomPosition(reusableObjectEl, 'z', length, outdorDiningLength);
-    reusableObjectEl.object3D.position.setY(posY);
-    reusableObjectEl.object3D.position.setZ(randPosZ);
+    reusableObjectEl.setAttribute('position', { y: posY, z: randPosZ });
     outdoorDiningParentEl.append(reusableObjectEl);
   });
 
@@ -730,8 +729,7 @@ function createMicroMobilityElement(
     const reusableObjectEl = document.createElement('a-entity');
     const rotationY = variantList[0] === 'inbound' ? 0 : 180;
     reusableObjectEl.setAttribute('rotation', '0 ' + rotationY + ' 0');
-    reusableObjectEl.object3D.position.setY(posY);
-    reusableObjectEl.object3D.position.setZ(randPosZ);
+    reusableObjectEl.setAttribute('position', { y: posY, z: randPosZ });
 
     if (animated) {
       reusableObjectEl.setAttribute('animation-mixer', '');
@@ -776,7 +774,7 @@ function createFlexZoneElement(variantList, length, showVehicles = true) {
     } else if (variantList[0] === 'rideshare') {
       reusableObjectEl.setAttribute('mixin', 'sedan-rig');
     }
-    reusableObjectEl.object3D.position.setZ(randPosZ);
+    reusableObjectEl.setAttribute('position', { z: randPosZ });
     flexZoneParentEl.append(reusableObjectEl);
   });
 
@@ -825,8 +823,7 @@ function createBenchesParentElement() {
 function createBikeRacksParentElement(posY) {
   const placedObjectEl = document.createElement('a-entity');
   placedObjectEl.setAttribute('class', 'bikerack-parent');
-  placedObjectEl.object3D.position.setY(posY);
-  placedObjectEl.object3D.position.setZ(-3.5);
+  placedObjectEl.setAttribute('position', { y: posY, z: -3.5 });
   return placedObjectEl;
 }
 
@@ -836,7 +833,7 @@ function createBikeShareStationElement(variantList, posY) {
   placedObjectEl.setAttribute('mixin', 'bikeshare');
   const rotationCloneY = variantList[0] === 'left' ? 90 : 270;
   placedObjectEl.setAttribute('rotation', '0 ' + rotationCloneY + ' 0');
-  placedObjectEl.object3D.position.setY(posY);
+  placedObjectEl.setAttribute('position', { y: posY });
   return placedObjectEl;
 }
 
@@ -851,7 +848,7 @@ function createParkletElement(length, variantList) {
     placedObjectEl.setAttribute('position', { x: 0, y: 0.02, z: randPosZ });
     placedObjectEl.setAttribute('mixin', 'parklet');
     const rotationY = variantList[0] === 'left' ? 90 : 270;
-    placedObjectEl.setAttribute('rotation', { x: 0, y: rotationY, z: 0 });
+    placedObjectEl.setAttribute('rotation', { y: rotationY });
     parkletParent.append(placedObjectEl);
   });
   return parkletParent;
@@ -878,7 +875,7 @@ function createBusStopElement(rotationBusStopY, posY) {
   placedObjectEl.setAttribute('class', 'bus-stop');
   placedObjectEl.setAttribute('rotation', '0 ' + rotationBusStopY + ' 0');
   placedObjectEl.setAttribute('mixin', 'bus-stop');
-  placedObjectEl.object3D.position.setY(posY);
+  placedObjectEl.setAttribute('position', { y: posY });
   return placedObjectEl;
 }
 
@@ -926,7 +923,7 @@ function createSegmentElement(
     width: ${segmentWidthInMeters};`
   );
 
-  segmentEl.object3D.position.setY(positionY);
+  segmentEl.setAttribute('position', { y: positionY });
   segmentEl.setAttribute('mixin', mixinId);
 
   if (repeatCount.length !== 0) {
@@ -1796,7 +1793,7 @@ function processBuildings(left, right, streetWidth, showGround, length) {
           segmentsDepth: 10,
           segmentsWidth: 10
         });
-        groundParentEl.object3D.position.setY(-3);
+        groundParentEl.setAttribute('position', { y: -3 });
       } else {
         groundParentEl = document.createElement('a-box');
         groundParentEl.setAttribute('depth', length);
@@ -1808,13 +1805,14 @@ function processBuildings(left, right, streetWidth, showGround, length) {
           'mixin',
           variantToMaterialMapping[currentValue]
         ); // case grass, fence
-        groundParentEl.object3D.position.setY(-1);
+        groundParentEl.setAttribute('position', { y: -1 });
       }
 
       if (side === 'right') {
-        groundParentEl.object3D.position.setX(groundPositionX);
+        // groundParentEl.setAttribute('position', groundPositionX + ' -1 0');
+        groundParentEl.setAttribute('position', { x: groundPositionX });
       } else {
-        groundParentEl.object3D.position.setX(groundPositionX);
+        groundParentEl.setAttribute('position', { x: groundPositionX });
       }
       groundParentEl.classList.add('ground-' + side);
       groundParentEl.setAttribute(
@@ -1858,14 +1856,13 @@ function processBuildings(left, right, streetWidth, showGround, length) {
       const objectPositionX = buildingPositionX - (sideMultiplier * 150) / 2;
       const placedObjectEl = document.createElement('a-entity');
       placedObjectEl.setAttribute('class', 'seawall-parent');
-      placedObjectEl.object3D.position.setX(objectPositionX);
-      placedObjectEl.object3D.position.setZ(4.5); // position="1.043 0.100 -3.463"
+      placedObjectEl.setAttribute('position', { x: objectPositionX, z: 4.5 }); // position="1.043 0.100 -3.463"
       let rotationCloneY;
       if (currentValue === 'compound-wall') {
-        placedObjectEl.object3D.position.setY(3);
-        placedObjectEl.object3D.position.setX(
-          objectPositionX + 1.5 * sideMultiplier
-        );
+        placedObjectEl.setAttribute('position', { y: 3 });
+        placedObjectEl.setAttribute('position', {
+          x: objectPositionX + 1.5 * sideMultiplier
+        });
         rotationCloneY = side === 'left' ? 90 : -90;
       } else {
         rotationCloneY = side === 'left' ? -90 : 90;
