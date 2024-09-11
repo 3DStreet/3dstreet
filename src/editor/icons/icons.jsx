@@ -19,6 +19,44 @@ const Camera32Icon = () => (
   </svg>
 );
 
+const Rotate24Icon = () => (
+  <svg
+    width="24"
+    height="24"
+    viewBox="0 0 24 24"
+    fill="none"
+    xmlns="http://www.w3.org/2000/svg"
+  >
+    <path
+      d="M15.3333 10L15.3333 4.66667L12 4.66667L16.6666 -2.03987e-07L21.3333 4.66667L18 4.66667L18 10C18 11.0506 17.7931 12.0909 17.391 13.0615C16.989 14.0321 16.3997 14.914 15.6568 15.6569C14.914 16.3997 14.0321 16.989 13.0614 17.391C12.0908 17.7931 11.0506 18 9.99998 18L4.66664 18L4.66665 21.3333L-2.42525e-05 16.6667L4.66664 12L4.66664 15.3333L9.99998 15.3333C10.7004 15.3333 11.3939 15.1954 12.041 14.9274C12.688 14.6593 13.276 14.2665 13.7712 13.7712C14.2665 13.276 14.6593 12.6881 14.9273 12.041C15.1954 11.3939 15.3333 10.7004 15.3333 10Z"
+      fill="white"
+    />
+  </svg>
+);
+
+const Translate24Icon = () => (
+  <svg
+    width="24"
+    height="24"
+    viewBox="0 0 24 24"
+    fill="none"
+    xmlns="http://www.w3.org/2000/svg"
+  >
+    <path
+      fillRule="evenodd"
+      clipRule="evenodd"
+      d="M22.8665 11.4315L18.4161 6.54248V9.72583H11.4385H4.47479V6.54248L0 11.4315L4.47653 16.3188L4.47479 13.172H11.4385H18.4161L18.4144 16.3188L22.8665 11.4315Z"
+      fill="white"
+    />
+    <path
+      fillRule="evenodd"
+      clipRule="evenodd"
+      d="M13.1559 11.4367H13.1785V4.47305L16.3236 4.47479L11.438 0L6.54899 4.47305H9.69753V11.4367H9.71146V18.4022L6.52985 18.4004L11.4154 22.8857L16.2975 18.4022H13.1559V11.4367Z"
+      fill="white"
+    />
+  </svg>
+);
+
 const Cloud24Icon = () => (
   <svg
     xmlns="http://www.w3.org/2000/svg"
@@ -731,5 +769,7 @@ export {
   ScreenshotIcon,
   DownloadIcon,
   Action24,
-  SignInMicrosoftIconSVG
+  SignInMicrosoftIconSVG,
+  Rotate24Icon,
+  Translate24Icon
 };
