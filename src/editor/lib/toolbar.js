@@ -1,5 +1,3 @@
-import Events from './Events';
-
 export function inputStreetmix() {
   const streetmixURL = prompt(
     'Please enter a Streetmix URL',
@@ -21,14 +19,13 @@ export function inputStreetmix() {
     streetmixURL
   );
 
-  // update sceneGraph
-  Events.emit('updatescenegraph');
+  AFRAME.scenes[0].emit('newScene');
 }
 
 export function createElementsForScenesFromJSON(streetData) {
   // clear scene data, create new blank scene.
   // clearMetadata = true, clearUrlHash = false, addDefaultStreet = false
-  STREET.utils.newScene(true, true, false);
+  STREET.utils.newScene(true, false, false);
 
   const streetContainerEl = document.getElementById('street-container');
 
@@ -38,6 +35,7 @@ export function createElementsForScenesFromJSON(streetData) {
   }
 
   STREET.utils.createEntities(streetData, streetContainerEl);
+  AFRAME.scenes[0].emit('newScene');
 }
 
 export function fileJSON(event) {
@@ -45,8 +43,6 @@ export function fileJSON(event) {
 
   reader.onload = function () {
     STREET.utils.createElementsFromJSON(reader.result);
-    // update sceneGraph
-    Events.emit('updatescenegraph');
   };
 
   reader.readAsText(event.target.files[0]);

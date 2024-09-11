@@ -1,1 +1,4 @@
-export { ProfileButton } from './ProfileButton.component.jsx';
+export {
+  ProfileButton,
+  renderProfileIcon
+} from './ProfileButton.component.jsx';

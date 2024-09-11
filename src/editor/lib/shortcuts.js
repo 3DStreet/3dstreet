@@ -28,12 +28,7 @@ export const Shortcuts = {
 
     var keyCode = event.keyCode;
 
-    // h: help
-    if (keyCode === 72) {
-      Events.emit('openhelpmodal');
-    }
-
-    // esc: close inspector
+    // esc: unselect entity
     if (keyCode === 27) {
       if (this.inspector.selectedEntity) {
         this.inspector.selectEntity(null);
@@ -65,17 +60,7 @@ export const Shortcuts = {
       Events.emit('togglegrid');
     }
 
-    // m: motion capture
-    if (keyCode === 77) {
-      Events.emit('togglemotioncapture');
-    }
-
-    // n: new entity
-    if (keyCode === 78) {
-      Events.emit('entitycreate', { element: 'a-entity', components: {} });
-    }
-
-    // backspace & supr: remove selected entity
+    // backspace & delete: remove selected entity
     if (keyCode === 8 || keyCode === 46) {
       removeSelectedEntity();
     }
@@ -125,6 +110,7 @@ export const Shortcuts = {
     if (!shouldCaptureKeyEvent(event) || !AFRAME.INSPECTOR.opened) {
       return;
     }
+
     if (
       (event.ctrlKey && os !== 'macos') ||
       (event.metaKey && os === 'macos')
@@ -145,12 +131,6 @@ export const Shortcuts = {
         AFRAME.INSPECTOR.selectedEntity &&
         document.activeElement.tagName !== 'INPUT'
       ) {
-        // x: cut selected entity
-        if (event.keyCode === 88) {
-          AFRAME.INSPECTOR.entityToCopy = AFRAME.INSPECTOR.selectedEntity;
-          removeSelectedEntity(true);
-        }
-
         // c: copy selected entity
         if (event.keyCode === 67) {
           AFRAME.INSPECTOR.entityToCopy = AFRAME.INSPECTOR.selectedEntity;
@@ -161,16 +141,9 @@ export const Shortcuts = {
           cloneEntity(AFRAME.INSPECTOR.entityToCopy);
         }
       }
-
-      // s: focus search input
-      if (event.keyCode === 83) {
-        event.preventDefault();
-        event.stopPropagation();
-        document.getElementById('filter').focus();
-      }
     }
 
-    // º: toggle sidebars visibility
+    // 0: toggle sidebars visibility
     if (event.keyCode === 48) {
       Events.emit('togglesidebar', { which: 'all' });
       event.preventDefault();

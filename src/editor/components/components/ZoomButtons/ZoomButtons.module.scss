@@ -1,15 +1,17 @@
 @use '../../../style/variables.scss';
 
+.resetZoomButton {
+  padding: 0 !important;
+  border-radius: 50%;
+  width: 43px;
+  height: 43px;
+}
+
 .wrapper {
-  position: absolute;
-  z-index: 1;
-  top: unset;
-  right: 32px;
-  bottom: 84px;
   display: block;
   min-width: unset;
-  width: 3rem;
-  height: 6rem;
+  width: 43px;
+  height: 86px;
   overflow: hidden;
   border-radius: 32px;
   margin: 0;

@@ -12,7 +12,7 @@ export const GeoProvider = ({ children }) => {
         setInfo({
           latitude: streetGeo['latitude'],
           longitude: streetGeo['longitude'],
-          elevation: streetGeo['elevation'] || 0
+          ellipsoidalHeight: streetGeo['ellipsoidalHeight']
         });
       } else {
         setInfo(null);

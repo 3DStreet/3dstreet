@@ -9,6 +9,8 @@ import capitalize from 'lodash-es/capitalize';
 import classnames from 'classnames';
 import { ArrowRightIcon, LayersIcon } from '../../icons';
 import { sendMetric } from '../../services/ga';
+import GeoSidebar from './GeoSidebar'; // Make sure to create and import this new component
+
 export default class Sidebar extends React.Component {
   static propTypes = {
     entity: PropTypes.object,
@@ -18,43 +20,54 @@ export default class Sidebar extends React.Component {
   constructor(props) {
     super(props);
     this.state = {
-      open: false,
       rightBarHide: false
     };
   }
 
-  componentDidMount() {
-    Events.on('entityupdate', (detail) => {
-      if (detail.entity !== this.props.entity) {
-        return;
-      }
-      if (detail.component === 'mixin') {
-        this.forceUpdate();
-      }
-    });
-
-    Events.on('componentremove', (event) => {
+  onEntityUpdate = (detail) => {
+    if (detail.entity !== this.props.entity) {
+      return;
+    }
+    if (detail.component === 'mixin') {
       this.forceUpdate();
-    });
-    Events.on('componentadd', (event) => {
-      this.forceUpdate();
-    });
-  }
-  // additional toggle for hide/show panel by clicking the button
-
-  toggleRightBar = () => {
-    this.setState({ rightBarHide: !this.state.rightBarHide });
+    }
   };
 
-  handleToggle = () => {
-    this.setState({ open: !this.state.open });
+  onComponentRemove = (detail) => {
+    if (detail.entity !== this.props.entity) {
+      return;
+    }
+    this.forceUpdate();
+  };
+
+  onComponentAdd = (detail) => {
+    if (detail.entity !== this.props.entity) {
+      return;
+    }
+    this.forceUpdate();
+  };
+
+  componentDidMount() {
+    Events.on('entityupdate', this.onEntityUpdate);
+    Events.on('componentremove', this.onComponentRemove);
+    Events.on('componentadd', this.onComponentAdd);
+  }
+
+  componentWillUnmount() {
+    Events.off('entityupdate', this.onEntityUpdate);
+    Events.off('componentremove', this.onComponentRemove);
+    Events.off('componentadd', this.onComponentAdd);
+  }
+
+  // additional toggle for hide/show panel by clicking the button
+  toggleRightBar = () => {
+    this.setState({ rightBarHide: !this.state.rightBarHide });
     sendMetric('Components', 'toggleSidebar');
   };
 
   render() {
     const entity = this.props.entity;
     const visible = this.props.visible;
-    // Rightbar class names
     const className = classnames({
       outliner: true,
       hide: this.state.rightBarHide
@@ -79,22 +92,28 @@ export default class Sidebar extends React.Component {
                 </div>
               </div>
               <div className="scroll">
-                {!!entity.mixinEls.length && <Mixins entity={entity} />}
-                <div id="sidebar-buttons">
-                  <Button
-                    variant={'toolbtn'}
-                    onClick={() => cloneEntity(entity)}
-                  >
-                    Duplicate
-                  </Button>
-                  <Button
-                    variant={'toolbtn'}
-                    onClick={() => removeSelectedEntity()}
-                  >
-                    Delete
-                  </Button>
-                </div>
-                <ComponentsContainer entity={entity} />
+                {entity.id !== 'reference-layers' ? (
+                  <>
+                    {!!entity.mixinEls.length && <Mixins entity={entity} />}
+                    <div id="sidebar-buttons">
+                      <Button
+                        variant={'toolbtn'}
+                        onClick={() => cloneEntity(entity)}
+                      >
+                        Duplicate
+                      </Button>
+                      <Button
+                        variant={'toolbtn'}
+                        onClick={() => removeSelectedEntity()}
+                      >
+                        Delete
+                      </Button>
+                    </div>
+                    <ComponentsContainer entity={entity} />
+                  </>
+                ) : (
+                  <GeoSidebar entity={entity} />
+                )}
               </div>
             </>
           ) : (

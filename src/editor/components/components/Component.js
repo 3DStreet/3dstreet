@@ -28,6 +28,15 @@ export default class Component extends React.Component {
     };
   }
 
+  onEntityUpdate = (detail) => {
+    if (detail.entity !== this.props.entity) {
+      return;
+    }
+    if (detail.component === this.props.name) {
+      this.forceUpdate();
+    }
+  };
+
   componentDidMount() {
     var clipboard = new Clipboard(
       '[data-action="copy-component-to-clipboard"]',
@@ -49,14 +58,11 @@ export default class Component extends React.Component {
       console.error(e);
     });
 
-    Events.on('entityupdate', (detail) => {
-      if (detail.entity !== this.props.entity) {
-        return;
-      }
-      if (detail.component === this.props.name) {
-        this.forceUpdate();
-      }
-    });
+    Events.on('entityupdate', this.onEntityUpdate);
+  }
+
+  componentWillUnmount() {
+    Events.off('entityupdate', this.onEntityUpdate);
   }
 
   static getDerivedStateFromProps(props, state) {
@@ -75,8 +81,7 @@ export default class Component extends React.Component {
     if (
       confirm('Do you really want to remove component `' + componentName + '`?')
     ) {
-      this.props.entity.removeAttribute(componentName);
-      Events.emit('componentremove', {
+      AFRAME.INSPECTOR.execute('componentremove', {
         entity: this.props.entity,
         component: componentName
       });

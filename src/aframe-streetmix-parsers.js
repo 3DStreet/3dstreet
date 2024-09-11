@@ -214,9 +214,9 @@ function createTracksParentElement(length, objectMixinId) {
   return placedObjectEl;
 }
 
-function createSafehitsParentElement() {
+function createBollardsParentElement() {
   const placedObjectEl = document.createElement('a-entity');
-  placedObjectEl.setAttribute('class', 'safehit-parent');
+  placedObjectEl.setAttribute('class', 'bollard-parent');
   return placedObjectEl;
 }
 
@@ -1163,16 +1163,16 @@ function processSegments(
       }
     } else if (segments[i].type === 'divider' && variantList[0] === 'bollard') {
       groundMixinId = 'divider';
-      // make some safehits
-      const safehitsParentEl = createSafehitsParentElement();
+      // make some bollards
+      const bollardsParentEl = createBollardsParentElement();
       cloneMixinAsChildren({
-        objectMixinId: 'safehit',
-        parentEl: safehitsParentEl,
+        objectMixinId: 'bollard',
+        parentEl: bollardsParentEl,
         step: 4,
         radius: clonedObjectRadius
       });
-      // add the safehits to the segment parent
-      segmentParentEl.append(safehitsParentEl);
+      // add the bollards to the segment parent
+      segmentParentEl.append(bollardsParentEl);
       repeatCount[0] = 1;
       repeatCount[1] = parseInt(length) / 4;
     } else if (segments[i].type === 'divider' && variantList[0] === 'flowers') {

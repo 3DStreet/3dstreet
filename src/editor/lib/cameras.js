@@ -1,7 +1,7 @@
 import Events from './Events';
 
 // Save ortho camera FOV / position before switching to restore later.
-let currentOrthoDir = '';
+export let currentOrthoDir = '';
 const orthoCameraMemory = {
   left: { position: new THREE.Vector3(-10, 0, 0), rotation: new THREE.Euler() },
   right: { position: new THREE.Vector3(10, 0, 0), rotation: new THREE.Euler() },
@@ -40,7 +40,7 @@ export function initCameras(inspector) {
 
   // Create Inspector camera.
   const perspectiveCamera = (inspector.camera = new THREE.PerspectiveCamera());
-  perspectiveCamera.far = 10000;
+  perspectiveCamera.far = 20000; // Changed from 10000 to 20000
   perspectiveCamera.near = 0.01;
   perspectiveCamera.position.set(0, 15, 30);
   perspectiveCamera.lookAt(new THREE.Vector3(0, 1.6, -1));
@@ -118,5 +118,4 @@ function setOrthoCamera(camera, dir, ratio) {
   camera.bottom = info.bottom || -40;
   camera.position.copy(info.position);
   camera.rotation.copy(info.rotation);
-  camera.updateProjectionMatrix();
 }

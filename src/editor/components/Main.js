@@ -1,10 +1,8 @@
-import { Button, HelpButton, GeoPanel, Logo, ZoomButtons } from './components';
+import { HelpButton, GeoPanel, Logo, ZoomButtons } from './components';
 import { CameraToolbar } from './viewport';
-import { Compass32Icon } from '../icons';
 import { Component } from 'react';
 import ComponentsSidebar from './components/Sidebar';
 import Events from '../lib/Events';
-import { ModalHelp } from './modals/ModalHelp';
 import ModalTextures from './modals/ModalTextures';
 import SceneGraph from './scenegraph/SceneGraph';
 import { ScreenshotModal } from './modals/ScreenshotModal';
@@ -20,12 +18,16 @@ import { ScenesModal } from './modals/ScenesModal';
 import { PaymentModal } from './modals/PaymentModal';
 import { SceneEditTitle } from './components/SceneEditTitle';
 import { AddLayerPanel } from './components/AddLayerPanel';
+import { IntroModal } from './modals/IntroModal';
 import posthog from 'posthog-js';
 
 THREE.ImageUtils.crossOrigin = '';
 
 const isStreetLoaded = window.location.hash.length;
 const isPaymentModalOpened = window.location.hash.includes('/modal/payment');
+
+// Define the libraries array as a constant outside of the component
+const GOOGLE_MAPS_LIBRARIES = ['places'];
 
 export default class Main extends Component {
   constructor(props) {
@@ -38,6 +40,7 @@ export default class Main extends Component {
       isProfileModalOpened: false,
       isAddLayerPanelOpen: false,
       isGeoModalOpened: false,
+      isIntroModalOpened: false,
       isScenesModalOpened: !isStreetLoaded,
       isPaymentModalOpened: isPaymentModalOpened,
       sceneEl: AFRAME.scenes[0],
@@ -85,6 +88,10 @@ export default class Main extends Component {
   handleStreetMixURL() {
     const isStreetMix = window.location.hash.includes('streetmix');
     if (isStreetMix) {
+      const shownIntro = localStorage.getItem('shownIntro');
+      if (!shownIntro) {
+        this.setState({ isIntroModalOpened: true });
+      }
       STREET.notify.warningMessage(
         'Hit save if you want to save changes to the scene. Otherwise changes will be lost'
       );
@@ -98,7 +105,7 @@ export default class Main extends Component {
     htmlEditorButton && htmlEditorButton.remove();
 
     this.handleStreetMixURL();
-    window.addEventListener('hashchange', this.handleStreetMixURL);
+    window.addEventListener('hashchange', () => this.handleStreetMixURL());
     Events.on(
       'opentexturesmodal',
       function (selectedTexture, textureOnClose) {
@@ -115,10 +122,6 @@ export default class Main extends Component {
     Events.on('inspectortoggle', (enabled) => {
       posthog.capture('inspector_toggled', { enabled: enabled });
       this.setState({ inspectorEnabled: enabled });
-    });
-    Events.on('openhelpmodal', () => {
-      posthog.capture('help_modal_opened');
-      this.setState({ isHelpOpen: true });
     });
     Events.on('openscreenshotmodal', () => {
       posthog.capture('screenshot_modal_opened');
@@ -141,13 +144,13 @@ export default class Main extends Component {
       this.setState({ isGeoModalOpened: true });
     });
     Events.on('openpaymentmodal', () => {
+      posthog.capture('payment_modal_opened');
       this.setState({ isPaymentModalOpened: true });
     });
+    Events.on('hideAddLayerPanel', () => {
+      this.setState({ isAddLayerPanelOpen: false });
+    });
   }
-
-  onCloseHelpModal = (value) => {
-    this.setState({ isHelpOpen: false });
-  };
 
   toggleAddLayerPanel = () => {
     posthog.capture('add_layer_panel_opened');
@@ -181,6 +184,11 @@ export default class Main extends Component {
 
   onCloseGeoModal = () => {
     this.setState({ isGeoModalOpened: false });
+  };
+
+  onCloseIntroModal = () => {
+    this.setState({ isIntroModalOpened: false });
+    localStorage.setItem('shownIntro', true);
   };
 
   onClosePaymentModal = () => {
@@ -264,10 +272,6 @@ export default class Main extends Component {
             </div>
           </div>
         )}
-        <ModalHelp
-          isOpen={this.state.isHelpOpen}
-          onClose={this.onCloseHelpModal}
-        />
         <ScreenshotModal
           isOpen={this.state.isScreenshotOpen}
           onClose={this.onCloseScreenshotModal}
@@ -290,9 +294,13 @@ export default class Main extends Component {
           isOpen={this.state.isProfileModalOpened}
           onClose={this.onCloseProfileModal}
         />
+        <IntroModal
+          isOpen={this.state.isIntroModalOpened}
+          onClose={this.onCloseIntroModal}
+        />
         <LoadScript
           googleMapsApiKey={firebaseConfig.apiKey}
-          libraries={['places']}
+          libraries={GOOGLE_MAPS_LIBRARIES}
         >
           <GeoModal
             isOpen={this.state.isGeoModalOpened}
@@ -304,11 +312,7 @@ export default class Main extends Component {
           selectedTexture={this.state.selectedTexture}
           onClose={this.onModalTextureOnClose}
         />
-        {this.state.inspectorEnabled && (
-          <div id="help">
-            <HelpButton />
-          </div>
-        )}
+
         {this.state.inspectorEnabled && (
           <div id="geo">
             <GeoPanel />
@@ -328,16 +332,12 @@ export default class Main extends Component {
           </div>
         )}
         {this.state.inspectorEnabled && (
-          <div id={'zoom-buttons'}>
+          <div id="zoom-help-buttons">
             <ZoomButtons />
+            <HelpButton />
           </div>
         )}
         {this.state.inspectorEnabled && (
-          <Button id={'resetZoomButton'}>
-            <Compass32Icon />
-          </Button>
-        )}
-        {this.state.inspectorEnabled && this.state.isAddLayerPanelOpen && (
           <AddLayerPanel
             onClose={this.toggleAddLayerPanel}
             isAddLayerPanelOpen={this.state.isAddLayerPanelOpen}

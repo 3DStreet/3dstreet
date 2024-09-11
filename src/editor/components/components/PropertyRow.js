@@ -12,7 +12,6 @@ import TextureWidget from '../widgets/TextureWidget';
 import Vec4Widget from '../widgets/Vec4Widget';
 import Vec3Widget from '../widgets/Vec3Widget';
 import Vec2Widget from '../widgets/Vec2Widget';
-import { updateEntity } from '../../lib/entity';
 
 export default class PropertyRow extends React.Component {
   static propTypes = {
@@ -25,9 +24,9 @@ export default class PropertyRow extends React.Component {
       PropTypes.string.isRequired
     ]),
     entity: PropTypes.object.isRequired,
-    id: PropTypes.string,
     isSingle: PropTypes.bool.isRequired,
     name: PropTypes.string.isRequired,
+    label: PropTypes.string,
     schema: PropTypes.object.isRequired
   };
 
@@ -49,7 +48,7 @@ export default class PropertyRow extends React.Component {
 
     const value =
       props.schema.type === 'selector'
-        ? props.entity.getDOMAttribute(props.componentname)[props.name]
+        ? props.entity.getDOMAttribute(props.componentname)?.[props.name]
         : props.data;
 
     const widgetProps = {
@@ -57,14 +56,13 @@ export default class PropertyRow extends React.Component {
       entity: props.entity,
       isSingle: props.isSingle,
       name: props.name,
-      // Wrap updateEntity for tracking.
       onChange: function (name, value) {
-        var propertyName = props.componentname;
-        if (!props.isSingle) {
-          propertyName += '.' + props.name;
-        }
-
-        updateEntity.apply(this, [props.entity, propertyName, value]);
+        AFRAME.INSPECTOR.execute('entityupdate', {
+          entity: props.entity,
+          component: props.componentname,
+          property: !props.isSingle ? props.name : '',
+          value: value
+        });
       },
       value: value
     };
@@ -114,7 +112,7 @@ export default class PropertyRow extends React.Component {
     const props = this.props;
     const value =
       props.schema.type === 'selector'
-        ? props.entity.getDOMAttribute(props.componentname)[props.name]
+        ? props.entity.getDOMAttribute(props.componentname)?.[props.name]
         : JSON.stringify(props.data);
     const title =
       props.name + '\n - type: ' + props.schema.type + '\n - value: ' + value;
@@ -130,7 +128,7 @@ export default class PropertyRow extends React.Component {
     return (
       <div className={className}>
         <label htmlFor={this.id} className="text" title={title}>
-          {props.name}
+          {props.label || props.name}
         </label>
         {this.getWidget(props.schema.type)}
       </div>

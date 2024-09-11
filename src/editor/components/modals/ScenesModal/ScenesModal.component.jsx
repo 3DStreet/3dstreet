@@ -9,7 +9,6 @@ import {
   inputStreetmix
 } from '../../../lib/toolbar';
 import { getCommunityScenes, getUserScenes } from '../../../api/scene';
-import Events from '../../../lib/Events';
 import { Load24Icon, Loader, Upload24Icon } from '../../../icons';
 import { signIn } from '../../../api';
 import posthog from 'posthog-js';
@@ -68,7 +67,6 @@ const ScenesModal = ({ isOpen, onClose, initialTab = 'owner', delay }) => {
       AFRAME.scenes[0].setAttribute('metadata', 'sceneId', sceneId);
       AFRAME.scenes[0].setAttribute('metadata', 'sceneTitle', sceneTitle);
 
-      Events.emit('entitycreate', { element: 'a-entity', components: {} });
       STREET.notify.successMessage('Scene loaded from 3DStreet Cloud.');
       onClose();
     }
@@ -186,7 +184,6 @@ const ScenesModal = ({ isOpen, onClose, initialTab = 'owner', delay }) => {
       className={styles.modalWrapper}
       isOpen={isOpen}
       onClose={onClose}
-      extraCloseKeyCode={72}
       currentUser={currentUser}
       selectedTab={selectedTab}
       title="Open scene"
@@ -226,25 +223,24 @@ const ScenesModal = ({ isOpen, onClose, initialTab = 'owner', delay }) => {
               <Button
                 leadingIcon={<Upload24Icon />}
                 className={styles.uploadBtn}
+                style={{ position: 'relative' }}
               >
-                <label
+                Upload 3DStreet JSON File
+                <input
+                  type="file"
+                  onChange={(e) => {
+                    fileJSON(e);
+                    onClose(); // Close the modal
+                  }}
                   style={{
-                    display: 'block',
-                    width: '100%',
+                    position: 'absolute',
+                    inset: 0,
+                    opacity: 0,
+                    fontSize: 0,
                     cursor: 'pointer'
                   }}
-                >
-                  <input
-                    type="file"
-                    onChange={(e) => {
-                      fileJSON(e);
-                      onClose(); // Close the modal
-                    }}
-                    style={{ display: 'none' }}
-                    accept=".js, .json, .txt"
-                  />
-                  Upload 3DStreet JSON File
-                </label>
+                  accept=".js, .json, .txt"
+                />
               </Button>
             </div>
           </div>

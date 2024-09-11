@@ -7,21 +7,21 @@ import Events from '../../lib/Events';
 import Entity from './Entity';
 import { ToolbarWrapper } from './ToolbarWrapper';
 import { LayersIcon, ArrowLeftIcon } from '../../icons';
+import { getEntityDisplayName } from '../../lib/entity';
 import posthog from 'posthog-js';
+
+const HIDDEN_CLASSES = ['teleportRay', 'hitEntity', 'hideFromSceneGraph'];
+const HIDDEN_IDS = ['dropPlane', 'previewEntity'];
 
 export default class SceneGraph extends React.Component {
   static propTypes = {
-    id: PropTypes.string,
-    onChange: PropTypes.func,
     scene: PropTypes.object,
     selectedEntity: PropTypes.object,
     visible: PropTypes.bool
   };
 
   static defaultProps = {
-    selectedEntity: '',
-    index: -1,
-    id: 'left-sidebar'
+    selectedEntity: ''
   };
 
   constructor(props) {
@@ -29,98 +29,103 @@ export default class SceneGraph extends React.Component {
     this.state = {
       entities: [],
       expandedElements: new WeakMap([[props.scene, true]]),
-      filter: '',
-      filteredEntities: [],
-      selectedIndex: -1,
       leftBarHide: false,
-      initiallyExpandedEntities: [],
-      secondLvlEntitiesExpanded: true,
-      firstLevelEntities: []
+      selectedIndex: -1
     };
 
     this.rebuildEntityOptions = debounce(
       this.rebuildEntityOptions.bind(this),
-      1000
-    );
-    this.updateFilteredEntities = debounce(
-      this.updateFilteredEntities.bind(this),
-      500
+      0
     );
   }
 
+  onEntityUpdate = (detail) => {
+    if (
+      detail.component === 'id' ||
+      detail.component === 'class' ||
+      detail.component === 'mixin' ||
+      detail.component === 'visible'
+    ) {
+      this.rebuildEntityOptions();
+    }
+  };
+
+  onChildAttachedDetached = (event) => {
+    if (this.includeInSceneGraph(event.detail.el)) {
+      this.rebuildEntityOptions();
+    }
+  };
+
   componentDidMount() {
-    this.setFirstLevelEntities();
     this.rebuildEntityOptions();
-    Events.on('updatescenegraph', this.rebuildEntityOptions);
-    Events.on('entityidchange', this.rebuildEntityOptions);
-    Events.on('entitycreated', this.rebuildEntityOptions);
-    Events.on('entityclone', this.rebuildEntityOptions);
-    Events.on('entityupdate', (detail) => {
-      if (detail.component === 'mixin') {
-        this.rebuildEntityOptions();
-      }
-    });
+    Events.on('entityupdate', this.onEntityUpdate);
+    document.addEventListener('child-attached', this.onChildAttachedDetached);
+    document.addEventListener('child-detached', this.onChildAttachedDetached);
+  }
+
+  componentWillUnmount() {
+    Events.off('entityupdate', this.onEntityUpdate);
+    document.removeEventListener(
+      'child-attached',
+      this.onChildAttachedDetached
+    );
+    document.removeEventListener(
+      'child-detached',
+      this.onChildAttachedDetached
+    );
   }
 
   /**
    * Selected entity updated from somewhere else in the app.
    */
-
   componentDidUpdate(prevProps) {
     if (prevProps.selectedEntity !== this.props.selectedEntity) {
       this.selectEntity(this.props.selectedEntity);
     }
   }
 
-  setFirstLevelEntities = () => {
-    for (
-      let i = 0;
-      i < document.querySelector('a-scene').childNodes.length;
-      i++
-    ) {
-      if (
-        document.querySelector('a-scene').childNodes[i].localName ===
-          'a-entity' &&
-        document.querySelector('a-scene').childNodes[i].id !== ''
-      ) {
-        this.setState((prevState) => ({
-          firstLevelEntities: [
-            ...prevState.firstLevelEntities,
-            document.querySelector('a-scene').childNodes[i].id
-          ]
-        }));
-      }
-    }
-  };
-
   selectEntity = (entity) => {
     let found = false;
-    for (let i = 0; i < this.state.filteredEntities.length; i++) {
-      const entityOption = this.state.filteredEntities[i];
+    for (let i = 0; i < this.state.entities.length; i++) {
+      const entityOption = this.state.entities[i];
       if (entityOption.entity === entity) {
-        this.setState({ selectedEntity: entity, selectedIndex: i });
+        this.setState({ selectedIndex: i });
+        setTimeout(() => {
+          // wait 500ms to allow user to double click on entity
+          document
+            .getElementById('sgnode' + i)
+            ?.scrollIntoView({ behavior: 'smooth' });
+        }, 500);
         // Make sure selected value is visible in scenegraph
         this.expandToRoot(entity);
-        if (this.props.onChange) {
-          this.props.onChange(entity);
-        }
         posthog.capture('entity_selected', {
-          entity: entity.getAttribute('mixin')
+          entity: getEntityDisplayName(entity)
         });
-        Events.emit('entityselect', entity, true);
+        Events.emit('entityselect', entity);
         found = true;
       }
     }
 
     if (!found) {
-      this.setState({ selectedEntity: null, selectedIndex: -1 });
+      this.setState({ selectedIndex: -1 });
     }
   };
 
-  rebuildEntityOptions = () => {
-    const entities = [{ depth: 0, entity: this.props.scene }];
+  includeInSceneGraph = (element) => {
+    return !(
+      element.dataset.isInspector ||
+      !element.isEntity ||
+      element.isInspector ||
+      'aframeInspector' in element.dataset ||
+      HIDDEN_CLASSES.includes(element.className) ||
+      HIDDEN_IDS.includes(element.id)
+    );
+  };
 
-    function treeIterate(element, depth) {
+  rebuildEntityOptions = () => {
+    const entities = [];
+
+    const treeIterate = (element, depth) => {
       if (!element) {
         return;
       }
@@ -129,37 +134,55 @@ export default class SceneGraph extends React.Component {
       for (let i = 0; i < element.children.length; i++) {
         let entity = element.children[i];
 
-        if (
-          entity.dataset.isInspector ||
-          !entity.isEntity ||
-          entity.isInspector ||
-          'aframeInspector' in entity.dataset
-        ) {
+        if (!this.includeInSceneGraph(entity) || (depth === 1 && !entity.id)) {
           continue;
         }
 
-        entities.push({ entity: entity, depth: depth });
+        entities.push({
+          entity: entity,
+          depth: depth,
+          id: 'sgnode' + entities.length
+        });
 
         treeIterate(entity, depth);
       }
+    };
+    const layers = this.props.scene.children;
+    const orderedLayers = [];
+
+    for (const layer of layers) {
+      if (layer.id === 'reference-layers') {
+        orderedLayers.unshift(layer);
+      } else if (layer.id === 'environment') {
+        orderedLayers.splice(1, 0, layer);
+      } else if (layer.id === 'street-container') {
+        orderedLayers.splice(2, 0, layer);
+      } else {
+        orderedLayers.push(layer);
+      }
     }
-    treeIterate(this.props.scene, 0);
+
+    treeIterate({ children: orderedLayers }, 0);
 
     this.setState({
       entities: entities,
-      filteredEntities: this.getFilteredEntities(this.state.filter, entities)
+      // Expand User Layers by default initially
+      expandedElements: orderedLayers.reduce((expandedElements, layer) => {
+        if (
+          expandedElements.get(layer) === undefined &&
+          layer.id === 'street-container'
+        ) {
+          return expandedElements.set(layer, true);
+        } else {
+          return expandedElements;
+        }
+      }, this.state.expandedElements)
     });
   };
 
   selectIndex = (index) => {
     if (index >= 0 && index < this.state.entities.length) {
       this.selectEntity(this.state.entities[index].entity);
-    }
-  };
-
-  onFilterKeyUp = (event) => {
-    if (event.keyCode === 27) {
-      this.clearFilter();
     }
   };
 
@@ -202,22 +225,12 @@ export default class SceneGraph extends React.Component {
     }
   };
 
-  getFilteredEntities(filter, entities) {
-    entities = entities || this.state.entities;
-    if (!filter) {
-      return entities;
-    }
-    return entities.filter((entityOption) => {
-      return filterEntity(entityOption.entity, filter || this.state.filter);
-    });
-  }
-
   isVisibleInSceneGraph = (x) => {
     let curr = x.parentNode;
     if (!curr) {
       return false;
     }
-    while (curr !== undefined && curr?.isEntity) {
+    while (curr?.isEntity) {
       if (!this.isExpanded(curr)) {
         return false;
       }
@@ -229,24 +242,9 @@ export default class SceneGraph extends React.Component {
   isExpanded = (x) => this.state.expandedElements.get(x) === true;
 
   toggleExpandedCollapsed = (x) => {
-    if (this.state.firstLevelEntities.includes(x.id)) {
-      this.setState({
-        expandedElements: this.state.expandedElements.set(
-          x,
-          !this.isExpanded(x)
-        )
-      });
-    } else {
-      this.setState({
-        secondLvlEntitiesExpanded: !this.state.secondLvlEntitiesExpanded
-      });
-      this.setState({
-        expandedElements: this.state.expandedElements.set(
-          x,
-          this.state.secondLvlEntitiesExpanded
-        )
-      });
-    }
+    this.setState({
+      expandedElements: this.state.expandedElements.set(x, !this.isExpanded(x))
+    });
   };
 
   expandToRoot = (x) => {
@@ -283,46 +281,23 @@ export default class SceneGraph extends React.Component {
     return -1;
   };
 
-  onChangeFilter = (evt) => {
-    const filter = evt.target.value;
-    this.setState({ filter: filter });
-    this.updateFilteredEntities(filter);
-  };
-
-  updateFilteredEntities(filter) {
-    this.setState({
-      filteredEntities: this.getFilteredEntities(filter)
-    });
-  }
-
-  clearFilter = () => {
-    this.setState({ filter: '' });
-    this.updateFilteredEntities('');
-  };
-
   toggleLeftBar = () => {
     this.setState({ leftBarHide: !this.state.leftBarHide });
   };
 
   renderEntities = () => {
-    let entityOptions = this.state.filteredEntities.filter((entityOption) => {
-      if (
-        !this.isVisibleInSceneGraph(entityOption.entity) &&
-        !this.state.filter
-      ) {
+    const renderedEntities = [];
+    const entityOptions = this.state.entities.filter((entityOption) => {
+      if (!this.isVisibleInSceneGraph(entityOption.entity)) {
         return false;
       } else {
         return true;
       }
     });
-
-    // wrap entities of layer level 1 in <div class="layer">
-    let layerEntities = [];
-    let resultEntities = [];
-    // let activeLayer = false;
-    for (let i = 1; i < entityOptions.length; i++) {
+    let children = [];
+    for (let i = 0; i < entityOptions.length; i++) {
       const entityOption = entityOptions[i];
-      const entity = (
+      const renderedEntity = (
         <Entity
           {...entityOption}
           key={i}
@@ -331,38 +306,24 @@ export default class SceneGraph extends React.Component {
           isSelected={this.props.selectedEntity === entityOption.entity}
           selectEntity={this.selectEntity}
           toggleExpandedCollapsed={this.toggleExpandedCollapsed}
-          isInitiallyExpanded={this.state.initiallyExpandedEntities.some(
-            (item) => item === entityOption.entity.id
-          )}
-          initiallyExpandEntity={() => {
-            this.toggleExpandedCollapsed(entityOption.entity);
-            this.setState((prevState) => ({
-              ...prevState,
-              initiallyExpandedEntities: [
-                ...prevState.initiallyExpandedEntities.filter(
-                  (item) => item !== entityOption.entity.id
-                ),
-                entityOption.entity.id
-              ]
-            }));
-          }}
         />
       );
-      layerEntities.push(entity);
+      children.push(renderedEntity);
+      // wrap entities of depth 1 in <div class="layer">
       if (i === entityOptions.length - 1 || entityOptions[i + 1].depth === 1) {
         const className = classNames({
           layer: true,
-          active: layerEntities[0].props.isSelected
+          active: children[0].props.isSelected
         });
-        resultEntities.push(
+        renderedEntities.push(
           <div className={className} key={i}>
-            {layerEntities}
+            {children}
           </div>
         );
-        layerEntities = [];
+        children = [];
       }
     }
-    return resultEntities;
+    return renderedEntities;
   };
 
   render() {
@@ -377,25 +338,10 @@ export default class SceneGraph extends React.Component {
       hide: this.state.leftBarHide
     });
 
-    const clearFilter = this.state.filter ? (
-      <a onClick={this.clearFilter} className="button fa fa-times" />
-    ) : null;
-
     return (
       <div id="scenegraph" className="scenegraph">
         <div className="scenegraph-toolbar">
           <ToolbarWrapper />
-          <div className="search">
-            <input
-              id="filter"
-              placeholder="Search..."
-              onChange={this.onChangeFilter}
-              onKeyUp={this.onFilterKeyUp}
-              value={this.state.filter}
-            />
-            {clearFilter}
-            {!this.state.filter && <span className="fa fa-search" />}
-          </div>
         </div>
         <div
           className={className}
@@ -421,22 +367,4 @@ export default class SceneGraph extends React.Component {
       </div>
     );
   }
-}
-
-function filterEntity(entity, filter) {
-  if (!filter) {
-    return true;
-  }
-
-  // Check if the ID, tagName, class, selector includes the filter.
-  if (
-    entity.id.toUpperCase().indexOf(filter.toUpperCase()) !== -1 ||
-    entity.tagName.toUpperCase().indexOf(filter.toUpperCase()) !== -1 ||
-    entity.classList.contains(filter) ||
-    entity.matches(filter)
-  ) {
-    return true;
-  }
-
-  return false;
 }

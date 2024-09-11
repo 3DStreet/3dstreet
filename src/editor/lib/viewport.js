@@ -5,7 +5,6 @@ import EditorControls from './EditorControls.js';
 import { initRaycaster } from './raycaster';
 import Events from './Events';
 import { sendMetric } from '../services/ga.js';
-import { EntityUpdateCommand } from './commands/EntityUpdateCommand.js';
 
 // variables used by OrientedBoxHelper
 const auxEuler = new THREE.Euler();
@@ -128,6 +127,7 @@ export function Viewport(inspector) {
 
   Events.on('raycastermouseenter', (el) => {
     // update hoverBox to match el.object3D bounding box
+    if (el === inspector.selectedEntity) return;
     hoverBox.visible = true;
     hoverBox.setFromObject(el.object3D);
   });
@@ -177,14 +177,11 @@ export function Viewport(inspector) {
       value = `${object.scale.x} ${object.scale.y} ${object.scale.z}`;
     }
 
-    inspector.execute(
-      new EntityUpdateCommand(inspector, {
-        component: component,
-        entity: transformControls.object.el,
-        property: '',
-        value: value
-      })
-    );
+    inspector.execute('entityupdate', {
+      component: component,
+      entity: transformControls.object.el,
+      value: value
+    });
   });
 
   transformControls.addEventListener('mouseDown', () => {
@@ -198,7 +195,11 @@ export function Viewport(inspector) {
   sceneHelpers.add(transformControls);
 
   Events.on('entityupdate', (detail) => {
-    if (inspector.selectedEntity.object3DMap.mesh) {
+    const object = detail.entity.object3D;
+    if (
+      inspector.selected === object &&
+      inspector.selectedEntity.object3DMap.mesh
+    ) {
       selectionBox.setFromObject(inspector.selected);
       hoverBox.visible = false;
     }
@@ -206,15 +207,24 @@ export function Viewport(inspector) {
 
   // Controls need to be added *after* main logic.
   const controls = new THREE.EditorControls(camera, inspector.container);
+  inspector.controls = controls; // used in ZoomButtons component
   controls.center.set(0, 1.6, 0);
   controls.rotationSpeed = 0.0035;
   controls.zoomSpeed = 0.05;
   controls.setAspectRatio(sceneEl.canvas.width / sceneEl.canvas.height);
+  controls.addEventListener('change', () => {
+    transformControls.update(true); // true is updateScale
+    Events.emit('camerachanged');
+  });
+
+  sceneEl.addEventListener('newScene', () => {
+    controls.resetZoom();
+  });
 
   Events.on('cameratoggle', (data) => {
     controls.setCamera(data.camera);
     transformControls.setCamera(data.camera);
-
+    updateAspectRatio();
     // quick solution to change 3d tiles camera
     const tilesElem = document.querySelector('a-entity[loader-3dtiles]');
     if (tilesElem) {
@@ -256,6 +266,7 @@ export function Viewport(inspector) {
   });
 
   Events.on('objectselect', (object) => {
+    hoverBox.visible = false;
     selectionBox.visible = false;
     transformControls.detach();
     if (object && object.el) {
@@ -263,23 +274,27 @@ export function Viewport(inspector) {
         selectionBox.setFromObject(object);
         selectionBox.visible = true;
       } else if (object.el.hasAttribute('gltf-model')) {
-        object.el.addEventListener(
-          'model-loaded',
-          () => {
+        const listener = (event) => {
+          if (event.target !== object.el) return; // we got an event for a child, ignore
+          // Some models have a wrong bounding box if we don't wait a bit
+          setTimeout(() => {
             selectionBox.setFromObject(object);
             selectionBox.visible = true;
-          },
-          { once: true }
-        );
+          }, 20);
+          object.el.removeEventListener('model-loaded', listener);
+        };
+        object.el.addEventListener('model-loaded', listener);
       }
 
-      transformControls.attach(object);
+      if (inspector.cursor.isPlaying) {
+        // Only show transform controls when we are in pointer mode
+        transformControls.attach(object);
+      }
     }
   });
 
   Events.on('objectfocus', (object) => {
     controls.focus(object);
-    transformControls.update();
   });
 
   Events.on('geometrychanged', (object) => {
@@ -312,11 +327,32 @@ export function Viewport(inspector) {
     updateHelpers(object);
   });
 
-  Events.on('windowresize', () => {
-    camera.aspect =
+  function updateAspectRatio() {
+    if (!inspector.opened) return;
+    // Modifying aspect for perspective camera is done by aframe a-scene.resize function
+    // when the perspective camera is the active camera, so we actually do it a second time here,
+    // but we need to modify it ourself when we switch from ortho camera to perspective camera (updateAspectRatio() is called in cameratoggle handler).
+    const camera = inspector.camera;
+    const aspect =
       inspector.container.offsetWidth / inspector.container.offsetHeight;
+    if (camera.isPerspectiveCamera) {
+      camera.aspect = aspect;
+    } else if (camera.isOrthographicCamera) {
+      const frustumSize = camera.top - camera.bottom;
+      camera.left = (-frustumSize * aspect) / 2;
+      camera.right = (frustumSize * aspect) / 2;
+      camera.top = frustumSize / 2;
+      camera.bottom = -frustumSize / 2;
+    }
+
+    controls.setAspectRatio(aspect); // for zoom in/out to work correctly for orthographic camera
     camera.updateProjectionMatrix();
-  });
+
+    const cameraHelper = inspector.helpers[camera.uuid];
+    if (cameraHelper) cameraHelper.update();
+  }
+
+  inspector.sceneEl.addEventListener('rendererresize', updateAspectRatio);
 
   Events.on('gridvisibilitychanged', (showGrid) => {
     grid.visible = showGrid;

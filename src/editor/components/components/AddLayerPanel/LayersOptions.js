@@ -1,56 +1,50 @@
 const LayersOptions = [
   {
-    value: 'Models: Personal Vehicles',
-    label: 'Models: Personal Vehicles',
-    mixinGroups: ['vehicles', 'vehicles-rigged'],
-    onClick: () => console.log('Models: Personal Vehicles')
+    value: 'Dividers & Traffic Control',
+    label: '🚧 Dividers & Traffic Control',
+    mixinGroups: ['dividers'],
+    onClick: () => {}
+  },
+  {
+    value: 'Street Layers',
+    label: '🛣️ Street Layers',
+    onClick: () => {}
   },
   {
     value: 'Pro Layers',
-    label: 'Pro Layers',
-    onClick: () => console.log('Layers: Streets & Intersections')
+    label: '🌏 Pro Layers',
+    onClick: () => {}
   },
   {
-    value: 'Models: Transit Vehicles',
-    label: 'Models: Transit Vehicles',
-    mixinGroups: ['vehicles-transit'],
-    onClick: () => console.log('Models: Transit Vehicles')
+    value: 'Motor Vehicles',
+    label: '🚗 Motor Vehicles',
+    mixinGroups: ['vehicles-rigged', 'vehicles-transit'],
+    onClick: () => {}
   },
   {
-    value: 'Models: Utility Vehicles',
-    label: 'Models: Utility Vehicles',
-    mixinGroups: ['vehicles-rigged'],
-    onClick: () => console.log('Models: Utility Vehicles')
+    value: 'People Power Vehicles',
+    label: '🚲 People Power Vehicles',
+    mixinGroups: ['vehicles', 'cyclists'],
+    onClick: () => {}
   },
   {
-    value: 'Models: Characters',
-    label: 'Models: Characters',
-    mixinGroups: ['people', 'people-rigged'],
-    onClick: () => console.log('Models: Characters')
+    value: 'Characters',
+    label: '🚶 Characters',
+    mixinGroups: ['people'],
+    onClick: () => {}
   },
   {
-    value: 'Models: Street Props',
-    label: 'Models: Street Props',
+    value: 'Sidewalk Props',
+    label: '🌳 Sidewalk Props',
     mixinGroups: ['sidewalk-props', 'intersection-props'],
-    onClick: () => console.log('Models: Street Props')
+    onClick: () => {}
   },
+
   {
-    value: 'Models: dividers',
-    label: 'Models: dividers',
-    mixinGroups: ['dividers'],
-    onClick: () => console.log('Models: dividers')
-  },
-  {
-    value: 'Markings: Stencils & Striping',
-    label: 'Markings: Stencils & Striping',
-    mixinGroups: ['lane-separator', 'stencils'],
-    onClick: () => console.log('Models: striping & stencils')
-  },
-  {
-    value: 'Models: Buildings',
-    label: 'Models: Buildings',
+    value: 'Buildings',
+    label: '🏠 Buildings',
     mixinGroups: ['buildings'],
-    onClick: () => console.log('Models: Buildings')
+    onClick: () => {}
   }
 ];
 

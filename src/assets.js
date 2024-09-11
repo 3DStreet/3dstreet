@@ -26,9 +26,16 @@ function buildAssetHTML(assetUrl, categories) {
         <a-mixin shadow id="track" gltf-part="src: #streetProps; part: track"></a-mixin>
         <a-mixin shadow id="tree3" gltf-part="src: #streetProps; part: tree-01" scale="1.25 1.25 1.25"></a-mixin>
         <a-mixin shadow id="bus-stop" gltf-part="src: #streetProps; part: transit-shelter-1"></a-mixin>
+        <a-mixin shadow id="bus-stop-alternate" gltf-model="url(${assetUrl}sets/bus-shelter-alt-1/gltf-exports/draco/bus-shelter-alt-1.glb)"></a-mixin>
         <a-mixin shadow id="pride-flag" position="0.409 3.345 0" rotation="0 0 0" scale="0.5 0.75 0" geometry="width:2;height:2;primitive:plane" material="side:double; src:${assetUrl}materials/rainbow-flag-poles_512.png;transparent: true;"></a-mixin>
         <a-mixin shadow id="wayfinding-box" geometry="primitive: box; height: 2; width: 0.84; depth: 0.1" material="color: gray"></a-mixin>
-      `,
+        <a-mixin shadow id="trash-bin" gltf-model="url(${assetUrl}sets/uoregon/gltf-exports/draco/bin.glb)"></a-mixin>
+        <a-mixin shadow id="lending-library" gltf-model="url(${assetUrl}sets/uoregon/gltf-exports/draco/lending-library.glb)"></a-mixin>
+        <a-mixin shadow id="residential-mailbox" gltf-model="url(${assetUrl}sets/uoregon/gltf-exports/draco/residential-mailbox.glb)"></a-mixin>
+        <a-mixin shadow id="USPS-mailbox" gltf-model="url(${assetUrl}sets/uoregon/gltf-exports/draco/USPS-mailbox.glb)"></a-mixin>
+        <a-mixin shadow id="picnic-bench" gltf-model="url(${assetUrl}sets/uoregon/gltf-exports/draco/picnic-bench.glb)"></a-mixin>
+        <a-mixin shadow id="large-parklet" gltf-model="url(${assetUrl}sets/uoregon/gltf-exports/draco/large-parklet-seating.glb)"></a-mixin>
+        `,
     people: `
         <!-- human characters -->
         <a-asset-item id="humans" src="${assetUrl}sets/human-characters-poses-1/gltf-exports/draco/human-characters-poses-1.glb"></a-asset-item>
@@ -70,14 +77,14 @@ function buildAssetHTML(assetUrl, categories) {
         <a-mixin shadow id="a_char8" gltf-model="#character8walk" animation-mixer></a-mixin>
       `,
     vehicles: `
-        <!-- vehicles -->
-        <a-asset-item id="magic-carpet-glb" src="${assetUrl}sets/magic-carpet/gltf-exports/draco/magic-carpet.glb"></a-asset-item>
-        <a-mixin shadow id="Character_1_M" gltf-part="src: #magic-carpet-glb; part: Character_1_M"></a-mixin>
-        <a-mixin shadow id="magic-carpet" gltf-part="src: #magic-carpet-glb; part: magic-carpet"></a-mixin>
         <!-- micro mobility vehicles -->
         <a-asset-item id="microMobilityDevices" src="${assetUrl}sets/micro-mobility-devices/gltf-exports/draco/micro-mobility-devices_v01.glb"></a-asset-item>
         <a-mixin shadow id="Bicycle_1" gltf-part="src: #microMobilityDevices; part: Bicycle_1"></a-mixin>
         <a-mixin shadow id="ElectricScooter_1" gltf-part="src: #microMobilityDevices; part: ElectricScooter_1"></a-mixin>
+        <!-- fantasy vehicles -->
+        <a-asset-item id="magic-carpet-glb" src="${assetUrl}sets/magic-carpet/gltf-exports/draco/magic-carpet.glb"></a-asset-item>
+        <a-mixin shadow id="Character_1_M" gltf-part="src: #magic-carpet-glb; part: Character_1_M"></a-mixin>
+        <a-mixin shadow id="magic-carpet" gltf-part="src: #magic-carpet-glb; part: magic-carpet"></a-mixin>
       `,
     'vehicles-rigged': `
         <!-- vehicles rigged -->
@@ -91,6 +98,8 @@ function buildAssetHTML(assetUrl, categories) {
         <a-mixin shadow id="trash-truck-side-loading" gltf-model="url(${assetUrl}sets/vehicles/gltf-exports/draco/trash-truck-side-loading.glb)"></a-mixin>
         <a-mixin shadow id="self-driving-cruise-car-rig" gltf-model="url(${assetUrl}sets/vehicles-rig/gltf-exports/draco/self-driving-cruise-car-rig.glb)"></a-mixin>
         <a-mixin shadow id="self-driving-waymo-car" gltf-model="url(${assetUrl}sets/vehicles/gltf-exports/draco/waymo-self-driving-car.glb)"></a-mixin>
+        <a-mixin shadow id="tuk-tuk" gltf-model="url(${assetUrl}sets/vehicles/gltf-exports/draco/tuk-tuk.glb)"></a-mixin>
+        <a-mixin shadow id="motorbike" gltf-model="url(${assetUrl}sets/vehicles/gltf-exports/draco/two-wheeler-with-person.glb)"></a-mixin>
       `,
     buildings: `
         <!-- blocks -->
@@ -127,11 +136,13 @@ function buildAssetHTML(assetUrl, categories) {
     'segment-textures': `  
         <!-- segment mixins with textures -->
         <img id="seamless-road" src="${assetUrl}materials/TexturesCom_Roads0086_1_seamless_S_rotate.jpg" crossorigin="anonymous">
+        <img id="seamless-sandy-road" src="${assetUrl}materials/TexturesCom_Roads0086_1_seamless_S_rotate-sandy.webp" crossorigin="anonymous">
         <img id="seamless-bright-road" src="${assetUrl}materials/asphalthd_Base_Color.jpg" crossorigin="anonymous">
         <img id="seamless-sidewalk" src="${assetUrl}materials/TexturesCom_FloorsRegular0301_1_seamless_S.jpg" crossorigin="anonymous">
         <img id="hatched-base" src="${assetUrl}materials/seamless-lane-with-hatch-half.jpg" crossorigin="anonymous">
         <img id="hatched-normal" src="${assetUrl}materials/seamless-lane-with-hatch-half.jpg" crossorigin="anonymous">
         <a-mixin shadow="cast: false" id="drive-lane" geometry="width:3;height:150;primitive:plane" material="roughness:${surfacesRoughness};repeat:0.3 25;offset:0.55 0;src:#seamless-road;"></a-mixin>
+        <a-mixin shadow="cast: false" id="sandy-lane" geometry="width:3;height:150;primitive:plane" material="roughness:${surfacesRoughness};repeat:0.3 5;offset:0.55 0;src:#seamless-sandy-road;"></a-mixin>
         <a-mixin shadow="cast: false" id="bright-lane" geometry="width:3;height:150;primitive:plane" material="roughness:${surfacesRoughness};repeat:0.6 50;offset:0.55 0;src:#seamless-bright-road;color:#dddddd"></a-mixin>
         <a-mixin shadow="cast: false" id="bike-lane" geometry="width:1.8;height:150;primitive:plane" material="roughness:${surfacesRoughness};repeat:0.3 25;offset:0.55 0;metalness:0;src:#seamless-road;"></a-mixin>
         <a-mixin shadow id="sidewalk" geometry="width:3;height:150;primitive:plane" material="roughness:${surfacesRoughness};repeat:1.5 75;src:#seamless-sidewalk;"></a-mixin>
@@ -193,6 +204,7 @@ function buildAssetHTML(assetUrl, categories) {
         <a-mixin shadow id="bus" gltf-model="url(${assetUrl}sets/flyer-bus/gltf-exports/draco/new-flyer-bus.glb)"></a-mixin>
         <a-mixin shadow id="tram" gltf-model="url(${assetUrl}sets/light-rail-vehicle/gltf-exports/draco/light_rail_vehicle.glb)"></a-mixin>
         <a-mixin shadow id="trolley" gltf-model="url(${assetUrl}sets/sanfrancisco-cablecar/gltf-exports/draco/sanfrancisco-cablecar_v01.glb)"></a-mixin>
+        <a-mixin shadow id="minibus" gltf-model="url(${assetUrl}sets/vehicles/gltf-exports/draco/mini-bus.glb)"></a-mixin>
         `,
     dividers: `
         <!-- dividers - aka street design elements -->
@@ -202,7 +214,8 @@ function buildAssetHTML(assetUrl, categories) {
         <a-mixin shadow id="dividers-planter-box" scale="1 1 1" rotation="0 0 0" gltf-part="src: #dividers; part: planter-box"></a-mixin>
         <a-mixin shadow id="dividers-bush" scale="1 1 1" rotation="0 0 0" gltf-part="src: #dividers; part: bush"></a-mixin>
         <a-mixin shadow id="dividers-dome" scale="1 1 1" rotation="0 0 0" gltf-part="src: #dividers; part: dome"></a-mixin>
-        <a-mixin shadow id="safehit" scale="1 1 1" rotation="0 0 0" gltf-part="src: #dividers; part: bollard"></a-mixin>
+        <a-mixin shadow id="safehit" scale="1 1 1" rotation="0 0 0" gltf-part="src: #dividers; part: safehit"></a-mixin>
+        <a-mixin shadow id="bollard" scale="1 1 1" rotation="0 0 0" gltf-part="src: #dividers; part: bollard"></a-mixin>
         <a-mixin shadow id="temporary-barricade" scale="1 1 1" rotation="0 0 0" gltf-part="src: #dividers; part: barricade"></a-mixin>
         <a-mixin shadow id="temporary-traffic-cone" scale="1 1 1" rotation="0 0 0" gltf-part="src: #dividers; part: traffic-cone"></a-mixin>
         <a-mixin shadow id="temporary-jersey-barrier-plastic" scale="1 1 1" rotation="0 0 0" gltf-part="src: #dividers; part: jersey-barrier-plastic"></a-mixin>
@@ -213,7 +226,10 @@ function buildAssetHTML(assetUrl, categories) {
         <a-mixin shadow id="street-element-traffic-post-k71" scale="1 1 1" rotation="0 0 0" gltf-model="url(${assetUrl}sets/uoregon/gltf-exports/draco/traffic-post-k71.glb)"></a-mixin>
         <a-mixin shadow id="street-element-traffic-island" scale="1.5 1.5 1.5" rotation="0 0 0" gltf-model="url(${assetUrl}sets/uoregon/gltf-exports/draco/curb-traffic-island.glb)"></a-mixin>
         <a-mixin shadow id="street-element-speed-hump" scale="1.5 1.5 1.5" rotation="0 0 0" gltf-model="url(${assetUrl}sets/uoregon/gltf-exports/draco/speed-hump.glb)"></a-mixin>
-      `,
+        <a-mixin shadow id="crosswalk-zebra-box" geometry="primitive: box; height: 0.1; width: 2; depth: 10" material="src: url(${assetUrl}materials/markings-crosswalk.png)"></a-mixin>
+        <a-mixin shadow id="traffic-calming-bumps" gltf-model="url(${assetUrl}sets/uoregon/gltf-exports/draco/traffic-calming-bumps.glb)"></a-mixin>
+        <a-mixin shadow id="corner-island" gltf-model="url(${assetUrl}sets/uoregon/gltf-exports/draco/corner-island.glb)"></a-mixin>
+        `,
     sky: `
         <!-- sky -->
         <img id="sky" src="${assetUrl}images/skies/2048-polyhaven-wasteland_clouds_puresky.jpeg" crossorigin="anonymous" />
@@ -222,8 +238,10 @@ function buildAssetHTML(assetUrl, categories) {
     grounds: `
         <!-- grounds -->
         <img id="grass-texture" src="${assetUrl}materials/TexturesCom_Grass0052_1_seamless_S.jpg" crossorigin="anonymous">
+        <img id="compacted-gravel-texture" src="${assetUrl}materials/compacted-gravel_color.webp" crossorigin="anonymous">
         <img id="parking-lot-texture" src="${assetUrl}materials/TexturesCom_Roads0111_1_seamless_S.jpg" crossorigin="anonymous">
         <img id="asphalt-texture" src="${assetUrl}materials/TexturesCom_AsphaltDamaged0057_1_seamless_S.jpg" crossorigin="anonymous">
+        <img id="sandy-asphalt-texture" src="${assetUrl}materials/sandy-asphalt-texture_color.webp" crossorigin="anonymous">
 
         <!-- legacy plane-based grounds for compatibility with 0.4.2 and earlier scenes, not used for new streets -->
         <a-mixin shadow id="ground-grass" rotation="-90 0 0" geometry="primitive:plane;height:150;width:40" material="src:#grass-texture;repeat:5 5;roughness:1"></a-mixin>
@@ -315,38 +333,57 @@ class StreetAssets extends AFRAME.ANode {
   }
 }
 customElements.define('street-assets', StreetAssets);
-
-// add street-assets to scene if it doesn't already exist
-var domModifiedHandler = function (evt) {
-  // Only care about events affecting an a-scene
-  if (evt.target.nodeName !== 'A-SCENE') return;
-
-  // Try to find the a-assets element in the a-scene
-  let assets = evt.target.querySelector('a-assets');
+// Function to add street-assets if it doesn't already exist
+function addStreetAssets(scene) {
+  let assets = scene.querySelector('a-assets');
 
   if (!assets) {
-    // attempt to create and add the assets if they don't already exist
-    // TODO: this doesn't work well with images, so scenes must include <a-assets></a-assets> to run correctly
     assets = document.createElement('a-assets');
-    evt.target.append(assets);
+    scene.appendChild(assets);
   }
 
-  // Already have the streetmix assets. No need to add them
-  if (assets.querySelector('street-assets')) {
-    document.removeEventListener('DOMSubtreeModified', domModifiedHandler);
-    return;
+  if (!assets.querySelector('street-assets')) {
+    const streetAssets = document.createElement('street-assets');
+    assets.appendChild(streetAssets);
   }
+}
 
-  // Create and add the custom street-assets element
-  const streetAssets = document.createElement('street-assets');
-  assets.append(streetAssets);
+// Set up the MutationObserver
+const observer = new MutationObserver((mutations) => {
+  for (const mutation of mutations) {
+    if (mutation.type === 'childList') {
+      const addedNodes = mutation.addedNodes;
+      for (const node of addedNodes) {
+        if (node.nodeName === 'A-SCENE') {
+          addStreetAssets(node);
+          // We've found and processed an a-scene, so we can disconnect the observer
+          observer.disconnect();
+          return;
+        }
+      }
+    }
+  }
+});
 
-  // Clean up by removing the event listener
-  document.removeEventListener('DOMSubtreeModified', domModifiedHandler);
-};
+// Function to start observing
+function startObserving() {
+  // Immediate check in case the a-scene is already in the DOM
+  const existingScene = document.querySelector('a-scene');
+  if (existingScene) {
+    addStreetAssets(existingScene);
+  } else {
+    // Start observing the document with the configured parameters
+    observer.observe(document.body, { childList: true, subtree: true });
+  }
+}
 
-document.addEventListener('DOMSubtreeModified', domModifiedHandler, false);
-
+// Wait for the DOM to be fully loaded before starting the observer
+if (document.readyState !== 'complete') {
+  document.addEventListener('DOMContentLoaded', startObserving);
+} else {
+  // DOMContentLoaded has already fired
+  startObserving();
+}
 /*
 Unused assets kept commented here for future reference
         <!-- audio -->

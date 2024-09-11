@@ -186,7 +186,6 @@ function ScreenshotModal({ isOpen, onClose }) {
       className={styles.screenshotModalWrapper}
       isOpen={isOpen}
       onClose={onClose}
-      extraCloseKeyCode={72}
       title={'Share scene'}
       titleElement={
         <>

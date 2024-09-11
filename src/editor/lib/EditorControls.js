@@ -1,4 +1,4 @@
-import debounce from 'lodash-es/debounce';
+import { currentOrthoDir } from './cameras';
 
 /**
  * @author qiao / https://github.com/qiao
@@ -55,12 +55,15 @@ THREE.EditorControls = function (_object, domElement) {
 
   var changeEvent = { type: 'change' };
 
-  this.dispatchChange = debounce(() => {
-    scope.dispatchEvent(changeEvent);
-  }, 100);
-
   this.focus = function (target) {
+    if (this.isOrthographic) {
+      return;
+    }
     var distance;
+
+    // Save current camera position/quaternion
+    scope.transitionCamPosStart.copy(object.position);
+    scope.transitionCamQuaternionStart.copy(object.quaternion);
 
     box.setFromObject(target);
 
@@ -75,12 +78,78 @@ THREE.EditorControls = function (_object, domElement) {
     }
 
     object.position.copy(
-      target.localToWorld(new THREE.Vector3(0, 0, distance * 2))
+      target.localToWorld(
+        new THREE.Vector3(0, center.y + distance * 0.5, distance * 2.5)
+      )
     );
-    object.lookAt(target.getWorldPosition(new THREE.Vector3()));
+    const pos = target.getWorldPosition(new THREE.Vector3());
+    pos.y = center.y;
 
-    scope.dispatchEvent(changeEvent);
+    object.lookAt(pos);
+
+    // Save end camera position/quaternion
+    scope.transitionCamPosEnd.copy(object.position);
+    scope.transitionCamQuaternionEnd.copy(object.quaternion);
+    // Restore camera position/quaternion and start transition
+    object.position.copy(scope.transitionCamPosStart);
+    object.quaternion.copy(scope.transitionCamQuaternionStart);
+    scope.transitionSpeed = 0.001;
+    scope.transitionProgress = 0;
+    scope.transitioning = true;
   };
+
+  function easeInOutQuad(t) {
+    return t < 0.5 ? 2 * t * t : -1 + (4 - 2 * t) * t;
+  }
+
+  this.transitioning = false;
+  this.transitionProgress = 0;
+  this.transitionCamPosStart = new THREE.Vector3();
+  this.transitionCamPosEnd = new THREE.Vector3();
+  this.transitionCamQuaternionStart = new THREE.Quaternion();
+  this.transitionCamQuaternionEnd = new THREE.Quaternion();
+  this.transitionSpeed = 0.001;
+  this.fakeComponent = {
+    name: 'inspector-editor-controls',
+    el: { isPlaying: true },
+    isPlaying: true,
+    tick: (t, delta) => {
+      if (scope.enabled === false) return;
+      if (this.transitioning) {
+        this.transitionProgress += delta * this.transitionSpeed;
+        const easeInOutTransitionProgress = easeInOutQuad(
+          this.transitionProgress
+        );
+
+        // Set camera position
+        object.position.lerpVectors(
+          this.transitionCamPosStart,
+          this.transitionCamPosEnd,
+          easeInOutTransitionProgress
+        );
+
+        object.quaternion.slerpQuaternions(
+          this.transitionCamQuaternionStart,
+          this.transitionCamQuaternionEnd,
+          easeInOutTransitionProgress
+        );
+
+        if (this.transitionProgress >= 1) {
+          this.transitioning = false;
+          object.position.copy(this.transitionCamPosEnd);
+          object.quaternion.copy(this.transitionCamQuaternionEnd);
+        }
+        scope.dispatchEvent(changeEvent);
+      }
+    }
+  };
+  // Register the tick function with the render loop
+  const sceneEl = AFRAME.scenes[0];
+  if (sceneEl.componentOrder) {
+    // aframe 1.6.0 an above
+    sceneEl.componentOrder.push(this.fakeComponent.name);
+  }
+  sceneEl.addBehavior(this.fakeComponent);
 
   this.pan = function (delta) {
     var distance;
@@ -96,7 +165,7 @@ THREE.EditorControls = function (_object, domElement) {
     object.position.add(delta);
     center.add(delta);
 
-    scope.dispatchChange();
+    scope.dispatchEvent(changeEvent);
   };
 
   var ratio = 1;
@@ -105,10 +174,6 @@ THREE.EditorControls = function (_object, domElement) {
   };
 
   this.zoom = function (delta) {
-    if (!sessionStorage.getItem('initialZoomObject')) {
-      sessionStorage.setItem('initialZoomObject', JSON.stringify(object));
-    }
-
     var distance = object.position.distanceTo(center);
 
     delta.multiplyScalar(distance * scope.zoomSpeed);
@@ -136,7 +201,7 @@ THREE.EditorControls = function (_object, domElement) {
       object.position.add(delta);
     }
 
-    scope.dispatchChange();
+    scope.dispatchEvent(changeEvent);
   };
 
   this.rotate = function (delta) {
@@ -159,7 +224,7 @@ THREE.EditorControls = function (_object, domElement) {
 
     object.lookAt(center);
 
-    scope.dispatchChange();
+    scope.dispatchEvent(changeEvent);
   };
 
   // mouse
@@ -246,30 +311,6 @@ THREE.EditorControls = function (_object, domElement) {
 
     domElement.removeEventListener('touchstart', touchStart, false);
     domElement.removeEventListener('touchmove', touchMove, false);
-
-    document
-      .getElementById('zoomInButton')
-      .removeEventListener('pointerdown', zoomInStart);
-    document
-      .getElementById('zoomInButton')
-      .removeEventListener('pointerup', zoomInStop);
-    document
-      .getElementById('zoomInButton')
-      .removeEventListener('pointerleave', zoomInStop);
-
-    document
-      .getElementById('zoomOutButton')
-      .removeEventListener('pointerdown', zoomOutStart);
-    document
-      .getElementById('zoomOutButton')
-      .removeEventListener('pointerup', zoomOutStop);
-    document
-      .getElementById('zoomOutButton')
-      .removeEventListener('pointerleave', zoomOutStop);
-
-    document
-      .getElementById('resetZoomButton')
-      .removeEventListener('pointerdown', resetZoom);
   };
 
   domElement.addEventListener('contextmenu', contextmenu, false);
@@ -368,58 +409,39 @@ THREE.EditorControls = function (_object, domElement) {
   let zoomInInterval;
   let zoomOutInterval;
 
-  const zoomInStart = () => {
+  this.zoomInStart = () => {
     zoomInInterval = setInterval(() => scope.zoom(delta.set(0, 0, -1)), 50);
   };
-  const zoomInStop = () => clearInterval(zoomInInterval);
+  this.zoomInStop = () => clearInterval(zoomInInterval);
 
-  const zoomOutStart = () => {
+  this.zoomOutStart = () => {
     zoomOutInterval = setInterval(() => scope.zoom(delta.set(0, 0, 1)), 50);
   };
-  const zoomOutStop = () => clearInterval(zoomOutInterval);
+  this.zoomOutStop = () => clearInterval(zoomOutInterval);
 
-  const resetZoom = () => {
-    const initialObject = JSON.parse(
-      sessionStorage.getItem('initialZoomObject')
-    )?.object;
-
-    if (initialObject) {
-      initialObject.position = new THREE.Vector3().set(0, 10, 0);
-
-      if (this.isOrthographic) {
-        object.left = initialObject.left;
-        object.bottom = initialObject.bottom;
-        object.right = initialObject.right;
-        object.top = initialObject.top;
+  this.resetZoom = () => {
+    if (this.isOrthographic) {
+      const sceneEl = AFRAME.scenes[0];
+      const ratio = sceneEl.canvas.width / sceneEl.canvas.height;
+      object.left = -40 * ratio;
+      object.right = 40 * ratio;
+      object.top = 40;
+      object.bottom = -40;
+      if (currentOrthoDir === 'top') {
         object.position.set(0, 10, 0);
-        if (object.left >= -0.0001) {
-          return;
-        }
-        object.updateProjectionMatrix();
-      } else {
-        object.rotation.set(-0.4, 0, 0);
-        object.position.set(0, 15, 30);
       }
-
-      scope.dispatchChange();
+      if (currentOrthoDir === 'front') {
+        object.position.set(0, 0, 10);
+      }
+      object.updateProjectionMatrix();
+    } else {
+      object.position.set(0, 15, 30);
+      object.lookAt(new THREE.Vector3(0, 1.6, -1));
+      object.updateMatrixWorld();
     }
+
+    scope.dispatchEvent(changeEvent);
   };
-
-  setTimeout(() => {
-    const zoomInButton = document.getElementById('zoomInButton');
-    const zoomOutButton = document.getElementById('zoomOutButton');
-    const resetZoomButton = document.getElementById('resetZoomButton');
-
-    zoomInButton.addEventListener('pointerdown', zoomInStart);
-    zoomInButton.addEventListener('pointerup', zoomInStop);
-    zoomInButton.addEventListener('pointerleave', zoomInStop);
-
-    zoomOutButton.addEventListener('pointerdown', zoomOutStart);
-    zoomOutButton.addEventListener('pointerup', zoomOutStop);
-    zoomOutButton.addEventListener('pointerleave', zoomOutStop);
-
-    resetZoomButton.addEventListener('pointerdown', resetZoom);
-  }, 1);
 };
 
 THREE.EditorControls.prototype = Object.create(THREE.EventDispatcher.prototype);

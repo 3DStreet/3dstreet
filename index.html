@@ -4,6 +4,7 @@
 <head>
   <!-- aframe -->
   <script src="https://launchar.app/sdk/v1?key=vDhrPJN2RAYrTKXak3LYKFPnPGKYAzKK&redirect=true"></script>
+  <!-- <script src="https://cdn.jsdelivr.net/gh/aframevr/aframe@4142ec90a76916d252e375ceb1595971ee264966/dist/aframe-master.min.js"></script> -->
   <script src="https://aframe.io/releases/1.5.0/aframe.min.js"></script>
 
   <!-- 3dstreet -->
@@ -23,25 +24,6 @@
     })
   </script> -->
 
-  <script>
-    // TODO: This should be inside of Viewer Wrapper component logic
-    // this makes the same camera rig setup work in VR and desktop modes
-    // this could be a new component, such as "swap desktop and vr controls" and put in init section
-    window.addEventListener("DOMContentLoaded", function () {
-      const sceneEl = document.querySelector("a-scene");
-      sceneEl.addEventListener("enter-vr", function () {
-        document.querySelector('#cameraRig').removeAttribute('look-controls')
-        document.querySelector('#cameraRig').removeAttribute('wasd-controls')
-        document.querySelector('#cameraRig').removeAttribute('cursor-teleport')
-        document.querySelector('#cameraRig').setAttribute('position', '0 0 0')
-      });
-      sceneEl.addEventListener("exit-vr", function () {
-        document.querySelector('#cameraRig').setAttribute('cursor-teleport', "cameraRig: #cameraRig; cameraHead: #camera;")
-        document.querySelector('#cameraRig').setAttribute('look-controls', "reverseMouseDrag: true;")
-        document.querySelector('#cameraRig').setAttribute('wasd-controls', "enabled: true")
-      });
-    })
-  </script>
   <title>3DStreet</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <link rel="icon" type="image/x-icon" href="ui_assets/favicon.ico">
@@ -123,9 +105,9 @@
     <a-entity id="environment" data-layer-name="Environment" street-environment="preset: day;"></a-entity>
 
     <a-entity id="cameraRig" class="ph-no-capture" data-layer-name="Viewer"
-      cursor-teleport="cameraRig: #cameraRig; cameraHead: #camera;" look-controls="reverseMouseDrag: true"
-      wasd-controls="enabled: true">
-      <a-entity id="camera" position="0 1.6 0"></a-entity>
+      cursor-teleport="cameraRig: #cameraRig; cameraHead: #camera;"
+      movement-controls="camera: #camera; fly: true">
+      <a-entity id="camera" position="0 1.6 0" camera look-controls="reverseMouseDrag: true"></a-entity>
       <a-entity id="leftHand" hand-controls="hand: left;"
         blink-controls="cameraRig: #cameraRig; teleportOrigin: #camera; rotateOnTeleport:false;"></a-entity>
       <a-entity id="rightHand" hand-controls="hand: right"

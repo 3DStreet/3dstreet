@@ -1,17 +1,16 @@
 import Events from './Events';
-import debounce from 'lodash-es/debounce';
 
 export function initRaycaster(inspector) {
   // Use cursor="rayOrigin: mouse".
   const mouseCursor = document.createElement('a-entity');
   mouseCursor.setAttribute('id', 'aframeInspectorMouseCursor');
-  mouseCursor.setAttribute('cursor', 'rayOrigin', 'mouse');
-  mouseCursor.setAttribute('data-aframe-inspector', 'true');
   mouseCursor.setAttribute('raycaster', {
     interval: 100,
     objects:
       'a-scene :not([data-aframe-inspector]):not([data-ignore-raycaster])'
   });
+  mouseCursor.setAttribute('cursor', 'rayOrigin', 'mouse');
+  mouseCursor.setAttribute('data-aframe-inspector', 'true');
 
   // Only visible objects.
   const raycaster = mouseCursor.components.raycaster;
@@ -34,19 +33,12 @@ export function initRaycaster(inspector) {
   inspector.sceneEl.appendChild(mouseCursor);
   inspector.cursor = mouseCursor;
 
-  inspector.sceneEl.addEventListener(
-    'child-attached',
-    debounce(function () {
-      mouseCursor.components.raycaster.refreshObjects();
-    }, 250)
-  );
-
   mouseCursor.addEventListener('click', handleClick);
   mouseCursor.addEventListener('mouseenter', onMouseEnter);
   mouseCursor.addEventListener('mouseleave', onMouseLeave);
   inspector.container.addEventListener('mousedown', onMouseDown);
   inspector.container.addEventListener('mouseup', onMouseUp);
-  // inspector.container.addEventListener('dblclick', onDoubleClick);
+  inspector.container.addEventListener('dblclick', onDoubleClick);
 
   inspector.sceneEl.canvas.addEventListener('mouseleave', () => {
     setTimeout(() => {
@@ -56,7 +48,6 @@ export function initRaycaster(inspector) {
 
   const onDownPosition = new THREE.Vector2();
   const onUpPosition = new THREE.Vector2();
-  // const onDoubleClickPosition = new THREE.Vector2();
 
   function onMouseEnter() {
     Events.emit(
@@ -74,11 +65,9 @@ export function initRaycaster(inspector) {
 
   function handleClick(evt) {
     // Check to make sure not dragging.
-    const DRAG_THRESHOLD = 0.03;
-    if (onDownPosition.distanceTo(onUpPosition) >= DRAG_THRESHOLD) {
-      return;
+    if (onDownPosition.distanceTo(onUpPosition) === 0) {
+      inspector.selectEntity(evt.detail.intersectedEl);
     }
-    inspector.selectEntity(evt.detail.intersectedEl);
   }
 
   function onMouseDown(event) {
@@ -110,19 +99,13 @@ export function initRaycaster(inspector) {
   /**
    * Focus on double click.
    */
-  // function onDoubleClick(event) {
-  //   const array = getMousePosition(
-  //     inspector.container,
-  //     event.clientX,
-  //     event.clientY
-  //   );
-  //   onDoubleClickPosition.fromArray(array);
-  //   const intersectedEl = mouseCursor.components.cursor.intersectedEl;
-  //   if (!intersectedEl) {
-  //     return;
-  //   }
-  //   Events.emit('objectfocus', intersectedEl.object3D);
-  // }
+  function onDoubleClick(event) {
+    const intersectedEl = mouseCursor.components.cursor.intersectedEl;
+    if (!intersectedEl) {
+      return;
+    }
+    Events.emit('objectfocus', intersectedEl.object3D);
+  }
 
   return {
     el: mouseCursor,
@@ -130,11 +113,13 @@ export function initRaycaster(inspector) {
       mouseCursor.setAttribute('raycaster', 'enabled', true);
       inspector.container.addEventListener('mousedown', onMouseDown);
       inspector.container.addEventListener('mouseup', onMouseUp);
+      inspector.container.addEventListener('dblclick', onDoubleClick);
     },
     disable: () => {
       mouseCursor.setAttribute('raycaster', 'enabled', false);
       inspector.container.removeEventListener('mousedown', onMouseDown);
       inspector.container.removeEventListener('mouseup', onMouseUp);
+      inspector.container.removeEventListener('dblclick', onDoubleClick);
     }
   };
 }

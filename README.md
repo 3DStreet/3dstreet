@@ -52,7 +52,7 @@ The `street` component creates a street made up of one or more segments as child
 | Property | Description | Default Value |
 | --------- | --------- | --------- |
 | JSON | A string of JSON containing an array one or more segments (also known as slices) representing cross-section parts of a street. See [basic-json.html](/examples/basic-json.html) for an example of proper usage | '' |
-| type | A string representing the formatting of the JSON passed in the `JSON` property |  'streetmixSegmentsFeet' |
+| type | A string representing the formatting of the JSON passed in the `JSON` property |  'streetmixSegmentsMetric' |
 | left | A string to determine which [building variant](#list-of-streetmix-building-variants) to create for the left side of the street (heading outbound) | '' |
 | right | A string to determine which building variant to create for the right side of the street (heading outbound). | '' |
 | showGround | A boolean to determine if the ground associated with the specified building variant(s) in `left` and `right` should be created or not. | true |
@@ -67,13 +67,13 @@ The `intersection` component creates an intersection surface with options for ad
 | --------- | --------- | --------- |
 | dimensions | Specifies the width and depth of the intersection. First value represents width, second value represents depth. | '20 20' |
 | sidewalk | Sets the width of the sidewalk at each side of the intersection. Values are set in the order of west, east, north, south. |  '0 0 0 0' |
-| northeastcurb | Sets the curb dimensions for the north east curb. Values are updated as width, then depth. | '0 0' |
-| southwestcurb | Sets the curb dimensions for the south west curb. Values are updated as width, then depth.  | '0 0' |
-| southeastcurb | Sets the curb dimensions for the south east curb. Values are updated as width, then depth. | '0 0' |
-| northwestcurb | Sets the curb dimensions for the north west curb. Values are updated as width, then depth. | '0 0' |
+| northeastcurb | Sets the curb dimensions for the north east curb. Values are updated as width, then depth. | '4 4' |
+| southwestcurb | Sets the curb dimensions for the south west curb. Values are updated as width, then depth.  | '4 4' |
+| southeastcurb | Sets the curb dimensions for the south east curb. Values are updated as width, then depth. | '4 4' |
+| northwestcurb | Sets the curb dimensions for the north west curb. Values are updated as width, then depth. | '4 4' |
 | stopsign | Sets if each side of the intersection has a stop sign. Values are set in the order of east, west, north, south. 0 is false, 1 is true. | '0 0 0 0' |
-| trafficsignal | Sets if each side of the intersection has a traffic signal. Values are set in the order of east, west, north, south. 0 is false, 1 is true. | '0 0 0 0' |
-| crosswalk | ​​Sets if each side of the intersection has a crosswalk. Values are set in the order of east, west, north, south. 0 is false, 1 is true. | '0 0 0 0' |
+| trafficsignal | Sets if each side of the intersection has a traffic signal. Values are set in the order of east, west, north, south. 0 is false, 1 is true. | '1 1 1 1' |
+| crosswalk | ​​Sets if each side of the intersection has a crosswalk. Values are set in the order of east, west, north, south. 0 is false, 1 is true. | '1 1 1 1' |
 
 ### A-Frame `streetmix-loader` Component API
 
@@ -85,11 +85,7 @@ The `streetmix-loader` component requests a Streetmix API response when given a 
 | streetmixAPIURL | A string representing the Streetmix API street URL such as https://streetmix.net/api/v1/streets/7a633310-e598-11e6-80db-ebe3de713876 | '' |
 | showBuildings | A Boolean that determines whether or not buildings are rendered | true |
 
-Either 1 of the 2 properties are required. If both are provided the component will use streetmixAPIURL value and ignore streetmixStreetURL.
-
-
-
-
+Either 1 of streetmixStreetURL or streetmixAPIURL properties are required. If both are provided the component will use streetmixAPIURL value and ignore streetmixStreetURL.
 
 #### Orientation and Scale
 A default Streetmix.net cross-section view is oriented to show vehicles heading away from you as "outbound". The `street` component follows this convention and when placed in a new A-Frame scene the default camera is looking toward the outbound direction of the generated street. The default rendering is 1:1 scale.

@@ -5,7 +5,7 @@ import { AuthProvider, GeoProvider } from './contexts';
 import Events from './lib/Events';
 import { AssetsLoader } from './lib/assetsLoader';
 import { initCameras } from './lib/cameras';
-import { createEntity } from './lib/entity';
+import { Config } from './lib/config';
 import { History } from './lib/history';
 import { Shortcuts } from './lib/shortcuts';
 import { Viewport } from './lib/viewport';
@@ -13,14 +13,15 @@ import { firebaseConfig } from './services/firebase.js';
 import './style/index.scss';
 import ReactGA from 'react-ga4';
 import posthog from 'posthog-js';
+import { commandsByType } from './lib/commands/index.js';
 
 function Inspector() {
   this.assetsLoader = new AssetsLoader();
   this.exporters = { gltf: new GLTFExporter() };
+  this.config = new Config();
   this.history = new History();
   this.isFirstOpen = true;
   this.modules = {};
-  this.on = Events.on;
   this.opened = false;
 
   // Wait for stuff.
@@ -89,10 +90,8 @@ Inspector.prototype = {
     this.sceneHelpers.userData.source = 'INSPECTOR';
     this.sceneHelpers.visible = true;
     this.inspectorActive = false;
-    this.debugUndoRedo = false;
 
     this.viewport = new Viewport(this);
-    Events.emit('windowresize');
 
     this.sceneEl.object3D.traverse((node) => {
       this.addHelper(node);
@@ -108,42 +107,41 @@ Inspector.prototype = {
     Events.emit('objectremove', object);
   },
 
-  addHelper: (function () {
-    return function (object) {
-      let helper;
+  addHelper: function (object) {
+    let helper;
 
-      if (object instanceof THREE.Camera) {
-        this.cameraHelper = helper = new THREE.CameraHelper(object, 0.1);
-      } else if (object instanceof THREE.PointLight) {
-        helper = new THREE.PointLightHelper(object, 1);
-      } else if (object instanceof THREE.DirectionalLight) {
-        helper = new THREE.DirectionalLightHelper(object, 1);
-      } else if (object instanceof THREE.SpotLight) {
-        helper = new THREE.SpotLightHelper(object, 1);
-      } else if (object instanceof THREE.HemisphereLight) {
-        helper = new THREE.HemisphereLightHelper(object, 1);
-      } else if (object instanceof THREE.SkinnedMesh) {
-        helper = new THREE.SkeletonHelper(object);
-      } else {
-        // no helper for this object type
-        return;
-      }
+    if (object instanceof THREE.Camera) {
+      this.cameraHelper = helper = new THREE.CameraHelper(object);
+    } else if (object instanceof THREE.PointLight) {
+      helper = new THREE.PointLightHelper(object, 1);
+    } else if (object instanceof THREE.DirectionalLight) {
+      helper = new THREE.DirectionalLightHelper(object, 1);
+    } else if (object instanceof THREE.SpotLight) {
+      helper = new THREE.SpotLightHelper(object, 1);
+    } else if (object instanceof THREE.HemisphereLight) {
+      helper = new THREE.HemisphereLightHelper(object, 1);
+    } else if (object instanceof THREE.SkinnedMesh) {
+      helper = new THREE.SkeletonHelper(object);
+    } else {
+      // no helper for this object type
+      return;
+    }
 
-      helper.visible = false;
-      this.sceneHelpers.add(helper);
-      this.helpers[object.uuid] = helper;
-      // SkeletonHelper doesn't have an update method
-      if (helper.update) {
-        helper.update();
-      }
-    };
-  })(),
+    helper.visible = false;
+    this.sceneHelpers.add(helper);
+    this.helpers[object.uuid] = helper;
+    // SkeletonHelper doesn't have an update method
+    if (helper.update) {
+      helper.update();
+    }
+  },
 
   removeHelpers: function (object) {
     object.traverse((node) => {
       const helper = this.helpers[node.uuid];
       if (helper) {
         this.sceneHelpers.remove(helper);
+        helper.dispose();
         delete this.helpers[node.uuid];
         Events.emit('helperremove', this.helpers[node.uuid]);
       }
@@ -163,7 +161,7 @@ Inspector.prototype = {
     }
 
     // Update helper visibilities.
-    for (let id in this.helpers) {
+    for (const id in this.helpers) {
       this.helpers[id].visible = false;
     }
 
@@ -183,7 +181,7 @@ Inspector.prototype = {
   initEvents: function () {
     window.addEventListener('keydown', (evt) => {
       // Alt + Ctrl + i: Shorcut to toggle the inspector
-      var shortcutPressed =
+      const shortcutPressed =
         evt.keyCode === 73 &&
         ((evt.ctrlKey && evt.altKey) || evt.getModifierState('AltGraph'));
       if (shortcutPressed) {
@@ -213,24 +211,23 @@ Inspector.prototype = {
       this.sceneHelpers.visible = this.inspectorActive;
     });
 
-    Events.on('entitycreate', (definition) => {
-      createEntity(definition, (entity) => {
-        this.selectEntity(entity);
-      });
-    });
-
     this.sceneEl.addEventListener('newScene', () => {
       this.history.clear();
     });
 
     document.addEventListener('child-detached', (event) => {
-      var entity = event.detail.el;
+      const entity = event.detail.el;
       AFRAME.INSPECTOR.removeObject(entity.object3D);
     });
   },
 
-  execute: function (cmd, optionalName) {
-    this.history.execute(cmd, optionalName);
+  execute: function (cmdName, payload, optionalName) {
+    const Cmd = commandsByType.get(cmdName);
+    if (!Cmd) {
+      console.error(`Command ${cmdName} not found`);
+      return;
+    }
+    return this.history.execute(new Cmd(this, payload), optionalName);
   },
 
   undo: function () {

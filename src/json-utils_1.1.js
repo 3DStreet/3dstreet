@@ -68,7 +68,7 @@ function getElementData(entity) {
     return;
   }
   // node id's that should save without child nodes
-  const skipChildrenNodes = ['environment'];
+  const skipChildrenNodes = ['environment', 'reference-layers'];
   const elementTree = getAttributes(entity);
   const children = entity.childNodes;
   if (children.length && !skipChildrenNodes.includes(elementTree.id)) {
@@ -113,8 +113,8 @@ function getAttributes(entity) {
     elemObj['components'] = {};
     for (const componentName in entityComponents) {
       const modifiedProperty = getModifiedProperty(entity, componentName);
-      if (modifiedProperty) {
-        if (isEmpty(modifiedProperty)) {
+      if (modifiedProperty !== null) {
+        if (isEmptyObject(modifiedProperty)) {
           elemObj['components'][componentName] = '';
         } else {
           elemObj['components'][componentName] = toPropString(modifiedProperty);
@@ -168,8 +168,13 @@ function isSingleProperty(schema) {
   return AFRAME.schema.isSingleProperty(schema);
 }
 
-function isEmpty(object) {
-  return Object.keys(object).length === 0;
+function isEmptyObject(object) {
+  return (
+    typeof object === 'object' &&
+    !Array.isArray(object) &&
+    object !== null &&
+    Object.keys(object).length === 0
+  );
 }
 
 // a list of component:value pairs to exclude from the JSON string.
@@ -201,7 +206,7 @@ function filterJSONstreet(streetJSON) {
         compAttributes = AFRAME.utils.styleParser.parse(value);
         const removeVal = removeProps[removeKey];
         // check for deleting component's attribute
-        if (typeof removeVal === 'object' && !isEmpty(removeVal)) {
+        if (!isEmptyObject(removeVal)) {
           // remove attribute in component
           const attrNames = Object.keys(removeVal);
           for (var attrName of attrNames) {
@@ -443,9 +448,6 @@ function createEntityFromObj(entityData, parentEl) {
     if (entityData.mixin) {
       entity.setAttribute('mixin', entityData.mixin);
     }
-    // Ensure the components are loaded before update the UI
-
-    entity.emit('entitycreated', {}, false);
   });
 
   if (entityData.children) {
@@ -643,6 +645,7 @@ function inputStreetmix() {
     'streetmixStreetURL',
     streetmixURL
   );
+  AFRAME.scenes[0].emit('newScene');
 }
 
 STREET.utils.inputStreetmix = inputStreetmix;
@@ -680,6 +683,7 @@ function createElementsFromJSON(streetJSON) {
 
   createEntities(streetObject.data, streetContainerEl);
   STREET.notify.successMessage('Scene loaded from JSON');
+  AFRAME.scenes[0].emit('newScene');
 }
 
 STREET.utils.createElementsFromJSON = createElementsFromJSON;

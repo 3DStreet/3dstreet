@@ -10,6 +10,7 @@ import Events from '../../../lib/Events.js';
 import { Action24, Loader } from '../../../icons';
 import { httpsCallable } from 'firebase/functions';
 import posthog from 'posthog-js';
+import { renderProfileIcon } from '../../components/ProfileButton';
 
 const ProfileModal = ({ isOpen, onClose }) => {
   const { currentUser, setCurrentUser } = useAuthContext();
@@ -39,23 +40,13 @@ const ProfileModal = ({ isOpen, onClose }) => {
   };
 
   return (
-    <Modal
-      className={styles.modalWrapper}
-      isOpen={isOpen}
-      onClose={onClose}
-      extraCloseKeyCode={72}
-    >
+    <Modal className={styles.modalWrapper} isOpen={isOpen} onClose={onClose}>
       <div className={styles.contentWrapper}>
         <h2 className={styles.title}>3DStreet Cloud Account</h2>
         <div className={styles.content}>
           <div className={styles.header}>
             <div className={styles.profile}>
-              <img
-                className={'photoURL'}
-                src={currentUser?.photoURL}
-                alt="userPhoto"
-                referrerPolicy="no-referrer"
-              />
+              {renderProfileIcon(currentUser)}
               <div className={styles.credentials}>
                 <span className={styles.name}>{currentUser?.displayName}</span>
                 <span className={styles.email}>{currentUser?.email}</span>

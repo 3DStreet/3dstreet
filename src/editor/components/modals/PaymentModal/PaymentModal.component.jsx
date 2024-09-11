@@ -8,6 +8,7 @@ import { CheckMark32Icon, Loader } from '../../../icons';
 import { Button } from '../../components/index.js';
 import Modal from '../Modal.jsx';
 import { functions } from '../../../services/firebase.js';
+import posthog from 'posthog-js';
 
 let stripePromise;
 const getStripe = () => {
@@ -22,7 +23,12 @@ const PaymentModal = ({ isOpen, onClose }) => {
   const { currentUser } = useAuthContext();
   const [isLoading, setIsLoading] = useState(false);
 
+  if (location.hash.includes('success')) {
+    posthog.capture('checkout_finished');
+  }
+
   const startCheckout = async () => {
+    posthog.capture('start_checkout');
     setIsLoading(true);
     try {
       const {
@@ -36,7 +42,9 @@ const PaymentModal = ({ isOpen, onClose }) => {
         success_url: `${location.origin}/#/modal/payment/success`,
         cancel_url: `${location.origin}/#/modal/payment`,
         metadata: { userId: currentUser.uid },
+        allow_promotion_codes: true,
         subscription_data: {
+          trial_period_days: 30,
           metadata: {
             userId: currentUser.uid
           }
@@ -52,14 +60,9 @@ const PaymentModal = ({ isOpen, onClose }) => {
   };
 
   return (
-    <Modal
-      className={styles.modalWrapper}
-      isOpen={isOpen}
-      onClose={onClose}
-      extraCloseKeyCode={72}
-    >
+    <Modal className={styles.modalWrapper} isOpen={isOpen} onClose={onClose}>
       <div className={styles.paymentDetails}>
-        <h3>Unlock Geospatial Features with 3DStreet Pro</h3>
+        <h3>Unlock Geospatial Features with a free 30 day trial</h3>
         <h2>
           Create with geospatial maps and share your vision in augmented reality
           with 3DStreet Pro.
@@ -94,7 +97,7 @@ const PaymentModal = ({ isOpen, onClose }) => {
                       </div>
                     ) : (
                       <Button onClick={startCheckout} variant="filled">
-                        Checkout with Stripe
+                        Try Now
                       </Button>
                     )}
                   </div>

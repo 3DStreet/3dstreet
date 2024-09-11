@@ -1,7 +1,6 @@
-import Events from '../../../lib/Events';
 import { loadScript, roundCoord } from '../../../../../src/utils.js';
 
-function createSvgExtrudedEntity() {
+export function createSvgExtrudedEntity() {
   // This component accepts a svgString and creates a new entity with geometry extruded
   // from the svg and applies the default mixin material grass.
   const svgString = prompt(
@@ -15,64 +14,103 @@ function createSvgExtrudedEntity() {
         </svg>`
   );
   if (svgString && svgString !== '') {
-    const newEl = document.createElement('a-entity');
-    newEl.setAttribute('svg-extruder', `svgString: ${svgString}`);
-    newEl.setAttribute('data-layer-name', 'SVG Path • My Custom Path');
-    const parentEl = document.querySelector('#street-container');
-    parentEl.appendChild(newEl);
-    // update sceneGraph
-    Events.emit('entitycreated', newEl);
+    const definition = {
+      element: 'a-entity',
+      components: {
+        'svg-extruder': `svgString: ${svgString}`,
+        'data-layer-name': 'SVG Path • My Custom Path'
+      }
+    };
+    AFRAME.INSPECTOR.execute('entitycreate', definition);
   }
 }
-
-function createMapbox() {
+export function createMapbox() {
   // This component accepts a long / lat and renders a plane with dimensions that
   // (should be) at a correct scale.
   const geoLayer = document.getElementById('reference-layers');
   let latitude = 0;
   let longitude = 0;
-  const streetGeo = document
-    .getElementById('reference-layers')
-    ?.getAttribute('street-geo');
+  const streetGeo = geoLayer?.getAttribute('street-geo');
 
   if (streetGeo && streetGeo['latitude'] && streetGeo['longitude']) {
     latitude = roundCoord(parseFloat(streetGeo['latitude']));
     longitude = roundCoord(parseFloat(streetGeo['longitude']));
   }
 
-  geoLayer.setAttribute(
-    'street-geo',
-    `
-    latitude: ${latitude}; longitude: ${longitude}; maps: mapbox2d
-    `
-  );
-  Events.emit('entitycreated', geoLayer);
+  AFRAME.INSPECTOR.execute(streetGeo ? 'entityupdate' : 'componentadd', {
+    entity: geoLayer,
+    component: 'street-geo',
+    value: {
+      latitude: latitude,
+      longitude: longitude,
+      maps: 'mapbox2d'
+    }
+  });
 }
 
-function createStreetmixStreet() {
+export function createStreetmixStreet(position, streetmixURL, hideBuildings) {
   // This code snippet allows the creation of an additional Streetmix street
   // in your 3DStreet scene without replacing any existing streets.
-  const streetmixURL = prompt(
-    'Please enter a Streetmix URL',
-    'https://streetmix.net/kfarr/128/owens-st'
-  );
-  if (streetmixURL && streetmixURL !== '') {
-    const newEl = document.createElement('a-entity');
-    newEl.setAttribute('id', streetmixURL);
-    // position the street further from the current one so as not to overlap each other
-    newEl.setAttribute('position', '0 0 -100');
-    newEl.setAttribute(
-      'streetmix-loader',
-      `streetmixStreetURL: ${streetmixURL}`
+  if (streetmixURL === undefined) {
+    streetmixURL = prompt(
+      'Please enter a Streetmix URL',
+      'https://streetmix.net/kfarr/3/3dstreet-demo-street'
     );
-    const parentEl = document.querySelector('#street-container');
-    parentEl.appendChild(newEl);
-    // update sceneGraph
-    Events.emit('entitycreated', newEl);
+  }
+  // position the street further from the current one so as not to overlap each other
+  if (streetmixURL && streetmixURL !== '') {
+    const definition = {
+      id: streetmixURL,
+      components: {
+        position: position ?? '0 0 -20',
+        'streetmix-loader': {
+          streetmixStreetURL: streetmixURL,
+          showBuildings: !hideBuildings
+        }
+      }
+    };
+
+    AFRAME.INSPECTOR.execute('entitycreate', definition);
   }
 }
 
-function create3DTiles() {
+export function create40ftRightOfWay(position) {
+  createStreetmixStreet(
+    position,
+    'https://streetmix.net/3dstreetapp/1/40ft-right-of-way-24ft-road-width',
+    true
+  );
+}
+export function create60ftRightOfWay(position) {
+  createStreetmixStreet(
+    position,
+    'https://streetmix.net/3dstreetapp/2/60ft-right-of-way-36ft-road-width',
+    true
+  );
+}
+export function create80ftRightOfWay(position) {
+  createStreetmixStreet(
+    position,
+    'https://streetmix.net/3dstreetapp/3/80ft-right-of-way-56ft-road-width',
+    true
+  );
+}
+export function create94ftRightOfWay(position) {
+  createStreetmixStreet(
+    position,
+    'https://streetmix.net/3dstreetapp/4/94ft-right-of-way-70ft-road-width',
+    true
+  );
+}
+export function create150ftRightOfWay(position) {
+  createStreetmixStreet(
+    position,
+    'https://streetmix.net/3dstreetapp/5/150ft-right-of-way-124ft-road-width',
+    true
+  );
+}
+
+export function create3DTiles() {
   // This code snippet adds an entity to load and display 3d tiles from
   // Google Maps Tiles API 3D Tiles endpoint. This will break your scene
   // and you cannot save it yet, so beware before testing.
@@ -81,25 +119,25 @@ function create3DTiles() {
     const geoLayer = document.getElementById('reference-layers');
     let latitude = 0;
     let longitude = 0;
-    let elevation = 0;
-    const streetGeo = document
-      .getElementById('reference-layers')
-      ?.getAttribute('street-geo');
+    let ellipsoidalHeight = 0;
+    const streetGeo = geoLayer?.getAttribute('street-geo');
 
     if (streetGeo && streetGeo['latitude'] && streetGeo['longitude']) {
       latitude = roundCoord(parseFloat(streetGeo['latitude']));
       longitude = roundCoord(parseFloat(streetGeo['longitude']));
-      elevation = parseFloat(streetGeo['elevation']) || 0;
+      ellipsoidalHeight = parseFloat(streetGeo['ellipsoidalHeight']) || 0;
     }
 
-    geoLayer.setAttribute(
-      'street-geo',
-      `
-      latitude: ${latitude}; longitude: ${longitude}; elevation: ${elevation}; maps: google3d
-    `
-    );
-    // update sceneGraph
-    Events.emit('entitycreated', geoLayer);
+    AFRAME.INSPECTOR.execute(streetGeo ? 'entityupdate' : 'componentadd', {
+      entity: geoLayer,
+      component: 'street-geo',
+      value: {
+        latitude: latitude,
+        longitude: longitude,
+        ellipsoidalHeight: ellipsoidalHeight,
+        maps: 'google3d'
+      }
+    });
   };
 
   if (AFRAME.components['loader-3dtiles']) {
@@ -115,7 +153,7 @@ function create3DTiles() {
   }
 }
 
-function createCustomModel() {
+export function createCustomModel() {
   // accepts a path for a glTF (or glb) file hosted on any publicly accessible HTTP server.
   // Then create entity with model from that path by using gltf-model component
   const modelUrl = prompt(
@@ -123,37 +161,58 @@ function createCustomModel() {
     'https://cdn.glitch.global/690c7ea3-3f1c-434b-8b8d-3907b16de83c/Mission_Bay_school_low_poly_model_v03_draco.glb'
   );
   if (modelUrl && modelUrl !== '') {
-    const newEl = document.createElement('a-entity');
-    newEl.classList.add('custom-model');
-    newEl.setAttribute('gltf-model', `url(${modelUrl})`);
-    newEl.setAttribute('data-layer-name', 'glTF Model • My Custom Object');
-    const parentEl = document.querySelector('#street-container');
-    parentEl.appendChild(newEl);
-    // update sceneGraph
-    Events.emit('entitycreated', newEl);
+    const definition = {
+      class: 'custom-model',
+      components: {
+        'gltf-model': `url(${modelUrl})`,
+        'data-layer-name': 'glTF Model • My Custom Object'
+      }
+    };
+    AFRAME.INSPECTOR.execute('entitycreate', definition);
   }
 }
 
-function createPrimitiveGeometry() {
-  const newEl = document.createElement('a-entity');
-  newEl.setAttribute('geometry', 'primitive: circle; radius: 50;');
-  newEl.setAttribute('rotation', '-90 0 0');
-  newEl.setAttribute(
-    'data-layer-name',
-    'Plane Geometry • Traffic Circle Asphalt'
-  );
-  newEl.setAttribute('material', 'src: #asphalt-texture; repeat: 5 5;');
-  const parentEl = document.querySelector('#street-container');
-  parentEl.appendChild(newEl);
-  // update sceneGraph
-  Events.emit('entitycreated', newEl);
+export function createPrimitiveGeometry() {
+  const definition = {
+    'data-layer-name': 'Plane Geometry • Traffic Circle Asphalt',
+    components: {
+      geometry: 'primitive: circle; radius: 50;',
+      rotation: '-90 -90 0',
+      material: 'src: #asphalt-texture; repeat: 5 5;'
+    }
+  };
+  AFRAME.INSPECTOR.execute('entitycreate', definition);
 }
 
-export {
-  createSvgExtrudedEntity,
-  createMapbox,
-  createStreetmixStreet,
-  create3DTiles,
-  createCustomModel,
-  createPrimitiveGeometry
-};
+export function createIntersection() {
+  const definition = {
+    'data-layer-name': 'Street • Intersection 90º',
+    components: {
+      intersection: '',
+      rotation: '-90 -90 0'
+    }
+  };
+  AFRAME.INSPECTOR.execute('entitycreate', definition);
+}
+
+export function createSplatObject() {
+  // accepts a path for a .splat file hosted on any publicly accessible HTTP server.
+  // Then create entity with model from that path by using gaussian_splatting component
+  const modelUrl = prompt(
+    'Please enter a URL to custom Splat model',
+    'https://cdn.glitch.me/f80a77a3-62a6-4024-9bef-a6b523d1abc0/gs_Bioswale3_treat.splat'
+  );
+
+  if (modelUrl && modelUrl !== '') {
+    const definition = {
+      class: 'splat-model',
+      'data-layer-name': 'Splat Model • My Custom Object',
+      'data-no-pause': '',
+      components: {
+        gaussian_splatting: `src: ${modelUrl}`
+      }
+    };
+    const entity = AFRAME.INSPECTOR.execute('entitycreate', definition);
+    entity.play();
+  }
+}

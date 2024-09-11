@@ -1,25 +1,5 @@
-import Events from '../Events';
 import { Command } from '../command.js';
-
-function updateEntity(entity, component, property, value) {
-  if (property) {
-    if (value === null || value === undefined) {
-      // Remove property.
-      entity.removeAttribute(component, property);
-    } else {
-      // Set property.
-      entity.setAttribute(component, property, value);
-    }
-  } else {
-    if (value === null || value === undefined) {
-      // Remove component.
-      entity.removeAttribute(component);
-    } else {
-      // Set component.
-      entity.setAttribute(component, value);
-    }
-  }
-}
+import { createUniqueId, updateEntity } from '../entity.js';
 
 /**
  * @param editor Editor
@@ -30,18 +10,25 @@ export class EntityUpdateCommand extends Command {
   constructor(editor, payload) {
     super(editor);
 
-    this.type = 'EntityUpdateCommand';
+    this.type = 'entityupdate';
     this.name = 'Update Entity';
-    this.updatable =
-      payload.component === 'position' ||
-      payload.component === 'rotation' ||
-      payload.component === 'scale';
+    this.updatable = true;
 
-    this.entity = payload.entity;
+    const entity = payload.entity;
+    if (!entity.id) {
+      entity.id = createUniqueId();
+    }
+    this.entityId = entity.id;
     this.component = payload.component;
-    this.property = payload.property;
+    this.property = payload.property ?? '';
 
-    const component = AFRAME.components[payload.component];
+    const component =
+      entity.components[payload.component] ??
+      AFRAME.components[payload.component];
+    // First try to get `entity.components[payload.component]` to have the dynamic schema, and fallback to `AFRAME.components[payload.component]` if not found.
+    // This is to properly stringify some properties that uses for example vec2 or vec3 on material component.
+    // This is important to fallback to `AFRAME.components[payload.component]` for primitive components position rotation and scale
+    // that may not have been created initially on the entity.
     if (component) {
       if (payload.property) {
         if (component.schema[payload.property]) {
@@ -49,55 +36,94 @@ export class EntityUpdateCommand extends Command {
             payload.value
           );
           this.oldValue = component.schema[payload.property].stringify(
-            payload.entity.getAttribute(payload.component, payload.property)
+            payload.entity.getAttribute(payload.component)[payload.property]
           );
-          if (this.editor.debugUndoRedo) {
-            console.log(this.component, this.oldValue, this.newValue);
-          }
+        } else {
+          // Just in case dynamic schema is not properly updated and we set an unknown property. I don't think this should happen.
+          this.newValue = payload.value;
+          this.oldValue = payload.entity.getAttribute(payload.component)[
+            payload.property
+          ];
         }
-      } else {
-        this.newValue = component.schema.stringify(payload.value);
-        this.oldValue = component.schema.stringify(
-          payload.entity.getAttribute(payload.component)
-        );
-        if (this.editor.debugUndoRedo) {
+        if (this.editor.config.debugUndoRedo) {
           console.log(this.component, this.oldValue, this.newValue);
         }
+      } else {
+        this.newValue = component.isSingleProperty
+          ? component.schema.stringify(payload.value)
+          : payload.value;
+        this.oldValue = component.isSingleProperty
+          ? component.schema.stringify(
+              payload.entity.getAttribute(payload.component)
+            )
+          : structuredClone(payload.entity.getDOMAttribute(payload.component));
+        if (this.editor.config.debugUndoRedo) {
+          console.log(this.component, this.oldValue, this.newValue);
+        }
+      }
+    } else {
+      // id, class, mixin, data attributes
+      this.newValue = payload.value;
+      this.oldValue = payload.entity.getAttribute(this.component);
+      if (this.editor.config.debugUndoRedo) {
+        console.log(this.component, this.oldValue, this.newValue);
       }
     }
   }
 
   execute() {
-    if (this.editor.debugUndoRedo) {
-      console.log(
-        'execute',
-        this.entity,
-        this.component,
-        this.property,
-        this.newValue
-      );
+    const entity = document.getElementById(this.entityId);
+    if (entity) {
+      if (this.editor.config.debugUndoRedo) {
+        console.log(
+          'execute',
+          entity,
+          this.component,
+          this.property,
+          this.newValue
+        );
+      }
+
+      // If we set a single mixin, remove the current mixin first so that it removes the gltf-model
+      // component, then set the new mixin that will load a new gltf model.
+      // If we don't remove first, sometimes a newly selected model won't load.
+      if (
+        this.component === 'mixin' &&
+        this.newValue &&
+        this.newValue.indexOf(' ') === -1
+      ) {
+        entity.setAttribute('mixin', '');
+      }
+      updateEntity(entity, this.component, this.property, this.newValue);
+      if (this.component === 'id') {
+        this.entityId = this.newValue;
+      }
     }
-    updateEntity(this.entity, this.component, this.property, this.newValue);
-    Events.emit('entityupdate', {
-      entity: this.entity,
-      component: this.component,
-      property: this.property,
-      value: this.newValue
-    });
   }
 
   undo() {
-    updateEntity(this.entity, this.component, this.property, this.oldValue);
-    Events.emit('entityupdate', {
-      entity: this.entity,
-      component: this.component,
-      property: this.property,
-      value: this.oldValue
-    });
+    const entity = document.getElementById(this.entityId);
+    if (entity) {
+      if (this.editor.selectedEntity && this.editor.selectedEntity !== entity) {
+        // If the selected entity is not the entity we are undoing, select the entity.
+        this.editor.selectEntity(entity);
+      }
+      if (
+        this.component === 'mixin' &&
+        this.oldValue &&
+        this.oldValue.indexOf(' ') === -1
+      ) {
+        entity.setAttribute('mixin', '');
+      }
+      updateEntity(entity, this.component, this.property, this.oldValue);
+      if (this.component === 'id') {
+        this.entityId = this.oldValue;
+      }
+    }
   }
 
   update(command) {
-    if (this.editor.debugUndoRedo) {
+    if (this.editor.config.debugUndoRedo) {
       console.log('update', command);
     }
     this.newValue = command.newValue;
