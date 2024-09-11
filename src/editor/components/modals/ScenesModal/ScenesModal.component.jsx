@@ -223,25 +223,24 @@ const ScenesModal = ({ isOpen, onClose, initialTab = 'owner', delay }) => {
               <Button
                 leadingIcon={<Upload24Icon />}
                 className={styles.uploadBtn}
+                style={{ position: 'relative' }}
               >
-                <label
+                Upload 3DStreet JSON File
+                <input
+                  type="file"
+                  onChange={(e) => {
+                    fileJSON(e);
+                    onClose(); // Close the modal
+                  }}
                   style={{
-                    display: 'block',
-                    width: '100%',
+                    position: 'absolute',
+                    inset: 0,
+                    opacity: 0,
+                    fontSize: 0,
                     cursor: 'pointer'
                   }}
-                >
-                  <input
-                    type="file"
-                    onChange={(e) => {
-                      fileJSON(e);
-                      onClose(); // Close the modal
-                    }}
-                    style={{ display: 'none' }}
-                    accept=".js, .json, .txt"
-                  />
-                  Upload 3DStreet JSON File
-                </label>
+                  accept=".js, .json, .txt"
+                />
               </Button>
             </div>
           </div>
