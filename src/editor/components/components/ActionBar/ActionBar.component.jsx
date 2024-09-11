@@ -16,6 +16,7 @@ const ActionBar = ({ handleAddClick, isAddLayerPanelOpen }) => {
   const handleHandClick = () => {
     Events.emit('hidecursor');
     posthog.capture('hand_clicked');
+    setTransformMode('off');
     setCursorEnabled(false);
   };
 
