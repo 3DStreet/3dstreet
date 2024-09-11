@@ -25,7 +25,7 @@ export function inputStreetmix() {
 export function createElementsForScenesFromJSON(streetData) {
   // clear scene data, create new blank scene.
   // clearMetadata = true, clearUrlHash = false, addDefaultStreet = false
-  STREET.utils.newScene(true, true, false);
+  STREET.utils.newScene(true, false, false);
 
   const streetContainerEl = document.getElementById('street-container');
 

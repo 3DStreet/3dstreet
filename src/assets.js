@@ -26,6 +26,7 @@ function buildAssetHTML(assetUrl, categories) {
         <a-mixin shadow id="track" gltf-part="src: #streetProps; part: track"></a-mixin>
         <a-mixin shadow id="tree3" gltf-part="src: #streetProps; part: tree-01" scale="1.25 1.25 1.25"></a-mixin>
         <a-mixin shadow id="bus-stop" gltf-part="src: #streetProps; part: transit-shelter-1"></a-mixin>
+        <a-mixin shadow id="bus-stop-alternate" gltf-model="url(${assetUrl}sets/bus-shelter-alt-1/gltf-exports/draco/bus-shelter-alt-1.glb)"></a-mixin>
         <a-mixin shadow id="pride-flag" position="0.409 3.345 0" rotation="0 0 0" scale="0.5 0.75 0" geometry="width:2;height:2;primitive:plane" material="side:double; src:${assetUrl}materials/rainbow-flag-poles_512.png;transparent: true;"></a-mixin>
         <a-mixin shadow id="wayfinding-box" geometry="primitive: box; height: 2; width: 0.84; depth: 0.1" material="color: gray"></a-mixin>
         <a-mixin shadow id="trash-bin" gltf-model="url(${assetUrl}sets/uoregon/gltf-exports/draco/bin.glb)"></a-mixin>
@@ -97,6 +98,8 @@ function buildAssetHTML(assetUrl, categories) {
         <a-mixin shadow id="trash-truck-side-loading" gltf-model="url(${assetUrl}sets/vehicles/gltf-exports/draco/trash-truck-side-loading.glb)"></a-mixin>
         <a-mixin shadow id="self-driving-cruise-car-rig" gltf-model="url(${assetUrl}sets/vehicles-rig/gltf-exports/draco/self-driving-cruise-car-rig.glb)"></a-mixin>
         <a-mixin shadow id="self-driving-waymo-car" gltf-model="url(${assetUrl}sets/vehicles/gltf-exports/draco/waymo-self-driving-car.glb)"></a-mixin>
+        <a-mixin shadow id="tuk-tuk" gltf-model="url(${assetUrl}sets/vehicles/gltf-exports/draco/tuk-tuk.glb)"></a-mixin>
+        <a-mixin shadow id="motorbike" gltf-model="url(${assetUrl}sets/vehicles/gltf-exports/draco/two-wheeler-with-person.glb)"></a-mixin>
       `,
     buildings: `
         <!-- blocks -->
@@ -200,6 +203,7 @@ function buildAssetHTML(assetUrl, categories) {
         <a-mixin shadow id="bus" anisotropy gltf-model="url(${assetUrl}sets/flyer-bus/gltf-exports/draco/new-flyer-bus.glb)"></a-mixin>
         <a-mixin shadow id="tram" anisotropy gltf-model="url(${assetUrl}sets/light-rail-vehicle/gltf-exports/draco/light_rail_vehicle.glb)"></a-mixin>
         <a-mixin shadow id="trolley" gltf-model="url(${assetUrl}sets/sanfrancisco-cablecar/gltf-exports/draco/sanfrancisco-cablecar_v01.glb)"></a-mixin>
+        <a-mixin shadow id="minibus" gltf-model="url(${assetUrl}sets/vehicles/gltf-exports/draco/mini-bus.glb)"></a-mixin>
         `,
     dividers: `
         <!-- dividers - aka street design elements -->

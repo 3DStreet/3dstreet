@@ -1,6 +1,16 @@
+const PRO_DOMAINS = ['unam.mx'];
+
 const isUserPro = async (user) => {
   if (user) {
     try {
+      // Check if the user's email contains "unam.mx"
+      if (
+        user.email &&
+        PRO_DOMAINS.some((domain) => user.email.includes(domain))
+      ) {
+        return true;
+      }
+
       await user.getIdToken(true);
       const idTokenResult = await user.getIdTokenResult();
       if (idTokenResult.claims.plan === 'PRO') {
