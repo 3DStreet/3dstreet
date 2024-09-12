@@ -1,6 +1,6 @@
 import { loadScript, roundCoord } from '../../../../../src/utils.js';
 
-export function createSvgExtrudedEntity() {
+export function createSvgExtrudedEntity(position) {
   // This component accepts a svgString and creates a new entity with geometry extruded
   // from the svg and applies the default mixin material grass.
   const svgString = prompt(
@@ -17,6 +17,7 @@ export function createSvgExtrudedEntity() {
     const definition = {
       element: 'a-entity',
       components: {
+        position: position ?? '0 0 0',
         'svg-extruder': `svgString: ${svgString}`,
         'data-layer-name': 'SVG Path • My Custom Path'
       }
@@ -153,7 +154,7 @@ export function create3DTiles() {
   }
 }
 
-export function createCustomModel() {
+export function createCustomModel(position) {
   // accepts a path for a glTF (or glb) file hosted on any publicly accessible HTTP server.
   // Then create entity with model from that path by using gltf-model component
   const modelUrl = prompt(
@@ -164,6 +165,7 @@ export function createCustomModel() {
     const definition = {
       class: 'custom-model',
       components: {
+        position: position ?? '0 0 0',
         'gltf-model': `url(${modelUrl})`,
         'data-layer-name': 'glTF Model • My Custom Object'
       }
@@ -172,11 +174,12 @@ export function createCustomModel() {
   }
 }
 
-export function createPrimitiveGeometry() {
+export function createPrimitiveGeometry(position) {
   const definition = {
-    'data-layer-name': 'Plane Geometry • Traffic Circle Asphalt',
+    'data-layer-name': 'Geometry • Traffic Circle Asphalt',
     components: {
-      geometry: 'primitive: circle; radius: 50;',
+      position: position ?? '0 0 0',
+      geometry: 'primitive: circle; radius: 15;',
       rotation: '-90 -90 0',
       material: 'src: #asphalt-texture; repeat: 5 5;'
     }
@@ -205,10 +208,11 @@ export function createImageEntity(position) {
   }
 }
 
-export function createIntersection() {
+export function createIntersection(position) {
   const definition = {
     'data-layer-name': 'Street • Intersection 90º',
     components: {
+      position: position ?? '0 0 0',
       intersection: '',
       rotation: '-90 -90 0'
     }
