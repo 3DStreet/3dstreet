@@ -10,7 +10,8 @@ import {
   create60ftRightOfWay,
   create80ftRightOfWay,
   create94ftRightOfWay,
-  create150ftRightOfWay
+  create150ftRightOfWay,
+  createImageEntity
 } from './createLayerFunctions';
 
 export const streetLayersData = [
@@ -126,5 +127,15 @@ export const layersData = [
       'Create intersection entity. Parameters of intersection component could be changed in properties panel.',
     id: 6,
     handlerFunction: createIntersection
+  }, // createImageEntity
+  {
+    name: 'Place New Image Entity',
+    img: '',
+    requiresPro: true,
+    icon: 'ui_assets/cards/icons/gallery24.png',
+    description:
+      'Place an image such as a sign, reference photo, custom map, etc.',
+    id: 7,
+    handlerFunction: createImageEntity
   }
 ];
