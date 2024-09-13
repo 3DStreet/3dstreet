@@ -44,19 +44,22 @@ AFRAME.registerComponent('notify', {
     if (STREET) {
       STREET.notify = {};
       STREET.notify.successMessage = (messageText) => {
-        this.message(messageText, 'success');
+        return this.message(messageText, 'success');
       };
       STREET.notify.errorMessage = (messageText) => {
-        this.message(messageText, 'error');
+        return this.message(messageText, 'error');
       };
       STREET.notify.warningMessage = (messageText) => {
-        this.message(messageText, 'warning');
+        return this.message(messageText, 'warning');
+      };
+      STREET.notify.dismissNotification = (notification) => {
+        return this.notify.dismiss(notification);
       };
     }
   },
   message: function (messageText, messageType = 'info') {
     if (messageText && this.types.includes(messageType)) {
-      this.notify.open({
+      return this.notify.open({
         type: messageType,
         message: messageText
       });

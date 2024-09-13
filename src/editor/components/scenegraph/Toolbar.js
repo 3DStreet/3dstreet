@@ -66,7 +66,8 @@ export default class Toolbar extends Component {
       isSavingScene: false,
       pendingSceneSave: false,
       signInSuccess: false,
-      isAuthor: props.isAuthor
+      isAuthor: props.isAuthor,
+      notification: null
     };
     this.saveButtonRef = React.createRef();
   }
@@ -180,6 +181,9 @@ export default class Toolbar extends Component {
 
   cloudSaveHandler = async ({ doSaveAs = false }) => {
     try {
+      if (this.state.notification) {
+        STREET.notify.dismissNotification(this.state.notification);
+      }
       // if there is no current user, show sign in modal
       let currentSceneId = STREET.utils.getCurrentSceneId();
       let currentSceneTitle = STREET.utils.getCurrentSceneTitle();
@@ -277,9 +281,11 @@ export default class Toolbar extends Component {
         );
         this.setState({ savedNewDocument: false }); // go back to default assumption of save overwrite
       } else {
-        STREET.notify.successMessage(
+        const notification = STREET.notify.successMessage(
           'Scene saved to 3DStreet Cloud in existing file.'
         );
+        this.setState({ notification });
+        console.log('message', notification);
       }
       this.setState({ isAuthor: true });
       sendMetric('SaveSceneAction', doSaveAs ? 'saveAs' : 'save');
@@ -293,7 +299,7 @@ export default class Toolbar extends Component {
     }
   };
 
-  debouncedCloudSaveHandler = debounce(this.cloudSaveHandler, 1000);
+  debouncedCloudSaveHandler = debounce(this.cloudSaveHandler, 500);
 
   handleRemixClick = () => {
     posthog.capture('remix_scene_clicked');
