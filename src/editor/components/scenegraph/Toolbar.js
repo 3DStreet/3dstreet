@@ -300,6 +300,18 @@ export default class Toolbar extends Component {
 
   debouncedCloudSaveHandler = debounce(() => {
     if (this.state.currentUser) {
+      const streetGeo = document
+        .getElementById('reference-layers')
+        ?.getAttribute('street-geo');
+      if (
+        !this.props.currentUser.isPro &&
+        streetGeo &&
+        streetGeo['latitude'] &&
+        streetGeo['longitude']
+      ) {
+        Events.emit('openpaymentmodal');
+        return;
+      }
       this.cloudSaveHandler({ doSaveAs: false });
     }
   }, 500);
