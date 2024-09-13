@@ -79,7 +79,7 @@ export default class Toolbar extends Component {
       if (cmd) {
         console.log('historychanged', cmd);
         // Debounce the cloudSaveHandler call
-        this.debouncedCloudSaveHandler({ doSaveAs: false });
+        this.debouncedCloudSaveHandler();
       }
     });
   }
@@ -89,8 +89,6 @@ export default class Toolbar extends Component {
       this.setState({ isAuthor: this.props.isAuthor });
     }
     if (this.props.currentUser !== prevProps.currentUser) {
-      console.log('component updated');
-      console.log(this.props);
       this.setState({ currentUser: this.props.currentUser });
 
       if (this.state.pendingSceneSave && this.props.currentUser) {
@@ -196,6 +194,7 @@ export default class Toolbar extends Component {
       });
 
       if (!this.props.currentUser) {
+        console.log('no user');
         Events.emit('opensigninmodal');
         return;
       }
@@ -299,7 +298,11 @@ export default class Toolbar extends Component {
     }
   };
 
-  debouncedCloudSaveHandler = debounce(this.cloudSaveHandler, 500);
+  debouncedCloudSaveHandler = debounce(() => {
+    if (this.state.currentUser) {
+      this.cloudSaveHandler({ doSaveAs: false });
+    }
+  }, 500);
 
   handleRemixClick = () => {
     posthog.capture('remix_scene_clicked');
