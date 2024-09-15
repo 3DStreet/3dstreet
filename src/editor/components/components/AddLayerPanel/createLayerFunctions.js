@@ -237,7 +237,6 @@ export function createSplatObject() {
         gaussian_splatting: `src: ${modelUrl}`
       }
     };
-    const entity = AFRAME.INSPECTOR.execute('entitycreate', definition);
-    entity.play();
+    AFRAME.INSPECTOR.execute('entitycreate', definition);
   }
 }

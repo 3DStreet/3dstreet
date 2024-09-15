@@ -11,7 +11,8 @@ import {
   create80ftRightOfWay,
   create94ftRightOfWay,
   create150ftRightOfWay,
-  createImageEntity
+  createImageEntity,
+  createSplatObject
 } from './createLayerFunctions';
 
 export const streetLayersData = [
@@ -137,5 +138,15 @@ export const layersData = [
       'Place an image such as a sign, reference photo, custom map, etc.',
     id: 7,
     handlerFunction: createImageEntity
+  },
+  {
+    name: 'Splat model from URL',
+    img: '',
+    requiresPro: true,
+    icon: '',
+    description:
+      'Create entity with model from path for a Splat (.splat) file hosted on any publicly accessible HTTP server.',
+    id: 8,
+    handlerFunction: createSplatObject
   }
 ];
