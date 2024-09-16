@@ -42,7 +42,7 @@ export function fileJSON(event) {
   let reader = new FileReader();
 
   reader.onload = function () {
-    STREET.utils.createElementsFromJSON(reader.result);
+    STREET.utils.createElementsFromJSON(reader.result, true);
   };
 
   reader.readAsText(event.target.files[0]);

@@ -573,6 +573,13 @@ AFRAME.registerComponent('set-loader-from-hash', {
   },
   fetchJSON: function (requestURL) {
     const request = new XMLHttpRequest();
+
+    // Prepend the base URL to the requestURL
+    if (window.location.href.includes('localhost')) {
+      const baseURL = 'https://dev-3dstreet.web.app';
+      requestURL = baseURL + requestURL;
+    }
+
     request.open('GET', requestURL, true);
     request.onload = function () {
       if (this.status >= 200 && this.status < 400) {
@@ -586,7 +593,7 @@ AFRAME.registerComponent('set-loader-from-hash', {
           '[set-loader-from-hash]',
           '200 response received and JSON parsed, now createElementsFromJSON'
         );
-        STREET.utils.createElementsFromJSON(jsonData);
+        STREET.utils.createElementsFromJSON(jsonData, false);
         const sceneId = getUUIDFromPath(requestURL);
         if (sceneId) {
           console.log('sceneId from fetchJSON from url hash loader', sceneId);
@@ -660,7 +667,7 @@ function getValidJSON(stringJSON) {
     .replace(/[\u0000-\u0019]+/g, ''); // eslint-disable-line no-control-regex
 }
 
-function createElementsFromJSON(streetJSON) {
+function createElementsFromJSON(streetJSON, clearUrlHash) {
   let streetObject = {};
   if (typeof streetJSON === 'string') {
     const validJSONString = getValidJSON(streetJSON);
@@ -671,7 +678,7 @@ function createElementsFromJSON(streetJSON) {
 
   // clear scene data, create new blank scene.
   // clearMetadata = true, clearUrlHash = true, addDefaultStreet = false
-  STREET.utils.newScene(true, true, false);
+  STREET.utils.newScene(true, clearUrlHash, false);
 
   const sceneTitle = streetObject.title;
   if (sceneTitle) {
@@ -682,20 +689,8 @@ function createElementsFromJSON(streetJSON) {
   const streetContainerEl = document.getElementById('street-container');
 
   createEntities(streetObject.data, streetContainerEl);
-  STREET.notify.successMessage('Scene loaded from JSON');
+  STREET.notify.successMessage('Scene loaded');
   AFRAME.scenes[0].emit('newScene');
 }
 
 STREET.utils.createElementsFromJSON = createElementsFromJSON;
-
-// handle viewer widget click to open 3dstreet json scene
-function fileJSON() {
-  const reader = new FileReader();
-  reader.onload = function () {
-    createElementsFromJSON(reader.result);
-  };
-  reader.readAsText(this.files[0]);
-}
-
-// temporarily place the UI function in utils, which is used in index.html.
-STREET.utils.fileJSON = fileJSON;
