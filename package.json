@@ -42,7 +42,7 @@
     "firebase-functions": "^5.0.1",
     "lodash-es": "^4.17.21",
     "nanoid": "^5.0.7",
-    "posthog-js": "^1.138.3",
+    "posthog-js": "^1.161.5",
     "prop-types": "^15.8.1",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
