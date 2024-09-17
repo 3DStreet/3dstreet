@@ -42,6 +42,7 @@ module.exports = {
     new CopyWebpackPlugin({
       patterns: [
         { from: 'src/lib/aframe-mapbox-component.min.js' },
+        { from: 'src/lib/aframe-master.min.js' },
         { from: 'src/notyf.min.css' },
         { from: 'src/viewer-styles.css' }
       ]
