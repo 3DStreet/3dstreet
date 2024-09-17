@@ -8,5 +8,10 @@
         "id": "bus",
         "name": "Bus New Flyer XD40",
         "description": "The New Flyer XD40 is a modern, stylish, and comfortable bus that is perfect for people in urban settings."
+    },
+    {
+        "id": "sedan-rig",
+        "name": "Sedan",
+        "img": "ui_assets/cards/models/vehicles-rig/toyota-prius-rig.jpg"
     }
 ]
