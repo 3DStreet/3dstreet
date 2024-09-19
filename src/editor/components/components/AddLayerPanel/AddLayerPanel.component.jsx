@@ -49,6 +49,9 @@ const getGroupedMixinOptions = () => {
     let mixinDescr = '';
 
     if (mixinDataFromCatalog) {
+      if (mixinDataFromCatalog.src) {
+        mixinImg = `${mixinDataFromCatalog.src}/${mixinId}.jpg`;
+      }
       mixinImg = mixinDataFromCatalog.img;
       mixinName = mixinDataFromCatalog.name;
       mixinDescr = mixinDataFromCatalog.description;

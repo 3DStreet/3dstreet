@@ -12,6 +12,73 @@
     {
         "id": "sedan-rig",
         "name": "Sedan",
-        "img": "ui_assets/cards/models/vehicles-rig/toyota-prius-rig.jpg"
+        "src": "https://assets.3dstreet.app/sets/vehicles-rig/gltf-exports/draco",
+        "category": "vehicles-rigged"
+    },
+    {
+        "id": "sedan-taxi-rig",
+        "name": "Sedan Taxi",
+        "src": "https://assets.3dstreet.app/sets/vehicles-rig/gltf-exports/draco",
+        "category": "vehicles-rigged"
+    },
+    {
+        "id": "suv-rig",
+        "name": "SUV",
+        "src": "https://assets.3dstreet.app/sets/vehicles-rig/gltf-exports/draco",
+        "category": "vehicles-rigged"
+    },
+    {
+        "id": "box-truck-rig",
+        "name": "Box Truck",
+        "src": "https://assets.3dstreet.app/sets/vehicles-rig/gltf-exports/draco",
+        "category": "vehicles-rigged"
+    },
+    {
+        "id": "food-trailer-rig",
+        "name": "Food Trailer",
+        "src": "https://assets.3dstreet.app/sets/vehicles-rig/gltf-exports/draco",
+        "category": "vehicles-rigged"
+    },
+    {
+        "id": "fire-truck-rig",
+        "name": "Fire Truck",
+        "src": "https://assets.3dstreet.app/sets/vehicles-rig/gltf-exports/draco",
+        "category": "vehicles-rigged"
+    },
+    {
+        "id": "fire-ladder-rig",
+        "name": "Fire Ladder Truck",
+        "src": "https://assets.3dstreet.app/sets/vehicles/gltf-exports/draco",
+        "category": "vehicles-rigged"
+    },
+    {
+        "id": "trash-truck-side-loading",
+        "name": "Side-Loading Trash Truck",
+        "src": "https://assets.3dstreet.app/sets/vehicles/gltf-exports/draco",
+        "category": "vehicles-rigged"
+    },
+    {
+        "id": "self-driving-cruise-car-rig",
+        "name": "Self-Driving Cruise Car",
+        "src": "https://assets.3dstreet.app/sets/vehicles-rig/gltf-exports/draco",
+        "category": "vehicles-rigged"
+    },
+    {
+        "id": "self-driving-waymo-car",
+        "name": "Self-Driving Waymo Car",
+        "src": "https://assets.3dstreet.app/sets/vehicles/gltf-exports/draco",
+        "category": "vehicles-rigged"
+    },
+    {
+        "id": "tuk-tuk",
+        "name": "Tuk-Tuk",
+        "src": "https://assets.3dstreet.app/sets/vehicles/gltf-exports/draco",
+        "category": "vehicles-rigged"
+    },
+    {
+        "id": "motorbike",
+        "name": "Motorbike",
+        "src": "https://assets.3dstreet.app/sets/vehicles/gltf-exports/draco",
+        "category": "vehicles-rigged"
     }
 ]
