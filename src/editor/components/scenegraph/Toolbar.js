@@ -212,12 +212,16 @@ export default class Toolbar extends Component {
         Events.emit('openpaymentmodal');
         return;
       }
-
+      let isCurrentUserTheSceneAuthor;
       // if owner != doc.id then doSaveAs = true;
-      const isCurrentUserTheSceneAuthor = await isSceneAuthor({
-        sceneId: currentSceneId,
-        authorId: this.props.currentUser.uid
-      });
+      try {
+        isCurrentUserTheSceneAuthor = await isSceneAuthor({
+          sceneId: currentSceneId,
+          authorId: this.props.currentUser.uid
+        });
+      } catch (error) {
+        return;
+      }
 
       if (!isCurrentUserTheSceneAuthor) {
         doSaveAs = true;
