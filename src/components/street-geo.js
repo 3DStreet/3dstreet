@@ -17,7 +17,9 @@ AFRAME.registerComponent('street-geo', {
       type: 'string',
       default: 'google3d',
       oneOf: ['google3d', 'mapbox2d', 'osm3d']
-    }
+    },
+    enableClippingPlanes: { type: 'boolean', default: false },
+    clippingPlanesTarget: { type: 'selector', default: '' }
   },
   init: function () {
     /*
@@ -71,6 +73,37 @@ AFRAME.registerComponent('street-geo', {
         }
       }
     }
+
+    console.log('enableClippingPlanes', data.enableClippingPlanes);
+    console.log('oldData.enableClippingPlanes', oldData.enableClippingPlanes);
+
+    // if enableClippingPlanes is true, and was previously false, add clipping-planes component to the parent of the geo layer
+    if (data.enableClippingPlanes && !oldData.enableClippingPlanes) {
+      // now we want to create a default target for the clipping-planes component if none exists
+      let targetBox;
+      if (!this.data.clippingPlanesTarget) {
+        targetBox = this.findDefaultClippingBoxTarget();
+      } else {
+        targetBox = data.clippingPlanesTarget;
+      }
+      console.log('targetBox', targetBox);
+      console.log('adding clipping-planes to geo entity');
+      console.log('this[data.maps]', this[data.maps]);
+      // we want to set 'clipping-planes' on the geo entity (which is a child of this component)
+      this[data.maps].setAttribute(
+        'clipping-planes',
+        'stringSelector: [data-layer-name="Underground"]'
+      );
+      console.log('clipping-planes added to geo entity');
+    }
+    if (!data.enableClippingPlanes && oldData.enableClippingPlanes) {
+      console.log('removing clipping-planes from geo entity');
+      this[data.maps].removeAttribute('clipping-planes');
+      console.log('clipping-planes removed from geo entity');
+    }
+  },
+  findDefaultClippingBoxTarget: function () {
+    return document.querySelector('[data-layer-name="Underground"]');
   },
   mapbox2dCreate: function () {
     const data = this.data;
