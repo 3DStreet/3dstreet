@@ -47,6 +47,7 @@ AFRAME.registerComponent('street-geo', {
 
     const updatedData = AFRAME.utils.diff(oldData, data);
 
+    // logic to determine if the map type has changed
     for (const mapType of this.mapTypes) {
       if (data.maps === mapType && !this[mapType]) {
         // create Map element and save a link to it in this[mapType]
@@ -73,22 +74,18 @@ AFRAME.registerComponent('street-geo', {
       }
     }
 
+    // logic to add or remove clipping-planes component
     if (this[data.maps]) {
       // if enableClippingPlanes is true, and was previously false, add clipping-planes component to the parent of the geo layer
       if (data.enableClippingPlanes && !oldData.enableClippingPlanes) {
-        console.log('adding clipping-planes to geo entity');
-        console.log('this[data.maps]', this[data.maps]);
         // we want to set 'clipping-planes' on the geo entity (which is a child of this component)
         this[data.maps].setAttribute(
           'clipping-planes',
           'stringSelector: [data-layer-name="Underground"]'
         );
-        console.log('clipping-planes added to geo entity');
       }
       if (!data.enableClippingPlanes && oldData.enableClippingPlanes) {
-        console.log('removing clipping-planes from geo entity');
         this[data.maps].removeAttribute('clipping-planes');
-        console.log('clipping-planes removed from geo entity');
       }
     }
   },
