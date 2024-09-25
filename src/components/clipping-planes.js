@@ -38,7 +38,7 @@ AFRAME.registerComponent('clipping-planes', {
     const normals = [
       new THREE.Vector3(1, 0, 0),
       new THREE.Vector3(-1, 0, 0),
-      // new THREE.Vector3(0, 1, 0), // remove top clipping plane to clip above target
+      new THREE.Vector3(0, 1, 0),
       new THREE.Vector3(0, -1, 0),
       new THREE.Vector3(0, 0, 1),
       new THREE.Vector3(0, 0, -1)
@@ -46,7 +46,7 @@ AFRAME.registerComponent('clipping-planes', {
 
     for (let i = 0; i < normals.length; i++) {
       const normal = normals[i];
-      const point = this.targetCenter
+      let point = this.targetCenter
         .clone()
         .add(
           normal
@@ -55,6 +55,10 @@ AFRAME.registerComponent('clipping-planes', {
               this.targetSize.clone().multiply(new THREE.Vector3(0.5, 0.5, 0.5))
             )
         );
+      if (i === 2) {
+        // set top clipping plane 100m higher
+        point = this.targetCenter.clone().add(new THREE.Vector3(0, 100, 0));
+      }
       this.clipPlanes[i].setFromNormalAndCoplanarPoint(normal, point);
     }
   },
