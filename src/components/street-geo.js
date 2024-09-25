@@ -119,7 +119,6 @@ AFRAME.registerComponent('street-geo', {
     document.getElementById('map-copyright').textContent = 'MapBox';
   },
   google3dCreate: function () {
-    console.log('google3dCreate');
     const data = this.data;
     const el = this.el;
     const self = this;
