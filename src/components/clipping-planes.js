@@ -38,13 +38,13 @@ AFRAME.registerComponent('clipping-planes', {
     const normals = [
       new THREE.Vector3(1, 0, 0),
       new THREE.Vector3(-1, 0, 0),
-      new THREE.Vector3(0, 1, 0),
+      // new THREE.Vector3(0, 1, 0), // remove top clipping plane to clip above target
       new THREE.Vector3(0, -1, 0),
       new THREE.Vector3(0, 0, 1),
       new THREE.Vector3(0, 0, -1)
     ];
 
-    for (let i = 0; i < 6; i++) {
+    for (let i = 0; i < normals.length; i++) {
       const normal = normals[i];
       const point = this.targetCenter
         .clone()
