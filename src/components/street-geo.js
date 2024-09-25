@@ -46,7 +46,7 @@ AFRAME.registerComponent('street-geo', {
     this.el.sceneEl.emit('newGeo', data);
 
     const updatedData = AFRAME.utils.diff(oldData, data);
-
+    console.log(data);
     // logic to determine if the map type has changed
     for (const mapType of this.mapTypes) {
       if (data.maps === mapType && !this[mapType]) {
@@ -74,19 +74,15 @@ AFRAME.registerComponent('street-geo', {
       }
     }
 
-    // logic to add or remove clipping-planes component
-    if (this[data.maps]) {
-      // if enableClippingPlanes is true, and was previously false, add clipping-planes component to the parent of the geo layer
-      if (data.enableClippingPlanes && !oldData.enableClippingPlanes) {
-        // we want to set 'clipping-planes' on the geo entity (which is a child of this component)
-        this[data.maps].setAttribute(
-          'clipping-planes',
-          'stringSelector: [data-layer-name="Underground"]'
-        );
-      }
-      if (!data.enableClippingPlanes && oldData.enableClippingPlanes) {
-        this[data.maps].removeAttribute('clipping-planes');
-      }
+    if (data.enableClippingPlanes && !oldData.enableClippingPlanes) {
+      // we want to set 'clipping-planes' on the geo entity (which is a child of this component)
+      this.el.setAttribute(
+        'clipping-planes',
+        'stringSelector: [data-layer-name="Underground"]'
+      );
+    }
+    if (!data.enableClippingPlanes && oldData.enableClippingPlanes) {
+      this.el.removeAttribute('clipping-planes');
     }
   },
   mapbox2dCreate: function () {
