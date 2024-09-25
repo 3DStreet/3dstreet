@@ -74,15 +74,19 @@ AFRAME.registerComponent('street-geo', {
       }
     }
 
-    if (data.enableClippingPlanes && !oldData.enableClippingPlanes) {
-      // we want to set 'clipping-planes' on the geo entity (which is a child of this component)
-      this.el.setAttribute(
-        'clipping-planes',
-        'stringSelector: [data-layer-name="Underground"]'
-      );
-    }
-    if (!data.enableClippingPlanes && oldData.enableClippingPlanes) {
-      this.el.removeAttribute('clipping-planes');
+    // logic to add or remove clipping-planes component
+    if (this[data.maps]) {
+      // if enableClippingPlanes is true, and was previously false, add clipping-planes component to the parent of the geo layer
+      if (data.enableClippingPlanes && !oldData.enableClippingPlanes) {
+        // we want to set 'clipping-planes' on the geo entity (which is a child of this component)
+        this[data.maps].setAttribute(
+          'clipping-planes',
+          'stringSelector: [data-layer-name="Underground"]'
+        );
+      }
+      if (!data.enableClippingPlanes && oldData.enableClippingPlanes) {
+        this[data.maps].removeAttribute('clipping-planes');
+      }
     }
   },
   mapbox2dCreate: function () {
@@ -115,6 +119,7 @@ AFRAME.registerComponent('street-geo', {
     document.getElementById('map-copyright').textContent = 'MapBox';
   },
   google3dCreate: function () {
+    console.log('google3dCreate');
     const data = this.data;
     const el = this.el;
     const self = this;
@@ -148,6 +153,7 @@ AFRAME.registerComponent('street-geo', {
           () => {
             // emit play event to start loading tiles in Editor mode
             google3dElement.play();
+            self.el.setAttribute('loaded', true);
           },
           { once: true }
         );
