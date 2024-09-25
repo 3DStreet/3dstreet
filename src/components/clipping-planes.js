@@ -77,5 +77,25 @@ AFRAME.registerComponent('clipping-planes', {
         }
       }
     });
+  },
+
+  removeClippingPlanes: function () {
+    this.el.object3D.traverse((obj) => {
+      if (obj.type === 'Mesh') {
+        if (Array.isArray(obj.material)) {
+          obj.material.forEach((material) => {
+            material.clippingPlanes = null;
+            material.clipIntersection = false;
+          });
+        } else {
+          obj.material.clippingPlanes = null;
+          obj.material.clipIntersection = false;
+        }
+      }
+    });
+  },
+
+  remove: function () {
+    this.removeClippingPlanes();
   }
 });
