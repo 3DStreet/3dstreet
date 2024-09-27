@@ -1,4 +1,5 @@
 import Events from './Events';
+import posthog from 'posthog-js';
 
 export class History {
   constructor(editor) {
@@ -39,6 +40,10 @@ export class History {
     }
 
     cmd.name = optionalName !== undefined ? optionalName : cmd.name;
+    posthog.capture('execute_command', {
+      name: cmd.name
+    });
+
     cmd.execute();
 
     this.lastCmdTime = Date.now();
