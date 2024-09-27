@@ -15,11 +15,11 @@ import {
 import Events from '../../lib/Events';
 import { saveBlob } from '../../lib/utils';
 import { Button, ProfileButton } from '../components';
-import { SavingModal } from '../modals/SavingModal';
 import { uploadThumbnailImage } from '../modals/ScreenshotModal/ScreenshotModal.component.jsx';
 import { sendMetric } from '../../services/ga.js';
 import posthog from 'posthog-js';
 import { UndoRedo } from '../components/UndoRedo';
+import debounce from 'lodash-es/debounce';
 // const LOCALSTORAGE_MOCAP_UI = "aframeinspectormocapuienabled";
 
 function filterHelpers(scene, visible) {
@@ -65,7 +65,8 @@ export default class Toolbar extends Component {
       isSavingScene: false,
       pendingSceneSave: false,
       signInSuccess: false,
-      isAuthor: props.isAuthor
+      isAuthor: props.isAuthor,
+      notification: null
     };
     this.saveButtonRef = React.createRef();
   }
@@ -73,6 +74,13 @@ export default class Toolbar extends Component {
   componentDidMount() {
     document.addEventListener('click', this.handleClickOutsideSave);
     this.checkSignInStatus();
+    Events.on('historychanged', (cmd) => {
+      if (cmd) {
+        console.log('historychanged', cmd);
+        // Debounce the cloudSaveHandler call
+        this.debouncedCloudSaveHandler();
+      }
+    });
   }
 
   componentDidUpdate(prevProps) {
@@ -80,8 +88,6 @@ export default class Toolbar extends Component {
       this.setState({ isAuthor: this.props.isAuthor });
     }
     if (this.props.currentUser !== prevProps.currentUser) {
-      console.log('component updated');
-      console.log(this.props);
       this.setState({ currentUser: this.props.currentUser });
 
       if (this.state.pendingSceneSave && this.props.currentUser) {
@@ -172,6 +178,9 @@ export default class Toolbar extends Component {
 
   cloudSaveHandler = async ({ doSaveAs = false }) => {
     try {
+      if (this.state.notification) {
+        STREET.notify.dismissNotification(this.state.notification);
+      }
       // if there is no current user, show sign in modal
       let currentSceneId = STREET.utils.getCurrentSceneId();
       let currentSceneTitle = STREET.utils.getCurrentSceneTitle();
@@ -184,6 +193,7 @@ export default class Toolbar extends Component {
       });
 
       if (!this.props.currentUser) {
+        console.log('no user');
         Events.emit('opensigninmodal');
         return;
       }
@@ -201,12 +211,16 @@ export default class Toolbar extends Component {
         Events.emit('openpaymentmodal');
         return;
       }
-
+      let isCurrentUserTheSceneAuthor;
       // if owner != doc.id then doSaveAs = true;
-      const isCurrentUserTheSceneAuthor = await isSceneAuthor({
-        sceneId: currentSceneId,
-        authorId: this.props.currentUser.uid
-      });
+      try {
+        isCurrentUserTheSceneAuthor = await isSceneAuthor({
+          sceneId: currentSceneId,
+          authorId: this.props.currentUser.uid
+        });
+      } catch (error) {
+        return;
+      }
 
       if (!isCurrentUserTheSceneAuthor) {
         doSaveAs = true;
@@ -269,9 +283,11 @@ export default class Toolbar extends Component {
         );
         this.setState({ savedNewDocument: false }); // go back to default assumption of save overwrite
       } else {
-        STREET.notify.successMessage(
+        const notification = STREET.notify.successMessage(
           'Scene saved to 3DStreet Cloud in existing file.'
         );
+        this.setState({ notification });
+        console.log('message', notification);
       }
       this.setState({ isAuthor: true });
       sendMetric('SaveSceneAction', doSaveAs ? 'saveAs' : 'save');
@@ -284,6 +300,24 @@ export default class Toolbar extends Component {
       this.setState({ isSavingScene: false });
     }
   };
+
+  debouncedCloudSaveHandler = debounce(() => {
+    if (this.state.currentUser) {
+      const streetGeo = document
+        .getElementById('reference-layers')
+        ?.getAttribute('street-geo');
+      if (
+        !this.props.currentUser.isPro &&
+        streetGeo &&
+        streetGeo['latitude'] &&
+        streetGeo['longitude']
+      ) {
+        Events.emit('openpaymentmodal');
+        return;
+      }
+      this.cloudSaveHandler({ doSaveAs: false });
+    }
+  }, 500);
 
   handleRemixClick = () => {
     posthog.capture('remix_scene_clicked');
@@ -397,10 +431,10 @@ export default class Toolbar extends Component {
               <Button
                 leadingIcon={<Save24Icon />}
                 onClick={this.toggleSaveActionState.bind(this)}
+                disabled={this.state.isSavingScene}
               >
                 <div className="hideInLowResolution">Save</div>
               </Button>
-              {this.state.isSavingScene && <SavingModal />}
               {this.state.isSaveActionActive && (
                 <div className="dropdownedButtons">
                   <Button

@@ -106,7 +106,7 @@ const isSceneAuthor = async ({ sceneId, authorId }) => {
     }
   } catch (error) {
     console.error('Error fetching scene while running isSceneAuthor:', error);
-    return false;
+    throw new Error('Error checking scene authorship');
   }
 };
 

@@ -100,7 +100,7 @@ export class History {
     this.undos = [];
     this.redos = [];
     this.idCounter = 0;
-
-    Events.emit('historychanged');
+    console.log('history cleared');
+    Events.emit('historychanged', null);
   }
 }
