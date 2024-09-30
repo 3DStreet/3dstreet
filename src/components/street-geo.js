@@ -114,6 +114,7 @@ AFRAME.registerComponent('street-geo', {
       const google3dElement = document.createElement('a-entity');
       google3dElement.setAttribute('data-no-pause', '');
       google3dElement.id = 'google3d';
+      google3dElement.setAttribute('obb-clipping', '');
       google3dElement.setAttribute('data-layer-name', 'Google 3D Tiles');
       google3dElement.setAttribute('loader-3dtiles', {
         url: 'https://tile.googleapis.com/v1/3dtiles/root.json',

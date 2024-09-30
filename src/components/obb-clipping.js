@@ -3,14 +3,14 @@
 AFRAME.registerComponent('obb-clipping', {
   schema: {
     size: { default: 0 },
-    trackedObject3D: { default: '' },
-    clippingSourceSelectorString: { default: '#dirt-box' },
-    minimumColliderDimension: { default: 0.02 },
-    clipPlaneFunction: { default: 'obb' } // also try aabb
+    clippingSourceSelectorString: {
+      default: '[data-layer-name="Underground"]'
+    },
+    minimumColliderDimension: { default: 0.02 }
   },
 
   init: function () {
-    this.previousScale = new THREE.Vector3().copy(this.el.object3D.scale);
+    this.previousScale = new THREE.Vector3();
     this.auxEuler = new THREE.Euler();
 
     this.boundingBox = new THREE.Box3();
@@ -21,6 +21,7 @@ AFRAME.registerComponent('obb-clipping', {
     this.updateBoundingBox = this.updateBoundingBox.bind(this);
 
     this.el.addEventListener('model-loaded', this.onModelLoaded);
+    this.checkTrackedObject();
     this.updateCollider();
 
     //    this.elementToClip = document.querySelector('#google3d');
@@ -130,6 +131,7 @@ AFRAME.registerComponent('obb-clipping', {
   })(),
 
   fetchElementToClip: function () {
+    // TODO: Instead this should use SELF unless it
     const elementToClip = document.querySelector('#google3d');
     if (elementToClip) {
       this.elementToClip = elementToClip;
@@ -157,12 +159,6 @@ AFRAME.registerComponent('obb-clipping', {
         }
       });
     }
-  },
-
-  update: function () {
-    // if (this.data.trackedObject3D) {
-    //   this.trackedObject3DPath = this.data.trackedObject3D.split('.');
-    // }
   },
 
   onModelLoaded: function () {
@@ -254,7 +250,10 @@ AFRAME.registerComponent('obb-clipping', {
       var auxEuler = this.auxEuler;
       var boundingBox = this.boundingBox;
       var size = this.data.size;
-      var trackedObject3D = this.trackedObject3D || this.el.object3D;
+      var trackedObject3D = this.trackedObject3D;
+      if (!trackedObject3D) {
+        return;
+      }
       var boundingBoxSize = this.boundingBoxSize;
       var minimumColliderDimension = this.data.minimumColliderDimension;
 
@@ -305,7 +304,7 @@ AFRAME.registerComponent('obb-clipping', {
         auxQuaternion,
         auxScale
       );
-      this.el.object3D.rotation.copy(auxEuler);
+      this.trackedObject3D.rotation.copy(auxEuler);
     };
   })(),
 
@@ -316,28 +315,8 @@ AFRAME.registerComponent('obb-clipping', {
     if (trackedElement) {
       this.trackedObject3D = trackedElement.object3D;
       this.updateCollider();
-      console.log('trackedElement', this.trackedObject3D);
     }
-    // var trackedObject3DPath = this.trackedObject3DPath;
-    // var trackedObject3D;
-
-    // if (
-    //   trackedObject3DPath &&
-    //   trackedObject3DPath.length &&
-    //   !this.trackedObject3D
-    // ) {
-    //   trackedObject3D = this.el;
-    //   for (var i = 0; i < trackedObject3DPath.length; i++) {
-    //     trackedObject3D = trackedObject3D[trackedObject3DPath[i]];
-    //     if (!trackedObject3D) {
-    //       break;
-    //     }
-    //   }
-    //   if (trackedObject3D) {
-    //     this.trackedObject3D = trackedObject3D;
-    //     this.updateCollider();
-    //   }
-    // }
+    console.log('trackedElement', this.trackedObject3D);
     return this.trackedObject3D;
   },
 
@@ -351,7 +330,7 @@ AFRAME.registerComponent('obb-clipping', {
       console.log('tick');
       var obb = this.obb;
       var renderColliderMesh = this.renderColliderMesh;
-      var trackedObject3D = this.checkTrackedObject() || this.el.object3D;
+      var trackedObject3D = this.checkTrackedObject();
 
       if (!trackedObject3D) {
         return;
