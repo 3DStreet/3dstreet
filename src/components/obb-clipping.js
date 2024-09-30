@@ -181,7 +181,8 @@ AFRAME.registerComponent('obb-collider2', {
     this.updateCollider();
 
     this.system.addCollider(this.el);
-    this.elementToClip = document.querySelector('#google3d');
+    //    this.elementToClip = document.querySelector('#google3d');
+    this.fetchElementToClip();
 
     // function findElementWithRetry(that) {
     //     const elementToClip = document.querySelector("#google3d");
@@ -366,9 +367,19 @@ AFRAME.registerComponent('obb-collider2', {
     return clipPlanes;
   },
 
+  fetchElementToClip: function () {
+    const elementToClip = document.querySelector('#google3d');
+    if (elementToClip) {
+      this.elementToClip = elementToClip;
+    }
+  },
+
   applyClippingPlanes: function (clipPlanes) {
     console.log('applyclipping', this.elementToClip);
     console.log('applyclipping', this);
+    if (!this.elementToClip) {
+      this.fetchElementToClip();
+    }
     if (this.elementToClip) {
       this.elementToClip.object3D.traverse((obj) => {
         if (obj.type === 'Mesh') {

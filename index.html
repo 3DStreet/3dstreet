@@ -114,8 +114,16 @@
         blink-controls="cameraRig: #cameraRig; teleportOrigin: #camera; rotateOnTeleport:false;"></a-entity>
       <a-entity id="screenshot" class="no-pause" screentock visible="false"></a-entity>
     </a-entity>
+    <!-- <a-entity position="1 -1 -1" rotation="0 30 0">
     <a-box data-no-pause="" position="1 -1 -1" rotation="0 30 0" id="clipping-box" depth="5" width="5" height="5"
-      material="wireframe: true" obb-collider3="clipPlaneFunction: obb;" class="autocreated" ;></a-box>
+      material="wireframe: true" obb-collider3="clipPlaneFunction: obb;" class="autocreated"></a-box>
+    </a-entity> -->
+    <!-- 
+    
+    document.querySelector('#clipping-box').setAttribute('obb-collider2', "clipPlaneFunction: obb;"); 
+    document.querySelector('#clipping-box').play();
+    
+    -->
   </a-scene>
 </body>
 <script>
