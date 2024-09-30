@@ -275,20 +275,12 @@ Inspector.prototype = {
    * Prevent pause elements with data-no-pause attribute while open inspector
    */
   playNoPauseElements: function () {
-    const noPauseElements = document.querySelectorAll('[data-no-pause]');
-    console.log(noPauseElements);
+    const noPauseElements = document.querySelectorAll(
+      'a-entity[data-no-pause]'
+    );
     noPauseElements.forEach((elem) => {
-      if (
-        elem.tagName.toLowerCase().startsWith('a-') &&
-        typeof elem.play === 'function'
-      ) {
-        elem.play();
-      }
+      elem.play();
     });
-    const dirtBox = document.getElementById('dirt-box');
-    if (dirtBox) {
-      dirtBox.play(); // TODO: This is a hack, fix this
-    }
   },
   /**
    * Open the editor UI
