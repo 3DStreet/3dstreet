@@ -4,6 +4,7 @@ AFRAME.registerComponent('obb-clipping', {
   schema: {
     size: { default: 0 },
     trackedObject3D: { default: '' },
+    clippingSourceSelectorString: { default: '#dirt-box' },
     minimumColliderDimension: { default: 0.02 },
     clipPlaneFunction: { default: 'obb' } // also try aabb
   },
@@ -24,19 +25,6 @@ AFRAME.registerComponent('obb-clipping', {
 
     //    this.elementToClip = document.querySelector('#google3d');
     this.fetchElementToClip();
-
-    // function findElementWithRetry(that) {
-    //     const elementToClip = document.querySelector("#google3d");
-    //     if (elementToClip) {
-    //         console.log('[obb-clipping] elementToClip found', elementToClip);
-    //         that.elementToClip = elementToClip;
-    //         // return elementToClip;
-    //     } else {
-    //         console.log('[obb-clipping] elementToClip not found, retrying in 1 second');
-    //         setTimeout(findElementWithRetry, 1000);
-    //     }
-    // }
-    // findElementWithRetry(this)
 
     // Enable local clipping in the renderer
     this.el.sceneEl.renderer.localClippingEnabled = true;
@@ -172,9 +160,9 @@ AFRAME.registerComponent('obb-clipping', {
   },
 
   update: function () {
-    if (this.data.trackedObject3D) {
-      this.trackedObject3DPath = this.data.trackedObject3D.split('.');
-    }
+    // if (this.data.trackedObject3D) {
+    //   this.trackedObject3DPath = this.data.trackedObject3D.split('.');
+    // }
   },
 
   onModelLoaded: function () {
@@ -322,26 +310,34 @@ AFRAME.registerComponent('obb-clipping', {
   })(),
 
   checkTrackedObject: function () {
-    var trackedObject3DPath = this.trackedObject3DPath;
-    var trackedObject3D;
-
-    if (
-      trackedObject3DPath &&
-      trackedObject3DPath.length &&
-      !this.trackedObject3D
-    ) {
-      trackedObject3D = this.el;
-      for (var i = 0; i < trackedObject3DPath.length; i++) {
-        trackedObject3D = trackedObject3D[trackedObject3DPath[i]];
-        if (!trackedObject3D) {
-          break;
-        }
-      }
-      if (trackedObject3D) {
-        this.trackedObject3D = trackedObject3D;
-        this.updateCollider();
-      }
+    var trackedElement = document.querySelector(
+      this.data.clippingSourceSelectorString
+    );
+    if (trackedElement) {
+      this.trackedObject3D = trackedElement.object3D;
+      this.updateCollider();
+      console.log('trackedElement', this.trackedObject3D);
     }
+    // var trackedObject3DPath = this.trackedObject3DPath;
+    // var trackedObject3D;
+
+    // if (
+    //   trackedObject3DPath &&
+    //   trackedObject3DPath.length &&
+    //   !this.trackedObject3D
+    // ) {
+    //   trackedObject3D = this.el;
+    //   for (var i = 0; i < trackedObject3DPath.length; i++) {
+    //     trackedObject3D = trackedObject3D[trackedObject3DPath[i]];
+    //     if (!trackedObject3D) {
+    //       break;
+    //     }
+    //   }
+    //   if (trackedObject3D) {
+    //     this.trackedObject3D = trackedObject3D;
+    //     this.updateCollider();
+    //   }
+    // }
     return this.trackedObject3D;
   },
 
