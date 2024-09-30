@@ -1,6 +1,6 @@
 /* global AFRAME */
 
-AFRAME.registerComponent('obb-collider2', {
+AFRAME.registerComponent('obb-clipping', {
   schema: {
     size: { default: 0 },
     trackedObject3D: { default: '' },
@@ -140,73 +140,6 @@ AFRAME.registerComponent('obb-collider2', {
       return clipPlanes;
     };
   })(),
-
-  createPlanesFromTargetObject: function () {
-    const targetElement = document.querySelector('#clipping-box');
-    var clipPlanes = [];
-    var targetBox = new THREE.Box3();
-    var targetCenter = new THREE.Vector3();
-    var targetSize = new THREE.Vector3();
-
-    // Create planes
-    for (let i = 0; i < 6; i++) {
-      clipPlanes.push(new THREE.Plane());
-    }
-
-    targetBox.setFromObject(targetElement.object3D);
-    targetBox.getCenter(targetCenter);
-    targetBox.getSize(targetSize);
-
-    // Update plane positions
-    const normals = [
-      new THREE.Vector3(1, 0, 0),
-      new THREE.Vector3(-1, 0, 0),
-      new THREE.Vector3(0, 1, 0), // top
-      new THREE.Vector3(0, -1, 0),
-      new THREE.Vector3(0, 0, 1),
-      new THREE.Vector3(0, 0, -1)
-    ];
-
-    for (let i = 0; i < normals.length; i++) {
-      const normal = normals[i];
-      let point = targetCenter
-        .clone()
-        .add(
-          normal
-            .clone()
-            .multiply(
-              targetSize.clone().multiply(new THREE.Vector3(0.5, 0.5, 0.5))
-            )
-        );
-
-      clipPlanes[i].setFromNormalAndCoplanarPoint(normal, point);
-
-      // Align the geometry to the plane
-      var coplanarPoint = new THREE.Vector3();
-      clipPlanes[i].coplanarPoint(coplanarPoint);
-      var focalPoint = new THREE.Vector3()
-        .copy(coplanarPoint)
-        .add(clipPlanes[i].normal);
-      // Create a basic rectangle geometry
-      var planeGeometry = new THREE.PlaneGeometry(5, 5);
-      planeGeometry.lookAt(focalPoint);
-      planeGeometry.translate(
-        coplanarPoint.x,
-        coplanarPoint.y,
-        coplanarPoint.z
-      );
-
-      // Create mesh with the geometry
-      var planeMaterial = new THREE.MeshBasicMaterial({
-        side: THREE.DoubleSide,
-        color: Math.random() * 0xffffff
-      });
-      var dispPlane = new THREE.Mesh(planeGeometry, planeMaterial);
-      this.el.sceneEl.object3D.add(dispPlane);
-    }
-
-    return clipPlanes;
-  },
 
   fetchElementToClip: function () {
     const elementToClip = document.querySelector('#google3d');
@@ -459,12 +392,7 @@ AFRAME.registerComponent('obb-collider2', {
       obb.copy(this.aabb);
       obb.applyMatrix4(auxMatrix);
 
-      let clipPlanes;
-      if (this.data.clipPlaneFunction === 'obb') {
-        clipPlanes = this.createPlanesFromOBB(obb);
-      } else if (this.data.clipPlaneFunction === 'aabb') {
-        clipPlanes = this.createPlanesFromTargetObject();
-      }
+      const clipPlanes = this.createPlanesFromOBB(obb);
       // console.log(clipPlanes);
       this.applyClippingPlanes(clipPlanes);
     };

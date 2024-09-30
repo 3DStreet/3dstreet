@@ -1716,7 +1716,7 @@ function processSegments(
   dirtBox.setAttribute('depth', length - 0.2); // depth is length - 0.1 on each side
   dirtBox.setAttribute('material', 'color: #664B00;');
   dirtBox.setAttribute('data-layer-name', 'Underground');
-  dirtBox.setAttribute('obb-collider2', 'clipPlaneFunction: obb;');
+  dirtBox.setAttribute('obb-clipping', 'clipPlaneFunction: obb;');
   dirtBox.setAttribute('data-no-pause', true);
   dirtBox.id = 'dirt-box';
   streetParentEl.append(dirtBox);
