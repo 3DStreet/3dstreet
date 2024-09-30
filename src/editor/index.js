@@ -285,6 +285,10 @@ Inspector.prototype = {
         elem.play();
       }
     });
+    const dirtBox = document.getElementById('dirt-box');
+    if (dirtBox) {
+      dirtBox.play(); // TODO: This is a hack, fix this
+    }
   },
   /**
    * Open the editor UI

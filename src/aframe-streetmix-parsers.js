@@ -1718,7 +1718,7 @@ function processSegments(
   dirtBox.setAttribute('data-layer-name', 'Underground');
   dirtBox.setAttribute('obb-collider2', 'clipPlaneFunction: obb;');
   dirtBox.setAttribute('data-no-pause', true);
-  dirtBox.classList.add('autocreated');
+  dirtBox.id = 'dirt-box';
   streetParentEl.append(dirtBox);
   return streetParentEl;
 }
