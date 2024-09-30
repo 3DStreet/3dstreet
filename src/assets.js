@@ -301,7 +301,7 @@ function buildAssetHTML(assetUrl, categories) {
         <a-mixin
           id="${item.id}"
           shadow
-          gltf-model="url(${item.src}/${item.id}.glb)"
+          gltf-model="url(${item.src})"
           category="${item.category || ''}"
         ></a-mixin>`;
       assetsHTML += mixinHTML;

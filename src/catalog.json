@@ -12,73 +12,79 @@
     {
         "id": "sedan-rig",
         "name": "Sedan",
-        "src": "https://assets.3dstreet.app/sets/vehicles-rig/gltf-exports/draco",
+        "src": "https://assets.3dstreet.app/sets/vehicles-rig/gltf-exports/draco/toyota-prius-rig.glb",
+        "img": "https://assets.3dstreet.app/sets/vehicles-rig/gltf-exports/draco/toyota-prius-rig.jpg",
         "category": "vehicles-rigged"
     },
     {
         "id": "sedan-taxi-rig",
         "name": "Sedan Taxi",
-        "src": "https://assets.3dstreet.app/sets/vehicles-rig/gltf-exports/draco",
+        "src": "https://assets.3dstreet.app/sets/vehicles-rig/gltf-exports/draco/sedan-taxi-rig.glb",
+        "img": "https://assets.3dstreet.app/sets/vehicles-rig/gltf-exports/draco/sedan-taxi-rig.jpg",
         "category": "vehicles-rigged"
     },
     {
         "id": "suv-rig",
         "name": "SUV",
-        "src": "https://assets.3dstreet.app/sets/vehicles-rig/gltf-exports/draco",
+        "src": "https://assets.3dstreet.app/sets/vehicles-rig/gltf-exports/draco/suv-rig.glb",
+        "img": "https://assets.3dstreet.app/sets/vehicles-rig/gltf-exports/draco/suv-rig.jpg",
         "category": "vehicles-rigged"
     },
     {
         "id": "box-truck-rig",
         "name": "Box Truck",
-        "src": "https://assets.3dstreet.app/sets/vehicles-rig/gltf-exports/draco",
+        "src": "https://assets.3dstreet.app/sets/vehicles-rig/gltf-exports/draco/isuzu-truck-rig.glb",
+        "img": "https://assets.3dstreet.app/sets/vehicles-rig/gltf-exports/draco/box-truck-rig.jpg",
         "category": "vehicles-rigged"
     },
     {
         "id": "food-trailer-rig",
         "name": "Food Trailer",
-        "src": "https://assets.3dstreet.app/sets/vehicles-rig/gltf-exports/draco",
+        "src": "https://assets.3dstreet.app/sets/vehicles-rig/gltf-exports/draco/food-trailer-rig.glb",
+        "img": "https://assets.3dstreet.app/sets/vehicles-rig/gltf-exports/draco/food-trailer-rig.jpg",
         "category": "vehicles-rigged"
     },
     {
         "id": "fire-truck-rig",
         "name": "Fire Truck",
-        "src": "https://assets.3dstreet.app/sets/vehicles-rig/gltf-exports/draco",
+        "src": "https://assets.3dstreet.app/sets/vehicles-rig/gltf-exports/draco/fire-truck-pumper-rig.glb",
+        "img": "https://assets.3dstreet.app/sets/vehicles-rig/gltf-exports/draco/fire-truck-pumper-rig.jpg",
         "category": "vehicles-rigged"
     },
     {
         "id": "fire-ladder-rig",
         "name": "Fire Ladder Truck",
-        "src": "https://assets.3dstreet.app/sets/vehicles/gltf-exports/draco",
+        "src": "https://assets.3dstreet.app/sets/vehicles/gltf-exports/draco/fire_truck_ladder.glb",
         "category": "vehicles-rigged"
     },
     {
         "id": "trash-truck-side-loading",
         "name": "Side-Loading Trash Truck",
-        "src": "https://assets.3dstreet.app/sets/vehicles/gltf-exports/draco",
+        "src": "https://assets.3dstreet.app/sets/vehicles/gltf-exports/draco/trash-truck-side-loading.glb",
         "category": "vehicles-rigged"
     },
     {
         "id": "self-driving-cruise-car-rig",
         "name": "Self-Driving Cruise Car",
-        "src": "https://assets.3dstreet.app/sets/vehicles-rig/gltf-exports/draco",
+        "src": "https://assets.3dstreet.app/sets/vehicles-rig/gltf-exports/draco/self-driving-cruise-car-rig.glb",
         "category": "vehicles-rigged"
     },
     {
         "id": "self-driving-waymo-car",
         "name": "Self-Driving Waymo Car",
-        "src": "https://assets.3dstreet.app/sets/vehicles/gltf-exports/draco",
+        "src": "https://assets.3dstreet.app/sets/vehicles/gltf-exports/draco/waymo-self-driving-car.glb",
         "category": "vehicles-rigged"
     },
     {
         "id": "tuk-tuk",
         "name": "Tuk-Tuk",
-        "src": "https://assets.3dstreet.app/sets/vehicles/gltf-exports/draco",
+        "src": "https://assets.3dstreet.app/sets/vehicles/gltf-exports/draco/tuk-tuk.glb",
         "category": "vehicles-rigged"
     },
     {
         "id": "motorbike",
         "name": "Motorbike",
-        "src": "https://assets.3dstreet.app/sets/vehicles/gltf-exports/draco",
+        "src": "https://assets.3dstreet.app/sets/vehicles/gltf-exports/draco/two-wheeler-with-person.glb",
         "category": "vehicles-rigged"
     }
 ]
