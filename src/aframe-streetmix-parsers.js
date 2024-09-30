@@ -1717,7 +1717,8 @@ function processSegments(
   dirtBox.setAttribute('material', 'color: #664B00;');
   dirtBox.setAttribute('data-layer-name', 'Underground');
   dirtBox.setAttribute('obb-collider2', 'clipPlaneFunction: obb;');
-  dirtBox.setAttribute('data-no-pause', '');
+  dirtBox.setAttribute('data-no-pause', true);
+  dirtBox.classList.add('autocreated');
   streetParentEl.append(dirtBox);
   return streetParentEl;
 }

@@ -275,11 +275,15 @@ Inspector.prototype = {
    * Prevent pause elements with data-no-pause attribute while open inspector
    */
   playNoPauseElements: function () {
-    const noPauseElements = document.querySelectorAll(
-      'a-entity[data-no-pause]'
-    );
+    const noPauseElements = document.querySelectorAll('[data-no-pause]');
+    console.log(noPauseElements);
     noPauseElements.forEach((elem) => {
-      elem.play();
+      if (
+        elem.tagName.toLowerCase().startsWith('a-') &&
+        typeof elem.play === 'function'
+      ) {
+        elem.play();
+      }
     });
   },
   /**
