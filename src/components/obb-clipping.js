@@ -4,9 +4,14 @@ AFRAME.registerComponent('obb-clipping', {
   schema: {
     size: { default: 0 },
     clippingSourceSelectorString: {
-      default: '[data-layer-name="Underground"]'
+      default: '[data-layer-name="Underground"]' // we use string instead of selector as the built-in a-frame selector doesn't support this syntax
     },
-    minimumColliderDimension: { default: 0.02 }
+    clippingDestinationSelectorString: {
+      // empty string means use the same element as the source
+      type: 'string'
+    },
+    minimumColliderDimension: { default: 0.02 },
+    enabled: { type: 'boolean', default: true }
   },
 
   init: function () {
@@ -24,7 +29,6 @@ AFRAME.registerComponent('obb-clipping', {
     this.checkTrackedObject();
     this.updateCollider();
 
-    //    this.elementToClip = document.querySelector('#google3d');
     this.fetchElementToClip();
 
     // Enable local clipping in the renderer
@@ -34,14 +38,6 @@ AFRAME.registerComponent('obb-clipping', {
   createPlanesFromOBB: (function () {
     var planeMeshes = [];
     var planeMatrix4 = new THREE.Matrix4();
-    // var planeColors = [
-    //     0x009B48,
-    //     0xB90000,
-    //     0x0045AD,
-    //     0xFF5900,
-    //     0xffffff,
-    //     0xFFD500,
-    // ];
 
     var planeNormals = [
       new THREE.Vector3(1, 0, 0),
@@ -111,6 +107,14 @@ AFRAME.registerComponent('obb-clipping', {
         clipPlanes[i].applyMatrix4(planeMatrix4);
 
         // Render planes. For testing purposes.
+        // var planeColors = [
+        //     0x009B48,
+        //     0xB90000,
+        //     0x0045AD,
+        //     0xFF5900,
+        //     0xffffff,
+        //     0xFFD500,
+        // ];
         // Align the geometry to the plane
         //         var coplanarPoint = new THREE.Vector3();
         //         clipPlanes[i].coplanarPoint(coplanarPoint);
@@ -131,10 +135,13 @@ AFRAME.registerComponent('obb-clipping', {
   })(),
 
   fetchElementToClip: function () {
-    // TODO: Instead this should use SELF unless it
-    const elementToClip = document.querySelector('#google3d');
-    if (elementToClip) {
-      this.elementToClip = elementToClip;
+    if (this.data.clippingDestinationSelectorString) {
+      // TODO: this route not tested
+      this.elementToClip = document.querySelector(
+        this.data.clippingDestinationSelectorString
+      );
+    } else {
+      this.elementToClip = this.el;
     }
   },
 
@@ -159,6 +166,27 @@ AFRAME.registerComponent('obb-clipping', {
         }
       });
     }
+  },
+
+  removeClippingPlanes: function () {
+    this.elementToClip.object3D.traverse((obj) => {
+      if (obj.type === 'Mesh') {
+        if (Array.isArray(obj.material)) {
+          obj.material.forEach((material) => {
+            material.clippingPlanes = null;
+            material.clipIntersection = false;
+          });
+        } else {
+          obj.material.clippingPlanes = null;
+          obj.material.clipIntersection = false;
+        }
+      }
+    });
+  },
+
+  remove: function () {
+    this.data.enabled = false;
+    this.removeClippingPlanes();
   },
 
   onModelLoaded: function () {
@@ -328,6 +356,9 @@ AFRAME.registerComponent('obb-clipping', {
 
     return function () {
       console.log('tick');
+      if (!this.data.enabled) {
+        return;
+      }
       var obb = this.obb;
       var renderColliderMesh = this.renderColliderMesh;
       var trackedObject3D = this.checkTrackedObject();

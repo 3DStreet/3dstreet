@@ -17,7 +17,8 @@ AFRAME.registerComponent('street-geo', {
       type: 'string',
       default: 'google3d',
       oneOf: ['google3d', 'mapbox2d', 'osm3d']
-    }
+    },
+    enableClipping: { type: 'boolean', default: false }
   },
   init: function () {
     /*
@@ -58,7 +59,8 @@ AFRAME.registerComponent('street-geo', {
         data.maps === mapType &&
         (updatedData.longitude ||
           updatedData.latitude ||
-          updatedData.ellipsoidalHeight)
+          updatedData.ellipsoidalHeight ||
+          updatedData.enableClipping)
       ) {
         // call update map function with name: <mapType>Update
         this[mapType + 'Update']();
@@ -114,7 +116,9 @@ AFRAME.registerComponent('street-geo', {
       const google3dElement = document.createElement('a-entity');
       google3dElement.setAttribute('data-no-pause', '');
       google3dElement.id = 'google3d';
-      google3dElement.setAttribute('obb-clipping', '');
+      if (data.enableClipping) {
+        google3dElement.setAttribute('obb-clipping', '');
+      }
       google3dElement.setAttribute('data-layer-name', 'Google 3D Tiles');
       google3dElement.setAttribute('loader-3dtiles', {
         url: 'https://tile.googleapis.com/v1/3dtiles/root.json',
@@ -171,6 +175,13 @@ AFRAME.registerComponent('street-geo', {
       long: data.longitude,
       height: height
     });
+
+    // if previous state was clipping, then disable it
+    if (data.enableClipping) {
+      this.google3d.setAttribute('obb-clipping', 'enabled: true');
+    } else {
+      this.google3d.removeAttribute('obb-clipping');
+    }
   },
   mapbox2dUpdate: function () {
     const data = this.data;
