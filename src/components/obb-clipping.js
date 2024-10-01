@@ -10,8 +10,7 @@ AFRAME.registerComponent('obb-clipping', {
       // empty string means use the same element as the source
       type: 'string'
     },
-    minimumColliderDimension: { default: 0.02 },
-    enabled: { type: 'boolean', default: true }
+    minimumColliderDimension: { default: 0.02 }
   },
 
   init: function () {
@@ -146,8 +145,8 @@ AFRAME.registerComponent('obb-clipping', {
   },
 
   applyClippingPlanes: function (clipPlanes) {
-    console.log('applyclipping', this.elementToClip);
-    console.log('applyclipping', this);
+    // console.log('applyclipping', this.elementToClip);
+    // console.log('applyclipping', this);
     if (!this.elementToClip) {
       this.fetchElementToClip();
     }
@@ -185,7 +184,6 @@ AFRAME.registerComponent('obb-clipping', {
   },
 
   remove: function () {
-    this.data.enabled = false;
     this.removeClippingPlanes();
   },
 
@@ -344,7 +342,7 @@ AFRAME.registerComponent('obb-clipping', {
       this.trackedObject3D = trackedElement.object3D;
       this.updateCollider();
     }
-    console.log('trackedElement', this.trackedObject3D);
+    // console.log('trackedElement', this.trackedObject3D);
     return this.trackedObject3D;
   },
 
@@ -355,10 +353,6 @@ AFRAME.registerComponent('obb-clipping', {
     var auxMatrix = new THREE.Matrix4();
 
     return function () {
-      console.log('tick');
-      if (!this.data.enabled) {
-        return;
-      }
       var obb = this.obb;
       var renderColliderMesh = this.renderColliderMesh;
       var trackedObject3D = this.checkTrackedObject();

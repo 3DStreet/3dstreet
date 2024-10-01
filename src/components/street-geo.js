@@ -73,6 +73,15 @@ AFRAME.registerComponent('street-geo', {
         }
       }
     }
+
+    // if state is not clipping, then disable it
+    if (this.google3d) {
+      if (data.enableClipping) {
+        this.google3d.setAttribute('obb-clipping', '');
+      } else {
+        this.google3d.removeAttribute('obb-clipping');
+      }
+    }
   },
   mapbox2dCreate: function () {
     const data = this.data;
@@ -175,13 +184,6 @@ AFRAME.registerComponent('street-geo', {
       long: data.longitude,
       height: height
     });
-
-    // if previous state was clipping, then disable it
-    if (data.enableClipping) {
-      this.google3d.setAttribute('obb-clipping', 'enabled: true');
-    } else {
-      this.google3d.removeAttribute('obb-clipping');
-    }
   },
   mapbox2dUpdate: function () {
     const data = this.data;
