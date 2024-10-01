@@ -14,6 +14,8 @@ AFRAME.registerComponent('obb-clipping', {
   },
 
   init: function () {
+    this.tick = AFRAME.utils.throttleTick(this.tick, 250, this);
+
     this.previousScale = new THREE.Vector3();
     this.auxEuler = new THREE.Euler();
 
