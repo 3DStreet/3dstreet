@@ -3,7 +3,7 @@ var { Notyf } = require('../lib/notyf.min.js');
 
 AFRAME.registerComponent('notify', {
   schema: {
-    duration: { type: 'number', default: 6000 },
+    duration: { type: 'number', default: 2000 },
     ripple: { type: 'boolean', default: false },
     position: {
       type: 'string',

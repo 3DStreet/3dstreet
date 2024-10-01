@@ -278,17 +278,11 @@ export default class Toolbar extends Component {
       // Change the hash URL without reloading
       window.location.hash = `#/scenes/${currentSceneId}.json`;
       if (this.state.savedNewDocument) {
-        STREET.notify.successMessage(
-          'Scene saved to 3DStreet Cloud as a new file.'
-        );
         this.setState({ savedNewDocument: false }); // go back to default assumption of save overwrite
-      } else {
-        const notification = STREET.notify.successMessage(
-          'Scene saved to 3DStreet Cloud in existing file.'
-        );
-        this.setState({ notification });
-        console.log('message', notification);
       }
+      const notification = STREET.notify.successMessage('Scene saved');
+      this.setState({ notification });
+
       this.setState({ isAuthor: true });
       sendMetric('SaveSceneAction', doSaveAs ? 'saveAs' : 'save');
     } catch (error) {
@@ -317,7 +311,7 @@ export default class Toolbar extends Component {
       }
       this.cloudSaveHandler({ doSaveAs: false });
     }
-  }, 500);
+  }, 750);
 
   handleRemixClick = () => {
     posthog.capture('remix_scene_clicked');
