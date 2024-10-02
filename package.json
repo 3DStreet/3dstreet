@@ -1,6 +1,6 @@
 {
   "name": "3dstreet",
-  "version": "0.5.3",
+  "version": "0.5.4",
   "description": "Web-based 3D visualization of streets using A-Frame and WebXR",
   "main": "dist/3dstreet-editor.js",
   "scripts": {
