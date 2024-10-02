@@ -37,14 +37,19 @@ AFRAME.registerComponent('obb-clipping', {
     // Enable local clipping in the renderer
     this.el.sceneEl.renderer.localClippingEnabled = true;
 
+    this.onContentPostProcess = this.onContentPostProcess.bind(this);
     this.elementToClip.addEventListener(
       'contentPostProcess',
-      function (e) {
-        this.applyClippingPlanes(this.createPlanesFromOBB(this.obb));
-      }.bind(this)
+      this.onContentPostProcess
     );
   },
 
+  onContentPostProcess: function (event) {
+    this.applyClippingPlanesToObject(
+      this.createPlanesFromOBB(this.obb),
+      event.detail.mesh
+    );
+  },
   createPlanesFromOBB: (function () {
     var planeMeshes = [];
     var planeMatrix4 = new THREE.Matrix4();
@@ -176,6 +181,23 @@ AFRAME.registerComponent('obb-clipping', {
     }
   },
 
+  applyClippingPlanesToObject: function (clipPlanes, object3DToClip) {
+    // object3DToClip should be an object3D such as a mesh or a group
+    object3DToClip.traverse((obj) => {
+      if (obj.type === 'Mesh') {
+        if (Array.isArray(obj.material)) {
+          obj.material.forEach((material) => {
+            material.clippingPlanes = clipPlanes;
+            material.clipIntersection = true;
+          });
+        } else {
+          obj.material.clippingPlanes = clipPlanes;
+          obj.material.clipIntersection = true;
+        }
+      }
+    });
+  },
+
   removeClippingPlanes: function () {
     this.elementToClip.object3D.traverse((obj) => {
       if (obj.type === 'Mesh') {
@@ -193,6 +215,10 @@ AFRAME.registerComponent('obb-clipping', {
   },
 
   remove: function () {
+    this.elementToClip.removeEventListener(
+      'contentPostProcess',
+      this.onContentPostProcess
+    );
     this.removeClippingPlanes();
   },
 
