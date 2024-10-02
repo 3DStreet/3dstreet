@@ -1,4 +1,5 @@
 import { loadScript, roundCoord } from '../../../../../src/utils.js';
+import { createUniqueId } from '../../../lib/entity.js';
 
 export function createSvgExtrudedEntity(position) {
   // This component accepts a svgString and creates a new entity with geometry extruded
@@ -61,7 +62,7 @@ export function createStreetmixStreet(position, streetmixURL, hideBuildings) {
   // position the street further from the current one so as not to overlap each other
   if (streetmixURL && streetmixURL !== '') {
     const definition = {
-      id: streetmixURL,
+      id: createUniqueId(),
       components: {
         position: position ?? '0 0 -20',
         'streetmix-loader': {
