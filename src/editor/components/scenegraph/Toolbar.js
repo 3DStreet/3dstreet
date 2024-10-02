@@ -311,7 +311,7 @@ export default class Toolbar extends Component {
       }
       this.cloudSaveHandler({ doSaveAs: false });
     }
-  }, 750);
+  }, 1000);
 
   handleRemixClick = () => {
     posthog.capture('remix_scene_clicked');
