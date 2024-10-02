@@ -36,6 +36,13 @@ AFRAME.registerComponent('obb-clipping', {
 
     // Enable local clipping in the renderer
     this.el.sceneEl.renderer.localClippingEnabled = true;
+
+    this.elementToClip.addEventListener(
+      'contentPostProcess',
+      function (e) {
+        this.applyClippingPlanes(this.createPlanesFromOBB(this.obb));
+      }.bind(this)
+    );
   },
 
   createPlanesFromOBB: (function () {
