@@ -17,6 +17,8 @@ AFRAME.registerComponent('obb-clipping', {
     this.tick = AFRAME.utils.throttleTick(this.tick, 250, this);
 
     this.previousScale = new THREE.Vector3();
+    this.previousPosition = new THREE.Vector3();
+    this.previousQuaternion = new THREE.Quaternion();
     this.auxEuler = new THREE.Euler();
 
     this.boundingBox = new THREE.Box3();
@@ -147,8 +149,6 @@ AFRAME.registerComponent('obb-clipping', {
   },
 
   applyClippingPlanes: function (clipPlanes) {
-    // console.log('applyclipping', this.elementToClip);
-    // console.log('applyclipping', this);
     if (!this.elementToClip) {
       this.fetchElementToClip();
     }
@@ -378,6 +378,7 @@ AFRAME.registerComponent('obb-clipping', {
         Math.abs(auxScale.z - this.previousScale.z) > 0.0001
       ) {
         this.updateCollider();
+        this.applyClippingPlanes(this.createPlanesFromOBB(obb));
       }
 
       this.previousScale.copy(auxScale);
@@ -394,9 +395,15 @@ AFRAME.registerComponent('obb-clipping', {
       obb.copy(this.aabb);
       obb.applyMatrix4(auxMatrix);
 
-      const clipPlanes = this.createPlanesFromOBB(obb);
-      // console.log(clipPlanes);
-      this.applyClippingPlanes(clipPlanes);
+      // If new position or rotation then reapply planes
+      if (
+        !this.previousPosition.equals(auxPosition) ||
+        !this.previousQuaternion.equals(auxQuaternion)
+      ) {
+        this.applyClippingPlanes(this.createPlanesFromOBB(obb));
+      }
+      this.previousPosition.copy(auxPosition);
+      this.previousQuaternion.copy(auxQuaternion);
     };
   })()
 });
