@@ -83,9 +83,6 @@ function buildAssetHTML(assetUrl, categories) {
         <a-mixin shadow id="Bicycle_1" gltf-part="src: #microMobilityDevices; part: Bicycle_1"></a-mixin>
         <a-mixin shadow id="ElectricScooter_1" gltf-part="src: #microMobilityDevices; part: ElectricScooter_1"></a-mixin>
         <!-- fantasy vehicles -->
-        <a-asset-item id="magic-carpet-glb" src="${assetUrl}sets/magic-carpet/gltf-exports/draco/magic-carpet.glb"></a-asset-item>
-        <a-mixin shadow id="Character_1_M" gltf-part="src: #magic-carpet-glb; part: Character_1_M"></a-mixin>
-        <a-mixin shadow id="magic-carpet" gltf-part="src: #magic-carpet-glb; part: magic-carpet"></a-mixin>
       `,
     buildings: `
         <!-- blocks -->
@@ -242,14 +239,6 @@ function buildAssetHTML(assetUrl, categories) {
 
         <a-asset-item id="fence-model" src="${assetUrl}sets/fences/gltf-exports/draco/fence4.glb"></a-asset-item>
         <a-mixin shadow id="fence" gltf-model="#fence-model" scale="0.1 0.1 0.1"></a-mixin>
-      `,
-    cyclists: `
-        <a-mixin shadow id="cyclist-cargo" gltf-model="url(${assetUrl}sets/cargo-bike-animation/gltf-exports/draco/cargo_bike_animation_v1.glb)"></a-mixin>
-        <a-mixin shadow id="cyclist1" gltf-model="url(${assetUrl}sets/cyclist-animation/gltf-exports/draco/cyclist-1-animation-v1.glb)"></a-mixin>
-        <a-mixin shadow id="cyclist2" gltf-model="url(${assetUrl}sets/cyclist-animation/gltf-exports/draco/cyclist-2-animation-v1.glb)"></a-mixin>
-        <a-mixin shadow id="cyclist3" gltf-model="url(${assetUrl}sets/cyclist-animation/gltf-exports/draco/cyclist-3-animation-v1.glb)"></a-mixin>
-        <a-mixin shadow id="cyclist-kid" gltf-model="url(${assetUrl}sets/cyclist-animation/gltf-exports/draco/Kid_cyclist_animation_v01.glb)"></a-mixin>
-        <a-mixin shadow id="cyclist-dutch" gltf-model="url(${assetUrl}sets/cyclist-animation/gltf-exports/draco/Dutch_cyclist_animation_v01.glb)"></a-mixin>
       `,
     'loud-bicycle': `
         <!-- loud-bicycle-game -->
