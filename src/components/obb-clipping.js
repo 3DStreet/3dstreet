@@ -165,35 +165,20 @@ AFRAME.registerComponent('obb-clipping', {
       this.fetchElementToClip();
     }
     if (this.elementToClip) {
-      this.elementToClip.object3D.traverse((obj) => {
-        if (obj.type === 'Mesh') {
-          if (Array.isArray(obj.material)) {
-            obj.material.forEach((material) => {
-              material.clippingPlanes = clipPlanes;
-              material.clipIntersection = true;
-            });
-          } else {
-            obj.material.clippingPlanes = clipPlanes;
-            obj.material.clipIntersection = true;
-          }
-        }
-      });
+      this.applyClippingPlanesToObject(clipPlanes, this.elementToClip.object3D);
     }
   },
 
-  applyClippingPlanesToObject: function (clipPlanes, object3DToClip) {
-    // object3DToClip should be an object3D such as a mesh or a group
-    object3DToClip.traverse((obj) => {
+  applyClippingPlanesToObject: function (clipPlanes, object3D) {
+    object3D.traverse((obj) => {
       if (obj.type === 'Mesh') {
-        if (Array.isArray(obj.material)) {
-          obj.material.forEach((material) => {
-            material.clippingPlanes = clipPlanes;
-            material.clipIntersection = true;
-          });
-        } else {
-          obj.material.clippingPlanes = clipPlanes;
-          obj.material.clipIntersection = true;
-        }
+        const materials = Array.isArray(obj.material)
+          ? obj.material
+          : [obj.material];
+        materials.forEach((material) => {
+          material.clippingPlanes = clipPlanes;
+          material.clipIntersection = true;
+        });
       }
     });
   },
