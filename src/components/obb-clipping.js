@@ -145,7 +145,9 @@ AFRAME.registerComponent('obb-clipping', {
         //         planeMeshes.push(dispPlane);
         //         this.el.sceneEl.object3D.add(dispPlane);
       }
-      return clipPlanes;
+      const filterArray = (arr) =>
+        arr.filter((_, i) => [0, 1, 4, 5].includes(i)); // remove top and bottom planes
+      return filterArray(clipPlanes);
     };
   })(),
 
