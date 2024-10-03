@@ -18,6 +18,9 @@ import { Button, Dropdown, Input } from '../../components';
 import Toolbar from '../../scenegraph/Toolbar';
 import Modal from '../Modal.jsx';
 import posthog from 'posthog-js';
+import { saveBlob } from '../../../lib/utils';
+import Events from '../../../lib/Events';
+
 // import { loginHandler } from '../SignInModal';
 
 export const uploadThumbnailImage = async (uploadedFirstTime) => {
@@ -120,6 +123,68 @@ const saveScreenshot = async (value) => {
   screenshotEl.setAttribute('screentock', 'takeScreenshot', true);
 };
 
+const filterHelpers = (scene, visible) => {
+  scene.traverse((o) => {
+    if (o.userData.source === 'INSPECTOR') {
+      o.visible = visible;
+    }
+  });
+};
+
+/**
+ * Slugify the string removing non-word chars and spaces
+ * @param  {string} text String to slugify
+ * @return {string}      Slugified string
+ */
+const slugify = (text) => {
+  return text
+    .toString()
+    .toLowerCase()
+    .replace(/\s+/g, '-') // Replace spaces with -
+    .replace(/[^\w-]+/g, '-') // Replace all non-word chars with -
+    .replace(/--+/g, '-') // Replace multiple - with single -
+    .replace(/^-+/, '') // Trim - from start of text
+    .replace(/-+$/, ''); // Trim - from end of text
+};
+
+const getSceneName = (scene) => {
+  return scene.id || slugify(window.location.host + window.location.pathname);
+};
+
+const exportSceneToGLTF = (isPro) => {
+  if (isPro) {
+    try {
+      const sceneName = getSceneName(AFRAME.scenes[0]);
+      const scene = AFRAME.scenes[0].object3D;
+      posthog.capture('export_scene_to_gltf_clicked', {
+        scene_id: STREET.utils.getCurrentSceneId()
+      });
+
+      filterHelpers(scene, false);
+      AFRAME.INSPECTOR.exporters.gltf.parse(
+        scene,
+        function (buffer) {
+          filterHelpers(scene, true);
+          const blob = new Blob([buffer], { type: 'application/octet-stream' });
+          saveBlob(blob, sceneName + '.glb');
+        },
+        function (error) {
+          console.error(error);
+        },
+        { binary: true }
+      );
+      STREET.notify.successMessage('3DStreet scene exported as glTF file.');
+    } catch (error) {
+      STREET.notify.errorMessage(
+        `Error while trying to save glTF file. Error: ${error}`
+      );
+      console.error(error);
+    }
+  } else {
+    Events.emit('openpaymentmodal');
+  }
+};
+
 function ScreenshotModal({ isOpen, onClose }) {
   const storedScreenshot = localStorage.getItem('screenshot');
   const parsedScreenshot = JSON.parse(storedScreenshot);
@@ -153,7 +218,7 @@ function ScreenshotModal({ isOpen, onClose }) {
     {
       value: 'GLB glTF',
       label: 'GLB glTF',
-      onClick: Toolbar.exportSceneToGLTF
+      onClick: () => exportSceneToGLTF(currentUser?.isPro)
     },
     {
       value: '.3dstreet.json',

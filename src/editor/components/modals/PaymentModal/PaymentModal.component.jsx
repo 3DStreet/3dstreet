@@ -39,8 +39,8 @@ const PaymentModal = ({ isOpen, onClose }) => {
       )({
         line_items: [{ price: process.env.STRIPE_PRICE_ID, quantity: 1 }],
         mode: 'subscription',
-        success_url: `${location.origin}/#/modal/payment/success`,
-        cancel_url: `${location.origin}/#/modal/payment`,
+        success_url: `${window.location.href.split('?')[0]}?payment=success`,
+        cancel_url: `${window.location.href.split('?')[0]}?payment=cancel`,
         metadata: { userId: currentUser.uid },
         allow_promotion_codes: true,
         subscription_data: {
