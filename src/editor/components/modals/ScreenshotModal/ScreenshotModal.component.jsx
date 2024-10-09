@@ -218,6 +218,7 @@ function ScreenshotModal({ isOpen, onClose }) {
     {
       value: 'GLB glTF',
       label: 'GLB glTF',
+      proIcon: true,
       onClick: () => exportSceneToGLTF(currentUser?.isPro)
     },
     {

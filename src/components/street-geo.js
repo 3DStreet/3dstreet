@@ -140,7 +140,8 @@ AFRAME.registerComponent('street-geo', {
         maximumMem: 400,
         cameraEl: '#camera',
         copyrightEl: '#map-copyright',
-        distanceScale: 0.5
+        distanceScale: 0.5,
+        emitPostProcess: true
       });
       google3dElement.classList.add('autocreated');
 

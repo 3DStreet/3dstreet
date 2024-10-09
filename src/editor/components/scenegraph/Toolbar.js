@@ -356,7 +356,11 @@ export default class Toolbar extends Component {
       <div id="toolbar">
         <div className="toolbarActions">
           <div>
-            <Button leadingIcon={<Edit24Icon />} onClick={this.newHandler}>
+            <Button
+              leadingIcon={<Edit24Icon />}
+              onClick={this.newHandler}
+              disabled={this.state.isSavingScene}
+            >
               <div className="hideInLowResolution">New</div>
             </Button>
           </div>
