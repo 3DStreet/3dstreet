@@ -17,6 +17,8 @@ AFRAME.registerComponent('obb-clipping', {
     this.tick = AFRAME.utils.throttleTick(this.tick, 250, this);
 
     this.previousScale = new THREE.Vector3();
+    this.previousPosition = new THREE.Vector3();
+    this.previousQuaternion = new THREE.Quaternion();
     this.auxEuler = new THREE.Euler();
 
     this.boundingBox = new THREE.Box3();
@@ -34,8 +36,20 @@ AFRAME.registerComponent('obb-clipping', {
 
     // Enable local clipping in the renderer
     this.el.sceneEl.renderer.localClippingEnabled = true;
+
+    this.onContentPostProcess = this.onContentPostProcess.bind(this);
+    this.elementToClip.addEventListener(
+      'contentPostProcess',
+      this.onContentPostProcess
+    );
   },
 
+  onContentPostProcess: function (event) {
+    this.applyClippingPlanesToObject(
+      this.createPlanesFromOBB(this.obb),
+      event.detail.mesh
+    );
+  },
   createPlanesFromOBB: (function () {
     var planeMeshes = [];
     var planeMatrix4 = new THREE.Matrix4();
@@ -131,7 +145,9 @@ AFRAME.registerComponent('obb-clipping', {
         //         planeMeshes.push(dispPlane);
         //         this.el.sceneEl.object3D.add(dispPlane);
       }
-      return clipPlanes;
+      const filterArray = (arr) =>
+        arr.filter((_, i) => [0, 1, 4, 5].includes(i)); // remove top and bottom planes
+      return filterArray(clipPlanes);
     };
   })(),
 
@@ -147,26 +163,28 @@ AFRAME.registerComponent('obb-clipping', {
   },
 
   applyClippingPlanes: function (clipPlanes) {
-    // console.log('applyclipping', this.elementToClip);
-    // console.log('applyclipping', this);
     if (!this.elementToClip) {
       this.fetchElementToClip();
     }
     if (this.elementToClip) {
-      this.elementToClip.object3D.traverse((obj) => {
-        if (obj.type === 'Mesh') {
-          if (Array.isArray(obj.material)) {
-            obj.material.forEach((material) => {
-              material.clippingPlanes = clipPlanes;
-              material.clipIntersection = true;
-            });
-          } else {
-            obj.material.clippingPlanes = clipPlanes;
-            obj.material.clipIntersection = true;
-          }
-        }
-      });
+      this.applyClippingPlanesToObject(clipPlanes, this.elementToClip.object3D);
     }
+  },
+
+  applyClippingPlanesToObject: function (clipPlanes, object3DToClip) {
+    object3DToClip.traverse((obj) => {
+      if (obj.type === 'Mesh') {
+        if (Array.isArray(obj.material)) {
+          obj.material.forEach((material) => {
+            material.clippingPlanes = clipPlanes;
+            material.clipIntersection = true;
+          });
+        } else {
+          obj.material.clippingPlanes = clipPlanes;
+          obj.material.clipIntersection = true;
+        }
+      }
+    });
   },
 
   removeClippingPlanes: function () {
@@ -186,6 +204,10 @@ AFRAME.registerComponent('obb-clipping', {
   },
 
   remove: function () {
+    this.elementToClip.removeEventListener(
+      'contentPostProcess',
+      this.onContentPostProcess
+    );
     this.removeClippingPlanes();
   },
 
@@ -378,6 +400,7 @@ AFRAME.registerComponent('obb-clipping', {
         Math.abs(auxScale.z - this.previousScale.z) > 0.0001
       ) {
         this.updateCollider();
+        this.applyClippingPlanes(this.createPlanesFromOBB(obb));
       }
 
       this.previousScale.copy(auxScale);
@@ -394,9 +417,15 @@ AFRAME.registerComponent('obb-clipping', {
       obb.copy(this.aabb);
       obb.applyMatrix4(auxMatrix);
 
-      const clipPlanes = this.createPlanesFromOBB(obb);
-      // console.log(clipPlanes);
-      this.applyClippingPlanes(clipPlanes);
+      // If new position or rotation then reapply planes
+      if (
+        !this.previousPosition.equals(auxPosition) ||
+        !this.previousQuaternion.equals(auxQuaternion)
+      ) {
+        this.applyClippingPlanes(this.createPlanesFromOBB(obb));
+      }
+      this.previousPosition.copy(auxPosition);
+      this.previousQuaternion.copy(auxQuaternion);
     };
   })()
 });
