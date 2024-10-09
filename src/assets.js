@@ -243,14 +243,6 @@ function buildAssetHTML(assetUrl, categories) {
         <a-asset-item id="fence-model" src="${assetUrl}sets/fences/gltf-exports/draco/fence4.glb"></a-asset-item>
         <a-mixin shadow id="fence" gltf-model="#fence-model" scale="0.1 0.1 0.1"></a-mixin>
       `,
-    cyclists: `
-        <a-mixin shadow id="cyclist-cargo" gltf-model="url(${assetUrl}sets/cargo-bike-animation/gltf-exports/draco/cargo_bike_animation_v1.glb)"></a-mixin>
-        <a-mixin shadow id="cyclist1" gltf-model="url(${assetUrl}sets/cyclist-animation/gltf-exports/draco/cyclist-1-animation-v1.glb)"></a-mixin>
-        <a-mixin shadow id="cyclist2" gltf-model="url(${assetUrl}sets/cyclist-animation/gltf-exports/draco/cyclist-2-animation-v1.glb)"></a-mixin>
-        <a-mixin shadow id="cyclist3" gltf-model="url(${assetUrl}sets/cyclist-animation/gltf-exports/draco/cyclist-3-animation-v1.glb)"></a-mixin>
-        <a-mixin shadow id="cyclist-kid" gltf-model="url(${assetUrl}sets/cyclist-animation/gltf-exports/draco/Kid_cyclist_animation_v01.glb)"></a-mixin>
-        <a-mixin shadow id="cyclist-dutch" gltf-model="url(${assetUrl}sets/cyclist-animation/gltf-exports/draco/Dutch_cyclist_animation_v01.glb)"></a-mixin>
-      `,
     'loud-bicycle': `
         <!-- loud-bicycle-game -->
         <a-mixin shadow id="loud-bicycle-mini" gltf-model="url(${assetUrl}sets/cycle-horn/gltf-exports/draco/loud-bicycle-mini-horn.glb)"></a-mixin>
