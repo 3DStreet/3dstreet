@@ -52,6 +52,7 @@ AFRAME.registerComponent('intersection', {
       'material',
       'src: #asphalt-texture; repeat:5 5; roughness:1'
     );
+    this.el.setAttribute('shadow', '');
 
     function createSidewalkElem({
       length,
@@ -73,6 +74,7 @@ AFRAME.registerComponent('intersection', {
       sd.setAttribute('scale', scaleVec);
       sd.setAttribute('rotation', rotationVec);
       sd.setAttribute('mixin', 'sidewalk');
+      sd.setAttribute('shadow', 'cast: false;');
       sd.classList.add('autocreated');
       sd.setAttribute(
         'material',
