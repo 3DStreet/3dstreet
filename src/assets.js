@@ -112,12 +112,9 @@ function buildAssetHTML(assetUrl, categories) {
         <a-mixin shadow id="arched-building-04" scale="1 1 1" rotation="0 0 0" gltf-part="src: #archedmodel; part: arched-building-04"></a-mixin>
 `,
     'intersection-props': `
-        <a-asset-item id="stopsign" src="${assetUrl}sets/road-signs/gltf-exports/draco/stop-sign.glb"></a-asset-item>
-        <a-asset-item id="signal1" src="${assetUrl}sets/signals/gltf-exports/draco/signal1.glb"></a-asset-item>
-        <a-asset-item id="signal2" src="${assetUrl}sets/signals/gltf-exports/draco/signal2.glb"></a-asset-item>
-        <a-mixin id="signal_left" gltf-model="#signal1"></a-mixin>
-        <a-mixin id="signal_right" gltf-model="#signal2"></a-mixin>
-        <a-mixin id="stop_sign" gltf-model="#stopsign"></a-mixin>
+        <a-mixin shadow id="signal_left" gltf-model="url(${assetUrl}sets/signals/gltf-exports/draco/signal1.glb)"></a-mixin>
+        <a-mixin shadow id="signal_right" gltf-model="url(${assetUrl}sets/signals/gltf-exports/draco/signal2.glb)"></a-mixin>
+        <a-mixin shadow id="stop_sign" gltf-model="url(${assetUrl}sets/road-signs/gltf-exports/draco/stop-sign.glb)"></a-mixin>
       `,
     'segment-textures': `  
         <!-- segment mixins with textures -->
