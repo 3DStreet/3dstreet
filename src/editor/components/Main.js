@@ -24,7 +24,7 @@ import posthog from 'posthog-js';
 THREE.ImageUtils.crossOrigin = '';
 
 const isStreetLoaded = window.location.hash.length;
-const isPaymentModalOpened = window.location.hash.includes('/modal/payment');
+const isPaymentModalOpened = window.location.hash.includes('payment');
 
 // Define the libraries array as a constant outside of the component
 const GOOGLE_MAPS_LIBRARIES = ['places'];

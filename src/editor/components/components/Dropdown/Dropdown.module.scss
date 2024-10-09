@@ -26,6 +26,13 @@
     width: 100%;
     transition: all 0.3s;
 
+    .badge {
+      background-color: #774dee;
+      padding: 0px 8px;
+      border-radius: 8px;
+      margin-left: 8px;
+      font-size: 0.775rem;
+    }
     .selector {
       display: flex;
       align-items: center;
