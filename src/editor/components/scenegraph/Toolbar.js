@@ -194,6 +194,10 @@ export default class Toolbar extends Component {
       }
 
       if (!isCurrentUserTheSceneAuthor) {
+        posthog.capture('not_scene_author', {
+          scene_id: currentSceneId,
+          user_id: this.props.currentUser.uid
+        });
         doSaveAs = true;
       }
 

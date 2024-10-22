@@ -41,7 +41,8 @@ const ScenesModal = ({ isOpen, onClose, initialTab = 'owner', delay }) => {
   const handleSceneClick = (scene, event) => {
     posthog.capture('scene_opened', {
       scene_id: scene.id,
-      scene_title: scene.title
+      scene_title: scene.title,
+      selected_tab: selectedTab
     });
     let sceneData = scene.data();
     if (!sceneData || !sceneData.data) {
