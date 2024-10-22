@@ -272,5 +272,9 @@ AFRAME.registerComponent('street-geo', {
       lon: data.longitude,
       lat: data.latitude
     });
+    this.osm3dBuilding.setAttribute('osm-geojson', {
+      lon: data.longitude,
+      lat: data.latitude
+    });
   }
 });
