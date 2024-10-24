@@ -214,9 +214,8 @@ const saveScreenshot = async (value) => {
 
 const uploadThumbnailImage = async () => {
   try {
-    saveScreenshot('img');
+    // saveScreenshot('img');
 
-    await new Promise((resolve) => setTimeout(resolve, 1000));
     const screentockImgElement = document.getElementById(
       'screentock-destination'
     );
@@ -296,5 +295,6 @@ export {
   isSceneAuthor,
   updateScene,
   updateSceneIdAndTitle,
-  uploadThumbnailImage
+  uploadThumbnailImage,
+  saveScreenshot
 };
