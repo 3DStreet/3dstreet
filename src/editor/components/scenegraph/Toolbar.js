@@ -3,7 +3,8 @@ import {
   generateSceneId,
   updateScene,
   isSceneAuthor,
-  checkIfImagePathIsEmpty
+  checkIfImagePathIsEmpty,
+  uploadThumbnailImage
 } from '../../api/scene';
 import {
   Cloud24Icon,
@@ -14,7 +15,6 @@ import {
 } from '../../icons';
 import Events from '../../lib/Events';
 import { Button, ProfileButton } from '../components';
-import { uploadThumbnailImage } from '../modals/ScreenshotModal/ScreenshotModal.component.jsx';
 import { sendMetric } from '../../services/ga.js';
 import posthog from 'posthog-js';
 import { UndoRedo } from '../components/UndoRedo';
@@ -30,7 +30,6 @@ export default class Toolbar extends Component {
     this.state = {
       // isPlaying: false,
       isSaveActionActive: false,
-      isCapturingScreen: false,
       showLoadBtn: true,
       savedNewDocument: false,
       isSavingScene: false,
@@ -75,13 +74,6 @@ export default class Toolbar extends Component {
             });
         }, 500);
       }
-    }
-
-    if (
-      this.state.isCapturingScreen &&
-      prevProps.isCapturingScreen !== this.state.isCapturingScreen
-    ) {
-      this.makeScreenshot(this);
     }
   }
 
@@ -298,34 +290,22 @@ export default class Toolbar extends Component {
     }
   };
 
-  makeScreenshot = (component) =>
-    new Promise((resolve) => {
-      // use vanilla js to create an img element as destination for our screenshot
-      const imgHTML = '<img id="screentock-destination">';
-      // Set the screenshot in local storage
-      localStorage.setItem('screenshot', JSON.stringify(imgHTML));
-      const screenshotEl = document.getElementById('screenshot');
-      screenshotEl.play();
+  makeScreenshot = () => {
+    const imgHTML = '<img id="screentock-destination">';
+    // Set the screenshot in local storage
+    localStorage.setItem('screenshot', JSON.stringify(imgHTML));
+    const screenshotEl = document.getElementById('screenshot');
+    screenshotEl.play();
 
-      screenshotEl.setAttribute('screentock', 'type', 'img');
-      screenshotEl.setAttribute(
-        'screentock',
-        'imgElementSelector',
-        '#screentock-destination'
-      );
-      // take the screenshot
-      screenshotEl.setAttribute('screentock', 'takeScreenshot', true);
-      setTimeout(() => resolve(), 1000);
-    }).then(() => {
-      component &&
-        component.setState((prevState) => ({
-          ...prevState,
-          isCapturingScreen: false
-        }));
-    });
-  // openViewMode() {
-  //   AFRAME.INSPECTOR.close();
-  // }
+    screenshotEl.setAttribute('screentock', 'type', 'img');
+    screenshotEl.setAttribute(
+      'screentock',
+      'imgElementSelector',
+      '#screentock-destination'
+    );
+    // take the screenshot
+    screenshotEl.setAttribute('screentock', 'takeScreenshot', true);
+  };
 
   toggleScenePlaying = () => {
     if (this.state.isPlaying) {
@@ -343,8 +323,8 @@ export default class Toolbar extends Component {
   };
 
   toggleSaveActionState = () => {
+    this.makeScreenshot();
     this.setState((prevState) => ({
-      isCapturingScreen: true,
       isSaveActionActive: !prevState.isSaveActionActive
     }));
   };
@@ -418,10 +398,7 @@ export default class Toolbar extends Component {
           <Button
             leadingIcon={<ScreenshotIcon />}
             onClick={() => {
-              this.setState((prevState) => ({
-                ...prevState,
-                isCapturingScreen: true
-              }));
+              this.makeScreenshot();
               Events.emit('openscreenshotmodal');
             }}
           >
