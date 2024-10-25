@@ -27,13 +27,10 @@ export default class Toolbar extends Component {
   constructor(props) {
     super(props);
     this.state = {
-      // isPlaying: false,
       isSaveActionActive: false,
       showLoadBtn: true,
       isSavingScene: false,
       pendingSceneSave: false,
-      signInSuccess: false,
-      isAuthor: props.currentUser?.uid === props.authorId,
       notification: null
     };
     this.saveButtonRef = React.createRef();
@@ -41,7 +38,6 @@ export default class Toolbar extends Component {
 
   componentDidMount() {
     document.addEventListener('click', this.handleClickOutsideSave);
-    this.checkSignInStatus();
     Events.on('historychanged', (cmd) => {
       if (cmd) {
         console.log('historychanged', cmd);
@@ -53,41 +49,22 @@ export default class Toolbar extends Component {
 
   componentDidUpdate(prevProps) {
     if (this.props.currentUser !== prevProps.currentUser) {
-      this.setState({ currentUser: this.props.currentUser });
-      this.setState({
-        isAuthor: this.props.currentUser?.uid === this.props.authorId
-      });
+      console.log('author', STREET.utils.getAuthorId());
       if (this.state.pendingSceneSave && this.props.currentUser) {
         // Remove the flag from state, as we're going to handle the save now.
         this.setState({ pendingSceneSave: false });
-        setTimeout(() => {
-          this.cloudSaveHandler({ doSaveAs: true })
-            .then(() => {
-              // The promise from cloudSaveHandler has resolved, now update the state.
-            })
-            .catch((error) => {
-              // Handle any errors here
-              console.error('Save failed:', error);
-            });
-        }, 500);
+        this.cloudSaveHandlerWithImageUpload(false);
       }
     }
   }
-
-  checkSignInStatus = async () => {
-    if (this.state.signInSuccess && this.state.pendingSceneSave) {
-      if (this.props.currentUser) {
-        await this.cloudSaveHandler({ doSaveAs: true });
-        this.setState({ signInSuccess: false, pendingSceneSave: false });
-      } else {
-        setTimeout(this.checkSignInStatus, 500);
-      }
-    }
-  };
 
   componentWillUnmount() {
     document.removeEventListener('click', this.handleClickOutsideSave);
   }
+
+  isAuthor = () => {
+    return this.props.currentUser?.uid === STREET.utils.getAuthorId();
+  };
 
   handleClickOutsideSave = (event) => {
     if (
@@ -126,8 +103,13 @@ export default class Toolbar extends Component {
     }
   };
 
-  cloudSaveAsHandler = async () => {
-    this.cloudSaveHandler({ doSaveAs: true });
+  cloudSaveHandlerWithImageUpload = async (doSaveAs) => {
+    console.log('doSaveAs', doSaveAs);
+    const currentSceneId = await this.cloudSaveHandler({ doSaveAs });
+    const isImagePathEmpty = await checkIfImagePathIsEmpty(currentSceneId);
+    if (isImagePathEmpty) {
+      await uploadThumbnailImage();
+    }
   };
 
   newHandler = () => {
@@ -171,7 +153,7 @@ export default class Toolbar extends Component {
         Events.emit('openpaymentmodal');
         return;
       }
-      if (!this.state.isAuthor) {
+      if (!this.isAuthor()) {
         posthog.capture('not_scene_author', {
           scene_id: currentSceneId,
           user_id: this.props.currentUser.uid
@@ -224,24 +206,20 @@ export default class Toolbar extends Component {
       // save json to firebase with other metadata
 
       // make sure to update sceneId with new one in metadata component!
-      AFRAME.scenes[0].setAttribute('metadata', 'sceneId: ' + currentSceneId);
+      AFRAME.scenes[0].setAttribute('metadata', 'sceneId' + currentSceneId);
       AFRAME.scenes[0].setAttribute(
         'metadata',
         'authorId',
         this.props.currentUser.uid
       );
-      const isImagePathEmpty = await checkIfImagePathIsEmpty(currentSceneId);
-      if (isImagePathEmpty) {
-        await uploadThumbnailImage();
-      }
 
       // Change the hash URL without reloading
       window.location.hash = `#/scenes/${currentSceneId}.json`;
       const notification = STREET.notify.successMessage('Scene saved');
       this.setState({ notification });
 
-      this.setState({ isAuthor: true });
       sendMetric('SaveSceneAction', doSaveAs ? 'saveAs' : 'save');
+      return currentSceneId;
     } catch (error) {
       STREET.notify.errorMessage(
         `Error trying to save 3DStreet scene to cloud. Error: ${error}`
@@ -253,7 +231,7 @@ export default class Toolbar extends Component {
   };
 
   debouncedCloudSaveHandler = debounce(() => {
-    if (this.state.currentUser) {
+    if (this.props.currentUser) {
       const streetGeo = document
         .getElementById('reference-layers')
         ?.getAttribute('street-geo');
@@ -270,14 +248,10 @@ export default class Toolbar extends Component {
     }
   }, 1000);
 
-  handleRemixClick = () => {
+  handleUnsignedSaveClick = () => {
     posthog.capture('remix_scene_clicked');
-    if (!this.props.currentUser) {
-      this.setState({ pendingSceneSave: true });
-      Events.emit('opensigninmodal');
-    } else {
-      this.cloudSaveHandler({ doSaveAs: true });
-    }
+    this.setState({ pendingSceneSave: true });
+    Events.emit('opensigninmodal');
   };
 
   makeScreenshot = () => {
@@ -353,14 +327,14 @@ export default class Toolbar extends Component {
                     leadingIcon={<Cloud24Icon />}
                     variant="white"
                     onClick={this.cloudSaveHandler}
-                    disabled={this.state.isSavingScene || !this.state.isAuthor}
+                    disabled={this.state.isSavingScene || !this.isAuthor()}
                   >
                     <div>Save</div>
                   </Button>
                   <Button
                     leadingIcon={<Cloud24Icon />}
                     variant="white"
-                    onClick={this.cloudSaveAsHandler}
+                    onClick={() => this.cloudSaveHandlerWithImageUpload(true)}
                     disabled={this.state.isSavingScene}
                   >
                     <div>Save As...</div>
@@ -371,7 +345,7 @@ export default class Toolbar extends Component {
           ) : (
             <Button
               leadingIcon={<Save24Icon />}
-              onClick={this.handleRemixClick}
+              onClick={this.handleUnsignedSaveClick}
               disabled={this.state.isSavingScene}
             >
               <div className="hideInLowResolution">Save</div>

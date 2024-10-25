@@ -51,6 +51,7 @@ const createScene = async (authorId, sceneData, title, version) => {
   });
   return newSceneId;
 };
+
 const deleteScene = async (sceneId) => {
   try {
     const sceneDocRef = doc(db, 'scenes', sceneId);
@@ -102,35 +103,6 @@ const getScene = async ({ sceneId }) => {
   const sceneRef = doc(db, 'scenes', sceneId);
   const sceneSnapshot = await getDoc(sceneRef);
   return sceneSnapshot;
-};
-
-const isSceneAuthorWithSnapshot = async ({ sceneSnapshot, authorId }) => {
-  console.log('sceneSnapshot', sceneSnapshot.blah);
-  if (!sceneSnapshot || !authorId) {
-    console.log('sceneSnapshot or authorId is not provided in isSceneAuthor2');
-    return false;
-  }
-  try {
-    if (sceneSnapshot.exists()) {
-      return sceneSnapshot.data().author === authorId;
-    } else {
-      console.error('Scene not found while running isSceneAuthor');
-      return false;
-    }
-  } catch (error) {
-    console.error('Error fetching scene while running isSceneAuthor:', error);
-    throw new Error('Error checking scene authorship');
-  }
-};
-
-const isSceneAuthor = async ({ sceneId, authorId }) => {
-  if (!sceneId || !authorId) {
-    console.log('sceneId or authorId is not provided in isSceneAuthor');
-    return false;
-  }
-  // Get a reference to the scene document
-  const sceneSnapshot = await getScene(sceneId);
-  return isSceneAuthorWithSnapshot({ sceneSnapshot, authorId });
 };
 
 let scenesSnapshot;
@@ -315,8 +287,6 @@ export {
   getCommunityScenes,
   getUserScenes,
   getScene,
-  isSceneAuthorWithSnapshot,
-  isSceneAuthor,
   updateScene,
   updateSceneIdAndTitle,
   uploadThumbnailImage,

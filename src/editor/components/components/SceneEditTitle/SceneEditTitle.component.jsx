@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import styles from './SceneEditTitle.module.scss';
 import { useAuthContext } from '../../../contexts/index.js';
-import { updateSceneIdAndTitle, isSceneAuthor } from '../../../api/scene';
+import { updateSceneIdAndTitle } from '../../../api/scene';
 
 const SceneEditTitle = ({ sceneData }) => {
   const [title, setTitle] = useState(sceneData?.sceneTitle);
@@ -35,11 +35,7 @@ const SceneEditTitle = ({ sceneData }) => {
   const saveNewTitle = async (newTitle) => {
     try {
       if (sceneData?.sceneId) {
-        const isCurrentUserTheSceneAuthor = await isSceneAuthor({
-          sceneId: sceneData.sceneId,
-          authorId: currentUser.uid
-        });
-        if (isCurrentUserTheSceneAuthor) {
+        if (currentUser.uid === STREET.utils.getAuthorId()) {
           await updateSceneIdAndTitle(sceneData?.sceneId, newTitle);
         }
       }
