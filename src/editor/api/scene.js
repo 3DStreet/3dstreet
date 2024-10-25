@@ -64,8 +64,7 @@ const deleteScene = async (sceneId) => {
 
 const updateScene = async (sceneId, sceneData, title, version) => {
   try {
-    const userScenesRef = collection(db, 'scenes');
-    const sceneDocRef = doc(userScenesRef, sceneId);
+    const sceneDocRef = doc(sceneRef, sceneId);
     await updateDoc(sceneDocRef, {
       data: sceneData,
       updateTimestamp: serverTimestamp(),
@@ -79,8 +78,7 @@ const updateScene = async (sceneId, sceneData, title, version) => {
 
 const updateSceneIdAndTitle = async (sceneId, title) => {
   try {
-    const userScenesRef = collection(db, 'scenes');
-    const sceneDocRef = doc(userScenesRef, sceneId);
+    const sceneDocRef = doc(sceneRef, sceneId);
 
     const sceneSnapshot = await getDoc(sceneDocRef);
     if (sceneSnapshot.exists()) {
@@ -96,13 +94,6 @@ const updateSceneIdAndTitle = async (sceneId, title) => {
   } catch (error) {
     throw new Error(error);
   }
-};
-
-const getScene = async ({ sceneId }) => {
-  if (!sceneId) return null;
-  const sceneRef = doc(db, 'scenes', sceneId);
-  const sceneSnapshot = await getDoc(sceneRef);
-  return sceneSnapshot;
 };
 
 let scenesSnapshot;
@@ -286,7 +277,6 @@ export {
   generateSceneId,
   getCommunityScenes,
   getUserScenes,
-  getScene,
   updateScene,
   updateSceneIdAndTitle,
   uploadThumbnailImage,
