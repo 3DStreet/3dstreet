@@ -49,7 +49,6 @@ export default class Toolbar extends Component {
 
   componentDidUpdate(prevProps) {
     if (this.props.currentUser !== prevProps.currentUser) {
-      console.log('author', STREET.utils.getAuthorId());
       if (this.state.pendingSceneSave && this.props.currentUser) {
         // Remove the flag from state, as we're going to handle the save now.
         this.setState({ pendingSceneSave: false });
