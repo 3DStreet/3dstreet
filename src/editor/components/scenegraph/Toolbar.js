@@ -225,7 +225,11 @@ export default class Toolbar extends Component {
 
       // make sure to update sceneId with new one in metadata component!
       AFRAME.scenes[0].setAttribute('metadata', 'sceneId: ' + currentSceneId);
-
+      AFRAME.scenes[0].setAttribute(
+        'metadata',
+        'authorId',
+        this.props.currentUser.uid
+      );
       const isImagePathEmpty = await checkIfImagePathIsEmpty(currentSceneId);
       if (isImagePathEmpty) {
         await uploadThumbnailImage();
