@@ -18,13 +18,13 @@ import { db, storage } from '../services/firebase';
 import { getDownloadURL, ref, uploadBytes } from 'firebase/storage';
 import posthog from 'posthog-js';
 
-const generateSceneId = async (authorId) => {
-  const userScenesRef = collection(db, 'scenes');
+const sceneRef = collection(db, 'scenes');
 
+const generateSceneId = async (authorId) => {
   // Generate a new UUID
   const newSceneId = uuidv4();
 
-  const newSceneDocRef = doc(userScenesRef, newSceneId);
+  const newSceneDocRef = doc(sceneRef, newSceneId);
 
   // Use setDoc to set data on the specified document
   await setDoc(newSceneDocRef, {
@@ -36,6 +36,21 @@ const generateSceneId = async (authorId) => {
   return newSceneId;
 };
 
+const createScene = async (authorId, sceneData, title, version) => {
+  // Generate a new UUID
+  const newSceneId = uuidv4();
+  const newSceneDocRef = doc(sceneRef, newSceneId);
+
+  await setDoc(newSceneDocRef, {
+    createTimestamp: serverTimestamp(),
+    updateTimestamp: serverTimestamp(),
+    author: authorId,
+    data: sceneData,
+    title: title,
+    version: version
+  });
+  return newSceneId;
+};
 const deleteScene = async (sceneId) => {
   try {
     const sceneDocRef = doc(db, 'scenes', sceneId);
@@ -46,24 +61,16 @@ const deleteScene = async (sceneId) => {
   }
 };
 
-const updateScene = async (sceneId, userUID, sceneData, title, version) => {
+const updateScene = async (sceneId, sceneData, title, version) => {
   try {
     const userScenesRef = collection(db, 'scenes');
     const sceneDocRef = doc(userScenesRef, sceneId);
-
-    const sceneSnapshot = await getDoc(sceneDocRef);
-    if (sceneSnapshot.exists()) {
-      await updateDoc(sceneDocRef, {
-        data: sceneData,
-        updateTimestamp: serverTimestamp(),
-        title: title,
-        version: version,
-        author: userUID
-      });
-      console.log('Firebase updateDoc fired');
-    } else {
-      throw new Error('No existing sceneSnapshot exists.');
-    }
+    await updateDoc(sceneDocRef, {
+      data: sceneData,
+      updateTimestamp: serverTimestamp(),
+      title: title,
+      version: version
+    });
   } catch (error) {
     throw new Error(error);
   }
@@ -90,16 +97,20 @@ const updateSceneIdAndTitle = async (sceneId, title) => {
   }
 };
 
-const isSceneAuthor = async ({ sceneId, authorId }) => {
-  if (!sceneId || !authorId) {
-    console.log('sceneId or authorId is not provided in isSceneAuthor');
+const getScene = async ({ sceneId }) => {
+  if (!sceneId) return null;
+  const sceneRef = doc(db, 'scenes', sceneId);
+  const sceneSnapshot = await getDoc(sceneRef);
+  return sceneSnapshot;
+};
+
+const isSceneAuthorWithSnapshot = async ({ sceneSnapshot, authorId }) => {
+  console.log('sceneSnapshot', sceneSnapshot.blah);
+  if (!sceneSnapshot || !authorId) {
+    console.log('sceneSnapshot or authorId is not provided in isSceneAuthor2');
     return false;
   }
   try {
-    // Get a reference to the scene document
-    const sceneRef = doc(db, 'scenes', sceneId);
-    const sceneSnapshot = await getDoc(sceneRef);
-
     if (sceneSnapshot.exists()) {
       return sceneSnapshot.data().author === authorId;
     } else {
@@ -110,6 +121,16 @@ const isSceneAuthor = async ({ sceneId, authorId }) => {
     console.error('Error fetching scene while running isSceneAuthor:', error);
     throw new Error('Error checking scene authorship');
   }
+};
+
+const isSceneAuthor = async ({ sceneId, authorId }) => {
+  if (!sceneId || !authorId) {
+    console.log('sceneId or authorId is not provided in isSceneAuthor');
+    return false;
+  }
+  // Get a reference to the scene document
+  const sceneSnapshot = await getScene(sceneId);
+  return isSceneAuthorWithSnapshot({ sceneSnapshot, authorId });
 };
 
 let scenesSnapshot;
@@ -288,10 +309,13 @@ const uploadThumbnailImage = async () => {
 
 export {
   checkIfImagePathIsEmpty,
+  createScene,
   deleteScene,
   generateSceneId,
   getCommunityScenes,
   getUserScenes,
+  getScene,
+  isSceneAuthorWithSnapshot,
   isSceneAuthor,
   updateScene,
   updateSceneIdAndTitle,

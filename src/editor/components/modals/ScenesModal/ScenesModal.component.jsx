@@ -64,10 +64,9 @@ const ScenesModal = ({ isOpen, onClose, initialTab = 'owner', delay }) => {
 
       const sceneId = scene.id;
       const sceneTitle = sceneData.title;
-
       AFRAME.scenes[0].setAttribute('metadata', 'sceneId', sceneId);
       AFRAME.scenes[0].setAttribute('metadata', 'sceneTitle', sceneTitle);
-
+      AFRAME.scenes[0].setAttribute('metadata', 'authorId', sceneData.author);
       STREET.notify.successMessage('Scene loaded from 3DStreet Cloud.');
       onClose();
     }

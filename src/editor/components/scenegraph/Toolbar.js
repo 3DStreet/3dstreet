@@ -1,8 +1,7 @@
 import React, { Component } from 'react';
 import {
-  generateSceneId,
+  createScene,
   updateScene,
-  isSceneAuthor,
   checkIfImagePathIsEmpty,
   uploadThumbnailImage
 } from '../../api/scene';
@@ -31,11 +30,10 @@ export default class Toolbar extends Component {
       // isPlaying: false,
       isSaveActionActive: false,
       showLoadBtn: true,
-      savedNewDocument: false,
       isSavingScene: false,
       pendingSceneSave: false,
       signInSuccess: false,
-      isAuthor: props.isAuthor,
+      isAuthor: props.currentUser?.uid === props.authorId,
       notification: null
     };
     this.saveButtonRef = React.createRef();
@@ -54,12 +52,11 @@ export default class Toolbar extends Component {
   }
 
   componentDidUpdate(prevProps) {
-    if (prevProps.isAuthor !== this.props.isAuthor) {
-      this.setState({ isAuthor: this.props.isAuthor });
-    }
     if (this.props.currentUser !== prevProps.currentUser) {
       this.setState({ currentUser: this.props.currentUser });
-
+      this.setState({
+        isAuthor: this.props.currentUser?.uid === this.props.authorId
+      });
       if (this.state.pendingSceneSave && this.props.currentUser) {
         // Remove the flag from state, as we're going to handle the save now.
         this.setState({ pendingSceneSave: false });
@@ -174,24 +171,19 @@ export default class Toolbar extends Component {
         Events.emit('openpaymentmodal');
         return;
       }
-      let isCurrentUserTheSceneAuthor;
-      // if owner != doc.id then doSaveAs = true;
-      try {
-        isCurrentUserTheSceneAuthor = await isSceneAuthor({
-          sceneId: currentSceneId,
-          authorId: this.props.currentUser.uid
-        });
-      } catch (error) {
-        return;
-      }
-
-      if (!isCurrentUserTheSceneAuthor) {
+      if (!this.state.isAuthor) {
         posthog.capture('not_scene_author', {
           scene_id: currentSceneId,
           user_id: this.props.currentUser.uid
         });
         doSaveAs = true;
       }
+
+      // generate json from 3dstreet core
+      const entity = document.getElementById('street-container');
+      const data = STREET.utils.convertDOMElToObject(entity);
+      const filteredData = JSON.parse(STREET.utils.filterJSONstreet(data));
+      this.setState({ isSavingScene: true });
 
       // we want to save, so if we *still* have no sceneID at this point, then create a new one
       if (!currentSceneId || !!doSaveAs) {
@@ -210,43 +202,37 @@ export default class Toolbar extends Component {
         console.log(
           'no urlSceneId or doSaveAs is true, therefore generate new one'
         );
-        currentSceneId = await generateSceneId(this.props.currentUser.uid);
+        currentSceneId = await createScene(
+          this.props.currentUser.uid,
+          filteredData.data,
+          currentSceneTitle,
+          filteredData.version
+        );
         console.log('newly generated currentSceneId', currentSceneId);
-        window.location.hash = `#/scenes/${currentSceneId}.json`;
-        this.setState({ savedNewDocument: true });
+      } else {
+        await updateScene(
+          currentSceneId,
+          filteredData.data,
+          currentSceneTitle,
+          filteredData.version
+        );
       }
 
       // after all those save shenanigans let's set currentSceneId in state
       this.setState({ currentSceneId });
 
-      // generate json from 3dstreet core
-      const entity = document.getElementById('street-container');
-      const data = STREET.utils.convertDOMElToObject(entity);
-      const filteredData = JSON.parse(STREET.utils.filterJSONstreet(data));
-      this.setState({ isSavingScene: true });
       // save json to firebase with other metadata
-
-      await updateScene(
-        currentSceneId,
-        this.props.currentUser.uid,
-        filteredData.data,
-        currentSceneTitle,
-        filteredData.version
-      );
 
       // make sure to update sceneId with new one in metadata component!
       AFRAME.scenes[0].setAttribute('metadata', 'sceneId: ' + currentSceneId);
 
       const isImagePathEmpty = await checkIfImagePathIsEmpty(currentSceneId);
       if (isImagePathEmpty) {
-        await uploadThumbnailImage(true);
+        await uploadThumbnailImage();
       }
 
       // Change the hash URL without reloading
       window.location.hash = `#/scenes/${currentSceneId}.json`;
-      if (this.state.savedNewDocument) {
-        this.setState({ savedNewDocument: false }); // go back to default assumption of save overwrite
-      }
       const notification = STREET.notify.successMessage('Scene saved');
       this.setState({ notification });
 
