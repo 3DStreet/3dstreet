@@ -26,6 +26,12 @@ function getCurrentSceneId() {
 }
 STREET.utils.getCurrentSceneId = getCurrentSceneId;
 
+function getAuthorId() {
+  const authorId = AFRAME.scenes[0].getAttribute('metadata').authorId;
+  return authorId;
+}
+STREET.utils.getAuthorId = getAuthorId;
+
 const getCurrentSceneTitle = () => {
   const currentSceneTitle =
     AFRAME.scenes[0].getAttribute('metadata').sceneTitle;
@@ -464,7 +470,8 @@ function createEntityFromObj(entityData, parentEl) {
 AFRAME.registerComponent('metadata', {
   schema: {
     sceneTitle: { default: '' },
-    sceneId: { default: '' }
+    sceneId: { default: '' },
+    authorId: { default: '' }
   },
   init: function () {},
   update: function (oldData) {
@@ -599,6 +606,7 @@ AFRAME.registerComponent('set-loader-from-hash', {
           console.log('sceneId from fetchJSON from url hash loader', sceneId);
           AFRAME.scenes[0].setAttribute('metadata', 'sceneId', sceneId);
         }
+        AFRAME.scenes[0].setAttribute('metadata', 'authorId', jsonData.author);
       } else if (this.status === 404) {
         console.error(
           '[set-loader-from-hash] Error trying to load scene: Resource not found.'

@@ -14,15 +14,17 @@ import {
   where
 } from 'firebase/firestore';
 import { v4 as uuidv4 } from 'uuid';
-import { db } from '../services/firebase';
+import { db, storage } from '../services/firebase';
+import { getDownloadURL, ref, uploadBytes } from 'firebase/storage';
+import posthog from 'posthog-js';
+
+const sceneRef = collection(db, 'scenes');
 
 const generateSceneId = async (authorId) => {
-  const userScenesRef = collection(db, 'scenes');
-
   // Generate a new UUID
   const newSceneId = uuidv4();
 
-  const newSceneDocRef = doc(userScenesRef, newSceneId);
+  const newSceneDocRef = doc(sceneRef, newSceneId);
 
   // Use setDoc to set data on the specified document
   await setDoc(newSceneDocRef, {
@@ -31,6 +33,22 @@ const generateSceneId = async (authorId) => {
     author: authorId
   });
 
+  return newSceneId;
+};
+
+const createScene = async (authorId, sceneData, title, version) => {
+  // Generate a new UUID
+  const newSceneId = uuidv4();
+  const newSceneDocRef = doc(sceneRef, newSceneId);
+
+  await setDoc(newSceneDocRef, {
+    createTimestamp: serverTimestamp(),
+    updateTimestamp: serverTimestamp(),
+    author: authorId,
+    data: sceneData,
+    title: title,
+    version: version
+  });
   return newSceneId;
 };
 
@@ -44,24 +62,15 @@ const deleteScene = async (sceneId) => {
   }
 };
 
-const updateScene = async (sceneId, userUID, sceneData, title, version) => {
+const updateScene = async (sceneId, sceneData, title, version) => {
   try {
-    const userScenesRef = collection(db, 'scenes');
-    const sceneDocRef = doc(userScenesRef, sceneId);
-
-    const sceneSnapshot = await getDoc(sceneDocRef);
-    if (sceneSnapshot.exists()) {
-      await updateDoc(sceneDocRef, {
-        data: sceneData,
-        updateTimestamp: serverTimestamp(),
-        title: title,
-        version: version,
-        author: userUID
-      });
-      console.log('Firebase updateDoc fired');
-    } else {
-      throw new Error('No existing sceneSnapshot exists.');
-    }
+    const sceneDocRef = doc(sceneRef, sceneId);
+    await updateDoc(sceneDocRef, {
+      data: sceneData,
+      updateTimestamp: serverTimestamp(),
+      title: title,
+      version: version
+    });
   } catch (error) {
     throw new Error(error);
   }
@@ -69,8 +78,7 @@ const updateScene = async (sceneId, userUID, sceneData, title, version) => {
 
 const updateSceneIdAndTitle = async (sceneId, title) => {
   try {
-    const userScenesRef = collection(db, 'scenes');
-    const sceneDocRef = doc(userScenesRef, sceneId);
+    const sceneDocRef = doc(sceneRef, sceneId);
 
     const sceneSnapshot = await getDoc(sceneDocRef);
     if (sceneSnapshot.exists()) {
@@ -85,28 +93,6 @@ const updateSceneIdAndTitle = async (sceneId, title) => {
     }
   } catch (error) {
     throw new Error(error);
-  }
-};
-
-const isSceneAuthor = async ({ sceneId, authorId }) => {
-  if (!sceneId || !authorId) {
-    console.log('sceneId or authorId is not provided in isSceneAuthor');
-    return false;
-  }
-  try {
-    // Get a reference to the scene document
-    const sceneRef = doc(db, 'scenes', sceneId);
-    const sceneSnapshot = await getDoc(sceneRef);
-
-    if (sceneSnapshot.exists()) {
-      return sceneSnapshot.data().author === authorId;
-    } else {
-      console.error('Scene not found while running isSceneAuthor');
-      return false;
-    }
-  } catch (error) {
-    console.error('Error fetching scene while running isSceneAuthor:', error);
-    throw new Error('Error checking scene authorship');
   }
 };
 
@@ -189,13 +175,110 @@ const checkIfImagePathIsEmpty = async (sceneId) => {
   }
 };
 
+const saveScreenshot = async (value) => {
+  const screenshotEl = document.getElementById('screenshot');
+  screenshotEl.play();
+
+  if (value === 'img') {
+    screenshotEl.setAttribute(
+      'screentock',
+      'imgElementSelector',
+      '#screentock-destination'
+    );
+  }
+
+  posthog.capture('screenshot_taken', {
+    type: value,
+    scene_id: STREET.utils.getCurrentSceneId()
+  });
+
+  screenshotEl.setAttribute('screentock', 'type', value);
+  screenshotEl.setAttribute('screentock', 'takeScreenshot', true);
+};
+
+const uploadThumbnailImage = async () => {
+  try {
+    // saveScreenshot('img');
+
+    const screentockImgElement = document.getElementById(
+      'screentock-destination'
+    );
+
+    // Get the original image dimensions
+    const originalWidth = screentockImgElement.naturalWidth;
+    const originalHeight = screentockImgElement.naturalHeight;
+
+    // Define the target dimensions
+    const targetWidth = 320;
+    const targetHeight = 240;
+
+    // Calculate the scale factors
+    const scaleX = targetWidth / originalWidth;
+    const scaleY = targetHeight / originalHeight;
+
+    // Use the larger scale factor to fill the entire space
+    const scale = Math.max(scaleX, scaleY);
+
+    // Calculate the new dimensions
+    const newWidth = originalWidth * scale;
+    const newHeight = originalHeight * scale;
+
+    const resizedCanvas = document.createElement('canvas');
+    resizedCanvas.width = targetWidth;
+    resizedCanvas.height = targetHeight;
+    const context = resizedCanvas.getContext('2d');
+
+    // Calculate the position to center the image
+    const posX = (targetWidth - newWidth) / 2;
+    const posY = (targetHeight - newHeight) / 2;
+
+    // Draw the image on the canvas with the new dimensions and position
+    context.drawImage(screentockImgElement, posX, posY, newWidth, newHeight);
+    // Rest of the code...
+    const thumbnailDataUrl = resizedCanvas.toDataURL('image/jpeg', 0.5);
+    const blobFile = await fetch(thumbnailDataUrl).then((res) => res.blob());
+
+    const sceneDocId = STREET.utils.getCurrentSceneId();
+
+    const thumbnailRef = ref(storage, `scenes/${sceneDocId}/files/preview.jpg`);
+
+    const uploadedImg = await uploadBytes(thumbnailRef, blobFile);
+
+    const downloadURL = await getDownloadURL(uploadedImg.ref);
+    const userScenesRef = collection(db, 'scenes');
+    const sceneDocRef = doc(userScenesRef, sceneDocId);
+    const sceneSnapshot = await getDoc(sceneDocRef);
+    if (sceneSnapshot.exists()) {
+      await updateDoc(sceneDocRef, {
+        imagePath: downloadURL,
+        updateTimestamp: serverTimestamp()
+      });
+      console.log('Firebase updateDoc fired');
+    } else {
+      throw new Error('No existing sceneSnapshot exists.');
+    }
+
+    console.log('Thumbnail uploaded and Firestore updated successfully.');
+  } catch (error) {
+    console.error('Error capturing screenshot and updating Firestore:', error);
+    let errorMessage = `Error updating scene thumbnail: ${error}`;
+    if (error.code === 'storage/unauthorized') {
+      errorMessage =
+        'Error updating scene thumbnail: only the scene author may change the scene thumbnail. Save this scene as your own to change the thumbnail.';
+      STREET.notify.errorMessage(errorMessage);
+    }
+  }
+};
+
 export {
   checkIfImagePathIsEmpty,
+  createScene,
   deleteScene,
   generateSceneId,
   getCommunityScenes,
   getUserScenes,
-  isSceneAuthor,
   updateScene,
-  updateSceneIdAndTitle
+  updateSceneIdAndTitle,
+  uploadThumbnailImage,
+  saveScreenshot
 };

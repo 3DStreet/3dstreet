@@ -1,9 +1,9 @@
 import React, { Component } from 'react';
 import {
-  generateSceneId,
+  createScene,
   updateScene,
-  isSceneAuthor,
-  checkIfImagePathIsEmpty
+  checkIfImagePathIsEmpty,
+  uploadThumbnailImage
 } from '../../api/scene';
 import {
   Cloud24Icon,
@@ -14,7 +14,6 @@ import {
 } from '../../icons';
 import Events from '../../lib/Events';
 import { Button, ProfileButton } from '../components';
-import { uploadThumbnailImage } from '../modals/ScreenshotModal/ScreenshotModal.component.jsx';
 import { sendMetric } from '../../services/ga.js';
 import posthog from 'posthog-js';
 import { UndoRedo } from '../components/UndoRedo';
@@ -28,15 +27,10 @@ export default class Toolbar extends Component {
   constructor(props) {
     super(props);
     this.state = {
-      // isPlaying: false,
       isSaveActionActive: false,
-      isCapturingScreen: false,
       showLoadBtn: true,
-      savedNewDocument: false,
       isSavingScene: false,
       pendingSceneSave: false,
-      signInSuccess: false,
-      isAuthor: props.isAuthor,
       notification: null
     };
     this.saveButtonRef = React.createRef();
@@ -44,7 +38,6 @@ export default class Toolbar extends Component {
 
   componentDidMount() {
     document.addEventListener('click', this.handleClickOutsideSave);
-    this.checkSignInStatus();
     Events.on('historychanged', (cmd) => {
       if (cmd) {
         console.log('historychanged', cmd);
@@ -55,50 +48,22 @@ export default class Toolbar extends Component {
   }
 
   componentDidUpdate(prevProps) {
-    if (prevProps.isAuthor !== this.props.isAuthor) {
-      this.setState({ isAuthor: this.props.isAuthor });
-    }
     if (this.props.currentUser !== prevProps.currentUser) {
-      this.setState({ currentUser: this.props.currentUser });
-
       if (this.state.pendingSceneSave && this.props.currentUser) {
         // Remove the flag from state, as we're going to handle the save now.
         this.setState({ pendingSceneSave: false });
-        setTimeout(() => {
-          this.cloudSaveHandler({ doSaveAs: true })
-            .then(() => {
-              // The promise from cloudSaveHandler has resolved, now update the state.
-            })
-            .catch((error) => {
-              // Handle any errors here
-              console.error('Save failed:', error);
-            });
-        }, 500);
+        this.cloudSaveHandlerWithImageUpload();
       }
-    }
-
-    if (
-      this.state.isCapturingScreen &&
-      prevProps.isCapturingScreen !== this.state.isCapturingScreen
-    ) {
-      this.makeScreenshot(this);
     }
   }
-
-  checkSignInStatus = async () => {
-    if (this.state.signInSuccess && this.state.pendingSceneSave) {
-      if (this.props.currentUser) {
-        await this.cloudSaveHandler({ doSaveAs: true });
-        this.setState({ signInSuccess: false, pendingSceneSave: false });
-      } else {
-        setTimeout(this.checkSignInStatus, 500);
-      }
-    }
-  };
 
   componentWillUnmount() {
     document.removeEventListener('click', this.handleClickOutsideSave);
   }
+
+  isAuthor = () => {
+    return this.props.currentUser?.uid === STREET.utils.getAuthorId();
+  };
 
   handleClickOutsideSave = (event) => {
     if (
@@ -137,8 +102,13 @@ export default class Toolbar extends Component {
     }
   };
 
-  cloudSaveAsHandler = async () => {
-    this.cloudSaveHandler({ doSaveAs: true });
+  cloudSaveHandlerWithImageUpload = async (doSaveAs) => {
+    this.makeScreenshot();
+    const currentSceneId = await this.cloudSaveHandler({ doSaveAs });
+    const isImagePathEmpty = await checkIfImagePathIsEmpty(currentSceneId);
+    if (isImagePathEmpty) {
+      await uploadThumbnailImage();
+    }
   };
 
   newHandler = () => {
@@ -182,24 +152,19 @@ export default class Toolbar extends Component {
         Events.emit('openpaymentmodal');
         return;
       }
-      let isCurrentUserTheSceneAuthor;
-      // if owner != doc.id then doSaveAs = true;
-      try {
-        isCurrentUserTheSceneAuthor = await isSceneAuthor({
-          sceneId: currentSceneId,
-          authorId: this.props.currentUser.uid
-        });
-      } catch (error) {
-        return;
-      }
-
-      if (!isCurrentUserTheSceneAuthor) {
+      if (!this.isAuthor()) {
         posthog.capture('not_scene_author', {
           scene_id: currentSceneId,
           user_id: this.props.currentUser.uid
         });
         doSaveAs = true;
       }
+
+      // generate json from 3dstreet core
+      const entity = document.getElementById('street-container');
+      const data = STREET.utils.convertDOMElToObject(entity);
+      const filteredData = JSON.parse(STREET.utils.filterJSONstreet(data));
+      this.setState({ isSavingScene: true });
 
       // we want to save, so if we *still* have no sceneID at this point, then create a new one
       if (!currentSceneId || !!doSaveAs) {
@@ -218,48 +183,42 @@ export default class Toolbar extends Component {
         console.log(
           'no urlSceneId or doSaveAs is true, therefore generate new one'
         );
-        currentSceneId = await generateSceneId(this.props.currentUser.uid);
+        currentSceneId = await createScene(
+          this.props.currentUser.uid,
+          filteredData.data,
+          currentSceneTitle,
+          filteredData.version
+        );
         console.log('newly generated currentSceneId', currentSceneId);
-        window.location.hash = `#/scenes/${currentSceneId}.json`;
-        this.setState({ savedNewDocument: true });
+      } else {
+        await updateScene(
+          currentSceneId,
+          filteredData.data,
+          currentSceneTitle,
+          filteredData.version
+        );
       }
 
       // after all those save shenanigans let's set currentSceneId in state
       this.setState({ currentSceneId });
 
-      // generate json from 3dstreet core
-      const entity = document.getElementById('street-container');
-      const data = STREET.utils.convertDOMElToObject(entity);
-      const filteredData = JSON.parse(STREET.utils.filterJSONstreet(data));
-      this.setState({ isSavingScene: true });
       // save json to firebase with other metadata
 
-      await updateScene(
-        currentSceneId,
-        this.props.currentUser.uid,
-        filteredData.data,
-        currentSceneTitle,
-        filteredData.version
-      );
-
       // make sure to update sceneId with new one in metadata component!
-      AFRAME.scenes[0].setAttribute('metadata', 'sceneId: ' + currentSceneId);
-
-      const isImagePathEmpty = await checkIfImagePathIsEmpty(currentSceneId);
-      if (isImagePathEmpty) {
-        await uploadThumbnailImage(true);
-      }
+      AFRAME.scenes[0].setAttribute('metadata', 'sceneId', currentSceneId);
+      AFRAME.scenes[0].setAttribute(
+        'metadata',
+        'authorId',
+        this.props.currentUser.uid
+      );
 
       // Change the hash URL without reloading
       window.location.hash = `#/scenes/${currentSceneId}.json`;
-      if (this.state.savedNewDocument) {
-        this.setState({ savedNewDocument: false }); // go back to default assumption of save overwrite
-      }
       const notification = STREET.notify.successMessage('Scene saved');
       this.setState({ notification });
 
-      this.setState({ isAuthor: true });
       sendMetric('SaveSceneAction', doSaveAs ? 'saveAs' : 'save');
+      return currentSceneId;
     } catch (error) {
       STREET.notify.errorMessage(
         `Error trying to save 3DStreet scene to cloud. Error: ${error}`
@@ -271,7 +230,10 @@ export default class Toolbar extends Component {
   };
 
   debouncedCloudSaveHandler = debounce(() => {
-    if (this.state.currentUser) {
+    if (
+      this.props.currentUser &&
+      STREET.utils.getAuthorId() === this.props.currentUser.uid
+    ) {
       const streetGeo = document
         .getElementById('reference-layers')
         ?.getAttribute('street-geo');
@@ -288,44 +250,28 @@ export default class Toolbar extends Component {
     }
   }, 1000);
 
-  handleRemixClick = () => {
+  handleUnsignedSaveClick = () => {
     posthog.capture('remix_scene_clicked');
-    if (!this.props.currentUser) {
-      this.setState({ pendingSceneSave: true });
-      Events.emit('opensigninmodal');
-    } else {
-      this.cloudSaveHandler({ doSaveAs: true });
-    }
+    this.setState({ pendingSceneSave: true });
+    Events.emit('opensigninmodal');
   };
 
-  makeScreenshot = (component) =>
-    new Promise((resolve) => {
-      // use vanilla js to create an img element as destination for our screenshot
-      const imgHTML = '<img id="screentock-destination">';
-      // Set the screenshot in local storage
-      localStorage.setItem('screenshot', JSON.stringify(imgHTML));
-      const screenshotEl = document.getElementById('screenshot');
-      screenshotEl.play();
+  makeScreenshot = () => {
+    const imgHTML = '<img id="screentock-destination">';
+    // Set the screenshot in local storage
+    localStorage.setItem('screenshot', JSON.stringify(imgHTML));
+    const screenshotEl = document.getElementById('screenshot');
+    screenshotEl.play();
 
-      screenshotEl.setAttribute('screentock', 'type', 'img');
-      screenshotEl.setAttribute(
-        'screentock',
-        'imgElementSelector',
-        '#screentock-destination'
-      );
-      // take the screenshot
-      screenshotEl.setAttribute('screentock', 'takeScreenshot', true);
-      setTimeout(() => resolve(), 1000);
-    }).then(() => {
-      component &&
-        component.setState((prevState) => ({
-          ...prevState,
-          isCapturingScreen: false
-        }));
-    });
-  // openViewMode() {
-  //   AFRAME.INSPECTOR.close();
-  // }
+    screenshotEl.setAttribute('screentock', 'type', 'img');
+    screenshotEl.setAttribute(
+      'screentock',
+      'imgElementSelector',
+      '#screentock-destination'
+    );
+    // take the screenshot
+    screenshotEl.setAttribute('screentock', 'takeScreenshot', true);
+  };
 
   toggleScenePlaying = () => {
     if (this.state.isPlaying) {
@@ -344,7 +290,6 @@ export default class Toolbar extends Component {
 
   toggleSaveActionState = () => {
     this.setState((prevState) => ({
-      isCapturingScreen: true,
       isSaveActionActive: !prevState.isSaveActionActive
     }));
   };
@@ -383,14 +328,14 @@ export default class Toolbar extends Component {
                     leadingIcon={<Cloud24Icon />}
                     variant="white"
                     onClick={this.cloudSaveHandler}
-                    disabled={this.state.isSavingScene || !this.state.isAuthor}
+                    disabled={this.state.isSavingScene || !this.isAuthor()}
                   >
                     <div>Save</div>
                   </Button>
                   <Button
                     leadingIcon={<Cloud24Icon />}
                     variant="white"
-                    onClick={this.cloudSaveAsHandler}
+                    onClick={() => this.cloudSaveHandlerWithImageUpload(true)}
                     disabled={this.state.isSavingScene}
                   >
                     <div>Save As...</div>
@@ -401,7 +346,7 @@ export default class Toolbar extends Component {
           ) : (
             <Button
               leadingIcon={<Save24Icon />}
-              onClick={this.handleRemixClick}
+              onClick={this.handleUnsignedSaveClick}
               disabled={this.state.isSavingScene}
             >
               <div className="hideInLowResolution">Save</div>
@@ -418,10 +363,7 @@ export default class Toolbar extends Component {
           <Button
             leadingIcon={<ScreenshotIcon />}
             onClick={() => {
-              this.setState((prevState) => ({
-                ...prevState,
-                isCapturingScreen: true
-              }));
+              this.makeScreenshot();
               Events.emit('openscreenshotmodal');
             }}
           >
