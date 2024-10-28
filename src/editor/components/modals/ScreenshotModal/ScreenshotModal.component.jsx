@@ -137,6 +137,12 @@ function ScreenshotModal({ isOpen, onClose }) {
     }
   };
 
+  const updateThumbnail = async () => {
+    posthog.capture('thumbnail updated');
+    await uploadThumbnailImage();
+    STREET.notify.successMessage('Thumbnail Updatedscne');
+  };
+
   return (
     <Modal
       className={styles.screenshotModalWrapper}
@@ -202,7 +208,7 @@ function ScreenshotModal({ isOpen, onClose }) {
           />
           <Button
             variant="custom"
-            onClick={uploadThumbnailImage}
+            onClick={updateThumbnail}
             className={styles.thumbnailButton}
           >
             Set as scene thumbnail

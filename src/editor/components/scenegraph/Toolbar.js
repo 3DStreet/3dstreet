@@ -52,7 +52,7 @@ export default class Toolbar extends Component {
       if (this.state.pendingSceneSave && this.props.currentUser) {
         // Remove the flag from state, as we're going to handle the save now.
         this.setState({ pendingSceneSave: false });
-        this.cloudSaveHandlerWithImageUpload(false);
+        this.cloudSaveHandlerWithImageUpload();
       }
     }
   }
@@ -103,7 +103,7 @@ export default class Toolbar extends Component {
   };
 
   cloudSaveHandlerWithImageUpload = async (doSaveAs) => {
-    console.log('doSaveAs', doSaveAs);
+    this.makeScreenshot();
     const currentSceneId = await this.cloudSaveHandler({ doSaveAs });
     const isImagePathEmpty = await checkIfImagePathIsEmpty(currentSceneId);
     if (isImagePathEmpty) {
@@ -230,7 +230,10 @@ export default class Toolbar extends Component {
   };
 
   debouncedCloudSaveHandler = debounce(() => {
-    if (this.props.currentUser) {
+    if (
+      this.props.currentUser &&
+      STREET.utils.getAuthorId() === this.props.currentUser.uid
+    ) {
       const streetGeo = document
         .getElementById('reference-layers')
         ?.getAttribute('street-geo');
@@ -286,7 +289,6 @@ export default class Toolbar extends Component {
   };
 
   toggleSaveActionState = () => {
-    this.makeScreenshot();
     this.setState((prevState) => ({
       isSaveActionActive: !prevState.isSaveActionActive
     }));
