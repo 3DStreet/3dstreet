@@ -138,9 +138,9 @@ function ScreenshotModal({ isOpen, onClose }) {
   };
 
   const updateThumbnail = async () => {
-    posthog.capture('thumbnail updated');
+    posthog.capture('thumbnail_updated');
     await uploadThumbnailImage();
-    STREET.notify.successMessage('Thumbnail Updatedscne');
+    STREET.notify.successMessage('Thumbnail Updated');
   };
 
   return (
