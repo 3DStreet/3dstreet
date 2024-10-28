@@ -205,7 +205,7 @@ export default class Toolbar extends Component {
       // save json to firebase with other metadata
 
       // make sure to update sceneId with new one in metadata component!
-      AFRAME.scenes[0].setAttribute('metadata', 'sceneId' + currentSceneId);
+      AFRAME.scenes[0].setAttribute('metadata', 'sceneId', currentSceneId);
       AFRAME.scenes[0].setAttribute(
         'metadata',
         'authorId',
