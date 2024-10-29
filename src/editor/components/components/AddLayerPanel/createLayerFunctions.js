@@ -168,7 +168,8 @@ export function createCustomModel(position) {
       components: {
         position: position ?? '0 0 0',
         'gltf-model': `url(${modelUrl})`,
-        'data-layer-name': 'glTF Model • My Custom Object'
+        'data-layer-name': 'glTF Model • My Custom Object',
+        shadow: 'receive: true; cast: true;'
       }
     };
     AFRAME.INSPECTOR.execute('entitycreate', definition);
