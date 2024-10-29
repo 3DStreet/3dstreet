@@ -220,7 +220,7 @@ AFRAME.registerComponent('street-geo', {
       osm3dBuildingElement.setAttribute('osm-geojson', {
         lon: data.longitude,
         lat: data.latitude,
-        radius_m: 500,
+        radius_m: 1000,
         trackId: 'camera'
       });
       osm3dBuildingElement.setAttribute('rotation', '0 -90 0');
