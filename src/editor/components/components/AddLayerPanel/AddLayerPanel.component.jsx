@@ -1,23 +1,18 @@
 import { useState, useEffect, useMemo, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { useAuthContext } from '../../../contexts/index.js';
+import { Button, Tabs } from '../../components';
 
 import styles from './AddLayerPanel.module.scss';
 import classNames from 'classnames';
-import { Button } from '../Button';
 import { Chevron24Down } from '../../../icons';
-import { Dropdown } from '../Dropdown';
 import CardPlaceholder from '../../../../../ui_assets/card-placeholder.svg';
 import LockedCard from '../../../../../ui_assets/locked-card.svg';
 import mixinCatalog from '../../../../catalog.json';
 import posthog from 'posthog-js';
 import Events from '../../../lib/Events';
 import pickPointOnGroundPlane from '../../../lib/pick-point-on-ground-plane';
-import {
-  customLayersData,
-  intersectionLayersData,
-  streetLayersData
-} from './layersData.js';
+import { customLayersData, streetLayersData } from './layersData.js';
 import { LayersOptions } from './LayersOptions.js';
 
 // Create an empty image
@@ -285,13 +280,12 @@ const AddLayerPanel = ({ onClose, isAddLayerPanelOpen }) => {
   }, []);
 
   const selectedCards = useMemo(() => {
+    console.log(selectedOption);
     switch (selectedOption) {
       case 'Custom Layers':
         return customLayersData;
-      case 'Streets':
+      case 'Streets and Intersections':
         return streetLayersData;
-      case 'Intersections':
-        return intersectionLayersData;
       default:
         return getSelectedMixinCards(groupedMixins, selectedOption);
     }
@@ -427,15 +421,16 @@ const AddLayerPanel = ({ onClose, isAddLayerPanelOpen }) => {
         <Chevron24Down />
       </Button>
       <div className={styles.header}>
-        <div className={styles.button}></div>
-        <Dropdown
-          placeholder="Layers: Maps & Reference"
-          options={LayersOptions}
-          onSelect={handleSelect}
-          selectedOptionValue={selectedOption}
-          className={styles.dropdown}
-          smallDropdown={true}
-        />
+        <div className={styles.categories}>
+          <Tabs
+            tabs={LayersOptions.map((option) => ({
+              label: option.label,
+              value: option.value,
+              isSelected: selectedOption === option.value,
+              onClick: () => handleSelect(option.value)
+            }))}
+          />
+        </div>
       </div>
       <div className={styles.cards}>
         {selectedCards.map((card) => (

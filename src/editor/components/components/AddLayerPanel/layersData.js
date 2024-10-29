@@ -61,6 +61,16 @@ export const streetLayersData = [
     description: 'Premade Street 150ft Right of Way / 124ft Roadway Width',
     id: 6,
     handlerFunction: create150ftRightOfWay
+  },
+  {
+    name: 'Create intersection',
+    img: '',
+    requiresPro: true,
+    icon: '',
+    description:
+      'Create intersection entity. Parameters of intersection component could be changed in properties panel.',
+    id: 7,
+    handlerFunction: createIntersection
   }
 ];
 
@@ -72,7 +82,7 @@ export const customLayersData = [
     requiresPro: true,
     description:
       'Create entity with svg-extruder component, that accepts a svgString and creates a new entity with geometry extruded from the svg and applies the default mixin material grass.',
-    id: 3,
+    id: 1,
     handlerFunction: createSvgExtrudedEntity
   },
   {
@@ -82,7 +92,7 @@ export const customLayersData = [
     icon: '',
     description:
       'Create entity with model from path for a glTF (or Glb) file hosted on any publicly accessible HTTP server.',
-    id: 4,
+    id: 2,
     handlerFunction: createCustomModel
   },
   {
@@ -92,7 +102,7 @@ export const customLayersData = [
     icon: '',
     description:
       'Create entity with A-Frame primitive geometry. Geometry type could be changed in properties panel.',
-    id: 5,
+    id: 3,
     handlerFunction: createPrimitiveGeometry
   },
   {
@@ -102,21 +112,7 @@ export const customLayersData = [
     icon: 'ui_assets/cards/icons/gallery24.png',
     description:
       'Place an image such as a sign, reference photo, custom map, etc.',
-    id: 7,
+    id: 4,
     handlerFunction: createImageEntity
   }
-];
-
-// data for PRO layers cards
-export const intersectionLayersData = [
-  {
-    name: 'Create intersection',
-    img: '',
-    requiresPro: true,
-    icon: '',
-    description:
-      'Create intersection entity. Parameters of intersection component could be changed in properties panel.',
-    id: 6,
-    handlerFunction: createIntersection
-  } // createImageEntity
 ];

@@ -30,16 +30,10 @@ const LayersOptions = [
     onClick: () => {}
   },
   {
-    value: 'Streets',
-    label: '🛣️ Streets',
+    value: 'Streets and Intersections',
+    label: '🚦 Streets and Intersections',
     onClick: () => {}
   },
-  {
-    value: 'Intersections',
-    label: '🚦 Intersections',
-    onClick: () => {}
-  },
-
   {
     value: 'Buildings',
     label: '🏠 Buildings',
