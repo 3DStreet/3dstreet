@@ -5,7 +5,7 @@ import { useAuthContext } from '../../../contexts/index.js';
 import styles from './AddLayerPanel.module.scss';
 import classNames from 'classnames';
 import { Button } from '../Button';
-import { Chevron24Down, Plus20Circle } from '../../../icons';
+import { Chevron24Down } from '../../../icons';
 import { Dropdown } from '../Dropdown';
 import CardPlaceholder from '../../../../../ui_assets/card-placeholder.svg';
 import LockedCard from '../../../../../ui_assets/locked-card.svg';
@@ -13,7 +13,11 @@ import mixinCatalog from '../../../../catalog.json';
 import posthog from 'posthog-js';
 import Events from '../../../lib/Events';
 import pickPointOnGroundPlane from '../../../lib/pick-point-on-ground-plane';
-import { layersData, streetLayersData } from './layersData.js';
+import {
+  customLayersData,
+  intersectionLayersData,
+  streetLayersData
+} from './layersData.js';
 import { LayersOptions } from './LayersOptions.js';
 
 // Create an empty image
@@ -281,12 +285,15 @@ const AddLayerPanel = ({ onClose, isAddLayerPanelOpen }) => {
   }, []);
 
   const selectedCards = useMemo(() => {
-    if (selectedOption === 'Pro Layers') {
-      return layersData;
-    } else if (selectedOption === 'Street Layers') {
-      return streetLayersData;
-    } else {
-      return getSelectedMixinCards(groupedMixins, selectedOption);
+    switch (selectedOption) {
+      case 'Custom Layers':
+        return customLayersData;
+      case 'Streets':
+        return streetLayersData;
+      case 'Intersections':
+        return intersectionLayersData;
+      default:
+        return getSelectedMixinCards(groupedMixins, selectedOption);
     }
   }, [groupedMixins, selectedOption]);
 
@@ -417,10 +424,7 @@ const AddLayerPanel = ({ onClose, isAddLayerPanelOpen }) => {
         <Chevron24Down />
       </Button>
       <div className={styles.header}>
-        <div className={styles.button}>
-          <Plus20Circle />
-          <p className={styles.buttonLabel}>Add New Entity</p>
-        </div>
+        <div className={styles.button}></div>
         <Dropdown
           placeholder="Layers: Maps & Reference"
           options={LayersOptions}

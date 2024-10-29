@@ -112,6 +112,7 @@ export default class Toolbar extends Component {
   };
 
   newHandler = () => {
+    posthog.capture('new_scene_clicked');
     AFRAME.INSPECTOR.selectEntity(null);
     STREET.utils.newScene();
     AFRAME.scenes[0].emit('newScene');

@@ -1,8 +1,6 @@
 import {
   createSvgExtrudedEntity,
-  createMapbox,
   createStreetmixStreet,
-  create3DTiles,
   createCustomModel,
   createPrimitiveGeometry,
   createIntersection,
@@ -66,28 +64,7 @@ export const streetLayersData = [
   }
 ];
 
-// data for PRO layers cards
-export const layersData = [
-  {
-    name: 'Mapbox 2D Aerial',
-    img: 'ui_assets/cards/mapbox2d.jpg',
-    icon: 'ui_assets/cards/icons/mapbox24.png',
-    requiresPro: true,
-    description:
-      'Create entity with mapbox component, that accepts a long / lat and renders a plane with dimensions that (should be) at a correct scale.',
-    id: 1,
-    handlerFunction: createMapbox
-  },
-  {
-    name: 'Google Maps 3D Tiles',
-    img: 'ui_assets/cards/google3d.jpg',
-    icon: 'ui_assets/cards/icons/google24.png',
-    requiresPro: true,
-    description:
-      'Adds an entity to load and display 3d tiles from Google Maps Tiles API 3D Tiles endpoint. This will break your scene and you cannot save it yet, so beware before testing.',
-    id: 2,
-    handlerFunction: create3DTiles
-  },
+export const customLayersData = [
   {
     name: 'Entity from extruded SVG',
     img: '',
@@ -119,16 +96,6 @@ export const layersData = [
     handlerFunction: createPrimitiveGeometry
   },
   {
-    name: 'Create intersection',
-    img: '',
-    requiresPro: true,
-    icon: '',
-    description:
-      'Create intersection entity. Parameters of intersection component could be changed in properties panel.',
-    id: 6,
-    handlerFunction: createIntersection
-  }, // createImageEntity
-  {
     name: 'Place New Image Entity',
     img: '',
     requiresPro: true,
@@ -138,4 +105,18 @@ export const layersData = [
     id: 7,
     handlerFunction: createImageEntity
   }
+];
+
+// data for PRO layers cards
+export const intersectionLayersData = [
+  {
+    name: 'Create intersection',
+    img: '',
+    requiresPro: true,
+    icon: '',
+    description:
+      'Create intersection entity. Parameters of intersection component could be changed in properties panel.',
+    id: 6,
+    handlerFunction: createIntersection
+  } // createImageEntity
 ];
