@@ -280,7 +280,6 @@ const AddLayerPanel = ({ onClose, isAddLayerPanelOpen }) => {
   }, []);
 
   const selectedCards = useMemo(() => {
-    console.log(selectedOption);
     switch (selectedOption) {
       case 'Custom Layers':
         return customLayersData;
