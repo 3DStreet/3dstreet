@@ -298,6 +298,9 @@ const AddLayerPanel = ({ onClose, isAddLayerPanelOpen }) => {
   }, [groupedMixins, selectedOption]);
 
   const handleSelect = (value) => {
+    posthog.capture('select_layer_option', {
+      layer_option: value
+    });
     setSelectedOption(value);
   };
 
