@@ -16,7 +16,7 @@ AFRAME.registerComponent('street-geo', {
     maps: {
       type: 'string',
       default: 'google3d',
-      oneOf: ['google3d', 'mapbox2d', 'osm3d']
+      oneOf: ['google3d', 'mapbox2d', 'osm3d', 'none']
     },
     enableClipping: { type: 'boolean', default: false }
   },
@@ -51,9 +51,9 @@ AFRAME.registerComponent('street-geo', {
       if (data.maps === mapType && !this[mapType]) {
         // create Map element and save a link to it in this[mapType]
         if (!this.isAR) {
-          this[mapType + 'Create']();
           document.getElementById('map-data-attribution').style.visibility =
             'visible';
+          this[mapType + 'Create']();
         }
       } else if (
         data.maps === mapType &&
@@ -82,6 +82,10 @@ AFRAME.registerComponent('street-geo', {
         this.google3d.removeAttribute('obb-clipping');
       }
     }
+  },
+  noneCreate: function () {
+    // do nothing
+    document.getElementById('map-data-attribution').style.visibility = 'hidden';
   },
   mapbox2dCreate: function () {
     const data = this.data;
@@ -172,6 +176,10 @@ AFRAME.registerComponent('street-geo', {
         create3DtilesElement
       );
     }
+  },
+  noneUpdate: function () {
+    // do nothing
+    document.getElementById('map-data-attribution').style.visibility = 'hidden';
   },
   google3dUpdate: function () {
     const data = this.data;
