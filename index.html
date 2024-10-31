@@ -3,9 +3,10 @@
 
 <head>
   <!-- aframe -->
-  <script src="https://launchar.app/sdk/v1?key=vDhrPJN2RAYrTKXak3LYKFPnPGKYAzKK&redirect=true"></script>
+  <!-- <script src="https://launchar.app/sdk/v1?key=vDhrPJN2RAYrTKXak3LYKFPnPGKYAzKK&redirect=true"></script> -->
   <!-- <script src="https://cdn.jsdelivr.net/gh/aframevr/aframe@4142ec90a76916d252e375ceb1595971ee264966/dist/aframe-master.min.js"></script> -->
-  <script src="https://aframe.io/releases/1.5.0/aframe.min.js"></script>
+  <script
+    src="https://cdn.jsdelivr.net/gh/aframevr/aframe@24130e55fabffd668680504f89e61730b4871492/dist/aframe-master.min.js"></script>
 
   <!-- 3dstreet -->
   <script src="./dist/aframe-street-component.js"></script>
@@ -15,6 +16,10 @@
 
   <!-- viewer controls - vr teleport -->
   <script src="https://cdn.jsdelivr.net/npm/aframe-blink-controls@0.4.3/dist/aframe-blink-controls.min.js"></script>
+
+  <script src="stroke-geometry.js"></script>
+  <script src="brush-component.js"></script>
+  <script src="brush-system.js"></script>
 
   <!-- posthog -->
   <!-- <script>
@@ -108,13 +113,13 @@
       cursor-teleport="cameraRig: #cameraRig; cameraHead: #camera;"
       movement-controls="camera: #camera; fly: true">
       <a-entity id="camera" position="0 1.6 0" camera look-controls="reverseMouseDrag: true"></a-entity>
-      <a-entity id="leftHand" hand-controls="hand: left;"
-        blink-controls="cameraRig: #cameraRig; teleportOrigin: #camera; rotateOnTeleport:false;"></a-entity>
-      <a-entity id="rightHand" hand-controls="hand: right"
-        blink-controls="cameraRig: #cameraRig; teleportOrigin: #camera; rotateOnTeleport:false;"></a-entity>
+
       <a-entity id="screenshot" class="no-pause" screentock visible="false"></a-entity>
     </a-entity>
-
+    <a-entity id="right-hand" brush="hand: right">
+    </a-entity>
+    <a-entity id="left-hand" brush="hand: left">
+    </a-entity>
   </a-scene>
 </body>
 <script>
