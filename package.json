@@ -52,7 +52,8 @@
     "react-select": "^5.4.0",
     "stripe": "^15.8.0",
     "three": "0.145.0",
-    "uuid": "^9.0.0"
+    "uuid": "^9.0.0",
+    "zustand": "^5.0.1"
   },
   "devDependencies": {
     "@babel/eslint-parser": "^7.24.5",

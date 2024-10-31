@@ -1,19 +1,5 @@
 /* AFRAME */
 
-// function buttonScreenshotTock() {
-//   AFRAME.scenes[0].setAttribute('screentock', 'type', 'jpg');
-//   AFRAME.scenes[0].setAttribute('screentock', 'takeScreenshot', true);
-// }
-// function buttonScreenshotTockPNG() {
-//   AFRAME.scenes[0].setAttribute('screentock', 'type', 'png');
-//   AFRAME.scenes[0].setAttribute('screentock', 'takeScreenshot', true);
-// }
-// function buttonCaptureImage() {
-//   AFRAME.scenes[0].setAttribute('screentock', 'type', 'img');
-//   AFRAME.scenes[0].setAttribute('screentock', 'imgElementSelector', '#captureImg');
-//   AFRAME.scenes[0].setAttribute('screentock', 'takeScreenshot', true);
-// }
-
 AFRAME.registerComponent('screentock', {
   schema: {
     takeScreenshot: { type: 'boolean', default: false },

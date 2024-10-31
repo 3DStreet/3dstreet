@@ -482,46 +482,6 @@ AFRAME.registerComponent('metadata', {
   }
 });
 
-AFRAME.registerComponent('scene-title', {
-  schema: {
-    titleText: { default: '' }
-  },
-  init: function () {
-    this.titleElement = undefined;
-    this.el.addEventListener('newTitle', (evt) => {
-      this.el.setAttribute('scene-title', 'titleText', evt.detail.sceneTitle);
-    });
-  },
-  createTitleElement: function (titleText) {
-    const titleDiv = (this.titleElement = document.createElement('div'));
-    const newContent = document.createTextNode(titleText);
-    titleDiv.setAttribute('id', 'sceneTitle');
-    titleDiv.appendChild(newContent);
-    document.body.append(titleDiv);
-  },
-  updateTitleText: function (titleText) {
-    this.titleElement.textContent = titleText;
-  },
-  update: function (oldData) {
-    // If `oldData` is empty, then this means we're in the initialization process.
-    // No need to update.
-    if (Object.keys(oldData).length === 0) {
-      return;
-    }
-
-    const titleText = this.data.titleText;
-    const titleElement = this.titleElement;
-
-    if (titleText !== oldData.titleText) {
-      if (!titleElement) {
-        this.createTitleElement(titleText);
-      } else {
-        this.updateTitleText(titleText);
-      }
-    }
-  }
-});
-
 AFRAME.registerComponent('set-loader-from-hash', {
   schema: {
     defaultURL: { type: 'string' }
