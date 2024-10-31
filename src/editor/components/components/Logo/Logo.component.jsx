@@ -16,7 +16,7 @@ const Logo = ({ onToggleEdit, isEditor }) => (
       </svg> */}
       <img src="ui_assets/favicon-32x32.png" alt="3DStreet Logo" />
     </div>
-    <Button onClick={onToggleEdit} className={styles.btn}>
+    <Button onClick={onToggleEdit} className={styles.btn} variant="toolbtn">
       {isEditor ? 'Enter Viewer mode' : 'Enter Editor mode'}
     </Button>
   </div>

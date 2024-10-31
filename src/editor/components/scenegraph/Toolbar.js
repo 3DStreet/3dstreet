@@ -309,6 +309,7 @@ export default class Toolbar extends Component {
               leadingIcon={<Edit24Icon />}
               onClick={this.newHandler}
               disabled={this.state.isSavingScene}
+              variant="toolbtn"
             >
               <div className="hideInLowResolution">New</div>
             </Button>
@@ -319,6 +320,7 @@ export default class Toolbar extends Component {
                 leadingIcon={<Save24Icon />}
                 onClick={this.toggleSaveActionState.bind(this)}
                 disabled={this.state.isSavingScene}
+                variant="toolbtn"
               >
                 <div className="hideInLowResolution">Save</div>
               </Button>
@@ -348,6 +350,7 @@ export default class Toolbar extends Component {
               leadingIcon={<Save24Icon />}
               onClick={this.handleUnsignedSaveClick}
               disabled={this.state.isSavingScene}
+              variant="toolbtn"
             >
               <div className="hideInLowResolution">Save</div>
             </Button>
@@ -356,6 +359,7 @@ export default class Toolbar extends Component {
             <Button
               leadingIcon={<Upload24Icon />}
               onClick={() => Events.emit('openscenesmodal')}
+              variant="toolbtn"
             >
               <div className="hideInLowResolution">Open</div>
             </Button>
@@ -366,6 +370,7 @@ export default class Toolbar extends Component {
               this.makeScreenshot();
               Events.emit('openscreenshotmodal');
             }}
+            variant="toolbtn"
           >
             <div className="hideInLowResolution">Share</div>
           </Button>
