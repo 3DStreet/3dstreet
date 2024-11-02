@@ -11,7 +11,7 @@ import styles from './Logo.module.scss';
 const Logo = ({ onToggleEdit, isEditor }) => (
   <div className={styles.wrapper}>
     <div className={styles.logo} id="logoImg">
-      <img src="ui_assets/3DSt-stacked-icon.png" alt="3DStreet Logo" />
+      <img src="ui_assets/3D-St-stacked-128.png" alt="3DStreet Logo" />
     </div>
     <Button onClick={onToggleEdit} className={styles.btn} variant="toolbtn">
       {isEditor ? 'Enter Viewer mode' : 'Enter Editor mode'}
