@@ -12,15 +12,17 @@
   column-gap: 1.5rem;
 }
 
+.logo {
+  img {
+    width: 48px;
+    height: 48px;
+    object-fit: contain;
+  }
+}
 @media screen and (max-width: 1268px) {
   .wrapper {
-    column-gap: 0rem;
-    flex-direction: column;
+    column-gap: 1.5rem;
     row-gap: 12px;
     left: 20px;
-    top: 24px;
-    .btn {
-      width: 100%;
-    }
   }
 }
