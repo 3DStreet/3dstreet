@@ -898,6 +898,7 @@ function createCenteredStreetElement(segments) {
   return streetEl;
 }
 
+// instead, create entity with street-segment component
 function createSegmentElement(
   segmentWidthInMeters,
   positionY,
@@ -907,32 +908,11 @@ function createSegmentElement(
   elevation = 0
 ) {
   var segmentEl = document.createElement('a-entity');
-  const heightLevels = [0.2, 0.4, 0.6];
-  const height = heightLevels[elevation];
-  if (elevation === 0) {
-    positionY = -0.1;
-  } else if (elevation === 2) {
-    positionY = 0.1;
-  }
-
-  segmentEl.setAttribute(
-    'geometry',
-    `primitive: box; 
-    height: ${height}; 
-    depth: ${length};
-    width: ${segmentWidthInMeters};`
-  );
-
+  segmentEl.setAttribute('street-segment', 'preset', mixinId);
+  segmentEl.setAttribute('street-segment', 'width', segmentWidthInMeters);
+  segmentEl.setAttribute('street-segment', 'length', length);
+  segmentEl.setAttribute('street-segment', 'elevation', elevation);
   segmentEl.setAttribute('position', { y: positionY });
-  segmentEl.setAttribute('mixin', mixinId);
-
-  if (repeatCount.length !== 0) {
-    segmentEl.setAttribute(
-      'material',
-      `repeat: ${repeatCount[0]} ${repeatCount[1]}`
-    );
-  }
-
   return segmentEl;
 }
 

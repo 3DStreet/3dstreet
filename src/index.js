@@ -20,6 +20,7 @@ require('./components/street-geo.js');
 require('./components/street-environment.js');
 require('./components/intersection.js');
 require('./components/obb-clipping.js');
+require('./components/street-segment.js');
 
 if (typeof VERSION !== 'undefined') {
   console.log(`3DStreet Version: ${VERSION}`);
