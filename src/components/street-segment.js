@@ -1,0 +1,55 @@
+/* global AFRAME */
+AFRAME.registerComponent('street-segment', {
+  schema: {
+    type: {
+      type: 'string',
+      default: 'drive-lane',
+      oneOf: ['drive-lane', 'bus-lane', 'mobility-lane', 'footpath']
+    },
+    width: {
+      type: 'number'
+    },
+    length: {
+      type: 'number'
+    },
+    direction: {
+      type: 'string',
+      default: 'outbound',
+      oneOf: ['inbound', 'outbound']
+    },
+    surface: {
+      type: 'string',
+      default: 'asphalt',
+      oneOf: ['asphalt', 'concrete', 'grass', 'dirt', 'gravel', 'sand']
+    }
+  },
+  init: function () {
+    this.depth = 0.1;
+    this.elevation = 0;
+    //
+  },
+  update: function (oldData) {
+    const data = this.data;
+    // if oldDate is not the same as data, then update the entity
+    if (oldData.type !== data.type) {
+      // TODO: this needs to use deep equal, will not work like this
+    }
+    this.clearGeometry();
+    this.generateGeometry(data);
+  },
+  generateGeometry(data) {
+    // create box geometry and apply to this entity
+    const geometry = new THREE.BoxGeometry(data.width, data.length, this.depth);
+    const material = new THREE.MeshBasicMaterial({
+      color: 0x00ff00,
+      transparent: true,
+      opacity: 0.5
+    });
+    const mesh = new THREE.Mesh(geometry, material);
+    this.el.setObject3D('mesh', mesh);
+  },
+  clearGeometry() {
+    // remove the geometry from the entity
+    this.el.removeObject3D('mesh');
+  }
+});
