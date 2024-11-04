@@ -1,7 +1,18 @@
 /* global AFRAME */
+
+/*
+Some next steps:
+- convert streetmix parser to use street-segment instead of ground mixins defined in asset.js
+
+<a-entity street-way="source: streetmix path">
+    <a-entity street-segment="preset: drive-lane; width: 3; length: 150"></a-entity>
+    <a-entity street-segment="preset: bus-lane; width: 6; length: 150"></a-entity>
+</a-entity>
+    */
+
 AFRAME.registerComponent('street-segment', {
   schema: {
-    type: {
+    preset: {
       type: 'string',
       default: 'drive-lane',
       oneOf: ['drive-lane', 'bus-lane', 'mobility-lane', 'footpath']
@@ -21,6 +32,18 @@ AFRAME.registerComponent('street-segment', {
       type: 'string',
       default: 'asphalt',
       oneOf: ['asphalt', 'concrete', 'grass', 'dirt', 'gravel', 'sand']
+    },
+    color: {
+      type: 'color',
+      default: '#00ff00'
+    },
+    spawn: {
+      // objects to spawn, model clone
+      type: 'array',
+      default: ['transit', 'cars', 'trucks']
+    },
+    spawnDensity: {
+      type: 'number' // x objects per segment
     }
   },
   init: function () {
