@@ -15,7 +15,7 @@ AFRAME.registerComponent('street-segment', {
     preset: {
       type: 'string',
       default: 'drive-lane',
-      oneOf: ['drive-lane', 'bus-lane', 'bike-lane', 'sidewalk']
+      oneOf: ['drive-lane', 'bus-lane', 'bike-lane', 'sidewalk', 'parking']
     },
     width: {
       type: 'number'
@@ -35,7 +35,7 @@ AFRAME.registerComponent('street-segment', {
     surface: {
       type: 'string',
       default: 'asphalt',
-      oneOf: ['asphalt', 'concrete', 'grass', 'dirt', 'gravel', 'sand']
+      oneOf: ['asphalt', 'concrete', 'grass', 'sidewalk', 'gravel', 'sand']
     },
     color: {
       type: 'color',
@@ -60,7 +60,7 @@ AFRAME.registerComponent('street-segment', {
       return;
       // TODO: this needs to use deep equal, will not work like this
     }
-    this.clearGeometry();
+    // this.clearGeometry();
     this.calculateHeight(data.elevation);
     this.el.setAttribute(
       'position',
@@ -92,23 +92,41 @@ AFRAME.registerComponent('street-segment', {
   },
   clearGeometry: function () {
     // remove the geometry from the entity
-    this.el.setAttribute('geometry', '');
-    this.el.setAttribute('material', '');
-    this.el.removeObject3D('mesh');
+    this.el.removeAttribute('geometry');
+    this.el.removeAttribute('material');
+    // this.el.removeObject3D('mesh');
   },
   remove: function () {
     this.clearGeometry();
   },
   generateGeometry: function (data) {
+    // create a lookup table for the material presets
+    const textureMaps = {
+      asphalt: 'seamless-road',
+      concrete: 'seamless-bright-road',
+      grass: 'grass-texture',
+      sidewalk: 'seamless-sidewalk',
+      gravel: 'compacted-gravel-texture',
+      sand: 'sandy-asphalt-texture'
+    };
+    //    this.el.setAttribute('mixin', this.data.preset);
+
+    // set the material based on the textureMap
+    let textureSourceId = textureMaps[this.data.surface];
+    console.log('textureSourceId', textureSourceId);
+
     this.el.setAttribute(
       'geometry',
       `primitive: box; 
-      height: ${this.height}; 
-      depth: ${this.data.length};
-      width: ${this.data.width};`
+        height: ${this.height}; 
+        depth: ${this.data.length};
+        width: ${this.data.width};`
     );
 
-    this.el.setAttribute('mixin', this.data.preset);
+    this.el.setAttribute(
+      'material',
+      `src: #${textureMaps[this.data.surface]}; roughness: 0.8; repeat: 0.3 25; offset: 0.55 0`
+    );
 
     // if (repeatCount.length !== 0) {
     //   segmentEl.setAttribute(
