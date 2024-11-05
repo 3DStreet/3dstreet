@@ -15,7 +15,7 @@ AFRAME.registerComponent('street-segment', {
     preset: {
       type: 'string',
       default: 'drive-lane',
-      oneOf: ['drive-lane', 'bus-lane', 'bike-lane', 'sidewalk', 'parking']
+      oneOf: ['drive-lane', 'bus-lane', 'bike-lane', 'sidewalk', 'parking-lane']
     },
     width: {
       type: 'number'
@@ -38,8 +38,7 @@ AFRAME.registerComponent('street-segment', {
       oneOf: ['asphalt', 'concrete', 'grass', 'sidewalk', 'gravel', 'sand']
     },
     color: {
-      type: 'color',
-      default: '#00ff00'
+      type: 'color'
     },
     spawn: {
       // objects to spawn, model clone
@@ -52,22 +51,75 @@ AFRAME.registerComponent('street-segment', {
   },
   init: function () {
     this.height = 0.2; // default height of segment surface box
+    // parse preset into default surface, color
+    this.applyPreset(this.data.preset);
+  },
+  applyPreset: function (preset) {
+    // parse preset into
+    // default surface, color
+    const presets = {
+      'drive-lane': {
+        surface: 'asphalt'
+      },
+      'bus-lane': {
+        surface: 'asphalt',
+        color: '#ff9393'
+      },
+      'surface-red bus-lane': {
+        // legacy output from processSegments
+        surface: 'asphalt',
+        color: '#ff9393'
+      },
+      'bike-lane': {
+        surface: 'asphalt',
+        color: '#adff83'
+      },
+      'surface-green bike-lane': {
+        // legacy output from processSegments
+        surface: 'asphalt',
+        color: '#adff83'
+      },
+      sidewalk: {
+        surface: 'sidewalk'
+      },
+      'parking-lane': {
+        surface: 'concrete'
+      },
+      'bright-lane': {
+        // legacy output for 'parking-lane' from processSegments
+        surface: 'concrete'
+      }
+    };
+    // if preset is not found, then use default preset
+    if (!presets[preset]) {
+      preset = 'drive-lane';
+    }
+    this.el.setAttribute('street-segment', 'surface', presets[preset].surface);
+    if (presets[preset].color) {
+      this.el.setAttribute('street-segment', 'color', presets[preset].color);
+    } else {
+      this.el.setAttribute('street-segment', 'color', '#ffffff');
+    }
   },
   update: function (oldData) {
     const data = this.data;
-    // if oldDate is same as current data, then don't update
+    // if oldData is same as current data, then don't update
     if (AFRAME.utils.deepEqual(oldData, data)) {
       return;
-      // TODO: this needs to use deep equal, will not work like this
     }
-    // this.clearGeometry();
+    // if oldData is defined AND the "preset" property has changed, then update
+    if (oldData.preset !== undefined && oldData.preset !== data.preset) {
+      this.applyPreset(data.preset);
+      return;
+    }
+    this.clearMesh();
     this.calculateHeight(data.elevation);
     this.el.setAttribute(
       'position',
       'y',
       this.calculateYPosition(data.elevation)
     );
-    this.generateGeometry(data);
+    this.generateMesh(data);
   },
   // for streetmix elevation number values of -1, 0, 1, 2, calculate heightLevel in three.js meters units
   calculateHeight: function (elevation) {
@@ -90,16 +142,16 @@ AFRAME.registerComponent('street-segment', {
     }
     return positionY;
   },
-  clearGeometry: function () {
+  clearMesh: function () {
     // remove the geometry from the entity
     this.el.removeAttribute('geometry');
     this.el.removeAttribute('material');
     // this.el.removeObject3D('mesh');
   },
   remove: function () {
-    this.clearGeometry();
+    this.clearMesh();
   },
-  generateGeometry: function (data) {
+  generateMesh: function (data) {
     // create a lookup table for the material presets
     const textureMaps = {
       asphalt: 'seamless-road',
@@ -125,26 +177,20 @@ AFRAME.registerComponent('street-segment', {
 
     this.el.setAttribute(
       'material',
-      `src: #${textureMaps[this.data.surface]}; roughness: 0.8; repeat: 0.3 25; offset: 0.55 0`
+      `src: #${textureMaps[this.data.surface]};
+        roughness: 0.8;
+        repeat: 0.3 25;
+        offset: 0.55 0;
+        color: ${this.data.color}`
     );
 
+    // TODO: fix repeating values (depends on surface value chosen)
     // if (repeatCount.length !== 0) {
     //   segmentEl.setAttribute(
     //     'material',
     //     `repeat: ${repeatCount[0]} ${repeatCount[1]}`
     //   );
     // }
-
     return;
-
-    // // create box geometry and apply to this entity
-    // const geometry = new THREE.BoxGeometry(data.width, data.length, this.depth);
-    // const material = new THREE.MeshBasicMaterial({
-    //   color: 0x00ff00,
-    //   transparent: true,
-    //   opacity: 0.5
-    // });
-    // const mesh = new THREE.Mesh(geometry, material);
-    // this.el.setObject3D('mesh', mesh);
   }
 });
