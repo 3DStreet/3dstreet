@@ -133,7 +133,7 @@ AFRAME.registerComponent('street-segment', {
   },
   calculateYPosition: function (elevation) {
     let positionY;
-    if (this.data.elevation === 0) {
+    if (elevation === 0) {
       positionY = -0.1;
     } else if (elevation === 2) {
       positionY = 0.1;
@@ -161,36 +161,63 @@ AFRAME.registerComponent('street-segment', {
       gravel: 'compacted-gravel-texture',
       sand: 'sandy-asphalt-texture'
     };
-    //    this.el.setAttribute('mixin', this.data.preset);
 
     // set the material based on the textureMap
-    let textureSourceId = textureMaps[this.data.surface];
+    let textureSourceId = textureMaps[data.surface];
     console.log('textureSourceId', textureSourceId);
 
     this.el.setAttribute(
       'geometry',
       `primitive: box; 
         height: ${this.height}; 
-        depth: ${this.data.length};
-        width: ${this.data.width};`
+        depth: ${data.length};
+        width: ${data.width};`
+    );
+
+    // calculate the repeatCount for the material
+    let repeatX, repeatY, offsetX;
+    [repeatX, repeatY, offsetX] = this.calculateTextureRepeat(
+      data.length,
+      data.width,
+      textureSourceId
     );
 
     this.el.setAttribute(
       'material',
-      `src: #${textureMaps[this.data.surface]};
+      `src: #${textureMaps[data.surface]};
         roughness: 0.8;
-        repeat: 0.3 25;
-        offset: 0.55 0;
-        color: ${this.data.color}`
+        repeat: ${repeatX} ${repeatY};
+        offset: ${offsetX} 0;
+        color: ${data.color}`
     );
 
-    // TODO: fix repeating values (depends on surface value chosen)
-    // if (repeatCount.length !== 0) {
-    //   segmentEl.setAttribute(
-    //     'material',
-    //     `repeat: ${repeatCount[0]} ${repeatCount[1]}`
-    //   );
-    // }
+    this.el.setAttribute('shadow', 'cast: false');
+
     return;
+  },
+  calculateTextureRepeat: function (length, width, textureSourceId) {
+    // calculate the repeatCount for the material
+    let repeatX = 0.3; // drive-lane, bus-lane, bike-lane
+    let repeatY = length / 6;
+    let offsetX = 0.55;
+    if (textureSourceId === 'seamless-bright-road') {
+      repeatX = 0.6;
+      repeatY = 15;
+    } else if (textureSourceId === 'seamless-sandy-road') {
+      // desired outcome for 60m length is = repeatx 0.15, repeaty 2.5
+      // 0.15 = 3 / x =>
+      repeatX = width / 30;
+      repeatY = length / 30;
+      offsetX = 0;
+    } else if (textureSourceId === 'seamless-sidewalk') {
+      repeatX = width / 2;
+      repeatY = length / 2;
+      offsetX = 0;
+    } else if (textureSourceId === 'grass-texture') {
+      repeatX = width / 4;
+      repeatY = length / 6;
+      offsetX = 0;
+    }
+    return [repeatX, repeatY, offsetX];
   }
 });
