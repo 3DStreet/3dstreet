@@ -4,6 +4,15 @@
 var streetmixParsersTested = require('./tested/aframe-streetmix-parsers-tested');
 var { segmentVariants } = require('./segments-variants.js');
 
+var COLORS = {
+  red: '#ff9393',
+  blue: '#00b6b6',
+  green: '#adff83',
+  yellow: '#f7d117',
+  white: '#ffffff',
+  brown: '#664B00'
+};
+
 function cloneMixinAsChildren({
   objectMixinId = '',
   parentEl = null,
@@ -338,30 +347,17 @@ function createSidewalkClonedVariants(
   return dividerParentEl;
 }
 
-function getBikeLaneMixin(variant) {
-  if (variant === 'red') {
-    return 'surface-red bike-lane';
-  }
-  if (variant === 'blue') {
-    return 'surface-blue bike-lane';
-  }
-  if (variant === 'green') {
-    return 'surface-green bike-lane';
-  }
-  return 'bike-lane';
-}
-
-function getBusLaneMixin(variant) {
+function getSegmentColor(variant) {
   if ((variant === 'colored') | (variant === 'red')) {
-    return 'surface-red bus-lane';
+    return COLORS.red;
   }
   if (variant === 'blue') {
-    return 'surface-blue bus-lane';
+    return COLORS.blue;
   }
   if (variant === 'grass') {
-    return 'surface-green bus-lane';
+    return COLORS.green;
   }
-  return 'bus-lane';
+  return COLORS.white;
 }
 
 function getDimensions(object3d) {
@@ -905,13 +901,15 @@ function createSegmentElement(
   mixinId,
   length,
   repeatCount,
-  elevation = 0
+  elevation = 0,
+  color
 ) {
   var segmentEl = document.createElement('a-entity');
   segmentEl.setAttribute('street-segment', 'preset', mixinId);
   segmentEl.setAttribute('street-segment', 'width', segmentWidthInMeters);
   segmentEl.setAttribute('street-segment', 'length', length);
   segmentEl.setAttribute('street-segment', 'elevation', elevation);
+  segmentEl.setAttribute('street-segment', 'color', color);
   segmentEl.setAttribute('position', { y: positionY });
   return segmentEl;
 }
@@ -992,6 +990,7 @@ function processSegments(
 
   var cumulativeWidthInMeters = 0;
   for (var i = 0; i < segments.length; i++) {
+    var segmentColor = COLORS.white;
     var segmentParentEl = document.createElement('a-entity');
     segmentParentEl.classList.add('segment-parent-' + i);
 
@@ -1057,7 +1056,7 @@ function processSegments(
         y: elevationPosY + 0.015
       });
       // get the mixin id for a bike lane
-      groundMixinId = getBikeLaneMixin(variantList[1]);
+      segmentColor = getSegmentColor(variantList[1]);
       // clone a bunch of stencil entities (note: this is not draw call efficient)
       cloneMixinAsChildren({
         objectMixinId: 'stencils bike-arrow',
@@ -1083,7 +1082,7 @@ function processSegments(
       segments[i].type === 'streetcar'
     ) {
       // get the mixin id for a bus lane
-      groundMixinId = getBusLaneMixin(variantList[1]);
+      segmentColor = getSegmentColor(variantList[1]);
       // get the mixin id for the vehicle (is it a trolley or a tram?)
       var objectMixinId = segments[i].type === 'streetcar' ? 'trolley' : 'tram';
       // create and append a train element
@@ -1262,7 +1261,7 @@ function processSegments(
       segments[i].type === 'bus-lane' ||
       segments[i].type === 'brt-lane'
     ) {
-      groundMixinId = getBusLaneMixin(variantList[1]);
+      segmentColor = getSegmentColor(variantList[1]);
 
       segmentParentEl.append(
         createBusElement(variantList, length, showVehicles)
@@ -1647,13 +1646,6 @@ function processSegments(
       segmentParentEl.append(reusableObjectStencilsParentEl);
     }
 
-    if (streetmixParsersTested.isSidewalk(segments[i].type)) {
-      groundMixinId = 'sidewalk';
-      repeatCount[0] = segmentWidthInMeters / 1.5;
-      // every 2 meters repeat sidewalk texture
-      repeatCount[1] = parseInt(length / 2);
-    }
-
     // add new object
     if (segments[i].type !== 'separator') {
       segmentParentEl.append(
@@ -1663,7 +1655,8 @@ function processSegments(
           groundMixinId,
           length,
           repeatCount,
-          elevation
+          elevation,
+          segmentColor
         )
       );
     } else {
@@ -1694,7 +1687,7 @@ function processSegments(
   dirtBox.setAttribute('height', 2); // height is 2 meters from y of -0.1 to -y of 2.1
   dirtBox.setAttribute('width', cumulativeWidthInMeters);
   dirtBox.setAttribute('depth', length - 0.2); // depth is length - 0.1 on each side
-  dirtBox.setAttribute('material', 'color: #664B00;');
+  dirtBox.setAttribute('material', `color: ${COLORS.brown};`);
   dirtBox.setAttribute('data-layer-name', 'Underground');
   streetParentEl.append(dirtBox);
   return streetParentEl;

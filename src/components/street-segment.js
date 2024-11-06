@@ -1,14 +1,20 @@
 /* global AFRAME */
 
 /*
-Some next steps:
-- convert streetmix parser to use street-segment instead of ground mixins defined in asset.js
-
 <a-entity street-way="source: streetmix path">
     <a-entity street-segment="preset: drive-lane; width: 3; length: 150"></a-entity>
     <a-entity street-segment="preset: bus-lane; width: 6; length: 150"></a-entity>
 </a-entity>
-    */
+*/
+
+var COLORS = {
+  red: '#ff9393',
+  blue: '#00b6b6',
+  green: '#adff83',
+  yellow: '#f7d117',
+  white: '#ffffff',
+  brown: '#664B00'
+};
 
 AFRAME.registerComponent('street-segment', {
   schema: {
@@ -39,14 +45,6 @@ AFRAME.registerComponent('street-segment', {
     },
     color: {
       type: 'color'
-    },
-    spawn: {
-      // objects to spawn, model clone
-      type: 'array',
-      default: ['transit', 'cars', 'trucks']
-    },
-    spawnDensity: {
-      type: 'number' // x objects per segment
     }
   },
   init: function () {
@@ -63,21 +61,11 @@ AFRAME.registerComponent('street-segment', {
       },
       'bus-lane': {
         surface: 'asphalt',
-        color: '#ff9393'
-      },
-      'surface-red bus-lane': {
-        // legacy output from processSegments
-        surface: 'asphalt',
-        color: '#ff9393'
+        color: COLORS.red
       },
       'bike-lane': {
         surface: 'asphalt',
-        color: '#adff83'
-      },
-      'surface-green bike-lane': {
-        // legacy output from processSegments
-        surface: 'asphalt',
-        color: '#adff83'
+        color: COLORS.green
       },
       sidewalk: {
         surface: 'sidewalk'
@@ -204,8 +192,6 @@ AFRAME.registerComponent('street-segment', {
       repeatX = 0.6;
       repeatY = 15;
     } else if (textureSourceId === 'seamless-sandy-road') {
-      // desired outcome for 60m length is = repeatx 0.15, repeaty 2.5
-      // 0.15 = 3 / x =>
       repeatX = width / 30;
       repeatY = length / 30;
       offsetX = 0;
@@ -217,7 +203,8 @@ AFRAME.registerComponent('street-segment', {
       repeatX = width / 4;
       repeatY = length / 6;
       offsetX = 0;
-    }
+    } // still need to support hatched-base
+    // how to handle different surface materials from streetmix
     return [repeatX, repeatY, offsetX];
   }
 });
