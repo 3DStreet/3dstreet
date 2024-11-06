@@ -7,15 +7,6 @@
 </a-entity>
 */
 
-var COLORS = {
-  red: '#ff9393',
-  blue: '#00b6b6',
-  green: '#adff83',
-  yellow: '#f7d117',
-  white: '#ffffff',
-  brown: '#664B00'
-};
-
 AFRAME.registerComponent('street-segment', {
   schema: {
     preset: {
@@ -60,12 +51,10 @@ AFRAME.registerComponent('street-segment', {
         surface: 'asphalt'
       },
       'bus-lane': {
-        surface: 'asphalt',
-        color: COLORS.red
+        surface: 'asphalt'
       },
       'bike-lane': {
-        surface: 'asphalt',
-        color: COLORS.green
+        surface: 'asphalt'
       },
       sidewalk: {
         surface: 'sidewalk'
@@ -157,7 +146,8 @@ AFRAME.registerComponent('street-segment', {
       grass: 'grass-texture',
       sidewalk: 'seamless-sidewalk',
       gravel: 'compacted-gravel-texture',
-      sand: 'sandy-asphalt-texture'
+      sand: 'sandy-asphalt-texture',
+      hatched: 'hatched-base'
     };
     let textureSourceId = textureMaps[data.surface];
 
@@ -201,7 +191,12 @@ AFRAME.registerComponent('street-segment', {
       repeatX = width / 4;
       repeatY = length / 6;
       offsetX = 0;
-    } // still need to support hatched-base
+    } else if (textureSourceId === 'hatched-base') {
+      repeatX = 1;
+      repeatY = length / 4;
+      offsetX = 0;
+    }
+    // still need to support hatched-base
     // how to handle different surface materials from streetmix
     return [repeatX, repeatY, offsetX];
   }
