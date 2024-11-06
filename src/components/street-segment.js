@@ -73,9 +73,11 @@ AFRAME.registerComponent('street-segment', {
       'parking-lane': {
         surface: 'concrete'
       },
-      'bright-lane': {
-        // legacy output for 'parking-lane' from processSegments
-        surface: 'concrete'
+      divider: {
+        surface: 'hatched'
+      },
+      grass: {
+        surface: 'grass'
       }
     };
     // if preset is not found, then use default preset
@@ -134,13 +136,21 @@ AFRAME.registerComponent('street-segment', {
     // remove the geometry from the entity
     this.el.removeAttribute('geometry');
     this.el.removeAttribute('material');
-    // this.el.removeObject3D('mesh');
   },
   remove: function () {
     this.clearMesh();
   },
   generateMesh: function (data) {
-    // create a lookup table for the material presets
+    // create geometry
+    this.el.setAttribute(
+      'geometry',
+      `primitive: box; 
+          height: ${this.height}; 
+          depth: ${data.length};
+          width: ${data.width};`
+    );
+
+    // create a lookup table to convert UI shortname into A-Frame img id's
     const textureMaps = {
       asphalt: 'seamless-road',
       concrete: 'seamless-bright-road',
@@ -149,22 +159,10 @@ AFRAME.registerComponent('street-segment', {
       gravel: 'compacted-gravel-texture',
       sand: 'sandy-asphalt-texture'
     };
-
-    // set the material based on the textureMap
     let textureSourceId = textureMaps[data.surface];
-    console.log('textureSourceId', textureSourceId);
-
-    this.el.setAttribute(
-      'geometry',
-      `primitive: box; 
-        height: ${this.height}; 
-        depth: ${data.length};
-        width: ${data.width};`
-    );
 
     // calculate the repeatCount for the material
-    let repeatX, repeatY, offsetX;
-    [repeatX, repeatY, offsetX] = this.calculateTextureRepeat(
+    let [repeatX, repeatY, offsetX] = this.calculateTextureRepeat(
       data.length,
       data.width,
       textureSourceId

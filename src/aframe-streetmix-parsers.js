@@ -1026,7 +1026,7 @@ function processSegments(
       variantList[0] === 'outbound' || variantList[1] === 'outbound' ? 1 : -1;
 
     // the A-Frame mixin ID is often identical to the corresponding streetmix segment "type" by design, let's start with that
-    var groundMixinId = segments[i].type;
+    var segmentPreset = segments[i].type;
 
     // repeat value for material property - repeatCount[0] is x texture repeat and repeatCount[1] is y texture repeat
     const repeatCount = [];
@@ -1094,7 +1094,7 @@ function processSegments(
       // add these trains to the segment parent
       segmentParentEl.append(tracksParentEl);
     } else if (segments[i].type === 'turn-lane') {
-      groundMixinId = 'drive-lane'; // use normal drive lane road material
+      segmentPreset = 'drive-lane'; // use normal drive lane road material
       var markerMixinId = variantList[1]; // set the mixin of the road markings to match the current variant name
 
       // Fix streetmix inbound turn lane orientation (change left to right) per: https://github.com/streetmix/streetmix/issues/683
@@ -1141,7 +1141,7 @@ function processSegments(
         segmentParentEl.append(stencilsParentEl);
       }
     } else if (segments[i].type === 'divider' && variantList[0] === 'bollard') {
-      groundMixinId = 'divider';
+      segmentPreset = 'divider';
       // make some bollards
       const bollardsParentEl = createBollardsParentElement();
       cloneMixinAsChildren({
@@ -1155,7 +1155,7 @@ function processSegments(
       repeatCount[0] = 1;
       repeatCount[1] = parseInt(length) / 4;
     } else if (segments[i].type === 'divider' && variantList[0] === 'flowers') {
-      groundMixinId = 'grass';
+      segmentPreset = 'grass';
       segmentParentEl.append(
         createDividerVariant('flowers', clonedObjectRadius, 2.25)
       );
@@ -1163,7 +1163,7 @@ function processSegments(
       segments[i].type === 'divider' &&
       variantList[0] === 'planting-strip'
     ) {
-      groundMixinId = 'grass';
+      segmentPreset = 'grass';
       segmentParentEl.append(
         createDividerVariant('planting-strip', clonedObjectRadius, 2.25)
       );
@@ -1171,7 +1171,7 @@ function processSegments(
       segments[i].type === 'divider' &&
       variantList[0] === 'planter-box'
     ) {
-      groundMixinId = 'grass';
+      segmentPreset = 'grass';
       segmentParentEl.append(
         createDividerVariant('planter-box', clonedObjectRadius, 2.45)
       );
@@ -1179,7 +1179,7 @@ function processSegments(
       segments[i].type === 'divider' &&
       variantList[0] === 'palm-tree'
     ) {
-      groundMixinId = 'grass';
+      segmentPreset = 'grass';
       const treesParentEl = createTreesParentElement();
       cloneMixinAsChildren({
         objectMixinId: 'palm-tree',
@@ -1192,7 +1192,7 @@ function processSegments(
       segments[i].type === 'divider' &&
       variantList[0] === 'big-tree'
     ) {
-      groundMixinId = 'grass';
+      segmentPreset = 'grass';
       const treesParentEl = createTreesParentElement();
       cloneMixinAsChildren({
         objectMixinId: 'tree3',
@@ -1202,26 +1202,26 @@ function processSegments(
       });
       segmentParentEl.append(treesParentEl);
     } else if (segments[i].type === 'divider' && variantList[0] === 'bush') {
-      groundMixinId = 'grass';
+      segmentPreset = 'grass';
       segmentParentEl.append(
         createDividerVariant('bush', clonedObjectRadius, 2.25)
       );
     } else if (segments[i].type === 'divider' && variantList[0] === 'dome') {
-      groundMixinId = 'divider';
+      segmentPreset = 'divider';
       segmentParentEl.append(
         createDividerVariant('dome', clonedObjectRadius, 2.25)
       );
       repeatCount[0] = 1;
       repeatCount[1] = parseInt(length) / 4;
     } else if (segments[i].type === 'divider') {
-      groundMixinId = 'divider';
+      segmentPreset = 'divider';
       repeatCount[0] = 1;
       repeatCount[1] = parseInt(length) / 4;
     } else if (
       segments[i].type === 'temporary' &&
       variantList[0] === 'barricade'
     ) {
-      groundMixinId = 'drive-lane';
+      segmentPreset = 'drive-lane';
       segmentParentEl.append(
         createClonedVariants('temporary-barricade', clonedObjectRadius, 2.25)
       );
@@ -1229,7 +1229,7 @@ function processSegments(
       segments[i].type === 'temporary' &&
       variantList[0] === 'traffic-cone'
     ) {
-      groundMixinId = 'drive-lane';
+      segmentPreset = 'drive-lane';
       segmentParentEl.append(
         createClonedVariants('temporary-traffic-cone', clonedObjectRadius, 2.25)
       );
@@ -1237,7 +1237,7 @@ function processSegments(
       segments[i].type === 'temporary' &&
       variantList[0] === 'jersey-barrier-plastic'
     ) {
-      groundMixinId = 'drive-lane';
+      segmentPreset = 'drive-lane';
       segmentParentEl.append(
         createClonedVariants(
           'temporary-jersey-barrier-plastic',
@@ -1249,7 +1249,7 @@ function processSegments(
       segments[i].type === 'temporary' &&
       variantList[0] === 'jersey-barrier-concrete'
     ) {
-      groundMixinId = 'drive-lane';
+      segmentPreset = 'drive-lane';
       segmentParentEl.append(
         createClonedVariants(
           'temporary-jersey-barrier-concrete',
@@ -1326,10 +1326,10 @@ function processSegments(
         )
       );
     } else if (segments[i].type === 'food-truck') {
-      groundMixinId = 'drive-lane';
+      segmentPreset = 'drive-lane';
       segmentParentEl.append(createFoodTruckElement(variantList, length));
     } else if (segments[i].type === 'flex-zone') {
-      groundMixinId = 'bright-lane';
+      segmentPreset = 'parking-lane';
       segmentParentEl.append(
         createFlexZoneElement(variantList, length, showVehicles)
       );
@@ -1417,13 +1417,13 @@ function processSegments(
       // add bike racks to the segment parent
       segmentParentEl.append(bikeRacksParentEl);
     } else if (segments[i].type === 'magic-carpet') {
-      groundMixinId = 'drive-lane';
+      segmentPreset = 'drive-lane';
       segmentParentEl.append(createMagicCarpetElement(showVehicles));
     } else if (segments[i].type === 'outdoor-dining') {
-      groundMixinId = variantList[1] === 'road' ? 'drive-lane' : 'sidewalk';
+      segmentPreset = variantList[1] === 'road' ? 'drive-lane' : 'sidewalk';
       segmentParentEl.append(createOutdoorDining(length, elevationPosY));
     } else if (segments[i].type === 'parklet') {
-      groundMixinId = 'drive-lane';
+      segmentPreset = 'drive-lane';
       segmentParentEl.append(createParkletElement(length, variantList));
     } else if (segments[i].type === 'bikeshare') {
       // make the parent for all the stations
@@ -1527,25 +1527,25 @@ function processSegments(
       segments[i].type === 'separator' &&
       variantList[0] === 'dashed'
     ) {
-      groundMixinId = 'markings dashed-stripe';
+      segmentPreset = 'markings dashed-stripe';
       positionY = elevationPosY + 0.01; // make sure the lane marker is above the asphalt
       // for all markings material property repeat = "1 25". So every 150/25=6 meters put a dash
       repeatCount[0] = 1;
       repeatCount[1] = parseInt(length / 6);
     } else if (segments[i].type === 'separator' && variantList[0] === 'solid') {
-      groundMixinId = 'markings solid-stripe';
+      segmentPreset = 'markings solid-stripe';
       positionY = elevationPosY + 0.01; // make sure the lane marker is above the asphalt
     } else if (
       segments[i].type === 'separator' &&
       variantList[0] === 'doubleyellow'
     ) {
-      groundMixinId = 'markings solid-doubleyellow';
+      segmentPreset = 'markings solid-doubleyellow';
       positionY = elevationPosY + 0.01; // make sure the lane marker is above the asphalt
     } else if (
       segments[i].type === 'separator' &&
       variantList[0] === 'shortdashedyellow'
     ) {
-      groundMixinId = 'markings yellow short-dashed-stripe';
+      segmentPreset = 'markings yellow short-dashed-stripe';
       positionY = elevationPosY + 0.01; // make sure the lane marker is above the asphalt
       // for short-dashed-stripe every 3 meters put a dash
       repeatCount[0] = 1;
@@ -1554,13 +1554,13 @@ function processSegments(
       segments[i].type === 'separator' &&
       variantList[0] === 'soliddashedyellow'
     ) {
-      groundMixinId = 'markings yellow solid-dashed';
+      segmentPreset = 'markings yellow solid-dashed';
       positionY = elevationPosY + 0.01; // make sure the lane marker is above the asphalt
     } else if (
       segments[i].type === 'separator' &&
       variantList[0] === 'soliddashedyellowinverted'
     ) {
-      groundMixinId = 'markings yellow solid-dashed';
+      segmentPreset = 'markings yellow solid-dashed';
       positionY = elevationPosY + 0.01; // make sure the lane marker is above the asphalt
       rotationY = '180';
       repeatCount[0] = 1;
@@ -1568,7 +1568,7 @@ function processSegments(
     } else if (segments[i].type === 'parking-lane') {
       let reusableObjectStencilsParentEl;
 
-      groundMixinId = 'bright-lane';
+      segmentPreset = 'bright-lane';
       let parkingMixin = 'stencils parking-t';
 
       const carCount = 5;
@@ -1646,13 +1646,17 @@ function processSegments(
       segmentParentEl.append(reusableObjectStencilsParentEl);
     }
 
+    // if this thing is a sidewalk, make segmentPreset sidewalk
+    if (streetmixParsersTested.isSidewalk(segments[i].type)) {
+      segmentPreset = 'sidewalk';
+    }
     // add new object
     if (segments[i].type !== 'separator') {
       segmentParentEl.append(
         createSegmentElement(
           segmentWidthInMeters,
           positionY,
-          groundMixinId,
+          segmentPreset,
           length,
           repeatCount,
           elevation,
@@ -1664,7 +1668,7 @@ function processSegments(
         createSeparatorElement(
           positionY,
           rotationY,
-          groundMixinId,
+          segmentPreset,
           length,
           repeatCount,
           elevation
