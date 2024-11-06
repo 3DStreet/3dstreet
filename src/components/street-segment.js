@@ -74,11 +74,6 @@ AFRAME.registerComponent('street-segment', {
       preset = 'drive-lane';
     }
     this.el.setAttribute('street-segment', 'surface', presets[preset].surface);
-    if (presets[preset].color) {
-      this.el.setAttribute('street-segment', 'color', presets[preset].color);
-    } else {
-      this.el.setAttribute('street-segment', 'color', '#ffffff');
-    }
   },
   update: function (oldData) {
     const data = this.data;

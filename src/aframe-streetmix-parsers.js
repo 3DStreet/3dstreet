@@ -348,13 +348,13 @@ function createSidewalkClonedVariants(
 }
 
 function getSegmentColor(variant) {
-  if ((variant === 'colored') | (variant === 'red')) {
+  if ((variant === 'red') | (variant === 'colored')) {
     return COLORS.red;
   }
   if (variant === 'blue') {
     return COLORS.blue;
   }
-  if (variant === 'grass') {
+  if ((variant === 'green') | (variant === 'grass')) {
     return COLORS.green;
   }
   return COLORS.white;
@@ -1152,8 +1152,6 @@ function processSegments(
       });
       // add the bollards to the segment parent
       segmentParentEl.append(bollardsParentEl);
-      repeatCount[0] = 1;
-      repeatCount[1] = parseInt(length) / 4;
     } else if (segments[i].type === 'divider' && variantList[0] === 'flowers') {
       segmentPreset = 'grass';
       segmentParentEl.append(
@@ -1211,12 +1209,8 @@ function processSegments(
       segmentParentEl.append(
         createDividerVariant('dome', clonedObjectRadius, 2.25)
       );
-      repeatCount[0] = 1;
-      repeatCount[1] = parseInt(length) / 4;
     } else if (segments[i].type === 'divider') {
       segmentPreset = 'divider';
-      repeatCount[0] = 1;
-      repeatCount[1] = parseInt(length) / 4;
     } else if (
       segments[i].type === 'temporary' &&
       variantList[0] === 'barricade'
