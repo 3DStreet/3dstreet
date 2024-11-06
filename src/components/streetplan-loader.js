@@ -56,6 +56,9 @@ AFRAME.registerComponent('streetplan-loader', {
     );
     el.emit('streetplan-loader-street-loaded');
   },
+  init: function () {
+    this.el.setAttribute('streetplan-loader', 'synchronize', true);
+  },
   update: function (oldData) {
     // fired at start and at each subsequent change of any schema value
     // This method may fire a few times when viewing a streetmix street in 3dstreet:
