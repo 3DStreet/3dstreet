@@ -13,11 +13,12 @@ import {
   Edit24Icon
 } from '../../icons';
 import Events from '../../lib/Events';
-import { Button, ProfileButton } from '../components';
+import { Button, ProfileButton, Logo } from '../components';
 import { sendMetric } from '../../services/ga.js';
 import posthog from 'posthog-js';
 import { UndoRedo } from '../components/UndoRedo';
 import debounce from 'lodash-es/debounce';
+import { CameraToolbar } from '../viewport/CameraToolbar';
 // const LOCALSTORAGE_MOCAP_UI = "aframeinspectormocapuienabled";
 
 /**
@@ -31,7 +32,8 @@ export default class Toolbar extends Component {
       showLoadBtn: true,
       isSavingScene: false,
       pendingSceneSave: false,
-      notification: null
+      notification: null,
+      inspectorEnabled: true
     };
     this.saveButtonRef = React.createRef();
   }
@@ -44,6 +46,9 @@ export default class Toolbar extends Component {
         // Debounce the cloudSaveHandler call
         this.debouncedCloudSaveHandler();
       }
+    });
+    Events.on('inspectortoggle', (enabled) => {
+      this.setState({ inspectorEnabled: enabled });
     });
   }
 
@@ -301,94 +306,122 @@ export default class Toolbar extends Component {
     }));
   };
 
+  toggleEdit = () => {
+    if (this.state.inspectorEnabled) {
+      AFRAME.INSPECTOR.close();
+    } else {
+      AFRAME.INSPECTOR.open();
+    }
+  };
+
   render() {
+    const isEditor = !!this.state.inspectorEnabled;
     return (
-      <div id="toolbar">
-        <div className="toolbarActions">
-          <div>
-            <Button
-              leadingIcon={<Edit24Icon />}
-              onClick={this.newHandler}
-              disabled={this.state.isSavingScene}
-              variant="toolbtn"
-            >
-              <div className="hideInLowResolution">New</div>
-            </Button>
+      <div id="toolbar" className="justify-center m-4">
+        <div className="grid grid-cols-5 grid-flow-dense justify-between">
+          <div className="col-span-2">
+            <Logo onToggleEdit={this.toggleEdit} isEditor={isEditor} />
           </div>
-          {this.props.currentUser ? (
-            <div className="saveButtonWrapper" ref={this.saveButtonRef}>
-              <Button
-                leadingIcon={<Save24Icon />}
-                onClick={this.toggleSaveActionState.bind(this)}
-                disabled={this.state.isSavingScene}
-                variant="toolbtn"
-              >
-                <div className="hideInLowResolution">Save</div>
-              </Button>
-              {this.state.isSaveActionActive && (
-                <div className="dropdownedButtons">
+          {isEditor && (
+            <>
+              <div className="flex items-center justify-center col-span-1">
+                <CameraToolbar />
+              </div>
+              <div className="flex items-center justify-end space-x-2 col-span-2">
+                <Button
+                  leadingIcon={<Edit24Icon />}
+                  onClick={this.newHandler}
+                  disabled={this.state.isSavingScene}
+                  variant="toolbtn"
+                >
+                  <div>New</div>
+                </Button>
+                {this.props.currentUser ? (
+                  <div
+                    className="saveButtonWrapper relative"
+                    ref={this.saveButtonRef}
+                  >
+                    <Button
+                      leadingIcon={<Save24Icon />}
+                      onClick={this.toggleSaveActionState.bind(this)}
+                      disabled={this.state.isSavingScene}
+                      variant="toolbtn"
+                    >
+                      <div>Save</div>
+                    </Button>
+                    {this.state.isSaveActionActive && (
+                      <div className="dropdownedButtons">
+                        <Button
+                          leadingIcon={<Cloud24Icon />}
+                          variant="white"
+                          onClick={this.cloudSaveHandler}
+                          disabled={
+                            this.state.isSavingScene || !this.isAuthor()
+                          }
+                        >
+                          <div>Save</div>
+                        </Button>
+                        <Button
+                          leadingIcon={<Cloud24Icon />}
+                          variant="white"
+                          onClick={() =>
+                            this.cloudSaveHandlerWithImageUpload(true)
+                          }
+                          disabled={this.state.isSavingScene}
+                        >
+                          <div>Save As...</div>
+                        </Button>
+                      </div>
+                    )}
+                  </div>
+                ) : (
                   <Button
-                    leadingIcon={<Cloud24Icon />}
-                    variant="white"
-                    onClick={this.cloudSaveHandler}
-                    disabled={this.state.isSavingScene || !this.isAuthor()}
+                    leadingIcon={<Save24Icon />}
+                    onClick={this.handleUnsignedSaveClick}
+                    disabled={this.state.isSavingScene}
+                    variant="toolbtn"
                   >
                     <div>Save</div>
                   </Button>
+                )}
+                {this.state.showLoadBtn && (
                   <Button
-                    leadingIcon={<Cloud24Icon />}
-                    variant="white"
-                    onClick={() => this.cloudSaveHandlerWithImageUpload(true)}
-                    disabled={this.state.isSavingScene}
+                    leadingIcon={<Upload24Icon />}
+                    onClick={() => Events.emit('openscenesmodal')}
+                    variant="toolbtn"
                   >
-                    <div>Save As...</div>
+                    <div>Open</div>
                   </Button>
+                )}
+                <Button
+                  leadingIcon={<ScreenshotIcon />}
+                  onClick={() => {
+                    this.makeScreenshot();
+                    Events.emit('openscreenshotmodal');
+                  }}
+                  variant="toolbtn"
+                >
+                  <div>Share</div>
+                </Button>
+                <div
+                  onClick={() =>
+                    this.setState((prevState) => ({
+                      ...prevState,
+                      isSignInModalActive: true
+                    }))
+                  }
+                >
+                  <ProfileButton />
                 </div>
-              )}
-            </div>
-          ) : (
-            <Button
-              leadingIcon={<Save24Icon />}
-              onClick={this.handleUnsignedSaveClick}
-              disabled={this.state.isSavingScene}
-              variant="toolbtn"
-            >
-              <div className="hideInLowResolution">Save</div>
-            </Button>
+              </div>
+            </>
           )}
-          {this.state.showLoadBtn && (
-            <Button
-              leadingIcon={<Upload24Icon />}
-              onClick={() => Events.emit('openscenesmodal')}
-              variant="toolbtn"
-            >
-              <div className="hideInLowResolution">Open</div>
-            </Button>
-          )}
-          <Button
-            leadingIcon={<ScreenshotIcon />}
-            onClick={() => {
-              this.makeScreenshot();
-              Events.emit('openscreenshotmodal');
-            }}
-            variant="toolbtn"
-          >
-            <div className="hideInLowResolution">Share</div>
-          </Button>
-          <div
-            onClick={() =>
-              this.setState((prevState) => ({
-                ...prevState,
-                isSignInModalActive: true
-              }))
-            }
-          >
-            <ProfileButton />
+        </div>
+        {isEditor && (
+          <div className="undoRedoActions flex justify-end space-x-2 mt-2 mr-14">
+            <UndoRedo />
           </div>
-        </div>
-        <div className="undoRedoActions">
-          <UndoRedo />
-        </div>
+        )}
       </div>
     );
   }

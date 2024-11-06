@@ -340,9 +340,6 @@ export default class SceneGraph extends React.Component {
 
     return (
       <div id="scenegraph" className="scenegraph">
-        <div className="scenegraph-toolbar">
-          <ToolbarWrapper />
-        </div>
         <div
           className={className}
           tabIndex="0"

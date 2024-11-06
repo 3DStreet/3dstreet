@@ -85,10 +85,17 @@ body {
 	width: 100%;
 	padding: 0px 0;
 	position: fixed;
-	top: 39px;
-	left: 40px;
+	/* top: 39px;
+	left: 40px; */
 	z-index: 999999;
 }
+
+.viewer-logo-img {
+    width: 48px;
+    height: 48px;
+    object-fit: contain;
+  }
+
 
 .viewer-header-wrapper {
 	width: 100%;

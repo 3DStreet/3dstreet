@@ -82,7 +82,7 @@ export default class Sidebar extends React.Component {
         <div className={className} tabIndex="0">
           {this.state.rightBarHide ? (
             <>
-              <div id="layers-title" onClick={this.toggleRightBar}>
+              <div onClick={this.toggleRightBar}>
                 <div className={'layersBlock'}>
                   <LayersIcon />
                   <span>{entityName || formattedMixin}</span>

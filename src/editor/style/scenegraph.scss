@@ -1,15 +1,9 @@
 @use './variables.scss';
 #toolbar {
-  position: fixed;
-  top: 36px;
-  right: 32px;
+  // top: 36px;
+  // left: 32px;
   height: 43px;
-  width: fit-content;
   z-index: 10;
-  .undoRedoActions {
-    padding-top: 12px;
-  }
-  .undoRedoActions,
   .toolbarActions {
     width: fit-content;
     height: 43px;
@@ -383,13 +377,5 @@
   a {
     float: right;
     margin: 10px;
-  }
-}
-@media screen and (max-width: 1400px) {
-  #toolbar {
-    max-width: 300px;
-    .hideInLowResolution {
-      display: none !important;
-    }
   }
 }
