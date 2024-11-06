@@ -894,26 +894,6 @@ function createCenteredStreetElement(segments) {
   return streetEl;
 }
 
-// instead, create entity with street-segment component
-function createSegmentElement(
-  segmentWidthInMeters,
-  positionY,
-  mixinId,
-  length,
-  repeatCount,
-  elevation = 0,
-  color
-) {
-  var segmentEl = document.createElement('a-entity');
-  segmentEl.setAttribute('street-segment', 'preset', mixinId);
-  segmentEl.setAttribute('street-segment', 'width', segmentWidthInMeters);
-  segmentEl.setAttribute('street-segment', 'length', length);
-  segmentEl.setAttribute('street-segment', 'elevation', elevation);
-  segmentEl.setAttribute('street-segment', 'color', color);
-  segmentEl.setAttribute('position', { y: positionY });
-  return segmentEl;
-}
-
 function createSeparatorElement(
   positionY,
   rotationY,
@@ -1646,17 +1626,16 @@ function processSegments(
     }
     // add new object
     if (segments[i].type !== 'separator') {
-      segmentParentEl.append(
-        createSegmentElement(
-          segmentWidthInMeters,
-          positionY,
-          segmentPreset,
-          length,
-          repeatCount,
-          elevation,
-          segmentColor
-        )
+      segmentParentEl.setAttribute('street-segment', 'preset', segmentPreset);
+      segmentParentEl.setAttribute(
+        'street-segment',
+        'width',
+        segmentWidthInMeters
       );
+      segmentParentEl.setAttribute('street-segment', 'length', length);
+      segmentParentEl.setAttribute('street-segment', 'elevation', elevation);
+      segmentParentEl.setAttribute('street-segment', 'color', segmentColor);
+      // segmentParentEl.setAttribute('position', { y: positionY });
     } else {
       segmentParentEl.append(
         createSeparatorElement(

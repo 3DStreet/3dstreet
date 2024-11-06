@@ -21,7 +21,7 @@ AFRAME.registerComponent('street-segment', {
       type: 'number'
     },
     elevation: {
-      type: 'number',
+      type: 'int',
       default: 0
     },
     direction: {
@@ -83,23 +83,19 @@ AFRAME.registerComponent('street-segment', {
     }
     // if oldData is defined AND the "preset" property has changed, then update
     if (oldData.preset !== undefined && oldData.preset !== data.preset) {
-      this.applyPreset(data.preset);
+      this.applyPreset(data.preset, true);
       return;
     }
     this.clearMesh();
     this.calculateHeight(data.elevation);
-    this.el.setAttribute(
-      'position',
-      'y',
-      this.calculateYPosition(data.elevation)
-    );
+    this.el.object3D.position.y = this.calculateYPosition(data.elevation); // Direct Object3D manipulation
     this.generateMesh(data);
   },
   // for streetmix elevation number values of -1, 0, 1, 2, calculate heightLevel in three.js meters units
   calculateHeight: function (elevation) {
     const heightLevels = [0.2, 0.4, 0.6];
     if (elevation === -1) {
-      this.height = 0;
+      this.height = 0.2;
       return;
     }
     this.height = heightLevels[elevation];
@@ -111,8 +107,10 @@ AFRAME.registerComponent('street-segment', {
       positionY = -0.1;
     } else if (elevation === 2) {
       positionY = 0.1;
-    } else {
+    } else if (elevation === 1) {
       positionY = 0;
+    } else if (elevation === -1) {
+      positionY = -0.2;
     }
     return positionY;
   },
