@@ -1,25 +1,24 @@
-import { useEffect, useState } from 'react';
 import styles from './SceneEditTitle.module.scss';
 import { useAuthContext } from '../../../contexts/index.js';
 import { updateSceneIdAndTitle } from '../../../api/scene';
+import useStore from '../../../../store.js';
 
 const SceneEditTitle = ({ sceneData }) => {
-  const [title, setTitle] = useState(sceneData?.sceneTitle);
+  const title = useStore((state) => state.sceneTitle);
+  const setTitle = useStore((state) => state.setSceneTitle);
   const { currentUser } = useAuthContext();
 
-  const sceneId = STREET.utils.getCurrentSceneId();
+  // useEffect(() => {
+  //   if (sceneData.sceneId === sceneId) {
+  //     setTitle(sceneData.sceneTitle);
+  //   }
+  // }, [sceneData?.sceneTitle, sceneData?.sceneId, sceneId]);
 
-  useEffect(() => {
-    if (sceneData.sceneId === sceneId) {
-      setTitle(sceneData.sceneTitle);
-    }
-  }, [sceneData?.sceneTitle, sceneData?.sceneId, sceneId]);
-
-  useEffect(() => {
-    AFRAME.scenes[0].addEventListener('newTitle', (event) => {
-      setTitle(event.detail.sceneTitle ?? '');
-    });
-  }, []);
+  // useEffect(() => {
+  //   AFRAME.scenes[0].addEventListener('newTitle', (event) => {
+  //     setTitle(event.detail.sceneTitle ?? '');
+  //   });
+  // }, []);
 
   const handleEditClick = () => {
     const newTitle = prompt('Edit the title:', title);
@@ -50,13 +49,11 @@ const SceneEditTitle = ({ sceneData }) => {
 
   return (
     <div className={styles.wrapper}>
-      {
-        <div className={styles.readOnly}>
-          <p className={styles.title} onClick={handleEditClick}>
-            {title || 'Untitled'}
-          </p>
-        </div>
-      }
+      <div className={styles.readOnly}>
+        <p className={styles.title} onClick={handleEditClick}>
+          {title || 'Untitled'}
+        </p>
+      </div>
     </div>
   );
 };

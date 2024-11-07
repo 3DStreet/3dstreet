@@ -237,7 +237,6 @@ export default class Main extends Component {
   render() {
     const scene = this.state.sceneEl;
     const isEditor = !!this.state.inspectorEnabled;
-    const sceneData = AFRAME.scenes[0].getAttribute('metadata', 'sceneTitle');
 
     return (
       <div id="inspectorContainer">
@@ -315,7 +314,7 @@ export default class Main extends Component {
         )}
         {this.state.inspectorEnabled && (
           <div id="scene-title" className="clickable">
-            <SceneEditTitle sceneData={sceneData} />
+            <SceneEditTitle />
           </div>
         )}
         {this.state.inspectorEnabled && (

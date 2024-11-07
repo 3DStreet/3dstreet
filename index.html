@@ -76,7 +76,7 @@
 
   <a-scene
     renderer="colorManagement: true; physicallyCorrectLights: true; anisotropy: 16; logarithmicDepthBuffer: true;"
-    inspector="url: ./dist/3dstreet-editor.js" timed-inspector="1" loading-screen="enabled: false" notify metadata
+    timed-inspector="1" loading-screen="enabled: false" notify metadata
     scene-title reflection device-orientation-permission-ui="enabled: false"
     webxr="requiredFeatures:hit-test,local-floor;referenceSpaceType:local-floor;" xr-mode-ui="XRMode: ar">
     <a-assets>
@@ -129,27 +129,5 @@
     });
   });
 </script>
-<script>
-
-  function startEditor() {
-    var sceneEl = document.querySelector('a-scene');
-    sceneEl.components.inspector.openInspector();
-    document.querySelector('.viewer-header-wrapper').style.display = 'none';
-  }
-
-  // launch the inspector in x seconds if ?viewer querystring NOT present
-  AFRAME.registerComponent('timed-inspector', {
-    init: function () {
-      const urlParams = new URLSearchParams(window.location.search);
-      const viewerParam = urlParams.get('viewer');
-      if (!viewerParam) {
-        setTimeout(function () {
-          window.postMessage('INJECT_AFRAME_INSPECTOR');
-        }, this.data * 1000);
-      }
-    }
-  });
-</script>
-<!-- <script src="./dist/3dstreet-editor.js"></script> -->
 
 </html>

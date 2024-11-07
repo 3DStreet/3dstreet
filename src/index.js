@@ -1,6 +1,7 @@
 /* global AFRAME, XMLHttpRequest, VERSION */
 import 'aframe-cursor-teleport-component';
 import 'aframe-extras/controls/index.js';
+import useStore from './store.js';
 var streetmixParsers = require('./aframe-streetmix-parsers');
 var streetmixUtils = require('./tested/streetmix-utils');
 require('./json-utils_1.1.js');
@@ -20,6 +21,10 @@ require('./components/street-geo.js');
 require('./components/street-environment.js');
 require('./components/intersection.js');
 require('./components/obb-clipping.js');
+require('./editor/index.js');
+// import { inspector } from './editor/index.js';
+
+const state = useStore.getState();
 
 if (typeof VERSION !== 'undefined') {
   console.log(`3DStreet Version: ${VERSION}`);
@@ -192,30 +197,14 @@ AFRAME.registerComponent('streetmix-loader', {
         const streetmixSegments = streetData.segments;
 
         const streetmixName = streetmixResponseObject.name;
-        console.log('streetmixName', streetmixName);
 
         el.setAttribute('streetmix-loader', 'name', streetmixName);
-
-        let currentSceneTitle;
-        if (AFRAME.scenes[0] && AFRAME.scenes[0].getAttribute('metadata')) {
-          currentSceneTitle =
-            AFRAME.scenes[0].getAttribute('metadata').sceneTitle;
-        }
-        if (!currentSceneTitle) {
-          // only set title from streetmix if none exists
-          AFRAME.scenes[0].setAttribute(
-            'metadata',
-            'sceneTitle',
-            streetmixName
-          );
-          console.log(
-            'therefore setting metadata sceneTitle as streetmixName',
-            streetmixName
-          );
-        }
+        // console.log('useStore', useStore);
+        state.setSceneTitle(streetmixName);
 
         el.setAttribute('data-layer-name', 'Streetmix • ' + streetmixName);
 
+        console.log('Call stack:', new Error().stack);
         if (data.showBuildings) {
           el.setAttribute('street', 'right', streetData.rightBuildingVariant);
           el.setAttribute('street', 'left', streetData.leftBuildingVariant);

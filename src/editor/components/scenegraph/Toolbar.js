@@ -42,7 +42,6 @@ export default class Toolbar extends Component {
     document.addEventListener('click', this.handleClickOutsideSave);
     Events.on('historychanged', (cmd) => {
       if (cmd) {
-        console.log('historychanged', cmd);
         // Debounce the cloudSaveHandler call
         this.debouncedCloudSaveHandler();
       }
