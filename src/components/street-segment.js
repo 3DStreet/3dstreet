@@ -7,6 +7,15 @@
 </a-entity>
 */
 
+var COLORS = {
+  red: '#ff9393',
+  blue: '#00b6b6',
+  green: '#adff83',
+  yellow: '#f7d117',
+  white: '#ffffff',
+  brown: '#664B00'
+};
+
 AFRAME.registerComponent('street-segment', {
   schema: {
     preset: {
@@ -41,32 +50,39 @@ AFRAME.registerComponent('street-segment', {
   init: function () {
     this.height = 0.2; // default height of segment surface box
     // parse preset into default surface, color
-    this.applyPreset(this.data.preset);
+    this.applyPreset(this.data.preset, false);
   },
-  applyPreset: function (preset) {
+  applyPreset: function (preset, clobber = false) {
     // parse preset into
     // default surface, color
     const presets = {
       'drive-lane': {
-        surface: 'asphalt'
+        surface: 'asphalt',
+        color: COLORS.white
       },
       'bus-lane': {
-        surface: 'asphalt'
+        surface: 'asphalt',
+        color: COLORS.red
       },
       'bike-lane': {
-        surface: 'asphalt'
+        surface: 'asphalt',
+        color: COLORS.green
       },
       sidewalk: {
-        surface: 'sidewalk'
+        surface: 'sidewalk',
+        color: COLORS.white
       },
       'parking-lane': {
-        surface: 'concrete'
+        surface: 'concrete',
+        color: COLORS.white
       },
       divider: {
-        surface: 'hatched'
+        surface: 'hatched',
+        color: COLORS.white
       },
       grass: {
-        surface: 'grass'
+        surface: 'grass',
+        color: COLORS.white
       }
     };
     // if preset is not found, then use default preset
@@ -74,6 +90,9 @@ AFRAME.registerComponent('street-segment', {
       preset = 'drive-lane';
     }
     this.el.setAttribute('street-segment', 'surface', presets[preset].surface);
+    if (clobber) {
+      this.el.setAttribute('street-segment', 'color', presets[preset].color);
+    }
   },
   update: function (oldData) {
     const data = this.data;
