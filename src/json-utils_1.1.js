@@ -1,9 +1,10 @@
+import useStore from './store';
+
 /* global AFRAME, Node */
 /* version: 1.0 */
 window.STREET = {};
 var assetsUrl;
 STREET.utils = {};
-
 function getSceneUuidFromURLHash() {
   const currentHash = window.location.hash;
   const match = currentHash.match(/#\/scenes\/([a-zA-Z0-9-]+)\.json/);
@@ -32,14 +33,6 @@ function getAuthorId() {
 }
 STREET.utils.getAuthorId = getAuthorId;
 
-const getCurrentSceneTitle = () => {
-  const currentSceneTitle =
-    AFRAME.scenes[0].getAttribute('metadata').sceneTitle;
-  console.log('currentSceneTitle', currentSceneTitle);
-  return currentSceneTitle;
-};
-STREET.utils.getCurrentSceneTitle = getCurrentSceneTitle;
-
 /*
 Takes one or more elements (from a DOM queryselector call)
 and returns a Javascript object
@@ -61,7 +54,7 @@ function convertDOMElToObject(entity) {
   }
 
   return {
-    title: STREET.utils.getCurrentSceneTitle(),
+    title: useStore.getState().sceneTitle,
     version: '1.0',
     data: data
   };
@@ -469,17 +462,10 @@ function createEntityFromObj(entityData, parentEl) {
 
 AFRAME.registerComponent('metadata', {
   schema: {
-    sceneTitle: { default: '' },
     sceneId: { default: '' },
     authorId: { default: '' }
   },
-  init: function () {},
-  update: function (oldData) {
-    const sceneTitle = this.data.sceneTitle;
-    if (sceneTitle !== oldData.sceneTitle) {
-      this.el.emit('newTitle', { sceneTitle: sceneTitle });
-    }
-  }
+  init: function () {}
 });
 
 AFRAME.registerComponent('set-loader-from-hash', {
@@ -651,7 +637,7 @@ function createElementsFromJSON(streetJSON, clearUrlHash) {
   const sceneTitle = streetObject.title;
   if (sceneTitle) {
     console.log('sceneTitle from createElementsFromJSON', sceneTitle);
-    AFRAME.scenes[0].setAttribute('metadata', 'sceneTitle', sceneTitle);
+    useStore.setState({ sceneTitle: sceneTitle });
   }
 
   const streetContainerEl = document.getElementById('street-container');

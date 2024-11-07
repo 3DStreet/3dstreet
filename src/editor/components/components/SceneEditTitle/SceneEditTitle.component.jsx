@@ -8,18 +8,6 @@ const SceneEditTitle = ({ sceneData }) => {
   const setTitle = useStore((state) => state.setSceneTitle);
   const { currentUser } = useAuthContext();
 
-  // useEffect(() => {
-  //   if (sceneData.sceneId === sceneId) {
-  //     setTitle(sceneData.sceneTitle);
-  //   }
-  // }, [sceneData?.sceneTitle, sceneData?.sceneId, sceneId]);
-
-  // useEffect(() => {
-  //   AFRAME.scenes[0].addEventListener('newTitle', (event) => {
-  //     setTitle(event.detail.sceneTitle ?? '');
-  //   });
-  // }, []);
-
   const handleEditClick = () => {
     const newTitle = prompt('Edit the title:', title);
 
@@ -38,7 +26,6 @@ const SceneEditTitle = ({ sceneData }) => {
           await updateSceneIdAndTitle(sceneData?.sceneId, newTitle);
         }
       }
-      AFRAME.scenes[0].setAttribute('metadata', 'sceneTitle', newTitle);
       AFRAME.scenes[0].setAttribute('metadata', 'sceneId', sceneData?.sceneId);
       STREET.notify.successMessage(`New scene title saved: ${newTitle}`);
     } catch (error) {

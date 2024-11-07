@@ -69,7 +69,6 @@ function newScene(
   // clear metadata
   if (clearMetaData) {
     AFRAME.scenes[0].setAttribute('metadata', 'sceneId', '');
-    AFRAME.scenes[0].setAttribute('metadata', 'sceneTitle', '');
     AFRAME.scenes[0].setAttribute('metadata', 'authorId', '');
   }
 

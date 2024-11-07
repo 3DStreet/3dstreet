@@ -25,8 +25,6 @@ AFRAME.registerComponent('streetplan-loader', {
     // streetplan alternative name
     // const streetplanAltName = streetData.altName;
 
-    console.log('streetplanName', streetplanName);
-
     let currentSceneTitle;
     const sceneEl = this.el.sceneEl;
     if (sceneEl && sceneEl.getAttribute('metadata')) {
