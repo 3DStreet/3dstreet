@@ -19,6 +19,7 @@ import posthog from 'posthog-js';
 import { UndoRedo } from '../components/UndoRedo';
 import debounce from 'lodash-es/debounce';
 import { CameraToolbar } from '../viewport/CameraToolbar';
+import useStore from '../../../store';
 // const LOCALSTORAGE_MOCAP_UI = "aframeinspectormocapuienabled";
 
 /**
@@ -129,7 +130,7 @@ export default class Toolbar extends Component {
       }
       // if there is no current user, show sign in modal
       let currentSceneId = STREET.utils.getCurrentSceneId();
-      let currentSceneTitle = STREET.utils.getCurrentSceneTitle();
+      let currentSceneTitle = useStore.getState().sceneTitle;
 
       posthog.capture('save_scene_clicked', {
         save_as: doSaveAs,

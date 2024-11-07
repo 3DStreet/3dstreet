@@ -204,7 +204,6 @@ AFRAME.registerComponent('streetmix-loader', {
 
         el.setAttribute('data-layer-name', 'Streetmix • ' + streetmixName);
 
-        console.log('Call stack:', new Error().stack);
         if (data.showBuildings) {
           el.setAttribute('street', 'right', streetData.rightBuildingVariant);
           el.setAttribute('street', 'left', streetData.leftBuildingVariant);

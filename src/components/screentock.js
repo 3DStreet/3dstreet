@@ -1,4 +1,5 @@
 /* AFRAME */
+import useStore from '../store';
 
 AFRAME.registerComponent('screentock', {
   schema: {
@@ -48,7 +49,7 @@ AFRAME.registerComponent('screentock', {
       ctx.textAlign = 'center';
       ctx.fillStyle = '#FFF';
       ctx.fillText(
-        STREET.utils.getCurrentSceneTitle(),
+        useStore.getState().sceneTitle,
         screenWidth - screenWidth / 2,
         screenHeight - 43
       );
