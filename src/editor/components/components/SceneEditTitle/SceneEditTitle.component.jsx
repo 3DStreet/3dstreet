@@ -21,13 +21,10 @@ const SceneEditTitle = ({ sceneData }) => {
 
   const saveNewTitle = async (newTitle) => {
     try {
-      if (sceneData?.sceneId) {
-        if (currentUser.uid === STREET.utils.getAuthorId()) {
-          await updateSceneIdAndTitle(sceneData?.sceneId, newTitle);
-        }
+      if (currentUser.uid === STREET.utils.getAuthorId()) {
+        await updateSceneIdAndTitle(STREET.utils.getCurrentSceneId(), newTitle);
+        STREET.notify.successMessage(`New scene title saved: ${newTitle}`);
       }
-      AFRAME.scenes[0].setAttribute('metadata', 'sceneId', sceneData?.sceneId);
-      STREET.notify.successMessage(`New scene title saved: ${newTitle}`);
     } catch (error) {
       console.error('Error with update title', error);
       STREET.notify.errorMessage(`Error updating scene title: ${error}`);

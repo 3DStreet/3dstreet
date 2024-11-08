@@ -14,7 +14,6 @@ import './style/index.scss';
 import posthog from 'posthog-js';
 import { commandsByType } from './lib/commands/index.js';
 
-console.log('editor');
 function Inspector() {
   this.assetsLoader = new AssetsLoader();
   this.exporters = { gltf: new GLTFExporter() };
@@ -23,7 +22,6 @@ function Inspector() {
   this.isFirstOpen = true;
   this.modules = {};
   this.opened = false;
-  console.log('Inspector');
   // Wait for stuff.
   const doInit = () => {
     if (!AFRAME.scenes.length) {
@@ -68,7 +66,6 @@ Inspector.prototype = {
     Shortcuts.init(this);
     this.initEvents();
 
-    console.log('initUI');
     this.selected = null;
 
     // Init React.
@@ -360,7 +357,6 @@ Inspector.prototype = {
 };
 
 const inspector = (AFRAME.INSPECTOR = new Inspector());
-console.log('inspector', inspector);
 posthog.init('phc_Yclai3qykyFi8AEFOrZsh6aS78SSooLzpDz9wQ9YAH9', {
   api_host: 'https://us.i.posthog.com',
   person_profiles: 'identified_only' // or 'always' to create profiles for anonymous users as well

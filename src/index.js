@@ -199,8 +199,9 @@ AFRAME.registerComponent('streetmix-loader', {
         const streetmixName = streetmixResponseObject.name;
 
         el.setAttribute('streetmix-loader', 'name', streetmixName);
-        // console.log('useStore', useStore);
-        state.setSceneTitle(streetmixName);
+        if (!state.sceneTitle) {
+          state.setSceneTitle(streetmixName);
+        }
 
         el.setAttribute('data-layer-name', 'Streetmix • ' + streetmixName);
 

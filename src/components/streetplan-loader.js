@@ -1,5 +1,8 @@
 /* global AFRAME, XMLHttpRequest */
+import useStore from '../store.js';
 var streetplanUtils = require('../streetplan/streetplan-utils.js');
+
+const state = useStore.getState();
 
 AFRAME.registerComponent('streetplan-loader', {
   dependencies: ['street'],
@@ -25,18 +28,8 @@ AFRAME.registerComponent('streetplan-loader', {
     // streetplan alternative name
     // const streetplanAltName = streetData.altName;
 
-    let currentSceneTitle;
-    const sceneEl = this.el.sceneEl;
-    if (sceneEl && sceneEl.getAttribute('metadata')) {
-      currentSceneTitle = sceneEl.getAttribute('metadata').sceneTitle;
-    }
-    if (!currentSceneTitle) {
-      // only set title from streetplan if none exists
-      sceneEl.setAttribute('metadata', 'sceneTitle', streetplanName);
-      console.log(
-        'therefore setting metadata sceneTitle as streetplanName',
-        streetplanName
-      );
+    if (!state.sceneTitle) {
+      state.setSceneTitle(streetplanName);
     }
 
     el.setAttribute('data-layer-name', 'StreetPlan • ' + streetplanName);
