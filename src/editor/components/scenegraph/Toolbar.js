@@ -138,7 +138,7 @@ export default class Toolbar extends Component {
 
       if (!this.props.currentUser) {
         console.log('no user');
-        useStore.setState({ modal: 'signin' });
+        useStore.getState().setModal('signin');
         return;
       }
 
@@ -152,7 +152,7 @@ export default class Toolbar extends Component {
         streetGeo['latitude'] &&
         streetGeo['longitude']
       ) {
-        useStore.setState({ modal: 'payment' });
+        useStore.getState().setModal('payment');
         return;
       }
       if (!this.isAuthor()) {
@@ -245,7 +245,7 @@ export default class Toolbar extends Component {
         streetGeo['latitude'] &&
         streetGeo['longitude']
       ) {
-        useStore.setState({ modal: 'payment' });
+        useStore.getState().setModal('payment');
         return;
       }
       this.cloudSaveHandler({ doSaveAs: false });
@@ -255,7 +255,7 @@ export default class Toolbar extends Component {
   handleUnsignedSaveClick = () => {
     posthog.capture('remix_scene_clicked');
     this.setState({ pendingSceneSave: true });
-    useStore.setState({ modal: 'signin' });
+    useStore.getState().setModal('signin');
   };
 
   makeScreenshot = () => {
@@ -389,7 +389,7 @@ export default class Toolbar extends Component {
                 {this.state.showLoadBtn && (
                   <Button
                     leadingIcon={<Upload24Icon />}
-                    onClick={() => useStore.setState({ modal: 'scenes' })}
+                    onClick={() => useStore.getState().setModal('scenes')}
                     variant="toolbtn"
                     className="min-w-[105px]"
                   >
@@ -400,7 +400,7 @@ export default class Toolbar extends Component {
                   leadingIcon={<ScreenshotIcon />}
                   onClick={() => {
                     this.makeScreenshot();
-                    useStore.setState({ modal: 'screenshot' });
+                    useStore.getState().setModal('screenshot');
                   }}
                   variant="toolbtn"
                   className="min-w-[105px]"

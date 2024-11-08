@@ -5,7 +5,7 @@ import useStore from '@/store.js';
 const IntroModal = () => {
   const isOpen = useStore((state) => state.modal === 'intro');
   const onClose = () => {
-    useStore.setState({ modal: null });
+    useStore.getState().setModal(null);
     localStorage.setItem('shownIntro', true);
   };
   return (
