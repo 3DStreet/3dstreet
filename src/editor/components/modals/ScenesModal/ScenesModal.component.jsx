@@ -25,7 +25,7 @@ const tabs = [
   }
 ];
 
-const ScenesModal = ({ isOpen, onClose, initialTab = 'owner', delay }) => {
+const ScenesModal = ({ initialTab = 'owner', delay = undefined }) => {
   const { currentUser } = useAuthContext();
   const [renderComponent, setRenderComponent] = useState(!delay);
   const [scenesData, setScenesData] = useState([]);
@@ -38,6 +38,8 @@ const ScenesModal = ({ isOpen, onClose, initialTab = 'owner', delay }) => {
   const [isLoading, setIsLoading] = useState(false);
   const [selectedTab, setSelectedTab] = useState(initialTab);
 
+  const setModal = useStore((state) => state.setModal);
+  const isOpen = useStore((state) => state.modal === 'scenes');
   const handleSceneClick = (scene, event) => {
     posthog.capture('scene_opened', {
       scene_id: scene.id,
@@ -138,6 +140,10 @@ const ScenesModal = ({ isOpen, onClose, initialTab = 'owner', delay }) => {
 
     fetchData();
   }, [isOpen, currentUser, selectedTab]); // eslint-disable-line
+
+  const onClose = () => {
+    setModal(null);
+  };
 
   const fetchUserScenes = async () => {
     return await getUserScenes(currentUser?.uid);

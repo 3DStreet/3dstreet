@@ -1,12 +1,11 @@
 import styles from './ProfileButton.module.scss';
 
 import { Button } from '../Button';
-import Events from '../../../lib/Events.js';
 import { Profile32Icon } from './icons.jsx';
 import { useAuthContext } from '../../../contexts';
 import posthog from 'posthog-js';
 import MsftProfileImg from '../../../../../ui_assets/profile-microsoft.png';
-
+import useStore from '@/store';
 /**
  * ProfileButton component.
  *
@@ -43,14 +42,14 @@ const renderProfileIcon = (currentUser) => {
 
 const ProfileButton = () => {
   const { currentUser } = useAuthContext();
-
+  const setModal = useStore((state) => state.setModal);
   const onClick = async () => {
     posthog.capture('profile_button_clicked', { is_logged_in: !!currentUser });
     if (currentUser) {
-      return Events.emit('openprofilemodal');
+      setModal('profile');
+    } else {
+      setModal('signin');
     }
-
-    return Events.emit('opensigninmodal');
   };
 
   return (

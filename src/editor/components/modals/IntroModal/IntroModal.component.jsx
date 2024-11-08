@@ -1,7 +1,13 @@
 import Modal from '../Modal.jsx';
 import MuxPlayer from '@mux/mux-player-react';
+import useStore from '@/store.js';
 
-const IntroModal = ({ isOpen, onClose }) => {
+const IntroModal = () => {
+  const isOpen = useStore((state) => state.modal === 'intro');
+  const onClose = () => {
+    useStore.setState({ modal: null });
+    localStorage.setItem('shownIntro', true);
+  };
   return (
     <Modal isOpen={isOpen} onClose={onClose} title="Welcome to 3DStreet">
       <MuxPlayer

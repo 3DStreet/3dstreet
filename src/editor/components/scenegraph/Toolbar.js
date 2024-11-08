@@ -20,6 +20,7 @@ import { UndoRedo } from '../components/UndoRedo';
 import debounce from 'lodash-es/debounce';
 import { CameraToolbar } from '../viewport/CameraToolbar';
 import useStore from '../../../store';
+
 // const LOCALSTORAGE_MOCAP_UI = "aframeinspectormocapuienabled";
 
 /**
@@ -141,7 +142,7 @@ export default class Toolbar extends Component {
 
       if (!this.props.currentUser) {
         console.log('no user');
-        Events.emit('opensigninmodal');
+        useStore.setState({ modal: 'signin' });
         return;
       }
 
@@ -155,7 +156,7 @@ export default class Toolbar extends Component {
         streetGeo['latitude'] &&
         streetGeo['longitude']
       ) {
-        Events.emit('openpaymentmodal');
+        useStore.setState({ modal: 'payment' });
         return;
       }
       if (!this.isAuthor()) {
@@ -249,7 +250,7 @@ export default class Toolbar extends Component {
         streetGeo['latitude'] &&
         streetGeo['longitude']
       ) {
-        Events.emit('openpaymentmodal');
+        useStore.setState({ modal: 'payment' });
         return;
       }
       this.cloudSaveHandler({ doSaveAs: false });
@@ -259,7 +260,7 @@ export default class Toolbar extends Component {
   handleUnsignedSaveClick = () => {
     posthog.capture('remix_scene_clicked');
     this.setState({ pendingSceneSave: true });
-    Events.emit('opensigninmodal');
+    useStore.setState({ modal: 'signin' });
   };
 
   makeScreenshot = () => {
@@ -387,7 +388,7 @@ export default class Toolbar extends Component {
                 {this.state.showLoadBtn && (
                   <Button
                     leadingIcon={<Upload24Icon />}
-                    onClick={() => Events.emit('openscenesmodal')}
+                    onClick={() => useStore.setState({ modal: 'scenes' })}
                     variant="toolbtn"
                   >
                     <div>Open</div>
@@ -397,7 +398,7 @@ export default class Toolbar extends Component {
                   leadingIcon={<ScreenshotIcon />}
                   onClick={() => {
                     this.makeScreenshot();
-                    Events.emit('openscreenshotmodal');
+                    useStore.setState({ modal: 'screenshot' });
                   }}
                   variant="toolbtn"
                 >
