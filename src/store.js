@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import { devtools } from 'zustand/middleware';
+import posthog from 'posthog-js';
 
 const firstModal = () => {
   let modal = window.location.hash.includes('payment')
@@ -24,7 +25,16 @@ const useStore = create(
       authorId: null,
       setAuthorId: (newAuthorId) => set({ authorId: newAuthorId }),
       modal: firstModal(),
-      setModal: (newModal) => set({ modal: newModal })
+      setModal: (newModal) => {
+        const currentModal = useStore.getState().modal;
+        if (currentModal) {
+          posthog.capture('modal_closed', { modal: currentModal });
+        }
+        if (newModal) {
+          posthog.capture('modal_opened', { modal: newModal });
+        }
+        set({ modal: newModal });
+      }
     }),
     { name: 'MyZustandStore' }
   )

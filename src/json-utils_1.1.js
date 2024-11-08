@@ -637,7 +637,7 @@ function createElementsFromJSON(streetJSON, clearUrlHash) {
   const sceneTitle = streetObject.title;
   if (sceneTitle) {
     console.log('sceneTitle from createElementsFromJSON', sceneTitle);
-    useStore.setState({ sceneTitle: sceneTitle });
+    useStore.getState().setSceneTitle(sceneTitle);
   }
 
   const streetContainerEl = document.getElementById('street-container');
