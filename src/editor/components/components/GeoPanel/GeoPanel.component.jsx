@@ -1,8 +1,8 @@
 import GeoImg from '../../../../../ui_assets/geo.png';
 import styles from './GeoPanel.module.scss';
-import Events from '../../../lib/Events';
 import { useAuthContext, useGeoContext } from '../../../contexts/index.js';
 import posthog from 'posthog-js';
+import useStore from '@/store';
 /**
  * GeoPanel component.
  *
@@ -11,14 +11,16 @@ import posthog from 'posthog-js';
  */
 const GeoPanel = () => {
   const { currentUser } = useAuthContext();
+  const setModal = useStore((state) => state.setModal);
+
   const onClick = () => {
     posthog.capture('geo_panel_clicked');
     if (!currentUser) {
-      Events.emit('opensigninmodal');
+      setModal('signin');
     } else if (currentUser.isPro) {
-      Events.emit('opengeomodal');
+      setModal('geo');
     } else {
-      Events.emit('openpaymentmodal');
+      setModal('payment');
     }
   };
 

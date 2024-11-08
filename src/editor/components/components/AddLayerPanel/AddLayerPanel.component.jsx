@@ -14,6 +14,7 @@ import Events from '../../../lib/Events';
 import pickPointOnGroundPlane from '../../../lib/pick-point-on-ground-plane';
 import { customLayersData, streetLayersData } from './layersData.js';
 import { LayersOptions } from './LayersOptions.js';
+import useStore from '@/store.js';
 
 // Create an empty image
 const emptyImg = new Image();
@@ -266,12 +267,18 @@ const cardMouseLeave = (mixinId) => {
   }
 };
 
-const AddLayerPanel = ({ onClose, isAddLayerPanelOpen }) => {
+const AddLayerPanel = () => {
+  const setModal = useStore((state) => state.setModal);
+  const isOpen = useStore((state) => state.modal === 'addlayer');
   // set the first Layers option when opening the panel
   const [selectedOption, setSelectedOption] = useState(LayersOptions[0].value);
   const [groupedMixins, setGroupedMixins] = useState([]);
   const { currentUser } = useAuthContext();
   const isProUser = currentUser && currentUser.isPro;
+
+  const onClose = () => {
+    setModal(null);
+  };
 
   useEffect(() => {
     // call getGroupedMixinOptions once time for getting mixinGroups
@@ -398,7 +405,7 @@ const AddLayerPanel = ({ onClose, isAddLayerPanelOpen }) => {
   return (
     <div
       className={classNames(styles.panel, {
-        [styles.open]: isAddLayerPanelOpen
+        [styles.open]: isOpen
       })}
     >
       {createPortal(

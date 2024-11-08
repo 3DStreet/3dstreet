@@ -17,8 +17,9 @@ import {
 import GeoImg from '../../../../../ui_assets/geo.png';
 import { roundCoord } from '../../../../../src/utils.js';
 import { QrCode } from '../../components/QrCode';
+import useStore from '@/store.js';
 
-const GeoModal = ({ isOpen, onClose }) => {
+const GeoModal = () => {
   const { isLoaded } = useJsApiLoader({
     googleMapsApiKey: firebaseConfig.apiKey
   });
@@ -30,6 +31,12 @@ const GeoModal = ({ isOpen, onClose }) => {
   const [autocomplete, setAutocomplete] = useState(null);
   const [qrCodeUrl, setQrCodeUrl] = useState(null);
   const [isWorking, setIsWorking] = useState(false);
+  const setModal = useStore((state) => state.setModal);
+  const isOpen = useStore((state) => state.modal === 'geo');
+
+  const onClose = () => {
+    setModal(null);
+  };
 
   useEffect(() => {
     if (isOpen) {
