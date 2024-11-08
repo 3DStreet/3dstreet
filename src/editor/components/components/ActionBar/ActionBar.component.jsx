@@ -40,7 +40,6 @@ const ActionBar = ({ handleAddClick, isAddLayerPanelOpen, selectedEntity }) => {
     setCursorEnabled(true);
   };
 
-  console.log('entity', selectedEntity);
   return (
     <div>
       {!isAddLayerPanelOpen && (
