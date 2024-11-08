@@ -1,26 +1,18 @@
 /* global AFRAME */
 
 /*
-<a-entity street-way="source: streetmix path">
-    <a-entity street-segment="preset: drive-lane; width: 3; length: 150"></a-entity>
-    <a-entity street-segment="preset: bus-lane; width: 6; length: 150"></a-entity>
+<a-entity street-way="source: xyz">
+    <a-entity street-segment="type: drive-lane; surface: asphalt; color: white; width: 3; length: 150"></a-entity>
+    <a-entity street-segment="type: bus-lane; surface: asphalt; color: red; width: 3; length: 150"></a-entity>
+    <a-entity street-segment="type: bike-lane; surface: asphalt; color: green; width: 2; length: 150"></a-entity>
+    <a-entity street-segment="type: sidewalk; surface: concrete; color: white; width: 6; length: 150"></a-entity>
 </a-entity>
 */
 
-var COLORS = {
-  red: '#ff9393',
-  blue: '#00b6b6',
-  green: '#adff83',
-  yellow: '#f7d117',
-  white: '#ffffff',
-  brown: '#664B00'
-};
-
 AFRAME.registerComponent('street-segment', {
   schema: {
-    preset: {
+    type: {
       type: 'string',
-      default: 'drive-lane',
       oneOf: ['drive-lane', 'bus-lane', 'bike-lane', 'sidewalk', 'parking-lane']
     },
     width: {
@@ -35,7 +27,6 @@ AFRAME.registerComponent('street-segment', {
     },
     direction: {
       type: 'string',
-      default: 'outbound',
       oneOf: ['inbound', 'outbound']
     },
     surface: {
@@ -49,60 +40,11 @@ AFRAME.registerComponent('street-segment', {
   },
   init: function () {
     this.height = 0.2; // default height of segment surface box
-    // parse preset into default surface, color
-    this.applyPreset(this.data.preset, false);
-  },
-  applyPreset: function (preset, clobber = false) {
-    // parse preset into
-    // default surface, color
-    const presets = {
-      'drive-lane': {
-        surface: 'asphalt',
-        color: COLORS.white
-      },
-      'bus-lane': {
-        surface: 'asphalt',
-        color: COLORS.red
-      },
-      'bike-lane': {
-        surface: 'asphalt',
-        color: COLORS.green
-      },
-      sidewalk: {
-        surface: 'sidewalk',
-        color: COLORS.white
-      },
-      'parking-lane': {
-        surface: 'concrete',
-        color: COLORS.white
-      },
-      divider: {
-        surface: 'hatched',
-        color: COLORS.white
-      },
-      grass: {
-        surface: 'grass',
-        color: COLORS.white
-      }
-    };
-    // if preset is not found, then use default preset
-    if (!presets[preset]) {
-      preset = 'drive-lane';
-    }
-    this.el.setAttribute('street-segment', 'surface', presets[preset].surface);
-    if (clobber) {
-      this.el.setAttribute('street-segment', 'color', presets[preset].color);
-    }
   },
   update: function (oldData) {
     const data = this.data;
     // if oldData is same as current data, then don't update
     if (AFRAME.utils.deepEqual(oldData, data)) {
-      return;
-    }
-    // if oldData is defined AND the "preset" property has changed, then update
-    if (oldData.preset !== undefined && oldData.preset !== data.preset) {
-      this.applyPreset(data.preset, true);
       return;
     }
     this.clearMesh();
@@ -179,7 +121,7 @@ AFRAME.registerComponent('street-segment', {
         color: ${data.color}`
     );
 
-    this.el.setAttribute('shadow', 'cast: false');
+    this.el.setAttribute('shadow', '');
 
     return;
   },
@@ -187,7 +129,7 @@ AFRAME.registerComponent('street-segment', {
     // calculate the repeatCount for the material
     let repeatX = 0.3; // drive-lane, bus-lane, bike-lane
     let repeatY = length / 6;
-    let offsetX = 0.55;
+    let offsetX = 0.55; // we could get rid of this using cropped texture for asphalt
     if (textureSourceId === 'seamless-bright-road') {
       repeatX = 0.6;
       repeatY = 15;
@@ -208,8 +150,6 @@ AFRAME.registerComponent('street-segment', {
       repeatY = length / 4;
       offsetX = 0;
     }
-    // still need to support hatched-base
-    // how to handle different surface materials from streetmix
     return [repeatX, repeatY, offsetX];
   }
 });

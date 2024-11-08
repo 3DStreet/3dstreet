@@ -4,13 +4,45 @@
 var streetmixParsersTested = require('./tested/aframe-streetmix-parsers-tested');
 var { segmentVariants } = require('./segments-variants.js');
 
-var COLORS = {
+const COLORS = {
   red: '#ff9393',
   blue: '#00b6b6',
   green: '#adff83',
   yellow: '#f7d117',
+  lightGray: '#dddddd',
   white: '#ffffff',
   brown: '#664B00'
+};
+
+const TYPES = {
+  'drive-lane': {
+    surface: 'asphalt',
+    color: COLORS.white
+  },
+  'bus-lane': {
+    surface: 'asphalt',
+    color: COLORS.red
+  },
+  'bike-lane': {
+    surface: 'asphalt',
+    color: COLORS.green
+  },
+  sidewalk: {
+    surface: 'sidewalk',
+    color: COLORS.white
+  },
+  'parking-lane': {
+    surface: 'concrete',
+    color: COLORS.lightGray
+  },
+  divider: {
+    surface: 'hatched',
+    color: COLORS.white
+  },
+  grass: {
+    surface: 'grass',
+    color: COLORS.white
+  }
 };
 
 function cloneMixinAsChildren({
@@ -970,7 +1002,7 @@ function processSegments(
 
   var cumulativeWidthInMeters = 0;
   for (var i = 0; i < segments.length; i++) {
-    var segmentColor = COLORS.white;
+    var segmentColor = null;
     var segmentParentEl = document.createElement('a-entity');
     segmentParentEl.classList.add('segment-parent-' + i);
 
@@ -1061,7 +1093,7 @@ function processSegments(
       segments[i].type === 'light-rail' ||
       segments[i].type === 'streetcar'
     ) {
-      // get the mixin id for a bus lane
+      // get the color for a bus lane
       segmentColor = getSegmentColor(variantList[1]);
       // get the mixin id for the vehicle (is it a trolley or a tram?)
       var objectMixinId = segments[i].type === 'streetcar' ? 'trolley' : 'tram';
@@ -1235,6 +1267,7 @@ function processSegments(
       segments[i].type === 'bus-lane' ||
       segments[i].type === 'brt-lane'
     ) {
+      // get the color for a bus lane
       segmentColor = getSegmentColor(variantList[1]);
 
       segmentParentEl.append(
@@ -1542,7 +1575,7 @@ function processSegments(
     } else if (segments[i].type === 'parking-lane') {
       let reusableObjectStencilsParentEl;
 
-      segmentPreset = 'bright-lane';
+      segmentPreset = 'parking-lane';
       let parkingMixin = 'stencils parking-t';
 
       const carCount = 5;
@@ -1626,7 +1659,7 @@ function processSegments(
     }
     // add new object
     if (segments[i].type !== 'separator') {
-      segmentParentEl.setAttribute('street-segment', 'preset', segmentPreset);
+      segmentParentEl.setAttribute('street-segment', 'type', segmentPreset);
       segmentParentEl.setAttribute(
         'street-segment',
         'width',
@@ -1634,8 +1667,16 @@ function processSegments(
       );
       segmentParentEl.setAttribute('street-segment', 'length', length);
       segmentParentEl.setAttribute('street-segment', 'elevation', elevation);
-      segmentParentEl.setAttribute('street-segment', 'color', segmentColor);
-      // segmentParentEl.setAttribute('position', { y: positionY });
+      segmentParentEl.setAttribute(
+        'street-segment',
+        'color',
+        segmentColor ?? TYPES[segmentPreset]?.color
+      );
+      segmentParentEl.setAttribute(
+        'street-segment',
+        'surface',
+        TYPES[segmentPreset]?.surface
+      );
     } else {
       segmentParentEl.append(
         createSeparatorElement(
