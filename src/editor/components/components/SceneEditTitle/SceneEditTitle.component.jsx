@@ -7,6 +7,8 @@ const SceneEditTitle = ({ sceneData }) => {
   const title = useStore((state) => state.sceneTitle);
   const setTitle = useStore((state) => state.setSceneTitle);
   const { currentUser } = useAuthContext();
+  const authorId = useStore((state) => state.authorId);
+  const sceneId = useStore((state) => state.sceneId);
 
   const handleEditClick = () => {
     const newTitle = prompt('Edit the title:', title);
@@ -21,8 +23,8 @@ const SceneEditTitle = ({ sceneData }) => {
 
   const saveNewTitle = async (newTitle) => {
     try {
-      if (currentUser.uid === STREET.utils.getAuthorId()) {
-        await updateSceneIdAndTitle(STREET.utils.getCurrentSceneId(), newTitle);
+      if (currentUser.uid === authorId) {
+        await updateSceneIdAndTitle(sceneId, newTitle);
         STREET.notify.successMessage(`New scene title saved: ${newTitle}`);
       }
     } catch (error) {
