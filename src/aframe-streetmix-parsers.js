@@ -1024,8 +1024,9 @@ function processSegments(
     // elevation property from streetmix segment
     const elevation = segments[i].elevation;
 
-    const elevationLevels = [0, 0.2, 0.4];
-    const elevationPosY = elevationLevels[elevation];
+    // const elevationLevels = [0, 0.2, 0.4];
+    // const elevationPosY = elevationLevels[elevation];
+    var elevationPosY = 0;
 
     // add y elevation position as a data attribute to segment entity
     segmentParentEl.setAttribute('data-elevation-posY', elevationPosY);
@@ -1701,7 +1702,7 @@ function processSegments(
   // create new brown box to represent ground underneath street
   const dirtBox = document.createElement('a-box');
   const xPos = cumulativeWidthInMeters / 2;
-  dirtBox.setAttribute('position', `${xPos} -1.1 0`); // what is x? x = 0 - cumulativeWidthInMeters / 2
+  dirtBox.setAttribute('position', `${xPos} -1 0`); // what is x? x = 0 - cumulativeWidthInMeters / 2
   dirtBox.setAttribute('height', 2); // height is 2 meters from y of -0.1 to -y of 2.1
   dirtBox.setAttribute('width', cumulativeWidthInMeters);
   dirtBox.setAttribute('depth', length - 0.2); // depth is length - 0.1 on each side

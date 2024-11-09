@@ -9,6 +9,30 @@
 </a-entity>
 */
 
+AFRAME.registerGeometry('below-box', {
+  schema: {
+    depth: { default: 1, min: 0 },
+    height: { default: 1, min: 0 },
+    width: { default: 1, min: 0 },
+    segmentsHeight: { default: 1, min: 1, max: 20, type: 'int' },
+    segmentsWidth: { default: 1, min: 1, max: 20, type: 'int' },
+    segmentsDepth: { default: 1, min: 1, max: 20, type: 'int' }
+  },
+
+  init: function (data) {
+    this.geometry = new THREE.BoxGeometry(
+      data.width,
+      data.height,
+      data.depth,
+      data.segmentsWidth,
+      data.segmentsHeight,
+      data.segmentsDepth
+    );
+    console.log('bro');
+    this.geometry.translate(0, -data.height / 2, 0);
+  }
+});
+
 AFRAME.registerComponent('street-segment', {
   schema: {
     type: {
@@ -49,7 +73,8 @@ AFRAME.registerComponent('street-segment', {
     }
     this.clearMesh();
     this.calculateHeight(data.elevation);
-    this.el.object3D.position.y = this.calculateYPosition(data.elevation); // Direct Object3D manipulation
+    this.tempXPosition = this.el.getAttribute('position').x;
+    this.el.setAttribute('position', { x: this.tempXPosition, y: this.height });
     this.generateMesh(data);
   },
   // for streetmix elevation number values of -1, 0, 1, 2, calculate heightLevel in three.js meters units
@@ -87,7 +112,7 @@ AFRAME.registerComponent('street-segment', {
     // create geometry
     this.el.setAttribute(
       'geometry',
-      `primitive: box; 
+      `primitive: below-box; 
           height: ${this.height}; 
           depth: ${data.length};
           width: ${data.width};`
