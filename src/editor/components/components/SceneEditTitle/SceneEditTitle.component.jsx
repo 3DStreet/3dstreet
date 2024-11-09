@@ -1,11 +1,10 @@
+import { useEffect, useState } from 'react';
 import styles from './SceneEditTitle.module.scss';
 import { useAuthContext } from '../../../contexts/index.js';
 import { updateSceneIdAndTitle } from '../../../api/scene';
-import useStore from '../../../../store.js';
 
 const SceneEditTitle = ({ sceneData }) => {
-  const title = useStore((state) => state.sceneTitle);
-  const setTitle = useStore((state) => state.setSceneTitle);
+  const [title, setTitle] = useState(sceneData?.sceneTitle);
   const { currentUser } = useAuthContext();
 
   const handleEditClick = () => {
@@ -33,11 +32,13 @@ const SceneEditTitle = ({ sceneData }) => {
 
   return (
     <div className={styles.wrapper}>
-      <div className={styles.readOnly}>
-        <p className={styles.title} onClick={handleEditClick}>
-          {title || 'Untitled'}
-        </p>
-      </div>
+      {
+        <div className={styles.readOnly}>
+          <p className={styles.title} onClick={handleEditClick}>
+            {title || 'Untitled'}
+          </p>
+        </div>
+      }
     </div>
   );
 };
