@@ -87,8 +87,6 @@ Inspector.prototype = {
     this.helpers = {};
     this.sceneHelpers = new THREE.Scene();
     this.sceneHelpers.userData.source = 'INSPECTOR';
-    this.sceneHelpers.visible = true;
-    this.inspectorActive = false;
 
     this.viewport = new Viewport(this);
 
@@ -205,11 +203,6 @@ Inspector.prototype = {
       this.cursor.setAttribute('raycaster', 'enabled', true);
     });
 
-    Events.on('inspectortoggle', (active) => {
-      this.inspectorActive = active;
-      this.sceneHelpers.visible = this.inspectorActive;
-    });
-
     this.sceneEl.addEventListener('newScene', () => {
       this.history.clear();
     });
@@ -286,7 +279,6 @@ Inspector.prototype = {
    */
   open: function (focusEl) {
     this.opened = true;
-    Events.emit('inspectortoggle', true);
 
     if (this.sceneEl.hasAttribute('embedded')) {
       // Remove embedded styles, but keep track of it.
@@ -331,7 +323,6 @@ Inspector.prototype = {
    */
   close: function () {
     this.opened = false;
-    Events.emit('inspectortoggle', false);
 
     // Untrick scene when we enabled this to run the cursor tick.
     this.sceneEl.isPlaying = false;

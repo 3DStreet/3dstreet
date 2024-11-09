@@ -17,8 +17,8 @@ import { PaymentModal } from './modals/PaymentModal';
 import { SceneEditTitle } from './components/SceneEditTitle';
 import { AddLayerPanel } from './components/AddLayerPanel';
 import { IntroModal } from './modals/IntroModal';
-import posthog from 'posthog-js';
 import { ToolbarWrapper } from './scenegraph/ToolbarWrapper.js';
+import useStore from '@/store';
 
 THREE.ImageUtils.crossOrigin = '';
 
@@ -28,7 +28,6 @@ const GOOGLE_MAPS_LIBRARIES = ['places'];
 export default function Main() {
   const [state, setState] = useState({
     entity: null,
-    inspectorEnabled: true,
     isModalTexturesOpen: false,
     sceneEl: AFRAME.scenes[0],
     visible: {
@@ -57,13 +56,6 @@ export default function Main() {
       setState((prevState) => ({
         ...prevState,
         entity: entity
-      }));
-    });
-    Events.on('inspectortoggle', (enabled) => {
-      posthog.capture('inspector_toggled', { enabled: enabled });
-      setState((prevState) => ({
-        ...prevState,
-        inspectorEnabled: enabled
       }));
     });
     Events.on('togglesidebar', (event) => {
@@ -122,50 +114,13 @@ export default function Main() {
     }
   };
 
-  const renderComponentsToggle = () => {
-    if (!state.inspectorEnabled || !state.entity || state.visible.attributes) {
-      return null;
-    }
-
-    return (
-      <div className="toggle-sidebar right">
-        <a
-          onClick={() => {
-            Events.emit('togglesidebar', { which: 'attributes' });
-          }}
-          className="fa fa-plus"
-          title="Show components"
-        />
-      </div>
-    );
-  };
-
-  const renderSceneGraphToggle = () => {
-    if (!state.inspectorEnabled || state.visible.scenegraph) {
-      return null;
-    }
-    return (
-      <div className="toggle-sidebar left">
-        <a
-          onClick={() => {
-            Events.emit('togglesidebar', { which: 'scenegraph' });
-          }}
-          className="fa fa-plus"
-          title="Show scenegraph"
-        />
-      </div>
-    );
-  };
-
   const scene = state.sceneEl;
-  const isEditor = !!state.inspectorEnabled;
+  const isInspectorEnabled = useStore((state) => state.isInspectorEnabled);
 
   return (
     <div id="inspectorContainer">
-      {renderSceneGraphToggle()}
-      {renderComponentsToggle()}
       <ToolbarWrapper />
-      {isEditor && (
+      {isInspectorEnabled && (
         <div>
           <SceneGraph
             scene={scene}
@@ -198,31 +153,25 @@ export default function Main() {
         onClose={onModalTextureOnClose}
       />
 
-      {state.inspectorEnabled && (
-        <div id="geo">
-          <GeoPanel />
-        </div>
-      )}
-      {state.inspectorEnabled && (
-        <div id="action-bar">
-          <ActionBar />
-        </div>
-      )}
-      {state.inspectorEnabled && (
-        <div id="scene-title" className="clickable">
-          <SceneEditTitle />
-        </div>
-      )}
-      {state.inspectorEnabled && (
-        <div id="zoom-help-buttons">
-          <ZoomButtons />
-          <HelpButton />
-        </div>
-      )}
-      {state.inspectorEnabled && (
-        <div className="clickable">
-          <AddLayerPanel />
-        </div>
+      {isInspectorEnabled && (
+        <>
+          <div id="geo">
+            <GeoPanel />
+          </div>
+          <div id="action-bar">
+            <ActionBar />
+          </div>
+          <div id="scene-title" className="clickable">
+            <SceneEditTitle />
+          </div>
+          <div id="zoom-help-buttons">
+            <ZoomButtons />
+            <HelpButton />
+            <div className="clickable">
+              <AddLayerPanel />
+            </div>
+          </div>
+        </>
       )}
     </div>
   );
