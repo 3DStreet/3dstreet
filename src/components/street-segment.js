@@ -87,19 +87,6 @@ AFRAME.registerComponent('street-segment', {
     this.height = heightLevels[elevation];
     return;
   },
-  calculateYPosition: function (elevation) {
-    let positionY;
-    if (elevation === 0) {
-      positionY = -0.1;
-    } else if (elevation === 2) {
-      positionY = 0.1;
-    } else if (elevation === 1) {
-      positionY = 0;
-    } else if (elevation === -1) {
-      positionY = -0.2;
-    }
-    return positionY;
-  },
   clearMesh: function () {
     // remove the geometry from the entity
     this.el.removeAttribute('geometry');
