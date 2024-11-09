@@ -39,8 +39,10 @@ const useStore = create(
         isInspectorEnabled: true,
         setIsInspectorEnabled: (newIsInspectorEnabled) => {
           if (newIsInspectorEnabled) {
+            posthog.capture('inspector_opened');
             AFRAME.INSPECTOR.open();
           } else {
+            posthog.capture('inspector_closed');
             AFRAME.INSPECTOR.close();
           }
           set({ isInspectorEnabled: newIsInspectorEnabled });
