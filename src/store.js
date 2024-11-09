@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { devtools } from 'zustand/middleware';
+import { devtools, subscribeWithSelector } from 'zustand/middleware';
 import posthog from 'posthog-js';
 
 const firstModal = () => {
@@ -16,27 +16,38 @@ const firstModal = () => {
 };
 
 const useStore = create(
-  devtools(
-    (set) => ({
-      sceneId: null,
-      setSceneId: (newSceneId) => set({ sceneId: newSceneId }),
-      sceneTitle: null,
-      setSceneTitle: (newSceneTitle) => set({ sceneTitle: newSceneTitle }),
-      authorId: null,
-      setAuthorId: (newAuthorId) => set({ authorId: newAuthorId }),
-      modal: firstModal(),
-      setModal: (newModal) => {
-        const currentModal = useStore.getState().modal;
-        if (currentModal) {
-          posthog.capture('modal_closed', { modal: currentModal });
+  subscribeWithSelector(
+    devtools(
+      (set) => ({
+        sceneId: null,
+        setSceneId: (newSceneId) => set({ sceneId: newSceneId }),
+        sceneTitle: null,
+        setSceneTitle: (newSceneTitle) => set({ sceneTitle: newSceneTitle }),
+        authorId: null,
+        setAuthorId: (newAuthorId) => set({ authorId: newAuthorId }),
+        modal: firstModal(),
+        setModal: (newModal) => {
+          const currentModal = useStore.getState().modal;
+          if (currentModal) {
+            posthog.capture('modal_closed', { modal: currentModal });
+          }
+          if (newModal) {
+            posthog.capture('modal_opened', { modal: newModal });
+          }
+          set({ modal: newModal });
+        },
+        isInspectorEnabled: true,
+        setIsInspectorEnabled: (newIsInspectorEnabled) => {
+          if (newIsInspectorEnabled) {
+            AFRAME.INSPECTOR.open();
+          } else {
+            AFRAME.INSPECTOR.close();
+          }
+          set({ isInspectorEnabled: newIsInspectorEnabled });
         }
-        if (newModal) {
-          posthog.capture('modal_opened', { modal: newModal });
-        }
-        set({ modal: newModal });
-      }
-    }),
-    { name: 'MyZustandStore' }
+      }),
+      { name: 'MyZustandStore' }
+    )
   )
 );
 

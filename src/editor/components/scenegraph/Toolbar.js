@@ -18,7 +18,7 @@ import posthog from 'posthog-js';
 import { UndoRedo } from '../components/UndoRedo';
 import debounce from 'lodash-es/debounce';
 import { CameraToolbar } from '../viewport/CameraToolbar';
-import useStore from '../../../store';
+import useStore from '@/store';
 
 // const LOCALSTORAGE_MOCAP_UI = "aframeinspectormocapuienabled";
 
@@ -47,9 +47,13 @@ export default class Toolbar extends Component {
         this.debouncedCloudSaveHandler();
       }
     });
-    Events.on('inspectortoggle', (enabled) => {
-      this.setState({ inspectorEnabled: enabled });
-    });
+    // Subscribe to store changes
+    this.unsubscribe = useStore.subscribe(
+      (state) => state.isInspectorEnabled,
+      (isInspectorEnabled) => {
+        this.setState({ inspectorEnabled: isInspectorEnabled });
+      }
+    );
   }
 
   componentDidUpdate(prevProps) {
@@ -64,6 +68,10 @@ export default class Toolbar extends Component {
 
   componentWillUnmount() {
     document.removeEventListener('click', this.handleClickOutsideSave);
+    // Unsubscribe from store changes
+    if (this.unsubscribe) {
+      this.unsubscribe();
+    }
   }
 
   isAuthor = () => {
@@ -302,21 +310,13 @@ export default class Toolbar extends Component {
     }));
   };
 
-  toggleEdit = () => {
-    if (this.state.inspectorEnabled) {
-      AFRAME.INSPECTOR.close();
-    } else {
-      AFRAME.INSPECTOR.open();
-    }
-  };
-
   render() {
     const isEditor = !!this.state.inspectorEnabled;
     return (
       <div id="toolbar" className="m-4 justify-center">
         <div className="grid grid-flow-dense grid-cols-5">
           <div className="col-span-2">
-            <Logo onToggleEdit={this.toggleEdit} isEditor={isEditor} />
+            <Logo />
           </div>
           {isEditor && (
             <>
