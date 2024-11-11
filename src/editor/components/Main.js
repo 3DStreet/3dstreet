@@ -310,6 +310,7 @@ export default class Main extends Component {
             <ActionBar
               handleAddClick={this.toggleAddLayerPanel}
               isAddLayerPanelOpen={this.state.isAddLayerPanelOpen}
+              selectedEntity={this.state.entity}
             />
           </div>
         )}

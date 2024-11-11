@@ -96,20 +96,24 @@ export default class Sidebar extends React.Component {
                 {entity.id !== 'reference-layers' ? (
                   <>
                     {!!entity.mixinEls.length && <Mixins entity={entity} />}
-                    <div id="sidebar-buttons">
-                      <Button
-                        variant={'toolbtn'}
-                        onClick={() => cloneEntity(entity)}
-                      >
-                        Duplicate
-                      </Button>
-                      <Button
-                        variant={'toolbtn'}
-                        onClick={() => removeSelectedEntity()}
-                      >
-                        Delete
-                      </Button>
-                    </div>
+                    {entity.hasAttribute('data-no-transform') ? (
+                      <></>
+                    ) : (
+                      <div id="sidebar-buttons">
+                        <Button
+                          variant={'toolbtn'}
+                          onClick={() => cloneEntity(entity)}
+                        >
+                          Duplicate
+                        </Button>
+                        <Button
+                          variant={'toolbtn'}
+                          onClick={() => removeSelectedEntity()}
+                        >
+                          Delete
+                        </Button>
+                      </div>
+                    )}
                     <ComponentsContainer entity={entity} />
                   </>
                 ) : (

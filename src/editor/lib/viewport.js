@@ -287,8 +287,9 @@ export function Viewport(inspector) {
       }
 
       if (inspector.cursor.isPlaying) {
-        // Only show transform controls when we are in pointer mode
-        transformControls.attach(object);
+        if (!object.el.hasAttribute('data-no-transform')) {
+          transformControls.attach(object);
+        }
       }
     }
   });

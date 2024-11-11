@@ -31,7 +31,16 @@ export default class ComponentsContainer extends React.Component {
 
     return (
       <div className="components">
-        <CommonComponents entity={entity} />
+        {entity.hasAttribute('data-no-transform') ? (
+          <div>
+            <br />
+            <p>⚠️ Transformations disabled for this layer.</p>
+          </div>
+        ) : (
+          <div>
+            <CommonComponents entity={entity} />
+          </div>
+        )}
         <div className="advancedComponentsContainer">
           <AdvancedComponents entity={entity} />
         </div>
