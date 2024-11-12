@@ -33,6 +33,53 @@ AFRAME.registerGeometry('below-box', {
   }
 });
 
+// Usage:      <a-entity geometry="primitive: repeating-plane; width: 3; height: 50; segmentsHeight: 5; segmentsWidth: 1" material="src: #seamless-sidewalk"></a-entity>
+AFRAME.registerGeometry('repeating-plane', {
+  schema: {
+    width: { default: 1, min: 0 },
+    height: { default: 1, min: 0 },
+    segmentsWidth: { default: 1, min: 1, max: 20, type: 'int' },
+    segmentsHeight: { default: 1, min: 1, max: 20, type: 'int' }
+  },
+  init: function (data) {
+    // Create base PlaneGeometry
+    const geometry = new THREE.PlaneGeometry(
+      data.width,
+      data.height,
+      data.segmentsWidth,
+      data.segmentsHeight
+    );
+
+    // Calculate number of vertices per row
+    const verticesPerRow = data.segmentsWidth + 1;
+
+    // Get UV attribute
+    const uvAttribute = geometry.attributes.uv;
+    const uvs = uvAttribute.array;
+
+    for (let i = 0; i < uvs.length; i += 2) {
+      // Calculate which row this vertex belongs to
+      const vertexRow = Math.floor(i / (2 * verticesPerRow));
+
+      // Keep the original x-coordinate (u)
+      // but modify the y-coordinate (v) based on row
+      const u = uvs[i];
+      const v = vertexRow % 2 === 0 ? 1 : 0;
+
+      // Update UV coordinates
+      uvs[i] = u; // x-coordinate (u) stays the same
+      uvs[i + 1] = v; // y-coordinate (v) alternates between 0 and 1
+    }
+
+    // Update UV attribute
+    uvAttribute.needsUpdate = true;
+
+    // Center the geometry at origin
+    geometry.center();
+
+    this.geometry = geometry;
+  }
+});
 AFRAME.registerComponent('street-segment', {
   schema: {
     type: {
