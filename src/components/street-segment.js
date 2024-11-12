@@ -28,7 +28,6 @@ AFRAME.registerGeometry('below-box', {
       data.segmentsHeight,
       data.segmentsDepth
     );
-    console.log('bro');
     this.geometry.translate(0, -data.height / 2, 0);
   }
 });
@@ -72,20 +71,18 @@ AFRAME.registerComponent('street-segment', {
       return;
     }
     this.clearMesh();
-    this.calculateHeight(data.elevation);
+    this.height = this.calculateHeight(data.elevation);
     this.tempXPosition = this.el.getAttribute('position').x;
     this.el.setAttribute('position', { x: this.tempXPosition, y: this.height });
     this.generateMesh(data);
   },
   // for streetmix elevation number values of -1, 0, 1, 2, calculate heightLevel in three.js meters units
   calculateHeight: function (elevation) {
-    const heightLevels = [0.2, 0.4, 0.6];
-    if (elevation === -1) {
-      this.height = 0.2;
-      return;
+    const stepLevel = 0.15;
+    if (elevation <= 0) {
+      return stepLevel;
     }
-    this.height = heightLevels[elevation];
-    return;
+    return stepLevel * (elevation + 1);
   },
   clearMesh: function () {
     // remove the geometry from the entity

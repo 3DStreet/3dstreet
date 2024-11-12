@@ -42,6 +42,10 @@ const TYPES = {
   grass: {
     surface: 'grass',
     color: COLORS.white
+  },
+  rail: {
+    surface: 'asphalt',
+    color: COLORS.white
   }
 };
 
@@ -316,7 +320,6 @@ function getZPositions(start, end, step) {
 function createSidewalkClonedVariants(
   segmentWidthInMeters,
   density,
-  elevationPosY = 0,
   streetLength,
   direction = 'random',
   animated = false
@@ -341,7 +344,6 @@ function createSidewalkClonedVariants(
     10
   );
   const dividerParentEl = createParentElement('pedestrians-parent');
-  dividerParentEl.setAttribute('position', { y: elevationPosY });
   // Randomly generate avatars
   for (let i = 0; i < totalPedestrianNumber; i++) {
     const variantName =
@@ -368,7 +370,6 @@ function createSidewalkClonedVariants(
         1.4,
         streetLength,
         xVal,
-        yVal,
         zVal,
         animationDirection
       );
@@ -464,7 +465,6 @@ function addLinearStreetAnimation(
   speed,
   streetLength,
   xPos,
-  yVal = 0,
   zPos,
   direction
 ) {
@@ -478,7 +478,7 @@ function addLinearStreetAnimation(
     property: 'position',
     easing: 'linear',
     loop: 'false',
-    from: { x: xPos, y: yVal, z: zPos },
+    from: { x: xPos, y: 0, z: zPos },
     to: { z: halfStreet },
     dur: startingDuration
   };
@@ -486,8 +486,8 @@ function addLinearStreetAnimation(
     property: 'position',
     easing: 'linear',
     loop: 'true',
-    from: { x: xPos, y: yVal, z: -halfStreet },
-    to: { x: xPos, y: yVal, z: halfStreet },
+    from: { x: xPos, y: 0, z: -halfStreet },
+    to: { x: xPos, y: 0, z: halfStreet },
     delay: startingDuration,
     dur: totalStreetDuration
   };
@@ -539,7 +539,6 @@ function createDriveLaneElement(
     return createSidewalkClonedVariants(
       segmentWidthInMeters,
       'normal',
-      0,
       streetLength,
       direction,
       animated
@@ -612,7 +611,6 @@ function createDriveLaneElement(
         reusableObjectEl,
         speed,
         streetLength,
-        0,
         0,
         positionZ,
         direction
@@ -728,7 +726,6 @@ function createOutdoorDining(length, posY) {
 function createMicroMobilityElement(
   variantList,
   segmentType,
-  posY = 0,
   length,
   showVehicles,
   animated = false
@@ -757,7 +754,7 @@ function createMicroMobilityElement(
     const reusableObjectEl = document.createElement('a-entity');
     const rotationY = variantList[0] === 'inbound' ? 0 : 180;
     reusableObjectEl.setAttribute('rotation', '0 ' + rotationY + ' 0');
-    reusableObjectEl.setAttribute('position', { y: posY, z: randPosZ });
+    reusableObjectEl.setAttribute('position', { z: randPosZ });
 
     if (animated) {
       reusableObjectEl.setAttribute('animation-mixer', '');
@@ -767,7 +764,6 @@ function createMicroMobilityElement(
         speed,
         length,
         0,
-        posY,
         randPosZ,
         variantList[0]
       );
@@ -843,25 +839,23 @@ function createWayfindingElements() {
 function createBenchesParentElement() {
   const placedObjectEl = document.createElement('a-entity');
   placedObjectEl.setAttribute('class', 'bench-parent');
-  // y = 0.2 for sidewalk elevation
-  placedObjectEl.setAttribute('position', '0 0.2 3.5');
+  placedObjectEl.setAttribute('position', '0 0 3.5');
   return placedObjectEl;
 }
 
-function createBikeRacksParentElement(posY) {
+function createBikeRacksParentElement() {
   const placedObjectEl = document.createElement('a-entity');
   placedObjectEl.setAttribute('class', 'bikerack-parent');
-  placedObjectEl.setAttribute('position', { y: posY, z: -3.5 });
+  placedObjectEl.setAttribute('position', { z: -3.5 });
   return placedObjectEl;
 }
 
-function createBikeShareStationElement(variantList, posY) {
+function createBikeShareStationElement(variantList) {
   const placedObjectEl = document.createElement('a-entity');
   placedObjectEl.setAttribute('class', 'bikeshare');
   placedObjectEl.setAttribute('mixin', 'bikeshare');
   const rotationCloneY = variantList[0] === 'left' ? 90 : 270;
   placedObjectEl.setAttribute('rotation', '0 ' + rotationCloneY + ' 0');
-  placedObjectEl.setAttribute('position', { y: posY });
   return placedObjectEl;
 }
 
@@ -885,16 +879,12 @@ function createParkletElement(length, variantList) {
 function createTreesParentElement() {
   const placedObjectEl = document.createElement('a-entity');
   placedObjectEl.setAttribute('class', 'tree-parent');
-  // y = 0.2 for sidewalk elevation
-  placedObjectEl.setAttribute('position', '0 0.2 7');
   return placedObjectEl;
 }
 
 function createLampsParentElement() {
   const placedObjectEl = document.createElement('a-entity');
   placedObjectEl.setAttribute('class', 'lamp-parent');
-  // y = 0.2 for sidewalk elevation
-  placedObjectEl.setAttribute('position', '0 0.2 0'); // position="1.043 0.100 -3.463"
   return placedObjectEl;
 }
 
@@ -926,6 +916,14 @@ function createCenteredStreetElement(segments) {
   return streetEl;
 }
 
+function calculateHeight(elevation) {
+  const stepLevel = 0.15;
+  if (elevation <= 0) {
+    return stepLevel;
+  }
+  return stepLevel * (elevation + 1);
+}
+
 function createSeparatorElement(
   positionY,
   rotationY,
@@ -941,7 +939,9 @@ function createSeparatorElement(
   segmentEl.setAttribute('rotation', '270 ' + rotationY + ' 0');
   segmentEl.setAttribute('scale', scalePlane);
 
-  segmentEl.setAttribute('position', '0 ' + positionY + ' 0');
+  let posY = calculateHeight(elevation) + positionY;
+  // take into account elevation property and add to positionY
+  segmentEl.setAttribute('position', '0 ' + posY + ' 0');
   segmentEl.setAttribute('mixin', mixinId);
 
   if (repeatCount.length !== 0) {
@@ -1025,13 +1025,6 @@ function processSegments(
     // elevation property from streetmix segment
     const elevation = segments[i].elevation;
 
-    // const elevationLevels = [0, 0.2, 0.4];
-    // const elevationPosY = elevationLevels[elevation];
-    var elevationPosY = 0;
-
-    // add y elevation position as a data attribute to segment entity
-    segmentParentEl.setAttribute('data-elevation-posY', elevationPosY);
-
     // Note: segment 3d models are outbound by default
     // If segment variant inbound, rotate segment model by 180 degrees
     var rotationY =
@@ -1049,7 +1042,7 @@ function processSegments(
     if (segments[i].type === 'drive-lane' && variantList[1] === 'sharrow') {
       // make a parent entity for the stencils
       const stencilsParentEl = createStencilsParentElement({
-        y: elevationPosY + 0.015
+        y: 0.015
       });
       // clone a bunch of stencil entities (note: this is not draw call efficient)
       cloneMixinAsChildren({
@@ -1067,7 +1060,7 @@ function processSegments(
     ) {
       // make a parent entity for the stencils
       const stencilsParentEl = createStencilsParentElement({
-        y: elevationPosY + 0.015
+        y: 0.015
       });
       // get the mixin id for a bike lane
       segmentColor = getSegmentColor(variantList[1]);
@@ -1085,7 +1078,6 @@ function processSegments(
         createMicroMobilityElement(
           variantList,
           segments[i].type,
-          elevationPosY,
           length,
           showVehicles,
           globalAnimated
@@ -1095,6 +1087,7 @@ function processSegments(
       segments[i].type === 'light-rail' ||
       segments[i].type === 'streetcar'
     ) {
+      segmentPreset = 'rail';
       // get the color for a bus lane
       segmentColor = getSegmentColor(variantList[1]);
       // get the mixin id for the vehicle (is it a trolley or a tram?)
@@ -1127,7 +1120,7 @@ function processSegments(
 
       // make the parent for all the objects to be cloned
       const stencilsParentEl = createStencilsParentElement({
-        y: elevationPosY + 0.015
+        y: 0.015
       });
       cloneMixinAsChildren({
         objectMixinId: mixinString,
@@ -1141,7 +1134,7 @@ function processSegments(
       if (variantList[1] === 'shared') {
         // add an additional marking to represent the opposite turn marking stencil (rotated 180º)
         const stencilsParentEl = createStencilsParentElement({
-          y: elevationPosY + 0.015,
+          y: 0.015,
           z: -3 * isOutbound
         });
         cloneMixinAsChildren({
@@ -1280,7 +1273,7 @@ function processSegments(
       let reusableObjectStencilsParentEl;
 
       reusableObjectStencilsParentEl = createStencilsParentElement({
-        y: elevationPosY + 0.015
+        y: 0.015
       });
       cloneMixinAsChildren({
         objectMixinId: 'stencils word-bus',
@@ -1293,7 +1286,7 @@ function processSegments(
       segmentParentEl.append(reusableObjectStencilsParentEl);
 
       reusableObjectStencilsParentEl = createStencilsParentElement({
-        y: elevationPosY + 0.015,
+        y: 0.015,
         z: 10
       });
       cloneMixinAsChildren({
@@ -1307,7 +1300,7 @@ function processSegments(
       segmentParentEl.append(reusableObjectStencilsParentEl);
 
       reusableObjectStencilsParentEl = createStencilsParentElement({
-        y: elevationPosY + 0.015,
+        y: 0.015,
         z: 20
       });
       cloneMixinAsChildren({
@@ -1346,7 +1339,7 @@ function processSegments(
       let reusableObjectStencilsParentEl;
 
       reusableObjectStencilsParentEl = createStencilsParentElement({
-        y: elevationPosY + 0.015,
+        y: 0.015,
         z: 5
       });
       cloneMixinAsChildren({
@@ -1360,7 +1353,7 @@ function processSegments(
       segmentParentEl.append(reusableObjectStencilsParentEl);
 
       reusableObjectStencilsParentEl = createStencilsParentElement({
-        y: elevationPosY + 0.015,
+        y: 0.015,
         z: -5
       });
       cloneMixinAsChildren({
@@ -1379,7 +1372,6 @@ function processSegments(
         createSidewalkClonedVariants(
           segmentWidthInMeters,
           variantList[0],
-          elevationPosY,
           length,
           'random',
           isAnimated
@@ -1414,7 +1406,7 @@ function processSegments(
       }
     } else if (segments[i].type === 'sidewalk-bike-rack') {
       // make the parent for all the bike racks
-      const bikeRacksParentEl = createBikeRacksParentElement(elevationPosY);
+      const bikeRacksParentEl = createBikeRacksParentElement(0);
 
       const rotationCloneY = variantList[1] === 'sidewalk-parallel' ? 90 : 0;
       cloneMixinAsChildren({
@@ -1430,15 +1422,13 @@ function processSegments(
       segmentParentEl.append(createMagicCarpetElement(showVehicles));
     } else if (segments[i].type === 'outdoor-dining') {
       segmentPreset = variantList[1] === 'road' ? 'drive-lane' : 'sidewalk';
-      segmentParentEl.append(createOutdoorDining(length, elevationPosY));
+      segmentParentEl.append(createOutdoorDining(length, 0));
     } else if (segments[i].type === 'parklet') {
       segmentPreset = 'drive-lane';
       segmentParentEl.append(createParkletElement(length, variantList));
     } else if (segments[i].type === 'bikeshare') {
       // make the parent for all the stations
-      segmentParentEl.append(
-        createBikeShareStationElement(variantList, elevationPosY)
-      );
+      segmentParentEl.append(createBikeShareStationElement(variantList, 0));
     } else if (segments[i].type === 'utilities') {
       var rotation = variantList[0] === 'right' ? '0 180 0' : '0 0 0';
       const utilityPoleElems = createClonedVariants(
@@ -1527,9 +1517,7 @@ function processSegments(
       segmentParentEl.append(lampsParentEl);
     } else if (segments[i].type === 'transit-shelter') {
       var rotationBusStopY = variantList[0] === 'left' ? 90 : 270;
-      segmentParentEl.append(
-        createBusStopElement(rotationBusStopY, elevationPosY)
-      );
+      segmentParentEl.append(createBusStopElement(rotationBusStopY, 0));
     } else if (segments[i].type === 'brt-station') {
       segmentParentEl.append(createBrtStationElement());
     } else if (
@@ -1537,25 +1525,25 @@ function processSegments(
       variantList[0] === 'dashed'
     ) {
       segmentPreset = 'markings dashed-stripe';
-      positionY = elevationPosY + 0.01; // make sure the lane marker is above the asphalt
+      positionY = 0.01; // make sure the lane marker is above the asphalt
       // for all markings material property repeat = "1 25". So every 150/25=6 meters put a dash
       repeatCount[0] = 1;
       repeatCount[1] = parseInt(length / 6);
     } else if (segments[i].type === 'separator' && variantList[0] === 'solid') {
       segmentPreset = 'markings solid-stripe';
-      positionY = elevationPosY + 0.01; // make sure the lane marker is above the asphalt
+      positionY = 0.01; // make sure the lane marker is above the asphalt
     } else if (
       segments[i].type === 'separator' &&
       variantList[0] === 'doubleyellow'
     ) {
       segmentPreset = 'markings solid-doubleyellow';
-      positionY = elevationPosY + 0.01; // make sure the lane marker is above the asphalt
+      positionY = 0.01; // make sure the lane marker is above the asphalt
     } else if (
       segments[i].type === 'separator' &&
       variantList[0] === 'shortdashedyellow'
     ) {
       segmentPreset = 'markings yellow short-dashed-stripe';
-      positionY = elevationPosY + 0.01; // make sure the lane marker is above the asphalt
+      positionY = 0.01; // make sure the lane marker is above the asphalt
       // for short-dashed-stripe every 3 meters put a dash
       repeatCount[0] = 1;
       repeatCount[1] = parseInt(length / 3);
@@ -1564,13 +1552,13 @@ function processSegments(
       variantList[0] === 'soliddashedyellow'
     ) {
       segmentPreset = 'markings yellow solid-dashed';
-      positionY = elevationPosY + 0.01; // make sure the lane marker is above the asphalt
+      positionY = 0.01; // make sure the lane marker is above the asphalt
     } else if (
       segments[i].type === 'separator' &&
       variantList[0] === 'soliddashedyellowinverted'
     ) {
       segmentPreset = 'markings yellow solid-dashed';
-      positionY = elevationPosY + 0.01; // make sure the lane marker is above the asphalt
+      positionY = 0.01; // make sure the lane marker is above the asphalt
       rotationY = '180';
       repeatCount[0] = 1;
       repeatCount[1] = parseInt(length / 6);
@@ -1626,7 +1614,7 @@ function processSegments(
       );
       if (variantList[1] === 'left') {
         reusableObjectStencilsParentEl = createStencilsParentElement({
-          y: elevationPosY + 0.015
+          y: 0.015
         });
         cloneMixinAsChildren({
           objectMixinId: parkingMixin,
@@ -1639,7 +1627,7 @@ function processSegments(
         });
       } else {
         reusableObjectStencilsParentEl = createStencilsParentElement({
-          y: elevationPosY + 0.015
+          y: 0.015
         });
         cloneMixinAsChildren({
           objectMixinId: parkingMixin,
