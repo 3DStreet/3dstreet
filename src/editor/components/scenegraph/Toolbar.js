@@ -180,12 +180,8 @@ export default class Toolbar extends Component {
         if (newSceneTitle) {
           currentSceneTitle = newSceneTitle;
         }
-        AFRAME.scenes[0].setAttribute(
-          'metadata',
-          'sceneTitle',
-          currentSceneTitle
-        );
 
+        useStore.getState().setSceneTitle(currentSceneTitle);
         console.log(
           'no urlSceneId or doSaveAs is true, therefore generate new one'
         );
