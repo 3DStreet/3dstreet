@@ -49,11 +49,11 @@
     </div>
   </div>
   <!-- viewer ui start -->
-  <div class="viewer-header-wrapper">
+  <!-- <div class="viewer-header-wrapper m-4">
     <button class="viewer-logo-start-editor-button" onclick="startEditor()">
       <img class="viewer-logo-img" alt="3DStreet Viewer" src="ui_assets/3D-St-stacked-128.png">
     </button>
-  </div>
+  </div> -->
 
   <!-- maps copyright start -->
   <div id="map-data-attribution" style="visibility: hidden;">
@@ -96,15 +96,15 @@
 
     </a-assets>
 
-    <a-entity id="street-container" data-layer-name="User Layers" data-layer-show-children>
+    <a-entity id="street-container" data-layer-name="User Layers" data-no-transform>
       <a-entity id="default-street" street streetmix-loader set-loader-from-hash></a-entity>
     </a-entity>
 
-    <a-entity id="reference-layers" data-layer-name="Geospatial Layers" data-layer-show-children></a-entity>
+    <a-entity id="reference-layers" data-layer-name="Geospatial Layers" data-no-transform></a-entity>
 
-    <a-entity id="environment" data-layer-name="Environment" street-environment="preset: day;"></a-entity>
+    <a-entity id="environment" data-layer-name="Environment" street-environment="preset: day;" data-no-transform></a-entity>
 
-    <a-entity id="cameraRig" class="ph-no-capture" data-layer-name="Viewer"
+    <a-entity id="cameraRig" class="ph-no-capture" data-layer-name="Viewer" data-no-transform
       cursor-teleport="cameraRig: #cameraRig; cameraHead: #camera;"
       movement-controls="camera: #camera; fly: true">
       <a-entity id="camera" position="0 1.6 0" camera look-controls="reverseMouseDrag: true"></a-entity>

@@ -1,12 +1,10 @@
-import { HelpButton, GeoPanel, Logo, ZoomButtons } from './components';
-import { CameraToolbar } from './viewport';
+import { HelpButton, GeoPanel, ZoomButtons } from './components';
 import { Component } from 'react';
 import ComponentsSidebar from './components/Sidebar';
 import Events from '../lib/Events';
 import ModalTextures from './modals/ModalTextures';
 import SceneGraph from './scenegraph/SceneGraph';
 import { ScreenshotModal } from './modals/ScreenshotModal';
-import TransformToolbar from './viewport/TransformToolbar';
 // import ViewportHUD from "./viewport/ViewportHUD";
 import { SignInModal } from './modals/SignInModal';
 import { ProfileModal } from './modals/ProfileModal';
@@ -20,6 +18,7 @@ import { SceneEditTitle } from './components/SceneEditTitle';
 import { AddLayerPanel } from './components/AddLayerPanel';
 import { IntroModal } from './modals/IntroModal';
 import posthog from 'posthog-js';
+import { ToolbarWrapper } from './scenegraph/ToolbarWrapper.js';
 
 THREE.ImageUtils.crossOrigin = '';
 
@@ -196,14 +195,6 @@ export default class Main extends Component {
     this.setState({ isPaymentModalOpened: false });
   };
 
-  toggleEdit = () => {
-    if (this.state.inspectorEnabled) {
-      AFRAME.INSPECTOR.close();
-    } else {
-      AFRAME.INSPECTOR.open();
-    }
-  };
-
   renderComponentsToggle() {
     if (
       !this.state.inspectorEnabled ||
@@ -249,21 +240,17 @@ export default class Main extends Component {
     const sceneData = AFRAME.scenes[0].getAttribute('metadata', 'sceneTitle');
 
     return (
-      <div>
-        <Logo onToggleEdit={this.toggleEdit} isEditor={isEditor} />
+      <div id="inspectorContainer">
         {this.renderSceneGraphToggle()}
         {this.renderComponentsToggle()}
+        <ToolbarWrapper />
         {isEditor && (
-          <div id="inspectorContainer">
+          <div>
             <SceneGraph
               scene={scene}
               selectedEntity={this.state.entity}
               visible={this.state.visible.scenegraph}
             />
-            <div id="viewportBar">
-              <CameraToolbar />
-              <TransformToolbar />
-            </div>
             <div id="rightPanel">
               <ComponentsSidebar
                 entity={this.state.entity}
@@ -323,11 +310,12 @@ export default class Main extends Component {
             <ActionBar
               handleAddClick={this.toggleAddLayerPanel}
               isAddLayerPanelOpen={this.state.isAddLayerPanelOpen}
+              selectedEntity={this.state.entity}
             />
           </div>
         )}
         {this.state.inspectorEnabled && (
-          <div id="scene-title">
+          <div id="scene-title" className="clickable">
             <SceneEditTitle sceneData={sceneData} />
           </div>
         )}
@@ -338,10 +326,12 @@ export default class Main extends Component {
           </div>
         )}
         {this.state.inspectorEnabled && (
-          <AddLayerPanel
-            onClose={this.toggleAddLayerPanel}
-            isAddLayerPanelOpen={this.state.isAddLayerPanelOpen}
-          />
+          <div className="clickable">
+            <AddLayerPanel
+              onClose={this.toggleAddLayerPanel}
+              isAddLayerPanelOpen={this.state.isAddLayerPanelOpen}
+            />
+          </div>
         )}
       </div>
     );
