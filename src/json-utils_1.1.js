@@ -93,7 +93,10 @@ function getElementData(entity) {
 function getAttributes(entity) {
   const elemObj = {};
 
-  elemObj['element'] = entity.tagName.toLowerCase();
+  const tagName = entity.tagName.toLowerCase();
+  if (tagName !== 'a-entity') {
+    elemObj['element'] = tagName;
+  }
 
   if (entity.id) {
     elemObj['id'] = entity.id;
@@ -413,8 +416,8 @@ Add a new entity with a list of components and children (if exists)
  * @return {Element} Entity created
 */
 function createEntityFromObj(entityData, parentEl) {
-  const entity =
-    entityData.entityElement || document.createElement(entityData.element);
+  const tagName = entityData.element || 'a-entity';
+  const entity = entityData.entityElement || document.createElement(tagName);
 
   if (!entity.parentEl && parentEl) {
     parentEl.appendChild(entity);
