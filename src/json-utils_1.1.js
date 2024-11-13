@@ -101,10 +101,6 @@ function getAttributes(entity) {
   if (entity.id) {
     elemObj['id'] = entity.id;
   }
-  if (entity.className) {
-    // convert from DOMTokenList to Array
-    elemObj['class'] = Array.from(entity.classList);
-  }
   if (entity.getAttribute('mixin')) {
     elemObj['mixin'] = entity.getAttribute('mixin');
   }
