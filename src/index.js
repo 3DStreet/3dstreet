@@ -22,30 +22,7 @@ require('./components/street-environment.js');
 require('./components/intersection.js');
 require('./components/obb-clipping.js');
 require('./editor/index.js');
-
-// Remove automatically injected inspector component to fix shortcut conflict.
-function removeInspectorComponent() {
-  setTimeout(() => {
-    document.querySelector('a-scene')?.removeAttribute('inspector');
-  }, 0);
-}
-
-function waitForDocumentReadyStateToRemoveInspectorComponent() {
-  if (document.readyState === 'complete') {
-    removeInspectorComponent();
-    return;
-  }
-
-  document.addEventListener('readystatechange', function onReadyStateChange() {
-    if (document.readyState !== 'complete') {
-      return;
-    }
-    document.removeEventListener('readystatechange', onReadyStateChange);
-    removeInspectorComponent();
-  });
-}
-
-waitForDocumentReadyStateToRemoveInspectorComponent();
+// import { inspector } from './editor/index.js';
 
 const state = useStore.getState();
 
