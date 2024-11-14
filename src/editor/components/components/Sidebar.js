@@ -125,8 +125,8 @@ export default class Sidebar extends React.Component {
                 onClick={this.toggleRightBar}
                 className="relative flex items-center justify-end"
               >
-                <div className="group flex items-center cursor-pointer relative p-2">
-                  <span className="absolute right-12 opacity-0 group-hover:opacity-100 transition-all duration-300 text-white whitespace-nowrap bg-gray-800 px-2 py-1 rounded">
+                <div className="group relative flex cursor-pointer items-center p-2">
+                  <span className="absolute right-12 whitespace-nowrap rounded bg-gray-800 px-2 py-1 text-white opacity-0 transition-all duration-300 group-hover:opacity-100">
                     {entityName || formattedMixin}
                   </span>
                   <div className="relative z-10">
