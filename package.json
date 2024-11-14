@@ -88,6 +88,7 @@
     "postcss": "^8.4.47",
     "postcss-loader": "^8.1.1",
     "prettier": "^3.1.0",
+    "prettier-plugin-tailwindcss": "^0.6.8",
     "pretty": "^2.0.0",
     "resolve-url-loader": "^5.0.0",
     "rewire": "^7.0.0",
