@@ -1,7 +1,6 @@
 import React from 'react';
 import PropTypes from 'prop-types';
 import classNames from 'classnames';
-import { sendMetric } from '../services/ga';
 
 export default class Collapsible extends React.Component {
   static propTypes = {
@@ -27,7 +26,6 @@ export default class Collapsible extends React.Component {
     // Don't collapse if we click on actions like clipboard
     if (event.target.nodeName === 'A') return;
     this.setState({ collapsed: !this.state.collapsed });
-    sendMetric('Components', 'collapse');
   };
 
   render() {

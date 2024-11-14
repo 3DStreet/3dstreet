@@ -14,7 +14,6 @@ import {
 } from '../../icons';
 import Events from '../../lib/Events';
 import { Button, ProfileButton, Logo } from '../components';
-import { sendMetric } from '../../services/ga.js';
 import posthog from 'posthog-js';
 import { UndoRedo } from '../components/UndoRedo';
 import debounce from 'lodash-es/debounce';
@@ -219,7 +218,6 @@ export default class Toolbar extends Component {
       const notification = STREET.notify.successMessage('Scene saved');
       this.setState({ notification });
 
-      sendMetric('SaveSceneAction', doSaveAs ? 'saveAs' : 'save');
       return currentSceneId;
     } catch (error) {
       STREET.notify.errorMessage(
