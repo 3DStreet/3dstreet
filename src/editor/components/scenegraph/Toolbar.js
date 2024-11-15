@@ -31,8 +31,8 @@ export default class Toolbar extends Component {
       isSaveActionActive: false,
       showLoadBtn: true,
       isSavingScene: false,
+      savedScene: false,
       pendingSceneSave: false,
-      notification: null,
       inspectorEnabled: true
     };
     this.saveButtonRef = React.createRef();
@@ -124,9 +124,6 @@ export default class Toolbar extends Component {
 
   cloudSaveHandler = async ({ doSaveAs = false }) => {
     try {
-      if (this.state.notification) {
-        STREET.notify.dismissNotification(this.state.notification);
-      }
       // if there is no current user, show sign in modal
       let currentSceneId = STREET.utils.getCurrentSceneId();
       let currentSceneTitle = useStore.getState().sceneTitle;
@@ -215,8 +212,8 @@ export default class Toolbar extends Component {
 
       // Change the hash URL without reloading
       window.location.hash = `#/scenes/${currentSceneId}.json`;
-      const notification = STREET.notify.successMessage('Scene saved');
-      this.setState({ notification });
+      this.setState({ savedScene: true });
+      this.setSavedSceneFalse();
 
       return currentSceneId;
     } catch (error) {
@@ -228,6 +225,10 @@ export default class Toolbar extends Component {
       this.setState({ isSavingScene: false });
     }
   };
+
+  setSavedSceneFalse = debounce(() => {
+    this.setState({ savedScene: false });
+  }, 500);
 
   debouncedCloudSaveHandler = debounce(() => {
     if (
@@ -332,17 +333,23 @@ export default class Toolbar extends Component {
                 </Button>
                 {this.props.currentUser ? (
                   <div
-                    className="saveButtonWrapper relative"
+                    className="saveButtonWrapper relative w-24"
                     ref={this.saveButtonRef}
                   >
-                    <Button
-                      leadingIcon={<Save24Icon />}
-                      onClick={this.toggleSaveActionState.bind(this)}
-                      disabled={this.state.isSavingScene}
-                      variant="toolbtn"
-                    >
-                      <div>Save</div>
-                    </Button>
+                    {this.state.savedScene ? (
+                      <Button variant="filled">
+                        <div>Saved</div>
+                      </Button>
+                    ) : (
+                      <Button
+                        leadingIcon={<Save24Icon />}
+                        onClick={this.toggleSaveActionState.bind(this)}
+                        disabled={this.state.isSavingScene}
+                        variant="toolbtn"
+                      >
+                        <div>Save</div>
+                      </Button>
+                    )}
                     {this.state.isSaveActionActive && (
                       <div className="dropdownedButtons">
                         <Button
