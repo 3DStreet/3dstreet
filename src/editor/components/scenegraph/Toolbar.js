@@ -14,11 +14,11 @@ import {
 } from '../../icons';
 import Events from '../../lib/Events';
 import { Button, ProfileButton, Logo } from '../components';
-import { sendMetric } from '../../services/ga.js';
 import posthog from 'posthog-js';
 import { UndoRedo } from '../components/UndoRedo';
 import debounce from 'lodash-es/debounce';
 import { CameraToolbar } from '../viewport/CameraToolbar';
+import useStore from '../../../store';
 // const LOCALSTORAGE_MOCAP_UI = "aframeinspectormocapuienabled";
 
 /**
@@ -42,7 +42,6 @@ export default class Toolbar extends Component {
     document.addEventListener('click', this.handleClickOutsideSave);
     Events.on('historychanged', (cmd) => {
       if (cmd) {
-        console.log('historychanged', cmd);
         // Debounce the cloudSaveHandler call
         this.debouncedCloudSaveHandler();
       }
@@ -130,7 +129,7 @@ export default class Toolbar extends Component {
       }
       // if there is no current user, show sign in modal
       let currentSceneId = STREET.utils.getCurrentSceneId();
-      let currentSceneTitle = STREET.utils.getCurrentSceneTitle();
+      let currentSceneTitle = useStore.getState().sceneTitle;
 
       posthog.capture('save_scene_clicked', {
         save_as: doSaveAs,
@@ -180,12 +179,8 @@ export default class Toolbar extends Component {
         if (newSceneTitle) {
           currentSceneTitle = newSceneTitle;
         }
-        AFRAME.scenes[0].setAttribute(
-          'metadata',
-          'sceneTitle',
-          currentSceneTitle
-        );
 
+        useStore.getState().setSceneTitle(currentSceneTitle);
         console.log(
           'no urlSceneId or doSaveAs is true, therefore generate new one'
         );
@@ -223,7 +218,6 @@ export default class Toolbar extends Component {
       const notification = STREET.notify.successMessage('Scene saved');
       this.setState({ notification });
 
-      sendMetric('SaveSceneAction', doSaveAs ? 'saveAs' : 'save');
       return currentSceneId;
     } catch (error) {
       STREET.notify.errorMessage(

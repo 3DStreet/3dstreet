@@ -10,9 +10,7 @@ import { Config } from './lib/config';
 import { History } from './lib/history';
 import { Shortcuts } from './lib/shortcuts';
 import { Viewport } from './lib/viewport';
-import { firebaseConfig } from './services/firebase.js';
 import './style/index.scss';
-import ReactGA from 'react-ga4';
 import posthog from 'posthog-js';
 import { commandsByType } from './lib/commands/index.js';
 
@@ -24,7 +22,6 @@ function Inspector() {
   this.isFirstOpen = true;
   this.modules = {};
   this.opened = false;
-
   // Wait for stuff.
   const doInit = () => {
     if (!AFRAME.scenes.length) {
@@ -72,6 +69,7 @@ Inspector.prototype = {
     this.selected = null;
 
     // Init React.
+
     const div = document.createElement('div');
     div.id = 'aframeInspector';
     div.setAttribute('data-aframe-inspector', 'app');
@@ -180,6 +178,9 @@ Inspector.prototype = {
   },
 
   initEvents: function () {
+    // Remove inspector component to properly unregister keydown listener when the inspector is loaded via a script tag,
+    // otherwise the listener will be registered twice and we can't toggle the inspector from viewer mode with the shortcut.
+    this.sceneEl.removeAttribute('inspector');
     window.addEventListener('keydown', (evt) => {
       // Alt + Ctrl + i: Shorcut to toggle the inspector
       const shortcutPressed =
@@ -358,9 +359,7 @@ Inspector.prototype = {
   }
 };
 
-ReactGA.initialize(firebaseConfig.measurementId);
 const inspector = (AFRAME.INSPECTOR = new Inspector());
-
 posthog.init('phc_Yclai3qykyFi8AEFOrZsh6aS78SSooLzpDz9wQ9YAH9', {
   api_host: 'https://us.i.posthog.com',
   person_profiles: 'identified_only' // or 'always' to create profiles for anonymous users as well

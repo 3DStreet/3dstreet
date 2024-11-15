@@ -8,7 +8,6 @@ import React from 'react';
 import capitalize from 'lodash-es/capitalize';
 import classnames from 'classnames';
 import { ArrowRightIcon, LayersIcon } from '../../icons';
-import { sendMetric } from '../../services/ga';
 import GeoSidebar from './GeoSidebar'; // Make sure to create and import this new component
 
 export default class Sidebar extends React.Component {
@@ -62,7 +61,6 @@ export default class Sidebar extends React.Component {
   // additional toggle for hide/show panel by clicking the button
   toggleRightBar = () => {
     this.setState({ rightBarHide: !this.state.rightBarHide });
-    sendMetric('Components', 'toggleSidebar');
   };
 
   render() {

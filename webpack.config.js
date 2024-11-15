@@ -17,10 +17,6 @@ module.exports = {
   },
   devtool: 'source-map',
   entry: {
-    editor: {
-      import: ['./src/editor/index.js'],
-      filename: '3dstreet-editor.js'
-    },
     core: { import: './src/index.js', filename: 'aframe-street-component.js' }
   },
   output: {
