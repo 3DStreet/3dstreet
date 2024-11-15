@@ -87,6 +87,8 @@ Inspector.prototype = {
     this.helpers = {};
     this.sceneHelpers = new THREE.Scene();
     this.sceneHelpers.userData.source = 'INSPECTOR';
+    this.sceneHelpers.visible = true;
+    this.inspectorActive = false;
 
     this.viewport = new Viewport(this);
 
@@ -179,16 +181,6 @@ Inspector.prototype = {
     // Remove inspector component to properly unregister keydown listener when the inspector is loaded via a script tag,
     // otherwise the listener will be registered twice and we can't toggle the inspector from viewer mode with the shortcut.
     this.sceneEl.removeAttribute('inspector');
-    window.addEventListener('keydown', (evt) => {
-      // Alt + Ctrl + i: Shorcut to toggle the inspector
-      const shortcutPressed =
-        evt.keyCode === 73 &&
-        ((evt.ctrlKey && evt.altKey) || evt.getModifierState('AltGraph'));
-      if (shortcutPressed) {
-        this.toggle();
-      }
-    });
-
     Events.on('entityselect', (entity) => {
       this.selectEntity(entity, false);
     });
