@@ -159,7 +159,7 @@ export default function Main() {
             <GeoPanel />
           </div>
           <div id="action-bar">
-            <ActionBar />
+            <ActionBar selectedEntity={state.entity} />
           </div>
           <div id="scene-title" className="clickable">
             <SceneEditTitle />

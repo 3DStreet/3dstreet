@@ -9,7 +9,7 @@ import posthog from 'posthog-js';
 import { Rotate24Icon, Translate24Icon } from '../../../icons';
 import useStore from '@/store.js';
 
-const ActionBar = () => {
+const ActionBar = ({ selectedEntity }) => {
   const setModal = useStore((state) => state.setModal);
   const isOpen = useStore((state) => state.modal === 'addlayer');
 
