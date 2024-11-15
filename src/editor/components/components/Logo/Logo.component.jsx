@@ -19,7 +19,7 @@ const Logo = () => {
         <img src="ui_assets/3D-St-stacked-128.png" alt="3DStreet Logo" />
       </div>
       <Button
-        onClick={setIsInspectorEnabled}
+        onClick={() => setIsInspectorEnabled(!isInspectorEnabled)}
         className={styles.btn}
         variant="toolbtn"
       >
