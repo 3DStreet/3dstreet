@@ -37,6 +37,7 @@ export const UndoRedo = () => {
     <>
       <Button
         variant="toolbtn"
+        className="min-w-[105px]"
         onClick={handleUndoClick}
         leadingIcon={<AwesomeIcon icon={faRotateLeft} />}
         disabled={undoDisabled}
@@ -45,6 +46,7 @@ export const UndoRedo = () => {
       </Button>
       <Button
         variant="toolbtn"
+        className="min-w-[105px]"
         onClick={handleRedoClick}
         leadingIcon={<AwesomeIcon icon={faRotateRight} />}
         disabled={redoDisabled}
