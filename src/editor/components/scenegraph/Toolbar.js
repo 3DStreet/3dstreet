@@ -419,7 +419,7 @@ export default class Toolbar extends Component {
           )}
         </div>
         {isEditor && (
-          <div className="undoRedoActions mr-14 mt-2 flex justify-end space-x-2">
+          <div className="mr-14 mt-2 flex justify-end space-x-2">
             <UndoRedo />
           </div>
         )}
