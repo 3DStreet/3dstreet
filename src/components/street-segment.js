@@ -34,10 +34,6 @@ AFRAME.registerGeometry('below-box', {
 
 AFRAME.registerComponent('street-segment', {
   schema: {
-    type: {
-      type: 'string',
-      oneOf: ['drive-lane', 'bus-lane', 'bike-lane', 'sidewalk', 'parking-lane']
-    },
     width: {
       type: 'number'
     },
@@ -55,7 +51,16 @@ AFRAME.registerComponent('street-segment', {
     surface: {
       type: 'string',
       default: 'asphalt',
-      oneOf: ['asphalt', 'concrete', 'grass', 'sidewalk', 'gravel', 'sand']
+      oneOf: [
+        'asphalt',
+        'concrete',
+        'grass',
+        'sidewalk',
+        'gravel',
+        'sand',
+        'none',
+        'solid'
+      ]
     },
     color: {
       type: 'color'
@@ -110,7 +115,9 @@ AFRAME.registerComponent('street-segment', {
       sidewalk: 'seamless-sidewalk',
       gravel: 'compacted-gravel-texture',
       sand: 'sandy-asphalt-texture',
-      hatched: 'hatched-base'
+      hatched: 'hatched-base',
+      none: 'none',
+      solid: ''
     };
     let textureSourceId = textureMaps[data.surface];
 
@@ -131,6 +138,12 @@ AFRAME.registerComponent('street-segment', {
     );
 
     this.el.setAttribute('shadow', '');
+
+    this.el.setAttribute(
+      'material',
+      'visible',
+      textureMaps[data.surface] !== 'none'
+    );
 
     return;
   },
