@@ -312,17 +312,17 @@ export default class Toolbar extends Component {
   render() {
     const isEditor = !!this.state.inspectorEnabled;
     return (
-      <div id="toolbar" className="justify-center m-4">
-        <div className="grid grid-cols-5 grid-flow-dense justify-between">
+      <div id="toolbar" className="m-4 justify-center">
+        <div className="grid grid-flow-dense grid-cols-5">
           <div className="col-span-2">
             <Logo onToggleEdit={this.toggleEdit} isEditor={isEditor} />
           </div>
           {isEditor && (
             <>
-              <div className="flex items-center justify-center col-span-1">
+              <div className="col-span-1 flex items-center justify-center">
                 <CameraToolbar />
               </div>
-              <div className="flex items-center justify-end space-x-2 col-span-2">
+              <div className="col-span-2 flex items-center justify-end gap-2">
                 <Button
                   leadingIcon={<Edit24Icon />}
                   onClick={this.newHandler}
@@ -390,6 +390,7 @@ export default class Toolbar extends Component {
                     leadingIcon={<Upload24Icon />}
                     onClick={() => Events.emit('openscenesmodal')}
                     variant="toolbtn"
+                    className="min-w-[105px]"
                   >
                     <div>Open</div>
                   </Button>
@@ -401,6 +402,7 @@ export default class Toolbar extends Component {
                     Events.emit('openscreenshotmodal');
                   }}
                   variant="toolbtn"
+                  className="min-w-[105px]"
                 >
                   <div>Share</div>
                 </Button>
@@ -419,7 +421,7 @@ export default class Toolbar extends Component {
           )}
         </div>
         {isEditor && (
-          <div className="undoRedoActions flex justify-end space-x-2 mt-2 mr-14">
+          <div className="mr-2 mt-2 flex justify-end gap-2 pr-[43px]">
             <UndoRedo />
           </div>
         )}
