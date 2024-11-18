@@ -4,6 +4,7 @@
 // this moves logic from aframe-streetmix-parsers into this component
 
 AFRAME.registerComponent('street-generated-fixed', {
+  multiple: true,
   schema: {
     model: {
       type: 'string'
@@ -17,7 +18,17 @@ AFRAME.registerComponent('street-generated-fixed', {
       default: 15,
       type: 'number'
     },
-    offset: {
+    positionX: {
+      // x position of clones along the length
+      default: 0,
+      type: 'number'
+    },
+    positionY: {
+      // y position of clones along the length
+      default: 0,
+      type: 'number'
+    },
+    cycleOffset: {
       // z (inbound/outbound) offset as a fraction of spacing value
       default: 0.5, // this is used to place different models at different z-levels with the same spacing value
       type: 'number'
@@ -27,7 +38,7 @@ AFRAME.registerComponent('street-generated-fixed', {
       type: 'number'
     },
     randomFacing: {
-      // if true, facing is ignored
+      // if true, facing is ignored and a random Y Rotation is applied to each clone
       default: false,
       type: 'boolean'
     }
@@ -62,13 +73,15 @@ AFRAME.registerComponent('street-generated-fixed', {
     for (let i = 0; i < numClones; i++) {
       const clone = document.createElement('a-entity');
       clone.setAttribute('mixin', data.model);
-
-      console.log('clone', clone);
       // Position each clone evenly spaced along z-axis
       // offset default is 0.5 so that clones don't start exactly at street start which looks weird
-      const zPosition =
-        (i + data.offset) * this.correctedSpacing - data.length / 2;
-      clone.setAttribute('position', `0 0 ${zPosition}`);
+      const positionZ =
+        data.length / 2 - (i + data.cycleOffset) * this.correctedSpacing;
+      clone.setAttribute('position', {
+        x: data.positionX,
+        y: data.positionY,
+        z: positionZ
+      });
 
       if (data.randomFacing) {
         clone.setAttribute('rotation', `0 ${Math.random() * 360} 0`);

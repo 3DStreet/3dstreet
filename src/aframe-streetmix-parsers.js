@@ -828,12 +828,6 @@ function createParkletElement(length, variantList) {
   return parkletParent;
 }
 
-function createLampsParentElement() {
-  const placedObjectEl = document.createElement('a-entity');
-  placedObjectEl.setAttribute('class', 'lamp-parent');
-  return placedObjectEl;
-}
-
 function createBusStopElement(rotationBusStopY, posY) {
   const placedObjectEl = document.createElement('a-entity');
   placedObjectEl.setAttribute('class', 'bus-stop');
@@ -1318,20 +1312,20 @@ function processSegments(
       if (variantList[0] === 'center') {
         segmentParentEl.setAttribute(
           'street-generated-fixed',
-          `model: bench_orientation_center; length: ${length}; facing: ${rotationCloneY}; offset: 0.1`
+          `model: bench_orientation_center; length: ${length}; facing: ${rotationCloneY}; cycleOffset: 0.1`
         );
       } else {
         // `right` or `left` bench
         segmentParentEl.setAttribute(
           'street-generated-fixed',
-          `model: bench; length: ${length}; facing: ${rotationCloneY}; offset: 0.1`
+          `model: bench; length: ${length}; facing: ${rotationCloneY}; cycleOffset: 0.1`
         );
       }
     } else if (segments[i].type === 'sidewalk-bike-rack') {
       const rotationCloneY = variantList[1] === 'sidewalk-parallel' ? 90 : 0;
       segmentParentEl.setAttribute(
         'street-generated-fixed',
-        `model: bikerack; length: ${length}; facing: ${rotationCloneY}; offset: 0.2`
+        `model: bikerack; length: ${length}; facing: ${rotationCloneY}; cycleOffset: 0.2`
       );
       // add bike racks to the segment parent
     } else if (segments[i].type === 'magic-carpet') {
@@ -1350,7 +1344,7 @@ function processSegments(
       var rotation = variantList[0] === 'right' ? '180' : '0';
       segmentParentEl.setAttribute(
         'street-generated-fixed',
-        `model: utility_pole; length: ${length}; offset: 0.25; facing: ${rotation}`
+        `model: utility_pole; length: ${length}; cycleOffset: 0.25; facing: ${rotation}`
       );
     } else if (segments[i].type === 'sidewalk-tree') {
       if (variantList[0] === 'palm-tree') {
@@ -1366,63 +1360,45 @@ function processSegments(
       segments[i].type === 'sidewalk-lamp' &&
       (variantList[1] === 'modern' || variantList[1] === 'pride')
     ) {
-      // Make the parent object for all the lamps
-      const lampsParentEl = createLampsParentElement();
       if (variantList[0] === 'both') {
-        cloneMixinAsChildren({
-          objectMixinId: 'lamp-modern-double',
-          parentEl: lampsParentEl,
-          rotation: '0 0 0',
-          radius: clonedObjectRadius
-        });
-        segmentParentEl.append(lampsParentEl);
+        segmentParentEl.setAttribute(
+          'street-generated-fixed',
+          `model: lamp-modern-double; length: ${length}; cycleOffset: 0.4;`
+        );
       } else {
         var rotationCloneY = variantList[0] === 'right' ? 0 : 180;
-        cloneMixinAsChildren({
-          objectMixinId: 'lamp-modern',
-          parentEl: lampsParentEl,
-          rotation: '0 ' + rotationCloneY + ' 0',
-          radius: clonedObjectRadius
-        });
-        segmentParentEl.append(lampsParentEl);
+        segmentParentEl.setAttribute(
+          'street-generated-fixed',
+          `model: lamp-modern; length: ${length}; facing: ${rotationCloneY}; cycleOffset: 0.4;`
+        );
       }
       // Add the pride flags to the lamp posts
       if (
         variantList[1] === 'pride' &&
         (variantList[0] === 'right' || variantList[0] === 'both')
       ) {
-        cloneMixinAsChildren({
-          objectMixinId: 'pride-flag',
-          parentEl: lampsParentEl,
-          positionXYString: '0.409 5',
-          radius: clonedObjectRadius
-        });
+        segmentParentEl.setAttribute(
+          'street-generated-fixed__pride-flag',
+          `model: pride-flag; length: ${length}; cycleOffset: 0.4; positionX: 0.409; positionY: 5;`
+        );
       }
       if (
         variantList[1] === 'pride' &&
         (variantList[0] === 'left' || variantList[0] === 'both')
       ) {
-        cloneMixinAsChildren({
-          objectMixinId: 'pride-flag',
-          parentEl: lampsParentEl,
-          rotation: '0 -180 0',
-          positionXYString: '-0.409 5',
-          radius: clonedObjectRadius
-        });
+        segmentParentEl.setAttribute(
+          'street-generated-fixed__pride-flag',
+          `model: pride-flag; length: ${length}; facing: 180; cycleOffset: 0.4; positionX: -0.409; positionY: 5;`
+        );
       }
     } else if (
       segments[i].type === 'sidewalk-lamp' &&
       variantList[1] === 'traditional'
     ) {
-      // make the parent for all the lamps
-      const lampsParentEl = createLampsParentElement();
-      // clone a bunch of lamps under the parent
-      cloneMixinAsChildren({
-        objectMixinId: 'lamp-traditional',
-        parentEl: lampsParentEl,
-        radius: clonedObjectRadius
-      });
-      segmentParentEl.append(lampsParentEl);
+      segmentParentEl.setAttribute(
+        'street-generated-fixed',
+        `model: lamp-traditional; length: ${length};`
+      );
     } else if (segments[i].type === 'transit-shelter') {
       var rotationBusStopY = variantList[0] === 'left' ? 90 : 270;
       segmentParentEl.append(createBusStopElement(rotationBusStopY, 0));
