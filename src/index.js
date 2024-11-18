@@ -22,6 +22,7 @@ require('./components/street-environment.js');
 require('./components/intersection.js');
 require('./components/obb-clipping.js');
 require('./components/street-segment.js');
+require('./components/street-generated-fixed.js');
 require('./editor/index.js');
 
 const state = useStore.getState();

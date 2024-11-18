@@ -271,17 +271,6 @@ function createParentElement(className) {
   return parentEl;
 }
 
-function createDividerVariant(variantName, clonedObjectRadius, step = 2.25) {
-  const dividerParentEl = createParentElement(`dividers-${variantName}-parent`);
-  cloneMixinAsChildren({
-    objectMixinId: `dividers-${variantName}`,
-    parentEl: dividerParentEl,
-    step: step,
-    radius: clonedObjectRadius
-  });
-  return dividerParentEl;
-}
-
 function createClonedVariants(
   variantName,
   clonedObjectRadius,
@@ -876,12 +865,6 @@ function createParkletElement(length, variantList) {
   return parkletParent;
 }
 
-function createTreesParentElement() {
-  const placedObjectEl = document.createElement('a-entity');
-  placedObjectEl.setAttribute('class', 'tree-parent');
-  return placedObjectEl;
-}
-
 function createLampsParentElement() {
   const placedObjectEl = document.createElement('a-entity');
   placedObjectEl.setAttribute('class', 'lamp-parent');
@@ -1161,60 +1144,57 @@ function processSegments(
       segmentParentEl.append(bollardsParentEl);
     } else if (segments[i].type === 'divider' && variantList[0] === 'flowers') {
       segmentPreset = 'grass';
-      segmentParentEl.append(
-        createDividerVariant('flowers', clonedObjectRadius, 2.25)
+      segmentParentEl.setAttribute(
+        'street-generated-fixed',
+        `model: dividers-flowers; spacing: 2.25; length: ${length}`
       );
     } else if (
       segments[i].type === 'divider' &&
       variantList[0] === 'planting-strip'
     ) {
       segmentPreset = 'grass';
-      segmentParentEl.append(
-        createDividerVariant('planting-strip', clonedObjectRadius, 2.25)
+      segmentParentEl.setAttribute(
+        'street-generated-fixed',
+        `model: dividers-planting-strip; spacing: 2.25; length: ${length}`
       );
     } else if (
       segments[i].type === 'divider' &&
       variantList[0] === 'planter-box'
     ) {
       segmentPreset = 'grass';
-      segmentParentEl.append(
-        createDividerVariant('planter-box', clonedObjectRadius, 2.45)
+      segmentParentEl.setAttribute(
+        'street-generated-fixed',
+        `model: dividers-planter-box; spacing: 2.45; length: ${length}`
       );
     } else if (
       segments[i].type === 'divider' &&
       variantList[0] === 'palm-tree'
     ) {
       segmentPreset = 'grass';
-      const treesParentEl = createTreesParentElement();
-      cloneMixinAsChildren({
-        objectMixinId: 'palm-tree',
-        parentEl: treesParentEl,
-        randomY: true,
-        radius: clonedObjectRadius
-      });
-      segmentParentEl.append(treesParentEl);
+      segmentParentEl.setAttribute(
+        'street-generated-fixed',
+        `model: palm-tree; length: ${length}`
+      );
     } else if (
       segments[i].type === 'divider' &&
       variantList[0] === 'big-tree'
     ) {
       segmentPreset = 'grass';
-      const treesParentEl = createTreesParentElement();
-      cloneMixinAsChildren({
-        objectMixinId: 'tree3',
-        parentEl: treesParentEl,
-        randomY: true,
-        radius: clonedObjectRadius
-      });
-      segmentParentEl.append(treesParentEl);
+      segmentParentEl.setAttribute(
+        'street-generated-fixed',
+        `model: tree3; length: ${length}`
+      );
     } else if (segments[i].type === 'divider' && variantList[0] === 'bush') {
       segmentPreset = 'grass';
-      segmentParentEl.append(
-        createDividerVariant('bush', clonedObjectRadius, 2.25)
+      segmentParentEl.setAttribute(
+        'street-generated-fixed',
+        `model: dividers-bush; spacing: 2.25; length: ${length}`
       );
     } else if (segments[i].type === 'divider' && variantList[0] === 'dome') {
       segmentPreset = 'divider';
-      segmentParentEl.append(
-        createDividerVariant('dome', clonedObjectRadius, 2.25)
+      segmentParentEl.setAttribute(
+        'street-generated-fixed',
+        `model: dividers-dome; spacing: 2.25; length: ${length}`
       );
     } else if (segments[i].type === 'divider') {
       segmentPreset = 'divider';
@@ -1430,30 +1410,21 @@ function processSegments(
       // make the parent for all the stations
       segmentParentEl.append(createBikeShareStationElement(variantList, 0));
     } else if (segments[i].type === 'utilities') {
-      var rotation = variantList[0] === 'right' ? '0 180 0' : '0 0 0';
-      const utilityPoleElems = createClonedVariants(
-        'utility_pole',
-        clonedObjectRadius,
-        15,
-        rotation
+      var rotation = variantList[0] === 'right' ? '180' : '0';
+      segmentParentEl.setAttribute(
+        'street-generated-fixed',
+        `model: utility_pole; length: ${length}; offset: 0.25; facing: ${rotation}`
       );
-      segmentParentEl.append(utilityPoleElems);
     } else if (segments[i].type === 'sidewalk-tree') {
-      // make the parent for all the trees
-      const treesParentEl = createTreesParentElement();
       if (variantList[0] === 'palm-tree') {
         objectMixinId = 'palm-tree';
       } else {
         objectMixinId = 'tree3';
       }
-      // clone a bunch of trees under the parent
-      cloneMixinAsChildren({
-        objectMixinId: objectMixinId,
-        parentEl: treesParentEl,
-        randomY: true,
-        radius: clonedObjectRadius
-      });
-      segmentParentEl.append(treesParentEl);
+      segmentParentEl.setAttribute(
+        'street-generated-fixed',
+        `model: ${objectMixinId}; length: ${length}; randomFacing: true;`
+      );
     } else if (
       segments[i].type === 'sidewalk-lamp' &&
       (variantList[1] === 'modern' || variantList[1] === 'pride')
