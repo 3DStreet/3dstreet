@@ -259,33 +259,10 @@ function createTracksParentElement(length, objectMixinId) {
   return placedObjectEl;
 }
 
-function createBollardsParentElement() {
-  const placedObjectEl = document.createElement('a-entity');
-  placedObjectEl.setAttribute('class', 'bollard-parent');
-  return placedObjectEl;
-}
-
 function createParentElement(className) {
   const parentEl = document.createElement('a-entity');
   parentEl.setAttribute('class', className);
   return parentEl;
-}
-
-function createClonedVariants(
-  variantName,
-  clonedObjectRadius,
-  step = 2.25,
-  rotation = '0 0 0'
-) {
-  const dividerParentEl = createParentElement(`${variantName}-parent`);
-  cloneMixinAsChildren({
-    objectMixinId: variantName,
-    parentEl: dividerParentEl,
-    step: step,
-    radius: clonedObjectRadius,
-    rotation: rotation
-  });
-  return dividerParentEl;
 }
 
 function getRandomIntInclusive(min, max) {
@@ -825,20 +802,6 @@ function createWayfindingElements() {
   return wayfindingParentEl;
 }
 
-function createBenchesParentElement() {
-  const placedObjectEl = document.createElement('a-entity');
-  placedObjectEl.setAttribute('class', 'bench-parent');
-  placedObjectEl.setAttribute('position', '0 0 3.5');
-  return placedObjectEl;
-}
-
-function createBikeRacksParentElement() {
-  const placedObjectEl = document.createElement('a-entity');
-  placedObjectEl.setAttribute('class', 'bikerack-parent');
-  placedObjectEl.setAttribute('position', { z: -3.5 });
-  return placedObjectEl;
-}
-
 function createBikeShareStationElement(variantList) {
   const placedObjectEl = document.createElement('a-entity');
   placedObjectEl.setAttribute('class', 'bikeshare');
@@ -1133,15 +1096,10 @@ function processSegments(
     } else if (segments[i].type === 'divider' && variantList[0] === 'bollard') {
       segmentPreset = 'divider';
       // make some bollards
-      const bollardsParentEl = createBollardsParentElement();
-      cloneMixinAsChildren({
-        objectMixinId: 'bollard',
-        parentEl: bollardsParentEl,
-        step: 4,
-        radius: clonedObjectRadius
-      });
-      // add the bollards to the segment parent
-      segmentParentEl.append(bollardsParentEl);
+      segmentParentEl.setAttribute(
+        'street-generated-fixed',
+        `model: bollard; spacing: 4; length: ${length}`
+      );
     } else if (segments[i].type === 'divider' && variantList[0] === 'flowers') {
       segmentPreset = 'grass';
       segmentParentEl.setAttribute(
@@ -1203,40 +1161,36 @@ function processSegments(
       variantList[0] === 'barricade'
     ) {
       segmentPreset = 'drive-lane';
-      segmentParentEl.append(
-        createClonedVariants('temporary-barricade', clonedObjectRadius, 2.25)
+      segmentParentEl.setAttribute(
+        'street-generated-fixed',
+        `model: temporary-barricade; spacing: 2.25; length: ${length}`
       );
     } else if (
       segments[i].type === 'temporary' &&
       variantList[0] === 'traffic-cone'
     ) {
       segmentPreset = 'drive-lane';
-      segmentParentEl.append(
-        createClonedVariants('temporary-traffic-cone', clonedObjectRadius, 2.25)
+      segmentParentEl.setAttribute(
+        'street-generated-fixed',
+        `model: temporary-traffic-cone; spacing: 2.25; length: ${length}`
       );
     } else if (
       segments[i].type === 'temporary' &&
       variantList[0] === 'jersey-barrier-plastic'
     ) {
       segmentPreset = 'drive-lane';
-      segmentParentEl.append(
-        createClonedVariants(
-          'temporary-jersey-barrier-plastic',
-          clonedObjectRadius,
-          2.25
-        )
+      segmentParentEl.setAttribute(
+        'street-generated-fixed',
+        `model: jersey-barrier-plastic; spacing: 2.25; length: ${length}`
       );
     } else if (
       segments[i].type === 'temporary' &&
       variantList[0] === 'jersey-barrier-concrete'
     ) {
       segmentPreset = 'drive-lane';
-      segmentParentEl.append(
-        createClonedVariants(
-          'temporary-jersey-barrier-concrete',
-          clonedObjectRadius,
-          2.93
-        )
+      segmentParentEl.setAttribute(
+        'street-generated-fixed',
+        `model: temporary-jersey-barrier-concrete; spacing: 2.93; length: ${length}`
       );
     } else if (
       segments[i].type === 'bus-lane' ||
@@ -1360,43 +1314,26 @@ function processSegments(
     } else if (segments[i].type === 'sidewalk-wayfinding') {
       segmentParentEl.append(createWayfindingElements());
     } else if (segments[i].type === 'sidewalk-bench') {
-      // make the parent for all the benches
-      const benchesParentEl = createBenchesParentElement();
-
       const rotationCloneY = variantList[0] === 'right' ? -90 : 90;
       if (variantList[0] === 'center') {
-        cloneMixinAsChildren({
-          objectMixinId: 'bench_orientation_center',
-          parentEl: benchesParentEl,
-          rotation: '0 ' + rotationCloneY + ' 0',
-          radius: clonedObjectRadius
-        });
-        // add benches to the segment parent
-        segmentParentEl.append(benchesParentEl);
+        segmentParentEl.setAttribute(
+          'street-generated-fixed',
+          `model: bench_orientation_center; length: ${length}; facing: ${rotationCloneY}; offset: 0.1`
+        );
       } else {
         // `right` or `left` bench
-        cloneMixinAsChildren({
-          objectMixinId: 'bench',
-          parentEl: benchesParentEl,
-          rotation: '0 ' + rotationCloneY + ' 0',
-          radius: clonedObjectRadius
-        });
-        // add benches to the segment parent
-        segmentParentEl.append(benchesParentEl);
+        segmentParentEl.setAttribute(
+          'street-generated-fixed',
+          `model: bench; length: ${length}; facing: ${rotationCloneY}; offset: 0.1`
+        );
       }
     } else if (segments[i].type === 'sidewalk-bike-rack') {
-      // make the parent for all the bike racks
-      const bikeRacksParentEl = createBikeRacksParentElement(0);
-
       const rotationCloneY = variantList[1] === 'sidewalk-parallel' ? 90 : 0;
-      cloneMixinAsChildren({
-        objectMixinId: 'bikerack',
-        parentEl: bikeRacksParentEl,
-        rotation: '0 ' + rotationCloneY + ' 0',
-        radius: clonedObjectRadius
-      });
+      segmentParentEl.setAttribute(
+        'street-generated-fixed',
+        `model: bikerack; length: ${length}; facing: ${rotationCloneY}; offset: 0.2`
+      );
       // add bike racks to the segment parent
-      segmentParentEl.append(bikeRacksParentEl);
     } else if (segments[i].type === 'magic-carpet') {
       segmentPreset = 'drive-lane';
       segmentParentEl.append(createMagicCarpetElement(showVehicles));
