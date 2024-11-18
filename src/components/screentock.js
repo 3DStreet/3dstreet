@@ -1,18 +1,5 @@
 /* AFRAME */
-
-// function buttonScreenshotTock() {
-//   AFRAME.scenes[0].setAttribute('screentock', 'type', 'jpg');
-//   AFRAME.scenes[0].setAttribute('screentock', 'takeScreenshot', true);
-// }
-// function buttonScreenshotTockPNG() {
-//   AFRAME.scenes[0].setAttribute('screentock', 'type', 'png');
-//   AFRAME.scenes[0].setAttribute('screentock', 'takeScreenshot', true);
-// }
-// function buttonCaptureImage() {
-//   AFRAME.scenes[0].setAttribute('screentock', 'type', 'img');
-//   AFRAME.scenes[0].setAttribute('screentock', 'imgElementSelector', '#captureImg');
-//   AFRAME.scenes[0].setAttribute('screentock', 'takeScreenshot', true);
-// }
+import useStore from '../store';
 
 AFRAME.registerComponent('screentock', {
   schema: {
@@ -62,7 +49,7 @@ AFRAME.registerComponent('screentock', {
       ctx.textAlign = 'center';
       ctx.fillStyle = '#FFF';
       ctx.fillText(
-        STREET.utils.getCurrentSceneTitle(),
+        useStore.getState().sceneTitle,
         screenWidth - screenWidth / 2,
         screenHeight - 43
       );

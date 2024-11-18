@@ -12,7 +12,7 @@ import { getCommunityScenes, getUserScenes } from '../../../api/scene';
 import { Load24Icon, Loader, Upload24Icon } from '../../../icons';
 import { signIn } from '../../../api';
 import posthog from 'posthog-js';
-
+import useStore from '../../../../store.js';
 const SCENES_PER_PAGE = 20;
 const tabs = [
   {
@@ -65,7 +65,7 @@ const ScenesModal = ({ isOpen, onClose, initialTab = 'owner', delay }) => {
       const sceneId = scene.id;
       const sceneTitle = sceneData.title;
       AFRAME.scenes[0].setAttribute('metadata', 'sceneId', sceneId);
-      AFRAME.scenes[0].setAttribute('metadata', 'sceneTitle', sceneTitle);
+      useStore.getState().setSceneTitle(sceneTitle);
       AFRAME.scenes[0].setAttribute('metadata', 'authorId', sceneData.author);
       STREET.notify.successMessage('Scene loaded from 3DStreet Cloud.');
       onClose();
