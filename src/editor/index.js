@@ -249,16 +249,6 @@ Inspector.prototype = {
   },
 
   /**
-   * Toggle the editor
-   */
-  toggle: function () {
-    if (this.opened) {
-      this.close();
-    } else {
-      this.open();
-    }
-  },
-  /**
    * Prevent pause elements with data-no-pause attribute while open inspector
    */
   playNoPauseElements: function () {
@@ -274,6 +264,8 @@ Inspector.prototype = {
    */
   open: function (focusEl) {
     this.opened = true;
+    this.inspectorActive = true;
+    this.sceneHelpers.visible = true;
 
     if (this.sceneEl.hasAttribute('embedded')) {
       // Remove embedded styles, but keep track of it.
@@ -318,6 +310,8 @@ Inspector.prototype = {
    */
   close: function () {
     this.opened = false;
+    this.inspectorActive = false;
+    this.sceneHelpers.visible = false;
 
     // Untrick scene when we enabled this to run the cursor tick.
     this.sceneEl.isPlaying = false;
