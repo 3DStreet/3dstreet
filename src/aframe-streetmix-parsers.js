@@ -235,7 +235,7 @@ function createRailsElement(length, railsPosX) {
   };
   placedObjectEl.setAttribute('geometry', railsGeometry);
   placedObjectEl.setAttribute('material', railsMaterial);
-  placedObjectEl.setAttribute('class', 'rails');
+  placedObjectEl.setAttribute('data-layer-name', 'rails');
   placedObjectEl.setAttribute('shadow', 'receive:true; cast: true');
   placedObjectEl.setAttribute('position', railsPosX + ' 0.2 0'); // position="1.043 0.100 -3.463"
 
@@ -244,7 +244,7 @@ function createRailsElement(length, railsPosX) {
 
 function createTracksParentElement(length, objectMixinId) {
   const placedObjectEl = document.createElement('a-entity');
-  placedObjectEl.setAttribute('class', 'track-parent');
+  placedObjectEl.setAttribute('data-layer-name', 'Tracks Parent');
   placedObjectEl.setAttribute('position', '0 -0.2 0'); // position="1.043 0.100 -3.463"
   // add rails
   const railsWidth = {
@@ -257,12 +257,6 @@ function createTracksParentElement(length, objectMixinId) {
   placedObjectEl.append(createRailsElement(length, -railsPosX));
 
   return placedObjectEl;
-}
-
-function createParentElement(className) {
-  const parentEl = document.createElement('a-entity');
-  parentEl.setAttribute('class', className);
-  return parentEl;
 }
 
 function getRandomIntInclusive(min, max) {
@@ -309,7 +303,8 @@ function createSidewalkClonedVariants(
     densityFactors[density] * streetLength,
     10
   );
-  const dividerParentEl = createParentElement('pedestrians-parent');
+  const dividerParentEl = document.createElement('a-entity');
+  dividerParentEl.setAttribute('data-layer-name', 'Pedestrians Parent');
   // Randomly generate avatars
   for (let i = 0; i < totalPedestrianNumber; i++) {
     const variantName =
@@ -1589,7 +1584,6 @@ module.exports.processSegments = processSegments;
 // test - for streetObject of street 44 and buildingElementId render 2 building sides
 function processBuildings(left, right, streetWidth, showGround, length) {
   const buildingElement = document.createElement('a-entity');
-  const clonedObjectRadius = 0.45 * length;
   buildingElement.classList.add('buildings-parent');
   buildingElement.setAttribute(
     'data-layer-name',
@@ -1720,7 +1714,6 @@ function processBuildings(left, right, streetWidth, showGround, length) {
     if (currentValue === 'waterfront' || currentValue === 'compound-wall') {
       const objectPositionX = buildingPositionX - (sideMultiplier * 150) / 2;
       const placedObjectEl = document.createElement('a-entity');
-      placedObjectEl.setAttribute('class', 'seawall-parent');
       placedObjectEl.setAttribute('position', { x: objectPositionX, z: 4.5 }); // position="1.043 0.100 -3.463"
       let rotationCloneY;
       if (currentValue === 'compound-wall') {
@@ -1732,34 +1725,26 @@ function processBuildings(left, right, streetWidth, showGround, length) {
       } else {
         rotationCloneY = side === 'left' ? -90 : 90;
       }
-      placedObjectEl.classList.add('seawall-parent-' + side);
+      placedObjectEl.setAttribute('data-layer-name', 'seawall-parent-' + side);
+      placedObjectEl.setAttribute(
+        'street-generated-fixed',
+        `model: seawall; length: ${length}; facing: ${rotationCloneY}; cycleOffset: 0.8;`
+      );
       buildingElement.appendChild(placedObjectEl);
-      // clone a bunch of seawalls under the parent
-      cloneMixinAsChildren({
-        objectMixinId: 'seawall',
-        parentEl: placedObjectEl,
-        rotation: '0 ' + rotationCloneY + ' 0',
-        step: 15,
-        radius: clonedObjectRadius
-      });
     }
 
     if (currentValue === 'fence' || currentValue === 'parking-lot') {
       const objectPositionX = buildingPositionX - (sideMultiplier * 150) / 2;
       // make the parent for all the objects to be cloned
       const placedObjectEl = document.createElement('a-entity');
-      placedObjectEl.setAttribute('class', 'fence-parent');
       placedObjectEl.setAttribute('position', objectPositionX + ' 0 4.625'); // position="1.043 0.100 -3.463"
-      placedObjectEl.classList.add('fence-parent-' + buildingPositionX);
+      placedObjectEl.setAttribute('data-layer-name', 'fence-parent');
       // clone a bunch of fences under the parent
       const rotationCloneY = side === 'right' ? -90 : 90;
-      cloneMixinAsChildren({
-        objectMixinId: 'fence',
-        parentEl: placedObjectEl,
-        rotation: '0 ' + rotationCloneY + ' 0',
-        step: 9.25,
-        radius: clonedObjectRadius
-      });
+      placedObjectEl.setAttribute(
+        'street-generated-fixed',
+        `model: fence; length: ${length}; spacing: 9.25; facing: ${rotationCloneY}; cycleOffset: 1`
+      );
       buildingElement.appendChild(placedObjectEl);
     }
   });
