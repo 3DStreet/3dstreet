@@ -23,10 +23,11 @@ AFRAME.registerComponent('street-generated-fixed', {
       type: 'number'
     },
     facing: {
-      default: 0, // this is a Y Rotation value in degrees
+      default: 0, // this is a Y Rotation value in degrees -- UI could offer a dropdown with options for 0, 90, 180, 270
       type: 'number'
     },
     randomFacing: {
+      // if true, facing is ignored
       default: false,
       type: 'boolean'
     }
@@ -52,8 +53,10 @@ AFRAME.registerComponent('street-generated-fixed', {
     });
     this.createdEntities = [];
 
+    this.correctedSpacing = data.spacing < 1 ? 1 : data.spacing; // return 1 if data.spacing is less than 1
+
     // Calculate number of clones needed based on length and spacing
-    const numClones = Math.floor(data.length / data.spacing);
+    const numClones = Math.floor(data.length / this.correctedSpacing);
 
     // Create clones and position them along the length
     for (let i = 0; i < numClones; i++) {
@@ -63,7 +66,8 @@ AFRAME.registerComponent('street-generated-fixed', {
       console.log('clone', clone);
       // Position each clone evenly spaced along z-axis
       // offset default is 0.5 so that clones don't start exactly at street start which looks weird
-      const zPosition = (i + data.offset) * data.spacing - data.length / 2;
+      const zPosition =
+        (i + data.offset) * this.correctedSpacing - data.length / 2;
       clone.setAttribute('position', `0 0 ${zPosition}`);
 
       if (data.randomFacing) {
@@ -74,6 +78,7 @@ AFRAME.registerComponent('street-generated-fixed', {
       clone.classList.add('autocreated');
       // clone.setAttribute('data-ignore-raycaster', ''); // i still like clicking to zoom to individual clones, but instead this should show the generated-fixed clone settings
       clone.setAttribute('data-no-transform', '');
+      clone.setAttribute('data-layer-name', 'Cloned Model • ' + data.model);
 
       this.el.appendChild(clone);
       this.createdEntities.push(clone);
