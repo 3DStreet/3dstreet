@@ -7,8 +7,12 @@ import { Button } from '../Button';
 import { useState, useEffect } from 'react';
 import posthog from 'posthog-js';
 import { Rotate24Icon, Translate24Icon } from '../../../icons';
+import useStore from '@/store.js';
 
-const ActionBar = ({ handleAddClick, isAddLayerPanelOpen, selectedEntity }) => {
+const ActionBar = ({ selectedEntity }) => {
+  const setModal = useStore((state) => state.setModal);
+  const isOpen = useStore((state) => state.modal === 'addlayer');
+
   const [cursorEnabled, setCursorEnabled] = useState(
     AFRAME.INSPECTOR.cursor.isPlaying
   );
@@ -42,7 +46,7 @@ const ActionBar = ({ handleAddClick, isAddLayerPanelOpen, selectedEntity }) => {
 
   return (
     <div>
-      {!isAddLayerPanelOpen && (
+      {!isOpen && (
         <div className={styles.wrapper}>
           <Button
             variant="toolbtn"
@@ -79,7 +83,7 @@ const ActionBar = ({ handleAddClick, isAddLayerPanelOpen, selectedEntity }) => {
           >
             <Rotate24Icon />
           </Button>
-          <Button variant="toolbtn" onClick={handleAddClick}>
+          <Button variant="toolbtn" onClick={() => setModal('addlayer')}>
             <AwesomeIcon icon={faPlusSquare} />
           </Button>
         </div>

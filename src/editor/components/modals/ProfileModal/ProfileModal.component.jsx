@@ -6,15 +6,22 @@ import { Button } from '../../components';
 import { useAuthContext } from '../../../contexts';
 import { signOut } from 'firebase/auth';
 import { auth, functions } from '../../../services/firebase';
-import Events from '../../../lib/Events.js';
 import { Action24, Loader } from '../../../icons';
 import { httpsCallable } from 'firebase/functions';
 import posthog from 'posthog-js';
 import { renderProfileIcon } from '../../components/ProfileButton';
+import useStore from '@/store';
 
-const ProfileModal = ({ isOpen, onClose }) => {
+const ProfileModal = () => {
   const { currentUser, setCurrentUser } = useAuthContext();
+  const setModal = useStore((state) => state.setModal);
+  const modal = useStore((state) => state.modal);
+
   const [isLoading, setIsLoading] = useState(false);
+
+  const onClose = () => {
+    setModal(null);
+  };
 
   const logOutHandler = async () => {
     onClose();
@@ -40,7 +47,11 @@ const ProfileModal = ({ isOpen, onClose }) => {
   };
 
   return (
-    <Modal className={styles.modalWrapper} isOpen={isOpen} onClose={onClose}>
+    <Modal
+      className={styles.modalWrapper}
+      isOpen={modal === 'profile'}
+      onClose={onClose}
+    >
       <div className={styles.contentWrapper}>
         <h2 className={styles.title}>3DStreet Cloud Account</h2>
         <div className={styles.content}>
@@ -110,7 +121,7 @@ const ProfileModal = ({ isOpen, onClose }) => {
                 <Button
                   onClick={() => {
                     onClose();
-                    Events.emit('openpaymentmodal');
+                    setModal('payment');
                   }}
                   type="filled"
                   target="_blank"
