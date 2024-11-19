@@ -4,7 +4,7 @@ import EditorControls from './EditorControls.js';
 
 import { initRaycaster } from './raycaster';
 import Events from './Events';
-
+import useStore from '@/store';
 // variables used by OrientedBoxHelper
 const auxEuler = new THREE.Euler();
 const auxPosition = new THREE.Vector3();
@@ -362,25 +362,28 @@ export function Viewport(inspector) {
     grid.visible = !grid.visible;
   });
 
-  Events.on('inspectortoggle', (active) => {
-    if (active) {
-      enableControls();
-      AFRAME.scenes[0].camera = inspector.camera;
-      Array.prototype.slice
-        .call(document.querySelectorAll('.a-enter-vr,.rs-base'))
-        .forEach((element) => {
-          element.style.display = 'none';
-        });
-    } else {
-      disableControls();
-      inspector.cameras.original.setAttribute('camera', 'active', 'true');
-      AFRAME.scenes[0].camera =
-        inspector.cameras.original.getObject3D('camera');
-      Array.prototype.slice
-        .call(document.querySelectorAll('.a-enter-vr,.rs-base'))
-        .forEach((element) => {
-          element.style.display = 'block';
-        });
+  useStore.subscribe(
+    (state) => state.isInspectorEnabled,
+    (isEnabled) => {
+      if (isEnabled) {
+        enableControls();
+        AFRAME.scenes[0].camera = inspector.camera;
+        Array.prototype.slice
+          .call(document.querySelectorAll('.a-enter-vr,.rs-base'))
+          .forEach((element) => {
+            element.style.display = 'none';
+          });
+      } else {
+        disableControls();
+        inspector.cameras.original.setAttribute('camera', 'active', 'true');
+        AFRAME.scenes[0].camera =
+          inspector.cameras.original.getObject3D('camera');
+        Array.prototype.slice
+          .call(document.querySelectorAll('.a-enter-vr,.rs-base'))
+          .forEach((element) => {
+            element.style.display = 'block';
+          });
+      }
     }
-  });
+  );
 }

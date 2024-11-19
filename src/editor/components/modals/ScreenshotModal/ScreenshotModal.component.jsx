@@ -1,7 +1,6 @@
 import { useEffect, useState } from 'react';
 import styles from './ScreenshotModal.module.scss';
 import { signIn } from '../../../api';
-import PropTypes from 'prop-types';
 import { useAuthContext } from '../../../contexts';
 import { Copy32Icon, Save24Icon } from '../../../icons';
 import { Button, Dropdown, Input } from '../../components';
@@ -9,9 +8,8 @@ import Toolbar from '../../scenegraph/Toolbar';
 import Modal from '../Modal.jsx';
 import posthog from 'posthog-js';
 import { saveBlob } from '../../../lib/utils';
-import Events from '../../../lib/Events';
 import { uploadThumbnailImage, saveScreenshot } from '../../../api/scene';
-// import { loginHandler } from '../SignInModal';
+import useStore from '@/store';
 
 const filterHelpers = (scene, visible) => {
   scene.traverse((o) => {
@@ -41,41 +39,9 @@ const getSceneName = (scene) => {
   return scene.id || slugify(window.location.host + window.location.pathname);
 };
 
-const exportSceneToGLTF = (isPro) => {
-  if (isPro) {
-    try {
-      const sceneName = getSceneName(AFRAME.scenes[0]);
-      const scene = AFRAME.scenes[0].object3D;
-      posthog.capture('export_scene_to_gltf_clicked', {
-        scene_id: STREET.utils.getCurrentSceneId()
-      });
-
-      filterHelpers(scene, false);
-      AFRAME.INSPECTOR.exporters.gltf.parse(
-        scene,
-        function (buffer) {
-          filterHelpers(scene, true);
-          const blob = new Blob([buffer], { type: 'application/octet-stream' });
-          saveBlob(blob, sceneName + '.glb');
-        },
-        function (error) {
-          console.error(error);
-        },
-        { binary: true }
-      );
-      STREET.notify.successMessage('3DStreet scene exported as glTF file.');
-    } catch (error) {
-      STREET.notify.errorMessage(
-        `Error while trying to save glTF file. Error: ${error}`
-      );
-      console.error(error);
-    }
-  } else {
-    Events.emit('openpaymentmodal');
-  }
-};
-
-function ScreenshotModal({ isOpen, onClose }) {
+function ScreenshotModal() {
+  const setModal = useStore((state) => state.setModal);
+  const modal = useStore((state) => state.modal);
   const storedScreenshot = localStorage.getItem('screenshot');
   const parsedScreenshot = JSON.parse(storedScreenshot);
   const { currentUser } = useAuthContext();
@@ -122,6 +88,42 @@ function ScreenshotModal({ isOpen, onClose }) {
     setSelectedOption(value);
   };
 
+  const exportSceneToGLTF = (isPro) => {
+    if (isPro) {
+      try {
+        const sceneName = getSceneName(AFRAME.scenes[0]);
+        const scene = AFRAME.scenes[0].object3D;
+        posthog.capture('export_scene_to_gltf_clicked', {
+          scene_id: STREET.utils.getCurrentSceneId()
+        });
+
+        filterHelpers(scene, false);
+        AFRAME.INSPECTOR.exporters.gltf.parse(
+          scene,
+          function (buffer) {
+            filterHelpers(scene, true);
+            const blob = new Blob([buffer], {
+              type: 'application/octet-stream'
+            });
+            saveBlob(blob, sceneName + '.glb');
+          },
+          function (error) {
+            console.error(error);
+          },
+          { binary: true }
+        );
+        STREET.notify.successMessage('3DStreet scene exported as glTF file.');
+      } catch (error) {
+        STREET.notify.errorMessage(
+          `Error while trying to save glTF file. Error: ${error}`
+        );
+        console.error(error);
+      }
+    } else {
+      setModal('payment');
+    }
+  };
+
   const copyToClipboardTailing = async () => {
     try {
       const sceneId = STREET.utils.getCurrentSceneId();
@@ -146,8 +148,8 @@ function ScreenshotModal({ isOpen, onClose }) {
   return (
     <Modal
       className={styles.screenshotModalWrapper}
-      isOpen={isOpen}
-      onClose={onClose}
+      isOpen={modal === 'screenshot'}
+      onClose={() => setModal(null)}
       title={'Share scene'}
       titleElement={
         <>
@@ -218,10 +220,5 @@ function ScreenshotModal({ isOpen, onClose }) {
     </Modal>
   );
 }
-
-ScreenshotModal.propTypes = {
-  isOpen: PropTypes.bool,
-  onClose: PropTypes.func.isRequired
-};
 
 export { ScreenshotModal };
