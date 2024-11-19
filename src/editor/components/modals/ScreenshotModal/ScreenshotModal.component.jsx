@@ -4,12 +4,12 @@ import { signIn } from '../../../api';
 import { useAuthContext } from '../../../contexts';
 import { Copy32Icon, Save24Icon } from '../../../icons';
 import { Button, Dropdown, Input } from '../../components';
-import Toolbar from '../../scenegraph/Toolbar';
 import Modal from '../Modal.jsx';
 import posthog from 'posthog-js';
 import { saveBlob } from '../../../lib/utils';
 import { uploadThumbnailImage, saveScreenshot } from '../../../api/scene';
 import useStore from '@/store';
+import { convertToObject } from '@/editor/lib/SceneUtils';
 
 const filterHelpers = (scene, visible) => {
   scene.traverse((o) => {
@@ -80,7 +80,12 @@ function ScreenshotModal() {
     {
       value: '.3dstreet.json',
       label: '.3dstreet.json',
-      onClick: Toolbar.convertToObject
+      onClick: () => {
+        posthog.capture('convert_to_json_clicked', {
+          scene_id: STREET.utils.getCurrentSceneId()
+        });
+        convertToObject();
+      }
     }
   ];
 

@@ -7,7 +7,7 @@ import {
   createElementsForScenesFromJSON,
   fileJSON,
   inputStreetmix
-} from '../../../lib/toolbar';
+} from '@/editor/lib/SceneUtils.js';
 import { getCommunityScenes, getUserScenes } from '../../../api/scene';
 import { Load24Icon, Loader, Upload24Icon } from '../../../icons';
 import { signIn } from '../../../api';

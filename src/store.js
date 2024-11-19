@@ -21,8 +21,10 @@ const useStore = create(
       (set) => ({
         sceneId: null,
         setSceneId: (newSceneId) => set({ sceneId: newSceneId }),
-        sceneTitle: '',
+        sceneTitle: null,
         setSceneTitle: (newSceneTitle) => set({ sceneTitle: newSceneTitle }),
+        newScene: () =>
+          set({ sceneId: null, sceneTitle: null, authorId: null }),
         authorId: null,
         setAuthorId: (newAuthorId) => set({ authorId: newAuthorId }),
         modal: firstModal(),

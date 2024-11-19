@@ -87,34 +87,6 @@ export default class Toolbar extends Component {
     }
   };
 
-  static convertToObject = () => {
-    try {
-      posthog.capture('convert_to_json_clicked', {
-        scene_id: STREET.utils.getCurrentSceneId()
-      });
-      const entity = document.getElementById('street-container');
-
-      const data = STREET.utils.convertDOMElToObject(entity);
-
-      const jsonString = `data:text/json;chatset=utf-8,${encodeURIComponent(
-        STREET.utils.filterJSONstreet(data)
-      )}`;
-
-      const link = document.createElement('a');
-      link.href = jsonString;
-      link.download = 'data.json';
-
-      link.click();
-      link.remove();
-      STREET.notify.successMessage('3DStreet JSON file saved successfully.');
-    } catch (error) {
-      STREET.notify.errorMessage(
-        `Error trying to save 3DStreet JSON file. Error: ${error}`
-      );
-      console.error(error);
-    }
-  };
-
   cloudSaveHandlerWithImageUpload = async (doSaveAs) => {
     this.makeScreenshot();
     const currentSceneId = await this.cloudSaveHandler({ doSaveAs });
@@ -127,6 +99,7 @@ export default class Toolbar extends Component {
   newHandler = () => {
     posthog.capture('new_scene_clicked');
     AFRAME.INSPECTOR.selectEntity(null);
+    useStore.getState().newScene();
     STREET.utils.newScene();
     AFRAME.scenes[0].emit('newScene');
   };
@@ -136,7 +109,6 @@ export default class Toolbar extends Component {
       // if there is no current user, show sign in modal
       let currentSceneId = STREET.utils.getCurrentSceneId();
       let currentSceneTitle = useStore.getState().sceneTitle;
-      console.log(currentSceneTitle);
 
       posthog.capture('save_scene_clicked', {
         save_as: doSaveAs,
@@ -181,7 +153,7 @@ export default class Toolbar extends Component {
       // we want to save, so if we *still* have no sceneID at this point, then create a new one
       if (!currentSceneId || !!doSaveAs) {
         // ask user for scene title here currentSceneTitle
-        let newSceneTitle = prompt('Scene Title:', currentSceneTitle);
+        let newSceneTitle = prompt('Scene Title:', currentSceneTitle || '');
 
         if (newSceneTitle) {
           currentSceneTitle = newSceneTitle;
