@@ -9,7 +9,8 @@ import {
   create80ftRightOfWay,
   create94ftRightOfWay,
   create150ftRightOfWay,
-  createImageEntity
+  createImageEntity,
+  createGlobalClippingBox
 } from './createLayerFunctions';
 
 export const streetLayersData = [
@@ -114,5 +115,15 @@ export const customLayersData = [
       'Place an image such as a sign, reference photo, custom map, etc.',
     id: 4,
     handlerFunction: createImageEntity
+  },
+  {
+    name: 'Global Clipping Box',
+    img: '',
+    icon: '',
+    requiresPro: true,
+    description:
+      'Create or reset a global clipping box to cut out parts of a 3D map from view.',
+    id: 5,
+    handlerFunction: createGlobalClippingBox
   }
 ];
