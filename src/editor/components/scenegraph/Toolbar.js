@@ -136,6 +136,7 @@ export default class Toolbar extends Component {
       // if there is no current user, show sign in modal
       let currentSceneId = STREET.utils.getCurrentSceneId();
       let currentSceneTitle = useStore.getState().sceneTitle;
+      console.log(currentSceneTitle);
 
       posthog.capture('save_scene_clicked', {
         save_as: doSaveAs,
@@ -221,6 +222,7 @@ export default class Toolbar extends Component {
 
       // Change the hash URL without reloading
       window.location.hash = `#/scenes/${currentSceneId}.json`;
+      this.toggleSaveActionState();
       this.setState({ savedScene: true });
       this.setSavedSceneFalse();
 
@@ -283,30 +285,9 @@ export default class Toolbar extends Component {
     screenshotEl.setAttribute('screentock', 'takeScreenshot', true);
   };
 
-  toggleScenePlaying = () => {
-    if (this.state.isPlaying) {
-      AFRAME.scenes[0].pause();
-      this.setState((prevState) => ({ ...prevState, isPlaying: false }));
-      Events.emit('sceneplayingtoggle', false);
-      AFRAME.scenes[0].isPlaying = true;
-      document.getElementById('aframeInspectorMouseCursor').play();
-      return;
-    }
-    AFRAME.scenes[0].isPlaying = false;
-    AFRAME.scenes[0].play();
-    this.setState((prevState) => ({ ...prevState, isPlaying: true }));
-    Events.emit('sceneplayingtoggle', true);
-  };
-
   toggleSaveActionState = () => {
     this.setState((prevState) => ({
       isSaveActionActive: !prevState.isSaveActionActive
-    }));
-  };
-
-  toggleLoadActionState = () => {
-    this.setState((prevState) => ({
-      isLoadActionActive: !prevState.isLoadActionActive
     }));
   };
 
