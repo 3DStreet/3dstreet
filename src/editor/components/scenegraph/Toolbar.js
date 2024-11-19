@@ -14,7 +14,6 @@ import {
 } from '../../icons';
 import Events from '../../lib/Events';
 import { Button, ProfileButton, Logo } from '../components';
-import { sendMetric } from '../../services/ga.js';
 import posthog from 'posthog-js';
 import { UndoRedo } from '../components/UndoRedo';
 import debounce from 'lodash-es/debounce';
@@ -33,9 +32,9 @@ export default class Toolbar extends Component {
       isSaveActionActive: false,
       showLoadBtn: true,
       isSavingScene: false,
+      savedScene: false,
       pendingSceneSave: false,
-      notification: null,
-      inspectorEnabled: useStore.getState().isInspectorEnabled
+      inspectorEnabled: true
     };
     this.saveButtonRef = React.createRef();
   }
@@ -134,9 +133,6 @@ export default class Toolbar extends Component {
 
   cloudSaveHandler = async ({ doSaveAs = false }) => {
     try {
-      if (this.state.notification) {
-        STREET.notify.dismissNotification(this.state.notification);
-      }
       // if there is no current user, show sign in modal
       let currentSceneId = STREET.utils.getCurrentSceneId();
       let currentSceneTitle = useStore.getState().sceneTitle;
@@ -189,12 +185,8 @@ export default class Toolbar extends Component {
         if (newSceneTitle) {
           currentSceneTitle = newSceneTitle;
         }
-        AFRAME.scenes[0].setAttribute(
-          'metadata',
-          'sceneTitle',
-          currentSceneTitle
-        );
 
+        useStore.getState().setSceneTitle(currentSceneTitle);
         console.log(
           'no urlSceneId or doSaveAs is true, therefore generate new one'
         );
@@ -229,10 +221,9 @@ export default class Toolbar extends Component {
 
       // Change the hash URL without reloading
       window.location.hash = `#/scenes/${currentSceneId}.json`;
-      const notification = STREET.notify.successMessage('Scene saved');
-      this.setState({ notification });
+      this.setState({ savedScene: true });
+      this.setSavedSceneFalse();
 
-      sendMetric('SaveSceneAction', doSaveAs ? 'saveAs' : 'save');
       return currentSceneId;
     } catch (error) {
       STREET.notify.errorMessage(
@@ -243,6 +234,10 @@ export default class Toolbar extends Component {
       this.setState({ isSavingScene: false });
     }
   };
+
+  setSavedSceneFalse = debounce(() => {
+    this.setState({ savedScene: false });
+  }, 500);
 
   debouncedCloudSaveHandler = debounce(() => {
     if (
@@ -318,17 +313,17 @@ export default class Toolbar extends Component {
   render() {
     const isEditor = !!this.state.inspectorEnabled;
     return (
-      <div id="toolbar" className="justify-center m-4">
-        <div className="grid grid-cols-5 grid-flow-dense justify-between">
+      <div id="toolbar" className="m-4 justify-center">
+        <div className="grid grid-flow-dense grid-cols-5">
           <div className="col-span-2">
             <Logo />
           </div>
           {isEditor && (
             <>
-              <div className="flex items-center justify-center col-span-1">
+              <div className="col-span-1 flex items-center justify-center">
                 <CameraToolbar />
               </div>
-              <div className="flex items-center justify-end space-x-2 col-span-2">
+              <div className="col-span-2 flex items-center justify-end gap-2">
                 <Button
                   leadingIcon={<Edit24Icon />}
                   onClick={this.newHandler}
@@ -339,17 +334,23 @@ export default class Toolbar extends Component {
                 </Button>
                 {this.props.currentUser ? (
                   <div
-                    className="saveButtonWrapper relative"
+                    className="saveButtonWrapper relative w-24"
                     ref={this.saveButtonRef}
                   >
-                    <Button
-                      leadingIcon={<Save24Icon />}
-                      onClick={this.toggleSaveActionState.bind(this)}
-                      disabled={this.state.isSavingScene}
-                      variant="toolbtn"
-                    >
-                      <div>Save</div>
-                    </Button>
+                    {this.state.savedScene ? (
+                      <Button variant="filled">
+                        <div>Saved</div>
+                      </Button>
+                    ) : (
+                      <Button
+                        leadingIcon={<Save24Icon />}
+                        onClick={this.toggleSaveActionState.bind(this)}
+                        disabled={this.state.isSavingScene}
+                        variant="toolbtn"
+                      >
+                        <div>Save</div>
+                      </Button>
+                    )}
                     {this.state.isSaveActionActive && (
                       <div className="dropdownedButtons">
                         <Button
@@ -390,6 +391,7 @@ export default class Toolbar extends Component {
                     leadingIcon={<Upload24Icon />}
                     onClick={() => useStore.getState().setModal('scenes')}
                     variant="toolbtn"
+                    className="min-w-[105px]"
                   >
                     <div>Open</div>
                   </Button>
@@ -401,6 +403,7 @@ export default class Toolbar extends Component {
                     useStore.getState().setModal('screenshot');
                   }}
                   variant="toolbtn"
+                  className="min-w-[105px]"
                 >
                   <div>Share</div>
                 </Button>
@@ -419,7 +422,7 @@ export default class Toolbar extends Component {
           )}
         </div>
         {isEditor && (
-          <div className="undoRedoActions flex justify-end space-x-2 mt-2 mr-14">
+          <div className="mr-2 mt-2 flex justify-end gap-2 pr-[43px]">
             <UndoRedo />
           </div>
         )}

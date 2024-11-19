@@ -22,7 +22,6 @@ require('./components/street-environment.js');
 require('./components/intersection.js');
 require('./components/obb-clipping.js');
 require('./editor/index.js');
-// import { inspector } from './editor/index.js';
 
 const state = useStore.getState();
 

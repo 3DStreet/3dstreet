@@ -9,7 +9,7 @@ import posthog from 'posthog-js';
 import { Rotate24Icon, Translate24Icon } from '../../../icons';
 import useStore from '@/store.js';
 
-const ActionBar = () => {
+const ActionBar = ({ selectedEntity }) => {
   const setModal = useStore((state) => state.setModal);
   const isOpen = useStore((state) => state.modal === 'addlayer');
 
@@ -50,7 +50,11 @@ const ActionBar = () => {
         <div className={styles.wrapper}>
           <Button
             variant="toolbtn"
-            className={classNames({ [styles.active]: !cursorEnabled })}
+            className={classNames({
+              [styles.active]:
+                !cursorEnabled ||
+                selectedEntity?.hasAttribute('data-no-transform')
+            })}
             onClick={handleHandClick}
           >
             <AwesomeIcon icon={faHand} />
@@ -58,18 +62,24 @@ const ActionBar = () => {
           <Button
             variant="toolbtn"
             className={classNames({
-              [styles.active]: transformMode === 'translate'
+              [styles.active]:
+                transformMode === 'translate' &&
+                !selectedEntity?.hasAttribute('data-no-transform')
             })}
             onClick={() => changeTransformMode('translate')}
+            disabled={selectedEntity?.hasAttribute('data-no-transform')}
           >
             <Translate24Icon />
           </Button>
           <Button
             variant="toolbtn"
             className={classNames({
-              [styles.active]: transformMode === 'rotate'
+              [styles.active]:
+                transformMode === 'rotate' &&
+                !selectedEntity?.hasAttribute('data-no-transform')
             })}
             onClick={() => changeTransformMode('rotate')}
+            disabled={selectedEntity?.hasAttribute('data-no-transform')}
           >
             <Rotate24Icon />
           </Button>

@@ -1009,6 +1009,7 @@ function processSegments(
   var streetParentEl = createCenteredStreetElement(segments);
   streetParentEl.classList.add('street-parent');
   streetParentEl.setAttribute('data-layer-name', 'Street Segments Container');
+  streetParentEl.setAttribute('data-no-transform', '');
 
   var cumulativeWidthInMeters = 0;
   for (var i = 0; i < segments.length; i++) {

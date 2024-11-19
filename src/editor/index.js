@@ -176,16 +176,9 @@ Inspector.prototype = {
   },
 
   initEvents: function () {
-    window.addEventListener('keydown', (evt) => {
-      // Alt + Ctrl + i: Shorcut to toggle the inspector
-      const shortcutPressed =
-        evt.keyCode === 73 &&
-        ((evt.ctrlKey && evt.altKey) || evt.getModifierState('AltGraph'));
-      if (shortcutPressed) {
-        this.toggle();
-      }
-    });
-
+    // Remove inspector component to properly unregister keydown listener when the inspector is loaded via a script tag,
+    // otherwise the listener will be registered twice and we can't toggle the inspector from viewer mode with the shortcut.
+    this.sceneEl.removeAttribute('inspector');
     Events.on('entityselect', (entity) => {
       this.selectEntity(entity, false);
     });
@@ -254,16 +247,6 @@ Inspector.prototype = {
   },
 
   /**
-   * Toggle the editor
-   */
-  toggle: function () {
-    if (this.opened) {
-      this.close();
-    } else {
-      this.open();
-    }
-  },
-  /**
    * Prevent pause elements with data-no-pause attribute while open inspector
    */
   playNoPauseElements: function () {
@@ -279,6 +262,8 @@ Inspector.prototype = {
    */
   open: function (focusEl) {
     this.opened = true;
+    this.inspectorActive = true;
+    this.sceneHelpers.visible = true;
 
     if (this.sceneEl.hasAttribute('embedded')) {
       // Remove embedded styles, but keep track of it.
@@ -323,6 +308,8 @@ Inspector.prototype = {
    */
   close: function () {
     this.opened = false;
+    this.inspectorActive = false;
+    this.sceneHelpers.visible = false;
 
     // Untrick scene when we enabled this to run the cursor tick.
     this.sceneEl.isPlaying = false;

@@ -8,7 +8,6 @@ import React from 'react';
 import capitalize from 'lodash-es/capitalize';
 import classnames from 'classnames';
 import { ArrowRightIcon, LayersIcon } from '../../icons';
-import { sendMetric } from '../../services/ga';
 import GeoSidebar from './GeoSidebar'; // Make sure to create and import this new component
 
 export default class Sidebar extends React.Component {
@@ -62,7 +61,6 @@ export default class Sidebar extends React.Component {
   // additional toggle for hide/show panel by clicking the button
   toggleRightBar = () => {
     this.setState({ rightBarHide: !this.state.rightBarHide });
-    sendMetric('Components', 'toggleSidebar');
   };
 
   render() {
@@ -96,20 +94,24 @@ export default class Sidebar extends React.Component {
                 {entity.id !== 'reference-layers' ? (
                   <>
                     {!!entity.mixinEls.length && <Mixins entity={entity} />}
-                    <div id="sidebar-buttons">
-                      <Button
-                        variant={'toolbtn'}
-                        onClick={() => cloneEntity(entity)}
-                      >
-                        Duplicate
-                      </Button>
-                      <Button
-                        variant={'toolbtn'}
-                        onClick={() => removeSelectedEntity()}
-                      >
-                        Delete
-                      </Button>
-                    </div>
+                    {entity.hasAttribute('data-no-transform') ? (
+                      <></>
+                    ) : (
+                      <div id="sidebar-buttons">
+                        <Button
+                          variant={'toolbtn'}
+                          onClick={() => cloneEntity(entity)}
+                        >
+                          Duplicate
+                        </Button>
+                        <Button
+                          variant={'toolbtn'}
+                          onClick={() => removeSelectedEntity()}
+                        >
+                          Delete
+                        </Button>
+                      </div>
+                    )}
                     <ComponentsContainer entity={entity} />
                   </>
                 ) : (
@@ -123,8 +125,8 @@ export default class Sidebar extends React.Component {
                 onClick={this.toggleRightBar}
                 className="relative flex items-center justify-end"
               >
-                <div className="group flex items-center cursor-pointer relative p-2">
-                  <span className="absolute right-12 opacity-0 group-hover:opacity-100 transition-all duration-300 text-white whitespace-nowrap bg-gray-800 px-2 py-1 rounded">
+                <div className="group relative flex cursor-pointer items-center p-2">
+                  <span className="absolute right-12 whitespace-nowrap rounded bg-gray-800 px-2 py-1 text-white opacity-0 transition-all duration-300 group-hover:opacity-100">
                     {entityName || formattedMixin}
                   </span>
                   <div className="relative z-10">

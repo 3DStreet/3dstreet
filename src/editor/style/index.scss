@@ -536,7 +536,7 @@ body.aframe-inspector-opened {
   padding: 0px;
   background: variables.$darkgray-800;
   border-radius: 12px 0 0 0px;
-
+  z-index: 1;
   li {
     list-style: none;
     margin-right: 0;

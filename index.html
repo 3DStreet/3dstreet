@@ -35,16 +35,6 @@
   <!-- loading animation start -->
   <div class="loader__wrapper">
     <div class="loader">
-      <div class="entities">
-        <img src="./ui_assets/loader/entities.svg" alt="entities" />
-      </div>
-      <div class="transport">
-        <div class="wrapper__transport">
-          <img src="./ui_assets/loader/car.svg" class="car" alt="car" />
-          <img src="./ui_assets/loader/bus.svg" class="bus" alt="bus" />
-          <img src="./ui_assets/loader/bike.svg" class="bike" alt="bike" />
-        </div>
-      </div>
       <div class="road">Loading 3DStreet</div>
     </div>
   </div>
@@ -96,15 +86,15 @@
 
     </a-assets>
 
-    <a-entity id="street-container" data-layer-name="User Layers" data-layer-show-children>
+    <a-entity id="street-container" data-layer-name="User Layers" data-no-transform>
       <a-entity id="default-street" street streetmix-loader set-loader-from-hash></a-entity>
     </a-entity>
 
-    <a-entity id="reference-layers" data-layer-name="Geospatial Layers" data-layer-show-children></a-entity>
+    <a-entity id="reference-layers" data-layer-name="Geospatial Layers" data-no-transform></a-entity>
 
-    <a-entity id="environment" data-layer-name="Environment" street-environment="preset: day;"></a-entity>
+    <a-entity id="environment" data-layer-name="Environment" street-environment="preset: day;" data-no-transform></a-entity>
 
-    <a-entity id="cameraRig" class="ph-no-capture" data-layer-name="Viewer"
+    <a-entity id="cameraRig" class="ph-no-capture" data-layer-name="Viewer" data-no-transform
       cursor-teleport="cameraRig: #cameraRig; cameraHead: #camera;"
       movement-controls="camera: #camera; fly: true">
       <a-entity id="camera" position="0 1.6 0" camera look-controls="reverseMouseDrag: true"></a-entity>
