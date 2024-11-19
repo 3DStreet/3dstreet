@@ -17,6 +17,7 @@ function cloneMixinAsChildren({
   for (let j = radius * -1; j <= radius; j = j + step) {
     const placedObjectEl = document.createElement('a-entity');
     placedObjectEl.setAttribute('mixin', objectMixinId);
+    placedObjectEl.setAttribute('class', objectMixinId);
     placedObjectEl.setAttribute('position', positionXYString + ' ' + j);
 
     if (length) {
@@ -166,7 +167,7 @@ function insertSeparatorSegments(segments) {
 
 function createStencilsParentElement(position) {
   const placedObjectEl = document.createElement('a-entity');
-  placedObjectEl.setAttribute('data-layer-name', 'stencils-parent');
+  placedObjectEl.setAttribute('class', 'stencils-parent');
   placedObjectEl.setAttribute('position', position); // position="1.043 0.100 -3.463"
   return placedObjectEl;
 }
@@ -189,7 +190,7 @@ function createRailsElement(length, railsPosX) {
   };
   placedObjectEl.setAttribute('geometry', railsGeometry);
   placedObjectEl.setAttribute('material', railsMaterial);
-  placedObjectEl.setAttribute('data-layer-name', 'rails');
+  placedObjectEl.setAttribute('class', 'rails');
   placedObjectEl.setAttribute('shadow', 'receive:true; cast: true');
   placedObjectEl.setAttribute('position', railsPosX + ' 0.2 0'); // position="1.043 0.100 -3.463"
 
@@ -198,7 +199,7 @@ function createRailsElement(length, railsPosX) {
 
 function createTracksParentElement(length, objectMixinId) {
   const placedObjectEl = document.createElement('a-entity');
-  placedObjectEl.setAttribute('data-layer-name', 'track-parent');
+  placedObjectEl.setAttribute('class', 'track-parent');
   placedObjectEl.setAttribute('position', '0 -0.2 0'); // position="1.043 0.100 -3.463"
   // add rails
   const railsWidth = {
@@ -215,13 +216,13 @@ function createTracksParentElement(length, objectMixinId) {
 
 function createBollardsParentElement() {
   const placedObjectEl = document.createElement('a-entity');
-  placedObjectEl.setAttribute('data-layer-name', 'bollard-parent');
+  placedObjectEl.setAttribute('class', 'bollard-parent');
   return placedObjectEl;
 }
 
-function createParentElement(layerName) {
+function createParentElement(className) {
   const parentEl = document.createElement('a-entity');
-  parentEl.setAttribute('data-layer-name', layerName);
+  parentEl.setAttribute('class', className);
   return parentEl;
 }
 
@@ -407,6 +408,7 @@ function createChooChooElement(
   const tramLength = 23;
   placedObjectEl.setAttribute('rotation', '0 ' + rotationY + ' 0');
   placedObjectEl.setAttribute('mixin', objectMixinId);
+  placedObjectEl.setAttribute('class', objectMixinId);
   const positionZ = randomPosition(placedObjectEl, 'z', length, tramLength);
   placedObjectEl.setAttribute('position', '0 0 ' + positionZ);
   return placedObjectEl;
@@ -812,7 +814,7 @@ function createWayfindingElements() {
 
 function createBenchesParentElement() {
   const placedObjectEl = document.createElement('a-entity');
-  placedObjectEl.setAttribute('data-layer-name', 'bench-parent');
+  placedObjectEl.setAttribute('class', 'bench-parent');
   // y = 0.2 for sidewalk elevation
   placedObjectEl.setAttribute('position', '0 0.2 3.5');
   return placedObjectEl;
@@ -820,13 +822,14 @@ function createBenchesParentElement() {
 
 function createBikeRacksParentElement(posY) {
   const placedObjectEl = document.createElement('a-entity');
-  placedObjectEl.setAttribute('data-layer-name', 'bikerack-parent');
+  placedObjectEl.setAttribute('class', 'bikerack-parent');
   placedObjectEl.setAttribute('position', { y: posY, z: -3.5 });
   return placedObjectEl;
 }
 
 function createBikeShareStationElement(variantList, posY) {
   const placedObjectEl = document.createElement('a-entity');
+  placedObjectEl.setAttribute('class', 'bikeshare');
   placedObjectEl.setAttribute('mixin', 'bikeshare');
   const rotationCloneY = variantList[0] === 'left' ? 90 : 270;
   placedObjectEl.setAttribute('rotation', '0 ' + rotationCloneY + ' 0');
@@ -841,6 +844,7 @@ function createParkletElement(length, variantList) {
   const randPlaces = randPlacedElements(length, parkletLength, parkletCount);
   randPlaces.forEach((randPosZ) => {
     const placedObjectEl = document.createElement('a-entity');
+    placedObjectEl.setAttribute('class', 'parklet');
     placedObjectEl.setAttribute('position', { x: 0, y: 0.02, z: randPosZ });
     placedObjectEl.setAttribute('mixin', 'parklet');
     const rotationY = variantList[0] === 'left' ? 90 : 270;
@@ -852,7 +856,7 @@ function createParkletElement(length, variantList) {
 
 function createTreesParentElement() {
   const placedObjectEl = document.createElement('a-entity');
-  placedObjectEl.setAttribute('data-layer-name', 'tree-parent');
+  placedObjectEl.setAttribute('class', 'tree-parent');
   // y = 0.2 for sidewalk elevation
   placedObjectEl.setAttribute('position', '0 0.2 7');
   return placedObjectEl;
@@ -860,7 +864,7 @@ function createTreesParentElement() {
 
 function createLampsParentElement() {
   const placedObjectEl = document.createElement('a-entity');
-  placedObjectEl.setAttribute('data-layer-name', 'lamp-parent');
+  placedObjectEl.setAttribute('class', 'lamp-parent');
   // y = 0.2 for sidewalk elevation
   placedObjectEl.setAttribute('position', '0 0.2 0'); // position="1.043 0.100 -3.463"
   return placedObjectEl;
@@ -868,6 +872,7 @@ function createLampsParentElement() {
 
 function createBusStopElement(rotationBusStopY, posY) {
   const placedObjectEl = document.createElement('a-entity');
+  placedObjectEl.setAttribute('class', 'bus-stop');
   placedObjectEl.setAttribute('rotation', '0 ' + rotationBusStopY + ' 0');
   placedObjectEl.setAttribute('mixin', 'bus-stop');
   placedObjectEl.setAttribute('position', { y: posY });
@@ -876,6 +881,7 @@ function createBusStopElement(rotationBusStopY, posY) {
 
 function createBrtStationElement() {
   const placedObjectEl = document.createElement('a-entity');
+  placedObjectEl.setAttribute('class', 'brt-station');
   placedObjectEl.setAttribute('mixin', 'brt-station');
   return placedObjectEl;
 }
@@ -1001,12 +1007,14 @@ function processSegments(
 
   // create and center offset to center the street around global x position of 0
   var streetParentEl = createCenteredStreetElement(segments);
+  streetParentEl.classList.add('street-parent');
   streetParentEl.setAttribute('data-layer-name', 'Street Segments Container');
   streetParentEl.setAttribute('data-no-transform', '');
 
   var cumulativeWidthInMeters = 0;
   for (var i = 0; i < segments.length; i++) {
     var segmentParentEl = document.createElement('a-entity');
+    segmentParentEl.classList.add('segment-parent-' + i);
 
     var segmentWidthInMeters = segments[i].width;
     // console.log('Type: ' + segments[i].type + '; Width: ' + segmentWidthInFeet + 'ft / ' + segmentWidthInMeters + 'm');
@@ -1287,10 +1295,6 @@ function processSegments(
       reusableObjectStencilsParentEl = createStencilsParentElement({
         y: elevationPosY + 0.015
       });
-      reusableObjectStencilsParentEl.setAttribute(
-        'data-layer-name',
-        'stencils parent'
-      );
       cloneMixinAsChildren({
         objectMixinId: 'stencils word-bus',
         parentEl: reusableObjectStencilsParentEl,
@@ -1722,6 +1726,7 @@ module.exports.processSegments = processSegments;
 function processBuildings(left, right, streetWidth, showGround, length) {
   const buildingElement = document.createElement('a-entity');
   const clonedObjectRadius = 0.45 * length;
+  buildingElement.classList.add('buildings-parent');
   buildingElement.setAttribute(
     'data-layer-name',
     'Buildings & Blocks Container'
@@ -1810,6 +1815,7 @@ function processBuildings(left, right, streetWidth, showGround, length) {
       } else {
         groundParentEl.setAttribute('position', { x: groundPositionX });
       }
+      groundParentEl.classList.add('ground-' + side);
       groundParentEl.setAttribute(
         'data-layer-name',
         'Ground ' + side + ' • ' + currentValue
@@ -1850,6 +1856,7 @@ function processBuildings(left, right, streetWidth, showGround, length) {
     if (currentValue === 'waterfront' || currentValue === 'compound-wall') {
       const objectPositionX = buildingPositionX - (sideMultiplier * 150) / 2;
       const placedObjectEl = document.createElement('a-entity');
+      placedObjectEl.setAttribute('class', 'seawall-parent');
       placedObjectEl.setAttribute('position', { x: objectPositionX, z: 4.5 }); // position="1.043 0.100 -3.463"
       let rotationCloneY;
       if (currentValue === 'compound-wall') {
@@ -1861,7 +1868,7 @@ function processBuildings(left, right, streetWidth, showGround, length) {
       } else {
         rotationCloneY = side === 'left' ? -90 : 90;
       }
-      placedObjectEl.setAttribute('data-layer-name', 'seawall-parent-' + side);
+      placedObjectEl.classList.add('seawall-parent-' + side);
       buildingElement.appendChild(placedObjectEl);
       // clone a bunch of seawalls under the parent
       cloneMixinAsChildren({
@@ -1877,11 +1884,9 @@ function processBuildings(left, right, streetWidth, showGround, length) {
       const objectPositionX = buildingPositionX - (sideMultiplier * 150) / 2;
       // make the parent for all the objects to be cloned
       const placedObjectEl = document.createElement('a-entity');
+      placedObjectEl.setAttribute('class', 'fence-parent');
       placedObjectEl.setAttribute('position', objectPositionX + ' 0 4.625'); // position="1.043 0.100 -3.463"
-      placedObjectEl.setAttribute(
-        'data-layer-name',
-        'fence-parent-' + buildingPositionX
-      );
+      placedObjectEl.classList.add('fence-parent-' + buildingPositionX);
       // clone a bunch of fences under the parent
       const rotationCloneY = side === 'right' ? -90 : 90;
       cloneMixinAsChildren({
