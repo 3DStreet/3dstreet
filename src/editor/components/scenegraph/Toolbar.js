@@ -87,34 +87,6 @@ export default class Toolbar extends Component {
     }
   };
 
-  static convertToObject = () => {
-    try {
-      posthog.capture('convert_to_json_clicked', {
-        scene_id: STREET.utils.getCurrentSceneId()
-      });
-      const entity = document.getElementById('street-container');
-
-      const data = STREET.utils.convertDOMElToObject(entity);
-
-      const jsonString = `data:text/json;chatset=utf-8,${encodeURIComponent(
-        STREET.utils.filterJSONstreet(data)
-      )}`;
-
-      const link = document.createElement('a');
-      link.href = jsonString;
-      link.download = 'data.json';
-
-      link.click();
-      link.remove();
-      STREET.notify.successMessage('3DStreet JSON file saved successfully.');
-    } catch (error) {
-      STREET.notify.errorMessage(
-        `Error trying to save 3DStreet JSON file. Error: ${error}`
-      );
-      console.error(error);
-    }
-  };
-
   cloudSaveHandlerWithImageUpload = async (doSaveAs) => {
     this.makeScreenshot();
     const currentSceneId = await this.cloudSaveHandler({ doSaveAs });
@@ -127,6 +99,7 @@ export default class Toolbar extends Component {
   newHandler = () => {
     posthog.capture('new_scene_clicked');
     AFRAME.INSPECTOR.selectEntity(null);
+    useStore.getState().newScene();
     STREET.utils.newScene();
     AFRAME.scenes[0].emit('newScene');
   };
@@ -180,7 +153,7 @@ export default class Toolbar extends Component {
       // we want to save, so if we *still* have no sceneID at this point, then create a new one
       if (!currentSceneId || !!doSaveAs) {
         // ask user for scene title here currentSceneTitle
-        let newSceneTitle = prompt('Scene Title:', currentSceneTitle);
+        let newSceneTitle = prompt('Scene Title:', currentSceneTitle || '');
 
         if (newSceneTitle) {
           currentSceneTitle = newSceneTitle;
@@ -221,6 +194,7 @@ export default class Toolbar extends Component {
 
       // Change the hash URL without reloading
       window.location.hash = `#/scenes/${currentSceneId}.json`;
+      this.toggleSaveActionState();
       this.setState({ savedScene: true });
       this.setSavedSceneFalse();
 
@@ -283,30 +257,9 @@ export default class Toolbar extends Component {
     screenshotEl.setAttribute('screentock', 'takeScreenshot', true);
   };
 
-  toggleScenePlaying = () => {
-    if (this.state.isPlaying) {
-      AFRAME.scenes[0].pause();
-      this.setState((prevState) => ({ ...prevState, isPlaying: false }));
-      Events.emit('sceneplayingtoggle', false);
-      AFRAME.scenes[0].isPlaying = true;
-      document.getElementById('aframeInspectorMouseCursor').play();
-      return;
-    }
-    AFRAME.scenes[0].isPlaying = false;
-    AFRAME.scenes[0].play();
-    this.setState((prevState) => ({ ...prevState, isPlaying: true }));
-    Events.emit('sceneplayingtoggle', true);
-  };
-
   toggleSaveActionState = () => {
     this.setState((prevState) => ({
       isSaveActionActive: !prevState.isSaveActionActive
-    }));
-  };
-
-  toggleLoadActionState = () => {
-    this.setState((prevState) => ({
-      isLoadActionActive: !prevState.isLoadActionActive
     }));
   };
 
