@@ -1,14 +1,25 @@
 import PropTypes from 'prop-types';
 import { Button } from '../components';
-import Events from '../../lib/Events';
+import { useAuthContext } from '@/editor/contexts/index.js';
 import AdvancedComponents from './AdvancedComponents';
 import PropertyRow from './PropertyRow';
 import posthog from 'posthog-js';
+import useStore from '@/store';
 
 const GeoSidebar = ({ entity }) => {
+  const setModal = useStore((state) => state.setModal);
+  const { currentUser } = useAuthContext();
+
   const openGeoModal = () => {
     posthog.capture('openGeoModalFromSidebar');
-    Events.emit('opengeomodal', { entity });
+    posthog.capture('geo_panel_clicked');
+    if (!currentUser) {
+      setModal('signin');
+    } else if (currentUser.isPro) {
+      setModal('geo');
+    } else {
+      setModal('payment');
+    }
   };
 
   // Check if entity and its components exist

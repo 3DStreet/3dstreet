@@ -19,6 +19,7 @@ export default class ComponentsContainer extends React.Component {
   };
 
   componentDidMount() {
+    console.log(this.props.entity.hasAttribute('data-no-transform'));
     Events.on('entityupdate', this.onEntityUpdate);
   }
 
