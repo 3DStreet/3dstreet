@@ -440,13 +440,12 @@ function createEntityFromObj(entityData, parentEl) {
     entity.setAttribute('id', entityData.id);
   }
 
+  if (entityData.class) {
+    entity.classList.add(...entityData.class);
+  }
+
   if (entityData['data-layer-name']) {
     entity.setAttribute('data-layer-name', entityData['data-layer-name']);
-  } else {
-    if (entityData.class) {
-      // for scenes that previously used class, now set the layer name instead
-      entity.setAttribute('data-layer-name', entityData.class[0]);
-    }
   }
 
   entity.addEventListener('loaded', () => {
