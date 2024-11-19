@@ -4,16 +4,7 @@
   // left: 32px;
   height: 43px;
   z-index: 10;
-  .toolbarActions {
-    width: fit-content;
-    height: 43px;
-    display: flex;
-    justify-content: flex-end;
-    align-items: center;
-    gap: 12px;
-  }
   .saveButtonWrapper {
-    position: relative;
     .icon * {
       stroke: variables.$gray-200;
     }
