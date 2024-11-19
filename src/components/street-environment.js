@@ -39,6 +39,7 @@ AFRAME.registerComponent('street-environment', {
 
   update: function (oldData) {
     this.setEnvOption();
+    this.el.setAttribute('data-no-transform', '');
   },
 
   setEnvOption: function () {
