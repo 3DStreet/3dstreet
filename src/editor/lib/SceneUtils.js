@@ -47,3 +47,28 @@ export function fileJSON(event) {
 
   reader.readAsText(event.target.files[0]);
 }
+
+export function convertToObject() {
+  try {
+    const entity = document.getElementById('street-container');
+
+    const data = STREET.utils.convertDOMElToObject(entity);
+
+    const jsonString = `data:text/json;chatset=utf-8,${encodeURIComponent(
+      STREET.utils.filterJSONstreet(data)
+    )}`;
+
+    const link = document.createElement('a');
+    link.href = jsonString;
+    link.download = 'data.json';
+
+    link.click();
+    link.remove();
+    STREET.notify.successMessage('3DStreet JSON file saved successfully.');
+  } catch (error) {
+    STREET.notify.errorMessage(
+      `Error trying to save 3DStreet JSON file. Error: ${error}`
+    );
+    console.error(error);
+  }
+}
