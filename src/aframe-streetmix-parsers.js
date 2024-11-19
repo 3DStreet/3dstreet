@@ -797,15 +797,6 @@ function createWayfindingElements() {
   return wayfindingParentEl;
 }
 
-function createBikeShareStationElement(variantList) {
-  const placedObjectEl = document.createElement('a-entity');
-  placedObjectEl.setAttribute('class', 'bikeshare');
-  placedObjectEl.setAttribute('mixin', 'bikeshare');
-  const rotationCloneY = variantList[0] === 'left' ? 90 : 270;
-  placedObjectEl.setAttribute('rotation', '0 ' + rotationCloneY + ' 0');
-  return placedObjectEl;
-}
-
 function createParkletElement(length, variantList) {
   const parkletParent = document.createElement('a-entity');
   const parkletLength = 4.03;
@@ -821,15 +812,6 @@ function createParkletElement(length, variantList) {
     parkletParent.append(placedObjectEl);
   });
   return parkletParent;
-}
-
-function createBusStopElement(rotationBusStopY, posY) {
-  const placedObjectEl = document.createElement('a-entity');
-  placedObjectEl.setAttribute('class', 'bus-stop');
-  placedObjectEl.setAttribute('rotation', '0 ' + rotationBusStopY + ' 0');
-  placedObjectEl.setAttribute('mixin', 'bus-stop');
-  placedObjectEl.setAttribute('position', { y: posY });
-  return placedObjectEl;
 }
 
 function createBrtStationElement() {
@@ -1333,8 +1315,11 @@ function processSegments(
       segmentPreset = 'drive-lane';
       segmentParentEl.append(createParkletElement(length, variantList));
     } else if (segments[i].type === 'bikeshare') {
-      // make the parent for all the stations
-      segmentParentEl.append(createBikeShareStationElement(variantList, 0));
+      const rotationCloneY = variantList[0] === 'left' ? 90 : 270;
+      segmentParentEl.setAttribute(
+        'street-generated-single',
+        `model: bikeshare; length: ${length}; facing: ${rotationCloneY}; justify: middle;`
+      );
     } else if (segments[i].type === 'utilities') {
       var rotation = variantList[0] === 'right' ? '180' : '0';
       segmentParentEl.setAttribute(
@@ -1396,7 +1381,10 @@ function processSegments(
       );
     } else if (segments[i].type === 'transit-shelter') {
       var rotationBusStopY = variantList[0] === 'left' ? 90 : 270;
-      segmentParentEl.append(createBusStopElement(rotationBusStopY, 0));
+      segmentParentEl.setAttribute(
+        'street-generated-single',
+        `model: bus-stop; length: ${length}; facing: ${rotationBusStopY};`
+      );
     } else if (segments[i].type === 'brt-station') {
       segmentParentEl.append(createBrtStationElement());
     } else if (
