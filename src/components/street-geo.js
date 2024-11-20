@@ -18,7 +18,8 @@ AFRAME.registerComponent('street-geo', {
       default: 'google3d',
       oneOf: ['google3d', 'mapbox2d', 'osm3d', 'none']
     },
-    enableClipping: { type: 'boolean', default: false }
+    enableClipping: { type: 'boolean', default: false },
+    globalClippingBox: { type: 'boolean', default: false }
   },
   init: function () {
     /*
@@ -79,7 +80,14 @@ AFRAME.registerComponent('street-geo', {
     // if state is not clipping, then disable it
     if (this.google3d) {
       if (data.enableClipping) {
-        this.google3d.setAttribute('obb-clipping', '');
+        const clippingSourceSelector = data.globalClippingBox
+          ? '#global-clipping-box'
+          : '[street]';
+        this.google3d.setAttribute(
+          'obb-clipping',
+          'clippingSourceSelectorString',
+          clippingSourceSelector
+        );
       } else {
         this.google3d.removeAttribute('obb-clipping');
       }
@@ -133,7 +141,14 @@ AFRAME.registerComponent('street-geo', {
       google3dElement.setAttribute('data-no-pause', '');
       google3dElement.id = 'google3d';
       if (data.enableClipping) {
-        google3dElement.setAttribute('obb-clipping', '');
+        const clippingSourceSelector = data.globalClippingBox
+          ? '#global-clipping-box'
+          : '[street]';
+        google3dElement.setAttribute(
+          'obb-clipping',
+          'clippingSourceSelectorString',
+          clippingSourceSelector
+        );
       }
       google3dElement.setAttribute('data-layer-name', 'Google 3D Tiles');
       google3dElement.setAttribute('data-no-transform', '');
