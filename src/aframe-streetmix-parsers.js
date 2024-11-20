@@ -384,26 +384,6 @@ function randomPosition(entity, axis, length, objSizeAttr = undefined) {
   return newPosition;
 }
 
-function createChooChooElement(
-  variantList,
-  objectMixinId,
-  length,
-  showVehicles
-) {
-  if (!showVehicles) {
-    return;
-  }
-  const rotationY = variantList[0] === 'inbound' ? 0 : 180;
-  const placedObjectEl = document.createElement('a-entity');
-  const tramLength = 23;
-  placedObjectEl.setAttribute('rotation', '0 ' + rotationY + ' 0');
-  placedObjectEl.setAttribute('mixin', objectMixinId);
-  placedObjectEl.setAttribute('class', objectMixinId);
-  const positionZ = randomPosition(placedObjectEl, 'z', length, tramLength);
-  placedObjectEl.setAttribute('position', '0 0 ' + positionZ);
-  return placedObjectEl;
-}
-
 function addLinearStreetAnimation(
   reusableObjectEl,
   speed,
@@ -991,11 +971,15 @@ function processSegments(
       // get the color for a bus lane
       segmentColor = getSegmentColor(variantList[1]);
       // get the mixin id for the vehicle (is it a trolley or a tram?)
-      var objectMixinId = segments[i].type === 'streetcar' ? 'trolley' : 'tram';
-      // create and append a train element
-      segmentParentEl.append(
-        createChooChooElement(variantList, objectMixinId, length, showVehicles)
-      );
+      const objectMixinId =
+        segments[i].type === 'streetcar' ? 'trolley' : 'tram';
+      if (showVehicles) {
+        const rotationY = variantList[0] === 'inbound' ? 0 : 180;
+        segmentParentEl.setAttribute(
+          'street-generated-random',
+          `model: ${objectMixinId}; length: ${length}; placeLength: 23; facing: ${rotationY}; count: 1;`
+        );
+      }
       // make the parent for all the objects to be cloned
       const tracksParentEl = createTracksParentElement(length, objectMixinId);
       // add these trains to the segment parent
@@ -1157,7 +1141,7 @@ function processSegments(
         const rotationY = variantList[0] === 'inbound' ? 0 : 180;
         segmentParentEl.setAttribute(
           'street-generated-random',
-          `model: bus; length: ${length}; objLength: 12; facing: ${rotationY}; count: 1;`
+          `model: bus; length: ${length}; placeLength: 15; facing: ${rotationY}; count: 1;`
         );
       }
       // create parent for the bus lane stencils to rotate the phrase instead of the word
@@ -1313,11 +1297,8 @@ function processSegments(
         `model: utility_pole; length: ${length}; cycleOffset: 0.25; facing: ${rotation}`
       );
     } else if (segments[i].type === 'sidewalk-tree') {
-      if (variantList[0] === 'palm-tree') {
-        objectMixinId = 'palm-tree';
-      } else {
-        objectMixinId = 'tree3';
-      }
+      const objectMixinId =
+        variantList[0] === 'palm-tree' ? 'palm-tree' : 'tree3';
       segmentParentEl.setAttribute(
         'street-generated-fixed',
         `model: ${objectMixinId}; length: ${length}; randomFacing: true;`

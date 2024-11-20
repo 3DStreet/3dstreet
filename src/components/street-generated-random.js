@@ -17,8 +17,8 @@ AFRAME.registerComponent('street-generated-random', {
       default: 1,
       type: 'number'
     },
-    objLength: {
-      // length of the model in meters
+    placeLength: {
+      // length of the place for each model in meters
       default: 1,
       type: 'number'
     },
@@ -66,7 +66,7 @@ AFRAME.registerComponent('street-generated-random', {
     // Calculate number of places needed based on length and objLength
     const randPlaces = this.randPlacedElements(
       data.length,
-      data.objLength,
+      data.placeLength,
       data.count
     );
 
@@ -93,10 +93,7 @@ AFRAME.registerComponent('street-generated-random', {
       this.createdEntities.push(clone);
     });
   },
-  randPlacedElements: function (streetLength, objLength, count) {
-    // Calculate placement length (spacing between objects)
-    const placeLength = objLength / 2 + objLength;
-
+  randPlacedElements: function (streetLength, placeLength, count) {
     // Calculate start and end positions
     const start = -streetLength / 2 + placeLength / 2;
     const end = streetLength / 2 - placeLength / 2;
