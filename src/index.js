@@ -24,6 +24,7 @@ require('./components/obb-clipping.js');
 require('./components/street-segment.js');
 require('./components/street-generated-fixed.js');
 require('./components/street-generated-single.js');
+require('./components/street-generated-random.js');
 require('./editor/index.js');
 
 const state = useStore.getState();
