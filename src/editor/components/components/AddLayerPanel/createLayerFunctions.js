@@ -50,6 +50,35 @@ export function createMapbox() {
   });
 }
 
+export function createGlobalClippingBox(position) {
+  const definition = {
+    id: 'global-clipping-box',
+    'data-layer-name': 'Global Clipping Box',
+    components: {
+      position: position ?? '0 0 0',
+      geometry: 'primitive: box; width: 100; height: 50; depth: 100',
+      material: 'color: #ff00ff; opacity: 0.5',
+      visible: false
+    }
+  };
+
+  // there should only be one global clipping box
+  const existingGlobalClippingBox = document.querySelector(
+    '#global-clipping-box'
+  );
+  if (existingGlobalClippingBox) {
+    existingGlobalClippingBox.remove();
+  }
+
+  AFRAME.INSPECTOR.execute('entitycreate', definition);
+  // then apply the global clipping box to the geo layer
+  const geoLayer = document.getElementById('reference-layers');
+  geoLayer.setAttribute(
+    'street-geo',
+    'enableClipping: true; globalClippingBox: true'
+  );
+}
+
 export function createStreetmixStreet(position, streetmixURL, hideBuildings) {
   // This code snippet allows the creation of an additional Streetmix street
   // in your 3DStreet scene without replacing any existing streets.
