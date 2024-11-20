@@ -404,23 +404,6 @@ function createChooChooElement(
   return placedObjectEl;
 }
 
-function createBusElement(variantList, length, showVehicles) {
-  if (!showVehicles) {
-    return;
-  }
-  const rotationY = variantList[0] === 'inbound' ? 0 : 180;
-  const busParentEl = document.createElement('a-entity');
-  const busLength = 12;
-  const busObjectEl = document.createElement('a-entity');
-  busObjectEl.setAttribute('rotation', '0 ' + rotationY + ' 0');
-  busObjectEl.setAttribute('mixin', 'bus');
-  const positionZ = randomPosition(busObjectEl, 'z', length, busLength);
-  busObjectEl.setAttribute('position', '0 0 ' + positionZ);
-  busParentEl.append(busObjectEl);
-
-  return busParentEl;
-}
-
 function addLinearStreetAnimation(
   reusableObjectEl,
   speed,
@@ -1170,10 +1153,13 @@ function processSegments(
       // get the color for a bus lane
       segmentColor = getSegmentColor(variantList[1]);
 
-      segmentParentEl.append(
-        createBusElement(variantList, length, showVehicles)
-      );
-
+      if (showVehicles) {
+        const rotationY = variantList[0] === 'inbound' ? 0 : 180;
+        segmentParentEl.setAttribute(
+          'street-generated-random',
+          `model: bus; length: ${length}; objLength: 12; facing: ${rotationY}; count: 1;`
+        );
+      }
       // create parent for the bus lane stencils to rotate the phrase instead of the word
       let reusableObjectStencilsParentEl;
 
