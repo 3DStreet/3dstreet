@@ -9,7 +9,7 @@ import { ToolbarWrapper } from './ToolbarWrapper';
 import { LayersIcon, ArrowLeftIcon } from '../../icons';
 import { getEntityDisplayName } from '../../lib/entity';
 import posthog from 'posthog-js';
-
+import GeoLayer from './GeoLayer';
 const HIDDEN_CLASSES = ['teleportRay', 'hitEntity', 'hideFromSceneGraph'];
 const HIDDEN_IDS = ['dropPlane', 'previewEntity'];
 
@@ -85,6 +85,7 @@ export default class SceneGraph extends React.Component {
   }
 
   selectEntity = (entity) => {
+    console.log('selectEntity', entity);
     let found = false;
     for (let i = 0; i < this.state.entities.length; i++) {
       const entityOption = this.state.entities[i];
@@ -226,6 +227,12 @@ export default class SceneGraph extends React.Component {
   };
 
   isVisibleInSceneGraph = (x) => {
+    if (
+      x.id === 'reference-layers' &&
+      !window.location.search.includes('debug=true')
+    ) {
+      return false;
+    }
     let curr = x.parentNode;
     if (!curr) {
       return false;
@@ -360,7 +367,10 @@ export default class SceneGraph extends React.Component {
               <span>Layers</span>
             </div>
           </div>
-          <div className="layers">{this.renderEntities()}</div>
+          <div className="layers">
+            <GeoLayer />
+            <div>{this.renderEntities()}</div>
+          </div>
         </div>
       </div>
     );

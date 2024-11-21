@@ -1,4 +1,4 @@
-import { HelpButton, GeoPanel, ZoomButtons } from './components';
+import { HelpButton, ZoomButtons } from './components';
 import { useState, useEffect } from 'react';
 import ComponentsSidebar from './components/Sidebar';
 import Events from '../lib/Events';
@@ -155,9 +155,6 @@ export default function Main() {
 
       {isInspectorEnabled && (
         <>
-          <div id="geo">
-            <GeoPanel />
-          </div>
           <div id="action-bar">
             <ActionBar selectedEntity={state.entity} />
           </div>
