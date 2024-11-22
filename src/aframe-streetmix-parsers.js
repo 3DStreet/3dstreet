@@ -888,7 +888,6 @@ function processSegments(
       const objectMixinId =
         segments[i].type === 'streetcar' ? 'trolley' : 'tram';
       if (showVehicles) {
-        const rotationY = variantList[0] === 'inbound' ? 0 : 180;
         segmentParentEl.setAttribute(
           'street-generated-random',
           `model: ${objectMixinId}; length: ${length}; placeLength: 23; facing: ${rotationY}; count: 1;`
@@ -900,8 +899,16 @@ function processSegments(
       segmentParentEl.append(tracksParentEl);
     } else if (segments[i].type === 'turn-lane') {
       segmentPreset = 'drive-lane'; // use normal drive lane road material
+      const rotationCloneY = variantList[0] === 'inbound' ? 0 : 180;
+      segmentParentEl.setAttribute(
+        'street-generated-random',
+        `modelsArray: sedan-rig, box-truck-rig, self-driving-waymo-car, suv-rig, motorbike;
+          length: ${length};
+          placeLength: 7.3;
+          facing: ${rotationCloneY};
+          count: ${getRandomIntInclusive(2, 4)};`
+      );
       var markerMixinId = variantList[1]; // set the mixin of the road markings to match the current variant name
-
       // Fix streetmix inbound turn lane orientation (change left to right) per: https://github.com/streetmix/streetmix/issues/683
       if (variantList[0] === 'inbound') {
         markerMixinId = markerMixinId.replace(/left|right/g, function (m) {
@@ -1102,19 +1109,15 @@ function processSegments(
       // add this stencil stuff to the segment parent
       segmentParentEl.append(reusableObjectStencilsParentEl);
     } else if (segments[i].type === 'drive-lane') {
-      const isAnimated = variantList[2] === 'animated' || globalAnimated;
-      const count = getRandomIntInclusive(2, 3);
-      const carStep = 7.3;
-      segmentParentEl.append(
-        createDriveLaneElement(
-          variantList,
-          segmentWidthInMeters,
-          length,
-          isAnimated,
-          showVehicles,
-          count,
-          carStep
-        )
+      // const isAnimated = variantList[2] === 'animated' || globalAnimated;
+      const rotationCloneY = variantList[0] === 'inbound' ? 0 : 180;
+      segmentParentEl.setAttribute(
+        'street-generated-random',
+        `modelsArray: sedan-rig, box-truck-rig, self-driving-waymo-car, suv-rig, motorbike;
+          length: ${length};
+          placeLength: 7.3;
+          facing: ${rotationCloneY};
+          count: ${getRandomIntInclusive(2, 4)};`
       );
     } else if (segments[i].type === 'food-truck') {
       segmentPreset = 'drive-lane';
