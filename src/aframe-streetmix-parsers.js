@@ -630,23 +630,6 @@ function randPlacedElements(streetLength, objLength, count) {
   return allPlaces.slice(0, count);
 }
 
-function createOutdoorDining(length, posY) {
-  const outdoorDiningParentEl = document.createElement('a-entity');
-  const outdorDiningLength = 2.27;
-
-  const randPlaces = randPlacedElements(length, outdorDiningLength, 5);
-  randPlaces.forEach((randPosZ) => {
-    const reusableObjectEl = document.createElement('a-entity');
-    reusableObjectEl.setAttribute('mixin', 'outdoor_dining');
-
-    // const positionZ = randomPosition(reusableObjectEl, 'z', length, outdorDiningLength);
-    reusableObjectEl.setAttribute('position', { y: posY, z: randPosZ });
-    outdoorDiningParentEl.append(reusableObjectEl);
-  });
-
-  return outdoorDiningParentEl;
-}
-
 function createMicroMobilityElement(
   variantList,
   segmentType,
@@ -1273,7 +1256,10 @@ function processSegments(
       segmentParentEl.append(createMagicCarpetElement(showVehicles));
     } else if (segments[i].type === 'outdoor-dining') {
       segmentPreset = variantList[1] === 'road' ? 'drive-lane' : 'sidewalk';
-      segmentParentEl.append(createOutdoorDining(length, 0));
+      segmentParentEl.setAttribute(
+        'street-generated-random',
+        `model: outdoor_dining; length: ${length}; placeLength: 2.27; count: 5;`
+      );
     } else if (segments[i].type === 'parklet') {
       segmentPreset = 'drive-lane';
       segmentParentEl.append(createParkletElement(length, variantList));
