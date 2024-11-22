@@ -579,27 +579,6 @@ function createDriveLaneElement(
   return driveLaneParentEl;
 }
 
-function createFoodTruckElement(variantList, length) {
-  const foodTruckParentEl = document.createElement('a-entity');
-
-  const reusableObjectEl = document.createElement('a-entity');
-  const foodTruckLength = 7;
-  const rotationY = variantList[0] === 'left' ? 0 : 180;
-  reusableObjectEl.setAttribute('rotation', '0 ' + rotationY + ' 0');
-  reusableObjectEl.setAttribute('mixin', 'food-trailer-rig');
-
-  const positionZ = randomPosition(
-    reusableObjectEl,
-    'z',
-    length,
-    foodTruckLength
-  );
-  reusableObjectEl.setAttribute('positon', '0 0 ' + positionZ);
-  foodTruckParentEl.append(reusableObjectEl);
-
-  return foodTruckParentEl;
-}
-
 function createMagicCarpetElement(showVehicles) {
   if (!showVehicles) {
     return;
@@ -1139,16 +1118,20 @@ function processSegments(
       );
     } else if (segments[i].type === 'food-truck') {
       segmentPreset = 'drive-lane';
-      segmentParentEl.append(createFoodTruckElement(variantList, length));
+      const rotationCloneY = variantList[0] === 'left' ? 0 : 180;
+      segmentParentEl.setAttribute(
+        'street-generated-random',
+        `model: food-trailer-rig; length: ${length}; placeLength: 7; facing: ${rotationCloneY}; count: 2;`
+      );
     } else if (segments[i].type === 'flex-zone') {
       segmentPreset = 'parking-lane';
       if (showVehicles) {
         const objectMixinId =
           variantList[0] === 'taxi' ? 'sedan-taxi-rig' : 'sedan-rig';
-        const rotationY = variantList[1] === 'inbound' ? 0 : 180;
+        const rotationCloneY = variantList[1] === 'inbound' ? 0 : 180;
         segmentParentEl.setAttribute(
           'street-generated-random',
-          `model: ${objectMixinId}; length: ${length}; placeLength: 5; facing: ${rotationY}; count: 4;`
+          `model: ${objectMixinId}; length: ${length}; placeLength: 5; facing: ${rotationCloneY}; count: 4;`
         );
       }
       let reusableObjectStencilsParentEl;
