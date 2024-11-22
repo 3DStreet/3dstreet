@@ -579,26 +579,6 @@ function createDriveLaneElement(
   return driveLaneParentEl;
 }
 
-function createMagicCarpetElement(showVehicles) {
-  if (!showVehicles) {
-    return;
-  }
-  const magicCarpetParentEl = document.createElement('a-entity');
-
-  const reusableObjectEl1 = document.createElement('a-entity');
-  reusableObjectEl1.setAttribute('position', '0 1.75 0');
-  reusableObjectEl1.setAttribute('rotation', '0 0 0');
-  reusableObjectEl1.setAttribute('mixin', 'magic-carpet');
-  magicCarpetParentEl.append(reusableObjectEl1);
-  const reusableObjectEl2 = document.createElement('a-entity');
-  reusableObjectEl2.setAttribute('position', '0 1.75 0');
-  reusableObjectEl2.setAttribute('rotation', '0 0 0');
-  reusableObjectEl2.setAttribute('mixin', 'Character_1_M');
-  magicCarpetParentEl.append(reusableObjectEl2);
-
-  return magicCarpetParentEl;
-}
-
 function createWayfindingElements() {
   const wayfindingParentEl = document.createElement('a-entity');
   let reusableObjectEl;
@@ -1139,7 +1119,18 @@ function processSegments(
       // add bike racks to the segment parent
     } else if (segments[i].type === 'magic-carpet') {
       segmentPreset = 'drive-lane';
-      segmentParentEl.append(createMagicCarpetElement(showVehicles));
+      segmentParentEl.setAttribute(
+        'street-generated-single',
+        `model: magic-carpet;
+        length: ${length};
+        positionY: 1.2;`
+      );
+      segmentParentEl.setAttribute(
+        'street-generated-single__2',
+        `model: Character_1_M;
+        length: ${length};
+        positionY: 1.2;`
+      );
     } else if (segments[i].type === 'outdoor-dining') {
       segmentPreset = variantList[1] === 'road' ? 'drive-lane' : 'sidewalk';
       segmentParentEl.setAttribute(
@@ -1194,7 +1185,7 @@ function processSegments(
         (variantList[0] === 'right' || variantList[0] === 'both')
       ) {
         segmentParentEl.setAttribute(
-          'street-generated-fixed__pride-flag',
+          'street-generated-fixed__2',
           `model: pride-flag; length: ${length}; cycleOffset: 0.4; positionX: 0.409; positionY: 5;`
         );
       }
@@ -1203,7 +1194,7 @@ function processSegments(
         (variantList[0] === 'left' || variantList[0] === 'both')
       ) {
         segmentParentEl.setAttribute(
-          'street-generated-fixed__pride-flag',
+          'street-generated-fixed__2',
           `model: pride-flag; length: ${length}; facing: 180; cycleOffset: 0.4; positionX: -0.409; positionY: 5;`
         );
       }
