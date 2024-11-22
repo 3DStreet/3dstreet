@@ -8,6 +8,9 @@ AFRAME.registerComponent('street-generated-random', {
     model: {
       type: 'string'
     },
+    modelsArray: {
+      type: 'array'
+    },
     length: {
       // length in meters of linear path to fill with clones
       type: 'number'
@@ -73,7 +76,7 @@ AFRAME.registerComponent('street-generated-random', {
     // Create clones
     randPlaces.forEach((randPosZ) => {
       const clone = document.createElement('a-entity');
-      clone.setAttribute('mixin', data.model);
+      clone.setAttribute('mixin', this.getRandomMixin());
       clone.setAttribute('position', {
         x: data.positionX,
         y: data.positionY,
@@ -92,6 +95,15 @@ AFRAME.registerComponent('street-generated-random', {
       this.el.appendChild(clone);
       this.createdEntities.push(clone);
     });
+  },
+  getRandomMixin: function () {
+    const data = this.data;
+    if (data.modelsArray && data.modelsArray.length > 0) {
+      return data.modelsArray[
+        Math.floor(Math.random() * data.modelsArray.length)
+      ];
+    }
+    return data.model;
   },
   randPlacedElements: function (streetLength, placeLength, count) {
     // Calculate start and end positions
