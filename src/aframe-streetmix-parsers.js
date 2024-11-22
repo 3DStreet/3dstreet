@@ -599,74 +599,6 @@ function createMagicCarpetElement(showVehicles) {
   return magicCarpetParentEl;
 }
 
-function randPlacedElements(streetLength, objLength, count) {
-  const placeLength = objLength / 2 + objLength;
-  const allPlaces = getZPositions(
-    -streetLength / 2 + placeLength / 2,
-    streetLength / 2 - placeLength / 2,
-    placeLength
-  );
-  return allPlaces.slice(0, count);
-}
-
-function createMicroMobilityElement(
-  variantList,
-  segmentType,
-  length,
-  showVehicles,
-  animated = false
-) {
-  if (!showVehicles) {
-    return;
-  }
-  const microMobilityParentEl = document.createElement('a-entity');
-
-  const bikeLength = 2.03;
-  const bikeCount = getRandomIntInclusive(2, 5);
-
-  const cyclistMixins = [
-    'cyclist-cargo',
-    'cyclist1',
-    'cyclist2',
-    'cyclist3',
-    'cyclist-dutch',
-    'cyclist-kid'
-  ];
-
-  const countCyclist = cyclistMixins.length;
-  let mixinId = 'Bicycle_1';
-  const randPlaces = randPlacedElements(length, bikeLength, bikeCount);
-  randPlaces.forEach((randPosZ) => {
-    const reusableObjectEl = document.createElement('a-entity');
-    const rotationY = variantList[0] === 'inbound' ? 0 : 180;
-    reusableObjectEl.setAttribute('rotation', '0 ' + rotationY + ' 0');
-    reusableObjectEl.setAttribute('position', { z: randPosZ });
-
-    if (animated) {
-      reusableObjectEl.setAttribute('animation-mixer', '');
-      const speed = 5;
-      addLinearStreetAnimation(
-        reusableObjectEl,
-        speed,
-        length,
-        0,
-        randPosZ,
-        variantList[0]
-      );
-    }
-    if (segmentType === 'bike-lane') {
-      mixinId = cyclistMixins[getRandomIntInclusive(0, countCyclist)];
-    } else {
-      mixinId = 'ElectricScooter_1';
-    }
-
-    reusableObjectEl.setAttribute('mixin', mixinId);
-    microMobilityParentEl.append(reusableObjectEl);
-  });
-
-  return microMobilityParentEl;
-}
-
 function createWayfindingElements() {
   const wayfindingParentEl = document.createElement('a-entity');
   let reusableObjectEl;
@@ -852,6 +784,7 @@ function processSegments(
       segments[i].type === 'bike-lane' ||
       segments[i].type === 'scooter'
     ) {
+      segmentPreset = 'bike-lane'; // use bike lane road material
       // make a parent entity for the stencils
       const stencilsParentEl = createStencilsParentElement({
         y: 0.015
@@ -868,14 +801,14 @@ function processSegments(
       });
       // add this stencil stuff to the segment parent
       segmentParentEl.append(stencilsParentEl);
-      segmentParentEl.append(
-        createMicroMobilityElement(
-          variantList,
-          segments[i].type,
-          length,
-          showVehicles,
-          globalAnimated
-        )
+      const rotationCloneY = variantList[0] === 'inbound' ? 0 : 180;
+      segmentParentEl.setAttribute(
+        'street-generated-random',
+        `modelsArray: cyclist-cargo, cyclist1, cyclist2, cyclist3, cyclist-dutch, cyclist-kid${segments[i].type === 'scooter' ? 'ElectricScooter_1' : ''};
+        length: ${length};
+        placeLength: 2.03;
+        facing: ${rotationCloneY};
+        count: ${getRandomIntInclusive(2, 5)};`
       );
     } else if (
       segments[i].type === 'light-rail' ||
