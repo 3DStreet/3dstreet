@@ -1211,25 +1211,25 @@ function processSegments(
       segments[i].type === 'separator' &&
       variantList[0] === 'dashed'
     ) {
-      segmentPreset = 'markings dashed-stripe';
+      segmentPreset = 'dashed-stripe';
       positionY = 0.01; // make sure the lane marker is above the asphalt
       // for all markings material property repeat = "1 25". So every 150/25=6 meters put a dash
       repeatCount[0] = 1;
       repeatCount[1] = parseInt(length / 6);
     } else if (segments[i].type === 'separator' && variantList[0] === 'solid') {
-      segmentPreset = 'markings solid-stripe';
+      segmentPreset = 'solid-stripe';
       positionY = 0.01; // make sure the lane marker is above the asphalt
     } else if (
       segments[i].type === 'separator' &&
       variantList[0] === 'doubleyellow'
     ) {
-      segmentPreset = 'markings solid-doubleyellow';
+      segmentPreset = 'solid-doubleyellow';
       positionY = 0.01; // make sure the lane marker is above the asphalt
     } else if (
       segments[i].type === 'separator' &&
       variantList[0] === 'shortdashedyellow'
     ) {
-      segmentPreset = 'markings yellow short-dashed-stripe';
+      segmentPreset = 'short-dashed-stripe-yellow';
       positionY = 0.01; // make sure the lane marker is above the asphalt
       // for short-dashed-stripe every 3 meters put a dash
       repeatCount[0] = 1;
@@ -1238,13 +1238,13 @@ function processSegments(
       segments[i].type === 'separator' &&
       variantList[0] === 'soliddashedyellow'
     ) {
-      segmentPreset = 'markings yellow solid-dashed';
+      segmentPreset = 'solid-dashed-yellow';
       positionY = 0.01; // make sure the lane marker is above the asphalt
     } else if (
       segments[i].type === 'separator' &&
       variantList[0] === 'soliddashedyellowinverted'
     ) {
-      segmentPreset = 'markings yellow solid-dashed';
+      segmentPreset = 'solid-dashed-yellow';
       positionY = 0.01; // make sure the lane marker is above the asphalt
       rotationY = '180';
       repeatCount[0] = 1;
@@ -1283,7 +1283,7 @@ function processSegments(
         carStep = 3;
         markingLength = segmentWidthInMeters;
         markingPosX = 0;
-        parkingMixin = 'markings solid-stripe';
+        parkingMixin = 'solid-stripe';
       }
       const markingPosXY = markingPosX + ' 0';
       const clonedStencilRadius = length / 2 - carStep;
