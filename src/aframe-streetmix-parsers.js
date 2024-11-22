@@ -688,30 +688,6 @@ function createMicroMobilityElement(
   return microMobilityParentEl;
 }
 
-function createFlexZoneElement(variantList, length, showVehicles = true) {
-  if (!showVehicles) {
-    return;
-  }
-  const flexZoneParentEl = document.createElement('a-entity');
-  const carLength = 5;
-  const carCount = getRandomIntInclusive(2, 4);
-  const randPlaces = randPlacedElements(length, carLength, carCount);
-  randPlaces.forEach((randPosZ) => {
-    const reusableObjectEl = document.createElement('a-entity');
-    const rotationY = variantList[1] === 'inbound' ? 0 : 180;
-    reusableObjectEl.setAttribute('rotation', '0 ' + rotationY + ' 0');
-    if (variantList[0] === 'taxi') {
-      reusableObjectEl.setAttribute('mixin', 'sedan-taxi-rig');
-    } else if (variantList[0] === 'rideshare') {
-      reusableObjectEl.setAttribute('mixin', 'sedan-rig');
-    }
-    reusableObjectEl.setAttribute('position', { z: randPosZ });
-    flexZoneParentEl.append(reusableObjectEl);
-  });
-
-  return flexZoneParentEl;
-}
-
 function createWayfindingElements() {
   const wayfindingParentEl = document.createElement('a-entity');
   let reusableObjectEl;
@@ -1183,12 +1159,16 @@ function processSegments(
       segmentParentEl.append(createFoodTruckElement(variantList, length));
     } else if (segments[i].type === 'flex-zone') {
       segmentPreset = 'parking-lane';
-      segmentParentEl.append(
-        createFlexZoneElement(variantList, length, showVehicles)
-      );
-
+      if (showVehicles) {
+        const objectMixinId =
+          variantList[0] === 'taxi' ? 'sedan-taxi-rig' : 'sedan-rig';
+        const rotationY = variantList[1] === 'inbound' ? 0 : 180;
+        segmentParentEl.setAttribute(
+          'street-generated-random',
+          `model: ${objectMixinId}; length: ${length}; placeLength: 5; facing: ${rotationY}; count: 4;`
+        );
+      }
       let reusableObjectStencilsParentEl;
-
       reusableObjectStencilsParentEl = createStencilsParentElement({
         y: 0.015,
         z: 5
