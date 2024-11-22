@@ -82,7 +82,7 @@ AFRAME.registerComponent('street-generated-single', {
     }
     clone.classList.add('autocreated');
     // clone.setAttribute('data-ignore-raycaster', ''); // i still like clicking to zoom to individual clones, but instead this should show the generated-fixed clone settings
-    // clone.setAttribute('data-no-transform', '');
+    clone.setAttribute('data-no-transform', '');
     clone.setAttribute('data-layer-name', 'Cloned Model • ' + data.model);
     this.el.appendChild(clone);
     this.createdEntities.push(clone);

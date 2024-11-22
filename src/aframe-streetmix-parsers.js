@@ -777,13 +777,6 @@ function createParkletElement(length, variantList) {
   return parkletParent;
 }
 
-function createBrtStationElement() {
-  const placedObjectEl = document.createElement('a-entity');
-  placedObjectEl.setAttribute('class', 'brt-station');
-  placedObjectEl.setAttribute('mixin', 'brt-station');
-  return placedObjectEl;
-}
-
 // offset to center the street around global x position of 0
 function createCenteredStreetElement(segments) {
   const streetEl = document.createElement('a-entity');
@@ -1353,7 +1346,10 @@ function processSegments(
         `model: bus-stop; length: ${length}; facing: ${rotationBusStopY};`
       );
     } else if (segments[i].type === 'brt-station') {
-      segmentParentEl.append(createBrtStationElement());
+      segmentParentEl.setAttribute(
+        'street-generated-single',
+        `model: brt-station; length: ${length};`
+      );
     } else if (
       segments[i].type === 'separator' &&
       variantList[0] === 'dashed'
