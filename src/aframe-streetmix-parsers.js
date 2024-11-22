@@ -719,23 +719,6 @@ function createWayfindingElements() {
   return wayfindingParentEl;
 }
 
-function createParkletElement(length, variantList) {
-  const parkletParent = document.createElement('a-entity');
-  const parkletLength = 4.03;
-  const parkletCount = 3;
-  const randPlaces = randPlacedElements(length, parkletLength, parkletCount);
-  randPlaces.forEach((randPosZ) => {
-    const placedObjectEl = document.createElement('a-entity');
-    placedObjectEl.setAttribute('class', 'parklet');
-    placedObjectEl.setAttribute('position', { x: 0, y: 0.02, z: randPosZ });
-    placedObjectEl.setAttribute('mixin', 'parklet');
-    const rotationY = variantList[0] === 'left' ? 90 : 270;
-    placedObjectEl.setAttribute('rotation', { y: rotationY });
-    parkletParent.append(placedObjectEl);
-  });
-  return parkletParent;
-}
-
 // offset to center the street around global x position of 0
 function createCenteredStreetElement(segments) {
   const streetEl = document.createElement('a-entity');
@@ -1242,7 +1225,11 @@ function processSegments(
       );
     } else if (segments[i].type === 'parklet') {
       segmentPreset = 'drive-lane';
-      segmentParentEl.append(createParkletElement(length, variantList));
+      const rotationCloneY = variantList[0] === 'left' ? 90 : 270;
+      segmentParentEl.setAttribute(
+        'street-generated-random',
+        `model: parklet; length: ${length}; placeLength: 4; count: 3; facing: ${rotationCloneY};`
+      );
     } else if (segments[i].type === 'bikeshare') {
       const rotationCloneY = variantList[0] === 'left' ? 90 : 270;
       segmentParentEl.setAttribute(
@@ -1250,10 +1237,10 @@ function processSegments(
         `model: bikeshare; length: ${length}; facing: ${rotationCloneY}; justify: middle;`
       );
     } else if (segments[i].type === 'utilities') {
-      var rotation = variantList[0] === 'right' ? '180' : '0';
+      const rotationCloneY = variantList[0] === 'right' ? 180 : 0;
       segmentParentEl.setAttribute(
         'street-generated-fixed',
-        `model: utility_pole; length: ${length}; cycleOffset: 0.25; facing: ${rotation}`
+        `model: utility_pole; length: ${length}; cycleOffset: 0.25; facing: ${rotationCloneY}`
       );
     } else if (segments[i].type === 'sidewalk-tree') {
       const objectMixinId =
