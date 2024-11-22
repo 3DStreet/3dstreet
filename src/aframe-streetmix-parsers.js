@@ -746,20 +746,10 @@ function processSegments(
 
     // look at segment type and variant(s) to determine specific cases
     if (segments[i].type === 'drive-lane' && variantList[1] === 'sharrow') {
-      // make a parent entity for the stencils
-      const stencilsParentEl = createStencilsParentElement({
-        y: 0.015
-      });
-      // clone a bunch of stencil entities (note: this is not draw call efficient)
-      cloneMixinAsChildren({
-        objectMixinId: 'stencils sharrow',
-        parentEl: stencilsParentEl,
-        rotation: '-90 ' + rotationY + ' 0',
-        step: 10,
-        radius: clonedObjectRadius
-      });
-      // add this stencil stuff to the segment parent
-      segmentParentEl.append(stencilsParentEl);
+      segmentParentEl.setAttribute(
+        'street-generated-fixed',
+        `model: stencils sharrow; length: ${length}; rotationX: -90; positionY: 0.15; cycleOffset: 0.2; spacing: 15;`
+      );
     } else if (
       segments[i].type === 'bike-lane' ||
       segments[i].type === 'scooter'

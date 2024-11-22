@@ -41,6 +41,10 @@ AFRAME.registerComponent('street-generated-fixed', {
       // if true, facing is ignored and a random Y Rotation is applied to each clone
       default: false,
       type: 'boolean'
+    },
+    rotationX: {
+      default: 0,
+      type: 'number'
     }
     // seed: {  // seed not yet supported
     //   default: 0,
@@ -84,9 +88,12 @@ AFRAME.registerComponent('street-generated-fixed', {
       });
 
       if (data.randomFacing) {
-        clone.setAttribute('rotation', `0 ${Math.random() * 360} 0`);
+        clone.setAttribute(
+          'rotation',
+          `${data.rotationX} ${Math.random() * 360} 0`
+        );
       } else {
-        clone.setAttribute('rotation', `0 ${data.facing} 0`);
+        clone.setAttribute('rotation', `${data.rotationX} ${data.facing} 0`);
       }
       clone.classList.add('autocreated');
       // clone.setAttribute('data-ignore-raycaster', ''); // i still like clicking to zoom to individual clones, but instead this should show the generated-fixed clone settings
