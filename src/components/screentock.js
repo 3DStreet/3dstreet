@@ -1,18 +1,5 @@
 /* AFRAME */
-
-// function buttonScreenshotTock() {
-//   AFRAME.scenes[0].setAttribute('screentock', 'type', 'jpg');
-//   AFRAME.scenes[0].setAttribute('screentock', 'takeScreenshot', true);
-// }
-// function buttonScreenshotTockPNG() {
-//   AFRAME.scenes[0].setAttribute('screentock', 'type', 'png');
-//   AFRAME.scenes[0].setAttribute('screentock', 'takeScreenshot', true);
-// }
-// function buttonCaptureImage() {
-//   AFRAME.scenes[0].setAttribute('screentock', 'type', 'img');
-//   AFRAME.scenes[0].setAttribute('screentock', 'imgElementSelector', '#captureImg');
-//   AFRAME.scenes[0].setAttribute('screentock', 'takeScreenshot', true);
-// }
+import useStore from '../store';
 
 AFRAME.registerComponent('screentock', {
   schema: {
@@ -21,7 +8,7 @@ AFRAME.registerComponent('screentock', {
     type: { type: 'string', default: 'jpg' }, // png, jpg, img
     imgElementSelector: { type: 'selector' }
   },
-  takeScreenshotNow: async function (filename, type, imgElement) {
+  takeScreenshotNow: function (filename, type, imgElement) {
     const inspector = AFRAME.INSPECTOR;
     const renderer = AFRAME.scenes[0].renderer;
 
@@ -32,7 +19,7 @@ AFRAME.registerComponent('screentock', {
       if (inspector && inspector.opened) inspector.sceneHelpers.visible = show;
     }
 
-    const createCanvasWithScreenshot = async (aframeCanvas) => {
+    const createCanvasWithScreenshot = (aframeCanvas) => {
       let screenshotCanvas = document.querySelector('#screenshotCanvas');
       if (!screenshotCanvas) {
         screenshotCanvas = document.createElement('canvas');
@@ -53,7 +40,7 @@ AFRAME.registerComponent('screentock', {
         screenshotCanvas.height
       );
       // add 3DStreet logo
-      await addLogoToCanvas(ctxScreenshot);
+      addLogoToCanvas(ctxScreenshot);
       return screenshotCanvas;
     };
 
@@ -62,27 +49,15 @@ AFRAME.registerComponent('screentock', {
       ctx.textAlign = 'center';
       ctx.fillStyle = '#FFF';
       ctx.fillText(
-        STREET.utils.getCurrentSceneTitle(),
+        useStore.getState().sceneTitle,
         screenWidth - screenWidth / 2,
         screenHeight - 43
       );
     }
 
-    const addLogoToCanvas = async (ctx) => {
-      const logoImg = document.querySelector('img.viewer-logo-img');
-      const logoSVG = document.querySelector('#aframeInspector #logoImg svg');
-
-      if (logoImg) {
-        ctx.drawImage(logoImg, 0, 0, 135, 43, 40, 30, 270, 86);
-      } else if (logoSVG) {
-        const image = new Image();
-        image.src = `data:image/svg+xml;base64,${window.btoa(logoSVG.outerHTML)}`;
-        await new Promise((resolve) => {
-          image.onload = resolve;
-        });
-
-        ctx.drawImage(image, 0, 0, 135, 23, 40, 40, 270, 46);
-      }
+    const addLogoToCanvas = (ctx) => {
+      const logoImg = document.querySelector('#screenshot-img');
+      ctx.drawImage(logoImg, 0, 0, 135, 43, 40, 30, 270, 86);
     };
 
     function downloadImageDataURL(filename, dataURL, scnrenshotCanvas) {
@@ -103,9 +78,7 @@ AFRAME.registerComponent('screentock', {
 
     // render one frame
     renderer.render(AFRAME.scenes[0].object3D, AFRAME.scenes[0].camera);
-    const screenshotCanvas = await createCanvasWithScreenshot(
-      renderer.domElement
-    );
+    const screenshotCanvas = createCanvasWithScreenshot(renderer.domElement);
 
     if (type === 'img') {
       imgElement.src = screenshotCanvas.toDataURL();

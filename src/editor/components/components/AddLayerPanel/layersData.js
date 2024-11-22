@@ -1,8 +1,6 @@
 import {
   createSvgExtrudedEntity,
-  createMapbox,
   createStreetmixStreet,
-  create3DTiles,
   createCustomModel,
   createPrimitiveGeometry,
   createIntersection,
@@ -10,7 +8,8 @@ import {
   create60ftRightOfWay,
   create80ftRightOfWay,
   create94ftRightOfWay,
-  create150ftRightOfWay
+  create150ftRightOfWay,
+  createImageEntity
 } from './createLayerFunctions';
 
 export const streetLayersData = [
@@ -62,31 +61,20 @@ export const streetLayersData = [
     description: 'Premade Street 150ft Right of Way / 124ft Roadway Width',
     id: 6,
     handlerFunction: create150ftRightOfWay
+  },
+  {
+    name: 'Create intersection',
+    img: '',
+    requiresPro: true,
+    icon: '',
+    description:
+      'Create intersection entity. Parameters of intersection component could be changed in properties panel.',
+    id: 7,
+    handlerFunction: createIntersection
   }
 ];
 
-// data for PRO layers cards
-export const layersData = [
-  {
-    name: 'Mapbox 2D Aerial',
-    img: 'ui_assets/cards/mapbox2d.jpg',
-    icon: 'ui_assets/cards/icons/mapbox24.png',
-    requiresPro: true,
-    description:
-      'Create entity with mapbox component, that accepts a long / lat and renders a plane with dimensions that (should be) at a correct scale.',
-    id: 1,
-    handlerFunction: createMapbox
-  },
-  {
-    name: 'Google Maps 3D Tiles',
-    img: 'ui_assets/cards/google3d.jpg',
-    icon: 'ui_assets/cards/icons/google24.png',
-    requiresPro: true,
-    description:
-      'Adds an entity to load and display 3d tiles from Google Maps Tiles API 3D Tiles endpoint. This will break your scene and you cannot save it yet, so beware before testing.',
-    id: 2,
-    handlerFunction: create3DTiles
-  },
+export const customLayersData = [
   {
     name: 'Entity from extruded SVG',
     img: '',
@@ -94,7 +82,7 @@ export const layersData = [
     requiresPro: true,
     description:
       'Create entity with svg-extruder component, that accepts a svgString and creates a new entity with geometry extruded from the svg and applies the default mixin material grass.',
-    id: 3,
+    id: 1,
     handlerFunction: createSvgExtrudedEntity
   },
   {
@@ -104,7 +92,7 @@ export const layersData = [
     icon: '',
     description:
       'Create entity with model from path for a glTF (or Glb) file hosted on any publicly accessible HTTP server.',
-    id: 4,
+    id: 2,
     handlerFunction: createCustomModel
   },
   {
@@ -114,17 +102,17 @@ export const layersData = [
     icon: '',
     description:
       'Create entity with A-Frame primitive geometry. Geometry type could be changed in properties panel.',
-    id: 5,
+    id: 3,
     handlerFunction: createPrimitiveGeometry
   },
   {
-    name: 'Create intersection',
+    name: 'Place New Image Entity',
     img: '',
     requiresPro: true,
-    icon: '',
+    icon: 'ui_assets/cards/icons/gallery24.png',
     description:
-      'Create intersection entity. Parameters of intersection component could be changed in properties panel.',
-    id: 6,
-    handlerFunction: createIntersection
+      'Place an image such as a sign, reference photo, custom map, etc.',
+    id: 4,
+    handlerFunction: createImageEntity
   }
 ];

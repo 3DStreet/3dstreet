@@ -1,3 +1,4 @@
+import '../styles/tailwind.css';
 import { createRoot } from 'react-dom/client';
 import { GLTFExporter } from 'three/examples/jsm/exporters/GLTFExporter';
 import MainWrapper from './components/MainWrapper';
@@ -9,9 +10,7 @@ import { Config } from './lib/config';
 import { History } from './lib/history';
 import { Shortcuts } from './lib/shortcuts';
 import { Viewport } from './lib/viewport';
-import { firebaseConfig } from './services/firebase.js';
 import './style/index.scss';
-import ReactGA from 'react-ga4';
 import posthog from 'posthog-js';
 import { commandsByType } from './lib/commands/index.js';
 
@@ -23,7 +22,6 @@ function Inspector() {
   this.isFirstOpen = true;
   this.modules = {};
   this.opened = false;
-
   // Wait for stuff.
   const doInit = () => {
     if (!AFRAME.scenes.length) {
@@ -71,6 +69,7 @@ Inspector.prototype = {
     this.selected = null;
 
     // Init React.
+
     const div = document.createElement('div');
     div.id = 'aframeInspector';
     div.setAttribute('data-aframe-inspector', 'app');
@@ -88,8 +87,6 @@ Inspector.prototype = {
     this.helpers = {};
     this.sceneHelpers = new THREE.Scene();
     this.sceneHelpers.userData.source = 'INSPECTOR';
-    this.sceneHelpers.visible = true;
-    this.inspectorActive = false;
 
     this.viewport = new Viewport(this);
 
@@ -179,16 +176,9 @@ Inspector.prototype = {
   },
 
   initEvents: function () {
-    window.addEventListener('keydown', (evt) => {
-      // Alt + Ctrl + i: Shorcut to toggle the inspector
-      const shortcutPressed =
-        evt.keyCode === 73 &&
-        ((evt.ctrlKey && evt.altKey) || evt.getModifierState('AltGraph'));
-      if (shortcutPressed) {
-        this.toggle();
-      }
-    });
-
+    // Remove inspector component to properly unregister keydown listener when the inspector is loaded via a script tag,
+    // otherwise the listener will be registered twice and we can't toggle the inspector from viewer mode with the shortcut.
+    this.sceneEl.removeAttribute('inspector');
     Events.on('entityselect', (entity) => {
       this.selectEntity(entity, false);
     });
@@ -204,11 +194,6 @@ Inspector.prototype = {
     Events.on('showcursor', () => {
       this.cursor.play();
       this.cursor.setAttribute('raycaster', 'enabled', true);
-    });
-
-    Events.on('inspectortoggle', (active) => {
-      this.inspectorActive = active;
-      this.sceneHelpers.visible = this.inspectorActive;
     });
 
     this.sceneEl.addEventListener('newScene', () => {
@@ -262,16 +247,6 @@ Inspector.prototype = {
   },
 
   /**
-   * Toggle the editor
-   */
-  toggle: function () {
-    if (this.opened) {
-      this.close();
-    } else {
-      this.open();
-    }
-  },
-  /**
    * Prevent pause elements with data-no-pause attribute while open inspector
    */
   playNoPauseElements: function () {
@@ -287,7 +262,8 @@ Inspector.prototype = {
    */
   open: function (focusEl) {
     this.opened = true;
-    Events.emit('inspectortoggle', true);
+    this.inspectorActive = true;
+    this.sceneHelpers.visible = true;
 
     if (this.sceneEl.hasAttribute('embedded')) {
       // Remove embedded styles, but keep track of it.
@@ -332,7 +308,8 @@ Inspector.prototype = {
    */
   close: function () {
     this.opened = false;
-    Events.emit('inspectortoggle', false);
+    this.inspectorActive = false;
+    this.sceneHelpers.visible = false;
 
     // Untrick scene when we enabled this to run the cursor tick.
     this.sceneEl.isPlaying = false;
@@ -357,9 +334,7 @@ Inspector.prototype = {
   }
 };
 
-ReactGA.initialize(firebaseConfig.measurementId);
 const inspector = (AFRAME.INSPECTOR = new Inspector());
-
 posthog.init('phc_Yclai3qykyFi8AEFOrZsh6aS78SSooLzpDz9wQ9YAH9', {
   api_host: 'https://us.i.posthog.com',
   person_profiles: 'identified_only' // or 'always' to create profiles for anonymous users as well

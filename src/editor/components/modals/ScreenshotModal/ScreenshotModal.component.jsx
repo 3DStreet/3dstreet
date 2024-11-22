@@ -1,126 +1,47 @@
 import { useEffect, useState } from 'react';
 import styles from './ScreenshotModal.module.scss';
-import {
-  collection,
-  doc,
-  getDoc,
-  serverTimestamp,
-  updateDoc
-} from 'firebase/firestore';
-
 import { signIn } from '../../../api';
-import { getDownloadURL, ref, uploadBytes } from 'firebase/storage';
-import PropTypes from 'prop-types';
 import { useAuthContext } from '../../../contexts';
 import { Copy32Icon, Save24Icon } from '../../../icons';
-import { db, storage } from '../../../services/firebase';
 import { Button, Dropdown, Input } from '../../components';
-import Toolbar from '../../scenegraph/Toolbar';
 import Modal from '../Modal.jsx';
 import posthog from 'posthog-js';
-// import { loginHandler } from '../SignInModal';
+import { saveBlob } from '../../../lib/utils';
+import { uploadThumbnailImage, saveScreenshot } from '../../../api/scene';
+import useStore from '@/store';
+import { convertToObject } from '@/editor/lib/SceneUtils';
 
-export const uploadThumbnailImage = async (uploadedFirstTime) => {
-  try {
-    saveScreenshot('img');
-
-    await new Promise((resolve) => setTimeout(resolve, 1000));
-    const screentockImgElement = document.getElementById(
-      'screentock-destination'
-    );
-
-    // Get the original image dimensions
-    const originalWidth = screentockImgElement.naturalWidth;
-    const originalHeight = screentockImgElement.naturalHeight;
-
-    // Define the target dimensions
-    const targetWidth = 320;
-    const targetHeight = 240;
-
-    // Calculate the scale factors
-    const scaleX = targetWidth / originalWidth;
-    const scaleY = targetHeight / originalHeight;
-
-    // Use the larger scale factor to fill the entire space
-    const scale = Math.max(scaleX, scaleY);
-
-    // Calculate the new dimensions
-    const newWidth = originalWidth * scale;
-    const newHeight = originalHeight * scale;
-
-    const resizedCanvas = document.createElement('canvas');
-    resizedCanvas.width = targetWidth;
-    resizedCanvas.height = targetHeight;
-    const context = resizedCanvas.getContext('2d');
-
-    // Calculate the position to center the image
-    const posX = (targetWidth - newWidth) / 2;
-    const posY = (targetHeight - newHeight) / 2;
-
-    // Draw the image on the canvas with the new dimensions and position
-    context.drawImage(screentockImgElement, posX, posY, newWidth, newHeight);
-    // Rest of the code...
-    const thumbnailDataUrl = resizedCanvas.toDataURL('image/jpeg', 0.5);
-    const blobFile = await fetch(thumbnailDataUrl).then((res) => res.blob());
-
-    const sceneDocId = STREET.utils.getCurrentSceneId();
-
-    const thumbnailRef = ref(storage, `scenes/${sceneDocId}/files/preview.jpg`);
-
-    const uploadedImg = await uploadBytes(thumbnailRef, blobFile);
-
-    const downloadURL = await getDownloadURL(uploadedImg.ref);
-    const userScenesRef = collection(db, 'scenes');
-    const sceneDocRef = doc(userScenesRef, sceneDocId);
-    const sceneSnapshot = await getDoc(sceneDocRef);
-    if (sceneSnapshot.exists()) {
-      await updateDoc(sceneDocRef, {
-        imagePath: downloadURL,
-        updateTimestamp: serverTimestamp()
-      });
-      console.log('Firebase updateDoc fired');
-    } else {
-      throw new Error('No existing sceneSnapshot exists.');
+const filterHelpers = (scene, visible) => {
+  scene.traverse((o) => {
+    if (o.userData.source === 'INSPECTOR') {
+      o.visible = visible;
     }
-
-    console.log('Thumbnail uploaded and Firestore updated successfully.');
-    uploadedFirstTime &&
-      STREET.notify.successMessage(
-        'Scene thumbnail updated in 3DStreet Cloud.'
-      );
-  } catch (error) {
-    console.error('Error capturing screenshot and updating Firestore:', error);
-    let errorMessage = `Error updating scene thumbnail: ${error}`;
-    if (error.code === 'storage/unauthorized') {
-      errorMessage =
-        'Error updating scene thumbnail: only the scene author may change the scene thumbnail. Save this scene as your own to change the thumbnail.';
-    }
-    STREET.notify.errorMessage(errorMessage);
-  }
-};
-
-const saveScreenshot = async (value) => {
-  const screenshotEl = document.getElementById('screenshot');
-  screenshotEl.play();
-
-  if (value === 'img') {
-    screenshotEl.setAttribute(
-      'screentock',
-      'imgElementSelector',
-      '#screentock-destination'
-    );
-  }
-
-  posthog.capture('screenshot_taken', {
-    type: value,
-    scene_id: STREET.utils.getCurrentSceneId()
   });
-
-  screenshotEl.setAttribute('screentock', 'type', value);
-  screenshotEl.setAttribute('screentock', 'takeScreenshot', true);
 };
 
-function ScreenshotModal({ isOpen, onClose }) {
+/**
+ * Slugify the string removing non-word chars and spaces
+ * @param  {string} text String to slugify
+ * @return {string}      Slugified string
+ */
+const slugify = (text) => {
+  return text
+    .toString()
+    .toLowerCase()
+    .replace(/\s+/g, '-') // Replace spaces with -
+    .replace(/[^\w-]+/g, '-') // Replace all non-word chars with -
+    .replace(/--+/g, '-') // Replace multiple - with single -
+    .replace(/^-+/, '') // Trim - from start of text
+    .replace(/-+$/, ''); // Trim - from end of text
+};
+
+const getSceneName = (scene) => {
+  return scene.id || slugify(window.location.host + window.location.pathname);
+};
+
+function ScreenshotModal() {
+  const setModal = useStore((state) => state.setModal);
+  const modal = useStore((state) => state.modal);
   const storedScreenshot = localStorage.getItem('screenshot');
   const parsedScreenshot = JSON.parse(storedScreenshot);
   const { currentUser } = useAuthContext();
@@ -153,17 +74,59 @@ function ScreenshotModal({ isOpen, onClose }) {
     {
       value: 'GLB glTF',
       label: 'GLB glTF',
-      onClick: Toolbar.exportSceneToGLTF
+      proIcon: true,
+      onClick: () => exportSceneToGLTF(currentUser?.isPro)
     },
     {
       value: '.3dstreet.json',
       label: '.3dstreet.json',
-      onClick: Toolbar.convertToObject
+      onClick: () => {
+        posthog.capture('convert_to_json_clicked', {
+          scene_id: STREET.utils.getCurrentSceneId()
+        });
+        convertToObject();
+      }
     }
   ];
 
   const handleSelect = (value) => {
     setSelectedOption(value);
+  };
+
+  const exportSceneToGLTF = (isPro) => {
+    if (isPro) {
+      try {
+        const sceneName = getSceneName(AFRAME.scenes[0]);
+        const scene = AFRAME.scenes[0].object3D;
+        posthog.capture('export_scene_to_gltf_clicked', {
+          scene_id: STREET.utils.getCurrentSceneId()
+        });
+
+        filterHelpers(scene, false);
+        AFRAME.INSPECTOR.exporters.gltf.parse(
+          scene,
+          function (buffer) {
+            filterHelpers(scene, true);
+            const blob = new Blob([buffer], {
+              type: 'application/octet-stream'
+            });
+            saveBlob(blob, sceneName + '.glb');
+          },
+          function (error) {
+            console.error(error);
+          },
+          { binary: true }
+        );
+        STREET.notify.successMessage('3DStreet scene exported as glTF file.');
+      } catch (error) {
+        STREET.notify.errorMessage(
+          `Error while trying to save glTF file. Error: ${error}`
+        );
+        console.error(error);
+      }
+    } else {
+      setModal('payment');
+    }
   };
 
   const copyToClipboardTailing = async () => {
@@ -181,11 +144,17 @@ function ScreenshotModal({ isOpen, onClose }) {
     }
   };
 
+  const updateThumbnail = async () => {
+    posthog.capture('thumbnail_updated');
+    await uploadThumbnailImage();
+    STREET.notify.successMessage('Thumbnail Updated');
+  };
+
   return (
     <Modal
       className={styles.screenshotModalWrapper}
-      isOpen={isOpen}
-      onClose={onClose}
+      isOpen={modal === 'screenshot'}
+      onClose={() => setModal(null)}
       title={'Share scene'}
       titleElement={
         <>
@@ -246,7 +215,7 @@ function ScreenshotModal({ isOpen, onClose }) {
           />
           <Button
             variant="custom"
-            onClick={uploadThumbnailImage}
+            onClick={updateThumbnail}
             className={styles.thumbnailButton}
           >
             Set as scene thumbnail
@@ -256,10 +225,5 @@ function ScreenshotModal({ isOpen, onClose }) {
     </Modal>
   );
 }
-
-ScreenshotModal.propTypes = {
-  isOpen: PropTypes.bool,
-  onClose: PropTypes.func.isRequired
-};
 
 export { ScreenshotModal };

@@ -7,12 +7,12 @@ import {
   createElementsForScenesFromJSON,
   fileJSON,
   inputStreetmix
-} from '../../../lib/toolbar';
+} from '@/editor/lib/SceneUtils.js';
 import { getCommunityScenes, getUserScenes } from '../../../api/scene';
 import { Load24Icon, Loader, Upload24Icon } from '../../../icons';
 import { signIn } from '../../../api';
 import posthog from 'posthog-js';
-
+import useStore from '../../../../store.js';
 const SCENES_PER_PAGE = 20;
 const tabs = [
   {
@@ -25,7 +25,7 @@ const tabs = [
   }
 ];
 
-const ScenesModal = ({ isOpen, onClose, initialTab = 'owner', delay }) => {
+const ScenesModal = ({ initialTab = 'owner', delay = undefined }) => {
   const { currentUser } = useAuthContext();
   const [renderComponent, setRenderComponent] = useState(!delay);
   const [scenesData, setScenesData] = useState([]);
@@ -38,10 +38,13 @@ const ScenesModal = ({ isOpen, onClose, initialTab = 'owner', delay }) => {
   const [isLoading, setIsLoading] = useState(false);
   const [selectedTab, setSelectedTab] = useState(initialTab);
 
+  const setModal = useStore((state) => state.setModal);
+  const isOpen = useStore((state) => state.modal === 'scenes');
   const handleSceneClick = (scene, event) => {
     posthog.capture('scene_opened', {
       scene_id: scene.id,
-      scene_title: scene.title
+      scene_title: scene.title,
+      selected_tab: selectedTab
     });
     let sceneData = scene.data();
     if (!sceneData || !sceneData.data) {
@@ -63,10 +66,9 @@ const ScenesModal = ({ isOpen, onClose, initialTab = 'owner', delay }) => {
 
       const sceneId = scene.id;
       const sceneTitle = sceneData.title;
-
       AFRAME.scenes[0].setAttribute('metadata', 'sceneId', sceneId);
-      AFRAME.scenes[0].setAttribute('metadata', 'sceneTitle', sceneTitle);
-
+      useStore.getState().setSceneTitle(sceneTitle);
+      AFRAME.scenes[0].setAttribute('metadata', 'authorId', sceneData.author);
       STREET.notify.successMessage('Scene loaded from 3DStreet Cloud.');
       onClose();
     }
@@ -138,6 +140,10 @@ const ScenesModal = ({ isOpen, onClose, initialTab = 'owner', delay }) => {
 
     fetchData();
   }, [isOpen, currentUser, selectedTab]); // eslint-disable-line
+
+  const onClose = () => {
+    setModal(null);
+  };
 
   const fetchUserScenes = async () => {
     return await getUserScenes(currentUser?.uid);

@@ -335,14 +335,12 @@ export default class SceneGraph extends React.Component {
     // Outliner class names.
     const className = classNames({
       outliner: true,
-      hide: this.state.leftBarHide
+      hide: this.state.leftBarHide,
+      'mt-16': true
     });
 
     return (
       <div id="scenegraph" className="scenegraph">
-        <div className="scenegraph-toolbar">
-          <ToolbarWrapper />
-        </div>
         <div
           className={className}
           tabIndex="0"

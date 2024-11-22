@@ -1,4 +1,4 @@
-const PRO_DOMAINS = ['unam.mx'];
+const PRO_DOMAINS = ['unam.mx', 'uoregon.edu'];
 
 const isUserPro = async (user) => {
   if (user) {

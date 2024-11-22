@@ -1,6 +1,7 @@
 import { loadScript, roundCoord } from '../../../../../src/utils.js';
+import { createUniqueId } from '../../../lib/entity.js';
 
-export function createSvgExtrudedEntity() {
+export function createSvgExtrudedEntity(position) {
   // This component accepts a svgString and creates a new entity with geometry extruded
   // from the svg and applies the default mixin material grass.
   const svgString = prompt(
@@ -17,6 +18,7 @@ export function createSvgExtrudedEntity() {
     const definition = {
       element: 'a-entity',
       components: {
+        position: position ?? '0 0 0',
         'svg-extruder': `svgString: ${svgString}`,
         'data-layer-name': 'SVG Path • My Custom Path'
       }
@@ -60,7 +62,7 @@ export function createStreetmixStreet(position, streetmixURL, hideBuildings) {
   // position the street further from the current one so as not to overlap each other
   if (streetmixURL && streetmixURL !== '') {
     const definition = {
-      id: streetmixURL,
+      id: createUniqueId(),
       components: {
         position: position ?? '0 0 -20',
         'streetmix-loader': {
@@ -153,30 +155,33 @@ export function create3DTiles() {
   }
 }
 
-export function createCustomModel() {
+export function createCustomModel(position) {
   // accepts a path for a glTF (or glb) file hosted on any publicly accessible HTTP server.
   // Then create entity with model from that path by using gltf-model component
   const modelUrl = prompt(
-    'Please enter a URL to custom glTF/Glb model',
+    'Please enter a URL to custom glTF/GLB model',
     'https://cdn.glitch.global/690c7ea3-3f1c-434b-8b8d-3907b16de83c/Mission_Bay_school_low_poly_model_v03_draco.glb'
   );
   if (modelUrl && modelUrl !== '') {
     const definition = {
       class: 'custom-model',
       components: {
+        position: position ?? '0 0 0',
         'gltf-model': `url(${modelUrl})`,
-        'data-layer-name': 'glTF Model • My Custom Object'
+        'data-layer-name': 'glTF Model • My Custom Object',
+        shadow: 'receive: true; cast: true;'
       }
     };
     AFRAME.INSPECTOR.execute('entitycreate', definition);
   }
 }
 
-export function createPrimitiveGeometry() {
+export function createPrimitiveGeometry(position) {
   const definition = {
-    'data-layer-name': 'Plane Geometry • Traffic Circle Asphalt',
+    'data-layer-name': 'Geometry • Traffic Circle Asphalt',
     components: {
-      geometry: 'primitive: circle; radius: 50;',
+      position: position ?? '0 0 0',
+      geometry: 'primitive: circle; radius: 15;',
       rotation: '-90 -90 0',
       material: 'src: #asphalt-texture; repeat: 5 5;'
     }
@@ -184,10 +189,32 @@ export function createPrimitiveGeometry() {
   AFRAME.INSPECTOR.execute('entitycreate', definition);
 }
 
-export function createIntersection() {
+export function createImageEntity(position) {
+  // This component accepts a svgString and creates a new entity with geometry extruded
+  // from the svg and applies the default mixin material grass.
+  const imagePath = prompt(
+    'Please enter an image path that is publicly accessible on the web and starts with https://',
+    `https://assets.3dstreet.app/images/signs/Sign-Speed-30kph-Kiritimati.png`
+  );
+  if (imagePath && imagePath !== '') {
+    const definition = {
+      element: 'a-entity',
+      components: {
+        position: position ?? '0 0 0', // TODO: How to override only the height (y) value? We don't want the sign in the ground
+        geometry: 'primitive: plane; height: 1.5; width: 1;',
+        material: `src: url(${imagePath})`,
+        'data-layer-name': 'Image • User Specified Path'
+      }
+    };
+    AFRAME.INSPECTOR.execute('entitycreate', definition);
+  }
+}
+
+export function createIntersection(position) {
   const definition = {
     'data-layer-name': 'Street • Intersection 90º',
     components: {
+      position: position ?? '0 0 0',
       intersection: '',
       rotation: '-90 -90 0'
     }

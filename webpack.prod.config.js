@@ -7,15 +7,14 @@ const DEPLOY_ENV = process.env.DEPLOY_ENV ?? 'production';
 
 module.exports = {
   performance: {
-    maxAssetSize: 2777777, // 2.4 MiB
-    maxEntrypointSize: 2777777, // 2.4 MiB
+    maxAssetSize: 2999999, // 2.8 MiB
+    maxEntrypointSize: 2999999, // 2.8 MiB
     hints: 'error'
   },
   mode: 'production',
   devtool: 'source-map',
   entry: {
-    core: { import: './src/index.js', filename: 'aframe-street-component.js' },
-    editor: { import: './src/editor/index.js', filename: '3dstreet-editor.js' }
+    core: { import: './src/index.js', filename: 'aframe-street-component.js' }
   },
   output: {
     clean: true,
@@ -61,7 +60,7 @@ module.exports = {
       },
       {
         test: /\.css$/,
-        use: ['style-loader', 'css-loader']
+        use: ['style-loader', 'css-loader', 'postcss-loader']
       },
       {
         test: /\.module\.scss$/,
@@ -104,5 +103,10 @@ module.exports = {
         }
       }
     ]
+  },
+  resolve: {
+    alias: {
+      '@': path.resolve(__dirname, 'src')
+    }
   }
 };

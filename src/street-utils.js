@@ -39,6 +39,7 @@ function newScene(
     'Environment'
   );
   environmentEl.setAttribute('street-environment', '');
+  environmentEl.setAttribute('data-no-transform', '');
 
   let geoLayer = document.getElementById('reference-layers');
   if (geoLayer) geoLayer.removeAttribute('street-geo');
@@ -47,6 +48,7 @@ function newScene(
     AFRAME.scenes[0],
     'Geospatial Layers'
   );
+  geoLayer.setAttribute('data-no-transform', '');
 
   const streetContainerEl = checkOrCreateEntity(
     'street-container',
@@ -69,7 +71,7 @@ function newScene(
   // clear metadata
   if (clearMetaData) {
     AFRAME.scenes[0].setAttribute('metadata', 'sceneId', '');
-    AFRAME.scenes[0].setAttribute('metadata', 'sceneTitle', '');
+    AFRAME.scenes[0].setAttribute('metadata', 'authorId', '');
   }
 
   // clear url hash

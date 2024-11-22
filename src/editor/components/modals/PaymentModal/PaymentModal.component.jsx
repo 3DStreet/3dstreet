@@ -9,6 +9,7 @@ import { Button } from '../../components/index.js';
 import Modal from '../Modal.jsx';
 import { functions } from '../../../services/firebase.js';
 import posthog from 'posthog-js';
+import useStore from '@/store';
 
 let stripePromise;
 const getStripe = () => {
@@ -19,9 +20,11 @@ const getStripe = () => {
   return stripePromise;
 };
 
-const PaymentModal = ({ isOpen, onClose }) => {
+const PaymentModal = () => {
   const { currentUser } = useAuthContext();
   const [isLoading, setIsLoading] = useState(false);
+  const setModal = useStore((state) => state.setModal);
+  const modal = useStore((state) => state.modal);
 
   if (location.hash.includes('success')) {
     posthog.capture('checkout_finished');
@@ -39,8 +42,8 @@ const PaymentModal = ({ isOpen, onClose }) => {
       )({
         line_items: [{ price: process.env.STRIPE_PRICE_ID, quantity: 1 }],
         mode: 'subscription',
-        success_url: `${location.origin}/#/modal/payment/success`,
-        cancel_url: `${location.origin}/#/modal/payment`,
+        success_url: `${window.location.href.split('?')[0]}?payment=success`,
+        cancel_url: `${window.location.href.split('?')[0]}?payment=cancel`,
         metadata: { userId: currentUser.uid },
         allow_promotion_codes: true,
         subscription_data: {
@@ -59,8 +62,17 @@ const PaymentModal = ({ isOpen, onClose }) => {
     setIsLoading(false);
   };
 
+  const onClose = () => {
+    window.location.hash = '#';
+    setModal(null);
+  };
+
   return (
-    <Modal className={styles.modalWrapper} isOpen={isOpen} onClose={onClose}>
+    <Modal
+      className={styles.modalWrapper}
+      isOpen={modal === 'payment'}
+      onClose={onClose}
+    >
       <div className={styles.paymentDetails}>
         <h3>Unlock Geospatial Features with a free 30 day trial</h3>
         <h2>

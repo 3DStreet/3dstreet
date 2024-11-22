@@ -1,4 +1,5 @@
 /* global AFRAME, customElements */
+const catalog = require('./catalog.json');
 
 function buildAssetHTML(assetUrl, categories) {
   // if (!assetUrl) assetUrl = 'https://assets.3dstreet.app/';
@@ -86,21 +87,6 @@ function buildAssetHTML(assetUrl, categories) {
         <a-mixin shadow id="Character_1_M" gltf-part="src: #magic-carpet-glb; part: Character_1_M"></a-mixin>
         <a-mixin shadow id="magic-carpet" gltf-part="src: #magic-carpet-glb; part: magic-carpet"></a-mixin>
       `,
-    'vehicles-rigged': `
-        <!-- vehicles rigged -->
-        <a-mixin shadow id="sedan-rig" gltf-model="url(${assetUrl}sets/vehicles-rig/gltf-exports/draco/toyota-prius-rig.glb)" ></a-mixin>
-        <a-mixin shadow id="sedan-taxi-rig" gltf-model="url(${assetUrl}sets/vehicles-rig/gltf-exports/draco/sedan-taxi-rig.glb)"></a-mixin>
-        <a-mixin shadow id="suv-rig" gltf-model="url(${assetUrl}sets/vehicles-rig/gltf-exports/draco/suv-rig.glb)"></a-mixin>
-        <a-mixin shadow id="box-truck-rig" gltf-model="url(${assetUrl}sets/vehicles-rig/gltf-exports/draco/isuzu-truck-rig.glb)"></a-mixin>
-        <a-mixin shadow id="food-trailer-rig" gltf-model="url(${assetUrl}sets/vehicles-rig/gltf-exports/draco/food-trailer-rig.glb)"></a-mixin>
-        <a-mixin shadow id="fire-truck-rig" gltf-model="url(${assetUrl}sets/vehicles-rig/gltf-exports/draco/fire-truck-pumper-rig.glb)"></a-mixin>
-        <a-mixin shadow id="fire-ladder-rig" gltf-model="url(${assetUrl}sets/vehicles/gltf-exports/draco/fire_truck_ladder.glb)"></a-mixin>
-        <a-mixin shadow id="trash-truck-side-loading" gltf-model="url(${assetUrl}sets/vehicles/gltf-exports/draco/trash-truck-side-loading.glb)"></a-mixin>
-        <a-mixin shadow id="self-driving-cruise-car-rig" gltf-model="url(${assetUrl}sets/vehicles-rig/gltf-exports/draco/self-driving-cruise-car-rig.glb)"></a-mixin>
-        <a-mixin shadow id="self-driving-waymo-car" gltf-model="url(${assetUrl}sets/vehicles/gltf-exports/draco/waymo-self-driving-car.glb)"></a-mixin>
-        <a-mixin shadow id="tuk-tuk" gltf-model="url(${assetUrl}sets/vehicles/gltf-exports/draco/tuk-tuk.glb)"></a-mixin>
-        <a-mixin shadow id="motorbike" gltf-model="url(${assetUrl}sets/vehicles/gltf-exports/draco/two-wheeler-with-person.glb)"></a-mixin>
-      `,
     buildings: `
         <!-- blocks -->
         <a-asset-item id="blockmodel" src="${assetUrl}sets/buildings/gltf-exports/draco/buildings.glb"></a-asset-item>
@@ -126,12 +112,9 @@ function buildAssetHTML(assetUrl, categories) {
         <a-mixin shadow id="arched-building-04" scale="1 1 1" rotation="0 0 0" gltf-part="src: #archedmodel; part: arched-building-04"></a-mixin>
 `,
     'intersection-props': `
-        <a-asset-item id="stopsign" src="${assetUrl}sets/road-signs/gltf-exports/draco/stop-sign.glb"></a-asset-item>
-        <a-asset-item id="signal1" src="${assetUrl}sets/signals/gltf-exports/draco/signal1.glb"></a-asset-item>
-        <a-asset-item id="signal2" src="${assetUrl}sets/signals/gltf-exports/draco/signal2.glb"></a-asset-item>
-        <a-mixin id="signal_left" gltf-model="#signal1"></a-mixin>
-        <a-mixin id="signal_right" gltf-model="#signal2"></a-mixin>
-        <a-mixin id="stop_sign" gltf-model="#stopsign"></a-mixin>
+        <a-mixin shadow id="signal_left" gltf-model="url(${assetUrl}sets/signals/gltf-exports/draco/signal1.glb)"></a-mixin>
+        <a-mixin shadow id="signal_right" gltf-model="url(${assetUrl}sets/signals/gltf-exports/draco/signal2.glb)"></a-mixin>
+        <a-mixin shadow id="stop_sign" gltf-model="url(${assetUrl}sets/road-signs/gltf-exports/draco/stop-sign.glb)"></a-mixin>
       `,
     'segment-textures': `  
         <!-- segment mixins with textures -->
@@ -258,14 +241,6 @@ function buildAssetHTML(assetUrl, categories) {
         <a-asset-item id="fence-model" src="${assetUrl}sets/fences/gltf-exports/draco/fence4.glb"></a-asset-item>
         <a-mixin shadow id="fence" gltf-model="#fence-model" scale="0.1 0.1 0.1"></a-mixin>
       `,
-    cyclists: `
-        <a-mixin shadow id="cyclist-cargo" gltf-model="url(${assetUrl}sets/cargo-bike-animation/gltf-exports/draco/cargo_bike_animation_v1.glb)"></a-mixin>
-        <a-mixin shadow id="cyclist1" gltf-model="url(${assetUrl}sets/cyclist-animation/gltf-exports/draco/cyclist-1-animation-v1.glb)"></a-mixin>
-        <a-mixin shadow id="cyclist2" gltf-model="url(${assetUrl}sets/cyclist-animation/gltf-exports/draco/cyclist-2-animation-v1.glb)"></a-mixin>
-        <a-mixin shadow id="cyclist3" gltf-model="url(${assetUrl}sets/cyclist-animation/gltf-exports/draco/cyclist-3-animation-v1.glb)"></a-mixin>
-        <a-mixin shadow id="cyclist-kid" gltf-model="url(${assetUrl}sets/cyclist-animation/gltf-exports/draco/Kid_cyclist_animation_v01.glb)"></a-mixin>
-        <a-mixin shadow id="cyclist-dutch" gltf-model="url(${assetUrl}sets/cyclist-animation/gltf-exports/draco/Dutch_cyclist_animation_v01.glb)"></a-mixin>
-      `,
     'loud-bicycle': `
         <!-- loud-bicycle-game -->
         <a-mixin shadow id="loud-bicycle-mini" gltf-model="url(${assetUrl}sets/cycle-horn/gltf-exports/draco/loud-bicycle-mini-horn.glb)"></a-mixin>
@@ -308,6 +283,20 @@ function buildAssetHTML(assetUrl, categories) {
       assetsHTML += addCategoryNamesToMixins(assetsCategoryHTML, categoryName);
     }
   }
+
+  // Iterate through catalog.json and add mixins to assetsHTML
+  catalog.forEach((item) => {
+    if (item.id && item.src) {
+      const mixinHTML = `
+        <a-mixin
+          id="${item.id}"
+          shadow
+          gltf-model="url(${item.src})"
+          category="${item.category || ''}"
+        ></a-mixin>`;
+      assetsHTML += mixinHTML;
+    }
+  });
   return assetsHTML;
 }
 

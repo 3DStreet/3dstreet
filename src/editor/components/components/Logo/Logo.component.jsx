@@ -1,29 +1,32 @@
-import { EditorLogo, ViewerLogo } from './logos.jsx';
-
 import { Button } from '../Button';
-import PropTypes from 'prop-types';
 import styles from './Logo.module.scss';
-
+import useStore from '@/store';
 /**
  * Logo component.
  *
  * @author Oleksii Medvediev
  * @category Components
  */
-const Logo = ({ onToggleEdit, isEditor }) => (
-  <div className={styles.wrapper}>
-    <div className={styles.logo} id="logoImg">
-      {isEditor ? <EditorLogo /> : <ViewerLogo />}
-    </div>
-    <Button onClick={onToggleEdit} className={styles.btn}>
-      {isEditor ? 'Enter Viewer mode' : 'Enter Editor mode'}
-    </Button>
-  </div>
-);
+const Logo = () => {
+  const setIsInspectorEnabled = useStore(
+    (state) => state.setIsInspectorEnabled
+  );
+  const isInspectorEnabled = useStore((state) => state.isInspectorEnabled);
 
-Logo.propTypes = {
-  onToggleEdit: PropTypes.func,
-  isEditor: PropTypes.bool
+  return (
+    <div className="flex items-center space-x-2">
+      <div className={styles.logo} id="logoImg">
+        <img src="ui_assets/3D-St-stacked-128.png" alt="3DStreet Logo" />
+      </div>
+      <Button
+        onClick={() => setIsInspectorEnabled(!isInspectorEnabled)}
+        className={styles.btn}
+        variant="toolbtn"
+      >
+        {isInspectorEnabled ? 'Enter Viewer mode' : 'Enter Editor mode'}
+      </Button>
+    </div>
+  );
 };
 
 export { Logo };

@@ -1,9 +1,10 @@
+import useStore from './store';
+
 /* global AFRAME, Node */
 /* version: 1.0 */
 window.STREET = {};
 var assetsUrl;
 STREET.utils = {};
-
 function getSceneUuidFromURLHash() {
   const currentHash = window.location.hash;
   const match = currentHash.match(/#\/scenes\/([a-zA-Z0-9-]+)\.json/);
@@ -26,13 +27,11 @@ function getCurrentSceneId() {
 }
 STREET.utils.getCurrentSceneId = getCurrentSceneId;
 
-const getCurrentSceneTitle = () => {
-  const currentSceneTitle =
-    AFRAME.scenes[0].getAttribute('metadata').sceneTitle;
-  console.log('currentSceneTitle', currentSceneTitle);
-  return currentSceneTitle;
-};
-STREET.utils.getCurrentSceneTitle = getCurrentSceneTitle;
+function getAuthorId() {
+  const authorId = AFRAME.scenes[0].getAttribute('metadata').authorId;
+  return authorId;
+}
+STREET.utils.getAuthorId = getAuthorId;
 
 /*
 Takes one or more elements (from a DOM queryselector call)
@@ -55,7 +54,7 @@ function convertDOMElToObject(entity) {
   }
 
   return {
-    title: STREET.utils.getCurrentSceneTitle(),
+    title: useStore.getState().sceneTitle,
     version: '1.0',
     data: data
   };
@@ -87,7 +86,10 @@ function getElementData(entity) {
 function getAttributes(entity) {
   const elemObj = {};
 
-  elemObj['element'] = entity.tagName.toLowerCase();
+  const tagName = entity.tagName.toLowerCase();
+  if (tagName !== 'a-entity') {
+    elemObj['element'] = tagName;
+  }
 
   if (entity.id) {
     elemObj['id'] = entity.id;
@@ -407,8 +409,8 @@ Add a new entity with a list of components and children (if exists)
  * @return {Element} Entity created
 */
 function createEntityFromObj(entityData, parentEl) {
-  const entity =
-    entityData.entityElement || document.createElement(entityData.element);
+  const tagName = entityData.element || 'a-entity';
+  const entity = entityData.entityElement || document.createElement(tagName);
 
   if (!entity.parentEl && parentEl) {
     parentEl.appendChild(entity);
@@ -463,56 +465,10 @@ function createEntityFromObj(entityData, parentEl) {
 
 AFRAME.registerComponent('metadata', {
   schema: {
-    sceneTitle: { default: '' },
-    sceneId: { default: '' }
+    sceneId: { default: '' },
+    authorId: { default: '' }
   },
-  init: function () {},
-  update: function (oldData) {
-    const sceneTitle = this.data.sceneTitle;
-    if (sceneTitle !== oldData.sceneTitle) {
-      this.el.emit('newTitle', { sceneTitle: sceneTitle });
-    }
-  }
-});
-
-AFRAME.registerComponent('scene-title', {
-  schema: {
-    titleText: { default: '' }
-  },
-  init: function () {
-    this.titleElement = undefined;
-    this.el.addEventListener('newTitle', (evt) => {
-      this.el.setAttribute('scene-title', 'titleText', evt.detail.sceneTitle);
-    });
-  },
-  createTitleElement: function (titleText) {
-    const titleDiv = (this.titleElement = document.createElement('div'));
-    const newContent = document.createTextNode(titleText);
-    titleDiv.setAttribute('id', 'sceneTitle');
-    titleDiv.appendChild(newContent);
-    document.body.append(titleDiv);
-  },
-  updateTitleText: function (titleText) {
-    this.titleElement.textContent = titleText;
-  },
-  update: function (oldData) {
-    // If `oldData` is empty, then this means we're in the initialization process.
-    // No need to update.
-    if (Object.keys(oldData).length === 0) {
-      return;
-    }
-
-    const titleText = this.data.titleText;
-    const titleElement = this.titleElement;
-
-    if (titleText !== oldData.titleText) {
-      if (!titleElement) {
-        this.createTitleElement(titleText);
-      } else {
-        this.updateTitleText(titleText);
-      }
-    }
-  }
+  init: function () {}
 });
 
 AFRAME.registerComponent('set-loader-from-hash', {
@@ -573,6 +529,13 @@ AFRAME.registerComponent('set-loader-from-hash', {
   },
   fetchJSON: function (requestURL) {
     const request = new XMLHttpRequest();
+
+    // Prepend the base URL to the requestURL
+    if (window.location.href.includes('localhost')) {
+      const baseURL = 'https://dev-3dstreet.web.app';
+      requestURL = baseURL + requestURL;
+    }
+
     request.open('GET', requestURL, true);
     request.onload = function () {
       if (this.status >= 200 && this.status < 400) {
@@ -586,12 +549,13 @@ AFRAME.registerComponent('set-loader-from-hash', {
           '[set-loader-from-hash]',
           '200 response received and JSON parsed, now createElementsFromJSON'
         );
-        STREET.utils.createElementsFromJSON(jsonData);
+        STREET.utils.createElementsFromJSON(jsonData, false);
         const sceneId = getUUIDFromPath(requestURL);
         if (sceneId) {
           console.log('sceneId from fetchJSON from url hash loader', sceneId);
           AFRAME.scenes[0].setAttribute('metadata', 'sceneId', sceneId);
         }
+        AFRAME.scenes[0].setAttribute('metadata', 'authorId', jsonData.author);
       } else if (this.status === 404) {
         console.error(
           '[set-loader-from-hash] Error trying to load scene: Resource not found.'
@@ -660,7 +624,7 @@ function getValidJSON(stringJSON) {
     .replace(/[\u0000-\u0019]+/g, ''); // eslint-disable-line no-control-regex
 }
 
-function createElementsFromJSON(streetJSON) {
+function createElementsFromJSON(streetJSON, clearUrlHash) {
   let streetObject = {};
   if (typeof streetJSON === 'string') {
     const validJSONString = getValidJSON(streetJSON);
@@ -671,31 +635,19 @@ function createElementsFromJSON(streetJSON) {
 
   // clear scene data, create new blank scene.
   // clearMetadata = true, clearUrlHash = true, addDefaultStreet = false
-  STREET.utils.newScene(true, true, false);
+  STREET.utils.newScene(true, clearUrlHash, false);
 
   const sceneTitle = streetObject.title;
   if (sceneTitle) {
     console.log('sceneTitle from createElementsFromJSON', sceneTitle);
-    AFRAME.scenes[0].setAttribute('metadata', 'sceneTitle', sceneTitle);
+    useStore.getState().setSceneTitle(sceneTitle);
   }
 
   const streetContainerEl = document.getElementById('street-container');
 
   createEntities(streetObject.data, streetContainerEl);
-  STREET.notify.successMessage('Scene loaded from JSON');
+  STREET.notify.successMessage('Scene loaded');
   AFRAME.scenes[0].emit('newScene');
 }
 
 STREET.utils.createElementsFromJSON = createElementsFromJSON;
-
-// handle viewer widget click to open 3dstreet json scene
-function fileJSON() {
-  const reader = new FileReader();
-  reader.onload = function () {
-    createElementsFromJSON(reader.result);
-  };
-  reader.readAsText(this.files[0]);
-}
-
-// temporarily place the UI function in utils, which is used in index.html.
-STREET.utils.fileJSON = fileJSON;

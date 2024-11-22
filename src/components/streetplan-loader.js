@@ -1,5 +1,8 @@
 /* global AFRAME, XMLHttpRequest */
+import useStore from '../store.js';
 var streetplanUtils = require('../streetplan/streetplan-utils.js');
+
+const state = useStore.getState();
 
 AFRAME.registerComponent('streetplan-loader', {
   dependencies: ['street'],
@@ -25,20 +28,8 @@ AFRAME.registerComponent('streetplan-loader', {
     // streetplan alternative name
     // const streetplanAltName = streetData.altName;
 
-    console.log('streetplanName', streetplanName);
-
-    let currentSceneTitle;
-    const sceneEl = this.el.sceneEl;
-    if (sceneEl && sceneEl.getAttribute('metadata')) {
-      currentSceneTitle = sceneEl.getAttribute('metadata').sceneTitle;
-    }
-    if (!currentSceneTitle) {
-      // only set title from streetplan if none exists
-      sceneEl.setAttribute('metadata', 'sceneTitle', streetplanName);
-      console.log(
-        'therefore setting metadata sceneTitle as streetplanName',
-        streetplanName
-      );
+    if (!state.sceneTitle) {
+      state.setSceneTitle(streetplanName);
     }
 
     el.setAttribute('data-layer-name', 'StreetPlan • ' + streetplanName);
@@ -55,6 +46,9 @@ AFRAME.registerComponent('streetplan-loader', {
       JSON.stringify({ streetmixSegmentsMetric: streetplanSegments })
     );
     el.emit('streetplan-loader-street-loaded');
+  },
+  init: function () {
+    this.el.setAttribute('streetplan-loader', 'synchronize', true);
   },
   update: function (oldData) {
     // fired at start and at each subsequent change of any schema value

@@ -8,7 +8,6 @@ import React from 'react';
 import capitalize from 'lodash-es/capitalize';
 import classnames from 'classnames';
 import { ArrowRightIcon, LayersIcon } from '../../icons';
-import { sendMetric } from '../../services/ga';
 import GeoSidebar from './GeoSidebar'; // Make sure to create and import this new component
 
 export default class Sidebar extends React.Component {
@@ -62,7 +61,6 @@ export default class Sidebar extends React.Component {
   // additional toggle for hide/show panel by clicking the button
   toggleRightBar = () => {
     this.setState({ rightBarHide: !this.state.rightBarHide });
-    sendMetric('Components', 'toggleSidebar');
   };
 
   render() {
@@ -70,7 +68,8 @@ export default class Sidebar extends React.Component {
     const visible = this.props.visible;
     const className = classnames({
       outliner: true,
-      hide: this.state.rightBarHide
+      hide: this.state.rightBarHide,
+      'mt-16': true
     });
     if (entity && visible) {
       const entityName = entity.getDOMAttribute('data-layer-name');
@@ -95,20 +94,24 @@ export default class Sidebar extends React.Component {
                 {entity.id !== 'reference-layers' ? (
                   <>
                     {!!entity.mixinEls.length && <Mixins entity={entity} />}
-                    <div id="sidebar-buttons">
-                      <Button
-                        variant={'toolbtn'}
-                        onClick={() => cloneEntity(entity)}
-                      >
-                        Duplicate
-                      </Button>
-                      <Button
-                        variant={'toolbtn'}
-                        onClick={() => removeSelectedEntity()}
-                      >
-                        Delete
-                      </Button>
-                    </div>
+                    {entity.hasAttribute('data-no-transform') ? (
+                      <></>
+                    ) : (
+                      <div id="sidebar-buttons">
+                        <Button
+                          variant={'toolbtn'}
+                          onClick={() => cloneEntity(entity)}
+                        >
+                          Duplicate
+                        </Button>
+                        <Button
+                          variant={'toolbtn'}
+                          onClick={() => removeSelectedEntity()}
+                        >
+                          Delete
+                        </Button>
+                      </div>
+                    )}
                     <ComponentsContainer entity={entity} />
                   </>
                 ) : (
@@ -118,30 +121,34 @@ export default class Sidebar extends React.Component {
             </>
           ) : (
             <>
-              <li onClick={this.toggleRightBar}>
-                <a className="camera" href="#">
-                  <span className="title" title={entityName || formattedMixin}>
+              <div
+                onClick={this.toggleRightBar}
+                className="relative flex items-center justify-end"
+              >
+                <div className="group relative flex cursor-pointer items-center p-2">
+                  <span className="absolute right-12 whitespace-nowrap rounded bg-gray-800 px-2 py-1 text-white opacity-0 transition-all duration-300 group-hover:opacity-100">
                     {entityName || formattedMixin}
                   </span>
-                  <div className="icon">
+                  <div className="relative z-10">
                     <svg
                       width="24"
                       height="28"
                       viewBox="0 0 24 28"
                       fill="none"
                       xmlns="http://www.w3.org/2000/svg"
+                      className="text-white"
                     >
                       <path
                         d="M1.3335 8.66667L12.0002 2L22.6668 8.66667V19.3333L12.0002 26L1.3335 19.3333V8.66667L12.0002 14.5333V26V14.5333L22.6668 8.66667"
-                        stroke="white"
+                        stroke="currentColor"
                         strokeWidth="2.5"
                         strokeLinecap="round"
                         strokeLinejoin="round"
                       />
                     </svg>
                   </div>
-                </a>
-              </li>
+                </div>
+              </div>
             </>
           )}
           {/* <div id="layers-title" onClick={this.toggleRightBar}> */}

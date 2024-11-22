@@ -8,5 +8,132 @@
         "id": "bus",
         "name": "Bus New Flyer XD40",
         "description": "The New Flyer XD40 is a modern, stylish, and comfortable bus that is perfect for people in urban settings."
+    },
+    {
+        "id": "sedan-rig",
+        "name": "Sedan",
+        "src": "https://assets.3dstreet.app/sets/vehicles-rig/gltf-exports/draco/toyota-prius-rig.glb",
+        "img": "https://assets.3dstreet.app/sets/vehicles-rig/gltf-exports/draco/toyota-prius-rig.jpg",
+        "category": "vehicles-rigged"
+    },
+    {
+        "id": "sedan-taxi-rig",
+        "name": "Sedan Taxi",
+        "src": "https://assets.3dstreet.app/sets/vehicles-rig/gltf-exports/draco/sedan-taxi-rig.glb",
+        "img": "https://assets.3dstreet.app/sets/vehicles-rig/gltf-exports/draco/sedan-taxi-rig.jpg",
+        "category": "vehicles-rigged"
+    },
+    {
+        "id": "suv-rig",
+        "name": "SUV",
+        "src": "https://assets.3dstreet.app/sets/vehicles-rig/gltf-exports/draco/suv-rig.glb",
+        "img": "https://assets.3dstreet.app/sets/vehicles-rig/gltf-exports/draco/suv-rig.jpg",
+        "category": "vehicles-rigged"
+    },
+    {
+        "id": "box-truck-rig",
+        "name": "Box Truck",
+        "src": "https://assets.3dstreet.app/sets/vehicles-rig/gltf-exports/draco/isuzu-truck-rig.glb",
+        "img": "https://assets.3dstreet.app/sets/vehicles-rig/gltf-exports/draco/box-truck-rig.jpg",
+        "category": "vehicles-rigged"
+    },
+    {
+        "id": "food-trailer-rig",
+        "name": "Food Trailer",
+        "src": "https://assets.3dstreet.app/sets/vehicles-rig/gltf-exports/draco/food-trailer-rig.glb",
+        "img": "https://assets.3dstreet.app/sets/vehicles-rig/gltf-exports/draco/food-trailer-rig.jpg",
+        "category": "vehicles-rigged"
+    },
+    {
+        "id": "fire-truck-rig",
+        "name": "Fire Truck",
+        "src": "https://assets.3dstreet.app/sets/vehicles-rig/gltf-exports/draco/fire-truck-pumper-rig.glb",
+        "img": "https://assets.3dstreet.app/sets/vehicles-rig/gltf-exports/draco/fire-truck-pumper-rig.jpg",
+        "category": "vehicles-rigged"
+    },
+    {
+        "id": "fire-ladder-rig",
+        "name": "Fire Ladder Truck",
+        "src": "https://assets.3dstreet.app/sets/vehicles/gltf-exports/draco/fire_truck_ladder.glb",
+        "img": "https://assets.3dstreet.app/sets/vehicles/gltf-exports/draco/fire_truck_ladder.jpg",
+        "category": "vehicles-rigged"
+    },
+    {
+        "id": "trash-truck-side-loading",
+        "name": "Side-Loading Trash Truck",
+        "src": "https://assets.3dstreet.app/sets/vehicles/gltf-exports/draco/trash-truck-side-loading.glb",
+        "img": "https://assets.3dstreet.app/sets/vehicles/gltf-exports/draco/trash-truck-side-loading.jpg",
+        "category": "vehicles-rigged"
+    },
+    {
+        "id": "self-driving-cruise-car-rig",
+        "name": "Self-Driving Cruise Car",
+        "src": "https://assets.3dstreet.app/sets/vehicles-rig/gltf-exports/draco/self-driving-cruise-car-rig.glb",
+        "img": "https://assets.3dstreet.app/sets/vehicles-rig/gltf-exports/draco/self-driving-cruise-car-rig.jpg",
+        "category": "vehicles-rigged"
+    },
+    {
+        "id": "self-driving-waymo-car",
+        "name": "Self-Driving Waymo Car",
+        "src": "https://assets.3dstreet.app/sets/vehicles/gltf-exports/draco/waymo-self-driving-car.glb",
+        "img": "https://assets.3dstreet.app/sets/vehicles/gltf-exports/draco/waymo-self-driving-car.jpg",
+        "category": "vehicles-rigged"
+    },
+    {
+        "id": "tuk-tuk",
+        "name": "Tuk-Tuk",
+        "src": "https://assets.3dstreet.app/sets/vehicles/gltf-exports/draco/tuk-tuk.glb",
+        "img": "https://assets.3dstreet.app/sets/vehicles/gltf-exports/draco/tuk-tuk.jpg",
+        "category": "vehicles-rigged"
+    },
+    {
+        "id": "motorbike",
+        "name": "Motorbike",
+        "src": "https://assets.3dstreet.app/sets/vehicles/gltf-exports/draco/two-wheeler-with-person.glb",
+        "img": "https://assets.3dstreet.app/sets/vehicles/gltf-exports/draco/two-wheeler-with-person.jpg",
+        "category": "vehicles-rigged"
+    },
+    {
+        "id": "cyclist-cargo",
+        "name": "Cargo Bike",
+        "src": "https://assets.3dstreet.app/sets/cargo-bike-animation/gltf-exports/draco/cargo_bike_animation_v1.glb",
+        "img": "https://assets.3dstreet.app/sets/cargo-bike-animation/gltf-exports/draco/cargo_bike_animation_v1.jpg",
+        "category": "cyclists"
+    },
+    {
+        "id": "cyclist1",
+        "name": "Cyclist 1",
+        "src": "https://assets.3dstreet.app/sets/cyclist-animation/gltf-exports/draco/cyclist-1-animation-v1.glb",
+        "img": "https://assets.3dstreet.app/sets/cyclist-animation/gltf-exports/draco/cyclist-1-animation-v1.jpg",
+        "category": "cyclists"
+    },
+    {
+        "id": "cyclist2",
+        "name": "Cyclist 2",
+        "src": "https://assets.3dstreet.app/sets/cyclist-animation/gltf-exports/draco/cyclist-2-animation-v1.glb",
+        "img": "https://assets.3dstreet.app/sets/cyclist-animation/gltf-exports/draco/cyclist-2-animation-v1.jpg",
+        "category": "cyclists"
+    },
+    {
+        "id": "cyclist3",
+        "name": "Cyclist 3",
+        "src": "https://assets.3dstreet.app/sets/cyclist-animation/gltf-exports/draco/cyclist-3-animation-v1.glb",
+        "img": "https://assets.3dstreet.app/sets/cyclist-animation/gltf-exports/draco/cyclist-3-animation-v1.jpg",
+        "category": "cyclists"
+    },
+    {
+        "id": "cyclist-kid",
+        "name": "Kid Cyclist",
+        "src": "https://assets.3dstreet.app/sets/cyclist-animation/gltf-exports/draco/Kid_cyclist_animation_v01.glb",
+        "img": "https://assets.3dstreet.app/sets/cyclist-animation/gltf-exports/draco/Kid_cyclist_animation_v01.jpg",
+        "category": "cyclists"
+    },
+    {
+        "id": "cyclist-dutch",
+        "name": "Dutch Cyclist",
+        "src": "https://assets.3dstreet.app/sets/cyclist-animation/gltf-exports/draco/Dutch_cyclist_animation_v01.glb",
+        "img": "https://assets.3dstreet.app/sets/cyclist-animation/gltf-exports/draco/Dutch_cyclist_animation_v01.jpg",
+        "category": "cyclists"
     }
+
 ]

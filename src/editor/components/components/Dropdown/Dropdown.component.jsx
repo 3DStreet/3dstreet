@@ -88,7 +88,7 @@ const Dropdown = ({
                     return 0;
                   }
                 })
-                .map(({ value, label, disabled, onClick }, index) => (
+                .map(({ value, label, disabled, onClick, proIcon }, index) => (
                   <button
                     type={'button'}
                     tabIndex={0}
@@ -104,7 +104,10 @@ const Dropdown = ({
                     key={value.concat(index.toString())}
                     disabled={disabled}
                   >
-                    <span className={styles.optionItemLabel}>{label}</span>
+                    <span className={styles.optionItemLabel}>
+                      {label}
+                      {proIcon && <div className={styles.badge}>Pro</div>}
+                    </span>
                   </button>
                 ))}
           </div>

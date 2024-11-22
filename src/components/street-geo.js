@@ -16,8 +16,9 @@ AFRAME.registerComponent('street-geo', {
     maps: {
       type: 'string',
       default: 'google3d',
-      oneOf: ['google3d', 'mapbox2d', 'osm3d']
-    }
+      oneOf: ['google3d', 'mapbox2d', 'osm3d', 'none']
+    },
+    enableClipping: { type: 'boolean', default: false }
   },
   init: function () {
     /*
@@ -41,6 +42,8 @@ AFRAME.registerComponent('street-geo', {
     document.getElementById('map-data-attribution').style.visibility = 'hidden';
   },
   update: function (oldData) {
+    this.el.setAttribute('data-no-transform', '');
+
     const data = this.data;
     this.el.sceneEl.emit('newGeo', data);
 
@@ -50,15 +53,16 @@ AFRAME.registerComponent('street-geo', {
       if (data.maps === mapType && !this[mapType]) {
         // create Map element and save a link to it in this[mapType]
         if (!this.isAR) {
-          this[mapType + 'Create']();
           document.getElementById('map-data-attribution').style.visibility =
             'visible';
+          this[mapType + 'Create']();
         }
       } else if (
         data.maps === mapType &&
         (updatedData.longitude ||
           updatedData.latitude ||
-          updatedData.ellipsoidalHeight)
+          updatedData.ellipsoidalHeight ||
+          updatedData.enableClipping)
       ) {
         // call update map function with name: <mapType>Update
         this[mapType + 'Update']();
@@ -71,6 +75,19 @@ AFRAME.registerComponent('street-geo', {
         }
       }
     }
+
+    // if state is not clipping, then disable it
+    if (this.google3d) {
+      if (data.enableClipping) {
+        this.google3d.setAttribute('obb-clipping', '');
+      } else {
+        this.google3d.removeAttribute('obb-clipping');
+      }
+    }
+  },
+  noneCreate: function () {
+    // do nothing
+    document.getElementById('map-data-attribution').style.visibility = 'hidden';
   },
   mapbox2dCreate: function () {
     const data = this.data;
@@ -97,6 +114,7 @@ AFRAME.registerComponent('street-geo', {
     });
     mapbox2dElement.classList.add('autocreated');
     mapbox2dElement.setAttribute('data-ignore-raycaster', '');
+    mapbox2dElement.setAttribute('data-no-transform', '');
     el.appendChild(mapbox2dElement);
     this['mapbox2d'] = mapbox2dElement;
     document.getElementById('map-copyright').textContent = 'MapBox';
@@ -113,7 +131,12 @@ AFRAME.registerComponent('street-geo', {
     const create3DtilesElement = () => {
       const google3dElement = document.createElement('a-entity');
       google3dElement.setAttribute('data-no-pause', '');
+      google3dElement.id = 'google3d';
+      if (data.enableClipping) {
+        google3dElement.setAttribute('obb-clipping', '');
+      }
       google3dElement.setAttribute('data-layer-name', 'Google 3D Tiles');
+      google3dElement.setAttribute('data-no-transform', '');
       google3dElement.setAttribute('loader-3dtiles', {
         url: 'https://tile.googleapis.com/v1/3dtiles/root.json',
         long: data.longitude,
@@ -125,7 +148,8 @@ AFRAME.registerComponent('street-geo', {
         maximumMem: 400,
         cameraEl: '#camera',
         copyrightEl: '#map-copyright',
-        distanceScale: 0.5
+        distanceScale: 0.5,
+        emitPostProcess: true
       });
       google3dElement.classList.add('autocreated');
 
@@ -156,6 +180,10 @@ AFRAME.registerComponent('street-geo', {
         create3DtilesElement
       );
     }
+  },
+  noneUpdate: function () {
+    // do nothing
+    document.getElementById('map-data-attribution').style.visibility = 'hidden';
   },
   google3dUpdate: function () {
     const data = this.data;
@@ -195,6 +223,7 @@ AFRAME.registerComponent('street-geo', {
       osm3dElement.setAttribute('data-no-pause', '');
       osm3dElement.classList.add('autocreated');
       osm3dElement.setAttribute('data-ignore-raycaster', '');
+      osm3dElement.setAttribute('data-no-transform', '');
 
       const osm3dBuildingElement = document.createElement('a-entity');
       osm3dBuildingElement.setAttribute(
@@ -204,13 +233,14 @@ AFRAME.registerComponent('street-geo', {
       osm3dBuildingElement.setAttribute('osm-geojson', {
         lon: data.longitude,
         lat: data.latitude,
-        radius_m: 500,
+        radius_m: 1000,
         trackId: 'camera'
       });
       osm3dBuildingElement.setAttribute('rotation', '0 -90 0');
       osm3dBuildingElement.setAttribute('data-no-pause', '');
       osm3dBuildingElement.classList.add('autocreated');
       osm3dBuildingElement.setAttribute('data-ignore-raycaster', '');
+      osm3dBuildingElement.setAttribute('data-no-transform', '');
 
       if (AFRAME.INSPECTOR?.opened) {
         osm3dElement.addEventListener(
@@ -253,6 +283,10 @@ AFRAME.registerComponent('street-geo', {
   osm3dUpdate: function () {
     const data = this.data;
     this.osm3d.setAttribute('osm-tiles', {
+      lon: data.longitude,
+      lat: data.latitude
+    });
+    this.osm3dBuilding.setAttribute('osm-geojson', {
       lon: data.longitude,
       lat: data.latitude
     });

@@ -22,15 +22,6 @@ const options = [
     payload: 'top',
     label: 'Plan View',
     hint: 'Down facing orthographic camera'
-  },
-  // { value: 'orthobottom', event: 'cameraorthographictoggle', payload: 'bottom', label: 'Bottom View' },
-  // { value: 'orthoback', event: 'cameraorthographictoggle', payload: 'back', label: 'Back View' },
-  {
-    value: 'orthofront',
-    event: 'cameraorthographictoggle',
-    payload: 'front',
-    label: 'Cross Section',
-    hint: 'Front facing orthographic camera'
   }
 ];
 

@@ -31,29 +31,19 @@
 </head>
 
 <body>
+  <img id="screenshot-img" src="ui_assets/3DStreet-Viewer-Start-Editor.svg" alt="Invisible Image" style="display:none;">
   <!-- loading animation start -->
   <div class="loader__wrapper">
     <div class="loader">
-      <div class="entities">
-        <img src="./ui_assets/loader/entities.svg" alt="entities" />
-      </div>
-      <div class="transport">
-        <div class="wrapper__transport">
-          <img src="./ui_assets/loader/car.svg" class="car" alt="car" />
-          <img src="./ui_assets/loader/bus.svg" class="bus" alt="bus" />
-          <img src="./ui_assets/loader/bike.svg" class="bike" alt="bike" />
-        </div>
-      </div>
       <div class="road">Loading 3DStreet</div>
     </div>
   </div>
-
   <!-- viewer ui start -->
-  <div class="viewer-header-wrapper">
+  <!-- <div class="viewer-header-wrapper m-4">
     <button class="viewer-logo-start-editor-button" onclick="startEditor()">
-      <img class="viewer-logo-img" alt="3DStreet Viewer" src="ui_assets/3DStreet-Viewer-Start-Editor.svg">
+      <img class="viewer-logo-img" alt="3DStreet Viewer" src="ui_assets/3D-St-stacked-128.png">
     </button>
-  </div>
+  </div> -->
 
   <!-- maps copyright start -->
   <div id="map-data-attribution" style="visibility: hidden;">
@@ -76,8 +66,8 @@
 
   <a-scene
     renderer="colorManagement: true; physicallyCorrectLights: true; anisotropy: 16; logarithmicDepthBuffer: true;"
-    inspector="url: ./dist/3dstreet-editor.js" timed-inspector="1" loading-screen="enabled: false" notify metadata
-    scene-title reflection device-orientation-permission-ui="enabled: false"
+    loading-screen="enabled: false" notify metadata
+    reflection device-orientation-permission-ui="enabled: false"
     webxr="requiredFeatures:hit-test,local-floor;referenceSpaceType:local-floor;" xr-mode-ui="XRMode: ar">
     <a-assets>
       <!-- TODO: Add this to repo documentation  -->
@@ -96,15 +86,15 @@
 
     </a-assets>
 
-    <a-entity id="street-container" data-layer-name="User Layers" data-layer-show-children>
+    <a-entity id="street-container" data-layer-name="User Layers" data-no-transform>
       <a-entity id="default-street" street streetmix-loader set-loader-from-hash></a-entity>
     </a-entity>
 
-    <a-entity id="reference-layers" data-layer-name="Geospatial Layers" data-layer-show-children></a-entity>
+    <a-entity id="reference-layers" data-layer-name="Geospatial Layers" data-no-transform></a-entity>
 
-    <a-entity id="environment" data-layer-name="Environment" street-environment="preset: day;"></a-entity>
+    <a-entity id="environment" data-layer-name="Environment" street-environment="preset: day;" data-no-transform></a-entity>
 
-    <a-entity id="cameraRig" class="ph-no-capture" data-layer-name="Viewer"
+    <a-entity id="cameraRig" class="ph-no-capture" data-layer-name="Viewer" data-no-transform
       cursor-teleport="cameraRig: #cameraRig; cameraHead: #camera;"
       movement-controls="camera: #camera; fly: true">
       <a-entity id="camera" position="0 1.6 0" camera look-controls="reverseMouseDrag: true"></a-entity>
@@ -129,37 +119,5 @@
     });
   });
 </script>
-<script>
-
-  // document.getElementById('inputfile')
-  //   .addEventListener('change', STREET.utils.fileJSON);
-
-  // function buttonScreenshotTock() {
-  //   const screenshotEl = document.getElementById('screenshot');
-  //   screenshotEl.play(); // double check playing in case we're in editor mode
-  //   screenshotEl.setAttribute('screentock', 'type', 'jpg');
-  //   screenshotEl.setAttribute('screentock', 'takeScreenshot', true);
-  // }
-
-  function startEditor() {
-    var sceneEl = document.querySelector('a-scene');
-    sceneEl.components.inspector.openInspector();
-    document.querySelector('.viewer-header-wrapper').style.display = 'none';
-  }
-
-  // launch the inspector in x seconds if ?viewer querystring NOT present
-  AFRAME.registerComponent('timed-inspector', {
-    init: function () {
-      const urlParams = new URLSearchParams(window.location.search);
-      const viewerParam = urlParams.get('viewer');
-      if (!viewerParam) {
-        setTimeout(function () {
-          window.postMessage('INJECT_AFRAME_INSPECTOR');
-        }, this.data * 1000);
-      }
-    }
-  });
-</script>
-<!-- <script src="./dist/3dstreet-editor.js"></script> -->
 
 </html>
