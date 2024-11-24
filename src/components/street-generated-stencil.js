@@ -3,7 +3,7 @@
 // a-frame component to generate cloned models along a street
 // this moves logic from aframe-streetmix-parsers into this component
 
-AFRAME.registerComponent('street-generated-fixed', {
+AFRAME.registerComponent('street-generated-stencil', {
   multiple: true,
   schema: {
     model: {
@@ -25,7 +25,7 @@ AFRAME.registerComponent('street-generated-fixed', {
     },
     positionY: {
       // y position of clones along the length
-      default: 0,
+      default: 0.15,
       type: 'number'
     },
     cycleOffset: {
@@ -84,9 +84,9 @@ AFRAME.registerComponent('street-generated-fixed', {
       });
 
       if (data.randomFacing) {
-        clone.setAttribute('rotation', `0 ${Math.random() * 360} 0`);
+        clone.setAttribute('rotation', `-90 ${Math.random() * 360} 0`);
       } else {
-        clone.setAttribute('rotation', `0 ${data.facing} 0`);
+        clone.setAttribute('rotation', `-90 ${data.facing} 0`);
       }
       clone.classList.add('autocreated');
       // clone.setAttribute('data-ignore-raycaster', ''); // i still like clicking to zoom to individual clones, but instead this should show the generated-fixed clone settings

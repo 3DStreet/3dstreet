@@ -707,6 +707,9 @@ function processSegments(
   streetParentEl.setAttribute('data-layer-name', 'Street Segments Container');
   streetParentEl.setAttribute('data-no-transform', '');
 
+  // experimental - create a new array children for the new data structure
+  let newManagedStreetDataStructureChildren = [];
+
   var cumulativeWidthInMeters = 0;
   for (var i = 0; i < segments.length; i++) {
     var segmentColor = null;
@@ -747,8 +750,8 @@ function processSegments(
     // look at segment type and variant(s) to determine specific cases
     if (segments[i].type === 'drive-lane' && variantList[1] === 'sharrow') {
       segmentParentEl.setAttribute(
-        'street-generated-fixed',
-        `model: stencils sharrow; length: ${length}; rotationX: -90; positionY: 0.15; cycleOffset: 0.2; spacing: 15;`
+        'street-generated-stencil',
+        `model: sharrow; length: ${length}; cycleOffset: 0.2; spacing: 15;`
       );
     } else if (
       segments[i].type === 'bike-lane' ||
@@ -1354,6 +1357,14 @@ function processSegments(
         'surface',
         TYPES[segmentPreset]?.surface
       );
+      // experimental - output the new data structure
+      let childData = {
+        id: segments[i].id, // this will collide with other segment ID if there are multiple streets placed with identical segment id's
+        type: segments[i].type,
+        width: segmentWidthInMeters,
+        elevation: elevation
+      };
+      newManagedStreetDataStructureChildren.push(childData);
     } else {
       segmentParentEl.append(
         createSeparatorElement(
@@ -1375,6 +1386,28 @@ function processSegments(
       'Segment • ' + segments[i].type + ', ' + variantList[0]
     );
   }
+  // experimental, output the new data structure
+  let newManagedStreetDataStructureInstance = {
+    // name: "string", // streetmix name not accessible from this function
+    type: 'managed_street',
+    width: cumulativeWidthInMeters, // this is the user-specified RoW width, not cumulative width of segments
+    // length: float, // not accessible from this function
+    // transform: {
+    // 	position: { x: float, y: float, z: float}
+    // 	rotation: { x: float, y: float, z: float}
+    // 	scale: { x: float, y: float, z: float}
+    // },
+    children: newManagedStreetDataStructureChildren
+  };
+  console.log(newManagedStreetDataStructureInstance);
+  document
+    .querySelector('#canvas-plane')
+    .setAttribute(
+      'drawCanvas',
+      'myCanvas: my-canvas; managedStreet: ' +
+        JSON.stringify(newManagedStreetDataStructureInstance)
+    );
+
   // create new brown box to represent ground underneath street
   const dirtBox = document.createElement('a-box');
   const xPos = cumulativeWidthInMeters / 2;
