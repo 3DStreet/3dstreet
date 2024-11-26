@@ -87,11 +87,8 @@ const PaymentModal = () => {
       onClose={onClose}
     >
       <div className={styles.paymentDetails}>
-        <h3>Unlock Geospatial Features with a free 30 day trial</h3>
-        <h2>
-          Create with geospatial maps and share your vision in augmented reality
-          with 3DStreet Pro.
-        </h2>
+        <h3>Unlock Pro features with a free 30 day trial</h3>
+        <h2>Create with intersections and geospatial maps.</h2>
         <ul>
           <li>
             <CheckMark32Icon /> All features in Free
@@ -102,7 +99,7 @@ const PaymentModal = () => {
           </li>
           <li>
             <CheckMark32Icon />
-            Advanced Street Geometry
+            Intersections and Advanced Street Geometry
           </li>
           <li>
             <CheckMark32Icon />
