@@ -38,7 +38,7 @@ const useStore = create(
           }
           set({ modal: newModal });
         },
-        startcheckout: (postCheckout) => {
+        startCheckout: (postCheckout) => {
           posthog.capture('modal_opened', { modal: 'payment' });
           posthog.capture('start_checkout');
           set({ modal: 'payment', postCheckout });

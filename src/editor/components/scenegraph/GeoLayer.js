@@ -26,7 +26,7 @@ const GeoLayer = () => {
   }, []);
   const { currentUser } = useAuthContext();
   const setModal = useStore((state) => state.setModal);
-  const startCheckout = useStore((state) => state.startcheckout);
+  const startCheckout = useStore((state) => state.startCheckout);
   const streetGeo = useGeoContext();
   const entity = document.getElementById('reference-layers');
 
