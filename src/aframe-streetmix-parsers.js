@@ -201,10 +201,6 @@ function insertSeparatorSegments(segments) {
     },
     []
   );
-
-  // console.log('newValues =', newValues)
-  // console.log(segments);
-
   return newValues;
 }
 
@@ -603,7 +599,7 @@ function processSegments(
       segmentParentEl.append(tracksParentEl);
     } else if (segments[i].type === 'turn-lane') {
       segmentPreset = 'drive-lane'; // use normal drive lane road material
-      if (showVehicles) {
+      if (showVehicles && variantList[1] !== 'shared') {
         const rotationCloneY = variantList[0] === 'inbound' ? 0 : 180;
         segmentParentEl.setAttribute(
           'street-generated-random',
