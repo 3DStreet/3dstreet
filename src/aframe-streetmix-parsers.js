@@ -1,5 +1,3 @@
-/* global THREE */
-
 // Orientation - default model orientation is "outbound" (away from camera)
 var streetmixParsersTested = require('./tested/aframe-streetmix-parsers-tested');
 var { segmentVariants } = require('./segments-variants.js');
@@ -354,36 +352,6 @@ function getSegmentColor(variant) {
   return COLORS.white;
 }
 
-function getDimensions(object3d) {
-  var box = new THREE.Box3().setFromObject(object3d);
-  var x = box.max.x - box.min.x;
-  var y = box.max.y - box.min.y;
-  var z = box.max.z - box.min.z;
-
-  return { x, y, z };
-}
-
-function getStartEndPosition(streetLength, objectLength) {
-  // get the start and end position for placing an object on a line
-  // computed by length of the street and object's length
-  const start = -0.5 * streetLength + 0.5 * objectLength;
-  const end = 0.5 * streetLength - 0.5 * objectLength;
-  return { start, end };
-}
-
-function randomPosition(entity, axis, length, objSizeAttr = undefined) {
-  // place randomly an element on a line length='length' on the axis 'axis'
-  // Need to call from 'model-loaded' event if objSizeAttr is undefined
-  // existEnts - array with existing entities (for prevent intersection)
-  const newObject = entity.object3D;
-  const objSize = objSizeAttr || getDimensions(newObject)[axis];
-  const { start, end } = getStartEndPosition(length, objSize);
-  const setFunc = `set${axis.toUpperCase()}`;
-  const newPosition = getRandomArbitrary(start, end);
-  newObject.position[setFunc](newPosition);
-  return newPosition;
-}
-
 function addLinearStreetAnimation(
   reusableObjectEl,
   speed,
@@ -419,164 +387,6 @@ function addLinearStreetAnimation(
   reusableObjectEl.setAttribute('animation__2', animationAttrs2);
 
   return reusableObjectEl;
-}
-
-function createDriveLaneElement(
-  variantList,
-  segmentWidthInMeters,
-  streetLength,
-  animated = false,
-  showVehicles = true,
-  count = 1,
-  carStep = undefined
-) {
-  if (!showVehicles) {
-    return;
-  }
-  let speed = 0;
-  let [lineVariant, direction, carType] = variantList;
-  if (variantList.length === 2) {
-    carType = direction;
-    direction = lineVariant;
-  }
-
-  const rotationVariants = {
-    inbound: 0,
-    outbound: 180,
-    sideways: {
-      left: -90,
-      right: 90
-    },
-    'angled-front-left': -60,
-    'angled-front-right': 60,
-    'angled-rear-left': -120,
-    'angled-rear-right': 120
-  };
-  let rotationY;
-  if (lineVariant === 'sideways') {
-    rotationY = rotationVariants['sideways'][direction];
-  } else {
-    rotationY = rotationVariants[lineVariant];
-  }
-
-  if (carType === 'pedestrian') {
-    return createSidewalkClonedVariants(
-      segmentWidthInMeters,
-      'normal',
-      streetLength,
-      direction,
-      animated
-    );
-  }
-
-  const driveLaneParentEl = document.createElement('a-entity');
-
-  if (variantList.length === 1) {
-    // if there is no cars
-    return driveLaneParentEl;
-  }
-
-  const carParams = {
-    car: {
-      mixin: 'sedan-rig',
-      wheelDiameter: 0.76,
-      length: 5.17,
-      width: 2
-    },
-    microvan: {
-      mixin: 'suv-rig',
-      wheelDiameter: 0.84,
-      length: 5,
-      width: 2
-    },
-    truck: {
-      mixin: 'box-truck-rig',
-      wheelDiameter: 1.05,
-      length: 6.95,
-      width: 2.5
-    },
-    // autonomous vehicle
-    av: {
-      mixin: 'self-driving-cruise-car-rig',
-      wheelDiameter: 0.76,
-      length: 5.17,
-      width: 2
-    }
-  };
-
-  // default drive-lane variant if selected variant (carType) is not supported
-  if (!carParams[carType]) {
-    carType = 'car';
-  }
-  function createCar(positionZ = undefined, carType = 'car') {
-    const params = carParams[carType];
-
-    const reusableObjectEl = document.createElement('a-entity');
-
-    if (!positionZ) {
-      positionZ = randomPosition(
-        reusableObjectEl,
-        'z',
-        streetLength,
-        params['length']
-      );
-    }
-    reusableObjectEl.setAttribute('position', `0 0 ${positionZ}`);
-    reusableObjectEl.setAttribute('mixin', params['mixin']);
-    reusableObjectEl.setAttribute('rotation', `0 ${rotationY} 0`);
-
-    if (animated) {
-      speed = 5; // meters per second
-      reusableObjectEl.setAttribute('wheel', {
-        speed: speed,
-        wheelDiameter: params['wheelDiameter']
-      });
-      addLinearStreetAnimation(
-        reusableObjectEl,
-        speed,
-        streetLength,
-        0,
-        positionZ,
-        direction
-      );
-    }
-    driveLaneParentEl.append(reusableObjectEl);
-    return reusableObjectEl;
-  }
-
-  // create one or more randomly placed cars
-
-  if (count > 1) {
-    const halfStreet = streetLength / 2;
-    const halfParkingLength = carStep / 2 + carStep;
-    const allPlaces = getZPositions(
-      -halfStreet + halfParkingLength,
-      halfStreet - halfParkingLength,
-      carStep
-    );
-    const randPlaces = allPlaces.slice(0, count);
-    const carSizeZ =
-      lineVariant === 'sideways' || lineVariant.includes('angled')
-        ? 'width'
-        : 'length';
-
-    const carSizeValueZ = carParams[carType][carSizeZ];
-
-    randPlaces.forEach((randPositionZ) => {
-      const maxDist = carStep - carSizeValueZ - 0.2;
-      // randOffset is for randomly displacement in a parking space (+/- maxDist)
-      const randOffset = -maxDist / 2 + maxDist * Math.random();
-      if (maxDist > 0) {
-        // if the car fits in the parking space
-        const positionZ = randPositionZ + randOffset;
-        createCar(positionZ, carType);
-      }
-    });
-  } else {
-    createCar(undefined, carType);
-  }
-
-  return driveLaneParentEl;
 }
 
 function createWayfindingElements() {
@@ -1220,15 +1030,12 @@ function processSegments(
       repeatCount[0] = 1;
       repeatCount[1] = parseInt(length / 6);
     } else if (segments[i].type === 'parking-lane') {
-      let reusableObjectStencilsParentEl;
-
       segmentPreset = 'parking-lane';
       let parkingMixin = 'stencils parking-t';
-
-      const carCount = 5;
       let carStep = 6;
 
       const rotationVars = {
+        // markings rotation
         outbound: 90,
         inbound: 90,
         sideways: 0,
@@ -1255,49 +1062,26 @@ function processSegments(
         markingPosX = 0;
         parkingMixin = 'solid-stripe';
       }
-      const markingPosXY = markingPosX + ' 0';
-      const clonedStencilRadius = length / 2 - carStep;
 
-      segmentParentEl.append(
-        createDriveLaneElement(
-          [...variantList, 'car'],
-          segmentWidthInMeters,
-          length,
-          false,
-          showVehicles,
-          carCount,
-          carStep
-        )
+      segmentParentEl.setAttribute(
+        'street-generated-random',
+        `modelsArray: sedan-rig, self-driving-waymo-car, suv-rig;
+          length: ${length};
+          placeLength: ${carStep};
+          count: ${getRandomIntInclusive(6, 8)};
+          facing: ${markingsRotZ - 90};` // this needs work -- the rotation is off by 180 degrees on the right side for perpendicular and angled variants
       );
       if (variantList[1] === 'left') {
-        reusableObjectStencilsParentEl = createStencilsParentElement({
-          y: 0.015
-        });
-        cloneMixinAsChildren({
-          objectMixinId: parkingMixin,
-          parentEl: reusableObjectStencilsParentEl,
-          positionXYString: markingPosXY,
-          rotation: '-90 ' + '90 ' + markingsRotZ,
-          length: markingLength,
-          step: carStep,
-          radius: clonedStencilRadius
-        });
+        segmentParentEl.setAttribute(
+          'street-generated-stencil',
+          `model: ${parkingMixin}; length: ${length}; cycleOffset: 1; spacing: ${carStep}; positionX: ${markingPosX}; facing: ${markingsRotZ + 90}; stencilHeight: ${markingLength};`
+        );
       } else {
-        reusableObjectStencilsParentEl = createStencilsParentElement({
-          y: 0.015
-        });
-        cloneMixinAsChildren({
-          objectMixinId: parkingMixin,
-          parentEl: reusableObjectStencilsParentEl,
-          positionXYString: markingPosXY,
-          rotation: '-90 ' + '90 ' + markingsRotZ,
-          length: markingLength,
-          step: carStep,
-          radius: clonedStencilRadius
-        });
+        segmentParentEl.setAttribute(
+          'street-generated-stencil',
+          `model: ${parkingMixin}; length: ${length}; cycleOffset: 1; spacing: ${carStep}; positionX: ${markingPosX}; facing: ${markingsRotZ + 90}; stencilHeight: ${markingLength};`
+        );
       }
-      // add the stencils to the segment parent
-      segmentParentEl.append(reusableObjectStencilsParentEl);
     }
 
     // if this thing is a sidewalk, make segmentPreset sidewalk

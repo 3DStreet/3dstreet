@@ -41,6 +41,10 @@ AFRAME.registerComponent('street-generated-stencil', {
       // if true, facing is ignored and a random Y Rotation is applied to each clone
       default: false,
       type: 'boolean'
+    },
+    stencilHeight: {
+      default: 0,
+      type: 'number'
     }
     // seed: {  // seed not yet supported
     //   default: 0,
@@ -82,6 +86,13 @@ AFRAME.registerComponent('street-generated-stencil', {
         y: data.positionY,
         z: positionZ
       });
+
+      if (data.stencilHeight > 0) {
+        clone.addEventListener('loaded', (evt) => {
+          evt.target.setAttribute('geometry', 'height', data.stencilHeight);
+          evt.target.setAttribute('atlas-uvs', 'forceRefresh', true); // this shouldn't be necessary, let's get rid of atlas uv
+        });
+      }
 
       if (data.randomFacing) {
         clone.setAttribute('rotation', `-90 ${Math.random() * 360} 0`);
