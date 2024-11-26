@@ -25,7 +25,7 @@ AFRAME.registerComponent('street-generated-stencil', {
     },
     positionY: {
       // y position of clones along the length
-      default: 0.15,
+      default: 0.05,
       type: 'number'
     },
     cycleOffset: {
