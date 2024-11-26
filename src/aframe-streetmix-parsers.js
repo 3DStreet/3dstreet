@@ -738,8 +738,6 @@ function processSegments(
     // If segment variant inbound, rotate segment model by 180 degrees
     var rotationY =
       variantList[0] === 'inbound' || variantList[1] === 'inbound' ? 180 : 0;
-    var isOutbound =
-      variantList[0] === 'outbound' || variantList[1] === 'outbound' ? 1 : -1;
 
     // the A-Frame mixin ID is often identical to the corresponding streetmix segment "type" by design, let's start with that
     var segmentPreset = segments[i].type;
@@ -762,7 +760,7 @@ function processSegments(
       segmentColor = getSegmentColor(variantList[1]);
       segmentParentEl.setAttribute(
         'street-generated-stencil',
-        `model: bike-arrow; length: ${length}; cycleOffset: 0.3; spacing: 20;`
+        `model: bike-arrow; length: ${length}; cycleOffset: 0.3; spacing: 20; facing: ${rotationY};`
       );
       const rotationCloneY = variantList[0] === 'inbound' ? 0 : 180;
       segmentParentEl.setAttribute(
@@ -819,36 +817,15 @@ function processSegments(
       if (variantList[1] === 'left-right-straight') {
         markerMixinId = 'all';
       }
-      var mixinString = 'stencils ' + markerMixinId;
-
-      // make the parent for all the objects to be cloned
-      const stencilsParentEl = createStencilsParentElement({
-        y: 0.015
-      });
-      cloneMixinAsChildren({
-        objectMixinId: mixinString,
-        parentEl: stencilsParentEl,
-        rotation: '-90 ' + rotationY + ' 0',
-        step: 15,
-        radius: clonedObjectRadius
-      });
-      // add this stencil stuff to the segment parent
-      segmentParentEl.append(stencilsParentEl);
+      segmentParentEl.setAttribute(
+        'street-generated-stencil',
+        `model: ${markerMixinId}; length: ${length}; cycleOffset: 0.4; spacing: 20; facing: ${rotationY};`
+      );
       if (variantList[1] === 'shared') {
-        // add an additional marking to represent the opposite turn marking stencil (rotated 180º)
-        const stencilsParentEl = createStencilsParentElement({
-          y: 0.015,
-          z: -3 * isOutbound
-        });
-        cloneMixinAsChildren({
-          objectMixinId: mixinString,
-          parentEl: stencilsParentEl,
-          rotation: '-90 ' + (rotationY + 180) + ' 0',
-          step: 15,
-          radius: clonedObjectRadius
-        });
-        // add this stencil stuff to the segment parent
-        segmentParentEl.append(stencilsParentEl);
+        segmentParentEl.setAttribute(
+          'street-generated-stencil__2',
+          `model: ${markerMixinId}; length: ${length}; cycleOffset: 0.3; spacing: 20; facing: ${rotationY + 180};`
+        );
       }
     } else if (segments[i].type === 'divider' && variantList[0] === 'bollard') {
       segmentPreset = 'divider';
