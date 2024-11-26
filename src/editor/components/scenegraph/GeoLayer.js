@@ -26,6 +26,7 @@ const GeoLayer = () => {
   }, []);
   const { currentUser } = useAuthContext();
   const setModal = useStore((state) => state.setModal);
+  const startCheckout = useStore((state) => state.startcheckout);
   const streetGeo = useGeoContext();
   const entity = document.getElementById('reference-layers');
 
@@ -40,6 +41,8 @@ const GeoLayer = () => {
       } else {
         setModal('geo');
       }
+    } else {
+      startCheckout('geo');
     }
   };
 
@@ -81,7 +84,7 @@ const GeoLayer = () => {
             <span> Set Location 🌎</span>
           </>
         ) : (
-          <span>Geospatial Layer</span>
+          <span>Geospatial Layer 🌎</span>
         )}
       </span>
     </div>

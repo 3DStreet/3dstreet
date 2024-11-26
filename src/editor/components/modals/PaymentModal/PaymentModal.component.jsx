@@ -20,14 +20,23 @@ const getStripe = () => {
   return stripePromise;
 };
 
+const resetPaymentQueryParam = () => {
+  const newUrl = window.location.href.replace(/\?payment=(success|cancel)/, '');
+  window.history.replaceState({}, '', newUrl);
+};
+
 const PaymentModal = () => {
   const { currentUser } = useAuthContext();
   const [isLoading, setIsLoading] = useState(false);
   const setModal = useStore((state) => state.setModal);
   const modal = useStore((state) => state.modal);
+  const postCheckout = useStore((state) => state.postCheckout);
+  const checkoutSuccess = location.hash.includes('success');
 
-  if (location.hash.includes('success')) {
+  if (checkoutSuccess) {
     posthog.capture('checkout_finished');
+  } else if (location.hash.includes('cancel')) {
+    posthog.capture('checkout_canceled');
   }
 
   const startCheckout = async () => {
@@ -63,8 +72,12 @@ const PaymentModal = () => {
   };
 
   const onClose = () => {
-    window.location.hash = '#';
-    setModal(null);
+    resetPaymentQueryParam();
+    if (checkoutSuccess && postCheckout) {
+      setModal(postCheckout);
+    } else {
+      setModal(null);
+    }
   };
 
   return (
