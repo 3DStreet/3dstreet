@@ -507,7 +507,7 @@ export function createUniqueId() {
   do {
     id = nanoid();
     // be sure to not return an id starting with a number
-  } while (/^\d/.test(id));
+  } while (/^[-\d]/.test(id));
   return id;
 }
 
