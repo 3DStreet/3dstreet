@@ -519,7 +519,7 @@ body.aframe-inspector-opened {
   position: absolute;
   right: 28px;
   bottom: 62px;
-  z-index: 1;
+  z-index: -1;
 }
 
 .outliner {
