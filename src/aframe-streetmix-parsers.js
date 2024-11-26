@@ -1400,13 +1400,6 @@ function processSegments(
     children: newManagedStreetDataStructureChildren
   };
   console.log(newManagedStreetDataStructureInstance);
-  document
-    .querySelector('#canvas-plane')
-    .setAttribute(
-      'drawCanvas',
-      'myCanvas: my-canvas; managedStreet: ' +
-        JSON.stringify(newManagedStreetDataStructureInstance)
-    );
 
   // create new brown box to represent ground underneath street
   const dirtBox = document.createElement('a-box');
