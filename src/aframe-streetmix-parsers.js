@@ -758,22 +758,12 @@ function processSegments(
       segments[i].type === 'scooter'
     ) {
       segmentPreset = 'bike-lane'; // use bike lane road material
-      // make a parent entity for the stencils
-      const stencilsParentEl = createStencilsParentElement({
-        y: 0.015
-      });
       // get the mixin id for a bike lane
       segmentColor = getSegmentColor(variantList[1]);
-      // clone a bunch of stencil entities (note: this is not draw call efficient)
-      cloneMixinAsChildren({
-        objectMixinId: 'stencils bike-arrow',
-        parentEl: stencilsParentEl,
-        rotation: '-90 ' + rotationY + ' 0',
-        step: 20,
-        radius: clonedObjectRadius
-      });
-      // add this stencil stuff to the segment parent
-      segmentParentEl.append(stencilsParentEl);
+      segmentParentEl.setAttribute(
+        'street-generated-stencil',
+        `model: bike-arrow; length: ${length}; cycleOffset: 0.3; spacing: 20;`
+      );
       const rotationCloneY = variantList[0] === 'inbound' ? 0 : 180;
       segmentParentEl.setAttribute(
         'street-generated-random',
