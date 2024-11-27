@@ -140,7 +140,13 @@ function buildAssetHTML(assetUrl, categories) {
         <a-mixin id="surface-blue" material="color:#00b6b6"></a-mixin>
       `,
     'lane-separator': `
-        <!-- lane separator markings -->
+        <!-- v2 lane separator markings -->
+        <img id="striping-solid-stripe" src="${assetUrl}materials/striping-solid-stripe-128-1024.webp" crossorigin="anonymous" />
+        <img id="striping-dashed-stripe" src="${assetUrl}materials/striping-dashed-stripe-128-1024.webp" crossorigin="anonymous" />
+        <img id="striping-solid-double" src="${assetUrl}materials/striping-solid-double-256-1024.webp" crossorigin="anonymous" />
+        <img id="striping-solid-dashed" src="${assetUrl}materials/striping-solid-dashed-256-1024.webp" crossorigin="anonymous" />
+        <img id="striping-crosswalk-zebra" src="${assetUrl}materials/striping-solid-dashed-256-1024.webp" crossorigin="anonymous" />
+        <!-- legacy lane separator markings using atlas uv -->
         <img id="markings-atlas" src="${assetUrl}materials/lane-markings-atlas_1024.png" crossorigin="anonymous" />
         <a-mixin id="markings"></a-mixin>
         <a-mixin shadow="cast: false" id="solid-stripe" atlas-uvs="totalRows: 1; totalColumns: 8; column: 3; row: 1" material="src: #markings-atlas;alphaTest: 0;transparent:true;repeat:1 5;" geometry="primitive: plane; width:0.2; height:150; skipCache: true;"></a-mixin>

@@ -47,11 +47,11 @@ const TYPES = {
   }
 };
 
-// this function takes a list of segments and adds lane markings or "separator segments"
-// these are 0 width segments inserted into the street json prior to rendering
-// the basic logic is: if there are two adjacent "lane-ish" segments, then add lane separators
-function insertSeparatorSegments(segments) {
-  // first, let's define what is a lane that will likely need adajcent striping?
+function getSeparatorMixinId(previousSegment, currentSegment) {
+  if (previousSegment === undefined || currentSegment === undefined) {
+    return null;
+  }
+  // Helper function to check if a segment type is "lane-ish"
   function isLaneIsh(typeString) {
     return (
       typeString.slice(typeString.length - 4) === 'lane' ||
@@ -61,106 +61,81 @@ function insertSeparatorSegments(segments) {
     );
   }
 
-  // then let's go through the segments array and build a new one with inserted separators
-  const newValues = segments.reduce(
-    (newArray, currentValue, currentIndex, arr) => {
-      // don't insert a lane marker before the first segment
-      if (currentIndex === 0) {
-        return newArray.concat(currentValue);
-      }
+  // If either segment is not lane-ish and not a divider, return null
+  if (
+    (!isLaneIsh(previousSegment.type) && previousSegment.type !== 'divider') ||
+    (!isLaneIsh(currentSegment.type) && currentSegment.type !== 'divider')
+  ) {
+    return null;
+  }
 
-      const previousValue = arr[currentIndex - 1];
+  // Default to solid line
+  let variantString = 'solid-stripe';
 
-      // if both adjacent lanes are "laneish"
-      if (isLaneIsh(currentValue.type) && isLaneIsh(previousValue.type)) {
-        // if in doubt start with a solid line
-        var variantString = 'solid';
+  // Handle divider cases
+  if (previousSegment.type === 'divider' || currentSegment.type === 'divider') {
+    return variantString;
+  }
 
-        // if adjacent lane types are identical, then used dashed lines
-        if (currentValue.type === previousValue.type) {
-          variantString = 'dashed';
-        }
+  // Get directions from variant strings
+  const prevDirection = previousSegment.variantString.split('|')[0];
+  const currDirection = currentSegment.variantString.split('|')[0];
 
-        // Or, if either is a drive lane or turn lane then use dashed
-        // Using dash vs solid for turn lanes along approach to intersections may need to be user defined
-        if (
-          (currentValue.type === 'drive-lane' &&
-            previousValue.type === 'turn-lane') ||
-          (previousValue.type === 'drive-lane' &&
-            currentValue.type === 'turn-lane')
-        ) {
-          variantString = 'dashed';
-        }
+  // Check for opposite directions
+  if (prevDirection !== currDirection) {
+    variantString = 'solid-doubleyellow';
 
-        // if adjacent segments in opposite directions then use double yellow
-        if (
-          currentValue.variantString.split('|')[0] !==
-          previousValue.variantString.split('|')[0]
-        ) {
-          variantString = 'doubleyellow';
-          // if adjacenet segments are both bike lanes, then use yellow short dash
-          if (
-            currentValue.type === 'bike-lane' &&
-            previousValue.type === 'bike-lane'
-          ) {
-            variantString = 'shortdashedyellow';
-          }
-          if (
-            currentValue.type === 'flex-zone' ||
-            previousValue.type === 'flex-zone'
-          ) {
-            variantString = 'solid';
-          }
-        }
+    // Special case for bike lanes
+    if (
+      currentSegment.type === 'bike-lane' &&
+      previousSegment.type === 'bike-lane'
+    ) {
+      variantString = 'short-dashed-stripe-yellow';
+    }
 
-        // special case -- if either lanes are turn lane shared, then use solid and long dash
-        if (
-          currentValue.type === 'turn-lane' &&
-          currentValue.variantString.split('|')[1] === 'shared'
-        ) {
-          variantString = 'soliddashedyellow';
-        } else if (
-          previousValue.type === 'turn-lane' &&
-          previousValue.variantString.split('|')[1] === 'shared'
-        ) {
-          variantString = 'soliddashedyellowinverted';
-        }
+    // Special case for flex zones
+    if (
+      currentSegment.type === 'flex-zone' ||
+      previousSegment.type === 'flex-zone'
+    ) {
+      variantString = 'solid';
+    }
+  } else {
+    // Same direction cases
+    if (currentSegment.type === previousSegment.type) {
+      variantString = 'dashed-stripe';
+    }
 
-        // if adjacent to parking lane with markings, do not draw white line
-        if (
-          currentValue.type === 'parking-lane' ||
-          previousValue.type === 'parking-lane'
-        ) {
-          variantString = 'invisible';
-        }
+    // Drive lane and turn lane combination
+    if (
+      (currentSegment.type === 'drive-lane' &&
+        previousSegment.type === 'turn-lane') ||
+      (previousSegment.type === 'drive-lane' &&
+        currentSegment.type === 'turn-lane')
+    ) {
+      variantString = 'dashed-stripe';
+    }
+  }
 
-        newArray.push({
-          type: 'separator',
-          variantString: variantString,
-          width: 0,
-          elevation: currentValue.elevation
-        });
-      }
+  // Special cases for shared turn lanes
+  const prevVariant = previousSegment.variantString.split('|')[1];
+  const currVariant = currentSegment.variantString.split('|')[1];
 
-      // if a *lane segment and divider are adjacent, use a solid separator
-      if (
-        (isLaneIsh(currentValue.type) && previousValue.type === 'divider') ||
-        (isLaneIsh(previousValue.type) && currentValue.type === 'divider')
-      ) {
-        newArray.push({
-          type: 'separator',
-          variantString: 'solid',
-          width: 0,
-          elevation: currentValue.elevation
-        });
-      }
+  if (currentSegment.type === 'turn-lane' && currVariant === 'shared') {
+    variantString = 'solid-dashed-yellow';
+  } else if (previousSegment.type === 'turn-lane' && prevVariant === 'shared') {
+    variantString = 'solid-dashed-yellow';
+  }
 
-      newArray.push(currentValue);
-      return newArray;
-    },
-    []
-  );
-  return newValues;
+  // Special case for parking lanes
+  if (
+    currentSegment.type === 'parking-lane' ||
+    previousSegment.type === 'parking-lane'
+  ) {
+    variantString = 'invisible';
+  }
+
+  return variantString;
 }
 
 function createRailsElement(length, railsPosX) {
@@ -411,11 +386,6 @@ function processSegments(
   globalAnimated,
   showVehicles
 ) {
-  // add additional 0-width segments for stripes (painted markers)
-  if (showStriping) {
-    segments = insertSeparatorSegments(segments);
-  }
-
   // create and center offset to center the street around global x position of 0
   var streetParentEl = createCenteredStreetElement(segments);
   streetParentEl.classList.add('street-parent');
@@ -824,33 +794,6 @@ function processSegments(
         'street-generated-single',
         `model: brt-station; length: ${length};`
       );
-    } else if (
-      segments[i].type === 'separator' &&
-      variantList[0] === 'dashed'
-    ) {
-      segmentPreset = 'dashed-stripe';
-    } else if (segments[i].type === 'separator' && variantList[0] === 'solid') {
-      segmentPreset = 'solid-stripe';
-    } else if (
-      segments[i].type === 'separator' &&
-      variantList[0] === 'doubleyellow'
-    ) {
-      segmentPreset = 'solid-doubleyellow';
-    } else if (
-      segments[i].type === 'separator' &&
-      variantList[0] === 'shortdashedyellow'
-    ) {
-      segmentPreset = 'short-dashed-stripe-yellow';
-    } else if (
-      segments[i].type === 'separator' &&
-      variantList[0] === 'soliddashedyellow'
-    ) {
-      segmentPreset = 'solid-dashed-yellow';
-    } else if (
-      segments[i].type === 'separator' &&
-      variantList[0] === 'soliddashedyellowinverted'
-    ) {
-      segmentPreset = 'solid-dashed-yellow';
     } else if (segments[i].type === 'parking-lane') {
       segmentPreset = 'parking-lane';
       let parkingMixin = 'stencils parking-t';
@@ -910,41 +853,39 @@ function processSegments(
     if (streetmixParsersTested.isSidewalk(segments[i].type)) {
       segmentPreset = 'sidewalk';
     }
+
     // add new object
-    if (segments[i].type !== 'separator') {
-      segmentParentEl.setAttribute('street-segment', 'type', segmentPreset);
-      segmentParentEl.setAttribute(
-        'street-segment',
-        'width',
-        segmentWidthInMeters
-      );
-      segmentParentEl.setAttribute('street-segment', 'length', length);
-      segmentParentEl.setAttribute('street-segment', 'elevation', elevation);
-      segmentParentEl.setAttribute(
-        'street-segment',
-        'color',
-        segmentColor ?? TYPES[segmentPreset]?.color
-      );
-      segmentParentEl.setAttribute(
-        'street-segment',
-        'surface',
-        TYPES[segmentPreset]?.surface
-      );
-      // experimental - output the new data structure
-      let childData = {
-        id: segments[i].id, // this will collide with other segment ID if there are multiple streets placed with identical segment id's
-        type: segments[i].type,
-        width: segmentWidthInMeters,
-        elevation: elevation
-      };
-      newManagedStreetDataStructureChildren.push(childData);
-    } else {
+    segmentParentEl.setAttribute('street-segment', 'type', segmentPreset);
+    segmentParentEl.setAttribute(
+      'street-segment',
+      'width',
+      segmentWidthInMeters
+    );
+    segmentParentEl.setAttribute('street-segment', 'length', length);
+    segmentParentEl.setAttribute('street-segment', 'elevation', elevation);
+    segmentParentEl.setAttribute(
+      'street-segment',
+      'color',
+      segmentColor ?? TYPES[segmentPreset]?.color
+    );
+    segmentParentEl.setAttribute(
+      'street-segment',
+      'surface',
+      TYPES[segmentPreset]?.surface
+    );
+
+    let currentSegment = segments[i];
+    let previousSegment = segments[i - 1];
+    let separatorMixinId = getSeparatorMixinId(previousSegment, currentSegment);
+
+    console.log('separatorMixinId', separatorMixinId);
+
+    if (separatorMixinId && showStriping) {
       segmentParentEl.setAttribute(
         'street-generated-striping',
-        `striping: ${segmentPreset}; length: ${length};` // set facing 180 when in a shared turn lane
+        `striping: ${separatorMixinId}; length: ${length}; segmentWidth: ${segmentWidthInMeters};`
       );
       // if previous segment is turn lane and shared, then facing should be 180
-      let previousSegment = segments[i - 1];
       if (
         previousSegment &&
         previousSegment.type === 'turn-lane' &&
@@ -957,6 +898,16 @@ function processSegments(
         );
       }
     }
+
+    // experimental - output the new data structure
+    let childData = {
+      id: segments[i].id, // this will collide with other segment ID if there are multiple streets placed with identical segment id's
+      type: segments[i].type,
+      width: segmentWidthInMeters,
+      elevation: elevation
+    };
+    newManagedStreetDataStructureChildren.push(childData);
+
     // returns JSON output instead
     // append the new surfaceElement to the segmentParentEl
     streetParentEl.append(segmentParentEl);

@@ -9,6 +9,9 @@ AFRAME.registerComponent('street-generated-striping', {
     striping: {
       type: 'string'
     },
+    segmentWidth: {
+      type: 'number'
+    },
     side: {
       default: 'left',
       oneOf: ['left', 'right']
@@ -21,14 +24,9 @@ AFRAME.registerComponent('street-generated-striping', {
       // length in meters of linear path to fill with clones
       type: 'number'
     },
-    positionX: {
-      // x position of clones along the length
-      default: 0,
-      type: 'number'
-    },
     positionY: {
       // y position of clones along the length
-      default: 0.2, // this is too high, instead this should component should respect elevation to follow street segment
+      default: 0.05, // this is too high, instead this should component should respect elevation to follow street segment
       type: 'number'
     }
   },
@@ -42,38 +40,70 @@ AFRAME.registerComponent('street-generated-striping', {
     // Clean up old entities
     this.createdEntities.forEach((entity) => entity.remove());
     this.createdEntities = [];
-
+    if (data.striping === 'invisible') {
+      return;
+    }
     const clone = document.createElement('a-entity');
-    clone.setAttribute('mixin', data.striping);
-
+    const { stripingTextureId, repeatY, color, stripingWidth } =
+      this.calculateStripingMaterial(data.striping, data.length);
+    const positionX = ((data.side === 'left' ? -1 : 1) * data.segmentWidth) / 2;
     clone.setAttribute('position', {
-      x: data.positionX,
+      x: positionX,
       y: data.positionY,
       z: 0
     });
-
-    const scaleY = data.length / 150;
-    const scalePlane = '1 ' + scaleY + ' 1';
-
-    clone.setAttribute('scale', scalePlane);
-
-    let repeatY = data.length / 6;
-    if (data.striping === 'short-dashed-stripe-yellow') {
-      repeatY = data.length / 3;
-    }
     clone.setAttribute('rotation', {
       x: -90,
       y: data.facing,
       z: 0
     });
-
-    clone.setAttribute('material', `repeat: 1 ${repeatY}`);
-
+    clone.setAttribute(
+      'material',
+      `src: #${stripingTextureId}; alphaTest: 0; transparent:true; repeat:1 ${repeatY}; color: ${color}`
+    );
+    clone.setAttribute(
+      'geometry',
+      `primitive: plane; width: ${stripingWidth}; height: ${data.length}; skipCache: true;`
+    );
     clone.classList.add('autocreated');
     // clone.setAttribute('data-ignore-raycaster', ''); // i still like clicking to zoom to individual clones, but instead this should show the generated-fixed clone settings
     clone.setAttribute('data-no-transform', '');
-    clone.setAttribute('data-layer-name', 'Cloned Striping • ' + data.striping);
+    clone.setAttribute(
+      'data-layer-name',
+      'Cloned Striping • ' + stripingTextureId
+    );
     this.el.appendChild(clone);
     this.createdEntities.push(clone);
+  },
+  calculateStripingMaterial: function (stripingName, length) {
+    // calculate the repeatCount for the material
+    var stripingTextureId = 'striping-solid-stripe'; // drive-lane, bus-lane, bike-lane
+    var repeatY = length / 6;
+    var color = '#FFFFFF'; // we could get rid of this using cropped texture for asphalt
+    var stripingWidth = 0.2;
+    if (stripingName === 'solid-stripe') {
+      stripingTextureId = 'striping-solid-stripe';
+    } else if (stripingName === 'dashed-stripe') {
+      stripingTextureId = 'striping-dashed-stripe';
+    } else if (stripingName === 'short-dashed-stripe') {
+      stripingTextureId = 'striping-dashed-stripe';
+      repeatY = length / 3;
+    } else if (stripingName === 'short-dashed-stripe-yellow') {
+      stripingTextureId = 'striping-dashed-stripe';
+      repeatY = length / 3;
+      color = '#f7d117';
+    } else if (stripingName === 'solid-doubleyellow') {
+      stripingTextureId = 'striping-solid-double';
+      stripingWidth = 0.5;
+      color = '#f7d117';
+    } else if (stripingName === 'solid-dashed') {
+      stripingTextureId = 'striping-solid-dashed';
+      stripingWidth = 0.4;
+    } else if (stripingName === 'solid-dashed-yellow') {
+      stripingTextureId = 'striping-solid-dashed';
+      color = '#f7d117';
+      stripingWidth = 0.4;
+    }
+    return { stripingTextureId, repeatY, color, stripingWidth };
   }
 });
