@@ -502,7 +502,7 @@ function processSegments(
     if (segments[i].type === 'drive-lane' && variantList[1] === 'sharrow') {
       segmentParentEl.setAttribute(
         'street-generated-stencil',
-        `model: sharrow; length: ${length}; cycleOffset: 0.2; spacing: 15;`
+        `model: sharrow; length: ${length}; cycleOffset: 0.2; spacing: 15; facing: ${rotationY}`
       );
     } else if (
       segments[i].type === 'bike-lane' ||
