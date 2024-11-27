@@ -26,6 +26,7 @@ require('./components/street-generated-fixed.js');
 require('./components/street-generated-single.js');
 require('./components/street-generated-random.js');
 require('./components/street-generated-stencil.js');
+require('./components/street-generated-striping.js');
 require('./editor/index.js');
 
 const state = useStore.getState();

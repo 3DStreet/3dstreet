@@ -380,44 +380,6 @@ function createCenteredStreetElement(segments) {
   return streetEl;
 }
 
-function calculateHeight(elevation) {
-  const stepLevel = 0.15;
-  if (elevation <= 0) {
-    return stepLevel;
-  }
-  return stepLevel * (elevation + 1);
-}
-
-function createSeparatorElement(
-  positionY,
-  rotationY,
-  mixinId,
-  length,
-  repeatCount,
-  elevation = 0
-) {
-  var segmentEl = document.createElement('a-entity');
-  const scaleY = length / 150;
-  const scalePlane = '1 ' + scaleY + ' 1';
-
-  segmentEl.setAttribute('rotation', '270 ' + rotationY + ' 0');
-  segmentEl.setAttribute('scale', scalePlane);
-
-  let posY = calculateHeight(elevation) + positionY;
-  // take into account elevation property and add to positionY
-  segmentEl.setAttribute('position', '0 ' + posY + ' 0');
-  segmentEl.setAttribute('mixin', mixinId);
-
-  if (repeatCount.length !== 0) {
-    segmentEl.setAttribute(
-      'material',
-      `repeat: ${repeatCount[0]} ${repeatCount[1]}`
-    );
-  }
-
-  return segmentEl;
-}
-
 // show warning message if segment or variantString are not supported
 function supportCheck(segmentType, segmentVariantString) {
   if (segmentType === 'separator') return;
@@ -474,7 +436,6 @@ function processSegments(
 
     cumulativeWidthInMeters = cumulativeWidthInMeters + segmentWidthInMeters;
     var segmentPositionX = cumulativeWidthInMeters - 0.5 * segmentWidthInMeters;
-    var positionY = 0;
 
     // get variantString
     var variantList = segments[i].variantString
@@ -494,9 +455,6 @@ function processSegments(
 
     // the A-Frame mixin ID is often identical to the corresponding streetmix segment "type" by design, let's start with that
     var segmentPreset = segments[i].type;
-
-    // repeat value for material property - repeatCount[0] is x texture repeat and repeatCount[1] is y texture repeat
-    const repeatCount = [];
 
     // look at segment type and variant(s) to determine specific cases
     if (segments[i].type === 'drive-lane' && variantList[1] === 'sharrow') {
@@ -577,7 +535,7 @@ function processSegments(
       if (variantList[1] === 'shared') {
         segmentParentEl.setAttribute(
           'street-generated-stencil__2',
-          `model: ${markerMixinId}; length: ${length}; cycleOffset: 0.3; spacing: 20; facing: ${rotationY + 180};`
+          `model: ${markerMixinId}; length: ${length}; cycleOffset: 0.6; spacing: 20; facing: ${rotationY + 180};`
         );
       }
     } else if (segments[i].type === 'divider' && variantList[0] === 'bollard') {
@@ -766,7 +724,6 @@ function processSegments(
         'street-generated-fixed',
         `model: bikerack; length: ${length}; facing: ${rotationCloneY}; cycleOffset: 0.2`
       );
-      // add bike racks to the segment parent
     } else if (segments[i].type === 'magic-carpet') {
       segmentPreset = 'drive-lane';
       segmentParentEl.setAttribute(
@@ -872,43 +829,28 @@ function processSegments(
       variantList[0] === 'dashed'
     ) {
       segmentPreset = 'dashed-stripe';
-      positionY = 0.01; // make sure the lane marker is above the asphalt
-      // for all markings material property repeat = "1 25". So every 150/25=6 meters put a dash
-      repeatCount[0] = 1;
-      repeatCount[1] = parseInt(length / 6);
     } else if (segments[i].type === 'separator' && variantList[0] === 'solid') {
       segmentPreset = 'solid-stripe';
-      positionY = 0.01; // make sure the lane marker is above the asphalt
     } else if (
       segments[i].type === 'separator' &&
       variantList[0] === 'doubleyellow'
     ) {
       segmentPreset = 'solid-doubleyellow';
-      positionY = 0.01; // make sure the lane marker is above the asphalt
     } else if (
       segments[i].type === 'separator' &&
       variantList[0] === 'shortdashedyellow'
     ) {
       segmentPreset = 'short-dashed-stripe-yellow';
-      positionY = 0.01; // make sure the lane marker is above the asphalt
-      // for short-dashed-stripe every 3 meters put a dash
-      repeatCount[0] = 1;
-      repeatCount[1] = parseInt(length / 3);
     } else if (
       segments[i].type === 'separator' &&
       variantList[0] === 'soliddashedyellow'
     ) {
       segmentPreset = 'solid-dashed-yellow';
-      positionY = 0.01; // make sure the lane marker is above the asphalt
     } else if (
       segments[i].type === 'separator' &&
       variantList[0] === 'soliddashedyellowinverted'
     ) {
       segmentPreset = 'solid-dashed-yellow';
-      positionY = 0.01; // make sure the lane marker is above the asphalt
-      rotationY = '180';
-      repeatCount[0] = 1;
-      repeatCount[1] = parseInt(length / 6);
     } else if (segments[i].type === 'parking-lane') {
       segmentPreset = 'parking-lane';
       let parkingMixin = 'stencils parking-t';
@@ -997,16 +939,23 @@ function processSegments(
       };
       newManagedStreetDataStructureChildren.push(childData);
     } else {
-      segmentParentEl.append(
-        createSeparatorElement(
-          positionY,
-          rotationY,
-          segmentPreset,
-          length,
-          repeatCount,
-          elevation
-        )
+      segmentParentEl.setAttribute(
+        'street-generated-striping',
+        `striping: ${segmentPreset}; length: ${length};` // set facing 180 when in a shared turn lane
       );
+      // if previous segment is turn lane and shared, then facing should be 180
+      let previousSegment = segments[i - 1];
+      if (
+        previousSegment &&
+        previousSegment.type === 'turn-lane' &&
+        previousSegment.variantString.split('|')[1] === 'shared'
+      ) {
+        segmentParentEl.setAttribute(
+          'street-generated-striping',
+          'facing',
+          180
+        );
+      }
     }
     // returns JSON output instead
     // append the new surfaceElement to the segmentParentEl
