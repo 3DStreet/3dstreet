@@ -9,6 +9,15 @@ AFRAME.registerComponent('street-generated-stencil', {
     model: {
       type: 'string'
     },
+    stencils: {
+      // if present, then use this array of stencils instead of 1 model
+      type: 'array'
+    },
+    padding: {
+      // distance between stencils within array
+      default: 0,
+      type: 'number'
+    },
     length: {
       // length in meters of linear path to fill with clones
       type: 'number'
@@ -55,57 +64,71 @@ AFRAME.registerComponent('street-generated-stencil', {
     this.createdEntities = [];
   },
   update: function (oldData) {
-    // generate a function that creates a cloned set of x entities based on spacing and length values from the model shortname gltf file loaded in aframe
     const data = this.data;
-    // if oldData is same as current data, then don't update
-    if (AFRAME.utils.deepEqual(oldData, data)) {
-      return;
-    }
+    if (AFRAME.utils.deepEqual(oldData, data)) return;
 
-    // For each clone in this.entities, remove it
-    this.createdEntities.forEach((entity) => {
-      entity.remove();
-    });
+    // Clean up old entities
+    this.createdEntities.forEach((entity) => entity.remove());
     this.createdEntities = [];
 
-    this.correctedSpacing = data.spacing < 1 ? 1 : data.spacing; // return 1 if data.spacing is less than 1
+    // Use either stencils array or single model
+    let stencilsToUse = data.stencils.length > 0 ? data.stencils : [data.model];
 
-    // Calculate number of clones needed based on length and spacing
-    const numClones = Math.floor(data.length / this.correctedSpacing);
+    // Reverse stencil order if facing is 180 degrees
+    if (data.facing === 180) {
+      stencilsToUse = stencilsToUse.slice().reverse();
+    }
 
-    // Create clones and position them along the length
-    for (let i = 0; i < numClones; i++) {
-      const clone = document.createElement('a-entity');
-      clone.setAttribute('mixin', data.model);
-      // Position each clone evenly spaced along z-axis
-      // offset default is 0.5 so that clones don't start exactly at street start which looks weird
-      const positionZ =
-        data.length / 2 - (i + data.cycleOffset) * this.correctedSpacing;
-      clone.setAttribute('position', {
-        x: data.positionX,
-        y: data.positionY,
-        z: positionZ
-      });
+    // Ensure minimum spacing
+    this.correctedSpacing = Math.max(1, data.spacing);
 
-      if (data.stencilHeight > 0) {
-        clone.addEventListener('loaded', (evt) => {
-          evt.target.setAttribute('geometry', 'height', data.stencilHeight);
-          evt.target.setAttribute('atlas-uvs', 'forceRefresh', true); // this shouldn't be necessary, let's get rid of atlas uv
+    // Calculate number of stencil groups that can fit in the length
+    const numGroups = Math.floor(data.length / this.correctedSpacing);
+
+    // Create stencil groups along the street
+    for (let groupIndex = 0; groupIndex < numGroups; groupIndex++) {
+      const groupPosition =
+        data.length / 2 -
+        (groupIndex + data.cycleOffset) * this.correctedSpacing;
+
+      // Create each stencil within the group
+      stencilsToUse.forEach((stencilName, stencilIndex) => {
+        const clone = document.createElement('a-entity');
+        clone.setAttribute('mixin', stencilName);
+
+        // Calculate stencil position within group
+        const stencilOffset =
+          (stencilIndex - (stencilsToUse.length - 1) / 2) * data.padding;
+
+        // Set position with group position and stencil offset
+        clone.setAttribute('position', {
+          x: data.positionX,
+          y: data.positionY,
+          z: groupPosition + stencilOffset
         });
-      }
 
-      if (data.randomFacing) {
-        clone.setAttribute('rotation', `-90 ${Math.random() * 360} 0`);
-      } else {
-        clone.setAttribute('rotation', `-90 ${data.facing} 0`);
-      }
-      clone.classList.add('autocreated');
-      // clone.setAttribute('data-ignore-raycaster', ''); // i still like clicking to zoom to individual clones, but instead this should show the generated-fixed clone settings
-      clone.setAttribute('data-no-transform', '');
-      clone.setAttribute('data-layer-name', 'Cloned Model • ' + data.model);
+        // Handle stencil height if specified
+        if (data.stencilHeight > 0) {
+          clone.addEventListener('loaded', (evt) => {
+            evt.target.setAttribute('geometry', 'height', data.stencilHeight);
+            evt.target.setAttribute('atlas-uvs', 'forceRefresh', true);
+          });
+        }
 
-      this.el.appendChild(clone);
-      this.createdEntities.push(clone);
+        // Set rotation - either random or specified facing
+        const rotation = data.randomFacing
+          ? `-90 ${Math.random() * 360} 0`
+          : `-90 ${data.facing} 0`;
+        clone.setAttribute('rotation', rotation);
+
+        // Add metadata
+        clone.classList.add('autocreated');
+        clone.setAttribute('data-no-transform', '');
+        clone.setAttribute('data-layer-name', `Cloned Model • ${stencilName}`);
+
+        this.el.appendChild(clone);
+        this.createdEntities.push(clone);
+      });
     }
   }
 });

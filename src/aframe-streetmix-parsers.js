@@ -47,47 +47,6 @@ const TYPES = {
   }
 };
 
-function cloneMixinAsChildren({
-  objectMixinId = '',
-  parentEl = null,
-  step = 15,
-  radius = 60,
-  rotation = '0 0 0',
-  positionXYString = '0 0',
-  length = undefined,
-  randomY = false
-}) {
-  for (let j = radius * -1; j <= radius; j = j + step) {
-    const placedObjectEl = document.createElement('a-entity');
-    placedObjectEl.setAttribute('mixin', objectMixinId);
-    placedObjectEl.setAttribute('class', objectMixinId);
-    placedObjectEl.setAttribute('position', positionXYString + ' ' + j);
-
-    if (length) {
-      placedObjectEl.addEventListener('loaded', (evt) => {
-        evt.target.setAttribute('geometry', 'height', length);
-        evt.target.setAttribute('atlas-uvs', 'c', 1);
-      });
-    }
-
-    if (randomY) {
-      placedObjectEl.setAttribute(
-        'rotation',
-        '0 ' + Math.floor(randomTestable() * 361) + ' 0'
-      );
-    } else {
-      placedObjectEl.setAttribute('rotation', rotation);
-    }
-    // add the new elmement to DOM
-    parentEl.append(placedObjectEl);
-    // could be good to use geometry merger https://github.com/supermedium/superframe/tree/master/components/geometry-merger
-  }
-}
-
-function randomTestable() {
-  return Math.random();
-}
-
 // this function takes a list of segments and adds lane markings or "separator segments"
 // these are 0 width segments inserted into the street json prior to rendering
 // the basic logic is: if there are two adjacent "lane-ish" segments, then add lane separators
@@ -202,13 +161,6 @@ function insertSeparatorSegments(segments) {
     []
   );
   return newValues;
-}
-
-function createStencilsParentElement(position) {
-  const placedObjectEl = document.createElement('a-entity');
-  placedObjectEl.setAttribute('class', 'stencils-parent');
-  placedObjectEl.setAttribute('position', position); // position="1.043 0.100 -3.463"
-  return placedObjectEl;
 }
 
 function createRailsElement(length, railsPosX) {
@@ -497,11 +449,6 @@ function processSegments(
   globalAnimated,
   showVehicles
 ) {
-  var clonedObjectRadius = length / 2;
-  //  Adjust clonedObjectRadius so that objects do not repeat
-  if (length > 12) {
-    clonedObjectRadius = (length - 12) / 2;
-  }
   // add additional 0-width segments for stripes (painted markers)
   if (showStriping) {
     segments = insertSeparatorSegments(segments);
@@ -746,49 +693,10 @@ function processSegments(
           `model: bus; length: ${length}; placeLength: 15; facing: ${rotationY}; count: 1;`
         );
       }
-      // create parent for the bus lane stencils to rotate the phrase instead of the word
-      let reusableObjectStencilsParentEl;
-
-      reusableObjectStencilsParentEl = createStencilsParentElement({
-        y: 0.015
-      });
-      cloneMixinAsChildren({
-        objectMixinId: 'stencils word-bus',
-        parentEl: reusableObjectStencilsParentEl,
-        rotation: '-90 ' + rotationY + ' 0',
-        step: 50,
-        radius: clonedObjectRadius
-      });
-      // add this stencil stuff to the segment parent
-      segmentParentEl.append(reusableObjectStencilsParentEl);
-
-      reusableObjectStencilsParentEl = createStencilsParentElement({
-        y: 0.015,
-        z: 10
-      });
-      cloneMixinAsChildren({
-        objectMixinId: 'stencils word-taxi',
-        parentEl: reusableObjectStencilsParentEl,
-        rotation: '-90 ' + rotationY + ' 0',
-        step: 50,
-        radius: clonedObjectRadius
-      });
-      // add this stencil stuff to the segment parent
-      segmentParentEl.append(reusableObjectStencilsParentEl);
-
-      reusableObjectStencilsParentEl = createStencilsParentElement({
-        y: 0.015,
-        z: 20
-      });
-      cloneMixinAsChildren({
-        objectMixinId: 'stencils word-only',
-        parentEl: reusableObjectStencilsParentEl,
-        rotation: '-90 ' + rotationY + ' 0',
-        step: 50,
-        radius: clonedObjectRadius
-      });
-      // add this stencil stuff to the segment parent
-      segmentParentEl.append(reusableObjectStencilsParentEl);
+      segmentParentEl.setAttribute(
+        'street-generated-stencil',
+        `stencils: word-only, word-taxi, word-bus; length: ${length}; spacing: 40; padding: 10; facing: ${rotationY}`
+      );
     } else if (segments[i].type === 'drive-lane') {
       if (showVehicles) {
         // const isAnimated = variantList[2] === 'animated' || globalAnimated;
@@ -820,34 +728,10 @@ function processSegments(
           `model: ${objectMixinId}; length: ${length}; placeLength: 5; facing: ${rotationCloneY}; count: 4;`
         );
       }
-      let reusableObjectStencilsParentEl;
-      reusableObjectStencilsParentEl = createStencilsParentElement({
-        y: 0.015,
-        z: 5
-      });
-      cloneMixinAsChildren({
-        objectMixinId: 'stencils word-loading-small',
-        parentEl: reusableObjectStencilsParentEl,
-        rotation: '-90 ' + rotationY + ' 0',
-        step: 50,
-        radius: clonedObjectRadius
-      });
-      // add this stencil stuff to the segment parent
-      segmentParentEl.append(reusableObjectStencilsParentEl);
-
-      reusableObjectStencilsParentEl = createStencilsParentElement({
-        y: 0.015,
-        z: -5
-      });
-      cloneMixinAsChildren({
-        objectMixinId: 'stencils word-only-small',
-        parentEl: reusableObjectStencilsParentEl,
-        rotation: '-90 ' + rotationY + ' 0',
-        step: 50,
-        radius: clonedObjectRadius
-      });
-      // add this stencil stuff to the segment parent
-      segmentParentEl.append(reusableObjectStencilsParentEl);
+      segmentParentEl.setAttribute(
+        'street-generated-stencil',
+        `stencils: word-loading-small, word-only-small; length: ${length}; spacing: 40; padding: 10; facing: ${rotationY}`
+      );
     } else if (segments[i].type === 'sidewalk' && variantList[0] !== 'empty') {
       // handles variantString with value sparse, normal, or dense sidewalk
       const isAnimated = variantList[1] === 'animated' || globalAnimated;
