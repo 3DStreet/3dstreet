@@ -186,70 +186,6 @@ function getRandomIntInclusive(min, max) {
   return Math.floor(Math.random() * (max - min + 1) + min);
 }
 
-function getRandomArbitrary(min, max) {
-  return Math.random() * (max - min) + min;
-}
-
-function getZPositions(start, end, step) {
-  const len = Math.floor((end - start) / step) + 1;
-  var arr = Array(len)
-    .fill()
-    .map((_, idx) => start + idx * step);
-  return arr.sort(() => 0.5 - Math.random());
-}
-
-function createSidewalkClonedVariants(
-  segmentWidthInMeters,
-  density,
-  streetLength,
-  direction = 'random',
-  animated = false
-) {
-  const xValueRange = [
-    -(0.37 * segmentWidthInMeters),
-    0.37 * segmentWidthInMeters
-  ];
-  const zValueRange = getZPositions(
-    -0.5 * streetLength,
-    0.5 * streetLength,
-    1.5
-  );
-  const densityFactors = {
-    empty: 0,
-    sparse: 0.03,
-    normal: 0.125,
-    dense: 0.25
-  };
-  const totalPedestrianNumber = parseInt(
-    densityFactors[density] * streetLength,
-    10
-  );
-  const dividerParentEl = document.createElement('a-entity');
-  dividerParentEl.setAttribute('data-layer-name', 'Pedestrians Parent');
-  // Randomly generate avatars
-  for (let i = 0; i < totalPedestrianNumber; i++) {
-    const variantName =
-      animated === true
-        ? 'a_char' + String(getRandomIntInclusive(1, 8))
-        : 'char' + String(getRandomIntInclusive(1, 16));
-    const xVal = getRandomArbitrary(xValueRange[0], xValueRange[1]);
-    const zVal = zValueRange.pop();
-    const yVal = 0;
-    // y = 0.2 for sidewalk elevation
-    const placedObjectEl = document.createElement('a-entity');
-    placedObjectEl.setAttribute('position', { x: xVal, y: yVal, z: zVal });
-    placedObjectEl.setAttribute('mixin', variantName);
-    // Roughly 50% of traffic will be incoming
-    if (Math.random() < 0.5 && direction === 'random') {
-      placedObjectEl.setAttribute('rotation', '0 180 0');
-    }
-
-    dividerParentEl.append(placedObjectEl);
-  }
-
-  return dividerParentEl;
-}
-
 function getSegmentColor(variant) {
   if ((variant === 'red') | (variant === 'colored')) {
     return COLORS.red;
@@ -612,16 +548,9 @@ function processSegments(
         `stencils: word-loading-small, word-only-small; length: ${length}; spacing: 40; padding: 10; facing: ${rotationY}`
       );
     } else if (segments[i].type === 'sidewalk' && variantList[0] !== 'empty') {
-      // handles variantString with value sparse, normal, or dense sidewalk
-      const isAnimated = variantList[1] === 'animated' || globalAnimated;
-      segmentParentEl.append(
-        createSidewalkClonedVariants(
-          segmentWidthInMeters,
-          variantList[0],
-          length,
-          'random',
-          isAnimated
-        )
+      segmentParentEl.setAttribute(
+        'street-generated-pedestrians',
+        `segmentWidth: ${segmentWidthInMeters}; density: ${variantList[0]}; length: ${length}; direction: random;`
       );
     } else if (segments[i].type === 'sidewalk-wayfinding') {
       segmentParentEl.append(createWayfindingElements());
