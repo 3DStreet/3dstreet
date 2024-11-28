@@ -237,25 +237,13 @@ function createSidewalkClonedVariants(
     const yVal = 0;
     // y = 0.2 for sidewalk elevation
     const placedObjectEl = document.createElement('a-entity');
-    let animationDirection = 'inbound';
     placedObjectEl.setAttribute('position', { x: xVal, y: yVal, z: zVal });
     placedObjectEl.setAttribute('mixin', variantName);
     // Roughly 50% of traffic will be incoming
     if (Math.random() < 0.5 && direction === 'random') {
       placedObjectEl.setAttribute('rotation', '0 180 0');
-      animationDirection = 'outbound';
     }
 
-    if (animated) {
-      addLinearStreetAnimation(
-        placedObjectEl,
-        1.4,
-        streetLength,
-        xVal,
-        zVal,
-        animationDirection
-      );
-    }
     dividerParentEl.append(placedObjectEl);
   }
 
@@ -273,43 +261,6 @@ function getSegmentColor(variant) {
     return COLORS.green;
   }
   return COLORS.white;
-}
-
-function addLinearStreetAnimation(
-  reusableObjectEl,
-  speed,
-  streetLength,
-  xPos,
-  zPos,
-  direction
-) {
-  const totalStreetDuration = (streetLength / speed) * 1000; // time in milliseconds
-  const halfStreet =
-    direction === 'outbound' ? -streetLength / 2 : streetLength / 2;
-  const startingDistanceToTravel = Math.abs(halfStreet - zPos);
-  const startingDuration = (startingDistanceToTravel / speed) * 1000;
-
-  const animationAttrs1 = {
-    property: 'position',
-    easing: 'linear',
-    loop: 'false',
-    from: { x: xPos, y: 0, z: zPos },
-    to: { z: halfStreet },
-    dur: startingDuration
-  };
-  const animationAttrs2 = {
-    property: 'position',
-    easing: 'linear',
-    loop: 'true',
-    from: { x: xPos, y: 0, z: -halfStreet },
-    to: { x: xPos, y: 0, z: halfStreet },
-    delay: startingDuration,
-    dur: totalStreetDuration
-  };
-  reusableObjectEl.setAttribute('animation__1', animationAttrs1);
-  reusableObjectEl.setAttribute('animation__2', animationAttrs2);
-
-  return reusableObjectEl;
 }
 
 function createWayfindingElements() {
