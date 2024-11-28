@@ -79,7 +79,7 @@ AFRAME.registerComponent('street-generated-striping', {
     // calculate the repeatCount for the material
     var stripingTextureId = 'striping-solid-stripe'; // drive-lane, bus-lane, bike-lane
     var repeatY = length / 6;
-    var color = '#FFFFFF'; // we could get rid of this using cropped texture for asphalt
+    var color = '#ffffff';
     var stripingWidth = 0.2;
     if (stripingName === 'solid-stripe') {
       stripingTextureId = 'striping-solid-stripe';
