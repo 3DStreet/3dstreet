@@ -9,7 +9,7 @@ import capitalize from 'lodash-es/capitalize';
 import classnames from 'classnames';
 import { ArrowRightIcon, LayersIcon } from '../../icons';
 import GeoSidebar from './GeoSidebar'; // Make sure to create and import this new component
-
+import IntersectionSidebar from './IntersectionSidebar';
 export default class Sidebar extends React.Component {
   static propTypes = {
     entity: PropTypes.object,
@@ -65,6 +65,10 @@ export default class Sidebar extends React.Component {
 
   render() {
     const entity = this.props.entity;
+    console.log(
+      'this.props.entity',
+      this.props.entity?.getAttribute('intersection')
+    );
     const visible = this.props.visible;
     const className = classnames({
       outliner: true,
@@ -112,7 +116,11 @@ export default class Sidebar extends React.Component {
                         </Button>
                       </div>
                     )}
-                    <ComponentsContainer entity={entity} />
+                    {!entity.getAttribute('intersection') ? (
+                      <ComponentsContainer entity={entity} />
+                    ) : (
+                      <IntersectionSidebar entity={entity} />
+                    )}
                   </>
                 ) : (
                   <GeoSidebar entity={entity} />

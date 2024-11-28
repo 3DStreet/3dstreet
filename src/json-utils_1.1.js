@@ -545,10 +545,7 @@ AFRAME.registerComponent('set-loader-from-hash', {
           key === 'set-loader-from-hash' ? undefined : value
         );
 
-        console.log(
-          '[set-loader-from-hash]',
-          '200 response received and JSON parsed, now createElementsFromJSON'
-        );
+        console.log(jsonData);
         STREET.utils.createElementsFromJSON(jsonData, false);
         const sceneId = getUUIDFromPath(requestURL);
         if (sceneId) {
