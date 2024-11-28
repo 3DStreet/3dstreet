@@ -82,9 +82,8 @@ const IntersectionSidebar = ({ entity }) => {
 
   return (
     <div className="intersection-sidebar">
-      <h3>Intersection Settings</h3>
       <div className="intersection-controls">
-        <div>Approaches</div>
+        <div className="mb-2 text-lg">Approaches</div>
         <div className="direction-selector mb-2">
           <label>Direction:</label>
           <select
