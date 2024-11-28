@@ -85,7 +85,6 @@ export default class SceneGraph extends React.Component {
   }
 
   selectEntity = (entity) => {
-    console.log('selectEntity', entity);
     let found = false;
     for (let i = 0; i < this.state.entities.length; i++) {
       const entityOption = this.state.entities[i];
