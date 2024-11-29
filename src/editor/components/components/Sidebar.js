@@ -65,10 +65,6 @@ export default class Sidebar extends React.Component {
 
   render() {
     const entity = this.props.entity;
-    console.log(
-      'this.props.entity',
-      this.props.entity?.getAttribute('intersection')
-    );
     const visible = this.props.visible;
     const className = classnames({
       outliner: true,

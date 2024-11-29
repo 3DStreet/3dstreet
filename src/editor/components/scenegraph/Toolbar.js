@@ -78,10 +78,6 @@ export default class Toolbar extends Component {
     return this.props.currentUser?.uid === STREET.utils.getAuthorId();
   };
 
-  isPro = () => {
-    return this.props.currentUser?.isPro;
-  };
-
   handleClickOutsideSave = (event) => {
     if (
       this.saveButtonRef.current &&
@@ -167,16 +163,12 @@ export default class Toolbar extends Component {
         console.log(
           'no urlSceneId or doSaveAs is true, therefore generate new one'
         );
-        if (this.isPro()) {
-          currentSceneId = await createScene(
-            this.props.currentUser.uid,
-            filteredData.data,
-            currentSceneTitle,
-            filteredData.version
-          );
-        } else {
-          useStore.getState().startCheckout();
-        }
+        currentSceneId = await createScene(
+          this.props.currentUser.uid,
+          filteredData.data,
+          currentSceneTitle,
+          filteredData.version
+        );
         console.log('newly generated currentSceneId', currentSceneId);
       } else {
         await updateScene(

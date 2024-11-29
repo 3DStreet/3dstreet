@@ -87,7 +87,6 @@ const IntersectionSidebar = ({ entity }) => {
       value: value
     });
   };
-  console.log(index);
   return (
     <div className="intersection-sidebar mr-4">
       <div className="components">
@@ -164,7 +163,6 @@ const IntersectionSidebar = ({ entity }) => {
               name="sidewalk"
               value={sidewalkArray[index]}
               onChange={(name, value) => {
-                console.log(name, value);
                 const newSidewalkArray = sidewalkArray.map((val, i) =>
                   i === index ? value : val
                 );
