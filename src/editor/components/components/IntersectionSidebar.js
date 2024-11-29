@@ -179,7 +179,7 @@ const IntersectionSidebar = ({ entity }) => {
             <label className="text">Traffic Control:</label>
             <SelectWidget
               name="trafficcontrol"
-              options={['signal', 'stop', 'stop']}
+              options={['signal', 'stop', 'none']}
               value={
                 trafficsignalArray[index] === 1
                   ? 'signal'
