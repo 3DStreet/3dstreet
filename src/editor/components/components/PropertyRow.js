@@ -57,6 +57,11 @@ export default class PropertyRow extends React.Component {
       isSingle: props.isSingle,
       name: props.name,
       onChange: function (name, value) {
+        console.log({
+          component: props.componentname,
+          property: !props.isSingle ? props.name : '',
+          value: value
+        });
         AFRAME.INSPECTOR.execute('entityupdate', {
           entity: props.entity,
           component: props.componentname,

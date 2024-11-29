@@ -116,11 +116,10 @@ export default class Sidebar extends React.Component {
                         </Button>
                       </div>
                     )}
-                    {!entity.getAttribute('intersection') ? (
-                      <ComponentsContainer entity={entity} />
-                    ) : (
+                    {entity.getAttribute('intersection') && (
                       <IntersectionSidebar entity={entity} />
                     )}
+                    <ComponentsContainer entity={entity} />
                   </>
                 ) : (
                   <GeoSidebar entity={entity} />

@@ -72,6 +72,7 @@ export class EntityUpdateCommand extends Command {
   }
 
   execute() {
+    console.log(this.newValue);
     const entity = document.getElementById(this.entityId);
     if (entity) {
       if (this.editor.config.debugUndoRedo) {

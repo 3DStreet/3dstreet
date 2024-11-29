@@ -1,11 +1,15 @@
 import { useState } from 'react';
 import PropTypes from 'prop-types';
+import SelectWidget from '../widgets/SelectWidget';
+import NumberWidget from '../widgets/NumberWidget';
+import BooleanWidget from '../widgets/BooleanWidget';
 
 const IntersectionSidebar = ({ entity }) => {
-  console.log(entity);
   const intersectionData = entity.getAttribute('intersection');
-  console.log(intersectionData);
 
+  const [dimensionsArray, setDimensionsArray] = useState(
+    intersectionData?.dimensions?.split(' ').map((num) => Number(num)) || []
+  );
   // Initialize state for each array
   const [crosswalkArray, setCrosswalkArray] = useState(
     intersectionData?.crosswalk?.split(' ').map((num) => Number(num)) || []
@@ -33,8 +37,8 @@ const IntersectionSidebar = ({ entity }) => {
   );
 
   const [curb, setCurb] = useState('northeast');
-  const [direction, setDirection] = useState('west');
-  const index = ['west', 'east', 'north', 'south'].indexOf(direction);
+  const [index, setIndex] = useState(0);
+  const options = ['West', 'East', 'North', 'South'];
 
   const curbArrays = {
     northeast: northeastcurbArray,
@@ -43,17 +47,15 @@ const IntersectionSidebar = ({ entity }) => {
     southwest: southwestcurbArray
   };
 
-  const handleCurbWidthChange = (e) => {
-    const newWidth = Number(e.target.value);
+  const handleCurbWidthChange = (name, value) => {
     const newCurbArray = [...curbArrays[curb]];
-    newCurbArray[0] = newWidth;
+    newCurbArray[0] = value;
     updateCurbArray(newCurbArray);
   };
 
-  const handleCurbHeightChange = (e) => {
-    const newHeight = Number(e.target.value);
+  const handleCurbHeightChange = (name, value) => {
     const newCurbArray = [...curbArrays[curb]];
-    newCurbArray[1] = newHeight;
+    newCurbArray[1] = value;
     updateCurbArray(newCurbArray);
   };
 
@@ -74,146 +76,179 @@ const IntersectionSidebar = ({ entity }) => {
       default:
         break;
     }
-    entity.setAttribute('intersection', {
-      ...intersectionData,
-      [`${curb}curb`]: newCurbArray.join(' ')
-    });
+    updateEntity('intersection', `${curb}curb`, newCurbArray.join(' '));
   };
 
+  const updateEntity = (component, property, value) => {
+    AFRAME.INSPECTOR.execute('entityupdate', {
+      entity: entity,
+      component: component,
+      property: property,
+      value: value
+    });
+  };
+  console.log(index);
   return (
-    <div className="intersection-sidebar">
-      <div className="intersection-controls">
-        <div className="mb-2 text-lg">Approaches</div>
-        <div className="direction-selector mb-2">
-          <label>Direction:</label>
-          <select
-            onChange={(e) => {
-              const newDirection = e.target.value;
-              setDirection(newDirection);
-            }}
-            defaultValue="west"
-          >
-            {['west', 'east', 'north', 'south'].map((direction) => (
-              <option key={direction} value={direction}>
-                {direction.charAt(0).toUpperCase() + direction.slice(1)}
-              </option>
-            ))}
-          </select>
-        </div>
-        <div className="intersection-section">
-          <h4 className="capitalize">{direction}</h4>
-          <div className="section-controls">
-            <div className="control-row">
-              <label>Crosswalk:</label>
-              <input
-                type="checkbox"
-                checked={crosswalkArray[index] === 1}
-                onChange={(e) => {
-                  const newCrosswalkArray = [...crosswalkArray];
-                  newCrosswalkArray[index] = e.target.checked ? 1 : 0;
-                  setCrosswalkArray(newCrosswalkArray);
-                  entity.setAttribute('intersection', {
-                    ...intersectionData,
-                    crosswalk: newCrosswalkArray.join(' ')
-                  });
-                }}
-              />
-            </div>
-            <div className="control-row">
-              <label>Sidewalk:</label>
-              <input
-                type="number"
-                value={sidewalkArray[index]}
-                onChange={(e) => {
-                  const newValue = e.target.value;
-                  setSidewalkArray(
-                    sidewalkArray.map((val, i) =>
-                      i === index ? Number(newValue) : val
-                    )
-                  );
-                  entity.setAttribute('intersection', {
-                    ...intersectionData,
-                    sidewalk: sidewalkArray.join(' ')
-                  });
-                  console.log(`Changed ${direction} sidewalk to ${newValue}`);
-                }}
-              />
-              <span> meters</span>
-            </div>
-            <div className="control-row">
-              <label>Traffic Control:</label>
-              <select
-                value={
-                  trafficsignalArray[index] === 1
-                    ? 'signal'
-                    : stopsignArray[index] === 1
-                      ? 'stop'
-                      : 'none'
-                }
-                onChange={(e) => {
-                  const newValue = e.target.value;
-                  const newStopsignArray = [...stopsignArray];
-                  const newTrafficsignalArray = [...trafficsignalArray];
-
-                  // Reset both arrays at this index
-                  newStopsignArray[index] = 0;
-                  newTrafficsignalArray[index] = 0;
-
-                  // Set the appropriate array based on selection
-                  if (newValue === 'stop') {
-                    newStopsignArray[index] = 1;
-                  } else if (newValue === 'signal') {
-                    newTrafficsignalArray[index] = 1;
-                  }
-
-                  setStopsignArray(newStopsignArray);
-                  setTrafficsignalArray(newTrafficsignalArray);
-                  entity.setAttribute('intersection', {
-                    ...intersectionData,
-                    stopsign: newStopsignArray.join(' '),
-                    trafficsignal: newTrafficsignalArray.join(' ')
-                  });
-                }}
-              >
-                <option value="none">None</option>
-                <option value="stop">Stop Sign</option>
-                <option value="signal">Traffic Signal</option>
-              </select>
-            </div>
+    <div className="intersection-sidebar mr-4">
+      <div className="components">
+        <div className="details">
+          <div className="propertyRow">
+            <div className="text">Width:</div>
+            <NumberWidget
+              name="dimensions"
+              value={dimensionsArray[0]}
+              onChange={(name, value) => {
+                const newDimensionsArray = [...dimensionsArray];
+                newDimensionsArray[0] = value;
+                setDimensionsArray(newDimensionsArray);
+                updateEntity(
+                  'intersection',
+                  'dimensions',
+                  newDimensionsArray.join(' ')
+                );
+              }}
+            />
           </div>
-        </div>
-        <div>Curbs</div>
-        <div className="control-row">
-          <label>Curb Position:</label>
-          <select
-            value={curb}
-            onChange={(e) => {
-              setCurb(e.target.value);
-            }}
-          >
-            <option value="northeast">Northeast</option>
-            <option value="northwest">Northwest</option>
-            <option value="southeast">Southeast</option>
-            <option value="southwest">Southwest</option>
-          </select>
-        </div>
-        <div className="control-row">
-          <label>Width:</label>
-          <input
-            type="number"
-            value={curbArrays[curb][0]}
-            onChange={handleCurbWidthChange}
-          />
-          <span> meters</span>
-        </div>
-        <div className="control-row">
-          <label>Height:</label>
-          <input
-            type="number"
-            value={curbArrays[curb][1]}
-            onChange={handleCurbHeightChange}
-          />
-          <span> meters</span>
+          <div className="propertyRow">
+            <div className="text">Height:</div>
+            <NumberWidget
+              name="dimensions"
+              value={dimensionsArray[1]}
+              onChange={(name, value) => {
+                const newDimensionsArray = [...dimensionsArray];
+                newDimensionsArray[1] = value;
+                setDimensionsArray(newDimensionsArray);
+                updateEntity(
+                  'intersection',
+                  'dimensions',
+                  newDimensionsArray.join(' ')
+                );
+              }}
+            />
+          </div>
+          <div className="propertyRow">
+            <div className="text">Approaches</div>
+          </div>
+          <div className="propertyRow">
+            <label className="text">Direction:</label>
+            <SelectWidget
+              name="direction"
+              value={options[index]}
+              options={options}
+              onChange={(name, value) => {
+                setIndex(options.indexOf(value));
+              }}
+            />
+          </div>
+          <div className="propertyRow">
+            <label className="text">Crosswalk:</label>
+            <BooleanWidget
+              name="crosswalk"
+              componentname="crosswalk"
+              value={crosswalkArray[index] === 1}
+              onChange={(name, value) => {
+                const newCrosswalkArray = [...crosswalkArray];
+                newCrosswalkArray[index] = value ? 1 : 0;
+                setCrosswalkArray(newCrosswalkArray);
+                updateEntity(
+                  'intersection',
+                  'crosswalk',
+                  newCrosswalkArray.join(' ')
+                );
+              }}
+            />
+          </div>
+          <div className="propertyRow">
+            <label className="text">Sidewalk:</label>
+            <NumberWidget
+              name="sidewalk"
+              value={sidewalkArray[index]}
+              onChange={(name, value) => {
+                console.log(name, value);
+                const newSidewalkArray = sidewalkArray.map((val, i) =>
+                  i === index ? value : val
+                );
+                setSidewalkArray(newSidewalkArray);
+                updateEntity(
+                  'intersection',
+                  'sidewalk',
+                  newSidewalkArray.join(' ')
+                );
+              }}
+            />
+          </div>
+          <div className="propertyRow">
+            <label className="text">Traffic Control:</label>
+            <SelectWidget
+              name="trafficcontrol"
+              options={['signal', 'stop', 'stop']}
+              value={
+                trafficsignalArray[index] === 1
+                  ? 'signal'
+                  : stopsignArray[index] === 1
+                    ? 'stop'
+                    : 'none'
+              }
+              onChange={(name, value) => {
+                const newStopsignArray = [...stopsignArray];
+                const newTrafficsignalArray = [...trafficsignalArray];
+
+                // Reset both arrays at this index
+                newStopsignArray[index] = 0;
+                newTrafficsignalArray[index] = 0;
+
+                // Set the appropriate array based on selection
+                if (value === 'stop') {
+                  newStopsignArray[index] = 1;
+                } else if (value === 'signal') {
+                  newTrafficsignalArray[index] = 1;
+                }
+
+                setStopsignArray(newStopsignArray);
+                setTrafficsignalArray(newTrafficsignalArray);
+                updateEntity(
+                  'intersection',
+                  'stopsign',
+                  newStopsignArray.join(' ')
+                );
+                updateEntity(
+                  'intersection',
+                  'trafficsignal',
+                  newTrafficsignalArray.join(' ')
+                );
+              }}
+            ></SelectWidget>
+          </div>
+          <div className="propertyRow">
+            <div className="text">Curbs</div>
+          </div>
+          <div className="propertyRow">
+            <label className="text">Curb:</label>
+            <SelectWidget
+              name="curb"
+              value={curb}
+              options={['northeast', 'northwest', 'southeast', 'southwest']}
+              onChange={(name, value) => {
+                setCurb(value);
+              }}
+            />
+          </div>
+          <div className="propertyRow">
+            <label className="text">Width:</label>
+            <NumberWidget
+              name="curbWidth"
+              value={curbArrays[curb][0]}
+              onChange={handleCurbWidthChange}
+            />
+          </div>
+          <div className="propertyRow">
+            <label className="text">Height:</label>
+            <NumberWidget
+              name="curbHeight"
+              value={curbArrays[curb][1]}
+              onChange={handleCurbHeightChange}
+            />
+          </div>
         </div>
       </div>
     </div>
