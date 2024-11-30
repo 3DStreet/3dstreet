@@ -451,6 +451,10 @@ const AddLayerPanel = () => {
                 layerCardId: card.handlerFunction ? card.id : undefined
               };
               e.stopPropagation();
+              if (card.requiresPro && !isProUser) {
+                startCheckout('addlayer');
+                return;
+              }
               fadeInDropPlane();
               if (e.dataTransfer) {
                 e.dataTransfer.effectAllowed = 'move';
