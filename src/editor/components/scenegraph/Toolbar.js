@@ -194,7 +194,7 @@ export default class Toolbar extends Component {
 
       // Change the hash URL without reloading
       window.location.hash = `#/scenes/${currentSceneId}.json`;
-      this.toggleSaveActionState();
+      this.setState({ isSaveActionActive: false });
       this.setState({ savedScene: true });
       this.setSavedSceneFalse();
 
