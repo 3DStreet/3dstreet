@@ -498,6 +498,7 @@ function processSegments(
       segments[i].type === 'bus-lane' ||
       segments[i].type === 'brt-lane'
     ) {
+      segmentPreset = 'bus-lane';
       // get the color for a bus lane
       segmentColor = getSegmentColor(variantList[1]);
 
@@ -746,19 +747,17 @@ function processSegments(
     segmentParentEl.setAttribute(
       'street-segment',
       'color',
-      segmentColor ?? TYPES[segmentPreset]?.color
+      segmentColor ?? TYPES[segmentPreset]?.color // no error handling for segmentPreset not found
     );
     segmentParentEl.setAttribute(
       'street-segment',
       'surface',
-      TYPES[segmentPreset]?.surface
+      TYPES[segmentPreset]?.surface // no error handling for segmentPreset not found
     );
 
     let currentSegment = segments[i];
     let previousSegment = segments[i - 1];
     let separatorMixinId = getSeparatorMixinId(previousSegment, currentSegment);
-
-    console.log('separatorMixinId', separatorMixinId);
 
     if (separatorMixinId && showStriping) {
       segmentParentEl.setAttribute(
