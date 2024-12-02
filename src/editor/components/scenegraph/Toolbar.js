@@ -193,8 +193,8 @@ export default class Toolbar extends Component {
       );
 
       // Change the hash URL without reloading
-      window.location.hash = `#/scenes/${currentSceneId}.json`;
-      this.setState({ isSaveActionActive: false });
+      window.location.hash = `#/scenes/${currentSceneId}`;
+      this.toggleSaveActionState();
       this.setState({ savedScene: true });
       this.setSavedSceneFalse();
 
@@ -264,6 +264,7 @@ export default class Toolbar extends Component {
   };
 
   render() {
+    console.log(this.props.currentUser)
     const isEditor = !!this.state.inspectorEnabled;
     return (
       <div id="toolbar" className="m-4 justify-center">

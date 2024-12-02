@@ -51,7 +51,6 @@ exports.getScene = functions
     const documentId = req.path
       .split('/')
       .filter(Boolean)[1]
-      .replace('.json', '');
     if (!documentId) {
       res.status(400).send({ error: 'Scene ID is required' });
       return;

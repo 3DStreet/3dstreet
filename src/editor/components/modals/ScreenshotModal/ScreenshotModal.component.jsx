@@ -49,7 +49,7 @@ function ScreenshotModal() {
   const sceneId = STREET.utils.getCurrentSceneId();
   let currentUrl;
   if (sceneId) {
-    currentUrl = 'https://3dstreet.app/#/scenes/' + sceneId + '.json';
+    currentUrl = 'https://3dstreet.app/#/scenes/' + sceneId;
   } else {
     currentUrl = window.location.href;
   }
