@@ -157,37 +157,6 @@ function getSegmentColor(variant) {
   return COLORS.white;
 }
 
-function createWayfindingElements() {
-  const wayfindingParentEl = document.createElement('a-entity');
-  let reusableObjectEl;
-
-  reusableObjectEl = document.createElement('a-entity');
-  reusableObjectEl.setAttribute('position', '0 1 0');
-  reusableObjectEl.setAttribute('mixin', 'wayfinding-box');
-  wayfindingParentEl.append(reusableObjectEl);
-
-  reusableObjectEl = document.createElement('a-entity');
-  reusableObjectEl.setAttribute('position', '0 1.2 0.06');
-  reusableObjectEl.setAttribute(
-    'geometry',
-    'primitive: plane; width: 0.8; height: 1.6'
-  );
-  reusableObjectEl.setAttribute('material', 'src:#wayfinding-map');
-  wayfindingParentEl.append(reusableObjectEl);
-
-  reusableObjectEl = document.createElement('a-entity');
-  reusableObjectEl.setAttribute('position', '0 1.2 -0.06');
-  reusableObjectEl.setAttribute('rotation', '0 180 0');
-  reusableObjectEl.setAttribute(
-    'geometry',
-    'primitive: plane; width: 0.8; height: 1.6'
-  );
-  reusableObjectEl.setAttribute('material', 'src:#wayfinding-map');
-  wayfindingParentEl.append(reusableObjectEl);
-
-  return wayfindingParentEl;
-}
-
 // offset to center the street around global x position of 0
 function createCenteredStreetElement(segments) {
   const streetEl = document.createElement('a-entity');
@@ -512,7 +481,10 @@ function processSegments(
         `segmentWidth: ${segmentWidthInMeters}; density: ${variantList[0]}; length: ${length}; direction: random;`
       );
     } else if (segments[i].type === 'sidewalk-wayfinding') {
-      segmentParentEl.append(createWayfindingElements());
+      segmentParentEl.setAttribute(
+        'street-generated-single',
+        `model: wayfinding; length: ${length};`
+      );
     } else if (segments[i].type === 'sidewalk-bench') {
       const rotationCloneY = variantList[0] === 'right' ? -90 : 90;
       if (variantList[0] === 'center') {

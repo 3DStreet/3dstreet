@@ -36,6 +36,7 @@ function buildAssetHTML(assetUrl, categories) {
         <a-mixin shadow id="USPS-mailbox" gltf-model="url(${assetUrl}sets/uoregon/gltf-exports/draco/USPS-mailbox.glb)"></a-mixin>
         <a-mixin shadow id="picnic-bench" gltf-model="url(${assetUrl}sets/uoregon/gltf-exports/draco/picnic-bench.glb)"></a-mixin>
         <a-mixin shadow id="large-parklet" gltf-model="url(${assetUrl}sets/uoregon/gltf-exports/draco/large-parklet-seating.glb)"></a-mixin>
+        <a-mixin shadow id="wayfinding" gltf-model="url(${assetUrl}sets/street-props-separated/gltf-exports/draco/wayfinding.glb)"></a-mixin>
         `,
     people: `
         <!-- human characters -->
