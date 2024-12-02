@@ -138,48 +138,6 @@ function getSeparatorMixinId(previousSegment, currentSegment) {
   return variantString;
 }
 
-function createRailsElement(length, railsPosX) {
-  const placedObjectEl = document.createElement('a-entity');
-  const railsGeometry = {
-    primitive: 'box',
-    depth: length,
-    width: 0.1,
-    height: 0.2
-  };
-  const railsMaterial = {
-    // TODO: Add environment map for reflection on metal rails
-    color: '#8f8f8f',
-    metalness: 1,
-    emissive: '#828282',
-    emissiveIntensity: 0.5,
-    roughness: 0.1
-  };
-  placedObjectEl.setAttribute('geometry', railsGeometry);
-  placedObjectEl.setAttribute('material', railsMaterial);
-  placedObjectEl.setAttribute('data-layer-name', 'rails');
-  placedObjectEl.setAttribute('shadow', 'receive:true; cast: true');
-  placedObjectEl.setAttribute('position', railsPosX + ' 0.2 0'); // position="1.043 0.100 -3.463"
-
-  return placedObjectEl;
-}
-
-function createTracksParentElement(length, objectMixinId) {
-  const placedObjectEl = document.createElement('a-entity');
-  placedObjectEl.setAttribute('data-layer-name', 'Tracks Parent');
-  placedObjectEl.setAttribute('position', '0 -0.2 0'); // position="1.043 0.100 -3.463"
-  // add rails
-  const railsWidth = {
-    // width as measured from center of rail, so 1/2 actual width
-    tram: 0.7175, // standard gauge 1,435 mm
-    trolley: 0.5335 // sf cable car rail gauge 1,067 mm
-  };
-  const railsPosX = railsWidth[objectMixinId];
-  placedObjectEl.append(createRailsElement(length, railsPosX));
-  placedObjectEl.append(createRailsElement(length, -railsPosX));
-
-  return placedObjectEl;
-}
-
 function getRandomIntInclusive(min, max) {
   min = Math.ceil(min);
   max = Math.floor(max);
@@ -355,10 +313,10 @@ function processSegments(
           `model: ${objectMixinId}; length: ${length}; placeLength: 23; facing: ${rotationY}; count: 1;`
         );
       }
-      // make the parent for all the objects to be cloned
-      const tracksParentEl = createTracksParentElement(length, objectMixinId);
-      // add these trains to the segment parent
-      segmentParentEl.append(tracksParentEl);
+      segmentParentEl.setAttribute(
+        'street-generated-rail',
+        `length: ${length}; gauge: ${segments[i].type === 'streetcar' ? 1067 : 1435};`
+      );
     } else if (segments[i].type === 'turn-lane') {
       segmentPreset = 'drive-lane'; // use normal drive lane road material
       if (showVehicles && variantList[1] !== 'shared') {
