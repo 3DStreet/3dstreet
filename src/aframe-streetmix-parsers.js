@@ -637,15 +637,18 @@ function processSegments(
         markingLength = segmentWidthInMeters;
         markingPosX = 0;
         parkingMixin = 'solid-stripe';
+        if (variantList[1] === 'right') {
+          // make sure cars face the right way on right side
+          markingsRotZ = markingsRotZ + 180;
+        }
       }
-
       segmentParentEl.setAttribute(
         'street-generated-random',
         `modelsArray: sedan-rig, self-driving-waymo-car, suv-rig;
           length: ${length};
           placeLength: ${carStep};
           count: ${getRandomIntInclusive(6, 8)};
-          facing: ${markingsRotZ - 90};` // this needs work -- the rotation is off by 180 degrees on the right side for perpendicular and angled variants
+          facing: ${markingsRotZ - 90};`
       );
       if (variantList[1] === 'left') {
         segmentParentEl.setAttribute(
