@@ -57,12 +57,12 @@ const ScenesModal = ({ initialTab = 'owner', delay = undefined }) => {
 
     if (event.ctrlKey || event.metaKey) {
       localStorage.setItem('sceneData', JSON.stringify(sceneData.data));
-      const newTabUrl = `#/scenes/${scene.id}.json`;
+      const newTabUrl = `#/scenes/${scene.id}`;
       const newTab = window.open(newTabUrl, '_blank');
       newTab.focus();
     } else {
       createElementsForScenesFromJSON(sceneData.data);
-      window.location.hash = `#/scenes/${scene.id}.json`;
+      window.location.hash = `#/scenes/${scene.id}`;
 
       const sceneId = scene.id;
       const sceneTitle = sceneData.title;
