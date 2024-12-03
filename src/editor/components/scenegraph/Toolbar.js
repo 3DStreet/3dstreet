@@ -264,7 +264,7 @@ export default class Toolbar extends Component {
   };
 
   render() {
-    console.log(this.props.currentUser)
+    console.log(this.props.currentUser);
     const isEditor = !!this.state.inspectorEnabled;
     return (
       <div id="toolbar" className="m-4 justify-center">
@@ -325,7 +325,7 @@ export default class Toolbar extends Component {
                           }
                           disabled={this.state.isSavingScene}
                         >
-                          <div>Save As...</div>
+                          <div>Make a Copy</div>
                         </Button>
                       </div>
                     )}
