@@ -19,7 +19,7 @@ export default class Sidebar extends React.Component {
   constructor(props) {
     super(props);
     this.state = {
-      rightBarHide: false
+      showSideBar: true
     };
   }
 
@@ -60,7 +60,7 @@ export default class Sidebar extends React.Component {
 
   // additional toggle for hide/show panel by clicking the button
   toggleRightBar = () => {
-    this.setState({ rightBarHide: !this.state.rightBarHide });
+    this.setState({ showSideBar: !this.state.showSideBar });
   };
 
   render() {
@@ -68,7 +68,7 @@ export default class Sidebar extends React.Component {
     const visible = this.props.visible;
     const className = classnames({
       outliner: true,
-      hide: this.state.rightBarHide,
+      hide: this.state.showSideBar,
       'mt-16': true
     });
     if (entity && visible) {
@@ -79,7 +79,7 @@ export default class Sidebar extends React.Component {
         : null;
       return (
         <div className={className} tabIndex="0">
-          {this.state.rightBarHide ? (
+          {this.state.showSideBar ? (
             <>
               <div id="layers-title" onClick={this.toggleRightBar}>
                 <div className={'layersBlock'}>
@@ -151,11 +151,6 @@ export default class Sidebar extends React.Component {
               </div>
             </>
           )}
-          {/* <div id="layers-title" onClick={this.toggleRightBar}> */}
-          {/* <span>{entityName || formattedMixin}</span> */}
-          {/* <div onClick={this.toggleRightBar} id="toggle-leftbar" /> */}
-          {/* </div>
-           */}
         </div>
       );
     } else {
