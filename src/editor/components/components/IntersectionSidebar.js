@@ -129,9 +129,9 @@ const IntersectionSidebar = ({ entity }) => {
             <div className="text">Approaches</div>
           </div>
           <div className="propertyRow">
-            <label className="text">Direction:</label>
+            <label className="text">Side:</label>
             <SelectWidget
-              name="direction"
+              name="side"
               value={options[index]}
               options={options}
               onChange={(name, value) => {
