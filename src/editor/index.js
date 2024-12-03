@@ -340,4 +340,20 @@ posthog.init('phc_Yclai3qykyFi8AEFOrZsh6aS78SSooLzpDz9wQ9YAH9', {
   person_profiles: 'identified_only' // or 'always' to create profiles for anonymous users as well
 });
 
+// A-Frame canvas needs to be outside of a-scene for posthog recording to work
+const sceneLoaded = () => {
+  const canvas = document.querySelector('canvas.a-canvas');
+  if (canvas) {
+    document.body.appendChild(canvas);
+  }
+};
+document.addEventListener('DOMContentLoaded', () => {
+  const scene = document.querySelector('a-scene');
+  if (scene.hasLoaded) {
+    sceneLoaded();
+  } else {
+    scene.addEventListener('loaded', sceneLoaded);
+  }
+});
+
 export { inspector };
