@@ -1,7 +1,7 @@
 import { createContext, useContext, useEffect, useState } from 'react';
 import { auth } from '../services/firebase';
 import PropTypes from 'prop-types';
-import { isUserPro, isUserBeta } from '../api/user';
+import { isUserPro } from '../api/user';
 import posthog from 'posthog-js';
 
 const AuthContext = createContext({
@@ -23,8 +23,7 @@ const AuthProvider = ({ children }) => {
       localStorage.setItem('token', await user.getIdToken());
 
       const isPro = await isUserPro(user);
-      const isBeta = await isUserBeta(user);
-      const enrichedUser = { ...user, isPro, isBeta };
+      const enrichedUser = { ...user, isPro };
 
       posthog.identify(user.uid, {
         email: user.email,

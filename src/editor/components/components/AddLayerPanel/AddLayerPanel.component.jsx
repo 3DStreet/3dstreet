@@ -10,7 +10,6 @@ import CardPlaceholder from '../../../../../ui_assets/card-placeholder.svg';
 import LockedCard from '../../../../../ui_assets/locked-card.svg';
 import mixinCatalog from '../../../../catalog.json';
 import posthog from 'posthog-js';
-import Events from '../../../lib/Events';
 import pickPointOnGroundPlane from '../../../lib/pick-point-on-ground-plane';
 import { customLayersData, streetLayersData } from './layersData.js';
 import { LayersOptions } from './LayersOptions.js';
@@ -270,6 +269,7 @@ const cardMouseLeave = (mixinId) => {
 const AddLayerPanel = () => {
   const setModal = useStore((state) => state.setModal);
   const isOpen = useStore((state) => state.modal === 'addlayer');
+  const startCheckout = useStore((state) => state.startCheckout);
   // set the first Layers option when opening the panel
   const [selectedOption, setSelectedOption] = useState(LayersOptions[0].value);
   const [groupedMixins, setGroupedMixins] = useState([]);
@@ -311,8 +311,7 @@ const AddLayerPanel = () => {
       isProUser: isProUser
     });
     if (card.requiresPro && !isProUser) {
-      Events.emit('hideAddLayerPanel');
-      Events.emit('openpaymentmodal');
+      startCheckout('addlayer');
     } else if (card.mixinId) {
       createEntity(card.mixinId);
     } else if (card.handlerFunction) {
@@ -452,6 +451,10 @@ const AddLayerPanel = () => {
                 layerCardId: card.handlerFunction ? card.id : undefined
               };
               e.stopPropagation();
+              if (card.requiresPro && !isProUser) {
+                startCheckout('addlayer');
+                return;
+              }
               fadeInDropPlane();
               if (e.dataTransfer) {
                 e.dataTransfer.effectAllowed = 'move';

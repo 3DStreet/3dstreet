@@ -20,14 +20,23 @@ const getStripe = () => {
   return stripePromise;
 };
 
+const resetPaymentQueryParam = () => {
+  const newUrl = window.location.href.replace(/\?payment=(success|cancel)/, '');
+  window.history.replaceState({}, '', newUrl);
+};
+
 const PaymentModal = () => {
   const { currentUser } = useAuthContext();
   const [isLoading, setIsLoading] = useState(false);
   const setModal = useStore((state) => state.setModal);
   const modal = useStore((state) => state.modal);
+  const postCheckout = useStore((state) => state.postCheckout);
+  const checkoutSuccess = location.hash.includes('success');
 
-  if (location.hash.includes('success')) {
+  if (checkoutSuccess) {
     posthog.capture('checkout_finished');
+  } else if (location.hash.includes('cancel')) {
+    posthog.capture('checkout_canceled');
   }
 
   const startCheckout = async () => {
@@ -63,8 +72,12 @@ const PaymentModal = () => {
   };
 
   const onClose = () => {
-    window.location.hash = '#';
-    setModal(null);
+    resetPaymentQueryParam();
+    if (checkoutSuccess && postCheckout) {
+      setModal(postCheckout);
+    } else {
+      setModal(null);
+    }
   };
 
   return (
@@ -74,11 +87,8 @@ const PaymentModal = () => {
       onClose={onClose}
     >
       <div className={styles.paymentDetails}>
-        <h3>Unlock Geospatial Features with a free 30 day trial</h3>
-        <h2>
-          Create with geospatial maps and share your vision in augmented reality
-          with 3DStreet Pro.
-        </h2>
+        <h3>Unlock Pro features with a free 30 day trial</h3>
+        <h2>Create with intersections and geospatial maps.</h2>
         <ul>
           <li>
             <CheckMark32Icon /> All features in Free
@@ -89,7 +99,7 @@ const PaymentModal = () => {
           </li>
           <li>
             <CheckMark32Icon />
-            Advanced Street Geometry
+            Intersections and Advanced Street Geometry
           </li>
           <li>
             <CheckMark32Icon />
