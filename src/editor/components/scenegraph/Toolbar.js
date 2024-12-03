@@ -19,6 +19,7 @@ import { UndoRedo } from '../components/UndoRedo';
 import debounce from 'lodash-es/debounce';
 import { CameraToolbar } from '../viewport/CameraToolbar';
 import useStore from '@/store';
+import { makeScreenshot } from '@/editor/lib/SceneUtils';
 
 // const LOCALSTORAGE_MOCAP_UI = "aframeinspectormocapuienabled";
 
@@ -88,7 +89,7 @@ export default class Toolbar extends Component {
   };
 
   cloudSaveHandlerWithImageUpload = async (doSaveAs) => {
-    this.makeScreenshot();
+    makeScreenshot();
     const currentSceneId = await this.cloudSaveHandler({ doSaveAs });
     const isImagePathEmpty = await checkIfImagePathIsEmpty(currentSceneId);
     if (isImagePathEmpty) {
@@ -106,6 +107,8 @@ export default class Toolbar extends Component {
 
   cloudSaveHandler = async ({ doSaveAs = false }) => {
     try {
+      this.setState({ isSavingScene: true });
+
       // if there is no current user, show sign in modal
       let currentSceneId = STREET.utils.getCurrentSceneId();
       let currentSceneTitle = useStore.getState().sceneTitle;
@@ -118,7 +121,6 @@ export default class Toolbar extends Component {
       });
 
       if (!this.props.currentUser) {
-        console.log('no user');
         useStore.getState().setModal('signin');
         return;
       }
@@ -148,7 +150,6 @@ export default class Toolbar extends Component {
       const entity = document.getElementById('street-container');
       const data = STREET.utils.convertDOMElToObject(entity);
       const filteredData = JSON.parse(STREET.utils.filterJSONstreet(data));
-      this.setState({ isSavingScene: true });
 
       // we want to save, so if we *still* have no sceneID at this point, then create a new one
       if (!currentSceneId || !!doSaveAs) {
@@ -178,11 +179,6 @@ export default class Toolbar extends Component {
           filteredData.version
         );
       }
-
-      // after all those save shenanigans let's set currentSceneId in state
-      this.setState({ currentSceneId });
-
-      // save json to firebase with other metadata
 
       // make sure to update sceneId with new one in metadata component!
       AFRAME.scenes[0].setAttribute('metadata', 'sceneId', currentSceneId);
@@ -240,22 +236,6 @@ export default class Toolbar extends Component {
     useStore.getState().setModal('signin');
   };
 
-  makeScreenshot = () => {
-    const imgHTML = '<img id="screentock-destination">';
-    // Set the screenshot in local storage
-    localStorage.setItem('screenshot', JSON.stringify(imgHTML));
-    const screenshotEl = document.getElementById('screenshot');
-    screenshotEl.play();
-
-    screenshotEl.setAttribute('screentock', 'type', 'img');
-    screenshotEl.setAttribute(
-      'screentock',
-      'imgElementSelector',
-      '#screentock-destination'
-    );
-    // take the screenshot
-    screenshotEl.setAttribute('screentock', 'takeScreenshot', true);
-  };
 
   toggleSaveActionState = () => {
     this.setState((prevState) => ({
@@ -353,7 +333,7 @@ export default class Toolbar extends Component {
                 <Button
                   leadingIcon={<ScreenshotIcon />}
                   onClick={() => {
-                    this.makeScreenshot();
+                    makeScreenshot();
                     useStore.getState().setModal('screenshot');
                   }}
                   variant="toolbtn"
