@@ -31,5 +31,6 @@ export {
   ScreenshotIcon,
   SignInMicrosoftIconSVG,
   Rotate24Icon,
-  Translate24Icon
+  Translate24Icon,
+  Object24Icon
 } from './icons.jsx';
