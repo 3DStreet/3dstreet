@@ -4,7 +4,6 @@ import Select from 'react-select';
 
 export default class SelectWidget extends React.Component {
   static propTypes = {
-    componentname: PropTypes.string.isRequired,
     entity: PropTypes.object,
     name: PropTypes.string.isRequired,
     onChange: PropTypes.func,
