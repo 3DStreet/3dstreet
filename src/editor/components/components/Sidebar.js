@@ -7,7 +7,7 @@ import PropTypes from 'prop-types';
 import React from 'react';
 import capitalize from 'lodash-es/capitalize';
 import classnames from 'classnames';
-import { ArrowRightIcon, LayersIcon } from '../../icons';
+import { ArrowRightIcon, Object24Icon } from '../../icons';
 import GeoSidebar from './GeoSidebar'; // Make sure to create and import this new component
 
 export default class Sidebar extends React.Component {
@@ -83,7 +83,7 @@ export default class Sidebar extends React.Component {
             <>
               <div id="layers-title" onClick={this.toggleRightBar}>
                 <div className={'layersBlock'}>
-                  <LayersIcon />
+                  <Object24Icon />
                   <span>{entityName || formattedMixin}</span>
                 </div>
                 <div id="toggle-rightbar">
@@ -130,22 +130,7 @@ export default class Sidebar extends React.Component {
                     {entityName || formattedMixin}
                   </span>
                   <div className="relative z-10">
-                    <svg
-                      width="24"
-                      height="28"
-                      viewBox="0 0 24 28"
-                      fill="none"
-                      xmlns="http://www.w3.org/2000/svg"
-                      className="text-white"
-                    >
-                      <path
-                        d="M1.3335 8.66667L12.0002 2L22.6668 8.66667V19.3333L12.0002 26L1.3335 19.3333V8.66667L12.0002 14.5333V26V14.5333L22.6668 8.66667"
-                        stroke="currentColor"
-                        strokeWidth="2.5"
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                      />
-                    </svg>
+                    <Object24Icon />
                   </div>
                 </div>
               </div>
