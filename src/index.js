@@ -22,13 +22,12 @@ require('./components/street-environment.js');
 require('./components/intersection.js');
 require('./components/obb-clipping.js');
 require('./components/street-segment.js');
-require('./components/street-generated-fixed.js');
-require('./components/street-generated-single.js');
 require('./components/street-generated-random.js');
 require('./components/street-generated-stencil.js');
 require('./components/street-generated-striping.js');
 require('./components/street-generated-pedestrians.js');
 require('./components/street-generated-rail.js');
+require('./components/street-generated-clones.js');
 require('./editor/index.js');
 
 const state = useStore.getState();
