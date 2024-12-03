@@ -259,10 +259,11 @@ function processSegments(
       );
       const rotationCloneY = variantList[0] === 'inbound' ? 0 : 180;
       segmentParentEl.setAttribute(
-        'street-generated-random',
-        `modelsArray: cyclist-cargo, cyclist1, cyclist2, cyclist3, cyclist-dutch, cyclist-kid${segments[i].type === 'scooter' ? 'ElectricScooter_1' : ''};
+        'street-generated-clones',
+        `mode: random;
+        modelsArray: cyclist-cargo, cyclist1, cyclist2, cyclist3, cyclist-dutch, cyclist-kid${segments[i].type === 'scooter' ? 'ElectricScooter_1' : ''};
         length: ${length};
-        placeLength: 2.03;
+        spacing: 2.03;
         facing: ${rotationCloneY};
         count: ${getRandomIntInclusive(2, 5)};`
       );
@@ -278,8 +279,8 @@ function processSegments(
         segments[i].type === 'streetcar' ? 'trolley' : 'tram';
       if (showVehicles) {
         segmentParentEl.setAttribute(
-          'street-generated-random',
-          `model: ${objectMixinId}; length: ${length}; placeLength: 23; facing: ${rotationY}; count: 1;`
+          'street-generated-clones',
+          `mode: random; model: ${objectMixinId}; length: ${length}; spacing: 20; facing: ${rotationY}; count: 1;`
         );
       }
       segmentParentEl.setAttribute(
@@ -291,10 +292,11 @@ function processSegments(
       if (showVehicles && variantList[1] !== 'shared') {
         const rotationCloneY = variantList[0] === 'inbound' ? 0 : 180;
         segmentParentEl.setAttribute(
-          'street-generated-random',
-          `modelsArray: sedan-rig, box-truck-rig, self-driving-waymo-car, suv-rig, motorbike;
+          'street-generated-clones',
+          `mode: random;
+           modelsArray: sedan-rig, box-truck-rig, self-driving-waymo-car, suv-rig, motorbike;
             length: ${length};
-            placeLength: 7.3;
+            spacing: 7.3;
             facing: ${rotationCloneY};
             count: ${getRandomIntInclusive(2, 4)};`
         );
@@ -432,8 +434,8 @@ function processSegments(
       if (showVehicles) {
         const rotationY = variantList[0] === 'inbound' ? 0 : 180;
         segmentParentEl.setAttribute(
-          'street-generated-random',
-          `model: bus; length: ${length}; placeLength: 15; facing: ${rotationY}; count: 1;`
+          'street-generated-clones',
+          `mode: random; model: bus; length: ${length}; spacing: 15; facing: ${rotationY}; count: 1;`
         );
       }
       segmentParentEl.setAttribute(
@@ -445,10 +447,11 @@ function processSegments(
         // const isAnimated = variantList[2] === 'animated' || globalAnimated;
         const rotationCloneY = variantList[0] === 'inbound' ? 0 : 180;
         segmentParentEl.setAttribute(
-          'street-generated-random',
-          `modelsArray: sedan-rig, box-truck-rig, self-driving-waymo-car, suv-rig, motorbike;
+          'street-generated-clones',
+          `mode: random;
+           modelsArray: sedan-rig, box-truck-rig, self-driving-waymo-car, suv-rig, motorbike;
             length: ${length};
-            placeLength: 7.3;
+            spacing: 7.3;
             facing: ${rotationCloneY};
             count: ${getRandomIntInclusive(2, 4)};`
         );
@@ -457,8 +460,8 @@ function processSegments(
       segmentPreset = 'drive-lane';
       const rotationCloneY = variantList[0] === 'left' ? 0 : 180;
       segmentParentEl.setAttribute(
-        'street-generated-random',
-        `model: food-trailer-rig; length: ${length}; placeLength: 7; facing: ${rotationCloneY}; count: 2;`
+        'street-generated-clones',
+        `mode: random; model: food-trailer-rig; length: ${length}; spacing: 7; facing: ${rotationCloneY}; count: 2;`
       );
     } else if (segments[i].type === 'flex-zone') {
       segmentPreset = 'parking-lane';
@@ -467,8 +470,8 @@ function processSegments(
           variantList[0] === 'taxi' ? 'sedan-taxi-rig' : 'sedan-rig';
         const rotationCloneY = variantList[1] === 'inbound' ? 0 : 180;
         segmentParentEl.setAttribute(
-          'street-generated-random',
-          `model: ${objectMixinId}; length: ${length}; placeLength: 5; facing: ${rotationCloneY}; count: 4;`
+          'street-generated-clones',
+          `mode: random; model: ${objectMixinId}; length: ${length}; spacing: 6; facing: ${rotationCloneY}; count: 4;`
         );
       }
       segmentParentEl.setAttribute(
@@ -522,15 +525,15 @@ function processSegments(
     } else if (segments[i].type === 'outdoor-dining') {
       segmentPreset = variantList[1] === 'road' ? 'drive-lane' : 'sidewalk';
       segmentParentEl.setAttribute(
-        'street-generated-random',
-        `model: outdoor_dining; length: ${length}; placeLength: 2.27; count: 5;`
+        'street-generated-clones',
+        `mode: random; model: outdoor_dining; length: ${length}; spacing: 3; count: 5;`
       );
     } else if (segments[i].type === 'parklet') {
       segmentPreset = 'drive-lane';
       const rotationCloneY = variantList[0] === 'left' ? 90 : 270;
       segmentParentEl.setAttribute(
-        'street-generated-random',
-        `model: parklet; length: ${length}; placeLength: 4; count: 3; facing: ${rotationCloneY};`
+        'street-generated-clones',
+        `mode: random; model: parklet; length: ${length}; spacing: 5.5; count: 3; facing: ${rotationCloneY};`
       );
     } else if (segments[i].type === 'bikeshare') {
       const rotationCloneY = variantList[0] === 'left' ? 90 : 270;
@@ -643,10 +646,11 @@ function processSegments(
         }
       }
       segmentParentEl.setAttribute(
-        'street-generated-random',
-        `modelsArray: sedan-rig, self-driving-waymo-car, suv-rig;
+        'street-generated-clones',
+        `mode: random; 
+         modelsArray: sedan-rig, self-driving-waymo-car, suv-rig;
           length: ${length};
-          placeLength: ${carStep};
+          spacing: ${carStep};
           count: ${getRandomIntInclusive(6, 8)};
           facing: ${markingsRotZ - 90};`
       );

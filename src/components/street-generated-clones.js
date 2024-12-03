@@ -15,9 +15,11 @@ AFRAME.registerComponent('street-generated-clones', {
     // Mode-specific properties
     mode: { default: 'fixed', oneOf: ['fixed', 'random', 'single'] },
 
-    // Unified spacing and offset properties
+    // Spacing for fixed and random modes
     spacing: { default: 15, type: 'number' }, // minimum distance between objects
-    cycleOffset: { default: 0.5, type: 'number' }, // offset as a fraction of spacing
+
+    // Fixed mode properties
+    cycleOffset: { default: 0.5, type: 'number' }, // offset as a fraction of spacing, only for fixed
 
     // Random mode properties
     count: { default: 1, type: 'number' },
@@ -73,8 +75,7 @@ AFRAME.registerComponent('street-generated-clones', {
     const positions = this.randPlacedElements(
       data.length,
       data.spacing,
-      data.count,
-      data.cycleOffset
+      data.count
     );
 
     positions.forEach((positionZ) => {
@@ -128,7 +129,7 @@ AFRAME.registerComponent('street-generated-clones', {
     return data.model;
   },
 
-  randPlacedElements: function (streetLength, spacing, count, offset) {
+  randPlacedElements: function (streetLength, spacing, count) {
     const correctedSpacing = Math.max(1, spacing);
     const start = -streetLength / 2 + correctedSpacing / 2;
     const end = streetLength / 2 - correctedSpacing / 2;
@@ -139,7 +140,7 @@ AFRAME.registerComponent('street-generated-clones', {
       .fill()
       .map((_, idx) => {
         // Apply the offset similar to fixed mode
-        return start + (idx + offset) * correctedSpacing;
+        return start + idx * correctedSpacing;
       });
 
     // Randomly select positions
