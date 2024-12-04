@@ -84,23 +84,6 @@ AFRAME.registerComponent('street-segment', {
     this.generatedComponents = [];
     this.types = window.STREET.types; // default segment types
   },
-  onPropertyChanged: function (property, value) {
-    // instead of using A-Frame component lifecycle 'update' hook, use this to reset components when type changes
-    const updateProperties = ['type', 'direction'];
-    if (!updateProperties.includes(property)) {
-      return;
-    }
-    console.log('onPropertyChanged', property, value);
-    let typeObject = this.types[value];
-    if (property === 'direction') {
-      typeObject = this.types[this.data.type];
-    }
-    this.updateGeneratedComponentsList(); // if components were created through streetmix or streetplan import
-    this.remove();
-    this.createGeneratedComponentsFromType(typeObject); // add components for this type
-    this.updateSurfaceFromType(typeObject); // update surface color, surface, level
-    this.update(); // force update to surface, needed for when the type value didn't change but still need to update the generated components
-  },
   createGeneratedComponentsFromType: function (typeObject) {
     // use global preset data to create the generated components for a given segment type
     const componentsToGenerate = typeObject.generated;
@@ -165,9 +148,21 @@ AFRAME.registerComponent('street-segment', {
   },
   update: function (oldData) {
     const data = this.data;
+    const dataDiff = AFRAME.utils.diff(oldData, data);
     // if oldData is same as current data, then don't update
     if (AFRAME.utils.deepEqual(oldData, data)) {
       return;
+    }
+    // regenerate components if only type has changed
+    if (
+      Object.keys(dataDiff).length === 1 &&
+      Object.keys(dataDiff).includes('type')
+    ) {
+      let typeObject = this.types[this.data.type];
+      this.updateGeneratedComponentsList(); // if components were created through streetmix or streetplan import
+      this.remove();
+      this.createGeneratedComponentsFromType(typeObject); // add components for this type
+      this.updateSurfaceFromType(typeObject); // update surface color, surface, level
     }
     this.clearMesh();
     this.height = this.calculateHeight(data.level);
