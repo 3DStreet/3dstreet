@@ -33,6 +33,10 @@ AFRAME.registerComponent('street-generated-clones', {
     this.createdEntities = [];
   },
 
+  remove: function () {
+    this.createdEntities.forEach((entity) => entity.remove());
+  },
+
   update: function (oldData) {
     const data = this.data;
 

@@ -45,6 +45,10 @@ AFRAME.registerComponent('street-generated-pedestrians', {
     };
   },
 
+  remove: function () {
+    this.createdEntities.forEach((entity) => entity.remove());
+  },
+
   update: function (oldData) {
     const data = this.data;
     if (AFRAME.utils.deepEqual(oldData, data)) return;
