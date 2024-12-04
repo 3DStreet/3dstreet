@@ -2,135 +2,6 @@
 var streetmixParsersTested = require('./tested/aframe-streetmix-parsers-tested');
 var { segmentVariants } = require('./segments-variants.js');
 
-const COLORS = {
-  red: '#ff9393',
-  blue: '#00b6b6',
-  green: '#adff83',
-  yellow: '#f7d117',
-  lightGray: '#dddddd',
-  white: '#ffffff',
-  brown: '#664B00'
-};
-
-const TYPES = {
-  'drive-lane': {
-    type: 'drive-lane',
-    color: COLORS.white,
-    surface: 'asphalt',
-    level: 0,
-    generated: {
-      clones: [
-        {
-          mode: 'random',
-          modelsArray:
-            'sedan-rig, box-truck-rig, self-driving-waymo-car, suv-rig, motorbike',
-          spacing: '7.3',
-          count: '4'
-        }
-      ]
-    }
-  },
-  'bus-lane': {
-    type: 'bus-lane',
-    surface: 'asphalt',
-    color: COLORS.red,
-    level: 0,
-    generated: {
-      clones: [
-        {
-          mode: 'random',
-          model: 'bus',
-          spacing: '15',
-          count: '1'
-        }
-      ],
-      stencil: [
-        {
-          stencils: 'word-only, word-taxi, word-bus',
-          spacing: '40',
-          padding: '10'
-        }
-      ]
-    }
-  },
-  'bike-lane': {
-    type: 'bike-lane',
-    color: COLORS.green,
-    surface: 'asphalt',
-    level: 0,
-    generated: {
-      stencil: [
-        {
-          model: 'bike-arrow',
-          cycleOffset: '0.3',
-          spacing: '20'
-        }
-      ],
-      clones: [
-        {
-          mode: 'random',
-          modelsArray:
-            'cyclist-cargo, cyclist1, cyclist2, cyclist3, cyclist-dutch, cyclist-kid, ElectricScooter_1',
-          spacing: '2.03',
-          count: '4'
-        }
-      ]
-    }
-  },
-  sidewalk: {
-    type: 'sidewalk',
-    surface: 'sidewalk',
-    color: COLORS.white,
-    level: 1,
-    direction: 'none',
-    generated: {
-      pedestrians: [
-        {
-          density: 'normal'
-        }
-      ]
-    }
-  },
-  'parking-lane': {
-    surface: 'concrete',
-    color: COLORS.lightGray,
-    level: 0,
-    generated: {
-      clones: [
-        {
-          mode: 'random',
-          modelsArray: 'sedan-rig, self-driving-waymo-car, suv-rig',
-          spacing: 6,
-          count: 6
-        }
-      ],
-      stencil: [
-        {
-          model: 'parking-t',
-          cycleOffset: 1,
-          spacing: 6
-        }
-      ]
-    }
-  },
-  divider: {
-    surface: 'hatched',
-    color: COLORS.white,
-    level: 0
-  },
-  grass: {
-    surface: 'grass',
-    color: COLORS.white,
-    level: -1
-  },
-  rail: {
-    surface: 'asphalt',
-    color: COLORS.white,
-    level: 0
-  }
-};
-STREET.types = TYPES;
-
 function getSeparatorMixinId(previousSegment, currentSegment) {
   if (previousSegment === undefined || currentSegment === undefined) {
     return null;
@@ -230,15 +101,15 @@ function getRandomIntInclusive(min, max) {
 
 function getSegmentColor(variant) {
   if ((variant === 'red') | (variant === 'colored')) {
-    return COLORS.red;
+    return window.STREET.colors.red;
   }
   if (variant === 'blue') {
-    return COLORS.blue;
+    return window.STREET.colors.blue;
   }
   if ((variant === 'green') | (variant === 'grass')) {
-    return COLORS.green;
+    return window.STREET.colors.green;
   }
-  return COLORS.white;
+  return window.STREET.colors.white;
 }
 
 // offset to center the street around global x position of 0
@@ -289,9 +160,6 @@ function processSegments(
   streetParentEl.classList.add('street-parent');
   streetParentEl.setAttribute('data-layer-name', 'Street Segments Container');
   streetParentEl.setAttribute('data-no-transform', '');
-
-  // experimental - create a new array children for the new data structure
-  let newManagedStreetDataStructureChildren = [];
 
   var cumulativeWidthInMeters = 0;
   for (var i = 0; i < segments.length; i++) {
@@ -769,13 +637,13 @@ function processSegments(
       // find default color for segmentPreset
       'street-segment',
       'color',
-      segmentColor ?? TYPES[segmentPreset]?.color // no error handling for segmentPreset not found
+      segmentColor ?? window.STREET.types[segmentPreset]?.color // no error handling for segmentPreset not found
     );
     segmentParentEl.setAttribute(
       // find default surface type for segmentPreset
       'street-segment',
       'surface',
-      TYPES[segmentPreset]?.surface // no error handling for segmentPreset not found
+      window.STREET.types[segmentPreset]?.surface // no error handling for segmentPreset not found
     );
 
     let currentSegment = segments[i];
@@ -801,16 +669,6 @@ function processSegments(
       }
     }
 
-    // experimental - output the new data structure
-    let childData = {
-      id: segments[i].id, // this will collide with other segment ID if there are multiple streets placed with identical segment id's
-      type: segments[i].type,
-      width: segmentWidthInMeters,
-      elevation: elevation
-    };
-    newManagedStreetDataStructureChildren.push(childData);
-
-    // returns JSON output instead
     // append the new surfaceElement to the segmentParentEl
     streetParentEl.append(segmentParentEl);
     segmentParentEl.setAttribute('position', segmentPositionX + ' 0 0');
@@ -819,20 +677,6 @@ function processSegments(
       'Segment • ' + segments[i].type + ', ' + variantList[0]
     );
   }
-  // experimental, output the new data structure
-  let newManagedStreetDataStructureInstance = {
-    // name: "string", // streetmix name not accessible from this function
-    type: 'managed_street',
-    width: cumulativeWidthInMeters, // this is the user-specified RoW width, not cumulative width of segments
-    // length: float, // not accessible from this function
-    // transform: {
-    // 	position: { x: float, y: float, z: float}
-    // 	rotation: { x: float, y: float, z: float}
-    // 	scale: { x: float, y: float, z: float}
-    // },
-    children: newManagedStreetDataStructureChildren
-  };
-  console.log(newManagedStreetDataStructureInstance);
 
   // create new brown box to represent ground underneath street
   const dirtBox = document.createElement('a-box');
@@ -841,7 +685,7 @@ function processSegments(
   dirtBox.setAttribute('height', 2); // height is 2 meters from y of -0.1 to -y of 2.1
   dirtBox.setAttribute('width', cumulativeWidthInMeters);
   dirtBox.setAttribute('depth', length - 0.2); // depth is length - 0.1 on each side
-  dirtBox.setAttribute('material', `color: ${COLORS.brown};`);
+  dirtBox.setAttribute('material', `color: ${STREET.colors.brown};`);
   dirtBox.setAttribute('data-layer-name', 'Underground');
   streetParentEl.append(dirtBox);
   return streetParentEl;

@@ -9,28 +9,135 @@
 </a-entity>
 */
 
-AFRAME.registerGeometry('below-box', {
-  schema: {
-    depth: { default: 1, min: 0 },
-    height: { default: 1, min: 0 },
-    width: { default: 1, min: 0 },
-    segmentsHeight: { default: 1, min: 1, max: 20, type: 'int' },
-    segmentsWidth: { default: 1, min: 1, max: 20, type: 'int' },
-    segmentsDepth: { default: 1, min: 1, max: 20, type: 'int' }
-  },
+const COLORS = {
+  red: '#ff9393',
+  blue: '#00b6b6',
+  green: '#adff83',
+  yellow: '#f7d117',
+  lightGray: '#dddddd',
+  white: '#ffffff',
+  brown: '#664B00'
+};
+STREET.colors = COLORS;
 
-  init: function (data) {
-    this.geometry = new THREE.BoxGeometry(
-      data.width,
-      data.height,
-      data.depth,
-      data.segmentsWidth,
-      data.segmentsHeight,
-      data.segmentsDepth
-    );
-    this.geometry.translate(0, -data.height / 2, 0);
+const TYPES = {
+  'drive-lane': {
+    type: 'drive-lane',
+    color: COLORS.white,
+    surface: 'asphalt',
+    level: 0,
+    generated: {
+      clones: [
+        {
+          mode: 'random',
+          modelsArray:
+            'sedan-rig, box-truck-rig, self-driving-waymo-car, suv-rig, motorbike',
+          spacing: '7.3',
+          count: '4'
+        }
+      ]
+    }
+  },
+  'bus-lane': {
+    type: 'bus-lane',
+    surface: 'asphalt',
+    color: COLORS.red,
+    level: 0,
+    generated: {
+      clones: [
+        {
+          mode: 'random',
+          model: 'bus',
+          spacing: '15',
+          count: '1'
+        }
+      ],
+      stencil: [
+        {
+          stencils: 'word-only, word-taxi, word-bus',
+          spacing: '40',
+          padding: '10'
+        }
+      ]
+    }
+  },
+  'bike-lane': {
+    type: 'bike-lane',
+    color: COLORS.green,
+    surface: 'asphalt',
+    level: 0,
+    generated: {
+      stencil: [
+        {
+          model: 'bike-arrow',
+          cycleOffset: '0.3',
+          spacing: '20'
+        }
+      ],
+      clones: [
+        {
+          mode: 'random',
+          modelsArray:
+            'cyclist-cargo, cyclist1, cyclist2, cyclist3, cyclist-dutch, cyclist-kid, ElectricScooter_1',
+          spacing: '2.03',
+          count: '4'
+        }
+      ]
+    }
+  },
+  sidewalk: {
+    type: 'sidewalk',
+    surface: 'sidewalk',
+    color: COLORS.white,
+    level: 1,
+    direction: 'none',
+    generated: {
+      pedestrians: [
+        {
+          density: 'normal'
+        }
+      ]
+    }
+  },
+  'parking-lane': {
+    surface: 'concrete',
+    color: COLORS.lightGray,
+    level: 0,
+    generated: {
+      clones: [
+        {
+          mode: 'random',
+          modelsArray: 'sedan-rig, self-driving-waymo-car, suv-rig',
+          spacing: 6,
+          count: 6
+        }
+      ],
+      stencil: [
+        {
+          model: 'parking-t',
+          cycleOffset: 1,
+          spacing: 6
+        }
+      ]
+    }
+  },
+  divider: {
+    surface: 'hatched',
+    color: COLORS.white,
+    level: 0
+  },
+  grass: {
+    surface: 'grass',
+    color: COLORS.white,
+    level: -1
+  },
+  rail: {
+    surface: 'asphalt',
+    color: COLORS.white,
+    level: 0
   }
-});
+};
+STREET.types = TYPES;
 
 AFRAME.registerComponent('street-segment', {
   schema: {
@@ -82,7 +189,7 @@ AFRAME.registerComponent('street-segment', {
   init: function () {
     this.height = 0.2; // default height of segment surface box
     this.generatedComponents = [];
-    this.types = window.STREET.types; // default segment types
+    this.types = TYPES; // default segment types
   },
   createGeneratedComponentsFromType: function (typeObject) {
     // use global preset data to create the generated components for a given segment type
@@ -266,5 +373,28 @@ AFRAME.registerComponent('street-segment', {
       offsetX = 0;
     }
     return [repeatX, repeatY, offsetX];
+  }
+});
+
+AFRAME.registerGeometry('below-box', {
+  schema: {
+    depth: { default: 1, min: 0 },
+    height: { default: 1, min: 0 },
+    width: { default: 1, min: 0 },
+    segmentsHeight: { default: 1, min: 1, max: 20, type: 'int' },
+    segmentsWidth: { default: 1, min: 1, max: 20, type: 'int' },
+    segmentsDepth: { default: 1, min: 1, max: 20, type: 'int' }
+  },
+
+  init: function (data) {
+    this.geometry = new THREE.BoxGeometry(
+      data.width,
+      data.height,
+      data.depth,
+      data.segmentsWidth,
+      data.segmentsHeight,
+      data.segmentsDepth
+    );
+    this.geometry.translate(0, -data.height / 2, 0);
   }
 });
