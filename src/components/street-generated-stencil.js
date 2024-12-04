@@ -29,7 +29,8 @@ AFRAME.registerComponent('street-generated-stencil', {
         'parking-t',
         'hash-left',
         'hash-right',
-        'hash-chevron'
+        'hash-chevron',
+        'solid-stripe'
       ]
     },
     stencils: {
@@ -147,12 +148,12 @@ AFRAME.registerComponent('street-generated-stencil', {
         }
 
         // Set rotation - either random, specified facing, or inbound/outbound
-        let rotationY = data.facing;
+        var rotationY = data.facing;
         if (data.direction === 'inbound') {
           rotationY = 180 + data.facing;
         }
         if (data.direction === 'outbound') {
-          rotationY = 0 + data.facing;
+          rotationY = 0 - data.facing;
         }
         if (data.randomFacing) {
           rotationY = Math.random() * 360;

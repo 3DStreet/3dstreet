@@ -113,16 +113,17 @@ AFRAME.registerComponent('street-generated-clones', {
       z: positionZ
     });
 
-    let rotation = data.randomFacing ? Math.random() * 360 : data.facing;
-    console.log('data.direction', data.direction);
-    if (data.direction === 'outbound') {
-      rotation = 180;
-    }
+    var rotationY = data.facing;
     if (data.direction === 'inbound') {
-      rotation = 0;
+      rotationY = 0 + data.facing;
     }
-    console.log('rotation', rotation);
-    clone.setAttribute('rotation', `0 ${rotation} 0`);
+    if (data.direction === 'outbound') {
+      rotationY = 180 - data.facing;
+    }
+    if (data.randomFacing) {
+      rotationY = Math.random() * 360;
+    }
+    clone.setAttribute('rotation', `0 ${rotationY} 0`);
 
     // Add common attributes
     clone.classList.add('autocreated');
