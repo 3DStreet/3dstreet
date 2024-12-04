@@ -32,6 +32,16 @@ const StreetSegmentSidebar = ({ entity }) => {
                 isSingle={false}
                 entity={entity}
               />
+              <PropertyRow
+                key="direction"
+                name="direction"
+                label="Direction"
+                schema={component.schema['direction']}
+                data={component.data['direction']}
+                componentname={componentName}
+                isSingle={false}
+                entity={entity}
+              />
             </>
           )}
         </div>

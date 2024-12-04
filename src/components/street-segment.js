@@ -59,7 +59,7 @@ AFRAME.registerComponent('street-segment', {
     },
     direction: {
       type: 'string',
-      oneOf: ['inbound', 'outbound']
+      oneOf: ['none', 'inbound', 'outbound']
     },
     surface: {
       type: 'string',
@@ -86,19 +86,24 @@ AFRAME.registerComponent('street-segment', {
   },
   onPropertyChanged: function (property, value) {
     // instead of using A-Frame component lifecycle 'update' hook, use this to reset components when type changes
-    if (property !== 'type') {
+    const updateProperties = ['type', 'direction'];
+    if (!updateProperties.includes(property)) {
       return;
     }
     console.log('onPropertyChanged', property, value);
+    let typeObject = this.types[value];
+    if (property === 'direction') {
+      typeObject = this.types[this.data.type];
+    }
     this.updateGeneratedComponentsList(); // if components were created through streetmix or streetplan import
     this.remove();
-    this.createGeneratedComponentsFromType(value); // add components for this type
-    this.updateSurfaceFromType(value); // update surface color, surface, level
-    this.update();
+    this.createGeneratedComponentsFromType(typeObject); // add components for this type
+    this.updateSurfaceFromType(typeObject); // update surface color, surface, level
+    this.update(); // force update to surface, needed for when the type value didn't change but still need to update the generated components
   },
-  createGeneratedComponentsFromType: function (type) {
+  createGeneratedComponentsFromType: function (typeObject) {
     // use global preset data to create the generated components for a given segment type
-    const componentsToGenerate = this.types[type].generated;
+    const componentsToGenerate = typeObject.generated;
 
     // for each of clones, stencils, rail, pedestrians, etc.
     if (componentsToGenerate?.clones?.length > 0) {
@@ -131,12 +136,20 @@ AFRAME.registerComponent('street-segment', {
         }
       });
     }
+    if (componentsToGenerate?.pedestrians?.length > 0) {
+      componentsToGenerate.pedestrians.forEach((pedestrian, index) => {
+        this.el.setAttribute(
+          `street-generated-pedestrians__${index}`,
+          `segmentWidth: ${this.data.width}; density: ${pedestrian.density}; length: ${this.data.length}; direction: ${this.data.direction};`
+        );
+      });
+    }
   },
-  updateSurfaceFromType: function (type) {
+  updateSurfaceFromType: function (typeObject) {
     // update color, surface, level from segment type preset
     this.el.setAttribute(
       'street-segment',
-      `surface: ${this.types[type].surface}; color: ${this.types[type].color}; level: ${this.types[type].level};`
+      `surface: ${typeObject.surface}; color: ${typeObject.color}; level: ${typeObject.level};`
     ); // to do: this should be more elegant to check for undefined and set default values
   },
   updateGeneratedComponentsList: function () {

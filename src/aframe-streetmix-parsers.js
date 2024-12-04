@@ -82,6 +82,7 @@ const TYPES = {
     surface: 'sidewalk',
     color: COLORS.white,
     level: 1,
+    direction: 'none',
     generated: {
       pedestrians: [
         {
@@ -564,7 +565,7 @@ function processSegments(
     } else if (segments[i].type === 'sidewalk' && variantList[0] !== 'empty') {
       segmentParentEl.setAttribute(
         'street-generated-pedestrians',
-        `segmentWidth: ${segmentWidthInMeters}; density: ${variantList[0]}; length: ${length}; direction: random;`
+        `segmentWidth: ${segmentWidthInMeters}; density: ${variantList[0]}; length: ${length};`
       );
     } else if (segments[i].type === 'sidewalk-wayfinding') {
       segmentParentEl.setAttribute(

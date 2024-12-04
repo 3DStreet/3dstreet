@@ -20,8 +20,8 @@ AFRAME.registerComponent('street-generated-pedestrians', {
     },
     direction: {
       type: 'string',
-      default: 'random',
-      oneOf: ['random', 'inbound', 'outbound']
+      default: 'none',
+      oneOf: ['none', 'inbound', 'outbound']
     },
     // animated: {
     //   // load 8 animated characters instead of 16 static characters
@@ -96,7 +96,7 @@ AFRAME.registerComponent('street-generated-pedestrians', {
       pedestrian.setAttribute('mixin', `${variantPrefix}${variantNumber}`);
 
       // Set rotation based on direction
-      if (data.direction === 'random' && Math.random() < 0.5) {
+      if (data.direction === 'none' && Math.random() < 0.5) {
         pedestrian.setAttribute('rotation', '0 180 0');
       } else if (data.direction === 'outbound') {
         pedestrian.setAttribute('rotation', '0 180 0');
