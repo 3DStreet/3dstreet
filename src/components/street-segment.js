@@ -271,6 +271,16 @@ AFRAME.registerComponent('street-segment', {
       this.createGeneratedComponentsFromType(typeObject); // add components for this type
       this.updateSurfaceFromType(typeObject); // update surface color, surface, level
     }
+    // propagate change of direction to generated components is solo changed
+    if (
+      Object.keys(dataDiff).length === 1 &&
+      Object.keys(dataDiff).includes('direction')
+    ) {
+      this.updateGeneratedComponentsList(); // if components were created through streetmix or streetplan import
+      for (const componentName of this.generatedComponents) {
+        this.el.setAttribute(componentName, 'direction', this.data.direction);
+      }
+    }
     this.clearMesh();
     this.height = this.calculateHeight(data.level);
     this.tempXPosition = this.el.getAttribute('position').x;

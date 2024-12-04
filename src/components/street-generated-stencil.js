@@ -77,6 +77,11 @@ AFRAME.registerComponent('street-generated-stencil', {
     stencilHeight: {
       default: 0,
       type: 'number'
+    },
+    direction: {
+      // specifying inbound/outbound directions will overwrite facing/randomFacing
+      type: 'string',
+      oneOf: ['none', 'inbound', 'outbound']
     }
     // seed: {  // seed not yet supported
     //   default: 0,
@@ -100,8 +105,8 @@ AFRAME.registerComponent('street-generated-stencil', {
     // Use either stencils array or single model
     let stencilsToUse = data.stencils.length > 0 ? data.stencils : [data.model];
 
-    // Reverse stencil order if facing is 180 degrees
-    if (data.facing === 180) {
+    // Reverse stencil order if inbound
+    if (data.direction === 'inbound') {
       stencilsToUse = stencilsToUse.slice().reverse();
     }
 
@@ -141,10 +146,16 @@ AFRAME.registerComponent('street-generated-stencil', {
           });
         }
 
-        // Set rotation - either random or specified facing
-        const rotation = data.randomFacing
+        // Set rotation - either random, specified facing, or inbound/outbound
+        let rotation = data.randomFacing
           ? `-90 ${Math.random() * 360} 0`
           : `-90 ${data.facing} 0`;
+        if (data.direction === 'inbound') {
+          rotation = `-90 180 0`;
+        }
+        if (data.direction === 'outbound') {
+          rotation = `-90 0 0`;
+        }
         clone.setAttribute('rotation', rotation);
 
         // Add metadata
