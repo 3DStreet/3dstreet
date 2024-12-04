@@ -147,16 +147,17 @@ AFRAME.registerComponent('street-generated-stencil', {
         }
 
         // Set rotation - either random, specified facing, or inbound/outbound
-        let rotation = data.randomFacing
-          ? `-90 ${Math.random() * 360} 0`
-          : `-90 ${data.facing} 0`;
+        let rotationY = 0;
         if (data.direction === 'inbound') {
-          rotation = `-90 180 0`;
+          rotationY = 180 + data.facing;
         }
         if (data.direction === 'outbound') {
-          rotation = `-90 0 0`;
+          rotationY = 0 + data.facing;
         }
-        clone.setAttribute('rotation', rotation);
+        if (data.randomFacing) {
+          rotationY = Math.random() * 360;
+        }
+        clone.setAttribute('rotation', `-90 ${rotationY} 0`);
 
         // Add metadata
         clone.classList.add('autocreated');

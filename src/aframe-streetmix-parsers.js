@@ -184,10 +184,10 @@ function processSegments(
     // elevation property from streetmix segment
     const elevation = segments[i].elevation;
 
-    // Note: segment 3d models are outbound by default
-    // If segment variant inbound, rotate segment model by 180 degrees
-    var rotationY =
-      variantList[0] === 'inbound' || variantList[1] === 'inbound' ? 180 : 0;
+    var direction =
+      variantList[0] === 'inbound' || variantList[1] === 'inbound'
+        ? 'inbound'
+        : 'outbound';
 
     // the A-Frame mixin ID is often identical to the corresponding streetmix segment "type" by design, let's start with that
     var segmentPreset = segments[i].type;
@@ -196,7 +196,7 @@ function processSegments(
     if (segments[i].type === 'drive-lane' && variantList[1] === 'sharrow') {
       segmentParentEl.setAttribute(
         'street-generated-stencil',
-        `model: sharrow; length: ${length}; cycleOffset: 0.2; spacing: 15; facing: ${rotationY}`
+        `model: sharrow; length: ${length}; cycleOffset: 0.2; spacing: 15; direction: ${direction}`
       );
     } else if (
       segments[i].type === 'bike-lane' ||
@@ -207,16 +207,15 @@ function processSegments(
       segmentColor = getSegmentColor(variantList[1]);
       segmentParentEl.setAttribute(
         'street-generated-stencil',
-        `model: bike-arrow; length: ${length}; cycleOffset: 0.3; spacing: 20; facing: ${rotationY};`
+        `model: bike-arrow; length: ${length}; cycleOffset: 0.3; spacing: 20; direction: ${direction};`
       );
-      const rotationCloneY = variantList[0] === 'inbound' ? 0 : 180;
       segmentParentEl.setAttribute(
         'street-generated-clones',
         `mode: random;
         modelsArray: cyclist-cargo, cyclist1, cyclist2, cyclist3, cyclist-dutch, cyclist-kid${segments[i].type === 'scooter' ? 'ElectricScooter_1' : ''};
         length: ${length};
         spacing: 2.03;
-        facing: ${rotationCloneY};
+        direction: ${direction};
         count: ${getRandomIntInclusive(2, 5)};`
       );
     } else if (
@@ -232,7 +231,7 @@ function processSegments(
       if (showVehicles) {
         segmentParentEl.setAttribute(
           'street-generated-clones',
-          `mode: random; model: ${objectMixinId}; length: ${length}; spacing: 20; facing: ${rotationY}; count: 1;`
+          `mode: random; model: ${objectMixinId}; length: ${length}; spacing: 20; direction: ${direction}; count: 1;`
         );
       }
       segmentParentEl.setAttribute(
@@ -242,14 +241,13 @@ function processSegments(
     } else if (segments[i].type === 'turn-lane') {
       segmentPreset = 'drive-lane'; // use normal drive lane road material
       if (showVehicles && variantList[1] !== 'shared') {
-        const rotationCloneY = variantList[0] === 'inbound' ? 0 : 180;
         segmentParentEl.setAttribute(
           'street-generated-clones',
           `mode: random;
            modelsArray: sedan-rig, box-truck-rig, self-driving-waymo-car, suv-rig, motorbike;
             length: ${length};
             spacing: 7.3;
-            facing: ${rotationCloneY};
+            direction: ${direction};
             count: ${getRandomIntInclusive(2, 4)};`
         );
       }
@@ -268,12 +266,12 @@ function processSegments(
       }
       segmentParentEl.setAttribute(
         'street-generated-stencil',
-        `model: ${markerMixinId}; length: ${length}; cycleOffset: 0.4; spacing: 20; facing: ${rotationY};`
+        `model: ${markerMixinId}; length: ${length}; cycleOffset: 0.4; spacing: 20; direction: ${direction};`
       );
       if (variantList[1] === 'shared') {
         segmentParentEl.setAttribute(
           'street-generated-stencil__2',
-          `model: ${markerMixinId}; length: ${length}; cycleOffset: 0.6; spacing: 20; facing: ${rotationY + 180};`
+          `model: ${markerMixinId}; length: ${length}; cycleOffset: 0.6; spacing: 20; direction: ${direction}; facing: 180;`
         );
       }
     } else if (segments[i].type === 'divider' && variantList[0] === 'bollard') {
@@ -384,51 +382,47 @@ function processSegments(
       segmentColor = getSegmentColor(variantList[1]);
 
       if (showVehicles) {
-        const rotationY = variantList[0] === 'inbound' ? 0 : 180;
         segmentParentEl.setAttribute(
           'street-generated-clones',
-          `mode: random; model: bus; length: ${length}; spacing: 15; facing: ${rotationY}; count: 1;`
+          `mode: random; model: bus; length: ${length}; spacing: 15; direction: ${direction}; count: 1;`
         );
       }
       segmentParentEl.setAttribute(
         'street-generated-stencil',
-        `stencils: word-only, word-taxi, word-bus; length: ${length}; spacing: 40; padding: 10; facing: ${rotationY}`
+        `stencils: word-only, word-taxi, word-bus; length: ${length}; spacing: 40; padding: 10; direction: ${direction}`
       );
     } else if (segments[i].type === 'drive-lane') {
       if (showVehicles) {
         // const isAnimated = variantList[2] === 'animated' || globalAnimated;
-        const rotationCloneY = variantList[0] === 'inbound' ? 0 : 180;
         segmentParentEl.setAttribute(
           'street-generated-clones',
           `mode: random;
            modelsArray: sedan-rig, box-truck-rig, self-driving-waymo-car, suv-rig, motorbike;
             length: ${length};
             spacing: 7.3;
-            facing: ${rotationCloneY};
+            direction: ${direction};
             count: ${getRandomIntInclusive(2, 4)};`
         );
       }
     } else if (segments[i].type === 'food-truck') {
       segmentPreset = 'drive-lane';
-      const rotationCloneY = variantList[0] === 'left' ? 0 : 180;
       segmentParentEl.setAttribute(
         'street-generated-clones',
-        `mode: random; model: food-trailer-rig; length: ${length}; spacing: 7; facing: ${rotationCloneY}; count: 2;`
+        `mode: random; model: food-trailer-rig; length: ${length}; spacing: 7; direction: ${direction}; count: 2;`
       );
     } else if (segments[i].type === 'flex-zone') {
       segmentPreset = 'parking-lane';
       if (showVehicles) {
         const objectMixinId =
           variantList[0] === 'taxi' ? 'sedan-taxi-rig' : 'sedan-rig';
-        const rotationCloneY = variantList[1] === 'inbound' ? 0 : 180;
         segmentParentEl.setAttribute(
           'street-generated-clones',
-          `mode: random; model: ${objectMixinId}; length: ${length}; spacing: 6; facing: ${rotationCloneY}; count: 4;`
+          `mode: random; model: ${objectMixinId}; length: ${length}; spacing: 6; direction: ${direction}; count: 4;`
         );
       }
       segmentParentEl.setAttribute(
         'street-generated-stencil',
-        `stencils: word-loading-small, word-only-small; length: ${length}; spacing: 40; padding: 10; facing: ${rotationY}`
+        `stencils: word-loading-small, word-only-small; length: ${length}; spacing: 40; padding: 10; direction: ${direction}`
       );
     } else if (segments[i].type === 'sidewalk' && variantList[0] !== 'empty') {
       segmentParentEl.setAttribute(
@@ -633,6 +627,7 @@ function processSegments(
     );
     segmentParentEl.setAttribute('street-segment', 'length', length);
     segmentParentEl.setAttribute('street-segment', 'level', elevation);
+    segmentParentEl.setAttribute('street-segment', 'direction', direction);
     segmentParentEl.setAttribute(
       // find default color for segmentPreset
       'street-segment',

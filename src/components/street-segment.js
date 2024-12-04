@@ -216,12 +216,12 @@ AFRAME.registerComponent('street-segment', {
         if (clone?.stencils?.length > 0) {
           this.el.setAttribute(
             `street-generated-stencil__${index}`,
-            `stencils: ${clone.stencils}; length: ${this.data.length}; spacing: ${clone.spacing}; facing: 0; padding: ${clone.padding};`
+            `stencils: ${clone.stencils}; length: ${this.data.length}; spacing: ${clone.spacing}; direction: ${this.data.direction}; padding: ${clone.padding};`
           );
         } else {
           this.el.setAttribute(
             `street-generated-stencil__${index}`,
-            `model: ${clone.model}; length: ${this.data.length}; spacing: ${clone.spacing}; facing: 0; count: ${clone.count};`
+            `model: ${clone.model}; length: ${this.data.length}; spacing: ${clone.spacing}; direction: ${this.data.direction}; count: ${clone.count};`
           );
         }
       });
