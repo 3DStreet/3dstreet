@@ -2,9 +2,9 @@
 import 'aframe-cursor-teleport-component';
 import 'aframe-extras/controls/index.js';
 import useStore from './store.js';
+require('./json-utils_1.1.js');
 var streetmixParsers = require('./aframe-streetmix-parsers');
 var streetmixUtils = require('./tested/streetmix-utils');
-require('./json-utils_1.1.js');
 var streetUtils = require('./street-utils.js');
 require('./components/gltf-part');
 require('./components/ocean');
