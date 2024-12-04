@@ -7,7 +7,30 @@ AFRAME.registerComponent('street-generated-stencil', {
   multiple: true,
   schema: {
     model: {
-      type: 'string'
+      type: 'string',
+      oneOf: [
+        'sharrow',
+        'bike-arrow',
+        'left',
+        'right',
+        'both',
+        'all',
+        'word-taxi',
+        'word-only',
+        'word-bus',
+        'word-lane',
+        'word-only-small',
+        'word-yield',
+        'word-slow',
+        'word-xing',
+        'word-stop',
+        'word-loading-small',
+        'perpendicular-stalls',
+        'parking-t',
+        'hash-left',
+        'hash-right',
+        'hash-chevron'
+      ]
     },
     stencils: {
       // if present, then use this array of stencils instead of 1 model
@@ -62,6 +85,9 @@ AFRAME.registerComponent('street-generated-stencil', {
   },
   init: function () {
     this.createdEntities = [];
+  },
+  remove: function () {
+    this.createdEntities.forEach((entity) => entity.remove());
   },
   update: function (oldData) {
     const data = this.data;

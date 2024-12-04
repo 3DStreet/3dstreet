@@ -63,6 +63,12 @@ export default class PropertyRow extends React.Component {
           property: !props.isSingle ? props.name : '',
           value: value
         });
+
+        // Call component's onPropertyChanged if it exists
+        const component = props.entity.components[props.componentname];
+        if (component && typeof component.onPropertyChanged === 'function') {
+          component.onPropertyChanged(name, value);
+        }
       },
       value: value
     };

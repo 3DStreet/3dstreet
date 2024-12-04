@@ -14,38 +14,121 @@ const COLORS = {
 
 const TYPES = {
   'drive-lane': {
+    type: 'drive-lane',
+    color: COLORS.white,
     surface: 'asphalt',
-    color: COLORS.white
+    level: 0,
+    generated: {
+      clones: [
+        {
+          mode: 'random',
+          modelsArray:
+            'sedan-rig, box-truck-rig, self-driving-waymo-car, suv-rig, motorbike',
+          spacing: '7.3',
+          count: '4'
+        }
+      ]
+    }
   },
   'bus-lane': {
+    type: 'bus-lane',
     surface: 'asphalt',
-    color: COLORS.red
+    color: COLORS.red,
+    level: 0,
+    generated: {
+      clones: [
+        {
+          mode: 'random',
+          model: 'bus',
+          spacing: '15',
+          count: '1'
+        }
+      ],
+      stencil: [
+        {
+          stencils: 'word-only, word-taxi, word-bus',
+          spacing: '40',
+          padding: '10'
+        }
+      ]
+    }
   },
   'bike-lane': {
+    type: 'bike-lane',
+    color: COLORS.green,
     surface: 'asphalt',
-    color: COLORS.green
+    level: 0,
+    generated: {
+      stencil: [
+        {
+          model: 'bike-arrow',
+          cycleOffset: '0.3',
+          spacing: '20'
+        }
+      ],
+      clones: [
+        {
+          mode: 'random',
+          modelsArray:
+            'cyclist-cargo, cyclist1, cyclist2, cyclist3, cyclist-dutch, cyclist-kid, ElectricScooter_1',
+          spacing: '2.03',
+          count: '4'
+        }
+      ]
+    }
   },
   sidewalk: {
+    type: 'sidewalk',
     surface: 'sidewalk',
-    color: COLORS.white
+    color: COLORS.white,
+    level: 1,
+    generated: {
+      pedestrians: [
+        {
+          density: 'normal'
+        }
+      ]
+    }
   },
   'parking-lane': {
     surface: 'concrete',
-    color: COLORS.lightGray
+    color: COLORS.lightGray,
+    level: 0,
+    generated: {
+      clones: [
+        {
+          mode: 'random',
+          modelsArray: 'sedan-rig, self-driving-waymo-car, suv-rig',
+          spacing: 6,
+          count: 6
+        }
+      ],
+      stencil: [
+        {
+          model: 'parking-t',
+          cycleOffset: 1,
+          spacing: 6
+        }
+      ]
+    }
   },
   divider: {
     surface: 'hatched',
-    color: COLORS.white
+    color: COLORS.white,
+    level: 0
   },
   grass: {
     surface: 'grass',
-    color: COLORS.white
+    color: COLORS.white,
+    level: -1
   },
   rail: {
     surface: 'asphalt',
-    color: COLORS.white
+    color: COLORS.white,
+    level: 0
   }
 };
+STREET.types = TYPES;
 
 function getSeparatorMixinId(previousSegment, currentSegment) {
   if (previousSegment === undefined || currentSegment === undefined) {
@@ -680,13 +763,15 @@ function processSegments(
       segmentWidthInMeters
     );
     segmentParentEl.setAttribute('street-segment', 'length', length);
-    segmentParentEl.setAttribute('street-segment', 'elevation', elevation);
+    segmentParentEl.setAttribute('street-segment', 'level', elevation);
     segmentParentEl.setAttribute(
+      // find default color for segmentPreset
       'street-segment',
       'color',
       segmentColor ?? TYPES[segmentPreset]?.color // no error handling for segmentPreset not found
     );
     segmentParentEl.setAttribute(
+      // find default surface type for segmentPreset
       'street-segment',
       'surface',
       TYPES[segmentPreset]?.surface // no error handling for segmentPreset not found

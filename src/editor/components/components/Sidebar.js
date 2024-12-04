@@ -10,6 +10,7 @@ import classnames from 'classnames';
 import { ArrowRightIcon, Object24Icon } from '../../icons';
 import GeoSidebar from './GeoSidebar'; // Make sure to create and import this new component
 import IntersectionSidebar from './IntersectionSidebar';
+import StreetSegmentSidebar from './StreetSegmentSidebar';
 export default class Sidebar extends React.Component {
   static propTypes = {
     entity: PropTypes.object,
@@ -114,6 +115,9 @@ export default class Sidebar extends React.Component {
                     )}
                     {entity.getAttribute('intersection') && (
                       <IntersectionSidebar entity={entity} />
+                    )}
+                    {entity.getAttribute('street-segment') && (
+                      <StreetSegmentSidebar entity={entity} />
                     )}
                     <ComponentsContainer entity={entity} />
                   </>

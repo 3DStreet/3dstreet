@@ -34,13 +34,26 @@ AFRAME.registerGeometry('below-box', {
 
 AFRAME.registerComponent('street-segment', {
   schema: {
+    type: {
+      type: 'string', // value not used by component, used in React app instead
+      oneOf: [
+        'drive-lane',
+        'bus-lane',
+        'bike-lane',
+        'sidewalk',
+        'parking-lane',
+        'divider',
+        'grass',
+        'rail'
+      ]
+    },
     width: {
       type: 'number'
     },
     length: {
       type: 'number'
     },
-    elevation: {
+    level: {
       type: 'int',
       default: 0
     },
@@ -68,6 +81,74 @@ AFRAME.registerComponent('street-segment', {
   },
   init: function () {
     this.height = 0.2; // default height of segment surface box
+    this.generatedComponents = [];
+    this.types = window.STREET.types; // default segment types
+  },
+  onPropertyChanged: function (property, value) {
+    // instead of using A-Frame component lifecycle 'update' hook, use this to reset components when type changes
+    if (property !== 'type') {
+      return;
+    }
+    console.log('onPropertyChanged', property, value);
+    this.updateGeneratedComponentsList(); // if components were created through streetmix or streetplan import
+    this.remove();
+    this.createGeneratedComponentsFromType(value); // add components for this type
+    this.updateSurfaceFromType(value); // update surface color, surface, level
+    this.update();
+  },
+  createGeneratedComponentsFromType: function (type) {
+    // use global preset data to create the generated components for a given segment type
+    const componentsToGenerate = this.types[type].generated;
+
+    // for each of clones, stencils, rail, pedestrians, etc.
+    if (componentsToGenerate?.clones?.length > 0) {
+      componentsToGenerate.clones.forEach((clone, index) => {
+        if (clone?.modelsArray?.length > 0) {
+          this.el.setAttribute(
+            `street-generated-clones__${index}`,
+            `mode: ${clone.mode}; modelsArray: ${clone.modelsArray}; length: ${this.data.length}; spacing: ${clone.spacing}; facing: 0; count: ${clone.count};`
+          );
+        } else {
+          this.el.setAttribute(
+            `street-generated-clones__${index}`,
+            `mode: ${clone.mode}; model: ${clone.model}; length: ${this.data.length}; spacing: ${clone.spacing}; facing: 0; count: ${clone.count};`
+          );
+        }
+      });
+    }
+    if (componentsToGenerate?.stencil?.length > 0) {
+      componentsToGenerate.stencil.forEach((clone, index) => {
+        if (clone?.stencils?.length > 0) {
+          this.el.setAttribute(
+            `street-generated-stencil__${index}`,
+            `stencils: ${clone.stencils}; length: ${this.data.length}; spacing: ${clone.spacing}; facing: 0; padding: ${clone.padding};`
+          );
+        } else {
+          this.el.setAttribute(
+            `street-generated-stencil__${index}`,
+            `model: ${clone.model}; length: ${this.data.length}; spacing: ${clone.spacing}; facing: 0; count: ${clone.count};`
+          );
+        }
+      });
+    }
+  },
+  updateSurfaceFromType: function (type) {
+    // update color, surface, level from segment type preset
+    this.el.setAttribute(
+      'street-segment',
+      `surface: ${this.types[type].surface}; color: ${this.types[type].color}; level: ${this.types[type].level};`
+    ); // to do: this should be more elegant to check for undefined and set default values
+  },
+  updateGeneratedComponentsList: function () {
+    // get all components on entity with prefix 'street-generated'
+    let generatedComponentList = [];
+    const components = this.el.components;
+    for (const componentName in components) {
+      if (componentName.startsWith('street-generated')) {
+        generatedComponentList.push(componentName);
+      }
+    }
+    this.generatedComponents = generatedComponentList;
   },
   update: function (oldData) {
     const data = this.data;
@@ -76,18 +157,18 @@ AFRAME.registerComponent('street-segment', {
       return;
     }
     this.clearMesh();
-    this.height = this.calculateHeight(data.elevation);
+    this.height = this.calculateHeight(data.level);
     this.tempXPosition = this.el.getAttribute('position').x;
     this.el.setAttribute('position', { x: this.tempXPosition, y: this.height });
     this.generateMesh(data);
   },
   // for streetmix elevation number values of -1, 0, 1, 2, calculate heightLevel in three.js meters units
-  calculateHeight: function (elevation) {
+  calculateHeight: function (elevationLevel) {
     const stepLevel = 0.15;
-    if (elevation <= 0) {
+    if (elevationLevel <= 0) {
       return stepLevel;
     }
-    return stepLevel * (elevation + 1);
+    return stepLevel * (elevationLevel + 1);
   },
   clearMesh: function () {
     // remove the geometry from the entity
@@ -96,6 +177,10 @@ AFRAME.registerComponent('street-segment', {
   },
   remove: function () {
     this.clearMesh();
+
+    this.generatedComponents.forEach((componentName) => {
+      this.el.removeAttribute(componentName);
+    });
   },
   generateMesh: function (data) {
     // create geometry
