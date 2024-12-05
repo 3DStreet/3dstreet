@@ -42,6 +42,39 @@ const StreetSegmentSidebar = ({ entity }) => {
                 isSingle={false}
                 entity={entity}
               />
+              <div className="propertyRow">
+                <div className="text">-----</div>
+              </div>
+              <PropertyRow
+                key="surface"
+                name="surface"
+                label="Surface"
+                schema={component.schema['surface']}
+                data={component.data['surface']}
+                componentname={componentName}
+                isSingle={false}
+                entity={entity}
+              />
+              <PropertyRow
+                key="color"
+                name="color"
+                label="Color"
+                schema={component.schema['color']}
+                data={component.data['color']}
+                componentname={componentName}
+                isSingle={false}
+                entity={entity}
+              />
+              <PropertyRow
+                key="level"
+                name="level"
+                label="Curb Level"
+                schema={component.schema['level']}
+                data={component.data['level']}
+                componentname={componentName}
+                isSingle={false}
+                entity={entity}
+              />
             </>
           )}
         </div>
