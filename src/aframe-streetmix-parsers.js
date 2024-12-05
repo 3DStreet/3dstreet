@@ -669,7 +669,7 @@ function processSegments(
     segmentParentEl.setAttribute('position', segmentPositionX + ' 0 0');
     segmentParentEl.setAttribute(
       'data-layer-name',
-      'Segment • ' + segments[i].type + ', ' + variantList[0]
+      '' + segments[i].type + ' • ' + variantList[0]
     );
   }
 
