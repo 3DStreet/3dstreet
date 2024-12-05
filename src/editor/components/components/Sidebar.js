@@ -7,7 +7,7 @@ import PropTypes from 'prop-types';
 import React from 'react';
 import capitalize from 'lodash-es/capitalize';
 import classnames from 'classnames';
-import { ArrowRightIcon, Object24Icon, Segment34Icon } from '../../icons';
+import { ArrowRightIcon, Object24Icon, SegmentIcon } from '../../icons';
 import GeoSidebar from './GeoSidebar'; // Make sure to create and import this new component
 import IntersectionSidebar from './IntersectionSidebar';
 import StreetSegmentSidebar from './StreetSegmentSidebar';
@@ -108,18 +108,20 @@ export default class Sidebar extends React.Component {
     );
   }
 
-  renderCollapsedSidebar(entityName, formattedMixin) {
+  renderCollapsedSidebar(entity, displayName) {
     return (
       <div
         onClick={this.toggleRightBar}
         className="relative flex items-center justify-end"
       >
-        <div className="group relative flex cursor-pointer items-center p-2">
-          <span className="absolute right-12 whitespace-nowrap rounded bg-gray-800 px-2 py-1 text-white opacity-0 transition-all duration-300 group-hover:opacity-100">
-            {entityName || formattedMixin}
-          </span>
+        <div className="group relative flex w-[64px] cursor-pointer items-center justify-end overflow-hidden p-5 transition-[width] transition-colors duration-200 hover:w-auto hover:bg-purple-600 active:bg-purple-800">
+          <span className="whitespace-nowrap px-6">{displayName}</span>
           <div className="relative z-10">
-            <Object24Icon />
+            {entity.getAttribute('street-segment') ? (
+              <SegmentIcon />
+            ) : (
+              <Object24Icon />
+            )}
           </div>
         </div>
       </div>
@@ -145,6 +147,7 @@ export default class Sidebar extends React.Component {
       'mt-16': true
     });
 
+    const displayName = entityName || formattedMixin;
     return (
       <div className={className} tabIndex="0">
         {this.state.showSideBar ? (
@@ -152,11 +155,11 @@ export default class Sidebar extends React.Component {
             <div id="layers-title" onClick={this.toggleRightBar}>
               <div className={'layersBlock'}>
                 {entity.getAttribute('street-segment') ? (
-                  <Segment34Icon />
+                  <SegmentIcon />
                 ) : (
                   <Object24Icon />
                 )}
-                <span>{entityName || formattedMixin}</span>
+                <span>{displayName}</span>
               </div>
               <div id="toggle-rightbar">
                 <ArrowRightIcon />
@@ -165,7 +168,7 @@ export default class Sidebar extends React.Component {
             <div className="scroll">{this.renderSidebarContent()}</div>
           </>
         ) : (
-          this.renderCollapsedSidebar(entityName, formattedMixin)
+          this.renderCollapsedSidebar(entity, displayName)
         )}
       </div>
     );

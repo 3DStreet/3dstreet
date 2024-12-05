@@ -33,5 +33,5 @@ export {
   Rotate24Icon,
   Translate24Icon,
   Object24Icon,
-  Segment34Icon
+  SegmentIcon
 } from './icons.jsx';
