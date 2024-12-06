@@ -29,6 +29,8 @@ require('./components/street-generated-pedestrians.js');
 require('./components/street-generated-rail.js');
 require('./components/street-generated-clones.js');
 require('./editor/index.js');
+var firebase = require('./editor/services/firebase.js');
+var sceneUtils = require('./editor/lib/SceneUtils.js');
 
 const state = useStore.getState();
 
@@ -110,6 +112,7 @@ AFRAME.registerComponent('street', {
     if (buildingParent) {
       buildingParent.remove();
     }
+    console.log(firebase.auth.currentUser);
 
     const streetEl = streetmixParsers.processSegments(
       streetmixSegments.streetmixSegmentsMetric,
@@ -134,6 +137,8 @@ AFRAME.registerComponent('street', {
       );
       this.el.append(buildingsEl);
     }
+
+    sceneUtils.saveSceneWithScreenshot(firebase.auth.currentUser, true);
     // the scene has been loaded, set the synchronize flag
     this.el.setAttribute('street', 'synchronize', false);
   }
@@ -166,7 +171,6 @@ AFRAME.registerComponent('streetmix-loader', {
       // console.log('[streetmix-loader]', 'Neither streetmixStreetURL nor streetmixAPIURL have changed in this component data update, not reloading street.')
       return;
     }
-
     // if no value for 'streetmixAPIURL' then let's see if there's a streetmixURL
     if (data.streetmixAPIURL.length === 0) {
       if (data.streetmixStreetURL.length > 0) {
@@ -193,6 +197,7 @@ AFRAME.registerComponent('streetmix-loader', {
 
     request.open('GET', data.streetmixAPIURL, true);
     request.onload = function () {
+      console.log(firebase.auth.currentUser);
       if (this.status >= 200 && this.status < 400) {
         // Connection success
         const streetmixResponseObject = JSON.parse(this.response);

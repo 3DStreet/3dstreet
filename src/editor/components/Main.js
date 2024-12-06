@@ -42,8 +42,6 @@ export default function Main() {
     );
     htmlEditorButton && htmlEditorButton.remove();
 
-    handleStreetMixURL();
-    window.addEventListener('hashchange', () => handleStreetMixURL());
     Events.on('opentexturesmodal', function (selectedTexture, textureOnClose) {
       setState((prevState) => ({
         ...prevState,
@@ -94,15 +92,6 @@ export default function Main() {
       }
     });
   }, []);
-
-  const handleStreetMixURL = () => {
-    const isStreetMix = window.location.hash.includes('streetmix');
-    if (isStreetMix) {
-      STREET.notify.warningMessage(
-        'Hit save if you want to save changes to the scene. Otherwise changes will be lost'
-      );
-    }
-  };
 
   const onModalTextureOnClose = (value) => {
     setState((prevState) => ({

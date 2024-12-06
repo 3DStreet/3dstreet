@@ -103,11 +103,9 @@ const ScenesModal = ({ initialTab = 'owner', delay = undefined }) => {
 
   useEffect(() => {
     const fetchData = async () => {
-      console.log({ scenesData, scenesDataCommunity });
       if (isOpen) {
         let collections;
         setIsLoadingScenes(true);
-
         try {
           if (
             selectedTab === 'owner' &&
@@ -158,7 +156,6 @@ const ScenesModal = ({ initialTab = 'owner', delay = undefined }) => {
 
     if (selectedTab === 'owner') {
       const userScenes = await fetchUserScenes();
-
       setScenesData([...scenesData, ...userScenes]);
       setTotalDisplayedUserScenes(end);
     } else if (selectedTab === 'community') {
@@ -184,7 +181,6 @@ const ScenesModal = ({ initialTab = 'owner', delay = undefined }) => {
       loadData(end);
     }
   };
-
   return renderComponent ? (
     <Modal
       className={styles.modalWrapper}
