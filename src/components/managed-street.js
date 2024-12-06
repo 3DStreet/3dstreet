@@ -34,6 +34,10 @@ AFRAME.registerComponent('managed-street', {
     sourceId: {
       type: 'string'
     },
+    synchronize: {
+      type: 'boolean',
+      default: false
+    },
     showVehicles: {
       type: 'boolean',
       default: true
@@ -47,6 +51,13 @@ AFRAME.registerComponent('managed-street', {
     this.createdEntities = [];
     // Bind the method to preserve context
     this.refreshFromSource = this.refreshFromSource.bind(this);
+  },
+  update: function () {
+    const data = this.data;
+    if (data.synchronize) {
+      this.refreshFromSource();
+      this.el.setAttribute('managed-street', 'synchronize', false);
+    }
   },
   refreshFromSource: function () {
     const self = this;
