@@ -9,44 +9,164 @@
 </a-entity>
 */
 
-AFRAME.registerGeometry('below-box', {
-  schema: {
-    depth: { default: 1, min: 0 },
-    height: { default: 1, min: 0 },
-    width: { default: 1, min: 0 },
-    segmentsHeight: { default: 1, min: 1, max: 20, type: 'int' },
-    segmentsWidth: { default: 1, min: 1, max: 20, type: 'int' },
-    segmentsDepth: { default: 1, min: 1, max: 20, type: 'int' }
-  },
+const COLORS = {
+  red: '#ff9393',
+  blue: '#00b6b6',
+  green: '#adff83',
+  yellow: '#f7d117',
+  lightGray: '#dddddd',
+  white: '#ffffff',
+  brown: '#664B00'
+};
+STREET.colors = COLORS;
 
-  init: function (data) {
-    this.geometry = new THREE.BoxGeometry(
-      data.width,
-      data.height,
-      data.depth,
-      data.segmentsWidth,
-      data.segmentsHeight,
-      data.segmentsDepth
-    );
-    this.geometry.translate(0, -data.height / 2, 0);
+const TYPES = {
+  'drive-lane': {
+    type: 'drive-lane',
+    color: COLORS.white,
+    surface: 'asphalt',
+    level: 0,
+    generated: {
+      clones: [
+        {
+          mode: 'random',
+          modelsArray:
+            'sedan-rig, box-truck-rig, self-driving-waymo-car, suv-rig, motorbike',
+          spacing: '7.3',
+          count: '4'
+        }
+      ]
+    }
+  },
+  'bus-lane': {
+    type: 'bus-lane',
+    surface: 'asphalt',
+    color: COLORS.red,
+    level: 0,
+    generated: {
+      clones: [
+        {
+          mode: 'random',
+          model: 'bus',
+          spacing: '15',
+          count: '1'
+        }
+      ],
+      stencil: [
+        {
+          stencils: 'word-only, word-taxi, word-bus',
+          spacing: '40',
+          padding: '10'
+        }
+      ]
+    }
+  },
+  'bike-lane': {
+    type: 'bike-lane',
+    color: COLORS.green,
+    surface: 'asphalt',
+    level: 0,
+    generated: {
+      stencil: [
+        {
+          model: 'bike-arrow',
+          cycleOffset: '0.3',
+          spacing: '20'
+        }
+      ],
+      clones: [
+        {
+          mode: 'random',
+          modelsArray:
+            'cyclist-cargo, cyclist1, cyclist2, cyclist3, cyclist-dutch, cyclist-kid, ElectricScooter_1',
+          spacing: '2.03',
+          count: '4'
+        }
+      ]
+    }
+  },
+  sidewalk: {
+    type: 'sidewalk',
+    surface: 'sidewalk',
+    color: COLORS.white,
+    level: 1,
+    direction: 'none',
+    generated: {
+      pedestrians: [
+        {
+          density: 'normal'
+        }
+      ]
+    }
+  },
+  'parking-lane': {
+    surface: 'concrete',
+    color: COLORS.lightGray,
+    level: 0,
+    generated: {
+      clones: [
+        {
+          mode: 'random',
+          modelsArray: 'sedan-rig, self-driving-waymo-car, suv-rig',
+          spacing: 6,
+          count: 6
+        }
+      ],
+      stencil: [
+        {
+          model: 'parking-t',
+          cycleOffset: 1,
+          spacing: 6
+        }
+      ]
+    }
+  },
+  divider: {
+    surface: 'hatched',
+    color: COLORS.white,
+    level: 0
+  },
+  grass: {
+    surface: 'grass',
+    color: COLORS.white,
+    level: -1
+  },
+  rail: {
+    surface: 'asphalt',
+    color: COLORS.white,
+    level: 0
   }
-});
+};
+STREET.types = TYPES;
 
 AFRAME.registerComponent('street-segment', {
   schema: {
+    type: {
+      type: 'string', // value not used by component, used in React app instead
+      oneOf: [
+        'drive-lane',
+        'bus-lane',
+        'bike-lane',
+        'sidewalk',
+        'parking-lane',
+        'divider',
+        'grass',
+        'rail'
+      ]
+    },
     width: {
       type: 'number'
     },
     length: {
       type: 'number'
     },
-    elevation: {
+    level: {
       type: 'int',
       default: 0
     },
     direction: {
       type: 'string',
-      oneOf: ['inbound', 'outbound']
+      oneOf: ['none', 'inbound', 'outbound']
     },
     surface: {
       type: 'string',
@@ -68,26 +188,112 @@ AFRAME.registerComponent('street-segment', {
   },
   init: function () {
     this.height = 0.2; // default height of segment surface box
+    this.generatedComponents = [];
+    this.types = TYPES; // default segment types
+  },
+  createGeneratedComponentsFromType: function (typeObject) {
+    // use global preset data to create the generated components for a given segment type
+    const componentsToGenerate = typeObject.generated;
+
+    // for each of clones, stencils, rail, pedestrians, etc.
+    if (componentsToGenerate?.clones?.length > 0) {
+      componentsToGenerate.clones.forEach((clone, index) => {
+        if (clone?.modelsArray?.length > 0) {
+          this.el.setAttribute(
+            `street-generated-clones__${index}`,
+            `mode: ${clone.mode}; modelsArray: ${clone.modelsArray}; length: ${this.data.length}; spacing: ${clone.spacing}; direction: ${this.data.direction}; count: ${clone.count};`
+          );
+        } else {
+          this.el.setAttribute(
+            `street-generated-clones__${index}`,
+            `mode: ${clone.mode}; model: ${clone.model}; length: ${this.data.length}; spacing: ${clone.spacing}; direction: ${this.data.direction}; count: ${clone.count};`
+          );
+        }
+      });
+    }
+    if (componentsToGenerate?.stencil?.length > 0) {
+      componentsToGenerate.stencil.forEach((clone, index) => {
+        if (clone?.stencils?.length > 0) {
+          this.el.setAttribute(
+            `street-generated-stencil__${index}`,
+            `stencils: ${clone.stencils}; length: ${this.data.length}; spacing: ${clone.spacing}; direction: ${this.data.direction}; padding: ${clone.padding};`
+          );
+        } else {
+          this.el.setAttribute(
+            `street-generated-stencil__${index}`,
+            `model: ${clone.model}; length: ${this.data.length}; spacing: ${clone.spacing}; direction: ${this.data.direction}; count: ${clone.count};`
+          );
+        }
+      });
+    }
+    if (componentsToGenerate?.pedestrians?.length > 0) {
+      componentsToGenerate.pedestrians.forEach((pedestrian, index) => {
+        this.el.setAttribute(
+          `street-generated-pedestrians__${index}`,
+          `segmentWidth: ${this.data.width}; density: ${pedestrian.density}; length: ${this.data.length}; direction: ${this.data.direction};`
+        );
+      });
+    }
+  },
+  updateSurfaceFromType: function (typeObject) {
+    // update color, surface, level from segment type preset
+    this.el.setAttribute(
+      'street-segment',
+      `surface: ${typeObject.surface}; color: ${typeObject.color}; level: ${typeObject.level};`
+    ); // to do: this should be more elegant to check for undefined and set default values
+  },
+  updateGeneratedComponentsList: function () {
+    // get all components on entity with prefix 'street-generated'
+    let generatedComponentList = [];
+    const components = this.el.components;
+    for (const componentName in components) {
+      if (componentName.startsWith('street-generated')) {
+        generatedComponentList.push(componentName);
+      }
+    }
+    this.generatedComponents = generatedComponentList;
   },
   update: function (oldData) {
     const data = this.data;
+    const dataDiff = AFRAME.utils.diff(oldData, data);
     // if oldData is same as current data, then don't update
     if (AFRAME.utils.deepEqual(oldData, data)) {
       return;
     }
+    // regenerate components if only type has changed
+    if (
+      Object.keys(dataDiff).length === 1 &&
+      Object.keys(dataDiff).includes('type')
+    ) {
+      let typeObject = this.types[this.data.type];
+      this.updateGeneratedComponentsList(); // if components were created through streetmix or streetplan import
+      this.remove();
+      this.createGeneratedComponentsFromType(typeObject); // add components for this type
+      this.updateSurfaceFromType(typeObject); // update surface color, surface, level
+    }
+    // propagate change of direction to generated components is solo changed
+    if (
+      Object.keys(dataDiff).length === 1 &&
+      Object.keys(dataDiff).includes('direction')
+    ) {
+      this.updateGeneratedComponentsList(); // if components were created through streetmix or streetplan import
+      for (const componentName of this.generatedComponents) {
+        this.el.setAttribute(componentName, 'direction', this.data.direction);
+      }
+    }
     this.clearMesh();
-    this.height = this.calculateHeight(data.elevation);
+    this.height = this.calculateHeight(data.level);
     this.tempXPosition = this.el.getAttribute('position').x;
     this.el.setAttribute('position', { x: this.tempXPosition, y: this.height });
     this.generateMesh(data);
   },
   // for streetmix elevation number values of -1, 0, 1, 2, calculate heightLevel in three.js meters units
-  calculateHeight: function (elevation) {
+  calculateHeight: function (elevationLevel) {
     const stepLevel = 0.15;
-    if (elevation <= 0) {
+    if (elevationLevel <= 0) {
       return stepLevel;
     }
-    return stepLevel * (elevation + 1);
+    return stepLevel * (elevationLevel + 1);
   },
   clearMesh: function () {
     // remove the geometry from the entity
@@ -96,6 +302,10 @@ AFRAME.registerComponent('street-segment', {
   },
   remove: function () {
     this.clearMesh();
+
+    this.generatedComponents.forEach((componentName) => {
+      this.el.removeAttribute(componentName);
+    });
   },
   generateMesh: function (data) {
     // create geometry
@@ -173,5 +383,28 @@ AFRAME.registerComponent('street-segment', {
       offsetX = 0;
     }
     return [repeatX, repeatY, offsetX];
+  }
+});
+
+AFRAME.registerGeometry('below-box', {
+  schema: {
+    depth: { default: 1, min: 0 },
+    height: { default: 1, min: 0 },
+    width: { default: 1, min: 0 },
+    segmentsHeight: { default: 1, min: 1, max: 20, type: 'int' },
+    segmentsWidth: { default: 1, min: 1, max: 20, type: 'int' },
+    segmentsDepth: { default: 1, min: 1, max: 20, type: 'int' }
+  },
+
+  init: function (data) {
+    this.geometry = new THREE.BoxGeometry(
+      data.width,
+      data.height,
+      data.depth,
+      data.segmentsWidth,
+      data.segmentsHeight,
+      data.segmentsDepth
+    );
+    this.geometry.translate(0, -data.height / 2, 0);
   }
 });

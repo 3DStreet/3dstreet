@@ -11,6 +11,7 @@ AFRAME.registerComponent('street-generated-clones', {
     positionY: { default: 0, type: 'number' },
     facing: { default: 0, type: 'number' }, // Y Rotation in degrees
     randomFacing: { default: false, type: 'boolean' },
+    direction: { type: 'string', oneOf: ['none', 'inbound', 'outbound'] }, // not used if facing defined?
 
     // Mode-specific properties
     mode: { default: 'fixed', oneOf: ['fixed', 'random', 'single'] },
@@ -102,22 +103,32 @@ AFRAME.registerComponent('street-generated-clones', {
 
   createClone: function (positionZ) {
     const data = this.data;
+    const mixinId = this.getModelMixin();
     const clone = document.createElement('a-entity');
 
-    clone.setAttribute('mixin', this.getModelMixin());
+    clone.setAttribute('mixin', mixinId);
     clone.setAttribute('position', {
       x: data.positionX,
       y: data.positionY,
       z: positionZ
     });
 
-    const rotation = data.randomFacing ? Math.random() * 360 : data.facing;
-    clone.setAttribute('rotation', `0 ${rotation} 0`);
+    var rotationY = data.facing;
+    if (data.direction === 'inbound') {
+      rotationY = 0 + data.facing;
+    }
+    if (data.direction === 'outbound') {
+      rotationY = 180 - data.facing;
+    }
+    if (data.randomFacing) {
+      rotationY = Math.random() * 360;
+    }
+    clone.setAttribute('rotation', `0 ${rotationY} 0`);
 
     // Add common attributes
     clone.classList.add('autocreated');
     clone.setAttribute('data-no-transform', '');
-    clone.setAttribute('data-layer-name', 'Cloned Model • ' + data.model);
+    clone.setAttribute('data-layer-name', 'Cloned Model • ' + mixinId);
 
     this.el.appendChild(clone);
     this.createdEntities.push(clone);

@@ -22,6 +22,7 @@ require('./components/street-environment.js');
 require('./components/intersection.js');
 require('./components/obb-clipping.js');
 require('./components/street-segment.js');
+require('./components/managed-street.js');
 require('./components/street-generated-stencil.js');
 require('./components/street-generated-striping.js');
 require('./components/street-generated-pedestrians.js');

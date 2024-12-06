@@ -757,6 +757,49 @@ const SignInMicrosoftIconSVG = () => (
   </svg>
 );
 
+const SegmentIcon = () => (
+  <svg
+    width="28"
+    height="28"
+    viewBox="0 0 26 24"
+    fill="none"
+    xmlns="http://www.w3.org/2000/svg"
+  >
+    <path d="M20 3L11 21" stroke="white" strokeLinecap="round" />
+    <path
+      d="M25 3L16 21"
+      stroke="white"
+      strokeWidth="0.5"
+      strokeLinecap="round"
+      strokeDasharray="1 2"
+    />
+    <path
+      d="M25 3L10 3"
+      stroke="white"
+      strokeWidth="0.5"
+      strokeLinecap="round"
+      strokeDasharray="1 2"
+    />
+    <path
+      d="M16 21L1 21"
+      stroke="white"
+      strokeWidth="0.5"
+      strokeLinecap="round"
+      strokeDasharray="1 2"
+    />
+    <path d="M15 3L6 21" stroke="white" strokeLinecap="round" />
+    <path d="M11 21L6 21" stroke="white" strokeLinecap="round" />
+    <path d="M15 3H20" stroke="white" strokeLinecap="round" />
+    <path
+      d="M10 3L1 21"
+      stroke="white"
+      strokeWidth="0.5"
+      strokeLinecap="round"
+      strokeDasharray="1 2"
+    />
+  </svg>
+);
+
 export {
   Camera32Icon,
   Save24Icon,
@@ -791,5 +834,6 @@ export {
   SignInMicrosoftIconSVG,
   Rotate24Icon,
   Translate24Icon,
-  Object24Icon
+  Object24Icon,
+  SegmentIcon
 };

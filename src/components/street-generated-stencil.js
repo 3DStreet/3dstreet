@@ -7,7 +7,34 @@ AFRAME.registerComponent('street-generated-stencil', {
   multiple: true,
   schema: {
     model: {
-      type: 'string'
+      type: 'string',
+      oneOf: [
+        'sharrow',
+        'bike-arrow',
+        'left',
+        'right',
+        'straight',
+        'left-straight',
+        'right-straight',
+        'both',
+        'all',
+        'word-taxi',
+        'word-only',
+        'word-bus',
+        'word-lane',
+        'word-only-small',
+        'word-yield',
+        'word-slow',
+        'word-xing',
+        'word-stop',
+        'word-loading-small',
+        'perpendicular-stalls',
+        'parking-t',
+        'hash-left',
+        'hash-right',
+        'hash-chevron',
+        'solid-stripe'
+      ]
     },
     stencils: {
       // if present, then use this array of stencils instead of 1 model
@@ -54,6 +81,11 @@ AFRAME.registerComponent('street-generated-stencil', {
     stencilHeight: {
       default: 0,
       type: 'number'
+    },
+    direction: {
+      // specifying inbound/outbound directions will overwrite facing/randomFacing
+      type: 'string',
+      oneOf: ['none', 'inbound', 'outbound']
     }
     // seed: {  // seed not yet supported
     //   default: 0,
@@ -62,6 +94,9 @@ AFRAME.registerComponent('street-generated-stencil', {
   },
   init: function () {
     this.createdEntities = [];
+  },
+  remove: function () {
+    this.createdEntities.forEach((entity) => entity.remove());
   },
   update: function (oldData) {
     const data = this.data;
@@ -74,8 +109,8 @@ AFRAME.registerComponent('street-generated-stencil', {
     // Use either stencils array or single model
     let stencilsToUse = data.stencils.length > 0 ? data.stencils : [data.model];
 
-    // Reverse stencil order if facing is 180 degrees
-    if (data.facing === 180) {
+    // Reverse stencil order if inbound
+    if (data.direction === 'inbound') {
       stencilsToUse = stencilsToUse.slice().reverse();
     }
 
@@ -115,11 +150,18 @@ AFRAME.registerComponent('street-generated-stencil', {
           });
         }
 
-        // Set rotation - either random or specified facing
-        const rotation = data.randomFacing
-          ? `-90 ${Math.random() * 360} 0`
-          : `-90 ${data.facing} 0`;
-        clone.setAttribute('rotation', rotation);
+        // Set rotation - either random, specified facing, or inbound/outbound
+        var rotationY = data.facing;
+        if (data.direction === 'inbound') {
+          rotationY = 180 + data.facing;
+        }
+        if (data.direction === 'outbound') {
+          rotationY = 0 - data.facing;
+        }
+        if (data.randomFacing) {
+          rotationY = Math.random() * 360;
+        }
+        clone.setAttribute('rotation', `-90 ${rotationY} 0`);
 
         // Add metadata
         clone.classList.add('autocreated');
