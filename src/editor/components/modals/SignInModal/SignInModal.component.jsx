@@ -3,6 +3,8 @@ import Modal from '../Modal.jsx';
 import styles from './SignInModal.module.scss';
 import { signIn, signInMicrosoft } from '../../../api';
 import useStore from '@/store';
+import { saveSceneWithScreenshot } from '@/editor/lib/SceneUtils';
+import { auth } from '@/editor/services/firebase';
 const SignInModal = () => {
   const setModal = useStore((state) => state.setModal);
   const modal = useStore((state) => state.modal);
@@ -11,6 +13,17 @@ const SignInModal = () => {
     setModal(null);
   };
 
+  const onSignInClick = async (provider = 'google') => {
+    if (provider === 'google') {
+      await signIn();
+    } else if (provider === 'microsoft') {
+      await signInMicrosoft();
+    }
+    if (STREET.utils.getCurrentSceneId() !== null) {
+      await saveSceneWithScreenshot(auth.currentUser, true);
+    }
+    onClose();
+  };
   return (
     <Modal
       className={styles.modalWrapper}
@@ -35,8 +48,7 @@ const SignInModal = () => {
         </div>
         <div
           onClick={() => {
-            signIn();
-            onClose();
+            onSignInClick('google');
           }}
           alt="Sign In with Google Button"
           className={styles.signInButton}
@@ -45,8 +57,7 @@ const SignInModal = () => {
         </div>
         <div
           onClick={() => {
-            signInMicrosoft();
-            onClose();
+            onSignInClick('microsoft');
           }}
           alt="Sign In with Microsoft Button"
           className={styles.signInButton}

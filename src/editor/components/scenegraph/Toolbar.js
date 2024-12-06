@@ -1,10 +1,5 @@
 import React, { Component } from 'react';
-import {
-  createScene,
-  updateScene,
-  checkIfImagePathIsEmpty,
-  uploadThumbnailImage
-} from '../../api/scene';
+import { checkIfImagePathIsEmpty, uploadThumbnailImage } from '../../api/scene';
 import {
   Cloud24Icon,
   Save24Icon,
@@ -19,7 +14,7 @@ import { UndoRedo } from '../components/UndoRedo';
 import debounce from 'lodash-es/debounce';
 import { CameraToolbar } from '../viewport/CameraToolbar';
 import useStore from '@/store';
-import { makeScreenshot } from '@/editor/lib/SceneUtils';
+import { makeScreenshot, saveScene } from '@/editor/lib/SceneUtils';
 
 // const LOCALSTORAGE_MOCAP_UI = "aframeinspectormocapuienabled";
 
@@ -90,7 +85,7 @@ export default class Toolbar extends Component {
 
   cloudSaveHandlerWithImageUpload = async (doSaveAs) => {
     makeScreenshot();
-    const currentSceneId = await this.cloudSaveHandler({ doSaveAs });
+    const currentSceneId = await this.saveScene({ doSaveAs });
     const isImagePathEmpty = await checkIfImagePathIsEmpty(currentSceneId);
     if (isImagePathEmpty) {
       await uploadThumbnailImage();
@@ -105,92 +100,11 @@ export default class Toolbar extends Component {
     AFRAME.scenes[0].emit('newScene');
   };
 
-  cloudSaveHandler = async ({ doSaveAs = false }) => {
+  saveScene = async ({ doSaveAs = false }) => {
     try {
       this.setState({ isSavingScene: true });
-
-      // if there is no current user, show sign in modal
-      let currentSceneId = STREET.utils.getCurrentSceneId();
-      let currentSceneTitle = useStore.getState().sceneTitle;
-
-      posthog.capture('save_scene_clicked', {
-        save_as: doSaveAs,
-        user_id: this.props.currentUser ? this.props.currentUser.uid : null,
-        scene_id: currentSceneId,
-        scene_title: currentSceneTitle
-      });
-
-      if (!this.props.currentUser) {
-        useStore.getState().setModal('signin');
-        return;
-      }
-
-      // check if the user is not pro, and if the geospatial has array of values of mapbox
-      const streetGeo = document
-        .getElementById('reference-layers')
-        ?.getAttribute('street-geo');
-      if (
-        !this.props.currentUser.isPro &&
-        streetGeo &&
-        streetGeo['latitude'] &&
-        streetGeo['longitude']
-      ) {
-        useStore.getState().setModal('payment');
-        return;
-      }
-      if (!this.isAuthor()) {
-        posthog.capture('not_scene_author', {
-          scene_id: currentSceneId,
-          user_id: this.props.currentUser.uid
-        });
-        doSaveAs = true;
-      }
-
-      // generate json from 3dstreet core
-      const entity = document.getElementById('street-container');
-      const data = STREET.utils.convertDOMElToObject(entity);
-      const filteredData = JSON.parse(STREET.utils.filterJSONstreet(data));
-
-      // we want to save, so if we *still* have no sceneID at this point, then create a new one
-      if (!currentSceneId || !!doSaveAs) {
-        // ask user for scene title here currentSceneTitle
-        let newSceneTitle = prompt('Scene Title:', currentSceneTitle || '');
-
-        if (newSceneTitle) {
-          currentSceneTitle = newSceneTitle;
-        }
-
-        useStore.getState().setSceneTitle(currentSceneTitle);
-        console.log(
-          'no urlSceneId or doSaveAs is true, therefore generate new one'
-        );
-        currentSceneId = await createScene(
-          this.props.currentUser.uid,
-          filteredData.data,
-          currentSceneTitle,
-          filteredData.version
-        );
-        console.log('newly generated currentSceneId', currentSceneId);
-      } else {
-        await updateScene(
-          currentSceneId,
-          filteredData.data,
-          currentSceneTitle,
-          filteredData.version
-        );
-      }
-
-      // make sure to update sceneId with new one in metadata component!
-      AFRAME.scenes[0].setAttribute('metadata', 'sceneId', currentSceneId);
-      AFRAME.scenes[0].setAttribute(
-        'metadata',
-        'authorId',
-        this.props.currentUser.uid
-      );
-
-      // Change the hash URL without reloading
-      window.location.hash = `#/scenes/${currentSceneId}`;
-      this.toggleSaveActionState();
+      const currentSceneId = await saveScene(this.props.currentUser, doSaveAs);
+      this.setState({ isSaveActionActive: false });
       this.setState({ savedScene: true });
       this.setSavedSceneFalse();
 
@@ -226,7 +140,7 @@ export default class Toolbar extends Component {
         useStore.getState().setModal('payment');
         return;
       }
-      this.cloudSaveHandler({ doSaveAs: false });
+      this.saveScene({ doSaveAs: false });
     }
   }, 1000);
 
@@ -235,7 +149,6 @@ export default class Toolbar extends Component {
     this.setState({ pendingSceneSave: true });
     useStore.getState().setModal('signin');
   };
-
 
   toggleSaveActionState = () => {
     this.setState((prevState) => ({
@@ -290,7 +203,7 @@ export default class Toolbar extends Component {
                         <Button
                           leadingIcon={<Cloud24Icon />}
                           variant="white"
-                          onClick={this.cloudSaveHandler}
+                          onClick={this.saveScene}
                           disabled={
                             this.state.isSavingScene || !this.isAuthor()
                           }

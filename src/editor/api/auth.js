@@ -9,9 +9,6 @@ import posthog from 'posthog-js';
 const signIn = async () => {
   try {
     const { user } = await signInWithPopup(auth, new GoogleAuthProvider());
-    STREET.notify.successMessage(
-      `Successful login with Google authentication.`
-    );
     // first signIn to ga
     if (user.metadata.creationTime !== user.metadata.lastSignInTime) return;
     posthog.capture('user_signed_up', {
@@ -32,6 +29,7 @@ const signIn = async () => {
       );
       console.error(error);
     }
+    throw error;
   }
 };
 

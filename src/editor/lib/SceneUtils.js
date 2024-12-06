@@ -1,5 +1,11 @@
 import posthog from 'posthog-js';
 import useStore from '@/store.js';
+import {
+  createScene,
+  updateScene,
+  checkIfImagePathIsEmpty,
+  uploadThumbnailImage
+} from '@/editor/api/scene';
 
 export function inputStreetmix() {
   const streetmixURL = prompt(
@@ -91,15 +97,12 @@ export function makeScreenshot() {
   );
   // take the screenshot
   screenshotEl.setAttribute('screentock', 'takeScreenshot', true);
-};
+}
 
-export async function saveScene(
-  currentUser,
-  doSaveAs
-) {
+export async function saveScene(currentUser, doSaveAs) {
   const sceneTitle = useStore.getState().sceneTitle;
   const authorId = STREET.utils.getAuthorId();
-  const sceneId = STREET.utils.getCurrentSceneId();
+  let sceneId = STREET.utils.getCurrentSceneId();
 
   posthog.capture('saving_scene', {
     save_as: doSaveAs,
@@ -141,17 +144,6 @@ export async function saveScene(
 
   // we want to save, so if we *still* have no sceneID at this point, then create a new one
   if (!sceneId || !!doSaveAs) {
-    // ask user for scene title here currentSceneTitle
-    let newSceneTitle = prompt('Scene Title:', sceneTitle || '');
-
-    if (newSceneTitle) {
-      sceneTitle = newSceneTitle;
-    }
-
-    useStore.getState().setSceneTitle(sceneTitle);
-    console.log(
-      'no urlSceneId or doSaveAs is true, therefore generate new one'
-    );
     sceneId = await createScene(
       currentUser.uid,
       filteredData.data,
@@ -169,12 +161,20 @@ export async function saveScene(
 
   // make sure to update sceneId with new one in metadata component!
   AFRAME.scenes[0].setAttribute('metadata', 'sceneId', sceneId);
-  AFRAME.scenes[0].setAttribute(
-    'metadata',
-    'authorId',
-    currentUser.uid
-  );
+  AFRAME.scenes[0].setAttribute('metadata', 'authorId', currentUser.uid);
 
   // Change the hash URL without reloading
   window.location.hash = `#/scenes/${sceneId}`;
+  return sceneId;
+}
+
+export async function saveSceneWithScreenshot(currentUser, doSaveAs) {
+  makeScreenshot();
+  const currentSceneId = await saveScene(currentUser, doSaveAs);
+  if (currentSceneId) {
+    const isImagePathEmpty = await checkIfImagePathIsEmpty(currentSceneId);
+    if (isImagePathEmpty) {
+      await uploadThumbnailImage();
+    }
+  }
 }
