@@ -7,10 +7,16 @@ import PropTypes from 'prop-types';
 import React from 'react';
 import capitalize from 'lodash-es/capitalize';
 import classnames from 'classnames';
-import { ArrowRightIcon, Object24Icon, SegmentIcon } from '../../icons';
+import {
+  ArrowRightIcon,
+  Object24Icon,
+  SegmentIcon,
+  ManagedStreetIcon
+} from '../../icons';
 import GeoSidebar from './GeoSidebar'; // Make sure to create and import this new component
 import IntersectionSidebar from './IntersectionSidebar';
 import StreetSegmentSidebar from './StreetSegmentSidebar';
+import ManagedStreetSidebar from './ManagedStreetSidebar';
 import AdvancedComponents from './AdvancedComponents';
 
 export default class Sidebar extends React.Component {
@@ -84,6 +90,17 @@ export default class Sidebar extends React.Component {
       );
     }
 
+    if (entity.getAttribute('managed-street')) {
+      return (
+        <>
+          <ManagedStreetSidebar entity={entity} />
+          <div className="advancedComponentsContainer">
+            <AdvancedComponents entity={entity} />
+          </div>
+        </>
+      );
+    }
+
     const isIntersection = entity.getAttribute('intersection');
     const hasNoTransform = entity.hasAttribute('data-no-transform');
 
@@ -117,7 +134,9 @@ export default class Sidebar extends React.Component {
         <div className="group relative flex w-[64px] cursor-pointer items-center justify-end overflow-hidden p-5 transition-[width] transition-colors duration-200 hover:w-auto hover:bg-purple-600 active:bg-purple-800">
           <span className="whitespace-nowrap px-6">{displayName}</span>
           <div className="relative z-10">
-            {entity.getAttribute('street-segment') ? (
+            {entity.getAttribute('managed-street') ? (
+              <ManagedStreetIcon />
+            ) : entity.getAttribute('street-segment') ? (
               <SegmentIcon />
             ) : (
               <Object24Icon />
@@ -154,7 +173,9 @@ export default class Sidebar extends React.Component {
           <>
             <div id="layers-title" onClick={this.toggleRightBar}>
               <div className={'layersBlock'}>
-                {entity.getAttribute('street-segment') ? (
+                {entity.getAttribute('managed-street') ? (
+                  <ManagedStreetIcon />
+                ) : entity.getAttribute('street-segment') ? (
                   <SegmentIcon />
                 ) : (
                   <Object24Icon />

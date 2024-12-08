@@ -33,5 +33,6 @@ export {
   Rotate24Icon,
   Translate24Icon,
   Object24Icon,
-  SegmentIcon
+  SegmentIcon,
+  ManagedStreetIcon
 } from './icons.jsx';

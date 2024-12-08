@@ -19,8 +19,8 @@ AFRAME.registerComponent('managed-street', {
       type: 'number'
     },
     length: {
-      type: 'string',
-      default: '60'
+      type: 'number',
+      default: 60
     },
     sourceType: {
       type: 'string',
