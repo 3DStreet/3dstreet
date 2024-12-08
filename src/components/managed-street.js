@@ -9,16 +9,14 @@ var streetmixParsersTested = require('../tested/aframe-streetmix-parsers-tested'
 /*
 userLayersEl = document.getElementById('street-container');
 newStreetEl = document.createElement('a-entity');
-newStreetEl.setAttribute('managed-street', 'sourceType: streetmix-url; sourceValue: https://streetmix.net/kfarr/3/');
+newStreetEl.setAttribute('managed-street', 'sourceType: streetmix-url; sourceValue: https://streetmix.net/kfarr/3/; synchronize: true');
 userLayersEl.append(newStreetEl);
-// press enter and then run this line
-newStreetEl.components['managed-street'].refreshFromSource();
 */
 
 AFRAME.registerComponent('managed-street', {
   schema: {
     width: {
-      type: 'array'
+      type: 'number'
     },
     length: {
       type: 'string',
@@ -45,19 +43,39 @@ AFRAME.registerComponent('managed-street', {
     showStriping: {
       type: 'boolean',
       default: true
+    },
+    justifyWidth: {
+      default: 'center',
+      type: 'string',
+      oneOf: ['center', 'left', 'right']
+    },
+    justifyLength: {
+      default: 'start',
+      type: 'string',
+      oneOf: ['middle', 'start', 'end']
     }
   },
   init: function () {
     this.createdEntities = [];
+    this.pendingEntities = [];
     // Bind the method to preserve context
     this.refreshFromSource = this.refreshFromSource.bind(this);
   },
-  update: function () {
+  update: function (oldData) {
     const data = this.data;
     if (data.synchronize) {
-      this.refreshFromSource();
       this.el.setAttribute('managed-street', 'synchronize', false);
+      this.refreshFromSource();
     }
+    if (
+      oldData.justifyWidth !== data.justifyWidth ||
+      oldData.justifyLength !== data.justifyLength
+    ) {
+      this.applyJustification();
+      this.createOrUpdateJustifiedDirtBox();
+    }
+    // if the value of length changes, then we need to update the length of all the child objects
+    // we need to get a list of all the child objects whose length we need to change
   },
   refreshFromSource: function () {
     const self = this;
@@ -69,6 +87,88 @@ AFRAME.registerComponent('managed-street', {
     } else if (data.sourceType === 'json-blob') {
       this.refreshFromJSONBlob(data.sourceValue);
     }
+  },
+  applyJustification: function () {
+    const data = this.data;
+    const segmentEls = this.createdEntities;
+    const streetWidth = data.width;
+    const streetLength = data.length;
+
+    // set starting xPosition for width justification
+    let xPosition = 0; // default for left justified
+    if (data.justifyWidth === 'center') {
+      xPosition = -streetWidth / 2;
+    }
+    if (data.justifyWidth === 'right') {
+      xPosition = -streetWidth;
+    }
+    // set z value for length justification
+    let zPosition = 0; // default for middle justified
+    if (data.justifyLength === 'start') {
+      zPosition = -streetLength / 2;
+    }
+    if (data.justifyLength === 'end') {
+      zPosition = streetLength / 2;
+    }
+
+    segmentEls.forEach((segmentEl) => {
+      if (!segmentEl.getAttribute('street-segment')) {
+        return;
+      }
+      const segmentWidth = segmentEl.getAttribute('street-segment').width;
+      const yPosition = segmentEl.getAttribute('position').y;
+      xPosition += segmentWidth / 2;
+      segmentEl.setAttribute(
+        'position',
+        `${xPosition} ${yPosition} ${zPosition}`
+      );
+      xPosition += segmentWidth / 2;
+    });
+  },
+  createOrUpdateJustifiedDirtBox: function () {
+    const data = this.data;
+    const streetWidth = data.width;
+    if (!streetWidth) {
+      return;
+    }
+    console.log('streetWidth', streetWidth);
+    const streetLength = data.length;
+    if (!this.justifiedDirtBox) {
+      // create new brown box to represent ground underneath street
+      const dirtBox = document.createElement('a-box');
+      // dirtBox.setAttribute('position', `${xPosition} -1 0`); // what is x? x = 0 - cumulativeWidthInMeters / 2
+      dirtBox.setAttribute('height', 2); // height is 2 meters from y of -0.1 to -y of 2.1
+      dirtBox.setAttribute('width', streetWidth);
+      dirtBox.setAttribute('depth', streetLength - 0.2); // depth is length - 0.1 on each side
+      dirtBox.setAttribute('material', `color: ${window.STREET.colors.brown};`);
+      dirtBox.setAttribute('data-layer-name', 'Underground');
+      dirtBox.classList.add('dirtbox');
+      this.el.append(dirtBox);
+      this.justifiedDirtBox = dirtBox;
+    }
+
+    // set starting xPosition for width justification
+    let xPosition = 0; // default for center justified
+    if (data.justifyWidth === 'left') {
+      xPosition = streetWidth / 2;
+    }
+    if (data.justifyWidth === 'right') {
+      xPosition = -streetWidth / 2;
+    }
+
+    // set z value for length justification
+    let zPosition = 0; // default for middle justified
+    if (data.justifyLength === 'start') {
+      zPosition = -streetLength / 2;
+    }
+    if (data.justifyLength === 'end') {
+      zPosition = streetLength / 2;
+    }
+
+    this.justifiedDirtBox.setAttribute(
+      'position',
+      `${xPosition} -1 ${zPosition}`
+    );
   },
   loadAndParseStreetmixURL: function (streetmixURL) {
     const data = this.data;
@@ -100,23 +200,36 @@ AFRAME.registerComponent('managed-street', {
         const streetmixName = streetmixResponseObject.name;
 
         self.el.setAttribute('data-layer-name', 'Street • ' + streetmixName);
-
-        console.log('streetmixSegments', streetmixSegments);
-        const streetEl = parseStreetmixSegments(
-          streetmixSegments,
-          data.showStriping,
-          data.length,
-          data.globalAnimated, // remove
-          data.showVehicles
-        );
-        self.el.append(streetEl);
-
         const streetWidth = streetmixSegments.reduce(
           (streetWidth, segmentData) => streetWidth + segmentData.width,
           0
         );
-
         self.el.setAttribute('managed-street', 'width', streetWidth);
+
+        const segmentEls = parseStreetmixSegments(
+          streetmixSegments,
+          data.showStriping,
+          data.length,
+          data.showVehicles
+        );
+        self.el.append(...segmentEls);
+
+        self.pendingEntities = segmentEls;
+        // for each pending entity Listen for loaded event
+        for (const entity of self.pendingEntities) {
+          entity.addEventListener('loaded', () => {
+            self.onEntityLoaded(entity);
+          });
+        }
+        // Set up a promise that resolves when all entities are loaded
+        self.allLoadedPromise = new Promise((resolve) => {
+          self.resolveAllLoaded = resolve;
+        });
+        // When all entities are loaded, do something with them
+        self.allLoadedPromise.then(() => {
+          self.applyJustification();
+          self.createOrUpdateJustifiedDirtBox();
+        });
       } else {
         // We reached our target server, but it returned an error
         console.log(
@@ -133,6 +246,18 @@ AFRAME.registerComponent('managed-street', {
       );
     };
     request.send();
+  },
+  onEntityLoaded: function (entity) {
+    // Remove from pending set
+    const index = this.pendingEntities.indexOf(entity);
+    if (index > -1) {
+      this.pendingEntities.splice(index, 1);
+    }
+    this.createdEntities.push(entity);
+    // If no more pending entities, resolve the promise
+    if (this.pendingEntities.length === 0) {
+      this.resolveAllLoaded();
+    }
   }
 });
 
@@ -246,18 +371,6 @@ function getSegmentColor(variant) {
   return window.STREET.colors.white;
 }
 
-// offset to center the street around global x position of 0
-function createCenteredStreetElement(segments) {
-  const streetEl = document.createElement('a-entity');
-  const streetWidth = segments.reduce(
-    (streetWidth, segmentData) => streetWidth + segmentData.width,
-    0
-  );
-  const offset = 0 - streetWidth / 2;
-  streetEl.setAttribute('position', offset + ' 0 0');
-  return streetEl;
-}
-
 // show warning message if segment or variantString are not supported
 function supportCheck(segmentType, segmentVariantString) {
   if (segmentType === 'separator') return;
@@ -282,18 +395,9 @@ function supportCheck(segmentType, segmentVariantString) {
 
 // OLD: takes a street's `segments` (array) from streetmix and a `streetElementId` (string) and places objects to make up a street with all segments
 // NEW: takes a `segments` (array) from streetmix and return an element and its children which represent the 3D street scene
-function parseStreetmixSegments(
-  segments,
-  showStriping,
-  length,
-  globalAnimated,
-  showVehicles
-) {
+function parseStreetmixSegments(segments, showStriping, length, showVehicles) {
   // create and center offset to center the street around global x position of 0
-  var streetParentEl = createCenteredStreetElement(segments);
-  streetParentEl.classList.add('street-parent');
-  streetParentEl.setAttribute('data-layer-name', 'Street Segments Container');
-  streetParentEl.setAttribute('data-no-transform', '');
+  var segmentEls = [];
 
   var cumulativeWidthInMeters = 0;
   for (var i = 0; i < segments.length; i++) {
@@ -527,7 +631,6 @@ function parseStreetmixSegments(
       );
     } else if (segments[i].type === 'drive-lane') {
       if (showVehicles) {
-        // const isAnimated = variantList[2] === 'animated' || globalAnimated;
         segmentParentEl.setAttribute(
           'street-generated-clones',
           `mode: random;
@@ -797,25 +900,12 @@ function parseStreetmixSegments(
         );
       }
     }
-
-    // append the new surfaceElement to the segmentParentEl
-    streetParentEl.append(segmentParentEl);
     segmentParentEl.setAttribute('position', segmentPositionX + ' 0 0');
     segmentParentEl.setAttribute(
       'data-layer-name',
       '' + segments[i].type + ' • ' + variantList[0]
     );
+    segmentEls.push(segmentParentEl);
   }
-
-  // create new brown box to represent ground underneath street
-  const dirtBox = document.createElement('a-box');
-  const xPos = cumulativeWidthInMeters / 2;
-  dirtBox.setAttribute('position', `${xPos} -1 0`); // what is x? x = 0 - cumulativeWidthInMeters / 2
-  dirtBox.setAttribute('height', 2); // height is 2 meters from y of -0.1 to -y of 2.1
-  dirtBox.setAttribute('width', cumulativeWidthInMeters);
-  dirtBox.setAttribute('depth', length - 0.2); // depth is length - 0.1 on each side
-  dirtBox.setAttribute('material', `color: ${STREET.colors.brown};`);
-  dirtBox.setAttribute('data-layer-name', 'Underground');
-  streetParentEl.append(dirtBox);
-  return streetParentEl;
+  return segmentEls;
 }
