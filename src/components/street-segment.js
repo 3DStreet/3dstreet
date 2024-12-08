@@ -281,6 +281,16 @@ AFRAME.registerComponent('street-segment', {
         this.el.setAttribute(componentName, 'direction', this.data.direction);
       }
     }
+    // propagate change of length to generated components is solo changed
+    if (
+      Object.keys(dataDiff).length === 1 &&
+      Object.keys(dataDiff).includes('length')
+    ) {
+      this.updateGeneratedComponentsList(); // if components were created through streetmix or streetplan import
+      for (const componentName of this.generatedComponents) {
+        this.el.setAttribute(componentName, 'length', this.data.length);
+      }
+    }
     this.clearMesh();
     this.height = this.calculateHeight(data.level);
     this.tempXPosition = this.el.getAttribute('position').x;

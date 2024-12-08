@@ -79,6 +79,10 @@ AFRAME.registerComponent('managed-street', {
       this.applyJustification();
       this.createOrUpdateJustifiedDirtBox();
     }
+
+    if (Object.keys(dataDiff).includes('length')) {
+      this.applyLength();
+    }
     // if the value of length changes, then we need to update the length of all the child objects
     // we need to get a list of all the child objects whose length we need to change
   },
@@ -92,6 +96,15 @@ AFRAME.registerComponent('managed-street', {
     } else if (data.sourceType === 'json-blob') {
       this.refreshFromJSONBlob(data.sourceValue);
     }
+  },
+  applyLength: function () {
+    const data = this.data;
+    const segmentEls = this.managedEntities;
+    const streetLength = data.length;
+
+    segmentEls.forEach((segmentEl) => {
+      segmentEl.setAttribute('street-segment', 'length', streetLength);
+    });
   },
   applyJustification: function () {
     const data = this.data;
