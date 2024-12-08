@@ -296,6 +296,10 @@ AFRAME.registerComponent('street-segment', {
     this.tempXPosition = this.el.getAttribute('position').x;
     this.el.setAttribute('position', { x: this.tempXPosition, y: this.height });
     this.generateMesh(data);
+    // if width was changed, trigger re-justification of all street-segments by the managed-street
+    if (Object.keys(dataDiff).includes('width')) {
+      this.el.parentNode.components['managed-street'].applyJustification();
+    }
   },
   // for streetmix elevation number values of -1, 0, 1, 2, calculate heightLevel in three.js meters units
   calculateHeight: function (elevationLevel) {
