@@ -50,6 +50,32 @@ export function createMapbox() {
   });
 }
 
+export function createManagedStreet(position) {
+  // This creates a new Managed Street
+  let streetmixURL = prompt(
+    'Please enter a Streetmix URL',
+    'https://streetmix.net/kfarr/3/3dstreet-demo-street'
+  );
+
+  if (streetmixURL && streetmixURL !== '') {
+    const definition = {
+      id: createUniqueId(),
+      components: {
+        position: position ?? '0 0 0',
+        'managed-street': {
+          sourceType: 'streetmix-url',
+          sourceValue: streetmixURL,
+          showVehicles: true,
+          showStriping: true,
+          synchronize: true
+        }
+      }
+    };
+
+    AFRAME.INSPECTOR.execute('entitycreate', definition);
+  }
+}
+
 export function createStreetmixStreet(position, streetmixURL, hideBuildings) {
   // This code snippet allows the creation of an additional Streetmix street
   // in your 3DStreet scene without replacing any existing streets.

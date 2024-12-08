@@ -9,7 +9,8 @@ import {
   create80ftRightOfWay,
   create94ftRightOfWay,
   create150ftRightOfWay,
-  createImageEntity
+  createImageEntity,
+  createManagedStreet
 } from './createLayerFunctions';
 
 export const streetLayersData = [
@@ -114,5 +115,15 @@ export const customLayersData = [
       'Place an image such as a sign, reference photo, custom map, etc.',
     id: 4,
     handlerFunction: createImageEntity
+  },
+  {
+    name: 'Create Managed Street (Beta)',
+    img: '',
+    requiresPro: true,
+    icon: '',
+    description:
+      'Create a new street from Streetmix using the Managed Street component.',
+    id: 5,
+    handlerFunction: createManagedStreet
   }
 ];
