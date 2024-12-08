@@ -50,27 +50,32 @@ AFRAME.registerComponent('managed-street', {
       oneOf: ['center', 'left', 'right']
     },
     justifyLength: {
-      default: 'start',
+      default: 'middle',
       type: 'string',
       oneOf: ['middle', 'start', 'end']
     }
   },
   init: function () {
-    this.createdEntities = [];
+    this.managedEntities = [];
     this.pendingEntities = [];
     // Bind the method to preserve context
     this.refreshFromSource = this.refreshFromSource.bind(this);
   },
   update: function (oldData) {
     const data = this.data;
+    const dataDiff = AFRAME.utils.diff(oldData, data);
+
     if (data.synchronize) {
       this.el.setAttribute('managed-street', 'synchronize', false);
       this.refreshFromSource();
     }
+
     if (
-      oldData.justifyWidth !== data.justifyWidth ||
-      oldData.justifyLength !== data.justifyLength
+      Object.keys(dataDiff).length === 1 &&
+      (Object.keys(dataDiff).includes('justifyWidth') ||
+        Object.keys(dataDiff).includes('justifyLength'))
     ) {
+      this.refreshManagedEntities();
       this.applyJustification();
       this.createOrUpdateJustifiedDirtBox();
     }
@@ -90,7 +95,7 @@ AFRAME.registerComponent('managed-street', {
   },
   applyJustification: function () {
     const data = this.data;
-    const segmentEls = this.createdEntities;
+    const segmentEls = this.managedEntities;
     const streetWidth = data.width;
     const streetLength = data.length;
 
@@ -125,6 +130,14 @@ AFRAME.registerComponent('managed-street', {
       xPosition += segmentWidth / 2;
     });
   },
+  refreshManagedEntities: function () {
+    // create a list again of the managed entities
+    this.managedEntities = [];
+    const segmentEls = this.el.querySelectorAll('[street-segment]');
+    segmentEls.forEach((segmentEl) => {
+      this.managedEntities.push(segmentEl);
+    });
+  },
   createOrUpdateJustifiedDirtBox: function () {
     const data = this.data;
     const streetWidth = data.width;
@@ -133,6 +146,10 @@ AFRAME.registerComponent('managed-street', {
     }
     console.log('streetWidth', streetWidth);
     const streetLength = data.length;
+    if (!this.justifiedDirtBox) {
+      // try to find an existing dirt box
+      this.justifiedDirtBox = this.el.querySelector('.dirtbox');
+    }
     if (!this.justifiedDirtBox) {
       // create new brown box to represent ground underneath street
       const dirtBox = document.createElement('a-box');
@@ -253,11 +270,14 @@ AFRAME.registerComponent('managed-street', {
     if (index > -1) {
       this.pendingEntities.splice(index, 1);
     }
-    this.createdEntities.push(entity);
+    this.managedEntities.push(entity);
     // If no more pending entities, resolve the promise
     if (this.pendingEntities.length === 0) {
       this.resolveAllLoaded();
     }
+  },
+  remove: function () {
+    this.managedEntities.forEach((entity) => entity.remove());
   }
 });
 
