@@ -31,20 +31,9 @@ const SignInModal = () => {
       onClose={onClose}
     >
       <div className={styles.contentWrapper}>
-        <h2 className={styles.title}>Sign in to 3DStreet Cloud</h2>
+        <h2 className={styles.title}>Sign in</h2>
         <div className={styles.content}>
-          <p className={styles.p1}>
-            Save and share your street scenes by clicking on a provider below to
-            log-in or automatically create a{' '}
-            <a
-              href="https://www.3dstreet.org/docs/3dstreet-editor/saving-and-loading-scenes"
-              target="_blank"
-              rel="noopener noreferrer"
-            >
-              3DStreet Cloud account
-            </a>{' '}
-            if you don&apos;t already have one.
-          </p>
+          <p className={styles.p1}>Sign in to save your project.</p>
         </div>
         <div
           onClick={() => {
