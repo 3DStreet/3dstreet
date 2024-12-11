@@ -290,7 +290,9 @@ AFRAME.registerComponent('managed-street', {
     }
   },
   remove: function () {
-    this.managedEntities.forEach((entity) => entity.remove());
+    this.managedEntities.forEach(
+      (entity) => entity.parentNode && entity.remove()
+    );
     this.managedEntities.length = 0; // Clear the array
   }
 });
