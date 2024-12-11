@@ -1,4 +1,4 @@
-const Camera32Icon = () => (
+export const Camera32Icon = () => (
   <svg
     width="32"
     height="32"
@@ -19,7 +19,7 @@ const Camera32Icon = () => (
   </svg>
 );
 
-const Rotate24Icon = () => (
+export const Rotate24Icon = () => (
   <svg
     width="24"
     height="24"
@@ -34,7 +34,7 @@ const Rotate24Icon = () => (
   </svg>
 );
 
-const Translate24Icon = () => (
+export const Translate24Icon = () => (
   <svg
     width="24"
     height="24"
@@ -57,7 +57,7 @@ const Translate24Icon = () => (
   </svg>
 );
 
-const Cloud24Icon = () => (
+export const Cloud24Icon = () => (
   <svg
     xmlns="http://www.w3.org/2000/svg"
     width="24"
@@ -78,7 +78,7 @@ const Cloud24Icon = () => (
   </svg>
 );
 
-const Load24Icon = () => (
+export const Load24Icon = () => (
   <svg
     xmlns="http://www.w3.org/2000/svg"
     width="24"
@@ -93,7 +93,7 @@ const Load24Icon = () => (
   </svg>
 );
 
-const Save24Icon = () => (
+export const Save24Icon = () => (
   <svg
     width="24"
     height="24"
@@ -111,7 +111,7 @@ const Save24Icon = () => (
   </svg>
 );
 
-const Upload24Icon = () => (
+export const Upload24Icon = () => (
   <svg
     width="24"
     height="24"
@@ -129,7 +129,7 @@ const Upload24Icon = () => (
   </svg>
 );
 
-const Cross32Icon = () => (
+export const Cross32Icon = () => (
   <svg
     width="32"
     height="32"
@@ -147,7 +147,7 @@ const Cross32Icon = () => (
   </svg>
 );
 
-const Cross24Icon = () => (
+export const Cross24Icon = () => (
   <svg
     width="24"
     height="24"
@@ -165,7 +165,7 @@ const Cross24Icon = () => (
   </svg>
 );
 
-const Compass32Icon = () => (
+export const Compass32Icon = () => (
   <svg
     width="33"
     height="33"
@@ -184,7 +184,7 @@ const Compass32Icon = () => (
   </svg>
 );
 
-const ArrowDown24Icon = () => (
+export const ArrowDown24Icon = () => (
   <svg
     width="24"
     height="24"
@@ -202,7 +202,7 @@ const ArrowDown24Icon = () => (
   </svg>
 );
 
-const ArrowUp24Icon = () => (
+export const ArrowUp24Icon = () => (
   <svg
     width="24"
     height="24"
@@ -220,7 +220,7 @@ const ArrowUp24Icon = () => (
   </svg>
 );
 
-const CheckIcon = (className) => (
+export const CheckIcon = (className) => (
   <svg
     className={className}
     width="8"
@@ -239,7 +239,7 @@ const CheckIcon = (className) => (
   </svg>
 );
 
-const DropdownArrowIcon = () => (
+export const DropdownArrowIcon = () => (
   <svg
     xmlns="http://www.w3.org/2000/svg"
     width="20"
@@ -251,7 +251,7 @@ const DropdownArrowIcon = () => (
   </svg>
 );
 
-const Mangnifier20Icon = () => (
+export const Mangnifier20Icon = () => (
   <svg
     xmlns="http://www.w3.org/2000/svg"
     width="20"
@@ -268,7 +268,7 @@ const Mangnifier20Icon = () => (
   </svg>
 );
 
-const Edit32Icon = () => (
+export const Edit32Icon = () => (
   <svg
     xmlns="http://www.w3.org/2000/svg"
     width="33"
@@ -285,7 +285,7 @@ const Edit32Icon = () => (
   </svg>
 );
 
-const Edit24Icon = () => (
+export const Edit24Icon = () => (
   <svg
     width="18"
     height="18"
@@ -302,7 +302,7 @@ const Edit24Icon = () => (
   </svg>
 );
 
-const CheckMark32Icon = () => (
+export const CheckMark32Icon = () => (
   <svg
     xmlns="http://www.w3.org/2000/svg"
     width="33"
@@ -319,7 +319,7 @@ const CheckMark32Icon = () => (
   </svg>
 );
 
-const Action24 = () => (
+export const Action24 = () => (
   <svg
     width="24"
     height="24"
@@ -362,7 +362,7 @@ const Action24 = () => (
   </svg>
 );
 
-const DownloadIcon = () => (
+export const DownloadIcon = () => (
   <svg
     width="24"
     height="25"
@@ -379,7 +379,7 @@ const DownloadIcon = () => (
   </svg>
 );
 
-const Copy32Icon = ({ className }) => (
+export const Copy32Icon = ({ className }) => (
   <svg
     className={className}
     xmlns="http://www.w3.org/2000/svg"
@@ -397,7 +397,7 @@ const Copy32Icon = ({ className }) => (
   </svg>
 );
 
-const DropdownIcon = () => (
+export const DropdownIcon = () => (
   <svg
     xmlns="http://www.w3.org/2000/svg"
     width="20"
@@ -420,7 +420,7 @@ const DropdownIcon = () => (
   </svg>
 );
 
-const Loader = ({ className }) => (
+export const Loader = ({ className }) => (
   <svg
     xmlns="http://www.w3.org/2000/svg"
     width="48"
@@ -448,7 +448,7 @@ const Loader = ({ className }) => (
   </svg>
 );
 
-const RemixIcon = ({ className }) => (
+export const RemixIcon = ({ className }) => (
   <svg
     viewBox="0 0 95 65"
     xmlns="http://www.w3.org/2000/svg"
@@ -463,7 +463,7 @@ const RemixIcon = ({ className }) => (
   </svg>
 );
 
-const ArrowLeftIcon = ({ className }) => (
+export const ArrowLeftIcon = ({ className }) => (
   <svg
     xmlns="http://www.w3.org/2000/svg"
     width="8"
@@ -476,7 +476,7 @@ const ArrowLeftIcon = ({ className }) => (
   </svg>
 );
 
-const ArrowRightIcon = ({ className }) => (
+export const ArrowRightIcon = ({ className }) => (
   <svg
     xmlns="http://www.w3.org/2000/svg"
     width="32"
@@ -489,7 +489,7 @@ const ArrowRightIcon = ({ className }) => (
   </svg>
 );
 
-const LayersIcon = ({ className }) => (
+export const LayersIcon = ({ className }) => (
   <svg
     xmlns="http://www.w3.org/2000/svg"
     width="24"
@@ -519,7 +519,7 @@ const LayersIcon = ({ className }) => (
   </svg>
 );
 
-const GoogleSignInButtonSVG = ({ className }) => (
+export const GoogleSignInButtonSVG = ({ className }) => (
   <svg
     width="175"
     height="40"
@@ -563,7 +563,7 @@ const GoogleSignInButtonSVG = ({ className }) => (
   </svg>
 );
 
-const Chevron24Down = ({ className }) => (
+export const Chevron24Down = ({ className }) => (
   <svg
     xmlns="http://www.w3.org/2000/svg"
     width="20"
@@ -579,7 +579,7 @@ const Chevron24Down = ({ className }) => (
   </svg>
 );
 
-const Plus20Circle = ({ className }) => (
+export const Plus20Circle = ({ className }) => (
   <svg
     xmlns="http://www.w3.org/2000/svg"
     width="16"
@@ -603,7 +603,7 @@ const Plus20Circle = ({ className }) => (
   </svg>
 );
 
-const QR32Icon = () => (
+export const QR32Icon = () => (
   <svg
     width="800px"
     height="800px"
@@ -618,7 +618,7 @@ const QR32Icon = () => (
   </svg>
 );
 
-const ScreenshotIcon = () => (
+export const ScreenshotIcon = () => (
   <svg
     width="20"
     height="21"
@@ -645,7 +645,7 @@ const ScreenshotIcon = () => (
   </svg>
 );
 
-const Object24Icon = () => (
+export const Object24Icon = () => (
   <svg
     width="24"
     height="28"
@@ -664,7 +664,7 @@ const Object24Icon = () => (
   </svg>
 );
 
-const SignInMicrosoftIconSVG = () => (
+export const SignInMicrosoftIconSVG = () => (
   <svg
     xmlns="http://www.w3.org/2000/svg"
     width="215"
@@ -757,7 +757,7 @@ const SignInMicrosoftIconSVG = () => (
   </svg>
 );
 
-const ManagedStreetIcon = () => (
+export const ManagedStreetIcon = () => (
   <svg
     width="26"
     height="24"
@@ -785,7 +785,8 @@ const ManagedStreetIcon = () => (
     <path d="M10 3L1 21" stroke="white" strokeLinecap="round" />
   </svg>
 );
-const SegmentIcon = () => (
+
+export const SegmentIcon = () => (
   <svg
     width="28"
     height="28"
@@ -827,42 +828,3 @@ const SegmentIcon = () => (
     />
   </svg>
 );
-
-export {
-  Camera32Icon,
-  Save24Icon,
-  Load24Icon,
-  Cross32Icon,
-  Cross24Icon,
-  Compass32Icon,
-  ArrowDown24Icon,
-  ArrowUp24Icon,
-  CheckIcon,
-  DropdownArrowIcon,
-  Cloud24Icon,
-  Mangnifier20Icon,
-  Upload24Icon,
-  Edit32Icon,
-  Edit24Icon,
-  CheckMark32Icon,
-  Copy32Icon,
-  DropdownIcon,
-  Loader,
-  RemixIcon,
-  ArrowLeftIcon,
-  ArrowRightIcon,
-  LayersIcon,
-  GoogleSignInButtonSVG,
-  Chevron24Down,
-  Plus20Circle,
-  QR32Icon,
-  ScreenshotIcon,
-  DownloadIcon,
-  Action24,
-  SignInMicrosoftIconSVG,
-  Rotate24Icon,
-  Translate24Icon,
-  Object24Icon,
-  SegmentIcon,
-  ManagedStreetIcon
-};
