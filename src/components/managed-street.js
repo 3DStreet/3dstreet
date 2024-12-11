@@ -218,6 +218,8 @@ AFRAME.registerComponent('managed-street', {
     request.onload = function () {
       if (this.status >= 200 && this.status < 400) {
         // Connection success
+        self.refreshManagedEntities();
+        self.remove();
         const streetmixResponseObject = JSON.parse(this.response);
         // convert units of measurement if necessary
         const streetData = streetmixUtils.convertStreetValues(
