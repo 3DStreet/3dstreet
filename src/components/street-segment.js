@@ -283,7 +283,12 @@ AFRAME.registerComponent('street-segment', {
     this.clearMesh();
     this.height = this.calculateHeight(data.level);
     this.tempXPosition = this.el.getAttribute('position').x;
-    this.el.setAttribute('position', { x: this.tempXPosition, y: this.height });
+    this.tempZPosition = this.el.getAttribute('position').z;
+    this.el.setAttribute('position', {
+      x: this.tempXPosition,
+      y: this.height,
+      z: this.tempZPosition
+    });
     this.generateMesh(data);
     // if width was changed, trigger re-justification of all street-segments by the managed-street
     if (changedProps.includes('width')) {
