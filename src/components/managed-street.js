@@ -146,11 +146,9 @@ AFRAME.registerComponent('managed-street', {
   },
   refreshManagedEntities: function () {
     // create a list again of the managed entities
-    this.managedEntities = [];
-    const segmentEls = this.el.querySelectorAll('[street-segment]');
-    segmentEls.forEach((segmentEl) => {
-      this.managedEntities.push(segmentEl);
-    });
+    this.managedEntities = Array.from(
+      this.el.querySelectorAll('[street-segment]')
+    );
   },
   createOrUpdateJustifiedDirtBox: function () {
     const data = this.data;
