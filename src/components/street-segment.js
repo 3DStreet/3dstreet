@@ -256,15 +256,10 @@ AFRAME.registerComponent('street-segment', {
   update: function (oldData) {
     const data = this.data;
     const dataDiff = AFRAME.utils.diff(oldData, data);
-    // if oldData is same as current data, then don't update
-    if (AFRAME.utils.deepEqual(oldData, data)) {
-      return;
-    }
+    const changedProps = Object.keys(dataDiff);
+
     // regenerate components if only type has changed
-    if (
-      Object.keys(dataDiff).length === 1 &&
-      Object.keys(dataDiff).includes('type')
-    ) {
+    if (changedProps.length === 1 && changedProps.includes('type')) {
       let typeObject = this.types[this.data.type];
       this.updateGeneratedComponentsList(); // if components were created through streetmix or streetplan import
       this.remove();
@@ -272,20 +267,14 @@ AFRAME.registerComponent('street-segment', {
       this.updateSurfaceFromType(typeObject); // update surface color, surface, level
     }
     // propagate change of direction to generated components is solo changed
-    if (
-      Object.keys(dataDiff).length === 1 &&
-      Object.keys(dataDiff).includes('direction')
-    ) {
+    if (changedProps.includes('direction')) {
       this.updateGeneratedComponentsList(); // if components were created through streetmix or streetplan import
       for (const componentName of this.generatedComponents) {
         this.el.setAttribute(componentName, 'direction', this.data.direction);
       }
     }
     // propagate change of length to generated components is solo changed
-    if (
-      Object.keys(dataDiff).length === 1 &&
-      Object.keys(dataDiff).includes('length')
-    ) {
+    if (changedProps.includes('length')) {
       this.updateGeneratedComponentsList(); // if components were created through streetmix or streetplan import
       for (const componentName of this.generatedComponents) {
         this.el.setAttribute(componentName, 'length', this.data.length);
@@ -297,7 +286,7 @@ AFRAME.registerComponent('street-segment', {
     this.el.setAttribute('position', { x: this.tempXPosition, y: this.height });
     this.generateMesh(data);
     // if width was changed, trigger re-justification of all street-segments by the managed-street
-    if (Object.keys(dataDiff).includes('width')) {
+    if (changedProps.includes('width')) {
       this.el.parentNode.components['managed-street'].applyJustification();
     }
   },
