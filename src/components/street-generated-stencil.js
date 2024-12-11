@@ -103,8 +103,7 @@ AFRAME.registerComponent('street-generated-stencil', {
     const data = this.data;
 
     // Clean up old entities
-    this.createdEntities.forEach((entity) => entity.remove());
-    this.createdEntities.length = 0; // Clear the array
+    this.remove();
 
     // Use either stencils array or single model
     let stencilsToUse = data.stencils.length > 0 ? data.stencils : [data.model];

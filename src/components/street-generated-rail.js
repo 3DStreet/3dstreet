@@ -22,8 +22,7 @@ AFRAME.registerComponent('street-generated-rail', {
   },
   update: function (oldData) {
     // Clean up old entities
-    this.createdEntities.forEach((entity) => entity.remove());
-    this.createdEntities.length = 0; // Clear the array
+    this.remove();
 
     const clone = document.createElement('a-entity');
     clone.setAttribute('data-layer-name', 'Cloned Railroad Tracks');

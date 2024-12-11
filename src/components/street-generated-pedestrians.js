@@ -54,8 +54,7 @@ AFRAME.registerComponent('street-generated-pedestrians', {
     const data = this.data;
 
     // Clean up old entities
-    this.createdEntities.forEach((entity) => entity.remove());
-    this.createdEntities.length = 0; // Clear the array
+    this.remove();
 
     // Calculate x position range based on segment width
     const xRange = {

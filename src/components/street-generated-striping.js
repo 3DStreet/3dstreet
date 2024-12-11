@@ -41,8 +41,8 @@ AFRAME.registerComponent('street-generated-striping', {
     const data = this.data;
 
     // Clean up old entities
-    this.createdEntities.forEach((entity) => entity.remove());
-    this.createdEntities.length = 0; // Clear the array
+    this.remove();
+
     if (data.striping === 'invisible') {
       return;
     }
