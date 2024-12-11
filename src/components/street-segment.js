@@ -309,6 +309,7 @@ AFRAME.registerComponent('street-segment', {
     this.generatedComponents.forEach((componentName) => {
       this.el.removeAttribute(componentName);
     });
+    this.generatedComponents.length = 0;
   },
   generateMesh: function (data) {
     // create geometry
