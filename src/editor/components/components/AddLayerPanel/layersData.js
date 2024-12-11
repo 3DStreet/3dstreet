@@ -72,6 +72,16 @@ export const streetLayersData = [
       'Create intersection entity. Parameters of intersection component could be changed in properties panel.',
     id: 7,
     handlerFunction: createIntersection
+  },
+  {
+    name: 'Create Managed Street (Beta)',
+    img: '',
+    requiresPro: true,
+    icon: '',
+    description:
+      'Create a new street from Streetmix using the Managed Street component.',
+    id: 8,
+    handlerFunction: createManagedStreet
   }
 ];
 
@@ -115,15 +125,5 @@ export const customLayersData = [
       'Place an image such as a sign, reference photo, custom map, etc.',
     id: 4,
     handlerFunction: createImageEntity
-  },
-  {
-    name: 'Create Managed Street (Beta)',
-    img: '',
-    requiresPro: true,
-    icon: '',
-    description:
-      'Create a new street from Streetmix using the Managed Street component.',
-    id: 5,
-    handlerFunction: createManagedStreet
   }
 ];
