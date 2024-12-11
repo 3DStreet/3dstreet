@@ -87,8 +87,7 @@ AFRAME.registerComponent('managed-street', {
     // we need to get a list of all the child objects whose length we need to change
   },
   refreshFromSource: function () {
-    const self = this;
-    const data = self.data;
+    const data = this.data;
     if (data.sourceType === 'streetmix-url') {
       this.loadAndParseStreetmixURL(data.sourceValue);
     } else if (data.sourceType === 'streetplan-url') {
