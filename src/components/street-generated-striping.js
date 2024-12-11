@@ -35,14 +35,14 @@ AFRAME.registerComponent('street-generated-striping', {
   },
   remove: function () {
     this.createdEntities.forEach((entity) => entity.remove());
+    this.createdEntities.length = 0; // Clear the array
   },
   update: function (oldData) {
     const data = this.data;
-    if (AFRAME.utils.deepEqual(oldData, data)) return;
 
     // Clean up old entities
     this.createdEntities.forEach((entity) => entity.remove());
-    this.createdEntities = [];
+    this.createdEntities.length = 0; // Clear the array
     if (data.striping === 'invisible') {
       return;
     }

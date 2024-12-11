@@ -36,18 +36,15 @@ AFRAME.registerComponent('street-generated-clones', {
 
   remove: function () {
     this.createdEntities.forEach((entity) => entity.remove());
+    this.createdEntities.length = 0; // Clear the array
   },
 
   update: function (oldData) {
     const data = this.data;
 
-    if (AFRAME.utils.deepEqual(oldData, data)) {
-      return;
-    }
-
     // Clear existing entities
     this.createdEntities.forEach((entity) => entity.remove());
-    this.createdEntities = [];
+    this.createdEntities.length = 0; // Clear the array
 
     // Generate new entities based on mode
     switch (data.mode) {

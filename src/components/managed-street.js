@@ -70,17 +70,18 @@ AFRAME.registerComponent('managed-street', {
       this.refreshFromSource();
     }
 
+    const dataDiffKeys = Object.keys(dataDiff);
     if (
-      Object.keys(dataDiff).length === 1 &&
-      (Object.keys(dataDiff).includes('justifyWidth') ||
-        Object.keys(dataDiff).includes('justifyLength'))
+      dataDiffKeys.length === 1 &&
+      (dataDiffKeys.includes('justifyWidth') ||
+        dataDiffKeys.includes('justifyLength'))
     ) {
       this.refreshManagedEntities();
       this.applyJustification();
       this.createOrUpdateJustifiedDirtBox();
     }
 
-    if (Object.keys(dataDiff).includes('length')) {
+    if (dataDiffKeys.includes('length')) {
       this.applyLength();
     }
     // if the value of length changes, then we need to update the length of all the child objects
@@ -390,13 +391,13 @@ function getRandomIntInclusive(min, max) {
 }
 
 function getSegmentColor(variant) {
-  if ((variant === 'red') | (variant === 'colored')) {
+  if (variant === 'red' || variant === 'colored') {
     return window.STREET.colors.red;
   }
   if (variant === 'blue') {
     return window.STREET.colors.blue;
   }
-  if ((variant === 'green') | (variant === 'grass')) {
+  if (variant === 'green' || variant === 'grass') {
     return window.STREET.colors.green;
   }
   return window.STREET.colors.white;
