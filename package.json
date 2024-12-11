@@ -54,7 +54,6 @@
   },
   "devDependencies": {
     "@babel/eslint-parser": "^7.24.5",
-    "@babel/preset-env": "^7.24.0",
     "@babel/preset-react": "^7.23.3",
     "@storybook/addon-essentials": "^7.6.3",
     "@storybook/addon-interactions": "^7.6.3",
