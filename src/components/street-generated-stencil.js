@@ -145,7 +145,7 @@ AFRAME.registerComponent('street-generated-stencil', {
         if (data.stencilHeight > 0) {
           clone.addEventListener('loaded', (evt) => {
             evt.target.setAttribute('geometry', 'height', data.stencilHeight);
-            evt.target.setAttribute('atlas-uvs', 'forceRefresh', true);
+            evt.target.components['atlas-uvs'].update();
           });
         }
 
