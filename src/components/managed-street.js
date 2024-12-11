@@ -82,6 +82,7 @@ AFRAME.registerComponent('managed-street', {
     }
 
     if (dataDiffKeys.includes('length')) {
+      this.refreshManagedEntities();
       this.applyLength();
     }
     // if the value of length changes, then we need to update the length of all the child objects
@@ -290,6 +291,7 @@ AFRAME.registerComponent('managed-street', {
   },
   remove: function () {
     this.managedEntities.forEach((entity) => entity.remove());
+    this.managedEntities.length = 0; // Clear the array
   }
 });
 
