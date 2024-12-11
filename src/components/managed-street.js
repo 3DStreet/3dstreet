@@ -259,6 +259,7 @@ AFRAME.registerComponent('managed-street', {
         self.allLoadedPromise.then(() => {
           self.applyJustification();
           self.createOrUpdateJustifiedDirtBox();
+          AFRAME.INSPECTOR.selectEntity(self.el);
         });
       } else {
         // We reached our target server, but it returned an error
