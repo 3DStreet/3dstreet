@@ -156,7 +156,6 @@ AFRAME.registerComponent('managed-street', {
     if (!streetWidth) {
       return;
     }
-    console.log('streetWidth', streetWidth);
     const streetLength = data.length;
     if (!this.justifiedDirtBox) {
       // try to find an existing dirt box
