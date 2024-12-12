@@ -9,7 +9,8 @@ import {
   create80ftRightOfWay,
   create94ftRightOfWay,
   create150ftRightOfWay,
-  createImageEntity
+  createImageEntity,
+  createManagedStreet
 } from './createLayerFunctions';
 
 export const streetLayersData = [
@@ -71,6 +72,16 @@ export const streetLayersData = [
       'Create intersection entity. Parameters of intersection component could be changed in properties panel.',
     id: 7,
     handlerFunction: createIntersection
+  },
+  {
+    name: 'Create Managed Street (Beta)',
+    img: '',
+    requiresPro: true,
+    icon: '',
+    description:
+      'Create a new street from Streetmix using the Managed Street component.',
+    id: 8,
+    handlerFunction: createManagedStreet
   }
 ];
 

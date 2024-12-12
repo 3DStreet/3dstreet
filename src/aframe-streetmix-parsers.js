@@ -352,7 +352,7 @@ function getBikeLaneMixin(variant) {
 }
 
 function getBusLaneMixin(variant) {
-  if ((variant === 'colored') | (variant === 'red')) {
+  if (variant === 'colored' || variant === 'red') {
     return 'surface-red bus-lane';
   }
   if (variant === 'blue') {
