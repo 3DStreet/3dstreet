@@ -1,3 +1,4 @@
+import Events from '../Events.js';
 import { Command } from '../command.js';
 import { createUniqueId } from '../entity.js';
 
@@ -7,34 +8,52 @@ export class EntityRenameCommand extends Command {
 
     this.type = 'entityrename';
     this.name = 'Rename Entity';
-    this.updatable = false;
+    this.updatable = true; // Allow updating for consecutive renames
+
     if (!entity.id) {
       entity.id = createUniqueId();
     }
-    this.entityIdToRename = entity.id;
-    this.entityId = null;
+    this.entityId = entity.id;
+    this.oldName = entity.getAttribute('data-layer-name') || '';
+    this.newName = null; // Will be set during execute
   }
 
   execute() {
-    const entityToRename = document.getElementById(this.entityIdToRename);
-    // prompt for new name
-    const newName = prompt(
-      'Enter new name for entity',
-      entityToRename.getAttribute('data-layer-name')
-    );
+    const entity = document.getElementById(this.entityId);
+    if (!entity) return;
 
-    if (entityToRename && newName) {
-      entityToRename.setAttribute('data-layer-name', newName);
+    // If newName hasn't been set (first execution), prompt for it
+    if (this.newName === null) {
+      const promptedName = prompt('Enter new name for entity', this.oldName);
+      // If user cancels or enters empty name, abort
+      if (!promptedName) return;
+      this.newName = promptedName;
     }
+
+    // Apply the new name
+    entity.setAttribute('data-layer-name', this.newName);
+    Events.emit('entityrenamed', {
+      entity,
+      oldName: this.oldName,
+      newName: this.newName
+    });
   }
 
   undo() {
     const entity = document.getElementById(this.entityId);
     if (entity) {
-      // entity.parentNode.removeChild(entity);
-      // Events.emit('entityremoved', entity);
-      // this.editor.selectEntity(document.getElementById(this.entityIdToClone));
-      console.log('cannot undo rename');
+      // Restore the old name
+      entity.setAttribute('data-layer-name', this.oldName);
+      Events.emit('entityrenamed', {
+        entity,
+        oldName: this.newName,
+        newName: this.oldName
+      });
     }
+  }
+
+  update(command) {
+    // Handle consecutive renames by updating the newName
+    this.newName = command.newName;
   }
 }
