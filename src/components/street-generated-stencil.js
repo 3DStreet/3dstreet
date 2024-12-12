@@ -150,7 +150,7 @@ AFRAME.registerComponent('street-generated-stencil', {
         }
 
         // Set rotation - either random, specified facing, or inbound/outbound
-        var rotationY = data.facing;
+        let rotationY = data.facing;
         if (data.direction === 'inbound') {
           rotationY = 180 + data.facing;
         }

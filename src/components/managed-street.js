@@ -1,9 +1,9 @@
 /* global AFRAME */
 
 // Orientation - default model orientation is "outbound" (away from camera)
-var { segmentVariants } = require('../segments-variants.js');
-var streetmixUtils = require('../tested/streetmix-utils');
-var streetmixParsersTested = require('../tested/aframe-streetmix-parsers-tested');
+const { segmentVariants } = require('../segments-variants.js');
+const streetmixUtils = require('../tested/streetmix-utils');
+const streetmixParsersTested = require('../tested/aframe-streetmix-parsers-tested');
 
 // invoking from js console
 /*
@@ -438,22 +438,23 @@ function supportCheck(segmentType, segmentVariantString) {
 // NEW: takes a `segments` (array) from streetmix and return an element and its children which represent the 3D street scene
 function parseStreetmixSegments(segments, showStriping, length, showVehicles) {
   // create and center offset to center the street around global x position of 0
-  var segmentEls = [];
+  const segmentEls = [];
 
-  var cumulativeWidthInMeters = 0;
-  for (var i = 0; i < segments.length; i++) {
-    var segmentColor = null;
-    var segmentParentEl = document.createElement('a-entity');
+  let cumulativeWidthInMeters = 0;
+  for (let i = 0; i < segments.length; i++) {
+    let segmentColor = null;
+    const segmentParentEl = document.createElement('a-entity');
     segmentParentEl.classList.add('segment-parent-' + i);
 
-    var segmentWidthInMeters = segments[i].width;
+    const segmentWidthInMeters = segments[i].width;
     // console.log('Type: ' + segments[i].type + '; Width: ' + segmentWidthInFeet + 'ft / ' + segmentWidthInMeters + 'm');
 
     cumulativeWidthInMeters = cumulativeWidthInMeters + segmentWidthInMeters;
-    var segmentPositionX = cumulativeWidthInMeters - 0.5 * segmentWidthInMeters;
+    const segmentPositionX =
+      cumulativeWidthInMeters - 0.5 * segmentWidthInMeters;
 
     // get variantString
-    var variantList = segments[i].variantString
+    const variantList = segments[i].variantString
       ? segments[i].variantString.split('|')
       : '';
 
@@ -463,13 +464,13 @@ function parseStreetmixSegments(segments, showStriping, length, showVehicles) {
     // elevation property from streetmix segment
     const elevation = segments[i].elevation;
 
-    var direction =
+    const direction =
       variantList[0] === 'inbound' || variantList[1] === 'inbound'
         ? 'inbound'
         : 'outbound';
 
     // the A-Frame mixin ID is often identical to the corresponding streetmix segment "type" by design, let's start with that
-    var segmentPreset = segments[i].type;
+    let segmentPreset = segments[i].type;
 
     // look at segment type and variant(s) to determine specific cases
     if (segments[i].type === 'drive-lane' && variantList[1] === 'sharrow') {
@@ -530,7 +531,7 @@ function parseStreetmixSegments(segments, showStriping, length, showVehicles) {
             count: ${getRandomIntInclusive(2, 4)};`
         );
       }
-      var markerMixinId = variantList[1]; // set the mixin of the road markings to match the current variant name
+      let markerMixinId = variantList[1]; // set the mixin of the road markings to match the current variant name
       // Fix streetmix inbound turn lane orientation (change left to right) per: https://github.com/streetmix/streetmix/issues/683
       if (variantList[0] === 'inbound') {
         markerMixinId = markerMixinId.replace(/left|right/g, function (m) {
@@ -788,7 +789,7 @@ function parseStreetmixSegments(segments, showStriping, length, showVehicles) {
           `model: lamp-modern-double; length: ${length}; cycleOffset: 0.4;`
         );
       } else {
-        var rotationCloneY = variantList[0] === 'right' ? 0 : 180;
+        const rotationCloneY = variantList[0] === 'right' ? 0 : 180;
         segmentParentEl.setAttribute(
           'street-generated-clones',
           `model: lamp-modern; length: ${length}; facing: ${rotationCloneY}; cycleOffset: 0.4;`
@@ -822,7 +823,7 @@ function parseStreetmixSegments(segments, showStriping, length, showVehicles) {
         `model: lamp-traditional; length: ${length};`
       );
     } else if (segments[i].type === 'transit-shelter') {
-      var rotationBusStopY = variantList[0] === 'left' ? 90 : 270;
+      const rotationBusStopY = variantList[0] === 'left' ? 90 : 270;
       segmentParentEl.setAttribute(
         'street-generated-clones',
         `mode: single; model: bus-stop; length: ${length}; facing: ${rotationBusStopY};`

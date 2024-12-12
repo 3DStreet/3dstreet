@@ -80,10 +80,10 @@ AFRAME.registerComponent('street-generated-striping', {
   },
   calculateStripingMaterial: function (stripingName, length) {
     // calculate the repeatCount for the material
-    var stripingTextureId = 'striping-solid-stripe'; // drive-lane, bus-lane, bike-lane
-    var repeatY = length / 6;
-    var color = '#ffffff';
-    var stripingWidth = 0.2;
+    let stripingTextureId = 'striping-solid-stripe'; // drive-lane, bus-lane, bike-lane
+    let repeatY = length / 6;
+    let color = '#ffffff';
+    let stripingWidth = 0.2;
     if (stripingName === 'solid-stripe') {
       stripingTextureId = 'striping-solid-stripe';
     } else if (stripingName === 'dashed-stripe') {

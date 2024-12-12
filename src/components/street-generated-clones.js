@@ -107,7 +107,7 @@ AFRAME.registerComponent('street-generated-clones', {
       z: positionZ
     });
 
-    var rotationY = data.facing;
+    let rotationY = data.facing;
     if (data.direction === 'inbound') {
       rotationY = 0 + data.facing;
     }
