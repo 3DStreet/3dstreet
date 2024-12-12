@@ -37,6 +37,7 @@ export class EntityRenameCommand extends Command {
       oldName: this.oldName,
       newName: this.newName
     });
+    AFRAME.INSPECTOR.selectEntity(entity);
   }
 
   undo() {
@@ -49,6 +50,7 @@ export class EntityRenameCommand extends Command {
         oldName: this.newName,
         newName: this.oldName
       });
+      AFRAME.INSPECTOR.selectEntity(entity);
     }
   }
 
