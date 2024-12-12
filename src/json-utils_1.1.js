@@ -519,7 +519,10 @@ AFRAME.registerComponent('set-loader-from-hash', {
           'Load 3DStreet scene with fetchJSON from',
           streetURL
         );
-        this.fetchJSON(`${streetURL}.json`);
+        const jsonURL = streetURL.endsWith('.json')
+          ? streetURL
+          : `${streetURL}.json`;
+        this.fetchJSON(jsonURL);
       }
       // else {
       //   console.log('[set-loader-from-hash]','Using default URL', this.data.defaultURL)
