@@ -116,6 +116,15 @@ export function cloneEntity(entity) {
 }
 
 /**
+ * Rename an entity, inserting it after the cloned one.
+ * @param {Element} entity Entity to clone
+ * @returns {Element} The clone
+ */
+export function renameEntity(entity) {
+  return AFRAME.INSPECTOR.execute('entityrename', entity);
+}
+
+/**
  * Clone an entity, inserting it after the cloned one. This is the implementation of the entityclone command.
  * @param {Element} entity Entity to clone
  * @param {string|undefined} newId The new id to use for the clone
