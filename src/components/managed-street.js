@@ -81,9 +81,14 @@ AFRAME.registerComponent('managed-street', {
       this.createOrUpdateJustifiedDirtBox();
     }
 
+    if (dataDiffKeys.includes('width')) {
+      this.createOrUpdateJustifiedDirtBox();
+    }
+
     if (dataDiffKeys.includes('length')) {
       this.refreshManagedEntities();
       this.applyLength();
+      this.createOrUpdateJustifiedDirtBox();
     }
     // if the value of length changes, then we need to update the length of all the child objects
     // we need to get a list of all the child objects whose length we need to change
@@ -164,16 +169,15 @@ AFRAME.registerComponent('managed-street', {
     if (!this.justifiedDirtBox) {
       // create new brown box to represent ground underneath street
       const dirtBox = document.createElement('a-box');
-      // dirtBox.setAttribute('position', `${xPosition} -1 0`); // what is x? x = 0 - cumulativeWidthInMeters / 2
-      dirtBox.setAttribute('height', 2); // height is 2 meters from y of -0.1 to -y of 2.1
-      dirtBox.setAttribute('width', streetWidth);
-      dirtBox.setAttribute('depth', streetLength - 0.2); // depth is length - 0.1 on each side
-      dirtBox.setAttribute('material', `color: ${window.STREET.colors.brown};`);
-      dirtBox.setAttribute('data-layer-name', 'Underground');
       dirtBox.classList.add('dirtbox');
       this.el.append(dirtBox);
       this.justifiedDirtBox = dirtBox;
+      dirtBox.setAttribute('material', `color: ${window.STREET.colors.brown};`);
+      dirtBox.setAttribute('data-layer-name', 'Underground');
     }
+    this.justifiedDirtBox.setAttribute('height', 2); // height is 2 meters from y of -0.1 to -y of 2.1
+    this.justifiedDirtBox.setAttribute('width', streetWidth);
+    this.justifiedDirtBox.setAttribute('depth', streetLength - 0.2); // depth is length - 0.1 on each side
 
     // set starting xPosition for width justification
     let xPosition = 0; // default for center justified
