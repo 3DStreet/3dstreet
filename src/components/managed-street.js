@@ -251,9 +251,13 @@ AFRAME.registerComponent('managed-street', {
         self.pendingEntities = segmentEls;
         // for each pending entity Listen for loaded event
         for (const entity of self.pendingEntities) {
-          entity.addEventListener('loaded', () => {
-            self.onEntityLoaded(entity);
-          });
+          entity.addEventListener(
+            'loaded',
+            () => {
+              self.onEntityLoaded(entity);
+            },
+            { once: true }
+          );
         }
         // Set up a promise that resolves when all entities are loaded
         self.allLoadedPromise = new Promise((resolve) => {
