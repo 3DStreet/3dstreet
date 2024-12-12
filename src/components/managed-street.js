@@ -202,7 +202,7 @@ AFRAME.registerComponent('managed-street', {
       `${xPosition} -1 ${zPosition}`
     );
   },
-  loadAndParseStreetmixURL: function (streetmixURL) {
+  loadAndParseStreetmixURL: async function (streetmixURL) {
     const data = this.data;
     const streetmixAPIURL = streetmixUtils.streetmixUserToAPI(streetmixURL);
     console.log(
@@ -211,80 +211,67 @@ AFRAME.registerComponent('managed-street', {
       streetmixAPIURL
     );
 
-    const request = new XMLHttpRequest();
-    console.log('[managed-street] loader', 'GET ' + streetmixAPIURL);
+    try {
+      console.log('[managed-street] loader', 'GET ' + streetmixAPIURL);
+      const response = await fetch(streetmixAPIURL);
 
-    request.open('GET', streetmixAPIURL, true);
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
 
-    // Bind the component instance to use inside the callbacks
-    const self = this;
+      const streetmixResponseObject = await response.json();
+      this.refreshManagedEntities();
+      this.remove();
 
-    request.onload = function () {
-      if (this.status >= 200 && this.status < 400) {
-        // Connection success
-        self.refreshManagedEntities();
-        self.remove();
-        const streetmixResponseObject = JSON.parse(this.response);
-        // convert units of measurement if necessary
-        const streetData = streetmixUtils.convertStreetValues(
-          streetmixResponseObject.data.street
-        );
-        const streetmixSegments = streetData.segments;
+      // convert units of measurement if necessary
+      const streetData = streetmixUtils.convertStreetValues(
+        streetmixResponseObject.data.street
+      );
+      const streetmixSegments = streetData.segments;
 
-        const streetmixName = streetmixResponseObject.name;
+      const streetmixName = streetmixResponseObject.name;
 
-        self.el.setAttribute('data-layer-name', 'Street • ' + streetmixName);
-        const streetWidth = streetmixSegments.reduce(
-          (streetWidth, segmentData) => streetWidth + segmentData.width,
-          0
-        );
-        self.el.setAttribute('managed-street', 'width', streetWidth);
+      this.el.setAttribute('data-layer-name', 'Street • ' + streetmixName);
+      const streetWidth = streetmixSegments.reduce(
+        (streetWidth, segmentData) => streetWidth + segmentData.width,
+        0
+      );
+      this.el.setAttribute('managed-street', 'width', streetWidth);
 
-        const segmentEls = parseStreetmixSegments(
-          streetmixSegments,
-          data.showStriping,
-          data.length,
-          data.showVehicles
-        );
-        self.el.append(...segmentEls);
+      const segmentEls = parseStreetmixSegments(
+        streetmixSegments,
+        data.showStriping,
+        data.length,
+        data.showVehicles
+      );
+      this.el.append(...segmentEls);
 
-        self.pendingEntities = segmentEls;
-        // for each pending entity Listen for loaded event
-        for (const entity of self.pendingEntities) {
-          entity.addEventListener(
-            'loaded',
-            () => {
-              self.onEntityLoaded(entity);
-            },
-            { once: true }
-          );
-        }
-        // Set up a promise that resolves when all entities are loaded
-        self.allLoadedPromise = new Promise((resolve) => {
-          self.resolveAllLoaded = resolve;
-        });
-        // When all entities are loaded, do something with them
-        self.allLoadedPromise.then(() => {
-          self.applyJustification();
-          self.createOrUpdateJustifiedDirtBox();
-          AFRAME.INSPECTOR.selectEntity(self.el);
-        });
-      } else {
-        // We reached our target server, but it returned an error
-        console.log(
-          '[streetmix-loader]',
-          'Loading Error: We reached the target server, but it returned an error'
+      this.pendingEntities = segmentEls;
+      // for each pending entity Listen for loaded event
+      for (const entity of this.pendingEntities) {
+        entity.addEventListener(
+          'loaded',
+          () => {
+            this.onEntityLoaded(entity);
+          },
+          { once: true }
         );
       }
-    };
-    request.onerror = function () {
-      // There was a connection error of some sort
-      console.log(
-        '[streetmix-loader]',
-        'Loading Error: There was a connection error of some sort'
-      );
-    };
-    request.send();
+
+      // Set up a promise that resolves when all entities are loaded
+      this.allLoadedPromise = new Promise((resolve) => {
+        this.resolveAllLoaded = resolve;
+      });
+
+      // When all entities are loaded, do something with them
+      this.allLoadedPromise.then(() => {
+        this.applyJustification();
+        this.createOrUpdateJustifiedDirtBox();
+        AFRAME.INSPECTOR.selectEntity(this.el);
+      });
+    } catch (error) {
+      console.error('[managed-street] loader', 'Loading Error:', error);
+    }
   },
   onEntityLoaded: function (entity) {
     // Remove from pending set
