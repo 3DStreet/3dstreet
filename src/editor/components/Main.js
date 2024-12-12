@@ -17,6 +17,7 @@ import { PaymentModal } from './modals/PaymentModal';
 import { SceneEditTitle } from './components/SceneEditTitle';
 import { AddLayerPanel } from './components/AddLayerPanel';
 import { IntroModal } from './modals/IntroModal';
+import { NewModal } from './modals/NewModal';
 import { ToolbarWrapper } from './scenegraph/ToolbarWrapper.js';
 import useStore from '@/store';
 
@@ -130,6 +131,7 @@ export default function Main() {
       <ScenesModal />
       <ProfileModal />
       <IntroModal />
+      <NewModal />
       <LoadScript
         googleMapsApiKey={firebaseConfig.apiKey}
         libraries={GOOGLE_MAPS_LIBRARIES}

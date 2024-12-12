@@ -138,9 +138,9 @@ AFRAME.registerComponent('street', {
       this.el.append(buildingsEl);
     }
 
-    sceneUtils.saveSceneWithScreenshot(firebase.auth.currentUser, true);
     // the scene has been loaded, set the synchronize flag
     this.el.setAttribute('street', 'synchronize', false);
+    sceneUtils.saveSceneWithScreenshot(firebase.auth.currentUser, true);
   }
 });
 
