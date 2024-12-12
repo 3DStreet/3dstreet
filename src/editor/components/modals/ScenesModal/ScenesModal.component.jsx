@@ -3,13 +3,9 @@ import { useAuthContext } from '../../../contexts';
 import { Button, SceneCard, Tabs } from '../../components';
 import Modal from '../Modal.jsx';
 import styles from './ScenesModal.module.scss';
-import {
-  createElementsForScenesFromJSON,
-  fileJSON,
-  inputStreetmix
-} from '@/editor/lib/SceneUtils.js';
+import { createElementsForScenesFromJSON } from '@/editor/lib/SceneUtils.js';
 import { getCommunityScenes, getUserScenes } from '../../../api/scene';
-import { Load24Icon, Loader, Upload24Icon } from '../../../icons';
+import { Load24Icon, Loader } from '../../../icons';
 import { signIn } from '../../../api';
 import posthog from 'posthog-js';
 import useStore from '../../../../store.js';
@@ -215,34 +211,11 @@ const ScenesModal = ({ initialTab = 'owner', delay = undefined }) => {
             <div className={styles.buttons}>
               <Button
                 onClick={() => {
-                  inputStreetmix();
-                  onClose(); // Close the modal
+                  setModal('new');
                 }}
                 leadingIcon={<Load24Icon />}
               >
-                Load from Streetmix
-              </Button>
-              <Button
-                leadingIcon={<Upload24Icon />}
-                className={styles.uploadBtn}
-                style={{ position: 'relative' }}
-              >
-                Upload 3DStreet JSON File
-                <input
-                  type="file"
-                  onChange={(e) => {
-                    fileJSON(e);
-                    onClose(); // Close the modal
-                  }}
-                  style={{
-                    position: 'absolute',
-                    inset: 0,
-                    opacity: 0,
-                    fontSize: 0,
-                    cursor: 'pointer'
-                  }}
-                  accept=".js, .json, .txt"
-                />
+                Create New Scene
               </Button>
             </div>
           </div>

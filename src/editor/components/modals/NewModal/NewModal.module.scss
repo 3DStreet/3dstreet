@@ -1,0 +1,136 @@
+@use '../../../style/variables.scss';
+
+.wrapper {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-start;
+  row-gap: 24px;
+  column-gap: 20px;
+  padding-bottom: 20px;
+
+  .img {
+    margin-bottom: 6px;
+    object-fit: cover;
+    width: 272px;
+    height: 204px;
+  }
+
+  .card {
+    border-radius: 4px;
+    border: 1px solid rgba(237, 235, 239, 0.2);
+    padding: 8px 8px 12px 8px;
+    width: 272px;
+    height: 292px;
+    position: relative;
+    cursor: pointer;
+
+    &:hover {
+      border: 1px solid variables.$purple-100;
+      transition: ease-out 0.3s;
+    }
+
+    &:active {
+      border-color: variables.$purple-200;
+      transition: all 0.3s;
+    }
+
+    &:disabled {
+      border: 1px solid rgba(237, 235, 239, 0.5);
+      transition: all 0.3s;
+    }
+  }
+
+  .menuBlock {
+    display: flex;
+    flex-direction: column;
+    width: 189px;
+    border-radius: 8px;
+    border: 1px solid variables.$purple-700;
+    position: absolute;
+    height: 70px;
+    width: 190px;
+    background-color: variables.$darkgray-300;
+    padding: 6px 0px;
+    top: 140px;
+    right: -75px;
+    z-index: 10;
+
+    .menuItem {
+      font-size: 16px;
+      padding: 8px 8px 8px 20px;
+
+      &:hover {
+        background-color: variables.$black-400;
+        transition: all 0.3s;
+      }
+
+      &:active {
+        background-color: variables.$black-700;
+        color: variables.$lightgray-200;
+        transition: all 0.3s;
+      }
+
+      &:disabled {
+        background-color: rgba(50, 50, 50, 0.6);
+        color: variables.$gray-500;
+        transition: all 0.3s;
+      }
+    }
+  }
+
+  .userBlock {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+
+    .dropdown {
+      width: 20px;
+      padding: 0px;
+      background: none;
+      border-radius: 0;
+    }
+
+    .userName {
+      display: flex;
+      align-items: center;
+      column-gap: 8px;
+    }
+  }
+
+  .editButtons {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    column-gap: 8px;
+
+    .editButton {
+      width: 100%;
+      border-radius: 10px;
+    }
+  }
+
+  .editInput {
+    font-size: 16px !important;
+    text-overflow: ellipsis;
+    overflow: hidden;
+    white-space: nowrap;
+    margin-bottom: 12px;
+    width: 100%;
+  }
+
+  .title {
+    font-size: 16px !important;
+    text-overflow: ellipsis;
+    overflow: hidden;
+    white-space: nowrap;
+    margin-bottom: 12px;
+  }
+
+  .date {
+    margin-top: 4px;
+    color: rgb(116, 116, 116);
+    text-overflow: ellipsis;
+    overflow: hidden;
+    white-space: nowrap;
+  }
+}
