@@ -140,7 +140,9 @@ AFRAME.registerComponent('street', {
 
     // the scene has been loaded, set the synchronize flag
     this.el.setAttribute('street', 'synchronize', false);
-    sceneUtils.saveSceneWithScreenshot(firebase.auth.currentUser, true);
+    setTimeout(() => {
+      sceneUtils.saveSceneWithScreenshot(firebase.auth.currentUser, true);
+    }, 1000);
   }
 });
 
