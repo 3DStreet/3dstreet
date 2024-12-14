@@ -133,8 +133,6 @@ export function renameEntity(entity) {
     property: '',
     value: promptedName
   });
-
-  AFRAME.INSPECTOR.selectEntity(entity);
 }
 
 /**
