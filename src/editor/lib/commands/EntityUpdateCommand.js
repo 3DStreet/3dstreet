@@ -90,6 +90,11 @@ export class EntityUpdateCommand extends Command {
   execute() {
     const entity = document.getElementById(this.entityId);
     if (entity) {
+      if (this.editor.selectedEntity && this.editor.selectedEntity !== entity) {
+        // If the selected entity is not the entity we are undoing, select the entity.
+        this.editor.selectEntity(entity);
+      }
+
       if (this.editor.config.debugUndoRedo) {
         console.log(
           'execute',
