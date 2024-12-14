@@ -31,7 +31,10 @@ export default class Sidebar extends React.Component {
     if (detail.entity !== this.props.entity) {
       return;
     }
-    if (detail.component === 'mixin') {
+    if (
+      detail.component === 'mixin' ||
+      detail.component === 'data-layer-name'
+    ) {
       this.forceUpdate();
     }
   };
