@@ -1,4 +1,8 @@
-import { cloneEntity, removeSelectedEntity } from '../../lib/entity';
+import {
+  cloneEntity,
+  removeSelectedEntity,
+  renameEntity
+} from '../../lib/entity';
 import { Button } from '../components';
 import ComponentsContainer from './ComponentsContainer';
 import Events from '../../lib/Events';
@@ -98,6 +102,12 @@ export default class Sidebar extends React.Component {
                       <></>
                     ) : (
                       <div id="sidebar-buttons">
+                        <Button
+                          variant={'toolbtn'}
+                          onClick={() => renameEntity(entity)}
+                        >
+                          Rename
+                        </Button>
                         <Button
                           variant={'toolbtn'}
                           onClick={() => cloneEntity(entity)}
