@@ -116,6 +116,26 @@ export function cloneEntity(entity) {
 }
 
 /**
+ * Rename an entity, inserting it after the cloned one.
+ * @param {Element} entity Entity to clone
+ * @returns {Element} The clone
+ */
+export function renameEntity(entity) {
+  const promptedName = prompt(
+    'Enter new name for entity',
+    entity.getAttribute('data-layer-name') || getEntityDisplayName(entity)
+  );
+  // If user cancels or enters empty name, abort
+  if (!promptedName) return;
+  AFRAME.INSPECTOR.execute('entityupdate', {
+    entity,
+    component: 'data-layer-name',
+    property: '',
+    value: promptedName
+  });
+}
+
+/**
  * Clone an entity, inserting it after the cloned one. This is the implementation of the entityclone command.
  * @param {Element} entity Entity to clone
  * @param {string|undefined} newId The new id to use for the clone

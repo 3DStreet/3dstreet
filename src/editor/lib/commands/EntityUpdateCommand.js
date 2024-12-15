@@ -46,7 +46,13 @@ export class EntityUpdateCommand extends Command {
           ];
         }
         if (this.editor.config.debugUndoRedo) {
-          console.log(this.component, this.oldValue, this.newValue);
+          console.log(
+            'entityupdate property',
+            this.component,
+            this.property,
+            this.oldValue,
+            this.newValue
+          );
         }
       } else {
         this.newValue = component.isSingleProperty
@@ -58,7 +64,12 @@ export class EntityUpdateCommand extends Command {
             )
           : structuredClone(payload.entity.getDOMAttribute(payload.component));
         if (this.editor.config.debugUndoRedo) {
-          console.log(this.component, this.oldValue, this.newValue);
+          console.log(
+            'entityupdate component',
+            this.component,
+            this.oldValue,
+            this.newValue
+          );
         }
       }
     } else {
@@ -66,7 +77,12 @@ export class EntityUpdateCommand extends Command {
       this.newValue = payload.value;
       this.oldValue = payload.entity.getAttribute(this.component);
       if (this.editor.config.debugUndoRedo) {
-        console.log(this.component, this.oldValue, this.newValue);
+        console.log(
+          'entityupdate attribute',
+          this.component,
+          this.oldValue,
+          this.newValue
+        );
       }
     }
   }
@@ -74,6 +90,11 @@ export class EntityUpdateCommand extends Command {
   execute() {
     const entity = document.getElementById(this.entityId);
     if (entity) {
+      if (this.editor.selectedEntity && this.editor.selectedEntity !== entity) {
+        // If the selected entity is not the entity we are undoing, select the entity.
+        this.editor.selectEntity(entity);
+      }
+
       if (this.editor.config.debugUndoRedo) {
         console.log(
           'execute',
@@ -114,6 +135,15 @@ export class EntityUpdateCommand extends Command {
         this.oldValue.indexOf(' ') === -1
       ) {
         entity.setAttribute('mixin', '');
+      }
+      if (this.editor.config.debugUndoRedo) {
+        console.log(
+          'undo',
+          entity,
+          this.component,
+          this.property,
+          this.oldValue
+        );
       }
       updateEntity(entity, this.component, this.property, this.oldValue);
       if (this.component === 'id') {
