@@ -44,7 +44,8 @@ export default class SceneGraph extends React.Component {
       detail.component === 'id' ||
       detail.component === 'class' ||
       detail.component === 'mixin' ||
-      detail.component === 'visible'
+      detail.component === 'visible' ||
+      detail.component === 'data-layer-name'
     ) {
       this.rebuildEntityOptions();
     }
