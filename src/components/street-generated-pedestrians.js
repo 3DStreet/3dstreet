@@ -77,6 +77,7 @@ AFRAME.registerComponent('street-generated-pedestrians', {
     // Create pedestrians
     for (let i = 0; i < totalPedestrians; i++) {
       const pedestrian = document.createElement('a-entity');
+      this.el.appendChild(pedestrian);
 
       // Set random position within bounds
       const position = {
@@ -106,7 +107,6 @@ AFRAME.registerComponent('street-generated-pedestrians', {
       pedestrian.setAttribute('data-no-transform', '');
       pedestrian.setAttribute('data-layer-name', 'Generated Pedestrian');
 
-      this.el.appendChild(pedestrian);
       this.createdEntities.push(pedestrian);
     }
   },
