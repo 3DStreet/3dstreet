@@ -199,39 +199,57 @@ AFRAME.registerComponent('street-segment', {
     if (componentsToGenerate?.clones?.length > 0) {
       componentsToGenerate.clones.forEach((clone, index) => {
         if (clone?.modelsArray?.length > 0) {
-          this.el.setAttribute(
-            `street-generated-clones__${index}`,
-            `mode: ${clone.mode}; modelsArray: ${clone.modelsArray}; length: ${this.data.length}; spacing: ${clone.spacing}; direction: ${this.data.direction}; count: ${clone.count};`
-          );
+          this.el.setAttribute(`street-generated-clones__${index}`, {
+            mode: clone.mode,
+            modelsArray: clone.modelsArray,
+            length: this.data.length,
+            spacing: clone.spacing,
+            direction: this.data.direction,
+            count: clone.count
+          });
         } else {
-          this.el.setAttribute(
-            `street-generated-clones__${index}`,
-            `mode: ${clone.mode}; model: ${clone.model}; length: ${this.data.length}; spacing: ${clone.spacing}; direction: ${this.data.direction}; count: ${clone.count};`
-          );
+          this.el.setAttribute(`street-generated-clones__${index}`, {
+            mode: clone.mode,
+            model: clone.model,
+            length: this.data.length,
+            spacing: clone.spacing,
+            direction: this.data.direction,
+            count: clone.count
+          });
         }
       });
     }
+
     if (componentsToGenerate?.stencil?.length > 0) {
       componentsToGenerate.stencil.forEach((clone, index) => {
         if (clone?.stencils?.length > 0) {
-          this.el.setAttribute(
-            `street-generated-stencil__${index}`,
-            `stencils: ${clone.stencils}; length: ${this.data.length}; spacing: ${clone.spacing}; direction: ${this.data.direction}; padding: ${clone.padding};`
-          );
+          this.el.setAttribute(`street-generated-stencil__${index}`, {
+            stencils: clone.stencils,
+            length: this.data.length,
+            spacing: clone.spacing,
+            direction: this.data.direction,
+            padding: clone.padding
+          });
         } else {
-          this.el.setAttribute(
-            `street-generated-stencil__${index}`,
-            `model: ${clone.model}; length: ${this.data.length}; spacing: ${clone.spacing}; direction: ${this.data.direction}; count: ${clone.count};`
-          );
+          this.el.setAttribute(`street-generated-stencil__${index}`, {
+            model: clone.model,
+            length: this.data.length,
+            spacing: clone.spacing,
+            direction: this.data.direction,
+            count: clone.count
+          });
         }
       });
     }
+
     if (componentsToGenerate?.pedestrians?.length > 0) {
       componentsToGenerate.pedestrians.forEach((pedestrian, index) => {
-        this.el.setAttribute(
-          `street-generated-pedestrians__${index}`,
-          `segmentWidth: ${this.data.width}; density: ${pedestrian.density}; length: ${this.data.length}; direction: ${this.data.direction};`
-        );
+        this.el.setAttribute(`street-generated-pedestrians__${index}`, {
+          segmentWidth: this.data.width,
+          density: pedestrian.density,
+          length: this.data.length,
+          direction: this.data.direction
+        });
       });
     }
   },
