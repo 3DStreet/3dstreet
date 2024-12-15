@@ -16,8 +16,8 @@ const ManagedStreetSidebar = ({ entity }) => {
                 key="length"
                 name="length"
                 label="Street Length"
-                schema={component.schema['length']}
-                data={component.data['length']}
+                schema={component.schema.length}
+                data={component.data.length}
                 componentname={componentName}
                 isSingle={false}
                 entity={entity}
@@ -26,8 +26,8 @@ const ManagedStreetSidebar = ({ entity }) => {
                 key="width"
                 name="width"
                 label="Street Width"
-                schema={component.schema['width']}
-                data={component.data['width']}
+                schema={component.schema.width}
+                data={component.data.width}
                 componentname={componentName}
                 isSingle={false}
                 entity={entity}
