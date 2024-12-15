@@ -143,7 +143,16 @@ AFRAME.registerComponent('street-segment', {
   schema: {
     type: {
       type: 'string', // value not used by component, used in React app instead
-      oneOf: [Object.keys(TYPES)]
+      oneOf: [
+        'drive-lane',
+        'bus-lane',
+        'bike-lane',
+        'sidewalk',
+        'parking-lane',
+        'divider',
+        'grass',
+        'rail'
+      ]
     },
     width: {
       type: 'number'
