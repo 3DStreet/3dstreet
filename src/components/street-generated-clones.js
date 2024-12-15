@@ -1,0 +1,158 @@
+/* global AFRAME */
+
+AFRAME.registerComponent('street-generated-clones', {
+  multiple: true,
+  schema: {
+    // Common properties
+    model: { type: 'string' },
+    modelsArray: { type: 'array' }, // For random selection from multiple models
+    length: { type: 'number' }, // length in meters of segment
+    positionX: { default: 0, type: 'number' },
+    positionY: { default: 0, type: 'number' },
+    facing: { default: 0, type: 'number' }, // Y Rotation in degrees
+    randomFacing: { default: false, type: 'boolean' },
+    direction: { type: 'string', oneOf: ['none', 'inbound', 'outbound'] }, // not used if facing defined?
+
+    // Mode-specific properties
+    mode: { default: 'fixed', oneOf: ['fixed', 'random', 'single'] },
+
+    // Spacing for fixed and random modes
+    spacing: { default: 15, type: 'number' }, // minimum distance between objects
+
+    // Fixed mode properties
+    cycleOffset: { default: 0.5, type: 'number' }, // offset as a fraction of spacing, only for fixed
+
+    // Random mode properties
+    count: { default: 1, type: 'number' },
+
+    // Single mode properties
+    justify: { default: 'middle', oneOf: ['start', 'middle', 'end'] },
+    padding: { default: 4, type: 'number' }
+  },
+
+  init: function () {
+    this.createdEntities = [];
+  },
+
+  remove: function () {
+    this.createdEntities.forEach((entity) => entity.remove());
+    this.createdEntities.length = 0; // Clear the array
+  },
+
+  update: function (oldData) {
+    // Clear existing entities
+    this.remove();
+
+    // Generate new entities based on mode
+    switch (this.data.mode) {
+      case 'fixed':
+        this.generateFixed();
+        break;
+      case 'random':
+        this.generateRandom();
+        break;
+      case 'single':
+        this.generateSingle();
+        break;
+    }
+  },
+
+  generateFixed: function () {
+    const data = this.data;
+    const correctedSpacing = Math.max(1, data.spacing);
+    const numClones = Math.floor(data.length / correctedSpacing);
+
+    for (let i = 0; i < numClones; i++) {
+      const positionZ =
+        data.length / 2 - (i + data.cycleOffset) * correctedSpacing;
+      this.createClone(positionZ);
+    }
+  },
+
+  generateRandom: function () {
+    const data = this.data;
+    const positions = this.randPlacedElements(
+      data.length,
+      data.spacing,
+      data.count
+    );
+
+    positions.forEach((positionZ) => {
+      this.createClone(positionZ);
+    });
+  },
+
+  generateSingle: function () {
+    const data = this.data;
+    let positionZ = 0;
+
+    if (data.justify === 'start') {
+      positionZ = data.length / 2 - data.padding;
+    } else if (data.justify === 'end') {
+      positionZ = -data.length / 2 + data.padding;
+    }
+
+    this.createClone(positionZ);
+  },
+
+  createClone: function (positionZ) {
+    const data = this.data;
+    const mixinId = this.getModelMixin();
+    const clone = document.createElement('a-entity');
+
+    clone.setAttribute('mixin', mixinId);
+    clone.setAttribute('position', {
+      x: data.positionX,
+      y: data.positionY,
+      z: positionZ
+    });
+
+    let rotationY = data.facing;
+    if (data.direction === 'inbound') {
+      rotationY = 0 + data.facing;
+    }
+    if (data.direction === 'outbound') {
+      rotationY = 180 - data.facing;
+    }
+    if (data.randomFacing) {
+      rotationY = Math.random() * 360;
+    }
+    clone.setAttribute('rotation', `0 ${rotationY} 0`);
+
+    // Add common attributes
+    clone.classList.add('autocreated');
+    clone.setAttribute('data-no-transform', '');
+    clone.setAttribute('data-layer-name', 'Cloned Model • ' + mixinId);
+
+    this.el.appendChild(clone);
+    this.createdEntities.push(clone);
+  },
+
+  getModelMixin: function () {
+    const data = this.data;
+    if (data.modelsArray && data.modelsArray.length > 0) {
+      return data.modelsArray[
+        Math.floor(Math.random() * data.modelsArray.length)
+      ];
+    }
+    return data.model;
+  },
+
+  randPlacedElements: function (streetLength, spacing, count) {
+    const correctedSpacing = Math.max(1, spacing);
+    const start = -streetLength / 2 + correctedSpacing / 2;
+    const end = streetLength / 2 - correctedSpacing / 2;
+
+    // Calculate positions with offset
+    const len = Math.floor((end - start) / correctedSpacing) + 1;
+    const positions = Array(len)
+      .fill()
+      .map((_, idx) => {
+        // Apply the offset similar to fixed mode
+        return start + idx * correctedSpacing;
+      });
+
+    // Randomly select positions
+    return positions.sort(() => 0.5 - Math.random()).slice(0, count);
+  }
+});

@@ -291,8 +291,16 @@ THREE.EditorControls = function (_object, domElement) {
   function onMouseWheel(event) {
     event.preventDefault();
 
-    // Normalize deltaY due to https://bugzilla.mozilla.org/show_bug.cgi?id=1392460
-    scope.zoom(delta.set(0, 0, event.deltaY > 0 ? 1 : -1));
+    if (Math.abs(event.deltaY) > Math.abs(event.deltaX)) {
+      // Normalize deltaY due to https://bugzilla.mozilla.org/show_bug.cgi?id=1392460
+      scope.zoom(delta.set(0, 0, event.deltaY > 0 ? 1 : -1));
+    } else {
+      if (event.deltaX !== 0) {
+        // Pan the camera horizontally based on deltaX
+        // We use a smaller multiplier for horizontal scroll to make it less sensitive
+        scope.pan(delta.set(event.deltaX > 0 ? 10 : -10, 0, 0));
+      }
+    }
   }
 
   function contextmenu(event) {

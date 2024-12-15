@@ -59,6 +59,14 @@ const segmentVariants = {
     'inbound|red|typical',
     'outbound|red|typical'
   ],
+  'brt-lane': [
+    'inbound|colored',
+    'outbound|colored',
+    'inbound|regular',
+    'outbound|regular',
+    'inbound|red',
+    'outbound|red'
+  ],
   'drive-lane': [
     'inbound|car',
     'outbound|car',
@@ -134,7 +142,7 @@ const segmentVariants = {
     'outbound|grass'
   ],
   // stations
-  'brt-station': ['center'],
+  'brt-station': ['center', 'left', 'right'],
   'transit-shelter': [
     'left|street-level',
     'right|street-level',
