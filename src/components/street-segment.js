@@ -310,6 +310,7 @@ AFRAME.registerComponent('street-segment', {
     this.generateMesh(data);
     // if width was changed, trigger re-justification of all street-segments by the managed-street
     if (changedProps.includes('width')) {
+      this.el.parentNode.components['managed-street'].refreshManagedEntities();
       this.el.parentNode.components['managed-street'].applyJustification();
     }
   },
