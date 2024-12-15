@@ -32,8 +32,8 @@ const TYPES = {
           mode: 'random',
           modelsArray:
             'sedan-rig, box-truck-rig, self-driving-waymo-car, suv-rig, motorbike',
-          spacing: '7.3',
-          count: '4'
+          spacing: 7.3,
+          count: 4
         }
       ]
     }
@@ -48,15 +48,15 @@ const TYPES = {
         {
           mode: 'random',
           model: 'bus',
-          spacing: '15',
-          count: '1'
+          spacing: 15,
+          count: 1
         }
       ],
       stencil: [
         {
           stencils: 'word-only, word-taxi, word-bus',
-          spacing: '40',
-          padding: '10'
+          spacing: 40,
+          padding: 10
         }
       ]
     }
@@ -70,8 +70,8 @@ const TYPES = {
       stencil: [
         {
           model: 'bike-arrow',
-          cycleOffset: '0.3',
-          spacing: '20'
+          cycleOffset: 0.3,
+          spacing: 20
         }
       ],
       clones: [
@@ -79,8 +79,8 @@ const TYPES = {
           mode: 'random',
           modelsArray:
             'cyclist-cargo, cyclist1, cyclist2, cyclist3, cyclist-dutch, cyclist-kid, ElectricScooter_1',
-          spacing: '2.03',
-          count: '4'
+          spacing: 2.03,
+          count: 4
         }
       ]
     }
