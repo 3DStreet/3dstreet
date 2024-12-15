@@ -143,16 +143,7 @@ AFRAME.registerComponent('street-segment', {
   schema: {
     type: {
       type: 'string', // value not used by component, used in React app instead
-      oneOf: [
-        'drive-lane',
-        'bus-lane',
-        'bike-lane',
-        'sidewalk',
-        'parking-lane',
-        'divider',
-        'grass',
-        'rail'
-      ]
+      oneOf: [Object.keys(TYPES)]
     },
     width: {
       type: 'number'
@@ -191,9 +182,9 @@ AFRAME.registerComponent('street-segment', {
     this.generatedComponents = [];
     this.types = TYPES; // default segment types
   },
-  createGeneratedComponentsFromType: function (typeObject) {
+  generateComponentsFromSegmentObject: function (segmentObject) {
     // use global preset data to create the generated components for a given segment type
-    const componentsToGenerate = typeObject.generated;
+    const componentsToGenerate = segmentObject.generated;
 
     // for each of clones, stencils, rail, pedestrians, etc.
     if (componentsToGenerate?.clones?.length > 0) {
@@ -263,7 +254,7 @@ AFRAME.registerComponent('street-segment', {
       let typeObject = this.types[this.data.type];
       this.updateGeneratedComponentsList(); // if components were created through streetmix or streetplan import
       this.remove();
-      this.createGeneratedComponentsFromType(typeObject); // add components for this type
+      this.generateComponentsFromSegmentObject(typeObject); // add components for this type
       this.updateSurfaceFromType(typeObject); // update surface color, surface, level
     }
     // propagate change of direction to generated components is solo changed
