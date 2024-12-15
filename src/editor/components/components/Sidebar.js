@@ -11,9 +11,17 @@ import PropTypes from 'prop-types';
 import React from 'react';
 import capitalize from 'lodash-es/capitalize';
 import classnames from 'classnames';
-import { ArrowRightIcon, Object24Icon } from '../../icons';
+import {
+  ArrowRightIcon,
+  Object24Icon,
+  SegmentIcon,
+  ManagedStreetIcon
+} from '../../icons';
 import GeoSidebar from './GeoSidebar'; // Make sure to create and import this new component
 import IntersectionSidebar from './IntersectionSidebar';
+import StreetSegmentSidebar from './StreetSegmentSidebar';
+import ManagedStreetSidebar from './ManagedStreetSidebar';
+import AdvancedComponents from './AdvancedComponents';
 export default class Sidebar extends React.Component {
   static propTypes = {
     entity: PropTypes.object,
@@ -90,7 +98,13 @@ export default class Sidebar extends React.Component {
             <>
               <div id="layers-title" onClick={this.toggleRightBar}>
                 <div className={'layersBlock'}>
-                  <Object24Icon />
+                  {entity.getAttribute('managed-street') ? (
+                    <ManagedStreetIcon />
+                  ) : entity.getAttribute('street-segment') ? (
+                    <SegmentIcon />
+                  ) : (
+                    <Object24Icon />
+                  )}
                   <span>{entityName || formattedMixin}</span>
                 </div>
                 <div id="toggle-rightbar">
@@ -98,7 +112,8 @@ export default class Sidebar extends React.Component {
                 </div>
               </div>
               <div className="scroll">
-                {entity.id !== 'reference-layers' ? (
+                {entity.id !== 'reference-layers' &&
+                !entity.getAttribute('street-segment') ? (
                   <>
                     {!!entity.mixinEls.length && <Mixins entity={entity} />}
                     {entity.hasAttribute('data-no-transform') ? (
@@ -128,10 +143,25 @@ export default class Sidebar extends React.Component {
                     {entity.getAttribute('intersection') && (
                       <IntersectionSidebar entity={entity} />
                     )}
+                    {entity.getAttribute('managed-street') && (
+                      <ManagedStreetSidebar entity={entity} />
+                    )}
                     <ComponentsContainer entity={entity} />
                   </>
                 ) : (
-                  <GeoSidebar entity={entity} />
+                  <>
+                    {entity.getAttribute('street-segment') && (
+                      <>
+                        <StreetSegmentSidebar entity={entity} />
+                        <div className="advancedComponentsContainer">
+                          <AdvancedComponents entity={entity} />
+                        </div>
+                      </>
+                    )}
+                    {entity.id === 'reference-layers' && (
+                      <GeoSidebar entity={entity} />
+                    )}
+                  </>
                 )}
               </div>
             </>
@@ -146,7 +176,13 @@ export default class Sidebar extends React.Component {
                     {entityName || formattedMixin}
                   </span>
                   <div className="relative z-10">
-                    <Object24Icon />
+                    {entity.getAttribute('managed-street') ? (
+                      <ManagedStreetIcon />
+                    ) : entity.getAttribute('street-segment') ? (
+                      <SegmentIcon />
+                    ) : (
+                      <Object24Icon />
+                    )}
                   </div>
                 </div>
               </div>
