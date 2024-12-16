@@ -279,29 +279,38 @@ export default class Toolbar extends Component {
               <div className="col-span-2 flex items-center justify-end gap-2">
                 <Button
                   leadingIcon={<Edit24Icon />}
-                  onClick={this.newHandler}
-                  disabled={this.state.isSavingScene}
+                  onClick={
+                    !this.state.isSavingScene ? this.newHandler : undefined
+                  }
                   variant="toolbtn"
                 >
                   <div>New</div>
                 </Button>
                 {this.props.currentUser ? (
                   <div
-                    className="saveButtonWrapper relative w-24"
+                    className="saveButtonWrapper relative"
                     ref={this.saveButtonRef}
                   >
                     {this.state.savedScene ? (
-                      <Button variant="filled">
-                        <div>Saved</div>
+                      <Button
+                        leadingIcon={<Save24Icon />}
+                        variant="filled"
+                        className="min-w-[110px]"
+                      >
+                        <div className="grow">Saved</div>
                       </Button>
                     ) : (
                       <Button
                         leadingIcon={<Save24Icon />}
-                        onClick={this.toggleSaveActionState.bind(this)}
-                        disabled={this.state.isSavingScene}
+                        onClick={
+                          !this.state.isSavingScene
+                            ? this.toggleSaveActionState.bind(this)
+                            : undefined
+                        }
                         variant="toolbtn"
+                        className="min-w-[110px]"
                       >
-                        <div>Save</div>
+                        <div className="grow">Save</div>
                       </Button>
                     )}
                     {this.state.isSaveActionActive && (
@@ -335,8 +344,9 @@ export default class Toolbar extends Component {
                     onClick={this.handleUnsignedSaveClick}
                     disabled={this.state.isSavingScene}
                     variant="toolbtn"
+                    className="min-w-[110px]"
                   >
-                    <div>Save</div>
+                    <div className="grow">Save</div>
                   </Button>
                 )}
                 {this.state.showLoadBtn && (
