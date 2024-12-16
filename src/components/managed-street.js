@@ -5,13 +5,136 @@ const { segmentVariants } = require('../segments-variants.js');
 const streetmixUtils = require('../tested/streetmix-utils');
 const streetmixParsersTested = require('../tested/aframe-streetmix-parsers-tested');
 
-// invoking from js console
+// invoking from js console - load from streetmix
 /*
 userLayersEl = document.getElementById('street-container');
 newStreetEl = document.createElement('a-entity');
-newStreetEl.setAttribute('managed-street', 'sourceType: streetmix-url; sourceValue: https://streetmix.net/kfarr/3/; synchronize: true');
+newStreetEl.setAttribute('managed-street', {
+  sourceType: 'streetmix-url',
+  sourceValue: 'https://streetmix.net/kfarr/3/',
+  synchronize: true
+});
 userLayersEl.append(newStreetEl);
 */
+
+// invoking from js console - load from blob
+/*
+userLayersEl = document.getElementById('street-container');
+newStreetEl = document.createElement('a-entity');
+newStreetEl.setAttribute('managed-street', {
+  sourceType: 'json-blob',
+  sourceValue: window.STREET.SAMPLE_STREET,
+  synchronize: true
+});
+userLayersEl.append(newStreetEl);
+*/
+
+// Example Street object
+const COLORS = window.STREET.colors;
+window.STREET.SAMPLE_STREET = {
+  // some of this is redundant, many of the segment attributes defined below can be inferred by type
+  id: 'aaaaaaaa-0123-4678-9000-000000000000', // this is a real v4 UUID! https://everyuuid.com/
+  name: "Kieran's Awesome Street",
+  width: 40, // this is the user-specified RoW width, not cumulative width of segments
+  length: 100,
+  justifyWidth: 'center',
+  justifyLength: 'start',
+  segments: [
+    {
+      id: 'aaaaaaaa-0123-4678-9000-000000000001',
+      name: 'Sidewalk for walking',
+      type: 'sidewalk',
+      surface: 'sidewalk',
+      color: COLORS.white,
+      level: 1,
+      width: 3,
+      direction: 'none',
+      generated: {
+        pedestrians: [
+          {
+            density: 'normal'
+          }
+        ]
+      }
+    },
+    {
+      id: 'aaaaaaaa-0123-4678-9000-000000000002',
+      name: 'Sidewalk for trees and stuff',
+      type: 'sidewalk',
+      surface: 'sidewalk',
+      color: COLORS.white,
+      level: 1,
+      width: 1,
+      direction: 'none',
+      generated: {
+        clones: [
+          {
+            mode: 'fixed',
+            model: 'tree3',
+            spacing: 15
+          }
+        ]
+      }
+    },
+    {
+      id: 'aaaaaaaa-0123-4678-9000-000000000003',
+      name: 'Parking for cars',
+      type: 'parking-lane',
+      surface: 'concrete',
+      color: COLORS.lightGray,
+      level: 0,
+      width: 3,
+      direction: 'inbound',
+      generated: {
+        clones: [
+          {
+            mode: 'random',
+            modelsArray: 'sedan-rig, self-driving-waymo-car, suv-rig',
+            spacing: 6,
+            count: 6
+          }
+        ],
+        stencil: [
+          {
+            model: 'parking-t',
+            cycleOffset: 1,
+            spacing: 6
+          }
+        ]
+      }
+    },
+    {
+      id: 'aaaaaaaa-0123-4678-9000-000000000004',
+      name: 'Drive Lane for cars and stuff',
+      type: 'drive-lane',
+      color: COLORS.white,
+      surface: 'asphalt',
+      level: 0,
+      width: 3,
+      direction: 'inbound',
+      generated: {
+        clones: [
+          {
+            mode: 'random',
+            modelsArray:
+              'sedan-rig, box-truck-rig, self-driving-waymo-car, suv-rig, motorbike',
+            spacing: 7.3,
+            count: 4
+          }
+        ]
+      }
+    },
+    {
+      id: 'aaaaaaaa-0123-4678-9000-000000000005',
+      name: 'A beautiful median',
+      type: 'divider',
+      surface: 'sidewalk',
+      color: COLORS.white,
+      level: 1,
+      width: 0.5
+    }
+  ]
+};
 
 AFRAME.registerComponent('managed-street', {
   schema: {
@@ -98,9 +221,10 @@ AFRAME.registerComponent('managed-street', {
     if (data.sourceType === 'streetmix-url') {
       this.loadAndParseStreetmixURL(data.sourceValue);
     } else if (data.sourceType === 'streetplan-url') {
+      // this function is not yet implemented
       this.refreshFromStreetplanURL(data.sourceValue);
     } else if (data.sourceType === 'json-blob') {
-      this.refreshFromJSONBlob(data.sourceValue);
+      this.parseStreetObject(data.sourceValue);
     }
   },
   applyLength: function () {
@@ -174,6 +298,8 @@ AFRAME.registerComponent('managed-street', {
       this.justifiedDirtBox = dirtBox;
       dirtBox.setAttribute('material', `color: ${window.STREET.colors.brown};`);
       dirtBox.setAttribute('data-layer-name', 'Underground');
+      dirtBox.setAttribute('data-no-transform', '');
+      dirtBox.setAttribute('data-ignore-raycaster', '');
     }
     this.justifiedDirtBox.setAttribute('height', 2); // height is 2 meters from y of -0.1 to -y of 2.1
     this.justifiedDirtBox.setAttribute('width', streetWidth);
@@ -201,6 +327,42 @@ AFRAME.registerComponent('managed-street', {
       'position',
       `${xPosition} -1 ${zPosition}`
     );
+  },
+  parseStreetObject: function (streetObject) {
+    // reset and delete all existing entities
+    this.remove();
+
+    // given an object streetObject, create child entities with 'street-segment' component
+    this.el.setAttribute(
+      'data-layer-name',
+      'Managed Street • ' + streetObject.name
+    );
+    this.el.setAttribute('managed-street', 'width', streetObject.width);
+    this.el.setAttribute('managed-street', 'length', streetObject.length);
+
+    for (let i = 0; i < streetObject.segments.length; i++) {
+      const segment = streetObject.segments[i];
+      const segmentEl = document.createElement('a-entity');
+      this.el.appendChild(segmentEl);
+
+      segmentEl.setAttribute('street-segment', {
+        type: segment.type, // this is the base type, it won't load its defaults since we are changing more than just the type value
+        width: segment.width,
+        length: streetObject.length,
+        level: segment.level,
+        direction: segment.direction,
+        color: segment.color || window.STREET.types[segment.type]?.color,
+        surface: segment.surface || window.STREET.types[segment.type]?.surface // no error handling for segmentPreset not found
+      });
+      segmentEl.setAttribute('data-layer-name', segment.name);
+      // wait for street-segment to be loaded, then generate components from segment object
+      segmentEl.addEventListener('loaded', () => {
+        segmentEl.components[
+          'street-segment'
+        ].generateComponentsFromSegmentObject(segment);
+        this.applyJustification();
+      });
+    }
   },
   loadAndParseStreetmixURL: async function (streetmixURL) {
     const data = this.data;
@@ -292,6 +454,8 @@ AFRAME.registerComponent('managed-street', {
     this.managedEntities.length = 0; // Clear the array
   }
 });
+
+// Helper functions for Streetmix to A-Frame conversion
 
 function getSeparatorMixinId(previousSegment, currentSegment) {
   if (previousSegment === undefined || currentSegment === undefined) {
