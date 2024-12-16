@@ -3,7 +3,6 @@ import useStore from '@/store.js';
 import {
   createScene,
   updateScene,
-  checkIfImagePathIsEmpty,
   uploadThumbnailImage
 } from '@/editor/api/scene';
 
@@ -104,6 +103,7 @@ export async function saveScene(currentUser, doSaveAs) {
   const authorId = STREET.utils.getAuthorId();
   let sceneId = STREET.utils.getCurrentSceneId();
 
+  console.log('saveScene', currentUser, doSaveAs);
   posthog.capture('saving_scene', {
     save_as: doSaveAs,
     user_id: currentUser ? currentUser.uid : null,
@@ -130,10 +130,10 @@ export async function saveScene(currentUser, doSaveAs) {
     return;
   }
   if (authorId !== currentUser.uid) {
-    posthog.capture('not_scene_author', {
-      scene_id: sceneId,
-      user_id: currentUser.uid
-    });
+    // posthog.capture('not_scene_author', {
+    //   scene_id: sceneId,
+    //   user_id: currentUser.uid
+    // });
     doSaveAs = true;
   }
 
@@ -172,9 +172,6 @@ export async function saveSceneWithScreenshot(currentUser, doSaveAs) {
   makeScreenshot();
   const currentSceneId = await saveScene(currentUser, doSaveAs);
   if (currentSceneId) {
-    const isImagePathEmpty = await checkIfImagePathIsEmpty(currentSceneId);
-    if (isImagePathEmpty) {
-      await uploadThumbnailImage();
-    }
+    uploadThumbnailImage(currentSceneId);
   }
 }

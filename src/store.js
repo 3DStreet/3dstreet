@@ -21,6 +21,11 @@ const useStore = create(
       (set) => ({
         sceneId: null,
         setSceneId: (newSceneId) => set({ sceneId: newSceneId }),
+        isSavingScene: false,
+        saveScene: (newDoSaveAs) =>
+          set({ isSavingScene: true, doSaveAs: newDoSaveAs }),
+        postSaveScene: () => set({ isSavingScene: false, doSaveAs: false }),
+        doSaveAs: false,
         sceneTitle: null,
         setSceneTitle: (newSceneTitle) => set({ sceneTitle: newSceneTitle }),
         newScene: () =>
