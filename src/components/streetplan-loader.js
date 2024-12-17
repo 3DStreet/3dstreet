@@ -17,90 +17,123 @@ AFRAME.registerComponent('streetplan-loader', {
   streetplanResponseParse: function (streetplanResponseObject) {
     const el = this.el;
     const data = this.data;
-    const streetplanProject = streetplanResponseObject.project;
-
-    // convert Streetplan structure to Streetmix-like structure
-    const streetData = streetplanUtils.convertStreetStruct(streetplanProject);
-
-    const streetplanSegments = streetData.segments;
-
-    const streetplanName = streetData.name;
-    // streetplan alternative name
-    // const streetplanAltName = streetData.altName;
-
-    if (!state.sceneTitle) {
-      state.setSceneTitle(streetplanName);
+    if (!streetplanResponseObject || !streetplanResponseObject.project) {
+      console.error('[streetplan-loader] Invalid streetplan data structure');
+      return;
     }
+    try {
+      // convert Streetplan structure to Streetmix-like structure
+      const streetData = streetplanUtils.convertStreetStruct(
+        streetplanResponseObject
+      );
 
-    el.setAttribute('data-layer-name', 'StreetPlan • ' + streetplanName);
+      const streetplanSegments = streetData.segments;
+      const streetplanName = streetData.name;
+      // const projectName = streetData.projectName || streetplanName;
 
-    if (data.showBuildings) {
-      el.setAttribute('street', 'right', streetData.rightBuildingVariant);
-      el.setAttribute('street', 'left', streetData.leftBuildingVariant);
+      // Update layer name with project and street names
+      el.setAttribute('data-layer-name', `StreetPlan • ${streetplanName}`);
+
+      if (!state.sceneTitle) {
+        state.setSceneTitle(streetplanName);
+      }
+
+      // Handle buildings if enabled
+      if (data.showBuildings) {
+        // Find building segments in the full data
+        const buildingSegments = streetplanSegments.filter(
+          (segment) => segment.type === 'Buildings'
+        );
+
+        // Set building variants based on side
+        const leftBuilding = buildingSegments.find((b) => b.side === 'left');
+        const rightBuilding = buildingSegments.find((b) => b.side === 'right');
+
+        if (leftBuilding) {
+          el.setAttribute('street', 'left', leftBuilding.title);
+        }
+        if (rightBuilding) {
+          el.setAttribute('street', 'right', rightBuilding.title);
+        }
+      }
+      // Set street type
+      el.setAttribute('street', 'type', 'streetmixSegmentsMetric');
+
+      // Filter out building segments for the main street data if needed
+      const finalSegments = data.showBuildings
+        ? streetplanSegments.filter((s) => s.type !== 'Buildings')
+        : streetplanSegments;
+
+      // Set JSON attribute last
+      el.setAttribute(
+        'street',
+        'JSON',
+        JSON.stringify({ streetmixSegmentsMetric: finalSegments })
+      );
+      el.emit('streetplan-loader-street-loaded');
+    } catch (error) {
+      console.error('[streetplan-loader] Error parsing street data:', error);
+      el.emit('streetplan-loader-error', { error });
     }
-    el.setAttribute('street', 'type', 'streetmixSegmentsMetric');
-    // set JSON attribute last or it messes things up
-    el.setAttribute(
-      'street',
-      'JSON',
-      JSON.stringify({ streetmixSegmentsMetric: streetplanSegments })
-    );
-    el.emit('streetplan-loader-street-loaded');
   },
   init: function () {
     this.el.setAttribute('streetplan-loader', 'synchronize', true);
   },
   update: function (oldData) {
-    // fired at start and at each subsequent change of any schema value
-    // This method may fire a few times when viewing a streetmix street in 3dstreet:
-    // First to find the proper path, once to actually load the street, and then subsequent updates such as street name
-    const that = this;
     const data = this.data;
 
-    // do not call the update function when the data.synchronize is set to false
+    // Skip update if synchronization is disabled
     if (!data.synchronize) return;
 
-    // load from URL encoded Streetplan JSON
+    // Handle URL encoded JSON data
     if (data.streetplanEncJSON) {
-      const streetplanJSON = decodeURIComponent(data.streetplanEncJSON);
-      this.streetplanResponseParse(JSON.parse(streetplanJSON));
+      try {
+        const streetplanJSON = decodeURIComponent(data.streetplanEncJSON);
+        this.streetplanResponseParse(JSON.parse(streetplanJSON));
+      } catch (error) {
+        console.error('[streetplan-loader] Error parsing encoded JSON:', error);
+        this.el.emit('streetplan-loader-error', { error });
+      }
       return;
     }
 
-    // if the loader has run once already, and upon update neither URL has changed, do not take action
+    // Skip if URLs haven't changed
     if (
       oldData.streetplanStreetURL === data.streetplanStreetURL &&
       oldData.streetplanAPIURL === data.streetplanAPIURL
     ) {
-      // console.log('[streetmix-loader]', 'Neither streetplanStreetURL nor streetplanAPIURL have changed in this component data update, not reloading street.')
       return;
     }
 
-    var request = new XMLHttpRequest();
+    // Load from API
+    const request = new XMLHttpRequest();
     console.log('[streetplan-loader]', 'GET ' + data.streetplanAPIURL);
 
     request.open('GET', data.streetplanAPIURL, true);
-    request.onload = function () {
-      if (this.status >= 200 && this.status < 400) {
-        // Connection success
-        const streetplanResponseObject = JSON.parse(this.response);
-        that.streetplanResponseParse(streetplanResponseObject);
-        // the streetplan data has been loaded, set the synchronize flag to false
-        that.el.setAttribute('streetplan-loader', 'synchronize', false);
+    request.onload = () => {
+      if (request.status >= 200 && request.status < 400) {
+        try {
+          const streetplanResponseObject = JSON.parse(request.response);
+          this.streetplanResponseParse(streetplanResponseObject);
+          this.el.setAttribute('streetplan-loader', 'synchronize', false);
+        } catch (error) {
+          console.error(
+            '[streetplan-loader] Error parsing API response:',
+            error
+          );
+          this.el.emit('streetplan-loader-error', { error });
+        }
       } else {
-        // We reached our target server, but it returned an error
-        console.log(
-          '[streetplan-loader]',
-          'Loading Error: We reached the target server, but it returned an error'
-        );
+        const error = new Error(`Server returned status ${request.status}`);
+        console.error('[streetplan-loader] API request failed:', error);
+        this.el.emit('streetplan-loader-error', { error });
       }
     };
-    request.onerror = function () {
-      // There was a connection error of some sort
-      console.log(
-        '[streetplan-loader]',
-        'Loading Error: There was a connection error of some sort'
-      );
+
+    request.onerror = () => {
+      const error = new Error('Network request failed');
+      console.error('[streetplan-loader] Network error:', error);
+      this.el.emit('streetplan-loader-error', { error });
     };
     request.send();
   }
