@@ -138,82 +138,82 @@
     },
     {
         "id": "char1",
-        "name": "Char 1",
+        "name": "Character 1",
         "img": "https://assets.3dstreet.app/thumbnails/char1.jpg"
     },
     {
         "id": "char2",
-        "name": "Char 2",
+        "name": "Character 2",
         "img": "https://assets.3dstreet.app/thumbnails/char2.jpg"
     },
     {
         "id": "char3",
-        "name": "Char 3",
+        "name": "Character 3",
         "img": "https://assets.3dstreet.app/thumbnails/char3.jpg"
     },
     {
         "id": "char4",
-        "name": "Char 4",
+        "name": "Character 4",
         "img": "https://assets.3dstreet.app/thumbnails/char4.jpg"
     },
     {
         "id": "char5",
-        "name": "Char 5",
+        "name": "Character 5",
         "img": "https://assets.3dstreet.app/thumbnails/char5.jpg"
     },
     {
         "id": "char6",
-        "name": "Char 6",
+        "name": "Character 6",
         "img": "https://assets.3dstreet.app/thumbnails/char6.jpg"
     },
     {
         "id": "char7",
-        "name": "Char 7",
+        "name": "Character 7",
         "img": "https://assets.3dstreet.app/thumbnails/char7.jpg"
     },
     {
         "id": "char8",
-        "name": "Char 8",
+        "name": "Character 8",
         "img": "https://assets.3dstreet.app/thumbnails/char8.jpg"
     },
     {
         "id": "char9",
-        "name": "Char 9",
+        "name": "Character 9",
         "img": "https://assets.3dstreet.app/thumbnails/char9.jpg"
     },
     {
         "id": "char10",
-        "name": "Char 10",
+        "name": "Character 10",
         "img": "https://assets.3dstreet.app/thumbnails/char10.jpg"
     },
     {
         "id": "char11",
-        "name": "Char 11",
+        "name": "Character 11",
         "img": "https://assets.3dstreet.app/thumbnails/char11.jpg"
     },
     {
         "id": "char12",
-        "name": "Char 12",
+        "name": "Character 12",
         "img": "https://assets.3dstreet.app/thumbnails/char12.jpg"
     },
     {
         "id": "char13",
-        "name": "Char 13",
+        "name": "Character 13",
         "img": "https://assets.3dstreet.app/thumbnails/char13.jpg"
     },
     {
         "id": "char14",
-        "name": "Char 14",
+        "name": "Character 14",
         "img": "https://assets.3dstreet.app/thumbnails/char14.jpg"
     },
     {
         "id": "char15",
-        "name": "Char 15",
+        "name": "Character 15",
         "img": "https://assets.3dstreet.app/thumbnails/char15.jpg"
     },
     {
         "id": "char16",
-        "name": "Char 16",
+        "name": "Character 16",
         "img": "https://assets.3dstreet.app/thumbnails/char16.jpg"
     },
     {
@@ -243,17 +243,17 @@
     },
     {
         "id": "dividers-planter-box",
-        "name": "Dividers Planter Box",
+        "name": "Planter Box",
         "img": "https://assets.3dstreet.app/thumbnails/dividers-planter-box.jpg"
     },
     {
         "id": "dividers-bush",
-        "name": "Dividers Bush",
+        "name": "Bush",
         "img": "https://assets.3dstreet.app/thumbnails/dividers-bush.jpg"
     },
     {
         "id": "dividers-dome",
-        "name": "Dividers Dome",
+        "name": "Dome",
         "img": "https://assets.3dstreet.app/thumbnails/dividers-dome.jpg"
     },
     {
@@ -288,32 +288,32 @@
     },
     {
         "id": "street-element-crosswalk-raised",
-        "name": "Street Element Crosswalk Raised",
+        "name": "Crosswalk Raised",
         "img": "https://assets.3dstreet.app/thumbnails/street-element-crosswalk-raised.jpg"
     },
     {
         "id": "street-element-traffic-island-end-rounded",
-        "name": "Street Element Traffic Island End Rounded",
+        "name": "Traffic Island End Rounded",
         "img": "https://assets.3dstreet.app/thumbnails/street-element-traffic-island-end-rounded.jpg"
     },
     {
         "id": "street-element-sign-warning-ped-rrfb",
-        "name": "Street Element Sign Warning Ped RRFB",
+        "name": "Sign Warning Ped RRFB",
         "img": "https://assets.3dstreet.app/thumbnails/street-element-sign-warning-ped-rrfb.jpg"
     },
     {
         "id": "street-element-traffic-post-k71",
-        "name": "Street Element Traffic Post K71",
+        "name": "Traffic Post K71",
         "img": "https://assets.3dstreet.app/thumbnails/street-element-traffic-post-k71.jpg"
     },
     {
         "id": "street-element-traffic-island",
-        "name": "Street Element Traffic Island",
+        "name": "Traffic Island",
         "img": "https://assets.3dstreet.app/thumbnails/street-element-traffic-island.jpg"
     },
     {
         "id": "street-element-speed-hump",
-        "name": "Street Element Speed Hump",
+        "name": "Speed Hump",
         "img": "https://assets.3dstreet.app/thumbnails/street-element-speed-hump.jpg"
     },
     {
@@ -468,42 +468,42 @@
     },
     {
         "id": "SM3D_Bld_Mixed_Corner_4fl",
-        "name": "SM3D Building Mixed Corner 4fl",
+        "name": "Mixed Corner 4fl",
         "img": "https://assets.3dstreet.app/thumbnails/SM3D_Bld_Mixed_Corner_4fl.jpg"
     },
     {
         "id": "SM3D_Bld_Mixed_Double_5fl",
-        "name": "SM3D Building Mixed Double 5fl",
+        "name": "Mixed Double 5fl",
         "img": "https://assets.3dstreet.app/thumbnails/SM3D_Bld_Mixed_Double_5fl.jpg"
     },
     {
         "id": "SM3D_Bld_Mixed_4fl_2",
-        "name": "SM3D Building Mixed 4fl 2",
+        "name": "Mixed 4fl 2",
         "img": "https://assets.3dstreet.app/thumbnails/SM3D_Bld_Mixed_4fl_2.jpg"
     },
     {
         "id": "SM3D_Bld_Mixed_5fl",
-        "name": "SM3D Building Mixed 5fl",
+        "name": "Mixed 5fl",
         "img": "https://assets.3dstreet.app/thumbnails/SM3D_Bld_Mixed_5fl.jpg"
     },
     {
         "id": "SM3D_Bld_Mixed_4fl",
-        "name": "SM3D Building Mixed 4fl",
+        "name": "Mixed 4fl",
         "img": "https://assets.3dstreet.app/thumbnails/SM3D_Bld_Mixed_4fl.jpg"
     },
     {
         "id": "SM_Bld_House_Preset_03_1800",
-        "name": "SM Building House Preset 03 1800",
+        "name": "Suburban House 1",
         "img": "https://assets.3dstreet.app/thumbnails/SM_Bld_House_Preset_03_1800.jpg"
     },
     {
         "id": "SM_Bld_House_Preset_08_1809",
-        "name": "SM Building House Preset 08 1809",
+        "name": "Suburban House 3",
         "img": "https://assets.3dstreet.app/thumbnails/SM_Bld_House_Preset_08_1809.jpg"
     },
     {
         "id": "SM_Bld_House_Preset_09_1845",
-        "name": "SM Building House Preset 09 1845",
+        "name": "Suburban House 2",
         "img": "https://assets.3dstreet.app/thumbnails/SM_Bld_House_Preset_09_1845.jpg"
     },
     {
