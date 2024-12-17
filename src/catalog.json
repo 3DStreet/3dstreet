@@ -7,7 +7,8 @@
     {
         "id": "bus",
         "name": "Bus New Flyer XD40",
-        "description": "The New Flyer XD40 is a modern, stylish, and comfortable bus that is perfect for people in urban settings."
+        "description": "The New Flyer XD40 is a modern, stylish, and comfortable bus that is perfect for people in urban settings.",
+        "img": "https://assets.3dstreet.app/thumbnails/bus.jpg"
     },
     {
         "id": "sedan-rig",
@@ -134,6 +135,415 @@
         "src": "https://assets.3dstreet.app/sets/cyclist-animation/gltf-exports/draco/Dutch_cyclist_animation_v01.glb",
         "img": "https://assets.3dstreet.app/sets/cyclist-animation/gltf-exports/draco/Dutch_cyclist_animation_v01.jpg",
         "category": "cyclists"
+    },
+    {
+        "id": "char1",
+        "name": "Char 1",
+        "img": "https://assets.3dstreet.app/thumbnails/char1.jpg"
+    },
+    {
+        "id": "char2",
+        "name": "Char 2",
+        "img": "https://assets.3dstreet.app/thumbnails/char2.jpg"
+    },
+    {
+        "id": "char3",
+        "name": "Char 3",
+        "img": "https://assets.3dstreet.app/thumbnails/char3.jpg"
+    },
+    {
+        "id": "char4",
+        "name": "Char 4",
+        "img": "https://assets.3dstreet.app/thumbnails/char4.jpg"
+    },
+    {
+        "id": "char5",
+        "name": "Char 5",
+        "img": "https://assets.3dstreet.app/thumbnails/char5.jpg"
+    },
+    {
+        "id": "char6",
+        "name": "Char 6",
+        "img": "https://assets.3dstreet.app/thumbnails/char6.jpg"
+    },
+    {
+        "id": "char7",
+        "name": "Char 7",
+        "img": "https://assets.3dstreet.app/thumbnails/char7.jpg"
+    },
+    {
+        "id": "char8",
+        "name": "Char 8",
+        "img": "https://assets.3dstreet.app/thumbnails/char8.jpg"
+    },
+    {
+        "id": "char9",
+        "name": "Char 9",
+        "img": "https://assets.3dstreet.app/thumbnails/char9.jpg"
+    },
+    {
+        "id": "char10",
+        "name": "Char 10",
+        "img": "https://assets.3dstreet.app/thumbnails/char10.jpg"
+    },
+    {
+        "id": "char11",
+        "name": "Char 11",
+        "img": "https://assets.3dstreet.app/thumbnails/char11.jpg"
+    },
+    {
+        "id": "char12",
+        "name": "Char 12",
+        "img": "https://assets.3dstreet.app/thumbnails/char12.jpg"
+    },
+    {
+        "id": "char13",
+        "name": "Char 13",
+        "img": "https://assets.3dstreet.app/thumbnails/char13.jpg"
+    },
+    {
+        "id": "char14",
+        "name": "Char 14",
+        "img": "https://assets.3dstreet.app/thumbnails/char14.jpg"
+    },
+    {
+        "id": "char15",
+        "name": "Char 15",
+        "img": "https://assets.3dstreet.app/thumbnails/char15.jpg"
+    },
+    {
+        "id": "char16",
+        "name": "Char 16",
+        "img": "https://assets.3dstreet.app/thumbnails/char16.jpg"
+    },
+    {
+        "id": "tram",
+        "name": "Tram",
+        "img": "https://assets.3dstreet.app/thumbnails/tram.jpg"
+    },
+    {
+        "id": "trolley",
+        "name": "Trolley",
+        "img": "https://assets.3dstreet.app/thumbnails/trolley.jpg"
+    },
+    {
+        "id": "minibus",
+        "name": "Minibus",
+        "img": "https://assets.3dstreet.app/thumbnails/minibus.jpg"
+    },
+    {
+        "id": "dividers-flowers",
+        "name": "Flowers",
+        "img": "https://assets.3dstreet.app/thumbnails/dividers-flowers.jpg"
+    },
+    {
+        "id": "dividers-planting-strip",
+        "name": "Planting Strip",
+        "img": "https://assets.3dstreet.app/thumbnails/dividers-planting-strip.jpg"
+    },
+    {
+        "id": "dividers-planter-box",
+        "name": "Dividers Planter Box",
+        "img": "https://assets.3dstreet.app/thumbnails/dividers-planter-box.jpg"
+    },
+    {
+        "id": "dividers-bush",
+        "name": "Dividers Bush",
+        "img": "https://assets.3dstreet.app/thumbnails/dividers-bush.jpg"
+    },
+    {
+        "id": "dividers-dome",
+        "name": "Dividers Dome",
+        "img": "https://assets.3dstreet.app/thumbnails/dividers-dome.jpg"
+    },
+    {
+        "id": "safehit",
+        "name": "Safehit",
+        "img": "https://assets.3dstreet.app/thumbnails/safehit.jpg"
+    },
+    {
+        "id": "bollard",
+        "name": "Bollard",
+        "img": "https://assets.3dstreet.app/thumbnails/bollard.jpg"
+    },
+    {
+        "id": "temporary-barricade",
+        "name": "Temporary Barricade",
+        "img": "https://assets.3dstreet.app/thumbnails/temporary-barricade.jpg"
+    },
+    {
+        "id": "temporary-traffic-cone",
+        "name": "Temporary Traffic Cone",
+        "img": "https://assets.3dstreet.app/thumbnails/temporary-traffic-cone.jpg"
+    },
+    {
+        "id": "temporary-jersey-barrier-plastic",
+        "name": "Temporary Jersey Barrier Plastic",
+        "img": "https://assets.3dstreet.app/thumbnails/temporary-jersey-barrier-plastic.jpg"
+    },
+    {
+        "id": "temporary-jersey-barrier-concrete",
+        "name": "Temporary Jersey Barrier Concrete",
+        "img": "https://assets.3dstreet.app/thumbnails/temporary-jersey-barrier-concrete.jpg"
+    },
+    {
+        "id": "street-element-crosswalk-raised",
+        "name": "Street Element Crosswalk Raised",
+        "img": "https://assets.3dstreet.app/thumbnails/street-element-crosswalk-raised.jpg"
+    },
+    {
+        "id": "street-element-traffic-island-end-rounded",
+        "name": "Street Element Traffic Island End Rounded",
+        "img": "https://assets.3dstreet.app/thumbnails/street-element-traffic-island-end-rounded.jpg"
+    },
+    {
+        "id": "street-element-sign-warning-ped-rrfb",
+        "name": "Street Element Sign Warning Ped RRFB",
+        "img": "https://assets.3dstreet.app/thumbnails/street-element-sign-warning-ped-rrfb.jpg"
+    },
+    {
+        "id": "street-element-traffic-post-k71",
+        "name": "Street Element Traffic Post K71",
+        "img": "https://assets.3dstreet.app/thumbnails/street-element-traffic-post-k71.jpg"
+    },
+    {
+        "id": "street-element-traffic-island",
+        "name": "Street Element Traffic Island",
+        "img": "https://assets.3dstreet.app/thumbnails/street-element-traffic-island.jpg"
+    },
+    {
+        "id": "street-element-speed-hump",
+        "name": "Street Element Speed Hump",
+        "img": "https://assets.3dstreet.app/thumbnails/street-element-speed-hump.jpg"
+    },
+    {
+        "id": "crosswalk-zebra-box",
+        "name": "Crosswalk Zebra Box",
+        "img": "https://assets.3dstreet.app/thumbnails/crosswalk-zebra-box.jpg"
+    },
+    {
+        "id": "traffic-calming-bumps",
+        "name": "Traffic Calming Bumps",
+        "img": "https://assets.3dstreet.app/thumbnails/traffic-calming-bumps.jpg"
+    },
+    {
+        "id": "corner-island",
+        "name": "Corner Island",
+        "img": "https://assets.3dstreet.app/thumbnails/corner-island.jpg"
+    },
+    {
+        "id": "brt-station",
+        "name": "BRT Station",
+        "img": "https://assets.3dstreet.app/thumbnails/brt-station.jpg"
+    },
+    {
+        "id": "outdoor_dining",
+        "name": "Outdoor Dining",
+        "img": "https://assets.3dstreet.app/thumbnails/outdoor_dining.jpg"
+    },
+    {
+        "id": "bench_orientation_center",
+        "name": "Bench Orientation Center",
+        "img": "https://assets.3dstreet.app/thumbnails/bench_orientation_center.jpg"
+    },
+    {
+        "id": "parklet",
+        "name": "Parklet",
+        "img": "https://assets.3dstreet.app/thumbnails/parklet.jpg"
+    },
+    {
+        "id": "utility_pole",
+        "name": "Utility Pole",
+        "img": "https://assets.3dstreet.app/thumbnails/utility_pole.jpg"
+    },
+    {
+        "id": "lamp-modern",
+        "name": "Lamp Modern",
+        "img": "https://assets.3dstreet.app/thumbnails/lamp-modern.jpg"
+    },
+    {
+        "id": "lamp-modern-double",
+        "name": "Lamp Modern Double",
+        "img": "https://assets.3dstreet.app/thumbnails/lamp-modern-double.jpg"
+    },
+    {
+        "id": "bikerack",
+        "name": "Bike Rack",
+        "img": "https://assets.3dstreet.app/thumbnails/bikerack.jpg"
+    },
+    {
+        "id": "bikeshare",
+        "name": "Bike Share",
+        "img": "https://assets.3dstreet.app/thumbnails/bikeshare.jpg"
+    },
+    {
+        "id": "lamp-traditional",
+        "name": "Lamp Traditional",
+        "img": "https://assets.3dstreet.app/thumbnails/lamp-traditional.jpg"
+    },
+    {
+        "id": "palm-tree",
+        "name": "Palm Tree",
+        "img": "https://assets.3dstreet.app/thumbnails/palm-tree.jpg"
+    },
+    {
+        "id": "bench",
+        "name": "Bench",
+        "img": "https://assets.3dstreet.app/thumbnails/bench.jpg"
+    },
+    {
+        "id": "seawall",
+        "name": "Seawall",
+        "img": "https://assets.3dstreet.app/thumbnails/seawall.jpg"
+    },
+    {
+        "id": "track",
+        "name": "Track",
+        "img": "https://assets.3dstreet.app/thumbnails/track.jpg"
+    },
+    {
+        "id": "tree3",
+        "name": "Tree",
+        "img": "https://assets.3dstreet.app/thumbnails/tree3.jpg"
+    },
+    {
+        "id": "bus-stop",
+        "name": "Bus Stop",
+        "img": "https://assets.3dstreet.app/thumbnails/bus-stop.jpg"
+    },
+    {
+        "id": "bus-stop-alternate",
+        "name": "Bus Stop Alternate",
+        "img": "https://assets.3dstreet.app/thumbnails/bus-stop-alternate.jpg"
+    },
+    {
+        "id": "wayfinding",
+        "name": "Wayfinding Box",
+        "img": "https://assets.3dstreet.app/thumbnails/wayfinding.jpg"
+    },
+    {
+        "id": "signal_left",
+        "name": "Signal Left",
+        "img": "https://assets.3dstreet.app/thumbnails/signal_left.jpg"
+    },
+    {
+        "id": "signal_right",
+        "name": "Signal Right",
+        "img": "https://assets.3dstreet.app/thumbnails/signal_right.jpg"
+    },
+    {
+        "id": "stop_sign",
+        "name": "Stop Sign",
+        "img": "https://assets.3dstreet.app/thumbnails/stop_sign.jpg"
+    },
+    {
+        "id": "trash-bin",
+        "name": "Trash Bin",
+        "img": "https://assets.3dstreet.app/thumbnails/trash-bin.jpg"
+    },
+    {
+        "id": "lending-library",
+        "name": "Lending Library",
+        "img": "https://assets.3dstreet.app/thumbnails/lending-library.jpg"
+    },
+    {
+        "id": "residential-mailbox",
+        "name": "Residential Mailbox",
+        "img": "https://assets.3dstreet.app/thumbnails/residential-mailbox.jpg"
+    },
+    {
+        "id": "USPS-mailbox",
+        "name": "USPS Mailbox",
+        "img": "https://assets.3dstreet.app/thumbnails/USPS-mailbox.jpg"
+    },
+    {
+        "id": "picnic-bench",
+        "name": "Picnic Bench",
+        "img": "https://assets.3dstreet.app/thumbnails/picnic-bench.jpg"
+    },
+    {
+        "id": "large-parklet",
+        "name": "Large Parklet",
+        "img": "https://assets.3dstreet.app/thumbnails/large-parklet.jpg"
+    },
+    {
+        "id": "SM3D_Bld_Mixed_Corner_4fl",
+        "name": "SM3D Building Mixed Corner 4fl",
+        "img": "https://assets.3dstreet.app/thumbnails/SM3D_Bld_Mixed_Corner_4fl.jpg"
+    },
+    {
+        "id": "SM3D_Bld_Mixed_Double_5fl",
+        "name": "SM3D Building Mixed Double 5fl",
+        "img": "https://assets.3dstreet.app/thumbnails/SM3D_Bld_Mixed_Double_5fl.jpg"
+    },
+    {
+        "id": "SM3D_Bld_Mixed_4fl_2",
+        "name": "SM3D Building Mixed 4fl 2",
+        "img": "https://assets.3dstreet.app/thumbnails/SM3D_Bld_Mixed_4fl_2.jpg"
+    },
+    {
+        "id": "SM3D_Bld_Mixed_5fl",
+        "name": "SM3D Building Mixed 5fl",
+        "img": "https://assets.3dstreet.app/thumbnails/SM3D_Bld_Mixed_5fl.jpg"
+    },
+    {
+        "id": "SM3D_Bld_Mixed_4fl",
+        "name": "SM3D Building Mixed 4fl",
+        "img": "https://assets.3dstreet.app/thumbnails/SM3D_Bld_Mixed_4fl.jpg"
+    },
+    {
+        "id": "SM_Bld_House_Preset_03_1800",
+        "name": "SM Building House Preset 03 1800",
+        "img": "https://assets.3dstreet.app/thumbnails/SM_Bld_House_Preset_03_1800.jpg"
+    },
+    {
+        "id": "SM_Bld_House_Preset_08_1809",
+        "name": "SM Building House Preset 08 1809",
+        "img": "https://assets.3dstreet.app/thumbnails/SM_Bld_House_Preset_08_1809.jpg"
+    },
+    {
+        "id": "SM_Bld_House_Preset_09_1845",
+        "name": "SM Building House Preset 09 1845",
+        "img": "https://assets.3dstreet.app/thumbnails/SM_Bld_House_Preset_09_1845.jpg"
+    },
+    {
+        "id": "arched-building-01",
+        "name": "Arched Building 1",
+        "img": "https://assets.3dstreet.app/thumbnails/arched-building-01.jpg"
+    },
+    {
+        "id": "arched-building-02",
+        "name": "Arched Building 2",
+        "img": "https://assets.3dstreet.app/thumbnails/arched-building-02.jpg"
+    },
+    {
+        "id": "arched-building-03",
+        "name": "Arched Building 3",
+        "img": "https://assets.3dstreet.app/thumbnails/arched-building-03.jpg"
+    },
+    {
+        "id": "arched-building-04",
+        "name": "Arched Building 4",
+        "img": "https://assets.3dstreet.app/thumbnails/arched-building-04.jpg"
+    },
+    {
+        "id": "ElectricScooter_1",
+        "name": "Electric Scooter",
+        "img": "https://assets.3dstreet.app/thumbnails/ElectricScooter_1.jpg"
+    },
+    {
+        "id": "Character_1_M",
+        "name": "Carpet Rider",
+        "img": "https://assets.3dstreet.app/thumbnails/Character_1_M.jpg"
+    },
+    {
+        "id": "magic-carpet",
+        "name": "Magic Carpet",
+        "img": "https://assets.3dstreet.app/thumbnails/magic-carpet.jpg"
+    },
+    {
+        "id": "cyclist-cargo",
+        "name": "Cargo Bike",
+        "img": "https://assets.3dstreet.app/thumbnails/cyclist-cargo.jpg"
     }
-
 ]
