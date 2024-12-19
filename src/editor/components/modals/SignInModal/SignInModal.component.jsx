@@ -3,6 +3,8 @@ import Modal from '../Modal.jsx';
 import styles from './SignInModal.module.scss';
 import { signIn, signInMicrosoft } from '../../../api';
 import useStore from '@/store';
+import { saveSceneWithScreenshot } from '@/editor/lib/SceneUtils';
+import { auth } from '@/editor/services/firebase';
 const SignInModal = () => {
   const setModal = useStore((state) => state.setModal);
   const modal = useStore((state) => state.modal);
@@ -11,6 +13,17 @@ const SignInModal = () => {
     setModal(null);
   };
 
+  const onSignInClick = async (provider = 'google') => {
+    if (provider === 'google') {
+      await signIn();
+    } else if (provider === 'microsoft') {
+      await signInMicrosoft();
+    }
+    if (STREET.utils.getCurrentSceneId() !== null) {
+      await saveSceneWithScreenshot(auth.currentUser, true);
+    }
+    onClose();
+  };
   return (
     <Modal
       className={styles.modalWrapper}
@@ -18,25 +31,13 @@ const SignInModal = () => {
       onClose={onClose}
     >
       <div className={styles.contentWrapper}>
-        <h2 className={styles.title}>Sign in to 3DStreet Cloud</h2>
+        <h2 className={styles.title}>Sign in</h2>
         <div className={styles.content}>
-          <p className={styles.p1}>
-            Save and share your street scenes by clicking on a provider below to
-            log-in or automatically create a{' '}
-            <a
-              href="https://www.3dstreet.org/docs/3dstreet-editor/saving-and-loading-scenes"
-              target="_blank"
-              rel="noopener noreferrer"
-            >
-              3DStreet Cloud account
-            </a>{' '}
-            if you don&apos;t already have one.
-          </p>
+          <p className={styles.p1}>Sign in to save your project.</p>
         </div>
         <div
           onClick={() => {
-            signIn();
-            onClose();
+            onSignInClick('google');
           }}
           alt="Sign In with Google Button"
           className={styles.signInButton}
@@ -45,8 +46,7 @@ const SignInModal = () => {
         </div>
         <div
           onClick={() => {
-            signInMicrosoft();
-            onClose();
+            onSignInClick('microsoft');
           }}
           alt="Sign In with Microsoft Button"
           className={styles.signInButton}

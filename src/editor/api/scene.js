@@ -196,7 +196,7 @@ const saveScreenshot = async (value) => {
   screenshotEl.setAttribute('screentock', 'takeScreenshot', true);
 };
 
-const uploadThumbnailImage = async () => {
+const uploadThumbnailImage = async (sceneDocId) => {
   try {
     // saveScreenshot('img');
 
@@ -237,8 +237,6 @@ const uploadThumbnailImage = async () => {
     // Rest of the code...
     const thumbnailDataUrl = resizedCanvas.toDataURL('image/jpeg', 0.5);
     const blobFile = await fetch(thumbnailDataUrl).then((res) => res.blob());
-
-    const sceneDocId = STREET.utils.getCurrentSceneId();
 
     const thumbnailRef = ref(storage, `scenes/${sceneDocId}/files/preview.jpg`);
 
