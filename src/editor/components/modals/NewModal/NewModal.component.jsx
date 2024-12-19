@@ -2,12 +2,12 @@ import Modal from '../Modal.jsx';
 import useStore from '@/store.js';
 import styles from './NewModal.module.scss';
 import ScenePlaceholder from '@/../ui_assets/ScenePlaceholder.svg';
-import { fileJSON, inputStreetmix } from '@/editor/lib/SceneUtils.js';
+import { inputStreetmix } from '@/editor/lib/SceneUtils.js';
 
 export const NewModal = () => {
   const setModal = useStore((state) => state.setModal);
   const isOpen = useStore((state) => state.modal === 'new');
-
+  const saveScene = useStore((state) => state.saveScene);
   const onClose = () => {
     setModal(null);
   };
@@ -30,23 +30,19 @@ export const NewModal = () => {
       title: 'Import From Streetmix',
       imagePath: ScenePlaceholder,
       onClick: inputStreetmix
-    },
-    {
-      title: 'Import From JSON',
-      imagePath: ScenePlaceholder,
-      onClick: fileJSON
     }
   ];
 
   return (
-    <Modal isOpen={isOpen} onClose={onClose} title="New Scene">
+    <Modal isOpen={isOpen} onClose={onClose} title="Create a New Scene">
       <div className={styles.wrapper}>
         {scenesData?.map((scene, index) => (
           <div key={index} className={styles.card} title={scene.title}>
             <div
               className={styles.img}
-              onClick={() => {
-                scene.onClick();
+              onClick={(event) => {
+                scene.onClick(event);
+                saveScene(true);
                 onClose();
               }}
               style={{

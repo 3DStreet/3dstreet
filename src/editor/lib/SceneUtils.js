@@ -103,7 +103,6 @@ export async function saveScene(currentUser, doSaveAs) {
   const authorId = STREET.utils.getAuthorId();
   let sceneId = STREET.utils.getCurrentSceneId();
 
-  console.log('saveScene', currentUser, doSaveAs);
   posthog.capture('saving_scene', {
     save_as: doSaveAs,
     user_id: currentUser ? currentUser.uid : null,

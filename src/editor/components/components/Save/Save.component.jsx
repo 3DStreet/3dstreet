@@ -22,9 +22,7 @@ export const Save = ({ currentUser }) => {
 
   useEffect(() => {
     const autoSaveScene = debounce((cmd) => {
-      console.log('autoSaveScene', cmd);
       if (cmd) {
-        console.log('autoSaveScene', currentUser);
         if (currentUser && STREET.utils.getAuthorId() === currentUser.uid) {
           const streetGeo = document
             .getElementById('reference-layers')
@@ -38,7 +36,6 @@ export const Save = ({ currentUser }) => {
             setModal('payment');
             return;
           }
-          console.log('saving scene');
           saveScene(false);
         }
       }

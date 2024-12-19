@@ -30,7 +30,6 @@ require('./components/street-generated-rail.js');
 require('./components/street-generated-clones.js');
 require('./editor/index.js');
 var firebase = require('./editor/services/firebase.js');
-var sceneUtils = require('./editor/lib/SceneUtils.js');
 
 const state = useStore.getState();
 
@@ -141,7 +140,7 @@ AFRAME.registerComponent('street', {
     // the scene has been loaded, set the synchronize flag
     this.el.setAttribute('street', 'synchronize', false);
     setTimeout(() => {
-      sceneUtils.saveSceneWithScreenshot(firebase.auth.currentUser, true);
+      state.saveScene(true);
     }, 1000);
   }
 });
@@ -199,7 +198,6 @@ AFRAME.registerComponent('streetmix-loader', {
 
     request.open('GET', data.streetmixAPIURL, true);
     request.onload = function () {
-      console.log(firebase.auth.currentUser);
       if (this.status >= 200 && this.status < 400) {
         // Connection success
         const streetmixResponseObject = JSON.parse(this.response);

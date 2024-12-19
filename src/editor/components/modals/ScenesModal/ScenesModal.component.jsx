@@ -5,10 +5,12 @@ import Modal from '../Modal.jsx';
 import styles from './ScenesModal.module.scss';
 import { createElementsForScenesFromJSON } from '@/editor/lib/SceneUtils.js';
 import { getCommunityScenes, getUserScenes } from '../../../api/scene';
-import { Load24Icon, Loader } from '../../../icons';
+import { Load24Icon, Loader, Upload24Icon } from '../../../icons';
 import { signIn } from '../../../api';
 import posthog from 'posthog-js';
 import useStore from '../../../../store.js';
+import { fileJSON } from '@/editor/lib/SceneUtils';
+
 const SCENES_PER_PAGE = 20;
 const tabs = [
   {
@@ -216,6 +218,28 @@ const ScenesModal = ({ initialTab = 'owner', delay = undefined }) => {
                 leadingIcon={<Load24Icon />}
               >
                 Create New Scene
+              </Button>
+              <Button
+                leadingIcon={<Upload24Icon />}
+                className={styles.uploadBtn}
+                style={{ position: 'relative' }}
+              >
+                Upload 3DStreet JSON File
+                <input
+                  type="file"
+                  onChange={(e) => {
+                    fileJSON(e);
+                    onClose(); // Close the modal
+                  }}
+                  style={{
+                    position: 'absolute',
+                    inset: 0,
+                    opacity: 0,
+                    fontSize: 0,
+                    cursor: 'pointer'
+                  }}
+                  accept=".js, .json, .txt"
+                />
               </Button>
             </div>
           </div>

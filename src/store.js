@@ -6,7 +6,7 @@ const firstModal = () => {
   let modal = window.location.hash.includes('payment')
     ? 'payment'
     : !window.location.hash.length
-      ? 'scenes'
+      ? 'new'
       : null;
   const isStreetMix = window.location.hash.includes('streetmix');
   if (isStreetMix) {
