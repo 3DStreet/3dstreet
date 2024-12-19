@@ -24,12 +24,12 @@
     cursor: pointer;
 
     &:hover {
-      border: 1px solid variables.$purple-100;
+      background-color: variables.$purple-100;
       transition: ease-out 0.3s;
     }
 
     &:active {
-      border-color: variables.$purple-200;
+      background-color: variables.$purple-200;
       transition: all 0.3s;
     }
 
