@@ -10,7 +10,8 @@ import {
   create94ftRightOfWay,
   create150ftRightOfWay,
   createImageEntity,
-  createManagedStreet
+  createManagedStreetFromStreetmix,
+  createManagedStreetFromHash
 } from './createLayerFunctions';
 
 export const streetLayersData = [
@@ -74,14 +75,23 @@ export const streetLayersData = [
     handlerFunction: createIntersection
   },
   {
-    name: 'Create Managed Street (Beta)',
+    name: 'Create Managed Street From Streetmix (Beta)',
+    img: '',
+    requiresPro: true,
+    icon: '',
+    description: 'Create an Auto-Managed Street from a Streetmix URL.',
+    id: 8,
+    handlerFunction: createManagedStreetFromStreetmix
+  },
+  {
+    name: 'Create Managed Street From JSON in URL Hash (Beta)',
     img: '',
     requiresPro: true,
     icon: '',
     description:
-      'Create a new street from Streetmix using the Managed Street component.',
-    id: 8,
-    handlerFunction: createManagedStreet
+      'Create an Auto-Managed Street from JSON passed after the hash (#) symbol of the URL.',
+    id: 9,
+    handlerFunction: createManagedStreetFromHash
   }
 ];
 
