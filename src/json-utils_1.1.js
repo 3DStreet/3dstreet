@@ -487,6 +487,23 @@ AFRAME.registerComponent('set-loader-from-hash', {
       if (!streetURL) {
         return;
       }
+      if (streetURL.startsWith('managed-street-json:')) {
+        // use set timeout
+        setTimeout(() => {
+          const definition = {
+            components: {
+              'managed-street': {
+                sourceType: 'json-hash',
+                synchronize: true
+              }
+            }
+          };
+          AFRAME.INSPECTOR.execute('entitycreate', definition);
+          // street notify
+          STREET.notify.successMessage('Loading Managed Street JSON from URL');
+        }, 1000);
+        return;
+      }
       if (streetURL.includes('//streetmix.net')) {
         console.log(
           '[set-loader-from-hash]',
