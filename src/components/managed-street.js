@@ -30,12 +30,12 @@ userLayersEl.append(newStreetEl);
 */
 
 // Example Street object
-const COLORS = window.STREET.colors;
+// 'width' this is the user-specified RoW width, not cumulative width of segments
+// some of this is redundant, many of the segment attributes defined below can be inferred by type
 window.STREET.SAMPLE_STREET = {
-  // some of this is redundant, many of the segment attributes defined below can be inferred by type
-  id: 'aaaaaaaa-0123-4678-9000-000000000000', // this is a real v4 UUID! https://everyuuid.com/
+  id: 'aaaaaaaa-0123-4678-9000-000000000000',
   name: "Kieran's Awesome Street",
-  width: 40, // this is the user-specified RoW width, not cumulative width of segments
+  width: 40,
   length: 100,
   justifyWidth: 'center',
   justifyLength: 'start',
@@ -45,7 +45,7 @@ window.STREET.SAMPLE_STREET = {
       name: 'Sidewalk for walking',
       type: 'sidewalk',
       surface: 'sidewalk',
-      color: COLORS.white,
+      color: '#ffffff',
       level: 1,
       width: 3,
       direction: 'none',
@@ -62,7 +62,7 @@ window.STREET.SAMPLE_STREET = {
       name: 'Sidewalk for trees and stuff',
       type: 'sidewalk',
       surface: 'sidewalk',
-      color: COLORS.white,
+      color: '#ffffff',
       level: 1,
       width: 1,
       direction: 'none',
@@ -81,7 +81,7 @@ window.STREET.SAMPLE_STREET = {
       name: 'Parking for cars',
       type: 'parking-lane',
       surface: 'concrete',
-      color: COLORS.lightGray,
+      color: '#dddddd',
       level: 0,
       width: 3,
       direction: 'inbound',
@@ -107,7 +107,7 @@ window.STREET.SAMPLE_STREET = {
       id: 'aaaaaaaa-0123-4678-9000-000000000004',
       name: 'Drive Lane for cars and stuff',
       type: 'drive-lane',
-      color: COLORS.white,
+      color: '#ffffff',
       surface: 'asphalt',
       level: 0,
       width: 3,
@@ -129,7 +129,7 @@ window.STREET.SAMPLE_STREET = {
       name: 'A beautiful median',
       type: 'divider',
       surface: 'sidewalk',
-      color: COLORS.white,
+      color: '#ffffff',
       level: 1,
       width: 0.5
     }
@@ -147,7 +147,7 @@ AFRAME.registerComponent('managed-street', {
     },
     sourceType: {
       type: 'string',
-      oneOf: ['streetmix-url', 'streetplan-url', 'json-blob']
+      oneOf: ['streetmix-url', 'streetplan-url', 'json-blob', 'json-hash']
     },
     sourceValue: {
       type: 'string'
@@ -225,6 +225,25 @@ AFRAME.registerComponent('managed-street', {
       this.refreshFromStreetplanURL(data.sourceValue);
     } else if (data.sourceType === 'json-blob') {
       this.parseStreetObject(data.sourceValue);
+    } else if (data.sourceType === 'json-hash') {
+      // url.com/page#managed-street-json:{"data":"value"}
+      const fragment = window.location.hash;
+      const prefix = '#managed-street-json:';
+      try {
+        const encodedJsonStr = fragment.substring(prefix.length);
+        const jsonStr = decodeURIComponent(encodedJsonStr);
+        const streetObjectFromHash = JSON.parse(jsonStr);
+        this.parseStreetObject(streetObjectFromHash);
+        this.el.setAttribute('managed-street', 'synchronize', false);
+        this.el.setAttribute('managed-street', 'sourceType', 'json-blob');
+        this.el.setAttribute(
+          'managed-street',
+          'sourceValue',
+          streetObjectFromHash
+        );
+      } catch (err) {
+        console.error('Error parsing fragment:', err);
+      }
     }
   },
   applyLength: function () {
