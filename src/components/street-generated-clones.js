@@ -33,18 +33,31 @@ AFRAME.registerComponent('street-generated-clones', {
 
   init: function () {
     this.createdEntities = [];
+
+    // Initialize seed immediately if needed
+    if (
+      this.data.seed === 0 &&
+      (this.data.mode === 'random' || this.data.randomFacing)
+    ) {
+      // Generate seed first, before creating RNG
+      const newSeed = Math.floor(Math.random() * 1000000);
+      this.el.setAttribute(this.attrName, 'seed', newSeed);
+      // Don't create RNG here - it will be created in the upcoming update()
+      return;
+    }
+
+    // Only create RNG if we have a valid seed
     this.rng = this.createRNG();
   },
 
   createRNG: function () {
     // If seed is 0 (default) and we need randomization, generate a random seed
     let seed = this.data.seed;
-    if (seed === 0 && (this.data.mode === 'random' || this.data.randomFacing)) {
-      seed = Math.floor(Math.random() * 1000000);
-      this.el.setAttribute('street-generated-clones', 'seed', seed);
-    }
+
+    console.log('seed after creating rng', seed);
     // Mulberry32 PRNG implementation
     return (function (a) {
+      console.log('seed passed as `a` to prng', a);
       return function () {
         var t = (a += 0x6d2b79f5);
         t = Math.imul(t ^ (t >>> 15), t | 1);
@@ -60,6 +73,14 @@ AFRAME.registerComponent('street-generated-clones', {
   },
 
   update: function (oldData) {
+    // Only proceed if we have a valid seed AND mode is random or randomFacing
+    if (
+      this.data.seed === 0 &&
+      (this.data.mode === 'random' || this.data.randomFacing)
+    ) {
+      return;
+    }
+
     // Reinitialize RNG if seed changed
     if (!oldData || oldData.seed !== this.data.seed) {
       this.rng = this.createRNG();
