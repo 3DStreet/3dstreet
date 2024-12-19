@@ -50,7 +50,7 @@ export function createMapbox() {
   });
 }
 
-export function createManagedStreetFromStreetmix(position) {
+export function createManagedStreet(position) {
   // This creates a new Managed Street
   let streetmixURL = prompt(
     'Please enter a Streetmix URL',
@@ -65,6 +65,8 @@ export function createManagedStreetFromStreetmix(position) {
         'managed-street': {
           sourceType: 'streetmix-url',
           sourceValue: streetmixURL,
+          showVehicles: true,
+          showStriping: true,
           synchronize: true
         }
       }
@@ -72,22 +74,6 @@ export function createManagedStreetFromStreetmix(position) {
 
     AFRAME.INSPECTOR.execute('entitycreate', definition);
   }
-}
-
-export function createManagedStreetFromHash(position) {
-  // This creates a new Managed Street from a JSON passed after the hash (#) symbol of the URL.
-  const definition = {
-    id: createUniqueId(),
-    components: {
-      position: position ?? '0 0 0',
-      'managed-street': {
-        sourceType: 'json-hash',
-        synchronize: true
-      }
-    }
-  };
-
-  AFRAME.INSPECTOR.execute('entitycreate', definition);
 }
 
 export function createStreetmixStreet(position, streetmixURL, hideBuildings) {
