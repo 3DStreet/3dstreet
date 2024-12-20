@@ -5,7 +5,7 @@ import Modal from '../Modal.jsx';
 import styles from './ScenesModal.module.scss';
 import { createElementsForScenesFromJSON } from '@/editor/lib/SceneUtils.js';
 import { getCommunityScenes, getUserScenes } from '../../../api/scene';
-import { Load24Icon, Loader, Upload24Icon } from '../../../icons';
+import { Edit32Icon, Loader, Upload24Icon } from '../../../icons';
 import { signIn } from '../../../api';
 import posthog from 'posthog-js';
 import useStore from '../../../../store.js';
@@ -215,7 +215,7 @@ const ScenesModal = ({ initialTab = 'owner', delay = undefined }) => {
                 onClick={() => {
                   setModal('new');
                 }}
-                leadingIcon={<Load24Icon />}
+                leadingIcon={<Edit32Icon />}
               >
                 Create New Scene
               </Button>

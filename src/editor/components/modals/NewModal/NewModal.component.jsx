@@ -4,7 +4,7 @@ import styles from './NewModal.module.scss';
 import ScenePlaceholder from '@/../ui_assets/ScenePlaceholder.svg';
 import { inputStreetmix } from '@/editor/lib/SceneUtils.js';
 import { Button } from '@/editor/components/components';
-import { Load24Icon } from '@/editor/icons';
+import { Upload24Icon } from '@/editor/icons';
 
 export const NewModal = () => {
   const setModal = useStore((state) => state.setModal);
@@ -25,12 +25,12 @@ export const NewModal = () => {
   const scenesData = [
     {
       title: 'Create Blank Scene',
-      imagePath: ScenePlaceholder,
+      imagePath: '/ui_assets/cards/new-blank.jpg',
       onClick: onClickNew
     },
     {
       title: 'Import From Streetmix',
-      imagePath: ScenePlaceholder,
+      imagePath: '/ui_assets/cards/new-streetmix-import.jpg',
       onClick: inputStreetmix
     }
   ];
@@ -49,7 +49,7 @@ export const NewModal = () => {
             onClick={() => {
               setModal('scenes');
             }}
-            leadingIcon={<Load24Icon />}
+            leadingIcon={<Upload24Icon />}
           >
             Open Scene
           </Button>
