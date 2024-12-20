@@ -492,11 +492,10 @@ AFRAME.registerComponent('set-loader-from-hash', {
         const fragment = window.location.hash;
         const prefix = '#managed-street-json:';
 
-        let streetObjectFromHash = {};
+        let jsonStr = {};
         try {
           const encodedJsonStr = fragment.substring(prefix.length);
-          const jsonStr = decodeURIComponent(encodedJsonStr);
-          streetObjectFromHash = JSON.parse(jsonStr);
+          jsonStr = decodeURIComponent(encodedJsonStr);
         } catch (err) {
           console.error('Error parsing fragment:', err);
         }
@@ -504,7 +503,7 @@ AFRAME.registerComponent('set-loader-from-hash', {
           components: {
             'managed-street': {
               sourceType: 'json-blob',
-              sourceValue: streetObjectFromHash,
+              sourceValue: jsonStr,
               synchronize: true
             }
           }

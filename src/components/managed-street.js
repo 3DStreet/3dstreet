@@ -23,7 +23,7 @@ userLayersEl = document.getElementById('street-container');
 newStreetEl = document.createElement('a-entity');
 newStreetEl.setAttribute('managed-street', {
   sourceType: 'json-blob',
-  sourceValue: window.STREET.SAMPLE_STREET,
+  sourceValue: JSON.stringify(window.STREET.SAMPLE_STREET),
   synchronize: true
 });
 userLayersEl.append(newStreetEl);
@@ -153,7 +153,7 @@ AFRAME.registerComponent('managed-street', {
     },
     sourceType: {
       type: 'string',
-      oneOf: ['streetmix-url', 'streetplan-url', 'json-blob', 'json-hash']
+      oneOf: ['streetmix-url', 'streetplan-url', 'json-blob']
     },
     sourceValue: {
       type: 'string'
@@ -234,19 +234,9 @@ AFRAME.registerComponent('managed-street', {
       if (typeof data.sourceValue === 'string') {
         const streetObjectFromBlob = JSON.parse(data.sourceValue);
         this.parseStreetObject(streetObjectFromBlob);
-      }
-
-      // if data.sourceValue is an object, then parse and rewrite it as a json string for saving
-      if (typeof data.sourceValue === 'object') {
-        const streetObjectFromBlob = data.sourceValue;
-
-        this.parseStreetObject(streetObjectFromBlob);
-
-        const stringifiedStreetObject = JSON.stringify(streetObjectFromBlob);
-        this.el.setAttribute(
-          'managed-street',
-          'sourceValue',
-          stringifiedStreetObject
+      } else {
+        console.log(
+          '[managed-street]: ERROR parsing json-blob, sourceValue must be a string'
         );
       }
     }
