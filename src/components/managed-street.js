@@ -29,6 +29,12 @@ newStreetEl.setAttribute('managed-street', {
 userLayersEl.append(newStreetEl);
 */
 
+// invoking from js console - load from hash
+/*
+url to copy / paste:
+localhost:3333#managed-street-json:{"id":"aaaaaaaa-0123-4678-9000-000000000000","name":"Kieran's Awesome Street","width":40,"length":100,"justifyWidth":"center","justifyLength":"start","segments":[{"id":"aaaaaaaa-0123-4678-9000-000000000001","name":"Sidewalk for walking","type":"sidewalk","surface":"sidewalk","color":"#ffffff","level":1,"width":3,"direction":"none","generated":{"pedestrians":[{"density":"normal"}]}},{"id":"aaaaaaaa-0123-4678-9000-000000000002","name":"Sidewalk for trees and stuff","type":"sidewalk","surface":"sidewalk","color":"#ffffff","level":1,"width":1,"direction":"none","generated":{"clones":[{"mode":"fixed","model":"tree3","spacing":15}]}},{"id":"aaaaaaaa-0123-4678-9000-000000000003","name":"Parking for cars","type":"parking-lane","surface":"concrete","color":"#dddddd","level":0,"width":3,"direction":"inbound","generated":{"clones":[{"mode":"random","modelsArray":"sedan-rig, self-driving-waymo-car, suv-rig","spacing":6,"count":6}],"stencil":[{"model":"parking-t","cycleOffset":1,"spacing":6}]}},{"id":"aaaaaaaa-0123-4678-9000-000000000004","name":"Drive Lane for cars and stuff","type":"drive-lane","color":"#ffffff","surface":"asphalt","level":0,"width":3,"direction":"inbound","generated":{"clones":[{"mode":"random","modelsArray":"sedan-rig, box-truck-rig, self-driving-waymo-car, suv-rig, motorbike","spacing":7.3,"count":4}]}},{"id":"aaaaaaaa-0123-4678-9000-000000000005","name":"A beautiful median","type":"divider","surface":"sidewalk","color":"#ffffff","level":1,"width":0.5}]}
+*/
+
 // Example Street object
 // 'width' this is the user-specified RoW width, not cumulative width of segments
 // some of this is redundant, many of the segment attributes defined below can be inferred by type
@@ -224,25 +230,24 @@ AFRAME.registerComponent('managed-street', {
       // this function is not yet implemented
       this.refreshFromStreetplanURL(data.sourceValue);
     } else if (data.sourceType === 'json-blob') {
-      this.parseStreetObject(data.sourceValue);
-    } else if (data.sourceType === 'json-hash') {
-      // url.com/page#managed-street-json:{"data":"value"}
-      const fragment = window.location.hash;
-      const prefix = '#managed-street-json:';
-      try {
-        const encodedJsonStr = fragment.substring(prefix.length);
-        const jsonStr = decodeURIComponent(encodedJsonStr);
-        const streetObjectFromHash = JSON.parse(jsonStr);
-        this.parseStreetObject(streetObjectFromHash);
-        this.el.setAttribute('managed-street', 'synchronize', false);
-        this.el.setAttribute('managed-street', 'sourceType', 'json-blob');
+      // if data.sourceValue is a string convert string to object for parsing but keep string for saving
+      if (typeof data.sourceValue === 'string') {
+        const streetObjectFromBlob = JSON.parse(data.sourceValue);
+        this.parseStreetObject(streetObjectFromBlob);
+      }
+
+      // if data.sourceValue is an object, then parse and rewrite it as a json string for saving
+      if (typeof data.sourceValue === 'object') {
+        const streetObjectFromBlob = data.sourceValue;
+
+        this.parseStreetObject(streetObjectFromBlob);
+
+        const stringifiedStreetObject = JSON.stringify(streetObjectFromBlob);
         this.el.setAttribute(
           'managed-street',
           'sourceValue',
-          streetObjectFromHash
+          stringifiedStreetObject
         );
-      } catch (err) {
-        console.error('Error parsing fragment:', err);
       }
     }
   },

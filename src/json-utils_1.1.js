@@ -488,16 +488,29 @@ AFRAME.registerComponent('set-loader-from-hash', {
         return;
       }
       if (streetURL.startsWith('managed-street-json:')) {
+        // url.com/page#managed-street-json:{"data":"value"}
+        const fragment = window.location.hash;
+        const prefix = '#managed-street-json:';
+
+        let streetObjectFromHash = {};
+        try {
+          const encodedJsonStr = fragment.substring(prefix.length);
+          const jsonStr = decodeURIComponent(encodedJsonStr);
+          streetObjectFromHash = JSON.parse(jsonStr);
+        } catch (err) {
+          console.error('Error parsing fragment:', err);
+        }
+        const definition = {
+          components: {
+            'managed-street': {
+              sourceType: 'json-blob',
+              sourceValue: streetObjectFromHash,
+              synchronize: true
+            }
+          }
+        };
         // use set timeout
         setTimeout(() => {
-          const definition = {
-            components: {
-              'managed-street': {
-                sourceType: 'json-hash',
-                synchronize: true
-              }
-            }
-          };
           AFRAME.INSPECTOR.execute('entitycreate', definition);
           // street notify
           STREET.notify.successMessage('Loading Managed Street JSON from URL');
