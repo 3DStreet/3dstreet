@@ -2,6 +2,11 @@
 
 These is a place to save random notes like code snippets, links to assets, and other references. This doc might not be useful to anyone else :)
 
+### Example managed street load from hash
+```
+localhost:3333#managed-street-json:{"id":"aaaaaaaa-0123-4678-9000-000000000000","name":"Kieran's Awesome Street","width":40,"length":100,"justifyWidth":"center","justifyLength":"start","segments":[{"id":"aaaaaaaa-0123-4678-9000-000000000001","name":"Sidewalk for walking","type":"sidewalk","surface":"sidewalk","color":"#ffffff","level":1,"width":3,"direction":"none","generated":{"pedestrians":[{"density":"normal"}]}},{"id":"aaaaaaaa-0123-4678-9000-000000000002","name":"Sidewalk for trees and stuff","type":"sidewalk","surface":"sidewalk","color":"#ffffff","level":1,"width":1,"direction":"none","generated":{"clones":[{"mode":"fixed","model":"tree3","spacing":15}]}},{"id":"aaaaaaaa-0123-4678-9000-000000000003","name":"Parking for cars","type":"parking-lane","surface":"concrete","color":"#dddddd","level":0,"width":3,"direction":"inbound","generated":{"clones":[{"mode":"random","modelsArray":"sedan-rig, self-driving-waymo-car, suv-rig","spacing":6,"count":6}],"stencil":[{"model":"parking-t","cycleOffset":1,"spacing":6}]}},{"id":"aaaaaaaa-0123-4678-9000-000000000004","name":"Drive Lane for cars and stuff","type":"drive-lane","color":"#ffffff","surface":"asphalt","level":0,"width":3,"direction":"inbound","generated":{"clones":[{"mode":"random","modelsArray":"sedan-rig, box-truck-rig, self-driving-waymo-car, suv-rig, motorbike","spacing":7.3,"count":4}]}},{"id":"aaaaaaaa-0123-4678-9000-000000000005","name":"A beautiful median","type":"divider","surface":"sidewalk","color":"#ffffff","level":1,"width":0.5}]}
+```
+
 ### Audio Notes
 ```
 var entity = document.querySelector('.playme');

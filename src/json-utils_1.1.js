@@ -487,6 +487,35 @@ AFRAME.registerComponent('set-loader-from-hash', {
       if (!streetURL) {
         return;
       }
+      if (streetURL.startsWith('managed-street-json:')) {
+        // url.com/page#managed-street-json:{"data":"value"}
+        const fragment = window.location.hash;
+        const prefix = '#managed-street-json:';
+
+        let jsonStr = {};
+        try {
+          const encodedJsonStr = fragment.substring(prefix.length);
+          jsonStr = decodeURIComponent(encodedJsonStr);
+        } catch (err) {
+          console.error('Error parsing fragment:', err);
+        }
+        const definition = {
+          components: {
+            'managed-street': {
+              sourceType: 'json-blob',
+              sourceValue: jsonStr,
+              synchronize: true
+            }
+          }
+        };
+        // use set timeout
+        setTimeout(() => {
+          AFRAME.INSPECTOR.execute('entitycreate', definition);
+          // street notify
+          STREET.notify.successMessage('Loading Managed Street JSON from URL');
+        }, 1000);
+        return;
+      }
       if (streetURL.includes('//streetmix.net')) {
         console.log(
           '[set-loader-from-hash]',

@@ -1,5 +1,6 @@
 import { loadScript, roundCoord } from '../../../../../src/utils.js';
 import { createUniqueId } from '../../../lib/entity.js';
+import * as defaultStreetObjects from './defaultStreets.js';
 
 export function createSvgExtrudedEntity(position) {
   // This component accepts a svgString and creates a new entity with geometry extruded
@@ -50,7 +51,7 @@ export function createMapbox() {
   });
 }
 
-export function createManagedStreet(position) {
+export function createManagedStreetFromStreetmixURLPrompt(position) {
   // This creates a new Managed Street
   let streetmixURL = prompt(
     'Please enter a Streetmix URL',
@@ -76,7 +77,29 @@ export function createManagedStreet(position) {
   }
 }
 
+export function createManagedStreetFromStreetObject(position, streetObject) {
+  // This creates a new Managed Street
+  if (streetObject && streetObject !== '') {
+    const definition = {
+      id: createUniqueId(),
+      components: {
+        position: position ?? '0 0 0',
+        'managed-street': {
+          sourceType: 'json-blob',
+          sourceValue: JSON.stringify(streetObject),
+          showVehicles: true,
+          showStriping: true,
+          synchronize: true
+        }
+      }
+    };
+
+    AFRAME.INSPECTOR.execute('entitycreate', definition);
+  }
+}
+
 export function createStreetmixStreet(position, streetmixURL, hideBuildings) {
+  // legacy
   // This code snippet allows the creation of an additional Streetmix street
   // in your 3DStreet scene without replacing any existing streets.
   if (streetmixURL === undefined) {
@@ -116,6 +139,18 @@ export function create60ftRightOfWay(position) {
     true
   );
 }
+
+export function create60ftRightOfWayManagedStreet(position) {
+  console.log(
+    'create60ftRightOfWayManagedStreet',
+    defaultStreetObjects.stroad60ftROW
+  );
+  createManagedStreetFromStreetObject(
+    position,
+    defaultStreetObjects.stroad60ftROW
+  );
+}
+
 export function create80ftRightOfWay(position) {
   createStreetmixStreet(
     position,
