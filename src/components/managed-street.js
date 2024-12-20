@@ -446,6 +446,7 @@ AFRAME.registerComponent('managed-street', {
 
       // When all entities are loaded, do something with them
       this.allLoadedPromise.then(() => {
+        this.refreshManagedEntities();
         this.applyJustification();
         this.createOrUpdateJustifiedDirtBox();
         AFRAME.INSPECTOR.selectEntity(this.el);
