@@ -7,7 +7,7 @@ var assetsUrl;
 STREET.utils = {};
 function getSceneUuidFromURLHash() {
   const currentHash = window.location.hash;
-  const match = currentHash.match(/#\/scenes\/([a-zA-Z0-9-]+)\.json/);
+  const match = currentHash.match(/#\/scenes\/([a-zA-Z0-9-]+)/);
   return match && match[1] ? match[1] : null;
 }
 
@@ -536,7 +536,10 @@ AFRAME.registerComponent('set-loader-from-hash', {
           'Load 3DStreet scene with fetchJSON from',
           streetURL
         );
-        this.fetchJSON(streetURL);
+        const jsonURL = streetURL.endsWith('.json')
+          ? streetURL
+          : `${streetURL}.json`;
+        this.fetchJSON(jsonURL);
       }
       // else {
       //   console.log('[set-loader-from-hash]','Using default URL', this.data.defaultURL)

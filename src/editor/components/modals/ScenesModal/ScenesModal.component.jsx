@@ -3,16 +3,14 @@ import { useAuthContext } from '../../../contexts';
 import { Button, SceneCard, Tabs } from '../../components';
 import Modal from '../Modal.jsx';
 import styles from './ScenesModal.module.scss';
-import {
-  createElementsForScenesFromJSON,
-  fileJSON,
-  inputStreetmix
-} from '@/editor/lib/SceneUtils.js';
+import { createElementsForScenesFromJSON } from '@/editor/lib/SceneUtils.js';
 import { getCommunityScenes, getUserScenes } from '../../../api/scene';
-import { Load24Icon, Loader, Upload24Icon } from '../../../icons';
+import { Edit32Icon, Loader, Upload24Icon } from '../../../icons';
 import { signIn } from '../../../api';
 import posthog from 'posthog-js';
 import useStore from '../../../../store.js';
+import { fileJSON } from '@/editor/lib/SceneUtils';
+
 const SCENES_PER_PAGE = 20;
 const tabs = [
   {
@@ -57,12 +55,12 @@ const ScenesModal = ({ initialTab = 'owner', delay = undefined }) => {
 
     if (event.ctrlKey || event.metaKey) {
       localStorage.setItem('sceneData', JSON.stringify(sceneData.data));
-      const newTabUrl = `#/scenes/${scene.id}.json`;
+      const newTabUrl = `#/scenes/${scene.id}`;
       const newTab = window.open(newTabUrl, '_blank');
       newTab.focus();
     } else {
       createElementsForScenesFromJSON(sceneData.data);
-      window.location.hash = `#/scenes/${scene.id}.json`;
+      window.location.hash = `#/scenes/${scene.id}`;
 
       const sceneId = scene.id;
       const sceneTitle = sceneData.title;
@@ -103,11 +101,9 @@ const ScenesModal = ({ initialTab = 'owner', delay = undefined }) => {
 
   useEffect(() => {
     const fetchData = async () => {
-      console.log({ scenesData, scenesDataCommunity });
       if (isOpen) {
         let collections;
         setIsLoadingScenes(true);
-
         try {
           if (
             selectedTab === 'owner' &&
@@ -158,7 +154,6 @@ const ScenesModal = ({ initialTab = 'owner', delay = undefined }) => {
 
     if (selectedTab === 'owner') {
       const userScenes = await fetchUserScenes();
-
       setScenesData([...scenesData, ...userScenes]);
       setTotalDisplayedUserScenes(end);
     } else if (selectedTab === 'community') {
@@ -184,7 +179,6 @@ const ScenesModal = ({ initialTab = 'owner', delay = undefined }) => {
       loadData(end);
     }
   };
-
   return renderComponent ? (
     <Modal
       className={styles.modalWrapper}
@@ -219,12 +213,11 @@ const ScenesModal = ({ initialTab = 'owner', delay = undefined }) => {
             <div className={styles.buttons}>
               <Button
                 onClick={() => {
-                  inputStreetmix();
-                  onClose(); // Close the modal
+                  setModal('new');
                 }}
-                leadingIcon={<Load24Icon />}
+                leadingIcon={<Edit32Icon />}
               >
-                Load from Streetmix
+                Create New Scene
               </Button>
               <Button
                 leadingIcon={<Upload24Icon />}

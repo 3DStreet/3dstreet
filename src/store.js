@@ -6,7 +6,7 @@ const firstModal = () => {
   let modal = window.location.hash.includes('payment')
     ? 'payment'
     : !window.location.hash.length
-      ? 'scenes'
+      ? 'new'
       : null;
   const isStreetMix = window.location.hash.includes('streetmix');
   if (isStreetMix) {
@@ -21,6 +21,11 @@ const useStore = create(
       (set) => ({
         sceneId: null,
         setSceneId: (newSceneId) => set({ sceneId: newSceneId }),
+        isSavingScene: false,
+        saveScene: (newDoSaveAs) =>
+          set({ isSavingScene: true, doSaveAs: newDoSaveAs }),
+        postSaveScene: () => set({ isSavingScene: false, doSaveAs: false }),
+        doSaveAs: false,
         sceneTitle: null,
         setSceneTitle: (newSceneTitle) => set({ sceneTitle: newSceneTitle }),
         newScene: () =>
