@@ -7,7 +7,7 @@ import { Button, Dropdown, Input } from '../../components';
 import Modal from '../Modal.jsx';
 import posthog from 'posthog-js';
 import { saveBlob } from '../../../lib/utils';
-import { uploadThumbnailImage, saveScreenshot } from '../../../api/scene';
+import { saveScreenshot } from '../../../api/scene';
 import useStore from '@/store';
 import { convertToObject } from '@/editor/lib/SceneUtils';
 
@@ -49,7 +49,7 @@ function ScreenshotModal() {
   const sceneId = STREET.utils.getCurrentSceneId();
   let currentUrl;
   if (sceneId) {
-    currentUrl = 'https://3dstreet.app/#/scenes/' + sceneId + '.json';
+    currentUrl = 'https://3dstreet.app/#/scenes/' + sceneId;
   } else {
     currentUrl = window.location.href;
   }
@@ -144,12 +144,6 @@ function ScreenshotModal() {
     }
   };
 
-  const updateThumbnail = async () => {
-    posthog.capture('thumbnail_updated');
-    await uploadThumbnailImage();
-    STREET.notify.successMessage('Thumbnail Updated');
-  };
-
   return (
     <Modal
       className={styles.screenshotModalWrapper}
@@ -213,13 +207,6 @@ function ScreenshotModal() {
             className={styles.screenshotWrapper}
             dangerouslySetInnerHTML={{ __html: parsedScreenshot }}
           />
-          <Button
-            variant="custom"
-            onClick={updateThumbnail}
-            className={styles.thumbnailButton}
-          >
-            Set as scene thumbnail
-          </Button>
         </div>
       </div>
     </Modal>
