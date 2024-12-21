@@ -20,6 +20,7 @@ import { IntroModal } from './modals/IntroModal';
 import { NewModal } from './modals/NewModal';
 import { ToolbarWrapper } from './scenegraph/ToolbarWrapper.js';
 import useStore from '@/store';
+import { TheatreProvider } from '../contexts/TheatreContext';
 
 THREE.ImageUtils.crossOrigin = '';
 
@@ -108,59 +109,61 @@ export default function Main() {
   const isInspectorEnabled = useStore((state) => state.isInspectorEnabled);
 
   return (
-    <div id="inspectorContainer">
-      <ToolbarWrapper />
-      {isInspectorEnabled && (
-        <div>
-          <SceneGraph
-            scene={scene}
-            selectedEntity={state.entity}
-            visible={state.visible.scenegraph}
-          />
-          <div id="rightPanel">
-            <ComponentsSidebar
-              entity={state.entity}
-              visible={state.visible.attributes}
+    <TheatreProvider>
+      <div id="inspectorContainer">
+        <ToolbarWrapper />
+        {isInspectorEnabled && (
+          <div>
+            <SceneGraph
+              scene={scene}
+              selectedEntity={state.entity}
+              visible={state.visible.scenegraph}
             />
-          </div>
-        </div>
-      )}
-      <ScreenshotModal />
-      <SignInModal />
-      <PaymentModal />
-      <ScenesModal />
-      <ProfileModal />
-      <IntroModal />
-      <NewModal />
-      <LoadScript
-        googleMapsApiKey={firebaseConfig.apiKey}
-        libraries={GOOGLE_MAPS_LIBRARIES}
-      >
-        <GeoModal />
-      </LoadScript>
-      <ModalTextures
-        isOpen={state.isModalTexturesOpen}
-        selectedTexture={state.selectedTexture}
-        onClose={onModalTextureOnClose}
-      />
-
-      {isInspectorEnabled && (
-        <>
-          <div id="action-bar">
-            <ActionBar selectedEntity={state.entity} />
-          </div>
-          <div id="scene-title" className="clickable">
-            <SceneEditTitle />
-          </div>
-          <div id="zoom-help-buttons">
-            <ZoomButtons />
-            <HelpButton />
-            <div className="clickable">
-              <AddLayerPanel />
+            <div id="rightPanel">
+              <ComponentsSidebar
+                entity={state.entity}
+                visible={state.visible.attributes}
+              />
             </div>
           </div>
-        </>
-      )}
-    </div>
+        )}
+        <ScreenshotModal />
+        <SignInModal />
+        <PaymentModal />
+        <ScenesModal />
+        <ProfileModal />
+        <IntroModal />
+        <NewModal />
+        <LoadScript
+          googleMapsApiKey={firebaseConfig.apiKey}
+          libraries={GOOGLE_MAPS_LIBRARIES}
+        >
+          <GeoModal />
+        </LoadScript>
+        <ModalTextures
+          isOpen={state.isModalTexturesOpen}
+          selectedTexture={state.selectedTexture}
+          onClose={onModalTextureOnClose}
+        />
+
+        {isInspectorEnabled && (
+          <>
+            <div id="action-bar">
+              <ActionBar selectedEntity={state.entity} />
+            </div>
+            <div id="scene-title" className="clickable">
+              <SceneEditTitle />
+            </div>
+            <div id="zoom-help-buttons">
+              <ZoomButtons />
+              <HelpButton />
+              <div className="clickable">
+                <AddLayerPanel />
+              </div>
+            </div>
+          </>
+        )}
+      </div>
+    </TheatreProvider>
   );
 }
