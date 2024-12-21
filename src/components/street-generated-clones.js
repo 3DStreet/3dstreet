@@ -33,21 +33,6 @@ AFRAME.registerComponent('street-generated-clones', {
 
   init: function () {
     this.createdEntities = [];
-
-    // Initialize seed immediately if needed
-    if (
-      this.data.seed === 0 &&
-      (this.data.mode === 'random' || this.data.randomFacing)
-    ) {
-      // Generate seed first, before creating RNG
-      const newSeed = Math.floor(Math.random() * 1000000);
-      this.el.setAttribute(this.attrName, 'seed', newSeed);
-      // Don't create RNG here - it will be created in the upcoming update()
-      return;
-    }
-
-    // Only create RNG if we have a valid seed
-    this.rng = this.createRNG();
   },
 
   createRNG: function () {
@@ -73,16 +58,15 @@ AFRAME.registerComponent('street-generated-clones', {
   },
 
   update: function (oldData) {
-    // Only proceed if we have a valid seed AND mode is random or randomFacing
-    if (
-      this.data.seed === 0 &&
-      (this.data.mode === 'random' || this.data.randomFacing)
-    ) {
-      return;
-    }
-
-    // Reinitialize RNG if seed changed
-    if (!oldData || oldData.seed !== this.data.seed) {
+    // If mode is random or randomFacing and seed is 0, generate a random seed and return,
+    // the update will be called again because of the setAttribute.
+    if (this.data.mode === 'random' || this.data.randomFacing) {
+      if (this.data.seed === 0) {
+        const newSeed = Math.floor(Math.random() * 1000000) + 1; // Add 1 to avoid seed 0
+        this.el.setAttribute(this.attrName, 'seed', newSeed);
+        return;
+      }
+      // Always recreate RNG when update is called to be sure we end of with the same clones positions for a given seed
       this.rng = this.createRNG();
     }
 
