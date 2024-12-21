@@ -93,9 +93,19 @@ export default class SceneGraph extends React.Component {
         this.setState({ selectedIndex: i });
         setTimeout(() => {
           // wait 500ms to allow user to double click on entity
-          document
-            .getElementById('sgnode' + i)
-            ?.scrollIntoView({ behavior: 'smooth' });
+          const node = document.getElementById('sgnode' + i);
+          const scrollableContainer = document.querySelector(
+            '#scenegraph .layers'
+          );
+          if (!node || !scrollableContainer) return;
+          const containerRect = scrollableContainer.getBoundingClientRect();
+          const nodeRect = node.getBoundingClientRect();
+          const isVisible =
+            nodeRect.top >= containerRect.top &&
+            nodeRect.bottom <= containerRect.bottom;
+          if (!isVisible) {
+            node.scrollIntoView({ behavior: 'smooth' });
+          }
         }, 500);
         // Make sure selected value is visible in scenegraph
         this.expandToRoot(entity);
