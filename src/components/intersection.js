@@ -151,6 +151,7 @@ AFRAME.registerComponent('intersection', {
         rotationVec: { x: 0, y: 90, z: -90 },
         length: northeastcurbArray[0],
         width: northeastcurbArray[1],
+        radius: northeastcurbArray[2],
         displayName: 'Northeast'
       },
       southwest: {
@@ -162,6 +163,7 @@ AFRAME.registerComponent('intersection', {
         rotationVec: { x: 0, y: 90, z: -90 },
         length: southwestcurbArray[0],
         width: southwestcurbArray[1],
+        radius: southwestcurbArray[2],
         displayName: 'Southwest'
       },
       southeast: {
@@ -173,6 +175,7 @@ AFRAME.registerComponent('intersection', {
         rotationVec: { x: 0, y: 90, z: -90 },
         length: southeastcurbArray[0],
         width: southeastcurbArray[1],
+        radius: southeastcurbArray[2],
         displayName: 'Southeast'
       },
       northwest: {
@@ -184,6 +187,7 @@ AFRAME.registerComponent('intersection', {
         rotationVec: { x: 0, y: 90, z: -90 },
         length: northwestcurbArray[0],
         width: northwestcurbArray[1],
+        radius: northwestcurbArray[2],
         displayName: 'Northwest'
       }
     };
