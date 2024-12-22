@@ -91,7 +91,7 @@ AFRAME.registerComponent('intersection', {
       // Create new shape out of the points:
       const curbShape = new THREE.Shape(points);
       const curbGeom = new THREE.ExtrudeGeometry(curbShape, {
-        depth: 0.4,
+        depth: 0.4, // Match existing sidewalk thickness
         bevelEnabled: false
       });
 
@@ -101,12 +101,12 @@ AFRAME.registerComponent('intersection', {
       console.log(sidewalkTexture);
       sidewalkTexture.wrapS = THREE.RepeatWrapping;
       sidewalkTexture.wrapT = THREE.RepeatWrapping;
-      sidewalkTexture.repeat.set(0.5, 0.5);
+      sidewalkTexture.repeat.set(0.5, 0.5); // Scale the texture to repeat twice every meter
 
       const material = new THREE.MeshStandardMaterial({
         map: sidewalkTexture,
-        roughness: 0.8,
-        color: 0xcccccc
+        roughness: 0.8, // Same roughness as sidewalk mixin in src/assets.js
+        color: 0xcccccc // Darkens the texture to match existing sidewalk
       });
       const mesh = new THREE.Mesh(curbGeom, material);
       mesh.scale.setX(scaleVec.x);
