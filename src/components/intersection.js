@@ -4,10 +4,10 @@ AFRAME.registerComponent('intersection', {
     dimensions: { type: 'string', default: '20 20' },
     // cardinal direction order for sidewalk, stopsign, crosswalk, and trafficsignal: west, east, north, south
     sidewalk: { type: 'string', default: '0 0 0 0' },
-    northeastcurb: { type: 'string', default: '4 4' },
-    southwestcurb: { type: 'string', default: '4 4' },
-    southeastcurb: { type: 'string', default: '4 4' },
-    northwestcurb: { type: 'string', default: '4 4' },
+    northeastcurb: { type: 'string', default: '4 4 0' },
+    southwestcurb: { type: 'string', default: '4 4 0' },
+    southeastcurb: { type: 'string', default: '4 4 0' },
+    northwestcurb: { type: 'string', default: '4 4 0' },
     stopsign: { type: 'string', default: '0 0 0 0' },
     trafficsignal: { type: 'string', default: '1 1 1 1' },
     crosswalk: { type: 'string', default: '1 1 1 1' }

@@ -59,6 +59,12 @@ const IntersectionSidebar = ({ entity }) => {
     updateCurbArray(newCurbArray);
   };
 
+  const handleCurbRadiusChange = (_, value) => {
+    const newCurbArray = [...curbArrays[curb]];
+    newCurbArray[2] = value;
+    updateCurbArray(newCurbArray);
+  };
+
   const updateCurbArray = (newCurbArray) => {
     switch (curb) {
       case 'northeast':
@@ -245,6 +251,14 @@ const IntersectionSidebar = ({ entity }) => {
               name="curbHeight"
               value={curbArrays[curb][1]}
               onChange={handleCurbHeightChange}
+            />
+          </div>
+          <div className="propertyRow">
+            <label className="text">Radius:</label>
+            <NumberWidget
+              name="curbRadius"
+              value={curbArrays[curb][2]}
+              onChange={handleCurbRadiusChange}
             />
           </div>
         </div>
