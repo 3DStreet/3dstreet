@@ -1,4 +1,5 @@
 /* global AFRAME */
+import { createRNG } from '../lib/rng';
 
 AFRAME.registerComponent('street-generated-pedestrians', {
   multiple: true,
@@ -40,21 +41,6 @@ AFRAME.registerComponent('street-generated-pedestrians', {
     };
   },
 
-  createRNG: function () {
-    // If seed is 0 (default), generate a random seed
-    let seed = this.data.seed;
-
-    // Mulberry32 PRNG implementation (identical to clones.js)
-    return (function (a) {
-      return function () {
-        var t = (a += 0x6d2b79f5);
-        t = Math.imul(t ^ (t >>> 15), t | 1);
-        t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
-        return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
-      };
-    })(seed);
-  },
-
   remove: function () {
     this.createdEntities.forEach((entity) => entity.remove());
     this.createdEntities.length = 0;
@@ -71,7 +57,7 @@ AFRAME.registerComponent('street-generated-pedestrians', {
     }
 
     // Create seeded RNG
-    this.rng = this.createRNG();
+    this.rng = createRNG(this.data.seed);
 
     // Clean up old entities
     this.remove();

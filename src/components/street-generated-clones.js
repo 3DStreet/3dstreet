@@ -1,4 +1,5 @@
 /* global AFRAME */
+import { createRNG } from '../lib/rng';
 
 AFRAME.registerComponent('street-generated-clones', {
   multiple: true,
@@ -35,21 +36,6 @@ AFRAME.registerComponent('street-generated-clones', {
     this.createdEntities = [];
   },
 
-  createRNG: function () {
-    // If seed is 0 (default) and we need randomization, generate a random seed
-    let seed = this.data.seed;
-
-    // Mulberry32 PRNG implementation
-    return (function (a) {
-      return function () {
-        var t = (a += 0x6d2b79f5);
-        t = Math.imul(t ^ (t >>> 15), t | 1);
-        t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
-        return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
-      };
-    })(seed);
-  },
-
   remove: function () {
     this.createdEntities.forEach((entity) => entity.remove());
     this.createdEntities.length = 0; // Clear the array
@@ -65,7 +51,7 @@ AFRAME.registerComponent('street-generated-clones', {
         return;
       }
       // Always recreate RNG when update is called to be sure we end of with the same clones positions for a given seed
-      this.rng = this.createRNG();
+      this.rng = createRNG(this.data.seed);
     }
 
     // Clear existing entities
