@@ -6,10 +6,10 @@ AFRAME.registerComponent('intersection', {
     dimensions: { type: 'string', default: '20 20' },
     // cardinal direction order for sidewalk, stopsign, crosswalk, and trafficsignal: west, east, north, south
     sidewalk: { type: 'string', default: '0 0 0 0' },
-    northeastcurb: { type: 'string', default: '4 4 0' },
-    southwestcurb: { type: 'string', default: '4 4 0' },
-    southeastcurb: { type: 'string', default: '4 4 0' },
-    northwestcurb: { type: 'string', default: '4 4 0' },
+    northeastcurb: { type: 'string', default: '4 4 1' },
+    southwestcurb: { type: 'string', default: '4 4 1' },
+    southeastcurb: { type: 'string', default: '4 4 1' },
+    northwestcurb: { type: 'string', default: '4 4 1' },
     stopsign: { type: 'string', default: '0 0 0 0' },
     trafficsignal: { type: 'string', default: '1 1 1 1' },
     crosswalk: { type: 'string', default: '1 1 1 1' }
@@ -185,8 +185,7 @@ AFRAME.registerComponent('intersection', {
           y: intersectDepth / 2,
           z: 0.1
         },
-        rotationVec: { x: 0, y: 0, z: 180 },
-        scaleVec: { x: 1, y: 1, z: 1 },
+        scaleVec: { x: -1, y: -1, z: 1 },
         length: northeastcurbArray[0],
         width: northeastcurbArray[1],
         radius: northeastcurbArray[2],
@@ -198,7 +197,6 @@ AFRAME.registerComponent('intersection', {
           y: -intersectDepth / 2,
           z: 0.1
         },
-        rotationVec: { x: 0, y: 0, z: 0 },
         scaleVec: { x: 1, y: 1, z: 1 },
         length: southwestcurbArray[0],
         width: southwestcurbArray[1],
@@ -211,7 +209,6 @@ AFRAME.registerComponent('intersection', {
           y: -intersectDepth / 2,
           z: 0.1
         },
-        rotationVec: { x: 0, y: 0, z: 0 },
         scaleVec: { x: -1, y: 1, z: 1 },
         length: southeastcurbArray[0],
         width: southeastcurbArray[1],
@@ -224,7 +221,6 @@ AFRAME.registerComponent('intersection', {
           y: intersectDepth / 2,
           z: 0.1
         },
-        rotationVec: { x: 0, y: 0, z: 0 },
         scaleVec: { x: 1, y: -1, z: 1 },
         length: northwestcurbArray[0],
         width: northwestcurbArray[1],
