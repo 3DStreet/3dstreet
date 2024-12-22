@@ -1,11 +1,9 @@
 /* global AFRAME */
 
-// a-frame component to generate cloned pedestrian models along a street
 AFRAME.registerComponent('street-generated-pedestrians', {
   multiple: true,
   schema: {
     segmentWidth: {
-      // width of the segment in meters
       type: 'number',
       default: 3
     },
@@ -15,7 +13,6 @@ AFRAME.registerComponent('street-generated-pedestrians', {
       oneOf: ['empty', 'sparse', 'normal', 'dense']
     },
     length: {
-      // length in meters of linear path to fill with clones
       type: 'number'
     },
     direction: {
@@ -23,14 +20,12 @@ AFRAME.registerComponent('street-generated-pedestrians', {
       default: 'none',
       oneOf: ['none', 'inbound', 'outbound']
     },
-    // animated: {
-    //   // load 8 animated characters instead of 16 static characters
-    //   type: 'boolean',
-    //   default: false
-    // },
     positionY: {
-      // y position of pedestrians
       type: 'number',
+      default: 0
+    },
+    seed: {
+      type: 'int',
       default: 0
     }
   },
@@ -45,13 +40,38 @@ AFRAME.registerComponent('street-generated-pedestrians', {
     };
   },
 
+  createRNG: function () {
+    // If seed is 0 (default), generate a random seed
+    let seed = this.data.seed;
+
+    // Mulberry32 PRNG implementation (identical to clones.js)
+    return (function (a) {
+      return function () {
+        var t = (a += 0x6d2b79f5);
+        t = Math.imul(t ^ (t >>> 15), t | 1);
+        t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+        return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+      };
+    })(seed);
+  },
+
   remove: function () {
     this.createdEntities.forEach((entity) => entity.remove());
-    this.createdEntities.length = 0; // Clear the array
+    this.createdEntities.length = 0;
   },
 
   update: function (oldData) {
     const data = this.data;
+
+    // Handle seed initialization
+    if (this.data.seed === 0) {
+      const newSeed = Math.floor(Math.random() * 1000000) + 1;
+      this.el.setAttribute(this.attrName, 'seed', newSeed);
+      return;
+    }
+
+    // Create seeded RNG
+    this.rng = this.createRNG();
 
     // Clean up old entities
     this.remove();
@@ -67,7 +87,7 @@ AFRAME.registerComponent('street-generated-pedestrians', {
       this.densityFactors[data.density] * data.length
     );
 
-    // Get available z positions
+    // Get Z positions using seeded randomization
     const zPositions = this.getZPositions(
       -data.length / 2,
       data.length / 2,
@@ -79,25 +99,23 @@ AFRAME.registerComponent('street-generated-pedestrians', {
       const pedestrian = document.createElement('a-entity');
       this.el.appendChild(pedestrian);
 
-      // Set random position within bounds
+      // Set seeded random position within bounds
       const position = {
         x: this.getRandomArbitrary(xRange.min, xRange.max),
         y: data.positionY,
-        z: zPositions.pop()
+        z: zPositions[i]
       };
       pedestrian.setAttribute('position', position);
 
-      // Set model variant
-      const variantNumber = this.getRandomIntInclusive(
-        1,
-        data.animated ? 8 : 16
-      );
-      const variantPrefix = data.animated ? 'a_char' : 'char';
-      pedestrian.setAttribute('mixin', `${variantPrefix}${variantNumber}`);
+      // Set model variant using seeded random
+      const variantNumber = this.getRandomIntInclusive(1, 16);
+      pedestrian.setAttribute('mixin', `char${variantNumber}`);
 
-      // Set rotation based on direction
-      if (data.direction === 'none' && Math.random() < 0.5) {
-        pedestrian.setAttribute('rotation', '0 180 0');
+      // Set rotation based on direction and seeded random
+      if (data.direction === 'none') {
+        if (this.rng() < 0.5) {
+          pedestrian.setAttribute('rotation', '0 180 0');
+        }
       } else if (data.direction === 'outbound') {
         pedestrian.setAttribute('rotation', '0 180 0');
       }
@@ -111,22 +129,29 @@ AFRAME.registerComponent('street-generated-pedestrians', {
     }
   },
 
-  // Helper methods from legacy function
+  // Helper methods now using seeded RNG
   getRandomIntInclusive: function (min, max) {
     min = Math.ceil(min);
     max = Math.floor(max);
-    return Math.floor(Math.random() * (max - min + 1) + min);
+    return Math.floor(this.rng() * (max - min + 1) + min);
   },
 
   getRandomArbitrary: function (min, max) {
-    return Math.random() * (max - min) + min;
+    return this.rng() * (max - min) + min;
   },
 
   getZPositions: function (start, end, step) {
     const len = Math.floor((end - start) / step) + 1;
-    const arr = Array(len)
+    const positions = Array(len)
       .fill()
       .map((_, idx) => start + idx * step);
-    return arr.sort(() => 0.5 - Math.random());
+
+    // Use seeded shuffle (Fisher-Yates algorithm with seeded RNG)
+    for (let i = positions.length - 1; i > 0; i--) {
+      const j = Math.floor(this.rng() * (i + 1));
+      [positions[i], positions[j]] = [positions[j], positions[i]];
+    }
+
+    return positions;
   }
 });
