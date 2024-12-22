@@ -39,10 +39,8 @@ AFRAME.registerComponent('street-generated-clones', {
     // If seed is 0 (default) and we need randomization, generate a random seed
     let seed = this.data.seed;
 
-    console.log('seed after creating rng', seed);
     // Mulberry32 PRNG implementation
     return (function (a) {
-      console.log('seed passed as `a` to prng', a);
       return function () {
         var t = (a += 0x6d2b79f5);
         t = Math.imul(t ^ (t >>> 15), t | 1);
@@ -179,7 +177,6 @@ AFRAME.registerComponent('street-generated-clones', {
         // Apply the offset similar to fixed mode
         return start + idx * correctedSpacing;
       });
-    console.log(this.rng());
     // Use seeded random for shuffling
     for (let i = positions.length - 1; i > 0; i--) {
       const j = Math.floor(this.rng() * (i + 1));
