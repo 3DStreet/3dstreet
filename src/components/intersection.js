@@ -56,7 +56,22 @@ AFRAME.registerComponent('intersection', {
     );
     this.el.setAttribute('shadow', '');
 
-    function createSidewalkElem({
+    // Create the texture for sidewalk that will be re-used
+    const sidewalkTexture = new THREE.TextureLoader().load(
+      document.getElementById('seamless-sidewalk').src
+    );
+    sidewalkTexture.wrapS = THREE.RepeatWrapping;
+    sidewalkTexture.wrapT = THREE.RepeatWrapping;
+    sidewalkTexture.repeat.set(0.5, 0.5); // Scale the texture to repeat twice every meter
+
+    this.sidewalkMaterial = new THREE.MeshStandardMaterial({
+      map: sidewalkTexture,
+      roughness: 0.8, // Same roughness as sidewalk mixin in src/assets.js
+      color: 0xcccccc // Darkens the texture to match existing sidewalk
+    });
+    this.curbGeoms = [];
+
+    const createSidewalkElem = ({
       length,
       width,
       radius,
@@ -64,7 +79,7 @@ AFRAME.registerComponent('intersection', {
       scaleVec = { x: 1, y: 1, z: 1 },
       rotationVec,
       displayName
-    }) {
+    }) => {
       const sd = document.createElement('a-entity');
       // Radius should not be greater than any side
       const boundedRadius = Math.min(radius, length, width);
@@ -94,21 +109,9 @@ AFRAME.registerComponent('intersection', {
         depth: 0.4, // Match existing sidewalk thickness
         bevelEnabled: false
       });
+      this.curbGeoms.push(curbGeom); // Need to remove manually later since it is 3js component
 
-      const sidewalkTexture = new THREE.TextureLoader().load(
-        document.getElementById('seamless-sidewalk').src
-      );
-      console.log(sidewalkTexture);
-      sidewalkTexture.wrapS = THREE.RepeatWrapping;
-      sidewalkTexture.wrapT = THREE.RepeatWrapping;
-      sidewalkTexture.repeat.set(0.5, 0.5); // Scale the texture to repeat twice every meter
-
-      const material = new THREE.MeshStandardMaterial({
-        map: sidewalkTexture,
-        roughness: 0.8, // Same roughness as sidewalk mixin in src/assets.js
-        color: 0xcccccc // Darkens the texture to match existing sidewalk
-      });
-      const mesh = new THREE.Mesh(curbGeom, material);
+      const mesh = new THREE.Mesh(curbGeom, this.sidewalkMaterial);
       mesh.scale.setX(scaleVec.x);
       mesh.scale.setY(scaleVec.y);
       mesh.scale.setZ(scaleVec.z);
@@ -121,7 +124,7 @@ AFRAME.registerComponent('intersection', {
       sd.setAttribute('data-ignore-raycaster', '');
       sd.object3D.add(mesh);
       el.appendChild(sd);
-    }
+    };
 
     // describe sidewalk parameters
     const sidewalkParams = {
@@ -444,5 +447,10 @@ AFRAME.registerComponent('intersection', {
       cw4.classList.add('autocreated');
       el.appendChild(cw4);
     }
+  },
+  remove() {
+    // Remove the 3js entities
+    this.curbGeoms.forEach((c) => c.dispose());
+    this.sidewalkMaterial.dispose();
   }
 });
