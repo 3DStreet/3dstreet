@@ -72,16 +72,20 @@ AFRAME.registerComponent('intersection', {
       const points = [];
       points.push(new THREE.Vector2(0, 0));
       points.push(new THREE.Vector2(length, 0));
-      // The arc
-      const arc = new THREE.EllipseCurve(
-        length - boundedRadius,
-        width - boundedRadius,
-        boundedRadius,
-        boundedRadius,
-        0,
-        Math.PI / 2
-      );
-      points.push(...arc.getSpacedPoints());
+      // Only if a radius is set, create the arc
+      if (radius > 0) {
+        const arc = new THREE.EllipseCurve(
+          length - boundedRadius,
+          width - boundedRadius,
+          boundedRadius,
+          boundedRadius,
+          0,
+          Math.PI / 2
+        );
+        points.push(...arc.getSpacedPoints());
+      } else {
+        points.push(new THREE.Vector2(length, width));
+      }
       points.push(new THREE.Vector2(0, width));
 
       // Create new shape out of the points:
