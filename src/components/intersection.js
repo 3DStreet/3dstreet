@@ -126,43 +126,45 @@ AFRAME.registerComponent('intersection', {
     // describe sidewalk parameters
     const sidewalkParams = {
       west: {
-        positionVec: { x: -intersectWidth / 2 + sidewalkArray[0] / 2, z: 0.1 },
-        rotationVec: { x: 90, y: 0, z: 0 },
-        length: intersectDepth,
-        width: sidewalkArray[0],
+        positionVec: {
+          x: -intersectWidth / 2,
+          y: -intersectWidth / 2,
+          z: 0.1
+        },
+        width: intersectDepth,
+        length: sidewalkArray[0],
         displayName: 'West'
       },
       east: {
-        positionVec: { x: intersectWidth / 2 - sidewalkArray[1] / 2, z: 0.1 },
-        rotationVec: { x: 90, y: 0, z: 0 },
-        length: intersectDepth,
-        width: sidewalkArray[1],
+        positionVec: {
+          x: intersectWidth / 2,
+          y: -intersectWidth / 2,
+          z: 0.1
+        },
+        scaleVec: { x: -1, y: 1, z: 1 },
+        width: intersectDepth,
+        length: sidewalkArray[1],
         displayName: 'East'
       },
       north: {
         positionVec: {
-          // add x offset to avoid sidewalk's element overlap
-          x: sidewalkArray[1] / 2 - sidewalkArray[0] / 2,
-          y: intersectDepth / 2 - sidewalkArray[2] / 2,
+          x: -intersectWidth / 2,
+          y: intersectWidth / 2,
           z: 0.1
         },
-        rotationVec: { x: 0, y: 90, z: -90 },
-        // minus the width of the crossing sidewalk
-        length: intersectWidth - sidewalkArray[1] - sidewalkArray[0],
+        scaleVec: { x: 1, y: -1, z: 1 },
         width: sidewalkArray[2],
+        length: intersectDepth,
         displayName: 'North'
       },
       south: {
         positionVec: {
-          // add x offset to avoid sidewalk's element overlap
-          x: sidewalkArray[1] / 2 - sidewalkArray[0] / 2,
-          y: -intersectDepth / 2 + sidewalkArray[3] / 2,
+          x: -intersectWidth / 2,
+          y: -intersectWidth / 2,
           z: 0.1
         },
-        rotationVec: { x: 0, y: 90, z: -90 },
-        // minus the width of the crossing sidewalk
-        length: intersectWidth - sidewalkArray[1] - sidewalkArray[0],
         width: sidewalkArray[3],
+        length: intersectDepth,
         displayName: 'South'
       }
     };
