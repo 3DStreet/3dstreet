@@ -97,10 +97,12 @@ AFRAME.registerComponent('intersection', {
       console.log(sidewalkTexture);
       sidewalkTexture.wrapS = THREE.RepeatWrapping;
       sidewalkTexture.wrapT = THREE.RepeatWrapping;
-      sidewalkTexture.repeat.set(2, 2);
+      sidewalkTexture.repeat.set(0.5, 0.5);
 
-      const material = new THREE.MeshBasicMaterial({
-        map: sidewalkTexture
+      const material = new THREE.MeshStandardMaterial({
+        map: sidewalkTexture,
+        roughness: 0.8,
+        color: 0xcccccc
       });
       const mesh = new THREE.Mesh(curbGeom, material);
       mesh.scale.setX(scaleVec.x);
@@ -109,13 +111,7 @@ AFRAME.registerComponent('intersection', {
 
       sd.setAttribute('position', positionVec);
       sd.setAttribute('rotation', rotationVec);
-      // sd.setAttribute('mixin', 'sidewalk');
-      // sd.setAttribute('shadow', 'cast: false;');
       sd.classList.add('autocreated');
-      // sd.setAttribute(
-      //   'material',
-      //   `repeat: ${repeatCountInter[0]} ${repeatCountInter[1]}`
-      // );
       sd.setAttribute('data-layer-name', 'Sidewalk • ' + displayName);
       sd.setAttribute('data-no-transform', '');
       sd.setAttribute('data-ignore-raycaster', '');
