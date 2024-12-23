@@ -67,10 +67,10 @@ The `intersection` component creates an intersection surface with options for ad
 | --------- | --------- | --------- |
 | dimensions | Specifies the width and depth of the intersection. First value represents width, second value represents depth. | '20 20' |
 | sidewalk | Sets the width of the sidewalk at each side of the intersection. Values are set in the order of west, east, north, south. |  '0 0 0 0' |
-| northeastcurb | Sets the curb dimensions for the north east curb. Values are updated as width, then depth. | '4 4' |
-| southwestcurb | Sets the curb dimensions for the south west curb. Values are updated as width, then depth.  | '4 4' |
-| southeastcurb | Sets the curb dimensions for the south east curb. Values are updated as width, then depth. | '4 4' |
-| northwestcurb | Sets the curb dimensions for the north west curb. Values are updated as width, then depth. | '4 4' |
+| northeastcurb | Sets the curb dimensions for the north east curb. Values are updated as width, depth, then radius. | '4 4 0' |
+| southwestcurb | Sets the curb dimensions for the south west curb. Values are updated as width, depth, then radius. | '4 4 0' |
+| southeastcurb | Sets the curb dimensions for the south east curb. Values are updated as width, depth, then radius. | '4 4 0' |
+| northwestcurb | Sets the curb dimensions for the north west curb. Values are updated as width, depth, then radius. | '4 4 0' |
 | stopsign | Sets if each side of the intersection has a stop sign. Values are set in the order of east, west, north, south. 0 is false, 1 is true. | '0 0 0 0' |
 | trafficsignal | Sets if each side of the intersection has a traffic signal. Values are set in the order of east, west, north, south. 0 is false, 1 is true. | '1 1 1 1' |
 | crosswalk | ​​Sets if each side of the intersection has a crosswalk. Values are set in the order of east, west, north, south. 0 is false, 1 is true. | '1 1 1 1' |

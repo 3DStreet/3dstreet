@@ -1,13 +1,15 @@
+import * as THREE from 'three';
+
 /* global AFRAME */
 AFRAME.registerComponent('intersection', {
   schema: {
     dimensions: { type: 'string', default: '20 20' },
     // cardinal direction order for sidewalk, stopsign, crosswalk, and trafficsignal: west, east, north, south
     sidewalk: { type: 'string', default: '0 0 0 0' },
-    northeastcurb: { type: 'string', default: '4 4' },
-    southwestcurb: { type: 'string', default: '4 4' },
-    southeastcurb: { type: 'string', default: '4 4' },
-    northwestcurb: { type: 'string', default: '4 4' },
+    northeastcurb: { type: 'string', default: '4 4 1' },
+    southwestcurb: { type: 'string', default: '4 4 1' },
+    southeastcurb: { type: 'string', default: '4 4 1' },
+    northwestcurb: { type: 'string', default: '4 4 1' },
     stopsign: { type: 'string', default: '0 0 0 0' },
     trafficsignal: { type: 'string', default: '1 1 1 1' },
     crosswalk: { type: 'string', default: '1 1 1 1' }
@@ -54,78 +56,118 @@ AFRAME.registerComponent('intersection', {
     );
     this.el.setAttribute('shadow', '');
 
-    function createSidewalkElem({
+    // Create the texture for sidewalk that will be re-used
+    const sidewalkTexture = new THREE.TextureLoader().load(
+      document.getElementById('seamless-sidewalk').src
+    );
+    sidewalkTexture.wrapS = THREE.RepeatWrapping;
+    sidewalkTexture.wrapT = THREE.RepeatWrapping;
+    sidewalkTexture.repeat.set(0.5, 0.5); // Scale the texture to repeat twice every meter
+
+    this.sidewalkMaterial = new THREE.MeshStandardMaterial({
+      map: sidewalkTexture,
+      roughness: 0.8, // Same roughness as sidewalk mixin in src/assets.js
+      color: 0xcccccc // Darkens the texture to match existing sidewalk
+    });
+    this.curbGeoms = [];
+
+    const createSidewalkElem = ({
       length,
       width,
+      radius,
       positionVec,
       scaleVec = { x: 1, y: 1, z: 1 },
       rotationVec,
       displayName
-    }) {
+    }) => {
       const sd = document.createElement('a-entity');
-      // every 2 meters repeat sidewalk texture
-      const repeatCountInter = [width / 2, parseInt(length / 2)];
+      // Radius should not be greater than any side
+      const boundedRadius = Math.min(radius, length, width);
 
-      sd.setAttribute(
-        'geometry',
-        `primitive:box; depth: ${length}; width: ${width}; height: 0.4`
-      );
+      const points = [];
+      points.push(new THREE.Vector2(0, 0));
+      points.push(new THREE.Vector2(length, 0));
+      // Only if a radius is set, create the arc
+      if (radius > 0) {
+        const arc = new THREE.EllipseCurve(
+          length - boundedRadius,
+          width - boundedRadius,
+          boundedRadius,
+          boundedRadius,
+          0,
+          Math.PI / 2
+        );
+        points.push(...arc.getSpacedPoints());
+      } else {
+        points.push(new THREE.Vector2(length, width));
+      }
+      points.push(new THREE.Vector2(0, width));
+
+      // Create new shape out of the points:
+      const curbShape = new THREE.Shape(points);
+      const curbGeom = new THREE.ExtrudeGeometry(curbShape, {
+        depth: 0.4, // Match existing sidewalk thickness
+        bevelEnabled: false
+      });
+      this.curbGeoms.push(curbGeom); // Need to remove manually later since it is 3js component
+
+      const mesh = new THREE.Mesh(curbGeom, this.sidewalkMaterial);
+      mesh.scale.setX(scaleVec.x);
+      mesh.scale.setY(scaleVec.y);
+      mesh.scale.setZ(scaleVec.z);
+
       sd.setAttribute('position', positionVec);
-      sd.setAttribute('scale', scaleVec);
       sd.setAttribute('rotation', rotationVec);
-      sd.setAttribute('mixin', 'sidewalk');
-      sd.setAttribute('shadow', 'cast: false;');
       sd.classList.add('autocreated');
-      sd.setAttribute(
-        'material',
-        `repeat: ${repeatCountInter[0]} ${repeatCountInter[1]}`
-      );
       sd.setAttribute('data-layer-name', 'Sidewalk • ' + displayName);
       sd.setAttribute('data-no-transform', '');
       sd.setAttribute('data-ignore-raycaster', '');
+      sd.object3D.add(mesh);
       el.appendChild(sd);
-    }
+    };
 
     // describe sidewalk parameters
     const sidewalkParams = {
       west: {
-        positionVec: { x: -intersectWidth / 2 + sidewalkArray[0] / 2, z: 0.1 },
-        rotationVec: { x: 90, y: 0, z: 0 },
-        length: intersectDepth,
-        width: sidewalkArray[0],
+        positionVec: {
+          x: -intersectWidth / 2,
+          y: -intersectWidth / 2,
+          z: 0.1
+        },
+        width: intersectDepth,
+        length: sidewalkArray[0],
         displayName: 'West'
       },
       east: {
-        positionVec: { x: intersectWidth / 2 - sidewalkArray[1] / 2, z: 0.1 },
-        rotationVec: { x: 90, y: 0, z: 0 },
-        length: intersectDepth,
-        width: sidewalkArray[1],
+        positionVec: {
+          x: intersectWidth / 2,
+          y: -intersectWidth / 2,
+          z: 0.1
+        },
+        scaleVec: { x: -1, y: 1, z: 1 },
+        width: intersectDepth,
+        length: sidewalkArray[1],
         displayName: 'East'
       },
       north: {
         positionVec: {
-          // add x offset to avoid sidewalk's element overlap
-          x: sidewalkArray[1] / 2 - sidewalkArray[0] / 2,
-          y: intersectDepth / 2 - sidewalkArray[2] / 2,
+          x: -intersectWidth / 2,
+          y: intersectWidth / 2,
           z: 0.1
         },
-        rotationVec: { x: 0, y: 90, z: -90 },
-        // minus the width of the crossing sidewalk
-        length: intersectWidth - sidewalkArray[1] - sidewalkArray[0],
+        scaleVec: { x: 1, y: -1, z: 1 },
         width: sidewalkArray[2],
+        length: intersectDepth,
         displayName: 'North'
       },
       south: {
         positionVec: {
-          // add x offset to avoid sidewalk's element overlap
-          x: sidewalkArray[1] / 2 - sidewalkArray[0] / 2,
-          y: -intersectDepth / 2 + sidewalkArray[3] / 2,
+          x: -intersectWidth / 2,
+          y: -intersectWidth / 2,
           z: 0.1
         },
-        rotationVec: { x: 0, y: 90, z: -90 },
-        // minus the width of the crossing sidewalk
-        length: intersectWidth - sidewalkArray[1] - sidewalkArray[0],
         width: sidewalkArray[3],
+        length: intersectDepth,
         displayName: 'South'
       }
     };
@@ -144,53 +186,57 @@ AFRAME.registerComponent('intersection', {
     const curbParams = {
       northeast: {
         positionVec: {
-          x: intersectWidth / 2 - northeastcurbArray[0] / 2,
-          y: intersectDepth / 2 - northeastcurbArray[1] / 2,
+          x: intersectWidth / 2,
+          y: intersectDepth / 2,
           z: 0.1
         },
-        rotationVec: { x: 0, y: 90, z: -90 },
+        scaleVec: { x: -1, y: -1, z: 1 },
         length: northeastcurbArray[0],
         width: northeastcurbArray[1],
+        radius: northeastcurbArray[2],
         displayName: 'Northeast'
       },
       southwest: {
         positionVec: {
-          x: -intersectWidth / 2 + southwestcurbArray[0] / 2,
-          y: -intersectDepth / 2 + southwestcurbArray[1] / 2,
+          x: -intersectWidth / 2,
+          y: -intersectDepth / 2,
           z: 0.1
         },
-        rotationVec: { x: 0, y: 90, z: -90 },
+        scaleVec: { x: 1, y: 1, z: 1 },
         length: southwestcurbArray[0],
         width: southwestcurbArray[1],
+        radius: southwestcurbArray[2],
         displayName: 'Southwest'
       },
       southeast: {
         positionVec: {
-          x: intersectWidth / 2 - southeastcurbArray[0] / 2,
-          y: -intersectDepth / 2 + southeastcurbArray[1] / 2,
+          x: intersectWidth / 2,
+          y: -intersectDepth / 2,
           z: 0.1
         },
-        rotationVec: { x: 0, y: 90, z: -90 },
+        scaleVec: { x: -1, y: 1, z: 1 },
         length: southeastcurbArray[0],
         width: southeastcurbArray[1],
+        radius: southeastcurbArray[2],
         displayName: 'Southeast'
       },
       northwest: {
         positionVec: {
-          x: -intersectWidth / 2 + northwestcurbArray[0] / 2,
-          y: intersectDepth / 2 - northwestcurbArray[1] / 2,
+          x: -intersectWidth / 2,
+          y: intersectDepth / 2,
           z: 0.1
         },
-        rotationVec: { x: 0, y: 90, z: -90 },
+        scaleVec: { x: 1, y: -1, z: 1 },
         length: northwestcurbArray[0],
         width: northwestcurbArray[1],
+        radius: northwestcurbArray[2],
         displayName: 'Northwest'
       }
     };
 
     // create curbs if they are given
     for (const [curbName, params] of Object.entries(curbParams)) {
-      if (data[`${curbName}curb`] !== '0 0') {
+      if (data[`${curbName}curb`] !== '0 0 0') {
         createSidewalkElem(params);
       }
     }
@@ -401,5 +447,10 @@ AFRAME.registerComponent('intersection', {
       cw4.classList.add('autocreated');
       el.appendChild(cw4);
     }
+  },
+  remove() {
+    // Remove the 3js entities
+    this.curbGeoms.forEach((c) => c.dispose());
+    this.sidewalkMaterial.dispose();
   }
 });
