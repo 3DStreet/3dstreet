@@ -106,5 +106,17 @@ I learned a few things:
 * This UUID is not shown in the UI. It can be found by going to this URL and supplying the nameSpacedId and creatorId, such as: https://streetmix.net/api/v1/streets?namespacedId=3&creatorId=kfarr . This will redirect to the UUID API endpoint
 * I wrote a quick JS helper function that takes a user facing URL on Streetmix (such as https://streetmix.net/kfarr/3/a-frame-city-builder-street-only) and transforms it into the API Redirect to find the UUID endpoint. You can find the [helper function docs here](https://github.com/kfarr/3dstreet/tree/master/src#streetmix-utilsjs).
 
+# Possibly Accepted URL Input hash schemes
+
+3DStreet can import third-party street data in a variety of formats. The following URL input hash schemes are experimental and not guaranteed to be supported in future versions:
+
+| Scheme | Description | Usage Example |
+| --------- | -- |-- |
+| `streetmix-url` | Streetmix User-Facing Street URL | `https://3dstreet.app/#https://streetmix.net/kfarr/3/3dstreet-demo-street` |
+| `streetplan-url` | StreetPlan API URL | `https://3dstreet.app/#https://streetplan.net/3dstreet/89241` |
+| `managed-street-json` | Managed Street JSON Blob | `https://3dstreet.app/#managed-street-json:{"data":"value"}` |
+| `cloud-uuid-legacy` | 3DStreet Scene JSON Format from Cloud UUID with .json Extension | `https://3dstreet.app/#scenes/bc72ab26-891d-417b-a50f-0cf84621a54c.json` |
+| `cloud-uuid` | 3DStreet Scene JSON Format from Cloud UUID | `https://3dstreet.app/#scenes/bc72ab26-891d-417b-a50f-0cf84621a54c` |
+
 ### More Notes
 See [DEV-NOTES](DEV-NOTES.md) for additional notes on future features and work in progress.
