@@ -53,6 +53,38 @@ AFRAME.registerComponent('managed-street', {
     // Bind the method to preserve context
     this.refreshFromSource = this.refreshFromSource.bind(this);
   },
+  setupMutationObserver: function () {
+    // Create mutation observer
+    if (this.observer) {
+      this.observer.disconnect();
+    }
+    this.observer = new MutationObserver((mutations) => {
+      let needsReflow = false;
+
+      mutations.forEach((mutation) => {
+        if (mutation.type === 'childList' && mutation.removedNodes.length > 0) {
+          // Check if any of the removed nodes were street segments
+          mutation.removedNodes.forEach((node) => {
+            if (node.hasAttribute && node.hasAttribute('street-segment')) {
+              needsReflow = true;
+            }
+          });
+        }
+      });
+
+      // If segments were removed, trigger reflow
+      if (needsReflow) {
+        this.refreshManagedEntities();
+        this.applyJustification();
+        this.createOrUpdateJustifiedDirtBox();
+      }
+    });
+
+    // Start observing the managed-street element
+    this.observer.observe(this.el, {
+      childList: true // watch for child additions/removals
+    });
+  },
   update: function (oldData) {
     const data = this.data;
     const dataDiff = AFRAME.utils.diff(oldData, data);
@@ -155,6 +187,7 @@ AFRAME.registerComponent('managed-street', {
     this.managedEntities = Array.from(
       this.el.querySelectorAll('[street-segment]')
     );
+    this.setupMutationObserver();
   },
   createOrUpdateJustifiedDirtBox: function () {
     const data = this.data;
@@ -326,6 +359,9 @@ AFRAME.registerComponent('managed-street', {
     }
   },
   remove: function () {
+    if (this.observer) {
+      this.observer.disconnect();
+    }
     this.managedEntities.forEach(
       (entity) => entity.parentNode && entity.remove()
     );
