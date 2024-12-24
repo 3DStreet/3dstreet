@@ -1,4 +1,5 @@
 /* global AFRAME */
+import { createRNG } from '../lib/rng';
 
 AFRAME.registerComponent('street-generated-clones', {
   multiple: true,
@@ -10,6 +11,7 @@ AFRAME.registerComponent('street-generated-clones', {
     positionX: { default: 0, type: 'number' },
     positionY: { default: 0, type: 'number' },
     facing: { default: 0, type: 'number' }, // Y Rotation in degrees
+    seed: { default: 0, type: 'int' }, // random seed for random and randomFacing mode
     randomFacing: { default: false, type: 'boolean' },
     direction: { type: 'string', oneOf: ['none', 'inbound', 'outbound'] }, // not used if facing defined?
 
@@ -40,6 +42,18 @@ AFRAME.registerComponent('street-generated-clones', {
   },
 
   update: function (oldData) {
+    // If mode is random or randomFacing and seed is 0, generate a random seed and return,
+    // the update will be called again because of the setAttribute.
+    if (this.data.mode === 'random' || this.data.randomFacing) {
+      if (this.data.seed === 0) {
+        const newSeed = Math.floor(Math.random() * 1000000) + 1; // Add 1 to avoid seed 0
+        this.el.setAttribute(this.attrName, 'seed', newSeed);
+        return;
+      }
+      // Always recreate RNG when update is called to be sure we end of with the same clones positions for a given seed
+      this.rng = createRNG(this.data.seed);
+    }
+
     // Clear existing entities
     this.remove();
 
@@ -115,7 +129,7 @@ AFRAME.registerComponent('street-generated-clones', {
       rotationY = 180 - data.facing;
     }
     if (data.randomFacing) {
-      rotationY = Math.random() * 360;
+      rotationY = this.rng() * 360;
     }
     clone.setAttribute('rotation', `0 ${rotationY} 0`);
 
@@ -131,9 +145,7 @@ AFRAME.registerComponent('street-generated-clones', {
   getModelMixin: function () {
     const data = this.data;
     if (data.modelsArray && data.modelsArray.length > 0) {
-      return data.modelsArray[
-        Math.floor(Math.random() * data.modelsArray.length)
-      ];
+      return data.modelsArray[Math.floor(this.rng() * data.modelsArray.length)];
     }
     return data.model;
   },
@@ -151,8 +163,12 @@ AFRAME.registerComponent('street-generated-clones', {
         // Apply the offset similar to fixed mode
         return start + idx * correctedSpacing;
       });
+    // Use seeded random for shuffling
+    for (let i = positions.length - 1; i > 0; i--) {
+      const j = Math.floor(this.rng() * (i + 1));
+      [positions[i], positions[j]] = [positions[j], positions[i]];
+    }
 
-    // Randomly select positions
-    return positions.sort(() => 0.5 - Math.random()).slice(0, count);
+    return positions.slice(0, count);
   }
 });
