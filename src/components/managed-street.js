@@ -109,12 +109,8 @@ AFRAME.registerComponent('managed-street', {
     }
 
     // Insert the segment at the specified index in the DOM
-    if (index === this.managedEntities.length) {
-      this.el.appendChild(segmentEl);
-    } else {
-      const referenceNode = this.managedEntities[index];
-      this.el.insertBefore(segmentEl, referenceNode);
-    }
+    const referenceNode = this.managedEntities[index] ?? null;
+    this.el.insertBefore(segmentEl, referenceNode);
 
     // Wait for the segment to be fully loaded
     segmentEl.addEventListener('loaded', () => {
