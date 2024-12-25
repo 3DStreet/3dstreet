@@ -53,8 +53,14 @@ AFRAME.registerComponent('managed-street', {
     // Bind the method to preserve context
     this.refreshFromSource = this.refreshFromSource.bind(this);
   },
-  // New method to insert a segment at a specific index
-  insertSegment: function (index, type) {
+  /**
+   * Inserts a new street segment at the specified index
+   * @param {number} index - The index at which to insert the new segment
+   * @param {string} type - The segment type (e.g., 'drive-lane', 'bike-lane')
+   * @param {Object} [segmentObject] - Optional configuration object for the segment
+   * @returns {Element} The created segment element
+   */
+  insertSegment: function (index, type, segmentObject = null) {
     // Validate index
     if (index < 0 || index > this.managedEntities.length) {
       console.error('[managed-street] Invalid index for insertion:', index);
@@ -67,22 +73,40 @@ AFRAME.registerComponent('managed-street', {
     // Get default properties for this segment type from STREET.types
     const defaultProps = window.STREET.types[type] || {};
 
-    // Set up basic segment properties
+    // Set up basic segment properties, merging defaults with any provided custom properties
     const segmentProps = {
       type: type,
-      width: defaultProps.width || 3, // Default 3m width if not specified
+      width: segmentObject?.width || defaultProps.width || 3,
       length: this.data.length,
-      level: 0,
-      direction: 'outbound',
-      color: defaultProps.color || window.STREET.colors.white,
-      surface: defaultProps.surface || 'asphalt'
+      level: segmentObject?.level ?? defaultProps.level ?? 0,
+      direction:
+        segmentObject?.direction || defaultProps.direction || 'outbound',
+      color:
+        segmentObject?.color ||
+        defaultProps.color ||
+        window.STREET.colors.white,
+      surface: segmentObject?.surface || defaultProps.surface || 'asphalt'
     };
 
-    // Set all properties on the segment
+    // Set the segment component with properties
     segmentEl.setAttribute('street-segment', segmentProps);
 
     // Set the layer name for the segment
-    segmentEl.setAttribute('data-layer-name', `${type} • default`);
+    const layerName = segmentObject?.name || `${type} • default`;
+    segmentEl.setAttribute('data-layer-name', layerName);
+
+    // If custom segment object is provided, wait for segment to load then generate its components
+    if (segmentObject) {
+      segmentEl.addEventListener('loaded', () => {
+        // Use the generateComponentsFromSegmentObject method from street-segment component
+        const streetSegmentComponent = segmentEl.components['street-segment'];
+        if (streetSegmentComponent) {
+          streetSegmentComponent.generateComponentsFromSegmentObject(
+            segmentObject
+          );
+        }
+      });
+    }
 
     // Insert the segment at the specified index in the DOM
     if (index === this.managedEntities.length) {
@@ -92,7 +116,7 @@ AFRAME.registerComponent('managed-street', {
       this.el.insertBefore(segmentEl, referenceNode);
     }
 
-    // Wait for the segment to be loaded
+    // Wait for the segment to be fully loaded
     segmentEl.addEventListener('loaded', () => {
       // Refresh the managed entities list
       this.refreshManagedEntities();
@@ -108,6 +132,9 @@ AFRAME.registerComponent('managed-street', {
 
       // Update the dirt box
       this.createOrUpdateJustifiedDirtBox();
+
+      // If we have a previous segment, check if we need to add stripe separators
+      // TODO: Check striping here in the future
     });
 
     return segmentEl;
