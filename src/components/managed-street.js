@@ -53,6 +53,65 @@ AFRAME.registerComponent('managed-street', {
     // Bind the method to preserve context
     this.refreshFromSource = this.refreshFromSource.bind(this);
   },
+  // New method to insert a segment at a specific index
+  insertSegment: function (index, type) {
+    // Validate index
+    if (index < 0 || index > this.managedEntities.length) {
+      console.error('[managed-street] Invalid index for insertion:', index);
+      return;
+    }
+
+    // Create new segment entity
+    const segmentEl = document.createElement('a-entity');
+
+    // Get default properties for this segment type from STREET.types
+    const defaultProps = window.STREET.types[type] || {};
+
+    // Set up basic segment properties
+    const segmentProps = {
+      type: type,
+      width: defaultProps.width || 3, // Default 3m width if not specified
+      length: this.data.length,
+      level: 0,
+      direction: 'outbound',
+      color: defaultProps.color || window.STREET.colors.white,
+      surface: defaultProps.surface || 'asphalt'
+    };
+
+    // Set all properties on the segment
+    segmentEl.setAttribute('street-segment', segmentProps);
+
+    // Set the layer name for the segment
+    segmentEl.setAttribute('data-layer-name', `${type} • default`);
+
+    // Insert the segment at the specified index in the DOM
+    if (index === this.managedEntities.length) {
+      this.el.appendChild(segmentEl);
+    } else {
+      const referenceNode = this.managedEntities[index];
+      this.el.insertBefore(segmentEl, referenceNode);
+    }
+
+    // Wait for the segment to be loaded
+    segmentEl.addEventListener('loaded', () => {
+      // Refresh the managed entities list
+      this.refreshManagedEntities();
+
+      // Update the total width
+      const totalWidth = this.managedEntities.reduce((sum, segment) => {
+        return sum + (segment.getAttribute('street-segment').width || 0);
+      }, 0);
+      this.el.setAttribute('managed-street', 'width', totalWidth);
+
+      // Apply justification to reposition all segments
+      this.applyJustification();
+
+      // Update the dirt box
+      this.createOrUpdateJustifiedDirtBox();
+    });
+
+    return segmentEl;
+  },
   setupMutationObserver: function () {
     // Create mutation observer
     if (this.observer) {
