@@ -41,6 +41,40 @@ AFRAME.registerComponent('street-generated-clones', {
     this.createdEntities.length = 0; // Clear the array
   },
 
+  /**
+   * Detaches all generated entities from the component's control.
+   * - Removes the 'autocreated' class from each entity
+   * - Clears the createdEntities array
+   * - Removes the component from the parent element
+   * This allows the entities to persist independently after the component is removed.
+   */
+  detach: function () {
+    // Store the parent element for later use
+    const parentEl = this.el;
+
+    // Process each created entity
+    this.createdEntities.forEach((entity) => {
+      // Remove the autocreated class to prevent cleanup by other systems
+      entity.classList.remove('autocreated');
+      entity.removeAttribute('data-no-transform');
+
+      // Optional: Update the layer name to reflect independent status
+      const currentLayerName = entity.getAttribute('data-layer-name');
+      if (currentLayerName) {
+        entity.setAttribute(
+          'data-layer-name',
+          currentLayerName.replace('Cloned Model', 'Detached Model')
+        );
+      }
+    });
+
+    // Clear the createdEntities array without removing the actual entities
+    this.createdEntities.length = 0;
+
+    // Remove the component from the parent element
+    parentEl.removeAttribute(this.attrName);
+  },
+
   update: function (oldData) {
     // If mode is random or randomFacing and seed is 0, generate a random seed and return,
     // the update will be called again because of the setAttribute.
