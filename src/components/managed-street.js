@@ -53,6 +53,88 @@ AFRAME.registerComponent('managed-street', {
     // Bind the method to preserve context
     this.refreshFromSource = this.refreshFromSource.bind(this);
   },
+  /**
+   * Inserts a new street segment at the specified index
+   * @param {number} index - The index at which to insert the new segment
+   * @param {string} type - The segment type (e.g., 'drive-lane', 'bike-lane')
+   * @param {Object} [segmentObject] - Optional configuration object for the segment
+   * @returns {Element} The created segment element
+   */
+  insertSegment: function (index, type, segmentObject = null) {
+    // Validate index
+    if (index < 0 || index > this.managedEntities.length) {
+      console.error('[managed-street] Invalid index for insertion:', index);
+      return;
+    }
+
+    // Create new segment entity
+    const segmentEl = document.createElement('a-entity');
+
+    // Get default properties for this segment type from STREET.types
+    const defaultProps = window.STREET.types[type] || {};
+
+    // Set up basic segment properties, merging defaults with any provided custom properties
+    const segmentProps = {
+      type: type,
+      width: segmentObject?.width || defaultProps.width || 3,
+      length: this.data.length,
+      level: segmentObject?.level ?? defaultProps.level ?? 0,
+      direction:
+        segmentObject?.direction || defaultProps.direction || 'outbound',
+      color:
+        segmentObject?.color ||
+        defaultProps.color ||
+        window.STREET.colors.white,
+      surface: segmentObject?.surface || defaultProps.surface || 'asphalt'
+    };
+
+    // Set the segment component with properties
+    segmentEl.setAttribute('street-segment', segmentProps);
+
+    // Set the layer name for the segment
+    const layerName = segmentObject?.name || `${type} • default`;
+    segmentEl.setAttribute('data-layer-name', layerName);
+
+    // If custom segment object is provided, wait for segment to load then generate its components
+    if (segmentObject) {
+      segmentEl.addEventListener('loaded', () => {
+        // Use the generateComponentsFromSegmentObject method from street-segment component
+        const streetSegmentComponent = segmentEl.components['street-segment'];
+        if (streetSegmentComponent) {
+          streetSegmentComponent.generateComponentsFromSegmentObject(
+            segmentObject
+          );
+        }
+      });
+    }
+
+    // Insert the segment at the specified index in the DOM
+    const referenceNode = this.managedEntities[index] ?? null;
+    this.el.insertBefore(segmentEl, referenceNode);
+
+    // Wait for the segment to be fully loaded
+    segmentEl.addEventListener('loaded', () => {
+      // Refresh the managed entities list
+      this.refreshManagedEntities();
+
+      // Update the total width
+      const totalWidth = this.managedEntities.reduce((sum, segment) => {
+        return sum + (segment.getAttribute('street-segment').width || 0);
+      }, 0);
+      this.el.setAttribute('managed-street', 'width', totalWidth);
+
+      // Apply justification to reposition all segments
+      this.applyJustification();
+
+      // Update the dirt box
+      this.createOrUpdateJustifiedDirtBox();
+
+      // If we have a previous segment, check if we need to add stripe separators
+      // TODO: Check striping here in the future
+    });
+
+    return segmentEl;
+  },
   setupMutationObserver: function () {
     // Create mutation observer
     if (this.observer) {
