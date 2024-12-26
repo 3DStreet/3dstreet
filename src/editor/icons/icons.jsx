@@ -1,3 +1,25 @@
+export const AutoIcon = () => (
+  <svg
+    width="27"
+    height="26"
+    viewBox="0 0 27 26"
+    fill="none"
+    xmlns="http://www.w3.org/2000/svg"
+  >
+    <circle
+      cx="13.5"
+      cy="13"
+      r="12.5"
+      fill="#0EAF00"
+      fillOpacity="0.17"
+      stroke="#0EAF00"
+    />
+    <path
+      d="M10.1618 19H7.19585L11.715 5.90909H15.2818L19.7946 19H16.8287L13.5495 8.90057H13.4473L10.1618 19ZM9.97638 13.8544H16.9821V16.0149H9.97638V13.8544Z"
+      fill="#0EAF00"
+    />
+  </svg>
+);
 export const Camera32Icon = () => (
   <svg
     width="32"

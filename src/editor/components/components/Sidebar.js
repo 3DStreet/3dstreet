@@ -15,7 +15,8 @@ import {
   ArrowRightIcon,
   Object24Icon,
   SegmentIcon,
-  ManagedStreetIcon
+  ManagedStreetIcon,
+  AutoIcon
 } from '../../icons';
 import GeoSidebar from './GeoSidebar'; // Make sure to create and import this new component
 import IntersectionSidebar from './IntersectionSidebar';
@@ -115,6 +116,14 @@ export default class Sidebar extends React.Component {
                 {entity.id !== 'reference-layers' &&
                 !entity.getAttribute('street-segment') ? (
                   <>
+                    {entity.classList.contains('autocreated') && (
+                      <div className="flex items-center gap-2">
+                        <div className="scale-[0.8] transform">
+                          <AutoIcon />
+                        </div>
+                        Autocreated Clone
+                      </div>
+                    )}
                     {!!entity.mixinEls.length && <Mixins entity={entity} />}
                     {entity.hasAttribute('data-no-transform') ? (
                       <></>
