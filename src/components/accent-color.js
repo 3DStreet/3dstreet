@@ -11,12 +11,10 @@ AFRAME.registerComponent('accent-color', {
   },
   init: function () {
     this.meshes = [];
-    console.log(this.el);
     // The group children aren't ready when the component is initialized, so wait a bit.
     // TODO: Find a better way to time this.
     setTimeout(() => {
       this.el.object3D.traverse((o) => o.material && this.meshes.push(o));
-      console.log(this.meshes);
       this.update();
     }, 1000);
   },

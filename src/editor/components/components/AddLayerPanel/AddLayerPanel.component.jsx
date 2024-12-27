@@ -204,7 +204,6 @@ const createEntity = (mixinId) => {
     });
     newEntityObject.components.position = position;
   }
-  console.log('heere!!');
   AFRAME.INSPECTOR.execute('entitycreate', newEntityObject);
 };
 
