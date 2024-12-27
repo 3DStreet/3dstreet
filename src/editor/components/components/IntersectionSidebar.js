@@ -2,7 +2,7 @@ import { useState } from 'react';
 import PropTypes from 'prop-types';
 import SelectWidget from '../widgets/SelectWidget';
 import NumberWidget from '../widgets/NumberWidget';
-import BooleanWidget from '../widgets/BooleanWidget';
+import { CROSSWALKS, CROSSWALKS_REV } from '../../../components/intersection';
 
 const IntersectionSidebar = ({ entity }) => {
   const intersectionData = entity.getAttribute('intersection');
@@ -147,13 +147,14 @@ const IntersectionSidebar = ({ entity }) => {
           </div>
           <div className="propertyRow">
             <label className="text">Crosswalk:</label>
-            <BooleanWidget
+
+            <SelectWidget
               name="crosswalk"
-              componentname="crosswalk"
-              value={crosswalkArray[index] === 1}
+              options={Object.keys(CROSSWALKS)}
+              value={CROSSWALKS_REV[crosswalkArray[index]]}
               onChange={(name, value) => {
                 const newCrosswalkArray = [...crosswalkArray];
-                newCrosswalkArray[index] = value ? 1 : 0;
+                newCrosswalkArray[index] = CROSSWALKS[value];
                 setCrosswalkArray(newCrosswalkArray);
                 updateEntity(
                   'intersection',
@@ -161,7 +162,7 @@ const IntersectionSidebar = ({ entity }) => {
                   newCrosswalkArray.join(' ')
                 );
               }}
-            />
+            ></SelectWidget>
           </div>
           <div className="propertyRow">
             <label className="text">Sidewalk:</label>

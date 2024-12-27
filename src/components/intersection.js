@@ -1,5 +1,32 @@
 import * as THREE from 'three';
 
+export const CROSSWALKS = {
+  none: 0,
+  'crosswalk-zebra': 1,
+  'street-element-crosswalk-raised': 2,
+  'crosswalk-zebra-box': 3
+};
+export const CROSSWALKS_REV = {};
+Object.keys(CROSSWALKS).forEach((key) => {
+  CROSSWALKS_REV[CROSSWALKS[key]] = key;
+});
+
+const CROSSWALK_TRANSFORMS = {
+  none: function () {},
+  'crosswalk-zebra': (entity, length, rotZ) => {
+    entity.setAttribute('rotation', { z: rotZ });
+    entity.setAttribute('scale', { y: length / 12 });
+  },
+  'street-element-crosswalk-raised': (entity, length, rotX) => {
+    entity.setAttribute('rotation', { x: rotX, y: 90, z: 90 });
+    entity.setAttribute('scale', { x: length / 7, z: 1.5 });
+  },
+  'crosswalk-zebra-box': (entity, length, rotX) => {
+    entity.setAttribute('rotation', { x: rotX + 90, y: 90, z: 90 });
+    entity.setAttribute('scale', { z: length / 12 });
+  }
+};
+
 /* global AFRAME */
 AFRAME.registerComponent('intersection', {
   schema: {
@@ -402,37 +429,49 @@ AFRAME.registerComponent('intersection', {
     if (crosswalklArray[0]) {
       const cw1 = document.createElement('a-entity');
       cw1.setAttribute('position', { x: -intersectWidth / 2 + 2, z: 0.11 });
-      cw1.setAttribute('rotation', { x: 0, y: 0, z: 180 });
-      cw1.setAttribute('scale', { y: intersectDepth / 12 });
-      cw1.setAttribute('mixin', 'markings crosswalk-zebra');
+      cw1.setAttribute(
+        'mixin',
+        'markings ' + CROSSWALKS_REV[crosswalklArray[0]]
+      );
       cw1.setAttribute('data-layer-name', 'Crosswalk • West');
       cw1.setAttribute('data-no-transform', '');
       cw1.setAttribute('data-ignore-raycaster', '');
       cw1.classList.add('autocreated');
+      const transform =
+        CROSSWALK_TRANSFORMS[CROSSWALKS_REV[crosswalklArray[0]]];
+      transform && transform(cw1, intersectDepth, 180);
       el.appendChild(cw1);
     }
     if (crosswalklArray[1]) {
       const cw2 = document.createElement('a-entity');
       cw2.setAttribute('position', { x: intersectWidth / 2 - 2, z: 0.11 });
-      cw2.setAttribute('rotation', { x: 0, y: 0, z: 180 });
-      cw2.setAttribute('scale', { y: intersectDepth / 12 });
-      cw2.setAttribute('mixin', 'markings crosswalk-zebra');
+      cw2.setAttribute(
+        'mixin',
+        'markings ' + CROSSWALKS_REV[crosswalklArray[1]]
+      );
       cw2.setAttribute('data-layer-name', 'Crosswalk • East');
       cw2.setAttribute('data-no-transform', '');
       cw2.setAttribute('data-ignore-raycaster', '');
       cw2.classList.add('autocreated');
+      const transform =
+        CROSSWALK_TRANSFORMS[CROSSWALKS_REV[crosswalklArray[1]]];
+      transform && transform(cw2, intersectDepth, 180);
       el.appendChild(cw2);
     }
     if (crosswalklArray[2]) {
       const cw3 = document.createElement('a-entity');
       cw3.setAttribute('position', { y: intersectDepth / 2 - 2, z: 0.11 });
-      cw3.setAttribute('rotation', { x: 0, y: 0, z: 90 });
-      cw3.setAttribute('scale', { y: intersectWidth / 12 });
-      cw3.setAttribute('mixin', 'markings crosswalk-zebra');
+      cw3.setAttribute(
+        'mixin',
+        'markings ' + CROSSWALKS_REV[crosswalklArray[2]]
+      );
       cw3.setAttribute('data-layer-name', 'Crosswalk • North');
       cw3.setAttribute('data-no-transform', '');
       cw3.setAttribute('data-ignore-raycaster', '');
       cw3.classList.add('autocreated');
+      const transform =
+        CROSSWALK_TRANSFORMS[CROSSWALKS_REV[crosswalklArray[2]]];
+      transform && transform(cw3, intersectWidth, 90);
       el.appendChild(cw3);
     }
     if (crosswalklArray[3]) {
@@ -441,10 +480,14 @@ AFRAME.registerComponent('intersection', {
       cw4.setAttribute('data-layer-name', 'Crosswalk • South');
       cw4.setAttribute('data-no-transform', '');
       cw4.setAttribute('data-ignore-raycaster', '');
-      cw4.setAttribute('rotation', { x: 0, y: 0, z: 90 });
-      cw4.setAttribute('scale', { y: intersectWidth / 12 });
-      cw4.setAttribute('mixin', 'markings crosswalk-zebra');
+      cw4.setAttribute(
+        'mixin',
+        'markings ' + CROSSWALKS_REV[crosswalklArray[3]]
+      );
       cw4.classList.add('autocreated');
+      const transform =
+        CROSSWALK_TRANSFORMS[CROSSWALKS_REV[crosswalklArray[3]]];
+      transform && transform(cw4, intersectWidth, 90);
       el.appendChild(cw4);
     }
   },
