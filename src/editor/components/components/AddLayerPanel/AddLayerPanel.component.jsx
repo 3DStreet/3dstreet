@@ -145,7 +145,11 @@ const createEntity = (mixinId) => {
   }
   const newEntityObject = {
     mixin: mixinId,
-    components: {}
+    components: {
+      'accent-color': {
+        index: -1
+      }
+    }
   };
 
   const selectedElement = AFRAME.INSPECTOR.selectedEntity;
@@ -200,6 +204,7 @@ const createEntity = (mixinId) => {
     });
     newEntityObject.components.position = position;
   }
+  console.log('heere!!');
   AFRAME.INSPECTOR.execute('entitycreate', newEntityObject);
 };
 

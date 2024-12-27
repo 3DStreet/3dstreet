@@ -13,6 +13,7 @@ require('./lib/animation-mixer.js');
 require('./lib/aframe-gaussian-splatting-component.min.js');
 require('./assets.js');
 require('./components/notify.js');
+require('./components/accent-color.js');
 require('./components/create-from-json');
 require('./components/screentock.js');
 require('aframe-atlas-uvs-component');
