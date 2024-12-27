@@ -46,6 +46,40 @@ AFRAME.registerComponent('street-generated-pedestrians', {
     this.createdEntities.length = 0;
   },
 
+  /**
+   * Detaches all generated entities from the component's control.
+   * - Removes the 'autocreated' class from each entity
+   * - Clears the createdEntities array
+   * - Removes the component from the parent element
+   * This allows the entities to persist independently after the component is removed.
+   */
+  detach: function () {
+    // Store the parent element for later use
+    const parentEl = this.el;
+
+    // Process each created entity
+    this.createdEntities.forEach((entity) => {
+      // Remove the autocreated class to prevent cleanup by other systems
+      entity.classList.remove('autocreated');
+      entity.removeAttribute('data-no-transform');
+
+      // Optional: Update the layer name to reflect independent status
+      const currentLayerName = entity.getAttribute('data-layer-name');
+      if (currentLayerName) {
+        entity.setAttribute(
+          'data-layer-name',
+          currentLayerName.replace('Cloned Pedestrian', 'Pedestrian')
+        );
+      }
+    });
+
+    // Clear the createdEntities array without removing the actual entities
+    this.createdEntities.length = 0;
+
+    // Remove the component from the parent element
+    parentEl.removeAttribute(this.attrName);
+  },
+
   update: function (oldData) {
     const data = this.data;
 
@@ -109,7 +143,8 @@ AFRAME.registerComponent('street-generated-pedestrians', {
       // Add metadata
       pedestrian.classList.add('autocreated');
       pedestrian.setAttribute('data-no-transform', '');
-      pedestrian.setAttribute('data-layer-name', 'Generated Pedestrian');
+      pedestrian.setAttribute('data-layer-name', 'Cloned Pedestrian');
+      pedestrian.setAttribute('data-parent-component', this.attrName);
 
       this.createdEntities.push(pedestrian);
     }

@@ -16,7 +16,9 @@ import {
   Object24Icon,
   SegmentIcon,
   ManagedStreetIcon,
-  AutoIcon
+  AutoIcon,
+  ManualIcon,
+  ArrowLeftHookIcon
 } from '../../icons';
 import GeoSidebar from './GeoSidebar'; // Make sure to create and import this new component
 import IntersectionSidebar from './IntersectionSidebar';
@@ -35,6 +37,26 @@ export default class Sidebar extends React.Component {
       showSideBar: true
     };
   }
+
+  getParentComponentName = (entity) => {
+    const componentName = entity.getAttribute('data-parent-component');
+    const parentEntity = entity.parentElement;
+    return componentName
+      ? `${parentEntity.getAttribute('data-layer-name') || 'Entity'}:${componentName}`
+      : 'Unknown';
+  };
+
+  fireParentComponentDetach = (entity) => {
+    const componentName = entity.getAttribute('data-parent-component');
+    const parentEntity = entity.parentElement;
+    parentEntity.components[componentName].detach();
+    // reselect the entity to refresh the sidepanel
+    AFRAME.INSPECTOR.selectEntity(entity);
+  };
+
+  selectParentEntity = (entity) => {
+    AFRAME.INSPECTOR.selectEntity(entity.parentElement);
+  };
 
   onEntityUpdate = (detail) => {
     if (detail.entity !== this.props.entity) {
@@ -117,12 +139,42 @@ export default class Sidebar extends React.Component {
                 !entity.getAttribute('street-segment') ? (
                   <>
                     {entity.classList.contains('autocreated') && (
-                      <div className="flex items-center gap-2">
-                        <div className="scale-[0.8] transform">
-                          <AutoIcon />
+                      <>
+                        <div className="flex items-center gap-2">
+                          <div className="scale-[0.8] transform">
+                            <AutoIcon />
+                          </div>
+                          Autocreated Clone
                         </div>
-                        Autocreated Clone
-                      </div>
+                        <div className="collapsible-content">
+                          <div className="propertyRow">
+                            <label className="text">Managed by</label>
+                            <input
+                              className="string"
+                              type="text"
+                              value={this.getParentComponentName(entity)}
+                              readOnly
+                            />
+                          </div>
+                        </div>
+                        <div id="sidebar-buttons">
+                          <Button
+                            variant={'toolbtn'}
+                            onClick={() => this.selectParentEntity(entity)}
+                          >
+                            <ArrowLeftHookIcon /> Edit Clone Settings
+                          </Button>
+                          <Button
+                            variant={'toolbtn'}
+                            onClick={() =>
+                              this.fireParentComponentDetach(entity)
+                            }
+                          >
+                            <ManualIcon />
+                            Convert to Manual
+                          </Button>
+                        </div>
+                      </>
                     )}
                     {!!entity.mixinEls.length && <Mixins entity={entity} />}
                     {entity.hasAttribute('data-no-transform') ? (

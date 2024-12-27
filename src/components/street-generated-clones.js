@@ -171,6 +171,7 @@ AFRAME.registerComponent('street-generated-clones', {
     clone.classList.add('autocreated');
     clone.setAttribute('data-no-transform', '');
     clone.setAttribute('data-layer-name', 'Cloned Model • ' + mixinId);
+    clone.setAttribute('data-parent-component', this.attrName);
 
     this.el.appendChild(clone);
     this.createdEntities.push(clone);
