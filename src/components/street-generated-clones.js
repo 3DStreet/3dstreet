@@ -41,6 +41,39 @@ AFRAME.registerComponent('street-generated-clones', {
     this.createdEntities.length = 0; // Clear the array
   },
 
+  detach: function () {
+    const commands = [];
+    commands.push([
+      'componentremove',
+      { entity: this.el, component: this.attrName }
+    ]);
+    let entityObjToPushAtTheEnd = null; // so that the entity is selected after executing the multi command
+    this.createdEntities.forEach((entity) => {
+      const position = entity.getAttribute('position');
+      const rotation = entity.getAttribute('rotation');
+      const entityObj = {
+        parentEl: this.el, // you can also put this.el.id here that way the command is fully json serializable but el currently doesn't have an id
+        mixin: entity.getAttribute('mixin'),
+        'data-layer-name': entity
+          .getAttribute('data-layer-name')
+          .replace('Cloned Model', 'Detached Model'),
+        components: {
+          position: { x: position.x, y: position.y, z: position.z },
+          rotation: { x: rotation.x, y: rotation.y, z: rotation.z }
+        }
+      };
+      if (AFRAME.INSPECTOR?.selectedEntity === entity) {
+        entityObjToPushAtTheEnd = entityObj;
+      } else {
+        commands.push(['entitycreate', entityObj]);
+      }
+    });
+    if (entityObjToPushAtTheEnd !== null) {
+      commands.push(['entitycreate', entityObjToPushAtTheEnd]);
+    }
+    AFRAME.INSPECTOR.execute('multi', commands);
+  },
+
   update: function (oldData) {
     // If mode is random or randomFacing and seed is 0, generate a random seed and return,
     // the update will be called again because of the setAttribute.
@@ -56,6 +89,7 @@ AFRAME.registerComponent('street-generated-clones', {
 
     // Clear existing entities
     this.remove();
+    this.createdEntities = [];
 
     // Generate new entities based on mode
     switch (this.data.mode) {
@@ -137,6 +171,7 @@ AFRAME.registerComponent('street-generated-clones', {
     clone.classList.add('autocreated');
     clone.setAttribute('data-no-transform', '');
     clone.setAttribute('data-layer-name', 'Cloned Model • ' + mixinId);
+    clone.setAttribute('data-parent-component', this.attrName);
 
     this.el.appendChild(clone);
     this.createdEntities.push(clone);
