@@ -3,7 +3,7 @@ import * as THREE from 'three';
 export const CROSSWALKS = {
   none: 0,
   'crosswalk-zebra': 1,
-  'street-element-crosswalk-raised': 2,
+  'crosswalk-raised': 2,
   'crosswalk-rainbow': 3,
   'crosswalk-double': 4,
   'crosswalk-mural': 5,
@@ -25,7 +25,7 @@ const CROSSWALK_TRANSFORMS = {
     entity.setAttribute('rotation', { z: rotZ });
     entity.setAttribute('scale', { y: length / 12 });
   },
-  'street-element-crosswalk-raised': (entity, length, rotX) => {
+  'crosswalk-raised': (entity, length, rotX) => {
     entity.setAttribute('rotation', { x: rotX, y: 90, z: 90 });
     entity.setAttribute('scale', { x: length / 7, z: 1.5 });
   },
