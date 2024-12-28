@@ -89,7 +89,6 @@ AFRAME.registerComponent('street-generated-clones', {
 
     // Clear existing entities
     this.remove();
-    this.createdEntities = [];
 
     // Generate new entities based on mode
     switch (this.data.mode) {
