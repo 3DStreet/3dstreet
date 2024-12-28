@@ -4,12 +4,20 @@ export const CROSSWALKS = {
   none: 0,
   'crosswalk-zebra': 1,
   'street-element-crosswalk-raised': 2,
-  'crosswalk-zebra-box': 3
+  'crosswalk-rainbow': 3,
+  'crosswalk-double': 4,
+  'crosswalk-mural': 5,
+  'crosswalk-piano': 6
 };
 export const CROSSWALKS_REV = {};
 Object.keys(CROSSWALKS).forEach((key) => {
   CROSSWALKS_REV[CROSSWALKS[key]] = key;
 });
+
+const transformImageCrosswalk = (entity, length, rotZ) => {
+  entity.setAttribute('rotation', { z: rotZ });
+  entity.setAttribute('scale', { y: length / 12, x: 1.5 });
+};
 
 const CROSSWALK_TRANSFORMS = {
   none: function () {},
@@ -21,10 +29,10 @@ const CROSSWALK_TRANSFORMS = {
     entity.setAttribute('rotation', { x: rotX, y: 90, z: 90 });
     entity.setAttribute('scale', { x: length / 7, z: 1.5 });
   },
-  'crosswalk-zebra-box': (entity, length, rotX) => {
-    entity.setAttribute('rotation', { x: rotX + 90, y: 90, z: 90 });
-    entity.setAttribute('scale', { z: length / 12 });
-  }
+  'crosswalk-rainbow': transformImageCrosswalk,
+  'crosswalk-double': transformImageCrosswalk,
+  'crosswalk-mural': transformImageCrosswalk,
+  'crosswalk-piano': transformImageCrosswalk
 };
 
 /* global AFRAME */
