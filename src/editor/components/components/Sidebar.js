@@ -51,8 +51,6 @@ export default class Sidebar extends React.Component {
     const componentName = entity.getAttribute('data-parent-component');
     const parentEntity = entity.parentElement;
     parentEntity.components[componentName].detach();
-    // reselect the entity to refresh the sidepanel
-    // AFRAME.INSPECTOR.selectEntity(entity);
   };
 
   selectParentEntity = (entity) => {
@@ -177,7 +175,10 @@ export default class Sidebar extends React.Component {
                         </div>
                       </>
                     )}
-                    {!!entity.mixinEls.length && <Mixins entity={entity} />}
+                    {!!entity.mixinEls.length &&
+                      !entity.classList.contains('autocreated') && (
+                        <Mixins entity={entity} />
+                      )}
                     {entity.hasAttribute('data-no-transform') ? (
                       <></>
                     ) : (
