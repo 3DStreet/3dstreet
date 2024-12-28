@@ -27,9 +27,17 @@ export class EntityCreateCommand extends Command {
       this.callback?.(entity);
       nextCommandCallback?.(entity);
     };
-    const parentEl =
-      this.definition.parentEl ??
-      document.querySelector(this.editor.config.defaultParent);
+    let parentEl;
+    if (this.definition.parentEl) {
+      if (typeof this.definition.parentEl === 'string') {
+        parentEl = document.getElementById(this.definition.parentEl);
+      } else {
+        parentEl = this.definition.parentEl;
+      }
+    }
+    if (!parentEl) {
+      parentEl = document.querySelector(this.editor.config.defaultParent);
+    }
     // If we undo and redo, use the previous id so next redo actions (for example entityupdate to move the position) works correctly
     if (this.entityId) {
       definition = { ...this.definition, id: this.entityId };
