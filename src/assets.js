@@ -218,6 +218,10 @@ function buildAssetHTML(assetUrl, categories) {
         <a-mixin shadow id="street-element-traffic-island" scale="1.5 1.5 1.5" rotation="0 0 0" gltf-model="url(${assetUrl}sets/uoregon/gltf-exports/draco/curb-traffic-island.glb)"></a-mixin>
         <a-mixin shadow id="street-element-speed-hump" scale="1.5 1.5 1.5" rotation="0 0 0" gltf-model="url(${assetUrl}sets/uoregon/gltf-exports/draco/speed-hump.glb)"></a-mixin>
         <a-mixin shadow id="crosswalk-zebra-box" geometry="primitive: box; height: 0.1; width: 2; depth: 10" material="src: url(${assetUrl}materials/markings-crosswalk.png)"></a-mixin>
+        <a-mixin shadow id="crosswalk-rainbow" geometry="primitive: plane; width:2; height:12; skipCache: true;" material="src:${assetUrl}materials/crosswalk-rainbow.png; transparent: true;"></a-mixin>
+        <a-mixin shadow id="crosswalk-double" geometry="primitive: plane; width:2; height:12; skipCache: true;" material="src:${assetUrl}materials/crosswalk-double.png; transparent: true;"></a-mixin>
+        <a-mixin shadow id="crosswalk-mural" geometry="primitive: plane; width:2; height:12; skipCache: true;" material="src:${assetUrl}materials/crosswalk-mural.png; transparent: true;"></a-mixin>
+        <a-mixin shadow id="crosswalk-piano" geometry="primitive: plane; width:2; height:12; skipCache: true;" material="src:${assetUrl}materials/crosswalk-piano.png; transparent: true;"></a-mixin>
         <a-mixin shadow id="traffic-calming-bumps" gltf-model="url(${assetUrl}sets/uoregon/gltf-exports/draco/traffic-calming-bumps.glb)"></a-mixin>
         <a-mixin shadow id="corner-island" gltf-model="url(${assetUrl}sets/uoregon/gltf-exports/draco/corner-island.glb)"></a-mixin>
         `,
