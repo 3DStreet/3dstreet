@@ -334,6 +334,7 @@ AFRAME.registerComponent('managed-street', {
 
     for (let i = 0; i < streetObject.segments.length; i++) {
       const segment = streetObject.segments[i];
+      const previousSegment = streetObject.segments[i - 1];
       const segmentEl = document.createElement('a-entity');
       this.el.appendChild(segmentEl);
 
@@ -349,12 +350,91 @@ AFRAME.registerComponent('managed-street', {
       segmentEl.setAttribute('data-layer-name', segment.name);
       // wait for street-segment to be loaded, then generate components from segment object
       segmentEl.addEventListener('loaded', () => {
+        if (!segment.generated?.striping) {
+          console.log('segment generated striping not exists');
+          const stripingVariant = this.getStripingFromSegments(
+            previousSegment,
+            segment
+          );
+          console.log('stripingVariant', stripingVariant);
+          if (stripingVariant) {
+            // Only add striping if variant is not null
+            if (!segment.generated) {
+              segment.generated = {};
+            }
+            segment.generated.striping = [
+              {
+                striping: stripingVariant,
+                length: streetObject.length,
+                segmentWidth: segment.width
+              }
+            ];
+          }
+        }
         segmentEl.components[
           'street-segment'
         ].generateComponentsFromSegmentObject(segment);
         this.applyJustification();
       });
     }
+  },
+  getStripingFromSegments: function (previousSegment, currentSegment) {
+    if (!previousSegment || !currentSegment) {
+      return null;
+    }
+
+    // Valid lane types that should have striping
+    const validLaneTypes = [
+      'drive-lane',
+      'bus-lane',
+      'bike-lane',
+      'parking-lane'
+    ];
+
+    // Only add striping between valid lane types
+    if (
+      !validLaneTypes.includes(previousSegment.type) ||
+      !validLaneTypes.includes(currentSegment.type)
+    ) {
+      return null;
+    }
+
+    // Default to solid line
+    let variantString = 'solid-stripe';
+
+    // Check for opposite directions
+    if (
+      previousSegment.direction !== currentSegment.direction &&
+      previousSegment.direction !== 'none' &&
+      currentSegment.direction !== 'none'
+    ) {
+      variantString = 'solid-doubleyellow';
+
+      // Special case for bike lanes
+      if (
+        currentSegment.type === 'bike-lane' &&
+        previousSegment.type === 'bike-lane'
+      ) {
+        variantString = 'short-dashed-stripe-yellow';
+      }
+    } else {
+      // Same direction cases
+      if (currentSegment.type === previousSegment.type) {
+        variantString = 'dashed-stripe';
+      }
+
+      // Drive lane and turn lane combination would go here if needed
+    }
+
+    // Special case for parking lanes - use dashed line between parking and drive lanes
+    if (
+      currentSegment.type === 'parking-lane' ||
+      previousSegment.type === 'parking-lane'
+    ) {
+      variantString = 'solid-stripe';
+    }
+
+    return variantString;
   },
   loadAndParseStreetmixURL: async function (streetmixURL) {
     const data = this.data;
@@ -538,7 +618,7 @@ function getSeparatorMixinId(previousSegment, currentSegment) {
     currentSegment.type === 'parking-lane' ||
     previousSegment.type === 'parking-lane'
   ) {
-    variantString = 'invisible';
+    variantString = 'solid-stripe';
   }
 
   return variantString;
