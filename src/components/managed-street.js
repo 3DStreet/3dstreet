@@ -351,12 +351,10 @@ AFRAME.registerComponent('managed-street', {
       // wait for street-segment to be loaded, then generate components from segment object
       segmentEl.addEventListener('loaded', () => {
         if (!segment.generated?.striping) {
-          console.log('segment generated striping not exists');
           const stripingVariant = this.getStripingFromSegments(
             previousSegment,
             segment
           );
-          console.log('stripingVariant', stripingVariant);
           if (stripingVariant) {
             // Only add striping if variant is not null
             if (!segment.generated) {
