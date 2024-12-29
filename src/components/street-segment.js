@@ -259,9 +259,9 @@ AFRAME.registerComponent('street-segment', {
           striping: stripe.striping,
           segmentWidth: this.data.width,
           length: this.data.length,
-          positionY: stripe.positionY || 0.05, // Default to 0.05 if not specified
-          side: stripe.side || 'left', // Default to left if not specified
-          facing: stripe.facing || 0 // Default to 0 if not specified
+          positionY: stripe.positionY ?? 0.05, // Default to 0.05 if not specified
+          side: stripe.side ?? 'left', // Default to left if not specified
+          facing: stripe.facing ?? 0 // Default to 0 if not specified
         });
       });
     }
