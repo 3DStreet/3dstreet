@@ -166,7 +166,7 @@ AFRAME.registerComponent('intersection', {
       west: {
         positionVec: {
           x: -intersectWidth / 2,
-          y: -intersectWidth / 2,
+          y: -intersectDepth / 2,
           z: 0.1
         },
         width: intersectDepth,
@@ -176,7 +176,7 @@ AFRAME.registerComponent('intersection', {
       east: {
         positionVec: {
           x: intersectWidth / 2,
-          y: -intersectWidth / 2,
+          y: -intersectDepth / 2,
           z: 0.1
         },
         scaleVec: { x: -1, y: 1, z: 1 },
@@ -187,22 +187,22 @@ AFRAME.registerComponent('intersection', {
       north: {
         positionVec: {
           x: -intersectWidth / 2,
-          y: intersectWidth / 2,
+          y: intersectDepth / 2,
           z: 0.1
         },
         scaleVec: { x: 1, y: -1, z: 1 },
         width: sidewalkArray[2],
-        length: intersectDepth,
+        length: intersectWidth,
         displayName: 'North'
       },
       south: {
         positionVec: {
           x: -intersectWidth / 2,
-          y: -intersectWidth / 2,
+          y: -intersectDepth / 2,
           z: 0.1
         },
         width: sidewalkArray[3],
-        length: intersectDepth,
+        length: intersectWidth,
         displayName: 'South'
       }
     };
