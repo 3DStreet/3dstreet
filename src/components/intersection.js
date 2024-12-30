@@ -15,19 +15,19 @@ Object.keys(CROSSWALKS).forEach((key) => {
 });
 
 const transformImageCrosswalk = (entity, length, rotZ) => {
-  entity.setAttribute('rotation', { z: rotZ });
-  entity.setAttribute('scale', { y: length / 12, x: 1.5 });
+  entity.setAttribute('rotation', { x: 0, y: 0, z: rotZ });
+  entity.setAttribute('scale', { x: 1.5, y: length / 12, z: 1 });
 };
 
 const CROSSWALK_TRANSFORMS = {
   none: function () {},
   'crosswalk-zebra': (entity, length, rotZ) => {
-    entity.setAttribute('rotation', { z: rotZ });
-    entity.setAttribute('scale', { y: length / 12 });
+    entity.setAttribute('rotation', { x: 0, y: 0, z: rotZ });
+    entity.setAttribute('scale', { x: 1, y: length / 12, z: 1 });
   },
   'crosswalk-raised': (entity, length, rotX) => {
     entity.setAttribute('rotation', { x: rotX, y: 90, z: 90 });
-    entity.setAttribute('scale', { x: length / 7, z: 1.5 });
+    entity.setAttribute('scale', { x: length / 7, y: 1, z: 1.5 });
   },
   'crosswalk-rainbow': transformImageCrosswalk,
   'crosswalk-double': transformImageCrosswalk,
