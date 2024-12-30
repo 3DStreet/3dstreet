@@ -437,10 +437,7 @@ AFRAME.registerComponent('intersection', {
     if (crosswalklArray[0]) {
       const cw1 = document.createElement('a-entity');
       cw1.setAttribute('position', { x: -intersectWidth / 2 + 2, z: 0.11 });
-      cw1.setAttribute(
-        'mixin',
-        'markings ' + CROSSWALKS_REV[crosswalklArray[0]]
-      );
+      cw1.setAttribute('mixin', CROSSWALKS_REV[crosswalklArray[0]]);
       cw1.setAttribute('data-layer-name', 'Crosswalk • West');
       cw1.setAttribute('data-no-transform', '');
       cw1.setAttribute('data-ignore-raycaster', '');
@@ -453,10 +450,7 @@ AFRAME.registerComponent('intersection', {
     if (crosswalklArray[1]) {
       const cw2 = document.createElement('a-entity');
       cw2.setAttribute('position', { x: intersectWidth / 2 - 2, z: 0.11 });
-      cw2.setAttribute(
-        'mixin',
-        'markings ' + CROSSWALKS_REV[crosswalklArray[1]]
-      );
+      cw2.setAttribute('mixin', CROSSWALKS_REV[crosswalklArray[1]]);
       cw2.setAttribute('data-layer-name', 'Crosswalk • East');
       cw2.setAttribute('data-no-transform', '');
       cw2.setAttribute('data-ignore-raycaster', '');
@@ -469,10 +463,7 @@ AFRAME.registerComponent('intersection', {
     if (crosswalklArray[2]) {
       const cw3 = document.createElement('a-entity');
       cw3.setAttribute('position', { y: intersectDepth / 2 - 2, z: 0.11 });
-      cw3.setAttribute(
-        'mixin',
-        'markings ' + CROSSWALKS_REV[crosswalklArray[2]]
-      );
+      cw3.setAttribute('mixin', CROSSWALKS_REV[crosswalklArray[2]]);
       cw3.setAttribute('data-layer-name', 'Crosswalk • North');
       cw3.setAttribute('data-no-transform', '');
       cw3.setAttribute('data-ignore-raycaster', '');
@@ -488,10 +479,7 @@ AFRAME.registerComponent('intersection', {
       cw4.setAttribute('data-layer-name', 'Crosswalk • South');
       cw4.setAttribute('data-no-transform', '');
       cw4.setAttribute('data-ignore-raycaster', '');
-      cw4.setAttribute(
-        'mixin',
-        'markings ' + CROSSWALKS_REV[crosswalklArray[3]]
-      );
+      cw4.setAttribute('mixin', CROSSWALKS_REV[crosswalklArray[3]]);
       cw4.classList.add('autocreated');
       const transform =
         CROSSWALK_TRANSFORMS[CROSSWALKS_REV[crosswalklArray[3]]];
