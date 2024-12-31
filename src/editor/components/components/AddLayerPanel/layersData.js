@@ -93,6 +93,14 @@ export const streetLayersData = [
     description: 'Premade Street 80ft Right of Way / 56ft Roadway Width',
     id: 11,
     handlerFunction: createFunctions.create80ftRightOfWayManagedStreet
+  },
+  {
+    name: '(Beta) Managed Street 94ft RoW 70ft Roadway Width',
+    img: 'ui_assets/cards/street-preset-94-70.jpg',
+    icon: 'ui_assets/cards/icons/3dst24.png',
+    description: 'Premade Street 94ft Right of Way / 70ft Roadway Width',
+    id: 12,
+    handlerFunction: createFunctions.create94ftRightOfWayManagedStreet
   }
 ];
 

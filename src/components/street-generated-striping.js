@@ -116,6 +116,10 @@ AFRAME.registerComponent('street-generated-striping', {
       stripingTextureId = 'striping-solid-dashed';
       color = '#f7d117';
       stripingWidth = 0.4;
+    } else if (stripingName === 'solid-dashed-yellow-mirror') {
+      stripingTextureId = 'striping-solid-dashed-mirror';
+      color = '#f7d117';
+      stripingWidth = 0.4;
     }
     return { stripingTextureId, repeatY, color, stripingWidth };
   }
