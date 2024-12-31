@@ -883,7 +883,6 @@ export const stroad94ftROW = {
       color: '#ffffff',
       level: 0,
       width: 3.048, // Original 10ft
-      direction: 'inbound',
       generated: {
         stencil: [
           {
@@ -902,6 +901,10 @@ export const stroad94ftROW = {
         striping: [
           {
             striping: 'solid-dashed-yellow'
+          },
+          {
+            striping: 'solid-dashed-yellow-mirror',
+            side: 'right'
           }
         ]
       }
@@ -927,7 +930,7 @@ export const stroad94ftROW = {
         ],
         striping: [
           {
-            striping: 'solid-dashed-yellow-mirror'
+            striping: 'none'
           }
         ]
       }
