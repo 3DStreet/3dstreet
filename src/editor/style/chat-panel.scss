@@ -34,6 +34,46 @@
   &.assistant {
     align-self: flex-start;
     background-color: variables.$darkgray-500;
+
+    // Ensure JSON blocks expand properly within assistant messages
+    .json-block {
+      width: 100%;
+      margin: 0.5em 0;
+    }
+
+    // Override react-json-pretty default styles
+    .json-pretty {
+      width: 100% !important;
+      max-width: none !important;
+      font-family: 'Fira Code', Consolas, Monaco, 'Andale Mono', 'Ubuntu Mono',
+        monospace !important;
+      font-size: 13px !important;
+      line-height: 1.4 !important;
+      background-color: variables.$darkgray-900 !important;
+      padding: 8px !important;
+      border-radius: 6px !important;
+      overflow-x: auto !important;
+
+      // Style JSON keys
+      .__json-key__ {
+        color: variables.$purple-100 !important;
+      }
+
+      // Style JSON strings
+      .__json-string__ {
+        color: variables.$green-100 !important;
+      }
+
+      // Style JSON values (numbers, booleans)
+      .__json-value__ {
+        color: variables.$blue-100 !important;
+      }
+
+      // Style JSON punctuation
+      .__json-punctuation__ {
+        color: variables.$gray-300 !important;
+      }
+    }
   }
 }
 

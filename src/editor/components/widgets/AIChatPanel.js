@@ -2,6 +2,71 @@ import { useState, useEffect, useRef } from 'react';
 import { vertexAI } from '../../services/firebase.js';
 import { getGenerativeModel } from 'firebase/vertexai';
 import Collapsible from '../Collapsible';
+import JSONPretty from 'react-json-pretty';
+import 'react-json-pretty/themes/monikai.css';
+
+// Helper component to render message content with JSON formatting
+const MessageContent = ({ content }) => {
+  const formatContent = (text) => {
+    const parts = [];
+    let currentIndex = 0;
+    const jsonBlockRegex = /```(?:json)?\s*(\{[\s\S]*?\})\s*```/g;
+
+    let match;
+    while ((match = jsonBlockRegex.exec(text)) !== null) {
+      // Add text before the JSON block
+      if (match.index > currentIndex) {
+        parts.push({
+          type: 'text',
+          content: text.slice(currentIndex, match.index)
+        });
+      }
+
+      try {
+        // Try to parse the JSON
+        const jsonContent = JSON.parse(match[1]);
+        parts.push({
+          type: 'json',
+          content: jsonContent
+        });
+      } catch (e) {
+        // If parsing fails, treat as regular text
+        parts.push({
+          type: 'text',
+          content: match[0]
+        });
+      }
+
+      currentIndex = match.index + match[0].length;
+    }
+
+    // Add any remaining text
+    if (currentIndex < text.length) {
+      parts.push({
+        type: 'text',
+        content: text.slice(currentIndex)
+      });
+    }
+
+    return parts;
+  };
+
+  const parts = formatContent(content);
+
+  return (
+    <>
+      {parts.map((part, index) => (
+        <div key={index} className={part.type === 'json' ? 'json-block' : ''}>
+          {part.type === 'json' ? (
+            <JSONPretty data={part.content} />
+          ) : (
+            <span>{part.content}</span>
+          )}
+        </div>
+      ))}
+    </>
+  );
+};
 
 const AIChatPanel = ({ scene }) => {
   const [messages, setMessages] = useState([]);
@@ -76,6 +141,7 @@ const AIChatPanel = ({ scene }) => {
         chatContainerRef.current.scrollHeight;
     }
   }, [messages]);
+
   return (
     <div className="chat-panel-container">
       <Collapsible defaultCollapsed={false}>
@@ -84,7 +150,7 @@ const AIChatPanel = ({ scene }) => {
           <div ref={chatContainerRef} className="chat-messages">
             {messages.map((message, index) => (
               <div key={index} className={`chat-message ${message.role}`}>
-                {message.content}
+                <MessageContent content={message.content} />
               </div>
             ))}
             {isLoading && <div className="loading-indicator">Thinking...</div>}
