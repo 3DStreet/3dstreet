@@ -8,7 +8,7 @@ import { ScreenshotModal } from './modals/ScreenshotModal';
 // import ViewportHUD from "./viewport/ViewportHUD";
 import { SignInModal } from './modals/SignInModal';
 import { ProfileModal } from './modals/ProfileModal';
-import { firebaseConfig } from '../services/firebase.js';
+import { firebaseConfig, app } from '../services/firebase.js';
 import { LoadScript } from '@react-google-maps/api';
 import { GeoModal } from './modals/GeoModal';
 import { ActionBar } from './components/ActionBar';
@@ -111,7 +111,7 @@ export default function Main() {
 
   return (
     <div id="inspectorContainer">
-      <AIChatProvider firebaseApp={window.firebaseApp}>
+      <AIChatProvider firebaseApp={app}>
         <ToolbarWrapper />
         {isInspectorEnabled && (
           <div>

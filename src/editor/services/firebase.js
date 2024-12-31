@@ -22,4 +22,4 @@ const db = getFirestore(app);
 const functions = getFunctions(app);
 const vertexAI = getVertexAI(app);
 
-export { firebaseConfig, auth, storage, db, functions, vertexAI };
+export { firebaseConfig, app, auth, storage, db, functions, vertexAI };
