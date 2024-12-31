@@ -34,29 +34,37 @@
   &.assistant {
     align-self: flex-start;
     background-color: variables.$darkgray-500;
+    width: 100%; // Ensure full width for JSON content
 
     // Ensure JSON blocks expand properly within assistant messages
     .json-block {
       width: 100%;
       margin: 0.5em 0;
+      position: relative;
+      padding-right: 80px; // Make room for the copy button
+      background-color: variables.$darkgray-900; // Darker background for JSON
+      border-radius: 6px;
+      overflow: hidden; // Contain the JSON content
     }
 
     // Override react-json-pretty default styles
     .json-pretty {
       width: 100% !important;
       max-width: none !important;
-      font-family: 'Fira Code', Consolas, Monaco, 'Andale Mono', 'Ubuntu Mono',
+      font-family: Monaco, 'Andale Mono', 'Ubuntu Mono', 'Fira Code', Consolas,
         monospace !important;
       font-size: 13px !important;
       line-height: 1.4 !important;
       background-color: variables.$darkgray-900 !important;
-      padding: 8px !important;
+      padding: 12px !important;
       border-radius: 6px !important;
       overflow-x: auto !important;
+      color: variables.$white !important; // Ensure base text is visible
 
       // Style JSON keys
       .__json-key__ {
         color: variables.$purple-100 !important;
+        font-weight: 600 !important;
       }
 
       // Style JSON strings
@@ -72,6 +80,37 @@
       // Style JSON punctuation
       .__json-punctuation__ {
         color: variables.$gray-300 !important;
+      }
+
+      // Add some spacing between properties
+      .json-pretty-key {
+        margin-right: 8px !important;
+      }
+    }
+
+    .copy-button {
+      position: absolute;
+      right: 8px;
+      top: 8px;
+      background: variables.$darkgray-700;
+      border: 1px solid variables.$darkgray-600;
+      cursor: pointer;
+      padding: 4px 8px;
+      border-radius: 4px;
+      color: variables.$gray-300;
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      font-size: 12px;
+      z-index: 1;
+
+      &:hover {
+        background: variables.$darkgray-600;
+        color: variables.$white;
+      }
+
+      &:active {
+        background: variables.$darkgray-500;
       }
     }
   }
@@ -106,11 +145,11 @@
     cursor: pointer;
 
     &:hover {
-      background-color: variables.$purple-100;
+      background-color: variables.$purple-700;
     }
 
     &:active {
-      background-color: variables.$purple-200;
+      background-color: variables.$purple-600;
     }
 
     &:disabled {

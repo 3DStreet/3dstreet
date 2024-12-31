@@ -4,6 +4,29 @@ import { getGenerativeModel } from 'firebase/vertexai';
 import Collapsible from '../Collapsible';
 import JSONPretty from 'react-json-pretty';
 import 'react-json-pretty/themes/monikai.css';
+import { Copy32Icon } from '../../icons';
+
+// Helper component for the copy button
+const CopyButton = ({ jsonData }) => {
+  const [copied, setCopied] = useState(false);
+
+  const handleCopy = async () => {
+    try {
+      await navigator.clipboard.writeText(JSON.stringify(jsonData, null, 2));
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch (err) {
+      console.error('Failed to copy:', err);
+    }
+  };
+
+  return (
+    <button onClick={handleCopy} className="copy-button">
+      <Copy32Icon />
+      {copied ? 'Copied!' : 'Copy'}
+    </button>
+  );
+};
 
 // Helper component to render message content with JSON formatting
 const MessageContent = ({ content }) => {
@@ -58,7 +81,10 @@ const MessageContent = ({ content }) => {
       {parts.map((part, index) => (
         <div key={index} className={part.type === 'json' ? 'json-block' : ''}>
           {part.type === 'json' ? (
-            <JSONPretty data={part.content} />
+            <>
+              <CopyButton jsonData={part.content} />
+              <JSONPretty data={part.content} />
+            </>
           ) : (
             <span>{part.content}</span>
           )}
