@@ -21,7 +21,7 @@ import { NewModal } from './modals/NewModal';
 import { ToolbarWrapper } from './scenegraph/ToolbarWrapper.js';
 import useStore from '@/store';
 import { AIChatProvider } from '../contexts/AIChatContext';
-import AIChatPanel from './widgets/AIChatPanel';
+import AIChatPanel from './scenegraph/AIChatPanel';
 
 THREE.ImageUtils.crossOrigin = '';
 
@@ -120,7 +120,7 @@ export default function Main() {
               selectedEntity={state.entity}
               visible={state.visible.scenegraph}
             />
-            <AIChatPanel scene={scene} />
+            <AIChatPanel />
             <div id="rightPanel">
               <ComponentsSidebar
                 entity={state.entity}

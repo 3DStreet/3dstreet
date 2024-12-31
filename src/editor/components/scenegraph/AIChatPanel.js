@@ -1,10 +1,10 @@
 import { useState, useEffect, useRef } from 'react';
 import { vertexAI } from '../../services/firebase.js';
 import { getGenerativeModel } from 'firebase/vertexai';
-import Collapsible from '../Collapsible';
+import Collapsible from '../Collapsible.js';
 import JSONPretty from 'react-json-pretty';
 import 'react-json-pretty/themes/monikai.css';
-import { Copy32Icon } from '../../icons';
+import { Copy32Icon } from '../../icons/index.js';
 
 // Helper component for the copy button
 const CopyButton = ({ jsonData }) => {
@@ -94,7 +94,7 @@ const MessageContent = ({ content }) => {
   );
 };
 
-const AIChatPanel = ({ scene }) => {
+const AIChatPanel = () => {
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -103,7 +103,6 @@ const AIChatPanel = ({ scene }) => {
 
   useEffect(() => {
     console.log('AIChatPanel mounted');
-    console.log('Scene available:', !!scene);
     const initializeAI = async () => {
       try {
         console.log('Initializing Vertex AI');
@@ -128,14 +127,17 @@ const AIChatPanel = ({ scene }) => {
     setInput('');
 
     try {
-      // Get the current scene state
-      const sceneState = scene.current
-        ? scene.current.getAttribute('managed-street')
-        : null;
+      // generate json from 3dstreet core
+      const entity = document.getElementById('street-container');
+      const data = STREET.utils.convertDOMElToObject(entity);
+      const filteredData = JSON.parse(STREET.utils.filterJSONstreet(data));
+
+      // fetch the same serialized data from the scene that is used for saving
+      const sceneJSON = filteredData.data;
 
       const prompt = `
         Context: You are a 3D street scene assistant. The current scene has the following state:
-        ${JSON.stringify(sceneState, null, 2)}
+        ${JSON.stringify(sceneJSON, null, 2)}
 
         User request: ${input}
 
