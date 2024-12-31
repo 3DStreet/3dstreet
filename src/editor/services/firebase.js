@@ -3,6 +3,7 @@ import { getAuth } from 'firebase/auth';
 import { getStorage } from 'firebase/storage';
 import { getFirestore } from 'firebase/firestore';
 import { getFunctions } from 'firebase/functions';
+import { getVertexAI } from 'firebase/vertexai';
 
 const firebaseConfig = {
   apiKey: process.env.FIREBASE_API_KEY,
@@ -19,5 +20,6 @@ const auth = getAuth(app);
 const storage = getStorage(app);
 const db = getFirestore(app);
 const functions = getFunctions(app);
+const vertexAI = getVertexAI(app);
 
-export { firebaseConfig, auth, storage, db, functions };
+export { firebaseConfig, auth, storage, db, functions, vertexAI };
