@@ -71,11 +71,21 @@ export const streetLayersData = [
     handlerFunction: createFunctions.createManagedStreetFromStreetmixURLPrompt
   },
   {
+    name: '(Beta) Managed Street from Streetplan URL',
+    img: '',
+    requiresPro: true,
+    icon: '',
+    description:
+      'Create a new street from Streetplan URL using the Managed Street component.',
+    id: 9,
+    handlerFunction: createFunctions.createManagedStreetFromStreetplanURLPrompt
+  },
+  {
     name: '(Beta) Managed Street 60ft RoW / 36ft Roadway Width',
     img: 'ui_assets/cards/street-preset-60-36.jpg',
     icon: 'ui_assets/cards/icons/3dst24.png',
     description: 'Premade Street 60ft Right of Way / 36ft Roadway Width',
-    id: 9,
+    id: 10,
     handlerFunction: createFunctions.create60ftRightOfWayManagedStreet
   }
 ];

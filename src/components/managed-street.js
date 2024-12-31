@@ -122,8 +122,7 @@ AFRAME.registerComponent('managed-street', {
     if (data.sourceType === 'streetmix-url') {
       this.loadAndParseStreetmixURL(data.sourceValue);
     } else if (data.sourceType === 'streetplan-url') {
-      // this function is not yet implemented
-      this.refreshFromStreetplanURL(data.sourceValue);
+      this.loadAndParseStreetplanURL(data.sourceValue);
     } else if (data.sourceType === 'json-blob') {
       // if data.sourceValue is a string convert string to object for parsing but keep string for saving
       if (typeof data.sourceValue === 'string') {
@@ -272,6 +271,98 @@ AFRAME.registerComponent('managed-street', {
         ].generateComponentsFromSegmentObject(segment);
         this.applyJustification();
       });
+    }
+  },
+  loadAndParseStreetplanURL: async function (streetplanURL) {
+    console.log(
+      '[managed-street] loader',
+      'sourceType: `streetplan-url`, loading from',
+      streetplanURL
+    );
+
+    try {
+      const response = await fetch(streetplanURL);
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      const streetplanData = await response.json();
+      const boulevard = streetplanData.project['My Street']['Boulevard Alt 1'];
+
+      // Convert StreetPlan format to managed-street format
+      const streetObject = {
+        name: streetplanData.project.ProjectName,
+        width: 0, // Will be calculated from segments
+        length:
+          parseFloat(streetplanData.project['My Street'].LengthMiles) *
+          5280 *
+          0.3048, // Convert miles to meters
+        segments: []
+      };
+
+      // Process segments
+      const segments = boulevard.segments;
+      for (const segmentKey in segments) {
+        const segment = segments[segmentKey];
+        const segmentWidth = parseFloat(segment.width) * 0.3048; // Convert feet to meters
+        streetObject.width += segmentWidth;
+
+        // Convert segment type based on your schema
+        let segmentType = 'drive-lane'; // Default type
+        let segmentDirection = 'inbound';
+        let segmentColor = window.STREET.colors.white;
+
+        switch (segment.Type) {
+          case 'BikesPaths':
+            segmentType = 'bike-lane';
+            break;
+          case 'Walkways':
+            segmentType = 'sidewalk';
+            break;
+          case 'Transit':
+            segmentType = 'bus-lane';
+            segmentColor = window.STREET.colors.red;
+            break;
+          case 'Median/Buffer':
+            segmentType = 'divider';
+            break;
+          case 'Curbside':
+            segmentType = 'divider';
+            break;
+          case 'Gutter':
+            segmentType = 'parking-lane';
+            break;
+          case 'Furniture':
+            segmentType = 'sidewalk-tree';
+            break;
+          // Add more type mappings as needed
+        }
+
+        // Determine direction based on segment data
+        if (segment.Direction === 'Coming') {
+          segmentDirection = 'inbound';
+        } else if (segment.Direction === 'Going') {
+          segmentDirection = 'outbound';
+        }
+
+        streetObject.segments.push({
+          type: segmentType,
+          width: segmentWidth,
+          name: segment.title,
+          level: parseFloat(segment.MaterialH) || 0,
+          direction: segmentDirection,
+          color: segmentColor,
+          surface: segment.Material?.toLowerCase() || 'asphalt'
+        });
+      }
+
+      // Parse the street object
+      this.parseStreetObject(streetObject);
+    } catch (error) {
+      console.error('[managed-street] loader', 'Loading Error:', error);
+      STREET.notify.warningMessage(
+        'Error loading StreetPlan data: ' + error.message
+      );
     }
   },
   loadAndParseStreetmixURL: async function (streetmixURL) {
