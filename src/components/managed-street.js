@@ -5,6 +5,67 @@ const { segmentVariants } = require('../segments-variants.js');
 const streetmixUtils = require('../tested/streetmix-utils');
 const streetmixParsersTested = require('../tested/aframe-streetmix-parsers-tested');
 
+// STREETPLAN HELPER FUNCTIONS
+// Material mapping from Streetplan to 3DStreet surfaces
+const STREETPLAN_MATERIAL_MAPPING = {
+  'asphalt black': 'asphalt',
+  'asphalt blue': 'asphalt',
+  'asphalt red 1': 'asphalt',
+  'asphalt red 2': 'asphalt',
+  'asphalt green': 'asphalt',
+  'asphalt old': 'asphalt',
+  'standard concrete': 'concrete',
+  grass: 'grass',
+  'grass dead': 'grass',
+  'pavers tan': 'sidewalk',
+  'pavers brown': 'sidewalk',
+  'pavers mixed': 'sidewalk',
+  'pavers red': 'sidewalk',
+  'tint conc. or dirt': 'gravel',
+  dirt: 'gravel',
+  gravel: 'gravel',
+  stonetan: 'sidewalk',
+  'sidewalk 2': 'sidewalk',
+  'cobble stone': 'sidewalk',
+  'solid black': 'solid',
+  'painted intersection': 'asphalt',
+  'grass with edging': 'grass',
+  xeriscape: 'grass',
+  'grassslopemedian 12ft': 'grass',
+  'grassslopemedian 24ft': 'grass',
+  'grassslope 12ft-left': 'grass',
+  'grassslope 12ft-right': 'grass',
+  'grassslope 24ft-left': 'grass',
+  'grassslope 24ft-right': 'grass',
+  sand: 'sand'
+};
+
+const STREETPLAN_OBJECT_MAPPING = {
+  'Japanese Zelkova': 'tree3',
+  'TallPlantBox (12ft)': 'dividers-bush'
+  // Add more mappings as needed
+};
+
+// Helper function to parse O-Tags string into array
+function parseOTags(tags) {
+  if (!tags || tags === '-') return [];
+  return tags.split('", "').map((t) => t.replace(/"/g, '').trim());
+}
+
+// Helper function to create clone configuration
+function createCloneConfig(name, tags) {
+  if (!name || name === '-') return null;
+
+  const model = STREETPLAN_OBJECT_MAPPING[name];
+  if (!model) return null;
+
+  return {
+    mode: 'fixed', // default to fixed mode
+    model: model,
+    spacing: 15 // default spacing
+  };
+}
+
 AFRAME.registerComponent('managed-street', {
   schema: {
     width: {
@@ -304,6 +365,12 @@ AFRAME.registerComponent('managed-street', {
       const segments = boulevard.segments;
       for (const segmentKey in segments) {
         const segment = segments[segmentKey];
+
+        // Skip Buildings and Setback segments
+        if (segment.Type === 'Buildings' || segment.Type === 'Setback') {
+          continue;
+        }
+
         const segmentWidth = parseFloat(segment.width) * 0.3048; // Convert feet to meters
         streetObject.width += segmentWidth;
 
@@ -345,6 +412,27 @@ AFRAME.registerComponent('managed-street', {
           segmentDirection = 'outbound';
         }
 
+        // Map the material using the STREETPLAN_MATERIAL_MAPPING, fallback to 'asphalt' if not found
+        const material = segment.Material?.toLowerCase() || '';
+        const mappedSurface =
+          STREETPLAN_MATERIAL_MAPPING[material] || 'asphalt';
+
+        // Map the O-Tags to clone configurations
+        const generated = {};
+        const clones = [];
+        // Process O1, O2, O3 configurations
+        ['O1', 'O2', 'O3'].forEach((prefix) => {
+          const name = segment[`${prefix}-Name`];
+          const tags = parseOTags(segment[`${prefix}-Tags`]);
+          const cloneConfig = createCloneConfig(name, tags);
+          if (cloneConfig) {
+            clones.push(cloneConfig);
+          }
+        });
+        if (clones.length > 0) {
+          generated.clones = clones;
+        }
+
         streetObject.segments.push({
           type: segmentType,
           width: segmentWidth,
@@ -352,7 +440,8 @@ AFRAME.registerComponent('managed-street', {
           level: parseFloat(segment.MaterialH) || 0,
           direction: segmentDirection,
           color: segmentColor,
-          surface: segment.Material?.toLowerCase() || 'asphalt'
+          surface: mappedSurface,
+          generated: clones.length > 0 ? generated : undefined
         });
       }
 
