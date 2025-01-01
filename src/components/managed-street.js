@@ -237,6 +237,17 @@ AFRAME.registerComponent('managed-street', {
       'position',
       `${xPosition} -1 ${zPosition}`
     );
+
+    this.justifiedDirtBox.addEventListener('loaded', () => {
+      // Fix z fighting issue
+      const mesh = this.justifiedDirtBox.getObject3D('mesh');
+      if (mesh) {
+        const material = mesh.material;
+        material.polygonOffset = true;
+        material.polygonOffsetFactor = 4;
+        material.polygonOffsetUnits = 4;
+      }
+    });
   },
   parseStreetObject: function (streetObject) {
     // reset and delete all existing entities
