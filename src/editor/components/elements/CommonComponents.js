@@ -4,6 +4,7 @@ import DEFAULT_COMPONENTS from './DefaultComponents';
 import PropertyRow from './PropertyRow';
 import Events from '../../lib/Events';
 import { saveBlob } from '../../lib/utils';
+import CustomizeColorWidget from './CustomizeColorWidget';
 
 export default class CommonComponents extends React.Component {
   static propTypes = {
@@ -35,11 +36,7 @@ export default class CommonComponents extends React.Component {
   renderCommonAttributes() {
     const entity = this.props.entity;
     // return ['position', 'rotation', 'scale', 'visible']
-    return ['position', 'rotation', 'scale'].map((componentName) => {
-      // if entity has managed-street component, then don't show scale
-      if (componentName === 'scale' && entity.components['managed-street']) {
-        return null;
-      }
+    const rows = ['position', 'rotation', 'scale'].map((componentName) => {
       const schema = AFRAME.components[componentName].schema;
       var data = entity.object3D[componentName];
       if (componentName === 'rotation') {
@@ -61,6 +58,12 @@ export default class CommonComponents extends React.Component {
         />
       );
     });
+
+    console.log(this.props.entity);
+
+    rows.push(<CustomizeColorWidget entity={entity} key={'customizeColor'} />);
+
+    return rows;
   }
 
   exportToGLTF() {
