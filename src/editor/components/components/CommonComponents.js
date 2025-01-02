@@ -70,9 +70,7 @@ export default class CommonComponents extends React.Component {
       );
     });
 
-    console.log(this.props.entity);
-
-    rows.push(<CustomizeColorWidget entity={entity} key={'customizeColor'} />);
+    rows.push(<CustomizeColorWidget entity={entity} key={entity.id} />);
 
     return rows;
   }
