@@ -69,7 +69,11 @@ export default class CommonComponents extends React.Component {
         />
       );
     });
-    rows.push(<CustomizeColorWidget entity={entity} key={entity.id} />);
+
+    // Custom colors are only applicable to entities, not things like intersections or groups.
+    if (entity.hasAttribute('mixin')) {
+      rows.push(<CustomizeColorWidget entity={entity} key={entity.id} />);
+    }
     return rows;
   }
 
