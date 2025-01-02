@@ -223,20 +223,23 @@ AFRAME.registerComponent('street-segment', {
     if (componentsToGenerate?.stencil?.length > 0) {
       componentsToGenerate.stencil.forEach((clone, index) => {
         if (clone?.stencils?.length > 0) {
+          // case where there are multiple stencils such as bus-only
           this.el.setAttribute(`street-generated-stencil__${index}`, {
             stencils: clone.stencils,
             length: this.data.length,
             spacing: clone.spacing,
-            direction: this.data.direction,
-            padding: clone.padding
+            direction: clone.direction ?? this.data.direction,
+            padding: clone.padding,
+            cycleOffset: clone.cycleOffset
           });
         } else {
           this.el.setAttribute(`street-generated-stencil__${index}`, {
             model: clone.model,
             length: this.data.length,
             spacing: clone.spacing,
-            direction: this.data.direction,
-            count: clone.count
+            direction: clone.direction ?? this.data.direction,
+            count: clone.count,
+            cycleOffset: clone.cycleOffset
           });
         }
       });
