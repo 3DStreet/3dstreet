@@ -10,7 +10,7 @@ export const getMaterials = (object3D) => {
   return Array.from(materials);
 };
 
-const CustomizeColorContent = ({ entity }) => {
+const CustomizeColorContent = ({ materials, entity }) => {
   const customColorData = entity.getAttribute('custom-colors') ?? '';
   // Convert the string data of `materialName:color;...` to a mapping of color overrides: { [materialName]: color }
   const baseColorMapping = useMemo(() => {
@@ -28,13 +28,11 @@ const CustomizeColorContent = ({ entity }) => {
     return mapping;
   }, [customColorData]);
   const [colorMapping, setColorMapping] = useState(baseColorMapping);
-
-  // Retrieve materials from the entity
-  const materials = useMemo(() => getMaterials(entity.object3D), [entity]);
   const [selectedMaterial, setSelectedMaterial] = useState();
 
   const setMaterialColor = (material, color) => {
     const newColorMapping = { ...colorMapping, [material]: color };
+    if (color === undefined) delete newColorMapping[material];
     setColorMapping(newColorMapping);
 
     const newColorsString = Object.entries(newColorMapping)
@@ -50,7 +48,7 @@ const CustomizeColorContent = ({ entity }) => {
 
   const handleToggleOverride = (_, v) => {
     if (v) {
-      setMaterialColor(selectedMaterial, '#FF0000');
+      setMaterialColor(selectedMaterial, '#FFFFFF');
     } else {
       setMaterialColor(selectedMaterial, undefined);
     }
@@ -121,6 +119,21 @@ const CustomizeColorWrapper = ({ entity }) => {
     setHasCustomColorComponent(false);
   };
 
+  const materials = useMemo(() => {
+    // Save the original material color values
+    const materials = getMaterials(entity.object3D);
+    materials.forEach((material) => {
+      material.userData.origColor = material.color.clone();
+    });
+
+    return getMaterials(entity.object3D);
+  }, [entity.object3D]);
+
+  // No materials to customize, don't add the widget
+  if (materials.length === 0) {
+    return <></>;
+  }
+
   return (
     <div className="details">
       <div className="propertyRow">
@@ -129,7 +142,13 @@ const CustomizeColorWrapper = ({ entity }) => {
           {hasCustomColorComponent ? 'Remove' : 'Add'} Custom Colors
         </Button>
       </div>
-      {hasCustomColorComponent && <CustomizeColorContent entity={entity} />}
+      {hasCustomColorComponent && (
+        <CustomizeColorContent
+          materials={materials}
+          entity={entity}
+          key={entity.object3D}
+        />
+      )}
     </div>
   );
 };
