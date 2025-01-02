@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useMemo, useState, useEffect, useCallback } from 'react';
 import { Button } from '../Button';
 import BooleanWidget from '../../widgets/BooleanWidget';
 import ColorWidget from '../../widgets/ColorWidget';
@@ -119,15 +119,28 @@ const CustomizeColorWrapper = ({ entity }) => {
     setHasCustomColorComponent(false);
   };
 
-  const materials = useMemo(() => {
+  const [materials, setMaterials] = useState([]);
+
+  const updateMaterials = useCallback(() => {
     // Save the original material color values
-    const materials = getMaterials(entity.object3D);
-    materials.forEach((material) => {
+    const newMaterials = getMaterials(entity.object3D);
+    newMaterials.forEach((material) => {
       material.userData.origColor = material.color.clone();
     });
-
-    return getMaterials(entity.object3D);
+    setMaterials(newMaterials);
   }, [entity.object3D]);
+
+  // We need to dynamically get the materials from the mesh in case the
+  // model is not loaded when the pane is loaded
+  useEffect(() => {
+    if (entity.getObject3D('mesh')) {
+      updateMaterials();
+    } else {
+      entity.addEventListener('model-loaded', () => {
+        updateMaterials();
+      });
+    }
+  }, [updateMaterials, entity.id, entity]);
 
   // No materials to customize, don't add the widget
   if (materials.length === 0) {
