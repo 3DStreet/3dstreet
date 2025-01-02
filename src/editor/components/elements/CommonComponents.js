@@ -58,9 +58,7 @@ export default class CommonComponents extends React.Component {
         />
       );
     });
-
     rows.push(<CustomizeColorWidget entity={entity} key={entity.id} />);
-
     return rows;
   }
 
