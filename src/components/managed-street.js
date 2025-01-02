@@ -53,6 +53,88 @@ AFRAME.registerComponent('managed-street', {
     // Bind the method to preserve context
     this.refreshFromSource = this.refreshFromSource.bind(this);
   },
+  /**
+   * Inserts a new street segment at the specified index
+   * @param {number} index - The index at which to insert the new segment
+   * @param {string} type - The segment type (e.g., 'drive-lane', 'bike-lane')
+   * @param {Object} [segmentObject] - Optional configuration object for the segment
+   * @returns {Element} The created segment element
+   */
+  insertSegment: function (index, type, segmentObject = null) {
+    // Validate index
+    if (index < 0 || index > this.managedEntities.length) {
+      console.error('[managed-street] Invalid index for insertion:', index);
+      return;
+    }
+
+    // Create new segment entity
+    const segmentEl = document.createElement('a-entity');
+
+    // Get default properties for this segment type from STREET.types
+    const defaultProps = window.STREET.types[type] || {};
+
+    // Set up basic segment properties, merging defaults with any provided custom properties
+    const segmentProps = {
+      type: type,
+      width: segmentObject?.width || defaultProps.width || 3,
+      length: this.data.length,
+      level: segmentObject?.level ?? defaultProps.level ?? 0,
+      direction:
+        segmentObject?.direction || defaultProps.direction || 'outbound',
+      color:
+        segmentObject?.color ||
+        defaultProps.color ||
+        window.STREET.colors.white,
+      surface: segmentObject?.surface || defaultProps.surface || 'asphalt'
+    };
+
+    // Set the segment component with properties
+    segmentEl.setAttribute('street-segment', segmentProps);
+
+    // Set the layer name for the segment
+    const layerName = segmentObject?.name || `${type} • default`;
+    segmentEl.setAttribute('data-layer-name', layerName);
+
+    // If custom segment object is provided, wait for segment to load then generate its components
+    if (segmentObject) {
+      segmentEl.addEventListener('loaded', () => {
+        // Use the generateComponentsFromSegmentObject method from street-segment component
+        const streetSegmentComponent = segmentEl.components['street-segment'];
+        if (streetSegmentComponent) {
+          streetSegmentComponent.generateComponentsFromSegmentObject(
+            segmentObject
+          );
+        }
+      });
+    }
+
+    // Insert the segment at the specified index in the DOM
+    const referenceNode = this.managedEntities[index] ?? null;
+    this.el.insertBefore(segmentEl, referenceNode);
+
+    // Wait for the segment to be fully loaded
+    segmentEl.addEventListener('loaded', () => {
+      // Refresh the managed entities list
+      this.refreshManagedEntities();
+
+      // Update the total width
+      const totalWidth = this.managedEntities.reduce((sum, segment) => {
+        return sum + (segment.getAttribute('street-segment').width || 0);
+      }, 0);
+      this.el.setAttribute('managed-street', 'width', totalWidth);
+
+      // Apply justification to reposition all segments
+      this.applyJustification();
+
+      // Update the dirt box
+      this.createOrUpdateJustifiedDirtBox();
+
+      // If we have a previous segment, check if we need to add stripe separators
+      // TODO: Check striping here in the future
+    });
+
+    return segmentEl;
+  },
   setupMutationObserver: function () {
     // Create mutation observer
     if (this.observer) {
@@ -263,6 +345,7 @@ AFRAME.registerComponent('managed-street', {
 
     for (let i = 0; i < streetObject.segments.length; i++) {
       const segment = streetObject.segments[i];
+      const previousSegment = streetObject.segments[i - 1];
       const segmentEl = document.createElement('a-entity');
       this.el.appendChild(segmentEl);
 
@@ -278,12 +361,89 @@ AFRAME.registerComponent('managed-street', {
       segmentEl.setAttribute('data-layer-name', segment.name);
       // wait for street-segment to be loaded, then generate components from segment object
       segmentEl.addEventListener('loaded', () => {
+        if (!segment.generated?.striping) {
+          const stripingVariant = this.getStripingFromSegments(
+            previousSegment,
+            segment
+          );
+          if (stripingVariant) {
+            // Only add striping if variant is not null
+            if (!segment.generated) {
+              segment.generated = {};
+            }
+            segment.generated.striping = [
+              {
+                striping: stripingVariant,
+                length: streetObject.length,
+                segmentWidth: segment.width
+              }
+            ];
+          }
+        }
         segmentEl.components[
           'street-segment'
         ].generateComponentsFromSegmentObject(segment);
         this.applyJustification();
       });
     }
+  },
+  getStripingFromSegments: function (previousSegment, currentSegment) {
+    if (!previousSegment || !currentSegment) {
+      return null;
+    }
+
+    // Valid lane types that should have striping
+    const validLaneTypes = [
+      'drive-lane',
+      'bus-lane',
+      'bike-lane',
+      'parking-lane'
+    ];
+
+    // Only add striping between valid lane types
+    if (
+      !validLaneTypes.includes(previousSegment.type) ||
+      !validLaneTypes.includes(currentSegment.type)
+    ) {
+      return null;
+    }
+
+    // Default to solid line
+    let variantString = 'solid-stripe';
+
+    // Check for opposite directions
+    if (
+      previousSegment.direction !== currentSegment.direction &&
+      previousSegment.direction !== 'none' &&
+      currentSegment.direction !== 'none'
+    ) {
+      variantString = 'solid-doubleyellow';
+
+      // Special case for bike lanes
+      if (
+        currentSegment.type === 'bike-lane' &&
+        previousSegment.type === 'bike-lane'
+      ) {
+        variantString = 'short-dashed-stripe-yellow';
+      }
+    } else {
+      // Same direction cases
+      if (currentSegment.type === previousSegment.type) {
+        variantString = 'dashed-stripe';
+      }
+
+      // Drive lane and turn lane combination would go here if needed
+    }
+
+    // Special case for parking lanes - use dashed line between parking and drive lanes
+    if (
+      currentSegment.type === 'parking-lane' ||
+      previousSegment.type === 'parking-lane'
+    ) {
+      variantString = 'solid-stripe';
+    }
+
+    return variantString;
   },
   loadAndParseStreetmixURL: async function (streetmixURL) {
     const data = this.data;
@@ -467,7 +627,7 @@ function getSeparatorMixinId(previousSegment, currentSegment) {
     currentSegment.type === 'parking-lane' ||
     previousSegment.type === 'parking-lane'
   ) {
-    variantString = 'invisible';
+    variantString = 'solid-stripe';
   }
 
   return variantString;

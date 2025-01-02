@@ -19,7 +19,7 @@ export class ComponentAddCommand extends Command {
     this.value = payload.value;
   }
 
-  execute() {
+  execute(nextCommandCallback) {
     const entity = document.getElementById(this.entityId);
     if (entity) {
       entity.setAttribute(this.component, this.value);
@@ -28,10 +28,11 @@ export class ComponentAddCommand extends Command {
         component: this.component,
         value: this.value
       });
+      nextCommandCallback?.(entity);
     }
   }
 
-  undo() {
+  undo(nextCommandCallback) {
     const entity = document.getElementById(this.entityId);
     if (entity) {
       entity.removeAttribute(this.component);
@@ -39,6 +40,7 @@ export class ComponentAddCommand extends Command {
         entity,
         component: this.component
       });
+      nextCommandCallback?.(entity);
     }
   }
 }
