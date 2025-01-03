@@ -1,4 +1,4 @@
-import { useMemo, useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Button } from '../Button';
 import BooleanWidget from '../../widgets/BooleanWidget';
 import ColorWidget from '../../widgets/ColorWidget';
@@ -11,47 +11,24 @@ export const getMaterials = (object3D) => {
 };
 
 const CustomizeColorContent = ({ materials, entity }) => {
-  const customColorData = entity.getAttribute('custom-colors') ?? '';
-  // Convert the string data of `materialName:color;...` to a mapping of color overrides: { [materialName]: color }
-  const baseColorMapping = useMemo(() => {
-    if (!customColorData) return {};
-    const mapping = {};
-    customColorData
-      .replaceAll(' ', '')
-      .split(';')
-      .forEach((entry) => {
-        // Skip unnamed
-        if (entry === '') return;
-        const [mat, color] = entry.split(':');
-        mapping[mat] = color;
-      });
-    return mapping;
-  }, [customColorData]);
-  const [colorMapping, setColorMapping] = useState(baseColorMapping);
+  const [colorMapping, setColorMapping] = useState(
+    entity.getAttribute('custom-colors') ?? {}
+  );
   const [selectedMaterial, setSelectedMaterial] = useState();
 
   const setMaterialColor = (material, color) => {
     const newColorMapping = { ...colorMapping, [material]: color };
     if (color === undefined) delete newColorMapping[material];
     setColorMapping(newColorMapping);
-
-    const newColorsString = Object.entries(newColorMapping)
-      .map(([mat, color]) => `${mat}:${color}`)
-      .join(';');
-
     AFRAME.INSPECTOR.execute('entityupdate', {
       entity: entity,
       component: 'custom-colors',
-      value: newColorsString
+      value: newColorMapping
     });
   };
 
   const handleToggleOverride = (_, v) => {
-    if (v) {
-      setMaterialColor(selectedMaterial, '#FFFFFF');
-    } else {
-      setMaterialColor(selectedMaterial, undefined);
-    }
+    setMaterialColor(selectedMaterial, v ? '#ffffff' : undefined);
   };
 
   const handleColorChange = (_, v) => {
@@ -136,9 +113,7 @@ const CustomizeColorWrapper = ({ entity }) => {
     if (entity.getObject3D('mesh')) {
       updateMaterials();
     } else {
-      entity.addEventListener('model-loaded', () => {
-        updateMaterials();
-      });
+      entity.addEventListener('model-loaded', updateMaterials, { once: true });
     }
   }, [updateMaterials, entity.id, entity]);
 
