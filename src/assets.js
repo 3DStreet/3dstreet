@@ -147,6 +147,7 @@ function buildAssetHTML(assetUrl, categories) {
         <img id="striping-dashed-stripe" src="${assetUrl}materials/striping-dashed-stripe-128-1024.webp" crossorigin="anonymous" />
         <img id="striping-solid-double" src="${assetUrl}materials/striping-solid-double-256-1024.webp" crossorigin="anonymous" />
         <img id="striping-solid-dashed" src="${assetUrl}materials/striping-solid-dashed-256-1024.webp" crossorigin="anonymous" />
+        <img id="striping-solid-dashed-mirror" src="${assetUrl}materials/striping-solid-dashed-mirror-256-1024.webp" crossorigin="anonymous" />
         <img id="striping-crosswalk-zebra" src="${assetUrl}materials/striping-solid-dashed-256-1024.webp" crossorigin="anonymous" />
         <!-- legacy lane separator markings using atlas uv -->
         <img id="markings-atlas" src="${assetUrl}materials/lane-markings-atlas_1024.png" crossorigin="anonymous" />

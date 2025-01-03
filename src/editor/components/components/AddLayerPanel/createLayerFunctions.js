@@ -151,6 +151,50 @@ export function create60ftRightOfWayManagedStreet(position) {
   );
 }
 
+export function create40ftRightOfWayManagedStreet(position) {
+  console.log(
+    'create40ftRightOfWayManagedStreet',
+    defaultStreetObjects.stroad40ftROW
+  );
+  createManagedStreetFromStreetObject(
+    position,
+    defaultStreetObjects.stroad40ftROW
+  );
+}
+
+export function create80ftRightOfWayManagedStreet(position) {
+  console.log(
+    'create80ftRightOfWayManagedStreet',
+    defaultStreetObjects.stroad80ftROW
+  );
+  createManagedStreetFromStreetObject(
+    position,
+    defaultStreetObjects.stroad80ftROW
+  );
+}
+
+export function create94ftRightOfWayManagedStreet(position) {
+  console.log(
+    'create94ftRightOfWayManagedStreet',
+    defaultStreetObjects.stroad94ftROW
+  );
+  createManagedStreetFromStreetObject(
+    position,
+    defaultStreetObjects.stroad94ftROW
+  );
+}
+
+export function create150ftRightOfWayManagedStreet(position) {
+  console.log(
+    'create150ftRightOfWayManagedStreet',
+    defaultStreetObjects.stroad150ftROW
+  );
+  createManagedStreetFromStreetObject(
+    position,
+    defaultStreetObjects.stroad150ftROW
+  );
+}
+
 export function create80ftRightOfWay(position) {
   createStreetmixStreet(
     position,

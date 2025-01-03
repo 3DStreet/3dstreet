@@ -223,20 +223,23 @@ AFRAME.registerComponent('street-segment', {
     if (componentsToGenerate?.stencil?.length > 0) {
       componentsToGenerate.stencil.forEach((clone, index) => {
         if (clone?.stencils?.length > 0) {
+          // case where there are multiple stencils such as bus-only
           this.el.setAttribute(`street-generated-stencil__${index}`, {
             stencils: clone.stencils,
             length: this.data.length,
             spacing: clone.spacing,
-            direction: this.data.direction,
-            padding: clone.padding
+            direction: clone.direction ?? this.data.direction,
+            padding: clone.padding,
+            cycleOffset: clone.cycleOffset
           });
         } else {
           this.el.setAttribute(`street-generated-stencil__${index}`, {
             model: clone.model,
             length: this.data.length,
             spacing: clone.spacing,
-            direction: this.data.direction,
-            count: clone.count
+            direction: clone.direction ?? this.data.direction,
+            count: clone.count,
+            cycleOffset: clone.cycleOffset
           });
         }
       });
@@ -249,6 +252,19 @@ AFRAME.registerComponent('street-segment', {
           density: pedestrian.density,
           length: this.data.length,
           direction: this.data.direction
+        });
+      });
+    }
+
+    if (componentsToGenerate?.striping?.length > 0) {
+      componentsToGenerate.striping.forEach((stripe, index) => {
+        this.el.setAttribute(`street-generated-striping__${index}`, {
+          striping: stripe.striping,
+          segmentWidth: this.data.width,
+          length: this.data.length,
+          positionY: stripe.positionY ?? 0.05, // Default to 0.05 if not specified
+          side: stripe.side ?? 'left', // Default to left if not specified
+          facing: stripe.facing ?? 0 // Default to 0 if not specified
         });
       });
     }
