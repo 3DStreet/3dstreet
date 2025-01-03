@@ -36,13 +36,17 @@ AFRAME.registerComponent('managed-street', {
       type: 'boolean',
       default: true
     },
+    showLabels: {
+      type: 'boolean',
+      default: true
+    },
     justifyWidth: {
       default: 'center',
       type: 'string',
       oneOf: ['center', 'left', 'right']
     },
     justifyLength: {
-      default: 'middle',
+      default: 'start',
       type: 'string',
       oneOf: ['middle', 'start', 'end']
     }
@@ -122,7 +126,6 @@ AFRAME.registerComponent('managed-street', {
         return sum + (segment.getAttribute('street-segment').width || 0);
       }, 0);
       this.el.setAttribute('managed-street', 'width', totalWidth);
-
       // Apply justification to reposition all segments
       this.applyJustification();
 
@@ -250,11 +253,14 @@ AFRAME.registerComponent('managed-street', {
       zPosition = streetLength / 2;
     }
 
+    let calculatedWidth = 0;
+    console.log(segmentEls.length);
     segmentEls.forEach((segmentEl) => {
       if (!segmentEl.getAttribute('street-segment')) {
         return;
       }
       const segmentWidth = segmentEl.getAttribute('street-segment').width;
+      calculatedWidth += segmentWidth;
       const yPosition = segmentEl.getAttribute('position').y;
       xPosition += segmentWidth / 2;
       segmentEl.setAttribute(
@@ -262,6 +268,30 @@ AFRAME.registerComponent('managed-street', {
         `${xPosition} ${yPosition} ${zPosition}`
       );
       xPosition += segmentWidth / 2;
+    });
+    console.log('calculatedWidth from managed street', calculatedWidth);
+  },
+  createLabelPlane: function () {
+    const segmentEls = this.managedEntities;
+
+    const widthsArray = [];
+    const labelsArray = [];
+    console.log('segmentEls', segmentEls);
+    segmentEls.forEach((segmentEl) => {
+      if (!segmentEl.getAttribute('street-segment')) {
+        return;
+      }
+      const segmentWidth = segmentEl.getAttribute('street-segment').width;
+      widthsArray.push(segmentWidth);
+      labelsArray.push(segmentEl.getAttribute('data-layer-name'));
+    });
+
+    console.log('widthsArray', widthsArray);
+    console.log('labelsArray', labelsArray);
+
+    this.el.setAttribute('street-generated-label', {
+      widthsArray: widthsArray,
+      labelsArray: labelsArray
     });
   },
   refreshManagedEntities: function () {
@@ -373,6 +403,11 @@ AFRAME.registerComponent('managed-street', {
           'street-segment'
         ].generateComponentsFromSegmentObject(segment);
         this.applyJustification();
+
+        // if labels enabled, create label plane
+        if (this.data.showLabels) {
+          this.createLabelPlane();
+        }
       });
     }
   },
