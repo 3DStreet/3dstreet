@@ -3,11 +3,9 @@
 AFRAME.registerComponent('street-generated-label', {
   schema: {
     widthsArray: {
-      // an array of widths in meters for which to generate labels
       type: 'array'
     },
     labelsArray: {
-      // an array of labels to place at each width in the widthsArray
       type: 'array'
     }
   },
@@ -21,27 +19,32 @@ AFRAME.registerComponent('street-generated-label', {
 
   update: function (oldData) {
     const data = this.data;
-    // if oldData is same as current data, then don't update
     if (AFRAME.utils.deepEqual(oldData, data)) {
       return;
     }
 
-    // Only proceed if we have matching arrays
     if (data.widthsArray.length !== data.labelsArray.length) {
       console.error('widthsArray and labelsArray must have the same length');
       return;
     }
+
+    // Calculate total width before drawing
+    const totalWidth = this.data.widthsArray.reduce(
+      (sum, width) => sum + parseFloat(width),
+      0
+    );
+
+    // Update canvas dimensions to match the plane's aspect ratio
+    this.updateCanvasDimensions(totalWidth);
 
     this.drawLabels();
     this.createLabelPlane();
   },
 
   remove: function () {
-    // Clean up canvas when component is removed
     if (this.canvas && this.canvas.parentNode) {
       this.canvas.parentNode.removeChild(this.canvas);
     }
-    // Remove any created entities
     this.createdEntities.forEach((entity) => {
       if (entity.parentNode) {
         entity.parentNode.removeChild(entity);
@@ -51,44 +54,50 @@ AFRAME.registerComponent('street-generated-label', {
   },
 
   createAndSetupCanvas: function () {
-    // Create canvas if it doesn't exist
     this.canvas = document.createElement('canvas');
     this.canvas.id = 'street-label-canvas';
-    this.canvas.width = 2048; // Relatively high resolution for clarity
-    this.canvas.height = 256;
-    this.canvas.style.display = 'none'; // Hide the canvas element
+    this.canvas.style.display = 'none';
     document.body.appendChild(this.canvas);
-
-    // Get context
     this.ctx = this.canvas.getContext('2d');
+  },
+
+  updateCanvasDimensions: function (totalWidth) {
+    // Set canvas dimensions to match the final display ratio
+    // Using the plane's height of 2.5 meters as reference
+    const PLANE_HEIGHT = 2.5;
+    const aspectRatio = totalWidth / PLANE_HEIGHT;
+
+    // Base canvas width on a reasonable pixel density
+    const BASE_WIDTH = 4096;
+    this.canvas.width = BASE_WIDTH;
+    this.canvas.height = Math.round(BASE_WIDTH / aspectRatio);
+
+    // Scale font sizes based on canvas dimensions
+    this.fontSize = Math.round(this.canvas.height * 0.14); // Main font size
+    this.subFontSize = Math.round(this.canvas.height * 0.12); // Secondary font size
   },
 
   drawLabels: function () {
     const { ctx, canvas } = this;
     const { widthsArray, labelsArray } = this.data;
 
-    // Clear canvas
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-    // Set up canvas styling
+    // Background
     ctx.fillStyle = '#ffffff';
     ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-    // Calculate total width
     const totalWidth = widthsArray.reduce(
       (sum, width) => sum + parseFloat(width),
       0
     );
 
-    // Track current x position
     let currentX = 0;
 
-    // Set up text styling
-    ctx.font = '48px Arial';
+    // Set up text styling with dynamic font sizes
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
 
-    // Draw segments and labels
     widthsArray.forEach((width, index) => {
       const segmentWidth = (parseFloat(width) / totalWidth) * canvas.width;
 
@@ -97,26 +106,29 @@ AFRAME.registerComponent('street-generated-label', {
       ctx.fillRect(currentX, 0, segmentWidth, canvas.height);
 
       // Draw segment border
-      ctx.strokeStyle = '#999999';
+      ctx.strokeStyle = '#000000';
       ctx.beginPath();
       ctx.moveTo(currentX, 0);
       ctx.lineTo(currentX, canvas.height);
       ctx.stroke();
 
-      // Draw label
+      // Draw width value with scaled font
       ctx.fillStyle = '#000000';
+      ctx.font = `${this.fontSize}px Arial`;
       const centerX = currentX + segmentWidth / 2;
       const centerY = canvas.height / 2;
 
-      // Draw width value
       const widthText = parseFloat(width).toFixed(1) + 'm';
-      ctx.fillText(widthText, centerX, centerY - 30);
+      ctx.fillText(widthText, centerX, centerY - this.fontSize * 0.6);
 
       // Draw label text if provided
       if (labelsArray[index]) {
-        ctx.font = '36px Arial'; // Smaller font for the label
-        ctx.fillText(labelsArray[index], centerX, centerY + 30);
-        ctx.font = '48px Arial'; // Reset font size
+        ctx.font = `${this.subFontSize}px Arial`;
+        ctx.fillText(
+          labelsArray[index],
+          centerX,
+          centerY + this.fontSize * 0.6
+        );
       }
 
       currentX += segmentWidth;
@@ -131,7 +143,6 @@ AFRAME.registerComponent('street-generated-label', {
   },
 
   createLabelPlane: function () {
-    // Remove any existing label planes
     this.createdEntities.forEach((entity) => {
       if (entity.parentNode) {
         entity.parentNode.removeChild(entity);
@@ -139,10 +150,7 @@ AFRAME.registerComponent('street-generated-label', {
     });
     this.createdEntities = [];
 
-    // Create new plane with the canvas texture
     const plane = document.createElement('a-entity');
-
-    // Calculate total width from widthsArray
     const totalWidth = this.data.widthsArray.reduce(
       (sum, width) => sum + parseFloat(width),
       0
@@ -150,27 +158,21 @@ AFRAME.registerComponent('street-generated-label', {
 
     plane.setAttribute('geometry', {
       primitive: 'plane',
-      width: totalWidth, // Use actual street width in meters
-      height: 2.5 // Height in meters
+      width: totalWidth,
+      height: 2.5
     });
 
-    console.log('totalWidth from generated-label', totalWidth);
-
-    // Set material to use the canvas
     plane.setAttribute('material', {
       src: '#street-label-canvas',
       transparent: true,
       alphaTest: 0.5
     });
 
-    // Position above the street
     plane.setAttribute('position', '0 -2 1');
-    plane.setAttribute('rotation', '-30 0 0'); // Angle slightly toward viewer
-
+    plane.setAttribute('rotation', '-30 0 0');
     plane.setAttribute('data-layer-name', 'Segment Labels');
     plane.classList.add('autocreated');
 
-    // Add to scene
     this.el.appendChild(plane);
     this.createdEntities.push(plane);
   }
