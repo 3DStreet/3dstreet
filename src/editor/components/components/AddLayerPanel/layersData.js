@@ -106,7 +106,7 @@ export const streetLayersData = [
     img: 'ui_assets/cards/street-preset-150-124.jpg',
     icon: 'ui_assets/cards/icons/3dst24.png',
     description: 'Premade Street 150ft Right of Way / 124ft Roadway Width',
-    id: 6,
+    id: 13,
     handlerFunction: createFunctions.create150ftRightOfWayManagedStreet
   }
 ];
