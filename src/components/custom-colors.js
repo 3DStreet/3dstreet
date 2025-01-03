@@ -9,32 +9,31 @@ AFRAME.registerComponent('custom-colors', {
     stringify: styleParser.stringify
   },
   update() {
-    // Save the original color values if not done already
-    if (this.origMaterialMap.size === 0) {
+    // If the mesh has not been traversed, duplicate the materials so that we can avoid
+    // accidental shared references, i.e. changing one material changes materials across multiple entities
+    if (!this.hasOrigColor) {
       const materialMap = new Map();
       this.el.object3D.traverse((node) => {
         if (node.material) {
-          // Duplicate the materials to avoid sharing references across entities
           if (!materialMap.has(node.material.uuid)) {
             materialMap.set(node.material.uuid, node.material.clone());
           }
           node.material = materialMap.get(node.material.uuid);
-
-          this.origMaterialMap.set(
-            node.material.uuid,
-            node.material.color.clone()
-          );
         }
       });
     }
 
     const materials = getMaterials(this.el.object3D);
     materials.forEach((material) => {
+      if (!material.userData.origColor) {
+        material.userData.origColor = material.color.clone();
+        this.hasOrigColor = true;
+      }
       if (this.data[material.name] !== undefined) {
         material.color.set(this.data[material.name]);
       } else {
-        // Reset to default, no tint
-        material.color.set(this.origMaterialMap.get(material.uuid));
+        // Reset to original
+        material.color.set(material.userData.origColor);
       }
     });
   },
@@ -42,17 +41,16 @@ AFRAME.registerComponent('custom-colors', {
     this.update();
   },
   resetAndUpdateMaterials() {
-    this.origMaterialMap.clear();
+    this.hasOrigColor = false;
     this.updateMaterials();
   },
   init() {
-    this.origMaterialMap = new Map();
+    this.hasOrigColor = false;
     this.resetAndUpdateMaterials = this.resetAndUpdateMaterials.bind(this);
 
     // Models that are components of larger models trigger this event instead of model-loaded.
     // This also will fire when the selected model is changed.
     this.el.addEventListener('object3dset', this.resetAndUpdateMaterials);
-
     if (this.el.getObject3D('mesh')) {
       this.update();
     } else {
@@ -66,8 +64,8 @@ AFRAME.registerComponent('custom-colors', {
     this.el.removeEventListener('object3dset', this.resetAndUpdateMaterials);
     const materials = getMaterials(this.el.object3D);
     materials.forEach((material) => {
-      // Reset to default, no tint
-      material.color.set(this.origMaterialMap.get(material.uuid));
+      // Reset to original
+      material.color.set(material.userData.origColor);
     });
   }
 });
