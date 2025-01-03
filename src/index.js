@@ -12,6 +12,7 @@ require('./components/svg-extruder.js');
 require('./lib/animation-mixer.js');
 require('./lib/aframe-gaussian-splatting-component.min.js');
 require('./assets.js');
+require('./components/custom-colors.js');
 require('./components/notify.js');
 require('./components/create-from-json');
 require('./components/screentock.js');
