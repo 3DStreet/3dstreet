@@ -101,20 +101,23 @@ const CustomizeColorWrapper = ({ entity }) => {
   const updateMaterials = useCallback(() => {
     // Save the original material color values
     const newMaterials = getMaterials(entity.object3D);
-    newMaterials.forEach((material) => {
-      material.userData.origColor = material.color.clone();
-    });
     setMaterials(newMaterials);
   }, [entity.object3D]);
 
   // We need to dynamically get the materials from the mesh in case the
   // model is not loaded when the pane is loaded
   useEffect(() => {
+    entity.addEventListener('object3dset', updateMaterials);
     if (entity.getObject3D('mesh')) {
       updateMaterials();
     } else {
-      entity.addEventListener('model-loaded', updateMaterials, { once: true });
+      entity.addEventListener('model-loaded', updateMaterials, {
+        once: true
+      });
     }
+    return () => {
+      entity.removeEventListener('object3dset', updateMaterials);
+    };
   }, [updateMaterials, entity.id, entity]);
 
   // No materials to customize, don't add the widget
