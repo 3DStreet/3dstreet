@@ -1,112 +1,179 @@
 /* global AFRAME */
 
-// WIP make managed street labels from canvas
-// assumes existing canvas with id label-canvas
-// <canvas id="my-canvas" height="512" width="2048" crossorigin="anonymous"></canvas>
-//         <a-entity id="canvas-plane" geometry="primitive: plane; width: 20; height: 5" material="src: #my-canvas"
-
-// WIP not complete
 AFRAME.registerComponent('street-generated-label', {
   schema: {
     widthsArray: {
-      // an array of widths in meters for which to generate labels
       type: 'array'
     },
     labelsArray: {
-      // an array of labels to place at each width in the widthsArray
-      // length in meters of linear path to fill with clones
       type: 'array'
     }
   },
+
   init: function () {
     this.createdEntities = [];
+    this.canvas = null;
+    this.ctx = null;
+    this.createAndSetupCanvas();
   },
+
   update: function (oldData) {
-    // generate a function that creates a cloned set of x entities based on spacing and length values from the model shortname gltf file loaded in aframe
     const data = this.data;
-    // if oldData is same as current data, then don't update
     if (AFRAME.utils.deepEqual(oldData, data)) {
       return;
     }
-    // call the drawCanvas component with the new data
+
+    if (data.widthsArray.length !== data.labelsArray.length) {
+      console.error('widthsArray and labelsArray must have the same length');
+      return;
+    }
+
+    // Calculate total width before drawing
+    const totalWidth = this.data.widthsArray.reduce(
+      (sum, width) => sum + parseFloat(width),
+      0
+    );
+
+    // Update canvas dimensions to match the plane's aspect ratio
+    this.updateCanvasDimensions(totalWidth);
+
+    this.drawLabels();
+    this.createLabelPlane();
   },
-  createCanvas: function () {
-    const canvas = document.createElement('canvas');
-    canvas.id = 'label-canvas'; // assume there is only 1 per scene for now
-    canvas.width = 2048;
-    canvas.height = 512;
-    document.body.appendChild(canvas);
+
+  remove: function () {
+    if (this.canvas && this.canvas.parentNode) {
+      this.canvas.parentNode.removeChild(this.canvas);
+    }
+    this.createdEntities.forEach((entity) => {
+      if (entity.parentNode) {
+        entity.parentNode.removeChild(entity);
+      }
+    });
+    this.createdEntities = [];
   },
-  drawCanvas: function () {
-    // <script>
-    // AFRAME.registerComponent('draw-canvas', {
-    //   schema: {
-    //     myCanvas: { type: 'string' },
-    //     managedStreet: { type: 'string' } // json of managed street children
-    //   },
-    //   init: function () {
-    // //        const objects = this.data.managedStreet.children;
-    //     const objects = JSON.parse(this.data.managedStreet).children;
-    //     this.canvas = document.getElementById(this.data);
-    //     this.ctx = this.canvas.getContext('2d');
-    //  // Calculate total width from all objects
-    //  const totalWidth = objects.reduce((sum, obj) => sum + obj.width, 0);
-    // ctx = this.ctx;
-    // canvas = this.canvas;
-    // // Set up canvas styling
-    // ctx.fillStyle = '#ffffff';
-    // ctx.fillRect(0, 0, canvas.width, canvas.height);
-    // ctx.font = '24px Arial';
-    // ctx.textAlign = 'center';
-    // ctx.textBaseline = 'middle';
-    // // Track current x position
-    // let currentX = 0;
-    // // Draw each segment
-    // objects.forEach((obj, index) => {
-    //     // Calculate proportional width for this segment
-    //     const segmentWidth = (obj.width / totalWidth) * canvas.width;
-    //     // Draw segment background with alternating colors
-    //     ctx.fillStyle = index % 2 === 0 ? '#f0f0f0' : '#e0e0e0';
-    //     ctx.fillRect(currentX, 0, segmentWidth, canvas.height);
-    //     // Draw segment border
-    //     ctx.strokeStyle = '#999999';
-    //     ctx.beginPath();
-    //     ctx.moveTo(currentX, 0);
-    //     ctx.lineTo(currentX, canvas.height);
-    //     ctx.stroke();
-    //     // Draw centered label
-    //     ctx.fillStyle = '#000000';
-    //     const centerX = currentX + (segmentWidth / 2);
-    //     const centerY = canvas.height / 2;
-    //     // Format width number for display
-    //     const label = obj.width.toLocaleString();
-    //     // Draw label with background for better readability
-    //     const textMetrics = ctx.measureText(label);
-    //     const textHeight = 30; // Approximate height of text
-    //     const padding = 10;
-    //     // Draw text background
-    //     ctx.fillStyle = 'rgba(255, 255, 255, 0.8)';
-    //     ctx.fillRect(
-    //         centerX - (textMetrics.width / 2) - padding,
-    //         centerY - (textHeight / 2) - padding,
-    //         textMetrics.width + (padding * 2),
-    //         textHeight + (padding * 2)
-    //     );
-    //     // Draw text
-    //     ctx.fillStyle = '#000000';
-    //     ctx.fillText(label, centerX, centerY);
-    //     // Update x position for next segment
-    //     currentX += segmentWidth;
-    // });
-    // // Draw final border
-    // ctx.strokeStyle = '#999999';
-    // ctx.beginPath();
-    // ctx.moveTo(canvas.width, 0);
-    // ctx.lineTo(canvas.width, canvas.height);
-    // ctx.stroke();
-    //     // Draw on canvas...
-    //   }
-    // });
-    // </script>
+
+  createAndSetupCanvas: function () {
+    this.canvas = document.createElement('canvas');
+    this.canvas.id = 'street-label-canvas';
+    this.canvas.style.display = 'none';
+    document.body.appendChild(this.canvas);
+    this.ctx = this.canvas.getContext('2d');
+  },
+
+  updateCanvasDimensions: function (totalWidth) {
+    // Set canvas dimensions to match the final display ratio
+    // Using the plane's height of 2.5 meters as reference
+    const PLANE_HEIGHT = 2.5;
+    const aspectRatio = totalWidth / PLANE_HEIGHT;
+
+    // Base canvas width on a reasonable pixel density
+    const BASE_WIDTH = 4096;
+    this.canvas.width = BASE_WIDTH;
+    this.canvas.height = Math.round(BASE_WIDTH / aspectRatio);
+
+    // Scale font sizes based on canvas dimensions
+    this.fontSize = Math.round(this.canvas.height * 0.14); // Main font size
+    this.subFontSize = Math.round(this.canvas.height * 0.12); // Secondary font size
+  },
+
+  drawLabels: function () {
+    const { ctx, canvas } = this;
+    const { widthsArray, labelsArray } = this.data;
+
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+    // Background
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+    const totalWidth = widthsArray.reduce(
+      (sum, width) => sum + parseFloat(width),
+      0
+    );
+
+    let currentX = 0;
+
+    // Set up text styling with dynamic font sizes
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+
+    widthsArray.forEach((width, index) => {
+      const segmentWidth = (parseFloat(width) / totalWidth) * canvas.width;
+
+      // Draw segment background
+      ctx.fillStyle = index % 2 === 0 ? '#f0f0f0' : '#e0e0e0';
+      ctx.fillRect(currentX, 0, segmentWidth, canvas.height);
+
+      // Draw segment border
+      ctx.strokeStyle = '#000000';
+      ctx.beginPath();
+      ctx.moveTo(currentX, 0);
+      ctx.lineTo(currentX, canvas.height);
+      ctx.stroke();
+
+      // Draw width value with scaled font
+      ctx.fillStyle = '#000000';
+      ctx.font = `${this.fontSize}px Arial`;
+      const centerX = currentX + segmentWidth / 2;
+      const centerY = canvas.height / 2;
+
+      const widthText = parseFloat(width).toFixed(1) + 'm';
+      ctx.fillText(widthText, centerX, centerY - this.fontSize * 0.6);
+
+      // Draw label text if provided
+      if (labelsArray[index]) {
+        ctx.font = `${this.subFontSize}px Arial`;
+        ctx.fillText(
+          labelsArray[index],
+          centerX,
+          centerY + this.fontSize * 0.6
+        );
+      }
+
+      currentX += segmentWidth;
+    });
+
+    // Draw final border
+    ctx.strokeStyle = '#999999';
+    ctx.beginPath();
+    ctx.moveTo(canvas.width, 0);
+    ctx.lineTo(canvas.width, canvas.height);
+    ctx.stroke();
+  },
+
+  createLabelPlane: function () {
+    this.createdEntities.forEach((entity) => {
+      if (entity.parentNode) {
+        entity.parentNode.removeChild(entity);
+      }
+    });
+    this.createdEntities = [];
+
+    const plane = document.createElement('a-entity');
+    const totalWidth = this.data.widthsArray.reduce(
+      (sum, width) => sum + parseFloat(width),
+      0
+    );
+
+    plane.setAttribute('geometry', {
+      primitive: 'plane',
+      width: totalWidth,
+      height: 2.5
+    });
+
+    plane.setAttribute('material', {
+      src: '#street-label-canvas',
+      transparent: true,
+      alphaTest: 0.5
+    });
+
+    plane.setAttribute('position', '0 -2 1');
+    plane.setAttribute('rotation', '-30 0 0');
+    plane.setAttribute('data-layer-name', 'Segment Labels');
+    plane.classList.add('autocreated');
+
+    this.el.appendChild(plane);
+    this.createdEntities.push(plane);
   }
 });
