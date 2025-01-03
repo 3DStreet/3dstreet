@@ -260,7 +260,7 @@ const AIChatPanel = () => {
       try {
         console.log('Initializing Vertex AI');
         modelRef.current = getGenerativeModel(vertexAI, {
-          model: 'gemini-2.0-flash-exp'
+          model: 'gemini-2.0-flash-exp' //           model: 'gemini-1.5-flash'
         });
         console.log('Vertex AI initialized successfully');
       } catch (error) {
