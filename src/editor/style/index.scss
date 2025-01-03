@@ -1,5 +1,6 @@
 @use './variables.scss';
 @import '../normalize.css';
+@import './chat-panel.scss';
 
 body.aframe-inspector-opened,
 .toggle-edit {
@@ -456,6 +457,7 @@ body.aframe-inspector-opened {
     z-index: 9;
   }
 
+  .chat-panel-container,
   #toolbar,
   .outliner,
   .modal,
