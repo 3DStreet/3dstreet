@@ -28,15 +28,12 @@ AFRAME.registerComponent('street-generated-label', {
       return;
     }
 
-    // Calculate total width before drawing
     const totalWidth = this.data.widthsArray.reduce(
       (sum, width) => sum + parseFloat(width),
       0
     );
 
-    // Update canvas dimensions to match the plane's aspect ratio
     this.updateCanvasDimensions(totalWidth);
-
     this.drawLabels();
     this.createLabelPlane();
   },
@@ -62,19 +59,45 @@ AFRAME.registerComponent('street-generated-label', {
   },
 
   updateCanvasDimensions: function (totalWidth) {
-    // Set canvas dimensions to match the final display ratio
-    // Using the plane's height of 2.5 meters as reference
     const PLANE_HEIGHT = 2.5;
     const aspectRatio = totalWidth / PLANE_HEIGHT;
 
-    // Base canvas width on a reasonable pixel density
     const BASE_WIDTH = 4096;
     this.canvas.width = BASE_WIDTH;
     this.canvas.height = Math.round(BASE_WIDTH / aspectRatio);
 
-    // Scale font sizes based on canvas dimensions
-    this.fontSize = Math.round(this.canvas.height * 0.14); // Main font size
-    this.subFontSize = Math.round(this.canvas.height * 0.12); // Secondary font size
+    this.fontSize = Math.round(this.canvas.height * 0.18);
+    this.subFontSize = Math.round(this.canvas.height * 0.14);
+  },
+
+  wrapText: function (text, maxWidth) {
+    const words = text.split(' ');
+    const lines = [];
+    let currentLine = words[0];
+
+    for (let i = 1; i < words.length; i++) {
+      const word = words[i];
+      const width = this.ctx.measureText(currentLine + ' ' + word).width;
+
+      if (width < maxWidth) {
+        currentLine += ' ' + word;
+      } else {
+        lines.push(currentLine);
+        currentLine = word;
+      }
+    }
+    lines.push(currentLine);
+    return lines;
+  },
+
+  drawMultilineText: function (lines, x, y, lineHeight) {
+    const totalHeight = (lines.length - 1) * lineHeight;
+    const startY = y - totalHeight / 2;
+
+    lines.forEach((line, index) => {
+      const yPos = startY + index * lineHeight;
+      this.ctx.fillText(line, x, yPos);
+    });
   },
 
   drawLabels: function () {
@@ -83,7 +106,6 @@ AFRAME.registerComponent('street-generated-label', {
 
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-    // Background
     ctx.fillStyle = '#ffffff';
     ctx.fillRect(0, 0, canvas.width, canvas.height);
 
@@ -94,40 +116,43 @@ AFRAME.registerComponent('street-generated-label', {
 
     let currentX = 0;
 
-    // Set up text styling with dynamic font sizes
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
 
     widthsArray.forEach((width, index) => {
       const segmentWidth = (parseFloat(width) / totalWidth) * canvas.width;
+      const maxLabelWidth = segmentWidth * 0.9; // 90% of segment width for padding
 
       // Draw segment background
       ctx.fillStyle = index % 2 === 0 ? '#f0f0f0' : '#e0e0e0';
       ctx.fillRect(currentX, 0, segmentWidth, canvas.height);
 
       // Draw segment border
-      ctx.strokeStyle = '#000000';
+      ctx.strokeStyle = '#999999';
       ctx.beginPath();
       ctx.moveTo(currentX, 0);
       ctx.lineTo(currentX, canvas.height);
       ctx.stroke();
 
-      // Draw width value with scaled font
+      // Draw width value
       ctx.fillStyle = '#000000';
       ctx.font = `${this.fontSize}px Arial`;
       const centerX = currentX + segmentWidth / 2;
-      const centerY = canvas.height / 2;
+      const centerY = canvas.height / 2 - 50;
 
       const widthText = parseFloat(width).toFixed(1) + 'm';
-      ctx.fillText(widthText, centerX, centerY - this.fontSize * 0.6);
+      ctx.fillText(widthText, centerX, centerY - this.fontSize * 0.8);
 
-      // Draw label text if provided
+      // Draw wrapped label text if provided
       if (labelsArray[index]) {
         ctx.font = `${this.subFontSize}px Arial`;
-        ctx.fillText(
-          labelsArray[index],
+        const lines = this.wrapText(labelsArray[index], maxLabelWidth);
+        const lineHeight = this.subFontSize * 1.2;
+        this.drawMultilineText(
+          lines,
           centerX,
-          centerY + this.fontSize * 0.6
+          centerY + this.fontSize * 0.4 + 75,
+          lineHeight
         );
       }
 

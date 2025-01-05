@@ -328,6 +328,7 @@ AFRAME.registerComponent('street-segment', {
     if (changedProps.includes('width')) {
       this.el.parentNode.components['managed-street'].refreshManagedEntities();
       this.el.parentNode.components['managed-street'].applyJustification();
+      this.el.parentNode.components['managed-street'].createLabelPlane();
     }
   },
   // for streetmix elevation number values of -1, 0, 1, 2, calculate heightLevel in three.js meters units
