@@ -29,6 +29,7 @@ require('./components/street-generated-pedestrians.js');
 require('./components/street-generated-rail.js');
 require('./components/street-generated-clones.js');
 require('./components/street-align.js');
+require('./components/street-ground.js');
 require('./editor/index.js');
 var firebase = require('./editor/services/firebase.js');
 

@@ -1,6 +1,7 @@
 /* global AFRAME */
 
 AFRAME.registerComponent('street-align', {
+  dependencies: ['managed-street'],
   schema: {
     width: {
       default: 'center',
@@ -15,74 +16,21 @@ AFRAME.registerComponent('street-align', {
   },
 
   init: function () {
-    this.monitoredSegments = [];
+    // Listen for any segment changes from managed-street
+    this.el.addEventListener('segments-changed', () => this.realignStreet());
 
-    this.boundWidthChangedHandler = this.onSegmentWidthChanged.bind(this);
-
-    // Initial setup
-    this.refreshMonitoredSegments(); // This now handles initial segment listeners
-    this.setupMutationObserver();
+    // Initial alignment
     this.realignStreet();
 
-    // for when loading from saved scene, add set timeout to refresh the segments and realign
+    // TODO: Still need this for loading from saved scene
     setTimeout(() => {
-      this.refreshMonitoredSegments();
       this.realignStreet();
-    }, 2000);
-  },
-
-  setupSegmentListeners: function () {
-    // Set up listeners for all existing segments
-    const segments = this.el.querySelectorAll('[street-segment]');
-    segments.forEach((segment) => this.addSegmentListener(segment));
-  },
-
-  addSegmentListener: function (segment) {
-    // Listen for width changes
-    segment.addEventListener(
-      'segment-width-changed',
-      this.boundWidthChangedHandler
-    );
-  },
-
-  removeSegmentListener: function (segment) {
-    // Remove listeners
-    segment.removeEventListener(
-      'segment-width-changed',
-      this.boundWidthChangedHandler
-    );
-    const index = this.monitoredSegments.indexOf(segment);
-    if (index > -1) {
-      this.monitoredSegments.splice(index, 1);
-    }
+    }, 0);
   },
 
   onSegmentWidthChanged: function (event) {
     console.log('segment width changed handler called', event);
-    this.refreshMonitoredSegments();
     this.realignStreet();
-  },
-
-  refreshMonitoredSegments: function () {
-    // Clear existing listeners
-    this.monitoredSegments.forEach((segment) => {
-      this.removeSegmentListener(segment);
-    });
-
-    // Reset the list
-    this.monitoredSegments = [];
-
-    // Reset and repopulate the list
-    this.monitoredSegments = Array.from(
-      this.el.querySelectorAll('[street-segment]')
-    );
-
-    // Add new listeners
-    const segments = this.el.querySelectorAll('[street-segment]');
-    segments.forEach((segment) => {
-      this.addSegmentListener(segment);
-    });
-    console.log('monitored segments', this.monitoredSegments);
   },
 
   update: function (oldData) {
@@ -91,7 +39,11 @@ AFRAME.registerComponent('street-align', {
 
     // Only realign if width or length alignment changed
     if (diff.width !== undefined || diff.length !== undefined) {
-      // this.alignStreetSegments();
+      this.el.emit('alignment-changed', {
+        changeType: 'alignment',
+        oldData: oldData,
+        newData: data
+      });
       this.realignStreet();
     }
   },
@@ -121,7 +73,6 @@ AFRAME.registerComponent('street-align', {
       });
 
       if (needsReflow) {
-        this.refreshMonitoredSegments();
         this.realignStreet();
       }
     });
@@ -134,10 +85,13 @@ AFRAME.registerComponent('street-align', {
 
   realignStreet: function () {
     const data = this.data;
-    if (this.monitoredSegments.length === 0) return;
+
+    // Get all segments
+    const segments = Array.from(this.el.querySelectorAll('[street-segment]'));
+    if (segments.length === 0) return;
 
     // Calculate total width
-    const totalWidth = this.monitoredSegments.reduce((sum, segment) => {
+    const totalWidth = segments.reduce((sum, segment) => {
       return sum + (segment.getAttribute('street-segment')?.width || 0);
     }, 0);
     console.log('total width', totalWidth);
@@ -161,7 +115,7 @@ AFRAME.registerComponent('street-align', {
     }
 
     // Position segments
-    this.monitoredSegments.forEach((segment) => {
+    segments.forEach((segment) => {
       const width = segment.getAttribute('street-segment')?.width;
       const currentPos = segment.getAttribute('position');
 
@@ -178,9 +132,7 @@ AFRAME.registerComponent('street-align', {
   },
 
   remove: function () {
-    if (this.observer) {
-      this.observer.disconnect();
-      this.observer = null;
-    }
+    // Clean up event listener
+    this.el.removeEventListener('segments-changed', this.realignStreet);
   }
 });
