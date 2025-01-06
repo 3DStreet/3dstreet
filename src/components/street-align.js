@@ -24,7 +24,7 @@ AFRAME.registerComponent('street-align', {
     this.setupMutationObserver();
     this.realignStreet();
 
-    // for when loading from saved scene, add set timeout to refresh the segments and realign
+    // TODO: This is bad -- for when loading from saved scene, add set timeout to refresh the segments and realign
     setTimeout(() => {
       this.refreshMonitoredSegments();
       this.realignStreet();

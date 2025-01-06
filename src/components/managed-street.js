@@ -44,6 +44,7 @@ AFRAME.registerComponent('managed-street', {
   init: function () {
     this.managedEntities = [];
     this.pendingEntities = [];
+    this.actualWidth = 0;
     // Bind the method to preserve context
     this.refreshFromSource = this.refreshFromSource.bind(this);
     if (this.data.enableAlignment && !this.el.hasAttribute('street-align')) {
@@ -170,14 +171,6 @@ AFRAME.registerComponent('managed-street', {
     }
 
     const dataDiffKeys = Object.keys(dataDiff);
-    if (
-      dataDiffKeys.length === 1 &&
-      (dataDiffKeys.includes('justifyWidth') ||
-        dataDiffKeys.includes('justifyLength'))
-    ) {
-      this.refreshManagedEntities();
-      this.createOrUpdateJustifiedDirtBox();
-    }
 
     if (dataDiffKeys.includes('width')) {
       this.createOrUpdateJustifiedDirtBox();
@@ -225,8 +218,14 @@ AFRAME.registerComponent('managed-street', {
       this.el.querySelectorAll('[street-segment]')
     );
     this.setupMutationObserver();
+    // calculate actual width
+    this.actualWidth = this.managedEntities.reduce((sum, segment) => {
+      return sum + (segment.getAttribute('street-segment')?.width || 0);
+    }, 0);
+    console.log('actual width', this.actualWidth);
   },
   createOrUpdateJustifiedDirtBox: function () {
+    console.log('createOrUpdateJustifiedDirtBox');
     const data = this.data;
     const streetWidth = data.width;
     if (!streetWidth) {
@@ -249,24 +248,28 @@ AFRAME.registerComponent('managed-street', {
       dirtBox.setAttribute('data-ignore-raycaster', '');
     }
     this.justifiedDirtBox.setAttribute('height', 2); // height is 2 meters from y of -0.1 to -y of 2.1
-    this.justifiedDirtBox.setAttribute('width', streetWidth);
+    this.justifiedDirtBox.setAttribute('width', this.actualWidth);
     this.justifiedDirtBox.setAttribute('depth', streetLength - 0.2); // depth is length - 0.1 on each side
+
+    // instead of data.justifyWidth, use [street-align] component to get width justification
+    const alignWidth = this.el.getAttribute('street-align')?.width;
+    const alignLength = this.el.getAttribute('street-align')?.length;
 
     // set starting xPosition for width justification
     let xPosition = 0; // default for center justified
-    if (data.justifyWidth === 'left') {
+    if (alignWidth === 'left') {
       xPosition = streetWidth / 2;
     }
-    if (data.justifyWidth === 'right') {
+    if (alignWidth === 'right') {
       xPosition = -streetWidth / 2;
     }
 
     // set z value for length justification
     let zPosition = 0; // default for middle justified
-    if (data.justifyLength === 'start') {
+    if (alignLength === 'start') {
       zPosition = -streetLength / 2;
     }
-    if (data.justifyLength === 'end') {
+    if (alignLength === 'end') {
       zPosition = streetLength / 2;
     }
 
