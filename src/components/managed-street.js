@@ -39,6 +39,10 @@ AFRAME.registerComponent('managed-street', {
     enableAlignment: {
       type: 'boolean',
       default: true
+    },
+    showGround: {
+      type: 'boolean',
+      default: true
     }
   },
   init: function () {
@@ -50,8 +54,25 @@ AFRAME.registerComponent('managed-street', {
     if (this.data.enableAlignment && !this.el.hasAttribute('street-align')) {
       this.el.setAttribute('street-align', '');
     }
+    if (this.data.showGround && !this.el.hasAttribute('street-ground')) {
+      this.el.setAttribute('street-ground', '');
+    }
 
     this.setupEventDispatcher();
+
+    setTimeout(() => {
+      this.attachListenersToExistingSegments();
+    }, 0);
+  },
+  attachListenersToExistingSegments: function () {
+    const segments = this.el.querySelectorAll('[street-segment]');
+    segments.forEach((segment) => {
+      console.log('Attaching width change listener to existing segment');
+      segment.addEventListener(
+        'segment-width-changed',
+        this.onSegmentWidthChanged.bind(this)
+      );
+    });
   },
   /**
    * Inserts a new street segment at the specified index
@@ -123,9 +144,6 @@ AFRAME.registerComponent('managed-street', {
       }, 0);
       this.el.setAttribute('managed-street', 'width', totalWidth);
 
-      // Update the dirt box
-      this.createOrUpdateJustifiedDirtBox();
-
       // If we have a previous segment, check if we need to add stripe separators
       // TODO: Check striping here in the future
     });
@@ -133,6 +151,11 @@ AFRAME.registerComponent('managed-street', {
     return segmentEl;
   },
   setupEventDispatcher: function () {
+    // Remove if existing mutation observer
+    if (this.observer) {
+      this.observer.disconnect();
+    }
+
     // Mutation observer for add/remove
     const observer = new MutationObserver((mutations) => {
       mutations.forEach((mutation) => {
@@ -194,17 +217,13 @@ AFRAME.registerComponent('managed-street', {
 
     const dataDiffKeys = Object.keys(dataDiff);
 
-    if (dataDiffKeys.includes('width')) {
-      this.createOrUpdateJustifiedDirtBox();
-    }
-
     if (dataDiffKeys.includes('length')) {
       this.refreshManagedEntities();
       this.applyLength();
-      this.createOrUpdateJustifiedDirtBox();
     }
     // if the value of length changes, then we need to update the length of all the child objects
     // we need to get a list of all the child objects whose length we need to change
+    this.setupEventDispatcher();
   },
   refreshFromSource: function () {
     const data = this.data;
@@ -244,60 +263,6 @@ AFRAME.registerComponent('managed-street', {
       return sum + (segment.getAttribute('street-segment')?.width || 0);
     }, 0);
     console.log('actual width', this.actualWidth);
-  },
-  createOrUpdateJustifiedDirtBox: function () {
-    console.log('createOrUpdateJustifiedDirtBox');
-    const data = this.data;
-    const streetWidth = data.width;
-    if (!streetWidth) {
-      return;
-    }
-    const streetLength = data.length;
-    if (!this.justifiedDirtBox) {
-      // try to find an existing dirt box
-      this.justifiedDirtBox = this.el.querySelector('.dirtbox');
-    }
-    if (!this.justifiedDirtBox) {
-      // create new brown box to represent ground underneath street
-      const dirtBox = document.createElement('a-box');
-      dirtBox.classList.add('dirtbox');
-      this.el.append(dirtBox);
-      this.justifiedDirtBox = dirtBox;
-      dirtBox.setAttribute('material', `color: ${window.STREET.colors.brown};`);
-      dirtBox.setAttribute('data-layer-name', 'Underground');
-      dirtBox.setAttribute('data-no-transform', '');
-      dirtBox.setAttribute('data-ignore-raycaster', '');
-    }
-    this.justifiedDirtBox.setAttribute('height', 2); // height is 2 meters from y of -0.1 to -y of 2.1
-    this.justifiedDirtBox.setAttribute('width', this.actualWidth);
-    this.justifiedDirtBox.setAttribute('depth', streetLength - 0.2); // depth is length - 0.1 on each side
-
-    // instead of data.justifyWidth, use [street-align] component to get width justification
-    const alignWidth = this.el.getAttribute('street-align')?.width;
-    const alignLength = this.el.getAttribute('street-align')?.length;
-
-    // set starting xPosition for width justification
-    let xPosition = 0; // default for center justified
-    if (alignWidth === 'left') {
-      xPosition = streetWidth / 2;
-    }
-    if (alignWidth === 'right') {
-      xPosition = -streetWidth / 2;
-    }
-
-    // set z value for length justification
-    let zPosition = 0; // default for middle justified
-    if (alignLength === 'start') {
-      zPosition = -streetLength / 2;
-    }
-    if (alignLength === 'end') {
-      zPosition = streetLength / 2;
-    }
-
-    this.justifiedDirtBox.setAttribute(
-      'position',
-      `${xPosition} -1 ${zPosition}`
-    );
   },
   parseStreetObject: function (streetObject) {
     // reset and delete all existing entities
@@ -476,7 +441,6 @@ AFRAME.registerComponent('managed-street', {
       // When all entities are loaded, do something with them
       this.allLoadedPromise.then(() => {
         this.refreshManagedEntities();
-        this.createOrUpdateJustifiedDirtBox();
         AFRAME.INSPECTOR.selectEntity(this.el);
       });
     } catch (error) {

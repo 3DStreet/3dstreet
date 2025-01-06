@@ -1,6 +1,7 @@
 /* global AFRAME */
 
 AFRAME.registerComponent('street-align', {
+  dependencies: ['managed-street'],
   schema: {
     width: {
       default: 'center',
@@ -24,12 +25,11 @@ AFRAME.registerComponent('street-align', {
     // TODO: Still need this for loading from saved scene
     setTimeout(() => {
       this.realignStreet();
-    }, 2000);
+    }, 0);
   },
 
   onSegmentWidthChanged: function (event) {
     console.log('segment width changed handler called', event);
-    this.refreshMonitoredSegments();
     this.realignStreet();
   },
 
@@ -39,7 +39,11 @@ AFRAME.registerComponent('street-align', {
 
     // Only realign if width or length alignment changed
     if (diff.width !== undefined || diff.length !== undefined) {
-      // this.alignStreetSegments();
+      this.el.emit('alignment-changed', {
+        changeType: 'alignment',
+        oldData: oldData,
+        newData: data
+      });
       this.realignStreet();
     }
   },
@@ -69,7 +73,6 @@ AFRAME.registerComponent('street-align', {
       });
 
       if (needsReflow) {
-        this.refreshMonitoredSegments();
         this.realignStreet();
       }
     });
