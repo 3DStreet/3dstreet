@@ -50,6 +50,8 @@ AFRAME.registerComponent('managed-street', {
     if (this.data.enableAlignment && !this.el.hasAttribute('street-align')) {
       this.el.setAttribute('street-align', '');
     }
+
+    this.setupEventDispatcher();
   },
   /**
    * Inserts a new street segment at the specified index
@@ -130,35 +132,55 @@ AFRAME.registerComponent('managed-street', {
 
     return segmentEl;
   },
-  setupMutationObserver: function () {
-    // Create mutation observer
-    if (this.observer) {
-      this.observer.disconnect();
-    }
-    this.observer = new MutationObserver((mutations) => {
-      let needsReflow = false;
-
+  setupEventDispatcher: function () {
+    // Mutation observer for add/remove
+    const observer = new MutationObserver((mutations) => {
       mutations.forEach((mutation) => {
-        if (mutation.type === 'childList' && mutation.removedNodes.length > 0) {
-          // Check if any of the removed nodes were street segments
-          mutation.removedNodes.forEach((node) => {
-            if (node.hasAttribute && node.hasAttribute('street-segment')) {
-              needsReflow = true;
-            }
+        if (mutation.type === 'childList') {
+          const addedSegments = Array.from(mutation.addedNodes).filter(
+            (node) => node.hasAttribute && node.hasAttribute('street-segment')
+          );
+          const removedSegments = Array.from(mutation.removedNodes).filter(
+            (node) => node.hasAttribute && node.hasAttribute('street-segment')
+          );
+
+          // Add listeners to new segments
+          addedSegments.forEach((segment) => {
+            segment.addEventListener(
+              'segment-width-changed',
+              this.onSegmentWidthChanged.bind(this)
+            );
           });
+
+          // Remove listeners from removed segments
+          removedSegments.forEach((segment) => {
+            segment.removeEventListener(
+              'segment-width-changed',
+              this.onSegmentWidthChanged.bind(this)
+            );
+          });
+
+          if (addedSegments.length || removedSegments.length) {
+            this.el.emit('segments-changed', {
+              changeType: 'structure',
+              added: addedSegments,
+              removed: removedSegments
+            });
+          }
         }
       });
-
-      // If segments were removed, trigger reflow
-      if (needsReflow) {
-        this.refreshManagedEntities();
-        this.createOrUpdateJustifiedDirtBox();
-      }
     });
 
-    // Start observing the managed-street element
-    this.observer.observe(this.el, {
-      childList: true // watch for child additions/removals
+    observer.observe(this.el, { childList: true });
+  },
+  onSegmentWidthChanged: function (event) {
+    console.log('segment width changed handler called', event);
+    this.el.emit('segments-changed', {
+      changeType: 'property',
+      property: 'width',
+      segment: event.target,
+      oldValue: event.detail.oldWidth,
+      newValue: event.detail.newWidth
     });
   },
   update: function (oldData) {
@@ -217,7 +239,6 @@ AFRAME.registerComponent('managed-street', {
     this.managedEntities = Array.from(
       this.el.querySelectorAll('[street-segment]')
     );
-    this.setupMutationObserver();
     // calculate actual width
     this.actualWidth = this.managedEntities.reduce((sum, segment) => {
       return sum + (segment.getAttribute('street-segment')?.width || 0);
