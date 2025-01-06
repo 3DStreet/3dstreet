@@ -7,7 +7,6 @@ export const streetLayersData = [
     requiresPro: true,
     icon: 'ui_assets/cards/icons/3dst24.png',
     description: 'Create 90º intersection entity.',
-    id: 1,
     handlerFunction: createFunctions.createIntersection
   },
   {
@@ -16,7 +15,6 @@ export const streetLayersData = [
     icon: 'ui_assets/cards/icons/streetmix24.png',
     description:
       'Create an additional Streetmix street in your 3DStreet scene without replacing any existing streets.',
-    id: 2,
     handlerFunction: createFunctions.createStreetmixStreet
   },
   {
@@ -24,7 +22,6 @@ export const streetLayersData = [
     img: 'ui_assets/cards/street-preset-40-24.jpg',
     icon: 'ui_assets/cards/icons/streetmix24.png',
     description: 'Premade Street 40ft Right of Way / 24ft Roadway Width',
-    id: 3,
     handlerFunction: createFunctions.create40ftRightOfWay
   },
   {
@@ -32,7 +29,6 @@ export const streetLayersData = [
     img: 'ui_assets/cards/street-preset-60-36.jpg',
     icon: 'ui_assets/cards/icons/streetmix24.png',
     description: 'Premade Street 60ft Right of Way / 36ft Roadway Width',
-    id: 4,
     handlerFunction: createFunctions.create60ftRightOfWay
   },
   {
@@ -40,7 +36,6 @@ export const streetLayersData = [
     img: 'ui_assets/cards/street-preset-80-56.jpg',
     icon: 'ui_assets/cards/icons/streetmix24.png',
     description: 'Premade Street 80ft Right of Way / 56ft Roadway Width',
-    id: 5,
     handlerFunction: createFunctions.create80ftRightOfWay
   },
   {
@@ -48,7 +43,6 @@ export const streetLayersData = [
     img: 'ui_assets/cards/street-preset-94-70.jpg',
     icon: 'ui_assets/cards/icons/streetmix24.png',
     description: 'Premade Street 94ft Right of Way / 70ft Roadway Width',
-    id: 6,
     handlerFunction: createFunctions.create94ftRightOfWay
   },
   {
@@ -56,7 +50,6 @@ export const streetLayersData = [
     img: 'ui_assets/cards/street-preset-150-124.jpg',
     icon: 'ui_assets/cards/icons/streetmix24.png',
     description: 'Premade Street 150ft Right of Way / 124ft Roadway Width',
-    id: 7,
     handlerFunction: createFunctions.create150ftRightOfWay
   },
   {
@@ -66,7 +59,6 @@ export const streetLayersData = [
     icon: 'ui_assets/cards/icons/streetmix24.png',
     description:
       'Create a new street from Streetmix URL using the Managed Street component.',
-    id: 8,
     handlerFunction: createFunctions.createManagedStreetFromStreetmixURLPrompt
   },
   {
@@ -74,7 +66,6 @@ export const streetLayersData = [
     img: 'ui_assets/cards/street-preset-40-24.jpg',
     icon: 'ui_assets/cards/icons/3dst24.png',
     description: 'Premade Street 40ft Right of Way / 24ft Roadway Width',
-    id: 9,
     handlerFunction: createFunctions.create40ftRightOfWayManagedStreet
   },
   {
@@ -82,7 +73,6 @@ export const streetLayersData = [
     img: 'ui_assets/cards/street-preset-60-36.jpg',
     icon: 'ui_assets/cards/icons/3dst24.png',
     description: 'Premade Street 60ft Right of Way / 36ft Roadway Width',
-    id: 10,
     handlerFunction: createFunctions.create60ftRightOfWayManagedStreet
   },
   {
@@ -90,7 +80,6 @@ export const streetLayersData = [
     img: 'ui_assets/cards/street-preset-80-56.jpg',
     icon: 'ui_assets/cards/icons/3dst24.png',
     description: 'Premade Street 80ft Right of Way / 56ft Roadway Width',
-    id: 11,
     handlerFunction: createFunctions.create80ftRightOfWayManagedStreet
   },
   {
@@ -98,7 +87,6 @@ export const streetLayersData = [
     img: 'ui_assets/cards/street-preset-94-70.jpg',
     icon: 'ui_assets/cards/icons/3dst24.png',
     description: 'Premade Street 94ft Right of Way / 70ft Roadway Width',
-    id: 12,
     handlerFunction: createFunctions.create94ftRightOfWayManagedStreet
   },
   {
@@ -106,10 +94,9 @@ export const streetLayersData = [
     img: 'ui_assets/cards/street-preset-150-124.jpg',
     icon: 'ui_assets/cards/icons/3dst24.png',
     description: 'Premade Street 150ft Right of Way / 124ft Roadway Width',
-    id: 13,
     handlerFunction: createFunctions.create150ftRightOfWayManagedStreet
   }
-];
+].map((layer, index) => ({ ...layer, id: index + 1 }));
 
 export const customLayersData = [
   {
@@ -119,7 +106,6 @@ export const customLayersData = [
     requiresPro: true,
     description:
       'Create entity with svg-extruder component, that accepts a svgString and creates a new entity with geometry extruded from the svg and applies the default mixin material grass.',
-    id: 1,
     handlerFunction: createFunctions.createSvgExtrudedEntity
   },
   {
@@ -129,7 +115,6 @@ export const customLayersData = [
     icon: '',
     description:
       'Create entity with model from path for a glTF (or Glb) file hosted on any publicly accessible HTTP server.',
-    id: 2,
     handlerFunction: createFunctions.createCustomModel
   },
   {
@@ -139,7 +124,6 @@ export const customLayersData = [
     icon: '',
     description:
       'Create entity with A-Frame primitive geometry. Geometry type could be changed in properties panel.',
-    id: 3,
     handlerFunction: createFunctions.createPrimitiveGeometry
   },
   {
@@ -149,7 +133,6 @@ export const customLayersData = [
     icon: 'ui_assets/cards/icons/gallery24.png',
     description:
       'Place an image such as a sign, reference photo, custom map, etc.',
-    id: 4,
     handlerFunction: createFunctions.createImageEntity
   }
-];
+].map((layer, index) => ({ ...layer, id: index + 1 }));
