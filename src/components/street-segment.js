@@ -326,8 +326,14 @@ AFRAME.registerComponent('street-segment', {
     this.generateMesh(data);
     // if width was changed, trigger re-justification of all street-segments by the managed-street
     if (changedProps.includes('width')) {
-      this.el.parentNode.components['managed-street'].refreshManagedEntities();
-      this.el.parentNode.components['managed-street'].applyJustification();
+      console.log('segment width changed');
+      this.el.emit('segment-width-changed', {
+        oldWidth: oldData.width,
+        newWidth: data.width
+      });
+
+      // this.el.parentNode.components['managed-street'].refreshManagedEntities();
+      // this.el.parentNode.components['managed-street'].applyJustification();
     }
   },
   // for streetmix elevation number values of -1, 0, 1, 2, calculate heightLevel in three.js meters units

@@ -36,15 +36,9 @@ AFRAME.registerComponent('managed-street', {
       type: 'boolean',
       default: true
     },
-    justifyWidth: {
-      default: 'center',
-      type: 'string',
-      oneOf: ['center', 'left', 'right']
-    },
-    justifyLength: {
-      default: 'middle',
-      type: 'string',
-      oneOf: ['middle', 'start', 'end']
+    enableAlignment: {
+      type: 'boolean',
+      default: true
     }
   },
   init: function () {
@@ -52,6 +46,9 @@ AFRAME.registerComponent('managed-street', {
     this.pendingEntities = [];
     // Bind the method to preserve context
     this.refreshFromSource = this.refreshFromSource.bind(this);
+    if (this.data.enableAlignment && !this.el.hasAttribute('street-align')) {
+      this.el.setAttribute('street-align', '');
+    }
   },
   /**
    * Inserts a new street segment at the specified index
@@ -123,9 +120,6 @@ AFRAME.registerComponent('managed-street', {
       }, 0);
       this.el.setAttribute('managed-street', 'width', totalWidth);
 
-      // Apply justification to reposition all segments
-      this.applyJustification();
-
       // Update the dirt box
       this.createOrUpdateJustifiedDirtBox();
 
@@ -157,7 +151,6 @@ AFRAME.registerComponent('managed-street', {
       // If segments were removed, trigger reflow
       if (needsReflow) {
         this.refreshManagedEntities();
-        this.applyJustification();
         this.createOrUpdateJustifiedDirtBox();
       }
     });
@@ -183,7 +176,6 @@ AFRAME.registerComponent('managed-street', {
         dataDiffKeys.includes('justifyLength'))
     ) {
       this.refreshManagedEntities();
-      this.applyJustification();
       this.createOrUpdateJustifiedDirtBox();
     }
 
@@ -225,43 +217,6 @@ AFRAME.registerComponent('managed-street', {
 
     segmentEls.forEach((segmentEl) => {
       segmentEl.setAttribute('street-segment', 'length', streetLength);
-    });
-  },
-  applyJustification: function () {
-    const data = this.data;
-    const segmentEls = this.managedEntities;
-    const streetWidth = data.width;
-    const streetLength = data.length;
-
-    // set starting xPosition for width justification
-    let xPosition = 0; // default for left justified
-    if (data.justifyWidth === 'center') {
-      xPosition = -streetWidth / 2;
-    }
-    if (data.justifyWidth === 'right') {
-      xPosition = -streetWidth;
-    }
-    // set z value for length justification
-    let zPosition = 0; // default for middle justified
-    if (data.justifyLength === 'start') {
-      zPosition = -streetLength / 2;
-    }
-    if (data.justifyLength === 'end') {
-      zPosition = streetLength / 2;
-    }
-
-    segmentEls.forEach((segmentEl) => {
-      if (!segmentEl.getAttribute('street-segment')) {
-        return;
-      }
-      const segmentWidth = segmentEl.getAttribute('street-segment').width;
-      const yPosition = segmentEl.getAttribute('position').y;
-      xPosition += segmentWidth / 2;
-      segmentEl.setAttribute(
-        'position',
-        `${xPosition} ${yPosition} ${zPosition}`
-      );
-      xPosition += segmentWidth / 2;
     });
   },
   refreshManagedEntities: function () {
@@ -372,7 +327,6 @@ AFRAME.registerComponent('managed-street', {
         segmentEl.components[
           'street-segment'
         ].generateComponentsFromSegmentObject(segment);
-        this.applyJustification();
       });
     }
   },
@@ -498,7 +452,6 @@ AFRAME.registerComponent('managed-street', {
       // When all entities are loaded, do something with them
       this.allLoadedPromise.then(() => {
         this.refreshManagedEntities();
-        this.applyJustification();
         this.createOrUpdateJustifiedDirtBox();
         AFRAME.INSPECTOR.selectEntity(this.el);
       });
