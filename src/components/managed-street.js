@@ -238,15 +238,9 @@ AFRAME.registerComponent('managed-street', {
       `${xPosition} -1 ${zPosition}`
     );
 
-    this.justifiedDirtBox.addEventListener('loaded', () => {
-      // Fix z fighting issue
-      const mesh = this.justifiedDirtBox.getObject3D('mesh');
-      if (mesh) {
-        const material = mesh.material;
-        material.polygonOffset = true;
-        material.polygonOffsetFactor = 4;
-        material.polygonOffsetUnits = 4;
-      }
+    this.justifiedDirtBox.setAttribute('polygon-offset', {
+      factor: 4,
+      units: 4
     });
   },
   parseStreetObject: function (streetObject) {

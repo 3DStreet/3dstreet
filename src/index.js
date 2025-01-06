@@ -28,6 +28,7 @@ require('./components/street-generated-striping.js');
 require('./components/street-generated-pedestrians.js');
 require('./components/street-generated-rail.js');
 require('./components/street-generated-clones.js');
+require('./components/polygon-offset.js');
 require('./editor/index.js');
 var firebase = require('./editor/services/firebase.js');
 
