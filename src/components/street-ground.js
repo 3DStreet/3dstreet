@@ -39,6 +39,10 @@ AFRAME.registerComponent('street-ground', {
       this.dirtbox.setAttribute('data-layer-name', 'Underground');
       this.dirtbox.setAttribute('data-no-transform', '');
       this.dirtbox.setAttribute('data-ignore-raycaster', '');
+      this.dirtbox.setAttribute('polygon-offset', {
+        factor: 4,
+        units: 4
+      });
     }
 
     // Get all segments

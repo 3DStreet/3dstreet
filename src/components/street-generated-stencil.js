@@ -202,6 +202,16 @@ AFRAME.registerComponent('street-generated-stencil', {
 
         this.el.appendChild(clone);
         this.createdEntities.push(clone);
+        // Fix z fighting issue
+        // clone.addEventListener('loaded', () => {
+        //   const mesh = clone.getObject3D('mesh');
+        //   if (mesh) {
+        //     const material = mesh.material;
+        //     material.polygonOffset = true;
+        //     material.polygonOffsetFactor = -2;
+        //     material.polygonOffsetUnits = -2;
+        //   }
+        // });
       });
     }
   }
