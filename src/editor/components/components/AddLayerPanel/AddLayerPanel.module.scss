@@ -74,6 +74,10 @@
 
     .description {
       color: rgba(182, 182, 182, 1);
+      max-width: 182px; // Same as image width
+      word-wrap: break-word;
+      overflow-wrap: break-word;
+      white-space: normal;
     }
   }
 

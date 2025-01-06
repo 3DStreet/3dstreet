@@ -99,6 +99,38 @@ AFRAME.registerComponent('street-generated-stencil', {
     this.createdEntities.forEach((entity) => entity.remove());
     this.createdEntities.length = 0; // Clear the array
   },
+  detach: function () {
+    const commands = [];
+    commands.push([
+      'componentremove',
+      { entity: this.el, component: this.attrName }
+    ]);
+    let entityObjToPushAtTheEnd = null; // so that the entity is selected after executing the multi command
+    this.createdEntities.forEach((entity) => {
+      const position = entity.getAttribute('position');
+      const rotation = entity.getAttribute('rotation');
+      const entityObj = {
+        parentEl: this.el, // you can also put this.el.id here that way the command is fully json serializable but el currently doesn't have an id
+        mixin: entity.getAttribute('mixin'),
+        'data-layer-name': entity
+          .getAttribute('data-layer-name')
+          .replace('Cloned Model', 'Detached Model'),
+        components: {
+          position: { x: position.x, y: position.y, z: position.z },
+          rotation: { x: rotation.x, y: rotation.y, z: rotation.z }
+        }
+      };
+      if (AFRAME.INSPECTOR?.selectedEntity === entity) {
+        entityObjToPushAtTheEnd = entityObj;
+      } else {
+        commands.push(['entitycreate', entityObj]);
+      }
+    });
+    if (entityObjToPushAtTheEnd !== null) {
+      commands.push(['entitycreate', entityObjToPushAtTheEnd]);
+    }
+    AFRAME.INSPECTOR.execute('multi', commands);
+  },
   update: function (oldData) {
     const data = this.data;
 
@@ -166,7 +198,7 @@ AFRAME.registerComponent('street-generated-stencil', {
         clone.classList.add('autocreated');
         clone.setAttribute('data-no-transform', '');
         clone.setAttribute('data-layer-name', `Cloned Model • ${stencilName}`);
-        clone.setAttribute('polygon-offset', { factor: -2, units: -2 });
+        clone.setAttribute('data-parent-component', this.attrName);
 
         this.el.appendChild(clone);
         this.createdEntities.push(clone);
