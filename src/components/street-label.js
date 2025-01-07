@@ -31,6 +31,9 @@ AFRAME.registerComponent('street-label', {
     }, 0);
   },
 
+  update: function () {
+    this.updateLabels();
+  },
   updateLabels: function () {
     const segments = Array.from(this.el.querySelectorAll('[street-segment]'));
     if (segments.length === 0) return;
