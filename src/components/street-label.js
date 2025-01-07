@@ -202,8 +202,12 @@ AFRAME.registerComponent('street-label', {
     // Get alignment from street-align component
     const streetAlign = this.el.components['street-align'];
     const alignWidth = streetAlign?.data.width || 'center';
+    const alignLength = streetAlign?.data.length || 'start';
 
-    // Calculate position based on alignment
+    // Get street length from managed-street component
+    const streetLength = this.el.getAttribute('managed-street')?.length || 0;
+
+    // Calculate x position based on width alignment
     let xPosition = 0;
     if (alignWidth === 'center') {
       xPosition = 0;
@@ -213,9 +217,17 @@ AFRAME.registerComponent('street-label', {
       xPosition = -totalWidth / 2;
     }
 
+    // Calculate z position based on length alignment
+    let zPosition = this.data.zOffset; // for 'start' alignment
+    if (alignLength === 'middle') {
+      zPosition = streetLength / 2 + this.data.zOffset;
+    } else if (alignLength === 'end') {
+      zPosition = streetLength + this.data.zOffset;
+    }
+
     plane.setAttribute(
       'position',
-      `${xPosition} ${this.data.heightOffset} ${this.data.zOffset}`
+      `${xPosition} ${this.data.heightOffset} ${zPosition}`
     );
     plane.setAttribute(
       'rotation',
