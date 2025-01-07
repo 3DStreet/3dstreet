@@ -5,7 +5,7 @@ AFRAME.registerComponent('street-label', {
 
   schema: {
     heightOffset: { type: 'number', default: -2 },
-    rotation: { type: 'vec3', default: { x: -30, y: 0, z: 0 } },
+    rotation: { type: 'vec3', default: { x: 0, y: 0, z: 0 } },
     zOffset: { type: 'number', default: 1 },
     labelHeight: { type: 'number', default: 2.5 },
     baseCanvasWidth: { type: 'number', default: 4096 }
