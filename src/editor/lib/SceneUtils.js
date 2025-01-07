@@ -44,6 +44,7 @@ export function createElementsForScenesFromJSON(streetData) {
 
   STREET.utils.createEntities(streetData, streetContainerEl);
   AFRAME.scenes[0].emit('newScene');
+  AFRAME.INSPECTOR.selectEntity(null);
 }
 
 export function fileJSON(event) {
