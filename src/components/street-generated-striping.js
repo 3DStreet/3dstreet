@@ -16,7 +16,8 @@ AFRAME.registerComponent('street-generated-striping', {
         'short-dashed-stripe-yellow',
         'solid-doubleyellow',
         'solid-dashed',
-        'solid-dashed-yellow'
+        'solid-dashed-yellow',
+        'solid-dashed-yellow-mirror'
       ]
     },
     segmentWidth: {
@@ -89,16 +90,6 @@ AFRAME.registerComponent('street-generated-striping', {
 
     this.el.appendChild(clone);
     this.createdEntities.push(clone);
-    // // Fix z fighting issue
-    // clone.addEventListener('loaded', () => {
-    //   const mesh = clone.getObject3D('mesh');
-    //   if (mesh) {
-    //     const material = mesh.material;
-    //     material.polygonOffset = true;
-    //     material.polygonOffsetFactor = -2;
-    //     material.polygonOffsetUnits = -2;
-    //   }
-    // });
   },
   calculateStripingMaterial: function (stripingName, length) {
     // calculate the repeatCount for the material

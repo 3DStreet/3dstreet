@@ -199,19 +199,10 @@ AFRAME.registerComponent('street-generated-stencil', {
         clone.setAttribute('data-no-transform', '');
         clone.setAttribute('data-layer-name', `Cloned Model • ${stencilName}`);
         clone.setAttribute('data-parent-component', this.attrName);
+        clone.setAttribute('polygon-offset', { factor: -2, units: -2 });
 
         this.el.appendChild(clone);
         this.createdEntities.push(clone);
-        // Fix z fighting issue
-        // clone.addEventListener('loaded', () => {
-        //   const mesh = clone.getObject3D('mesh');
-        //   if (mesh) {
-        //     const material = mesh.material;
-        //     material.polygonOffset = true;
-        //     material.polygonOffsetFactor = -2;
-        //     material.polygonOffsetUnits = -2;
-        //   }
-        // });
       });
     }
   }
