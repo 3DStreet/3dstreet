@@ -168,9 +168,9 @@ export async function saveScene(currentUser, doSaveAs) {
 }
 
 export async function saveSceneWithScreenshot(currentUser, doSaveAs) {
-  makeScreenshot();
   const currentSceneId = await saveScene(currentUser, doSaveAs);
   if (currentSceneId) {
+    makeScreenshot();
     uploadThumbnailImage(currentSceneId);
   }
 }
