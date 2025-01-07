@@ -43,10 +43,6 @@ AFRAME.registerComponent('managed-street', {
     showGround: {
       type: 'boolean',
       default: true
-    },
-    showLabels: {
-      type: 'boolean',
-      default: true
     }
   },
   init: function () {
@@ -61,7 +57,7 @@ AFRAME.registerComponent('managed-street', {
     if (this.data.showGround && !this.el.hasAttribute('street-ground')) {
       this.el.setAttribute('street-ground', '');
     }
-    if (this.data.showLabels && !this.el.hasAttribute('street-label')) {
+    if (!this.el.hasAttribute('street-label')) {
       this.el.setAttribute('street-label', '');
     }
 

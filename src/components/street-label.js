@@ -4,6 +4,7 @@ AFRAME.registerComponent('street-label', {
   dependencies: ['managed-street', 'street-align'],
 
   schema: {
+    enabled: { type: 'boolean', default: true },
     heightOffset: { type: 'number', default: -2 },
     rotation: { type: 'vec3', default: { x: 0, y: 0, z: 0 } },
     zOffset: { type: 'number', default: 1 },
@@ -30,13 +31,31 @@ AFRAME.registerComponent('street-label', {
 
     // Handle loading from saved scene
     setTimeout(() => {
-      this.updateLabels();
+      if (this.data.enabled) {
+        this.updateLabels();
+      }
     }, 0);
   },
 
-  update: function () {
-    this.updateLabels();
+  update: function (oldData) {
+    if (oldData && this.data.enabled !== oldData.enabled) {
+      if (!this.data.enabled) {
+        // Hide existing labels
+        this.createdEntities.forEach((entity) => {
+          entity.setAttribute('visible', false);
+        });
+      } else {
+        // Show and update labels
+        this.createdEntities.forEach((entity) => {
+          entity.setAttribute('visible', true);
+        });
+        this.updateLabels();
+      }
+    } else if (this.data.enabled) {
+      this.updateLabels();
+    }
   },
+
   updateLabels: function () {
     const segments = Array.from(this.el.querySelectorAll('[street-segment]'));
     if (segments.length === 0) return;
