@@ -1,7 +1,7 @@
 /* global AFRAME */
 
 AFRAME.registerComponent('street-label', {
-  dependencies: ['managed-street'],
+  dependencies: ['managed-street', 'street-align'],
 
   schema: {
     heightOffset: { type: 'number', default: -2 },
@@ -21,6 +21,9 @@ AFRAME.registerComponent('street-label', {
 
     // Listen for segment changes
     this.el.addEventListener('segments-changed', this.updateLabels.bind(this));
+
+    // Listen for alignment changes
+    this.el.addEventListener('alignment-changed', this.updateLabels.bind(this));
 
     // Initial update
     this.updateLabels();
@@ -196,9 +199,23 @@ AFRAME.registerComponent('street-label', {
       alphaTest: 0.5
     });
 
+    // Get alignment from street-align component
+    const streetAlign = this.el.components['street-align'];
+    const alignWidth = streetAlign?.data.width || 'center';
+
+    // Calculate position based on alignment
+    let xPosition = 0;
+    if (alignWidth === 'center') {
+      xPosition = 0;
+    } else if (alignWidth === 'left') {
+      xPosition = totalWidth / 2;
+    } else if (alignWidth === 'right') {
+      xPosition = -totalWidth / 2;
+    }
+
     plane.setAttribute(
       'position',
-      `0 ${this.data.heightOffset} ${this.data.zOffset}`
+      `${xPosition} ${this.data.heightOffset} ${this.data.zOffset}`
     );
     plane.setAttribute(
       'rotation',
@@ -227,5 +244,6 @@ AFRAME.registerComponent('street-label', {
 
     // Remove event listener
     this.el.removeEventListener('segments-changed', this.updateLabels);
+    this.el.removeEventListener('alignment-changed', this.updateLabels);
   }
 });
