@@ -2,26 +2,21 @@ AFRAME.registerComponent('street-ground', {
   dependencies: ['managed-street', 'street-align'],
 
   init: function () {
+    this.createOrUpdateDirtbox = this.createOrUpdateDirtbox.bind(this);
+
     // Listen for any changes from managed-street
-    this.el.addEventListener('segments-changed', () =>
-      this.createOrUpdateDirtbox()
-    );
+    this.el.addEventListener('segments-changed', this.createOrUpdateDirtbox);
 
     // Listen for alignment changes
-    this.el.addEventListener('alignment-changed', () =>
-      this.createOrUpdateDirtbox()
-    );
+    this.el.addEventListener('alignment-changed', this.createOrUpdateDirtbox);
 
     // Create initial dirtbox
-    this.createOrUpdateDirtbox();
-
     setTimeout(() => {
       this.createOrUpdateDirtbox();
     }, 0);
   },
 
   createOrUpdateDirtbox: function () {
-    console.log('dirtbox fired update');
     // Find or create dirtbox element
     if (!this.dirtbox) {
       this.dirtbox = this.el.querySelector('.dirtbox');
@@ -87,8 +82,12 @@ AFRAME.registerComponent('street-ground', {
   remove: function () {
     // Clean up
     if (this.dirtbox) {
-      this.dirtbox.parentNode.removeChild(this.dirtbox);
+      this.dirtbox.remove();
     }
     this.el.removeEventListener('segments-changed', this.createOrUpdateDirtbox);
+    this.el.removeEventListener(
+      'alignment-changed',
+      this.createOrUpdateDirtbox
+    );
   }
 });
