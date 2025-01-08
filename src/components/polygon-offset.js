@@ -24,7 +24,7 @@ AFRAME.registerComponent('polygon-offset', {
     if (!object3D) return;
 
     object3D.traverse((obj) => {
-      if (obj.type === 'Mesh') {
+      if (obj.isMesh) {
         if (Array.isArray(obj.material)) {
           obj.material.forEach((material) => {
             this.updateMaterial(material);
@@ -59,7 +59,7 @@ AFRAME.registerComponent('polygon-offset', {
     const mesh = this.el.getObject3D('mesh');
     if (mesh) {
       mesh.traverse((obj) => {
-        if (obj.type === 'Mesh') {
+        if (obj.isMesh) {
           if (Array.isArray(obj.material)) {
             obj.material.forEach((material) => {
               material.polygonOffset = false;
