@@ -510,14 +510,15 @@ AFRAME.registerComponent('managed-street', {
       const streetplanData = await response.json();
       const boulevard = streetplanData.project['My Street']['Boulevard Alt 1'];
 
+      const streetLength =
+        parseFloat(streetplanData.project['My Street'].LengthMiles) *
+          5280 *
+          0.3048 || 100; // Convert miles to meters
       // Convert StreetPlan format to managed-street format
       const streetObject = {
         name: streetplanData.project.ProjectName,
         width: 0, // Will be calculated from segments
-        length:
-          parseFloat(streetplanData.project['My Street'].LengthMiles) *
-          5280 *
-          0.3048, // Convert miles to meters
+        length: streetLength,
         segments: []
       };
 
