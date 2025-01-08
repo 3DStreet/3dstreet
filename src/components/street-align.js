@@ -22,15 +22,10 @@ AFRAME.registerComponent('street-align', {
     // Initial alignment
     this.realignStreet();
 
-    // TODO: Still need this for loading from saved scene
+    // wait for all components, including managed-street to be initialized
     setTimeout(() => {
       this.realignStreet();
     }, 0);
-  },
-
-  onSegmentWidthChanged: function (event) {
-    console.log('segment width changed handler called', event);
-    this.realignStreet();
   },
 
   update: function (oldData) {
@@ -46,41 +41,6 @@ AFRAME.registerComponent('street-align', {
       });
       this.realignStreet();
     }
-  },
-
-  setupMutationObserver: function () {
-    if (this.observer) {
-      this.observer.disconnect();
-    }
-
-    this.observer = new MutationObserver((mutations) => {
-      let needsReflow = false;
-
-      mutations.forEach((mutation) => {
-        if (mutation.type === 'childList') {
-          // Instead of handling segments individually, refresh the entire list
-          if (
-            Array.from(mutation.addedNodes).some(
-              (node) => node.hasAttribute && node.hasAttribute('street-segment')
-            ) ||
-            Array.from(mutation.removedNodes).some(
-              (node) => node.hasAttribute && node.hasAttribute('street-segment')
-            )
-          ) {
-            needsReflow = true;
-          }
-        }
-      });
-
-      if (needsReflow) {
-        this.realignStreet();
-      }
-    });
-
-    this.observer.observe(this.el, {
-      childList: true,
-      subtree: false
-    });
   },
 
   realignStreet: function () {
