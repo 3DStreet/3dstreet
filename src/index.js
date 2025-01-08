@@ -32,6 +32,7 @@ require('./components/polygon-offset.js');
 require('./components/street-align.js');
 require('./components/street-ground.js');
 require('./components/street-label.js');
+require('./components/tiles-material-change.js');
 require('./editor/index.js');
 var firebase = require('./editor/services/firebase.js');
 
