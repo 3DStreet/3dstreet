@@ -17,7 +17,8 @@ AFRAME.registerComponent('street-align', {
 
   init: function () {
     // Listen for any segment changes from managed-street
-    this.el.addEventListener('segments-changed', () => this.realignStreet());
+    this.realignStreet = this.realignStreet.bind(this);
+    this.el.addEventListener('segments-changed', this.realignStreet);
 
     // Initial alignment
     this.realignStreet();
