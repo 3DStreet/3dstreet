@@ -51,6 +51,8 @@ AFRAME.registerComponent('managed-street', {
     this.actualWidth = 0;
     // Bind the method to preserve context
     this.refreshFromSource = this.refreshFromSource.bind(this);
+    this.onSegmentWidthChanged = this.onSegmentWidthChanged.bind(this);
+
     if (this.data.enableAlignment && !this.el.hasAttribute('street-align')) {
       this.el.setAttribute('street-align', '');
     }
@@ -73,7 +75,7 @@ AFRAME.registerComponent('managed-street', {
       console.log('Attaching width change listener to existing segment');
       segment.addEventListener(
         'segment-width-changed',
-        this.onSegmentWidthChanged.bind(this)
+        this.onSegmentWidthChanged
       );
     });
   },
@@ -174,7 +176,7 @@ AFRAME.registerComponent('managed-street', {
           addedSegments.forEach((segment) => {
             segment.addEventListener(
               'segment-width-changed',
-              this.onSegmentWidthChanged.bind(this)
+              this.onSegmentWidthChanged
             );
           });
 
@@ -182,7 +184,7 @@ AFRAME.registerComponent('managed-street', {
           removedSegments.forEach((segment) => {
             segment.removeEventListener(
               'segment-width-changed',
-              this.onSegmentWidthChanged.bind(this)
+              this.onSegmentWidthChanged
             );
           });
 
