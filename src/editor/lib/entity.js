@@ -195,7 +195,10 @@ export function prepareForSerialization(entity, filterFunc = () => true) {
         !child.hasAttribute('data-aframe-inspector') &&
         !child.hasAttribute('data-aframe-canvas'))
     ) {
-      clone.appendChild(prepareForSerialization(children[i], filterFunc));
+      const childClone = prepareForSerialization(children[i], filterFunc);
+      if (childClone !== null) {
+        clone.appendChild(childClone);
+      }
     }
   }
   optimizeComponents(clone, entity);
