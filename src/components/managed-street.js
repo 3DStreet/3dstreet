@@ -598,7 +598,7 @@ AFRAME.registerComponent('managed-street', {
           type: segmentType,
           width: segmentWidth,
           name: segment.title,
-          level: parseFloat(segment.MaterialH) || 0,
+          level: parseFloat(segment.MaterialH) === 0.5 ? 1 : 0,
           direction: segmentDirection,
           color: mappedColor || window.STREET.types[segmentType]?.color,
           surface: mappedSurface,
