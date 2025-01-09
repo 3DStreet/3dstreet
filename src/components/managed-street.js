@@ -8,36 +8,36 @@ const streetmixParsersTested = require('../tested/aframe-streetmix-parsers-teste
 // STREETPLAN HELPER FUNCTIONS
 // Material mapping from Streetplan to 3DStreet surfaces
 const STREETPLAN_MATERIAL_MAPPING = {
-  'asphalt black': 'asphalt',
-  'asphalt blue': 'asphalt',
-  'asphalt red 1': 'asphalt',
-  'asphalt red 2': 'asphalt',
-  'asphalt green': 'asphalt',
-  'asphalt old': 'asphalt',
-  'standard concrete': 'concrete',
-  grass: 'grass',
-  'grass dead': 'grass',
-  'pavers tan': 'sidewalk',
-  'pavers brown': 'sidewalk',
-  'pavers mixed': 'sidewalk',
-  'pavers red': 'sidewalk',
-  'tint conc. or dirt': 'gravel',
-  dirt: 'gravel',
-  gravel: 'gravel',
-  stonetan: 'sidewalk',
-  'sidewalk 2': 'sidewalk',
-  'cobble stone': 'sidewalk',
-  'solid black': 'solid',
-  'painted intersection': 'asphalt',
-  'grass with edging': 'grass',
-  xeriscape: 'grass',
-  'grassslopemedian 12ft': 'grass',
-  'grassslopemedian 24ft': 'grass',
-  'grassslope 12ft-left': 'grass',
-  'grassslope 12ft-right': 'grass',
-  'grassslope 24ft-left': 'grass',
-  'grassslope 24ft-right': 'grass',
-  sand: 'sand'
+  'asphalt black': { surface: 'asphalt', color: '#aaaaaa' },
+  'asphalt blue': { surface: 'asphalt', color: '#aaaaff' },
+  'asphalt red 1': { surface: 'asphalt', color: '#ffaaaa' },
+  'asphalt red 2': { surface: 'asphalt', color: '#ff0000' },
+  'asphalt green': { surface: 'asphalt', color: '#aaffaa' },
+  'asphalt old': { surface: 'asphalt' },
+  'standard concrete': { surface: 'concrete' },
+  grass: { surface: 'grass' },
+  'grass dead': { surface: 'grass' },
+  'pavers tan': { surface: 'sidewalk' },
+  'pavers brown': { surface: 'sidewalk' },
+  'pavers mixed': { surface: 'sidewalk' },
+  'pavers red': { surface: 'sidewalk', color: '#ffaaaa' },
+  'tint conc. or dirt': { surface: 'gravel' },
+  dirt: { surface: 'gravel' },
+  gravel: { surface: 'gravel' },
+  stonetan: { surface: 'sidewalk' },
+  'sidewalk 2': { surface: 'sidewalk' },
+  'cobble stone': { surface: 'sidewalk' },
+  'solid black': { surface: 'solid' },
+  'painted intersection': { surface: 'asphalt' },
+  'grass with edging': { surface: 'grass' },
+  xeriscape: { surface: 'grass' },
+  'grassslopemedian 12ft': { surface: 'grass' },
+  'grassslopemedian 24ft': { surface: 'grass' },
+  'grassslope 12ft-left': { surface: 'grass' },
+  'grassslope 12ft-right': { surface: 'grass' },
+  'grassslope 24ft-left': { surface: 'grass' },
+  'grassslope 24ft-right': { surface: 'grass' },
+  sand: { surface: 'sand' }
 };
 
 const STREETPLAN_OBJECT_MAPPING = {
@@ -522,7 +522,7 @@ AFRAME.registerComponent('managed-street', {
         segments: []
       };
 
-      // Process segments
+      // Process streetplan segments
       const segments = boulevard.segments;
       for (const segmentKey in segments) {
         const segment = segments[segmentKey];
@@ -535,11 +535,11 @@ AFRAME.registerComponent('managed-street', {
         const segmentWidth = parseFloat(segment.width) * 0.3048; // Convert feet to meters
         streetObject.width += segmentWidth;
 
-        // Convert segment type based on your schema
+        // Convert streetplan segment type based on your schema
         let segmentType = 'drive-lane'; // Default type
         let segmentDirection = 'inbound';
-        let segmentColor = window.STREET.colors.white;
 
+        // convert from streetplan type to managed street default type
         switch (segment.Type) {
           case 'BikesPaths':
             segmentType = 'bike-lane';
@@ -549,7 +549,6 @@ AFRAME.registerComponent('managed-street', {
             break;
           case 'Transit':
             segmentType = 'bus-lane';
-            segmentColor = window.STREET.colors.red;
             break;
           case 'Median/Buffer':
             segmentType = 'divider';
@@ -576,7 +575,8 @@ AFRAME.registerComponent('managed-street', {
         // Map the material using the STREETPLAN_MATERIAL_MAPPING, fallback to 'asphalt' if not found
         const material = segment.Material?.toLowerCase() || '';
         const mappedSurface =
-          STREETPLAN_MATERIAL_MAPPING[material] || 'asphalt';
+          STREETPLAN_MATERIAL_MAPPING[material]?.surface || 'asphalt';
+        const mappedColor = STREETPLAN_MATERIAL_MAPPING[material]?.color;
 
         // Map the O-Tags to clone configurations
         const generated = {};
@@ -600,7 +600,7 @@ AFRAME.registerComponent('managed-street', {
           name: segment.title,
           level: parseFloat(segment.MaterialH) || 0,
           direction: segmentDirection,
-          color: segmentColor,
+          color: mappedColor || window.STREET.types[segmentType]?.color,
           surface: mappedSurface,
           generated: clones.length > 0 ? generated : undefined
         });
