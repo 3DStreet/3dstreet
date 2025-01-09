@@ -16,7 +16,7 @@ export class EntityRemoveCommand extends Command {
     this.index = Array.from(this.parentEl.children).indexOf(entity);
   }
 
-  execute() {
+  execute(nextCommandCallback) {
     const closest = findClosestEntity(this.entity);
 
     // Keep a clone not attached to DOM for undo
@@ -31,9 +31,10 @@ export class EntityRemoveCommand extends Command {
     this.entity = clone;
 
     this.editor.selectEntity(closest);
+    nextCommandCallback?.(null);
   }
 
-  undo() {
+  undo(nextCommandCallback) {
     // Reinsert the entity at its original position using the stored index
     const referenceNode = this.parentEl.children[this.index] ?? null;
     this.parentEl.insertBefore(this.entity, referenceNode);
@@ -44,6 +45,7 @@ export class EntityRemoveCommand extends Command {
       () => {
         Events.emit('entitycreated', this.entity);
         this.editor.selectEntity(this.entity);
+        nextCommandCallback?.(this.entity);
       },
       { once: true }
     );

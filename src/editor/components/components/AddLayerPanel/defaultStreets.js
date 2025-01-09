@@ -322,3 +322,1150 @@ export const exampleStreet = {
     }
   ]
 };
+
+export const stroad40ftROW = {
+  id: '727dbbf4-692a-48ee-8f99-a056fd60fedd',
+  name: '40ft Right of Way 24ft Road Width',
+  width: 12.192, // Original 40ft converted to meters
+  length: 100,
+  justifyWidth: 'center',
+  justifyLength: 'start',
+  segments: [
+    {
+      id: 'JCWzsLQHmyfDHzQhi9_pU',
+      name: 'Dense Sidewalk',
+      type: 'sidewalk',
+      surface: 'sidewalk',
+      color: '#ffffff',
+      level: 1,
+      width: 1.829, // Original 6ft
+      direction: 'none',
+      generated: {
+        pedestrians: [
+          {
+            density: 'dense'
+          }
+        ]
+      }
+    },
+    {
+      id: 'RsLZFtSi3oJH7uufQ5rc4',
+      name: 'Tree Planting Strip',
+      type: 'sidewalk',
+      surface: 'sidewalk',
+      color: '#ffffff',
+      level: 1,
+      width: 0.61, // Original 2ft
+      direction: 'none',
+      generated: {
+        clones: [
+          {
+            mode: 'fixed',
+            model: 'tree3',
+            spacing: 15
+          }
+        ]
+      }
+    },
+    {
+      id: 'GbEHhCMPmVom_IJK-xIn3',
+      name: 'Inbound Parking',
+      type: 'parking-lane',
+      surface: 'concrete',
+      color: '#dddddd',
+      level: 0,
+      width: 2.134, // Original 7ft
+      direction: 'inbound',
+      generated: {
+        clones: [
+          {
+            mode: 'random',
+            modelsArray: 'sedan-rig, self-driving-waymo-car, suv-rig',
+            spacing: 6,
+            count: 6
+          }
+        ],
+        stencil: [
+          {
+            model: 'parking-t',
+            cycleOffset: 1,
+            spacing: 6
+          }
+        ]
+      }
+    },
+    {
+      id: 'z4gZgzYoM7sQ7mzIV01PC',
+      name: 'Drive Lane',
+      type: 'drive-lane',
+      surface: 'asphalt',
+      color: '#ffffff',
+      level: 0,
+      width: 3.048, // Original 10ft
+      direction: 'inbound',
+      generated: {
+        clones: [
+          {
+            mode: 'random',
+            modelsArray:
+              'sedan-rig, box-truck-rig, self-driving-waymo-car, suv-rig, motorbike',
+            spacing: 7.3,
+            count: 4
+          }
+        ]
+      }
+    },
+    {
+      id: 'ARosTXeWGXp17QyfZgSKB',
+      name: 'Outbound Parking',
+      type: 'parking-lane',
+      surface: 'concrete',
+      color: '#dddddd',
+      level: 0,
+      width: 2.134, // Original 7ft
+      direction: 'outbound',
+      generated: {
+        clones: [
+          {
+            mode: 'random',
+            modelsArray: 'sedan-rig, self-driving-waymo-car, suv-rig',
+            spacing: 6,
+            count: 6
+          }
+        ],
+        stencil: [
+          {
+            model: 'parking-t',
+            cycleOffset: 1,
+            spacing: 6
+          }
+        ]
+      }
+    },
+    {
+      id: 'vL9qDNp5neZt32zlZ9ExG',
+      name: 'Tree Planting Strip',
+      type: 'sidewalk',
+      surface: 'sidewalk',
+      color: '#ffffff',
+      level: 1,
+      width: 0.61, // Original 2ft
+      direction: 'none',
+      generated: {
+        clones: [
+          {
+            mode: 'fixed',
+            model: 'tree3',
+            spacing: 15
+          }
+        ]
+      }
+    },
+    {
+      id: 'RClRRZoof9_BYnqQm7mz-',
+      name: 'Normal Sidewalk',
+      type: 'sidewalk',
+      surface: 'sidewalk',
+      color: '#ffffff',
+      level: 1,
+      width: 1.829, // Original 6ft
+      direction: 'none',
+      generated: {
+        pedestrians: [
+          {
+            density: 'normal'
+          }
+        ]
+      }
+    }
+  ]
+};
+
+export const stroad80ftROW = {
+  id: 'dea1980d-2a13-481b-b318-9f757ca114f7',
+  name: '80ft Right of Way 56ft Road Width',
+  width: 24.384, // Original 80ft converted to meters
+  length: 100,
+  justifyWidth: 'center',
+  justifyLength: 'start',
+  segments: [
+    {
+      id: 'JCWzsLQHmyfDHzQhi9_pU',
+      name: 'Dense Sidewalk',
+      type: 'sidewalk',
+      surface: 'sidewalk',
+      color: '#ffffff',
+      level: 1,
+      width: 1.829, // Original 6ft
+      direction: 'none',
+      generated: {
+        pedestrians: [
+          {
+            density: 'dense'
+          }
+        ]
+      }
+    },
+    {
+      id: 'RsLZFtSi3oJH7uufQ5rc4',
+      name: 'Tree Planting Strip',
+      type: 'sidewalk',
+      surface: 'sidewalk',
+      color: '#ffffff',
+      level: 1,
+      width: 0.914, // Original 3ft
+      direction: 'none',
+      generated: {
+        clones: [
+          {
+            mode: 'fixed',
+            model: 'tree3',
+            spacing: 15
+          }
+        ]
+      }
+    },
+    {
+      id: 'X2tAKuwUDc728RIPfhJUS',
+      name: 'Modern Street Lamp',
+      type: 'sidewalk',
+      surface: 'sidewalk',
+      color: '#ffffff',
+      level: 1,
+      width: 0.914, // Original 3ft
+      direction: 'none',
+      generated: {
+        clones: [
+          {
+            mode: 'fixed',
+            model: 'lamp-modern',
+            spacing: 30,
+            facing: 0
+          }
+        ]
+      }
+    },
+    {
+      id: 'GbEHhCMPmVom_IJK-xIn3',
+      name: 'Inbound Parking',
+      type: 'parking-lane',
+      surface: 'concrete',
+      color: '#dddddd',
+      level: 0,
+      width: 2.438, // Original 8ft
+      direction: 'inbound',
+      generated: {
+        clones: [
+          {
+            mode: 'random',
+            modelsArray: 'sedan-rig, self-driving-waymo-car, suv-rig',
+            spacing: 6,
+            count: 6
+          }
+        ],
+        stencil: [
+          {
+            model: 'parking-t',
+            cycleOffset: 1,
+            spacing: 6
+          }
+        ]
+      }
+    },
+    {
+      id: 'z4gZgzYoM7sQ7mzIV01PC',
+      name: 'Inbound Drive Lane 1',
+      type: 'drive-lane',
+      surface: 'asphalt',
+      color: '#ffffff',
+      level: 0,
+      width: 3.048, // Original 10ft
+      direction: 'inbound',
+      generated: {
+        clones: [
+          {
+            mode: 'random',
+            modelsArray:
+              'sedan-rig, box-truck-rig, self-driving-waymo-car, suv-rig, motorbike',
+            spacing: 7.3,
+            count: 4
+          }
+        ]
+      }
+    },
+    {
+      id: 'n9A8XDtjRSpgxElVhxoWB',
+      name: 'Inbound Drive Lane 2',
+      type: 'drive-lane',
+      surface: 'asphalt',
+      color: '#ffffff',
+      level: 0,
+      width: 3.048, // Original 10ft
+      direction: 'inbound',
+      generated: {
+        clones: [
+          {
+            mode: 'random',
+            modelsArray:
+              'sedan-rig, box-truck-rig, self-driving-waymo-car, suv-rig, motorbike',
+            spacing: 7.3,
+            count: 4
+          }
+        ]
+      }
+    },
+    {
+      id: 'O08G5Br9w6vwdomdhUmwk',
+      name: 'Outbound Drive Lane 1',
+      type: 'drive-lane',
+      surface: 'asphalt',
+      color: '#ffffff',
+      level: 0,
+      width: 3.048, // Original 10ft
+      direction: 'outbound',
+      generated: {
+        clones: [
+          {
+            mode: 'random',
+            modelsArray:
+              'sedan-rig, box-truck-rig, self-driving-waymo-car, suv-rig, motorbike',
+            spacing: 7.3,
+            count: 4
+          }
+        ]
+      }
+    },
+    {
+      id: '1w9jjehQwnvBfJeSVOd6M',
+      name: 'Outbound Drive Lane 2',
+      type: 'drive-lane',
+      surface: 'asphalt',
+      color: '#ffffff',
+      level: 0,
+      width: 3.048, // Original 10ft
+      direction: 'outbound',
+      generated: {
+        clones: [
+          {
+            mode: 'random',
+            modelsArray:
+              'sedan-rig, box-truck-rig, self-driving-waymo-car, suv-rig, motorbike',
+            spacing: 7.3,
+            count: 4
+          }
+        ]
+      }
+    },
+    {
+      id: 'ARosTXeWGXp17QyfZgSKB',
+      name: 'Outbound Parking',
+      type: 'parking-lane',
+      surface: 'concrete',
+      color: '#dddddd',
+      level: 0,
+      width: 2.438, // Original 8ft
+      direction: 'outbound',
+      generated: {
+        clones: [
+          {
+            mode: 'random',
+            modelsArray: 'sedan-rig, self-driving-waymo-car, suv-rig',
+            spacing: 6,
+            count: 6
+          }
+        ],
+        stencil: [
+          {
+            model: 'parking-t',
+            cycleOffset: 1,
+            spacing: 6
+          }
+        ]
+      }
+    },
+    {
+      id: '2p_cReSRF4748HV9Fyejr',
+      name: 'Modern Street Lamp',
+      type: 'sidewalk',
+      surface: 'sidewalk',
+      color: '#ffffff',
+      level: 1,
+      width: 0.914, // Original 3ft
+      direction: 'none',
+      generated: {
+        clones: [
+          {
+            mode: 'fixed',
+            model: 'lamp-modern',
+            spacing: 30,
+            facing: 180
+          }
+        ]
+      }
+    },
+    {
+      id: 'vL9qDNp5neZt32zlZ9ExG',
+      name: 'Tree Planting Strip',
+      type: 'sidewalk',
+      surface: 'sidewalk',
+      color: '#ffffff',
+      level: 1,
+      width: 0.914, // Original 3ft
+      direction: 'none',
+      generated: {
+        clones: [
+          {
+            mode: 'fixed',
+            model: 'tree3',
+            spacing: 15
+          }
+        ]
+      }
+    },
+    {
+      id: 'RClRRZoof9_BYnqQm7mz-',
+      name: 'Normal Sidewalk',
+      type: 'sidewalk',
+      surface: 'sidewalk',
+      color: '#ffffff',
+      level: 1,
+      width: 1.829, // Original 6ft
+      direction: 'none',
+      generated: {
+        pedestrians: [
+          {
+            density: 'normal'
+          }
+        ]
+      }
+    }
+  ]
+};
+
+export const stroad94ftROW = {
+  id: 'a55d288c-215d-49a2-b67f-3efb9ec9ff41',
+  name: '94ft Right of Way 70ft Road Width',
+  width: 28.651, // Original 94ft converted to meters
+  length: 100,
+  justifyWidth: 'center',
+  justifyLength: 'start',
+  segments: [
+    {
+      id: 'JCWzsLQHmyfDHzQhi9_pU',
+      name: 'Dense Sidewalk',
+      type: 'sidewalk',
+      surface: 'sidewalk',
+      color: '#ffffff',
+      level: 1,
+      width: 1.829, // Original 6ft
+      direction: 'none',
+      generated: {
+        pedestrians: [
+          {
+            density: 'dense'
+          }
+        ]
+      }
+    },
+    {
+      id: 'RsLZFtSi3oJH7uufQ5rc4',
+      name: 'Tree Planting Strip',
+      type: 'sidewalk',
+      surface: 'sidewalk',
+      color: '#ffffff',
+      level: 1,
+      width: 0.914, // Original 3ft
+      direction: 'none',
+      generated: {
+        clones: [
+          {
+            mode: 'fixed',
+            model: 'tree3',
+            spacing: 15
+          }
+        ]
+      }
+    },
+    {
+      id: 'X2tAKuwUDc728RIPfhJUS',
+      name: 'Modern Street Lamp',
+      type: 'sidewalk',
+      surface: 'sidewalk',
+      color: '#ffffff',
+      level: 1,
+      width: 0.914, // Original 3ft
+      direction: 'none',
+      generated: {
+        clones: [
+          {
+            mode: 'fixed',
+            model: 'lamp-modern',
+            spacing: 30,
+            facing: 0
+          }
+        ]
+      }
+    },
+    {
+      id: 'GbEHhCMPmVom_IJK-xIn3',
+      name: 'Inbound Parking',
+      type: 'parking-lane',
+      surface: 'concrete',
+      color: '#dddddd',
+      level: 0,
+      width: 2.438, // Original 8ft
+      direction: 'inbound',
+      generated: {
+        clones: [
+          {
+            mode: 'random',
+            modelsArray: 'sedan-rig, self-driving-waymo-car, suv-rig',
+            spacing: 6,
+            count: 6
+          }
+        ],
+        stencil: [
+          {
+            model: 'parking-t',
+            cycleOffset: 1,
+            spacing: 6
+          }
+        ]
+      }
+    },
+    {
+      id: 'z4gZgzYoM7sQ7mzIV01PC',
+      name: 'Inbound Drive Lane 1',
+      type: 'drive-lane',
+      surface: 'asphalt',
+      color: '#ffffff',
+      level: 0,
+      width: 3.353, // Original 11ft
+      direction: 'inbound',
+      generated: {
+        clones: [
+          {
+            mode: 'random',
+            modelsArray:
+              'sedan-rig, box-truck-rig, self-driving-waymo-car, suv-rig, motorbike',
+            spacing: 7.3,
+            count: 4
+          }
+        ]
+      }
+    },
+    {
+      id: 'n9A8XDtjRSpgxElVhxoWB',
+      name: 'Inbound Drive Lane 2',
+      type: 'drive-lane',
+      surface: 'asphalt',
+      color: '#ffffff',
+      level: 0,
+      width: 3.353, // Original 11ft
+      direction: 'inbound',
+      generated: {
+        clones: [
+          {
+            mode: 'random',
+            modelsArray:
+              'sedan-rig, box-truck-rig, self-driving-waymo-car, suv-rig, motorbike',
+            spacing: 7.3,
+            count: 4
+          }
+        ]
+      }
+    },
+    {
+      id: 'zUl55HA-DUaJpyQEelUhW',
+      name: 'Center Turn Lane',
+      type: 'drive-lane',
+      surface: 'asphalt',
+      color: '#ffffff',
+      level: 0,
+      width: 3.048, // Original 10ft
+      generated: {
+        stencil: [
+          {
+            model: 'left',
+            cycleOffset: 0.6,
+            spacing: 20,
+            direction: 'outbound'
+          },
+          {
+            model: 'left',
+            cycleOffset: 0.4,
+            spacing: 20,
+            direction: 'inbound'
+          }
+        ],
+        striping: [
+          {
+            striping: 'solid-dashed-yellow'
+          },
+          {
+            striping: 'solid-dashed-yellow-mirror',
+            side: 'right'
+          }
+        ]
+      }
+    },
+    {
+      id: 'O08G5Br9w6vwdomdhUmwk',
+      name: 'Outbound Drive Lane 1',
+      type: 'drive-lane',
+      surface: 'asphalt',
+      color: '#ffffff',
+      level: 0,
+      width: 3.353, // Original 11ft
+      direction: 'outbound',
+      generated: {
+        clones: [
+          {
+            mode: 'random',
+            modelsArray:
+              'sedan-rig, box-truck-rig, self-driving-waymo-car, suv-rig, motorbike',
+            spacing: 7.3,
+            count: 4
+          }
+        ],
+        striping: [
+          {
+            striping: 'none'
+          }
+        ]
+      }
+    },
+    {
+      id: '1w9jjehQwnvBfJeSVOd6M',
+      name: 'Outbound Drive Lane 2',
+      type: 'drive-lane',
+      surface: 'asphalt',
+      color: '#ffffff',
+      level: 0,
+      width: 3.353, // Original 11ft
+      direction: 'outbound',
+      generated: {
+        clones: [
+          {
+            mode: 'random',
+            modelsArray:
+              'sedan-rig, box-truck-rig, self-driving-waymo-car, suv-rig, motorbike',
+            spacing: 7.3,
+            count: 4
+          }
+        ]
+      }
+    },
+    {
+      id: 'ARosTXeWGXp17QyfZgSKB',
+      name: 'Outbound Parking',
+      type: 'parking-lane',
+      surface: 'concrete',
+      color: '#dddddd',
+      level: 0,
+      width: 2.438, // Original 8ft
+      direction: 'outbound',
+      generated: {
+        clones: [
+          {
+            mode: 'random',
+            modelsArray: 'sedan-rig, self-driving-waymo-car, suv-rig',
+            spacing: 6,
+            count: 6
+          }
+        ],
+        stencil: [
+          {
+            model: 'parking-t',
+            cycleOffset: 1,
+            spacing: 6
+          }
+        ]
+      }
+    },
+    {
+      id: '2p_cReSRF4748HV9Fyejr',
+      name: 'Modern Street Lamp',
+      type: 'sidewalk',
+      surface: 'sidewalk',
+      color: '#ffffff',
+      level: 1,
+      width: 0.914, // Original 3ft
+      direction: 'none',
+      generated: {
+        clones: [
+          {
+            mode: 'fixed',
+            model: 'lamp-modern',
+            spacing: 30,
+            facing: 180
+          }
+        ]
+      }
+    },
+    {
+      id: 'vL9qDNp5neZt32zlZ9ExG',
+      name: 'Tree Planting Strip',
+      type: 'sidewalk',
+      surface: 'sidewalk',
+      color: '#ffffff',
+      level: 1,
+      width: 0.914, // Original 3ft
+      direction: 'none',
+      generated: {
+        clones: [
+          {
+            mode: 'fixed',
+            model: 'tree3',
+            spacing: 15
+          }
+        ]
+      }
+    },
+    {
+      id: 'RClRRZoof9_BYnqQm7mz-',
+      name: 'Normal Sidewalk',
+      type: 'sidewalk',
+      surface: 'sidewalk',
+      color: '#ffffff',
+      level: 1,
+      width: 1.829, // Original 6ft
+      direction: 'none',
+      generated: {
+        pedestrians: [
+          {
+            density: 'normal'
+          }
+        ]
+      }
+    }
+  ]
+};
+
+export const stroad150ftROW = {
+  id: 'f8eeb25c-f68c-4f0b-9435-3f87e6be705a',
+  name: '150ft Right of Way 124ft Road Width',
+  width: 45.72, // Original 150ft converted to meters
+  length: 100,
+  justifyWidth: 'center',
+  justifyLength: 'start',
+  segments: [
+    {
+      id: 'JCWzsLQHmyfDHzQhi9_pU',
+      name: 'Dense Sidewalk',
+      type: 'sidewalk',
+      surface: 'sidewalk',
+      color: '#ffffff',
+      level: 1,
+      width: 2.134, // Original 7ft
+      direction: 'none',
+      generated: {
+        pedestrians: [
+          {
+            density: 'dense'
+          }
+        ]
+      }
+    },
+    {
+      id: 'RsLZFtSi3oJH7uufQ5rc4',
+      name: 'Tree Planting Strip',
+      type: 'sidewalk',
+      surface: 'sidewalk',
+      color: '#ffffff',
+      level: 1,
+      width: 0.914, // Original 3ft
+      direction: 'none',
+      generated: {
+        clones: [
+          {
+            mode: 'fixed',
+            model: 'tree3',
+            spacing: 15
+          }
+        ]
+      }
+    },
+    {
+      id: 'X2tAKuwUDc728RIPfhJUS',
+      name: 'Modern Street Lamp',
+      type: 'sidewalk',
+      surface: 'sidewalk',
+      color: '#ffffff',
+      level: 1,
+      width: 0.914, // Original 3ft
+      direction: 'none',
+      generated: {
+        clones: [
+          {
+            mode: 'fixed',
+            model: 'lamp-modern',
+            spacing: 30,
+            facing: 0
+          }
+        ]
+      }
+    },
+    {
+      id: 'GbEHhCMPmVom_IJK-xIn3',
+      name: 'Inbound Parking',
+      type: 'parking-lane',
+      surface: 'concrete',
+      color: '#dddddd',
+      level: 0,
+      width: 2.438, // Original 8ft
+      direction: 'inbound',
+      generated: {
+        clones: [
+          {
+            mode: 'random',
+            modelsArray: 'sedan-rig, self-driving-waymo-car, suv-rig',
+            spacing: 6,
+            count: 6
+          }
+        ],
+        stencil: [
+          {
+            model: 'parking-t',
+            cycleOffset: 1,
+            spacing: 6
+          }
+        ]
+      }
+    },
+    {
+      id: 'vLBLQS2VraoTL2sJRmD4J',
+      name: 'Inbound Left Turn Lane',
+      type: 'drive-lane',
+      surface: 'asphalt',
+      color: '#ffffff',
+      level: 0,
+      width: 3.048, // Original 10ft
+      direction: 'inbound',
+      generated: {
+        clones: [
+          {
+            mode: 'random',
+            modelsArray: 'sedan-rig, suv-rig',
+            spacing: 20,
+            count: 2
+          }
+        ],
+        stencil: [
+          {
+            model: 'turn-lane-left',
+            cycleOffset: 1,
+            spacing: 20
+          }
+        ]
+      }
+    },
+    {
+      id: 'z4gZgzYoM7sQ7mzIV01PC',
+      name: 'Inbound Drive Lane 1',
+      type: 'drive-lane',
+      surface: 'asphalt',
+      color: '#ffffff',
+      level: 0,
+      width: 3.353, // Original 11ft
+      direction: 'inbound',
+      generated: {
+        clones: [
+          {
+            mode: 'random',
+            modelsArray:
+              'sedan-rig, self-driving-waymo-car, suv-rig, motorbike',
+            spacing: 7.3,
+            count: 4
+          }
+        ]
+      }
+    },
+    {
+      id: '3a42u-6x8OsoGsI7bjb4z',
+      name: 'Inbound Truck Lane',
+      type: 'drive-lane',
+      surface: 'asphalt',
+      color: '#ffffff',
+      level: 0,
+      width: 3.353, // Original 11ft
+      direction: 'inbound',
+      generated: {
+        clones: [
+          {
+            mode: 'random',
+            modelsArray: 'box-truck-rig, trailer-truck-rig',
+            spacing: 15,
+            count: 2
+          }
+        ]
+      }
+    },
+    {
+      id: 'n9A8XDtjRSpgxElVhxoWB',
+      name: 'Inbound Drive Lane 2',
+      type: 'drive-lane',
+      surface: 'asphalt',
+      color: '#ffffff',
+      level: 0,
+      width: 3.353, // Original 11ft
+      direction: 'inbound',
+      generated: {
+        clones: [
+          {
+            mode: 'random',
+            modelsArray:
+              'sedan-rig, self-driving-waymo-car, suv-rig, motorbike',
+            spacing: 7.3,
+            count: 4
+          }
+        ]
+      }
+    },
+    {
+      id: 'E1UvC71Nkre2H2-hg2gMd',
+      name: 'Inbound Right Turn Lane',
+      type: 'drive-lane',
+      surface: 'asphalt',
+      color: '#ffffff',
+      level: 0,
+      width: 3.048, // Original 10ft
+      direction: 'inbound',
+      generated: {
+        clones: [
+          {
+            mode: 'random',
+            modelsArray: 'sedan-rig, suv-rig',
+            spacing: 20,
+            count: 2
+          }
+        ],
+        stencil: [
+          {
+            model: 'turn-lane-right',
+            cycleOffset: 1,
+            spacing: 20
+          }
+        ]
+      }
+    },
+    {
+      id: 'WisaQ2Pfc5K51O8k_Mrnb',
+      name: 'Planted Median',
+      type: 'divider',
+      surface: 'planting-strip',
+      color: '#338833',
+      level: 1,
+      width: 0.61, // Original 2ft
+      direction: 'none',
+      generated: {
+        clones: [
+          {
+            mode: 'fixed',
+            model: 'flowers1',
+            spacing: 3
+          }
+        ]
+      }
+    },
+    {
+      id: 'qvQftgSPmiA7afQles5EK',
+      name: 'Outbound Left Turn Lane',
+      type: 'drive-lane',
+      surface: 'asphalt',
+      color: '#ffffff',
+      level: 0,
+      width: 3.048, // Original 10ft
+      direction: 'outbound',
+      generated: {
+        clones: [
+          {
+            mode: 'random',
+            modelsArray: 'sedan-rig, suv-rig',
+            spacing: 20,
+            count: 2
+          }
+        ],
+        stencil: [
+          {
+            model: 'turn-lane-left',
+            cycleOffset: 1,
+            spacing: 20
+          }
+        ]
+      }
+    },
+    {
+      id: 'O08G5Br9w6vwdomdhUmwk',
+      name: 'Outbound Drive Lane 1',
+      type: 'drive-lane',
+      surface: 'asphalt',
+      color: '#ffffff',
+      level: 0,
+      width: 3.353, // Original 11ft
+      direction: 'outbound',
+      generated: {
+        clones: [
+          {
+            mode: 'random',
+            modelsArray:
+              'sedan-rig, self-driving-waymo-car, suv-rig, motorbike',
+            spacing: 7.3,
+            count: 4
+          }
+        ]
+      }
+    },
+    {
+      id: '1w9jjehQwnvBfJeSVOd6M',
+      name: 'Outbound Truck Lane',
+      type: 'drive-lane',
+      surface: 'asphalt',
+      color: '#ffffff',
+      level: 0,
+      width: 3.353, // Original 11ft
+      direction: 'outbound',
+      generated: {
+        clones: [
+          {
+            mode: 'random',
+            modelsArray: 'box-truck-rig, trailer-truck-rig',
+            spacing: 15,
+            count: 2
+          }
+        ]
+      }
+    },
+    {
+      id: 'RnfgVJLk2oJv7QTW_s3WR',
+      name: 'Outbound Drive Lane 2',
+      type: 'drive-lane',
+      surface: 'asphalt',
+      color: '#ffffff',
+      level: 0,
+      width: 3.353, // Original 11ft
+      direction: 'outbound',
+      generated: {
+        clones: [
+          {
+            mode: 'random',
+            modelsArray:
+              'sedan-rig, self-driving-waymo-car, suv-rig, motorbike',
+            spacing: 7.3,
+            count: 4
+          }
+        ]
+      }
+    },
+    {
+      id: 'va_9kr_Dtr9q8ddlzAl02',
+      name: 'Outbound Right Turn Lane',
+      type: 'drive-lane',
+      surface: 'asphalt',
+      color: '#ffffff',
+      level: 0,
+      width: 3.048, // Original 10ft
+      direction: 'outbound',
+      generated: {
+        clones: [
+          {
+            mode: 'random',
+            modelsArray: 'sedan-rig, suv-rig',
+            spacing: 20,
+            count: 2
+          }
+        ],
+        stencil: [
+          {
+            model: 'turn-lane-right',
+            cycleOffset: 1,
+            spacing: 20
+          }
+        ]
+      }
+    },
+    {
+      id: 'ARosTXeWGXp17QyfZgSKB',
+      name: 'Outbound Parking',
+      type: 'parking-lane',
+      surface: 'concrete',
+      color: '#dddddd',
+      level: 0,
+      width: 2.438, // Original 8ft
+      direction: 'outbound',
+      generated: {
+        clones: [
+          {
+            mode: 'random',
+            modelsArray: 'sedan-rig, self-driving-waymo-car, suv-rig',
+            spacing: 6,
+            count: 6
+          }
+        ],
+        stencil: [
+          {
+            model: 'parking-t',
+            cycleOffset: 1,
+            spacing: 6
+          }
+        ]
+      }
+    },
+    {
+      id: '2p_cReSRF4748HV9Fyejr',
+      name: 'Modern Street Lamp',
+      type: 'sidewalk',
+      surface: 'sidewalk',
+      color: '#ffffff',
+      level: 1,
+      width: 0.914, // Original 3ft
+      direction: 'none',
+      generated: {
+        clones: [
+          {
+            mode: 'fixed',
+            model: 'lamp-modern',
+            spacing: 30,
+            facing: 180
+          }
+        ]
+      }
+    },
+    {
+      id: 'vL9qDNp5neZt32zlZ9ExG',
+      name: 'Tree Planting Strip',
+      type: 'sidewalk',
+      surface: 'sidewalk',
+      color: '#ffffff',
+      level: 1,
+      width: 0.914, // Original 3ft
+      direction: 'none',
+      generated: {
+        clones: [
+          {
+            mode: 'fixed',
+            model: 'tree3',
+            spacing: 15
+          }
+        ]
+      }
+    },
+    {
+      id: 'RClRRZoof9_BYnqQm7mz-',
+      name: 'Normal Sidewalk',
+      type: 'sidewalk',
+      surface: 'sidewalk',
+      color: '#ffffff',
+      level: 1,
+      width: 2.134, // Original 7ft
+      direction: 'none',
+      generated: {
+        pedestrians: [
+          {
+            density: 'normal'
+          }
+        ]
+      }
+    }
+  ]
+};
