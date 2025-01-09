@@ -20,14 +20,10 @@ AFRAME.registerComponent('street-label', {
     // Create and setup canvas
     this.createAndSetupCanvas();
 
-    // Listen for segment changes
-    this.el.addEventListener('segments-changed', this.updateLabels.bind(this));
-
-    // Listen for alignment changes
-    this.el.addEventListener('alignment-changed', this.updateLabels.bind(this));
-
-    // Initial update
-    this.updateLabels();
+    // Listen for segment & alignment changes
+    this.updateLabels = this.updateLabels.bind(this);
+    this.el.addEventListener('segments-changed', this.updateLabels);
+    this.el.addEventListener('alignment-changed', this.updateLabels);
 
     // Handle loading from saved scene
     setTimeout(() => {
@@ -64,9 +60,9 @@ AFRAME.registerComponent('street-label', {
     const labelsArray = [];
 
     segments.forEach((segmentEl) => {
-      if (!segmentEl.getAttribute('street-segment')) return;
+      const segmentWidth = segmentEl.getAttribute('street-segment')?.width;
+      if (!segmentWidth) return;
 
-      const segmentWidth = segmentEl.getAttribute('street-segment').width;
       widthsArray.push(segmentWidth);
       labelsArray.push(segmentEl.getAttribute('data-layer-name') || '');
     });
