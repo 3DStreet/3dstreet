@@ -139,10 +139,6 @@ AFRAME.registerComponent('street', {
 
     // the scene has been loaded, set the synchronize flag
     this.el.setAttribute('street', 'synchronize', false);
-    // setTimeout(() => {
-    //   console.log('trigger saveScene from street component');
-    //   useStore.getState().saveScene(true);
-    // }, 1000);
   }
 });
 
