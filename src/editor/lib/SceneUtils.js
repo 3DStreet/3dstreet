@@ -91,18 +91,30 @@ export function convertToObject() {
   }
 }
 
-export function makeScreenshot() {
-  const screenshotEl = document.getElementById('screenshot');
-  screenshotEl.play();
+export async function makeScreenshot() {
+  await new Promise((resolve, reject) => {
+    const screenshotEl = document.getElementById('screenshot');
+    screenshotEl.play();
 
-  screenshotEl.setAttribute('screentock', 'type', 'img');
-  screenshotEl.setAttribute(
-    'screentock',
-    'imgElementSelector',
-    '#screentock-destination'
-  );
-  // take the screenshot
-  screenshotEl.setAttribute('screentock', 'takeScreenshot', true);
+    const screentockImgElement = document.getElementById(
+      'screentock-destination'
+    );
+    screentockImgElement.addEventListener(
+      'load',
+      () => {
+        resolve();
+      },
+      { once: true }
+    );
+    screenshotEl.setAttribute('screentock', 'type', 'img');
+    screenshotEl.setAttribute(
+      'screentock',
+      'imgElementSelector',
+      '#screentock-destination'
+    );
+    // take the screenshot
+    screenshotEl.setAttribute('screentock', 'takeScreenshot', true);
+  });
 }
 
 export async function saveScene(currentUser, doSaveAs) {
@@ -177,7 +189,9 @@ export async function saveScene(currentUser, doSaveAs) {
 export async function saveSceneWithScreenshot(currentUser, doSaveAs) {
   const currentSceneId = await saveScene(currentUser, doSaveAs);
   if (currentSceneId) {
-    makeScreenshot();
+    // wait a bit for models to be loaded, may not be enough...
+    await new Promise((resolve) => setTimeout(resolve, 2000));
+    await makeScreenshot();
     uploadThumbnailImage(currentSceneId);
   }
 }
