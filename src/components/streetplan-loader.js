@@ -2,8 +2,6 @@
 import useStore from '../store.js';
 var streetplanUtils = require('../streetplan/streetplan-utils.js');
 
-const state = useStore.getState();
-
 AFRAME.registerComponent('streetplan-loader', {
   dependencies: ['street'],
   schema: {
@@ -34,6 +32,7 @@ AFRAME.registerComponent('streetplan-loader', {
       // Update layer name with project and street names
       el.setAttribute('data-layer-name', `StreetPlan • ${streetplanName}`);
 
+      const state = useStore.getState();
       if (!state.sceneTitle) {
         state.setSceneTitle(streetplanName);
       }

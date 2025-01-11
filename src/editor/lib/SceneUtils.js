@@ -6,6 +6,11 @@ import {
   uploadThumbnailImage
 } from '@/editor/api/scene';
 
+export function createBlankScene() {
+  STREET.utils.newScene();
+  AFRAME.scenes[0].emit('newScene');
+}
+
 export function inputStreetmix() {
   const streetmixURL = prompt(
     'Please enter a Streetmix URL',
@@ -20,14 +25,19 @@ export function inputStreetmix() {
     window.location.hash = streetmixURL;
   });
 
+  AFRAME.scenes[0].addEventListener('streetmix-loader-street-loaded', () => {
+    // setTimeout very important here, otherwise all entities are positionned at 0,0,0 when reloading the scene
+    setTimeout(() => {
+      AFRAME.scenes[0].emit('newScene');
+    });
+  });
+
   const defaultStreetEl = document.getElementById('default-street');
   defaultStreetEl.setAttribute(
     'streetmix-loader',
     'streetmixStreetURL',
     streetmixURL
   );
-
-  AFRAME.scenes[0].emit('newScene');
 }
 
 export function createElementsForScenesFromJSON(streetData) {
@@ -44,7 +54,6 @@ export function createElementsForScenesFromJSON(streetData) {
 
   STREET.utils.createEntities(streetData, streetContainerEl);
   AFRAME.scenes[0].emit('newScene');
-  AFRAME.INSPECTOR.selectEntity(null);
 }
 
 export function fileJSON(event) {
