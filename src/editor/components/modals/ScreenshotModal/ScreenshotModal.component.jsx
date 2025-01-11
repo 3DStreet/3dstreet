@@ -42,8 +42,6 @@ const getSceneName = (scene) => {
 function ScreenshotModal() {
   const setModal = useStore((state) => state.setModal);
   const modal = useStore((state) => state.modal);
-  const storedScreenshot = localStorage.getItem('screenshot');
-  const parsedScreenshot = JSON.parse(storedScreenshot);
   const { currentUser } = useAuthContext();
 
   const sceneId = STREET.utils.getCurrentSceneId();
@@ -203,10 +201,9 @@ function ScreenshotModal() {
           )}
         </div>
         <div className={styles.imageWrapper}>
-          <div
-            className={styles.screenshotWrapper}
-            dangerouslySetInnerHTML={{ __html: parsedScreenshot }}
-          />
+          <div className={styles.screenshotWrapper}>
+            <img id="screentock-destination" />
+          </div>
         </div>
       </div>
     </Modal>
