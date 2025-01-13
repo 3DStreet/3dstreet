@@ -2,10 +2,12 @@
 import 'aframe-cursor-teleport-component';
 import 'aframe-extras/controls/index.js';
 import useStore from './store.js';
-require('./json-utils_1.1.js');
+import * as streetUtils from './street-utils.js';
+require('./json-utils_1.1.js'); // this defines STREET.utils
+STREET.utils.newScene = streetUtils.newScene;
 var streetmixParsers = require('./aframe-streetmix-parsers');
 var streetmixUtils = require('./tested/streetmix-utils');
-var streetUtils = require('./street-utils.js');
+
 require('./components/gltf-part');
 require('./components/ocean');
 require('./components/svg-extruder.js');
@@ -30,8 +32,6 @@ require('./components/street-generated-rail.js');
 require('./components/street-generated-clones.js');
 require('./editor/index.js');
 var firebase = require('./editor/services/firebase.js');
-
-const state = useStore.getState();
 
 if (typeof VERSION !== 'undefined') {
   console.log(`3DStreet Version: ${VERSION}`);
@@ -139,9 +139,6 @@ AFRAME.registerComponent('street', {
 
     // the scene has been loaded, set the synchronize flag
     this.el.setAttribute('street', 'synchronize', false);
-    setTimeout(() => {
-      state.saveScene(true);
-    }, 1000);
   }
 });
 
@@ -210,6 +207,8 @@ AFRAME.registerComponent('streetmix-loader', {
         const streetmixName = streetmixResponseObject.name;
 
         el.setAttribute('streetmix-loader', 'name', streetmixName);
+
+        const state = useStore.getState();
         if (!state.sceneTitle) {
           state.setSceneTitle(streetmixName);
         }

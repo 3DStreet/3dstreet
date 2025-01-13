@@ -6,6 +6,11 @@ import {
   uploadThumbnailImage
 } from '@/editor/api/scene';
 
+export function createBlankScene() {
+  STREET.utils.newScene();
+  AFRAME.scenes[0].emit('newScene');
+}
+
 export function inputStreetmix() {
   const streetmixURL = prompt(
     'Please enter a Streetmix URL',
@@ -20,14 +25,19 @@ export function inputStreetmix() {
     window.location.hash = streetmixURL;
   });
 
+  AFRAME.scenes[0].addEventListener('streetmix-loader-street-loaded', () => {
+    // setTimeout very important here, otherwise all entities are positionned at 0,0,0 when reloading the scene
+    setTimeout(() => {
+      AFRAME.scenes[0].emit('newScene');
+    });
+  });
+
   const defaultStreetEl = document.getElementById('default-street');
   defaultStreetEl.setAttribute(
     'streetmix-loader',
     'streetmixStreetURL',
     streetmixURL
   );
-
-  AFRAME.scenes[0].emit('newScene');
 }
 
 export function createElementsForScenesFromJSON(streetData) {
@@ -44,7 +54,6 @@ export function createElementsForScenesFromJSON(streetData) {
 
   STREET.utils.createEntities(streetData, streetContainerEl);
   AFRAME.scenes[0].emit('newScene');
-  AFRAME.INSPECTOR.selectEntity(null);
 }
 
 export function fileJSON(event) {
@@ -82,21 +91,30 @@ export function convertToObject() {
   }
 }
 
-export function makeScreenshot() {
-  const imgHTML = '<img id="screentock-destination">';
-  // Set the screenshot in local storage
-  localStorage.setItem('screenshot', JSON.stringify(imgHTML));
-  const screenshotEl = document.getElementById('screenshot');
-  screenshotEl.play();
+export async function makeScreenshot() {
+  await new Promise((resolve, reject) => {
+    const screenshotEl = document.getElementById('screenshot');
+    screenshotEl.play();
 
-  screenshotEl.setAttribute('screentock', 'type', 'img');
-  screenshotEl.setAttribute(
-    'screentock',
-    'imgElementSelector',
-    '#screentock-destination'
-  );
-  // take the screenshot
-  screenshotEl.setAttribute('screentock', 'takeScreenshot', true);
+    const screentockImgElement = document.getElementById(
+      'screentock-destination'
+    );
+    screentockImgElement.addEventListener(
+      'load',
+      () => {
+        resolve();
+      },
+      { once: true }
+    );
+    screenshotEl.setAttribute('screentock', 'type', 'img');
+    screenshotEl.setAttribute(
+      'screentock',
+      'imgElementSelector',
+      '#screentock-destination'
+    );
+    // take the screenshot
+    screenshotEl.setAttribute('screentock', 'takeScreenshot', true);
+  });
 }
 
 export async function saveScene(currentUser, doSaveAs) {
@@ -171,7 +189,9 @@ export async function saveScene(currentUser, doSaveAs) {
 export async function saveSceneWithScreenshot(currentUser, doSaveAs) {
   const currentSceneId = await saveScene(currentUser, doSaveAs);
   if (currentSceneId) {
-    makeScreenshot();
+    // wait a bit for models to be loaded, may not be enough...
+    await new Promise((resolve) => setTimeout(resolve, 2000));
+    await makeScreenshot();
     uploadThumbnailImage(currentSceneId);
   }
 }
