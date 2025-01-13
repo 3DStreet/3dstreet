@@ -51,14 +51,6 @@ export const Save = ({ currentUser }) => {
       handleSave(doSaveAs);
     }
   }, [isSavingScene]); // eslint-disable-line react-hooks/exhaustive-deps
-  // if (isSavingScene) {
-  // // Events.on('historychanged', (cmd) => {
-  // //   if (cmd) {
-  // //     // Debounce the cloudSaveHandler call
-
-  // //     // this.debouncedCloudSaveHandler();
-  // //   }
-  // // });
 
   const toggleSaveActionState = () => {
     setIsSaveActionActive(!isSaveActionActive);
