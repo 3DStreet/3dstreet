@@ -529,6 +529,11 @@ AFRAME.registerComponent('set-loader-from-hash', {
           'streetmixStreetURL',
           streetURL
         );
+
+        setTimeout(() => {
+          console.log('trigger saveScene from street component');
+          useStore.getState().saveScene(true);
+        }, 3000);
       } else if (streetURL.includes('streetplan.net/')) {
         // instead, load streetplan via managed street the new addlayerpanel
         console.log(
@@ -552,6 +557,10 @@ AFRAME.registerComponent('set-loader-from-hash', {
 
           setTimeout(() => {
             AFRAME.INSPECTOR.execute('entitycreate', definition);
+            setTimeout(() => {
+              console.log('trigger saveScene from street component');
+              useStore.getState().saveScene(true);
+            }, 3000);
           }, 1000);
         }
       } else {
