@@ -18,7 +18,6 @@ require('./components/notify.js');
 require('./components/create-from-json');
 require('./components/screentock.js');
 require('aframe-atlas-uvs-component');
-require('./components/streetplan-loader');
 require('./components/street-geo.js');
 require('./components/street-environment.js');
 require('./components/intersection.js');
@@ -30,6 +29,10 @@ require('./components/street-generated-striping.js');
 require('./components/street-generated-pedestrians.js');
 require('./components/street-generated-rail.js');
 require('./components/street-generated-clones.js');
+require('./components/polygon-offset.js');
+require('./components/street-align.js');
+require('./components/street-ground.js');
+require('./components/street-label.js');
 require('./editor/index.js');
 var firebase = require('./editor/services/firebase.js');
 
