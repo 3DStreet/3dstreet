@@ -1,4 +1,5 @@
 import useStore from './store';
+import { createUniqueId } from './editor/lib/entity';
 
 /* global AFRAME, Node */
 /* version: 1.0 */
@@ -529,18 +530,30 @@ AFRAME.registerComponent('set-loader-from-hash', {
           streetURL
         );
       } else if (streetURL.includes('streetplan.net/')) {
-        // load from Streetplan encoded JSON in URL
+        // instead, load streetplan via managed street the new addlayerpanel
         console.log(
           '[set-loader-from-hash]',
-          'Set streetplan-loader streetplanAPIURL to',
+          'Create new Managed Street with StreetPlan URL',
           streetURL
         );
+        if (streetURL && streetURL !== '') {
+          const definition = {
+            id: createUniqueId(),
+            components: {
+              'managed-street': {
+                sourceType: 'streetplan-url',
+                sourceValue: streetURL,
+                showVehicles: true,
+                showStriping: true,
+                synchronize: true
+              }
+            }
+          };
 
-        this.el.setAttribute(
-          'streetplan-loader',
-          'streetplanAPIURL',
-          streetURL
-        );
+          setTimeout(() => {
+            AFRAME.INSPECTOR.execute('entitycreate', definition);
+          }, 1000);
+        }
       } else {
         // try to load JSON file from remote resource
         console.log(
