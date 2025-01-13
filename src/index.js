@@ -16,7 +16,6 @@ require('./components/notify.js');
 require('./components/create-from-json');
 require('./components/screentock.js');
 require('aframe-atlas-uvs-component');
-require('./components/streetplan-loader');
 require('./components/street-geo.js');
 require('./components/street-environment.js');
 require('./components/intersection.js');
