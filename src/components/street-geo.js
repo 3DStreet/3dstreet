@@ -135,6 +135,8 @@ AFRAME.registerComponent('street-geo', {
       if (data.enableClipping) {
         google3dElement.setAttribute('obb-clipping', '');
       }
+      google3dElement.setAttribute('tiles-material-change', 'opacity: 0.5');
+
       google3dElement.setAttribute('data-layer-name', 'Google 3D Tiles');
       google3dElement.setAttribute('data-no-transform', '');
       google3dElement.setAttribute('loader-3dtiles', {
