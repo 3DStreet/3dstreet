@@ -39,9 +39,6 @@ const ManagedStreetSidebar = ({ entity }) => {
                   isSingle={false}
                   entity={entity}
                 />
-                <div className="propertyRow">
-                  <div className="text">-----</div>
-                </div>
               </>
             )}
         </div>
