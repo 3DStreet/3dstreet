@@ -300,7 +300,7 @@ function createSidewalkClonedVariants(
     10
   );
   const dividerParentEl = createParentElement('pedestrians-parent');
-  dividerParentEl.setAttribute('position', { y: elevationPosY });
+  dividerParentEl.setAttribute('position', { x: 0, y: elevationPosY, z: 0 });
   // Randomly generate avatars
   for (let i = 0; i < totalPedestrianNumber; i++) {
     const variantName =
@@ -690,7 +690,7 @@ function createOutdoorDining(length, posY) {
     reusableObjectEl.setAttribute('mixin', 'outdoor_dining');
 
     // const positionZ = randomPosition(reusableObjectEl, 'z', length, outdorDiningLength);
-    reusableObjectEl.setAttribute('position', { y: posY, z: randPosZ });
+    reusableObjectEl.setAttribute('position', { x: 0, y: posY, z: randPosZ });
     outdoorDiningParentEl.append(reusableObjectEl);
   });
 
@@ -729,7 +729,7 @@ function createMicroMobilityElement(
     const reusableObjectEl = document.createElement('a-entity');
     const rotationY = variantList[0] === 'inbound' ? 0 : 180;
     reusableObjectEl.setAttribute('rotation', '0 ' + rotationY + ' 0');
-    reusableObjectEl.setAttribute('position', { y: posY, z: randPosZ });
+    reusableObjectEl.setAttribute('position', { x: 0, y: posY, z: randPosZ });
 
     if (animated) {
       reusableObjectEl.setAttribute('animation-mixer', '');
@@ -774,7 +774,7 @@ function createFlexZoneElement(variantList, length, showVehicles = true) {
     } else if (variantList[0] === 'rideshare') {
       reusableObjectEl.setAttribute('mixin', 'sedan-rig');
     }
-    reusableObjectEl.setAttribute('position', { z: randPosZ });
+    reusableObjectEl.setAttribute('position', { x: 0, y: 0, z: randPosZ });
     flexZoneParentEl.append(reusableObjectEl);
   });
 
@@ -823,7 +823,7 @@ function createBenchesParentElement() {
 function createBikeRacksParentElement(posY) {
   const placedObjectEl = document.createElement('a-entity');
   placedObjectEl.setAttribute('class', 'bikerack-parent');
-  placedObjectEl.setAttribute('position', { y: posY, z: -3.5 });
+  placedObjectEl.setAttribute('position', { x: 0, y: posY, z: -3.5 });
   return placedObjectEl;
 }
 
@@ -833,7 +833,7 @@ function createBikeShareStationElement(variantList, posY) {
   placedObjectEl.setAttribute('mixin', 'bikeshare');
   const rotationCloneY = variantList[0] === 'left' ? 90 : 270;
   placedObjectEl.setAttribute('rotation', '0 ' + rotationCloneY + ' 0');
-  placedObjectEl.setAttribute('position', { y: posY });
+  placedObjectEl.setAttribute('position', { x: 0, y: posY, z: 0 });
   return placedObjectEl;
 }
 
@@ -875,7 +875,7 @@ function createBusStopElement(rotationBusStopY, posY) {
   placedObjectEl.setAttribute('class', 'bus-stop');
   placedObjectEl.setAttribute('rotation', '0 ' + rotationBusStopY + ' 0');
   placedObjectEl.setAttribute('mixin', 'bus-stop');
-  placedObjectEl.setAttribute('position', { y: posY });
+  placedObjectEl.setAttribute('position', { x: 0, y: posY, z: 0 });
   return placedObjectEl;
 }
 
@@ -923,7 +923,7 @@ function createSegmentElement(
     width: ${segmentWidthInMeters};`
   );
 
-  segmentEl.setAttribute('position', { y: positionY });
+  segmentEl.setAttribute('position', { x: 0, y: positionY, z: 0 });
   segmentEl.setAttribute('mixin', mixinId);
 
   if (repeatCount.length !== 0) {
