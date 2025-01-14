@@ -28,7 +28,6 @@
   "dependencies": {
     "@fortawesome/free-regular-svg-icons": "^6.5.2",
     "@fortawesome/free-solid-svg-icons": "^6.5.2",
-    "@mux/mux-player-react": "^2.9.1",
     "@react-google-maps/api": "^2.19.3",
     "@stripe/stripe-js": "^3.4.1",
     "aframe-atlas-uvs-component": "^3.0.0",
