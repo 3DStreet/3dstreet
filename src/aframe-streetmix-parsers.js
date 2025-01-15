@@ -451,7 +451,7 @@ function addLinearStreetAnimation(
     easing: 'linear',
     loop: 'false',
     from: { x: xPos, y: yVal, z: zPos },
-    to: { z: halfStreet },
+    to: { x: xPos, y: yVal, z: halfStreet },
     dur: startingDuration
   };
   const animationAttrs2 = {
