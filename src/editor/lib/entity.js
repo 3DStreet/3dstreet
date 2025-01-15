@@ -587,36 +587,21 @@ export function getEntityDisplayName(entity) {
 /**
  * Entity representation.
  */
-const ICONS_NEW = {
+const ICONS = {
   cameraRig: <VideoCameraIcon />,
   environment: <SunIcon />,
   'street-container': <LayersIcon />
 };
-const ICONS = {
-  camera: 'fa-camera',
-  mesh: 'fa-cube',
-  light: 'fa-lightbulb-o',
-  text: 'fa-font'
-};
+
 export function printEntity(entity) {
   if (!entity) {
     return '';
   }
 
-  // Icons.
-  let icons = '';
-  for (let objType in ICONS) {
-    if (!entity.getObject3D(objType)) {
-      continue;
-    }
-    icons += `&nbsp;<i class="fa ${ICONS[objType]}" title="${objType}"></i>`;
-  }
-
-  // Icons for new entities -- if entity id matches ICONS_NEW then use icon
   let icon = null;
-  for (let entityId in ICONS_NEW) {
+  for (let entityId in ICONS) {
     if (entityId === entity.id) {
-      icon = ICONS_NEW[entityId];
+      icon = ICONS[entityId];
     }
   }
 
@@ -626,12 +611,6 @@ export function printEntity(entity) {
     <span className="entityPrint">
       {icon && <span className="entityIcons">{icon}</span>}
       {displayName && <span className="entityName">&nbsp;{displayName}</span>}
-      {!!icons && (
-        <span
-          className="entityIcons"
-          dangerouslySetInnerHTML={{ __html: icons }}
-        />
-      )}
     </span>
   );
 }
