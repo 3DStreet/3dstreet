@@ -1,13 +1,14 @@
 @use './variables.scss';
 
 .entityPrint {
+  display: flex;
+  align-items: center;
   overflow: hidden;
   text-overflow: ellipsis;
-  line-height: 16.8px;
+  min-width: 0; // Required for text-overflow to work in flex containers
 }
 
 .entityName {
-  width: 230px;
   position: relative;
   white-space: nowrap;
   font-style: normal;
@@ -15,4 +16,58 @@
   font-size: 14px;
   line-height: 14px;
   color: variables.$white;
+  min-width: 0; // Required for text-overflow to work in flex containers
+}
+
+.entityIcons {
+  display: flex;
+  align-items: center;
+  // make 80% size and darker color for the svg icons
+  svg {
+    width: 16px;
+    height: 16px;
+    * {
+      fill: rgb(180, 180, 180);
+    }
+  }
+}
+
+.badge {
+  background-color: #774dee;
+  padding: 0px 12px;
+  border-radius: 6px;
+  position: absolute;
+  top: -8px;
+  right: 10px;
+  font-size: 12px;
+  // darken on hover
+  &:hover {
+    background-color: #5b37c0;
+  }
+}
+
+// create red alert notification dot in upper-right of badge
+.badgeAlert::after {
+  content: '';
+  display: block;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background-color: #ff2222;
+  position: absolute;
+  top: -2px;
+  right: -2px;
+}
+
+// create green success notification dot in upper-right of badge
+.badgeSuccess::after {
+  content: '';
+  display: block;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background-color: #22ff22;
+  position: absolute;
+  top: -2px;
+  right: -2px;
 }

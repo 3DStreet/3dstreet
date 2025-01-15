@@ -89,7 +89,9 @@
     flex: none;
     order: 1;
     flex-grow: 0;
-    padding: 14.5px 16px 10.5px 14.5px;
+    height: 40px; // Explicitly set desired height
+    justify-content: center; // Center content vertically within the 40px height
+    padding: 0 16px; // Keep horizontal padding, remove vertical
     box-sizing: border-box;
     > span {
       display: flex;
@@ -100,6 +102,10 @@
       .entityPrint {
         flex-basis: 237px;
         margin-left: 10.5px;
+        min-width: 0; // Important for text-overflow to work
+        display: flex;
+        align-items: center;
+        gap: 4px;
       }
     }
   }
@@ -165,7 +171,6 @@
     color: variables.$blue-100;
   }
   .entityIcons {
-    display: none;
     margin-left: 2px;
   }
   .entityActions {
