@@ -848,7 +848,7 @@ function createParkletElement(length, variantList) {
     placedObjectEl.setAttribute('position', { x: 0, y: 0.02, z: randPosZ });
     placedObjectEl.setAttribute('mixin', 'parklet');
     const rotationY = variantList[0] === 'left' ? 90 : 270;
-    placedObjectEl.setAttribute('rotation', { y: rotationY });
+    placedObjectEl.setAttribute('rotation', { x: 0, y: rotationY, z: 0 });
     parkletParent.append(placedObjectEl);
   });
   return parkletParent;
