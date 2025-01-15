@@ -46,7 +46,6 @@ export default class Sidebar extends React.Component {
       : 'Unknown';
   };
 
-  // entity.getAttribute('data-parent-component')
   fireParentComponentDetach = (entity) => {
     const componentName = entity.getAttribute('data-parent-component');
     const parentEntity = entity.parentElement;

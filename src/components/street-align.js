@@ -20,9 +20,6 @@ AFRAME.registerComponent('street-align', {
     this.realignStreet = this.realignStreet.bind(this);
     this.el.addEventListener('segments-changed', this.realignStreet);
 
-    // Initial alignment
-    this.realignStreet();
-
     // wait for all components, including managed-street to be initialized
     setTimeout(() => {
       this.realignStreet();

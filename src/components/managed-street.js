@@ -5,11 +5,208 @@ const { segmentVariants } = require('../segments-variants.js');
 const streetmixUtils = require('../tested/streetmix-utils');
 const streetmixParsersTested = require('../tested/aframe-streetmix-parsers-tested');
 
+// STREETPLAN HELPER FUNCTIONS
+// Material mapping from Streetplan to 3DStreet surfaces
+const STREETPLAN_MATERIAL_MAPPING = {
+  'asphalt black': { surface: 'asphalt', color: '#aaaaaa' },
+  'asphalt blue': { surface: 'asphalt', color: '#aaaaff' },
+  'asphalt red 1': { surface: 'asphalt', color: '#ffaaaa' },
+  'asphalt red 2': { surface: 'asphalt', color: '#ff0000' },
+  'asphalt green': { surface: 'asphalt', color: '#aaffaa' },
+  'asphalt old': { surface: 'asphalt' },
+  'standard concrete': { surface: 'concrete' },
+  grass: { surface: 'grass' },
+  'grass dead': { surface: 'grass' },
+  'pavers tan': { surface: 'sidewalk' },
+  'pavers brown': { surface: 'sidewalk' },
+  'pavers mixed': { surface: 'sidewalk' },
+  'pavers red': { surface: 'sidewalk', color: '#ffaaaa' },
+  'tint conc. or dirt': { surface: 'gravel' },
+  dirt: { surface: 'gravel' },
+  gravel: { surface: 'gravel' },
+  stonetan: { surface: 'sidewalk' },
+  'sidewalk 2': { surface: 'sidewalk' },
+  'cobble stone': { surface: 'sidewalk' },
+  'solid black': { surface: 'solid' },
+  'painted intersection': { surface: 'asphalt' },
+  'grass with edging': { surface: 'grass' },
+  xeriscape: { surface: 'grass' },
+  'grassslopemedian 12ft': { surface: 'grass' },
+  'grassslopemedian 24ft': { surface: 'grass' },
+  'grassslope 12ft-left': { surface: 'grass' },
+  'grassslope 12ft-right': { surface: 'grass' },
+  'grassslope 24ft-left': { surface: 'grass' },
+  'grassslope 24ft-right': { surface: 'grass' },
+  sand: { surface: 'sand' }
+};
+
+const STREETPLAN_OBJECT_MAPPING = {
+  'away, left park, head in': '',
+  'barrier 1-ft': 'temporary-jersey-barrier-concrete',
+  'barrier 2-ft': 'temporary-jersey-barrier-concrete',
+  'bike food cart': '',
+  'bikelane sharecar': '',
+  'bikerack bollard': '',
+  'blank pedrefuge (8ft)': '',
+  'blue car': 'sedan-rig',
+  'blue mailbox': 'usps-mailbox',
+  'bollard plastic yellow': 'bollard',
+  boulevardcirculator: 'minibus',
+  'boulevardcirculator rev': 'minibus',
+  'boxwood planter 2ft': 'dividers-planter-box',
+  'boxwood planter 3ft': 'dividers-planter-box',
+  'boxwood planter 5ft': 'dividers-planter-box',
+  'bur oak': 'tree3',
+  bus: 'bus',
+  'bus rev': 'bus',
+  'cactus median (10ft)': 'dividers-bush',
+  'cactus median (12ft)': 'dividers-bush',
+  'cactus median (4ft)': 'dividers-bush',
+  'cactus median (6ft)': 'dividers-bush',
+  'cactus median (8ft)': 'dividers-bush',
+  'casual woman': '',
+  couple: '',
+  'couple biking': '',
+  'desertwillow texas': 'tree3',
+  'dog walker': '',
+  'empty place holder': '',
+  'english oak': 'tree3',
+  'fleamarket stuff': '',
+  'flower median (10ft)': 'dividers-flowers',
+  'flower median (12ft)': 'dividers-flowers',
+  'flower median (4ft)': 'dividers-flowers',
+  'flower median (6ft)': 'dividers-flowers',
+  'flower median (8ft)': 'dividers-flowers',
+  'flower pot 4ft': 'dividers-flowers',
+  'floweringpear 18ft': 'tree3',
+  'flowers pedrefuge (8ft)': 'dividers-flowers',
+  goldenraintree: 'tree3',
+  'golfcart red 4ft back': 'tuk-tuk',
+  'grassmound (10ft)': '',
+  'grassmound (12ft)': '',
+  'grassmound (4ft)': '',
+  'grassmound (6ft)': '',
+  'grassmound (8ft)': '',
+  'grassy median (10ft)': '',
+  'grassy median (12ft)': '',
+  'grassy median (4ft)': '',
+  'grassy median (6ft)': '',
+  'grassy median (8ft)': '',
+  'green car': 'sedan-rig',
+  'heavy rail': 'tram',
+  'heavy rail rev': 'tram',
+  'historic light': 'lamp-traditional',
+  'historic no banner': 'lamp-traditional',
+  'historic with banners': 'lamp-traditional',
+  'historic with flowers 1': 'lamp-traditional',
+  'historic with flowers 2': 'lamp-traditional',
+  honeylocust: 'tree3',
+  'japanese lilac': 'tree3',
+  'japanese zelkova': 'tree3',
+  'jerusalem thorn': 'tree3',
+  'kentucky coffeetree': 'tree3',
+  'large food cart': '',
+  'large oak': 'tree3',
+  'light rail poles': '',
+  'moto highway rider': 'motorbike',
+  'mountable barrier 1-ft': '',
+  'nev shuttle back': 'minibus',
+  'nev shuttle front': 'minibus',
+  'nyc bike rack': 'bikerack',
+  'orange barrel': 'temporary-traffic-cone',
+  'palm tree': 'palm-tree',
+  'palmtree 20ft': 'palm-tree',
+  'palmtree 28ft': 'palm-tree',
+  'pine tree': 'tree3',
+  'pink flower 16ft': 'tree3',
+  'planter flowers': 'dividers-flowers',
+  'planter with bench': 'bench',
+  'polaris gem e4': 'tuk-tuk',
+  'power tower 30ft': '',
+  'purpendicular right side, blue': '',
+  'purpendicular right side, red': '',
+  'purpleleaf plum': 'tree3',
+  'random trashcan': 'trash-bin',
+  'red berries 14ft': 'tree3',
+  'red car': 'sedan-rig',
+  'red jeep': 'suv-rig',
+  'rock median (10ft)': '',
+  'rock median (12ft)': '',
+  'rock median (4ft)': '',
+  'rock median (6ft)': '',
+  'rock median (8ft)': '',
+  'semi truck': 'box-truck-rig',
+  'serious man': '',
+  shelter: 'bus-stop',
+  'shelter roundroof': 'bus-stop',
+  'sign directory': 'wayfinding',
+  'silver suv': 'suv-rig',
+  'small tree': 'tree3',
+  smallnev: 'minibus',
+  'smartcar 5ft': 'self-driving-cruise-car-rig',
+  'soundwall (12ft)': '',
+  'soundwall (8ft)': '',
+  'soundwall plants (12ft)': '',
+  'soundwall plants (8ft)': '',
+  'street light': 'lamp-modern',
+  'streetcar blue': 'trolley',
+  'streetcar red 1': 'trolley',
+  'streetcar red 2': 'trolley',
+  'streetcar yellow': 'trolley',
+  'streetlight solar': 'lamp-modern',
+  'streetlight solar banners 1': 'lamp-modern',
+  'streetlight solar banners 2': 'lamp-modern',
+  tallgrass: '',
+  'tallplantbox (10ft)': '',
+  'tallplantbox (12ft)': 'dividers-bush',
+  'tallplantbox (4ft)': '',
+  'tallplantbox (6ft)': '',
+  'tallplantbox (8ft)': '',
+  'tallplantbox pedref (10ft)': '',
+  'tallplantbox pedref (12ft)': '',
+  'tallplantbox pedref (6ft)': '',
+  'tallplantbox pedref (8ft)': '',
+  'telephone pole': 'utility_pole',
+  'tent bluewhite': '',
+  'tent veggie': '',
+  'toward, right park, head in': '',
+  trashcan: 'trash-bin',
+  'tropical median (4ft)': 'palm-tree',
+  'two bikes back': '',
+  'uta bus': 'bus',
+  'uta lightrail': 'tram',
+  'uta lightrail rev': 'tram',
+  'weeds median (4ft)': '',
+  'weeds median (6ft)': '',
+  'weeds median (8ft)': '',
+  'white coup': 'sedan-rig',
+  'white sedan': 'sedan-rig',
+  'white truck': 'box-truck-rig',
+  'yellow sedan': 'sedan-rig'
+};
+
+// Streetplan Helper function to parse O-Tags string into array
+function parseOTags(tags) {
+  if (!tags || tags === '-') return [];
+  return tags.split('", "').map((t) => t.replace(/"/g, '').trim());
+}
+
+// Streetplan Helper function to create clone configuration
+function createCloneConfig(name, tags) {
+  if (!name || name === '-') return null;
+
+  const model = STREETPLAN_OBJECT_MAPPING[name.toLowerCase()];
+  if (!model) return null;
+
+  return {
+    mode: 'fixed', // default to fixed mode
+    model: model,
+    spacing: 15 // default spacing
+  };
+}
+
 AFRAME.registerComponent('managed-street', {
   schema: {
-    width: {
-      type: 'number'
-    },
     length: {
       type: 'number',
       default: 60
@@ -21,28 +218,9 @@ AFRAME.registerComponent('managed-street', {
     sourceValue: {
       type: 'string'
     },
-    sourceId: {
-      type: 'string'
-    },
     synchronize: {
       type: 'boolean',
       default: false
-    },
-    showVehicles: {
-      type: 'boolean',
-      default: true
-    },
-    showStriping: {
-      type: 'boolean',
-      default: true
-    },
-    enableAlignment: {
-      type: 'boolean',
-      default: true
-    },
-    showGround: {
-      type: 'boolean',
-      default: true
     }
   },
   init: function () {
@@ -51,10 +229,12 @@ AFRAME.registerComponent('managed-street', {
     this.actualWidth = 0;
     // Bind the method to preserve context
     this.refreshFromSource = this.refreshFromSource.bind(this);
-    if (this.data.enableAlignment && !this.el.hasAttribute('street-align')) {
+    this.onSegmentWidthChanged = this.onSegmentWidthChanged.bind(this);
+
+    if (!this.el.hasAttribute('street-align')) {
       this.el.setAttribute('street-align', '');
     }
-    if (this.data.showGround && !this.el.hasAttribute('street-ground')) {
+    if (!this.el.hasAttribute('street-ground')) {
       this.el.setAttribute('street-ground', '');
     }
     if (!this.el.hasAttribute('street-label')) {
@@ -73,7 +253,7 @@ AFRAME.registerComponent('managed-street', {
       console.log('Attaching width change listener to existing segment');
       segment.addEventListener(
         'segment-width-changed',
-        this.onSegmentWidthChanged.bind(this)
+        this.onSegmentWidthChanged
       );
     });
   },
@@ -145,7 +325,7 @@ AFRAME.registerComponent('managed-street', {
       const totalWidth = this.managedEntities.reduce((sum, segment) => {
         return sum + (segment.getAttribute('street-segment').width || 0);
       }, 0);
-      this.el.setAttribute('managed-street', 'width', totalWidth);
+      this.actualWidth = totalWidth;
 
       // If we have a previous segment, check if we need to add stripe separators
       // TODO: Check striping here in the future
@@ -174,7 +354,7 @@ AFRAME.registerComponent('managed-street', {
           addedSegments.forEach((segment) => {
             segment.addEventListener(
               'segment-width-changed',
-              this.onSegmentWidthChanged.bind(this)
+              this.onSegmentWidthChanged
             );
           });
 
@@ -182,7 +362,7 @@ AFRAME.registerComponent('managed-street', {
           removedSegments.forEach((segment) => {
             segment.removeEventListener(
               'segment-width-changed',
-              this.onSegmentWidthChanged.bind(this)
+              this.onSegmentWidthChanged
             );
           });
 
@@ -208,6 +388,7 @@ AFRAME.registerComponent('managed-street', {
       oldValue: event.detail.oldWidth,
       newValue: event.detail.newWidth
     });
+    this.refreshManagedEntities();
   },
   update: function (oldData) {
     const data = this.data;
@@ -223,9 +404,15 @@ AFRAME.registerComponent('managed-street', {
     if (dataDiffKeys.includes('length')) {
       this.refreshManagedEntities();
       this.applyLength();
+      // Emit segments-changed event when length changes
+      this.el.emit('segments-changed', {
+        changeType: 'property',
+        property: 'length',
+        oldValue: oldData.length,
+        newValue: data.length
+      });
     }
-    // if the value of length changes, then we need to update the length of all the child objects
-    // we need to get a list of all the child objects whose length we need to change
+
     this.setupEventDispatcher();
   },
   refreshFromSource: function () {
@@ -233,8 +420,7 @@ AFRAME.registerComponent('managed-street', {
     if (data.sourceType === 'streetmix-url') {
       this.loadAndParseStreetmixURL(data.sourceValue);
     } else if (data.sourceType === 'streetplan-url') {
-      // this function is not yet implemented
-      this.refreshFromStreetplanURL(data.sourceValue);
+      this.loadAndParseStreetplanURL(data.sourceValue);
     } else if (data.sourceType === 'json-blob') {
       // if data.sourceValue is a string convert string to object for parsing but keep string for saving
       if (typeof data.sourceValue === 'string') {
@@ -265,7 +451,6 @@ AFRAME.registerComponent('managed-street', {
     this.actualWidth = this.managedEntities.reduce((sum, segment) => {
       return sum + (segment.getAttribute('street-segment')?.width || 0);
     }, 0);
-    console.log('actual width', this.actualWidth);
   },
   parseStreetObject: function (streetObject) {
     // reset and delete all existing entities
@@ -276,7 +461,6 @@ AFRAME.registerComponent('managed-street', {
       'data-layer-name',
       'Managed Street • ' + streetObject.name
     );
-    this.el.setAttribute('managed-street', 'width', streetObject.width);
     this.el.setAttribute('managed-street', 'length', streetObject.length);
 
     for (let i = 0; i < streetObject.segments.length; i++) {
@@ -322,6 +506,128 @@ AFRAME.registerComponent('managed-street', {
       });
     }
   },
+  loadAndParseStreetplanURL: async function (streetplanURL) {
+    console.log(
+      '[managed-street] loader',
+      'sourceType: `streetplan-url`, loading from',
+      streetplanURL
+    );
+
+    try {
+      const response = await fetch(streetplanURL);
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      const streetplanData = await response.json();
+      const boulevard = streetplanData.project['My Street']['Boulevard Alt 1'];
+
+      const streetLength =
+        parseFloat(streetplanData.project['My Street'].LengthMiles) *
+          5280 *
+          0.3048 || 100; // Convert miles to meters
+      // Convert StreetPlan format to managed-street format
+      const streetObject = {
+        name: streetplanData.project.ProjectName,
+        width: 0, // Will be calculated from segments
+        length: streetLength,
+        segments: []
+      };
+
+      // Process streetplan segments
+      const segments = boulevard.segments;
+      for (const segmentKey in segments) {
+        const segment = segments[segmentKey];
+
+        // Skip Buildings and Setback segments
+        if (segment.Type === 'Buildings' || segment.Type === 'Setback') {
+          continue;
+        }
+
+        const segmentWidth = parseFloat(segment.width) * 0.3048; // Convert feet to meters
+        streetObject.width += segmentWidth;
+
+        // Convert streetplan segment type based on your schema
+        let segmentType = 'drive-lane'; // Default type
+        let segmentDirection = 'inbound';
+
+        // convert from streetplan type to managed street default type
+        switch (segment.Type) {
+          case 'BikesPaths':
+            segmentType = 'bike-lane';
+            break;
+          case 'Walkways':
+            segmentType = 'sidewalk';
+            break;
+          case 'Transit':
+            segmentType = 'bus-lane';
+            break;
+          case 'Median/Buffer':
+            segmentType = 'divider';
+            break;
+          case 'Curbside':
+            segmentType = 'divider';
+            break;
+          case 'Gutter':
+            segmentType = 'parking-lane';
+            break;
+          case 'Furniture':
+            segmentType = 'sidewalk-tree';
+            break;
+          // Add more type mappings as needed
+        }
+
+        // Determine direction based on segment data
+        if (segment.Direction === 'Coming') {
+          segmentDirection = 'inbound';
+        } else if (segment.Direction === 'Going') {
+          segmentDirection = 'outbound';
+        }
+
+        // Map the material using the STREETPLAN_MATERIAL_MAPPING, fallback to 'asphalt' if not found
+        const material = segment.Material?.toLowerCase() || '';
+        const mappedSurface =
+          STREETPLAN_MATERIAL_MAPPING[material]?.surface || 'asphalt';
+        const mappedColor = STREETPLAN_MATERIAL_MAPPING[material]?.color;
+
+        // Map the O-Tags to clone configurations
+        const generated = {};
+        const clones = [];
+        // Process O1, O2, O3 configurations
+        ['O1', 'O2', 'O3'].forEach((prefix) => {
+          const name = segment[`${prefix}-Name`];
+          const tags = parseOTags(segment[`${prefix}-Tags`]);
+          const cloneConfig = createCloneConfig(name, tags);
+          if (cloneConfig) {
+            clones.push(cloneConfig);
+          }
+        });
+        if (clones.length > 0) {
+          generated.clones = clones;
+        }
+
+        streetObject.segments.push({
+          type: segmentType,
+          width: segmentWidth,
+          name: segment.title,
+          level: parseFloat(segment.MaterialH) === 0.5 ? 1 : 0,
+          direction: segmentDirection,
+          color: mappedColor || window.STREET.types[segmentType]?.color,
+          surface: mappedSurface,
+          generated: clones.length > 0 ? generated : undefined
+        });
+      }
+
+      // Parse the street object
+      this.parseStreetObject(streetObject);
+    } catch (error) {
+      console.error('[managed-street] loader', 'Loading Error:', error);
+      STREET.notify.warningMessage(
+        'Error loading StreetPlan data: ' + error.message
+      );
+    }
+  },
+
   getStripingFromSegments: function (previousSegment, currentSegment) {
     if (!previousSegment || !currentSegment) {
       return null;
@@ -410,18 +716,12 @@ AFRAME.registerComponent('managed-street', {
       const streetmixName = streetmixResponseObject.name;
 
       this.el.setAttribute('data-layer-name', 'Street • ' + streetmixName);
-      const streetWidth = streetmixSegments.reduce(
-        (streetWidth, segmentData) => streetWidth + segmentData.width,
-        0
-      );
-      this.el.setAttribute('managed-street', 'width', streetWidth);
+      // const streetWidth = streetmixSegments.reduce(
+      //   (streetWidth, segmentData) => streetWidth + segmentData.width,
+      //   0
+      // );
 
-      const segmentEls = parseStreetmixSegments(
-        streetmixSegments,
-        data.showStriping,
-        data.length,
-        data.showVehicles
-      );
+      const segmentEls = parseStreetmixSegments(streetmixSegments, data.length);
       this.el.append(...segmentEls);
 
       this.pendingEntities = segmentEls;
@@ -609,7 +909,7 @@ function supportCheck(segmentType, segmentVariantString) {
 
 // OLD: takes a street's `segments` (array) from streetmix and a `streetElementId` (string) and places objects to make up a street with all segments
 // NEW: takes a `segments` (array) from streetmix and return an element and its children which represent the 3D street scene
-function parseStreetmixSegments(segments, showStriping, length, showVehicles) {
+function parseStreetmixSegments(segments, length) {
   // create and center offset to center the street around global x position of 0
   const segmentEls = [];
 
@@ -681,19 +981,17 @@ function parseStreetmixSegments(segments, showStriping, length, showVehicles) {
       // get the mixin id for the vehicle (is it a trolley or a tram?)
       const objectMixinId =
         segments[i].type === 'streetcar' ? 'trolley' : 'tram';
-      if (showVehicles) {
-        segmentParentEl.setAttribute(
-          'street-generated-clones',
-          `mode: random; model: ${objectMixinId}; length: ${length}; spacing: 20; direction: ${direction}; count: 1;`
-        );
-      }
+      segmentParentEl.setAttribute(
+        'street-generated-clones',
+        `mode: random; model: ${objectMixinId}; length: ${length}; spacing: 20; direction: ${direction}; count: 1;`
+      );
       segmentParentEl.setAttribute(
         'street-generated-rail',
         `length: ${length}; gauge: ${segments[i].type === 'streetcar' ? 1067 : 1435};`
       );
     } else if (segments[i].type === 'turn-lane') {
       segmentPreset = 'drive-lane'; // use normal drive lane road material
-      if (showVehicles && variantList[1] !== 'shared') {
+      if (variantList[1] !== 'shared') {
         segmentParentEl.setAttribute(
           'street-generated-clones',
           `mode: random;
@@ -833,29 +1131,24 @@ function parseStreetmixSegments(segments, showStriping, length, showVehicles) {
       segmentPreset = 'bus-lane';
       // get the color for a bus lane
       segmentColor = getSegmentColor(variantList[1]);
-
-      if (showVehicles) {
-        segmentParentEl.setAttribute(
-          'street-generated-clones',
-          `mode: random; model: bus; length: ${length}; spacing: 15; direction: ${direction}; count: 1;`
-        );
-      }
+      segmentParentEl.setAttribute(
+        'street-generated-clones',
+        `mode: random; model: bus; length: ${length}; spacing: 15; direction: ${direction}; count: 1;`
+      );
       segmentParentEl.setAttribute(
         'street-generated-stencil',
         `stencils: word-only, word-taxi, word-bus; length: ${length}; spacing: 40; padding: 10; direction: ${direction}`
       );
     } else if (segments[i].type === 'drive-lane') {
-      if (showVehicles) {
-        segmentParentEl.setAttribute(
-          'street-generated-clones',
-          `mode: random;
-           modelsArray: sedan-rig, box-truck-rig, self-driving-waymo-car, suv-rig, motorbike;
-            length: ${length};
-            spacing: 7.3;
-            direction: ${direction};
-            count: ${getRandomIntInclusive(2, 4)};`
-        );
-      }
+      segmentParentEl.setAttribute(
+        'street-generated-clones',
+        `mode: random;
+          modelsArray: sedan-rig, box-truck-rig, self-driving-waymo-car, suv-rig, motorbike;
+          length: ${length};
+          spacing: 7.3;
+          direction: ${direction};
+          count: ${getRandomIntInclusive(2, 4)};`
+      );
     } else if (segments[i].type === 'food-truck') {
       segmentPreset = 'drive-lane';
       segmentParentEl.setAttribute(
@@ -864,14 +1157,12 @@ function parseStreetmixSegments(segments, showStriping, length, showVehicles) {
       );
     } else if (segments[i].type === 'flex-zone') {
       segmentPreset = 'parking-lane';
-      if (showVehicles) {
-        const objectMixinId =
-          variantList[0] === 'taxi' ? 'sedan-taxi-rig' : 'sedan-rig';
-        segmentParentEl.setAttribute(
-          'street-generated-clones',
-          `mode: random; model: ${objectMixinId}; length: ${length}; spacing: 6; direction: ${direction}; count: 4;`
-        );
-      }
+      const objectMixinId =
+        variantList[0] === 'taxi' ? 'sedan-taxi-rig' : 'sedan-rig';
+      segmentParentEl.setAttribute(
+        'street-generated-clones',
+        `mode: random; model: ${objectMixinId}; length: ${length}; spacing: 6; direction: ${direction}; count: 4;`
+      );
       segmentParentEl.setAttribute(
         'street-generated-stencil',
         `stencils: word-loading-small, word-only-small; length: ${length}; spacing: 40; padding: 10; direction: ${direction}`
@@ -1097,7 +1388,7 @@ function parseStreetmixSegments(segments, showStriping, length, showVehicles) {
     let previousSegment = segments[i - 1];
     let separatorMixinId = getSeparatorMixinId(previousSegment, currentSegment);
 
-    if (separatorMixinId && showStriping) {
+    if (separatorMixinId) {
       segmentParentEl.setAttribute(
         'street-generated-striping',
         `striping: ${separatorMixinId}; length: ${length}; segmentWidth: ${segmentWidthInMeters};`

@@ -95,6 +95,15 @@ export const streetLayersData = [
     icon: 'ui_assets/cards/icons/3dst24.png',
     description: 'Premade Street 150ft Right of Way / 124ft Roadway Width',
     handlerFunction: createFunctions.create150ftRightOfWayManagedStreet
+  },
+  {
+    name: '(Beta) Managed Street from Streetplan URL',
+    img: '',
+    requiresPro: true,
+    icon: '',
+    description:
+      'Create a new street from Streetplan URL using the Managed Street component.',
+    handlerFunction: createFunctions.createManagedStreetFromStreetplanURLPrompt
   }
 ].map((layer, index) => ({ ...layer, id: index + 1 }));
 

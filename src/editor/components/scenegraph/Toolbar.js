@@ -31,8 +31,7 @@ function Toolbar({ currentUser }) {
             <div className="col-span-2 flex items-center justify-end gap-2">
               <Button
                 leadingIcon={<Edit24Icon />}
-                onClick={newHandler}
-                disabled={isSavingScene}
+                onClick={!isSavingScene ? newHandler : undefined}
                 variant="toolbtn"
               >
                 <div>New</div>

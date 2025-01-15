@@ -77,6 +77,32 @@ export function createManagedStreetFromStreetmixURLPrompt(position) {
   }
 }
 
+export function createManagedStreetFromStreetplanURLPrompt(position) {
+  // This creates a new Managed Street
+  let streetplanURL = prompt(
+    'Please enter a StreetPlan URL',
+    'https://streetplan.net/3dstreet/89474'
+  );
+
+  if (streetplanURL && streetplanURL !== '') {
+    const definition = {
+      id: createUniqueId(),
+      components: {
+        position: position ?? '0 0 0',
+        'managed-street': {
+          sourceType: 'streetplan-url',
+          sourceValue: streetplanURL,
+          showVehicles: true,
+          showStriping: true,
+          synchronize: true
+        }
+      }
+    };
+
+    AFRAME.INSPECTOR.execute('entitycreate', definition);
+  }
+}
+
 export function createManagedStreetFromStreetObject(position, streetObject) {
   // This creates a new Managed Street
   if (streetObject && streetObject !== '') {

@@ -1,5 +1,6 @@
 /* global AFRAME */
 /* 3DStreet utils functions */
+import useStore from '@/store.js';
 
 /*
  * create element with provided Id, clear old element data and replace with new HTML string
@@ -26,11 +27,12 @@ function checkOrCreateEntity(elementId, parentEl, layerName = null) {
 /*
  * clear old scene elements and data. Create blank scene
  */
-function newScene(
+export function newScene(
   clearMetaData = true,
   clearUrlHash = true,
   addDefaultStreet = true
 ) {
+  AFRAME.INSPECTOR?.selectEntity(null);
   let environmentEl = document.getElementById('environment');
   if (environmentEl) environmentEl.removeAttribute('street-environment');
   environmentEl = checkOrCreateEntity(
@@ -70,6 +72,7 @@ function newScene(
 
   // clear metadata
   if (clearMetaData) {
+    useStore.getState().newScene();
     AFRAME.scenes[0].setAttribute('metadata', 'sceneId', '');
     AFRAME.scenes[0].setAttribute('metadata', 'authorId', '');
   }
@@ -82,9 +85,7 @@ function newScene(
   }
 }
 
-STREET.utils.newScene = newScene;
-
-function getVehicleEntities() {
+export function getVehicleEntities() {
   return getEntitiesByCategories([
     'vehicles',
     'vehicles-rigged',
@@ -93,13 +94,9 @@ function getVehicleEntities() {
   ]);
 }
 
-module.exports.getVehicleEntities = getVehicleEntities;
-
-function getStripingEntities() {
+export function getStripingEntities() {
   return getEntitiesByCategories(['lane-separator']);
 }
-
-module.exports.getStripingEntities = getStripingEntities;
 
 function getEntitiesByCategories(categoriesArray) {
   // get entity Nodes by array of their mixin categories
