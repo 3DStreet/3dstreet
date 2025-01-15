@@ -425,9 +425,15 @@ AFRAME.registerComponent('managed-street', {
     if (dataDiffKeys.includes('length')) {
       this.refreshManagedEntities();
       this.applyLength();
+      // Emit segments-changed event when length changes
+      this.el.emit('segments-changed', {
+        changeType: 'property',
+        property: 'length',
+        oldValue: oldData.length,
+        newValue: data.length
+      });
     }
-    // if the value of length changes, then we need to update the length of all the child objects
-    // we need to get a list of all the child objects whose length we need to change
+
     this.setupEventDispatcher();
   },
   refreshFromSource: function () {
