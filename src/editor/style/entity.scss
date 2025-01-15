@@ -6,6 +6,9 @@
   overflow: hidden;
   text-overflow: ellipsis;
   min-width: 0; // Required for text-overflow to work in flex containers
+  flex: 1; // Allow the container to grow
+  margin-left: 10.5px;
+  gap: 4px;
 }
 
 .entityName {

@@ -99,14 +99,6 @@
       align-items: center;
       flex-direction: row;
       position: relative;
-      .entityPrint {
-        flex-basis: 237px;
-        margin-left: 10.5px;
-        min-width: 0; // Important for text-overflow to work
-        display: flex;
-        align-items: center;
-        gap: 4px;
-      }
     }
   }
   .entity:first-child {
@@ -208,6 +200,19 @@
     width: 14px;
     right: 0px;
     position: absolute;
+    &::before {
+      content: '';
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-45%, -50%);
+      width: 20px;
+      height: 20px;
+      background: variables.$darkgray-800;
+      border-radius: 50%;
+      z-index: -1;
+    }
+    z-index: 1;
   }
   .fa-eye,
   .fa-eye-slash {
