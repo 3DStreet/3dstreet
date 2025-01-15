@@ -79,13 +79,16 @@ const GeoLayer = () => {
       className={`layersBlock py-2 pl-4 ${clicked ? 'bg-violet-600' : 'hover:bg-violet-600 hover:shadow-lg'} cursor-pointer`}
     >
       {visibilityButton}
-      <div onClick={onClick} style={{ transform: 'scale(0.7)' }}>
+      <div
+        onClick={onClick}
+        style={{ transform: 'scale(0.7)', marginLeft: '2px' }}
+      >
         <GeospatialIcon />
       </div>
       <span
         onClick={onClick}
         className="entityName flex-1"
-        style={{ marginLeft: '-6px' }}
+        style={{ marginLeft: '-2px' }}
       >
         Geospatial
         {!streetGeo && <span className="badge badgeAlert">Set Location</span>}
