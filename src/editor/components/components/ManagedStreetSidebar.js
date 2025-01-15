@@ -29,6 +29,10 @@ const ManagedStreetSidebar = ({ entity }) => {
                   isSingle={false}
                   entity={entity}
                 />
+                <div className="propertyRow">
+                  <div className="text">Width</div>
+                  <div className="text">{component.actualWidth}</div>
+                </div>
                 <PropertyRow
                   key="enabled"
                   name="enabled"
