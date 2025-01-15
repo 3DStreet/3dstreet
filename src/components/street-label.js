@@ -16,6 +16,7 @@ AFRAME.registerComponent('street-label', {
     this.createdEntities = [];
     this.canvas = null;
     this.ctx = null;
+    this.canvasId = `street-label-canvas-${Math.random().toString(36).substr(2, 9)}`;
 
     // Create and setup canvas
     this.createAndSetupCanvas();
@@ -84,7 +85,7 @@ AFRAME.registerComponent('street-label', {
 
   createAndSetupCanvas: function () {
     this.canvas = document.createElement('canvas');
-    this.canvas.id = 'street-label-canvas';
+    this.canvas.id = this.canvasId;
     this.canvas.style.display = 'none';
     document.body.appendChild(this.canvas);
     this.ctx = this.canvas.getContext('2d');
@@ -209,7 +210,7 @@ AFRAME.registerComponent('street-label', {
     });
 
     plane.setAttribute('material', {
-      src: '#street-label-canvas',
+      src: `#${this.canvasId}`,
       transparent: true,
       alphaTest: 0.5
     });
