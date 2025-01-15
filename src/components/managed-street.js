@@ -207,9 +207,6 @@ function createCloneConfig(name, tags) {
 
 AFRAME.registerComponent('managed-street', {
   schema: {
-    width: {
-      type: 'number'
-    },
     length: {
       type: 'number',
       default: 60
@@ -328,7 +325,7 @@ AFRAME.registerComponent('managed-street', {
       const totalWidth = this.managedEntities.reduce((sum, segment) => {
         return sum + (segment.getAttribute('street-segment').width || 0);
       }, 0);
-      this.el.setAttribute('managed-street', 'width', totalWidth);
+      this.actualWidth = totalWidth;
 
       // If we have a previous segment, check if we need to add stripe separators
       // TODO: Check striping here in the future
@@ -391,6 +388,7 @@ AFRAME.registerComponent('managed-street', {
       oldValue: event.detail.oldWidth,
       newValue: event.detail.newWidth
     });
+    this.refreshManagedEntities();
   },
   update: function (oldData) {
     const data = this.data;
@@ -447,7 +445,6 @@ AFRAME.registerComponent('managed-street', {
     this.actualWidth = this.managedEntities.reduce((sum, segment) => {
       return sum + (segment.getAttribute('street-segment')?.width || 0);
     }, 0);
-    console.log('actual width', this.actualWidth);
   },
   parseStreetObject: function (streetObject) {
     // reset and delete all existing entities
@@ -458,7 +455,6 @@ AFRAME.registerComponent('managed-street', {
       'data-layer-name',
       'Managed Street • ' + streetObject.name
     );
-    this.el.setAttribute('managed-street', 'width', streetObject.width);
     this.el.setAttribute('managed-street', 'length', streetObject.length);
 
     for (let i = 0; i < streetObject.segments.length; i++) {
@@ -714,11 +710,10 @@ AFRAME.registerComponent('managed-street', {
       const streetmixName = streetmixResponseObject.name;
 
       this.el.setAttribute('data-layer-name', 'Street • ' + streetmixName);
-      const streetWidth = streetmixSegments.reduce(
-        (streetWidth, segmentData) => streetWidth + segmentData.width,
-        0
-      );
-      this.el.setAttribute('managed-street', 'width', streetWidth);
+      // const streetWidth = streetmixSegments.reduce(
+      //   (streetWidth, segmentData) => streetWidth + segmentData.width,
+      //   0
+      // );
 
       const segmentEls = parseStreetmixSegments(streetmixSegments, data.length);
       this.el.append(...segmentEls);
