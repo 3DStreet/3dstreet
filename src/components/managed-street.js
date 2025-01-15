@@ -207,9 +207,6 @@ function createCloneConfig(name, tags) {
 
 AFRAME.registerComponent('managed-street', {
   schema: {
-    width: {
-      type: 'number'
-    },
     length: {
       type: 'number',
       default: 60
@@ -221,28 +218,9 @@ AFRAME.registerComponent('managed-street', {
     sourceValue: {
       type: 'string'
     },
-    sourceId: {
-      type: 'string'
-    },
     synchronize: {
       type: 'boolean',
       default: false
-    },
-    showVehicles: {
-      type: 'boolean',
-      default: true
-    },
-    showStriping: {
-      type: 'boolean',
-      default: true
-    },
-    enableAlignment: {
-      type: 'boolean',
-      default: true
-    },
-    showGround: {
-      type: 'boolean',
-      default: true
     }
   },
   init: function () {
@@ -253,10 +231,10 @@ AFRAME.registerComponent('managed-street', {
     this.refreshFromSource = this.refreshFromSource.bind(this);
     this.onSegmentWidthChanged = this.onSegmentWidthChanged.bind(this);
 
-    if (this.data.enableAlignment && !this.el.hasAttribute('street-align')) {
+    if (!this.el.hasAttribute('street-align')) {
       this.el.setAttribute('street-align', '');
     }
-    if (this.data.showGround && !this.el.hasAttribute('street-ground')) {
+    if (!this.el.hasAttribute('street-ground')) {
       this.el.setAttribute('street-ground', '');
     }
     if (!this.el.hasAttribute('street-label')) {
@@ -347,7 +325,7 @@ AFRAME.registerComponent('managed-street', {
       const totalWidth = this.managedEntities.reduce((sum, segment) => {
         return sum + (segment.getAttribute('street-segment').width || 0);
       }, 0);
-      this.el.setAttribute('managed-street', 'width', totalWidth);
+      this.actualWidth = totalWidth;
 
       // If we have a previous segment, check if we need to add stripe separators
       // TODO: Check striping here in the future
@@ -410,6 +388,7 @@ AFRAME.registerComponent('managed-street', {
       oldValue: event.detail.oldWidth,
       newValue: event.detail.newWidth
     });
+    this.refreshManagedEntities();
   },
   update: function (oldData) {
     const data = this.data;
@@ -472,7 +451,6 @@ AFRAME.registerComponent('managed-street', {
     this.actualWidth = this.managedEntities.reduce((sum, segment) => {
       return sum + (segment.getAttribute('street-segment')?.width || 0);
     }, 0);
-    console.log('actual width', this.actualWidth);
   },
   parseStreetObject: function (streetObject) {
     // reset and delete all existing entities
@@ -483,7 +461,6 @@ AFRAME.registerComponent('managed-street', {
       'data-layer-name',
       'Managed Street • ' + streetObject.name
     );
-    this.el.setAttribute('managed-street', 'width', streetObject.width);
     this.el.setAttribute('managed-street', 'length', streetObject.length);
 
     for (let i = 0; i < streetObject.segments.length; i++) {
@@ -739,18 +716,12 @@ AFRAME.registerComponent('managed-street', {
       const streetmixName = streetmixResponseObject.name;
 
       this.el.setAttribute('data-layer-name', 'Street • ' + streetmixName);
-      const streetWidth = streetmixSegments.reduce(
-        (streetWidth, segmentData) => streetWidth + segmentData.width,
-        0
-      );
-      this.el.setAttribute('managed-street', 'width', streetWidth);
+      // const streetWidth = streetmixSegments.reduce(
+      //   (streetWidth, segmentData) => streetWidth + segmentData.width,
+      //   0
+      // );
 
-      const segmentEls = parseStreetmixSegments(
-        streetmixSegments,
-        data.showStriping,
-        data.length,
-        data.showVehicles
-      );
+      const segmentEls = parseStreetmixSegments(streetmixSegments, data.length);
       this.el.append(...segmentEls);
 
       this.pendingEntities = segmentEls;
@@ -938,7 +909,7 @@ function supportCheck(segmentType, segmentVariantString) {
 
 // OLD: takes a street's `segments` (array) from streetmix and a `streetElementId` (string) and places objects to make up a street with all segments
 // NEW: takes a `segments` (array) from streetmix and return an element and its children which represent the 3D street scene
-function parseStreetmixSegments(segments, showStriping, length, showVehicles) {
+function parseStreetmixSegments(segments, length) {
   // create and center offset to center the street around global x position of 0
   const segmentEls = [];
 
@@ -1010,19 +981,17 @@ function parseStreetmixSegments(segments, showStriping, length, showVehicles) {
       // get the mixin id for the vehicle (is it a trolley or a tram?)
       const objectMixinId =
         segments[i].type === 'streetcar' ? 'trolley' : 'tram';
-      if (showVehicles) {
-        segmentParentEl.setAttribute(
-          'street-generated-clones',
-          `mode: random; model: ${objectMixinId}; length: ${length}; spacing: 20; direction: ${direction}; count: 1;`
-        );
-      }
+      segmentParentEl.setAttribute(
+        'street-generated-clones',
+        `mode: random; model: ${objectMixinId}; length: ${length}; spacing: 20; direction: ${direction}; count: 1;`
+      );
       segmentParentEl.setAttribute(
         'street-generated-rail',
         `length: ${length}; gauge: ${segments[i].type === 'streetcar' ? 1067 : 1435};`
       );
     } else if (segments[i].type === 'turn-lane') {
       segmentPreset = 'drive-lane'; // use normal drive lane road material
-      if (showVehicles && variantList[1] !== 'shared') {
+      if (variantList[1] !== 'shared') {
         segmentParentEl.setAttribute(
           'street-generated-clones',
           `mode: random;
@@ -1162,29 +1131,24 @@ function parseStreetmixSegments(segments, showStriping, length, showVehicles) {
       segmentPreset = 'bus-lane';
       // get the color for a bus lane
       segmentColor = getSegmentColor(variantList[1]);
-
-      if (showVehicles) {
-        segmentParentEl.setAttribute(
-          'street-generated-clones',
-          `mode: random; model: bus; length: ${length}; spacing: 15; direction: ${direction}; count: 1;`
-        );
-      }
+      segmentParentEl.setAttribute(
+        'street-generated-clones',
+        `mode: random; model: bus; length: ${length}; spacing: 15; direction: ${direction}; count: 1;`
+      );
       segmentParentEl.setAttribute(
         'street-generated-stencil',
         `stencils: word-only, word-taxi, word-bus; length: ${length}; spacing: 40; padding: 10; direction: ${direction}`
       );
     } else if (segments[i].type === 'drive-lane') {
-      if (showVehicles) {
-        segmentParentEl.setAttribute(
-          'street-generated-clones',
-          `mode: random;
-           modelsArray: sedan-rig, box-truck-rig, self-driving-waymo-car, suv-rig, motorbike;
-            length: ${length};
-            spacing: 7.3;
-            direction: ${direction};
-            count: ${getRandomIntInclusive(2, 4)};`
-        );
-      }
+      segmentParentEl.setAttribute(
+        'street-generated-clones',
+        `mode: random;
+          modelsArray: sedan-rig, box-truck-rig, self-driving-waymo-car, suv-rig, motorbike;
+          length: ${length};
+          spacing: 7.3;
+          direction: ${direction};
+          count: ${getRandomIntInclusive(2, 4)};`
+      );
     } else if (segments[i].type === 'food-truck') {
       segmentPreset = 'drive-lane';
       segmentParentEl.setAttribute(
@@ -1193,14 +1157,12 @@ function parseStreetmixSegments(segments, showStriping, length, showVehicles) {
       );
     } else if (segments[i].type === 'flex-zone') {
       segmentPreset = 'parking-lane';
-      if (showVehicles) {
-        const objectMixinId =
-          variantList[0] === 'taxi' ? 'sedan-taxi-rig' : 'sedan-rig';
-        segmentParentEl.setAttribute(
-          'street-generated-clones',
-          `mode: random; model: ${objectMixinId}; length: ${length}; spacing: 6; direction: ${direction}; count: 4;`
-        );
-      }
+      const objectMixinId =
+        variantList[0] === 'taxi' ? 'sedan-taxi-rig' : 'sedan-rig';
+      segmentParentEl.setAttribute(
+        'street-generated-clones',
+        `mode: random; model: ${objectMixinId}; length: ${length}; spacing: 6; direction: ${direction}; count: 4;`
+      );
       segmentParentEl.setAttribute(
         'street-generated-stencil',
         `stencils: word-loading-small, word-only-small; length: ${length}; spacing: 40; padding: 10; direction: ${direction}`
@@ -1426,7 +1388,7 @@ function parseStreetmixSegments(segments, showStriping, length, showVehicles) {
     let previousSegment = segments[i - 1];
     let separatorMixinId = getSeparatorMixinId(previousSegment, currentSegment);
 
-    if (separatorMixinId && showStriping) {
+    if (separatorMixinId) {
       segmentParentEl.setAttribute(
         'street-generated-striping',
         `striping: ${separatorMixinId}; length: ${length}; segmentWidth: ${segmentWidthInMeters};`
