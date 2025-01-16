@@ -21,7 +21,7 @@ AFRAME.registerComponent('street-geo', {
     enableClipping: { type: 'boolean', default: false },
     blendMode: {
       type: 'string',
-      default: '30% Opacity',
+      default: 'Normal',
       oneOf: ['Normal', '30% Opacity', '60% Opacity', 'Darker', 'Lighter']
     }
   },
