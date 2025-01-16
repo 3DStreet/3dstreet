@@ -1,9 +1,5 @@
 @use './variables.scss';
 
-.components {
-  color: variables.$lightgray-100;
-  width: 364px;
-}
 div.vec2,
 div.vec3,
 div.vec4 {
@@ -24,24 +20,57 @@ div.vec4 {
     color: variables.$white;
   }
 }
-.componentTitle span {
-  max-width: 200px;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  text-transform: capitalize;
-  white-space: nowrap;
-  color: variables.$white;
-  font-weight: 500;
-  vertical-align: bottom !important;
+.componentTitle {
+  display: flex;
+  align-items: center;
+
+  span {
+    overflow: hidden;
+    white-space: nowrap;
+    color: variables.$white;
+    font-weight: 500;
+    font-size: 16px;
+    text-transform: uppercase;
+  }
 }
-.collapsible .static {
-  cursor: pointer;
-  height: 16px;
-  padding: 20px 10px 12px 0px;
-  vertical-align: bottom;
-  font-size: 16px;
-  &:hover {
-    background: variables.$darkgray-500;
+.componentHeader.collapsible-header {
+  display: flex;
+  align-items: center;
+  flex: 1;
+}
+.sidepanelContent {
+  padding: 0 0 0 15px;
+}
+.collapsible {
+  .static {
+    padding: 6px 20px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    height: auto;
+    background: variables.$black;
+
+    .collapse-button {
+      border: 6px solid transparent;
+      width: 0;
+      height: 0;
+      margin: 0 8px;
+    }
+
+    &:hover {
+      background: variables.$black-400;
+    }
+  }
+
+  &.collapsed .static .collapse-button {
+    border-left-color: variables.$lightgray-100;
+    transform: translateY(-1px);
+  }
+
+  &:not(.collapsed) .static .collapse-button {
+    border-top-color: variables.$lightgray-100;
+    transform: translateY(1px);
+    transform: translateX(-2px);
   }
 }
 .collapsible.component ~ .collapsible.component {
@@ -87,6 +116,7 @@ div.vec4 {
   margin-top: 7px;
 }
 .details .propertyRow {
+  padding: 0 0 0 15px;
   width: 100%;
   display: flex;
   align-items: center;
@@ -117,7 +147,8 @@ div.vec4 {
 .propertyRow {
   font-size: 14px;
   min-height: 30px;
-  margin-top: 20px;
+  margin-top: 10px;
+  margin-bottom: 10px;
   > input.string,
   > input.number,
   > .inputBlock > input.number,

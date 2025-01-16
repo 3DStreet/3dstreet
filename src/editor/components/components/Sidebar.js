@@ -139,7 +139,7 @@ export default class Sidebar extends React.Component {
                 !entity.getAttribute('street-segment') ? (
                   <>
                     {entity.classList.contains('autocreated') && (
-                      <>
+                      <div className="sidepanelContent">
                         <div className="flex items-center gap-2">
                           <div className="scale-[0.8] transform">
                             <AutoIcon />
@@ -174,36 +174,39 @@ export default class Sidebar extends React.Component {
                             Convert to Manual
                           </Button>
                         </div>
-                      </>
-                    )}
-                    {!!entity.mixinEls.length &&
-                      !entity.classList.contains('autocreated') && (
-                        <Mixins entity={entity} />
-                      )}
-                    {entity.hasAttribute('data-no-transform') ? (
-                      <></>
-                    ) : (
-                      <div id="sidebar-buttons">
-                        <Button
-                          variant={'toolbtn'}
-                          onClick={() => renameEntity(entity)}
-                        >
-                          Rename
-                        </Button>
-                        <Button
-                          variant={'toolbtn'}
-                          onClick={() => cloneEntity(entity)}
-                        >
-                          Duplicate
-                        </Button>
-                        <Button
-                          variant={'toolbtn'}
-                          onClick={() => removeSelectedEntity()}
-                        >
-                          Delete
-                        </Button>
                       </div>
                     )}
+                    <div className="sidepanelContent">
+                      {!!entity.mixinEls.length &&
+                        !entity.classList.contains('autocreated') && (
+                          <Mixins entity={entity} />
+                        )}
+                      {entity.hasAttribute('data-no-transform') ? (
+                        <></>
+                      ) : (
+                        <div id="sidebar-buttons">
+                          <Button
+                            variant={'toolbtn'}
+                            onClick={() => renameEntity(entity)}
+                          >
+                            Rename
+                          </Button>
+                          <Button
+                            variant={'toolbtn'}
+                            onClick={() => cloneEntity(entity)}
+                          >
+                            Duplicate
+                          </Button>
+                          <Button
+                            variant={'toolbtn'}
+                            onClick={() => removeSelectedEntity()}
+                          >
+                            Delete
+                          </Button>
+                        </div>
+                      )}
+                    </div>
+
                     {entity.getAttribute('intersection') && (
                       <IntersectionSidebar entity={entity} />
                     )}
