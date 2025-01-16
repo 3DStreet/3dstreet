@@ -45,7 +45,6 @@ const StreetSegmentSidebar = ({ entity }) => {
               {/* props for street-segment but formatted as a fake 'surface' component */}
               <div className="collapsible component">
                 <div className="static">
-                  <div className="collapse-button" />
                   <div className="componentHeader collapsible-header">
                     <span className="componentTitle" title="Surface">
                       <span>Surface</span>

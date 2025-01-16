@@ -179,7 +179,9 @@ export default class Sidebar extends React.Component {
                     <div className="sidepanelContent">
                       {!!entity.mixinEls.length &&
                         !entity.classList.contains('autocreated') && (
-                          <Mixins entity={entity} />
+                          <div className="details">
+                            <Mixins entity={entity} />
+                          </div>
                         )}
                       {entity.hasAttribute('data-no-transform') ? (
                         <></>
