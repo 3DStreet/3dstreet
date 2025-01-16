@@ -21,6 +21,9 @@ AFRAME.registerComponent('blending-opacity', {
   },
 
   init: function () {
+    // Cache for materials arrays to avoid allocations
+    this.materialsCache = new WeakMap();
+
     // Blending mode map
     this.blendModes = {
       Normal: THREE.NormalBlending,
@@ -59,6 +62,7 @@ AFRAME.registerComponent('blending-opacity', {
 
   remove: function () {
     this.el.removeEventListener('model-loaded', this.onModelLoaded);
+    this.materialsCache = null;
   },
 
   onModelLoaded: function () {
@@ -102,15 +106,29 @@ AFRAME.registerComponent('blending-opacity', {
     }
   },
 
+  getMaterialsArray: function (node) {
+    // Check if we have a cached materials array for this node
+    let materials = this.materialsCache.get(node);
+
+    // If no cached array exists or the material has changed
+    if (!materials || materials[0] !== node.material) {
+      // Create new array only if needed
+      materials = Array.isArray(node.material)
+        ? node.material
+        : [node.material];
+      this.materialsCache.set(node, materials);
+    }
+
+    return materials;
+  },
+
   updateMaterials: function () {
     const opacity = this.data.opacity;
     const blendMode = this.data.blendMode;
 
     this.el.object3D.traverse((node) => {
       if (node.type === 'Mesh') {
-        const materials = Array.isArray(node.material)
-          ? node.material
-          : [node.material];
+        const materials = this.getMaterialsArray(node);
 
         materials.forEach((material) => {
           material.transparent = opacity < 1.0;
@@ -135,11 +153,6 @@ AFRAME.registerComponent('blending-opacity', {
   },
 
   tick: function () {
-    // Only update materials if there are changes
-    // if (this.el.getAttribute('tiles-material-change').needsUpdate) {
-    //   this.updateMaterials();
-    //   this.el.getAttribute('tiles-material-change').needsUpdate = false;
-    // }
     this.updateMaterials();
   }
 });
