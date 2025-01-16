@@ -18,7 +18,12 @@ AFRAME.registerComponent('street-geo', {
       default: 'google3d',
       oneOf: ['google3d', 'mapbox2d', 'osm3d', 'none']
     },
-    enableClipping: { type: 'boolean', default: false }
+    enableClipping: { type: 'boolean', default: false },
+    blendMode: {
+      type: 'string',
+      default: '30% Opacity',
+      oneOf: ['Normal', '30% Opacity', '60% Opacity', 'Darker', 'Lighter']
+    }
   },
   init: function () {
     /*
@@ -40,6 +45,18 @@ AFRAME.registerComponent('street-geo', {
   },
   remove: function () {
     document.getElementById('map-data-attribution').style.visibility = 'hidden';
+  },
+  returnBlendMode: function (blendModePreset) {
+    // on the target, such as
+    // for each blend mode preset option, create a dictionary of blend modes and their corresponding values
+    const blendModes = {
+      Normal: { blendMode: 'Normal', opacity: 1.0 },
+      '30% Opacity': { blendMode: 'Normal', opacity: 0.3 },
+      '60% Opacity': { blendMode: 'Normal', opacity: 0.6 },
+      Darker: { blendMode: 'Multiply', opacity: 1.0 },
+      Lighter: { blendMode: 'Additive', opacity: 1.0 }
+    };
+    return blendModes[blendModePreset];
   },
   update: function (oldData) {
     this.el.setAttribute('data-no-transform', '');
@@ -76,12 +93,21 @@ AFRAME.registerComponent('street-geo', {
       }
     }
 
-    // if state is not clipping, then disable it
     if (this.google3d) {
+      // this won't run at first due to race condition
+      // if state is not clipping, then disable it
       if (data.enableClipping) {
         this.google3d.setAttribute('obb-clipping', '');
       } else {
         this.google3d.removeAttribute('obb-clipping');
+      }
+      if (data.blendMode) {
+        console.log('blend mode', data.blendMode);
+        console.log('blend mode', this.returnBlendMode(data.blendMode));
+        this.google3d.setAttribute(
+          'blending-opacity',
+          this.returnBlendMode(data.blendMode)
+        );
       }
     }
   },
@@ -168,6 +194,20 @@ AFRAME.registerComponent('street-geo', {
       google3dElement.setAttribute('data-ignore-raycaster', '');
       el.appendChild(google3dElement);
       self['google3d'] = google3dElement;
+
+      // if clipping is enabled, add it
+      if (data.enableClipping) {
+        google3dElement.setAttribute('obb-clipping', '');
+      }
+      // if blend mode is set, add it
+      if (data.blendMode) {
+        console.log('blend mode', data.blendMode);
+        console.log('blend mode', this.returnBlendMode(data.blendMode));
+        google3dElement.setAttribute(
+          'blending-opacity',
+          this.returnBlendMode(data.blendMode)
+        );
+      }
     };
 
     // check whether the library has been imported. Download if not
@@ -199,6 +239,25 @@ AFRAME.registerComponent('street-geo', {
       long: data.longitude,
       height: height
     });
+
+    // if state is not clipping, then disable it
+    if (data.enableClipping && !this.google3d.getAttribute('obb-clipping')) {
+      this.google3d.setAttribute('obb-clipping', '');
+    } else if (
+      !data.enableClipping &&
+      this.google3d.getAttribute('obb-clipping')
+    ) {
+      this.google3d.removeAttribute('obb-clipping');
+    }
+
+    if (data.blendMode) {
+      console.log('blend mode', data.blendMode);
+      console.log('blend mode', this.returnBlendMode(data.blendMode));
+      this.google3d.setAttribute(
+        'blending-opacity',
+        this.returnBlendMode(data.blendMode)
+      );
+    }
   },
   mapbox2dUpdate: function () {
     const data = this.data;

@@ -1,5 +1,5 @@
 /* global AFRAME */
-AFRAME.registerComponent('tiles-material-change', {
+AFRAME.registerComponent('blending-opacity', {
   schema: {
     opacity: { type: 'number', default: 1.0, min: 0, max: 1 },
     blendMode: {
@@ -21,16 +21,6 @@ AFRAME.registerComponent('tiles-material-change', {
   },
 
   init: function () {
-    // Bind methods
-    this.updateMaterials = this.updateMaterials.bind(this);
-    this.onModelLoaded = this.onModelLoaded.bind(this);
-
-    // Add event listeners
-    this.el.addEventListener('model-loaded', this.onModelLoaded);
-
-    // Initial setup
-    this.updateMaterials();
-
     // Blending mode map
     this.blendModes = {
       Normal: THREE.NormalBlending,
@@ -44,6 +34,16 @@ AFRAME.registerComponent('tiles-material-change', {
       ColorDodge: THREE.CustomBlending,
       ColorBurn: THREE.CustomBlending
     };
+
+    // Bind methods
+    this.updateMaterials = this.updateMaterials.bind(this);
+    this.onModelLoaded = this.onModelLoaded.bind(this);
+
+    // Add event listeners
+    this.el.addEventListener('model-loaded', this.onModelLoaded);
+
+    // Initial setup
+    this.updateMaterials();
   },
 
   update: function (oldData) {
