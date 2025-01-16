@@ -1,7 +1,7 @@
 import PropTypes from 'prop-types';
 import PropertyRow from './PropertyRow';
 
-const GeoSidebar = ({ entity }) => {
+const EnviroSidebar = ({ entity }) => {
   const componentName = 'street-environment';
   // Check if entity and its components exist
   const component = entity?.components?.[componentName];
@@ -40,8 +40,8 @@ const GeoSidebar = ({ entity }) => {
   );
 };
 
-GeoSidebar.propTypes = {
+EnviroSidebar.propTypes = {
   entity: PropTypes.object.isRequired
 };
 
-export default GeoSidebar;
+export default EnviroSidebar;
