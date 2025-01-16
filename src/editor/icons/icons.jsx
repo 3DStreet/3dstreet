@@ -963,72 +963,97 @@ export const SignInMicrosoftIconSVG = () => (
 
 export const ManagedStreetIcon = () => (
   <svg
-    width="26"
+    width="24"
     height="24"
-    viewBox="0 0 26 24"
+    viewBox="0 0 24 24"
     fill="none"
     xmlns="http://www.w3.org/2000/svg"
   >
     <path
-      d="M20 3L11 21"
+      d="M17 1L17 22"
       stroke="white"
-      strokeWidth="0.5"
       strokeLinecap="round"
-      strokeDasharray="1 2"
+      strokeDasharray="3 4"
     />
-    <path d="M25 3L16 21" stroke="white" strokeLinecap="round" />
-    <path d="M25 3L10 3" stroke="white" strokeLinecap="round" />
-    <path d="M16 21L1 21" stroke="white" strokeLinecap="round" />
     <path
-      d="M15 3L6 21"
+      d="M6 1L6 22"
+      stroke="white"
+      strokeLinecap="round"
+      strokeDasharray="3 4"
+    />
+    <path
+      d="M12 1L12 22"
       stroke="white"
       strokeWidth="0.5"
       strokeLinecap="round"
-      strokeDasharray="1 2"
     />
-    <path d="M10 3L1 21" stroke="white" strokeLinecap="round" />
+    <path
+      d="M11 1L11 22"
+      stroke="white"
+      strokeWidth="0.5"
+      strokeLinecap="round"
+    />
+    <rect
+      x="0.75"
+      y="0.75"
+      width="21.5"
+      height="21.5"
+      rx="1.25"
+      stroke="#00FF37"
+      strokeWidth="1.5"
+    />
   </svg>
 );
 
 export const SegmentIcon = () => (
   <svg
-    width="28"
-    height="28"
-    viewBox="0 0 26 24"
+    width="24"
+    height="24"
+    viewBox="0 0 24 24"
     fill="none"
     xmlns="http://www.w3.org/2000/svg"
   >
-    <path d="M20 3L11 21" stroke="white" strokeLinecap="round" />
     <path
-      d="M25 3L16 21"
+      d="M17 1L17 22"
       stroke="white"
-      strokeWidth="0.5"
       strokeLinecap="round"
-      strokeDasharray="1 2"
+      strokeDasharray="3 4"
     />
     <path
-      d="M25 3L10 3"
+      d="M6 1L6 22"
       stroke="white"
-      strokeWidth="0.5"
       strokeLinecap="round"
-      strokeDasharray="1 2"
+      strokeDasharray="3 4"
     />
     <path
-      d="M16 21L1 21"
+      d="M12 1L12 22"
       stroke="white"
       strokeWidth="0.5"
       strokeLinecap="round"
-      strokeDasharray="1 2"
     />
-    <path d="M15 3L6 21" stroke="white" strokeLinecap="round" />
-    <path d="M11 21L6 21" stroke="white" strokeLinecap="round" />
-    <path d="M15 3H20" stroke="white" strokeLinecap="round" />
     <path
-      d="M10 3L1 21"
+      d="M11 1L11 22"
       stroke="white"
       strokeWidth="0.5"
       strokeLinecap="round"
-      strokeDasharray="1 2"
+    />
+    <rect
+      x="0.75"
+      y="0.75"
+      width="21.5"
+      height="21.5"
+      rx="1.25"
+      stroke="#929292"
+      strokeWidth="1.5"
+    />
+    <rect
+      x="9.75"
+      y="0.75"
+      width="6.5"
+      height="21.5"
+      rx="1.25"
+      stroke="#00FF37"
+      strokeWidth="1.5"
     />
   </svg>
 );
