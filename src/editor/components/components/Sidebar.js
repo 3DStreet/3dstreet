@@ -20,7 +20,8 @@ import {
   ManualIcon,
   ArrowLeftHookIcon
 } from '../../icons';
-import GeoSidebar from './GeoSidebar'; // Make sure to create and import this new component
+import GeoSidebar from './GeoSidebar';
+import EnviroSidebar from './EnviroSidebar';
 import IntersectionSidebar from './IntersectionSidebar';
 import StreetSegmentSidebar from './StreetSegmentSidebar';
 import ManagedStreetSidebar from './ManagedStreetSidebar';
@@ -134,6 +135,7 @@ export default class Sidebar extends React.Component {
               </div>
               <div className="scroll">
                 {entity.id !== 'reference-layers' &&
+                entity.id !== 'environment' &&
                 !entity.getAttribute('street-segment') ? (
                   <>
                     {entity.classList.contains('autocreated') && (
@@ -222,6 +224,9 @@ export default class Sidebar extends React.Component {
                     )}
                     {entity.id === 'reference-layers' && (
                       <GeoSidebar entity={entity} />
+                    )}
+                    {entity.id === 'environment' && (
+                      <EnviroSidebar entity={entity} />
                     )}
                   </>
                 )}
