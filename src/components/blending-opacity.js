@@ -103,43 +103,42 @@ AFRAME.registerComponent('blending-opacity', {
   },
 
   updateMaterials: function () {
-    const opacity = this.data.opacity;
-    const blendMode = this.data.blendMode;
-
-    this.el.object3D.traverse((node) => {
-      if (node.type === 'Mesh') {
-        const materials = Array.isArray(node.material)
-          ? node.material
-          : [node.material];
-
-        materials.forEach((material) => {
-          material.transparent = opacity < 1.0;
-          material.opacity = opacity;
-
-          // Set blending mode
-          if (
-            blendMode === 'Normal' ||
-            blendMode === 'Additive' ||
-            blendMode === 'Subtract' ||
-            blendMode === 'Multiply'
-          ) {
-            material.blending = this.blendModes[blendMode];
-          } else {
-            this.setCustomBlendMode(material, blendMode);
-          }
-
-          material.needsUpdate = true;
-        });
+    this.el.object3D.traverse((obj) => {
+      if (obj.isMesh) {
+        if (Array.isArray(obj.material)) {
+          obj.material.forEach((material) => {
+            this.updateMaterial(material);
+          });
+        } else {
+          this.updateMaterial(obj.material);
+        }
       }
     });
   },
 
+  updateMaterial: function (material) {
+    if (!material) return;
+
+    const opacity = this.data.opacity;
+    const blendMode = this.data.blendMode;
+
+    material.transparent = opacity < 1.0;
+    material.opacity = opacity;
+
+    // Set blending mode
+    if (
+      blendMode === 'Normal' ||
+      blendMode === 'Additive' ||
+      blendMode === 'Subtract' ||
+      blendMode === 'Multiply'
+    ) {
+      material.blending = this.blendModes[blendMode];
+    } else {
+      this.setCustomBlendMode(material, blendMode);
+    }
+  },
+
   tick: function () {
-    // Only update materials if there are changes
-    // if (this.el.getAttribute('tiles-material-change').needsUpdate) {
-    //   this.updateMaterials();
-    //   this.el.getAttribute('tiles-material-change').needsUpdate = false;
-    // }
     this.updateMaterials();
   }
 });
