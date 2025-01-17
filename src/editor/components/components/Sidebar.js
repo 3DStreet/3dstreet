@@ -120,13 +120,17 @@ export default class Sidebar extends React.Component {
             <>
               <div id="layers-title" onClick={this.toggleRightBar}>
                 <div className={'layersBlock'}>
-                  {entity.getAttribute('managed-street') ? (
-                    <ManagedStreetIcon />
-                  ) : entity.getAttribute('street-segment') ? (
-                    <SegmentIcon />
-                  ) : (
-                    <Object24Icon />
-                  )}
+                  <div style={{ width: '32px', height: '32px' }}>
+                    {entity.getAttribute('managed-street') ? (
+                      <ManagedStreetIcon
+                        style={{ width: '100%', height: '100%' }}
+                      />
+                    ) : entity.getAttribute('street-segment') ? (
+                      <SegmentIcon style={{ width: '100%', height: '100%' }} />
+                    ) : (
+                      <Object24Icon style={{ width: '100%', height: '100%' }} />
+                    )}
+                  </div>
                   <span>{entityName || formattedMixin}</span>
                 </div>
                 <div id="toggle-rightbar">
