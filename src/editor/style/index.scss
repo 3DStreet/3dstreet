@@ -617,6 +617,19 @@ body.aframe-inspector-opened {
       background-color: variables.$purple-200;
     }
 
+    .icon-container {
+      min-width: 24px;
+      min-height: 24px;
+      display: flex; // This helps with centering
+      align-items: center;
+      justify-content: center;
+
+      svg {
+        min-width: 24px;
+        min-height: 24px;
+      }
+    }
+
     .layersBlock {
       padding-left: 20px;
       display: flex;

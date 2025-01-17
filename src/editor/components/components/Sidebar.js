@@ -18,7 +18,11 @@ import {
   ManagedStreetIcon,
   AutoIcon,
   ManualIcon,
-  ArrowLeftHookIcon
+  ArrowLeftHookIcon,
+  VideoCameraIcon,
+  GeospatialIcon,
+  LayersIcon,
+  SunIcon
 } from '../../icons';
 import GeoSidebar from './GeoSidebar';
 import EnviroSidebar from './EnviroSidebar';
@@ -38,6 +42,28 @@ export default class Sidebar extends React.Component {
       showSideBar: true
     };
   }
+
+  getEntityIcon = (entity) => {
+    if (entity.getAttribute('managed-street')) {
+      return <ManagedStreetIcon />;
+    }
+    if (entity.getAttribute('street-segment')) {
+      return <SegmentIcon />;
+    }
+
+    switch (entity.id) {
+      case 'environment':
+        return <SunIcon />;
+      case 'reference-layers':
+        return <GeospatialIcon />;
+      case 'street-container':
+        return <LayersIcon />;
+      case 'cameraRig':
+        return <VideoCameraIcon />;
+      default:
+        return <Object24Icon />;
+    }
+  };
 
   getParentComponentName = (entity) => {
     const componentName = entity.getAttribute('data-parent-component');
@@ -119,17 +145,9 @@ export default class Sidebar extends React.Component {
           {this.state.showSideBar ? (
             <>
               <div id="layers-title" onClick={this.toggleRightBar}>
-                <div className={'layersBlock'}>
-                  <div style={{ width: '32px', height: '32px' }}>
-                    {entity.getAttribute('managed-street') ? (
-                      <ManagedStreetIcon
-                        style={{ width: '100%', height: '100%' }}
-                      />
-                    ) : entity.getAttribute('street-segment') ? (
-                      <SegmentIcon style={{ width: '100%', height: '100%' }} />
-                    ) : (
-                      <Object24Icon style={{ width: '100%', height: '100%' }} />
-                    )}
+                <div className="layersBlock">
+                  <div className="icon-container">
+                    {this.getEntityIcon(entity)}
                   </div>
                   <span>{entityName || formattedMixin}</span>
                 </div>
@@ -252,13 +270,7 @@ export default class Sidebar extends React.Component {
                     {entityName || formattedMixin}
                   </span>
                   <div className="relative z-10">
-                    {entity.getAttribute('managed-street') ? (
-                      <ManagedStreetIcon />
-                    ) : entity.getAttribute('street-segment') ? (
-                      <SegmentIcon />
-                    ) : (
-                      <Object24Icon />
-                    )}
+                    {this.getEntityIcon(entity)}
                   </div>
                 </div>
               </div>
