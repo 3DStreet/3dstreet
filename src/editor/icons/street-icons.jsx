@@ -1,4 +1,4 @@
-export const ManagedStreetIcon = () => (
+export const StreetSurfaceIcon = () => (
   <svg
     width="24"
     height="24"
@@ -7,37 +7,61 @@ export const ManagedStreetIcon = () => (
     xmlns="http://www.w3.org/2000/svg"
   >
     <path
-      d="M17 1L17 22"
+      d="M19.5358 5.44066C19.5358 4.30253 18.5511 3.36642 17.2882 3.25144C16.9337 2.41305 16.0164 1.81432 14.937 1.81432C14.4645 1.81432 14.0241 1.931 13.6469 2.13009C13.2179 1.45627 12.3979 1 11.4553 1C10.2057 1 9.17228 1.80217 8.98051 2.85084C8.87852 2.83991 8.77543 2.83236 8.67011 2.83236C7.28415 2.83236 6.16036 3.81784 6.16036 5.03372C6.16036 5.09328 6.16535 5.15162 6.17062 5.20996C5.46782 5.60012 5 6.28609 5 7.06955C5 7.76211 5.36528 8.37904 5.93532 8.78256C5.93283 8.82219 5.9284 8.86154 5.9284 8.90168C5.9284 10.1173 7.05193 11.103 8.43814 11.103C8.85357 11.103 9.24432 11.0131 9.58938 10.8566C10.0674 11.1578 10.752 11.5345 11.0834 11.4594C11.0834 11.4594 11.2067 13.1348 11.1801 13.5602C11.1294 14.3696 10.8525 15.2707 10.6577 16H13.6752C13.6752 16 13.2304 14.3743 13.211 13.8315C13.1916 13.2886 13.4044 12.2891 13.4044 12.2891L14.4512 11.3394C14.8541 11.581 15.3408 11.7183 15.8657 11.7183C17.1632 11.7183 18.2305 10.8525 18.3616 9.7447C19.3174 9.43381 20 8.62701 20 7.6802C20 7.1211 19.7606 6.61257 19.3692 6.22414C19.4751 5.98054 19.5358 5.71705 19.5358 5.44066ZM10.1691 10.4931C10.3703 10.3247 10.5391 10.1278 10.668 9.90925L11.1607 10.8147C11.1604 10.8148 10.8924 10.9185 10.1691 10.4931ZM12.0115 11.0522C11.7566 11.0928 11.3223 10.4042 11.0141 9.84432C11.3558 9.99723 11.7416 10.0852 12.1518 10.0852C12.2571 10.0852 12.3605 10.0777 12.4624 10.0665C12.3832 10.5145 12.2435 11.015 12.0115 11.0522ZM13.0949 11.4929C12.5051 11.6366 12.8582 10.5651 13.0272 9.94474C13.1495 9.90488 13.2678 9.85798 13.3803 9.80228C13.4482 10.2544 13.6721 10.6623 14.0039 10.9849C13.7165 11.2088 13.3856 11.4222 13.0949 11.4929Z"
+      fill="#888888"
+    />
+    <rect
+      x="3.5"
+      y="16.75"
+      width="17.5"
+      height="5.25"
+      rx="2"
+      stroke="#00FFFF"
+      strokeWidth="2"
+    />
+  </svg>
+);
+
+export const ManagedStreetIcon = () => (
+  <svg
+    width="25"
+    height="25"
+    viewBox="0 0 25 25"
+    fill="none"
+    xmlns="http://www.w3.org/2000/svg"
+  >
+    <path
+      d="M18 2L18 23"
       stroke="white"
       strokeLinecap="round"
       strokeDasharray="3 4"
     />
     <path
-      d="M6 1L6 22"
+      d="M7 2L7 23"
       stroke="white"
       strokeLinecap="round"
       strokeDasharray="3 4"
     />
     <path
-      d="M12 1L12 22"
+      d="M13 2L13 23"
       stroke="white"
       strokeWidth="0.5"
       strokeLinecap="round"
     />
     <path
-      d="M11 1L11 22"
+      d="M12 2L12 23"
       stroke="white"
       strokeWidth="0.5"
       strokeLinecap="round"
     />
     <rect
-      x="0.75"
-      y="0.75"
-      width="21.5"
-      height="21.5"
-      rx="1.25"
-      stroke="#00FF37"
-      strokeWidth="1.5"
+      x="1"
+      y="1"
+      width="23"
+      height="23"
+      rx="2"
+      stroke="#00FFFF"
+      strokeWidth="2"
     />
   </svg>
 );
@@ -45,38 +69,38 @@ export const ManagedStreetIcon = () => (
 export const SegmentIcon = () => (
   <svg
     width="24"
-    height="24"
-    viewBox="0 0 24 24"
+    height="25"
+    viewBox="0 0 24 25"
     fill="none"
     xmlns="http://www.w3.org/2000/svg"
   >
     <path
-      d="M17 1L17 22"
+      d="M17 2L17 23"
       stroke="white"
       strokeLinecap="round"
       strokeDasharray="3 4"
     />
     <path
-      d="M6 1L6 22"
+      d="M6 2L6 23"
       stroke="white"
       strokeLinecap="round"
       strokeDasharray="3 4"
     />
     <path
-      d="M12 1L12 22"
+      d="M12 2L12 23"
       stroke="white"
       strokeWidth="0.5"
       strokeLinecap="round"
     />
     <path
-      d="M11 1L11 22"
+      d="M11 2L11 23"
       stroke="white"
       strokeWidth="0.5"
       strokeLinecap="round"
     />
     <rect
       x="0.75"
-      y="0.75"
+      y="1.75"
       width="21.5"
       height="21.5"
       rx="1.25"
@@ -84,13 +108,13 @@ export const SegmentIcon = () => (
       strokeWidth="1.5"
     />
     <rect
-      x="9.75"
-      y="0.75"
-      width="6.5"
-      height="21.5"
-      rx="1.25"
-      stroke="#00FF37"
-      strokeWidth="1.5"
+      x="9"
+      y="1"
+      width="8"
+      height="23"
+      rx="2"
+      stroke="#00FFFF"
+      strokeWidth="2"
     />
   </svg>
 );

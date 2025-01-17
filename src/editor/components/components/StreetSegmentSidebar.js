@@ -1,5 +1,6 @@
 import PropTypes from 'prop-types';
 import PropertyRow from './PropertyRow';
+import { StreetSurfaceIcon } from '../../icons';
 
 const StreetSegmentSidebar = ({ entity }) => {
   const componentName = 'street-segment';
@@ -47,6 +48,7 @@ const StreetSegmentSidebar = ({ entity }) => {
                 <div className="static">
                   <div className="componentHeader collapsible-header">
                     <span className="componentTitle" title="Surface">
+                      <StreetSurfaceIcon />
                       <span>Surface</span>
                     </span>
                   </div>
