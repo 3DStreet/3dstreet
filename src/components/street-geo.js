@@ -20,8 +20,8 @@ AFRAME.registerComponent('street-geo', {
     enableClipping: { type: 'boolean', default: false },
     blendMode: {
       type: 'string',
-      default: 'Normal',
-      oneOf: ['Normal', '30% Opacity', '60% Opacity', 'Darker', 'Lighter']
+      default: '30% Opacity',
+      oneOf: ['30% Opacity', '60% Opacity', 'Darker', 'Lighter', 'Normal']
     },
     blendingEnabled: { type: 'boolean', default: false }
   },
@@ -73,6 +73,7 @@ AFRAME.registerComponent('street-geo', {
             'visible';
           this[mapType + 'Create']();
         }
+        AFRAME.INSPECTOR.selectEntity(this.el);
       } else if (
         data.maps === mapType &&
         (updatedData.longitude ||
@@ -89,6 +90,7 @@ AFRAME.registerComponent('street-geo', {
         if (mapType === 'osm3d') {
           this.el.removeChild(this['osm3dBuilding']);
         }
+        AFRAME.INSPECTOR.selectEntity(this.el);
       }
     }
 
@@ -116,6 +118,7 @@ AFRAME.registerComponent('street-geo', {
           this.el.removeChild(currentEl);
           this.google3d = null;
           this.google3dCreate();
+          AFRAME.INSPECTOR.selectEntity(this.el);
         }
       }
 
@@ -131,6 +134,7 @@ AFRAME.registerComponent('street-geo', {
         this.el.removeChild(currentEl);
         this.google3d = null;
         this.google3dCreate();
+        AFRAME.INSPECTOR.selectEntity(this.el);
       }
     }
   },

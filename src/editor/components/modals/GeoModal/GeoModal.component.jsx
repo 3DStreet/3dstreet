@@ -136,6 +136,9 @@ const GeoModal = () => {
           }
         }
       );
+      setTimeout(() => {
+        AFRAME.INSPECTOR.selectEntity(geoLayer);
+      }, 0);
     }
 
     setIsWorking(false);
