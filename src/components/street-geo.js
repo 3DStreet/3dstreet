@@ -9,7 +9,6 @@ AFRAME.registerComponent('street-geo', {
   schema: {
     longitude: { type: 'number', default: 0 },
     latitude: { type: 'number', default: 0 },
-    elevation: { type: 'number', default: null }, // deprecated
     orthometricHeight: { type: 'number', default: null },
     geoidHeight: { type: 'number', default: null },
     ellipsoidalHeight: { type: 'number', default: null },
@@ -23,7 +22,8 @@ AFRAME.registerComponent('street-geo', {
       type: 'string',
       default: 'Normal',
       oneOf: ['Normal', '30% Opacity', '60% Opacity', 'Darker', 'Lighter']
-    }
+    },
+    blendingEnabled: { type: 'boolean', default: false }
   },
   init: function () {
     /*
@@ -32,7 +32,6 @@ AFRAME.registerComponent('street-geo', {
       update function: <mapType>Update,
     */
     this.mapTypes = this.el.components['street-geo'].schema.maps.oneOf;
-    this.elevationHeightConstant = 32.49158; // deprecated
 
     const urlParams = new URLSearchParams(window.location.search);
     this.isAR = urlParams.get('viewer') === 'ar';
@@ -94,20 +93,44 @@ AFRAME.registerComponent('street-geo', {
     }
 
     if (this.google3d) {
-      // this won't run at first due to race condition
-      // if state is not clipping, then disable it
+      // Handle clipping updates
       if (data.enableClipping) {
         this.google3d.setAttribute('obb-clipping', '');
       } else {
         this.google3d.removeAttribute('obb-clipping');
       }
-      if (data.blendMode) {
-        console.log('blend mode', data.blendMode);
-        console.log('blend mode', this.returnBlendMode(data.blendMode));
-        this.google3d.setAttribute(
-          'blending-opacity',
-          this.returnBlendMode(data.blendMode)
-        );
+
+      // Handle blending updates
+      if (data.blendingEnabled) {
+        if (data.blendMode) {
+          this.google3d.setAttribute(
+            'blending-opacity',
+            this.returnBlendMode(data.blendMode)
+          );
+        }
+      } else {
+        this.google3d.removeAttribute('blending-opacity');
+        if (oldData.blendingEnabled) {
+          // If blending was previously enabled and now disabled, recreate the tiles
+          const currentEl = this.google3d;
+          this.el.removeChild(currentEl);
+          this.google3d = null;
+          this.google3dCreate();
+        }
+      }
+
+      // regenerate tiles if blending enabled in editor
+      const dataDiff = AFRAME.utils.diff(oldData, data);
+      const changedProps = Object.keys(dataDiff);
+      if (
+        changedProps.length === 1 &&
+        changedProps.includes('blendingEnabled')
+      ) {
+        if (!data.blendingEnabled) return;
+        const currentEl = this.google3d;
+        this.el.removeChild(currentEl);
+        this.google3d = null;
+        this.google3dCreate();
       }
     }
   },
@@ -149,10 +172,7 @@ AFRAME.registerComponent('street-geo', {
     const data = this.data;
     const el = this.el;
     const self = this;
-    // if data.ellipsoidalHeight, use it, otherwise use data.elevation less constant (deprecated)
-    const height = data.ellipsoidalHeight
-      ? data.ellipsoidalHeight
-      : data.elevation - this.elevationHeightConstant;
+    const height = data.ellipsoidalHeight;
 
     const create3DtilesElement = () => {
       const google3dElement = document.createElement('a-entity');
@@ -161,7 +181,6 @@ AFRAME.registerComponent('street-geo', {
       if (data.enableClipping) {
         google3dElement.setAttribute('obb-clipping', '');
       }
-      google3dElement.setAttribute('tiles-material-change', 'opacity: 0.5');
 
       google3dElement.setAttribute('data-layer-name', 'Google 3D Tiles');
       google3dElement.setAttribute('data-no-transform', '');
@@ -199,14 +218,14 @@ AFRAME.registerComponent('street-geo', {
       if (data.enableClipping) {
         google3dElement.setAttribute('obb-clipping', '');
       }
-      // if blend mode is set, add it
-      if (data.blendMode) {
-        console.log('blend mode', data.blendMode);
-        console.log('blend mode', this.returnBlendMode(data.blendMode));
-        google3dElement.setAttribute(
-          'blending-opacity',
-          this.returnBlendMode(data.blendMode)
-        );
+      // Only set blending if enabled
+      if (data.blendingEnabled) {
+        if (data.blendMode) {
+          google3dElement.setAttribute(
+            'blending-opacity',
+            this.returnBlendMode(data.blendMode)
+          );
+        }
       }
     };
 
@@ -229,10 +248,7 @@ AFRAME.registerComponent('street-geo', {
   },
   google3dUpdate: function () {
     const data = this.data;
-    // if data.ellipsoidalHeight, use it, otherwise use data.elevation less constant (deprecated)
-    const height = data.ellipsoidalHeight
-      ? data.ellipsoidalHeight
-      : data.elevation - this.elevationHeightConstant;
+    const height = data.ellipsoidalHeight;
 
     this.google3d.setAttribute('loader-3dtiles', {
       lat: data.latitude,
@@ -250,13 +266,16 @@ AFRAME.registerComponent('street-geo', {
       this.google3d.removeAttribute('obb-clipping');
     }
 
-    if (data.blendMode) {
-      console.log('blend mode', data.blendMode);
-      console.log('blend mode', this.returnBlendMode(data.blendMode));
-      this.google3d.setAttribute(
-        'blending-opacity',
-        this.returnBlendMode(data.blendMode)
-      );
+    // Handle blending updates
+    if (data.blendingEnabled) {
+      if (data.blendMode) {
+        this.google3d.setAttribute(
+          'blending-opacity',
+          this.returnBlendMode(data.blendMode)
+        );
+      }
+    } else {
+      this.google3d.removeAttribute('blending-opacity');
     }
   },
   mapbox2dUpdate: function () {
