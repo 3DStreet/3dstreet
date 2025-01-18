@@ -2,7 +2,7 @@ import { useState, useCallback, useEffect } from 'react';
 import { SavingModal } from '../SavingModal';
 
 import styles from './GeoModal.module.scss';
-import { Mangnifier20Icon, Save24Icon, QR32Icon } from '../../../icons';
+import { Mangnifier20Icon, Save24Icon } from '../../../icons';
 
 import { httpsCallable } from 'firebase/functions';
 import { firebaseConfig, functions } from '../../../services/firebase.js';
@@ -16,7 +16,6 @@ import {
 } from '@react-google-maps/api';
 import GeoImg from '../../../../../ui_assets/geo.png';
 import { roundCoord } from '../../../../../src/utils.js';
-import { QrCode } from '../../components/QrCode';
 import useStore from '@/store.js';
 
 const GeoModal = () => {
@@ -29,7 +28,6 @@ const GeoModal = () => {
     lng: -122.4151768
   });
   const [autocomplete, setAutocomplete] = useState(null);
-  const [qrCodeUrl, setQrCodeUrl] = useState(null);
   const [isWorking, setIsWorking] = useState(false);
   const setModal = useStore((state) => state.setModal);
   const isOpen = useStore((state) => state.modal === 'geo');
@@ -111,25 +109,6 @@ const GeoModal = () => {
     if (autocompleteContatiner.children.length === 0) {
       onClose();
     }
-  };
-
-  const onQRHandler = () => {
-    let currentSceneId = STREET.utils.getCurrentSceneId();
-    const PROTOCOL = 'https://';
-    const HOSTNAME = window.location.host; // such as 'dev-3dstreet.web.app'
-    const QUERYSTRING = '?viewer=ar';
-    const HASH = '#/scenes/' + currentSceneId + '.json';
-    const AR_URL = PROTOCOL + HOSTNAME + QUERYSTRING + HASH;
-    const APPCLIP_PREFIX = 'https://launchar.app/l/gy8Ma2?url='; // via https://launchar.app/projects/
-    const APPCLIP_URL = APPCLIP_PREFIX + encodeURIComponent(AR_URL);
-    setQrCodeUrl(APPCLIP_URL);
-    setTimeout(
-      () =>
-        document
-          .getElementById('qrCodeContainer')
-          ?.scrollIntoView({ behavior: 'smooth' }),
-      100
-    );
   };
 
   const onSaveHandler = async () => {
@@ -222,26 +201,10 @@ const GeoModal = () => {
             </div>
           </div>
 
-          {qrCodeUrl && (
-            <div className={styles.qrCodeContainer} id="qrCodeContainer">
-              <QrCode url={qrCodeUrl} />
-              <div>Click on the QR Code to download it</div>
-            </div>
-          )}
-
           <div className={styles.controlButtons}>
             <Button variant="ghost" onClick={onClose}>
               Cancel
             </Button>
-            {!qrCodeUrl && (
-              <Button
-                leadingIcon={<QR32Icon />}
-                variant="filled"
-                onClick={onQRHandler}
-              >
-                Create Augmented Reality QR Code
-              </Button>
-            )}
             <Button
               leadingIcon={<Save24Icon />}
               variant="filled"
