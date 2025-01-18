@@ -117,8 +117,6 @@ AFRAME.registerComponent('blending-opacity', {
   },
 
   updateMaterial: function (material) {
-    if (!material) return;
-
     const opacity = this.data.opacity;
     const blendMode = this.data.blendMode;
 

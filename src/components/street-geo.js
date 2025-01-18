@@ -109,6 +109,13 @@ AFRAME.registerComponent('street-geo', {
             'blending-opacity',
             this.returnBlendMode(data.blendMode)
           );
+          if (oldData.blendingEnabled === false) {
+            const currentEl = this.google3d;
+            this.el.removeChild(currentEl);
+            this.google3d = null;
+            this.google3dCreate();
+            AFRAME.INSPECTOR.selectEntity(this.el);
+          }
         }
       } else {
         this.google3d.removeAttribute('blending-opacity');
@@ -120,21 +127,6 @@ AFRAME.registerComponent('street-geo', {
           this.google3dCreate();
           AFRAME.INSPECTOR.selectEntity(this.el);
         }
-      }
-
-      // regenerate tiles if blending enabled in editor
-      const dataDiff = AFRAME.utils.diff(oldData, data);
-      const changedProps = Object.keys(dataDiff);
-      if (
-        changedProps.length === 1 &&
-        changedProps.includes('blendingEnabled')
-      ) {
-        if (!data.blendingEnabled) return;
-        const currentEl = this.google3d;
-        this.el.removeChild(currentEl);
-        this.google3d = null;
-        this.google3dCreate();
-        AFRAME.INSPECTOR.selectEntity(this.el);
       }
     }
   },
