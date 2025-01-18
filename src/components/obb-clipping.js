@@ -4,7 +4,7 @@ AFRAME.registerComponent('obb-clipping', {
   schema: {
     size: { default: 0 },
     clippingSourceSelectorString: {
-      default: '[street]' // we use string instead of selector as the built-in a-frame selector doesn't support this syntax
+      default: '[managed-street], [street]' // we use string instead of selector as the built-in a-frame selector doesn't support this syntax
     },
     clippingDestinationSelectorString: {
       // empty string means use the same element as the source
