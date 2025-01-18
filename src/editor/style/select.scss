@@ -33,6 +33,7 @@
   border-radius: 10px;
   padding: 12px 16px;
   height: 48px;
+  max-width: 220px;
 }
 [class^='select-single__control']:hover {
   border: 1px solid variables.$purple-500;
@@ -53,6 +54,7 @@
 [class^='select-single__menu'] {
   background: variables.$darkgray-300;
   border-radius: 8px;
+  max-width: 220px;
 }
 [class^='select-single__option'] {
   padding: 8px;

@@ -78,7 +78,7 @@ export default class Entity extends React.Component {
         </span>
       );
     } else {
-      collapse = <span className="collapsespace" />;
+      collapse = <span />;
     }
 
     // Visibility button.

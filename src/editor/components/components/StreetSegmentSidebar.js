@@ -1,5 +1,6 @@
 import PropTypes from 'prop-types';
 import PropertyRow from './PropertyRow';
+import { StreetSurfaceIcon } from '../../icons';
 
 const StreetSegmentSidebar = ({ entity }) => {
   const componentName = 'street-segment';
@@ -42,39 +43,51 @@ const StreetSegmentSidebar = ({ entity }) => {
                 isSingle={false}
                 entity={entity}
               />
-              <div className="propertyRow">
-                <div className="text">-----</div>
+              {/* props for street-segment but formatted as a fake 'surface' component */}
+              <div className="collapsible component">
+                <div className="static">
+                  <div className="componentHeader collapsible-header">
+                    <span className="componentTitle" title="Surface">
+                      <StreetSurfaceIcon />
+                      <span>Surface</span>
+                    </span>
+                  </div>
+                </div>
+                <div className="content">
+                  <div className="collapsible-content">
+                    <PropertyRow
+                      key="surface"
+                      name="surface"
+                      label="Surface"
+                      schema={component.schema['surface']}
+                      data={component.data['surface']}
+                      componentname={componentName}
+                      isSingle={false}
+                      entity={entity}
+                    />
+                    <PropertyRow
+                      key="color"
+                      name="color"
+                      label="Color"
+                      schema={component.schema['color']}
+                      data={component.data['color']}
+                      componentname={componentName}
+                      isSingle={false}
+                      entity={entity}
+                    />
+                    <PropertyRow
+                      key="level"
+                      name="level"
+                      label="Curb Level"
+                      schema={component.schema['level']}
+                      data={component.data['level']}
+                      componentname={componentName}
+                      isSingle={false}
+                      entity={entity}
+                    />
+                  </div>
+                </div>
               </div>
-              <PropertyRow
-                key="surface"
-                name="surface"
-                label="Surface"
-                schema={component.schema['surface']}
-                data={component.data['surface']}
-                componentname={componentName}
-                isSingle={false}
-                entity={entity}
-              />
-              <PropertyRow
-                key="color"
-                name="color"
-                label="Color"
-                schema={component.schema['color']}
-                data={component.data['color']}
-                componentname={componentName}
-                isSingle={false}
-                entity={entity}
-              />
-              <PropertyRow
-                key="level"
-                name="level"
-                label="Curb Level"
-                schema={component.schema['level']}
-                data={component.data['level']}
-                componentname={componentName}
-                isSingle={false}
-                entity={entity}
-              />
             </>
           )}
         </div>
