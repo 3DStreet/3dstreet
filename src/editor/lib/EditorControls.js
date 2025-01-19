@@ -62,8 +62,10 @@ THREE.EditorControls = function (_object, domElement) {
     var distance;
 
     // Save current camera position/quaternion
-    scope.transitionCamPosStart.copy(object.position);
-    scope.transitionCamQuaternionStart.copy(object.quaternion);
+    this.focusAnimationComponent.transitionCamPosStart.copy(object.position);
+    this.focusAnimationComponent.transitionCamQuaternionStart.copy(
+      object.quaternion
+    );
 
     box.setFromObject(target);
 
@@ -88,68 +90,25 @@ THREE.EditorControls = function (_object, domElement) {
     object.lookAt(pos);
 
     // Save end camera position/quaternion
-    scope.transitionCamPosEnd.copy(object.position);
-    scope.transitionCamQuaternionEnd.copy(object.quaternion);
+    this.focusAnimationComponent.transitionCamPosEnd.copy(object.position);
+    this.focusAnimationComponent.transitionCamQuaternionEnd.copy(
+      object.quaternion
+    );
     // Restore camera position/quaternion and start transition
-    object.position.copy(scope.transitionCamPosStart);
-    object.quaternion.copy(scope.transitionCamQuaternionStart);
-    scope.transitionSpeed = 0.001;
-    scope.transitionProgress = 0;
-    scope.transitioning = true;
+    object.position.copy(this.focusAnimationComponent.transitionCamPosStart);
+    object.quaternion.copy(
+      this.focusAnimationComponent.transitionCamQuaternionStart
+    );
+    this.focusAnimationComponent.transitionProgress = 0;
+    this.focusAnimationComponent.transitioning = true;
   };
 
-  function easeInOutQuad(t) {
-    return t < 0.5 ? 2 * t * t : -1 + (4 - 2 * t) * t;
-  }
-
-  this.transitioning = false;
-  this.transitionProgress = 0;
-  this.transitionCamPosStart = new THREE.Vector3();
-  this.transitionCamPosEnd = new THREE.Vector3();
-  this.transitionCamQuaternionStart = new THREE.Quaternion();
-  this.transitionCamQuaternionEnd = new THREE.Quaternion();
-  this.transitionSpeed = 0.001;
-  this.fakeComponent = {
-    name: 'inspector-editor-controls',
-    el: { isPlaying: true },
-    isPlaying: true,
-    tick: (t, delta) => {
-      if (scope.enabled === false) return;
-      if (this.transitioning) {
-        this.transitionProgress += delta * this.transitionSpeed;
-        const easeInOutTransitionProgress = easeInOutQuad(
-          this.transitionProgress
-        );
-
-        // Set camera position
-        object.position.lerpVectors(
-          this.transitionCamPosStart,
-          this.transitionCamPosEnd,
-          easeInOutTransitionProgress
-        );
-
-        object.quaternion.slerpQuaternions(
-          this.transitionCamQuaternionStart,
-          this.transitionCamQuaternionEnd,
-          easeInOutTransitionProgress
-        );
-
-        if (this.transitionProgress >= 1) {
-          this.transitioning = false;
-          object.position.copy(this.transitionCamPosEnd);
-          object.quaternion.copy(this.transitionCamQuaternionEnd);
-        }
-        scope.dispatchEvent(changeEvent);
-      }
-    }
+  this.focusAnimationComponent =
+    document.querySelector('[focus-animation]').components['focus-animation'];
+  const changeEventCallback = () => {
+    scope.dispatchEvent(changeEvent);
   };
-  // Register the tick function with the render loop
-  const sceneEl = AFRAME.scenes[0];
-  if (sceneEl.componentOrder) {
-    // aframe 1.6.0 an above
-    sceneEl.componentOrder.push(this.fakeComponent.name);
-  }
-  sceneEl.addBehavior(this.fakeComponent);
+  this.focusAnimationComponent.setCamera(object, changeEventCallback);
 
   this.pan = function (delta) {
     var distance;

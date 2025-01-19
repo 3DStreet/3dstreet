@@ -17,6 +17,7 @@ require('./assets.js');
 require('./components/notify.js');
 require('./components/create-from-json');
 require('./components/screentock.js');
+require('./components/focus-animation');
 require('aframe-atlas-uvs-component');
 require('./components/street-geo.js');
 require('./components/street-environment.js');

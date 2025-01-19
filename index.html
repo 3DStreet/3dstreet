@@ -100,7 +100,15 @@
         blink-controls="cameraRig: #cameraRig; teleportOrigin: #camera; rotateOnTeleport:false;"></a-entity>
       <a-entity id="rightHand" hand-controls="hand: right"
         blink-controls="cameraRig: #cameraRig; teleportOrigin: #camera; rotateOnTeleport:false;"></a-entity>
-      <a-entity id="screenshot" class="no-pause" screentock visible="false"></a-entity>
+      <a-entity
+        id="screenshot"
+        data-layer-name="Focus animation"
+        data-no-pause=""
+        data-no-transform=""
+        focus-animation
+        screentock
+        visible="false"
+      ></a-entity>
     </a-entity>
 
   </a-scene>
