@@ -53,11 +53,6 @@ AFRAME.registerComponent('custom-colors', {
     this.el.addEventListener('object3dset', this.resetAndUpdateMaterials);
     if (this.el.getObject3D('mesh')) {
       this.update();
-    } else {
-      this.updateMaterials = this.updateMaterials.bind(this);
-      this.el.addEventListener('model-loaded', this.updateMaterials, {
-        once: true
-      });
     }
   },
   remove() {
