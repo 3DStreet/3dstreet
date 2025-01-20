@@ -77,6 +77,32 @@ export function createManagedStreetFromStreetmixURLPrompt(position) {
   }
 }
 
+export function createManagedStreetFromStreetplanURLPrompt(position) {
+  // This creates a new Managed Street
+  let streetplanURL = prompt(
+    'Please enter a StreetPlan URL',
+    'https://streetplan.net/3dstreet/89474'
+  );
+
+  if (streetplanURL && streetplanURL !== '') {
+    const definition = {
+      id: createUniqueId(),
+      components: {
+        position: position ?? '0 0 0',
+        'managed-street': {
+          sourceType: 'streetplan-url',
+          sourceValue: streetplanURL,
+          showVehicles: true,
+          showStriping: true,
+          synchronize: true
+        }
+      }
+    };
+
+    AFRAME.INSPECTOR.execute('entitycreate', definition);
+  }
+}
+
 export function createManagedStreetFromStreetObject(position, streetObject) {
   // This creates a new Managed Street
   if (streetObject && streetObject !== '') {
@@ -148,6 +174,50 @@ export function create60ftRightOfWayManagedStreet(position) {
   createManagedStreetFromStreetObject(
     position,
     defaultStreetObjects.stroad60ftROW
+  );
+}
+
+export function create40ftRightOfWayManagedStreet(position) {
+  console.log(
+    'create40ftRightOfWayManagedStreet',
+    defaultStreetObjects.stroad40ftROW
+  );
+  createManagedStreetFromStreetObject(
+    position,
+    defaultStreetObjects.stroad40ftROW
+  );
+}
+
+export function create80ftRightOfWayManagedStreet(position) {
+  console.log(
+    'create80ftRightOfWayManagedStreet',
+    defaultStreetObjects.stroad80ftROW
+  );
+  createManagedStreetFromStreetObject(
+    position,
+    defaultStreetObjects.stroad80ftROW
+  );
+}
+
+export function create94ftRightOfWayManagedStreet(position) {
+  console.log(
+    'create94ftRightOfWayManagedStreet',
+    defaultStreetObjects.stroad94ftROW
+  );
+  createManagedStreetFromStreetObject(
+    position,
+    defaultStreetObjects.stroad94ftROW
+  );
+}
+
+export function create150ftRightOfWayManagedStreet(position) {
+  console.log(
+    'create150ftRightOfWayManagedStreet',
+    defaultStreetObjects.stroad150ftROW
+  );
+  createManagedStreetFromStreetObject(
+    position,
+    defaultStreetObjects.stroad150ftROW
   );
 }
 

@@ -2,6 +2,7 @@
 import { nanoid } from 'nanoid';
 import Events from './Events';
 import { equal } from './utils';
+import { SunIcon, VideoCameraIcon, LayersIcon } from '../icons';
 
 /**
  * Update a component.
@@ -587,36 +588,29 @@ export function getEntityDisplayName(entity) {
  * Entity representation.
  */
 const ICONS = {
-  camera: 'fa-camera',
-  mesh: 'fa-cube',
-  light: 'fa-lightbulb-o',
-  text: 'fa-font'
+  cameraRig: <VideoCameraIcon />,
+  environment: <SunIcon />,
+  'street-container': <LayersIcon />
 };
+
 export function printEntity(entity) {
   if (!entity) {
     return '';
   }
 
-  // Icons.
-  let icons = '';
-  for (let objType in ICONS) {
-    if (!entity.getObject3D(objType)) {
-      continue;
+  let icon = null;
+  for (let entityId in ICONS) {
+    if (entityId === entity.id) {
+      icon = ICONS[entityId];
     }
-    icons += `&nbsp;<i class="fa ${ICONS[objType]}" title="${objType}"></i>`;
   }
 
   // Custom display name for a layer if available, otherwise use entity name or tag
   let displayName = getEntityDisplayName(entity);
   return (
     <span className="entityPrint">
+      {icon && <span className="entityIcons">{icon}</span>}
       {displayName && <span className="entityName">&nbsp;{displayName}</span>}
-      {!!icons && (
-        <span
-          className="entityIcons"
-          dangerouslySetInnerHTML={{ __html: icons }}
-        />
-      )}
     </span>
   );
 }

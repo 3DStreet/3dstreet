@@ -16,21 +16,23 @@ export class EntityCloneCommand extends Command {
     this.entityId = null;
   }
 
-  execute() {
+  execute(nextCommandCallback) {
     const entityToClone = document.getElementById(this.entityIdToClone);
     if (entityToClone) {
       const clone = cloneEntityImpl(entityToClone, this.entityId);
       this.entityId = clone.id;
+      nextCommandCallback?.(clone);
       return clone;
     }
   }
 
-  undo() {
+  undo(nextCommandCallback) {
     const entity = document.getElementById(this.entityId);
     if (entity) {
       entity.parentNode.removeChild(entity);
       Events.emit('entityremoved', entity);
       this.editor.selectEntity(document.getElementById(this.entityIdToClone));
+      nextCommandCallback?.(entity);
     }
   }
 }

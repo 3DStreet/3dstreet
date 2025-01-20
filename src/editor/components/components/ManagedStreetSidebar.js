@@ -3,40 +3,44 @@ import PropertyRow from './PropertyRow';
 
 const ManagedStreetSidebar = ({ entity }) => {
   const componentName = 'managed-street';
+  const labelComponentName = 'street-label';
   // Check if entity and its components exist
   const component = entity?.components?.[componentName];
+  const labelComponent = entity?.components?.[labelComponentName];
 
   return (
     <div className="managed-street-sidebar">
       <div className="street-controls">
         <div className="details">
-          {component && component.schema && component.data && (
-            <>
-              <PropertyRow
-                key="length"
-                name="length"
-                label="Street Length"
-                schema={component.schema.length}
-                data={component.data.length}
-                componentname={componentName}
-                isSingle={false}
-                entity={entity}
-              />
-              <PropertyRow
-                key="width"
-                name="width"
-                label="Street Width"
-                schema={component.schema.width}
-                data={component.data.width}
-                componentname={componentName}
-                isSingle={false}
-                entity={entity}
-              />
-              <div className="propertyRow">
-                <div className="text">-----</div>
-              </div>
-            </>
-          )}
+          {component &&
+            component.schema &&
+            component.data &&
+            labelComponent &&
+            labelComponent.schema &&
+            labelComponent.data && (
+              <>
+                <PropertyRow
+                  key="length"
+                  name="length"
+                  label="Street Length"
+                  schema={component.schema.length}
+                  data={component.data.length}
+                  componentname={componentName}
+                  isSingle={false}
+                  entity={entity}
+                />
+                <PropertyRow
+                  key="enabled"
+                  name="enabled"
+                  label="Labels"
+                  schema={labelComponent.schema.enabled}
+                  data={labelComponent.data.enabled}
+                  componentname={labelComponentName}
+                  isSingle={false}
+                  entity={entity}
+                />
+              </>
+            )}
         </div>
       </div>
     </div>

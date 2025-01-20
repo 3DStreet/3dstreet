@@ -300,7 +300,7 @@ function createSidewalkClonedVariants(
     10
   );
   const dividerParentEl = createParentElement('pedestrians-parent');
-  dividerParentEl.setAttribute('position', { y: elevationPosY });
+  dividerParentEl.setAttribute('position', { x: 0, y: elevationPosY, z: 0 });
   // Randomly generate avatars
   for (let i = 0; i < totalPedestrianNumber; i++) {
     const variantName =
@@ -451,7 +451,7 @@ function addLinearStreetAnimation(
     easing: 'linear',
     loop: 'false',
     from: { x: xPos, y: yVal, z: zPos },
-    to: { z: halfStreet },
+    to: { x: xPos, y: yVal, z: halfStreet },
     dur: startingDuration
   };
   const animationAttrs2 = {
@@ -690,7 +690,7 @@ function createOutdoorDining(length, posY) {
     reusableObjectEl.setAttribute('mixin', 'outdoor_dining');
 
     // const positionZ = randomPosition(reusableObjectEl, 'z', length, outdorDiningLength);
-    reusableObjectEl.setAttribute('position', { y: posY, z: randPosZ });
+    reusableObjectEl.setAttribute('position', { x: 0, y: posY, z: randPosZ });
     outdoorDiningParentEl.append(reusableObjectEl);
   });
 
@@ -729,7 +729,7 @@ function createMicroMobilityElement(
     const reusableObjectEl = document.createElement('a-entity');
     const rotationY = variantList[0] === 'inbound' ? 0 : 180;
     reusableObjectEl.setAttribute('rotation', '0 ' + rotationY + ' 0');
-    reusableObjectEl.setAttribute('position', { y: posY, z: randPosZ });
+    reusableObjectEl.setAttribute('position', { x: 0, y: posY, z: randPosZ });
 
     if (animated) {
       reusableObjectEl.setAttribute('animation-mixer', '');
@@ -774,7 +774,7 @@ function createFlexZoneElement(variantList, length, showVehicles = true) {
     } else if (variantList[0] === 'rideshare') {
       reusableObjectEl.setAttribute('mixin', 'sedan-rig');
     }
-    reusableObjectEl.setAttribute('position', { z: randPosZ });
+    reusableObjectEl.setAttribute('position', { x: 0, y: 0, z: randPosZ });
     flexZoneParentEl.append(reusableObjectEl);
   });
 
@@ -823,7 +823,7 @@ function createBenchesParentElement() {
 function createBikeRacksParentElement(posY) {
   const placedObjectEl = document.createElement('a-entity');
   placedObjectEl.setAttribute('class', 'bikerack-parent');
-  placedObjectEl.setAttribute('position', { y: posY, z: -3.5 });
+  placedObjectEl.setAttribute('position', { x: 0, y: posY, z: -3.5 });
   return placedObjectEl;
 }
 
@@ -833,7 +833,7 @@ function createBikeShareStationElement(variantList, posY) {
   placedObjectEl.setAttribute('mixin', 'bikeshare');
   const rotationCloneY = variantList[0] === 'left' ? 90 : 270;
   placedObjectEl.setAttribute('rotation', '0 ' + rotationCloneY + ' 0');
-  placedObjectEl.setAttribute('position', { y: posY });
+  placedObjectEl.setAttribute('position', { x: 0, y: posY, z: 0 });
   return placedObjectEl;
 }
 
@@ -848,7 +848,7 @@ function createParkletElement(length, variantList) {
     placedObjectEl.setAttribute('position', { x: 0, y: 0.02, z: randPosZ });
     placedObjectEl.setAttribute('mixin', 'parklet');
     const rotationY = variantList[0] === 'left' ? 90 : 270;
-    placedObjectEl.setAttribute('rotation', { y: rotationY });
+    placedObjectEl.setAttribute('rotation', { x: 0, y: rotationY, z: 0 });
     parkletParent.append(placedObjectEl);
   });
   return parkletParent;
@@ -875,7 +875,7 @@ function createBusStopElement(rotationBusStopY, posY) {
   placedObjectEl.setAttribute('class', 'bus-stop');
   placedObjectEl.setAttribute('rotation', '0 ' + rotationBusStopY + ' 0');
   placedObjectEl.setAttribute('mixin', 'bus-stop');
-  placedObjectEl.setAttribute('position', { y: posY });
+  placedObjectEl.setAttribute('position', { x: 0, y: posY, z: 0 });
   return placedObjectEl;
 }
 
@@ -923,7 +923,7 @@ function createSegmentElement(
     width: ${segmentWidthInMeters};`
   );
 
-  segmentEl.setAttribute('position', { y: positionY });
+  segmentEl.setAttribute('position', { x: 0, y: positionY, z: 0 });
   segmentEl.setAttribute('mixin', mixinId);
 
   if (repeatCount.length !== 0) {
@@ -1768,6 +1768,7 @@ function processBuildings(left, right, streetWidth, showGround, length) {
 
     const groundPositionX = (length / 4 + streetWidth / 2) * sideMultiplier;
     const buildingPositionX = (150 / 2 + streetWidth / 2) * sideMultiplier;
+    let groundPositionY = 0;
 
     // this is the logic to make the ground box
     if (showGround) {
@@ -1794,7 +1795,7 @@ function processBuildings(left, right, streetWidth, showGround, length) {
           segmentsDepth: 10,
           segmentsWidth: 10
         });
-        groundParentEl.setAttribute('position', { y: -3 });
+        groundPositionY = -3;
       } else {
         groundParentEl = document.createElement('a-box');
         groundParentEl.setAttribute('depth', length);
@@ -1806,15 +1807,14 @@ function processBuildings(left, right, streetWidth, showGround, length) {
           'mixin',
           variantToMaterialMapping[currentValue]
         ); // case grass, fence
-        groundParentEl.setAttribute('position', { y: -1 });
+        groundPositionY = -1;
       }
 
-      if (side === 'right') {
-        // groundParentEl.setAttribute('position', groundPositionX + ' -1 0');
-        groundParentEl.setAttribute('position', { x: groundPositionX });
-      } else {
-        groundParentEl.setAttribute('position', { x: groundPositionX });
-      }
+      groundParentEl.setAttribute('position', {
+        x: groundPositionX,
+        y: groundPositionY,
+        z: 0
+      });
       groundParentEl.classList.add('ground-' + side);
       groundParentEl.setAttribute(
         'data-layer-name',
@@ -1854,21 +1854,24 @@ function processBuildings(left, right, streetWidth, showGround, length) {
     buildingElement.append(newBuildings);
 
     if (currentValue === 'waterfront' || currentValue === 'compound-wall') {
-      const objectPositionX = buildingPositionX - (sideMultiplier * 150) / 2;
+      let objectPositionY = 0;
+      let objectPositionX = buildingPositionX - (sideMultiplier * 150) / 2;
       const placedObjectEl = document.createElement('a-entity');
       placedObjectEl.setAttribute('class', 'seawall-parent');
-      placedObjectEl.setAttribute('position', { x: objectPositionX, z: 4.5 }); // position="1.043 0.100 -3.463"
       let rotationCloneY;
       if (currentValue === 'compound-wall') {
-        placedObjectEl.setAttribute('position', { y: 3 });
-        placedObjectEl.setAttribute('position', {
-          x: objectPositionX + 1.5 * sideMultiplier
-        });
+        objectPositionY = 3;
+        objectPositionX += 1.5 * sideMultiplier;
         rotationCloneY = side === 'left' ? 90 : -90;
       } else {
         rotationCloneY = side === 'left' ? -90 : 90;
       }
       placedObjectEl.classList.add('seawall-parent-' + side);
+      placedObjectEl.setAttribute('position', {
+        x: objectPositionX,
+        y: objectPositionY,
+        z: 4.5
+      });
       buildingElement.appendChild(placedObjectEl);
       // clone a bunch of seawalls under the parent
       cloneMixinAsChildren({

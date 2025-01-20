@@ -7,7 +7,18 @@ AFRAME.registerComponent('street-generated-striping', {
   multiple: true,
   schema: {
     striping: {
-      type: 'string'
+      type: 'string',
+      oneOf: [
+        'none',
+        'solid-stripe',
+        'dashed-stripe',
+        'short-dashed-stripe',
+        'short-dashed-stripe-yellow',
+        'solid-doubleyellow',
+        'solid-dashed',
+        'solid-dashed-yellow',
+        'solid-dashed-yellow-mirror'
+      ]
     },
     segmentWidth: {
       type: 'number'
@@ -43,7 +54,7 @@ AFRAME.registerComponent('street-generated-striping', {
     // Clean up old entities
     this.remove();
 
-    if (data.striping === 'invisible') {
+    if (!data.striping || data.striping === 'none') {
       return;
     }
     const clone = document.createElement('a-entity');
@@ -75,6 +86,8 @@ AFRAME.registerComponent('street-generated-striping', {
       'data-layer-name',
       'Cloned Striping • ' + stripingTextureId
     );
+    clone.setAttribute('polygon-offset', { factor: -2, units: -2 });
+
     this.el.appendChild(clone);
     this.createdEntities.push(clone);
   },
@@ -104,6 +117,10 @@ AFRAME.registerComponent('street-generated-striping', {
       stripingWidth = 0.4;
     } else if (stripingName === 'solid-dashed-yellow') {
       stripingTextureId = 'striping-solid-dashed';
+      color = '#f7d117';
+      stripingWidth = 0.4;
+    } else if (stripingName === 'solid-dashed-yellow-mirror') {
+      stripingTextureId = 'striping-solid-dashed-mirror';
       color = '#f7d117';
       stripingWidth = 0.4;
     }
