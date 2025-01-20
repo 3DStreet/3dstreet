@@ -30,7 +30,7 @@ const GeoSidebar = ({ entity }) => {
       <div className="geo-controls">
         <div className="details">
           <div className="propertyRow">
-            {entity && entity.components && entity.components['street-geo'] ? (
+            {entity && entity.components ? (
               <>
                 <Button variant="toolbtn" onClick={openGeoModal}>
                   Change Location
@@ -45,18 +45,69 @@ const GeoSidebar = ({ entity }) => {
             )}
           </div>
           {component && component.schema && component.data && (
-            <PropertyRow
-              key="maps"
-              name="maps"
-              label="Map Source"
-              schema={component.schema['maps']}
-              data={component.data['maps']}
-              componentname="street-geo"
-              isSingle={false}
-              entity={entity}
-            />
+            <>
+              <PropertyRow
+                key="maps"
+                name="maps"
+                label="Map Source"
+                schema={component.schema['maps']}
+                data={component.data['maps']}
+                componentname="street-geo"
+                isSingle={false}
+                entity={entity}
+              />
+              {/* only show this if google3d is selected */}
+              {component.data['maps'] === 'google3d' && (
+                <div className="collapsible component">
+                  <div className="static">
+                    <div className="componentHeader collapsible-header">
+                      <span className="componentTitle" title="Surface">
+                        <span>Blending & Clipping</span>
+                      </span>
+                    </div>
+                  </div>
+                  <div className="content">
+                    <div className="collapsible-content">
+                      <PropertyRow
+                        key="blendingEnabled"
+                        name="blendingEnabled"
+                        label="Blending"
+                        schema={component.schema['blendingEnabled']}
+                        data={component.data['blendingEnabled']}
+                        componentname="street-geo"
+                        isSingle={false}
+                        entity={entity}
+                      />
+                      {component.data['blendingEnabled'] && (
+                        <PropertyRow
+                          key="blendMode"
+                          name="blendMode"
+                          label="Blend Mode"
+                          schema={component.schema['blendMode']}
+                          data={component.data['blendMode']}
+                          componentname="street-geo"
+                          isSingle={false}
+                          entity={entity}
+                        />
+                      )}
+                      <PropertyRow
+                        key="enableClipping"
+                        name="enableClipping"
+                        label="Street Clipping"
+                        schema={component.schema['enableClipping']}
+                        data={component.data['enableClipping']}
+                        componentname="street-geo"
+                        isSingle={false}
+                        entity={entity}
+                      />
+                    </div>
+                  </div>
+                </div>
+              )}
+            </>
           )}
-          {entity && entity.components && entity.components['street-geo'] && (
+
+          {entity && entity.components && (
             <div className="propertyRow">
               <AdvancedComponents entity={entity} />
             </div>

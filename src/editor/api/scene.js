@@ -236,7 +236,8 @@ const uploadThumbnailImage = async (sceneDocId) => {
     context.drawImage(screentockImgElement, posX, posY, newWidth, newHeight);
     // Rest of the code...
     const thumbnailDataUrl = resizedCanvas.toDataURL('image/jpeg', 0.5);
-    const blobFile = await fetch(thumbnailDataUrl).then((res) => res.blob());
+    const res = await fetch(thumbnailDataUrl);
+    const blobFile = await res.blob();
 
     const thumbnailRef = ref(storage, `scenes/${sceneDocId}/files/preview.jpg`);
 

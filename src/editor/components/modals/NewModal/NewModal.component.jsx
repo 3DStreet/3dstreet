@@ -2,7 +2,7 @@ import Modal from '../Modal.jsx';
 import useStore from '@/store.js';
 import styles from './NewModal.module.scss';
 import ScenePlaceholder from '@/../ui_assets/ScenePlaceholder.svg';
-import { inputStreetmix } from '@/editor/lib/SceneUtils.js';
+import { createBlankScene, inputStreetmix } from '@/editor/lib/SceneUtils.js';
 import { Button } from '@/editor/components/components';
 import { Upload24Icon } from '@/editor/icons';
 
@@ -14,19 +14,11 @@ export const NewModal = () => {
     setModal(null);
   };
 
-  const onClickNew = () => {
-    setModal(null);
-    AFRAME.INSPECTOR.selectEntity(null);
-    useStore.getState().newScene();
-    STREET.utils.newScene();
-    AFRAME.scenes[0].emit('newScene');
-  };
-
   const scenesData = [
     {
       title: 'Create Blank Scene',
       imagePath: '/ui_assets/cards/new-blank.jpg',
-      onClick: onClickNew
+      onClick: createBlankScene
     },
     {
       title: 'Import From Streetmix',
@@ -62,9 +54,15 @@ export const NewModal = () => {
             <div
               className={styles.img}
               onClick={(event) => {
-                scene.onClick(event);
-                saveScene(true);
                 onClose();
+                AFRAME.scenes[0].addEventListener(
+                  'newScene',
+                  () => {
+                    saveScene(true);
+                  },
+                  { once: true }
+                );
+                scene.onClick(event);
               }}
               style={{
                 backgroundImage: `url(${scene.imagePath || ScenePlaceholder})`,

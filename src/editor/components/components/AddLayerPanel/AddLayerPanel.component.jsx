@@ -172,7 +172,11 @@ const createEntity = (mixinId) => {
       const segmentElevationPosY = getSegmentElevationPosY(ancestorEl);
       // set position y by elevation level of segment
       if (customGroupCreated) {
-        customGroupEl.setAttribute('position', { y: segmentElevationPosY });
+        customGroupEl.setAttribute('position', {
+          x: 0,
+          y: segmentElevationPosY,
+          z: 0
+        });
         newEntityObject.components.position = { x: 0, y: 0, z: 0 };
       } else {
         newEntityObject.components.position = {

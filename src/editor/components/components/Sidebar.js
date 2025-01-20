@@ -15,9 +15,17 @@ import {
   ArrowRightIcon,
   Object24Icon,
   SegmentIcon,
-  ManagedStreetIcon
+  ManagedStreetIcon,
+  AutoIcon,
+  ManualIcon,
+  ArrowLeftHookIcon,
+  VideoCameraIcon,
+  GeospatialIcon,
+  LayersIcon,
+  SunIcon
 } from '../../icons';
-import GeoSidebar from './GeoSidebar'; // Make sure to create and import this new component
+import GeoSidebar from './GeoSidebar';
+import EnviroSidebar from './EnviroSidebar';
 import IntersectionSidebar from './IntersectionSidebar';
 import StreetSegmentSidebar from './StreetSegmentSidebar';
 import ManagedStreetSidebar from './ManagedStreetSidebar';
@@ -34,6 +42,46 @@ export default class Sidebar extends React.Component {
       showSideBar: true
     };
   }
+
+  getEntityIcon = (entity) => {
+    if (entity.getAttribute('managed-street')) {
+      return <ManagedStreetIcon />;
+    }
+    if (entity.getAttribute('street-segment')) {
+      return <SegmentIcon />;
+    }
+
+    switch (entity.id) {
+      case 'environment':
+        return <SunIcon />;
+      case 'reference-layers':
+        return <GeospatialIcon />;
+      case 'street-container':
+        return <LayersIcon />;
+      case 'cameraRig':
+        return <VideoCameraIcon />;
+      default:
+        return <Object24Icon />;
+    }
+  };
+
+  getParentComponentName = (entity) => {
+    const componentName = entity.getAttribute('data-parent-component');
+    const parentEntity = entity.parentElement;
+    return componentName
+      ? `${parentEntity.getAttribute('data-layer-name') || 'Entity'}:${componentName}`
+      : 'Unknown';
+  };
+
+  fireParentComponentDetach = (entity) => {
+    const componentName = entity.getAttribute('data-parent-component');
+    const parentEntity = entity.parentElement;
+    parentEntity.components[componentName].detach();
+  };
+
+  selectParentEntity = (entity) => {
+    AFRAME.INSPECTOR.selectEntity(entity.parentElement);
+  };
 
   onEntityUpdate = (detail) => {
     if (detail.entity !== this.props.entity) {
@@ -97,14 +145,10 @@ export default class Sidebar extends React.Component {
           {this.state.showSideBar ? (
             <>
               <div id="layers-title" onClick={this.toggleRightBar}>
-                <div className={'layersBlock'}>
-                  {entity.getAttribute('managed-street') ? (
-                    <ManagedStreetIcon />
-                  ) : entity.getAttribute('street-segment') ? (
-                    <SegmentIcon />
-                  ) : (
-                    <Object24Icon />
-                  )}
+                <div className="layersBlock">
+                  <div className="icon-container">
+                    {this.getEntityIcon(entity)}
+                  </div>
                   <span>{entityName || formattedMixin}</span>
                 </div>
                 <div id="toggle-rightbar">
@@ -113,33 +157,80 @@ export default class Sidebar extends React.Component {
               </div>
               <div className="scroll">
                 {entity.id !== 'reference-layers' &&
+                entity.id !== 'environment' &&
                 !entity.getAttribute('street-segment') ? (
                   <>
-                    {!!entity.mixinEls.length && <Mixins entity={entity} />}
-                    {entity.hasAttribute('data-no-transform') ? (
-                      <></>
-                    ) : (
-                      <div id="sidebar-buttons">
-                        <Button
-                          variant={'toolbtn'}
-                          onClick={() => renameEntity(entity)}
-                        >
-                          Rename
-                        </Button>
-                        <Button
-                          variant={'toolbtn'}
-                          onClick={() => cloneEntity(entity)}
-                        >
-                          Duplicate
-                        </Button>
-                        <Button
-                          variant={'toolbtn'}
-                          onClick={() => removeSelectedEntity()}
-                        >
-                          Delete
-                        </Button>
+                    {entity.classList.contains('autocreated') && (
+                      <div className="sidepanelContent">
+                        <div className="flex items-center gap-2">
+                          <div className="scale-[0.8] transform">
+                            <AutoIcon />
+                          </div>
+                          Autocreated Clone
+                        </div>
+                        <div className="collapsible-content">
+                          <div className="propertyRow">
+                            <label className="text">Managed by</label>
+                            <input
+                              className="string"
+                              type="text"
+                              value={this.getParentComponentName(entity)}
+                              readOnly
+                            />
+                          </div>
+                        </div>
+                        <div id="sidebar-buttons">
+                          <Button
+                            variant={'toolbtn'}
+                            onClick={() => this.selectParentEntity(entity)}
+                          >
+                            <ArrowLeftHookIcon /> Edit Clone Settings
+                          </Button>
+                          <Button
+                            variant={'toolbtn'}
+                            onClick={() =>
+                              this.fireParentComponentDetach(entity)
+                            }
+                          >
+                            <ManualIcon />
+                            Convert to Manual
+                          </Button>
+                        </div>
                       </div>
                     )}
+                    <div className="sidepanelContent">
+                      {!!entity.mixinEls.length &&
+                        !entity.classList.contains('autocreated') && (
+                          <div className="details">
+                            <Mixins entity={entity} />
+                          </div>
+                        )}
+                      {entity.hasAttribute('data-no-transform') ? (
+                        <></>
+                      ) : (
+                        <div id="sidebar-buttons">
+                          <Button
+                            variant={'toolbtn'}
+                            onClick={() => renameEntity(entity)}
+                          >
+                            Rename
+                          </Button>
+                          <Button
+                            variant={'toolbtn'}
+                            onClick={() => cloneEntity(entity)}
+                          >
+                            Duplicate
+                          </Button>
+                          <Button
+                            variant={'toolbtn'}
+                            onClick={() => removeSelectedEntity()}
+                          >
+                            Delete
+                          </Button>
+                        </div>
+                      )}
+                    </div>
+
                     {entity.getAttribute('intersection') && (
                       <IntersectionSidebar entity={entity} />
                     )}
@@ -161,6 +252,9 @@ export default class Sidebar extends React.Component {
                     {entity.id === 'reference-layers' && (
                       <GeoSidebar entity={entity} />
                     )}
+                    {entity.id === 'environment' && (
+                      <EnviroSidebar entity={entity} />
+                    )}
                   </>
                 )}
               </div>
@@ -176,13 +270,7 @@ export default class Sidebar extends React.Component {
                     {entityName || formattedMixin}
                   </span>
                   <div className="relative z-10">
-                    {entity.getAttribute('managed-street') ? (
-                      <ManagedStreetIcon />
-                    ) : entity.getAttribute('street-segment') ? (
-                      <SegmentIcon />
-                    ) : (
-                      <Object24Icon />
-                    )}
+                    {this.getEntityIcon(entity)}
                   </div>
                 </div>
               </div>

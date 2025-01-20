@@ -3,6 +3,7 @@ import useStore from '@/store';
 import { useAuthContext, useGeoContext } from '@/editor/contexts/index.js';
 import Events from '@/editor/lib/Events';
 import posthog from 'posthog-js';
+import { GeospatialIcon } from '../../icons';
 
 const GeoLayer = () => {
   const [clicked, setClicked] = useState(false);
@@ -75,17 +76,22 @@ const GeoLayer = () => {
   return (
     <div
       ref={componentRef}
-      className={`layersBlock border py-2 pl-4 ${clicked ? 'bg-violet-800' : 'bg-violet-600 hover:bg-violet-700 hover:shadow-lg'} cursor-pointer`}
+      className={`layersBlock py-2 pl-4 ${clicked ? 'bg-violet-600' : 'hover:bg-violet-600 hover:shadow-lg'} cursor-pointer`}
     >
       {visibilityButton}
-      <span onClick={onClick} className="flex-1">
-        {!streetGeo ? (
-          <>
-            <span> Set Location 🌎</span>
-          </>
-        ) : (
-          <span>Geospatial Layer 🌎</span>
-        )}
+      <div
+        onClick={onClick}
+        style={{ transform: 'scale(0.7)', marginLeft: '2px' }}
+      >
+        <GeospatialIcon />
+      </div>
+      <span
+        onClick={onClick}
+        className="entityName flex-1"
+        style={{ marginLeft: '-2px' }}
+      >
+        Geospatial
+        {!streetGeo && <span className="badge badgeAlert">Set Location</span>}
       </span>
     </div>
   );
