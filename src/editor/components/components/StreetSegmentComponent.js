@@ -92,10 +92,151 @@ export default class Component extends React.Component {
    */
   renderPropertyRows = () => {
     const componentData = this.props.component;
+    const componentName = this.props.name;
+    const schema = AFRAME.components[componentName.split('__')[0]].schema;
 
-    if (isSingleProperty(componentData.schema)) {
-      const componentName = this.props.name;
-      const schema = AFRAME.components[componentName.split('__')[0]].schema;
+    if (componentName.startsWith('street-generated-clones')) {
+      // Custom rendering for clones
+      return (
+        <>
+          {/* <PropertyRow
+            key="modelsArray"
+            name="modelsArray"
+            label="Models"
+            schema={schema['modelsArray']}
+            data={componentData.data['modelsArray']}
+            componentname={componentName}
+            entity={this.props.entity}
+            isSingle={false}
+          /> */}
+          <PropertyRow
+            key="mode"
+            name="mode"
+            label="Mode"
+            schema={schema['mode']}
+            data={componentData.data['mode']}
+            componentname={componentName}
+            entity={this.props.entity}
+            isSingle={false}
+          />
+          {componentData.data.mode === 'fixed' && (
+            <>
+              <PropertyRow
+                key="spacing"
+                name="spacing"
+                label="Spacing"
+                schema={schema['spacing']}
+                data={componentData.data['spacing']}
+                componentname={componentName}
+                entity={this.props.entity}
+                isSingle={false}
+              />
+              <PropertyRow
+                key="cycleOffset"
+                name="cycleOffset"
+                label="Cycle Offset"
+                schema={schema['cycleOffset']}
+                data={componentData.data['cycleOffset']}
+                componentname={componentName}
+                entity={this.props.entity}
+                isSingle={false}
+              />
+            </>
+          )}
+          {componentData.data.mode === 'random' && (
+            <>
+              <PropertyRow
+                key="spacing"
+                name="spacing"
+                label="Spacing"
+                schema={schema['spacing']}
+                data={componentData.data['spacing']}
+                componentname={componentName}
+                entity={this.props.entity}
+                isSingle={false}
+              />
+              <PropertyRow
+                key="count"
+                name="count"
+                label="Count"
+                schema={schema['count']}
+                data={componentData.data['count']}
+                componentname={componentName}
+                entity={this.props.entity}
+                isSingle={false}
+              />
+            </>
+          )}
+          {componentData.data.mode === 'single' && (
+            <>
+              <PropertyRow
+                key="justify"
+                name="justify"
+                label="Justify"
+                schema={schema['justify']}
+                data={componentData.data['justify']}
+                componentname={componentName}
+                entity={this.props.entity}
+                isSingle={false}
+              />
+              <PropertyRow
+                key="padding"
+                name="padding"
+                label="Padding"
+                schema={schema['padding']}
+                data={componentData.data['padding']}
+                componentname={componentName}
+                entity={this.props.entity}
+                isSingle={false}
+              />
+            </>
+          )}
+          <hr></hr>
+          <PropertyRow
+            key="positionX"
+            name="positionX"
+            label="PositionX"
+            schema={schema['positionX']}
+            data={componentData.data['positionX']}
+            componentname={componentName}
+            entity={this.props.entity}
+            isSingle={false}
+          />
+          <PropertyRow
+            key="positionY"
+            name="positionY"
+            label="PositionY"
+            schema={schema['positionY']}
+            data={componentData.data['positionY']}
+            componentname={componentName}
+            entity={this.props.entity}
+            isSingle={false}
+          />
+          <PropertyRow
+            key="facing"
+            name="facing"
+            label="Facing"
+            schema={schema['facing']}
+            data={componentData.data['facing']}
+            componentname={componentName}
+            entity={this.props.entity}
+            isSingle={false}
+          />
+          <PropertyRow
+            key="randomFacing"
+            name="randomFacing"
+            label="Random Facing"
+            schema={schema['randomFacing']}
+            data={componentData.data['randomFacing']}
+            componentname={componentName}
+            entity={this.props.entity}
+            isSingle={false}
+          />
+        </>
+      );
+    }
+
+    if (isSingleProperty(schema)) {
       return (
         <PropertyRow
           key={componentName}
