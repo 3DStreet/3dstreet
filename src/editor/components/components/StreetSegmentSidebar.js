@@ -1,11 +1,22 @@
 import PropTypes from 'prop-types';
+import Component from './Component';
 import PropertyRow from './PropertyRow';
 import { StreetSurfaceIcon } from '../../icons';
 
+// Define featured component prefixes that should be shown in their own section
+const FEATURED_COMPONENT_PREFIXES = ['street-generated-'];
+
 const StreetSegmentSidebar = ({ entity }) => {
   const componentName = 'street-segment';
-  // Check if entity and its components exist
   const component = entity?.components?.[componentName];
+  const components = entity ? entity.components : {};
+
+  // Filter for featured components that exist on this entity
+  const featuredComponents = Object.keys(components).filter((key) =>
+    FEATURED_COMPONENT_PREFIXES.some((prefix) => key.startsWith(prefix))
+  );
+
+  console.log('featuredComponents', featuredComponents);
 
   return (
     <div className="segment-sidebar">
@@ -88,6 +99,25 @@ const StreetSegmentSidebar = ({ entity }) => {
                   </div>
                 </div>
               </div>
+
+              {/* Featured Components section */}
+              {featuredComponents.length > 0 && (
+                <div className="collapsible component">
+                  <div className="content">
+                    <div className="collapsible-content">
+                      {featuredComponents.map((key) => (
+                        <Component
+                          key={key}
+                          isCollapsed={false}
+                          component={components[key]}
+                          entity={entity}
+                          name={key}
+                        />
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              )}
             </>
           )}
         </div>
