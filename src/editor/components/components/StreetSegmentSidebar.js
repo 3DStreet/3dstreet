@@ -1,5 +1,6 @@
 import PropTypes from 'prop-types';
-import Component from './Component';
+// import Component from './Component';
+import Component from './StreetSegmentComponent';
 import PropertyRow from './PropertyRow';
 import { StreetSurfaceIcon } from '../../icons';
 
@@ -102,21 +103,19 @@ const StreetSegmentSidebar = ({ entity }) => {
 
               {/* Featured Components section */}
               {featuredComponents.length > 0 && (
-                <div className="collapsible component">
-                  <div className="content">
-                    <div className="collapsible-content">
-                      {featuredComponents.map((key) => (
-                        <Component
-                          key={key}
-                          isCollapsed={false}
-                          component={components[key]}
-                          entity={entity}
-                          name={key}
-                        />
-                      ))}
+                <>
+                  {featuredComponents.map((key) => (
+                    <div key={key} className={'details'}>
+                      <Component
+                        key={key}
+                        isCollapsed={false}
+                        component={components[key]}
+                        entity={entity}
+                        name={key}
+                      />
                     </div>
-                  </div>
-                </div>
+                  ))}
+                </>
               )}
             </>
           )}
