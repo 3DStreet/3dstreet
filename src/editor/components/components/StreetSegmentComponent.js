@@ -138,29 +138,46 @@ export default class Component extends React.Component {
     return <></>;
   };
 
-  render() {
-    let componentName = this.props.name;
-    let subComponentName = '';
-    if (componentName.indexOf('__') !== -1) {
-      subComponentName = componentName;
-      componentName = componentName.substr(0, componentName.indexOf('__'));
+  getDisplayName(componentName) {
+    // Prefix mapping configuration
+    const PREFIX_MAPPING = {
+      'street-generated-clones': 'Clones',
+      'street-generated-striping': 'Striping',
+      'street-generated-stencil': 'Stencils'
+    };
+    // First check if any prefix mapping matches
+    for (const [prefix, displayName] of Object.entries(PREFIX_MAPPING)) {
+      if (componentName.startsWith(prefix)) {
+        // Get the suffix part (after __) if it exists
+        const suffixPart = componentName.split('__')[1];
+        // Only add suffix if it's not '1'
+        return suffixPart && suffixPart !== '1'
+          ? `${displayName} ${suffixPart}`
+          : displayName;
+      }
     }
+
+    // If no prefix mapping matches, fall back to the original __ splitting behavior
+    const parts = componentName.split('__');
+    return parts[1] && parts[1] !== '1' ? `${parts[0]} ${parts[1]}` : parts[0];
+  }
+
+  render() {
+    const componentName = this.props.name;
+    const componentDisplayName = this.getDisplayName(componentName);
 
     return (
       <Collapsible collapsed={this.props.isCollapsed}>
         <div className="componentHeader collapsible-header">
-          {this.getIcon()}
-          <span
-            className="componentTitle"
-            title={subComponentName || componentName}
-          >
-            <span>{subComponentName || componentName}</span>
+          <span className="componentTitle" title={componentDisplayName}>
+            {this.getIcon()}
+            <span>{componentDisplayName}</span>
           </span>
           <div className="componentHeaderActions">
             <a
               title="Copy to clipboard"
               data-action="copy-component-to-clipboard"
-              data-component={subComponentName || componentName}
+              data-component={componentName}
               className="button fa fa-clipboard"
             />
             <a
