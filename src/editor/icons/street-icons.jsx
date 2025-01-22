@@ -213,3 +213,96 @@ export const ClonedTreesIcon = () => (
     />
   </svg>
 );
+
+export const StencilsIcon = () => (
+  <svg
+    width="25"
+    height="23"
+    viewBox="0 0 25 23"
+    fill="none"
+    xmlns="http://www.w3.org/2000/svg"
+  >
+    <path
+      d="M12.3029 1L15.5949 7.05015L8.83301 7.05015L12.3029 1Z"
+      fill="#00FFFF"
+    />
+    <path
+      d="M23.0686 10.965L19.1538 6.69424L19.1538 15.2356L23.0686 10.965Z"
+      fill="#00FFFF"
+    />
+    <path
+      d="M2.07111 10.965L5.98592 15.5915L5.98592 6.69427L2.07111 10.965Z"
+      fill="#00FFFF"
+    />
+    <path
+      d="M12.8462 7.40607L13.1037 20.2181H11.6801V7.40607H12.8462Z"
+      fill="#00FFFF"
+    />
+    <path
+      d="M12.7478 20.2181C12.7478 20.2181 12.036 17.0151 14.1713 14.168"
+      stroke="#00FFFF"
+      strokeWidth="1.77946"
+    />
+    <path
+      d="M14.8831 13.4562C14.8831 13.4562 16.8263 10.9073 18.442 10.9649"
+      stroke="#00FFFF"
+      strokeWidth="1.77946"
+    />
+    <path
+      d="M10.2566 13.4562C9.18888 12.0326 7.7653 10.9649 6.69763 10.8756"
+      stroke="#00FFFF"
+      strokeWidth="1.77946"
+    />
+    <path
+      d="M12.7478 19.8622C12.7478 19.8622 12.036 15.5916 10.6124 14.168"
+      stroke="#00FFFF"
+      strokeWidth="1.77946"
+    />
+  </svg>
+);
+
+export const StripingIcon = () => (
+  <svg
+    width="24"
+    height="24"
+    viewBox="0 0 24 24"
+    fill="none"
+    xmlns="http://www.w3.org/2000/svg"
+  >
+    <path
+      d="M18 1L18 22"
+      stroke="#00FFFF"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeDasharray="3 4"
+    />
+    <path
+      d="M5 1L5 22"
+      stroke="#00FFFF"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeDasharray="3 4"
+    />
+    <path
+      d="M13 1L13 22"
+      stroke="#00FFFF"
+      strokeWidth="1.5"
+      strokeLinecap="round"
+    />
+    <path
+      d="M10 1L10 22"
+      stroke="#00FFFF"
+      strokeWidth="1.5"
+      strokeLinecap="round"
+    />
+    <rect
+      x="0.25"
+      y="0.25"
+      width="22.5"
+      height="22.5"
+      rx="1.75"
+      stroke="#929292"
+      strokeWidth="0.5"
+    />
+  </svg>
+);

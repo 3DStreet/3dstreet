@@ -5,7 +5,7 @@ import PropTypes from 'prop-types';
 import PropertyRow from './PropertyRow';
 import React from 'react';
 import { getComponentClipboardRepresentation } from '../../lib/entity';
-import { ClonedTreesIcon } from '../../icons';
+import { ClonedTreesIcon, StencilsIcon, StripingIcon } from '../../icons';
 
 const isSingleProperty = AFRAME.schema.isSingleProperty;
 
@@ -126,6 +126,18 @@ export default class Component extends React.Component {
       ));
   };
 
+  getIcon = () => {
+    const componentName = this.props.name;
+    if (componentName.startsWith('street-generated-clones')) {
+      return <ClonedTreesIcon />;
+    } else if (componentName.startsWith('street-generated-stencil')) {
+      return <StencilsIcon />;
+    } else if (componentName.startsWith('street-generated-striping')) {
+      return <StripingIcon />;
+    }
+    return <></>;
+  };
+
   render() {
     let componentName = this.props.name;
     let subComponentName = '';
@@ -137,7 +149,7 @@ export default class Component extends React.Component {
     return (
       <Collapsible collapsed={this.props.isCollapsed}>
         <div className="componentHeader collapsible-header">
-          <ClonedTreesIcon />
+          {this.getIcon()}
           <span
             className="componentTitle"
             title={subComponentName || componentName}
