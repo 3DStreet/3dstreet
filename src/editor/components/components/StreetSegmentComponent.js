@@ -6,6 +6,7 @@ import PropertyRow from './PropertyRow';
 import React from 'react';
 import { getComponentClipboardRepresentation } from '../../lib/entity';
 import { ClonedTreesIcon, StencilsIcon, StripingIcon } from '../../icons';
+import ModelsArrayWidget from '../widgets/ModelsArrayWidget';
 
 const isSingleProperty = AFRAME.schema.isSingleProperty;
 
@@ -99,6 +100,10 @@ export default class Component extends React.Component {
       // Custom rendering for clones
       return (
         <>
+          <ModelsArrayWidget
+            entity={this.props.entity}
+            componentname={componentName}
+          />
           {/* <PropertyRow
             key="modelsArray"
             name="modelsArray"
