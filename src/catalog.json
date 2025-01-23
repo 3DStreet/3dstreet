@@ -527,6 +527,12 @@
         "img": "https://assets.3dstreet.app/thumbnails/arched-building-04.jpg"
     },
     {
+        "id": "sp-building-08",
+        "name": "Mixed Use Building, Victorian Style",
+        "src": "/assets/sets/buildings/gltf-exports/draco/sp-building-08.glb",
+        "category": "buildings"
+    },
+    {
         "id": "ElectricScooter_1",
         "name": "Electric Scooter",
         "img": "https://assets.3dstreet.app/thumbnails/ElectricScooter_1.jpg"

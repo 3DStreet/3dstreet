@@ -43,7 +43,12 @@ const STREETPLAN_MATERIAL_MAPPING = {
 const STREETPLAN_OBJECT_MAPPING = {
   'away, left park, head in': null,
   'barrier 1-ft': 'temporary-jersey-barrier-concrete',
-  'barrier 2-ft': 'temporary-jersey-barrier-concrete',
+  'barrier 2-ft': {
+    modelsArray:
+      'temporary-jersey-barrier-concrete, temporary-jersey-barrier-plastic',
+    mode: 'fixed',
+    spacing: 2
+  },
   'bike food cart': null,
   'bikelane sharecar': null,
   'bikerack bollard': null,
@@ -205,7 +210,7 @@ const STREETPLAN_BUILDING_MAPPING = {
   'building yellow 1floor': null,
   'house 1floor': null,
   'shop 2floors': null,
-  'live work': null, // 'sp-structure-building8'
+  'live work': 'sp-building-08', // 'sp-structure-building-08'
   narrow: null,
   'mikedesign midvale 2story': null,
   'mixed use 2floors': null,
@@ -262,8 +267,9 @@ function createCloneConfig(name, tags) {
 
   let model = STREETPLAN_OBJECT_MAPPING[name.toLowerCase()];
   if (!model) {
-    // if no model found, then see if a building matches?
+    // if no model found, then see if a building matches
     model = STREETPLAN_BUILDING_MAPPING[name.toLowerCase()];
+    // TODO: if building left vs. right
   }
   return {
     mode: 'fixed', // default to fixed mode
