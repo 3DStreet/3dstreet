@@ -127,7 +127,7 @@ export default class ModelsArrayWidget extends React.Component {
     return (
       <div className="mixinOptions">
         <div className="propertyRow">
-          <span className="text">Model</span>
+          <span className="text">Models</span>
           <span className="mixinValue">
             <Select
               id="mixinSelect"
@@ -142,8 +142,8 @@ export default class ModelsArrayWidget extends React.Component {
               isMulti={true}
               isSearchable={true}
               isClearable={false}
-              placeholder="Search mixins..."
-              noResultsText="No mixins found"
+              placeholder="Search models..."
+              noResultsText="No models found"
               onChange={this.updateModels.bind(this)}
               simpleValue
               value={this.state.modelsArrayWidget}
