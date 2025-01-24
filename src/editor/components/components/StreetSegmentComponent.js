@@ -104,16 +104,6 @@ export default class Component extends React.Component {
             entity={this.props.entity}
             componentname={componentName}
           />
-          {/* <PropertyRow
-            key="modelsArray"
-            name="modelsArray"
-            label="Models"
-            schema={schema['modelsArray']}
-            data={componentData.data['modelsArray']}
-            componentname={componentName}
-            entity={this.props.entity}
-            isSingle={false}
-          /> */}
           <PropertyRow
             key="mode"
             name="mode"
