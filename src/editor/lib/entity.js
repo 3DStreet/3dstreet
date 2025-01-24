@@ -155,20 +155,14 @@ export function cloneEntityImpl(entity, newId = undefined) {
     { once: true }
   );
 
+  // In cloneEntityImpl
   if (newId) {
     clone.id = newId;
+  } else if (entity.id) {
+    clone.id =
+      entity.id.length === 21 ? createUniqueId() : getUniqueId(entity.id);
   } else {
-    if (entity.id) {
-      if (entity.id.length === 21) {
-        // nanoid generated id, create a new one
-        clone.id = createUniqueId();
-      } else {
-        // Get a valid unique ID for the entity
-        clone.id = getUniqueId(entity.id);
-      }
-    } else {
-      entity.id = createUniqueId();
-    }
+    clone.id = createUniqueId();
   }
   insertAfter(clone, entity);
   return clone;

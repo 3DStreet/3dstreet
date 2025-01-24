@@ -10,17 +10,17 @@ export class EntityCloneCommand extends Command {
     this.name = 'Clone Entity';
     this.updatable = false;
     if (!entity.id) {
-      entity.id = createUniqueId();
+      entity.id = createUniqueId(); // if entity to clone doesn't have an id, create one
     }
-    this.entityIdToClone = entity.id;
-    this.entityId = null;
+    this.entityIdToClone = entity.id; // save the id of the entity to clone
+    this.entityId = null; // this will be the id of the newly cloned entity
   }
 
   execute(nextCommandCallback) {
     const entityToClone = document.getElementById(this.entityIdToClone);
     if (entityToClone) {
-      const clone = cloneEntityImpl(entityToClone, this.entityId);
-      this.entityId = clone.id;
+      const clone = cloneEntityImpl(entityToClone, this.entityId); // why is this.entityId passed? will this always be null?
+      this.entityId = clone.id; // use ID set by cloneEntityImpl function
       nextCommandCallback?.(clone);
       return clone;
     }
