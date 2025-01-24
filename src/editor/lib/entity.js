@@ -164,6 +164,16 @@ export function cloneEntityImpl(entity, newId = undefined) {
   } else {
     clone.id = createUniqueId();
   }
+
+  // Add recursive ID generation for children
+  function regenerateIDs(element) {
+    if (element.id) {
+      element.id = createUniqueId();
+    }
+    Array.from(element.children).forEach(regenerateIDs);
+  }
+  regenerateIDs(clone);
+
   insertAfter(clone, entity);
   return clone;
 }
