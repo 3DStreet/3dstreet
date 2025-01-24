@@ -143,9 +143,6 @@
 .select__option {
   cursor: pointer;
 }
-.select__clear-indicator {
-  display: none;
-}
 .select__label {
   font-size: 11px;
 }
@@ -183,9 +180,6 @@
 }
 .select__multi-value__label {
   color: variables.$blue-100;
-}
-.select__value-container--is-multi > :last-child {
-  display: none;
 }
 .select__multi-value__remove:hover {
   color: variables.$white;

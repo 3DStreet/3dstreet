@@ -143,11 +143,12 @@ export default class Mixin extends React.Component {
                   IndicatorSeparator: () => null
                 }}
                 formatGroupLabel={formatGroupLabel}
-                isMulti={true}
+                isMulti
+                isClearable={false}
+                isSearchable={true}
                 placeholder="Search mixins..."
-                noResultsText="No mixins found"
+                noOptionsMessage={() => 'No mixins found'}
                 onChange={this.updateMixins.bind(this)}
-                simpleValue
                 value={this.state.mixins}
               />
             ) : (
@@ -162,12 +163,11 @@ export default class Mixin extends React.Component {
                 }}
                 formatGroupLabel={formatGroupLabel}
                 isMulti={false}
-                isSearchable={true}
                 isClearable={false}
+                isSearchable={true}
                 placeholder="Search models..."
-                noResultsText="No models found"
+                noOptionsMessage={() => 'No models found'}
                 onChange={this.updateMixinSingle.bind(this)}
-                simpleValue
                 value={this.state.mixins}
               />
             )}
