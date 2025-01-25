@@ -47,7 +47,7 @@ const TYPES = {
       clones: [
         {
           mode: 'random',
-          model: 'bus',
+          modelsArray: 'bus',
           spacing: 15,
           count: 1
         }
@@ -198,25 +198,14 @@ AFRAME.registerComponent('street-segment', {
     // for each of clones, stencils, rail, pedestrians, etc.
     if (componentsToGenerate?.clones?.length > 0) {
       componentsToGenerate.clones.forEach((clone, index) => {
-        if (clone?.modelsArray?.length > 0) {
-          this.el.setAttribute(`street-generated-clones__${index + 1}`, {
-            mode: clone.mode,
-            modelsArray: clone.modelsArray,
-            length: this.data.length,
-            spacing: clone.spacing,
-            direction: this.data.direction,
-            count: clone.count
-          });
-        } else {
-          this.el.setAttribute(`street-generated-clones__${index + 1}`, {
-            mode: clone.mode,
-            model: clone.model,
-            length: this.data.length,
-            spacing: clone.spacing,
-            direction: this.data.direction,
-            count: clone.count
-          });
-        }
+        this.el.setAttribute(`street-generated-clones__${index + 1}`, {
+          mode: clone.mode,
+          modelsArray: clone.modelsArray,
+          length: this.data.length,
+          spacing: clone.spacing,
+          direction: this.data.direction,
+          count: clone.count
+        });
       });
     }
 

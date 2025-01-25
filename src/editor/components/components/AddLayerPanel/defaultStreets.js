@@ -38,7 +38,7 @@ export const stroad60ftROW = {
         clones: [
           {
             mode: 'fixed',
-            model: 'tree3',
+            modelsArray: 'tree3',
             spacing: 15
           }
         ]
@@ -57,7 +57,7 @@ export const stroad60ftROW = {
         clones: [
           {
             mode: 'fixed',
-            model: 'lamp-modern',
+            modelsArray: 'lamp-modern',
             spacing: 30,
             facing: 0
           }
@@ -173,7 +173,7 @@ export const stroad60ftROW = {
         clones: [
           {
             mode: 'fixed',
-            model: 'lamp-modern',
+            modelsArray: 'lamp-modern',
             spacing: 30,
             facing: 180
           }
@@ -193,7 +193,7 @@ export const stroad60ftROW = {
         clones: [
           {
             mode: 'fixed',
-            model: 'tree3',
+            modelsArray: 'tree3',
             spacing: 15
           }
         ]
@@ -257,7 +257,7 @@ export const exampleStreet = {
         clones: [
           {
             mode: 'fixed',
-            model: 'tree3',
+            modelsArray: 'tree3',
             spacing: 15
           }
         ]
@@ -361,7 +361,7 @@ export const stroad40ftROW = {
         clones: [
           {
             mode: 'fixed',
-            model: 'tree3',
+            modelsArray: 'tree3',
             spacing: 15
           }
         ]
@@ -455,7 +455,7 @@ export const stroad40ftROW = {
         clones: [
           {
             mode: 'fixed',
-            model: 'tree3',
+            modelsArray: 'tree3',
             spacing: 15
           }
         ]
@@ -519,7 +519,7 @@ export const stroad80ftROW = {
         clones: [
           {
             mode: 'fixed',
-            model: 'tree3',
+            modelsArray: 'tree3',
             spacing: 15
           }
         ]
@@ -538,7 +538,7 @@ export const stroad80ftROW = {
         clones: [
           {
             mode: 'fixed',
-            model: 'lamp-modern',
+            modelsArray: 'lamp-modern',
             spacing: 30,
             facing: 0
           }
@@ -696,7 +696,7 @@ export const stroad80ftROW = {
         clones: [
           {
             mode: 'fixed',
-            model: 'lamp-modern',
+            modelsArray: 'lamp-modern',
             spacing: 30,
             facing: 180
           }
@@ -716,7 +716,7 @@ export const stroad80ftROW = {
         clones: [
           {
             mode: 'fixed',
-            model: 'tree3',
+            modelsArray: 'tree3',
             spacing: 15
           }
         ]
@@ -780,7 +780,7 @@ export const stroad94ftROW = {
         clones: [
           {
             mode: 'fixed',
-            model: 'tree3',
+            modelsArray: 'tree3',
             spacing: 15
           }
         ]
@@ -799,7 +799,7 @@ export const stroad94ftROW = {
         clones: [
           {
             mode: 'fixed',
-            model: 'lamp-modern',
+            modelsArray: 'lamp-modern',
             spacing: 30,
             facing: 0
           }
@@ -996,7 +996,7 @@ export const stroad94ftROW = {
         clones: [
           {
             mode: 'fixed',
-            model: 'lamp-modern',
+            modelsArray: 'lamp-modern',
             spacing: 30,
             facing: 180
           }
@@ -1016,7 +1016,7 @@ export const stroad94ftROW = {
         clones: [
           {
             mode: 'fixed',
-            model: 'tree3',
+            modelsArray: 'tree3',
             spacing: 15
           }
         ]
@@ -1080,7 +1080,7 @@ export const stroad150ftROW = {
         clones: [
           {
             mode: 'fixed',
-            model: 'tree3',
+            modelsArray: 'tree3',
             spacing: 15
           }
         ]
@@ -1099,7 +1099,7 @@ export const stroad150ftROW = {
         clones: [
           {
             mode: 'fixed',
-            model: 'lamp-modern',
+            modelsArray: 'lamp-modern',
             spacing: 30,
             facing: 0
           }
@@ -1262,7 +1262,7 @@ export const stroad150ftROW = {
         clones: [
           {
             mode: 'fixed',
-            model: 'flowers1',
+            modelsArray: 'flowers1',
             spacing: 3
           }
         ]
@@ -1424,7 +1424,7 @@ export const stroad150ftROW = {
         clones: [
           {
             mode: 'fixed',
-            model: 'lamp-modern',
+            modelsArray: 'lamp-modern',
             spacing: 30,
             facing: 180
           }
@@ -1444,7 +1444,7 @@ export const stroad150ftROW = {
         clones: [
           {
             mode: 'fixed',
-            model: 'tree3',
+            modelsArray: 'tree3',
             spacing: 15
           }
         ]
