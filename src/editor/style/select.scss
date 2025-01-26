@@ -32,26 +32,19 @@
   border: 1px solid variables.$purple-400;
   border-radius: 10px;
   padding: 12px 16px;
-  height: 48px;
-  max-width: 220px;
-}
-[class^='select-single__control']:hover {
-  border: 1px solid variables.$purple-500;
+  max-width: 230px;
 }
 [class^='select-single__value-container'],
 [class^='select-single__input-container'] {
   padding: 0;
   margin: 0;
 }
-[class^='select-single__indicator-separator'] {
-  display: none;
-}
-[class^='select-single__indicator'] {
-  * {
-    fill: variables.$white;
-  }
-}
 [class^='select-single__menu'] {
+  background: variables.$darkgray-300;
+  border-radius: 8px;
+  max-width: 220px;
+}
+[class^='select__menu'] {
   background: variables.$darkgray-300;
   border-radius: 8px;
   max-width: 220px;
@@ -79,19 +72,6 @@
   svg {
     * {
       fill: variables.$white;
-    }
-  }
-}
-.select-single__control--is-disabled {
-  background: rgba(50, 50, 50, 0.8);
-  border: 1px solid variables.$darkpurple !important;
-  box-shadow: none;
-  .select-single__single-value {
-    color: variables.$gray-500 !important;
-  }
-  svg {
-    * {
-      fill: variables.$gray-500;
     }
   }
 }
@@ -174,14 +154,18 @@
 .select__dropdown-indicator svg {
   display: none;
 }
-.select__multi-value {
+.select-single__multi-value {
   background: variables.$darkgray-100;
-  color: variables.$blue-100;
-}
-.select__multi-value__label {
-  color: variables.$blue-100;
-}
-.select__multi-value__remove:hover {
   color: variables.$white;
-  background: variables.$darkgray-100;
+}
+.select-single__multi-value__label {
+  color: variables.$white;
+}
+.select-single__multi-value__remove:hover {
+  color: variables.$red-200;
+}
+.select__value-container--is-multi {
+  min-height: 48px;
+  flex-wrap: wrap;
+  gap: 4px;
 }
