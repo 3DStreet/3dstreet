@@ -109,7 +109,7 @@ export default class PropertyRow extends React.Component {
         return <BooleanWidget {...widgetProps} />;
       }
       default: {
-        return <InputWidget {...widgetProps} />;
+        return <InputWidget {...widgetProps} schema={props.schema} />;
       }
     }
   }
