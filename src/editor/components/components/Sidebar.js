@@ -6,7 +6,7 @@ import {
 import { Button } from '../components';
 import ComponentsContainer from './ComponentsContainer';
 import Events from '../../lib/Events';
-import Mixins from './Mixins';
+import Mixins from '../widgets/Mixins';
 import PropTypes from 'prop-types';
 import React from 'react';
 import capitalize from 'lodash-es/capitalize';
