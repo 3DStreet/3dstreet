@@ -5,7 +5,6 @@ AFRAME.registerComponent('street-generated-clones', {
   multiple: true,
   schema: {
     // Common properties
-    model: { type: 'string' },
     modelsArray: { type: 'array' }, // For random selection from multiple models
     length: { type: 'number' }, // length in meters of segment
     positionX: { default: 0, type: 'number' },
@@ -178,10 +177,8 @@ AFRAME.registerComponent('street-generated-clones', {
 
   getModelMixin: function () {
     const data = this.data;
-    if (data.modelsArray && data.modelsArray.length > 0) {
-      return data.modelsArray[Math.floor(this.rng() * data.modelsArray.length)];
-    }
-    return data.model;
+    if (!this.rng) return data.modelsArray[0]; // this is a hack but it works for now
+    return data.modelsArray[Math.floor(this.rng() * data.modelsArray.length)];
   },
 
   randPlacedElements: function (streetLength, spacing, count) {
