@@ -95,7 +95,7 @@ export function removeSelectedEntity(force) {
  * @param  {Element} newNode       Node to insert.
  * @param  {Element} referenceNode Node used as reference to insert after it.
  */
-function insertAfter(newNode, referenceNode) {
+export function insertAfter(newNode, referenceNode) {
   if (!referenceNode.parentNode) {
     referenceNode = AFRAME.INSPECTOR.selectedEntity;
   }
@@ -136,41 +136,29 @@ export function renameEntity(entity) {
   });
 }
 
+function recursivelyRegenerateId(element) {
+  if (element.id) {
+    // if it's a nanoid, create a new one, otherwise use getUniqueId
+    element.id =
+      element.id.length === 21 ? createUniqueId() : getUniqueId(element.id);
+  } else {
+    element.id = createUniqueId();
+  }
+
+  for (const child of element.childNodes) {
+    recursivelyRegenerateId(child);
+  }
+}
+
 /**
- * Clone an entity, inserting it after the cloned one. This is the implementation of the entityclone command.
+ * Clone an entity. This is used by the the entityclone command.
  * @param {Element} entity Entity to clone
- * @param {string|undefined} newId The new id to use for the clone
  * @returns {Element} The clone
  */
-export function cloneEntityImpl(entity, newId = undefined) {
+export function cloneEntityImpl(entity) {
   entity.flushToDOM();
-
   const clone = prepareForSerialization(entity);
-  clone.addEventListener(
-    'loaded',
-    function () {
-      Events.emit('entityclone', clone);
-      AFRAME.INSPECTOR.selectEntity(clone);
-    },
-    { once: true }
-  );
-
-  if (newId) {
-    clone.id = newId;
-  } else {
-    if (entity.id) {
-      if (entity.id.length === 21) {
-        // nanoid generated id, create a new one
-        clone.id = createUniqueId();
-      } else {
-        // Get a valid unique ID for the entity
-        clone.id = getUniqueId(entity.id);
-      }
-    } else {
-      entity.id = createUniqueId();
-    }
-  }
-  insertAfter(clone, entity);
+  recursivelyRegenerateId(clone);
   return clone;
 }
 
