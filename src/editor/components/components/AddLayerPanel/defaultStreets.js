@@ -79,7 +79,7 @@ export const stroad60ftROW = {
         ],
         stencil: [
           {
-            model: 'parking-t',
+            modelsArray: 'parking-t',
             cycleOffset: 1,
             spacing: 6
           }
@@ -145,7 +145,7 @@ export const stroad60ftROW = {
         ],
         stencil: [
           {
-            model: 'parking-t',
+            modelsArray: 'parking-t',
             cycleOffset: 1,
             spacing: 6
           }
@@ -268,7 +268,7 @@ export const stroad40ftROW = {
         ],
         stencil: [
           {
-            model: 'parking-t',
+            modelsArray: 'parking-t',
             cycleOffset: 1,
             spacing: 6
           }
@@ -314,7 +314,7 @@ export const stroad40ftROW = {
         ],
         stencil: [
           {
-            model: 'parking-t',
+            modelsArray: 'parking-t',
             cycleOffset: 1,
             spacing: 6
           }
@@ -437,7 +437,7 @@ export const stroad80ftROW = {
         ],
         stencil: [
           {
-            model: 'parking-t',
+            modelsArray: 'parking-t',
             cycleOffset: 1,
             spacing: 6
           }
@@ -543,7 +543,7 @@ export const stroad80ftROW = {
         ],
         stencil: [
           {
-            model: 'parking-t',
+            modelsArray: 'parking-t',
             cycleOffset: 1,
             spacing: 6
           }
@@ -685,7 +685,7 @@ export const stroad94ftROW = {
         ],
         stencil: [
           {
-            model: 'parking-t',
+            modelsArray: 'parking-t',
             cycleOffset: 1,
             spacing: 6
           }
@@ -742,13 +742,13 @@ export const stroad94ftROW = {
       generated: {
         stencil: [
           {
-            model: 'left',
+            modelsArray: 'left',
             cycleOffset: 0.6,
             spacing: 20,
             direction: 'outbound'
           },
           {
-            model: 'left',
+            modelsArray: 'left',
             cycleOffset: 0.4,
             spacing: 20,
             direction: 'inbound'
@@ -829,7 +829,7 @@ export const stroad94ftROW = {
         ],
         stencil: [
           {
-            model: 'parking-t',
+            modelsArray: 'parking-t',
             cycleOffset: 1,
             spacing: 6
           }
@@ -971,7 +971,7 @@ export const stroad150ftROW = {
         ],
         stencil: [
           {
-            model: 'parking-t',
+            modelsArray: 'parking-t',
             cycleOffset: 1,
             spacing: 6
           }
@@ -997,7 +997,7 @@ export const stroad150ftROW = {
         ],
         stencil: [
           {
-            model: 'turn-lane-left',
+            modelsArray: 'turn-lane-left',
             cycleOffset: 1,
             spacing: 20
           }
@@ -1082,7 +1082,7 @@ export const stroad150ftROW = {
         ],
         stencil: [
           {
-            model: 'turn-lane-right',
+            modelsArray: 'turn-lane-right',
             cycleOffset: 1,
             spacing: 20
           }
@@ -1126,7 +1126,7 @@ export const stroad150ftROW = {
         ],
         stencil: [
           {
-            model: 'turn-lane-left',
+            modelsArray: 'turn-lane-left',
             cycleOffset: 1,
             spacing: 20
           }
@@ -1211,7 +1211,7 @@ export const stroad150ftROW = {
         ],
         stencil: [
           {
-            model: 'turn-lane-right',
+            modelsArray: 'turn-lane-right',
             cycleOffset: 1,
             spacing: 20
           }
@@ -1237,7 +1237,7 @@ export const stroad150ftROW = {
         ],
         stencil: [
           {
-            model: 'parking-t',
+            modelsArray: 'parking-t',
             cycleOffset: 1,
             spacing: 6
           }

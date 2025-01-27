@@ -54,7 +54,7 @@ const TYPES = {
       ],
       stencil: [
         {
-          stencils: 'word-only, word-taxi, word-bus',
+          modelsArray: 'word-only, word-taxi, word-bus',
           spacing: 40,
           padding: 10
         }
@@ -69,7 +69,7 @@ const TYPES = {
     generated: {
       stencil: [
         {
-          model: 'bike-arrow',
+          modelsArray: 'bike-arrow',
           cycleOffset: 0.3,
           spacing: 20
         }
@@ -114,7 +114,7 @@ const TYPES = {
       ],
       stencil: [
         {
-          model: 'parking-t',
+          modelsArray: 'parking-t',
           cycleOffset: 1,
           spacing: 6
         }
@@ -211,26 +211,14 @@ AFRAME.registerComponent('street-segment', {
 
     if (componentsToGenerate?.stencil?.length > 0) {
       componentsToGenerate.stencil.forEach((clone, index) => {
-        if (clone?.stencils?.length > 0) {
-          // case where there are multiple stencils such as bus-only
-          this.el.setAttribute(`street-generated-stencil__${index + 1}`, {
-            stencils: clone.stencils,
-            length: this.data.length,
-            spacing: clone.spacing,
-            direction: clone.direction ?? this.data.direction,
-            padding: clone.padding,
-            cycleOffset: clone.cycleOffset
-          });
-        } else {
-          this.el.setAttribute(`street-generated-stencil__${index + 1}`, {
-            model: clone.model,
-            length: this.data.length,
-            spacing: clone.spacing,
-            direction: clone.direction ?? this.data.direction,
-            count: clone.count,
-            cycleOffset: clone.cycleOffset
-          });
-        }
+        this.el.setAttribute(`street-generated-stencil__${index + 1}`, {
+          modelsArray: clone.modelsArray,
+          length: this.data.length,
+          spacing: clone.spacing,
+          direction: clone.direction ?? this.data.direction,
+          padding: clone.padding,
+          cycleOffset: clone.cycleOffset
+        });
       });
     }
 

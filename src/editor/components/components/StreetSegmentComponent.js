@@ -229,6 +229,86 @@ export default class Component extends React.Component {
           />
         </>
       );
+    } else if (componentName.startsWith('street-generated-stencil')) {
+      return (
+        <>
+          <ModelsArrayWidget
+            entity={this.props.entity}
+            componentname={componentName}
+          />
+          <PropertyRow
+            key="spacing"
+            name="spacing"
+            label="Spacing"
+            schema={schema['spacing']}
+            data={componentData.data['spacing']}
+            componentname={componentName}
+            entity={this.props.entity}
+            isSingle={false}
+          />
+          <PropertyRow
+            key="padding"
+            name="padding"
+            label="Padding"
+            schema={schema['padding']}
+            data={componentData.data['padding']}
+            componentname={componentName}
+            entity={this.props.entity}
+            isSingle={false}
+          />
+          <PropertyRow
+            key="stencilHeight"
+            name="stencilHeight"
+            label="Stencil Height"
+            schema={schema['stencilHeight']}
+            data={componentData.data['stencilHeight']}
+            componentname={componentName}
+            entity={this.props.entity}
+            isSingle={false}
+          />
+          <hr></hr>
+          <PropertyRow
+            key="positionX"
+            name="positionX"
+            label="Position X"
+            schema={schema['positionX']}
+            data={componentData.data['positionX']}
+            componentname={componentName}
+            entity={this.props.entity}
+            isSingle={false}
+          />
+          <PropertyRow
+            key="positionY"
+            name="positionY"
+            label="Position Y"
+            schema={schema['positionY']}
+            data={componentData.data['positionY']}
+            componentname={componentName}
+            entity={this.props.entity}
+            isSingle={false}
+          />
+          <PropertyRow
+            key="cycleOffset"
+            name="cycleOffset"
+            label="Cycle Offset"
+            schema={schema['cycleOffset']}
+            data={componentData.data['cycleOffset']}
+            componentname={componentName}
+            entity={this.props.entity}
+            isSingle={false}
+          />
+          <PropertyRow
+            key="facing"
+            name="facing"
+            label="Facing"
+            schema={schema['facing']}
+            data={componentData.data['facing']}
+            componentname={componentName}
+            entity={this.props.entity}
+            isSingle={false}
+          />
+        </>
+      );
     }
 
     if (isSingleProperty(schema)) {
