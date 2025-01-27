@@ -110,10 +110,33 @@ export default class Component extends React.Component {
 
     return Object.keys(componentData.schema)
       .sort()
-      .map((propertyName, idx) => (
-        <div className="detailed" key={idx}>
+      .filter((propertyName) => {
+        if (!componentData.schema[propertyName].if) {
+          return true;
+        }
+        let showProperty = true;
+        for (const [conditionKey, conditionValue] of Object.entries(
+          componentData.schema[propertyName].if
+        )) {
+          if (Array.isArray(conditionValue)) {
+            if (
+              conditionValue.indexOf(componentData.data[conditionKey]) === -1
+            ) {
+              showProperty = false;
+              break;
+            }
+          } else {
+            if (conditionValue !== componentData.data[conditionKey]) {
+              showProperty = false;
+              break;
+            }
+          }
+        }
+        return showProperty;
+      })
+      .map((propertyName) => (
+        <div className="detailed" key={propertyName}>
           <PropertyRow
-            key={propertyName}
             name={propertyName}
             schema={componentData.schema[propertyName]}
             data={componentData.data[propertyName]}
