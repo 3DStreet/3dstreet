@@ -216,7 +216,7 @@ AFRAME.registerComponent('street-segment', {
           length: this.data.length,
           spacing: clone.spacing,
           direction: clone.direction ?? this.data.direction,
-          count: clone.count,
+          padding: clone.padding,
           cycleOffset: clone.cycleOffset
         });
       });
