@@ -5,6 +5,7 @@ import {
   updateScene,
   uploadThumbnailImage
 } from '@/editor/api/scene';
+import { createUniqueId } from '@/editor/lib/entity.js';
 
 export function createBlankScene() {
   STREET.utils.newScene();
@@ -52,7 +53,40 @@ export function createElementsForScenesFromJSON(streetData) {
     return;
   }
 
-  STREET.utils.createEntities(streetData, streetContainerEl);
+  const processStreetDataForDuplicateIds = (data) => {
+    // Keep track of IDs we've seen during processing
+    const seenIds = new Set();
+    let changeCounter = 0;
+
+    // Main recursive function to process IDs and children
+    const processItem = (obj) => {
+      if (obj.id) {
+        if (seenIds.has(obj.id)) {
+          // If we've seen this ID before, generate a new one
+          obj.id = createUniqueId();
+          changeCounter++;
+        } else {
+          // First time seeing this ID, add it to seen set
+          seenIds.add(obj.id);
+        }
+      }
+
+      if (obj.children) {
+        obj.children = obj.children.map(processItem);
+      }
+
+      return obj;
+    };
+    const output = data.map(processItem);
+    if (changeCounter > 0) {
+      console.log(`Duplicate IDs fixed: ${changeCounter} instances`);
+    }
+    return output;
+  };
+
+  const correctedStreetData = processStreetDataForDuplicateIds(streetData);
+
+  STREET.utils.createEntities(correctedStreetData, streetContainerEl);
   AFRAME.scenes[0].emit('newScene');
 }
 
@@ -60,7 +94,8 @@ export function fileJSON(event) {
   let reader = new FileReader();
 
   reader.onload = function () {
-    STREET.utils.createElementsFromJSON(reader.result, true);
+    const data = JSON.parse(reader.result);
+    createElementsForScenesFromJSON(data.data);
   };
 
   reader.readAsText(event.target.files[0]);
