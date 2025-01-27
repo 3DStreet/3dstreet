@@ -949,7 +949,7 @@ function parseStreetmixSegments(segments, length) {
     if (segments[i].type === 'drive-lane' && variantList[1] === 'sharrow') {
       segmentParentEl.setAttribute(
         'street-generated-stencil',
-        `model: sharrow; length: ${length}; cycleOffset: 0.2; spacing: 15; direction: ${direction}`
+        `modelsArray: sharrow; length: ${length}; cycleOffset: 0.2; spacing: 15; direction: ${direction}`
       );
     } else if (
       segments[i].type === 'bike-lane' ||
@@ -960,7 +960,7 @@ function parseStreetmixSegments(segments, length) {
       segmentColor = getSegmentColor(variantList[1]);
       segmentParentEl.setAttribute(
         'street-generated-stencil',
-        `model: bike-arrow; length: ${length}; cycleOffset: 0.3; spacing: 20; direction: ${direction};`
+        `modelsArray: bike-arrow; length: ${length}; cycleOffset: 0.3; spacing: 20; direction: ${direction};`
       );
       segmentParentEl.setAttribute(
         'street-generated-clones',
@@ -1017,12 +1017,12 @@ function parseStreetmixSegments(segments, length) {
       }
       segmentParentEl.setAttribute(
         'street-generated-stencil',
-        `model: ${markerMixinId}; length: ${length}; cycleOffset: 0.4; spacing: 20; direction: ${direction};`
+        `modelsArray: ${markerMixinId}; length: ${length}; cycleOffset: 0.4; spacing: 20; direction: ${direction};`
       );
       if (variantList[1] === 'shared') {
         segmentParentEl.setAttribute(
           'street-generated-stencil__2',
-          `model: ${markerMixinId}; length: ${length}; cycleOffset: 0.6; spacing: 20; direction: ${direction}; facing: 180;`
+          `modelsArray: ${markerMixinId}; length: ${length}; cycleOffset: 0.6; spacing: 20; direction: ${direction}; facing: 180;`
         );
       }
     } else if (segments[i].type === 'divider' && variantList[0] === 'bollard') {
@@ -1137,7 +1137,7 @@ function parseStreetmixSegments(segments, length) {
       );
       segmentParentEl.setAttribute(
         'street-generated-stencil',
-        `stencils: word-only, word-taxi, word-bus; length: ${length}; spacing: 40; padding: 10; direction: ${direction}`
+        `modelsArray: word-only, word-taxi, word-bus; length: ${length}; spacing: 40; padding: 10; direction: ${direction}`
       );
     } else if (segments[i].type === 'drive-lane') {
       segmentParentEl.setAttribute(
@@ -1165,7 +1165,7 @@ function parseStreetmixSegments(segments, length) {
       );
       segmentParentEl.setAttribute(
         'street-generated-stencil',
-        `stencils: word-loading-small, word-only-small; length: ${length}; spacing: 40; padding: 10; direction: ${direction}`
+        `modelsArray: word-loading-small, word-only-small; length: ${length}; spacing: 40; padding: 10; direction: ${direction}`
       );
     } else if (segments[i].type === 'sidewalk' && variantList[0] !== 'empty') {
       segmentParentEl.setAttribute(
@@ -1346,12 +1346,12 @@ function parseStreetmixSegments(segments, length) {
       if (variantList[1] === 'left') {
         segmentParentEl.setAttribute(
           'street-generated-stencil',
-          `model: ${parkingMixin}; length: ${length}; cycleOffset: 1; spacing: ${carStep}; positionX: ${markingPosX}; facing: ${markingsRotZ + 90}; stencilHeight: ${markingLength};`
+          `modelsArray: ${parkingMixin}; length: ${length}; cycleOffset: 1; spacing: ${carStep}; positionX: ${markingPosX}; facing: ${markingsRotZ + 90}; stencilHeight: ${markingLength};`
         );
       } else {
         segmentParentEl.setAttribute(
           'street-generated-stencil',
-          `model: ${parkingMixin}; length: ${length}; cycleOffset: 1; spacing: ${carStep}; positionX: ${markingPosX}; facing: ${markingsRotZ + 90}; stencilHeight: ${markingLength};`
+          `modelsArray: ${parkingMixin}; length: ${length}; cycleOffset: 1; spacing: ${carStep}; positionX: ${markingPosX}; facing: ${markingsRotZ + 90}; stencilHeight: ${markingLength};`
         );
       }
     }
