@@ -1,9 +1,5 @@
 @use './variables.scss';
 
-.components {
-  color: variables.$lightgray-100;
-  width: 364px;
-}
 div.vec2,
 div.vec3,
 div.vec4 {
@@ -24,24 +20,58 @@ div.vec4 {
     color: variables.$white;
   }
 }
-.componentTitle span {
-  max-width: 200px;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  text-transform: capitalize;
-  white-space: nowrap;
-  color: variables.$white;
-  font-weight: 500;
-  vertical-align: bottom !important;
+.componentTitle {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+
+  span {
+    overflow: hidden;
+    white-space: nowrap;
+    color: variables.$white;
+    font-weight: 500;
+    font-size: 16px;
+    text-transform: uppercase;
+  }
 }
-.collapsible .static {
-  cursor: pointer;
-  height: 16px;
-  padding: 20px 10px 12px 0px;
-  vertical-align: bottom;
-  font-size: 16px;
-  &:hover {
-    background: variables.$darkgray-500;
+.componentHeader.collapsible-header {
+  display: flex;
+  align-items: center;
+  flex: 1;
+}
+.sidepanelContent {
+  padding: 0 0 0 15px;
+}
+.collapsible {
+  .static {
+    padding: 6px 20px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    height: auto;
+    background: variables.$black;
+
+    .collapse-button {
+      border: 6px solid transparent;
+      width: 0;
+      height: 0;
+      margin: 0 8px;
+    }
+
+    &:hover {
+      background: variables.$black-400;
+    }
+  }
+
+  &.collapsed .static .collapse-button {
+    border-left-color: variables.$lightgray-100;
+    transform: translateY(-1px);
+  }
+
+  &:not(.collapsed) .static .collapse-button {
+    border-top-color: variables.$lightgray-100;
+    transform: translateY(1px);
+    transform: translateX(-2px);
   }
 }
 .collapsible.component ~ .collapsible.component {
@@ -87,6 +117,7 @@ div.vec4 {
   margin-top: 7px;
 }
 .details .propertyRow {
+  padding: 0 0 0 15px;
   width: 100%;
   display: flex;
   align-items: center;
@@ -115,9 +146,12 @@ div.vec4 {
   width: 100%;
 }
 .propertyRow {
+  display: flex;
+  align-items: center;
   font-size: 14px;
   min-height: 30px;
-  margin-top: 20px;
+  margin-top: 10px;
+  margin-bottom: 10px;
   > input.string,
   > input.number,
   > .inputBlock > input.number,
@@ -231,37 +265,39 @@ div.vec4 {
     }
   }
   .vec3 {
-    width: 348px;
-    display: flex;
+    width: auto; // Changed from 348px
+    display: inline-flex; // Changed from flex
     flex-direction: row;
     column-gap: 12px;
     align-content: center;
     align-items: center;
     margin-top: 4px;
     .name {
-      width: 100px;
+      width: auto; // Changed from 100px
     }
     .inputBlock {
-      width: 108px;
-      height: 48px;
-      padding: 12px 16px;
+      width: 86px;
+      height: 38px;
+      padding: 4px 10px;
       background: rgba(50, 50, 50, 0.8);
       border: 1px solid variables.$purple-400;
       border-radius: 10px;
       box-sizing: border-box;
       white-space: nowrap;
+      display: inline-flex; // Added
+      align-items: center; // Added
       span {
-        width: 9px;
-        height: 19px;
-        line-height: 19px;
-        margin-right: 8px;
+        width: auto; // Changed from 9px
+        height: 16px;
+        line-height: 18px;
+        margin-right: 6px;
         font-weight: 400;
-        font-size: 16px;
+        font-size: 11px;
         color: variables.$lightgray-200;
         text-transform: uppercase;
       }
       .number {
-        width: 56px;
+        width: 100%;
         color: variables.$lightgray-500;
         font-weight: 400;
         overflow: hidden;
@@ -269,6 +305,7 @@ div.vec4 {
         display: inline-block;
         vertical-align: middle;
         padding: 0px;
+        font-size: 13.5px;
       }
     }
   }
@@ -306,9 +343,12 @@ div.vec4 {
     }
   }
   .color_value {
-    margin: 0 0 0 5px;
-    width: 68px;
     letter-spacing: 1px;
+  }
+  .text {
+    display: inline-block; // Changed from block
+    margin-bottom: 0; // Changed from 4px
+    min-width: 70px; // Added to maintain consistent label width
   }
 }
 .propertyRowDefined .text {

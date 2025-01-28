@@ -47,6 +47,10 @@ export default class CommonComponents extends React.Component {
     const entity = this.props.entity;
     // return ['position', 'rotation', 'scale', 'visible']
     return ['position', 'rotation', 'scale'].map((componentName) => {
+      // if entity has managed-street component, then don't show scale
+      if (componentName === 'scale' && entity.components['managed-street']) {
+        return null;
+      }
       const schema = AFRAME.components[componentName].schema;
       var data = entity.object3D[componentName];
       if (componentName === 'rotation') {

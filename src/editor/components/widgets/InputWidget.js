@@ -7,7 +7,8 @@ export default class InputWidget extends React.Component {
     entity: PropTypes.object,
     name: PropTypes.string.isRequired,
     onChange: PropTypes.func,
-    value: PropTypes.any
+    value: PropTypes.any,
+    schema: PropTypes.object
   };
 
   constructor(props) {
@@ -17,6 +18,10 @@ export default class InputWidget extends React.Component {
 
   onChange = (e) => {
     var value = e.target.value;
+    // if this component property is an array, then turn the string into an array
+    if (this.props.schema.type === 'array') {
+      value = value.split(',');
+    }
     this.setState({ value: value });
     if (this.props.onChange) {
       this.props.onChange(this.props.name, value);

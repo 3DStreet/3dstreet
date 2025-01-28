@@ -19,9 +19,13 @@ const AdvancedComponents = ({ entity }) => {
 
   return (
     <div className="advanced-components">
-      <Button variant="toolbtn" onClick={toggleAdvanced}>
-        {showAdvanced ? 'Hide Advanced' : 'Show Advanced'}
-      </Button>
+      <div className="details">
+        <div className="propertyRow">
+          <Button variant="toolbtn" onClick={toggleAdvanced}>
+            {showAdvanced ? 'Hide Advanced' : 'Show Advanced'}
+          </Button>
+        </div>
+      </div>
       {showAdvanced &&
         definedComponents.sort().map((key) => (
           <div key={key} className={'details'}>

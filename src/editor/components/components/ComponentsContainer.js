@@ -32,12 +32,12 @@ export default class ComponentsContainer extends React.Component {
     return (
       <div className="components">
         {entity.hasAttribute('data-no-transform') ? (
-          <div>
+          <div className="sidepanelContent">
             <br />
             <p>⚠️ Transformations disabled for this layer.</p>
           </div>
         ) : (
-          <div>
+          <div className="sidepanelContent">
             <CommonComponents entity={entity} />
           </div>
         )}

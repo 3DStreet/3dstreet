@@ -1,13 +1,11 @@
 /* global AFRAME */
 
-// a-frame component to generate cloned models along a street
-// this moves logic from aframe-streetmix-parsers into this component
-
+// generate cloned stencils on a street surface
 AFRAME.registerComponent('street-generated-stencil', {
   multiple: true,
   schema: {
-    model: {
-      type: 'string',
+    modelsArray: {
+      type: 'array',
       oneOf: [
         'sharrow',
         'bike-arrow',
@@ -35,10 +33,6 @@ AFRAME.registerComponent('street-generated-stencil', {
         'hash-chevron',
         'solid-stripe'
       ]
-    },
-    stencils: {
-      // if present, then use this array of stencils instead of 1 model
-      type: 'array'
     },
     padding: {
       // distance between stencils within array
@@ -73,11 +67,6 @@ AFRAME.registerComponent('street-generated-stencil', {
       default: 0, // this is a Y Rotation value in degrees -- UI could offer a dropdown with options for 0, 90, 180, 270
       type: 'number'
     },
-    randomFacing: {
-      // if true, facing is ignored and a random Y Rotation is applied to each clone
-      default: false,
-      type: 'boolean'
-    },
     stencilHeight: {
       default: 0,
       type: 'number'
@@ -87,10 +76,6 @@ AFRAME.registerComponent('street-generated-stencil', {
       type: 'string',
       oneOf: ['none', 'inbound', 'outbound']
     }
-    // seed: {  // seed not yet supported
-    //   default: 0,
-    //   type: 'number'
-    // }
   },
   init: function () {
     this.createdEntities = [];
@@ -99,6 +84,38 @@ AFRAME.registerComponent('street-generated-stencil', {
     this.createdEntities.forEach((entity) => entity.remove());
     this.createdEntities.length = 0; // Clear the array
   },
+  detach: function () {
+    const commands = [];
+    commands.push([
+      'componentremove',
+      { entity: this.el, component: this.attrName }
+    ]);
+    let entityObjToPushAtTheEnd = null; // so that the entity is selected after executing the multi command
+    this.createdEntities.forEach((entity) => {
+      const position = entity.getAttribute('position');
+      const rotation = entity.getAttribute('rotation');
+      const entityObj = {
+        parentEl: this.el, // you can also put this.el.id here that way the command is fully json serializable but el currently doesn't have an id
+        mixin: entity.getAttribute('mixin'),
+        'data-layer-name': entity
+          .getAttribute('data-layer-name')
+          .replace('Cloned Model', 'Detached Model'),
+        components: {
+          position: { x: position.x, y: position.y, z: position.z },
+          rotation: { x: rotation.x, y: rotation.y, z: rotation.z }
+        }
+      };
+      if (AFRAME.INSPECTOR?.selectedEntity === entity) {
+        entityObjToPushAtTheEnd = entityObj;
+      } else {
+        commands.push(['entitycreate', entityObj]);
+      }
+    });
+    if (entityObjToPushAtTheEnd !== null) {
+      commands.push(['entitycreate', entityObjToPushAtTheEnd]);
+    }
+    AFRAME.INSPECTOR.execute('multi', commands);
+  },
   update: function (oldData) {
     const data = this.data;
 
@@ -106,7 +123,7 @@ AFRAME.registerComponent('street-generated-stencil', {
     this.remove();
 
     // Use either stencils array or single model
-    let stencilsToUse = data.stencils.length > 0 ? data.stencils : [data.model];
+    let stencilsToUse = data.modelsArray;
 
     // Reverse stencil order if inbound
     if (data.direction === 'inbound') {
@@ -149,7 +166,7 @@ AFRAME.registerComponent('street-generated-stencil', {
           });
         }
 
-        // Set rotation - either random, specified facing, or inbound/outbound
+        // Set rotation - either specified facing, or inbound/outbound
         let rotationY = data.facing;
         if (data.direction === 'inbound') {
           rotationY = 180 + data.facing;
@@ -157,15 +174,14 @@ AFRAME.registerComponent('street-generated-stencil', {
         if (data.direction === 'outbound') {
           rotationY = 0 - data.facing;
         }
-        if (data.randomFacing) {
-          rotationY = Math.random() * 360;
-        }
         clone.setAttribute('rotation', `-90 ${rotationY} 0`);
 
         // Add metadata
         clone.classList.add('autocreated');
         clone.setAttribute('data-no-transform', '');
         clone.setAttribute('data-layer-name', `Cloned Model • ${stencilName}`);
+        clone.setAttribute('data-parent-component', this.attrName);
+        clone.setAttribute('polygon-offset', { factor: -2, units: -2 });
 
         this.el.appendChild(clone);
         this.createdEntities.push(clone);

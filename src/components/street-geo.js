@@ -9,7 +9,6 @@ AFRAME.registerComponent('street-geo', {
   schema: {
     longitude: { type: 'number', default: 0 },
     latitude: { type: 'number', default: 0 },
-    elevation: { type: 'number', default: null }, // deprecated
     orthometricHeight: { type: 'number', default: null },
     geoidHeight: { type: 'number', default: null },
     ellipsoidalHeight: { type: 'number', default: null },
@@ -18,7 +17,13 @@ AFRAME.registerComponent('street-geo', {
       default: 'google3d',
       oneOf: ['google3d', 'mapbox2d', 'osm3d', 'none']
     },
-    enableClipping: { type: 'boolean', default: false }
+    enableClipping: { type: 'boolean', default: false },
+    blendMode: {
+      type: 'string',
+      default: '30% Opacity',
+      oneOf: ['30% Opacity', '60% Opacity', 'Darker', 'Lighter', 'Normal']
+    },
+    blendingEnabled: { type: 'boolean', default: false }
   },
   init: function () {
     /*
@@ -27,7 +32,6 @@ AFRAME.registerComponent('street-geo', {
       update function: <mapType>Update,
     */
     this.mapTypes = this.el.components['street-geo'].schema.maps.oneOf;
-    this.elevationHeightConstant = 32.49158; // deprecated
 
     const urlParams = new URLSearchParams(window.location.search);
     this.isAR = urlParams.get('viewer') === 'ar';
@@ -40,6 +44,18 @@ AFRAME.registerComponent('street-geo', {
   },
   remove: function () {
     document.getElementById('map-data-attribution').style.visibility = 'hidden';
+  },
+  returnBlendMode: function (blendModePreset) {
+    // on the target, such as
+    // for each blend mode preset option, create a dictionary of blend modes and their corresponding values
+    const blendModes = {
+      Normal: { blendMode: 'Normal', opacity: 1.0 },
+      '30% Opacity': { blendMode: 'Normal', opacity: 0.3 },
+      '60% Opacity': { blendMode: 'Normal', opacity: 0.6 },
+      Darker: { blendMode: 'Multiply', opacity: 1.0 },
+      Lighter: { blendMode: 'Additive', opacity: 1.0 }
+    };
+    return blendModes[blendModePreset];
   },
   update: function (oldData) {
     this.el.setAttribute('data-no-transform', '');
@@ -57,6 +73,7 @@ AFRAME.registerComponent('street-geo', {
             'visible';
           this[mapType + 'Create']();
         }
+        AFRAME.INSPECTOR.selectEntity(this.el);
       } else if (
         data.maps === mapType &&
         (updatedData.longitude ||
@@ -73,15 +90,43 @@ AFRAME.registerComponent('street-geo', {
         if (mapType === 'osm3d') {
           this.el.removeChild(this['osm3dBuilding']);
         }
+        AFRAME.INSPECTOR.selectEntity(this.el);
       }
     }
 
-    // if state is not clipping, then disable it
     if (this.google3d) {
+      // Handle clipping updates
       if (data.enableClipping) {
         this.google3d.setAttribute('obb-clipping', '');
       } else {
         this.google3d.removeAttribute('obb-clipping');
+      }
+
+      // Handle blending updates
+      if (data.blendingEnabled) {
+        if (data.blendMode) {
+          this.google3d.setAttribute(
+            'blending-opacity',
+            this.returnBlendMode(data.blendMode)
+          );
+          if (oldData.blendingEnabled === false) {
+            const currentEl = this.google3d;
+            this.el.removeChild(currentEl);
+            this.google3d = null;
+            this.google3dCreate();
+            AFRAME.INSPECTOR.selectEntity(this.el);
+          }
+        }
+      } else {
+        this.google3d.removeAttribute('blending-opacity');
+        if (oldData.blendingEnabled) {
+          // If blending was previously enabled and now disabled, recreate the tiles
+          const currentEl = this.google3d;
+          this.el.removeChild(currentEl);
+          this.google3d = null;
+          this.google3dCreate();
+          AFRAME.INSPECTOR.selectEntity(this.el);
+        }
       }
     }
   },
@@ -123,10 +168,7 @@ AFRAME.registerComponent('street-geo', {
     const data = this.data;
     const el = this.el;
     const self = this;
-    // if data.ellipsoidalHeight, use it, otherwise use data.elevation less constant (deprecated)
-    const height = data.ellipsoidalHeight
-      ? data.ellipsoidalHeight
-      : data.elevation - this.elevationHeightConstant;
+    const height = data.ellipsoidalHeight;
 
     const create3DtilesElement = () => {
       const google3dElement = document.createElement('a-entity');
@@ -135,6 +177,7 @@ AFRAME.registerComponent('street-geo', {
       if (data.enableClipping) {
         google3dElement.setAttribute('obb-clipping', '');
       }
+
       google3dElement.setAttribute('data-layer-name', 'Google 3D Tiles');
       google3dElement.setAttribute('data-no-transform', '');
       google3dElement.setAttribute('loader-3dtiles', {
@@ -166,6 +209,20 @@ AFRAME.registerComponent('street-geo', {
       google3dElement.setAttribute('data-ignore-raycaster', '');
       el.appendChild(google3dElement);
       self['google3d'] = google3dElement;
+
+      // if clipping is enabled, add it
+      if (data.enableClipping) {
+        google3dElement.setAttribute('obb-clipping', '');
+      }
+      // Only set blending if enabled
+      if (data.blendingEnabled) {
+        if (data.blendMode) {
+          google3dElement.setAttribute(
+            'blending-opacity',
+            this.returnBlendMode(data.blendMode)
+          );
+        }
+      }
     };
 
     // check whether the library has been imported. Download if not
@@ -187,16 +244,35 @@ AFRAME.registerComponent('street-geo', {
   },
   google3dUpdate: function () {
     const data = this.data;
-    // if data.ellipsoidalHeight, use it, otherwise use data.elevation less constant (deprecated)
-    const height = data.ellipsoidalHeight
-      ? data.ellipsoidalHeight
-      : data.elevation - this.elevationHeightConstant;
+    const height = data.ellipsoidalHeight;
 
     this.google3d.setAttribute('loader-3dtiles', {
       lat: data.latitude,
       long: data.longitude,
       height: height
     });
+
+    // if state is not clipping, then disable it
+    if (data.enableClipping && !this.google3d.getAttribute('obb-clipping')) {
+      this.google3d.setAttribute('obb-clipping', '');
+    } else if (
+      !data.enableClipping &&
+      this.google3d.getAttribute('obb-clipping')
+    ) {
+      this.google3d.removeAttribute('obb-clipping');
+    }
+
+    // Handle blending updates
+    if (data.blendingEnabled) {
+      if (data.blendMode) {
+        this.google3d.setAttribute(
+          'blending-opacity',
+          this.returnBlendMode(data.blendMode)
+        );
+      }
+    } else {
+      this.google3d.removeAttribute('blending-opacity');
+    }
   },
   mapbox2dUpdate: function () {
     const data = this.data;

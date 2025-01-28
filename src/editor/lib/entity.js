@@ -2,6 +2,7 @@
 import { nanoid } from 'nanoid';
 import Events from './Events';
 import { equal } from './utils';
+import { SunIcon, VideoCameraIcon, LayersIcon } from '../icons';
 
 /**
  * Update a component.
@@ -94,7 +95,7 @@ export function removeSelectedEntity(force) {
  * @param  {Element} newNode       Node to insert.
  * @param  {Element} referenceNode Node used as reference to insert after it.
  */
-function insertAfter(newNode, referenceNode) {
+export function insertAfter(newNode, referenceNode) {
   if (!referenceNode.parentNode) {
     referenceNode = AFRAME.INSPECTOR.selectedEntity;
   }
@@ -135,41 +136,29 @@ export function renameEntity(entity) {
   });
 }
 
+function recursivelyRegenerateId(element) {
+  if (element.id) {
+    // if it's a nanoid, create a new one, otherwise use getUniqueId
+    element.id =
+      element.id.length === 21 ? createUniqueId() : getUniqueId(element.id);
+  } else {
+    element.id = createUniqueId();
+  }
+
+  for (const child of element.childNodes) {
+    recursivelyRegenerateId(child);
+  }
+}
+
 /**
- * Clone an entity, inserting it after the cloned one. This is the implementation of the entityclone command.
+ * Clone an entity. This is used by the the entityclone command.
  * @param {Element} entity Entity to clone
- * @param {string|undefined} newId The new id to use for the clone
  * @returns {Element} The clone
  */
-export function cloneEntityImpl(entity, newId = undefined) {
+export function cloneEntityImpl(entity) {
   entity.flushToDOM();
-
   const clone = prepareForSerialization(entity);
-  clone.addEventListener(
-    'loaded',
-    function () {
-      Events.emit('entityclone', clone);
-      AFRAME.INSPECTOR.selectEntity(clone);
-    },
-    { once: true }
-  );
-
-  if (newId) {
-    clone.id = newId;
-  } else {
-    if (entity.id) {
-      if (entity.id.length === 21) {
-        // nanoid generated id, create a new one
-        clone.id = createUniqueId();
-      } else {
-        // Get a valid unique ID for the entity
-        clone.id = getUniqueId(entity.id);
-      }
-    } else {
-      entity.id = createUniqueId();
-    }
-  }
-  insertAfter(clone, entity);
+  recursivelyRegenerateId(clone);
   return clone;
 }
 
@@ -248,6 +237,17 @@ function optimizeComponents(copy, source) {
       var value = stringifyComponentValue(schema, optimalUpdate);
       setAttribute.call(copy, name, value);
     }
+
+    // Remove special components if they use the default value
+    if (
+      value === '' &&
+      (name === 'visible' ||
+        name === 'position' ||
+        name === 'rotation' ||
+        name === 'scale')
+    ) {
+      removeAttribute.call(copy, name);
+    }
   });
 }
 
@@ -316,6 +316,13 @@ function getImplicitValue(component, source) {
   function _multi() {
     var value;
 
+    // Set isInherited to true if the component is inherited from primitive defaultComponents and is empty object
+    var defaults = source.defaultComponentsFromPrimitive;
+    isInherited =
+      defaults &&
+      /* eslint-disable-next-line no-prototype-builtins */
+      defaults.hasOwnProperty(component.attrName) &&
+      Object.keys(defaults[component.attrName]).length === 0;
     Object.keys(component.schema).forEach(function (propertyName) {
       var propertyValue = getFromAttribute(component, propertyName, source);
       if (propertyValue === undefined) {
@@ -394,15 +401,15 @@ function getFromAttribute(component, propertyName, source) {
  */
 function getMixedValue(component, propertyName, source) {
   var value;
-  var reversedMixins = source.mixinEls.reverse();
+  var reversedMixins = source.mixinEls.toReversed();
   for (var i = 0; value === undefined && i < reversedMixins.length; i++) {
     var mixin = reversedMixins[i];
     /* eslint-disable-next-line no-prototype-builtins */
-    if (mixin.attributes.hasOwnProperty(component.name)) {
+    if (mixin.attributes.hasOwnProperty(component.attrName)) {
       if (!propertyName) {
-        value = mixin.getAttribute(component.name);
+        value = mixin.getAttribute(component.attrName);
       } else {
-        value = mixin.getAttribute(component.name)[propertyName];
+        value = mixin.getAttribute(component.attrName)[propertyName];
       }
     }
   }
@@ -411,7 +418,7 @@ function getMixedValue(component, propertyName, source) {
 
 /**
  * Gets the value for a component or component's property coming from primitive
- * defaults or a-frame defaults. In this specific order.
+ * defaults.
  *
  * @param {Component} component      Component to be found.
  * @param {string}    [propertyName] If provided, component's property to be
@@ -422,18 +429,16 @@ function getMixedValue(component, propertyName, source) {
  */
 function getInjectedValue(component, propertyName, source) {
   var value;
-  var primitiveDefaults = source.defaultComponentsFromPrimitive || {};
-  var aFrameDefaults = source.defaultComponents || {};
-  var defaultSources = [primitiveDefaults, aFrameDefaults];
-  for (var i = 0; value === undefined && i < defaultSources.length; i++) {
-    var defaults = defaultSources[i];
+  var primitiveDefaults = source.defaultComponentsFromPrimitive;
+  if (
+    primitiveDefaults &&
     /* eslint-disable-next-line no-prototype-builtins */
-    if (defaults.hasOwnProperty(component.name)) {
-      if (!propertyName) {
-        value = defaults[component.name];
-      } else {
-        value = defaults[component.name][propertyName];
-      }
+    primitiveDefaults.hasOwnProperty(component.attrName)
+  ) {
+    if (!propertyName) {
+      value = primitiveDefaults[component.attrName];
+    } else {
+      value = primitiveDefaults[component.attrName][propertyName];
     }
   }
   return value;
@@ -587,36 +592,29 @@ export function getEntityDisplayName(entity) {
  * Entity representation.
  */
 const ICONS = {
-  camera: 'fa-camera',
-  mesh: 'fa-cube',
-  light: 'fa-lightbulb-o',
-  text: 'fa-font'
+  cameraRig: <VideoCameraIcon />,
+  environment: <SunIcon />,
+  'street-container': <LayersIcon />
 };
+
 export function printEntity(entity) {
   if (!entity) {
     return '';
   }
 
-  // Icons.
-  let icons = '';
-  for (let objType in ICONS) {
-    if (!entity.getObject3D(objType)) {
-      continue;
+  let icon = null;
+  for (let entityId in ICONS) {
+    if (entityId === entity.id) {
+      icon = ICONS[entityId];
     }
-    icons += `&nbsp;<i class="fa ${ICONS[objType]}" title="${objType}"></i>`;
   }
 
   // Custom display name for a layer if available, otherwise use entity name or tag
   let displayName = getEntityDisplayName(entity);
   return (
     <span className="entityPrint">
+      {icon && <span className="entityIcons">{icon}</span>}
       {displayName && <span className="entityName">&nbsp;{displayName}</span>}
-      {!!icons && (
-        <span
-          className="entityIcons"
-          dangerouslySetInnerHTML={{ __html: icons }}
-        />
-      )}
     </span>
   );
 }

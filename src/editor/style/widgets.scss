@@ -63,3 +63,19 @@
 .dropdownhover .dropbtn {
   color: variables.$blue-100;
 }
+.color-widget {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+
+  input.color {
+    flex: 1;
+    min-width: 50%;
+  }
+
+  input.color_value {
+    flex: 1;
+    min-width: 50%;
+  }
+}

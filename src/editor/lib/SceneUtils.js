@@ -5,6 +5,12 @@ import {
   updateScene,
   uploadThumbnailImage
 } from '@/editor/api/scene';
+import { createUniqueId } from '@/editor/lib/entity.js';
+
+export function createBlankScene() {
+  STREET.utils.newScene();
+  AFRAME.scenes[0].emit('newScene');
+}
 
 export function inputStreetmix() {
   const streetmixURL = prompt(
@@ -20,14 +26,19 @@ export function inputStreetmix() {
     window.location.hash = streetmixURL;
   });
 
+  AFRAME.scenes[0].addEventListener('streetmix-loader-street-loaded', () => {
+    // setTimeout very important here, otherwise all entities are positionned at 0,0,0 when reloading the scene
+    setTimeout(() => {
+      AFRAME.scenes[0].emit('newScene');
+    });
+  });
+
   const defaultStreetEl = document.getElementById('default-street');
   defaultStreetEl.setAttribute(
     'streetmix-loader',
     'streetmixStreetURL',
     streetmixURL
   );
-
-  AFRAME.scenes[0].emit('newScene');
 }
 
 export function createElementsForScenesFromJSON(streetData) {
@@ -42,7 +53,40 @@ export function createElementsForScenesFromJSON(streetData) {
     return;
   }
 
-  STREET.utils.createEntities(streetData, streetContainerEl);
+  const processStreetDataForDuplicateIds = (data) => {
+    // Keep track of IDs we've seen during processing
+    const seenIds = new Set();
+    let changeCounter = 0;
+
+    // Main recursive function to process IDs and children
+    const processItem = (obj) => {
+      if (obj.id) {
+        if (seenIds.has(obj.id)) {
+          // If we've seen this ID before, generate a new one
+          obj.id = createUniqueId();
+          changeCounter++;
+        } else {
+          // First time seeing this ID, add it to seen set
+          seenIds.add(obj.id);
+        }
+      }
+
+      if (obj.children) {
+        obj.children = obj.children.map(processItem);
+      }
+
+      return obj;
+    };
+    const output = data.map(processItem);
+    if (changeCounter > 0) {
+      console.log(`Duplicate IDs fixed: ${changeCounter} instances`);
+    }
+    return output;
+  };
+
+  const correctedStreetData = processStreetDataForDuplicateIds(streetData);
+
+  STREET.utils.createEntities(correctedStreetData, streetContainerEl);
   AFRAME.scenes[0].emit('newScene');
 }
 
@@ -50,7 +94,8 @@ export function fileJSON(event) {
   let reader = new FileReader();
 
   reader.onload = function () {
-    STREET.utils.createElementsFromJSON(reader.result, true);
+    const data = JSON.parse(reader.result);
+    createElementsForScenesFromJSON(data.data);
   };
 
   reader.readAsText(event.target.files[0]);
@@ -81,21 +126,30 @@ export function convertToObject() {
   }
 }
 
-export function makeScreenshot() {
-  const imgHTML = '<img id="screentock-destination">';
-  // Set the screenshot in local storage
-  localStorage.setItem('screenshot', JSON.stringify(imgHTML));
-  const screenshotEl = document.getElementById('screenshot');
-  screenshotEl.play();
+export async function makeScreenshot() {
+  await new Promise((resolve, reject) => {
+    const screenshotEl = document.getElementById('screenshot');
+    screenshotEl.play();
 
-  screenshotEl.setAttribute('screentock', 'type', 'img');
-  screenshotEl.setAttribute(
-    'screentock',
-    'imgElementSelector',
-    '#screentock-destination'
-  );
-  // take the screenshot
-  screenshotEl.setAttribute('screentock', 'takeScreenshot', true);
+    const screentockImgElement = document.getElementById(
+      'screentock-destination'
+    );
+    screentockImgElement.addEventListener(
+      'load',
+      () => {
+        resolve();
+      },
+      { once: true }
+    );
+    screenshotEl.setAttribute('screentock', 'type', 'img');
+    screenshotEl.setAttribute(
+      'screentock',
+      'imgElementSelector',
+      '#screentock-destination'
+    );
+    // take the screenshot
+    screenshotEl.setAttribute('screentock', 'takeScreenshot', true);
+  });
 }
 
 export async function saveScene(currentUser, doSaveAs) {
@@ -168,9 +222,11 @@ export async function saveScene(currentUser, doSaveAs) {
 }
 
 export async function saveSceneWithScreenshot(currentUser, doSaveAs) {
-  makeScreenshot();
   const currentSceneId = await saveScene(currentUser, doSaveAs);
   if (currentSceneId) {
+    // wait a bit for models to be loaded, may not be enough...
+    await new Promise((resolve) => setTimeout(resolve, 2000));
+    await makeScreenshot();
     uploadThumbnailImage(currentSceneId);
   }
 }

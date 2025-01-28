@@ -51,14 +51,6 @@ export const Save = ({ currentUser }) => {
       handleSave(doSaveAs);
     }
   }, [isSavingScene]); // eslint-disable-line react-hooks/exhaustive-deps
-  // if (isSavingScene) {
-  // // Events.on('historychanged', (cmd) => {
-  // //   if (cmd) {
-  // //     // Debounce the cloudSaveHandler call
-
-  // //     // this.debouncedCloudSaveHandler();
-  // //   }
-  // // });
 
   const toggleSaveActionState = () => {
     setIsSaveActionActive(!isSaveActionActive);
@@ -89,19 +81,23 @@ export const Save = ({ currentUser }) => {
   return (
     <div>
       {currentUser ? (
-        <div className="saveButtonWrapper relative w-24">
+        <div className="saveButtonWrapper relative">
           {isSavingScene ? (
-            <Button variant="filled">
-              <div>Saved</div>
+            <Button
+              leadingIcon={<Save24Icon />}
+              variant="filled"
+              className="min-w-[110px]"
+            >
+              <div className="grow">Saved</div>
             </Button>
           ) : (
             <Button
               leadingIcon={<Save24Icon />}
               onClick={toggleSaveActionState}
-              disabled={isSavingScene}
               variant="toolbtn"
+              className="min-w-[110px]"
             >
-              <div>Save</div>
+              <div className="grow">Save</div>
             </Button>
           )}
           {isSaveActionActive && (
@@ -128,11 +124,11 @@ export const Save = ({ currentUser }) => {
       ) : (
         <Button
           leadingIcon={<Save24Icon />}
-          onClick={handleUnsignedSave}
-          disabled={isSavingScene}
+          onClick={!isSavingScene ? handleUnsignedSave : undefined}
           variant="toolbtn"
+          className="min-w-[110px]"
         >
-          <div>Save</div>
+          <div className="grow">Save</div>
         </Button>
       )}
     </div>

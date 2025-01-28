@@ -1,10 +1,23 @@
 import PropTypes from 'prop-types';
+// import Component from './Component';
+import Component from './StreetSegmentComponent';
 import PropertyRow from './PropertyRow';
+import { StreetSurfaceIcon } from '../../icons';
+
+// Define featured component prefixes that should be shown in their own section
+const FEATURED_COMPONENT_PREFIXES = ['street-generated-'];
 
 const StreetSegmentSidebar = ({ entity }) => {
   const componentName = 'street-segment';
-  // Check if entity and its components exist
   const component = entity?.components?.[componentName];
+  const components = entity ? entity.components : {};
+
+  // Filter for featured components that exist on this entity
+  const featuredComponents = Object.keys(components).filter((key) =>
+    FEATURED_COMPONENT_PREFIXES.some((prefix) => key.startsWith(prefix))
+  );
+
+  console.log('featuredComponents', featuredComponents);
 
   return (
     <div className="segment-sidebar">
@@ -42,39 +55,68 @@ const StreetSegmentSidebar = ({ entity }) => {
                 isSingle={false}
                 entity={entity}
               />
-              <div className="propertyRow">
-                <div className="text">-----</div>
+              {/* props for street-segment but formatted as a fake 'surface' component */}
+              <div className="collapsible component">
+                <div className="static">
+                  <div className="componentHeader collapsible-header">
+                    <span className="componentTitle" title="Surface">
+                      <StreetSurfaceIcon />
+                      <span>Surface</span>
+                    </span>
+                  </div>
+                </div>
+                <div className="content">
+                  <div className="collapsible-content">
+                    <PropertyRow
+                      key="surface"
+                      name="surface"
+                      label="Surface"
+                      schema={component.schema['surface']}
+                      data={component.data['surface']}
+                      componentname={componentName}
+                      isSingle={false}
+                      entity={entity}
+                    />
+                    <PropertyRow
+                      key="color"
+                      name="color"
+                      label="Color"
+                      schema={component.schema['color']}
+                      data={component.data['color']}
+                      componentname={componentName}
+                      isSingle={false}
+                      entity={entity}
+                    />
+                    <PropertyRow
+                      key="level"
+                      name="level"
+                      label="Curb Level"
+                      schema={component.schema['level']}
+                      data={component.data['level']}
+                      componentname={componentName}
+                      isSingle={false}
+                      entity={entity}
+                    />
+                  </div>
+                </div>
               </div>
-              <PropertyRow
-                key="surface"
-                name="surface"
-                label="Surface"
-                schema={component.schema['surface']}
-                data={component.data['surface']}
-                componentname={componentName}
-                isSingle={false}
-                entity={entity}
-              />
-              <PropertyRow
-                key="color"
-                name="color"
-                label="Color"
-                schema={component.schema['color']}
-                data={component.data['color']}
-                componentname={componentName}
-                isSingle={false}
-                entity={entity}
-              />
-              <PropertyRow
-                key="level"
-                name="level"
-                label="Curb Level"
-                schema={component.schema['level']}
-                data={component.data['level']}
-                componentname={componentName}
-                isSingle={false}
-                entity={entity}
-              />
+
+              {/* Featured Components section */}
+              {featuredComponents.length > 0 && (
+                <>
+                  {featuredComponents.map((key) => (
+                    <div key={key} className={'details'}>
+                      <Component
+                        key={key}
+                        isCollapsed={false}
+                        component={components[key]}
+                        entity={entity}
+                        name={key}
+                      />
+                    </div>
+                  ))}
+                </>
+              )}
             </>
           )}
         </div>

@@ -19,8 +19,8 @@ const useStore = create(
   subscribeWithSelector(
     devtools(
       (set) => ({
-        sceneId: null,
-        setSceneId: (newSceneId) => set({ sceneId: newSceneId }),
+        sceneId: null, // not used anywhere yet, we still use the metadata component
+        setSceneId: (newSceneId) => set({ sceneId: newSceneId }), // not used anywhere yet
         isSavingScene: false,
         saveScene: (newDoSaveAs) =>
           set({ isSavingScene: true, doSaveAs: newDoSaveAs }),
@@ -30,8 +30,8 @@ const useStore = create(
         setSceneTitle: (newSceneTitle) => set({ sceneTitle: newSceneTitle }),
         newScene: () =>
           set({ sceneId: null, sceneTitle: null, authorId: null }),
-        authorId: null,
-        setAuthorId: (newAuthorId) => set({ authorId: newAuthorId }),
+        authorId: null, // not used anywhere yet, we still use the metadata component
+        setAuthorId: (newAuthorId) => set({ authorId: newAuthorId }), // not used anywhere yet
         modal: firstModal(),
         setModal: (newModal) => {
           const currentModal = useStore.getState().modal;

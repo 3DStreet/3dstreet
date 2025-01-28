@@ -5,7 +5,6 @@ AFRAME.registerComponent('street-generated-clones', {
   multiple: true,
   schema: {
     // Common properties
-    model: { type: 'string' },
     modelsArray: { type: 'array' }, // For random selection from multiple models
     length: { type: 'number' }, // length in meters of segment
     positionX: { default: 0, type: 'number' },
@@ -39,6 +38,39 @@ AFRAME.registerComponent('street-generated-clones', {
   remove: function () {
     this.createdEntities.forEach((entity) => entity.remove());
     this.createdEntities.length = 0; // Clear the array
+  },
+
+  detach: function () {
+    const commands = [];
+    commands.push([
+      'componentremove',
+      { entity: this.el, component: this.attrName }
+    ]);
+    let entityObjToPushAtTheEnd = null; // so that the entity is selected after executing the multi command
+    this.createdEntities.forEach((entity) => {
+      const position = entity.getAttribute('position');
+      const rotation = entity.getAttribute('rotation');
+      const entityObj = {
+        parentEl: this.el, // you can also put this.el.id here that way the command is fully json serializable but el currently doesn't have an id
+        mixin: entity.getAttribute('mixin'),
+        'data-layer-name': entity
+          .getAttribute('data-layer-name')
+          .replace('Cloned Model', 'Detached Model'),
+        components: {
+          position: { x: position.x, y: position.y, z: position.z },
+          rotation: { x: rotation.x, y: rotation.y, z: rotation.z }
+        }
+      };
+      if (AFRAME.INSPECTOR?.selectedEntity === entity) {
+        entityObjToPushAtTheEnd = entityObj;
+      } else {
+        commands.push(['entitycreate', entityObj]);
+      }
+    });
+    if (entityObjToPushAtTheEnd !== null) {
+      commands.push(['entitycreate', entityObjToPushAtTheEnd]);
+    }
+    AFRAME.INSPECTOR.execute('multi', commands);
   },
 
   update: function (oldData) {
@@ -137,6 +169,7 @@ AFRAME.registerComponent('street-generated-clones', {
     clone.classList.add('autocreated');
     clone.setAttribute('data-no-transform', '');
     clone.setAttribute('data-layer-name', 'Cloned Model • ' + mixinId);
+    clone.setAttribute('data-parent-component', this.attrName);
 
     this.el.appendChild(clone);
     this.createdEntities.push(clone);
@@ -144,10 +177,8 @@ AFRAME.registerComponent('street-generated-clones', {
 
   getModelMixin: function () {
     const data = this.data;
-    if (data.modelsArray && data.modelsArray.length > 0) {
-      return data.modelsArray[Math.floor(this.rng() * data.modelsArray.length)];
-    }
-    return data.model;
+    if (!this.rng) return data.modelsArray[0]; // this is a hack but it works for now
+    return data.modelsArray[Math.floor(this.rng() * data.modelsArray.length)];
   },
 
   randPlacedElements: function (streetLength, spacing, count) {

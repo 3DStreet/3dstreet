@@ -343,7 +343,6 @@ body.aframe-inspector-opened {
   }
 
   .scroll {
-    padding: 0 0 0 20px;
     margin-top: 72px;
     overflow-y: auto;
     overflow-x: hidden;
@@ -618,6 +617,19 @@ body.aframe-inspector-opened {
 
     #toggle-rightbar:active {
       background-color: variables.$purple-200;
+    }
+
+    .icon-container {
+      min-width: 24px;
+      min-height: 24px;
+      display: flex; // This helps with centering
+      align-items: center;
+      justify-content: center;
+
+      svg {
+        min-width: 24px;
+        min-height: 24px;
+      }
     }
 
     .layersBlock {
