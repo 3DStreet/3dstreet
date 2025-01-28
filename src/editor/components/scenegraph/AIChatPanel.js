@@ -5,6 +5,7 @@ import Collapsible from '../Collapsible.js';
 import JSONPretty from 'react-json-pretty';
 import 'react-json-pretty/themes/monikai.css';
 import { Copy32Icon } from '../../icons/index.js';
+import { Parser } from 'expr-eval';
 
 // Helper component for the copy button
 const CopyButton = ({ jsonData }) => {
@@ -28,130 +29,18 @@ const CopyButton = ({ jsonData }) => {
   );
 };
 
-function calculateArithmeticExpression(expression) {
-  console.log('calculateArithmeticExpression:', expression);
-
-  // Remove all whitespace
-  const cleanExpr = expression.replace(/\s+/g, '');
-
-  // Only allow numbers, basic operators, and parentheses
-  if (!/^[-+0-9\s()*/%.]*$/.test(cleanExpr)) {
-    throw new Error('Invalid expression: contains forbidden characters');
+function evaluateExpression(expression) {
+  try {
+    const parser = new Parser();
+    const cleanExpr = expression.trim();
+    if (!/^[-+0-9\s()*/%.]*$/.test(cleanExpr)) {
+      throw new Error('Invalid expression: contains forbidden characters');
+    }
+    return parser.evaluate(cleanExpr);
+  } catch (error) {
+    console.error('Error evaluating expression:', error);
+    throw error;
   }
-
-  const numbers = [];
-  const operators = [];
-
-  const precedence = {
-    '+': 1,
-    '-': 1,
-    '*': 2,
-    '/': 2,
-    '%': 2,
-    '(': 0
-  };
-
-  const applyOperation = () => {
-    const b = numbers.pop();
-    const a = numbers.pop();
-    const op = operators.pop();
-
-    if (a === undefined || b === undefined) {
-      throw new Error('Invalid expression: not enough operands');
-    }
-
-    switch (op) {
-      case '+':
-        numbers.push(a + b);
-        break;
-      case '-':
-        numbers.push(a - b);
-        break;
-      case '*':
-        numbers.push(a * b);
-        break;
-      case '/':
-        if (b === 0) throw new Error('Division by zero');
-        numbers.push(a / b);
-        break;
-      case '%':
-        if (b === 0) throw new Error('Modulo by zero');
-        numbers.push(a % b);
-        break;
-      default:
-        throw new Error(`Invalid operator: ${op}`);
-    }
-  };
-
-  let i = 0;
-  while (i < cleanExpr.length) {
-    // Handle numbers (including decimals and negatives)
-    if (cleanExpr[i] === '-' && (i === 0 || cleanExpr[i - 1] === '(')) {
-      // This is a negative number, not a subtraction operator
-      let numStr = '-';
-      i++;
-      while (
-        i < cleanExpr.length &&
-        (/\d/.test(cleanExpr[i]) || cleanExpr[i] === '.')
-      ) {
-        numStr += cleanExpr[i];
-        i++;
-      }
-      numbers.push(parseFloat(numStr));
-      continue;
-    }
-
-    if (/\d/.test(cleanExpr[i])) {
-      let numStr = '';
-      while (
-        i < cleanExpr.length &&
-        (/\d/.test(cleanExpr[i]) || cleanExpr[i] === '.')
-      ) {
-        numStr += cleanExpr[i];
-        i++;
-      }
-      numbers.push(parseFloat(numStr));
-      continue;
-    }
-
-    // Handle operators and parentheses
-    if (cleanExpr[i] === '(') {
-      operators.push(cleanExpr[i]);
-    } else if (cleanExpr[i] === ')') {
-      while (operators.length > 0 && operators[operators.length - 1] !== '(') {
-        applyOperation();
-      }
-      if (operators.length === 0) {
-        throw new Error('Invalid expression: mismatched parentheses');
-      }
-      operators.pop(); // Remove the '('
-    } else if (['+', '-', '*', '/', '%'].includes(cleanExpr[i])) {
-      while (
-        operators.length > 0 &&
-        operators[operators.length - 1] !== '(' &&
-        precedence[operators[operators.length - 1]] >= precedence[cleanExpr[i]]
-      ) {
-        applyOperation();
-      }
-      operators.push(cleanExpr[i]);
-    }
-    i++;
-  }
-
-  // Process remaining operators
-  while (operators.length > 0) {
-    if (operators[operators.length - 1] === '(') {
-      throw new Error('Invalid expression: mismatched parentheses');
-    }
-    applyOperation();
-  }
-
-  if (numbers.length !== 1) {
-    throw new Error('Invalid expression: incorrect number of operands');
-  }
-
-  console.log('Result:', numbers[0]);
-  return numbers[0];
 }
 
 function evaluateEmbeddedExpressions(obj) {
@@ -161,8 +50,9 @@ function evaluateEmbeddedExpressions(obj) {
     const newObj = {};
     for (const key in obj) {
       if (key.startsWith('expression-for-')) {
-        newObj[key.replace('expression-for-', '')] =
-          calculateArithmeticExpression(obj[key]);
+        newObj[key.replace('expression-for-', '')] = evaluateExpression(
+          obj[key]
+        );
       } else {
         newObj[key] = evaluateEmbeddedExpressions(obj[key]);
       }
