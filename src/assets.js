@@ -92,12 +92,6 @@ function buildAssetHTML(assetUrl, categories) {
     buildings: `
         <!-- blocks -->
         <a-asset-item id="archedmodel" src="${assetUrl}sets/arcade-style-buildings/gltf-exports/draco/arched-buildings.glb"></a-asset-item>
-        <a-asset-item id="suburbiamodel" src="${assetUrl}sets/suburban-houses/gltf-exports/draco/suburban-houses.glb"></a-asset-item>
-
-        <!-- suburban buildings -->
-        <a-mixin shadow id="SM_Bld_House_Preset_03_1800" scale="1 1 1" rotation="0 0 0" gltf-part="src: #suburbiamodel; part: suburban-house_1"></a-mixin>
-        <a-mixin shadow id="SM_Bld_House_Preset_08_1809" scale="1 1 1" rotation="0 0 0" gltf-part="src: #suburbiamodel; part: suburban-house_3"></a-mixin>
-        <a-mixin shadow id="SM_Bld_House_Preset_09_1845" scale="1 1 1" rotation="0 0 0" gltf-part="src: #suburbiamodel; part: suburban-house_2"></a-mixin>
 
         <!-- arched style buildings -->
         <a-mixin shadow id="arched-building-01" scale="1 1 1" rotation="0 0 0" gltf-part="src: #archedmodel; part: arched-building-01"></a-mixin>
