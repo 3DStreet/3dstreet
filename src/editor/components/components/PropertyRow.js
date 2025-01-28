@@ -72,7 +72,13 @@ export default class PropertyRow extends React.Component {
     };
 
     if (props.schema.oneOf && props.schema.oneOf.length > 0) {
-      return <SelectWidget {...widgetProps} options={props.schema.oneOf} />;
+      return (
+        <SelectWidget
+          {...widgetProps}
+          options={props.schema.oneOf}
+          isMulti={props.schema.type === 'array'}
+        />
+      );
     }
     if (type === 'map' || isMap) {
       return <TextureWidget {...widgetProps} />;
@@ -103,7 +109,15 @@ export default class PropertyRow extends React.Component {
         return <BooleanWidget {...widgetProps} />;
       }
       default: {
-        return <InputWidget {...widgetProps} />;
+        if (
+          props.schema.type === 'string' &&
+          widgetProps.value &&
+          typeof widgetProps.value !== 'string'
+        ) {
+          // Allow editing a custom type like event-set component schema
+          widgetProps.value = props.schema.stringify(widgetProps.value);
+        }
+        return <InputWidget {...widgetProps} schema={props.schema} />;
       }
     }
   }

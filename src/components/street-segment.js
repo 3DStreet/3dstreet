@@ -47,14 +47,14 @@ const TYPES = {
       clones: [
         {
           mode: 'random',
-          model: 'bus',
+          modelsArray: 'bus',
           spacing: 15,
           count: 1
         }
       ],
       stencil: [
         {
-          stencils: 'word-only, word-taxi, word-bus',
+          modelsArray: 'word-only, word-taxi, word-bus',
           spacing: 40,
           padding: 10
         }
@@ -69,7 +69,7 @@ const TYPES = {
     generated: {
       stencil: [
         {
-          model: 'bike-arrow',
+          modelsArray: 'bike-arrow',
           cycleOffset: 0.3,
           spacing: 20
         }
@@ -114,7 +114,7 @@ const TYPES = {
       ],
       stencil: [
         {
-          model: 'parking-t',
+          modelsArray: 'parking-t',
           cycleOffset: 1,
           spacing: 6
         }
@@ -198,56 +198,33 @@ AFRAME.registerComponent('street-segment', {
     // for each of clones, stencils, rail, pedestrians, etc.
     if (componentsToGenerate?.clones?.length > 0) {
       componentsToGenerate.clones.forEach((clone, index) => {
-        if (clone?.modelsArray?.length > 0) {
-          this.el.setAttribute(`street-generated-clones__${index}`, {
-            mode: clone.mode,
-            modelsArray: clone.modelsArray,
-            length: this.data.length,
-            spacing: clone.spacing,
-            direction: this.data.direction,
-            count: clone.count
-          });
-        } else {
-          this.el.setAttribute(`street-generated-clones__${index}`, {
-            mode: clone.mode,
-            model: clone.model,
-            length: this.data.length,
-            spacing: clone.spacing,
-            direction: this.data.direction,
-            count: clone.count
-          });
-        }
+        this.el.setAttribute(`street-generated-clones__${index + 1}`, {
+          mode: clone.mode,
+          modelsArray: clone.modelsArray,
+          length: this.data.length,
+          spacing: clone.spacing,
+          direction: this.data.direction,
+          count: clone.count
+        });
       });
     }
 
     if (componentsToGenerate?.stencil?.length > 0) {
       componentsToGenerate.stencil.forEach((clone, index) => {
-        if (clone?.stencils?.length > 0) {
-          // case where there are multiple stencils such as bus-only
-          this.el.setAttribute(`street-generated-stencil__${index}`, {
-            stencils: clone.stencils,
-            length: this.data.length,
-            spacing: clone.spacing,
-            direction: clone.direction ?? this.data.direction,
-            padding: clone.padding,
-            cycleOffset: clone.cycleOffset
-          });
-        } else {
-          this.el.setAttribute(`street-generated-stencil__${index}`, {
-            model: clone.model,
-            length: this.data.length,
-            spacing: clone.spacing,
-            direction: clone.direction ?? this.data.direction,
-            count: clone.count,
-            cycleOffset: clone.cycleOffset
-          });
-        }
+        this.el.setAttribute(`street-generated-stencil__${index + 1}`, {
+          modelsArray: clone.modelsArray,
+          length: this.data.length,
+          spacing: clone.spacing,
+          direction: clone.direction ?? this.data.direction,
+          padding: clone.padding,
+          cycleOffset: clone.cycleOffset
+        });
       });
     }
 
     if (componentsToGenerate?.pedestrians?.length > 0) {
       componentsToGenerate.pedestrians.forEach((pedestrian, index) => {
-        this.el.setAttribute(`street-generated-pedestrians__${index}`, {
+        this.el.setAttribute(`street-generated-pedestrians__${index + 1}`, {
           segmentWidth: this.data.width,
           density: pedestrian.density,
           length: this.data.length,
@@ -258,7 +235,7 @@ AFRAME.registerComponent('street-segment', {
 
     if (componentsToGenerate?.striping?.length > 0) {
       componentsToGenerate.striping.forEach((stripe, index) => {
-        this.el.setAttribute(`street-generated-striping__${index}`, {
+        this.el.setAttribute(`street-generated-striping__${index + 1}`, {
           striping: stripe.striping,
           segmentWidth: this.data.width,
           length: this.data.length,
