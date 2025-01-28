@@ -1,8 +1,9 @@
 /* global AFRAME, customElements */
 const catalog = require('./catalog.json');
 
+const assetBasePath = 'https://assets.3dstreet.app/'; // use this path if none specified in index.html assets tag
+
 function buildAssetHTML(assetUrl, categories) {
-  // if (!assetUrl) assetUrl = 'https://assets.3dstreet.app/';
   console.log('[street]', 'Using street assets from', assetUrl);
   const surfacesRoughness = 0.8;
   var assetsObj = {
@@ -90,16 +91,8 @@ function buildAssetHTML(assetUrl, categories) {
       `,
     buildings: `
         <!-- blocks -->
-        <a-asset-item id="blockmodel" src="${assetUrl}sets/buildings/gltf-exports/draco/buildings.glb"></a-asset-item>
         <a-asset-item id="archedmodel" src="${assetUrl}sets/arcade-style-buildings/gltf-exports/draco/arched-buildings.glb"></a-asset-item>
         <a-asset-item id="suburbiamodel" src="${assetUrl}sets/suburban-houses/gltf-exports/draco/suburban-houses.glb"></a-asset-item>
-
-        <!-- buildings and blocks -->
-        <a-mixin shadow id="SM3D_Bld_Mixed_Corner_4fl" scale="1 1 1" rotation="0 0 0" gltf-part="src: #blockmodel; part: SM3D_Bld_Mixed_Corner_4fl"></a-mixin>
-        <a-mixin shadow id="SM3D_Bld_Mixed_Double_5fl" scale="1 1 1" rotation="0 0 0" gltf-part="src: #blockmodel; part: SM3D_Bld_Mixed_Double_5fl"></a-mixin>
-        <a-mixin shadow id="SM3D_Bld_Mixed_4fl_2" scale="1 1 1" rotation="0 0 0" gltf-part="src: #blockmodel; part: SM3D_Bld_Mixed_4fl_2"></a-mixin>
-        <a-mixin shadow id="SM3D_Bld_Mixed_5fl" scale="1 1 1" rotation="0 0 0" gltf-part="src: #blockmodel; part: SM3D_Bld_Mixed_5fl"></a-mixin>
-        <a-mixin shadow id="SM3D_Bld_Mixed_4fl" scale="1 1 1" rotation="0 0 0" gltf-part="src: #blockmodel; part: SM3D_Bld_Mixed_4fl"></a-mixin>
 
         <!-- suburban buildings -->
         <a-mixin shadow id="SM_Bld_House_Preset_03_1800" scale="1 1 1" rotation="0 0 0" gltf-part="src: #suburbiamodel; part: suburban-house_1"></a-mixin>
@@ -300,11 +293,13 @@ function buildAssetHTML(assetUrl, categories) {
   // Iterate through catalog.json and add mixins to assetsHTML
   catalog.forEach((item) => {
     if (item.id && item.src) {
+      // if item.src does not contain http, then prepend the base asset path
+      const combinedPath = assetUrl + item.src;
       const mixinHTML = `
         <a-mixin
           id="${item.id}"
           shadow
-          gltf-model="url(${item.src})"
+          gltf-model="url(${combinedPath})"
           category="${item.category || ''}"
         ></a-mixin>`;
       assetsHTML += mixinHTML;
@@ -324,7 +319,7 @@ class StreetAssets extends AFRAME.ANode {
     var categories = this.getAttribute('categories');
     var assetUrl = this.getAttribute('url');
     if (!assetUrl) {
-      assetUrl = 'https://assets.3dstreet.app/';
+      assetUrl = assetBasePath;
       this.setAttribute('url', assetUrl);
     }
     const assetsHTML = buildAssetHTML(assetUrl, categories);
