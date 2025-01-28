@@ -525,22 +525,30 @@
     {
         "id": "arched-building-01",
         "name": "Arched Building 1",
-        "img": "thumbnails/arched-building-01.jpg"
+        "img": "thumbnails/arched-building-01.jpg",
+        "src": "sets/arcade-style-buildings/gltf-exports/draco/v2-buildings-arched-01.glb",
+        "category": "buildings"
     },
     {
         "id": "arched-building-02",
         "name": "Arched Building 2",
-        "img": "thumbnails/arched-building-02.jpg"
+        "img": "thumbnails/arched-building-02.jpg",
+        "src": "sets/arcade-style-buildings/gltf-exports/draco/v2-buildings-arched-02.glb",
+        "category": "buildings"
     },
     {
         "id": "arched-building-03",
         "name": "Arched Building 3",
-        "img": "thumbnails/arched-building-03.jpg"
+        "img": "thumbnails/arched-building-03.jpg",
+        "src": "sets/arcade-style-buildings/gltf-exports/draco/v2-buildings-arched-03.glb",
+        "category": "buildings"
     },
     {
         "id": "arched-building-04",
         "name": "Arched Building 4",
-        "img": "thumbnails/arched-building-04.jpg"
+        "img": "thumbnails/arched-building-04.jpg",
+        "src": "sets/arcade-style-buildings/gltf-exports/draco/v2-buildings-arched-04.glb",
+        "category": "buildings"
     },
     {
         "id": "ElectricScooter_1",

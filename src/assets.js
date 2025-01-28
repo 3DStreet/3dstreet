@@ -89,16 +89,6 @@ function buildAssetHTML(assetUrl, categories) {
         <a-mixin shadow id="Character_1_M" gltf-part="src: #magic-carpet-glb; part: Character_1_M"></a-mixin>
         <a-mixin shadow id="magic-carpet" gltf-part="src: #magic-carpet-glb; part: magic-carpet"></a-mixin>
       `,
-    buildings: `
-        <!-- blocks -->
-        <a-asset-item id="archedmodel" src="${assetUrl}sets/arcade-style-buildings/gltf-exports/draco/arched-buildings.glb"></a-asset-item>
-
-        <!-- arched style buildings -->
-        <a-mixin shadow id="arched-building-01" scale="1 1 1" rotation="0 0 0" gltf-part="src: #archedmodel; part: arched-building-01"></a-mixin>
-        <a-mixin shadow id="arched-building-02" scale="1 1 1" rotation="0 0 0" gltf-part="src: #archedmodel; part: arched-building-02"></a-mixin>
-        <a-mixin shadow id="arched-building-03" scale="1 1 1" rotation="0 0 0" gltf-part="src: #archedmodel; part: arched-building-03"></a-mixin>
-        <a-mixin shadow id="arched-building-04" scale="1 1 1" rotation="0 0 0" gltf-part="src: #archedmodel; part: arched-building-04"></a-mixin>
-`,
     'intersection-props': `
         <a-mixin shadow id="signal_left" gltf-model="url(${assetUrl}sets/signals/gltf-exports/draco/signal1.glb)"></a-mixin>
         <a-mixin shadow id="signal_right" gltf-model="url(${assetUrl}sets/signals/gltf-exports/draco/signal2.glb)"></a-mixin>
