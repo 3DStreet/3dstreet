@@ -6,6 +6,7 @@ import { getEntityClipboardRepresentation } from '../../lib/entity';
 import Events from '../../lib/Events';
 import Clipboard from 'clipboard';
 import { saveBlob } from '../../lib/utils';
+import CustomizeColorWidget from './CustomizeColorWidget';
 
 export default class CommonComponents extends React.Component {
   static propTypes = {
@@ -46,7 +47,7 @@ export default class CommonComponents extends React.Component {
   renderCommonAttributes() {
     const entity = this.props.entity;
     // return ['position', 'rotation', 'scale', 'visible']
-    return ['position', 'rotation', 'scale'].map((componentName) => {
+    const rows = ['position', 'rotation', 'scale'].map((componentName) => {
       // if entity has managed-street component, then don't show scale
       if (componentName === 'scale' && entity.components['managed-street']) {
         return null;
@@ -72,6 +73,12 @@ export default class CommonComponents extends React.Component {
         />
       );
     });
+
+    // Custom colors are only applicable to entities, not things like intersections or groups.
+    if (entity.hasAttribute('mixin')) {
+      rows.push(<CustomizeColorWidget entity={entity} key={entity.id} />);
+    }
+    return rows;
   }
 
   exportToGLTF() {
