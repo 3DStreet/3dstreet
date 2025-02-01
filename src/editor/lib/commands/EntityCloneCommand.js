@@ -31,6 +31,7 @@ export class EntityCloneCommand extends Command {
       clone.addEventListener(
         'loaded',
         function () {
+          clone.pause();
           Events.emit('entityclone', clone);
           AFRAME.INSPECTOR.selectEntity(clone);
         },

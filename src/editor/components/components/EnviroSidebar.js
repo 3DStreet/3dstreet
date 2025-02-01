@@ -1,5 +1,6 @@
 import PropTypes from 'prop-types';
 import PropertyRow from './PropertyRow';
+import AdvancedComponents from './AdvancedComponents';
 
 const EnviroSidebar = ({ entity }) => {
   const componentName = 'street-environment';
@@ -33,6 +34,11 @@ const EnviroSidebar = ({ entity }) => {
                 entity={entity}
               />
             </>
+          )}
+          {entity && entity.components && (
+            <div className="propertyRow">
+              <AdvancedComponents entity={entity} />
+            </div>
           )}
         </div>
       </div>
