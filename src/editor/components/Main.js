@@ -153,9 +153,9 @@ export default function Main() {
           <div id="zoom-help-buttons">
             <ZoomButtons />
             <HelpButton />
-            <div className="clickable">
-              <AddLayerPanel />
-            </div>
+          </div>
+          <div className="clickable">
+            <AddLayerPanel />
           </div>
         </>
       )}
