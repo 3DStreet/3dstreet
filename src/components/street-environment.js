@@ -17,7 +17,11 @@ AFRAME.registerComponent('street-environment', {
         'cloudy'
       ]
     },
-    backgroundColor: { type: 'color', default: '#555555' }
+    backgroundColor: {
+      type: 'color',
+      default: '#555555',
+      if: { preset: ['color'] }
+    }
   },
 
   init: function () {
