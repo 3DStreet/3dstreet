@@ -2,7 +2,6 @@ import useStore from './store';
 import { createUniqueId } from './editor/lib/entity';
 
 /* global AFRAME, Node */
-/* version: 1.0 */
 window.STREET = {};
 var assetsUrl;
 STREET.utils = {};
@@ -56,7 +55,7 @@ function convertDOMElToObject(entity) {
 
   return {
     title: useStore.getState().sceneTitle,
-    version: '1.0',
+    version: '0.5.5',
     data: data
   };
 }

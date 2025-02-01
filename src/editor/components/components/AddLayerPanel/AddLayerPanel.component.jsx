@@ -19,6 +19,9 @@ import useStore from '@/store.js';
 const emptyImg = new Image();
 emptyImg.src = 'data:image/gif;base64,R0lGODlhAQABAAD/ACwAAAAAAQABAAACADs=';
 
+// base asset path
+const assetBasePath = 'https://assets.3dstreet.app/';
+
 // get all mixin data divided into groups, from a-mixin DOM elements
 const getGroupedMixinOptions = () => {
   const mixinElements = document.querySelectorAll('a-mixin');
@@ -51,6 +54,11 @@ const getGroupedMixinOptions = () => {
       mixinImg = mixinDataFromCatalog.img;
       mixinName = mixinDataFromCatalog.name;
       mixinDescr = mixinDataFromCatalog.description;
+    }
+
+    // if mixinImg does not contain http, then prepend the base asset path
+    if (!mixinImg.includes('http')) {
+      mixinImg = assetBasePath + mixinImg;
     }
     const mixinData = {
       // here could be data from dataCards JSON file
