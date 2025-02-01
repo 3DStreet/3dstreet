@@ -18,17 +18,21 @@ AFRAME.registerComponent('street-generated-clones', {
     mode: { default: 'fixed', oneOf: ['fixed', 'random', 'single'] },
 
     // Spacing for fixed and random modes
-    spacing: { default: 15, type: 'number' }, // minimum distance between objects
+    spacing: { default: 15, type: 'number', if: { mode: ['fixed', 'random'] } }, // minimum distance between objects
 
     // Fixed mode properties
-    cycleOffset: { default: 0.5, type: 'number' }, // offset as a fraction of spacing, only for fixed
+    cycleOffset: { default: 0.5, type: 'number', if: { mode: ['fixed'] } }, // offset as a fraction of spacing, only for fixed
 
     // Random mode properties
-    count: { default: 1, type: 'number' },
+    count: { default: 1, type: 'number', if: { mode: ['random'] } },
 
     // Single mode properties
-    justify: { default: 'middle', oneOf: ['start', 'middle', 'end'] },
-    padding: { default: 4, type: 'number' }
+    justify: {
+      default: 'middle',
+      oneOf: ['start', 'middle', 'end'],
+      if: { mode: ['single'] }
+    },
+    padding: { default: 4, type: 'number', if: { mode: ['single'] } }
   },
 
   init: function () {
