@@ -5,7 +5,12 @@ import PropTypes from 'prop-types';
 import PropertyRow from './PropertyRow';
 import React from 'react';
 import { getComponentClipboardRepresentation } from '../../lib/entity';
-import { ClonedTreesIcon, StencilsIcon, StripingIcon } from '../../icons';
+import {
+  ClonedTreesIcon,
+  StencilsIcon,
+  StripingIcon,
+  SunIcon
+} from '../../icons';
 import ModelsArrayWidget from '../widgets/ModelsArrayWidget';
 
 const isSingleProperty = AFRAME.schema.isSingleProperty;
@@ -391,16 +396,12 @@ export default class Component extends React.Component {
           </span>
           <div className="componentHeaderActions">
             <a
-              title="Copy to clipboard"
-              data-action="copy-component-to-clipboard"
-              data-component={componentName}
-              className="button fa fa-clipboard"
-            />
-            <a
               title="Remove component"
-              className="button fa fa-trash-o"
+              className="button"
               onClick={this.removeComponent}
-            />
+            >
+              <SunIcon />
+            </a>
           </div>
         </div>
         <div className="collapsible-content">{this.renderPropertyRows()}</div>

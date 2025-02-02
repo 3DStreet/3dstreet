@@ -422,10 +422,53 @@ a.help-linkhover {
     color: variables.$blue-100;
   }
 }
-.fa-clipboard,
-.fa-trash-o {
-  display: none;
+.componentHeaderActions {
+  .button {
+    font-size: 16px;
+    padding: 4px;
+    text-decoration: none;
+    cursor: pointer;
+    opacity: 0.8;
+    transition: opacity 0.2s;
+
+    &:hover {
+      opacity: 1;
+    }
+  }
 }
+
 .advancedComponentsContainer {
   margin-top: 20px;
+}
+
+.componentHeader.collapsible-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+
+  .componentTitle {
+    flex: 1;
+  }
+
+  .componentHeaderActions {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+  }
+}
+
+// If you need to override any Button styles specifically for these icons:
+.componentHeaderActions {
+  .button[variant='toolbtn'] {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    padding: 4px;
+
+    svg {
+      width: 16px;
+      height: 16px;
+    }
+  }
 }
