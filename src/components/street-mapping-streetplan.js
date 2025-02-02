@@ -1,4 +1,5 @@
-// STREETPLAN HELPER FUNCTIONS
+// StreetPlan Mapping Constants
+
 // Material mapping from Streetplan to 3DStreet surfaces
 const STREETPLAN_MATERIAL_MAPPING = {
   'asphalt black': { surface: 'asphalt', color: '#aaaaaa' },
@@ -33,9 +34,14 @@ const STREETPLAN_MATERIAL_MAPPING = {
   sand: { surface: 'sand' }
 };
 
-const STREETPLAN_OBJECT_MAPPING = {
+// StreetPlan O-Tags objects (Name-01, etc.) to generated clones mapping
+const STREETPLAN_OBJECT_TO_GENERATED_CLONES_MAPPING = {
   'away, left park, head in': '',
-  'barrier 1-ft': 'temporary-jersey-barrier-concrete',
+  'barrier 1-ft': {
+    mode: 'fixed',
+    modelsArray: 'temporary-jersey-barrier-concrete',
+    spacing: 3
+  },
   'barrier 2-ft': 'temporary-jersey-barrier-concrete',
   'bike food cart': '',
   'bikelane sharecar': '',
@@ -178,4 +184,7 @@ const STREETPLAN_OBJECT_MAPPING = {
   'yellow sedan': 'sedan-rig'
 };
 
-export { STREETPLAN_MATERIAL_MAPPING, STREETPLAN_OBJECT_MAPPING };
+export {
+  STREETPLAN_MATERIAL_MAPPING,
+  STREETPLAN_OBJECT_TO_GENERATED_CLONES_MAPPING
+};

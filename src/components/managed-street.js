@@ -2,7 +2,7 @@
 // Orientation - default model orientation is "outbound" (away from camera)
 import {
   STREETPLAN_MATERIAL_MAPPING,
-  STREETPLAN_OBJECT_MAPPING
+  STREETPLAN_OBJECT_TO_GENERATED_CLONES_MAPPING
 } from './street-mapping-streetplan.js';
 const { segmentVariants } = require('../segments-variants.js');
 const streetmixUtils = require('../tested/streetmix-utils');
@@ -18,14 +18,21 @@ function parseOTags(tags) {
 function createCloneConfig(name, tags) {
   if (!name || name === '-') return null;
 
-  const model = STREETPLAN_OBJECT_MAPPING[name.toLowerCase()];
-  if (!model) return null;
+  const generatedClonesConfig =
+    STREETPLAN_OBJECT_TO_GENERATED_CLONES_MAPPING[name.toLowerCase()];
+  if (!generatedClonesConfig) return null;
 
-  return {
-    mode: 'fixed', // default to fixed mode
-    modelsArray: model,
-    spacing: 15 // default spacing
-  };
+  // if the config is an object, then it is a generated clone config
+  if (typeof generatedClonesConfig === 'object') {
+    return generatedClonesConfig;
+  } else {
+    // if it is a string, then it is a model mixin
+    return {
+      mode: 'fixed', // default to fixed mode
+      modelsArray: generatedClonesConfig,
+      spacing: 15 // default spacing
+    };
+  }
 }
 
 AFRAME.registerComponent('managed-street', {
@@ -370,11 +377,11 @@ AFRAME.registerComponent('managed-street', {
         const segmentWidth = parseFloat(segment.width) * 0.3048; // Convert feet to meters
         streetObject.width += segmentWidth;
 
-        // Convert streetplan segment type based on your schema
+        // Convert from streetplan segment type to managed street types
         let segmentType = 'drive-lane'; // Default type
         let segmentDirection = 'inbound';
 
-        // convert from streetplan type to managed street default type
+        // convert from streetplan segment types to managed street presets
         switch (segment.Type) {
           case 'BikesPaths':
             segmentType = 'bike-lane';
