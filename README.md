@@ -19,13 +19,9 @@ _(or visit https://3dstreet.app)_
 
 ## The rest of this README is for developers. [User-facing docs are here.](https://www.3dstreet.org/docs/)
 
-This repo is the 3DStreet Core Viewer. It provides parsing of JSON in Streetmix format into a 3DStreet scene. It also provides all of the core components needed for viewers. It is also a core dependency of the [3DStreet Editor hosted in a separate repository](https://github.com/3DStreet/3dstreet-editor).
-
-### Project Hosting Path
-This repo's main branch is hosted via github pages at `github.3dstreet.org`. The 3DStreet Editor uses this path to fetch 3DStreet dependencies. A-Frame developers leveraging 3DStreet Core will also use this path.
-
 ## A-Frame component
 3DStreet is built upon a custom A-Frame `street` component which is also available for you to customize for your own custom A-Frame street scenes. The `street` component takes a string of JSON and renders one or more "segments" (also known as lanes or slices) of a street and optionally buildings and ground to the left and right.
+
 ### Usage Example
 
 [![Remix](https://cloud.githubusercontent.com/assets/674727/24572421/688f7fc0-162d-11e7-8a35-b02bc050c043.jpg)](https://glitch.com/~3dstreet-simple) 
@@ -93,17 +89,6 @@ A default Streetmix.net cross-section view is oriented to show vehicles heading 
 #### Automatic Asset Loading
 When `aframe-street-component.js` is included on a page it automatically loads 3D models and other assets using the A-Frame asset loader by adding them to the scene's `a-assets` block and defining mixins pointing to these assets. The `street` component itself simply places entities with appropriate mixin names. [For more information on the asset loader see this docs link](https://github.com/3DStreet/3dstreet/blob/main/src/README.md#assetsjs).
 
-### Additional variant strings
-
-- The word `animated` can be added to the variantString of the type `sidewalk` to make the pedestrians animated. Here is an example of how this can be implemented:
-```
-{
-  "width": 9,
-  "variantString": "normal|animated",
-  "type": "sidewalk"
-}
-```
-Please see `animated.html` for a demo.
 
 ### List of Supported Segment Types
 
