@@ -9,6 +9,8 @@ import {
   ClonedTreesIcon,
   StencilsIcon,
   StripingIcon,
+  PedestriansIcon,
+  RailIcon,
   TrashIcon
 } from '../../icons';
 import ModelsArrayWidget from '../widgets/ModelsArrayWidget';
@@ -449,6 +451,10 @@ export default class Component extends React.Component {
       return <StencilsIcon />;
     } else if (componentName.startsWith('street-generated-striping')) {
       return <StripingIcon />;
+    } else if (componentName.startsWith('street-generated-pedestrians')) {
+      return <PedestriansIcon />;
+    } else if (componentName.startsWith('street-generated-rail')) {
+      return <RailIcon />;
     }
     return <></>;
   };
