@@ -24,10 +24,31 @@ export default class AddComponent extends React.Component {
     const entity = this.props.entity;
 
     if (AFRAME.components[componentName].multiple) {
-      const id = prompt(
+      let id = prompt(
         `Provide an ID for this component (e.g., 'foo' for ${componentName}__foo).`
       );
-      componentName = id ? `${componentName}__${id}` : componentName;
+      if (id) {
+        id = id
+          .trim()
+          .toLowerCase()
+          .replace(/[^a-z0-9]/g, '');
+        // With the transform, id could be empty string, so we need to check again.
+      }
+      if (id) {
+        componentName = `${componentName}__${id}`;
+      } else {
+        // If components already exist, be sure to suffix with an id,
+        // if it's first one, use the component name without id.
+        const numberOfComponents = Object.keys(
+          this.props.entity.components
+        ).filter(function (name) {
+          return name.startsWith(componentName);
+        }).length;
+        if (numberOfComponents > 0) {
+          id = numberOfComponents + 1;
+          componentName = `${componentName}__${id}`;
+        }
+      }
     }
 
     AFRAME.INSPECTOR.execute('componentadd', {
