@@ -72,22 +72,11 @@ export default class AddComponent extends React.Component {
         );
       })
       .map(function (value) {
-        return { value: value, label: value, origin: 'loaded' };
+        return { value: value, label: value };
       })
       .toSorted(function (a, b) {
         return a.label === b.label ? 0 : a.label < b.label ? -1 : 1;
       });
-  }
-
-  renderOption(option) {
-    const bullet = (
-      <span title="Component already loaded in the scene">&#9679;</span>
-    );
-    return (
-      <strong className="option">
-        {option.label} {option.origin === 'loaded' ? bullet : ''}
-      </strong>
-    );
   }
 
   render() {
@@ -110,7 +99,6 @@ export default class AddComponent extends React.Component {
           placeholder="Add component..."
           noOptionsMessage={() => 'No components found'}
           onChange={this.addComponent}
-          optionRenderer={this.renderOption}
           value={this.state.value}
         />
       </div>
