@@ -314,8 +314,52 @@ export default class Component extends React.Component {
           />
         </>
       );
+    } else if (componentName.startsWith('street-generated-striping')) {
+      return (
+        <>
+          <PropertyRow
+            key="striping"
+            name="striping"
+            label="Striping"
+            schema={schema['striping']}
+            data={componentData.data['striping']}
+            componentname={componentName}
+            entity={this.props.entity}
+            isSingle={false}
+          />
+          <PropertyRow
+            key="positionY"
+            name="positionY"
+            label="Position Y"
+            schema={schema['positionY']}
+            data={componentData.data['positionY']}
+            componentname={componentName}
+            entity={this.props.entity}
+            isSingle={false}
+          />
+          <PropertyRow
+            key="side"
+            name="side"
+            label="Side"
+            schema={schema['side']}
+            data={componentData.data['side']}
+            componentname={componentName}
+            entity={this.props.entity}
+            isSingle={false}
+          />
+          <PropertyRow
+            key="facing"
+            name="facing"
+            label="Facing"
+            schema={schema['facing']}
+            data={componentData.data['facing']}
+            componentname={componentName}
+            entity={this.props.entity}
+            isSingle={false}
+          />
+        </>
+      );
     }
-
     if (isSingleProperty(schema)) {
       return (
         <PropertyRow
@@ -397,7 +441,7 @@ export default class Component extends React.Component {
           <div className="componentHeaderActions">
             <a
               title="Remove component"
-              className="button"
+              className="button remove-button"
               onClick={this.removeComponent}
             >
               <TrashIcon />
