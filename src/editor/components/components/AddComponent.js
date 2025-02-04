@@ -21,7 +21,7 @@ export default class AddComponent extends React.Component {
 
     let componentName = value.value;
 
-    var entity = this.props.entity;
+    const entity = this.props.entity;
 
     if (AFRAME.components[componentName].multiple) {
       const id = prompt(
@@ -42,7 +42,7 @@ export default class AddComponent extends React.Component {
    */
   getComponentsOptions() {
     const usedComponents = Object.keys(this.props.entity.components);
-    var commonOptions = Object.keys(AFRAME.components)
+    return Object.keys(AFRAME.components)
       .filter(function (componentName) {
         return (
           componentName.startsWith('street-generated-') && // Added filter for street-generated- prefix
@@ -50,19 +50,16 @@ export default class AddComponent extends React.Component {
             usedComponents.indexOf(componentName) === -1)
         );
       })
-      .sort()
       .map(function (value) {
         return { value: value, label: value, origin: 'loaded' };
+      })
+      .toSorted(function (a, b) {
+        return a.label === b.label ? 0 : a.label < b.label ? -1 : 1;
       });
-
-    this.options = commonOptions;
-    this.options = this.options.sort(function (a, b) {
-      return a.label === b.label ? 0 : a.label < b.label ? -1 : 1;
-    });
   }
 
   renderOption(option) {
-    var bullet = (
+    const bullet = (
       <span title="Component already loaded in the scene">&#9679;</span>
     );
     return (
@@ -78,7 +75,7 @@ export default class AddComponent extends React.Component {
       return <div />;
     }
 
-    this.getComponentsOptions();
+    const options = this.getComponentsOptions();
 
     return (
       <div id="addComponentContainer">
@@ -86,7 +83,7 @@ export default class AddComponent extends React.Component {
           id="addComponent"
           className="addComponent"
           classNamePrefix="select"
-          options={this.options}
+          options={options}
           isClearable={false}
           isSearchable
           placeholder="Add component..."
