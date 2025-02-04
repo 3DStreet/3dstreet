@@ -394,6 +394,21 @@ export default class Component extends React.Component {
           />
         </>
       );
+    } else if (componentName.startsWith('street-generated-rail')) {
+      return (
+        <>
+          <PropertyRow
+            key="gauge"
+            name="gauge"
+            label="Gauge"
+            schema={schema['gauge']}
+            data={componentData.data['gauge']}
+            componentname={componentName}
+            entity={this.props.entity}
+            isSingle={false}
+          />
+        </>
+      );
     }
     if (isSingleProperty(schema)) {
       return (
@@ -443,7 +458,9 @@ export default class Component extends React.Component {
     const PREFIX_MAPPING = {
       'street-generated-clones': 'Clones',
       'street-generated-striping': 'Striping',
-      'street-generated-stencil': 'Stencils'
+      'street-generated-stencil': 'Stencils',
+      'street-generated-pedestrians': 'Pedestrians',
+      'street-generated-rail': 'Rail'
     };
     // First check if any prefix mapping matches
     for (const [prefix, displayName] of Object.entries(PREFIX_MAPPING)) {
