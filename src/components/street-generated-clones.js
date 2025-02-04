@@ -78,6 +78,11 @@ AFRAME.registerComponent('street-generated-clones', {
   },
 
   update: function (oldData) {
+    // if length is not set, then derive length from the segment
+    if (!this.data.length) {
+      this.data.length = this.el.getAttribute('street-segment').length;
+    }
+
     // If mode is random or randomFacing and seed is 0, generate a random seed and return,
     // the update will be called again because of the setAttribute.
     if (this.data.mode === 'random' || this.data.randomFacing) {

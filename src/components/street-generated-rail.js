@@ -22,6 +22,11 @@ AFRAME.registerComponent('street-generated-rail', {
     this.createdEntities.length = 0; // Clear the array
   },
   update: function (oldData) {
+    // if length is not set, then derive length from the segment
+    if (!this.data.length) {
+      this.data.length = this.el.getAttribute('street-segment').length;
+    }
+
     // Clean up old entities
     this.remove();
 
