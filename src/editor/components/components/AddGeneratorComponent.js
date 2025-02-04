@@ -2,7 +2,7 @@ import React from 'react';
 import PropTypes from 'prop-types';
 import Select from 'react-select';
 
-export default class AddComponent extends React.Component {
+export default class AddGeneratorComponent extends React.Component {
   static propTypes = {
     entity: PropTypes.object
   };
@@ -17,7 +17,7 @@ export default class AddComponent extends React.Component {
    * If component is instanced, generate an ID.
    */
   addComponent = (value) => {
-    this.setState({ value: null });
+    this.setState({ value: '' });
 
     let componentName = value.value;
 
@@ -64,6 +64,14 @@ export default class AddComponent extends React.Component {
    * Component dropdown options.
    */
   getComponentsOptions() {
+    const PREFIX_MAPPING = {
+      'street-generated-clones': 'Clones',
+      'street-generated-striping': 'Striping',
+      'street-generated-stencil': 'Stencils',
+      'street-generated-pedestrians': 'Pedestrians',
+      'street-generated-rail': 'Rail'
+    };
+
     const usedComponents = Object.keys(this.props.entity.components);
     return Object.keys(AFRAME.components)
       .filter(function (componentName) {
@@ -74,7 +82,13 @@ export default class AddComponent extends React.Component {
         );
       })
       .map(function (value) {
-        return { value: value, label: value };
+        // Prefix mapping configuration
+        const displayName = PREFIX_MAPPING[value];
+        if (displayName) {
+          return { value: value, label: displayName };
+        } else {
+          return { value: value, label: value };
+        }
       })
       .toSorted(function (a, b) {
         return a.label === b.label ? 0 : a.label < b.label ? -1 : 1;
@@ -98,7 +112,7 @@ export default class AddComponent extends React.Component {
           options={options}
           isClearable={false}
           isSearchable
-          placeholder="Add component..."
+          placeholder="Add Generator Component..."
           noOptionsMessage={() => 'No components found'}
           onChange={this.addComponent}
           value={this.state.value}

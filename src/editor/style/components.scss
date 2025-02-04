@@ -495,3 +495,64 @@ a.help-linkhover {
     stroke: #ff4444 !important;
   }
 }
+
+#addComponentContainer {
+  align-items: center;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  padding: 20px 10px;
+
+  #addComponent {
+    width: 300px; // Slightly smaller than 348px for other component widths
+
+    .select__control {
+      padding: 12px 16px !important;
+      background: rgba(50, 50, 50, 0.8);
+      border: 1px solid variables.$purple-400;
+      border-radius: 10px;
+      box-sizing: border-box;
+      white-space: nowrap;
+      min-height: 48px; // Match other input heights
+
+      &:hover {
+        border-color: variables.$purple-700;
+      }
+
+      &--is-focused {
+        border-color: variables.$purple-700 !important;
+        box-shadow: none;
+      }
+    }
+
+    .select__placeholder {
+      color: variables.$white;
+      font-weight: 400;
+      font-size: 16px;
+    }
+
+    .select__single-value {
+      color: variables.$white;
+    }
+
+    .select__menu {
+      margin-top: 8px;
+      background: variables.$darkgray-300;
+      border: 1px solid variables.$purple-500;
+      border-radius: 10px;
+
+      .select__option {
+        padding: 12px 16px;
+        color: variables.$white;
+
+        &--is-focused {
+          background: variables.$black;
+        }
+
+        &--is-selected {
+          background: variables.$black;
+        }
+      }
+    }
+  }
+}

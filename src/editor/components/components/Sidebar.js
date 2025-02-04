@@ -11,7 +11,7 @@ import PropTypes from 'prop-types';
 import React from 'react';
 import capitalize from 'lodash-es/capitalize';
 import classnames from 'classnames';
-import AddComponent from './AddComponent';
+import AddGeneratorComponent from './AddGeneratorComponent';
 import {
   ArrowRightIcon,
   Object24Icon,
@@ -245,7 +245,9 @@ export default class Sidebar extends React.Component {
                     {entity.getAttribute('street-segment') && (
                       <>
                         <StreetSegmentSidebar entity={entity} />
-                        <AddComponent entity={entity} />
+                        <hr />
+                        <AddGeneratorComponent entity={entity} />
+                        <hr />
                         <div className="advancedComponentsContainer">
                           <AdvancedComponents entity={entity} />
                         </div>
