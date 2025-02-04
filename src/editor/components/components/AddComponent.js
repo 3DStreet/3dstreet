@@ -82,7 +82,6 @@ export default class AddComponent extends React.Component {
 
     return (
       <div id="addComponentContainer">
-        <p id="addComponentHeader">COMPONENTS</p>
         <Select
           id="addComponent"
           className="addComponent"
