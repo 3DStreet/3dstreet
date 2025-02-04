@@ -5,6 +5,7 @@ import PropTypes from 'prop-types';
 import PropertyRow from './PropertyRow';
 import React from 'react';
 import { getComponentClipboardRepresentation } from '../../lib/entity';
+import { TrashIcon } from '../../icons';
 
 const isSingleProperty = AFRAME.schema.isSingleProperty;
 
@@ -77,7 +78,11 @@ export default class Component extends React.Component {
     var componentName = this.props.name;
     event.stopPropagation();
     if (
-      confirm('Do you really want to remove component `' + componentName + '`?')
+      confirm(
+        'Do you really want to remove component `' +
+          componentName +
+          '`? This may cause problems or corrupt your scene, please use component removal with caution.'
+      )
     ) {
       AFRAME.INSPECTOR.execute('componentremove', {
         entity: this.props.entity,
@@ -167,16 +172,12 @@ export default class Component extends React.Component {
           </span>
           <div className="componentHeaderActions">
             <a
-              title="Copy to clipboard"
-              data-action="copy-component-to-clipboard"
-              data-component={subComponentName || componentName}
-              className="button fa fa-clipboard"
-            />
-            <a
               title="Remove component"
-              className="button fa fa-trash-o"
+              className="button remove-button"
               onClick={this.removeComponent}
-            />
+            >
+              <TrashIcon />
+            </a>
           </div>
         </div>
         <div className="collapsible-content">{this.renderPropertyRows()}</div>

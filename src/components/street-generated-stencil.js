@@ -45,7 +45,7 @@ AFRAME.registerComponent('street-generated-stencil', {
     },
     spacing: {
       // spacing in meters between clones
-      default: 15,
+      default: 10,
       type: 'number'
     },
     positionX: {
@@ -118,6 +118,11 @@ AFRAME.registerComponent('street-generated-stencil', {
   },
   update: function (oldData) {
     const data = this.data;
+
+    // if length is not set, then derive length from the segment
+    if (!data.length) {
+      data.length = this.el.getAttribute('street-segment').length;
+    }
 
     // Clean up old entities
     this.remove();

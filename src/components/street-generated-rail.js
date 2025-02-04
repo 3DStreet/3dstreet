@@ -1,6 +1,7 @@
 /* global AFRAME */
 
 AFRAME.registerComponent('street-generated-rail', {
+  multiple: true,
   schema: {
     length: {
       // length in meters of linear path to fill with rail
@@ -21,6 +22,11 @@ AFRAME.registerComponent('street-generated-rail', {
     this.createdEntities.length = 0; // Clear the array
   },
   update: function (oldData) {
+    // if length is not set, then derive length from the segment
+    if (!this.data.length) {
+      this.data.length = this.el.getAttribute('street-segment').length;
+    }
+
     // Clean up old entities
     this.remove();
 
@@ -32,6 +38,7 @@ AFRAME.registerComponent('street-generated-rail', {
     clone.append(this.createRailsElement(this.data.length, -railsPosX));
     clone.setAttribute('data-no-transform', '');
     clone.setAttribute('data-ignore-raycaster', '');
+    clone.setAttribute('shadow', '');
     clone.classList.add('autocreated');
 
     this.el.appendChild(clone);
@@ -48,9 +55,9 @@ AFRAME.registerComponent('street-generated-rail', {
     const railsMaterial = {
       // TODO: Add environment map for reflection on metal rails
       color: '#8f8f8f',
-      metalness: 1,
+      metalness: 0.8,
       emissive: '#828282',
-      emissiveIntensity: 0.5,
+      emissiveIntensity: 0.2,
       roughness: 0.1
     };
     placedObjectEl.setAttribute('geometry', railsGeometry);

@@ -5,7 +5,14 @@ import PropTypes from 'prop-types';
 import PropertyRow from './PropertyRow';
 import React from 'react';
 import { getComponentClipboardRepresentation } from '../../lib/entity';
-import { ClonedTreesIcon, StencilsIcon, StripingIcon } from '../../icons';
+import {
+  ClonedTreesIcon,
+  StencilsIcon,
+  StripingIcon,
+  PedestriansIcon,
+  RailIcon,
+  TrashIcon
+} from '../../icons';
 import ModelsArrayWidget from '../widgets/ModelsArrayWidget';
 
 const isSingleProperty = AFRAME.schema.isSingleProperty;
@@ -232,9 +239,15 @@ export default class Component extends React.Component {
     } else if (componentName.startsWith('street-generated-stencil')) {
       return (
         <>
-          <ModelsArrayWidget
-            entity={this.props.entity}
+          <PropertyRow
+            key="modelsArray"
+            name="modelsArray"
+            label="Stencils"
+            schema={schema['modelsArray']}
+            data={componentData.data['modelsArray']}
             componentname={componentName}
+            entity={this.props.entity}
+            isSingle={false}
           />
           <PropertyRow
             key="spacing"
@@ -309,8 +322,102 @@ export default class Component extends React.Component {
           />
         </>
       );
+    } else if (componentName.startsWith('street-generated-striping')) {
+      return (
+        <>
+          <PropertyRow
+            key="striping"
+            name="striping"
+            label="Striping"
+            schema={schema['striping']}
+            data={componentData.data['striping']}
+            componentname={componentName}
+            entity={this.props.entity}
+            isSingle={false}
+          />
+          <PropertyRow
+            key="positionY"
+            name="positionY"
+            label="Position Y"
+            schema={schema['positionY']}
+            data={componentData.data['positionY']}
+            componentname={componentName}
+            entity={this.props.entity}
+            isSingle={false}
+          />
+          <PropertyRow
+            key="side"
+            name="side"
+            label="Side"
+            schema={schema['side']}
+            data={componentData.data['side']}
+            componentname={componentName}
+            entity={this.props.entity}
+            isSingle={false}
+          />
+          <PropertyRow
+            key="facing"
+            name="facing"
+            label="Facing"
+            schema={schema['facing']}
+            data={componentData.data['facing']}
+            componentname={componentName}
+            entity={this.props.entity}
+            isSingle={false}
+          />
+        </>
+      );
+    } else if (componentName.startsWith('street-generated-pedestrians')) {
+      return (
+        <>
+          <PropertyRow
+            key="density"
+            name="density"
+            label="Density"
+            schema={schema['density']}
+            data={componentData.data['density']}
+            componentname={componentName}
+            entity={this.props.entity}
+            isSingle={false}
+          />
+          <PropertyRow
+            key="direction"
+            name="direction"
+            label="Direction"
+            schema={schema['direction']}
+            data={componentData.data['direction']}
+            componentname={componentName}
+            entity={this.props.entity}
+            isSingle={false}
+          />
+          <PropertyRow
+            key="positionY"
+            name="positionY"
+            label="Position Y"
+            schema={schema['positionY']}
+            data={componentData.data['positionY']}
+            componentname={componentName}
+            entity={this.props.entity}
+            isSingle={false}
+          />
+        </>
+      );
+    } else if (componentName.startsWith('street-generated-rail')) {
+      return (
+        <>
+          <PropertyRow
+            key="gauge"
+            name="gauge"
+            label="Gauge"
+            schema={schema['gauge']}
+            data={componentData.data['gauge']}
+            componentname={componentName}
+            entity={this.props.entity}
+            isSingle={false}
+          />
+        </>
+      );
     }
-
     if (isSingleProperty(schema)) {
       return (
         <PropertyRow
@@ -350,6 +457,10 @@ export default class Component extends React.Component {
       return <StencilsIcon />;
     } else if (componentName.startsWith('street-generated-striping')) {
       return <StripingIcon />;
+    } else if (componentName.startsWith('street-generated-pedestrians')) {
+      return <PedestriansIcon />;
+    } else if (componentName.startsWith('street-generated-rail')) {
+      return <RailIcon />;
     }
     return <></>;
   };
@@ -359,7 +470,9 @@ export default class Component extends React.Component {
     const PREFIX_MAPPING = {
       'street-generated-clones': 'Clones',
       'street-generated-striping': 'Striping',
-      'street-generated-stencil': 'Stencils'
+      'street-generated-stencil': 'Stencils',
+      'street-generated-pedestrians': 'Pedestrians',
+      'street-generated-rail': 'Rail'
     };
     // First check if any prefix mapping matches
     for (const [prefix, displayName] of Object.entries(PREFIX_MAPPING)) {
@@ -391,16 +504,12 @@ export default class Component extends React.Component {
           </span>
           <div className="componentHeaderActions">
             <a
-              title="Copy to clipboard"
-              data-action="copy-component-to-clipboard"
-              data-component={componentName}
-              className="button fa fa-clipboard"
-            />
-            <a
               title="Remove component"
-              className="button fa fa-trash-o"
+              className="button remove-button"
               onClick={this.removeComponent}
-            />
+            >
+              <TrashIcon />
+            </a>
           </div>
         </div>
         <div className="collapsible-content">{this.renderPropertyRows()}</div>

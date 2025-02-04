@@ -134,7 +134,22 @@ const TYPES = {
   rail: {
     surface: 'asphalt',
     color: COLORS.white,
-    level: 0
+    level: 0,
+    generated: {
+      clones: [
+        {
+          mode: 'random',
+          modelsArray: 'tram',
+          spacing: 15,
+          count: 2
+        }
+      ],
+      rail: [
+        {
+          gauge: 1435
+        }
+      ]
+    }
   }
 };
 STREET.types = TYPES;
@@ -242,6 +257,15 @@ AFRAME.registerComponent('street-segment', {
           positionY: stripe.positionY ?? 0.05, // Default to 0.05 if not specified
           side: stripe.side ?? 'left', // Default to left if not specified
           facing: stripe.facing ?? 0 // Default to 0 if not specified
+        });
+      });
+    }
+
+    if (componentsToGenerate?.rail?.length > 0) {
+      componentsToGenerate.rail.forEach((rail, index) => {
+        this.el.setAttribute(`street-generated-rail__${index + 1}`, {
+          gauge: rail.gauge,
+          length: this.data.length
         });
       });
     }

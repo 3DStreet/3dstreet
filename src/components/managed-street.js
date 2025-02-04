@@ -350,6 +350,9 @@ AFRAME.registerComponent('managed-street', {
       }
 
       const streetplanData = await response.json();
+      if (streetplanData.status === false) {
+        throw new Error(`streetplan returned status: false`);
+      }
       const boulevard = streetplanData.project['My Street']['Boulevard Alt 1'];
 
       const streetLength =
