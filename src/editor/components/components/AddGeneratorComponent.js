@@ -116,6 +116,9 @@ export default class AddGeneratorComponent extends React.Component {
           noOptionsMessage={() => 'No components found'}
           onChange={this.addComponent}
           value={this.state.value}
+          menuPosition="fixed"
+          menuPlacement="auto"
+          minMenuHeight={300}
         />
       </div>
     );
