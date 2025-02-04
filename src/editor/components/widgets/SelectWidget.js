@@ -71,6 +71,9 @@ export default class SelectWidget extends React.Component {
         value={this.state.value}
         noOptionsMessage={() => 'No value found'}
         onChange={this.onChange}
+        menuPosition="fixed"
+        menuPlacement="auto"
+        minMenuHeight={300}
       />
     );
   }

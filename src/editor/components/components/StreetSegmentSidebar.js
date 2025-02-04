@@ -3,6 +3,12 @@ import PropTypes from 'prop-types';
 import Component from './StreetSegmentComponent';
 import PropertyRow from './PropertyRow';
 import { StreetSurfaceIcon } from '../../icons';
+import {
+  cloneEntity,
+  removeSelectedEntity,
+  renameEntity
+} from '../../lib/entity';
+import { Button } from '../components';
 
 // Define featured component prefixes that should be shown in their own section
 const FEATURED_COMPONENT_PREFIXES = ['street-generated-'];
@@ -55,6 +61,28 @@ const StreetSegmentSidebar = ({ entity }) => {
                 isSingle={false}
                 entity={entity}
               />
+              <div className="sidepanelContent">
+                <div id="sidebar-buttons" className="pb-2">
+                  <Button
+                    variant={'toolbtn'}
+                    onClick={() => renameEntity(entity)}
+                  >
+                    Rename
+                  </Button>
+                  <Button
+                    variant={'toolbtn'}
+                    onClick={() => cloneEntity(entity)}
+                  >
+                    Duplicate
+                  </Button>
+                  <Button
+                    variant={'toolbtn'}
+                    onClick={() => removeSelectedEntity()}
+                  >
+                    Delete
+                  </Button>
+                </div>
+              </div>
               {/* props for street-segment but formatted as a fake 'surface' component */}
               <div className="collapsible component">
                 <div className="static">
