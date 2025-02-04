@@ -9,7 +9,7 @@ import {
   ClonedTreesIcon,
   StencilsIcon,
   StripingIcon,
-  SunIcon
+  TrashIcon
 } from '../../icons';
 import ModelsArrayWidget from '../widgets/ModelsArrayWidget';
 
@@ -400,7 +400,7 @@ export default class Component extends React.Component {
               className="button"
               onClick={this.removeComponent}
             >
-              <SunIcon />
+              <TrashIcon />
             </a>
           </div>
         </div>

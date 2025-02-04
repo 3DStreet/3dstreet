@@ -472,3 +472,26 @@ a.help-linkhover {
     }
   }
 }
+
+// only show component header actions on hover
+.componentHeaderActions {
+  .button.remove-button {
+    opacity: 0;
+    transition: opacity 0.2s ease;
+  }
+}
+.componentHeader:hover {
+  .componentHeaderActions {
+    .button.remove-button {
+      opacity: 0.6;
+    }
+  }
+}
+
+/* Make the delete component hover state more specific to override the header hover */
+.componentHeader .componentHeaderActions .button.remove-button:hover {
+  opacity: 1 !important;
+  svg path {
+    stroke: #ff4444 !important;
+  }
+}
