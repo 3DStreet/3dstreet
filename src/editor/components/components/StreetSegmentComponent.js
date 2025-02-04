@@ -359,6 +359,41 @@ export default class Component extends React.Component {
           />
         </>
       );
+    } else if (componentName.startsWith('street-generated-pedestrians')) {
+      return (
+        <>
+          <PropertyRow
+            key="density"
+            name="density"
+            label="Density"
+            schema={schema['density']}
+            data={componentData.data['density']}
+            componentname={componentName}
+            entity={this.props.entity}
+            isSingle={false}
+          />
+          <PropertyRow
+            key="direction"
+            name="direction"
+            label="Direction"
+            schema={schema['direction']}
+            data={componentData.data['direction']}
+            componentname={componentName}
+            entity={this.props.entity}
+            isSingle={false}
+          />
+          <PropertyRow
+            key="positionY"
+            name="positionY"
+            label="Position Y"
+            schema={schema['positionY']}
+            data={componentData.data['positionY']}
+            componentname={componentName}
+            entity={this.props.entity}
+            isSingle={false}
+          />
+        </>
+      );
     }
     if (isSingleProperty(schema)) {
       return (
