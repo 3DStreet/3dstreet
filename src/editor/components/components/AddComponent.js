@@ -42,7 +42,9 @@ export default class AddComponent extends React.Component {
         const numberOfComponents = Object.keys(
           this.props.entity.components
         ).filter(function (name) {
-          return name.startsWith(componentName);
+          return (
+            name === componentName || name.startsWith(`${componentName}__`)
+          );
         }).length;
         if (numberOfComponents > 0) {
           id = numberOfComponents + 1;
