@@ -10,6 +10,7 @@ import { saveBlob } from '../../../lib/utils';
 import { saveScreenshot } from '../../../api/scene';
 import useStore from '@/store';
 import { convertToObject } from '@/editor/lib/SceneUtils';
+import { transformUVs } from './transformUVs';
 
 const filterHelpers = (scene, visible) => {
   scene.traverse((o) => {
@@ -150,18 +151,39 @@ function ScreenshotModal() {
           filterRiggedEntities(scene, false);
         }
         filterHelpers(scene, false);
+        // Modified to handle post-processing
         AFRAME.INSPECTOR.exporters.gltf.parse(
           scene,
-          function (buffer) {
+          async function (buffer) {
             filterHelpers(scene, true);
             filterRiggedEntities(scene, true);
-            const blob = new Blob([buffer], {
+
+            let finalBuffer = buffer;
+
+            // Post-process GLB if AR Ready option is selected
+            if (hideRigged) {
+              try {
+                finalBuffer = await transformUVs(buffer);
+                console.log('Successfully post-processed GLB file');
+              } catch (error) {
+                console.warn('Error in GLB post-processing:', error);
+                // Fall back to original buffer if post-processing fails
+                STREET.notify.warningMessage(
+                  'UV transformation skipped - using original export'
+                );
+              }
+            }
+
+            const blob = new Blob([finalBuffer], {
               type: 'application/octet-stream'
             });
             saveBlob(blob, sceneName + '.glb');
           },
           function (error) {
             console.error(error);
+            STREET.notify.errorMessage(
+              `Error while trying to save glTF file. Error: ${error}`
+            );
           },
           { binary: true }
         );
