@@ -47,7 +47,11 @@
     "stripe": "^15.8.0",
     "three": "0.172.0",
     "uuid": "^9.0.0",
-    "zustand": "^5.0.1"
+    "zustand": "^5.0.1",
+    "@gltf-transform/core": "^3.10.0",
+    "@gltf-transform/extensions": "^3.10.0",
+    "@gltf-transform/functions": "^3.10.0",
+    "gl-matrix": "^3.4.3"
   },
   "devDependencies": {
     "@babel/eslint-parser": "^7.24.5",
