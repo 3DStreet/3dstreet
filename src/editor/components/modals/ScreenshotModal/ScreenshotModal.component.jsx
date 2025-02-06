@@ -123,7 +123,8 @@ function ScreenshotModal() {
             (category.includes('people') ||
               category.includes('people-rigged') ||
               category.includes('vehicles') ||
-              category.includes('vehicles-transit'))
+              category.includes('vehicles-transit') ||
+              category.includes('cyclists'))
           ) {
             node.visible = visible;
             console.log(
