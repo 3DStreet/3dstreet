@@ -138,12 +138,12 @@ function ScreenshotModal() {
       }
     });
   };
-  const exportSceneToGLTF = (isPro, hideRigged) => {
+  const exportSceneToGLTF = (isPro, arReady) => {
     if (isPro) {
       try {
         const sceneName = getSceneName(AFRAME.scenes[0]);
         let scene = AFRAME.scenes[0].object3D;
-        if (hideRigged) {
+        if (arReady) {
           // only export user layers, not geospatial
           scene = document.querySelector('#street-container').object3D;
         }
@@ -152,7 +152,7 @@ function ScreenshotModal() {
         });
 
         // if AR Ready mode, then remove rigged vehicles and people from the scene
-        if (hideRigged) {
+        if (arReady) {
           filterRiggedEntities(scene, false);
         }
         filterHelpers(scene, false);
@@ -166,7 +166,7 @@ function ScreenshotModal() {
             let finalBuffer = buffer;
 
             // Post-process GLB if AR Ready option is selected
-            if (hideRigged) {
+            if (arReady) {
               try {
                 finalBuffer = await transformUVs(buffer);
                 console.log('Successfully post-processed GLB file');
