@@ -142,7 +142,11 @@ function ScreenshotModal() {
     if (isPro) {
       try {
         const sceneName = getSceneName(AFRAME.scenes[0]);
-        const scene = AFRAME.scenes[0].object3D;
+        let scene = AFRAME.scenes[0].object3D;
+        if (hideRigged) {
+          // only export user layers, not geospatial
+          scene = document.querySelector('#street-container').object3D;
+        }
         posthog.capture('export_scene_to_gltf_clicked', {
           scene_id: STREET.utils.getCurrentSceneId()
         });
