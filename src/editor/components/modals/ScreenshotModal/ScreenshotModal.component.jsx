@@ -123,7 +123,8 @@ function ScreenshotModal() {
             (category.includes('people') ||
               category.includes('people-rigged') ||
               category.includes('vehicles') ||
-              category.includes('vehicles-transit'))
+              category.includes('vehicles-transit') ||
+              category.includes('cyclists'))
           ) {
             node.visible = visible;
             console.log(
@@ -137,17 +138,21 @@ function ScreenshotModal() {
       }
     });
   };
-  const exportSceneToGLTF = (isPro, hideRigged) => {
+  const exportSceneToGLTF = (isPro, arReady) => {
     if (isPro) {
       try {
         const sceneName = getSceneName(AFRAME.scenes[0]);
-        const scene = AFRAME.scenes[0].object3D;
+        let scene = AFRAME.scenes[0].object3D;
+        if (arReady) {
+          // only export user layers, not geospatial
+          scene = document.querySelector('#street-container').object3D;
+        }
         posthog.capture('export_scene_to_gltf_clicked', {
           scene_id: STREET.utils.getCurrentSceneId()
         });
 
         // if AR Ready mode, then remove rigged vehicles and people from the scene
-        if (hideRigged) {
+        if (arReady) {
           filterRiggedEntities(scene, false);
         }
         filterHelpers(scene, false);
@@ -161,7 +166,7 @@ function ScreenshotModal() {
             let finalBuffer = buffer;
 
             // Post-process GLB if AR Ready option is selected
-            if (hideRigged) {
+            if (arReady) {
               try {
                 finalBuffer = await transformUVs(buffer);
                 console.log('Successfully post-processed GLB file');
