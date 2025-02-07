@@ -394,8 +394,9 @@ THREE.EditorControls = function (_object, domElement) {
       }
       object.updateProjectionMatrix();
     } else {
-      object.position.set(0, 15, 30);
-      object.lookAt(new THREE.Vector3(0, 1.6, -1));
+      center.set(0, 1.6, 0); // same as in viewport.js
+      object.position.set(0, 15, 30); // same as in camera.js
+      object.lookAt(center);
       object.updateMatrixWorld();
     }
 
