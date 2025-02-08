@@ -569,5 +569,21 @@
         "id": "cyclist-cargo",
         "name": "Cargo Bike",
         "img": "thumbnails/cyclist-cargo.jpg"
-    }
+    },
+    {  
+        "id": "crosswalk-rainbow",
+        "display": "none"
+     },   
+     {  
+        "id": "crosswalk-double",
+        "display": "none"
+     },
+            {  
+        "id": "crosswalk-mural",
+        "display": "none"
+     },    
+     {  
+        "id": "crosswalk-piano",
+        "display": "none"
+     }
 ]
