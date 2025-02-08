@@ -50,7 +50,7 @@ const getGroupedMixinOptions = () => {
     let mixinName = '';
     let mixinDescr = '';
 
-    if (mixinDataFromCatalog) {
+    if (mixinDataFromCatalog && mixinDataFromCatalog.display !== 'none') {
       mixinImg = mixinDataFromCatalog.img;
       mixinName = mixinDataFromCatalog.name;
       mixinDescr = mixinDataFromCatalog.description;
@@ -69,7 +69,9 @@ const getGroupedMixinOptions = () => {
       description: mixinDescr,
       id: index
     };
-    groupedObject[categoryName].push(mixinData);
+    if (mixinDataFromCatalog?.display !== 'none') {
+      groupedObject[categoryName].push(mixinData);
+    }
     index += 1;
   }
 
