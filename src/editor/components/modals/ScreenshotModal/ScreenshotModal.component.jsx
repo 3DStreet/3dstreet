@@ -10,7 +10,7 @@ import { saveBlob } from '../../../lib/utils';
 import { saveScreenshot } from '../../../api/scene';
 import useStore from '@/store';
 import { convertToObject } from '@/editor/lib/SceneUtils';
-import { transformUVs } from './transformUVs';
+import { transformUVs, addGLBMetadata } from './gltfTransforms';
 
 const filterHelpers = (scene, visible) => {
   scene.traverse((o) => {
@@ -179,6 +179,22 @@ function ScreenshotModal() {
               }
             }
 
+            // fetch metadata from scene
+            const geoLayer = document.getElementById('reference-layers');
+            if (geoLayer && geoLayer.hasAttribute('street-geo')) {
+              const metadata = {
+                longitude: geoLayer.getAttribute('street-geo').longitude,
+                latitude: geoLayer.getAttribute('street-geo').latitude,
+                orthometricHeight:
+                  geoLayer.getAttribute('street-geo').orthometricHeight,
+                geoidHeight: geoLayer.getAttribute('street-geo').geoidHeight,
+                ellipsoidalHeight:
+                  geoLayer.getAttribute('street-geo').ellipsoidalHeight,
+                orientation: 270
+              };
+              finalBuffer = await addGLBMetadata(finalBuffer, metadata);
+              console.log('Successfully added geospatial metadata to GLB file');
+            }
             const blob = new Blob([finalBuffer], {
               type: 'application/octet-stream'
             });

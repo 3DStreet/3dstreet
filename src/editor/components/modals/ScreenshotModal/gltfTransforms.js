@@ -1,5 +1,9 @@
 import { NodeIO } from '@gltf-transform/core';
-import { KHRTextureTransform } from '@gltf-transform/extensions';
+import {
+  KHRXMP,
+  ALL_EXTENSIONS,
+  KHRTextureTransform
+} from '@gltf-transform/extensions';
 import { vec3, mat3 } from 'gl-matrix';
 
 async function transformUVs(glbBuffer) {
@@ -66,3 +70,36 @@ async function transformUVs(glbBuffer) {
 }
 
 export { transformUVs };
+
+async function addGLBMetadata(glbBuffer, metadata) {
+  try {
+    const io = new NodeIO().registerExtensions(ALL_EXTENSIONS);
+    // Create an Extension attached to the Document.
+    const document = await io.readBinary(new Uint8Array(glbBuffer));
+    const xmpExtension = document.createExtension(KHRXMP);
+    const root = document.getRoot();
+
+    // Create Packet property.
+    const packet = xmpExtension
+      .createPacket()
+      .setContext({
+        geo: 'https://3dstreet.com'
+      })
+      .setProperty('geo:version', '0.1')
+      .setProperty('geo:longitude', metadata.longitude ?? 0)
+      .setProperty('geo:latitude', metadata.latitude ?? 0)
+      .setProperty('geo:orthometricHeight', metadata.orthometricHeight ?? null)
+      .setProperty('geo:geoidHeight', metadata.geoidHeight ?? null)
+      .setProperty('geo:ellipsoidalHeight', metadata.ellipsoidalHeight ?? null)
+      .setProperty('geo:orientation', metadata.orientation ?? null);
+
+    root.setExtension('KHR_xmp_json_ld', packet);
+
+    return await io.writeBinary(document);
+  } catch (error) {
+    console.error('Error adding metadata:', error);
+    throw error;
+  }
+}
+
+export { addGLBMetadata };
