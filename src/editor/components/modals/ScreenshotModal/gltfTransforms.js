@@ -80,9 +80,7 @@ async function addGLBMetadata(glbBuffer, metadata) {
     const root = document.getRoot();
 
     // Create Packet property.
-    let packet = null;
-
-    packet = xmpExtension
+    const packet = xmpExtension
       .createPacket()
       .setContext({
         geo: 'https://3dstreet.com'
