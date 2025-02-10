@@ -840,6 +840,24 @@ export const Object24Icon = () => (
   </svg>
 );
 
+export const Object24IconCyan = () => (
+  <svg
+    width="24"
+    height="28"
+    viewBox="0 0 24 28"
+    fill="none"
+    xmlns="http://www.w3.org/2000/svg"
+  >
+    <path
+      d="M1.3335 8.66667L12.0002 2L22.6668 8.66667V19.3333L12.0002 26L1.3335 19.3333V8.66667L12.0002 14.5333V26V14.5333L22.6668 8.66667"
+      stroke="#00FFFF"
+      strokeWidth="2.5"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    />
+  </svg>
+);
+
 export const SignInMicrosoftIconSVG = () => (
   <svg
     xmlns="http://www.w3.org/2000/svg"
