@@ -10,7 +10,7 @@ import { saveBlob } from '../../../lib/utils';
 import { saveScreenshot } from '../../../api/scene';
 import useStore from '@/store';
 import { convertToObject } from '@/editor/lib/SceneUtils';
-import { transformUVs } from './transformUVs';
+import { transformUVs, addGLBMetadata } from './transformUVs';
 
 const filterHelpers = (scene, visible) => {
   scene.traverse((o) => {
@@ -178,6 +178,22 @@ function ScreenshotModal() {
                 );
               }
             }
+
+            // add metadata to glb if exists
+            const metadata = {
+              longitude: -122.4194,
+              latitude: 37.7749,
+              orthometricHeight: 100,
+              geoidHeight: -32,
+              ellipsoidalHeight: 68,
+              orientation: 270,
+              custom: {
+                sceneName: 'Main Street',
+                author: 'svGiHZr9D0PseLs5sLuvXraIJLZ2'
+              }
+            };
+
+            finalBuffer = await addGLBMetadata(finalBuffer, metadata);
 
             const blob = new Blob([finalBuffer], {
               type: 'application/octet-stream'
