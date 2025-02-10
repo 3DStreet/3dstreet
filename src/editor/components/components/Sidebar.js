@@ -1,7 +1,8 @@
 import {
   cloneEntity,
   removeSelectedEntity,
-  renameEntity
+  renameEntity,
+  getEntityIcon
 } from '../../lib/entity';
 import { Button } from '../components';
 import ComponentsContainer from './ComponentsContainer';
@@ -14,16 +15,8 @@ import classnames from 'classnames';
 import AddGeneratorComponent from './AddGeneratorComponent';
 import {
   ArrowRightIcon,
-  Object24Icon,
-  SegmentIcon,
-  ManagedStreetIcon,
-  AutoIcon,
-  ManualIcon,
-  ArrowLeftHookIcon,
-  VideoCameraIcon,
-  GeospatialIcon,
-  LayersIcon,
-  SunIcon
+  Object24IconCyan,
+  ArrowLeftHookIcon
 } from '../../icons';
 import GeoSidebar from './GeoSidebar';
 import EnviroSidebar from './EnviroSidebar';
@@ -43,28 +36,6 @@ export default class Sidebar extends React.Component {
       showSideBar: true
     };
   }
-
-  getEntityIcon = (entity) => {
-    if (entity.getAttribute('managed-street')) {
-      return <ManagedStreetIcon />;
-    }
-    if (entity.getAttribute('street-segment')) {
-      return <SegmentIcon />;
-    }
-
-    switch (entity.id) {
-      case 'environment':
-        return <SunIcon />;
-      case 'reference-layers':
-        return <GeospatialIcon />;
-      case 'street-container':
-        return <LayersIcon />;
-      case 'cameraRig':
-        return <VideoCameraIcon />;
-      default:
-        return <Object24Icon />;
-    }
-  };
 
   getParentComponentName = (entity) => {
     const componentName = entity.getAttribute('data-parent-component');
@@ -147,9 +118,7 @@ export default class Sidebar extends React.Component {
             <>
               <div id="layers-title" onClick={this.toggleRightBar}>
                 <div className="layersBlock">
-                  <div className="icon-container">
-                    {this.getEntityIcon(entity)}
-                  </div>
+                  <div className="icon-container">{getEntityIcon(entity)}</div>
                   <span>{entityName || formattedMixin}</span>
                 </div>
                 <div id="toggle-rightbar">
@@ -164,9 +133,6 @@ export default class Sidebar extends React.Component {
                     {entity.classList.contains('autocreated') && (
                       <div className="sidepanelContent">
                         <div className="flex items-center gap-2">
-                          <div className="scale-[0.8] transform">
-                            <AutoIcon />
-                          </div>
                           Autocreated Clone
                         </div>
                         <div className="collapsible-content">
@@ -193,8 +159,8 @@ export default class Sidebar extends React.Component {
                               this.fireParentComponentDetach(entity)
                             }
                           >
-                            <ManualIcon />
-                            Convert to Manual
+                            <Object24IconCyan />
+                            Detach
                           </Button>
                         </div>
                       </div>

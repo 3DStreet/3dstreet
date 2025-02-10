@@ -2,7 +2,16 @@
 import { nanoid } from 'nanoid';
 import Events from './Events';
 import { equal } from './utils';
-import { SunIcon, VideoCameraIcon, LayersIcon } from '../icons';
+import {
+  GeospatialIcon,
+  ManagedStreetIcon,
+  SegmentIcon,
+  AutoIcon,
+  SunIcon,
+  VideoCameraIcon,
+  LayersIcon,
+  Object24IconCyan
+} from '../icons';
 
 /**
  * Update a component.
@@ -567,26 +576,44 @@ export function getEntityDisplayName(entity) {
   return displayName;
 }
 
+export function getEntityIcon(entity) {
+  // Check for component-based icons first
+  if (entity.getAttribute('managed-street')) {
+    return <ManagedStreetIcon />;
+  }
+  if (entity.getAttribute('street-segment')) {
+    return <SegmentIcon />;
+  }
+
+  // Check for class-based icons
+  if (entity.classList.contains('autocreated')) {
+    return <AutoIcon />;
+  }
+
+  // Check for ID-based icons
+  switch (entity.id) {
+    case 'environment':
+      return <SunIcon />;
+    case 'reference-layers':
+      return <GeospatialIcon />;
+    case 'street-container':
+      return <LayersIcon />;
+    case 'cameraRig':
+      return <VideoCameraIcon />;
+    default:
+      return <Object24IconCyan />;
+  }
+}
+
 /**
  * Entity representation.
  */
-const ICONS = {
-  cameraRig: <VideoCameraIcon />,
-  environment: <SunIcon />,
-  'street-container': <LayersIcon />
-};
-
 export function printEntity(entity) {
   if (!entity) {
     return '';
   }
 
-  let icon = null;
-  for (let entityId in ICONS) {
-    if (entityId === entity.id) {
-      icon = ICONS[entityId];
-    }
-  }
+  const icon = getEntityIcon(entity);
 
   // Custom display name for a layer if available, otherwise use entity name or tag
   let displayName = getEntityDisplayName(entity);
