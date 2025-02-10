@@ -16,6 +16,8 @@ THREE.EditorControls = function (_object, domElement) {
   this.center = new THREE.Vector3();
   this.panSpeed = 0.001;
   this.zoomSpeed = 0.1;
+  // minimum speed factor for zoom and pan, speed is max(minSpeedFactor, distanceFromCenter) * zoomSpeed
+  this.minSpeedFactor = 8;
   this.rotationSpeed = 0.005;
 
   var object = _object;
@@ -118,7 +120,9 @@ THREE.EditorControls = function (_object, domElement) {
       distance = object.position.distanceTo(center);
     }
 
-    delta.multiplyScalar(distance * scope.panSpeed);
+    delta.multiplyScalar(
+      Math.max(scope.minSpeedFactor, distance) * scope.panSpeed
+    );
     delta.applyMatrix3(normalMatrix.getNormalMatrix(object.matrix));
 
     object.position.add(delta);
@@ -135,9 +139,15 @@ THREE.EditorControls = function (_object, domElement) {
   this.zoom = function (delta) {
     var distance = object.position.distanceTo(center);
 
-    delta.multiplyScalar(distance * scope.zoomSpeed);
+    // Zoom speed is greater with distance and has a minimum speed closest to the center.
+    // If we go past the center, we move the center 2m in front of the camera.
+    const speedFactor = this.isOrthographic
+      ? distance
+      : Math.max(scope.minSpeedFactor, distance);
+    delta.multiplyScalar(speedFactor * scope.zoomSpeed);
 
-    if (delta.length() > distance) return;
+    const moveCenter = delta.length() > distance;
+    if (this.isOrthographic && moveCenter) return;
 
     delta.applyMatrix3(normalMatrix.getNormalMatrix(object.matrix));
 
@@ -158,6 +168,12 @@ THREE.EditorControls = function (_object, domElement) {
       object.updateProjectionMatrix();
     } else {
       object.position.add(delta);
+      // Move center as well so we can use zoom to actually move in the same direction indefinitely at the same speed
+      if (moveCenter) {
+        // Set new center 2m in front of camera
+        delta.set(0, 0, -2).applyMatrix3(normalMatrix);
+        center.copy(object.position).add(delta);
+      }
     }
 
     scope.dispatchEvent(changeEvent);
