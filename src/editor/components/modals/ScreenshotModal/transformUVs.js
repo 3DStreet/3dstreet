@@ -1,5 +1,9 @@
 import { NodeIO } from '@gltf-transform/core';
-import { KHRTextureTransform } from '@gltf-transform/extensions';
+import {
+  KHRXMP,
+  ALL_EXTENSIONS,
+  KHRTextureTransform
+} from '@gltf-transform/extensions';
 import { vec3, mat3 } from 'gl-matrix';
 
 async function transformUVs(glbBuffer) {
@@ -69,92 +73,41 @@ export { transformUVs };
 
 async function addGLBMetadata(glbBuffer, metadata) {
   try {
-    const io = new NodeIO();
+    const io = new NodeIO().registerExtensions(ALL_EXTENSIONS);
+    // Create an Extension attached to the Document.
     const document = await io.readBinary(new Uint8Array(glbBuffer));
+    const xmpExtension = document.createExtension(KHRXMP);
     const root = document.getRoot();
-    const asset = root.getAsset();
 
-    // Preserve existing generator and add our info
-    const originalGenerator = asset.generator;
-    asset.generator = `${originalGenerator} + 3DStreet Metadata`;
+    // Create Packet property.
+    let packet = null;
 
-    // Add metadata to copyright
-    const geoMetadata = {
-      version: '1.0',
-      timestamp: new Date().toISOString(),
-      geospatial: {
-        position: {
-          longitude: metadata.longitude ?? 0,
-          latitude: metadata.latitude ?? 0,
-          orthometricHeight: metadata.orthometricHeight ?? null,
-          geoidHeight: metadata.geoidHeight ?? null,
-          ellipsoidalHeight: metadata.ellipsoidalHeight ?? null,
-          orientation: metadata.orientation ?? null
-        }
-      },
-      custom: metadata.custom || {}
-    };
+    packet = xmpExtension
+      .createPacket()
+      .setContext({
+        geo: 'https://kieranfarr.com'
+      })
+      .setProperty('geo:version', '0.1');
 
-    asset.copyright = JSON.stringify(geoMetadata);
+    packet = xmpExtension
+      .createPacket()
+      .setContext({
+        geo: 'https://kieranfarr.com'
+      })
+      .setProperty('geo:longitude', metadata.longitude ?? 0);
+    root.setExtension('KHR_xmp_json_ld', packet);
+
+    // .setProperty('geo:latitude', metadata.latitude ?? 0)
+    // .setProperty('geo:orthometricHeight', metadata.orthometricHeight ?? null)
+    // .setProperty('geo:geoidHeight', metadata.geoidHeight ?? null)
+    // .setProperty('geo:ellipsoidalHeight', metadata.ellipsoidalHeight ?? null)
+    // .setProperty('geo:orientation', metadata.orientation ?? null)
+
     return await io.writeBinary(document);
   } catch (error) {
     console.error('Error adding metadata:', error);
     throw error;
   }
 }
-
-/*
-async function addGLBMetadata2(glbBuffer, metadata) {
-  try {
-    const io = new NodeIO();
-    const document = await io.readBinary(new Uint8Array(glbBuffer));
-    const root = document.getRoot();
-
-    // Create a dedicated metadata structure
-    const geoMetadata = {
-      version: '1.0',
-      timestamp: new Date().toISOString(),
-      geospatial: {
-        position: {
-          longitude: metadata.longitude ?? 0,
-          latitude: metadata.latitude ?? 0,
-          orthometricHeight: metadata.orthometricHeight ?? null,
-          geoidHeight: metadata.geoidHeight ?? null,
-          ellipsoidalHeight: metadata.ellipsoidalHeight ?? null,
-          orientation: metadata.orientation ?? null
-        }
-      },
-      custom: metadata.custom || {}
-    };
-
-    // Set metadata at multiple levels for redundancy
-    root.setExtras({ ...root.getExtras(), extras: geoMetadata });
-
-    // Add to scenes
-    root.listScenes().forEach(scene => {
-      scene.setExtras({ ...scene.getExtras(), extras: geoMetadata });
-    });
-
-    // Add to nodes
-    root.listNodes().forEach(node => {
-      if (node.getName()?.includes('root') || !node.getParent()) {
-        node.setExtras({ ...node.getExtras(), extras: geoMetadata });
-      }
-    });
-
-    console.log('Metadata added to:', {
-      root: root.getExtras(),
-      scenes: root.listScenes().map(s => s.getExtras()),
-      nodes: root.listNodes().filter(n => n.getExtras()?.metadata).length
-    });
-
-    const processedBuffer = await io.writeBinary(document);
-    return processedBuffer;
-  } catch (error) {
-    console.error('Error adding metadata:', error);
-    throw error;
-  }
-}
- */
 
 export { addGLBMetadata };
