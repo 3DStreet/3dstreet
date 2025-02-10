@@ -85,23 +85,17 @@ async function addGLBMetadata(glbBuffer, metadata) {
     packet = xmpExtension
       .createPacket()
       .setContext({
-        geo: 'https://kieranfarr.com'
+        geo: 'https://3dstreet.com'
       })
-      .setProperty('geo:version', '0.1');
+      .setProperty('geo:version', '0.1')
+      .setProperty('geo:longitude', metadata.longitude ?? 0)
+      .setProperty('geo:latitude', metadata.latitude ?? 0)
+      .setProperty('geo:orthometricHeight', metadata.orthometricHeight ?? null)
+      .setProperty('geo:geoidHeight', metadata.geoidHeight ?? null)
+      .setProperty('geo:ellipsoidalHeight', metadata.ellipsoidalHeight ?? null)
+      .setProperty('geo:orientation', metadata.orientation ?? null);
 
-    packet = xmpExtension
-      .createPacket()
-      .setContext({
-        geo: 'https://kieranfarr.com'
-      })
-      .setProperty('geo:longitude', metadata.longitude ?? 0);
     root.setExtension('KHR_xmp_json_ld', packet);
-
-    // .setProperty('geo:latitude', metadata.latitude ?? 0)
-    // .setProperty('geo:orthometricHeight', metadata.orthometricHeight ?? null)
-    // .setProperty('geo:geoidHeight', metadata.geoidHeight ?? null)
-    // .setProperty('geo:ellipsoidalHeight', metadata.ellipsoidalHeight ?? null)
-    // .setProperty('geo:orientation', metadata.orientation ?? null)
 
     return await io.writeBinary(document);
   } catch (error) {
