@@ -239,9 +239,7 @@ export default class Sidebar extends React.Component {
                   <span className="absolute right-12 whitespace-nowrap rounded bg-gray-800 px-2 py-1 text-white opacity-0 transition-all duration-300 group-hover:opacity-100">
                     {entityName || formattedMixin}
                   </span>
-                  <div className="relative z-10">
-                    {this.getEntityIcon(entity)}
-                  </div>
+                  <div className="relative z-10">{getEntityIcon(entity)}</div>
                 </div>
               </div>
             </>
