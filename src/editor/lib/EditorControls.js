@@ -81,15 +81,48 @@ THREE.EditorControls = function (_object, domElement) {
       distance = 0.1;
     }
 
-    object.position.copy(
-      target.localToWorld(
-        new THREE.Vector3(0, center.y + distance * 0.5, distance * 2.5)
-      )
-    );
-    const pos = target.getWorldPosition(new THREE.Vector3());
-    pos.y = center.y;
+    // REWRITE START
 
-    object.lookAt(pos);
+    const targetEl = target.el;
+    let cameraPosition;
+    let lookAtPosition;
+
+    // if focus-camera-pose set on target then use that vec3 as target
+    if (targetEl && targetEl.hasAttribute('focus-camera-pose')) {
+      const poseRelativePosition = targetEl.getAttribute(
+        'focus-camera-pose',
+        'relativePosition'
+      );
+      if (poseRelativePosition) {
+        // Create a vector from the relative position and transform it to world space
+        console.log('focus-camera-pose', poseRelativePosition);
+        cameraPosition = target.localToWorld(
+          new THREE.Vector3(
+            poseRelativePosition.x,
+            5 + poseRelativePosition.y,
+            poseRelativePosition.z
+          )
+        );
+      }
+    }
+    console.log('camPosY', center.y + distance * 0.5);
+    // Fallback to default positioning if no pose relative position
+    if (!cameraPosition) {
+      cameraPosition = target.localToWorld(
+        new THREE.Vector3(0, center.y + distance * 0.5, distance * 2.5)
+      );
+    }
+    console.log('camPos', cameraPosition);
+    // Set camera position
+    object.position.copy(cameraPosition);
+
+    // Get position to look at
+    lookAtPosition = target.getWorldPosition(new THREE.Vector3());
+    lookAtPosition.y = center.y;
+
+    object.lookAt(lookAtPosition);
+
+    // REWRITE END
 
     // Save end camera position/quaternion
     this.focusAnimationComponent.transitionCamPosEnd.copy(object.position);
