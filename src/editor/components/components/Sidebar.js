@@ -16,7 +16,11 @@ import AddGeneratorComponent from './AddGeneratorComponent';
 import {
   ArrowRightIcon,
   Object24IconCyan,
-  ArrowLeftHookIcon
+  ArrowLeftHookIcon,
+  Edit24Icon,
+  TrashIcon,
+  Copy32Icon,
+  ArrowsPointingInwardIcon
 } from '../../icons';
 import GeoSidebar from './GeoSidebar';
 import EnviroSidebar from './EnviroSidebar';
@@ -183,22 +187,34 @@ export default class Sidebar extends React.Component {
                       {entity.hasAttribute('data-no-transform') ? (
                         <></>
                       ) : (
-                        <div id="sidebar-buttons">
+                        <div id="sidebar-buttons-small">
+                          <Button
+                            variant={'toolbtn'}
+                            onClick={() =>
+                              Events.emit('objectfocus', entity.object3D)
+                            }
+                            leadingIcon={<ArrowsPointingInwardIcon />}
+                          >
+                            Focus
+                          </Button>
                           <Button
                             variant={'toolbtn'}
                             onClick={() => renameEntity(entity)}
+                            leadingIcon={<Edit24Icon />}
                           >
                             Rename
                           </Button>
                           <Button
                             variant={'toolbtn'}
                             onClick={() => cloneEntity(entity)}
+                            leadingIcon={<Copy32Icon />}
                           >
                             Duplicate
                           </Button>
                           <Button
                             variant={'toolbtn'}
                             onClick={() => removeSelectedEntity()}
+                            leadingIcon={<TrashIcon />}
                           >
                             Delete
                           </Button>

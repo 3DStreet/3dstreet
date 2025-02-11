@@ -361,6 +361,27 @@ body.aframe-inspector-opened {
     width: 100%;
   }
 
+  #sidebar-buttons-small {
+    display: flex;
+    flex-direction: row;
+    justify-content: space-between;
+    width: 348px;
+    margin-top: 12px;
+    column-gap: 4px;
+  }
+
+  #sidebar-buttons-small button {
+    width: 100%;
+    font-size: 0.8rem !important; /* Make font smaller if needed */
+    padding: 10px !important;
+    height: 30px !important;
+    column-gap: 0px !important;
+    svg {
+      width: 15px;
+      height: 15px;
+    }
+  }
+
   input,
   textarea,
   select {
