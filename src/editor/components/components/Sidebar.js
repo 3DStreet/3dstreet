@@ -45,6 +45,10 @@ export default class Sidebar extends React.Component {
       : 'Unknown';
   };
 
+  hasParentComponent = (entity) => {
+    return entity.getAttribute('data-parent-component');
+  };
+
   fireParentComponentDetach = (entity) => {
     const componentName = entity.getAttribute('data-parent-component');
     const parentEntity = entity.parentElement;
@@ -133,36 +137,40 @@ export default class Sidebar extends React.Component {
                     {entity.classList.contains('autocreated') && (
                       <div className="sidepanelContent">
                         <div className="flex items-center gap-2">
-                          Autocreated Clone
+                          Autocreated Entity
                         </div>
-                        <div className="collapsible-content">
-                          <div className="propertyRow">
-                            <label className="text">Managed by</label>
-                            <input
-                              className="string"
-                              type="text"
-                              value={this.getParentComponentName(entity)}
-                              readOnly
-                            />
-                          </div>
-                        </div>
-                        <div id="sidebar-buttons">
-                          <Button
-                            variant={'toolbtn'}
-                            onClick={() => this.selectParentEntity(entity)}
-                          >
-                            <ArrowLeftHookIcon /> Edit Clone Settings
-                          </Button>
-                          <Button
-                            variant={'toolbtn'}
-                            onClick={() =>
-                              this.fireParentComponentDetach(entity)
-                            }
-                          >
-                            <Object24IconCyan />
-                            Detach
-                          </Button>
-                        </div>
+                        {this.hasParentComponent(entity) && (
+                          <>
+                            <div className="collapsible-content">
+                              <div className="propertyRow">
+                                <label className="text">Managed by</label>
+                                <input
+                                  className="string"
+                                  type="text"
+                                  value={this.getParentComponentName(entity)}
+                                  readOnly
+                                />
+                              </div>
+                            </div>
+                            <div id="sidebar-buttons">
+                              <Button
+                                variant={'toolbtn'}
+                                onClick={() => this.selectParentEntity(entity)}
+                              >
+                                <ArrowLeftHookIcon /> Edit Clone Settings
+                              </Button>
+                              <Button
+                                variant={'toolbtn'}
+                                onClick={() =>
+                                  this.fireParentComponentDetach(entity)
+                                }
+                              >
+                                <Object24IconCyan />
+                                Detach
+                              </Button>
+                            </div>
+                          </>
+                        )}
                       </div>
                     )}
                     <div className="sidepanelContent">
