@@ -106,6 +106,16 @@ export default class Sidebar extends React.Component {
     this.setState({ showSideBar: !this.state.showSideBar });
   };
 
+  handleLongPress = (entity) => {
+    const camera = AFRAME.INSPECTOR.camera;
+    const cameraPositionRelativeToEntity = entity.object3D.worldToLocal(
+      camera.position.clone()
+    );
+    entity.setAttribute('focus-camera-pose', {
+      relativePosition: cameraPositionRelativeToEntity
+    });
+  };
+
   render() {
     const entity = this.props.entity;
     const visible = this.props.visible;
@@ -193,6 +203,8 @@ export default class Sidebar extends React.Component {
                             onClick={() =>
                               Events.emit('objectfocus', entity.object3D)
                             }
+                            onLongPress={() => this.handleLongPress(entity)}
+                            longPressDelay={1500} // Optional, defaults to 2000ms
                             leadingIcon={<ArrowsPointingInwardIcon />}
                           >
                             Focus

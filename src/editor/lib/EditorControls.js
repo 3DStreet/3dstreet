@@ -90,8 +90,6 @@ THREE.EditorControls = function (_object, domElement) {
         targetEl.getAttribute('focus-camera-pose')['relativePosition'];
       if (poseRelativePosition) {
         // Create a vector from the relative position and transform it to world space
-        console.log('focus-camera-pose YOYO', poseRelativePosition);
-        console.log('focus-camera-pose YOYOx', poseRelativePosition.x);
         cameraPosition = target.localToWorld(
           new THREE.Vector3(
             poseRelativePosition.x,

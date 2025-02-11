@@ -106,6 +106,9 @@ const Button = ({
           className={classNames(styles.pressProgress, {
             [styles.pressing]: isPressing
           })}
+          style={{
+            '--press-duration': `${longPressDelay}ms`
+          }}
         />
       )}
     </button>

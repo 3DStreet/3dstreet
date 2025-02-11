@@ -206,7 +206,7 @@
   width: 0;
 
   &.pressing {
-    animation: progress 2s linear forwards;
+    animation: progress var(--press-duration, 2000ms) linear forwards;
   }
 }
 
