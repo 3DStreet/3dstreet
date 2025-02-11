@@ -2,7 +2,8 @@ import {
   cloneEntity,
   removeSelectedEntity,
   renameEntity,
-  getEntityIcon
+  getEntityIcon,
+  setFocusCameraPose
 } from '../../lib/entity';
 import { Button } from '../components';
 import ComponentsContainer from './ComponentsContainer';
@@ -106,30 +107,6 @@ export default class Sidebar extends React.Component {
     this.setState({ showSideBar: !this.state.showSideBar });
   };
 
-  handleLongPress = (entity) => {
-    const camera = AFRAME.INSPECTOR.camera;
-    const cameraPositionRelativeToEntity = entity.object3D.worldToLocal(
-      camera.position.clone()
-    );
-    if (entity.hasAttribute('focus-camera-pose')) {
-      AFRAME.INSPECTOR.execute('entityupdate', {
-        entity: entity,
-        component: 'focus-camera-pose',
-        property: 'relativePosition',
-        value: cameraPositionRelativeToEntity
-      });
-    } else {
-      AFRAME.INSPECTOR.execute('componentadd', {
-        entity: entity,
-        component: 'focus-camera-pose',
-        value: {
-          relativePosition: cameraPositionRelativeToEntity
-        }
-      });
-    }
-    STREET.notify.successMessage('Focus camera pose set');
-  };
-
   render() {
     const entity = this.props.entity;
     const visible = this.props.visible;
@@ -217,7 +194,7 @@ export default class Sidebar extends React.Component {
                             onClick={() =>
                               Events.emit('objectfocus', entity.object3D)
                             }
-                            onLongPress={() => this.handleLongPress(entity)}
+                            onLongPress={() => setFocusCameraPose(entity)}
                             longPressDelay={1500} // Optional, defaults to 2000ms
                             leadingIcon={<ArrowsPointingInwardIcon />}
                           >

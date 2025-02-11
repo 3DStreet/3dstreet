@@ -683,3 +683,27 @@ export function createEntity(definition, cb, parentEl = undefined) {
 
   return entity;
 }
+
+export function setFocusCameraPose(entity) {
+  const camera = AFRAME.INSPECTOR.camera;
+  const cameraPositionRelativeToEntity = entity.object3D.worldToLocal(
+    camera.position.clone()
+  );
+  if (entity.hasAttribute('focus-camera-pose')) {
+    AFRAME.INSPECTOR.execute('entityupdate', {
+      entity: entity,
+      component: 'focus-camera-pose',
+      property: 'relativePosition',
+      value: cameraPositionRelativeToEntity
+    });
+  } else {
+    AFRAME.INSPECTOR.execute('componentadd', {
+      entity: entity,
+      component: 'focus-camera-pose',
+      value: {
+        relativePosition: cameraPositionRelativeToEntity
+      }
+    });
+  }
+  STREET.notify.successMessage('Focus camera pose set');
+}
