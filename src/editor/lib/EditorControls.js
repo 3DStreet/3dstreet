@@ -99,14 +99,12 @@ THREE.EditorControls = function (_object, domElement) {
         );
       }
     }
-    console.log('camPosY', center.y + distance * 0.5);
     // Fallback to default positioning if no pose relative position
     if (!cameraPosition) {
       cameraPosition = target.localToWorld(
         new THREE.Vector3(0, center.y + distance * 0.5, distance * 2.5)
       );
     }
-    console.log('camPos', cameraPosition);
     // Set camera position
     object.position.copy(cameraPosition);
     // Get position to look at

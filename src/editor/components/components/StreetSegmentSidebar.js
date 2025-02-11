@@ -31,8 +31,6 @@ const StreetSegmentSidebar = ({ entity }) => {
     FEATURED_COMPONENT_PREFIXES.some((prefix) => key.startsWith(prefix))
   );
 
-  console.log('featuredComponents', featuredComponents);
-
   return (
     <div className="segment-sidebar">
       <div className="segment-controls">
