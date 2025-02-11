@@ -111,9 +111,22 @@ export default class Sidebar extends React.Component {
     const cameraPositionRelativeToEntity = entity.object3D.worldToLocal(
       camera.position.clone()
     );
-    entity.setAttribute('focus-camera-pose', {
-      relativePosition: cameraPositionRelativeToEntity
-    });
+    if (entity.hasAttribute('focus-camera-pose')) {
+      AFRAME.INSPECTOR.execute('entityupdate', {
+        entity: entity,
+        component: 'focus-camera-pose',
+        property: 'relativePosition',
+        value: cameraPositionRelativeToEntity
+      });
+    } else {
+      AFRAME.INSPECTOR.execute('componentadd', {
+        entity: entity,
+        component: 'focus-camera-pose',
+        value: {
+          relativePosition: cameraPositionRelativeToEntity
+        }
+      });
+    }
   };
 
   render() {
