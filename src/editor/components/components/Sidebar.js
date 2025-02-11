@@ -127,6 +127,7 @@ export default class Sidebar extends React.Component {
         }
       });
     }
+    STREET.notify.successMessage('Focus camera pose set');
   };
 
   render() {
