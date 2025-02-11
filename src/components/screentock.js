@@ -6,18 +6,50 @@ AFRAME.registerComponent('screentock', {
     takeScreenshot: { type: 'boolean', default: false },
     filename: { type: 'string', default: 'screenshot' },
     type: { type: 'string', default: 'jpg' }, // png, jpg, img
-    imgElementSelector: { type: 'selector' }
+    imgElementSelector: { type: 'selector' },
+    // New title styling properties
+    titleFont: { type: 'string', default: 'Lato' },
+    titleSize: { type: 'number', default: 10 },
+    titleColor: { type: 'string', default: '#FFF' },
+    titleStroke: { type: 'boolean', default: false },
+    titleStrokeColor: { type: 'string', default: '#000' },
+    titleStrokeWidth: { type: 'number', default: 2 }
   },
+
+  addStyledTitleToCanvas: function (ctx, screenWidth, screenHeight) {
+    const titleText = useStore.getState().sceneTitle;
+    const fontSize = this.data.titleSize * 10;
+
+    // Set font properties
+    ctx.font = `${fontSize}px ${this.data.titleFont}`;
+    ctx.textAlign = 'center';
+
+    // Add stroke if enabled
+    if (this.data.titleStroke) {
+      ctx.strokeStyle = this.data.titleStrokeColor;
+      ctx.lineWidth = this.data.titleStrokeWidth;
+      ctx.strokeText(
+        titleText,
+        screenWidth - screenWidth / 2,
+        screenHeight - 43
+      );
+    }
+
+    // Fill text
+    ctx.fillStyle = this.data.titleColor;
+    ctx.fillText(titleText, screenWidth - screenWidth / 2, screenHeight - 43);
+  },
+
   takeScreenshotNow: function (filename, type, imgElement) {
     const inspector = AFRAME.INSPECTOR;
     const renderer = AFRAME.scenes[0].renderer;
 
     // hide helpers
-    toggleHelpers(false);
-
-    function toggleHelpers(show) {
+    const toggleHelpers = (show) => {
       if (inspector && inspector.opened) inspector.sceneHelpers.visible = show;
-    }
+    };
+
+    toggleHelpers(false);
 
     const createCanvasWithScreenshot = (aframeCanvas) => {
       let screenshotCanvas = document.querySelector('#screenshotCanvas');
@@ -33,8 +65,8 @@ AFRAME.registerComponent('screentock', {
 
       // draw image from Aframe canvas to screenshot canvas
       ctxScreenshot.drawImage(aframeCanvas, 0, 0);
-      // add scene title to screenshot
-      addTitleToCanvas(
+      // add scene title to screenshot with custom styling
+      this.addStyledTitleToCanvas(
         ctxScreenshot,
         screenshotCanvas.width,
         screenshotCanvas.height
@@ -44,23 +76,12 @@ AFRAME.registerComponent('screentock', {
       return screenshotCanvas;
     };
 
-    function addTitleToCanvas(ctx, screenWidth, screenHeight) {
-      ctx.font = '25px Lato';
-      ctx.textAlign = 'center';
-      ctx.fillStyle = '#FFF';
-      ctx.fillText(
-        useStore.getState().sceneTitle,
-        screenWidth - screenWidth / 2,
-        screenHeight - 43
-      );
-    }
-
     const addLogoToCanvas = (ctx) => {
       const logoImg = document.querySelector('#screenshot-img');
       ctx.drawImage(logoImg, 0, 0, 135, 43, 40, 30, 270, 86);
     };
 
-    function downloadImageDataURL(filename, dataURL, scnrenshotCanvas) {
+    const downloadImageDataURL = (filename, dataURL) => {
       const element = document.createElement('a');
       const url = dataURL.replace(
         /^data:image\/[^;]/,
@@ -72,13 +93,16 @@ AFRAME.registerComponent('screentock', {
       document.body.appendChild(element);
       element.click();
       document.body.removeChild(element);
-    }
+    };
 
     const saveFilename = filename + '.' + type;
 
     // render one frame
     renderer.render(AFRAME.scenes[0].object3D, AFRAME.scenes[0].camera);
-    const screenshotCanvas = createCanvasWithScreenshot(renderer.domElement);
+    const screenshotCanvas = createCanvasWithScreenshot.call(
+      this,
+      renderer.domElement
+    );
 
     if (type === 'img') {
       imgElement.src = screenshotCanvas.toDataURL();
@@ -97,6 +121,7 @@ AFRAME.registerComponent('screentock', {
     // show helpers
     toggleHelpers(true);
   },
+
   update: function (oldData) {
     // If `oldData` is empty, then this means we're in the initialization process.
     // No need to update.
