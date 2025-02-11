@@ -196,3 +196,25 @@
   width: 20px;
   height: 24px;
 }
+
+.pressProgress {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  height: 2px;
+  background-color: variables.$purple;
+  width: 0;
+
+  &.pressing {
+    animation: progress 2s linear forwards;
+  }
+}
+
+@keyframes progress {
+  0% {
+    width: 0;
+  }
+  100% {
+    width: 100%;
+  }
+}
