@@ -4,17 +4,10 @@ import { createRNG } from '../lib/rng';
 AFRAME.registerComponent('street-generated-pedestrians', {
   multiple: true,
   schema: {
-    segmentWidth: {
-      type: 'number',
-      default: 3
-    },
     density: {
       type: 'string',
       default: 'normal',
       oneOf: ['empty', 'sparse', 'normal', 'dense']
-    },
-    length: {
-      type: 'number'
     },
     direction: {
       type: 'string',
@@ -39,6 +32,8 @@ AFRAME.registerComponent('street-generated-pedestrians', {
       normal: 0.125,
       dense: 0.25
     };
+    this.length = this.getSegmentLength();
+    this.segmentWidth = this.getSegmentWidth();
   },
 
   remove: function () {
@@ -77,13 +72,24 @@ AFRAME.registerComponent('street-generated-pedestrians', {
     }
     AFRAME.INSPECTOR.execute('multi', commands);
   },
-
+  getSegmentLength() {
+    if (this.el.hasAttribute('street-segment')) {
+      return this.el.getAttribute('street-segment')?.length;
+    }
+  },
+  getSegmentWidth() {
+    if (this.el.hasAttribute('street-segment')) {
+      return this.el.getAttribute('street-segment')?.width;
+    }
+  },
   update: function (oldData) {
     const data = this.data;
 
-    // if length is not set, then derive length from the segment
-    if (!data.length) {
-      data.length = this.el.getAttribute('street-segment').length;
+    if (this.length !== this.getSegmentLength()) {
+      this.length = this.getSegmentLength() || 0;
+    }
+    if (this.segmentWidth !== this.getSegmentWidth()) {
+      this.segmentWidth = this.getSegmentWidth() || 0;
     }
 
     // Handle seed initialization
@@ -101,19 +107,20 @@ AFRAME.registerComponent('street-generated-pedestrians', {
 
     // Calculate x position range based on segment width
     const xRange = {
-      min: -(0.37 * data.segmentWidth),
-      max: 0.37 * data.segmentWidth
+      min: -(0.37 * this.segmentWidth),
+      max: 0.37 * this.segmentWidth
     };
 
     // Calculate total number of pedestrians based on density and street length
     const totalPedestrians = Math.floor(
-      this.densityFactors[data.density] * data.length
+      this.densityFactors[data.density] * this.length
     );
 
     // Get Z positions using seeded randomization
+    if (!this.length) return;
     const zPositions = this.getZPositions(
-      -data.length / 2,
-      data.length / 2,
+      -this.length / 2,
+      this.length / 2,
       1.5
     );
 
