@@ -3,10 +3,6 @@
 AFRAME.registerComponent('street-generated-rail', {
   multiple: true,
   schema: {
-    length: {
-      // length in meters of linear path to fill with rail
-      type: 'number'
-    },
     gauge: {
       // spacing in millimeters between rails
       type: 'int',
@@ -16,15 +12,20 @@ AFRAME.registerComponent('street-generated-rail', {
   },
   init: function () {
     this.createdEntities = [];
+    this.length = this.getSegmentLength();
   },
   remove: function () {
     this.createdEntities.forEach((entity) => entity.remove());
     this.createdEntities.length = 0; // Clear the array
   },
+  getSegmentLength() {
+    if (this.el.hasAttribute('street-segment')) {
+      return this.el.getAttribute('street-segment').length;
+    }
+  },
   update: function (oldData) {
-    // if length is not set, then derive length from the segment
-    if (!this.data.length) {
-      this.data.length = this.el.getAttribute('street-segment').length;
+    if (this.length !== this.getSegmentLength()) {
+      this.length = this.getSegmentLength();
     }
 
     // Clean up old entities
