@@ -50,6 +50,23 @@ AFRAME.registerComponent('street-environment', {
     const assetsPathRoot = '//assets.3dstreet.app/';
     const scene = this.el.sceneEl.object3D;
 
+    // if color, then use the atoll terrain component
+    const useAtollTerrain = this.data.preset === 'color';
+    if (useAtollTerrain) {
+      const atollTerrainEl = document.createElement('a-atoll-terrain');
+      atollTerrainEl.setAttribute('plateau-radius', '150');
+      atollTerrainEl.setAttribute('plateau-elevation', '5');
+      atollTerrainEl.setAttribute('elevation-bias', '0');
+      atollTerrainEl.setAttribute('middle-radius', '500');
+      atollTerrainEl.setAttribute('unit-size', '10');
+      atollTerrainEl.setAttribute('far', '1900');
+      // atollTerrainEl.setAttribute('sun-position', '0.8 0.6 0');
+      atollTerrainEl.setAttribute('log', 'true');
+      atollTerrainEl.setAttribute('flat-shading', 'false');
+      atollTerrainEl.setAttribute('position', '0 -5 0');
+      this.el.appendChild(atollTerrainEl);
+    }
+
     switch (this.data.preset) {
       case 'night':
         this.setLights(0.5, 0.15);

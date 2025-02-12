@@ -107,7 +107,16 @@ export function Viewport(inspector) {
 
   // Helpers.
   const sceneHelpers = inspector.sceneHelpers;
-  const grid = new THREE.GridHelper(30, 60, 0xaaaaaa, 0x262626);
+  const size = 100; // 100 meters total size
+  const divisions = 100; // This gives us 1 meter divisions
+  const colorMainGrid = 0x888888;
+  const colorSubGrid = 0x222222;
+  const grid = new THREE.GridHelper(
+    size,
+    divisions,
+    colorMainGrid,
+    colorSubGrid
+  );
   grid.visible = false;
   sceneHelpers.add(grid);
 
