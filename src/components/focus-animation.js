@@ -73,3 +73,15 @@ AFRAME.registerComponent('focus-animation', {
     }
   }
 });
+
+AFRAME.registerComponent('focus-camera-pose', {
+  schema: {
+    relativePosition: { type: 'vec3', default: { x: 0, y: 0, z: 0 } }
+  },
+  init() {
+    //
+  },
+  update() {
+    //
+  }
+});
