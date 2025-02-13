@@ -4,6 +4,7 @@ import {
   STREETPLAN_MATERIAL_MAPPING,
   STREETPLAN_OBJECT_TO_GENERATED_CLONES_MAPPING
 } from './street-mapping-streetplan.js';
+import useStore from '../store.js';
 const { segmentVariants } = require('../segments-variants.js');
 const streetmixUtils = require('../tested/streetmix-utils');
 const streetmixParsersTested = require('../tested/aframe-streetmix-parsers-tested');
@@ -54,6 +55,8 @@ AFRAME.registerComponent('managed-street', {
     }
   },
   init: function () {
+    this.zustandState = useStore.getState();
+
     this.managedEntities = [];
     this.pendingEntities = [];
     this.actualWidth = 0;
@@ -354,14 +357,14 @@ AFRAME.registerComponent('managed-street', {
         throw new Error(`streetplan returned status: false`);
       }
       const boulevard = streetplanData.project['My Street']['Boulevard Alt 1'];
-
+      const streetPlanName = streetplanData.project.ProjectName;
       const streetLength =
         parseFloat(streetplanData.project['My Street'].LengthMiles) *
           5280 *
           0.3048 || 100; // Convert miles to meters
       // Convert StreetPlan format to managed-street format
       const streetObject = {
-        name: streetplanData.project.ProjectName,
+        name: streetPlanName,
         width: 0, // Will be calculated from segments
         length: streetLength,
         segments: []
@@ -452,7 +455,14 @@ AFRAME.registerComponent('managed-street', {
       }
 
       // Parse the street object
-      this.parseStreetObject(streetObject);
+      await this.parseStreetObject(streetObject);
+
+      // Change Title
+      if (!this.zustandState.sceneTitle) {
+        this.zustandState.setSceneTitle('StreetPlan Import: ' + streetPlanName);
+      }
+      // Success Message
+      STREET.notify.successMessage('Loaded from StreetPlan: ' + streetPlanName);
     } catch (error) {
       console.error('[managed-street] loader', 'Loading Error:', error);
       STREET.notify.warningMessage(
@@ -578,6 +588,12 @@ AFRAME.registerComponent('managed-street', {
       this.allLoadedPromise.then(() => {
         this.refreshManagedEntities();
         AFRAME.INSPECTOR.selectEntity(this.el);
+        // Change Title
+        if (!this.zustandState.sceneTitle) {
+          this.zustandState.setSceneTitle(streetmixName);
+        }
+        // Success Message
+        STREET.notify.successMessage('Loaded from Streetmix: ' + streetmixName);
       });
     } catch (error) {
       console.error('[managed-street] loader', 'Loading Error:', error);
