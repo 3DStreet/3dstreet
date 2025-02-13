@@ -585,5 +585,12 @@
      {  
         "id": "crosswalk-piano",
         "display": "none"
-     }
+     },
+     {
+        "id": "sp-tree-honeylocust-24ft",
+        "name": "Honey Locust Tree 24ft",
+        "img": "sets/streetplan/sp-tree-honeylocust-24ft.webp",
+        "src": "sets/streetplan/sp-tree-honeylocust-24ft.glb",
+        "category": "sidewalk-props"
+    }
 ]

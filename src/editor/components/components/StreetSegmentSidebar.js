@@ -2,13 +2,21 @@ import PropTypes from 'prop-types';
 // import Component from './Component';
 import Component from './StreetSegmentComponent';
 import PropertyRow from './PropertyRow';
-import { StreetSurfaceIcon } from '../../icons';
 import {
   cloneEntity,
   removeSelectedEntity,
-  renameEntity
+  renameEntity,
+  setFocusCameraPose
 } from '../../lib/entity';
+import {
+  StreetSurfaceIcon,
+  ArrowsPointingInwardIcon,
+  Copy32Icon,
+  Edit24Icon,
+  TrashIcon
+} from '../../icons';
 import { Button } from '../components';
+import Events from '../../lib/Events';
 
 // Define featured component prefixes that should be shown in their own section
 const FEATURED_COMPONENT_PREFIXES = ['street-generated-'];
@@ -22,8 +30,6 @@ const StreetSegmentSidebar = ({ entity }) => {
   const featuredComponents = Object.keys(components).filter((key) =>
     FEATURED_COMPONENT_PREFIXES.some((prefix) => key.startsWith(prefix))
   );
-
-  console.log('featuredComponents', featuredComponents);
 
   return (
     <div className="segment-sidebar">
@@ -41,6 +47,40 @@ const StreetSegmentSidebar = ({ entity }) => {
                 isSingle={false}
                 entity={entity}
               />
+              <div className="sidepanelContent">
+                <div id="sidebar-buttons-small">
+                  <Button
+                    variant={'toolbtn'}
+                    onClick={() => Events.emit('objectfocus', entity.object3D)}
+                    onLongPress={() => setFocusCameraPose(entity)}
+                    longPressDelay={1500} // Optional, defaults to 2000ms
+                    leadingIcon={<ArrowsPointingInwardIcon />}
+                  >
+                    Focus
+                  </Button>
+                  <Button
+                    variant={'toolbtn'}
+                    onClick={() => renameEntity(entity)}
+                    leadingIcon={<Edit24Icon />}
+                  >
+                    Rename
+                  </Button>
+                  <Button
+                    variant={'toolbtn'}
+                    onClick={() => cloneEntity(entity)}
+                    leadingIcon={<Copy32Icon />}
+                  >
+                    Duplicate
+                  </Button>
+                  <Button
+                    variant={'toolbtn'}
+                    onClick={() => removeSelectedEntity()}
+                    leadingIcon={<TrashIcon />}
+                  >
+                    Delete
+                  </Button>
+                </div>
+              </div>
               <PropertyRow
                 key="width"
                 name="width"
@@ -61,28 +101,6 @@ const StreetSegmentSidebar = ({ entity }) => {
                 isSingle={false}
                 entity={entity}
               />
-              <div className="sidepanelContent">
-                <div id="sidebar-buttons" className="pb-2">
-                  <Button
-                    variant={'toolbtn'}
-                    onClick={() => renameEntity(entity)}
-                  >
-                    Rename
-                  </Button>
-                  <Button
-                    variant={'toolbtn'}
-                    onClick={() => cloneEntity(entity)}
-                  >
-                    Duplicate
-                  </Button>
-                  <Button
-                    variant={'toolbtn'}
-                    onClick={() => removeSelectedEntity()}
-                  >
-                    Delete
-                  </Button>
-                </div>
-              </div>
               {/* props for street-segment but formatted as a fake 'surface' component */}
               <div className="collapsible component">
                 <div className="static">
