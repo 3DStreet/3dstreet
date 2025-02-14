@@ -5,16 +5,24 @@
   top: 115px;
   left: 0;
   right: 0;
-  width: 80vw;
+  width: 90vw;
   height: 90vh;
   overflow-y: scroll;
 
   .wrapper {
     width: 100%;
     display: flex;
-    flex-direction: column;
-    align-items: center;
-    row-gap: 8px;
+    align-items: flex-start;
+    gap: 16px;
+    padding: 16px;
+    flex-direction: row-reverse;
+
+    .mainContent {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
 
     .header {
       display: flex;
@@ -99,6 +107,29 @@
         right: 16px;
       }
     }
+  }
+
+  .propertiesPanel {
+    width: 300px;
+    background: var(--panel-background);
+    border-radius: 4px;
+    border: 1px solid var(--panel-border);
+    flex-shrink: 0;
+  }
+
+  .propertiesHeader {
+    padding: 8px 10px;
+    font-weight: 600;
+    border-bottom: 1px solid var(--panel-border);
+  }
+
+  .propertiesContent {
+    padding: 10px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    max-height: 500px;
+    overflow-y: auto;
   }
 }
 

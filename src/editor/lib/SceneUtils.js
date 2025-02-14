@@ -233,7 +233,8 @@ export async function saveScene(currentUser, doSaveAs) {
 
 export async function saveSceneWithScreenshot(currentUser, doSaveAs) {
   const currentSceneId = await saveScene(currentUser, doSaveAs);
-  if (currentSceneId) {
+  // if currentSceneId AND the screenshot modal is NOT open
+  if (currentSceneId && useStore.getState().modal !== 'screenshot') {
     // wait a bit for models to be loaded, may not be enough...
     await new Promise((resolve) => setTimeout(resolve, 2000));
     await makeScreenshot(true);

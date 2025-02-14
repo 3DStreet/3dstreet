@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { ScreenshotProperties } from './ScreenshotProperties.component.jsx';
 import styles from './ScreenshotModal.module.scss';
 import { signIn } from '../../../api';
 import { useAuthContext } from '../../../contexts';
@@ -41,6 +42,12 @@ const getSceneName = (scene) => {
 };
 
 function ScreenshotModal() {
+  // Get the entity that has the screentock component
+  const getScreentockEntity = () => {
+    const screenshotEl = document.getElementById('screenshot');
+    screenshotEl.play();
+    return screenshotEl;
+  };
   const setModal = useStore((state) => state.setModal);
   const modal = useStore((state) => state.modal);
   const { currentUser } = useAuthContext();
@@ -257,45 +264,48 @@ function ScreenshotModal() {
       }
     >
       <div className={styles.wrapper}>
-        <div className={styles.header}>
-          {currentUser ? (
-            <div className={styles.forms}>
-              <div className={styles.inputContainer}>
-                <Input
-                  className={styles.input}
-                  value={inputValue}
-                  readOnly={true}
-                  hideBorderAndBackground={true}
+        <ScreenshotProperties entity={getScreentockEntity()} />
+        <div className={styles.mainContent}>
+          <div className={styles.header}>
+            {currentUser ? (
+              <div className={styles.forms}>
+                <div className={styles.inputContainer}>
+                  <Input
+                    className={styles.input}
+                    value={inputValue}
+                    readOnly={true}
+                    hideBorderAndBackground={true}
+                  />
+                  <Button
+                    variant="ghost"
+                    onClick={copyToClipboardTailing}
+                    className={styles.button}
+                  >
+                    <Copy32Icon />
+                  </Button>
+                </div>
+                <Dropdown
+                  placeholder="Download scene as..."
+                  options={options}
+                  onSelect={handleSelect}
+                  selectedOptionValue={selectedOption}
+                  icon={<Save24Icon />}
+                  className={styles.dropdown}
                 />
-                <Button
-                  variant="ghost"
-                  onClick={copyToClipboardTailing}
-                  className={styles.button}
-                >
-                  <Copy32Icon />
+              </div>
+            ) : (
+              <div>
+                <h3>Please log in first to share the URL</h3>
+                <Button onClick={() => signIn()}>
+                  Sign in to 3DStreet Cloud
                 </Button>
               </div>
-              <Dropdown
-                placeholder="Download scene as..."
-                options={options}
-                onSelect={handleSelect}
-                selectedOptionValue={selectedOption}
-                icon={<Save24Icon />}
-                className={styles.dropdown}
-              />
+            )}
+          </div>
+          <div className={styles.imageWrapper}>
+            <div className={styles.screenshotWrapper}>
+              <img id="screentock-destination" />
             </div>
-          ) : (
-            <div>
-              <h3>Please log in first to share the URL</h3>
-              <Button onClick={() => signIn()}>
-                Sign in to 3DStreet Cloud
-              </Button>
-            </div>
-          )}
-        </div>
-        <div className={styles.imageWrapper}>
-          <div className={styles.screenshotWrapper}>
-            <img id="screentock-destination" />
           </div>
         </div>
       </div>
