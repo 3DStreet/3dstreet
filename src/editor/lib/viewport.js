@@ -229,6 +229,10 @@ export function Viewport(inspector) {
     if (tilesElem) {
       tilesElem.emit('cameraChange', data.camera);
     }
+    const tilesElem2 = document.querySelector('#google-maps-aerial');
+    if (tilesElem2) {
+      tilesElem2.emit('cameraChange', data.camera);
+    }
   });
 
   function disableControls() {

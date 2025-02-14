@@ -72,11 +72,29 @@ AFRAME.registerComponent('google-maps-aerial', {
         this.tiles.setCamera(this.camera);
       }
     });
+
+    // Add this to your component's init:
+    this.el.addEventListener('cameraChange', (e) => {
+      console.log('eventtriggered', e);
+      if (e.detail.type === 'PerspectiveCamera' && this.initialized) {
+        const prevCamera = this.camera;
+        this.camera = e.detail;
+
+        // Delete previous camera from tiles renderer first
+        if (prevCamera) {
+          this.tiles.deleteCamera(prevCamera);
+        }
+
+        // Set new camera and update resolution
+        this.tiles.setCamera(this.camera);
+        this.tiles.setResolutionFromRenderer(this.camera, this.renderer);
+      }
+    });
   },
 
   tick: function () {
     // only run this function 10 times total
-    if (this.tickCount >= 10) return;
+    // if (this.tickCount >= 10) return;
     if (this.initialized && this.tiles && this.camera) {
       // Ensure camera is set on each tick
       this.tiles.setCamera(this.camera);
