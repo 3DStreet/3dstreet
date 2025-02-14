@@ -8,17 +8,20 @@ AFRAME.registerComponent('screentock', {
     type: { type: 'string', default: 'jpg' }, // png, jpg, img
     imgElementSelector: { type: 'selector' },
     // New title styling properties
+    showLogo: { type: 'boolean', default: true },
+    showTitle: { type: 'boolean', default: true },
     titleFont: { type: 'string', default: 'Lato' },
     titleSize: { type: 'number', default: 10 },
-    titleColor: { type: 'string', default: '#FFF' },
+    titleColor: { type: 'color', default: '#FFFFFF' },
     titleStroke: { type: 'boolean', default: false },
-    titleStrokeColor: { type: 'string', default: '#000' },
-    titleStrokeWidth: { type: 'number', default: 2 }
+    titleStrokeColor: { type: 'color', default: '#000000' },
+    titleStrokeWidth: { type: 'number', default: 1 }
   },
 
   addStyledTitleToCanvas: function (ctx, screenWidth, screenHeight) {
     const titleText = useStore.getState().sceneTitle;
     const fontSize = this.data.titleSize * 10;
+    const strokeWidth = this.data.titleStroke * 10;
 
     // Set font properties
     ctx.font = `${fontSize}px ${this.data.titleFont}`;
@@ -27,7 +30,7 @@ AFRAME.registerComponent('screentock', {
     // Add stroke if enabled
     if (this.data.titleStroke) {
       ctx.strokeStyle = this.data.titleStrokeColor;
-      ctx.lineWidth = this.data.titleStrokeWidth;
+      ctx.lineWidth = strokeWidth;
       ctx.strokeText(
         titleText,
         screenWidth - screenWidth / 2,
@@ -66,13 +69,17 @@ AFRAME.registerComponent('screentock', {
       // draw image from Aframe canvas to screenshot canvas
       ctxScreenshot.drawImage(aframeCanvas, 0, 0);
       // add scene title to screenshot with custom styling
-      this.addStyledTitleToCanvas(
-        ctxScreenshot,
-        screenshotCanvas.width,
-        screenshotCanvas.height
-      );
+      if (this.data.showTitle) {
+        this.addStyledTitleToCanvas(
+          ctxScreenshot,
+          screenshotCanvas.width,
+          screenshotCanvas.height
+        );
+      }
       // add 3DStreet logo
-      addLogoToCanvas(ctxScreenshot);
+      if (this.data.showLogo) {
+        addLogoToCanvas(ctxScreenshot);
+      }
       return screenshotCanvas;
     };
 
