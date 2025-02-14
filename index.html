@@ -88,6 +88,14 @@
 
     <a-entity id="street-container" data-layer-name="User Layers" data-no-transform>
       <a-entity id="default-street" street streetmix-loader set-loader-from-hash></a-entity>
+      <a-entity google-maps-aerial="
+      apiToken: AIzaSyAKveHaNwJJTESz_MMUY8wxtmRKfdFfQhk;
+      latitude: 37.795;
+      longitude: -122.394;
+      minDistance: 500;
+      maxDistance: 20000;
+      ellipsoidalHeight: -29.605;
+    "></a-entity>
     </a-entity>
 
     <a-entity id="reference-layers" data-layer-name="Geospatial Layers" data-no-transform></a-entity>
