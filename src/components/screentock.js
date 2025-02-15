@@ -10,18 +10,26 @@ AFRAME.registerComponent('screentock', {
     // New title styling properties
     showLogo: { type: 'boolean', default: true },
     showTitle: { type: 'boolean', default: true },
-    titleFont: { type: 'string', default: 'Lato' },
-    titleSize: { type: 'number', default: 10 },
+    titleFont: {
+      type: 'string',
+      default: 'Lato',
+      oneOf: ['Lato', 'Helvetica', 'Times', 'Courier', 'Impact']
+    },
+    titleSize: {
+      type: 'number',
+      default: 10,
+      oneOf: [5, 8, 10, 12, 15, 20, 30]
+    },
     titleColor: { type: 'color', default: '#FFFFFF' },
     titleStroke: { type: 'boolean', default: false },
     titleStrokeColor: { type: 'color', default: '#000000' },
-    titleStrokeWidth: { type: 'number', default: 1 }
+    titleStrokeWidth: { type: 'number', default: 1, max: 5, min: 0 }
   },
 
   addStyledTitleToCanvas: function (ctx, screenWidth, screenHeight) {
     const titleText = useStore.getState().sceneTitle;
     const fontSize = this.data.titleSize * 10;
-    const strokeWidth = this.data.titleStroke * 10;
+    const strokeWidth = this.data.titleStrokeWidth * 10;
 
     // Set font properties
     ctx.font = `${fontSize}px ${this.data.titleFont}`;
