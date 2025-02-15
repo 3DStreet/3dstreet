@@ -21,7 +21,6 @@
       flex: 1;
       display: flex;
       flex-direction: column;
-      gap: 16px;
     }
 
     .header {
@@ -73,11 +72,6 @@
             }
           }
         }
-
-        .dropdown {
-          max-width: fit-content;
-          min-width: 240px;
-        }
       }
     }
     .imageWrapper {
@@ -124,12 +118,19 @@
   }
 
   .propertiesContent {
-    padding: 10px;
     display: flex;
     flex-direction: column;
-    gap: 8px;
-    max-height: 500px;
     overflow-y: auto;
+  }
+  .dropdown {
+    max-width: fit-content;
+    min-width: 290px;
+    button {
+      background-color: variables.$purple-900 !important;
+      &:hover {
+        background-color: variables.$purple-800 !important;
+      }
+    }
   }
 }
 
