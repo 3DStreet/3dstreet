@@ -56,12 +56,12 @@ function Toolbar({ currentUser }) {
               >
                 <div>Share</div>
               </Button>
-              <button
+              <div
                 onClick={() => setModal(currentUser ? 'profile' : 'signin')}
                 aria-label={currentUser ? 'Open profile' : 'Sign in'}
               >
                 <ProfileButton />
-              </button>
+              </div>
             </div>
           </>
         )}
