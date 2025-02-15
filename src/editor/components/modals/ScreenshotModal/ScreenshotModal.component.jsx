@@ -232,7 +232,7 @@ function ScreenshotModal() {
       const sceneId = STREET.utils.getCurrentSceneId();
       let updatedUrl;
       if (sceneId) {
-        updatedUrl = 'https://3dstreet.app/#/scenes/' + sceneId + '.json';
+        updatedUrl = 'https://3dstreet.app/#/scenes/' + sceneId;
       } else {
         updatedUrl = window.location.href;
       }

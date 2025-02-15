@@ -1,15 +1,19 @@
 import PropTypes from 'prop-types';
 import styles from './ScreenshotModal.module.scss';
 import PropertyRow from '../../components/PropertyRow.js';
+import { makeScreenshot } from '@/editor/lib/SceneUtils.js';
+import { debounce } from 'lodash-es';
 
 const ScreenshotProperties = ({ entity }) => {
   const componentName = 'screentock';
   const component = entity?.components?.[componentName];
-  console.log(component);
+
+  const debouncedMakeScreenshot = debounce(() => {
+    makeScreenshot(false);
+  }, 500);
 
   return (
     <div className={styles.propertiesPanel}>
-      <div className={styles.propertiesHeader}>Screenshot Properties</div>
       <div className={styles.propertiesContent}>
         {component && component.schema && component.data && (
           <>
@@ -20,8 +24,9 @@ const ScreenshotProperties = ({ entity }) => {
               schema={component.schema['showLogo']}
               data={component.data['showLogo']}
               componentname={componentName}
-              isSingle={false}
               entity={entity}
+              noSelectEntity={true}
+              onEntityUpdate={() => debouncedMakeScreenshot()}
             />
             <PropertyRow
               key="showTitle"
@@ -30,8 +35,9 @@ const ScreenshotProperties = ({ entity }) => {
               schema={component.schema['showTitle']}
               data={component.data['showTitle']}
               componentname={componentName}
-              isSingle={false}
               entity={entity}
+              noSelectEntity={true}
+              onEntityUpdate={() => debouncedMakeScreenshot()}
             />
             <PropertyRow
               key="titleFont"
@@ -40,8 +46,9 @@ const ScreenshotProperties = ({ entity }) => {
               schema={component.schema['titleFont']}
               data={component.data['titleFont']}
               componentname={componentName}
-              isSingle={false}
               entity={entity}
+              noSelectEntity={true}
+              onEntityUpdate={() => debouncedMakeScreenshot()}
             />
             <PropertyRow
               key="titleSize"
@@ -50,8 +57,9 @@ const ScreenshotProperties = ({ entity }) => {
               schema={component.schema['titleSize']}
               data={component.data['titleSize']}
               componentname={componentName}
-              isSingle={false}
               entity={entity}
+              noSelectEntity={true}
+              onEntityUpdate={() => debouncedMakeScreenshot()}
             />
             <PropertyRow
               key="titleColor"
@@ -60,8 +68,9 @@ const ScreenshotProperties = ({ entity }) => {
               schema={component.schema['titleColor']}
               data={component.data['titleColor']}
               componentname={componentName}
-              isSingle={false}
               entity={entity}
+              noSelectEntity={true}
+              onEntityUpdate={() => debouncedMakeScreenshot()}
             />
             <PropertyRow
               key="titleStroke"
@@ -70,8 +79,9 @@ const ScreenshotProperties = ({ entity }) => {
               schema={component.schema['titleStroke']}
               data={component.data['titleStroke']}
               componentname={componentName}
-              isSingle={false}
               entity={entity}
+              noSelectEntity={true}
+              onEntityUpdate={() => debouncedMakeScreenshot()}
             />
             <PropertyRow
               key="titleStrokeColor"
@@ -80,8 +90,9 @@ const ScreenshotProperties = ({ entity }) => {
               schema={component.schema['titleStrokeColor']}
               data={component.data['titleStrokeColor']}
               componentname={componentName}
-              isSingle={false}
               entity={entity}
+              noSelectEntity={true}
+              onEntityUpdate={() => debouncedMakeScreenshot()}
             />
             <PropertyRow
               key="titleStrokeWidth"
@@ -90,8 +101,9 @@ const ScreenshotProperties = ({ entity }) => {
               schema={component.schema['titleStrokeWidth']}
               data={component.data['titleStrokeWidth']}
               componentname={componentName}
-              isSingle={false}
               entity={entity}
+              noSelectEntity={true}
+              onEntityUpdate={() => debouncedMakeScreenshot()}
             />
           </>
         )}
