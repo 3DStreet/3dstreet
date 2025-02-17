@@ -190,11 +190,18 @@ const AIChatPanel = () => {
     const initializeAI = async () => {
       try {
         console.log('Initializing Vertex AI');
-        modelRef.current = getGenerativeModel(vertexAI, {
-          model: 'gemini-2.0-flash-exp',
+        const model = getGenerativeModel(vertexAI, {
+          model: 'gemini-2.0-flash',
           tools: entityTools
         });
-        console.log('Vertex AI initialized successfully');
+        // Initialize chat with history
+        modelRef.current = model.startChat({
+          history: [],
+          generationConfig: {
+            maxOutputTokens: 1000
+          }
+        });
+        console.log('Vertex AI chat initialized successfully');
       } catch (error) {
         console.error('Error initializing Vertex AI:', error);
       }
@@ -251,11 +258,16 @@ const AIChatPanel = () => {
       IMPORTANT: Always respond with a text message, even if the user is asking for a function call.
       `;
 
-      const chat = modelRef.current.startChat();
-      const result = await chat.sendMessage(prompt);
-      const response = await result.response;
-      console.log('AI Chat response:', response);
-      // Handle any function calls
+      console.log('Sending prompt to AI:', [prompt]);
+
+      // Send message and get response
+      const result = await modelRef.current.sendMessage(prompt);
+      console.log('Raw result:', result);
+
+      const response = result.response;
+      const responseText = response.text();
+
+      // Get function calls
       const functionCalls = response.functionCalls();
       if (functionCalls && functionCalls.length > 0) {
         for (const call of functionCalls) {
@@ -300,8 +312,7 @@ const AIChatPanel = () => {
         }
       }
 
-      // Get response text first and store it
-      const responseText = response.text();
+      // Create AI message with the response text
       console.log('Stored response text:', responseText);
       aiMessage = {
         role: 'assistant',
