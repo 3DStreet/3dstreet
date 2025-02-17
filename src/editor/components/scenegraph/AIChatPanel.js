@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { vertexAI } from '../../services/firebase.js';
-import { getGenerativeModel } from 'firebase/vertexai';
+import { getGenerativeModel, Schema } from 'firebase/vertexai';
 import Collapsible from '../Collapsible.js';
 import JSONPretty from 'react-json-pretty';
 import 'react-json-pretty/themes/monikai.css';
@@ -41,25 +41,6 @@ function evaluateExpression(expression) {
     console.error('Error evaluating expression:', error);
     throw error;
   }
-}
-
-function evaluateEmbeddedExpressions(obj) {
-  if (Array.isArray(obj)) {
-    return obj.map(evaluateEmbeddedExpressions);
-  } else if (typeof obj === 'object' && obj !== null) {
-    const newObj = {};
-    for (const key in obj) {
-      if (key.startsWith('expression-for-')) {
-        newObj[key.replace('expression-for-', '')] = evaluateExpression(
-          obj[key]
-        );
-      } else {
-        newObj[key] = evaluateEmbeddedExpressions(obj[key]);
-      }
-    }
-    return newObj;
-  }
-  return obj;
 }
 
 function executeCommand(command) {
@@ -144,13 +125,48 @@ const AIChatPanel = () => {
   const chatContainerRef = useRef(null);
   const modelRef = useRef(null);
 
+  // Define the function declaration for entity updates
+  const entityUpdateTool = {
+    functionDeclarations: [
+      {
+        name: 'entityUpdate',
+        description:
+          'Update an entity in the A-Frame scene with new properties or components',
+        parameters: Schema.object({
+          properties: {
+            'entity-id': Schema.string({
+              description: 'The ID of the entity to update'
+            }),
+            component: Schema.string({
+              description:
+                'The component to update (e.g., position, rotation, mixin)'
+            }),
+            property: Schema.string({
+              description:
+                'The property to update within the component (optional)'
+            }),
+            value: Schema.string({
+              description: 'The new value to set'
+            }),
+            'expression-for-value': Schema.string({
+              description:
+                'Mathematical expression to evaluate for the value (e.g., "5 - 2"). Use this instead of value when calculation is needed.'
+            })
+          },
+          optionalProperties: ['value', 'expression-for-value', 'property']
+        })
+      }
+    ]
+  };
+
   useEffect(() => {
     console.log('AIChatPanel mounted');
     const initializeAI = async () => {
       try {
         console.log('Initializing Vertex AI');
         modelRef.current = getGenerativeModel(vertexAI, {
-          model: 'gemini-2.0-flash-exp' //           model: 'gemini-1.5-flash'
+          model: 'gemini-2.0-flash-exp',
+          tools: entityUpdateTool
         });
         console.log('Vertex AI initialized successfully');
       } catch (error) {
@@ -185,47 +201,66 @@ const AIChatPanel = () => {
 
       Please analyze the request and provide one of the following:
       1. If the user is asking about the scene, provide a natural language explanation
-      2. If the user is asking to modify the scene, provide specific JSON-formatted changes
+      2. If the user is asking to modify the scene, use the entityUpdate function
       3. If the user needs help, provide relevant guidance about the 3DStreet editor
 
       In the scene state, units for length are in meters, and rotations are in degrees.
-
-      Write your response directly to the user. Do not describe the user's request.
-
-      For scene modifications, imagine a JSON format similar to this:
-      {
-        "command": "entityupdate",
-        "payload": {
-          "entity-id": "n9eLgB9C635T_edXuXIgz",
-          "component": "position",
-          "property": "x",
-          "value": 10
-        }
-      }
-
-      This describes a change to entities in an A-Frame scene.
-
-      When changing a model, use the "entityupdate" command with the following payload:
-      {
-        "entity-id": "n9eLgB9C635T_edXuXIgz",
-        "component": "mixin",
-        "value": "fire-truck-rig"
-      }
-
-      The possible model (mixin) values are: Bicycle_1, bus, sedan-rig, sedan-taxi-rig, suv-rig, box-truck-rig, food-trailer-rig, fire-truck-rig, fire-ladder-rig, trash-truck-side-loading, self-driving-cruise-car-rig, self-driving-waymo-car, tuk-tuk, motorbike, cyclist-cargo, cyclist1, cyclist2, cyclist3, cyclist-kid, cyclist-dutch, char1, char2, char3, char4, char5, char6, char7, char8, char9, char10, char11, char12, char13, char14, char15, char16, tram, trolley, minibus, dividers-flowers, dividers-planting-strip, dividers-planter-box, dividers-bush, dividers-dome, safehit, bollard, temporary-barricade, temporary-traffic-cone, temporary-jersey-barrier-plastic, temporary-jersey-barrier-concrete, street-element-crosswalk-raised, street-element-traffic-island-end-rounded, street-element-sign-warning-ped-rrfb, street-element-traffic-post-k71, street-element-traffic-island, street-element-speed-hump, crosswalk-zebra-box, traffic-calming-bumps, corner-island, brt-station, outdoor_dining, bench_orientation_center, parklet, utility_pole, lamp-modern, lamp-modern-double, bikerack, bikeshare, lamp-traditional, palm-tree, bench, seawall, track, tree3, bus-stop, bus-stop-alternate, wayfinding, signal_left, signal_right, stop_sign, trash-bin, lending-library, residential-mailbox, USPS-mailbox, picnic-bench, large-parklet, SM3D_Bld_Mixed_Corner_4fl, SM3D_Bld_Mixed_Double_5fl, SM3D_Bld_Mixed_4fl_2, SM3D_Bld_Mixed_5fl, SM3D_Bld_Mixed_4fl, SM_Bld_House_Preset_03_1800, SM_Bld_House_Preset_08_1809, SM_Bld_House_Preset_09_1845, arched-building-01, arched-building-02, arched-building-03, arched-building-04, ElectricScooter_1, Character_1_M, magic-carpet, cyclist-cargo
 
       The orientation of axis to cardinal directions is as follows: x+ (positive) is north; x- (negative) is south; y+ (positive) is up; y- (negative) is down; z- (negative) is west; z+ (positive) is east;
       Models face z- (east) when at 0º Y rotation. 
 
       Make sure you convert everything to the appropriate units, even if the user uses different units.
 
-      If you have to pass an arithmetic expression, like 5 - 2, put it in quotes like "5 - 2", and replace
-      the name of the key with "expression-for-" prepended, so, for example, "value" would become
-      "expression-for-value".
+      IMPORTANT: When you need to calculate a value (like "5 - 2"), return it as a string expression ("5 - 2") and prepend "expression-for-" to the parameter name. For example, if setting a 'value' parameter, use "expression-for-value" instead.
+
+      When changing a model, use the "entityupdate" command with the following payload:
+      {
+        "entityId": "n9eLgB9C635T_edXuXIgz",
+        "component": "mixin",
+        "value": "fire-truck-rig"
+      }
+
+      The possible model (mixin) values are: Bicycle_1, bus, sedan-rig, sedan-taxi-rig, suv-rig, box-truck-rig, food-trailer-rig, fire-truck-rig, fire-ladder-rig, trash-truck-side-loading, self-driving-cruise-car-rig, self-driving-waymo-car, tuk-tuk, motorbike, cyclist-cargo, cyclist1, cyclist2, cyclist3, cyclist-kid, cyclist-dutch, char1, char2, char3, char4, char5, char6, char7, char8, char9, char10, char11, char12, char13, char14, char15, char16, tram, trolley, minibus, dividers-flowers, dividers-planting-strip, dividers-planter-box, dividers-bush, dividers-dome, safehit, bollard, temporary-barricade, temporary-traffic-cone, temporary-jersey-barrier-plastic, temporary-jersey-barrier-concrete, street-element-crosswalk-raised, street-element-traffic-island-end-rounded, street-element-sign-warning-ped-rrfb, street-element-traffic-post-k71, street-element-traffic-island, street-element-speed-hump, crosswalk-zebra-box, traffic-calming-bumps, corner-island, brt-station, outdoor_dining, bench_orientation_center, parklet, utility_pole, lamp-modern, lamp-modern-double, bikerack, bikeshare, lamp-traditional, palm-tree, bench, seawall, track, tree3, bus-stop, bus-stop-alternate, wayfinding, signal_left, signal_right, stop_sign, trash-bin, lending-library, residential-mailbox, USPS-mailbox, picnic-bench, large-parklet, SM3D_Bld_Mixed_Corner_4fl, SM3D_Bld_Mixed_Double_5fl, SM3D_Bld_Mixed_4fl_2, SM3D_Bld_Mixed_5fl, SM3D_Bld_Mixed_4fl, SM_Bld_House_Preset_03_1800, SM_Bld_House_Preset_08_1809, SM_Bld_House_Preset_09_1845, arched-building-01, arched-building-02, arched-building-03, arched-building-04, ElectricScooter_1, Character_1_M, magic-carpet, cyclist-cargo
       `;
 
-      const result = await modelRef.current.generateContent(prompt);
+      const chat = modelRef.current.startChat();
+      const result = await chat.sendMessage(prompt);
       const response = await result.response;
+
+      // Handle any function calls
+      const functionCalls = response.functionCalls();
+      if (functionCalls.length > 0) {
+        for (const call of functionCalls) {
+          console.log('Function call:', call);
+          if (call.name === 'entityUpdate') {
+            const args = call.args;
+            // Convert the function call args to the format expected by executeCommand
+            // Convert function call args to command format, handling expressions
+            const payload = {
+              'entity-id': args['entity-id'],
+              component: args.component
+            };
+
+            // Handle property if present
+            if (args.property) {
+              payload.property = args.property;
+            }
+
+            if (args['expression-for-value']) {
+              payload.value = evaluateExpression(args['expression-for-value']);
+            } else {
+              payload.value = args.value;
+            }
+
+            const commandData = {
+              command: 'entityupdate',
+              payload
+            };
+            executeCommand(commandData);
+          }
+        }
+      }
+
       const responseText = response.text();
       aiMessage = { role: 'assistant', content: responseText };
       setMessages((prev) => [...prev, aiMessage]);
@@ -240,24 +275,6 @@ const AIChatPanel = () => {
       ]);
     } finally {
       setIsLoading(false);
-
-      // Parse the most recent message for commands and execute them
-      const lastMessage = aiMessage;
-      console.log('lastMessage', lastMessage);
-      if (lastMessage && lastMessage.role === 'assistant') {
-        const jsonBlockRegex = /```(?:json)?\s*(\{[\s\S]*?\})\s*```/g;
-        let match;
-        while ((match = jsonBlockRegex.exec(lastMessage.content)) !== null) {
-          try {
-            const jsonContent = JSON.parse(match[1]);
-            console.log('jsonContent', jsonContent);
-            const evaluatedContent = evaluateEmbeddedExpressions(jsonContent);
-            executeCommand(evaluatedContent);
-          } catch (e) {
-            console.error('Error processing command:', e);
-          }
-        }
-      }
     }
   };
 
