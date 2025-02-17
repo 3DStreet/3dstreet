@@ -43,16 +43,16 @@ function evaluateExpression(expression) {
   }
 }
 
-function executeCommand(command) {
+function executeUpdateCommand(command) {
   if (command.command && command.payload) {
-    const newCommandPayload = {
+    const updateCommandPayload = {
       entity: document.getElementById(command.payload['entity-id']),
       component: command.payload.component,
       property: command.payload.property,
       value: command.payload.value
     };
-    console.log('newCommandPayload:', newCommandPayload);
-    AFRAME.INSPECTOR.execute(command.command, newCommandPayload);
+    console.log('updateCommandPayload:', updateCommandPayload);
+    AFRAME.INSPECTOR.execute(command.command, updateCommandPayload);
   }
 }
 
@@ -125,9 +125,35 @@ const AIChatPanel = () => {
   const chatContainerRef = useRef(null);
   const modelRef = useRef(null);
 
-  // Define the function declaration for entity updates
-  const entityUpdateTool = {
+  // Define the function declarations for entity operations
+  const entityTools = {
     functionDeclarations: [
+      {
+        name: 'entityCreateMixin',
+        description:
+          'Create a new entity in the A-Frame scene with specified components and transforms',
+        parameters: Schema.object({
+          properties: {
+            mixin: Schema.string({
+              description:
+                'The mixin id value for the new entity (e.g., "box-truck-rig")'
+            }),
+            position: Schema.string({
+              description:
+                'Position as space-separated x y z values (e.g., "0 1.5 -3") default 0 0 0'
+            }),
+            rotation: Schema.string({
+              description:
+                'Rotation as space-separated x y z values in degrees (e.g., "0 45 0") default 0 0 0'
+            }),
+            scale: Schema.string({
+              description:
+                'Scale as space-separated x y z values (e.g., "2 2 2") default 1 1 1'
+            })
+          },
+          optionalProperties: ['position', 'rotation', 'scale']
+        })
+      },
       {
         name: 'entityUpdate',
         description:
@@ -166,7 +192,7 @@ const AIChatPanel = () => {
         console.log('Initializing Vertex AI');
         modelRef.current = getGenerativeModel(vertexAI, {
           model: 'gemini-2.0-flash-exp',
-          tools: entityUpdateTool
+          tools: entityTools
         });
         console.log('Vertex AI initialized successfully');
       } catch (error) {
@@ -222,7 +248,7 @@ const AIChatPanel = () => {
 
       The possible model (mixin) values are: Bicycle_1, bus, sedan-rig, sedan-taxi-rig, suv-rig, box-truck-rig, food-trailer-rig, fire-truck-rig, fire-ladder-rig, trash-truck-side-loading, self-driving-cruise-car-rig, self-driving-waymo-car, tuk-tuk, motorbike, cyclist-cargo, cyclist1, cyclist2, cyclist3, cyclist-kid, cyclist-dutch, char1, char2, char3, char4, char5, char6, char7, char8, char9, char10, char11, char12, char13, char14, char15, char16, tram, trolley, minibus, dividers-flowers, dividers-planting-strip, dividers-planter-box, dividers-bush, dividers-dome, safehit, bollard, temporary-barricade, temporary-traffic-cone, temporary-jersey-barrier-plastic, temporary-jersey-barrier-concrete, street-element-crosswalk-raised, street-element-traffic-island-end-rounded, street-element-sign-warning-ped-rrfb, street-element-traffic-post-k71, street-element-traffic-island, street-element-speed-hump, crosswalk-zebra-box, traffic-calming-bumps, corner-island, brt-station, outdoor_dining, bench_orientation_center, parklet, utility_pole, lamp-modern, lamp-modern-double, bikerack, bikeshare, lamp-traditional, palm-tree, bench, seawall, track, tree3, bus-stop, bus-stop-alternate, wayfinding, signal_left, signal_right, stop_sign, trash-bin, lending-library, residential-mailbox, USPS-mailbox, picnic-bench, large-parklet, SM3D_Bld_Mixed_Corner_4fl, SM3D_Bld_Mixed_Double_5fl, SM3D_Bld_Mixed_4fl_2, SM3D_Bld_Mixed_5fl, SM3D_Bld_Mixed_4fl, SM_Bld_House_Preset_03_1800, SM_Bld_House_Preset_08_1809, SM_Bld_House_Preset_09_1845, arched-building-01, arched-building-02, arched-building-03, arched-building-04, ElectricScooter_1, Character_1_M, magic-carpet, cyclist-cargo
 
-      IMPORTANT: Always respond with a brief text message, even if the user is asking for a function call. Do not describe the user's request.
+      IMPORTANT: Always respond with a text message, even if the user is asking for a function call.
       `;
 
       const chat = modelRef.current.startChat();
@@ -257,7 +283,19 @@ const AIChatPanel = () => {
               command: 'entityupdate',
               payload
             };
-            executeCommand(commandData);
+            executeUpdateCommand(commandData);
+          }
+          if (call.name === 'entityCreateMixin') {
+            const newCommandPayload = {
+              mixin: call.args.mixin,
+              components: {
+                position: call.args.position || '0 0 0',
+                rotation: call.args.rotation || '0 0 0',
+                scale: call.args.scale || '1 1 1'
+              }
+            };
+            console.log('newCommandPayload:', newCommandPayload);
+            AFRAME.INSPECTOR.execute('entitycreate', newCommandPayload);
           }
         }
       }
