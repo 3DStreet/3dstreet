@@ -1,7 +1,9 @@
 import {
   cloneEntity,
   removeSelectedEntity,
-  renameEntity
+  renameEntity,
+  getEntityIcon,
+  setFocusCameraPose
 } from '../../lib/entity';
 import { Button } from '../components';
 import ComponentsContainer from './ComponentsContainer';
@@ -11,18 +13,15 @@ import PropTypes from 'prop-types';
 import React from 'react';
 import capitalize from 'lodash-es/capitalize';
 import classnames from 'classnames';
+import AddGeneratorComponent from './AddGeneratorComponent';
 import {
   ArrowRightIcon,
-  Object24Icon,
-  SegmentIcon,
-  ManagedStreetIcon,
-  AutoIcon,
-  ManualIcon,
+  Object24IconCyan,
   ArrowLeftHookIcon,
-  VideoCameraIcon,
-  GeospatialIcon,
-  LayersIcon,
-  SunIcon
+  Edit24Icon,
+  TrashIcon,
+  Copy32Icon,
+  ArrowsPointingInwardIcon
 } from '../../icons';
 import GeoSidebar from './GeoSidebar';
 import EnviroSidebar from './EnviroSidebar';
@@ -43,34 +42,16 @@ export default class Sidebar extends React.Component {
     };
   }
 
-  getEntityIcon = (entity) => {
-    if (entity.getAttribute('managed-street')) {
-      return <ManagedStreetIcon />;
-    }
-    if (entity.getAttribute('street-segment')) {
-      return <SegmentIcon />;
-    }
-
-    switch (entity.id) {
-      case 'environment':
-        return <SunIcon />;
-      case 'reference-layers':
-        return <GeospatialIcon />;
-      case 'street-container':
-        return <LayersIcon />;
-      case 'cameraRig':
-        return <VideoCameraIcon />;
-      default:
-        return <Object24Icon />;
-    }
-  };
-
   getParentComponentName = (entity) => {
     const componentName = entity.getAttribute('data-parent-component');
     const parentEntity = entity.parentElement;
     return componentName
       ? `${parentEntity.getAttribute('data-layer-name') || 'Entity'}:${componentName}`
       : 'Unknown';
+  };
+
+  hasParentComponent = (entity) => {
+    return entity.getAttribute('data-parent-component');
   };
 
   fireParentComponentDetach = (entity) => {
@@ -146,9 +127,7 @@ export default class Sidebar extends React.Component {
             <>
               <div id="layers-title" onClick={this.toggleRightBar}>
                 <div className="layersBlock">
-                  <div className="icon-container">
-                    {this.getEntityIcon(entity)}
-                  </div>
+                  <div className="icon-container">{getEntityIcon(entity)}</div>
                   <span>{entityName || formattedMixin}</span>
                 </div>
                 <div id="toggle-rightbar">
@@ -163,39 +142,40 @@ export default class Sidebar extends React.Component {
                     {entity.classList.contains('autocreated') && (
                       <div className="sidepanelContent">
                         <div className="flex items-center gap-2">
-                          <div className="scale-[0.8] transform">
-                            <AutoIcon />
-                          </div>
-                          Autocreated Clone
+                          Autocreated Entity
                         </div>
-                        <div className="collapsible-content">
-                          <div className="propertyRow">
-                            <label className="text">Managed by</label>
-                            <input
-                              className="string"
-                              type="text"
-                              value={this.getParentComponentName(entity)}
-                              readOnly
-                            />
-                          </div>
-                        </div>
-                        <div id="sidebar-buttons">
-                          <Button
-                            variant={'toolbtn'}
-                            onClick={() => this.selectParentEntity(entity)}
-                          >
-                            <ArrowLeftHookIcon /> Edit Clone Settings
-                          </Button>
-                          <Button
-                            variant={'toolbtn'}
-                            onClick={() =>
-                              this.fireParentComponentDetach(entity)
-                            }
-                          >
-                            <ManualIcon />
-                            Convert to Manual
-                          </Button>
-                        </div>
+                        {this.hasParentComponent(entity) && (
+                          <>
+                            <div className="collapsible-content">
+                              <div className="propertyRow">
+                                <label className="text">Managed by</label>
+                                <input
+                                  className="string"
+                                  type="text"
+                                  value={this.getParentComponentName(entity)}
+                                  readOnly
+                                />
+                              </div>
+                            </div>
+                            <div id="sidebar-buttons">
+                              <Button
+                                variant={'toolbtn'}
+                                onClick={() => this.selectParentEntity(entity)}
+                              >
+                                <ArrowLeftHookIcon /> Edit Clone Settings
+                              </Button>
+                              <Button
+                                variant={'toolbtn'}
+                                onClick={() =>
+                                  this.fireParentComponentDetach(entity)
+                                }
+                              >
+                                <Object24IconCyan />
+                                Detach
+                              </Button>
+                            </div>
+                          </>
+                        )}
                       </div>
                     )}
                     <div className="sidepanelContent">
@@ -208,22 +188,36 @@ export default class Sidebar extends React.Component {
                       {entity.hasAttribute('data-no-transform') ? (
                         <></>
                       ) : (
-                        <div id="sidebar-buttons">
+                        <div id="sidebar-buttons-small">
+                          <Button
+                            variant={'toolbtn'}
+                            onClick={() =>
+                              Events.emit('objectfocus', entity.object3D)
+                            }
+                            onLongPress={() => setFocusCameraPose(entity)}
+                            longPressDelay={1500} // Optional, defaults to 2000ms
+                            leadingIcon={<ArrowsPointingInwardIcon />}
+                          >
+                            Focus
+                          </Button>
                           <Button
                             variant={'toolbtn'}
                             onClick={() => renameEntity(entity)}
+                            leadingIcon={<Edit24Icon />}
                           >
                             Rename
                           </Button>
                           <Button
                             variant={'toolbtn'}
                             onClick={() => cloneEntity(entity)}
+                            leadingIcon={<Copy32Icon />}
                           >
                             Duplicate
                           </Button>
                           <Button
                             variant={'toolbtn'}
                             onClick={() => removeSelectedEntity()}
+                            leadingIcon={<TrashIcon />}
                           >
                             Delete
                           </Button>
@@ -244,6 +238,9 @@ export default class Sidebar extends React.Component {
                     {entity.getAttribute('street-segment') && (
                       <>
                         <StreetSegmentSidebar entity={entity} />
+                        <hr />
+                        <AddGeneratorComponent entity={entity} />
+                        <hr />
                         <div className="advancedComponentsContainer">
                           <AdvancedComponents entity={entity} />
                         </div>
@@ -269,9 +266,7 @@ export default class Sidebar extends React.Component {
                   <span className="absolute right-12 whitespace-nowrap rounded bg-gray-800 px-2 py-1 text-white opacity-0 transition-all duration-300 group-hover:opacity-100">
                     {entityName || formattedMixin}
                   </span>
-                  <div className="relative z-10">
-                    {this.getEntityIcon(entity)}
-                  </div>
+                  <div className="relative z-10">{getEntityIcon(entity)}</div>
                 </div>
               </div>
             </>

@@ -193,6 +193,28 @@
   display: flex;
   justify-content: center;
   align-items: center;
-  width: 24px;
+  width: 20px;
   height: 24px;
+}
+
+.pressProgress {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  height: 2px;
+  background-color: variables.$purple;
+  width: 0;
+
+  &.pressing {
+    animation: progress var(--press-duration, 2000ms) linear forwards;
+  }
+}
+
+@keyframes progress {
+  0% {
+    width: 0;
+  }
+  100% {
+    width: 100%;
+  }
 }

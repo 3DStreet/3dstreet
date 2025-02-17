@@ -10,6 +10,7 @@ import { saveBlob } from '../../../lib/utils';
 import { saveScreenshot } from '../../../api/scene';
 import useStore from '@/store';
 import { convertToObject } from '@/editor/lib/SceneUtils';
+import { transformUVs, addGLBMetadata } from './gltfTransforms';
 
 const filterHelpers = (scene, visible) => {
   scene.traverse((o) => {
@@ -73,7 +74,13 @@ function ScreenshotModal() {
       value: 'GLB glTF',
       label: 'GLB glTF',
       proIcon: true,
-      onClick: () => exportSceneToGLTF(currentUser?.isPro)
+      onClick: () => exportSceneToGLTF(currentUser?.isPro, false)
+    },
+    {
+      value: 'AR Ready GLB',
+      label: '`AR Ready` GLB',
+      proIcon: true,
+      onClick: () => exportSceneToGLTF(currentUser?.isPro, true)
     },
     {
       value: '.3dstreet.json',
@@ -91,27 +98,113 @@ function ScreenshotModal() {
     setSelectedOption(value);
   };
 
-  const exportSceneToGLTF = (isPro) => {
+  const getMixinCategories = () => {
+    const mapping = {};
+    const mixinElements = document.querySelectorAll('a-mixin');
+    for (let mixinEl of Array.from(mixinElements)) {
+      const category = mixinEl.getAttribute('category');
+      if (category) {
+        mapping[mixinEl.id] = category;
+      }
+    }
+    return mapping;
+  };
+
+  const filterRiggedEntities = (scene, visible) => {
+    const mixinToCategory = getMixinCategories();
+
+    scene.traverse((node) => {
+      if (node.el && node.el.components) {
+        const mixin = node.el.getAttribute('mixin');
+        if (mixin) {
+          const category = mixinToCategory[mixin];
+          if (
+            category &&
+            (category.includes('people') ||
+              category.includes('people-rigged') ||
+              category.includes('vehicles') ||
+              category.includes('vehicles-transit') ||
+              category.includes('cyclists'))
+          ) {
+            node.visible = visible;
+            console.log(
+              'Hiding Rigged Entity',
+              node.el.id || 'unnamed',
+              'category:',
+              category
+            );
+          }
+        }
+      }
+    });
+  };
+  const exportSceneToGLTF = (isPro, arReady) => {
     if (isPro) {
       try {
         const sceneName = getSceneName(AFRAME.scenes[0]);
-        const scene = AFRAME.scenes[0].object3D;
+        let scene = AFRAME.scenes[0].object3D;
+        if (arReady) {
+          // only export user layers, not geospatial
+          scene = document.querySelector('#street-container').object3D;
+        }
         posthog.capture('export_scene_to_gltf_clicked', {
           scene_id: STREET.utils.getCurrentSceneId()
         });
 
+        // if AR Ready mode, then remove rigged vehicles and people from the scene
+        if (arReady) {
+          filterRiggedEntities(scene, false);
+        }
         filterHelpers(scene, false);
+        // Modified to handle post-processing
         AFRAME.INSPECTOR.exporters.gltf.parse(
           scene,
-          function (buffer) {
+          async function (buffer) {
             filterHelpers(scene, true);
-            const blob = new Blob([buffer], {
+            filterRiggedEntities(scene, true);
+
+            let finalBuffer = buffer;
+
+            // Post-process GLB if AR Ready option is selected
+            if (arReady) {
+              try {
+                finalBuffer = await transformUVs(buffer);
+                console.log('Successfully post-processed GLB file');
+              } catch (error) {
+                console.warn('Error in GLB post-processing:', error);
+                // Fall back to original buffer if post-processing fails
+                STREET.notify.warningMessage(
+                  'UV transformation skipped - using original export'
+                );
+              }
+            }
+
+            // fetch metadata from scene
+            const geoLayer = document.getElementById('reference-layers');
+            if (geoLayer && geoLayer.hasAttribute('street-geo')) {
+              const metadata = {
+                longitude: geoLayer.getAttribute('street-geo').longitude,
+                latitude: geoLayer.getAttribute('street-geo').latitude,
+                orthometricHeight:
+                  geoLayer.getAttribute('street-geo').orthometricHeight,
+                geoidHeight: geoLayer.getAttribute('street-geo').geoidHeight,
+                ellipsoidalHeight:
+                  geoLayer.getAttribute('street-geo').ellipsoidalHeight,
+                orientation: 270
+              };
+              finalBuffer = await addGLBMetadata(finalBuffer, metadata);
+              console.log('Successfully added geospatial metadata to GLB file');
+            }
+            const blob = new Blob([finalBuffer], {
               type: 'application/octet-stream'
             });
             saveBlob(blob, sceneName + '.glb');
           },
           function (error) {
             console.error(error);
+            STREET.notify.errorMessage(
+              `Error while trying to save glTF file. Error: ${error}`
+            );
           },
           { binary: true }
         );

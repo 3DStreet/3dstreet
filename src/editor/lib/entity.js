@@ -2,7 +2,16 @@
 import { nanoid } from 'nanoid';
 import Events from './Events';
 import { equal } from './utils';
-import { SunIcon, VideoCameraIcon, LayersIcon } from '../icons';
+import {
+  GeospatialIcon,
+  ManagedStreetIcon,
+  SegmentIcon,
+  AutoIcon,
+  SunIcon,
+  VideoCameraIcon,
+  LayersIcon,
+  Object24IconCyan
+} from '../icons';
 
 /**
  * Update a component.
@@ -537,35 +546,14 @@ export function createUniqueId() {
 }
 
 export function getComponentClipboardRepresentation(entity, componentName) {
-  /**
-   * Get the list of modified properties
-   * @param  {Element} entity        Entity where the component belongs
-   * @param  {string} componentName Component name
-   * @return {object}               List of modified properties with their value
-   */
-  function getModifiedProperties(entity, componentName) {
-    var data = entity.components[componentName].data;
-    var defaultData = entity.components[componentName].schema;
-    var diff = {};
-    for (var key in data) {
-      // Prevent adding unknown attributes
-      if (!defaultData[key]) {
-        continue;
-      }
-
-      var defaultValue = defaultData[key].default;
-      var currentValue = data[key];
-
-      // Some parameters could be null and '' like mergeTo
-      if ((currentValue || defaultValue) && currentValue !== defaultValue) {
-        diff[key] = data[key];
-      }
-    }
-    return diff;
+  entity.flushToDOM();
+  const data = entity.getDOMAttribute(componentName);
+  if (!data) {
+    return componentName;
   }
 
-  const diff = getModifiedProperties(entity, componentName);
-  const attributes = AFRAME.utils.styleParser.stringify(diff);
+  const schema = entity.components[componentName].schema;
+  const attributes = stringifyComponentValue(schema, data);
   return `${componentName}="${attributes}"`;
 }
 
@@ -588,26 +576,44 @@ export function getEntityDisplayName(entity) {
   return displayName;
 }
 
+export function getEntityIcon(entity) {
+  // Check for component-based icons first
+  if (entity.getAttribute('managed-street')) {
+    return <ManagedStreetIcon />;
+  }
+  if (entity.getAttribute('street-segment')) {
+    return <SegmentIcon />;
+  }
+
+  // Check for class-based icons
+  if (entity.classList.contains('autocreated')) {
+    return <AutoIcon />;
+  }
+
+  // Check for ID-based icons
+  switch (entity.id) {
+    case 'environment':
+      return <SunIcon />;
+    case 'reference-layers':
+      return <GeospatialIcon />;
+    case 'street-container':
+      return <LayersIcon />;
+    case 'cameraRig':
+      return <VideoCameraIcon />;
+    default:
+      return <Object24IconCyan />;
+  }
+}
+
 /**
  * Entity representation.
  */
-const ICONS = {
-  cameraRig: <VideoCameraIcon />,
-  environment: <SunIcon />,
-  'street-container': <LayersIcon />
-};
-
 export function printEntity(entity) {
   if (!entity) {
     return '';
   }
 
-  let icon = null;
-  for (let entityId in ICONS) {
-    if (entityId === entity.id) {
-      icon = ICONS[entityId];
-    }
-  }
+  const icon = getEntityIcon(entity);
 
   // Custom display name for a layer if available, otherwise use entity name or tag
   let displayName = getEntityDisplayName(entity);
@@ -676,4 +682,28 @@ export function createEntity(definition, cb, parentEl = undefined) {
   }
 
   return entity;
+}
+
+export function setFocusCameraPose(entity) {
+  const camera = AFRAME.INSPECTOR.camera;
+  const cameraPositionRelativeToEntity = entity.object3D.worldToLocal(
+    camera.position.clone()
+  );
+  if (entity.hasAttribute('focus-camera-pose')) {
+    AFRAME.INSPECTOR.execute('entityupdate', {
+      entity: entity,
+      component: 'focus-camera-pose',
+      property: 'relativePosition',
+      value: cameraPositionRelativeToEntity
+    });
+  } else {
+    AFRAME.INSPECTOR.execute('componentadd', {
+      entity: entity,
+      component: 'focus-camera-pose',
+      value: {
+        relativePosition: cameraPositionRelativeToEntity
+      }
+    });
+  }
+  STREET.notify.successMessage('Focus camera pose set');
 }

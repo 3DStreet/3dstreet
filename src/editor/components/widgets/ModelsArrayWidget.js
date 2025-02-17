@@ -147,6 +147,9 @@ export default class ModelsArrayWidget extends React.Component {
               onChange={this.updateModels.bind(this)}
               simpleValue
               value={this.state.modelsArrayWidget}
+              menuPosition="fixed"
+              menuPlacement="auto"
+              minMenuHeight={300}
             />
           </span>
         </div>

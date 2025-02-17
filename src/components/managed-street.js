@@ -1,189 +1,12 @@
 /* global AFRAME */
-
 // Orientation - default model orientation is "outbound" (away from camera)
+import {
+  STREETPLAN_MATERIAL_MAPPING,
+  STREETPLAN_OBJECT_TO_GENERATED_CLONES_MAPPING
+} from './street-mapping-streetplan.js';
 const { segmentVariants } = require('../segments-variants.js');
 const streetmixUtils = require('../tested/streetmix-utils');
 const streetmixParsersTested = require('../tested/aframe-streetmix-parsers-tested');
-
-// STREETPLAN HELPER FUNCTIONS
-// Material mapping from Streetplan to 3DStreet surfaces
-const STREETPLAN_MATERIAL_MAPPING = {
-  'asphalt black': { surface: 'asphalt', color: '#aaaaaa' },
-  'asphalt blue': { surface: 'asphalt', color: '#aaaaff' },
-  'asphalt red 1': { surface: 'asphalt', color: '#ffaaaa' },
-  'asphalt red 2': { surface: 'asphalt', color: '#ff0000' },
-  'asphalt green': { surface: 'asphalt', color: '#aaffaa' },
-  'asphalt old': { surface: 'asphalt' },
-  'standard concrete': { surface: 'concrete' },
-  grass: { surface: 'grass' },
-  'grass dead': { surface: 'grass' },
-  'pavers tan': { surface: 'sidewalk' },
-  'pavers brown': { surface: 'sidewalk' },
-  'pavers mixed': { surface: 'sidewalk' },
-  'pavers red': { surface: 'sidewalk', color: '#ffaaaa' },
-  'tint conc. or dirt': { surface: 'gravel' },
-  dirt: { surface: 'gravel' },
-  gravel: { surface: 'gravel' },
-  stonetan: { surface: 'sidewalk' },
-  'sidewalk 2': { surface: 'sidewalk' },
-  'cobble stone': { surface: 'sidewalk' },
-  'solid black': { surface: 'solid' },
-  'painted intersection': { surface: 'asphalt' },
-  'grass with edging': { surface: 'grass' },
-  xeriscape: { surface: 'grass' },
-  'grassslopemedian 12ft': { surface: 'grass' },
-  'grassslopemedian 24ft': { surface: 'grass' },
-  'grassslope 12ft-left': { surface: 'grass' },
-  'grassslope 12ft-right': { surface: 'grass' },
-  'grassslope 24ft-left': { surface: 'grass' },
-  'grassslope 24ft-right': { surface: 'grass' },
-  sand: { surface: 'sand' }
-};
-
-const STREETPLAN_OBJECT_MAPPING = {
-  'away, left park, head in': '',
-  'barrier 1-ft': 'temporary-jersey-barrier-concrete',
-  'barrier 2-ft': 'temporary-jersey-barrier-concrete',
-  'bike food cart': '',
-  'bikelane sharecar': '',
-  'bikerack bollard': '',
-  'blank pedrefuge (8ft)': '',
-  'blue car': 'sedan-rig',
-  'blue mailbox': 'usps-mailbox',
-  'bollard plastic yellow': 'bollard',
-  boulevardcirculator: 'minibus',
-  'boulevardcirculator rev': 'minibus',
-  'boxwood planter 2ft': 'dividers-planter-box',
-  'boxwood planter 3ft': 'dividers-planter-box',
-  'boxwood planter 5ft': 'dividers-planter-box',
-  'bur oak': 'tree3',
-  bus: 'bus',
-  'bus rev': 'bus',
-  'cactus median (10ft)': 'dividers-bush',
-  'cactus median (12ft)': 'dividers-bush',
-  'cactus median (4ft)': 'dividers-bush',
-  'cactus median (6ft)': 'dividers-bush',
-  'cactus median (8ft)': 'dividers-bush',
-  'casual woman': '',
-  couple: '',
-  'couple biking': '',
-  'desertwillow texas': 'tree3',
-  'dog walker': '',
-  'empty place holder': '',
-  'english oak': 'tree3',
-  'fleamarket stuff': '',
-  'flower median (10ft)': 'dividers-flowers',
-  'flower median (12ft)': 'dividers-flowers',
-  'flower median (4ft)': 'dividers-flowers',
-  'flower median (6ft)': 'dividers-flowers',
-  'flower median (8ft)': 'dividers-flowers',
-  'flower pot 4ft': 'dividers-flowers',
-  'floweringpear 18ft': 'tree3',
-  'flowers pedrefuge (8ft)': 'dividers-flowers',
-  goldenraintree: 'tree3',
-  'golfcart red 4ft back': 'tuk-tuk',
-  'grassmound (10ft)': '',
-  'grassmound (12ft)': '',
-  'grassmound (4ft)': '',
-  'grassmound (6ft)': '',
-  'grassmound (8ft)': '',
-  'grassy median (10ft)': '',
-  'grassy median (12ft)': '',
-  'grassy median (4ft)': '',
-  'grassy median (6ft)': '',
-  'grassy median (8ft)': '',
-  'green car': 'sedan-rig',
-  'heavy rail': 'tram',
-  'heavy rail rev': 'tram',
-  'historic light': 'lamp-traditional',
-  'historic no banner': 'lamp-traditional',
-  'historic with banners': 'lamp-traditional',
-  'historic with flowers 1': 'lamp-traditional',
-  'historic with flowers 2': 'lamp-traditional',
-  honeylocust: 'tree3',
-  'japanese lilac': 'tree3',
-  'japanese zelkova': 'tree3',
-  'jerusalem thorn': 'tree3',
-  'kentucky coffeetree': 'tree3',
-  'large food cart': '',
-  'large oak': 'tree3',
-  'light rail poles': '',
-  'moto highway rider': 'motorbike',
-  'mountable barrier 1-ft': '',
-  'nev shuttle back': 'minibus',
-  'nev shuttle front': 'minibus',
-  'nyc bike rack': 'bikerack',
-  'orange barrel': 'temporary-traffic-cone',
-  'palm tree': 'palm-tree',
-  'palmtree 20ft': 'palm-tree',
-  'palmtree 28ft': 'palm-tree',
-  'pine tree': 'tree3',
-  'pink flower 16ft': 'tree3',
-  'planter flowers': 'dividers-flowers',
-  'planter with bench': 'bench',
-  'polaris gem e4': 'tuk-tuk',
-  'power tower 30ft': '',
-  'purpendicular right side, blue': '',
-  'purpendicular right side, red': '',
-  'purpleleaf plum': 'tree3',
-  'random trashcan': 'trash-bin',
-  'red berries 14ft': 'tree3',
-  'red car': 'sedan-rig',
-  'red jeep': 'suv-rig',
-  'rock median (10ft)': '',
-  'rock median (12ft)': '',
-  'rock median (4ft)': '',
-  'rock median (6ft)': '',
-  'rock median (8ft)': '',
-  'semi truck': 'box-truck-rig',
-  'serious man': '',
-  shelter: 'bus-stop',
-  'shelter roundroof': 'bus-stop',
-  'sign directory': 'wayfinding',
-  'silver suv': 'suv-rig',
-  'small tree': 'tree3',
-  smallnev: 'minibus',
-  'smartcar 5ft': 'self-driving-cruise-car-rig',
-  'soundwall (12ft)': '',
-  'soundwall (8ft)': '',
-  'soundwall plants (12ft)': '',
-  'soundwall plants (8ft)': '',
-  'street light': 'lamp-modern',
-  'streetcar blue': 'trolley',
-  'streetcar red 1': 'trolley',
-  'streetcar red 2': 'trolley',
-  'streetcar yellow': 'trolley',
-  'streetlight solar': 'lamp-modern',
-  'streetlight solar banners 1': 'lamp-modern',
-  'streetlight solar banners 2': 'lamp-modern',
-  tallgrass: '',
-  'tallplantbox (10ft)': '',
-  'tallplantbox (12ft)': 'dividers-bush',
-  'tallplantbox (4ft)': '',
-  'tallplantbox (6ft)': '',
-  'tallplantbox (8ft)': '',
-  'tallplantbox pedref (10ft)': '',
-  'tallplantbox pedref (12ft)': '',
-  'tallplantbox pedref (6ft)': '',
-  'tallplantbox pedref (8ft)': '',
-  'telephone pole': 'utility_pole',
-  'tent bluewhite': '',
-  'tent veggie': '',
-  'toward, right park, head in': '',
-  trashcan: 'trash-bin',
-  'tropical median (4ft)': 'palm-tree',
-  'two bikes back': '',
-  'uta bus': 'bus',
-  'uta lightrail': 'tram',
-  'uta lightrail rev': 'tram',
-  'weeds median (4ft)': '',
-  'weeds median (6ft)': '',
-  'weeds median (8ft)': '',
-  'white coup': 'sedan-rig',
-  'white sedan': 'sedan-rig',
-  'white truck': 'box-truck-rig',
-  'yellow sedan': 'sedan-rig'
-};
 
 // Streetplan Helper function to parse O-Tags string into array
 function parseOTags(tags) {
@@ -195,14 +18,21 @@ function parseOTags(tags) {
 function createCloneConfig(name, tags) {
   if (!name || name === '-') return null;
 
-  const model = STREETPLAN_OBJECT_MAPPING[name.toLowerCase()];
-  if (!model) return null;
+  const generatedClonesConfig =
+    STREETPLAN_OBJECT_TO_GENERATED_CLONES_MAPPING[name.toLowerCase()];
+  if (!generatedClonesConfig) return null;
 
-  return {
-    mode: 'fixed', // default to fixed mode
-    modelsArray: model,
-    spacing: 15 // default spacing
-  };
+  // if the config is an object, then it is a generated clone config
+  if (typeof generatedClonesConfig === 'object') {
+    return generatedClonesConfig;
+  } else {
+    // if it is a string, then it is a model mixin
+    return {
+      mode: 'fixed', // default to fixed mode
+      modelsArray: generatedClonesConfig,
+      spacing: 15 // default spacing
+    };
+  }
 }
 
 AFRAME.registerComponent('managed-street', {
@@ -520,6 +350,9 @@ AFRAME.registerComponent('managed-street', {
       }
 
       const streetplanData = await response.json();
+      if (streetplanData.status === false) {
+        throw new Error(`streetplan returned status: false`);
+      }
       const boulevard = streetplanData.project['My Street']['Boulevard Alt 1'];
 
       const streetLength =
@@ -547,11 +380,11 @@ AFRAME.registerComponent('managed-street', {
         const segmentWidth = parseFloat(segment.width) * 0.3048; // Convert feet to meters
         streetObject.width += segmentWidth;
 
-        // Convert streetplan segment type based on your schema
+        // Convert from streetplan segment type to managed street types
         let segmentType = 'drive-lane'; // Default type
         let segmentDirection = 'inbound';
 
-        // convert from streetplan type to managed street default type
+        // convert from streetplan segment types to managed street presets
         switch (segment.Type) {
           case 'BikesPaths':
             segmentType = 'bike-lane';

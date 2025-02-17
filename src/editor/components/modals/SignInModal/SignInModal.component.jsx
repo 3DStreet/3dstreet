@@ -33,7 +33,7 @@ const SignInModal = () => {
       <div className={styles.contentWrapper}>
         <h2 className={styles.title}>Sign in</h2>
         <div className={styles.content}>
-          <p className={styles.p1}>Sign in to save your project.</p>
+          <p className={styles.p1}>Sign in to save and share scenes.</p>
         </div>
         <div
           onClick={() => {

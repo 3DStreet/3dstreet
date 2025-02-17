@@ -150,6 +150,9 @@ export default class Mixin extends React.Component {
                 noOptionsMessage={() => 'No mixins found'}
                 onChange={this.updateMixins.bind(this)}
                 value={this.state.mixins}
+                menuPosition="fixed"
+                menuPlacement="auto"
+                minMenuHeight={300}
               />
             ) : (
               <Select
@@ -169,6 +172,9 @@ export default class Mixin extends React.Component {
                 noOptionsMessage={() => 'No models found'}
                 onChange={this.updateMixinSingle.bind(this)}
                 value={this.state.mixins}
+                menuPosition="fixed"
+                menuPlacement="auto"
+                minMenuHeight={300}
               />
             )}
           </span>

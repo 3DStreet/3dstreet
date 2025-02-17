@@ -19,6 +19,9 @@ import useStore from '@/store.js';
 const emptyImg = new Image();
 emptyImg.src = 'data:image/gif;base64,R0lGODlhAQABAAD/ACwAAAAAAQABAAACADs=';
 
+// base asset path
+const assetBasePath = 'https://assets.3dstreet.app/';
+
 // get all mixin data divided into groups, from a-mixin DOM elements
 const getGroupedMixinOptions = () => {
   const mixinElements = document.querySelectorAll('a-mixin');
@@ -47,10 +50,15 @@ const getGroupedMixinOptions = () => {
     let mixinName = '';
     let mixinDescr = '';
 
-    if (mixinDataFromCatalog) {
+    if (mixinDataFromCatalog && mixinDataFromCatalog.display !== 'none') {
       mixinImg = mixinDataFromCatalog.img;
       mixinName = mixinDataFromCatalog.name;
       mixinDescr = mixinDataFromCatalog.description;
+    }
+
+    // if mixinImg does not contain http, then prepend the base asset path
+    if (!mixinImg.includes('http')) {
+      mixinImg = assetBasePath + mixinImg;
     }
     const mixinData = {
       // here could be data from dataCards JSON file
@@ -61,7 +69,9 @@ const getGroupedMixinOptions = () => {
       description: mixinDescr,
       id: index
     };
-    groupedObject[categoryName].push(mixinData);
+    if (mixinDataFromCatalog?.display !== 'none') {
+      groupedObject[categoryName].push(mixinData);
+    }
     index += 1;
   }
 

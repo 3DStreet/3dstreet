@@ -8,7 +8,7 @@ import { ScreenshotModal } from './modals/ScreenshotModal';
 // import ViewportHUD from "./viewport/ViewportHUD";
 import { SignInModal } from './modals/SignInModal';
 import { ProfileModal } from './modals/ProfileModal';
-import { firebaseConfig, app } from '../services/firebase.js';
+import { firebaseConfig } from '../services/firebase.js';
 import { LoadScript } from '@react-google-maps/api';
 import { GeoModal } from './modals/GeoModal';
 import { ActionBar } from './components/ActionBar';
@@ -19,8 +19,6 @@ import { AddLayerPanel } from './components/AddLayerPanel';
 import { NewModal } from './modals/NewModal';
 import { ToolbarWrapper } from './scenegraph/ToolbarWrapper.js';
 import useStore from '@/store';
-import { AIChatProvider } from '../contexts/AIChatContext';
-import AIChatPanel from './scenegraph/AIChatPanel';
 
 THREE.ImageUtils.crossOrigin = '';
 
@@ -110,60 +108,57 @@ export default function Main() {
 
   return (
     <div id="inspectorContainer">
-      <AIChatProvider firebaseApp={app}>
-        <ToolbarWrapper />
-        {isInspectorEnabled && (
-          <div>
-            <SceneGraph
-              scene={scene}
-              selectedEntity={state.entity}
-              visible={state.visible.scenegraph}
+      <ToolbarWrapper />
+      {isInspectorEnabled && (
+        <div>
+          <SceneGraph
+            scene={scene}
+            selectedEntity={state.entity}
+            visible={state.visible.scenegraph}
+          />
+          <div id="rightPanel">
+            <ComponentsSidebar
+              entity={state.entity}
+              visible={state.visible.attributes}
             />
-            <AIChatPanel />
-            <div id="rightPanel">
-              <ComponentsSidebar
-                entity={state.entity}
-                visible={state.visible.attributes}
-              />
-            </div>
           </div>
-        )}
-        <ScreenshotModal />
-        <SignInModal />
-        <PaymentModal />
-        <ScenesModal />
-        <ProfileModal />
-        <NewModal />
-        <LoadScript
-          googleMapsApiKey={firebaseConfig.apiKey}
-          libraries={GOOGLE_MAPS_LIBRARIES}
-        >
-          <GeoModal />
-        </LoadScript>
-        <ModalTextures
-          isOpen={state.isModalTexturesOpen}
-          selectedTexture={state.selectedTexture}
-          onClose={onModalTextureOnClose}
-        />
+        </div>
+      )}
+      <ScreenshotModal />
+      <SignInModal />
+      <PaymentModal />
+      <ScenesModal />
+      <ProfileModal />
+      <NewModal />
+      <LoadScript
+        googleMapsApiKey={firebaseConfig.apiKey}
+        libraries={GOOGLE_MAPS_LIBRARIES}
+      >
+        <GeoModal />
+      </LoadScript>
+      <ModalTextures
+        isOpen={state.isModalTexturesOpen}
+        selectedTexture={state.selectedTexture}
+        onClose={onModalTextureOnClose}
+      />
 
-        {isInspectorEnabled && (
-          <>
-            <div id="action-bar">
-              <ActionBar selectedEntity={state.entity} />
-            </div>
-            <div id="scene-title" className="clickable">
-              <SceneEditTitle />
-            </div>
-            <div id="zoom-help-buttons">
-              <ZoomButtons />
-              <HelpButton />
-              <div className="clickable">
-                <AddLayerPanel />
-              </div>
-            </div>
-          </>
-        )}
-      </AIChatProvider>
+      {isInspectorEnabled && (
+        <>
+          <div id="action-bar">
+            <ActionBar selectedEntity={state.entity} />
+          </div>
+          <div id="scene-title" className="clickable">
+            <SceneEditTitle />
+          </div>
+          <div id="zoom-help-buttons">
+            <ZoomButtons />
+            <HelpButton />
+          </div>
+          <div className="clickable">
+            <AddLayerPanel />
+          </div>
+        </>
+      )}
     </div>
   );
 }

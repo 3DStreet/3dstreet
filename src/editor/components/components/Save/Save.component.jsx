@@ -105,7 +105,10 @@ export const Save = ({ currentUser }) => {
               <Button
                 leadingIcon={<Cloud24Icon />}
                 variant="white"
-                onClick={() => saveScene(false)}
+                onClick={() => {
+                  saveScene(false);
+                  setIsSaveActionActive(false);
+                }}
                 disabled={isSavingScene || !isAuthor()}
               >
                 <div>Save</div>
@@ -113,7 +116,10 @@ export const Save = ({ currentUser }) => {
               <Button
                 leadingIcon={<Cloud24Icon />}
                 variant="white"
-                onClick={() => saveScene(true)}
+                onClick={() => {
+                  saveScene(true);
+                  setIsSaveActionActive(false);
+                }}
                 disabled={isSavingScene}
               >
                 <div>Make a Copy</div>

@@ -56,7 +56,10 @@ function Toolbar({ currentUser }) {
               >
                 <div>Share</div>
               </Button>
-              <div onClick={() => setModal('profile')}>
+              <div
+                onClick={() => setModal(currentUser ? 'profile' : 'signin')}
+                aria-label={currentUser ? 'Open profile' : 'Sign in'}
+              >
                 <ProfileButton />
               </div>
             </div>

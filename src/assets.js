@@ -1,8 +1,9 @@
 /* global AFRAME, customElements */
 const catalog = require('./catalog.json');
 
+const assetBasePath = 'https://assets.3dstreet.app/'; // use this path if none specified in index.html assets tag
+
 function buildAssetHTML(assetUrl, categories) {
-  // if (!assetUrl) assetUrl = 'https://assets.3dstreet.app/';
   console.log('[street]', 'Using street assets from', assetUrl);
   const surfacesRoughness = 0.8;
   var assetsObj = {
@@ -88,30 +89,6 @@ function buildAssetHTML(assetUrl, categories) {
         <a-mixin shadow id="Character_1_M" gltf-part="src: #magic-carpet-glb; part: Character_1_M"></a-mixin>
         <a-mixin shadow id="magic-carpet" gltf-part="src: #magic-carpet-glb; part: magic-carpet"></a-mixin>
       `,
-    buildings: `
-        <!-- blocks -->
-        <a-asset-item id="blockmodel" src="${assetUrl}sets/buildings/gltf-exports/draco/buildings.glb"></a-asset-item>
-        <a-asset-item id="archedmodel" src="${assetUrl}sets/arcade-style-buildings/gltf-exports/draco/arched-buildings.glb"></a-asset-item>
-        <a-asset-item id="suburbiamodel" src="${assetUrl}sets/suburban-houses/gltf-exports/draco/suburban-houses.glb"></a-asset-item>
-
-        <!-- buildings and blocks -->
-        <a-mixin shadow id="SM3D_Bld_Mixed_Corner_4fl" scale="1 1 1" rotation="0 0 0" gltf-part="src: #blockmodel; part: SM3D_Bld_Mixed_Corner_4fl"></a-mixin>
-        <a-mixin shadow id="SM3D_Bld_Mixed_Double_5fl" scale="1 1 1" rotation="0 0 0" gltf-part="src: #blockmodel; part: SM3D_Bld_Mixed_Double_5fl"></a-mixin>
-        <a-mixin shadow id="SM3D_Bld_Mixed_4fl_2" scale="1 1 1" rotation="0 0 0" gltf-part="src: #blockmodel; part: SM3D_Bld_Mixed_4fl_2"></a-mixin>
-        <a-mixin shadow id="SM3D_Bld_Mixed_5fl" scale="1 1 1" rotation="0 0 0" gltf-part="src: #blockmodel; part: SM3D_Bld_Mixed_5fl"></a-mixin>
-        <a-mixin shadow id="SM3D_Bld_Mixed_4fl" scale="1 1 1" rotation="0 0 0" gltf-part="src: #blockmodel; part: SM3D_Bld_Mixed_4fl"></a-mixin>
-
-        <!-- suburban buildings -->
-        <a-mixin shadow id="SM_Bld_House_Preset_03_1800" scale="1 1 1" rotation="0 0 0" gltf-part="src: #suburbiamodel; part: suburban-house_1"></a-mixin>
-        <a-mixin shadow id="SM_Bld_House_Preset_08_1809" scale="1 1 1" rotation="0 0 0" gltf-part="src: #suburbiamodel; part: suburban-house_3"></a-mixin>
-        <a-mixin shadow id="SM_Bld_House_Preset_09_1845" scale="1 1 1" rotation="0 0 0" gltf-part="src: #suburbiamodel; part: suburban-house_2"></a-mixin>
-
-        <!-- arched style buildings -->
-        <a-mixin shadow id="arched-building-01" scale="1 1 1" rotation="0 0 0" gltf-part="src: #archedmodel; part: arched-building-01"></a-mixin>
-        <a-mixin shadow id="arched-building-02" scale="1 1 1" rotation="0 0 0" gltf-part="src: #archedmodel; part: arched-building-02"></a-mixin>
-        <a-mixin shadow id="arched-building-03" scale="1 1 1" rotation="0 0 0" gltf-part="src: #archedmodel; part: arched-building-03"></a-mixin>
-        <a-mixin shadow id="arched-building-04" scale="1 1 1" rotation="0 0 0" gltf-part="src: #archedmodel; part: arched-building-04"></a-mixin>
-`,
     'intersection-props': `
         <a-mixin shadow id="signal_left" gltf-model="url(${assetUrl}sets/signals/gltf-exports/draco/signal1.glb)"></a-mixin>
         <a-mixin shadow id="signal_right" gltf-model="url(${assetUrl}sets/signals/gltf-exports/draco/signal2.glb)"></a-mixin>
@@ -219,6 +196,9 @@ function buildAssetHTML(assetUrl, categories) {
         <a-mixin shadow id="street-element-traffic-island" scale="1.5 1.5 1.5" rotation="0 0 0" gltf-model="url(${assetUrl}sets/uoregon/gltf-exports/draco/curb-traffic-island.glb)"></a-mixin>
         <a-mixin shadow id="street-element-speed-hump" scale="1.5 1.5 1.5" rotation="0 0 0" gltf-model="url(${assetUrl}sets/uoregon/gltf-exports/draco/speed-hump.glb)"></a-mixin>
         <a-mixin shadow id="crosswalk-zebra-box" geometry="primitive: box; height: 0.1; width: 2; depth: 10" material="src: url(${assetUrl}materials/markings-crosswalk.png)"></a-mixin>
+        <a-mixin shadow id="crosswalk-rainbow-box" geometry="primitive: box; height: 0.1; width: 2; depth: 10" material="src: url(${assetUrl}materials/crosswalk-rainbow.png)"></a-mixin>
+        <a-mixin shadow id="crosswalk-double-box" geometry="primitive: box; height: 0.1; width: 2; depth: 10" material="src: url(${assetUrl}materials/crosswalk-double.png)"></a-mixin>
+        <a-mixin shadow id="crosswalk-piano-box" geometry="primitive: box; height: 0.1; width: 2; depth: 10" material="src: url(${assetUrl}materials/crosswalk-piano.png)"></a-mixin>
         <a-mixin shadow id="crosswalk-rainbow" geometry="primitive: plane; width:2; height:12; skipCache: true;" material="src:${assetUrl}materials/crosswalk-rainbow.png; transparent: true;"></a-mixin>
         <a-mixin shadow id="crosswalk-double" geometry="primitive: plane; width:2; height:12; skipCache: true;" material="src:${assetUrl}materials/crosswalk-double.png; transparent: true;"></a-mixin>
         <a-mixin shadow id="crosswalk-mural" geometry="primitive: plane; width:2; height:12; skipCache: true;" material="src:${assetUrl}materials/crosswalk-mural.png; transparent: true;"></a-mixin>
@@ -300,11 +280,13 @@ function buildAssetHTML(assetUrl, categories) {
   // Iterate through catalog.json and add mixins to assetsHTML
   catalog.forEach((item) => {
     if (item.id && item.src) {
+      // if item.src does not contain http, then prepend the base asset path
+      const combinedPath = assetUrl + item.src;
       const mixinHTML = `
         <a-mixin
           id="${item.id}"
           shadow
-          gltf-model="url(${item.src})"
+          gltf-model="url(${combinedPath})"
           category="${item.category || ''}"
         ></a-mixin>`;
       assetsHTML += mixinHTML;
@@ -324,7 +306,7 @@ class StreetAssets extends AFRAME.ANode {
     var categories = this.getAttribute('categories');
     var assetUrl = this.getAttribute('url');
     if (!assetUrl) {
-      assetUrl = 'https://assets.3dstreet.app/';
+      assetUrl = assetBasePath;
       this.setAttribute('url', assetUrl);
     }
     const assetsHTML = buildAssetHTML(assetUrl, categories);

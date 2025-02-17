@@ -422,10 +422,137 @@ a.help-linkhover {
     color: variables.$blue-100;
   }
 }
-.fa-clipboard,
-.fa-trash-o {
-  display: none;
+.componentHeaderActions {
+  .button {
+    font-size: 16px;
+    padding: 4px;
+    text-decoration: none;
+    cursor: pointer;
+    opacity: 0.8;
+    transition: opacity 0.2s;
+
+    &:hover {
+      opacity: 1;
+    }
+  }
 }
+
 .advancedComponentsContainer {
   margin-top: 20px;
+}
+
+.componentHeader.collapsible-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+
+  .componentTitle {
+    flex: 1;
+  }
+
+  .componentHeaderActions {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+  }
+}
+
+// If you need to override any Button styles specifically for these icons:
+.componentHeaderActions {
+  .button[variant='toolbtn'] {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    padding: 4px;
+
+    svg {
+      width: 16px;
+      height: 16px;
+    }
+  }
+}
+
+// only show component header actions on hover
+.componentHeaderActions {
+  .button.remove-button {
+    opacity: 0;
+    transition: opacity 0.2s ease;
+  }
+}
+.componentHeader:hover {
+  .componentHeaderActions {
+    .button.remove-button {
+      opacity: 0.6;
+    }
+  }
+}
+
+/* Make the delete component hover state more specific to override the header hover */
+.componentHeader .componentHeaderActions .button.remove-button:hover {
+  opacity: 1 !important;
+  svg path {
+    stroke: #ff4444 !important;
+  }
+}
+
+#addComponentContainer {
+  align-items: center;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  padding: 20px 10px;
+
+  #addComponent {
+    width: 300px; // Slightly smaller than 348px for other component widths
+
+    .select__control {
+      padding: 12px 16px !important;
+      background: rgba(50, 50, 50, 0.8);
+      border: 1px solid variables.$purple-400;
+      border-radius: 10px;
+      box-sizing: border-box;
+      white-space: nowrap;
+      min-height: 48px; // Match other input heights
+
+      &:hover {
+        border-color: variables.$purple-700;
+      }
+
+      &--is-focused {
+        border-color: variables.$purple-700 !important;
+        box-shadow: none;
+      }
+    }
+
+    .select__placeholder {
+      color: variables.$white;
+      font-weight: 400;
+      font-size: 16px;
+    }
+
+    .select__single-value {
+      color: variables.$white;
+    }
+
+    .select__menu {
+      margin-top: 8px;
+      background: variables.$darkgray-300;
+      border: 1px solid variables.$purple-500;
+      border-radius: 10px;
+
+      .select__option {
+        padding: 12px 16px;
+        color: variables.$white;
+
+        &--is-focused {
+          background: variables.$black;
+        }
+
+        &--is-selected {
+          background: variables.$black;
+        }
+      }
+    }
+  }
 }

@@ -16,6 +16,8 @@ THREE.EditorControls = function (_object, domElement) {
   this.center = new THREE.Vector3();
   this.panSpeed = 0.001;
   this.zoomSpeed = 0.1;
+  // minimum speed factor for zoom and pan, speed is max(minSpeedFactor, distanceFromCenter) * zoomSpeed
+  this.minSpeedFactor = 8;
   this.rotationSpeed = 0.005;
 
   var object = _object;
@@ -79,15 +81,36 @@ THREE.EditorControls = function (_object, domElement) {
       distance = 0.1;
     }
 
-    object.position.copy(
-      target.localToWorld(
+    const targetEl = target.el;
+    let cameraPosition;
+    let lookAtPosition;
+    // if focus-camera-pose set on target then use that vec3 as target
+    if (targetEl && targetEl.hasAttribute('focus-camera-pose')) {
+      const poseRelativePosition =
+        targetEl.getAttribute('focus-camera-pose')['relativePosition'];
+      if (poseRelativePosition) {
+        // Create a vector from the relative position and transform it to world space
+        cameraPosition = target.localToWorld(
+          new THREE.Vector3(
+            poseRelativePosition.x,
+            poseRelativePosition.y,
+            poseRelativePosition.z
+          )
+        );
+      }
+    }
+    // Fallback to default positioning if no pose relative position
+    if (!cameraPosition) {
+      cameraPosition = target.localToWorld(
         new THREE.Vector3(0, center.y + distance * 0.5, distance * 2.5)
-      )
-    );
-    const pos = target.getWorldPosition(new THREE.Vector3());
-    pos.y = center.y;
-
-    object.lookAt(pos);
+      );
+    }
+    // Set camera position
+    object.position.copy(cameraPosition);
+    // Get position to look at
+    lookAtPosition = target.getWorldPosition(new THREE.Vector3());
+    lookAtPosition.y = center.y;
+    object.lookAt(lookAtPosition);
 
     // Save end camera position/quaternion
     this.focusAnimationComponent.transitionCamPosEnd.copy(object.position);
@@ -118,7 +141,9 @@ THREE.EditorControls = function (_object, domElement) {
       distance = object.position.distanceTo(center);
     }
 
-    delta.multiplyScalar(distance * scope.panSpeed);
+    delta.multiplyScalar(
+      Math.max(scope.minSpeedFactor, distance) * scope.panSpeed
+    );
     delta.applyMatrix3(normalMatrix.getNormalMatrix(object.matrix));
 
     object.position.add(delta);
@@ -135,9 +160,15 @@ THREE.EditorControls = function (_object, domElement) {
   this.zoom = function (delta) {
     var distance = object.position.distanceTo(center);
 
-    delta.multiplyScalar(distance * scope.zoomSpeed);
+    // Zoom speed is greater with distance and has a minimum speed closest to the center.
+    // If we go past the center, we move the center 2m in front of the camera.
+    const speedFactor = this.isOrthographic
+      ? distance
+      : Math.max(scope.minSpeedFactor, distance);
+    delta.multiplyScalar(speedFactor * scope.zoomSpeed);
 
-    if (delta.length() > distance) return;
+    const moveCenter = delta.length() > distance;
+    if (this.isOrthographic && moveCenter) return;
 
     delta.applyMatrix3(normalMatrix.getNormalMatrix(object.matrix));
 
@@ -158,6 +189,12 @@ THREE.EditorControls = function (_object, domElement) {
       object.updateProjectionMatrix();
     } else {
       object.position.add(delta);
+      // Move center as well so we can use zoom to actually move in the same direction indefinitely at the same speed
+      if (moveCenter) {
+        // Set new center 2m in front of camera
+        delta.set(0, 0, -2).applyMatrix3(normalMatrix);
+        center.copy(object.position).add(delta);
+      }
     }
 
     scope.dispatchEvent(changeEvent);
@@ -394,8 +431,9 @@ THREE.EditorControls = function (_object, domElement) {
       }
       object.updateProjectionMatrix();
     } else {
-      object.position.set(0, 15, 30);
-      object.lookAt(new THREE.Vector3(0, 1.6, -1));
+      center.set(0, 1.6, 0); // same as in viewport.js
+      object.position.set(0, 15, 30); // same as in camera.js
+      object.lookAt(center);
       object.updateMatrixWorld();
     }
 
