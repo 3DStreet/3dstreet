@@ -14,10 +14,10 @@ import './style/index.scss';
 import posthog from 'posthog-js';
 import { commandsByType } from './lib/commands/index.js';
 
-function Inspector() {
+function Inspector(configOverrides) {
   this.assetsLoader = new AssetsLoader();
   this.exporters = { gltf: new GLTFExporter() };
-  this.config = new Config();
+  this.config = new Config(configOverrides);
   this.history = new History();
   this.isFirstOpen = true;
   this.modules = {};
@@ -337,7 +337,9 @@ Inspector.prototype = {
   }
 };
 
-const inspector = (AFRAME.INSPECTOR = new Inspector());
+const inspector = (AFRAME.INSPECTOR = new Inspector(
+  window.AFRAME_INSPECTOR_CONFIG
+));
 posthog.init('phc_Yclai3qykyFi8AEFOrZsh6aS78SSooLzpDz9wQ9YAH9', {
   api_host: 'https://us.i.posthog.com',
   person_profiles: 'identified_only' // or 'always' to create profiles for anonymous users as well
