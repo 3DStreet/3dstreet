@@ -190,7 +190,7 @@ const AIChatPanel = () => {
       const entity = document.getElementById('street-container');
       const data = STREET.utils.convertDOMElToObject(entity);
       const filteredData = STREET.utils.filterJSONstreet(data);
-      const sceneJSON = JSON.parse(filteredData.data);
+      const sceneJSON = JSON.parse(filteredData).data;
 
       const prompt = `
       Context: You are a 3D street scene assistant for the 3DStreet application. 
