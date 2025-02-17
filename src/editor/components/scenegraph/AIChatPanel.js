@@ -211,7 +211,7 @@ const AIChatPanel = () => {
 
       Make sure you convert everything to the appropriate units, even if the user uses different units.
 
-      IMPORTANT: When you need to calculate a value (like "5 - 2"), return it as a string expression ("5 - 2") and prepend "expression-for-" to the parameter name. For example, if setting a 'value' parameter, use "expression-for-value" instead.
+      IMPORTANT: When you need to calculate a value (like "5 - 2"), return it as a string expression ("5 - 2") in a parameter named "expression-for-value"
 
       When changing a model, use the "entityupdate" command with the following payload:
       {
@@ -221,6 +221,8 @@ const AIChatPanel = () => {
       }
 
       The possible model (mixin) values are: Bicycle_1, bus, sedan-rig, sedan-taxi-rig, suv-rig, box-truck-rig, food-trailer-rig, fire-truck-rig, fire-ladder-rig, trash-truck-side-loading, self-driving-cruise-car-rig, self-driving-waymo-car, tuk-tuk, motorbike, cyclist-cargo, cyclist1, cyclist2, cyclist3, cyclist-kid, cyclist-dutch, char1, char2, char3, char4, char5, char6, char7, char8, char9, char10, char11, char12, char13, char14, char15, char16, tram, trolley, minibus, dividers-flowers, dividers-planting-strip, dividers-planter-box, dividers-bush, dividers-dome, safehit, bollard, temporary-barricade, temporary-traffic-cone, temporary-jersey-barrier-plastic, temporary-jersey-barrier-concrete, street-element-crosswalk-raised, street-element-traffic-island-end-rounded, street-element-sign-warning-ped-rrfb, street-element-traffic-post-k71, street-element-traffic-island, street-element-speed-hump, crosswalk-zebra-box, traffic-calming-bumps, corner-island, brt-station, outdoor_dining, bench_orientation_center, parklet, utility_pole, lamp-modern, lamp-modern-double, bikerack, bikeshare, lamp-traditional, palm-tree, bench, seawall, track, tree3, bus-stop, bus-stop-alternate, wayfinding, signal_left, signal_right, stop_sign, trash-bin, lending-library, residential-mailbox, USPS-mailbox, picnic-bench, large-parklet, SM3D_Bld_Mixed_Corner_4fl, SM3D_Bld_Mixed_Double_5fl, SM3D_Bld_Mixed_4fl_2, SM3D_Bld_Mixed_5fl, SM3D_Bld_Mixed_4fl, SM_Bld_House_Preset_03_1800, SM_Bld_House_Preset_08_1809, SM_Bld_House_Preset_09_1845, arched-building-01, arched-building-02, arched-building-03, arched-building-04, ElectricScooter_1, Character_1_M, magic-carpet, cyclist-cargo
+
+      Always respond with a brief text message, even if the user is asking for a function call. Do not describe the user's request.
       `;
 
       const chat = modelRef.current.startChat();
@@ -234,7 +236,6 @@ const AIChatPanel = () => {
           console.log('Function call:', call);
           if (call.name === 'entityUpdate') {
             const args = call.args;
-            // Convert the function call args to the format expected by executeCommand
             // Convert function call args to command format, handling expressions
             const payload = {
               'entity-id': args['entity-id'],
@@ -261,8 +262,13 @@ const AIChatPanel = () => {
         }
       }
 
+      // Get response text first and store it
       const responseText = response.text();
-      aiMessage = { role: 'assistant', content: responseText };
+      console.log('Stored response text:', responseText);
+      aiMessage = {
+        role: 'assistant',
+        content: responseText || 'No text response available'
+      };
       setMessages((prev) => [...prev, aiMessage]);
     } catch (error) {
       console.error('Error generating response:', error);
