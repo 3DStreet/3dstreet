@@ -4,7 +4,7 @@ import classNames from 'classnames';
 import Events from '../../../lib/Events';
 import styles from './ActionBar.module.scss';
 import { Button } from '../Button';
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect } from 'react';
 import posthog from 'posthog-js';
 import { Rotate24Icon, Translate24Icon, Ruler24Icon } from '../../../icons';
 import useStore from '@/store.js';
@@ -23,31 +23,13 @@ const ActionBar = ({ selectedEntity }) => {
     if (tool === 'ruler') {
       // use pick-point-on-ground-plane to get the ground position
       // add on hover event to log the position
-      fadeInDropPlane();
+      fadeInRulerPreviewEntity();
     } else {
-      fadeOutDropPlane();
+      fadeOutRulerPreviewEntity();
     }
   };
 
-  const dropPlaneEl = useRef(null);
-
-  function fadeInDropPlane() {
-    let planeEl = document.getElementById('dropPlane');
-    if (!planeEl) {
-      planeEl = document.createElement('a-plane');
-      planeEl.setAttribute('id', 'dropPlane');
-      planeEl.setAttribute('position', '0 0.001 0');
-      planeEl.setAttribute('rotation', '-90 0 0');
-      planeEl.setAttribute('width', '200');
-      planeEl.setAttribute('height', '200');
-      planeEl.setAttribute('material', 'color: #1faaf2; opacity: 0.5');
-      planeEl.setAttribute('data-ignore-raycaster', '');
-      AFRAME.scenes[0].appendChild(planeEl);
-    }
-    planeEl.setAttribute('visible', 'true');
-    dropPlaneEl.current.style.display = 'block';
-    dropPlaneEl.current.style.opacity = '0';
-
+  function fadeInRulerPreviewEntity() {
     let rulerPreviewEntity = document.getElementById('rulerPreviewEntity');
     if (!rulerPreviewEntity) {
       rulerPreviewEntity = document.createElement('a-entity');
@@ -68,13 +50,7 @@ const ActionBar = ({ selectedEntity }) => {
     rulerPreviewEntity.setAttribute('visible', true);
   }
 
-  function fadeOutDropPlane() {
-    const planeEl = document.getElementById('dropPlane');
-    if (planeEl) {
-      planeEl.setAttribute('visible', 'false');
-    }
-    dropPlaneEl.current.style.display = 'none';
-    dropPlaneEl.current.style.opacity = '0';
+  function fadeOutRulerPreviewEntity() {
     let rulerPreviewEntity = document.getElementById('rulerPreviewEntity');
     if (rulerPreviewEntity) {
       rulerPreviewEntity.setAttribute('visible', false);
@@ -82,7 +58,6 @@ const ActionBar = ({ selectedEntity }) => {
   }
 
   const onRulerMouseMove = (e) => {
-    console.log('onRulerMouseMove', e);
     if (e.preventDefault) e.preventDefault(); // Necessary. Allows us to drop.
     if (e.dataTransfer) {
       e.dataTransfer.dropEffect = 'move'; // See the section on the DataTransfer object.
@@ -110,6 +85,8 @@ const ActionBar = ({ selectedEntity }) => {
     const onChange = (mode) => {
       setTransformMode(mode);
       setNewToolMode('off');
+      fadeOutRulerPreviewEntity();
+      Events.emit('showcursor');
     };
     Events.on('transformmodechange', onChange);
     return () => {
@@ -177,20 +154,19 @@ const ActionBar = ({ selectedEntity }) => {
           </Button>
         </div>
       )}
-      {createPortal(
-        <div
-          ref={dropPlaneEl}
-          onMouseMove={onRulerMouseMove}
-          style={{
-            display: 'none',
-            position: 'absolute',
-            inset: '0px',
-            userSelect: 'none',
-            pointerEvents: 'auto'
-          }}
-        ></div>,
-        document.body
-      )}
+      {newToolMode === 'ruler' &&
+        createPortal(
+          <div
+            onMouseMove={onRulerMouseMove}
+            style={{
+              position: 'absolute',
+              inset: '0px',
+              userSelect: 'none',
+              pointerEvents: 'auto'
+            }}
+          />,
+          document.body
+        )}
     </div>
   );
 };
