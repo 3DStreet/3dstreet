@@ -20,19 +20,12 @@ AFRAME.registerComponent('street-generated-striping', {
         'solid-dashed-yellow-mirror'
       ]
     },
-    segmentWidth: {
-      type: 'number'
-    },
     side: {
       default: 'left',
       oneOf: ['left', 'right']
     },
     facing: {
       default: 0, // this is a Y Rotation value in degrees -- UI could offer a dropdown with options for 0, 90, 180, 270
-      type: 'number'
-    },
-    length: {
-      // length in meters of linear path to fill with clones
       type: 'number'
     },
     positionY: {
@@ -43,12 +36,32 @@ AFRAME.registerComponent('street-generated-striping', {
   },
   init: function () {
     this.createdEntities = [];
+    this.length = this.getSegmentLength();
+    this.segmentWidth = this.getSegmentWidth();
   },
   remove: function () {
     this.createdEntities.forEach((entity) => entity.remove());
     this.createdEntities.length = 0; // Clear the array
   },
+  getSegmentLength() {
+    if (this.el.hasAttribute('street-segment')) {
+      return this.el.getAttribute('street-segment').length;
+    }
+  },
+  getSegmentWidth() {
+    if (this.el.hasAttribute('street-segment')) {
+      return this.el.getAttribute('street-segment').width;
+    }
+  },
   update: function (oldData) {
+    // update this.length if segment length is modified
+    if (this.length !== this.getSegmentLength()) {
+      this.length = this.getSegmentLength();
+    }
+    if (this.segmentWidth !== this.getSegmentWidth()) {
+      this.segmentWidth = this.getSegmentWidth();
+    }
+
     const data = this.data;
 
     // Clean up old entities
@@ -59,8 +72,8 @@ AFRAME.registerComponent('street-generated-striping', {
     }
     const clone = document.createElement('a-entity');
     const { stripingTextureId, repeatY, color, stripingWidth } =
-      this.calculateStripingMaterial(data.striping, data.length);
-    const positionX = ((data.side === 'left' ? -1 : 1) * data.segmentWidth) / 2;
+      this.calculateStripingMaterial(data.striping, this.length);
+    const positionX = ((data.side === 'left' ? -1 : 1) * this.segmentWidth) / 2;
     clone.setAttribute('position', {
       x: positionX,
       y: data.positionY,
@@ -77,7 +90,7 @@ AFRAME.registerComponent('street-generated-striping', {
     );
     clone.setAttribute(
       'geometry',
-      `primitive: plane; width: ${stripingWidth}; height: ${data.length}; skipCache: true;`
+      `primitive: plane; width: ${stripingWidth}; height: ${this.length}; skipCache: true;`
     );
     clone.classList.add('autocreated');
     // clone.setAttribute('data-ignore-raycaster', ''); // i still like clicking to zoom to individual clones, but instead this should show the generated-fixed clone settings

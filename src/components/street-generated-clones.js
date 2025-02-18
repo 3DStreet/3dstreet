@@ -6,7 +6,6 @@ AFRAME.registerComponent('street-generated-clones', {
   schema: {
     // Common properties
     modelsArray: { type: 'array' }, // For random selection from multiple models
-    length: { type: 'number' }, // length in meters of segment
     positionX: { default: 0, type: 'number' },
     positionY: { default: 0, type: 'number' },
     facing: { default: 0, type: 'number' }, // Y Rotation in degrees
@@ -37,6 +36,7 @@ AFRAME.registerComponent('street-generated-clones', {
 
   init: function () {
     this.createdEntities = [];
+    this.length = this.getSegmentLength();
   },
 
   remove: function () {
@@ -77,10 +77,15 @@ AFRAME.registerComponent('street-generated-clones', {
     AFRAME.INSPECTOR.execute('multi', commands);
   },
 
+  getSegmentLength() {
+    if (this.el.hasAttribute('street-segment')) {
+      return this.el.getAttribute('street-segment')?.length || 0;
+    }
+  },
   update: function (oldData) {
-    // if length is not set, then derive length from the segment
-    if (!this.data.length) {
-      this.data.length = this.el.getAttribute('street-segment').length;
+    // update this.length if segment length is modified
+    if (this.length !== this.getSegmentLength()) {
+      this.length = this.getSegmentLength();
     }
 
     // If mode is random or randomFacing and seed is 0, generate a random seed and return,
@@ -115,11 +120,11 @@ AFRAME.registerComponent('street-generated-clones', {
   generateFixed: function () {
     const data = this.data;
     const correctedSpacing = Math.max(1, data.spacing);
-    const numClones = Math.floor(data.length / correctedSpacing);
+    const numClones = Math.floor(this.length / correctedSpacing);
 
     for (let i = 0; i < numClones; i++) {
       const positionZ =
-        data.length / 2 - (i + data.cycleOffset) * correctedSpacing;
+        this.length / 2 - (i + data.cycleOffset) * correctedSpacing;
       this.createClone(positionZ);
     }
   },
@@ -127,7 +132,7 @@ AFRAME.registerComponent('street-generated-clones', {
   generateRandom: function () {
     const data = this.data;
     const positions = this.randPlacedElements(
-      data.length,
+      this.length,
       data.spacing,
       data.count
     );
@@ -142,9 +147,9 @@ AFRAME.registerComponent('street-generated-clones', {
     let positionZ = 0;
 
     if (data.justify === 'start') {
-      positionZ = data.length / 2 - data.padding;
+      positionZ = this.length / 2 - data.padding;
     } else if (data.justify === 'end') {
-      positionZ = -data.length / 2 + data.padding;
+      positionZ = -this.length / 2 + data.padding;
     }
 
     this.createClone(positionZ);
@@ -191,6 +196,8 @@ AFRAME.registerComponent('street-generated-clones', {
   },
 
   randPlacedElements: function (streetLength, spacing, count) {
+    if (!streetLength) return [];
+    console.log('randPlacedElements', streetLength, spacing, count);
     const correctedSpacing = Math.max(1, spacing);
     const start = -streetLength / 2 + correctedSpacing / 2;
     const end = streetLength / 2 - correctedSpacing / 2;
