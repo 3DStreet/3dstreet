@@ -45,7 +45,9 @@ function ScreenshotModal() {
   // Get the entity that has the screentock component
   const getScreentockEntity = () => {
     const screenshotEl = document.getElementById('screenshot');
-    screenshotEl.play();
+    if (!screenshotEl.isPlaying) {
+      screenshotEl.play();
+    }
     return screenshotEl;
   };
   const setModal = useStore((state) => state.setModal);
