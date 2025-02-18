@@ -58,14 +58,8 @@ const ActionBar = ({ selectedEntity }) => {
   }
 
   const onRulerMouseMove = (e) => {
-    if (e.preventDefault) e.preventDefault(); // Necessary. Allows us to drop.
-    if (e.dataTransfer) {
-      e.dataTransfer.dropEffect = 'move'; // See the section on the DataTransfer object.
-    }
-
     let rulerPreviewEntity = document.getElementById('rulerPreviewEntity');
     if (rulerPreviewEntity) {
-      rulerPreviewEntity.setAttribute('visible', true); // we need to set it to true because it's set to false in cardMouseLeave
       const position = pickPointOnGroundPlane({
         x: e.clientX,
         y: e.clientY,
@@ -74,7 +68,6 @@ const ActionBar = ({ selectedEntity }) => {
       });
       rulerPreviewEntity.object3D.position.copy(position);
     }
-
     return false;
   };
 
