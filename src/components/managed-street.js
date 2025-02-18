@@ -55,8 +55,6 @@ AFRAME.registerComponent('managed-street', {
     }
   },
   init: function () {
-    this.zustandState = useStore.getState();
-
     this.managedEntities = [];
     this.pendingEntities = [];
     this.actualWidth = 0;
@@ -340,6 +338,8 @@ AFRAME.registerComponent('managed-street', {
     }
   },
   loadAndParseStreetplanURL: async function (streetplanURL) {
+    const currentState = useStore.getState();
+
     console.log(
       '[managed-street] loader',
       'sourceType: `streetplan-url`, loading from',
@@ -458,8 +458,8 @@ AFRAME.registerComponent('managed-street', {
       await this.parseStreetObject(streetObject);
 
       // Change Title
-      if (!this.zustandState.sceneTitle) {
-        this.zustandState.setSceneTitle('StreetPlan Import: ' + streetPlanName);
+      if (!currentState.sceneTitle) {
+        currentState.setSceneTitle('StreetPlan Import: ' + streetPlanName);
       }
       // Success Message
       STREET.notify.successMessage('Loaded from StreetPlan: ' + streetPlanName);
@@ -530,6 +530,7 @@ AFRAME.registerComponent('managed-street', {
     return variantString;
   },
   loadAndParseStreetmixURL: async function (streetmixURL) {
+    const currentState = useStore.getState();
     const data = this.data;
     const streetmixAPIURL = streetmixUtils.streetmixUserToAPI(streetmixURL);
     console.log(
@@ -589,8 +590,8 @@ AFRAME.registerComponent('managed-street', {
         this.refreshManagedEntities();
         AFRAME.INSPECTOR.selectEntity(this.el);
         // Change Title
-        if (!this.zustandState.sceneTitle) {
-          this.zustandState.setSceneTitle(streetmixName);
+        if (!currentState.sceneTitle) {
+          currentState.setSceneTitle(streetmixName);
         }
         // Success Message
         STREET.notify.successMessage('Loaded from Streetmix: ' + streetmixName);
