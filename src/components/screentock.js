@@ -21,7 +21,7 @@ AFRAME.registerComponent('screentock', {
       oneOf: [5, 8, 10, 12, 15, 20, 30]
     },
     titleColor: { type: 'color', default: '#FFFFFF' },
-    titleStroke: { type: 'boolean', default: false },
+    titleStroke: { type: 'boolean', default: true },
     titleStrokeColor: { type: 'color', default: '#000000' },
     titleStrokeWidth: { type: 'number', default: 1, max: 5, min: 0 }
   },

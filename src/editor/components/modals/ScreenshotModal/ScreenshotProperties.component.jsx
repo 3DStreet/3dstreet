@@ -18,22 +18,22 @@ const ScreenshotProperties = ({ entity }) => {
         {component && component.schema && component.data && (
           <>
             <PropertyRow
-              key="showLogo"
-              name="showLogo"
-              label="Show Logo"
-              schema={component.schema['showLogo']}
-              data={component.data['showLogo']}
+              key="showTitle"
+              name="showTitle"
+              label="Show Title"
+              schema={component.schema['showTitle']}
+              data={component.data['showTitle']}
               componentname={componentName}
               entity={entity}
               noSelectEntity={true}
               onEntityUpdate={() => debouncedMakeScreenshot()}
             />
             <PropertyRow
-              key="showTitle"
-              name="showTitle"
-              label="Show Title"
-              schema={component.schema['showTitle']}
-              data={component.data['showTitle']}
+              key="showLogo"
+              name="showLogo"
+              label="Show Logo"
+              schema={component.schema['showLogo']}
+              data={component.data['showLogo']}
               componentname={componentName}
               entity={entity}
               noSelectEntity={true}
