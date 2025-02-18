@@ -4,31 +4,112 @@ import classNames from 'classnames';
 import Events from '../../../lib/Events';
 import styles from './ActionBar.module.scss';
 import { Button } from '../Button';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import posthog from 'posthog-js';
-import { Rotate24Icon, Translate24Icon } from '../../../icons';
+import { Rotate24Icon, Translate24Icon, Ruler24Icon } from '../../../icons';
 import useStore from '@/store.js';
+import pickPointOnGroundPlane from '../../../lib/pick-point-on-ground-plane';
+import { createPortal } from 'react-dom';
 
 const ActionBar = ({ selectedEntity }) => {
   const setModal = useStore((state) => state.setModal);
   const isOpen = useStore((state) => state.modal === 'addlayer');
 
-  const [cursorEnabled, setCursorEnabled] = useState(
-    AFRAME.INSPECTOR.cursor.isPlaying
-  );
-
-  const handleHandClick = () => {
-    Events.emit('hidecursor');
-    posthog.capture('hand_clicked');
+  const handleNewToolClick = (tool) => {
+    Events.emit('hidecursor'); // objects cannot be hovered and selected
+    posthog.capture(`${tool}_clicked`);
     setTransformMode('off');
-    setCursorEnabled(false);
+    setNewToolMode(tool);
+    if (tool === 'ruler') {
+      // use pick-point-on-ground-plane to get the ground position
+      // add on hover event to log the position
+      fadeInDropPlane();
+    } else {
+      fadeOutDropPlane();
+    }
+  };
+
+  const dropPlaneEl = useRef(null);
+
+  function fadeInDropPlane() {
+    let planeEl = document.getElementById('dropPlane');
+    if (!planeEl) {
+      planeEl = document.createElement('a-plane');
+      planeEl.setAttribute('id', 'dropPlane');
+      planeEl.setAttribute('position', '0 0.001 0');
+      planeEl.setAttribute('rotation', '-90 0 0');
+      planeEl.setAttribute('width', '200');
+      planeEl.setAttribute('height', '200');
+      planeEl.setAttribute('material', 'color: #1faaf2; opacity: 0.5');
+      planeEl.setAttribute('data-ignore-raycaster', '');
+      AFRAME.scenes[0].appendChild(planeEl);
+    }
+    planeEl.setAttribute('visible', 'true');
+    dropPlaneEl.current.style.display = 'block';
+    dropPlaneEl.current.style.opacity = '0';
+
+    let rulerPreviewEntity = document.getElementById('rulerPreviewEntity');
+    if (!rulerPreviewEntity) {
+      rulerPreviewEntity = document.createElement('a-entity');
+      rulerPreviewEntity.setAttribute('id', 'rulerPreviewEntity');
+      rulerPreviewEntity.classList.add('hideFromSceneGraph');
+      rulerPreviewEntity.innerHTML = `
+          <a-ring class="hideFromSceneGraph" id="drop-cursor" rotation="-90 0 0" radius-inner="0.2" radius-outer="0.3">
+            <a-ring class="hideFromSceneGraph" color="yellow" radius-inner="0.4" radius-outer="0.5"
+              animation="property: scale; from: 1 1 1; to: 2 2 2; loop: true; dir: alternate"></a-ring>
+            <a-ring class="hideFromSceneGraph" color="yellow" radius-inner="0.6" radius-outer="0.7"
+              animation="property: scale; from: 1 1 1; to: 3 3 3; loop: true; dir: alternate"></a-ring>
+            <a-entity class="hideFromSceneGraph" rotation="90 0 0">
+              <a-cylinder class="hideFromSceneGraph" color="yellow" position="0 5.25 0" radius="0.05" height="2.5"></a-cylinder>
+              <a-cone class="hideFromSceneGraph" color="yellow" position="0 4 0" radius-top="0.5" radius-bottom="0" height="1"></a-cone>
+          </a-ring>`;
+      AFRAME.scenes[0].appendChild(rulerPreviewEntity);
+    }
+    rulerPreviewEntity.setAttribute('visible', true);
+  }
+
+  function fadeOutDropPlane() {
+    const planeEl = document.getElementById('dropPlane');
+    if (planeEl) {
+      planeEl.setAttribute('visible', 'false');
+    }
+    dropPlaneEl.current.style.display = 'none';
+    dropPlaneEl.current.style.opacity = '0';
+    let rulerPreviewEntity = document.getElementById('rulerPreviewEntity');
+    if (rulerPreviewEntity) {
+      rulerPreviewEntity.setAttribute('visible', false);
+    }
+  }
+
+  const onRulerMouseMove = (e) => {
+    console.log('onRulerMouseMove', e);
+    if (e.preventDefault) e.preventDefault(); // Necessary. Allows us to drop.
+    if (e.dataTransfer) {
+      e.dataTransfer.dropEffect = 'move'; // See the section on the DataTransfer object.
+    }
+
+    let rulerPreviewEntity = document.getElementById('rulerPreviewEntity');
+    if (rulerPreviewEntity) {
+      rulerPreviewEntity.setAttribute('visible', true); // we need to set it to true because it's set to false in cardMouseLeave
+      const position = pickPointOnGroundPlane({
+        x: e.clientX,
+        y: e.clientY,
+        canvas: AFRAME.scenes[0].canvas,
+        camera: AFRAME.INSPECTOR.camera
+      });
+      rulerPreviewEntity.object3D.position.copy(position);
+    }
+
+    return false;
   };
 
   const [transformMode, setTransformMode] = useState('translate'); // "translate" | "rotate" | "scale"
+  const [newToolMode, setNewToolMode] = useState('off'); // "off" | "hand" | "ruler"
   useEffect(() => {
     // e (rotate) and w (translate) shortcuts
     const onChange = (mode) => {
       setTransformMode(mode);
+      setNewToolMode('off');
     };
     Events.on('transformmodechange', onChange);
     return () => {
@@ -41,7 +122,6 @@ const ActionBar = ({ selectedEntity }) => {
     Events.emit('showcursor');
     Events.emit('transformmodechange', mode);
     posthog.capture('transform_mode_changed', { mode: mode });
-    setCursorEnabled(true);
   };
 
   return (
@@ -52,10 +132,10 @@ const ActionBar = ({ selectedEntity }) => {
             variant="toolbtn"
             className={classNames({
               [styles.active]:
-                !cursorEnabled ||
+                newToolMode === 'hand' ||
                 selectedEntity?.hasAttribute('data-no-transform')
             })}
-            onClick={handleHandClick}
+            onClick={handleNewToolClick.bind(null, 'hand')}
           >
             <AwesomeIcon icon={faHand} />
           </Button>
@@ -86,7 +166,30 @@ const ActionBar = ({ selectedEntity }) => {
           <Button variant="toolbtn" onClick={() => setModal('addlayer')}>
             <AwesomeIcon icon={faPlusSquare} />
           </Button>
+          <Button
+            variant="toolbtn"
+            className={classNames({
+              [styles.active]: newToolMode === 'ruler'
+            })}
+            onClick={handleNewToolClick.bind(null, 'ruler')}
+          >
+            <Ruler24Icon />
+          </Button>
         </div>
+      )}
+      {createPortal(
+        <div
+          ref={dropPlaneEl}
+          onMouseMove={onRulerMouseMove}
+          style={{
+            display: 'none',
+            position: 'absolute',
+            inset: '0px',
+            userSelect: 'none',
+            pointerEvents: 'auto'
+          }}
+        ></div>,
+        document.body
       )}
     </div>
   );
