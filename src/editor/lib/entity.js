@@ -29,13 +29,8 @@ export function updateEntity(entity, component, property, value) {
     // Get current values
     const currentValues = entity.getAttribute(component) || {};
 
-    if (value === null || value === undefined) {
-      // Remove property
-      delete currentValues[property];
-    } else {
-      // Update specific property (x, y, or z)
-      currentValues[property] = value;
-    }
+    // Update specific property (x, y, or z)
+    currentValues[property] = value;
 
     // Set entire vector component
     entity.setAttribute(component, currentValues);

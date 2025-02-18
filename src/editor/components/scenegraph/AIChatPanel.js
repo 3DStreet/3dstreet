@@ -248,7 +248,7 @@ const AIChatPanel = () => {
 
       When changing a model, use the "entityupdate" command with the following payload:
       {
-        "entityId": "n9eLgB9C635T_edXuXIgz",
+        "entity-id": "n9eLgB9C635T_edXuXIgz",
         "component": "mixin",
         "value": "fire-truck-rig"
       }
