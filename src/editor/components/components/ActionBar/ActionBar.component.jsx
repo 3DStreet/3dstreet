@@ -21,22 +21,20 @@ const ActionBar = ({ selectedEntity }) => {
     setTransformMode('off');
     setNewToolMode(tool);
     if (tool === 'ruler') {
-      // use pick-point-on-ground-plane to get the ground position
-      // add on hover event to log the position
-      fadeInRulerPreviewEntity();
+      fadeInRulerCursorEntity();
     } else {
-      fadeOutRulerPreviewEntity();
+      fadeOutRulerCursorEntity();
     }
   };
 
-  function fadeInRulerPreviewEntity() {
-    let rulerPreviewEntity = document.getElementById('rulerPreviewEntity');
-    if (!rulerPreviewEntity) {
-      rulerPreviewEntity = document.createElement('a-entity');
-      rulerPreviewEntity.setAttribute('id', 'rulerPreviewEntity');
-      rulerPreviewEntity.classList.add('hideFromSceneGraph');
-      rulerPreviewEntity.innerHTML = `
-          <a-ring class="hideFromSceneGraph" id="drop-cursor" rotation="-90 0 0" radius-inner="0.2" radius-outer="0.3">
+  function fadeInRulerCursorEntity() {
+    let rulerCursorEntity = document.getElementById('rulerCursorEntity');
+    if (!rulerCursorEntity) {
+      rulerCursorEntity = document.createElement('a-entity');
+      rulerCursorEntity.setAttribute('id', 'rulerCursorEntity');
+      rulerCursorEntity.classList.add('hideFromSceneGraph');
+      rulerCursorEntity.innerHTML = `
+          <a-ring class="hideFromSceneGraph" rotation="-90 0 0" radius-inner="0.2" radius-outer="0.3">
             <a-ring class="hideFromSceneGraph" color="yellow" radius-inner="0.4" radius-outer="0.5"
               animation="property: scale; from: 1 1 1; to: 2 2 2; loop: true; dir: alternate"></a-ring>
             <a-ring class="hideFromSceneGraph" color="yellow" radius-inner="0.6" radius-outer="0.7"
@@ -45,15 +43,15 @@ const ActionBar = ({ selectedEntity }) => {
               <a-cylinder class="hideFromSceneGraph" color="yellow" position="0 5.25 0" radius="0.05" height="2.5"></a-cylinder>
               <a-cone class="hideFromSceneGraph" color="yellow" position="0 4 0" radius-top="0.5" radius-bottom="0" height="1"></a-cone>
           </a-ring>`;
-      AFRAME.scenes[0].appendChild(rulerPreviewEntity);
+      AFRAME.scenes[0].appendChild(rulerCursorEntity);
     }
-    rulerPreviewEntity.setAttribute('visible', true);
+    rulerCursorEntity.setAttribute('visible', true);
   }
 
-  function fadeOutRulerPreviewEntity() {
-    let rulerPreviewEntity = document.getElementById('rulerPreviewEntity');
-    if (rulerPreviewEntity) {
-      rulerPreviewEntity.setAttribute('visible', false);
+  function fadeOutRulerCursorEntity() {
+    let rulerCursorEntity = document.getElementById('rulerCursorEntity');
+    if (rulerCursorEntity) {
+      rulerCursorEntity.setAttribute('visible', false);
     }
   }
 
@@ -95,9 +93,7 @@ const ActionBar = ({ selectedEntity }) => {
       ].calculateLength(startPosition, mouseUpPosition);
       // Second click logic
       setHasRulerClicked(false);
-      // Finish measure-line component...
       // now create a new entity with the measure-line component with the same dimensions
-
       AFRAME.INSPECTOR.execute('entitycreate', {
         components: {
           'data-layer-name':
@@ -111,15 +107,15 @@ const ActionBar = ({ selectedEntity }) => {
     }
   };
   const onRulerMouseMove = (e) => {
-    let rulerPreviewEntity = document.getElementById('rulerPreviewEntity');
+    let rulerCursorEntity = document.getElementById('rulerCursorEntity');
     const position = pickPointOnGroundPlane({
       x: e.clientX,
       y: e.clientY,
       canvas: AFRAME.scenes[0].canvas,
       camera: AFRAME.INSPECTOR.camera
     });
-    if (rulerPreviewEntity) {
-      rulerPreviewEntity.object3D.position.copy(position);
+    if (rulerCursorEntity) {
+      rulerCursorEntity.object3D.position.copy(position);
     }
     if (hasRulerClicked) {
       // get the previewMeasureLine entity
@@ -142,7 +138,7 @@ const ActionBar = ({ selectedEntity }) => {
     const onChange = (mode) => {
       setTransformMode(mode);
       setNewToolMode('off');
-      fadeOutRulerPreviewEntity();
+      fadeOutRulerCursorEntity();
       Events.emit('showcursor');
     };
     Events.on('transformmodechange', onChange);
