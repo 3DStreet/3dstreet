@@ -96,7 +96,8 @@ const ActionBar = ({ selectedEntity }) => {
         previewMeasureLineEl.getAttribute('measure-line').start;
       AFRAME.INSPECTOR.execute('entitycreate', {
         components: {
-          measureLine: {
+          'data-layer-name': 'Measure Line',
+          'measure-line': {
             start: startPosition,
             end: mouseUpPosition
           }
