@@ -9,6 +9,29 @@ import { TrashIcon } from '../../icons';
 
 const isSingleProperty = AFRAME.schema.isSingleProperty;
 
+export function shouldShowProperty(propertyName, component) {
+  if (!component.schema[propertyName].if) {
+    return true;
+  }
+  let showProperty = true;
+  for (const [conditionKey, conditionValue] of Object.entries(
+    component.schema[propertyName].if
+  )) {
+    if (Array.isArray(conditionValue)) {
+      if (conditionValue.indexOf(component.data[conditionKey]) === -1) {
+        showProperty = false;
+        break;
+      }
+    } else {
+      if (conditionValue !== component.data[conditionKey]) {
+        showProperty = false;
+        break;
+      }
+    }
+  }
+  return showProperty;
+}
+
 /**
  * Single component.
  */
@@ -116,28 +139,7 @@ export default class Component extends React.Component {
     return Object.keys(componentData.schema)
       .sort()
       .filter((propertyName) => {
-        if (!componentData.schema[propertyName].if) {
-          return true;
-        }
-        let showProperty = true;
-        for (const [conditionKey, conditionValue] of Object.entries(
-          componentData.schema[propertyName].if
-        )) {
-          if (Array.isArray(conditionValue)) {
-            if (
-              conditionValue.indexOf(componentData.data[conditionKey]) === -1
-            ) {
-              showProperty = false;
-              break;
-            }
-          } else {
-            if (conditionValue !== componentData.data[conditionKey]) {
-              showProperty = false;
-              break;
-            }
-          }
-        }
-        return showProperty;
+        return shouldShowProperty(propertyName, componentData);
       })
       .map((propertyName) => (
         <div className="detailed" key={propertyName}>

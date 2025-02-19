@@ -170,7 +170,8 @@ AFRAME.registerComponent('street-segment', {
       ]
     },
     width: {
-      type: 'number'
+      type: 'number',
+      min: 0
     },
     length: {
       type: 'number'
