@@ -13,6 +13,7 @@ import pickPointOnGroundPlane from '../../../lib/pick-point-on-ground-plane';
 const ActionBar = ({ selectedEntity }) => {
   const setModal = useStore((state) => state.setModal);
   const isOpen = useStore((state) => state.modal === 'addlayer');
+  const [measureLineCounter, setMeasureLineCounter] = useState(1);
 
   const handleNewToolClick = (tool) => {
     Events.emit('hidecursor'); // objects cannot be hovered and selected
@@ -96,15 +97,12 @@ const ActionBar = ({ selectedEntity }) => {
         previewMeasureLineEl.setAttribute('visible', false);
         const startPosition =
           previewMeasureLineEl.getAttribute('measure-line').start;
-        const measureLineLength =
-          previewMeasureLineEl.components['measure-line'].calculateLength();
         // Second click logic
         setHasRulerClicked(false);
         // now create a new entity with the measure-line component with the same dimensions
         AFRAME.INSPECTOR.execute('entitycreate', {
           components: {
-            'data-layer-name':
-              'Measure Line • ' + Number(measureLineLength).toFixed(1) + ' m',
+            'data-layer-name': `Measure Line • ${measureLineCounter}`,
             'measure-line': {
               start: {
                 x: startPosition.x,
@@ -119,6 +117,7 @@ const ActionBar = ({ selectedEntity }) => {
             }
           }
         });
+        setMeasureLineCounter((prev) => prev + 1);
       }
     },
     [hasRulerClicked]
