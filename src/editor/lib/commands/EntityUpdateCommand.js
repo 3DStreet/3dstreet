@@ -21,6 +21,8 @@ export class EntityUpdateCommand extends Command {
     this.entityId = entity.id;
     this.component = payload.component;
     this.property = payload.property ?? '';
+    this.noSelectEntity = payload.noSelectEntity ?? false;
+    this.onEntityUpdate = payload.onEntityUpdate;
 
     const component =
       entity.components[payload.component] ??
@@ -90,7 +92,11 @@ export class EntityUpdateCommand extends Command {
   execute(nextCommandCallback) {
     const entity = document.getElementById(this.entityId);
     if (entity) {
-      if (this.editor.selectedEntity && this.editor.selectedEntity !== entity) {
+      if (
+        this.editor.selectedEntity &&
+        this.editor.selectedEntity !== entity &&
+        !this.noSelectEntity
+      ) {
         // If the selected entity is not the entity we are undoing, select the entity.
         this.editor.selectEntity(entity);
       }
@@ -119,6 +125,7 @@ export class EntityUpdateCommand extends Command {
       if (this.component === 'id') {
         this.entityId = this.newValue;
       }
+      this.onEntityUpdate?.(entity);
       nextCommandCallback?.(entity);
     }
   }
@@ -126,7 +133,11 @@ export class EntityUpdateCommand extends Command {
   undo(nextCommandCallback) {
     const entity = document.getElementById(this.entityId);
     if (entity) {
-      if (this.editor.selectedEntity && this.editor.selectedEntity !== entity) {
+      if (
+        this.editor.selectedEntity &&
+        this.editor.selectedEntity !== entity &&
+        !this.noSelectEntity
+      ) {
         // If the selected entity is not the entity we are undoing, select the entity.
         this.editor.selectEntity(entity);
       }
@@ -150,6 +161,7 @@ export class EntityUpdateCommand extends Command {
       if (this.component === 'id') {
         this.entityId = this.oldValue;
       }
+      this.onEntityUpdate?.(entity);
       nextCommandCallback?.(entity);
     }
   }
