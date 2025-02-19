@@ -20,9 +20,11 @@ const ActionBar = ({ selectedEntity }) => {
     setTransformMode('off');
     setNewToolMode(tool);
     if (tool === 'ruler') {
+      AFRAME.scenes[0].canvas.style.cursor = 'pointer';
       fadeInRulerCursorEntity();
     } else {
       fadeOutRulerCursorEntity();
+      AFRAME.scenes[0].canvas.style.cursor = 'grab';
     }
   };
 
@@ -164,6 +166,8 @@ const ActionBar = ({ selectedEntity }) => {
     const onChange = (mode) => {
       setTransformMode(mode);
       setNewToolMode('off');
+      // Using null to allow transform controls to manage cursor styles
+      AFRAME.scenes[0].canvas.style.cursor = null;
       fadeOutRulerCursorEntity();
       Events.emit('showcursor');
     };
@@ -219,9 +223,6 @@ const ActionBar = ({ selectedEntity }) => {
           >
             <Rotate24Icon />
           </Button>
-          <Button variant="toolbtn" onClick={() => setModal('addlayer')}>
-            <AwesomeIcon icon={faPlusSquare} />
-          </Button>
           <Button
             variant="toolbtn"
             className={classNames({
@@ -230,6 +231,9 @@ const ActionBar = ({ selectedEntity }) => {
             onClick={handleNewToolClick.bind(null, 'ruler')}
           >
             <Ruler24Icon />
+          </Button>
+          <Button variant="toolbtn" onClick={() => setModal('addlayer')}>
+            <AwesomeIcon icon={faPlusSquare} />
           </Button>
         </div>
       )}
