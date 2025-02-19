@@ -70,9 +70,23 @@ const ActionBar = ({ selectedEntity }) => {
   const [transformMode, setTransformMode] = useState('translate'); // "translate" | "rotate" | "scale"
   const [newToolMode, setNewToolMode] = useState('off'); // "off" | "hand" | "ruler"
   const [hasRulerClicked, setHasRulerClicked] = useState(false);
+  const [cameraChanged, setCameraChanged] = useState(false);
+
+  useEffect(() => {
+    Events.on('camerachanged', () => {
+      setCameraChanged(true);
+    });
+    return () => {
+      Events.off('camerachanged');
+    };
+  }, []);
 
   const onRulerMouseUp = useCallback(
     (e) => {
+      if (cameraChanged) {
+        setCameraChanged(false);
+        return;
+      }
       const previewMeasureLineEl = fetchOrCreatePreviewMeasureLineEntity();
       const mouseUpPosition = pickPointOnGroundPlane({
         x: e.clientX,
@@ -120,7 +134,7 @@ const ActionBar = ({ selectedEntity }) => {
         });
       }
     },
-    [hasRulerClicked]
+    [hasRulerClicked, cameraChanged]
   );
 
   const onRulerMouseMove = useCallback(
