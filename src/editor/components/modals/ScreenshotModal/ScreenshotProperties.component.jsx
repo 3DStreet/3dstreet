@@ -4,9 +4,11 @@ import PropertyRow from '../../components/PropertyRow.js';
 import { makeScreenshot } from '@/editor/lib/SceneUtils.js';
 import { debounce } from 'lodash-es';
 import { useAuthContext } from '../../../contexts';
+import useStore from '@/store';
 
 const ScreenshotProperties = ({ entity }) => {
   const { currentUser } = useAuthContext();
+  const setModal = useStore((state) => state.setModal);
   const componentName = 'screentock';
   const component = entity?.components?.[componentName];
 
@@ -21,7 +23,10 @@ const ScreenshotProperties = ({ entity }) => {
           <>
             <div className={styles.proFeaturesWrapper}>
               {!currentUser?.isPro && (
-                <div className={styles.proOverlay}>
+                <div
+                  className={styles.proOverlay}
+                  onClick={() => setModal('payment')}
+                >
                   <div className={styles.proOverlayContent}>
                     <span role="img" aria-label="lock">
                       🔒
