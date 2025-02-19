@@ -1,6 +1,9 @@
 // a-frame component to measure distances
 // 2 vec3 values are required: start and end
 
+// Import CSS2D Object for labels
+import { CSS2DObject } from 'three/addons/renderers/CSS2DRenderer.js';
+
 // Up vector is Y axis (0,1,0) - default cylinder orientation
 const up = new THREE.Vector3(0, 1, 0);
 
@@ -9,9 +12,11 @@ AFRAME.registerComponent('measure-line', {
     start: { type: 'vec3', default: { x: 0, y: 0, z: 0 } },
     end: { type: 'vec3', default: { x: 0, y: 0, z: 0 } }
   },
-  createOrUpdateHelper: function (start, end) {
+  createOrUpdateHelper: function () {
     // Calculate length for cylinder height
-    const length = this.calculateLength(start, end);
+    const start = this.data.start;
+    const end = this.data.end;
+    const length = this.calculateLength();
 
     // Create cylinder geometry with calculated length as height
     const geometry = new THREE.CylinderGeometry(
@@ -54,8 +59,14 @@ AFRAME.registerComponent('measure-line', {
 
     // Apply rotation
     this.mesh.setRotationFromQuaternion(this.tmpQuaternion);
+
+    // Update label position and content
+    this.labelObject.position.copy(this.mesh.position);
+    this.labelDiv.textContent = `${length.toFixed(2)}m`;
   },
-  calculateLength: function (start, end) {
+  calculateLength: function () {
+    const start = this.data.start;
+    const end = this.data.end;
     // calculate the length of the line segment
     // use the Pythagorean theorem
     const xDiff = end.x - start.x;
@@ -70,14 +81,23 @@ AFRAME.registerComponent('measure-line', {
     // initialize helper cylinder geometry
     this.radius = 0.05;
     this.color = 0xffff00;
+
+    // Create label div
+    const labelDiv = document.createElement('div');
+    labelDiv.className = 'label';
+    labelDiv.style.color = '#FFF';
+    labelDiv.style.fontFamily = 'sans-serif';
+    labelDiv.style.padding = '2px';
+    labelDiv.style.backgroundColor = 'rgba(0, 0, 0, .6)';
+    this.labelDiv = labelDiv;
+
+    // Create CSS2D object
+    this.labelObject = new CSS2DObject(labelDiv);
+    this.el.object3D.add(this.labelObject);
   },
   update: function (oldData) {
     // update the location of the helper cylinder
-    console.log(
-      'update, length:',
-      this.calculateLength(this.data.start, this.data.end)
-    );
-    this.createOrUpdateHelper(this.data.start, this.data.end);
+    this.createOrUpdateHelper();
   },
   remove: function () {
     // remove the helper cylinder

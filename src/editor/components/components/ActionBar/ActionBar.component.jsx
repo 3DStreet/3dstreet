@@ -80,8 +80,6 @@ const ActionBar = ({ selectedEntity }) => {
         canvas: AFRAME.scenes[0].canvas,
         camera: AFRAME.INSPECTOR.camera
       });
-      console.log('onRulerMouseUp');
-      console.log('hasRulerClicked:', hasRulerClicked);
       if (!hasRulerClicked) {
         previewMeasureLineEl.setAttribute('visible', true);
         // First click logic
@@ -94,9 +92,8 @@ const ActionBar = ({ selectedEntity }) => {
         previewMeasureLineEl.setAttribute('visible', false);
         const startPosition =
           previewMeasureLineEl.getAttribute('measure-line').start;
-        const measureLineLength = previewMeasureLineEl.components[
-          'measure-line'
-        ].calculateLength(startPosition, mouseUpPosition);
+        const measureLineLength =
+          previewMeasureLineEl.components['measure-line'].calculateLength();
         // Second click logic
         setHasRulerClicked(false);
         // now create a new entity with the measure-line component with the same dimensions
