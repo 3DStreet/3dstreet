@@ -260,6 +260,7 @@ function ScreenshotModal() {
             icon={<Save24Icon />}
             className={styles.dropdown}
           />
+          <br />
           <ScreenshotProperties entity={getScreentockEntity()} />
         </div>
         <div className={styles.mainContent}>
