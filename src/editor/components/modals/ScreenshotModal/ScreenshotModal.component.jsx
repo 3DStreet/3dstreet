@@ -240,36 +240,40 @@ function ScreenshotModal() {
       titleElement={
         <div className="flex items-center justify-between pr-4 pt-4">
           <div className="font-large text-center text-2xl">Share Scene</div>
-          <Button
-            onClick={copyToClipboardTailing}
-            leadingIcon={<Copy32Icon />}
-            variant="toolbtn"
-          >
-            Copy Link
-          </Button>
+          {currentUser && (
+            <Button
+              onClick={copyToClipboardTailing}
+              leadingIcon={<Copy32Icon />}
+              variant="toolbtn"
+            >
+              Copy Link
+            </Button>
+          )}
         </div>
       }
     >
       <div className={styles.wrapper}>
-        <div className="details">
-          <Dropdown
-            placeholder="Download scene as..."
-            options={options}
-            onSelect={handleSelect}
-            selectedOptionValue={selectedOption}
-            icon={<Save24Icon />}
-            className={styles.dropdown}
-          />
-          <br />
-          <ScreenshotProperties entity={getScreentockEntity()} />
-        </div>
+        {currentUser && (
+          <div className="details">
+            <Dropdown
+              placeholder="Download scene as..."
+              options={options}
+              onSelect={handleSelect}
+              selectedOptionValue={selectedOption}
+              icon={<Save24Icon />}
+              className={styles.dropdown}
+            />
+            <br />
+            <ScreenshotProperties entity={getScreentockEntity()} />
+          </div>
+        )}
         <div className={styles.mainContent}>
           <div className={styles.header}>
             {currentUser ? (
               <></>
             ) : (
               <div>
-                <h3>Please log in first to share the URL</h3>
+                <h3>Please sign in for download and link sharing options</h3>
                 <Button onClick={() => signIn()}>
                   Sign in to 3DStreet Cloud
                 </Button>
