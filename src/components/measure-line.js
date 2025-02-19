@@ -103,5 +103,6 @@ AFRAME.registerComponent('measure-line', {
     // remove the helper cylinder
     this.mesh.material.dispose();
     this.mesh.geometry.dispose();
+    this.labelDiv.remove();
   }
 });
