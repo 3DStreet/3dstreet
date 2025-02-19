@@ -23,15 +23,32 @@ export default function pickPointOnGroundPlane(args) {
     nY = -((2 * (y - viewport.top)) / viewport.height - 1);
   }
 
-  // setup raycaster
-  pickingRaycaster.set(
-    camera.position,
-    pickingVector
-      .set(nX, nY, 1)
-      .unproject(camera)
-      .sub(camera.position)
-      .normalize()
-  );
+  if (camera.isOrthographicCamera) {
+    console.log('is ortho');
+    // For orthographic camera:
+    // Start position should be on the near plane
+    const start = new THREE.Vector3(
+      (nX * (camera.right - camera.left)) / 2,
+      0, // Y is now 0 since we're working with a ground plane
+      (-nY * (camera.top - camera.bottom)) / 2 // Y coordinate becomes Z because of the rotation
+    ).add(camera.position);
+
+    // Direction is still the same - aligned with camera's view direction
+    const direction = new THREE.Vector3(0, -1, 0) // Changed to point down toward ground plane
+      .normalize();
+
+    pickingRaycaster.set(start, direction);
+  } else {
+    // Original perspective camera code
+    pickingRaycaster.set(
+      camera.position,
+      pickingVector
+        .set(nX, nY, 1)
+        .unproject(camera)
+        .sub(camera.position)
+        .normalize()
+    );
+  }
 
   // shoot ray
   const intersects = pickingRaycaster.intersectObject(pickingPlane);
