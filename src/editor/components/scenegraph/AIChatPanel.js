@@ -208,7 +208,7 @@ const AIChatPanel = () => {
     };
 
     initializeAI();
-  }, []);
+  }, [entityTools]);
 
   const handleSendMessage = async () => {
     if (!input.trim() || !modelRef.current) return;
