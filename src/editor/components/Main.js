@@ -60,25 +60,20 @@ export default function Main() {
     });
     Events.on('togglesidebar', (event) => {
       if (event.which === 'all') {
-        if (state.visible.scenegraph || state.visible.attributes) {
-          setState((prevState) => ({
+        setState((prevState) => {
+          const currentlyVisible =
+            prevState.visible.scenegraph || prevState.visible.attributes;
+          return {
             ...prevState,
             visible: {
-              scenegraph: false,
-              attributes: false
+              scenegraph: !currentlyVisible,
+              attributes: !currentlyVisible
             }
-          }));
-        } else {
-          setState((prevState) => ({
-            ...prevState,
-            visible: {
-              scenegraph: true,
-              attributes: true
-            }
-          }));
-        }
+          };
+        });
       } else if (event.which === 'attributes') {
         setState((prevState) => ({
+          ...prevState,
           visible: {
             ...prevState.visible,
             attributes: !prevState.visible.attributes
@@ -86,6 +81,7 @@ export default function Main() {
         }));
       } else if (event.which === 'scenegraph') {
         setState((prevState) => ({
+          ...prevState,
           visible: {
             ...prevState.visible,
             scenegraph: !prevState.visible.scenegraph
