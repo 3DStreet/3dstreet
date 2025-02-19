@@ -88,15 +88,20 @@ const ActionBar = ({ selectedEntity }) => {
         end: mouseUpPosition
       });
     } else {
+      const startPosition =
+        previewMeasureLineEl.getAttribute('measure-line').start;
+      const measureLineLength = previewMeasureLineEl.components[
+        'measure-line'
+      ].calculateLength(startPosition, mouseUpPosition);
       // Second click logic
       setHasRulerClicked(false);
       // Finish measure-line component...
       // now create a new entity with the measure-line component with the same dimensions
-      const startPosition =
-        previewMeasureLineEl.getAttribute('measure-line').start;
+
       AFRAME.INSPECTOR.execute('entitycreate', {
         components: {
-          'data-layer-name': 'Measure Line',
+          'data-layer-name':
+            'Measure Line • ' + Number(measureLineLength).toFixed(1) + ' m',
           'measure-line': {
             start: startPosition,
             end: mouseUpPosition
