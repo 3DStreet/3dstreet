@@ -99,8 +99,16 @@ const ActionBar = ({ selectedEntity }) => {
           'data-layer-name':
             'Measure Line • ' + Number(measureLineLength).toFixed(1) + ' m',
           'measure-line': {
-            start: startPosition,
-            end: mouseUpPosition
+            start: {
+              x: startPosition.x,
+              y: startPosition.y,
+              z: startPosition.z
+            },
+            end: {
+              x: mouseUpPosition.x,
+              y: mouseUpPosition.y,
+              z: mouseUpPosition.z
+            }
           }
         }
       });
