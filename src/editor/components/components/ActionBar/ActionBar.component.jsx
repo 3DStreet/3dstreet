@@ -79,6 +79,7 @@ const ActionBar = ({ selectedEntity }) => {
     console.log('onRulerMouseUp');
     console.log('hasRulerClicked:', hasRulerClicked);
     if (!hasRulerClicked) {
+      previewMeasureLineEl.setAttribute('visible', true);
       // First click logic
       setHasRulerClicked(true);
       previewMeasureLineEl.setAttribute('measure-line', {
@@ -86,6 +87,7 @@ const ActionBar = ({ selectedEntity }) => {
         end: mouseUpPosition
       });
     } else {
+      previewMeasureLineEl.setAttribute('visible', false);
       const startPosition =
         previewMeasureLineEl.getAttribute('measure-line').start;
       const measureLineLength = previewMeasureLineEl.components[
