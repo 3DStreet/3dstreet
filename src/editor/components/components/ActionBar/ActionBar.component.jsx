@@ -65,6 +65,8 @@ const ActionBar = ({ selectedEntity }) => {
     previewMeasureLineEl = document.createElement('a-entity');
     previewMeasureLineEl.setAttribute('id', 'previewMeasureLine');
     previewMeasureLineEl.setAttribute('measure-line', '');
+    previewMeasureLineEl.classList.add('hideFromSceneGraph');
+
     AFRAME.scenes[0].appendChild(previewMeasureLineEl);
     return previewMeasureLineEl;
   };
