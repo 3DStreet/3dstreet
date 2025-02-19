@@ -1,16 +1,39 @@
+import { useCallback, useEffect, useState } from 'react';
 import PropTypes from 'prop-types';
 import styles from './ScreenshotModal.module.scss';
 import PropertyRow from '../../components/PropertyRow.js';
+import { shouldShowProperty } from '../../components/Component.js';
 import { makeScreenshot } from '@/editor/lib/SceneUtils.js';
 import { debounce } from 'lodash-es';
 import { useAuthContext } from '../../../contexts';
 import useStore from '@/store';
+import Events from '../../../lib/Events.js';
 
 const ScreenshotProperties = ({ entity }) => {
   const { currentUser } = useAuthContext();
   const setModal = useStore((state) => state.setModal);
   const componentName = 'screentock';
   const component = entity?.components?.[componentName];
+
+  const [forceUpdate, setForceUpdate] = useState(0); // eslint-disable-line
+  const onEntityUpdate = useCallback(
+    (detail) => {
+      if (detail.entity !== entity) {
+        return;
+      }
+      if (detail.component === componentName) {
+        setForceUpdate((v) => v + 1);
+      }
+    },
+    [entity, componentName]
+  );
+
+  useEffect(() => {
+    Events.on('entityupdate', onEntityUpdate);
+    return () => {
+      Events.off('entityupdate', onEntityUpdate);
+    };
+  }, [onEntityUpdate]);
 
   const debouncedMakeScreenshot = debounce(() => {
     makeScreenshot(false);
@@ -122,36 +145,40 @@ const ScreenshotProperties = ({ entity }) => {
                     : undefined
                 }
               />
-              <PropertyRow
-                key="titleStrokeColor"
-                name="titleStrokeColor"
-                label="Stroke Color"
-                schema={component.schema['titleStrokeColor']}
-                data={component.data['titleStrokeColor']}
-                componentname={componentName}
-                entity={entity}
-                noSelectEntity={true}
-                onEntityUpdate={
-                  currentUser?.isPro
-                    ? () => debouncedMakeScreenshot()
-                    : undefined
-                }
-              />
-              <PropertyRow
-                key="titleStrokeWidth"
-                name="titleStrokeWidth"
-                label="Stroke Width"
-                schema={component.schema['titleStrokeWidth']}
-                data={component.data['titleStrokeWidth']}
-                componentname={componentName}
-                entity={entity}
-                noSelectEntity={true}
-                onEntityUpdate={
-                  currentUser?.isPro
-                    ? () => debouncedMakeScreenshot()
-                    : undefined
-                }
-              />
+              {shouldShowProperty('titleStrokeColor', component) && (
+                <PropertyRow
+                  key="titleStrokeColor"
+                  name="titleStrokeColor"
+                  label="Stroke Color"
+                  schema={component.schema['titleStrokeColor']}
+                  data={component.data['titleStrokeColor']}
+                  componentname={componentName}
+                  entity={entity}
+                  noSelectEntity={true}
+                  onEntityUpdate={
+                    currentUser?.isPro
+                      ? () => debouncedMakeScreenshot()
+                      : undefined
+                  }
+                />
+              )}
+              {shouldShowProperty('titleStrokeWidth', component) && (
+                <PropertyRow
+                  key="titleStrokeWidth"
+                  name="titleStrokeWidth"
+                  label="Stroke Width"
+                  schema={component.schema['titleStrokeWidth']}
+                  data={component.data['titleStrokeWidth']}
+                  componentname={componentName}
+                  entity={entity}
+                  noSelectEntity={true}
+                  onEntityUpdate={
+                    currentUser?.isPro
+                      ? () => debouncedMakeScreenshot()
+                      : undefined
+                  }
+                />
+              )}
             </div>
           </>
         )}

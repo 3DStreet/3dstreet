@@ -22,8 +22,18 @@ AFRAME.registerComponent('screentock', {
     },
     titleColor: { type: 'color', default: '#FFFFFF' },
     titleStroke: { type: 'boolean', default: true },
-    titleStrokeColor: { type: 'color', default: '#000000' },
-    titleStrokeWidth: { type: 'number', default: 1, max: 5, min: 0 }
+    titleStrokeColor: {
+      type: 'color',
+      default: '#000000',
+      if: { titleStroke: true }
+    },
+    titleStrokeWidth: {
+      type: 'number',
+      default: 1,
+      max: 5,
+      min: 0,
+      if: { titleStroke: true }
+    }
   },
 
   addStyledTitleToCanvas: function (ctx, screenWidth, screenHeight) {
