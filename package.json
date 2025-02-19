@@ -49,6 +49,7 @@
     "uuid": "^9.0.0",
     "zustand": "^5.0.1",
     "@gltf-transform/core": "^3.10.0",
+    "3d-tiles-renderer": "^0.3.21",
     "@gltf-transform/extensions": "^3.10.0",
     "@gltf-transform/functions": "^3.10.0",
     "gl-matrix": "^3.4.3"
