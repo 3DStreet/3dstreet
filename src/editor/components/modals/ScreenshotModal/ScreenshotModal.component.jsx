@@ -1,7 +1,6 @@
 import { useState } from 'react';
 import { ScreenshotProperties } from './ScreenshotProperties.component.jsx';
 import styles from './ScreenshotModal.module.scss';
-import { signIn } from '../../../api';
 import { useAuthContext } from '../../../contexts';
 import { Copy32Icon, Save24Icon } from '../../../icons';
 import { Button, Dropdown } from '../../components';
@@ -253,33 +252,30 @@ function ScreenshotModal() {
       }
     >
       <div className={styles.wrapper}>
-        {currentUser && (
-          <div className="details">
-            <Dropdown
-              placeholder="Download scene as..."
-              options={options}
-              onSelect={handleSelect}
-              selectedOptionValue={selectedOption}
-              icon={<Save24Icon />}
-              className={styles.dropdown}
-            />
-            <br />
-            <ScreenshotProperties entity={getScreentockEntity()} />
-          </div>
-        )}
+        <div className="details">
+          {currentUser ? (
+            <>
+              <Dropdown
+                placeholder="Download scene as..."
+                options={options}
+                onSelect={handleSelect}
+                selectedOptionValue={selectedOption}
+                icon={<Save24Icon />}
+                className={styles.dropdown}
+              />
+              <br />
+              <ScreenshotProperties entity={getScreentockEntity()} />
+            </>
+          ) : (
+            <div className="w-full max-w-xs">
+              <h3>Please sign in for download options and link sharing</h3>
+              <Button onClick={() => setModal('signin')}>
+                Sign in to 3DStreet Cloud
+              </Button>
+            </div>
+          )}
+        </div>
         <div className={styles.mainContent}>
-          <div className={styles.header}>
-            {currentUser ? (
-              <></>
-            ) : (
-              <div>
-                <h3>Please sign in for download and link sharing options</h3>
-                <Button onClick={() => signIn()}>
-                  Sign in to 3DStreet Cloud
-                </Button>
-              </div>
-            )}
-          </div>
           <div className={styles.imageWrapper}>
             <div className={styles.screenshotWrapper}>
               <img id="screentock-destination" />
