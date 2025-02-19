@@ -57,22 +57,80 @@ const ActionBar = ({ selectedEntity }) => {
     }
   }
 
+  const fetchOrCreatePreviewMeasureLineEntity = () => {
+    let previewMeasureLineEl = document.getElementById('previewMeasureLine');
+    if (previewMeasureLineEl) {
+      return previewMeasureLineEl;
+    }
+    // create a new entity with the measure-line component with the same dimensions
+    previewMeasureLineEl = document.createElement('a-entity');
+    previewMeasureLineEl.setAttribute('id', 'previewMeasureLine');
+    previewMeasureLineEl.setAttribute('measure-line', '');
+    AFRAME.scenes[0].appendChild(previewMeasureLineEl);
+    return previewMeasureLineEl;
+  };
+
+  const onRulerMouseUp = (e) => {
+    const previewMeasureLineEl = fetchOrCreatePreviewMeasureLineEntity();
+    const mouseUpPosition = pickPointOnGroundPlane({
+      x: e.clientX,
+      y: e.clientY,
+      canvas: AFRAME.scenes[0].canvas,
+      camera: AFRAME.INSPECTOR.camera
+    });
+    console.log('onRulerMouseUp');
+    console.log('hasRulerClicked:', hasRulerClicked);
+    if (!hasRulerClicked) {
+      // First click logic
+      setHasRulerClicked(true);
+      previewMeasureLineEl.setAttribute('measure-line', {
+        start: mouseUpPosition,
+        end: mouseUpPosition
+      });
+    } else {
+      // Second click logic
+      setHasRulerClicked(false);
+      // Finish measure-line component...
+      // now create a new entity with the measure-line component with the same dimensions
+      const startPosition =
+        previewMeasureLineEl.getAttribute('measure-line').start;
+      AFRAME.INSPECTOR.execute('entitycreate', {
+        components: {
+          measureLine: {
+            start: startPosition,
+            end: mouseUpPosition
+          }
+        }
+      });
+    }
+  };
   const onRulerMouseMove = (e) => {
     let rulerPreviewEntity = document.getElementById('rulerPreviewEntity');
+    const position = pickPointOnGroundPlane({
+      x: e.clientX,
+      y: e.clientY,
+      canvas: AFRAME.scenes[0].canvas,
+      camera: AFRAME.INSPECTOR.camera
+    });
     if (rulerPreviewEntity) {
-      const position = pickPointOnGroundPlane({
-        x: e.clientX,
-        y: e.clientY,
-        canvas: AFRAME.scenes[0].canvas,
-        camera: AFRAME.INSPECTOR.camera
-      });
       rulerPreviewEntity.object3D.position.copy(position);
+    }
+    if (hasRulerClicked) {
+      // get the previewMeasureLine entity
+      const previewMeasureLineEl =
+        document.getElementById('previewMeasureLine');
+      if (previewMeasureLineEl) {
+        previewMeasureLineEl.setAttribute('measure-line', {
+          end: position
+        });
+      }
     }
     return false;
   };
 
   const [transformMode, setTransformMode] = useState('translate'); // "translate" | "rotate" | "scale"
   const [newToolMode, setNewToolMode] = useState('off'); // "off" | "hand" | "ruler"
+  const [hasRulerClicked, setHasRulerClicked] = useState(false);
   useEffect(() => {
     // e (rotate) and w (translate) shortcuts
     const onChange = (mode) => {
@@ -151,6 +209,7 @@ const ActionBar = ({ selectedEntity }) => {
         createPortal(
           <div
             onMouseMove={onRulerMouseMove}
+            onMouseUp={onRulerMouseUp}
             style={{
               position: 'absolute',
               inset: '0px',
