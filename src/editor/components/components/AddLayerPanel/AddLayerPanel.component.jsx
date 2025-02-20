@@ -429,14 +429,6 @@ const AddLayerPanel = () => {
           [styles.open]: isOpen
         })}
       >
-        {' '}
-        <Button
-          onClick={onClose}
-          variant="custom"
-          className={styles.closeButton}
-        >
-          <Cross24Icon />
-        </Button>
         {createPortal(
           <div
             ref={dropPlaneEl}
@@ -463,70 +455,80 @@ const AddLayerPanel = () => {
               }))}
             />
           </div>
+          <Button
+            onClick={onClose}
+            variant="custom"
+            className={styles.closeButton}
+          >
+            <Cross24Icon />
+          </Button>
         </div>
-        <div className={styles.cards}>
-          {selectedCards.map((card) => (
-            <div
-              key={card.id}
-              className={styles.card}
-              onMouseEnter={() => cardMouseEnter(card.mixinId)}
-              onMouseLeave={() => cardMouseLeave(card.mixinId)}
-              draggable={true}
-              onDragStart={(e) => {
-                const transferData = {
-                  mixinId: card.mixinId,
-                  layerCardId: card.handlerFunction ? card.id : undefined
-                };
-                e.stopPropagation();
-                if (card.requiresPro && !isProUser) {
-                  startCheckout('addlayer');
-                  return;
-                }
-                fadeInDropPlane();
-                if (e.dataTransfer) {
-                  e.dataTransfer.effectAllowed = 'move';
-                  e.dataTransfer.setData(
-                    'application/json',
-                    JSON.stringify(transferData)
-                  );
-                  // Set the empty image as the drag image
-                  e.dataTransfer.setDragImage(emptyImg, 0, 0);
-                }
-                return false;
-              }}
-              onDragEnd={(e) => {
-                e.stopPropagation();
-                fadeOutDropPlane();
-                return false;
-              }}
-              onClick={() => cardClick(card, isProUser)}
-              title={card.description}
-            >
-              {card.requiresPro && !isProUser ? (
-                <div
-                  className={styles.img}
-                  style={{
-                    backgroundImage: `url(${LockedCard})`,
-                    backgroundSize: 'cover',
-                    backgroundPosition: 'center'
-                  }}
-                />
-              ) : (
-                <div
-                  className={styles.img}
-                  style={{
-                    backgroundImage: `url(${card.img || CardPlaceholder})`,
-                    backgroundSize: 'cover',
-                    backgroundPosition: 'center'
-                  }}
-                />
-              )}
-              <div className={styles.body}>
-                {card.icon ? <img src={card.icon} /> : null}
-                <p className={styles.description}>{card.name}</p>
+
+        <div className={styles.contentContainer}>
+          <div className={styles.cards}>
+            {selectedCards.map((card) => (
+              <div
+                key={card.id}
+                className={styles.card}
+                onMouseEnter={() => cardMouseEnter(card.mixinId)}
+                onMouseLeave={() => cardMouseLeave(card.mixinId)}
+                draggable={true}
+                onDragStart={(e) => {
+                  const transferData = {
+                    mixinId: card.mixinId,
+                    layerCardId: card.handlerFunction ? card.id : undefined
+                  };
+                  e.stopPropagation();
+                  if (card.requiresPro && !isProUser) {
+                    startCheckout('addlayer');
+                    return;
+                  }
+                  fadeInDropPlane();
+                  if (e.dataTransfer) {
+                    e.dataTransfer.effectAllowed = 'move';
+                    e.dataTransfer.setData(
+                      'application/json',
+                      JSON.stringify(transferData)
+                    );
+                    // Set the empty image as the drag image
+                    e.dataTransfer.setDragImage(emptyImg, 0, 0);
+                  }
+                  return false;
+                }}
+                onDragEnd={(e) => {
+                  e.stopPropagation();
+                  fadeOutDropPlane();
+                  return false;
+                }}
+                onClick={() => cardClick(card, isProUser)}
+                title={card.description}
+              >
+                {card.requiresPro && !isProUser ? (
+                  <div
+                    className={styles.img}
+                    style={{
+                      backgroundImage: `url(${LockedCard})`,
+                      backgroundSize: 'cover',
+                      backgroundPosition: 'center'
+                    }}
+                  />
+                ) : (
+                  <div
+                    className={styles.img}
+                    style={{
+                      backgroundImage: `url(${card.img || CardPlaceholder})`,
+                      backgroundSize: 'cover',
+                      backgroundPosition: 'center'
+                    }}
+                  />
+                )}
+                <div className={styles.body}>
+                  {card.icon ? <img src={card.icon} /> : null}
+                  <p className={styles.description}>{card.name}</p>
+                </div>
               </div>
-            </div>
-          ))}
+            ))}
+          </div>
         </div>
       </div>
     </>

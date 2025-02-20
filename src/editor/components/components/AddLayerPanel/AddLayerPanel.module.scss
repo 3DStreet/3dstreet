@@ -9,19 +9,6 @@
   z-index: 100;
 }
 
-.closeButton {
-  position: sticky;
-  width: 64px;
-  height: 40px;
-  top: 16px;
-  right: 16px;
-  cursor: pointer;
-  padding: 4px 20px 4px 20px;
-  border-radius: 8px;
-  float: right;
-  margin-right: -24px; /* Compensate for panel padding */
-}
-
 .panel {
   position: fixed;
   left: 0;
@@ -32,9 +19,9 @@
   box-shadow: 2px 0 5px rgba(0, 0, 0, 0.2);
   transition: transform 0.3s ease-in-out;
   z-index: 100;
-  padding: 0px 40px 20px 42px;
   margin: 0 auto;
-  overflow-y: scroll;
+  display: flex;
+  flex-direction: column;
 
   .badge {
     background-color: #774dee;
@@ -45,61 +32,69 @@
   &.open {
     bottom: 0;
   }
+}
 
-  .dropdown {
-    min-width: 285px;
-    height: 36px !important;
-    padding: 10px;
+.closeButton {
+  position: absolute;
+  display: flex;
+  width: 64px;
+  height: 40px;
+  right: 15px;
+  cursor: pointer;
+  padding: 4px 20px;
+  border-radius: 8px;
+  z-index: 2;
+}
+
+.header {
+  position: sticky;
+  top: 0;
+  background: rgba(34, 34, 34, 1);
+  padding: 6px 22px 6px 42px;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+
+  .categories {
+    width: 100%;
+    padding-right: 20px; /* Make space for close button */
+  }
+}
+
+.contentContainer {
+  flex: 1;
+  overflow-y: auto;
+  padding: 0 40px 20px 42px;
+}
+
+.cards {
+  display: flex;
+  column-gap: 14px;
+  flex-wrap: wrap;
+  row-gap: 25px;
+  padding-top: 12px;
+
+  .card {
+    .img {
+      margin-bottom: 15px;
+      object-fit: cover;
+      width: 206px;
+      height: 114px;
+    }
+    cursor: pointer;
   }
 
-  .button {
+  .body {
     display: flex;
     align-items: center;
-    column-gap: 8px;
+    column-gap: 15px;
   }
 
-  .buttonLabel {
-    font-size: 18px !important;
-    line-height: 21.6px;
-    color: variables.$white;
-  }
-
-  .header {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    margin-bottom: 12px;
-    margin-top: 12px;
-  }
-
-  .cards {
-    display: flex;
-    column-gap: 24px;
-    flex-wrap: wrap;
-    row-gap: 30px;
-
-    .card {
-      .img {
-        margin-bottom: 15px;
-        object-fit: cover;
-        width: 206px;
-        height: 114px;
-      }
-      cursor: pointer;
-    }
-
-    .body {
-      display: flex;
-      align-items: center;
-      column-gap: 15px;
-    }
-
-    .description {
-      color: rgba(182, 182, 182, 1);
-      max-width: 182px; // Same as image width
-      word-wrap: break-word;
-      overflow-wrap: break-word;
-      white-space: normal;
-    }
+  .description {
+    color: rgba(182, 182, 182, 1);
+    max-width: 182px;
+    word-wrap: break-word;
+    overflow-wrap: break-word;
+    white-space: normal;
   }
 }
