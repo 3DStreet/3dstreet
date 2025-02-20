@@ -1,10 +1,10 @@
 import { useState, useEffect, useMemo, useRef } from 'react';
+import { Cross24Icon, Plus20Circle } from '../../../icons';
 import { createPortal } from 'react-dom';
 import { useAuthContext } from '../../../contexts/index.js';
 import { Button, Tabs, PanelToggleButton } from '../../components';
 import styles from './AddLayerPanel.module.scss';
 import classNames from 'classnames';
-import { Chevron24Down, Plus20Circle } from '../../../icons';
 import CardPlaceholder from '../../../../../ui_assets/card-placeholder.svg';
 import LockedCard from '../../../../../ui_assets/locked-card.svg';
 import mixinCatalog from '../../../../catalog.json';
@@ -429,6 +429,14 @@ const AddLayerPanel = () => {
           [styles.open]: isOpen
         })}
       >
+        {' '}
+        <Button
+          onClick={onClose}
+          variant="custom"
+          className={styles.closeButton}
+        >
+          <Cross24Icon />
+        </Button>
         {createPortal(
           <div
             ref={dropPlaneEl}
@@ -444,13 +452,6 @@ const AddLayerPanel = () => {
           ></div>,
           document.body
         )}
-        <Button
-          onClick={onClose}
-          variant="custom"
-          className={styles.closeButton}
-        >
-          <Chevron24Down />
-        </Button>
         <div className={styles.header}>
           <div className={styles.categories}>
             <Tabs

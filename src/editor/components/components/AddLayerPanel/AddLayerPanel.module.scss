@@ -9,6 +9,19 @@
   z-index: 100;
 }
 
+.closeButton {
+  position: sticky;
+  width: 64px;
+  height: 40px;
+  top: 16px;
+  right: 16px;
+  cursor: pointer;
+  padding: 4px 20px 4px 20px;
+  border-radius: 8px;
+  float: right;
+  margin-right: -24px; /* Compensate for panel padding */
+}
+
 .panel {
   position: fixed;
   left: 0;
@@ -88,17 +101,5 @@
       overflow-wrap: break-word;
       white-space: normal;
     }
-  }
-
-  .closeButton {
-    position: sticky;
-    width: 64px;
-    height: 40px;
-    transform: translateX(-50%);
-    top: 0px;
-    left: 50%;
-    cursor: pointer;
-    padding: 4px 20px 4px 20px;
-    border-radius: 0px 0px 8px 8px;
   }
 }
