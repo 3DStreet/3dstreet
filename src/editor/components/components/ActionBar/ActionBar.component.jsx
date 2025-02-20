@@ -1,4 +1,4 @@
-import { faHand, faPlusSquare } from '@fortawesome/free-regular-svg-icons';
+import { faHand } from '@fortawesome/free-regular-svg-icons';
 import { AwesomeIcon } from '../AwesomeIcon';
 import classNames from 'classnames';
 import Events from '../../../lib/Events';
@@ -8,12 +8,9 @@ import { Button, UnitsPreference } from '../../components';
 import { useState, useEffect, useCallback } from 'react';
 import posthog from 'posthog-js';
 import { Rotate24Icon, Translate24Icon, Ruler24Icon } from '../../../icons';
-import useStore from '@/store.js';
 import pickPointOnGroundPlane from '../../../lib/pick-point-on-ground-plane';
 
 const ActionBar = ({ selectedEntity }) => {
-  const setModal = useStore((state) => state.setModal);
-  const isOpen = useStore((state) => state.modal === 'addlayer');
   const [measureLineCounter, setMeasureLineCounter] = useState(1);
 
   const handleNewToolClick = (tool) => {
@@ -187,59 +184,56 @@ const ActionBar = ({ selectedEntity }) => {
   };
 
   return (
-    <div>
-      {!isOpen && (
-        <div className={styles.wrapper}>
-          <Button
-            variant="toolbtn"
-            className={classNames({
-              [styles.active]:
-                newToolMode === 'hand' ||
-                selectedEntity?.hasAttribute('data-no-transform')
-            })}
-            onClick={handleNewToolClick.bind(null, 'hand')}
-          >
-            <AwesomeIcon icon={faHand} />
-          </Button>
-          <Button
-            variant="toolbtn"
-            className={classNames({
-              [styles.active]:
-                transformMode === 'translate' &&
-                !selectedEntity?.hasAttribute('data-no-transform')
-            })}
-            onClick={() => changeTransformMode('translate')}
-            disabled={selectedEntity?.hasAttribute('data-no-transform')}
-          >
-            <Translate24Icon />
-          </Button>
-          <Button
-            variant="toolbtn"
-            className={classNames({
-              [styles.active]:
-                transformMode === 'rotate' &&
-                !selectedEntity?.hasAttribute('data-no-transform')
-            })}
-            onClick={() => changeTransformMode('rotate')}
-            disabled={selectedEntity?.hasAttribute('data-no-transform')}
-          >
-            <Rotate24Icon />
-          </Button>
-          <Button
-            variant="toolbtn"
-            className={classNames({
-              [styles.active]: newToolMode === 'ruler'
-            })}
-            onClick={handleNewToolClick.bind(null, 'ruler')}
-          >
-            <Ruler24Icon />
-          </Button>
-          <UnitsPreference />
-          <Button variant="toolbtn" onClick={() => setModal('addlayer')}>
-            <AwesomeIcon icon={faPlusSquare} />
-          </Button>
-        </div>
-      )}
+    <div className={styles.wrapper}>
+      <Button
+        variant="toolbtn"
+        className={classNames({
+          [styles.active]:
+            newToolMode === 'hand' ||
+            selectedEntity?.hasAttribute('data-no-transform')
+        })}
+        onClick={handleNewToolClick.bind(null, 'hand')}
+        title="Hand Tool - pan and rotate the view without selecting objects"
+      >
+        <AwesomeIcon icon={faHand} />
+      </Button>
+      <Button
+        variant="toolbtn"
+        className={classNames({
+          [styles.active]:
+            transformMode === 'translate' &&
+            !selectedEntity?.hasAttribute('data-no-transform')
+        })}
+        onClick={() => changeTransformMode('translate')}
+        disabled={selectedEntity?.hasAttribute('data-no-transform')}
+        title="Translate Tool (w) - Select and move objects"
+      >
+        <Translate24Icon />
+      </Button>
+      <Button
+        variant="toolbtn"
+        className={classNames({
+          [styles.active]:
+            transformMode === 'rotate' &&
+            !selectedEntity?.hasAttribute('data-no-transform')
+        })}
+        onClick={() => changeTransformMode('rotate')}
+        disabled={selectedEntity?.hasAttribute('data-no-transform')}
+        title="Rotate Tool (e) - Select and rotate objects"
+      >
+        <Rotate24Icon />
+      </Button>
+      <Button
+        variant="toolbtn"
+        className={classNames({
+          [styles.active]: newToolMode === 'ruler'
+        })}
+        onClick={handleNewToolClick.bind(null, 'ruler')}
+        title="Ruler Tool - Measure distances between points"
+      >
+        <Ruler24Icon />
+      </Button>
+      <UnitsPreference />
     </div>
   );
 };

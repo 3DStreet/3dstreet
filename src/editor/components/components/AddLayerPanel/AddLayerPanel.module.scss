@@ -1,18 +1,74 @@
 @use '../../../style/variables.scss';
 
+.addLayerButton {
+  position: fixed;
+  bottom: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  margin-bottom: 0px;
+  z-index: 1;
+}
+
 .panel {
   position: fixed;
   left: 0;
-  bottom: -100%;
+  bottom: 0;
   width: 100%;
+  min-height: 200px;
+  max-height: 80vh;
   height: 260px;
   background: rgba(34, 34, 34, 1);
   box-shadow: 2px 0 5px rgba(0, 0, 0, 0.2);
+  transform: translateY(100%);
   transition: transform 0.3s ease-in-out;
+  &.dragging {
+    transition: none;
+  }
+  will-change: transform, height;
   z-index: 100;
-  padding: 0px 40px 20px 42px;
   margin: 0 auto;
-  overflow-y: scroll;
+  display: flex;
+  flex-direction: column;
+
+  .dragHandle {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 12px;
+    cursor: ns-resize;
+    background: rgba(33, 33, 33, 1);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+    z-index: 101;
+
+    &::before,
+    &::after {
+      content: '';
+      position: absolute;
+      left: 50%;
+      width: 30px;
+      height: 2px;
+      background: rgba(255, 255, 255, 0.4);
+      border-radius: 1px;
+    }
+
+    &::before {
+      top: 3px;
+    }
+
+    &::after {
+      bottom: 3px;
+    }
+
+    &:hover {
+      background: rgba(77, 77, 77, 1);
+
+      &::before,
+      &::after {
+        background: rgba(255, 255, 255, 0.6);
+      }
+    }
+  }
 
   .badge {
     background-color: #774dee;
@@ -21,75 +77,71 @@
   }
 
   &.open {
-    bottom: 0;
+    transform: translateY(0);
   }
+}
 
-  .dropdown {
-    min-width: 285px;
-    height: 36px !important;
-    padding: 10px;
+.closeButton {
+  position: absolute;
+  display: flex;
+  width: 64px;
+  height: 40px;
+  right: 15px;
+  cursor: pointer;
+  padding: 4px 20px;
+  border-radius: 8px;
+  z-index: 2;
+}
+
+.header {
+  position: sticky;
+  top: 0;
+  background: rgba(34, 34, 34, 1);
+  padding: 26px 22px 6px 42px;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+
+  .categories {
+    width: 100%;
+    padding-right: 20px; /* Make space for close button */
   }
+}
 
-  .button {
-    display: flex;
-    align-items: center;
-    column-gap: 8px;
-  }
+.contentContainer {
+  flex: 1;
+  overflow-y: auto;
+  padding: 0 40px 20px 42px;
+}
 
-  .buttonLabel {
-    font-size: 18px !important;
-    line-height: 21.6px;
-    color: variables.$white;
-  }
+.cards {
+  display: flex;
+  column-gap: 14px;
+  flex-wrap: wrap;
+  row-gap: 25px;
+  padding-top: 12px;
 
-  .header {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    margin-bottom: 12px;
-    margin-top: 12px;
-  }
-
-  .cards {
-    display: flex;
-    column-gap: 24px;
-    flex-wrap: wrap;
-    row-gap: 30px;
-
-    .card {
-      .img {
-        margin-bottom: 15px;
-        object-fit: cover;
-        width: 206px;
-        height: 114px;
-      }
-      cursor: pointer;
+  .card {
+    .img {
+      margin-bottom: 15px;
+      object-fit: cover;
+      width: 206px;
+      height: 114px;
     }
-
-    .body {
-      display: flex;
-      align-items: center;
-      column-gap: 15px;
-    }
-
-    .description {
-      color: rgba(182, 182, 182, 1);
-      max-width: 182px; // Same as image width
-      word-wrap: break-word;
-      overflow-wrap: break-word;
-      white-space: normal;
-    }
-  }
-
-  .closeButton {
-    position: sticky;
-    width: 64px;
-    height: 40px;
-    transform: translateX(-50%);
-    top: 0px;
-    left: 50%;
     cursor: pointer;
-    padding: 4px 20px 4px 20px;
-    border-radius: 0px 0px 8px 8px;
+  }
+
+  .body {
+    display: flex;
+    align-items: center;
+    column-gap: 15px;
+  }
+
+  .description {
+    color: rgba(182, 182, 182, 1);
+    max-width: 182px;
+    word-wrap: break-word;
+    overflow-wrap: break-word;
+    white-space: normal;
   }
 }
