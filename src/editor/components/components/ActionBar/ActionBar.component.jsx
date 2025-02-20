@@ -3,7 +3,8 @@ import { AwesomeIcon } from '../AwesomeIcon';
 import classNames from 'classnames';
 import Events from '../../../lib/Events';
 import styles from './ActionBar.module.scss';
-import { Button } from '../Button';
+import { Button, UnitsPreference } from '../../components';
+
 import { useState, useEffect, useCallback } from 'react';
 import posthog from 'posthog-js';
 import { Rotate24Icon, Translate24Icon, Ruler24Icon } from '../../../icons';
@@ -120,7 +121,7 @@ const ActionBar = ({ selectedEntity }) => {
         setMeasureLineCounter((prev) => prev + 1);
       }
     },
-    [hasRulerClicked]
+    [hasRulerClicked, measureLineCounter]
   );
 
   const onRulerMouseMove = useCallback(
@@ -233,6 +234,7 @@ const ActionBar = ({ selectedEntity }) => {
           >
             <Ruler24Icon />
           </Button>
+          <UnitsPreference />
           <Button variant="toolbtn" onClick={() => setModal('addlayer')}>
             <AwesomeIcon icon={faPlusSquare} />
           </Button>

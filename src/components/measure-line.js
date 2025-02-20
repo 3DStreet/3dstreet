@@ -3,6 +3,7 @@
 
 // Import CSS2D Object for labels
 import { CSS2DObject } from 'three/addons/renderers/CSS2DRenderer.js';
+import useStore from '../store.js';
 
 // Up vector is Y axis (0,1,0) - default cylinder orientation
 const up = new THREE.Vector3(0, 1, 0);
@@ -62,7 +63,12 @@ AFRAME.registerComponent('measure-line', {
 
     // Update label position and content
     this.labelObject.position.copy(this.mesh.position);
-    this.labelDiv.textContent = `${length.toFixed(2)}m`;
+    if (this.units === 'metric') {
+      this.labelDiv.textContent = `${length.toFixed(2)}m`;
+    } else if (this.units === 'imperial') {
+      const feet = length * 3.28084;
+      this.labelDiv.textContent = `${feet.toFixed(2)}ft`;
+    }
   },
   calculateLength: function () {
     const start = this.data.start;
@@ -76,6 +82,16 @@ AFRAME.registerComponent('measure-line', {
     return length;
   },
   init: function () {
+    // Get initial units preference from store
+    this.units = useStore.getState().unitsPreference || 'metric';
+
+    // Subscribe to units preference changes
+    useStore.subscribe((state) => {
+      if (this.units !== state.unitsPreference) {
+        this.units = state.unitsPreference;
+        this.createOrUpdateHelper();
+      }
+    });
     this.tmpQuaternion = new THREE.Quaternion();
     this.direction = new THREE.Vector3();
     // initialize helper cylinder geometry
