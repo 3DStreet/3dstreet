@@ -1,4 +1,4 @@
-import { faHand, faPlusSquare } from '@fortawesome/free-regular-svg-icons';
+import { faHand } from '@fortawesome/free-regular-svg-icons';
 import { AwesomeIcon } from '../AwesomeIcon';
 import classNames from 'classnames';
 import Events from '../../../lib/Events';
@@ -12,7 +12,6 @@ import useStore from '@/store.js';
 import pickPointOnGroundPlane from '../../../lib/pick-point-on-ground-plane';
 
 const ActionBar = ({ selectedEntity }) => {
-  const setModal = useStore((state) => state.setModal);
   const isOpen = useStore((state) => state.modal === 'addlayer');
   const [measureLineCounter, setMeasureLineCounter] = useState(1);
 
@@ -235,9 +234,6 @@ const ActionBar = ({ selectedEntity }) => {
             <Ruler24Icon />
           </Button>
           <UnitsPreference />
-          <Button variant="toolbtn" onClick={() => setModal('addlayer')}>
-            <AwesomeIcon icon={faPlusSquare} />
-          </Button>
         </div>
       )}
     </div>

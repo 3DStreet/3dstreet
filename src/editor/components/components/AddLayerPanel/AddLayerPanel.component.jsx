@@ -2,10 +2,12 @@ import { useState, useEffect, useMemo, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { useAuthContext } from '../../../contexts/index.js';
 import { Button, Tabs } from '../../components';
+// import { AwesomeIcon } from '../AwesomeIcon';
+// import { faPlusSquare } from '@fortawesome/free-regular-svg-icons';
 
 import styles from './AddLayerPanel.module.scss';
 import classNames from 'classnames';
-import { Chevron24Down } from '../../../icons';
+import { Chevron24Down, Plus20Circle } from '../../../icons';
 import CardPlaceholder from '../../../../../ui_assets/card-placeholder.svg';
 import LockedCard from '../../../../../ui_assets/locked-card.svg';
 import mixinCatalog from '../../../../catalog.json';
@@ -416,106 +418,119 @@ const AddLayerPanel = () => {
   };
 
   return (
-    <div
-      className={classNames(styles.panel, {
-        [styles.open]: isOpen
-      })}
-    >
-      {createPortal(
-        <div
-          ref={dropPlaneEl}
-          onDragOver={onItemDragOver}
-          onDrop={onItemDrop}
-          style={{
-            display: 'none',
-            position: 'absolute',
-            inset: '0px',
-            userSelect: 'none',
-            pointerEvents: 'auto'
-          }}
-        ></div>,
-        document.body
-      )}
-      <Button onClick={onClose} variant="custom" className={styles.closeButton}>
-        <Chevron24Down />
-      </Button>
-      <div className={styles.header}>
-        <div className={styles.categories}>
-          <Tabs
-            tabs={LayersOptions.map((option) => ({
-              label: option.label,
-              value: option.value,
-              isSelected: selectedOption === option.value,
-              onClick: () => handleSelect(option.value)
-            }))}
-          />
+    <>
+      <button
+        className={styles.addLayerButton}
+        onClick={() => setModal('addlayer')}
+      >
+        <Plus20Circle />
+        Add New Layer
+      </button>
+      <div
+        className={classNames(styles.panel, {
+          [styles.open]: isOpen
+        })}
+      >
+        {createPortal(
+          <div
+            ref={dropPlaneEl}
+            onDragOver={onItemDragOver}
+            onDrop={onItemDrop}
+            style={{
+              display: 'none',
+              position: 'absolute',
+              inset: '0px',
+              userSelect: 'none',
+              pointerEvents: 'auto'
+            }}
+          ></div>,
+          document.body
+        )}
+        <Button
+          onClick={onClose}
+          variant="custom"
+          className={styles.closeButton}
+        >
+          <Chevron24Down />
+        </Button>
+        <div className={styles.header}>
+          <div className={styles.categories}>
+            <Tabs
+              tabs={LayersOptions.map((option) => ({
+                label: option.label,
+                value: option.value,
+                isSelected: selectedOption === option.value,
+                onClick: () => handleSelect(option.value)
+              }))}
+            />
+          </div>
+        </div>
+        <div className={styles.cards}>
+          {selectedCards.map((card) => (
+            <div
+              key={card.id}
+              className={styles.card}
+              onMouseEnter={() => cardMouseEnter(card.mixinId)}
+              onMouseLeave={() => cardMouseLeave(card.mixinId)}
+              draggable={true}
+              onDragStart={(e) => {
+                const transferData = {
+                  mixinId: card.mixinId,
+                  layerCardId: card.handlerFunction ? card.id : undefined
+                };
+                e.stopPropagation();
+                if (card.requiresPro && !isProUser) {
+                  startCheckout('addlayer');
+                  return;
+                }
+                fadeInDropPlane();
+                if (e.dataTransfer) {
+                  e.dataTransfer.effectAllowed = 'move';
+                  e.dataTransfer.setData(
+                    'application/json',
+                    JSON.stringify(transferData)
+                  );
+                  // Set the empty image as the drag image
+                  e.dataTransfer.setDragImage(emptyImg, 0, 0);
+                }
+                return false;
+              }}
+              onDragEnd={(e) => {
+                e.stopPropagation();
+                fadeOutDropPlane();
+                return false;
+              }}
+              onClick={() => cardClick(card, isProUser)}
+              title={card.description}
+            >
+              {card.requiresPro && !isProUser ? (
+                <div
+                  className={styles.img}
+                  style={{
+                    backgroundImage: `url(${LockedCard})`,
+                    backgroundSize: 'cover',
+                    backgroundPosition: 'center'
+                  }}
+                />
+              ) : (
+                <div
+                  className={styles.img}
+                  style={{
+                    backgroundImage: `url(${card.img || CardPlaceholder})`,
+                    backgroundSize: 'cover',
+                    backgroundPosition: 'center'
+                  }}
+                />
+              )}
+              <div className={styles.body}>
+                {card.icon ? <img src={card.icon} /> : null}
+                <p className={styles.description}>{card.name}</p>
+              </div>
+            </div>
+          ))}
         </div>
       </div>
-      <div className={styles.cards}>
-        {selectedCards.map((card) => (
-          <div
-            key={card.id}
-            className={styles.card}
-            onMouseEnter={() => cardMouseEnter(card.mixinId)}
-            onMouseLeave={() => cardMouseLeave(card.mixinId)}
-            draggable={true}
-            onDragStart={(e) => {
-              const transferData = {
-                mixinId: card.mixinId,
-                layerCardId: card.handlerFunction ? card.id : undefined
-              };
-              e.stopPropagation();
-              if (card.requiresPro && !isProUser) {
-                startCheckout('addlayer');
-                return;
-              }
-              fadeInDropPlane();
-              if (e.dataTransfer) {
-                e.dataTransfer.effectAllowed = 'move';
-                e.dataTransfer.setData(
-                  'application/json',
-                  JSON.stringify(transferData)
-                );
-                // Set the empty image as the drag image
-                e.dataTransfer.setDragImage(emptyImg, 0, 0);
-              }
-              return false;
-            }}
-            onDragEnd={(e) => {
-              e.stopPropagation();
-              fadeOutDropPlane();
-              return false;
-            }}
-            onClick={() => cardClick(card, isProUser)}
-            title={card.description}
-          >
-            {card.requiresPro && !isProUser ? (
-              <div
-                className={styles.img}
-                style={{
-                  backgroundImage: `url(${LockedCard})`,
-                  backgroundSize: 'cover',
-                  backgroundPosition: 'center'
-                }}
-              />
-            ) : (
-              <div
-                className={styles.img}
-                style={{
-                  backgroundImage: `url(${card.img || CardPlaceholder})`,
-                  backgroundSize: 'cover',
-                  backgroundPosition: 'center'
-                }}
-              />
-            )}
-            <div className={styles.body}>
-              {card.icon ? <img src={card.icon} /> : null}
-              <p className={styles.description}>{card.name}</p>
-            </div>
-          </div>
-        ))}
-      </div>
-    </div>
+    </>
   );
 };
 
