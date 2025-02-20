@@ -1,9 +1,9 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
+import { ScreenshotProperties } from './ScreenshotProperties.component.jsx';
 import styles from './ScreenshotModal.module.scss';
-import { signIn } from '../../../api';
 import { useAuthContext } from '../../../contexts';
 import { Copy32Icon, Save24Icon } from '../../../icons';
-import { Button, Dropdown, Input } from '../../components';
+import { Button, Dropdown } from '../../components';
 import Modal from '../Modal.jsx';
 import posthog from 'posthog-js';
 import { saveBlob } from '../../../lib/utils';
@@ -41,22 +41,17 @@ const getSceneName = (scene) => {
 };
 
 function ScreenshotModal() {
+  // Get the entity that has the screentock component
+  const getScreentockEntity = () => {
+    const screenshotEl = document.getElementById('screenshot');
+    if (!screenshotEl.isPlaying) {
+      screenshotEl.play();
+    }
+    return screenshotEl;
+  };
   const setModal = useStore((state) => state.setModal);
   const modal = useStore((state) => state.modal);
   const { currentUser } = useAuthContext();
-
-  const sceneId = STREET.utils.getCurrentSceneId();
-  let currentUrl;
-  if (sceneId) {
-    currentUrl = 'https://3dstreet.app/#/scenes/' + sceneId;
-  } else {
-    currentUrl = window.location.href;
-  }
-
-  const [inputValue, setInputValue] = useState(currentUrl);
-  useEffect(() => {
-    setInputValue(currentUrl);
-  }, [currentUrl]);
 
   const [selectedOption, setSelectedOption] = useState(null);
   const options = [
@@ -225,11 +220,12 @@ function ScreenshotModal() {
       const sceneId = STREET.utils.getCurrentSceneId();
       let updatedUrl;
       if (sceneId) {
-        updatedUrl = 'https://3dstreet.app/#/scenes/' + sceneId + '.json';
+        updatedUrl = 'https://3dstreet.app/#/scenes/' + sceneId;
       } else {
         updatedUrl = window.location.href;
       }
       await navigator.clipboard.writeText(updatedUrl);
+      STREET.notify.successMessage('Scene URL copied to clipboard');
     } catch (err) {
       console.error('Failed to copy text: ', err);
     }
@@ -240,41 +236,25 @@ function ScreenshotModal() {
       className={styles.screenshotModalWrapper}
       isOpen={modal === 'screenshot'}
       onClose={() => setModal(null)}
-      title={'Share scene'}
       titleElement={
-        <>
-          <h3
-            style={{
-              fontSize: '20px',
-              marginTop: '26px',
-              marginBottom: '0px',
-              position: 'relative'
-            }}
-          >
-            Share scene
-          </h3>
-        </>
+        <div className="flex items-center justify-between pr-4 pt-4">
+          <div className="font-large text-center text-2xl">Share Scene</div>
+          {currentUser && (
+            <Button
+              onClick={copyToClipboardTailing}
+              leadingIcon={<Copy32Icon />}
+              variant="toolbtn"
+            >
+              Copy Link
+            </Button>
+          )}
+        </div>
       }
     >
       <div className={styles.wrapper}>
-        <div className={styles.header}>
+        <div className="details">
           {currentUser ? (
-            <div className={styles.forms}>
-              <div className={styles.inputContainer}>
-                <Input
-                  className={styles.input}
-                  value={inputValue}
-                  readOnly={true}
-                  hideBorderAndBackground={true}
-                />
-                <Button
-                  variant="ghost"
-                  onClick={copyToClipboardTailing}
-                  className={styles.button}
-                >
-                  <Copy32Icon />
-                </Button>
-              </div>
+            <>
               <Dropdown
                 placeholder="Download scene as..."
                 options={options}
@@ -283,19 +263,23 @@ function ScreenshotModal() {
                 icon={<Save24Icon />}
                 className={styles.dropdown}
               />
-            </div>
+              <br />
+              <ScreenshotProperties entity={getScreentockEntity()} />
+            </>
           ) : (
-            <div>
-              <h3>Please log in first to share the URL</h3>
-              <Button onClick={() => signIn()}>
+            <div className="w-full max-w-xs">
+              <h3>Please sign in for download options and link sharing</h3>
+              <Button onClick={() => setModal('signin')}>
                 Sign in to 3DStreet Cloud
               </Button>
             </div>
           )}
         </div>
-        <div className={styles.imageWrapper}>
-          <div className={styles.screenshotWrapper}>
-            <img id="screentock-destination" />
+        <div className={styles.mainContent}>
+          <div className={styles.imageWrapper}>
+            <div className={styles.screenshotWrapper}>
+              <img id="screentock-destination" />
+            </div>
           </div>
         </div>
       </div>
