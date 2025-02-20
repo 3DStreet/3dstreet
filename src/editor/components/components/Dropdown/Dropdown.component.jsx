@@ -29,7 +29,6 @@ const Dropdown = ({
   icon,
   placeholder,
   disabled,
-  smallDropdown,
   className
 }) => {
   const [isOptionsMenuOpen, setIsMenuOptionsOpen] = useState(false);
@@ -60,17 +59,11 @@ const Dropdown = ({
           onClick={toggleOptionsMenu}
           className={classNames(
             styles.selector,
-            isOptionsMenuOpen && styles.selectorWithOpenedMenu,
-            smallDropdown && styles.selectorOfSmallDropdown
+            isOptionsMenuOpen && styles.selectorWithOpenedMenu
           )}
         >
           {icon && <div className={styles.icon}>{icon}</div>}
-          <span
-            className={classNames(
-              styles.selectedOptionLabel,
-              smallDropdown && styles.selectedOptionLabelOfSmallDropdown
-            )}
-          >
+          <span className={classNames(styles.selectedOptionLabel)}>
             {findSelectedOptionLabel() ?? placeholder}
           </span>
           {isOptionsMenuOpen ? <ArrowUp24Icon /> : <ArrowDown24Icon />}

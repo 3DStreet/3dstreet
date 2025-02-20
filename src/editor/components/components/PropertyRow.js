@@ -24,10 +24,17 @@ export default class PropertyRow extends React.Component {
       PropTypes.string.isRequired
     ]),
     entity: PropTypes.object.isRequired,
-    isSingle: PropTypes.bool.isRequired,
+    isSingle: PropTypes.bool,
     name: PropTypes.string.isRequired,
     label: PropTypes.string,
-    schema: PropTypes.object.isRequired
+    schema: PropTypes.object.isRequired,
+    noSelectEntity: PropTypes.bool,
+    onEntityUpdate: PropTypes.func
+  };
+
+  static defaultProps = {
+    isSingle: false,
+    noSelectEntity: false
   };
 
   constructor(props) {
@@ -61,7 +68,9 @@ export default class PropertyRow extends React.Component {
           entity: props.entity,
           component: props.componentname,
           property: !props.isSingle ? props.name : '',
-          value: value
+          value: value,
+          noSelectEntity: props.noSelectEntity,
+          onEntityUpdate: props.onEntityUpdate
         });
       },
       value: value
