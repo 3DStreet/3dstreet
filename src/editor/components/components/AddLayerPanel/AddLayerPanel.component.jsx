@@ -1,10 +1,7 @@
 import { useState, useEffect, useMemo, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { useAuthContext } from '../../../contexts/index.js';
-import { Button, Tabs } from '../../components';
-// import { AwesomeIcon } from '../AwesomeIcon';
-// import { faPlusSquare } from '@fortawesome/free-regular-svg-icons';
-
+import { Button, Tabs, PanelToggleButton } from '../../components';
 import styles from './AddLayerPanel.module.scss';
 import classNames from 'classnames';
 import { Chevron24Down, Plus20Circle } from '../../../icons';
@@ -419,13 +416,14 @@ const AddLayerPanel = () => {
 
   return (
     <>
-      <button
-        className={styles.addLayerButton}
+      <PanelToggleButton
+        icon={Plus20Circle}
+        isOpen={isOpen}
         onClick={() => setModal('addlayer')}
+        className={styles.addLayerButton}
       >
-        <Plus20Circle />
         Add New Layer
-      </button>
+      </PanelToggleButton>
       <div
         className={classNames(styles.panel, {
           [styles.open]: isOpen

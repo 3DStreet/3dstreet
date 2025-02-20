@@ -6,20 +6,7 @@
   left: 50%;
   transform: translateX(-50%);
   margin-bottom: 10px;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 8px 16px;
-  border-radius: 4px;
-  background-color: variables.$black-100;
-  color: variables.$white;
-  border: 1px solid variables.$gray-200;
-  cursor: pointer;
   z-index: 100;
-
-  &:hover {
-    background-color: variables.$black-100;
-  }
 }
 
 .panel {

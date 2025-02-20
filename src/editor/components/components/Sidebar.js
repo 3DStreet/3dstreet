@@ -5,7 +5,7 @@ import {
   getEntityIcon,
   setFocusCameraPose
 } from '../../lib/entity';
-import { Button } from '../components';
+import { Button, PanelToggleButton } from '../components';
 import ComponentsContainer from './ComponentsContainer';
 import Events from '../../lib/Events';
 import Mixins from '../widgets/Mixins';
@@ -258,17 +258,16 @@ export default class Sidebar extends React.Component {
             </>
           ) : (
             <>
-              <div
+              <PanelToggleButton
+                icon={() => getEntityIcon(entity)}
+                isOpen={this.state.showSideBar}
                 onClick={this.toggleRightBar}
                 className="relative flex items-center justify-end"
               >
-                <div className="group relative flex cursor-pointer items-center p-2">
-                  <span className="absolute right-12 whitespace-nowrap rounded bg-gray-800 px-2 py-1 text-white opacity-0 transition-all duration-300 group-hover:opacity-100">
-                    {entityName || formattedMixin}
-                  </span>
-                  <div className="relative z-10">{getEntityIcon(entity)}</div>
-                </div>
-              </div>
+                <span className="absolute right-12 whitespace-nowrap rounded bg-gray-800 px-2 py-1 text-white opacity-0 transition-all duration-300 group-hover:opacity-100">
+                  {entityName || formattedMixin}
+                </span>
+              </PanelToggleButton>
             </>
           )}
         </div>
