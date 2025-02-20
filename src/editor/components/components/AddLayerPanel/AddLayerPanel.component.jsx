@@ -286,8 +286,83 @@ const AddLayerPanel = () => {
   // set the first Layers option when opening the panel
   const [selectedOption, setSelectedOption] = useState(LayersOptions[0].value);
   const [groupedMixins, setGroupedMixins] = useState([]);
+  const [isDragging, setIsDragging] = useState(false);
+  const panelRef = useRef(null);
   const { currentUser } = useAuthContext();
   const isProUser = currentUser && currentUser.isPro;
+
+  const handleDragStart = (e) => {
+    console.log('Drag start event:', e);
+    console.log('Panel state - isOpen:', isOpen, 'ref:', panelRef.current);
+
+    if (!isOpen) {
+      console.log('Panel is not open, ignoring drag');
+      return;
+    }
+
+    e.preventDefault();
+    const rect = panelRef.current.getBoundingClientRect();
+    console.log('Initial panel rect:', rect);
+
+    const startHeight = rect.height;
+    const startY = e.clientY;
+    console.log('Start position - height:', startHeight, 'Y:', startY);
+
+    setIsDragging(true);
+
+    const handleMove = (moveEvent) => {
+      console.log('Move event:', moveEvent.clientY);
+      if (!panelRef.current) return;
+
+      const deltaY = startY - moveEvent.clientY;
+      const newHeight = startHeight + deltaY;
+      console.log(
+        'Height calculation - delta:',
+        deltaY,
+        'new height:',
+        newHeight
+      );
+
+      // Constrain height between min and max values
+      const minHeight = 200;
+      const maxHeight = window.innerHeight * 0.8;
+      const constrainedHeight = Math.max(
+        minHeight,
+        Math.min(maxHeight, newHeight)
+      );
+      console.log('Constrained height:', constrainedHeight);
+
+      // Force immediate height update
+      panelRef.current.style.height = `${constrainedHeight}px`;
+    };
+
+    const handleUp = () => {
+      console.log('Mouse up - ending drag');
+      setIsDragging(false);
+      document.removeEventListener('mousemove', handleMove);
+      document.removeEventListener('mouseup', handleUp);
+    };
+
+    console.log('Adding move and up listeners');
+    document.addEventListener('mousemove', handleMove);
+    document.addEventListener('mouseup', handleUp);
+  };
+
+  const handleDrag = () => {}; // Keep empty function for cleanup
+
+  const handleDragEnd = () => {
+    setIsDragging(false);
+    document.removeEventListener('mousemove', handleDrag);
+    document.removeEventListener('mouseup', handleDragEnd);
+  };
+
+  useEffect(() => {
+    return () => {
+      // Cleanup event listeners
+      document.removeEventListener('mousemove', handleDrag);
+      document.removeEventListener('mouseup', handleDragEnd);
+    };
+  }, []);
 
   const onClose = () => {
     setModal(null);
@@ -425,10 +500,13 @@ const AddLayerPanel = () => {
         Add New Layer &nbsp;🌳🚦🚗
       </PanelToggleButton>
       <div
+        ref={panelRef}
         className={classNames(styles.panel, {
-          [styles.open]: isOpen
+          [styles.open]: isOpen,
+          [styles.dragging]: isDragging
         })}
       >
+        <div className={styles.dragHandle} onMouseDown={handleDragStart} />
         {createPortal(
           <div
             ref={dropPlaneEl}
