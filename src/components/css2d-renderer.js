@@ -9,6 +9,7 @@ AFRAME.registerComponent('css2d-renderer', {
     this.labelRenderer.domElement.style.position = 'absolute';
     this.labelRenderer.domElement.style.top = '0px';
     this.labelRenderer.domElement.style.pointerEvents = 'none'; // Let mouse events pass through
+    this.labelRenderer.domElement.style.zIndex = '1'; // Ensure labels stay behind UI elements
     document.body.appendChild(this.labelRenderer.domElement);
 
     // Bind methods
