@@ -296,36 +296,22 @@ const AddLayerPanel = () => {
   };
 
   const handleDragStart = (e) => {
-    console.log('Drag start event:', e);
-    console.log('Panel state - isOpen:', isOpen, 'ref:', panelRef.current);
-
     if (!isOpen) {
-      console.log('Panel is not open, ignoring drag');
       return;
     }
 
     e.preventDefault();
     const rect = panelRef.current.getBoundingClientRect();
-    console.log('Initial panel rect:', rect);
 
     const startHeight = rect.height;
     const startY = e.clientY;
-    console.log('Start position - height:', startHeight, 'Y:', startY);
 
     setIsDragging(true);
 
     const handleMove = (moveEvent) => {
-      console.log('Move event:', moveEvent.clientY);
       if (!panelRef.current) return;
-
       const deltaY = startY - moveEvent.clientY;
       const newHeight = startHeight + deltaY;
-      console.log(
-        'Height calculation - delta:',
-        deltaY,
-        'new height:',
-        newHeight
-      );
 
       // Constrain height between min and max values
       const minHeight = 200;
@@ -334,20 +320,15 @@ const AddLayerPanel = () => {
         minHeight,
         Math.min(maxHeight, newHeight)
       );
-      console.log('Constrained height:', constrainedHeight);
-
-      // Force immediate height update
       panelRef.current.style.height = `${constrainedHeight}px`;
     };
 
     const handleUp = () => {
-      console.log('Mouse up - ending drag');
       setIsDragging(false);
       document.removeEventListener('mousemove', handleMove);
       document.removeEventListener('mouseup', handleUp);
     };
 
-    console.log('Adding move and up listeners');
     document.addEventListener('mousemove', handleMove);
     document.addEventListener('mouseup', handleUp);
   };
