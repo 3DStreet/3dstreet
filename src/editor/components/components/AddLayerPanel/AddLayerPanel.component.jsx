@@ -291,6 +291,10 @@ const AddLayerPanel = () => {
   const { currentUser } = useAuthContext();
   const isProUser = currentUser && currentUser.isPro;
 
+  const handleDoubleClick = () => {
+    onClose();
+  };
+
   const handleDragStart = (e) => {
     console.log('Drag start event:', e);
     console.log('Panel state - isOpen:', isOpen, 'ref:', panelRef.current);
@@ -505,6 +509,7 @@ const AddLayerPanel = () => {
           [styles.open]: isOpen,
           [styles.dragging]: isDragging
         })}
+        onDoubleClick={handleDoubleClick}
       >
         <div className={styles.dragHandle} onMouseDown={handleDragStart} />
         {createPortal(
