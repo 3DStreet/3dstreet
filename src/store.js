@@ -32,6 +32,11 @@ const useStore = create(
           set({ sceneId: null, sceneTitle: null, authorId: null }),
         authorId: null, // not used anywhere yet, we still use the metadata component
         setAuthorId: (newAuthorId) => set({ authorId: newAuthorId }), // not used anywhere yet
+        unitsPreference: localStorage.getItem('unitsPreference') || 'metric',
+        setUnitsPreference: (newUnitsPreference) => {
+          localStorage.setItem('unitsPreference', newUnitsPreference);
+          set({ unitsPreference: newUnitsPreference });
+        },
         modal: firstModal(),
         setModal: (newModal) => {
           const currentModal = useStore.getState().modal;
