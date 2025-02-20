@@ -118,6 +118,66 @@ const MessageContent = ({ content }) => {
   );
 };
 
+// Define the function declarations for entity operations
+const entityTools = {
+  functionDeclarations: [
+    {
+      name: 'entityCreateMixin',
+      description:
+        'Create a new entity in the A-Frame scene with specified components and transforms',
+      parameters: Schema.object({
+        properties: {
+          mixin: Schema.string({
+            description:
+              'The mixin id value for the new entity (e.g., "box-truck-rig")'
+          }),
+          position: Schema.string({
+            description:
+              'Position as space-separated x y z values (e.g., "0 1.5 -3") default 0 0 0'
+          }),
+          rotation: Schema.string({
+            description:
+              'Rotation as space-separated x y z values in degrees (e.g., "0 45 0") default 0 0 0'
+          }),
+          scale: Schema.string({
+            description:
+              'Scale as space-separated x y z values (e.g., "2 2 2") default 1 1 1'
+          })
+        },
+        optionalProperties: ['position', 'rotation', 'scale']
+      })
+    },
+    {
+      name: 'entityUpdate',
+      description:
+        'Update an entity in the A-Frame scene with new properties or components',
+      parameters: Schema.object({
+        properties: {
+          'entity-id': Schema.string({
+            description: 'The ID of the entity to update'
+          }),
+          component: Schema.string({
+            description:
+              'The component to update (e.g., position, rotation, mixin)'
+          }),
+          property: Schema.string({
+            description:
+              'The property to update within the component (optional)'
+          }),
+          value: Schema.string({
+            description: 'The new value to set'
+          }),
+          'expression-for-value': Schema.string({
+            description:
+              'Mathematical expression to evaluate for the value (e.g., "5 - 2"). Use this instead of value when calculation is needed.'
+          })
+        },
+        optionalProperties: ['value', 'expression-for-value', 'property']
+      })
+    }
+  ]
+};
+
 const AIChatPanel = () => {
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState('');
@@ -125,71 +185,9 @@ const AIChatPanel = () => {
   const chatContainerRef = useRef(null);
   const modelRef = useRef(null);
 
-  // Define the function declarations for entity operations
-  const entityTools = {
-    functionDeclarations: [
-      {
-        name: 'entityCreateMixin',
-        description:
-          'Create a new entity in the A-Frame scene with specified components and transforms',
-        parameters: Schema.object({
-          properties: {
-            mixin: Schema.string({
-              description:
-                'The mixin id value for the new entity (e.g., "box-truck-rig")'
-            }),
-            position: Schema.string({
-              description:
-                'Position as space-separated x y z values (e.g., "0 1.5 -3") default 0 0 0'
-            }),
-            rotation: Schema.string({
-              description:
-                'Rotation as space-separated x y z values in degrees (e.g., "0 45 0") default 0 0 0'
-            }),
-            scale: Schema.string({
-              description:
-                'Scale as space-separated x y z values (e.g., "2 2 2") default 1 1 1'
-            })
-          },
-          optionalProperties: ['position', 'rotation', 'scale']
-        })
-      },
-      {
-        name: 'entityUpdate',
-        description:
-          'Update an entity in the A-Frame scene with new properties or components',
-        parameters: Schema.object({
-          properties: {
-            'entity-id': Schema.string({
-              description: 'The ID of the entity to update'
-            }),
-            component: Schema.string({
-              description:
-                'The component to update (e.g., position, rotation, mixin)'
-            }),
-            property: Schema.string({
-              description:
-                'The property to update within the component (optional)'
-            }),
-            value: Schema.string({
-              description: 'The new value to set'
-            }),
-            'expression-for-value': Schema.string({
-              description:
-                'Mathematical expression to evaluate for the value (e.g., "5 - 2"). Use this instead of value when calculation is needed.'
-            })
-          },
-          optionalProperties: ['value', 'expression-for-value', 'property']
-        })
-      }
-    ]
-  };
-
   useEffect(() => {
-    console.log('AIChatPanel mounted');
     const initializeAI = async () => {
       try {
-        console.log('Initializing Vertex AI');
         const model = getGenerativeModel(vertexAI, {
           model: 'gemini-2.0-flash',
           tools: entityTools
@@ -208,7 +206,7 @@ const AIChatPanel = () => {
     };
 
     initializeAI();
-  }, [entityTools]);
+  }, []);
 
   const handleSendMessage = async () => {
     if (!input.trim() || !modelRef.current) return;
