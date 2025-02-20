@@ -223,9 +223,12 @@ const AIChatPanel = () => {
           tools: entityTools,
           systemInstruction: systemPrompt
         });
-        // Initialize chat with history
+        // Initialize chat with history from messages state
         modelRef.current = model.startChat({
-          history: [],
+          history: messages.map((msg) => ({
+            role: msg.role,
+            content: msg.content
+          })),
           generationConfig: {
             maxOutputTokens: 1000
           }
