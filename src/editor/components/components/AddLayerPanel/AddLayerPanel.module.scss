@@ -6,7 +6,7 @@
   left: 50%;
   transform: translateX(-50%);
   margin-bottom: 0px;
-  z-index: 100;
+  z-index: 1;
 }
 
 .panel {
@@ -37,7 +37,7 @@
     right: 0;
     height: 12px;
     cursor: ns-resize;
-    background: rgba(66, 66, 66, 1);
+    background: rgba(33, 33, 33, 1);
     border-bottom: 1px solid rgba(255, 255, 255, 0.2);
     z-index: 101;
 
