@@ -182,7 +182,27 @@ const AIChatPanel = () => {
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [isSpeaking, setIsSpeaking] = useState(false);
+  const [voices, setVoices] = useState([]);
+  const [isMuted, setIsMuted] = useState(true);
   const chatContainerRef = useRef(null);
+
+  useEffect(() => {
+    // Load voices
+    const loadVoices = () => {
+      const availableVoices = window.speechSynthesis.getVoices();
+      if (availableVoices.length > 0) {
+        setVoices(availableVoices);
+      }
+    };
+
+    loadVoices();
+    window.speechSynthesis.onvoiceschanged = loadVoices;
+
+    return () => {
+      window.speechSynthesis.onvoiceschanged = null;
+    };
+  }, []);
   const modelRef = useRef(null);
 
   const systemPrompt = `
@@ -240,7 +260,7 @@ const AIChatPanel = () => {
     };
 
     initializeAI();
-  }, []);
+  }, [messages, systemPrompt]);
 
   const handleSendMessage = async () => {
     if (!input.trim() || !modelRef.current) return;
@@ -326,6 +346,7 @@ const AIChatPanel = () => {
         content: responseText || 'No text response available'
       };
       setMessages((prev) => [...prev, aiMessage]);
+      speakMessage(responseText || 'No text response available');
     } catch (error) {
       console.error('Error generating response:', error);
       setMessages((prev) => [
@@ -347,6 +368,58 @@ const AIChatPanel = () => {
     }
   }, [messages]);
 
+  const speakMessage = async (text) => {
+    if (isMuted) {
+      return;
+    }
+    try {
+      if (!window.speechSynthesis) {
+        console.error('Speech synthesis not supported in this browser');
+        return;
+      }
+
+      // Cancel any ongoing speech
+      window.speechSynthesis.cancel();
+
+      const utterance = new SpeechSynthesisUtterance(text);
+      utterance.lang = 'en-GB';
+      utterance.rate = 1.0;
+      utterance.pitch = 1.0;
+
+      // Try to find a female British English voice
+      const preferredVoice =
+        voices.find(
+          (voice) =>
+            voice.lang.startsWith('en-GB') && voice.name.includes('Female')
+        ) ||
+        voices.find(
+          (voice) =>
+            voice.lang.startsWith('en-') && voice.name.includes('Female')
+        );
+
+      if (preferredVoice) {
+        utterance.voice = preferredVoice;
+      }
+
+      utterance.onstart = () => {
+        setIsSpeaking(true);
+      };
+
+      utterance.onend = () => {
+        setIsSpeaking(false);
+      };
+
+      utterance.onerror = (event) => {
+        setIsSpeaking(false);
+      };
+
+      window.speechSynthesis.speak(utterance);
+    } catch (error) {
+      console.error('Error with text-to-speech:', error);
+      setIsSpeaking(false);
+    }
+  };
+
   return (
     <div className="chat-panel-container">
       <Collapsible defaultCollapsed={false}>
@@ -359,6 +432,9 @@ const AIChatPanel = () => {
               </div>
             ))}
             {isLoading && <div className="loading-indicator">Thinking...</div>}
+            {isSpeaking && (
+              <div className="speaking-indicator">Speaking...</div>
+            )}
           </div>
           <div className="chat-input">
             <input
@@ -370,6 +446,13 @@ const AIChatPanel = () => {
             />
             <button onClick={handleSendMessage} disabled={isLoading}>
               Send
+            </button>
+            <button
+              onClick={() => setIsMuted(!isMuted)}
+              className={`mute-button ${isMuted ? 'muted' : ''}`}
+              title={isMuted ? 'Unmute speech' : 'Mute speech'}
+            >
+              {isMuted ? '🔇' : '🔊'}
             </button>
           </div>
         </div>
