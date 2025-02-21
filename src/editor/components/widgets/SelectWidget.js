@@ -18,12 +18,13 @@ export default class SelectWidget extends React.Component {
   constructor(props) {
     super(props);
     if (this.props.isMulti) {
-      const value = this.props.value;
+      const value = Array.isArray(this.props.value) ? this.props.value : [];
       this.state = {
         value: value.map((choice) => ({ value: choice, label: choice }))
       };
     } else {
-      const value = this.props.value;
+      const value =
+        typeof this.props.value === 'string' ? this.props.value : '';
       this.state = { value: { value: value, label: value } };
     }
   }

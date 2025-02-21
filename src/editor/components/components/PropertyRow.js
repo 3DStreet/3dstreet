@@ -81,9 +81,18 @@ export default class PropertyRow extends React.Component {
     };
 
     if (props.schema.oneOf && props.schema.oneOf.length > 0) {
+      // Ensure value is properly formatted for SelectWidget
+      let formattedValue = value;
+      if (props.schema.type === 'array') {
+        formattedValue = Array.isArray(value) ? value : [];
+      } else {
+        formattedValue =
+          typeof value === 'string' ? value : value?.toString() || '';
+      }
       return (
         <SelectWidget
           {...widgetProps}
+          value={formattedValue}
           options={props.schema.oneOf}
           isMulti={props.schema.type === 'array'}
         />
