@@ -1,7 +1,6 @@
 import { ScreenshotIcon, Upload24Icon, Edit24Icon } from '../../icons';
 import { Button, ProfileButton, Logo } from '../components';
 import posthog from 'posthog-js';
-import { UndoRedo } from '../components/UndoRedo';
 import { CameraToolbar } from '../viewport/CameraToolbar';
 import useStore from '@/store';
 import { makeScreenshot } from '@/editor/lib/SceneUtils';
@@ -66,11 +65,6 @@ function Toolbar({ currentUser }) {
           </>
         )}
       </div>
-      {isEditor && (
-        <div className="mr-2 mt-2 flex justify-end gap-2 pr-[43px]">
-          <UndoRedo />
-        </div>
-      )}
     </div>
   );
 }

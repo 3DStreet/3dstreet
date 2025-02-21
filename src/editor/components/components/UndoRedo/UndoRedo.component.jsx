@@ -37,22 +37,18 @@ export const UndoRedo = () => {
     <>
       <Button
         variant="toolbtn"
-        className="min-w-[105px]"
+        className="min-w-[40px]"
         onClick={handleUndoClick}
         leadingIcon={<AwesomeIcon icon={faRotateLeft} />}
         disabled={undoDisabled}
-      >
-        <div>Undo</div>
-      </Button>
+      ></Button>
       <Button
         variant="toolbtn"
-        className="min-w-[105px]"
+        className="min-w-[40px]"
         onClick={handleRedoClick}
         leadingIcon={<AwesomeIcon icon={faRotateRight} />}
         disabled={redoDisabled}
-      >
-        <div>Redo</div>
-      </Button>
+      ></Button>
     </>
   );
 };
