@@ -40,10 +40,6 @@ const PaymentModal = () => {
   }
 
   const startCheckout = async () => {
-    // Add this debugging code temporarily before the createStripeSession call
-    console.log('Monthly price ID:', process.env.STRIPE_MONTHLY_PRICE_ID);
-    console.log('Yearly price ID:', process.env.STRIPE_YEARLY_PRICE_ID);
-
     posthog.capture('start_checkout');
     setIsLoading(true);
     try {
