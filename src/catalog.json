@@ -591,6 +591,8 @@
         "name": "Honey Locust Tree 24ft",
         "img": "sets/streetplan/sp-tree-honeylocust-24ft.webp",
         "src": "sets/streetplan/sp-tree-honeylocust-24ft.glb",
-        "category": "sidewalk-props"
+        "category": "sidewalk-props",
+        "copyright": "Copyright 2025 StreetPlan LLC. Used with permission.",
+        "copyrightUrl": "https://www.urbaninnovators.com/streetplan"
     }
 ]
