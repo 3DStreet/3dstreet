@@ -1,7 +1,3 @@
-export function getNumber(value) {
-  return parseFloat(value.toFixed(3));
-}
-
 export function equal(var1, var2) {
   var keys1;
   var keys2;

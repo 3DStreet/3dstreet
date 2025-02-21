@@ -1,0 +1,28 @@
+@use '../../../style/variables.scss';
+
+.panelToggleButton {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 18px 30px;
+  border-radius: 4px;
+  background-color: rgba(50, 50, 50, 0.8);
+  color: variables.$white;
+  font-size: 20px !important;
+  border: 1px solid variables.$gray-200;
+  cursor: pointer;
+  transition: all 0.2s ease;
+
+  &:hover {
+    background-color: variables.$purple-500;
+  }
+
+  &:active {
+    background-color: variables.$darkpurple;
+  }
+
+  .icon {
+    width: 24px;
+    height: 24px;
+  }
+}

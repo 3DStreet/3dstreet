@@ -10,3 +10,6 @@ export { Logo } from './Logo';
 export { ProfileButton } from './ProfileButton';
 export { SceneCard } from './SceneCard';
 export { SceneEditTitle } from './SceneEditTitle';
+export { UnitsPreference } from './UnitsPreference';
+export { PanelToggleButton } from './PanelToggleButton';
+export { UndoRedo } from './UndoRedo';
