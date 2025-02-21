@@ -40,6 +40,53 @@
     .paymentButton {
       padding: 32px !important;
     }
+
+    .pricing {
+      flex-direction: column;
+      align-items: stretch;
+      margin: 16px 0;
+    }
+
+    .planSelector {
+      display: flex;
+      gap: 16px;
+      margin-bottom: 24px;
+    }
+
+    .planButton {
+      flex: 1;
+      padding: 16px;
+      border: 2px solid #e0e0e0;
+      border-radius: 8px;
+      background: white;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 8px;
+
+      &:hover {
+        border-color: #0eaf00;
+      }
+
+      &.selected {
+        border-color: #0eaf00;
+        background: #f0fff0;
+      }
+
+      .price {
+        font-size: 1.25rem;
+        font-weight: bold;
+        color: #0eaf00;
+      }
+
+      .savings {
+        font-size: 0.875rem;
+        color: #0eaf00;
+        font-weight: 500;
+      }
+    }
   }
 
   .loadingSpinner {

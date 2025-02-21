@@ -1,7 +1,6 @@
 import { httpsCallable } from 'firebase/functions';
 import styles from './PaymentModal.module.scss';
 import { useState } from 'react';
-
 import { loadStripe } from '@stripe/stripe-js';
 import { useAuthContext } from '../../../contexts/index.js';
 import { CheckMark32Icon, Loader } from '../../../icons';
@@ -28,6 +27,7 @@ const resetPaymentQueryParam = () => {
 const PaymentModal = () => {
   const { currentUser } = useAuthContext();
   const [isLoading, setIsLoading] = useState(false);
+  const [selectedPlan, setSelectedPlan] = useState('monthly');
   const setModal = useStore((state) => state.setModal);
   const modal = useStore((state) => state.modal);
   const postCheckout = useStore((state) => state.postCheckout);
@@ -40,6 +40,10 @@ const PaymentModal = () => {
   }
 
   const startCheckout = async () => {
+    // Add this debugging code temporarily before the createStripeSession call
+    console.log('Monthly price ID:', process.env.STRIPE_MONTHLY_PRICE_ID);
+    console.log('Yearly price ID:', process.env.STRIPE_YEARLY_PRICE_ID);
+
     posthog.capture('start_checkout');
     setIsLoading(true);
     try {
@@ -49,7 +53,15 @@ const PaymentModal = () => {
         functions,
         'createStripeSession'
       )({
-        line_items: [{ price: process.env.STRIPE_PRICE_ID, quantity: 1 }],
+        line_items: [
+          {
+            price:
+              selectedPlan === 'monthly'
+                ? process.env.STRIPE_MONTHLY_PRICE_ID
+                : process.env.STRIPE_YEARLY_PRICE_ID,
+            quantity: 1
+          }
+        ],
         mode: 'subscription',
         success_url: `${window.location.href.split('?')[0]}?payment=success`,
         cancel_url: `${window.location.href.split('?')[0]}?payment=cancel`,
@@ -106,6 +118,25 @@ const PaymentModal = () => {
             GLTF Export and Augmented Reality
           </li>
           <li>&nbsp;</li>
+          <li className={styles.pricing}>
+            <div className={styles.planSelector}>
+              <button
+                className={`${styles.planButton} ${selectedPlan === 'monthly' ? styles.selected : ''}`}
+                onClick={() => setSelectedPlan('monthly')}
+              >
+                Monthly
+                <span className={styles.price}>$9.99/mo</span>
+              </button>
+              <button
+                className={`${styles.planButton} ${selectedPlan === 'yearly' ? styles.selected : ''}`}
+                onClick={() => setSelectedPlan('yearly')}
+              >
+                Yearly
+                <span className={styles.price}>$99/year</span>
+                <span className={styles.savings}>Save 17%</span>
+              </button>
+            </div>
+          </li>
           <li>
             {currentUser ? (
               <div className="paymentButton">
