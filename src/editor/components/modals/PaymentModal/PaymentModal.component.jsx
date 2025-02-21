@@ -66,7 +66,7 @@ const PaymentModal = () => {
         success_url: `${window.location.href.split('?')[0]}?payment=success`,
         cancel_url: `${window.location.href.split('?')[0]}?payment=cancel`,
         metadata: { userId: currentUser.uid },
-        allow_promotion_codes: true,
+        // allow_promotion_codes: true,
         subscription_data: {
           trial_period_days: 30,
           metadata: {
@@ -97,14 +97,12 @@ const PaymentModal = () => {
       className={styles.modalWrapper}
       isOpen={modal === 'payment'}
       onClose={onClose}
+      title="Unlock Pro Features"
     >
       <div className={styles.paymentDetails}>
-        <h3>Unlock Pro features with a free 30 day trial</h3>
-        <h2>Create with intersections and geospatial maps.</h2>
+        <h3>Try 3DStreet Pro now with a free 30 day trial.</h3>
+        <h2>3DStreet Geospatial Pro includes all features of Free and adds:</h2>
         <ul>
-          <li>
-            <CheckMark32Icon /> All features in Free
-          </li>
           <li>
             <CheckMark32Icon />
             Integrated 2D & 3D Maps
@@ -115,7 +113,15 @@ const PaymentModal = () => {
           </li>
           <li>
             <CheckMark32Icon />
-            GLTF Export and Augmented Reality
+            glTF Export with `AR Ready` Output
+          </li>
+          <li>
+            <CheckMark32Icon />
+            Import Custom 3D Models and Images
+          </li>
+          <li>
+            <CheckMark32Icon />
+            Screenshot Overlay Customization
           </li>
           <li>&nbsp;</li>
           <li className={styles.pricing}>
