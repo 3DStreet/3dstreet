@@ -1,11 +1,15 @@
 import { Menubar } from 'radix-ui';
 import '../../style/AppMenu.scss';
 import useStore from '@/store';
-import { makeScreenshot } from '@/editor/lib/SceneUtils';
+import {
+  makeScreenshot,
+  saveSceneWithScreenshot
+} from '@/editor/lib/SceneUtils';
 import posthog from 'posthog-js';
 
-const AppMenu = () => {
-  const { setModal } = useStore();
+const AppMenu = ({ currentUser }) => {
+  const { setModal, postSaveScene } = useStore();
+  // const { setModal, isSavingScene, doSaveAs, saveScene, postSaveScene } = useStore();
 
   const newHandler = () => {
     posthog.capture('new_scene_clicked');
@@ -32,8 +36,51 @@ const AppMenu = () => {
             >
               Open
             </Menubar.Item>
-            <Menubar.Item className="MenubarItem">Save</Menubar.Item>
-            <Menubar.Item className="MenubarItem">Save As</Menubar.Item>
+            <Menubar.Item
+              className="MenubarItem"
+              onClick={async () => {
+                if (!currentUser) {
+                  setModal('signin');
+                  return;
+                }
+                if (currentUser?.uid !== STREET.utils.getAuthorId()) {
+                  return;
+                }
+                try {
+                  await saveSceneWithScreenshot(currentUser, false);
+                } catch (error) {
+                  STREET.notify.errorMessage(`Error saving scene: ${error}`);
+                  console.error(error);
+                } finally {
+                  postSaveScene();
+                  STREET.notify.successMessage('Scene saved successfully.');
+                }
+              }}
+            >
+              Save
+            </Menubar.Item>
+            <Menubar.Item
+              className="MenubarItem"
+              onClick={async () => {
+                if (!currentUser) {
+                  setModal('signin');
+                  return;
+                }
+                try {
+                  await saveSceneWithScreenshot(currentUser, true);
+                } catch (error) {
+                  STREET.notify.errorMessage(`Error saving scene: ${error}`);
+                  console.error(error);
+                } finally {
+                  postSaveScene();
+                  STREET.notify.successMessage(
+                    'Scene saved as a new scene successfully.'
+                  );
+                }
+              }}
+            >
+              Save As
+            </Menubar.Item>
             <Menubar.Item
               className="MenubarItem"
               onClick={() => {

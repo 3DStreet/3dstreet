@@ -18,7 +18,7 @@ function Toolbar({ currentUser }) {
           </div>
           {isInspectorEnabled && (
             <div className="ml-4">
-              <AppMenu />
+              <AppMenu currentUser={currentUser} />
             </div>
           )}
         </div>
