@@ -3,6 +3,7 @@ import AdvancedComponents from './AdvancedComponents';
 import PropTypes from 'prop-types';
 import React from 'react';
 import Events from '../../lib/Events';
+import MixinMetadata from './MixinMetadata';
 
 export default class ComponentsContainer extends React.Component {
   static propTypes = {
@@ -41,6 +42,12 @@ export default class ComponentsContainer extends React.Component {
             <CommonComponents entity={entity} />
           </div>
         )}
+        {!!entity.mixinEls.length && (
+          <div className="details">
+            <MixinMetadata entity={entity} />
+          </div>
+        )}
+
         <div className="advancedComponentsContainer">
           <AdvancedComponents entity={entity} />
         </div>
