@@ -179,12 +179,6 @@ export default class Sidebar extends React.Component {
                       </div>
                     )}
                     <div className="sidepanelContent">
-                      {!!entity.mixinEls.length &&
-                        !entity.classList.contains('autocreated') && (
-                          <div className="details">
-                            <Mixins entity={entity} />
-                          </div>
-                        )}
                       {entity.hasAttribute('data-no-transform') ? (
                         <></>
                       ) : (
@@ -223,6 +217,12 @@ export default class Sidebar extends React.Component {
                           </Button>
                         </div>
                       )}
+                      {!!entity.mixinEls.length &&
+                        !entity.classList.contains('autocreated') && (
+                          <div className="details">
+                            <Mixins entity={entity} />
+                          </div>
+                        )}
                     </div>
 
                     {entity.getAttribute('intersection') && (
