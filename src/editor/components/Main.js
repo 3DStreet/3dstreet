@@ -11,7 +11,6 @@ import { ProfileModal } from './modals/ProfileModal';
 import { firebaseConfig } from '../services/firebase.js';
 import { LoadScript } from '@react-google-maps/api';
 import { GeoModal } from './modals/GeoModal';
-import { ActionBar } from './components/ActionBar';
 import { ScenesModal } from './modals/ScenesModal';
 import { PaymentModal } from './modals/PaymentModal';
 import { AddLayerPanel } from './components/AddLayerPanel';
@@ -107,7 +106,7 @@ export default function Main() {
 
   return (
     <div id="inspectorContainer">
-      <ToolbarWrapper />
+      <ToolbarWrapper entity={state.entity} />
       {isInspectorEnabled && (
         <div>
           <SceneGraph
@@ -143,9 +142,6 @@ export default function Main() {
 
       {isInspectorEnabled && (
         <>
-          <div id="action-bar">
-            <ActionBar selectedEntity={state.entity} />
-          </div>
           <div id="zoom-help-buttons">
             <ZoomButtons />
             <HelpButton />

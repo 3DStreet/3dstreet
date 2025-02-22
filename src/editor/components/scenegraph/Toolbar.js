@@ -5,8 +5,9 @@ import { Button } from '../components/Button';
 import { ScreenshotIcon } from '../../icons';
 import { makeScreenshot } from '@/editor/lib/SceneUtils';
 import { SceneEditTitle } from '../components/SceneEditTitle';
+import { ActionBar } from '../components/ActionBar';
 
-function Toolbar({ currentUser }) {
+function Toolbar({ currentUser, entity }) {
   const { setModal, isInspectorEnabled } = useStore();
 
   return (
@@ -17,9 +18,14 @@ function Toolbar({ currentUser }) {
             <Logo />
           </div>
           {isInspectorEnabled && (
-            <div className="ml-4">
-              <AppMenu currentUser={currentUser} />
-            </div>
+            <>
+              <div className="ml-4">
+                <AppMenu currentUser={currentUser} />
+              </div>
+              <div className="ml-4">
+                <ActionBar selectedEntity={entity} />
+              </div>
+            </>
           )}
         </div>
         {isInspectorEnabled && (
