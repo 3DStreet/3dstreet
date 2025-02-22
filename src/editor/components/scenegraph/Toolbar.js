@@ -1,19 +1,9 @@
-import { ScreenshotIcon, Upload24Icon, Edit24Icon } from '../../icons';
-import { Button, ProfileButton, Logo } from '../components';
-import posthog from 'posthog-js';
-import { CameraToolbar } from '../viewport/CameraToolbar';
+import { ProfileButton, Logo } from '../components';
 import useStore from '@/store';
-import { makeScreenshot } from '@/editor/lib/SceneUtils';
-import { Save } from '@/editor/components/components/Save';
+import AppMenu from './AppMenu';
 
 function Toolbar({ currentUser }) {
-  const { isSavingScene, setModal, isInspectorEnabled } = useStore();
-
-  const newHandler = () => {
-    posthog.capture('new_scene_clicked');
-    useStore.getState().setModal('new');
-  };
-
+  const { setModal, isInspectorEnabled } = useStore();
   const isEditor = !!isInspectorEnabled;
 
   return (
@@ -25,36 +15,9 @@ function Toolbar({ currentUser }) {
         {isEditor && (
           <>
             <div className="col-span-1 flex items-center justify-center">
-              <CameraToolbar />
+              <AppMenu />
             </div>
             <div className="col-span-2 flex items-center justify-end gap-2">
-              <Button
-                leadingIcon={<Edit24Icon />}
-                onClick={!isSavingScene ? newHandler : undefined}
-                variant="toolbtn"
-              >
-                <div>New</div>
-              </Button>
-              <Save currentUser={currentUser} />
-              <Button
-                leadingIcon={<Upload24Icon />}
-                onClick={() => useStore.getState().setModal('scenes')}
-                variant="toolbtn"
-                className="min-w-[105px]"
-              >
-                <div>Open</div>
-              </Button>
-              <Button
-                leadingIcon={<ScreenshotIcon />}
-                onClick={() => {
-                  makeScreenshot();
-                  useStore.getState().setModal('screenshot');
-                }}
-                variant="toolbtn"
-                className="min-w-[105px]"
-              >
-                <div>Share</div>
-              </Button>
               <div
                 onClick={() => setModal(currentUser ? 'profile' : 'signin')}
                 aria-label={currentUser ? 'Open profile' : 'Sign in'}
