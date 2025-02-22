@@ -4,10 +4,10 @@ import AppMenu from './AppMenu';
 import { Button } from '../components/Button';
 import { ScreenshotIcon } from '../../icons';
 import { makeScreenshot } from '@/editor/lib/SceneUtils';
+import { SceneEditTitle } from '../components/SceneEditTitle';
 
 function Toolbar({ currentUser }) {
-  const { setModal, isInspectorEnabled, setIsInspectorEnabled } = useStore();
-  const isEditor = !!isInspectorEnabled;
+  const { setModal, isInspectorEnabled } = useStore();
 
   return (
     <div id="toolbar">
@@ -16,20 +16,17 @@ function Toolbar({ currentUser }) {
           <div className="flex-shrink-0">
             <Logo />
           </div>
-          {isEditor && (
+          {isInspectorEnabled && (
             <div className="ml-4">
               <AppMenu />
             </div>
           )}
         </div>
-        {isEditor && (
+        {isInspectorEnabled && (
           <div className="col-span-3 flex items-center justify-end gap-2">
-            <Button
-              onClick={() => setIsInspectorEnabled(!isInspectorEnabled)}
-              variant="toolbtn"
-            >
-              {isInspectorEnabled ? 'Enter Viewer mode' : 'Enter Editor mode'}
-            </Button>
+            <div id="scene-title" className="clickable">
+              <SceneEditTitle />
+            </div>
             <Button
               leadingIcon={<ScreenshotIcon />}
               onClick={() => {

@@ -32,11 +32,9 @@ const SceneEditTitle = ({ sceneData }) => {
   };
 
   return (
-    <div className={styles.wrapper}>
+    <div className={styles.wrapper} onClick={handleEditClick}>
       <div className={styles.readOnly}>
-        <p className={styles.title} onClick={handleEditClick}>
-          {title || 'Untitled'}
-        </p>
+        <p className={styles.title}>{title || 'Untitled'}</p>
       </div>
     </div>
   );

@@ -25,7 +25,7 @@ const Logo = () => {
           className={styles.btn}
           variant="toolbtn"
         >
-          {isInspectorEnabled ? 'Enter Viewer mode' : 'Enter Editor mode'}
+          {isInspectorEnabled ? 'Enter Viewer mode' : 'Return to Editor'}
         </Button>
       )}
     </div>

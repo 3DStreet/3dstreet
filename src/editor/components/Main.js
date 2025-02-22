@@ -14,7 +14,6 @@ import { GeoModal } from './modals/GeoModal';
 import { ActionBar } from './components/ActionBar';
 import { ScenesModal } from './modals/ScenesModal';
 import { PaymentModal } from './modals/PaymentModal';
-import { SceneEditTitle } from './components/SceneEditTitle';
 import { AddLayerPanel } from './components/AddLayerPanel';
 import { NewModal } from './modals/NewModal';
 import { ToolbarWrapper } from './scenegraph/ToolbarWrapper.js';
@@ -146,9 +145,6 @@ export default function Main() {
         <>
           <div id="action-bar">
             <ActionBar selectedEntity={state.entity} />
-          </div>
-          <div id="scene-title" className="clickable">
-            <SceneEditTitle />
           </div>
           <div id="zoom-help-buttons">
             <ZoomButtons />
