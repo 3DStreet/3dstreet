@@ -18,13 +18,16 @@ const Logo = () => {
       <div className={styles.logo} id="logoImg">
         <img src="ui_assets/3D-St-stacked-128.png" alt="3DStreet Logo" />
       </div>
-      <Button
-        onClick={() => setIsInspectorEnabled(!isInspectorEnabled)}
-        className={styles.btn}
-        variant="toolbtn"
-      >
-        {isInspectorEnabled ? 'Enter Viewer mode' : 'Enter Editor mode'}
-      </Button>
+
+      {!isInspectorEnabled && (
+        <Button
+          onClick={() => setIsInspectorEnabled(!isInspectorEnabled)}
+          className={styles.btn}
+          variant="toolbtn"
+        >
+          {isInspectorEnabled ? 'Enter Viewer mode' : 'Enter Editor mode'}
+        </Button>
+      )}
     </div>
   );
 };
