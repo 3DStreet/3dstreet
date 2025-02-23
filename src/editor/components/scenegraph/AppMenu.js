@@ -28,14 +28,15 @@ const AppMenu = ({ currentUser }) => {
             alignOffset={-3}
           >
             <Menubar.Item className="MenubarItem" onClick={newHandler}>
-              New
+              New...
             </Menubar.Item>
             <Menubar.Item
               className="MenubarItem"
               onClick={() => setModal('scenes')}
             >
-              Open
+              Open...
             </Menubar.Item>
+            <Menubar.Separator className="MenubarSeparator" />
             <Menubar.Item
               className="MenubarItem"
               onClick={async () => {
@@ -79,8 +80,9 @@ const AppMenu = ({ currentUser }) => {
                 }
               }}
             >
-              Save As
+              Save As...
             </Menubar.Item>
+            <Menubar.Separator className="MenubarSeparator" />
             <Menubar.Item
               className="MenubarItem"
               onClick={() => {
@@ -88,7 +90,7 @@ const AppMenu = ({ currentUser }) => {
                 setModal('screenshot');
               }}
             >
-              Share & Export
+              Share & Download...
             </Menubar.Item>
           </Menubar.Content>
         </Menubar.Portal>
