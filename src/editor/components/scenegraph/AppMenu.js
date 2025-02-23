@@ -6,9 +6,31 @@ import {
   saveSceneWithScreenshot
 } from '@/editor/lib/SceneUtils';
 import posthog from 'posthog-js';
+import Events from '../../lib/Events.js';
+
+const cameraOptions = [
+  {
+    value: 'perspective',
+    event: 'cameraperspectivetoggle',
+    payload: null,
+    label: '3D View'
+  },
+  {
+    value: 'orthotop',
+    event: 'cameraorthographictoggle',
+    payload: 'top',
+    label: 'Plan View'
+  }
+];
 
 const AppMenu = ({ currentUser }) => {
   const { setModal, postSaveScene } = useStore();
+
+  const handleCameraChange = (option) => {
+    // Let the camera system handle the camera change first
+    Events.emit(option.event, option.payload);
+    // The cameratoggle event will be emitted by the camera system with the proper camera object
+  };
   // const { setModal, isSavingScene, doSaveAs, saveScene, postSaveScene } = useStore();
 
   const newHandler = () => {
@@ -105,8 +127,16 @@ const AppMenu = ({ currentUser }) => {
             sideOffset={5}
             alignOffset={-3}
           >
-            <Menubar.Item className="MenubarItem">3D View</Menubar.Item>
-            <Menubar.Item className="MenubarItem">Plan View</Menubar.Item>
+            {cameraOptions.map((option) => (
+              <Menubar.Item
+                key={option.value}
+                className="MenubarItem"
+                onClick={() => handleCameraChange(option)}
+              >
+                {option.label}
+              </Menubar.Item>
+            ))}
+            <Menubar.Separator className="MenubarSeparator" />
             <Menubar.Item className="MenubarItem">
               Enter Viewer Mode
             </Menubar.Item>
