@@ -24,14 +24,14 @@ const cameraOptions = [
 ];
 
 const AppMenu = ({ currentUser }) => {
-  const { setModal, postSaveScene } = useStore();
+  const { setModal, postSaveScene, isInspectorEnabled, setIsInspectorEnabled } =
+    useStore();
 
   const handleCameraChange = (option) => {
     // Let the camera system handle the camera change first
     Events.emit(option.event, option.payload);
     // The cameratoggle event will be emitted by the camera system with the proper camera object
   };
-  // const { setModal, isSavingScene, doSaveAs, saveScene, postSaveScene } = useStore();
 
   const newHandler = () => {
     posthog.capture('new_scene_clicked');
@@ -137,7 +137,10 @@ const AppMenu = ({ currentUser }) => {
               </Menubar.Item>
             ))}
             <Menubar.Separator className="MenubarSeparator" />
-            <Menubar.Item className="MenubarItem">
+            <Menubar.Item
+              className="MenubarItem"
+              onClick={() => setIsInspectorEnabled(!isInspectorEnabled)}
+            >
               Enter Viewer Mode
             </Menubar.Item>
           </Menubar.Content>
