@@ -158,7 +158,9 @@ const AppMenu = ({ currentUser }) => {
           >
             <Menubar.Item
               className="MenubarItem"
-              onClick={() => window.open('https://docs.3dstreet.org', '_blank')}
+              onClick={() =>
+                window.open('https://www.3dstreet.org/docs/', '_blank')
+              }
             >
               Documentation
             </Menubar.Item>
