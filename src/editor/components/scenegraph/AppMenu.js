@@ -79,7 +79,7 @@ const AppMenu = ({ currentUser }) => {
                   setModal('signin');
                   return;
                 }
-                saveScene(true);
+                saveScene(true, true);
               }}
             >
               Save As...

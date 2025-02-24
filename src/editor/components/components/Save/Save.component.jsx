@@ -12,8 +12,14 @@ import Events from '@/editor/lib/Events';
 
 export const Save = ({ currentUser }) => {
   const [savedScene, setSavedScene] = useState(false);
-  const { isSavingScene, doSaveAs, setModal, saveScene, postSaveScene } =
-    useStore();
+  const {
+    isSavingScene,
+    doSaveAs,
+    doPromptTitle,
+    setModal,
+    saveScene,
+    postSaveScene
+  } = useStore();
 
   useEffect(() => {
     if (savedScene) {
@@ -51,7 +57,7 @@ export const Save = ({ currentUser }) => {
 
   useEffect(() => {
     if (isSavingScene) {
-      handleSave(doSaveAs);
+      handleSave(doSaveAs, doPromptTitle);
     }
   }, [isSavingScene]); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -59,9 +65,9 @@ export const Save = ({ currentUser }) => {
     return currentUser?.uid === STREET.utils.getAuthorId();
   };
 
-  const handleSave = async (saveAs) => {
+  const handleSave = async (saveAs, doPromptTitle) => {
     try {
-      await saveSceneWithScreenshot(currentUser, saveAs);
+      await saveSceneWithScreenshot(currentUser, saveAs, doPromptTitle);
     } catch (error) {
       STREET.notify.errorMessage(
         `Error trying to save 3DStreet scene to cloud. Error: ${error}`
