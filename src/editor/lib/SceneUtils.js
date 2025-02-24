@@ -162,10 +162,11 @@ export async function makeScreenshot(hideOverlays = false) {
   });
 }
 
-export async function saveScene(currentUser, doSaveAs) {
+export async function saveScene(currentUser, doSaveAs, doPromptTitle) {
   const sceneTitle = useStore.getState().sceneTitle;
   const authorId = STREET.utils.getAuthorId();
   let sceneId = STREET.utils.getCurrentSceneId();
+  const store = useStore.getState();
 
   posthog.capture('saving_scene', {
     save_as: doSaveAs,
@@ -207,10 +208,21 @@ export async function saveScene(currentUser, doSaveAs) {
 
   // we want to save, so if we *still* have no sceneID at this point, then create a new one
   if (!sceneId || !!doSaveAs) {
+    let title = sceneTitle;
+    if (doPromptTitle) {
+      // Prompt user for new scene title when saving as
+      const newTitle = window.prompt(
+        'Enter a title for your scene:',
+        sceneTitle
+      );
+      if (!newTitle) return; // User cancelled the prompt
+      store.setSceneTitle(newTitle);
+      title = newTitle;
+    }
     sceneId = await createScene(
       currentUser.uid,
       filteredData.data,
-      sceneTitle,
+      title,
       filteredData.version
     );
   } else {
@@ -231,8 +243,12 @@ export async function saveScene(currentUser, doSaveAs) {
   return sceneId;
 }
 
-export async function saveSceneWithScreenshot(currentUser, doSaveAs) {
-  const currentSceneId = await saveScene(currentUser, doSaveAs);
+export async function saveSceneWithScreenshot(
+  currentUser,
+  doSaveAs,
+  doPromptTitle
+) {
+  const currentSceneId = await saveScene(currentUser, doSaveAs, doPromptTitle);
   // if currentSceneId AND the screenshot modal is NOT open
   if (currentSceneId && useStore.getState().modal !== 'screenshot') {
     // wait a bit for models to be loaded, may not be enough...

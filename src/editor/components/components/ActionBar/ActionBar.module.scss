@@ -1,13 +1,16 @@
 @use '../../../style/variables.scss';
 
 .wrapper {
-  position: absolute;
-  top: 80px;
-  left: 15px;
   background: rgba(30, 30, 30, 0.8);
   backdrop-filter: blur(8px);
   height: auto;
   border-radius: 6px;
+  // translate y down by 40 pixels // but only if screen width is less than 1000px
+  @media (max-width: 1000px) {
+    transform: translateY(70px) translateX(-250px);
+  }
+  z-index: 2;
+  position: relative;
   align-items: center;
   display: flex;
   column-gap: 1px;
@@ -25,7 +28,7 @@
   button {
     border-radius: 4px;
     width: 50px;
-    height: 40px;
+    height: 30px;
     display: flex;
     justify-content: center;
     align-items: center;
