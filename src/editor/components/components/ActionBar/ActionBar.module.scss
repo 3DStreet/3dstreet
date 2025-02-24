@@ -5,6 +5,10 @@
   backdrop-filter: blur(8px);
   height: auto;
   border-radius: 6px;
+  // translate y down by 40 pixels // but only if screen width is less than 1000px
+  @media (max-width: 1000px) {
+    transform: translateY(70px) translateX(-250px);
+  }
   align-items: center;
   display: flex;
   column-gap: 1px;
