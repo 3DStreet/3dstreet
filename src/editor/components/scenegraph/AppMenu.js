@@ -1,10 +1,7 @@
 import { Menubar } from 'radix-ui';
 import '../../style/AppMenu.scss';
 import useStore from '@/store';
-import {
-  makeScreenshot,
-  saveSceneWithScreenshot
-} from '@/editor/lib/SceneUtils';
+import { makeScreenshot } from '@/editor/lib/SceneUtils';
 import posthog from 'posthog-js';
 import Events from '../../lib/Events.js';
 
@@ -24,7 +21,7 @@ const cameraOptions = [
 ];
 
 const AppMenu = ({ currentUser }) => {
-  const { setModal, postSaveScene, isInspectorEnabled, setIsInspectorEnabled } =
+  const { setModal, isInspectorEnabled, setIsInspectorEnabled, saveScene } =
     useStore();
 
   const handleCameraChange = (option) => {
@@ -62,7 +59,7 @@ const AppMenu = ({ currentUser }) => {
             <Menubar.Item
               className="MenubarItem"
               disabled={!STREET.utils.getCurrentSceneId()}
-              onClick={async () => {
+              onClick={() => {
                 if (!currentUser) {
                   setModal('signin');
                   return;
@@ -70,37 +67,19 @@ const AppMenu = ({ currentUser }) => {
                 if (currentUser?.uid !== STREET.utils.getAuthorId()) {
                   return;
                 }
-                try {
-                  await saveSceneWithScreenshot(currentUser, false);
-                } catch (error) {
-                  STREET.notify.errorMessage(`Error saving scene: ${error}`);
-                  console.error(error);
-                } finally {
-                  postSaveScene();
-                  STREET.notify.successMessage('Scene saved successfully.');
-                }
+                saveScene(false);
               }}
             >
               Save
             </Menubar.Item>
             <Menubar.Item
               className="MenubarItem"
-              onClick={async () => {
+              onClick={() => {
                 if (!currentUser) {
                   setModal('signin');
                   return;
                 }
-                try {
-                  await saveSceneWithScreenshot(currentUser, true);
-                } catch (error) {
-                  STREET.notify.errorMessage(`Error saving scene: ${error}`);
-                  console.error(error);
-                } finally {
-                  postSaveScene();
-                  STREET.notify.successMessage(
-                    'Scene saved as a new scene successfully.'
-                  );
-                }
+                saveScene(true);
               }}
             >
               Save As...
