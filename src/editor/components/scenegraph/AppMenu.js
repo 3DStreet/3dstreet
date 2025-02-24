@@ -61,6 +61,7 @@ const AppMenu = ({ currentUser }) => {
             <Menubar.Separator className="MenubarSeparator" />
             <Menubar.Item
               className="MenubarItem"
+              disabled={!STREET.utils.getCurrentSceneId()}
               onClick={async () => {
                 if (!currentUser) {
                   setModal('signin');
