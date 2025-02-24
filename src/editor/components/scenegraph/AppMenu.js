@@ -139,6 +139,13 @@ const AppMenu = ({ currentUser }) => {
             <Menubar.Separator className="MenubarSeparator" />
             <Menubar.Item
               className="MenubarItem"
+              onClick={() => AFRAME.INSPECTOR.controls.resetZoom()}
+            >
+              Reset Camera View
+            </Menubar.Item>
+            <Menubar.Separator className="MenubarSeparator" />
+            <Menubar.Item
+              className="MenubarItem"
               onClick={() => setIsInspectorEnabled(!isInspectorEnabled)}
             >
               Enter Viewer Mode
