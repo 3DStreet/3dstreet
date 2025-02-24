@@ -43,12 +43,14 @@ function Toolbar({ currentUser, entity }) {
               }}
               variant="toolbtn"
               className="min-w-[105px]"
+              title="Take screenshot and download scene"
             >
               <div>Share</div>
             </Button>
             <div
               onClick={() => setModal(currentUser ? 'profile' : 'signin')}
               aria-label={currentUser ? 'Open profile' : 'Sign in'}
+              title={currentUser ? 'Open profile' : 'Sign in'}
             >
               <ProfileButton />
             </div>

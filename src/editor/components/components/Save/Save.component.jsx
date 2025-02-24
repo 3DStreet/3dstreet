@@ -99,7 +99,7 @@ export const Save = ({ currentUser }) => {
                     saveScene(false);
                   }}
                   variant="save"
-                  title="Scene not saved, click to save as new file"
+                  title="Scene not saved, press to save as new file"
                 >
                   <CloudNotSavedIcon />
                 </Button>
@@ -109,7 +109,7 @@ export const Save = ({ currentUser }) => {
                     saveScene(false);
                   }}
                   variant="save"
-                  title="Scene saved to cloud, click to save again"
+                  title="Scene saved to cloud, press to save again"
                 >
                   <CloudSavedIcon />
                 </Button>
