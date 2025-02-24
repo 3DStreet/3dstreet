@@ -6,6 +6,7 @@ import { ScreenshotIcon } from '../../icons';
 import { makeScreenshot } from '@/editor/lib/SceneUtils';
 import { SceneEditTitle } from '../components/SceneEditTitle';
 import { ActionBar } from '../components/ActionBar';
+import { Save } from '../components/Save';
 
 function Toolbar({ currentUser, entity }) {
   const { setModal, isInspectorEnabled } = useStore();
@@ -33,6 +34,7 @@ function Toolbar({ currentUser, entity }) {
             <div id="scene-title" className="clickable">
               <SceneEditTitle />
             </div>
+            <Save currentUser={currentUser} />
             <Button
               leadingIcon={<ScreenshotIcon />}
               onClick={() => {

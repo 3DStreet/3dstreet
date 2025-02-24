@@ -2,13 +2,16 @@ import { useState, useEffect } from 'react';
 import { saveSceneWithScreenshot } from '@/editor/lib/SceneUtils';
 import useStore from '@/store';
 import { Button } from '@/editor/components/components';
-import { Cloud24Icon, Save24Icon } from '@/editor/icons';
+import {
+  CloudSavedIcon,
+  CloudSavingIcon,
+  CloudNotSavedIcon
+} from '@/editor/icons';
 import debounce from 'lodash-es/debounce';
 import Events from '@/editor/lib/Events';
 
 export const Save = ({ currentUser }) => {
   const [savedScene, setSavedScene] = useState(false);
-  const [isSaveActionActive, setIsSaveActionActive] = useState(false);
   const { isSavingScene, doSaveAs, setModal, saveScene, postSaveScene } =
     useStore();
 
@@ -52,10 +55,6 @@ export const Save = ({ currentUser }) => {
     }
   }, [isSavingScene]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const toggleSaveActionState = () => {
-    setIsSaveActionActive(!isSaveActionActive);
-  };
-
   const isAuthor = () => {
     return currentUser?.uid === STREET.utils.getAuthorId();
   };
@@ -81,60 +80,44 @@ export const Save = ({ currentUser }) => {
   return (
     <div>
       {currentUser ? (
-        <div className="saveButtonWrapper relative">
+        <div className="relative">
           {isSavingScene ? (
-            <Button
-              leadingIcon={<Save24Icon />}
-              variant="filled"
-              className="min-w-[110px]"
-            >
-              <div className="grow">Saved</div>
+            <Button variant="save" title="Saving...">
+              <CloudSavingIcon />
             </Button>
           ) : (
-            <Button
-              leadingIcon={<Save24Icon />}
-              onClick={toggleSaveActionState}
-              variant="toolbtn"
-              className="min-w-[110px]"
-            >
-              <div className="grow">Save</div>
-            </Button>
-          )}
-          {isSaveActionActive && (
-            <div className="dropdownedButtons">
-              <Button
-                leadingIcon={<Cloud24Icon />}
-                variant="white"
-                onClick={() => {
-                  saveScene(false);
-                  setIsSaveActionActive(false);
-                }}
-                disabled={isSavingScene || !isAuthor()}
-              >
-                <div>Save</div>
-              </Button>
-              <Button
-                leadingIcon={<Cloud24Icon />}
-                variant="white"
-                onClick={() => {
-                  saveScene(true);
-                  setIsSaveActionActive(false);
-                }}
-                disabled={isSavingScene}
-              >
-                <div>Make a Copy</div>
-              </Button>
-            </div>
+            <>
+              {!isAuthor() ? (
+                <Button
+                  onClick={() => {
+                    saveScene(false);
+                  }}
+                  variant="save"
+                  title="Scene not saved, click to save as new file"
+                >
+                  <CloudNotSavedIcon />
+                </Button>
+              ) : (
+                <Button
+                  onClick={() => {
+                    saveScene(false);
+                  }}
+                  variant="save"
+                  title="Scene saved to cloud, click to save again"
+                >
+                  <CloudSavedIcon />
+                </Button>
+              )}
+            </>
           )}
         </div>
       ) : (
         <Button
-          leadingIcon={<Save24Icon />}
           onClick={!isSavingScene ? handleUnsignedSave : undefined}
-          variant="toolbtn"
-          className="min-w-[110px]"
+          variant="save"
+          title="Scene not saved, sign in to save"
         >
-          <div className="grow">Save</div>
+          <CloudNotSavedIcon />
         </Button>
       )}
     </div>

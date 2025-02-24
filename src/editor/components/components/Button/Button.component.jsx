@@ -10,7 +10,8 @@ const variants = {
   ghost: styles.ghostButton,
   toolbtn: styles.toolButton,
   white: styles.whiteButton,
-  custom: styles.customButton
+  custom: styles.customButton,
+  save: styles.saveButton
 };
 
 /**
