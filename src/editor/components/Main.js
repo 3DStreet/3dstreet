@@ -1,4 +1,4 @@
-import { HelpButton, ZoomButtons } from './components';
+import { ZoomButtons } from './components';
 import { useState, useEffect } from 'react';
 import ComponentsSidebar from './components/Sidebar';
 import Events from '../lib/Events';
@@ -144,7 +144,6 @@ export default function Main() {
         <>
           <div id="zoom-help-buttons">
             <ZoomButtons />
-            <HelpButton />
           </div>
           <div className="clickable">
             <AddLayerPanel />
