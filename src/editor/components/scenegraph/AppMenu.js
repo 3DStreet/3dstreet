@@ -164,6 +164,29 @@ const AppMenu = ({ currentUser }) => {
             >
               Documentation
             </Menubar.Item>
+            <Menubar.Separator className="MenubarSeparator" />
+            <Menubar.Item
+              className="MenubarItem"
+              onClick={() =>
+                window.open(
+                  'https://www.3dstreet.org/docs/3dstreet-editor/keyboard-shortcuts',
+                  '_blank'
+                )
+              }
+            >
+              Keyboard Shortcuts
+            </Menubar.Item>
+            <Menubar.Item
+              className="MenubarItem"
+              onClick={() =>
+                window.open(
+                  'https://www.3dstreet.org/docs/3dstreet-editor/mouse-and-touch-controls',
+                  '_blank'
+                )
+              }
+            >
+              Mouse and Touch Controls
+            </Menubar.Item>
           </Menubar.Content>
         </Menubar.Portal>
       </Menubar.Menu>
