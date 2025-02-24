@@ -2,14 +2,11 @@
 
 .resetZoomButton {
   padding: 0 !important;
-  border-radius: 50%;
-  width: 43px;
+  width: 43px !important;
   height: 43px;
 }
 
 .wrapper {
-  display: block;
-  min-width: unset;
   width: 43px;
   height: 86px;
   overflow: hidden;

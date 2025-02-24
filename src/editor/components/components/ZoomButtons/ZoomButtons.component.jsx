@@ -1,8 +1,7 @@
 import styles from './ZoomButtons.module.scss';
 import { Button } from '../Button';
 import classNames from 'classnames';
-import { Compass32Icon, SuperHeroIcon } from '../../../icons';
-import useStore from '@/store';
+import { Compass32Icon } from '../../../icons';
 
 /**
  * ZoomButtons component.
@@ -11,8 +10,6 @@ import useStore from '@/store';
  * @category Components
  */
 function ZoomButtons() {
-  const { isInspectorEnabled, setIsInspectorEnabled } = useStore();
-
   return (
     <>
       <Button
@@ -22,10 +19,10 @@ function ZoomButtons() {
         onPointerDown={() => {
           AFRAME.INSPECTOR.controls.resetZoom();
         }}
-      >
-        <Compass32Icon />
-      </Button>
-      <Button
+        leadingIcon={<Compass32Icon />}
+        title="Reset Camera View"
+      />
+      {/* <Button
         id="enterViewModeButton"
         className={styles.enterViewModeButton}
         variant="toolbtn"
@@ -34,7 +31,7 @@ function ZoomButtons() {
         title="Enter Viewer Mode"
       >
         <SuperHeroIcon />
-      </Button>
+      </Button> */}
       <div className={styles.wrapper}>
         <Button
           id="zoomInButton"
@@ -49,6 +46,7 @@ function ZoomButtons() {
           onPointerLeave={() => {
             AFRAME.INSPECTOR.controls.zoomInStop();
           }}
+          title="Zoom In"
         />
         <Button
           id="zoomOutButton"
@@ -63,6 +61,7 @@ function ZoomButtons() {
           onPointerLeave={() => {
             AFRAME.INSPECTOR.controls.zoomOutStop();
           }}
+          title="Zoom Out"
         />
       </div>
     </>
