@@ -9,6 +9,8 @@
   @media (max-width: 1000px) {
     transform: translateY(70px) translateX(-250px);
   }
+  z-index: 2;
+  position: relative;
   align-items: center;
   display: flex;
   column-gap: 1px;
