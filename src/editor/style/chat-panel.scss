@@ -32,6 +32,55 @@
     background-color: variables.$purple-800;
   }
 
+  &.function-call {
+    align-self: flex-start;
+    background-color: variables.$darkgray-500;
+    width: 100%;
+    border-left: 3px solid #ffc107;
+    position: relative;
+
+    &.success {
+      border-left-color: #28a745;
+    }
+
+    &.error {
+      border-left-color: #dc3545;
+    }
+
+    .function-call-summary {
+      display: flex;
+      align-items: center;
+      cursor: pointer;
+
+      .status-indicator {
+        display: inline-block;
+        width: 10px;
+        height: 10px;
+        border-radius: 50%;
+        margin-right: 8px;
+        background-color: #ffc107;
+
+        &.success {
+          background-color: #28a745;
+        }
+
+        &.error {
+          background-color: #dc3545;
+        }
+      }
+    }
+
+    .function-call-details {
+      margin-top: 8px;
+      padding: 8px;
+      background-color: rgba(0, 0, 0, 0.2);
+      border-radius: 4px;
+      font-family: monospace;
+      font-size: 0.9em;
+      overflow-x: auto;
+    }
+  }
+
   &.assistant {
     align-self: flex-start;
     background-color: variables.$darkgray-500;

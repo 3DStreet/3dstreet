@@ -56,6 +56,53 @@ function executeUpdateCommand(command) {
   }
 }
 
+// Function call message component
+const FunctionCallMessage = ({ functionCall }) => {
+  const [isExpanded, setIsExpanded] = useState(false);
+  const { name, args, status, result } = functionCall;
+
+  return (
+    <div className={`chat-message function-call ${status}`}>
+      <div
+        className="function-call-summary"
+        onClick={() => setIsExpanded(!isExpanded)}
+      >
+        <span className={`status-indicator ${status}`}></span>
+        <strong>{name}</strong>:{' '}
+        {status === 'pending'
+          ? 'Executing...'
+          : status === 'success'
+            ? 'Completed'
+            : 'Failed'}
+      </div>
+
+      {isExpanded && (
+        <div className="function-call-details">
+          <div>
+            <strong>Function:</strong> {name}
+          </div>
+          <div>
+            <strong>Arguments:</strong>
+          </div>
+          <pre>{JSON.stringify(args, null, 2)}</pre>
+          {status !== 'pending' && (
+            <>
+              <div>
+                <strong>Result:</strong>
+              </div>
+              <pre>
+                {typeof result === 'object'
+                  ? JSON.stringify(result, null, 2)
+                  : result}
+              </pre>
+            </>
+          )}
+        </div>
+      )}
+    </div>
+  );
+};
+
 // Helper component to render message content with JSON formatting
 const MessageContent = ({ content }) => {
   const formatContent = (text) => {
@@ -299,54 +346,122 @@ const AIChatPanel = () => {
       if (functionCalls && functionCalls.length > 0) {
         for (const call of functionCalls) {
           console.log('Function call:', call);
-          if (call.name === 'entityUpdate') {
-            const args = call.args;
-            // Convert function call args to command format, handling expressions
-            const payload = {
-              'entity-id': args['entity-id'],
-              component: args.component
-            };
+          // Create a function call object with pending status
+          const functionCallObj = {
+            type: 'functionCall',
+            id: Date.now() + Math.random().toString(16).slice(2),
+            name: call.name,
+            args: call.args || {},
+            status: 'pending',
+            result: null,
+            timestamp: new Date()
+          };
 
-            // Handle property if present
-            if (args.property) {
-              payload.property = args.property;
-            }
+          // Add the function call to the messages array
+          setMessages((prev) => [...prev, functionCallObj]);
 
-            if (args['expression-for-value']) {
-              payload.value = evaluateExpression(args['expression-for-value']);
-            } else {
-              payload.value = args.value;
-            }
+          try {
+            if (call.name === 'entityUpdate') {
+              const args = call.args;
+              // Convert function call args to command format, handling expressions
+              const payload = {
+                'entity-id': args['entity-id'],
+                component: args.component
+              };
 
-            const commandData = {
-              command: 'entityupdate',
-              payload
-            };
-            executeUpdateCommand(commandData);
-          }
-          if (call.name === 'entityCreateMixin') {
-            const newCommandPayload = {
-              mixin: call.args.mixin,
-              components: {
-                position: call.args.position || '0 0 0',
-                rotation: call.args.rotation || '0 0 0',
-                scale: call.args.scale || '1 1 1'
+              // Handle property if present
+              if (args.property) {
+                payload.property = args.property;
               }
-            };
-            console.log('newCommandPayload:', newCommandPayload);
-            AFRAME.INSPECTOR.execute('entitycreate', newCommandPayload);
+
+              if (args['expression-for-value']) {
+                payload.value = evaluateExpression(
+                  args['expression-for-value']
+                );
+              } else {
+                payload.value = args.value;
+              }
+
+              const commandData = {
+                command: 'entityupdate',
+                payload
+              };
+              executeUpdateCommand(commandData);
+
+              // Update function call status to success
+              setMessages((prev) =>
+                prev.map((msg) =>
+                  msg.type === 'functionCall' && msg.id === functionCallObj.id
+                    ? {
+                        ...msg,
+                        status: 'success',
+                        result: 'Entity updated successfully'
+                      }
+                    : msg
+                )
+              );
+            } else if (call.name === 'entityCreateMixin') {
+              const newCommandPayload = {
+                mixin: call.args.mixin,
+                components: {
+                  position: call.args.position || '0 0 0',
+                  rotation: call.args.rotation || '0 0 0',
+                  scale: call.args.scale || '1 1 1'
+                }
+              };
+              console.log('newCommandPayload:', newCommandPayload);
+              AFRAME.INSPECTOR.execute('entitycreate', newCommandPayload);
+
+              // Update function call status to success
+              setMessages((prev) =>
+                prev.map((msg) =>
+                  msg.type === 'functionCall' && msg.id === functionCallObj.id
+                    ? {
+                        ...msg,
+                        status: 'success',
+                        result: 'Entity created successfully'
+                      }
+                    : msg
+                )
+              );
+            }
+          } catch (error) {
+            console.error(`Error executing function ${call.name}:`, error);
+
+            // Update function call status to error
+            setMessages((prev) =>
+              prev.map((msg) =>
+                msg.type === 'functionCall' && msg.id === functionCallObj.id
+                  ? {
+                      ...msg,
+                      status: 'error',
+                      result: error.message || 'Error executing function'
+                    }
+                  : msg
+              )
+            );
           }
         }
       }
 
-      // Create AI message with the response text
-      console.log('Stored response text:', responseText);
-      aiMessage = {
-        role: 'assistant',
-        content: responseText || 'No text response available'
-      };
-      setMessages((prev) => [...prev, aiMessage]);
-      speakMessage(responseText || 'No text response available');
+      // Only add AI text message if there's actual text content
+      if (responseText && responseText.trim()) {
+        console.log('Stored response text:', responseText);
+        aiMessage = {
+          role: 'assistant',
+          content: responseText
+        };
+        setMessages((prev) => [...prev, aiMessage]);
+        speakMessage(responseText);
+      } else if (!functionCalls || functionCalls.length === 0) {
+        // Only show "No text response" if there were no function calls
+        aiMessage = {
+          role: 'assistant',
+          content: 'No text response available'
+        };
+        setMessages((prev) => [...prev, aiMessage]);
+        speakMessage('No text response available');
+      }
     } catch (error) {
       console.error('Error generating response:', error);
       setMessages((prev) => [
@@ -426,16 +541,21 @@ const AIChatPanel = () => {
         <div>AI Scene Assistant</div>
         <div className="chat-panel">
           <div ref={chatContainerRef} className="chat-messages">
-            {messages.map((message, index) => (
-              <div key={index} className={`chat-message ${message.role}`}>
-                <MessageContent content={message.content} />
-              </div>
-            ))}
+            {messages.map((message, index) =>
+              message.type === 'functionCall' ? (
+                <FunctionCallMessage key={message.id} functionCall={message} />
+              ) : (
+                <div key={index} className={`chat-message ${message.role}`}>
+                  <MessageContent content={message.content} />
+                </div>
+              )
+            )}
             {isLoading && <div className="loading-indicator">Thinking...</div>}
             {isSpeaking && (
               <div className="speaking-indicator">Speaking...</div>
             )}
           </div>
+
           <div className="chat-input">
             <input
               type="text"
