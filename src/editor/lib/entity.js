@@ -22,20 +22,32 @@ import {
  * @param {string|number|object} value - New value.
  */
 export function updateEntity(entity, component, property, value) {
-  if (property) {
+  // Special handling for vector components (position, rotation, scale)
+  const vectorComponents = ['position', 'rotation', 'scale'];
+
+  if (property && vectorComponents.includes(component)) {
+    // Get current values
+    const currentValues = entity.getAttribute(component) || {};
+
+    // Update specific property (x, y, or z)
+    currentValues[property] = value;
+
+    // Set entire vector component
+    entity.setAttribute(component, currentValues);
+  } else if (property) {
     if (value === null || value === undefined) {
-      // Remove property.
+      // Remove property
       entity.removeAttribute(component, property);
     } else {
-      // Set property.
+      // Set property
       entity.setAttribute(component, property, value);
     }
   } else {
     if (value === null || value === undefined) {
-      // Remove component.
+      // Remove component
       entity.removeAttribute(component);
     } else {
-      // Set component.
+      // Set component
       entity.setAttribute(component, value);
     }
   }

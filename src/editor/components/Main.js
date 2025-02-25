@@ -8,7 +8,7 @@ import { ScreenshotModal } from './modals/ScreenshotModal';
 // import ViewportHUD from "./viewport/ViewportHUD";
 import { SignInModal } from './modals/SignInModal';
 import { ProfileModal } from './modals/ProfileModal';
-import { firebaseConfig } from '../services/firebase.js';
+import { firebaseConfig, app } from '../services/firebase.js';
 import { LoadScript } from '@react-google-maps/api';
 import { GeoModal } from './modals/GeoModal';
 import { ScenesModal } from './modals/ScenesModal';
@@ -17,6 +17,8 @@ import { AddLayerPanel } from './components/AddLayerPanel';
 import { NewModal } from './modals/NewModal';
 import { ToolbarWrapper } from './scenegraph/ToolbarWrapper.js';
 import useStore from '@/store';
+import { AIChatProvider } from '../contexts/AIChatContext';
+import AIChatPanel from './scenegraph/AIChatPanel';
 
 THREE.ImageUtils.crossOrigin = '';
 
@@ -56,25 +58,20 @@ export default function Main() {
     });
     Events.on('togglesidebar', (event) => {
       if (event.which === 'all') {
-        if (state.visible.scenegraph || state.visible.attributes) {
-          setState((prevState) => ({
+        setState((prevState) => {
+          const currentlyVisible =
+            prevState.visible.scenegraph || prevState.visible.attributes;
+          return {
             ...prevState,
             visible: {
-              scenegraph: false,
-              attributes: false
+              scenegraph: !currentlyVisible,
+              attributes: !currentlyVisible
             }
-          }));
-        } else {
-          setState((prevState) => ({
-            ...prevState,
-            visible: {
-              scenegraph: true,
-              attributes: true
-            }
-          }));
-        }
+          };
+        });
       } else if (event.which === 'attributes') {
         setState((prevState) => ({
+          ...prevState,
           visible: {
             ...prevState.visible,
             attributes: !prevState.visible.attributes
@@ -82,6 +79,7 @@ export default function Main() {
         }));
       } else if (event.which === 'scenegraph') {
         setState((prevState) => ({
+          ...prevState,
           visible: {
             ...prevState.visible,
             scenegraph: !prevState.visible.scenegraph
@@ -106,21 +104,24 @@ export default function Main() {
 
   return (
     <div id="inspectorContainer">
-      <ToolbarWrapper entity={state.entity} />
+      <ToolbarWrapper />
       {isInspectorEnabled && (
-        <div>
-          <SceneGraph
-            scene={scene}
-            selectedEntity={state.entity}
-            visible={state.visible.scenegraph}
-          />
-          <div id="rightPanel">
-            <ComponentsSidebar
-              entity={state.entity}
-              visible={state.visible.attributes}
+        <AIChatProvider firebaseApp={app}>
+          <div>
+            <SceneGraph
+              scene={scene}
+              selectedEntity={state.entity}
+              visible={state.visible.scenegraph}
             />
+            <AIChatPanel />
+            <div id="rightPanel">
+              <ComponentsSidebar
+                entity={state.entity}
+                visible={state.visible.attributes}
+              />
+            </div>
           </div>
-        </div>
+        </AIChatProvider>
       )}
       <ScreenshotModal />
       <SignInModal />
