@@ -226,7 +226,13 @@ const entityTools = {
 };
 
 const AIChatPanel = () => {
-  const [messages, setMessages] = useState([]);
+  const initialMessage = {
+    role: 'assistant',
+    content:
+      'I am an AI assistant for the 3DStreet application. I can help you to analyze the scene, modify the scene or provide help about the 3DStreet editor. What do you need help with?'
+  };
+
+  const [messages, setMessages] = useState([initialMessage]);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [showResetConfirm, setShowResetConfirm] = useState(false);
@@ -272,12 +278,11 @@ const AIChatPanel = () => {
           tools: entityTools,
           systemInstruction: systemPrompt
         });
-        // Initialize chat with history from messages state
+
+        // Initialize the model with an empty chat history
+        // The history will be sent with each message instead
         modelRef.current = model.startChat({
-          history: messages.map((msg) => ({
-            role: msg.role,
-            content: msg.content
-          })),
+          history: [],
           generationConfig: {
             maxOutputTokens: 1000
           }
@@ -289,7 +294,7 @@ const AIChatPanel = () => {
     };
 
     initializeAI();
-  }, [messages, systemPrompt]);
+  }, []);
 
   const handleSendMessage = async () => {
     if (!input.trim() || !modelRef.current) return;
@@ -316,8 +321,18 @@ const AIChatPanel = () => {
 
       console.log('Sending prompt to AI:', [prompt]);
 
-      // Send message and get response
-      const result = await modelRef.current.sendMessage(prompt);
+      // Filter out function call messages for the history
+      const historyMessages = messages
+        .filter((msg) => msg.role === 'user' || msg.role === 'assistant')
+        .map((msg) => ({
+          role: msg.role,
+          content: msg.content
+        }));
+
+      // Send message and get response with the full history
+      const result = await modelRef.current.sendMessage(prompt, {
+        history: historyMessages
+      });
       console.log('Raw result:', result);
 
       const response = result.response;
@@ -464,7 +479,13 @@ const AIChatPanel = () => {
   }, [messages]);
 
   const resetConversation = () => {
-    setMessages([]);
+    const initialMessage = {
+      role: 'assistant',
+      content:
+        'I am an AI assistant for the 3DStreet application. I can help you to analyze the scene, modify the scene or provide help about the 3DStreet editor. What do you need help with?'
+    };
+
+    setMessages([initialMessage]);
     setInput('');
     setShowResetConfirm(false);
 
@@ -477,13 +498,14 @@ const AIChatPanel = () => {
           systemInstruction: systemPrompt
         });
 
-        // Start a fresh chat with no history
+        // Start a fresh chat with only the initial welcome message
         modelRef.current = model.startChat({
           history: [],
           generationConfig: {
             maxOutputTokens: 1000
           }
         });
+        console.log('Vertex AI chat reinitialized with empty history');
         console.log('Vertex AI chat reinitialized successfully');
       } catch (error) {
         console.error('Error reinitializing Vertex AI:', error);

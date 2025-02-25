@@ -29,12 +29,12 @@
 
   &.user {
     align-self: flex-end;
-    background-color: variables.$purple-800;
+    background-color: variables.$purple-900;
   }
 
   &.function-call {
     align-self: flex-start;
-    background-color: variables.$darkgray-500;
+    background-color: variables.$darkgray-600;
     width: 100%;
     border-left: 3px solid #ffc107;
     position: relative;
@@ -258,7 +258,7 @@
     padding: 8px 16px;
     border: none;
     border-radius: 4px;
-    background-color: variables.$purple-600;
+    background-color: variables.$purple-700;
     color: variables.$white;
     cursor: pointer;
     transition: background-color 0.2s;
