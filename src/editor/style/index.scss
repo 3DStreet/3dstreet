@@ -694,11 +694,6 @@ span {
   background-position: left;
 }
 
-.outliner.hide:hover,
-.outliner.hide #layers-title:hover {
-  cursor: pointer;
-}
-
 .outliner.hide #layers-title:active {
   background-color: variables.$purple-200;
 }
