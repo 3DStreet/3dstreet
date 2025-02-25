@@ -229,27 +229,9 @@ const AIChatPanel = () => {
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const [isSpeaking, setIsSpeaking] = useState(false);
-  const [voices, setVoices] = useState([]);
-  const [isMuted, setIsMuted] = useState(true);
+  const [showResetConfirm, setShowResetConfirm] = useState(false);
   const chatContainerRef = useRef(null);
 
-  useEffect(() => {
-    // Load voices
-    const loadVoices = () => {
-      const availableVoices = window.speechSynthesis.getVoices();
-      if (availableVoices.length > 0) {
-        setVoices(availableVoices);
-      }
-    };
-
-    loadVoices();
-    window.speechSynthesis.onvoiceschanged = loadVoices;
-
-    return () => {
-      window.speechSynthesis.onvoiceschanged = null;
-    };
-  }, []);
   const modelRef = useRef(null);
 
   const systemPrompt = `
@@ -452,7 +434,6 @@ const AIChatPanel = () => {
           content: responseText
         };
         setMessages((prev) => [...prev, aiMessage]);
-        speakMessage(responseText);
       } else if (!functionCalls || functionCalls.length === 0) {
         // Only show "No text response" if there were no function calls
         aiMessage = {
@@ -460,7 +441,6 @@ const AIChatPanel = () => {
           content: 'No text response available'
         };
         setMessages((prev) => [...prev, aiMessage]);
-        speakMessage('No text response available');
       }
     } catch (error) {
       console.error('Error generating response:', error);
@@ -483,56 +463,34 @@ const AIChatPanel = () => {
     }
   }, [messages]);
 
-  const speakMessage = async (text) => {
-    if (isMuted) {
-      return;
-    }
-    try {
-      if (!window.speechSynthesis) {
-        console.error('Speech synthesis not supported in this browser');
-        return;
+  const resetConversation = () => {
+    setMessages([]);
+    setInput('');
+    setShowResetConfirm(false);
+
+    // Re-initialize the AI model with empty history
+    const initializeAI = async () => {
+      try {
+        const model = getGenerativeModel(vertexAI, {
+          model: 'gemini-2.0-flash',
+          tools: entityTools,
+          systemInstruction: systemPrompt
+        });
+
+        // Start a fresh chat with no history
+        modelRef.current = model.startChat({
+          history: [],
+          generationConfig: {
+            maxOutputTokens: 1000
+          }
+        });
+        console.log('Vertex AI chat reinitialized successfully');
+      } catch (error) {
+        console.error('Error reinitializing Vertex AI:', error);
       }
+    };
 
-      // Cancel any ongoing speech
-      window.speechSynthesis.cancel();
-
-      const utterance = new SpeechSynthesisUtterance(text);
-      utterance.lang = 'en-GB';
-      utterance.rate = 1.0;
-      utterance.pitch = 1.0;
-
-      // Try to find a female British English voice
-      const preferredVoice =
-        voices.find(
-          (voice) =>
-            voice.lang.startsWith('en-GB') && voice.name.includes('Female')
-        ) ||
-        voices.find(
-          (voice) =>
-            voice.lang.startsWith('en-') && voice.name.includes('Female')
-        );
-
-      if (preferredVoice) {
-        utterance.voice = preferredVoice;
-      }
-
-      utterance.onstart = () => {
-        setIsSpeaking(true);
-      };
-
-      utterance.onend = () => {
-        setIsSpeaking(false);
-      };
-
-      utterance.onerror = (event) => {
-        setIsSpeaking(false);
-      };
-
-      window.speechSynthesis.speak(utterance);
-    } catch (error) {
-      console.error('Error with text-to-speech:', error);
-      setIsSpeaking(false);
-    }
+    initializeAI();
   };
 
   return (
@@ -551,9 +509,6 @@ const AIChatPanel = () => {
               )
             )}
             {isLoading && <div className="loading-indicator">Thinking...</div>}
-            {isSpeaking && (
-              <div className="speaking-indicator">Speaking...</div>
-            )}
           </div>
 
           <div className="chat-input">
@@ -568,12 +523,29 @@ const AIChatPanel = () => {
               Send
             </button>
             <button
-              onClick={() => setIsMuted(!isMuted)}
-              className={`mute-button ${isMuted ? 'muted' : ''}`}
-              title={isMuted ? 'Unmute speech' : 'Mute speech'}
+              onClick={() => setShowResetConfirm(true)}
+              className="reset-button"
+              title="Reset conversation"
             >
-              {isMuted ? '🔇' : '🔊'}
+              🔄 Reset
             </button>
+
+            {showResetConfirm && (
+              <div className="reset-confirm-modal">
+                <div className="reset-confirm-content">
+                  <p>
+                    Are you sure you want to reset the conversation? This will
+                    delete all messages.
+                  </p>
+                  <div className="reset-confirm-buttons">
+                    <button onClick={resetConversation}>Yes, reset</button>
+                    <button onClick={() => setShowResetConfirm(false)}>
+                      Cancel
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
         </div>
       </Collapsible>

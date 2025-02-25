@@ -166,6 +166,68 @@
   }
 }
 
+.reset-confirm-modal {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.7);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
+}
+
+.reset-confirm-content {
+  background-color: variables.$darkgray-800;
+  padding: 20px;
+  border-radius: 8px;
+  width: 90%;
+  max-width: 400px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+
+  p {
+    margin: 10px 0 30px 0;
+    color: variables.$white;
+    text-align: center;
+    font-size: 18px !important;
+  }
+
+  .reset-confirm-buttons {
+    display: flex;
+    justify-content: center;
+    gap: 12px;
+
+    button {
+      padding: 8px 16px;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      font-weight: 500;
+      font-size: 18px !important;
+
+      &:first-child {
+        background-color: #dc3545;
+        color: variables.$white;
+
+        &:hover {
+          background-color: #bd2130;
+        }
+      }
+
+      &:last-child {
+        background-color: variables.$darkgray-600;
+        color: variables.$white;
+
+        &:hover {
+          background-color: variables.$darkgray-500;
+        }
+      }
+    }
+  }
+}
+
 .chat-input {
   display: flex;
   gap: 8px;
@@ -209,16 +271,13 @@
       cursor: not-allowed;
     }
 
-    &.mute-button {
+    &.reset-button {
       padding: 8px;
-      min-width: 36px;
       background-color: variables.$darkgray-600;
-      font-size: 16px;
-
-      &.muted {
-        background-color: variables.$darkgray-800;
-        opacity: 0.8;
-      }
+      font-size: 14px;
+      display: flex;
+      align-items: center;
+      gap: 4px;
 
       &:hover {
         background-color: variables.$darkgray-500;
