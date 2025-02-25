@@ -35,6 +35,13 @@ const AppMenu = ({ currentUser }) => {
     setModal('new');
   };
 
+  const showAIChatPanel = () => {
+    const container = document.querySelector('.chat-panel-container');
+    if (container) {
+      container.style.display = 'block';
+    }
+  };
+
   return (
     <Menubar.Root className="MenubarRoot">
       <Menubar.Menu>
@@ -173,6 +180,10 @@ const AppMenu = ({ currentUser }) => {
               }
             >
               Mouse and Touch Controls
+            </Menubar.Item>
+            <Menubar.Separator className="MenubarSeparator" />
+            <Menubar.Item className="MenubarItem" onClick={showAIChatPanel}>
+              AI Scene Assistant
             </Menubar.Item>
           </Menubar.Content>
         </Menubar.Portal>

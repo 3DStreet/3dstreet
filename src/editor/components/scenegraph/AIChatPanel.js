@@ -518,7 +518,20 @@ const AIChatPanel = () => {
   return (
     <div className="chat-panel-container">
       <Collapsible defaultCollapsed={false}>
-        <div>AI Scene Assistant (Experimental)</div>
+        <div className="panel-header">
+          <span>AI Scene Assistant (Experimental)</span>
+          <button
+            className="close-button"
+            onClick={(e) => {
+              e.stopPropagation();
+              const container = document.querySelector('.chat-panel-container');
+              if (container) container.style.display = 'none';
+            }}
+            title="Close AI Assistant"
+          >
+            ×
+          </button>
+        </div>
         <div className="chat-panel">
           <div ref={chatContainerRef} className="chat-messages">
             {messages.map((message, index) =>
