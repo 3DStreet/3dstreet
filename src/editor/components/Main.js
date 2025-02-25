@@ -1,4 +1,4 @@
-import { HelpButton, ZoomButtons } from './components';
+import { ZoomButtons } from './components';
 import { useState, useEffect } from 'react';
 import ComponentsSidebar from './components/Sidebar';
 import Events from '../lib/Events';
@@ -11,10 +11,8 @@ import { ProfileModal } from './modals/ProfileModal';
 import { firebaseConfig, app } from '../services/firebase.js';
 import { LoadScript } from '@react-google-maps/api';
 import { GeoModal } from './modals/GeoModal';
-import { ActionBar } from './components/ActionBar';
 import { ScenesModal } from './modals/ScenesModal';
 import { PaymentModal } from './modals/PaymentModal';
-import { SceneEditTitle } from './components/SceneEditTitle';
 import { AddLayerPanel } from './components/AddLayerPanel';
 import { NewModal } from './modals/NewModal';
 import { ToolbarWrapper } from './scenegraph/ToolbarWrapper.js';
@@ -106,9 +104,9 @@ export default function Main() {
 
   return (
     <div id="inspectorContainer">
-      <AIChatProvider firebaseApp={app}>
-        <ToolbarWrapper />
-        {isInspectorEnabled && (
+      <ToolbarWrapper />
+      {isInspectorEnabled && (
+        <AIChatProvider firebaseApp={app}>
           <div>
             <SceneGraph
               scene={scene}
@@ -123,43 +121,36 @@ export default function Main() {
               />
             </div>
           </div>
-        )}
-        <ScreenshotModal />
-        <SignInModal />
-        <PaymentModal />
-        <ScenesModal />
-        <ProfileModal />
-        <NewModal />
-        <LoadScript
-          googleMapsApiKey={firebaseConfig.apiKey}
-          libraries={GOOGLE_MAPS_LIBRARIES}
-        >
-          <GeoModal />
-        </LoadScript>
-        <ModalTextures
-          isOpen={state.isModalTexturesOpen}
-          selectedTexture={state.selectedTexture}
-          onClose={onModalTextureOnClose}
-        />
+        </AIChatProvider>
+      )}
+      <ScreenshotModal />
+      <SignInModal />
+      <PaymentModal />
+      <ScenesModal />
+      <ProfileModal />
+      <NewModal />
+      <LoadScript
+        googleMapsApiKey={firebaseConfig.apiKey}
+        libraries={GOOGLE_MAPS_LIBRARIES}
+      >
+        <GeoModal />
+      </LoadScript>
+      <ModalTextures
+        isOpen={state.isModalTexturesOpen}
+        selectedTexture={state.selectedTexture}
+        onClose={onModalTextureOnClose}
+      />
 
-        {isInspectorEnabled && (
-          <>
-            <div id="action-bar">
-              <ActionBar selectedEntity={state.entity} />
-            </div>
-            <div id="scene-title" className="clickable">
-              <SceneEditTitle />
-            </div>
-            <div id="zoom-help-buttons">
-              <ZoomButtons />
-              <HelpButton />
-            </div>
-            <div className="clickable">
-              <AddLayerPanel />
-            </div>
-          </>
-        )}
-      </AIChatProvider>
+      {isInspectorEnabled && (
+        <>
+          <div id="zoom-help-buttons">
+            <ZoomButtons />
+          </div>
+          <div className="clickable">
+            <AddLayerPanel />
+          </div>
+        </>
+      )}
     </div>
   );
 }

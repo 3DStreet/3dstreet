@@ -19,49 +19,7 @@
     border-radius: 8px 8px 0 0;
   }
 }
-#toolbar {
-  // top: 36px;
-  // left: 32px;
-  height: 43px;
-  z-index: 10;
-  .saveButtonWrapper {
-    .icon * {
-      stroke: variables.$gray-200;
-    }
-    .dropdownedButtons {
-      position: absolute;
-      width: 300px;
-      display: flex;
-      flex-direction: column;
-      row-gap: 8px;
-      top: 51px;
-    }
-  }
-  .saveActions,
-  .loadActions {
-    display: flex;
-    align-items: center;
-    column-gap: 12px;
-  }
-  .closeButton {
-    border-radius: 22px;
-  }
-  .closeButton {
-    width: 43px;
-    height: 43px;
-    background: rgba(50, 50, 50, 0.8);
-    border-radius: 22px !important;
-    &:hover {
-      background: variables.$darkgray-300;
-      svg > path {
-        stroke: variables.$white;
-      }
-    }
-  }
-  .fa {
-    display: none;
-  }
-}
+
 #scenegraph {
   display: flex;
   flex-direction: column;
