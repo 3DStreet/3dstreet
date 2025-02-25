@@ -83,7 +83,7 @@
 
   &.assistant {
     align-self: flex-start;
-    background-color: variables.$darkgray-500;
+    background-color: variables.$black;
     width: 100%; // Ensure full width for JSON content
 
     // Ensure JSON blocks expand properly within assistant messages
@@ -230,10 +230,11 @@
 
 .chat-input {
   display: flex;
-  gap: 8px;
+  gap: 10px;
   padding: 10px;
   background-color: variables.$darkgray-700;
   border-radius: 0 0 8px 8px;
+  translate: 0px 20px;
 
   input {
     flex: 1;
@@ -241,7 +242,7 @@
     border: 1px solid variables.$darkgray-500;
     border-radius: 4px;
     background-color: variables.$darkgray-900;
-    color: variables.$white;
+    color: variables.$white !important;
 
     &:focus {
       outline: none;

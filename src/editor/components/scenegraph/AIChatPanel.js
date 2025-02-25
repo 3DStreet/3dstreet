@@ -527,7 +527,7 @@ const AIChatPanel = () => {
               className="reset-button"
               title="Reset conversation"
             >
-              🔄 Reset
+              Reset
             </button>
 
             {showResetConfirm && (
