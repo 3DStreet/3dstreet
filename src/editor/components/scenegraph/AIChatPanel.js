@@ -229,7 +229,7 @@ const AIChatPanel = () => {
   const initialMessage = {
     role: 'assistant',
     content:
-      'I am an AI assistant for the 3DStreet application. I can help you to analyze the scene, modify the scene or provide help about the 3DStreet editor. What do you need help with?'
+      "I am an AI assistant for the 3DStreet application. I can try to help you to analyze the scene, modify the scene or provide help about the 3DStreet editor. But I'm just a hacky experiment, and a lot of stuff is not working yet. What do you need help with?"
   };
 
   const [messages, setMessages] = useState([initialMessage]);
@@ -518,7 +518,7 @@ const AIChatPanel = () => {
   return (
     <div className="chat-panel-container">
       <Collapsible defaultCollapsed={false}>
-        <div>AI Scene Assistant</div>
+        <div>AI Scene Assistant (Experimental)</div>
         <div className="chat-panel">
           <div ref={chatContainerRef} className="chat-messages">
             {messages.map((message, index) =>
