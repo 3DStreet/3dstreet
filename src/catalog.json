@@ -592,7 +592,61 @@
         "img": "sets/streetplan/sp-tree-honeylocust-24ft.webp",
         "src": "sets/streetplan/sp-tree-honeylocust-24ft.glb",
         "category": "sidewalk-props",
-        "attribution": "Copyright 2025 StreetPlan LLC. Used with permission.",
+        "attribution": "StreetPlan.net. Used with permission.",
+        "attributionUrl": "https://www.urbaninnovators.com/streetplan"
+    },
+    {
+        "id": "sp-tree-buroak-24ft",
+        "name": "Bur Oak Tree 24ft",
+        "img": "sets/streetplan/sp-tree-buroak-24ft.webp",
+        "src": "sets/streetplan/sp-tree-buroak-24ft.glb",
+        "category": "sidewalk-props",
+        "attribution": "StreetPlan.net. Used with permission.",
+        "attributionUrl": "https://www.urbaninnovators.com/streetplan"
+    },
+    {
+        "id": "sp-tree-japaneselilac-20ft",
+        "name": "Japanese Lilac Tree 20ft",
+        "img": "sets/streetplan/sp-tree-japaneselilac-20ft.webp",
+        "src": "sets/streetplan/sp-tree-japaneselilac-20ft.glb",
+        "category": "sidewalk-props",
+        "attribution": "StreetPlan.net. Used with permission.",
+        "attributionUrl": "https://www.urbaninnovators.com/streetplan"
+    },
+    {
+        "id": "sp-tree-palm-26ft",
+        "name": "Palm Tree 26 ft",
+        "img": "sets/streetplan/sp-tree-palm-26ft.webp",
+        "src": "sets/streetplan/sp-tree-palm-26ft.glb",
+        "category": "sidewalk-props",
+        "attribution": "StreetPlan.net. Used with permission.",
+        "attributionUrl": "https://www.urbaninnovators.com/streetplan"
+    },
+    {
+        "id": "sp-tree-palm-28ft",
+        "name": "Palm Tree 28ft",
+        "img": "sets/streetplan/sp-tree-palm-28ft.webp",
+        "src": "sets/streetplan/sp-tree-palm-28ft.glb",
+        "category": "sidewalk-props",
+        "attribution": "StreetPlan.net. Used with permission.",
+        "attributionUrl": "https://www.urbaninnovators.com/streetplan"
+    },
+    {
+        "id": "sp-tree-purpleplum-16ft",
+        "name": "Purple Plum Tree 16ft",
+        "img": "sets/streetplan/sp-tree-purpleplum-16ft.webp",
+        "src": "sets/streetplan/sp-tree-purpleplum-16ft.glb",
+        "category": "sidewalk-props",
+        "attribution": "StreetPlan.net. Used with permission.",
+        "attributionUrl": "https://www.urbaninnovators.com/streetplan"
+    },
+    {
+        "id": "sp-tree-small-15ft",
+        "name": "Small Tree 15ft",
+        "img": "sets/streetplan/sp-tree-small-15ft.webp",
+        "src": "sets/streetplan/sp-tree-small-15ft.glb",
+        "category": "sidewalk-props",
+        "attribution": "StreetPlan.net. Used with permission.",
         "attributionUrl": "https://www.urbaninnovators.com/streetplan"
     }
 ]
