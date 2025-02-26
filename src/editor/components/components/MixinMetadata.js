@@ -58,22 +58,22 @@ export default class MixinMetadata extends React.Component {
     if (!metadata) return null;
 
     // Properties to exclude from automatic rendering
-    const excludedProps = ['img', 'src', 'copyrightUrl'];
+    const excludedProps = ['img', 'src', 'attributionUrl'];
 
     // Create a function to generate a property row
     const createPropertyRow = (key, value) => {
       if (excludedProps.includes(key) || !value) return null;
       if (key === 'id') key = 'ID';
 
-      // Special handling for copyright
-      if (key === 'copyright') {
+      // Special handling for attribution
+      if (key === 'attribution') {
         return (
           <div className="propertyRow" key={key}>
             <div className="text">{key}</div>
             <div className="string">
-              {metadata.copyrightUrl ? (
+              {metadata.attributionUrl ? (
                 <a
-                  href={metadata.copyrightUrl}
+                  href={metadata.attributionUrl}
                   target="_blank"
                   rel="noreferrer"
                   style={{
