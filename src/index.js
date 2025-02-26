@@ -39,6 +39,7 @@ require('./components/measure-line.js');
 require('./components/css2d-renderer.js');
 require('./components/bloom.js');
 require('./components/ssao.js');
+require('./components/gtao.js');
 require('./editor/index.js');
 var firebase = require('./editor/services/firebase.js');
 

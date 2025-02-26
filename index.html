@@ -60,7 +60,9 @@
     reflection device-orientation-permission-ui="enabled: false"
     webxr="requiredFeatures:hit-test,local-floor;referenceSpaceType:local-floor;" xr-mode-ui="XRMode: ar"
     css2d-renderer
-    ssao="enabled: true; output: SSAO; kernelRadius: 32; minDistance: 0.001; maxDistance: 0.3;"
+    bloom-off="intensity: 0.3; threshold: 0.5; radius: 0.1;"
+    ssao-off="output: SSAO; kernelRadius: 32; minDistance: 0.001; maxDistance: 0.3;"
+    gtao="enabled: true; output: AO; radius: 1; samples: 32; screenSpaceRadius: false;"
     >
     <a-assets>
       <!-- TODO: Add this to repo documentation  -->
