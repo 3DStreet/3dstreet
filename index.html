@@ -55,12 +55,12 @@
   </div> -->
 
   <a-scene
-    renderer="colorManagement: true; physicallyCorrectLights: true; anisotropy: 16; logarithmicDepthBuffer: true;"
+    renderer="colorManagement: true; physicallyCorrectLights: true; anisotropy: 16; logarithmicDepthBuffer: false;"
     loading-screen="enabled: false" notify metadata
     reflection device-orientation-permission-ui="enabled: false"
     webxr="requiredFeatures:hit-test,local-floor;referenceSpaceType:local-floor;" xr-mode-ui="XRMode: ar"
     css2d-renderer
-    bloom="threshold: 1.0; strength: 0.3; radius: 1;"
+    ssao="enabled: true; output: SSAO; kernelRadius: 32; minDistance: 0.001; maxDistance: 0.3;"
     >
     <a-assets>
       <!-- TODO: Add this to repo documentation  -->
