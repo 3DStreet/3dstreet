@@ -34,14 +34,6 @@ AFRAME.registerComponent('ssao', {
     this.renderer = this.el.renderer;
     this.camera = this.el.camera;
     this.originalRender = this.el.renderer.render;
-
-    // Make sure logarithmicDepthBuffer is enabled for proper depth information
-    if (!this.renderer.capabilities.logarithmicDepthBuffer) {
-      console.warn(
-        'SSAO: logarithmicDepthBuffer should be enabled for best results'
-      );
-    }
-
     this.bind();
   },
   update: function (oldData) {
