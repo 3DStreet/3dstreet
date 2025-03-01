@@ -9,7 +9,8 @@ const SceneEditTitle = ({ sceneData }) => {
   const { currentUser } = useAuthContext();
 
   const handleEditClick = () => {
-    const newTitle = prompt('Edit the title:', title);
+    const promptTitle = title || 'Untitled';
+    const newTitle = prompt('Edit the title:', promptTitle);
 
     if (newTitle !== null) {
       if (newTitle !== title) {
