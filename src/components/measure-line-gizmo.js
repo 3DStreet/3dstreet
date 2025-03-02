@@ -67,13 +67,13 @@ AFRAME.registerComponent('measure-line-gizmo', {
     });
 
     // Create start handle
-    this.handles.start = new THREE.Mesh(geometry, this.defaultMaterial.clone());
+    this.handles.start = new THREE.Mesh(geometry, this.defaultMaterial);
     this.handles.start.name = 'start';
     this.handles.start.renderOrder = 100; // Ensure visibility
     this.handleGroup.add(this.handles.start);
 
     // Create end handle
-    this.handles.end = new THREE.Mesh(geometry, this.defaultMaterial.clone());
+    this.handles.end = new THREE.Mesh(geometry, this.defaultMaterial);
     this.handles.end.name = 'end';
     this.handles.end.renderOrder = 100; // Ensure visibility
     this.handleGroup.add(this.handles.end);
@@ -117,8 +117,13 @@ AFRAME.registerComponent('measure-line-gizmo', {
   },
 
   addEventListeners: function () {
-    // Get the renderer's canvas
-    const canvas = document.querySelector('canvas');
+    // Get the renderer's canvas - use the scene's canvas
+    const sceneEl = this.el.sceneEl;
+    if (!sceneEl) {
+      console.error('Could not find scene element');
+      return;
+    }
+    const canvas = sceneEl.canvas;
     if (!canvas) {
       console.error('Could not find canvas element');
       return;
@@ -128,6 +133,9 @@ AFRAME.registerComponent('measure-line-gizmo', {
     this.onMouseMove = this.onMouseMove.bind(this);
     this.onMouseDown = this.onMouseDown.bind(this);
     this.onMouseUp = this.onMouseUp.bind(this);
+    this.onTouchMove = this.onTouchMove.bind(this);
+    this.onTouchStart = this.onTouchStart.bind(this);
+    this.onTouchEnd = this.onTouchEnd.bind(this);
 
     // Add event listeners
     canvas.addEventListener('mousemove', this.onMouseMove);
@@ -135,9 +143,12 @@ AFRAME.registerComponent('measure-line-gizmo', {
     canvas.addEventListener('mouseup', this.onMouseUp);
 
     // Add touch event listeners for mobile
-    canvas.addEventListener('touchmove', this.onTouchMove.bind(this));
-    canvas.addEventListener('touchstart', this.onTouchStart.bind(this));
-    canvas.addEventListener('touchend', this.onTouchEnd.bind(this));
+    canvas.addEventListener('touchmove', this.onTouchMove);
+    canvas.addEventListener('touchstart', this.onTouchStart);
+    canvas.addEventListener('touchend', this.onTouchEnd);
+
+    // Log for debugging
+    console.log('Event listeners added to canvas', canvas);
   },
 
   onMouseMove: function (event) {
@@ -152,6 +163,8 @@ AFRAME.registerComponent('measure-line-gizmo', {
 
     if (this.isDragging && this.selectedHandle) {
       this.handleDrag();
+      // Prevent default behavior during drag
+      event.preventDefault();
     } else {
       this.handleHover();
     }
@@ -174,20 +187,24 @@ AFRAME.registerComponent('measure-line-gizmo', {
   },
 
   handleHover: function () {
+    if (!this.data.active) return;
+
     // Cast a ray from the camera through the mouse position
-    const camera = document.querySelector('[camera]').getObject3D('camera');
+    const camera = this.el.sceneEl.camera;
+    if (!camera) return;
+
     this.raycaster.setFromCamera(this.mouse, camera);
 
     // Check for intersections with our handles
     const handleObjects = [this.handles.start, this.handles.end];
-    const intersects = this.raycaster.intersectObjects(handleObjects);
+    const intersects = this.raycaster.intersectObjects(handleObjects, true);
 
     // Reset previously hovered handle
     if (
       this.intersectedHandle &&
       (!intersects.length || this.intersectedHandle !== intersects[0].object)
     ) {
-      this.intersectedHandle.material = this.defaultMaterial.clone();
+      this.intersectedHandle.material = this.defaultMaterial;
       this.intersectedHandle = null;
     }
 
@@ -197,7 +214,8 @@ AFRAME.registerComponent('measure-line-gizmo', {
 
       if (this.intersectedHandle !== handle) {
         this.intersectedHandle = handle;
-        handle.material = this.hoveredMaterial.clone();
+        handle.material = this.hoveredMaterial;
+        console.log('Handle hovered:', handle.name);
       }
     }
   },
@@ -205,11 +223,13 @@ AFRAME.registerComponent('measure-line-gizmo', {
   onMouseDown: function (event) {
     if (!this.data.active || !this.intersectedHandle) return;
 
+    console.log('Mouse down on handle:', this.intersectedHandle.name);
     this.isDragging = true;
     this.selectedHandle = this.intersectedHandle;
 
     // Set up drag plane
-    const camera = document.querySelector('[camera]').getObject3D('camera');
+    const camera = this.el.sceneEl.camera;
+    if (!camera) return;
 
     // Calculate plane normal (perpendicular to view direction)
     this.planeNormal
@@ -227,8 +247,12 @@ AFRAME.registerComponent('measure-line-gizmo', {
     this.raycaster.setFromCamera(this.mouse, camera);
 
     // Calculate drag offset
-    this.raycaster.ray.intersectPlane(this.dragPlane, this.tempVec);
-    this.dragOffset.copy(this.selectedHandle.position).sub(this.tempVec);
+    if (this.raycaster.ray.intersectPlane(this.dragPlane, this.tempVec)) {
+      this.dragOffset.copy(this.selectedHandle.position).sub(this.tempVec);
+    }
+
+    // Prevent default behavior to avoid text selection, etc.
+    event.preventDefault();
   },
 
   onTouchStart: function (event) {
@@ -253,7 +277,8 @@ AFRAME.registerComponent('measure-line-gizmo', {
   handleDrag: function () {
     if (!this.selectedHandle || !this.isDragging) return;
 
-    const camera = document.querySelector('[camera]').getObject3D('camera');
+    const camera = this.el.sceneEl.camera;
+    if (!camera) return;
 
     // Cast ray from camera through mouse point
     this.raycaster.setFromCamera(this.mouse, camera);
@@ -275,12 +300,14 @@ AFRAME.registerComponent('measure-line-gizmo', {
           y: this.tempVec.y,
           z: this.tempVec.z
         };
+        console.log('Updating start handle position:', newData.start);
       } else if (this.selectedHandle.name === 'end') {
         newData.end = {
           x: this.tempVec.x,
           y: this.tempVec.y,
           z: this.tempVec.z
         };
+        console.log('Updating end handle position:', newData.end);
       }
 
       // Update measure-line component
@@ -289,8 +316,13 @@ AFRAME.registerComponent('measure-line-gizmo', {
   },
 
   onMouseUp: function (event) {
-    this.isDragging = false;
-    this.selectedHandle = null;
+    if (this.isDragging) {
+      console.log('Drag ended');
+      this.isDragging = false;
+      this.selectedHandle = null;
+      // Prevent default behavior
+      event.preventDefault();
+    }
   },
 
   onTouchEnd: function (event) {
@@ -344,8 +376,9 @@ AFRAME.registerComponent('measure-line-gizmo', {
 
   remove: function () {
     // Remove event listeners
-    const canvas = document.querySelector('canvas');
-    if (canvas) {
+    const sceneEl = this.el.sceneEl;
+    if (sceneEl && sceneEl.canvas) {
+      const canvas = sceneEl.canvas;
       canvas.removeEventListener('mousemove', this.onMouseMove);
       canvas.removeEventListener('mousedown', this.onMouseDown);
       canvas.removeEventListener('mouseup', this.onMouseUp);
@@ -355,10 +388,12 @@ AFRAME.registerComponent('measure-line-gizmo', {
     }
 
     // Remove objects from scene
-    this.el.removeObject3D('lineGizmo');
+    if (this.handleGroup) {
+      this.el.removeObject3D('lineGizmo');
+    }
 
     // Dispose of materials and geometries
-    this.defaultMaterial.dispose();
-    this.hoveredMaterial.dispose();
+    if (this.defaultMaterial) this.defaultMaterial.dispose();
+    if (this.hoveredMaterial) this.hoveredMaterial.dispose();
   }
 });
