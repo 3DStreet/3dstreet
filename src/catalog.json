@@ -234,57 +234,79 @@
     {
         "id": "dividers-flowers",
         "name": "Flowers",
-        "img": "thumbnails/dividers-flowers.jpg"
+        "img": "thumbnails/dividers-flowers.jpg",
+        "src": "sets/dividers/gltf-exports-/draco/dividers-flowers.glb",
+        "category": "dividers"
     },
     {
         "id": "dividers-planting-strip",
         "name": "Planting Strip",
-        "img": "thumbnails/dividers-planting-strip.jpg"
+        "img": "thumbnails/dividers-planting-strip.jpg",
+        "src": "sets/dividers/gltf-exports-/draco/dividers-planting-strip.glb",
+        "category": "dividers"
     },
     {
         "id": "dividers-planter-box",
         "name": "Planter Box",
-        "img": "thumbnails/dividers-planter-box.jpg"
+        "img": "thumbnails/dividers-planter-box.jpg",
+        "src": "sets/dividers/gltf-exports-/draco/dividers-planter-box.glb",
+        "category": "dividers"
     },
     {
         "id": "dividers-bush",
         "name": "Bush",
-        "img": "thumbnails/dividers-bush.jpg"
+        "img": "thumbnails/dividers-bush.jpg",
+        "src": "sets/dividers/gltf-exports-/draco/dividers-bush.glb",
+        "category": "dividers"
     },
     {
         "id": "dividers-dome",
         "name": "Dome",
-        "img": "thumbnails/dividers-dome.jpg"
+        "img": "thumbnails/dividers-dome.jpg",
+        "src": "sets/dividers/gltf-exports-/draco/dividers-dome.glb",
+        "category": "dividers"
     },
     {
         "id": "safehit",
         "name": "Safehit",
-        "img": "thumbnails/safehit.jpg"
+        "img": "thumbnails/safehit.jpg",
+        "src": "sets/dividers/gltf-exports-/draco/dividers-safehit.glb",
+        "category": "dividers"
     },
     {
         "id": "bollard",
         "name": "Bollard",
-        "img": "thumbnails/bollard.jpg"
+        "img": "thumbnails/bollard.jpg",
+        "src": "sets/dividers/gltf-exports-/draco/dividers-bollard.glb",
+        "category": "dividers"
     },
     {
         "id": "temporary-barricade",
         "name": "Temporary Barricade",
-        "img": "thumbnails/temporary-barricade.jpg"
+        "img": "thumbnails/temporary-barricade.jpg",
+        "src": "sets/dividers/gltf-exports-/draco/dividers-barricade.glb",
+        "category": "dividers"
     },
     {
         "id": "temporary-traffic-cone",
         "name": "Temporary Traffic Cone",
-        "img": "thumbnails/temporary-traffic-cone.jpg"
+        "img": "thumbnails/temporary-traffic-cone.jpg",
+        "src": "sets/dividers/gltf-exports-/draco/dividers-traffic-cone.glb",
+        "category": "dividers"
     },
     {
         "id": "temporary-jersey-barrier-plastic",
         "name": "Temporary Jersey Barrier Plastic",
-        "img": "thumbnails/temporary-jersey-barrier-plastic.jpg"
+        "img": "thumbnails/temporary-jersey-barrier-plastic.jpg",
+        "src": "sets/dividers/gltf-exports-/draco/dividers-jersey-barrier-plastic.glb",
+        "category": "dividers"
     },
     {
         "id": "temporary-jersey-barrier-concrete",
         "name": "Temporary Jersey Barrier Concrete",
-        "img": "thumbnails/temporary-jersey-barrier-concrete.jpg"
+        "img": "thumbnails/temporary-jersey-barrier-concrete.jpg",
+        "src": "sets/dividers/gltf-exports-/draco/dividers-jersey-barrier-concrete.glb",
+        "category": "dividers"
     },
     {
         "id": "street-element-crosswalk-raised",
