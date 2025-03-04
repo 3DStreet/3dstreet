@@ -188,9 +188,18 @@ const ActionBar = ({ selectedEntity }) => {
       fadeOutRulerCursorEntity();
       Events.emit('showcursor');
     };
+
+    // Handle remote tool activation
+    const onToolChange = (tool) => {
+      handleNewToolClick(tool);
+    };
+
     Events.on('transformmodechange', onChange);
+    Events.on('toolchange', onToolChange);
+
     return () => {
       Events.off('transformmodechange', onChange);
+      Events.off('toolchange', onToolChange);
     };
   }, []);
 
