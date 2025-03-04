@@ -55,7 +55,6 @@ export default function Main() {
       }));
     });
     Events.on('togglesidebar', (event) => {
-      console.log('event.which', event.which);
       if (event.which === 'all') {
         setState((prevState) => {
           const isVisible =
