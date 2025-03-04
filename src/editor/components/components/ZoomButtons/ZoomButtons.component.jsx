@@ -12,16 +12,17 @@ import { CameraResetIcon } from '../../../icons';
 function ZoomButtons() {
   return (
     <>
-      <div
+      <Button
         id="resetZoomButton"
         className={styles.resetZoomButton}
+        variant="toolbtn"
         onPointerDown={() => {
           AFRAME.INSPECTOR.controls.resetZoom();
         }}
         title="Reset Camera View"
       >
         <CameraResetIcon />
-      </div>
+      </Button>
       {/* <Button
         id="enterViewModeButton"
         className={styles.enterViewModeButton}
@@ -36,7 +37,7 @@ function ZoomButtons() {
         <Button
           id="zoomInButton"
           className={classNames(styles.btn, styles.plusButton)}
-          variant="primary"
+          variant="toolbtn"
           onPointerDown={() => {
             AFRAME.INSPECTOR.controls.zoomInStart();
           }}
@@ -51,7 +52,7 @@ function ZoomButtons() {
         <Button
           id="zoomOutButton"
           className={classNames(styles.btn, styles.minusButton)}
-          variant="primary"
+          variant="toolbtn"
           onPointerDown={() => {
             AFRAME.INSPECTOR.controls.zoomOutStart();
           }}
