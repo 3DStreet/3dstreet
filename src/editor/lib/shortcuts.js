@@ -47,14 +47,12 @@ export const Shortcuts = {
 
     // r: ruler
     if (keyCode === 82) {
-      // ruler mode
-      console.log('ruler mode -- not implemented yet');
+      Events.emit('toolchange', 'ruler');
     }
 
     // h: hand
     if (keyCode === 72) {
-      // hand mode
-      console.log('hand mode -- not implemented yet');
+      Events.emit('toolchange', 'hand');
     }
 
     // s: scale
