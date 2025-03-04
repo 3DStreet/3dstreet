@@ -314,6 +314,21 @@ export function Viewport(inspector) {
 
   Events.on('transformmodechange', (mode) => {
     transformControls.setMode(mode);
+
+    // If there's a selected entity, reattach the appropriate controls
+    if (
+      inspector.selectedEntity &&
+      inspector.cursor.isPlaying &&
+      !inspector.selectedEntity.hasAttribute('data-no-transform')
+    ) {
+      if (inspector.selectedEntity.components['measure-line']) {
+        transformControls.detach();
+        measureLineControls.attach(inspector.selectedEntity);
+      } else {
+        measureLineControls.detach();
+        transformControls.attach(inspector.selectedEntity.object3D);
+      }
+    }
   });
 
   Events.on('translationsnapchanged', (dist) => {
