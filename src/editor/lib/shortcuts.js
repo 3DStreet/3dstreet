@@ -45,8 +45,20 @@ export const Shortcuts = {
       Events.emit('transformmodechange', 'rotate');
     }
 
-    // r: scale
+    // r: ruler
     if (keyCode === 82) {
+      // ruler mode
+      console.log('ruler mode -- not implemented yet');
+    }
+
+    // h: hand
+    if (keyCode === 72) {
+      // hand mode
+      console.log('hand mode -- not implemented yet');
+    }
+
+    // s: scale
+    if (keyCode === 83) {
       Events.emit('transformmodechange', 'scale');
     }
 
