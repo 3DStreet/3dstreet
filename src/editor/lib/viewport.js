@@ -238,18 +238,14 @@ export function Viewport(inspector) {
     const startPoint = measureLineControls.handles.start.position;
     const endPoint = measureLineControls.handles.end.position;
 
+    // Instead of sending two separate updates, send a single update with both properties
     inspector.execute('entityupdate', {
       component: 'measure-line',
       entity: entity,
-      property: 'start',
-      value: `${startPoint.x} ${startPoint.y} ${startPoint.z}`
-    });
-
-    inspector.execute('entityupdate', {
-      component: 'measure-line',
-      entity: entity,
-      property: 'end',
-      value: `${endPoint.x} ${endPoint.y} ${endPoint.z}`
+      value: {
+        start: `${startPoint.x} ${startPoint.y} ${startPoint.z}`,
+        end: `${endPoint.x} ${endPoint.y} ${endPoint.z}`
+      }
     });
   });
 
