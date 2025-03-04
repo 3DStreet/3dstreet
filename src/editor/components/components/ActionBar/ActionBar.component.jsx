@@ -7,11 +7,11 @@ import { Button, UnitsPreference, UndoRedo } from '../../components';
 import { useState, useEffect, useCallback } from 'react';
 import posthog from 'posthog-js';
 import { Rotate24Icon, Translate24Icon, Ruler24Icon } from '../../../icons';
-import pickPointOnGroundPlane from '../../../lib/pick-point-on-ground-plane';
 import {
   fadeInRulerCursorEntity,
   fadeOutRulerCursorEntity,
-  fetchOrCreatePreviewMeasureLineEntity
+  onRulerMouseUp,
+  onRulerMouseMove
 } from './RulerAction.jsx';
 
 const ActionBar = ({ selectedEntity }) => {
@@ -35,78 +35,23 @@ const ActionBar = ({ selectedEntity }) => {
   const [newToolMode, setNewToolMode] = useState('off'); // "off" | "hand" | "ruler"
   const [hasRulerClicked, setHasRulerClicked] = useState(false);
 
-  const onRulerMouseUp = useCallback(
+  const handleRulerMouseUp = useCallback(
     (e) => {
-      const previewMeasureLineEl = fetchOrCreatePreviewMeasureLineEntity();
-      const mouseUpPosition = pickPointOnGroundPlane({
-        x: e.clientX,
-        y: e.clientY,
-        canvas: AFRAME.scenes[0].canvas,
-        camera: AFRAME.INSPECTOR.camera
-      });
-      if (!hasRulerClicked) {
-        previewMeasureLineEl.setAttribute('visible', true);
-        // First click logic
-        setHasRulerClicked(true);
-        previewMeasureLineEl.setAttribute('measure-line', {
-          start: mouseUpPosition,
-          end: mouseUpPosition
-        });
-      } else {
-        previewMeasureLineEl.setAttribute('visible', false);
-        const startPosition =
-          previewMeasureLineEl.getAttribute('measure-line').start;
-        // Second click logic
-        setHasRulerClicked(false);
-        // now create a new entity with the measure-line component with the same dimensions
-        AFRAME.INSPECTOR.execute('entitycreate', {
-          components: {
-            'data-layer-name': `Measure Line • ${measureLineCounter}`,
-            'measure-line': {
-              start: {
-                x: startPosition.x,
-                y: startPosition.y,
-                z: startPosition.z
-              },
-              end: {
-                x: mouseUpPosition.x,
-                y: mouseUpPosition.y,
-                z: mouseUpPosition.z
-              }
-            }
-          }
-        });
-        // select the translate tools to show measure line controls
-        changeTransformMode('translate');
-        setMeasureLineCounter((prev) => prev + 1);
-      }
+      onRulerMouseUp(
+        e,
+        hasRulerClicked,
+        setHasRulerClicked,
+        changeTransformMode,
+        measureLineCounter,
+        setMeasureLineCounter
+      );
     },
     [hasRulerClicked, measureLineCounter]
   );
 
-  const onRulerMouseMove = useCallback(
+  const handleRulerMouseMove = useCallback(
     (e) => {
-      let rulerCursorEntity = document.getElementById('rulerCursorEntity');
-      const position = pickPointOnGroundPlane({
-        x: e.clientX,
-        y: e.clientY,
-        canvas: AFRAME.scenes[0].canvas,
-        camera: AFRAME.INSPECTOR.camera
-      });
-      if (rulerCursorEntity) {
-        rulerCursorEntity.object3D.position.copy(position);
-      }
-      if (hasRulerClicked) {
-        // get the previewMeasureLine entity
-        const previewMeasureLineEl =
-          document.getElementById('previewMeasureLine');
-        if (previewMeasureLineEl) {
-          previewMeasureLineEl.setAttribute('measure-line', {
-            end: position
-          });
-        }
-      }
-      return false;
+      onRulerMouseMove(e, hasRulerClicked);
     },
     [hasRulerClicked]
   );
@@ -128,17 +73,17 @@ const ActionBar = ({ selectedEntity }) => {
   useEffect(() => {
     const canvas = AFRAME.scenes[0].canvas;
     if (newToolMode === 'ruler') {
-      canvas.addEventListener('mousemove', onRulerMouseMove);
-      canvas.addEventListener('mouseup', onRulerMouseUp);
+      canvas.addEventListener('mousemove', handleRulerMouseMove);
+      canvas.addEventListener('mouseup', handleRulerMouseUp);
       // Add escape key listener
       window.addEventListener('keydown', handleEscapeKey);
     }
     return () => {
-      canvas.removeEventListener('mousemove', onRulerMouseMove);
-      canvas.removeEventListener('mouseup', onRulerMouseUp);
+      canvas.removeEventListener('mousemove', handleRulerMouseMove);
+      canvas.removeEventListener('mouseup', handleRulerMouseUp);
       window.removeEventListener('keydown', handleEscapeKey);
     };
-  }, [newToolMode, onRulerMouseMove, onRulerMouseUp, handleEscapeKey]);
+  }, [newToolMode, handleRulerMouseMove, handleRulerMouseUp, handleEscapeKey]);
 
   useEffect(() => {
     // e (rotate) and w (translate) shortcuts
@@ -182,7 +127,7 @@ const ActionBar = ({ selectedEntity }) => {
             selectedEntity?.hasAttribute('data-no-transform')
         })}
         onClick={handleNewToolClick.bind(null, 'hand')}
-        title="Hand Tool - pan and rotate the view without selecting objects"
+        title="Hand Tool (h) - pan and rotate the view without selecting objects"
       >
         <AwesomeIcon icon={faHand} />
       </Button>
@@ -218,7 +163,7 @@ const ActionBar = ({ selectedEntity }) => {
           [styles.active]: newToolMode === 'ruler'
         })}
         onClick={handleNewToolClick.bind(null, 'ruler')}
-        title="Ruler Tool - Measure distances between points"
+        title="Ruler Tool (r) - Measure distances between points"
       >
         <Ruler24Icon />
       </Button>
