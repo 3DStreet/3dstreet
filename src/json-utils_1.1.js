@@ -487,6 +487,27 @@ AFRAME.registerComponent('set-loader-from-hash', {
       if (!streetURL) {
         return;
       }
+      if (streetURL.startsWith('crushed-3dstreet-json:')) {
+        const fragment = window.location.hash;
+        const prefix = '#crushed-3dstreet-json:';
+        let jsonStr = {};
+        try {
+          console.log('substring', fragment.substring(prefix.length));
+          const substring = fragment.substring(prefix.length);
+
+          jsonStr = window.JSONCrush.uncrush(decodeURIComponent(substring));
+
+          console.log('jsonStr', jsonStr);
+          let jsonScene = JSON.parse(jsonStr);
+          console.log('jsonScene', jsonScene);
+          // parse the json string into a scene
+          STREET.utils.newScene(true, false);
+          STREET.utils.createElementsFromJSON(jsonScene, false);
+        } catch (err) {
+          console.error('Error parsing fragment:', err);
+        }
+        return;
+      }
       if (streetURL.startsWith('managed-street-json:')) {
         // url.com/page#managed-street-json:{"data":"value"}
         const fragment = window.location.hash;
