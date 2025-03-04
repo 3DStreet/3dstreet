@@ -36,7 +36,6 @@ require('./components/street-ground.js');
 require('./components/street-label.js');
 require('./components/blending-opacity.js');
 require('./components/measure-line.js');
-require('./components/measure-line-gizmo.js');
 require('./components/css2d-renderer.js');
 require('./editor/index.js');
 var firebase = require('./editor/services/firebase.js');
