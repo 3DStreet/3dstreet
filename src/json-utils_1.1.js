@@ -1,5 +1,6 @@
 import useStore from './store';
 import { createUniqueId } from './editor/lib/entity';
+import JSONCrush from 'jsoncrush';
 
 /* global AFRAME, Node */
 window.STREET = {};
@@ -492,14 +493,14 @@ AFRAME.registerComponent('set-loader-from-hash', {
         const prefix = '#crushed-3dstreet-json:';
         let jsonStr = {};
         try {
-          console.log('substring', fragment.substring(prefix.length));
           const substring = fragment.substring(prefix.length);
-
-          jsonStr = window.JSONCrush.uncrush(decodeURIComponent(substring));
-
-          console.log('jsonStr', jsonStr);
+          jsonStr = JSONCrush.uncrush(decodeURIComponent(substring));
           let jsonScene = JSON.parse(jsonStr);
-          console.log('jsonScene', jsonScene);
+          console.log(
+            '[set-loader-from-hash]',
+            'crushed-3dstreet-json => jsonScene:',
+            jsonScene
+          );
           // parse the json string into a scene
           STREET.utils.newScene(true, false);
           STREET.utils.createElementsFromJSON(jsonScene, false);

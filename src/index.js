@@ -12,7 +12,6 @@ require('./components/gltf-part');
 require('./components/ocean');
 require('./components/svg-extruder.js');
 require('./lib/animation-mixer.js');
-require('./lib/json-crush.js');
 require('./lib/aframe-gaussian-splatting-component.min.js');
 require('./assets.js');
 require('./components/notify.js');
