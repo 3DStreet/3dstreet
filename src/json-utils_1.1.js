@@ -1,5 +1,6 @@
 import useStore from './store';
 import { createUniqueId } from './editor/lib/entity';
+import JSONCrush from 'jsoncrush';
 
 /* global AFRAME, Node */
 window.STREET = {};
@@ -485,6 +486,27 @@ AFRAME.registerComponent('set-loader-from-hash', {
       // get hash from window
       const streetURL = window.location.hash.substring(1);
       if (!streetURL) {
+        return;
+      }
+      if (streetURL.startsWith('crushed-3dstreet-json:')) {
+        const fragment = window.location.hash;
+        const prefix = '#crushed-3dstreet-json:';
+        let jsonStr = {};
+        try {
+          const substring = fragment.substring(prefix.length);
+          jsonStr = JSONCrush.uncrush(decodeURIComponent(substring));
+          let jsonScene = JSON.parse(jsonStr);
+          console.log(
+            '[set-loader-from-hash]',
+            'crushed-3dstreet-json => jsonScene:',
+            jsonScene
+          );
+          // parse the json string into a scene
+          STREET.utils.newScene(true, false);
+          STREET.utils.createElementsFromJSON(jsonScene, false);
+        } catch (err) {
+          console.error('Error parsing fragment:', err);
+        }
         return;
       }
       if (streetURL.startsWith('managed-street-json:')) {

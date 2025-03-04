@@ -1,9 +1,10 @@
 @use '../../../style/variables.scss';
 
 .resetZoomButton {
-  padding: 0 !important;
-  width: 43px !important;
-  height: 43px;
+  padding: 7px !important;
+  &:active {
+    background-color: variables.$purple-200 !important;
+  }
 }
 
 .wrapper {
@@ -21,7 +22,7 @@
     height: 50%;
     padding: 0;
     margin: 0;
-    background-color: variables.$darkgray-300;
+    background-color: variables.$bgalphadark;
     outline: unset;
     border: unset;
     border-radius: unset;
@@ -36,9 +37,6 @@
       background-image: url(variables.$minusButton);
       background-repeat: no-repeat;
       background-position: top 8px center;
-    }
-    &:hover {
-      background-color: variables.$purple-100;
     }
     &:active {
       background-color: variables.$purple-200;

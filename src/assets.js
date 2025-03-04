@@ -176,19 +176,7 @@ function buildAssetHTML(assetUrl, categories) {
         <a-mixin shadow id="minibus" gltf-model="url(${assetUrl}sets/vehicles/gltf-exports/draco/mini-bus.glb)"></a-mixin>
         `,
     dividers: `
-        <!-- dividers - aka street design elements -->
-        <a-asset-item id="dividers" src="${assetUrl}sets/dividers/gltf-exports/draco/dividers.glb"></a-asset-item>        
-        <a-mixin shadow id="dividers-flowers" scale="1 1 1" rotation="0 0 0" gltf-part="src: #dividers; part: flowers"></a-mixin>
-        <a-mixin shadow id="dividers-planting-strip" scale="1 1 1" rotation="0 0 0" gltf-part="src: #dividers; part: planting-strip"></a-mixin>
-        <a-mixin shadow id="dividers-planter-box" scale="1 1 1" rotation="0 0 0" gltf-part="src: #dividers; part: planter-box"></a-mixin>
-        <a-mixin shadow id="dividers-bush" scale="1 1 1" rotation="0 0 0" gltf-part="src: #dividers; part: bush"></a-mixin>
-        <a-mixin shadow id="dividers-dome" scale="1 1 1" rotation="0 0 0" gltf-part="src: #dividers; part: dome"></a-mixin>
-        <a-mixin shadow id="safehit" scale="1 1 1" rotation="0 0 0" gltf-part="src: #dividers; part: safehit"></a-mixin>
-        <a-mixin shadow id="bollard" scale="1 1 1" rotation="0 0 0" gltf-part="src: #dividers; part: bollard"></a-mixin>
-        <a-mixin shadow id="temporary-barricade" scale="1 1 1" rotation="0 0 0" gltf-part="src: #dividers; part: barricade"></a-mixin>
-        <a-mixin shadow id="temporary-traffic-cone" scale="1 1 1" rotation="0 0 0" gltf-part="src: #dividers; part: traffic-cone"></a-mixin>
-        <a-mixin shadow id="temporary-jersey-barrier-plastic" scale="1 1 1" rotation="0 0 0" gltf-part="src: #dividers; part: jersey-barrier-plastic"></a-mixin>
-        <a-mixin shadow id="temporary-jersey-barrier-concrete" scale="1 1 1" rotation="0 0 0" gltf-part="src: #dividers; part: jersey-barrier-concrete"></a-mixin>
+        <!-- dividers - aka traffic control devices -->
         <a-mixin shadow id="street-element-crosswalk-raised" scale="1 1 1" rotation="0 0 0" gltf-model="url(${assetUrl}sets/uoregon/gltf-exports/draco/crosswalk-raised.glb)"></a-mixin>
         <a-mixin shadow id="street-element-traffic-island-end-rounded" scale="1.5 1.5 1.5" rotation="0 0 0" gltf-model="url(${assetUrl}sets/uoregon/gltf-exports/draco/curb-island-end-rounded.glb)"></a-mixin>
         <a-mixin shadow id="street-element-sign-warning-ped-rrfb" scale="1.5 1.5 1.5" rotation="0 0 0" gltf-model="url(${assetUrl}sets/uoregon/gltf-exports/draco/sign-warning-ped-rrfb.glb)"></a-mixin>
