@@ -55,24 +55,19 @@ export default function Main() {
       }));
     });
     Events.on('togglesidebar', (event) => {
+      console.log('event.which', event.which);
       if (event.which === 'all') {
-        if (state.visible.scenegraph || state.visible.attributes) {
-          setState((prevState) => ({
+        setState((prevState) => {
+          const isVisible =
+            prevState.visible.scenegraph || prevState.visible.attributes;
+          return {
             ...prevState,
             visible: {
-              scenegraph: false,
-              attributes: false
+              scenegraph: !isVisible,
+              attributes: !isVisible
             }
-          }));
-        } else {
-          setState((prevState) => ({
-            ...prevState,
-            visible: {
-              scenegraph: true,
-              attributes: true
-            }
-          }));
-        }
+          };
+        });
       } else if (event.which === 'attributes') {
         setState((prevState) => ({
           visible: {
