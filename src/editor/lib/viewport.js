@@ -143,6 +143,17 @@ export function Viewport(inspector) {
         inspector.helpers[node.uuid].update();
       }
     });
+
+    // Force an update of the measure line controls -- needed after undo/redo to update control points
+    if (
+      object.el &&
+      object.el.components &&
+      object.el.components['measure-line']
+    ) {
+      if (measureLineControls.object === object.el) {
+        measureLineControls.update();
+      }
+    }
   }
 
   const camera = inspector.camera;
@@ -238,18 +249,14 @@ export function Viewport(inspector) {
     const startPoint = measureLineControls.handles.start.position;
     const endPoint = measureLineControls.handles.end.position;
 
+    // Instead of sending two separate updates, send a single update with both properties
     inspector.execute('entityupdate', {
       component: 'measure-line',
       entity: entity,
-      property: 'start',
-      value: `${startPoint.x} ${startPoint.y} ${startPoint.z}`
-    });
-
-    inspector.execute('entityupdate', {
-      component: 'measure-line',
-      entity: entity,
-      property: 'end',
-      value: `${endPoint.x} ${endPoint.y} ${endPoint.z}`
+      value: {
+        start: `${startPoint.x} ${startPoint.y} ${startPoint.z}`,
+        end: `${endPoint.x} ${endPoint.y} ${endPoint.z}`
+      }
     });
   });
 
