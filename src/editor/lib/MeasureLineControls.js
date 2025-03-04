@@ -61,7 +61,7 @@ class MeasureLineControls extends THREE.Object3D {
 
     // Listen for transform mode changes
     Events.on('transformmodechange', (mode) => {
-      this.enabled = mode === 'off';
+      this.enabled = mode !== 'off';
       if (!this.enabled) {
         this.visible = false;
         this.axis = null;
@@ -141,6 +141,27 @@ class MeasureLineControls extends THREE.Object3D {
     if (object && object.components && object.components['measure-line']) {
       this.object = object;
       this.visible = true;
+      this.enabled = true;
+
+      // Ensure the measure-line component has valid data
+      const measureLine = object.components['measure-line'];
+      if (!measureLine.data) {
+        measureLine.data = {
+          start: { x: 0, y: 0, z: 0 },
+          end: { x: 0, y: 0, z: 0 }
+        };
+      }
+
+      // Parse string values if necessary
+      if (typeof measureLine.data.start === 'string') {
+        const [x, y, z] = measureLine.data.start.split(' ').map(Number);
+        measureLine.data.start = { x, y, z };
+      }
+      if (typeof measureLine.data.end === 'string') {
+        const [x, y, z] = measureLine.data.end.split(' ').map(Number);
+        measureLine.data.end = { x, y, z };
+      }
+
       this.update();
       Events.emit('transformcontrols-attach', object);
     }
@@ -179,6 +200,12 @@ class MeasureLineControls extends THREE.Object3D {
       // Update handle visibility based on control state
       this.handles.start.visible = this.visible && this.enabled;
       this.handles.end.visible = this.visible && this.enabled;
+
+      // Update handle materials
+      this.handles.start.material =
+        this.axis === 'start' ? this.hoveredMaterial : this.defaultMaterial;
+      this.handles.end.material =
+        this.axis === 'end' ? this.hoveredMaterial : this.defaultMaterial;
 
       // Emit change event
       this.dispatchEvent(this.changeEvent);
