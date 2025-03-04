@@ -250,6 +250,11 @@ class MeasureLineControls extends THREE.Object3D {
     if (intersects.length > 0) {
       axis = intersects[0].object.name;
       event.preventDefault();
+      // Change cursor to pointer when hovering over a handle
+      this.domElement.style.cursor = 'pointer';
+    } else {
+      // Reset cursor to default when not hovering over a handle
+      this.domElement.style.cursor = null;
     }
 
     // Update highlight if axis changed
