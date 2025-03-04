@@ -1,8 +1,132 @@
 import pickPointOnGroundPlane from '../../../lib/pick-point-on-ground-plane';
+import { useState, useCallback } from 'react';
 
 /**
- * Functions for managing the ruler cursor entity in the 3D scene
+ * Custom hook to manage ruler tool state and functionality
  */
+export function useRulerTool(
+  changeTransformMode,
+  measureLineCounter,
+  setMeasureLineCounter
+) {
+  const [hasRulerClicked, setHasRulerClicked] = useState(false);
+
+  const handleRulerMouseUp = useCallback(
+    (e) => {
+      const previewMeasureLineEl = fetchOrCreatePreviewMeasureLineEntity();
+      const mouseUpPosition = pickPointOnGroundPlane({
+        x: e.clientX,
+        y: e.clientY,
+        canvas: AFRAME.scenes[0].canvas,
+        camera: AFRAME.INSPECTOR.camera
+      });
+
+      if (!hasRulerClicked) {
+        previewMeasureLineEl.setAttribute('visible', true);
+        setHasRulerClicked(true);
+        previewMeasureLineEl.setAttribute('measure-line', {
+          start: mouseUpPosition,
+          end: mouseUpPosition
+        });
+      } else {
+        previewMeasureLineEl.setAttribute('visible', false);
+        const startPosition =
+          previewMeasureLineEl.getAttribute('measure-line').start;
+        setHasRulerClicked(false);
+
+        AFRAME.INSPECTOR.execute('entitycreate', {
+          components: {
+            'data-layer-name': `Measure Line • ${measureLineCounter}`,
+            'measure-line': {
+              start: {
+                x: startPosition.x,
+                y: startPosition.y,
+                z: startPosition.z
+              },
+              end: {
+                x: mouseUpPosition.x,
+                y: mouseUpPosition.y,
+                z: mouseUpPosition.z
+              }
+            }
+          }
+        });
+        changeTransformMode('translate');
+        setMeasureLineCounter((prev) => prev + 1);
+      }
+    },
+    [
+      hasRulerClicked,
+      measureLineCounter,
+      setMeasureLineCounter,
+      changeTransformMode
+    ]
+  );
+
+  const handleRulerMouseMove = useCallback(
+    (e) => {
+      let rulerCursorEntity = document.getElementById('rulerCursorEntity');
+      const position = pickPointOnGroundPlane({
+        x: e.clientX,
+        y: e.clientY,
+        canvas: AFRAME.scenes[0].canvas,
+        camera: AFRAME.INSPECTOR.camera
+      });
+      if (rulerCursorEntity) {
+        rulerCursorEntity.object3D.position.copy(position);
+      }
+      if (hasRulerClicked) {
+        const previewMeasureLineEl =
+          document.getElementById('previewMeasureLine');
+        if (previewMeasureLineEl) {
+          previewMeasureLineEl.setAttribute('measure-line', { end: position });
+        }
+      }
+    },
+    [hasRulerClicked]
+  );
+
+  const handleEscapeKey = useCallback(
+    (e) => {
+      if (e.key === 'Escape' && hasRulerClicked) {
+        const previewMeasureLineEl =
+          document.getElementById('previewMeasureLine');
+        if (previewMeasureLineEl) {
+          previewMeasureLineEl.setAttribute('visible', false);
+        }
+        setHasRulerClicked(false);
+      }
+    },
+    [hasRulerClicked]
+  );
+
+  const setupRulerListeners = useCallback(
+    (isActive) => {
+      const canvas = AFRAME.scenes[0].canvas;
+      if (isActive) {
+        canvas.addEventListener('mousemove', handleRulerMouseMove);
+        canvas.addEventListener('mouseup', handleRulerMouseUp);
+        window.addEventListener('keydown', handleEscapeKey);
+        canvas.style.cursor = 'pointer';
+        fadeInRulerCursorEntity();
+      } else {
+        canvas.removeEventListener('mousemove', handleRulerMouseMove);
+        canvas.removeEventListener('mouseup', handleRulerMouseUp);
+        window.removeEventListener('keydown', handleEscapeKey);
+        fadeOutRulerCursorEntity();
+      }
+    },
+    [handleRulerMouseMove, handleRulerMouseUp, handleEscapeKey]
+  );
+
+  return {
+    hasRulerClicked,
+    handleRulerMouseUp,
+    handleRulerMouseMove,
+    handleEscapeKey,
+    setupRulerListeners
+  };
+}
 
 /**
  * Creates and shows the ruler cursor entity with animated rings
@@ -42,7 +166,7 @@ export function fadeOutRulerCursorEntity() {
  * Fetches or creates the preview measure line entity used for showing the ruler measurement
  * @returns {HTMLElement} The preview measure line entity
  */
-export function fetchOrCreatePreviewMeasureLineEntity() {
+function fetchOrCreatePreviewMeasureLineEntity() {
   let previewMeasureLineEl = document.getElementById('previewMeasureLine');
   if (previewMeasureLineEl) {
     return previewMeasureLineEl;
@@ -55,95 +179,4 @@ export function fetchOrCreatePreviewMeasureLineEntity() {
 
   AFRAME.scenes[0].appendChild(previewMeasureLineEl);
   return previewMeasureLineEl;
-}
-
-/**
- * Handles mouse move events for the ruler tool
- * @param {MouseEvent} e - The mouse event
- * @param {boolean} hasRulerClicked - Whether the ruler has been clicked once already
- */
-export function onRulerMouseMove(e, hasRulerClicked) {
-  let rulerCursorEntity = document.getElementById('rulerCursorEntity');
-  const position = pickPointOnGroundPlane({
-    x: e.clientX,
-    y: e.clientY,
-    canvas: AFRAME.scenes[0].canvas,
-    camera: AFRAME.INSPECTOR.camera
-  });
-  if (rulerCursorEntity) {
-    rulerCursorEntity.object3D.position.copy(position);
-  }
-  if (hasRulerClicked) {
-    // get the previewMeasureLine entity
-    const previewMeasureLineEl = document.getElementById('previewMeasureLine');
-    if (previewMeasureLineEl) {
-      previewMeasureLineEl.setAttribute('measure-line', {
-        end: position
-      });
-    }
-  }
-  return false;
-}
-
-/**
- * Handles mouse up events for the ruler tool
- * @param {MouseEvent} e - The mouse event
- * @param {boolean} hasRulerClicked - Whether the ruler has been clicked once already
- * @param {Function} setHasRulerClicked - Function to update hasRulerClicked state
- * @param {Function} changeTransformMode - Function to change transform mode
- * @param {number} measureLineCounter - Current measure line counter
- * @param {Function} setMeasureLineCounter - Function to update measure line counter
- */
-export function onRulerMouseUp(
-  e,
-  hasRulerClicked,
-  setHasRulerClicked,
-  changeTransformMode,
-  measureLineCounter,
-  setMeasureLineCounter
-) {
-  const previewMeasureLineEl = fetchOrCreatePreviewMeasureLineEntity();
-  const mouseUpPosition = pickPointOnGroundPlane({
-    x: e.clientX,
-    y: e.clientY,
-    canvas: AFRAME.scenes[0].canvas,
-    camera: AFRAME.INSPECTOR.camera
-  });
-
-  if (!hasRulerClicked) {
-    previewMeasureLineEl.setAttribute('visible', true);
-    // First click logic
-    setHasRulerClicked(true);
-    previewMeasureLineEl.setAttribute('measure-line', {
-      start: mouseUpPosition,
-      end: mouseUpPosition
-    });
-  } else {
-    previewMeasureLineEl.setAttribute('visible', false);
-    const startPosition =
-      previewMeasureLineEl.getAttribute('measure-line').start;
-    // Second click logic
-    setHasRulerClicked(false);
-    // now create a new entity with the measure-line component with the same dimensions
-    AFRAME.INSPECTOR.execute('entitycreate', {
-      components: {
-        'data-layer-name': `Measure Line • ${measureLineCounter}`,
-        'measure-line': {
-          start: {
-            x: startPosition.x,
-            y: startPosition.y,
-            z: startPosition.z
-          },
-          end: {
-            x: mouseUpPosition.x,
-            y: mouseUpPosition.y,
-            z: mouseUpPosition.z
-          }
-        }
-      }
-    });
-    // select the translate tools to show measure line controls
-    changeTransformMode('translate');
-    setMeasureLineCounter((prev) => prev + 1);
-  }
 }

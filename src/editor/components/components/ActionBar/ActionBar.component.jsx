@@ -4,24 +4,39 @@ import classNames from 'classnames';
 import Events from '../../../lib/Events';
 import styles from './ActionBar.module.scss';
 import { Button, UnitsPreference, UndoRedo } from '../../components';
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect } from 'react';
 import posthog from 'posthog-js';
 import { Rotate24Icon, Translate24Icon, Ruler24Icon } from '../../../icons';
 import {
   fadeInRulerCursorEntity,
   fadeOutRulerCursorEntity,
-  onRulerMouseUp,
-  onRulerMouseMove
+  useRulerTool
 } from './RulerAction.jsx';
 
 const ActionBar = ({ selectedEntity }) => {
   const [measureLineCounter, setMeasureLineCounter] = useState(1);
+  const [transformMode, setTransformMode] = useState('translate');
+  const [newToolMode, setNewToolMode] = useState('off');
+
+  const changeTransformMode = (mode) => {
+    Events.emit('showcursor');
+    Events.emit('transformmodechange', mode);
+    posthog.capture('transform_mode_changed', { mode: mode });
+  };
+
+  const { handleRulerMouseUp, handleRulerMouseMove, handleEscapeKey } =
+    useRulerTool(
+      changeTransformMode,
+      measureLineCounter,
+      setMeasureLineCounter
+    );
 
   const handleNewToolClick = (tool) => {
-    Events.emit('hidecursor'); // objects cannot be hovered and selected
+    Events.emit('hidecursor');
     posthog.capture(`${tool}_clicked`);
     setTransformMode('off');
     setNewToolMode(tool);
+
     if (tool === 'ruler') {
       AFRAME.scenes[0].canvas.style.cursor = 'pointer';
       fadeInRulerCursorEntity();
@@ -31,51 +46,11 @@ const ActionBar = ({ selectedEntity }) => {
     }
   };
 
-  const [transformMode, setTransformMode] = useState('translate'); // "translate" | "rotate" | "scale"
-  const [newToolMode, setNewToolMode] = useState('off'); // "off" | "hand" | "ruler"
-  const [hasRulerClicked, setHasRulerClicked] = useState(false);
-
-  const handleRulerMouseUp = useCallback(
-    (e) => {
-      onRulerMouseUp(
-        e,
-        hasRulerClicked,
-        setHasRulerClicked,
-        changeTransformMode,
-        measureLineCounter,
-        setMeasureLineCounter
-      );
-    },
-    [hasRulerClicked, measureLineCounter]
-  );
-
-  const handleRulerMouseMove = useCallback(
-    (e) => {
-      onRulerMouseMove(e, hasRulerClicked);
-    },
-    [hasRulerClicked]
-  );
-
-  const handleEscapeKey = useCallback(
-    (e) => {
-      if (e.key === 'Escape' && hasRulerClicked) {
-        const previewMeasureLineEl =
-          document.getElementById('previewMeasureLine');
-        if (previewMeasureLineEl) {
-          previewMeasureLineEl.setAttribute('visible', false);
-        }
-        setHasRulerClicked(false);
-      }
-    },
-    [hasRulerClicked]
-  );
-
   useEffect(() => {
     const canvas = AFRAME.scenes[0].canvas;
     if (newToolMode === 'ruler') {
       canvas.addEventListener('mousemove', handleRulerMouseMove);
       canvas.addEventListener('mouseup', handleRulerMouseUp);
-      // Add escape key listener
       window.addEventListener('keydown', handleEscapeKey);
     }
     return () => {
@@ -86,17 +61,14 @@ const ActionBar = ({ selectedEntity }) => {
   }, [newToolMode, handleRulerMouseMove, handleRulerMouseUp, handleEscapeKey]);
 
   useEffect(() => {
-    // e (rotate) and w (translate) shortcuts
     const onChange = (mode) => {
       setTransformMode(mode);
       setNewToolMode('off');
-      // Using null to allow transform controls to manage cursor styles
       AFRAME.scenes[0].canvas.style.cursor = null;
       fadeOutRulerCursorEntity();
       Events.emit('showcursor');
     };
 
-    // Handle remote tool activation
     const onToolChange = (tool) => {
       handleNewToolClick(tool);
     };
@@ -109,13 +81,6 @@ const ActionBar = ({ selectedEntity }) => {
       Events.off('toolchange', onToolChange);
     };
   }, []);
-
-  const changeTransformMode = (mode) => {
-    // mode: "translate" | "rotate" | "scale"
-    Events.emit('showcursor');
-    Events.emit('transformmodechange', mode);
-    posthog.capture('transform_mode_changed', { mode: mode });
-  };
 
   return (
     <div className={styles.wrapper}>
