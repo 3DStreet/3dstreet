@@ -111,9 +111,6 @@ const ActionBar = ({ selectedEntity }) => {
                 y: mouseUpPosition.y,
                 z: mouseUpPosition.z
               }
-            },
-            'measure-line-gizmo': {
-              active: true
             }
           }
         });
