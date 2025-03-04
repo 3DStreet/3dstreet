@@ -114,6 +114,8 @@ const ActionBar = ({ selectedEntity }) => {
             }
           }
         });
+        // select the translate tools to show measure line controls
+        changeTransformMode('translate');
         setMeasureLineCounter((prev) => prev + 1);
       }
     },
@@ -147,17 +149,34 @@ const ActionBar = ({ selectedEntity }) => {
     [hasRulerClicked]
   );
 
+  const handleEscapeKey = useCallback(
+    (e) => {
+      if (e.key === 'Escape' && hasRulerClicked) {
+        const previewMeasureLineEl =
+          document.getElementById('previewMeasureLine');
+        if (previewMeasureLineEl) {
+          previewMeasureLineEl.setAttribute('visible', false);
+        }
+        setHasRulerClicked(false);
+      }
+    },
+    [hasRulerClicked]
+  );
+
   useEffect(() => {
     const canvas = AFRAME.scenes[0].canvas;
     if (newToolMode === 'ruler') {
       canvas.addEventListener('mousemove', onRulerMouseMove);
       canvas.addEventListener('mouseup', onRulerMouseUp);
+      // Add escape key listener
+      window.addEventListener('keydown', handleEscapeKey);
     }
     return () => {
       canvas.removeEventListener('mousemove', onRulerMouseMove);
       canvas.removeEventListener('mouseup', onRulerMouseUp);
+      window.removeEventListener('keydown', handleEscapeKey);
     };
-  }, [newToolMode, onRulerMouseMove, onRulerMouseUp]);
+  }, [newToolMode, onRulerMouseMove, onRulerMouseUp, handleEscapeKey]);
 
   useEffect(() => {
     // e (rotate) and w (translate) shortcuts
