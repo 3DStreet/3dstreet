@@ -143,6 +143,17 @@ export function Viewport(inspector) {
         inspector.helpers[node.uuid].update();
       }
     });
+
+    // Force an update of the measure line controls -- needed after undo/redo to update control points
+    if (
+      object.el &&
+      object.el.components &&
+      object.el.components['measure-line']
+    ) {
+      if (measureLineControls.object === object.el) {
+        measureLineControls.update();
+      }
+    }
   }
 
   const camera = inspector.camera;
