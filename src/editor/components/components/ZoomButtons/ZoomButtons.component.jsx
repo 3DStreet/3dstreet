@@ -1,7 +1,7 @@
 import styles from './ZoomButtons.module.scss';
 import { Button } from '../Button';
 import classNames from 'classnames';
-import { Compass32Icon } from '../../../icons';
+import { CameraResetIcon } from '../../../icons';
 
 /**
  * ZoomButtons component.
@@ -12,16 +12,16 @@ import { Compass32Icon } from '../../../icons';
 function ZoomButtons() {
   return (
     <>
-      <Button
+      <div
         id="resetZoomButton"
         className={styles.resetZoomButton}
-        variant="toolbtn"
         onPointerDown={() => {
           AFRAME.INSPECTOR.controls.resetZoom();
         }}
-        leadingIcon={<Compass32Icon />}
         title="Reset Camera View"
-      />
+      >
+        <CameraResetIcon />
+      </div>
       {/* <Button
         id="enterViewModeButton"
         className={styles.enterViewModeButton}
