@@ -35,3 +35,22 @@ export function fadeOutRulerCursorEntity() {
     rulerCursorEntity.setAttribute('visible', false);
   }
 }
+
+/**
+ * Fetches or creates the preview measure line entity used for showing the ruler measurement
+ * @returns {HTMLElement} The preview measure line entity
+ */
+export function fetchOrCreatePreviewMeasureLineEntity() {
+  let previewMeasureLineEl = document.getElementById('previewMeasureLine');
+  if (previewMeasureLineEl) {
+    return previewMeasureLineEl;
+  }
+  // create a new entity with the measure-line component with the same dimensions
+  previewMeasureLineEl = document.createElement('a-entity');
+  previewMeasureLineEl.setAttribute('id', 'previewMeasureLine');
+  previewMeasureLineEl.setAttribute('measure-line', '');
+  previewMeasureLineEl.classList.add('hideFromSceneGraph');
+
+  AFRAME.scenes[0].appendChild(previewMeasureLineEl);
+  return previewMeasureLineEl;
+}

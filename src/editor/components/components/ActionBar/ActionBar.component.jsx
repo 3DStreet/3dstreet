@@ -10,7 +10,8 @@ import { Rotate24Icon, Translate24Icon, Ruler24Icon } from '../../../icons';
 import pickPointOnGroundPlane from '../../../lib/pick-point-on-ground-plane';
 import {
   fadeInRulerCursorEntity,
-  fadeOutRulerCursorEntity
+  fadeOutRulerCursorEntity,
+  fetchOrCreatePreviewMeasureLineEntity
 } from './RulerAction.jsx';
 
 const ActionBar = ({ selectedEntity }) => {
@@ -28,21 +29,6 @@ const ActionBar = ({ selectedEntity }) => {
       fadeOutRulerCursorEntity();
       AFRAME.scenes[0].canvas.style.cursor = 'grab';
     }
-  };
-
-  const fetchOrCreatePreviewMeasureLineEntity = () => {
-    let previewMeasureLineEl = document.getElementById('previewMeasureLine');
-    if (previewMeasureLineEl) {
-      return previewMeasureLineEl;
-    }
-    // create a new entity with the measure-line component with the same dimensions
-    previewMeasureLineEl = document.createElement('a-entity');
-    previewMeasureLineEl.setAttribute('id', 'previewMeasureLine');
-    previewMeasureLineEl.setAttribute('measure-line', '');
-    previewMeasureLineEl.classList.add('hideFromSceneGraph');
-
-    AFRAME.scenes[0].appendChild(previewMeasureLineEl);
-    return previewMeasureLineEl;
   };
 
   const [transformMode, setTransformMode] = useState('translate'); // "translate" | "rotate" | "scale"
