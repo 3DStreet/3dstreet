@@ -61,7 +61,7 @@ const ActionBar = ({ selectedEntity }) => {
   }, [newToolMode, handleRulerMouseMove, handleRulerMouseUp, handleEscapeKey]);
 
   useEffect(() => {
-    const onChange = (mode) => {
+    const onTransformModeChange = (mode) => {
       setTransformMode(mode);
       setNewToolMode('off');
       AFRAME.scenes[0].canvas.style.cursor = null;
@@ -69,16 +69,16 @@ const ActionBar = ({ selectedEntity }) => {
       Events.emit('showcursor');
     };
 
-    const onToolChange = (tool) => {
+    const onNewToolChange = (tool) => {
       handleNewToolClick(tool);
     };
 
-    Events.on('transformmodechange', onChange);
-    Events.on('toolchange', onToolChange);
+    Events.on('transformmodechange', onTransformModeChange);
+    Events.on('toolchange', onNewToolChange);
 
     return () => {
-      Events.off('transformmodechange', onChange);
-      Events.off('toolchange', onToolChange);
+      Events.off('transformmodechange', onTransformModeChange);
+      Events.off('toolchange', onNewToolChange);
     };
   }, []);
 
