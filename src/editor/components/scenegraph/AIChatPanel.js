@@ -360,29 +360,59 @@ const AIChatPanel = () => {
           try {
             if (call.name === 'entityUpdate') {
               const args = call.args;
-              // Convert function call args to command format, handling expressions
+
+              // Extract fields with appropriate fallbacks
+              const entityId = args['entity-id'];
+              const component = args.component;
+              const property = args.property || null;
+
+              // Create the command payload
               const payload = {
-                'entity-id': args['entity-id'],
-                component: args.component
+                'entity-id': entityId,
+                component: component
               };
 
-              // Handle property if present
-              if (args.property) {
-                payload.property = args.property;
+              // Add property if specified (important for position.x, position.y, etc.)
+              if (property) {
+                payload.property = property;
               }
 
+              // Set the value - either from direct value or expression
               if (args['expression-for-value']) {
-                payload.value = evaluateExpression(
-                  args['expression-for-value']
-                );
-              } else {
+                try {
+                  // Simple numeric expression evaluation
+                  const expr = args['expression-for-value'].trim();
+                  // Simple safety check - only allow basic math
+                  if (!/^[-+0-9\s()*/%.]*$/.test(expr)) {
+                    throw new Error(
+                      'Invalid expression: contains forbidden characters'
+                    );
+                  }
+
+                  // Use Function constructor for simple math evaluation
+                  // This is safer than eval() but still handles basic arithmetic
+                  // payload.value = new Function(`return ${expr}`)();
+                  payload.value = evaluateExpression(expr);
+                } catch (error) {
+                  throw new Error(
+                    `Failed to evaluate expression "${args['expression-for-value']}": ${error.message}`
+                  );
+                }
+              } else if (args.value) {
                 payload.value = args.value;
+              } else {
+                throw new Error(
+                  'Either value or expression-for-value must be provided'
+                );
               }
 
+              // Execute the command
               const commandData = {
                 command: 'entityupdate',
                 payload
               };
+
+              console.log('Executing command:', commandData);
               executeUpdateCommand(commandData);
 
               // Update function call status to success
