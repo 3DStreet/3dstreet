@@ -59,13 +59,13 @@ export default function Main() {
     Events.on('togglesidebar', (event) => {
       if (event.which === 'all') {
         setState((prevState) => {
-          const currentlyVisible =
+          const isVisible =
             prevState.visible.scenegraph || prevState.visible.attributes;
           return {
             ...prevState,
             visible: {
-              scenegraph: !currentlyVisible,
-              attributes: !currentlyVisible
+              scenegraph: !isVisible,
+              attributes: !isVisible
             }
           };
         });

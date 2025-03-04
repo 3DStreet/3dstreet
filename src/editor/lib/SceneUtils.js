@@ -213,7 +213,7 @@ export async function saveScene(currentUser, doSaveAs, doPromptTitle) {
       // Prompt user for new scene title when saving as
       const newTitle = window.prompt(
         'Enter a title for your scene:',
-        sceneTitle
+        sceneTitle || 'Untitled'
       );
       if (!newTitle) return; // User cancelled the prompt
       store.setSceneTitle(newTitle);

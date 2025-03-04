@@ -1,6 +1,7 @@
 /* eslint-disable no-unused-vars */
 import TransformControls from './TransformControls.js';
 import EditorControls from './EditorControls.js';
+import { MeasureLineControls } from './MeasureLineControls.js';
 
 import { copyCameraPosition } from './cameras';
 import { initRaycaster } from './raycaster';
@@ -142,6 +143,17 @@ export function Viewport(inspector) {
         inspector.helpers[node.uuid].update();
       }
     });
+
+    // Force an update of the measure line controls -- needed after undo/redo to update control points
+    if (
+      object.el &&
+      object.el.components &&
+      object.el.components['measure-line']
+    ) {
+      if (measureLineControls.object === object.el) {
+        measureLineControls.update();
+      }
+    }
   }
 
   const camera = inspector.camera;
@@ -150,6 +162,32 @@ export function Viewport(inspector) {
     inspector.container
   );
   transformControls.size = 0.75;
+
+  const measureLineControls = new THREE.MeasureLineControls(
+    camera,
+    inspector.container
+  );
+  measureLineControls.visible = false;
+  measureLineControls.enabled = true;
+
+  // Function to switch between controls based on entity type
+  const switchControls = (entity) => {
+    if (!entity) {
+      transformControls.detach();
+      measureLineControls.detach();
+      return;
+    }
+
+    const object = entity.object3D;
+    if (entity.components['measure-line']) {
+      transformControls.detach();
+      measureLineControls.attach(entity);
+    } else {
+      measureLineControls.detach();
+      transformControls.attach(object);
+    }
+  };
+
   transformControls.addEventListener('objectChange', (evt) => {
     const object = transformControls.object;
     if (object === undefined) {
@@ -192,7 +230,38 @@ export function Viewport(inspector) {
     controls.enabled = true;
   });
 
+  measureLineControls.addEventListener('mouseDown', () => {
+    controls.enabled = false;
+  });
+
+  measureLineControls.addEventListener('mouseUp', () => {
+    controls.enabled = true;
+  });
+
+  measureLineControls.addEventListener('objectChange', (evt) => {
+    if (!measureLineControls.object) return;
+
+    const entity = measureLineControls.object;
+    const measureLine = entity.components['measure-line'];
+    if (!measureLine) return;
+
+    // Update the measure-line component data
+    const startPoint = measureLineControls.handles.start.position;
+    const endPoint = measureLineControls.handles.end.position;
+
+    // Instead of sending two separate updates, send a single update with both properties
+    inspector.execute('entityupdate', {
+      component: 'measure-line',
+      entity: entity,
+      value: {
+        start: `${startPoint.x} ${startPoint.y} ${startPoint.z}`,
+        end: `${endPoint.x} ${endPoint.y} ${endPoint.z}`
+      }
+    });
+  });
+
   sceneHelpers.add(transformControls);
+  sceneHelpers.add(measureLineControls);
 
   Events.on('entityupdate', (detail) => {
     const object = detail.entity.object3D;
@@ -224,6 +293,7 @@ export function Viewport(inspector) {
   Events.on('cameratoggle', (data) => {
     controls.setCamera(data.camera);
     transformControls.setCamera(data.camera);
+    measureLineControls.camera = data.camera;
     updateAspectRatio();
     // quick solution to change 3d tiles camera
     const tilesElem = document.querySelector('a-entity[loader-3dtiles]');
@@ -251,6 +321,21 @@ export function Viewport(inspector) {
 
   Events.on('transformmodechange', (mode) => {
     transformControls.setMode(mode);
+
+    // If there's a selected entity, reattach the appropriate controls
+    if (
+      inspector.selectedEntity &&
+      inspector.cursor.isPlaying &&
+      !inspector.selectedEntity.hasAttribute('data-no-transform')
+    ) {
+      if (inspector.selectedEntity.components['measure-line']) {
+        transformControls.detach();
+        measureLineControls.attach(inspector.selectedEntity);
+      } else {
+        measureLineControls.detach();
+        transformControls.attach(inspector.selectedEntity.object3D);
+      }
+    }
   });
 
   Events.on('translationsnapchanged', (dist) => {
@@ -269,6 +354,8 @@ export function Viewport(inspector) {
     hoverBox.visible = false;
     selectionBox.visible = false;
     transformControls.detach();
+    measureLineControls.detach();
+
     if (object && object.el) {
       if (object.el.getObject3D('mesh')) {
         selectionBox.setFromObject(object);
@@ -286,8 +373,13 @@ export function Viewport(inspector) {
         object.el.addEventListener('model-loaded', listener);
       }
 
-      if (inspector.cursor.isPlaying) {
-        if (!object.el.hasAttribute('data-no-transform')) {
+      if (
+        inspector.cursor.isPlaying &&
+        !object.el.hasAttribute('data-no-transform')
+      ) {
+        if (object.el.components['measure-line']) {
+          measureLineControls.attach(object.el);
+        } else {
           transformControls.attach(object);
         }
       }

@@ -234,57 +234,79 @@
     {
         "id": "dividers-flowers",
         "name": "Flowers",
-        "img": "thumbnails/dividers-flowers.jpg"
+        "img": "thumbnails/dividers-flowers.jpg",
+        "src": "sets/dividers/gltf-exports/draco/dividers-flowers.glb",
+        "category": "dividers"
     },
     {
         "id": "dividers-planting-strip",
         "name": "Planting Strip",
-        "img": "thumbnails/dividers-planting-strip.jpg"
+        "img": "thumbnails/dividers-planting-strip.jpg",
+        "src": "sets/dividers/gltf-exports/draco/dividers-planting-strip.glb",
+        "category": "dividers"
     },
     {
         "id": "dividers-planter-box",
         "name": "Planter Box",
-        "img": "thumbnails/dividers-planter-box.jpg"
+        "img": "thumbnails/dividers-planter-box.jpg",
+        "src": "sets/dividers/gltf-exports/draco/dividers-planter-box.glb",
+        "category": "dividers"
     },
     {
         "id": "dividers-bush",
         "name": "Bush",
-        "img": "thumbnails/dividers-bush.jpg"
+        "img": "thumbnails/dividers-bush.jpg",
+        "src": "sets/dividers/gltf-exports/draco/dividers-bush.glb",
+        "category": "dividers"
     },
     {
         "id": "dividers-dome",
         "name": "Dome",
-        "img": "thumbnails/dividers-dome.jpg"
+        "img": "thumbnails/dividers-dome.jpg",
+        "src": "sets/dividers/gltf-exports/draco/dividers-dome.glb",
+        "category": "dividers"
     },
     {
         "id": "safehit",
         "name": "Safehit",
-        "img": "thumbnails/safehit.jpg"
+        "img": "thumbnails/safehit.jpg",
+        "src": "sets/dividers/gltf-exports/draco/dividers-safehit.glb",
+        "category": "dividers"
     },
     {
         "id": "bollard",
         "name": "Bollard",
-        "img": "thumbnails/bollard.jpg"
+        "img": "thumbnails/bollard.jpg",
+        "src": "sets/dividers/gltf-exports/draco/dividers-bollard.glb",
+        "category": "dividers"
     },
     {
         "id": "temporary-barricade",
         "name": "Temporary Barricade",
-        "img": "thumbnails/temporary-barricade.jpg"
+        "img": "thumbnails/temporary-barricade.jpg",
+        "src": "sets/dividers/gltf-exports/draco/dividers-barricade.glb",
+        "category": "dividers"
     },
     {
         "id": "temporary-traffic-cone",
         "name": "Temporary Traffic Cone",
-        "img": "thumbnails/temporary-traffic-cone.jpg"
+        "img": "thumbnails/temporary-traffic-cone.jpg",
+        "src": "sets/dividers/gltf-exports/draco/dividers-traffic-cone.glb",
+        "category": "dividers"
     },
     {
         "id": "temporary-jersey-barrier-plastic",
         "name": "Temporary Jersey Barrier Plastic",
-        "img": "thumbnails/temporary-jersey-barrier-plastic.jpg"
+        "img": "thumbnails/temporary-jersey-barrier-plastic.jpg",
+        "src": "sets/dividers/gltf-exports/draco/dividers-jersey-barrier-plastic.glb",
+        "category": "dividers"
     },
     {
         "id": "temporary-jersey-barrier-concrete",
         "name": "Temporary Jersey Barrier Concrete",
-        "img": "thumbnails/temporary-jersey-barrier-concrete.jpg"
+        "img": "thumbnails/temporary-jersey-barrier-concrete.jpg",
+        "src": "sets/dividers/gltf-exports/draco/dividers-jersey-barrier-concrete.glb",
+        "category": "dividers"
     },
     {
         "id": "street-element-crosswalk-raised",
@@ -592,7 +614,142 @@
         "img": "sets/streetplan/sp-tree-honeylocust-24ft.webp",
         "src": "sets/streetplan/sp-tree-honeylocust-24ft.glb",
         "category": "sidewalk-props",
-        "copyright": "Copyright 2025 StreetPlan LLC. Used with permission.",
-        "copyrightUrl": "https://www.urbaninnovators.com/streetplan"
+        "attribution": "StreetPlan.net. Used with permission.",
+        "attributionUrl": "https://www.urbaninnovators.com/streetplan"
+    },
+    {
+        "id": "sp-tree-buroak-24ft",
+        "name": "Bur Oak Tree 24ft",
+        "img": "sets/streetplan/sp-tree-buroak-24ft.webp",
+        "src": "sets/streetplan/sp-tree-buroak-24ft.glb",
+        "category": "sidewalk-props",
+        "attribution": "StreetPlan.net. Used with permission.",
+        "attributionUrl": "https://www.urbaninnovators.com/streetplan"
+    },
+    {
+        "id": "sp-tree-japaneselilac-20ft",
+        "name": "Japanese Lilac Tree 20ft",
+        "img": "sets/streetplan/sp-tree-japaneselilac-20ft.webp",
+        "src": "sets/streetplan/sp-tree-japaneselilac-20ft.glb",
+        "category": "sidewalk-props",
+        "attribution": "StreetPlan.net. Used with permission.",
+        "attributionUrl": "https://www.urbaninnovators.com/streetplan"
+    },
+    {
+        "id": "sp-tree-palm-26ft",
+        "name": "Palm Tree 26 ft",
+        "img": "sets/streetplan/sp-tree-palm-26ft.webp",
+        "src": "sets/streetplan/sp-tree-palm-26ft.glb",
+        "category": "sidewalk-props",
+        "attribution": "StreetPlan.net. Used with permission.",
+        "attributionUrl": "https://www.urbaninnovators.com/streetplan"
+    },
+    {
+        "id": "sp-tree-palm-28ft",
+        "name": "Palm Tree 28ft",
+        "img": "sets/streetplan/sp-tree-palm-28ft.webp",
+        "src": "sets/streetplan/sp-tree-palm-28ft.glb",
+        "category": "sidewalk-props",
+        "attribution": "StreetPlan.net. Used with permission.",
+        "attributionUrl": "https://www.urbaninnovators.com/streetplan"
+    },
+    {
+        "id": "sp-tree-purpleplum-16ft",
+        "name": "Purple Plum Tree 16ft",
+        "img": "sets/streetplan/sp-tree-purpleplum-16ft.webp",
+        "src": "sets/streetplan/sp-tree-purpleplum-16ft.glb",
+        "category": "sidewalk-props",
+        "attribution": "StreetPlan.net. Used with permission.",
+        "attributionUrl": "https://www.urbaninnovators.com/streetplan"
+    },
+    {
+        "id": "sp-tree-small-15ft",
+        "name": "Small Tree 15ft",
+        "img": "sets/streetplan/sp-tree-small-15ft.webp",
+        "src": "sets/streetplan/sp-tree-small-15ft.glb",
+        "category": "sidewalk-props",
+        "attribution": "StreetPlan.net. Used with permission.",
+        "attributionUrl": "https://www.urbaninnovators.com/streetplan"
+    },
+    {
+        "id": "sp-furn-bench1-5x2ft",
+        "name": "Bench with people #1",
+        "img": "sets/streetplan/sp-furn-bench1-5x2ft.webp",
+        "src": "sets/streetplan/sp-furn-bench1-5x2ft.glb",
+        "category": "sidewalk-props",
+        "attribution": "StreetPlan.net. Used with permission.",
+        "attributionUrl": "https://www.urbaninnovators.com/streetplan"
+    },
+    {
+        "id": "sp-furn-bench2-5x2ft",
+        "name": "Bench with people #2",
+        "img": "sets/streetplan/sp-furn-bench2-5x2ft.webp",
+        "src": "sets/streetplan/sp-furn-bench2-5x2ft.glb",
+        "category": "sidewalk-props",
+        "attribution": "StreetPlan.net. Used with permission.",
+        "attributionUrl": "https://www.urbaninnovators.com/streetplan"
+    },
+    {
+        "id": "sp-furn-busstop-roundshelter-12x13ft",
+        "name": "Bus stop rounded shelter with people",
+        "img": "sets/streetplan/sp-furn-busstop-roundshelter-12x13ft.webp",
+        "src": "sets/streetplan/sp-furn-busstop-roundshelter-12x13ft.glb",
+        "category": "sidewalk-props",
+        "attribution": "StreetPlan.net. Used with permission.",
+        "attributionUrl": "https://www.urbaninnovators.com/streetplan"
+    },
+    {
+        "id": "sp-furn-busstop-shelter-12x4ft",
+        "name": "Bus stop shelter with people",
+        "img": "sets/streetplan/sp-furn-busstop-shelter-12x4ft.webp",
+        "src": "sets/streetplan/sp-furn-busstop-shelter-12x4ft.glb",
+        "category": "sidewalk-props",
+        "attribution": "StreetPlan.net. Used with permission.",
+        "attributionUrl": "https://www.urbaninnovators.com/streetplan"
+    },
+    {
+        "id": "sp-furn-farmertent1-10x10ft",
+        "name": "Farmer's market tent 10x10 with people 1",
+        "img": "sets/streetplan/sp-furn-farmertent1-10x10ft.webp",
+        "src": "sets/streetplan/sp-furn-farmertent1-10x10ft.glb",
+        "category": "sidewalk-props",
+        "attribution": "StreetPlan.net. Used with permission.",
+        "attributionUrl": "https://www.urbaninnovators.com/streetplan"
+    },
+    {
+        "id": "sp-furn-farmertent2-10x10ft",
+        "name": "Farmer's market tent 10x10 with people 2",
+        "img": "sets/streetplan/sp-furn-farmertent2-10x10ft.webp",
+        "src": "sets/streetplan/sp-furn-farmertent2-10x10ft.glb",
+        "category": "sidewalk-props",
+        "attribution": "StreetPlan.net. Used with permission.",
+        "attributionUrl": "https://www.urbaninnovators.com/streetplan"
+    },
+    {
+        "id": "sp-furn-foodcart-5dot5x9ft",
+        "name": "Food cart with people",
+        "img": "sets/streetplan/sp-furn-foodcart-5dot5x9ft.webp",
+        "src": "sets/streetplan/sp-furn-foodcart-5dot5x9ft.glb",
+        "category": "sidewalk-props",
+        "attribution": "StreetPlan.net. Used with permission.",
+        "attributionUrl": "https://www.urbaninnovators.com/streetplan"
+    },
+    {
+        "id": "sp-furn-table-2x7ft",
+        "name": "Outdoor seating with people",
+        "img": "sets/streetplan/sp-furn-table-2x7ft.webp",
+        "src": "sets/streetplan/sp-furn-table-2x7ft.glb",
+        "category": "sidewalk-props",
+        "attribution": "StreetPlan.net. Used with permission.",
+        "attributionUrl": "https://www.urbaninnovators.com/streetplan"
+    },
+    {
+        "id": "sp-furn-table-blue-7x7ft",
+        "name": "Outdoor seating with umbrella and people",
+        "img": "sets/streetplan/sp-furn-table-blue-7x7ft.webp",
+        "src": "sets/streetplan/sp-furn-table-blue-7x7ft.glb",
+        "category": "sidewalk-props",
+        "attribution": "StreetPlan.net. Used with permission.",
+        "attributionUrl": "https://www.urbaninnovators.com/streetplan"
     }
 ]

@@ -37,7 +37,7 @@ AFRAME.registerComponent('screentock', {
   },
 
   addStyledTitleToCanvas: function (ctx, screenWidth, screenHeight) {
-    const titleText = useStore.getState().sceneTitle;
+    let titleText = useStore.getState().sceneTitle;
     const fontSize = this.data.titleSize * 10;
     const strokeWidth = this.data.titleStrokeWidth * 10;
 
@@ -45,6 +45,9 @@ AFRAME.registerComponent('screentock', {
     ctx.font = `${fontSize}px ${this.data.titleFont}`;
     ctx.textAlign = 'center';
 
+    if (!titleText) {
+      titleText = 'Untitled';
+    }
     // Add stroke if enabled
     if (this.data.titleStroke) {
       ctx.strokeStyle = this.data.titleStrokeColor;

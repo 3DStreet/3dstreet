@@ -42,6 +42,7 @@
     "firebase-admin": "^12.1.1",
     "firebase-functions": "^5.0.1",
     "gl-matrix": "^3.4.3",
+    "jsoncrush": "^1.1.8",
     "lodash-es": "^4.17.21",
     "nanoid": "^5.0.7",
     "posthog-js": "^1.161.5",
