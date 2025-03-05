@@ -6,7 +6,12 @@ import styles from './ActionBar.module.scss';
 import { Button, UnitsPreference, UndoRedo } from '../../components';
 import { useState, useEffect } from 'react';
 import posthog from 'posthog-js';
-import { Rotate24Icon, Translate24Icon, Ruler24Icon } from '../../../icons';
+import {
+  Rotate24Icon,
+  Translate24Icon,
+  Ruler24Icon,
+  RectangleRulerIcon
+} from '../../../icons';
 import {
   fadeInRulerCursorEntity,
   fadeOutRulerCursorEntity,
@@ -166,7 +171,7 @@ const ActionBar = ({ selectedEntity }) => {
         onClick={handleNewToolClick.bind(null, 'rectangleRuler')}
         title="Rectangle Ruler Tool - Measure rectangular areas"
       >
-        <Ruler24Icon />
+        <RectangleRulerIcon />
       </Button>
       <UnitsPreference />
       <div className={styles.divider} />

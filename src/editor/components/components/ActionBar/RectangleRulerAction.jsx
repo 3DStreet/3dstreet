@@ -75,23 +75,41 @@ export function useRectangleRulerTool(
         // Third click - complete the rectangle
         previewMeasureLineEl.setAttribute('visible', false);
 
-        // Calculate the fourth point to form a rectangle
+        // Get points for the rectangle
         const firstPoint = rectangleRulerState.firstPoint;
         const secondPoint = rectangleRulerState.secondPoint;
-        const thirdPoint = mouseUpPosition;
 
-        // Vector from second to third point
-        const v2 = {
-          x: thirdPoint.x - secondPoint.x,
-          y: thirdPoint.y - secondPoint.y,
-          z: thirdPoint.z - secondPoint.z
+        // Use the raw mouse position for calculation, but not directly for the rectangle
+        const rawMousePosition = mouseUpPosition;
+
+        // Calculate the direction vector of the first line (from first to second point)
+        const dx = secondPoint.x - firstPoint.x;
+        const dz = secondPoint.z - firstPoint.z;
+        const length = Math.sqrt(dx * dx + dz * dz);
+
+        // Create a unit perpendicular vector to the first line (rotate 90 degrees)
+        const perpX = -dz / length;
+        const perpZ = dx / length;
+
+        // Calculate the projection of the mouse position onto the perpendicular vector
+        const mouseToSecondX = rawMousePosition.x - secondPoint.x;
+        const mouseToSecondZ = rawMousePosition.z - secondPoint.z;
+
+        // Project to get the width
+        const width = mouseToSecondX * perpX + mouseToSecondZ * perpZ;
+
+        // Calculate the ACTUAL third point (perpendicular to the line between points 1 and 2)
+        const thirdPoint = {
+          x: secondPoint.x + perpX * width,
+          y: secondPoint.y,
+          z: secondPoint.z + perpZ * width
         };
 
-        // Calculate fourth point (completing the parallelogram)
+        // Calculate the fourth point to form a perfect rectangle
         const fourthPoint = {
-          x: firstPoint.x + v2.x,
-          y: firstPoint.y + v2.y,
-          z: firstPoint.z + v2.z
+          x: firstPoint.x + (thirdPoint.x - secondPoint.x),
+          y: firstPoint.y,
+          z: firstPoint.z + (thirdPoint.z - secondPoint.z)
         };
 
         // Create the remaining three sides of the rectangle
