@@ -290,7 +290,7 @@ const AIChatPanel = () => {
           "entity-id": "NLs5CmxZ8r6nfuAEgPhck",
           "component": "position",
           "property": "x",
-          "value": "2 + 10 * 0.3048"
+          "expression-for-value": "2 + 10 * 0.3048"
         }
 
       NEVER use expression-for-value with vector strings like "3.048 0 0" - they will fail.
@@ -298,7 +298,16 @@ const AIChatPanel = () => {
 
       IMPORTANT: Always respond with a text message, even if the user is asking for a function call.
 
-      You can invoke more than 1 function at a time.`;
+      You can invoke more than 1 function at a time.
+      
+      You can also perform more complicated updates, such as call entityupdate:
+      {
+        "entity-id": "TBD",
+        "component": "measure-line",
+        "property": "start",
+        "value": "0 0 0"
+      }
+      `;
 
   useEffect(() => {
     const initializeAI = async () => {
