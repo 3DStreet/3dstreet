@@ -342,6 +342,12 @@ const AIChatPanel = () => {
     initializeAI();
   }, []);
 
+  // Hide the chat panel by default when component mounts
+  useEffect(() => {
+    const container = document.querySelector('.chat-panel-container');
+    if (container) container.style.display = 'none';
+  }, []);
+
   const handleSendMessage = async () => {
     if (!input.trim() || !modelRef.current) return;
 
@@ -593,7 +599,7 @@ const AIChatPanel = () => {
 
   return (
     <div className="chat-panel-container">
-      <Collapsible defaultCollapsed={false}>
+      <Collapsible defaultCollapsed={true}>
         <div className="panel-header">
           <span>AI Scene Assistant (Experimental)</span>
           <button
