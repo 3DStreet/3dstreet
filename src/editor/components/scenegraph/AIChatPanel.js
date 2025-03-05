@@ -6,6 +6,9 @@ import JSONPretty from 'react-json-pretty';
 import 'react-json-pretty/themes/monikai.css';
 import { Copy32Icon } from '../../icons/index.js';
 import { Parser } from 'expr-eval';
+import { useAuthContext } from '../../contexts';
+import useStore from '@/store';
+import styles from './AIChatPanel.module.scss';
 
 // Helper component for the copy button
 const CopyButton = ({ jsonData }) => {
@@ -237,6 +240,8 @@ const AIChatPanel = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [showResetConfirm, setShowResetConfirm] = useState(false);
   const chatContainerRef = useRef(null);
+  const { currentUser } = useAuthContext();
+  const setModal = useStore((state) => state.setModal);
 
   const modelRef = useRef(null);
 
@@ -601,7 +606,22 @@ const AIChatPanel = () => {
             ×
           </button>
         </div>
-        <div className="chat-panel">
+        <div
+          className={`chat-panel ${!currentUser?.isPro ? styles.proFeaturesWrapper : ''}`}
+        >
+          {!currentUser?.isPro && (
+            <div
+              className={styles.proOverlay}
+              onClick={() => setModal('payment')}
+            >
+              <div className={styles.proOverlayContent}>
+                <span role="img" aria-label="lock">
+                  🔒
+                </span>
+                <span>Pro Feature - Upgrade Now</span>
+              </div>
+            </div>
+          )}
           <div ref={chatContainerRef} className="chat-messages">
             {messages.map((message, index) =>
               message.type === 'functionCall' ? (
@@ -620,16 +640,23 @@ const AIChatPanel = () => {
               type="text"
               value={input}
               onChange={(e) => setInput(e.target.value)}
-              onKeyPress={(e) => e.key === 'Enter' && handleSendMessage()}
+              onKeyPress={(e) =>
+                e.key === 'Enter' && currentUser?.isPro && handleSendMessage()
+              }
               placeholder="Ask about the scene..."
+              disabled={!currentUser?.isPro}
             />
-            <button onClick={handleSendMessage} disabled={isLoading}>
+            <button
+              onClick={handleSendMessage}
+              disabled={isLoading || !currentUser?.isPro}
+            >
               Send
             </button>
             <button
               onClick={() => setShowResetConfirm(true)}
               className="reset-button"
               title="Reset conversation"
+              disabled={!currentUser?.isPro}
             >
               Reset
             </button>
