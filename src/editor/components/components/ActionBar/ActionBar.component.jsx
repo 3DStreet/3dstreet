@@ -12,6 +12,7 @@ import {
   fadeOutRulerCursorEntity,
   useRulerTool
 } from './RulerAction.jsx';
+import { useRectangleRulerTool } from './RectangleRulerAction.jsx';
 
 const ActionBar = ({ selectedEntity }) => {
   const [measureLineCounter, setMeasureLineCounter] = useState(1);
@@ -31,13 +32,23 @@ const ActionBar = ({ selectedEntity }) => {
       setMeasureLineCounter
     );
 
+  const {
+    handleRectangleRulerMouseUp,
+    handleRectangleRulerMouseMove,
+    handleEscapeKey: handleRectangleEscapeKey
+  } = useRectangleRulerTool(
+    changeTransformMode,
+    measureLineCounter,
+    setMeasureLineCounter
+  );
+
   const handleNewToolClick = (tool) => {
     Events.emit('hidecursor');
     posthog.capture(`${tool}_clicked`);
     setTransformMode('off');
     setNewToolMode(tool);
 
-    if (tool === 'ruler') {
+    if (tool === 'ruler' || tool === 'rectangleRuler') {
       AFRAME.scenes[0].canvas.style.cursor = 'pointer';
       fadeInRulerCursorEntity();
     } else {
@@ -52,13 +63,28 @@ const ActionBar = ({ selectedEntity }) => {
       canvas.addEventListener('mousemove', handleRulerMouseMove);
       canvas.addEventListener('mouseup', handleRulerMouseUp);
       window.addEventListener('keydown', handleEscapeKey);
+    } else if (newToolMode === 'rectangleRuler') {
+      canvas.addEventListener('mousemove', handleRectangleRulerMouseMove);
+      canvas.addEventListener('mouseup', handleRectangleRulerMouseUp);
+      window.addEventListener('keydown', handleRectangleEscapeKey);
     }
     return () => {
       canvas.removeEventListener('mousemove', handleRulerMouseMove);
       canvas.removeEventListener('mouseup', handleRulerMouseUp);
+      canvas.removeEventListener('mousemove', handleRectangleRulerMouseMove);
+      canvas.removeEventListener('mouseup', handleRectangleRulerMouseUp);
       window.removeEventListener('keydown', handleEscapeKey);
+      window.removeEventListener('keydown', handleRectangleEscapeKey);
     };
-  }, [newToolMode, handleRulerMouseMove, handleRulerMouseUp, handleEscapeKey]);
+  }, [
+    newToolMode,
+    handleRulerMouseMove,
+    handleRulerMouseUp,
+    handleEscapeKey,
+    handleRectangleRulerMouseMove,
+    handleRectangleRulerMouseUp,
+    handleRectangleEscapeKey
+  ]);
 
   useEffect(() => {
     const onTransformModeChange = (mode) => {
@@ -129,6 +155,16 @@ const ActionBar = ({ selectedEntity }) => {
         })}
         onClick={handleNewToolClick.bind(null, 'ruler')}
         title="Ruler Tool (r) - Measure distances between points"
+      >
+        <Ruler24Icon />
+      </Button>
+      <Button
+        variant="toolbtn"
+        className={classNames({
+          [styles.active]: newToolMode === 'rectangleRuler'
+        })}
+        onClick={handleNewToolClick.bind(null, 'rectangleRuler')}
+        title="Rectangle Ruler Tool - Measure rectangular areas"
       >
         <Ruler24Icon />
       </Button>
