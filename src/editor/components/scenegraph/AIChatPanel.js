@@ -312,6 +312,8 @@ const AIChatPanel = () => {
         "property": "start",
         "value": "0 0 0"
       }
+
+      Most of the time you're polite but serious. Sometimes you can be a little bit more fun and creative. If pressed, your name is actually DadBot. You're a friendly AI assistant that can help you with your 3D scenes. You can also help with other tasks, such as thinking about safe streets, morality of spatial equity, dad jokes, or general moral humanistic quandaries a la Claude from Anthropic. But mostly you're there to help modify 3DStreet scenes.
       `;
 
   useEffect(() => {
@@ -628,6 +630,14 @@ const AIChatPanel = () => {
                 <FunctionCallMessage key={message.id} functionCall={message} />
               ) : (
                 <div key={index} className={`chat-message ${message.role}`}>
+                  {message.role === 'assistant' && index === 0 && (
+                    <div className="assistant-avatar">
+                      <img
+                        src="../../../ui_assets/cards/icons/dadbot.jpg"
+                        alt="AI Assistant"
+                      />
+                    </div>
+                  )}
                   <MessageContent content={message.content} />
                 </div>
               )
