@@ -189,7 +189,48 @@ export function useRectangleRulerTool(
         const previewMeasureLineEl =
           document.getElementById('previewMeasureLine');
         if (previewMeasureLineEl) {
-          previewMeasureLineEl.setAttribute('measure-line', { end: position });
+          if (rectangleRulerState.clickCount === 2) {
+            // After second click, we're modifying the width of the rectangle
+            // Calculate the projection vector perpendicular to the first line
+            const firstPoint = rectangleRulerState.firstPoint;
+            const secondPoint = rectangleRulerState.secondPoint;
+
+            // Calculate the direction vector of the first line
+            const dx = secondPoint.x - firstPoint.x;
+            const dz = secondPoint.z - firstPoint.z;
+            const length = Math.sqrt(dx * dx + dz * dz);
+
+            // Create a perpendicular vector (rotate 90 degrees)
+            const perpX = -dz / length;
+            const perpZ = dx / length;
+
+            // Calculate the projected distance (width) based on cursor position
+            const cursorToSecondX = position.x - secondPoint.x;
+            const cursorToSecondZ = position.z - secondPoint.z;
+
+            // Project the cursor-to-second-point vector onto the perpendicular vector
+            // to get the magnitude of the projection (i.e., the width)
+            const projectionMagnitude =
+              cursorToSecondX * perpX + cursorToSecondZ * perpZ;
+
+            // Calculate the third point position using the perpendicular vector
+            const thirdPoint = {
+              x: secondPoint.x + perpX * projectionMagnitude,
+              y: secondPoint.y,
+              z: secondPoint.z + perpZ * projectionMagnitude
+            };
+
+            // Update the preview line to show width
+            previewMeasureLineEl.setAttribute('measure-line', {
+              start: secondPoint,
+              end: thirdPoint
+            });
+          } else {
+            // For the first click, just update the end position of the line
+            previewMeasureLineEl.setAttribute('measure-line', {
+              end: position
+            });
+          }
         }
       }
     },
