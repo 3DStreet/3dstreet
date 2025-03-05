@@ -35,6 +35,27 @@ const AppMenu = ({ currentUser }) => {
     setModal('new');
   };
 
+  const showAIChatPanel = () => {
+    const container = document.querySelector('.chat-panel-container');
+    if (container) {
+      container.style.display = 'block';
+
+      // Make sure the collapsible is expanded when shown from help menu
+      const collapsibleContent = container.querySelector(
+        '.collapsible__content'
+      );
+      if (collapsibleContent && collapsibleContent.style.display === 'none') {
+        // Find and click the collapsible header to expand it
+        const collapsibleHeader = container.querySelector(
+          '.collapsible__header'
+        );
+        if (collapsibleHeader) {
+          collapsibleHeader.click();
+        }
+      }
+    }
+  };
+
   return (
     <Menubar.Root className="MenubarRoot">
       <Menubar.Menu>
@@ -173,6 +194,10 @@ const AppMenu = ({ currentUser }) => {
               }
             >
               Mouse and Touch Controls
+            </Menubar.Item>
+            <Menubar.Separator className="MenubarSeparator" />
+            <Menubar.Item className="MenubarItem" onClick={showAIChatPanel}>
+              AI Scene Assistant
             </Menubar.Item>
           </Menubar.Content>
         </Menubar.Portal>

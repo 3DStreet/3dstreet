@@ -1,4 +1,24 @@
 @use './variables.scss';
+/* chatpanel */
+.ai-chat-panel {
+  position: fixed;
+  bottom: 20px;
+  right: 20px;
+  width: 350px;
+  z-index: 1000;
+  background: white;
+  border-radius: 8px;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+}
+/* Add responsive styles */
+@media (max-width: 768px) {
+  .ai-chat-panel {
+    width: 100%;
+    bottom: 0;
+    right: 0;
+    border-radius: 8px 8px 0 0;
+  }
+}
 
 #scenegraph {
   display: flex;

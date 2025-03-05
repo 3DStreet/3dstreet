@@ -161,7 +161,9 @@ const PaymentModal = () => {
             ) : (
               <div className={styles.unAuth}>
                 <p>To upgrade you have to sign in:</p>
-                <Button variant="filled">Sign in to 3DStreet Cloud</Button>
+                <Button onClick={() => setModal('signin')} variant="filled">
+                  Sign in to 3DStreet Cloud
+                </Button>
               </div>
             )}
           </li>
