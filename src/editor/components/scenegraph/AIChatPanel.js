@@ -250,14 +250,21 @@ const AIChatPanel = () => {
 
       In the scene state, units for length are in meters, and rotations are in degrees.
 
-      The orientation of axis to cardinal directions is as follows: x+ (positive) is north; x- (negative) is south; y+ (positive) is up; y- (negative) is down; z- (negative) is west; z+ (positive) is east;
+      The orientation of axis to cardinal directions is as follows: 
+      - x+ (positive) is north
+      - x- (negative) is south
+      - y+ (positive) is up
+      - y- (negative) is down
+      - z- (negative) is west
+      - z+ (positive) is east
+      
       Models face z+ (east) when at 0º Y rotation. Increasing Y rotation will rotate the model to the left (anticlockwise). Therefore if a model is at 90º Y rotation and a user asks to "move it forward" it will be moving to the north.
 
       Make sure you convert everything to the appropriate units, even if the user uses different units.
 
       IMPORTANT: When you need to calculate a value (like "5 - 2"), return it as a string expression ("5 - 2") in a parameter named "expression-for-value"
 
-      When changing a model, use the "entityupdate" command with the following payload:
+      When changing a model from one to another, use the "entityupdate" command with the following payload:
       {
         "entity-id": "n9eLgB9C635T_edXuXIgz",
         "component": "mixin",
@@ -265,6 +272,29 @@ const AIChatPanel = () => {
       }
 
       The possible model (mixin) values are: Bicycle_1, bus, sedan-rig, sedan-taxi-rig, suv-rig, box-truck-rig, food-trailer-rig, fire-truck-rig, fire-ladder-rig, trash-truck-side-loading, self-driving-cruise-car-rig, self-driving-waymo-car, tuk-tuk, motorbike, cyclist-cargo, cyclist1, cyclist2, cyclist3, cyclist-kid, cyclist-dutch, char1, char2, char3, char4, char5, char6, char7, char8, char9, char10, char11, char12, char13, char14, char15, char16, tram, trolley, minibus, dividers-flowers, dividers-planting-strip, dividers-planter-box, dividers-bush, dividers-dome, safehit, bollard, temporary-barricade, temporary-traffic-cone, temporary-jersey-barrier-plastic, temporary-jersey-barrier-concrete, street-element-crosswalk-raised, street-element-traffic-island-end-rounded, street-element-sign-warning-ped-rrfb, street-element-traffic-post-k71, street-element-traffic-island, street-element-speed-hump, crosswalk-zebra-box, traffic-calming-bumps, corner-island, brt-station, outdoor_dining, bench_orientation_center, parklet, utility_pole, lamp-modern, lamp-modern-double, bikerack, bikeshare, lamp-traditional, palm-tree, bench, seawall, track, tree3, bus-stop, bus-stop-alternate, wayfinding, signal_left, signal_right, stop_sign, trash-bin, lending-library, residential-mailbox, USPS-mailbox, picnic-bench, large-parklet, SM3D_Bld_Mixed_Corner_4fl, SM3D_Bld_Mixed_Double_5fl, SM3D_Bld_Mixed_4fl_2, SM3D_Bld_Mixed_5fl, SM3D_Bld_Mixed_4fl, SM_Bld_House_Preset_03_1800, SM_Bld_House_Preset_08_1809, SM_Bld_House_Preset_09_1845, arched-building-01, arched-building-02, arched-building-03, arched-building-04, ElectricScooter_1, Character_1_M, magic-carpet, cyclist-cargo
+
+      When updating a model's position, rotation or scale, use the "entityupdate" command with the following payload:
+      {
+        "entity-id": "n9eLgB9C635T_edXuXIgz",
+        "component": "position",
+        "property": "x"
+        "expression-for-value": "3 + 4"
+      }
+
+      EXAMPLE: Moving a car forward 10 feet when it has 90° Y rotation:
+      1. From scene state, find car has position "2 0 0" and rotation "0 90 0" 
+      2. At 90° Y rotation, "forward" means +x (north)
+      3. Convert 10 feet to meters: 10 * 0.3048
+      4. Call entityUpdate with:
+        {
+          "entity-id": "NLs5CmxZ8r6nfuAEgPhck",
+          "component": "position",
+          "property": "x",
+          "value": "2 + 10 * 0.3048"
+        }
+
+      NEVER use expression-for-value with vector strings like "3.048 0 0" - they will fail.
+      ALWAYS specify the component (position) AND property (x, y, or z) for movement commands.
 
       IMPORTANT: Always respond with a text message, even if the user is asking for a function call.
 
