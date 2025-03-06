@@ -399,17 +399,14 @@ const AIChatPanel = () => {
       const response = result.response;
       const responseText = response.text();
 
-      posthog.capture({
-        event: '$ai_generation',
-        properties: {
-          $ai_model: AI_MODEL_ID,
-          $ai_provider: 'vertexai',
-          $ai_trace_id: AI_CONVERSATION_ID,
-          $ai_input: prompt,
-          $ai_input_tokens: response.usageMetadata.promptTokenCount,
-          $ai_output_choices: responseText,
-          $ai_output_tokens: response.usageMetadata.candidatesTokenCount
-        }
+      posthog.capture('$ai_generation', {
+        $ai_model: AI_MODEL_ID,
+        $ai_provider: 'vertexai',
+        $ai_trace_id: AI_CONVERSATION_ID,
+        $ai_input: prompt,
+        $ai_input_tokens: response.usageMetadata.promptTokenCount,
+        $ai_output_choices: responseText,
+        $ai_output_tokens: response.usageMetadata.candidatesTokenCount
       });
 
       // Get function calls
