@@ -279,27 +279,6 @@ export const ArrowLeftHookIcon = () => (
   </svg>
 );
 
-export const ManualIcon = () => (
-  <svg
-    width="25"
-    height="30"
-    viewBox="0 0 25 30"
-    fill="none"
-    xmlns="http://www.w3.org/2000/svg"
-  >
-    <path
-      d="M5.15243 7.90909H8.56578L12.1709 16.7045H12.3243L15.9294 7.90909H19.3428V21H16.6581V12.4794H16.5495L13.1617 20.9361H11.3335L7.94576 12.4474H7.83709V21H5.15243V7.90909Z"
-      fill="#EA4335"
-    />
-    <path
-      d="M12.2572 28.8995L0.5 20.9199V8.37301L12.2571 0.595916L24.5 8.37889V20.914L12.2572 28.8995Z"
-      fill="#EA4335"
-      fillOpacity="0.23"
-      stroke="#EA4335"
-    />
-  </svg>
-);
-
 export const AutoIcon = () => (
   <svg
     width="27"
