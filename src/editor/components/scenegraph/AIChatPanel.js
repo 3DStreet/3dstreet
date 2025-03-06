@@ -9,6 +9,11 @@ import { Parser } from 'expr-eval';
 import { useAuthContext } from '../../contexts';
 import useStore from '@/store';
 import styles from './AIChatPanel.module.scss';
+import posthog from 'posthog-js';
+import { v4 as uuidv4 } from 'uuid';
+
+const AI_MODEL_ID = 'gemini-2.0-flash';
+let AI_CONVERSATION_ID = uuidv4();
 
 // Helper component for the copy button
 const CopyButton = ({ jsonData }) => {
@@ -320,7 +325,7 @@ const AIChatPanel = () => {
     const initializeAI = async () => {
       try {
         const model = getGenerativeModel(vertexAI, {
-          model: 'gemini-2.0-flash',
+          model: AI_MODEL_ID,
           tools: entityTools,
           systemInstruction: systemPrompt
         });
@@ -331,6 +336,9 @@ const AIChatPanel = () => {
           history: [],
           generationConfig: {
             maxOutputTokens: 1000
+          },
+          labels: {
+            AI_CONVERSATION_ID: AI_CONVERSATION_ID
           }
         });
         console.log('Vertex AI chat initialized successfully');
@@ -386,9 +394,20 @@ const AIChatPanel = () => {
         history: historyMessages
       });
       console.log('Raw result:', result);
+      console.log('Model reference:', modelRef.current);
 
       const response = result.response;
       const responseText = response.text();
+
+      posthog.capture('$ai_generation', {
+        $ai_model: AI_MODEL_ID,
+        $ai_provider: 'vertexai',
+        $ai_trace_id: AI_CONVERSATION_ID,
+        $ai_input: [{ role: 'user', content: prompt }],
+        $ai_input_tokens: response.usageMetadata.promptTokenCount,
+        $ai_output_choices: [{ role: 'assistant', content: responseText }],
+        $ai_output_tokens: response.usageMetadata.candidatesTokenCount
+      });
 
       // Get function calls
       const functionCalls = response.functionCalls();
@@ -575,16 +594,21 @@ const AIChatPanel = () => {
     const initializeAI = async () => {
       try {
         const model = getGenerativeModel(vertexAI, {
-          model: 'gemini-2.0-flash',
+          model: AI_MODEL_ID,
           tools: entityTools,
           systemInstruction: systemPrompt
         });
+        // generate new uuid
+        AI_CONVERSATION_ID = uuidv4();
 
         // Start a fresh chat with only the initial welcome message
         modelRef.current = model.startChat({
           history: [],
           generationConfig: {
             maxOutputTokens: 1000
+          },
+          labels: {
+            AI_CONVERSATION_ID: AI_CONVERSATION_ID
           }
         });
         console.log('Vertex AI chat reinitialized with empty history');
