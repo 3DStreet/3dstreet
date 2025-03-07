@@ -12,7 +12,9 @@ export function useRectangleRulerTool(
   const [rectangleRulerState, setRectangleRulerState] = useState({
     clickCount: 0,
     firstPoint: null,
-    secondPoint: null
+    secondPoint: null,
+    rectangleEntityId: null,
+    sections: []
   });
 
   const handleRectangleRulerMouseUp = useCallback(
@@ -31,25 +33,24 @@ export function useRectangleRulerTool(
         setRectangleRulerState({
           clickCount: 1,
           firstPoint: mouseUpPosition,
-          secondPoint: null
+          secondPoint: null,
+          rectangleEntityId: null,
+          sections: []
         });
         previewMeasureLineEl.setAttribute('measure-line', {
           start: mouseUpPosition,
           end: mouseUpPosition
         });
       } else if (rectangleRulerState.clickCount === 1) {
-        // Second click - set the second point and continue showing preview
-        setRectangleRulerState({
-          clickCount: 2,
-          firstPoint: rectangleRulerState.firstPoint,
-          secondPoint: mouseUpPosition
-        });
+        // Second click - set the second point and create measure-rectangle
+        // Create the measure-rectangle entity with a unique ID
+        const rectangleEntityId = `rectangle-ruler-${Date.now()}`;
 
-        // Create the first measure line
         AFRAME.INSPECTOR.execute('entitycreate', {
           components: {
-            'data-layer-name': `Rectangle Line • ${measureLineCounter}`,
-            'measure-line': {
+            id: rectangleEntityId,
+            'data-layer-name': `Rectangle • ${measureLineCounter}`,
+            'measure-rectangle': {
               start: {
                 x: rectangleRulerState.firstPoint.x,
                 y: rectangleRulerState.firstPoint.y,
@@ -59,125 +60,92 @@ export function useRectangleRulerTool(
                 x: mouseUpPosition.x,
                 y: mouseUpPosition.y,
                 z: mouseUpPosition.z
-              }
+              },
+              sections: []
             }
           }
         });
 
-        // Reset preview line for the second side of rectangle
+        setRectangleRulerState({
+          clickCount: 2,
+          firstPoint: rectangleRulerState.firstPoint,
+          secondPoint: mouseUpPosition,
+          rectangleEntityId: rectangleEntityId,
+          sections: []
+        });
+
+        // Reset preview line for the next section
         previewMeasureLineEl.setAttribute('measure-line', {
           start: mouseUpPosition,
           end: mouseUpPosition
         });
 
         setMeasureLineCounter((prev) => prev + 1);
-      } else if (rectangleRulerState.clickCount === 2) {
-        // Third click - complete the rectangle
-        previewMeasureLineEl.setAttribute('visible', false);
-
-        // Get points for the rectangle
+      } else if (rectangleRulerState.clickCount >= 2) {
+        // Third and subsequent clicks - add sections to the measure-rectangle
         const firstPoint = rectangleRulerState.firstPoint;
         const secondPoint = rectangleRulerState.secondPoint;
 
-        // Use the raw mouse position for calculation, but not directly for the rectangle
-        const rawMousePosition = mouseUpPosition;
-
-        // Calculate the direction vector of the first line (from first to second point)
+        // Calculate the direction vector of the baseline (from first to second point)
         const dx = secondPoint.x - firstPoint.x;
         const dz = secondPoint.z - firstPoint.z;
         const length = Math.sqrt(dx * dx + dz * dz);
 
-        // Create a unit perpendicular vector to the first line (rotate 90 degrees)
+        // Create a unit perpendicular vector to the baseline (rotate 90 degrees)
         const perpX = -dz / length;
         const perpZ = dx / length;
 
         // Calculate the projection of the mouse position onto the perpendicular vector
-        const mouseToSecondX = rawMousePosition.x - secondPoint.x;
-        const mouseToSecondZ = rawMousePosition.z - secondPoint.z;
+        const mouseToSecondX = mouseUpPosition.x - secondPoint.x;
+        const mouseToSecondZ = mouseUpPosition.z - secondPoint.z;
 
-        // Project to get the width
-        const width = mouseToSecondX * perpX + mouseToSecondZ * perpZ;
+        // Project to get the width (height of the section)
+        const width = Math.abs(mouseToSecondX * perpX + mouseToSecondZ * perpZ);
 
-        // Calculate the ACTUAL third point (perpendicular to the line between points 1 and 2)
-        const thirdPoint = {
-          x: secondPoint.x + perpX * width,
-          y: secondPoint.y,
-          z: secondPoint.z + perpZ * width
-        };
+        // Add this width to the sections array
+        const newSections = [...rectangleRulerState.sections, width];
 
-        // Calculate the fourth point to form a perfect rectangle
-        const fourthPoint = {
-          x: firstPoint.x + (thirdPoint.x - secondPoint.x),
-          y: firstPoint.y,
-          z: firstPoint.z + (thirdPoint.z - secondPoint.z)
-        };
+        // Update the measure-rectangle entity with the new section
+        const rectangleEntity = document.getElementById(
+          rectangleRulerState.rectangleEntityId
+        );
+        if (rectangleEntity) {
+          rectangleEntity.setAttribute('measure-rectangle', {
+            start: {
+              x: firstPoint.x,
+              y: firstPoint.y,
+              z: firstPoint.z
+            },
+            end: {
+              x: secondPoint.x,
+              y: secondPoint.y,
+              z: secondPoint.z
+            },
+            sections: newSections
+          });
+        }
 
-        // Create the remaining three sides of the rectangle
-        // Second side (from second point to third point)
-        AFRAME.INSPECTOR.execute('entitycreate', {
-          components: {
-            'data-layer-name': `Rectangle Line • ${measureLineCounter + 1}`,
-            'measure-line': {
-              start: {
-                x: secondPoint.x,
-                y: secondPoint.y,
-                z: secondPoint.z
-              },
-              end: {
-                x: thirdPoint.x,
-                y: thirdPoint.y,
-                z: thirdPoint.z
-              }
-            }
-          }
-        });
-
-        // Third side (from third point to fourth point)
-        AFRAME.INSPECTOR.execute('entitycreate', {
-          components: {
-            'data-layer-name': `Rectangle Line • ${measureLineCounter + 2}`,
-            'measure-line': {
-              start: {
-                x: thirdPoint.x,
-                y: thirdPoint.y,
-                z: thirdPoint.z
-              },
-              end: {
-                x: fourthPoint.x,
-                y: fourthPoint.y,
-                z: fourthPoint.z
-              }
-            }
-          }
-        });
-
-        // Fourth side (from fourth point to first point)
-        AFRAME.INSPECTOR.execute('entitycreate', {
-          components: {
-            'data-layer-name': `Rectangle Line • ${measureLineCounter + 3}`,
-            'measure-line': {
-              start: {
-                x: fourthPoint.x,
-                y: fourthPoint.y,
-                z: fourthPoint.z
-              },
-              end: {
-                x: firstPoint.x,
-                y: firstPoint.y,
-                z: firstPoint.z
-              }
-            }
-          }
-        });
-
-        // Reset state and switch back to translate mode
-        setRectangleRulerState({
-          clickCount: 0,
-          firstPoint: null,
-          secondPoint: null
-        });
-        changeTransformMode('translate');
-        setMeasureLineCounter((prev) => prev + 4);
+        if (rectangleRulerState.clickCount === 2) {
+          // For the third click (first section), continue to add more sections
+          setRectangleRulerState({
+            clickCount: 3,
+            firstPoint: firstPoint,
+            secondPoint: secondPoint,
+            rectangleEntityId: rectangleRulerState.rectangleEntityId,
+            sections: newSections
+          });
+        } else {
+          // After the fourth click, reset state and switch back to translate mode
+          previewMeasureLineEl.setAttribute('visible', false);
+          setRectangleRulerState({
+            clickCount: 0,
+            firstPoint: null,
+            secondPoint: null,
+            rectangleEntityId: null,
+            sections: []
+          });
+          changeTransformMode('translate');
+        }
       }
     },
     [
@@ -204,50 +172,83 @@ export function useRectangleRulerTool(
 
       // Update preview line if we're in the process of creating a rectangle
       if (rectangleRulerState.clickCount > 0) {
-        const previewMeasureLineEl =
-          document.getElementById('previewMeasureLine');
-        if (previewMeasureLineEl) {
-          if (rectangleRulerState.clickCount === 2) {
-            // After second click, we're modifying the width of the rectangle
-            // Calculate the projection vector perpendicular to the first line
-            const firstPoint = rectangleRulerState.firstPoint;
-            const secondPoint = rectangleRulerState.secondPoint;
+        const previewMeasureLineEl = fetchOrCreatePreviewMeasureLineEntity();
 
-            // Calculate the direction vector of the first line
-            const dx = secondPoint.x - firstPoint.x;
-            const dz = secondPoint.z - firstPoint.z;
-            const length = Math.sqrt(dx * dx + dz * dz);
+        if (rectangleRulerState.clickCount === 1) {
+          // For the first click, just update the end position of the line
+          previewMeasureLineEl.setAttribute('measure-line', {
+            start: rectangleRulerState.firstPoint || position,
+            end: position
+          });
+        } else if (rectangleRulerState.clickCount >= 2) {
+          // Second click and beyond - visualize the section height
+          const firstPoint = rectangleRulerState.firstPoint;
+          const secondPoint = rectangleRulerState.secondPoint;
 
-            // Create a perpendicular vector (rotate 90 degrees)
-            const perpX = -dz / length;
-            const perpZ = dx / length;
+          // Calculate the direction vector of the baseline
+          const dx = secondPoint.x - firstPoint.x;
+          const dz = secondPoint.z - firstPoint.z;
+          const length = Math.sqrt(dx * dx + dz * dz);
 
-            // Calculate the projected distance (width) based on cursor position
-            const cursorToSecondX = position.x - secondPoint.x;
-            const cursorToSecondZ = position.z - secondPoint.z;
+          if (length === 0) return; // Prevent division by zero
 
-            // Project the cursor-to-second-point vector onto the perpendicular vector
-            // to get the magnitude of the projection (i.e., the width)
-            const projectionMagnitude =
-              cursorToSecondX * perpX + cursorToSecondZ * perpZ;
+          // Create a perpendicular vector (rotate 90 degrees)
+          const perpX = -dz / length;
+          const perpZ = dx / length;
 
-            // Calculate the third point position using the perpendicular vector
-            const thirdPoint = {
-              x: secondPoint.x + perpX * projectionMagnitude,
-              y: secondPoint.y,
-              z: secondPoint.z + perpZ * projectionMagnitude
-            };
+          // Calculate the projected distance (height) based on cursor position
+          const cursorToSecondX = position.x - secondPoint.x;
+          const cursorToSecondZ = position.z - secondPoint.z;
 
-            // Update the preview line to show width
-            previewMeasureLineEl.setAttribute('measure-line', {
-              start: secondPoint,
-              end: thirdPoint
-            });
-          } else {
-            // For the first click, just update the end position of the line
-            previewMeasureLineEl.setAttribute('measure-line', {
-              end: position
-            });
+          // Project to get the section height
+          const projectionMagnitude =
+            cursorToSecondX * perpX + cursorToSecondZ * perpZ;
+
+          // Calculate the perpendicular point
+          const perpPoint = {
+            x: secondPoint.x + perpX * projectionMagnitude,
+            y: secondPoint.y,
+            z: secondPoint.z + perpZ * projectionMagnitude
+          };
+
+          // Update the preview line to show the section height
+          previewMeasureLineEl.setAttribute('measure-line', {
+            start: secondPoint,
+            end: perpPoint
+          });
+
+          // Preview the section in the rectangle entity if it exists
+          if (rectangleRulerState.rectangleEntityId) {
+            const rectangleEntity = document.getElementById(
+              rectangleRulerState.rectangleEntityId
+            );
+            if (rectangleEntity) {
+              // Create a temporary sections array for preview
+              const previewSections = [...rectangleRulerState.sections];
+
+              // Add current section height as preview if we're hovering to add another section
+              // Always show a preview section, but use a minimum value to avoid tiny sections
+              const previewValue = Math.max(
+                Math.abs(projectionMagnitude),
+                0.01
+              );
+              previewSections.push(previewValue);
+
+              // Update the rectangle entity with preview sections
+              rectangleEntity.setAttribute('measure-rectangle', {
+                start: {
+                  x: firstPoint.x,
+                  y: firstPoint.y,
+                  z: firstPoint.z
+                },
+                end: {
+                  x: secondPoint.x,
+                  y: secondPoint.y,
+                  z: secondPoint.z
+                },
+                sections: previewSections
+              });
+            }
           }
         }
       }
