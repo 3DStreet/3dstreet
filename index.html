@@ -55,11 +55,15 @@
   </div> -->
 
   <a-scene
-    renderer="colorManagement: true; physicallyCorrectLights: true; anisotropy: 16; logarithmicDepthBuffer: true;"
+    renderer="colorManagement: true; physicallyCorrectLights: true; anisotropy: 16; logarithmicDepthBuffer: false;"
     loading-screen="enabled: false" notify metadata
     reflection device-orientation-permission-ui="enabled: false"
     webxr="requiredFeatures:hit-test,local-floor;referenceSpaceType:local-floor;" xr-mode-ui="XRMode: ar"
-    css2d-renderer>
+    css2d-renderer
+    bloom-off="intensity: 0.3; threshold: 0.5; radius: 0.1;"
+    ssao-off="output: SSAO; kernelRadius: 32; minDistance: 0.001; maxDistance: 0.3;"
+    gtao="enabled: true; output: AO; radius: 1; samples: 32; screenSpaceRadius: false;"
+    >
     <a-assets>
       <!-- TODO: Add this to repo documentation  -->
       <!-- you can specify a custom asset path using below syntax  -->
