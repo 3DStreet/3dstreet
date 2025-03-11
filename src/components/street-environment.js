@@ -19,7 +19,7 @@ AFRAME.registerComponent('street-environment', {
     },
     backgroundColor: {
       type: 'color',
-      default: '#555555',
+      default: '#808080',
       if: { preset: ['color'] }
     }
   },
