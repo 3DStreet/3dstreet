@@ -95,6 +95,27 @@
         "category": "vehicles-rigged"
     },
     {
+        "id": "bike-only-cargo",
+        "name": "Cargo Bike",
+        "src": "sets/micro-mobility-devices/gltf-exports/draco/bike-only-cargo.glb",
+        "img": "sets/micro-mobility-devices/gltf-exports/draco/bike-only-cargo.webp",
+        "category": "cyclists"
+    },
+    {
+        "id": "bike-only-dutch",
+        "name": "Dutch Bike",
+        "src": "sets/micro-mobility-devices/gltf-exports/draco/bike-only-dutch.glb",
+        "img": "sets/micro-mobility-devices/gltf-exports/draco/bike-only-dutch.webp",
+        "category": "cyclists"
+    },
+    {
+        "id": "bike-only-hybrid",
+        "name": "Hybrid Bike",
+        "src": "sets/micro-mobility-devices/gltf-exports/draco/bike-only-hybrid.glb",
+        "img": "sets/micro-mobility-devices/gltf-exports/draco/bike-only-hybrid.webp",
+        "category": "cyclists"
+    },
+    {
         "id": "cyclist-cargo",
         "name": "Cargo Bike",
         "src": "sets/cargo-bike-animation/gltf-exports/draco/cargo_bike_animation_v1.glb",
@@ -580,12 +601,14 @@
     {
         "id": "Character_1_M",
         "name": "Carpet Rider",
-        "img": "thumbnails/Character_1_M.jpg"
+        "img": "thumbnails/Character_1_M.jpg",
+        "display": "none"
     },
     {
         "id": "magic-carpet",
         "name": "Magic Carpet",
-        "img": "thumbnails/magic-carpet.jpg"
+        "img": "thumbnails/magic-carpet.jpg",
+        "display": "none"
     },
     {
         "id": "cyclist-cargo",
