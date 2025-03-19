@@ -478,6 +478,8 @@ const AIChatPanel = () => {
       3. If the user is asking to create or modify a managed street, use the managedStreetCreate or managedStreetUpdate functions
       4. If the user needs help, provide relevant guidance about the 3DStreet editor
 
+      IMPORTANT: When the user asks for you to do a command, DO NOT ask clarifying questions before doing the command. Remember the user can always undo the command if they make a mistake or modify something after an initial street, model, segment, etc. is placed. For example if a user wants a street, you could immediately create a default two-way street with bike lanes using the managedStreetCreate function without first asking for details about dimensions, segments, or position - just create the default street.
+
       In the scene state, units for length are in meters, and rotations are in degrees.
 
       The orientation of axis to cardinal directions is as follows: 
@@ -920,30 +922,52 @@ const AIChatPanel = () => {
                 throw new Error(`Entity with ID ${entityId} not found`);
               }
 
-              const managedStreetComponent =
-                entity.components['managed-street'];
-              if (!managedStreetComponent) {
-                throw new Error(
-                  `Entity does not have a managed-street component`
-                );
-              }
+              // Get all segment entities (direct children with street-segment component)
+              const segmentEntities = Array.from(entity.children).filter(
+                (child) => child.hasAttribute('street-segment')
+              );
 
-              // Handle different operations
               if (operation === 'add-segment') {
                 // Add a new segment
                 const segment = call.args.segment;
-                if (!segment || !segment.type || !segment.width) {
-                  throw new Error(
-                    'Segment must have at least type and width properties'
-                  );
+                if (!segment || !segment.type) {
+                  throw new Error('Segment must have at least a type property');
                 }
 
-                // Call the insertSegment method of the managed-street component
-                managedStreetComponent.insertSegment(
-                  managedStreetComponent.data.segments.length, // Add at the end
-                  segment.type,
-                  segment
-                );
+                // Create a new segment entity
+                const segmentEl = document.createElement('a-entity');
+
+                // Set default values for any missing properties
+                const segmentData = {
+                  type: segment.type,
+                  width: typeof segment.width === 'number' ? segment.width : 3,
+                  length: entity.components['managed-street'].data.length || 60,
+                  level: typeof segment.level === 'number' ? segment.level : 0,
+                  direction: segment.direction || 'none',
+                  color: segment.color || '#888888',
+                  surface: segment.surface || 'asphalt'
+                };
+
+                // Set the segment component with properties
+                segmentEl.setAttribute('street-segment', segmentData);
+
+                // Set the layer name for the segment
+                const layerName = segment.name || `${segment.type} • default`;
+                segmentEl.setAttribute('data-layer-name', layerName);
+
+                // Add the segment to the managed street entity
+                entity.appendChild(segmentEl);
+
+                // If segment has generated content, add it after the segment is loaded
+                if (segment.generated) {
+                  segmentEl.addEventListener('loaded', () => {
+                    segmentEl.components[
+                      'street-segment'
+                    ].generateComponentsFromSegmentObject(segment);
+                  });
+                }
+
+                console.log('Added new segment:', segmentData);
               } else if (operation === 'update-segment') {
                 // Update an existing segment
                 const segmentIndex = call.args.segmentIndex;
@@ -957,20 +981,55 @@ const AIChatPanel = () => {
 
                 if (
                   segmentIndex < 0 ||
-                  segmentIndex >= managedStreetComponent.data.segments.length
+                  segmentIndex >= segmentEntities.length
                 ) {
                   throw new Error(`Invalid segment index: ${segmentIndex}`);
                 }
 
-                // Update the segment properties
-                const currentSegment =
-                  managedStreetComponent.data.segments[segmentIndex];
-                const updatedSegment = { ...currentSegment, ...segment };
+                // Get the segment entity to update
+                const segmentEl = segmentEntities[segmentIndex];
 
-                // Update the segment in the component
-                managedStreetComponent.data.segments[segmentIndex] =
-                  updatedSegment;
-                managedStreetComponent.updateSegments();
+                // Get current segment data
+                const currentData = segmentEl.getAttribute('street-segment');
+
+                // Update only the properties that were provided
+                const updatedData = { ...currentData };
+
+                // Update properties
+                Object.keys(segment).forEach((key) => {
+                  if (key !== 'generated') {
+                    // Handle generated separately
+                    updatedData[key] = segment[key];
+                  }
+                });
+
+                // Update the street-segment component
+                segmentEl.setAttribute('street-segment', updatedData);
+
+                // Update the layer name if provided
+                if (segment.name) {
+                  segmentEl.setAttribute('data-layer-name', segment.name);
+                }
+
+                // If generated content is provided, update it
+                if (segment.generated) {
+                  // We need to wait for the next tick to ensure the segment component is updated
+                  setTimeout(() => {
+                    segmentEl.components[
+                      'street-segment'
+                    ].generateComponentsFromSegmentObject({
+                      ...updatedData,
+                      generated: segment.generated
+                    });
+                  }, 0);
+                }
+
+                console.log(
+                  'Updated segment at index',
+                  segmentIndex,
+                  'with data:',
+                  updatedData
+                );
               } else if (operation === 'remove-segment') {
                 // Remove a segment
                 const segmentIndex = call.args.segmentIndex;
@@ -983,17 +1042,32 @@ const AIChatPanel = () => {
 
                 if (
                   segmentIndex < 0 ||
-                  segmentIndex >= managedStreetComponent.data.segments.length
+                  segmentIndex >= segmentEntities.length
                 ) {
                   throw new Error(`Invalid segment index: ${segmentIndex}`);
                 }
 
-                // Remove the segment
-                managedStreetComponent.data.segments.splice(segmentIndex, 1);
-                managedStreetComponent.updateSegments();
+                // Get the segment entity to remove
+                const segmentEl = segmentEntities[segmentIndex];
+
+                // Remove the segment from the parent
+                entity.removeChild(segmentEl);
+
+                console.log('Removed segment at index', segmentIndex);
               } else {
                 throw new Error(`Unknown operation: ${operation}`);
               }
+
+              // Trigger a refresh of the managed street
+              // This will update the alignment and other properties
+              AFRAME.INSPECTOR.execute('entityupdate', {
+                entity: entity,
+                component: 'street-align',
+                property: 'refresh',
+                value: true
+              });
+
+              console.log('Updated managed street entity:', entityId);
 
               // Update function call status to success
               setMessages((prev) =>
