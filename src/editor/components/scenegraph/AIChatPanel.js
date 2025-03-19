@@ -834,33 +834,70 @@ const AIChatPanel = () => {
                 )
               );
             } else if (call.name === 'managedStreetCreate') {
-              // Create a new managed street entity
+              // Create a new managed street entity with proper structure
               const streetData = {
                 name: call.args.name || 'New Managed Street',
                 length: parseFloat(call.args.length || '60'),
-                segments: call.args.segments || []
+                segments: []
               };
 
-              // Create the entity with managed-street component
-              const newEntity = document.createElement('a-entity');
-
-              // Set position if provided
-              if (call.args.position) {
-                newEntity.setAttribute('position', call.args.position);
+              // Ensure each segment has all required properties
+              if (call.args.segments && Array.isArray(call.args.segments)) {
+                streetData.segments = call.args.segments.map((segment) => {
+                  // Ensure all required properties are present with defaults if missing
+                  return {
+                    name:
+                      segment.name || `${segment.type || 'segment'} • default`,
+                    type: segment.type || 'drive-lane',
+                    width:
+                      typeof segment.width === 'number' ? segment.width : 3,
+                    level:
+                      typeof segment.level === 'number' ? segment.level : 0,
+                    direction: segment.direction || 'none',
+                    color: segment.color || '#888888',
+                    surface: segment.surface || 'asphalt',
+                    // Include generated content if provided
+                    ...(segment.generated
+                      ? { generated: segment.generated }
+                      : {})
+                  };
+                });
               }
 
-              // Convert the street data to JSON string for the sourceValue
-              const streetDataJson = JSON.stringify(streetData);
+              // Calculate total width for proper alignment
+              const totalWidth = streetData.segments.reduce(
+                (sum, segment) => sum + segment.width,
+                0
+              );
+              streetData.width = totalWidth;
 
-              // Set the managed-street component attributes
-              newEntity.setAttribute('managed-street', {
-                sourceType: 'json-blob',
-                sourceValue: streetDataJson
-              });
+              // Generate a unique ID for the new entity
+              const uniqueId =
+                'managed-street-' + Math.random().toString(36).substr(2, 9);
 
-              // Add the entity to the scene
-              const sceneEl = document.querySelector('a-scene');
-              sceneEl.appendChild(newEntity);
+              // Create the entity definition for AFRAME.INSPECTOR.execute
+              const definition = {
+                id: uniqueId,
+                parent: '#street-container', // This ensures it's added to the street-container
+                components: {
+                  position: call.args.position || '0 0.01 0', // Default position slightly above ground
+                  'managed-street': {
+                    sourceType: 'json-blob',
+                    sourceValue: JSON.stringify(streetData),
+                    showVehicles: true,
+                    showStriping: true,
+                    synchronize: true
+                  },
+                  'data-layer-name': streetData.name || 'New Managed Street'
+                }
+              };
+
+              // Use AFRAME.INSPECTOR.execute to create the entity, which properly integrates with the inspector
+              // and ensures all components are initialized correctly
+              AFRAME.INSPECTOR.execute('entitycreate', definition);
+
+              // Log the created street data for debugging
+              console.log('Created managed street with data:', streetData);
 
               // Update function call status to success
               setMessages((prev) =>
