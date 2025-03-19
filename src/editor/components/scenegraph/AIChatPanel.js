@@ -229,6 +229,225 @@ const entityTools = {
         },
         optionalProperties: ['value', 'expression-for-value', 'property']
       })
+    },
+    {
+      name: 'managedStreetCreate',
+      description:
+        'Create a new managed street with specified segments and properties',
+      parameters: Schema.object({
+        properties: {
+          name: Schema.string({
+            description: 'Name of the street configuration'
+          }),
+          length: Schema.string({
+            description: 'Length of the street in meters (default: 60)'
+          }),
+          position: Schema.string({
+            description:
+              'Position as space-separated x y z values (e.g., "0 0 0")'
+          }),
+          segments: Schema.array({
+            description: 'Array of segment definitions for the street',
+            items: Schema.object({
+              properties: {
+                name: Schema.string({
+                  description: 'Display name of the segment'
+                }),
+                type: Schema.string({
+                  description:
+                    'Type of segment (e.g., "drive-lane", "bike-lane", "sidewalk", "parking-lane", "divider", "grass", "rail", "bus-lane")'
+                }),
+                surface: Schema.string({
+                  description:
+                    'Surface material (e.g., "asphalt", "concrete", "grass", "sidewalk", "gravel", "sand", "hatched", "planting-strip", "none", "solid")'
+                }),
+                color: Schema.string({
+                  description: 'Hex color code (e.g., "#ffffff")'
+                }),
+                level: Schema.number({
+                  description: 'Vertical offset (-1, 0, 1, 2)'
+                }),
+                width: Schema.number({
+                  description: 'Width in meters'
+                }),
+                direction: Schema.string({
+                  description:
+                    'Traffic direction ("none", "inbound", "outbound")'
+                }),
+                generated: Schema.object({
+                  description: 'Optional generated content',
+                  properties: {
+                    clones: Schema.array({
+                      description:
+                        'Clones configuration for repeated 3D models',
+                      items: Schema.object({
+                        properties: {
+                          mode: Schema.string({
+                            description:
+                              'Clone mode ("random", "fixed", "single")'
+                          }),
+                          modelsArray: Schema.string({
+                            description: 'Comma-separated list of model names'
+                          }),
+                          spacing: Schema.number({
+                            description: 'Distance between models in meters'
+                          }),
+                          count: Schema.number({
+                            description: 'Number of models (for random mode)'
+                          }),
+                          facing: Schema.number({
+                            description: 'Rotation in degrees'
+                          }),
+                          randomFacing: Schema.boolean({
+                            description: 'Random rotation'
+                          }),
+                          cycleOffset: Schema.number({
+                            description: 'Offset in the repeating pattern (0-1)'
+                          })
+                        },
+                        optionalProperties: [
+                          'count',
+                          'facing',
+                          'randomFacing',
+                          'cycleOffset'
+                        ]
+                      })
+                    }),
+                    stencil: Schema.array({
+                      description: 'Stencil configuration for road markings',
+                      items: Schema.object({
+                        properties: {
+                          modelsArray: Schema.string({
+                            description: 'Stencil model names'
+                          }),
+                          spacing: Schema.number({
+                            description: 'Distance between stencils'
+                          }),
+                          padding: Schema.number({
+                            description: 'Edge padding'
+                          }),
+                          cycleOffset: Schema.number({
+                            description: 'Pattern offset (0-1)'
+                          }),
+                          direction: Schema.string({
+                            description: 'Stencil orientation'
+                          }),
+                          stencilHeight: Schema.number({
+                            description: 'Height of stencil'
+                          })
+                        },
+                        optionalProperties: [
+                          'padding',
+                          'cycleOffset',
+                          'direction',
+                          'stencilHeight'
+                        ]
+                      })
+                    }),
+                    pedestrians: Schema.array({
+                      description: 'Pedestrian configuration',
+                      items: Schema.object({
+                        properties: {
+                          density: Schema.string({
+                            description:
+                              'Pedestrian density ("normal", "dense")'
+                          })
+                        }
+                      })
+                    }),
+                    striping: Schema.array({
+                      description: 'Striping configuration for lane markings',
+                      items: Schema.object({
+                        properties: {
+                          striping: Schema.string({
+                            description: 'Stripe pattern type'
+                          }),
+                          side: Schema.string({
+                            description: 'Side of segment ("left", "right")'
+                          })
+                        },
+                        optionalProperties: ['side']
+                      })
+                    })
+                  },
+                  optionalProperties: [
+                    'clones',
+                    'stencil',
+                    'pedestrians',
+                    'striping'
+                  ]
+                })
+              },
+              optionalProperties: ['name', 'generated']
+            })
+          })
+        },
+        optionalProperties: ['name', 'length', 'position']
+      })
+    },
+    {
+      name: 'managedStreetUpdate',
+      description:
+        'Update segments in an existing managed street (use entityUpdate for updating street properties)',
+      parameters: Schema.object({
+        properties: {
+          'entity-id': Schema.string({
+            description: 'The ID of the managed street entity to update'
+          }),
+          operation: Schema.string({
+            description:
+              'Operation to perform ("add-segment", "update-segment", "remove-segment")'
+          }),
+          segmentIndex: Schema.number({
+            description:
+              'Index of the segment to update or remove (for update-segment and remove-segment operations)'
+          }),
+          segment: Schema.object({
+            description:
+              'Segment definition for add-segment or update-segment operations',
+            properties: {
+              name: Schema.string({
+                description: 'Display name of the segment'
+              }),
+              type: Schema.string({
+                description:
+                  'Type of segment (e.g., "drive-lane", "bike-lane", "sidewalk")'
+              }),
+              surface: Schema.string({
+                description:
+                  'Surface material (e.g., "asphalt", "concrete", "grass")'
+              }),
+              color: Schema.string({
+                description: 'Hex color code (e.g., "#ffffff")'
+              }),
+              level: Schema.number({
+                description: 'Vertical offset (-1, 0, 1, 2)'
+              }),
+              width: Schema.number({
+                description: 'Width in meters'
+              }),
+              direction: Schema.string({
+                description: 'Traffic direction ("none", "inbound", "outbound")'
+              }),
+              generated: Schema.object({
+                description: 'Optional generated content',
+                properties: {}
+              })
+            },
+            optionalProperties: [
+              'name',
+              'type',
+              'surface',
+              'color',
+              'level',
+              'width',
+              'direction',
+              'generated'
+            ]
+          })
+        },
+        optionalProperties: ['segmentIndex', 'segment']
+      })
     }
   ]
 };
@@ -256,7 +475,8 @@ const AIChatPanel = () => {
       Please analyze the request and provide one of the following:
       1. If the user is asking about the scene, provide a natural language explanation
       2. If the user is asking to modify the scene, use the entityUpdate function
-      3. If the user needs help, provide relevant guidance about the 3DStreet editor
+      3. If the user is asking to create or modify a managed street, use the managedStreetCreate or managedStreetUpdate functions
+      4. If the user needs help, provide relevant guidance about the 3DStreet editor
 
       In the scene state, units for length are in meters, and rotations are in degrees.
 
@@ -306,17 +526,108 @@ const AIChatPanel = () => {
       NEVER use expression-for-value with vector strings like "3.048 0 0" - they will fail.
       ALWAYS specify the component (position) AND property (x, y, or z) for movement commands.
 
+      MANAGED STREET TOOLS:
+      
+      To create a new managed street, use the managedStreetCreate function with a payload like this:
+      {
+        "name": "Two-way Street with Bike Lanes",
+        "length": "60",
+        "position": "0 0 0",
+        "segments": [
+          {
+            "type": "sidewalk",
+            "width": 3,
+            "level": 1,
+            "surface": "sidewalk",
+            "color": "#cccccc",
+            "direction": "none"
+          },
+          {
+            "type": "bike-lane",
+            "width": 1.5,
+            "level": 0,
+            "surface": "asphalt",
+            "color": "#88cc88",
+            "direction": "inbound"
+          },
+          {
+            "type": "drive-lane",
+            "width": 3.5,
+            "level": 0,
+            "surface": "asphalt",
+            "color": "#888888",
+            "direction": "inbound"
+          },
+          {
+            "type": "drive-lane",
+            "width": 3.5,
+            "level": 0,
+            "surface": "asphalt",
+            "color": "#888888",
+            "direction": "outbound"
+          },
+          {
+            "type": "bike-lane",
+            "width": 1.5,
+            "level": 0,
+            "surface": "asphalt",
+            "color": "#88cc88",
+            "direction": "outbound"
+          },
+          {
+            "type": "sidewalk",
+            "width": 3,
+            "level": 1,
+            "surface": "sidewalk",
+            "color": "#cccccc",
+            "direction": "none"
+          }
+        ]
+      }
+      
+      To update properties of an existing managed street (like length), use the entityUpdate function:
+      {
+        "entity-id": "street-123",
+        "component": "managed-street",
+        "property": "length",
+        "value": "100"
+      }
+      
+      To add a new segment to a managed street, use managedStreetUpdate:
+      {
+        "entity-id": "street-123",
+        "operation": "add-segment",
+        "segment": {
+          "type": "drive-lane",
+          "width": 3.5,
+          "level": 0,
+          "surface": "asphalt",
+          "color": "#888888",
+          "direction": "inbound"
+        }
+      }
+      
+      To update an existing segment, use:
+      {
+        "entity-id": "street-123",
+        "operation": "update-segment",
+        "segmentIndex": 2,
+        "segment": {
+          "width": 4.0,
+          "color": "#999999"
+        }
+      }
+      
+      To remove a segment, use:
+      {
+        "entity-id": "street-123",
+        "operation": "remove-segment",
+        "segmentIndex": 2
+      }
+
       IMPORTANT: Always respond with a text message, even if the user is asking for a function call.
 
       You can invoke more than 1 function at a time.
-      
-      You can also perform more complicated updates, such as call entityupdate:
-      {
-        "entity-id": "TBD",
-        "component": "measure-line",
-        "property": "start",
-        "value": "0 0 0"
-      }
 
       Most of the time you're polite but serious. Sometimes you can be a little bit more fun and creative. If pressed, your name is actually DadBot. You're a friendly AI assistant that can help you with your 3D scenes. You can also help with other tasks, such as thinking about safe streets, morality of spatial equity, dad jokes, or general moral humanistic quandaries a la Claude from Anthropic. But mostly you're there to help modify 3DStreet scenes.
       `;
@@ -518,6 +829,143 @@ const AIChatPanel = () => {
                         ...msg,
                         status: 'success',
                         result: 'Entity created successfully'
+                      }
+                    : msg
+                )
+              );
+            } else if (call.name === 'managedStreetCreate') {
+              // Create a new managed street entity
+              const streetData = {
+                name: call.args.name || 'New Managed Street',
+                length: parseFloat(call.args.length || '60'),
+                segments: call.args.segments || []
+              };
+
+              // Create the entity with managed-street component
+              const newEntity = document.createElement('a-entity');
+
+              // Set position if provided
+              if (call.args.position) {
+                newEntity.setAttribute('position', call.args.position);
+              }
+
+              // Convert the street data to JSON string for the sourceValue
+              const streetDataJson = JSON.stringify(streetData);
+
+              // Set the managed-street component attributes
+              newEntity.setAttribute('managed-street', {
+                sourceType: 'json-blob',
+                sourceValue: streetDataJson
+              });
+
+              // Add the entity to the scene
+              const sceneEl = document.querySelector('a-scene');
+              sceneEl.appendChild(newEntity);
+
+              // Update function call status to success
+              setMessages((prev) =>
+                prev.map((msg) =>
+                  msg.type === 'functionCall' && msg.id === functionCallObj.id
+                    ? {
+                        ...msg,
+                        status: 'success',
+                        result: 'Managed street created successfully'
+                      }
+                    : msg
+                )
+              );
+            } else if (call.name === 'managedStreetUpdate') {
+              const entityId = call.args['entity-id'];
+              const operation = call.args.operation;
+              const entity = document.getElementById(entityId);
+
+              if (!entity) {
+                throw new Error(`Entity with ID ${entityId} not found`);
+              }
+
+              const managedStreetComponent =
+                entity.components['managed-street'];
+              if (!managedStreetComponent) {
+                throw new Error(
+                  `Entity does not have a managed-street component`
+                );
+              }
+
+              // Handle different operations
+              if (operation === 'add-segment') {
+                // Add a new segment
+                const segment = call.args.segment;
+                if (!segment || !segment.type || !segment.width) {
+                  throw new Error(
+                    'Segment must have at least type and width properties'
+                  );
+                }
+
+                // Call the insertSegment method of the managed-street component
+                managedStreetComponent.insertSegment(
+                  managedStreetComponent.data.segments.length, // Add at the end
+                  segment.type,
+                  segment
+                );
+              } else if (operation === 'update-segment') {
+                // Update an existing segment
+                const segmentIndex = call.args.segmentIndex;
+                const segment = call.args.segment;
+
+                if (segmentIndex === undefined || !segment) {
+                  throw new Error(
+                    'segmentIndex and segment are required for update-segment operation'
+                  );
+                }
+
+                if (
+                  segmentIndex < 0 ||
+                  segmentIndex >= managedStreetComponent.data.segments.length
+                ) {
+                  throw new Error(`Invalid segment index: ${segmentIndex}`);
+                }
+
+                // Update the segment properties
+                const currentSegment =
+                  managedStreetComponent.data.segments[segmentIndex];
+                const updatedSegment = { ...currentSegment, ...segment };
+
+                // Update the segment in the component
+                managedStreetComponent.data.segments[segmentIndex] =
+                  updatedSegment;
+                managedStreetComponent.updateSegments();
+              } else if (operation === 'remove-segment') {
+                // Remove a segment
+                const segmentIndex = call.args.segmentIndex;
+
+                if (segmentIndex === undefined) {
+                  throw new Error(
+                    'segmentIndex is required for remove-segment operation'
+                  );
+                }
+
+                if (
+                  segmentIndex < 0 ||
+                  segmentIndex >= managedStreetComponent.data.segments.length
+                ) {
+                  throw new Error(`Invalid segment index: ${segmentIndex}`);
+                }
+
+                // Remove the segment
+                managedStreetComponent.data.segments.splice(segmentIndex, 1);
+                managedStreetComponent.updateSegments();
+              } else {
+                throw new Error(`Unknown operation: ${operation}`);
+              }
+
+              // Update function call status to success
+              setMessages((prev) =>
+                prev.map((msg) =>
+                  msg.type === 'functionCall' && msg.id === functionCallObj.id
+                    ? {
+                        ...msg,
+                        status: 'success',
+                        result: 'Managed street updated successfully'
                       }
                     : msg
                 )
