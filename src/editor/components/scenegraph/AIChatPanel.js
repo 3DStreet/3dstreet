@@ -610,6 +610,37 @@ const AIChatPanel = () => {
         }
       }
       
+      IMPORTANT SAFETY GUIDELINES:
+      1. NEVER place bollards or other protective elements directly ON bike lanes or pedestrian paths.
+      2. When adding protection for bike lanes, ALWAYS place bollards or barriers in a divider segment BETWEEN the bike lane and the drive lane.
+      3. To properly protect a bike lane, add a narrow divider segment (type: "divider", width: 0.2-0.5) between the bike lane and the adjacent drive lane, then add bollards to that divider segment.
+      
+      Example of correctly protecting a bike lane with bollards:
+      {
+        "entityId": "street-123",
+        "operation": "add-segment",
+        "segmentIndex": 2, // Insert between bike lane (index 1) and drive lane (index 2)
+        "segment": {
+          "type": "divider",
+          "width": 0.3,
+          "level": 0.1,
+          "surface": "concrete",
+          "color": "#888888",
+          "direction": "none",
+          "generated": {
+            "clones": [
+              {
+                "spacing": 2,
+                "modelsArray": "bollard",
+                "count": 30,
+                "facing": 0,
+                "mode": "fixed"
+              }
+            ]
+          }
+        }
+      }
+      
       To update an existing segment, use:
       {
         "entityId": "street-123",
@@ -618,6 +649,30 @@ const AIChatPanel = () => {
         "segment": {
           "width": 4.0,
           "color": "#999999"
+        }
+      }
+      
+      IMPORTANT: To remove clones or other generated elements from a segment, use an empty array:
+      {
+        "entityId": "street-123",
+        "operation": "update-segment",
+        "segmentIndex": 2,
+        "segment": {
+          "generated": {
+            "clones": []
+          }
+        }
+      }
+      
+      You can also set the property to null, which has the same effect:
+      {
+        "entityId": "street-123",
+        "operation": "update-segment",
+        "segmentIndex": 2,
+        "segment": {
+          "generated": {
+            "clones": null
+          }
         }
       }
       
@@ -1058,15 +1113,78 @@ const AIChatPanel = () => {
 
                 // If generated content is provided, update it
                 if (segment.generated) {
-                  // We need to wait for the next tick to ensure the segment component is updated
-                  setTimeout(() => {
-                    segmentEl.components[
-                      'street-segment'
-                    ].generateComponentsFromSegmentObject({
-                      ...updatedData,
-                      generated: segment.generated
-                    });
-                  }, 0);
+                  // Check if we need to remove any generated components
+                  // This handles the case where clones: [] is provided to remove clones
+                  const generatedTypes = [
+                    'clones',
+                    'stencil',
+                    'pedestrians',
+                    'striping',
+                    'rail'
+                  ];
+
+                  generatedTypes.forEach((type) => {
+                    // If the type exists in segment.generated and is an empty array, remove those components
+                    if (
+                      Array.isArray(segment.generated[type]) &&
+                      segment.generated[type].length === 0
+                    ) {
+                      // Find all components of this type on the segment
+                      Object.keys(segmentEl.components).forEach(
+                        (componentName) => {
+                          if (
+                            componentName.startsWith(`street-generated-${type}`)
+                          ) {
+                            // Remove the component
+                            segmentEl.removeAttribute(componentName);
+                            console.log(
+                              `Removed ${componentName} from segment at index ${segmentIndex}`
+                            );
+                          }
+                        }
+                      );
+                    } else if (segment.generated[type] === null) {
+                      // If the type is explicitly set to null, also remove those components
+                      // Find all components of this type on the segment
+                      Object.keys(segmentEl.components).forEach(
+                        (componentName) => {
+                          if (
+                            componentName.startsWith(`street-generated-${type}`)
+                          ) {
+                            // Remove the component
+                            segmentEl.removeAttribute(componentName);
+                            console.log(
+                              `Removed ${componentName} from segment at index ${segmentIndex}`
+                            );
+                          }
+                        }
+                      );
+                    }
+                  });
+
+                  // Only call generateComponentsFromSegmentObject if there are non-empty arrays
+                  // or if the generated object has properties other than those we explicitly handled
+                  const hasNonEmptyArrays = generatedTypes.some(
+                    (type) =>
+                      Array.isArray(segment.generated[type]) &&
+                      segment.generated[type].length > 0
+                  );
+
+                  const hasOtherProperties = Object.keys(
+                    segment.generated
+                  ).some((key) => !generatedTypes.includes(key));
+
+                  if (hasNonEmptyArrays || hasOtherProperties) {
+                    // We need to wait for the next tick to ensure the segment component is updated
+                    setTimeout(() => {
+                      segmentEl.components[
+                        'street-segment'
+                      ].generateComponentsFromSegmentObject({
+                        ...updatedData,
+                        generated: segment.generated
+                      });
+                    }, 0);
+                  }
                 }
 
                 console.log(
