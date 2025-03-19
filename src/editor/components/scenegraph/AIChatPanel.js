@@ -743,6 +743,16 @@ const AIChatPanel = () => {
           setMessages((prev) => [...prev, functionCallObj]);
 
           try {
+            // Validate that the function name exists in the function declarations
+            const functionExists = entityTools.functionDeclarations.some(
+              (func) => func.name === call.name
+            );
+
+            if (!functionExists) {
+              throw new Error(
+                `Unknown function: ${call.name}. Please use one of the available functions.`
+              );
+            }
             if (call.name === 'entityUpdate') {
               const args = call.args;
 
