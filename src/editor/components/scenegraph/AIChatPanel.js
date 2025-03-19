@@ -54,7 +54,7 @@ function evaluateExpression(expression) {
 function executeUpdateCommand(command) {
   if (command.command && command.payload) {
     const updateCommandPayload = {
-      entity: document.getElementById(command.payload['entity-id']),
+      entity: document.getElementById(command.payload.entityId),
       component: command.payload.component,
       property: command.payload.property,
       value: command.payload.value
@@ -208,7 +208,7 @@ const entityTools = {
         'Update an entity in the A-Frame scene with new properties or components',
       parameters: Schema.object({
         properties: {
-          'entity-id': Schema.string({
+          entityId: Schema.string({
             description: 'The ID of the entity to update'
           }),
           component: Schema.string({
@@ -222,12 +222,12 @@ const entityTools = {
           value: Schema.string({
             description: 'The new value to set'
           }),
-          'expression-for-value': Schema.string({
+          expressionForValue: Schema.string({
             description:
               'Mathematical expression to evaluate for the value (e.g., "5 - 2"). Use this instead of value when calculation is needed.'
           })
         },
-        optionalProperties: ['value', 'expression-for-value', 'property']
+        optionalProperties: ['value', 'expressionForValue', 'property']
       })
     },
     {
@@ -391,7 +391,7 @@ const entityTools = {
         'Update segments in an existing managed street (use entityUpdate for updating street properties)',
       parameters: Schema.object({
         properties: {
-          'entity-id': Schema.string({
+          entityId: Schema.string({
             description: 'The ID of the managed street entity to update'
           }),
           operation: Schema.string({
@@ -494,11 +494,11 @@ const AIChatPanel = () => {
 
       Make sure you convert everything to the appropriate units, even if the user uses different units.
 
-      IMPORTANT: When you need to calculate a value (like "5 - 2"), return it as a string expression ("5 - 2") in a parameter named "expression-for-value"
+      IMPORTANT: When you need to calculate a value (like "5 - 2"), return it as a string expression ("5 - 2") in a parameter named "expressionForValue"
 
       When changing a model from one to another, use the "entityupdate" command with the following payload:
       {
-        "entity-id": "n9eLgB9C635T_edXuXIgz",
+        "entityId": "n9eLgB9C635T_edXuXIgz",
         "component": "mixin",
         "value": "fire-truck-rig"
       }
@@ -507,10 +507,10 @@ const AIChatPanel = () => {
 
       When updating a model's position, rotation or scale, use the "entityupdate" command with the following payload:
       {
-        "entity-id": "n9eLgB9C635T_edXuXIgz",
+        "entityId": "n9eLgB9C635T_edXuXIgz",
         "component": "position",
-        "property": "x"
-        "expression-for-value": "3 + 4"
+        "property": "x",
+        "expressionForValue": "3 + 4"
       }
 
       EXAMPLE: Moving a car forward 10 feet when it has 90° Y rotation:
@@ -519,13 +519,13 @@ const AIChatPanel = () => {
       3. Convert 10 feet to meters: 10 * 0.3048
       4. Call entityUpdate with:
         {
-          "entity-id": "NLs5CmxZ8r6nfuAEgPhck",
+          "entityId": "NLs5CmxZ8r6nfuAEgPhck",
           "component": "position",
           "property": "x",
-          "expression-for-value": "2 + 10 * 0.3048"
+          "expressionForValue": "2 + 10 * 0.3048"
         }
 
-      NEVER use expression-for-value with vector strings like "3.048 0 0" - they will fail.
+      NEVER use expressionForValue with vector strings like "3.048 0 0" - they will fail.
       ALWAYS specify the component (position) AND property (x, y, or z) for movement commands.
 
       MANAGED STREET TOOLS:
@@ -589,7 +589,7 @@ const AIChatPanel = () => {
       
       To update properties of an existing managed street (like length), use the entityUpdate function:
       {
-        "entity-id": "street-123",
+        "entityId": "street-123",
         "component": "managed-street",
         "property": "length",
         "value": "100"
@@ -597,8 +597,9 @@ const AIChatPanel = () => {
       
       To add a new segment to a managed street, use managedStreetUpdate:
       {
-        "entity-id": "street-123",
+        "entityId": "street-123",
         "operation": "add-segment",
+        "segmentIndex": 0, // Optional: position to insert the segment (0 = leftmost, omit to add to the right side)
         "segment": {
           "type": "drive-lane",
           "width": 3.5,
@@ -611,7 +612,7 @@ const AIChatPanel = () => {
       
       To update an existing segment, use:
       {
-        "entity-id": "street-123",
+        "entityId": "street-123",
         "operation": "update-segment",
         "segmentIndex": 2,
         "segment": {
@@ -622,7 +623,7 @@ const AIChatPanel = () => {
       
       To remove a segment, use:
       {
-        "entity-id": "street-123",
+        "entityId": "street-123",
         "operation": "remove-segment",
         "segmentIndex": 2
       }
@@ -746,13 +747,13 @@ const AIChatPanel = () => {
               const args = call.args;
 
               // Extract fields with appropriate fallbacks
-              const entityId = args['entity-id'];
+              const entityId = args.entityId;
               const component = args.component;
               const property = args.property || null;
 
               // Create the command payload
               const payload = {
-                'entity-id': entityId,
+                entityId: entityId,
                 component: component
               };
 
@@ -762,10 +763,10 @@ const AIChatPanel = () => {
               }
 
               // Set the value - either from direct value or expression
-              if (args['expression-for-value']) {
+              if (args.expressionForValue) {
                 try {
                   // Simple numeric expression evaluation
-                  const expr = args['expression-for-value'].trim();
+                  const expr = args.expressionForValue.trim();
                   // Simple safety check - only allow basic math
                   if (!/^[-+0-9\s()*/%.]*$/.test(expr)) {
                     throw new Error(
@@ -779,14 +780,14 @@ const AIChatPanel = () => {
                   payload.value = evaluateExpression(expr);
                 } catch (error) {
                   throw new Error(
-                    `Failed to evaluate expression "${args['expression-for-value']}": ${error.message}`
+                    `Failed to evaluate expression "${args.expressionForValue}": ${error.message}`
                   );
                 }
               } else if (args.value) {
                 payload.value = args.value;
               } else {
                 throw new Error(
-                  'Either value or expression-for-value must be provided'
+                  'Either value or expressionForValue must be provided'
                 );
               }
 
@@ -914,7 +915,7 @@ const AIChatPanel = () => {
                 )
               );
             } else if (call.name === 'managedStreetUpdate') {
-              const entityId = call.args['entity-id'];
+              const entityId = call.args.entityId;
               const operation = call.args.operation;
               const entity = document.getElementById(entityId);
 
@@ -930,6 +931,8 @@ const AIChatPanel = () => {
               if (operation === 'add-segment') {
                 // Add a new segment
                 const segment = call.args.segment;
+                const segmentIndex = call.args.segmentIndex;
+
                 if (!segment || !segment.type) {
                   throw new Error('Segment must have at least a type property');
                 }
@@ -955,8 +958,42 @@ const AIChatPanel = () => {
                 const layerName = segment.name || `${segment.type} • default`;
                 segmentEl.setAttribute('data-layer-name', layerName);
 
-                // Add the segment to the managed street entity
-                entity.appendChild(segmentEl);
+                // Add the segment to the managed street entity at the specified index or at the end if no index
+                if (segmentIndex !== undefined) {
+                  // Validate the segment index
+                  if (
+                    segmentIndex < 0 ||
+                    segmentIndex > segmentEntities.length
+                  ) {
+                    throw new Error(
+                      `Invalid segmentIndex: ${segmentIndex}. Must be between 0 and ${segmentEntities.length}`
+                    );
+                  }
+
+                  // If we have a valid index, insert at that position
+                  if (segmentIndex < segmentEntities.length) {
+                    // Insert before the segment at the specified index
+                    entity.insertBefore(
+                      segmentEl,
+                      segmentEntities[segmentIndex]
+                    );
+                    console.log(
+                      `Added new segment at segmentIndex ${segmentIndex}:`,
+                      segmentData
+                    );
+                  } else {
+                    // If the index is equal to the length, append to the end
+                    entity.appendChild(segmentEl);
+                    console.log(
+                      `Added new segment at the end (segmentIndex ${segmentEntities.length}):`,
+                      segmentData
+                    );
+                  }
+                } else {
+                  // Default behavior: append to the end
+                  entity.appendChild(segmentEl);
+                  console.log('Added new segment at the end:', segmentData);
+                }
 
                 // If segment has generated content, add it after the segment is loaded
                 if (segment.generated) {
@@ -966,8 +1003,6 @@ const AIChatPanel = () => {
                     ].generateComponentsFromSegmentObject(segment);
                   });
                 }
-
-                console.log('Added new segment:', segmentData);
               } else if (operation === 'update-segment') {
                 // Update an existing segment
                 const segmentIndex = call.args.segmentIndex;
@@ -983,7 +1018,7 @@ const AIChatPanel = () => {
                   segmentIndex < 0 ||
                   segmentIndex >= segmentEntities.length
                 ) {
-                  throw new Error(`Invalid segment index: ${segmentIndex}`);
+                  throw new Error(`Invalid segmentIndex: ${segmentIndex}`);
                 }
 
                 // Get the segment entity to update
@@ -1025,7 +1060,7 @@ const AIChatPanel = () => {
                 }
 
                 console.log(
-                  'Updated segment at index',
+                  'Updated segment at segmentIndex',
                   segmentIndex,
                   'with data:',
                   updatedData
@@ -1044,7 +1079,7 @@ const AIChatPanel = () => {
                   segmentIndex < 0 ||
                   segmentIndex >= segmentEntities.length
                 ) {
-                  throw new Error(`Invalid segment index: ${segmentIndex}`);
+                  throw new Error(`Invalid segmentIndex: ${segmentIndex}`);
                 }
 
                 // Get the segment entity to remove
@@ -1053,7 +1088,7 @@ const AIChatPanel = () => {
                 // Remove the segment from the parent
                 entity.removeChild(segmentEl);
 
-                console.log('Removed segment at index', segmentIndex);
+                console.log('Removed segment at segmentIndex', segmentIndex);
               } else {
                 throw new Error(`Unknown operation: ${operation}`);
               }
