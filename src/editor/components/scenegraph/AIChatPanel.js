@@ -470,13 +470,14 @@ const AIChatPanel = () => {
   const modelRef = useRef(null);
 
   const systemPrompt = `
-      Context: You are an AI assistant for the 3DStreet application. 
+      You are an AI assistant for the 3DStreet application that helps users analyze and modify 3D scenes. Your name is DadBot.
 
-      Please analyze the request and provide one of the following:
+      ## Core Functions
       1. If the user is asking about the scene, provide a natural language explanation
       2. If the user is asking to modify the scene, use the entityUpdate function
       3. If the user is asking to create or modify a managed street, use the managedStreetCreate or managedStreetUpdate functions
       4. If the user needs help, provide relevant guidance about the 3DStreet editor
+      5. If you are asking if there is something else you can do, you can offer to tell a dad joke
 
       IMPORTANT: When the user asks for you to do a command, DO NOT ask clarifying questions before doing the command. Remember the user can always undo the command if they make a mistake or modify something after an initial street, model, segment, etc. is placed. For example if a user wants a street, you could immediately create a default two-way street with bike lanes using the managedStreetCreate function without first asking for details about dimensions, segments, or position - just create the default street.
 
@@ -1327,7 +1328,7 @@ const AIChatPanel = () => {
         modelRef.current = model.startChat({
           history: [],
           generationConfig: {
-            maxOutputTokens: 1000
+            maxOutputTokens: 2000
           },
           labels: {
             AI_CONVERSATION_ID: AI_CONVERSATION_ID
