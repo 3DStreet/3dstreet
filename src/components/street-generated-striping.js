@@ -43,6 +43,16 @@ AFRAME.registerComponent('street-generated-striping', {
   },
   init: function () {
     this.createdEntities = [];
+    // Add listener for segment width changes
+    this.onSegmentWidthChanged = this.onSegmentWidthChanged.bind(this);
+    this.el.addEventListener(
+      'segment-width-changed',
+      this.onSegmentWidthChanged
+    );
+  },
+  onSegmentWidthChanged: function (event) {
+    // Update the segmentWidth property when the parent segment's width changes
+    this.el.setAttribute(this.attrName, 'segmentWidth', event.detail.newWidth);
   },
   remove: function () {
     this.createdEntities.forEach((entity) => entity.remove());
