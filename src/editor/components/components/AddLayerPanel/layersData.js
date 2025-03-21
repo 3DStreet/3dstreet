@@ -18,41 +18,6 @@ export const streetLayersData = [
     handlerFunction: createFunctions.createStreetmixStreet
   },
   {
-    name: '40ft RoW / 24ft Roadway Width',
-    img: 'ui_assets/cards/street-preset-40-24.jpg',
-    icon: 'ui_assets/cards/icons/streetmix24.png',
-    description: 'Premade Street 40ft Right of Way / 24ft Roadway Width',
-    handlerFunction: createFunctions.create40ftRightOfWay
-  },
-  {
-    name: '60ft RoW / 36ft Roadway Width',
-    img: 'ui_assets/cards/street-preset-60-36.jpg',
-    icon: 'ui_assets/cards/icons/streetmix24.png',
-    description: 'Premade Street 60ft Right of Way / 36ft Roadway Width',
-    handlerFunction: createFunctions.create60ftRightOfWay
-  },
-  {
-    name: '80ft RoW / 56ft Roadway Width',
-    img: 'ui_assets/cards/street-preset-80-56.jpg',
-    icon: 'ui_assets/cards/icons/streetmix24.png',
-    description: 'Premade Street 80ft Right of Way / 56ft Roadway Width',
-    handlerFunction: createFunctions.create80ftRightOfWay
-  },
-  {
-    name: '94ft RoW / 70ft Roadway Width',
-    img: 'ui_assets/cards/street-preset-94-70.jpg',
-    icon: 'ui_assets/cards/icons/streetmix24.png',
-    description: 'Premade Street 94ft Right of Way / 70ft Roadway Width',
-    handlerFunction: createFunctions.create94ftRightOfWay
-  },
-  {
-    name: '150ft RoW / 124ft Roadway Width',
-    img: 'ui_assets/cards/street-preset-150-124.jpg',
-    icon: 'ui_assets/cards/icons/streetmix24.png',
-    description: 'Premade Street 150ft Right of Way / 124ft Roadway Width',
-    handlerFunction: createFunctions.create150ftRightOfWay
-  },
-  {
     name: '(Beta) Managed Street from Streetmix URL',
     img: '',
     requiresPro: true,
