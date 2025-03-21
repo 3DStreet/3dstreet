@@ -13,9 +13,6 @@ AFRAME.registerComponent('street-generated-pedestrians', {
       default: 'normal',
       oneOf: ['empty', 'sparse', 'normal', 'dense']
     },
-    length: {
-      type: 'number'
-    },
     direction: {
       type: 'string',
       default: 'none',
@@ -39,6 +36,11 @@ AFRAME.registerComponent('street-generated-pedestrians', {
       normal: 0.125,
       dense: 0.25
     };
+    this.length = this.el.getAttribute('street-segment').length;
+    this.el.addEventListener('segment-length-changed', (event) => {
+      this.length = event.detail.newLength;
+      this.update();
+    });
   },
 
   remove: function () {
@@ -81,11 +83,6 @@ AFRAME.registerComponent('street-generated-pedestrians', {
   update: function (oldData) {
     const data = this.data;
 
-    // if length is not set, then derive length from the segment
-    if (!data.length) {
-      data.length = this.el.getAttribute('street-segment').length;
-    }
-
     // Handle seed initialization
     if (this.data.seed === 0) {
       const newSeed = Math.floor(Math.random() * 1000000) + 1;
@@ -107,13 +104,13 @@ AFRAME.registerComponent('street-generated-pedestrians', {
 
     // Calculate total number of pedestrians based on density and street length
     const totalPedestrians = Math.floor(
-      this.densityFactors[data.density] * data.length
+      this.densityFactors[data.density] * this.length
     );
 
     // Get Z positions using seeded randomization
     const zPositions = this.getZPositions(
-      -data.length / 2,
-      data.length / 2,
+      -this.length / 2,
+      this.length / 2,
       1.5
     );
 

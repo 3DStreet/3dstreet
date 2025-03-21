@@ -39,10 +39,6 @@ AFRAME.registerComponent('street-generated-stencil', {
       default: 0,
       type: 'number'
     },
-    length: {
-      // length in meters of linear path to fill with clones
-      type: 'number'
-    },
     spacing: {
       // spacing in meters between clones
       default: 10,
@@ -79,6 +75,11 @@ AFRAME.registerComponent('street-generated-stencil', {
   },
   init: function () {
     this.createdEntities = [];
+    this.length = this.el.getAttribute('street-segment').length;
+    this.el.addEventListener('segment-length-changed', (event) => {
+      this.length = event.detail.newLength;
+      this.update();
+    });
   },
   remove: function () {
     this.createdEntities.forEach((entity) => entity.remove());
@@ -119,11 +120,6 @@ AFRAME.registerComponent('street-generated-stencil', {
   update: function (oldData) {
     const data = this.data;
 
-    // if length is not set, then derive length from the segment
-    if (!data.length) {
-      data.length = this.el.getAttribute('street-segment').length;
-    }
-
     // Clean up old entities
     this.remove();
 
@@ -139,12 +135,12 @@ AFRAME.registerComponent('street-generated-stencil', {
     this.correctedSpacing = Math.max(1, data.spacing);
 
     // Calculate number of stencil groups that can fit in the length
-    const numGroups = Math.floor(data.length / this.correctedSpacing);
+    const numGroups = Math.floor(this.length / this.correctedSpacing);
 
     // Create stencil groups along the street
     for (let groupIndex = 0; groupIndex < numGroups; groupIndex++) {
       const groupPosition =
-        data.length / 2 -
+        this.length / 2 -
         (groupIndex + data.cycleOffset) * this.correctedSpacing;
 
       // Create each stencil within the group
