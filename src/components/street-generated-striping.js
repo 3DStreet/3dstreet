@@ -20,9 +20,6 @@ AFRAME.registerComponent('street-generated-striping', {
         'solid-dashed-yellow-mirror'
       ]
     },
-    segmentWidth: {
-      type: 'number'
-    },
     side: {
       default: 'left',
       oneOf: ['left', 'right']
@@ -44,15 +41,11 @@ AFRAME.registerComponent('street-generated-striping', {
   init: function () {
     this.createdEntities = [];
     // Add listener for segment width changes
-    this.onSegmentWidthChanged = this.onSegmentWidthChanged.bind(this);
-    this.el.addEventListener(
-      'segment-width-changed',
-      this.onSegmentWidthChanged
-    );
-  },
-  onSegmentWidthChanged: function (event) {
-    // Update the segmentWidth property when the parent segment's width changes
-    this.el.setAttribute(this.attrName, 'segmentWidth', event.detail.newWidth);
+    this.width = this.el.getAttribute('street-segment').width;
+    this.el.addEventListener('segment-width-changed', (event) => {
+      this.width = event.detail.newWidth;
+      this.update();
+    });
   },
   remove: function () {
     this.createdEntities.forEach((entity) => entity.remove());
@@ -70,7 +63,7 @@ AFRAME.registerComponent('street-generated-striping', {
     const clone = document.createElement('a-entity');
     const { stripingTextureId, repeatY, color, stripingWidth } =
       this.calculateStripingMaterial(data.striping, data.length);
-    const positionX = ((data.side === 'left' ? -1 : 1) * data.segmentWidth) / 2;
+    const positionX = ((data.side === 'left' ? -1 : 1) * this.width) / 2;
     clone.setAttribute('position', {
       x: positionX,
       y: data.positionY,
