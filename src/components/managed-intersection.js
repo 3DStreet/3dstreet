@@ -90,7 +90,7 @@ AFRAME.registerComponent('managed-intersection', {
     // Create main intersection surface
     this.el.setAttribute(
       'geometry',
-      `primitive:box; width: ${intersectWidth}; height: ${intersectDepth}; depth:0.2`
+      `primitive:box; width: ${intersectWidth}; height: 0.2; depth: ${intersectDepth}`
     );
     this.el.setAttribute(
       'material',
