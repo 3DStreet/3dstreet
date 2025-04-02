@@ -36,7 +36,7 @@ AFRAME.registerComponent('street-generated-pedestrians', {
       normal: 0.125,
       dense: 0.25
     };
-    this.length = this.el.getAttribute('street-segment').length;
+    this.length = this.el.getAttribute('street-segment')?.length;
     this.el.addEventListener('segment-length-changed', (event) => {
       this.length = event.detail.newLength;
       this.update();
@@ -82,6 +82,9 @@ AFRAME.registerComponent('street-generated-pedestrians', {
 
   update: function (oldData) {
     const data = this.data;
+    if (!this.length) {
+      return;
+    }
 
     // Handle seed initialization
     if (this.data.seed === 0) {

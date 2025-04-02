@@ -75,7 +75,7 @@ AFRAME.registerComponent('street-generated-stencil', {
   },
   init: function () {
     this.createdEntities = [];
-    this.length = this.el.getAttribute('street-segment').length;
+    this.length = this.el.getAttribute('street-segment')?.length;
     this.el.addEventListener('segment-length-changed', (event) => {
       this.length = event.detail.newLength;
       this.update();
@@ -118,6 +118,9 @@ AFRAME.registerComponent('street-generated-stencil', {
     AFRAME.INSPECTOR.execute('multi', commands);
   },
   update: function (oldData) {
+    if (!this.length) {
+      return;
+    }
     const data = this.data;
 
     // Clean up old entities

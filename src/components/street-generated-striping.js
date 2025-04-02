@@ -37,13 +37,13 @@ AFRAME.registerComponent('street-generated-striping', {
   init: function () {
     this.createdEntities = [];
     // Add listener for segment width changes
-    this.width = this.el.getAttribute('street-segment').width;
+    this.width = this.el.getAttribute('street-segment')?.width;
     this.el.addEventListener('segment-width-changed', (event) => {
       this.width = event.detail.newWidth;
       this.update();
     });
 
-    this.length = this.el.getAttribute('street-segment').length;
+    this.length = this.el.getAttribute('street-segment')?.length;
     this.el.addEventListener('segment-length-changed', (event) => {
       this.length = event.detail.newLength;
       this.update();
@@ -54,6 +54,9 @@ AFRAME.registerComponent('street-generated-striping', {
     this.createdEntities.length = 0; // Clear the array
   },
   update: function (oldData) {
+    if (!this.length || !this.width) {
+      return;
+    }
     const data = this.data;
 
     // Clean up old entities
