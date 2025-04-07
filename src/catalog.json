@@ -774,5 +774,50 @@
         "category": "sidewalk-props",
         "attribution": "StreetPlan.net. Used with permission.",
         "attributionUrl": "https://www.urbaninnovators.com/streetplan"
+    },
+    {
+        "id": "sp-light-flowerP-bannerBY-13ft",
+        "name": "Light pole 13 ft with purple flowers and blue & yellow banners",
+        "img": "sets/streetplan/sp-light-flowerP-bannerBY-13ft.webp",
+        "src": "sets/streetplan/sp-light-flowerP-bannerBY-13ft.glb",
+        "category": "sidewalk-props",
+        "attribution": "StreetPlan.net. Used with permission.",
+        "attributionUrl": "https://www.urbaninnovators.com/streetplan"
+    },
+    {
+        "id": "sp-light-flowerY-bannerRG-13ft",
+        "name": "Light pole 13 ft with yellow flowers and red & green banners",
+        "img": "sets/streetplan/sp-light-flowerY-bannerRG-13ft.webp",
+        "src": "sets/streetplan/sp-light-flowerY-bannerRG-13ft.glb",
+        "category": "sidewalk-props",
+        "attribution": "StreetPlan.net. Used with permission.",
+        "attributionUrl": "https://www.urbaninnovators.com/streetplan"
+    },
+    {
+        "id": "sp-median-planterbox-tall-06x30ft",
+        "name": "Median Planterbox 6x30 ft",
+        "img": "sets/streetplan/sp-median-planterbox-tall-06x30ft.webp",
+        "src": "sets/streetplan/sp-median-planterbox-tall-06x30ft.glb",
+        "category": "sidewalk-props",
+        "attribution": "StreetPlan.net. Used with permission.",
+        "attributionUrl": "https://www.urbaninnovators.com/streetplan"
+    },
+    {
+        "id": "ssp-median-planterbox-tall-10x30ft",
+        "name": "Median Planterbox 10x30 ft",
+        "img": "sets/streetplan/sp-median-planterbox-tall-10x30ft.webp",
+        "src": "sets/streetplan/sp-median-planterbox-tall-10x30ft.glb",
+        "category": "sidewalk-props",
+        "attribution": "StreetPlan.net. Used with permission.",
+        "attributionUrl": "https://www.urbaninnovators.com/streetplan"
+    },
+    {
+        "id": "sp-parking-planter-5x8ft",
+        "name": "Parking Planter 5x8 ft",
+        "img": "sets/streetplan/sp-parking-planter-5x8ft.webp",
+        "src": "sets/streetplan/sp-parking-planter-5x8ft.glb",
+        "category": "sidewalk-props",
+        "attribution": "StreetPlan.net. Used with permission.",
+        "attributionUrl": "https://www.urbaninnovators.com/streetplan"
     }
 ]
