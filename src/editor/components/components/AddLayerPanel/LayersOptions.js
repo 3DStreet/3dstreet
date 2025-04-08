@@ -5,9 +5,15 @@ const LayersOptions = [
     onClick: () => {}
   },
   {
-    value: 'Dividers & Traffic Control',
-    label: '🚧 Dividers & Traffic Control',
+    value: 'Traffic Control',
+    label: '🚧 Traffic Control',
     mixinGroups: ['dividers'],
+    onClick: () => {}
+  },
+  {
+    value: 'Signs',
+    label: '🚸 Signs',
+    mixinGroups: ['signs'],
     onClick: () => {}
   },
   {
