@@ -819,5 +819,140 @@
         "category": "sidewalk-props",
         "attribution": "StreetPlan.net. Used with permission.",
         "attributionUrl": "https://www.urbaninnovators.com/streetplan"
+    },
+    {
+        "id": "sp-sign-speed-limit-10mph",
+        "name": "Speed Limit 10 MPH Sign",
+        "img": "sets/streetplan/sp-sign-speed-limit-10mph.webp",
+        "src": "sets/streetplan/sp-sign-speed-limit-10mph.glb",
+        "category": "signs",
+        "attribution": "StreetPlan.net. Used with permission.",
+        "attributionUrl": "https://www.urbaninnovators.com/streetplan"
+    },
+    {
+        "id": "sp-sign-speed-limit-15mph",
+        "name": "Speed Limit 15 MPH Sign",
+        "img": "sets/streetplan/sp-sign-speed-limit-15mph.webp",
+        "src": "sets/streetplan/sp-sign-speed-limit-15mph.glb",
+        "category": "signs",
+        "attribution": "StreetPlan.net. Used with permission.",
+        "attributionUrl": "https://www.urbaninnovators.com/streetplan"
+    },
+    {
+        "id": "sp-sign-speed-limit-20mph",
+        "name": "Speed Limit 20 MPH Sign",
+        "img": "sets/streetplan/sp-sign-speed-limit-20mph.webp",
+        "src": "sets/streetplan/sp-sign-speed-limit-20mph.glb",
+        "category": "signs",
+        "attribution": "StreetPlan.net. Used with permission.",
+        "attributionUrl": "https://www.urbaninnovators.com/streetplan"
+    },
+    {
+        "id": "sp-sign-speed-limit-25mph",
+        "name": "Speed Limit 25 MPH Sign",
+        "img": "sets/streetplan/sp-sign-speed-limit-25mph.webp",
+        "src": "sets/streetplan/sp-sign-speed-limit-25mph.glb",
+        "category": "signs",
+        "attribution": "StreetPlan.net. Used with permission.",
+        "attributionUrl": "https://www.urbaninnovators.com/streetplan"
+    },
+    {
+        "id": "sp-sign-speed-limit-30mph",
+        "name": "Speed Limit 30 MPH Sign",
+        "img": "sets/streetplan/sp-sign-speed-limit-30mph.webp",
+        "src": "sets/streetplan/sp-sign-speed-limit-30mph.glb",
+        "category": "signs",
+        "attribution": "StreetPlan.net. Used with permission.",
+        "attributionUrl": "https://www.urbaninnovators.com/streetplan"
+    },
+    {
+        "id": "sp-sign-speed-limit-35mph",
+        "name": "Speed Limit 35 MPH Sign",
+        "img": "sets/streetplan/sp-sign-speed-limit-35mph.webp",
+        "src": "sets/streetplan/sp-sign-speed-limit-35mph.glb",
+        "category": "signs",
+        "attribution": "StreetPlan.net. Used with permission.",
+        "attributionUrl": "https://www.urbaninnovators.com/streetplan"
+    },
+    {
+        "id": "sp-sign-speed-limit-40mph",
+        "name": "Speed Limit 40 MPH Sign",
+        "img": "sets/streetplan/sp-sign-speed-limit-40mph.webp",
+        "src": "sets/streetplan/sp-sign-speed-limit-40mph.glb",
+        "category": "signs",
+        "attribution": "StreetPlan.net. Used with permission.",
+        "attributionUrl": "https://www.urbaninnovators.com/streetplan"
+    },
+    {
+        "id": "sp-sign-speed-limit-45mph",
+        "name": "Speed Limit 45 MPH Sign",
+        "img": "sets/streetplan/sp-sign-speed-limit-45mph.webp",
+        "src": "sets/streetplan/sp-sign-speed-limit-45mph.glb",
+        "category": "signs",
+        "attribution": "StreetPlan.net. Used with permission.",
+        "attributionUrl": "https://www.urbaninnovators.com/streetplan"
+    },
+    {
+        "id": "sp-sign-speed-limit-50mph",
+        "name": "Speed Limit 50 MPH Sign",
+        "img": "sets/streetplan/sp-sign-speed-limit-50mph.webp",
+        "src": "sets/streetplan/sp-sign-speed-limit-50mph.glb",
+        "category": "signs",
+        "attribution": "StreetPlan.net. Used with permission.",
+        "attributionUrl": "https://www.urbaninnovators.com/streetplan"
+    },
+    {
+        "id": "sp-sign-speed-limit-55mph",
+        "name": "Speed Limit 55 MPH Sign",
+        "img": "sets/streetplan/sp-sign-speed-limit-55mph.webp",
+        "src": "sets/streetplan/sp-sign-speed-limit-55mph.glb",
+        "category": "signs",
+        "attribution": "StreetPlan.net. Used with permission.",
+        "attributionUrl": "https://www.urbaninnovators.com/streetplan"
+    },
+    {
+        "id": "sp-sign-speed-limit-60mph",
+        "name": "Speed Limit 60 MPH Sign",
+        "img": "sets/streetplan/sp-sign-speed-limit-60mph.webp",
+        "src": "sets/streetplan/sp-sign-speed-limit-60mph.glb",
+        "category": "signs",
+        "attribution": "StreetPlan.net. Used with permission.",
+        "attributionUrl": "https://www.urbaninnovators.com/streetplan"
+    },
+    {
+        "id": "sp-sign-speed-limit-65mph",
+        "name": "Speed Limit 65 MPH Sign",
+        "img": "sets/streetplan/sp-sign-speed-limit-65mph.webp",
+        "src": "sets/streetplan/sp-sign-speed-limit-65mph.glb",
+        "category": "signs",
+        "attribution": "StreetPlan.net. Used with permission.",
+        "attributionUrl": "https://www.urbaninnovators.com/streetplan"
+    },
+    {
+        "id": "sp-sign-speed-limit-70mph",
+        "name": "Speed Limit 70 MPH Sign",
+        "img": "sets/streetplan/sp-sign-speed-limit-70mph.webp",
+        "src": "sets/streetplan/sp-sign-speed-limit-70mph.glb",
+        "category": "signs",
+        "attribution": "StreetPlan.net. Used with permission.",
+        "attributionUrl": "https://www.urbaninnovators.com/streetplan"
+    },
+    {
+        "id": "sp-sign-speed-limit-75mph",
+        "name": "Speed Limit 75 MPH Sign",
+        "img": "sets/streetplan/sp-sign-speed-limit-75mph.webp",
+        "src": "sets/streetplan/sp-sign-speed-limit-75mph.glb",
+        "category": "signs",
+        "attribution": "StreetPlan.net. Used with permission.",
+        "attributionUrl": "https://www.urbaninnovators.com/streetplan"
+    },
+    {
+        "id": "sp-sign-speed-limit-80mph",
+        "name": "Speed Limit 80 MPH Sign",
+        "img": "sets/streetplan/sp-sign-speed-limit-80mph.webp",
+        "src": "sets/streetplan/sp-sign-speed-limit-80mph.glb",
+        "category": "signs",
+        "attribution": "StreetPlan.net. Used with permission.",
+        "attributionUrl": "https://www.urbaninnovators.com/streetplan"
     }
 ]
