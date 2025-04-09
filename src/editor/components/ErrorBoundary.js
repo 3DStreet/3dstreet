@@ -135,7 +135,7 @@ Date/Time: ${new Date().toISOString()}
           <div className="error-boundary-header">
             <h2>Something went wrong</h2>
             <p>
-              The 3DStreet editor encountered an error, but the 3D view is still
+              3DStreet Editor encountered an error, but the 3D view is still
               running.
             </p>
           </div>
