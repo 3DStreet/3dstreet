@@ -79,9 +79,7 @@ AFRAME.registerComponent('google-maps-aerial', {
 
     // Add this to your component's init:
     this.el.addEventListener('cameraChange', (e) => {
-      console.log('eventtriggered', e);
-      if (e.detail.type === 'PerspectiveCamera' && this.initialized) {
-        console.log('cameraChange', e.detail);
+      if (e.detail && this.initialized) {
         const prevCamera = this.camera;
         this.camera = e.detail;
 
@@ -93,11 +91,13 @@ AFRAME.registerComponent('google-maps-aerial', {
         // Set new camera and update resolution
         this.tiles.setCamera(this.camera);
         this.tiles.setResolutionFromRenderer(this.camera, this.renderer);
+        this.tiles.update();
       }
     });
 
     const sceneEl = this.el.sceneEl;
     sceneEl.addEventListener('camera-set-active', (e) => {
+      console.log('camera-set-active', e);
       // TODO: For some reason after closing the inspector this event is fired with an empty camera,
       // so revert to the original camera used.
       //
