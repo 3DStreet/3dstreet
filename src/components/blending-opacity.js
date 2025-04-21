@@ -40,7 +40,7 @@ AFRAME.registerComponent('blending-opacity', {
     this.onModelLoaded = this.onModelLoaded.bind(this);
 
     // Add event listeners
-    this.el.addEventListener('model-loaded', this.onModelLoaded);
+    this.el.addEventListener('load-model', this.onModelLoaded);
 
     // Initial setup
     this.updateMaterials();
@@ -58,7 +58,7 @@ AFRAME.registerComponent('blending-opacity', {
   },
 
   remove: function () {
-    this.el.removeEventListener('model-loaded', this.onModelLoaded);
+    this.el.removeEventListener('load-model', this.onModelLoaded);
   },
 
   onModelLoaded: function () {
