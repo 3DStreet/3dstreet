@@ -19,8 +19,8 @@ if (typeof AFRAME === 'undefined') {
 AFRAME.registerComponent('google-maps-aerial', {
   schema: {
     apiToken: { type: 'string', default: '' },
-    latitude: { type: 'number', default: 35.6586 }, // Tokyo Tower
-    longitude: { type: 'number', default: 139.7454 },
+    latitude: { type: 'number', default: 37.795 }, // SF Ferry Building
+    longitude: { type: 'number', default: -122.394 },
     minDistance: { type: 'number', default: 500 },
     maxDistance: { type: 'number', default: 20000 },
     ellipsoidalHeight: { type: 'number', default: 0 }
@@ -61,22 +61,38 @@ AFRAME.registerComponent('google-maps-aerial', {
     this.el.appendChild(offsetEl);
     this.offsetEl = offsetEl;
 
-    // Wait for camera and scene to be ready
-    this.el.sceneEl.addEventListener('loaded', () => {
-      this.camera = this.el.sceneEl.camera;
-      this.renderer = this.el.sceneEl.renderer;
+    // Get camera and renderer
+    this.camera =
+      this.data.cameraEl?.object3D.children[0] ??
+      document.querySelector('a-scene').camera;
+    this.renderer = this.el.sceneEl.renderer;
+    // if (!this.camera) {
+    //   throw new Error('3D Tiles: Please add an active camera or specify the target camera via the cameraEl property');
+    // }
+    this.originalCamera = this.camera;
 
-      if (this.camera && this.renderer) {
-        this.initialized = true;
-        this.tiles.setResolutionFromRenderer(this.camera, this.renderer);
-        this.tiles.setCamera(this.camera);
-      }
-    });
+    this.tiles.setResolutionFromRenderer(this.camera, this.renderer);
+    this.tiles.setCamera(this.camera);
+    this.tiles.update();
+    this.initialized = true;
+
+    console.log();
+    // this.el.sceneEl.addEventListener('loaded', () => {
+    //   this.camera = this.el.sceneEl.camera;
+    //   this.renderer = this.el.sceneEl.renderer;
+
+    //   if (this.camera && this.renderer) {
+    //     this.initialized = true;
+    //     this.tiles.setResolutionFromRenderer(this.camera, this.renderer);
+    //     this.tiles.setCamera(this.camera);
+    //   }
+    // });
 
     // Add this to your component's init:
     this.el.addEventListener('cameraChange', (e) => {
       console.log('eventtriggered', e);
       if (e.detail.type === 'PerspectiveCamera' && this.initialized) {
+        console.log('cameraChange', e.detail);
         const prevCamera = this.camera;
         this.camera = e.detail;
 
@@ -90,11 +106,29 @@ AFRAME.registerComponent('google-maps-aerial', {
         this.tiles.setResolutionFromRenderer(this.camera, this.renderer);
       }
     });
+
+    const sceneEl = this.el.sceneEl;
+    sceneEl.addEventListener('camera-set-active', (e) => {
+      // TODO: For some reason after closing the inspector this event is fired with an empty camera,
+      // so revert to the original camera used.
+      //
+      // TODO: Does not provide the right Inspector perspective camera
+      this.camera =
+        e.detail.cameraEl.object3D.children[0] ?? this.originalCamera;
+    });
+
+    if (AFRAME.INSPECTOR && AFRAME.INSPECTOR.opened) {
+      // set active inspector camera
+      this.camera = AFRAME.INSPECTOR.camera;
+      // emit play event to start load tiles in aframe-inspector
+      this.play();
+    }
   },
 
   tick: function () {
     // only run this function 10 times total
     // if (this.tickCount >= 10) return;
+    // console.log(this.renderer)
     if (this.initialized && this.tiles && this.camera) {
       // Ensure camera is set on each tick
       this.tiles.setCamera(this.camera);
@@ -120,12 +154,14 @@ AFRAME.registerComponent('google-maps-aerial', {
     if (
       this.tiles &&
       (oldData.latitude !== this.data.latitude ||
-        oldData.longitude !== this.data.longitude)
+        oldData.longitude !== this.data.longitude ||
+        oldData.ellipsoidalHeight !== this.data.ellipsoidalHeight)
     ) {
       this.tiles.setLatLonToYUp(
         this.data.latitude * MathUtils.DEG2RAD,
         this.data.longitude * MathUtils.DEG2RAD
       );
+      this.offsetEl.object3D.position.y = -this.data.ellipsoidalHeight;
     }
   }
 });

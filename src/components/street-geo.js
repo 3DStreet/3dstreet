@@ -168,7 +168,6 @@ AFRAME.registerComponent('street-geo', {
     const data = this.data;
     const el = this.el;
     const self = this;
-    const height = data.ellipsoidalHeight;
 
     const create3DtilesElement = () => {
       const google3dElement = document.createElement('a-entity');
@@ -180,19 +179,12 @@ AFRAME.registerComponent('street-geo', {
 
       google3dElement.setAttribute('data-layer-name', 'Google 3D Tiles');
       google3dElement.setAttribute('data-no-transform', '');
-      google3dElement.setAttribute('loader-3dtiles', {
-        url: 'https://tile.googleapis.com/v1/3dtiles/root.json',
-        long: data.longitude,
-        lat: data.latitude,
-        // set this to ellipsoidalHeight
-        height: height,
-        googleApiKey: firebaseConfig.apiKey,
-        maximumSSE: 16,
-        maximumMem: 400,
-        cameraEl: '#camera',
-        copyrightEl: '#map-copyright',
-        distanceScale: 0.5,
-        emitPostProcess: true
+      console.log(firebaseConfig.apiKey);
+      google3dElement.setAttribute('google-maps-aerial', {
+        longitude: data.longitude,
+        latitude: data.latitude,
+        ellipsoidalHeight: data.ellipsoidalHeight,
+        apiToken: firebaseConfig.apiKey
       });
       google3dElement.classList.add('autocreated');
 
@@ -225,18 +217,20 @@ AFRAME.registerComponent('street-geo', {
       }
     };
 
+    create3DtilesElement();
+
     // check whether the library has been imported. Download if not
-    if (AFRAME.components['loader-3dtiles']) {
-      create3DtilesElement();
-    } else {
-      loadScript(
-        new URL(
-          '/src/lib/aframe-loader-3dtiles-component.min.js',
-          import.meta.url
-        ),
-        create3DtilesElement
-      );
-    }
+    // if (AFRAME.components['loader-3dtiles']) {
+    //   create3DtilesElement();
+    // } else {
+    //   loadScript(
+    //     new URL(
+    //       '/src/lib/aframe-loader-3dtiles-component.min.js',
+    //       import.meta.url
+    //     ),
+    //     create3DtilesElement
+    //   );
+    // }
   },
   noneUpdate: function () {
     // do nothing
@@ -244,12 +238,11 @@ AFRAME.registerComponent('street-geo', {
   },
   google3dUpdate: function () {
     const data = this.data;
-    const height = data.ellipsoidalHeight;
 
-    this.google3d.setAttribute('loader-3dtiles', {
-      lat: data.latitude,
-      long: data.longitude,
-      height: height
+    this.google3d.setAttribute('google-maps-aerial', {
+      latitude: data.latitude,
+      longitude: data.longitude,
+      ellipsoidalHeight: data.ellipsoidalHeight
     });
 
     // if state is not clipping, then disable it
