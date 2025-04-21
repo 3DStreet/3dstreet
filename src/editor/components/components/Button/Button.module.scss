@@ -6,14 +6,12 @@
   align-items: center;
   column-gap: 8px;
   width: fit-content;
-  height: 43px;
-  padding: 11px 15px !important;
-  border-radius: 18px;
+  padding: 8px 10px;
+  border-radius: 12px;
   border: 1px solid transparent;
   outline: unset;
   background-color: transparent;
   font-size: 16px !important;
-  line-height: 19px;
   font-weight: 500;
   transition: all 0.3s;
 
@@ -57,14 +55,6 @@
 
   &:focus {
     border: 1px solid variables.$white;
-  }
-
-  &.icon {
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    width: 24px;
-    height: 24px;
   }
 }
 
@@ -168,6 +158,32 @@
   background-color: rgba(50, 50, 50, 0.8);
   color: #dbdbdb;
   border-radius: 10px;
+
+  &:active {
+    background-color: #282828;
+  }
+
+  &:focus {
+    border: 1px solid #fff;
+    background-color: #2d2d2d;
+  }
+
+  &:hover {
+    background-color: #2d2d2d;
+    transition: all 0.3s;
+  }
+
+  &:disabled {
+    color: #474747;
+    transition: all 0.3s;
+  }
+}
+
+.saveButton {
+  background-color: rgba(50, 50, 50, 0.6);
+  color: #dbdbdb;
+  border-radius: 10px;
+  padding: 4px 4px !important;
 
   &:active {
     background-color: #282828;

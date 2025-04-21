@@ -170,7 +170,8 @@ AFRAME.registerComponent('street-segment', {
       ]
     },
     width: {
-      type: 'number'
+      type: 'number',
+      min: 0
     },
     length: {
       type: 'number'
@@ -327,10 +328,16 @@ AFRAME.registerComponent('street-segment', {
     this.generateMesh(data);
     // if width was changed, trigger re-justification of all street-segments by the managed-street
     if (changedProps.includes('width')) {
-      console.log('segment width changed');
       this.el.emit('segment-width-changed', {
         oldWidth: oldData.width,
         newWidth: data.width
+      });
+    }
+    // if length was changed, trigger re-justification of all street-segments by the managed-street
+    if (changedProps.includes('length')) {
+      this.el.emit('segment-length-changed', {
+        oldLength: oldData.length,
+        newLength: data.length
       });
     }
   },

@@ -1,11 +1,10 @@
 import { useState, useEffect, useMemo, useRef } from 'react';
+import { Cross24Icon, Plus20Circle } from '../../../icons';
 import { createPortal } from 'react-dom';
 import { useAuthContext } from '../../../contexts/index.js';
-import { Button, Tabs } from '../../components';
-
+import { Button, Tabs, PanelToggleButton } from '../../components';
 import styles from './AddLayerPanel.module.scss';
 import classNames from 'classnames';
-import { Chevron24Down } from '../../../icons';
 import CardPlaceholder from '../../../../../ui_assets/card-placeholder.svg';
 import LockedCard from '../../../../../ui_assets/locked-card.svg';
 import mixinCatalog from '../../../../catalog.json';
@@ -135,12 +134,13 @@ const getSegmentElevationPosY = (ancestorEl) => {
   } else return 0; // default value
 };
 
-const createEntityOnPosition = (mixinId, position) => {
+const createEntityOnPosition = (mixinId, position, mixinName) => {
   const previewEntity = document.getElementById('previewEntity');
   if (previewEntity) {
     previewEntity.remove();
   }
   AFRAME.INSPECTOR.execute('entitycreate', {
+    'data-layer-name': mixinName,
     mixin: mixinId,
     components: {
       position: position
@@ -148,12 +148,13 @@ const createEntityOnPosition = (mixinId, position) => {
   });
 };
 
-const createEntity = (mixinId) => {
+const createEntity = (mixinId, mixinName) => {
   const previewEntity = document.getElementById('previewEntity');
   if (previewEntity) {
     previewEntity.remove();
   }
   const newEntityObject = {
+    'data-layer-name': mixinName,
     mixin: mixinId,
     components: {}
   };
@@ -287,8 +288,68 @@ const AddLayerPanel = () => {
   // set the first Layers option when opening the panel
   const [selectedOption, setSelectedOption] = useState(LayersOptions[0].value);
   const [groupedMixins, setGroupedMixins] = useState([]);
+  const [isDragging, setIsDragging] = useState(false);
+  const panelRef = useRef(null);
   const { currentUser } = useAuthContext();
   const isProUser = currentUser && currentUser.isPro;
+
+  const handleDoubleClick = () => {
+    onClose();
+  };
+
+  const handleDragStart = (e) => {
+    if (!isOpen) {
+      return;
+    }
+
+    e.preventDefault();
+    const rect = panelRef.current.getBoundingClientRect();
+
+    const startHeight = rect.height;
+    const startY = e.clientY;
+
+    setIsDragging(true);
+
+    const handleMove = (moveEvent) => {
+      if (!panelRef.current) return;
+      const deltaY = startY - moveEvent.clientY;
+      const newHeight = startHeight + deltaY;
+
+      // Constrain height between min and max values
+      const minHeight = 200;
+      const maxHeight = window.innerHeight * 0.8;
+      const constrainedHeight = Math.max(
+        minHeight,
+        Math.min(maxHeight, newHeight)
+      );
+      panelRef.current.style.height = `${constrainedHeight}px`;
+    };
+
+    const handleUp = () => {
+      setIsDragging(false);
+      document.removeEventListener('mousemove', handleMove);
+      document.removeEventListener('mouseup', handleUp);
+    };
+
+    document.addEventListener('mousemove', handleMove);
+    document.addEventListener('mouseup', handleUp);
+  };
+
+  const handleDrag = () => {}; // Keep empty function for cleanup
+
+  const handleDragEnd = () => {
+    setIsDragging(false);
+    document.removeEventListener('mousemove', handleDrag);
+    document.removeEventListener('mouseup', handleDragEnd);
+  };
+
+  useEffect(() => {
+    return () => {
+      // Cleanup event listeners
+      document.removeEventListener('mousemove', handleDrag);
+      document.removeEventListener('mouseup', handleDragEnd);
+    };
+  }, []);
 
   const onClose = () => {
     setModal(null);
@@ -327,7 +388,7 @@ const AddLayerPanel = () => {
     if (card.requiresPro && !isProUser) {
       startCheckout('addlayer');
     } else if (card.mixinId) {
-      createEntity(card.mixinId);
+      createEntity(card.mixinId, card.name);
     } else if (card.handlerFunction) {
       card.handlerFunction();
     }
@@ -404,7 +465,11 @@ const AddLayerPanel = () => {
         e.dataTransfer.getData('application/json')
       );
       if (transferredData.mixinId) {
-        createEntityOnPosition(transferredData.mixinId, position);
+        createEntityOnPosition(
+          transferredData.mixinId,
+          position,
+          transferredData.mixinName
+        );
       } else if (transferredData.layerCardId) {
         selectedCards
           .find((card) => card.id === transferredData.layerCardId)
@@ -416,106 +481,128 @@ const AddLayerPanel = () => {
   };
 
   return (
-    <div
-      className={classNames(styles.panel, {
-        [styles.open]: isOpen
-      })}
-    >
-      {createPortal(
-        <div
-          ref={dropPlaneEl}
-          onDragOver={onItemDragOver}
-          onDrop={onItemDrop}
-          style={{
-            display: 'none',
-            position: 'absolute',
-            inset: '0px',
-            userSelect: 'none',
-            pointerEvents: 'auto'
-          }}
-        ></div>,
-        document.body
-      )}
-      <Button onClick={onClose} variant="custom" className={styles.closeButton}>
-        <Chevron24Down />
-      </Button>
-      <div className={styles.header}>
-        <div className={styles.categories}>
-          <Tabs
-            tabs={LayersOptions.map((option) => ({
-              label: option.label,
-              value: option.value,
-              isSelected: selectedOption === option.value,
-              onClick: () => handleSelect(option.value)
-            }))}
-          />
+    <>
+      <PanelToggleButton
+        icon={Plus20Circle}
+        isOpen={isOpen}
+        onClick={() => setModal('addlayer')}
+        className={styles.addLayerButton}
+      >
+        Add New Layer &nbsp;🌳🚦🚗
+      </PanelToggleButton>
+      <div
+        ref={panelRef}
+        className={classNames(styles.panel, {
+          [styles.open]: isOpen,
+          [styles.dragging]: isDragging
+        })}
+        onDoubleClick={handleDoubleClick}
+      >
+        <div className={styles.dragHandle} onMouseDown={handleDragStart} />
+        {createPortal(
+          <div
+            ref={dropPlaneEl}
+            onDragOver={onItemDragOver}
+            onDrop={onItemDrop}
+            style={{
+              display: 'none',
+              position: 'absolute',
+              inset: '0px',
+              userSelect: 'none',
+              pointerEvents: 'auto'
+            }}
+          ></div>,
+          document.body
+        )}
+        <div className={styles.header}>
+          <div className={styles.categories}>
+            <Tabs
+              tabs={LayersOptions.map((option) => ({
+                label: option.label,
+                value: option.value,
+                isSelected: selectedOption === option.value,
+                onClick: () => handleSelect(option.value)
+              }))}
+            />
+          </div>
+          <Button
+            onClick={onClose}
+            variant="custom"
+            className={styles.closeButton}
+          >
+            <Cross24Icon />
+          </Button>
+        </div>
+
+        <div className={styles.contentContainer}>
+          <div className={styles.cards}>
+            {selectedCards.map((card) => (
+              <div
+                key={card.id}
+                className={styles.card}
+                onMouseEnter={() => cardMouseEnter(card.mixinId)}
+                onMouseLeave={() => cardMouseLeave(card.mixinId)}
+                draggable={true}
+                onDragStart={(e) => {
+                  const transferData = {
+                    mixinName: card.name,
+                    mixinId: card.mixinId,
+                    layerCardId: card.handlerFunction ? card.id : undefined
+                  };
+                  e.stopPropagation();
+                  if (card.requiresPro && !isProUser) {
+                    startCheckout('addlayer');
+                    return;
+                  }
+                  fadeInDropPlane();
+                  if (e.dataTransfer) {
+                    e.dataTransfer.effectAllowed = 'move';
+                    e.dataTransfer.setData(
+                      'application/json',
+                      JSON.stringify(transferData)
+                    );
+                    // Set the empty image as the drag image
+                    e.dataTransfer.setDragImage(emptyImg, 0, 0);
+                  }
+                  return false;
+                }}
+                onDragEnd={(e) => {
+                  e.stopPropagation();
+                  fadeOutDropPlane();
+                  return false;
+                }}
+                onClick={() => cardClick(card, isProUser)}
+                title={card.description}
+              >
+                {card.requiresPro && !isProUser ? (
+                  <div
+                    className={styles.img}
+                    style={{
+                      backgroundImage: `url(${LockedCard})`,
+                      backgroundSize: 'cover',
+                      backgroundPosition: 'center'
+                    }}
+                  />
+                ) : (
+                  <div
+                    className={styles.img}
+                    style={{
+                      backgroundImage: `url(${card.img || CardPlaceholder})`,
+                      backgroundSize: 'cover',
+                      backgroundPosition: 'center'
+                    }}
+                  />
+                )}
+                <div className={styles.body}>
+                  {card.icon ? <img src={card.icon} /> : null}
+                  <p className={styles.description}>{card.name}</p>
+                </div>
+              </div>
+            ))}
+          </div>
         </div>
       </div>
-      <div className={styles.cards}>
-        {selectedCards.map((card) => (
-          <div
-            key={card.id}
-            className={styles.card}
-            onMouseEnter={() => cardMouseEnter(card.mixinId)}
-            onMouseLeave={() => cardMouseLeave(card.mixinId)}
-            draggable={true}
-            onDragStart={(e) => {
-              const transferData = {
-                mixinId: card.mixinId,
-                layerCardId: card.handlerFunction ? card.id : undefined
-              };
-              e.stopPropagation();
-              if (card.requiresPro && !isProUser) {
-                startCheckout('addlayer');
-                return;
-              }
-              fadeInDropPlane();
-              if (e.dataTransfer) {
-                e.dataTransfer.effectAllowed = 'move';
-                e.dataTransfer.setData(
-                  'application/json',
-                  JSON.stringify(transferData)
-                );
-                // Set the empty image as the drag image
-                e.dataTransfer.setDragImage(emptyImg, 0, 0);
-              }
-              return false;
-            }}
-            onDragEnd={(e) => {
-              e.stopPropagation();
-              fadeOutDropPlane();
-              return false;
-            }}
-            onClick={() => cardClick(card, isProUser)}
-            title={card.description}
-          >
-            {card.requiresPro && !isProUser ? (
-              <div
-                className={styles.img}
-                style={{
-                  backgroundImage: `url(${LockedCard})`,
-                  backgroundSize: 'cover',
-                  backgroundPosition: 'center'
-                }}
-              />
-            ) : (
-              <div
-                className={styles.img}
-                style={{
-                  backgroundImage: `url(${card.img || CardPlaceholder})`,
-                  backgroundSize: 'cover',
-                  backgroundPosition: 'center'
-                }}
-              />
-            )}
-            <div className={styles.body}>
-              {card.icon ? <img src={card.icon} /> : null}
-              <p className={styles.description}>{card.name}</p>
-            </div>
-          </div>
-        ))}
-      </div>
-    </div>
+    </>
   );
 };
 

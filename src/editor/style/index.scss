@@ -1,5 +1,7 @@
 @use './variables.scss';
 @import '../normalize.css';
+@import './chat-panel.scss';
+@import './error-boundary.scss';
 
 body.aframe-inspector-opened,
 .toggle-edit {
@@ -476,6 +478,7 @@ body.aframe-inspector-opened {
     z-index: 9;
   }
 
+  .chat-panel-container,
   #toolbar,
   .outliner,
   .modal,
@@ -692,11 +695,6 @@ span {
   line-height: 28px;
   background-repeat: no-repeat;
   background-position: left;
-}
-
-.outliner.hide:hover,
-.outliner.hide #layers-title:hover {
-  cursor: pointer;
 }
 
 .outliner.hide #layers-title:active {

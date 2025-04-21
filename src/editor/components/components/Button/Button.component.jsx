@@ -10,7 +10,8 @@ const variants = {
   ghost: styles.ghostButton,
   toolbtn: styles.toolButton,
   white: styles.whiteButton,
-  custom: styles.customButton
+  custom: styles.customButton,
+  save: styles.saveButton
 };
 
 /**
@@ -51,7 +52,8 @@ const Button = ({
   leadingIcon,
   trailingIcon,
   onLongPress,
-  longPressDelay = 2000 // Default 2 seconds
+  longPressDelay = 2000, // Default 2 seconds
+  title
 }) => {
   const [pressTimer, setPressTimer] = useState(null);
   const [isPressing, setIsPressing] = useState(false);
@@ -96,6 +98,7 @@ const Button = ({
       tabIndex={0}
       disabled={disabled}
       id={id}
+      title={title}
     >
       {leadingIcon && <div className={styles.icon}>{leadingIcon}</div>}
       {children}
@@ -128,7 +131,10 @@ Button.propTypes = {
   disabled: bool,
   id: string || number,
   leadingIcon: element,
-  trailingIcon: element
+  trailingIcon: element,
+  title: string,
+  onLongPress: func,
+  longPressDelay: number
 };
 
 export { Button };

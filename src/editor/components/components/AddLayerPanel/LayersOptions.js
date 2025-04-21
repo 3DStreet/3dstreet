@@ -1,26 +1,19 @@
 const LayersOptions = [
   {
-    value: 'Bicycles',
-    label: '🚲 Bicycles',
-    mixinGroups: ['vehicles', 'cyclists'],
+    value: 'Streets and Intersections',
+    label: '🚦 Streets & Intersections',
     onClick: () => {}
   },
   {
-    value: 'People',
-    label: '🚶 People',
-    mixinGroups: ['people'],
-    onClick: () => {}
-  },
-  {
-    value: 'Vehicles',
-    label: '🚗 Vehicles',
-    mixinGroups: ['vehicles-rigged', 'vehicles-transit'],
-    onClick: () => {}
-  },
-  {
-    value: 'Dividers & Traffic Control',
-    label: '🚧 Dividers & Traffic Control',
+    value: 'Traffic Control',
+    label: '🚧 Traffic Control',
     mixinGroups: ['dividers'],
+    onClick: () => {}
+  },
+  {
+    value: 'Signs',
+    label: '🚸 Signs',
+    mixinGroups: ['signs'],
     onClick: () => {}
   },
   {
@@ -30,8 +23,21 @@ const LayersOptions = [
     onClick: () => {}
   },
   {
-    value: 'Streets and Intersections',
-    label: '🚦 Streets and Intersections',
+    value: 'People',
+    label: '🚶 People',
+    mixinGroups: ['people'],
+    onClick: () => {}
+  },
+  {
+    value: 'Bicycles',
+    label: '🚲 Bicycles',
+    mixinGroups: ['vehicles', 'cyclists'],
+    onClick: () => {}
+  },
+  {
+    value: 'Vehicles',
+    label: '🚗 Vehicles',
+    mixinGroups: ['vehicles-rigged', 'vehicles-transit'],
     onClick: () => {}
   },
   {
@@ -42,7 +48,7 @@ const LayersOptions = [
   },
   {
     value: 'Custom Layers',
-    label: '🌐 Custom Layers',
+    label: '⚙️ Custom Layers',
     onClick: () => {}
   }
 ];

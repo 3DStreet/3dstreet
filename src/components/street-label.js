@@ -1,4 +1,5 @@
 /* global AFRAME */
+import useStore from '../store.js';
 
 AFRAME.registerComponent('street-label', {
   dependencies: ['managed-street', 'street-align'],
@@ -13,6 +14,16 @@ AFRAME.registerComponent('street-label', {
   },
 
   init: function () {
+    // Get initial units preference from store
+    this.units = useStore.getState().unitsPreference || 'metric';
+
+    // Subscribe to units preference changes
+    useStore.subscribe((state) => {
+      if (this.units !== state.unitsPreference) {
+        this.units = state.unitsPreference;
+        this.updateLabels();
+      }
+    });
     this.createdEntities = [];
     this.canvas = null;
     this.ctx = null;
@@ -164,7 +175,13 @@ AFRAME.registerComponent('street-label', {
       const centerX = currentX + segmentWidth / 2;
       const centerY = canvas.height / 2 - 50;
 
-      const widthText = parseFloat(width).toFixed(1) + 'm';
+      let widthText;
+      if (this.units === 'metric') {
+        widthText = parseFloat(width).toFixed(1) + 'm';
+      } else if (this.units === 'imperial') {
+        const widthFeet = width * 3.28084;
+        widthText = parseFloat(widthFeet).toFixed(1) + 'ft';
+      }
       ctx.fillText(widthText, centerX, centerY - this.fontSize * 0.8);
 
       // Draw wrapped label text

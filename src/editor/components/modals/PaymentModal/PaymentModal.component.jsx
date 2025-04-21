@@ -1,7 +1,6 @@
 import { httpsCallable } from 'firebase/functions';
 import styles from './PaymentModal.module.scss';
 import { useState } from 'react';
-
 import { loadStripe } from '@stripe/stripe-js';
 import { useAuthContext } from '../../../contexts/index.js';
 import { CheckMark32Icon, Loader } from '../../../icons';
@@ -28,6 +27,7 @@ const resetPaymentQueryParam = () => {
 const PaymentModal = () => {
   const { currentUser } = useAuthContext();
   const [isLoading, setIsLoading] = useState(false);
+  const [selectedPlan, setSelectedPlan] = useState('monthly');
   const setModal = useStore((state) => state.setModal);
   const modal = useStore((state) => state.modal);
   const postCheckout = useStore((state) => state.postCheckout);
@@ -49,12 +49,20 @@ const PaymentModal = () => {
         functions,
         'createStripeSession'
       )({
-        line_items: [{ price: process.env.STRIPE_PRICE_ID, quantity: 1 }],
+        line_items: [
+          {
+            price:
+              selectedPlan === 'monthly'
+                ? process.env.STRIPE_MONTHLY_PRICE_ID
+                : process.env.STRIPE_YEARLY_PRICE_ID,
+            quantity: 1
+          }
+        ],
         mode: 'subscription',
         success_url: `${window.location.href.split('?')[0]}?payment=success`,
         cancel_url: `${window.location.href.split('?')[0]}?payment=cancel`,
         metadata: { userId: currentUser.uid },
-        allow_promotion_codes: true,
+        // allow_promotion_codes: true,
         subscription_data: {
           trial_period_days: 30,
           metadata: {
@@ -85,14 +93,12 @@ const PaymentModal = () => {
       className={styles.modalWrapper}
       isOpen={modal === 'payment'}
       onClose={onClose}
+      title="Unlock Pro Features"
     >
       <div className={styles.paymentDetails}>
-        <h3>Unlock Pro features with a free 30 day trial</h3>
-        <h2>Create with intersections and geospatial maps.</h2>
+        <h3>Try 3DStreet Pro now with a free 30 day trial.</h3>
+        <h2>3DStreet Geospatial Pro includes all features of Free and adds:</h2>
         <ul>
-          <li>
-            <CheckMark32Icon /> All features in Free
-          </li>
           <li>
             <CheckMark32Icon />
             Integrated 2D & 3D Maps
@@ -103,9 +109,36 @@ const PaymentModal = () => {
           </li>
           <li>
             <CheckMark32Icon />
-            GLTF Export and Augmented Reality
+            glTF Export with `AR Ready` Output
+          </li>
+          <li>
+            <CheckMark32Icon />
+            Import Custom 3D Models and Images
+          </li>
+          <li>
+            <CheckMark32Icon />
+            Screenshot Overlay Customization
           </li>
           <li>&nbsp;</li>
+          <li className={styles.pricing}>
+            <div className={styles.planSelector}>
+              <button
+                className={`${styles.planButton} ${selectedPlan === 'monthly' ? styles.selected : ''}`}
+                onClick={() => setSelectedPlan('monthly')}
+              >
+                Monthly
+                <span className={styles.price}>$9.99/mo</span>
+              </button>
+              <button
+                className={`${styles.planButton} ${selectedPlan === 'yearly' ? styles.selected : ''}`}
+                onClick={() => setSelectedPlan('yearly')}
+              >
+                Yearly
+                <span className={styles.price}>$99/year</span>
+                <span className={styles.savings}>Save 17%</span>
+              </button>
+            </div>
+          </li>
           <li>
             {currentUser ? (
               <div className="paymentButton">
@@ -128,7 +161,9 @@ const PaymentModal = () => {
             ) : (
               <div className={styles.unAuth}>
                 <p>To upgrade you have to sign in:</p>
-                <Button variant="filled">Sign in to 3DStreet Cloud</Button>
+                <Button onClick={() => setModal('signin')} variant="filled">
+                  Sign in to 3DStreet Cloud
+                </Button>
               </div>
             )}
           </li>

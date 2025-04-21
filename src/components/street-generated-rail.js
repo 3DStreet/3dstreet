@@ -3,10 +3,6 @@
 AFRAME.registerComponent('street-generated-rail', {
   multiple: true,
   schema: {
-    length: {
-      // length in meters of linear path to fill with rail
-      type: 'number'
-    },
     gauge: {
       // spacing in millimeters between rails
       type: 'int',
@@ -16,17 +12,20 @@ AFRAME.registerComponent('street-generated-rail', {
   },
   init: function () {
     this.createdEntities = [];
+    this.length = this.el.getAttribute('street-segment')?.length;
+    this.el.addEventListener('segment-length-changed', (event) => {
+      this.length = event.detail.newLength;
+      this.update();
+    });
   },
   remove: function () {
     this.createdEntities.forEach((entity) => entity.remove());
     this.createdEntities.length = 0; // Clear the array
   },
   update: function (oldData) {
-    // if length is not set, then derive length from the segment
-    if (!this.data.length) {
-      this.data.length = this.el.getAttribute('street-segment').length;
+    if (!this.length) {
+      return;
     }
-
     // Clean up old entities
     this.remove();
 
@@ -34,8 +33,8 @@ AFRAME.registerComponent('street-generated-rail', {
     clone.setAttribute('data-layer-name', 'Cloned Railroad Tracks');
     clone.setAttribute('position', '0 -0.2 0');
     const railsPosX = this.data.gauge / 2 / 1000;
-    clone.append(this.createRailsElement(this.data.length, railsPosX));
-    clone.append(this.createRailsElement(this.data.length, -railsPosX));
+    clone.append(this.createRailsElement(this.length, railsPosX));
+    clone.append(this.createRailsElement(this.length, -railsPosX));
     clone.setAttribute('data-no-transform', '');
     clone.setAttribute('data-ignore-raycaster', '');
     clone.setAttribute('shadow', '');

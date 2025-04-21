@@ -1,29 +1,46 @@
 @use '../../../style/variables.scss';
 
 .wrapper {
-  position: absolute;
-  transform: translateX(-50%);
-  bottom: 10%;
-  left: 50%;
-  border: unset;
-  height: auto; // Changed from fixed height
-  border-radius: 16px;
+  background: rgba(30, 30, 30, 0.8);
+  backdrop-filter: blur(8px);
+  height: auto;
+  border-radius: 6px;
+  // translate y down by 40 pixels // but only if screen width is less than 1000px
+  @media (max-width: 1000px) {
+    transform: translateY(70px) translateX(-250px);
+  }
+  z-index: 2;
+  position: relative;
   align-items: center;
   display: flex;
-  column-gap: 8px;
-  padding: 8px 12px;
+  column-gap: 1px;
+  padding: 4px;
   transition: 0.2s ease-in-out;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+
+  .divider {
+    width: 1px;
+    height: 24px;
+    background-color: rgba(255, 255, 255, 0.2);
+    margin: 0 4px;
+  }
 
   button {
-    border-radius: 50%;
-    width: 56px; // Increased from 43px
-    height: 56px; // Increased from 43px
+    border-radius: 4px;
+    width: 50px;
+    height: 30px;
     display: flex;
     justify-content: center;
     align-items: center;
+    transition: background-color 0.2s ease;
+
+    &:hover {
+      background-color: rgba(255, 255, 255, 0.1);
+    }
 
     &.active {
-      border: 1px solid variables.$white;
+      background-color: rgba(255, 255, 255, 0.2);
+      border: none;
     }
   }
 }

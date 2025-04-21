@@ -22,8 +22,12 @@ const useStore = create(
         sceneId: null, // not used anywhere yet, we still use the metadata component
         setSceneId: (newSceneId) => set({ sceneId: newSceneId }), // not used anywhere yet
         isSavingScene: false,
-        saveScene: (newDoSaveAs) =>
-          set({ isSavingScene: true, doSaveAs: newDoSaveAs }),
+        saveScene: (newDoSaveAs, newDoPromptTitle) =>
+          set({
+            isSavingScene: true,
+            doSaveAs: newDoSaveAs,
+            doPromptTitle: newDoPromptTitle
+          }),
         postSaveScene: () => set({ isSavingScene: false, doSaveAs: false }),
         doSaveAs: false,
         sceneTitle: null,
@@ -32,6 +36,11 @@ const useStore = create(
           set({ sceneId: null, sceneTitle: null, authorId: null }),
         authorId: null, // not used anywhere yet, we still use the metadata component
         setAuthorId: (newAuthorId) => set({ authorId: newAuthorId }), // not used anywhere yet
+        unitsPreference: localStorage.getItem('unitsPreference') || 'metric',
+        setUnitsPreference: (newUnitsPreference) => {
+          localStorage.setItem('unitsPreference', newUnitsPreference);
+          set({ unitsPreference: newUnitsPreference });
+        },
         modal: firstModal(),
         setModal: (newModal) => {
           const currentModal = useStore.getState().modal;

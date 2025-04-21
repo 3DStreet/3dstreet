@@ -3,7 +3,8 @@
 
 <head>
   <!-- aframe -->
-  <script src="https://cdn.jsdelivr.net/gh/aframevr/aframe@6024588c1060a23e42826953455c4537a35905eb/dist/aframe-master.min.js"></script>
+
+  <script src="https://aframe.io/releases/1.7.0/aframe.min.js"></script>
   <!-- 3dstreet -->
   <script src="./dist/aframe-street-component.js"></script>
 
@@ -12,17 +13,6 @@
 
   <!-- viewer controls - vr teleport -->
   <script src="https://cdn.jsdelivr.net/npm/aframe-blink-controls@0.4.3/dist/aframe-blink-controls.min.js"></script>
-
-  <!-- usersnap -->
-  <script>
-    window.onUsersnapLoad = function(api) {
-      api.init();
-    };
-    var script = document.createElement('script');
-    script.defer = 1;
-    script.src = 'https://widget.usersnap.com/global/load/07006ba2-73d0-4242-8e4b-47bdb559e20d?onload=onUsersnapLoad';
-    document.getElementsByTagName('head')[0].appendChild(script);
-  </script>
 
   <title>3DStreet</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
@@ -68,7 +58,8 @@
     renderer="colorManagement: true; physicallyCorrectLights: true; anisotropy: 16; logarithmicDepthBuffer: true;"
     loading-screen="enabled: false" notify metadata
     reflection device-orientation-permission-ui="enabled: false"
-    webxr="requiredFeatures:hit-test,local-floor;referenceSpaceType:local-floor;" xr-mode-ui="XRMode: ar">
+    webxr="requiredFeatures:hit-test,local-floor;referenceSpaceType:local-floor;" xr-mode-ui="XRMode: ar"
+    css2d-renderer>
     <a-assets>
       <!-- TODO: Add this to repo documentation  -->
       <!-- you can specify a custom asset path using below syntax  -->

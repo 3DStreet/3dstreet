@@ -45,8 +45,18 @@ export const Shortcuts = {
       Events.emit('transformmodechange', 'rotate');
     }
 
-    // r: scale
+    // r: ruler
     if (keyCode === 82) {
+      Events.emit('toolchange', 'ruler');
+    }
+
+    // h: hand
+    if (keyCode === 72) {
+      Events.emit('toolchange', 'hand');
+    }
+
+    // s: scale
+    if (keyCode === 83) {
       Events.emit('transformmodechange', 'scale');
     }
 

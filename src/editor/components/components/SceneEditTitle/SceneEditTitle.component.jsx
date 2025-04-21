@@ -9,7 +9,8 @@ const SceneEditTitle = ({ sceneData }) => {
   const { currentUser } = useAuthContext();
 
   const handleEditClick = () => {
-    const newTitle = prompt('Edit the title:', title);
+    const promptTitle = title || 'Untitled';
+    const newTitle = prompt('Edit the title:', promptTitle);
 
     if (newTitle !== null) {
       if (newTitle !== title) {
@@ -32,11 +33,13 @@ const SceneEditTitle = ({ sceneData }) => {
   };
 
   return (
-    <div className={styles.wrapper}>
+    <div
+      className={styles.wrapper}
+      onClick={handleEditClick}
+      title="Edit scene title"
+    >
       <div className={styles.readOnly}>
-        <p className={styles.title} onClick={handleEditClick}>
-          {title || 'Untitled'}
-        </p>
+        <p className={styles.title}>{title || 'Untitled'}</p>
       </div>
     </div>
   );

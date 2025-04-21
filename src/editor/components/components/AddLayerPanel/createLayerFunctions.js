@@ -309,12 +309,13 @@ export function createCustomModel(position) {
 
 export function createPrimitiveGeometry(position) {
   const definition = {
-    'data-layer-name': 'Geometry • Traffic Circle Asphalt',
+    'data-layer-name': 'Geometry • Circle Asphalt',
     components: {
       position: position ?? '0 0 0',
       geometry: 'primitive: circle; radius: 15;',
       rotation: '-90 -90 0',
-      material: 'src: #asphalt-texture; repeat: 5 5;'
+      material: 'src: #asphalt-texture; repeat: 5 5;',
+      shadow: ''
     }
   };
   AFRAME.INSPECTOR.execute('entitycreate', definition);
