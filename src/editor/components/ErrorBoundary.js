@@ -73,30 +73,6 @@ Date/Time: ${new Date().toISOString()}
       );
     } catch (err) {
       console.error('Copy to clipboard not supported:', err);
-
-      // Fallback for browsers that don't support clipboard API
-      const textarea = document.createElement('textarea');
-      textarea.value = errorDetails;
-      textarea.style.position = 'fixed';
-      document.body.appendChild(textarea);
-      textarea.focus();
-      textarea.select();
-
-      try {
-        document.execCommand('copy');
-        const copyButton = this.copyErrorDetailsRef.current;
-        if (copyButton) {
-          const originalText = copyButton.textContent;
-          copyButton.textContent = 'Copied!';
-          setTimeout(() => {
-            copyButton.textContent = originalText;
-          }, 2000);
-        }
-      } catch (e) {
-        console.error('Fallback copy failed:', e);
-      }
-
-      document.body.removeChild(textarea);
     }
   };
 
