@@ -23,12 +23,13 @@ AFRAME.registerComponent('google-maps-aerial', {
     longitude: { type: 'number', default: -122.394 },
     minDistance: { type: 'number', default: 500 },
     maxDistance: { type: 'number', default: 20000 },
-    ellipsoidalHeight: { type: 'number', default: 0 }
+    ellipsoidalHeight: { type: 'number', default: 0 },
+    copyrightEl: { type: 'selector' }
   },
 
   init: function () {
+    this.tick = AFRAME.utils.throttleTick(this.tick, 10, this);
     this.initialized = false;
-    console.log('google-maps-aerial init');
     // Initialize tiles
     this.tiles = new TilesRenderer(
       'https://tile.googleapis.com/v1/3dtiles/root.json'
@@ -76,18 +77,6 @@ AFRAME.registerComponent('google-maps-aerial', {
     this.tiles.update();
     this.initialized = true;
 
-    console.log();
-    // this.el.sceneEl.addEventListener('loaded', () => {
-    //   this.camera = this.el.sceneEl.camera;
-    //   this.renderer = this.el.sceneEl.renderer;
-
-    //   if (this.camera && this.renderer) {
-    //     this.initialized = true;
-    //     this.tiles.setResolutionFromRenderer(this.camera, this.renderer);
-    //     this.tiles.setCamera(this.camera);
-    //   }
-    // });
-
     // Add this to your component's init:
     this.el.addEventListener('cameraChange', (e) => {
       console.log('eventtriggered', e);
@@ -126,16 +115,16 @@ AFRAME.registerComponent('google-maps-aerial', {
   },
 
   tick: function () {
-    // only run this function 10 times total
-    // if (this.tickCount >= 10) return;
-    // console.log(this.renderer)
     if (this.initialized && this.tiles && this.camera) {
       // Ensure camera is set on each tick
       this.tiles.setCamera(this.camera);
       this.tiles.setResolutionFromRenderer(this.camera, this.renderer);
       this.tiles.update();
     }
-    this.tickCount++;
+    if (this.data.copyrightEl) {
+      this.data.copyrightEl.innerHTML =
+        this.tiles.getAttributions()[0]?.value || '';
+    }
   },
 
   remove: function () {

@@ -184,7 +184,8 @@ AFRAME.registerComponent('street-geo', {
         longitude: data.longitude,
         latitude: data.latitude,
         ellipsoidalHeight: data.ellipsoidalHeight,
-        apiToken: firebaseConfig.apiKey
+        apiToken: firebaseConfig.apiKey,
+        copyrightEl: '#map-copyright'
       });
       google3dElement.classList.add('autocreated');
 
