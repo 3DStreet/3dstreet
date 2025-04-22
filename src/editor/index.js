@@ -303,6 +303,12 @@ Inspector.prototype = {
       Events.emit('objectfocus', focusEl.object3D);
     }
     this.isFirstOpen = false;
+
+    // quick solution to change 3d tiles camera
+    const tilesElem = document.querySelector('a-entity[google-maps-aerial]');
+    if (tilesElem) {
+      tilesElem.emit('cameraChange', this.camera);
+    }
   },
 
   /**
@@ -332,7 +338,10 @@ Inspector.prototype = {
     // quick solution to change 3d tiles camera
     const tilesElem = document.querySelector('a-entity[google-maps-aerial]');
     if (tilesElem) {
-      tilesElem.emit('cameraChange', AFRAME.scenes[0].camera);
+      tilesElem.emit(
+        'cameraChange',
+        document.querySelector('#camera').object3D.children[0]
+      );
     }
   }
 };

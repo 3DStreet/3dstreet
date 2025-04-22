@@ -87,23 +87,11 @@ AFRAME.registerComponent('google-maps-aerial', {
         if (prevCamera) {
           this.tiles.deleteCamera(prevCamera);
         }
-
         // Set new camera and update resolution
         this.tiles.setCamera(this.camera);
         this.tiles.setResolutionFromRenderer(this.camera, this.renderer);
         this.tiles.update();
       }
-    });
-
-    const sceneEl = this.el.sceneEl;
-    sceneEl.addEventListener('camera-set-active', (e) => {
-      console.log('camera-set-active', e);
-      // TODO: For some reason after closing the inspector this event is fired with an empty camera,
-      // so revert to the original camera used.
-      //
-      // TODO: Does not provide the right Inspector perspective camera
-      this.camera =
-        e.detail.cameraEl.object3D.children[0] ?? this.originalCamera;
     });
 
     if (AFRAME.INSPECTOR && AFRAME.INSPECTOR.opened) {
