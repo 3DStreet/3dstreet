@@ -169,69 +169,52 @@ AFRAME.registerComponent('street-geo', {
     const el = this.el;
     const self = this;
 
-    const create3DtilesElement = () => {
-      const google3dElement = document.createElement('a-entity');
-      google3dElement.setAttribute('data-no-pause', '');
-      google3dElement.id = 'google3d';
-      if (data.enableClipping) {
-        google3dElement.setAttribute('obb-clipping', '');
-      }
+    const google3dElement = document.createElement('a-entity');
+    google3dElement.setAttribute('data-no-pause', '');
+    google3dElement.id = 'google3d';
+    if (data.enableClipping) {
+      google3dElement.setAttribute('obb-clipping', '');
+    }
 
-      google3dElement.setAttribute('data-layer-name', 'Google 3D Tiles');
-      google3dElement.setAttribute('data-no-transform', '');
-      console.log(firebaseConfig.apiKey);
-      google3dElement.setAttribute('google-maps-aerial', {
-        longitude: data.longitude,
-        latitude: data.latitude,
-        ellipsoidalHeight: data.ellipsoidalHeight,
-        apiToken: firebaseConfig.apiKey,
-        copyrightEl: '#map-copyright'
-      });
-      google3dElement.classList.add('autocreated');
+    google3dElement.setAttribute('data-layer-name', 'Google 3D Tiles');
+    google3dElement.setAttribute('data-no-transform', '');
+    console.log(firebaseConfig.apiKey);
+    google3dElement.setAttribute('google-maps-aerial', {
+      longitude: data.longitude,
+      latitude: data.latitude,
+      ellipsoidalHeight: data.ellipsoidalHeight,
+      apiToken: firebaseConfig.apiKey,
+      copyrightEl: '#map-copyright'
+    });
+    google3dElement.classList.add('autocreated');
 
-      if (AFRAME.INSPECTOR?.opened) {
-        google3dElement.addEventListener(
-          'loaded',
-          () => {
-            // emit play event to start loading tiles in Editor mode
-            google3dElement.play();
-          },
-          { once: true }
+    if (AFRAME.INSPECTOR?.opened) {
+      google3dElement.addEventListener(
+        'loaded',
+        () => {
+          // emit play event to start loading tiles in Editor mode
+          google3dElement.play();
+        },
+        { once: true }
+      );
+    }
+    google3dElement.setAttribute('data-ignore-raycaster', '');
+    el.appendChild(google3dElement);
+    self['google3d'] = google3dElement;
+
+    // if clipping is enabled, add it
+    if (data.enableClipping) {
+      google3dElement.setAttribute('obb-clipping', '');
+    }
+    // Only set blending if enabled
+    if (data.blendingEnabled) {
+      if (data.blendMode) {
+        google3dElement.setAttribute(
+          'blending-opacity',
+          this.returnBlendMode(data.blendMode)
         );
       }
-      google3dElement.setAttribute('data-ignore-raycaster', '');
-      el.appendChild(google3dElement);
-      self['google3d'] = google3dElement;
-
-      // if clipping is enabled, add it
-      if (data.enableClipping) {
-        google3dElement.setAttribute('obb-clipping', '');
-      }
-      // Only set blending if enabled
-      if (data.blendingEnabled) {
-        if (data.blendMode) {
-          google3dElement.setAttribute(
-            'blending-opacity',
-            this.returnBlendMode(data.blendMode)
-          );
-        }
-      }
-    };
-
-    create3DtilesElement();
-
-    // check whether the library has been imported. Download if not
-    // if (AFRAME.components['loader-3dtiles']) {
-    //   create3DtilesElement();
-    // } else {
-    //   loadScript(
-    //     new URL(
-    //       '/src/lib/aframe-loader-3dtiles-component.min.js',
-    //       import.meta.url
-    //     ),
-    //     create3DtilesElement
-    //   );
-    // }
+    }
   },
   noneUpdate: function () {
     // do nothing
