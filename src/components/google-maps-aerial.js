@@ -57,33 +57,15 @@ AFRAME.registerComponent('google-maps-aerial', {
     this.el.appendChild(offsetEl);
     this.offsetEl = offsetEl;
 
-    // Get camera and renderer
-    this.camera = this.el.sceneEl.camera;
+    // Get renderer
     this.renderer = this.el.sceneEl.renderer;
     // if (!this.camera) {
     //   throw new Error('3D Tiles: Please add an active camera or specify the target camera via the cameraEl property');
     // }
 
-    this.tiles.setResolutionFromRenderer(this.camera, this.renderer);
-    this.tiles.setCamera(this.camera);
+    this.tiles.setResolutionFromRenderer(this.el.sceneEl.camera, this.renderer);
+    this.tiles.setCamera(this.el.sceneEl.camera);
     this.tiles.update();
-
-    // Add this to your component's init:
-    this.el.addEventListener('cameraChange', (e) => {
-      if (e.detail) {
-        const prevCamera = this.camera;
-        this.camera = e.detail;
-
-        // Delete previous camera from tiles renderer first
-        if (prevCamera) {
-          this.tiles.deleteCamera(prevCamera);
-        }
-        // Set new camera and update resolution
-        this.tiles.setCamera(this.camera);
-        this.tiles.setResolutionFromRenderer(this.camera, this.renderer);
-        this.tiles.update();
-      }
-    });
 
     if (AFRAME.INSPECTOR && AFRAME.INSPECTOR.opened) {
       // emit play event to start load tiles in aframe-inspector
@@ -92,10 +74,13 @@ AFRAME.registerComponent('google-maps-aerial', {
   },
 
   tick: function () {
-    if (this.tiles && this.camera) {
+    if (this.tiles && this.el.sceneEl.camera) {
       // Ensure camera is set on each tick
-      this.tiles.setCamera(this.camera);
-      this.tiles.setResolutionFromRenderer(this.camera, this.renderer);
+      this.tiles.setCamera(this.el.sceneEl.camera);
+      this.tiles.setResolutionFromRenderer(
+        this.el.sceneEl.camera,
+        this.renderer
+      );
       this.tiles.update();
     }
     if (this.data.copyrightEl) {
