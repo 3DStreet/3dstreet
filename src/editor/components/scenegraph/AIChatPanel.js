@@ -477,7 +477,8 @@ const AIChatPanel = () => {
       2. If the user is asking to modify the scene, use the entityUpdate function
       3. If the user is asking to create or modify a managed street, use the managedStreetCreate or managedStreetUpdate functions
       4. If the user needs help, provide relevant guidance about the 3DStreet editor
-      5. If you are asking if there is something else you can do, you can offer to tell a dad joke
+      5. If the user provides information about their project, update the appropriate properties in the project-info component on entityId "project"
+      6. If you are asking if there is something else you can do, you can offer to tell a dad joke, but maximum once per session.
 
       IMPORTANT: When the user asks for you to do a command, DO NOT ask clarifying questions before doing the command. Remember the user can always undo the command if they make a mistake or modify something after an initial street, model, segment, etc. is placed. For example if a user wants a street, you could immediately create a default two-way street with bike lanes using the managedStreetCreate function without first asking for details about dimensions, segments, or position - just create the default street.
 
@@ -683,6 +684,25 @@ const AIChatPanel = () => {
         "operation": "remove-segment",
         "segmentIndex": 2
       }
+      
+      ## Project Information
+      The scene may contain a project-info component on the "project" entityId that stores information about the current project. When users mention details about their project, you should update this component.
+      
+      The project-info component has the following fields:
+      - location: Colloquial description of project location
+      - problemStatement: Description of the problem being addressed
+      - currentCondition: Description of the current street conditions
+      - proposedSolutions: Description of the proposed solution(s)
+      
+      To update the project-info component, use the entityUpdate function:
+      {
+        "entityId": "project",
+        "component": "project-info",
+        "property": "location",
+        "value": "Main Street Corridor Between 123rd and 124th Streets"
+      }
+      
+      You can update any of the project-info properties this way. Always look for opportunities to update the project-info component when users provide relevant information, even if they don't explicitly ask you to update it.
 
       IMPORTANT: Always respond with a text message, even if the user is asking for a function call.
 
@@ -1218,6 +1238,52 @@ const AIChatPanel = () => {
                 entity.removeChild(segmentEl);
 
                 console.log('Removed segment at segmentIndex', segmentIndex);
+              } else if (call.name === 'projectInfoUpdate') {
+                // Handle project info update
+                const args = call.args;
+
+                // Get the project info entity
+                let projectInfoEntity = document.querySelector(
+                  '#project-info-entity'
+                );
+
+                // If the entity doesn't exist, create it
+                if (!projectInfoEntity) {
+                  console.log('Creating project info entity');
+                  projectInfoEntity = document.createElement('a-entity');
+                  projectInfoEntity.setAttribute('id', 'project-info-entity');
+                  projectInfoEntity.setAttribute('project-info', {});
+
+                  // Add to the scene under user layers
+                  const userLayers =
+                    document.querySelector('#user-layers') ||
+                    document.querySelector('a-scene');
+                  userLayers.appendChild(projectInfoEntity);
+                }
+
+                // Update the project info properties
+                for (const key in args) {
+                  if (args[key]) {
+                    projectInfoEntity.setAttribute(
+                      'project-info',
+                      key,
+                      args[key]
+                    );
+                  }
+                }
+
+                // Update function call status to success
+                setMessages((prev) =>
+                  prev.map((msg) =>
+                    msg.type === 'functionCall' && msg.id === functionCallObj.id
+                      ? {
+                          ...msg,
+                          status: 'success',
+                          result: 'Project info updated successfully'
+                        }
+                      : msg
+                  )
+                );
               } else {
                 throw new Error(`Unknown operation: ${operation}`);
               }
