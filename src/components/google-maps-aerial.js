@@ -59,9 +59,6 @@ AFRAME.registerComponent('google-maps-aerial', {
 
     // Get renderer
     this.renderer = this.el.sceneEl.renderer;
-    // if (!this.camera) {
-    //   throw new Error('3D Tiles: Please add an active camera or specify the target camera via the cameraEl property');
-    // }
 
     this.tiles.setResolutionFromRenderer(this.el.sceneEl.camera, this.renderer);
     this.tiles.setCamera(this.el.sceneEl.camera);
@@ -82,10 +79,10 @@ AFRAME.registerComponent('google-maps-aerial', {
         this.renderer
       );
       this.tiles.update();
-    }
-    if (this.data.copyrightEl) {
-      this.data.copyrightEl.innerHTML =
-        this.tiles.getAttributions()[0]?.value || '';
+      if (this.data.copyrightEl) {
+        this.data.copyrightEl.innerHTML =
+          this.tiles.getAttributions()[0]?.value || '';
+      }
     }
   },
 
