@@ -8,7 +8,6 @@ import {
 
 console.log('3d-tiles-renderer', TilesRenderer);
 const MathUtils = AFRAME.THREE.MathUtils;
-const DRACOLoader = AFRAME.THREE.DRACOLoader;
 
 if (typeof AFRAME === 'undefined') {
   throw new Error(
@@ -43,9 +42,7 @@ AFRAME.registerComponent('google-maps-aerial', {
     this.tiles.registerPlugin(new TilesFadePlugin());
     this.tiles.registerPlugin(
       new GLTFExtensionsPlugin({
-        dracoLoader: new DRACOLoader().setDecoderPath(
-          'https://unpkg.com/three@0.153.0/examples/jsm/libs/draco/gltf/'
-        )
+        dracoLoader: this.el.sceneEl.systems['gltf-model'].getDRACOLoader()
       })
     );
 
