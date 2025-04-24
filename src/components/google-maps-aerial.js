@@ -28,7 +28,6 @@ AFRAME.registerComponent('google-maps-aerial', {
 
   init: function () {
     this.tick = AFRAME.utils.throttleTick(this.tick, 10, this);
-    this.initialized = false;
     // Initialize tiles
     this.tiles = new TilesRenderer(
       'https://tile.googleapis.com/v1/3dtiles/root.json'
@@ -69,11 +68,10 @@ AFRAME.registerComponent('google-maps-aerial', {
     this.tiles.setResolutionFromRenderer(this.camera, this.renderer);
     this.tiles.setCamera(this.camera);
     this.tiles.update();
-    this.initialized = true;
 
     // Add this to your component's init:
     this.el.addEventListener('cameraChange', (e) => {
-      if (e.detail && this.initialized) {
+      if (e.detail) {
         const prevCamera = this.camera;
         this.camera = e.detail;
 
@@ -97,7 +95,7 @@ AFRAME.registerComponent('google-maps-aerial', {
   },
 
   tick: function () {
-    if (this.initialized && this.tiles && this.camera) {
+    if (this.tiles && this.camera) {
       // Ensure camera is set on each tick
       this.tiles.setCamera(this.camera);
       this.tiles.setResolutionFromRenderer(this.camera, this.renderer);
