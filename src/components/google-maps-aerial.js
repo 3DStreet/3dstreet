@@ -50,6 +50,13 @@ AFRAME.registerComponent('google-maps-aerial', {
       this.data.longitude * MathUtils.DEG2RAD
     );
 
+    this.tiles.addEventListener('load-model', () => {
+      if (this.data.copyrightEl) {
+        this.data.copyrightEl.innerHTML =
+          this.tiles.getAttributions()[0]?.value || '';
+      }
+    });
+
     // Create a child entity for the height offset
     const offsetEl = document.createElement('a-entity');
     offsetEl.object3D.position.y = -this.data.ellipsoidalHeight;
@@ -79,10 +86,6 @@ AFRAME.registerComponent('google-maps-aerial', {
         this.renderer
       );
       this.tiles.update();
-      if (this.data.copyrightEl) {
-        this.data.copyrightEl.innerHTML =
-          this.tiles.getAttributions()[0]?.value || '';
-      }
     }
   },
 
