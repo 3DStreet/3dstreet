@@ -296,7 +296,7 @@ export function Viewport(inspector) {
     measureLineControls.camera = data.camera;
     updateAspectRatio();
     // quick solution to change 3d tiles camera
-    const tilesElem = document.querySelector('a-entity[loader-3dtiles]');
+    const tilesElem = document.querySelector('a-entity[google-maps-aerial]');
     if (tilesElem) {
       tilesElem.emit('cameraChange', data.camera);
     }

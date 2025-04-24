@@ -1,4 +1,3 @@
-import { loadScript, roundCoord } from '../../../../../src/utils.js';
 import { createUniqueId } from '../../../lib/entity.js';
 import * as defaultStreetObjects from './defaultStreets.js';
 
@@ -26,29 +25,6 @@ export function createSvgExtrudedEntity(position) {
     };
     AFRAME.INSPECTOR.execute('entitycreate', definition);
   }
-}
-export function createMapbox() {
-  // This component accepts a long / lat and renders a plane with dimensions that
-  // (should be) at a correct scale.
-  const geoLayer = document.getElementById('reference-layers');
-  let latitude = 0;
-  let longitude = 0;
-  const streetGeo = geoLayer?.getAttribute('street-geo');
-
-  if (streetGeo && streetGeo['latitude'] && streetGeo['longitude']) {
-    latitude = roundCoord(parseFloat(streetGeo['latitude']));
-    longitude = roundCoord(parseFloat(streetGeo['longitude']));
-  }
-
-  AFRAME.INSPECTOR.execute(streetGeo ? 'entityupdate' : 'componentadd', {
-    entity: geoLayer,
-    component: 'street-geo',
-    value: {
-      latitude: latitude,
-      longitude: longitude,
-      maps: 'mapbox2d'
-    }
-  });
 }
 
 export function createManagedStreetFromStreetmixURLPrompt(position) {
@@ -241,49 +217,6 @@ export function create150ftRightOfWay(position) {
     'https://streetmix.net/3dstreetapp/5/150ft-right-of-way-124ft-road-width',
     true
   );
-}
-
-export function create3DTiles() {
-  // This code snippet adds an entity to load and display 3d tiles from
-  // Google Maps Tiles API 3D Tiles endpoint. This will break your scene
-  // and you cannot save it yet, so beware before testing.
-
-  const create3DtilesElement = () => {
-    const geoLayer = document.getElementById('reference-layers');
-    let latitude = 0;
-    let longitude = 0;
-    let ellipsoidalHeight = 0;
-    const streetGeo = geoLayer?.getAttribute('street-geo');
-
-    if (streetGeo && streetGeo['latitude'] && streetGeo['longitude']) {
-      latitude = roundCoord(parseFloat(streetGeo['latitude']));
-      longitude = roundCoord(parseFloat(streetGeo['longitude']));
-      ellipsoidalHeight = parseFloat(streetGeo['ellipsoidalHeight']) || 0;
-    }
-
-    AFRAME.INSPECTOR.execute(streetGeo ? 'entityupdate' : 'componentadd', {
-      entity: geoLayer,
-      component: 'street-geo',
-      value: {
-        latitude: latitude,
-        longitude: longitude,
-        ellipsoidalHeight: ellipsoidalHeight,
-        maps: 'google3d'
-      }
-    });
-  };
-
-  if (AFRAME.components['loader-3dtiles']) {
-    create3DtilesElement();
-  } else {
-    loadScript(
-      new URL(
-        '/src/lib/aframe-loader-3dtiles-component.min.js',
-        import.meta.url
-      ),
-      create3DtilesElement
-    );
-  }
 }
 
 export function createCustomModel(position) {
