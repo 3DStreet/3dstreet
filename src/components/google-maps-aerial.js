@@ -63,14 +63,11 @@ AFRAME.registerComponent('google-maps-aerial', {
     this.offsetEl = offsetEl;
 
     // Get camera and renderer
-    this.camera =
-      this.data.cameraEl?.object3D.children[0] ??
-      document.querySelector('a-scene').camera;
+    this.camera = this.el.sceneEl.camera;
     this.renderer = this.el.sceneEl.renderer;
     // if (!this.camera) {
     //   throw new Error('3D Tiles: Please add an active camera or specify the target camera via the cameraEl property');
     // }
-    this.originalCamera = this.camera;
 
     this.tiles.setResolutionFromRenderer(this.camera, this.renderer);
     this.tiles.setCamera(this.camera);

@@ -178,7 +178,6 @@ AFRAME.registerComponent('street-geo', {
 
     google3dElement.setAttribute('data-layer-name', 'Google 3D Tiles');
     google3dElement.setAttribute('data-no-transform', '');
-    console.log(firebaseConfig.apiKey);
     google3dElement.setAttribute('google-maps-aerial', {
       longitude: data.longitude,
       latitude: data.latitude,
