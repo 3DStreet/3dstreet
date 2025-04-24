@@ -27,7 +27,6 @@ AFRAME.registerComponent('google-maps-aerial', {
   },
 
   init: function () {
-    this.tick = AFRAME.utils.throttleTick(this.tick, 10, this);
     // Initialize tiles
     this.tiles = new TilesRenderer(
       'https://tile.googleapis.com/v1/3dtiles/root.json'
@@ -87,8 +86,6 @@ AFRAME.registerComponent('google-maps-aerial', {
     });
 
     if (AFRAME.INSPECTOR && AFRAME.INSPECTOR.opened) {
-      // set active inspector camera
-      this.camera = AFRAME.INSPECTOR.camera;
       // emit play event to start load tiles in aframe-inspector
       this.play();
     }
