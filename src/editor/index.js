@@ -340,7 +340,7 @@ Inspector.prototype = {
     if (tilesElem) {
       tilesElem.emit(
         'cameraChange',
-        document.querySelector('#camera').object3D.children[0]
+        this.cameras.original.getObject3D('camera')
       );
     }
   }
