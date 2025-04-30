@@ -78,6 +78,52 @@
       flex-direction: row;
       position: relative;
     }
+
+    // Make the cursor indicate draggability
+    &[draggable='true'] {
+      cursor: grab;
+      &:active {
+        cursor: grabbing;
+      }
+    }
+
+    // Dragging state
+    &.is-dragging {
+      opacity: 0.6;
+      background-color: variables.$purple-300;
+      outline: 1px dashed variables.$purple-900;
+      box-shadow: 0 0 8px rgba(0, 0, 0, 0.2);
+    }
+
+    // Drag over state (potential drop target)
+    &.is-drag-over {
+      background-color: variables.$purple-300;
+      border-bottom: 2px solid variables.$purple-900;
+      position: relative;
+
+      &:after {
+        content: '';
+        position: absolute;
+        left: 0;
+        bottom: -2px;
+        width: 100%;
+        height: 2px;
+        background-color: variables.$purple-900;
+        animation: pulse 1.5s infinite;
+      }
+    }
+
+    @keyframes pulse {
+      0% {
+        opacity: 0.5;
+      }
+      50% {
+        opacity: 1;
+      }
+      100% {
+        opacity: 0.5;
+      }
+    }
   }
   .entity:first-child {
     margin: 0px !important;
