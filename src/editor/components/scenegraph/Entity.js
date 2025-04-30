@@ -51,7 +51,19 @@ export default class Entity extends React.Component {
       entity.id === 'reference-layers' ||
       entity.id === 'environment';
 
-    if (tagName === 'a-scene' || isContainer) {
+    // Check if the entity is within the user layers (street-container)
+    let isInUserLayers = false;
+    let parent = entity.parentElement;
+    while (parent && parent.isEntity) {
+      if (parent.id === 'street-container') {
+        isInUserLayers = true;
+        break;
+      }
+      parent = parent.parentElement;
+    }
+
+    // Prevent dragging if it's a scene, container, or not in user layers
+    if (tagName === 'a-scene' || isContainer || !isInUserLayers) {
       e.preventDefault();
       return false;
     }
