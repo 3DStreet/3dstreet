@@ -367,6 +367,13 @@ export default class SceneGraph extends React.Component {
     // Rebuild the entity list to reflect the new order
     this.rebuildEntityOptions();
 
+    // Trigger autosave
+    // NOTE: In a future PR, this should be implemented as an undoable command
+    // so that undo/redo works properly and autosave is triggered through the history system
+    const useStore = require('@/store').default;
+    const saveScene = useStore.getState().saveScene;
+    saveScene(false);
+
     // Clear drag state
     this.handleDragEnd();
   };
