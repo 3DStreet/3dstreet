@@ -30,7 +30,10 @@ export default class SceneGraph extends React.Component {
       entities: [],
       expandedElements: new WeakMap([[props.scene, true]]),
       leftBarHide: false,
-      selectedIndex: -1
+      selectedIndex: -1,
+      draggedEntity: null,
+      draggedNodeId: null,
+      dragOverNodeId: null
     };
 
     this.rebuildEntityOptions = debounce(
@@ -302,6 +305,79 @@ export default class SceneGraph extends React.Component {
     this.setState({ leftBarHide: !this.state.leftBarHide });
   };
 
+  handleDragStart = (entity, nodeId) => {
+    this.setState({
+      draggedEntity: entity,
+      draggedNodeId: nodeId
+    });
+  };
+
+  handleDragOver = (entity, nodeId) => {
+    if (nodeId !== this.state.dragOverNodeId) {
+      this.setState({ dragOverNodeId: nodeId });
+    }
+  };
+
+  handleDragEnd = () => {
+    this.setState({
+      draggedEntity: null,
+      draggedNodeId: null,
+      dragOverNodeId: null
+    });
+  };
+
+  handleDrop = (sourceId, targetId, targetEntity) => {
+    // Find the source entity object
+    const sourceIndex = this.state.entities.findIndex((e) => e.id === sourceId);
+    if (sourceIndex === -1) return;
+
+    const sourceEntityObj = this.state.entities[sourceIndex];
+    const sourceEntity = sourceEntityObj.entity;
+
+    // Find the target entity object
+    const targetIndex = this.state.entities.findIndex((e) => e.id === targetId);
+    if (targetIndex === -1) return;
+
+    // Don't allow dropping on itself
+    if (sourceIndex === targetIndex) return;
+
+    // Get parent elements
+    const sourceParent = sourceEntity.parentElement;
+    const targetParent = targetEntity.parentElement;
+
+    // Only allow reordering within the same parent
+    if (sourceParent !== targetParent) return;
+
+    // Perform the DOM reordering
+    if (sourceIndex < targetIndex) {
+      // Moving down - insert after target
+      sourceParent.insertBefore(sourceEntity, targetEntity.nextElementSibling);
+    } else {
+      // Moving up - insert before target
+      sourceParent.insertBefore(sourceEntity, targetEntity);
+    }
+
+    // Emit an event that the entity order has changed
+    Events.emit('entityreorder', {
+      entity: sourceEntity,
+      oldIndex: sourceIndex,
+      newIndex: targetIndex
+    });
+
+    // Rebuild the entity list to reflect the new order
+    this.rebuildEntityOptions();
+
+    // Trigger autosave
+    // NOTE: In a future PR, this should be implemented as an undoable command
+    // so that undo/redo works properly and autosave is triggered through the history system
+    const useStore = require('@/store').default;
+    const saveScene = useStore.getState().saveScene;
+    saveScene(false);
+
+    // Clear drag state
+    this.handleDragEnd();
+  };
+
   renderEntities = () => {
     const renderedEntities = [];
     const entityOptions = this.state.entities.filter((entityOption) => {
@@ -323,6 +399,12 @@ export default class SceneGraph extends React.Component {
           isSelected={this.props.selectedEntity === entityOption.entity}
           selectEntity={this.selectEntity}
           toggleExpandedCollapsed={this.toggleExpandedCollapsed}
+          onDragStart={this.handleDragStart}
+          onDragOver={this.handleDragOver}
+          onDragEnd={this.handleDragEnd}
+          onDrop={this.handleDrop}
+          isDragging={entityOption.id === this.state.draggedNodeId}
+          isDragOver={entityOption.id === this.state.dragOverNodeId}
         />
       );
       children.push(renderedEntity);

@@ -16,7 +16,13 @@ export default class Entity extends React.Component {
     isFiltering: PropTypes.bool,
     isSelected: PropTypes.bool,
     selectEntity: PropTypes.func,
-    toggleExpandedCollapsed: PropTypes.func
+    toggleExpandedCollapsed: PropTypes.func,
+    onDragStart: PropTypes.func,
+    onDragOver: PropTypes.func,
+    onDragEnd: PropTypes.func,
+    onDrop: PropTypes.func,
+    isDragging: PropTypes.bool,
+    isDragOver: PropTypes.bool
   };
 
   onClick = () => this.props.selectEntity(this.props.entity);
@@ -36,11 +42,97 @@ export default class Entity extends React.Component {
     });
   };
 
+  handleDragStart = (e) => {
+    // Only allow dragging if this is not the scene and not a top-level container
+    const entity = this.props.entity;
+    const tagName = entity.tagName.toLowerCase();
+    const isContainer =
+      entity.id === 'street-container' ||
+      entity.id === 'reference-layers' ||
+      entity.id === 'environment';
+
+    // Check if the entity is within the user layers (street-container)
+    let isInUserLayers = false;
+    let parent = entity.parentElement;
+    while (parent && parent.isEntity) {
+      if (parent.id === 'street-container') {
+        isInUserLayers = true;
+        break;
+      }
+      parent = parent.parentElement;
+    }
+
+    // Prevent dragging if it's a scene, container, or not in user layers
+    if (tagName === 'a-scene' || isContainer || !isInUserLayers) {
+      e.preventDefault();
+      return false;
+    }
+
+    // Set the drag data
+    e.dataTransfer.setData('text/plain', this.props.id);
+    e.dataTransfer.effectAllowed = 'move';
+
+    // Add a slight delay to make the dragged element semi-transparent
+    setTimeout(() => {
+      if (this.props.onDragStart) {
+        this.props.onDragStart(this.props.entity, this.props.id);
+      }
+    }, 0);
+
+    return true;
+  };
+
+  handleDragOver = (e) => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+
+    if (this.props.onDragOver) {
+      this.props.onDragOver(this.props.entity, this.props.id);
+    }
+
+    return false;
+  };
+
+  handleDragEnter = (e) => {
+    e.preventDefault();
+    return false;
+  };
+
+  handleDragLeave = (e) => {
+    e.preventDefault();
+    return false;
+  };
+
+  handleDrop = (e) => {
+    e.preventDefault();
+
+    const sourceId = e.dataTransfer.getData('text/plain');
+
+    if (this.props.onDrop) {
+      this.props.onDrop(sourceId, this.props.id, this.props.entity);
+    }
+
+    return false;
+  };
+
+  handleDragEnd = (e) => {
+    if (this.props.onDragEnd) {
+      this.props.onDragEnd();
+    }
+
+    return false;
+  };
+
   render() {
     const isFiltering = this.props.isFiltering;
     const isExpanded = this.props.isExpanded;
     const entity = this.props.entity;
     const tagName = entity.tagName.toLowerCase();
+    const isContainer =
+      entity.id === 'street-container' ||
+      entity.id === 'reference-layers' ||
+      entity.id === 'environment';
+    const isDraggable = tagName !== 'a-scene' && !isContainer;
 
     // Clone and remove buttons if not a-scene.
     const cloneButton =
@@ -68,7 +160,7 @@ export default class Entity extends React.Component {
       collapse = (
         <span
           onClick={() => this.props.toggleExpandedCollapsed(entity)}
-          className="collapsespace"
+          title="Drag to reorder"
         >
           {isExpanded ? (
             <AwesomeIcon icon={faCaretDown} size={16} />
@@ -99,7 +191,9 @@ export default class Entity extends React.Component {
       active: this.props.isSelected,
       entity: true,
       novisible: !visible,
-      option: true
+      option: true,
+      'is-dragging': this.props.isDragging,
+      'is-drag-over': this.props.isDragOver
     });
 
     return (
@@ -108,6 +202,14 @@ export default class Entity extends React.Component {
         onClick={this.onClick}
         onDoubleClick={this.onDoubleClick}
         id={this.props.id}
+        draggable={isDraggable}
+        onDragStart={this.handleDragStart}
+        onDragOver={this.handleDragOver}
+        onDragEnter={this.handleDragEnter}
+        onDragLeave={this.handleDragLeave}
+        onDrop={this.handleDrop}
+        onDragEnd={this.handleDragEnd}
+        title={isDraggable ? 'Drag to reorder' : null}
       >
         <span>
           <span
