@@ -42,7 +42,13 @@ function convertDOMElToObject(entity) {
   const data = [];
   const environmentElement = document.querySelector('#environment');
   const referenceEntities = document.querySelector('#reference-layers');
-  const sceneEntities = [entity, environmentElement, referenceEntities];
+  const userAgentEntities = document.querySelector('#cameraRig');
+  const sceneEntities = [
+    entity,
+    environmentElement,
+    referenceEntities,
+    userAgentEntities
+  ];
 
   // get assets url address
   assetsUrl = document.querySelector('street-assets').getAttribute('url');
@@ -69,6 +75,31 @@ function getElementData(entity) {
   }
   // node id's that should save without child nodes
   const skipChildrenNodes = ['environment', 'reference-layers'];
+  const explicitSaveNodes = ['cameraRig'];
+
+  if (explicitSaveNodes.includes(entity.id)) {
+    // for explicit-save node, only save the parent node id and no other attribute data
+    // for each child in explicit-save node, only save if there is attribute explicit-save
+    const elementTree = { id: entity.id };
+    const children = entity.childNodes;
+    console.log('elementTree', elementTree);
+    if (children.length) {
+      const savedChildren = [];
+      for (const child of children) {
+        if (child.nodeType === Node.ELEMENT_NODE) {
+          const elementData = getElementData(child);
+          if (elementData && child.hasAttribute('explicit-save')) {
+            savedChildren.push(elementData);
+          }
+        }
+      }
+      if (savedChildren.length > 0) {
+        elementTree['children'] = savedChildren;
+      }
+    }
+    return elementTree;
+  }
+
   const elementTree = getAttributes(entity);
   const children = entity.childNodes;
   if (children.length && !skipChildrenNodes.includes(elementTree.id)) {
@@ -410,6 +441,21 @@ Add a new entity with a list of components and children (if exists)
  * @return {Element} Entity created
 */
 function createEntityFromObj(entityData, parentEl) {
+  // special case for 'cameraRig' only load in children, don't replace the parent
+  if (entityData.id === 'cameraRig') {
+    if (entityData.children) {
+      for (const childEntityData of entityData.children) {
+        if (childEntityData.id === 'memory') {
+          const memoryEntity = document.getElementById('memory');
+          for (const attr in childEntityData.components) {
+            memoryEntity.setAttribute(attr, childEntityData.components[attr]);
+          }
+        }
+      }
+    }
+    return;
+  }
+
   const tagName = entityData.element || 'a-entity';
   const entity = entityData.entityElement || document.createElement(tagName);
 
