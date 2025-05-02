@@ -424,7 +424,7 @@ function createEntityFromObj(entityData, parentEl) {
 
   // load this attributes in advance in right order to correctly apply other specific components
   for (const attr of ['geometry', 'material']) {
-    if (entityData.components[attr]) {
+    if (entityData.components?.[attr]) {
       entity.setAttribute(attr, entityData.components[attr]);
       delete entityData.components[attr];
     }
