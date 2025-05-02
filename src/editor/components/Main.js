@@ -14,7 +14,9 @@ import { GeoModal } from './modals/GeoModal';
 import { ScenesModal } from './modals/ScenesModal';
 import { PaymentModal } from './modals/PaymentModal';
 import { AddLayerPanel } from './components/AddLayerPanel';
+import { ReportButton } from './components/ReportButton';
 import { NewModal } from './modals/NewModal';
+import { ReportModal } from './modals/ReportModal';
 import { ToolbarWrapper } from './scenegraph/ToolbarWrapper.js';
 import useStore from '@/store';
 import { AIChatProvider } from '../contexts/AIChatContext';
@@ -129,6 +131,7 @@ export default function Main() {
       <ScenesModal />
       <ProfileModal />
       <NewModal />
+      <ReportModal />
       <LoadScript
         googleMapsApiKey={firebaseConfig.apiKey}
         libraries={GOOGLE_MAPS_LIBRARIES}
@@ -148,6 +151,7 @@ export default function Main() {
           </div>
           <div className="clickable">
             <AddLayerPanel />
+            <ReportButton />
           </div>
         </>
       )}

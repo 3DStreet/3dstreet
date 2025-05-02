@@ -1,0 +1,28 @@
+@use '../../../style/variables.scss';
+
+.textArea {
+  background-color: rgba(0, 0, 0, 0.3);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 4px;
+  color: #ffffff;
+  font-family: 'Inter', sans-serif;
+  font-size: 14px;
+  padding: 8px 12px;
+  width: 100%;
+  resize: vertical;
+
+  &:focus {
+    outline: none;
+    border-color: variables.$purple-500;
+    box-shadow: 0 0 0 2px rgba(119, 77, 238, 0.3);
+  }
+
+  &::placeholder {
+    color: rgba(255, 255, 255, 0.5);
+  }
+
+  &:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+  }
+}

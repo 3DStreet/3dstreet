@@ -1,0 +1,165 @@
+@use '../../../style/variables.scss';
+
+.wrapper {
+  display: flex;
+  flex-direction: column;
+  padding: 20px;
+  max-height: 70vh;
+  overflow-y: auto;
+}
+
+.formContainer {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  width: 100%;
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+
+  label {
+    font-weight: 500;
+    color: #f0f0f0;
+  }
+}
+
+.actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+  margin-top: 16px;
+}
+
+.previewContainer {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  width: 100%;
+}
+
+.previewActions {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 16px;
+}
+
+.markdownPreview {
+  background-color: rgba(255, 255, 255, 0.05);
+  border-radius: 8px;
+  padding: 16px;
+  overflow-y: auto;
+  max-height: 60vh;
+}
+
+.markdownContent {
+  color: #f0f0f0;
+  font-family: 'Inter', sans-serif;
+  line-height: 1.6;
+
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6 {
+    margin-top: 1.5em;
+    margin-bottom: 0.75em;
+    color: #ffffff;
+  }
+
+  h1 {
+    font-size: 1.8em;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+    padding-bottom: 0.3em;
+  }
+
+  h2 {
+    font-size: 1.5em;
+  }
+
+  h3 {
+    font-size: 1.3em;
+  }
+
+  p {
+    margin-bottom: 1em;
+  }
+
+  ul,
+  ol {
+    margin-bottom: 1em;
+    padding-left: 2em;
+  }
+
+  li {
+    margin-bottom: 0.5em;
+  }
+
+  blockquote {
+    border-left: 4px solid variables.$purple-500;
+    padding-left: 1em;
+    margin-left: 0;
+    margin-right: 0;
+    font-style: italic;
+    color: #cccccc;
+  }
+
+  code {
+    background-color: rgba(0, 0, 0, 0.3);
+    padding: 0.2em 0.4em;
+    border-radius: 3px;
+    font-family: monospace;
+  }
+
+  pre {
+    background-color: rgba(0, 0, 0, 0.3);
+    padding: 1em;
+    border-radius: 5px;
+    overflow-x: auto;
+    margin-bottom: 1em;
+  }
+
+  img {
+    max-width: 100%;
+    height: auto;
+    display: block;
+    margin: 1.5em auto;
+    border: 1px dashed #666;
+    padding: 1em;
+    background-color: rgba(0, 0, 0, 0.2);
+    text-align: center;
+    font-style: italic;
+    color: #aaa;
+  }
+
+  .imagePlaceholder {
+    display: block;
+    margin: 1.5em auto;
+    border: 1px dashed #666;
+    padding: 1em;
+    background-color: rgba(0, 0, 0, 0.2);
+    text-align: center;
+    font-style: italic;
+    color: #aaa;
+  }
+
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-bottom: 1em;
+  }
+
+  th,
+  td {
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    padding: 0.5em;
+    text-align: left;
+  }
+
+  th {
+    background-color: rgba(255, 255, 255, 0.1);
+  }
+}
