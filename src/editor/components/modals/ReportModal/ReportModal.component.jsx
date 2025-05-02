@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Modal from '../Modal.jsx';
 import useStore from '@/store.js';
 import styles from './ReportModal.module.scss';
@@ -20,6 +20,23 @@ export const ReportModal = () => {
   });
 
   const [isGenerating, setIsGenerating] = useState(false);
+
+  // Load project info data from #memory entity when modal opens
+  useEffect(() => {
+    if (isOpen) {
+      const memoryEntity = document.getElementById('memory');
+      if (memoryEntity && memoryEntity.hasAttribute('project-info')) {
+        const projectInfo = memoryEntity.getAttribute('project-info');
+        setFormData({
+          description: projectInfo.description || '',
+          location: projectInfo.location || '',
+          currentCondition: projectInfo.currentCondition || '',
+          problemStatement: projectInfo.problemStatement || '',
+          proposedSolutions: projectInfo.proposedSolutions || ''
+        });
+      }
+    }
+  }, [isOpen]);
 
   const onClose = () => {
     setModal(null);
@@ -45,6 +62,42 @@ export const ReportModal = () => {
 
   const generateReport = () => {
     setIsGenerating(true);
+
+    // Update project-info component on #memory entity
+    const memoryEntity = document.getElementById('memory');
+    if (memoryEntity) {
+      // Check if component exists and update or add as needed
+      if (memoryEntity.hasAttribute('project-info')) {
+        AFRAME.INSPECTOR.execute('entityupdate', {
+          entity: memoryEntity,
+          component: 'project-info',
+          value: {
+            description: formData.description,
+            location: formData.location,
+            currentCondition: formData.currentCondition,
+            problemStatement: formData.problemStatement,
+            proposedSolutions: formData.proposedSolutions
+          }
+        });
+      } else {
+        AFRAME.INSPECTOR.execute('componentadd', {
+          entity: memoryEntity,
+          component: 'project-info',
+          value: {
+            description: formData.description,
+            location: formData.location,
+            currentCondition: formData.currentCondition,
+            problemStatement: formData.problemStatement,
+            proposedSolutions: formData.proposedSolutions
+          }
+        });
+      }
+
+      // Select the entity to update the inspector panel
+      setTimeout(() => {
+        AFRAME.INSPECTOR.selectEntity(memoryEntity);
+      }, 0);
+    }
 
     // Log form data to console
     console.log('Generating report with the following data:', formData);
