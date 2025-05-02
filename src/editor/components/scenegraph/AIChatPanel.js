@@ -793,7 +793,7 @@ const AIChatPanel = () => {
         $ai_model: AI_MODEL_ID,
         $ai_provider: 'vertexai',
         $ai_trace_id: AI_CONVERSATION_ID,
-        $ai_input: [{ role: 'user', content: prompt }],
+        $ai_input: [{ role: 'user', content: input }],
         $ai_input_tokens: response.usageMetadata.promptTokenCount,
         $ai_output_choices: [{ role: 'assistant', content: responseText }],
         $ai_output_tokens: response.usageMetadata.candidatesTokenCount
