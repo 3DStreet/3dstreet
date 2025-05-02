@@ -686,7 +686,7 @@ const AIChatPanel = () => {
       }
       
       ## Project Information
-      The scene may contain a project-info component on the "project" entityId that stores information about the current project. When users mention details about their project, you should update this component.
+      The scene may contain a project-info component on the "memory" entityId that stores information about the current project. When users mention details about their project, you should update this component.
       
       The project-info component has the following fields:
       - location: Colloquial description of project location
@@ -696,7 +696,7 @@ const AIChatPanel = () => {
       
       To update the project-info component, use the entityUpdate function:
       {
-        "entityId": "project",
+        "entityId": "memory",
         "component": "project-info",
         "property": "location",
         "value": "Main Street Corridor Between 123rd and 124th Streets"
@@ -1238,52 +1238,6 @@ const AIChatPanel = () => {
                 entity.removeChild(segmentEl);
 
                 console.log('Removed segment at segmentIndex', segmentIndex);
-              } else if (call.name === 'projectInfoUpdate') {
-                // Handle project info update
-                const args = call.args;
-
-                // Get the project info entity
-                let projectInfoEntity = document.querySelector(
-                  '#project-info-entity'
-                );
-
-                // If the entity doesn't exist, create it
-                if (!projectInfoEntity) {
-                  console.log('Creating project info entity');
-                  projectInfoEntity = document.createElement('a-entity');
-                  projectInfoEntity.setAttribute('id', 'project-info-entity');
-                  projectInfoEntity.setAttribute('project-info', {});
-
-                  // Add to the scene under user layers
-                  const userLayers =
-                    document.querySelector('#user-layers') ||
-                    document.querySelector('a-scene');
-                  userLayers.appendChild(projectInfoEntity);
-                }
-
-                // Update the project info properties
-                for (const key in args) {
-                  if (args[key]) {
-                    projectInfoEntity.setAttribute(
-                      'project-info',
-                      key,
-                      args[key]
-                    );
-                  }
-                }
-
-                // Update function call status to success
-                setMessages((prev) =>
-                  prev.map((msg) =>
-                    msg.type === 'functionCall' && msg.id === functionCallObj.id
-                      ? {
-                          ...msg,
-                          status: 'success',
-                          result: 'Project info updated successfully'
-                        }
-                      : msg
-                  )
-                );
               } else {
                 throw new Error(`Unknown operation: ${operation}`);
               }

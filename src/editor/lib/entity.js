@@ -10,7 +10,8 @@ import {
   SunIcon,
   VideoCameraIcon,
   LayersIcon,
-  Object24IconCyan
+  Object24IconCyan,
+  PenPaperIconCyan
 } from '../icons';
 
 /**
@@ -613,6 +614,8 @@ export function getEntityIcon(entity) {
       return <LayersIcon />;
     case 'cameraRig':
       return <VideoCameraIcon />;
+    case 'memory':
+      return <PenPaperIconCyan />;
     default:
       return <Object24IconCyan />;
   }
