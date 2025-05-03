@@ -102,7 +102,7 @@ export const ReportModal = () => {
     // Create a report prompt to send to the LLM
     const reportPrompt = `Create a report (also called a study) for a street improvement project using the information from the project description and scene graph.
     Please expand upon information from the description as given your understanding of modern transportation planning, using your knowledge of best practices combined with information from the scene and the user to create a plausible street improvement project.
-    Do not call any function (don't update memory) and do not respond with affirmation message, since the output of your next message will be copied by the user as the entire report.
+    Do not respond with affirmation message, since the output of your next message will be copied by the user as the entire report.
     
     Project Description: ${formData.description}
     Location: ${formData.location}
@@ -110,8 +110,7 @@ export const ReportModal = () => {
     Problem Statement: ${formData.problemStatement}
     Proposed Solutions: ${formData.proposedSolutions}
     
-    For each section suggest at least one picture in markdown format with alt text describing what is in the picture, with instructions for what is the target of the camera and the camera's relative position to the target.
-    
+    Optional, generate a screenshot using the takeSnapshot function call. 
     `;
 
     // Show the AI Chat Panel

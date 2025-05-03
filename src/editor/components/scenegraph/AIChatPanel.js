@@ -116,6 +116,20 @@ const FunctionCallMessage = ({ functionCall }) => {
   );
 };
 
+// Snapshot message component
+const SnapshotMessage = ({ snapshot }) => {
+  const { caption, imageData } = snapshot;
+
+  return (
+    <div className={`chat-message snapshot ${styles.snapshotContainer}`}>
+      <div className={styles.snapshotCaption}>{caption}</div>
+      <div className={styles.snapshotImageWrapper}>
+        <img src={imageData} className={styles.snapshotImage} alt={caption} />
+      </div>
+    </div>
+  );
+};
+
 // Helper component to render message content with JSON formatting and Markdown
 const MessageContent = ({ content, isAssistant = false }) => {
   // Only show copy button for messages longer than this threshold
@@ -462,6 +476,19 @@ const entityTools = {
         },
         optionalProperties: ['segmentIndex', 'segment']
       })
+    },
+    {
+      name: 'takeSnapshot',
+      description:
+        'Take a snapshot of the current camera view and include it in the chat',
+      parameters: Schema.object({
+        properties: {
+          caption: Schema.string({
+            description: 'Optional caption to display with the snapshot'
+          })
+        },
+        optionalProperties: ['caption']
+      })
     }
   ]
 };
@@ -492,7 +519,8 @@ const AIChatPanel = () => {
       3. If the user is asking to create or modify a managed street, use the managedStreetCreate or managedStreetUpdate functions
       4. If the user needs help, provide relevant guidance about the 3DStreet editor
       5. If the user provides information about their project, update the appropriate properties in the project-info component on entityId "project"
-      6. If you are asking if there is something else you can do, you can offer to tell a dad joke, but maximum once per session.
+      6. You can use the takeSnapshot function to include images of the current view in the chat. This is very helpful for report generation.
+      7. If you are asking if there is something else you can do, you can offer to tell a dad joke, but maximum once per session.
 
       IMPORTANT: When the user asks for you to do a command, DO NOT ask clarifying questions before doing the command. Remember the user can always undo the command if they make a mistake or modify something after an initial street, model, segment, etc. is placed. For example if a user wants a street, you could immediately create a default two-way street with bike lanes using the managedStreetCreate function without first asking for details about dimensions, segments, or position - just create the default street.
 
@@ -1279,6 +1307,130 @@ const AIChatPanel = () => {
                     : msg
                 )
               );
+            } else if (call.name === 'takeSnapshot') {
+              // Get the caption if provided
+              const caption =
+                call.args.caption || 'Snapshot of the current view';
+
+              try {
+                // Get the screenshot element
+                const screenshotEl = document.getElementById('screenshot');
+                if (!screenshotEl) {
+                  throw new Error('Screenshot element not found');
+                }
+
+                // Make sure the screenshot element is playing
+                if (!screenshotEl.isPlaying) {
+                  screenshotEl.play();
+                }
+
+                // Create a canvas to capture the screenshot
+                let screenshotCanvas =
+                  document.querySelector('#screenshotCanvas');
+                if (!screenshotCanvas) {
+                  screenshotCanvas = document.createElement('canvas');
+                  screenshotCanvas.id = 'screenshotCanvas';
+                  screenshotCanvas.hidden = true;
+                  document.body.appendChild(screenshotCanvas);
+                }
+
+                // Render the scene to the canvas
+                const renderer = AFRAME.scenes[0].renderer;
+
+                // Hide helpers if inspector is open
+                const inspector = AFRAME.INSPECTOR;
+                if (inspector && inspector.opened) {
+                  inspector.sceneHelpers.visible = false;
+                }
+
+                // Render one frame
+                renderer.render(
+                  AFRAME.scenes[0].object3D,
+                  AFRAME.scenes[0].camera
+                );
+
+                // Set canvas dimensions
+                screenshotCanvas.width = renderer.domElement.width;
+                screenshotCanvas.height = renderer.domElement.height;
+
+                // Draw the rendered frame to the canvas
+                const ctx = screenshotCanvas.getContext('2d');
+                ctx.drawImage(renderer.domElement, 0, 0);
+
+                // Add title if needed (similar to screentock component)
+                const sceneTitle = useStore.getState().sceneTitle;
+                if (sceneTitle) {
+                  ctx.font = '30px Lato';
+                  ctx.textAlign = 'center';
+                  ctx.fillStyle = '#FFFFFF';
+                  ctx.strokeStyle = '#000000';
+                  ctx.lineWidth = 3;
+                  ctx.strokeText(
+                    sceneTitle,
+                    screenshotCanvas.width / 2,
+                    screenshotCanvas.height - 43
+                  );
+                  ctx.fillText(
+                    sceneTitle,
+                    screenshotCanvas.width / 2,
+                    screenshotCanvas.height - 43
+                  );
+                }
+
+                // Add 3DStreet logo if available
+                const logoImg = document.querySelector('#screenshot-img');
+                if (logoImg) {
+                  ctx.drawImage(logoImg, 0, 0, 135, 43, 40, 30, 270, 86);
+                }
+
+                // Get the image data as a data URL
+                const imageData = screenshotCanvas.toDataURL('image/png');
+
+                // Show helpers again if inspector is open
+                if (inspector && inspector.opened) {
+                  inspector.sceneHelpers.visible = true;
+                }
+
+                // Create a container for the snapshot message with the image data
+                const snapshotMessage = {
+                  type: 'snapshot',
+                  id: Date.now() + Math.random().toString(16).slice(2),
+                  caption: caption,
+                  imageData: imageData,
+                  timestamp: new Date()
+                };
+
+                // Add the snapshot message to the messages array
+                setMessages((prev) => [...prev, snapshotMessage]);
+
+                // Update function call status to success
+                setMessages((prev) =>
+                  prev.map((msg) =>
+                    msg.type === 'functionCall' && msg.id === functionCallObj.id
+                      ? {
+                          ...msg,
+                          status: 'success',
+                          result: 'Snapshot taken successfully'
+                        }
+                      : msg
+                  )
+                );
+              } catch (error) {
+                console.error('Error taking snapshot:', error);
+
+                // Update function call status to error
+                setMessages((prev) =>
+                  prev.map((msg) =>
+                    msg.type === 'functionCall' && msg.id === functionCallObj.id
+                      ? {
+                          ...msg,
+                          status: 'error',
+                          result: `Error taking snapshot: ${error.message}`
+                        }
+                      : msg
+                  )
+                );
+              }
             }
           } catch (error) {
             console.error(`Error executing function ${call.name}:`, error);
@@ -1412,26 +1564,35 @@ const AIChatPanel = () => {
             </div>
           )}
           <div ref={chatContainerRef} className="chat-messages">
-            {messages.map((message, index) =>
-              message.type === 'functionCall' ? (
-                <FunctionCallMessage key={message.id} functionCall={message} />
-              ) : (
-                <div key={index} className={`chat-message ${message.role}`}>
-                  {message.role === 'assistant' && index === 0 && (
-                    <div className="assistant-avatar">
-                      <img
-                        src="../../../ui_assets/cards/icons/dadbot.jpg"
-                        alt="AI Assistant"
-                      />
-                    </div>
-                  )}
-                  <MessageContent
-                    content={message.content}
-                    isAssistant={message.role === 'assistant'}
+            {messages.map((message, index) => {
+              if (message.type === 'functionCall') {
+                return (
+                  <FunctionCallMessage
+                    key={message.id}
+                    functionCall={message}
                   />
-                </div>
-              )
-            )}
+                );
+              } else if (message.type === 'snapshot') {
+                return <SnapshotMessage key={message.id} snapshot={message} />;
+              } else {
+                return (
+                  <div key={index} className={`chat-message ${message.role}`}>
+                    {message.role === 'assistant' && index === 0 && (
+                      <div className="assistant-avatar">
+                        <img
+                          src="../../../ui_assets/cards/icons/dadbot.jpg"
+                          alt="AI Assistant"
+                        />
+                      </div>
+                    )}
+                    <MessageContent
+                      content={message.content}
+                      isAssistant={message.role === 'assistant'}
+                    />
+                  </div>
+                );
+              }
+            })}
             {isLoading && <div className="loading-indicator">Thinking...</div>}
           </div>
 
