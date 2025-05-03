@@ -17,12 +17,16 @@ const AI_MODEL_ID = 'gemini-2.0-flash';
 let AI_CONVERSATION_ID = uuidv4();
 
 // Helper component for the copy button
-const CopyButton = ({ jsonData }) => {
+const CopyButton = ({ jsonData, textContent }) => {
   const [copied, setCopied] = useState(false);
 
   const handleCopy = async () => {
     try {
-      await navigator.clipboard.writeText(JSON.stringify(jsonData, null, 2));
+      if (jsonData) {
+        await navigator.clipboard.writeText(JSON.stringify(jsonData, null, 2));
+      } else if (textContent) {
+        await navigator.clipboard.writeText(textContent);
+      }
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
     } catch (err) {
@@ -113,7 +117,9 @@ const FunctionCallMessage = ({ functionCall }) => {
 };
 
 // Helper component to render message content with JSON formatting and Markdown
-const MessageContent = ({ content }) => {
+const MessageContent = ({ content, isAssistant = false }) => {
+  // Only show copy button for messages longer than this threshold
+  const COPY_BUTTON_THRESHOLD = 200;
   const formatContent = (text) => {
     const parts = [];
     let currentIndex = 0;
@@ -168,6 +174,11 @@ const MessageContent = ({ content }) => {
           ) : (
             <div className={styles.markdownContent}>
               <ReactMarkdown>{part.content}</ReactMarkdown>
+              {isAssistant && part.content.length > COPY_BUTTON_THRESHOLD && (
+                <div className={styles.markdownFooter}>
+                  <CopyButton textContent={part.content} />
+                </div>
+              )}
             </div>
           )}
         </div>
@@ -1414,7 +1425,10 @@ const AIChatPanel = () => {
                       />
                     </div>
                   )}
-                  <MessageContent content={message.content} />
+                  <MessageContent
+                    content={message.content}
+                    isAssistant={message.role === 'assistant'}
+                  />
                 </div>
               )
             )}

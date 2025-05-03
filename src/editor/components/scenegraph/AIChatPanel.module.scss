@@ -1,6 +1,7 @@
 @use '../../style/variables.scss';
 
 .markdownContent {
+  position: relative; // This is needed for the absolute positioned footer
   h1,
   h2,
   h3,
@@ -85,6 +86,42 @@
 
     th {
       background-color: rgba(0, 0, 0, 0.05);
+    }
+  }
+
+  .markdownFooter {
+    position: absolute;
+    bottom: 8px;
+    right: 8px;
+    opacity: 0;
+    transition: opacity 0.2s ease;
+
+    :global(.copy-button) {
+      font-size: 0.8em;
+      padding: 2px 6px;
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      background-color: rgba(0, 0, 0, 0.05);
+      border: 1px solid rgba(0, 0, 0, 0.1);
+      border-radius: 4px;
+      cursor: pointer;
+      transition: background-color 0.2s ease;
+
+      &:hover {
+        background-color: rgba(0, 0, 0, 0.1);
+      }
+
+      svg {
+        width: 14px;
+        height: 14px;
+      }
+    }
+  }
+
+  &:hover {
+    .markdownFooter {
+      opacity: 1;
     }
   }
 }
