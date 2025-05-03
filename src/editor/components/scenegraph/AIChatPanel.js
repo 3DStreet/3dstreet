@@ -11,6 +11,7 @@ import useStore from '@/store';
 import styles from './AIChatPanel.module.scss';
 import posthog from 'posthog-js';
 import { v4 as uuidv4 } from 'uuid';
+import ReactMarkdown from 'react-markdown';
 
 const AI_MODEL_ID = 'gemini-2.0-flash';
 let AI_CONVERSATION_ID = uuidv4();
@@ -111,7 +112,7 @@ const FunctionCallMessage = ({ functionCall }) => {
   );
 };
 
-// Helper component to render message content with JSON formatting
+// Helper component to render message content with JSON formatting and Markdown
 const MessageContent = ({ content }) => {
   const formatContent = (text) => {
     const parts = [];
@@ -165,7 +166,9 @@ const MessageContent = ({ content }) => {
               <JSONPretty data={part.content} />
             </>
           ) : (
-            <span>{part.content}</span>
+            <div className={styles.markdownContent}>
+              <ReactMarkdown>{part.content}</ReactMarkdown>
+            </div>
           )}
         </div>
       ))}
