@@ -99,14 +99,63 @@ export const ReportModal = () => {
       }, 0);
     }
 
-    // Log form data to console
-    console.log('Generating report with the following data:', formData);
+    // Create a report prompt to send to the LLM
+    const reportPrompt = `Create a report (also called a study) for a street improvement project using the information from the project description and scene graph. Please expand upon information from the description as though you are a transportation planner professional, using your knowledge of best practices combined with information from the scene and the user to create a plausible street improvement project.
 
-    // Simulate API call
-    setTimeout(() => {
+Project Description: ${formData.description}
+Location: ${formData.location}
+Current Conditions: ${formData.currentCondition}
+Problem Statement: ${formData.problemStatement}
+Proposed Solutions: ${formData.proposedSolutions}`;
+
+    // Show the AI Chat Panel
+    const chatPanelContainer = document.querySelector('.chat-panel-container');
+    if (chatPanelContainer) {
+      chatPanelContainer.style.display = 'block';
+
+      // Make sure the collapsible is expanded
+      const collapsibleContent = chatPanelContainer.querySelector(
+        '.collapsible__content'
+      );
+      if (collapsibleContent && collapsibleContent.style.display === 'none') {
+        const collapsibleHeader = chatPanelContainer.querySelector(
+          '.collapsible__header'
+        );
+        if (collapsibleHeader) {
+          collapsibleHeader.click();
+        }
+      }
+
+      // Find the input field and send button
+      const inputField = chatPanelContainer.querySelector('input[type="text"]');
+      const sendButton = chatPanelContainer.querySelector('.chat-input button');
+
+      if (inputField && sendButton) {
+        // Set the input value to our report prompt
+        inputField.value = reportPrompt;
+
+        // Trigger the input event to ensure React state is updated
+        const inputEvent = new Event('input', { bubbles: true });
+        inputField.dispatchEvent(inputEvent);
+
+        // Click the send button to submit the prompt
+        setTimeout(() => {
+          sendButton.click();
+          setIsGenerating(false);
+          onClose();
+        }, 100);
+      } else {
+        console.error(
+          'Could not find input field or send button in AI Chat Panel'
+        );
+        setIsGenerating(false);
+        onClose();
+      }
+    } else {
+      console.error('Could not find AI Chat Panel container');
       setIsGenerating(false);
       onClose();
-    }, 1000);
+    }
   };
 
   return (
