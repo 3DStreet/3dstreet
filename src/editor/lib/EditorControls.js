@@ -159,6 +159,8 @@ THREE.EditorControls = function (_object, domElement) {
 
   this.zoom = function (delta) {
     var distance = object.position.distanceTo(center);
+    object.far = Math.min(100000000, Math.max(20000, distance * 10));
+    object.updateProjectionMatrix();
 
     // Zoom speed is greater with distance and has a minimum speed closest to the center.
     // If we go past the center, we move the center 2m in front of the camera.
