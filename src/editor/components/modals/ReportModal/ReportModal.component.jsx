@@ -100,17 +100,9 @@ export const ReportModal = () => {
     }
 
     // Create a report prompt to send to the LLM
-    const reportPrompt = `Create a report (also called a study) for a street improvement project using the information from the project description and scene graph.
-    Please expand upon information from the description as given your understanding of modern transportation planning, using your knowledge of best practices combined with information from the scene and the user to create a plausible street improvement project.
-    Do not respond with affirmation message, since the output of your next message will be copied by the user as the entire report.
-    
-    Project Description: ${formData.description}
-    Location: ${formData.location}
-    Current Conditions: ${formData.currentCondition}
-    Problem Statement: ${formData.problemStatement}
-    Proposed Solutions: ${formData.proposedSolutions}
-    
-    Optional, generate a screenshot using the takeSnapshot function call. 
+    const reportPrompt = `Create a report for a street improvement project using the information from the user-provided project description inside of project-info component of #memory entity, and the scene graph.
+    Please expand upon project-info description given your understanding of modern transportation planning.
+    Optional, generate one or more screenshots using the takeSnapshot function call. Do NOT update memory project-info component when writing the report.
     `;
 
     // Show the AI Chat Panel
@@ -164,7 +156,12 @@ export const ReportModal = () => {
   };
 
   return (
-    <Modal isOpen={isOpen} onClose={onClose} title="Generate New Report">
+    <Modal
+      id="report-modal"
+      isOpen={isOpen}
+      onClose={onClose}
+      title="Generate New Report"
+    >
       <div className={styles.wrapper}>
         <div className={styles.formContainer}>
           <div className={styles.field}>
@@ -214,7 +211,7 @@ export const ReportModal = () => {
           </div>
 
           <div className={styles.field}>
-            <label htmlFor="proposedSolutions">Proposed Solutions</label>
+            <label htmlFor="proposedSolutions">Proposed Solution(s)</label>
             <TextArea
               id="proposedSolutions"
               name="proposedSolutions"
