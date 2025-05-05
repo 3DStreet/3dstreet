@@ -5,15 +5,14 @@ import Collapsible from '../Collapsible.js';
 import JSONPretty from 'react-json-pretty';
 import 'react-json-pretty/themes/monikai.css';
 import { Copy32Icon } from '../../icons/index.js';
-import { Parser } from 'expr-eval';
 import { useAuthContext } from '../../contexts';
 import useStore from '@/store';
 import styles from './AIChatPanel.module.scss';
 import posthog from 'posthog-js';
 import { v4 as uuidv4 } from 'uuid';
 import ReactMarkdown from 'react-markdown';
-import Events from '../../lib/Events.js';
 import { systemPrompt } from './AIChatPrompt.js';
+import AIChatTools from './AIChatTools.js';
 
 const AI_MODEL_ID = 'gemini-2.0-flash';
 let AI_CONVERSATION_ID = uuidv4();
@@ -43,32 +42,6 @@ const CopyButton = ({ jsonData, textContent }) => {
     </button>
   );
 };
-
-function evaluateExpression(expression) {
-  try {
-    const parser = new Parser();
-    const cleanExpr = expression.trim();
-    if (!/^[-+0-9\s()*/%.]*$/.test(cleanExpr)) {
-      throw new Error('Invalid expression: contains forbidden characters');
-    }
-    return parser.evaluate(cleanExpr);
-  } catch (error) {
-    console.error('Error evaluating expression:', error);
-    throw error;
-  }
-}
-
-function executeUpdateCommand(command) {
-  if (command.command && command.payload) {
-    const updateCommandPayload = {
-      entity: document.getElementById(command.payload.entityId),
-      component: command.payload.component,
-      property: command.payload.property,
-      value: command.payload.value
-    };
-    AFRAME.INSPECTOR.execute(command.command, updateCommandPayload);
-  }
-}
 
 // Function call message component
 const FunctionCallMessage = ({ functionCall }) => {
@@ -542,7 +515,7 @@ const AIChatPanel = () => {
     };
 
     initializeAI();
-  }, [systemPrompt]); // Added systemPrompt as a dependency
+  }, [systemPrompt]);
 
   // Hide the chat panel by default when component mounts
   useEffect(() => {
@@ -644,612 +617,47 @@ const AIChatPanel = () => {
                   `Unknown function: ${call.name}. Please use one of the available functions.`
                 );
               }
-              if (call.name === 'entityUpdate') {
-                const args = call.args;
 
-                // Extract fields with appropriate fallbacks
-                const entityId = args.entityId;
-                const component = args.component;
-                const property = args.property || null;
+              // Execute the function using the AIChatTools module
+              const result = await AIChatTools.executeFunction(
+                call.name,
+                call.args
+              );
 
-                // Create the command payload
-                const payload = {
-                  entityId: entityId,
-                  component: component
+              // Special handling for takeSnapshot function
+              if (call.name === 'takeSnapshot' && result && result.imageData) {
+                // Create a container for the snapshot message with the image data
+                const snapshotMessage = {
+                  type: 'snapshot',
+                  id: Date.now() + Math.random().toString(16).slice(2),
+                  caption: result.caption,
+                  imageData: result.imageData,
+                  timestamp: new Date()
                 };
 
-                // Add property if specified (important for position.x, position.y, etc.)
-                if (property) {
-                  payload.property = property;
-                }
-
-                // Set the value - either from direct value or expression
-                if (args.expressionForValue) {
-                  try {
-                    // Simple numeric expression evaluation
-                    const expr = args.expressionForValue.trim();
-                    // Simple safety check - only allow basic math
-                    if (!/^[-+0-9\s()*/%.]*$/.test(expr)) {
-                      throw new Error(
-                        'Invalid expression: contains forbidden characters'
-                      );
-                    }
-
-                    // Use Function constructor for simple math evaluation
-                    // This is safer than eval() but still handles basic arithmetic
-                    // payload.value = new Function(`return ${expr}`)();
-                    payload.value = evaluateExpression(expr);
-                  } catch (error) {
-                    throw new Error(
-                      `Failed to evaluate expression "${args.expressionForValue}": ${error.message}`
-                    );
-                  }
-                } else if (args.value) {
-                  payload.value = args.value;
-                } else {
-                  throw new Error(
-                    'Either value or expressionForValue must be provided'
-                  );
-                }
-
-                // Execute the command
-                const commandData = {
-                  command: 'entityupdate',
-                  payload
-                };
-
-                executeUpdateCommand(commandData);
-
-                // Update function call status to success
-                setMessages((prev) =>
-                  prev.map((msg) =>
-                    msg.type === 'functionCall' && msg.id === functionCallObj.id
-                      ? {
-                          ...msg,
-                          status: 'success',
-                          result: 'Entity updated successfully'
-                        }
-                      : msg
-                  )
-                );
-              } else if (call.name === 'entityCreateMixin') {
-                const newCommandPayload = {
-                  mixin: call.args.mixin,
-                  components: {
-                    position: call.args.position || '0 0 0',
-                    rotation: call.args.rotation || '0 0 0',
-                    scale: call.args.scale || '1 1 1'
-                  }
-                };
-                AFRAME.INSPECTOR.execute('entitycreate', newCommandPayload);
-
-                // Update function call status to success
-                setMessages((prev) =>
-                  prev.map((msg) =>
-                    msg.type === 'functionCall' && msg.id === functionCallObj.id
-                      ? {
-                          ...msg,
-                          status: 'success',
-                          result: 'Entity created successfully'
-                        }
-                      : msg
-                  )
-                );
-              } else if (call.name === 'managedStreetCreate') {
-                // Create a new managed street entity with proper structure
-                const streetData = {
-                  name: call.args.name || 'New Managed Street',
-                  length: parseFloat(call.args.length || '60'),
-                  segments: []
-                };
-
-                // Ensure each segment has all required properties
-                if (call.args.segments && Array.isArray(call.args.segments)) {
-                  streetData.segments = call.args.segments.map((segment) => {
-                    // Ensure all required properties are present with defaults if missing
-                    return {
-                      name:
-                        segment.name ||
-                        `${segment.type || 'segment'} • default`,
-                      type: segment.type || 'drive-lane',
-                      width:
-                        typeof segment.width === 'number' ? segment.width : 3,
-                      level:
-                        typeof segment.level === 'number' ? segment.level : 0,
-                      direction: segment.direction || 'none',
-                      color: segment.color || '#888888',
-                      surface: segment.surface || 'asphalt',
-                      // Include generated content if provided
-                      ...(segment.generated
-                        ? { generated: segment.generated }
-                        : {})
-                    };
-                  });
-                }
-
-                // Calculate total width for proper alignment
-                const totalWidth = streetData.segments.reduce(
-                  (sum, segment) => sum + segment.width,
-                  0
-                );
-                streetData.width = totalWidth;
-
-                // Generate a unique ID for the new entity
-                const uniqueId =
-                  'managed-street-' + Math.random().toString(36).substr(2, 9);
-
-                // Create the entity definition for AFRAME.INSPECTOR.execute
-                const definition = {
-                  id: uniqueId,
-                  parent: '#street-container', // This ensures it's added to the street-container
-                  components: {
-                    position: call.args.position || '0 0.01 0', // Default position slightly above ground
-                    'managed-street': {
-                      sourceType: 'json-blob',
-                      sourceValue: JSON.stringify(streetData),
-                      showVehicles: true,
-                      showStriping: true,
-                      synchronize: true
-                    },
-                    'data-layer-name': streetData.name || 'New Managed Street'
-                  }
-                };
-
-                // Use AFRAME.INSPECTOR.execute to create the entity, which properly integrates with the inspector
-                // and ensures all components are initialized correctly
-                AFRAME.INSPECTOR.execute('entitycreate', definition);
-
-                // Update function call status to success
-                setMessages((prev) =>
-                  prev.map((msg) =>
-                    msg.type === 'functionCall' && msg.id === functionCallObj.id
-                      ? {
-                          ...msg,
-                          status: 'success',
-                          result: 'Managed street created successfully'
-                        }
-                      : msg
-                  )
-                );
-              } else if (call.name === 'managedStreetUpdate') {
-                const entityId = call.args.entityId;
-                const operation = call.args.operation;
-                const entity = document.getElementById(entityId);
-
-                if (!entity) {
-                  throw new Error(`Entity with ID ${entityId} not found`);
-                }
-
-                // Get all segment entities (direct children with street-segment component)
-                const segmentEntities = Array.from(entity.children).filter(
-                  (child) => child.hasAttribute('street-segment')
-                );
-
-                if (operation === 'add-segment') {
-                  // Add a new segment
-                  const segment = call.args.segment;
-                  const segmentIndex = call.args.segmentIndex;
-
-                  if (!segment || !segment.type) {
-                    throw new Error(
-                      'Segment must have at least a type property'
-                    );
-                  }
-
-                  // Create a new segment entity
-                  const segmentEl = document.createElement('a-entity');
-
-                  // Set default values for any missing properties
-                  const segmentData = {
-                    type: segment.type,
-                    width:
-                      typeof segment.width === 'number' ? segment.width : 3,
-                    length:
-                      entity.components['managed-street'].data.length || 60,
-                    level:
-                      typeof segment.level === 'number' ? segment.level : 0,
-                    direction: segment.direction || 'none',
-                    color: segment.color || '#888888',
-                    surface: segment.surface || 'asphalt'
-                  };
-
-                  // Set the segment component with properties
-                  segmentEl.setAttribute('street-segment', segmentData);
-
-                  // Set the layer name for the segment
-                  const layerName = segment.name || `${segment.type} • default`;
-                  segmentEl.setAttribute('data-layer-name', layerName);
-
-                  // Add the segment to the managed street entity at the specified index or at the end if no index
-                  if (segmentIndex !== undefined) {
-                    // Validate the segment index
-                    if (
-                      segmentIndex < 0 ||
-                      segmentIndex > segmentEntities.length
-                    ) {
-                      throw new Error(
-                        `Invalid segmentIndex: ${segmentIndex}. Must be between 0 and ${segmentEntities.length}`
-                      );
-                    }
-
-                    // If we have a valid index, insert at that position
-                    if (segmentIndex < segmentEntities.length) {
-                      // Insert before the segment at the specified index
-                      entity.insertBefore(
-                        segmentEl,
-                        segmentEntities[segmentIndex]
-                      );
-                    } else {
-                      // If the index is equal to the length, append to the end
-                      entity.appendChild(segmentEl);
-                    }
-                  } else {
-                    // Default behavior: append to the end
-                    entity.appendChild(segmentEl);
-                  }
-
-                  // If segment has generated content, add it after the segment is loaded
-                  if (segment.generated) {
-                    segmentEl.addEventListener('loaded', () => {
-                      segmentEl.components[
-                        'street-segment'
-                      ].generateComponentsFromSegmentObject(segment);
-                    });
-                  }
-                } else if (operation === 'update-segment') {
-                  // Update an existing segment
-                  const segmentIndex = call.args.segmentIndex;
-                  const segment = call.args.segment;
-
-                  if (segmentIndex === undefined || !segment) {
-                    throw new Error(
-                      'segmentIndex and segment are required for update-segment operation'
-                    );
-                  }
-
-                  if (
-                    segmentIndex < 0 ||
-                    segmentIndex >= segmentEntities.length
-                  ) {
-                    throw new Error(`Invalid segmentIndex: ${segmentIndex}`);
-                  }
-
-                  // Get the segment entity to update
-                  const segmentEl = segmentEntities[segmentIndex];
-
-                  // Get current segment data
-                  const currentData = segmentEl.getAttribute('street-segment');
-
-                  // Update only the properties that were provided
-                  const updatedData = { ...currentData };
-
-                  // Update properties
-                  Object.keys(segment).forEach((key) => {
-                    if (key !== 'generated') {
-                      // Handle generated separately
-                      updatedData[key] = segment[key];
-                    }
-                  });
-
-                  // Update the street-segment component
-                  segmentEl.setAttribute('street-segment', updatedData);
-
-                  // Update the layer name if provided
-                  if (segment.name) {
-                    segmentEl.setAttribute('data-layer-name', segment.name);
-                  }
-
-                  // If generated content is provided, update it
-                  if (segment.generated) {
-                    // Check if we need to remove any generated components
-                    // This handles the case where clones: [] is provided to remove clones
-                    const generatedTypes = [
-                      'clones',
-                      'stencil',
-                      'pedestrians',
-                      'striping',
-                      'rail'
-                    ];
-
-                    generatedTypes.forEach((type) => {
-                      // If the type exists in segment.generated and is an empty array, remove those components
-                      if (
-                        Array.isArray(segment.generated[type]) &&
-                        segment.generated[type].length === 0
-                      ) {
-                        // Find all components of this type on the segment
-                        Object.keys(segmentEl.components).forEach(
-                          (componentName) => {
-                            if (
-                              componentName.startsWith(
-                                `street-generated-${type}`
-                              )
-                            ) {
-                              // Remove the component
-                              segmentEl.removeAttribute(componentName);
-                            }
-                          }
-                        );
-                      } else if (segment.generated[type] === null) {
-                        // If the type is explicitly set to null, also remove those components
-                        // Find all components of this type on the segment
-                        Object.keys(segmentEl.components).forEach(
-                          (componentName) => {
-                            if (
-                              componentName.startsWith(
-                                `street-generated-${type}`
-                              )
-                            ) {
-                              // Remove the component
-                              segmentEl.removeAttribute(componentName);
-                            }
-                          }
-                        );
-                      }
-                    });
-
-                    // Only call generateComponentsFromSegmentObject if there are non-empty arrays
-                    // or if the generated object has properties other than those we explicitly handled
-                    const hasNonEmptyArrays = generatedTypes.some(
-                      (type) =>
-                        Array.isArray(segment.generated[type]) &&
-                        segment.generated[type].length > 0
-                    );
-
-                    const hasOtherProperties = Object.keys(
-                      segment.generated
-                    ).some((key) => !generatedTypes.includes(key));
-
-                    if (hasNonEmptyArrays || hasOtherProperties) {
-                      // We need to wait for the next tick to ensure the segment component is updated
-                      setTimeout(() => {
-                        segmentEl.components[
-                          'street-segment'
-                        ].generateComponentsFromSegmentObject({
-                          ...updatedData,
-                          generated: segment.generated
-                        });
-                      }, 0);
-                    }
-                  }
-                } else if (operation === 'remove-segment') {
-                  // Remove a segment
-                  const segmentIndex = call.args.segmentIndex;
-
-                  if (segmentIndex === undefined) {
-                    throw new Error(
-                      'segmentIndex is required for remove-segment operation'
-                    );
-                  }
-
-                  if (
-                    segmentIndex < 0 ||
-                    segmentIndex >= segmentEntities.length
-                  ) {
-                    throw new Error(`Invalid segmentIndex: ${segmentIndex}`);
-                  }
-
-                  // Get the segment entity to remove
-                  const segmentEl = segmentEntities[segmentIndex];
-
-                  // Remove the segment from the parent
-                  entity.removeChild(segmentEl);
-                } else {
-                  throw new Error(`Unknown operation: ${operation}`);
-                }
-
-                // Trigger a refresh of the managed street
-                // This will update the alignment and other properties
-                AFRAME.INSPECTOR.execute('entityupdate', {
-                  entity: entity,
-                  component: 'street-align',
-                  property: 'refresh',
-                  value: true
-                });
-
-                // Update function call status to success
-                setMessages((prev) =>
-                  prev.map((msg) =>
-                    msg.type === 'functionCall' && msg.id === functionCallObj.id
-                      ? {
-                          ...msg,
-                          status: 'success',
-                          result: 'Managed street updated successfully'
-                        }
-                      : msg
-                  )
-                );
-              } else if (call.name === 'takeSnapshot') {
-                // Get the caption if provided
-                const caption =
-                  call.args.caption || 'Snapshot of the current view';
-                // Get the focusEntityId if provided
-                const focusEntityId = call.args.focusEntityId;
-
-                try {
-                  // Get the screenshot element
-                  const screenshotEl = document.getElementById('screenshot');
-                  if (!screenshotEl) {
-                    throw new Error('Screenshot element not found');
-                  }
-
-                  // Make sure the screenshot element is playing
-                  if (!screenshotEl.isPlaying) {
-                    screenshotEl.play();
-                  }
-
-                  // Create a canvas to capture the screenshot
-                  let screenshotCanvas =
-                    document.querySelector('#screenshotCanvas');
-                  if (!screenshotCanvas) {
-                    screenshotCanvas = document.createElement('canvas');
-                    screenshotCanvas.id = 'screenshotCanvas';
-                    screenshotCanvas.hidden = true;
-                    document.body.appendChild(screenshotCanvas);
-                  }
-
-                  // Define the function to take the actual snapshot
-                  const takeActualSnapshot = () => {
-                    // Render the scene to the canvas
-                    const renderer = AFRAME.scenes[0].renderer;
-
-                    // Hide helpers if inspector is open
-                    const inspector = AFRAME.INSPECTOR;
-                    if (inspector && inspector.opened) {
-                      inspector.sceneHelpers.visible = false;
-                    }
-
-                    // Render one frame
-                    renderer.render(
-                      AFRAME.scenes[0].object3D,
-                      AFRAME.scenes[0].camera
-                    );
-
-                    // Set canvas dimensions
-                    screenshotCanvas.width = renderer.domElement.width;
-                    screenshotCanvas.height = renderer.domElement.height;
-
-                    // Draw the rendered frame to the canvas
-                    const ctx = screenshotCanvas.getContext('2d');
-                    ctx.drawImage(renderer.domElement, 0, 0);
-
-                    // Add title if needed (similar to screentock component)
-                    const sceneTitle = useStore.getState().sceneTitle;
-                    if (sceneTitle) {
-                      ctx.font = '30px Lato';
-                      ctx.textAlign = 'center';
-                      ctx.fillStyle = '#FFFFFF';
-                      ctx.strokeStyle = '#000000';
-                      ctx.lineWidth = 3;
-                      ctx.strokeText(
-                        sceneTitle,
-                        screenshotCanvas.width / 2,
-                        screenshotCanvas.height - 43
-                      );
-                      ctx.fillText(
-                        sceneTitle,
-                        screenshotCanvas.width / 2,
-                        screenshotCanvas.height - 43
-                      );
-                    }
-
-                    // Add 3DStreet logo if available
-                    const logoImg = document.querySelector('#screenshot-img');
-                    if (logoImg) {
-                      ctx.drawImage(logoImg, 0, 0, 135, 43, 40, 30, 270, 86);
-                    }
-
-                    // Get the image data as a data URL
-                    const imageData = screenshotCanvas.toDataURL('image/png');
-
-                    // Show helpers again if inspector is open
-                    if (inspector && inspector.opened) {
-                      inspector.sceneHelpers.visible = true;
-                    }
-
-                    // Create a container for the snapshot message with the image data
-                    const snapshotMessage = {
-                      type: 'snapshot',
-                      id: Date.now() + Math.random().toString(16).slice(2),
-                      caption: caption,
-                      imageData: imageData,
-                      timestamp: new Date()
-                    };
-
-                    // Add the snapshot message to the messages array
-                    setMessages((prev) => [...prev, snapshotMessage]);
-
-                    // Update function call status to success
-                    setMessages((prev) =>
-                      prev.map((msg) =>
-                        msg.type === 'functionCall' &&
-                        msg.id === functionCallObj.id
-                          ? {
-                              ...msg,
-                              status: 'success',
-                              result: 'Snapshot taken successfully'
-                            }
-                          : msg
-                      )
-                    );
-
-                    return 'Snapshot taken successfully';
-                  };
-
-                  // Focus on entity if focusEntityId is provided
-                  if (focusEntityId) {
-                    // Find the entity by ID
-                    const entity = document.getElementById(focusEntityId);
-                    if (entity && entity.object3D) {
-                      // Emit the objectfocus event with the entity's object3D
-                      Events.emit('objectfocus', entity.object3D);
-
-                      // Get the focus animation component to check when animation completes
-                      const focusAnimationComponent =
-                        document.querySelector('[focus-animation]')?.components[
-                          'focus-animation'
-                        ];
-
-                      if (focusAnimationComponent) {
-                        // Wait for the focus animation to complete
-                        await new Promise((resolve) => {
-                          // Create a function to check if animation is complete
-                          const checkAnimationComplete = () => {
-                            if (!focusAnimationComponent.transitioning) {
-                              const result = takeActualSnapshot();
-                              resolve(result);
-                            } else {
-                              // Check again in 100ms
-                              setTimeout(checkAnimationComplete, 100);
-                            }
-                          };
-
-                          // Start checking after a small delay to ensure animation has started
-                          setTimeout(checkAnimationComplete, 100);
-                        });
-                      } else {
-                        console.warn(
-                          'Focus animation component not found, using fallback timeout'
-                        );
-                        // Fallback to timeout if animation component not found
-                        await new Promise((resolve) => {
-                          setTimeout(() => {
-                            const result = takeActualSnapshot();
-                            resolve(result);
-                          }, 1500); // Increased to 1500ms for camera to focus
-                        });
-                      }
-                    } else {
-                      console.warn(
-                        `Entity with ID ${focusEntityId} not found or has no object3D`
-                      );
-                      takeActualSnapshot();
-                    }
-                  } else {
-                    // If no focusEntityId, take snapshot immediately
-                    takeActualSnapshot();
-                  }
-                } catch (error) {
-                  console.error('Error taking snapshot:', error);
-
-                  // Update function call status to error
-                  setMessages((prev) =>
-                    prev.map((msg) =>
-                      msg.type === 'functionCall' &&
-                      msg.id === functionCallObj.id
-                        ? {
-                            ...msg,
-                            status: 'error',
-                            result: `Error taking snapshot: ${error.message}`
-                          }
-                        : msg
-                    )
-                  );
-                }
+                // Add the snapshot message to the messages array
+                setMessages((prev) => [...prev, snapshotMessage]);
               }
+
+              // Update function call status to success
+              setMessages((prev) =>
+                prev.map((msg) =>
+                  msg.type === 'functionCall' && msg.id === functionCallObj.id
+                    ? {
+                        ...msg,
+                        status: 'success',
+                        result:
+                          typeof result === 'object'
+                            ? call.name === 'takeSnapshot'
+                              ? 'Snapshot taken successfully'
+                              : JSON.stringify(result)
+                            : result
+                      }
+                    : msg
+                )
+              );
             } catch (error) {
               console.error(`Error executing function ${call.name}:`, error);
-
               // Update function call status to error
               setMessages((prev) =>
                 prev.map((msg) =>
@@ -1257,7 +665,7 @@ const AIChatPanel = () => {
                     ? {
                         ...msg,
                         status: 'error',
-                        result: error.message || 'Error executing function'
+                        result: error.message
                       }
                     : msg
                 )
@@ -1267,9 +675,7 @@ const AIChatPanel = () => {
         };
 
         // Start processing function calls
-        processFunctionCalls().catch((error) => {
-          console.error('Error processing function calls:', error);
-        });
+        processFunctionCalls();
       }
 
       // If no text response was found and there were no function calls, show a fallback message
