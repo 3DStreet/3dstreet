@@ -4,6 +4,7 @@ import useStore from '@/store.js';
 import styles from './ReportModal.module.scss';
 import { Button, TextArea, Input } from '@/editor/components/components';
 import { useAuthContext } from '@/editor/contexts';
+import { GeospatialIcon } from '@/editor/icons';
 
 export const ReportModal = () => {
   const setModal = useStore((state) => state.setModal);
@@ -20,6 +21,9 @@ export const ReportModal = () => {
   });
 
   const [isGenerating, setIsGenerating] = useState(false);
+  const [hasGeoLocation, setHasGeoLocation] = useState(false);
+  const [geoCoordinates, setGeoCoordinates] = useState('');
+  const [previousModal, setPreviousModal] = useState(null);
 
   // Load project info data from #memory entity when modal opens
   useEffect(() => {
@@ -35,11 +39,55 @@ export const ReportModal = () => {
           proposedSolutions: projectInfo.proposedSolutions || ''
         });
       }
+
+      // Check if geo location is defined
+      const geoLayer = document.getElementById('reference-layers');
+      if (geoLayer && geoLayer.hasAttribute('street-geo')) {
+        const streetGeo = geoLayer.getAttribute('street-geo');
+        if (streetGeo && streetGeo.latitude && streetGeo.longitude) {
+          setHasGeoLocation(true);
+          setGeoCoordinates(`${streetGeo.latitude}, ${streetGeo.longitude}`);
+        } else {
+          setHasGeoLocation(false);
+          setGeoCoordinates('');
+        }
+      } else {
+        setHasGeoLocation(false);
+        setGeoCoordinates('');
+      }
+
+      // Store that we came from the report modal
+      setPreviousModal('report');
     }
   }, [isOpen]);
 
+  // Listen for modal changes to handle returning from geo modal
+  useEffect(() => {
+    if (previousModal === 'geo' && isOpen) {
+      // We've returned from the geo modal to the report modal
+      const geoLayer = document.getElementById('reference-layers');
+      if (geoLayer && geoLayer.hasAttribute('street-geo')) {
+        const streetGeo = geoLayer.getAttribute('street-geo');
+        if (streetGeo && streetGeo.latitude && streetGeo.longitude) {
+          setHasGeoLocation(true);
+          setGeoCoordinates(`${streetGeo.latitude}, ${streetGeo.longitude}`);
+        } else {
+          setHasGeoLocation(false);
+          setGeoCoordinates('');
+        }
+      }
+      setPreviousModal(null);
+    }
+  }, [isOpen, previousModal]);
+
   const onClose = () => {
     setModal(null);
+  };
+
+  const openGeoModal = () => {
+    // Store current modal to return to after geo modal
+    setPreviousModal('geo');
+    setModal('geo');
   };
 
   const handleInputChange = (valueOrEvent, name) => {
@@ -177,13 +225,39 @@ export const ReportModal = () => {
 
           <div className={styles.field}>
             <label htmlFor="location">Location</label>
-            <Input
-              id="location"
-              name="location"
-              value={formData.location}
-              onChange={(value) => handleInputChange(value, 'location')}
-              placeholder="Street address or intersection"
-            />
+            <div className={styles.locationContainer}>
+              <Button
+                variant="toolbtn"
+                onClick={openGeoModal}
+                className={styles.geoButton}
+                style={!hasGeoLocation ? { backgroundColor: '#8965EF' } : {}}
+                title={
+                  hasGeoLocation ? 'Edit map location' : 'Set map location'
+                }
+              >
+                <GeospatialIcon
+                  className={hasGeoLocation ? styles.activeGeoIcon : ''}
+                />
+                {hasGeoLocation ? 'Change Location' : 'Set Location'}
+              </Button>
+              <Input
+                id="latlon"
+                name="latlon"
+                value={geoCoordinates}
+                placeholder="Latitude and Longitude"
+                readOnly={true}
+                disabled={true}
+              />
+            </div>
+            <div className={styles.locationContainer}>
+              <Input
+                id="location"
+                name="location"
+                value={formData.location}
+                onChange={(value) => handleInputChange(value, 'location')}
+                placeholder="Brief description of project location"
+              />
+            </div>
           </div>
 
           <div className={styles.field}>
