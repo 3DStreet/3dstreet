@@ -65,7 +65,6 @@ function executeUpdateCommand(command) {
       property: command.payload.property,
       value: command.payload.value
     };
-    console.log('updateCommandPayload:', updateCommandPayload);
     AFRAME.INSPECTOR.execute(command.command, updateCommandPayload);
   }
 }
@@ -831,14 +830,9 @@ const AIChatPanel = () => {
         history: historyMessages
       });
       console.log('Raw result:', result);
-      console.log('Model reference:', modelRef.current);
 
       const response = result.response;
       const responseText = response.text();
-
-      // Log the full response for debugging
-      console.log('Full response from LLM:', response);
-      console.log('Response text:', responseText);
 
       posthog.capture('$ai_generation', {
         $ai_model: AI_MODEL_ID,
@@ -852,11 +846,9 @@ const AIChatPanel = () => {
 
       // Get function calls
       const functionCalls = response.functionCalls();
-      console.log('Function calls detected:', functionCalls);
 
       // Always add AI text message first if there's actual text content
       if (responseText && responseText.trim()) {
-        console.log('Adding text response to messages:', responseText);
         aiMessage = {
           role: 'assistant',
           content: responseText
@@ -866,12 +858,9 @@ const AIChatPanel = () => {
 
       // Then process all function calls
       if (functionCalls && functionCalls.length > 0) {
-        console.log(`Processing ${functionCalls.length} function calls`);
-
         // Process function calls sequentially using async/await
         const processFunctionCalls = async () => {
           for (const call of functionCalls) {
-            console.log('Processing function call:', call);
             // Create a function call object with pending status
             const functionCallObj = {
               type: 'functionCall',
@@ -951,7 +940,6 @@ const AIChatPanel = () => {
                   payload
                 };
 
-                console.log('Executing command:', commandData);
                 executeUpdateCommand(commandData);
 
                 // Update function call status to success
@@ -975,7 +963,6 @@ const AIChatPanel = () => {
                     scale: call.args.scale || '1 1 1'
                   }
                 };
-                console.log('newCommandPayload:', newCommandPayload);
                 AFRAME.INSPECTOR.execute('entitycreate', newCommandPayload);
 
                 // Update function call status to success
@@ -1053,9 +1040,6 @@ const AIChatPanel = () => {
                 // Use AFRAME.INSPECTOR.execute to create the entity, which properly integrates with the inspector
                 // and ensures all components are initialized correctly
                 AFRAME.INSPECTOR.execute('entitycreate', definition);
-
-                // Log the created street data for debugging
-                console.log('Created managed street with data:', streetData);
 
                 // Update function call status to success
                 setMessages((prev) =>
@@ -1137,22 +1121,13 @@ const AIChatPanel = () => {
                         segmentEl,
                         segmentEntities[segmentIndex]
                       );
-                      console.log(
-                        `Added new segment at segmentIndex ${segmentIndex}:`,
-                        segmentData
-                      );
                     } else {
                       // If the index is equal to the length, append to the end
                       entity.appendChild(segmentEl);
-                      console.log(
-                        `Added new segment at the end (segmentIndex ${segmentEntities.length}):`,
-                        segmentData
-                      );
                     }
                   } else {
                     // Default behavior: append to the end
                     entity.appendChild(segmentEl);
-                    console.log('Added new segment at the end:', segmentData);
                   }
 
                   // If segment has generated content, add it after the segment is loaded
@@ -1234,9 +1209,6 @@ const AIChatPanel = () => {
                             ) {
                               // Remove the component
                               segmentEl.removeAttribute(componentName);
-                              console.log(
-                                `Removed ${componentName} from segment at index ${segmentIndex}`
-                              );
                             }
                           }
                         );
@@ -1252,9 +1224,6 @@ const AIChatPanel = () => {
                             ) {
                               // Remove the component
                               segmentEl.removeAttribute(componentName);
-                              console.log(
-                                `Removed ${componentName} from segment at index ${segmentIndex}`
-                              );
                             }
                           }
                         );
@@ -1285,13 +1254,6 @@ const AIChatPanel = () => {
                       }, 0);
                     }
                   }
-
-                  console.log(
-                    'Updated segment at segmentIndex',
-                    segmentIndex,
-                    'with data:',
-                    updatedData
-                  );
                 } else if (operation === 'remove-segment') {
                   // Remove a segment
                   const segmentIndex = call.args.segmentIndex;
@@ -1314,8 +1276,6 @@ const AIChatPanel = () => {
 
                   // Remove the segment from the parent
                   entity.removeChild(segmentEl);
-
-                  console.log('Removed segment at segmentIndex', segmentIndex);
                 } else {
                   throw new Error(`Unknown operation: ${operation}`);
                 }
@@ -1328,8 +1288,6 @@ const AIChatPanel = () => {
                   property: 'refresh',
                   value: true
                 });
-
-                console.log('Updated managed street entity:', entityId);
 
                 // Update function call status to success
                 setMessages((prev) =>
@@ -1344,12 +1302,9 @@ const AIChatPanel = () => {
                   )
                 );
               } else if (call.name === 'takeSnapshot') {
-                console.log('Processing takeSnapshot function call');
                 // Get the caption if provided
                 const caption =
                   call.args.caption || 'Snapshot of the current view';
-                console.log('Snapshot caption:', caption);
-
                 // Get the focusEntityId if provided
                 const focusEntityId = call.args.focusEntityId;
 
@@ -1465,17 +1420,10 @@ const AIChatPanel = () => {
 
                   // Focus on entity if focusEntityId is provided
                   if (focusEntityId) {
-                    console.log(`Focusing on entity with ID: ${focusEntityId}`);
                     // Find the entity by ID
                     const entity = document.getElementById(focusEntityId);
                     if (entity && entity.object3D) {
-                      console.log(
-                        `Found entity with object3D:`,
-                        entity.object3D
-                      );
-
                       // Emit the objectfocus event with the entity's object3D
-                      console.log('Emitting objectfocus event');
                       Events.emit('objectfocus', entity.object3D);
 
                       // Get the focus animation component to check when animation completes
@@ -1485,25 +1433,14 @@ const AIChatPanel = () => {
                         ];
 
                       if (focusAnimationComponent) {
-                        console.log(
-                          'Found focus animation component, waiting for animation to complete'
-                        );
-
                         // Wait for the focus animation to complete
                         await new Promise((resolve) => {
                           // Create a function to check if animation is complete
                           const checkAnimationComplete = () => {
                             if (!focusAnimationComponent.transitioning) {
-                              console.log(
-                                'Focus animation completed, taking snapshot'
-                              );
                               const result = takeActualSnapshot();
                               resolve(result);
                             } else {
-                              console.log(
-                                'Focus animation still in progress, progress:',
-                                focusAnimationComponent.transitionProgress
-                              );
                               // Check again in 100ms
                               setTimeout(checkAnimationComplete, 100);
                             }
@@ -1519,9 +1456,6 @@ const AIChatPanel = () => {
                         // Fallback to timeout if animation component not found
                         await new Promise((resolve) => {
                           setTimeout(() => {
-                            console.log(
-                              'Focus timeout completed, taking snapshot'
-                            );
                             const result = takeActualSnapshot();
                             resolve(result);
                           }, 1500); // Increased to 1500ms for camera to focus
@@ -1585,9 +1519,6 @@ const AIChatPanel = () => {
         !responseText.trim() &&
         (!functionCalls || functionCalls.length === 0)
       ) {
-        console.log(
-          'No text response or function calls available, adding fallback message'
-        );
         aiMessage = {
           role: 'assistant',
           content: 'No response available'
@@ -1648,7 +1579,6 @@ const AIChatPanel = () => {
           }
         });
         console.log('Vertex AI chat reinitialized with empty history');
-        console.log('Vertex AI chat reinitialized successfully');
       } catch (error) {
         console.error('Error reinitializing Vertex AI:', error);
       }
