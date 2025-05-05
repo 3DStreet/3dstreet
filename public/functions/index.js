@@ -15,31 +15,115 @@ exports.getGeoidHeight = functions
     const geoidHeight = await getGeoidHeightFromPGM(geoidFilePath, lat, lon);
     const client = new GoogleMapsClient({});
 
-    let orthometricHeight = null;
-    await client
-      .elevation({
-        params: {
-          locations: [{ lat: lat, lng: lon }],
-          key: process.env.GOOGLE_MAPS_ELEVATION_API_KEY,
-        },
-        timeout: 1000, // milliseconds
-      })
-      .then((r) => {
-        orthometricHeight = r.data.results[0].elevation;
-      })
-      .catch((e) => {
-        console.log(e.response.data.error_message);
+    // Helper function to add timeout to a promise
+    const promiseWithTimeout = (promise, timeoutMs) => {
+      let timeoutId;
+      const timeoutPromise = new Promise((resolve, _) => {
+        timeoutId = setTimeout(() => {
+          console.log(`Promise timed out after ${timeoutMs}ms`);
+          // Resolving with null instead of rejecting to handle timeout gracefully
+          resolve(null);
+        }, timeoutMs);
       });
-    // return json response with fields geoidModel, lat, lon, geoidHeight
+      
+      return Promise.race([
+        promise.then(value => {
+          clearTimeout(timeoutId);
+          return value;
+        }).catch(err => {
+          clearTimeout(timeoutId);
+          console.log('Promise error:', err);
+          return null; // Return null on error
+        }),
+        timeoutPromise
+      ]);
+    };
+
+    // Create all three API call promises with timeout
+    const elevationPromise = promiseWithTimeout(
+      client
+        .elevation({
+          params: {
+            locations: [{ lat: lat, lng: lon }],
+            key: process.env.GOOGLE_MAPS_ELEVATION_API_KEY,
+          }
+        })
+        .then((r) => {
+          return r.data.results[0].elevation;
+        }),
+      3000 // 3 second timeout
+    );
+
+    const reverseGeocodePromise = promiseWithTimeout(
+      client
+        .reverseGeocode({
+          params: {
+            latlng: `${lat},${lon}`,
+            result_type: "street_address|route|locality|administrative_area",
+            key: process.env.GOOGLE_MAPS_ELEVATION_API_KEY,
+          }
+        })
+        .then((r) => {
+          const addressComponents = r.data.results[0]?.address_components || [];
+          // Extract everything except the street number
+          const streetName = addressComponents.find(c => c.types.includes("route"))?.long_name || '';
+          const locality = addressComponents.find(c => c.types.includes("locality"))?.long_name || '';
+          const state = addressComponents.find(c => c.types.includes("administrative_area_level_1"))?.long_name || '';
+          const country = addressComponents.find(c => c.types.includes("country"))?.long_name || '';
+          const locationString = `${streetName}, ${locality}, ${state}, ${country}`;
+
+          return {
+            streetName,
+            locality,
+            state,
+            country,
+            locationString
+          };
+        }),
+      3000 // 3 second timeout
+    );
+
+    const intersectionPromise = promiseWithTimeout(
+      fetch(
+        `http://api.geonames.org/findNearestIntersectionOSM?lat=${lat}&lng=${lon}&username=3dstreet`
+      )
+        .then(response => response.text())
+        .then(data => {
+          // Parse XML response
+          // Simple parsing for example purposes - in production use proper XML parser
+          const streetMatch = data.match(/<street1>([^<]+)<\/street1>/);
+          const crossStreetMatch = data.match(/<street2>([^<]+)<\/street2>/);
+          
+          return {
+            street: streetMatch ? streetMatch[1] : '',
+            crossStreet: crossStreetMatch ? crossStreetMatch[1] : '',
+            intersectionString: streetMatch && crossStreetMatch ? `${streetMatch[1]} & ${crossStreetMatch[1]}` : ''
+          };
+        }),
+      3000 // 3 second timeout
+    );
+
+    // Execute all promises in parallel and wait for all to complete
+    const [orthometricHeight, locationInfo, intersectionInfo] = await Promise.all([
+      elevationPromise,
+      reverseGeocodePromise,
+      intersectionPromise
+    ]);
+
+    // Return combined response
     return {
       lat: lat,
       lon: lon,
       geoidHeight: geoidHeight,
       geoidSource: geoidFilePath,
-      orthometricHeight: orthometricHeight,
-      orthometricSource: 'Google Maps Elevation Service',
-      ellipsoidalHeight: geoidHeight + orthometricHeight,
-      ellipsoidalSource: 'Calculated: ellipsoidalHeight = geoidHeight + orthometricHeight'
+      orthometricHeight: orthometricHeight || null,
+      orthometricSource: orthometricHeight ? 'Google Maps Elevation Service' : 'Request timed out or failed',
+      ellipsoidalHeight: orthometricHeight ? (geoidHeight + orthometricHeight) : null,
+      ellipsoidalSource: orthometricHeight ? 'Calculated: ellipsoidalHeight = geoidHeight + orthometricHeight' : 'Could not be calculated',
+      location: locationInfo || { streetName: '', locality: '', state: '', country: '', locationString: '' },
+      locationSource: locationInfo ? 'Google Maps Reverse Geocoding Service' : 'Request timed out or failed',
+      nearestIntersection: intersectionInfo || { street: '', crossStreet: '', intersectionString: '' },
+      nearestIntersectionSource: intersectionInfo ? 'GeoNames FindNearestIntersectionOSM Service' : 'Request timed out or failed'
     };
   });
 
