@@ -151,6 +151,13 @@ export const ReportModal = () => {
     const reportPrompt = `Create a report for a street improvement project using the information from the user-provided project description inside of project-info component of #memory entity, and the scene graph.
     Please expand upon project-info description given your understanding of modern transportation planning.
     Optional, generate one or more screenshots using the takeSnapshot function call. Do NOT update memory project-info component when writing the report.
+        
+    Project Description: ${formData.description}
+    Location: ${formData.location}
+    Current Conditions: ${formData.currentCondition}
+    Problem Statement: ${formData.problemStatement}
+    Proposed Solutions: ${formData.proposedSolutions}
+    
     `;
 
     // Show the AI Chat Panel

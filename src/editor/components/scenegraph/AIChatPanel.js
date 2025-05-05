@@ -836,6 +836,10 @@ const AIChatPanel = () => {
       const response = result.response;
       const responseText = response.text();
 
+      // Log the full response for debugging
+      console.log('Full response from LLM:', response);
+      console.log('Response text:', responseText);
+
       posthog.capture('$ai_generation', {
         $ai_model: AI_MODEL_ID,
         $ai_provider: 'vertexai',
@@ -848,9 +852,23 @@ const AIChatPanel = () => {
 
       // Get function calls
       const functionCalls = response.functionCalls();
+      console.log('Function calls detected:', functionCalls);
+
+      // Always add AI text message first if there's actual text content
+      if (responseText && responseText.trim()) {
+        console.log('Adding text response to messages:', responseText);
+        aiMessage = {
+          role: 'assistant',
+          content: responseText
+        };
+        setMessages((prev) => [...prev, aiMessage]);
+      }
+
+      // Then process all function calls
       if (functionCalls && functionCalls.length > 0) {
+        console.log(`Processing ${functionCalls.length} function calls`);
         for (const call of functionCalls) {
-          console.log('Function call:', call);
+          console.log('Processing function call:', call);
           // Create a function call object with pending status
           const functionCallObj = {
             type: 'functionCall',
@@ -1313,9 +1331,11 @@ const AIChatPanel = () => {
                 )
               );
             } else if (call.name === 'takeSnapshot') {
+              console.log('Processing takeSnapshot function call');
               // Get the caption if provided
               const caption =
                 call.args.caption || 'Snapshot of the current view';
+              console.log('Snapshot caption:', caption);
 
               // Get the focusEntityId if provided
               const focusEntityId = call.args.focusEntityId;
@@ -1537,19 +1557,17 @@ const AIChatPanel = () => {
         }
       }
 
-      // Only add AI text message if there's actual text content
-      if (responseText && responseText.trim()) {
-        console.log('Stored response text:', responseText);
+      // If no text response was found and there were no function calls, show a fallback message
+      if (
+        !responseText.trim() &&
+        (!functionCalls || functionCalls.length === 0)
+      ) {
+        console.log(
+          'No text response or function calls available, adding fallback message'
+        );
         aiMessage = {
           role: 'assistant',
-          content: responseText
-        };
-        setMessages((prev) => [...prev, aiMessage]);
-      } else if (!functionCalls || functionCalls.length === 0) {
-        // Only show "No text response" if there were no function calls
-        aiMessage = {
-          role: 'assistant',
-          content: 'No text response available'
+          content: 'No response available'
         };
         setMessages((prev) => [...prev, aiMessage]);
       }
