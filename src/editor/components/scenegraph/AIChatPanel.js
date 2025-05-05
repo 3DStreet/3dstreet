@@ -12,6 +12,7 @@ import styles from './AIChatPanel.module.scss';
 import posthog from 'posthog-js';
 import { v4 as uuidv4 } from 'uuid';
 import ReactMarkdown from 'react-markdown';
+import Events from '../../lib/Events.js';
 
 const AI_MODEL_ID = 'gemini-2.0-flash';
 let AI_CONVERSATION_ID = uuidv4();
@@ -485,9 +486,13 @@ const entityTools = {
         properties: {
           caption: Schema.string({
             description: 'Optional caption to display with the snapshot'
+          }),
+          focusEntityId: Schema.string({
+            description:
+              'Optional entity ID to focus on before taking the snapshot'
           })
         },
-        optionalProperties: ['caption']
+        optionalProperties: ['caption', 'focusEntityId']
       })
     }
   ]
@@ -767,7 +772,7 @@ const AIChatPanel = () => {
         modelRef.current = model.startChat({
           history: [],
           generationConfig: {
-            maxOutputTokens: 1000
+            maxOutputTokens: 2000
           },
           labels: {
             AI_CONVERSATION_ID: AI_CONVERSATION_ID
@@ -780,7 +785,7 @@ const AIChatPanel = () => {
     };
 
     initializeAI();
-  }, []);
+  }, [systemPrompt]); // Added systemPrompt as a dependency
 
   // Hide the chat panel by default when component mounts
   useEffect(() => {
@@ -1312,6 +1317,9 @@ const AIChatPanel = () => {
               const caption =
                 call.args.caption || 'Snapshot of the current view';
 
+              // Get the focusEntityId if provided
+              const focusEntityId = call.args.focusEntityId;
+
               try {
                 // Get the screenshot element
                 const screenshotEl = document.getElementById('screenshot');
@@ -1334,87 +1342,165 @@ const AIChatPanel = () => {
                   document.body.appendChild(screenshotCanvas);
                 }
 
-                // Render the scene to the canvas
-                const renderer = AFRAME.scenes[0].renderer;
+                // Define the function to take the actual snapshot
+                const takeActualSnapshot = () => {
+                  // Render the scene to the canvas
+                  const renderer = AFRAME.scenes[0].renderer;
 
-                // Hide helpers if inspector is open
-                const inspector = AFRAME.INSPECTOR;
-                if (inspector && inspector.opened) {
-                  inspector.sceneHelpers.visible = false;
-                }
+                  // Hide helpers if inspector is open
+                  const inspector = AFRAME.INSPECTOR;
+                  if (inspector && inspector.opened) {
+                    inspector.sceneHelpers.visible = false;
+                  }
 
-                // Render one frame
-                renderer.render(
-                  AFRAME.scenes[0].object3D,
-                  AFRAME.scenes[0].camera
-                );
-
-                // Set canvas dimensions
-                screenshotCanvas.width = renderer.domElement.width;
-                screenshotCanvas.height = renderer.domElement.height;
-
-                // Draw the rendered frame to the canvas
-                const ctx = screenshotCanvas.getContext('2d');
-                ctx.drawImage(renderer.domElement, 0, 0);
-
-                // Add title if needed (similar to screentock component)
-                const sceneTitle = useStore.getState().sceneTitle;
-                if (sceneTitle) {
-                  ctx.font = '30px Lato';
-                  ctx.textAlign = 'center';
-                  ctx.fillStyle = '#FFFFFF';
-                  ctx.strokeStyle = '#000000';
-                  ctx.lineWidth = 3;
-                  ctx.strokeText(
-                    sceneTitle,
-                    screenshotCanvas.width / 2,
-                    screenshotCanvas.height - 43
+                  // Render one frame
+                  renderer.render(
+                    AFRAME.scenes[0].object3D,
+                    AFRAME.scenes[0].camera
                   );
-                  ctx.fillText(
-                    sceneTitle,
-                    screenshotCanvas.width / 2,
-                    screenshotCanvas.height - 43
+
+                  // Set canvas dimensions
+                  screenshotCanvas.width = renderer.domElement.width;
+                  screenshotCanvas.height = renderer.domElement.height;
+
+                  // Draw the rendered frame to the canvas
+                  const ctx = screenshotCanvas.getContext('2d');
+                  ctx.drawImage(renderer.domElement, 0, 0);
+
+                  // Add title if needed (similar to screentock component)
+                  const sceneTitle = useStore.getState().sceneTitle;
+                  if (sceneTitle) {
+                    ctx.font = '30px Lato';
+                    ctx.textAlign = 'center';
+                    ctx.fillStyle = '#FFFFFF';
+                    ctx.strokeStyle = '#000000';
+                    ctx.lineWidth = 3;
+                    ctx.strokeText(
+                      sceneTitle,
+                      screenshotCanvas.width / 2,
+                      screenshotCanvas.height - 43
+                    );
+                    ctx.fillText(
+                      sceneTitle,
+                      screenshotCanvas.width / 2,
+                      screenshotCanvas.height - 43
+                    );
+                  }
+
+                  // Add 3DStreet logo if available
+                  const logoImg = document.querySelector('#screenshot-img');
+                  if (logoImg) {
+                    ctx.drawImage(logoImg, 0, 0, 135, 43, 40, 30, 270, 86);
+                  }
+
+                  // Get the image data as a data URL
+                  const imageData = screenshotCanvas.toDataURL('image/png');
+
+                  // Show helpers again if inspector is open
+                  if (inspector && inspector.opened) {
+                    inspector.sceneHelpers.visible = true;
+                  }
+
+                  // Create a container for the snapshot message with the image data
+                  const snapshotMessage = {
+                    type: 'snapshot',
+                    id: Date.now() + Math.random().toString(16).slice(2),
+                    caption: caption,
+                    imageData: imageData,
+                    timestamp: new Date()
+                  };
+
+                  // Add the snapshot message to the messages array
+                  setMessages((prev) => [...prev, snapshotMessage]);
+
+                  // Update function call status to success
+                  setMessages((prev) =>
+                    prev.map((msg) =>
+                      msg.type === 'functionCall' &&
+                      msg.id === functionCallObj.id
+                        ? {
+                            ...msg,
+                            status: 'success',
+                            result: 'Snapshot taken successfully'
+                          }
+                        : msg
+                    )
                   );
-                }
 
-                // Add 3DStreet logo if available
-                const logoImg = document.querySelector('#screenshot-img');
-                if (logoImg) {
-                  ctx.drawImage(logoImg, 0, 0, 135, 43, 40, 30, 270, 86);
-                }
-
-                // Get the image data as a data URL
-                const imageData = screenshotCanvas.toDataURL('image/png');
-
-                // Show helpers again if inspector is open
-                if (inspector && inspector.opened) {
-                  inspector.sceneHelpers.visible = true;
-                }
-
-                // Create a container for the snapshot message with the image data
-                const snapshotMessage = {
-                  type: 'snapshot',
-                  id: Date.now() + Math.random().toString(16).slice(2),
-                  caption: caption,
-                  imageData: imageData,
-                  timestamp: new Date()
+                  return 'Snapshot taken successfully';
                 };
 
-                // Add the snapshot message to the messages array
-                setMessages((prev) => [...prev, snapshotMessage]);
+                // Focus on entity if focusEntityId is provided
+                if (focusEntityId) {
+                  console.log(`Focusing on entity with ID: ${focusEntityId}`);
+                  // Find the entity by ID
+                  const entity = document.getElementById(focusEntityId);
+                  if (entity && entity.object3D) {
+                    console.log(`Found entity with object3D:`, entity.object3D);
 
-                // Update function call status to success
-                setMessages((prev) =>
-                  prev.map((msg) =>
-                    msg.type === 'functionCall' && msg.id === functionCallObj.id
-                      ? {
-                          ...msg,
-                          status: 'success',
-                          result: 'Snapshot taken successfully'
-                        }
-                      : msg
-                  )
-                );
+                    // Emit the objectfocus event with the entity's object3D
+                    console.log('Emitting objectfocus event');
+                    Events.emit('objectfocus', entity.object3D);
+
+                    // Get the focus animation component to check when animation completes
+                    const focusAnimationComponent =
+                      document.querySelector('[focus-animation]')?.components[
+                        'focus-animation'
+                      ];
+
+                    if (focusAnimationComponent) {
+                      console.log(
+                        'Found focus animation component, waiting for animation to complete'
+                      );
+
+                      // Wait for the focus animation to complete
+                      return new Promise((resolve) => {
+                        // Create a function to check if animation is complete
+                        const checkAnimationComplete = () => {
+                          if (!focusAnimationComponent.transitioning) {
+                            console.log(
+                              'Focus animation completed, taking snapshot'
+                            );
+                            const result = takeActualSnapshot();
+                            resolve(result);
+                          } else {
+                            console.log(
+                              'Focus animation still in progress, progress:',
+                              focusAnimationComponent.transitionProgress
+                            );
+                            // Check again in 100ms
+                            setTimeout(checkAnimationComplete, 100);
+                          }
+                        };
+
+                        // Start checking after a small delay to ensure animation has started
+                        setTimeout(checkAnimationComplete, 100);
+                      });
+                    } else {
+                      console.warn(
+                        'Focus animation component not found, using fallback timeout'
+                      );
+                      // Fallback to timeout if animation component not found
+                      return new Promise((resolve) => {
+                        setTimeout(() => {
+                          console.log(
+                            'Focus timeout completed, taking snapshot'
+                          );
+                          const result = takeActualSnapshot();
+                          resolve(result);
+                        }, 1500); // Increased to 1500ms for camera to focus
+                      });
+                    }
+                  } else {
+                    console.warn(
+                      `Entity with ID ${focusEntityId} not found or has no object3D`
+                    );
+                    return takeActualSnapshot();
+                  }
+                } else {
+                  // If no focusEntityId, take snapshot immediately
+                  return takeActualSnapshot();
+                }
               } catch (error) {
                 console.error('Error taking snapshot:', error);
 
