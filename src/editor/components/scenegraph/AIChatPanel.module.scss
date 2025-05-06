@@ -207,6 +207,7 @@
   display: flex;
   justify-content: center;
   margin-top: 4px;
+  position: relative;
 }
 
 .snapshotImage {
@@ -214,4 +215,41 @@
   max-height: 400px;
   border-radius: 4px;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.snapshotActions {
+  position: absolute;
+  bottom: 8px;
+  right: 8px;
+  display: flex;
+  gap: 8px;
+  opacity: 0;
+  transition: opacity 0.2s ease;
+}
+
+.snapshotButton {
+  background: rgba(0, 0, 0, 0.5);
+  border: none;
+  border-radius: 4px;
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+  padding: 0;
+
+  svg {
+    width: 20px;
+    height: 20px;
+  }
+
+  &:hover {
+    background: rgba(0, 0, 0, 0.7);
+  }
+}
+
+.snapshotImageWrapper:hover .snapshotActions {
+  opacity: 1;
 }

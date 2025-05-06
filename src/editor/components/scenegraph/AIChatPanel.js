@@ -4,7 +4,7 @@ import { getGenerativeModel } from 'firebase/vertexai';
 import Collapsible from '../Collapsible.js';
 import JSONPretty from 'react-json-pretty';
 import 'react-json-pretty/themes/monikai.css';
-import { Copy32Icon } from '../../icons/index.js';
+import { Copy32Icon, DownloadIcon } from '../../icons/index.js';
 import { useAuthContext } from '../../contexts';
 import useStore from '@/store';
 import styles from './AIChatPanel.module.scss';
@@ -93,12 +93,89 @@ const FunctionCallMessage = ({ functionCall }) => {
 // Snapshot message component
 const SnapshotMessage = ({ snapshot }) => {
   const { caption, imageData } = snapshot;
+  const [copied, setCopied] = useState(false);
+
+  const handleCopy = async () => {
+    try {
+      // Create a temporary image element to load the image data
+      const img = new Image();
+      img.crossOrigin = 'anonymous';
+
+      // Set up a promise to wait for the image to load
+      const imageLoaded = new Promise((resolve, reject) => {
+        img.onload = () => resolve();
+        img.onerror = () => reject(new Error('Failed to load image'));
+      });
+
+      // Set the source and wait for it to load
+      img.src = imageData;
+      await imageLoaded;
+
+      // Create a canvas and draw the image on it
+      const canvas = document.createElement('canvas');
+      canvas.width = img.width;
+      canvas.height = img.height;
+      const ctx = canvas.getContext('2d');
+      ctx.drawImage(img, 0, 0);
+
+      // Convert the canvas to a blob
+      const blob = await new Promise((resolve) =>
+        canvas.toBlob(resolve, 'image/png')
+      );
+
+      // Use the clipboard API to write the blob as an image
+      await navigator.clipboard.write([
+        new ClipboardItem({
+          'image/png': blob
+        })
+      ]);
+
+      // Show success notification
+      STREET.notify.successMessage('Image copied to clipboard');
+
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch (err) {
+      console.error('Failed to copy image data:', err);
+      // Show error notification
+      STREET.notify.errorMessage('Failed to copy image to clipboard');
+    }
+  };
+
+  const handleDownload = () => {
+    // Create a temporary anchor element to trigger download
+    const link = document.createElement('a');
+    link.href = imageData;
+    link.download = `${caption || 'snapshot'}.png`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+
+    // Show success notification
+    STREET.notify.successMessage('Image download started');
+  };
 
   return (
     <div className={`chat-message snapshot ${styles.snapshotContainer}`}>
       <div className={styles.snapshotCaption}>{caption}</div>
       <div className={styles.snapshotImageWrapper}>
         <img src={imageData} className={styles.snapshotImage} alt={caption} />
+        <div className={styles.snapshotActions}>
+          <button
+            onClick={handleCopy}
+            className={styles.snapshotButton}
+            title={copied ? 'Copied!' : 'Copy image'}
+          >
+            <Copy32Icon />
+          </button>
+          <button
+            onClick={handleDownload}
+            className={styles.snapshotButton}
+            title="Download image"
+          >
+            <DownloadIcon />
+          </button>
+        </div>
       </div>
     </div>
   );
