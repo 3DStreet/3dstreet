@@ -209,7 +209,7 @@
 }
 
 .reset-confirm-modal {
-  position: fixed;
+  position: absolute;
   top: 0;
   left: 0;
   right: 0;
@@ -218,7 +218,7 @@
   display: flex;
   justify-content: center;
   align-items: center;
-  z-index: 1000;
+  z-index: 10;
 }
 
 .reset-confirm-content {
@@ -312,19 +312,6 @@
     &:disabled {
       background-color: variables.$darkgray-500;
       cursor: not-allowed;
-    }
-
-    &.reset-button {
-      padding: 8px;
-      background-color: variables.$darkgray-600;
-      font-size: 14px;
-      display: flex;
-      align-items: center;
-      gap: 4px;
-
-      &:hover {
-        background-color: variables.$darkgray-500;
-      }
     }
   }
 }

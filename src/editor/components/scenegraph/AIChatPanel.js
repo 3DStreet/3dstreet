@@ -544,6 +544,22 @@ const AIChatPanel = () => {
         <div
           className={`chat-panel ${!currentUser?.isPro ? styles.proFeaturesWrapper : ''}`}
         >
+          {showResetConfirm && (
+            <div className="reset-confirm-modal">
+              <div className="reset-confirm-content">
+                <p>
+                  Are you sure you want to reset the conversation? This will
+                  delete all messages.
+                </p>
+                <div className="reset-confirm-buttons">
+                  <button onClick={resetConversation}>Yes, reset</button>
+                  <button onClick={() => setShowResetConfirm(false)}>
+                    Cancel
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
           {!currentUser?.isPro && (
             <div
               className={styles.proOverlay}
@@ -607,23 +623,6 @@ const AIChatPanel = () => {
             >
               Send
             </button>
-
-            {showResetConfirm && (
-              <div className="reset-confirm-modal">
-                <div className="reset-confirm-content">
-                  <p>
-                    Are you sure you want to reset the conversation? This will
-                    delete all messages.
-                  </p>
-                  <div className="reset-confirm-buttons">
-                    <button onClick={resetConversation}>Yes, reset</button>
-                    <button onClick={() => setShowResetConfirm(false)}>
-                      Cancel
-                    </button>
-                  </div>
-                </div>
-              </div>
-            )}
           </div>
         </div>
       </Collapsible>
