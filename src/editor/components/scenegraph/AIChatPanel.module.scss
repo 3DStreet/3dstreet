@@ -224,7 +224,33 @@
   display: flex;
   gap: 8px;
   opacity: 0;
+}
+
+.resetButton {
+  margin-left: 8px;
+  padding: 4px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  opacity: 0.6;
   transition: opacity 0.2s ease;
+
+  &:hover {
+    opacity: 1;
+
+    svg path {
+      stroke: #ff4444;
+    }
+  }
+
+  &:disabled {
+    opacity: 0.3;
+    cursor: not-allowed;
+
+    &:hover svg path {
+      stroke: inherit;
+    }
+  }
 }
 
 .snapshotButton {

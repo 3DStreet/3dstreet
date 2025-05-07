@@ -4,7 +4,7 @@ import { getGenerativeModel } from 'firebase/vertexai';
 import Collapsible from '../Collapsible.js';
 import JSONPretty from 'react-json-pretty';
 import 'react-json-pretty/themes/monikai.css';
-import { Copy32Icon, DownloadIcon } from '../../icons/index.js';
+import { Copy32Icon, DownloadIcon, TrashIcon } from '../../icons/index.js';
 import { useAuthContext } from '../../contexts';
 import useStore from '@/store';
 import styles from './AIChatPanel.module.scss';
@@ -255,8 +255,7 @@ const MessageContent = ({ content, isAssistant = false }) => {
 const AIChatPanel = () => {
   const initialMessage = {
     role: 'assistant',
-    content:
-      "I am an AI assistant for the 3DStreet application. I can try to help you to analyze the scene, modify the scene or provide help about the 3DStreet editor. But I'm just a hacky experiment, and a lot of stuff is not working yet. What do you need help with?"
+    content: 'What can I help you with?'
   };
 
   const [messages, setMessages] = useState([initialMessage]);
@@ -297,12 +296,6 @@ const AIChatPanel = () => {
 
     initializeAI();
   }, [systemPrompt]);
-
-  // Hide the chat panel by default when component mounts
-  useEffect(() => {
-    const container = document.querySelector('.chat-panel-container');
-    if (container) container.style.display = 'none';
-  }, []);
 
   const handleSendMessage = async () => {
     if (!input.trim() || !modelRef.current) return;
@@ -494,8 +487,7 @@ const AIChatPanel = () => {
   const resetConversation = () => {
     const initialMessage = {
       role: 'assistant',
-      content:
-        'I am an AI assistant for the 3DStreet application. I can help you to analyze the scene, modify the scene or provide help about the 3DStreet editor. What do you need help with?'
+      content: 'What can I help you with?'
     };
 
     setMessages([initialMessage]);
@@ -534,19 +526,19 @@ const AIChatPanel = () => {
 
   return (
     <div className="chat-panel-container">
-      <Collapsible defaultCollapsed={true}>
+      <Collapsible collapsed={true}>
         <div className="panel-header">
-          <span>AI Scene Assistant (Experimental)</span>
+          <span>Assistant (Beta)</span>
           <button
-            className="close-button"
             onClick={(e) => {
-              e.stopPropagation();
-              const container = document.querySelector('.chat-panel-container');
-              if (container) container.style.display = 'none';
+              e.stopPropagation(); // Prevent collapsible toggle
+              setShowResetConfirm(true);
             }}
-            title="Close AI Assistant"
+            className={styles.resetButton}
+            title="Reset conversation"
+            disabled={!currentUser?.isPro}
           >
-            ×
+            <TrashIcon />
           </button>
         </div>
         <div
@@ -614,14 +606,6 @@ const AIChatPanel = () => {
               disabled={isLoading || !currentUser?.isPro}
             >
               Send
-            </button>
-            <button
-              onClick={() => setShowResetConfirm(true)}
-              className="reset-button"
-              title="Reset conversation"
-              disabled={!currentUser?.isPro}
-            >
-              Reset
             </button>
 
             {showResetConfirm && (
