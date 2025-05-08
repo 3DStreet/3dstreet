@@ -370,10 +370,16 @@ export default class SceneGraph extends React.Component {
             onClick={this.toggleLeftBar}
           >
             <div id="toggle-leftbar">
-              <ArrowLeftIcon />
+              {this.state.leftBarHide ? (
+                <div className="move-icon">
+                  <LayersIcon />
+                </div>
+              ) : (
+                <ArrowLeftIcon />
+              )}
             </div>
             <div className={'layersBlock'}>
-              <LayersIcon />
+              <LayersIcon className="toggle-icon" />
               <span>Layers</span>
             </div>
           </div>

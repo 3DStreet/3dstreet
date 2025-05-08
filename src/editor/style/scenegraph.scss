@@ -1,24 +1,4 @@
 @use './variables.scss';
-/* chatpanel */
-.ai-chat-panel {
-  position: fixed;
-  bottom: 20px;
-  right: 20px;
-  width: 350px;
-  z-index: 1000;
-  background: white;
-  border-radius: 8px;
-  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
-}
-/* Add responsive styles */
-@media (max-width: 768px) {
-  .ai-chat-panel {
-    width: 100%;
-    bottom: 0;
-    right: 0;
-    border-radius: 8px 8px 0 0;
-  }
-}
 
 #scenegraph {
   display: flex;
@@ -26,16 +6,22 @@
   overflow: auto;
   padding-top: 32px;
   width: auto;
+
+  // Layers container
   .layers {
     margin-top: 72px;
     overflow-y: auto;
     height: 512px; // 584px - 72px
   }
+
+  // Layer block styling
   .layersBlock {
     display: flex;
     align-items: center;
     column-gap: 8px;
   }
+
+  // Layer styling
   .layer {
     width: 100%;
     margin-top: 6px;
@@ -44,47 +30,23 @@
     display: flex;
     flex-direction: column;
     align-items: flex-start;
-  }
-  .layer:not(.active):hover {
-    outline: 2px solid variables.$purple-900;
-    > div:first-child {
-      background: none;
+
+    &:not(.active):hover {
+      outline: 2px solid variables.$purple-900;
+      > div:first-child {
+        background: none;
+      }
+    }
+
+    &.active {
+      background: variables.$purple-300;
+      &:hover {
+        background: variables.$purple-900;
+      }
     }
   }
-  .layer.active {
-    background: variables.$purple-300;
-    &:hover {
-      background: variables.$purple-900;
-    }
-  }
-  .entity.option.active {
-    background: variables.$purple-900;
-  }
-  .entity.option {
-    display: flex;
-    flex-direction: column;
-    width: 100%;
-    flex: none;
-    order: 1;
-    flex-grow: 0;
-    height: 40px; // Explicitly set desired height
-    justify-content: center; // Center content vertically within the 40px height
-    padding: 0 16px; // Keep horizontal padding, remove vertical
-    box-sizing: border-box;
-    > span {
-      display: flex;
-      justify-content: flex-start;
-      align-items: center;
-      flex-direction: row;
-      position: relative;
-    }
-  }
-  .entity:first-child {
-    margin: 0px !important;
-    &:hover {
-      background: variables.$purple-900;
-    }
-  }
+
+  // Entity styling
   .entity {
     cursor: pointer;
     display: flex;
@@ -92,85 +54,162 @@
     padding: 3px;
     width: 100%;
     white-space: nowrap;
+
     &:focus {
       background: variables.$purple-900;
       border: 1px solid variables.$white;
     }
+
     &:hover {
       background: variables.$purple-900;
     }
+
+    &:first-child {
+      margin: 0px !important;
+      &:hover {
+        background: variables.$purple-900;
+      }
+    }
+
+    &.option {
+      display: flex;
+      flex-direction: column;
+      width: 100%;
+      flex: none;
+      order: 1;
+      flex-grow: 0;
+      height: 40px;
+      justify-content: center;
+      padding: 0 16px;
+      box-sizing: border-box;
+
+      > span {
+        display: flex;
+        justify-content: flex-start;
+        align-items: center;
+        flex-direction: row;
+        position: relative;
+      }
+
+      &.active {
+        background: variables.$purple-900;
+
+        .id {
+          color: variables.$white;
+        }
+      }
+    }
+
     &.disabled {
       background: variables.$purple-600;
       color: variables.$white;
       padding: 10.5px 16px 10.5px 14.5px;
+
       .component:hover {
         color: #1888c1;
       }
+
       .entityActions {
         display: inline;
       }
     }
-    &.active.novisible:first-child ~ .entity .entityName,
-    &.novisible:first-child ~ .entity .entityName {
-      color: variables.$lightgray-700;
-    }
+
     &.novisible {
       box-sizing: border-box;
+
       &.disabled {
         background: variables.$gray-200;
       }
+
       &:focus {
         border: 1px solid variables.$white;
       }
 
-      &.active {
-        span,
-        .id {
-          color: variables.$lightgray-700;
-        }
-      }
+      &.active,
       &:not(.active) {
         span,
         .id {
           color: variables.$lightgray-700;
         }
       }
+
+      &:first-child ~ .entity .entityName {
+        color: variables.$lightgray-700;
+      }
+
+      &.active:first-child ~ .entity .entityName {
+        color: variables.$lightgray-700;
+      }
     }
   }
+
+  // Component hover effect
   .component:hover {
     color: variables.$blue-100;
   }
+
+  // Entity icons and actions
   .entityIcons {
     margin-left: 2px;
   }
+
   .entityActions {
     display: none;
     margin: 0 14px;
+
     .button {
       color: variables.$white;
       font-size: 12px;
       margin-left: 6px;
     }
+
+    .fa:hover {
+      color: variables.$blue-100;
+    }
   }
+
+  // Font awesome icons
   .fa {
     color: variables.$lightgray-600;
   }
+
   .fa-trash,
   .fa-clone {
     display: none;
   }
-  .entityActions .fa:hover {
-    color: variables.$blue-100;
-  }
+
   .active .fa {
     color: variables.$white-100;
   }
+
+  .fa-eye,
+  .fa-eye-slash {
+    color: variables.$lightgray-300;
+    background-repeat: no-repeat;
+    background-size: contain;
+    background-position: center;
+    width: 15px;
+    height: 15px;
+
+    &:before {
+      content: none;
+    }
+  }
+
+  .fa-eye {
+    background-image: url(variables.$faEye);
+  }
+
+  .fa-eye-slash {
+    background-image: url(variables.$faEyeSlash) !important;
+  }
+
+  // ID styling
   .id {
     color: variables.$lightgray-600;
   }
-  .option.active .id {
-    color: variables.$white;
-  }
+
+  // Collapse space styling
   .collapsespace {
     color: variables.$white !important;
     display: inline-block;
@@ -178,6 +217,8 @@
     width: 14px;
     right: 0px;
     position: absolute;
+    z-index: 1;
+
     &::before {
       content: '';
       position: absolute;
@@ -190,35 +231,20 @@
       border-radius: 50%;
       z-index: -1;
     }
-    z-index: 1;
   }
-  .fa-eye,
-  .fa-eye-slash {
-    color: variables.$lightgray-300;
-    background-repeat: no-repeat;
-    background-size: contain;
-    background-position: center;
-    width: 15px;
-    height: 15px;
-  }
-  .fa-eye {
-    background-image: url(variables.$faEye);
-  }
-  .fa-eye:before,
-  .fa-eye-slash:before {
-    content: none;
-  }
-  .fa-eye-slash {
-    background-image: url(variables.$faEyeSlash) !important;
-  }
+
+  // Icons and buttons
   .icons a.button {
     color: variables.$white;
   }
+
+  // Search functionality
   .search {
     display: none;
     padding: 5px;
     font-size: 16px;
     position: relative;
+
     input {
       color: variables.$lightgray-100;
       background: variables.$darkgray-200;
@@ -227,132 +253,113 @@
       text-indent: 10px;
       width: 216px;
     }
+
     .fa-search {
       position: absolute;
       right: 14px;
       top: 8px;
     }
+
     .fa-times {
       position: absolute;
       right: 15px;
       top: 9px;
     }
   }
+
+  // Outliner component
   .outliner {
     color: variables.$lightgray-100;
     cursor: default;
     font-size: 16px;
     outline: none;
-    overflow-y: hidden;
-    overflow-x: hidden;
+    overflow: hidden;
     position: absolute;
     top: 80px;
     width: 372px;
     height: 584px;
     align-items: center;
-    padding: 0px;
+    padding: 0;
     background: variables.$darkgray-800;
-    border-bottom-right-radius: 8px;
-    border-top-right-radius: 8px;
+    border-radius: 0 8px 8px 0;
+    transition: all 0.3s ease-in-out;
+    cursor: pointer;
+
+    // Layers title section
     #layers-title {
       justify-content: flex-start;
       border-top-right-radius: 8px;
+      display: flex;
+      align-items: center;
+
       #toggle-leftbar {
-        width: 56px;
-        height: 72px;
-        background: variables.$darkgray-900;
+        width: 52px;
+        height: 60px;
         display: flex;
         justify-content: center;
         align-items: center;
         cursor: pointer;
+
+        .move-icon {
+          translate: 15px 0px;
+        }
+
+        &:hover {
+          background-color: variables.$purple-100;
+          .move-icon {
+            translate: 0px 0px;
+          }
+        }
+
+        &:active {
+          background-color: variables.$purple-200;
+        }
       }
-      #toggle-leftbar:hover {
-        background-color: variables.$purple-100;
+    }
+
+    // Hidden state
+    &.hide {
+      width: 52px;
+      height: 60px;
+      border-radius: 0 12px 12px 0;
+
+      #layers-title {
+        width: 52px;
+        height: 60px;
+        display: flex;
+        border-radius: 0 12px 12px 0;
+
+        span {
+          display: none;
+        }
+
+        .toggle-icon {
+          display: none;
+        }
+
+        &:hover {
+          width: 155px;
+          background-color: variables.$purple-100;
+
+          span {
+            display: block;
+            font-size: 22px;
+          }
+        }
       }
-      #toggle-leftbar:active {
-        background-color: variables.$purple-200;
-      }
-      span {
-        font-weight: 500;
-        font-size: 24px;
-        color: variables.$white;
-        line-height: 28px;
-      }
     }
-  }
-  .outliner.hide,
-  .outliner.hide #layers-title {
-    transition: all 0.4s ease-in-out 0s;
-    width: 70px;
-    height: 72px;
-    display: flex;
-    border-radius: 0px 12px 12px 0px;
-    svg {
-      display: none;
-    }
-  }
-  .outliner.hide .layersBlock .hide {
-    display: none;
-  }
-  .outliner.hide:hover,
-  .outliner.hide #layers-title:hover {
-    width: 115px;
-    background-color: variables.$purple-100;
-    cursor: pointer;
-    svg {
-      padding-left: 15px;
-    }
-  }
-  .outliner.hide #layers-title span {
-    display: none;
-  }
-  .outliner.hide #layers-title:active {
-    background-color: variables.$purple-200;
-    span {
-      display: block;
-      font-size: 18px;
-      color: variables.$lightgray-200;
-      background-position: left;
-    }
-  }
-  .outliner.hide #layers-title:hover span {
-    display: block;
-    font-size: 18px;
-    margin-left: 12px;
-    padding-left: 40px;
-    line-height: 29px;
-    background-image: url(variables.$iconLayers);
-    background-repeat: no-repeat !important;
-    svg {
-      display: none;
-    }
-  }
-  .outliner.hide #layers-title:hover #toggle-leftbar {
-    display: none;
-  }
-  .outliner.hide #toggle-leftbar {
-    background: rgba(50, 50, 50, 0.5) !important;
-    backdrop-filter: blur(24px);
-    background-image: url(variables.$iconLayers) !important;
-    background-repeat: no-repeat !important;
-    background-position: center !important;
-    border-radius: 0px 12px 12px 0px;
-  }
-  .outliner.hide #toggle-leftbar:active {
-    background-color: variables.$purple-200 !important;
-  }
-  .outliner.hide .entity,
-  .outliner.hide .layer {
-    display: none;
   }
 }
+
+// Bottom section of scenegraph
 .scenegraph-bottom {
   background-color: variables.$darkgray-900;
   border-top: 1px solid variables.$black-200;
-  bottom: 10;
+  bottom: 10px;
   height: 40px;
   left: 0;
   z-index: 100;
+
   a {
     float: right;
     margin: 10px;

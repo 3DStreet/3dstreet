@@ -3,15 +3,13 @@
 .aiChatToggle {
   position: fixed;
   left: 0;
-  top: 80px; /* Position it above the layers panel toggle */
+  top: 76px; /* Position it above the layers panel toggle */
   z-index: 9; /* Lower z-index to be below modals */
 
   button {
     width: 52px; /* Default width with only icon visible */
     overflow: hidden;
-    transition:
-      width 0.3s ease,
-      padding 0.3s ease; /* Only transition specific properties */
+    transition: none;
     padding: 18px 14px; /* Adjusted padding to keep icon centered */
     border-radius: 0 12px 12px 0; /* No rounded corners on left, larger radius on right */
     height: 60px;
@@ -28,7 +26,6 @@
       left: 55px; /* Position text to appear after icon */
       opacity: 0;
       white-space: nowrap;
-      transition: opacity 0.2s ease;
       pointer-events: none; /* Prevent text from interfering with hover */
     }
 
@@ -55,7 +52,7 @@
 .chatContainer {
   position: fixed;
   left: 0;
-  top: 80px;
+  top: 76px;
   z-index: 8; /* Lower z-index to be below modals */
   width: 450px;
   overflow-y: auto;
@@ -92,7 +89,7 @@
         justify-content: center;
         padding: 4px;
         border-radius: 4px;
-        transition: all 0.2s ease;
+        // transition: all 0.2s ease;
 
         &:hover {
           color: variables.$white;
