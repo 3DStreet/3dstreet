@@ -305,14 +305,14 @@
         }
 
         &:hover {
-          background-color: variables.$purple-100;
+          background-color: variables.$purple-900;
           .move-icon {
             translate: 0px 0px;
           }
         }
 
         &:active {
-          background-color: variables.$purple-200;
+          background-color: variables.$darkpurple;
         }
       }
     }
@@ -339,7 +339,7 @@
 
         &:hover {
           width: 155px;
-          background-color: variables.$purple-100;
+          background-color: variables.$purple-900;
 
           span {
             display: block;
