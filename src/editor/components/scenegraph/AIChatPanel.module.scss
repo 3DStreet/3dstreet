@@ -7,24 +7,19 @@
   z-index: 9; /* Lower z-index to be below modals */
 
   button {
-    width: 56px; /* Default width with only icon visible */
+    width: 54px; /* Default width with only icon visible */
     overflow: hidden;
     transition:
       width 0.3s ease,
       padding 0.3s ease; /* Only transition specific properties */
-    padding: 18px 16px; /* Adjusted padding to keep icon centered */
+    padding: 18px 14px; /* Adjusted padding to keep icon centered */
     border-radius: 0 12px 12px 0; /* No rounded corners on left, larger radius on right */
+    height: 60px;
 
-    /* Keep icon fixed in position */
-    .icon {
-      min-width: 24px;
-      width: 24px;
-      height: 24px;
-      flex-shrink: 0;
-      transform: translateZ(0); /* Force hardware acceleration */
-      transition: none; /* Disable any transitions on the icon */
-      position: relative; /* Create stacking context */
-      z-index: 1; /* Ensure icon is above other elements */
+    /* Special styling for ArrowLeftIcon to keep it small */
+    svg[viewBox='0 0 8 13'] {
+      width: 8px; /* 1/4 of the standard 24px icon size */
+      height: 13px; /* Maintain aspect ratio */
     }
 
     span {
@@ -50,7 +45,7 @@
 .chatContainer {
   position: fixed;
   left: 0;
-  top: 130px;
+  top: 80px;
   z-index: 8; /* Lower z-index to be below modals */
   width: 450px;
   overflow-y: auto;
@@ -63,12 +58,14 @@
     display: flex;
     justify-content: space-between;
     align-items: center;
-    padding: 10px 15px;
+    padding: 18px 15px; /* Match the toggle button padding */
     border-bottom: 1px solid variables.$gray-700;
 
     .chat-title {
-      font-weight: 600;
+      font-weight: 500; /* Match the toggle text weight */
       color: variables.$white;
+      font-size: 20px; /* Match the toggle text size */
+      margin-left: 39px; /* Match the positioning of the text in the toggle (55px - 16px padding) */
     }
 
     .chat-actions {

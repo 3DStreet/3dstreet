@@ -7,7 +7,8 @@ import {
   Copy32Icon,
   DownloadIcon,
   TrashIcon,
-  ChatbotIcon
+  ChatbotIcon,
+  ArrowLeftIcon
 } from '../../icons/index.js';
 import { useAuthContext } from '../../contexts';
 import useStore from '@/store';
@@ -534,7 +535,7 @@ const AIChatPanel = () => {
     <>
       <div className={`${styles.aiChatToggle} ai-chat-toggle-container`}>
         <PanelToggleButton
-          icon={ChatbotIcon}
+          icon={isOpen ? ArrowLeftIcon : ChatbotIcon}
           isOpen={isOpen}
           onClick={() => setIsOpen(!isOpen)}
         >
@@ -546,7 +547,7 @@ const AIChatPanel = () => {
         <div className={`${styles.chatContainer} ai-chat-panel-container`}>
           <div className={styles.proFeaturesWrapper}>
             <div className={styles['chat-header']}>
-              <div className={styles['chat-title']}>AI Assistant</div>
+              <div className={styles['chat-title']}>Assistant</div>
               <div className={styles['chat-actions']}>
                 <button
                   onClick={() => setShowResetConfirm(true)}
