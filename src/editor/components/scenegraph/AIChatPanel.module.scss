@@ -4,18 +4,58 @@
   position: fixed;
   left: 0;
   top: 80px; /* Position it above the layers panel toggle */
-  z-index: 999;
+  z-index: 9; /* Lower z-index to be below modals */
+
+  button {
+    width: 56px; /* Default width with only icon visible */
+    overflow: hidden;
+    transition:
+      width 0.3s ease,
+      padding 0.3s ease; /* Only transition specific properties */
+    padding: 18px 16px; /* Adjusted padding to keep icon centered */
+    border-radius: 0 12px 12px 0; /* No rounded corners on left, larger radius on right */
+
+    /* Keep icon fixed in position */
+    .icon {
+      min-width: 24px;
+      width: 24px;
+      height: 24px;
+      flex-shrink: 0;
+      transform: translateZ(0); /* Force hardware acceleration */
+      transition: none; /* Disable any transitions on the icon */
+      position: relative; /* Create stacking context */
+      z-index: 1; /* Ensure icon is above other elements */
+    }
+
+    span {
+      position: absolute;
+      left: 55px; /* Position text to appear after icon */
+      opacity: 0;
+      white-space: nowrap;
+      transition: opacity 0.2s ease;
+      pointer-events: none; /* Prevent text from interfering with hover */
+    }
+
+    /* Expand width and show text on hover */
+    &:hover {
+      width: 160px; /* Increased width to provide more space */
+
+      span {
+        opacity: 1;
+      }
+    }
+  }
 }
 
 .chatContainer {
   position: fixed;
-  left: 20px;
+  left: 0;
   top: 130px;
-  z-index: 998;
+  z-index: 8; /* Lower z-index to be below modals */
   width: 450px;
   overflow-y: auto;
   background-color: rgba(40, 40, 40, 0.9);
-  border-radius: 8px;
+  border-radius: 0 8px 8px 0; /* Rounded only on the right corners */
   border: 1px solid variables.$gray-200;
   box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
 
