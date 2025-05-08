@@ -1,10 +1,14 @@
 import { useState, useEffect, useRef } from 'react';
 import { vertexAI } from '../../services/firebase.js';
 import { getGenerativeModel } from 'firebase/vertexai';
-import Collapsible from '../Collapsible.js';
 import JSONPretty from 'react-json-pretty';
 import 'react-json-pretty/themes/monikai.css';
-import { Copy32Icon, DownloadIcon, TrashIcon } from '../../icons/index.js';
+import {
+  Copy32Icon,
+  DownloadIcon,
+  TrashIcon,
+  ChatbotIcon
+} from '../../icons/index.js';
 import { useAuthContext } from '../../contexts';
 import useStore from '@/store';
 import styles from './AIChatPanel.module.scss';
@@ -13,6 +17,7 @@ import { v4 as uuidv4 } from 'uuid';
 import ReactMarkdown from 'react-markdown';
 import { systemPrompt } from './AIChatPrompt.js';
 import AIChatTools, { entityTools } from './AIChatTools.js';
+import { PanelToggleButton } from '../../components/components';
 
 const AI_MODEL_ID = 'gemini-2.0-flash';
 let AI_CONVERSATION_ID = uuidv4();
@@ -262,6 +267,7 @@ const AIChatPanel = () => {
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [showResetConfirm, setShowResetConfirm] = useState(false);
+  const [isOpen, setIsOpen] = useState(false);
   const chatContainerRef = useRef(null);
   const { currentUser } = useAuthContext();
   const setModal = useStore((state) => state.setModal);
@@ -525,108 +531,123 @@ const AIChatPanel = () => {
   };
 
   return (
-    <div className="chat-panel-container">
-      <Collapsible collapsed={true}>
-        <div className="panel-header">
-          <span>Assistant (Beta)</span>
-          <button
-            onClick={(e) => {
-              e.stopPropagation(); // Prevent collapsible toggle
-              setShowResetConfirm(true);
-            }}
-            className={styles.resetButton}
-            title="Reset conversation"
-            disabled={!currentUser?.isPro}
-          >
-            <TrashIcon />
-          </button>
-        </div>
-        <div
-          className={`chat-panel ${!currentUser?.isPro ? styles.proFeaturesWrapper : ''}`}
+    <>
+      <div className={`${styles.aiChatToggle} ai-chat-toggle-container`}>
+        <PanelToggleButton
+          icon={ChatbotIcon}
+          isOpen={isOpen}
+          onClick={() => setIsOpen(!isOpen)}
         >
-          {showResetConfirm && (
-            <div className="reset-confirm-modal">
-              <div className="reset-confirm-content">
-                <p>
-                  Are you sure you want to reset the conversation? This will
-                  delete all messages.
-                </p>
-                <div className="reset-confirm-buttons">
-                  <button onClick={resetConversation}>Yes, reset</button>
-                  <button onClick={() => setShowResetConfirm(false)}>
-                    Cancel
-                  </button>
+          <span className="">Assistant</span>
+        </PanelToggleButton>
+      </div>
+
+      {isOpen && (
+        <div className={`${styles.chatContainer} ai-chat-panel-container`}>
+          <div className={styles.proFeaturesWrapper}>
+            <div className={styles['chat-header']}>
+              <div className={styles['chat-title']}>AI Assistant</div>
+              <div className={styles['chat-actions']}>
+                <button
+                  onClick={() => setShowResetConfirm(true)}
+                  className={styles['reset-button']}
+                  title="Reset conversation"
+                  disabled={isLoading}
+                >
+                  <TrashIcon />
+                </button>
+              </div>
+            </div>
+            {showResetConfirm && (
+              <div className={styles.resetConfirmOverlay}>
+                <div className={styles.resetConfirmModal}>
+                  <div className={styles.resetConfirmContent}>
+                    <p>
+                      Are you sure you want to reset the conversation? This will
+                      delete all messages.
+                    </p>
+                    <div className={styles.resetConfirmButtons}>
+                      <button onClick={resetConversation}>Yes, reset</button>
+                      <button onClick={() => setShowResetConfirm(false)}>
+                        Cancel
+                      </button>
+                    </div>
+                  </div>
                 </div>
               </div>
-            </div>
-          )}
-          {!currentUser?.isPro && (
-            <div
-              className={styles.proOverlay}
-              onClick={() => setModal('payment')}
-            >
-              <div className={styles.proOverlayContent}>
-                <span role="img" aria-label="lock">
-                  🔒
-                </span>
-                <span>Pro Feature - Upgrade Now</span>
-              </div>
-            </div>
-          )}
-          <div ref={chatContainerRef} className="chat-messages">
-            {messages.map((message, index) => {
-              if (message.type === 'functionCall') {
-                return (
-                  <FunctionCallMessage
-                    key={message.id}
-                    functionCall={message}
-                  />
-                );
-              } else if (message.type === 'snapshot') {
-                return <SnapshotMessage key={message.id} snapshot={message} />;
-              } else {
-                return (
-                  <div key={index} className={`chat-message ${message.role}`}>
-                    {message.role === 'assistant' && index === 0 && (
-                      <div className="assistant-avatar">
-                        <img
-                          src="../../../ui_assets/cards/icons/dadbot.jpg"
-                          alt="AI Assistant"
-                        />
-                      </div>
-                    )}
-                    <MessageContent
-                      content={message.content}
-                      isAssistant={message.role === 'assistant'}
+            )}
+            <div ref={chatContainerRef} className="chat-messages">
+              {messages.map((message, index) => {
+                if (message.type === 'functionCall') {
+                  return (
+                    <FunctionCallMessage
+                      key={message.id}
+                      functionCall={message}
                     />
-                  </div>
-                );
-              }
-            })}
-            {isLoading && <div className="loading-indicator">Thinking...</div>}
-          </div>
+                  );
+                } else if (message.type === 'snapshot') {
+                  return (
+                    <SnapshotMessage key={message.id} snapshot={message} />
+                  );
+                } else {
+                  return (
+                    <div key={index} className={`chat-message ${message.role}`}>
+                      {message.role === 'assistant' && index === 0 && (
+                        <div className="assistant-avatar">
+                          <img
+                            src="../../../ui_assets/cards/icons/dadbot.jpg"
+                            alt="AI Assistant"
+                          />
+                        </div>
+                      )}
+                      <MessageContent
+                        content={message.content}
+                        isAssistant={message.role === 'assistant'}
+                      />
+                    </div>
+                  );
+                }
+              })}
+              {isLoading && (
+                <div className="loading-indicator">Thinking...</div>
+              )}
+            </div>
 
-          <div className="chat-input">
-            <input
-              type="text"
-              value={input}
-              onChange={(e) => setInput(e.target.value)}
-              onKeyPress={(e) =>
-                e.key === 'Enter' && currentUser?.isPro && handleSendMessage()
-              }
-              placeholder="Ask about the scene..."
-              disabled={!currentUser?.isPro}
-            />
-            <button
-              onClick={handleSendMessage}
-              disabled={isLoading || !currentUser?.isPro}
-            >
-              Send
-            </button>
+            <div className={styles.chatInput}>
+              <input
+                type="text"
+                value={input}
+                onChange={(e) => setInput(e.target.value)}
+                onKeyPress={(e) =>
+                  e.key === 'Enter' && currentUser?.isPro && handleSendMessage()
+                }
+                placeholder="Ask about the scene..."
+                disabled={!currentUser?.isPro}
+              />
+              <button
+                onClick={handleSendMessage}
+                disabled={isLoading || !currentUser?.isPro}
+              >
+                Send
+              </button>
+            </div>
+            {!currentUser?.isPro && (
+              <div
+                className={styles.proOverlay}
+                onClick={() => setModal('payment')}
+              >
+                <div className={styles.proOverlayContent}>
+                  <span role="img" aria-label="lock">
+                    🔒
+                  </span>
+                  <span>Pro Feature - Upgrade Now</span>
+                </div>
+              </div>
+            )}
           </div>
         </div>
-      </Collapsible>
-    </div>
+      )}
+    </>
   );
 };
 
