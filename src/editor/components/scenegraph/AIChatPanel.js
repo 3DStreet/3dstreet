@@ -597,10 +597,11 @@ const AIChatPanel = () => {
                     <div key={index} className={`chat-message ${message.role}`}>
                       {message.role === 'assistant' && index === 0 && (
                         <div className="assistant-avatar">
-                          <img
+                          {/* <img
                             src="../../../ui_assets/cards/icons/dadbot.jpg"
-                            alt="AI Assistant"
-                          />
+                            alt="DadBot AI Assistant"
+                          /> */}
+                          <ChatbotIcon />
                         </div>
                       )}
                       <MessageContent
