@@ -7,7 +7,7 @@
   z-index: 9; /* Lower z-index to be below modals */
 
   button {
-    width: 54px; /* Default width with only icon visible */
+    width: 52px; /* Default width with only icon visible */
     overflow: hidden;
     transition:
       width 0.3s ease,
@@ -18,8 +18,9 @@
 
     /* Special styling for ArrowLeftIcon to keep it small */
     svg[viewBox='0 0 8 13'] {
-      width: 8px; /* 1/4 of the standard 24px icon size */
-      height: 13px; /* Maintain aspect ratio */
+      width: 10px; /* 1/4 of the standard 24px icon size */
+      height: 14px; /* Maintain aspect ratio */
+      translate: 4px 0px;
     }
 
     span {
@@ -31,13 +32,22 @@
       pointer-events: none; /* Prevent text from interfering with hover */
     }
 
-    /* Expand width and show text on hover */
+    /* Expand width and show text on hover only when toggle is closed */
     &:hover {
       width: 160px; /* Increased width to provide more space */
 
       span {
         opacity: 1;
       }
+    }
+  }
+
+  /* When toggle is open, don't expand width and don't show text on hover */
+  &.isOpen button:hover {
+    width: 52px !important; /* Keep the default width when open */
+
+    span {
+      opacity: 0 !important; /* Keep text hidden */
     }
   }
 }

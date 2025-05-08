@@ -533,13 +533,15 @@ const AIChatPanel = () => {
 
   return (
     <>
-      <div className={`${styles.aiChatToggle} ai-chat-toggle-container`}>
+      <div
+        className={`${styles.aiChatToggle} ${isOpen ? styles.isOpen : ''} ai-chat-toggle-container`}
+      >
         <PanelToggleButton
           icon={isOpen ? ArrowLeftIcon : ChatbotIcon}
           isOpen={isOpen}
           onClick={() => setIsOpen(!isOpen)}
         >
-          <span className="">Assistant</span>
+          {!isOpen && <span>Assistant</span>}
         </PanelToggleButton>
       </div>
 
