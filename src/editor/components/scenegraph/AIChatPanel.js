@@ -7,8 +7,6 @@ import {
 } from 'react';
 import { vertexAI } from '../../services/firebase.js';
 import { getGenerativeModel } from 'firebase/vertexai';
-import JSONPretty from 'react-json-pretty';
-import 'react-json-pretty/themes/monikai.css';
 import {
   Copy32Icon,
   DownloadIcon,
@@ -242,22 +240,15 @@ const MessageContent = ({ content, isAssistant = false }) => {
   return (
     <>
       {parts.map((part, index) => (
-        <div key={index} className={part.type === 'json' ? 'json-block' : ''}>
-          {part.type === 'json' ? (
-            <>
-              <CopyButton jsonData={part.content} />
-              <JSONPretty data={part.content} />
-            </>
-          ) : (
-            <div className={styles.markdownContent}>
-              <ReactMarkdown>{part.content}</ReactMarkdown>
-              {isAssistant && part.content.length > COPY_BUTTON_THRESHOLD && (
-                <div className={styles.markdownFooter}>
-                  <CopyButton textContent={part.content} />
-                </div>
-              )}
-            </div>
-          )}
+        <div key={index}>
+          <div className={styles.markdownContent}>
+            <ReactMarkdown>{part.content}</ReactMarkdown>
+            {isAssistant && part.content.length > COPY_BUTTON_THRESHOLD && (
+              <div className={styles.markdownFooter}>
+                <CopyButton textContent={part.content} />
+              </div>
+            )}
+          </div>
         </div>
       ))}
     </>
