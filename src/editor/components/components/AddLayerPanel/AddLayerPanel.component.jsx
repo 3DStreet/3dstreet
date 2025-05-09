@@ -488,7 +488,7 @@ const AddLayerPanel = () => {
         onClick={() => setModal('addlayer')}
         className={styles.addLayerButton}
       >
-        Add New Layer &nbsp;🌳🚦🚗
+        Add Layer &nbsp;🌳🚦🚗
       </PanelToggleButton>
       <div
         ref={panelRef}

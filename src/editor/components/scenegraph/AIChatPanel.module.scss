@@ -9,7 +9,7 @@
 
   button {
     padding: 18px 14px; /* Adjusted padding to keep icon centered */
-    border-radius: 12px; /* Rounded corners on all sides since it's centered */
+    border-radius: 10px; /* Rounded corners on all sides since it's centered */
     height: 60px;
     /* When toggle is open, don't expand width and don't show text on hover */
     &.isOpen {
