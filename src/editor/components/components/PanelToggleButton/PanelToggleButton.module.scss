@@ -25,10 +25,4 @@
     width: 24px;
     height: 24px;
   }
-
-  // Make arrow icon smaller (1/4 size or smaller)
-  svg[viewBox='0 0 24 24'][data-testid='ArrowLeftIcon'] {
-    width: 6px;
-    height: 6px;
-  }
 }
