@@ -214,6 +214,7 @@ const MessageContent = ({ content, isAssistant = false }) => {
 
 const AIChatPanel = forwardRef(function AIChatPanel(props, ref) {
   const [messages, setMessages] = useState([]);
+  const isMessages = messages.length > 0;
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [showResetConfirm, setShowResetConfirm] = useState(false);
@@ -713,7 +714,11 @@ const AIChatPanel = forwardRef(function AIChatPanel(props, ref) {
             <div className={styles['chat-header']}>
               <div></div> {/* Empty div for the left column */}
               <div className={styles['chat-title']}>
-                {messages.length === 0 ? 'What can I help with?' : 'Assistant'}{' '}
+                {!isMessages ? 'What can I help with?' : 'Assistant'}{' '}
+                {/* <img
+                            src="../../../ui_assets/cards/icons/dadbot.jpg"
+                            alt="DadBot AI Assistant"
+                          /> */}
                 <ChatbotIcon />
               </div>
               <div className={styles['chat-actions']}>
@@ -744,46 +749,44 @@ const AIChatPanel = forwardRef(function AIChatPanel(props, ref) {
                 </div>
               </div>
             )}
-            <div ref={chatContainerRef} className={styles.chatMessages}>
-              {messages.map((message, index) => {
-                if (message.type === 'functionCall') {
-                  return (
-                    <FunctionCallMessage
-                      key={message.id}
-                      functionCall={message}
-                    />
-                  );
-                } else if (message.type === 'snapshot') {
-                  return (
-                    <SnapshotMessage key={message.id} snapshot={message} />
-                  );
-                } else {
-                  return (
-                    <div
-                      key={index}
-                      className={`${styles.chatMessage} ${styles[message.role]}`}
-                    >
-                      {message.role === 'assistant' && index === 0 && (
-                        <div className={styles.assistantAvatar}>
-                          <img
-                            src="../../../ui_assets/cards/icons/dadbot.jpg"
-                            alt="DadBot AI Assistant"
-                          />
-                          <ChatbotIcon />
-                        </div>
-                      )}
-                      <MessageContent
-                        content={message.content}
-                        isAssistant={message.role === 'assistant'}
+            {isMessages && (
+              <div ref={chatContainerRef} className={styles.chatMessages}>
+                {messages.map((message, index) => {
+                  if (message.type === 'functionCall') {
+                    return (
+                      <FunctionCallMessage
+                        key={message.id}
+                        functionCall={message}
                       />
-                    </div>
-                  );
-                }
-              })}
-              {isLoading && (
-                <div className={styles.loadingIndicator}>Thinking...</div>
-              )}
-            </div>
+                    );
+                  } else if (message.type === 'snapshot') {
+                    return (
+                      <SnapshotMessage key={message.id} snapshot={message} />
+                    );
+                  } else {
+                    return (
+                      <div
+                        key={index}
+                        className={`${styles.chatMessage} ${styles[message.role]}`}
+                      >
+                        {message.role === 'assistant' && (
+                          <div className={styles.assistantAvatar}>
+                            <ChatbotIcon />
+                          </div>
+                        )}
+                        <MessageContent
+                          content={message.content}
+                          isAssistant={message.role === 'assistant'}
+                        />
+                      </div>
+                    );
+                  }
+                })}
+                {isLoading && (
+                  <div className={styles.loadingIndicator}>Thinking...</div>
+                )}
+              </div>
+            )}
 
             <div className={styles.chatInput}>
               <input
@@ -795,7 +798,6 @@ const AIChatPanel = forwardRef(function AIChatPanel(props, ref) {
                 }
                 placeholder="Ask anything"
                 disabled={!currentUser?.isPro}
-                style={{ color: '#fff' }} /* Ensure text is white */
               />
               <div className={styles.actionButtons}>
                 <div className={styles.leftButtons}>
@@ -840,6 +842,7 @@ const AIChatPanel = forwardRef(function AIChatPanel(props, ref) {
                 </div>
               </div>
             </div>
+
             {!currentUser?.isPro && (
               <div
                 className={styles.proOverlay}

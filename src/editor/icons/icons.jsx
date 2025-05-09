@@ -955,8 +955,8 @@ export const QR32Icon = () => (
 
 export const ChatbotIcon = ({ className }) => (
   <svg
-    width="22"
-    height="22"
+    width="25"
+    height="25"
     viewBox="0 0 22 22"
     fill="none"
     xmlns="http://www.w3.org/2000/svg"
