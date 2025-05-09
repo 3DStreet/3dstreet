@@ -157,6 +157,14 @@ export const ReportModal = () => {
     Current Conditions: ${formData.currentCondition}
     Problem Statement: ${formData.problemStatement}
     Proposed Solutions: ${formData.proposedSolutions}
+
+    Be sure to use markdown formatting such as 
+
+    # Project Name
+    ## Section Header
+    ### Subsection Header
+    **Bold Text**
+    *Italic Text*
     
     `;
 

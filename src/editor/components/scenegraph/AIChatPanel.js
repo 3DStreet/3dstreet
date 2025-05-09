@@ -31,17 +31,73 @@ let AI_CONVERSATION_ID = uuidv4();
 const CopyButton = ({ jsonData, textContent }) => {
   const [copied, setCopied] = useState(false);
 
+  const convertMarkdownToHtml = (markdown) => {
+    // Basic markdown to HTML conversion for common patterns
+    let html = markdown
+      // Convert headers
+      .replace(/^### (.*$)/gm, '<h3>$1</h3>')
+      .replace(/^## (.*$)/gm, '<h2>$1</h2>')
+      .replace(/^# (.*$)/gm, '<h1>$1</h1>')
+      // Convert bold
+      .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+      // Convert italic
+      .replace(/\*(.*?)\*/g, '<em>$1</em>')
+      // Convert code blocks
+      .replace(/```([\s\S]*?)```/g, '<pre><code>$1</code></pre>')
+      // Convert inline code
+      .replace(/`([^`]+)`/g, '<code>$1</code>')
+      // Convert unordered lists
+      .replace(/^\* (.*)$/gm, '<li>$1</li>')
+      // Convert ordered lists
+      .replace(/^\d+\. (.*)$/gm, '<li>$1</li>')
+      // Convert links
+      .replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2">$1</a>')
+      // Convert line breaks (preserve paragraphs)
+      .replace(/\n\s*\n/g, '</p><p>')
+      // Convert single line breaks
+      .replace(/\n/g, '<br>');
+
+    // Wrap content in paragraph tags if not already wrapped
+    if (!html.startsWith('<h') && !html.startsWith('<p>')) {
+      html = '<p>' + html + '</p>';
+    }
+
+    return html;
+  };
+
   const handleCopy = async () => {
     try {
       if (jsonData) {
         await navigator.clipboard.writeText(JSON.stringify(jsonData, null, 2));
       } else if (textContent) {
-        await navigator.clipboard.writeText(textContent);
+        // Create a temporary element to hold the HTML content
+        const tempElement = document.createElement('div');
+        tempElement.innerHTML = convertMarkdownToHtml(textContent);
+
+        // Use the Clipboard API to write both text and HTML formats
+        await navigator.clipboard.write([
+          new ClipboardItem({
+            'text/plain': new Blob([textContent], { type: 'text/plain' }),
+            'text/html': new Blob([tempElement.innerHTML], {
+              type: 'text/html'
+            })
+          })
+        ]);
       }
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
     } catch (err) {
       console.error('Failed to copy:', err);
+      // Fallback to plain text if the clipboard API fails
+      try {
+        if (textContent) {
+          await navigator.clipboard.writeText(textContent);
+          setCopied(true);
+          setTimeout(() => setCopied(false), 2000);
+        }
+      } catch (fallbackErr) {
+        console.error('Fallback copy also failed:', fallbackErr);
+      }
     }
   };
 
