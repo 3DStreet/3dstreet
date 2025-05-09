@@ -265,12 +265,7 @@ const MessageContent = ({ content, isAssistant = false }) => {
 };
 
 const AIChatPanel = forwardRef(function AIChatPanel(props, ref) {
-  const initialMessage = {
-    role: 'assistant',
-    content: 'What can I help you with?'
-  };
-
-  const [messages, setMessages] = useState([initialMessage]);
+  const [messages, setMessages] = useState([]);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [showResetConfirm, setShowResetConfirm] = useState(false);
@@ -498,12 +493,7 @@ const AIChatPanel = forwardRef(function AIChatPanel(props, ref) {
   }, [messages]);
 
   const resetConversation = () => {
-    const initialMessage = {
-      role: 'assistant',
-      content: 'What can I help you with?'
-    };
-
-    setMessages([initialMessage]);
+    setMessages([]);
     setInput('');
     setShowResetConfirm(false);
 
@@ -773,7 +763,11 @@ const AIChatPanel = forwardRef(function AIChatPanel(props, ref) {
         <div className={`${styles.chatContainer} ai-chat-panel-container`}>
           <div className={styles.proFeaturesWrapper}>
             <div className={styles['chat-header']}>
-              <div className={styles['chat-title']}>Assistant</div>
+              <div></div> {/* Empty div for the left column */}
+              <div className={styles['chat-title']}>
+                {messages.length === 0 ? 'What can I help with?' : 'Assistant'}{' '}
+                <ChatbotIcon />
+              </div>
               <div className={styles['chat-actions']}>
                 <button
                   className={styles.closeButton}

@@ -34,8 +34,8 @@
   box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
 
   .chat-header {
-    display: flex;
-    justify-content: space-between;
+    display: grid;
+    grid-template-columns: 1fr auto 1fr;
     align-items: center;
     padding: 18px 15px; /* Match the toggle button padding */
     border-bottom: 1px solid variables.$gray-700;
@@ -44,12 +44,17 @@
       font-weight: 500; /* Match the toggle text weight */
       color: variables.$white;
       font-size: 20px; /* Match the toggle text size */
-      // margin-left: 39px; /* Match the positioning of the text in the toggle (55px - 16px padding) */
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px; /* Add space between text and icon */
+      white-space: nowrap; /* Prevent wrapping */
     }
 
     .chat-actions {
       display: flex;
       gap: 8px;
+      justify-content: flex-end; /* Align to the right side of the grid cell */
 
       .reset-button {
         background: none;
