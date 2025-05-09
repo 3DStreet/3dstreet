@@ -2,6 +2,10 @@
 @import '../normalize.css';
 @import './error-boundary.scss';
 
+.notyf {
+  top: 65px !important;
+}
+
 body.aframe-inspector-opened,
 .toggle-edit {
   font-family: variables.$mainFont;
