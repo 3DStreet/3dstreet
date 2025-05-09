@@ -2,8 +2,9 @@
 
 .aiChatToggle {
   position: fixed;
-  left: 0;
-  top: 76px; /* Position it above the layers panel toggle */
+  left: 50%;
+  bottom: 20px; /* Position it at the bottom of the window */
+  transform: translateX(-50%); /* Center it horizontally */
   z-index: 9; /* Lower z-index to be below modals */
 
   button {
@@ -11,7 +12,7 @@
     overflow: hidden;
     transition: none;
     padding: 18px 14px; /* Adjusted padding to keep icon centered */
-    border-radius: 0 12px 12px 0; /* No rounded corners on left, larger radius on right */
+    border-radius: 12px; /* Rounded corners on all sides since it's centered */
     height: 60px;
 
     /* Special styling for ArrowLeftIcon to keep it small */
@@ -51,14 +52,15 @@
 
 .chatContainer {
   position: fixed;
-  left: 0;
-  top: 76px;
+  left: 50%;
+  bottom: 80px; /* Position it above the toggle button */
+  transform: translateX(-50%); /* Center it horizontally */
   z-index: 8; /* Lower z-index to be below modals */
   width: 450px;
   overflow-y: auto;
   background-color: rgba(40, 40, 40, 0.8);
   backdrop-filter: blur(10px);
-  border-radius: 0 8px 8px 0; /* Rounded only on the right corners */
+  border-radius: 8px; /* Rounded corners on all sides */
   border: 1px solid variables.$gray-200;
   box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
 
@@ -73,7 +75,7 @@
       font-weight: 500; /* Match the toggle text weight */
       color: variables.$white;
       font-size: 20px; /* Match the toggle text size */
-      margin-left: 39px; /* Match the positioning of the text in the toggle (55px - 16px padding) */
+      // margin-left: 39px; /* Match the positioning of the text in the toggle (55px - 16px padding) */
     }
 
     .chat-actions {
@@ -116,26 +118,18 @@
 
   .chatInput {
     display: flex;
+    flex-direction: column;
     padding: 10px 15px;
     border-top: 1px solid variables.$gray-700;
+    gap: 8px;
+    background-color: rgb(50, 50, 50);
 
     input {
-      flex: 1;
-      background-color: rgba(255, 255, 255, 0.1);
-      border: 1px solid variables.$gray-600;
-      border-radius: 4px;
-      padding: 8px 12px;
-      color: variables.$white;
-      margin-right: 8px;
-
-      &::placeholder {
-        color: variables.$gray-400;
-      }
-
-      &:focus {
-        outline: none;
-        border-color: variables.$purple-500;
-      }
+      background-color: rgb(50, 50, 50) !important;
+      width: 100%;
+      padding: 10px 4px;
+      color: variables.$white !important; /* Ensure text is white */
+      caret-color: variables.$white; /* Make cursor white too */
 
       &:disabled {
         opacity: 0.6;
@@ -144,22 +138,84 @@
       }
     }
 
-    button {
-      background-color: variables.$purple-500;
-      color: variables.$white;
-      border: none;
-      border-radius: 4px;
-      padding: 8px 16px;
-      cursor: pointer;
-      transition: all 0.2s ease;
+    .actionButtons {
+      display: flex;
+      justify-content: space-between;
+      gap: 8px;
 
-      &:hover {
-        background-color: variables.$purple-600;
+      .leftButtons {
+        display: flex;
+        gap: 8px;
+        justify-content: flex-start;
+        flex-grow: 1;
       }
 
-      &:disabled {
-        opacity: 0.6;
-        cursor: not-allowed;
+      .rightButtons {
+        display: flex;
+        gap: 8px;
+        justify-content: flex-end;
+      }
+
+      .actionButton {
+        background-color: transparent;
+        color: variables.$white;
+        border: 1px solid variables.$purple-500;
+        border-radius: 4px;
+        padding: 8px 16px;
+        cursor: pointer;
+        transition: all 0.2s ease;
+
+        &:hover {
+          background-color: rgba(variables.$purple-500, 0.1);
+        }
+
+        &:disabled {
+          opacity: 0.6;
+          cursor: not-allowed;
+          border-color: variables.$gray-600;
+          color: variables.$gray-400;
+        }
+      }
+
+      .sendButton {
+        background-color: variables.$purple-500;
+        color: variables.$white;
+        border: none;
+        border-radius: 4px;
+        padding: 8px 16px;
+        cursor: pointer;
+        transition: all 0.2s ease;
+
+        &:hover {
+          background-color: variables.$purple-600;
+        }
+
+        &:disabled {
+          opacity: 0.6;
+          cursor: not-allowed;
+        }
+      }
+
+      .resetButton {
+        background: none;
+        border: none;
+        cursor: pointer;
+        color: variables.$gray-400;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 8px;
+        border-radius: 4px;
+
+        &:hover {
+          color: variables.$white;
+          background-color: rgba(255, 255, 255, 0.1);
+        }
+
+        &:disabled {
+          opacity: 0.5;
+          cursor: not-allowed;
+        }
       }
     }
   }

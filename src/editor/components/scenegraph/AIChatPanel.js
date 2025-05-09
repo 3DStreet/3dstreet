@@ -14,7 +14,7 @@ import {
   DownloadIcon,
   TrashIcon,
   ChatbotIcon,
-  ArrowLeftIcon
+  ArrowDown24Icon
 } from '../../icons/index.js';
 import { useAuthContext } from '../../contexts';
 import useStore from '@/store';
@@ -759,7 +759,7 @@ const AIChatPanel = forwardRef(function AIChatPanel(props, ref) {
         className={`${styles.aiChatToggle} ${isOpen ? styles.isOpen : ''} ai-chat-toggle-container`}
       >
         <PanelToggleButton
-          icon={isOpen ? ArrowLeftIcon : ChatbotIcon}
+          icon={isOpen ? ArrowDown24Icon : ChatbotIcon}
           isOpen={isOpen}
           onClick={() => setIsOpen(!isOpen)}
         >
@@ -773,14 +773,7 @@ const AIChatPanel = forwardRef(function AIChatPanel(props, ref) {
             <div className={styles['chat-header']}>
               <div className={styles['chat-title']}>Assistant</div>
               <div className={styles['chat-actions']}>
-                <button
-                  onClick={() => setShowResetConfirm(true)}
-                  className={styles['reset-button']}
-                  title="Reset conversation"
-                  disabled={isLoading}
-                >
-                  <TrashIcon />
-                </button>
+                {/* Trash button moved to action buttons area */}
               </div>
             </div>
             {showResetConfirm && (
@@ -847,15 +840,52 @@ const AIChatPanel = forwardRef(function AIChatPanel(props, ref) {
                 onKeyPress={(e) =>
                   e.key === 'Enter' && currentUser?.isPro && handleSendMessage()
                 }
-                placeholder="Ask about the scene..."
+                placeholder="Ask anything"
                 disabled={!currentUser?.isPro}
+                style={{ color: '#fff' }} /* Ensure text is white */
               />
-              <button
-                onClick={handleSendMessage}
-                disabled={isLoading || !currentUser?.isPro}
-              >
-                Send
-              </button>
+              <div className={styles.actionButtons}>
+                <div className={styles.leftButtons}>
+                  <button
+                    className={styles.actionButton}
+                    onClick={() => {}}
+                    disabled={isLoading || !currentUser?.isPro}
+                  >
+                    Action1
+                  </button>
+                  <button
+                    className={styles.actionButton}
+                    onClick={() => {}}
+                    disabled={isLoading || !currentUser?.isPro}
+                  >
+                    Action2
+                  </button>
+                  <button
+                    className={styles.actionButton}
+                    onClick={() => {}}
+                    disabled={isLoading || !currentUser?.isPro}
+                  >
+                    Action3
+                  </button>
+                </div>
+                <div className={styles.rightButtons}>
+                  <button
+                    onClick={() => setShowResetConfirm(true)}
+                    className={styles.resetButton}
+                    title="Reset conversation"
+                    disabled={isLoading || !currentUser?.isPro}
+                  >
+                    <TrashIcon />
+                  </button>
+                  <button
+                    className={styles.sendButton}
+                    onClick={handleSendMessage}
+                    disabled={isLoading || !currentUser?.isPro}
+                  >
+                    Send
+                  </button>
+                </div>
+              </div>
             </div>
             {!currentUser?.isPro && (
               <div

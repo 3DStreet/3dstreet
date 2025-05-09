@@ -1,7 +1,7 @@
 @use 'variables.scss';
 
 .chat-messages {
-  height: 50vh;
+  max-height: 50vh;
   overflow-y: auto;
   padding: 10px;
   display: flex;
@@ -173,52 +173,6 @@
       &:active {
         background: variables.$darkgray-500;
       }
-    }
-  }
-}
-
-.chat-input {
-  display: flex;
-  gap: 10px;
-  padding: 10px;
-  background-color: variables.$darkgray-700;
-  border-radius: 0 0 8px 8px;
-  translate: 0px 20px;
-
-  input {
-    flex: 1;
-    padding: 8px;
-    border: 1px solid variables.$darkgray-500;
-    border-radius: 4px;
-    background-color: variables.$darkgray-900;
-    color: variables.$white !important;
-
-    &:focus {
-      outline: none;
-      border-color: variables.$purple-500;
-    }
-
-    &::placeholder {
-      color: variables.$gray-400;
-    }
-  }
-
-  button {
-    padding: 8px 16px;
-    border: none;
-    border-radius: 4px;
-    background-color: variables.$purple-700;
-    color: variables.$white;
-    cursor: pointer;
-    transition: background-color 0.2s;
-
-    &:hover {
-      background-color: variables.$purple-500;
-    }
-
-    &:disabled {
-      background-color: variables.$darkgray-500;
-      cursor: not-allowed;
     }
   }
 }
