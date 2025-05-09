@@ -862,10 +862,10 @@ const AIChatPanel = forwardRef(function AIChatPanel(props, ref) {
                   </button>
                   <button
                     className={styles.actionButton}
-                    onClick={() => {}}
+                    onClick={() => setModal('report')}
                     disabled={isLoading || !currentUser?.isPro}
                   >
-                    Action3
+                    📋 Generate Report
                   </button>
                 </div>
                 <div className={styles.rightButtons}>

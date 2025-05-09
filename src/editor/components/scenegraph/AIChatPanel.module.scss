@@ -56,7 +56,8 @@
   bottom: 80px; /* Position it above the toggle button */
   transform: translateX(-50%); /* Center it horizontally */
   z-index: 8; /* Lower z-index to be below modals */
-  width: 450px;
+  min-width: 450px;
+  width: 50vw;
   overflow-y: auto;
   background-color: rgba(40, 40, 40, 0.8);
   backdrop-filter: blur(10px);
