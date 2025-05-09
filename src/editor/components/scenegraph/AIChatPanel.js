@@ -191,67 +191,20 @@ const SnapshotMessage = ({ snapshot }) => {
   );
 };
 
-// Helper component to render message content with JSON formatting and Markdown
+// Helper component to render message content with Markdown
 const MessageContent = ({ content, isAssistant = false }) => {
   // Only show copy button for messages longer than this threshold
   const COPY_BUTTON_THRESHOLD = 200;
-  const formatContent = (text) => {
-    const parts = [];
-    let currentIndex = 0;
-    const jsonBlockRegex = /```(?:json)?\s*(\{[\s\S]*?\})\s*```/g;
-
-    let match;
-    while ((match = jsonBlockRegex.exec(text)) !== null) {
-      if (match.index > currentIndex) {
-        parts.push({
-          type: 'text',
-          content: text.slice(currentIndex, match.index)
-        });
-      }
-
-      try {
-        const jsonContent = JSON.parse(match[1]);
-        parts.push({
-          type: 'json',
-          content: jsonContent
-        });
-      } catch (e) {
-        parts.push({
-          type: 'text',
-          content: match[0]
-        });
-      }
-
-      currentIndex = match.index + match[0].length;
-    }
-
-    if (currentIndex < text.length) {
-      parts.push({
-        type: 'text',
-        content: text.slice(currentIndex)
-      });
-    }
-
-    return parts;
-  };
-
-  const parts = formatContent(content);
 
   return (
-    <>
-      {parts.map((part, index) => (
-        <div key={index}>
-          <div className={styles.markdownContent}>
-            <ReactMarkdown>{part.content}</ReactMarkdown>
-            {isAssistant && part.content.length > COPY_BUTTON_THRESHOLD && (
-              <div className={styles.markdownFooter}>
-                <CopyButton textContent={part.content} />
-              </div>
-            )}
-          </div>
+    <div className={styles.markdownContent}>
+      <ReactMarkdown>{content}</ReactMarkdown>
+      {isAssistant && content.length > COPY_BUTTON_THRESHOLD && (
+        <div className={styles.markdownFooter}>
+          <CopyButton textContent={content} />
         </div>
-      ))}
-    </>
+      )}
+    </div>
   );
 };
 
