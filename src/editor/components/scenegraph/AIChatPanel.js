@@ -46,7 +46,7 @@ const CopyButton = ({ jsonData, textContent }) => {
   };
 
   return (
-    <button onClick={handleCopy} className="copy-button">
+    <button onClick={handleCopy} className={styles.copyButton}>
       <Copy32Icon />
       {copied ? 'Copied!' : 'Copy'}
     </button>
@@ -59,12 +59,14 @@ const FunctionCallMessage = ({ functionCall }) => {
   const { name, args, status, result } = functionCall;
 
   return (
-    <div className={`chat-message function-call ${status}`}>
+    <div
+      className={`${styles.chatMessage} ${styles.functionCall} ${styles[status]}`}
+    >
       <div
-        className="function-call-summary"
+        className={styles.functionCallSummary}
         onClick={() => setIsExpanded(!isExpanded)}
       >
-        <span className={`status-indicator ${status}`}></span>
+        <span className={`${styles.statusIndicator} ${styles[status]}`}></span>
         <strong>{name}</strong>:{' '}
         {status === 'pending'
           ? 'Executing...'
@@ -74,7 +76,7 @@ const FunctionCallMessage = ({ functionCall }) => {
       </div>
 
       {isExpanded && (
-        <div className="function-call-details">
+        <div className={styles.functionCallDetails}>
           <div>
             <strong>Function:</strong> {name}
           </div>
@@ -166,7 +168,9 @@ const SnapshotMessage = ({ snapshot }) => {
   };
 
   return (
-    <div className={`chat-message snapshot ${styles.snapshotContainer}`}>
+    <div
+      className={`${styles.chatMessage} ${styles.snapshot} ${styles.snapshotContainer}`}
+    >
       <div className={styles.snapshotCaption}>{caption}</div>
       <div className={styles.snapshotImageWrapper}>
         <img src={imageData} className={styles.snapshotImage} alt={caption} />
@@ -740,7 +744,7 @@ const AIChatPanel = forwardRef(function AIChatPanel(props, ref) {
                 </div>
               </div>
             )}
-            <div ref={chatContainerRef} className="chat-messages">
+            <div ref={chatContainerRef} className={styles.chatMessages}>
               {messages.map((message, index) => {
                 if (message.type === 'functionCall') {
                   return (
@@ -755,13 +759,16 @@ const AIChatPanel = forwardRef(function AIChatPanel(props, ref) {
                   );
                 } else {
                   return (
-                    <div key={index} className={`chat-message ${message.role}`}>
+                    <div
+                      key={index}
+                      className={`${styles.chatMessage} ${styles[message.role]}`}
+                    >
                       {message.role === 'assistant' && index === 0 && (
-                        <div className="assistant-avatar">
-                          {/* <img
+                        <div className={styles.assistantAvatar}>
+                          <img
                             src="../../../ui_assets/cards/icons/dadbot.jpg"
                             alt="DadBot AI Assistant"
-                          /> */}
+                          />
                           <ChatbotIcon />
                         </div>
                       )}
@@ -774,7 +781,7 @@ const AIChatPanel = forwardRef(function AIChatPanel(props, ref) {
                 }
               })}
               {isLoading && (
-                <div className="loading-indicator">Thinking...</div>
+                <div className={styles.loadingIndicator}>Thinking...</div>
               )}
             </div>
 
