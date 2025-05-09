@@ -1,4 +1,10 @@
-import { useState, useEffect, useRef } from 'react';
+import {
+  useState,
+  useEffect,
+  useRef,
+  useImperativeHandle,
+  forwardRef
+} from 'react';
 import { vertexAI } from '../../services/firebase.js';
 import { getGenerativeModel } from 'firebase/vertexai';
 import JSONPretty from 'react-json-pretty';
@@ -258,7 +264,7 @@ const MessageContent = ({ content, isAssistant = false }) => {
   );
 };
 
-const AIChatPanel = () => {
+const AIChatPanel = forwardRef(function AIChatPanel(props, ref) {
   const initialMessage = {
     role: 'assistant',
     content: 'What can I help you with?'
@@ -531,6 +537,222 @@ const AIChatPanel = () => {
     initializeAI();
   };
 
+  // Expose methods to be called from outside components
+  useImperativeHandle(ref, () => ({
+    // Open the chat panel
+    openPanel: () => {
+      setIsOpen(true);
+    },
+    // Set a message in the input field
+    setUserMessage: (message) => {
+      setInput(message);
+    },
+    // Submit the current message in the input field
+    submitUserMessage: (directMessage) => {
+      // If directMessage is provided, use it instead of waiting for state update
+      if (directMessage) {
+        // Create a temporary function that uses the direct message
+        const sendDirectMessage = async () => {
+          if (!directMessage.trim() || !modelRef.current) return;
+
+          setIsLoading(true);
+          const userMessage = { role: 'user', content: directMessage };
+          setMessages((prev) => [...prev, userMessage]);
+          setInput(''); // Clear the input field
+
+          try {
+            // Continue with the rest of handleSendMessage logic
+            const entity = document.getElementById('street-container');
+            const data = STREET.utils.convertDOMElToObject(entity);
+            const filteredData = STREET.utils.filterJSONstreet(data);
+            const sceneJSON = JSON.parse(filteredData).data;
+
+            const prompt = `
+            The current scene has the following state:
+            ${JSON.stringify(sceneJSON, null, 2)}
+
+            User request: ${directMessage}
+
+            `;
+
+            // Send the prompt to AI
+
+            // Filter out function call messages for the history
+            const historyMessages = messages
+              .filter((msg) => msg.role === 'user' || msg.role === 'assistant')
+              .map((msg) => ({
+                role: msg.role,
+                content: msg.content
+              }));
+
+            // Send message and get response with the full history
+            const result = await modelRef.current.sendMessage(prompt, {
+              history: historyMessages
+            });
+
+            // Process response (same as in handleSendMessage)
+            const response = result.response;
+            const responseText = response.text();
+
+            posthog.capture('$ai_generation', {
+              $ai_model: AI_MODEL_ID,
+              $ai_provider: 'vertexai',
+              $ai_trace_id: AI_CONVERSATION_ID,
+              $ai_input: [{ role: 'user', content: directMessage }],
+              $ai_input_tokens: response.usageMetadata.promptTokenCount,
+              $ai_output_choices: [
+                { role: 'assistant', content: responseText }
+              ],
+              $ai_output_tokens: response.usageMetadata.candidatesTokenCount
+            });
+
+            // Get function calls
+            const functionCalls = response.functionCalls();
+
+            // Always add AI text message first if there's actual text content
+            if (responseText && responseText.trim()) {
+              const aiMessage = {
+                role: 'assistant',
+                content: responseText
+              };
+              setMessages((prev) => [...prev, aiMessage]);
+            }
+
+            // Process function calls if any
+            if (functionCalls && functionCalls.length > 0) {
+              // Use the existing processFunctionCalls logic
+              const processFunctionCalls = async () => {
+                for (const call of functionCalls) {
+                  // Create a function call object with pending status
+                  const functionCallObj = {
+                    type: 'functionCall',
+                    id: Date.now() + Math.random().toString(16).slice(2),
+                    name: call.name,
+                    args: call.args || {},
+                    status: 'pending',
+                    result: null,
+                    timestamp: new Date()
+                  };
+
+                  // Add the function call to the messages array
+                  setMessages((prev) => [...prev, functionCallObj]);
+
+                  try {
+                    // Validate that the function name exists in the function declarations
+                    const functionExists =
+                      entityTools.functionDeclarations.some(
+                        (func) => func.name === call.name
+                      );
+
+                    if (!functionExists) {
+                      throw new Error(
+                        `Unknown function: ${call.name}. Please use one of the available functions.`
+                      );
+                    }
+
+                    // Execute the function using the AIChatTools module
+                    const result = await AIChatTools.executeFunction(
+                      call.name,
+                      call.args
+                    );
+
+                    // Special handling for takeSnapshot function
+                    if (
+                      call.name === 'takeSnapshot' &&
+                      result &&
+                      result.imageData
+                    ) {
+                      // Create a container for the snapshot message with the image data
+                      const snapshotMessage = {
+                        type: 'snapshot',
+                        id: Date.now() + Math.random().toString(16).slice(2),
+                        caption: result.caption,
+                        imageData: result.imageData,
+                        timestamp: new Date()
+                      };
+
+                      // Add the snapshot message to the messages array
+                      setMessages((prev) => [...prev, snapshotMessage]);
+                    }
+
+                    // Update function call status to success
+                    setMessages((prev) =>
+                      prev.map((msg) =>
+                        msg.type === 'functionCall' &&
+                        msg.id === functionCallObj.id
+                          ? {
+                              ...msg,
+                              status: 'success',
+                              result:
+                                typeof result === 'object'
+                                  ? call.name === 'takeSnapshot'
+                                    ? 'Snapshot taken successfully'
+                                    : JSON.stringify(result)
+                                  : result
+                            }
+                          : msg
+                      )
+                    );
+                  } catch (error) {
+                    console.error(
+                      `Error executing function ${call.name}:`,
+                      error
+                    );
+                    // Update function call status to error
+                    setMessages((prev) =>
+                      prev.map((msg) =>
+                        msg.type === 'functionCall' &&
+                        msg.id === functionCallObj.id
+                          ? {
+                              ...msg,
+                              status: 'error',
+                              result: error.message
+                            }
+                          : msg
+                      )
+                    );
+                  }
+                }
+              };
+
+              // Start processing function calls
+              processFunctionCalls();
+            }
+
+            // If no text response was found and there were no function calls, show a fallback message
+            if (
+              !responseText.trim() &&
+              (!functionCalls || functionCalls.length === 0)
+            ) {
+              const aiMessage = {
+                role: 'assistant',
+                content: 'No response available'
+              };
+              setMessages((prev) => [...prev, aiMessage]);
+            }
+          } catch (error) {
+            console.error('Error generating response:', error);
+            setMessages((prev) => [
+              ...prev,
+              {
+                role: 'assistant',
+                content: 'Sorry, I encountered an error. Please try again.'
+              }
+            ]);
+          } finally {
+            setIsLoading(false);
+          }
+        };
+
+        // Execute the direct message function
+        sendDirectMessage();
+      } else {
+        // Fall back to the original method which uses the input state
+        handleSendMessage();
+      }
+    }
+  }));
+
   return (
     <>
       <div
@@ -653,6 +875,6 @@ const AIChatPanel = () => {
       )}
     </>
   );
-};
+});
 
 export default AIChatPanel;

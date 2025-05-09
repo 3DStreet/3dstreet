@@ -1,5 +1,5 @@
 import { ZoomButtons } from './components';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import ComponentsSidebar from './components/Sidebar';
 import Events from '../lib/Events';
 import ModalTextures from './modals/ModalTextures';
@@ -28,6 +28,16 @@ THREE.ImageUtils.crossOrigin = '';
 const GOOGLE_MAPS_LIBRARIES = ['places'];
 
 export default function Main() {
+  // Create a ref for the AIChatPanel component
+  const aiChatPanelRef = useRef(null);
+
+  // Expose the ref globally for other components to access
+  useEffect(() => {
+    window.aiChatPanelRef = aiChatPanelRef.current;
+    return () => {
+      window.aiChatPanelRef = null;
+    };
+  }, []);
   const [state, setState] = useState({
     entity: null,
     isModalTexturesOpen: false,
@@ -115,7 +125,7 @@ export default function Main() {
               selectedEntity={state.entity}
               visible={state.visible.scenegraph}
             />
-            <AIChatPanel />
+            <AIChatPanel ref={aiChatPanelRef} />
             <div id="rightPanel">
               <ComponentsSidebar
                 entity={state.entity}

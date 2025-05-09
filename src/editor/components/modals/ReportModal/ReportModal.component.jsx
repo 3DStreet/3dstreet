@@ -160,53 +160,21 @@ export const ReportModal = () => {
     
     `;
 
-    // Show the AI Chat Panel
-    const chatPanelContainer = document.querySelector('.chat-panel-container');
-    if (chatPanelContainer) {
-      chatPanelContainer.style.display = 'block';
+    // Get reference to the AIChatPanel component
+    const aiChatPanelRef = window.aiChatPanelRef;
 
-      // Make sure the collapsible is expanded
-      const collapsibleContent = chatPanelContainer.querySelector(
-        '.collapsible__content'
-      );
-      if (collapsibleContent && collapsibleContent.style.display === 'none') {
-        const collapsibleHeader = chatPanelContainer.querySelector(
-          '.collapsible__header'
-        );
-        if (collapsibleHeader) {
-          collapsibleHeader.click();
-        }
-      }
+    if (aiChatPanelRef) {
+      // Use the exposed API methods to interact with the AIChatPanel
+      aiChatPanelRef.openPanel();
+      aiChatPanelRef.setUserMessage(reportPrompt);
 
-      // Find the input field and send button
-      const inputField = chatPanelContainer.querySelector('input[type="text"]');
-      const sendButton = chatPanelContainer.querySelector('.chat-input button');
-
-      if (inputField && sendButton) {
-        // Set the input value to our report prompt
-        inputField.value = reportPrompt;
-
-        // Trigger the input event to ensure React state is updated
-        const inputEvent = new Event('input', { bubbles: true });
-        inputField.dispatchEvent(inputEvent);
-
-        // Click the send button to submit the prompt
-        setTimeout(() => {
-          sendButton.click();
-          setIsGenerating(false);
-          onClose();
-        }, 100);
-      } else {
-        console.error(
-          'Could not find input field or send button in AI Chat Panel'
-        );
-        setIsGenerating(false);
-        onClose();
-      }
-    } else {
-      console.error('Could not find AI Chat Panel container');
+      // Pass the report prompt directly to submitUserMessage to avoid React state timing issues
+      aiChatPanelRef.submitUserMessage(reportPrompt);
       setIsGenerating(false);
       onClose();
+    } else {
+      console.error('Could not find AI Chat Panel reference');
+      setIsGenerating(false);
     }
   };
 
