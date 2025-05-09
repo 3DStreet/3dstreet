@@ -8,44 +8,12 @@
   z-index: 9; /* Lower z-index to be below modals */
 
   button {
-    width: 52px; /* Default width with only icon visible */
-    overflow: hidden;
-    transition: none;
     padding: 18px 14px; /* Adjusted padding to keep icon centered */
     border-radius: 12px; /* Rounded corners on all sides since it's centered */
     height: 60px;
-
-    /* Special styling for ArrowLeftIcon to keep it small */
-    svg[viewBox='0 0 8 13'] {
-      width: 10px; /* 1/4 of the standard 24px icon size */
-      height: 14px; /* Maintain aspect ratio */
-      translate: 4px 0px;
-    }
-
-    span {
-      position: absolute;
-      left: 55px; /* Position text to appear after icon */
-      opacity: 0;
-      white-space: nowrap;
-      pointer-events: none; /* Prevent text from interfering with hover */
-    }
-
-    /* Expand width and show text on hover only when toggle is closed */
-    &:hover {
-      width: 160px; /* Increased width to provide more space */
-
-      span {
-        opacity: 1;
-      }
-    }
-  }
-
-  /* When toggle is open, don't expand width and don't show text on hover */
-  &.isOpen button:hover {
-    width: 52px !important; /* Keep the default width when open */
-
-    span {
-      opacity: 0 !important; /* Keep text hidden */
+    /* When toggle is open, don't expand width and don't show text on hover */
+    &.isOpen {
+      display: none;
     }
   }
 }
@@ -53,7 +21,7 @@
 .chatContainer {
   position: fixed;
   left: 50%;
-  bottom: 80px; /* Position it above the toggle button */
+  bottom: 20px; /* Position it above the toggle button */
   transform: translateX(-50%); /* Center it horizontally */
   z-index: 8; /* Lower z-index to be below modals */
   min-width: 450px;
@@ -103,6 +71,24 @@
         &:disabled {
           opacity: 0.5;
           cursor: not-allowed;
+        }
+      }
+
+      .closeButton {
+        background: none;
+        border: none;
+        cursor: pointer;
+        color: variables.$gray-400;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 4px;
+        border-radius: 4px;
+        transition: all 0.2s ease;
+
+        &:hover {
+          color: variables.$white;
+          background-color: rgba(255, 255, 255, 0.1);
         }
       }
     }

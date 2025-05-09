@@ -14,7 +14,7 @@ import {
   DownloadIcon,
   TrashIcon,
   ChatbotIcon,
-  ArrowDown24Icon
+  Cross24Icon
 } from '../../icons/index.js';
 import { useAuthContext } from '../../contexts';
 import useStore from '@/store';
@@ -308,7 +308,7 @@ const AIChatPanel = forwardRef(function AIChatPanel(props, ref) {
     };
 
     initializeAI();
-  }, [systemPrompt]);
+  }, []);
 
   const handleSendMessage = async () => {
     if (!input.trim() || !modelRef.current) return;
@@ -758,13 +758,15 @@ const AIChatPanel = forwardRef(function AIChatPanel(props, ref) {
       <div
         className={`${styles.aiChatToggle} ${isOpen ? styles.isOpen : ''} ai-chat-toggle-container`}
       >
-        <PanelToggleButton
-          icon={isOpen ? ArrowDown24Icon : ChatbotIcon}
-          isOpen={isOpen}
-          onClick={() => setIsOpen(!isOpen)}
-        >
-          {!isOpen && <span>Assistant</span>}
-        </PanelToggleButton>
+        {!isOpen && (
+          <PanelToggleButton
+            icon={ChatbotIcon}
+            isOpen={isOpen}
+            onClick={() => setIsOpen(!isOpen)}
+          >
+            <span>Assistant</span>
+          </PanelToggleButton>
+        )}
       </div>
 
       {isOpen && (
@@ -773,7 +775,13 @@ const AIChatPanel = forwardRef(function AIChatPanel(props, ref) {
             <div className={styles['chat-header']}>
               <div className={styles['chat-title']}>Assistant</div>
               <div className={styles['chat-actions']}>
-                {/* Trash button moved to action buttons area */}
+                <button
+                  className={styles.closeButton}
+                  onClick={() => setIsOpen(false)}
+                  title="Close assistant"
+                >
+                  <Cross24Icon />
+                </button>
               </div>
             </div>
             {showResetConfirm && (
