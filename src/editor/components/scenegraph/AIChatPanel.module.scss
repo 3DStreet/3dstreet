@@ -305,6 +305,12 @@
           cursor: not-allowed;
         }
       }
+
+      .greenIcon {
+        &:hover {
+          color: #44ff44;
+        }
+      }
     }
   }
 }
@@ -550,7 +556,7 @@
     opacity: 1;
 
     svg path {
-      stroke: #ff4444;
+      stroke: #44ff44;
     }
   }
 

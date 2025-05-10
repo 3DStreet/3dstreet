@@ -10,7 +10,6 @@ import { getGenerativeModel } from 'firebase/vertexai';
 import {
   Copy32Icon,
   DownloadIcon,
-  TrashIcon,
   ChatbotIcon,
   Cross24Icon
 } from '../../icons/index.js';
@@ -23,6 +22,8 @@ import ReactMarkdown from 'react-markdown';
 import { systemPrompt } from './AIChatPrompt.js';
 import AIChatTools, { entityTools } from './AIChatTools.js';
 import { PanelToggleButton } from '../../components/components';
+import { AwesomeIcon } from '../components/AwesomeIcon';
+import { faRotate } from '@fortawesome/free-solid-svg-icons';
 
 const AI_MODEL_ID = 'gemini-2.0-flash';
 let AI_CONVERSATION_ID = uuidv4();
@@ -895,11 +896,11 @@ const AIChatPanel = forwardRef(function AIChatPanel(props, ref) {
                   {isMessages && (
                     <button
                       onClick={() => setShowResetConfirm(true)}
-                      className={styles.resetButton}
+                      className={`${styles.resetButton} ${styles.greenIcon}`}
                       title="Reset conversation"
                       disabled={isLoading || !currentUser?.isPro}
                     >
-                      <TrashIcon />
+                      <AwesomeIcon icon={faRotate} />
                     </button>
                   )}
                   <button
