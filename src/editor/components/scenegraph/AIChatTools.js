@@ -297,9 +297,14 @@ export const entityTools = {
           focusEntityId: Schema.string({
             description:
               'Optional entity ID to focus on before taking the snapshot'
+          }),
+          type: Schema.string({
+            description:
+              'Optional type of snapshot view: "focus" (default), "birdseye", "straightOn", or "closeup"',
+            enum: ['focus', 'birdseye', 'straightOn', 'closeup']
           })
         },
-        optionalProperties: ['caption', 'focusEntityId']
+        optionalProperties: ['caption', 'focusEntityId', 'type']
       })
     }
   ]
@@ -705,6 +710,8 @@ const AIChatTools = {
     const caption = args.caption || 'Snapshot of the current view';
     // Get the focusEntityId if provided
     const focusEntityId = args.focusEntityId;
+    // Get the snapshot type if provided (defaults to 'focus')
+    const snapshotType = args.type || 'focus';
 
     // Get the screenshot element
     const screenshotEl = document.getElementById('screenshot');
@@ -726,8 +733,85 @@ const AIChatTools = {
       document.body.appendChild(screenshotCanvas);
     }
 
-    // If a focusEntityId is provided, focus the camera on that entity
-    if (focusEntityId) {
+    // Get the camera from A-Frame
+    const cameraEl = document.querySelector('[camera]');
+    if (!cameraEl) {
+      throw new Error('Camera element not found');
+    }
+
+    // Position the camera based on the snapshot type
+    if (snapshotType !== 'focus') {
+      // Find the street entity to use as a reference point
+      const streetEntity = document.querySelector('[managed-street]');
+      if (!streetEntity) {
+        throw new Error('Street entity not found. Cannot position camera.');
+      }
+
+      // Create a temporary target entity for camera positioning
+      let targetEntity = document.querySelector('#temp-camera-target');
+      if (!targetEntity) {
+        targetEntity = document.createElement('a-entity');
+        targetEntity.id = 'temp-camera-target';
+        document.querySelector('a-scene').appendChild(targetEntity);
+      }
+
+      // Get street position
+      const streetPosition = new THREE.Vector3();
+      streetEntity.object3D.getWorldPosition(streetPosition);
+
+      // Position the target entity based on snapshot type
+      switch (snapshotType) {
+        case 'birdseye':
+          // Position target at street level, we'll look down at it from above
+          targetEntity.setAttribute('position', {
+            x: streetPosition.x,
+            y: streetPosition.y,
+            z: streetPosition.z
+          });
+          // Add focus-camera-pose component with relative position above
+          targetEntity.setAttribute('focus-camera-pose', {
+            relativePosition: { x: 0, y: 50, z: 0 }
+          });
+          break;
+
+        case 'straightOn':
+          // Position target at street level
+          targetEntity.setAttribute('position', {
+            x: streetPosition.x,
+            y: streetPosition.y,
+            z: streetPosition.z
+          });
+          // Add focus-camera-pose component with relative position in front
+          targetEntity.setAttribute('focus-camera-pose', {
+            relativePosition: { x: 0, y: 1.6, z: 20 }
+          });
+          break;
+
+        case 'closeup':
+          // Position target at street level
+          targetEntity.setAttribute('position', {
+            x: streetPosition.x,
+            y: streetPosition.y,
+            z: streetPosition.z
+          });
+          // Add focus-camera-pose component with relative position for closeup
+          targetEntity.setAttribute('focus-camera-pose', {
+            relativePosition: { x: 3, y: 1.2, z: 5 }
+          });
+          break;
+      }
+
+      // Use the proper event system to focus on the target entity
+      if (typeof Events !== 'undefined' && Events.emit) {
+        Events.emit('objectfocus', targetEntity.object3D);
+
+        // Wait for the focus animation to complete
+        await new Promise((resolve) => setTimeout(resolve, 1000));
+      } else {
+        throw new Error('Events system not available');
+      }
+    } else if (focusEntityId) {
+      // If a focusEntityId is provided and type is 'focus', focus the camera on that entity
       const focusEntity = document.getElementById(focusEntityId);
       if (!focusEntity) {
         throw new Error(`Entity with ID ${focusEntityId} not found`);
