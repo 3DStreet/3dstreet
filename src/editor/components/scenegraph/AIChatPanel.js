@@ -852,48 +852,56 @@ const AIChatPanel = forwardRef(function AIChatPanel(props, ref) {
                 onKeyPress={(e) =>
                   e.key === 'Enter' && currentUser?.isPro && handleSendMessage()
                 }
-                placeholder="Ask anything"
+                placeholder={
+                  isMessages ? 'Reply to Assistant...' : 'Ask anything'
+                }
                 disabled={!currentUser?.isPro}
               />
               <div className={styles.actionButtons}>
                 <div className={styles.leftButtons}>
-                  <button
-                    className={styles.actionButton}
-                    onClick={() =>
-                      setInput(
-                        'Make a basic street with 2 drive lanes, 2 sidewalks, and 2 bike lanes'
-                      )
-                    }
-                    disabled={isLoading || !currentUser?.isPro}
-                  >
-                    🛣️ Create a Street
-                  </button>
-                  <button
-                    className={styles.actionButton}
-                    onClick={() =>
-                      setInput('take 3 snapshots with different types')
-                    }
-                    disabled={isLoading || !currentUser?.isPro}
-                  >
-                    📸 Take Snapshots
-                  </button>
-                  <button
-                    className={styles.actionButton}
-                    onClick={() => setModal('report')}
-                    disabled={isLoading || !currentUser?.isPro}
-                  >
-                    📋 Generate Report
-                  </button>
+                  {!isMessages && (
+                    <>
+                      <button
+                        className={styles.actionButton}
+                        onClick={() =>
+                          setInput(
+                            'Make a basic street with 2 drive lanes, 2 sidewalks, and 2 bike lanes'
+                          )
+                        }
+                        disabled={isLoading || !currentUser?.isPro}
+                      >
+                        🛣️ Create a Street
+                      </button>
+                      <button
+                        className={styles.actionButton}
+                        onClick={() =>
+                          setInput('take 3 snapshots with different types')
+                        }
+                        disabled={isLoading || !currentUser?.isPro}
+                      >
+                        📸 Take Snapshots
+                      </button>
+                      <button
+                        className={styles.actionButton}
+                        onClick={() => setModal('report')}
+                        disabled={isLoading || !currentUser?.isPro}
+                      >
+                        📋 Generate Report
+                      </button>
+                    </>
+                  )}
                 </div>
                 <div className={styles.rightButtons}>
-                  <button
-                    onClick={() => setShowResetConfirm(true)}
-                    className={styles.resetButton}
-                    title="Reset conversation"
-                    disabled={isLoading || !currentUser?.isPro}
-                  >
-                    <TrashIcon />
-                  </button>
+                  {isMessages && (
+                    <button
+                      onClick={() => setShowResetConfirm(true)}
+                      className={styles.resetButton}
+                      title="Reset conversation"
+                      disabled={isLoading || !currentUser?.isPro}
+                    >
+                      <TrashIcon />
+                    </button>
+                  )}
                   <button
                     className={styles.sendButton}
                     onClick={handleSendMessage}
