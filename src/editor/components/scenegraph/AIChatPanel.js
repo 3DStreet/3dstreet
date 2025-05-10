@@ -859,17 +859,23 @@ const AIChatPanel = forwardRef(function AIChatPanel(props, ref) {
                 <div className={styles.leftButtons}>
                   <button
                     className={styles.actionButton}
-                    onClick={() => {}}
+                    onClick={() =>
+                      setInput(
+                        'Make a basic street with 2 drive lanes, 2 sidewalks, and 2 bike lanes'
+                      )
+                    }
                     disabled={isLoading || !currentUser?.isPro}
                   >
-                    Action1
+                    🛣️ Create a Street
                   </button>
                   <button
                     className={styles.actionButton}
-                    onClick={() => {}}
+                    onClick={() =>
+                      setInput('take 3 snapshots with different types')
+                    }
                     disabled={isLoading || !currentUser?.isPro}
                   >
-                    Action2
+                    📸 Take Snapshots
                   </button>
                   <button
                     className={styles.actionButton}
