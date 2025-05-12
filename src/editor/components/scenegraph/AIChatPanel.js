@@ -114,6 +114,7 @@ const CopyButton = ({ jsonData, textContent }) => {
 const FunctionCallMessage = ({ functionCall }) => {
   const [isExpanded, setIsExpanded] = useState(false);
   const { name, args, status, result } = functionCall;
+  const setModal = useStore((state) => state.setModal);
 
   return (
     <div
@@ -130,6 +131,18 @@ const FunctionCallMessage = ({ functionCall }) => {
           : status === 'success'
             ? 'Completed'
             : 'Failed'}
+        {name === 'setLatLon' && status === 'success' && (
+          <button
+            className={styles.editLocationButton}
+            onClick={(e) => {
+              e.stopPropagation(); // Prevent expanding the function call details
+              setModal('geo');
+              posthog.capture('openGeoModalFromAIChat');
+            }}
+          >
+            Edit Precise Location
+          </button>
+        )}
       </div>
 
       {isExpanded && (
