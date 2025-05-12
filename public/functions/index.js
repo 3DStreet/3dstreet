@@ -59,7 +59,7 @@ exports.getGeoidHeight = functions
         .reverseGeocode({
           params: {
             latlng: `${lat},${lon}`,
-            result_type: "street_address|route|locality|administrative_area",
+            result_type: ["street_address", "route", "locality", "administrative_area_level_1"],
             key: process.env.GOOGLE_MAPS_ELEVATION_API_KEY,
           }
         })
