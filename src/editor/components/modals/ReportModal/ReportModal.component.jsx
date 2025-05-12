@@ -35,7 +35,6 @@ export const ReportModal = () => {
   const [isGenerating, setIsGenerating] = useState(false);
   const [hasGeoLocation, setHasGeoLocation] = useState(false);
   const [geoCoordinates, setGeoCoordinates] = useState('');
-  const [previousModal, setPreviousModal] = useState(null);
 
   // Load project info data from #memory entity when modal opens
   useEffect(() => {
@@ -67,16 +66,12 @@ export const ReportModal = () => {
         setHasGeoLocation(false);
         setGeoCoordinates('');
       }
-
-      // Store that we came from the report modal
-      setPreviousModal('report');
     }
   }, [isOpen]);
 
   // Listen for modal changes to handle returning from geo modal
   useEffect(() => {
-    if (previousModal === 'geo' && isOpen) {
-      // We've returned from the geo modal to the report modal
+    if (isOpen) {
       const geoLayer = document.getElementById('reference-layers');
       if (geoLayer && geoLayer.hasAttribute('street-geo')) {
         const streetGeo = geoLayer.getAttribute('street-geo');
@@ -93,18 +88,15 @@ export const ReportModal = () => {
           setGeoCoordinates('');
         }
       }
-      setPreviousModal(null);
     }
-  }, [isOpen, previousModal]);
+  }, [isOpen]);
 
   const onClose = () => {
     setModal(null);
   };
 
   const openGeoModal = () => {
-    // Store current modal to return to after geo modal
-    setPreviousModal('geo');
-    setModal('geo');
+    setModal('geo', true);
 
     // Mark geoLocation as touched
     setTouched((prev) => ({

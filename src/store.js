@@ -42,15 +42,22 @@ const useStore = create(
           set({ unitsPreference: newUnitsPreference });
         },
         modal: firstModal(),
-        setModal: (newModal) => {
+        previousModal: null,
+        setModal: (newModal, rememberPrevious = false) => {
           const currentModal = useStore.getState().modal;
-          if (currentModal) {
-            posthog.capture('modal_closed', { modal: currentModal });
+          if (rememberPrevious && currentModal) {
+            set({ modal: newModal, previousModal: currentModal });
+          } else {
+            set({ modal: newModal });
           }
-          if (newModal) {
-            posthog.capture('modal_opened', { modal: newModal });
+        },
+        returnToPreviousModal: () => {
+          const { previousModal } = useStore.getState();
+          if (previousModal) {
+            set({ modal: previousModal, previousModal: null });
+          } else {
+            set({ modal: null });
           }
-          set({ modal: newModal });
         },
         startCheckout: (postCheckout) => {
           posthog.capture('modal_opened', { modal: 'payment' });

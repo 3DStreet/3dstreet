@@ -29,11 +29,13 @@ const GeoModal = () => {
   });
   const [autocomplete, setAutocomplete] = useState(null);
   const [isWorking, setIsWorking] = useState(false);
-  const setModal = useStore((state) => state.setModal);
+  const returnToPreviousModal = useStore(
+    (state) => state.returnToPreviousModal
+  );
   const isOpen = useStore((state) => state.modal === 'geo');
 
   const onClose = () => {
-    setModal(null);
+    returnToPreviousModal();
   };
 
   useEffect(() => {
