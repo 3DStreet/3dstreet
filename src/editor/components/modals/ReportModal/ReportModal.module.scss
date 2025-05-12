@@ -114,9 +114,13 @@
 
 .actions {
   display: flex;
-  justify-content: flex-end;
-  gap: 12px;
+  justify-content: space-between;
   margin-top: 16px;
+}
+
+.rightActions {
+  display: flex;
+  gap: 12px;
 }
 
 .previewContainer {

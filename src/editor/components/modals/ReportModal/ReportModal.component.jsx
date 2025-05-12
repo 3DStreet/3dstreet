@@ -117,7 +117,48 @@ export const ReportModal = () => {
     setModal(null);
   };
 
+  const saveFormData = () => {
+    // Update project-info component on #memory entity
+    const memoryEntity = document.getElementById('memory');
+    if (memoryEntity) {
+      // Check if component exists and update or add as needed
+      if (memoryEntity.hasAttribute('project-info')) {
+        AFRAME.INSPECTOR.execute('entityupdate', {
+          entity: memoryEntity,
+          component: 'project-info',
+          value: {
+            description: formData.description,
+            location: formData.location,
+            currentCondition: formData.currentCondition,
+            problemStatement: formData.problemStatement,
+            proposedSolutions: formData.proposedSolutions
+          }
+        });
+      } else {
+        AFRAME.INSPECTOR.execute('componentadd', {
+          entity: memoryEntity,
+          component: 'project-info',
+          value: {
+            description: formData.description,
+            location: formData.location,
+            currentCondition: formData.currentCondition,
+            problemStatement: formData.problemStatement,
+            proposedSolutions: formData.proposedSolutions
+          }
+        });
+      }
+
+      // Select the entity to update the inspector panel
+      setTimeout(() => {
+        AFRAME.INSPECTOR.selectEntity(memoryEntity);
+      }, 0);
+    }
+  };
+
   const openGeoModal = () => {
+    // Save form data without validation before opening geo modal
+    saveFormData();
+
     setModal('geo', true);
 
     // Mark geoLocation as touched
@@ -207,41 +248,8 @@ export const ReportModal = () => {
     }
     setIsGenerating(true);
 
-    // Update project-info component on #memory entity
-    const memoryEntity = document.getElementById('memory');
-    if (memoryEntity) {
-      // Check if component exists and update or add as needed
-      if (memoryEntity.hasAttribute('project-info')) {
-        AFRAME.INSPECTOR.execute('entityupdate', {
-          entity: memoryEntity,
-          component: 'project-info',
-          value: {
-            description: formData.description,
-            location: formData.location,
-            currentCondition: formData.currentCondition,
-            problemStatement: formData.problemStatement,
-            proposedSolutions: formData.proposedSolutions
-          }
-        });
-      } else {
-        AFRAME.INSPECTOR.execute('componentadd', {
-          entity: memoryEntity,
-          component: 'project-info',
-          value: {
-            description: formData.description,
-            location: formData.location,
-            currentCondition: formData.currentCondition,
-            problemStatement: formData.problemStatement,
-            proposedSolutions: formData.proposedSolutions
-          }
-        });
-      }
-
-      // Select the entity to update the inspector panel
-      setTimeout(() => {
-        AFRAME.INSPECTOR.selectEntity(memoryEntity);
-      }, 0);
-    }
+    // Save form data
+    saveFormData();
 
     // Create a report prompt to send to the LLM
     const reportPrompt = `Create a report for a street improvement project using the information from the user-provided project description inside of project-info component of #memory entity, and the scene graph.
@@ -383,7 +391,7 @@ export const ReportModal = () => {
               value={formData.problemStatement}
               onChange={handleInputChange}
               placeholder="What issues need to be addressed?"
-              rows={3}
+              rows={2}
               className={
                 touched.problemStatement && errors.problemStatement
                   ? styles.errorTextArea
@@ -406,15 +414,26 @@ export const ReportModal = () => {
 
           <div className={styles.actions}>
             <Button onClick={onClose} variant="secondary">
-              Cancel
+              Discard
             </Button>
-            <Button
-              onClick={generateReport}
-              disabled={isGenerating}
-              loading={isGenerating}
-            >
-              {isGenerating ? 'Generating...' : 'Generate Report'}
-            </Button>
+            <div className={styles.rightActions}>
+              <Button
+                onClick={() => {
+                  saveFormData();
+                  onClose();
+                }}
+                variant="secondary"
+              >
+                Save Project Info Only
+              </Button>
+              <Button
+                onClick={generateReport}
+                disabled={isGenerating}
+                loading={isGenerating}
+              >
+                {isGenerating ? 'Generating...' : 'Save and Generate Report'}
+              </Button>
+            </div>
           </div>
         </div>
       </div>
