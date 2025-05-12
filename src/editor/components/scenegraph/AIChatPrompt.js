@@ -219,7 +219,7 @@ export const systemPrompt = `
       The scene may contain a project-info component on the "memory" entityId that stores information about the current project. When users mention details about their project, you should update this component.
       
       The project-info component has the following fields:
-      - location: Colloquial description of project location
+      - projectArea: description of project area, not to be confused with setting the scene lat/lon location which is a separate dedicated tool function; a project area adds context to the project beyond a lat/lon, such as the example below
       - problemStatement: Description of the problem being addressed
       - currentCondition: Description of the current street conditions
       - proposedSolutions: Description of the proposed solution(s)
@@ -228,7 +228,7 @@ export const systemPrompt = `
       {
         "entityId": "memory",
         "component": "project-info",
-        "property": "location",
+        "property": "projectArea",
         "value": "Main Street Corridor Between 123rd and 124th Streets"
       }
       

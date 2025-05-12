@@ -5,7 +5,7 @@
 AFRAME.registerComponent('project-info', {
   schema: {
     description: { type: 'string', default: '' },
-    location: { type: 'string', default: '' },
+    projectArea: { type: 'string', default: '' },
     currentCondition: { type: 'string', default: '' },
     problemStatement: { type: 'string', default: '' },
     proposedSolutions: { type: 'string', default: '' }

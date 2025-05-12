@@ -66,7 +66,7 @@ export const ReportModal = () => {
         const projectInfo = memoryEntity.getAttribute('project-info');
         setFormData({
           description: projectInfo.description || '',
-          location: projectInfo.location || '',
+          location: projectInfo.projectArea || '',
           currentCondition: projectInfo.currentCondition || '',
           problemStatement: projectInfo.problemStatement || '',
           proposedSolutions: projectInfo.proposedSolutions || ''
@@ -128,7 +128,7 @@ export const ReportModal = () => {
           component: 'project-info',
           value: {
             description: formData.description,
-            location: formData.location,
+            projectArea: formData.location,
             currentCondition: formData.currentCondition,
             problemStatement: formData.problemStatement,
             proposedSolutions: formData.proposedSolutions
@@ -140,7 +140,7 @@ export const ReportModal = () => {
           component: 'project-info',
           value: {
             description: formData.description,
-            location: formData.location,
+            projectArea: formData.location,
             currentCondition: formData.currentCondition,
             problemStatement: formData.problemStatement,
             proposedSolutions: formData.proposedSolutions
@@ -257,7 +257,7 @@ export const ReportModal = () => {
     Optional, generate one or more screenshots using the takeSnapshot function call. Do NOT update memory project-info component when writing the report.
         
     Project Description: ${formData.description}
-    Location: ${formData.location}
+    Project Area: ${formData.location}
     Current Conditions: ${formData.currentCondition}
     Problem Statement: ${formData.problemStatement}
     Proposed Solutions: ${formData.proposedSolutions}
