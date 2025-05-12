@@ -36,8 +36,30 @@ export const ReportModal = () => {
   const [hasGeoLocation, setHasGeoLocation] = useState(false);
   const [geoCoordinates, setGeoCoordinates] = useState('');
 
-  // Load project info data from #memory entity when modal opens
+  // Reset validation state when modal opens/closes
   useEffect(() => {
+    // Reset validation errors and touched state when modal closes
+    if (!isOpen) {
+      // Reset errors - create empty object with same keys
+      setErrors((prevErrors) => {
+        const resetErrors = {};
+        Object.keys(prevErrors).forEach((key) => {
+          resetErrors[key] = '';
+        });
+        return resetErrors;
+      });
+
+      // Reset touched state - create object with same keys but all false
+      setTouched((prevTouched) => {
+        const resetTouched = {};
+        Object.keys(prevTouched).forEach((key) => {
+          resetTouched[key] = false;
+        });
+        return resetTouched;
+      });
+    }
+
+    // Load project info data from #memory entity when modal opens
     if (isOpen) {
       const memoryEntity = document.getElementById('memory');
       if (memoryEntity && memoryEntity.hasAttribute('project-info')) {
