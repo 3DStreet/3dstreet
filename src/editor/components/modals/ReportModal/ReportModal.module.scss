@@ -28,6 +28,7 @@
   display: flex;
   flex-direction: column;
   gap: 6px;
+  position: relative; /* For absolute positioning of error message */
 
   label {
     font-weight: 500;
@@ -39,6 +40,45 @@
   :global(textarea) {
     width: 100%;
     box-sizing: border-box;
+  }
+}
+
+// Label container for showing inline validation
+.labelContainer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  min-height: 20px; /* Fixed height to prevent layout shift */
+}
+
+// Inline error message
+.inlineError {
+  color: #ff4d4f;
+  font-size: 0.85rem;
+  font-weight: normal;
+  position: absolute;
+  right: 0;
+}
+
+// Style for required field labels
+.requiredField {
+  position: relative;
+
+  &::after {
+    content: '*';
+    color: #ff4d4f;
+    margin-left: 4px;
+  }
+}
+
+// Style for textarea with error
+.errorTextArea {
+  border-color: #ff4d4f !important;
+
+  &:focus {
+    border-color: #ff4d4f !important;
+    // box-shadow: 0 0 0 2px rgba(255, 77, 79, 0.2) !important;
   }
 }
 

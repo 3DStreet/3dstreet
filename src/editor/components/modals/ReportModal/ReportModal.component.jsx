@@ -20,6 +20,18 @@ export const ReportModal = () => {
     proposedSolutions: ''
   });
 
+  const [errors, setErrors] = useState({
+    description: '',
+    problemStatement: '',
+    geoLocation: ''
+  });
+
+  const [touched, setTouched] = useState({
+    description: false,
+    problemStatement: false,
+    geoLocation: false
+  });
+
   const [isGenerating, setIsGenerating] = useState(false);
   const [hasGeoLocation, setHasGeoLocation] = useState(false);
   const [geoCoordinates, setGeoCoordinates] = useState('');
@@ -71,6 +83,11 @@ export const ReportModal = () => {
         if (streetGeo && streetGeo.latitude && streetGeo.longitude) {
           setHasGeoLocation(true);
           setGeoCoordinates(`${streetGeo.latitude}, ${streetGeo.longitude}`);
+          // Clear geo location error
+          setErrors((prev) => ({
+            ...prev,
+            geoLocation: ''
+          }));
         } else {
           setHasGeoLocation(false);
           setGeoCoordinates('');
@@ -88,27 +105,92 @@ export const ReportModal = () => {
     // Store current modal to return to after geo modal
     setPreviousModal('geo');
     setModal('geo');
+
+    // Mark geoLocation as touched
+    setTouched((prev) => ({
+      ...prev,
+      geoLocation: true
+    }));
   };
 
   const handleInputChange = (valueOrEvent, name) => {
     // Handle both direct value (from Input) and event objects (from TextArea)
+    let fieldName, value;
+
     if (typeof valueOrEvent === 'object' && valueOrEvent.target) {
       // It's an event from TextArea
-      const { name: fieldName, value } = valueOrEvent.target;
+      fieldName = valueOrEvent.target.name;
+      value = valueOrEvent.target.value;
       setFormData((prev) => ({
         ...prev,
         [fieldName]: value
       }));
     } else {
       // It's a direct value from Input
+      fieldName = name;
+      value = valueOrEvent;
       setFormData((prev) => ({
         ...prev,
-        [name]: valueOrEvent
+        [fieldName]: value
       }));
+    }
+
+    // Mark field as touched
+    if (fieldName === 'description' || fieldName === 'problemStatement') {
+      setTouched((prev) => ({
+        ...prev,
+        [fieldName]: true
+      }));
+
+      // Clear error if value is not empty
+      if (value.trim()) {
+        setErrors((prev) => ({
+          ...prev,
+          [fieldName]: ''
+        }));
+      }
     }
   };
 
+  // Validate form before generating report
+  const validateForm = () => {
+    const newErrors = {};
+    let isValid = true;
+
+    // Validate description
+    if (!formData.description.trim()) {
+      newErrors.description = 'Project description is required';
+      isValid = false;
+    }
+
+    // Validate problem statement
+    if (!formData.problemStatement.trim()) {
+      newErrors.problemStatement = 'Problem statement is required';
+      isValid = false;
+    }
+
+    // Validate geo location
+    if (!hasGeoLocation) {
+      newErrors.geoLocation = 'Geographic location is required';
+      isValid = false;
+    }
+
+    // Update all fields as touched
+    setTouched({
+      description: true,
+      problemStatement: true,
+      geoLocation: true
+    });
+
+    setErrors(newErrors);
+    return isValid;
+  };
+
   const generateReport = () => {
+    // Validate form before proceeding
+    if (!validateForm()) {
+      return;
+    }
     setIsGenerating(true);
 
     // Update project-info component on #memory entity
@@ -196,7 +278,14 @@ export const ReportModal = () => {
       <div className={styles.wrapper}>
         <div className={styles.formContainer}>
           <div className={styles.field}>
-            <label htmlFor="description">Project Description</label>
+            <div className={styles.labelContainer}>
+              <label htmlFor="description" className={styles.requiredField}>
+                Project Description
+              </label>
+              {touched.description && errors.description && (
+                <span className={styles.inlineError}>Required</span>
+              )}
+            </div>
             <Input
               id="description"
               name="description"
@@ -207,7 +296,14 @@ export const ReportModal = () => {
           </div>
 
           <div className={styles.field}>
-            <label htmlFor="location">Location</label>
+            <div className={styles.labelContainer}>
+              <label htmlFor="location" className={styles.requiredField}>
+                Location
+              </label>
+              {touched.geoLocation && errors.geoLocation && (
+                <span className={styles.inlineError}>Required</span>
+              )}
+            </div>
             <div className={styles.locationContainer}>
               <Button
                 variant="toolbtn"
@@ -256,7 +352,17 @@ export const ReportModal = () => {
           </div>
 
           <div className={styles.field}>
-            <label htmlFor="problemStatement">Problem Statement</label>
+            <div className={styles.labelContainer}>
+              <label
+                htmlFor="problemStatement"
+                className={styles.requiredField}
+              >
+                Problem Statement
+              </label>
+              {touched.problemStatement && errors.problemStatement && (
+                <span className={styles.inlineError}>Required</span>
+              )}
+            </div>
             <TextArea
               id="problemStatement"
               name="problemStatement"
@@ -264,6 +370,11 @@ export const ReportModal = () => {
               onChange={handleInputChange}
               placeholder="What issues need to be addressed?"
               rows={3}
+              className={
+                touched.problemStatement && errors.problemStatement
+                  ? styles.errorTextArea
+                  : ''
+              }
             />
           </div>
 
