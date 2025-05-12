@@ -306,6 +306,21 @@ export const entityTools = {
         },
         optionalProperties: ['caption', 'focusEntityId', 'type']
       })
+    },
+    {
+      name: 'setLatLon',
+      description:
+        'Set the latitude and longitude for the scene, which will trigger elevation calculation',
+      parameters: Schema.object({
+        properties: {
+          latitude: Schema.number({
+            description: 'Latitude in decimal degrees (e.g., 37.7637072)'
+          }),
+          longitude: Schema.number({
+            description: 'Longitude in decimal degrees (e.g., -122.4151768)'
+          })
+        }
+      })
     }
   ]
 };
@@ -961,6 +976,71 @@ const AIChatTools = {
    * @param {Object} args - The function arguments
    * @returns {Promise<any>} Promise resolving to the function result
    */
+  /**
+   * Handles setLatLon function call
+   * @param {Object} args - The function arguments (latitude, longitude)
+   * @returns {Promise<string>} Result message
+   */
+  setLatLon: async (args) => {
+    const { latitude, longitude } = args;
+
+    if (isNaN(latitude) || isNaN(longitude)) {
+      return 'Error: Invalid latitude or longitude values';
+    }
+
+    try {
+      // Import the httpsCallable and functions from firebase
+      const { httpsCallable } = await import('firebase/functions');
+      const { functions } = await import('../../services/firebase.js');
+      const { roundCoord } = await import('../../../../src/utils.js');
+
+      // Round coordinates to reasonable precision
+      const lat = roundCoord(parseFloat(latitude));
+      const lng = roundCoord(parseFloat(longitude));
+
+      // Request elevation data from the cloud function
+      const getGeoidHeight = httpsCallable(functions, 'getGeoidHeight');
+      const result = await getGeoidHeight({ lat, lon: lng });
+      const data = result.data;
+
+      if (data) {
+        console.log(`Setting location - latitude: ${lat}, longitude: ${lng}`);
+        console.log(`Elevation data: ${JSON.stringify(data)}`);
+
+        // Get the reference layers element
+        const geoLayer = document.getElementById('reference-layers');
+
+        // Update or add the street-geo component
+        AFRAME.INSPECTOR.execute(
+          geoLayer.hasAttribute('street-geo') ? 'entityupdate' : 'componentadd',
+          {
+            entity: geoLayer,
+            component: 'street-geo',
+            value: {
+              latitude: lat,
+              longitude: lng,
+              ellipsoidalHeight: data.ellipsoidalHeight,
+              orthometricHeight: data.orthometricHeight,
+              geoidHeight: data.geoidHeight
+            }
+          }
+        );
+
+        // Select the geo layer in the inspector
+        setTimeout(() => {
+          AFRAME.INSPECTOR.selectEntity(geoLayer);
+        }, 0);
+
+        return `Successfully set location to latitude: ${lat}, longitude: ${lng} with elevation data: ellipsoidal height ${data.ellipsoidalHeight}m, orthometric height ${data.orthometricHeight}m`;
+      } else {
+        return 'Error: Failed to retrieve elevation data';
+      }
+    } catch (error) {
+      console.error('Error setting lat/lon:', error);
+      return `Error setting location: ${error.message || 'Unknown error'}`;
+    }
+  },
+
   executeFunction: async (functionName, args) => {
     if (!AIChatTools[functionName]) {
       throw new Error(`Unknown function: ${functionName}`);
