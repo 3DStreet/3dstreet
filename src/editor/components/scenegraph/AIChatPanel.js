@@ -539,6 +539,10 @@ const AIChatPanel = forwardRef(function AIChatPanel(props, ref) {
     openPanel: () => {
       setIsOpen(true);
     },
+    // Reset the conversation
+    resetConversation: () => {
+      resetConversation();
+    },
     // Set a message in the input field
     setUserMessage: (message) => {
       setInput(message);

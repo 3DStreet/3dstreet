@@ -59,6 +59,14 @@ export function newScene(
     memoryEl.setAttribute('project-info', '');
   }
 
+  // reset AI Chat
+  if (
+    window.aiChatPanelRef &&
+    typeof window.aiChatPanelRef.resetConversation === 'function'
+  ) {
+    window.aiChatPanelRef.resetConversation();
+  }
+
   const streetContainerEl = checkOrCreateEntity(
     'street-container',
     AFRAME.scenes[0],
