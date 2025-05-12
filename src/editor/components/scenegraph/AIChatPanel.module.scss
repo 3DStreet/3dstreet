@@ -39,8 +39,6 @@
     align-items: center;
     padding: 18px 15px;
     border-bottom: 1px solid variables.$gray-700;
-    /* Define the CSS variable for the header height that will be used by the proOverlay */
-    --chat-header-height: 100%; /* This makes the overlay start exactly at the bottom of the header */
 
     .chat-title {
       font-weight: 1000;
@@ -450,10 +448,7 @@
 
   .proOverlay {
     position: absolute;
-    top: var(
-      --chat-header-height,
-      0
-    ); /* Use CSS variable to position after header */
+    top: 57px;
     left: 0;
     right: 0;
     bottom: 0;
