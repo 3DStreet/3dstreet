@@ -36,10 +36,17 @@
   }
 
   // Make input fields wider
-  :global(input),
   :global(textarea) {
     width: 100%;
     box-sizing: border-box;
+
+    // Default color for inputs with value (not showing placeholder)
+    color: #ffffff !important;
+
+    // Gray color when placeholder is shown
+    &:placeholder-shown {
+      color: variables.$lightgray-200 !important;
+    }
   }
 }
 
