@@ -251,7 +251,7 @@ export const ReportModal = () => {
               value={formData.currentCondition}
               onChange={handleInputChange}
               placeholder="Describe the current state of the street"
-              rows={3}
+              rows={2}
             />
           </div>
 
@@ -275,7 +275,7 @@ export const ReportModal = () => {
               value={formData.proposedSolutions}
               onChange={handleInputChange}
               placeholder="What improvements do you suggest?"
-              rows={3}
+              rows={2}
             />
           </div>
 

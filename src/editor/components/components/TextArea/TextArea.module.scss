@@ -1,20 +1,37 @@
 @use '../../../style/variables.scss';
 
 .textArea {
-  background-color: rgba(0, 0, 0, 0.3);
-  border: 1px solid rgba(255, 255, 255, 0.2);
-  border-radius: 4px;
-  color: #ffffff;
+  background-color: rgba(50, 50, 50, 0.8) !important;
+  border: 1px solid variables.$purple-400 !important;
+  border-radius: 10px !important;
+  color: variables.$lightgray-200 !important;
   font-family: 'Inter', sans-serif;
   font-size: 14px;
   padding: 8px 12px;
   width: 100%;
   resize: vertical;
+  transition: all 0.3s;
+  box-sizing: border-box;
+
+  &:hover {
+    background-color: variables.$darkgray-300 !important;
+    border-color: variables.$purple-500 !important;
+    color: variables.$gray-300 !important;
+    transition: all 0.3s;
+  }
 
   &:focus {
     outline: none;
-    border-color: variables.$purple-500;
-    box-shadow: 0 0 0 2px rgba(119, 77, 238, 0.3);
+    border-color: variables.$purple-700 !important;
+    background-color: variables.$darkgray-300 !important;
+    color: variables.$white !important;
+    transition: all 0.3s;
+  }
+
+  &:active {
+    border-color: variables.$purple-400 !important;
+    background-color: rgba(50, 50, 50, 0.8) !important;
+    transition: all 0.3s;
   }
 
   &::placeholder {
@@ -24,5 +41,16 @@
   &:disabled {
     opacity: 0.6;
     cursor: not-allowed;
+    border-color: variables.$darkpurple !important;
+    background-color: rgba(50, 50, 50, 0.8) !important;
+    color: variables.$gray-500 !important;
+
+    &:hover,
+    &:focus,
+    &:active {
+      cursor: not-allowed;
+      border-color: variables.$darkpurple !important;
+      background-color: rgba(50, 50, 50, 0.8) !important;
+    }
   }
 }
