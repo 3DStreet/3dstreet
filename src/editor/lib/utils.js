@@ -76,6 +76,83 @@ export function injectJS(url, onLoad, onError) {
   document.head.appendChild(link);
 }
 
+/**
+ * Sets the scene location with latitude and longitude coordinates
+ * @param {number} latitude - The latitude coordinate
+ * @param {number} longitude - The longitude coordinate
+ * @returns {Promise<Object>} - Promise resolving to the elevation data or error message
+ */
+export async function setSceneLocation(latitude, longitude) {
+  if (isNaN(latitude) || isNaN(longitude)) {
+    return {
+      success: false,
+      message: 'Error: Invalid latitude or longitude values'
+    };
+  }
+
+  try {
+    // Import the httpsCallable and functions from firebase
+    const { httpsCallable } = await import('firebase/functions');
+    const { functions } = await import('../services/firebase.js');
+    const { roundCoord } = await import('../../../src/utils.js');
+
+    // Round coordinates to reasonable precision
+    const lat = roundCoord(parseFloat(latitude));
+    const lng = roundCoord(parseFloat(longitude));
+
+    // Request elevation data from the cloud function
+    const getGeoidHeight = httpsCallable(functions, 'getGeoidHeight');
+    const result = await getGeoidHeight({ lat, lon: lng });
+    const data = result.data;
+
+    if (data) {
+      console.log(`Setting location - latitude: ${lat}, longitude: ${lng}`);
+      console.log(`Elevation data: ${JSON.stringify(data)}`);
+
+      // Get the reference layers element
+      const geoLayer = document.getElementById('reference-layers');
+
+      // Update or add the street-geo component
+      AFRAME.INSPECTOR.execute(
+        geoLayer.hasAttribute('street-geo') ? 'entityupdate' : 'componentadd',
+        {
+          entity: geoLayer,
+          component: 'street-geo',
+          value: {
+            latitude: lat,
+            longitude: lng,
+            ellipsoidalHeight: data.ellipsoidalHeight,
+            orthometricHeight: data.orthometricHeight,
+            geoidHeight: data.geoidHeight
+          }
+        }
+      );
+
+      // Select the geo layer in the inspector
+      setTimeout(() => {
+        AFRAME.INSPECTOR.selectEntity(geoLayer);
+      }, 0);
+
+      return {
+        success: true,
+        message: `Successfully set location to latitude: ${lat}, longitude: ${lng}`,
+        data
+      };
+    } else {
+      return {
+        success: false,
+        message: 'Error: Failed to retrieve elevation data'
+      };
+    }
+  } catch (error) {
+    console.error('Error setting lat/lon:', error);
+    return {
+      success: false,
+      message: `Error setting location: ${error.message || 'Unknown error'}`
+    };
+  }
+}
+
 export function saveString(text, filename, mimeType) {
   saveBlob(new Blob([text], { type: mimeType }), filename);
 }
