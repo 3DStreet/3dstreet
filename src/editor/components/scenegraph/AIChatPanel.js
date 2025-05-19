@@ -868,12 +868,12 @@ const AIChatPanel = forwardRef(function AIChatPanel(props, ref) {
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
                 onKeyPress={(e) =>
-                  e.key === 'Enter' && currentUser?.isPro && handleSendMessage()
+                  e.key === 'Enter' && currentUser && handleSendMessage()
                 }
                 placeholder={
                   isMessages ? 'Reply to Assistant...' : 'Ask anything'
                 }
-                disabled={!currentUser?.isPro}
+                disabled={!currentUser}
               />
               <div className={styles.actionButtons}>
                 <div className={styles.leftButtons}>
@@ -886,7 +886,7 @@ const AIChatPanel = forwardRef(function AIChatPanel(props, ref) {
                             'Make a basic street with 2 drive lanes, 2 sidewalks, and 2 bike lanes'
                           )
                         }
-                        disabled={isLoading || !currentUser?.isPro}
+                        disabled={isLoading || !currentUser}
                       >
                         🛣️ Create a Street
                       </button>
@@ -895,14 +895,14 @@ const AIChatPanel = forwardRef(function AIChatPanel(props, ref) {
                         onClick={() =>
                           setInput('take 3 snapshots with different types')
                         }
-                        disabled={isLoading || !currentUser?.isPro}
+                        disabled={isLoading || !currentUser}
                       >
                         📸 Take Snapshots
                       </button>
                       <button
                         className={styles.actionButton}
                         onClick={() => setModal('report')}
-                        disabled={isLoading || !currentUser?.isPro}
+                        disabled={isLoading || !currentUser}
                       >
                         📋 Generate Report
                       </button>
@@ -915,7 +915,7 @@ const AIChatPanel = forwardRef(function AIChatPanel(props, ref) {
                       onClick={() => setShowResetConfirm(true)}
                       className={`${styles.resetButton} ${styles.greenIcon}`}
                       title="Reset conversation"
-                      disabled={isLoading || !currentUser?.isPro}
+                      disabled={isLoading || !currentUser}
                     >
                       <AwesomeIcon icon={faRotate} />
                     </button>
@@ -923,7 +923,7 @@ const AIChatPanel = forwardRef(function AIChatPanel(props, ref) {
                   <button
                     className={styles.sendButton}
                     onClick={handleSendMessage}
-                    disabled={isLoading || !currentUser?.isPro}
+                    disabled={isLoading || !currentUser}
                   >
                     Send
                   </button>
@@ -931,16 +931,16 @@ const AIChatPanel = forwardRef(function AIChatPanel(props, ref) {
               </div>
             </div>
 
-            {!currentUser?.isPro && (
+            {!currentUser && (
               <div
                 className={styles.proOverlay}
-                onClick={() => setModal('payment')}
+                onClick={() => setModal('signin')}
               >
                 <div className={styles.proOverlayContent}>
                   <span role="img" aria-label="lock">
                     🔒
                   </span>
-                  <span>Pro Feature - Upgrade Now</span>
+                  <span>Please log in to use the Assistant</span>
                 </div>
               </div>
             )}
