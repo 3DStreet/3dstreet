@@ -33,7 +33,18 @@ const useStore = create(
         sceneTitle: null,
         setSceneTitle: (newSceneTitle) => set({ sceneTitle: newSceneTitle }),
         newScene: () =>
-          set({ sceneId: null, sceneTitle: null, authorId: null }),
+          set({
+            sceneId: null,
+            sceneTitle: null,
+            authorId: null,
+            projectInfo: {
+              description: '',
+              projectArea: '',
+              currentCondition: '',
+              problemStatement: '',
+              proposedSolutions: ''
+            }
+          }),
         authorId: null, // not used anywhere yet, we still use the metadata component
         setAuthorId: (newAuthorId) => set({ authorId: newAuthorId }), // not used anywhere yet
         unitsPreference: localStorage.getItem('unitsPreference') || 'metric',
@@ -41,6 +52,21 @@ const useStore = create(
           localStorage.setItem('unitsPreference', newUnitsPreference);
           set({ unitsPreference: newUnitsPreference });
         },
+        // Project info data (replaces project-info component)
+        projectInfo: {
+          description: '',
+          projectArea: '',
+          currentCondition: '',
+          problemStatement: '',
+          proposedSolutions: ''
+        },
+        setProjectInfo: (newProjectInfo) =>
+          set({
+            projectInfo: {
+              ...useStore.getState().projectInfo,
+              ...newProjectInfo
+            }
+          }),
         modal: firstModal(),
         previousModal: null,
         setModal: (newModal, rememberPrevious = false) => {

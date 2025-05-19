@@ -42,13 +42,7 @@ function convertDOMElToObject(entity) {
   const data = [];
   const environmentElement = document.querySelector('#environment');
   const referenceEntities = document.querySelector('#reference-layers');
-  const userAgentEntities = document.querySelector('#cameraRig');
-  const sceneEntities = [
-    entity,
-    environmentElement,
-    referenceEntities,
-    userAgentEntities
-  ];
+  const sceneEntities = [entity, environmentElement, referenceEntities];
 
   // get assets url address
   assetsUrl = document.querySelector('street-assets').getAttribute('url');
@@ -60,10 +54,17 @@ function convertDOMElToObject(entity) {
     }
   }
 
+  // Get project info from Zustand store
+  const storeState = useStore.getState();
+  const memory = {
+    projectInfo: storeState.projectInfo
+  };
+
   return {
-    title: useStore.getState().sceneTitle,
+    title: storeState.sceneTitle,
     version: '0.5.5',
-    data: data
+    data: data,
+    memory: memory
   };
 }
 
@@ -75,31 +76,6 @@ function getElementData(entity) {
   }
   // node id's that should save without child nodes
   const skipChildrenNodes = ['environment', 'reference-layers'];
-  const explicitSaveNodes = ['cameraRig'];
-
-  if (explicitSaveNodes.includes(entity.id)) {
-    // for explicit-save node, only save the parent node id and no other attribute data
-    // for each child in explicit-save node, only save if there is attribute explicit-save
-    const elementTree = { id: entity.id };
-    const children = entity.childNodes;
-    console.log('elementTree', elementTree);
-    if (children.length) {
-      const savedChildren = [];
-      for (const child of children) {
-        if (child.nodeType === Node.ELEMENT_NODE) {
-          const elementData = getElementData(child);
-          if (elementData && child.hasAttribute('explicit-save')) {
-            savedChildren.push(elementData);
-          }
-        }
-      }
-      if (savedChildren.length > 0) {
-        elementTree['children'] = savedChildren;
-      }
-    }
-    return elementTree;
-  }
-
   const elementTree = getAttributes(entity);
   const children = entity.childNodes;
   if (children.length && !skipChildrenNodes.includes(elementTree.id)) {
@@ -233,6 +209,11 @@ function filterJSONstreet(streetJSON) {
   }
 
   let stringJSON = JSON.stringify(streetJSON, function replacer(key, value) {
+    // Preserve memory data
+    if (key === 'memory') {
+      return value;
+    }
+
     let compAttributes;
     for (var removeKey in removeProps) {
       // check for removing components
@@ -441,21 +422,6 @@ Add a new entity with a list of components and children (if exists)
  * @return {Element} Entity created
 */
 function createEntityFromObj(entityData, parentEl) {
-  // special case for 'cameraRig' only load in children, don't replace the parent
-  if (entityData.id === 'cameraRig') {
-    if (entityData.children) {
-      for (const childEntityData of entityData.children) {
-        if (childEntityData.id === 'memory') {
-          const memoryEntity = document.getElementById('memory');
-          for (const attr in childEntityData.components) {
-            memoryEntity.setAttribute(attr, childEntityData.components[attr]);
-          }
-        }
-      }
-    }
-    return;
-  }
-
   const tagName = entityData.element || 'a-entity';
   const entity = entityData.entityElement || document.createElement(tagName);
 
@@ -661,15 +627,41 @@ AFRAME.registerComponent('set-loader-from-hash', {
     request.onload = function () {
       if (this.status >= 200 && this.status < 400) {
         // Connection success
-        // remove 'set-loader-from-hash' component from json data
-        const jsonData = JSON.parse(this.response, (key, value) =>
-          key === 'set-loader-from-hash' ? undefined : value
+        // Parse the JSON response
+        const responseData = JSON.parse(this.response);
+        console.log('[set-loader-from-hash] Full response data:', responseData);
+
+        // Extract memory data if it exists
+        const memoryData = responseData.memory;
+
+        // Log the memory data for debugging
+        if (memoryData) {
+          console.log('[set-loader-from-hash] Memory data found:', memoryData);
+        } else {
+          console.log(
+            '[set-loader-from-hash] No memory data found in the JSON'
+          );
+        }
+
+        // Create a clean JSON object without the set-loader-from-hash component
+        const jsonData = JSON.parse(
+          JSON.stringify(responseData),
+          (key, value) => (key === 'set-loader-from-hash' ? undefined : value)
         );
 
         console.log(
           '[set-loader-from-hash]',
           '200 response received and JSON parsed, now createElementsFromJSON'
         );
+
+        // Ensure memory data is preserved
+        if (memoryData && !jsonData.memory) {
+          jsonData.memory = memoryData;
+          console.log(
+            '[set-loader-from-hash] Restored memory data to jsonData'
+          );
+        }
+
         STREET.utils.createElementsFromJSON(jsonData, false);
         const sceneId = getUUIDFromPath(requestURL);
         if (sceneId) {
@@ -762,6 +754,15 @@ function createElementsFromJSON(streetJSON, clearUrlHash) {
   if (sceneTitle) {
     console.log('sceneTitle from createElementsFromJSON', sceneTitle);
     useStore.getState().setSceneTitle(sceneTitle);
+  }
+
+  // Load project info from memory if available
+  if (streetObject.memory && streetObject.memory.projectInfo) {
+    console.log(
+      'Loading project info from memory:',
+      streetObject.memory.projectInfo
+    );
+    useStore.getState().setProjectInfo(streetObject.memory.projectInfo);
   }
 
   const streetContainerEl = document.getElementById('street-container');

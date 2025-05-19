@@ -85,10 +85,9 @@
 
     <a-entity id="environment" data-layer-name="Environment" street-environment="preset: day;" data-no-transform></a-entity>
 
-    <a-entity id="cameraRig" class="ph-no-capture" data-layer-name="User Agent" data-no-transform
+    <a-entity id="cameraRig" class="ph-no-capture" data-layer-name="Viewer" data-no-transform
       cursor-teleport="cameraRig: #cameraRig; cameraHead: #camera;"
       movement-controls="camera: #camera; fly: true">
-      <a-entity id="memory" project-info data-layer-name="Memory" data-no-transform explicit-save></a-entity>
       <a-entity id="camera" data-layer-name="Camera" position="0 1.6 0" camera look-controls="reverseMouseDrag: true" class="autocreated"></a-entity>
       <a-entity id="leftHand" hand-controls="hand: left;" data-layer-name="Left Controls" class="autocreated" data-no-transform=""
         blink-controls="cameraRig: #cameraRig; teleportOrigin: #camera; rotateOnTeleport:false;"></a-entity>
