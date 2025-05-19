@@ -36,7 +36,7 @@ export function initCameras(inspector) {
 
   // Create Inspector camera.
   const perspectiveCamera = (inspector.camera = new THREE.PerspectiveCamera());
-  perspectiveCamera.far = 20000; // Changed from 20000
+  perspectiveCamera.far = 20000; // Changed from 10000 to 20000
   perspectiveCamera.near = 0.01;
   perspectiveCamera.position.set(0, 15, 30);
   const center = new THREE.Vector3(0, 1.6, 0); // same as in viewport.js
