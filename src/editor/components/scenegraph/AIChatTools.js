@@ -402,6 +402,8 @@ const AIChatTools = {
       // Special case for title which is handled separately in the store
       if (property === 'title') {
         useStore.getState().setSceneTitle(value);
+        // Emit the historychanged event to trigger autosave
+        Events.emit('historychanged', true);
         return `Updated scene title to: ${value}`;
       }
 
