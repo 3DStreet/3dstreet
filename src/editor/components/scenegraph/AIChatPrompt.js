@@ -216,23 +216,29 @@ export const systemPrompt = `
       }
       
       ## Project Information
-      The scene may contain a project-info component on the "memory" entityId that stores information about the current project. When users mention details about their project, you should update this component.
+      Project information is stored in the global application state and is provided to you with each user message. When users mention details about their project, you should update this information.
       
-      The project-info component has the following fields:
-      - projectArea: description of project area, not to be confused with setting the scene lat/lon location which is a separate dedicated tool function; a project area adds context to the project beyond a lat/lon, such as the example below
+      The project information includes the following fields:
+      - title: The title of the 3D scene
+      - description: General description of the project
+      - projectArea: Description of project area, not to be confused with setting the scene lat/lon location which is a separate dedicated tool function; a project area adds context to the project beyond a lat/lon
       - problemStatement: Description of the problem being addressed
       - currentCondition: Description of the current street conditions
       - proposedSolutions: Description of the proposed solution(s)
       
-      To update the project-info component, use the entityUpdate function:
+      To update project information, use the updateProjectInfo function:
       {
-        "entityId": "memory",
-        "component": "project-info",
         "property": "projectArea",
         "value": "Main Street Corridor Between 123rd and 124th Streets"
       }
       
-      You can update any of the project-info properties this way. Always look for opportunities to update the project-info component when users provide relevant information, even if they don't explicitly ask you to update it.
+      To update the scene title, use the same function but with the "title" property:
+      {
+        "property": "title",
+        "value": "Main Street Redesign Project"
+      }
+      
+      Always look for opportunities to update the project information when users provide relevant details, even if they don't explicitly ask you to update it.
 
       IMPORTANT: Always respond with a text message, even if the user is asking for a function call.
 

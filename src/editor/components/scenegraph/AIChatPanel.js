@@ -339,9 +339,20 @@ const AIChatPanel = forwardRef(function AIChatPanel(props, ref) {
       const filteredData = STREET.utils.filterJSONstreet(data);
       const sceneJSON = JSON.parse(filteredData).data;
 
+      // Get project info from zustand store
+      const { projectInfo, sceneTitle } = useStore.getState();
+
       const prompt = `
       The current scene has the following state:
       ${JSON.stringify(sceneJSON, null, 2)}
+      
+      Current project information:
+      Scene Title: ${sceneTitle || 'Untitled'}
+      Description: ${projectInfo.description || ''}
+      Project Area: ${projectInfo.projectArea || ''}
+      Current Condition: ${projectInfo.currentCondition || ''}
+      Problem Statement: ${projectInfo.problemStatement || ''}
+      Proposed Solutions: ${projectInfo.proposedSolutions || ''}
 
       User request: ${input}
 
@@ -580,9 +591,20 @@ const AIChatPanel = forwardRef(function AIChatPanel(props, ref) {
             const filteredData = STREET.utils.filterJSONstreet(data);
             const sceneJSON = JSON.parse(filteredData).data;
 
+            // Get project info from zustand store
+            const { projectInfo, sceneTitle } = useStore.getState();
+
             const prompt = `
             The current scene has the following state:
             ${JSON.stringify(sceneJSON, null, 2)}
+            
+            Current project information:
+            Scene Title: ${sceneTitle || 'Untitled'}
+            Description: ${projectInfo.description || ''}
+            Project Area: ${projectInfo.projectArea || ''}
+            Current Condition: ${projectInfo.currentCondition || ''}
+            Problem Statement: ${projectInfo.problemStatement || ''}
+            Proposed Solutions: ${projectInfo.proposedSolutions || ''}
 
             User request: ${directMessage}
 

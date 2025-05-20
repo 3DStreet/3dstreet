@@ -8,10 +8,27 @@ import { Parser } from 'expr-eval';
 import Events from '../../lib/Events.js';
 import * as THREE from 'three';
 import { Schema } from 'firebase/vertexai';
+import useStore from '@/store';
 
 // Define the function declarations for entity operations
 export const entityTools = {
   functionDeclarations: [
+    {
+      name: 'updateProjectInfo',
+      description: 'Update project information stored in the global state',
+      parameters: Schema.object({
+        properties: {
+          property: Schema.string({
+            description:
+              'The project info property to update (description, projectArea, currentCondition, problemStatement, proposedSolutions, or title)'
+          }),
+          value: Schema.string({
+            description: 'The new value to set for the property'
+          })
+        },
+        required: ['property', 'value']
+      })
+    },
     {
       name: 'entityCreateMixin',
       description:
@@ -364,6 +381,47 @@ export function executeUpdateCommand(command) {
  * Collection of functions to handle AI function calls
  */
 const AIChatTools = {
+  /**
+   * Handles updateProjectInfo function call
+   * @param {Object} args - The function arguments
+   * @returns {string} Result message
+   */
+  updateProjectInfo: (args) => {
+    try {
+      const { property, value } = args;
+
+      // Validate the property
+      const validProperties = [
+        'description',
+        'projectArea',
+        'currentCondition',
+        'problemStatement',
+        'proposedSolutions'
+      ];
+
+      // Special case for title which is handled separately in the store
+      if (property === 'title') {
+        useStore.getState().setSceneTitle(value);
+        return `Updated scene title to: ${value}`;
+      }
+
+      if (!validProperties.includes(property)) {
+        throw new Error(
+          `Invalid property: ${property}. Must be one of: ${validProperties.join(', ')} or title`
+        );
+      }
+
+      // Update the project info in the Zustand store
+      const updatedInfo = {};
+      updatedInfo[property] = value;
+      useStore.getState().setProjectInfo(updatedInfo);
+
+      return `Updated project ${property} to: ${value}`;
+    } catch (error) {
+      console.error('Error updating project info:', error);
+      throw error;
+    }
+  },
   /**
    * Handles entityUpdate function call
    * @param {Object} args - The function arguments
