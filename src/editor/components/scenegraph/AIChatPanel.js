@@ -289,6 +289,7 @@ const AIChatPanel = forwardRef(function AIChatPanel(props, ref) {
   const [isLoading, setIsLoading] = useState(false);
   const [showResetConfirm, setShowResetConfirm] = useState(false);
   const [isOpen, setIsOpen] = useState(false);
+  const [savedScrollPosition, setSavedScrollPosition] = useState(0);
   const chatContainerRef = useRef(null);
   const { currentUser } = useAuthContext();
   const setModal = useStore((state) => state.setModal);
@@ -521,12 +522,23 @@ const AIChatPanel = forwardRef(function AIChatPanel(props, ref) {
     await processMessage(currentInput);
   };
 
+  // Scroll to bottom when new messages are added
   useEffect(() => {
     if (chatContainerRef.current) {
       chatContainerRef.current.scrollTop =
         chatContainerRef.current.scrollHeight;
     }
   }, [messages]);
+
+  // Restore scroll position when panel is opened
+  useEffect(() => {
+    if (isOpen && chatContainerRef.current && savedScrollPosition > 0) {
+      // Use setTimeout to ensure the DOM has fully rendered
+      setTimeout(() => {
+        chatContainerRef.current.scrollTop = savedScrollPosition;
+      }, 0);
+    }
+  }, [isOpen, savedScrollPosition]);
 
   const resetConversation = () => {
     setMessages([]);
@@ -568,6 +580,7 @@ const AIChatPanel = forwardRef(function AIChatPanel(props, ref) {
     // Open the chat panel
     openPanel: () => {
       setIsOpen(true);
+      // Scroll position will be restored via useEffect
     },
     // Reset the conversation
     resetConversation: () => {
@@ -629,7 +642,15 @@ const AIChatPanel = forwardRef(function AIChatPanel(props, ref) {
               <div className={styles['chat-actions']}>
                 <button
                   className={styles.closeButton}
-                  onClick={() => setIsOpen(false)}
+                  onClick={() => {
+                    // Save scroll position before closing
+                    if (chatContainerRef.current) {
+                      setSavedScrollPosition(
+                        chatContainerRef.current.scrollTop
+                      );
+                    }
+                    setIsOpen(false);
+                  }}
                   title="Close assistant"
                 >
                   <Cross24Icon />
