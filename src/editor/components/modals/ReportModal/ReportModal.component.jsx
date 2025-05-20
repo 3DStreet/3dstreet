@@ -249,9 +249,8 @@ export const ReportModal = () => {
     if (aiChatPanelRef) {
       // Use the exposed API methods to interact with the AIChatPanel
       aiChatPanelRef.openPanel();
-      aiChatPanelRef.setUserMessage(reportPrompt);
 
-      // Pass the report prompt directly to submitUserMessage to avoid React state timing issues
+      // Just directly submit the message - no need to set it in the input field first
       aiChatPanelRef.submitUserMessage(reportPrompt);
       setIsGenerating(false);
       onClose();
