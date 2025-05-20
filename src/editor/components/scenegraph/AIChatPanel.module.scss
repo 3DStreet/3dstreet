@@ -34,11 +34,11 @@
   box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
 
   .chat-header {
-    display: grid;
-    grid-template-columns: 1fr auto 1fr;
+    display: flex;
     align-items: center;
     padding: 18px 15px;
     border-bottom: 1px solid variables.$gray-700;
+    position: relative;
 
     .chat-title {
       font-weight: 1000;
@@ -46,14 +46,48 @@
       font-size: 24px;
       display: flex;
       align-items: center;
-      justify-content: center;
       gap: 12px; /* Add space between text and icon */
+      position: absolute;
+      left: 0;
+      right: 0;
+      top: 50%;
+      transform: translateY(-50%);
+      justify-content: center;
+      pointer-events: none; /* Allow clicks to pass through to elements below */
+
+      svg {
+        pointer-events: none; /* Ensure icon doesn't capture clicks */
+      }
+    }
+
+    .betaPill {
+      background: conic-gradient(
+        from 0deg,
+        #ff00cc,
+        #ff00cc,
+        #ff9900,
+        #ff9900,
+        #9900ff,
+        #ff00cc
+      );
+      color: white;
+      font-weight: bold;
+      font-size: 12px;
+      padding: 4px 10px;
+      border-radius: 12px;
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+      text-shadow: 0 1px 1px rgba(0, 0, 0, 0.2);
+      white-space: nowrap;
+
+      &:hover {
+        opacity: 0.8;
+      }
     }
 
     .chat-actions {
       display: flex;
       gap: 8px;
-      justify-content: flex-end; /* Align to the right side of the grid cell */
+      margin-left: auto; /* Push to the right side */
 
       .reset-button {
         background: none;

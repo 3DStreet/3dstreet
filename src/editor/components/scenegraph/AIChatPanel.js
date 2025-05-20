@@ -786,7 +786,13 @@ const AIChatPanel = forwardRef(function AIChatPanel(props, ref) {
         <div className={`${styles.chatContainer} ai-chat-panel-container`}>
           <div className={styles.proFeaturesWrapper}>
             <div className={styles['chat-header']}>
-              <div></div> {/* Empty div for the left column */}
+              <a
+                href="https://3dstreet.com/blog/"
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                <div className={styles.betaPill}>Free Chat in Beta</div>
+              </a>
               <div className={styles['chat-title']}>
                 {!isMessages ? 'What can I help with?' : 'Assistant'}{' '}
                 {/* <img
