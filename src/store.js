@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import { devtools, subscribeWithSelector } from 'zustand/middleware';
 import posthog from 'posthog-js';
+import Events from './editor/lib/Events';
 
 const firstModal = () => {
   let modal = window.location.hash.includes('payment')
@@ -106,6 +107,19 @@ const useStore = create(
       { name: 'MyZustandStore' }
     )
   )
+);
+
+// Subscribe to projectInfo changes and trigger cloud save
+useStore.subscribe(
+  (state) => state.projectInfo,
+  (projectInfo) => {
+    // Don't trigger on initial state (empty values)
+    const hasContent = Object.values(projectInfo).some((value) => value !== '');
+    if (hasContent) {
+      // Emit the same event that triggers autosave
+      Events.emit('historychanged', true);
+    }
+  }
 );
 
 export default useStore;
