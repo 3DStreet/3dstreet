@@ -1041,7 +1041,7 @@ const AIChatTools = {
    * @param {Object} args - The function arguments (latitude, longitude)
    * @returns {Promise<string>} Result message
    */
-  setLatLon: async (args) => {
+  setLatLon: async (args, currentUser) => {
     const { latitude, longitude } = args;
 
     if (isNaN(latitude) || isNaN(longitude)) {
@@ -1049,6 +1049,18 @@ const AIChatTools = {
     }
 
     try {
+      // Check if user is authenticated
+      if (!currentUser) {
+        throw new Error('You need to sign in to set location');
+      }
+
+      if (!currentUser.isPro) {
+        // Trigger checkout flow for non-pro users
+        // const useStore = (await import('@/store')).default;
+        // useStore.getState().startCheckout('geo'); // don't do this for now
+        throw new Error('Setting location requires a Pro subscription');
+      }
+
       // Import the httpsCallable and functions from firebase
       const { httpsCallable } = await import('firebase/functions');
       const { functions } = await import('../../services/firebase.js');
@@ -1093,20 +1105,20 @@ const AIChatTools = {
 
         return `Successfully set location to latitude: ${lat}, longitude: ${lng} with elevation data: ellipsoidal height ${data.ellipsoidalHeight}m, orthometric height ${data.orthometricHeight}m`;
       } else {
-        return 'Error: Failed to retrieve elevation data';
+        throw new Error('Failed to retrieve elevation data');
       }
     } catch (error) {
       console.error('Error setting lat/lon:', error);
-      return `Error setting location: ${error.message || 'Unknown error'}`;
+      throw error;
     }
   },
 
-  executeFunction: async (functionName, args) => {
+  executeFunction: async (functionName, args, currentUser) => {
     if (!AIChatTools[functionName]) {
       throw new Error(`Unknown function: ${functionName}`);
     }
 
-    return await AIChatTools[functionName](args);
+    return await AIChatTools[functionName](args, currentUser);
   }
 };
 

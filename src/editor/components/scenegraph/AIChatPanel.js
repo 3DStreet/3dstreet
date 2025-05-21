@@ -433,7 +433,8 @@ const AIChatPanel = forwardRef(function AIChatPanel(props, ref) {
               // Execute the function using the AIChatTools module
               const result = await AIChatTools.executeFunction(
                 call.name,
-                call.args
+                call.args,
+                currentUser
               );
 
               // Special handling for takeSnapshot function
