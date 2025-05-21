@@ -206,11 +206,11 @@ export const ReportModal = () => {
       isValid = false;
     }
 
-    // Validate geo location
-    if (!hasGeoLocation) {
-      newErrors.geoLocation = 'Geographic location is required';
-      isValid = false;
-    }
+    // Temporarily disabled geo location validation
+    // if (!hasGeoLocation) {
+    //   newErrors.geoLocation = 'Geographic location is required';
+    //   isValid = false;
+    // }
 
     // Update all fields as touched
     setTouched({
