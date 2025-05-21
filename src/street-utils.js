@@ -52,21 +52,6 @@ export function newScene(
   );
   geoLayer.setAttribute('data-no-transform', '');
 
-  // reset memory
-  const memoryEl = document.getElementById('memory');
-  if (memoryEl) {
-    memoryEl.removeAttribute('project-info');
-    memoryEl.setAttribute('project-info', '');
-  }
-
-  // reset AI Chat
-  if (
-    window.aiChatPanelRef &&
-    typeof window.aiChatPanelRef.resetConversation === 'function'
-  ) {
-    window.aiChatPanelRef.resetConversation();
-  }
-
   const streetContainerEl = checkOrCreateEntity(
     'street-container',
     AFRAME.scenes[0],

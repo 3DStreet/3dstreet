@@ -323,6 +323,18 @@ const AIChatPanel = forwardRef(function AIChatPanel(props, ref) {
     };
 
     initializeAI();
+
+    // Add event listener for newScene event to reset conversation
+    const handleNewScene = () => {
+      resetConversation();
+    };
+
+    AFRAME.scenes[0].addEventListener('newScene', handleNewScene);
+
+    // Cleanup event listener on component unmount
+    return () => {
+      AFRAME.scenes[0].removeEventListener('newScene', handleNewScene);
+    };
   }, []);
 
   // Core function to process a message and get AI response
