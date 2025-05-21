@@ -12,6 +12,9 @@
   resize: vertical;
   transition: all 0.3s;
   box-sizing: border-box;
+  white-space: normal;
+  word-wrap: break-word;
+  overflow-wrap: break-word;
 
   &:hover {
     background-color: variables.$darkgray-300 !important;
