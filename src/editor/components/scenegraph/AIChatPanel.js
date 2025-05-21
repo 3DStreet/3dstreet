@@ -338,6 +338,17 @@ const AIChatPanel = forwardRef(function AIChatPanel(props, ref) {
   }, []);
 
   // Core function to process a message and get AI response
+  // Add a new function to handle textarea auto-resize
+  const adjustTextareaHeight = (element) => {
+    if (!element) return;
+
+    // Reset height to auto to get the correct scrollHeight
+    element.style.height = 'auto';
+
+    // Set the height to match the content (scrollHeight)
+    element.style.height = `${element.scrollHeight}px`;
+  };
+
   const processMessage = async (messageText) => {
     if (!messageText.trim() || !modelRef.current) return;
 
@@ -728,17 +739,32 @@ const AIChatPanel = forwardRef(function AIChatPanel(props, ref) {
             )}
 
             <div className={styles.chatInput}>
-              <input
-                type="text"
+              <textarea
                 value={input}
-                onChange={(e) => setInput(e.target.value)}
-                onKeyPress={(e) =>
-                  e.key === 'Enter' && currentUser && handleSendMessage()
-                }
+                onChange={(e) => {
+                  setInput(e.target.value);
+                  adjustTextareaHeight(e.target);
+                }}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    if (e.shiftKey) {
+                      // Let the default behavior happen (create a newline)
+                      return;
+                    } else if (currentUser) {
+                      e.preventDefault(); // Prevent default to avoid creating a newline
+                      handleSendMessage();
+                    }
+                  }
+                }}
                 placeholder={
                   isMessages ? 'Reply to Assistant...' : 'Ask anything'
                 }
                 disabled={!currentUser}
+                rows="1"
+                className={styles.chatTextarea}
+                ref={(el) => {
+                  if (el) adjustTextareaHeight(el);
+                }}
               />
               <div className={styles.actionButtons}>
                 <div className={styles.leftButtons}>

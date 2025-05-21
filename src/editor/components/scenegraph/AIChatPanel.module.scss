@@ -270,7 +270,8 @@
     gap: 8px;
     background-color: rgb(50, 50, 50);
 
-    input {
+    input,
+    .chatTextarea {
       background-color: rgb(50, 50, 50) !important;
       width: 100%;
       font-size: 18px !important;
@@ -283,6 +284,18 @@
         cursor: not-allowed;
         background-color: rgba(255, 255, 255, 0.05);
       }
+    }
+
+    .chatTextarea {
+      resize: none;
+      border: none;
+      outline: none;
+      min-height: 40px;
+      max-height: 320px;
+      line-height: 1.4;
+      font-family: inherit;
+      box-sizing: border-box; /* Ensure padding is included in height calculations */
+      transition: height 0.1s ease; /* Smooth height transitions */
     }
 
     .actionButtons {
