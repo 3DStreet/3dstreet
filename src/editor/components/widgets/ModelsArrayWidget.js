@@ -3,6 +3,7 @@ import PropTypes from 'prop-types';
 import Select, { components } from 'react-select';
 import Events from '../../lib/Events';
 import { DropdownArrowIcon } from '../../icons';
+import { getGroupedMixinOptions } from '../../lib/mixinUtils';
 
 export default class ModelsArrayWidget extends React.Component {
   static propTypes = {
@@ -50,31 +51,6 @@ export default class ModelsArrayWidget extends React.Component {
     }));
     return modelsArrayTransformed;
   }
-
-  getGroupedMixinOptions = () => {
-    const mixinElements = document.querySelectorAll('a-mixin');
-    const groupedArray = [];
-    let categoryName, mixinId;
-
-    const groupedObject = {};
-    for (let mixinEl of Array.from(mixinElements)) {
-      categoryName = mixinEl.getAttribute('category');
-      if (!categoryName) continue;
-      mixinId = mixinEl.id;
-      if (!groupedObject[categoryName]) {
-        groupedObject[categoryName] = [];
-      }
-      groupedObject[categoryName].push({ label: mixinId, value: mixinId });
-    }
-
-    for (let categoryName of Object.keys(groupedObject)) {
-      groupedArray.push({
-        label: categoryName,
-        options: groupedObject[categoryName]
-      });
-    }
-    return groupedArray;
-  };
 
   updateModels = (value) => {
     const entity = this.props.entity;
@@ -132,7 +108,7 @@ export default class ModelsArrayWidget extends React.Component {
             <Select
               id="mixinSelect"
               classNamePrefix="select-single"
-              options={this.getGroupedMixinOptions()}
+              options={getGroupedMixinOptions(false)}
               components={{
                 GroupHeading: CustomGroupHeading,
                 DropdownIndicator: DropdownArrowIcon,
