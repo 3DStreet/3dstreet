@@ -21,10 +21,12 @@
 <script>
         AFRAME.registerComponent('cloud-shader', {
             schema: {
-                translateSpeed: { type: 'number', default: 0.02 },
-                evolutionSpeed: { type: 'number', default: 0.01 },
-                scale: { type: 'number', default: 4.0 },
-                coverage: { type: 'number', default: 0.85 }
+                translateSpeed: { type: 'number', default: 0.1 },
+                evolutionSpeed: { type: 'number', default: 0.2 },
+                scale: { type: 'number', default: 1.0 },
+                coverage: { type: 'number', default: 0.8 },
+                slicePosition: { type: 'number', default: 0.0 },
+                sliceThickness: { type: 'number', default: 0.1 }
             },
 
             init: function () {
@@ -64,6 +66,8 @@
                     uniform float evolutionSpeed;
                     uniform float scale;
                     uniform float coverage;
+                    uniform float slicePosition; // Position of this slice in the volume
+                    uniform float sliceThickness; // Thickness of each slice
                     varying vec2 vUv;
 
                     // Hash functions for noise
@@ -177,8 +181,9 @@
                         vec2 uv = vUv;
                         uv -= translateSpeed * time; // Translation movement
                         
-                        // Create 3D coordinates with time for animation
-                        vec3 pos = vec3(uv * scale, time * evolutionSpeed); // Evolution through 3D volume
+                        // Create 3D coordinates with time for animation and slice position
+                        // Use slicePosition as the z-coordinate for true volumetric slicing
+                        vec3 pos = vec3(uv * scale, slicePosition + time * evolutionSpeed); // Evolution through 3D volume
                         
                         // Generate noise with time evolution
                         float pfbm = mix(1.0, perlinfbm(pos, 7), 0.5);
@@ -200,7 +205,10 @@
                         cloud = remap(cloud, coverage, 1.0, 0.0, 1.0);
                         cloud = max(0.0, cloud);
                         
-                        gl_FragColor = vec4(cloud, cloud, cloud, 1.0);
+                        // Make clouds stronger by applying a power function
+                        cloud = pow(cloud, 0.7); // Values less than 1 make the clouds stronger
+                        
+                        gl_FragColor = vec4(1.0, 1.0, 1.0, cloud);
                     }
                 `;
 
@@ -210,11 +218,15 @@
                         translateSpeed: { value: this.data.translateSpeed },
                         evolutionSpeed: { value: this.data.evolutionSpeed },
                         scale: { value: this.data.scale },
-                        coverage: { value: this.data.coverage }
+                        coverage: { value: this.data.coverage },
+                        slicePosition: { value: this.data.slicePosition },
+                        sliceThickness: { value: this.data.sliceThickness }
                     },
                     vertexShader: vertexShader,
                     fragmentShader: fragmentShader,
-                    transparent: true
+                    transparent: true,
+                    depthTest: false,  // Try disabling depth testing
+
                 });
 
                 this.el.getObject3D('mesh').material = material;
@@ -234,6 +246,8 @@
                     this.material.uniforms.evolutionSpeed.value = this.data.evolutionSpeed;
                     this.material.uniforms.scale.value = this.data.scale;
                     this.material.uniforms.coverage.value = this.data.coverage;
+                    this.material.uniforms.slicePosition.value = this.data.slicePosition;
+                    this.material.uniforms.sliceThickness.value = this.data.sliceThickness;
                 }
             }
         });
@@ -299,20 +313,20 @@
 
     <a-entity id="street-container" data-layer-name="User Layers" data-no-transform>
       <a-entity id="default-street" street streetmix-loader set-loader-from-hash></a-entity>
-        <a-plane 
-            position="0 0 0" 
-            rotation="-90 0 0"
-            width="40" 
-            height="40" 
-            cloud-shader="speed: 0.2; scale: 1; coverage: 0.85">
+        <!-- Cloud volume created with multiple slices (similar to the original shader's approach) -->
+        <!-- Slice 1 (bottom) -->
+        <a-plane position="0 100 0" rotation="-90 0 0" width="10000" height="10000" 
+            cloud-shader="translateSpeed: 0.005; evolutionSpeed: 0.05; scale: 5; coverage: 0.7; slicePosition: 0.0; sliceThickness: 1"
+            data-no-pause="" data-layer-name="Clouds">
         </a-plane>
+
     </a-entity>
 
     <a-entity id="reference-layers" data-layer-name="Geospatial Layers" data-no-transform></a-entity>
 
     <a-entity id="environment" data-layer-name="Environment" street-environment="preset: day;" data-no-transform></a-entity>
 
-    <a-entity id="cameraRig" class="ph-no-capture" data-layer-name="Viewer" data-no-transform
+    <a-entity id="cameraRig" position="0 500 0" class="ph-no-capture" data-layer-name="Viewer" data-no-transform
       cursor-teleport="cameraRig: #cameraRig; cameraHead: #camera;"
       movement-controls="camera: #camera; fly: true">
       <a-entity id="camera" data-layer-name="Camera" position="0 1.6 0" camera look-controls="reverseMouseDrag: true" class="autocreated"></a-entity>
