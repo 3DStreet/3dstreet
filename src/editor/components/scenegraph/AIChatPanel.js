@@ -680,7 +680,7 @@ const AIChatPanel = forwardRef(function AIChatPanel(props, ref) {
           <div className={styles.proFeaturesWrapper}>
             <div className={styles['chat-header']}>
               <a
-                href="https://3dstreet.com/blog/"
+                href="https://3dstreet.com/blog/2025/05/22/introducing-ai-assistant-beta-your-creative-partner-for-street-design#the-fine-print-beta-status-and-availability"
                 target="_blank"
                 rel="noopener noreferrer"
               >
