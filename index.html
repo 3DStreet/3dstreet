@@ -18,6 +18,226 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <link rel="icon" type="image/x-icon" href="ui_assets/favicon.ico">
   <link rel="stylesheet" href="./dist/viewer-styles.css">
+<script>
+        AFRAME.registerComponent('cloud-shader', {
+            schema: {
+                translateSpeed: { type: 'number', default: 0.02 },
+                evolutionSpeed: { type: 'number', default: 0.01 },
+                scale: { type: 'number', default: 4.0 },
+                coverage: { type: 'number', default: 0.85 }
+            },
+
+            init: function () {
+                this.startTime = performance.now() / 1000;
+                this.setupShader();
+            },
+
+            // Better Perlin noise implementation
+            fade: function(t) {
+                return t * t * t * (t * (t * 6 - 15) + 10);
+            },
+
+            lerp: function(a, b, t) {
+                return a + t * (b - a);
+            },
+
+            grad: function(hash, x, y) {
+                const h = hash & 15;
+                const u = h < 8 ? x : y;
+                const v = h < 4 ? y : h === 12 || h === 14 ? x : 0;
+                return ((h & 1) === 0 ? u : -u) + ((h & 2) === 0 ? v : -v);
+            },
+
+            setupShader: function () {
+                const vertexShader = `
+                    varying vec2 vUv;
+                    
+                    void main() {
+                        vUv = uv;
+                        gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+                    }
+                `;
+
+                const fragmentShader = `
+                    uniform float time;
+                    uniform float translateSpeed;
+                    uniform float evolutionSpeed;
+                    uniform float scale;
+                    uniform float coverage;
+                    varying vec2 vUv;
+
+                    // Hash functions for noise
+                    float hash(vec2 p) {
+                        return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453);
+                    }
+
+                    float hash(vec3 p) {
+                        return fract(sin(dot(p, vec3(127.1, 311.7, 74.7))) * 43758.5453);
+                    }
+
+                    vec3 hash33(vec3 p) {
+                        p = vec3(dot(p, vec3(127.1, 311.7, 74.7)),
+                                dot(p, vec3(269.5, 183.3, 246.1)),
+                                dot(p, vec3(113.5, 271.9, 124.6)));
+                        return fract(sin(p) * 43758.5453123);
+                    }
+
+                    // Improved gradient noise
+                    float gradientNoise(vec3 x) {
+                        vec3 p = floor(x);
+                        vec3 w = fract(x);
+                        
+                        vec3 u = w * w * w * (w * (w * 6.0 - 15.0) + 10.0);
+                        
+                        vec3 ga = hash33(p + vec3(0.0, 0.0, 0.0));
+                        vec3 gb = hash33(p + vec3(1.0, 0.0, 0.0));
+                        vec3 gc = hash33(p + vec3(0.0, 1.0, 0.0));
+                        vec3 gd = hash33(p + vec3(1.0, 1.0, 0.0));
+                        vec3 ge = hash33(p + vec3(0.0, 0.0, 1.0));
+                        vec3 gf = hash33(p + vec3(1.0, 0.0, 1.0));
+                        vec3 gg = hash33(p + vec3(0.0, 1.0, 1.0));
+                        vec3 gh = hash33(p + vec3(1.0, 1.0, 1.0));
+                        
+                        // Normalize gradients
+                        ga = normalize(ga - 0.5);
+                        gb = normalize(gb - 0.5);
+                        gc = normalize(gc - 0.5);
+                        gd = normalize(gd - 0.5);
+                        ge = normalize(ge - 0.5);
+                        gf = normalize(gf - 0.5);
+                        gg = normalize(gg - 0.5);
+                        gh = normalize(gh - 0.5);
+                        
+                        float va = dot(ga, w - vec3(0.0, 0.0, 0.0));
+                        float vb = dot(gb, w - vec3(1.0, 0.0, 0.0));
+                        float vc = dot(gc, w - vec3(0.0, 1.0, 0.0));
+                        float vd = dot(gd, w - vec3(1.0, 1.0, 0.0));
+                        float ve = dot(ge, w - vec3(0.0, 0.0, 1.0));
+                        float vf = dot(gf, w - vec3(1.0, 0.0, 1.0));
+                        float vg = dot(gg, w - vec3(0.0, 1.0, 1.0));
+                        float vh = dot(gh, w - vec3(1.0, 1.0, 1.0));
+                        
+                        return va + 
+                               u.x * (vb - va) + 
+                               u.y * (vc - va) + 
+                               u.z * (ve - va) + 
+                               u.x * u.y * (va - vb - vc + vd) + 
+                               u.y * u.z * (va - vc - ve + vg) + 
+                               u.z * u.x * (va - vb - ve + vf) + 
+                               u.x * u.y * u.z * (-va + vb + vc - vd + ve - vf - vg + vh);
+                    }
+
+                    // Worley noise
+                    float worleyNoise(vec3 uv) {    
+                        vec3 id = floor(uv);
+                        vec3 p = fract(uv);
+                        
+                        float minDist = 10000.0;
+                        for (float x = -1.0; x <= 1.0; ++x) {
+                            for(float y = -1.0; y <= 1.0; ++y) {
+                                for(float z = -1.0; z <= 1.0; ++z) {
+                                    vec3 offset = vec3(x, y, z);
+                                    vec3 h = hash33(id + offset) * 0.5 + 0.5;
+                                    h += offset;
+                                    vec3 d = p - h;
+                                    minDist = min(minDist, dot(d, d));
+                                }
+                            }
+                        }
+                        
+                        return 1.0 - minDist;
+                    }
+
+                    // FBM for Perlin noise
+                    float perlinfbm(vec3 p, int octaves) {
+                        float G = exp2(-0.85);
+                        float amp = 1.0;
+                        float noise = 0.0;
+                        for (int i = 0; i < 7; ++i) {
+                            if (i >= octaves) break;
+                            noise += amp * gradientNoise(p);
+                            p *= 2.0;
+                            amp *= G;
+                        }
+                        return noise;
+                    }
+
+                    // Worley FBM
+                    float worleyFbm(vec3 p) {
+                        return worleyNoise(p) * 0.625 +
+                               worleyNoise(p * 2.0) * 0.25 +
+                               worleyNoise(p * 4.0) * 0.125;
+                    }
+
+                    float remap(float x, float a, float b, float c, float d) {
+                        return (((x - a) / (b - a)) * (d - c)) + c;
+                    }
+
+                    void main() {
+                        vec2 uv = vUv;
+                        uv -= translateSpeed * time; // Translation movement
+                        
+                        // Create 3D coordinates with time for animation
+                        vec3 pos = vec3(uv * scale, time * evolutionSpeed); // Evolution through 3D volume
+                        
+                        // Generate noise with time evolution
+                        float pfbm = mix(1.0, perlinfbm(pos, 7), 0.5);
+                        pfbm = abs(pfbm * 2.0 - 1.0); // billowy perlin noise
+                        
+                        // Generate worley noise components
+                        float worley1 = worleyFbm(pos);
+                        float worley2 = worleyFbm(pos * 2.0);
+                        float worley3 = worleyFbm(pos * 4.0);
+                        
+                        // Combine worley components
+                        float wfbm = worley1 * 0.625 + worley2 * 0.25 + worley3 * 0.125;
+                        
+                        // Create perlin-worley combination
+                        float perlinWorley = remap(pfbm, 0.0, 1.0, worley1, 1.0);
+                        
+                        // Final cloud shape
+                        float cloud = remap(perlinWorley, wfbm - 1.0, 1.0, 0.0, 1.0);
+                        cloud = remap(cloud, coverage, 1.0, 0.0, 1.0);
+                        cloud = max(0.0, cloud);
+                        
+                        gl_FragColor = vec4(cloud, cloud, cloud, 1.0);
+                    }
+                `;
+
+                const material = new THREE.ShaderMaterial({
+                    uniforms: {
+                        time: { value: 0 },
+                        translateSpeed: { value: this.data.translateSpeed },
+                        evolutionSpeed: { value: this.data.evolutionSpeed },
+                        scale: { value: this.data.scale },
+                        coverage: { value: this.data.coverage }
+                    },
+                    vertexShader: vertexShader,
+                    fragmentShader: fragmentShader,
+                    transparent: true
+                });
+
+                this.el.getObject3D('mesh').material = material;
+                this.material = material;
+            },
+
+            tick: function () {
+                if (this.material) {
+                    const currentTime = performance.now() / 1000;
+                    this.material.uniforms.time.value = currentTime - this.startTime;
+                }
+            },
+
+            update: function (oldData) {
+                if (this.material) {
+                    this.material.uniforms.translateSpeed.value = this.data.translateSpeed;
+                    this.material.uniforms.evolutionSpeed.value = this.data.evolutionSpeed;
+                    this.material.uniforms.scale.value = this.data.scale;
+                    this.material.uniforms.coverage.value = this.data.coverage;
+                }
+            }
+        });
+    </script>
 </head>
 
 <body>
@@ -79,6 +299,13 @@
 
     <a-entity id="street-container" data-layer-name="User Layers" data-no-transform>
       <a-entity id="default-street" street streetmix-loader set-loader-from-hash></a-entity>
+        <a-plane 
+            position="0 0 0" 
+            rotation="-90 0 0"
+            width="40" 
+            height="40" 
+            cloud-shader="speed: 0.2; scale: 1; coverage: 0.85">
+        </a-plane>
     </a-entity>
 
     <a-entity id="reference-layers" data-layer-name="Geospatial Layers" data-no-transform></a-entity>
