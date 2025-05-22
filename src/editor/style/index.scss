@@ -1,7 +1,10 @@
 @use './variables.scss';
 @import '../normalize.css';
-@import './chat-panel.scss';
 @import './error-boundary.scss';
+
+.notyf {
+  top: 65px !important;
+}
 
 body.aframe-inspector-opened,
 .toggle-edit {
@@ -52,7 +55,7 @@ body.aframe-inspector-opened {
   footer,
   aside {
     font-family: variables.$mainFont;
-    font-size: 13px;
+    font-size: 16px;
   }
 
   .wf-robotomono-n4-active .Select,
@@ -84,26 +87,6 @@ body.aframe-inspector-opened {
       Bitstream Vera Sans Mono,
       Courier New,
       monospace;
-  }
-
-  textarea {
-    tab-size: 4;
-    white-space: pre;
-    word-wrap: normal;
-  }
-
-  textarea.success {
-    border-color: variables.$green-100 !important;
-  }
-
-  textarea.fail {
-    background-color: rgba(255, 0, 0, 0.05);
-    border-color: variables.$red-100 !important;
-  }
-
-  textarea,
-  input {
-    outline: none; /* osx */
   }
 
   .viewButton {
@@ -479,6 +462,8 @@ body.aframe-inspector-opened {
   }
 
   .chat-panel-container,
+  .ai-chat-toggle-container,
+  .ai-chat-panel-container,
   #toolbar,
   .outliner,
   .modal,

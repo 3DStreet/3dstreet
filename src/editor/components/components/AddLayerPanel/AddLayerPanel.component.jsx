@@ -7,81 +7,16 @@ import styles from './AddLayerPanel.module.scss';
 import classNames from 'classnames';
 import CardPlaceholder from '../../../../../ui_assets/card-placeholder.svg';
 import LockedCard from '../../../../../ui_assets/locked-card.svg';
-import mixinCatalog from '../../../../catalog.json';
 import posthog from 'posthog-js';
 import pickPointOnGroundPlane from '../../../lib/pick-point-on-ground-plane';
 import { customLayersData, streetLayersData } from './layersData.js';
 import { LayersOptions } from './LayersOptions.js';
 import useStore from '@/store.js';
+import { getGroupedMixinOptions } from '../../../lib/mixinUtils';
 
 // Create an empty image
 const emptyImg = new Image();
 emptyImg.src = 'data:image/gif;base64,R0lGODlhAQABAAD/ACwAAAAAAQABAAACADs=';
-
-// base asset path
-const assetBasePath = 'https://assets.3dstreet.app/';
-
-// get all mixin data divided into groups, from a-mixin DOM elements
-const getGroupedMixinOptions = () => {
-  const mixinElements = document.querySelectorAll('a-mixin');
-  const groupedArray = [];
-  let categoryName, mixinId;
-
-  // convert the mixins array into an object with mixins for faster access by index
-  const mixinCatalogObj = {};
-  for (const item of mixinCatalog) {
-    mixinCatalogObj[item.id] = item;
-  }
-
-  const groupedObject = {};
-  let index = 0;
-  for (const mixinEl of mixinElements) {
-    categoryName = mixinEl.getAttribute('category');
-    if (!categoryName) continue;
-
-    if (!groupedObject[categoryName]) {
-      groupedObject[categoryName] = [];
-    }
-    // get mixin data from mixin catalog and push it to object with grouped mixins
-    mixinId = mixinEl.id;
-    const mixinDataFromCatalog = mixinCatalogObj[mixinId];
-    let mixinImg = '';
-    let mixinName = '';
-    let mixinDescr = '';
-
-    if (mixinDataFromCatalog && mixinDataFromCatalog.display !== 'none') {
-      mixinImg = mixinDataFromCatalog.img;
-      mixinName = mixinDataFromCatalog.name;
-      mixinDescr = mixinDataFromCatalog.description;
-    }
-
-    // if mixinImg does not contain http, then prepend the base asset path
-    if (!mixinImg.includes('http')) {
-      mixinImg = assetBasePath + mixinImg;
-    }
-    const mixinData = {
-      // here could be data from dataCards JSON file
-      img: mixinImg,
-      icon: '',
-      mixinId: mixinId,
-      name: mixinName || mixinId,
-      description: mixinDescr,
-      id: index
-    };
-    if (mixinDataFromCatalog?.display !== 'none') {
-      groupedObject[categoryName].push(mixinData);
-    }
-    index += 1;
-  }
-
-  for (const [categoryName, options] of Object.entries(groupedObject)) {
-    groupedArray.push({
-      label: categoryName,
-      options: options
-    });
-  }
-  return groupedArray;
-};
 
 // get array with objects data (cardsData) from mixinGroups of selectedOption
 const getSelectedMixinCards = (groupedMixins, selectedOption) => {
@@ -357,7 +292,7 @@ const AddLayerPanel = () => {
 
   useEffect(() => {
     // call getGroupedMixinOptions once time for getting mixinGroups
-    const data = getGroupedMixinOptions();
+    const data = getGroupedMixinOptions(true);
     setGroupedMixins(data);
   }, []);
 
@@ -488,7 +423,7 @@ const AddLayerPanel = () => {
         onClick={() => setModal('addlayer')}
         className={styles.addLayerButton}
       >
-        Add New Layer &nbsp;🌳🚦🚗
+        Add Layer &nbsp;🌳🚦🚗
       </PanelToggleButton>
       <div
         ref={panelRef}

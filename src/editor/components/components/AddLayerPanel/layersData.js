@@ -20,7 +20,6 @@ export const streetLayersData = [
   {
     name: '(Beta) Managed Street from Streetmix URL',
     img: '',
-    requiresPro: true,
     icon: 'ui_assets/cards/icons/streetmix24.png',
     description:
       'Create a new street from Streetmix URL using the Managed Street component.',

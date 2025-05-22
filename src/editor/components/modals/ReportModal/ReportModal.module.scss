@@ -1,0 +1,262 @@
+@use '../../../style/variables.scss';
+
+// Make only the report modal wider
+:global(.modal[id='report-modal']) :global(.modal-content) {
+  width: 800px;
+  max-width: 90vw;
+}
+
+.wrapper {
+  display: flex;
+  flex-direction: column;
+  padding: 20px;
+  max-height: 70vh;
+  overflow-y: auto;
+  width: 100%;
+}
+
+.formContainer {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  width: 100%;
+  max-width: 720px;
+  margin: 0 auto;
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  position: relative; /* For absolute positioning of error message */
+
+  label {
+    font-weight: 500;
+    color: #f0f0f0;
+  }
+
+  // Make input fields wider
+  :global(textarea) {
+    width: 100%;
+    box-sizing: border-box;
+
+    // Default color for inputs with value (not showing placeholder)
+    color: #ffffff !important;
+
+    // Gray color when placeholder is shown
+    &:placeholder-shown {
+      color: variables.$lightgray-200 !important;
+    }
+  }
+}
+
+// Label container for showing inline validation
+.labelContainer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  min-height: 20px; /* Fixed height to prevent layout shift */
+}
+
+// Inline error message
+.inlineError {
+  color: #ff4d4f;
+  font-size: 0.85rem;
+  font-weight: normal;
+  position: absolute;
+  right: 0;
+}
+
+// Style for required field labels
+.requiredField {
+  position: relative;
+
+  &::after {
+    content: '*';
+    color: #ff4d4f;
+    margin-left: 4px;
+  }
+}
+
+// Style for textarea with error
+.errorTextArea {
+  border-color: #ff4d4f !important;
+
+  &:focus {
+    border-color: #ff4d4f !important;
+    // box-shadow: 0 0 0 2px rgba(255, 77, 79, 0.2) !important;
+  }
+}
+
+.locationContainer {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+
+  :global(input) {
+    flex: 1;
+  }
+}
+
+.geoButton {
+  min-width: 200px;
+  height: 40px;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  svg {
+    width: 24px;
+    height: 24px;
+    color: #cccccc;
+  }
+}
+
+.activeGeoIcon {
+  color: variables.$purple-500 !important;
+}
+
+.actions {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 16px;
+}
+
+.rightActions {
+  display: flex;
+  gap: 12px;
+}
+
+.previewContainer {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  width: 100%;
+}
+
+.previewActions {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 16px;
+}
+
+.markdownPreview {
+  background-color: rgba(255, 255, 255, 0.05);
+  border-radius: 8px;
+  padding: 16px;
+  overflow-y: auto;
+  max-height: 60vh;
+}
+
+.markdownContent {
+  color: #f0f0f0;
+  font-family: 'Inter', sans-serif;
+  line-height: 1.6;
+
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6 {
+    margin-top: 1.5em;
+    margin-bottom: 0.75em;
+    color: #ffffff;
+  }
+
+  h1 {
+    font-size: 1.8em;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+    padding-bottom: 0.3em;
+  }
+
+  h2 {
+    font-size: 1.5em;
+  }
+
+  h3 {
+    font-size: 1.3em;
+  }
+
+  p {
+    margin-bottom: 1em;
+  }
+
+  ul,
+  ol {
+    margin-bottom: 1em;
+    padding-left: 2em;
+  }
+
+  li {
+    margin-bottom: 0.5em;
+  }
+
+  blockquote {
+    border-left: 4px solid variables.$purple-500;
+    padding-left: 1em;
+    margin-left: 0;
+    margin-right: 0;
+    font-style: italic;
+    color: #cccccc;
+  }
+
+  code {
+    background-color: rgba(0, 0, 0, 0.3);
+    padding: 0.2em 0.4em;
+    border-radius: 3px;
+    font-family: monospace;
+  }
+
+  pre {
+    background-color: rgba(0, 0, 0, 0.3);
+    padding: 1em;
+    border-radius: 5px;
+    overflow-x: auto;
+    margin-bottom: 1em;
+  }
+
+  img {
+    max-width: 100%;
+    height: auto;
+    display: block;
+    margin: 1.5em auto;
+    border: 1px dashed #666;
+    padding: 1em;
+    background-color: rgba(0, 0, 0, 0.2);
+    text-align: center;
+    font-style: italic;
+    color: #aaa;
+  }
+
+  .imagePlaceholder {
+    display: block;
+    margin: 1.5em auto;
+    border: 1px dashed #666;
+    padding: 1em;
+    background-color: rgba(0, 0, 0, 0.2);
+    text-align: center;
+    font-style: italic;
+    color: #aaa;
+  }
+
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-bottom: 1em;
+  }
+
+  th,
+  td {
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    padding: 0.5em;
+    text-align: left;
+  }
+
+  th {
+    background-color: rgba(255, 255, 255, 0.1);
+  }
+}

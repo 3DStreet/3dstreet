@@ -41,7 +41,7 @@ export function inputStreetmix() {
   );
 }
 
-export function createElementsForScenesFromJSON(streetData) {
+export function createElementsForScenesFromJSON(streetData, memoryData) {
   // clear scene data, create new blank scene.
   // clearMetadata = true, clearUrlHash = false, addDefaultStreet = false
   STREET.utils.newScene(true, false, false);
@@ -51,6 +51,15 @@ export function createElementsForScenesFromJSON(streetData) {
   if (!Array.isArray(streetData)) {
     console.error('Invalid data format. Expected an array.');
     return;
+  }
+
+  // Load project info from memory if available
+  if (memoryData && memoryData.projectInfo) {
+    console.log(
+      'Loading project info from memory in createElementsForScenesFromJSON:',
+      memoryData.projectInfo
+    );
+    useStore.getState().setProjectInfo(memoryData.projectInfo);
   }
 
   const processStreetDataForDuplicateIds = (data) => {
@@ -95,7 +104,8 @@ export function fileJSON(event) {
 
   reader.onload = function () {
     const data = JSON.parse(reader.result);
-    createElementsForScenesFromJSON(data.data);
+    // Pass the entire data object to handle both scene data and memory
+    createElementsForScenesFromJSON(data.data, data.memory);
   };
 
   reader.readAsText(event.target.files[0]);
@@ -206,6 +216,9 @@ export async function saveScene(currentUser, doSaveAs, doPromptTitle) {
   const data = STREET.utils.convertDOMElToObject(entity);
   const filteredData = JSON.parse(STREET.utils.filterJSONstreet(data));
 
+  // Ensure memory data (including project info) is preserved
+  filteredData.memory = data.memory;
+
   // we want to save, so if we *still* have no sceneID at this point, then create a new one
   if (!sceneId || !!doSaveAs) {
     let title = sceneTitle;
@@ -223,14 +236,16 @@ export async function saveScene(currentUser, doSaveAs, doPromptTitle) {
       currentUser.uid,
       filteredData.data,
       title,
-      filteredData.version
+      filteredData.version,
+      filteredData.memory
     );
   } else {
     await updateScene(
       sceneId,
       filteredData.data,
       sceneTitle,
-      filteredData.version
+      filteredData.version,
+      filteredData.memory
     );
   }
 

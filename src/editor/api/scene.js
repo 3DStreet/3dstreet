@@ -36,7 +36,7 @@ const generateSceneId = async (authorId) => {
   return newSceneId;
 };
 
-const createScene = async (authorId, sceneData, title, version) => {
+const createScene = async (authorId, sceneData, title, version, memory) => {
   // Generate a new UUID
   const newSceneId = uuidv4();
   const newSceneDocRef = doc(sceneRef, newSceneId);
@@ -47,7 +47,8 @@ const createScene = async (authorId, sceneData, title, version) => {
     author: authorId,
     data: sceneData,
     title: title,
-    version: version
+    version: version,
+    memory: memory
   });
   return newSceneId;
 };
@@ -62,14 +63,15 @@ const deleteScene = async (sceneId) => {
   }
 };
 
-const updateScene = async (sceneId, sceneData, title, version) => {
+const updateScene = async (sceneId, sceneData, title, version, memory) => {
   try {
     const sceneDocRef = doc(sceneRef, sceneId);
     await updateDoc(sceneDocRef, {
       data: sceneData,
       updateTimestamp: serverTimestamp(),
       title: title,
-      version: version
+      version: version,
+      memory: memory
     });
   } catch (error) {
     throw new Error(error);

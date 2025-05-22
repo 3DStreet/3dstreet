@@ -54,10 +54,17 @@ function convertDOMElToObject(entity) {
     }
   }
 
+  // Get project info from Zustand store
+  const storeState = useStore.getState();
+  const memory = {
+    projectInfo: storeState.projectInfo
+  };
+
   return {
-    title: useStore.getState().sceneTitle,
+    title: storeState.sceneTitle,
     version: '0.5.5',
-    data: data
+    data: data,
+    memory: memory
   };
 }
 
@@ -202,6 +209,11 @@ function filterJSONstreet(streetJSON) {
   }
 
   let stringJSON = JSON.stringify(streetJSON, function replacer(key, value) {
+    // Preserve memory data
+    if (key === 'memory') {
+      return value;
+    }
+
     let compAttributes;
     for (var removeKey in removeProps) {
       // check for removing components
@@ -424,7 +436,7 @@ function createEntityFromObj(entityData, parentEl) {
 
   // load this attributes in advance in right order to correctly apply other specific components
   for (const attr of ['geometry', 'material']) {
-    if (entityData.components[attr]) {
+    if (entityData.components?.[attr]) {
       entity.setAttribute(attr, entityData.components[attr]);
       delete entityData.components[attr];
     }
@@ -615,15 +627,41 @@ AFRAME.registerComponent('set-loader-from-hash', {
     request.onload = function () {
       if (this.status >= 200 && this.status < 400) {
         // Connection success
-        // remove 'set-loader-from-hash' component from json data
-        const jsonData = JSON.parse(this.response, (key, value) =>
-          key === 'set-loader-from-hash' ? undefined : value
+        // Parse the JSON response
+        const responseData = JSON.parse(this.response);
+        console.log('[set-loader-from-hash] Full response data:', responseData);
+
+        // Extract memory data if it exists
+        const memoryData = responseData.memory;
+
+        // Log the memory data for debugging
+        if (memoryData) {
+          console.log('[set-loader-from-hash] Memory data found:', memoryData);
+        } else {
+          console.log(
+            '[set-loader-from-hash] No memory data found in the JSON'
+          );
+        }
+
+        // Create a clean JSON object without the set-loader-from-hash component
+        const jsonData = JSON.parse(
+          JSON.stringify(responseData),
+          (key, value) => (key === 'set-loader-from-hash' ? undefined : value)
         );
 
         console.log(
           '[set-loader-from-hash]',
           '200 response received and JSON parsed, now createElementsFromJSON'
         );
+
+        // Ensure memory data is preserved
+        if (memoryData && !jsonData.memory) {
+          jsonData.memory = memoryData;
+          console.log(
+            '[set-loader-from-hash] Restored memory data to jsonData'
+          );
+        }
+
         STREET.utils.createElementsFromJSON(jsonData, false);
         const sceneId = getUUIDFromPath(requestURL);
         if (sceneId) {
@@ -716,6 +754,15 @@ function createElementsFromJSON(streetJSON, clearUrlHash) {
   if (sceneTitle) {
     console.log('sceneTitle from createElementsFromJSON', sceneTitle);
     useStore.getState().setSceneTitle(sceneTitle);
+  }
+
+  // Load project info from memory if available
+  if (streetObject.memory && streetObject.memory.projectInfo) {
+    console.log(
+      'Loading project info from memory:',
+      streetObject.memory.projectInfo
+    );
+    useStore.getState().setProjectInfo(streetObject.memory.projectInfo);
   }
 
   const streetContainerEl = document.getElementById('street-container');

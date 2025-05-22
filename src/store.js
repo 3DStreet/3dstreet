@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import { devtools, subscribeWithSelector } from 'zustand/middleware';
 import posthog from 'posthog-js';
+import Events from './editor/lib/Events';
 
 const firstModal = () => {
   let modal = window.location.hash.includes('payment')
@@ -33,7 +34,18 @@ const useStore = create(
         sceneTitle: null,
         setSceneTitle: (newSceneTitle) => set({ sceneTitle: newSceneTitle }),
         newScene: () =>
-          set({ sceneId: null, sceneTitle: null, authorId: null }),
+          set({
+            sceneId: null,
+            sceneTitle: null,
+            authorId: null,
+            projectInfo: {
+              description: '',
+              projectArea: '',
+              currentCondition: '',
+              problemStatement: '',
+              proposedSolutions: ''
+            }
+          }),
         authorId: null, // not used anywhere yet, we still use the metadata component
         setAuthorId: (newAuthorId) => set({ authorId: newAuthorId }), // not used anywhere yet
         unitsPreference: localStorage.getItem('unitsPreference') || 'metric',
@@ -41,16 +53,38 @@ const useStore = create(
           localStorage.setItem('unitsPreference', newUnitsPreference);
           set({ unitsPreference: newUnitsPreference });
         },
+        // Project info data (replaces project-info component)
+        projectInfo: {
+          description: '',
+          projectArea: '',
+          currentCondition: '',
+          problemStatement: '',
+          proposedSolutions: ''
+        },
+        setProjectInfo: (newProjectInfo) =>
+          set({
+            projectInfo: {
+              ...useStore.getState().projectInfo,
+              ...newProjectInfo
+            }
+          }),
         modal: firstModal(),
-        setModal: (newModal) => {
+        previousModal: null,
+        setModal: (newModal, rememberPrevious = false) => {
           const currentModal = useStore.getState().modal;
-          if (currentModal) {
-            posthog.capture('modal_closed', { modal: currentModal });
+          if (rememberPrevious && currentModal) {
+            set({ modal: newModal, previousModal: currentModal });
+          } else {
+            set({ modal: newModal });
           }
-          if (newModal) {
-            posthog.capture('modal_opened', { modal: newModal });
+        },
+        returnToPreviousModal: () => {
+          const { previousModal } = useStore.getState();
+          if (previousModal) {
+            set({ modal: previousModal, previousModal: null });
+          } else {
+            set({ modal: null });
           }
-          set({ modal: newModal });
         },
         startCheckout: (postCheckout) => {
           posthog.capture('modal_opened', { modal: 'payment' });
@@ -73,6 +107,19 @@ const useStore = create(
       { name: 'MyZustandStore' }
     )
   )
+);
+
+// Subscribe to projectInfo changes and trigger cloud save
+useStore.subscribe(
+  (state) => state.projectInfo,
+  (projectInfo) => {
+    // Don't trigger on initial state (empty values)
+    const hasContent = Object.values(projectInfo).some((value) => value !== '');
+    if (hasContent) {
+      // Emit the same event that triggers autosave
+      Events.emit('historychanged', true);
+    }
+  }
 );
 
 export default useStore;

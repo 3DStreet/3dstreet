@@ -12,3 +12,4 @@ export { SceneEditTitle } from './SceneEditTitle';
 export { UnitsPreference } from './UnitsPreference';
 export { PanelToggleButton } from './PanelToggleButton';
 export { UndoRedo } from './UndoRedo';
+export { TextArea } from './TextArea';

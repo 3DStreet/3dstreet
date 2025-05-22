@@ -11,7 +11,7 @@ AFRAME.registerComponent('notify', {
         // x: left | center | right
         // y: top | center | bottom
         x: 'center',
-        y: 'bottom'
+        y: 'top'
       }
     },
     dismissible: { type: 'boolean', default: false },

@@ -132,13 +132,24 @@
       font-size: 1rem !important;
       line-height: 1.1875rem !important;
       font-weight: 400 !important;
-      color: variables.$lightgray-200 !important;
       background: transparent !important;
       background-color: transparent !important;
       transition: all 0.3s;
       overflow: hidden;
       text-overflow: ellipsis;
       white-space: nowrap;
+
+      // Default color for inputs with value (not showing placeholder)
+      color: variables.$white !important;
+
+      // Gray color when placeholder is shown
+      &::placeholder {
+        color: variables.$lightgray-200 !important;
+      }
+
+      &:placeholder-shown {
+        color: variables.$lightgray-200 !important;
+      }
 
       &:focus,
       &:active {
