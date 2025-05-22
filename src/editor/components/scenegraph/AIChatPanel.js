@@ -24,6 +24,7 @@ import AIChatTools, { entityTools } from './AIChatTools.js';
 import { PanelToggleButton } from '../../components/components';
 import { AwesomeIcon } from '../components/AwesomeIcon';
 import { faRotate } from '@fortawesome/free-solid-svg-icons';
+import { getGroupedMixinOptions } from '../../lib/mixinUtils';
 
 const AI_MODEL_ID = 'gemini-2.0-flash';
 let AI_CONVERSATION_ID = uuidv4();
@@ -282,6 +283,26 @@ const MessageContent = ({ content, isAssistant = false }) => {
   );
 };
 
+/**
+ * Generates an enhanced system prompt by appending available mixin information
+ * @returns {string} The enhanced system prompt with mixin information
+ */
+const getEnhancedSystemPrompt = () => {
+  // Get available mixins - this needs to happen at runtime when A-Frame is initialized
+  const availableMixins = getGroupedMixinOptions(false)
+    .flatMap((group) => group.options.map((option) => option.value))
+    .join(', ');
+
+  // Append the mixin information to the system prompt
+  return (
+    systemPrompt +
+    `
+  Available models (mixins) are:
+  ${availableMixins}
+  `
+  );
+};
+
 const AIChatPanel = forwardRef(function AIChatPanel(props, ref) {
   const [messages, setMessages] = useState([]);
   const isMessages = messages.length > 0;
@@ -299,10 +320,13 @@ const AIChatPanel = forwardRef(function AIChatPanel(props, ref) {
   useEffect(() => {
     const initializeAI = async () => {
       try {
+        // Get the enhanced system prompt with mixin information
+        const enhancedSystemPrompt = getEnhancedSystemPrompt();
+
         const model = getGenerativeModel(vertexAI, {
           model: AI_MODEL_ID,
           tools: entityTools,
-          systemInstruction: systemPrompt
+          systemInstruction: enhancedSystemPrompt
         });
 
         // Initialize the model with an empty chat history
@@ -365,6 +389,9 @@ const AIChatPanel = forwardRef(function AIChatPanel(props, ref) {
       // Get project info from zustand store
       const { projectInfo, sceneTitle } = useStore.getState();
 
+      // Get the enhanced system prompt with mixin information
+      const enhancedSystemPrompt = getEnhancedSystemPrompt();
+
       const prompt = `
       The current scene has the following state:
       ${JSON.stringify(sceneJSON, null, 2)}
@@ -393,7 +420,8 @@ const AIChatPanel = forwardRef(function AIChatPanel(props, ref) {
 
       // Send message and get response with the full history
       const result = await modelRef.current.sendMessage(prompt, {
-        history: historyMessages
+        history: historyMessages,
+        systemPrompt: enhancedSystemPrompt // Use the enhanced system prompt with mixin information
       });
       console.log('Raw result:', result);
 
@@ -572,10 +600,13 @@ const AIChatPanel = forwardRef(function AIChatPanel(props, ref) {
     // Re-initialize the AI model with empty history
     const initializeAI = async () => {
       try {
+        // Get the enhanced system prompt with mixin information
+        const enhancedSystemPrompt = getEnhancedSystemPrompt();
+
         const model = getGenerativeModel(vertexAI, {
           model: AI_MODEL_ID,
           tools: entityTools,
-          systemInstruction: systemPrompt
+          systemInstruction: enhancedSystemPrompt
         });
         // generate new uuid
         AI_CONVERSATION_ID = uuidv4();
