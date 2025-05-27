@@ -62,12 +62,11 @@ function convertDOMElToObject(entity) {
 
   return {
     title: storeState.sceneTitle,
-    version: '0.5.5',
+    version: '0.5.6',
     data: data,
     memory: memory
   };
 }
-
 STREET.utils.convertDOMElToObject = convertDOMElToObject;
 
 function getElementData(entity) {
@@ -90,6 +89,7 @@ function getElementData(entity) {
   }
   return elementTree;
 }
+STREET.utils.getElementData = getElementData;
 
 function getAttributes(entity) {
   const elemObj = {};

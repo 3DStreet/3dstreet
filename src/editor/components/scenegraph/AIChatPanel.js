@@ -392,6 +392,21 @@ const AIChatPanel = forwardRef(function AIChatPanel(props, ref) {
       // Get the enhanced system prompt with mixin information
       const enhancedSystemPrompt = getEnhancedSystemPrompt();
 
+      // Get selected entity info if available
+      let selectedEntityInfo = 'No entity currently selected';
+      if (AFRAME.INSPECTOR && AFRAME.INSPECTOR.selectedEntity) {
+        const selectedEntity = AFRAME.INSPECTOR.selectedEntity;
+
+        // Use getElementData directly to get just the entity data
+        const entityData = STREET.utils.getElementData(selectedEntity);
+
+        // Convert to a nicely formatted JSON string
+        selectedEntityInfo = entityData
+          ? JSON.stringify(entityData, null, 2)
+          : 'Unable to get entity data';
+      }
+      console.log('Selected entity info:', selectedEntityInfo);
+
       const prompt = `
       The current scene has the following state:
       ${JSON.stringify(sceneJSON, null, 2)}
@@ -403,6 +418,9 @@ const AIChatPanel = forwardRef(function AIChatPanel(props, ref) {
       Current Condition: ${projectInfo.currentCondition || ''}
       Problem Statement: ${projectInfo.problemStatement || ''}
       Proposed Solutions: ${projectInfo.proposedSolutions || ''}
+
+      Currently selected entity:
+      ${selectedEntityInfo}
 
       User request: ${messageText}
 
