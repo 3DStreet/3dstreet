@@ -585,6 +585,19 @@ const AIChatPanel = forwardRef(function AIChatPanel(props, ref) {
         });
       }
 
+      // For text-only responses (no function calls), add the rating immediately
+      // Otherwise it will be added after function calls via the .then() callback
+      if (!functionCalls || functionCalls.length === 0) {
+        const ratingMessage = {
+          type: 'rating',
+          id: Date.now() + Math.random().toString(16).slice(2),
+          responseId: responseId,
+          isRated: false,
+          timestamp: new Date()
+        };
+        setMessages((prev) => [...prev, ratingMessage]);
+      }
+
       // If no text response was found and there were no function calls, show a fallback message
       if (
         !responseText.trim() &&
