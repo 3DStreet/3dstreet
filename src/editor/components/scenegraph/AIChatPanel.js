@@ -26,7 +26,7 @@ import { AwesomeIcon } from '../components/AwesomeIcon';
 import { faRotate } from '@fortawesome/free-solid-svg-icons';
 import { getGroupedMixinOptions } from '../../lib/mixinUtils';
 
-const AI_MODEL_ID = 'gemini-2.0-flash';
+const AI_MODEL_ID = 'gemini-2.5-flash-preview-05-20';
 let AI_CONVERSATION_ID = uuidv4();
 
 // Helper component for the copy button
