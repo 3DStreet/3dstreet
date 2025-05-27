@@ -23,10 +23,14 @@ import { systemPrompt } from './AIChatPrompt.js';
 import AIChatTools, { entityTools } from './AIChatTools.js';
 import { PanelToggleButton } from '../../components/components';
 import { AwesomeIcon } from '../components/AwesomeIcon';
-import { faRotate } from '@fortawesome/free-solid-svg-icons';
+import {
+  faRotate,
+  faThumbsUp,
+  faThumbsDown
+} from '@fortawesome/free-solid-svg-icons';
 import { getGroupedMixinOptions } from '../../lib/mixinUtils';
 
-const AI_MODEL_ID = 'gemini-2.0-flash';
+const AI_MODEL_ID = 'gemini-2.5-flash-preview-05-20';
 let AI_CONVERSATION_ID = uuidv4();
 
 // Helper component for the copy button
@@ -307,6 +311,7 @@ const AIChatPanel = forwardRef(function AIChatPanel(props, ref) {
   const [messages, setMessages] = useState([]);
   const isMessages = messages.length > 0;
   const [input, setInput] = useState('');
+  const [latestResponseId, setLatestResponseId] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
   const [showResetConfirm, setShowResetConfirm] = useState(false);
   const [isOpen, setIsOpen] = useState(false);
@@ -392,6 +397,21 @@ const AIChatPanel = forwardRef(function AIChatPanel(props, ref) {
       // Get the enhanced system prompt with mixin information
       const enhancedSystemPrompt = getEnhancedSystemPrompt();
 
+      // Get selected entity info if available
+      let selectedEntityInfo = 'No entity currently selected';
+      if (AFRAME.INSPECTOR && AFRAME.INSPECTOR.selectedEntity) {
+        const selectedEntity = AFRAME.INSPECTOR.selectedEntity;
+
+        // Use getElementData directly to get just the entity data
+        const entityData = STREET.utils.getElementData(selectedEntity);
+
+        // Convert to a nicely formatted JSON string
+        selectedEntityInfo = entityData
+          ? JSON.stringify(entityData, null, 2)
+          : 'Unable to get entity data';
+      }
+      console.log('Selected entity info:', selectedEntityInfo);
+
       const prompt = `
       The current scene has the following state:
       ${JSON.stringify(sceneJSON, null, 2)}
@@ -403,6 +423,9 @@ const AIChatPanel = forwardRef(function AIChatPanel(props, ref) {
       Current Condition: ${projectInfo.currentCondition || ''}
       Problem Statement: ${projectInfo.problemStatement || ''}
       Proposed Solutions: ${projectInfo.proposedSolutions || ''}
+
+      Currently selected entity:
+      ${selectedEntityInfo}
 
       User request: ${messageText}
 
@@ -441,11 +464,19 @@ const AIChatPanel = forwardRef(function AIChatPanel(props, ref) {
       // Get function calls
       const functionCalls = response.functionCalls();
 
+      // Generate a unique response ID for this entire response (text + any function calls)
+      const responseId = Date.now() + Math.random().toString(16).slice(2);
+
+      // Set this as the latest response ID
+      setLatestResponseId(responseId);
+
       // Always add AI text message first if there's actual text content
       if (responseText && responseText.trim()) {
         const aiMessage = {
           role: 'assistant',
-          content: responseText
+          content: responseText,
+          responseId: responseId, // Add the response ID
+          timestamp: new Date()
         };
         setMessages((prev) => [...prev, aiMessage]);
       }
@@ -459,6 +490,7 @@ const AIChatPanel = forwardRef(function AIChatPanel(props, ref) {
             const functionCallObj = {
               type: 'functionCall',
               id: Date.now() + Math.random().toString(16).slice(2),
+              responseId: responseId, // Add the response ID
               name: call.name,
               args: call.args || {},
               status: 'pending',
@@ -494,6 +526,7 @@ const AIChatPanel = forwardRef(function AIChatPanel(props, ref) {
                 const snapshotMessage = {
                   type: 'snapshot',
                   id: Date.now() + Math.random().toString(16).slice(2),
+                  responseId: functionCallObj.responseId, // Use the same response ID
                   caption: result.caption,
                   imageData: result.imageData,
                   timestamp: new Date()
@@ -538,8 +571,18 @@ const AIChatPanel = forwardRef(function AIChatPanel(props, ref) {
           }
         };
 
-        // Start processing function calls
-        processFunctionCalls();
+        // Start processing function calls and add rating message when done
+        processFunctionCalls().then(() => {
+          // Now add the rating message after all function calls are processed
+          const ratingMessage = {
+            type: 'rating',
+            id: Date.now() + Math.random().toString(16).slice(2),
+            responseId: responseId,
+            isRated: false,
+            timestamp: new Date()
+          };
+          setMessages((prev) => [...prev, ratingMessage]);
+        });
       }
 
       // If no text response was found and there were no function calls, show a fallback message
@@ -549,17 +592,43 @@ const AIChatPanel = forwardRef(function AIChatPanel(props, ref) {
       ) {
         const aiMessage = {
           role: 'assistant',
-          content: 'No response available'
+          content: 'No response available',
+          responseId: responseId, // Add the response ID
+          timestamp: new Date()
         };
         setMessages((prev) => [...prev, aiMessage]);
+
+        // Add rating message right after the fallback message
+        const ratingMessage = {
+          type: 'rating',
+          id: Date.now() + Math.random().toString(16).slice(2),
+          responseId: responseId,
+          isRated: false,
+          timestamp: new Date()
+        };
+        setMessages((prev) => [...prev, ratingMessage]);
       }
+
+      // We'll add the rating message after all function calls are processed
+      // This will happen in the processFunctionCalls().then() callback
     } catch (error) {
       console.error('Error generating response:', error);
+      const errorResponseId = Date.now() + Math.random().toString(16).slice(2);
+      setLatestResponseId(errorResponseId);
       setMessages((prev) => [
         ...prev,
         {
           role: 'assistant',
-          content: 'Sorry, I encountered an error. Please try again.'
+          content: 'Sorry, I encountered an error. Please try again.',
+          responseId: errorResponseId,
+          timestamp: new Date()
+        },
+        {
+          type: 'rating',
+          id: Date.now() + Math.random().toString(16).slice(2),
+          responseId: errorResponseId,
+          isRated: false,
+          timestamp: new Date()
         }
       ]);
     } finally {
@@ -628,6 +697,32 @@ const AIChatPanel = forwardRef(function AIChatPanel(props, ref) {
     };
 
     initializeAI();
+  };
+
+  // Function to handle response rating
+  const handleResponseRating = (responseId, rating) => {
+    // Log the rating to PostHog using the existing trace structure with user feedback
+    posthog.capture('$ai_generation', {
+      $ai_model: AI_MODEL_ID,
+      $ai_provider: 'vertexai',
+      $ai_trace_id: AI_CONVERSATION_ID,
+      $ai_input: [
+        {
+          role: 'user',
+          content:
+            rating === 'thumbs_up'
+              ? 'This response was helpful'
+              : 'This response was not helpful'
+        }
+      ]
+    });
+
+    // Mark the response as rated in our local state
+    setMessages((prev) =>
+      prev.map((msg) =>
+        msg.responseId === responseId ? { ...msg, isRated: true } : msg
+      )
+    );
   };
 
   // Expose methods to be called from outside components
@@ -743,6 +838,47 @@ const AIChatPanel = forwardRef(function AIChatPanel(props, ref) {
                   } else if (message.type === 'snapshot') {
                     return (
                       <SnapshotMessage key={message.id} snapshot={message} />
+                    );
+                  } else if (message.type === 'rating') {
+                    // Only show rating UI if this is the latest response and it's not already rated
+                    const isLatest = message.responseId === latestResponseId;
+
+                    return (
+                      <div key={message.id} className={styles.ratingContainer}>
+                        {isLatest && !message.isRated && (
+                          <div className={styles.ratingButtons}>
+                            <button
+                              className={styles.ratingButton}
+                              onClick={() =>
+                                handleResponseRating(
+                                  message.responseId,
+                                  'thumbs_up'
+                                )
+                              }
+                              title="This response was helpful"
+                            >
+                              <AwesomeIcon icon={faThumbsUp} />
+                            </button>
+                            <button
+                              className={styles.ratingButton}
+                              onClick={() =>
+                                handleResponseRating(
+                                  message.responseId,
+                                  'thumbs_down'
+                                )
+                              }
+                              title="This response was not helpful"
+                            >
+                              <AwesomeIcon icon={faThumbsDown} />
+                            </button>
+                          </div>
+                        )}
+                        {isLatest && message.isRated && (
+                          <div className={styles.ratingFeedback}>
+                            Thank you for your feedback
+                          </div>
+                        )}
+                      </div>
                     );
                   } else {
                     return (
