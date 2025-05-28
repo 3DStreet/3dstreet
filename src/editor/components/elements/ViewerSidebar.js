@@ -2,7 +2,10 @@ import PropTypes from 'prop-types';
 import { useState, useEffect } from 'react';
 import PropertyRow from './PropertyRow';
 import AdvancedComponents from './AdvancedComponents';
+import { Button } from '../elements';
+import useStore from '@/store';
 import Events from '../../lib/Events';
+import posthog from 'posthog-js';
 
 // Helper function to determine if a property should be shown based on schema conditions
 function shouldShowProperty(propertyName, component) {
@@ -31,6 +34,8 @@ function shouldShowProperty(propertyName, component) {
 
 const ViewerSidebar = ({ entity }) => {
   const componentName = 'viewer-mode';
+  // Access the store to control inspector mode
+  const { setIsInspectorEnabled } = useStore();
   // Use state to force re-renders
   const [, forceUpdate] = useState({});
 
@@ -54,6 +59,12 @@ const ViewerSidebar = ({ entity }) => {
     };
   }, [entity]);
 
+  // Handler for entering viewer mode
+  const handleEnterViewerMode = () => {
+    posthog.capture('enter_viewer_mode_clicked_from_sidebar');
+    setIsInspectorEnabled(false);
+  };
+
   // Check if entity and its components exist
   const component = entity?.components?.[componentName];
 
@@ -61,6 +72,15 @@ const ViewerSidebar = ({ entity }) => {
     <div className="viewer-sidebar">
       <div className="viewer-controls">
         <div className="details">
+          <div className="propertyRow">
+            <Button
+              variant="toolbtn"
+              onClick={handleEnterViewerMode}
+              className="mb-4 w-full"
+            >
+              Start in Viewer Mode
+            </Button>
+          </div>
           {component && component.schema && component.data && (
             <>
               <PropertyRow
