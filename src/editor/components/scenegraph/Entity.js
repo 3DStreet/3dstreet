@@ -4,7 +4,7 @@ import PropTypes from 'prop-types';
 import classNames from 'classnames';
 import Events from '../../lib/Events';
 import { printEntity, removeEntity, cloneEntity } from '../../lib/entity';
-import { AwesomeIcon } from '../components/AwesomeIcon';
+import { AwesomeIcon } from '../elements/AwesomeIcon';
 import { faCaretDown, faCaretRight } from '@fortawesome/free-solid-svg-icons';
 
 export default class Entity extends React.Component {

@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { saveSceneWithScreenshot } from '@/editor/lib/SceneUtils';
 import useStore from '@/store';
-import { Button } from '@/editor/components/components';
+import { Button } from '@/editor/components/elements';
 import {
   CloudSavedIcon,
   CloudSavingIcon,

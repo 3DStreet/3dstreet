@@ -15,7 +15,7 @@ import {
   Edit24Icon,
   TrashIcon
 } from '../../icons';
-import { Button } from '../components';
+import { Button } from '../elements';
 import Events from '../../lib/Events';
 
 // Define featured component prefixes that should be shown in their own section

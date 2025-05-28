@@ -5,7 +5,7 @@ import {
   getEntityIcon,
   setFocusCameraPose
 } from '../../lib/entity';
-import { Button, PanelToggleButton } from '../components';
+import { Button, PanelToggleButton } from '../elements';
 import ComponentsContainer from './ComponentsContainer';
 import Events from '../../lib/Events';
 import Mixins from '../widgets/Mixins';

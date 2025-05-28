@@ -3,7 +3,7 @@ import { AwesomeIcon } from '../AwesomeIcon';
 import classNames from 'classnames';
 import Events from '../../../lib/Events';
 import styles from './ActionBar.module.scss';
-import { Button, UnitsPreference, UndoRedo } from '../../components';
+import { Button, UnitsPreference, UndoRedo } from '../../elements';
 import { useState, useEffect } from 'react';
 import posthog from 'posthog-js';
 import { Rotate24Icon, Translate24Icon, Ruler24Icon } from '../../../icons';

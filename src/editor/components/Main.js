@@ -1,6 +1,6 @@
-import { ZoomButtons } from './components';
+import { ZoomButtons } from './elements';
 import { useState, useEffect, useRef } from 'react';
-import ComponentsSidebar from './components/Sidebar';
+import ComponentsSidebar from './elements/Sidebar';
 import Events from '../lib/Events';
 import ModalTextures from './modals/ModalTextures';
 import SceneGraph from './scenegraph/SceneGraph';
@@ -13,7 +13,7 @@ import { LoadScript } from '@react-google-maps/api';
 import { GeoModal } from './modals/GeoModal';
 import { ScenesModal } from './modals/ScenesModal';
 import { PaymentModal } from './modals/PaymentModal';
-import { AddLayerPanel } from './components/AddLayerPanel';
+import { AddLayerPanel } from './elements/AddLayerPanel';
 import { NewModal } from './modals/NewModal';
 import { ReportModal } from './modals/ReportModal';
 import { ToolbarWrapper } from './scenegraph/ToolbarWrapper.js';

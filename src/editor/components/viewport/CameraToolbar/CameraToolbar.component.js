@@ -4,7 +4,7 @@ import { Component } from 'react';
 
 import Events from '../../../lib/Events.js';
 import classNames from 'classnames';
-import { Hint } from '../../components/Tabs/components/index.js';
+import { Hint } from '../../elements/Tabs/components/index.js';
 
 const options = [
   {

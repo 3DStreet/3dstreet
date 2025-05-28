@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useAuthContext } from '../../../contexts';
-import { Button, SceneCard, Tabs } from '../../components';
+import { Button, SceneCard, Tabs } from '../../elements';
 import Modal from '../Modal.jsx';
 import styles from './ScenesModal.module.scss';
 import { createElementsForScenesFromJSON } from '@/editor/lib/SceneUtils.js';
