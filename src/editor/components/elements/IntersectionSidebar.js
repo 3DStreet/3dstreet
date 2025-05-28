@@ -2,7 +2,10 @@ import { useState } from 'react';
 import PropTypes from 'prop-types';
 import SelectWidget from '../widgets/SelectWidget';
 import NumberWidget from '../widgets/NumberWidget';
-import { CROSSWALKS, CROSSWALKS_REV } from '../../../components/intersection';
+import {
+  CROSSWALKS,
+  CROSSWALKS_REV
+} from '../../../aframe-components/intersection';
 
 const IntersectionSidebar = ({ entity }) => {
   const intersectionData = entity.getAttribute('intersection');

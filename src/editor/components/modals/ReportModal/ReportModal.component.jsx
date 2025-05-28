@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import Modal from '../Modal.jsx';
 import useStore from '@/store.js';
 import styles from './ReportModal.module.scss';
-import { Button, TextArea, Input } from '@/editor/components/components';
+import { Button, TextArea, Input } from '@/editor/components/elements';
 import { useAuthContext } from '@/editor/contexts';
 import { GeospatialIcon } from '@/editor/icons';
 

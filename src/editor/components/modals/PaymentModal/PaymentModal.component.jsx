@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { loadStripe } from '@stripe/stripe-js';
 import { useAuthContext } from '../../../contexts/index.js';
 import { CheckMark32Icon, Loader } from '../../../icons';
-import { Button } from '../../components/index.js';
+import { Button } from '../../elements/index.js';
 import Modal from '../Modal.jsx';
 import { functions } from '../../../services/firebase.js';
 import posthog from 'posthog-js';

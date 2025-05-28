@@ -2,7 +2,7 @@ import { useState } from 'react';
 import PropTypes from 'prop-types';
 import Component from './Component';
 import DEFAULT_COMPONENTS from './DefaultComponents';
-import { Button } from '../components';
+import { Button } from '../elements';
 import posthog from 'posthog-js';
 const AdvancedComponents = ({ entity }) => {
   const [showAdvanced, setShowAdvanced] = useState(false);

@@ -3,7 +3,7 @@ import { ScreenshotProperties } from './ScreenshotProperties.component.jsx';
 import styles from './ScreenshotModal.module.scss';
 import { useAuthContext } from '../../../contexts';
 import { Copy32Icon, Save24Icon } from '../../../icons';
-import { Button, Dropdown } from '../../components';
+import { Button, Dropdown } from '../../elements';
 import Modal from '../Modal.jsx';
 import posthog from 'posthog-js';
 import { saveBlob } from '../../../lib/utils';

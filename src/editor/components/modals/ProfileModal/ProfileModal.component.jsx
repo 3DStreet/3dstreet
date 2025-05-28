@@ -2,14 +2,14 @@ import styles from './ProfileModal.module.scss';
 import { useState } from 'react';
 
 import Modal from '../Modal.jsx';
-import { Button } from '../../components';
+import { Button } from '../../elements';
 import { useAuthContext } from '../../../contexts';
 import { signOut } from 'firebase/auth';
 import { auth, functions } from '../../../services/firebase';
 import { Action24, Loader } from '../../../icons';
 import { httpsCallable } from 'firebase/functions';
 import posthog from 'posthog-js';
-import { renderProfileIcon } from '../../components/ProfileButton';
+import { renderProfileIcon } from '../../elements/ProfileButton';
 import useStore from '@/store';
 
 const ProfileModal = () => {

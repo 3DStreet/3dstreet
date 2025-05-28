@@ -1,12 +1,12 @@
-import { ProfileButton, Logo } from '../components';
+import { ProfileButton, Logo } from '../elements';
 import useStore from '@/store';
 import AppMenu from './AppMenu';
-import { Button } from '../components/Button';
+import { Button } from '../elements/Button';
 import { ScreenshotIcon } from '../../icons';
 import { makeScreenshot } from '@/editor/lib/SceneUtils';
-import { SceneEditTitle } from '../components/SceneEditTitle';
-import { ActionBar } from '../components/ActionBar';
-import { Save } from '../components/Save';
+import { SceneEditTitle } from '../elements/SceneEditTitle';
+import { ActionBar } from '../elements/ActionBar';
+import { Save } from '../elements/Save';
 
 function Toolbar({ currentUser, entity }) {
   const { setModal, isInspectorEnabled } = useStore();
