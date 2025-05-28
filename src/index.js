@@ -38,6 +38,7 @@ require('./components/blending-opacity.js');
 require('./components/measure-line.js');
 require('./components/css2d-renderer.js');
 require('./components/google-maps-aerial.js');
+require('./components/viewer-mode.js');
 require('./editor/index.js');
 var firebase = require('./editor/services/firebase.js');
 
