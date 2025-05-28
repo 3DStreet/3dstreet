@@ -35,6 +35,9 @@ AFRAME.registerComponent('viewer-mode', {
     // Initialize basic camera path (just a simple circle for demo)
     this.initBasicCameraPath();
 
+    // Flag to control tick execution for camera path mode
+    this.cameraPathActive = false;
+
     // Set up the initial mode
     this.setupMode(this.data.preset);
   },
@@ -69,11 +72,8 @@ AFRAME.registerComponent('viewer-mode', {
     this.cameraRig.removeAttribute('cursor-teleport');
     this.camera.setAttribute('look-controls', 'enabled: false');
 
-    // Stop camera path animation if running
-    if (this.animationFrameId) {
-      cancelAnimationFrame(this.animationFrameId);
-      this.animationFrameId = null;
-    }
+    // Disable camera path animation
+    this.cameraPathActive = false;
   },
 
   enableLocomotionMode: function () {
@@ -87,24 +87,12 @@ AFRAME.registerComponent('viewer-mode', {
         this.originalRigAttributes.cursorTeleport
       );
     }
-
-    // Make VR hands visible again
-    const leftHand = document.querySelector('#leftHand');
-    const rightHand = document.querySelector('#rightHand');
-    if (leftHand) leftHand.setAttribute('visible', true);
-    if (rightHand) rightHand.setAttribute('visible', true);
   },
 
   enableCameraPathMode: function () {
-    // Hide VR hands in this mode
-    const leftHand = document.querySelector('#leftHand');
-    const rightHand = document.querySelector('#rightHand');
-    if (leftHand) leftHand.setAttribute('visible', false);
-    if (rightHand) rightHand.setAttribute('visible', false);
-
-    // Start simple camera path animation
+    // Reset path position and enable camera path animation
     this.pathPosition = 0;
-    this.playCameraPathAnimation();
+    this.cameraPathActive = true;
   },
 
   // Create a basic circular camera path for demonstration
@@ -116,7 +104,11 @@ AFRAME.registerComponent('viewer-mode', {
     this.pathSpeed = 0.002;
   },
 
-  playCameraPathAnimation: function () {
+  // A-Frame tick lifecycle method - called on every frame
+  tick: function (time, deltaTime) {
+    // Only run animation logic if camera path mode is active
+    if (!this.cameraPathActive) return;
+
     // Simple circular path around the center point
     const x = this.pathCenter.x + this.pathRadius * Math.cos(this.pathPosition);
     const z = this.pathCenter.z + this.pathRadius * Math.sin(this.pathPosition);
@@ -149,18 +141,11 @@ AFRAME.registerComponent('viewer-mode', {
 
     // Update position for next frame
     this.pathPosition += this.pathSpeed;
-
-    // Continue the animation
-    this.animationFrameId = requestAnimationFrame(
-      this.playCameraPathAnimation.bind(this)
-    );
   },
 
   remove: function () {
-    // Clean up
-    if (this.animationFrameId) {
-      cancelAnimationFrame(this.animationFrameId);
-    }
+    // Disable camera path mode
+    this.cameraPathActive = false;
 
     // Restore original locomotion mode
     this.enableLocomotionMode();
