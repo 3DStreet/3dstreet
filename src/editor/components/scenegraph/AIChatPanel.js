@@ -656,6 +656,15 @@ const AIChatPanel = forwardRef(function AIChatPanel(props, ref) {
     await processMessage(currentInput);
   };
 
+  // Assign ref to window object for external access
+  useEffect(() => {
+    window.aiChatPanelRef = ref.current;
+
+    return () => {
+      window.aiChatPanelRef = null;
+    };
+  }, []);
+
   // Scroll to bottom when new messages are added
   useEffect(() => {
     if (chatContainerRef.current) {
