@@ -2,7 +2,7 @@ import { useState, useEffect, useMemo, useRef } from 'react';
 import { Cross24Icon, Plus20Circle } from '../../../icons';
 import { createPortal } from 'react-dom';
 import { useAuthContext } from '../../../contexts/index.js';
-import { Button, Tabs, PanelToggleButton } from '../../components';
+import { Button, Tabs, PanelToggleButton } from '../../elements';
 import styles from './AddLayerPanel.module.scss';
 import classNames from 'classnames';
 import CardPlaceholder from '../../../../../ui_assets/card-placeholder.svg';

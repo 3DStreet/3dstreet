@@ -1,5 +1,5 @@
 import PropTypes from 'prop-types';
-import { Button } from '../components';
+import { Button } from '../elements';
 import { useAuthContext } from '@/editor/contexts/index.js';
 import AdvancedComponents from './AdvancedComponents';
 import PropertyRow from './PropertyRow';

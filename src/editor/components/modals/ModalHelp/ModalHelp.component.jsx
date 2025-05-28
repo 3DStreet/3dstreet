@@ -5,7 +5,7 @@ import { Component } from 'react';
 
 import Modal from '../Modal.jsx';
 import PropTypes from 'prop-types';
-import { Tabs } from '../../components';
+import { Tabs } from '../../elements';
 
 const tabs = [
   {

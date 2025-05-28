@@ -21,8 +21,8 @@ import { v4 as uuidv4 } from 'uuid';
 import ReactMarkdown from 'react-markdown';
 import { systemPrompt } from './AIChatPrompt.js';
 import AIChatTools, { entityTools } from './AIChatTools.js';
-import { PanelToggleButton } from '../../components/components';
-import { AwesomeIcon } from '../components/AwesomeIcon';
+import { PanelToggleButton } from '../../components/elements';
+import { AwesomeIcon } from '../../components/elements/AwesomeIcon';
 import {
   faRotate,
   faThumbsUp,

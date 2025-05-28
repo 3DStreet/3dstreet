@@ -7,7 +7,7 @@ import { Mangnifier20Icon, Save24Icon } from '../../../icons';
 import { httpsCallable } from 'firebase/functions';
 import { firebaseConfig, functions } from '../../../services/firebase.js';
 import Modal from '../Modal.jsx';
-import { Button, Input } from '../../components/index.js';
+import { Button, Input } from '../../elements/index.js';
 import {
   GoogleMap,
   useJsApiLoader,
