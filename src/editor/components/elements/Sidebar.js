@@ -25,6 +25,7 @@ import {
 } from '../../icons';
 import GeoSidebar from './GeoSidebar';
 import EnviroSidebar from './EnviroSidebar';
+import ViewerSidebar from './ViewerSidebar';
 import IntersectionSidebar from './IntersectionSidebar';
 import StreetSegmentSidebar from './StreetSegmentSidebar';
 import ManagedStreetSidebar from './ManagedStreetSidebar';
@@ -137,6 +138,7 @@ export default class Sidebar extends React.Component {
               <div className="scroll">
                 {entity.id !== 'reference-layers' &&
                 entity.id !== 'environment' &&
+                entity.id !== 'cameraRig' &&
                 !entity.getAttribute('street-segment') ? (
                   <>
                     {entity.classList.contains('autocreated') && (
@@ -251,6 +253,9 @@ export default class Sidebar extends React.Component {
                     )}
                     {entity.id === 'environment' && (
                       <EnviroSidebar entity={entity} />
+                    )}
+                    {entity.id === 'cameraRig' && (
+                      <ViewerSidebar entity={entity} />
                     )}
                   </>
                 )}
