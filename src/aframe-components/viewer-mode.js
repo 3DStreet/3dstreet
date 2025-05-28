@@ -12,6 +12,10 @@ AFRAME.registerComponent('viewer-mode', {
       default: 'circle',
       oneOf: ['circle', 'forward', 'strafe', 'zoom'],
       if: { preset: 'camera-path' }
+    },
+    cameraStartPosition: {
+      type: 'vec3',
+      default: { x: 0, y: 1.6, z: 0 }
     }
   },
 
@@ -93,12 +97,36 @@ AFRAME.registerComponent('viewer-mode', {
     // Reset path position and enable camera path animation
     this.pathPosition = 0;
     this.cameraPathActive = true;
+
+    // Reset all path-specific counters
+    this.forwardDistance = 0;
+    this.strafeDistance = 0;
+    this.zoomCycleTime = 0;
+
+    // For certain paths, set the initial camera position to the start position
+    const cameraPath = this.data.cameraPath;
+    if (cameraPath === 'forward' || cameraPath === 'strafe') {
+      // Position the camera rig at the start position
+      this.cameraRig.object3D.position.copy(this.cameraStartPosition);
+    }
   },
 
   // Initialize camera path settings for different modes
   initBasicCameraPath: function () {
-    // Center of the path - get from the camera's current position
-    this.pathCenter = new THREE.Vector3(0, 1.6, 0);
+    // Use the provided start position or default to a standard position
+    const startPos = this.data.cameraStartPosition;
+    this.cameraStartPosition = new THREE.Vector3(
+      startPos.x,
+      startPos.y,
+      startPos.z
+    );
+
+    // Center of the path - use the camera start position as a reference
+    this.pathCenter = new THREE.Vector3(
+      this.cameraStartPosition.x,
+      this.cameraStartPosition.y,
+      this.cameraStartPosition.z
+    );
 
     // Circular path settings
     this.pathRadius = 10;
@@ -153,6 +181,7 @@ AFRAME.registerComponent('viewer-mode', {
 
   // Circle path - move around the center point
   updateCirclePath: function () {
+    // Calculate position around a circle centered on pathCenter
     const x = this.pathCenter.x + this.pathRadius * Math.cos(this.pathPosition);
     const z = this.pathCenter.z + this.pathRadius * Math.sin(this.pathPosition);
     const y = this.pathCenter.y + this.pathHeight;
@@ -178,12 +207,15 @@ AFRAME.registerComponent('viewer-mode', {
     // Reset if we've gone too far
     if (this.forwardDistance > this.forwardMaxDistance) {
       this.forwardDistance = 0;
+      // Reset to start position when we loop
+      this.cameraRig.object3D.position.copy(this.cameraStartPosition);
+      return;
     }
 
     // Set new position
     const x = currentPos.x;
-    const y = this.pathCenter.y + this.pathHeight;
-    const z = this.pathCenter.z - this.forwardDistance;
+    const y = this.cameraStartPosition.y + this.pathHeight;
+    const z = this.cameraStartPosition.z - this.forwardDistance;
 
     this.cameraRig.object3D.position.set(x, y, z);
 
@@ -210,9 +242,9 @@ AFRAME.registerComponent('viewer-mode', {
       this.strafeDirection *= -1;
     }
 
-    // Set new position
-    const x = this.pathCenter.x + this.strafeDistance;
-    const y = this.pathCenter.y + this.pathHeight;
+    // Set new position relative to start position
+    const x = this.cameraStartPosition.x + this.strafeDistance;
+    const y = this.cameraStartPosition.y + this.pathHeight;
     const z = currentPos.z;
 
     this.cameraRig.object3D.position.set(x, y, z);
@@ -239,13 +271,14 @@ AFRAME.registerComponent('viewer-mode', {
         (Math.sin(this.zoomCycleTime) + 1);
 
     // Calculate position based on zoom distance
-    const x = this.pathCenter.x;
-    const y = this.pathCenter.y + this.pathHeight;
-    const z = this.pathCenter.z + this.zoomDistance;
+    // Use the start position as the point to zoom toward/away from
+    const x = this.cameraStartPosition.x;
+    const y = this.cameraStartPosition.y + this.pathHeight;
+    const z = this.cameraStartPosition.z + this.zoomDistance;
 
     this.cameraRig.object3D.position.set(x, y, z);
 
-    // Look at the center
+    // Look at the center (which is now based on start position)
     this.lookAtCenter();
   },
 
