@@ -31,11 +31,6 @@ AFRAME.registerComponent('viewer-mode', {
       return;
     }
 
-    // Store original attributes for locomotion mode
-    this.originalRigAttributes = {
-      cursorTeleport: this.cameraRig.getAttribute('cursor-teleport')
-    };
-
     // Initialize basic camera path (just a simple circle for demo)
     this.initBasicCameraPath();
 
@@ -54,8 +49,6 @@ AFRAME.registerComponent('viewer-mode', {
   },
 
   setupMode: function (mode) {
-    console.log('Switching to viewer mode:', mode);
-
     // First disable all modes
     this.disableAllModes();
 
@@ -65,7 +58,6 @@ AFRAME.registerComponent('viewer-mode', {
     } else if (mode === 'camera-path') {
       this.enableCameraPathMode();
     }
-
     // Notify other components about the mode change
     this.el.emit('viewer-mode-changed', { mode: mode });
   },
@@ -73,7 +65,7 @@ AFRAME.registerComponent('viewer-mode', {
   disableAllModes: function () {
     // Disable locomotion controls but preserve position
     this.cameraRig.setAttribute('movement-controls', 'enabled: false');
-    this.cameraRig.removeAttribute('cursor-teleport');
+    this.cameraRig.setAttribute('cursor-teleport', 'enabled: false');
     this.camera.setAttribute('look-controls', 'enabled: false');
 
     // Disable camera path animation
@@ -83,14 +75,8 @@ AFRAME.registerComponent('viewer-mode', {
   enableLocomotionMode: function () {
     // Restore original locomotion controls
     this.cameraRig.setAttribute('movement-controls', 'enabled: true');
+    this.cameraRig.setAttribute('cursor-teleport', 'enabled: true');
     this.camera.setAttribute('look-controls', 'enabled: true');
-
-    if (this.originalRigAttributes.cursorTeleport) {
-      this.cameraRig.setAttribute(
-        'cursor-teleport',
-        this.originalRigAttributes.cursorTeleport
-      );
-    }
   },
 
   enableCameraPathMode: function () {
