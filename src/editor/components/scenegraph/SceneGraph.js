@@ -166,8 +166,10 @@ export default class SceneGraph extends React.Component {
         orderedLayers.unshift(layer);
       } else if (layer.id === 'environment') {
         orderedLayers.splice(1, 0, layer);
-      } else if (layer.id === 'street-container') {
+      } else if (layer.id === 'cameraRig') {
         orderedLayers.splice(2, 0, layer);
+      } else if (layer.id === 'street-container') {
+        orderedLayers.splice(3, 0, layer);
       } else {
         orderedLayers.push(layer);
       }
