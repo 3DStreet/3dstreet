@@ -2,6 +2,7 @@ import { create } from 'zustand';
 import { devtools, subscribeWithSelector } from 'zustand/middleware';
 import posthog from 'posthog-js';
 import Events from './editor/lib/Events';
+import canvasRecorder from './editor/lib/CanvasRecorder';
 
 const firstModal = () => {
   let modal = window.location.hash.includes('payment')
@@ -97,6 +98,12 @@ const useStore = create(
           if (newIsInspectorEnabled) {
             posthog.capture('inspector_opened');
             AFRAME.INSPECTOR.open();
+
+            // Make sure to stop recording when returning to editor mode
+            if (canvasRecorder.isCurrentlyRecording()) {
+              console.log('Stopping recording due to returning to editor mode');
+              canvasRecorder.stopRecording();
+            }
           } else {
             posthog.capture('inspector_closed');
             AFRAME.INSPECTOR.close();

@@ -7,9 +7,41 @@ import { makeScreenshot } from '@/editor/lib/SceneUtils';
 import { SceneEditTitle } from '../elements/SceneEditTitle';
 import { ActionBar } from '../elements/ActionBar';
 import { Save } from '../elements/Save';
+import canvasRecorder from '../../lib/CanvasRecorder';
+import { useState, useEffect } from 'react';
 
 function Toolbar({ currentUser, entity }) {
   const { setModal, isInspectorEnabled } = useStore();
+  const [isRecording, setIsRecording] = useState(false);
+
+  // Check recording status on each render
+  useEffect(() => {
+    const checkRecordingStatus = () => {
+      const recordingStatus = canvasRecorder.isCurrentlyRecording();
+      if (isRecording !== recordingStatus) {
+        setIsRecording(recordingStatus);
+      }
+    };
+
+    // Check immediately and then set up interval
+    checkRecordingStatus();
+    const intervalId = setInterval(checkRecordingStatus, 1000);
+
+    return () => clearInterval(intervalId);
+  }, [isRecording]);
+
+  // Handler for stopping recording manually
+  const handleStopRecording = async () => {
+    if (canvasRecorder.isCurrentlyRecording()) {
+      try {
+        console.log('Manually stopping recording from toolbar...');
+        await canvasRecorder.stopRecording();
+        setIsRecording(false);
+      } catch (error) {
+        console.error('Error stopping recording:', error);
+      }
+    }
+  };
 
   return (
     <div id="toolbar">
@@ -27,6 +59,19 @@ function Toolbar({ currentUser, entity }) {
                 <ActionBar selectedEntity={entity} />
               </div>
             </>
+          )}
+          {/* Add the stop recording button when in viewer mode (not inspector) and recording is in progress */}
+          {!isInspectorEnabled && isRecording && (
+            <div className="ml-4">
+              <Button
+                variant="toolbtn"
+                onClick={handleStopRecording}
+                className="bg-red-600 text-white hover:bg-red-700"
+                title="Stop recording and download video"
+              >
+                <div>Stop Recording & Save</div>
+              </Button>
+            </div>
           )}
         </div>
         {isInspectorEnabled && (
