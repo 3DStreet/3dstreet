@@ -14,7 +14,8 @@ AFRAME.registerComponent('scene-timer', {
   init: function () {
     // Initialize timer state
     this.elapsedTime = 0; // Time in milliseconds
-    this.startTime = null;
+    this.startTime = null; // Will hold the tick time when timer starts
+    this.lastTickTime = null; // Will track the last tick time received
     this.isPlaying = false;
     this.isPaused = false;
     this.frameRate = 30; // Assumed frame rate for frame count
@@ -80,24 +81,17 @@ AFRAME.registerComponent('scene-timer', {
   play: function () {
     if (this.isPlaying) return;
 
-    // If we're resuming from a pause
-    if (this.isPaused) {
-      // Store the current elapsed time when resuming from pause
-      const pausedElapsedTime = this.elapsedTime;
-
-      // Adjust the start time to account for the time spent paused
-      this.startTime = performance.now() - pausedElapsedTime;
-
-      console.log('Resuming timer from pause at', this.getFormattedTime());
-    } else {
-      // If starting fresh (not from a pause)
-      this.startTime = performance.now() - this.elapsedTime;
-      console.log('Starting timer from', this.getFormattedTime());
-    }
+    // We'll set the startTime on the next tick when we have a valid tick time
+    // For now, mark as playing so the tick method knows to initialize the timer
 
     // Make sure we're playing
     this.isPlaying = true;
     this.isPaused = false;
+
+    console.log(
+      this.isPaused ? 'Resuming timer from pause at' : 'Starting timer from',
+      this.getFormattedTime()
+    );
 
     // Emit event
     this.el.emit('timer-started', { time: this.elapsedTime });
@@ -109,11 +103,8 @@ AFRAME.registerComponent('scene-timer', {
   pause: function () {
     if (!this.isPlaying) return;
 
-    // Before pausing, update the elapsed time to the current value
-    // This freezes the time at the exact moment of pause
-    if (this.startTime !== null) {
-      this.elapsedTime = performance.now() - this.startTime;
-    }
+    // We don't need to update elapsedTime here as it's continuously updated in tick
+    // The last updated elapsedTime value will be preserved when we pause
 
     this.isPlaying = false;
     this.isPaused = true;
@@ -145,7 +136,7 @@ AFRAME.registerComponent('scene-timer', {
    */
   reset: function () {
     this.elapsedTime = 0;
-    this.startTime = this.isPlaying ? performance.now() : null;
+    this.startTime = null; // Will be set on next tick if playing
 
     // Emit event
     this.el.emit('timer-reset', { time: 0 });
@@ -160,8 +151,9 @@ AFRAME.registerComponent('scene-timer', {
   setTime: function (time) {
     this.elapsedTime = time;
 
-    if (this.isPlaying) {
-      this.startTime = performance.now() - time;
+    if (this.isPlaying && this.lastTickTime !== null) {
+      // Calculate what the startTime should be based on the current tick time
+      this.startTime = this.lastTickTime - time;
     }
 
     // Emit event
@@ -217,9 +209,6 @@ AFRAME.registerComponent('scene-timer', {
     }
   },
 
-  /**
-   * Standard A-Frame update lifecycle - called when component data changes
-   */
   update: function (oldData) {
     // Handle data changes if needed
     if (oldData && oldData.format !== this.data.format) {
@@ -227,24 +216,22 @@ AFRAME.registerComponent('scene-timer', {
     }
   },
 
-  /**
-   * Standard A-Frame tick lifecycle - called on every frame
-   */
   tick: function (time, deltaTime) {
+    // Store the current tick time for reference in other methods
+    this.lastTickTime = time;
+
     // Only update time if playing
     if (!this.isPlaying) return;
 
-    // Calculate elapsed time
-    const now = performance.now();
-    this.elapsedTime = now - this.startTime;
+    // If this is the first tick after starting or resuming, initialize the start time
+    if (this.startTime === null) {
+      this.startTime = time - this.elapsedTime;
+    }
 
-    // Timer-tick events are disabled for performance reasons
-    // Components that need time updates should poll getTime() or getFormattedTime() instead
+    // Calculate elapsed time using A-Frame's tick time
+    this.elapsedTime = time - this.startTime;
   },
 
-  /**
-   * Cleanup when component is removed
-   */
   remove: function () {
     // Stop the timer and cleanup
     if (this.isPlaying) {
