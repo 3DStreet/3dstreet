@@ -31,11 +31,10 @@ AFRAME.registerComponent('viewer-mode', {
       return;
     }
 
-    // Get reference to scene-timer if available
-    this.sceneTimer = document.querySelector('[scene-timer]');
-    if (!this.sceneTimer) {
+    // Check if STREET.timer exists
+    if (typeof STREET === 'undefined' || !STREET.timer) {
       console.warn(
-        'viewer-mode component: No scene-timer found, camera will not move'
+        'viewer-mode component: No STREET.timer found, camera will not move'
       );
     }
 
@@ -92,8 +91,8 @@ AFRAME.registerComponent('viewer-mode', {
     this.cameraPathActive = true;
 
     // Apply the correct initial position based on current time
-    // Only if scene-timer is available
-    if (!(this.sceneTimer && typeof STREET !== 'undefined' && STREET.timer)) {
+    // Only if STREET.timer is available
+    if (typeof STREET === 'undefined' || !STREET.timer) {
       return; // Don't move if no timer
     }
 
@@ -158,8 +157,8 @@ AFRAME.registerComponent('viewer-mode', {
     // Only run animation logic if camera path mode is active
     if (!this.cameraPathActive) return;
 
-    // Only move if scene-timer is available
-    if (!(this.sceneTimer && typeof STREET !== 'undefined' && STREET.timer)) {
+    // Only move if STREET.timer is available
+    if (typeof STREET === 'undefined' || !STREET.timer) {
       return; // Don't move if no timer
     }
 
