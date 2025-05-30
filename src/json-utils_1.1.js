@@ -47,10 +47,29 @@ function convertDOMElToObject(entity) {
   // get assets url address
   assetsUrl = document.querySelector('street-assets').getAttribute('url');
 
+  // First process the main entities
   for (const entry of sceneEntities) {
     const entityData = getElementData(entry);
     if (entityData) {
       data.push(entityData);
+    }
+  }
+
+  // Save viewer-mode component data separately
+  const cameraRig = document.querySelector('#cameraRig');
+  if (cameraRig && cameraRig.hasAttribute('viewer-mode')) {
+    // Create a minimal entity with just the viewer-mode component
+    const viewerModeData = {
+      id: 'cameraRig',
+      components: {}
+    };
+
+    // Get the viewer-mode component data
+    const viewerModeComponent = cameraRig.getAttribute('viewer-mode');
+    if (viewerModeComponent) {
+      viewerModeData.components['viewer-mode'] =
+        toPropString(viewerModeComponent);
+      data.push(viewerModeData);
     }
   }
 
@@ -422,6 +441,24 @@ Add a new entity with a list of components and children (if exists)
  * @return {Element} Entity created
 */
 function createEntityFromObj(entityData, parentEl) {
+  // Special handling for cameraRig with viewer-mode component
+  if (
+    entityData.id === 'cameraRig' &&
+    entityData.components &&
+    entityData.components['viewer-mode']
+  ) {
+    // Get the existing cameraRig entity
+    const existingCameraRig = document.querySelector('#cameraRig');
+    if (existingCameraRig) {
+      // Apply the viewer-mode component to the existing cameraRig
+      existingCameraRig.setAttribute(
+        'viewer-mode',
+        entityData.components['viewer-mode']
+      );
+      return existingCameraRig;
+    }
+  }
+
   const tagName = entityData.element || 'a-entity';
   const entity = entityData.entityElement || document.createElement(tagName);
 
