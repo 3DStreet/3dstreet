@@ -194,7 +194,8 @@ AFRAME.registerComponent('scene-timer', {
    */
   formatTime: function (milliseconds, format) {
     if (format === 'raw') {
-      return Math.floor(milliseconds); // instead we want to limit to integer
+      // Pad with zeros to ensure it's at least 8 digits long
+      return Math.floor(milliseconds).toString().padStart(8, '0');
     }
 
     const totalSeconds = Math.floor(milliseconds / 1000);
