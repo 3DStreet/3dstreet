@@ -31,7 +31,7 @@ const TimeControls = () => {
     // Find the scene-timer component
     if (typeof STREET !== 'undefined' && STREET.timer) {
       sceneTimerRef.current = STREET.timer;
-      setIsPlaying(STREET.timer.isPlaying());
+      setIsPlaying(STREET.timer.isTimerActive());
     }
 
     // Set up event listeners for timer state changes
@@ -91,7 +91,7 @@ const TimeControls = () => {
         setTimeUpdate((prev) => prev + 1);
 
         // Update playing state if it changed
-        const isTimerPlaying = sceneTimerRef.current.isPlaying();
+        const isTimerPlaying = sceneTimerRef.current.isTimerActive();
         if (isPlaying !== isTimerPlaying) {
           setIsPlaying(isTimerPlaying);
         }

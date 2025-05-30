@@ -15,7 +15,7 @@ AFRAME.registerComponent('scene-timer', {
     // Initialize timer state
     this.elapsedTime = 0; // Time in milliseconds
     this.startTime = null;
-    this.isPlaying = false;
+    this.timerActive = false;
     this.isPaused = false;
     this.frameRate = 30; // Assumed frame rate for frame count
     // Register timer event handlers
@@ -41,7 +41,7 @@ AFRAME.registerComponent('scene-timer', {
       STREET.timer.stop = this.stop.bind(this);
       STREET.timer.getTime = this.getTime.bind(this);
       STREET.timer.getFormattedTime = this.getFormattedTime.bind(this);
-      STREET.timer.isPlaying = () => this.isPlaying;
+      STREET.timer.isTimerActive = () => this.timerActive;
     }
 
     console.log('Scene timer initialized');
@@ -78,7 +78,7 @@ AFRAME.registerComponent('scene-timer', {
    * Start or resume the timer
    */
   play: function () {
-    if (this.isPlaying) return;
+    if (this.timerActive) return;
 
     // If we're resuming from a pause
     if (this.isPaused) {
@@ -96,7 +96,7 @@ AFRAME.registerComponent('scene-timer', {
     }
 
     // Make sure we're playing
-    this.isPlaying = true;
+    this.timerActive = true;
     this.isPaused = false;
 
     // Emit event
@@ -107,7 +107,7 @@ AFRAME.registerComponent('scene-timer', {
    * Pause the timer
    */
   pause: function () {
-    if (!this.isPlaying) return;
+    if (!this.timerActive) return;
 
     // Before pausing, update the elapsed time to the current value
     // This freezes the time at the exact moment of pause
@@ -115,7 +115,7 @@ AFRAME.registerComponent('scene-timer', {
       this.elapsedTime = performance.now() - this.startTime;
     }
 
-    this.isPlaying = false;
+    this.timerActive = false;
     this.isPaused = true;
 
     // Emit event
@@ -128,7 +128,7 @@ AFRAME.registerComponent('scene-timer', {
    * Stop and reset the timer
    */
   stop: function () {
-    this.isPlaying = false;
+    this.timerActive = false;
     this.isPaused = false;
 
     // Emit event before resetting time
@@ -145,7 +145,7 @@ AFRAME.registerComponent('scene-timer', {
    */
   reset: function () {
     this.elapsedTime = 0;
-    this.startTime = this.isPlaying ? performance.now() : null;
+    this.startTime = this.timerActive ? performance.now() : null;
 
     // Emit event
     this.el.emit('timer-reset', { time: 0 });
@@ -160,7 +160,7 @@ AFRAME.registerComponent('scene-timer', {
   setTime: function (time) {
     this.elapsedTime = time;
 
-    if (this.isPlaying) {
+    if (this.timerActive) {
       this.startTime = performance.now() - time;
     }
 
@@ -233,7 +233,7 @@ AFRAME.registerComponent('scene-timer', {
    */
   tick: function (time, deltaTime) {
     // Only update time if playing
-    if (!this.isPlaying) return;
+    if (!this.timerActive) return;
 
     // Calculate elapsed time
     const now = performance.now();
@@ -248,7 +248,7 @@ AFRAME.registerComponent('scene-timer', {
    */
   remove: function () {
     // Stop the timer and cleanup
-    if (this.isPlaying) {
+    if (this.timerActive) {
       this.stop();
     }
 
