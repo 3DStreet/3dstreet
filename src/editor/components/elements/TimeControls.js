@@ -4,6 +4,7 @@ import { Button } from '../elements';
 import canvasRecorder from '../../lib/CanvasRecorder';
 import Events from '../../lib/Events';
 import useStore from '@/store';
+import { useAuthContext } from '../../contexts/Auth.context';
 
 /**
  * TimeControls component for the header during viewer mode.
@@ -13,6 +14,8 @@ import useStore from '@/store';
 const TimeControls = ({ entity }) => {
   // Get viewer mode status from the store
   const { isInspectorEnabled } = useStore();
+  // Get current user info to check pro status
+  const { currentUser } = useAuthContext();
 
   // Component states
   const [isRecording, setIsRecording] = useState(false);
@@ -205,6 +208,12 @@ const TimeControls = ({ entity }) => {
 
   // Handler for record button
   const handleStartRecording = async () => {
+    // Check if user has pro account
+    if (!currentUser?.isPro) {
+      console.log('Recording requires a pro account');
+      return;
+    }
+
     // Find the A-Frame canvas
     const aframeCanvas = document.querySelector('a-scene').canvas;
     if (!aframeCanvas) {
@@ -317,7 +326,8 @@ const TimeControls = ({ entity }) => {
           </svg>
         </Button>
 
-        {!isRecording ? (
+        {/* Only show Record button if user has Pro account */}
+        {!isRecording && currentUser?.isPro ? (
           <Button
             variant="toolbtn"
             onClick={handleStartRecording}
@@ -337,24 +347,26 @@ const TimeControls = ({ entity }) => {
             </svg>
           </Button>
         ) : (
-          <Button
-            variant="toolbtn"
-            onClick={handleStopRecording}
-            aria-label="Stop Recording"
-            title="Stop recording and save MP4"
-            className="p-1"
-          >
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              width="20"
-              height="20"
-              viewBox="0 0 24 24"
-              fill="currentColor"
-              className="animate-pulse text-red-500"
+          isRecording && (
+            <Button
+              variant="toolbtn"
+              onClick={handleStopRecording}
+              aria-label="Stop Recording"
+              title="Stop recording and save MP4"
+              className="p-1"
             >
-              <rect x="6" y="6" width="12" height="12" />
-            </svg>
-          </Button>
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                width="20"
+                height="20"
+                viewBox="0 0 24 24"
+                fill="currentColor"
+                className="animate-pulse text-red-500"
+              >
+                <rect x="6" y="6" width="12" height="12" />
+              </svg>
+            </Button>
+          )
         )}
       </div>
     </div>
