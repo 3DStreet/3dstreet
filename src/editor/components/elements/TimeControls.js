@@ -1,4 +1,3 @@
-import PropTypes from 'prop-types';
 import { useState, useEffect, useRef } from 'react';
 import { Button } from '../elements';
 import canvasRecorder from '../../lib/CanvasRecorder';
@@ -11,7 +10,7 @@ import { useAuthContext } from '../../contexts/Auth.context';
  * Provides record, play, pause, stop buttons and a broadcast-style timer.
  * Uses the global scene-timer component for timing.
  */
-const TimeControls = ({ entity }) => {
+const TimeControls = () => {
   // Get viewer mode status from the store
   const { isInspectorEnabled } = useStore();
   // Get current user info to check pro status
@@ -20,39 +19,25 @@ const TimeControls = ({ entity }) => {
   // Component states
   const [isRecording, setIsRecording] = useState(false);
   const [isPlaying, setIsPlaying] = useState(false);
-  const [, setIsPaused] = useState(false);
-  const [elapsedTime, setElapsedTime] = useState(0); // Time in milliseconds
   const [viewerModeActive, setViewerModeActive] = useState(!isInspectorEnabled);
   const [timeFormat, setTimeFormat] = useState('mm:ss:ff'); // Track current time format
+  const [, setTimeUpdate] = useState(0); // State to trigger re-renders on time updates
 
   // References
   const sceneTimerRef = useRef(null); // Reference to the scene-timer component
 
-  // Initialize and clean up
+  // Initialize timer and set up event listeners
   useEffect(() => {
     // Find the scene-timer component
-    if (
-      !sceneTimerRef.current &&
-      typeof STREET !== 'undefined' &&
-      STREET.timer
-    ) {
+    if (typeof STREET !== 'undefined' && STREET.timer) {
       sceneTimerRef.current = STREET.timer;
-
-      // Update state based on scene timer's current state
       setIsPlaying(STREET.timer.isPlaying());
     }
 
-    // Set up event listeners for timer state changes (not for ticks)
+    // Set up event listeners for timer state changes
     const handleTimerStarted = () => setIsPlaying(true);
-    const handleTimerPaused = () => {
-      setIsPlaying(false);
-      setIsPaused(true);
-    };
-    const handleTimerStopped = () => {
-      setIsPlaying(false);
-      setIsPaused(false);
-      setElapsedTime(0);
-    };
+    const handleTimerPaused = () => setIsPlaying(false);
+    const handleTimerStopped = () => setIsPlaying(false);
 
     // Listen for inspector state changes
     const handleInspectorStatus = (enabled) => {
@@ -67,12 +52,10 @@ const TimeControls = ({ entity }) => {
         if (isRecording) {
           handleStopRecording();
         }
-      } else {
-        // Inspector disabled (viewing mode) - animation will be controlled by play button
       }
     };
 
-    // Add event listeners for state changes only
+    // Add event listeners
     const sceneEl = document.querySelector('a-scene');
     if (sceneEl) {
       sceneEl.addEventListener('timer-started', handleTimerStarted);
@@ -83,10 +66,7 @@ const TimeControls = ({ entity }) => {
     Events.on('inspectorenabled', handleInspectorStatus);
 
     // Check recording status on component mount
-    const recordingStatus = canvasRecorder.isCurrentlyRecording();
-    if (recordingStatus !== isRecording) {
-      setIsRecording(recordingStatus);
-    }
+    setIsRecording(canvasRecorder.isCurrentlyRecording());
 
     // Clean up event listeners
     return () => {
@@ -97,59 +77,46 @@ const TimeControls = ({ entity }) => {
         sceneEl.removeEventListener('timer-stopped', handleTimerStopped);
       }
     };
-  }, [isRecording, isPlaying, viewerModeActive]);
+  }, [isPlaying, isRecording]);
 
   // Set up polling for timer updates
   useEffect(() => {
-    // Only poll if the component is mounted and timer is available
+    // Only poll if the component is mounted and timer is available and we're in viewer mode
     if (!sceneTimerRef.current || !viewerModeActive) return;
 
     // Create polling interval (10 times per second is sufficient for UI updates)
     const pollInterval = setInterval(() => {
       if (sceneTimerRef.current) {
-        // Get time directly from the timer component
-        const currentTime = sceneTimerRef.current.getTime();
-        setElapsedTime(currentTime);
+        // Force re-render to update the time display
+        setTimeUpdate((prev) => prev + 1);
 
-        // Also update playing state if it changed
+        // Update playing state if it changed
         const isTimerPlaying = sceneTimerRef.current.isPlaying();
         if (isPlaying !== isTimerPlaying) {
           setIsPlaying(isTimerPlaying);
         }
       }
-    }, 10); // 10 Hz polling rate
+    }, 20);
 
     // Clean up interval on unmount
     return () => clearInterval(pollInterval);
   }, [viewerModeActive, isPlaying]);
 
   // Format time based on current format setting
-  const formatTime = (milliseconds) => {
+  const formatTime = () => {
     // Use the scene-timer's formatting if available
-    if (sceneTimerRef.current && sceneTimerRef.current.getFormattedTime) {
-      // The scene-timer's format is controlled by the timeFormat state
+    if (sceneTimerRef.current?.getFormattedTime) {
       return sceneTimerRef.current.getFormattedTime();
     }
-
-    // Fallback formatting if scene-timer is not available
-    if (timeFormat === 'raw') {
-      return milliseconds.toFixed(0);
-    } else {
-      const totalSeconds = Math.floor(milliseconds / 1000);
-      const minutes = Math.floor(totalSeconds / 60);
-      const seconds = totalSeconds % 60;
-      const frames = Math.floor((milliseconds % 1000) / (1000 / 30)); // Assuming 30fps
-
-      return `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}:${frames.toString().padStart(2, '0')}`;
-    }
+    return '00:00:00';
   };
 
   // Toggle time format when clicking on the time display
   const handleTimeFormatToggle = () => {
     const newFormat = timeFormat === 'mm:ss:ff' ? 'raw' : 'mm:ss:ff';
     setTimeFormat(newFormat);
-    // Also update the scene-timer component format
-    if (sceneTimerRef.current && sceneTimerRef.current.component.el) {
+    // Update the scene-timer component format
+    if (sceneTimerRef.current?.component?.el) {
       sceneTimerRef.current.component.el.setAttribute(
         'scene-timer',
         'format',
@@ -160,50 +127,34 @@ const TimeControls = ({ entity }) => {
 
   // Handler for play button
   const handlePlay = () => {
-    // Use the scene-timer to control playback
     if (sceneTimerRef.current) {
       sceneTimerRef.current.play();
     }
-
-    // Emit an event to notify the viewer mode component to resume animation
     Events.emit('viewer-animation-play');
-
-    setIsPaused(false);
     setIsPlaying(true);
   };
 
   // Handler for pause button
   const handlePause = () => {
-    // Use the scene-timer to control playback
     if (sceneTimerRef.current) {
       sceneTimerRef.current.pause();
     }
-
-    // Emit an event to notify the viewer mode component to pause animation
     Events.emit('viewer-animation-pause');
-
-    setIsPaused(true);
     setIsPlaying(false);
   };
 
   // Handler for stop button
   const handleStop = () => {
-    // Use the scene-timer to control playback
     if (sceneTimerRef.current) {
       sceneTimerRef.current.stop();
     }
 
-    // If recording is in progress, stop it
     if (isRecording) {
       handleStopRecording();
     }
 
-    // Emit an event to notify the viewer mode component to stop animation
     Events.emit('viewer-animation-stop');
-
-    setIsPaused(false);
     setIsPlaying(false);
-    setElapsedTime(0);
   };
 
   // Handler for record button
@@ -228,7 +179,6 @@ const TimeControls = ({ entity }) => {
 
     if (success) {
       setIsRecording(true);
-
       // Make sure we're playing if not already
       if (!isPlaying) {
         handlePlay();
@@ -262,7 +212,7 @@ const TimeControls = ({ entity }) => {
         onClick={handleTimeFormatToggle}
         title="Click to toggle time format"
       >
-        <span>{formatTime(elapsedTime)}</span>
+        <span>{formatTime()}</span>
         {isRecording && (
           <span className="ml-2 inline-block h-2 w-2 animate-pulse rounded-full bg-red-500"></span>
         )}
@@ -371,10 +321,6 @@ const TimeControls = ({ entity }) => {
       </div>
     </div>
   );
-};
-
-TimeControls.propTypes = {
-  entity: PropTypes.object
 };
 
 export default TimeControls;
