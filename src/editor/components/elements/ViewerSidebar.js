@@ -1,5 +1,6 @@
 import PropTypes from 'prop-types';
 import { useState, useEffect } from 'react';
+import { useAuthContext } from '@/editor/contexts';
 import PropertyRow from './PropertyRow';
 import AdvancedComponents from './AdvancedComponents';
 import { Button } from '../elements';
@@ -37,6 +38,8 @@ const ViewerSidebar = ({ entity }) => {
   const componentName = 'viewer-mode';
   // Access the store to control inspector mode
   const { setIsInspectorEnabled } = useStore();
+  // Get current user from auth context
+  const { currentUser } = useAuthContext();
   // Track recording state to update UI
   const [isRecording, setIsRecording] = useState(false);
   // Use state to force re-renders
@@ -71,6 +74,20 @@ const ViewerSidebar = ({ entity }) => {
   // Handler for entering viewer mode with recording
   const handleStartRecording = async () => {
     posthog.capture('start_recording_clicked_from_sidebar');
+
+    // Check if user is logged in and has pro access
+    if (!currentUser) {
+      // Not logged in, show signin modal
+      useStore.getState().setModal('signin');
+      return;
+    }
+
+    if (!currentUser.isPro) {
+      // User doesn't have pro access, show payment modal
+      useStore.getState().startCheckout(null); // No redirect after payment
+      posthog.capture('recording_feature_paywall_shown');
+      return;
+    }
 
     // Find the A-Frame canvas
     const aframeCanvas = document.querySelector('a-scene').canvas;
@@ -146,7 +163,7 @@ const ViewerSidebar = ({ entity }) => {
               className="mb-4 w-full"
               disabled={isRecording}
             >
-              Start and Record
+              Start and Record <span className="pro-badge">Pro</span>
             </Button>
             {isRecording && (
               <>

@@ -5,6 +5,7 @@ import { makeScreenshot } from '@/editor/lib/SceneUtils';
 import posthog from 'posthog-js';
 import Events from '../../lib/Events.js';
 import canvasRecorder from '../../lib/CanvasRecorder';
+import { useAuthContext } from '@/editor/contexts';
 
 const cameraOptions = [
   {
@@ -22,8 +23,14 @@ const cameraOptions = [
 ];
 
 const AppMenu = ({ currentUser }) => {
-  const { setModal, isInspectorEnabled, setIsInspectorEnabled, saveScene } =
-    useStore();
+  const {
+    setModal,
+    isInspectorEnabled,
+    setIsInspectorEnabled,
+    saveScene,
+    startCheckout
+  } = useStore();
+  const { currentUser: authUser } = useAuthContext();
 
   const handleCameraChange = (option) => {
     // Let the camera system handle the camera change first
@@ -159,7 +166,22 @@ const AppMenu = ({ currentUser }) => {
             <Menubar.Item
               className="MenubarItem"
               onClick={async () => {
-                // Find the A-Frame canvas
+                // Check if user is logged in and has pro access
+                if (!authUser) {
+                  // Not logged in, show signin modal
+                  setModal('signin');
+                  return;
+                }
+
+                if (!authUser.isPro) {
+                  // User doesn't have pro access, show payment modal
+                  // Pass the current location as postCheckout to return here after payment
+                  startCheckout(null); // No redirect after payment
+                  posthog.capture('recording_feature_paywall_shown');
+                  return;
+                }
+
+                // User has pro access, proceed with recording
                 const aframeCanvas = document.querySelector('a-scene').canvas;
                 if (!aframeCanvas) {
                   console.error('Could not find A-Frame canvas for recording');
@@ -182,7 +204,10 @@ const AppMenu = ({ currentUser }) => {
                 }
               }}
             >
-              Start and Record
+              Start and Record{' '}
+              <div className="RightSlot">
+                <span className="pro-badge">Pro</span>
+              </div>
             </Menubar.Item>
           </Menubar.Content>
         </Menubar.Portal>

@@ -135,3 +135,13 @@
 [data-disabled] > .RightSlot {
   color: variables.$lightgray-400;
 }
+
+.pro-badge {
+  background-color: #774dee;
+  padding: 0px 8px;
+  border-radius: 8px;
+  margin-left: 8px;
+  font-size: 0.775rem;
+  font-weight: normal;
+  display: inline-block;
+}
