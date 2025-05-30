@@ -4,6 +4,7 @@ import useStore from '@/store';
 import { makeScreenshot } from '@/editor/lib/SceneUtils';
 import posthog from 'posthog-js';
 import Events from '../../lib/Events.js';
+import canvasRecorder from '../../lib/CanvasRecorder';
 
 const cameraOptions = [
   {
@@ -133,12 +134,55 @@ const AppMenu = ({ currentUser }) => {
             >
               Reset Camera View
             </Menubar.Item>
-            <Menubar.Separator className="MenubarSeparator" />
+          </Menubar.Content>
+        </Menubar.Portal>
+      </Menubar.Menu>
+
+      <Menubar.Menu>
+        <Menubar.Trigger className="MenubarTrigger">Run</Menubar.Trigger>
+        <Menubar.Portal>
+          <Menubar.Content
+            className="MenubarContent"
+            align="start"
+            sideOffset={5}
+            alignOffset={-3}
+          >
             <Menubar.Item
               className="MenubarItem"
-              onClick={() => setIsInspectorEnabled(!isInspectorEnabled)}
+              onClick={() => {
+                // Enter viewer mode
+                setIsInspectorEnabled(!isInspectorEnabled);
+              }}
             >
-              Enter Viewer Mode
+              Start Viewer
+            </Menubar.Item>
+            <Menubar.Item
+              className="MenubarItem"
+              onClick={async () => {
+                // Find the A-Frame canvas
+                const aframeCanvas = document.querySelector('a-scene').canvas;
+                if (!aframeCanvas) {
+                  console.error('Could not find A-Frame canvas for recording');
+                  return;
+                }
+
+                // Start recording the canvas
+                const success = await canvasRecorder.startRecording(
+                  aframeCanvas,
+                  {
+                    name:
+                      '3DStreet-Recording-' +
+                      new Date().toISOString().slice(0, 10)
+                  }
+                );
+
+                if (success) {
+                  // Enter viewer mode
+                  setIsInspectorEnabled(!isInspectorEnabled);
+                }
+              }}
+            >
+              Start and Record
             </Menubar.Item>
           </Menubar.Content>
         </Menubar.Portal>
