@@ -10,7 +10,7 @@ AFRAME.registerComponent('viewer-mode', {
     cameraPath: {
       type: 'string',
       default: 'circle',
-      oneOf: ['circle', 'forward', 'strafe', 'zoom'],
+      oneOf: ['circle', 'forward', 'strafe'],
       if: { preset: 'camera-path' }
     },
     cameraStartPosition: {
@@ -87,7 +87,6 @@ AFRAME.registerComponent('viewer-mode', {
     // Reset all path-specific counters
     this.forwardDistance = 0;
     this.strafeDistance = 0;
-    this.zoomCycleTime = 0;
 
     // For certain paths, set the initial camera position to the start position
     const cameraPath = this.data.cameraPath;
@@ -129,14 +128,6 @@ AFRAME.registerComponent('viewer-mode', {
     this.strafeDistance = 0;
     this.strafeMaxDistance = 20;
     this.strafeDirection = 1; // 1 for right, -1 for left
-
-    // Zoom path settings
-    this.zoomSpeed = 0.01;
-    this.zoomDirection = -1; // -1 for zoom out, 1 for zoom in
-    this.zoomMinDistance = 3;
-    this.zoomMaxDistance = 15;
-    this.zoomDistance = 8; // Starting distance
-    this.zoomCycleTime = 0; // Time tracker for zoom cycles
   },
 
   tick: function (time, deltaTime) {
@@ -155,9 +146,6 @@ AFRAME.registerComponent('viewer-mode', {
         break;
       case 'strafe':
         this.updateStrafePath();
-        break;
-      case 'zoom':
-        this.updateZoomPath(time);
         break;
       default:
         this.updateCirclePath();
@@ -242,29 +230,6 @@ AFRAME.registerComponent('viewer-mode', {
     );
 
     this.lookAtPoint(lookTarget);
-  },
-
-  // Zoom path - gradually zoom in and out
-  updateZoomPath: function (time) {
-    // Calculate zoom cycle (oscillate between min and max)
-    this.zoomCycleTime += this.zoomSpeed;
-
-    // Use sine wave to create smooth zoom in/out effect
-    this.zoomDistance =
-      this.zoomMinDistance +
-      ((this.zoomMaxDistance - this.zoomMinDistance) / 2) *
-        (Math.sin(this.zoomCycleTime) + 1);
-
-    // Calculate position based on zoom distance
-    // Use the start position as the point to zoom toward/away from
-    const x = this.cameraStartPosition.x;
-    const y = this.cameraStartPosition.y + this.pathHeight;
-    const z = this.cameraStartPosition.z + this.zoomDistance;
-
-    this.cameraRig.object3D.position.set(x, y, z);
-
-    // Look at the center (which is now based on start position)
-    this.lookAtCenter();
   },
 
   // Helper method to look at the center point
