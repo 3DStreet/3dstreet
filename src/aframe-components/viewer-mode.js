@@ -139,7 +139,6 @@ AFRAME.registerComponent('viewer-mode', {
     this.zoomCycleTime = 0; // Time tracker for zoom cycles
   },
 
-  // A-Frame tick lifecycle method - called on every frame
   tick: function (time, deltaTime) {
     // Only run animation logic if camera path mode is active
     if (!this.cameraPathActive) return;

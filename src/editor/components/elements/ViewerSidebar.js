@@ -6,7 +6,6 @@ import AdvancedComponents from './AdvancedComponents';
 import { Button } from '../elements';
 import useStore from '@/store';
 import Events from '../../lib/Events';
-import posthog from 'posthog-js';
 import canvasRecorder from '../../lib/CanvasRecorder';
 
 // Helper function to determine if a property should be shown based on schema conditions
@@ -67,14 +66,11 @@ const ViewerSidebar = ({ entity }) => {
 
   // Handler for entering viewer mode
   const handleEnterViewerMode = () => {
-    posthog.capture('enter_viewer_mode_clicked_from_sidebar');
     setIsInspectorEnabled(false);
   };
 
   // Handler for entering viewer mode with recording
   const handleStartRecording = async () => {
-    posthog.capture('start_recording_clicked_from_sidebar');
-
     // Check if user is logged in and has pro access
     if (!currentUser) {
       // Not logged in, show signin modal
@@ -85,7 +81,6 @@ const ViewerSidebar = ({ entity }) => {
     if (!currentUser.isPro) {
       // User doesn't have pro access, show payment modal
       useStore.getState().startCheckout(null); // No redirect after payment
-      posthog.capture('recording_feature_paywall_shown');
       return;
     }
 
@@ -110,8 +105,6 @@ const ViewerSidebar = ({ entity }) => {
 
   // Handler for stopping recording manually
   const handleStopRecording = async () => {
-    posthog.capture('stop_recording_clicked_from_sidebar');
-
     if (canvasRecorder.isCurrentlyRecording()) {
       try {
         console.log('Manually stopping recording...');

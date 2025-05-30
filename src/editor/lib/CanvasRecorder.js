@@ -1,8 +1,5 @@
-// Import only what we need - no external recorder libraries
-import Events from './Events';
-
-// Declare AFRAME for TypeScript
 /* global AFRAME */
+import Events from './Events';
 
 // Recorder statuses - simple enum replacement
 const RecorderStatus = {
@@ -261,19 +258,6 @@ class CanvasRecorder {
       this.status = RecorderStatus.Idle;
 
       // No offscreen canvas to clean up
-    }
-  }
-
-  /**
-   * Capture a single frame from the A-Frame scene
-   */
-  // The captureFrame method is no longer needed since we're using captureStream directly
-  async captureFrame() {
-    // This method is kept for backwards compatibility but is no longer used
-    // The stream from captureStream will automatically capture frames
-    if (this.frameCount % 30 === 0) {
-      console.log(`Recording in progress - frame approx ${this.frameCount}`);
-      this.frameCount++;
     }
   }
 
