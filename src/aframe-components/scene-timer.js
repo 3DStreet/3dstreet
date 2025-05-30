@@ -18,7 +18,6 @@ AFRAME.registerComponent('scene-timer', {
     this.isPlaying = false;
     this.isPaused = false;
     this.frameRate = 30; // Assumed frame rate for frame count
-    this.currentTime = 0; // Store the latest A-Frame time value
     // Register timer event handlers
     this.bindEvents();
 
@@ -87,12 +86,12 @@ AFRAME.registerComponent('scene-timer', {
       const pausedElapsedTime = this.elapsedTime;
 
       // Adjust the start time to account for the time spent paused
-      this.startTime = this.currentTime - pausedElapsedTime;
+      this.startTime = performance.now() - pausedElapsedTime;
 
       console.log('Resuming timer from pause at', this.getFormattedTime());
     } else {
       // If starting fresh (not from a pause)
-      this.startTime = this.currentTime - this.elapsedTime;
+      this.startTime = performance.now() - this.elapsedTime;
       console.log('Starting timer from', this.getFormattedTime());
     }
 
@@ -113,7 +112,7 @@ AFRAME.registerComponent('scene-timer', {
     // Before pausing, update the elapsed time to the current value
     // This freezes the time at the exact moment of pause
     if (this.startTime !== null) {
-      this.elapsedTime = this.currentTime - this.startTime;
+      this.elapsedTime = performance.now() - this.startTime;
     }
 
     this.isPlaying = false;
@@ -146,7 +145,7 @@ AFRAME.registerComponent('scene-timer', {
    */
   reset: function () {
     this.elapsedTime = 0;
-    this.startTime = this.isPlaying ? this.currentTime : null;
+    this.startTime = this.isPlaying ? performance.now() : null;
 
     // Emit event
     this.el.emit('timer-reset', { time: 0 });
@@ -162,7 +161,7 @@ AFRAME.registerComponent('scene-timer', {
     this.elapsedTime = time;
 
     if (this.isPlaying) {
-      this.startTime = this.currentTime - time;
+      this.startTime = performance.now() - time;
     }
 
     // Emit event
@@ -236,11 +235,12 @@ AFRAME.registerComponent('scene-timer', {
     // Only update time if playing
     if (!this.isPlaying) return;
 
-    // Update our stored time value with the time from A-Frame's tick
-    this.currentTime = time;
+    // Calculate elapsed time
+    const now = performance.now();
+    this.elapsedTime = now - this.startTime;
 
-    // Calculate elapsed time using A-Frame's time
-    this.elapsedTime = time - this.startTime;
+    // Timer-tick events are disabled for performance reasons
+    // Components that need time updates should poll getTime() or getFormattedTime() instead
   },
 
   /**
