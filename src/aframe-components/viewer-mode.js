@@ -116,44 +116,51 @@ AFRAME.registerComponent('viewer-mode', {
     // Circular path settings
     this.pathRadius = 10;
     this.pathHeight = 3;
-    this.pathSpeed = 0.002;
+    // Define speeds in units per second (not per tick)
+    this.pathSpeed = 0.1; // Radians per second for circle path
 
     // Forward path settings
-    this.forwardSpeed = 0.02;
+    this.forwardSpeed = 1.0; // Units per second
     this.forwardDistance = 0;
     this.forwardMaxDistance = 100;
 
     // Strafe path settings
-    this.strafeSpeed = 0.02;
+    this.strafeSpeed = 1.0; // Units per second
     this.strafeDistance = 0;
     this.strafeMaxDistance = 20;
     this.strafeDirection = 1; // 1 for right, -1 for left
+
+    // Store the last timestamp for deltaTime calculations
+    this.lastTime = 0;
   },
 
   tick: function (time, deltaTime) {
     // Only run animation logic if camera path mode is active
     if (!this.cameraPathActive) return;
 
+    // Convert deltaTime from milliseconds to seconds for easier calculations
+    const deltaSeconds = deltaTime / 1000;
+
     const cameraPath = this.data.cameraPath;
 
     // Handle different camera paths based on the selected mode
     switch (cameraPath) {
       case 'circle':
-        this.updateCirclePath();
+        this.updateCirclePath(deltaSeconds);
         break;
       case 'forward':
-        this.updateForwardPath();
+        this.updateForwardPath(deltaSeconds);
         break;
       case 'strafe':
-        this.updateStrafePath();
+        this.updateStrafePath(deltaSeconds);
         break;
       default:
-        this.updateCirclePath();
+        this.updateCirclePath(deltaSeconds);
     }
   },
 
   // Circle path - move around the center point
-  updateCirclePath: function () {
+  updateCirclePath: function (deltaSeconds) {
     // Calculate position around a circle centered on pathCenter
     const x = this.pathCenter.x + this.pathRadius * Math.cos(this.pathPosition);
     const z = this.pathCenter.z + this.pathRadius * Math.sin(this.pathPosition);
@@ -165,17 +172,17 @@ AFRAME.registerComponent('viewer-mode', {
     // Make camera look at center
     this.lookAtCenter();
 
-    // Update position for next frame
-    this.pathPosition += this.pathSpeed;
+    // Update position for next frame using time-based increment
+    this.pathPosition += this.pathSpeed * deltaSeconds;
   },
 
   // Forward path - move slowly forward along street path (z-)
-  updateForwardPath: function () {
+  updateForwardPath: function (deltaSeconds) {
     // Get current position
     const currentPos = this.cameraRig.object3D.position;
 
-    // Move forward (z-)
-    this.forwardDistance += this.forwardSpeed;
+    // Move forward (z-) using time-based increment
+    this.forwardDistance += this.forwardSpeed * deltaSeconds;
 
     // Reset if we've gone too far
     if (this.forwardDistance > this.forwardMaxDistance) {
@@ -203,12 +210,13 @@ AFRAME.registerComponent('viewer-mode', {
   },
 
   // Strafe path - move sideways along street path (x+)
-  updateStrafePath: function () {
+  updateStrafePath: function (deltaSeconds) {
     // Get current position
     const currentPos = this.cameraRig.object3D.position;
 
-    // Move sideways (x+)
-    this.strafeDistance += this.strafeSpeed * this.strafeDirection;
+    // Move sideways (x+) using time-based increment
+    this.strafeDistance +=
+      this.strafeSpeed * this.strafeDirection * deltaSeconds;
 
     // Reverse direction if we've gone too far in either direction
     if (Math.abs(this.strafeDistance) > this.strafeMaxDistance) {
