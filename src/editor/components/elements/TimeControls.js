@@ -199,8 +199,17 @@ const TimeControls = () => {
     }
   };
 
-  // If we're not in viewer mode, don't render the controls
+  // Check if we're not in viewer mode
   if (isInspectorEnabled || !viewerModeActive) {
+    return null;
+  }
+
+  // Check if the viewer-mode component has preset="locomotion"
+  const viewerModeEl = document.querySelector('[viewer-mode]');
+  if (
+    viewerModeEl &&
+    viewerModeEl.getAttribute('viewer-mode').preset === 'locomotion'
+  ) {
     return null;
   }
 
