@@ -9,6 +9,7 @@ import { ActionBar } from '../elements/ActionBar';
 import { Save } from '../elements/Save';
 import canvasRecorder from '../../lib/CanvasRecorder';
 import { useState, useEffect } from 'react';
+import TimeControls from '../elements/TimeControls';
 
 function Toolbar({ currentUser, entity }) {
   const { setModal, isInspectorEnabled } = useStore();
@@ -60,17 +61,10 @@ function Toolbar({ currentUser, entity }) {
               </div>
             </>
           )}
-          {/* Add the stop recording button when in viewer mode (not inspector) and recording is in progress */}
-          {!isInspectorEnabled && isRecording && (
+          {/* Time Controls - only shown in viewer mode */}
+          {!isInspectorEnabled && (
             <div className="ml-4">
-              <Button
-                variant="toolbtn"
-                onClick={handleStopRecording}
-                className="bg-red-600 text-white hover:bg-red-700"
-                title="Stop recording and download video"
-              >
-                <div>Stop Recording & Save</div>
-              </Button>
+              <TimeControls entity={entity} />
             </div>
           )}
         </div>

@@ -1,4 +1,4 @@
-/* global AFRAME, THREE */
+/* global AFRAME, THREE, STREET */
 
 AFRAME.registerComponent('viewer-mode', {
   schema: {
@@ -29,6 +29,13 @@ AFRAME.registerComponent('viewer-mode', {
         'viewer-mode component: No camera rig found with id "cameraRig"'
       );
       return;
+    }
+
+    // Check if STREET.timer exists
+    if (typeof STREET === 'undefined' || !STREET.timer) {
+      console.warn(
+        'viewer-mode component: No STREET.timer found, camera will not move'
+      );
     }
 
     // Initialize basic camera path (just a simple circle for demo)
@@ -80,19 +87,31 @@ AFRAME.registerComponent('viewer-mode', {
   },
 
   enableCameraPathMode: function () {
-    // Reset path position and enable camera path animation
-    this.pathPosition = 0;
+    // Enable camera path animation
     this.cameraPathActive = true;
 
-    // Reset all path-specific counters
-    this.forwardDistance = 0;
-    this.strafeDistance = 0;
+    // Apply the correct initial position based on current time
+    // Only if STREET.timer is available
+    if (typeof STREET === 'undefined' || !STREET.timer) {
+      return; // Don't move if no timer
+    }
 
-    // For certain paths, set the initial camera position to the start position
+    const timeSeconds = STREET.timer.getTime() / 1000;
+
+    // Update position immediately based on current time
     const cameraPath = this.data.cameraPath;
-    if (cameraPath === 'forward' || cameraPath === 'strafe') {
-      // Position the camera rig at the start position
-      this.cameraRig.object3D.position.copy(this.cameraStartPosition);
+    switch (cameraPath) {
+      case 'circle':
+        this.updateCirclePath(timeSeconds);
+        break;
+      case 'forward':
+        this.updateForwardPath(timeSeconds);
+        break;
+      case 'strafe':
+        this.updateStrafePath(timeSeconds);
+        break;
+      default:
+        this.updateCirclePath(timeSeconds);
     }
   },
 
@@ -138,32 +157,40 @@ AFRAME.registerComponent('viewer-mode', {
     // Only run animation logic if camera path mode is active
     if (!this.cameraPathActive) return;
 
-    // Convert deltaTime from milliseconds to seconds for easier calculations
-    const deltaSeconds = deltaTime / 1000;
+    // Only move if STREET.timer is available
+    if (typeof STREET === 'undefined' || !STREET.timer) {
+      return; // Don't move if no timer
+    }
+
+    // Get absolute time in seconds for deterministic positioning
+    const timeSeconds = STREET.timer.getTime() / 1000;
 
     const cameraPath = this.data.cameraPath;
 
     // Handle different camera paths based on the selected mode
     switch (cameraPath) {
       case 'circle':
-        this.updateCirclePath(deltaSeconds);
+        this.updateCirclePath(timeSeconds);
         break;
       case 'forward':
-        this.updateForwardPath(deltaSeconds);
+        this.updateForwardPath(timeSeconds);
         break;
       case 'strafe':
-        this.updateStrafePath(deltaSeconds);
+        this.updateStrafePath(timeSeconds);
         break;
       default:
-        this.updateCirclePath(deltaSeconds);
+        this.updateCirclePath(timeSeconds);
     }
   },
 
   // Circle path - move around the center point
-  updateCirclePath: function (deltaSeconds) {
+  updateCirclePath: function (timeSeconds) {
+    // Calculate angle based directly on absolute time and speed
+    const angle = timeSeconds * this.pathSpeed;
+
     // Calculate position around a circle centered on pathCenter
-    const x = this.pathCenter.x + this.pathRadius * Math.cos(this.pathPosition);
-    const z = this.pathCenter.z + this.pathRadius * Math.sin(this.pathPosition);
+    const x = this.pathCenter.x + this.pathRadius * Math.cos(angle);
+    const z = this.pathCenter.z + this.pathRadius * Math.sin(angle);
     const y = this.pathCenter.y + this.pathHeight;
 
     // Move the camera rig
@@ -171,62 +198,44 @@ AFRAME.registerComponent('viewer-mode', {
 
     // Make camera look at center
     this.lookAtCenter();
-
-    // Update position for next frame using time-based increment
-    this.pathPosition += this.pathSpeed * deltaSeconds;
   },
 
   // Forward path - move slowly forward along street path (z-)
-  updateForwardPath: function (deltaSeconds) {
-    // Get current position
-    const currentPos = this.cameraRig.object3D.position;
-
-    // Move forward (z-) using time-based increment
-    this.forwardDistance += this.forwardSpeed * deltaSeconds;
-
-    // Reset if we've gone too far
-    if (this.forwardDistance > this.forwardMaxDistance) {
-      this.forwardDistance = 0;
-      // Reset to start position when we loop
-      this.cameraRig.object3D.position.copy(this.cameraStartPosition);
-      return;
-    }
+  updateForwardPath: function (timeSeconds) {
+    // Calculate distance based directly on absolute time
+    let distance = (timeSeconds * this.forwardSpeed) % this.forwardMaxDistance;
 
     // Set new position
-    const x = currentPos.x;
+    const x = this.cameraStartPosition.x;
     const y = this.cameraStartPosition.y + this.pathHeight;
-    const z = this.cameraStartPosition.z - this.forwardDistance;
+    const z = this.cameraStartPosition.z - distance;
 
     this.cameraRig.object3D.position.set(x, y, z);
 
-    // Look forward along the path
+    // Look ahead (forward)
     const lookTarget = new THREE.Vector3(
       x,
       y,
-      z - 5 // Look ahead in the direction of movement
+      z - 10 // Look ahead along the street
     );
 
     this.lookAtPoint(lookTarget);
   },
 
   // Strafe path - move sideways along street path (x+)
-  updateStrafePath: function (deltaSeconds) {
-    // Get current position
-    const currentPos = this.cameraRig.object3D.position;
+  updateStrafePath: function (timeSeconds) {
+    // Calculate position using a sine wave pattern for back-and-forth motion
+    // This creates deterministic oscillation based on absolute time
+    const oscillationPeriod = (this.strafeMaxDistance * 2) / this.strafeSpeed;
+    const sineValue = Math.sin((timeSeconds * Math.PI * 2) / oscillationPeriod);
 
-    // Move sideways (x+) using time-based increment
-    this.strafeDistance +=
-      this.strafeSpeed * this.strafeDirection * deltaSeconds;
-
-    // Reverse direction if we've gone too far in either direction
-    if (Math.abs(this.strafeDistance) > this.strafeMaxDistance) {
-      this.strafeDirection *= -1;
-    }
+    // Scale the sine wave (-1 to 1) to our max strafe distance
+    const strafeDistance = sineValue * this.strafeMaxDistance;
 
     // Set new position relative to start position
-    const x = this.cameraStartPosition.x + this.strafeDistance;
+    const x = this.cameraStartPosition.x + strafeDistance;
     const y = this.cameraStartPosition.y + this.pathHeight;
-    const z = currentPos.z;
+    const z = this.cameraStartPosition.z;
 
     this.cameraRig.object3D.position.set(x, y, z);
 
