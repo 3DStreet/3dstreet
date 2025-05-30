@@ -31,19 +31,6 @@ function Toolbar({ currentUser, entity }) {
     return () => clearInterval(intervalId);
   }, [isRecording]);
 
-  // Handler for stopping recording manually
-  const handleStopRecording = async () => {
-    if (canvasRecorder.isCurrentlyRecording()) {
-      try {
-        console.log('Manually stopping recording from toolbar...');
-        await canvasRecorder.stopRecording();
-        setIsRecording(false);
-      } catch (error) {
-        console.error('Error stopping recording:', error);
-      }
-    }
-  };
-
   return (
     <div id="toolbar">
       <div className="grid grid-flow-dense grid-cols-5">
