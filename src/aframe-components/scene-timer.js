@@ -18,6 +18,27 @@ AFRAME.registerComponent('scene-timer', {
     this.timerActive = false;
     this.isPaused = false;
     this.frameRate = 30; // Assumed frame rate for frame count
+
+    // Bind event handlers once to reuse the same function references
+    this.boundStartTimer = this.startTimer.bind(this);
+    this.boundPauseTimer = this.pauseTimer.bind(this);
+    this.boundStopTimer = this.stopTimer.bind(this);
+    this.boundReset = this.reset.bind(this);
+    this.boundSetTimeHandler = (event) => {
+      if (event.detail) {
+        // Handle time setting
+        if (typeof event.detail.time === 'number') {
+          this.setTime(event.detail.time);
+        }
+
+        // Handle format changes
+        if (typeof event.detail.format === 'string') {
+          this.el.setAttribute('scene-timer', 'format', event.detail.format);
+          console.log('Scene timer format changed to', event.detail.format);
+        }
+      }
+    };
+
     // Register timer event handlers
     this.bindEvents();
 
@@ -55,19 +76,15 @@ AFRAME.registerComponent('scene-timer', {
     const el = this.el;
 
     // Timer control events
-    el.addEventListener('timer-start', this.startTimer.bind(this));
-    el.addEventListener('timer-pause', this.pauseTimer.bind(this));
-    el.addEventListener('timer-stop', this.stopTimer.bind(this));
+    el.addEventListener('timer-start', this.boundStartTimer);
+    el.addEventListener('timer-pause', this.boundPauseTimer);
+    el.addEventListener('timer-stop', this.boundStopTimer);
 
     // Reset event
-    el.addEventListener('timer-reset', this.reset.bind(this));
+    el.addEventListener('timer-reset', this.boundReset);
 
     // Set time event (e.g., for jumping to a specific time)
-    el.addEventListener('timer-set-time', (event) => {
-      if (event.detail && typeof event.detail.time === 'number') {
-        this.setTime(event.detail.time);
-      }
-    });
+    el.addEventListener('timer-set-time', this.boundSetTimeHandler);
   },
 
   /**
@@ -244,11 +261,11 @@ AFRAME.registerComponent('scene-timer', {
 
     // Remove all event listeners
     const el = this.el;
-    el.removeEventListener('timer-play', this.startTimer);
-    el.removeEventListener('timer-pause', this.pauseTimer);
-    el.removeEventListener('timer-stop', this.stopTimer);
-    el.removeEventListener('timer-reset', this.reset);
-    el.removeEventListener('timer-set-time', this.setTime);
+    el.removeEventListener('timer-start', this.boundStartTimer);
+    el.removeEventListener('timer-pause', this.boundPauseTimer);
+    el.removeEventListener('timer-stop', this.boundStopTimer);
+    el.removeEventListener('timer-reset', this.boundReset);
+    el.removeEventListener('timer-set-time', this.boundSetTimeHandler);
 
     // Remove from global STREET object if present
     if (typeof STREET !== 'undefined' && STREET.timer) {
