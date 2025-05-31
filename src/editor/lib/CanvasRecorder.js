@@ -1,5 +1,4 @@
 /* global AFRAME */
-import Events from './Events';
 
 // Recorder statuses - simple enum replacement
 const RecorderStatus = {
@@ -18,7 +17,6 @@ class CanvasRecorder {
     this.isRecording = false;
     this.captureInterval = null;
     this.frameCount = 0;
-    this.onInspectorStateChange = this.onInspectorStateChange.bind(this);
   }
 
   /**
@@ -115,9 +113,6 @@ class CanvasRecorder {
       this.isRecording = true;
       this.status = RecorderStatus.Recording;
       this.startTime = Date.now();
-
-      // Add event listener to detect when user exits viewer mode
-      Events.on('inspectorenabled', this.onInspectorStateChange);
 
       // Set a timeout for max duration
       this.durationTimeout = setTimeout(() => {
@@ -216,11 +211,6 @@ class CanvasRecorder {
       this.captureInterval = null;
     }
 
-    // Remove event listeners
-    Events.off('inspectorenabled', this.onInspectorStateChange);
-
-    // No render handler to remove in the simplified approach
-
     try {
       // Only stop if mediaRecorder exists and is not already stopped
       if (mediaRecorder && mediaRecorder.state !== 'inactive') {
@@ -269,24 +259,6 @@ class CanvasRecorder {
     // Not needed with MediaRecorder approach
     console.warn('Manual video generation not needed with MediaRecorder');
     return null;
-  }
-
-  /**
-   * Handle inspector state changes (when user exits viewer mode)
-   * @param {boolean} isEnabled - Whether the inspector is enabled
-   */
-  onInspectorStateChange(isEnabled) {
-    console.log(
-      'Inspector state changed:',
-      isEnabled,
-      'Recording:',
-      this.isRecording
-    );
-    if (isEnabled && this.isRecording) {
-      // User has exited viewer mode, stop recording
-      console.log('Stopping recording due to inspector state change');
-      this.stopRecording();
-    }
   }
 
   /**

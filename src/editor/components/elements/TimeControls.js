@@ -1,7 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { Button } from '../elements';
 import canvasRecorder from '../../lib/CanvasRecorder';
-import Events from '../../lib/Events';
 import useStore from '@/store';
 import { useAuthContext } from '../../contexts/Auth.context';
 
@@ -19,7 +18,7 @@ const TimeControls = () => {
   // Component states
   const [isRecording, setIsRecording] = useState(false);
   const [isPlaying, setIsPlaying] = useState(false);
-  const [viewerModeActive, setViewerModeActive] = useState(!isInspectorEnabled);
+  const [viewerModeActive] = useState(!isInspectorEnabled);
   const [timeFormat, setTimeFormat] = useState('mm:ss:ff'); // Track current time format
   const [, setTimeUpdate] = useState(0); // State to trigger re-renders on time updates
 
@@ -39,22 +38,6 @@ const TimeControls = () => {
     const handleTimerPaused = () => setIsPlaying(false);
     const handleTimerStopped = () => setIsPlaying(false);
 
-    // Listen for inspector state changes
-    const handleInspectorStatus = (enabled) => {
-      setViewerModeActive(!enabled);
-      if (enabled) {
-        // Inspector enabled (editing mode) - pause animation
-        if (sceneTimerRef.current && isPlaying) {
-          sceneTimerRef.current.pauseTimer();
-        }
-
-        // If recording, stop it
-        if (isRecording) {
-          handleStopRecording();
-        }
-      }
-    };
-
     // Add event listeners
     if (sceneTimerRef.current) {
       sceneTimerRef.current.component.el.addEventListener(
@@ -71,15 +54,11 @@ const TimeControls = () => {
       );
     }
 
-    // fix this event, not actually fired
-    Events.on('inspectorenabled', handleInspectorStatus);
-
     // Check recording status on component mount
     setIsRecording(canvasRecorder.isCurrentlyRecording());
 
     // Clean up event listeners
     return () => {
-      Events.off('inspectorenabled', handleInspectorStatus);
       if (sceneTimerRef.current) {
         sceneTimerRef.current.component.el.removeEventListener(
           'timer-started',
