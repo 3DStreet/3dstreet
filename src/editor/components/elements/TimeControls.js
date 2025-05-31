@@ -56,11 +56,19 @@ const TimeControls = () => {
     };
 
     // Add event listeners
-    const sceneEl = document.querySelector('a-scene');
-    if (sceneEl) {
-      sceneEl.addEventListener('timer-started', handleTimerStarted);
-      sceneEl.addEventListener('timer-paused', handleTimerPaused);
-      sceneEl.addEventListener('timer-stopped', handleTimerStopped);
+    if (sceneTimerRef.current) {
+      sceneTimerRef.current.component.el.addEventListener(
+        'timer-started',
+        handleTimerStarted
+      );
+      sceneTimerRef.current.component.el.addEventListener(
+        'timer-paused',
+        handleTimerPaused
+      );
+      sceneTimerRef.current.component.el.addEventListener(
+        'timer-stopped',
+        handleTimerStopped
+      );
     }
 
     // fix this event, not actually fired
@@ -72,10 +80,19 @@ const TimeControls = () => {
     // Clean up event listeners
     return () => {
       Events.off('inspectorenabled', handleInspectorStatus);
-      if (sceneEl) {
-        sceneEl.removeEventListener('timer-started', handleTimerStarted);
-        sceneEl.removeEventListener('timer-paused', handleTimerPaused);
-        sceneEl.removeEventListener('timer-stopped', handleTimerStopped);
+      if (sceneTimerRef.current) {
+        sceneTimerRef.current.component.el.removeEventListener(
+          'timer-started',
+          handleTimerStarted
+        );
+        sceneTimerRef.current.component.el.removeEventListener(
+          'timer-paused',
+          handleTimerPaused
+        );
+        sceneTimerRef.current.component.el.removeEventListener(
+          'timer-stopped',
+          handleTimerStopped
+        );
       }
     };
   }, [isPlaying, isRecording]);
@@ -116,36 +133,34 @@ const TimeControls = () => {
   const handleTimeFormatToggle = () => {
     const newFormat = timeFormat === 'mm:ss:ff' ? 'raw' : 'mm:ss:ff';
     setTimeFormat(newFormat);
-    // Update the scene-timer component format
-    if (sceneTimerRef.current?.component?.el) {
-      sceneTimerRef.current.component.el.setAttribute(
-        'scene-timer',
-        'format',
-        newFormat
-      );
+    // Update the scene-timer component format via event
+    if (sceneTimerRef.current) {
+      sceneTimerRef.current.component.el.emit('timer-set-time', {
+        format: newFormat
+      });
     }
   };
 
   // Handler for play button
   const handlePlay = () => {
     if (sceneTimerRef.current) {
-      sceneTimerRef.current.startTimer();
+      sceneTimerRef.current.component.el.emit('timer-start');
     }
-    setIsPlaying(true);
+    // UI state will be updated via the timer-started event we're listening for
   };
 
   // Handler for pause button
   const handlePause = () => {
     if (sceneTimerRef.current) {
-      sceneTimerRef.current.pauseTimer();
+      sceneTimerRef.current.component.el.emit('timer-pause');
     }
-    setIsPlaying(false);
+    // UI state will be updated via the timer-paused event we're listening for
   };
 
   // Handler for stop button
   const handleStop = () => {
     if (sceneTimerRef.current) {
-      sceneTimerRef.current.stopTimer();
+      sceneTimerRef.current.component.el.emit('timer-stop');
     }
 
     if (isRecording) {
