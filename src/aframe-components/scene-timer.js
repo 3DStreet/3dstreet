@@ -113,6 +113,14 @@ AFRAME.registerComponent('scene-timer', {
     this.el.emit('timer-started', { time: this.elapsedTime });
   },
 
+  play: function () {
+    this.startTimer();
+  },
+
+  pause: function () {
+    this.pauseTimer();
+  },
+
   /**
    * Pause the timer
    */
