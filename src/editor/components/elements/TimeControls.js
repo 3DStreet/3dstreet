@@ -45,7 +45,7 @@ const TimeControls = () => {
       if (enabled) {
         // Inspector enabled (editing mode) - pause animation
         if (sceneTimerRef.current && isPlaying) {
-          sceneTimerRef.current.pause();
+          sceneTimerRef.current.pauseTimer();
         }
 
         // If recording, stop it
@@ -63,6 +63,7 @@ const TimeControls = () => {
       sceneEl.addEventListener('timer-stopped', handleTimerStopped);
     }
 
+    // fix this event, not actually fired
     Events.on('inspectorenabled', handleInspectorStatus);
 
     // Check recording status on component mount
@@ -128,32 +129,29 @@ const TimeControls = () => {
   // Handler for play button
   const handlePlay = () => {
     if (sceneTimerRef.current) {
-      sceneTimerRef.current.play();
+      sceneTimerRef.current.startTimer();
     }
-    Events.emit('viewer-animation-play');
     setIsPlaying(true);
   };
 
   // Handler for pause button
   const handlePause = () => {
     if (sceneTimerRef.current) {
-      sceneTimerRef.current.pause();
+      sceneTimerRef.current.pauseTimer();
     }
-    Events.emit('viewer-animation-pause');
     setIsPlaying(false);
   };
 
   // Handler for stop button
   const handleStop = () => {
     if (sceneTimerRef.current) {
-      sceneTimerRef.current.stop();
+      sceneTimerRef.current.stopTimer();
     }
 
     if (isRecording) {
       handleStopRecording();
     }
 
-    Events.emit('viewer-animation-stop');
     setIsPlaying(false);
   };
 

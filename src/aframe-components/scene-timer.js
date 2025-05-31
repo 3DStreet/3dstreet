@@ -36,9 +36,9 @@ AFRAME.registerComponent('scene-timer', {
       STREET.timer.component = this;
 
       // Provide API methods
-      STREET.timer.play = this.play.bind(this);
-      STREET.timer.pause = this.pause.bind(this);
-      STREET.timer.stop = this.stop.bind(this);
+      STREET.timer.startTimer = this.startTimer.bind(this);
+      STREET.timer.pauseTimer = this.pauseTimer.bind(this);
+      STREET.timer.stopTimer = this.stopTimer.bind(this);
       STREET.timer.getTime = this.getTime.bind(this);
       STREET.timer.getFormattedTime = this.getFormattedTime.bind(this);
       STREET.timer.isTimerActive = () => this.timerActive;
@@ -54,14 +54,10 @@ AFRAME.registerComponent('scene-timer', {
     // Use actual element to receive events
     const el = this.el;
 
-    // Play event
-    el.addEventListener('timer-play', this.play.bind(this));
-
-    // Pause event
-    el.addEventListener('timer-pause', this.pause.bind(this));
-
-    // Stop event
-    el.addEventListener('timer-stop', this.stop.bind(this));
+    // Timer control events
+    el.addEventListener('timer-start', this.startTimer.bind(this));
+    el.addEventListener('timer-pause', this.pauseTimer.bind(this));
+    el.addEventListener('timer-stop', this.stopTimer.bind(this));
 
     // Reset event
     el.addEventListener('timer-reset', this.reset.bind(this));
@@ -77,7 +73,7 @@ AFRAME.registerComponent('scene-timer', {
   /**
    * Start or resume the timer
    */
-  play: function () {
+  startTimer: function () {
     if (this.timerActive) return;
 
     // If we're resuming from a pause
@@ -106,7 +102,7 @@ AFRAME.registerComponent('scene-timer', {
   /**
    * Pause the timer
    */
-  pause: function () {
+  pauseTimer: function () {
     if (!this.timerActive) return;
 
     // Before pausing, update the elapsed time to the current value
@@ -127,7 +123,7 @@ AFRAME.registerComponent('scene-timer', {
   /**
    * Stop and reset the timer
    */
-  stop: function () {
+  stopTimer: function () {
     this.timerActive = false;
     this.isPaused = false;
 
@@ -218,9 +214,6 @@ AFRAME.registerComponent('scene-timer', {
     }
   },
 
-  /**
-   * Standard A-Frame update lifecycle - called when component data changes
-   */
   update: function (oldData) {
     // Handle data changes if needed
     if (oldData && oldData.format !== this.data.format) {
@@ -228,9 +221,6 @@ AFRAME.registerComponent('scene-timer', {
     }
   },
 
-  /**
-   * Standard A-Frame tick lifecycle - called on every frame
-   */
   tick: function (time, deltaTime) {
     // Only update time if playing
     if (!this.timerActive) return;
@@ -249,14 +239,14 @@ AFRAME.registerComponent('scene-timer', {
   remove: function () {
     // Stop the timer and cleanup
     if (this.timerActive) {
-      this.stop();
+      this.stopTimer();
     }
 
     // Remove all event listeners
     const el = this.el;
-    el.removeEventListener('timer-play', this.play);
-    el.removeEventListener('timer-pause', this.pause);
-    el.removeEventListener('timer-stop', this.stop);
+    el.removeEventListener('timer-play', this.startTimer);
+    el.removeEventListener('timer-pause', this.pauseTimer);
+    el.removeEventListener('timer-stop', this.stopTimer);
     el.removeEventListener('timer-reset', this.reset);
     el.removeEventListener('timer-set-time', this.setTime);
 
