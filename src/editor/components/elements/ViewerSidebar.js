@@ -7,31 +7,7 @@ import { Button } from '../elements';
 import useStore from '@/store';
 import Events from '../../lib/Events';
 import canvasRecorder from '../../lib/CanvasRecorder';
-
-// Helper function to determine if a property should be shown based on schema conditions
-function shouldShowProperty(propertyName, component) {
-  if (!component.schema[propertyName].if) {
-    return true;
-  }
-
-  let showProperty = true;
-  for (const [conditionKey, conditionValue] of Object.entries(
-    component.schema[propertyName].if
-  )) {
-    if (Array.isArray(conditionValue)) {
-      if (conditionValue.indexOf(component.data[conditionKey]) === -1) {
-        showProperty = false;
-        break;
-      }
-    } else {
-      if (conditionValue !== component.data[conditionKey]) {
-        showProperty = false;
-        break;
-      }
-    }
-  }
-  return showProperty;
-}
+import { shouldShowProperty } from '@/editor/components/elements/Component';
 
 const ViewerSidebar = ({ entity }) => {
   const componentName = 'viewer-mode';
