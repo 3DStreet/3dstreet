@@ -80,9 +80,6 @@ AFRAME.registerComponent('scene-timer', {
     el.addEventListener('timer-pause', this.boundPauseTimer);
     el.addEventListener('timer-stop', this.boundStopTimer);
 
-    // Reset event
-    el.addEventListener('timer-reset', this.boundReset);
-
     // Set time event (e.g., for jumping to a specific time)
     el.addEventListener('timer-set-time', this.boundSetTimeHandler);
   },
@@ -159,10 +156,6 @@ AFRAME.registerComponent('scene-timer', {
   reset: function () {
     this.elapsedTime = 0;
     this.startTime = this.timerActive ? performance.now() : null;
-
-    // Emit event
-    this.el.emit('timer-reset', { time: 0 });
-
     console.log('Scene timer reset');
   },
 
@@ -264,7 +257,6 @@ AFRAME.registerComponent('scene-timer', {
     el.removeEventListener('timer-start', this.boundStartTimer);
     el.removeEventListener('timer-pause', this.boundPauseTimer);
     el.removeEventListener('timer-stop', this.boundStopTimer);
-    el.removeEventListener('timer-reset', this.boundReset);
     el.removeEventListener('timer-set-time', this.boundSetTimeHandler);
 
     // Remove from global STREET object if present
