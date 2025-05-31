@@ -53,7 +53,7 @@
     loading-screen="enabled: false" notify metadata
     reflection device-orientation-permission-ui="enabled: false"
     webxr="requiredFeatures:hit-test,local-floor;referenceSpaceType:local-floor;" xr-mode-ui="XRMode: ar"
-    css2d-renderer>
+    css2d-renderer scene-timer="autoStart: false; format: mm:ss:ff">
     <a-assets>
       <!-- TODO: Add this to repo documentation  -->
       <!-- you can specify a custom asset path using below syntax  -->
@@ -71,15 +71,12 @@
 
     </a-assets>
 
-    <a-entity id="street-container" data-layer-name="User Layers" data-no-transform>
-      <a-entity id="default-street" street streetmix-loader set-loader-from-hash></a-entity>
-    </a-entity>
 
     <a-entity id="reference-layers" data-layer-name="Geospatial Layers" data-no-transform></a-entity>
 
     <a-entity id="environment" data-layer-name="Environment" street-environment="preset: day;" data-no-transform></a-entity>
 
-    <a-entity id="cameraRig" class="ph-no-capture" data-layer-name="Viewer" data-no-transform
+    <a-entity id="cameraRig" class="ph-no-capture" data-layer-name="Viewer" data-no-transform viewer-mode="preset: camera-path;"
       cursor-teleport="cameraRig: #cameraRig; cameraHead: #camera;"
       movement-controls="camera: #camera; fly: true">
       <a-entity id="camera" data-layer-name="Camera" position="0 1.6 0" camera look-controls="reverseMouseDrag: true" class="autocreated"></a-entity>
@@ -97,6 +94,10 @@
         visible="false"
         class="autocreated"
       ></a-entity>
+    </a-entity>
+
+    <a-entity id="street-container" data-layer-name="User Layers" data-no-transform>
+      <a-entity id="default-street" street streetmix-loader set-loader-from-hash></a-entity>
     </a-entity>
 
   </a-scene>

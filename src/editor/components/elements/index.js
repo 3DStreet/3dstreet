@@ -13,3 +13,4 @@ export { UnitsPreference } from './UnitsPreference';
 export { PanelToggleButton } from './PanelToggleButton';
 export { UndoRedo } from './UndoRedo';
 export { TextArea } from './TextArea';
+export { default as TimeControls } from './TimeControls';
