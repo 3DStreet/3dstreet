@@ -21,6 +21,39 @@ const useStore = create(
   subscribeWithSelector(
     devtools(
       (set) => ({
+        // Recording state
+        isRecording: false,
+        setIsRecording: (newIsRecording) =>
+          set({ isRecording: newIsRecording }),
+        checkRecordingStatus: () => {
+          const recordingStatus = canvasRecorder.isCurrentlyRecording();
+          const currentState = useStore.getState().isRecording;
+          if (currentState !== recordingStatus) {
+            set({ isRecording: recordingStatus });
+          }
+          return recordingStatus;
+        },
+        startRecordingCheck: () => {
+          // First check immediately
+          useStore.getState().checkRecordingStatus();
+
+          // Then set up an interval
+          const intervalId = setInterval(() => {
+            useStore.getState().checkRecordingStatus();
+          }, 1000);
+
+          // Store the interval ID for cleanup
+          set({ recordingCheckIntervalId: intervalId });
+        },
+        stopRecordingCheck: () => {
+          const { recordingCheckIntervalId } = useStore.getState();
+          if (recordingCheckIntervalId) {
+            clearInterval(recordingCheckIntervalId);
+            set({ recordingCheckIntervalId: null });
+          }
+        },
+        recordingCheckIntervalId: null,
+
         sceneId: null, // not used anywhere yet, we still use the metadata component
         setSceneId: (newSceneId) => set({ sceneId: newSceneId }), // not used anywhere yet
         isSavingScene: false,

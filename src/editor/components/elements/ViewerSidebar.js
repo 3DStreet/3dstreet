@@ -11,12 +11,10 @@ import { shouldShowProperty } from '@/editor/components/elements/Component';
 
 const ViewerSidebar = ({ entity }) => {
   const componentName = 'viewer-mode';
-  // Access the store to control inspector mode
-  const { setIsInspectorEnabled } = useStore();
+  // Access the store to control inspector mode and get recording status
+  const { setIsInspectorEnabled, isRecording, setIsRecording } = useStore();
   // Get current user from auth context
   const { currentUser } = useAuthContext();
-  // Track recording state to update UI
-  const [isRecording, setIsRecording] = useState(false);
   // Use state to force re-renders
   const [, forceUpdate] = useState({});
 
@@ -92,21 +90,16 @@ const ViewerSidebar = ({ entity }) => {
     }
   };
 
-  // Check recording status on each render
+  // Initialize recording status check on component mount
   useEffect(() => {
-    const checkRecordingStatus = () => {
-      const recordingStatus = canvasRecorder.isCurrentlyRecording();
-      if (isRecording !== recordingStatus) {
-        setIsRecording(recordingStatus);
-      }
+    // Start the recording status check
+    useStore.getState().startRecordingCheck();
+
+    // Clean up when component unmounts
+    return () => {
+      useStore.getState().stopRecordingCheck();
     };
-
-    // Check immediately and then set up interval
-    checkRecordingStatus();
-    const intervalId = setInterval(checkRecordingStatus, 1000);
-
-    return () => clearInterval(intervalId);
-  }, [isRecording]);
+  }, []);
 
   // Check if entity and its components exist
   const component = entity?.components?.[componentName];

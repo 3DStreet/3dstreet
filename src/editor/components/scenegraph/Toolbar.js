@@ -7,29 +7,22 @@ import { makeScreenshot } from '@/editor/lib/SceneUtils';
 import { SceneEditTitle } from '../elements/SceneEditTitle';
 import { ActionBar } from '../elements/ActionBar';
 import { Save } from '../elements/Save';
-import canvasRecorder from '../../lib/CanvasRecorder';
-import { useState, useEffect } from 'react';
+import { useEffect } from 'react';
 import TimeControls from '../elements/TimeControls';
 
 function Toolbar({ currentUser, entity }) {
   const { setModal, isInspectorEnabled } = useStore();
-  const [isRecording, setIsRecording] = useState(false);
 
-  // Check recording status on each render
+  // Initialize recording status check on component mount
   useEffect(() => {
-    const checkRecordingStatus = () => {
-      const recordingStatus = canvasRecorder.isCurrentlyRecording();
-      if (isRecording !== recordingStatus) {
-        setIsRecording(recordingStatus);
-      }
+    // Start the recording status check
+    useStore.getState().startRecordingCheck();
+
+    // Clean up when component unmounts
+    return () => {
+      useStore.getState().stopRecordingCheck();
     };
-
-    // Check immediately and then set up interval
-    checkRecordingStatus();
-    const intervalId = setInterval(checkRecordingStatus, 1000);
-
-    return () => clearInterval(intervalId);
-  }, [isRecording]);
+  }, []);
 
   return (
     <div id="toolbar">
