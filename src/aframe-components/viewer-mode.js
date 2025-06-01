@@ -5,7 +5,7 @@ AFRAME.registerComponent('viewer-mode', {
     preset: {
       type: 'string',
       default: 'camera-path',
-      oneOf: ['locomotion', 'camera-path']
+      oneOf: ['locomotion', 'camera-path', 'ar-webxr']
     },
     cameraPath: {
       type: 'string',
@@ -16,6 +16,10 @@ AFRAME.registerComponent('viewer-mode', {
     cameraStartPosition: {
       type: 'vec3',
       default: { x: 0, y: 1.6, z: 0 }
+    },
+    cameraStartRotation: {
+      type: 'vec3',
+      default: { x: 0, y: 0, z: 0 }
     }
   },
 
@@ -23,6 +27,8 @@ AFRAME.registerComponent('viewer-mode', {
     // Store references to existing elements
     this.cameraRig = document.querySelector('#cameraRig');
     this.camera = document.querySelector('#camera');
+    this.leftHand = document.querySelector('#leftHand');
+    this.rightHand = document.querySelector('#rightHand');
 
     if (!this.cameraRig) {
       console.error(
@@ -30,6 +36,12 @@ AFRAME.registerComponent('viewer-mode', {
       );
       return;
     }
+
+    // Store blink controls settings
+    this.blinkControlsSettings = {
+      leftHand: null,
+      rightHand: null
+    };
 
     // Check if STREET.timer exists
     if (typeof STREET === 'undefined' || !STREET.timer) {
@@ -64,6 +76,8 @@ AFRAME.registerComponent('viewer-mode', {
       this.enableLocomotionMode();
     } else if (mode === 'camera-path') {
       this.enableCameraPathMode();
+    } else if (mode === 'ar-webxr') {
+      this.enableARWebXRMode();
     }
     // Notify other components about the mode change
     this.el.emit('viewer-mode-changed', { mode: mode });
@@ -75,8 +89,32 @@ AFRAME.registerComponent('viewer-mode', {
     this.cameraRig.setAttribute('cursor-teleport', 'enabled: false');
     this.camera.setAttribute('look-controls', 'enabled: false');
 
+    // Save and remove blink-controls from hands
+    if (this.leftHand && this.leftHand.hasAttribute('blink-controls')) {
+      // Store current settings before removing
+      this.blinkControlsSettings.leftHand =
+        this.leftHand.getAttribute('blink-controls');
+      this.leftHand.removeAttribute('blink-controls');
+    }
+
+    if (this.rightHand && this.rightHand.hasAttribute('blink-controls')) {
+      // Store current settings before removing
+      this.blinkControlsSettings.rightHand =
+        this.rightHand.getAttribute('blink-controls');
+      this.rightHand.removeAttribute('blink-controls');
+    }
+
     // Disable camera path animation
     this.cameraPathActive = false;
+
+    // Disable AR WebXR UI
+    // TODO: Disable AR WebXR UI
+  },
+
+  enableARWebXRMode: function () {
+    // TODO: Enable AR WebXR UI
+    console.log('enableARWebXRMode');
+    // the UI should be shown and the play button starts AR mode
   },
 
   enableLocomotionMode: function () {
@@ -84,6 +122,31 @@ AFRAME.registerComponent('viewer-mode', {
     this.cameraRig.setAttribute('movement-controls', 'enabled: true');
     this.cameraRig.setAttribute('cursor-teleport', 'enabled: true');
     this.camera.setAttribute('look-controls', 'enabled: true');
+
+    // Restore blink-controls with saved settings
+    if (this.leftHand) {
+      if (this.blinkControlsSettings.leftHand) {
+        this.leftHand.setAttribute(
+          'blink-controls',
+          this.blinkControlsSettings.leftHand
+        );
+      } else {
+        // Default settings if none were saved
+        this.leftHand.setAttribute('blink-controls', '');
+      }
+    }
+
+    if (this.rightHand) {
+      if (this.blinkControlsSettings.rightHand) {
+        this.rightHand.setAttribute(
+          'blink-controls',
+          this.blinkControlsSettings.rightHand
+        );
+      } else {
+        // Default settings if none were saved
+        this.rightHand.setAttribute('blink-controls', '');
+      }
+    }
   },
 
   enableCameraPathMode: function () {
