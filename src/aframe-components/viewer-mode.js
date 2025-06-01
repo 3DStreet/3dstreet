@@ -126,6 +126,12 @@ AFRAME.registerComponent('viewer-mode', {
       'block';
     this.el.sceneEl.addEventListener('enter-vr', this.onEnterVR);
     this.el.sceneEl.addEventListener('exit-vr', this.onExitVR);
+
+    if (!AFRAME.utils.device.checkHeadsetConnected()) {
+      document.getElementById(
+        'viewer-mode-ar-webxr-not-supported'
+      ).style.display = 'block';
+    }
   },
 
   enableLocomotionMode: function () {
