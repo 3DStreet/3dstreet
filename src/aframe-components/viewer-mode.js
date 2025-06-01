@@ -16,10 +16,6 @@ AFRAME.registerComponent('viewer-mode', {
     cameraStartPosition: {
       type: 'vec3',
       default: { x: 0, y: 1.6, z: 0 }
-    },
-    cameraStartRotation: {
-      type: 'vec3',
-      default: { x: 0, y: 0, z: 0 }
     }
   },
 
@@ -132,6 +128,12 @@ AFRAME.registerComponent('viewer-mode', {
         'viewer-mode-ar-webxr-not-supported'
       ).style.display = 'block';
     }
+
+    this.cameraRig.object3D.position.set(
+      this.data.cameraStartPosition.x,
+      0,
+      this.data.cameraStartPosition.z
+    );
   },
 
   enableLocomotionMode: function () {
