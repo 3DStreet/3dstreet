@@ -96,7 +96,7 @@ AFRAME.registerComponent('street-generated-stencil', {
       const position = entity.getAttribute('position');
       const rotation = entity.getAttribute('rotation');
       const entityObj = {
-        parentEl: this.el, // you can also put this.el.id here that way the command is fully json serializable but el currently doesn't have an id
+        parentEl: this.el,
         mixin: entity.getAttribute('mixin'),
         'data-layer-name': entity
           .getAttribute('data-layer-name')
