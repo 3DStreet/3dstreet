@@ -56,6 +56,10 @@ AFRAME.registerComponent('viewer-mode', {
     // Flag to control tick execution for camera path mode
     this.cameraPathActive = false;
 
+    // Define event handlers as properties so they can be removed later
+    this.onEnterVR = this.onEnterVR.bind(this);
+    this.onExitVR = this.onExitVR.bind(this);
+
     // Set up the initial mode
     this.setupMode(this.data.preset);
   },
@@ -108,13 +112,20 @@ AFRAME.registerComponent('viewer-mode', {
     this.cameraPathActive = false;
 
     // Disable AR WebXR UI
-    // TODO: Disable AR WebXR UI
+    document.getElementById('viewer-mode-ar-play-button').style.display =
+      'none';
+
+    // Remove event listeners if they were added
+    this.el.sceneEl.removeEventListener('enter-vr', this.onEnterVR);
+    this.el.sceneEl.removeEventListener('exit-vr', this.onExitVR);
   },
 
   enableARWebXRMode: function () {
-    // TODO: Enable AR WebXR UI
-    console.log('enableARWebXRMode');
     // the UI should be shown and the play button starts AR mode
+    document.getElementById('viewer-mode-ar-play-button').style.display =
+      'block';
+    this.el.sceneEl.addEventListener('enter-vr', this.onEnterVR);
+    this.el.sceneEl.addEventListener('exit-vr', this.onExitVR);
   },
 
   enableLocomotionMode: function () {
@@ -350,6 +361,17 @@ AFRAME.registerComponent('viewer-mode', {
 
     // Apply the quaternion to the camera
     this.camera.object3D.quaternion.copy(lookQuaternion);
+  },
+
+  // Event handler methods
+  onEnterVR: function () {
+    document.querySelector('#viewer-mode-ar-play-button').style.display =
+      'none';
+  },
+
+  onExitVR: function () {
+    document.querySelector('#viewer-mode-ar-play-button').style.display =
+      'block';
   },
 
   remove: function () {

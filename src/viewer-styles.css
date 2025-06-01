@@ -78,46 +78,41 @@ body {
 	color: #ffffff !important;
 }
 
-/********* viewer header css *********/
+/********* viewer mode UI *********/
+#viewer-mode-ui {
+	display: none;
+}
 
-.viewer-header-wrapper {
-	background-color: transparent;
-	width: 100%;
-	padding: 0px 0;
+/********* viewer mode AR play button *********/
+#viewer-mode-ar-play-button {
 	position: fixed;
-	/* top: 39px;
-	left: 40px; */
-	z-index: 999999;
-}
-
-.viewer-logo-img {
-    width: 48px;
-    height: 48px;
-    object-fit: contain;
-  }
-
-
-.viewer-header-wrapper {
-	width: 100%;
-	display: inline-flex;
-	align-items: center;
-}
-
-.viewer-logo-start-editor-button {
-	border: none;
-	background: none;
+	top: 50%;
+	left: 50%;
+	transform: translate(-50%, -50%);
+	width: 18vh;
+	height: 18vh;
+	background-color: #000000;
+	border-radius: 50%;
 	cursor: pointer;
+	transition: background-color 0.3s ease;
+	z-index: 999999;
+	display: none;
 }
 
-.viewer-logo-start-editor-button:hover,
-.viewer-logo-start-editor-button.hover {
-	transition: all 0.25s ease-in-out 0s;
-	-webkit-filter: brightness(.75);
-	-moz-filter: brightness(.75);
-	-ms-filter: brightness(.75);
-	filter: brightness(.75);
+#viewer-mode-ar-play-button::before {
+	content: "";
+	position: absolute;
+	top: 50%;
+	left: 50%;
+	transform: translate(-40%, -50%);
+	border-style: solid;
+	border-width: 5vh 0 5vh 8vh;
+	border-color: transparent transparent transparent #aaaaaa;
 }
 
+#viewer-mode-ar-play-button:hover {
+	background-color: #333333;
+}
 
 /********* right menu css *********/
 
