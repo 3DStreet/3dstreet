@@ -13,6 +13,13 @@ import { Viewport } from './lib/viewport';
 import './style/index.scss';
 import posthog from 'posthog-js';
 import { commandsByType } from './lib/commands/index.js';
+import useStore from '@/store';
+
+// Helper function to check if viewer mode is requested via URL parameter
+function isViewerModeRequested() {
+  const urlParams = new URLSearchParams(window.location.search);
+  return urlParams.get('viewer') === 'true';
+}
 
 function Inspector(configOverrides) {
   this.assetsLoader = new AssetsLoader();
@@ -96,6 +103,11 @@ Inspector.prototype = {
 
     this.scene.add(this.sceneHelpers);
     this.open();
+
+    // If viewer mode is requested, switch to it after initialization is complete
+    if (isViewerModeRequested()) {
+      useStore.getState().setIsInspectorEnabled(false);
+    }
   },
 
   removeObject: function (object) {
