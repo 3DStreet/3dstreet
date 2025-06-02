@@ -5,9 +5,18 @@ import useStore from '@/store';
 import { useAuthContext } from '../../contexts/Auth.context';
 
 /**
+ * Helper function to get the scene-timer component
+ * This provides a more reliable way to access the timer than using global variables
+ * @returns {Object|null} The scene-timer component or null if not found
+ */
+function getTimerComponent() {
+  return document.querySelector('a-scene')?.components['scene-timer'];
+}
+
+/**
  * TimeControls component for the header during viewer mode.
  * Provides record, play, pause, stop buttons and a broadcast-style timer.
- * Uses the global scene-timer component for timing.
+ * Uses the scene-timer component for timing.
  */
 const TimeControls = () => {
   // Get viewer mode status from the store
@@ -27,10 +36,11 @@ const TimeControls = () => {
 
   // Initialize timer and set up event listeners
   useEffect(() => {
-    // Find the scene-timer component
-    if (typeof STREET !== 'undefined' && STREET.timer) {
-      sceneTimerRef.current = STREET.timer;
-      setIsPlaying(STREET.timer.isTimerActive());
+    // Get the scene-timer component
+    const timerComponent = getTimerComponent();
+    if (timerComponent) {
+      sceneTimerRef.current = timerComponent;
+      setIsPlaying(timerComponent.timerActive);
     }
 
     // Set up event listeners for timer state changes
@@ -40,15 +50,15 @@ const TimeControls = () => {
 
     // Add event listeners
     if (sceneTimerRef.current) {
-      sceneTimerRef.current.component.el.addEventListener(
+      sceneTimerRef.current.el.addEventListener(
         'timer-started',
         handleTimerStarted
       );
-      sceneTimerRef.current.component.el.addEventListener(
+      sceneTimerRef.current.el.addEventListener(
         'timer-paused',
         handleTimerPaused
       );
-      sceneTimerRef.current.component.el.addEventListener(
+      sceneTimerRef.current.el.addEventListener(
         'timer-stopped',
         handleTimerStopped
       );
@@ -60,15 +70,15 @@ const TimeControls = () => {
     // Clean up event listeners
     return () => {
       if (sceneTimerRef.current) {
-        sceneTimerRef.current.component.el.removeEventListener(
+        sceneTimerRef.current.el.removeEventListener(
           'timer-started',
           handleTimerStarted
         );
-        sceneTimerRef.current.component.el.removeEventListener(
+        sceneTimerRef.current.el.removeEventListener(
           'timer-paused',
           handleTimerPaused
         );
-        sceneTimerRef.current.component.el.removeEventListener(
+        sceneTimerRef.current.el.removeEventListener(
           'timer-stopped',
           handleTimerStopped
         );
@@ -88,7 +98,7 @@ const TimeControls = () => {
         setTimeUpdate((prev) => prev + 1);
 
         // Update playing state if it changed
-        const isTimerPlaying = sceneTimerRef.current.isTimerActive();
+        const isTimerPlaying = sceneTimerRef.current.timerActive;
         if (isPlaying !== isTimerPlaying) {
           setIsPlaying(isTimerPlaying);
         }
@@ -114,7 +124,7 @@ const TimeControls = () => {
     setTimeFormat(newFormat);
     // Update the scene-timer component format via event
     if (sceneTimerRef.current) {
-      sceneTimerRef.current.component.el.emit('timer-set-time', {
+      sceneTimerRef.current.el.emit('timer-set-time', {
         format: newFormat
       });
     }
@@ -123,7 +133,7 @@ const TimeControls = () => {
   // Handler for play button
   const handlePlay = () => {
     if (sceneTimerRef.current) {
-      sceneTimerRef.current.component.el.emit('timer-start');
+      sceneTimerRef.current.el.emit('timer-start');
     }
     // UI state will be updated via the timer-started event we're listening for
   };
@@ -131,7 +141,7 @@ const TimeControls = () => {
   // Handler for pause button
   const handlePause = () => {
     if (sceneTimerRef.current) {
-      sceneTimerRef.current.component.el.emit('timer-pause');
+      sceneTimerRef.current.el.emit('timer-pause');
     }
     // UI state will be updated via the timer-paused event we're listening for
   };
@@ -139,7 +149,7 @@ const TimeControls = () => {
   // Handler for stop button
   const handleStop = () => {
     if (sceneTimerRef.current) {
-      sceneTimerRef.current.component.el.emit('timer-stop');
+      sceneTimerRef.current.el.emit('timer-stop');
     }
 
     if (isRecording) {
