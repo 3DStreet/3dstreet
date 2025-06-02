@@ -145,6 +145,16 @@ AFRAME.registerComponent('viewer-mode', {
       0,
       this.data.cameraStartPosition.z
     );
+
+    // load the variant launch script, here is the normal one
+    // <script src="https://launchar.app/sdk/v1?key=aYjwWOhdpgACjccHzG4SjHLtSxOuRpMz&redirect=true"></script>
+
+    var variantLaunchScript = document.createElement('script');
+    variantLaunchScript.setAttribute(
+      'src',
+      'https://launchar.app/sdk/v1?key=aYjwWOhdpgACjccHzG4SjHLtSxOuRpMz&redirect=true'
+    );
+    document.head.appendChild(variantLaunchScript);
   },
 
   enableLocomotionMode: function () {

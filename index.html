@@ -43,6 +43,11 @@
     <div id="viewer-mode-ar-webxr-not-supported">
       Device does not support WebXR.
     </div>
+    <!-- AR Overlay - shown when in AR mode -->
+    <div id="viewer-mode-ar-overlay">
+      <span id="viewer-mode-ar-overlay-greeting">3DStreet AR Mode</span>
+      <button id="viewer-mode-ar-overlay-exit-button">Exit AR Mode</button>  
+    </div>
   </div>
 
   <!-- <div class="right-fixed">
@@ -63,7 +68,9 @@
     loading-screen="enabled: false" notify metadata
     device-orientation-permission-ui="enabled: false"
     reflection device-orientation-permission-ui="enabled: false"
-    webxr="requiredFeatures:hit-test,local-floor;referenceSpaceType:local-floor;"
+    webxr="requiredFeatures: hit-test, local-floor, dom-overlay;
+           referenceSpaceType: local-floor;
+           overlayElement: #viewer-mode-ar-overlay"
     xr-mode-ui="XRMode: ar; enterARButton: #viewer-mode-ar-play-button;"
     css2d-renderer scene-timer="autoStart: false; format: mm:ss:ff">
     <a-assets>
