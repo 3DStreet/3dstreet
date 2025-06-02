@@ -1,4 +1,13 @@
-/* global AFRAME, THREE, STREET */
+/* global AFRAME, THREE */
+
+/**
+ * Helper function to get the scene-timer component
+ * This provides a more reliable way to access the timer than using global variables
+ * @returns {Object|null} The scene-timer component or null if not found
+ */
+function getTimerComponent() {
+  return document.querySelector('a-scene')?.components['scene-timer'];
+}
 
 AFRAME.registerComponent('viewer-mode', {
   schema: {
@@ -31,10 +40,10 @@ AFRAME.registerComponent('viewer-mode', {
       return;
     }
 
-    // Check if STREET.timer exists
-    if (typeof STREET === 'undefined' || !STREET.timer) {
+    // Check if timer component exists
+    if (!getTimerComponent()) {
       console.warn(
-        'viewer-mode component: No STREET.timer found, camera will not move'
+        'viewer-mode component: No scene-timer component found, camera will not move'
       );
     }
 
@@ -91,12 +100,13 @@ AFRAME.registerComponent('viewer-mode', {
     this.cameraPathActive = true;
 
     // Apply the correct initial position based on current time
-    // Only if STREET.timer is available
-    if (typeof STREET === 'undefined' || !STREET.timer) {
+    // Only if timer component is available
+    const timerComponent = getTimerComponent();
+    if (!timerComponent) {
       return; // Don't move if no timer
     }
 
-    const timeSeconds = STREET.timer.getTime() / 1000;
+    const timeSeconds = timerComponent.getTime() / 1000;
 
     // Update position immediately based on current time
     const cameraPath = this.data.cameraPath;
@@ -157,13 +167,14 @@ AFRAME.registerComponent('viewer-mode', {
     // Only run animation logic if camera path mode is active
     if (!this.cameraPathActive) return;
 
-    // Only move if STREET.timer is available
-    if (typeof STREET === 'undefined' || !STREET.timer) {
+    // Only move if timer component is available
+    const timerComponent = getTimerComponent();
+    if (!timerComponent) {
       return; // Don't move if no timer
     }
 
     // Get absolute time in seconds for deterministic positioning
-    const timeSeconds = STREET.timer.getTime() / 1000;
+    const timeSeconds = timerComponent.getTime() / 1000;
 
     const cameraPath = this.data.cameraPath;
 

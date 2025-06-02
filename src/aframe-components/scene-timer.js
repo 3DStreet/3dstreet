@@ -1,4 +1,4 @@
-/* global AFRAME, STREET */
+/* global AFRAME */
 
 /**
  * Scene Timer Component
@@ -45,21 +45,6 @@ AFRAME.registerComponent('scene-timer', {
     // Auto-start if configured
     if (this.data.autoStart) {
       this.play();
-    }
-
-    // Register this component in the global STREET object if available
-    if (typeof STREET !== 'undefined') {
-      if (!STREET.timer) {
-        STREET.timer = {};
-      }
-
-      // Store a reference to this component instance
-      STREET.timer.component = this;
-
-      // Provide API methods
-      STREET.timer.getTime = this.getTime.bind(this);
-      STREET.timer.getFormattedTime = this.getFormattedTime.bind(this);
-      STREET.timer.isTimerActive = () => this.timerActive;
     }
 
     console.log('Scene timer initialized');
@@ -263,11 +248,6 @@ AFRAME.registerComponent('scene-timer', {
     el.removeEventListener('timer-pause', this.pauseTimer);
     el.removeEventListener('timer-stop', this.stopTimer);
     el.removeEventListener('timer-set-time', this.setTimeHandler);
-
-    // Remove from global STREET object if present
-    if (typeof STREET !== 'undefined' && STREET.timer) {
-      STREET.timer = null;
-    }
 
     console.log('Scene timer removed');
   }
