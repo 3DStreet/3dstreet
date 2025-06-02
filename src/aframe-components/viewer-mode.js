@@ -92,15 +92,17 @@ AFRAME.registerComponent('viewer-mode', {
     // Save and remove blink-controls from hands
     if (this.leftHand && this.leftHand.hasAttribute('blink-controls')) {
       // Store current settings before removing
-      this.blinkControlsSettings.leftHand =
-        this.leftHand.getAttribute('blink-controls');
+      this.blinkControlsSettings.leftHand = {
+        ...this.leftHand.getAttribute('blink-controls')
+      };
       this.leftHand.removeAttribute('blink-controls');
     }
 
     if (this.rightHand && this.rightHand.hasAttribute('blink-controls')) {
       // Store current settings before removing
-      this.blinkControlsSettings.rightHand =
-        this.rightHand.getAttribute('blink-controls');
+      this.blinkControlsSettings.rightHand = {
+        ...this.rightHand.getAttribute('blink-controls')
+      };
       this.rightHand.removeAttribute('blink-controls');
     }
 
