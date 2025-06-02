@@ -57,9 +57,6 @@ AFRAME.registerComponent('scene-timer', {
       STREET.timer.component = this;
 
       // Provide API methods
-      STREET.timer.startTimer = this.startTimer.bind(this);
-      STREET.timer.pauseTimer = this.pauseTimer.bind(this);
-      STREET.timer.stopTimer = this.stopTimer.bind(this);
       STREET.timer.getTime = this.getTime.bind(this);
       STREET.timer.getFormattedTime = this.getFormattedTime.bind(this);
       STREET.timer.isTimerActive = () => this.timerActive;
