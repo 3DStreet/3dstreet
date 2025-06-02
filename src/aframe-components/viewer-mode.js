@@ -14,7 +14,7 @@ AFRAME.registerComponent('viewer-mode', {
     preset: {
       type: 'string',
       default: 'camera-path',
-      oneOf: ['locomotion', 'camera-path']
+      oneOf: ['locomotion', 'camera-path', 'ar-webxr']
     },
     cameraPath: {
       type: 'string',
@@ -32,6 +32,8 @@ AFRAME.registerComponent('viewer-mode', {
     // Store references to existing elements
     this.cameraRig = document.querySelector('#cameraRig');
     this.camera = document.querySelector('#camera');
+    this.leftHand = document.querySelector('#leftHand');
+    this.rightHand = document.querySelector('#rightHand');
 
     if (!this.cameraRig) {
       console.error(
@@ -39,6 +41,12 @@ AFRAME.registerComponent('viewer-mode', {
       );
       return;
     }
+
+    // Store blink controls settings
+    this.blinkControlsSettings = {
+      leftHand: null,
+      rightHand: null
+    };
 
     // Check if timer component exists
     if (!getTimerComponent()) {
@@ -52,6 +60,10 @@ AFRAME.registerComponent('viewer-mode', {
 
     // Flag to control tick execution for camera path mode
     this.cameraPathActive = false;
+
+    // Define event handlers as properties so they can be removed later
+    this.onEnterVR = this.onEnterVR.bind(this);
+    this.onExitVR = this.onExitVR.bind(this);
 
     // Set up the initial mode
     this.setupMode(this.data.preset);
@@ -73,6 +85,8 @@ AFRAME.registerComponent('viewer-mode', {
       this.enableLocomotionMode();
     } else if (mode === 'camera-path') {
       this.enableCameraPathMode();
+    } else if (mode === 'ar-webxr') {
+      this.enableARWebXRMode();
     }
     // Notify other components about the mode change
     this.el.emit('viewer-mode-changed', { mode: mode });
@@ -84,8 +98,53 @@ AFRAME.registerComponent('viewer-mode', {
     this.cameraRig.setAttribute('cursor-teleport', 'enabled: false');
     this.camera.setAttribute('look-controls', 'enabled: false');
 
+    // Save and remove blink-controls from hands
+    if (this.leftHand && this.leftHand.hasAttribute('blink-controls')) {
+      // Store current settings before removing
+      this.blinkControlsSettings.leftHand = {
+        ...this.leftHand.getAttribute('blink-controls')
+      };
+      this.leftHand.removeAttribute('blink-controls');
+    }
+
+    if (this.rightHand && this.rightHand.hasAttribute('blink-controls')) {
+      // Store current settings before removing
+      this.blinkControlsSettings.rightHand = {
+        ...this.rightHand.getAttribute('blink-controls')
+      };
+      this.rightHand.removeAttribute('blink-controls');
+    }
+
     // Disable camera path animation
     this.cameraPathActive = false;
+
+    // Disable AR WebXR UI
+    document.getElementById('viewer-mode-ar-play-button').style.display =
+      'none';
+
+    // Remove event listeners if they were added
+    this.el.sceneEl.removeEventListener('enter-vr', this.onEnterVR);
+    this.el.sceneEl.removeEventListener('exit-vr', this.onExitVR);
+  },
+
+  enableARWebXRMode: function () {
+    // the UI should be shown and the play button starts AR mode
+    document.getElementById('viewer-mode-ar-play-button').style.display =
+      'block';
+    this.el.sceneEl.addEventListener('enter-vr', this.onEnterVR);
+    this.el.sceneEl.addEventListener('exit-vr', this.onExitVR);
+
+    if (!AFRAME.utils.device.checkHeadsetConnected()) {
+      document.getElementById(
+        'viewer-mode-ar-webxr-not-supported'
+      ).style.display = 'block';
+    }
+
+    this.cameraRig.object3D.position.set(
+      this.data.cameraStartPosition.x,
+      0,
+      this.data.cameraStartPosition.z
+    );
   },
 
   enableLocomotionMode: function () {
@@ -93,6 +152,31 @@ AFRAME.registerComponent('viewer-mode', {
     this.cameraRig.setAttribute('movement-controls', 'enabled: true');
     this.cameraRig.setAttribute('cursor-teleport', 'enabled: true');
     this.camera.setAttribute('look-controls', 'enabled: true');
+
+    // Restore blink-controls with saved settings
+    if (this.leftHand) {
+      if (this.blinkControlsSettings.leftHand) {
+        this.leftHand.setAttribute(
+          'blink-controls',
+          this.blinkControlsSettings.leftHand
+        );
+      } else {
+        // Default settings if none were saved
+        this.leftHand.setAttribute('blink-controls', '');
+      }
+    }
+
+    if (this.rightHand) {
+      if (this.blinkControlsSettings.rightHand) {
+        this.rightHand.setAttribute(
+          'blink-controls',
+          this.blinkControlsSettings.rightHand
+        );
+      } else {
+        // Default settings if none were saved
+        this.rightHand.setAttribute('blink-controls', '');
+      }
+    }
   },
 
   enableCameraPathMode: function () {
@@ -298,6 +382,17 @@ AFRAME.registerComponent('viewer-mode', {
 
     // Apply the quaternion to the camera
     this.camera.object3D.quaternion.copy(lookQuaternion);
+  },
+
+  // Event handler methods
+  onEnterVR: function () {
+    document.querySelector('#viewer-mode-ar-play-button').style.display =
+      'none';
+  },
+
+  onExitVR: function () {
+    document.querySelector('#viewer-mode-ar-play-button').style.display =
+      'block';
   },
 
   remove: function () {
