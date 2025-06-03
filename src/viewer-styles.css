@@ -135,6 +135,18 @@ body {
 	border: 1px solid rgba(255, 255, 255, 0.1);
 }
 
+#viewer-mode-ar-webxr-not-supported-variant {
+	font-size: 0.8rem;
+	font-weight: 400;
+	margin-top: 0.5rem;
+	padding: 0.5rem;
+	background-color: rgba(0, 0, 0, 0.5);
+	border-radius: 5px;
+	max-width: 100%;
+	overflow-wrap: break-word;
+	white-space: pre-wrap;
+}
+
 /********* right menu css *********/
 
 .right-fixed {
