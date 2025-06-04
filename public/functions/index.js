@@ -4,6 +4,10 @@ admin.initializeApp();
 const { getAuth } = require('firebase-admin/auth');
 const { getGeoidHeightFromPGM } = require('./geoid.js');
 const { Client: GoogleMapsClient } = require("@googlemaps/google-maps-services-js");
+const { serveWebXRVariant } = require('./webxr-variant.js');
+
+// Re-export the WebXR variant function
+exports.serveWebXRVariant = serveWebXRVariant;
 
 exports.getGeoidHeight = functions
   .runWith({ secrets: ["GOOGLE_MAPS_ELEVATION_API_KEY"] })
