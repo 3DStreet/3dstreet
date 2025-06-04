@@ -18,6 +18,18 @@ body {
 	margin: 0;
 }
 
+/* viewer mode AR overlay */
+#viewer-mode-ar-overlay {
+	display: none;
+	position: absolute;
+	top: 5;
+	left: 5;
+	font-size: 12px;
+	background-color: rgba(0, 0, 0, 0.3);
+	color: #bebebe;
+	z-index: 1;
+}
+
 /* maps copyright notice */
 #map-data-attribution {
 	position: absolute;
@@ -133,18 +145,6 @@ body {
 	max-width: 80%;
 	box-shadow: 0 4px 30px rgba(0, 0, 0, 0.2);
 	border: 1px solid rgba(255, 255, 255, 0.1);
-}
-
-#viewer-mode-ar-webxr-not-supported-variant {
-	font-size: 0.8rem;
-	font-weight: 400;
-	margin-top: 0.5rem;
-	padding: 0.5rem;
-	background-color: rgba(0, 0, 0, 0.5);
-	border-radius: 5px;
-	max-width: 100%;
-	overflow-wrap: break-word;
-	white-space: pre-wrap;
 }
 
 /********* right menu css *********/

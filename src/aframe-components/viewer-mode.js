@@ -145,38 +145,6 @@ AFRAME.registerComponent('viewer-mode', {
       0,
       this.data.cameraStartPosition.z
     );
-
-    // load the variant launch script, here is the normal one
-    // <script src="https://launchar.app/sdk/v1?key=aYjwWOhdpgACjccHzG4SjHLtSxOuRpMz&redirect=true"></script>
-    window.addEventListener('vlaunch-initialized', (event) => {
-      console.log('vlaunch-initialized', event);
-      // Get the div element that needs to be populated
-      const notSupportedVariantDiv = document.getElementById(
-        'viewer-mode-ar-webxr-not-supported-variant'
-      );
-
-      // Dump the event.detail to the div
-      if (notSupportedVariantDiv) {
-        notSupportedVariantDiv.innerHTML = JSON.stringify(
-          event.detail,
-          null,
-          2
-        );
-      }
-
-      if (event.detail.launchRequired) {
-        // We need to use launch to get WebXR as we're on iOS
-        window.location.href = event.detail.launchUrl;
-        console.log(event.detail);
-      }
-    });
-    console.log('launch script added');
-    var variantLaunchScript = document.createElement('script');
-    variantLaunchScript.setAttribute(
-      'src',
-      'https://launchar.app/sdk/v1?key=aYjwWOhdpgACjccHzG4SjHLtSxOuRpMz&redirect=true'
-    );
-    document.head.appendChild(variantLaunchScript);
   },
 
   enableLocomotionMode: function () {
@@ -420,11 +388,13 @@ AFRAME.registerComponent('viewer-mode', {
   onEnterVR: function () {
     document.querySelector('#viewer-mode-ar-play-button').style.display =
       'none';
+    document.querySelector('#viewer-mode-ar-overlay').style.display = 'block';
   },
 
   onExitVR: function () {
     document.querySelector('#viewer-mode-ar-play-button').style.display =
       'block';
+    document.querySelector('#viewer-mode-ar-overlay').style.display = 'none';
   },
 
   remove: function () {

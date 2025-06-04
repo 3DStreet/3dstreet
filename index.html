@@ -3,7 +3,7 @@
 
 <head>
   <!-- aframe -->
-
+  <script src="https://launchar.app/sdk/v1?key=aYjwWOhdpgACjccHzG4SjHLtSxOuRpMz&redirect=true"></script>
   <script src="https://aframe.io/releases/1.7.1/aframe.min.js"></script>
   <!-- 3dstreet -->
   <script src="./dist/aframe-street-component.js"></script>
@@ -42,13 +42,12 @@
     <!-- AR Error Message - shown if device does not support WebXR AR mode -->
     <div id="viewer-mode-ar-webxr-not-supported">
       Device does not support WebXR.
-      <div id="viewer-mode-ar-webxr-not-supported-variant"></div>
     </div>
-    <!-- AR Overlay - shown when in AR mode -->
-    <div id="viewer-mode-ar-overlay">
-      <span id="viewer-mode-ar-overlay-greeting">3DStreet AR Mode</span>
-      <button id="viewer-mode-ar-overlay-exit-button">Exit AR Mode</button>  
-    </div>
+  </div>
+
+  <!-- AR Overlay - only shown when in AR mode -->
+  <div id="viewer-mode-ar-overlay">
+    <button id="viewer-mode-ar-overlay-exit-button" onclick="AFRAME.scenes[0].renderer.xr.getSession().end()">Exit AR Mode</button>
   </div>
 
   <!-- <div class="right-fixed">
@@ -69,9 +68,7 @@
     loading-screen="enabled: false" notify metadata
     device-orientation-permission-ui="enabled: false"
     reflection device-orientation-permission-ui="enabled: false"
-    webxr="requiredFeatures: hit-test, local-floor, dom-overlay;
-           referenceSpaceType: local-floor;
-           overlayElement: #viewer-mode-ar-overlay"
+    webxr="requiredFeatures:hit-test,local-floor,dom-overlay;referenceSpaceType:local-floor;overlayElement:#viewer-mode-ar-overlay"
     xr-mode-ui="XRMode: ar; enterARButton: #viewer-mode-ar-play-button;"
     css2d-renderer scene-timer="autoStart: false; format: mm:ss:ff">
     <a-assets>
