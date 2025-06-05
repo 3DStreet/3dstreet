@@ -123,8 +123,12 @@ const ViewerSidebar = ({ entity }) => {
 
     // Get the base URL (without hash)
     const baseUrl = window.location.origin + window.location.pathname;
+    // Check if webXRVariant is enabled
+    const isVariantEnabled = component?.data?.webXRVariant === true;
     // Create the viewer URL with the scene ID in the hash
-    return `${baseUrl}?viewer=true#/scenes/${sceneId}`;
+    // Include /webxr-variant/ path if the variant is enabled
+    const pathPrefix = isVariantEnabled ? 'webxr-variant' : '';
+    return `${baseUrl}${pathPrefix}?viewer=true#/scenes/${sceneId}`;
   };
 
   // Check if AR-WebXR mode is selected
@@ -139,7 +143,7 @@ const ViewerSidebar = ({ entity }) => {
               <PropertyRow
                 key="preset"
                 name="preset"
-                label="Viewing Mode"
+                label="Mode"
                 schema={component.schema['preset']}
                 data={component.data['preset']}
                 componentname={componentName}
@@ -158,6 +162,34 @@ const ViewerSidebar = ({ entity }) => {
                   isSingle={false}
                   entity={entity}
                 />
+              )}
+              {/* Show webXRVariant option when ar-webxr is selected */}
+              {shouldShowProperty('webXRVariant', component) && (
+                <>
+                  <div className="propertyRow">
+                    <div className="fakePropertyRowLabel">Android</div>
+                    <div className="fakePropertyRowValue">
+                      <span className="checkmark-green">✓</span>
+                      <span className="ml-2">via WebXR</span>
+                    </div>
+                  </div>
+                  <PropertyRow
+                    key="webXRVariant"
+                    name="webXRVariant"
+                    label="iOS"
+                    schema={component.schema['webXRVariant']}
+                    data={component.data['webXRVariant']}
+                    componentname={componentName}
+                    isSingle={false}
+                    entity={entity}
+                    rightElement={
+                      <>
+                        via Variant Launch{' '}
+                        <span className="pro-badge">Pro</span>
+                      </>
+                    }
+                  />
+                </>
               )}
             </>
           )}
@@ -221,16 +253,27 @@ const ViewerSidebar = ({ entity }) => {
           {isArWebXRMode && (
             <div className="propertyRow mt-4">
               <div className="mb-2 font-bold">AR Viewer URL:</div>
-              <div className="break-all rounded bg-gray-100 p-2 text-sm">
-                {getViewerUrl()}
-              </div>
-              <Button
-                variant="toolbtn"
-                onClick={() => navigator.clipboard.writeText(getViewerUrl())}
-                className="mt-2 w-full text-sm"
-              >
-                Copy URL to Clipboard
-              </Button>
+              {getCurrentSceneId() ? (
+                <>
+                  <div className="break-all rounded bg-gray-100 p-2 text-sm">
+                    {getViewerUrl()}
+                  </div>
+                  <Button
+                    variant="toolbtn"
+                    onClick={() =>
+                      navigator.clipboard.writeText(getViewerUrl())
+                    }
+                    className="mt-2 w-full text-sm"
+                  >
+                    Copy URL to Clipboard
+                  </Button>
+                </>
+              ) : (
+                <div className="rounded bg-yellow-50 p-2 text-sm text-yellow-700">
+                  Please log in and save your scene to generate a shareable AR
+                  viewer URL.
+                </div>
+              )}
             </div>
           )}
           {entity && entity.components && (

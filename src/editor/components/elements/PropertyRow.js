@@ -29,7 +29,8 @@ export default class PropertyRow extends React.Component {
     label: PropTypes.string,
     schema: PropTypes.object.isRequired,
     noSelectEntity: PropTypes.bool,
-    onEntityUpdate: PropTypes.func
+    onEntityUpdate: PropTypes.func,
+    rightElement: PropTypes.node
   };
 
   static defaultProps = {
@@ -150,10 +151,18 @@ export default class PropertyRow extends React.Component {
 
     return (
       <div className={className}>
-        <label htmlFor={this.id} className="text" title={title}>
+        <label
+          htmlFor={this.id}
+          className="text"
+          title={title}
+          style={props.label ? { textTransform: 'none' } : null}
+        >
           {props.label || props.name}
         </label>
         {this.getWidget()}
+        {props.rightElement && (
+          <div className="property-row-right-element">{props.rightElement}</div>
+        )}
       </div>
     );
   }

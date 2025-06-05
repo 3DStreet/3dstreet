@@ -25,6 +25,11 @@ AFRAME.registerComponent('viewer-mode', {
     cameraStartPosition: {
       type: 'vec3',
       default: { x: 0, y: 1.6, z: 0 }
+    },
+    webXRVariant: {
+      type: 'boolean',
+      default: false,
+      if: { preset: 'ar-webxr' }
     }
   },
 
