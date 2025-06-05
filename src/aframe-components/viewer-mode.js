@@ -122,6 +122,10 @@ AFRAME.registerComponent('viewer-mode', {
     document.getElementById('viewer-mode-ar-play-button').style.display =
       'none';
 
+    // Hide locomotion controls UI
+    document.getElementById('viewer-mode-locomotion-controls').style.display =
+      'none';
+
     // Remove event listeners if they were added
     this.el.sceneEl.removeEventListener('enter-vr', this.onEnterVR);
     this.el.sceneEl.removeEventListener('exit-vr', this.onExitVR);
@@ -177,6 +181,11 @@ AFRAME.registerComponent('viewer-mode', {
         this.rightHand.setAttribute('blink-controls', '');
       }
     }
+
+    // Show the locomotion controls UI
+    document.getElementById('viewer-mode-ui').style.display = 'block';
+    document.getElementById('viewer-mode-locomotion-controls').style.display =
+      'block';
   },
 
   enableCameraPathMode: function () {
