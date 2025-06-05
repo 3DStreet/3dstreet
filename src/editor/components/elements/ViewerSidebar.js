@@ -104,44 +104,36 @@ const ViewerSidebar = ({ entity }) => {
   // Check if entity and its components exist
   const component = entity?.components?.[componentName];
 
+  // Function to get current scene ID
+  const getCurrentSceneId = () => {
+    if (
+      window.STREET &&
+      window.STREET.utils &&
+      window.STREET.utils.getCurrentSceneId
+    ) {
+      return window.STREET.utils.getCurrentSceneId();
+    }
+    return null;
+  };
+
+  // Generate viewer URL for AR-WebXR mode
+  const getViewerUrl = () => {
+    const sceneId = getCurrentSceneId();
+    if (!sceneId) return '';
+
+    // Get the base URL (without hash)
+    const baseUrl = window.location.origin + window.location.pathname;
+    // Create the viewer URL with the scene ID in the hash
+    return `${baseUrl}?viewer=true#/scenes/${sceneId}`;
+  };
+
+  // Check if AR-WebXR mode is selected
+  const isArWebXRMode = component?.data?.preset === 'ar-webxr';
+
   return (
     <div className="viewer-sidebar">
       <div className="viewer-controls">
         <div className="details">
-          <div className="propertyRow">
-            <Button
-              variant="toolbtn"
-              onClick={handleEnterViewerMode}
-              className="mb-2 w-full"
-              disabled={isRecording}
-            >
-              Start in Viewer Mode
-            </Button>
-          </div>
-          <div className="propertyRow">
-            <Button
-              variant="toolbtn"
-              onClick={handleStartRecording}
-              className="mb-4 w-full"
-              disabled={isRecording}
-            >
-              Start and Record <span className="pro-badge">Pro</span>
-            </Button>
-            {isRecording && (
-              <>
-                <div className="mb-2 mt-1 text-center text-sm font-bold text-red-500">
-                  Recording in progress...
-                </div>
-                <Button
-                  variant="toolbtn"
-                  onClick={handleStopRecording}
-                  className="mb-4 w-full"
-                >
-                  Stop Recording & Save
-                </Button>
-              </>
-            )}
-          </div>
           {component && component.schema && component.data && (
             <>
               <PropertyRow
@@ -168,6 +160,78 @@ const ViewerSidebar = ({ entity }) => {
                 />
               )}
             </>
+          )}
+          <br />
+          <div className="propertyRow">
+            <Button
+              variant="toolbtn"
+              onClick={handleEnterViewerMode}
+              className="mb-2 w-full"
+              disabled={isRecording}
+            >
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                width="16"
+                height="16"
+                viewBox="0 0 24 24"
+                fill="currentColor"
+                className="mr-2 inline-block"
+              >
+                <path d="M8 5v14l11-7z" />
+              </svg>
+              Start Viewer Mode
+            </Button>
+          </div>
+          <div className="propertyRow">
+            <Button
+              variant="toolbtn"
+              onClick={handleStartRecording}
+              className="mb-4 w-full"
+              disabled={isRecording}
+            >
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                width="16"
+                height="16"
+                viewBox="0 0 24 24"
+                fill="currentColor"
+                className="mr-2 inline-block text-red-500"
+              >
+                <circle cx="12" cy="12" r="8" />
+              </svg>
+              Start and Record <span className="pro-badge">Pro</span>
+            </Button>
+            {isRecording && (
+              <>
+                <div className="mb-2 mt-1 text-center text-sm font-bold text-red-500">
+                  Recording in progress...
+                </div>
+                <Button
+                  variant="toolbtn"
+                  onClick={handleStopRecording}
+                  className="mb-4 w-full"
+                >
+                  Stop Recording & Save
+                </Button>
+              </>
+            )}
+          </div>
+
+          {/* Display viewer URL when AR-WebXR mode is selected */}
+          {isArWebXRMode && (
+            <div className="propertyRow mt-4">
+              <div className="mb-2 font-bold">AR Viewer URL:</div>
+              <div className="break-all rounded bg-gray-100 p-2 text-sm">
+                {getViewerUrl()}
+              </div>
+              <Button
+                variant="toolbtn"
+                onClick={() => navigator.clipboard.writeText(getViewerUrl())}
+                className="mt-2 w-full text-sm"
+              >
+                Copy URL to Clipboard
+              </Button>
+            </div>
           )}
           {entity && entity.components && (
             <div className="propertyRow">
