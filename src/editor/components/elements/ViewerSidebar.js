@@ -9,6 +9,7 @@ import useStore from '@/store';
 import Events from '../../lib/Events';
 import canvasRecorder from '../../lib/CanvasRecorder';
 import { shouldShowProperty } from '@/editor/components/elements/Component';
+import { QrCode } from './QrCode';
 
 const ViewerSidebar = ({ entity }) => {
   const componentName = 'viewer-mode';
@@ -218,9 +219,9 @@ const ViewerSidebar = ({ entity }) => {
               )}
             </>
           )}
-          <br />
           {!isArWebXRMode && (
             <>
+              <br />
               <div className="propertyRow">
                 <Button
                   variant="toolbtn"
@@ -282,13 +283,13 @@ const ViewerSidebar = ({ entity }) => {
           {isArWebXRMode && getCurrentSceneId() ? (
             <>
               <div className="propertyRow">
-                <div className="fakePropertyRowLabel">URL for AR View</div>
+                <div className="fakePropertyRowLabel">AR URL</div>
                 <URLValueWithCopy url={getViewerUrl()} />
               </div>
               <div className="propertyRow">
-                <div className="fakePropertyRowLabel">QR for AR View</div>
+                <div className="fakePropertyRowLabel">AR QR</div>
                 <div className="fakePropertyRowValue">
-                  <img src={getViewerUrl()} alt="QR Code" />
+                  <QrCode url={getViewerUrl()} />
                 </div>
               </div>
             </>
