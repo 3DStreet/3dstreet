@@ -7,8 +7,9 @@ exports.serveWebXRVariant = functions.https.onRequest((req, res) => {
 <html>
 
 <head>
-  <!-- aframe with WebXR variant launch script -->
+  <!-- WebXR variant launch script -->
   <script src="https://launchar.app/sdk/v1?key=aYjwWOhdpgACjccHzG4SjHLtSxOuRpMz&redirect=true&variant=webxr"></script>
+  <!-- aframe -->
   <script src="https://aframe.io/releases/1.7.1/aframe.min.js"></script>
   <!-- 3dstreet -->
   <script src="/dist/aframe-street-component.js"></script>
@@ -48,12 +49,37 @@ exports.serveWebXRVariant = functions.https.onRequest((req, res) => {
     <div id="viewer-mode-ar-webxr-not-supported">
       Device does not support WebXR.
     </div>
+    <!-- Viewer Mode - Locomotion Instructions -->
+    <div id="viewer-mode-locomotion-controls">
+      <div class="controls-container">
+        <div class="controls-title">Controls</div>
+        <div class="controls-item">
+          <span class="key-group">W A S D</span> or <span class="key-group">Arrow Keys</span> to move
+        </div>
+        <div class="controls-item">
+          <span class="key-group">Click + Drag</span> to pan screen
+        </div>
+      </div>
+    </div>
   </div>
 
   <!-- AR Overlay - only shown when in AR mode -->
   <div id="viewer-mode-ar-overlay">
     <button id="viewer-mode-ar-overlay-exit-button" onclick="AFRAME.scenes[0].renderer.xr.getSession().end()">Exit AR Mode</button>
   </div>
+
+  <!-- <div class="right-fixed">
+    <ul class="right-menu">
+      <li onclick="buttonScreenshotTock()"> <a class="camera" href="#"> <span> Capture image as PNG </span> <img
+            src="ui_assets/camera-icon.svg"> </a></li>
+      <li onclick="STREET.utils.inputStreetmix()"> <a class="load" href="#"> <span> Load Streetmix URL </span> <img
+            src="ui_assets/streetmix-logo.svg"> </a></li>
+      <li onclick="inputJSON()"> <a class="load"  href="#"> <span> Load JSON String </span> <img src="assets/ui_assets/upload-icon.svg"> </a></li>
+      <li><a class="load"> <label for="inputfile" style="display: inherit; align-items: center; cursor: pointer"> <input
+              type="file" id="inputfile" style="display:none" accept=".js, .json, .txt"> <span> Load JSON File </span>
+            <img src="ui_assets/upload-icon.svg"></label></a></li>
+    </ul>
+  </div> -->
 
   <a-scene
     renderer="colorManagement: true; physicallyCorrectLights: true; anisotropy: 16; logarithmicDepthBuffer: true;"
