@@ -3,11 +3,13 @@ import { useState, useEffect } from 'react';
 import { useAuthContext } from '@/editor/contexts';
 import PropertyRow from './PropertyRow';
 import AdvancedComponents from './AdvancedComponents';
+import { Copy32Icon } from '@/editor/icons';
 import { Button } from '../elements';
 import useStore from '@/store';
 import Events from '../../lib/Events';
 import canvasRecorder from '../../lib/CanvasRecorder';
 import { shouldShowProperty } from '@/editor/components/elements/Component';
+import { QrCode } from './QrCode';
 
 const ViewerSidebar = ({ entity }) => {
   const componentName = 'viewer-mode';
@@ -104,50 +106,47 @@ const ViewerSidebar = ({ entity }) => {
   // Check if entity and its components exist
   const component = entity?.components?.[componentName];
 
+  // Function to get current scene ID
+  const getCurrentSceneId = () => {
+    if (
+      window.STREET &&
+      window.STREET.utils &&
+      window.STREET.utils.getCurrentSceneId
+    ) {
+      return window.STREET.utils.getCurrentSceneId();
+    }
+    return null;
+  };
+
+  // Generate viewer URL for AR-WebXR mode
+  const getViewerUrl = () => {
+    const sceneId = getCurrentSceneId();
+    if (!sceneId) return '';
+
+    // Get the base URL (without hash)
+    const baseUrl = window.location.origin;
+    // Check if webXRVariant is enabled AND user has Pro access
+    const isVariantEnabled =
+      currentUser?.isPro && component?.data?.webXRVariant === true;
+    // Create the viewer URL with the scene ID in the hash
+    // Include /webxr-variant/ path if the variant is enabled
+    const pathPrefix = isVariantEnabled ? 'webxr-variant/' : '';
+    return `${baseUrl}/${pathPrefix}?viewer=true#/scenes/${sceneId}`;
+  };
+
+  // Check if AR-WebXR mode is selected
+  const isArWebXRMode = component?.data?.preset === 'ar-webxr';
+
   return (
     <div className="viewer-sidebar">
       <div className="viewer-controls">
         <div className="details">
-          <div className="propertyRow">
-            <Button
-              variant="toolbtn"
-              onClick={handleEnterViewerMode}
-              className="mb-2 w-full"
-              disabled={isRecording}
-            >
-              Start in Viewer Mode
-            </Button>
-          </div>
-          <div className="propertyRow">
-            <Button
-              variant="toolbtn"
-              onClick={handleStartRecording}
-              className="mb-4 w-full"
-              disabled={isRecording}
-            >
-              Start and Record <span className="pro-badge">Pro</span>
-            </Button>
-            {isRecording && (
-              <>
-                <div className="mb-2 mt-1 text-center text-sm font-bold text-red-500">
-                  Recording in progress...
-                </div>
-                <Button
-                  variant="toolbtn"
-                  onClick={handleStopRecording}
-                  className="mb-4 w-full"
-                >
-                  Stop Recording & Save
-                </Button>
-              </>
-            )}
-          </div>
           {component && component.schema && component.data && (
             <>
               <PropertyRow
                 key="preset"
                 name="preset"
-                label="Viewing Mode"
+                label="Mode"
                 schema={component.schema['preset']}
                 data={component.data['preset']}
                 componentname={componentName}
@@ -167,8 +166,141 @@ const ViewerSidebar = ({ entity }) => {
                   entity={entity}
                 />
               )}
+              {/* Show webXRVariant option when ar-webxr is selected */}
+              {shouldShowProperty('webXRVariant', component) && (
+                <>
+                  <div className="propertyRow">
+                    <div className="fakePropertyRowLabel">Android</div>
+                    <div className="fakePropertyRowValue">
+                      <span className="checkmark-green">✓</span>
+                      <span className="ml-2">via WebXR</span>
+                    </div>
+                  </div>
+                  {currentUser?.isPro ? (
+                    <PropertyRow
+                      key="webXRVariant"
+                      name="webXRVariant"
+                      label="iOS"
+                      schema={component.schema['webXRVariant']}
+                      data={component.data['webXRVariant']}
+                      componentname={componentName}
+                      isSingle={false}
+                      entity={entity}
+                      rightElement={
+                        <>
+                          via Variant Launch{' '}
+                          <span className="pro-badge">Pro</span>
+                        </>
+                      }
+                    />
+                  ) : (
+                    <div
+                      className="propertyRow"
+                      onClick={() => useStore.getState().startCheckout(null)}
+                    >
+                      <div className="fakePropertyRowLabel">iOS</div>
+                      <div className="fakePropertyRowValue">
+                        <div className="checkboxAnim">
+                          <input
+                            type="checkbox"
+                            checked={false}
+                            value={false}
+                          />
+                          <label />
+                        </div>
+                        <span className="ml-2">
+                          via Variant Launch{' '}
+                          <span className="pro-badge">Pro</span>
+                        </span>
+                      </div>
+                    </div>
+                  )}
+                </>
+              )}
             </>
           )}
+          {!isArWebXRMode && (
+            <>
+              <br />
+              <div className="propertyRow">
+                <Button
+                  variant="toolbtn"
+                  onClick={handleEnterViewerMode}
+                  className="mb-2 w-full"
+                  disabled={isRecording}
+                >
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    width="16"
+                    height="16"
+                    viewBox="0 0 24 24"
+                    fill="currentColor"
+                    className="mr-2 inline-block"
+                  >
+                    <path d="M8 5v14l11-7z" />
+                  </svg>
+                  Start Viewer Mode
+                </Button>
+              </div>
+              <div className="propertyRow">
+                <Button
+                  variant="toolbtn"
+                  onClick={handleStartRecording}
+                  className="mb-4 w-full"
+                  disabled={isRecording}
+                >
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    width="16"
+                    height="16"
+                    viewBox="0 0 24 24"
+                    fill="currentColor"
+                    className="mr-2 inline-block text-red-500"
+                  >
+                    <circle cx="12" cy="12" r="8" />
+                  </svg>
+                  Start and Record <span className="pro-badge">Pro</span>
+                </Button>
+                {isRecording && (
+                  <>
+                    <div className="mb-2 mt-1 text-center text-sm font-bold text-red-500">
+                      Recording in progress...
+                    </div>
+                    <Button
+                      variant="toolbtn"
+                      onClick={handleStopRecording}
+                      className="mb-4 w-full"
+                    >
+                      Stop Recording & Save
+                    </Button>
+                  </>
+                )}
+              </div>
+            </>
+          )}
+
+          {/* Display viewer URL when AR-WebXR mode is selected */}
+          {isArWebXRMode &&
+            (getCurrentSceneId() ? (
+              <>
+                <div className="propertyRow">
+                  <div className="fakePropertyRowLabel">AR URL</div>
+                  <URLValueWithCopy url={getViewerUrl()} />
+                </div>
+                <div className="propertyRow">
+                  <div className="fakePropertyRowLabel">AR QR</div>
+                  <div className="fakePropertyRowValue">
+                    <QrCode url={getViewerUrl()} />
+                  </div>
+                </div>
+              </>
+            ) : (
+              <div className="rounded bg-yellow-50 p-2 text-sm text-yellow-700">
+                Please log in and save your scene to generate a shareable AR
+                viewer URL.
+              </div>
+            ))}
+
           {entity && entity.components && (
             <div className="propertyRow">
               <AdvancedComponents entity={entity} />
@@ -182,6 +314,46 @@ const ViewerSidebar = ({ entity }) => {
 
 ViewerSidebar.propTypes = {
   entity: PropTypes.object.isRequired
+};
+
+// Helper component for the copy button
+const CopyButton = ({ textContent, copied, onClick }) => {
+  return (
+    <button
+      onClick={onClick}
+      className={`copy-button ${copied ? 'copied' : ''}`}
+    >
+      <Copy32Icon />
+      {copied ? 'Copied!' : 'Copy'}
+    </button>
+  );
+};
+
+// Component for URL value with copy functionality
+const URLValueWithCopy = ({ url }) => {
+  const [copied, setCopied] = useState(false);
+
+  const handleCopy = async (e) => {
+    try {
+      await navigator.clipboard.writeText(url);
+      setCopied(true);
+      // Keep the button visible while showing "Copied!"
+      setTimeout(() => setCopied(false), 2000);
+    } catch (err) {
+      console.error('Failed to copy:', err);
+    }
+  };
+
+  return (
+    <div
+      className="fakePropertyRowValue input-style"
+      onClick={handleCopy}
+      style={{ cursor: 'pointer' }}
+    >
+      {url}
+      <CopyButton textContent={url} copied={copied} onClick={handleCopy} />
+    </div>
+  );
 };
 
 export default ViewerSidebar;

@@ -16,7 +16,7 @@ const Logo = () => {
   return (
     <div className="flex items-center space-x-2">
       <div className={styles.logo} id="logoImg">
-        <img src="ui_assets/3D-St-stacked-128.png" alt="3DStreet Logo" />
+        <img src="/ui_assets/3D-St-stacked-128.png" alt="3DStreet Logo" />
       </div>
 
       {!isInspectorEnabled && (

@@ -25,6 +25,11 @@ AFRAME.registerComponent('viewer-mode', {
     cameraStartPosition: {
       type: 'vec3',
       default: { x: 0, y: 1.6, z: 0 }
+    },
+    webXRVariant: {
+      type: 'boolean',
+      default: false,
+      if: { preset: 'ar-webxr' }
     }
   },
 
@@ -122,6 +127,10 @@ AFRAME.registerComponent('viewer-mode', {
     document.getElementById('viewer-mode-ar-play-button').style.display =
       'none';
 
+    // Hide locomotion controls UI
+    document.getElementById('viewer-mode-locomotion-controls').style.display =
+      'none';
+
     // Remove event listeners if they were added
     this.el.sceneEl.removeEventListener('enter-vr', this.onEnterVR);
     this.el.sceneEl.removeEventListener('exit-vr', this.onExitVR);
@@ -177,6 +186,10 @@ AFRAME.registerComponent('viewer-mode', {
         this.rightHand.setAttribute('blink-controls', '');
       }
     }
+
+    // Show the locomotion controls UI
+    document.getElementById('viewer-mode-locomotion-controls').style.display =
+      'block';
   },
 
   enableCameraPathMode: function () {
@@ -388,11 +401,13 @@ AFRAME.registerComponent('viewer-mode', {
   onEnterVR: function () {
     document.querySelector('#viewer-mode-ar-play-button').style.display =
       'none';
+    document.querySelector('#viewer-mode-ar-overlay').style.display = 'block';
   },
 
   onExitVR: function () {
     document.querySelector('#viewer-mode-ar-play-button').style.display =
       'block';
+    document.querySelector('#viewer-mode-ar-overlay').style.display = 'none';
   },
 
   remove: function () {

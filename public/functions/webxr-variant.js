@@ -1,7 +1,14 @@
-<!DOCTYPE html>
+const functions = require('firebase-functions');
+
+// Function to serve a modified version of index.html with WebXR variant launch script
+exports.serveWebXRVariant = functions.https.onRequest((req, res) => {
+  // HTML template with the WebXR variant launch script
+  const htmlTemplate = `<!DOCTYPE html>
 <html>
 
 <head>
+  <!-- WebXR variant launch script -->
+  <script src="https://launchar.app/sdk/v1?key=5FXAKdmPAUHi5QV6zkUt8wPkBl6Wa4p6&redirect=true"></script>
   <!-- aframe -->
   <script src="https://aframe.io/releases/1.7.1/aframe.min.js"></script>
   <!-- 3dstreet -->
@@ -13,7 +20,7 @@
   <!-- viewer controls - vr teleport -->
   <script src="https://cdn.jsdelivr.net/npm/aframe-blink-controls@0.4.3/dist/aframe-blink-controls.min.js"></script>
 
-  <title>3DStreet</title>
+  <title>3DStreet WebXR Variant</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <link rel="icon" type="image/x-icon" href="ui_assets/favicon.ico">
   <link rel="stylesheet" href="/dist/viewer-styles.css">
@@ -24,7 +31,7 @@
   <!-- loading animation start -->
   <div class="loader__wrapper">
     <div class="loader">
-      <div class="road">Loading 3DStreet</div>
+      <div class="road">Loading 3DStreet WebXR Variant</div>
     </div>
   </div>
 
@@ -143,4 +150,11 @@
   });
 </script>
 
-</html>
+</html>`;
+
+  // Set the content type to HTML
+  res.set('Content-Type', 'text/html');
+  
+  // Send the HTML template as the response
+  res.send(htmlTemplate);
+});

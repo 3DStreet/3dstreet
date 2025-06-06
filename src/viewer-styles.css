@@ -18,6 +18,18 @@ body {
 	margin: 0;
 }
 
+/* viewer mode AR overlay */
+#viewer-mode-ar-overlay {
+	display: none;
+	position: absolute;
+	top: 5;
+	left: 5;
+	font-size: 12px;
+	background-color: rgba(0, 0, 0, 0.3);
+	color: #bebebe;
+	z-index: 1;
+}
+
 /* maps copyright notice */
 #map-data-attribution {
 	position: absolute;
@@ -133,6 +145,49 @@ body {
 	max-width: 80%;
 	box-shadow: 0 4px 30px rgba(0, 0, 0, 0.2);
 	border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+/********* viewer mode locomotion controls *********/
+#viewer-mode-locomotion-controls {
+	display: none;
+	position: fixed;
+	bottom: 20px;
+	left: 20px;
+	z-index: 999999;
+}
+
+.controls-container {
+	background-color: rgba(0, 0, 0, 0.7);
+	backdrop-filter: blur(5px);
+	border-radius: 10px;
+	color: white;
+	padding: 12px 16px;
+	box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+	border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.controls-title {
+	font-size: 16px;
+	font-weight: 500;
+	margin-bottom: 8px;
+	text-align: center;
+}
+
+.controls-item {
+	font-size: 14px;
+	margin-bottom: 6px;
+}
+
+.controls-item:last-child {
+	margin-bottom: 0;
+}
+
+.key-group {
+	background-color: rgba(255, 255, 255, 0.2);
+	padding: 2px 6px;
+	border-radius: 4px;
+	font-family: monospace;
+	font-weight: bold;
 }
 
 /********* right menu css *********/
