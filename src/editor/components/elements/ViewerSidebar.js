@@ -194,60 +194,64 @@ const ViewerSidebar = ({ entity }) => {
             </>
           )}
           <br />
-          <div className="propertyRow">
-            <Button
-              variant="toolbtn"
-              onClick={handleEnterViewerMode}
-              className="mb-2 w-full"
-              disabled={isRecording}
-            >
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                width="16"
-                height="16"
-                viewBox="0 0 24 24"
-                fill="currentColor"
-                className="mr-2 inline-block"
-              >
-                <path d="M8 5v14l11-7z" />
-              </svg>
-              Start Viewer Mode
-            </Button>
-          </div>
-          <div className="propertyRow">
-            <Button
-              variant="toolbtn"
-              onClick={handleStartRecording}
-              className="mb-4 w-full"
-              disabled={isRecording}
-            >
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                width="16"
-                height="16"
-                viewBox="0 0 24 24"
-                fill="currentColor"
-                className="mr-2 inline-block text-red-500"
-              >
-                <circle cx="12" cy="12" r="8" />
-              </svg>
-              Start and Record <span className="pro-badge">Pro</span>
-            </Button>
-            {isRecording && (
-              <>
-                <div className="mb-2 mt-1 text-center text-sm font-bold text-red-500">
-                  Recording in progress...
-                </div>
+          {!isArWebXRMode && (
+            <>
+              <div className="propertyRow">
                 <Button
                   variant="toolbtn"
-                  onClick={handleStopRecording}
-                  className="mb-4 w-full"
+                  onClick={handleEnterViewerMode}
+                  className="mb-2 w-full"
+                  disabled={isRecording}
                 >
-                  Stop Recording & Save
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    width="16"
+                    height="16"
+                    viewBox="0 0 24 24"
+                    fill="currentColor"
+                    className="mr-2 inline-block"
+                  >
+                    <path d="M8 5v14l11-7z" />
+                  </svg>
+                  Start Viewer Mode
                 </Button>
-              </>
-            )}
-          </div>
+              </div>
+              <div className="propertyRow">
+                <Button
+                  variant="toolbtn"
+                  onClick={handleStartRecording}
+                  className="mb-4 w-full"
+                  disabled={isRecording}
+                >
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    width="16"
+                    height="16"
+                    viewBox="0 0 24 24"
+                    fill="currentColor"
+                    className="mr-2 inline-block text-red-500"
+                  >
+                    <circle cx="12" cy="12" r="8" />
+                  </svg>
+                  Start and Record <span className="pro-badge">Pro</span>
+                </Button>
+                {isRecording && (
+                  <>
+                    <div className="mb-2 mt-1 text-center text-sm font-bold text-red-500">
+                      Recording in progress...
+                    </div>
+                    <Button
+                      variant="toolbtn"
+                      onClick={handleStopRecording}
+                      className="mb-4 w-full"
+                    >
+                      Stop Recording & Save
+                    </Button>
+                  </>
+                )}
+              </div>
+            </>
+          )}
 
           {/* Display viewer URL when AR-WebXR mode is selected */}
           {isArWebXRMode && (
