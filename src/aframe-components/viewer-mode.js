@@ -188,7 +188,6 @@ AFRAME.registerComponent('viewer-mode', {
     }
 
     // Show the locomotion controls UI
-    document.getElementById('viewer-mode-ui').style.display = 'block';
     document.getElementById('viewer-mode-locomotion-controls').style.display =
       'block';
   },
