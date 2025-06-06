@@ -280,25 +280,27 @@ const ViewerSidebar = ({ entity }) => {
           )}
 
           {/* Display viewer URL when AR-WebXR mode is selected */}
-          {isArWebXRMode && getCurrentSceneId() ? (
-            <>
-              <div className="propertyRow">
-                <div className="fakePropertyRowLabel">AR URL</div>
-                <URLValueWithCopy url={getViewerUrl()} />
-              </div>
-              <div className="propertyRow">
-                <div className="fakePropertyRowLabel">AR QR</div>
-                <div className="fakePropertyRowValue">
-                  <QrCode url={getViewerUrl()} />
+          {isArWebXRMode &&
+            (getCurrentSceneId() ? (
+              <>
+                <div className="propertyRow">
+                  <div className="fakePropertyRowLabel">AR URL</div>
+                  <URLValueWithCopy url={getViewerUrl()} />
                 </div>
+                <div className="propertyRow">
+                  <div className="fakePropertyRowLabel">AR QR</div>
+                  <div className="fakePropertyRowValue">
+                    <QrCode url={getViewerUrl()} />
+                  </div>
+                </div>
+              </>
+            ) : (
+              <div className="rounded bg-yellow-50 p-2 text-sm text-yellow-700">
+                Please log in and save your scene to generate a shareable AR
+                viewer URL.
               </div>
-            </>
-          ) : (
-            <div className="rounded bg-yellow-50 p-2 text-sm text-yellow-700">
-              Please log in and save your scene to generate a shareable AR
-              viewer URL.
-            </div>
-          )}
+            ))}
+
           {entity && entity.components && (
             <div className="propertyRow">
               <AdvancedComponents entity={entity} />
