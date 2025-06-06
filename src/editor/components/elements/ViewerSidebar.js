@@ -123,8 +123,9 @@ const ViewerSidebar = ({ entity }) => {
 
     // Get the base URL (without hash)
     const baseUrl = window.location.origin;
-    // Check if webXRVariant is enabled
-    const isVariantEnabled = component?.data?.webXRVariant === true;
+    // Check if webXRVariant is enabled AND user has Pro access
+    const isVariantEnabled =
+      currentUser?.isPro && component?.data?.webXRVariant === true;
     // Create the viewer URL with the scene ID in the hash
     // Include /webxr-variant/ path if the variant is enabled
     const pathPrefix = isVariantEnabled ? 'webxr-variant/' : '';
@@ -173,22 +174,45 @@ const ViewerSidebar = ({ entity }) => {
                       <span className="ml-2">via WebXR</span>
                     </div>
                   </div>
-                  <PropertyRow
-                    key="webXRVariant"
-                    name="webXRVariant"
-                    label="iOS"
-                    schema={component.schema['webXRVariant']}
-                    data={component.data['webXRVariant']}
-                    componentname={componentName}
-                    isSingle={false}
-                    entity={entity}
-                    rightElement={
-                      <>
-                        via Variant Launch{' '}
-                        <span className="pro-badge">Pro</span>
-                      </>
-                    }
-                  />
+                  {currentUser?.isPro ? (
+                    <PropertyRow
+                      key="webXRVariant"
+                      name="webXRVariant"
+                      label="iOS"
+                      schema={component.schema['webXRVariant']}
+                      data={component.data['webXRVariant']}
+                      componentname={componentName}
+                      isSingle={false}
+                      entity={entity}
+                      rightElement={
+                        <>
+                          via Variant Launch{' '}
+                          <span className="pro-badge">Pro</span>
+                        </>
+                      }
+                    />
+                  ) : (
+                    <div
+                      className="propertyRow"
+                      onClick={() => useStore.getState().startCheckout(null)}
+                    >
+                      <div className="fakePropertyRowLabel">iOS</div>
+                      <div className="fakePropertyRowValue">
+                        <div className="checkboxAnim">
+                          <input
+                            type="checkbox"
+                            checked={false}
+                            value={false}
+                          />
+                          <label />
+                        </div>
+                        <span className="ml-2">
+                          via Variant Launch{' '}
+                          <span className="pro-badge">Pro</span>
+                        </span>
+                      </div>
+                    </div>
+                  )}
                 </>
               )}
             </>
