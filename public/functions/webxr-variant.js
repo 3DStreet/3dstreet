@@ -8,7 +8,7 @@ exports.serveWebXRVariant = functions.https.onRequest((req, res) => {
 
 <head>
   <!-- WebXR variant launch script -->
-  <script src="https://launchar.app/sdk/v1?key=aYjwWOhdpgACjccHzG4SjHLtSxOuRpMz&redirect=true&variant=webxr"></script>
+  <script src="https://launchar.app/sdk/v1?key=5FXAKdmPAUHi5QV6zkUt8wPkBl6Wa4p6&redirect=true"></script>
   <!-- aframe -->
   <script src="https://aframe.io/releases/1.7.1/aframe.min.js"></script>
   <!-- 3dstreet -->
