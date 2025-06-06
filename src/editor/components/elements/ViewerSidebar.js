@@ -122,13 +122,13 @@ const ViewerSidebar = ({ entity }) => {
     if (!sceneId) return '';
 
     // Get the base URL (without hash)
-    const baseUrl = window.location.origin + window.location.pathname;
+    const baseUrl = window.location.origin;
     // Check if webXRVariant is enabled
     const isVariantEnabled = component?.data?.webXRVariant === true;
     // Create the viewer URL with the scene ID in the hash
     // Include /webxr-variant/ path if the variant is enabled
-    const pathPrefix = isVariantEnabled ? 'webxr-variant' : '';
-    return `${baseUrl}${pathPrefix}?viewer=true#/scenes/${sceneId}`;
+    const pathPrefix = isVariantEnabled ? 'webxr-variant/' : '';
+    return `${baseUrl}/${pathPrefix}?viewer=true#/scenes/${sceneId}`;
   };
 
   // Check if AR-WebXR mode is selected
