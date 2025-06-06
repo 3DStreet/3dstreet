@@ -3,6 +3,7 @@ import { useState, useEffect } from 'react';
 import { useAuthContext } from '@/editor/contexts';
 import PropertyRow from './PropertyRow';
 import AdvancedComponents from './AdvancedComponents';
+import { Copy32Icon } from '@/editor/icons';
 import { Button } from '../elements';
 import useStore from '@/store';
 import Events from '../../lib/Events';
@@ -278,30 +279,23 @@ const ViewerSidebar = ({ entity }) => {
           )}
 
           {/* Display viewer URL when AR-WebXR mode is selected */}
-          {isArWebXRMode && (
-            <div className="propertyRow mt-4">
-              <div className="mb-2 font-bold">AR Viewer URL:</div>
-              {getCurrentSceneId() ? (
-                <>
-                  <div className="break-all rounded bg-gray-100 p-2 text-sm">
-                    {getViewerUrl()}
-                  </div>
-                  <Button
-                    variant="toolbtn"
-                    onClick={() =>
-                      navigator.clipboard.writeText(getViewerUrl())
-                    }
-                    className="mt-2 w-full text-sm"
-                  >
-                    Copy URL to Clipboard
-                  </Button>
-                </>
-              ) : (
-                <div className="rounded bg-yellow-50 p-2 text-sm text-yellow-700">
-                  Please log in and save your scene to generate a shareable AR
-                  viewer URL.
+          {isArWebXRMode && getCurrentSceneId() ? (
+            <>
+              <div className="propertyRow">
+                <div className="fakePropertyRowLabel">URL for AR View</div>
+                <URLValueWithCopy url={getViewerUrl()} />
+              </div>
+              <div className="propertyRow">
+                <div className="fakePropertyRowLabel">QR for AR View</div>
+                <div className="fakePropertyRowValue">
+                  <img src={getViewerUrl()} alt="QR Code" />
                 </div>
-              )}
+              </div>
+            </>
+          ) : (
+            <div className="rounded bg-yellow-50 p-2 text-sm text-yellow-700">
+              Please log in and save your scene to generate a shareable AR
+              viewer URL.
             </div>
           )}
           {entity && entity.components && (
@@ -317,6 +311,46 @@ const ViewerSidebar = ({ entity }) => {
 
 ViewerSidebar.propTypes = {
   entity: PropTypes.object.isRequired
+};
+
+// Helper component for the copy button
+const CopyButton = ({ textContent, copied, onClick }) => {
+  return (
+    <button
+      onClick={onClick}
+      className={`copy-button ${copied ? 'copied' : ''}`}
+    >
+      <Copy32Icon />
+      {copied ? 'Copied!' : 'Copy'}
+    </button>
+  );
+};
+
+// Component for URL value with copy functionality
+const URLValueWithCopy = ({ url }) => {
+  const [copied, setCopied] = useState(false);
+
+  const handleCopy = async (e) => {
+    try {
+      await navigator.clipboard.writeText(url);
+      setCopied(true);
+      // Keep the button visible while showing "Copied!"
+      setTimeout(() => setCopied(false), 2000);
+    } catch (err) {
+      console.error('Failed to copy:', err);
+    }
+  };
+
+  return (
+    <div
+      className="fakePropertyRowValue input-style"
+      onClick={handleCopy}
+      style={{ cursor: 'pointer' }}
+    >
+      {url}
+      <CopyButton textContent={url} copied={copied} onClick={handleCopy} />
+    </div>
+  );
 };
 
 export default ViewerSidebar;
