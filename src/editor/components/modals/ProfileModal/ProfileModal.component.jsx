@@ -1,8 +1,8 @@
 import styles from './ProfileModal.module.scss';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 
 import Modal from '../Modal.jsx';
-import { Button } from '../../elements';
+import { Button, UsernameEditor } from '../../elements';
 import { useAuthContext } from '../../../contexts';
 import { signOut } from 'firebase/auth';
 import { auth, functions } from '../../../services/firebase';
@@ -11,6 +11,10 @@ import { httpsCallable } from 'firebase/functions';
 import posthog from 'posthog-js';
 import { renderProfileIcon } from '../../elements/ProfileButton';
 import useStore from '@/store';
+import {
+  getUserProfile,
+  generateAndSaveUsername
+} from '../../../utils/username';
 
 const ProfileModal = () => {
   const { currentUser, setCurrentUser } = useAuthContext();
@@ -18,6 +22,34 @@ const ProfileModal = () => {
   const modal = useStore((state) => state.modal);
 
   const [isLoading, setIsLoading] = useState(false);
+  const [username, setUsername] = useState(null);
+  const [isLoadingUsername, setIsLoadingUsername] = useState(false);
+
+  // Load or generate username when modal opens
+  useEffect(() => {
+    const loadUsername = async () => {
+      if (modal === 'profile' && currentUser?.uid && !username) {
+        setIsLoadingUsername(true);
+        try {
+          // Check if user already has a username
+          const userProfile = await getUserProfile(currentUser.uid);
+
+          if (userProfile?.username) {
+            setUsername(userProfile.username);
+          } else {
+            // Generate and save a new username
+            const newUsername = await generateAndSaveUsername(currentUser.uid);
+            setUsername(newUsername);
+          }
+        } catch (error) {
+          console.error('Error loading username:', error);
+        }
+        setIsLoadingUsername(false);
+      }
+    };
+
+    loadUsername();
+  }, [modal, currentUser, username]);
 
   const onClose = () => {
     setModal(null);
@@ -76,6 +108,23 @@ const ProfileModal = () => {
               </Button>
             </div>
           </div>
+
+          {/* Username section */}
+          <div className={styles.usernameSection}>
+            {isLoadingUsername ? (
+              <div className={styles.loadingUsername}>
+                <Loader className={styles.spinner} />
+                <span>Loading username...</span>
+              </div>
+            ) : username ? (
+              <UsernameEditor
+                currentUsername={username}
+                userId={currentUser?.uid}
+                onUpdate={(newUsername) => setUsername(newUsername)}
+              />
+            ) : null}
+          </div>
+
           <hr />
 
           {currentUser?.isPro ? (

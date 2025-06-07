@@ -94,6 +94,23 @@
       border: 1px solid #5c2fa5;
     }
 
+    .usernameSection {
+      padding: 16px 0;
+
+      .loadingUsername {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        color: variables.$lightgray-200;
+
+        .spinner {
+          width: 20px;
+          height: 20px;
+          animation: spin 1s linear infinite;
+        }
+      }
+    }
+
     .manageBillingCard {
       display: flex;
       flex-direction: column;
