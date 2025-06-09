@@ -97,6 +97,13 @@
     }
   }
 
+  .titleButtons {
+    display: flex;
+    justify-content: flex-end;
+    align-items: center;
+    margin-top: 14px;
+  }
+
   .header {
     display: flex;
     justify-content: space-between;
@@ -122,7 +129,7 @@
 
     .searchContainer {
       position: relative;
-      min-width: 230px;
+      min-width: 200px;
     }
 
     .searchInputWrapper {

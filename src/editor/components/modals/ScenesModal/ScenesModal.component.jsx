@@ -5,7 +5,7 @@ import Modal from '../Modal.jsx';
 import styles from './ScenesModal.module.scss';
 import { createElementsForScenesFromJSON } from '@/editor/lib/SceneUtils.js';
 import { getCommunityScenes, getUserScenes } from '../../../api/scene';
-import { Edit32Icon, Loader, Upload24Icon } from '../../../icons';
+import { Loader, Upload24Icon } from '../../../icons';
 import { signIn } from '../../../api';
 import posthog from 'posthog-js';
 import useStore from '../../../../store.js';
@@ -341,16 +341,50 @@ const ScenesModal = ({ initialTab = 'owner', delay = undefined }) => {
       title="Open scene"
       titleElement={
         <>
-          <h3
+          <div
             style={{
-              fontSize: '20px',
-              marginTop: '26px',
-              marginBottom: '0px',
-              position: 'relative'
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              width: '100%'
             }}
           >
-            Open scene
-          </h3>
+            <h3
+              style={{
+                fontSize: '20px',
+                marginTop: '26px',
+                marginBottom: '0px',
+                position: 'relative'
+              }}
+            >
+              Open scene
+            </h3>
+            <div className={styles.titleButtons}>
+              <Button
+                leadingIcon={<Upload24Icon />}
+                className={styles.uploadBtn}
+                style={{ position: 'relative' }}
+                size="small"
+              >
+                Upload 3DStreet JSON File
+                <input
+                  type="file"
+                  onChange={(e) => {
+                    fileJSON(e);
+                    onClose(); // Close the modal
+                  }}
+                  style={{
+                    position: 'absolute',
+                    inset: 0,
+                    opacity: 0,
+                    fontSize: 0,
+                    cursor: 'pointer'
+                  }}
+                  accept=".js, .json, .txt"
+                />
+              </Button>
+            </div>
+          </div>
           <div className={styles.header}>
             <div className={styles.leftSection}>
               <Tabs
@@ -411,38 +445,6 @@ const ScenesModal = ({ initialTab = 'owner', delay = undefined }) => {
                   )}
                 </div>
               )}
-            </div>
-            <div className={styles.buttons}>
-              <Button
-                onClick={() => {
-                  setModal('new');
-                }}
-                leadingIcon={<Edit32Icon />}
-              >
-                Create New Scene
-              </Button>
-              <Button
-                leadingIcon={<Upload24Icon />}
-                className={styles.uploadBtn}
-                style={{ position: 'relative' }}
-              >
-                Upload 3DStreet JSON File
-                <input
-                  type="file"
-                  onChange={(e) => {
-                    fileJSON(e);
-                    onClose(); // Close the modal
-                  }}
-                  style={{
-                    position: 'absolute',
-                    inset: 0,
-                    opacity: 0,
-                    fontSize: 0,
-                    cursor: 'pointer'
-                  }}
-                  accept=".js, .json, .txt"
-                />
-              </Button>
             </div>
           </div>
         </>
