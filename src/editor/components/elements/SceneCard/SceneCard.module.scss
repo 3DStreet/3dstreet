@@ -123,7 +123,7 @@
     text-overflow: ellipsis;
     overflow: hidden;
     white-space: nowrap;
-    margin-bottom: 12px;
+    margin-bottom: 4px;
   }
 
   .date {
@@ -132,5 +132,48 @@
     text-overflow: ellipsis;
     overflow: hidden;
     white-space: nowrap;
+  }
+
+  .username {
+    color: variables.$purple-700;
+    font-weight: 500;
+  }
+
+  .lastModified {
+    color: rgb(116, 116, 116);
+    text-overflow: ellipsis;
+    overflow: hidden;
+    white-space: nowrap;
+    font-size: 14px;
+    margin: 0;
+  }
+
+  .communityInfo {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+
+  .usernameDisplay {
+    color: variables.$purple-700;
+    font-weight: 500;
+    text-overflow: ellipsis;
+    overflow: hidden;
+    white-space: nowrap;
+    font-size: 14px;
+    margin: 0;
+    line-height: 1.2;
+    min-height: 19px; /* Ensure it takes up space even when empty */
+    display: block; /* Ensures it maintains the block size */
+  }
+
+  .timestamp {
+    color: rgb(116, 116, 116);
+    text-overflow: ellipsis;
+    overflow: hidden;
+    white-space: nowrap;
+    font-size: 14px;
+    margin: 0;
+    line-height: 1.2;
   }
 }
