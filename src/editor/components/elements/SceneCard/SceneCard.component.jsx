@@ -5,15 +5,18 @@ import { formatDistanceToNow } from 'date-fns';
 import { DropdownIcon } from '../../../icons';
 import { deleteScene, updateSceneIdAndTitle } from '../../../api/scene';
 import { Button } from '../Button';
+import { getUserProfile } from '../../../utils/username';
 
-function LastModified({ timestamp }) {
-  // Convert Firestore Timestamp to JavaScript Date object
+function TimeAgo({ timestamp, includeAgo = false }) {
+  // Convert Firestore Timestamp to JavaScript Date object if it exists
+  if (!timestamp) return null;
+
   const date = timestamp.toDate();
 
   // Use date-fns to get "time ago" format
-  const timeAgo = formatDistanceToNow(date, { addSuffix: true });
+  const timeAgo = formatDistanceToNow(date, { addSuffix: includeAgo });
 
-  return <span className={styles.date}>Last modified {timeAgo}</span>;
+  return timeAgo;
 }
 
 const SceneCard = ({
@@ -25,6 +28,7 @@ const SceneCard = ({
   const [showMenu, setShowMenu] = useState(null);
   const [editIndex, setEditIndex] = useState(null);
   const [editInputValue, setEditInputValue] = useState('');
+  const [authorUsernames, setAuthorUsernames] = useState({});
   const editInputRef = useRef(null);
   const menuRefs = useRef({});
 
@@ -134,6 +138,38 @@ const SceneCard = ({
     };
   }, [handleClickOutside]);
 
+  // Fetch usernames for scene authors
+  useEffect(() => {
+    const fetchUsernames = async () => {
+      const authorsToFetch = {};
+
+      // Collect unique author IDs
+      scenesData?.forEach((scene) => {
+        const authorId = scene.data().author;
+        if (authorId && !authorUsernames[authorId]) {
+          authorsToFetch[authorId] = true;
+        }
+      });
+
+      // Fetch profiles for all unique authors
+      const fetchedUsernames = { ...authorUsernames };
+      for (const authorId of Object.keys(authorsToFetch)) {
+        try {
+          const profile = await getUserProfile(authorId);
+          fetchedUsernames[authorId] = profile?.username || null;
+        } catch (error) {
+          console.error(`Error fetching profile for user ${authorId}:`, error);
+        }
+      }
+
+      setAuthorUsernames(fetchedUsernames);
+    };
+
+    if (scenesData?.length > 0) {
+      fetchUsernames();
+    }
+  }, [scenesData]);
+
   return (
     <div className={styles.wrapper}>
       {scenesData?.map((scene, index) => (
@@ -184,12 +220,31 @@ const SceneCard = ({
             <>
               <div className={styles.userBlock}>
                 <div className={styles.userName}>
-                  {/* Placeholder for username + thumbnail support */}
-                  {/* <img src={'../../../../../ui_assets/avatar.svg'} alt="avatar" /> */}
-                  {/* <p>User Name</p> */}
-                  <p>
-                    <LastModified timestamp={scene.data().updateTimestamp} />
-                  </p>
+                  {isCommunityTabSelected &&
+                  scene.data().author &&
+                  authorUsernames[scene.data().author] ? (
+                    <div className={styles.communityInfo}>
+                      <p className={styles.usernameDisplay}>
+                        @{authorUsernames[scene.data().author]}
+                      </p>
+                      <p className={styles.timestamp}>
+                        {TimeAgo({
+                          timestamp: scene.data().updateTimestamp,
+                          includeAgo: true
+                        })}
+                      </p>
+                    </div>
+                  ) : (
+                    <div className={styles.communityInfo}>
+                      <p className={styles.usernameDisplay}></p>
+                      <p className={styles.timestamp}>
+                        {TimeAgo({
+                          timestamp: scene.data().updateTimestamp,
+                          includeAgo: true
+                        })}
+                      </p>
+                    </div>
+                  )}
                 </div>
                 {!isCommunityTabSelected && (
                   <div
