@@ -11,53 +11,10 @@ import {
   limit
 } from 'firebase/firestore';
 import { db } from '../services/firebase';
+import { generateUsername } from './username-generator.js';
 
-// Username components for generation
-const usernameComponents = {
-  place: [
-    'street',
-    'city',
-    'avenue',
-    'plaza',
-    'urban',
-    'calle',
-    'ciudad',
-    'barrio'
-  ],
-  role: [
-    'creator',
-    'builder',
-    'designer',
-    'architect',
-    'maker',
-    'creador',
-    'constructor'
-  ]
-};
-
-// Generate random alphanumeric string
-const generateRandomSuffix = (length = 4) => {
-  const chars = 'abcdefghijklmnopqrstuvwxyz0123456789';
-  let result = '';
-  for (let i = 0; i < length; i++) {
-    result += chars.charAt(Math.floor(Math.random() * chars.length));
-  }
-  return result;
-};
-
-// Generate a random username
-export const generateUsername = () => {
-  const place =
-    usernameComponents.place[
-      Math.floor(Math.random() * usernameComponents.place.length)
-    ];
-  const role =
-    usernameComponents.role[
-      Math.floor(Math.random() * usernameComponents.role.length)
-    ];
-  const suffix = generateRandomSuffix();
-  return `${place}_${role}_${suffix}`;
-};
+// Re-export the generator function
+export { generateUsername };
 
 // Validate username format
 export const validateUsernameFormat = (username) => {
