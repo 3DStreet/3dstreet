@@ -103,6 +103,12 @@
     align-items: center;
     margin: 32px 0px 0px;
 
+    .leftSection {
+      display: flex;
+      align-items: center;
+      column-gap: 16px;
+    }
+
     .tabs {
       margin: 0px;
     }
@@ -112,6 +118,101 @@
       justify-content: center;
       align-items: center;
       column-gap: 16px;
+    }
+
+    .searchContainer {
+      position: relative;
+      min-width: 230px;
+    }
+
+    .searchInputWrapper {
+      position: relative;
+      display: flex;
+      align-items: center;
+      border: 1px solid variables.$purple-600;
+      border-radius: 4px;
+      background-color: variables.$darkgray-300;
+      overflow: hidden;
+
+      &:focus-within {
+        border-color: variables.$purple-700;
+        box-shadow: 0 0 0 1px variables.$purple-700;
+      }
+    }
+
+    .atSymbol {
+      font-size: 16px;
+      width: 24px;
+      text-align: center;
+      margin-left: 4px;
+      color: variables.$lightgray-700;
+      font-weight: 400;
+    }
+
+    .searchInput {
+      background: transparent;
+      border: none;
+      color: variables.$white;
+      font-size: 14px;
+      height: 32px;
+      padding: 0 8px;
+      width: 100%;
+
+      &:focus {
+        outline: none;
+      }
+
+      &::placeholder {
+        color: variables.$lightgray-800;
+      }
+    }
+
+    .clearButton {
+      background: none;
+      border: none;
+      color: variables.$lightgray-700;
+      cursor: pointer;
+      font-size: 18px;
+      height: 100%;
+      padding: 0 8px;
+
+      &:hover {
+        color: variables.$white;
+      }
+    }
+
+    .searchResults {
+      position: absolute;
+      top: 100%;
+      left: 0;
+      width: 100%;
+      max-height: 200px;
+      overflow-y: auto;
+      background-color: variables.$darkgray-300;
+      border: 1px solid variables.$purple-600;
+      border-radius: 4px;
+      margin-top: 4px;
+      z-index: 10;
+      box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
+    }
+
+    .searchResultItem {
+      padding: 8px 12px;
+      cursor: pointer;
+      font-size: 14px;
+      color: variables.$white;
+
+      &:hover {
+        background-color: variables.$purple-400;
+      }
+    }
+
+    .searchingMessage,
+    .noResults {
+      padding: 8px 12px;
+      font-size: 14px;
+      color: variables.$lightgray-700;
+      text-align: center;
     }
   }
 }
