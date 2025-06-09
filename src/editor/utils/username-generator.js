@@ -9,7 +9,15 @@ const usernameComponents = {
     'urban',
     'calle',
     'ciudad',
-    'barrio'
+    'barrio',
+    'boulevard',
+    'district',
+    'neighborhood',
+    'square',
+    'avenida',
+    'paseo',
+    'distrito',
+    'esquina'
   ],
   role: [
     'creator',
@@ -18,7 +26,13 @@ const usernameComponents = {
     'architect',
     'maker',
     'creador',
-    'constructor'
+    'constructor',
+    'planner',
+    'developer',
+    'artist',
+    'innovator',
+    'artista',
+    'desarrollador'
   ]
 };
 
