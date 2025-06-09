@@ -11,7 +11,6 @@ import {
   limit
 } from 'firebase/firestore';
 import { db } from '../services/firebase';
-import { containsProfanity } from './profanity';
 
 // Username components for generation
 const usernameComponents = {
@@ -76,9 +75,6 @@ export const validateUsernameFormat = (username) => {
       valid: false,
       error: 'Username can only contain letters, numbers, and underscores'
     };
-  }
-  if (containsProfanity(username)) {
-    return { valid: false, error: 'Username contains inappropriate content' };
   }
   return { valid: true };
 };
