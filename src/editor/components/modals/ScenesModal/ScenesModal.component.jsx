@@ -352,8 +352,7 @@ const ScenesModal = ({ initialTab = 'owner', delay = undefined }) => {
             <h3
               style={{
                 fontSize: '20px',
-                marginTop: '26px',
-                marginBottom: '0px',
+                margin: '20px 0 0',
                 position: 'relative'
               }}
             >
@@ -364,6 +363,7 @@ const ScenesModal = ({ initialTab = 'owner', delay = undefined }) => {
                 leadingIcon={<Upload24Icon />}
                 className={styles.uploadBtn}
                 style={{ position: 'relative' }}
+                variant="toolbtn"
                 size="small"
               >
                 Upload 3DStreet JSON File
