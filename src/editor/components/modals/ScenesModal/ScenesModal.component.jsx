@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef } from 'react';
+import { useEffect, useState } from 'react';
 import { useAuthContext } from '../../../contexts';
 import { Button, SceneCard, Tabs } from '../../elements';
 import Modal from '../Modal.jsx';
@@ -42,9 +42,6 @@ const ScenesModal = ({ initialTab = 'owner', delay = undefined }) => {
   const [searchResults, setSearchResults] = useState([]);
   const [selectedUserId, setSelectedUserId] = useState(null);
   const [showSearchResults, setShowSearchResults] = useState(false);
-
-  const searchResultsRef = useRef(null);
-  const searchInputRef = useRef(null);
 
   const setModal = useStore((state) => state.setModal);
   const isOpen = useStore((state) => state.modal === 'scenes');
@@ -136,21 +133,19 @@ const ScenesModal = ({ initialTab = 'owner', delay = undefined }) => {
     }
   }, [isOpen]);
 
-  // Handle clicking outside of search results to close them
+  // Handle clicks on the document
   useEffect(() => {
-    const handleClickOutside = (event) => {
-      if (
-        searchResultsRef.current &&
-        !searchResultsRef.current.contains(event.target) &&
-        searchInputRef.current &&
-        !searchInputRef.current.contains(event.target)
-      ) {
+    const handleDocumentClick = (event) => {
+      // Close search results dropdown when clicking outside search area
+      if (!event.target.closest('[data-search-component]')) {
         setShowSearchResults(false);
       }
     };
 
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
+    document.addEventListener('mousedown', handleDocumentClick);
+    return () => {
+      document.removeEventListener('mousedown', handleDocumentClick);
+    };
   }, []);
 
   useEffect(() => {
@@ -300,24 +295,10 @@ const ScenesModal = ({ initialTab = 'owner', delay = undefined }) => {
     setFilteredCommunityScenes(scenesDataCommunity);
   };
 
-  // Handle input focus - perform a fresh search with current input
-  const handleInputFocus = async () => {
-    const currentInput = usernameSearch;
-
-    if (currentInput.length >= 2) {
-      setIsSearching(true);
+  // Handle input focus - show search results if we have any
+  const handleInputFocus = () => {
+    if (usernameSearch.length >= 2) {
       setShowSearchResults(true);
-
-      try {
-        // Perform a fresh search with the current input value
-        const results = await searchUsersByUsername(currentInput);
-        setSearchResults(results);
-      } catch (error) {
-        console.error('Error searching for usernames on focus:', error);
-        setSearchResults([]);
-      } finally {
-        setIsSearching(false);
-      }
     }
   };
 
@@ -383,11 +364,8 @@ const ScenesModal = ({ initialTab = 'owner', delay = undefined }) => {
                 className={styles.tabs}
               />
               {selectedTab === 'community' && (
-                <div className={styles.searchContainer}>
-                  <div
-                    className={styles.searchInputWrapper}
-                    ref={searchInputRef}
-                  >
+                <div className={styles.searchContainer} data-search-component>
+                  <div className={styles.searchInputWrapper}>
                     <span className={styles.atSymbol}>@</span>
                     <input
                       type="text"
@@ -409,10 +387,7 @@ const ScenesModal = ({ initialTab = 'owner', delay = undefined }) => {
                     )}
                   </div>
                   {showSearchResults && (
-                    <div
-                      className={styles.searchResults}
-                      ref={searchResultsRef}
-                    >
+                    <div className={styles.searchResults} data-search-component>
                       {isSearching ? (
                         <div className={styles.searchingMessage}>
                           Searching...
