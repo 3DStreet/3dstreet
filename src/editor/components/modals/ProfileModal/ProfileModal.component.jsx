@@ -75,7 +75,6 @@ const ProfileModal = () => {
     });
     setIsLoading(false);
     window.open(url, '_blank');
-    // Replace 'https://example.com' with your desired URL
   };
 
   return (
@@ -85,20 +84,21 @@ const ProfileModal = () => {
       onClose={onClose}
     >
       <div className={styles.contentWrapper}>
-        <h2 className={styles.title}>3DStreet Cloud Account</h2>
+        <h2 className={styles.title}>3DStreet Account</h2>
         <div className={styles.content}>
-          <div className={styles.header}>
-            <div className={styles.profile}>
-              {renderProfileIcon(currentUser)}
-              <div className={styles.credentials}>
-                <span className={styles.name}>{currentUser?.displayName}</span>
-                <span className={styles.email}>{currentUser?.email}</span>
+          {/* Private Auth Info Section */}
+          <div className={styles.authSection}>
+            <h3 className={styles.sectionTitle}>Account Information</h3>
+            <div className={styles.authInfo}>
+              <div className={styles.profile}>
+                {renderProfileIcon(currentUser)}
+                <div className={styles.credentials}>
+                  <span className={styles.name}>
+                    {currentUser?.displayName}
+                  </span>
+                  <span className={styles.email}>{currentUser?.email}</span>
+                </div>
               </div>
-            </div>
-            <div className={styles.controlButtons}>
-              {/* <Button type="filled" onClick={editProfileHandler}>
-                Edit Profile
-              </Button> */}
               <Button
                 type="outlined"
                 className={styles.logOut}
@@ -109,77 +109,80 @@ const ProfileModal = () => {
             </div>
           </div>
 
-          {/* Username section */}
-          <div className={styles.usernameSection}>
-            {isLoadingUsername ? (
-              <div className={styles.loadingUsername}>
-                <Loader className={styles.spinner} />
-                <span>Loading username...</span>
-              </div>
-            ) : username ? (
-              <UsernameEditor
-                currentUsername={username}
-                userId={currentUser?.uid}
-                onUpdate={(newUsername) => setUsername(newUsername)}
-              />
-            ) : null}
+          <hr className={styles.divider} />
+
+          {/* Public Profile Section */}
+          <div className={styles.publicProfileSection}>
+            <h3 className={styles.sectionTitle}>Public Profile</h3>
+            <div className={styles.usernameSection}>
+              {isLoadingUsername ? (
+                <div className={styles.loadingUsername}>
+                  <Loader className={styles.spinner} />
+                  <span>Loading username...</span>
+                </div>
+              ) : username ? (
+                <UsernameEditor
+                  currentUsername={username}
+                  userId={currentUser?.uid}
+                  onUpdate={(newUsername) => setUsername(newUsername)}
+                />
+              ) : null}
+            </div>
           </div>
 
-          <hr />
+          <hr className={styles.divider} />
 
-          {currentUser?.isPro ? (
-            <div className={styles.manageBillingCard}>
-              <p>
-                <Action24 /> Plan: Geospatial Pro
-              </p>
-              <div>
-                {isLoading ? (
-                  <div className={styles.loadingSpinner}>
-                    <Loader className={styles.spinner} />
-                  </div>
-                ) : (
+          {/* Subscription Section */}
+          <div className={styles.subscriptionSection}>
+            <h3 className={styles.sectionTitle}>Subscription</h3>
+            {currentUser?.isPro ? (
+              <div className={styles.manageBillingCard}>
+                <p>
+                  <Action24 /> Plan: Geospatial Pro
+                </p>
+                <div>
+                  {isLoading ? (
+                    <div className={styles.loadingSpinner}>
+                      <Loader className={styles.spinner} />
+                    </div>
+                  ) : (
+                    <Button
+                      variant="ghost"
+                      className={styles.manageSubscription}
+                      onClick={manageSubscription}
+                    >
+                      Manage subscription
+                    </Button>
+                  )}
+                </div>
+              </div>
+            ) : (
+              <div className={styles.subscribeCard}>
+                <div className={styles.about}>
+                  <h3 className={styles.cardTitle}>
+                    Unlock Geospatial Features with 3DStreet Pro
+                  </h3>
+                  <span>
+                    Create with geospatial maps and share your vision in
+                    augmented reality with 3DStreet Pro.
+                  </span>
+                </div>
+
+                <div className={styles.controlButtons}>
                   <Button
-                    variant="ghost"
-                    className={styles.manageSubscription}
-                    onClick={manageSubscription}
+                    onClick={() => {
+                      onClose();
+                      setModal('payment');
+                    }}
+                    type="filled"
+                    target="_blank"
                   >
-                    Manage subscription
+                    Subscribe
                   </Button>
-                )}
+                </div>
               </div>
-            </div>
-          ) : (
-            <div className={styles.subscribeCard}>
-              <div className={styles.about}>
-                <h3 className={styles.cardTitle}>
-                  Unlock Geospatial Features with 3DStreet Pro
-                </h3>
-                <span>
-                  Create with geospatial maps and share your vision in augmented
-                  reality with 3DStreet Pro.
-                </span>
-              </div>
-
-              <div className={styles.controlButtons}>
-                {/* <a
-                href="http://"
-                target="_blank"
-                rel="noopener noreferrer"
-                > */}
-
-                <Button
-                  onClick={() => {
-                    onClose();
-                    setModal('payment');
-                  }}
-                  type="filled"
-                  target="_blank"
-                >
-                  Subscribe
-                </Button>
-              </div>
-            </div>
-          )}
+            )}
+          </div>
         </div>
       </div>
     </Modal>
