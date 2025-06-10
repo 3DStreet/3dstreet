@@ -29,6 +29,7 @@ import ViewerSidebar from './ViewerSidebar';
 import IntersectionSidebar from './IntersectionSidebar';
 import StreetSegmentSidebar from './StreetSegmentSidebar';
 import ManagedStreetSidebar from './ManagedStreetSidebar';
+import MeasureLineSidebar from './MeasureLineSidebar';
 import AdvancedComponents from './AdvancedComponents';
 export default class Sidebar extends React.Component {
   static propTypes = {
@@ -233,7 +234,17 @@ export default class Sidebar extends React.Component {
                     {entity.getAttribute('managed-street') && (
                       <ManagedStreetSidebar entity={entity} />
                     )}
-                    <ComponentsContainer entity={entity} />
+                    {entity.getAttribute('measure-line') && (
+                      <>
+                        <MeasureLineSidebar entity={entity} />
+                        <div className="propertyRow">
+                          <AdvancedComponents entity={entity} />
+                        </div>
+                      </>
+                    )}
+                    {!entity.getAttribute('measure-line') && (
+                      <ComponentsContainer entity={entity} />
+                    )}
                   </>
                 ) : (
                   <>
