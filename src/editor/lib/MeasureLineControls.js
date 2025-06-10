@@ -18,7 +18,8 @@ class MeasureLineControls extends THREE.Object3D {
     this.active = true;
     this.handleRadius = 0.5;
     this.hoveredColor = '#FFFF00'; // Solid yellow for hover
-    this.defaultColor = '#8844AA'; // Purple for default
+    this.startColor = '#00FF00'; // Green for start
+    this.endColor = '#FF0000'; // Red for end
     this.axis = null; // 'start' or 'end'
 
     // Initialize vectors for position tracking
@@ -76,9 +77,16 @@ class MeasureLineControls extends THREE.Object3D {
     // Create handle geometry (sphere)
     const geometry = new THREE.SphereGeometry(this.handleRadius, 16, 16);
 
-    // Create materials for both states
-    this.defaultMaterial = new THREE.MeshBasicMaterial({
-      color: this.defaultColor,
+    // Create materials for different states
+    this.startMaterial = new THREE.MeshBasicMaterial({
+      color: this.startColor,
+      transparent: true,
+      opacity: 0.5,
+      depthTest: false
+    });
+
+    this.endMaterial = new THREE.MeshBasicMaterial({
+      color: this.endColor,
       transparent: true,
       opacity: 0.5,
       depthTest: false
@@ -93,14 +101,14 @@ class MeasureLineControls extends THREE.Object3D {
     // Create handles container
     this.handles = {};
 
-    // Create start handle
-    this.handles.start = new THREE.Mesh(geometry, this.defaultMaterial);
+    // Create start handle (green)
+    this.handles.start = new THREE.Mesh(geometry, this.startMaterial);
     this.handles.start.name = 'start';
     this.handles.start.renderOrder = 100; // Ensure visibility
     this.handleGroup.add(this.handles.start);
 
-    // Create end handle
-    this.handles.end = new THREE.Mesh(geometry, this.defaultMaterial);
+    // Create end handle (red)
+    this.handles.end = new THREE.Mesh(geometry, this.endMaterial);
     this.handles.end.name = 'end';
     this.handles.end.renderOrder = 100; // Ensure visibility
     this.handleGroup.add(this.handles.end);
@@ -203,9 +211,9 @@ class MeasureLineControls extends THREE.Object3D {
 
       // Update handle materials
       this.handles.start.material =
-        this.axis === 'start' ? this.hoveredMaterial : this.defaultMaterial;
+        this.axis === 'start' ? this.hoveredMaterial : this.startMaterial;
       this.handles.end.material =
-        this.axis === 'end' ? this.hoveredMaterial : this.defaultMaterial;
+        this.axis === 'end' ? this.hoveredMaterial : this.endMaterial;
 
       // Emit change event
       this.dispatchEvent(this.changeEvent);
@@ -215,10 +223,9 @@ class MeasureLineControls extends THREE.Object3D {
   }
 
   highlight(axis) {
-    // Reset all handles to default material
-    Object.values(this.handles).forEach((handle) => {
-      handle.material = this.defaultMaterial;
-    });
+    // Reset all handles to their default colors
+    this.handles.start.material = this.startMaterial;
+    this.handles.end.material = this.endMaterial;
 
     // Highlight the specified handle
     if (axis && this.handles[axis]) {

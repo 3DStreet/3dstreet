@@ -137,6 +137,23 @@ const ViewerSidebar = ({ entity }) => {
   // Check if AR-WebXR mode is selected
   const isArWebXRMode = component?.data?.preset === 'ar-webxr';
 
+  // Helper function to get all measure line entities in the scene
+  const getMeasureLineEntities = () => {
+    const entities = Array.from(document.querySelectorAll('[measure-line]'));
+    return entities.map((entity) => ({
+      id: entity.id || `measure-line-${entities.indexOf(entity)}`,
+      name:
+        entity.getAttribute('data-layer-name') ||
+        entity.id ||
+        `Measure Line ${entities.indexOf(entity) + 1}`
+    }));
+  };
+
+  // Check if measure-line camera path is selected
+  const isMeasureLinePath =
+    component?.data?.preset === 'camera-path' &&
+    component?.data?.cameraPath === 'measure-line';
+
   return (
     <div className="viewer-sidebar">
       <div className="viewer-controls">
@@ -164,6 +181,15 @@ const ViewerSidebar = ({ entity }) => {
                   componentname={componentName}
                   isSingle={false}
                   entity={entity}
+                />
+              )}
+              {/* Show measure line selector when measure-line camera path is selected */}
+              {isMeasureLinePath && (
+                <MeasureLineSelector
+                  entity={entity}
+                  componentName={componentName}
+                  measureLineEntities={getMeasureLineEntities()}
+                  currentValue={component.data.measureLineEntity}
                 />
               )}
               {/* Show webXRVariant option when ar-webxr is selected */}
@@ -352,6 +378,69 @@ const URLValueWithCopy = ({ url }) => {
     >
       {url}
       <CopyButton textContent={url} copied={copied} onClick={handleCopy} />
+    </div>
+  );
+};
+
+// Component for selecting measure line entities
+const MeasureLineSelector = ({
+  entity,
+  componentName,
+  measureLineEntities,
+  currentValue
+}) => {
+  const handleMeasureLineChange = (event) => {
+    const value = event.target.value;
+    if (entity.setAttribute) {
+      entity.setAttribute(componentName, { measureLineEntity: value });
+    }
+  };
+
+  const handleCreateMeasureLine = () => {
+    // Switch to ruler tool to create a new measure line
+    if (window.AFRAME && window.AFRAME.INSPECTOR) {
+      // Get the action bar component and trigger ruler tool
+      const actionBarElement = document.querySelector('[action-bar]');
+      if (actionBarElement) {
+        // This would need to be implemented - switching to ruler mode
+        console.log('Switch to ruler tool to create measure line');
+      }
+    }
+  };
+
+  return (
+    <div className="propertyRow">
+      <div className="fakePropertyRowLabel">Camera Path Line</div>
+      <div className="fakePropertyRowValue">
+        {measureLineEntities.length > 0 ? (
+          <select
+            value={currentValue || ''}
+            onChange={handleMeasureLineChange}
+            className="input-style"
+            style={{ width: '100%' }}
+          >
+            <option value="">Select a measure line...</option>
+            {measureLineEntities.map((entity) => (
+              <option key={entity.id} value={entity.id}>
+                {entity.name}
+              </option>
+            ))}
+          </select>
+        ) : (
+          <div className="text-center">
+            <div className="mb-2 text-sm text-gray-600">
+              No measure lines found in scene
+            </div>
+            <Button
+              variant="toolbtn"
+              onClick={handleCreateMeasureLine}
+              className="w-full"
+            >
+              Create Measure Line
+            </Button>
+          </div>
+        )}
+      </div>
     </div>
   );
 };
