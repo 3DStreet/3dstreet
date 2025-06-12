@@ -1,11 +1,31 @@
 import PropTypes from 'prop-types';
+import { useState, useEffect } from 'react';
 import PropertyRow from './PropertyRow';
 import useStore from '@/store';
+import Events from '../../lib/Events';
 
 const MeasureLineSidebar = ({ entity }) => {
+  const [, setUpdateTrigger] = useState(0);
   const componentName = 'measure-line';
   const component = entity?.components?.[componentName];
   const { unitsPreference } = useStore();
+
+  useEffect(() => {
+    const onEntityUpdate = (detail) => {
+      if (detail.entity !== entity) {
+        return;
+      }
+      if (detail.component === 'measure-line') {
+        setUpdateTrigger((prev) => prev + 1);
+      }
+    };
+
+    Events.on('entityupdate', onEntityUpdate);
+
+    return () => {
+      Events.off('entityupdate', onEntityUpdate);
+    };
+  }, [entity]);
 
   // Helper function to calculate and display the distance
   const calculateDistance = (start, end) => {
