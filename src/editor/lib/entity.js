@@ -10,7 +10,8 @@ import {
   SunIcon,
   VideoCameraIcon,
   LayersIcon,
-  Object24IconCyan
+  Object24IconCyan,
+  Ruler24Icon
 } from '../icons';
 
 /**
@@ -596,6 +597,13 @@ export function getEntityIcon(entity) {
   }
   if (entity.getAttribute('street-segment')) {
     return <SegmentIcon />;
+  }
+  if (entity.getAttribute('measure-line')) {
+    return (
+      <div style={{ color: '#00FFFF' }}>
+        <Ruler24Icon />
+      </div>
+    );
   }
 
   // Check for class-based icons

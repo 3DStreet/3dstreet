@@ -61,6 +61,9 @@ AFRAME.registerComponent('measure-line', {
     // Apply rotation
     this.mesh.setRotationFromQuaternion(this.tmpQuaternion);
 
+    // Create or update endpoint spheres
+    this.createOrUpdateEndpoints(start, end);
+
     // Update label position and content
     this.labelObject.position.copy(this.mesh.position);
     if (this.units === 'metric') {
@@ -69,6 +72,40 @@ AFRAME.registerComponent('measure-line', {
       const feet = length * 3.28084;
       this.labelDiv.textContent = `${feet.toFixed(2)}ft`;
     }
+  },
+  createOrUpdateEndpoints: function (start, end) {
+    // Create endpoint sphere geometry
+    const sphereGeometry = new THREE.SphereGeometry(
+      this.endpointRadius,
+      16,
+      16
+    );
+
+    // Create or update start endpoint (green)
+    if (!this.startEndpoint) {
+      const startMaterial = new THREE.MeshBasicMaterial({
+        color: this.startColor,
+        transparent: true,
+        opacity: 0.8,
+        depthTest: false
+      });
+      this.startEndpoint = new THREE.Mesh(sphereGeometry, startMaterial);
+      this.el.setObject3D('startEndpoint', this.startEndpoint);
+    }
+    this.startEndpoint.position.set(start.x, start.y, start.z);
+
+    // Create or update end endpoint (red)
+    if (!this.endEndpoint) {
+      const endMaterial = new THREE.MeshBasicMaterial({
+        color: this.endColor,
+        transparent: true,
+        opacity: 0.8,
+        depthTest: false
+      });
+      this.endEndpoint = new THREE.Mesh(sphereGeometry, endMaterial);
+      this.el.setObject3D('endEndpoint', this.endEndpoint);
+    }
+    this.endEndpoint.position.set(end.x, end.y, end.z);
   },
   calculateLength: function () {
     const start = this.data.start;
@@ -98,6 +135,11 @@ AFRAME.registerComponent('measure-line', {
     this.radius = 0.05;
     this.color = 0xffff00;
 
+    // initialize endpoint sphere geometry
+    this.endpointRadius = 0.15;
+    this.startColor = 0x00ff00; // Green for start
+    this.endColor = 0xff0000; // Red for end
+
     // Create label div
     const labelDiv = document.createElement('div');
     labelDiv.className = 'label';
@@ -117,8 +159,23 @@ AFRAME.registerComponent('measure-line', {
   },
   remove: function () {
     // remove the helper cylinder
-    this.mesh.material.dispose();
-    this.mesh.geometry.dispose();
-    this.labelDiv.remove();
+    if (this.mesh) {
+      this.mesh.material.dispose();
+      this.mesh.geometry.dispose();
+    }
+
+    // remove the endpoint spheres
+    if (this.startEndpoint) {
+      this.startEndpoint.material.dispose();
+      this.startEndpoint.geometry.dispose();
+    }
+    if (this.endEndpoint) {
+      this.endEndpoint.material.dispose();
+      this.endEndpoint.geometry.dispose();
+    }
+
+    if (this.labelDiv) {
+      this.labelDiv.remove();
+    }
   }
 });

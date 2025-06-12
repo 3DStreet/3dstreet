@@ -19,8 +19,13 @@ AFRAME.registerComponent('viewer-mode', {
     cameraPath: {
       type: 'string',
       default: 'circle',
-      oneOf: ['circle', 'forward', 'strafe'],
+      oneOf: ['circle', 'forward', 'strafe', 'custom'],
       if: { preset: 'camera-path' }
+    },
+    customPathEntity: {
+      type: 'string',
+      default: '',
+      if: { preset: 'camera-path', cameraPath: 'custom' }
     },
     cameraStartPosition: {
       type: 'vec3',
@@ -217,6 +222,9 @@ AFRAME.registerComponent('viewer-mode', {
       case 'strafe':
         this.updateStrafePath(timeSeconds);
         break;
+      case 'custom':
+        this.updateMeasureLinePath(timeSeconds);
+        break;
       default:
         this.updateCirclePath(timeSeconds);
     }
@@ -286,6 +294,9 @@ AFRAME.registerComponent('viewer-mode', {
       case 'strafe':
         this.updateStrafePath(timeSeconds);
         break;
+      case 'custom':
+        this.updateMeasureLinePath(timeSeconds);
+        break;
       default:
         this.updateCirclePath(timeSeconds);
     }
@@ -352,6 +363,68 @@ AFRAME.registerComponent('viewer-mode', {
       x,
       y,
       z - 10 // Look ahead along the street
+    );
+
+    this.lookAtPoint(lookTarget);
+  },
+
+  // Measure line path - move along the line defined by a measure-line component
+  updateMeasureLinePath: function (timeSeconds) {
+    // Get the measure line entity
+    const customPathEntityId = this.data.customPathEntity;
+    if (!customPathEntityId) {
+      console.warn('No custom path entity specified for camera path');
+      return;
+    }
+
+    const customPathEntity = document.getElementById(customPathEntityId);
+    if (!customPathEntity || !customPathEntity.components['measure-line']) {
+      console.warn(
+        `Custom path entity '${customPathEntityId}' not found or missing measure-line component`
+      );
+      return;
+    }
+
+    const measureLineComponent = customPathEntity.components['measure-line'];
+    const start = measureLineComponent.data.start;
+    const end = measureLineComponent.data.end;
+
+    // Calculate total distance for the path
+    const totalDistance = Math.sqrt(
+      Math.pow(end.x - start.x, 2) +
+        Math.pow(end.y - start.y, 2) +
+        Math.pow(end.z - start.z, 2)
+    );
+
+    if (totalDistance === 0) {
+      console.warn('Measure line has zero length, cannot create camera path');
+      return;
+    }
+
+    // Calculate progress along the line (0 to 1) with looping
+    const pathSpeed = this.forwardSpeed || 1.0; // Use existing forward speed
+    const totalTime = totalDistance / pathSpeed;
+    const progress = (timeSeconds % totalTime) / totalTime;
+
+    // Interpolate position along the line
+    const x = start.x + (end.x - start.x) * progress;
+    const y = start.y + (end.y - start.y) * progress + this.pathHeight;
+    const z = start.z + (end.z - start.z) * progress;
+
+    // Set camera position
+    this.cameraRig.object3D.position.set(x, y, z);
+
+    // Look along the direction of the line
+    const direction = new THREE.Vector3(
+      end.x - start.x,
+      end.y - start.y,
+      end.z - start.z
+    ).normalize();
+
+    const lookTarget = new THREE.Vector3(
+      x + direction.x * 10,
+      y + direction.y * 10,
+      z + direction.z * 10
     );
 
     this.lookAtPoint(lookTarget);
