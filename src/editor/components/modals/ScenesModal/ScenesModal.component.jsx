@@ -10,7 +10,6 @@ import { signIn } from '../../../api';
 import posthog from 'posthog-js';
 import useStore from '../../../../store.js';
 import { fileJSON } from '@/editor/lib/SceneUtils';
-import { searchUsersByUsername } from '../../../utils/username';
 
 const SCENES_PER_PAGE = 20;
 const tabs = [
@@ -29,7 +28,6 @@ const ScenesModal = ({ initialTab = 'owner', delay = undefined }) => {
   const [renderComponent, setRenderComponent] = useState(!delay);
   const [scenesData, setScenesData] = useState([]);
   const [scenesDataCommunity, setScenesDataCommunity] = useState([]);
-  const [filteredCommunityScenes, setFilteredCommunityScenes] = useState([]);
   const [totalDisplayedUserScenes, setTotalDisplayedUserScenes] =
     useState(SCENES_PER_PAGE);
   const [totalDisplayedCommunityScenes, setTotalDisplayedCommunityScenes] =
@@ -37,11 +35,6 @@ const ScenesModal = ({ initialTab = 'owner', delay = undefined }) => {
   const [isLoadingScenes, setIsLoadingScenes] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [selectedTab, setSelectedTab] = useState(initialTab);
-  const [usernameSearch, setUsernameSearch] = useState('');
-  const [isSearching, setIsSearching] = useState(false);
-  const [searchResults, setSearchResults] = useState([]);
-  const [selectedUserId, setSelectedUserId] = useState(null);
-  const [showSearchResults, setShowSearchResults] = useState(false);
 
   const setModal = useStore((state) => state.setModal);
   const isOpen = useStore((state) => state.modal === 'scenes');
@@ -125,28 +118,10 @@ const ScenesModal = ({ initialTab = 'owner', delay = undefined }) => {
     if (!isOpen) {
       setScenesData([]);
       setScenesDataCommunity([]);
-      setFilteredCommunityScenes([]);
       setTotalDisplayedUserScenes(SCENES_PER_PAGE);
       setTotalDisplayedCommunityScenes(SCENES_PER_PAGE);
-      setUsernameSearch('');
-      setSelectedUserId(null);
     }
   }, [isOpen]);
-
-  // Handle clicks on the document
-  useEffect(() => {
-    const handleDocumentClick = (event) => {
-      // Close search results dropdown when clicking outside search area
-      if (!event.target.closest('[data-search-component]')) {
-        setShowSearchResults(false);
-      }
-    };
-
-    document.addEventListener('mousedown', handleDocumentClick);
-    return () => {
-      document.removeEventListener('mousedown', handleDocumentClick);
-    };
-  }, []);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -166,7 +141,6 @@ const ScenesModal = ({ initialTab = 'owner', delay = undefined }) => {
           if (selectedTab === 'community' && !scenesDataCommunity.length) {
             collections = await getCommunityScenes(true);
             setScenesDataCommunity(collections);
-            setFilteredCommunityScenes(collections);
           }
         } catch (error) {
           AFRAME.scenes[0].components['notify'].message(
@@ -210,112 +184,10 @@ const ScenesModal = ({ initialTab = 'owner', delay = undefined }) => {
       const communityScenes = await fetchCommunityScenes();
 
       setScenesDataCommunity([...scenesDataCommunity, ...communityScenes]);
-      // Only update filtered scenes if no user filter is active
-      if (!selectedUserId) {
-        setFilteredCommunityScenes([
-          ...filteredCommunityScenes,
-          ...communityScenes
-        ]);
-      } else {
-        // Filter the new scenes by the selected user ID
-        const newFiltered = communityScenes.filter(
-          (scene) => scene.data().author === selectedUserId
-        );
-        setFilteredCommunityScenes([
-          ...filteredCommunityScenes,
-          ...newFiltered
-        ]);
-      }
       setTotalDisplayedCommunityScenes(end);
     }
 
     setIsLoading(false);
-  };
-
-  // Handle username search
-  const handleUsernameSearch = async (e) => {
-    const value = e.target.value;
-    // Remove any @ symbol that might be accidentally typed by the user
-    const cleanValue = value.replace('@', '');
-    setUsernameSearch(cleanValue);
-
-    // If user is editing and we had a filter applied, check if we should clear it
-    if (
-      selectedUserId &&
-      cleanValue !==
-        searchResults.find((r) => r.userId === selectedUserId)?.username
-    ) {
-      // The user has edited away from the selected username, clear the filter
-      setSelectedUserId(null);
-      setFilteredCommunityScenes(scenesDataCommunity);
-    }
-
-    if (cleanValue.length >= 2) {
-      setIsSearching(true);
-      setShowSearchResults(true);
-      try {
-        const results = await searchUsersByUsername(cleanValue);
-        setSearchResults(results);
-      } catch (error) {
-        console.error('Error searching for usernames:', error);
-        setSearchResults([]);
-      } finally {
-        setIsSearching(false);
-      }
-    } else {
-      setSearchResults([]);
-      setShowSearchResults(false);
-    }
-  };
-
-  // Apply user filter to scenes
-  const filterScenesByUser = (userId, username) => {
-    setSelectedUserId(userId);
-    setUsernameSearch(username); // Store just the username without @
-    setShowSearchResults(false);
-
-    if (!userId) {
-      // Clear filter - show all community scenes
-      setFilteredCommunityScenes(scenesDataCommunity);
-    } else {
-      // Filter scenes by selected user ID
-      const filtered = scenesDataCommunity.filter(
-        (scene) => scene.data().author === userId
-      );
-      setFilteredCommunityScenes(filtered);
-    }
-  };
-
-  // Clear search
-  const clearSearch = () => {
-    setUsernameSearch('');
-    setSelectedUserId(null);
-    setSearchResults([]);
-    setShowSearchResults(false);
-    setFilteredCommunityScenes(scenesDataCommunity);
-  };
-
-  // Handle input focus - show search results if we have any
-  const handleInputFocus = () => {
-    if (usernameSearch.length >= 2) {
-      setShowSearchResults(true);
-    }
-  };
-
-  // Handle keyboard events for username search
-  const handleUsernameKeyDown = (e) => {
-    // Enter pressed - commit the current search term
-    if (e.key === 'Enter') {
-      e.preventDefault();
-
-      // If we have search results, select the first match
-      if (searchResults.length > 0) {
-        const firstMatch = searchResults[0];
-        filterScenesByUser(firstMatch.userId, firstMatch.username);
-      }
-      // Close the dropdown even if there are no matches
-      setShowSearchResults(false);
-    }
   };
 
   const loadMoreScenes = () => {
@@ -386,66 +258,16 @@ const ScenesModal = ({ initialTab = 'owner', delay = undefined }) => {
             </div>
           </div>
           <div className={styles.header}>
-            <div className={styles.leftSection}>
-              <Tabs
-                tabs={tabs.map((tab) => {
-                  return {
-                    ...tab,
-                    isSelected: selectedTab === tab.value,
-                    onClick: () => setSelectedTab(tab.value)
-                  };
-                })}
-                className={styles.tabs}
-              />
-              {selectedTab === 'community' && (
-                <div className={styles.searchContainer} data-search-component>
-                  <div className={styles.searchInputWrapper}>
-                    <span className={styles.atSymbol}>@</span>
-                    <input
-                      type="text"
-                      className={styles.searchInput}
-                      placeholder="Search by username"
-                      value={usernameSearch}
-                      onChange={handleUsernameSearch}
-                      onFocus={handleInputFocus}
-                      onKeyDown={handleUsernameKeyDown}
-                    />
-                    {usernameSearch && (
-                      <button
-                        className={styles.clearButton}
-                        onClick={clearSearch}
-                        aria-label="Clear search"
-                      >
-                        &times;
-                      </button>
-                    )}
-                  </div>
-                  {showSearchResults && (
-                    <div className={styles.searchResults} data-search-component>
-                      {isSearching ? (
-                        <div className={styles.searchingMessage}>
-                          Searching...
-                        </div>
-                      ) : searchResults.length > 0 ? (
-                        searchResults.map((result) => (
-                          <div
-                            key={result.userId}
-                            className={styles.searchResultItem}
-                            onClick={() =>
-                              filterScenesByUser(result.userId, result.username)
-                            }
-                          >
-                            {result.username}
-                          </div>
-                        ))
-                      ) : usernameSearch.length >= 2 ? (
-                        <div className={styles.noResults}>No users found</div>
-                      ) : null}
-                    </div>
-                  )}
-                </div>
-              )}
-            </div>
+            <Tabs
+              tabs={tabs.map((tab) => {
+                return {
+                  ...tab,
+                  isSelected: selectedTab === tab.value,
+                  onClick: () => setSelectedTab(tab.value)
+                };
+              })}
+              className={styles.tabs}
+            />
           </div>
         </>
       }
@@ -458,7 +280,7 @@ const ScenesModal = ({ initialTab = 'owner', delay = undefined }) => {
         ) : currentUser || selectedTab !== 'owner' ? (
           <SceneCard
             scenesData={
-              selectedTab === 'owner' ? scenesData : filteredCommunityScenes
+              selectedTab === 'owner' ? scenesData : scenesDataCommunity
             }
             setScenesData={setScenesData}
             isCommunityTabSelected={selectedTab === 'community'}
