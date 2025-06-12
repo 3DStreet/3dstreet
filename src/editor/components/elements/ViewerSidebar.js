@@ -423,9 +423,9 @@ const MeasureLineSelector = ({
             value={currentValue || ''}
             onChange={handleMeasureLineChange}
             className="input-style"
-            style={{ width: '100%' }}
+            style={{ width: '100%', color: currentValue ? 'white' : 'inherit' }}
           >
-            <option value="">Select a measure line...</option>
+            <option value="">Select a path source...</option>
             {measureLineEntities.map((entity) => (
               <option key={entity.id} value={entity.id}>
                 {entity.name}
