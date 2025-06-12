@@ -391,8 +391,14 @@ const MeasureLineSelector = ({
 }) => {
   const handleMeasureLineChange = (event) => {
     const value = event.target.value;
-    if (entity.setAttribute) {
-      entity.setAttribute(componentName, { customPathEntity: value });
+    // Use AFRAME inspector to properly update the entity and trigger re-renders
+    if (window.AFRAME && window.AFRAME.INSPECTOR) {
+      AFRAME.INSPECTOR.execute('entityupdate', {
+        entity: entity,
+        component: componentName,
+        property: 'customPathEntity',
+        value: value
+      });
     }
   };
 
