@@ -19,13 +19,13 @@ AFRAME.registerComponent('viewer-mode', {
     cameraPath: {
       type: 'string',
       default: 'circle',
-      oneOf: ['circle', 'forward', 'strafe', 'measure-line'],
+      oneOf: ['circle', 'forward', 'strafe', 'custom'],
       if: { preset: 'camera-path' }
     },
-    measureLineEntity: {
+    customPathEntity: {
       type: 'string',
       default: '',
-      if: { preset: 'camera-path', cameraPath: 'measure-line' }
+      if: { preset: 'camera-path', cameraPath: 'custom' }
     },
     cameraStartPosition: {
       type: 'vec3',
@@ -222,7 +222,7 @@ AFRAME.registerComponent('viewer-mode', {
       case 'strafe':
         this.updateStrafePath(timeSeconds);
         break;
-      case 'measure-line':
+      case 'custom':
         this.updateMeasureLinePath(timeSeconds);
         break;
       default:
@@ -294,7 +294,7 @@ AFRAME.registerComponent('viewer-mode', {
       case 'strafe':
         this.updateStrafePath(timeSeconds);
         break;
-      case 'measure-line':
+      case 'custom':
         this.updateMeasureLinePath(timeSeconds);
         break;
       default:
@@ -371,21 +371,21 @@ AFRAME.registerComponent('viewer-mode', {
   // Measure line path - move along the line defined by a measure-line component
   updateMeasureLinePath: function (timeSeconds) {
     // Get the measure line entity
-    const measureLineEntityId = this.data.measureLineEntity;
-    if (!measureLineEntityId) {
-      console.warn('No measure line entity specified for camera path');
+    const customPathEntityId = this.data.customPathEntity;
+    if (!customPathEntityId) {
+      console.warn('No custom path entity specified for camera path');
       return;
     }
 
-    const measureLineEntity = document.getElementById(measureLineEntityId);
-    if (!measureLineEntity || !measureLineEntity.components['measure-line']) {
+    const customPathEntity = document.getElementById(customPathEntityId);
+    if (!customPathEntity || !customPathEntity.components['measure-line']) {
       console.warn(
-        `Measure line entity '${measureLineEntityId}' not found or missing measure-line component`
+        `Custom path entity '${customPathEntityId}' not found or missing measure-line component`
       );
       return;
     }
 
-    const measureLineComponent = measureLineEntity.components['measure-line'];
+    const measureLineComponent = customPathEntity.components['measure-line'];
     const start = measureLineComponent.data.start;
     const end = measureLineComponent.data.end;
 

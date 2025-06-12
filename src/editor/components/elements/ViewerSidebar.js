@@ -149,10 +149,10 @@ const ViewerSidebar = ({ entity }) => {
     }));
   };
 
-  // Check if measure-line camera path is selected
-  const isMeasureLinePath =
+  // Check if custom camera path is selected
+  const isCustomPath =
     component?.data?.preset === 'camera-path' &&
-    component?.data?.cameraPath === 'measure-line';
+    component?.data?.cameraPath === 'custom';
 
   return (
     <div className="viewer-sidebar">
@@ -183,13 +183,13 @@ const ViewerSidebar = ({ entity }) => {
                   entity={entity}
                 />
               )}
-              {/* Show measure line selector when measure-line camera path is selected */}
-              {isMeasureLinePath && (
+              {/* Show measure line selector when custom camera path is selected */}
+              {isCustomPath && (
                 <MeasureLineSelector
                   entity={entity}
                   componentName={componentName}
                   measureLineEntities={getMeasureLineEntities()}
-                  currentValue={component.data.measureLineEntity}
+                  currentValue={component.data.customPathEntity}
                 />
               )}
               {/* Show webXRVariant option when ar-webxr is selected */}
@@ -392,7 +392,7 @@ const MeasureLineSelector = ({
   const handleMeasureLineChange = (event) => {
     const value = event.target.value;
     if (entity.setAttribute) {
-      entity.setAttribute(componentName, { measureLineEntity: value });
+      entity.setAttribute(componentName, { customPathEntity: value });
     }
   };
 
