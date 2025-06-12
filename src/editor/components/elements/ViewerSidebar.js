@@ -402,18 +402,6 @@ const MeasureLineSelector = ({
     }
   };
 
-  const handleCreateMeasureLine = () => {
-    // Switch to ruler tool to create a new measure line
-    if (window.AFRAME && window.AFRAME.INSPECTOR) {
-      // Get the action bar component and trigger ruler tool
-      const actionBarElement = document.querySelector('[action-bar]');
-      if (actionBarElement) {
-        // This would need to be implemented - switching to ruler mode
-        console.log('Switch to ruler tool to create measure line');
-      }
-    }
-  };
-
   return (
     <div className="propertyRow">
       <div className="fakePropertyRowLabel">Camera Path Line</div>
@@ -433,17 +421,8 @@ const MeasureLineSelector = ({
             ))}
           </select>
         ) : (
-          <div className="text-center">
-            <div className="mb-2 text-sm text-gray-600">
-              No measure lines found in scene
-            </div>
-            <Button
-              variant="toolbtn"
-              onClick={handleCreateMeasureLine}
-              className="w-full"
-            >
-              Create Measure Line
-            </Button>
+          <div className="text-center text-sm">
+            No custom paths found in scene. Use the ruler tool to create one.
           </div>
         )}
       </div>
