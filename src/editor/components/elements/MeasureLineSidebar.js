@@ -71,9 +71,11 @@ const MeasureLineSidebar = ({ entity }) => {
 
               {/* Additional info section */}
               <div className="propertyRow">
-                <div className="rounded bg-blue-50 p-2 text-sm text-gray-600">
-                  <div className="mb-1 font-semibold">💡 Tips:</div>
-                  <ul className="space-y-1 text-xs">
+                <div className="rounded bg-blue-50 p-2 text-gray-600">
+                  <div className="mb-1 font-semibold uppercase">
+                    💡 Measure Line Tips
+                  </div>
+                  <ul className="space-y-1">
                     <li>• Green sphere marks the start point</li>
                     <li>• Red sphere marks the end point</li>
                     <li>• Use this line as a camera path in Viewer Mode</li>

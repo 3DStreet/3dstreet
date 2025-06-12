@@ -425,52 +425,49 @@ const MeasureLineSelector = ({
     }
   };
 
-  const handleCreateMeasureLine = () => {
-    // Switch to ruler tool to create a new measure line
-    if (window.AFRAME && window.AFRAME.INSPECTOR) {
-      // Get the action bar component and trigger ruler tool
-      const actionBarElement = document.querySelector('[action-bar]');
-      if (actionBarElement) {
-        // This would need to be implemented - switching to ruler mode
-        console.log('Switch to ruler tool to create measure line');
-      }
-    }
-  };
-
   return (
-    <div className="propertyRow">
-      <div className="fakePropertyRowLabel">Camera Path Line</div>
-      <div className="fakePropertyRowValue">
-        {measureLineEntities.length > 0 ? (
-          <select
-            value={currentValue || ''}
-            onChange={handleMeasureLineChange}
-            className="input-style"
-            style={{ width: '100%', color: currentValue ? 'white' : 'inherit' }}
-          >
-            <option value="">Select a path source...</option>
-            {measureLineEntities.map((entity) => (
-              <option key={entity.id} value={entity.id}>
-                {entity.name}
-              </option>
-            ))}
-          </select>
-        ) : (
-          <div className="text-center">
-            <div className="mb-2 text-sm text-gray-600">
-              No measure lines found in scene
-            </div>
-            <Button
-              variant="toolbtn"
-              onClick={handleCreateMeasureLine}
-              className="w-full"
+    <>
+      <div className="propertyRow">
+        <div className="fakePropertyRowLabel">Custom Path Line</div>
+        <div className="fakePropertyRowValue">
+          {measureLineEntities.length > 0 ? (
+            <select
+              value={currentValue || ''}
+              onChange={handleMeasureLineChange}
+              className="input-style"
+              style={{
+                width: '100%',
+                color: currentValue ? 'white' : 'inherit'
+              }}
             >
-              Create Measure Line
-            </Button>
-          </div>
-        )}
+              <option value="">Select a path source...</option>
+              {measureLineEntities.map((entity) => (
+                <option key={entity.id} value={entity.id}>
+                  {entity.name}
+                </option>
+              ))}
+            </select>
+          ) : (
+            <div className="text-center text-sm">
+              No custom paths found in scene.
+            </div>
+          )}
+        </div>
       </div>
-    </div>
+      <div className="propertyRow">
+        <div className="rounded bg-blue-50 p-2 text-gray-600">
+          <div className="mb-1 font-semibold uppercase">
+            💡 Custom Path Tips
+          </div>
+          <ul className="space-y-1">
+            <li>• Use the ruler tool to create a custom path</li>
+            <li>• Green marks the start and red the end point</li>
+            <li>• Set this new line as the custom path above</li>
+            <li>• Uncheck line in layers panel to hide in viewer</li>
+          </ul>
+        </div>
+      </div>
+    </>
   );
 };
 
