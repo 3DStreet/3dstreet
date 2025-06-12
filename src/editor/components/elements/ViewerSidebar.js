@@ -137,6 +137,20 @@ const ViewerSidebar = ({ entity }) => {
   // Check if AR-WebXR mode is selected
   const isArWebXRMode = component?.data?.preset === 'ar-webxr';
 
+  // Check if current user owns the scene
+  const getAuthorId = () => {
+    if (
+      window.STREET &&
+      window.STREET.utils &&
+      window.STREET.utils.getAuthorId
+    ) {
+      return window.STREET.utils.getAuthorId();
+    }
+    return null;
+  };
+
+  const currentUserOwnsScene = currentUser?.uid === getAuthorId();
+
   // Helper function to get all measure line entities in the scene
   const getMeasureLineEntities = () => {
     const entities = Array.from(document.querySelectorAll('[measure-line]'));
@@ -170,6 +184,13 @@ const ViewerSidebar = ({ entity }) => {
                 isSingle={false}
                 entity={entity}
               />
+              {/* Show message for non-owners when AR-WebXR mode is selected */}
+              {isArWebXRMode && !currentUserOwnsScene && (
+                <div className="mb-2 rounded bg-yellow-50 p-2 text-sm text-yellow-700">
+                  You must be the scene owner to enable and generate AR codes.
+                  Save as... your own scene to enable AR mode.
+                </div>
+              )}
               {/* Use the shouldShowProperty function to determine if cameraPath should be shown */}
               {shouldShowProperty('cameraPath', component) && (
                 <PropertyRow
@@ -192,57 +213,58 @@ const ViewerSidebar = ({ entity }) => {
                   currentValue={component.data.customPathEntity}
                 />
               )}
-              {/* Show webXRVariant option when ar-webxr is selected */}
-              {shouldShowProperty('webXRVariant', component) && (
-                <>
-                  <div className="propertyRow">
-                    <div className="fakePropertyRowLabel">Android</div>
-                    <div className="fakePropertyRowValue">
-                      <span className="checkmark-green">✓</span>
-                      <span className="ml-2">via WebXR</span>
-                    </div>
-                  </div>
-                  {currentUser?.isPro ? (
-                    <PropertyRow
-                      key="webXRVariant"
-                      name="webXRVariant"
-                      label="iOS"
-                      schema={component.schema['webXRVariant']}
-                      data={component.data['webXRVariant']}
-                      componentname={componentName}
-                      isSingle={false}
-                      entity={entity}
-                      rightElement={
-                        <>
-                          via Variant Launch{' '}
-                          <span className="pro-badge">Pro</span>
-                        </>
-                      }
-                    />
-                  ) : (
-                    <div
-                      className="propertyRow"
-                      onClick={() => useStore.getState().startCheckout(null)}
-                    >
-                      <div className="fakePropertyRowLabel">iOS</div>
+              {/* Show webXRVariant option when ar-webxr is selected and user owns scene */}
+              {shouldShowProperty('webXRVariant', component) &&
+                currentUserOwnsScene && (
+                  <>
+                    <div className="propertyRow">
+                      <div className="fakePropertyRowLabel">Android</div>
                       <div className="fakePropertyRowValue">
-                        <div className="checkboxAnim">
-                          <input
-                            type="checkbox"
-                            checked={false}
-                            value={false}
-                          />
-                          <label />
-                        </div>
-                        <span className="ml-2">
-                          via Variant Launch{' '}
-                          <span className="pro-badge">Pro</span>
-                        </span>
+                        <span className="checkmark-green">✓</span>
+                        <span className="ml-2">via WebXR</span>
                       </div>
                     </div>
-                  )}
-                </>
-              )}
+                    {currentUser?.isPro ? (
+                      <PropertyRow
+                        key="webXRVariant"
+                        name="webXRVariant"
+                        label="iOS"
+                        schema={component.schema['webXRVariant']}
+                        data={component.data['webXRVariant']}
+                        componentname={componentName}
+                        isSingle={false}
+                        entity={entity}
+                        rightElement={
+                          <>
+                            via Variant Launch{' '}
+                            <span className="pro-badge">Pro</span>
+                          </>
+                        }
+                      />
+                    ) : (
+                      <div
+                        className="propertyRow"
+                        onClick={() => useStore.getState().startCheckout(null)}
+                      >
+                        <div className="fakePropertyRowLabel">iOS</div>
+                        <div className="fakePropertyRowValue">
+                          <div className="checkboxAnim">
+                            <input
+                              type="checkbox"
+                              checked={false}
+                              value={false}
+                            />
+                            <label />
+                          </div>
+                          <span className="ml-2">
+                            via Variant Launch{' '}
+                            <span className="pro-badge">Pro</span>
+                          </span>
+                        </div>
+                      </div>
+                    )}
+                  </>
+                )}
             </>
           )}
           {!isArWebXRMode && (
@@ -305,8 +327,9 @@ const ViewerSidebar = ({ entity }) => {
             </>
           )}
 
-          {/* Display viewer URL when AR-WebXR mode is selected */}
+          {/* Display viewer URL when AR-WebXR mode is selected and user owns scene */}
           {isArWebXRMode &&
+            currentUserOwnsScene &&
             (getCurrentSceneId() ? (
               <>
                 <div className="propertyRow">
