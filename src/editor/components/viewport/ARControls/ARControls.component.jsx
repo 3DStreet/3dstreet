@@ -17,13 +17,9 @@ const ARControls = () => {
     }
   };
 
-  const handleButtonClick = () => {
-    console.log('AR Control Button clicked!', { rotationValue });
-  };
-
   return (
     <div className={styles.arControls}>
-      <div className={styles.title}>AR Controls</div>
+      {/* <div className={styles.title}>AR Controls</div> */}
 
       <div className={styles.controlGroup}>
         <label className={styles.label}>Rotation: {rotationValue}°</label>
@@ -36,10 +32,6 @@ const ARControls = () => {
           className={styles.slider}
         />
       </div>
-
-      <button onClick={handleButtonClick} className={styles.actionButton}>
-        Apply Changes
-      </button>
     </div>
   );
 };
