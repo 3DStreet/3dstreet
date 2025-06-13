@@ -66,6 +66,7 @@ exports.serveWebXRVariant = functions.https.onRequest((req, res) => {
   <!-- AR Overlay - only shown when in AR mode -->
   <div id="viewer-mode-ar-overlay">
     <button id="viewer-mode-ar-overlay-exit-button" onclick="AFRAME.scenes[0].renderer.xr.getSession().end()">Exit AR Mode</button>
+    <div id="react-ar-controls"></div>
   </div>
 
   <!-- <div class="right-fixed">
