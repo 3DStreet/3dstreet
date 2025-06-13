@@ -10,6 +10,7 @@ import {
 console.log('3d-tiles-renderer', TilesRenderer);
 const MathUtils = AFRAME.THREE.MathUtils;
 const Vector3 = AFRAME.THREE.Vector3;
+const Box3 = AFRAME.THREE.Box3;
 
 if (typeof AFRAME === 'undefined') {
   throw new Error(
@@ -87,12 +88,19 @@ AFRAME.registerComponent('google-maps-aerial', {
               relativeShape.scale
             );
 
+          // Calculate the direction to flatten on using ellipsoid
+          const direction = new Vector3();
+          const box = new Box3();
+          box.setFromObject(relativeShape);
+          box.getCenter(direction);
+          this.tiles.ellipsoid
+            .getPositionToNormal(direction, direction)
+            .multiplyScalar(-1);
+
+          console.log('flattening direction', direction);
+
           // Add the transformed plane as a flattening shape
-          this.flatteningPlugin.addShape(
-            relativeShape,
-            new Vector3(-1, 0, 0),
-            Infinity
-          );
+          this.flatteningPlugin.addShape(relativeShape, direction, Infinity);
           console.log(
             'Added flattening shape from #flattening-mesh after load-model'
           );
