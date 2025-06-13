@@ -105,8 +105,9 @@ AFRAME.registerComponent('google-maps-aerial', {
             'Added flattening shape from #flattening-mesh after load-model'
           );
 
-          // Store reference for cleanup
+          // Store references for cleanup and updates
           this.flatteningShape = relativeShape;
+          this.originalFlatteningMesh = testMesh;
         }
       }
     });
@@ -141,7 +142,27 @@ AFRAME.registerComponent('google-maps-aerial', {
       );
 
       // Update flattening shape if it exists
-      if (this.flatteningPlugin && this.flatteningShape) {
+      if (
+        this.flatteningPlugin &&
+        this.flatteningShape &&
+        this.originalFlatteningMesh
+      ) {
+        // Update world transforms
+        this.tiles.group.updateMatrixWorld();
+        this.originalFlatteningMesh.updateMatrixWorld(true);
+
+        // Re-transform the shape into the local frame of the tile set
+        this.flatteningShape.matrixWorld.copy(
+          this.originalFlatteningMesh.matrixWorld
+        );
+        this.flatteningShape.matrixWorld
+          .premultiply(this.tiles.group.matrixWorldInverse)
+          .decompose(
+            this.flatteningShape.position,
+            this.flatteningShape.quaternion,
+            this.flatteningShape.scale
+          );
+
         this.flatteningPlugin.updateShape(this.flatteningShape);
       }
 
@@ -155,6 +176,7 @@ AFRAME.registerComponent('google-maps-aerial', {
       if (this.flatteningPlugin && this.flatteningShape) {
         this.flatteningPlugin.deleteShape(this.flatteningShape);
         this.flatteningShape = null;
+        this.originalFlatteningMesh = null;
       }
 
       if (this.offsetEl) {
