@@ -3,11 +3,13 @@ import {
   TilesFadePlugin,
   TileCompressionPlugin,
   GLTFExtensionsPlugin,
-  GoogleCloudAuthPlugin
+  GoogleCloudAuthPlugin,
+  TileFlatteningPlugin
 } from '3d-tiles-renderer/plugins';
 
 console.log('3d-tiles-renderer', TilesRenderer);
 const MathUtils = AFRAME.THREE.MathUtils;
+const Vector3 = AFRAME.THREE.Vector3;
 
 if (typeof AFRAME === 'undefined') {
   throw new Error(
@@ -23,7 +25,8 @@ AFRAME.registerComponent('google-maps-aerial', {
     minDistance: { type: 'number', default: 500 },
     maxDistance: { type: 'number', default: 20000 },
     ellipsoidalHeight: { type: 'number', default: 0 },
-    copyrightEl: { type: 'selector' }
+    copyrightEl: { type: 'selector' },
+    enableFlattening: { type: 'boolean', default: true }
   },
 
   init: function () {
@@ -44,6 +47,44 @@ AFRAME.registerComponent('google-maps-aerial', {
       })
     );
 
+    // Add flattening plugin if enabled
+    if (this.data.enableFlattening) {
+      this.flatteningPlugin = new TileFlatteningPlugin();
+      this.tiles.registerPlugin(this.flatteningPlugin);
+      console.log('TileFlatteningPlugin enabled');
+      const testMeshEl = document.querySelector('#flattening-mesh');
+
+      // Create flattening shape if plane exists
+      if (testMeshEl) {
+        const testMesh = testMeshEl.object3D.children[0];
+        console.log('testMesh', testMesh);
+
+        // Ensure world transforms are up to date
+        this.tiles.group.updateMatrixWorld();
+        testMesh.updateMatrixWorld(true);
+
+        // Transform the shape into the local frame of the tile set
+        const relativeShape = testMesh.clone();
+        relativeShape.matrixWorld
+          .premultiply(this.tiles.group.matrixWorldInverse)
+          .decompose(
+            relativeShape.position,
+            relativeShape.quaternion,
+            relativeShape.scale
+          );
+
+        // Add the transformed plane as a flattening shape
+        this.flatteningPlugin.addShape(
+          relativeShape,
+          new Vector3(0, 1, 0),
+          Infinity
+        );
+        console.log('Added flattening shape from #flattening-plane');
+
+        // Store reference for cleanup
+        this.flatteningShape = relativeShape;
+      }
+    }
     // Set location
     this.tiles.setLatLonToYUp(
       this.data.latitude * MathUtils.DEG2RAD,
@@ -85,12 +126,24 @@ AFRAME.registerComponent('google-maps-aerial', {
         this.el.sceneEl.camera,
         this.renderer
       );
+
+      // Update flattening shape if it exists
+      if (this.flatteningPlugin && this.flatteningShape) {
+        this.flatteningPlugin.updateShape(this.flatteningShape);
+      }
+
       this.tiles.update();
     }
   },
 
   remove: function () {
     if (this.tiles) {
+      // Clean up flattening shape
+      if (this.flatteningPlugin && this.flatteningShape) {
+        this.flatteningPlugin.deleteShape(this.flatteningShape);
+        this.flatteningShape = null;
+      }
+
       if (this.offsetEl) {
         this.offsetEl.removeFromParent();
         this.offsetEl = null;
