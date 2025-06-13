@@ -52,38 +52,6 @@ AFRAME.registerComponent('google-maps-aerial', {
       this.flatteningPlugin = new TileFlatteningPlugin();
       this.tiles.registerPlugin(this.flatteningPlugin);
       console.log('TileFlatteningPlugin enabled');
-      const testMeshEl = document.querySelector('#flattening-mesh');
-
-      // Create flattening shape if plane exists
-      if (testMeshEl) {
-        const testMesh = testMeshEl.object3D.children[0];
-        console.log('testMesh', testMesh);
-
-        // Ensure world transforms are up to date
-        this.tiles.group.updateMatrixWorld();
-        testMesh.updateMatrixWorld(true);
-
-        // Transform the shape into the local frame of the tile set
-        const relativeShape = testMesh.clone();
-        relativeShape.matrixWorld
-          .premultiply(this.tiles.group.matrixWorldInverse)
-          .decompose(
-            relativeShape.position,
-            relativeShape.quaternion,
-            relativeShape.scale
-          );
-
-        // Add the transformed plane as a flattening shape
-        this.flatteningPlugin.addShape(
-          relativeShape,
-          new Vector3(0, 1, 0),
-          Infinity
-        );
-        console.log('Added flattening shape from #flattening-plane');
-
-        // Store reference for cleanup
-        this.flatteningShape = relativeShape;
-      }
     }
     // Set location
     this.tiles.setLatLonToYUp(
@@ -95,6 +63,43 @@ AFRAME.registerComponent('google-maps-aerial', {
       if (this.data.copyrightEl) {
         this.data.copyrightEl.innerHTML =
           this.tiles.getAttributions()[0]?.value || '';
+      }
+
+      // Add flattening shape after tiles are loaded
+      if (this.data.enableFlattening && this.flatteningPlugin) {
+        const testMeshEl = document.querySelector('#flattening-mesh');
+
+        if (testMeshEl && !this.flatteningShape) {
+          const testMesh = testMeshEl.object3D.children[0];
+          console.log('testMesh', testMesh);
+
+          // Ensure world transforms are up to date
+          this.tiles.group.updateMatrixWorld();
+          testMesh.updateMatrixWorld(true);
+
+          // Transform the shape into the local frame of the tile set
+          const relativeShape = testMesh.clone();
+          relativeShape.matrixWorld
+            .premultiply(this.tiles.group.matrixWorldInverse)
+            .decompose(
+              relativeShape.position,
+              relativeShape.quaternion,
+              relativeShape.scale
+            );
+
+          // Add the transformed plane as a flattening shape
+          this.flatteningPlugin.addShape(
+            relativeShape,
+            new Vector3(-1, 0, 0),
+            Infinity
+          );
+          console.log(
+            'Added flattening shape from #flattening-mesh after load-model'
+          );
+
+          // Store reference for cleanup
+          this.flatteningShape = relativeShape;
+        }
       }
     });
 
