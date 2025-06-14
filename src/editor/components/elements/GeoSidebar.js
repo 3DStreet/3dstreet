@@ -62,7 +62,7 @@ const GeoSidebar = ({ entity }) => {
                   <div className="static">
                     <div className="componentHeader collapsible-header">
                       <span className="componentTitle" title="Surface">
-                        <span>Blending & Clipping</span>
+                        <span>Blending & Flattening</span>
                       </span>
                     </div>
                   </div>
@@ -91,15 +91,27 @@ const GeoSidebar = ({ entity }) => {
                         />
                       )}
                       <PropertyRow
-                        key="enableClipping"
-                        name="enableClipping"
-                        label="Street Clipping"
-                        schema={component.schema['enableClipping']}
-                        data={component.data['enableClipping']}
+                        key="enableFlattening"
+                        name="enableFlattening"
+                        label="Terrain Flattening"
+                        schema={component.schema['enableFlattening']}
+                        data={component.data['enableFlattening']}
                         componentname="street-geo"
                         isSingle={false}
                         entity={entity}
                       />
+                      {component.data['enableFlattening'] && (
+                        <PropertyRow
+                          key="flatteningShape"
+                          name="flatteningShape"
+                          label="Flattening Shape"
+                          schema={component.schema['flatteningShape']}
+                          data={component.data['flatteningShape']}
+                          componentname="street-geo"
+                          isSingle={false}
+                          entity={entity}
+                        />
+                      )}
                     </div>
                   </div>
                 </div>

@@ -27,7 +27,8 @@ AFRAME.registerComponent('google-maps-aerial', {
     maxDistance: { type: 'number', default: 20000 },
     ellipsoidalHeight: { type: 'number', default: 0 },
     copyrightEl: { type: 'selector' },
-    enableFlattening: { type: 'boolean', default: true }
+    enableFlattening: { type: 'boolean', default: false },
+    flatteningShape: { type: 'string', default: '' }
   },
 
   init: function () {
@@ -67,8 +68,13 @@ AFRAME.registerComponent('google-maps-aerial', {
       }
 
       // Add flattening shape after tiles are loaded
-      if (this.data.enableFlattening && this.flatteningPlugin) {
-        const testMeshEl = document.querySelector('#flattening-mesh');
+      if (
+        this.data.enableFlattening &&
+        this.flatteningPlugin &&
+        this.data.flatteningShape
+      ) {
+        const shapeSelector = this.data.flatteningShape;
+        const testMeshEl = document.querySelector(shapeSelector);
 
         if (testMeshEl && !this.flatteningShape) {
           const testMesh = testMeshEl.object3D.children[0];
@@ -102,7 +108,9 @@ AFRAME.registerComponent('google-maps-aerial', {
           // Add the transformed plane as a flattening shape
           this.flatteningPlugin.addShape(relativeShape, direction, Infinity);
           console.log(
-            'Added flattening shape from #flattening-mesh after load-model'
+            'Added flattening shape from',
+            shapeSelector,
+            'after load-model'
           );
 
           // Store references for cleanup and updates
@@ -201,6 +209,57 @@ AFRAME.registerComponent('google-maps-aerial', {
         this.data.longitude * MathUtils.DEG2RAD
       );
       this.offsetEl.object3D.position.y = -this.data.ellipsoidalHeight;
+    }
+
+    // Handle flattening shape changes
+    if (
+      this.flatteningPlugin &&
+      oldData.flatteningShape !== this.data.flatteningShape
+    ) {
+      // Remove old shape if it exists
+      if (this.flatteningShape) {
+        this.flatteningPlugin.deleteShape(this.flatteningShape);
+        this.flatteningShape = null;
+        this.originalFlatteningMesh = null;
+      }
+
+      // Add new shape if flattening is enabled and we have a shape
+      if (this.data.enableFlattening && this.data.flatteningShape) {
+        const shapeSelector = this.data.flatteningShape;
+        const testMeshEl = document.querySelector(shapeSelector);
+
+        if (testMeshEl) {
+          const testMesh = testMeshEl.object3D.children[0];
+          if (testMesh) {
+            // Same transformation logic as in init
+            this.tiles.group.updateMatrixWorld();
+            testMesh.updateMatrixWorld(true);
+
+            const relativeShape = testMesh.clone();
+            relativeShape.matrixWorld
+              .premultiply(this.tiles.group.matrixWorldInverse)
+              .decompose(
+                relativeShape.position,
+                relativeShape.quaternion,
+                relativeShape.scale
+              );
+
+            const direction = new AFRAME.THREE.Vector3();
+            const box = new AFRAME.THREE.Box3();
+            box.setFromObject(relativeShape);
+            box.getCenter(direction);
+            this.tiles.ellipsoid
+              .getPositionToNormal(direction, direction)
+              .multiplyScalar(-1);
+
+            this.flatteningPlugin.addShape(relativeShape, direction, Infinity);
+            this.flatteningShape = relativeShape;
+            this.originalFlatteningMesh = testMesh;
+
+            console.log('Updated flattening shape to', shapeSelector);
+          }
+        }
+      }
     }
   }
 });

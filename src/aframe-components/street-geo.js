@@ -5,6 +5,22 @@ import { loadScript } from '../utils.js';
 const MAPBOX_ACCESS_TOKEN_VALUE =
   'pk.eyJ1Ijoia2llcmFuZmFyciIsImEiOiJjazB0NWh2YncwOW9rM25sd2p0YTlxemk2In0.mLl4sNGDFbz_QXk0GIK02Q';
 
+// Helper function to get available flattening shapes
+function getFlatteningShapeOptions() {
+  const shapeElements = Array.from(
+    document.querySelectorAll('[class*="shape"]')
+  );
+  const options = ['create-default'];
+
+  shapeElements.forEach((el) => {
+    if (el.id) {
+      options.push(el.id);
+    }
+  });
+
+  return options;
+}
+
 AFRAME.registerComponent('street-geo', {
   schema: {
     longitude: { type: 'number', default: 0 },
@@ -18,6 +34,12 @@ AFRAME.registerComponent('street-geo', {
       oneOf: ['google3d', 'mapbox2d', 'osm3d', 'none']
     },
     enableClipping: { type: 'boolean', default: false },
+    enableFlattening: { type: 'boolean', default: true },
+    flatteningShape: {
+      type: 'string',
+      default: 'create-default',
+      oneOf: ['create-default']
+    },
     blendMode: {
       type: 'string',
       default: '30% Opacity',
@@ -41,9 +63,47 @@ AFRAME.registerComponent('street-geo', {
       this[mapType + 'Create'].bind(this);
       this[mapType + 'Update'].bind(this);
     }
+
+    // Update flattening shape options
+    this.updateFlatteningShapeOptions();
   },
   remove: function () {
     document.getElementById('map-data-attribution').style.visibility = 'hidden';
+  },
+  updateFlatteningShapeOptions: function () {
+    // Update the schema's oneOf options dynamically
+    const options = getFlatteningShapeOptions();
+    this.schema.flatteningShape.oneOf = options;
+  },
+  createDefaultFlatteningShape: function () {
+    const streetContainer = document.querySelector('#street-container');
+    if (!streetContainer) {
+      console.warn('No street-container found to create flattening shape');
+      return null;
+    }
+
+    // Create the default flattening shape
+    const shapeEl = document.createElement('a-box');
+    shapeEl.setAttribute('height', '10');
+    shapeEl.setAttribute('width', '10');
+    shapeEl.setAttribute('depth', '10');
+    shapeEl.setAttribute(
+      'material',
+      'transparent: true; opacity: 0.2; color: white'
+    );
+    shapeEl.setAttribute('data-layer-name', 'Geo Flattening Shape');
+    shapeEl.classList.add('shape');
+
+    // Generate a unique ID
+    const shapeId = 'flattening-shape-' + Date.now();
+    shapeEl.id = shapeId;
+
+    streetContainer.appendChild(shapeEl);
+
+    // Update the dropdown options now that we've added a shape
+    this.updateFlatteningShapeOptions();
+
+    return shapeId;
   },
   returnBlendMode: function (blendModePreset) {
     // on the target, such as
@@ -65,6 +125,18 @@ AFRAME.registerComponent('street-geo', {
 
     const updatedData = AFRAME.utils.diff(oldData, data);
 
+    // Handle flattening shape creation
+    if (data.enableFlattening && data.flatteningShape === 'create-default') {
+      console.log('Creating default flattening shape...');
+      const shapeId = this.createDefaultFlatteningShape();
+      if (shapeId) {
+        console.log('Created default flattening shape with ID:', shapeId);
+        // Update the component data to use the new shape
+        this.el.setAttribute('street-geo', 'flatteningShape', shapeId);
+        return; // Early return to avoid double update
+      }
+    }
+
     for (const mapType of this.mapTypes) {
       if (data.maps === mapType && !this[mapType]) {
         // create Map element and save a link to it in this[mapType]
@@ -79,7 +151,9 @@ AFRAME.registerComponent('street-geo', {
         (updatedData.longitude ||
           updatedData.latitude ||
           updatedData.ellipsoidalHeight ||
-          updatedData.enableClipping)
+          updatedData.enableClipping ||
+          updatedData.enableFlattening ||
+          updatedData.flatteningShape)
       ) {
         // call update map function with name: <mapType>Update
         this[mapType + 'Update']();
@@ -182,6 +256,11 @@ AFRAME.registerComponent('street-geo', {
       longitude: data.longitude,
       latitude: data.latitude,
       ellipsoidalHeight: data.ellipsoidalHeight,
+      enableFlattening: data.enableFlattening,
+      flatteningShape:
+        data.flatteningShape && data.flatteningShape !== 'create-default'
+          ? '#' + data.flatteningShape
+          : '',
       apiToken: firebaseConfig.apiKey,
       copyrightEl: '#map-copyright'
     });
@@ -225,7 +304,12 @@ AFRAME.registerComponent('street-geo', {
     this.google3d.setAttribute('google-maps-aerial', {
       latitude: data.latitude,
       longitude: data.longitude,
-      ellipsoidalHeight: data.ellipsoidalHeight
+      ellipsoidalHeight: data.ellipsoidalHeight,
+      enableFlattening: data.enableFlattening,
+      flatteningShape:
+        data.flatteningShape && data.flatteningShape !== 'create-default'
+          ? '#' + data.flatteningShape
+          : ''
     });
 
     // if state is not clipping, then disable it
