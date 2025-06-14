@@ -206,13 +206,13 @@ const TimeControls = () => {
     return null;
   }
 
-  // Check if the viewer-mode component has preset="locomotion"
+  // Check if the viewer-mode component has preset="locomotion" or "ar-webxr"
   const viewerModeEl = document.querySelector('[viewer-mode]');
-  if (
-    viewerModeEl &&
-    viewerModeEl.getAttribute('viewer-mode').preset === 'locomotion'
-  ) {
-    return null;
+  if (viewerModeEl) {
+    const preset = viewerModeEl.getAttribute('viewer-mode').preset;
+    if (preset === 'locomotion' || preset === 'ar-webxr') {
+      return null;
+    }
   }
 
   return (
