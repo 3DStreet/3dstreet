@@ -2,6 +2,7 @@ import '../styles/tailwind.css';
 import { createRoot } from 'react-dom/client';
 import { GLTFExporter } from 'three/examples/jsm/exporters/GLTFExporter';
 import MainWrapper from './components/MainWrapper';
+import ARControls from './components/viewport/ARControls';
 import { AuthProvider, GeoProvider } from './contexts';
 import Events from './lib/Events';
 import { AssetsLoader } from './lib/assetsLoader';
@@ -89,6 +90,13 @@ Inspector.prototype = {
         </GeoProvider>
       </AuthProvider>
     );
+
+    // Mount AR Controls to the AR overlay div
+    const arControlsContainer = document.getElementById('react-ar-controls');
+    if (arControlsContainer) {
+      const arRoot = createRoot(arControlsContainer);
+      arRoot.render(<ARControls />);
+    }
 
     this.scene = this.sceneEl.object3D;
     this.helpers = {};
