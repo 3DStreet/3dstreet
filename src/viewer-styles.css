@@ -21,13 +21,40 @@ body {
 /* viewer mode AR overlay */
 #viewer-mode-ar-overlay {
 	display: none;
-	position: absolute;
-	top: 5;
-	left: 5;
-	font-size: 12px;
-	background-color: rgba(0, 0, 0, 0.3);
-	color: #bebebe;
-	z-index: 1;
+	position: fixed;
+	top: 0;
+	left: 0;
+	width: 100vw;
+	height: 100vh;
+	pointer-events: none;
+	z-index: 1000;
+}
+
+#viewer-mode-ar-overlay-exit-button {
+	position: fixed;
+	bottom: 20px;
+	left: 20px;
+	padding: 12px 20px;
+	background: rgba(255, 0, 0, 0.8);
+	color: white;
+	border: none;
+	border-radius: 8px;
+	font-size: 16px;
+	font-weight: 500;
+	cursor: pointer;
+	backdrop-filter: blur(10px);
+	transition: all 0.2s ease;
+	pointer-events: auto;
+	z-index: 1001;
+}
+
+#viewer-mode-ar-overlay-exit-button:hover {
+	background: rgba(255, 0, 0, 0.9);
+	transform: scale(1.05);
+}
+
+#react-ar-controls {
+	pointer-events: auto;
 }
 
 /* maps copyright notice */
