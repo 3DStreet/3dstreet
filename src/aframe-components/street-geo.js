@@ -17,7 +17,6 @@ AFRAME.registerComponent('street-geo', {
       default: 'google3d',
       oneOf: ['google3d', 'mapbox2d', 'osm3d', 'none']
     },
-    enableClipping: { type: 'boolean', default: false },
     enableFlattening: { type: 'boolean', default: true },
     flatteningShape: {
       type: 'string'
@@ -83,7 +82,6 @@ AFRAME.registerComponent('street-geo', {
         (updatedData.longitude ||
           updatedData.latitude ||
           updatedData.ellipsoidalHeight ||
-          updatedData.enableClipping ||
           updatedData.enableFlattening ||
           updatedData.flatteningShape)
       ) {
@@ -101,13 +99,6 @@ AFRAME.registerComponent('street-geo', {
     }
 
     if (this.google3d) {
-      // Handle clipping updates
-      if (data.enableClipping) {
-        this.google3d.setAttribute('obb-clipping', '');
-      } else {
-        this.google3d.removeAttribute('obb-clipping');
-      }
-
       // Handle blending updates
       if (data.blendingEnabled) {
         if (data.blendMode) {
@@ -178,10 +169,6 @@ AFRAME.registerComponent('street-geo', {
     const google3dElement = document.createElement('a-entity');
     google3dElement.setAttribute('data-no-pause', '');
     google3dElement.id = 'google3d';
-    if (data.enableClipping) {
-      google3dElement.setAttribute('obb-clipping', '');
-    }
-
     google3dElement.setAttribute('data-layer-name', 'Google 3D Tiles');
     google3dElement.setAttribute('data-no-transform', '');
     google3dElement.setAttribute('google-maps-aerial', {
@@ -212,10 +199,6 @@ AFRAME.registerComponent('street-geo', {
     el.appendChild(google3dElement);
     self['google3d'] = google3dElement;
 
-    // if clipping is enabled, add it
-    if (data.enableClipping) {
-      google3dElement.setAttribute('obb-clipping', '');
-    }
     // Only set blending if enabled
     if (data.blendingEnabled) {
       if (data.blendMode) {
@@ -243,16 +226,6 @@ AFRAME.registerComponent('street-geo', {
           ? '#' + data.flatteningShape
           : ''
     });
-
-    // if state is not clipping, then disable it
-    if (data.enableClipping && !this.google3d.getAttribute('obb-clipping')) {
-      this.google3d.setAttribute('obb-clipping', '');
-    } else if (
-      !data.enableClipping &&
-      this.google3d.getAttribute('obb-clipping')
-    ) {
-      this.google3d.removeAttribute('obb-clipping');
-    }
 
     // Handle blending updates
     if (data.blendingEnabled) {
