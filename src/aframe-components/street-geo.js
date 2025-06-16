@@ -17,7 +17,7 @@ AFRAME.registerComponent('street-geo', {
       default: 'google3d',
       oneOf: ['google3d', 'mapbox2d', 'osm3d', 'none']
     },
-    enableFlattening: { type: 'boolean', default: true },
+    enableFlattening: { type: 'boolean', default: false },
     flatteningShape: {
       type: 'string'
     },

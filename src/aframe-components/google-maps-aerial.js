@@ -49,12 +49,10 @@ AFRAME.registerComponent('google-maps-aerial', {
       })
     );
 
-    // Add flattening plugin if enabled
-    if (this.data.enableFlattening) {
-      this.flatteningPlugin = new TileFlatteningPlugin();
-      this.tiles.registerPlugin(this.flatteningPlugin);
-      console.log('TileFlatteningPlugin enabled');
-    }
+    // Always create flattening plugin to support runtime toggling
+    this.flatteningPlugin = new TileFlatteningPlugin();
+    this.tiles.registerPlugin(this.flatteningPlugin);
+    console.log('TileFlatteningPlugin registered');
     // Set location
     this.tiles.setLatLonToYUp(
       this.data.latitude * MathUtils.DEG2RAD,
@@ -70,53 +68,10 @@ AFRAME.registerComponent('google-maps-aerial', {
       // Add flattening shape after tiles are loaded
       if (
         this.data.enableFlattening &&
-        this.flatteningPlugin &&
-        this.data.flatteningShape
+        this.data.flatteningShape &&
+        !this.flatteningShape
       ) {
-        const shapeSelector = this.data.flatteningShape;
-        const testMeshEl = document.querySelector(shapeSelector);
-
-        if (testMeshEl && !this.flatteningShape) {
-          const testMesh = testMeshEl.object3D.children[0];
-          console.log('testMesh', testMesh);
-
-          // Ensure world transforms are up to date
-          this.tiles.group.updateMatrixWorld();
-          testMesh.updateMatrixWorld(true);
-
-          // Transform the shape into the local frame of the tile set
-          const relativeShape = testMesh.clone();
-          relativeShape.matrixWorld
-            .premultiply(this.tiles.group.matrixWorldInverse)
-            .decompose(
-              relativeShape.position,
-              relativeShape.quaternion,
-              relativeShape.scale
-            );
-
-          // Calculate the direction to flatten on using ellipsoid
-          const direction = new Vector3();
-          const box = new Box3();
-          box.setFromObject(relativeShape);
-          box.getCenter(direction);
-          this.tiles.ellipsoid
-            .getPositionToNormal(direction, direction)
-            .multiplyScalar(-1);
-
-          console.log('flattening direction', direction);
-
-          // Add the transformed plane as a flattening shape
-          this.flatteningPlugin.addShape(relativeShape, direction, Infinity);
-          console.log(
-            'Added flattening shape from',
-            shapeSelector,
-            'after load-model'
-          );
-
-          // Store references for cleanup and updates
-          this.flatteningShape = relativeShape;
-          this.originalFlatteningMesh = testMesh;
-        }
+        this.addFlatteningShape(this.data.flatteningShape);
       }
     });
 
@@ -138,6 +93,47 @@ AFRAME.registerComponent('google-maps-aerial', {
       // emit play event to start load tiles in aframe-inspector
       this.play();
     }
+  },
+
+  addFlatteningShape: function (shapeSelector) {
+    if (!this.flatteningPlugin || !shapeSelector) return;
+
+    const testMeshEl = document.querySelector(shapeSelector);
+    if (!testMeshEl) return;
+
+    const testMesh = testMeshEl.object3D.children[0];
+    if (!testMesh) return;
+
+    // Ensure world transforms are up to date
+    this.tiles.group.updateMatrixWorld();
+    testMesh.updateMatrixWorld(true);
+
+    // Transform the shape into the local frame of the tile set
+    const relativeShape = testMesh.clone();
+    relativeShape.matrixWorld
+      .premultiply(this.tiles.group.matrixWorldInverse)
+      .decompose(
+        relativeShape.position,
+        relativeShape.quaternion,
+        relativeShape.scale
+      );
+
+    // Calculate the direction to flatten on using ellipsoid
+    const direction = new Vector3();
+    const box = new Box3();
+    box.setFromObject(relativeShape);
+    box.getCenter(direction);
+    this.tiles.ellipsoid
+      .getPositionToNormal(direction, direction)
+      .multiplyScalar(-1);
+
+    // Add the transformed plane as a flattening shape
+    this.flatteningPlugin.addShape(relativeShape, direction, Infinity);
+    console.log('Added flattening shape from', shapeSelector);
+
+    // Store references for cleanup and updates
+    this.flatteningShape = relativeShape;
+    this.originalFlatteningMesh = testMesh;
   },
 
   tick: function () {
@@ -211,11 +207,12 @@ AFRAME.registerComponent('google-maps-aerial', {
       this.offsetEl.object3D.position.y = -this.data.ellipsoidalHeight;
     }
 
-    // Handle flattening shape changes
-    if (
-      this.flatteningPlugin &&
-      oldData.flatteningShape !== this.data.flatteningShape
-    ) {
+    // Handle flattening changes
+    const flatteningChanged =
+      oldData.enableFlattening !== this.data.enableFlattening;
+    const shapeChanged = oldData.flatteningShape !== this.data.flatteningShape;
+
+    if (flatteningChanged || shapeChanged) {
       // Remove old shape if it exists
       if (this.flatteningShape) {
         this.flatteningPlugin.deleteShape(this.flatteningShape);
@@ -225,40 +222,7 @@ AFRAME.registerComponent('google-maps-aerial', {
 
       // Add new shape if flattening is enabled and we have a shape
       if (this.data.enableFlattening && this.data.flatteningShape) {
-        const shapeSelector = this.data.flatteningShape;
-        const testMeshEl = document.querySelector(shapeSelector);
-
-        if (testMeshEl) {
-          const testMesh = testMeshEl.object3D.children[0];
-          if (testMesh) {
-            // Same transformation logic as in init
-            this.tiles.group.updateMatrixWorld();
-            testMesh.updateMatrixWorld(true);
-
-            const relativeShape = testMesh.clone();
-            relativeShape.matrixWorld
-              .premultiply(this.tiles.group.matrixWorldInverse)
-              .decompose(
-                relativeShape.position,
-                relativeShape.quaternion,
-                relativeShape.scale
-              );
-
-            const direction = new AFRAME.THREE.Vector3();
-            const box = new AFRAME.THREE.Box3();
-            box.setFromObject(relativeShape);
-            box.getCenter(direction);
-            this.tiles.ellipsoid
-              .getPositionToNormal(direction, direction)
-              .multiplyScalar(-1);
-
-            this.flatteningPlugin.addShape(relativeShape, direction, Infinity);
-            this.flatteningShape = relativeShape;
-            this.originalFlatteningMesh = testMesh;
-
-            console.log('Updated flattening shape to', shapeSelector);
-          }
-        }
+        this.addFlatteningShape(this.data.flatteningShape);
       }
     }
   }
