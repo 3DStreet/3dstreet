@@ -61,11 +61,9 @@ const FlatteningShapeSelector = ({
       element: 'a-box',
       components: {
         'data-layer-name': 'Geo Flattening Shape',
-        height: '5',
-        width: '20',
-        depth: '40',
+        scale: '20 5 40',
         material: 'transparent: true; opacity: 0.3; color: purple',
-        class: 'shape'
+        class: 'flattening shape'
       }
     };
 
