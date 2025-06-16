@@ -79,11 +79,11 @@ AFRAME.registerComponent('street-geo', {
         AFRAME.INSPECTOR.selectEntity(this.el);
       } else if (
         data.maps === mapType &&
-        (updatedData.longitude ||
-          updatedData.latitude ||
-          updatedData.ellipsoidalHeight ||
-          updatedData.enableFlattening ||
-          updatedData.flatteningShape)
+        (updatedData.longitude !== undefined ||
+          updatedData.latitude !== undefined ||
+          updatedData.ellipsoidalHeight !== undefined ||
+          updatedData.enableFlattening !== undefined ||
+          updatedData.flatteningShape !== undefined)
       ) {
         // call update map function with name: <mapType>Update
         this[mapType + 'Update']();
