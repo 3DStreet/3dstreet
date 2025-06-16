@@ -7,7 +7,6 @@ import {
   TileFlatteningPlugin
 } from '3d-tiles-renderer/plugins';
 
-console.log('3d-tiles-renderer', TilesRenderer);
 const MathUtils = AFRAME.THREE.MathUtils;
 const Vector3 = AFRAME.THREE.Vector3;
 const Box3 = AFRAME.THREE.Box3;
@@ -52,7 +51,6 @@ AFRAME.registerComponent('google-maps-aerial', {
     // Always create flattening plugin to support runtime toggling
     this.flatteningPlugin = new TileFlatteningPlugin();
     this.tiles.registerPlugin(this.flatteningPlugin);
-    console.log('TileFlatteningPlugin registered');
     // Set location
     this.tiles.setLatLonToYUp(
       this.data.latitude * MathUtils.DEG2RAD,
@@ -129,7 +127,6 @@ AFRAME.registerComponent('google-maps-aerial', {
 
     // Add the transformed plane as a flattening shape
     this.flatteningPlugin.addShape(relativeShape, direction, Infinity);
-    console.log('Added flattening shape from', shapeSelector);
 
     // Store references for cleanup and updates
     this.flatteningShape = relativeShape;

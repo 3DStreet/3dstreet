@@ -176,10 +176,7 @@ AFRAME.registerComponent('street-geo', {
       latitude: data.latitude,
       ellipsoidalHeight: data.ellipsoidalHeight,
       enableFlattening: data.enableFlattening,
-      flatteningShape:
-        data.flatteningShape && data.flatteningShape !== 'create-default'
-          ? '#' + data.flatteningShape
-          : '',
+      flatteningShape: data.flatteningShape ? '#' + data.flatteningShape : '',
       apiToken: firebaseConfig.apiKey,
       copyrightEl: '#map-copyright'
     });
