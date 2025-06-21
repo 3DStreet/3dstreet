@@ -4,10 +4,10 @@ import debounce from 'lodash-es/debounce';
 import PropTypes from 'prop-types';
 import React from 'react';
 import Events from '../../lib/Events';
-import Entity from './Entity';
+import Entity, { isContainer } from './Entity';
 import { ToolbarWrapper } from './ToolbarWrapper';
 import { LayersIcon, ArrowLeftIcon } from '../../icons';
-import { getEntityDisplayName } from '../../lib/entity';
+import { createUniqueId, getEntityDisplayName } from '../../lib/entity';
 import posthog from 'posthog-js';
 import GeoLayer from './GeoLayer';
 const HIDDEN_CLASSES = ['teleportRay', 'hitEntity', 'hideFromSceneGraph'];
@@ -30,7 +30,11 @@ export default class SceneGraph extends React.Component {
       entities: [],
       expandedElements: new WeakMap([[props.scene, true]]),
       leftBarHide: false,
-      selectedIndex: -1
+      selectedIndex: -1,
+      // Drag and drop state
+      draggedEntity: null,
+      hoveredDropTarget: null,
+      insertionInfo: null
     };
 
     this.rebuildEntityOptions = debounce(
@@ -131,6 +135,97 @@ export default class SceneGraph extends React.Component {
       HIDDEN_CLASSES.includes(element.className) ||
       HIDDEN_IDS.includes(element.id)
     );
+  };
+
+  canBeDragged = (entity) => {
+    return !isContainer(entity) && !entity.classList.contains('autocreated');
+  };
+
+  canBeDropTarget = (entity, draggedEntity) => {
+    if (
+      !draggedEntity ||
+      draggedEntity === entity ||
+      entity.id === 'reference-layers' ||
+      entity.id === 'environment' ||
+      entity.id === 'cameraRig'
+    ) {
+      return false;
+    }
+
+    // Prevent dropping an entity onto its own descendants
+    let current = entity.parentNode;
+    while (current && current.isEntity) {
+      if (current === draggedEntity) {
+        return false;
+      }
+      current = current.parentNode;
+    }
+
+    return true;
+  };
+
+  // Drag and drop handlers
+  setDraggedEntity = (entity) => {
+    this.setState({ draggedEntity: entity });
+  };
+
+  setHoveredDropTarget = (entity) => {
+    this.setState({ hoveredDropTarget: entity });
+  };
+
+  setInsertionInfo = (info) => {
+    this.setState({ insertionInfo: info });
+  };
+
+  onReparentEntity = (draggedEntity, targetEntity, insertionMode = 'child') => {
+    if (!draggedEntity || !targetEntity || draggedEntity === targetEntity) {
+      return;
+    }
+
+    let parentEl;
+    let indexInParent;
+
+    if (insertionMode === 'child') {
+      // Make draggedEntity a child of targetEntity
+      parentEl = targetEntity.id;
+      indexInParent = targetEntity.children.length; // Add at the end
+
+      // Expand the target entity in the UI
+      this.state.expandedElements.set(targetEntity, true);
+      this.setState({ expandedElements: this.state.expandedElements });
+    } else {
+      // Insert before or after targetEntity (same parent)
+      const targetParent = targetEntity.parentNode;
+      if (!targetParent) {
+        return;
+      }
+
+      if (!targetParent.id) {
+        targetParent.id = createUniqueId();
+      }
+
+      if (!draggedEntity.parentNode.id) {
+        draggedEntity.parentNode.id = createUniqueId();
+      }
+
+      parentEl = targetParent.id;
+      const targetIndex = Array.from(targetParent.children).indexOf(
+        targetEntity
+      );
+
+      if (insertionMode === 'before') {
+        indexInParent = targetIndex;
+      } else {
+        // 'after'
+        indexInParent = targetIndex + 1;
+      }
+    }
+
+    AFRAME.INSPECTOR.execute('entityreparent', {
+      entity: draggedEntity,
+      parentEl,
+      indexInParent
+    });
   };
 
   rebuildEntityOptions = () => {
@@ -325,6 +420,16 @@ export default class SceneGraph extends React.Component {
           isSelected={this.props.selectedEntity === entityOption.entity}
           selectEntity={this.selectEntity}
           toggleExpandedCollapsed={this.toggleExpandedCollapsed}
+          // Drag and drop props
+          draggedEntity={this.state.draggedEntity}
+          setDraggedEntity={this.setDraggedEntity}
+          hoveredDropTarget={this.state.hoveredDropTarget}
+          setHoveredDropTarget={this.setHoveredDropTarget}
+          insertionInfo={this.state.insertionInfo}
+          setInsertionInfo={this.setInsertionInfo}
+          onReparentEntity={this.onReparentEntity}
+          canBeDragged={this.canBeDragged}
+          canBeDropTarget={this.canBeDropTarget}
         />
       );
       children.push(renderedEntity);
