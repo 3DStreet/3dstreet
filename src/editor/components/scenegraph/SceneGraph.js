@@ -138,7 +138,12 @@ export default class SceneGraph extends React.Component {
   };
 
   canBeDragged = (entity) => {
-    return !isContainer(entity) && !entity.classList.contains('autocreated');
+    return (
+      !isContainer(entity) &&
+      !entity.classList.contains('autocreated') &&
+      !entity.hasAttribute('managed-street') &&
+      !entity.hasAttribute('street-segment')
+    );
   };
 
   canBeDropTarget = (entity, draggedEntity) => {
@@ -147,7 +152,9 @@ export default class SceneGraph extends React.Component {
       draggedEntity === entity ||
       entity.id === 'reference-layers' ||
       entity.id === 'environment' ||
-      entity.id === 'cameraRig'
+      entity.id === 'cameraRig' ||
+      entity.hasAttribute('managed-street') ||
+      entity.hasAttribute('street-segment')
     ) {
       return false;
     }
