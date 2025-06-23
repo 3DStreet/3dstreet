@@ -343,11 +343,6 @@ export function Viewport(inspector) {
     transformControls.setCamera(data.camera);
     measureLineControls.camera = data.camera;
     updateAspectRatio();
-    // quick solution to change 3d tiles camera
-    const tilesElem = document.querySelector('a-entity[google-maps-aerial]');
-    if (tilesElem) {
-      tilesElem.emit('cameraChange', data.camera);
-    }
   });
 
   function disableControls() {
