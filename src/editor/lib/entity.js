@@ -669,8 +669,7 @@ const NOT_COMPONENTS = ['id', 'class', 'mixin'];
  * @return {Element} Entity created
  */
 export function createEntity(definition, cb, parentEl = undefined) {
-  const createChildren = false;
-  const entity = objectToElement(definition, createChildren);
+  const entity = objectToElement(definition);
 
   // Ensure the components are loaded before update the UI
   entity.addEventListener(
@@ -697,10 +696,9 @@ export function createEntity(definition, cb, parentEl = undefined) {
  * Converts an entity object definition into an A-Frame element.
  *
  * @param {EntityObject} definition
- * @param {boolean} [createChildren=true] Whether to create the children defined in definition
  * @returns {Entity}
  */
-export function objectToElement(definition, createChildren = true) {
+export function objectToElement(definition) {
   const entity = document.createElement(definition.element || 'a-entity');
   if (definition.id) {
     entity.id = definition.id;
@@ -730,7 +728,7 @@ export function objectToElement(definition, createChildren = true) {
     }
   }
 
-  if (createChildren && definition.children) {
+  if (definition.children) {
     for (const childDefinition of definition.children) {
       const child = objectToElement(childDefinition);
       entity.appendChild(child);
