@@ -113,6 +113,8 @@ export class EntityReparentCommand extends Command {
     recreatedEntity.addEventListener(
       'loaded',
       () => {
+        recreatedEntity.pause();
+
         // Calculate new local position and quaternion relative to new parent
         this.updateLocalTransform(recreatedEntity, newParent);
 
@@ -167,6 +169,8 @@ export class EntityReparentCommand extends Command {
     recreatedEntity.addEventListener(
       'loaded',
       () => {
+        recreatedEntity.pause();
+
         // For undo, restore the original local transform relative to old parent
         this.updateLocalTransform(recreatedEntity, oldParent);
 
