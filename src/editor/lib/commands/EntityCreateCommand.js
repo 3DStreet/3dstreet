@@ -36,6 +36,7 @@ export class EntityCreateCommand extends Command {
   execute(nextCommandCallback) {
     let definition = this.definition;
     const callback = (entity) => {
+      entity.pause();
       this.editor.selectEntity(entity);
       this.callback?.(entity);
       nextCommandCallback?.(entity);
