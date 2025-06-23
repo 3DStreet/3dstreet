@@ -114,6 +114,7 @@ export default class SceneGraph extends React.Component {
         });
         Events.emit('entityselect', entity);
         found = true;
+        break;
       }
     }
 
