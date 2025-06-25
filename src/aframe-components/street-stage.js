@@ -11,7 +11,7 @@ AFRAME.registerComponent('street-stage', {
     },
     density: {
       type: 'number',
-      default: 5000,
+      default: 25000,
       if: { preset: ['grass'] }
     }
   },
@@ -168,6 +168,13 @@ AFRAME.registerComponent('street-stage', {
 
     // Create stage entity
     this.stageEntity = document.createElement('a-entity');
+    this.stageEntity.setAttribute('data-layer-name', 'Grass');
+    this.stageEntity.setAttribute('class', 'autocreated');
+
+    // Create grass surface sub-entity
+    groundEntity.setAttribute('data-layer-name', 'Grass Surface');
+    groundEntity.setAttribute('class', 'autocreated');
+
     this.stageEntity.appendChild(groundEntity);
     this.stageEntity.setObject3D('grass', instancedMesh);
 
@@ -207,6 +214,8 @@ AFRAME.registerComponent('street-stage', {
 
     // Create ground box with appropriate surface texture
     this.stageEntity = document.createElement('a-entity');
+    this.stageEntity.setAttribute('data-layer-name', 'Stage');
+    this.stageEntity.setAttribute('class', 'autocreated');
     this.stageEntity.setAttribute(
       'geometry',
       `primitive: box; width: ${size}; height: 0.2; depth: ${size}`
