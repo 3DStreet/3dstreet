@@ -33,6 +33,7 @@ require('./aframe-components/street-generated-clones.js');
 require('./aframe-components/polygon-offset.js');
 require('./aframe-components/street-align.js');
 require('./aframe-components/street-ground.js');
+require('./aframe-components/street-stage.js');
 require('./aframe-components/street-label.js');
 require('./aframe-components/blending-opacity.js');
 require('./aframe-components/measure-line.js');
