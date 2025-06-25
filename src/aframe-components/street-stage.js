@@ -71,7 +71,37 @@ AFRAME.registerComponent('street-stage', {
     );
     groundEntity.setAttribute('position', '0 -0.1 0');
 
-    // Create simple grass material that respects depth
+    // Create animated grass shader with wind effects
+    const simpleNoise = `
+      float N (vec2 st) {
+          return fract( sin( dot( st.xy, vec2(12.9898,78.233 ) ) ) *  43758.5453123);
+      }
+      
+      float smoothNoise( vec2 ip ){
+          vec2 lv = fract( ip );
+        vec2 id = floor( ip );
+        
+        lv = lv * lv * ( 3. - 2. * lv );
+        
+        float bl = N( id );
+        float br = N( id + vec2( 1, 0 ));
+        float b = mix( bl, br, lv.x );
+        
+        float tl = N( id + vec2( 0, 1 ));
+        float tr = N( id + vec2( 1, 1 ));
+        float t = mix( tl, tr, lv.x );
+        
+        return mix( b, t, lv.y );
+      }
+    `;
+
+    const uniforms = {
+      time: {
+        value: 0
+      }
+    };
+
+    // Use MeshLambertMaterial with custom vertex shader for wind animation
     const leavesMaterial = new THREE.MeshLambertMaterial({
       color: 0x6aa84f,
       side: THREE.DoubleSide,
@@ -79,6 +109,37 @@ AFRAME.registerComponent('street-stage', {
       depthWrite: true,
       depthTest: true
     });
+
+    // Override the vertex shader to add wind animation
+    leavesMaterial.onBeforeCompile = function (shader) {
+      shader.uniforms.time = uniforms.time;
+
+      shader.vertexShader = shader.vertexShader.replace(
+        '#include <common>',
+        `#include <common>
+        uniform float time;
+        
+        ${simpleNoise}`
+      );
+
+      shader.vertexShader = shader.vertexShader.replace(
+        '#include <begin_vertex>',
+        `#include <begin_vertex>
+        
+        // Get the world position of this instance
+        vec4 instancePosition = instanceMatrix * vec4(0.0, 0.0, 0.0, 1.0);
+        
+        float t = time * 2.;
+        // Use instance position to create unique noise per blade
+        vec2 noiseCoord = instancePosition.xz * 0.1 + transformed.xz * 0.5 + vec2(0., t);
+        float noise = smoothNoise(noiseCoord);
+        noise = pow(noise * 0.5 + 0.5, 2.) * 2.;
+        
+        float dispPower = 1. - cos( uv.y * 3.1416 * 0.5 );
+        float displacement = noise * ( 0.3 * dispPower );
+        transformed.z -= displacement;`
+      );
+    };
 
     // Create instanced grass mesh
     const dummy = new THREE.Object3D();
@@ -110,7 +171,14 @@ AFRAME.registerComponent('street-stage', {
     this.stageEntity.appendChild(groundEntity);
     this.stageEntity.setObject3D('grass', instancedMesh);
 
+    // Store references for animation
+    this.uniforms = uniforms;
+    this.clock = new THREE.Clock();
+
     this.el.appendChild(this.stageEntity);
+
+    // Start animation loop
+    this.animateGrass();
   },
 
   createSurfaceStage: function (textureId) {
@@ -152,11 +220,22 @@ AFRAME.registerComponent('street-stage', {
     this.el.appendChild(this.stageEntity);
   },
 
+  animateGrass: function () {
+    if (this.uniforms && this.clock) {
+      this.uniforms.time.value = this.clock.getElapsedTime();
+      requestAnimationFrame(() => this.animateGrass());
+    }
+  },
+
   removeStage: function () {
     if (this.stageEntity) {
       this.el.removeChild(this.stageEntity);
       this.stageEntity = null;
     }
+
+    // Stop grass animation
+    this.uniforms = null;
+    this.clock = null;
   },
 
   remove: function () {
