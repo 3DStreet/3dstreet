@@ -69,6 +69,7 @@ AFRAME.registerComponent('street-stage', {
       'material',
       `src: #grass-texture; roughness: 0.8; repeat: ${size / 4} ${size / 6}; color: #ffffff`
     );
+    groundEntity.setAttribute('shadow', 'receive: true');
     groundEntity.setAttribute('position', '0 -0.1 0');
 
     // Create animated grass shader with wind effects
@@ -224,6 +225,7 @@ AFRAME.registerComponent('street-stage', {
       'material',
       `src: #${textureId}; roughness: 0.8; repeat: ${repeatX} ${repeatY}; color: #ffffff`
     );
+    this.stageEntity.setAttribute('shadow', 'receive: true');
     this.stageEntity.setAttribute('position', '0 -0.1 0');
 
     this.el.appendChild(this.stageEntity);
