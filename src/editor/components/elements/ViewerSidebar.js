@@ -350,6 +350,32 @@ const ViewerSidebar = ({ entity }) => {
               </div>
             ))}
 
+          {/* Viewer Mode Tips - only show when camera-path mode is selected and NOT custom path */}
+          {component?.data?.preset === 'camera-path' &&
+            component?.data?.cameraPath !== 'custom' && (
+              <div className="propertyRow">
+                <div className="rounded bg-blue-50 p-2 text-gray-600">
+                  <div className="mb-1 font-semibold uppercase">
+                    💡 Viewer Mode Tips
+                  </div>
+                  <ul className="space-y-1">
+                    <li>
+                      • These settings control the experience when a scene is
+                      run by pressing Start or Record
+                    </li>
+                    <li>
+                      • Choose camera path styles to quickly create moving
+                      videos of your scene
+                    </li>
+                    <li>
+                      • Create an augmented reality (AR) experience by choosing
+                      ar-webxr Mode
+                    </li>
+                  </ul>
+                </div>
+              </div>
+            )}
+
           {entity && entity.components && (
             <div className="propertyRow">
               <AdvancedComponents entity={entity} />
