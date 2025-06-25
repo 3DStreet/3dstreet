@@ -13,6 +13,16 @@ AFRAME.registerComponent('street-stage', {
       type: 'number',
       default: 25000,
       if: { preset: ['grass'] }
+    },
+    grassWidth: {
+      type: 'number',
+      default: 0.1,
+      if: { preset: ['grass'] }
+    },
+    grassHeight: {
+      type: 'number',
+      default: 1.0,
+      if: { preset: ['grass'] }
     }
   },
 
@@ -58,6 +68,8 @@ AFRAME.registerComponent('street-stage', {
   createGrassStage: function () {
     const size = this.data.size;
     const density = this.data.density;
+    const grassWidth = this.data.grassWidth;
+    const grassHeight = this.data.grassHeight;
 
     // Create ground box with grass texture
     const groundEntity = document.createElement('a-entity');
@@ -99,6 +111,9 @@ AFRAME.registerComponent('street-stage', {
     const uniforms = {
       time: {
         value: 0
+      },
+      grassHeight: {
+        value: grassHeight
       }
     };
 
@@ -114,11 +129,13 @@ AFRAME.registerComponent('street-stage', {
     // Override the vertex shader to add wind animation
     leavesMaterial.onBeforeCompile = function (shader) {
       shader.uniforms.time = uniforms.time;
+      shader.uniforms.grassHeight = uniforms.grassHeight;
 
       shader.vertexShader = shader.vertexShader.replace(
         '#include <common>',
         `#include <common>
         uniform float time;
+        uniform float grassHeight;
         
         ${simpleNoise}`
       );
@@ -137,15 +154,15 @@ AFRAME.registerComponent('street-stage', {
         noise = pow(noise * 0.5 + 0.5, 2.) * 2.;
         
         float dispPower = 1. - cos( uv.y * 3.1416 * 0.5 );
-        float displacement = noise * ( 0.3 * dispPower );
+        float displacement = noise * ( 0.3 * dispPower * grassHeight );
         transformed.z -= displacement;`
       );
     };
 
     // Create instanced grass mesh
     const dummy = new THREE.Object3D();
-    const geometry = new THREE.PlaneGeometry(0.1, 1, 1, 4);
-    geometry.translate(0, 0.5, 0);
+    const geometry = new THREE.PlaneGeometry(grassWidth, grassHeight, 1, 4);
+    geometry.translate(0, grassHeight / 2, 0);
 
     const instancedMesh = new THREE.InstancedMesh(
       geometry,
