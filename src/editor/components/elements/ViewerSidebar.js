@@ -376,6 +376,28 @@ const ViewerSidebar = ({ entity }) => {
               </div>
             )}
 
+          {/* Viewer Mode Tips - only show when camera-path mode is selected and NOT custom path */}
+          {component?.data?.preset === 'locomotion' && (
+            <div className="propertyRow">
+              <div className="rounded bg-blue-50 p-2 text-gray-600">
+                <div className="mb-1 font-semibold uppercase">
+                  💡 Locomotion Mode Tips
+                </div>
+                <ul className="space-y-1">
+                  <li>
+                    • Locomotion mode provides First Person controls for viewers
+                    to move about the scene when you Run the scene by pressing
+                    Start
+                  </li>
+                  <li>
+                    • The user is provided with instructions to use W A S D or
+                    Arrow Keys to move and clicking + dragging to pan screen
+                  </li>
+                </ul>
+              </div>
+            </div>
+          )}
+
           {entity && entity.components && (
             <div className="propertyRow">
               <AdvancedComponents entity={entity} />
