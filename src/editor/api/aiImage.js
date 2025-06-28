@@ -1,5 +1,4 @@
-import { httpsCallable } from 'firebase/functions';
-import { functions } from '../services/firebase';
+import { getAuth } from 'firebase/auth';
 
 /**
  * Takes a screenshot of the current scene and enhances it with AI
@@ -20,22 +19,41 @@ export const enhanceSceneWithAI = async (prompt) => {
 
     console.log('Calling Python OpenAI enhancement function...');
 
-    // Call the Python Cloud Function using Firebase's httpsCallable
-    const enhanceFunction = httpsCallable(functions, 'enhanceImagePython', {
-      timeout: 540000 // 540 seconds in milliseconds to match server timeout
+    // Get Firebase auth token for authentication
+    const auth = getAuth();
+    const user = auth.currentUser;
+    if (!user) {
+      throw new Error('User must be authenticated to use AI enhancement');
+    }
+
+    const token = await user.getIdToken();
+
+    // Make direct HTTP request to the Cloud Function
+    const url =
+      'https://us-central1-dev-3dstreet.cloudfunctions.net/enhanceImagePython';
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${token}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        imageBase64: imageBase64,
+        prompt:
+          prompt ||
+          'Convert this low-poly 3D street scene into a photorealistic urban environment with realistic lighting, textures, and details',
+        sceneData: { sceneId } // Optional metadata
+      })
     });
 
-    const result = await enhanceFunction({
-      imageBase64: imageBase64,
-      prompt:
-        prompt ||
-        'Convert this low-poly 3D street scene into a photorealistic urban environment with realistic lighting, textures, and details',
-      sceneData: { sceneId } // Optional metadata
-    });
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(`HTTP ${response.status}: ${errorText}`);
+    }
 
-    // The Python function returns data in Firebase callable format:
-    // { data: { success: true, imageData: "base64...", original_prompt: "...", revised_prompt: "..." } }
-    const responseData = result.data;
+    const responseData = await response.json();
+
+    console.log('Response data from Python function:', responseData);
 
     if (!responseData.success) {
       throw new Error(
@@ -44,12 +62,21 @@ export const enhanceSceneWithAI = async (prompt) => {
     }
 
     // Transform the response to match the expected format
-    return {
+    const result = {
       success: true,
       enhanced_image_base64: responseData.imageData,
       original_prompt: responseData.original_prompt,
       revised_prompt: responseData.revised_prompt
     };
+
+    console.log('Returning result:', {
+      ...result,
+      enhanced_image_base64: result.enhanced_image_base64
+        ? `${result.enhanced_image_base64.substring(0, 50)}...`
+        : 'missing'
+    });
+
+    return result;
   } catch (error) {
     console.error('Error enhancing scene with AI:', error);
     throw error;

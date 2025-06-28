@@ -536,6 +536,25 @@ const AIChatPanel = forwardRef(function AIChatPanel(props, ref) {
                 setMessages((prev) => [...prev, snapshotMessage]);
               }
 
+              if (
+                call.name === 'enhanceSceneWithAI' &&
+                result &&
+                result.imageData
+              ) {
+                // Create a container for the enhanced image message with the image data
+                const enhancedImageMessage = {
+                  type: 'snapshot',
+                  id: Date.now() + Math.random().toString(16).slice(2),
+                  responseId: functionCallObj.responseId, // Use the same response ID
+                  caption: result.message || 'AI Enhanced Scene',
+                  imageData: `data:image/png;base64,${result.imageData}`,
+                  timestamp: new Date()
+                };
+
+                // Add the enhanced image message to the messages array
+                setMessages((prev) => [...prev, enhancedImageMessage]);
+              }
+
               // Update function call status to success
               setMessages((prev) =>
                 prev.map((msg) =>
