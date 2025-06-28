@@ -156,21 +156,13 @@ export default class Component extends React.Component {
   };
 
   render() {
-    let componentName = this.props.name;
-    let subComponentName = '';
-    if (componentName.indexOf('__') !== -1) {
-      subComponentName = componentName;
-      componentName = componentName.substr(0, componentName.indexOf('__'));
-    }
+    const componentName = this.props.name;
 
     return (
       <Collapsible collapsed={this.props.isCollapsed}>
         <div className="componentHeader collapsible-header">
-          <span
-            className="componentTitle"
-            title={subComponentName || componentName}
-          >
-            <span>{subComponentName || componentName}</span>
+          <span className="componentTitle" title={componentName}>
+            <span>{componentName}</span>
           </span>
           <div className="componentHeaderActions">
             <a
