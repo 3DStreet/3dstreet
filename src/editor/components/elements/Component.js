@@ -5,32 +5,10 @@ import PropTypes from 'prop-types';
 import PropertyRow from './PropertyRow';
 import React from 'react';
 import { getComponentClipboardRepresentation } from '../../lib/entity';
+import { shouldShowProperty } from '../../lib/utils';
 import { TrashIcon } from '../../icons';
 
 const isSingleProperty = AFRAME.schema.isSingleProperty;
-
-export function shouldShowProperty(propertyName, component) {
-  if (!component.schema[propertyName].if) {
-    return true;
-  }
-  let showProperty = true;
-  for (const [conditionKey, conditionValue] of Object.entries(
-    component.schema[propertyName].if
-  )) {
-    if (Array.isArray(conditionValue)) {
-      if (conditionValue.indexOf(component.data[conditionKey]) === -1) {
-        showProperty = false;
-        break;
-      }
-    } else {
-      if (conditionValue !== component.data[conditionKey]) {
-        showProperty = false;
-        break;
-      }
-    }
-  }
-  return showProperty;
-}
 
 /**
  * Single component.
