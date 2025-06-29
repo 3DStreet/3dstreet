@@ -8,7 +8,7 @@ import { Button } from '../elements';
 import useStore from '@/store';
 import Events from '../../lib/Events';
 import canvasRecorder from '../../lib/CanvasRecorder';
-import { shouldShowProperty } from '@/editor/components/elements/Component';
+import { shouldShowProperty } from '../../lib/utils';
 import { QrCode } from './QrCode';
 
 const ViewerSidebar = ({ entity }) => {
