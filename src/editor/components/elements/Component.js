@@ -1,10 +1,8 @@
-import Clipboard from 'clipboard';
 import Collapsible from '../Collapsible';
 import Events from '../../lib/Events';
 import PropTypes from 'prop-types';
 import PropertyRow from './PropertyRow';
 import React from 'react';
-import { getComponentClipboardRepresentation } from '../../lib/entity';
 import { shouldShowProperty } from '../../lib/utils';
 import { TrashIcon } from '../../icons';
 
@@ -39,25 +37,6 @@ export default class Component extends React.Component {
   };
 
   componentDidMount() {
-    var clipboard = new Clipboard(
-      '[data-action="copy-component-to-clipboard"]',
-      {
-        text: (trigger) => {
-          var componentName = trigger
-            .getAttribute('data-component')
-            .toLowerCase();
-          return getComponentClipboardRepresentation(
-            this.state.entity,
-            componentName
-          );
-        }
-      }
-    );
-    clipboard.on('error', (e) => {
-      // @todo Show the error in the UI
-      console.error(e);
-    });
-
     Events.on('entityupdate', this.onEntityUpdate);
   }
 
