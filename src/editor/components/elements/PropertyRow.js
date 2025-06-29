@@ -12,6 +12,7 @@ import TextureWidget from '../widgets/TextureWidget';
 import Vec4Widget from '../widgets/Vec4Widget';
 import Vec3Widget from '../widgets/Vec3Widget';
 import Vec2Widget from '../widgets/Vec2Widget';
+import { equal } from '../../lib/utils';
 
 export default class PropertyRow extends React.Component {
   static propTypes = {
@@ -139,6 +140,30 @@ export default class PropertyRow extends React.Component {
     }
   }
 
+  isPropertyDefined() {
+    const props = this.props;
+    let definedValue;
+    let defaultValue;
+    // getDOMAttribute returns null if the component doesn't exist, and
+    // in the case of a multi-properties component it returns undefined
+    // if it exists but has the default values.
+    if (props.isSingle) {
+      definedValue = props.entity.getDOMAttribute(props.componentname);
+      if (definedValue === null) return false;
+      defaultValue =
+        props.entity.components[props.componentname].schema.default;
+      return !equal(definedValue, defaultValue);
+    } else {
+      definedValue = (props.entity.getDOMAttribute(props.componentname) || {})[
+        props.name
+      ];
+      if (definedValue === undefined) return false;
+      defaultValue =
+        props.entity.components[props.componentname].schema[props.name].default;
+      return !equal(definedValue, defaultValue);
+    }
+  }
+
   render() {
     const props = this.props;
     const value =
@@ -150,10 +175,7 @@ export default class PropertyRow extends React.Component {
 
     const className = classNames({
       propertyRow: true,
-      propertyRowDefined: props.isSingle
-        ? !!props.entity.getDOMAttribute(props.componentname)
-        : props.name in
-          (props.entity.getDOMAttribute(props.componentname) || {})
+      propertyRowDefined: this.isPropertyDefined()
     });
 
     return (
