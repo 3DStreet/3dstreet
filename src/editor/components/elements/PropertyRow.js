@@ -1,6 +1,5 @@
 /* eslint-disable no-prototype-builtins */
 import React from 'react';
-import classNames from 'classnames';
 import PropTypes from 'prop-types';
 
 import BooleanWidget from '../widgets/BooleanWidget';
@@ -148,16 +147,8 @@ export default class PropertyRow extends React.Component {
     const title =
       props.name + '\n - type: ' + props.schema.type + '\n - value: ' + value;
 
-    const className = classNames({
-      propertyRow: true,
-      propertyRowDefined: props.isSingle
-        ? !!props.entity.getDOMAttribute(props.componentname)
-        : props.name in
-          (props.entity.getDOMAttribute(props.componentname) || {})
-    });
-
     return (
-      <div className={className}>
+      <div className="propertyRow">
         <label
           htmlFor={this.id}
           className="text"

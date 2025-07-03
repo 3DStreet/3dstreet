@@ -1,36 +1,12 @@
-import Clipboard from 'clipboard';
 import Collapsible from '../Collapsible';
 import Events from '../../lib/Events';
 import PropTypes from 'prop-types';
 import PropertyRow from './PropertyRow';
 import React from 'react';
-import { getComponentClipboardRepresentation } from '../../lib/entity';
+import { shouldShowProperty } from '../../lib/utils';
 import { TrashIcon } from '../../icons';
 
 const isSingleProperty = AFRAME.schema.isSingleProperty;
-
-export function shouldShowProperty(propertyName, component) {
-  if (!component.schema[propertyName].if) {
-    return true;
-  }
-  let showProperty = true;
-  for (const [conditionKey, conditionValue] of Object.entries(
-    component.schema[propertyName].if
-  )) {
-    if (Array.isArray(conditionValue)) {
-      if (conditionValue.indexOf(component.data[conditionKey]) === -1) {
-        showProperty = false;
-        break;
-      }
-    } else {
-      if (conditionValue !== component.data[conditionKey]) {
-        showProperty = false;
-        break;
-      }
-    }
-  }
-  return showProperty;
-}
 
 /**
  * Single component.
@@ -61,25 +37,6 @@ export default class Component extends React.Component {
   };
 
   componentDidMount() {
-    var clipboard = new Clipboard(
-      '[data-action="copy-component-to-clipboard"]',
-      {
-        text: (trigger) => {
-          var componentName = trigger
-            .getAttribute('data-component')
-            .toLowerCase();
-          return getComponentClipboardRepresentation(
-            this.state.entity,
-            componentName
-          );
-        }
-      }
-    );
-    clipboard.on('error', (e) => {
-      // @todo Show the error in the UI
-      console.error(e);
-    });
-
     Events.on('entityupdate', this.onEntityUpdate);
   }
 
@@ -156,21 +113,13 @@ export default class Component extends React.Component {
   };
 
   render() {
-    let componentName = this.props.name;
-    let subComponentName = '';
-    if (componentName.indexOf('__') !== -1) {
-      subComponentName = componentName;
-      componentName = componentName.substr(0, componentName.indexOf('__'));
-    }
+    const componentName = this.props.name;
 
     return (
       <Collapsible collapsed={this.props.isCollapsed}>
         <div className="componentHeader collapsible-header">
-          <span
-            className="componentTitle"
-            title={subComponentName || componentName}
-          >
-            <span>{subComponentName || componentName}</span>
+          <span className="componentTitle" title={componentName}>
+            <span>{componentName}</span>
           </span>
           <div className="componentHeaderActions">
             <a

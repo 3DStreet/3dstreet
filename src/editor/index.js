@@ -327,7 +327,6 @@ Inspector.prototype = {
 
   /**
    * Closes the editor and gives the control back to the scene
-   * @return {[type]} [description]
    */
   close: function () {
     this.opened = false;
