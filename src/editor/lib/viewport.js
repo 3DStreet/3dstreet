@@ -158,7 +158,7 @@ export function Viewport(inspector) {
   // Helpers.
   const sceneHelpers = inspector.sceneHelpers;
   const grid = new InfiniteGridHelper(1, 10, new THREE.Color(0xaaaaaa), 500);
-  grid.visible = false;
+  grid.visible = true;
   sceneHelpers.add(grid);
 
   const selectionBox = new OrientedBoxHelper(undefined, 0x1faaf2);
