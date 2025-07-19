@@ -126,6 +126,11 @@ const useStore = create(
           set({ modal: 'payment', postCheckout });
         },
         postCheckout: null,
+        isGridVisible: true,
+        setIsGridVisible: (newIsGridVisible) => {
+          Events.emit('gridvisibilitychanged', newIsGridVisible);
+          set({ isGridVisible: newIsGridVisible });
+        },
         isInspectorEnabled: true,
         setIsInspectorEnabled: (newIsInspectorEnabled) => {
           const viewerModeUI = document.getElementById('viewer-mode-ui');

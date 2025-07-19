@@ -5,6 +5,7 @@ import {
   cloneEntity
 } from './entity';
 import { getOS } from './utils';
+import useStore from '@/store';
 
 const os = getOS();
 
@@ -67,7 +68,8 @@ export const Shortcuts = {
 
     // g: toggle grid
     if (keyCode === 71) {
-      Events.emit('togglegrid');
+      const { isGridVisible, setIsGridVisible } = useStore.getState();
+      setIsGridVisible(!isGridVisible);
     }
 
     // backspace & delete: remove selected entity

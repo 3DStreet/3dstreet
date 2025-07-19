@@ -6,6 +6,8 @@ import posthog from 'posthog-js';
 import Events from '../../lib/Events.js';
 import canvasRecorder from '../../lib/CanvasRecorder';
 import { useAuthContext } from '@/editor/contexts';
+import { faCheck } from '@fortawesome/free-solid-svg-icons';
+import { AwesomeIcon } from '../elements/AwesomeIcon';
 
 const cameraOptions = [
   {
@@ -27,6 +29,8 @@ const AppMenu = ({ currentUser }) => {
     setModal,
     isInspectorEnabled,
     setIsInspectorEnabled,
+    isGridVisible,
+    setIsGridVisible,
     saveScene,
     startCheckout
   } = useStore();
@@ -125,6 +129,17 @@ const AppMenu = ({ currentUser }) => {
             sideOffset={5}
             alignOffset={-3}
           >
+            <Menubar.CheckboxItem
+              className="MenubarCheckboxItem"
+              checked={isGridVisible}
+              onCheckedChange={setIsGridVisible}
+            >
+              <Menubar.ItemIndicator className="MenubarItemIndicator">
+                <AwesomeIcon icon={faCheck} size={14} />
+              </Menubar.ItemIndicator>
+              Show Grid
+            </Menubar.CheckboxItem>
+            <Menubar.Separator className="MenubarSeparator" />
             {cameraOptions.map((option) => (
               <Menubar.Item
                 key={option.value}
