@@ -161,6 +161,50 @@ export function Viewport(inspector) {
   grid.visible = true;
   sceneHelpers.add(grid);
 
+  // Origin indicator with RGB axis cylinders
+  const originIndicator = new THREE.Group();
+
+  // Create cylinder geometry for axes (1m length, thin radius)
+  const axisGeometry = new THREE.CylinderGeometry(0.01, 0.01, 1, 8);
+
+  // X-axis (red) - points in +X direction
+  const xAxisMaterial = new THREE.MeshBasicMaterial({
+    color: 0xff0000,
+    transparent: true,
+    opacity: 0.8,
+    depthTest: false
+  });
+  const xAxis = new THREE.Mesh(axisGeometry, xAxisMaterial);
+  xAxis.rotation.z = -Math.PI / 2; // Rotate to point along X axis
+  xAxis.position.x = 0.5; // Move half length to start at origin
+  originIndicator.add(xAxis);
+
+  // Y-axis (green) - points in +Y direction
+  const yAxisMaterial = new THREE.MeshBasicMaterial({
+    color: 0x00ff00,
+    transparent: true,
+    opacity: 0.8,
+    depthTest: false
+  });
+  const yAxis = new THREE.Mesh(axisGeometry, yAxisMaterial);
+  yAxis.position.y = 0.5; // Move half length to start at origin
+  originIndicator.add(yAxis);
+
+  // Z-axis (blue) - points in +Z direction
+  const zAxisMaterial = new THREE.MeshBasicMaterial({
+    color: 0x0000ff,
+    transparent: true,
+    opacity: 0.8,
+    depthTest: false
+  });
+  const zAxis = new THREE.Mesh(axisGeometry, zAxisMaterial);
+  zAxis.rotation.x = Math.PI / 2; // Rotate to point along Z axis
+  zAxis.position.z = 0.5; // Move half length to start at origin
+  originIndicator.add(zAxis);
+
+  originIndicator.visible = true;
+  sceneHelpers.add(originIndicator);
+
   const selectionBox = new OrientedBoxHelper(undefined, 0x1faaf2);
   selectionBox.material.depthTest = false;
   selectionBox.material.transparent = true;
@@ -496,10 +540,12 @@ export function Viewport(inspector) {
 
   Events.on('gridvisibilitychanged', (showGrid) => {
     grid.visible = showGrid;
+    originIndicator.visible = showGrid;
   });
 
   Events.on('togglegrid', () => {
     grid.visible = !grid.visible;
+    originIndicator.visible = grid.visible;
   });
 
   useStore.subscribe(
