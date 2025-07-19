@@ -14,13 +14,15 @@ const cameraOptions = [
     value: 'perspective',
     event: 'cameraperspectivetoggle',
     payload: null,
-    label: '3D View'
+    label: '3D View',
+    shortcut: '1'
   },
   {
     value: 'orthotop',
     event: 'cameraorthographictoggle',
     payload: 'top',
-    label: 'Plan View'
+    label: 'Plan View',
+    shortcut: '4'
   }
 ];
 
@@ -138,6 +140,7 @@ const AppMenu = ({ currentUser }) => {
                 <AwesomeIcon icon={faCheck} size={14} />
               </Menubar.ItemIndicator>
               Show Grid
+              <div className="RightSlot">G</div>
             </Menubar.CheckboxItem>
             <Menubar.Separator className="MenubarSeparator" />
             {cameraOptions.map((option) => (
@@ -147,6 +150,7 @@ const AppMenu = ({ currentUser }) => {
                 onClick={() => handleCameraChange(option)}
               >
                 {option.label}
+                <div className="RightSlot">{option.shortcut}</div>
               </Menubar.Item>
             ))}
             <Menubar.Separator className="MenubarSeparator" />
@@ -177,6 +181,7 @@ const AppMenu = ({ currentUser }) => {
               }}
             >
               Start Viewer
+              <div className="RightSlot">5</div>
             </Menubar.Item>
             <Menubar.Item
               className="MenubarItem"

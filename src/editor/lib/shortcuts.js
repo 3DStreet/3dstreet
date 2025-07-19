@@ -72,6 +72,19 @@ export const Shortcuts = {
       setIsGridVisible(!isGridVisible);
     }
 
+    // 5: enter viewer mode
+    if (keyCode === 53) {
+      const { isInspectorEnabled, setIsInspectorEnabled } = useStore.getState();
+      setIsInspectorEnabled(!isInspectorEnabled);
+    }
+
+    // F5: enter viewer mode
+    if (keyCode === 116) {
+      event.preventDefault(); // Prevent browser refresh
+      const { isInspectorEnabled, setIsInspectorEnabled } = useStore.getState();
+      setIsInspectorEnabled(!isInspectorEnabled);
+    }
+
     // backspace & delete: remove selected entity
     if (keyCode === 8 || keyCode === 46) {
       removeSelectedEntity();
@@ -98,8 +111,6 @@ export const Shortcuts = {
       Events.emit('cameraorthographictoggle', 'right');
     } else if (keyCode === 52) {
       Events.emit('cameraorthographictoggle', 'top');
-    } else if (keyCode === 53) {
-      Events.emit('cameraorthographictoggle', 'bottom');
     } else if (keyCode === 54) {
       Events.emit('cameraorthographictoggle', 'back');
     } else if (keyCode === 55) {
