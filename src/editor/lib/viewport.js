@@ -2,6 +2,7 @@
 import TransformControls from './TransformControls.js';
 import EditorControls from './EditorControls.js';
 import { MeasureLineControls } from './MeasureLineControls.js';
+import InfiniteGridHelper from './InfiniteGridHelper.js';
 
 import { copyCameraPosition } from './cameras';
 import { initRaycaster } from './raycaster';
@@ -156,7 +157,7 @@ export function Viewport(inspector) {
 
   // Helpers.
   const sceneHelpers = inspector.sceneHelpers;
-  const grid = new THREE.GridHelper(30, 60, 0xaaaaaa, 0x262626);
+  const grid = new InfiniteGridHelper(1, 10, new THREE.Color(0xaaaaaa), 500);
   grid.visible = false;
   sceneHelpers.add(grid);
 
