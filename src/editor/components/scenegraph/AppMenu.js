@@ -6,19 +6,25 @@ import posthog from 'posthog-js';
 import Events from '../../lib/Events.js';
 import canvasRecorder from '../../lib/CanvasRecorder';
 import { useAuthContext } from '@/editor/contexts';
+import { faCheck, faCircle } from '@fortawesome/free-solid-svg-icons';
+import { AwesomeIcon } from '../elements/AwesomeIcon';
+import { useState, useEffect } from 'react';
+import { currentOrthoDir } from '../../lib/cameras.js';
 
 const cameraOptions = [
   {
     value: 'perspective',
     event: 'cameraperspectivetoggle',
     payload: null,
-    label: '3D View'
+    label: '3D View',
+    shortcut: '1'
   },
   {
     value: 'orthotop',
     event: 'cameraorthographictoggle',
     payload: 'top',
-    label: 'Plan View'
+    label: 'Plan View',
+    shortcut: '4'
   }
 ];
 
@@ -27,10 +33,51 @@ const AppMenu = ({ currentUser }) => {
     setModal,
     isInspectorEnabled,
     setIsInspectorEnabled,
+    isGridVisible,
+    setIsGridVisible,
     saveScene,
     startCheckout
   } = useStore();
   const { currentUser: authUser } = useAuthContext();
+  const [currentCamera, setCurrentCamera] = useState('perspective');
+
+  // Function to get current camera state from the actual camera system
+  const getCurrentCameraState = () => {
+    if (!AFRAME.INSPECTOR?.camera) return 'perspective';
+
+    const camera = AFRAME.INSPECTOR.camera;
+    if (camera.type === 'PerspectiveCamera') {
+      return 'perspective';
+    } else if (camera.type === 'OrthographicCamera') {
+      return `ortho${currentOrthoDir}`;
+    }
+    return 'perspective';
+  };
+
+  useEffect(() => {
+    // Initialize with actual camera state
+    setCurrentCamera(getCurrentCameraState());
+
+    const handleCameraToggle = (event) => {
+      setCurrentCamera(event.value);
+    };
+
+    // Also sync when inspector is enabled/disabled
+    const handleInspectorToggle = () => {
+      // Small delay to ensure camera system has updated
+      setTimeout(() => {
+        setCurrentCamera(getCurrentCameraState());
+      }, 100);
+    };
+
+    Events.on('cameratoggle', handleCameraToggle);
+    Events.on('inspectortoggle', handleInspectorToggle);
+
+    return () => {
+      Events.off('cameratoggle', handleCameraToggle);
+      Events.off('inspectortoggle', handleInspectorToggle);
+    };
+  }, []);
 
   const handleCameraChange = (option) => {
     // Let the camera system handle the camera change first
@@ -125,14 +172,31 @@ const AppMenu = ({ currentUser }) => {
             sideOffset={5}
             alignOffset={-3}
           >
+            <Menubar.CheckboxItem
+              className="MenubarCheckboxItem"
+              checked={isGridVisible}
+              onCheckedChange={setIsGridVisible}
+            >
+              <Menubar.ItemIndicator className="MenubarItemIndicator">
+                <AwesomeIcon icon={faCheck} size={14} />
+              </Menubar.ItemIndicator>
+              Show Grid
+              <div className="RightSlot">G</div>
+            </Menubar.CheckboxItem>
+            <Menubar.Separator className="MenubarSeparator" />
             {cameraOptions.map((option) => (
-              <Menubar.Item
+              <Menubar.CheckboxItem
                 key={option.value}
-                className="MenubarItem"
-                onClick={() => handleCameraChange(option)}
+                className="MenubarCheckboxItem"
+                checked={currentCamera === option.value}
+                onCheckedChange={() => handleCameraChange(option)}
               >
+                <Menubar.ItemIndicator className="MenubarItemIndicator">
+                  <AwesomeIcon icon={faCircle} size={8} />
+                </Menubar.ItemIndicator>
                 {option.label}
-              </Menubar.Item>
+                <div className="RightSlot">{option.shortcut}</div>
+              </Menubar.CheckboxItem>
             ))}
             <Menubar.Separator className="MenubarSeparator" />
             <Menubar.Item
@@ -162,6 +226,7 @@ const AppMenu = ({ currentUser }) => {
               }}
             >
               Start Viewer
+              <div className="RightSlot">5</div>
             </Menubar.Item>
             <Menubar.Item
               className="MenubarItem"

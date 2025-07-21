@@ -244,17 +244,6 @@
           ]
         ],
 
-        XYZ: [
-          [
-            new THREE.Mesh(
-              new THREE.OctahedronGeometry(0.1, 0),
-              new GizmoMaterial({ color: 0xffffff, opacity: 0.25 })
-            ),
-            [0, 0, 0],
-            [0, 0, 0]
-          ]
-        ],
-
         XY: [
           [
             new THREE.Mesh(
@@ -321,10 +310,6 @@
           ]
         ],
 
-        XYZ: [
-          [new THREE.Mesh(new THREE.OctahedronGeometry(0.2, 0), pickerMaterial)]
-        ],
-
         XY: [
           [
             new THREE.Mesh(
@@ -389,8 +374,6 @@
         if (Math.abs(eye.x) > Math.abs(eye.y))
           this.activePlane = this.planes['YZ'];
       }
-
-      if (axis === 'XYZ') this.activePlane = this.planes['XYZE'];
 
       if (axis === 'XY') this.activePlane = this.planes['XY'];
 
