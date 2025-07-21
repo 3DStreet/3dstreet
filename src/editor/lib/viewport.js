@@ -157,7 +157,7 @@ export function Viewport(inspector) {
 
   // Helpers.
   const sceneHelpers = inspector.sceneHelpers;
-  const grid = new InfiniteGridHelper(1, 10, new THREE.Color(0xaaaaaa), 500);
+  const grid = new InfiniteGridHelper(1, 10, new THREE.Color(0xffffff), 500);
   grid.visible = true;
   sceneHelpers.add(grid);
 
