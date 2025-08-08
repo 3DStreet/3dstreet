@@ -118,6 +118,17 @@ const ViewerSidebar = ({ entity }) => {
     return null;
   };
 
+  // Generate 8-character random alphanumeric string for cache busting
+  const generateCacheBust = () => {
+    const chars =
+      'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+    let result = '';
+    for (let i = 0; i < 8; i++) {
+      result += chars.charAt(Math.floor(Math.random() * chars.length));
+    }
+    return result;
+  };
+
   // Generate viewer URL for AR-WebXR mode
   const getViewerUrl = () => {
     const sceneId = getCurrentSceneId();
@@ -128,10 +139,12 @@ const ViewerSidebar = ({ entity }) => {
     // Check if webXRVariant is enabled AND user has Pro access
     const isVariantEnabled =
       currentUser?.isPro && component?.data?.webXRVariant === true;
+    // Generate cache bust parameter for AR mode
+    const cacheBust = generateCacheBust();
     // Create the viewer URL with the scene ID in the hash
     // Include /webxr-variant/ path if the variant is enabled
     const pathPrefix = isVariantEnabled ? 'webxr-variant/' : '';
-    return `${baseUrl}/${pathPrefix}?viewer=true#/scenes/${sceneId}`;
+    return `${baseUrl}/${pathPrefix}?viewer=true&cacheBust=${cacheBust}#/scenes/${sceneId}`;
   };
 
   // Check if AR-WebXR mode is selected
