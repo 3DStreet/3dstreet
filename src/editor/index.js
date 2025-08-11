@@ -2,7 +2,7 @@ import '../styles/tailwind.css';
 import { createRoot } from 'react-dom/client';
 import { GLTFExporter } from 'three/examples/jsm/exporters/GLTFExporter';
 import MainWrapper from './components/MainWrapper';
-import ARControls from './components/viewport/ARControls';
+import { ARControls, VisibilityToggle } from './components/viewport/ARControls';
 import { AuthProvider, GeoProvider } from './contexts';
 import Events from './lib/Events';
 import { AssetsLoader } from './lib/assetsLoader';
@@ -96,6 +96,15 @@ Inspector.prototype = {
     if (arControlsContainer) {
       const arRoot = createRoot(arControlsContainer);
       arRoot.render(<ARControls />);
+    }
+
+    // Mount Visibility Toggle to the AR overlay div
+    const visibilityToggleContainer = document.getElementById(
+      'react-visibility-toggle'
+    );
+    if (visibilityToggleContainer) {
+      const visibilityRoot = createRoot(visibilityToggleContainer);
+      visibilityRoot.render(<VisibilityToggle />);
     }
 
     this.scene = this.sceneEl.object3D;
