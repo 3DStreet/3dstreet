@@ -338,6 +338,20 @@ export const entityTools = {
           })
         }
       })
+    },
+    {
+      name: 'enhanceSceneWithAI',
+      description:
+        'Take a screenshot of the current 3D scene and enhance it to look photorealistic using AI. This creates a realistic version of the low-poly street scene.',
+      parameters: Schema.object({
+        properties: {
+          prompt: Schema.string({
+            description:
+              'Custom prompt for AI enhancement. If not provided, defaults to converting the scene to photorealistic urban environment with realistic lighting and textures.'
+          })
+        },
+        optionalProperties: ['prompt']
+      })
     }
   ]
 };
@@ -1109,6 +1123,43 @@ const AIChatTools = {
       }
     } catch (error) {
       console.error('Error setting lat/lon:', error);
+      throw error;
+    }
+  },
+
+  /**
+   * Handles enhanceSceneWithAI function call
+   * @param {Object} args - The function arguments
+   * @param {Object} currentUser - The current user object
+   * @returns {Promise<Object>} Enhanced image data
+   */
+  enhanceSceneWithAI: async (args, currentUser) => {
+    try {
+      // Check if user is authenticated
+      if (!currentUser) {
+        throw new Error('You need to sign in to use AI scene enhancement');
+      }
+
+      // Import the enhanceSceneWithAI function from the API module
+      const { enhanceSceneWithAI } = await import('../../api/aiImage.js');
+
+      // Call the AI enhancement function with the provided prompt
+      const result = await enhanceSceneWithAI(args.prompt);
+
+      if (result && result.enhanced_image_base64) {
+        // Return the enhanced image data for display in the chat
+        return {
+          success: true,
+          message: 'Scene enhanced successfully with AI',
+          imageData: result.enhanced_image_base64,
+          prompt: result.original_prompt,
+          revisedPrompt: result.revised_prompt
+        };
+      } else {
+        throw new Error('Failed to enhance scene - no image data returned');
+      }
+    } catch (error) {
+      console.error('Error enhancing scene with AI:', error);
       throw error;
     }
   },
