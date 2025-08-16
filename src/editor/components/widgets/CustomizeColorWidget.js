@@ -1,8 +1,8 @@
 import { useState, useEffect, useCallback } from 'react';
-import { Button } from '../Button';
-import BooleanWidget from '../../widgets/BooleanWidget';
-import ColorWidget from '../../widgets/ColorWidget';
-import SelectWidget from '../../widgets/SelectWidget';
+import { Button } from '../elements';
+import BooleanWidget from './BooleanWidget';
+import ColorWidget from './ColorWidget';
+import SelectWidget from './SelectWidget';
 
 export const getMaterials = (object3D) => {
   const materials = new Set();

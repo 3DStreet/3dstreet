@@ -1,7 +1,7 @@
 /* global AFRAME, customElements */
 const catalog = require('./catalog.json');
 
-const assetBasePath = 'https://assets.3dstreet.app/'; // use this path if none specified in index.html assets tag
+const assetBasePath = 'http://localhost:8000/'; // use this path if none specified in index.html assets tag
 
 function buildAssetHTML(assetUrl, categories) {
   console.log('[street]', 'Using street assets from', assetUrl);

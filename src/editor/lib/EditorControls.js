@@ -131,7 +131,7 @@ THREE.EditorControls = function (_object, domElement) {
   const changeEventCallback = () => {
     scope.dispatchEvent(changeEvent);
   };
-  this.focusAnimationComponent.setCamera(object, changeEventCallback);
+  this.focusAnimationComponent?.setCamera(object, changeEventCallback);
 
   this.pan = function (delta) {
     var distance;

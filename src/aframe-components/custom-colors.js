@@ -1,5 +1,5 @@
 /* global AFRAME */
-import { getMaterials } from '../editor/components/components/CustomizeColorWidget';
+import { getMaterials } from '../editor/components/widgets/CustomizeColorWidget';
 const styleParser = AFRAME.utils.styleParser;
 
 AFRAME.registerComponent('custom-colors', {

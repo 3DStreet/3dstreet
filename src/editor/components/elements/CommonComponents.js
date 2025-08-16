@@ -4,7 +4,7 @@ import DEFAULT_COMPONENTS from './DefaultComponents';
 import PropertyRow from './PropertyRow';
 import Events from '../../lib/Events';
 import { saveBlob } from '../../lib/utils';
-import CustomizeColorWidget from './CustomizeColorWidget';
+import CustomizeColorWidget from '../widgets/CustomizeColorWidget';
 
 export default class CommonComponents extends React.Component {
   static propTypes = {
