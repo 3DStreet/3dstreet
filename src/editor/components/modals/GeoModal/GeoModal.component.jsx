@@ -1,11 +1,8 @@
 import { useState, useCallback, useEffect } from 'react';
 import { SavingModal } from '../SavingModal';
-
 import styles from './GeoModal.module.scss';
 import { Mangnifier20Icon, Save24Icon } from '../../../icons';
-
-import { httpsCallable } from 'firebase/functions';
-import { firebaseConfig, functions } from '../../../services/firebase.js';
+import { firebaseConfig } from '../../../services/firebase.js';
 import Modal from '../Modal.jsx';
 import { Button, Input } from '../../elements/index.js';
 import {
@@ -16,9 +13,12 @@ import {
 } from '@react-google-maps/api';
 import GeoImg from '../../../../../ui_assets/geo.png';
 import { roundCoord } from '../../../../../src/utils.js';
+import { setSceneLocation } from '../../../lib/utils.js';
 import useStore from '@/store.js';
+import { useAuthContext } from '../../../contexts/index.js';
 
 const GeoModal = () => {
+  const { currentUser } = useAuthContext();
   const { isLoaded } = useJsApiLoader({
     googleMapsApiKey: firebaseConfig.apiKey
   });
@@ -33,6 +33,7 @@ const GeoModal = () => {
     (state) => state.returnToPreviousModal
   );
   const isOpen = useStore((state) => state.modal === 'geo');
+  const startCheckout = useStore((state) => state.startCheckout);
 
   const onClose = () => {
     returnToPreviousModal();
@@ -54,17 +55,6 @@ const GeoModal = () => {
       }
     }
   }, [isOpen]);
-
-  const requestAndSetElevation = async (lat, lng) => {
-    try {
-      const getGeoidHeight = httpsCallable(functions, 'getGeoidHeight');
-      const result = await getGeoidHeight({ lat: lat, lon: lng });
-      return result.data;
-    } catch (error) {
-      console.error(error.code, error.message, error.details);
-      return null;
-    }
-  };
 
   const setMarkerPositionAndElevation = useCallback((lat, lng) => {
     if (!isNaN(lat) && !isNaN(lng)) {
@@ -114,33 +104,29 @@ const GeoModal = () => {
   };
 
   const onSaveHandler = async () => {
+    // Check if user is pro before allowing save
+    if (!currentUser?.isPro) {
+      startCheckout('geo');
+      return;
+    }
+
     setIsWorking(true);
     const latitude = markerPosition.lat;
     const longitude = markerPosition.lng;
-    const data = await requestAndSetElevation(latitude, longitude);
 
-    if (data) {
-      console.log(`latitude: ${latitude}, longitude: ${longitude}`);
-      console.log(`elevation: ${data.ellipsoidalHeight}`);
+    // Use the shared utility function to set the scene location
+    const result = await setSceneLocation(latitude, longitude);
 
-      const geoLayer = document.getElementById('reference-layers');
-      AFRAME.INSPECTOR.execute(
-        geoLayer.hasAttribute('street-geo') ? 'entityupdate' : 'componentadd',
-        {
-          entity: geoLayer,
-          component: 'street-geo',
-          value: {
-            latitude: latitude,
-            longitude: longitude,
-            ellipsoidalHeight: data.ellipsoidalHeight,
-            orthometricHeight: data.orthometricHeight,
-            geoidHeight: data.geoidHeight
-          }
-        }
-      );
-      setTimeout(() => {
-        AFRAME.INSPECTOR.selectEntity(geoLayer);
-      }, 0);
+    if (result.success && result.data) {
+      const data = result.data;
+
+      // Log the new location information
+      console.log('Location data:', data.location);
+      console.log('Location source:', data.locationSource);
+
+      // Log the new intersection information
+      console.log('Nearest intersection:', data.nearestIntersection);
+      console.log('Intersection source:', data.nearestIntersectionSource);
     }
 
     setIsWorking(false);
@@ -242,7 +228,9 @@ const GeoModal = () => {
               variant="filled"
               onClick={onSaveHandler}
             >
-              Update Scene Location
+              {currentUser?.isPro
+                ? 'Update Scene Location'
+                : 'Update Scene Location (Pro)'}
             </Button>
           </div>
         </div>

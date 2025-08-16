@@ -172,10 +172,8 @@ const GeoSidebar = ({ entity }) => {
     posthog.capture('geo_panel_clicked');
     if (!currentUser) {
       setModal('signin');
-    } else if (currentUser.isPro) {
-      setModal('geo');
     } else {
-      setModal('payment');
+      setModal('geo');
     }
   };
 
