@@ -17,7 +17,7 @@ import {
 } from '../../../utils/username';
 
 const ProfileModal = () => {
-  const { currentUser, setCurrentUser } = useAuthContext();
+  const { currentUser, setCurrentUser, tokenProfile } = useAuthContext();
   const setModal = useStore((state) => state.setModal);
   const modal = useStore((state) => state.modal);
 
@@ -135,6 +135,22 @@ const ProfileModal = () => {
           {/* Subscription Section */}
           <div className={styles.subscriptionSection}>
             <h3 className={styles.sectionTitle}>Subscription</h3>
+
+            {/* Token Usage Display */}
+            {!currentUser?.isPro && tokenProfile && (
+              <div className={styles.tokenUsage}>
+                <p>
+                  Plan: Free
+                  <br />
+                  Geo Tokens: {tokenProfile.geoToken}
+                </p>
+                <p className={styles.tokenDescription}>
+                  Use free Geo Tokens to set scene locations. Upgrade to Pro for
+                  unlimited access.
+                </p>
+              </div>
+            )}
+
             {currentUser?.isPro ? (
               <div className={styles.manageBillingCard}>
                 <p>
@@ -163,8 +179,8 @@ const ProfileModal = () => {
                     Unlock Geospatial Features with 3DStreet Pro
                   </h3>
                   <span>
-                    Create with geospatial maps and share your vision in
-                    augmented reality with 3DStreet Pro.
+                    Create with unlimited geospatial map access, and share your
+                    vision in augmented reality with 3DStreet Pro.
                   </span>
                 </div>
 

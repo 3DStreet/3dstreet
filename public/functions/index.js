@@ -13,8 +13,56 @@ exports.getGeoidHeight = functions
   .runWith({ secrets: ["GOOGLE_MAPS_ELEVATION_API_KEY"] })
   .https
   .onCall(async (data, context) => {
+    // Check if user is authenticated
+    if (!context.auth) {
+      throw new functions.https.HttpsError('unauthenticated', 'User must be authenticated');
+    }
+
+    const userId = context.auth.uid;
     const lat = parseFloat(data.lat);
     const lon = parseFloat(data.lon);
+
+    // Check if user is Pro or has tokens
+    const db = admin.firestore();
+    let canProceed = false;
+    let isProUser = false;
+
+    // Check if user has Pro subscription
+    try {
+      const userRecord = await getAuth().getUser(userId);
+      if (userRecord.customClaims && userRecord.customClaims.plan === 'PRO') {
+        canProceed = true;
+        isProUser = true;
+      }
+    } catch (error) {
+      console.log('Error checking user claims:', error);
+    }
+
+    // If not Pro, check tokens
+    if (!canProceed) {
+      const tokenProfileRef = db.collection('tokenProfile').doc(userId);
+      const tokenDoc = await tokenProfileRef.get();
+      
+      if (tokenDoc.exists) {
+        const tokenData = tokenDoc.data();
+        if (tokenData.geoToken > 0) {
+          canProceed = true;
+        }
+      } else {
+        // Create initial token profile with 3 tokens
+        await tokenProfileRef.set({
+          userId: userId,
+          geoToken: 3,
+          createdAt: admin.firestore.FieldValue.serverTimestamp(),
+          updatedAt: admin.firestore.FieldValue.serverTimestamp()
+        });
+        canProceed = true;
+      }
+    }
+
+    if (!canProceed) {
+      throw new functions.https.HttpsError('permission-denied', 'No tokens or Pro subscription available');
+    }
     const geoidFilePath = 'EGM96-15.pgm'; // Converted from USA NGA data under Public Domain license.
     const geoidHeight = await getGeoidHeightFromPGM(geoidFilePath, lat, lon);
     const client = new GoogleMapsClient({});
@@ -114,6 +162,25 @@ exports.getGeoidHeight = functions
       intersectionPromise
     ]);
 
+    // Decrement token if not a Pro user (only after successful API calls)
+    let remainingTokens = null;
+    if (!isProUser) {
+      const tokenProfileRef = db.collection('tokenProfile').doc(userId);
+      const tokenDoc = await tokenProfileRef.get();
+      
+      if (tokenDoc.exists) {
+        const currentTokens = tokenDoc.data().geoToken;
+        const newTokenCount = Math.max(0, currentTokens - 1);
+        
+        await tokenProfileRef.update({
+          geoToken: newTokenCount,
+          updatedAt: admin.firestore.FieldValue.serverTimestamp()
+        });
+        
+        remainingTokens = newTokenCount;
+      }
+    }
+
     // Return combined response
     return {
       lat: lat,
@@ -127,7 +194,11 @@ exports.getGeoidHeight = functions
       location: locationInfo || { streetName: '', locality: '', state: '', country: '', locationString: '' },
       locationSource: locationInfo ? 'Google Maps Reverse Geocoding Service' : 'Request timed out or failed',
       nearestIntersection: intersectionInfo || { street: '', crossStreet: '', intersectionString: '' },
-      nearestIntersectionSource: intersectionInfo ? 'GeoNames FindNearestIntersectionOSM Service' : 'Request timed out or failed'
+      nearestIntersectionSource: intersectionInfo ? 'GeoNames FindNearestIntersectionOSM Service' : 'Request timed out or failed',
+      tokenInfo: {
+        isProUser: isProUser,
+        remainingTokens: remainingTokens
+      }
     };
   });
 

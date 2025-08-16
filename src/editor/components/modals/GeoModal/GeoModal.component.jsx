@@ -16,9 +16,10 @@ import { roundCoord } from '../../../../../src/utils.js';
 import { setSceneLocation } from '../../../lib/utils.js';
 import useStore from '@/store.js';
 import { useAuthContext } from '../../../contexts/index.js';
+import { canUseGeoFeature } from '../../../utils/tokens.js';
 
 const GeoModal = () => {
-  const { currentUser } = useAuthContext();
+  const { currentUser, tokenProfile, refreshTokenProfile } = useAuthContext();
   const { isLoaded } = useJsApiLoader({
     googleMapsApiKey: firebaseConfig.apiKey
   });
@@ -104,8 +105,9 @@ const GeoModal = () => {
   };
 
   const onSaveHandler = async () => {
-    // Check if user is pro before allowing save
-    if (!currentUser?.isPro) {
+    // Check if user can use geo feature (pro OR has tokens)
+    const canUse = await canUseGeoFeature(currentUser);
+    if (!canUse) {
       startCheckout('geo');
       return;
     }
@@ -127,6 +129,9 @@ const GeoModal = () => {
       // Log the new intersection information
       console.log('Nearest intersection:', data.nearestIntersection);
       console.log('Intersection source:', data.nearestIntersectionSource);
+
+      // Refresh token profile to get updated count after successful save
+      await refreshTokenProfile();
     }
 
     setIsWorking(false);
@@ -230,7 +235,9 @@ const GeoModal = () => {
             >
               {currentUser?.isPro
                 ? 'Update Scene Location'
-                : 'Update Scene Location (Pro)'}
+                : tokenProfile?.geoToken > 0
+                  ? `Update Scene Location (${tokenProfile.geoToken} free left)`
+                  : 'Update Scene Location (Pro)'}
             </Button>
           </div>
         </div>

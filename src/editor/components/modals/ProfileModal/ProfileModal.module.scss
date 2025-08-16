@@ -128,6 +128,27 @@
       }
     }
 
+    .tokenUsage {
+      display: flex;
+      flex-direction: column;
+      row-gap: 8px;
+
+      & > p {
+        display: flex;
+        align-items: center;
+        column-gap: 8px;
+        font-size: 18px !important;
+        margin: 0;
+      }
+
+      .tokenDescription {
+        font-size: 14px !important;
+        font-style: italic;
+        color: variables.$lightgray-200;
+        margin: 0;
+      }
+    }
+
     .manageBillingCard {
       display: flex;
       flex-direction: column;
