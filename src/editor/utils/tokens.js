@@ -9,6 +9,8 @@ export const getTokenProfile = async (userId) => {
     if (tokenProfileDoc.exists()) {
       return tokenProfileDoc.data();
     } else {
+      // Create initial token profile with exactly 3 tokens
+      // Firestore rules enforce this must be exactly 3 tokens
       const defaultProfile = {
         userId,
         geoToken: 3,
