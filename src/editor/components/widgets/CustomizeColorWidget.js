@@ -47,10 +47,7 @@ const CustomizeColorContent = ({ materials, entity }) => {
         <CustomColorRow
           key={material.name}
           material={material.name}
-          color={
-            colorMapping[material.name] ||
-            `#${material.userData.origColor?.getHexString()}`
-          }
+          color={colorMapping[material.name] ?? ''}
           setMaterialColor={setMaterialColor}
         />
       ))}
@@ -58,7 +55,7 @@ const CustomizeColorContent = ({ materials, entity }) => {
   );
 };
 
-const CustomizeColorWrapper = ({ entity }) => {
+const CustomizeColorWidget = ({ entity }) => {
   const [hasCustomColorComponent, setHasCustomColorComponent] = useState(
     Boolean(entity.getAttribute('custom-colors'))
   );
@@ -128,4 +125,4 @@ const CustomizeColorWrapper = ({ entity }) => {
   );
 };
 
-export default CustomizeColorWrapper;
+export default CustomizeColorWidget;
