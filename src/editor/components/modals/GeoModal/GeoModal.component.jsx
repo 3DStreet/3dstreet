@@ -15,8 +15,10 @@ import GeoImg from '../../../../../ui_assets/geo.png';
 import { roundCoord } from '../../../../../src/utils.js';
 import { setSceneLocation } from '../../../lib/utils.js';
 import useStore from '@/store.js';
+import { useAuthContext } from '../../../contexts/index.js';
 
 const GeoModal = () => {
+  const { currentUser } = useAuthContext();
   const { isLoaded } = useJsApiLoader({
     googleMapsApiKey: firebaseConfig.apiKey
   });
@@ -31,6 +33,7 @@ const GeoModal = () => {
     (state) => state.returnToPreviousModal
   );
   const isOpen = useStore((state) => state.modal === 'geo');
+  const startCheckout = useStore((state) => state.startCheckout);
 
   const onClose = () => {
     returnToPreviousModal();
@@ -101,6 +104,12 @@ const GeoModal = () => {
   };
 
   const onSaveHandler = async () => {
+    // Check if user is pro before allowing save
+    if (!currentUser?.isPro) {
+      startCheckout('geo');
+      return;
+    }
+
     setIsWorking(true);
     const latitude = markerPosition.lat;
     const longitude = markerPosition.lng;
@@ -219,7 +228,9 @@ const GeoModal = () => {
               variant="filled"
               onClick={onSaveHandler}
             >
-              Update Scene Location
+              {currentUser?.isPro
+                ? 'Update Scene Location'
+                : 'Update Scene Location (Pro)'}
             </Button>
           </div>
         </div>
