@@ -1050,13 +1050,6 @@ const AIChatTools = {
         throw new Error('You need to sign in to set location');
       }
 
-      if (!currentUser.isPro) {
-        // Trigger checkout flow for non-pro users
-        // const useStore = (await import('@/store')).default;
-        // useStore.getState().startCheckout('geo'); // don't do this for now
-        throw new Error('Setting location requires a Pro subscription');
-      }
-
       // Import the setSceneLocation utility function
       const { setSceneLocation } = await import('../../lib/utils.js');
 

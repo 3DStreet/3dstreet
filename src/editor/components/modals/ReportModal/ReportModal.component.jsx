@@ -12,7 +12,6 @@ export const ReportModal = () => {
   const projectInfo = useStore((state) => state.projectInfo);
   const setProjectInfo = useStore((state) => state.setProjectInfo);
   const { currentUser } = useAuthContext();
-  const startCheckout = useStore((state) => state.startCheckout);
 
   const [formData, setFormData] = useState({
     description: '',
@@ -130,17 +129,13 @@ export const ReportModal = () => {
     // Save form data without validation before opening geo modal
     saveFormData();
 
-    // Check if user is logged in and is a pro user
+    // Check if user is logged in
     if (!currentUser) {
       setModal('signin');
       return;
-    } else if (!currentUser.isPro) {
-      // If not a pro user, start checkout process
-      startCheckout('geo');
-      return;
     }
 
-    // If user is a pro user, open geo modal
+    // Open geo modal for all signed-in users
     setModal('geo', true);
 
     // Mark geoLocation as touched
