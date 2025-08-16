@@ -9,7 +9,6 @@ export const getMaterials = (object3D) => {
 };
 
 const CustomColorRow = ({ material, color, setMaterialColor }) => {
-  console.log('CustomColorRow', material, color);
   return (
     <div className="propertyRow">
       <label className="text">{material}</label>
@@ -18,7 +17,6 @@ const CustomColorRow = ({ material, color, setMaterialColor }) => {
         name="color"
         value={color}
         onChange={(_, v) => {
-          console.log('setMaterialColor', material, v);
           setMaterialColor(material, v);
         }}
       />
