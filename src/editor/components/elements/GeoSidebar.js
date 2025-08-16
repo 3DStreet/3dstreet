@@ -184,6 +184,18 @@ const GeoSidebar = ({ entity }) => {
     <div className="geo-sidebar">
       <div className="geo-controls">
         <div className="details">
+          {/* Display location string if available */}
+          {component && component.data && component.data.locationString && (
+            <div className="propertyRow">
+              <div className="fakePropertyRowLabel">Location</div>
+              <div
+                className="fakePropertyRowValue"
+                style={{ fontSize: '12px', color: '#ccc' }}
+              >
+                {component.data.locationString}
+              </div>
+            </div>
+          )}
           <div className="propertyRow">
             {entity && entity.components ? (
               <>
