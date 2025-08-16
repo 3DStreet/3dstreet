@@ -123,7 +123,10 @@ export async function setSceneLocation(latitude, longitude) {
             longitude: lng,
             ellipsoidalHeight: data.ellipsoidalHeight,
             orthometricHeight: data.orthometricHeight,
-            geoidHeight: data.geoidHeight
+            geoidHeight: data.geoidHeight,
+            locationString: data.location?.locationString || '',
+            intersectionString:
+              data.nearestIntersection?.intersectionString || ''
           }
         }
       );
