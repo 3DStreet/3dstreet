@@ -18,6 +18,7 @@ require('./aframe-components/custom-colors.js');
 require('./aframe-components/notify.js');
 require('./aframe-components/create-from-json');
 require('./aframe-components/screentock.js');
+require('./aframe-components/focus-animation');
 require('aframe-atlas-uvs-component');
 require('./aframe-components/street-geo.js');
 require('./aframe-components/street-environment.js');
