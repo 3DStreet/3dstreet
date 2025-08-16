@@ -1,8 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { Button } from '../elements';
-import BooleanWidget from './BooleanWidget';
 import ColorWidget from './ColorWidget';
-import SelectWidget from './SelectWidget';
 
 export const getMaterials = (object3D) => {
   const materials = new Set();
@@ -10,12 +8,28 @@ export const getMaterials = (object3D) => {
   return Array.from(materials);
 };
 
+const CustomColorRow = ({ material, color, setMaterialColor }) => {
+  console.log('CustomColorRow', material, color);
+  return (
+    <div className="propertyRow">
+      <label className="text">{material}</label>
+      <ColorWidget
+        componentname="color"
+        name="color"
+        value={color}
+        onChange={(_, v) => {
+          console.log('setMaterialColor', material, v);
+          setMaterialColor(material, v);
+        }}
+      />
+    </div>
+  );
+};
+
 const CustomizeColorContent = ({ materials, entity }) => {
   const [colorMapping, setColorMapping] = useState(
     entity.getAttribute('custom-colors') ?? {}
   );
-  const [selectedMaterial, setSelectedMaterial] = useState();
-
   const setMaterialColor = (material, color) => {
     const newColorMapping = { ...colorMapping, [material]: color };
     if (color === undefined) delete newColorMapping[material];
@@ -27,49 +41,19 @@ const CustomizeColorContent = ({ materials, entity }) => {
     });
   };
 
-  const handleToggleOverride = (_, v) => {
-    setMaterialColor(selectedMaterial, v ? '#ffffff' : undefined);
-  };
-
-  const handleColorChange = (_, v) => {
-    setMaterialColor(selectedMaterial, v);
-  };
-
   return (
     <div className="details">
-      <div className="propertyRow">
-        <label className="text">Material</label>
-        <SelectWidget
-          name="material"
-          value={selectedMaterial}
-          onChange={(_, v) => {
-            setSelectedMaterial(v);
-          }}
-          options={materials.map((m) => m.name)}
+      {materials.map((material) => (
+        <CustomColorRow
+          key={material.name}
+          material={material.name}
+          color={
+            colorMapping[material.name] ||
+            `#${material.userData.origColor?.getHexString()}`
+          }
+          setMaterialColor={setMaterialColor}
         />
-      </div>
-      {selectedMaterial && (
-        <>
-          <div className="propertyRow">
-            <label className="text">Override default</label>
-            <BooleanWidget
-              componentname="override"
-              name="override"
-              onChange={handleToggleOverride}
-              value={colorMapping[selectedMaterial] !== undefined}
-            />
-          </div>
-          <div className="propertyRow">
-            <label className="text">Color</label>
-            <ColorWidget
-              componentname="color"
-              name="color"
-              value={colorMapping[selectedMaterial]}
-              onChange={handleColorChange}
-            />
-          </div>
-        </>
-      )}
+      ))}
     </div>
   );
 };
@@ -130,7 +114,7 @@ const CustomizeColorWrapper = ({ entity }) => {
       <div className="propertyRow">
         <label className="text">Custom Colors</label>
         <Button variant="toolbtn" onClick={toggleCustomColors}>
-          {hasCustomColorComponent ? 'Remove' : 'Add'} Custom Colors
+          {hasCustomColorComponent ? 'Remove' : 'Add'}
         </Button>
       </div>
       {hasCustomColorComponent && (
