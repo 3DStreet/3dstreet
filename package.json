@@ -1,6 +1,6 @@
 {
   "name": "3dstreet",
-  "version": "0.5.5",
+  "version": "0.5.6",
   "description": "Web-based 3D visualization of streets using A-Frame and WebXR",
   "main": "dist/3dstreet-editor.js",
   "scripts": {
@@ -31,12 +31,11 @@
     "@gltf-transform/functions": "^3.10.0",
     "@react-google-maps/api": "^2.19.3",
     "@stripe/stripe-js": "^3.4.1",
-    "3d-tiles-renderer": "^0.4.8",
+    "3d-tiles-renderer": "^0.4.10",
     "aframe-atlas-uvs-component": "^3.0.0",
     "aframe-cursor-teleport-component": "^1.6.0",
     "aframe-extras": "^7.5.1",
     "classnames": "^2.3.2",
-    "clipboard": "^2.0.11",
     "date-fns": "^2.30.0",
     "expr-eval": "^2.0.2",
     "firebase": "^11.3.1",

@@ -1,6 +1,8 @@
 import { create } from 'zustand';
 import { devtools, subscribeWithSelector } from 'zustand/middleware';
 import posthog from 'posthog-js';
+import Events from './editor/lib/Events';
+import canvasRecorder from './editor/lib/CanvasRecorder';
 
 const firstModal = () => {
   let modal = window.location.hash.includes('payment')
@@ -19,6 +21,39 @@ const useStore = create(
   subscribeWithSelector(
     devtools(
       (set) => ({
+        // Recording state
+        isRecording: false,
+        setIsRecording: (newIsRecording) =>
+          set({ isRecording: newIsRecording }),
+        checkRecordingStatus: () => {
+          const recordingStatus = canvasRecorder.isCurrentlyRecording();
+          const currentState = useStore.getState().isRecording;
+          if (currentState !== recordingStatus) {
+            set({ isRecording: recordingStatus });
+          }
+          return recordingStatus;
+        },
+        startRecordingCheck: () => {
+          // First check immediately
+          useStore.getState().checkRecordingStatus();
+
+          // Then set up an interval
+          const intervalId = setInterval(() => {
+            useStore.getState().checkRecordingStatus();
+          }, 1000);
+
+          // Store the interval ID for cleanup
+          set({ recordingCheckIntervalId: intervalId });
+        },
+        stopRecordingCheck: () => {
+          const { recordingCheckIntervalId } = useStore.getState();
+          if (recordingCheckIntervalId) {
+            clearInterval(recordingCheckIntervalId);
+            set({ recordingCheckIntervalId: null });
+          }
+        },
+        recordingCheckIntervalId: null,
+
         sceneId: null, // not used anywhere yet, we still use the metadata component
         setSceneId: (newSceneId) => set({ sceneId: newSceneId }), // not used anywhere yet
         isSavingScene: false,
@@ -33,7 +68,18 @@ const useStore = create(
         sceneTitle: null,
         setSceneTitle: (newSceneTitle) => set({ sceneTitle: newSceneTitle }),
         newScene: () =>
-          set({ sceneId: null, sceneTitle: null, authorId: null }),
+          set({
+            sceneId: null,
+            sceneTitle: null,
+            authorId: null,
+            projectInfo: {
+              description: '',
+              projectArea: '',
+              currentCondition: '',
+              problemStatement: '',
+              proposedSolutions: ''
+            }
+          }),
         authorId: null, // not used anywhere yet, we still use the metadata component
         setAuthorId: (newAuthorId) => set({ authorId: newAuthorId }), // not used anywhere yet
         unitsPreference: localStorage.getItem('unitsPreference') || 'metric',
@@ -41,6 +87,21 @@ const useStore = create(
           localStorage.setItem('unitsPreference', newUnitsPreference);
           set({ unitsPreference: newUnitsPreference });
         },
+        // Project info data (replaces project-info component)
+        projectInfo: {
+          description: '',
+          projectArea: '',
+          currentCondition: '',
+          problemStatement: '',
+          proposedSolutions: ''
+        },
+        setProjectInfo: (newProjectInfo) =>
+          set({
+            projectInfo: {
+              ...useStore.getState().projectInfo,
+              ...newProjectInfo
+            }
+          }),
         modal: firstModal(),
         previousModal: null,
         setModal: (newModal, rememberPrevious = false) => {
@@ -65,14 +126,37 @@ const useStore = create(
           set({ modal: 'payment', postCheckout });
         },
         postCheckout: null,
+        isGridVisible: true,
+        setIsGridVisible: (newIsGridVisible) => {
+          Events.emit('gridvisibilitychanged', newIsGridVisible);
+          set({ isGridVisible: newIsGridVisible });
+        },
         isInspectorEnabled: true,
         setIsInspectorEnabled: (newIsInspectorEnabled) => {
+          const viewerModeUI = document.getElementById('viewer-mode-ui');
+
           if (newIsInspectorEnabled) {
             posthog.capture('inspector_opened');
             AFRAME.INSPECTOR.open();
+
+            // Make sure to stop recording when returning to editor mode
+            if (canvasRecorder.isCurrentlyRecording()) {
+              console.log('Stopping recording due to returning to editor mode');
+              canvasRecorder.stopRecording();
+            }
+
+            // Hide viewer mode UI when inspector is visible
+            if (viewerModeUI) {
+              viewerModeUI.style.display = 'none';
+            }
           } else {
             posthog.capture('inspector_closed');
             AFRAME.INSPECTOR.close();
+
+            // Show viewer mode UI when inspector is not visible
+            if (viewerModeUI) {
+              viewerModeUI.style.display = 'block';
+            }
           }
           set({ isInspectorEnabled: newIsInspectorEnabled });
         }
@@ -80,6 +164,19 @@ const useStore = create(
       { name: 'MyZustandStore' }
     )
   )
+);
+
+// Subscribe to projectInfo changes and trigger cloud save
+useStore.subscribe(
+  (state) => state.projectInfo,
+  (projectInfo) => {
+    // Don't trigger on initial state (empty values)
+    const hasContent = Object.values(projectInfo).some((value) => value !== '');
+    if (hasContent) {
+      // Emit the same event that triggers autosave
+      Events.emit('historychanged', true);
+    }
+  }
 );
 
 export default useStore;

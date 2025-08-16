@@ -4,7 +4,7 @@ import PropTypes from 'prop-types';
 import classNames from 'classnames';
 import Events from '../../lib/Events';
 import { printEntity, removeEntity, cloneEntity } from '../../lib/entity';
-import { AwesomeIcon } from '../components/AwesomeIcon';
+import { AwesomeIcon } from '../elements/AwesomeIcon';
 import { faCaretDown, faCaretRight } from '@fortawesome/free-solid-svg-icons';
 
 export default class Entity extends React.Component {
@@ -25,10 +25,7 @@ export default class Entity extends React.Component {
 
   toggleVisibility = () => {
     const entity = this.props.entity;
-    const visible =
-      entity.tagName.toLowerCase() === 'a-scene'
-        ? entity.object3D.visible
-        : entity.getAttribute('visible');
+    const visible = entity.object3D.visible;
     AFRAME.INSPECTOR.execute('entityupdate', {
       entity,
       component: 'visible',
@@ -82,10 +79,7 @@ export default class Entity extends React.Component {
     }
 
     // Visibility button.
-    const visible =
-      tagName === 'a-scene'
-        ? entity.object3D.visible
-        : entity.getAttribute('visible');
+    const visible = entity.object3D.visible;
     const visibilityButton = (
       <i
         title="Toggle entity visibility"

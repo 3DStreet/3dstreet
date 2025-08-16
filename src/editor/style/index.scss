@@ -89,26 +89,6 @@ body.aframe-inspector-opened {
       monospace;
   }
 
-  textarea {
-    tab-size: 4;
-    white-space: pre;
-    word-wrap: normal;
-  }
-
-  textarea.success {
-    border-color: variables.$green-100 !important;
-  }
-
-  textarea.fail {
-    background-color: rgba(255, 0, 0, 0.05);
-    border-color: variables.$red-100 !important;
-  }
-
-  textarea,
-  input {
-    outline: none; /* osx */
-  }
-
   .viewButton {
     box-sizing: border-box;
     font-weight: 500;

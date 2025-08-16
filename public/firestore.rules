@@ -13,6 +13,21 @@ service cloud.firestore {
       // Allow update or delete scene if user is owner of document
       allow update, delete: if request.auth.uid == resource.data.author;
     }
+
+    // Social Profile Collection Rules (PUBLIC data - usernames, display info, etc.)
+    match /socialProfile/{userId} {
+      // Allow any authenticated user to read (for username lookups, public profiles)
+      allow read: if request.auth != null;
+      
+      // Users can only create their own profile (doc ID must match auth UID)
+      allow create: if request.auth != null 
+        && request.auth.uid == userId  // Doc ID must match auth UID
+        && request.resource.data.userId == userId; // userId field must match too
+      
+      // Users can only update their own profile
+      allow update: if request.auth != null
+        && request.auth.uid == resource.data.userId;
+    }
   }
 }
 

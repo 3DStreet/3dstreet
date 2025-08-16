@@ -3,13 +3,12 @@
 
 <head>
   <!-- aframe -->
-
   <script src="https://aframe.io/releases/1.7.1/aframe.min.js"></script>
   <!-- 3dstreet -->
-  <script src="./dist/aframe-street-component.js"></script>
+  <script src="/dist/aframe-street-component.js"></script>
 
   <!-- mapbox -->
-  <script src="./dist/aframe-mapbox-component.min.js"></script>
+  <script src="/dist/aframe-mapbox-component.min.js"></script>
 
   <!-- viewer controls - vr teleport -->
   <script src="https://cdn.jsdelivr.net/npm/aframe-blink-controls@0.4.3/dist/aframe-blink-controls.min.js"></script>
@@ -17,7 +16,7 @@
   <title>3DStreet</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <link rel="icon" type="image/x-icon" href="ui_assets/favicon.ico">
-  <link rel="stylesheet" href="./dist/viewer-styles.css">
+  <link rel="stylesheet" href="/dist/viewer-styles.css">
 </head>
 
 <body>
@@ -28,17 +27,40 @@
       <div class="road">Loading 3DStreet</div>
     </div>
   </div>
-  <!-- viewer ui start -->
-  <!-- <div class="viewer-header-wrapper m-4">
-    <button class="viewer-logo-start-editor-button" onclick="startEditor()">
-      <img class="viewer-logo-img" alt="3DStreet Viewer" src="ui_assets/3D-St-stacked-128.png">
-    </button>
-  </div> -->
 
   <!-- maps copyright start -->
   <div id="map-data-attribution" style="visibility: hidden;">
     <div id="map-logo">Map Attribution:</div>
     <span id="map-copyright"></span>
+  </div>
+
+  <!-- Viewer Mode UI - shown when inspector not visible -->
+  <div id="viewer-mode-ui">
+    <!-- AR Play Button - shown if device supports XR mode -->
+    <div id="viewer-mode-ar-play-button"></div>
+    <!-- AR Error Message - shown if device does not support WebXR AR mode -->
+    <div id="viewer-mode-ar-webxr-not-supported">
+      Device does not support WebXR.
+    </div>
+    <!-- Viewer Mode - Locomotion Instructions -->
+    <div id="viewer-mode-locomotion-controls">
+      <div class="controls-container">
+        <div class="controls-title">Controls</div>
+        <div class="controls-item">
+          <span class="key-group">W A S D</span> or <span class="key-group">Arrow Keys</span> to move
+        </div>
+        <div class="controls-item">
+          <span class="key-group">Click + Drag</span> to pan screen
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- AR Overlay - only shown when in AR mode -->
+  <div id="viewer-mode-ar-overlay">
+    <button id="viewer-mode-ar-overlay-exit-button" onclick="AFRAME.scenes[0].renderer.xr.getSession().end()">Exit AR Mode</button>
+    <div id="react-ar-controls"></div>
+    <div id="react-visibility-toggle"></div>
   </div>
 
   <!-- <div class="right-fixed">
@@ -57,9 +79,11 @@
   <a-scene
     renderer="colorManagement: true; physicallyCorrectLights: true; anisotropy: 16; logarithmicDepthBuffer: true;"
     loading-screen="enabled: false" notify metadata
+    device-orientation-permission-ui="enabled: false"
     reflection device-orientation-permission-ui="enabled: false"
-    webxr="requiredFeatures:hit-test,local-floor;referenceSpaceType:local-floor;" xr-mode-ui="XRMode: ar"
-    css2d-renderer>
+    webxr="requiredFeatures:hit-test,local-floor,dom-overlay;referenceSpaceType:local-floor;overlayElement:#viewer-mode-ar-overlay"
+    xr-mode-ui="XRMode: ar; enterARButton: #viewer-mode-ar-play-button;"
+    css2d-renderer scene-timer="autoStart: false; format: mm:ss:ff">
     <a-assets>
       <!-- TODO: Add this to repo documentation  -->
       <!-- you can specify a custom asset path using below syntax  -->
@@ -77,18 +101,14 @@
 
     </a-assets>
 
-    <a-entity id="street-container" data-layer-name="User Layers" data-no-transform>
-      <a-entity id="default-street" street streetmix-loader set-loader-from-hash></a-entity>
-    </a-entity>
 
     <a-entity id="reference-layers" data-layer-name="Geospatial Layers" data-no-transform></a-entity>
 
     <a-entity id="environment" data-layer-name="Environment" street-environment="preset: day;" data-no-transform></a-entity>
 
-    <a-entity id="cameraRig" class="ph-no-capture" data-layer-name="User Agent" data-no-transform
+    <a-entity id="cameraRig" class="ph-no-capture" data-layer-name="Viewer" data-no-transform viewer-mode="preset: camera-path;"
       cursor-teleport="cameraRig: #cameraRig; cameraHead: #camera;"
       movement-controls="camera: #camera; fly: true">
-      <a-entity id="memory" project-info data-layer-name="Memory" data-no-transform explicit-save></a-entity>
       <a-entity id="camera" data-layer-name="Camera" position="0 1.6 0" camera look-controls="reverseMouseDrag: true" class="autocreated"></a-entity>
       <a-entity id="leftHand" hand-controls="hand: left;" data-layer-name="Left Controls" class="autocreated" data-no-transform=""
         blink-controls="cameraRig: #cameraRig; teleportOrigin: #camera; rotateOnTeleport:false;"></a-entity>
@@ -104,6 +124,10 @@
         visible="false"
         class="autocreated"
       ></a-entity>
+    </a-entity>
+
+    <a-entity id="street-container" data-layer-name="User Layers" data-no-transform>
+      <a-entity id="default-street" street streetmix-loader set-loader-from-hash></a-entity>
     </a-entity>
 
   </a-scene>

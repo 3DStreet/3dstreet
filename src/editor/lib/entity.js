@@ -11,7 +11,7 @@ import {
   VideoCameraIcon,
   LayersIcon,
   Object24IconCyan,
-  PenPaperIconCyan
+  Ruler24Icon
 } from '../icons';
 
 /**
@@ -60,9 +60,9 @@ export function updateEntity(entity, component, property, value) {
  * Remove an entity.
  *
  * @param {Element} entity Entity to remove.
- * @param {boolean} force (Optional) If true it won't ask for confirmation.
+ * @param {boolean} [force=false] If true it won't ask for confirmation.
  */
-export function removeEntity(entity, force) {
+export function removeEntity(entity, force = false) {
   if (entity) {
     if (
       force === true ||
@@ -104,9 +104,9 @@ export function findClosestEntity(entity) {
 
 /**
  * Remove the selected entity
- * @param  {boolean} force (Optional) If true it won't ask for confirmation
+ * @param {boolean} [force=false] If true it won't ask for confirmation.
  */
-export function removeSelectedEntity(force) {
+export function removeSelectedEntity(force = false) {
   if (AFRAME.INSPECTOR.selectedEntity) {
     removeEntity(AFRAME.INSPECTOR.selectedEntity, force);
   }
@@ -561,14 +561,27 @@ export function createUniqueId() {
 
 export function getComponentClipboardRepresentation(entity, componentName) {
   entity.flushToDOM();
-  const data = entity.getDOMAttribute(componentName);
+  let data = entity.getDOMAttribute(componentName);
   if (!data) {
     return componentName;
   }
 
-  const schema = entity.components[componentName].schema;
-  const attributes = stringifyComponentValue(schema, data);
-  return `${componentName}="${attributes}"`;
+  const component = entity.components[componentName];
+  const schema = component.schema;
+  // If multi-properties component, filter out properties that are the same as their default value
+  if (!isSingleProperty(schema)) {
+    data = { ...data };
+
+    for (const [propertyName, value] of Object.entries(data)) {
+      const defaultValue = getDefaultValue(component, propertyName);
+      if (equal(value, defaultValue)) {
+        delete data[propertyName];
+      }
+    }
+  }
+
+  const properties = stringifyComponentValue(schema, data);
+  return `${componentName}="${properties}"`;
 }
 
 export function getEntityDisplayName(entity) {
@@ -598,6 +611,13 @@ export function getEntityIcon(entity) {
   if (entity.getAttribute('street-segment')) {
     return <SegmentIcon />;
   }
+  if (entity.getAttribute('measure-line')) {
+    return (
+      <div style={{ color: '#00FFFF' }}>
+        <Ruler24Icon />
+      </div>
+    );
+  }
 
   // Check for class-based icons
   if (entity.classList.contains('autocreated')) {
@@ -614,8 +634,6 @@ export function getEntityIcon(entity) {
       return <LayersIcon />;
     case 'cameraRig':
       return <VideoCameraIcon />;
-    case 'memory':
-      return <PenPaperIconCyan />;
     default:
       return <Object24IconCyan />;
   }

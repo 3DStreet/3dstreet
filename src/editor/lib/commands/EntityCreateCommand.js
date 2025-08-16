@@ -1,6 +1,6 @@
 import Events from '../Events';
 import { Command } from '../command.js';
-import { createEntity } from '../entity.js';
+import { createEntity, createUniqueId } from '../entity.js';
 
 /**
  * @param editor Editor
@@ -18,22 +18,32 @@ export class EntityCreateCommand extends Command {
     this.definition = definition;
     this.callback = callback;
     this.entityId = null;
+    // If we have parentEl in the definition, be sure it has an id and store the definition with the id
+    if (
+      this.definition.parentEl &&
+      typeof this.definition.parentEl !== 'string'
+    ) {
+      if (!this.definition.parentEl.id) {
+        this.definition.parentEl.id = createUniqueId();
+      }
+      this.definition = {
+        ...this.definition,
+        parentEl: this.definition.parentEl.id
+      };
+    }
   }
 
   execute(nextCommandCallback) {
     let definition = this.definition;
     const callback = (entity) => {
+      entity.pause();
       this.editor.selectEntity(entity);
       this.callback?.(entity);
       nextCommandCallback?.(entity);
     };
     let parentEl;
     if (this.definition.parentEl) {
-      if (typeof this.definition.parentEl === 'string') {
-        parentEl = document.getElementById(this.definition.parentEl);
-      } else {
-        parentEl = this.definition.parentEl;
-      }
+      parentEl = document.getElementById(this.definition.parentEl);
     }
     if (!parentEl) {
       parentEl = document.querySelector(this.editor.config.defaultParent);

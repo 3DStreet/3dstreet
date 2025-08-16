@@ -4,7 +4,11 @@
 [![License](http://img.shields.io/npm/l/3dstreet.svg)](LICENSE)
 [![Build Status](https://github.com/3DStreet/3dstreet/actions/workflows/ci.yml/badge.svg)](https://github.com/3DStreet/3dstreet/actions/workflows/ci.yml)
 
-3DStreet creates 3D visualizations of your 2D [Streetmix.net](https://streetmix.net) streets using A-Frame and WebXR. Developers can use the same core [`street` A-Frame component](#a-frame-street-component-api) of 3DStreet for their own projects.
+3DStreet is an open-source geospatial design application for creating urban planning scenes with detailed street configurations. Based on three.js and A-Frame, 3DStreet empowers users to rapidly prototype custom urban design scenarios using procedural street design tools combined with a rich library of accurately scaled and oriented creative-commons licensed 3D models. 
+
+3DStreet creates immersive 3D visualizations using built-in street generation templates, or from 2D [Streetmix.net](https://streetmix.net) street cross-sections and supports real-world context through built-in integrations to geospatial data sources such as Google 3D Tiles, Open Street Map, and on-site Augmented Reality using WebXR. 3DStreet has an active global user base and has been used by tens of thousands of students, professionals, and advocates worldwide to create visualizations of proposed scenarios for street safety improvements.
+
+Our long-term vision is to improve street safety and address climate change by empowering community-led planning, made possible by open-source tools like 3DStreet that provide a level playing field for geospatial design for both community members and engineering professionals.
 
 ### Online Tool
 
@@ -15,76 +19,27 @@ _(or visit https://3dstreet.app)_
 
 <img height="500" src="https://raw.githubusercontent.com/kfarr/streetmix3d/master/ui_assets/streetmix3d.jpg" />
 
-### [Quick Start - How to make your own 3DStreet scene from Streetmix. See documentation here.](https://www.3dstreet.org/docs/category/tutorial-use-streetmix-to-create-a-3dstreet-scene)
+### Educational Use & Partnerships
 
-## The rest of this README is for developers. [User-facing docs are here.](https://www.3dstreet.org/docs/)
+3DStreet is actively used in educational settings, including partnerships with universities across Europe and North America. The application serves as a teaching tool for urban planning and transportation design courses, helping students learn about street safety and sustainable transportation through hands-on 3D design experiences.
+
+### WebXR and Augmented Reality
+
+3DStreet supports immersive experiences through WebXR, including augmented reality visualization for on-site street design review. The companion [Bollard Buddy](https://github.com/3DStreet/bollardbuddy/) application provides web-based AR capabilities for measurement, geolocated object placement, and 3DStreet scene visualization without requiring separate native applications.
+
+## Open-Source Geospatial Design Platform
+
+3DStreet addresses the critical need for open-source alternatives to proprietary civil engineering software. While most 3D geospatial design tools used by professional engineers are closed-source applications from companies like ESRI and Autodesk, 3DStreet provides a browser-based, cross-platform solution that works on any device.
+
+This approach ensures equitable access to geospatial design tools for users worldwide, including those in developing regions who cannot afford traditional commercial civil engineering software.
+
+## The rest of this README is for developers and contributors. For info on using 3DStreet, please refer to [our full user-facing documentation at 3dstreet.com/docs.](https://www.3dstreet.com/docs/)
 
 ## A-Frame component
-3DStreet is built upon a custom A-Frame `street` component which is also available for you to customize for your own custom A-Frame street scenes. The `street` component takes a string of JSON and renders one or more "segments" (also known as lanes or slices) of a street and optionally buildings and ground to the left and right.
 
-### Usage Example
+3DStreet is a customized fork of the [A-Frame Inspector](https://github.com/aframevr/aframe-inspector) with similarities to the C-Frame community A-Frame Editor (https://github.com/c-frame/aframe-editor/) maintained by Vincent Fretin. Our projects attempt to coordinate in bug fixing and feature development on 3DStreet/A-Frame Editor and to share these changes across these 3 repositories when feasible.
 
-[![Remix](https://cloud.githubusercontent.com/assets/674727/24572421/688f7fc0-162d-11e7-8a35-b02bc050c043.jpg)](https://glitch.com/~3dstreet-simple) 
-
-```html
-<html>
-  <head>
-    <title>Street Component!</title>
-    <script src="https://aframe.io/releases/1.5.0/aframe.min.js"></script>
-    <script src="https://unpkg.com/3dstreet@0.4.5/dist/aframe-street-component.js"></script>
-  </head>  
-  <body>
-    <a-scene>
-      <a-entity id="mySimpleStreet" street streetmix-loader="streetmixStreetURL: https://streetmix.net/kfarr/3/" ></a-entity>
-    </a-scene>
-  </body>
-</html>
-```
-
-### A-Frame `street` Component API
-
-The `street` component creates a street made up of one or more segments as children of the entity it's attached to. It may also create buildings, ground, and place models in the scene using mixins. Creating the JSON array of segments by hand is cumbersome and typically the `streetmix-loader` component (below) is also used on the same entity to populate the street JSON from a Streetmix.net street.
-
-| Property | Description | Default Value |
-| --------- | --------- | --------- |
-| JSON | A string of JSON containing an array one or more segments (also known as slices) representing cross-section parts of a street. See [basic-json.html](/examples/basic-json.html) for an example of proper usage | '' |
-| type | A string representing the formatting of the JSON passed in the `JSON` property |  'streetmixSegmentsMetric' |
-| left | A string to determine which [building variant](#list-of-streetmix-building-variants) to create for the left side of the street (heading outbound) | '' |
-| right | A string to determine which building variant to create for the right side of the street (heading outbound). | '' |
-| showGround | A boolean to determine if the ground associated with the specified building variant(s) in `left` and `right` should be created or not. | true |
-| showStriping | A boolean to determine if the lane stripings should be created or not. | true |
-| length | A number that sets the street's length in meters | 150 |
-
-### A-Frame `intersection` Component API
-
-The `intersection` component creates an intersection surface with options for adding curbs, sidewalks, crosswalks, stop signs, and traffic signals.
-
-| Property | Description | Default Value |
-| --------- | --------- | --------- |
-| dimensions | Specifies the width and depth of the intersection. First value represents width, second value represents depth. | '20 20' |
-| sidewalk | Sets the width of the sidewalk at each side of the intersection. Values are set in the order of west, east, north, south. |  '0 0 0 0' |
-| northeastcurb | Sets the curb dimensions for the north east curb. Values are updated as width, depth, then radius. | '4 4 0' |
-| southwestcurb | Sets the curb dimensions for the south west curb. Values are updated as width, depth, then radius. | '4 4 0' |
-| southeastcurb | Sets the curb dimensions for the south east curb. Values are updated as width, depth, then radius. | '4 4 0' |
-| northwestcurb | Sets the curb dimensions for the north west curb. Values are updated as width, depth, then radius. | '4 4 0' |
-| stopsign | Sets if each side of the intersection has a stop sign. Values are set in the order of east, west, north, south. 0 is false, 1 is true. | '0 0 0 0' |
-| trafficsignal | Sets if each side of the intersection has a traffic signal. Values are set in the order of east, west, north, south. 0 is false, 1 is true. | '1 1 1 1' |
-| crosswalk | ​​Sets if each side of the intersection has a crosswalk. Values are set in the order of east, west, north, south. 0 is false, 1 is true. | '1 1 1 1' |
-
-### A-Frame `streetmix-loader` Component API
-
-The `streetmix-loader` component requests a Streetmix API response when given a unique street URL and then passes the segments array JSON as a string to the `street` component (which is a dependency -- you must have the `street` component on the same entity as that of the `streetmix-loader` component). 
-
-| Property | Description | Default Value |
-| --------- | --------- | --------- |
-| streetmixStreetURL | A string representing a "user facing" Streetmix street URL such as https://streetmix.net/kfarr/3/ | '' |
-| streetmixAPIURL | A string representing the Streetmix API street URL such as https://streetmix.net/api/v1/streets/7a633310-e598-11e6-80db-ebe3de713876 | '' |
-| showBuildings | A Boolean that determines whether or not buildings are rendered | true |
-
-Either 1 of streetmixStreetURL or streetmixAPIURL properties are required. If both are provided the component will use streetmixAPIURL value and ignore streetmixStreetURL.
-
-#### Orientation and Scale
-A default Streetmix.net cross-section view is oriented to show vehicles heading away from you as "outbound". The `street` component follows this convention and when placed in a new A-Frame scene the default camera is looking toward the outbound direction of the generated street. The default rendering is 1:1 scale.
+3DStreet Editor interface is a React application, and the core internals are a series of A-Frame Components which could also available for developers under AGPL to customize for their own custom applications, however external use of the internal 3DStreet libraries are not actively supported or tested.
 
 #### Automatic Asset Loading
 When `aframe-street-component.js` is included on a page it automatically loads 3D models and other assets using the A-Frame asset loader by adding them to the scene's `a-assets` block and defining mixins pointing to these assets. The `street` component itself simply places entities with appropriate mixin names. [For more information on the asset loader see this docs link](https://github.com/3DStreet/3dstreet/blob/main/src/README.md#assetsjs).

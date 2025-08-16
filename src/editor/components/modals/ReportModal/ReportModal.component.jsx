@@ -2,15 +2,17 @@ import { useState, useEffect } from 'react';
 import Modal from '../Modal.jsx';
 import useStore from '@/store.js';
 import styles from './ReportModal.module.scss';
-import { Button, TextArea, Input } from '@/editor/components/components';
+import { Button, TextArea, Input } from '@/editor/components/elements';
 import { useAuthContext } from '@/editor/contexts';
 import { GeospatialIcon } from '@/editor/icons';
 
 export const ReportModal = () => {
   const setModal = useStore((state) => state.setModal);
   const isOpen = useStore((state) => state.modal === 'report');
-  // Auth context available if needed in the future
-  useAuthContext();
+  const projectInfo = useStore((state) => state.projectInfo);
+  const setProjectInfo = useStore((state) => state.setProjectInfo);
+  const { currentUser } = useAuthContext();
+  const startCheckout = useStore((state) => state.startCheckout);
 
   const [formData, setFormData] = useState({
     description: '',
@@ -59,19 +61,15 @@ export const ReportModal = () => {
       });
     }
 
-    // Load project info data from #memory entity when modal opens
+    // Load project info data from Zustand store when modal opens
     if (isOpen) {
-      const memoryEntity = document.getElementById('memory');
-      if (memoryEntity && memoryEntity.hasAttribute('project-info')) {
-        const projectInfo = memoryEntity.getAttribute('project-info');
-        setFormData({
-          description: projectInfo.description || '',
-          location: projectInfo.projectArea || '',
-          currentCondition: projectInfo.currentCondition || '',
-          problemStatement: projectInfo.problemStatement || '',
-          proposedSolutions: projectInfo.proposedSolutions || ''
-        });
-      }
+      setFormData({
+        description: projectInfo.description || '',
+        location: projectInfo.projectArea || '',
+        currentCondition: projectInfo.currentCondition || '',
+        problemStatement: projectInfo.problemStatement || '',
+        proposedSolutions: projectInfo.proposedSolutions || ''
+      });
 
       // Check if geo location is defined
       const geoLayer = document.getElementById('reference-layers');
@@ -118,47 +116,31 @@ export const ReportModal = () => {
   };
 
   const saveFormData = () => {
-    // Update project-info component on #memory entity
-    const memoryEntity = document.getElementById('memory');
-    if (memoryEntity) {
-      // Check if component exists and update or add as needed
-      if (memoryEntity.hasAttribute('project-info')) {
-        AFRAME.INSPECTOR.execute('entityupdate', {
-          entity: memoryEntity,
-          component: 'project-info',
-          value: {
-            description: formData.description,
-            projectArea: formData.location,
-            currentCondition: formData.currentCondition,
-            problemStatement: formData.problemStatement,
-            proposedSolutions: formData.proposedSolutions
-          }
-        });
-      } else {
-        AFRAME.INSPECTOR.execute('componentadd', {
-          entity: memoryEntity,
-          component: 'project-info',
-          value: {
-            description: formData.description,
-            projectArea: formData.location,
-            currentCondition: formData.currentCondition,
-            problemStatement: formData.problemStatement,
-            proposedSolutions: formData.proposedSolutions
-          }
-        });
-      }
-
-      // Select the entity to update the inspector panel
-      setTimeout(() => {
-        AFRAME.INSPECTOR.selectEntity(memoryEntity);
-      }, 0);
-    }
+    // Update project info in Zustand store
+    setProjectInfo({
+      description: formData.description,
+      projectArea: formData.location,
+      currentCondition: formData.currentCondition,
+      problemStatement: formData.problemStatement,
+      proposedSolutions: formData.proposedSolutions
+    });
   };
 
   const openGeoModal = () => {
     // Save form data without validation before opening geo modal
     saveFormData();
 
+    // Check if user is logged in and is a pro user
+    if (!currentUser) {
+      setModal('signin');
+      return;
+    } else if (!currentUser.isPro) {
+      // If not a pro user, start checkout process
+      startCheckout('geo');
+      return;
+    }
+
+    // If user is a pro user, open geo modal
     setModal('geo', true);
 
     // Mark geoLocation as touched
@@ -224,11 +206,11 @@ export const ReportModal = () => {
       isValid = false;
     }
 
-    // Validate geo location
-    if (!hasGeoLocation) {
-      newErrors.geoLocation = 'Geographic location is required';
-      isValid = false;
-    }
+    // Temporarily disabled geo location validation
+    // if (!hasGeoLocation) {
+    //   newErrors.geoLocation = 'Geographic location is required';
+    //   isValid = false;
+    // }
 
     // Update all fields as touched
     setTouched({
@@ -252,9 +234,9 @@ export const ReportModal = () => {
     saveFormData();
 
     // Create a report prompt to send to the LLM
-    const reportPrompt = `Create a report for a street improvement project using the information from the user-provided project description inside of project-info component of #memory entity, and the scene graph.
-    Please expand upon project-info description given your understanding of modern transportation planning.
-    Optional, generate one or more screenshots using the takeSnapshot function call. Do NOT update memory project-info component when writing the report.
+    const reportPrompt = `Create a report for a street improvement project using the information from the user-provided project description in the project info data, and the scene graph.
+    Please expand upon the project description given your understanding of modern transportation planning.
+    Optional, generate one or more screenshots using the takeSnapshot function call.
         
     Project Description: ${formData.description}
     Project Area: ${formData.location}
@@ -278,9 +260,8 @@ export const ReportModal = () => {
     if (aiChatPanelRef) {
       // Use the exposed API methods to interact with the AIChatPanel
       aiChatPanelRef.openPanel();
-      aiChatPanelRef.setUserMessage(reportPrompt);
 
-      // Pass the report prompt directly to submitUserMessage to avoid React state timing issues
+      // Just directly submit the message - no need to set it in the input field first
       aiChatPanelRef.submitUserMessage(reportPrompt);
       setIsGenerating(false);
       onClose();

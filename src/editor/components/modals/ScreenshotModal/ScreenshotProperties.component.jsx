@@ -1,13 +1,13 @@
 import { useCallback, useEffect, useState } from 'react';
 import PropTypes from 'prop-types';
 import styles from './ScreenshotModal.module.scss';
-import PropertyRow from '../../components/PropertyRow.js';
-import { shouldShowProperty } from '../../components/Component.js';
+import PropertyRow from '../../elements/PropertyRow.js';
 import { makeScreenshot } from '@/editor/lib/SceneUtils.js';
 import { debounce } from 'lodash-es';
 import { useAuthContext } from '../../../contexts';
 import useStore from '@/store';
 import Events from '../../../lib/Events.js';
+import { shouldShowProperty } from '../../../lib/utils.js';
 
 const ScreenshotProperties = ({ entity }) => {
   const { currentUser } = useAuthContext();

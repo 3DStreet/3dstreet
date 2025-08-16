@@ -4,7 +4,7 @@ import styles from './GeoModal.module.scss';
 import { Mangnifier20Icon, Save24Icon } from '../../../icons';
 import { firebaseConfig } from '../../../services/firebase.js';
 import Modal from '../Modal.jsx';
-import { Button, Input } from '../../components/index.js';
+import { Button, Input } from '../../elements/index.js';
 import {
   GoogleMap,
   useJsApiLoader,
@@ -180,6 +180,33 @@ const GeoModal = () => {
                 placeholder="None"
                 onChange={handleCoordinateChange}
               ></Input>
+            </div>
+          </div>
+
+          <div className="propertyRow">
+            <div className="rounded bg-blue-50 p-2 text-gray-600">
+              <div className="mb-1 font-semibold uppercase">
+                💡 Geospatial Tips
+              </div>
+              <ul className="space-y-1">
+                <li>
+                  • The red marker sets the geospatial location for the
+                  centerpoint origin of the scene
+                </li>
+                <li>
+                  • Click on the map to change the location of the red marker
+                  point
+                </li>
+                <li>
+                  • Choose a point that is easy to identify visually from aerial
+                  view such as utility pole, road marking, crosswalk ramp, or
+                  other landmark
+                </li>
+                <li>
+                  • Zoom in as much as possible when placing point to ensure
+                  accurate scene alignment
+                </li>
+              </ul>
             </div>
           </div>
 

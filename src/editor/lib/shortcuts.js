@@ -5,6 +5,7 @@ import {
   cloneEntity
 } from './entity';
 import { getOS } from './utils';
+import useStore from '@/store';
 
 const os = getOS();
 
@@ -67,7 +68,21 @@ export const Shortcuts = {
 
     // g: toggle grid
     if (keyCode === 71) {
-      Events.emit('togglegrid');
+      const { isGridVisible, setIsGridVisible } = useStore.getState();
+      setIsGridVisible(!isGridVisible);
+    }
+
+    // 5: enter viewer mode
+    if (keyCode === 53) {
+      const { isInspectorEnabled, setIsInspectorEnabled } = useStore.getState();
+      setIsInspectorEnabled(!isInspectorEnabled);
+    }
+
+    // F5: enter viewer mode
+    if (keyCode === 116) {
+      event.preventDefault(); // Prevent browser refresh
+      const { isInspectorEnabled, setIsInspectorEnabled } = useStore.getState();
+      setIsInspectorEnabled(!isInspectorEnabled);
     }
 
     // backspace & delete: remove selected entity
@@ -96,8 +111,6 @@ export const Shortcuts = {
       Events.emit('cameraorthographictoggle', 'right');
     } else if (keyCode === 52) {
       Events.emit('cameraorthographictoggle', 'top');
-    } else if (keyCode === 53) {
-      Events.emit('cameraorthographictoggle', 'bottom');
     } else if (keyCode === 54) {
       Events.emit('cameraorthographictoggle', 'back');
     } else if (keyCode === 55) {

@@ -1,15 +1,28 @@
-import { ProfileButton, Logo } from '../components';
+import { ProfileButton, Logo } from '../elements';
 import useStore from '@/store';
 import AppMenu from './AppMenu';
-import { Button } from '../components/Button';
+import { Button } from '../elements/Button';
 import { ScreenshotIcon } from '../../icons';
 import { makeScreenshot } from '@/editor/lib/SceneUtils';
-import { SceneEditTitle } from '../components/SceneEditTitle';
-import { ActionBar } from '../components/ActionBar';
-import { Save } from '../components/Save';
+import { SceneEditTitle } from '../elements/SceneEditTitle';
+import { ActionBar } from '../elements/ActionBar';
+import { Save } from '../elements/Save';
+import { useEffect } from 'react';
+import TimeControls from '../elements/TimeControls';
 
 function Toolbar({ currentUser, entity }) {
   const { setModal, isInspectorEnabled } = useStore();
+
+  // Initialize recording status check on component mount
+  useEffect(() => {
+    // Start the recording status check
+    useStore.getState().startRecordingCheck();
+
+    // Clean up when component unmounts
+    return () => {
+      useStore.getState().stopRecordingCheck();
+    };
+  }, []);
 
   return (
     <div id="toolbar">
@@ -27,6 +40,12 @@ function Toolbar({ currentUser, entity }) {
                 <ActionBar selectedEntity={entity} />
               </div>
             </>
+          )}
+          {/* Time Controls - only shown in viewer mode */}
+          {!isInspectorEnabled && (
+            <div className="ml-4">
+              <TimeControls entity={entity} />
+            </div>
           )}
         </div>
         {isInspectorEnabled && (

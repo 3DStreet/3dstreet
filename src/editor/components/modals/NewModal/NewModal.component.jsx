@@ -3,7 +3,7 @@ import useStore from '@/store.js';
 import styles from './NewModal.module.scss';
 import ScenePlaceholder from '@/../ui_assets/ScenePlaceholder.svg';
 import { createBlankScene, inputStreetmix } from '@/editor/lib/SceneUtils.js';
-import { Button } from '@/editor/components/components';
+import { Button } from '@/editor/components/elements';
 import { Upload24Icon } from '@/editor/icons';
 
 export const NewModal = () => {

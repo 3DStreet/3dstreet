@@ -1,11 +1,11 @@
 import { useEffect, useState } from 'react';
 import { useAuthContext } from '../../../contexts';
-import { Button, SceneCard, Tabs } from '../../components';
+import { Button, SceneCard, Tabs } from '../../elements';
 import Modal from '../Modal.jsx';
 import styles from './ScenesModal.module.scss';
 import { createElementsForScenesFromJSON } from '@/editor/lib/SceneUtils.js';
 import { getCommunityScenes, getUserScenes } from '../../../api/scene';
-import { Edit32Icon, Loader, Upload24Icon } from '../../../icons';
+import { Loader, Upload24Icon } from '../../../icons';
 import { signIn } from '../../../api';
 import posthog from 'posthog-js';
 import useStore from '../../../../store.js';
@@ -54,12 +54,25 @@ const ScenesModal = ({ initialTab = 'owner', delay = undefined }) => {
     }
 
     if (event.ctrlKey || event.metaKey) {
-      localStorage.setItem('sceneData', JSON.stringify(sceneData.data));
+      // Store both data and memory for new tab
+      const fullData = {
+        data: sceneData.data,
+        memory: sceneData.memory
+      };
+      localStorage.setItem('sceneData', JSON.stringify(fullData));
       const newTabUrl = `#/scenes/${scene.id}`;
       const newTab = window.open(newTabUrl, '_blank');
       newTab.focus();
     } else {
-      createElementsForScenesFromJSON(sceneData.data);
+      // Log memory data for debugging
+      if (sceneData.memory) {
+        console.log('Loading scene with memory data:', sceneData.memory);
+      } else {
+        console.log('No memory data found in scene data');
+      }
+
+      // Pass both data and memory to createElementsForScenesFromJSON
+      createElementsForScenesFromJSON(sceneData.data, sceneData.memory);
       window.location.hash = `#/scenes/${scene.id}`;
 
       const sceneId = scene.id;
@@ -73,9 +86,20 @@ const ScenesModal = ({ initialTab = 'owner', delay = undefined }) => {
   };
 
   useEffect(() => {
-    const sceneData = JSON.parse(localStorage.getItem('sceneData'));
-    if (sceneData) {
-      createElementsForScenesFromJSON(sceneData);
+    const storedData = JSON.parse(localStorage.getItem('sceneData'));
+    if (storedData) {
+      if (storedData.data) {
+        // New format with separate data and memory
+        console.log('Loading scene from localStorage with new format');
+        if (storedData.memory) {
+          console.log('Memory data found in localStorage:', storedData.memory);
+        }
+        createElementsForScenesFromJSON(storedData.data, storedData.memory);
+      } else {
+        // Old format with just data
+        console.log('Loading scene from localStorage with old format');
+        createElementsForScenesFromJSON(storedData);
+      }
       localStorage.removeItem('sceneData');
     }
   }, []);
@@ -189,40 +213,30 @@ const ScenesModal = ({ initialTab = 'owner', delay = undefined }) => {
       title="Open scene"
       titleElement={
         <>
-          <h3
+          <div
             style={{
-              fontSize: '20px',
-              marginTop: '26px',
-              marginBottom: '0px',
-              position: 'relative'
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              width: '100%'
             }}
           >
-            Open scene
-          </h3>
-          <div className={styles.header}>
-            <Tabs
-              tabs={tabs.map((tab) => {
-                return {
-                  ...tab,
-                  isSelected: selectedTab === tab.value,
-                  onClick: () => setSelectedTab(tab.value)
-                };
-              })}
-              className={styles.tabs}
-            />
-            <div className={styles.buttons}>
-              <Button
-                onClick={() => {
-                  setModal('new');
-                }}
-                leadingIcon={<Edit32Icon />}
-              >
-                Create New Scene
-              </Button>
+            <h3
+              style={{
+                fontSize: '20px',
+                margin: '20px 0 0',
+                position: 'relative'
+              }}
+            >
+              Open scene
+            </h3>
+            <div className={styles.titleButtons}>
               <Button
                 leadingIcon={<Upload24Icon />}
                 className={styles.uploadBtn}
                 style={{ position: 'relative' }}
+                variant="toolbtn"
+                size="small"
               >
                 Upload 3DStreet JSON File
                 <input
@@ -242,6 +256,18 @@ const ScenesModal = ({ initialTab = 'owner', delay = undefined }) => {
                 />
               </Button>
             </div>
+          </div>
+          <div className={styles.header}>
+            <Tabs
+              tabs={tabs.map((tab) => {
+                return {
+                  ...tab,
+                  isSelected: selectedTab === tab.value,
+                  onClick: () => setSelectedTab(tab.value)
+                };
+              })}
+              className={styles.tabs}
+            />
           </div>
         </>
       }

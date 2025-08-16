@@ -2,6 +2,7 @@ import '../styles/tailwind.css';
 import { createRoot } from 'react-dom/client';
 import { GLTFExporter } from 'three/examples/jsm/exporters/GLTFExporter';
 import MainWrapper from './components/MainWrapper';
+import { ARControls, VisibilityToggle } from './components/viewport/ARControls';
 import { AuthProvider, GeoProvider } from './contexts';
 import Events from './lib/Events';
 import { AssetsLoader } from './lib/assetsLoader';
@@ -13,6 +14,13 @@ import { Viewport } from './lib/viewport';
 import './style/index.scss';
 import posthog from 'posthog-js';
 import { commandsByType } from './lib/commands/index.js';
+import useStore from '@/store';
+
+// Helper function to check if viewer mode is requested via URL parameter
+function isViewerModeRequested() {
+  const urlParams = new URLSearchParams(window.location.search);
+  return urlParams.get('viewer') === 'true';
+}
 
 function Inspector(configOverrides) {
   this.assetsLoader = new AssetsLoader();
@@ -83,6 +91,22 @@ Inspector.prototype = {
       </AuthProvider>
     );
 
+    // Mount AR Controls to the AR overlay div
+    const arControlsContainer = document.getElementById('react-ar-controls');
+    if (arControlsContainer) {
+      const arRoot = createRoot(arControlsContainer);
+      arRoot.render(<ARControls />);
+    }
+
+    // Mount Visibility Toggle to the AR overlay div
+    const visibilityToggleContainer = document.getElementById(
+      'react-visibility-toggle'
+    );
+    if (visibilityToggleContainer) {
+      const visibilityRoot = createRoot(visibilityToggleContainer);
+      visibilityRoot.render(<VisibilityToggle />);
+    }
+
     this.scene = this.sceneEl.object3D;
     this.helpers = {};
     this.sceneHelpers = new THREE.Scene();
@@ -96,6 +120,11 @@ Inspector.prototype = {
 
     this.scene.add(this.sceneHelpers);
     this.open();
+
+    // If viewer mode is requested, switch to it after initialization is complete
+    if (isViewerModeRequested()) {
+      useStore.getState().setIsInspectorEnabled(false);
+    }
   },
 
   removeObject: function (object) {
@@ -303,17 +332,10 @@ Inspector.prototype = {
       Events.emit('objectfocus', focusEl.object3D);
     }
     this.isFirstOpen = false;
-
-    // quick solution to change 3d tiles camera
-    const tilesElem = document.querySelector('a-entity[google-maps-aerial]');
-    if (tilesElem) {
-      tilesElem.emit('cameraChange', this.camera);
-    }
   },
 
   /**
    * Closes the editor and gives the control back to the scene
-   * @return {[type]} [description]
    */
   close: function () {
     this.opened = false;
@@ -334,15 +356,6 @@ Inspector.prototype = {
     this.sceneEl.resize();
     Shortcuts.disable();
     document.activeElement.blur();
-
-    // quick solution to change 3d tiles camera
-    const tilesElem = document.querySelector('a-entity[google-maps-aerial]');
-    if (tilesElem) {
-      tilesElem.emit(
-        'cameraChange',
-        this.cameras.original.getObject3D('camera')
-      );
-    }
   }
 };
 

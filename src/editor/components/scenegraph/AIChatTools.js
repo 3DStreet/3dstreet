@@ -8,10 +8,27 @@ import { Parser } from 'expr-eval';
 import Events from '../../lib/Events.js';
 import * as THREE from 'three';
 import { Schema } from 'firebase/vertexai';
+import useStore from '@/store';
 
 // Define the function declarations for entity operations
 export const entityTools = {
   functionDeclarations: [
+    {
+      name: 'updateProjectInfo',
+      description: 'Update project information stored in the global state',
+      parameters: Schema.object({
+        properties: {
+          property: Schema.string({
+            description:
+              'The project info property to update (description, projectArea, currentCondition, problemStatement, proposedSolutions, or title)'
+          }),
+          value: Schema.string({
+            description: 'The new value to set for the property'
+          })
+        },
+        required: ['property', 'value']
+      })
+    },
     {
       name: 'entityCreateMixin',
       description:
@@ -364,6 +381,49 @@ export function executeUpdateCommand(command) {
  * Collection of functions to handle AI function calls
  */
 const AIChatTools = {
+  /**
+   * Handles updateProjectInfo function call
+   * @param {Object} args - The function arguments
+   * @returns {string} Result message
+   */
+  updateProjectInfo: (args) => {
+    try {
+      const { property, value } = args;
+
+      // Validate the property
+      const validProperties = [
+        'description',
+        'projectArea',
+        'currentCondition',
+        'problemStatement',
+        'proposedSolutions'
+      ];
+
+      // Special case for title which is handled separately in the store
+      if (property === 'title') {
+        useStore.getState().setSceneTitle(value);
+        // Emit the historychanged event to trigger autosave
+        Events.emit('historychanged', true);
+        return `Updated scene title to: ${value}`;
+      }
+
+      if (!validProperties.includes(property)) {
+        throw new Error(
+          `Invalid property: ${property}. Must be one of: ${validProperties.join(', ')} or title`
+        );
+      }
+
+      // Update the project info in the Zustand store
+      const updatedInfo = {};
+      updatedInfo[property] = value;
+      useStore.getState().setProjectInfo(updatedInfo);
+
+      return `Updated project ${property} to: ${value}`;
+    } catch (error) {
+      console.error('Error updating project info:', error);
+      throw error;
+    }
+  },
   /**
    * Handles entityUpdate function call
    * @param {Object} args - The function arguments
@@ -981,10 +1041,22 @@ const AIChatTools = {
    * @param {Object} args - The function arguments (latitude, longitude)
    * @returns {Promise<string>} Result message
    */
-  setLatLon: async (args) => {
+  setLatLon: async (args, currentUser) => {
     const { latitude, longitude } = args;
 
     try {
+      // Check if user is authenticated
+      if (!currentUser) {
+        throw new Error('You need to sign in to set location');
+      }
+
+      if (!currentUser.isPro) {
+        // Trigger checkout flow for non-pro users
+        // const useStore = (await import('@/store')).default;
+        // useStore.getState().startCheckout('geo'); // don't do this for now
+        throw new Error('Setting location requires a Pro subscription');
+      }
+
       // Import the setSceneLocation utility function
       const { setSceneLocation } = await import('../../lib/utils.js');
 
@@ -1000,16 +1072,16 @@ const AIChatTools = {
       }
     } catch (error) {
       console.error('Error setting lat/lon:', error);
-      return `Error setting location: ${error.message || 'Unknown error'}`;
+      throw error;
     }
   },
 
-  executeFunction: async (functionName, args) => {
+  executeFunction: async (functionName, args, currentUser) => {
     if (!AIChatTools[functionName]) {
       throw new Error(`Unknown function: ${functionName}`);
     }
 
-    return await AIChatTools[functionName](args);
+    return await AIChatTools[functionName](args, currentUser);
   }
 };
 

@@ -97,6 +97,13 @@
     }
   }
 
+  .titleButtons {
+    display: flex;
+    justify-content: flex-end;
+    align-items: center;
+    transform: translate(-8px, 12px);
+  }
+
   .header {
     display: flex;
     justify-content: space-between;

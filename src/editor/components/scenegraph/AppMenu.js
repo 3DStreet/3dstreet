@@ -4,25 +4,80 @@ import useStore from '@/store';
 import { makeScreenshot } from '@/editor/lib/SceneUtils';
 import posthog from 'posthog-js';
 import Events from '../../lib/Events.js';
+import canvasRecorder from '../../lib/CanvasRecorder';
+import { useAuthContext } from '@/editor/contexts';
+import { faCheck, faCircle } from '@fortawesome/free-solid-svg-icons';
+import { AwesomeIcon } from '../elements/AwesomeIcon';
+import { useState, useEffect } from 'react';
+import { currentOrthoDir } from '../../lib/cameras.js';
 
 const cameraOptions = [
   {
     value: 'perspective',
     event: 'cameraperspectivetoggle',
     payload: null,
-    label: '3D View'
+    label: '3D View',
+    shortcut: '1'
   },
   {
     value: 'orthotop',
     event: 'cameraorthographictoggle',
     payload: 'top',
-    label: 'Plan View'
+    label: 'Plan View',
+    shortcut: '4'
   }
 ];
 
 const AppMenu = ({ currentUser }) => {
-  const { setModal, isInspectorEnabled, setIsInspectorEnabled, saveScene } =
-    useStore();
+  const {
+    setModal,
+    isInspectorEnabled,
+    setIsInspectorEnabled,
+    isGridVisible,
+    setIsGridVisible,
+    saveScene,
+    startCheckout
+  } = useStore();
+  const { currentUser: authUser } = useAuthContext();
+  const [currentCamera, setCurrentCamera] = useState('perspective');
+
+  // Function to get current camera state from the actual camera system
+  const getCurrentCameraState = () => {
+    if (!AFRAME.INSPECTOR?.camera) return 'perspective';
+
+    const camera = AFRAME.INSPECTOR.camera;
+    if (camera.type === 'PerspectiveCamera') {
+      return 'perspective';
+    } else if (camera.type === 'OrthographicCamera') {
+      return `ortho${currentOrthoDir}`;
+    }
+    return 'perspective';
+  };
+
+  useEffect(() => {
+    // Initialize with actual camera state
+    setCurrentCamera(getCurrentCameraState());
+
+    const handleCameraToggle = (event) => {
+      setCurrentCamera(event.value);
+    };
+
+    // Also sync when inspector is enabled/disabled
+    const handleInspectorToggle = () => {
+      // Small delay to ensure camera system has updated
+      setTimeout(() => {
+        setCurrentCamera(getCurrentCameraState());
+      }, 100);
+    };
+
+    Events.on('cameratoggle', handleCameraToggle);
+    Events.on('inspectortoggle', handleInspectorToggle);
+
+    return () => {
+      Events.off('cameratoggle', handleCameraToggle);
+      Events.off('inspectortoggle', handleInspectorToggle);
+    };
+  }, []);
 
   const handleCameraChange = (option) => {
     // Let the camera system handle the camera change first
@@ -117,14 +172,31 @@ const AppMenu = ({ currentUser }) => {
             sideOffset={5}
             alignOffset={-3}
           >
+            <Menubar.CheckboxItem
+              className="MenubarCheckboxItem"
+              checked={isGridVisible}
+              onCheckedChange={setIsGridVisible}
+            >
+              <Menubar.ItemIndicator className="MenubarItemIndicator">
+                <AwesomeIcon icon={faCheck} size={14} />
+              </Menubar.ItemIndicator>
+              Show Grid
+              <div className="RightSlot">G</div>
+            </Menubar.CheckboxItem>
+            <Menubar.Separator className="MenubarSeparator" />
             {cameraOptions.map((option) => (
-              <Menubar.Item
+              <Menubar.CheckboxItem
                 key={option.value}
-                className="MenubarItem"
-                onClick={() => handleCameraChange(option)}
+                className="MenubarCheckboxItem"
+                checked={currentCamera === option.value}
+                onCheckedChange={() => handleCameraChange(option)}
               >
+                <Menubar.ItemIndicator className="MenubarItemIndicator">
+                  <AwesomeIcon icon={faCircle} size={8} />
+                </Menubar.ItemIndicator>
                 {option.label}
-              </Menubar.Item>
+                <div className="RightSlot">{option.shortcut}</div>
+              </Menubar.CheckboxItem>
             ))}
             <Menubar.Separator className="MenubarSeparator" />
             <Menubar.Item
@@ -133,12 +205,74 @@ const AppMenu = ({ currentUser }) => {
             >
               Reset Camera View
             </Menubar.Item>
-            <Menubar.Separator className="MenubarSeparator" />
+          </Menubar.Content>
+        </Menubar.Portal>
+      </Menubar.Menu>
+
+      <Menubar.Menu>
+        <Menubar.Trigger className="MenubarTrigger">Run</Menubar.Trigger>
+        <Menubar.Portal>
+          <Menubar.Content
+            className="MenubarContent"
+            align="start"
+            sideOffset={5}
+            alignOffset={-3}
+          >
             <Menubar.Item
               className="MenubarItem"
-              onClick={() => setIsInspectorEnabled(!isInspectorEnabled)}
+              onClick={() => {
+                // Enter viewer mode
+                setIsInspectorEnabled(!isInspectorEnabled);
+              }}
             >
-              Enter Viewer Mode
+              Start Viewer
+              <div className="RightSlot">5</div>
+            </Menubar.Item>
+            <Menubar.Item
+              className="MenubarItem"
+              onClick={async () => {
+                // Check if user is logged in and has pro access
+                if (!authUser) {
+                  // Not logged in, show signin modal
+                  setModal('signin');
+                  return;
+                }
+
+                if (!authUser.isPro) {
+                  // User doesn't have pro access, show payment modal
+                  // Pass the current location as postCheckout to return here after payment
+                  startCheckout(null); // No redirect after payment
+                  posthog.capture('recording_feature_paywall_shown');
+                  return;
+                }
+
+                // User has pro access, proceed with recording
+                const aframeCanvas = document.querySelector('a-scene').canvas;
+                if (!aframeCanvas) {
+                  console.error('Could not find A-Frame canvas for recording');
+                  return;
+                }
+
+                // Start recording the canvas
+                const success = await canvasRecorder.startRecording(
+                  aframeCanvas,
+                  {
+                    name:
+                      '3DStreet-Recording-' +
+                      new Date().toISOString().slice(0, 10)
+                  }
+                );
+
+                if (success) {
+                  // Enter viewer mode
+                  setIsInspectorEnabled(!isInspectorEnabled);
+                }
+              }}
+            >
+              Start and Record{' '}
+              <div className="RightSlot">
+                <span className="pro-badge">Pro</span>
+              </div>
             </Menubar.Item>
           </Menubar.Content>
         </Menubar.Portal>

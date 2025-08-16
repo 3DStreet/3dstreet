@@ -48,7 +48,7 @@
 
 .MenubarContent,
 .MenubarSubContent {
-  min-width: 220px;
+  min-width: 250px;
   background-color: variables.$bgalphadarker;
   border-radius: 6px;
   padding: 5px;
@@ -74,7 +74,7 @@
   display: flex;
   align-items: center;
   height: 35px;
-  padding: 0 10px;
+  padding: 0 10px 0 32px;
   position: relative;
   user-select: none;
   cursor: pointer;
@@ -109,8 +109,8 @@
 
 .MenubarItemIndicator {
   position: absolute;
-  left: 0;
-  width: 20px;
+  left: 10px;
+  width: 16px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -134,4 +134,14 @@
 
 [data-disabled] > .RightSlot {
   color: variables.$lightgray-400;
+}
+
+.pro-badge {
+  background-color: #774dee;
+  padding: 0px 8px;
+  border-radius: 8px;
+  margin-left: 8px;
+  font-size: 0.775rem;
+  font-weight: normal;
+  display: inline-block;
 }

@@ -145,6 +145,10 @@ div.vec4 {
 .details .propertyRow .vec2 .inputBlock {
   width: 100%;
 }
+.details .propertyRow .vec3 .inputBlock {
+  margin-right: 2px;
+  width: 100%;
+}
 .propertyRow {
   display: flex;
   align-items: center;
@@ -152,6 +156,98 @@ div.vec4 {
   min-height: 30px;
   margin-top: 10px;
   margin-bottom: 10px;
+  position: relative;
+
+  .property-row-right-element {
+    margin-left: auto;
+    margin-right: 20px;
+    display: flex;
+    align-items: center;
+  }
+
+  .pro-badge {
+    background-color: #774dee;
+    color: white;
+    padding: 0px 8px;
+    border-radius: 8px;
+    font-size: 0.775rem;
+    font-weight: normal;
+    display: inline-block;
+  }
+
+  .fakePropertyRowLabel {
+    display: inline-block;
+    min-width: 70px;
+    color: variables.$white-100;
+    font-weight: 500;
+    font-size: 16px;
+  }
+
+  .fakePropertyRowValue {
+    display: flex;
+    align-items: center;
+    margin-left: 35px;
+    font-size: 16px;
+
+    &.input-style {
+      background: rgba(50, 50, 50, 0.8);
+      border: 1px solid variables.$purple-400;
+      border-radius: 10px;
+      padding: 0.5rem;
+      width: 100%;
+      word-break: break-all;
+      font-size: 0.875rem;
+      position: relative;
+
+      &:hover .copy-button,
+      .copy-button.copied {
+        opacity: 1;
+        pointer-events: auto;
+      }
+    }
+
+    .copy-button {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      border: 1px solid variables.$darkgray-600;
+      font-size: 12px;
+      padding: 4px 8px;
+      backdrop-filter: blur(3px);
+      border-radius: 4px;
+      cursor: pointer;
+      position: absolute;
+      left: 50%;
+      top: 50%;
+      transform: translate(-50%, -50%);
+      background-color: rgba(0, 0, 0, 0.5);
+      color: variables.$white;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.2s ease;
+      z-index: 10;
+
+      &:hover {
+        background-color: rgba(0, 0, 0, 0.7);
+      }
+
+      &:active {
+        background-color: rgba(0, 0, 0, 0.8);
+      }
+
+      svg {
+        width: 14px;
+        height: 14px;
+      }
+    }
+  }
+
+  .checkmark-green {
+    color: #4caf50;
+    font-weight: bold;
+    font-size: 16px;
+  }
+
   > input.string,
   > input.number,
   > .inputBlock > input.number,
@@ -276,9 +372,9 @@ div.vec4 {
       width: auto; // Changed from 100px
     }
     .inputBlock {
-      width: 86px;
+      width: 100%;
       height: 38px;
-      padding: 4px 10px;
+      padding: 0px 10px;
       background: rgba(50, 50, 50, 0.8);
       border: 1px solid variables.$purple-400;
       border-radius: 10px;
@@ -350,10 +446,6 @@ div.vec4 {
     margin-bottom: 0; // Changed from 4px
     min-width: 70px; // Added to maintain consistent label width
   }
-}
-.propertyRowDefined .text {
-  color: variables.$white-100;
-  font-weight: 500;
 }
 .components * {
   vertical-align: middle;
