@@ -62,21 +62,16 @@ export const ReportModal = () => {
 
     // Load project info data from Zustand store when modal opens
     if (isOpen) {
-      setFormData({
-        description: projectInfo.description || '',
-        location: projectInfo.projectArea || '',
-        currentCondition: projectInfo.currentCondition || '',
-        problemStatement: projectInfo.problemStatement || '',
-        proposedSolutions: projectInfo.proposedSolutions || ''
-      });
-
-      // Check if geo location is defined
+      // Check if geo location is defined and get locationString
       const geoLayer = document.getElementById('reference-layers');
+      let locationFromGeo = '';
       if (geoLayer && geoLayer.hasAttribute('street-geo')) {
         const streetGeo = geoLayer.getAttribute('street-geo');
         if (streetGeo && streetGeo.latitude && streetGeo.longitude) {
           setHasGeoLocation(true);
           setGeoCoordinates(`${streetGeo.latitude}, ${streetGeo.longitude}`);
+          // Get locationString if available
+          locationFromGeo = streetGeo.locationString || '';
         } else {
           setHasGeoLocation(false);
           setGeoCoordinates('');
@@ -85,6 +80,14 @@ export const ReportModal = () => {
         setHasGeoLocation(false);
         setGeoCoordinates('');
       }
+
+      setFormData({
+        description: projectInfo.description || '',
+        location: projectInfo.projectArea || locationFromGeo,
+        currentCondition: projectInfo.currentCondition || '',
+        problemStatement: projectInfo.problemStatement || '',
+        proposedSolutions: projectInfo.proposedSolutions || ''
+      });
     }
   }, [isOpen]);
 
@@ -97,6 +100,16 @@ export const ReportModal = () => {
         if (streetGeo && streetGeo.latitude && streetGeo.longitude) {
           setHasGeoLocation(true);
           setGeoCoordinates(`${streetGeo.latitude}, ${streetGeo.longitude}`);
+
+          // Update location field if it's empty and locationString is available
+          const locationFromGeo = streetGeo.locationString || '';
+          if (!formData.location && locationFromGeo) {
+            setFormData((prev) => ({
+              ...prev,
+              location: locationFromGeo
+            }));
+          }
+
           // Clear geo location error
           setErrors((prev) => ({
             ...prev,
@@ -108,7 +121,7 @@ export const ReportModal = () => {
         }
       }
     }
-  }, [isOpen]);
+  }, [isOpen, formData.location]);
 
   const onClose = () => {
     setModal(null);
