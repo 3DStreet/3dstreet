@@ -30,6 +30,8 @@ const GeoModal = () => {
   });
   const [autocomplete, setAutocomplete] = useState(null);
   const [isWorking, setIsWorking] = useState(false);
+  const [showSuccessOverlay, setShowSuccessOverlay] = useState(false);
+  const [successData, setSuccessData] = useState(null);
   const returnToPreviousModal = useStore(
     (state) => state.returnToPreviousModal
   );
@@ -132,10 +134,22 @@ const GeoModal = () => {
 
       // Refresh token profile to get updated count after successful save
       await refreshTokenProfile();
-    }
 
-    setIsWorking(false);
-    onClose();
+      // Show success overlay instead of immediately closing
+      setSuccessData(data);
+      setShowSuccessOverlay(true);
+      setIsWorking(false);
+
+      // Auto-dismiss after 4 seconds
+      setTimeout(() => {
+        setShowSuccessOverlay(false);
+        setSuccessData(null);
+        onClose();
+      }, 4000);
+    } else {
+      setIsWorking(false);
+      onClose();
+    }
   };
 
   return (
@@ -243,6 +257,70 @@ const GeoModal = () => {
         </div>
       </Modal>
       {isWorking && <SavingModal action="Working" />}
+
+      {/* Success Overlay */}
+      {showSuccessOverlay && successData && (
+        <div className={styles.successOverlay}>
+          <div className={styles.successContent}>
+            <div className={styles.successHeader}>
+              <span className={styles.successIcon}>✨</span>
+              <h3>Location Set Successfully!</h3>
+            </div>
+
+            <div className={styles.valueDemo}>
+              {successData.location?.locationString && (
+                <div className={styles.dataItem}>
+                  <span className={styles.icon}>📍</span>
+                  <div className={styles.dataContent}>
+                    <span className={styles.label}>Location:</span>
+                    <span className={styles.value}>
+                      {successData.location.locationString}
+                    </span>
+                  </div>
+                </div>
+              )}
+
+              {successData.nearestIntersection?.intersectionString && (
+                <div className={styles.dataItem}>
+                  <span className={styles.icon}>🛣️</span>
+                  <div className={styles.dataContent}>
+                    <span className={styles.label}>Nearest Intersection:</span>
+                    <span className={styles.value}>
+                      {successData.nearestIntersection.intersectionString}
+                    </span>
+                  </div>
+                </div>
+              )}
+
+              {successData.orthometricHeight && (
+                <div className={styles.dataItem}>
+                  <span className={styles.icon}>📐</span>
+                  <div className={styles.dataContent}>
+                    <span className={styles.label}>Elevation:</span>
+                    <span className={styles.value}>
+                      {Math.round(successData.orthometricHeight)}m
+                    </span>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {successData.tokenInfo && !successData.tokenInfo.isProUser && (
+              <div className={styles.tokenStatus}>
+                <span className={styles.tokenIcon}>🗺️</span>
+                <span className={styles.tokenText}>
+                  {successData.tokenInfo.remainingTokens} geo tokens remaining
+                </span>
+                {successData.tokenInfo.remainingTokens === 0 && (
+                  <span className={styles.upgradeHint}>
+                    • Upgrade to Pro for unlimited access
+                  </span>
+                )}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
     </>
   );
 };
