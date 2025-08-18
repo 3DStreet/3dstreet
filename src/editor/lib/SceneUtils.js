@@ -190,19 +190,6 @@ export async function saveScene(currentUser, doSaveAs, doPromptTitle) {
     return;
   }
 
-  // check if the user is not pro, and if the geospatial has array of values of mapbox
-  const streetGeo = document
-    .getElementById('reference-layers')
-    ?.getAttribute('street-geo');
-  if (
-    !currentUser.isPro &&
-    streetGeo &&
-    streetGeo['latitude'] &&
-    streetGeo['longitude']
-  ) {
-    useStore.getState().setModal('payment');
-    return;
-  }
   if (authorId !== currentUser.uid) {
     // posthog.capture('not_scene_author', {
     //   scene_id: sceneId,

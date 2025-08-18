@@ -33,18 +33,6 @@ export const Save = ({ currentUser }) => {
     const autoSaveScene = debounce((cmd) => {
       if (cmd) {
         if (currentUser && STREET.utils.getAuthorId() === currentUser.uid) {
-          const streetGeo = document
-            .getElementById('reference-layers')
-            ?.getAttribute('street-geo');
-          if (
-            !currentUser.isPro &&
-            streetGeo &&
-            streetGeo['latitude'] &&
-            streetGeo['longitude']
-          ) {
-            setModal('payment');
-            return;
-          }
           saveScene(false);
         }
       }
