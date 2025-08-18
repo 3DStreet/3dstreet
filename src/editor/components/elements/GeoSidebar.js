@@ -211,12 +211,12 @@ const GeoSidebar = ({ entity }) => {
                       height: '40px',
                       border:
                         component.data['maps'] === mapType
-                          ? '2px solid #10b981'
+                          ? '2px solid #774dee'
                           : '1px solid #374151',
                       borderRadius: '6px',
                       background:
                         component.data['maps'] === mapType
-                          ? '#065f46'
+                          ? '#4c1d95'
                           : '#1f2937',
                       cursor: 'pointer',
                       display: 'flex',
@@ -337,10 +337,11 @@ const GeoSidebar = ({ entity }) => {
                 <span
                   className="success-badge"
                   style={{
-                    background:
+                    background: '#374151',
+                    border:
                       component && component.data && component.data.latitude
-                        ? '#10b981'
-                        : '#6b7280',
+                        ? '1px solid #10b981'
+                        : '1px solid #6b7280',
                     color: 'white',
                     padding: '4px 8px',
                     borderRadius: '4px',
@@ -363,7 +364,18 @@ const GeoSidebar = ({ entity }) => {
                       fontSize: '10px'
                     }}
                   >
-                    🗺️ {tokenProfile.geoToken} free
+                    <img
+                      src="/ui_assets/token-geo.png"
+                      alt="Geo Token"
+                      style={{
+                        width: '20px',
+                        height: '20px',
+                        marginRight: '3px',
+                        display: 'inline-block',
+                        verticalAlign: 'middle'
+                      }}
+                    />
+                    {tokenProfile.geoToken} free
                   </span>
                 )}
               </div>

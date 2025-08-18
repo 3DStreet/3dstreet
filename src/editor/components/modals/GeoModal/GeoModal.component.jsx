@@ -167,7 +167,6 @@ const GeoModal = () => {
           <div className={styles.header}>
             <img src={GeoImg} alt="geo" style={{ objectFit: 'contain' }} />
             <h3>Scene Location</h3>
-            <p className={styles.badge}>Pro</p>
           </div>
           {isLoaded && (
             <>
@@ -246,17 +245,44 @@ const GeoModal = () => {
             <Button variant="ghost" onClick={onClose}>
               Cancel
             </Button>
-            <Button
-              leadingIcon={<Save24Icon />}
-              variant="filled"
-              onClick={onSaveHandler}
-            >
-              {currentUser?.isPro
-                ? 'Update Scene Location'
-                : tokenProfile?.geoToken > 0
-                  ? `Update Scene Location (${tokenProfile.geoToken} free left)`
-                  : 'Update Scene Location (Pro)'}
-            </Button>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+              {!currentUser?.isPro && tokenProfile && (
+                <span
+                  style={{
+                    background: '#374151',
+                    color: '#9ca3af',
+                    padding: '4px 8px',
+                    borderRadius: '4px',
+                    fontSize: '14px',
+                    fontWeight: '500'
+                  }}
+                >
+                  <img
+                    src="/ui_assets/token-geo.png"
+                    alt="Geo Token"
+                    style={{
+                      width: '28px',
+                      height: '28px',
+                      marginRight: '4px',
+                      display: 'inline-block',
+                      verticalAlign: 'middle'
+                    }}
+                  />
+                  {tokenProfile.geoToken} free tokens
+                </span>
+              )}
+              <Button
+                leadingIcon={<Save24Icon />}
+                variant="filled"
+                onClick={onSaveHandler}
+              >
+                {currentUser?.isPro
+                  ? 'Update Scene Location'
+                  : tokenProfile?.geoToken > 0
+                    ? 'Update Scene Location'
+                    : 'Update Scene Location (Pro)'}
+              </Button>
+            </div>
           </div>
         </div>
       </Modal>
@@ -311,7 +337,17 @@ const GeoModal = () => {
 
             {successData.tokenInfo && !successData.tokenInfo.isProUser && (
               <div className={styles.tokenStatus}>
-                <span className={styles.tokenIcon}>🗺️</span>
+                <img
+                  src="/ui_assets/token-geo.png"
+                  alt="Geo Token"
+                  className={styles.tokenIcon}
+                  style={{
+                    width: '32px',
+                    height: '32px',
+                    display: 'inline-block',
+                    verticalAlign: 'middle'
+                  }}
+                />
                 <span className={styles.tokenText}>
                   {successData.tokenInfo.remainingTokens} geo tokens remaining
                 </span>

@@ -139,15 +139,33 @@ const ProfileModal = () => {
             {/* Token Usage Display */}
             {!currentUser?.isPro && tokenProfile && (
               <div className={styles.tokenUsage}>
-                <p>
-                  Plan: Free
-                  <br />
-                  Geo Tokens: {tokenProfile.geoToken}
-                </p>
-                <p className={styles.tokenDescription}>
-                  Use free Geo Tokens to set scene locations. Upgrade to Pro for
-                  unlimited access.
-                </p>
+                <div
+                  style={{
+                    background: '#374151',
+                    border: '1px solid #4b5563',
+                    borderRadius: '6px',
+                    padding: '8px 12px',
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'center'
+                  }}
+                >
+                  <span>Plan: Free</span>
+                  <span style={{ display: 'flex', alignItems: 'center' }}>
+                    <img
+                      src="/ui_assets/token-geo.png"
+                      alt="Geo Token"
+                      style={{
+                        width: '20px',
+                        height: '20px',
+                        marginRight: '6px',
+                        display: 'inline-block',
+                        verticalAlign: 'middle'
+                      }}
+                    />
+                    {tokenProfile.geoToken} Free Geotokens
+                  </span>
+                </div>
               </div>
             )}
 
