@@ -147,6 +147,10 @@ const GeoModal = () => {
         onClose();
       }, 4000);
     } else {
+      // Show error notification
+      STREET.notify.errorMessage(
+        result.message || 'Failed to set scene location. Please try again.'
+      );
       setIsWorking(false);
       onClose();
     }
