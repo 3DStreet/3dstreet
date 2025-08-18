@@ -3,6 +3,7 @@ import { Button } from '../elements';
 import { useAuthContext } from '@/editor/contexts/index.js';
 import AdvancedComponents from './AdvancedComponents';
 import PropertyRow from './PropertyRow';
+import { Mangnifier20Icon } from '../../icons';
 import posthog from 'posthog-js';
 import useStore from '@/store';
 import { useState, useEffect } from 'react';
@@ -133,7 +134,8 @@ FlatteningShapeSelector.propTypes = {
 
 const GeoSidebar = ({ entity }) => {
   const setModal = useStore((state) => state.setModal);
-  const { currentUser } = useAuthContext();
+  const { currentUser, tokenProfile } = useAuthContext();
+  const startCheckout = useStore((state) => state.startCheckout);
 
   // Force re-render when entity updates
   const [, forceUpdate] = useState({});
@@ -184,45 +186,277 @@ const GeoSidebar = ({ entity }) => {
     <div className="geo-sidebar">
       <div className="geo-controls">
         <div className="details">
-          {/* Display location string if available */}
-          {component && component.data && component.data.locationString && (
-            <div className="propertyRow">
-              <div className="fakePropertyRowLabel">Location</div>
+          {/* Map Source Selection */}
+          {component && component.schema && component.data && (
+            <div className="propertyRow" style={{ marginBottom: '16px' }}>
+              <div className="fakePropertyRowLabel">Map Type</div>
               <div
-                className="fakePropertyRowValue"
-                style={{ fontSize: '12px', color: '#ccc' }}
+                style={{ display: 'flex', gap: '8px', alignItems: 'center' }}
               >
-                {component.data.locationString}
+                {['none', 'google3d', 'mapbox2d', 'osm3d'].map((mapType) => (
+                  <button
+                    key={mapType}
+                    onClick={() => {
+                      if (window.AFRAME && window.AFRAME.INSPECTOR) {
+                        AFRAME.INSPECTOR.execute('entityupdate', {
+                          entity: entity,
+                          component: 'street-geo',
+                          property: 'maps',
+                          value: mapType
+                        });
+                      }
+                    }}
+                    style={{
+                      width: '50px',
+                      height: '40px',
+                      border:
+                        component.data['maps'] === mapType
+                          ? '2px solid #10b981'
+                          : '1px solid #374151',
+                      borderRadius: '6px',
+                      background:
+                        component.data['maps'] === mapType
+                          ? '#065f46'
+                          : '#1f2937',
+                      cursor: 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      fontSize: '16px',
+                      transition: 'all 0.2s',
+                      position: 'relative'
+                    }}
+                    title={`${mapType === 'google3d' ? 'Google 3D' : mapType === 'mapbox2d' ? 'Mapbox 2D' : mapType === 'osm3d' ? 'OSM 3D' : 'No Map'}`}
+                  >
+                    {/* Map icons */}
+                    {mapType === 'google3d' && (
+                      <>
+                        <img
+                          src="/ui_assets/map-icon1.jpg"
+                          alt="Google 3D"
+                          style={{
+                            width: '24px',
+                            height: '24px',
+                            objectFit: 'cover',
+                            borderRadius: '2px'
+                          }}
+                        />
+                        <span
+                          style={{
+                            position: 'absolute',
+                            bottom: '4px',
+                            fontSize: '8px',
+                            color: '#ffffff',
+                            fontWeight: '600',
+                            textShadow:
+                              '0 1px 2px rgba(0,0,0,0.8), 0 0 4px rgba(0,0,0,0.6)',
+                            pointerEvents: 'none'
+                          }}
+                        >
+                          3D
+                        </span>
+                      </>
+                    )}
+                    {mapType === 'mapbox2d' && (
+                      <>
+                        <img
+                          src="/ui_assets/map-icon2.jpg"
+                          alt="Mapbox 2D"
+                          style={{
+                            width: '24px',
+                            height: '24px',
+                            objectFit: 'cover',
+                            borderRadius: '2px'
+                          }}
+                        />
+                        <span
+                          style={{
+                            position: 'absolute',
+                            bottom: '4px',
+                            fontSize: '8px',
+                            color: '#ffffff',
+                            fontWeight: '600',
+                            textShadow:
+                              '0 1px 2px rgba(0,0,0,0.8), 0 0 4px rgba(0,0,0,0.6)',
+                            pointerEvents: 'none'
+                          }}
+                        >
+                          2D
+                        </span>
+                      </>
+                    )}
+                    {mapType === 'osm3d' && (
+                      <>
+                        <img
+                          src="/ui_assets/map-icon3.jpg"
+                          alt="OSM 3D"
+                          style={{
+                            width: '24px',
+                            height: '24px',
+                            objectFit: 'cover',
+                            borderRadius: '2px'
+                          }}
+                        />
+                        <span
+                          style={{
+                            position: 'absolute',
+                            bottom: '4px',
+                            fontSize: '8px',
+                            color: '#ffffff',
+                            fontWeight: '600',
+                            textShadow:
+                              '0 1px 2px rgba(0,0,0,0.8), 0 0 4px rgba(0,0,0,0.6)',
+                            pointerEvents: 'none'
+                          }}
+                        >
+                          2.5D
+                        </span>
+                      </>
+                    )}
+                    {mapType === 'none' && '🚫'}
+                  </button>
+                ))}
               </div>
             </div>
           )}
-          <div className="propertyRow">
-            {entity && entity.components ? (
-              <>
-                <Button variant="toolbtn" onClick={openGeoModal}>
-                  Change Location
-                </Button>
-              </>
-            ) : (
-              <div>
-                <Button variant="toolbtn" onClick={openGeoModal}>
-                  Set Location
+
+          {/* Combined location header with button */}
+          <div className="propertyRow" style={{ marginBottom: '12px' }}>
+            <div
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                width: '100%',
+                paddingRight: '12px'
+              }}
+            >
+              <div
+                style={{ display: 'flex', alignItems: 'center', gap: '8px' }}
+              >
+                <span
+                  className="success-badge"
+                  style={{
+                    background:
+                      component && component.data && component.data.latitude
+                        ? '#10b981'
+                        : '#6b7280',
+                    color: 'white',
+                    padding: '4px 8px',
+                    borderRadius: '4px',
+                    fontSize: '11px',
+                    fontWeight: '500'
+                  }}
+                >
+                  {component && component.data && component.data.latitude
+                    ? '✅ Location Set'
+                    : '📍 No Location'}
+                </span>
+                {!currentUser?.isPro && tokenProfile && (
+                  <span
+                    className="token-badge"
+                    style={{
+                      background: '#374151',
+                      color: '#9ca3af',
+                      padding: '4px 8px',
+                      borderRadius: '4px',
+                      fontSize: '10px'
+                    }}
+                  >
+                    🗺️ {tokenProfile.geoToken} free
+                  </span>
+                )}
+              </div>
+              <Button variant="toolbtn" onClick={openGeoModal}>
+                <Mangnifier20Icon />
+                {entity && entity.components
+                  ? 'Change Location'
+                  : 'Set Location'}
+              </Button>
+            </div>
+          </div>
+
+          {/* Location details using standard label/value format */}
+          {component && component.data && component.data.locationString && (
+            <>
+              <div className="propertyRow">
+                <div className="fakePropertyRowLabel">Location</div>
+                <div
+                  className="fakePropertyRowValue"
+                  style={{ fontSize: '12px', color: '#ccc' }}
+                >
+                  {component.data.locationString}
+                </div>
+              </div>
+
+              {component.data.intersectionString && (
+                <div className="propertyRow">
+                  <div
+                    className="fakePropertyRowLabel"
+                    style={{ whiteSpace: 'nowrap' }}
+                  >
+                    Nearest
+                    <br />
+                    Intersection
+                  </div>
+                  <div
+                    className="fakePropertyRowValue"
+                    style={{ fontSize: '12px', color: '#ccc' }}
+                  >
+                    {component.data.intersectionString}
+                  </div>
+                </div>
+              )}
+
+              {component.data.orthometricHeight && (
+                <div className="propertyRow">
+                  <div className="fakePropertyRowLabel">Elevation</div>
+                  <div
+                    className="fakePropertyRowValue"
+                    style={{ fontSize: '12px', color: '#ccc' }}
+                  >
+                    {Math.round(component.data.orthometricHeight)}m
+                  </div>
+                </div>
+              )}
+            </>
+          )}
+
+          {/* Upgrade prompt for users with 0 tokens */}
+          {!currentUser?.isPro && tokenProfile?.geoToken === 0 && (
+            <div className="propertyRow" style={{ marginTop: '8px' }}>
+              <div
+                className="upgrade-prompt"
+                style={{
+                  padding: '12px',
+                  background: '#1f2937',
+                  borderRadius: '6px',
+                  border: '1px solid #374151',
+                  width: '100%'
+                }}
+              >
+                <p
+                  style={{
+                    margin: '0 0 8px 0',
+                    fontSize: '11px',
+                    color: '#f3f4f6',
+                    fontWeight: '500'
+                  }}
+                >
+                  🚀 Upgrade to Pro for unlimited geo lookups
+                </p>
+                <Button
+                  variant="toolbtn"
+                  style={{ fontSize: '11px', padding: '4px 8px' }}
+                  onClick={() => startCheckout('geo')}
+                >
+                  Upgrade Now
                 </Button>
               </div>
-            )}
-          </div>
+            </div>
+          )}
           {component && component.schema && component.data && (
             <>
-              <PropertyRow
-                key="maps"
-                name="maps"
-                label="Map Source"
-                schema={component.schema['maps']}
-                data={component.data['maps']}
-                componentname="street-geo"
-                isSingle={false}
-                entity={entity}
-              />
               {/* only show this if google3d is selected */}
               {component.data['maps'] === 'google3d' && (
                 <div className="collapsible component">
