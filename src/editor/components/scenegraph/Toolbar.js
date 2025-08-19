@@ -1,6 +1,5 @@
 import { ProfileButton, Logo } from '../elements';
 import useStore from '@/store';
-import AppMenu from './AppMenu';
 import { Button } from '../elements/Button';
 import { ScreenshotIcon } from '../../icons';
 import { makeScreenshot } from '@/editor/lib/SceneUtils';
@@ -29,13 +28,10 @@ function Toolbar({ currentUser, entity }) {
       <div className="grid grid-flow-dense grid-cols-5">
         <div className="col-span-2 flex items-center">
           <div className="flex-shrink-0">
-            <Logo />
+            <Logo currentUser={currentUser} />
           </div>
           {isInspectorEnabled && (
             <>
-              <div className="ml-4">
-                <AppMenu currentUser={currentUser} />
-              </div>
               <div className="ml-4">
                 <ActionBar selectedEntity={entity} />
               </div>
@@ -70,6 +66,7 @@ function Toolbar({ currentUser, entity }) {
               onClick={() => setModal(currentUser ? 'profile' : 'signin')}
               aria-label={currentUser ? 'Open profile' : 'Sign in'}
               title={currentUser ? 'Open profile' : 'Sign in'}
+              className="mr-1"
             >
               <ProfileButton />
             </div>
