@@ -432,52 +432,6 @@ const GeoSidebar = ({ entity }) => {
               </div>
             </div>
 
-            {/* Location details using standard label/value format */}
-            {component && component.data && component.data.locationString && (
-              <>
-                <div className="propertyRow">
-                  <div className="fakePropertyRowLabel">Location</div>
-                  <div
-                    className="fakePropertyRowValue"
-                    style={{ fontSize: '12px', color: '#ccc' }}
-                  >
-                    {component.data.locationString}
-                  </div>
-                </div>
-
-                {component.data.intersectionString && (
-                  <div className="propertyRow">
-                    <div
-                      className="fakePropertyRowLabel"
-                      style={{ whiteSpace: 'nowrap' }}
-                    >
-                      Nearest
-                      <br />
-                      Intersection
-                    </div>
-                    <div
-                      className="fakePropertyRowValue"
-                      style={{ fontSize: '12px', color: '#ccc' }}
-                    >
-                      {component.data.intersectionString}
-                    </div>
-                  </div>
-                )}
-
-                {component.data.orthometricHeight && (
-                  <div className="propertyRow">
-                    <div className="fakePropertyRowLabel">Elevation</div>
-                    <div
-                      className="fakePropertyRowValue"
-                      style={{ fontSize: '12px', color: '#ccc' }}
-                    >
-                      {Math.round(component.data.orthometricHeight)}m
-                    </div>
-                  </div>
-                )}
-              </>
-            )}
-
             {/* Upgrade prompt for users with 0 tokens */}
             {!currentUser?.isPro && tokenProfile?.geoToken === 0 && (
               <div className="propertyRow" style={{ marginTop: '8px' }}>
@@ -510,6 +464,48 @@ const GeoSidebar = ({ entity }) => {
                   </Button>
                 </div>
               </div>
+            )}
+
+            {/* Location details using standard label/value format */}
+            {component && component.data && component.data.locationString && (
+              <>
+                <div className="propertyRow">
+                  <div className="fakePropertyRowLabel">Location</div>
+                  <div
+                    className="fakePropertyRowValue"
+                    style={{ fontSize: '12px', color: '#ccc' }}
+                  >
+                    {component.data.locationString}
+                  </div>
+                </div>
+
+                {component.data.intersectionString && (
+                  <div className="propertyRow">
+                    <div className="fakePropertyRowLabel">
+                      Nearest
+                      <br /> Intersection
+                    </div>
+                    <div
+                      className="fakePropertyRowValue"
+                      style={{ fontSize: '12px', color: '#ccc' }}
+                    >
+                      {component.data.intersectionString}
+                    </div>
+                  </div>
+                )}
+
+                {component.data.orthometricHeight && (
+                  <div className="propertyRow">
+                    <div className="fakePropertyRowLabel">Elevation</div>
+                    <div
+                      className="fakePropertyRowValue"
+                      style={{ fontSize: '12px', color: '#ccc' }}
+                    >
+                      {Math.round(component.data.orthometricHeight)}m
+                    </div>
+                  </div>
+                )}
+              </>
             )}
             {component && component.schema && component.data && (
               <>
