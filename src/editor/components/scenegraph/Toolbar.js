@@ -110,7 +110,16 @@ function Toolbar({ currentUser, entity }) {
                   side="bottom"
                 >
                   <div
-                    className="cursor-pointer rounded-full bg-gray-700 px-2 py-1 text-xs font-semibold text-white transition-colors hover:bg-gray-600"
+                    className="cursor-pointer rounded-xl px-2 py-1 text-xs font-semibold text-white transition-all duration-300"
+                    style={{
+                      backgroundColor: 'rgba(50, 50, 50, 0.8)'
+                    }}
+                    onMouseEnter={(e) => {
+                      e.target.style.backgroundColor = '#262626'; // variables.$black-400
+                    }}
+                    onMouseLeave={(e) => {
+                      e.target.style.backgroundColor = 'rgba(50, 50, 50, 0.8)';
+                    }}
                     onClick={() => setModal(currentUser ? 'profile' : 'signin')}
                   >
                     {authUser?.isPro ? 'PRO' : 'FREE'}
