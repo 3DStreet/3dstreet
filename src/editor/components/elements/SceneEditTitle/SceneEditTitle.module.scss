@@ -23,5 +23,13 @@
     overflow: hidden;
     font-size: 20px !important;
     white-space: nowrap;
+
+    @media (max-width: 768px) {
+      max-width: 25vw;
+    }
+
+    @media (max-width: 480px) {
+      max-width: 20vw;
+    }
   }
 }
