@@ -415,11 +415,7 @@ export const ReportModal = () => {
               >
                 Save Project Info Only
               </Button>
-              <Button
-                onClick={generateReport}
-                disabled={isGenerating}
-                loading={isGenerating}
-              >
+              <Button onClick={generateReport} disabled={isGenerating}>
                 {isGenerating ? 'Generating...' : 'Save and Generate Report'}
               </Button>
             </div>
