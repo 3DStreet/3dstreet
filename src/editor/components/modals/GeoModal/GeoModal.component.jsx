@@ -178,6 +178,17 @@ const GeoModal = () => {
         scene_id: STREET.utils.getCurrentSceneId()
       });
 
+      // Track if user just used their last geotoken
+      if (!currentUser?.isPro && previousTokenCount === 1) {
+        posthog.capture('geo_last_token_used', {
+          latitude: latitude,
+          longitude: longitude,
+          location_string: data.location?.locationString || '',
+          scene_id: STREET.utils.getCurrentSceneId(),
+          tokens_remaining_after: 0
+        });
+      }
+
       // Show success overlay instead of immediately closing
       setSuccessData(data);
       setShowSuccessOverlay(true);
