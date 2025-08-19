@@ -26,7 +26,9 @@ AFRAME.registerComponent('street-geo', {
       default: '30% Opacity',
       oneOf: ['30% Opacity', '60% Opacity', 'Darker', 'Lighter', 'Normal']
     },
-    blendingEnabled: { type: 'boolean', default: false }
+    blendingEnabled: { type: 'boolean', default: false },
+    locationString: { type: 'string', default: '' },
+    intersectionString: { type: 'string', default: '' }
   },
   init: function () {
     /*

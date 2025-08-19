@@ -28,6 +28,21 @@ service cloud.firestore {
       allow update: if request.auth != null
         && request.auth.uid == resource.data.userId;
     }
+
+    // Token Profile Collection Rules (PRIVATE data - token counts, usage, etc.)
+    match /tokenProfile/{userId} {
+      // Users can only read their own token profile
+      allow read: if request.auth != null && request.auth.uid == userId;
+      
+      // Allow users to create their initial token profile with exactly 3 tokens
+      allow create: if request.auth != null 
+        && request.auth.uid == userId  // Doc ID must match auth UID
+        && request.resource.data.userId == userId  // userId field must match
+        && request.resource.data.geoToken == 3;  // Must start with exactly 3 tokens
+      
+      // DENY all client-side updates - only cloud functions can modify token counts
+      allow update: if false;
+    }
   }
 }
 

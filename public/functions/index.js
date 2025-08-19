@@ -2,50 +2,14 @@ const functions = require('firebase-functions');
 const admin = require('firebase-admin');
 admin.initializeApp();
 const { getAuth } = require('firebase-admin/auth');
-const { getGeoidHeightFromPGM } = require('./geoid.js');
-const { Client: GoogleMapsClient } = require("@googlemaps/google-maps-services-js");
 const { serveWebXRVariant } = require('./webxr-variant.js');
+const { getGeoidHeight } = require('./geoid-height.js');
 
 // Re-export the WebXR variant function
 exports.serveWebXRVariant = serveWebXRVariant;
 
-exports.getGeoidHeight = functions
-  .runWith({ secrets: ["GOOGLE_MAPS_ELEVATION_API_KEY"] })
-  .https
-  .onCall(async (data, context) => {
-    const lat = parseFloat(data.lat);
-    const lon = parseFloat(data.lon);
-    const geoidFilePath = 'EGM96-15.pgm'; // Converted from USA NGA data under Public Domain license.
-    const geoidHeight = await getGeoidHeightFromPGM(geoidFilePath, lat, lon);
-    const client = new GoogleMapsClient({});
-
-    let orthometricHeight = null;
-    await client
-      .elevation({
-        params: {
-          locations: [{ lat: lat, lng: lon }],
-          key: process.env.GOOGLE_MAPS_ELEVATION_API_KEY,
-        },
-        timeout: 1000, // milliseconds
-      })
-      .then((r) => {
-        orthometricHeight = r.data.results[0].elevation;
-      })
-      .catch((e) => {
-        console.log(e.response.data.error_message);
-      });
-    // return json response with fields geoidModel, lat, lon, geoidHeight
-    return {
-      lat: lat,
-      lon: lon,
-      geoidHeight: geoidHeight,
-      geoidSource: geoidFilePath,
-      orthometricHeight: orthometricHeight,
-      orthometricSource: 'Google Maps Elevation Service',
-      ellipsoidalHeight: geoidHeight + orthometricHeight,
-      ellipsoidalSource: 'Calculated: ellipsoidalHeight = geoidHeight + orthometricHeight'
-    };
-  });
+// Re-export the getGeoidHeight function
+exports.getGeoidHeight = getGeoidHeight;
 
 exports.getScene = functions
   .https

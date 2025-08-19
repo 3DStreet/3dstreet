@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { ScreenshotProperties } from './ScreenshotProperties.component.jsx';
 import styles from './ScreenshotModal.module.scss';
 import { useAuthContext } from '../../../contexts';
@@ -52,6 +52,15 @@ function ScreenshotModal() {
   const setModal = useStore((state) => state.setModal);
   const modal = useStore((state) => state.modal);
   const { currentUser } = useAuthContext();
+
+  // Track when screenshot modal opens for camera positioning
+  useEffect(() => {
+    if (modal === 'screenshot') {
+      posthog.capture('screenshot_modal_opened', {
+        scene_id: STREET.utils.getCurrentSceneId()
+      });
+    }
+  }, [modal]);
 
   const [selectedOption, setSelectedOption] = useState(null);
   const options = [
@@ -136,6 +145,11 @@ function ScreenshotModal() {
   const exportSceneToGLTF = (isPro, arReady) => {
     if (isPro) {
       try {
+        posthog.capture('export_initiated', {
+          export_type: arReady ? 'ar_glb' : 'glb',
+          scene_id: STREET.utils.getCurrentSceneId()
+        });
+
         const sceneName = getSceneName(AFRAME.scenes[0]);
         let scene = AFRAME.scenes[0].object3D;
         if (arReady) {

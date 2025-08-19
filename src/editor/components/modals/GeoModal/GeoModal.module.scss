@@ -74,3 +74,131 @@
     }
   }
 }
+
+.successOverlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.8);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 10002;
+  pointer-events: all;
+  animation: fadeIn 0.3s ease-out;
+
+  .successContent {
+    background: variables.$darkgray-600;
+    border: 1px solid variables.$darkgray-400;
+    border-radius: 12px;
+    padding: 32px;
+    max-width: 500px;
+    width: 90%;
+    animation: slideIn 0.4s ease-out;
+
+    .successHeader {
+      display: flex;
+      align-items: center;
+      column-gap: 12px;
+      margin-bottom: 24px;
+
+      .successIcon {
+        font-size: 32px;
+      }
+
+      h3 {
+        color: variables.$lightgray-100;
+        font-size: 24px;
+        margin: 0;
+      }
+    }
+
+    .valueDemo {
+      display: flex;
+      flex-direction: column;
+      row-gap: 16px;
+      margin-bottom: 24px;
+
+      .dataItem {
+        display: flex;
+        align-items: flex-start;
+        column-gap: 12px;
+        padding: 16px;
+        background: variables.$darkgray-500;
+        border-radius: 8px;
+
+        .icon {
+          font-size: 20px;
+          line-height: 1;
+          flex-shrink: 0;
+        }
+
+        .dataContent {
+          display: flex;
+          flex-direction: column;
+          row-gap: 4px;
+          flex: 1;
+
+          .label {
+            font-size: 14px;
+            color: variables.$lightgray-300;
+            font-weight: 500;
+          }
+
+          .value {
+            font-size: 16px;
+            color: variables.$lightgray-100;
+            line-height: 1.4;
+          }
+        }
+      }
+    }
+
+    .tokenStatus {
+      display: flex;
+      align-items: center;
+      column-gap: 8px;
+      padding: 16px;
+      background: variables.$darkgray-500;
+      border-radius: 8px;
+
+      .tokenIcon {
+        font-size: 18px;
+      }
+
+      .tokenText {
+        color: variables.$lightgray-200;
+        font-size: 14px;
+        font-weight: 500;
+      }
+
+      .upgradeHint {
+        color: variables.$purple-300;
+        font-size: 14px;
+        margin-left: 4px;
+      }
+    }
+  }
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes slideIn {
+  from {
+    opacity: 0;
+    transform: translateY(-20px) scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}

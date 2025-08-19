@@ -2,6 +2,7 @@
 import { nanoid } from 'nanoid';
 import Events from './Events';
 import { equal } from './utils';
+import posthog from 'posthog-js';
 import {
   GeospatialIcon,
   ManagedStreetIcon,
@@ -51,6 +52,19 @@ export function updateEntity(entity, component, property, value) {
       // Set component
       entity.setAttribute(component, value);
     }
+  }
+
+  // Track street positioning events for workflow analytics
+  if (
+    component === 'position' &&
+    (entity.hasAttribute('managed-street') || entity.hasAttribute('street'))
+  ) {
+    posthog.capture('street_positioned', {
+      property: property,
+      value: value,
+      entity_id: entity.id,
+      scene_id: STREET.utils.getCurrentSceneId()
+    });
   }
 
   Events.emit('entityupdate', { entity, component, property, value });
