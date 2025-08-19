@@ -18,6 +18,34 @@ import useStore from '@/store.js';
 import { useAuthContext } from '../../../contexts/index.js';
 import { canUseGeoFeature } from '../../../utils/tokens.js';
 import posthog from 'posthog-js';
+import { Tooltip } from 'radix-ui';
+
+const TooltipWrapper = ({ children, content, side = 'bottom', ...props }) => {
+  return (
+    <Tooltip.Root delayDuration={0}>
+      <Tooltip.Trigger asChild>{children}</Tooltip.Trigger>
+      <Tooltip.Portal>
+        <Tooltip.Content
+          side={side}
+          sideOffset={5}
+          style={{
+            backgroundColor: '#1f2937',
+            color: 'white',
+            padding: '8px 12px',
+            borderRadius: '6px',
+            fontSize: '12px',
+            border: '1px solid #374151',
+            zIndex: 1000
+          }}
+          {...props}
+        >
+          {content}
+          <Tooltip.Arrow style={{ fill: '#1f2937' }} />
+        </Tooltip.Content>
+      </Tooltip.Portal>
+    </Tooltip.Root>
+  );
+};
 
 const GeoModal = () => {
   const { currentUser, tokenProfile, refreshTokenProfile } = useAuthContext();
@@ -182,7 +210,7 @@ const GeoModal = () => {
   };
 
   return (
-    <>
+    <Tooltip.Provider>
       <Modal
         className={styles.modalWrapper}
         isOpen={isOpen}
@@ -240,30 +268,48 @@ const GeoModal = () => {
           </div>
 
           <div className="propertyRow">
-            <div className="rounded bg-blue-50 p-2 text-gray-600">
-              <div className="mb-1 font-semibold uppercase">
-                💡 Geospatial Tips
+            {!currentUser?.isPro && tokenProfile?.geoToken === 0 ? (
+              <div className="rounded bg-red-50 p-2 text-red-600">
+                <div className="mb-1 font-semibold uppercase">
+                  🚀 Out of Geo Tokens
+                </div>
+                <ul className="space-y-1">
+                  <li>• You&apos;ve used all your free geo tokens</li>
+                  <li>
+                    • Upgrade to 3DStreet Pro for unlimited geospatial features
+                  </li>
+                  <li>
+                    • Pro includes unlimited geo lookups, map access, and more
+                  </li>
+                  <li>• Set and change scene locations as often as you need</li>
+                </ul>
               </div>
-              <ul className="space-y-1">
-                <li>
-                  • The red marker sets the geospatial location for the
-                  centerpoint origin of the scene
-                </li>
-                <li>
-                  • Click on the map to change the location of the red marker
-                  point
-                </li>
-                <li>
-                  • Choose a point that is easy to identify visually from aerial
-                  view such as utility pole, road marking, crosswalk ramp, or
-                  other landmark
-                </li>
-                <li>
-                  • Zoom in as much as possible when placing point to ensure
-                  accurate scene alignment
-                </li>
-              </ul>
-            </div>
+            ) : (
+              <div className="rounded bg-blue-50 p-2 text-gray-600">
+                <div className="mb-1 font-semibold uppercase">
+                  💡 Geospatial Tips
+                </div>
+                <ul className="space-y-1">
+                  <li>
+                    • The red marker sets the geospatial location for the
+                    centerpoint origin of the scene
+                  </li>
+                  <li>
+                    • Click on the map to change the location of the red marker
+                    point
+                  </li>
+                  <li>
+                    • Choose a point that is easy to identify visually from
+                    aerial view such as utility pole, road marking, crosswalk
+                    ramp, or other landmark
+                  </li>
+                  <li>
+                    • Zoom in as much as possible when placing point to ensure
+                    accurate scene alignment
+                  </li>
+                </ul>
+              </div>
+            )}
           </div>
 
           <div className={styles.controlButtons}>
@@ -272,29 +318,31 @@ const GeoModal = () => {
             </Button>
             <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
               {!currentUser?.isPro && tokenProfile && (
-                <span
-                  style={{
-                    background: '#374151',
-                    color: '#9ca3af',
-                    padding: '4px 8px',
-                    borderRadius: '4px',
-                    fontSize: '14px',
-                    fontWeight: '500'
-                  }}
-                >
-                  <img
-                    src="/ui_assets/token-geo.png"
-                    alt="Geo Token"
+                <TooltipWrapper content="Use geo tokens to set or change a geolocation for your scene.">
+                  <span
                     style={{
-                      width: '28px',
-                      height: '28px',
-                      marginRight: '4px',
-                      display: 'inline-block',
-                      verticalAlign: 'middle'
+                      background: '#374151',
+                      color: '#9ca3af',
+                      padding: '4px 8px',
+                      borderRadius: '4px',
+                      fontSize: '14px',
+                      fontWeight: '500'
                     }}
-                  />
-                  {tokenProfile.geoToken} free tokens
-                </span>
+                  >
+                    <img
+                      src="/ui_assets/token-geo.png"
+                      alt="Geo Token"
+                      style={{
+                        width: '28px',
+                        height: '28px',
+                        marginRight: '4px',
+                        display: 'inline-block',
+                        verticalAlign: 'middle'
+                      }}
+                    />
+                    {tokenProfile.geoToken} free tokens
+                  </span>
+                </TooltipWrapper>
               )}
               <Button
                 leadingIcon={<Save24Icon />}
@@ -305,7 +353,7 @@ const GeoModal = () => {
                   ? 'Update Scene Location'
                   : tokenProfile?.geoToken > 0
                     ? 'Update Scene Location'
-                    : 'Update Scene Location (Pro)'}
+                    : 'Upgrade to Pro to Change Location'}
               </Button>
             </div>
           </div>
@@ -386,7 +434,7 @@ const GeoModal = () => {
           </div>
         </div>
       )}
-    </>
+    </Tooltip.Provider>
   );
 };
 
