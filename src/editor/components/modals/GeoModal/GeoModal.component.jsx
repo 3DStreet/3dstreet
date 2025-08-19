@@ -437,7 +437,7 @@ const GeoModal = () => {
                 </span>
                 {successData.tokenInfo.remainingTokens === 0 && (
                   <span className={styles.upgradeHint}>
-                    • Upgrade to Pro for unlimited access
+                    Upgrade to Pro for unlimited access
                   </span>
                 )}
               </div>
