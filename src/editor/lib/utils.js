@@ -106,9 +106,6 @@ export async function setSceneLocation(latitude, longitude) {
     const data = result.data;
 
     if (data) {
-      console.log(`Setting location - latitude: ${lat}, longitude: ${lng}`);
-      console.log(`Elevation data: ${JSON.stringify(data)}`);
-
       // Get the reference layers element
       const geoLayer = document.getElementById('reference-layers');
 

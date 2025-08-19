@@ -124,14 +124,6 @@ const GeoModal = () => {
     if (result.success && result.data) {
       const data = result.data;
 
-      // Log the new location information
-      console.log('Location data:', data.location);
-      console.log('Location source:', data.locationSource);
-
-      // Log the new intersection information
-      console.log('Nearest intersection:', data.nearestIntersection);
-      console.log('Intersection source:', data.nearestIntersectionSource);
-
       // Refresh token profile to get updated count after successful save
       await refreshTokenProfile();
 
