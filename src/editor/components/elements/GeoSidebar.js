@@ -374,7 +374,13 @@ const GeoSidebar = ({ entity }) => {
                 <div
                   style={{ display: 'flex', alignItems: 'center', gap: '8px' }}
                 >
-                  <TooltipWrapper content="This scene has a geolocation centerpoint defined.">
+                  <TooltipWrapper
+                    content={
+                      component && component.data && component.data.latitude
+                        ? `This scene's centerpoint is ${component.data.latitude}, ${component.data.longitude}`
+                        : 'This scene has a geolocation centerpoint defined.'
+                    }
+                  >
                     <span
                       className="success-badge"
                       style={{
@@ -396,7 +402,7 @@ const GeoSidebar = ({ entity }) => {
                     </span>
                   </TooltipWrapper>
                   {!currentUser?.isPro && tokenProfile && (
-                    <TooltipWrapper content="Use Free Geo Tokens to save or update geolocation centerpoint for your scene.">
+                    <TooltipWrapper content="Use geo tokens to set or change a geolocation for your scene.">
                       <span
                         className="token-badge"
                         style={{
