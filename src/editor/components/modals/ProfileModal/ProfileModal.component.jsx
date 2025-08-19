@@ -6,7 +6,7 @@ import { Button, UsernameEditor } from '../../elements';
 import { useAuthContext } from '../../../contexts';
 import { signOut } from 'firebase/auth';
 import { auth, functions } from '../../../services/firebase';
-import { Action24, Loader } from '../../../icons';
+import { Loader } from '../../../icons';
 import { httpsCallable } from 'firebase/functions';
 import posthog from 'posthog-js';
 import { renderProfileIcon } from '../../elements/ProfileButton';
@@ -170,24 +170,57 @@ const ProfileModal = () => {
             )}
 
             {currentUser?.isPro ? (
-              <div className={styles.manageBillingCard}>
-                <p>
-                  <Action24 /> Plan: Geospatial Pro
-                </p>
-                <div>
-                  {isLoading ? (
-                    <div className={styles.loadingSpinner}>
-                      <Loader className={styles.spinner} />
-                    </div>
-                  ) : (
-                    <Button
-                      variant="ghost"
-                      className={styles.manageSubscription}
-                      onClick={manageSubscription}
-                    >
-                      Manage subscription
-                    </Button>
-                  )}
+              <div>
+                <div className={styles.tokenUsage}>
+                  <div
+                    style={{
+                      background: '#374151',
+                      border: '1px solid #4b5563',
+                      borderRadius: '6px',
+                      padding: '8px 12px',
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      alignItems: 'center'
+                    }}
+                  >
+                    <span>Plan: Geospatial Pro</span>
+                    <span style={{ display: 'flex', alignItems: 'center' }}>
+                      ∞
+                      <img
+                        src="/ui_assets/token-geo.png"
+                        alt="Geo Token"
+                        style={{
+                          width: '20px',
+                          height: '20px',
+                          marginRight: '6px',
+                          marginLeft: '6px',
+                          display: 'inline-block',
+                          verticalAlign: 'middle'
+                        }}
+                      />
+                      Unlimited Geo Tokens
+                    </span>
+                  </div>
+                </div>
+                <div
+                  className={styles.manageBillingCard}
+                  style={{ marginTop: '12px' }}
+                >
+                  <div>
+                    {isLoading ? (
+                      <div className={styles.loadingSpinner}>
+                        <Loader className={styles.spinner} />
+                      </div>
+                    ) : (
+                      <Button
+                        variant="ghost"
+                        className={styles.manageSubscription}
+                        onClick={manageSubscription}
+                      >
+                        Manage subscription
+                      </Button>
+                    )}
+                  </div>
                 </div>
               </div>
             ) : (
