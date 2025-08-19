@@ -17,6 +17,7 @@ import { setSceneLocation } from '../../../lib/utils.js';
 import useStore from '@/store.js';
 import { useAuthContext } from '../../../contexts/index.js';
 import { canUseGeoFeature } from '../../../utils/tokens.js';
+import posthog from 'posthog-js';
 
 const GeoModal = () => {
   const { currentUser, tokenProfile, refreshTokenProfile } = useAuthContext();
@@ -118,6 +119,14 @@ const GeoModal = () => {
     const latitude = markerPosition.lat;
     const longitude = markerPosition.lng;
 
+    // Track geo location setting attempt
+    posthog.capture('geo_location_set_attempt', {
+      latitude: latitude,
+      longitude: longitude,
+      is_pro_user: currentUser?.isPro || false,
+      tokens_available: tokenProfile?.geoToken || 0
+    });
+
     // Use the shared utility function to set the scene location
     const result = await setSceneLocation(latitude, longitude);
 
@@ -125,7 +134,21 @@ const GeoModal = () => {
       const data = result.data;
 
       // Refresh token profile to get updated count after successful save
+      const previousTokenCount = tokenProfile?.geoToken || 0;
       await refreshTokenProfile();
+
+      // Track successful geo location setting and token consumption
+      posthog.capture('geo_location_set_success', {
+        latitude: latitude,
+        longitude: longitude,
+        location_string: data.location?.locationString || '',
+        intersection_string: data.nearestIntersection?.intersectionString || '',
+        elevation: data.orthometricHeight || null,
+        is_pro_user: currentUser?.isPro || false,
+        tokens_consumed: currentUser?.isPro ? 0 : 1,
+        tokens_remaining_before: previousTokenCount,
+        scene_id: STREET.utils.getCurrentSceneId()
+      });
 
       // Show success overlay instead of immediately closing
       setSuccessData(data);
@@ -139,6 +162,16 @@ const GeoModal = () => {
         onClose();
       }, 4000);
     } else {
+      // Track failed geo location setting
+      posthog.capture('geo_location_set_failed', {
+        latitude: latitude,
+        longitude: longitude,
+        error_message: result.message || 'Unknown error',
+        is_pro_user: currentUser?.isPro || false,
+        tokens_available: tokenProfile?.geoToken || 0,
+        scene_id: STREET.utils.getCurrentSceneId()
+      });
+
       // Show error notification
       STREET.notify.errorMessage(
         result.message || 'Failed to set scene location. Please try again.'
