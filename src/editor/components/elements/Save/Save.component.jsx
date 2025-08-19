@@ -113,10 +113,10 @@ export const Save = ({ currentUser }) => {
             ) : (
               <>
                 {!isAuthor() ? (
-                  <TooltipWrapper content="Scene not saved, press to save as new file">
+                  <TooltipWrapper content="Scene not saved, press to save as...">
                     <Button
                       onClick={() => {
-                        saveScene(false);
+                        saveScene(true, true);
                       }}
                       variant="save"
                     >
@@ -124,10 +124,10 @@ export const Save = ({ currentUser }) => {
                     </Button>
                   </TooltipWrapper>
                 ) : (
-                  <TooltipWrapper content="Scene saved to cloud, press to save again">
+                  <TooltipWrapper content="Press to save as...">
                     <Button
                       onClick={() => {
-                        saveScene(false);
+                        saveScene(true, true);
                       }}
                       variant="save"
                     >
@@ -139,7 +139,7 @@ export const Save = ({ currentUser }) => {
             )}
           </div>
         ) : (
-          <TooltipWrapper content="Scene not saved, sign in to save">
+          <TooltipWrapper content="Scene not saved, sign in to save as...">
             <Button
               onClick={!isSavingScene ? handleUnsignedSave : undefined}
               variant="save"
