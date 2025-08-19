@@ -25,54 +25,63 @@ function Toolbar({ currentUser, entity }) {
 
   return (
     <div id="toolbar">
-      <div className="grid grid-flow-dense grid-cols-5">
-        <div className="col-span-2 flex items-center">
+      <div className="flex items-center justify-between">
+        {/* Left section - Logo, Title, Save */}
+        <div className="flex items-center gap-4">
           <div className="flex-shrink-0">
             <Logo currentUser={currentUser} />
           </div>
           {isInspectorEnabled && (
-            <>
-              <div className="ml-4">
-                <ActionBar selectedEntity={entity} />
+            <div className="flex min-w-0 items-center gap-2">
+              <div id="scene-title" className="clickable truncate">
+                <SceneEditTitle />
               </div>
-            </>
+              <Save currentUser={currentUser} />
+            </div>
           )}
           {/* Time Controls - only shown in viewer mode */}
           {!isInspectorEnabled && (
-            <div className="ml-4">
+            <div>
               <TimeControls entity={entity} />
             </div>
           )}
         </div>
-        {isInspectorEnabled && (
-          <div className="col-span-3 flex items-center justify-end gap-2">
-            <div id="scene-title" className="clickable">
-              <SceneEditTitle />
-            </div>
-            <Save currentUser={currentUser} />
-            <Button
-              leadingIcon={<ScreenshotIcon />}
-              onClick={() => {
-                makeScreenshot();
-                useStore.getState().setModal('screenshot');
-              }}
-              variant="toolbtn"
-              className="min-w-[105px]"
-              title="Take screenshot and download scene"
-            >
-              <div>Share</div>
-            </Button>
-            <div
-              onClick={() => setModal(currentUser ? 'profile' : 'signin')}
-              aria-label={currentUser ? 'Open profile' : 'Sign in'}
-              title={currentUser ? 'Open profile' : 'Sign in'}
-              className="mr-1"
-            >
-              <ProfileButton />
-            </div>
-          </div>
-        )}
+
+        {/* Right section - Share, Profile */}
+        <div className="flex items-center gap-2">
+          {isInspectorEnabled && (
+            <>
+              <Button
+                leadingIcon={<ScreenshotIcon />}
+                onClick={() => {
+                  makeScreenshot();
+                  useStore.getState().setModal('screenshot');
+                }}
+                variant="toolbtn"
+                className="min-w-[105px]"
+                title="Take screenshot and download scene"
+              >
+                <div>Share</div>
+              </Button>
+              <div
+                onClick={() => setModal(currentUser ? 'profile' : 'signin')}
+                aria-label={currentUser ? 'Open profile' : 'Sign in'}
+                title={currentUser ? 'Open profile' : 'Sign in'}
+                className="mr-1"
+              >
+                <ProfileButton />
+              </div>
+            </>
+          )}
+        </div>
       </div>
+
+      {/* Floating ActionBar below toolbar */}
+      {isInspectorEnabled && (
+        <div className="absolute left-1/2 z-10 mt-3 -translate-x-1/2 transform">
+          <ActionBar selectedEntity={entity} />
+        </div>
+      )}
     </div>
   );
 }
