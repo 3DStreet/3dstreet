@@ -9,13 +9,26 @@ import posthog from 'posthog-js';
 const signIn = async () => {
   try {
     const { user } = await signInWithPopup(auth, new GoogleAuthProvider());
-    // first signIn to ga
-    if (user.metadata.creationTime !== user.metadata.lastSignInTime) return;
-    posthog.capture('user_signed_up', {
-      email: user.email,
-      name: user.displayName,
-      provider: 'google.com'
-    });
+
+    // Check if this is a new user (sign up) or existing user (sign in)
+    const isNewUser =
+      user.metadata.creationTime === user.metadata.lastSignInTime;
+
+    if (isNewUser) {
+      posthog.capture('user_signed_up', {
+        email: user.email,
+        name: user.displayName,
+        provider: 'google.com',
+        user_id: user.uid
+      });
+    } else {
+      posthog.capture('sign_in_completed', {
+        email: user.email,
+        name: user.displayName,
+        provider: 'google.com',
+        user_id: user.uid
+      });
+    }
   } catch (error) {
     // handle specific error for `auth/account-exists-with-different-credential`
     if (error.code === 'auth/account-exists-with-different-credential') {
@@ -40,13 +53,26 @@ const signInMicrosoft = async () => {
     STREET.notify.successMessage(
       `Successful login with Microsoft authentication.`
     );
-    // first signIn to ga
-    if (user.metadata.creationTime !== user.metadata.lastSignInTime) return;
-    posthog.capture('user_signed_up', {
-      email: user.email,
-      name: user.displayName,
-      provider: 'microsoft.com'
-    });
+
+    // Check if this is a new user (sign up) or existing user (sign in)
+    const isNewUser =
+      user.metadata.creationTime === user.metadata.lastSignInTime;
+
+    if (isNewUser) {
+      posthog.capture('user_signed_up', {
+        email: user.email,
+        name: user.displayName,
+        provider: 'microsoft.com',
+        user_id: user.uid
+      });
+    } else {
+      posthog.capture('sign_in_completed', {
+        email: user.email,
+        name: user.displayName,
+        provider: 'microsoft.com',
+        user_id: user.uid
+      });
+    }
   } catch (error) {
     // handle specific error for `auth/account-exists-with-different-credential`
     if (error.code === 'auth/account-exists-with-different-credential') {

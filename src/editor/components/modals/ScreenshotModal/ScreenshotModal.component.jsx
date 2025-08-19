@@ -145,6 +145,11 @@ function ScreenshotModal() {
   const exportSceneToGLTF = (isPro, arReady) => {
     if (isPro) {
       try {
+        posthog.capture('export_initiated', {
+          export_type: arReady ? 'ar_glb' : 'glb',
+          scene_id: STREET.utils.getCurrentSceneId()
+        });
+
         const sceneName = getSceneName(AFRAME.scenes[0]);
         let scene = AFRAME.scenes[0].object3D;
         if (arReady) {

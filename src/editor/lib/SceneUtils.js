@@ -30,6 +30,10 @@ export function inputStreetmix() {
     // setTimeout very important here, otherwise all entities are positionned at 0,0,0 when reloading the scene
     setTimeout(() => {
       AFRAME.scenes[0].emit('newScene');
+      posthog.capture('streetmix_import_completed', {
+        streetmix_url: streetmixURL,
+        scene_id: STREET.utils.getCurrentSceneId()
+      });
     });
   });
 
@@ -113,6 +117,11 @@ export function fileJSON(event) {
 
 export function convertToObject() {
   try {
+    posthog.capture('export_initiated', {
+      export_type: 'json',
+      scene_id: STREET.utils.getCurrentSceneId()
+    });
+
     const entity = document.getElementById('street-container');
 
     const data = STREET.utils.convertDOMElToObject(entity);

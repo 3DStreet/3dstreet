@@ -33,6 +33,11 @@ const generateSceneId = async (authorId) => {
     author: authorId
   });
 
+  posthog.capture('scene_created', {
+    scene_id: newSceneId,
+    author_id: authorId
+  });
+
   return newSceneId;
 };
 
@@ -50,6 +55,13 @@ const createScene = async (authorId, sceneData, title, version, memory) => {
     version: version,
     memory: memory
   });
+
+  posthog.capture('scene_created', {
+    scene_id: newSceneId,
+    author_id: authorId,
+    scene_title: title
+  });
+
   return newSceneId;
 };
 
@@ -188,6 +200,11 @@ const saveScreenshot = async (value) => {
       '#screentock-destination'
     );
   }
+
+  posthog.capture('export_initiated', {
+    export_type: value,
+    scene_id: STREET.utils.getCurrentSceneId()
+  });
 
   posthog.capture('screenshot_taken', {
     type: value,
