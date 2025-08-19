@@ -124,10 +124,10 @@ export const Save = ({ currentUser }) => {
                     </Button>
                   </TooltipWrapper>
                 ) : (
-                  <TooltipWrapper content="Press to save as...">
+                  <TooltipWrapper content="Scene saved to cloud, press to save again">
                     <Button
                       onClick={() => {
-                        saveScene(true, true);
+                        saveScene(false);
                       }}
                       variant="save"
                     >
