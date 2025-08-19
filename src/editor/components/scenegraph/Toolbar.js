@@ -3,7 +3,9 @@ import useStore from '@/store';
 import { useAuthContext } from '@/editor/contexts';
 import { Tooltip } from 'radix-ui';
 import { Button } from '../elements/Button';
-import { ScreenshotIcon } from '../../icons';
+import { CameraSparkleIcon } from '../../icons';
+import { AwesomeIcon } from '../elements/AwesomeIcon';
+import { faLockOpen } from '@fortawesome/free-solid-svg-icons';
 import { makeScreenshot } from '@/editor/lib/SceneUtils';
 import { SceneEditTitle } from '../elements/SceneEditTitle';
 import { ActionBar } from '../elements/ActionBar';
@@ -85,17 +87,38 @@ function Toolbar({ currentUser, entity }) {
             {isInspectorEnabled && (
               <>
                 <TooltipWrapper
-                  content="Take screenshot and download scene"
+                  content="Capture screenshot and generate rendered images"
                   side="bottom"
                 >
                   <Button
-                    leadingIcon={<ScreenshotIcon />}
+                    leadingIcon={
+                      <div
+                        style={{
+                          transform:
+                            'scale(0.9) translateY(-3px) translateX(2px)'
+                        }}
+                      >
+                        <CameraSparkleIcon />
+                      </div>
+                    }
                     onClick={() => {
                       makeScreenshot();
                       useStore.getState().setModal('screenshot');
                     }}
                     variant="toolbtn"
                     className="min-w-[105px]"
+                  >
+                    <div>Snapshot</div>
+                  </Button>
+                </TooltipWrapper>
+                <TooltipWrapper content="Share scene" side="bottom">
+                  <Button
+                    leadingIcon={<AwesomeIcon icon={faLockOpen} size={20} />}
+                    onClick={() => {
+                      useStore.getState().setModal('share');
+                    }}
+                    variant="toolbtn"
+                    className="min-w-[90px]"
                   >
                     <div>Share</div>
                   </Button>
