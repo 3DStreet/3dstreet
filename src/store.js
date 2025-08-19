@@ -3,6 +3,7 @@ import { devtools, subscribeWithSelector } from 'zustand/middleware';
 import posthog from 'posthog-js';
 import Events from './editor/lib/Events';
 import canvasRecorder from './editor/lib/CanvasRecorder';
+import { auth } from './editor/services/firebase';
 
 const firstModal = () => {
   let modal = window.location.hash.includes('payment')
@@ -178,5 +179,25 @@ useStore.subscribe(
     }
   }
 );
+
+// Add beforeunload warning for unsaved changes
+window.addEventListener('beforeunload', (event) => {
+  // Check if scene is unsaved using the same logic as the Save button
+  const sceneId = STREET.utils.getCurrentSceneId();
+  const authorId = STREET.utils.getAuthorId();
+  const currentUser = auth.currentUser;
+
+  // Scene is unsaved if:
+  // 1. No scene ID (new unsaved scene)
+  // 2. Current user is not the author (scene not saved by current user)
+  const isUnsaved = !sceneId || (currentUser && currentUser.uid !== authorId);
+
+  if (isUnsaved) {
+    const message = 'You have unsaved changes. Are you sure you want to leave?';
+    event.preventDefault();
+    event.returnValue = message;
+    return message;
+  }
+});
 
 export default useStore;

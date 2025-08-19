@@ -9,6 +9,34 @@ import {
 } from '@/editor/icons';
 import debounce from 'lodash-es/debounce';
 import Events from '@/editor/lib/Events';
+import { Tooltip } from 'radix-ui';
+
+const TooltipWrapper = ({ children, content, side = 'bottom', ...props }) => {
+  return (
+    <Tooltip.Root delayDuration={0}>
+      <Tooltip.Trigger asChild>{children}</Tooltip.Trigger>
+      <Tooltip.Portal>
+        <Tooltip.Content
+          side={side}
+          sideOffset={5}
+          style={{
+            backgroundColor: '#1f2937',
+            color: 'white',
+            padding: '8px 12px',
+            borderRadius: '6px',
+            fontSize: '12px',
+            border: '1px solid #374151',
+            zIndex: 1000
+          }}
+          {...props}
+        >
+          {content}
+          <Tooltip.Arrow style={{ fill: '#1f2937' }} />
+        </Tooltip.Content>
+      </Tooltip.Portal>
+    </Tooltip.Root>
+  );
+};
 
 export const Save = ({ currentUser }) => {
   const [savedScene, setSavedScene] = useState(false);
@@ -72,48 +100,55 @@ export const Save = ({ currentUser }) => {
   };
 
   return (
-    <div>
-      {currentUser ? (
-        <div className="relative">
-          {isSavingScene ? (
-            <Button variant="save" title="Saving...">
-              <CloudSavingIcon />
+    <Tooltip.Provider>
+      <div>
+        {currentUser ? (
+          <div className="relative">
+            {isSavingScene ? (
+              <TooltipWrapper content="Saving...">
+                <Button variant="save">
+                  <CloudSavingIcon />
+                </Button>
+              </TooltipWrapper>
+            ) : (
+              <>
+                {!isAuthor() ? (
+                  <TooltipWrapper content="Scene not saved, press to save as...">
+                    <Button
+                      onClick={() => {
+                        saveScene(true, true);
+                      }}
+                      variant="save"
+                    >
+                      <CloudNotSavedIcon />
+                    </Button>
+                  </TooltipWrapper>
+                ) : (
+                  <TooltipWrapper content="Scene saved to cloud, press to save again">
+                    <Button
+                      onClick={() => {
+                        saveScene(false);
+                      }}
+                      variant="save"
+                    >
+                      <CloudSavedIcon />
+                    </Button>
+                  </TooltipWrapper>
+                )}
+              </>
+            )}
+          </div>
+        ) : (
+          <TooltipWrapper content="Scene not saved, sign in to save as...">
+            <Button
+              onClick={!isSavingScene ? handleUnsignedSave : undefined}
+              variant="save"
+            >
+              <CloudNotSavedIcon />
             </Button>
-          ) : (
-            <>
-              {!isAuthor() ? (
-                <Button
-                  onClick={() => {
-                    saveScene(false);
-                  }}
-                  variant="save"
-                  title="Scene not saved, press to save as new file"
-                >
-                  <CloudNotSavedIcon />
-                </Button>
-              ) : (
-                <Button
-                  onClick={() => {
-                    saveScene(false);
-                  }}
-                  variant="save"
-                  title="Scene saved to cloud, press to save again"
-                >
-                  <CloudSavedIcon />
-                </Button>
-              )}
-            </>
-          )}
-        </div>
-      ) : (
-        <Button
-          onClick={!isSavingScene ? handleUnsignedSave : undefined}
-          variant="save"
-          title="Scene not saved, sign in to save"
-        >
-          <CloudNotSavedIcon />
-        </Button>
-      )}
-    </div>
+          </TooltipWrapper>
+        )}
+      </div>
+    </Tooltip.Provider>
   );
 };

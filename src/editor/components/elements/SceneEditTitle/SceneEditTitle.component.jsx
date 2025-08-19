@@ -33,11 +33,7 @@ const SceneEditTitle = ({ sceneData }) => {
   };
 
   return (
-    <div
-      className={styles.wrapper}
-      onClick={handleEditClick}
-      title="Edit scene title"
-    >
+    <div className={styles.wrapper} onClick={handleEditClick}>
       <div className={styles.readOnly}>
         <p className={styles.title}>{title || 'Untitled'}</p>
       </div>

@@ -1,5 +1,5 @@
 import { bool, element, func, node, number, object, string } from 'prop-types';
-import { useState, useCallback } from 'react';
+import { useState, useCallback, forwardRef } from 'react';
 
 import classNames from 'classnames';
 import styles from './Button.module.scss';
@@ -37,86 +37,100 @@ const variants = {
  *  longPressDelay: number, // Duration in ms
  * }} props
  */
-const Button = ({
-  className,
-  style,
-  onClick,
-  onPointerDown,
-  onPointerUp,
-  onPointerLeave,
-  type = 'button',
-  children,
-  variant = 'filled',
-  disabled,
-  id,
-  leadingIcon,
-  trailingIcon,
-  onLongPress,
-  longPressDelay = 2000, // Default 2 seconds
-  title
-}) => {
-  const [pressTimer, setPressTimer] = useState(null);
-  const [isPressing, setIsPressing] = useState(false);
+const Button = forwardRef(
+  (
+    {
+      className,
+      style,
+      onClick,
+      onPointerDown,
+      onPointerUp,
+      onPointerLeave,
+      type = 'button',
+      children,
+      variant = 'filled',
+      disabled,
+      id,
+      leadingIcon,
+      trailingIcon,
+      onLongPress,
+      longPressDelay = 2000, // Default 2 seconds
+      title,
+      ...props
+    },
+    ref
+  ) => {
+    const [pressTimer, setPressTimer] = useState(null);
+    const [isPressing, setIsPressing] = useState(false);
 
-  const startPressTimer = useCallback(() => {
-    if (!onLongPress) return; // Only start timer if onLongPress exists
-    setIsPressing(true);
-    const timer = setTimeout(() => {
-      if (onLongPress) {
-        onLongPress();
+    const startPressTimer = useCallback(() => {
+      if (!onLongPress) return; // Only start timer if onLongPress exists
+      setIsPressing(true);
+      const timer = setTimeout(() => {
+        if (onLongPress) {
+          onLongPress();
+        }
+        setIsPressing(false);
+      }, longPressDelay);
+      setPressTimer(timer);
+    }, [onLongPress, longPressDelay]);
+
+    const clearPressTimer = useCallback(() => {
+      if (pressTimer) {
+        clearTimeout(pressTimer);
+        setPressTimer(null);
+        setIsPressing(false);
       }
-      setIsPressing(false);
-    }, longPressDelay);
-    setPressTimer(timer);
-  }, [onLongPress, longPressDelay]);
+    }, [pressTimer]);
+    return (
+      <button
+        ref={ref}
+        className={classNames(
+          styles.buttonWrapper,
+          variants[variant],
+          className
+        )}
+        style={{ ...style, position: 'relative' }}
+        onClick={onClick}
+        onPointerDown={(e) => {
+          startPressTimer();
+          onPointerDown?.(e);
+        }}
+        onPointerUp={(e) => {
+          clearPressTimer();
+          onPointerUp?.(e);
+        }}
+        onPointerLeave={(e) => {
+          clearPressTimer();
+          onPointerLeave?.(e);
+        }}
+        type={type}
+        tabIndex={0}
+        disabled={disabled}
+        id={id}
+        title={title}
+        {...props}
+      >
+        {leadingIcon && <div className={styles.icon}>{leadingIcon}</div>}
+        {children}
+        {trailingIcon && <div className={styles.icon}>{trailingIcon}</div>}
 
-  const clearPressTimer = useCallback(() => {
-    if (pressTimer) {
-      clearTimeout(pressTimer);
-      setPressTimer(null);
-      setIsPressing(false);
-    }
-  }, [pressTimer]);
-  return (
-    <button
-      className={classNames(styles.buttonWrapper, variants[variant], className)}
-      style={{ ...style, position: 'relative' }}
-      onClick={onClick}
-      onPointerDown={(e) => {
-        startPressTimer();
-        onPointerDown?.(e);
-      }}
-      onPointerUp={(e) => {
-        clearPressTimer();
-        onPointerUp?.(e);
-      }}
-      onPointerLeave={(e) => {
-        clearPressTimer();
-        onPointerLeave?.(e);
-      }}
-      type={type}
-      tabIndex={0}
-      disabled={disabled}
-      id={id}
-      title={title}
-    >
-      {leadingIcon && <div className={styles.icon}>{leadingIcon}</div>}
-      {children}
-      {trailingIcon && <div className={styles.icon}>{trailingIcon}</div>}
+        {onLongPress && (
+          <div
+            className={classNames(styles.pressProgress, {
+              [styles.pressing]: isPressing
+            })}
+            style={{
+              '--press-duration': `${longPressDelay}ms`
+            }}
+          />
+        )}
+      </button>
+    );
+  }
+);
 
-      {onLongPress && (
-        <div
-          className={classNames(styles.pressProgress, {
-            [styles.pressing]: isPressing
-          })}
-          style={{
-            '--press-duration': `${longPressDelay}ms`
-          }}
-        />
-      )}
-    </button>
-  );
-};
+Button.displayName = 'Button';
 
 Button.propTypes = {
   className: string,
