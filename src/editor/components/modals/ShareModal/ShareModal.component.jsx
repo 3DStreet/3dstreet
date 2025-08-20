@@ -8,6 +8,7 @@ import posthog from 'posthog-js';
 import useStore from '@/store';
 import { getDoc, doc } from 'firebase/firestore';
 import { db } from '../../../services/firebase';
+import { shareSceneToDiscord } from '../../../api/scene';
 import ScenePlaceholder from '../../../../../ui_assets/ScenePlaceholder.svg';
 import { getUserProfile } from '../../../utils/username';
 import { Tooltip } from 'radix-ui';
@@ -173,23 +174,40 @@ function ShareModal() {
     }
   };
 
-  const handleDiscordShare = () => {
+  const handleDiscordShare = async () => {
     const sceneTitle = sceneData?.title || 'Untitled Scene';
     const authorName = authorUsername || 'anonymous';
-    const location = locationString || 'Location not set';
+    const location = locationString || '';
+    const sceneId = STREET.utils.getCurrentSceneId();
 
-    const discordMessage = encodeURIComponent(
-      `🏙️ Check out "${sceneTitle}" by @${authorName} on 3DStreet!\n` +
-        `📍 ${location}\n` +
-        `🔗 ${shareUrl}`
-    );
-    window.open(
-      `https://discord.com/channels/@me?message=${discordMessage}`,
-      '_blank'
-    );
-    posthog.capture('share_via_discord', {
-      scene_id: STREET.utils.getCurrentSceneId()
-    });
+    try {
+      const result = await shareSceneToDiscord({
+        title: sceneTitle,
+        location: location,
+        username: authorName,
+        sceneUrl: shareUrl
+      });
+
+      STREET.notify.successMessage(
+        result.message || 'Scene shared to Discord successfully!'
+      );
+
+      posthog.capture('share_via_discord_server', {
+        scene_id: sceneId,
+        success: true
+      });
+    } catch (error) {
+      console.error('Discord share error:', error);
+      STREET.notify.errorMessage(
+        'Failed to share scene to Discord. Please try again.'
+      );
+
+      posthog.capture('share_via_discord_server', {
+        scene_id: sceneId,
+        success: false,
+        error: error.message
+      });
+    }
   };
 
   const sceneId = STREET.utils.getCurrentSceneId();

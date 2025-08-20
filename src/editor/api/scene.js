@@ -16,6 +16,7 @@ import {
 import { v4 as uuidv4 } from 'uuid';
 import { auth, db, storage } from '../services/firebase';
 import { getDownloadURL, ref, uploadBytes } from 'firebase/storage';
+import { httpsCallable, getFunctions } from 'firebase/functions';
 import posthog from 'posthog-js';
 import { isUserPro } from './user';
 
@@ -326,6 +327,20 @@ const uploadThumbnailImage = async (sceneDocId) => {
   }
 };
 
+// Share scene to Discord
+const shareSceneToDiscord = async (sceneData) => {
+  try {
+    const functions = getFunctions();
+    const shareToDiscord = httpsCallable(functions, 'shareToDiscord');
+
+    const result = await shareToDiscord(sceneData);
+    return result.data;
+  } catch (error) {
+    console.error('Error sharing to Discord:', error);
+    throw error;
+  }
+};
+
 export {
   checkIfImagePathIsEmpty,
   createScene,
@@ -337,5 +352,6 @@ export {
   updateSceneIdAndTitle,
   uploadThumbnailImage,
   saveScreenshot,
-  takeScreenshotWithOptions
+  takeScreenshotWithOptions,
+  shareSceneToDiscord
 };
