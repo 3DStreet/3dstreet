@@ -234,19 +234,11 @@ function ShareModal() {
                   ? 'Please sign in to share your scene'
                   : 'Please save your scene to share it'}
               </h3>
-              <Button
-                onClick={() => {
-                  if (!currentUser) {
-                    setModal('signin');
-                  } else {
-                    // User is authenticated but scene isn't saved - trigger save
-                    document.getElementById('saveButton')?.click();
-                    setModal(null); // Close share modal after triggering save
-                  }
-                }}
-              >
-                {!currentUser ? 'Sign in to 3DStreet Cloud' : 'Save Scene'}
-              </Button>
+              {!currentUser && (
+                <Button onClick={() => setModal('signin')}>
+                  Sign in to 3DStreet Cloud
+                </Button>
+              )}
             </div>
           ) : (
             <div className={styles.shareableContent}>
