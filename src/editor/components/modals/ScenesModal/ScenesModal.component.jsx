@@ -54,10 +54,13 @@ const ScenesModal = ({ initialTab = 'owner', delay = undefined }) => {
     }
 
     if (event.ctrlKey || event.metaKey) {
-      // Store both data and memory for new tab
+      // Store both data, memory, and snapshots for new tab
       const fullData = {
         data: sceneData.data,
-        memory: sceneData.memory
+        memory: sceneData.memory,
+        snapshots: sceneData.snapshots,
+        title: sceneData.title,
+        author: sceneData.author
       };
       localStorage.setItem('sceneData', JSON.stringify(fullData));
       const newTabUrl = `#/scenes/${scene.id}`;
@@ -80,6 +83,22 @@ const ScenesModal = ({ initialTab = 'owner', delay = undefined }) => {
       AFRAME.scenes[0].setAttribute('metadata', 'sceneId', sceneId);
       useStore.getState().setSceneTitle(sceneTitle);
       AFRAME.scenes[0].setAttribute('metadata', 'authorId', sceneData.author);
+
+      // Check for snapshots and apply default camera position
+      if (sceneData.snapshots && sceneData.snapshots.length > 0) {
+        const defaultSnapshot = sceneData.snapshots.find((s) => s.isDefault);
+        if (defaultSnapshot && defaultSnapshot.cameraState) {
+          console.log(
+            '[ScenesModal] Applying default snapshot camera state:',
+            defaultSnapshot.cameraState
+          );
+          // Apply camera state after a short delay to ensure scene is fully loaded
+          setTimeout(() => {
+            STREET.utils.applyCameraState(defaultSnapshot.cameraState);
+          }, 500);
+        }
+      }
+
       STREET.notify.successMessage('Scene loaded from 3DStreet Cloud.');
       onClose();
     }
@@ -88,6 +107,8 @@ const ScenesModal = ({ initialTab = 'owner', delay = undefined }) => {
   useEffect(() => {
     const storedData = JSON.parse(localStorage.getItem('sceneData'));
     if (storedData) {
+      let sceneData = null;
+
       if (storedData.data) {
         // New format with separate data and memory
         console.log('Loading scene from localStorage with new format');
@@ -95,11 +116,29 @@ const ScenesModal = ({ initialTab = 'owner', delay = undefined }) => {
           console.log('Memory data found in localStorage:', storedData.memory);
         }
         createElementsForScenesFromJSON(storedData.data, storedData.memory);
+        sceneData = storedData; // Full data including snapshots
       } else {
         // Old format with just data
         console.log('Loading scene from localStorage with old format');
         createElementsForScenesFromJSON(storedData);
+        sceneData = { data: storedData }; // Wrap in expected format
       }
+
+      // Check for snapshots and apply default camera position
+      if (sceneData.snapshots && sceneData.snapshots.length > 0) {
+        const defaultSnapshot = sceneData.snapshots.find((s) => s.isDefault);
+        if (defaultSnapshot && defaultSnapshot.cameraState) {
+          console.log(
+            '[ScenesModal localStorage] Applying default snapshot camera state:',
+            defaultSnapshot.cameraState
+          );
+          // Apply camera state after a short delay to ensure scene is fully loaded
+          setTimeout(() => {
+            STREET.utils.applyCameraState(defaultSnapshot.cameraState);
+          }, 500);
+        }
+      }
+
       localStorage.removeItem('sceneData');
     }
   }, []);

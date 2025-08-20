@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import styles from './ScreenshotModal.module.scss';
 import Modal from '../Modal.jsx';
 import posthog from 'posthog-js';
@@ -6,12 +6,14 @@ import useStore from '@/store';
 import { Button } from '../../elements';
 import { Save24Icon } from '../../../icons';
 import { takeScreenshotWithOptions } from '../../../api/scene';
+import { createSceneSnapshot } from '../../../api/snapshot';
 import { useAuthContext } from '../../../contexts';
 
 function ScreenshotModal() {
   const setModal = useStore((state) => state.setModal);
   const modal = useStore((state) => state.modal);
   const { currentUser } = useAuthContext();
+  const [isSavingSnapshot, setIsSavingSnapshot] = useState(false);
 
   const handleDownloadScreenshot = async (type) => {
     const isPro = currentUser?.isPro;
@@ -22,6 +24,39 @@ function ScreenshotModal() {
       showWatermark: !isPro,
       imgElementSelector: type === 'img' ? '#screentock-destination' : null
     });
+  };
+
+  const handleSetAsSceneThumbnail = async () => {
+    const sceneId = STREET.utils.getCurrentSceneId();
+    const authorId = STREET.utils.getAuthorId();
+
+    if (!sceneId) {
+      STREET.notify.errorMessage('Please save your scene first');
+      return;
+    }
+
+    if (!currentUser || currentUser.uid !== authorId) {
+      STREET.notify.errorMessage('Only the scene author can set the thumbnail');
+      return;
+    }
+
+    setIsSavingSnapshot(true);
+
+    try {
+      await createSceneSnapshot(sceneId, true, 'Scene Thumbnail');
+      STREET.notify.successMessage('Scene thumbnail saved successfully!');
+
+      posthog.capture('scene_thumbnail_set', {
+        scene_id: sceneId
+      });
+    } catch (error) {
+      console.error('Error setting scene thumbnail:', error);
+      STREET.notify.errorMessage(
+        'Failed to set scene thumbnail. Please try again.'
+      );
+    } finally {
+      setIsSavingSnapshot(false);
+    }
   };
 
   // Track when screenshot modal opens for camera positioning
@@ -65,6 +100,20 @@ function ScreenshotModal() {
             >
               Download JPEG
             </Button>
+            {/* Set as Scene Thumbnail button - only show for scene authors */}
+            {currentUser &&
+              STREET.utils.getCurrentSceneId() &&
+              currentUser.uid === STREET.utils.getAuthorId() && (
+                <Button
+                  onClick={handleSetAsSceneThumbnail}
+                  variant="filled"
+                  className={styles.downloadButton}
+                  disabled={isSavingSnapshot}
+                  style={{ marginTop: '8px' }}
+                >
+                  {isSavingSnapshot ? 'Saving...' : '📸 Set as Scene Thumbnail'}
+                </Button>
+              )}
           </div>
           {/* Upsell button for free users */}
           {!currentUser?.isPro && (

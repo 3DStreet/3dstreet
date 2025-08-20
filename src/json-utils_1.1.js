@@ -426,6 +426,54 @@ function createEntities(entitiesData, parentEl) {
 
 STREET.utils.createEntities = createEntities;
 
+/**
+ * Apply a saved camera state to the current scene camera
+ * @param {Object} cameraState - Camera state object with position, rotation, and zoom
+ */
+function applyCameraState(cameraState) {
+  if (!cameraState) return;
+
+  const camera = AFRAME.scenes[0].camera;
+  if (!camera) {
+    console.error('[STREET.utils.applyCameraState] No camera found in scene');
+    return;
+  }
+
+  // Set position
+  if (cameraState.position) {
+    camera.position.set(
+      cameraState.position.x,
+      cameraState.position.y,
+      cameraState.position.z
+    );
+  }
+
+  // Set rotation
+  if (cameraState.rotation) {
+    camera.rotation.set(
+      cameraState.rotation.x,
+      cameraState.rotation.y,
+      cameraState.rotation.z
+    );
+  }
+
+  // Set zoom/FOV if applicable
+  if (cameraState.zoom && camera.fov !== undefined) {
+    camera.fov = cameraState.zoom;
+    camera.updateProjectionMatrix();
+  }
+
+  // Update camera
+  camera.updateMatrixWorld();
+
+  console.log(
+    '[STREET.utils.applyCameraState] Camera state applied:',
+    cameraState
+  );
+}
+
+STREET.utils.applyCameraState = applyCameraState;
+
 /*
 Add a new entity with a list of components and children (if exists)
  * @param {object} entityData Entity definition to add:
@@ -704,6 +752,21 @@ AFRAME.registerComponent('set-loader-from-hash', {
         if (sceneId) {
           console.log('sceneId from fetchJSON from url hash loader', sceneId);
           AFRAME.scenes[0].setAttribute('metadata', 'sceneId', sceneId);
+
+          // Check for snapshots and apply default camera position
+          if (jsonData.snapshots && jsonData.snapshots.length > 0) {
+            const defaultSnapshot = jsonData.snapshots.find((s) => s.isDefault);
+            if (defaultSnapshot && defaultSnapshot.cameraState) {
+              console.log(
+                '[set-loader-from-hash] Applying default snapshot camera state:',
+                defaultSnapshot.cameraState
+              );
+              // Apply camera state after a short delay to ensure scene is fully loaded
+              setTimeout(() => {
+                STREET.utils.applyCameraState(defaultSnapshot.cameraState);
+              }, 500);
+            }
+          }
         }
         AFRAME.scenes[0].setAttribute('metadata', 'authorId', jsonData.author);
       } else if (this.status === 404) {

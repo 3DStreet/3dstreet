@@ -6,6 +6,8 @@ import {
   uploadThumbnailImage
 } from '@/editor/api/scene';
 import { createUniqueId } from '@/editor/lib/entity.js';
+import { doc, getDoc } from 'firebase/firestore';
+import { db } from '@/editor/services/firebase';
 
 export function createBlankScene() {
   STREET.utils.newScene();
@@ -262,9 +264,19 @@ export async function saveSceneWithScreenshot(
   const currentSceneId = await saveScene(currentUser, doSaveAs, doPromptTitle);
   // if currentSceneId AND the screenshot modal is NOT open
   if (currentSceneId && useStore.getState().modal !== 'screenshot') {
-    // wait a bit for models to be loaded, may not be enough...
-    await new Promise((resolve) => setTimeout(resolve, 2000));
-    await makeScreenshot(true);
-    uploadThumbnailImage(currentSceneId);
+    // Check if the scene has a locked thumbnail (manual snapshot set)
+    const sceneDocRef = doc(db, 'scenes', currentSceneId);
+    const sceneSnapshot = await getDoc(sceneDocRef);
+
+    if (sceneSnapshot.exists()) {
+      const sceneData = sceneSnapshot.data();
+      // Only auto-update thumbnail if it's not locked
+      if (!sceneData.thumbnailLocked) {
+        // wait a bit for models to be loaded, may not be enough...
+        await new Promise((resolve) => setTimeout(resolve, 2000));
+        await makeScreenshot(true);
+        uploadThumbnailImage(currentSceneId);
+      }
+    }
   }
 }
