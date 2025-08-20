@@ -256,7 +256,13 @@ const saveScreenshot = async (value) => {
 
 const uploadThumbnailImage = async (sceneDocId) => {
   try {
-    // saveScreenshot('img');
+    // Take a fresh screenshot without watermarks for thumbnail
+    await takeScreenshotWithOptions({
+      type: 'img',
+      showLogo: false,
+      showWatermark: false,
+      imgElementSelector: '#screentock-destination'
+    });
 
     const screentockImgElement = document.getElementById(
       'screentock-destination'
