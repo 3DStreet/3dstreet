@@ -441,34 +441,40 @@ const GeoSidebar = ({ entity }) => {
             {/* Upgrade prompt for users with 0 tokens */}
             {!currentUser?.isPro && tokenProfile?.geoToken === 0 && (
               <div className="propertyRow" style={{ marginTop: '8px' }}>
-                <div
-                  className="upgrade-prompt"
+                <Button
+                  variant="toolbtn"
                   style={{
-                    padding: '12px',
-                    background: '#1f2937',
-                    borderRadius: '6px',
-                    border: '1px solid #374151',
-                    width: '100%'
+                    width: '100%',
+                    background:
+                      'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                    border: 'none',
+                    color: 'white',
+                    fontWeight: '600',
+                    fontSize: '12px',
+                    padding: '12px 16px',
+                    borderRadius: '8px',
+                    cursor: 'pointer',
+                    transition: 'all 0.3s ease',
+                    boxShadow: '0 4px 12px rgba(118, 75, 162, 0.3)',
+                    ':hover': {
+                      transform: 'translateY(-1px)',
+                      boxShadow: '0 6px 20px rgba(118, 75, 162, 0.4)'
+                    }
+                  }}
+                  onClick={() => startCheckout('geo')}
+                  onMouseEnter={(e) => {
+                    e.target.style.transform = 'translateY(-1px)';
+                    e.target.style.boxShadow =
+                      '0 6px 20px rgba(118, 75, 162, 0.4)';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.target.style.transform = 'translateY(0px)';
+                    e.target.style.boxShadow =
+                      '0 4px 12px rgba(118, 75, 162, 0.3)';
                   }}
                 >
-                  <p
-                    style={{
-                      margin: '0 0 8px 0',
-                      fontSize: '11px',
-                      color: '#f3f4f6',
-                      fontWeight: '500'
-                    }}
-                  >
-                    🚀 Upgrade to Pro for unlimited geo lookups
-                  </p>
-                  <Button
-                    variant="toolbtn"
-                    style={{ fontSize: '11px', padding: '4px 8px' }}
-                    onClick={() => startCheckout('geo')}
-                  >
-                    Upgrade Now
-                  </Button>
-                </div>
+                  Upgrade to Pro for unlimited geo lookups
+                </Button>
               </div>
             )}
 
