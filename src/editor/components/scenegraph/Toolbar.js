@@ -128,7 +128,7 @@ function Toolbar({ currentUser, entity }) {
                   content={
                     authUser?.isPro
                       ? '3DStreet Geospatial Pro Plan'
-                      : '3DStreet Free Community Plan'
+                      : '3DStreet Free Community Edition'
                   }
                   side="bottom"
                 >

@@ -14,9 +14,10 @@ import {
   where
 } from 'firebase/firestore';
 import { v4 as uuidv4 } from 'uuid';
-import { db, storage } from '../services/firebase';
+import { auth, db, storage } from '../services/firebase';
 import { getDownloadURL, ref, uploadBytes } from 'firebase/storage';
 import posthog from 'posthog-js';
+import { isUserPro } from './user';
 
 const sceneRef = collection(db, 'scenes');
 
@@ -189,30 +190,67 @@ const checkIfImagePathIsEmpty = async (sceneId) => {
   }
 };
 
-const saveScreenshot = async (value) => {
+// Enhanced screenshot function with explicit overlay control
+const takeScreenshotWithOptions = async (options = {}) => {
+  const {
+    type = 'jpg',
+    filename = 'screenshot',
+    showLogo = false,
+    showWatermark = false,
+    imgElementSelector = null
+  } = options;
+
   const screenshotEl = document.getElementById('screenshot');
   screenshotEl.play();
 
-  if (value === 'img') {
+  // Set all screentock attributes explicitly
+  screenshotEl.setAttribute('screentock', 'showLogo', showLogo);
+  screenshotEl.setAttribute(
+    'screentock',
+    'showCommunityWatermark',
+    showWatermark
+  );
+  screenshotEl.setAttribute('screentock', 'filename', filename);
+  screenshotEl.setAttribute('screentock', 'type', type);
+
+  if (imgElementSelector) {
     screenshotEl.setAttribute(
       'screentock',
       'imgElementSelector',
-      '#screentock-destination'
+      imgElementSelector
     );
   }
 
   posthog.capture('export_initiated', {
-    export_type: value,
+    export_type: type,
     scene_id: STREET.utils.getCurrentSceneId()
   });
 
   posthog.capture('screenshot_taken', {
-    type: value,
+    type: type,
     scene_id: STREET.utils.getCurrentSceneId()
   });
 
-  screenshotEl.setAttribute('screentock', 'type', value);
   screenshotEl.setAttribute('screentock', 'takeScreenshot', true);
+};
+
+// Legacy function for backward compatibility - auto-detects user plan
+const saveScreenshot = async (value) => {
+  // Check if user is Pro to determine overlay settings
+  const currentUser = auth.currentUser;
+  const isPro = currentUser ? await isUserPro(currentUser) : false;
+
+  const options = {
+    type: value,
+    showLogo: !isPro,
+    showWatermark: !isPro
+  };
+
+  if (value === 'img') {
+    options.imgElementSelector = '#screentock-destination';
+  }
+
+  await takeScreenshotWithOptions(options);
 };
 
 const uploadThumbnailImage = async (sceneDocId) => {
@@ -298,5 +336,6 @@ export {
   updateScene,
   updateSceneIdAndTitle,
   uploadThumbnailImage,
-  saveScreenshot
+  saveScreenshot,
+  takeScreenshotWithOptions
 };
