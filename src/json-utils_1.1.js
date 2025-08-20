@@ -761,10 +761,7 @@ AFRAME.registerComponent('set-loader-from-hash', {
                 '[set-loader-from-hash] Applying default snapshot camera state:',
                 defaultSnapshot.cameraState
               );
-              // Apply camera state after a short delay to ensure scene is fully loaded
-              setTimeout(() => {
-                STREET.utils.applyCameraState(defaultSnapshot.cameraState);
-              }, 500);
+              STREET.utils.applyCameraState(defaultSnapshot.cameraState);
             }
           }
         }
