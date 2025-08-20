@@ -19,18 +19,18 @@ const TooltipWrapper = ({ children, content, side = 'bottom', ...props }) => {
           side={side}
           sideOffset={5}
           style={{
-            backgroundColor: '#1f2937',
+            backgroundColor: '#2d2d2d',
             color: 'white',
             padding: '8px 12px',
             borderRadius: '6px',
             fontSize: '12px',
-            border: '1px solid #374151',
+            border: '1px solid #4b4b4b',
             zIndex: 1000
           }}
           {...props}
         >
           {content}
-          <Tooltip.Arrow style={{ fill: '#1f2937' }} />
+          <Tooltip.Arrow style={{ fill: '#2d2d2d' }} />
         </Tooltip.Content>
       </Tooltip.Portal>
     </Tooltip.Root>
@@ -252,12 +252,12 @@ const GeoSidebar = ({ entity }) => {
                           border:
                             component.data['maps'] === mapType
                               ? '2px solid #774dee'
-                              : '1px solid #374151',
+                              : '1px solid #4b4b4b',
                           borderRadius: '6px',
                           background:
                             component.data['maps'] === mapType
                               ? '#4c1d95'
-                              : '#1f2937',
+                              : '#2d2d2d',
                           cursor: 'pointer',
                           display: 'flex',
                           alignItems: 'center',
@@ -384,7 +384,7 @@ const GeoSidebar = ({ entity }) => {
                     <span
                       className="success-badge"
                       style={{
-                        background: '#374151',
+                        background: '#2d2d2d',
                         border:
                           component && component.data && component.data.latitude
                             ? '1px solid #10b981'
@@ -406,7 +406,7 @@ const GeoSidebar = ({ entity }) => {
                       <span
                         className="token-badge"
                         style={{
-                          background: '#374151',
+                          background: '#2d2d2d',
                           color: '#9ca3af',
                           padding: '4px 8px',
                           borderRadius: '4px',

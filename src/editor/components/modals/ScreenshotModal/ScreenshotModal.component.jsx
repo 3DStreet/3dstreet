@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { ScreenshotProperties } from './ScreenshotProperties.component.jsx';
 import styles from './ScreenshotModal.module.scss';
 import { useAuthContext } from '../../../contexts';
-import { Copy32Icon, Save24Icon } from '../../../icons';
+import { Save24Icon } from '../../../icons';
 import { Button, Dropdown } from '../../elements';
 import Modal from '../Modal.jsx';
 import posthog from 'posthog-js';
@@ -229,39 +229,16 @@ function ScreenshotModal() {
     }
   };
 
-  const copyToClipboardTailing = async () => {
-    try {
-      const sceneId = STREET.utils.getCurrentSceneId();
-      let updatedUrl;
-      if (sceneId) {
-        updatedUrl = 'https://3dstreet.app/#/scenes/' + sceneId;
-      } else {
-        updatedUrl = window.location.href;
-      }
-      await navigator.clipboard.writeText(updatedUrl);
-      STREET.notify.successMessage('Scene URL copied to clipboard');
-    } catch (err) {
-      console.error('Failed to copy text: ', err);
-    }
-  };
-
   return (
     <Modal
       className={styles.screenshotModalWrapper}
       isOpen={modal === 'screenshot'}
       onClose={() => setModal(null)}
       titleElement={
-        <div className="flex items-center justify-between pr-4 pt-4">
-          <div className="font-large text-center text-2xl">Share Scene</div>
-          {currentUser && (
-            <Button
-              onClick={copyToClipboardTailing}
-              leadingIcon={<Copy32Icon />}
-              variant="toolbtn"
-            >
-              Copy Link
-            </Button>
-          )}
+        <div className="flex pr-4 pt-5">
+          <div className="font-large text-center text-2xl">
+            Snapshot & Render
+          </div>
         </div>
       }
     >

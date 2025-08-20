@@ -21,19 +21,19 @@ const TooltipWrapper = ({ children, content, side = 'bottom', ...props }) => {
           side={side}
           sideOffset={5}
           style={{
-            backgroundColor: '#1f2937',
+            backgroundColor: '#2d2d2d',
             color: 'white',
             padding: '8px 12px',
             borderRadius: '6px',
             fontSize: '12px',
-            border: '1px solid #374151',
+            border: '1px solid #4b4b4b',
             zIndex: 1000,
             maxWidth: '200px'
           }}
           {...props}
         >
           {content}
-          <Tooltip.Arrow style={{ fill: '#1f2937' }} />
+          <Tooltip.Arrow style={{ fill: '#2d2d2d' }} />
         </Tooltip.Content>
       </Tooltip.Portal>
     </Tooltip.Root>
@@ -203,7 +203,7 @@ function ShareModal() {
         isOpen={modal === 'share'}
         onClose={() => setModal(null)}
         titleElement={
-          <div className="flex pr-4 pt-4">
+          <div className="flex pr-4 pt-5">
             <div className="font-large text-center text-2xl">Share Scene</div>
           </div>
         }
