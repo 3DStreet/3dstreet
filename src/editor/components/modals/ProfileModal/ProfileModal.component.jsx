@@ -25,10 +25,17 @@ const ProfileModal = () => {
   const [username, setUsername] = useState(null);
   const [isLoadingUsername, setIsLoadingUsername] = useState(false);
 
+  // Clear username when user changes (logout/login)
+  useEffect(() => {
+    if (!currentUser) {
+      setUsername(null);
+    }
+  }, [currentUser]);
+
   // Load or generate username when modal opens
   useEffect(() => {
     const loadUsername = async () => {
-      if (modal === 'profile' && currentUser?.uid && !username) {
+      if (modal === 'profile' && currentUser?.uid) {
         setIsLoadingUsername(true);
         try {
           // Check if user already has a username
@@ -49,7 +56,7 @@ const ProfileModal = () => {
     };
 
     loadUsername();
-  }, [modal, currentUser, username]);
+  }, [modal, currentUser]);
 
   const onClose = () => {
     setModal(null);
