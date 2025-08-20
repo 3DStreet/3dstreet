@@ -19,18 +19,18 @@ const TooltipWrapper = ({ children, content, side = 'bottom', ...props }) => {
           side={side}
           sideOffset={5}
           style={{
-            backgroundColor: '#1f2937',
+            backgroundColor: '#2d2d2d',
             color: 'white',
             padding: '8px 12px',
             borderRadius: '6px',
             fontSize: '12px',
-            border: '1px solid #374151',
+            border: '1px solid #4b4b4b',
             zIndex: 1000
           }}
           {...props}
         >
           {content}
-          <Tooltip.Arrow style={{ fill: '#1f2937' }} />
+          <Tooltip.Arrow style={{ fill: '#2d2d2d' }} />
         </Tooltip.Content>
       </Tooltip.Portal>
     </Tooltip.Root>
@@ -252,12 +252,12 @@ const GeoSidebar = ({ entity }) => {
                           border:
                             component.data['maps'] === mapType
                               ? '2px solid #774dee'
-                              : '1px solid #374151',
+                              : '1px solid #4b4b4b',
                           borderRadius: '6px',
                           background:
                             component.data['maps'] === mapType
                               ? '#4c1d95'
-                              : '#1f2937',
+                              : '#2d2d2d',
                           cursor: 'pointer',
                           display: 'flex',
                           alignItems: 'center',
@@ -384,7 +384,7 @@ const GeoSidebar = ({ entity }) => {
                     <span
                       className="success-badge"
                       style={{
-                        background: '#374151',
+                        background: '#2d2d2d',
                         border:
                           component && component.data && component.data.latitude
                             ? '1px solid #10b981'
@@ -406,7 +406,7 @@ const GeoSidebar = ({ entity }) => {
                       <span
                         className="token-badge"
                         style={{
-                          background: '#374151',
+                          background: '#2d2d2d',
                           color: '#9ca3af',
                           padding: '4px 8px',
                           borderRadius: '4px',
@@ -441,34 +441,40 @@ const GeoSidebar = ({ entity }) => {
             {/* Upgrade prompt for users with 0 tokens */}
             {!currentUser?.isPro && tokenProfile?.geoToken === 0 && (
               <div className="propertyRow" style={{ marginTop: '8px' }}>
-                <div
-                  className="upgrade-prompt"
+                <Button
+                  variant="toolbtn"
                   style={{
-                    padding: '12px',
-                    background: '#1f2937',
-                    borderRadius: '6px',
-                    border: '1px solid #374151',
-                    width: '100%'
+                    width: '100%',
+                    background:
+                      'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                    border: 'none',
+                    color: 'white',
+                    fontWeight: '600',
+                    fontSize: '12px',
+                    padding: '12px 16px',
+                    borderRadius: '8px',
+                    cursor: 'pointer',
+                    transition: 'all 0.3s ease',
+                    boxShadow: '0 4px 12px rgba(118, 75, 162, 0.3)',
+                    ':hover': {
+                      transform: 'translateY(-1px)',
+                      boxShadow: '0 6px 20px rgba(118, 75, 162, 0.4)'
+                    }
+                  }}
+                  onClick={() => startCheckout('geo')}
+                  onMouseEnter={(e) => {
+                    e.target.style.transform = 'translateY(-1px)';
+                    e.target.style.boxShadow =
+                      '0 6px 20px rgba(118, 75, 162, 0.4)';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.target.style.transform = 'translateY(0px)';
+                    e.target.style.boxShadow =
+                      '0 4px 12px rgba(118, 75, 162, 0.3)';
                   }}
                 >
-                  <p
-                    style={{
-                      margin: '0 0 8px 0',
-                      fontSize: '11px',
-                      color: '#f3f4f6',
-                      fontWeight: '500'
-                    }}
-                  >
-                    🚀 Upgrade to Pro for unlimited geo lookups
-                  </p>
-                  <Button
-                    variant="toolbtn"
-                    style={{ fontSize: '11px', padding: '4px 8px' }}
-                    onClick={() => startCheckout('geo')}
-                  >
-                    Upgrade Now
-                  </Button>
-                </div>
+                  Upgrade to Pro for unlimited geo lookups
+                </Button>
               </div>
             )}
 

@@ -81,6 +81,14 @@
       flex-direction: column;
     }
 
+    .details {
+      width: 155px;
+      background: var(--panel-background);
+      border-radius: 4px;
+      border: 1px solid var(--panel-border);
+      flex-shrink: 0;
+    }
+
     .header {
       display: flex;
       justify-content: space-between;
@@ -158,32 +166,86 @@
         bottom: 16px;
         right: 16px;
       }
+
+      .upsellButtonWrapper {
+        position: absolute;
+        bottom: 16px;
+        right: 16px;
+
+        .upsellButton {
+          background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+          border: none;
+          color: white;
+          font-weight: 600;
+          font-size: 12px;
+          padding: 12px 16px;
+          border-radius: 8px;
+          cursor: pointer;
+          transition: all 0.3s ease;
+          box-shadow: 0 4px 12px rgba(118, 75, 162, 0.3);
+
+          &:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 6px 20px rgba(118, 75, 162, 0.4);
+          }
+
+          &:active {
+            transform: translateY(0px);
+            box-shadow: 0 4px 12px rgba(118, 75, 162, 0.3);
+          }
+        }
+      }
     }
   }
 
-  .propertiesPanel {
-    width: 310px;
-    background: var(--panel-background);
-    border-radius: 4px;
-    border: 1px solid var(--panel-border);
-    flex-shrink: 0;
-  }
-
-  .propertiesHeader {
-    padding: 8px 10px;
-    font-weight: 600;
+  .downloadSection {
+    padding: 16px;
     border-bottom: 1px solid var(--panel-border);
+
+    .downloadButton {
+      width: 100%;
+      max-width: 250px;
+      justify-content: center;
+    }
   }
 
-  .propertiesContent {
-    display: flex;
-    flex-direction: column;
-    overflow-x: hidden;
-    overflow-y: auto;
+  .upsellSection {
+    padding: 16px;
+    border-bottom: 1px solid var(--panel-border);
+
+    .upsellButton {
+      width: 100%;
+      max-width: 250px;
+      justify-content: center;
+
+      &:hover {
+        background: linear-gradient(
+          135deg,
+          #667eea 0%,
+          #764ba2 100%
+        ) !important;
+        border: none !important;
+        color: white !important;
+        transform: translateY(-1px);
+        box-shadow: 0 6px 20px rgba(118, 75, 162, 0.4);
+        transition: all 0.3s ease;
+      }
+
+      &:active {
+        background: linear-gradient(
+          135deg,
+          #5a6fd8 0%,
+          #6a4190 100%
+        ) !important;
+        transform: translateY(0px);
+        box-shadow: 0 4px 12px rgba(118, 75, 162, 0.3);
+      }
+    }
   }
+
   .dropdown {
     max-width: fit-content;
-    min-width: 310px;
+    min-width: 155px;
     button {
       background-color: variables.$purple-900 !important;
       &:hover {

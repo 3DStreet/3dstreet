@@ -189,3 +189,45 @@ exports.stripeWebhook = functions
 
     return res.sendStatus(200);
   });
+
+// Discord webhook function for sharing scenes
+exports.shareToDiscord = functions
+  .runWith({ secrets: ["DISCORD_WEBHOOK_URL"] })
+  .https
+  .onCall(async (data, context) => {
+    // Verify user is authenticated
+    if (!context.auth) {
+      throw new functions.https.HttpsError('unauthenticated', 'User must be authenticated to share scenes.');
+    }
+
+    const { title, location, username, sceneUrl } = data;
+
+    // Validate required data
+    if (!title || !username || !sceneUrl) {
+      throw new functions.https.HttpsError('invalid-argument', 'Missing required scene data.');
+    }
+
+    // Create Discord message
+    const message = {
+      content: `🙋 **${username}** shared a new scene!\n\n` +
+               `**${title}**${location ? `\n📍 Location: ${location}` : ''}\n` +
+               `🔗 View scene: ${sceneUrl}`
+    };
+
+    try {
+      const response = await fetch(process.env.DISCORD_WEBHOOK_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(message)
+      });
+
+      if (!response.ok) {
+        throw new Error(`Discord API error: ${response.status}`);
+      }
+
+      return { success: true, message: 'Scene shared to Discord successfully!' };
+    } catch (error) {
+      console.error('Error sharing to Discord:', error);
+      throw new functions.https.HttpsError('internal', 'Failed to share scene to Discord.');
+    }
+  });

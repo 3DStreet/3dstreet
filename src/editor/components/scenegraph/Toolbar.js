@@ -3,7 +3,9 @@ import useStore from '@/store';
 import { useAuthContext } from '@/editor/contexts';
 import { Tooltip } from 'radix-ui';
 import { Button } from '../elements/Button';
-import { ScreenshotIcon } from '../../icons';
+import { CameraSparkleIcon } from '../../icons';
+import { AwesomeIcon } from '../elements/AwesomeIcon';
+import { faLockOpen } from '@fortawesome/free-solid-svg-icons';
 import { makeScreenshot } from '@/editor/lib/SceneUtils';
 import { SceneEditTitle } from '../elements/SceneEditTitle';
 import { ActionBar } from '../elements/ActionBar';
@@ -20,18 +22,18 @@ const TooltipWrapper = ({ children, content, side = 'bottom', ...props }) => {
           side={side}
           sideOffset={5}
           style={{
-            backgroundColor: '#1f2937',
+            backgroundColor: '#2d2d2d',
             color: 'white',
             padding: '8px 12px',
             borderRadius: '6px',
             fontSize: '12px',
-            border: '1px solid #374151',
+            border: '1px solid #4b4b4b',
             zIndex: 1000
           }}
           {...props}
         >
           {content}
-          <Tooltip.Arrow style={{ fill: '#1f2937' }} />
+          <Tooltip.Arrow style={{ fill: '#2d2d2d' }} />
         </Tooltip.Content>
       </Tooltip.Portal>
     </Tooltip.Root>
@@ -85,17 +87,38 @@ function Toolbar({ currentUser, entity }) {
             {isInspectorEnabled && (
               <>
                 <TooltipWrapper
-                  content="Take screenshot and download scene"
+                  content="Capture screenshot and generate rendered images"
                   side="bottom"
                 >
                   <Button
-                    leadingIcon={<ScreenshotIcon />}
+                    leadingIcon={
+                      <div
+                        style={{
+                          transform:
+                            'scale(0.9) translateY(-3px) translateX(2px)'
+                        }}
+                      >
+                        <CameraSparkleIcon />
+                      </div>
+                    }
                     onClick={() => {
                       makeScreenshot();
                       useStore.getState().setModal('screenshot');
                     }}
                     variant="toolbtn"
                     className="min-w-[105px]"
+                  >
+                    <div>Snapshot</div>
+                  </Button>
+                </TooltipWrapper>
+                <TooltipWrapper content="Share scene" side="bottom">
+                  <Button
+                    leadingIcon={<AwesomeIcon icon={faLockOpen} size={20} />}
+                    onClick={() => {
+                      useStore.getState().setModal('share');
+                    }}
+                    variant="toolbtn"
+                    className="min-w-[90px]"
                   >
                     <div>Share</div>
                   </Button>
@@ -105,7 +128,7 @@ function Toolbar({ currentUser, entity }) {
                   content={
                     authUser?.isPro
                       ? '3DStreet Geospatial Pro Plan'
-                      : '3DStreet Free Community Plan'
+                      : '3DStreet Free Community Edition'
                   }
                   side="bottom"
                 >

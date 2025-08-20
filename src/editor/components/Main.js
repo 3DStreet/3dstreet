@@ -5,6 +5,7 @@ import Events from '../lib/Events';
 import ModalTextures from './modals/ModalTextures';
 import SceneGraph from './scenegraph/SceneGraph';
 import { ScreenshotModal } from './modals/ScreenshotModal';
+import { ShareModal } from './modals/ShareModal';
 // import ViewportHUD from "./viewport/ViewportHUD";
 import { SignInModal } from './modals/SignInModal';
 import { ProfileModal } from './modals/ProfileModal';
@@ -135,6 +136,7 @@ export default function Main() {
         </AIChatProvider>
       )}
       <ScreenshotModal />
+      <ShareModal />
       <SignInModal />
       <PaymentModal />
       <ScenesModal />
