@@ -54,11 +54,10 @@ const ScenesModal = ({ initialTab = 'owner', delay = undefined }) => {
     }
 
     if (event.ctrlKey || event.metaKey) {
-      // Store both data, memory, and snapshots for new tab
+      // Store both data and memory (which contains snapshots) for new tab
       const fullData = {
         data: sceneData.data,
         memory: sceneData.memory,
-        snapshots: sceneData.snapshots,
         title: sceneData.title,
         author: sceneData.author
       };
@@ -74,12 +73,8 @@ const ScenesModal = ({ initialTab = 'owner', delay = undefined }) => {
         console.log('No memory data found in scene data');
       }
 
-      // Pass data, memory, and snapshots to createElementsForScenesFromJSON
-      createElementsForScenesFromJSON(
-        sceneData.data,
-        sceneData.memory,
-        sceneData.snapshots
-      );
+      // Pass data and memory (which now contains snapshots) to createElementsForScenesFromJSON
+      createElementsForScenesFromJSON(sceneData.data, sceneData.memory);
       window.location.hash = `#/scenes/${scene.id}`;
 
       const sceneId = scene.id;
@@ -102,11 +97,7 @@ const ScenesModal = ({ initialTab = 'owner', delay = undefined }) => {
         if (storedData.memory) {
           console.log('Memory data found in localStorage:', storedData.memory);
         }
-        createElementsForScenesFromJSON(
-          storedData.data,
-          storedData.memory,
-          storedData.snapshots
-        );
+        createElementsForScenesFromJSON(storedData.data, storedData.memory);
       } else {
         // Old format with just data
         console.log('Loading scene from localStorage with old format');

@@ -159,7 +159,10 @@ async function updateSceneSnapshots(sceneId, newSnapshot, setAsDefault) {
   }
 
   const sceneData = sceneSnapshot.data();
-  let snapshots = sceneData.snapshots || [];
+
+  // Get existing memory object or create new one
+  const memory = sceneData.memory || {};
+  let snapshots = memory.snapshots || [];
 
   // If setting as default, update all other snapshots
   if (setAsDefault) {
@@ -169,9 +172,15 @@ async function updateSceneSnapshots(sceneId, newSnapshot, setAsDefault) {
   // Add the new snapshot
   snapshots.push(newSnapshot);
 
+  // Update memory with new snapshots
+  const updatedMemory = {
+    ...memory,
+    snapshots: snapshots
+  };
+
   // Update the scene document
   const updateData = {
-    snapshots: snapshots,
+    memory: updatedMemory,
     updateTimestamp: serverTimestamp()
   };
 
@@ -199,11 +208,14 @@ export async function getDefaultSnapshot(sceneId) {
     }
 
     const sceneData = sceneSnapshot.data();
-    if (!sceneData.snapshots || sceneData.snapshots.length === 0) {
+    if (
+      !sceneData.memory?.snapshots ||
+      sceneData.memory.snapshots.length === 0
+    ) {
       return null;
     }
 
-    return sceneData.snapshots.find((s) => s.isDefault) || null;
+    return sceneData.memory.snapshots.find((s) => s.isDefault) || null;
   } catch (error) {
     console.error('Error getting default snapshot:', error);
     return null;
@@ -225,13 +237,20 @@ export async function removeSnapshot(sceneId, snapshotId) {
     }
 
     const sceneData = sceneSnapshot.data();
-    const snapshots = sceneData.snapshots || [];
+    const memory = sceneData.memory || {};
+    const snapshots = memory.snapshots || [];
 
     // Filter out the snapshot to remove
     const updatedSnapshots = snapshots.filter((s) => s.id !== snapshotId);
 
+    // Update memory with filtered snapshots
+    const updatedMemory = {
+      ...memory,
+      snapshots: updatedSnapshots
+    };
+
     await updateDoc(sceneDocRef, {
-      snapshots: updatedSnapshots,
+      memory: updatedMemory,
       updateTimestamp: serverTimestamp()
     });
 

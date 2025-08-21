@@ -749,8 +749,13 @@ AFRAME.registerComponent('set-loader-from-hash', {
 
         // Check for snapshots and store default camera state BEFORE createElementsFromJSON
         let defaultSnapshotCameraState = null;
-        if (jsonData.snapshots && jsonData.snapshots.length > 0) {
-          const defaultSnapshot = jsonData.snapshots.find((s) => s.isDefault);
+        if (
+          jsonData.memory?.snapshots &&
+          jsonData.memory.snapshots.length > 0
+        ) {
+          const defaultSnapshot = jsonData.memory.snapshots.find(
+            (s) => s.isDefault
+          );
           if (defaultSnapshot && defaultSnapshot.cameraState) {
             console.log(
               '[set-loader-from-hash] Found default snapshot camera state:',

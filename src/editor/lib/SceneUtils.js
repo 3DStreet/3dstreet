@@ -47,11 +47,7 @@ export function inputStreetmix() {
   );
 }
 
-export function createElementsForScenesFromJSON(
-  streetData,
-  memoryData,
-  snapshotData
-) {
+export function createElementsForScenesFromJSON(streetData, memoryData) {
   // clear scene data, create new blank scene.
   // clearMetadata = true, clearUrlHash = false, addDefaultStreet = false
   STREET.utils.newScene(true, false, false);
@@ -74,8 +70,8 @@ export function createElementsForScenesFromJSON(
 
   // Store snapshot camera state if available
   let defaultSnapshotCameraState = null;
-  if (snapshotData && snapshotData.length > 0) {
-    const defaultSnapshot = snapshotData.find((s) => s.isDefault);
+  if (memoryData?.snapshots && memoryData.snapshots.length > 0) {
+    const defaultSnapshot = memoryData.snapshots.find((s) => s.isDefault);
     if (defaultSnapshot && defaultSnapshot.cameraState) {
       defaultSnapshotCameraState = defaultSnapshot.cameraState;
     }
@@ -127,8 +123,8 @@ export function fileJSON(event) {
 
   reader.onload = function () {
     const data = JSON.parse(reader.result);
-    // Pass the entire data object to handle scene data, memory, and snapshots
-    createElementsForScenesFromJSON(data.data, data.memory, data.snapshots);
+    // Pass the data and memory (which now contains snapshots)
+    createElementsForScenesFromJSON(data.data, data.memory);
   };
 
   reader.readAsText(event.target.files[0]);
