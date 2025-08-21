@@ -441,6 +441,119 @@ THREE.EditorControls = function (_object, domElement) {
 
     scope.dispatchEvent(changeEvent);
   };
+
+  this.newSceneCameraZoom = (snapshotCameraState) => {
+    if (this.isOrthographic) {
+      // For orthographic, just use the existing resetZoom logic
+      this.resetZoom();
+      return;
+    }
+
+    // Define start position and look-at target
+    const startPos = { x: 0, y: 30, z: 60 };
+    const startLookAt = { x: 0, y: 1.6, z: 0 }; // Default center
+
+    // Determine end position and look-at target
+    let endPos, endLookAt;
+
+    if (snapshotCameraState) {
+      // Use snapshot camera state as the end position
+      endPos = {
+        x: snapshotCameraState.position?.x || 0,
+        y: snapshotCameraState.position?.y || 15,
+        z: snapshotCameraState.position?.z || 30
+      };
+
+      // Calculate where the camera is looking based on rotation
+      // Create a temporary camera to get the forward direction
+      const tempCamera = new THREE.PerspectiveCamera();
+      tempCamera.position.set(endPos.x, endPos.y, endPos.z);
+      tempCamera.rotation.set(
+        snapshotCameraState.rotation?.x || 0,
+        snapshotCameraState.rotation?.y || 0,
+        snapshotCameraState.rotation?.z || 0
+      );
+      tempCamera.updateMatrixWorld();
+
+      // Get the forward direction vector
+      const forward = new THREE.Vector3(0, 0, -1);
+      forward.applyQuaternion(tempCamera.quaternion);
+
+      // Calculate intersection with ground plane (y=0) or use a reasonable distance
+      let t;
+      if (Math.abs(forward.y) > 0.001) {
+        // Ray intersects with y=0 plane
+        t = -endPos.y / forward.y;
+        if (t < 0 || t > 1000) {
+          // Behind camera or too far, use default distance
+          t = 30;
+        }
+      } else {
+        // Ray is parallel to ground, use default distance
+        t = 30;
+      }
+
+      // Calculate the look-at point
+      endLookAt = {
+        x: endPos.x + forward.x * t,
+        y: endPos.y + forward.y * t,
+        z: endPos.z + forward.z * t
+      };
+
+      // Clamp the look-at point to reasonable bounds
+      if (endLookAt.y < 0) endLookAt.y = 0;
+    } else {
+      // Use default end position and look-at
+      endPos = { x: 0, y: 15, z: 30 };
+      endLookAt = { x: 0, y: 1.6, z: 0 };
+    }
+
+    // Animation duration in milliseconds
+    const duration = 3000;
+    const startTime = Date.now();
+
+    const animate = () => {
+      const elapsed = Date.now() - startTime;
+      const progress = Math.min(elapsed / duration, 1);
+
+      // Use easeOutCubic for smooth deceleration
+      const easeProgress = 1 - Math.pow(1 - progress, 3);
+
+      // Interpolate position
+      const currentPos = {
+        x: startPos.x + (endPos.x - startPos.x) * easeProgress,
+        y: startPos.y + (endPos.y - startPos.y) * easeProgress,
+        z: startPos.z + (endPos.z - startPos.z) * easeProgress
+      };
+
+      // Interpolate look-at target
+      const currentLookAt = {
+        x: startLookAt.x + (endLookAt.x - startLookAt.x) * easeProgress,
+        y: startLookAt.y + (endLookAt.y - startLookAt.y) * easeProgress,
+        z: startLookAt.z + (endLookAt.z - startLookAt.z) * easeProgress
+      };
+
+      // Set camera position and look at interpolated target
+      object.position.set(currentPos.x, currentPos.y, currentPos.z);
+      center.set(currentLookAt.x, currentLookAt.y, currentLookAt.z);
+      object.lookAt(center);
+      object.updateMatrixWorld();
+
+      scope.dispatchEvent(changeEvent);
+
+      // Continue animation if not finished
+      if (progress < 1) {
+        requestAnimationFrame(animate);
+      } else {
+        // Animation complete - update the orbit controls center
+        // This ensures rotation works correctly around the new center
+        console.log('Animation complete, new orbit center:', endLookAt);
+      }
+    };
+
+    // Start the animation
+    requestAnimationFrame(animate);
+  };
 };
 
 THREE.EditorControls.prototype = Object.create(THREE.EventDispatcher.prototype);

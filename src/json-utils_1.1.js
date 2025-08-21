@@ -426,6 +426,54 @@ function createEntities(entitiesData, parentEl) {
 
 STREET.utils.createEntities = createEntities;
 
+/**
+ * Apply a saved camera state to the current scene camera
+ * @param {Object} cameraState - Camera state object with position, rotation, and zoom
+ */
+function applyCameraState(cameraState) {
+  if (!cameraState) return;
+
+  const camera = AFRAME.scenes[0].camera;
+  if (!camera) {
+    console.error('[STREET.utils.applyCameraState] No camera found in scene');
+    return;
+  }
+
+  // Set position
+  if (cameraState.position) {
+    camera.position.set(
+      cameraState.position.x,
+      cameraState.position.y,
+      cameraState.position.z
+    );
+  }
+
+  // Set rotation
+  if (cameraState.rotation) {
+    camera.rotation.set(
+      cameraState.rotation.x,
+      cameraState.rotation.y,
+      cameraState.rotation.z
+    );
+  }
+
+  // Set zoom/FOV if applicable
+  if (cameraState.zoom && camera.fov !== undefined) {
+    camera.fov = cameraState.zoom;
+    camera.updateProjectionMatrix();
+  }
+
+  // Update camera
+  camera.updateMatrixWorld();
+
+  console.log(
+    '[STREET.utils.applyCameraState] Camera state applied:',
+    cameraState
+  );
+}
+
+STREET.utils.applyCameraState = applyCameraState;
+
 /*
 Add a new entity with a list of components and children (if exists)
  * @param {object} entityData Entity definition to add:
@@ -699,6 +747,27 @@ AFRAME.registerComponent('set-loader-from-hash', {
           );
         }
 
+        // Check for snapshots and store default camera state BEFORE createElementsFromJSON
+        let defaultSnapshotCameraState = null;
+        if (
+          jsonData.memory?.snapshots &&
+          jsonData.memory.snapshots.length > 0
+        ) {
+          const defaultSnapshot = jsonData.memory.snapshots.find(
+            (s) => s.isDefault
+          );
+          if (defaultSnapshot && defaultSnapshot.cameraState) {
+            console.log(
+              '[set-loader-from-hash] Found default snapshot camera state:',
+              defaultSnapshot.cameraState
+            );
+            defaultSnapshotCameraState = defaultSnapshot.cameraState;
+            // Store it temporarily on the scene element for the newScene event
+            AFRAME.scenes[0].defaultSnapshotCameraState =
+              defaultSnapshotCameraState;
+          }
+        }
+
         STREET.utils.createElementsFromJSON(jsonData, false);
         const sceneId = getUUIDFromPath(requestURL);
         if (sceneId) {
@@ -806,7 +875,14 @@ function createElementsFromJSON(streetJSON, clearUrlHash) {
 
   createEntities(streetObject.data, streetContainerEl);
   STREET.notify.successMessage('Scene loaded');
-  AFRAME.scenes[0].emit('newScene');
+
+  // Pass snapshot camera state if available
+  const snapshotCameraState = AFRAME.scenes[0].defaultSnapshotCameraState;
+  AFRAME.scenes[0].emit('newScene', {
+    snapshotCameraState: snapshotCameraState
+  });
+  // Clean up temporary storage
+  delete AFRAME.scenes[0].defaultSnapshotCameraState;
 }
 
 STREET.utils.createElementsFromJSON = createElementsFromJSON;

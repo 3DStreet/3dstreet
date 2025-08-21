@@ -6,6 +6,8 @@ import {
   uploadThumbnailImage
 } from '@/editor/api/scene';
 import { createUniqueId } from '@/editor/lib/entity.js';
+import { doc, getDoc } from 'firebase/firestore';
+import { db } from '@/editor/services/firebase';
 
 export function createBlankScene() {
   STREET.utils.newScene();
@@ -66,6 +68,15 @@ export function createElementsForScenesFromJSON(streetData, memoryData) {
     useStore.getState().setProjectInfo(memoryData.projectInfo);
   }
 
+  // Store snapshot camera state if available
+  let defaultSnapshotCameraState = null;
+  if (memoryData?.snapshots && memoryData.snapshots.length > 0) {
+    const defaultSnapshot = memoryData.snapshots.find((s) => s.isDefault);
+    if (defaultSnapshot && defaultSnapshot.cameraState) {
+      defaultSnapshotCameraState = defaultSnapshot.cameraState;
+    }
+  }
+
   const processStreetDataForDuplicateIds = (data) => {
     // Keep track of IDs we've seen during processing
     const seenIds = new Set();
@@ -100,7 +111,11 @@ export function createElementsForScenesFromJSON(streetData, memoryData) {
   const correctedStreetData = processStreetDataForDuplicateIds(streetData);
 
   STREET.utils.createEntities(correctedStreetData, streetContainerEl);
-  AFRAME.scenes[0].emit('newScene');
+
+  // Emit newScene with snapshot camera state if available
+  AFRAME.scenes[0].emit('newScene', {
+    snapshotCameraState: defaultSnapshotCameraState
+  });
 }
 
 export function fileJSON(event) {
@@ -108,14 +123,18 @@ export function fileJSON(event) {
 
   reader.onload = function () {
     const data = JSON.parse(reader.result);
-    // Pass the entire data object to handle both scene data and memory
+    // Pass the data and memory (which now contains snapshots)
     createElementsForScenesFromJSON(data.data, data.memory);
+
+    // Reset the file input value so it can be selected again
+    // This fixes the issue where selecting a file a second time doesn't work
+    event.target.value = '';
   };
 
   reader.readAsText(event.target.files[0]);
 }
 
-export function convertToObject() {
+export async function convertToObject() {
   try {
     posthog.capture('export_initiated', {
       export_type: 'json',
@@ -123,8 +142,36 @@ export function convertToObject() {
     });
 
     const entity = document.getElementById('street-container');
-
     const data = STREET.utils.convertDOMElToObject(entity);
+
+    // Get current scene ID to fetch snapshots from Firebase
+    const currentSceneId = STREET.utils.getCurrentSceneId();
+
+    // If we have a scene ID, try to fetch snapshots from Firebase
+    if (currentSceneId) {
+      try {
+        const { doc, getDoc } = await import('firebase/firestore');
+        const { db } = await import('../services/firebase');
+
+        const sceneDocRef = doc(db, 'scenes', currentSceneId);
+        const sceneSnapshot = await getDoc(sceneDocRef);
+
+        if (sceneSnapshot.exists()) {
+          const sceneData = sceneSnapshot.data();
+
+          // Merge Firebase memory data (including snapshots) with local data
+          if (sceneData.memory) {
+            data.memory = {
+              ...data.memory,
+              ...sceneData.memory
+            };
+          }
+        }
+      } catch (firebaseError) {
+        console.warn('Could not fetch snapshots from Firebase:', firebaseError);
+        // Continue with export without snapshots
+      }
+    }
 
     const jsonString = `data:text/json;chatset=utf-8,${encodeURIComponent(
       STREET.utils.filterJSONstreet(data)
@@ -215,6 +262,29 @@ export async function saveScene(currentUser, doSaveAs, doPromptTitle) {
   // Ensure memory data (including project info) is preserved
   filteredData.memory = data.memory;
 
+  // If we have an existing scene ID, fetch and preserve snapshots from Firebase
+  if (sceneId && !doSaveAs) {
+    try {
+      const sceneDocRef = doc(db, 'scenes', sceneId);
+      const sceneSnapshot = await getDoc(sceneDocRef);
+
+      if (sceneSnapshot.exists()) {
+        const existingSceneData = sceneSnapshot.data();
+
+        // Merge existing snapshots with the local memory data
+        if (existingSceneData.memory?.snapshots) {
+          filteredData.memory = {
+            ...filteredData.memory,
+            snapshots: existingSceneData.memory.snapshots
+          };
+        }
+      }
+    } catch (error) {
+      console.warn('Could not fetch existing snapshots during save:', error);
+      // Continue with save even if we couldn't fetch snapshots
+    }
+  }
+
   // we want to save, so if we *still* have no sceneID at this point, then create a new one
   if (!sceneId || !!doSaveAs) {
     let title = sceneTitle;
@@ -262,9 +332,19 @@ export async function saveSceneWithScreenshot(
   const currentSceneId = await saveScene(currentUser, doSaveAs, doPromptTitle);
   // if currentSceneId AND the screenshot modal is NOT open
   if (currentSceneId && useStore.getState().modal !== 'screenshot') {
-    // wait a bit for models to be loaded, may not be enough...
-    await new Promise((resolve) => setTimeout(resolve, 2000));
-    await makeScreenshot(true);
-    uploadThumbnailImage(currentSceneId);
+    // Check if the scene has a locked thumbnail (manual snapshot set)
+    const sceneDocRef = doc(db, 'scenes', currentSceneId);
+    const sceneSnapshot = await getDoc(sceneDocRef);
+
+    if (sceneSnapshot.exists()) {
+      const sceneData = sceneSnapshot.data();
+      // Only auto-update thumbnail if it's not locked
+      if (!sceneData.thumbnailLocked) {
+        // wait a bit for models to be loaded, may not be enough...
+        await new Promise((resolve) => setTimeout(resolve, 2000));
+        await makeScreenshot(true);
+        uploadThumbnailImage(currentSceneId);
+      }
+    }
   }
 }
