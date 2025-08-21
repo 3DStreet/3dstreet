@@ -223,6 +223,79 @@ export async function getDefaultSnapshot(sceneId) {
 }
 
 /**
+ * Create a snapshot from a generated image URL
+ * @param {string} sceneId - The scene ID
+ * @param {string} imageUrl - The URL of the generated image
+ * @param {string} label - Label for the snapshot
+ * @returns {Object} The created snapshot object
+ */
+export async function createSnapshotFromImageUrl(sceneId, imageUrl, label) {
+  try {
+    const snapshotId = uuidv4();
+    const cameraState = getCurrentCameraState();
+
+    if (!cameraState) {
+      throw new Error('Failed to capture camera state');
+    }
+
+    // Create an image element from the URL
+    const img = new Image();
+    img.crossOrigin = 'anonymous';
+
+    await new Promise((resolve, reject) => {
+      img.onload = resolve;
+      img.onerror = reject;
+      img.src = imageUrl;
+    });
+
+    // Upload low-res thumbnail (320x240)
+    const lowResUrl = await uploadSnapshotImage(
+      sceneId,
+      snapshotId,
+      img,
+      320,
+      240,
+      'low'
+    );
+
+    // Upload high-res version (1280x960)
+    const highResUrl = await uploadSnapshotImage(
+      sceneId,
+      snapshotId,
+      img,
+      1280,
+      960,
+      'high'
+    );
+
+    // Create snapshot object
+    const snapshot = {
+      id: snapshotId,
+      imagePath: lowResUrl,
+      imagePathHD: highResUrl,
+      cameraState: cameraState,
+      isDefault: false,
+      timestamp: new Date().toISOString(),
+      label: label || `AI Generated ${new Date().toLocaleString()}`
+    };
+
+    // Update the scene document
+    await updateSceneSnapshots(sceneId, snapshot, false);
+
+    posthog.capture('ai_snapshot_created', {
+      scene_id: sceneId,
+      snapshot_id: snapshotId,
+      is_generated: true
+    });
+
+    return snapshot;
+  } catch (error) {
+    console.error('Error creating snapshot from image URL:', error);
+    throw error;
+  }
+}
+
+/**
  * Remove a snapshot from a scene
  * @param {string} sceneId - Scene ID
  * @param {string} snapshotId - Snapshot ID to remove

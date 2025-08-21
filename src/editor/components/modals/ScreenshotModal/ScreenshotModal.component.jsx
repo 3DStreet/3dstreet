@@ -6,14 +6,23 @@ import useStore from '@/store';
 import { Button } from '../../elements';
 import { Save24Icon } from '../../../icons';
 import { takeScreenshotWithOptions } from '../../../api/scene';
-import { createSceneSnapshot } from '../../../api/snapshot';
+import {
+  createSceneSnapshot,
+  createSnapshotFromImageUrl
+} from '../../../api/snapshot';
 import { useAuthContext } from '../../../contexts';
+import { httpsCallable } from 'firebase/functions';
+import { functions } from '../../../services/firebase';
 
 function ScreenshotModal() {
   const setModal = useStore((state) => state.setModal);
   const modal = useStore((state) => state.modal);
   const { currentUser } = useAuthContext();
   const [isSavingSnapshot, setIsSavingSnapshot] = useState(false);
+  const [isGeneratingAI, setIsGeneratingAI] = useState(false);
+  const [aiPrompt, setAiPrompt] = useState(
+    'Transform satellite image into high-quality drone shot'
+  );
 
   const handleDownloadScreenshot = async (type) => {
     const isPro = currentUser?.isPro;
@@ -59,6 +68,76 @@ function ScreenshotModal() {
     }
   };
 
+  const handleGenerateAIImage = async () => {
+    const sceneId = STREET.utils.getCurrentSceneId();
+    const authorId = STREET.utils.getAuthorId();
+
+    if (!sceneId) {
+      STREET.notify.errorMessage('Please save your scene first');
+      return;
+    }
+
+    if (!currentUser || currentUser.uid !== authorId) {
+      STREET.notify.errorMessage(
+        'Only the scene author can generate AI images'
+      );
+      return;
+    }
+
+    const screentockImgElement = document.getElementById(
+      'screentock-destination'
+    );
+    if (!screentockImgElement || !screentockImgElement.src) {
+      STREET.notify.errorMessage(
+        'No screenshot available. Please generate a preview first.'
+      );
+      return;
+    }
+
+    setIsGeneratingAI(true);
+
+    try {
+      // Call the cloud function
+      const generateReplicateImage = httpsCallable(
+        functions,
+        'generateReplicateImage'
+      );
+      const result = await generateReplicateImage({
+        prompt: aiPrompt,
+        input_image: screentockImgElement.src,
+        guidance: 2.5,
+        num_inference_steps: 30
+      });
+
+      if (result.data.success) {
+        // Create a snapshot from the generated image
+        await createSnapshotFromImageUrl(
+          sceneId,
+          result.data.image_url,
+          `AI: ${aiPrompt}`
+        );
+
+        STREET.notify.successMessage(
+          'AI image generated and snapshot created!'
+        );
+
+        posthog.capture('ai_image_generated', {
+          scene_id: sceneId,
+          prompt: aiPrompt
+        });
+      } else {
+        throw new Error('Failed to generate image');
+      }
+    } catch (error) {
+      console.error('Error generating AI image:', error);
+      STREET.notify.errorMessage(
+        'Failed to generate AI image. Please try again.'
+      );
+    } finally {
+      setIsGeneratingAI(false);
+    }
+  };
+
   // Track when screenshot modal opens for camera positioning
   useEffect(() => {
     if (modal === 'screenshot') {
@@ -90,7 +169,7 @@ function ScreenshotModal() {
       }
     >
       <div className={styles.wrapper}>
-        <div className="details">
+        <div className={styles.details}>
           <div className={styles.downloadSection}>
             <Button
               leadingIcon={<Save24Icon />}
@@ -121,6 +200,39 @@ function ScreenshotModal() {
                 </Button>
               )}
           </div>
+          {/* AI Generation Section - only show for scene authors */}
+          {currentUser &&
+            STREET.utils.getCurrentSceneId() &&
+            currentUser.uid === STREET.utils.getAuthorId() && (
+              <div className={styles.aiSection}>
+                <h3>AI Image Generation</h3>
+                <div className={styles.promptSection}>
+                  <input
+                    type="text"
+                    value={aiPrompt}
+                    onChange={(e) => setAiPrompt(e.target.value)}
+                    placeholder="Enter prompt for AI image generation..."
+                    className={styles.promptInput}
+                    disabled={isGeneratingAI}
+                  />
+                  <Button
+                    onClick={handleGenerateAIImage}
+                    variant="filled"
+                    className={styles.aiButton}
+                    disabled={isGeneratingAI || !aiPrompt.trim()}
+                  >
+                    {isGeneratingAI ? (
+                      'Generating...'
+                    ) : (
+                      <span>
+                        <span>🤖</span>
+                        <span>Generate AI Image & Create Snapshot</span>
+                      </span>
+                    )}
+                  </Button>
+                </div>
+              </div>
+            )}
           {/* Upsell button for free users */}
           {!currentUser?.isPro && (
             <div className={styles.upsellSection}>

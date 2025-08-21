@@ -4,12 +4,16 @@ admin.initializeApp();
 const { getAuth } = require('firebase-admin/auth');
 const { serveWebXRVariant } = require('./webxr-variant.js');
 const { getGeoidHeight } = require('./geoid-height.js');
+const { generateReplicateImage } = require('./replicate.js');
 
 // Re-export the WebXR variant function
 exports.serveWebXRVariant = serveWebXRVariant;
 
 // Re-export the getGeoidHeight function
 exports.getGeoidHeight = getGeoidHeight;
+
+// Re-export the Replicate function
+exports.generateReplicateImage = generateReplicateImage;
 
 exports.getScene = functions
   .https
