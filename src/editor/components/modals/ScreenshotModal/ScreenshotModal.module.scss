@@ -65,7 +65,16 @@
   right: 0;
   width: 90vw;
   height: 90vh;
-  overflow-y: scroll;
+  overflow: hidden;
+
+  .modalContainer {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    min-height: 100%;
+    max-height: 100%;
+    overflow: hidden;
+  }
 
   .wrapper {
     width: 100%;
@@ -74,6 +83,9 @@
     gap: 16px;
     padding: 16px;
     flex-direction: row-reverse;
+    flex: 1;
+    overflow-y: auto;
+    min-height: 0;
 
     .mainContent {
       flex: 1;
@@ -146,7 +158,8 @@
       height: fit-content;
       position: relative;
       width: fit-content;
-      max-height: calc(100% - 44px - 24px);
+      max-height: calc(75vh - 200px);
+      max-width: 100%;
 
       .screenshotWrapper {
         height: fit-content;
@@ -294,6 +307,104 @@
           box-shadow: 0 2px 6px rgba(16, 185, 129, 0.3);
         }
       }
+    }
+  }
+
+  .snapshotGalleryBottom {
+    padding: 16px;
+    border-top: 1px solid var(--panel-border);
+    background: var(--panel-background);
+    width: 100%;
+
+    h3 {
+      margin: 0 0 12px 0;
+      font-size: 16px;
+      font-weight: 600;
+      color: var(--text-primary);
+    }
+  }
+
+  .snapshotRow {
+    display: flex;
+    gap: 12px;
+    overflow-x: auto;
+    padding-bottom: 8px;
+
+    &::-webkit-scrollbar {
+      height: 6px;
+    }
+
+    &::-webkit-scrollbar-track {
+      background: var(--panel-border);
+      border-radius: 3px;
+    }
+
+    &::-webkit-scrollbar-thumb {
+      background: var(--accent);
+      border-radius: 3px;
+    }
+  }
+
+  .snapshotThumbnail {
+    flex-shrink: 0;
+    width: 120px;
+    height: 100px;
+    position: relative;
+    border-radius: 6px;
+    overflow: hidden;
+    cursor: pointer;
+    border: 2px solid transparent;
+    transition: all 0.2s ease;
+    background: var(--input-background);
+
+    &:hover {
+      border-color: var(--accent);
+      transform: translateY(-2px);
+      box-shadow: 0 6px 12px rgba(0, 0, 0, 0.25);
+    }
+
+    &.defaultSnapshot {
+      border-color: #10b981;
+    }
+
+    &.selectedSnapshot {
+      border-color: var(--accent);
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+      transform: translateY(-1px);
+    }
+
+    img {
+      width: 100%;
+      height: 75px;
+      object-fit: cover;
+      display: block;
+    }
+
+    .defaultBadge {
+      position: absolute;
+      top: 4px;
+      right: 4px;
+      background: #10b981;
+      color: white;
+      font-size: 9px;
+      padding: 2px 6px;
+      border-radius: 3px;
+      font-weight: 600;
+    }
+
+    .snapshotLabel {
+      position: absolute;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      background: rgba(0, 0, 0, 0.85);
+      color: white;
+      font-size: 10px;
+      padding: 6px 8px;
+      line-height: 1.2;
+      text-overflow: ellipsis;
+      overflow: hidden;
+      white-space: nowrap;
     }
   }
 
