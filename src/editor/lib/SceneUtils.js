@@ -125,6 +125,10 @@ export function fileJSON(event) {
     const data = JSON.parse(reader.result);
     // Pass the data and memory (which now contains snapshots)
     createElementsForScenesFromJSON(data.data, data.memory);
+
+    // Reset the file input value so it can be selected again
+    // This fixes the issue where selecting a file a second time doesn't work
+    event.target.value = '';
   };
 
   reader.readAsText(event.target.files[0]);
