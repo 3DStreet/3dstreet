@@ -130,7 +130,7 @@ export function fileJSON(event) {
   reader.readAsText(event.target.files[0]);
 }
 
-export function convertToObject() {
+export async function convertToObject() {
   try {
     posthog.capture('export_initiated', {
       export_type: 'json',
@@ -138,8 +138,36 @@ export function convertToObject() {
     });
 
     const entity = document.getElementById('street-container');
-
     const data = STREET.utils.convertDOMElToObject(entity);
+
+    // Get current scene ID to fetch snapshots from Firebase
+    const currentSceneId = STREET.utils.getCurrentSceneId();
+
+    // If we have a scene ID, try to fetch snapshots from Firebase
+    if (currentSceneId) {
+      try {
+        const { doc, getDoc } = await import('firebase/firestore');
+        const { db } = await import('../services/firebase');
+
+        const sceneDocRef = doc(db, 'scenes', currentSceneId);
+        const sceneSnapshot = await getDoc(sceneDocRef);
+
+        if (sceneSnapshot.exists()) {
+          const sceneData = sceneSnapshot.data();
+
+          // Merge Firebase memory data (including snapshots) with local data
+          if (sceneData.memory) {
+            data.memory = {
+              ...data.memory,
+              ...sceneData.memory
+            };
+          }
+        }
+      } catch (firebaseError) {
+        console.warn('Could not fetch snapshots from Firebase:', firebaseError);
+        // Continue with export without snapshots
+      }
+    }
 
     const jsonString = `data:text/json;chatset=utf-8,${encodeURIComponent(
       STREET.utils.filterJSONstreet(data)
