@@ -106,12 +106,18 @@ function ScreenshotModal() {
               currentUser.uid === STREET.utils.getAuthorId() && (
                 <Button
                   onClick={handleSetAsSceneThumbnail}
-                  variant="filled"
-                  className={styles.downloadButton}
+                  variant="outlined"
+                  className={styles.thumbnailButton}
                   disabled={isSavingSnapshot}
-                  style={{ marginTop: '8px' }}
                 >
-                  {isSavingSnapshot ? 'Saving...' : '📸 Set as Scene Thumbnail'}
+                  {isSavingSnapshot ? (
+                    'Saving...'
+                  ) : (
+                    <span>
+                      <span>📸</span>
+                      <span>Set as Scene Thumbnail</span>
+                    </span>
+                  )}
                 </Button>
               )}
           </div>

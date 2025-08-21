@@ -201,11 +201,28 @@
   .downloadSection {
     padding: 16px;
     border-bottom: 1px solid var(--panel-border);
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
 
     .downloadButton {
       width: 100%;
       max-width: 250px;
       justify-content: center;
+    }
+
+    .thumbnailButton {
+      width: 100%;
+      max-width: 250px;
+      justify-content: center;
+      height: 40px; // Match the height of the primary button
+
+      // Add space between emoji and text
+      span {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+      }
     }
   }
 
