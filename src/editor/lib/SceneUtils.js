@@ -262,6 +262,29 @@ export async function saveScene(currentUser, doSaveAs, doPromptTitle) {
   // Ensure memory data (including project info) is preserved
   filteredData.memory = data.memory;
 
+  // If we have an existing scene ID, fetch and preserve snapshots from Firebase
+  if (sceneId && !doSaveAs) {
+    try {
+      const sceneDocRef = doc(db, 'scenes', sceneId);
+      const sceneSnapshot = await getDoc(sceneDocRef);
+
+      if (sceneSnapshot.exists()) {
+        const existingSceneData = sceneSnapshot.data();
+
+        // Merge existing snapshots with the local memory data
+        if (existingSceneData.memory?.snapshots) {
+          filteredData.memory = {
+            ...filteredData.memory,
+            snapshots: existingSceneData.memory.snapshots
+          };
+        }
+      }
+    } catch (error) {
+      console.warn('Could not fetch existing snapshots during save:', error);
+      // Continue with save even if we couldn't fetch snapshots
+    }
+  }
+
   // we want to save, so if we *still* have no sceneID at this point, then create a new one
   if (!sceneId || !!doSaveAs) {
     let title = sceneTitle;
