@@ -47,7 +47,11 @@ export function inputStreetmix() {
   );
 }
 
-export function createElementsForScenesFromJSON(streetData, memoryData) {
+export function createElementsForScenesFromJSON(
+  streetData,
+  memoryData,
+  snapshotData
+) {
   // clear scene data, create new blank scene.
   // clearMetadata = true, clearUrlHash = false, addDefaultStreet = false
   STREET.utils.newScene(true, false, false);
@@ -66,6 +70,15 @@ export function createElementsForScenesFromJSON(streetData, memoryData) {
       memoryData.projectInfo
     );
     useStore.getState().setProjectInfo(memoryData.projectInfo);
+  }
+
+  // Store snapshot camera state if available
+  let defaultSnapshotCameraState = null;
+  if (snapshotData && snapshotData.length > 0) {
+    const defaultSnapshot = snapshotData.find((s) => s.isDefault);
+    if (defaultSnapshot && defaultSnapshot.cameraState) {
+      defaultSnapshotCameraState = defaultSnapshot.cameraState;
+    }
   }
 
   const processStreetDataForDuplicateIds = (data) => {
@@ -102,7 +115,11 @@ export function createElementsForScenesFromJSON(streetData, memoryData) {
   const correctedStreetData = processStreetDataForDuplicateIds(streetData);
 
   STREET.utils.createEntities(correctedStreetData, streetContainerEl);
-  AFRAME.scenes[0].emit('newScene');
+
+  // Emit newScene with snapshot camera state if available
+  AFRAME.scenes[0].emit('newScene', {
+    snapshotCameraState: defaultSnapshotCameraState
+  });
 }
 
 export function fileJSON(event) {
@@ -110,8 +127,8 @@ export function fileJSON(event) {
 
   reader.onload = function () {
     const data = JSON.parse(reader.result);
-    // Pass the entire data object to handle both scene data and memory
-    createElementsForScenesFromJSON(data.data, data.memory);
+    // Pass the entire data object to handle scene data, memory, and snapshots
+    createElementsForScenesFromJSON(data.data, data.memory, data.snapshots);
   };
 
   reader.readAsText(event.target.files[0]);

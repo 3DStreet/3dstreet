@@ -379,8 +379,10 @@ export function Viewport(inspector) {
     Events.emit('camerachanged');
   });
 
-  sceneEl.addEventListener('newScene', () => {
-    controls.resetZoom();
+  sceneEl.addEventListener('newScene', (event) => {
+    // Check if there's a snapshot camera state passed with the event
+    const snapshotCameraState = event.detail?.snapshotCameraState;
+    controls.newSceneCameraZoom(snapshotCameraState);
   });
 
   Events.on('cameratoggle', (data) => {

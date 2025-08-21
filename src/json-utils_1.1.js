@@ -747,23 +747,27 @@ AFRAME.registerComponent('set-loader-from-hash', {
           );
         }
 
+        // Check for snapshots and store default camera state BEFORE createElementsFromJSON
+        let defaultSnapshotCameraState = null;
+        if (jsonData.snapshots && jsonData.snapshots.length > 0) {
+          const defaultSnapshot = jsonData.snapshots.find((s) => s.isDefault);
+          if (defaultSnapshot && defaultSnapshot.cameraState) {
+            console.log(
+              '[set-loader-from-hash] Found default snapshot camera state:',
+              defaultSnapshot.cameraState
+            );
+            defaultSnapshotCameraState = defaultSnapshot.cameraState;
+            // Store it temporarily on the scene element for the newScene event
+            AFRAME.scenes[0].defaultSnapshotCameraState =
+              defaultSnapshotCameraState;
+          }
+        }
+
         STREET.utils.createElementsFromJSON(jsonData, false);
         const sceneId = getUUIDFromPath(requestURL);
         if (sceneId) {
           console.log('sceneId from fetchJSON from url hash loader', sceneId);
           AFRAME.scenes[0].setAttribute('metadata', 'sceneId', sceneId);
-
-          // Check for snapshots and apply default camera position
-          if (jsonData.snapshots && jsonData.snapshots.length > 0) {
-            const defaultSnapshot = jsonData.snapshots.find((s) => s.isDefault);
-            if (defaultSnapshot && defaultSnapshot.cameraState) {
-              console.log(
-                '[set-loader-from-hash] Applying default snapshot camera state:',
-                defaultSnapshot.cameraState
-              );
-              STREET.utils.applyCameraState(defaultSnapshot.cameraState);
-            }
-          }
         }
         AFRAME.scenes[0].setAttribute('metadata', 'authorId', jsonData.author);
       } else if (this.status === 404) {
@@ -866,7 +870,14 @@ function createElementsFromJSON(streetJSON, clearUrlHash) {
 
   createEntities(streetObject.data, streetContainerEl);
   STREET.notify.successMessage('Scene loaded');
-  AFRAME.scenes[0].emit('newScene');
+
+  // Pass snapshot camera state if available
+  const snapshotCameraState = AFRAME.scenes[0].defaultSnapshotCameraState;
+  AFRAME.scenes[0].emit('newScene', {
+    snapshotCameraState: snapshotCameraState
+  });
+  // Clean up temporary storage
+  delete AFRAME.scenes[0].defaultSnapshotCameraState;
 }
 
 STREET.utils.createElementsFromJSON = createElementsFromJSON;
