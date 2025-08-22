@@ -163,7 +163,7 @@ function ScreenshotModal() {
 
       if (result.data.success) {
         // Create a snapshot from the generated image
-        await createSnapshotFromImageUrl(
+        const newSnapshot = await createSnapshotFromImageUrl(
           sceneId,
           result.data.image_url,
           `AI: ${aiPrompt}`
@@ -175,6 +175,17 @@ function ScreenshotModal() {
 
         // Reload snapshots to show the new AI-generated one
         await loadSnapshots();
+
+        // Select the newly created AI snapshot and display it
+        setSelectedSnapshotId(newSnapshot.id);
+        const screentockImgElement = document.getElementById(
+          'screentock-destination'
+        );
+        if (screentockImgElement) {
+          // Use high-res version if available, otherwise use standard resolution
+          const imageUrl = newSnapshot.imagePathHD || newSnapshot.imagePath;
+          screentockImgElement.src = imageUrl;
+        }
 
         posthog.capture('ai_image_generated', {
           scene_id: sceneId,
