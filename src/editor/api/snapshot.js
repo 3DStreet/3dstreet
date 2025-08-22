@@ -296,6 +296,62 @@ export async function createSnapshotFromImageUrl(sceneId, imageUrl, label) {
 }
 
 /**
+ * Set an existing snapshot as the scene thumbnail
+ * @param {string} sceneId - Scene ID
+ * @param {string} snapshotId - Snapshot ID to set as thumbnail
+ */
+export async function setSnapshotAsSceneThumbnail(sceneId, snapshotId) {
+  try {
+    const sceneDocRef = doc(db, 'scenes', sceneId);
+    const sceneSnapshot = await getDoc(sceneDocRef);
+
+    if (!sceneSnapshot.exists()) {
+      throw new Error('Scene not found');
+    }
+
+    const sceneData = sceneSnapshot.data();
+    const memory = sceneData.memory || {};
+    const snapshots = memory.snapshots || [];
+
+    // Find the snapshot
+    const targetSnapshot = snapshots.find((s) => s.id === snapshotId);
+    if (!targetSnapshot) {
+      throw new Error('Snapshot not found');
+    }
+
+    // Update all snapshots - set the target as default, others as not default
+    const updatedSnapshots = snapshots.map((s) => ({
+      ...s,
+      isDefault: s.id === snapshotId
+    }));
+
+    // Update memory with updated snapshots
+    const updatedMemory = {
+      ...memory,
+      snapshots: updatedSnapshots
+    };
+
+    // Update the scene document with the new default thumbnail
+    await updateDoc(sceneDocRef, {
+      memory: updatedMemory,
+      imagePath: targetSnapshot.imagePath,
+      thumbnailLocked: true,
+      updateTimestamp: serverTimestamp()
+    });
+
+    posthog.capture('snapshot_set_as_thumbnail', {
+      scene_id: sceneId,
+      snapshot_id: snapshotId
+    });
+
+    return targetSnapshot;
+  } catch (error) {
+    console.error('Error setting snapshot as scene thumbnail:', error);
+    throw error;
+  }
+}
+
+/**
  * Remove a snapshot from a scene
  * @param {string} sceneId - Scene ID
  * @param {string} snapshotId - Snapshot ID to remove

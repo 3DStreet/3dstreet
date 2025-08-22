@@ -8,7 +8,8 @@ import { Save24Icon } from '../../../icons';
 import { takeScreenshotWithOptions } from '../../../api/scene';
 import {
   createSceneSnapshot,
-  createSnapshotFromImageUrl
+  createSnapshotFromImageUrl,
+  setSnapshotAsSceneThumbnail
 } from '../../../api/snapshot';
 import { doc, getDoc } from 'firebase/firestore';
 import { db, functions } from '../../../services/firebase';
@@ -77,20 +78,43 @@ function ScreenshotModal() {
     setIsSavingSnapshot(true);
 
     try {
-      await createSceneSnapshot(sceneId, true, 'Scene Thumbnail');
-      STREET.notify.successMessage('Scene thumbnail saved successfully!');
+      // Check if a snapshot is selected (AI-generated or existing snapshot)
+      if (selectedSnapshotId) {
+        // Use the existing snapshot as the scene thumbnail
+        await setSnapshotAsSceneThumbnail(sceneId, selectedSnapshotId);
+        STREET.notify.successMessage('Scene thumbnail set successfully!');
 
-      // Reload snapshots to show the new one
-      await loadSnapshots();
+        // Reload snapshots to update the default indicator
+        await loadSnapshots();
 
-      posthog.capture('scene_thumbnail_set', {
-        scene_id: sceneId
-      });
+        posthog.capture('scene_thumbnail_set_from_snapshot', {
+          scene_id: sceneId,
+          snapshot_id: selectedSnapshotId
+        });
+      } else {
+        // Create a new snapshot from the current canvas view
+        await createSceneSnapshot(sceneId, true, 'Scene Thumbnail');
+        STREET.notify.successMessage('Scene thumbnail saved successfully!');
+
+        // Reload snapshots to show the new one
+        await loadSnapshots();
+
+        posthog.capture('scene_thumbnail_set', {
+          scene_id: sceneId
+        });
+      }
     } catch (error) {
       console.error('Error setting scene thumbnail:', error);
-      STREET.notify.errorMessage(
-        'Failed to set scene thumbnail. Please try again.'
-      );
+      // Check if it's a CORS error
+      if (error.message && error.message.includes('tainted canvas')) {
+        STREET.notify.errorMessage(
+          'Cannot export AI-generated image. Please select it from the snapshots gallery below.'
+        );
+      } else {
+        STREET.notify.errorMessage(
+          'Failed to set scene thumbnail. Please try again.'
+        );
+      }
     } finally {
       setIsSavingSnapshot(false);
     }
@@ -314,11 +338,6 @@ function ScreenshotModal() {
 
                     // Optional: Load this snapshot's camera state in the future
                     console.log('Loaded snapshot:', snapshot.label);
-
-                    // Show a brief notification
-                    STREET.notify.successMessage(
-                      `Loaded snapshot: ${snapshot.label}`
-                    );
                   }}
                   title={snapshot.label}
                 >
