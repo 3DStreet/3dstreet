@@ -4,7 +4,7 @@ import Modal from '../Modal.jsx';
 import posthog from 'posthog-js';
 import useStore from '@/store';
 import { Button } from '../../elements';
-import { Save24Icon } from '../../../icons';
+import { DownloadIcon } from '../../../icons';
 import { takeScreenshotWithOptions } from '../../../api/scene';
 import {
   createSceneSnapshot,
@@ -22,9 +22,6 @@ function ScreenshotModal() {
   const { currentUser } = useAuthContext();
   const [isSavingSnapshot, setIsSavingSnapshot] = useState(false);
   const [isGeneratingAI, setIsGeneratingAI] = useState(false);
-  const [aiPrompt, setAiPrompt] = useState(
-    'Transform satellite image into high-quality drone shot'
-  );
   const [snapshots, setSnapshots] = useState([]);
   const [selectedSnapshotId, setSelectedSnapshotId] = useState(null);
 
@@ -50,14 +47,35 @@ function ScreenshotModal() {
     }
   };
 
-  const handleDownloadScreenshot = async (type) => {
-    const isPro = currentUser?.isPro;
+  const handleDownloadScreenshot = async () => {
+    // Get the currently displayed image
+    const screentockImgElement = document.getElementById(
+      'screentock-destination'
+    );
 
-    await takeScreenshotWithOptions({
-      type: type,
-      showLogo: !isPro,
-      showWatermark: !isPro,
-      imgElementSelector: type === 'img' ? '#screentock-destination' : null
+    if (!screentockImgElement || !screentockImgElement.src) {
+      STREET.notify.errorMessage('No image available to download');
+      return;
+    }
+
+    // Generate filename based on whether it's a snapshot or live view
+    const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+    const filename = selectedSnapshotId
+      ? `snapshot-${timestamp}.jpg`
+      : `3dstreet-screenshot-${timestamp}.jpg`;
+
+    // Create download link
+    const link = document.createElement('a');
+    link.href = screentockImgElement.src;
+    link.target = '_blank'; // Opens in new tab, might trigger download
+    link.download = filename; // Hint to download with this filename
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+
+    posthog.capture('screenshot_downloaded', {
+      scene_id: STREET.utils.getCurrentSceneId(),
+      is_snapshot: !!selectedSnapshotId
     });
   };
 
@@ -149,6 +167,9 @@ function ScreenshotModal() {
     setIsGeneratingAI(true);
 
     try {
+      // Hardcoded AI prompt
+      const aiPrompt = 'Transform satellite image into high-quality drone shot';
+
       // Call the cloud function
       const generateReplicateImage = httpsCallable(
         functions,
@@ -217,7 +238,13 @@ function ScreenshotModal() {
   useEffect(() => {
     if (modal === 'screenshot') {
       // Generate preview with appropriate overlays
-      handleDownloadScreenshot('img');
+      const isPro = currentUser?.isPro;
+      takeScreenshotWithOptions({
+        type: 'img',
+        showLogo: !isPro,
+        showWatermark: !isPro,
+        imgElementSelector: '#screentock-destination'
+      });
       // Load existing snapshots
       loadSnapshots();
     }
@@ -239,67 +266,27 @@ function ScreenshotModal() {
       <div className={styles.modalContainer}>
         <div className={styles.wrapper}>
           <div className={styles.details}>
-            <div className={styles.downloadSection}>
-              <Button
-                leadingIcon={<Save24Icon />}
-                onClick={() => handleDownloadScreenshot('jpg')}
-                variant="filled"
-                className={styles.downloadButton}
-              >
-                Download JPEG
-              </Button>
-              {/* Set as Scene Thumbnail button - only show for scene authors */}
-              {currentUser &&
-                STREET.utils.getCurrentSceneId() &&
-                currentUser.uid === STREET.utils.getAuthorId() && (
-                  <Button
-                    onClick={handleSetAsSceneThumbnail}
-                    variant="outlined"
-                    className={styles.thumbnailButton}
-                    disabled={isSavingSnapshot}
-                  >
-                    {isSavingSnapshot ? (
-                      'Saving...'
-                    ) : (
-                      <span>
-                        <span>📸</span>
-                        <span>Set as Scene Thumbnail</span>
-                      </span>
-                    )}
-                  </Button>
-                )}
-            </div>
             {/* AI Generation Section - only show for scene authors */}
             {currentUser &&
               STREET.utils.getCurrentSceneId() &&
               currentUser.uid === STREET.utils.getAuthorId() && (
                 <div className={styles.aiSection}>
                   <h3>AI Image Generation</h3>
-                  <div className={styles.promptSection}>
-                    <input
-                      type="text"
-                      value={aiPrompt}
-                      onChange={(e) => setAiPrompt(e.target.value)}
-                      placeholder="Enter prompt for AI image generation..."
-                      className={styles.promptInput}
-                      disabled={isGeneratingAI}
-                    />
-                    <Button
-                      onClick={handleGenerateAIImage}
-                      variant="filled"
-                      className={styles.aiButton}
-                      disabled={isGeneratingAI || !aiPrompt.trim()}
-                    >
-                      {isGeneratingAI ? (
-                        'Generating...'
-                      ) : (
-                        <span>
-                          <span>🤖</span>
-                          <span>Generate AI Image & Create Snapshot</span>
-                        </span>
-                      )}
-                    </Button>
-                  </div>
+                  <Button
+                    onClick={handleGenerateAIImage}
+                    variant="filled"
+                    className={styles.aiButton}
+                    disabled={isGeneratingAI}
+                  >
+                    {isGeneratingAI ? (
+                      'Generating...'
+                    ) : (
+                      <span>
+                        <span>🤖</span>
+                        <span>Generate AI Image & Create Snapshot</span>
+                      </span>
+                    )}
+                  </Button>
                 </div>
               )}
             {/* Upsell button for free users */}
@@ -319,6 +306,36 @@ function ScreenshotModal() {
             <div className={styles.imageWrapper}>
               <div className={styles.screenshotWrapper}>
                 <img id="screentock-destination" />
+                {/* Download button in the upper right corner */}
+                <button
+                  className={styles.downloadIconButton}
+                  onClick={handleDownloadScreenshot}
+                  title="Download image"
+                  aria-label="Download image"
+                >
+                  <DownloadIcon />
+                </button>
+                {/* Pin as Default button in the lower right corner - only show for scene authors */}
+                {currentUser &&
+                  STREET.utils.getCurrentSceneId() &&
+                  currentUser.uid === STREET.utils.getAuthorId() && (
+                    <button
+                      className={styles.pinDefaultButton}
+                      onClick={handleSetAsSceneThumbnail}
+                      title="Pin as Default"
+                      aria-label="Pin as Default"
+                      disabled={isSavingSnapshot}
+                    >
+                      {isSavingSnapshot ? (
+                        '...'
+                      ) : (
+                        <>
+                          <span className={styles.pinIcon}>📌</span>
+                          <span className={styles.pinText}>Pin as Default</span>
+                        </>
+                      )}
+                    </button>
+                  )}
               </div>
             </div>
           </div>
