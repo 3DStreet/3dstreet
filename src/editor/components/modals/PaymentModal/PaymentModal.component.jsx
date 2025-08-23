@@ -64,7 +64,6 @@ const PaymentModal = () => {
         metadata: { userId: currentUser.uid },
         // allow_promotion_codes: true,
         subscription_data: {
-          trial_period_days: 30,
           metadata: {
             userId: currentUser.uid
           }
@@ -96,16 +95,12 @@ const PaymentModal = () => {
       title="Unlock Pro Features"
     >
       <div className={styles.paymentDetails}>
-        <h3>Try 3DStreet Pro now with a free 30 day trial.</h3>
-        <h2>3DStreet Geospatial Pro includes all features of Free and adds:</h2>
+        <h3>Access 3DStreet Pro features now with a paid plan.</h3>
+        <h2>The Pro plan includes all features of Free and adds:</h2>
         <ul>
           <li>
             <CheckMark32Icon />
-            Integrated 2D & 3D Maps
-          </li>
-          <li>
-            <CheckMark32Icon />
-            Intersections and Advanced Street Geometry
+            Integrated 2D & 3D Maps with Unlimited Edits
           </li>
           <li>
             <CheckMark32Icon />
@@ -117,7 +112,7 @@ const PaymentModal = () => {
           </li>
           <li>
             <CheckMark32Icon />
-            Screenshot Overlay Customization
+            Removal of Watermark on Exported Images
           </li>
           <li>&nbsp;</li>
           <li className={styles.pricing}>
@@ -152,7 +147,7 @@ const PaymentModal = () => {
                       </div>
                     ) : (
                       <Button onClick={startCheckout} variant="filled">
-                        Try Now
+                        Activate Now
                       </Button>
                     )}
                   </div>
