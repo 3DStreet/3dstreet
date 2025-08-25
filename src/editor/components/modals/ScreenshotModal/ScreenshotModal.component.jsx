@@ -4,25 +4,78 @@ import Modal from '../Modal.jsx';
 import posthog from 'posthog-js';
 import useStore from '@/store';
 import { Button } from '../../elements';
-import { Save24Icon } from '../../../icons';
+import { DownloadIcon } from '../../../icons';
 import { takeScreenshotWithOptions } from '../../../api/scene';
-import { createSceneSnapshot } from '../../../api/snapshot';
+import {
+  createSceneSnapshot,
+  createSnapshotFromImageUrl,
+  setSnapshotAsSceneThumbnail
+} from '../../../api/snapshot';
+import { doc, getDoc } from 'firebase/firestore';
+import { db, functions } from '../../../services/firebase';
 import { useAuthContext } from '../../../contexts';
+import { httpsCallable } from 'firebase/functions';
 
 function ScreenshotModal() {
   const setModal = useStore((state) => state.setModal);
   const modal = useStore((state) => state.modal);
   const { currentUser } = useAuthContext();
   const [isSavingSnapshot, setIsSavingSnapshot] = useState(false);
+  const [isGeneratingAI, setIsGeneratingAI] = useState(false);
+  const [snapshots, setSnapshots] = useState([]);
+  const [selectedSnapshotId, setSelectedSnapshotId] = useState(null);
 
-  const handleDownloadScreenshot = async (type) => {
-    const isPro = currentUser?.isPro;
+  const loadSnapshots = async () => {
+    const sceneId = STREET.utils.getCurrentSceneId();
+    if (!sceneId) return;
 
-    await takeScreenshotWithOptions({
-      type: type,
-      showLogo: !isPro,
-      showWatermark: !isPro,
-      imgElementSelector: type === 'img' ? '#screentock-destination' : null
+    try {
+      const sceneDocRef = doc(db, 'scenes', sceneId);
+      const sceneSnapshot = await getDoc(sceneDocRef);
+
+      if (sceneSnapshot.exists()) {
+        const sceneData = sceneSnapshot.data();
+        const sceneSnapshots = sceneData.memory?.snapshots || [];
+        setSnapshots(
+          sceneSnapshots.sort(
+            (a, b) => new Date(b.timestamp) - new Date(a.timestamp)
+          )
+        );
+      }
+    } catch (error) {
+      console.error('Error loading snapshots:', error);
+    }
+  };
+
+  const handleDownloadScreenshot = async () => {
+    // Get the currently displayed image
+    const screentockImgElement = document.getElementById(
+      'screentock-destination'
+    );
+
+    if (!screentockImgElement || !screentockImgElement.src) {
+      STREET.notify.errorMessage('No image available to download');
+      return;
+    }
+
+    // Generate filename based on whether it's a snapshot or live view
+    const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+    const filename = selectedSnapshotId
+      ? `snapshot-${timestamp}.jpg`
+      : `3dstreet-screenshot-${timestamp}.jpg`;
+
+    // Create download link
+    const link = document.createElement('a');
+    link.href = screentockImgElement.src;
+    link.target = '_blank'; // Opens in new tab, might trigger download
+    link.download = filename; // Hint to download with this filename
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+
+    posthog.capture('screenshot_downloaded', {
+      scene_id: STREET.utils.getCurrentSceneId(),
+      is_snapshot: !!selectedSnapshotId
     });
   };
 
@@ -43,19 +96,132 @@ function ScreenshotModal() {
     setIsSavingSnapshot(true);
 
     try {
-      await createSceneSnapshot(sceneId, true, 'Scene Thumbnail');
-      STREET.notify.successMessage('Scene thumbnail saved successfully!');
+      // Check if a snapshot is selected (AI-generated or existing snapshot)
+      if (selectedSnapshotId) {
+        // Use the existing snapshot as the scene thumbnail
+        await setSnapshotAsSceneThumbnail(sceneId, selectedSnapshotId);
+        STREET.notify.successMessage('Scene thumbnail set successfully!');
 
-      posthog.capture('scene_thumbnail_set', {
-        scene_id: sceneId
-      });
+        // Reload snapshots to update the default indicator
+        await loadSnapshots();
+
+        posthog.capture('scene_thumbnail_set_from_snapshot', {
+          scene_id: sceneId,
+          snapshot_id: selectedSnapshotId
+        });
+      } else {
+        // Create a new snapshot from the current canvas view
+        await createSceneSnapshot(sceneId, true, 'Scene Thumbnail');
+        STREET.notify.successMessage('Scene thumbnail saved successfully!');
+
+        // Reload snapshots to show the new one
+        await loadSnapshots();
+
+        posthog.capture('scene_thumbnail_set', {
+          scene_id: sceneId
+        });
+      }
     } catch (error) {
       console.error('Error setting scene thumbnail:', error);
-      STREET.notify.errorMessage(
-        'Failed to set scene thumbnail. Please try again.'
-      );
+      // Check if it's a CORS error
+      if (error.message && error.message.includes('tainted canvas')) {
+        STREET.notify.errorMessage(
+          'Cannot export AI-generated image. Please select it from the snapshots gallery below.'
+        );
+      } else {
+        STREET.notify.errorMessage(
+          'Failed to set scene thumbnail. Please try again.'
+        );
+      }
     } finally {
       setIsSavingSnapshot(false);
+    }
+  };
+
+  const handleGenerateAIImage = async () => {
+    const sceneId = STREET.utils.getCurrentSceneId();
+    const authorId = STREET.utils.getAuthorId();
+
+    if (!sceneId) {
+      STREET.notify.errorMessage('Please save your scene first');
+      return;
+    }
+
+    if (!currentUser || currentUser.uid !== authorId) {
+      STREET.notify.errorMessage(
+        'Only the scene author can generate AI images'
+      );
+      return;
+    }
+
+    const screentockImgElement = document.getElementById(
+      'screentock-destination'
+    );
+    if (!screentockImgElement || !screentockImgElement.src) {
+      STREET.notify.errorMessage(
+        'No screenshot available. Please generate a preview first.'
+      );
+      return;
+    }
+
+    setIsGeneratingAI(true);
+
+    try {
+      // Hardcoded AI prompt
+      const aiPrompt = 'Transform satellite image into high-quality drone shot';
+
+      // Call the cloud function
+      const generateReplicateImage = httpsCallable(
+        functions,
+        'generateReplicateImage'
+      );
+      const result = await generateReplicateImage({
+        prompt: aiPrompt,
+        input_image: screentockImgElement.src,
+        guidance: 2.5,
+        num_inference_steps: 30
+      });
+
+      if (result.data.success) {
+        // Create a snapshot from the generated image
+        const newSnapshot = await createSnapshotFromImageUrl(
+          sceneId,
+          result.data.image_url,
+          `AI: ${aiPrompt}`
+        );
+
+        STREET.notify.successMessage(
+          'AI image generated and snapshot created!'
+        );
+
+        // Reload snapshots to show the new AI-generated one
+        await loadSnapshots();
+
+        // Select the newly created AI snapshot and display it
+        setSelectedSnapshotId(newSnapshot.id);
+        const screentockImgElement = document.getElementById(
+          'screentock-destination'
+        );
+        if (screentockImgElement) {
+          // Use high-res version if available, otherwise use standard resolution
+          const imageUrl = newSnapshot.imagePathHD || newSnapshot.imagePath;
+          screentockImgElement.src = imageUrl;
+        }
+
+        posthog.capture('ai_image_generated', {
+          scene_id: sceneId,
+          prompt: aiPrompt
+        });
+      } else {
+        throw new Error('Failed to generate image');
+      }
+    } catch (error) {
+      console.error('Error generating AI image:', error);
+      STREET.notify.errorMessage(
+        'Failed to generate AI image. Please try again.'
+      );
+    } finally {
+      setIsGeneratingAI(false);
     }
   };
 
@@ -72,7 +238,15 @@ function ScreenshotModal() {
   useEffect(() => {
     if (modal === 'screenshot') {
       // Generate preview with appropriate overlays
-      handleDownloadScreenshot('img');
+      const isPro = currentUser?.isPro;
+      takeScreenshotWithOptions({
+        type: 'img',
+        showLogo: !isPro,
+        showWatermark: !isPro,
+        imgElementSelector: '#screentock-destination'
+      });
+      // Load existing snapshots
+      loadSnapshots();
     }
   }, [modal, currentUser?.isPro]);
 
@@ -89,58 +263,130 @@ function ScreenshotModal() {
         </div>
       }
     >
-      <div className={styles.wrapper}>
-        <div className="details">
-          <div className={styles.downloadSection}>
-            <Button
-              leadingIcon={<Save24Icon />}
-              onClick={() => handleDownloadScreenshot('jpg')}
-              variant="filled"
-              className={styles.downloadButton}
-            >
-              Download JPEG
-            </Button>
-            {/* Set as Scene Thumbnail button - only show for scene authors */}
+      <div className={styles.modalContainer}>
+        <div className={styles.wrapper}>
+          <div className={styles.details}>
+            {/* AI Generation Section - only show for scene authors */}
             {currentUser &&
               STREET.utils.getCurrentSceneId() &&
               currentUser.uid === STREET.utils.getAuthorId() && (
-                <Button
-                  onClick={handleSetAsSceneThumbnail}
-                  variant="outlined"
-                  className={styles.thumbnailButton}
-                  disabled={isSavingSnapshot}
-                >
-                  {isSavingSnapshot ? (
-                    'Saving...'
-                  ) : (
-                    <span>
-                      <span>📸</span>
-                      <span>Set as Scene Thumbnail</span>
-                    </span>
-                  )}
-                </Button>
+                <div className={styles.aiSection}>
+                  <h3>AI Image Generation</h3>
+                  <Button
+                    onClick={handleGenerateAIImage}
+                    variant="filled"
+                    className={styles.aiButton}
+                    disabled={isGeneratingAI}
+                  >
+                    {isGeneratingAI ? (
+                      'Generating...'
+                    ) : (
+                      <span>
+                        <span>🤖</span>
+                        <span>Generate AI Image & Create Snapshot</span>
+                      </span>
+                    )}
+                  </Button>
+                </div>
               )}
+            {/* Upsell button for free users */}
+            {!currentUser?.isPro && (
+              <div className={styles.upsellSection}>
+                <Button
+                  variant="toolbtn"
+                  className={styles.upsellButton}
+                  onClick={() => setModal('payment')}
+                >
+                  Upgrade to Pro to hide 3DStreet Free watermark
+                </Button>
+              </div>
+            )}
           </div>
-          {/* Upsell button for free users */}
-          {!currentUser?.isPro && (
-            <div className={styles.upsellSection}>
-              <Button
-                variant="toolbtn"
-                className={styles.upsellButton}
-                onClick={() => setModal('payment')}
-              >
-                Upgrade to Pro to hide 3DStreet Free watermark
-              </Button>
-            </div>
-          )}
-        </div>
-        <div className={styles.mainContent}>
-          <div className={styles.imageWrapper}>
-            <div className={styles.screenshotWrapper}>
-              <img id="screentock-destination" />
+          <div className={styles.mainContent}>
+            <div className={styles.imageWrapper}>
+              <div className={styles.screenshotWrapper}>
+                <img id="screentock-destination" />
+                {/* Download button in the upper right corner */}
+                <button
+                  className={styles.downloadIconButton}
+                  onClick={handleDownloadScreenshot}
+                  title="Download image"
+                  aria-label="Download image"
+                >
+                  <DownloadIcon />
+                </button>
+                {/* Pin as Default button in the lower right corner - only show for scene authors */}
+                {currentUser &&
+                  STREET.utils.getCurrentSceneId() &&
+                  currentUser.uid === STREET.utils.getAuthorId() && (
+                    <button
+                      className={styles.pinDefaultButton}
+                      onClick={handleSetAsSceneThumbnail}
+                      title="Pin as Default"
+                      aria-label="Pin as Default"
+                      disabled={isSavingSnapshot}
+                    >
+                      {isSavingSnapshot ? (
+                        '...'
+                      ) : (
+                        <>
+                          <span className={styles.pinIcon}>📌</span>
+                          <span className={styles.pinText}>Pin as Default</span>
+                        </>
+                      )}
+                    </button>
+                  )}
+              </div>
             </div>
           </div>
         </div>
+        {/* Snapshots Gallery - Full Width at Bottom */}
+        {snapshots.length > 0 && (
+          <div className={styles.snapshotGalleryBottom}>
+            <h3>Scene Snapshots</h3>
+            <div className={styles.snapshotRow}>
+              {snapshots.map((snapshot, index) => (
+                <div
+                  key={snapshot.id}
+                  className={`${styles.snapshotThumbnail} ${snapshot.isDefault ? styles.defaultSnapshot : ''} ${selectedSnapshotId === snapshot.id ? styles.selectedSnapshot : ''}`}
+                  onClick={() => {
+                    // Load the clicked snapshot into the main image area
+                    const screentockImgElement = document.getElementById(
+                      'screentock-destination'
+                    );
+                    if (screentockImgElement) {
+                      // Use high-res version if available, otherwise use standard resolution
+                      const imageUrl =
+                        snapshot.imagePathHD || snapshot.imagePath;
+                      screentockImgElement.src = imageUrl;
+                    }
+
+                    // Set as selected for visual feedback
+                    setSelectedSnapshotId(snapshot.id);
+
+                    // Optional: Load this snapshot's camera state in the future
+                    console.log('Loaded snapshot:', snapshot.label);
+                  }}
+                  title={snapshot.label}
+                >
+                  <img
+                    src={snapshot.imagePath}
+                    alt={snapshot.label}
+                    loading="lazy"
+                  />
+                  {snapshot.isDefault && (
+                    <div className={styles.defaultBadge}>Default</div>
+                  )}
+                  <div className={styles.snapshotLabel}>
+                    {snapshot.label.length > 25
+                      ? `${snapshot.label.substring(0, 25)}...`
+                      : snapshot.label}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
       </div>
     </Modal>
   );
