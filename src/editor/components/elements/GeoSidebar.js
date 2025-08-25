@@ -3,7 +3,7 @@ import { Button } from '../elements';
 import { useAuthContext } from '@/editor/contexts/index.js';
 import AdvancedComponents from './AdvancedComponents';
 import PropertyRow from './PropertyRow';
-import { Mangnifier20Icon } from '../../icons';
+import { Magnifier20Icon } from '../../icons';
 import posthog from 'posthog-js';
 import useStore from '@/store';
 import { useState, useEffect } from 'react';
@@ -430,7 +430,7 @@ const GeoSidebar = ({ entity }) => {
                   )}
                 </div>
                 <Button variant="toolbtn" onClick={openGeoModal}>
-                  <Mangnifier20Icon />
+                  <Magnifier20Icon />
                   {entity && entity.components
                     ? 'Change Location'
                     : 'Set Location'}

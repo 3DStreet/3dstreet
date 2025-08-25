@@ -15,6 +15,7 @@ import './style/index.scss';
 import posthog from 'posthog-js';
 import { commandsByType } from './lib/commands/index.js';
 import useStore from '@/store';
+import { initializeLocationSync } from './lib/location-sync';
 
 // Helper function to check if viewer mode is requested via URL parameter
 function isViewerModeRequested() {
@@ -73,6 +74,9 @@ Inspector.prototype = {
   initUI: function () {
     Shortcuts.init(this);
     this.initEvents();
+
+    // Initialize location sync
+    initializeLocationSync();
 
     this.selected = null;
 
