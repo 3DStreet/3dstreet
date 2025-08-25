@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import styles from './GeoLocationDisplay.module.scss';
 import useStore from '@/store';
-import { Mangnifier20Icon } from '../../../icons';
+import { Magnifier20Icon } from '../../../icons';
 
 const GeoLocationDisplay = () => {
   const [isHovered, setIsHovered] = useState(false);
@@ -20,7 +20,7 @@ const GeoLocationDisplay = () => {
       onClick={() => setModal('geo')}
     >
       <div className={`${styles.content} ${isHovered ? styles.hovered : ''}`}>
-        {isHovered && <Mangnifier20Icon className={styles.searchIcon} />}
+        {isHovered && <Magnifier20Icon className={styles.searchIcon} />}
         <span className={styles.locationText}>{locationString}</span>
       </div>
     </div>

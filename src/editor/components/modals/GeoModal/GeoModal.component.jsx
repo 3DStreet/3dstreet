@@ -1,7 +1,7 @@
 import { useState, useCallback, useEffect } from 'react';
 import { SavingModal } from '../SavingModal';
 import styles from './GeoModal.module.scss';
-import { Mangnifier20Icon, Save24Icon } from '../../../icons';
+import { Magnifier20Icon, Save24Icon } from '../../../icons';
 import { firebaseConfig } from '../../../services/firebase.js';
 import Modal from '../Modal.jsx';
 import { Button, Input } from '../../elements/index.js';
@@ -261,7 +261,7 @@ const GeoModal = () => {
             onPlaceChanged={onPlaceChanged}
           >
             <Input
-              leadingIcon={<Mangnifier20Icon />}
+              leadingIcon={<Magnifier20Icon />}
               placeholder="Search for a location"
               onChange={(value) => {}}
             />
