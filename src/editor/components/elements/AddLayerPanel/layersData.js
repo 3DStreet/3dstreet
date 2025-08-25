@@ -4,7 +4,6 @@ export const streetLayersData = [
   {
     name: 'Create Intersection',
     img: '',
-    requiresPro: true,
     icon: 'ui_assets/cards/icons/3dst24.png',
     description: 'Create 90º intersection entity.',
     handlerFunction: createFunctions.createIntersection
