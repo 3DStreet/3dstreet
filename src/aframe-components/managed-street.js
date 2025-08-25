@@ -551,6 +551,52 @@ AFRAME.registerComponent('managed-street', {
       this.refreshManagedEntities();
       this.remove();
 
+      // Extract and set location data if available
+      console.log(
+        '[managed-street] Full Streetmix response:',
+        streetmixResponseObject
+      );
+      console.log(
+        '[managed-street] Street data structure:',
+        streetmixResponseObject.data
+      );
+      console.log(
+        '[managed-street] Street object:',
+        streetmixResponseObject.data.street
+      );
+
+      const streetLocation = streetmixResponseObject.data.street?.location;
+      console.log('[managed-street] Extracted location:', streetLocation);
+
+      if (
+        streetLocation &&
+        streetLocation.latlng &&
+        streetLocation.latlng.lat &&
+        streetLocation.latlng.lng
+      ) {
+        console.log(
+          '[managed-street] Found location data in Streetmix:',
+          streetLocation
+        );
+        // Import setSceneLocation utility
+        const { setSceneLocation } = await import('../editor/lib/utils.js');
+        try {
+          await setSceneLocation(
+            streetLocation.latlng.lat,
+            streetLocation.latlng.lng
+          );
+          console.log(
+            '[managed-street] Successfully set scene location from Streetmix'
+          );
+        } catch (error) {
+          console.warn('[managed-street] Failed to set scene location:', error);
+        }
+      } else {
+        console.log(
+          '[managed-street] No location data found in Streetmix response'
+        );
+      }
+
       // convert units of measurement if necessary
       const streetData = streetmixUtils.convertStreetValues(
         streetmixResponseObject.data.street
