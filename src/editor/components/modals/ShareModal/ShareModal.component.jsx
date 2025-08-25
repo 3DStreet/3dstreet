@@ -256,6 +256,13 @@ function ShareModal() {
                         <img src={ScenePlaceholder} alt="Scene placeholder" />
                       )}
                     </div>
+                    <Button
+                      className={styles.changeThumbnailBtn}
+                      onClick={() => setModal('screenshot')}
+                      variant="toolbtn"
+                    >
+                      Change Thumbnail
+                    </Button>
                   </div>
                 </div>
 
