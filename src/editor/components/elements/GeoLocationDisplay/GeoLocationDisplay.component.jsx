@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import styles from './GeoLocationDisplay.module.scss';
 import useStore from '@/store';
 import { Mangnifier20Icon } from '../../../icons';
@@ -8,17 +8,7 @@ const GeoLocationDisplay = () => {
   const locationString = useStore((state) => state.locationString);
   const setModal = useStore((state) => state.setModal);
 
-  useEffect(() => {
-    console.log('[GeoLocationDisplay] locationString changed:', locationString);
-  }, [locationString]);
-
-  console.log(
-    '[GeoLocationDisplay] Rendering with locationString:',
-    locationString
-  );
-
   if (!locationString) {
-    console.log('[GeoLocationDisplay] No location string, returning null');
     return null;
   }
 
