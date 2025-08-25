@@ -68,11 +68,15 @@ const useStore = create(
         doSaveAs: false,
         sceneTitle: null,
         setSceneTitle: (newSceneTitle) => set({ sceneTitle: newSceneTitle }),
+        locationString: null,
+        setLocationString: (newLocationString) =>
+          set({ locationString: newLocationString }),
         newScene: () =>
           set({
             sceneId: null,
             sceneTitle: null,
             authorId: null,
+            locationString: null,
             projectInfo: {
               description: '',
               projectArea: '',

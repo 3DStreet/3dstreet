@@ -15,6 +15,7 @@ import { GeoModal } from './modals/GeoModal';
 import { ScenesModal } from './modals/ScenesModal';
 import { PaymentModal } from './modals/PaymentModal';
 import { AddLayerPanel } from './elements/AddLayerPanel';
+import { GeoLocationDisplay } from './elements/GeoLocationDisplay';
 import { NewModal } from './modals/NewModal';
 import { ReportModal } from './modals/ReportModal';
 import { ToolbarWrapper } from './scenegraph/ToolbarWrapper.js';
@@ -163,6 +164,7 @@ export default function Main() {
           <div className="clickable">
             <AddLayerPanel />
           </div>
+          <GeoLocationDisplay />
         </>
       )}
     </div>
