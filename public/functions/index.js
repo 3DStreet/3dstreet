@@ -200,18 +200,30 @@ exports.shareToDiscord = functions
       throw new functions.https.HttpsError('unauthenticated', 'User must be authenticated to share scenes.');
     }
 
-    const { title, location, username, sceneUrl } = data;
+    const { title, location, username, sceneUrl, imageUrl } = data;
 
     // Validate required data
     if (!title || !username || !sceneUrl) {
       throw new functions.https.HttpsError('invalid-argument', 'Missing required scene data.');
     }
 
-    // Create Discord message
+    // Create Discord message with embed for rich preview
     const message = {
-      content: `🙋 **${username}** shared a new scene!\n\n` +
-               `**${title}**${location ? `\n📍 Location: ${location}` : ''}\n` +
-               `🔗 View scene: ${sceneUrl}`
+      content: `🙋 **${username}** shared a new scene!`,
+      embeds: [{
+        title: title,
+        description: location ? `📍 ${location}` : undefined,
+        url: sceneUrl,
+        color: 0x6366F1, // Indigo color for the embed stripe
+        image: imageUrl ? {
+          url: imageUrl
+        } : undefined,
+        footer: {
+          text: '3DStreet',
+          icon_url: 'https://3dstreet.app/favicon.ico'
+        },
+        timestamp: new Date().toISOString()
+      }]
     };
 
     try {

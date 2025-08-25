@@ -179,13 +179,15 @@ function ShareModal() {
     const authorName = authorUsername || 'anonymous';
     const location = locationString || '';
     const sceneId = STREET.utils.getCurrentSceneId();
+    const imageUrl = sceneData?.imagePath || null;
 
     try {
       const result = await shareSceneToDiscord({
         title: sceneTitle,
         location: location,
         username: authorName,
-        sceneUrl: shareUrl
+        sceneUrl: shareUrl,
+        imageUrl: imageUrl
       });
 
       STREET.notify.successMessage(
