@@ -62,6 +62,7 @@ THREE.EditorControls = function (_object, domElement) {
       return;
     }
     var distance;
+    var localCenterY;
 
     // Save current camera position/quaternion
     this.focusAnimationComponent.transitionCamPosStart.copy(object.position);
@@ -74,16 +75,16 @@ THREE.EditorControls = function (_object, domElement) {
     if (box.isEmpty() === false && !isNaN(box.min.x)) {
       box.getCenter(center);
       distance = box.getBoundingSphere(sphere).radius;
+      localCenterY = (box.max.y - box.min.y) / 2;
     } else {
-      // Focusing on an Group, AmbientLight, etc
-
+      // Focusing on an AmbientLight, etc
       center.setFromMatrixPosition(target.matrixWorld);
       distance = 0.1;
+      localCenterY = target.position.y;
     }
 
     const targetEl = target.el;
     let cameraPosition;
-    let lookAtPosition;
     // if focus-camera-pose set on target then use that vec3 as target
     if (targetEl && targetEl.hasAttribute('focus-camera-pose')) {
       const poseRelativePosition =
@@ -102,15 +103,13 @@ THREE.EditorControls = function (_object, domElement) {
     // Fallback to default positioning if no pose relative position
     if (!cameraPosition) {
       cameraPosition = target.localToWorld(
-        new THREE.Vector3(0, center.y + distance * 0.5, distance * 2.5)
+        new THREE.Vector3(0, localCenterY + distance * 0.5, distance * 2.5)
       );
     }
     // Set camera position
     object.position.copy(cameraPosition);
     // Get position to look at
-    lookAtPosition = target.getWorldPosition(new THREE.Vector3());
-    lookAtPosition.y = center.y;
-    object.lookAt(lookAtPosition);
+    object.lookAt(center);
 
     // Save end camera position/quaternion
     this.focusAnimationComponent.transitionCamPosEnd.copy(object.position);

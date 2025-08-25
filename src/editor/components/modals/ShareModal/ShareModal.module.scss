@@ -46,6 +46,7 @@
             overflow: hidden;
             border: 1px solid #e5e7eb;
             background-color: #f9fafb;
+            position: relative;
 
             .screenshotWrapper {
               width: 100%;
@@ -56,6 +57,21 @@
                 height: 100%;
                 object-fit: cover;
               }
+            }
+
+            .changeThumbnailBtn {
+              position: absolute !important;
+              bottom: 8px !important;
+              right: 8px !important;
+              font-size: 12px !important;
+              padding: 6px 12px !important;
+              opacity: 0;
+              transition: opacity 0.2s ease;
+              z-index: 10;
+            }
+
+            &:hover .changeThumbnailBtn {
+              opacity: 1;
             }
           }
         }

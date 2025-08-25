@@ -617,7 +617,7 @@ export const DropdownArrowIcon = () => (
   </svg>
 );
 
-export const Mangnifier20Icon = () => (
+export const Magnifier20Icon = () => (
   <svg
     xmlns="http://www.w3.org/2000/svg"
     width="20"
