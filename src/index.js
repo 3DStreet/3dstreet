@@ -208,6 +208,58 @@ AFRAME.registerComponent('streetmix-loader', {
       if (this.status >= 200 && this.status < 400) {
         // Connection success
         const streetmixResponseObject = JSON.parse(this.response);
+
+        // Extract and set location data if available
+        console.log(
+          '[streetmix-loader] Full Streetmix response:',
+          streetmixResponseObject
+        );
+        console.log(
+          '[streetmix-loader] Street data structure:',
+          streetmixResponseObject.data
+        );
+        console.log(
+          '[streetmix-loader] Street object:',
+          streetmixResponseObject.data.street
+        );
+
+        const streetLocation = streetmixResponseObject.data.street?.location;
+        console.log('[streetmix-loader] Extracted location:', streetLocation);
+
+        if (
+          streetLocation &&
+          streetLocation.latlng &&
+          streetLocation.latlng.lat &&
+          streetLocation.latlng.lng
+        ) {
+          console.log(
+            '[streetmix-loader] Found location data in Streetmix:',
+            streetLocation
+          );
+          // Import setSceneLocation utility
+          import('./editor/lib/utils.js').then(({ setSceneLocation }) => {
+            setSceneLocation(
+              streetLocation.latlng.lat,
+              streetLocation.latlng.lng
+            )
+              .then(() => {
+                console.log(
+                  '[streetmix-loader] Successfully set scene location from Streetmix'
+                );
+              })
+              .catch((error) => {
+                console.warn(
+                  '[streetmix-loader] Failed to set scene location:',
+                  error
+                );
+              });
+          });
+        } else {
+          console.log(
+            '[streetmix-loader] No location data found in Streetmix response'
+          );
+        }
+
         // convert units of measurement if necessary
         const streetData = streetmixUtils.convertStreetValues(
           streetmixResponseObject.data.street
