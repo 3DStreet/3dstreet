@@ -133,6 +133,16 @@ export async function setSceneLocation(latitude, longitude) {
         AFRAME.INSPECTOR.selectEntity(geoLayer);
       }, 0);
 
+      // Manually trigger location sync update
+      setTimeout(() => {
+        console.log('[utils] Manually triggering location sync update');
+        import('./location-sync').then(({ updateLocationInStore }) => {
+          if (updateLocationInStore) {
+            updateLocationInStore();
+          }
+        });
+      }, 200);
+
       return {
         success: true,
         message: `Successfully set location to latitude: ${lat}, longitude: ${lng}`,
