@@ -23,12 +23,25 @@ exports.getGeoidHeight = functions
     let canProceed = false;
     let isProUser = false;
 
-    // Check if user has Pro subscription
+    // Check if user has Pro subscription or is from pro domains
     try {
       const userRecord = await getAuth().getUser(userId);
+      
+      // Check for Pro subscription via custom claims
       if (userRecord.customClaims && userRecord.customClaims.plan === 'PRO') {
         canProceed = true;
         isProUser = true;
+      }
+      
+      // Check for pro domains (uoregon.edu)
+      const PRO_DOMAINS = ['uoregon.edu'];
+      if (!isProUser && userRecord.email) {
+        const userDomain = PRO_DOMAINS.find(domain => userRecord.email.includes(domain));
+        if (userDomain) {
+          canProceed = true;
+          isProUser = true;
+          console.log(`User ${userRecord.email} granted pro access via domain: ${userDomain}`);
+        }
       }
     } catch (error) {
       console.log('Error checking user claims:', error);
