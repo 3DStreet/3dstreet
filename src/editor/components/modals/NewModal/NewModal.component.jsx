@@ -247,7 +247,11 @@ export const NewModal = () => {
       description: 'Start with maps and real-world context',
       imagePath: '/ui_assets/cards/new-blank.jpg',
       actionType: 'geolocation',
-      icon: <GeospatialIcon />
+      icon: (
+        <div style={{ transform: 'scale(1.5)' }}>
+          <GeospatialIcon />
+        </div>
+      )
     },
     {
       title: 'Create intersection',
@@ -352,6 +356,7 @@ export const NewModal = () => {
           </div>
         </div>
 
+        {/* Onboarding section hidden for now
         <div className={styles.onboardingSection}>
           <h3 className={styles.sectionTitle}>Learn 3DStreet</h3>
           <div className={styles.onboardingOptions}>
@@ -382,6 +387,7 @@ export const NewModal = () => {
             </button>
           </div>
         </div>
+        */}
       </div>
     </Modal>
   );

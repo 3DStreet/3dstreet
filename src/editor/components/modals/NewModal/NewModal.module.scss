@@ -129,6 +129,10 @@
           .cardTitle {
             color: white;
           }
+
+          .cardDescription {
+            color: variables.$lightgray-200;
+          }
         }
 
         &:active {
