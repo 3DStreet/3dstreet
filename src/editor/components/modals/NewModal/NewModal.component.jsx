@@ -4,7 +4,12 @@ import useStore from '@/store.js';
 import styles from './NewModal.module.scss';
 import { createBlankScene, inputStreetmix } from '@/editor/lib/SceneUtils.js';
 import { Button } from '@/editor/components/elements';
-import { Upload24Icon, ChatbotIcon, GeospatialIcon } from '@/editor/icons';
+import {
+  Upload24Icon,
+  ChatbotIcon,
+  GeospatialIcon,
+  ManagedStreetIcon
+} from '@/editor/icons';
 import {
   createIntersection,
   createManagedStreetFromStreetObject
@@ -213,7 +218,7 @@ export const NewModal = () => {
       description: 'Start with a pre-configured street template',
       imagePath: '/ui_assets/cards/new-blank.jpg',
       actionType: 'basic_street',
-      icon: '🛣️'
+      icon: <ManagedStreetIcon />
     },
     {
       title: 'Import from Streetmix',
