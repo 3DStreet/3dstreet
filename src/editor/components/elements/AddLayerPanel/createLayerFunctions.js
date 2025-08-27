@@ -308,3 +308,25 @@ export function createSplatObject() {
     entity.play();
   }
 }
+
+export function createPanoramaSphere() {
+  // Create a sphere with panorama texture for AR/VR experiences
+  const panoramaUrl = prompt(
+    'Please enter a URL to a 360° panorama image',
+    'https://kfarr.github.io/ar-tour-assets/panoramic/world_b5da22ec-c745-40b3-ac6b-01247b8c212b_skybox.png'
+  );
+
+  if (panoramaUrl && panoramaUrl !== '') {
+    const definition = {
+      element: 'a-entity',
+      components: {
+        geometry:
+          'primitive: sphere; radius: 100; segmentsWidth: 64; segmentsHeight: 32',
+        material: `shader: flat; side: back; src: ${panoramaUrl}`,
+        scale: '-1 1 1',
+        'data-layer-name': 'Sphere Geometry • 360° Panorama'
+      }
+    };
+    AFRAME.INSPECTOR.execute('entitycreate', definition);
+  }
+}
