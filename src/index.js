@@ -209,20 +209,7 @@ AFRAME.registerComponent('streetmix-loader', {
         // Connection success
         const streetmixResponseObject = JSON.parse(this.response);
 
-        // Extract and set location data if available
-        console.log(
-          '[streetmix-loader] Full Streetmix response:',
-          streetmixResponseObject
-        );
-        console.log(
-          '[streetmix-loader] Street data structure:',
-          streetmixResponseObject.data
-        );
-        console.log(
-          '[streetmix-loader] Street object:',
-          streetmixResponseObject.data.street
-        );
-
+        // Extract and set location data if available (v1 - just save lat/lon)
         const streetLocation = streetmixResponseObject.data.street?.location;
         console.log('[streetmix-loader] Extracted location:', streetLocation);
 
@@ -236,24 +223,59 @@ AFRAME.registerComponent('streetmix-loader', {
             '[streetmix-loader] Found location data in Streetmix:',
             streetLocation
           );
-          // Import setSceneLocation utility
-          import('./editor/lib/utils.js').then(({ setSceneLocation }) => {
-            setSceneLocation(
-              streetLocation.latlng.lat,
-              streetLocation.latlng.lng
-            )
-              .then(() => {
+
+          // Get the reference layers element
+          const geoLayer = document.getElementById('reference-layers');
+          if (geoLayer) {
+            import('./utils.js').then(({ roundCoord }) => {
+              const lat = roundCoord(parseFloat(streetLocation.latlng.lat));
+              const lng = roundCoord(parseFloat(streetLocation.latlng.lng));
+
+              // Set only lat/lon without triggering the geo cloud function
+              // This sets maps to 'none' initially to avoid triggering any map loading
+              const geoData = {
+                latitude: lat,
+                longitude: lng,
+                maps: 'none'
+              };
+
+              // Update or add the street-geo component
+              if (
+                window.AFRAME &&
+                window.AFRAME.INSPECTOR &&
+                window.AFRAME.INSPECTOR.execute
+              ) {
+                window.AFRAME.INSPECTOR.execute(
+                  geoLayer.hasAttribute('street-geo')
+                    ? 'entityupdate'
+                    : 'componentadd',
+                  {
+                    entity: geoLayer,
+                    component: 'street-geo',
+                    value: geoData
+                  }
+                );
                 console.log(
-                  '[streetmix-loader] Successfully set scene location from Streetmix'
+                  '[streetmix-loader] Set lat/lon from Streetmix without triggering geo cloud function'
                 );
-              })
-              .catch((error) => {
-                console.warn(
-                  '[streetmix-loader] Failed to set scene location:',
-                  error
+              } else {
+                // Fallback if inspector not available
+                geoLayer.setAttribute('street-geo', geoData);
+                console.log(
+                  '[streetmix-loader] Set lat/lon via setAttribute (inspector not available)'
                 );
-              });
-          });
+              }
+
+              // Manually trigger location sync update
+              import('./editor/lib/location-sync.js').then(
+                ({ updateLocationInStore }) => {
+                  if (updateLocationInStore) {
+                    updateLocationInStore();
+                  }
+                }
+              );
+            });
+          }
         } else {
           console.log(
             '[streetmix-loader] No location data found in Streetmix response'

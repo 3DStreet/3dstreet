@@ -551,20 +551,7 @@ AFRAME.registerComponent('managed-street', {
       this.refreshManagedEntities();
       this.remove();
 
-      // Extract and set location data if available
-      console.log(
-        '[managed-street] Full Streetmix response:',
-        streetmixResponseObject
-      );
-      console.log(
-        '[managed-street] Street data structure:',
-        streetmixResponseObject.data
-      );
-      console.log(
-        '[managed-street] Street object:',
-        streetmixResponseObject.data.street
-      );
-
+      // Extract and set location data if available (v1 - just save lat/lon)
       const streetLocation = streetmixResponseObject.data.street?.location;
       console.log('[managed-street] Extracted location:', streetLocation);
 
@@ -578,18 +565,53 @@ AFRAME.registerComponent('managed-street', {
           '[managed-street] Found location data in Streetmix:',
           streetLocation
         );
-        // Import setSceneLocation utility
-        const { setSceneLocation } = await import('../editor/lib/utils.js');
-        try {
-          await setSceneLocation(
-            streetLocation.latlng.lat,
-            streetLocation.latlng.lng
+
+        // Get the reference layers element
+        const geoLayer = document.getElementById('reference-layers');
+        if (geoLayer) {
+          const { roundCoord } = await import('../../src/utils.js');
+          const lat = roundCoord(parseFloat(streetLocation.latlng.lat));
+          const lng = roundCoord(parseFloat(streetLocation.latlng.lng));
+
+          // Set only lat/lon without triggering the geo cloud function
+          // This sets maps to 'none' initially to avoid triggering any map loading
+          const geoData = {
+            latitude: lat,
+            longitude: lng,
+            maps: 'none'
+          };
+
+          // Update or add the street-geo component
+          if (AFRAME.INSPECTOR && AFRAME.INSPECTOR.execute) {
+            AFRAME.INSPECTOR.execute(
+              geoLayer.hasAttribute('street-geo')
+                ? 'entityupdate'
+                : 'componentadd',
+              {
+                entity: geoLayer,
+                component: 'street-geo',
+                value: geoData
+              }
+            );
+            console.log(
+              '[managed-street] Set lat/lon from Streetmix without triggering geo cloud function'
+            );
+          } else {
+            // Fallback if inspector not available
+            geoLayer.setAttribute('street-geo', geoData);
+            console.log(
+              '[managed-street] Set lat/lon via setAttribute (inspector not available)'
+            );
+          }
+
+          // Manually trigger location sync update
+          import('../editor/lib/location-sync').then(
+            ({ updateLocationInStore }) => {
+              if (updateLocationInStore) {
+                updateLocationInStore();
+              }
+            }
           );
-          console.log(
-            '[managed-street] Successfully set scene location from Streetmix'
-          );
-        } catch (error) {
-          console.warn('[managed-street] Failed to set scene location:', error);
         }
       } else {
         console.log(
