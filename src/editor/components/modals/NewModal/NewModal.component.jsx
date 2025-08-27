@@ -67,9 +67,12 @@ export const NewModal = () => {
         AFRAME.scenes[0].addEventListener(
           'newScene',
           () => {
-            saveScene(true);
             // Create managed street with default 60ft ROW
             createManagedStreetFromStreetObject('0 0 0', stroad60ftROW);
+            // Save after creating the street
+            setTimeout(() => {
+              saveScene(true);
+            }, 100);
             posthog.capture('scene_created_from_template', {
               template_type: 'basic_street',
               street_template: '60ft_ROW',
@@ -117,8 +120,11 @@ export const NewModal = () => {
         AFRAME.scenes[0].addEventListener(
           'newScene',
           () => {
-            saveScene(true);
             createIntersection('0 0 0');
+            // Save after creating the intersection
+            setTimeout(() => {
+              saveScene(true);
+            }, 100);
             posthog.capture('scene_created_from_template', {
               template_type: 'intersection',
               intersection_type: '90_degree',
@@ -134,7 +140,6 @@ export const NewModal = () => {
         AFRAME.scenes[0].addEventListener(
           'newScene',
           () => {
-            saveScene(true);
             // Create a sphere with panorama texture
             const definition = {
               element: 'a-entity',
@@ -148,6 +153,10 @@ export const NewModal = () => {
               }
             };
             AFRAME.INSPECTOR.execute('entitycreate', definition);
+            // Save after creating the panorama sphere
+            setTimeout(() => {
+              saveScene(true);
+            }, 100);
             posthog.capture('scene_created_from_template', {
               template_type: 'ar_panorama',
               panorama_source: 'default_skybox',
