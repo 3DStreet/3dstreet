@@ -109,6 +109,23 @@ export async function setSceneLocation(latitude, longitude) {
       // Get the reference layers element
       const geoLayer = document.getElementById('reference-layers');
 
+      // Get current street-geo component data
+      const currentGeoData = geoLayer.hasAttribute('street-geo')
+        ? geoLayer.getAttribute('street-geo')
+        : {};
+
+      // If current map type is 'none', automatically set it to 'google3d'
+      const mapType =
+        currentGeoData.maps === 'none' || !currentGeoData.maps
+          ? 'google3d'
+          : currentGeoData.maps;
+
+      if (currentGeoData.maps === 'none') {
+        console.log(
+          '[setSceneLocation] Map type was "none", automatically setting to "google3d"'
+        );
+      }
+
       // Update or add the street-geo component
       AFRAME.INSPECTOR.execute(
         geoLayer.hasAttribute('street-geo') ? 'entityupdate' : 'componentadd',
@@ -123,7 +140,8 @@ export async function setSceneLocation(latitude, longitude) {
             geoidHeight: data.geoidHeight,
             locationString: data.location?.locationString || '',
             intersectionString:
-              data.nearestIntersection?.intersectionString || ''
+              data.nearestIntersection?.intersectionString || '',
+            maps: mapType // Set the map type
           }
         }
       );
