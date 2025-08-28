@@ -9,6 +9,26 @@ import useStore from '@/store';
 import { useState, useEffect } from 'react';
 import Events from '../../lib/Events';
 import { Tooltip } from 'radix-ui';
+import { getLocationDisplayString } from '../../lib/geo-utils.js';
+
+// Add CSS animation styles
+if (typeof document !== 'undefined') {
+  const style = document.createElement('style');
+  style.textContent = `
+    @keyframes gradientShift {
+      0% {
+        background-position: 0% 50%;
+      }
+      100% {
+        background-position: 100% 50%;
+      }
+    }
+  `;
+  if (!document.head.querySelector('style[data-gradient-shift]')) {
+    style.setAttribute('data-gradient-shift', 'true');
+    document.head.appendChild(style);
+  }
+}
 
 const TooltipWrapper = ({ children, content, side = 'bottom', ...props }) => {
   return (
@@ -162,11 +182,15 @@ FlatteningShapeSelector.propTypes = {
 
 const GeoSidebar = ({ entity }) => {
   const setModal = useStore((state) => state.setModal);
+  const geoData = useStore((state) => state.geoData);
   const { currentUser, tokenProfile } = useAuthContext();
   const startCheckout = useStore((state) => state.startCheckout);
 
   // Force re-render when entity updates
   const [, forceUpdate] = useState({});
+
+  // State for location display string
+  const [locationDisplay, setLocationDisplay] = useState('Location');
 
   useEffect(() => {
     if (!entity) return;
@@ -185,6 +209,23 @@ const GeoSidebar = ({ entity }) => {
       Events.off('entityupdate', handleEntityUpdate);
     };
   }, [entity]);
+
+  // Fetch location display string when geoData changes
+  useEffect(() => {
+    const fetchLocationDisplay = async () => {
+      if (geoData.latitude && geoData.longitude) {
+        const displayString = await getLocationDisplayString(
+          geoData.latitude,
+          geoData.longitude
+        );
+        setLocationDisplay(displayString);
+      } else {
+        setLocationDisplay('Location');
+      }
+    };
+
+    fetchLocationDisplay();
+  }, [geoData.latitude, geoData.longitude]);
 
   const getShapeEntities = () => {
     const entities = Array.from(document.querySelectorAll('[class*="shape"]'));
@@ -210,233 +251,305 @@ const GeoSidebar = ({ entity }) => {
   // Check if entity and its components exist
   const component = entity?.components?.['street-geo'];
 
+  // Check if we have lat/lon but no ellipsoidalHeight (incomplete geo data)
+  const hasIncompleteGeoData =
+    geoData.latitude &&
+    geoData.longitude &&
+    !geoData.ellipsoidalHeight &&
+    !geoData.locationString;
+
   return (
     <Tooltip.Provider>
       <div className="geo-sidebar">
         <div className="geo-controls">
           <div className="details">
-            {/* Map Source Selection */}
-            {component && component.schema && component.data && (
+            {/* Show CTA when we have incomplete geo data */}
+            {hasIncompleteGeoData && (
               <div className="propertyRow" style={{ marginBottom: '16px' }}>
-                <div className="fakePropertyRowLabel">Map Type</div>
-                <div
-                  style={{ display: 'flex', gap: '8px', alignItems: 'center' }}
+                <Button
+                  variant="toolbtn"
+                  style={{
+                    width: '100%',
+                    background:
+                      'linear-gradient(135deg, #774dee 0%, #9333ea 50%, #774dee 100%)',
+                    backgroundSize: '200% 200%',
+                    animation:
+                      'gradientShift 2s ease-in-out infinite alternate',
+                    border: '1px solid rgba(119, 77, 238, 0.6)',
+                    color: 'white',
+                    fontWeight: '600',
+                    fontSize: '14px',
+                    padding: '16px 20px',
+                    borderRadius: '10px',
+                    cursor: 'pointer',
+                    transition: 'all 0.3s ease',
+                    boxShadow: '0 6px 25px rgba(119, 77, 238, 0.4)',
+                    textAlign: 'center',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    minHeight: '60px'
+                  }}
+                  onClick={openGeoModal}
+                  onMouseEnter={(e) => {
+                    e.target.style.transform = 'translateY(-2px)';
+                    e.target.style.boxShadow =
+                      '0 8px 30px rgba(119, 77, 238, 0.6)';
+                    e.target.style.background =
+                      'linear-gradient(135deg, #8b5cf6 0%, #a855f7 50%, #8b5cf6 100%)';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.target.style.transform = 'translateY(0px)';
+                    e.target.style.boxShadow =
+                      '0 6px 25px rgba(119, 77, 238, 0.4)';
+                    e.target.style.background =
+                      'linear-gradient(135deg, #774dee 0%, #9333ea 50%, #774dee 100%)';
+                  }}
                 >
-                  {['none', 'google3d', 'mapbox2d', 'osm3d'].map((mapType) => (
-                    <TooltipWrapper
-                      key={mapType}
-                      content={
-                        mapType === 'google3d'
-                          ? 'Google 3D Map Tiles'
-                          : mapType === 'mapbox2d'
-                            ? 'Mapbox 2D Satellite'
-                            : mapType === 'osm3d'
-                              ? 'Open Street Map 2.5D Buildings'
-                              : 'No Map'
-                      }
-                    >
-                      <button
-                        onClick={() => {
-                          if (window.AFRAME && window.AFRAME.INSPECTOR) {
-                            AFRAME.INSPECTOR.execute('entityupdate', {
-                              entity: entity,
-                              component: 'street-geo',
-                              property: 'maps',
-                              value: mapType
-                            });
-                          }
-                        }}
-                        style={{
-                          width: '50px',
-                          height: '40px',
-                          border:
-                            component.data['maps'] === mapType
-                              ? '2px solid #774dee'
-                              : '1px solid #4b4b4b',
-                          borderRadius: '6px',
-                          background:
-                            component.data['maps'] === mapType
-                              ? '#4c1d95'
-                              : '#2d2d2d',
-                          cursor: 'pointer',
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          fontSize: '16px',
-                          transition: 'all 0.2s',
-                          position: 'relative'
-                        }}
-                      >
-                        {/* Map icons */}
-                        {mapType === 'google3d' && (
-                          <>
-                            <img
-                              src="/ui_assets/map-icon1.jpg"
-                              alt="Google 3D"
-                              style={{
-                                width: '24px',
-                                height: '24px',
-                                objectFit: 'cover',
-                                borderRadius: '2px'
-                              }}
-                            />
-                            <span
-                              style={{
-                                position: 'absolute',
-                                bottom: '4px',
-                                fontSize: '8px',
-                                color: '#ffffff',
-                                fontWeight: '600',
-                                textShadow:
-                                  '0 1px 2px rgba(0,0,0,0.8), 0 0 4px rgba(0,0,0,0.6)',
-                                pointerEvents: 'none'
-                              }}
-                            >
-                              3D
-                            </span>
-                          </>
-                        )}
-                        {mapType === 'mapbox2d' && (
-                          <>
-                            <img
-                              src="/ui_assets/map-icon2.jpg"
-                              alt="Mapbox 2D"
-                              style={{
-                                width: '24px',
-                                height: '24px',
-                                objectFit: 'cover',
-                                borderRadius: '2px'
-                              }}
-                            />
-                            <span
-                              style={{
-                                position: 'absolute',
-                                bottom: '4px',
-                                fontSize: '8px',
-                                color: '#ffffff',
-                                fontWeight: '600',
-                                textShadow:
-                                  '0 1px 2px rgba(0,0,0,0.8), 0 0 4px rgba(0,0,0,0.6)',
-                                pointerEvents: 'none'
-                              }}
-                            >
-                              2D
-                            </span>
-                          </>
-                        )}
-                        {mapType === 'osm3d' && (
-                          <>
-                            <img
-                              src="/ui_assets/map-icon3.jpg"
-                              alt="OSM 3D"
-                              style={{
-                                width: '24px',
-                                height: '24px',
-                                objectFit: 'cover',
-                                borderRadius: '2px'
-                              }}
-                            />
-                            <span
-                              style={{
-                                position: 'absolute',
-                                bottom: '4px',
-                                fontSize: '8px',
-                                color: '#ffffff',
-                                fontWeight: '600',
-                                textShadow:
-                                  '0 1px 2px rgba(0,0,0,0.8), 0 0 4px rgba(0,0,0,0.6)',
-                                pointerEvents: 'none'
-                              }}
-                            >
-                              2.5D
-                            </span>
-                          </>
-                        )}
-                        {mapType === 'none' && '🚫'}
-                      </button>
-                    </TooltipWrapper>
-                  ))}
-                </div>
+                  Add Map Layer for {locationDisplay}
+                </Button>
               </div>
             )}
 
-            {/* Combined location header with button */}
-            <div className="propertyRow" style={{ marginBottom: '12px' }}>
-              <div
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'space-between',
-                  width: '100%',
-                  paddingRight: '12px'
-                }}
-              >
-                <div
-                  style={{ display: 'flex', alignItems: 'center', gap: '8px' }}
-                >
-                  <TooltipWrapper
-                    content={
-                      component && component.data && component.data.latitude
-                        ? `This scene's centerpoint is ${component.data.latitude}, ${component.data.longitude}`
-                        : 'This scene has a geolocation centerpoint defined.'
-                    }
+            {/* Map Source Selection - only show when geo data is complete */}
+            {!hasIncompleteGeoData &&
+              component &&
+              component.schema &&
+              component.data && (
+                <div className="propertyRow" style={{ marginBottom: '16px' }}>
+                  <div className="fakePropertyRowLabel">Map Type</div>
+                  <div
+                    style={{
+                      display: 'flex',
+                      gap: '8px',
+                      alignItems: 'center'
+                    }}
                   >
-                    <span
-                      className="success-badge"
-                      style={{
-                        background: '#2d2d2d',
-                        border:
-                          component && component.data && component.data.latitude
-                            ? '1px solid #10b981'
-                            : '1px solid #6b7280',
-                        color: 'white',
-                        padding: '4px 8px',
-                        borderRadius: '4px',
-                        fontSize: '11px',
-                        fontWeight: '500'
-                      }}
+                    {['none', 'google3d', 'mapbox2d', 'osm3d'].map(
+                      (mapType) => (
+                        <TooltipWrapper
+                          key={mapType}
+                          content={
+                            mapType === 'google3d'
+                              ? 'Google 3D Map Tiles'
+                              : mapType === 'mapbox2d'
+                                ? 'Mapbox 2D Satellite'
+                                : mapType === 'osm3d'
+                                  ? 'Open Street Map 2.5D Buildings'
+                                  : 'No Map'
+                          }
+                        >
+                          <button
+                            onClick={() => {
+                              if (window.AFRAME && window.AFRAME.INSPECTOR) {
+                                AFRAME.INSPECTOR.execute('entityupdate', {
+                                  entity: entity,
+                                  component: 'street-geo',
+                                  property: 'maps',
+                                  value: mapType
+                                });
+                              }
+                            }}
+                            style={{
+                              width: '50px',
+                              height: '40px',
+                              border:
+                                component.data['maps'] === mapType
+                                  ? '2px solid #774dee'
+                                  : '1px solid #4b4b4b',
+                              borderRadius: '6px',
+                              background:
+                                component.data['maps'] === mapType
+                                  ? '#4c1d95'
+                                  : '#2d2d2d',
+                              cursor: 'pointer',
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              fontSize: '16px',
+                              transition: 'all 0.2s',
+                              position: 'relative'
+                            }}
+                          >
+                            {/* Map icons */}
+                            {mapType === 'google3d' && (
+                              <>
+                                <img
+                                  src="/ui_assets/map-icon1.jpg"
+                                  alt="Google 3D"
+                                  style={{
+                                    width: '24px',
+                                    height: '24px',
+                                    objectFit: 'cover',
+                                    borderRadius: '2px'
+                                  }}
+                                />
+                                <span
+                                  style={{
+                                    position: 'absolute',
+                                    bottom: '4px',
+                                    fontSize: '8px',
+                                    color: '#ffffff',
+                                    fontWeight: '600',
+                                    textShadow:
+                                      '0 1px 2px rgba(0,0,0,0.8), 0 0 4px rgba(0,0,0,0.6)',
+                                    pointerEvents: 'none'
+                                  }}
+                                >
+                                  3D
+                                </span>
+                              </>
+                            )}
+                            {mapType === 'mapbox2d' && (
+                              <>
+                                <img
+                                  src="/ui_assets/map-icon2.jpg"
+                                  alt="Mapbox 2D"
+                                  style={{
+                                    width: '24px',
+                                    height: '24px',
+                                    objectFit: 'cover',
+                                    borderRadius: '2px'
+                                  }}
+                                />
+                                <span
+                                  style={{
+                                    position: 'absolute',
+                                    bottom: '4px',
+                                    fontSize: '8px',
+                                    color: '#ffffff',
+                                    fontWeight: '600',
+                                    textShadow:
+                                      '0 1px 2px rgba(0,0,0,0.8), 0 0 4px rgba(0,0,0,0.6)',
+                                    pointerEvents: 'none'
+                                  }}
+                                >
+                                  2D
+                                </span>
+                              </>
+                            )}
+                            {mapType === 'osm3d' && (
+                              <>
+                                <img
+                                  src="/ui_assets/map-icon3.jpg"
+                                  alt="OSM 3D"
+                                  style={{
+                                    width: '24px',
+                                    height: '24px',
+                                    objectFit: 'cover',
+                                    borderRadius: '2px'
+                                  }}
+                                />
+                                <span
+                                  style={{
+                                    position: 'absolute',
+                                    bottom: '4px',
+                                    fontSize: '8px',
+                                    color: '#ffffff',
+                                    fontWeight: '600',
+                                    textShadow:
+                                      '0 1px 2px rgba(0,0,0,0.8), 0 0 4px rgba(0,0,0,0.6)',
+                                    pointerEvents: 'none'
+                                  }}
+                                >
+                                  2.5D
+                                </span>
+                              </>
+                            )}
+                            {mapType === 'none' && '🚫'}
+                          </button>
+                        </TooltipWrapper>
+                      )
+                    )}
+                  </div>
+                </div>
+              )}
+
+            {/* Combined location header with button - hide when showing CTA */}
+            {!hasIncompleteGeoData && (
+              <div className="propertyRow" style={{ marginBottom: '12px' }}>
+                <div
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    width: '100%',
+                    paddingRight: '12px'
+                  }}
+                >
+                  <div
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '8px'
+                    }}
+                  >
+                    <TooltipWrapper
+                      content={
+                        component && component.data && component.data.latitude
+                          ? `This scene's centerpoint is ${component.data.latitude}, ${component.data.longitude}`
+                          : 'This scene has a geolocation centerpoint defined.'
+                      }
                     >
-                      {component && component.data && component.data.latitude
-                        ? '✅ Location Set'
-                        : '📍 No Location'}
-                    </span>
-                  </TooltipWrapper>
-                  {!currentUser?.isPro && tokenProfile && (
-                    <TooltipWrapper content="Use geo tokens to set or change a geolocation for your scene.">
                       <span
-                        className="token-badge"
+                        className="success-badge"
                         style={{
                           background: '#2d2d2d',
-                          color: '#9ca3af',
+                          border:
+                            component &&
+                            component.data &&
+                            component.data.latitude
+                              ? '1px solid #10b981'
+                              : '1px solid #6b7280',
+                          color: 'white',
                           padding: '4px 8px',
                           borderRadius: '4px',
-                          fontSize: '10px'
+                          fontSize: '11px',
+                          fontWeight: '500'
                         }}
                       >
-                        <img
-                          src="/ui_assets/token-geo.png"
-                          alt="Geo Token"
-                          style={{
-                            width: '20px',
-                            height: '20px',
-                            marginRight: '3px',
-                            display: 'inline-block',
-                            verticalAlign: 'middle'
-                          }}
-                        />
-                        {tokenProfile.geoToken} free
+                        {component && component.data && component.data.latitude
+                          ? '✅ Location Set'
+                          : '📍 No Location'}
                       </span>
                     </TooltipWrapper>
-                  )}
+                    {!currentUser?.isPro && tokenProfile && (
+                      <TooltipWrapper content="Use geo tokens to set or change a geolocation for your scene.">
+                        <span
+                          className="token-badge"
+                          style={{
+                            background: '#2d2d2d',
+                            color: '#9ca3af',
+                            padding: '4px 8px',
+                            borderRadius: '4px',
+                            fontSize: '10px'
+                          }}
+                        >
+                          <img
+                            src="/ui_assets/token-geo.png"
+                            alt="Geo Token"
+                            style={{
+                              width: '20px',
+                              height: '20px',
+                              marginRight: '3px',
+                              display: 'inline-block',
+                              verticalAlign: 'middle'
+                            }}
+                          />
+                          {tokenProfile.geoToken} free
+                        </span>
+                      </TooltipWrapper>
+                    )}
+                  </div>
+                  <Button variant="toolbtn" onClick={openGeoModal}>
+                    <Magnifier20Icon />
+                    {entity && entity.components
+                      ? 'Change Location'
+                      : 'Set Location'}
+                  </Button>
                 </div>
-                <Button variant="toolbtn" onClick={openGeoModal}>
-                  <Magnifier20Icon />
-                  {entity && entity.components
-                    ? 'Change Location'
-                    : 'Set Location'}
-                </Button>
               </div>
-            </div>
+            )}
 
             {/* Upgrade prompt for users with 0 tokens */}
             {!currentUser?.isPro && tokenProfile?.geoToken === 0 && (
