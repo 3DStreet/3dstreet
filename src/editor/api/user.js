@@ -1,9 +1,8 @@
-const PRO_DOMAINS = ['unam.mx', 'uoregon.edu'];
+const PRO_DOMAINS = ['uoregon.edu'];
 
 const isUserPro = async (user) => {
   if (user) {
     try {
-      // Check if the user's email contains "unam.mx"
       if (
         user.email &&
         PRO_DOMAINS.some((domain) => user.email.includes(domain))

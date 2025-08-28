@@ -224,7 +224,7 @@ exports.shareToDiscord = functions
         } : undefined,
         footer: {
           text: '3DStreet',
-          icon_url: 'https://3dstreet.app/favicon.ico'
+          icon_url: 'https://3dstreet.app/favicon-32x32.png'
         },
         timestamp: new Date().toISOString()
       }]

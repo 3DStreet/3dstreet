@@ -106,5 +106,14 @@ export const customLayersData = [
     description:
       'Place an image such as a sign, reference photo, custom map, etc.',
     handlerFunction: createFunctions.createImageEntity
+  },
+  {
+    name: '360° Panorama Sphere',
+    img: '',
+    requiresPro: false,
+    icon: '',
+    description:
+      'Create an immersive 360° environment from a panoramic image for AR/VR experiences.',
+    handlerFunction: createFunctions.createPanoramaSphere
   }
 ].map((layer, index) => ({ ...layer, id: index + 1 }));

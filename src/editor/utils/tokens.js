@@ -1,5 +1,6 @@
 import { doc, getDoc, setDoc, serverTimestamp } from 'firebase/firestore';
 import { db } from '../services/firebase';
+import { isUserPro } from '../api/user';
 
 export const getTokenProfile = async (userId) => {
   try {
@@ -29,7 +30,9 @@ export const getTokenProfile = async (userId) => {
 export const canUseGeoFeature = async (user) => {
   if (!user) return false;
 
-  if (user.isPro) return true;
+  // Check if user is pro using the centralized function
+  const isPro = await isUserPro(user);
+  if (isPro) return true;
 
   try {
     const tokenProfile = await getTokenProfile(user.uid);
