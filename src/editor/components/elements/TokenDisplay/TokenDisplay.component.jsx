@@ -1,5 +1,5 @@
 import PropTypes from 'prop-types';
-import { useAuthContext } from '../../contexts/index.js';
+import { useAuthContext } from '../../../contexts/index.js';
 
 const TokenDisplay = ({
   tokenType = 'geoToken',
@@ -13,7 +13,12 @@ const TokenDisplay = ({
   }
 
   const tokenCount = tokenProfile[tokenType] || 0;
-  const tokenName = tokenType === 'geoToken' ? 'Geo' : 'Token';
+  const tokenName =
+    tokenType === 'geoToken'
+      ? 'Geo'
+      : tokenType === 'imageToken'
+        ? 'Image'
+        : 'Token';
 
   if (inline) {
     return (

@@ -1,6 +1,7 @@
 const functions = require('firebase-functions');
 const Replicate = require('replicate');
 const admin = require('firebase-admin');
+const { getAuth } = require('firebase-admin/auth');
 
 // Replicate API function for image generation
 const generateReplicateImage = functions
@@ -12,7 +13,64 @@ const generateReplicateImage = functions
       throw new functions.https.HttpsError('unauthenticated', 'User must be authenticated to generate images.');
     }
 
+    const userId = context.auth.uid;
     const { prompt, input_image, guidance = 2.5, num_inference_steps = 30 } = data;
+    
+    // Check if user is Pro or has tokens
+    const db = admin.firestore();
+    let canProceed = false;
+    let isProUser = false;
+
+    // Check if user has Pro subscription or is from pro domains
+    try {
+      const userRecord = await getAuth().getUser(userId);
+      
+      // Check for Pro subscription via custom claims
+      if (userRecord.customClaims && userRecord.customClaims.plan === 'PRO') {
+        canProceed = true;
+        isProUser = true;
+      }
+      
+      // Check for pro domains (uoregon.edu)
+      const PRO_DOMAINS = ['uoregon.edu'];
+      if (!isProUser && userRecord.email) {
+        const userDomain = PRO_DOMAINS.find(domain => userRecord.email.includes(domain));
+        if (userDomain) {
+          canProceed = true;
+          isProUser = true;
+          console.log(`User ${userRecord.email} granted pro access via domain: ${userDomain}`);
+        }
+      }
+    } catch (error) {
+      console.log('Error checking user claims:', error);
+    }
+
+    // If not Pro, check tokens
+    if (!canProceed) {
+      const tokenProfileRef = db.collection('tokenProfile').doc(userId);
+      const tokenDoc = await tokenProfileRef.get();
+      
+      if (tokenDoc.exists) {
+        const tokenData = tokenDoc.data();
+        if (tokenData.imageToken > 0) {
+          canProceed = true;
+        }
+      } else {
+        // Create initial token profile with 3 tokens for each type
+        await tokenProfileRef.set({
+          userId: userId,
+          geoToken: 3,
+          imageToken: 3,
+          createdAt: admin.firestore.FieldValue.serverTimestamp(),
+          updatedAt: admin.firestore.FieldValue.serverTimestamp()
+        });
+        canProceed = true;
+      }
+    }
+
+    if (!canProceed) {
+      throw new functions.https.HttpsError('permission-denied', 'No tokens or Pro subscription available');
+    }
 
     // Validate required data
     if (!prompt || !input_image) {
@@ -88,6 +146,8 @@ const generateReplicateImage = functions
       const output = await replicate.wait(prediction);
 
       console.log('Replicate output:', output);
+      console.log('Replicate output type:', typeof output);
+      console.log('Replicate output keys:', Object.keys(output || {}));
 
       // Clean up temp file if we created one
       if (input_image.startsWith('data:image/') && imageUrl !== input_image) {
@@ -101,10 +161,33 @@ const generateReplicateImage = functions
         }
       }
 
+      // Decrement token if not a Pro user (only after successful image generation)
+      let remainingTokens = null;
+      if (!isProUser) {
+        const tokenProfileRef = db.collection('tokenProfile').doc(userId);
+        const tokenDoc = await tokenProfileRef.get();
+        
+        if (tokenDoc.exists) {
+          const currentTokens = tokenDoc.data().imageToken;
+          const newTokenCount = Math.max(0, currentTokens - 1);
+          
+          await tokenProfileRef.update({
+            imageToken: newTokenCount,
+            updatedAt: admin.firestore.FieldValue.serverTimestamp()
+          });
+          
+          remainingTokens = newTokenCount;
+        }
+      }
+
+      // Handle different output formats from Replicate
+      const imageUrl = Array.isArray(output) ? output[0] : output;
+      
       return { 
         success: true, 
-        image_url: output.output,
-        message: 'Image generated successfully!' 
+        image_url: imageUrl,
+        message: 'Image generated successfully!',
+        remainingTokens: remainingTokens
       };
     } catch (error) {
       console.error('Error generating image with Replicate:', error);

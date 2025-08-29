@@ -11,11 +11,13 @@ import { useAuthContext } from '../../../contexts';
 import { httpsCallable } from 'firebase/functions';
 import { ImgComparisonSlider } from '@img-comparison-slider/react';
 import 'img-comparison-slider/dist/styles.css';
+import { canUseImageFeature } from '../../../utils/tokens';
 
 function ScreenshotModal() {
   const setModal = useStore((state) => state.setModal);
   const modal = useStore((state) => state.modal);
-  const { currentUser } = useAuthContext();
+  const startCheckout = useStore((state) => state.startCheckout);
+  const { currentUser, tokenProfile, refreshTokenProfile } = useAuthContext();
   const [isGeneratingAI, setIsGeneratingAI] = useState(false);
   const [originalImageUrl, setOriginalImageUrl] = useState(null);
   const [aiImageUrl, setAiImageUrl] = useState(null);
@@ -54,6 +56,13 @@ function ScreenshotModal() {
       return;
     }
 
+    // Check if user can use image feature
+    const canUse = await canUseImageFeature(currentUser);
+    if (!canUse) {
+      startCheckout('image');
+      return;
+    }
+
     setIsGeneratingAI(true);
 
     try {
@@ -79,9 +88,21 @@ function ScreenshotModal() {
         setShowOriginal(false);
         STREET.notify.successMessage('AI render generated successfully!');
 
+        // Refresh token profile to get updated count
+        await refreshTokenProfile();
+
+        // Show remaining tokens if not pro
+        if (!currentUser?.isPro && result.data.remainingTokens !== undefined) {
+          STREET.notify.successMessage(
+            `AI render complete! ${result.data.remainingTokens} image tokens remaining.`
+          );
+        }
+
         posthog.capture('ai_image_generated', {
           scene_id: STREET.utils.getCurrentSceneId(),
-          prompt: aiPrompt
+          prompt: aiPrompt,
+          is_pro_user: currentUser?.isPro || false,
+          tokens_available: tokenProfile?.imageToken || 0
         });
       } else {
         throw new Error('Failed to generate image');
@@ -149,7 +170,14 @@ function ScreenshotModal() {
                 ) : (
                   <span>
                     <span>🤖</span>
-                    <span>Generate AI Render (1 token)</span>
+                    <span>
+                      Generate AI Render
+                      {!currentUser?.isPro && tokenProfile && (
+                        <span className={styles.tokenBadge}>
+                          {tokenProfile.imageToken || 0} tokens
+                        </span>
+                      )}
+                    </span>
                   </span>
                 )}
               </Button>
@@ -158,6 +186,14 @@ function ScreenshotModal() {
                   Please log in to use AI rendering
                 </p>
               )}
+              {currentUser &&
+                !currentUser.isPro &&
+                tokenProfile?.imageToken === 0 && (
+                  <p className={styles.noTokensWarning}>
+                    No image tokens remaining. Upgrade to Pro for unlimited AI
+                    renders.
+                  </p>
+                )}
             </div>
 
             {aiImageUrl && (
