@@ -6,174 +6,66 @@ import useStore from '@/store';
 import { Button } from '../../elements';
 import { DownloadIcon } from '../../../icons';
 import { takeScreenshotWithOptions } from '../../../api/scene';
-import {
-  createSceneSnapshot,
-  createSnapshotFromImageUrl,
-  setSnapshotAsSceneThumbnail
-} from '../../../api/snapshot';
-import { doc, getDoc } from 'firebase/firestore';
-import { db, functions } from '../../../services/firebase';
+import { functions } from '../../../services/firebase';
 import { useAuthContext } from '../../../contexts';
 import { httpsCallable } from 'firebase/functions';
+import { ImgComparisonSlider } from '@img-comparison-slider/react';
+import 'img-comparison-slider/dist/styles.css';
 
 function ScreenshotModal() {
   const setModal = useStore((state) => state.setModal);
   const modal = useStore((state) => state.modal);
   const { currentUser } = useAuthContext();
-  const [isSavingSnapshot, setIsSavingSnapshot] = useState(false);
   const [isGeneratingAI, setIsGeneratingAI] = useState(false);
-  const [snapshots, setSnapshots] = useState([]);
-  const [selectedSnapshotId, setSelectedSnapshotId] = useState(null);
-
-  const loadSnapshots = async () => {
-    const sceneId = STREET.utils.getCurrentSceneId();
-    if (!sceneId) return;
-
-    try {
-      const sceneDocRef = doc(db, 'scenes', sceneId);
-      const sceneSnapshot = await getDoc(sceneDocRef);
-
-      if (sceneSnapshot.exists()) {
-        const sceneData = sceneSnapshot.data();
-        const sceneSnapshots = sceneData.memory?.snapshots || [];
-        setSnapshots(
-          sceneSnapshots.sort(
-            (a, b) => new Date(b.timestamp) - new Date(a.timestamp)
-          )
-        );
-      }
-    } catch (error) {
-      console.error('Error loading snapshots:', error);
-    }
-  };
+  const [originalImageUrl, setOriginalImageUrl] = useState(null);
+  const [aiImageUrl, setAiImageUrl] = useState(null);
+  const [showOriginal, setShowOriginal] = useState(true);
+  const [comparisonMode, setComparisonMode] = useState(false);
 
   const handleDownloadScreenshot = async () => {
-    // Get the currently displayed image
-    const screentockImgElement = document.getElementById(
-      'screentock-destination'
-    );
-
-    if (!screentockImgElement || !screentockImgElement.src) {
+    const imageUrl = showOriginal ? originalImageUrl : aiImageUrl;
+    if (!imageUrl) {
       STREET.notify.errorMessage('No image available to download');
       return;
     }
 
-    // Generate filename based on whether it's a snapshot or live view
     const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
-    const filename = selectedSnapshotId
-      ? `snapshot-${timestamp}.jpg`
-      : `3dstreet-screenshot-${timestamp}.jpg`;
+    const filename = showOriginal
+      ? `3dstreet-screenshot-${timestamp}.jpg`
+      : `3dstreet-ai-render-${timestamp}.jpg`;
 
-    // Create download link
     const link = document.createElement('a');
-    link.href = screentockImgElement.src;
-    link.target = '_blank'; // Opens in new tab, might trigger download
-    link.download = filename; // Hint to download with this filename
+    link.href = imageUrl;
+    link.target = '_blank';
+    link.download = filename;
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
 
     posthog.capture('screenshot_downloaded', {
       scene_id: STREET.utils.getCurrentSceneId(),
-      is_snapshot: !!selectedSnapshotId
+      is_ai_render: !showOriginal
     });
   };
 
-  const handleSetAsSceneThumbnail = async () => {
-    const sceneId = STREET.utils.getCurrentSceneId();
-    const authorId = STREET.utils.getAuthorId();
-
-    if (!sceneId) {
-      STREET.notify.errorMessage('Please save your scene first');
-      return;
-    }
-
-    if (!currentUser || currentUser.uid !== authorId) {
-      STREET.notify.errorMessage('Only the scene author can set the thumbnail');
-      return;
-    }
-
-    setIsSavingSnapshot(true);
-
-    try {
-      // Check if a snapshot is selected (AI-generated or existing snapshot)
-      if (selectedSnapshotId) {
-        // Use the existing snapshot as the scene thumbnail
-        await setSnapshotAsSceneThumbnail(sceneId, selectedSnapshotId);
-        STREET.notify.successMessage('Scene thumbnail set successfully!');
-
-        // Reload snapshots to update the default indicator
-        await loadSnapshots();
-
-        posthog.capture('scene_thumbnail_set_from_snapshot', {
-          scene_id: sceneId,
-          snapshot_id: selectedSnapshotId
-        });
-      } else {
-        // Create a new snapshot from the current canvas view
-        await createSceneSnapshot(sceneId, true, 'Scene Thumbnail');
-        STREET.notify.successMessage('Scene thumbnail saved successfully!');
-
-        // Reload snapshots to show the new one
-        await loadSnapshots();
-
-        posthog.capture('scene_thumbnail_set', {
-          scene_id: sceneId
-        });
-      }
-    } catch (error) {
-      console.error('Error setting scene thumbnail:', error);
-      // Check if it's a CORS error
-      if (error.message && error.message.includes('tainted canvas')) {
-        STREET.notify.errorMessage(
-          'Cannot export AI-generated image. Please select it from the snapshots gallery below.'
-        );
-      } else {
-        STREET.notify.errorMessage(
-          'Failed to set scene thumbnail. Please try again.'
-        );
-      }
-    } finally {
-      setIsSavingSnapshot(false);
-    }
-  };
-
   const handleGenerateAIImage = async () => {
-    const sceneId = STREET.utils.getCurrentSceneId();
-    const authorId = STREET.utils.getAuthorId();
-
-    if (!sceneId) {
-      STREET.notify.errorMessage('Please save your scene first');
-      return;
-    }
-
-    if (!currentUser || currentUser.uid !== authorId) {
-      STREET.notify.errorMessage(
-        'Only the scene author can generate AI images'
-      );
-      return;
-    }
-
-    const screentockImgElement = document.getElementById(
-      'screentock-destination'
-    );
-    if (!screentockImgElement || !screentockImgElement.src) {
-      STREET.notify.errorMessage(
-        'No screenshot available. Please generate a preview first.'
-      );
+    if (!originalImageUrl) {
+      STREET.notify.errorMessage('No screenshot available to render');
       return;
     }
 
     setIsGeneratingAI(true);
 
     try {
-      // Hardcoded AI prompt
       const aiPrompt = 'Transform satellite image into high-quality drone shot';
 
-      // Call the cloud function
       const generateReplicateImage = httpsCallable(
         functions,
         'generateReplicateImage'
+      );
+
+      const screentockImgElement = document.getElementById(
+        'screentock-destination'
       );
       const result = await generateReplicateImage({
         prompt: aiPrompt,
@@ -183,33 +75,12 @@ function ScreenshotModal() {
       });
 
       if (result.data.success) {
-        // Create a snapshot from the generated image
-        const newSnapshot = await createSnapshotFromImageUrl(
-          sceneId,
-          result.data.image_url,
-          `AI: ${aiPrompt}`
-        );
-
-        STREET.notify.successMessage(
-          'AI image generated and snapshot created!'
-        );
-
-        // Reload snapshots to show the new AI-generated one
-        await loadSnapshots();
-
-        // Select the newly created AI snapshot and display it
-        setSelectedSnapshotId(newSnapshot.id);
-        const screentockImgElement = document.getElementById(
-          'screentock-destination'
-        );
-        if (screentockImgElement) {
-          // Use high-res version if available, otherwise use standard resolution
-          const imageUrl = newSnapshot.imagePathHD || newSnapshot.imagePath;
-          screentockImgElement.src = imageUrl;
-        }
+        setAiImageUrl(result.data.image_url);
+        setShowOriginal(false);
+        STREET.notify.successMessage('AI render generated successfully!');
 
         posthog.capture('ai_image_generated', {
-          scene_id: sceneId,
+          scene_id: STREET.utils.getCurrentSceneId(),
           prompt: aiPrompt
         });
       } else {
@@ -218,14 +89,13 @@ function ScreenshotModal() {
     } catch (error) {
       console.error('Error generating AI image:', error);
       STREET.notify.errorMessage(
-        'Failed to generate AI image. Please try again.'
+        'Failed to generate AI render. Please try again.'
       );
     } finally {
       setIsGeneratingAI(false);
     }
   };
 
-  // Track when screenshot modal opens for camera positioning
   useEffect(() => {
     if (modal === 'screenshot') {
       posthog.capture('screenshot_modal_opened', {
@@ -234,19 +104,20 @@ function ScreenshotModal() {
     }
   }, [modal]);
 
-  // Generate preview image when modal opens
   useEffect(() => {
     if (modal === 'screenshot') {
-      // Generate preview with appropriate overlays
       const isPro = currentUser?.isPro;
       takeScreenshotWithOptions({
         type: 'img',
         showLogo: !isPro,
         showWatermark: !isPro,
         imgElementSelector: '#screentock-destination'
+      }).then(() => {
+        const imgElement = document.getElementById('screentock-destination');
+        if (imgElement && imgElement.src) {
+          setOriginalImageUrl(imgElement.src);
+        }
       });
-      // Load existing snapshots
-      loadSnapshots();
     }
   }, [modal, currentUser?.isPro]);
 
@@ -258,7 +129,7 @@ function ScreenshotModal() {
       titleElement={
         <div className="flex pr-4 pt-5">
           <div className="font-large text-center text-2xl">
-            Snapshot & Render
+            Screenshot & AI Render
           </div>
         </div>
       }
@@ -266,30 +137,67 @@ function ScreenshotModal() {
       <div className={styles.modalContainer}>
         <div className={styles.wrapper}>
           <div className={styles.details}>
-            {/* AI Generation Section - only show for scene authors */}
-            {currentUser &&
-              STREET.utils.getCurrentSceneId() &&
-              currentUser.uid === STREET.utils.getAuthorId() && (
-                <div className={styles.aiSection}>
-                  <h3>AI Image Generation</h3>
+            <div className={styles.aiSection}>
+              <Button
+                onClick={handleGenerateAIImage}
+                variant="filled"
+                className={styles.aiButton}
+                disabled={isGeneratingAI || !currentUser}
+              >
+                {isGeneratingAI ? (
+                  'Generating AI Render...'
+                ) : (
+                  <span>
+                    <span>🤖</span>
+                    <span>Generate AI Render (1 token)</span>
+                  </span>
+                )}
+              </Button>
+              {!currentUser && (
+                <p className={styles.loginPrompt}>
+                  Please log in to use AI rendering
+                </p>
+              )}
+            </div>
+
+            {aiImageUrl && (
+              <div className={styles.viewControls}>
+                <div className={styles.toggleButtons}>
                   <Button
-                    onClick={handleGenerateAIImage}
-                    variant="filled"
-                    className={styles.aiButton}
-                    disabled={isGeneratingAI}
+                    variant={
+                      showOriginal && !comparisonMode ? 'filled' : 'outline'
+                    }
+                    onClick={() => {
+                      setShowOriginal(true);
+                      setComparisonMode(false);
+                    }}
+                    size="small"
                   >
-                    {isGeneratingAI ? (
-                      'Generating...'
-                    ) : (
-                      <span>
-                        <span>🤖</span>
-                        <span>Generate AI Image & Create Snapshot</span>
-                      </span>
-                    )}
+                    Show Original
+                  </Button>
+                  <Button
+                    variant={
+                      !showOriginal && !comparisonMode ? 'filled' : 'outline'
+                    }
+                    onClick={() => {
+                      setShowOriginal(false);
+                      setComparisonMode(false);
+                    }}
+                    size="small"
+                  >
+                    Show AI Render
+                  </Button>
+                  <Button
+                    variant={comparisonMode ? 'filled' : 'outline'}
+                    onClick={() => setComparisonMode(!comparisonMode)}
+                    size="small"
+                  >
+                    Compare A/B
                   </Button>
                 </div>
-              )}
-            {/* Upsell button for free users */}
+              </div>
+            )}
+
             {!currentUser?.isPro && (
               <div className={styles.upsellSection}>
                 <Button
@@ -302,91 +210,55 @@ function ScreenshotModal() {
               </div>
             )}
           </div>
+
           <div className={styles.mainContent}>
             <div className={styles.imageWrapper}>
               <div className={styles.screenshotWrapper}>
-                <img id="screentock-destination" />
-                {/* Download button in the upper right corner */}
-                <button
-                  className={styles.downloadIconButton}
-                  onClick={handleDownloadScreenshot}
-                  title="Download image"
-                  aria-label="Download image"
-                >
-                  <DownloadIcon />
-                </button>
-                {/* Pin as Default button in the lower right corner - only show for scene authors */}
-                {currentUser &&
-                  STREET.utils.getCurrentSceneId() &&
-                  currentUser.uid === STREET.utils.getAuthorId() && (
+                {comparisonMode && aiImageUrl ? (
+                  <div className={styles.comparisonContainer}>
+                    <ImgComparisonSlider>
+                      <img
+                        slot="first"
+                        src={originalImageUrl}
+                        alt="Original Screenshot"
+                      />
+                      <img
+                        slot="second"
+                        src={aiImageUrl}
+                        alt="AI Rendered Image"
+                      />
+                    </ImgComparisonSlider>
+                  </div>
+                ) : (
+                  <>
+                    <img
+                      id="screentock-destination"
+                      src={
+                        showOriginal || !aiImageUrl
+                          ? originalImageUrl
+                          : aiImageUrl
+                      }
+                      alt={
+                        showOriginal || !aiImageUrl
+                          ? 'Original Screenshot'
+                          : 'AI Rendered Image'
+                      }
+                    />
                     <button
-                      className={styles.pinDefaultButton}
-                      onClick={handleSetAsSceneThumbnail}
-                      title="Pin as Default"
-                      aria-label="Pin as Default"
-                      disabled={isSavingSnapshot}
+                      className={styles.downloadButton}
+                      onClick={handleDownloadScreenshot}
+                      title="Download image"
+                      aria-label="Download image"
                     >
-                      {isSavingSnapshot ? (
-                        '...'
-                      ) : (
-                        <>
-                          <span className={styles.pinIcon}>📌</span>
-                          <span className={styles.pinText}>Pin as Default</span>
-                        </>
-                      )}
+                      <DownloadIcon />
+                      <span>Download</span>
                     </button>
-                  )}
+                  </>
+                )}
               </div>
             </div>
           </div>
         </div>
-        {/* Snapshots Gallery - Full Width at Bottom */}
-        {snapshots.length > 0 && (
-          <div className={styles.snapshotGalleryBottom}>
-            <h3>Scene Snapshots</h3>
-            <div className={styles.snapshotRow}>
-              {snapshots.map((snapshot, index) => (
-                <div
-                  key={snapshot.id}
-                  className={`${styles.snapshotThumbnail} ${snapshot.isDefault ? styles.defaultSnapshot : ''} ${selectedSnapshotId === snapshot.id ? styles.selectedSnapshot : ''}`}
-                  onClick={() => {
-                    // Load the clicked snapshot into the main image area
-                    const screentockImgElement = document.getElementById(
-                      'screentock-destination'
-                    );
-                    if (screentockImgElement) {
-                      // Use high-res version if available, otherwise use standard resolution
-                      const imageUrl =
-                        snapshot.imagePathHD || snapshot.imagePath;
-                      screentockImgElement.src = imageUrl;
-                    }
-
-                    // Set as selected for visual feedback
-                    setSelectedSnapshotId(snapshot.id);
-
-                    // Optional: Load this snapshot's camera state in the future
-                    console.log('Loaded snapshot:', snapshot.label);
-                  }}
-                  title={snapshot.label}
-                >
-                  <img
-                    src={snapshot.imagePath}
-                    alt={snapshot.label}
-                    loading="lazy"
-                  />
-                  {snapshot.isDefault && (
-                    <div className={styles.defaultBadge}>Default</div>
-                  )}
-                  <div className={styles.snapshotLabel}>
-                    {snapshot.label.length > 25
-                      ? `${snapshot.label.substring(0, 25)}...`
-                      : snapshot.label}
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
       </div>
     </Modal>
   );

@@ -1,544 +1,252 @@
-@use '../../../style/variables.scss';
+.screenshotModalWrapper {
+  :global(.modal__wrapper) {
+    width: 90%;
+    max-width: 1200px;
+    height: 85vh;
+    max-height: 85vh;
+  }
+}
 
-.proFeaturesWrapper {
-  position: relative;
+.modalContainer {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  overflow: hidden;
+}
 
-  .proOverlay {
-    position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    background: rgba(0, 0, 0, 0.5);
-    backdrop-filter: blur(2px);
-    border-radius: 12px;
+.wrapper {
+  display: flex;
+  flex: 1;
+  padding: 20px;
+  gap: 20px;
+  overflow: hidden;
+}
+
+.details {
+  width: 280px;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.aiSection {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+
+  h3 {
+    margin: 0;
+    font-size: 16px;
+    font-weight: 600;
+  }
+}
+
+.aiButton {
+  width: 100%;
+  padding: 12px 16px;
+  font-size: 14px;
+  font-weight: 500;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+
+  span {
     display: flex;
     align-items: center;
-    justify-content: center;
-    z-index: 1;
-    cursor: pointer;
-    transition: background-color 0.2s ease;
+    gap: 8px;
+  }
 
-    &:hover {
-      background: rgba(0, 0, 0, 0.4);
+  &:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+  }
+}
+
+.loginPrompt {
+  font-size: 12px;
+  color: #999;
+  margin: 0;
+  text-align: center;
+}
+
+.viewControls {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.toggleButtons {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+
+  button {
+    width: 100%;
+    padding: 8px 12px;
+    font-size: 13px;
+  }
+}
+
+.upsellSection {
+  margin-top: auto;
+  padding-top: 20px;
+  border-top: 1px solid #333;
+}
+
+.upsellButton {
+  width: 100%;
+  padding: 10px;
+  font-size: 12px;
+  text-align: center;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: opacity 0.2s;
+
+  &:hover {
+    opacity: 0.9;
+  }
+}
+
+.mainContent {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+
+.imageWrapper {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.screenshotWrapper {
+  position: relative;
+  max-width: 100%;
+  max-height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  img {
+    max-width: 100%;
+    max-height: calc(85vh - 120px);
+    object-fit: contain;
+    border-radius: 8px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+  }
+}
+
+.downloadButton {
+  position: absolute;
+  bottom: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 20px;
+  background: rgba(0, 0, 0, 0.85);
+  color: white;
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  border-radius: 24px;
+  cursor: pointer;
+  transition: all 0.2s;
+  font-size: 14px;
+  font-weight: 500;
+  backdrop-filter: blur(10px);
+
+  &:hover {
+    background: rgba(0, 0, 0, 0.95);
+    border-color: rgba(255, 255, 255, 0.5);
+    transform: translateX(-50%) translateY(-2px);
+  }
+
+  svg {
+    width: 18px;
+    height: 18px;
+  }
+}
+
+.comparisonContainer {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  :global(img-comparison-slider) {
+    width: 100%;
+    height: 100%;
+    max-width: 100%;
+    max-height: calc(85vh - 120px);
+
+    :global([slot='first']),
+    :global([slot='second']) {
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
+      border-radius: 8px;
     }
 
-    &:active {
-      background: rgba(0, 0, 0, 0.3);
+    // Style the slider handle
+    :global(.slider) {
+      background: white;
+      width: 3px;
+      box-shadow: 0 0 10px rgba(0, 0, 0, 0.5);
     }
 
-    .proOverlayContent {
+    :global(.handle) {
+      width: 44px;
+      height: 44px;
+      background: white;
+      border-radius: 50%;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
       display: flex;
       align-items: center;
-      gap: 8px;
-      background: rgba(119, 77, 238, 0.9);
-      transition: all 0.2s ease;
-      padding: 8px 16px;
-      border-radius: 8px;
-      color: white;
-      font-weight: 500;
-      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+      justify-content: center;
 
-      &:hover {
-        background: rgba(119, 77, 238, 1);
-        transform: translateY(-1px);
-        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
-      }
-
-      &:active {
-        background: rgba(107, 69, 214, 1);
-        transform: translateY(0);
-        box-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
-      }
-
-      span[role='img'] {
-        font-size: 16px;
+      &:after {
+        content: '◀ ▶';
+        font-size: 12px;
+        color: #333;
       }
     }
   }
 }
 
-.screenshotModalWrapper {
-  position: absolute;
-  top: 55px;
-  left: 0;
-  right: 0;
-  width: 90vw;
-  height: 90vh;
-  overflow: hidden;
-
-  .modalContainer {
-    display: flex;
-    flex-direction: column;
-    height: 100%;
-    min-height: 100%;
-    max-height: 100%;
-    overflow: hidden;
-  }
-
+@media (max-width: 768px) {
   .wrapper {
-    width: 100%;
-    display: flex;
-    align-items: flex-start;
-    gap: 16px;
-    padding: 16px;
-    flex-direction: row-reverse;
-    flex: 1;
-    overflow-y: auto;
-    min-height: 0;
-
-    .mainContent {
-      flex: 1;
-      display: flex;
-      flex-direction: column;
-    }
-
-    .details {
-      width: 240px;
-      background: var(--panel-background);
-      border-radius: 4px;
-      border: 1px solid var(--panel-border);
-      flex-shrink: 0;
-    }
-
-    .header {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      width: 100%;
-      .forms {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        width: 100%;
-
-        .inputContainer {
-          display: flex;
-          align-items: center;
-          width: 50%;
-
-          .input {
-            border: none;
-            background: none;
-          }
-
-          .button {
-            padding: 0px 10px 0px 0px !important;
-            cursor: pointer;
-            transition:
-              filter 0.2s,
-              transform 0.2s,
-              box-shadow 0.2s;
-            filter: brightness(85%);
-
-            svg {
-              width: 30px;
-              height: 30px;
-            }
-            &:hover {
-              filter: brightness(100%);
-              box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
-            }
-
-            &:focus {
-              outline: none;
-            }
-
-            &:active {
-              filter: brightness(70%);
-              box-shadow: none;
-            }
-          }
-        }
-      }
-    }
-    .imageWrapper {
-      justify-content: center;
-      display: flex;
-      height: fit-content;
-      position: relative;
-      width: 100%;
-      max-height: calc(75vh - 200px);
-      max-width: 100%;
-
-      .screenshotWrapper {
-        position: relative;
-        width: 100%;
-        max-width: 100%;
-        max-height: 100%;
-        display: flex;
-        justify-content: center;
-        align-items: center;
-
-        img {
-          max-width: 100%;
-          max-height: calc(75vh - 200px);
-          width: auto;
-          height: auto;
-          object-fit: contain;
-        }
-      }
-
-      .downloadIconButton {
-        position: absolute;
-        top: 12px;
-        right: 12px;
-        background: rgba(0, 0, 0, 0.6);
-        border: none;
-        border-radius: 6px;
-        padding: 8px;
-        cursor: pointer;
-        transition: all 0.2s ease;
-        backdrop-filter: blur(4px);
-        z-index: 2;
-
-        &:hover {
-          background: rgba(0, 0, 0, 0.8);
-          transform: translateY(-1px);
-          box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
-        }
-
-        &:active {
-          background: rgba(0, 0, 0, 0.9);
-          transform: translateY(0);
-        }
-
-        svg {
-          width: 16px;
-          height: 16px;
-          color: white;
-        }
-      }
-
-      .pinDefaultButton {
-        position: absolute;
-        bottom: 12px;
-        right: 12px;
-        background: rgba(0, 0, 0, 0.6);
-        border: none;
-        border-radius: 6px;
-        padding: 8px 12px;
-        cursor: pointer;
-        transition: all 0.2s ease;
-        backdrop-filter: blur(4px);
-        z-index: 2;
-        display: flex;
-        align-items: center;
-        gap: 6px;
-        font-size: 12px;
-        color: white;
-        font-weight: 500;
-
-        &:hover:not(:disabled) {
-          background: rgba(0, 0, 0, 0.8);
-          transform: translateY(-1px);
-          box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
-        }
-
-        &:active:not(:disabled) {
-          background: rgba(0, 0, 0, 0.9);
-          transform: translateY(0);
-        }
-
-        &:disabled {
-          opacity: 0.6;
-          cursor: not-allowed;
-        }
-
-        .pinIcon {
-          font-size: 14px;
-        }
-
-        .pinText {
-          white-space: nowrap;
-        }
-      }
-
-      .thumbnailButton {
-        position: absolute !important;
-        bottom: 16px;
-        right: 16px;
-      }
-
-      .upsellButtonWrapper {
-        position: absolute;
-        bottom: 16px;
-        right: 16px;
-
-        .upsellButton {
-          background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-          border: none;
-          color: white;
-          font-weight: 600;
-          font-size: 12px;
-          padding: 12px 16px;
-          border-radius: 8px;
-          cursor: pointer;
-          transition: all 0.3s ease;
-          box-shadow: 0 4px 12px rgba(118, 75, 162, 0.3);
-
-          &:hover {
-            transform: translateY(-1px);
-            box-shadow: 0 6px 20px rgba(118, 75, 162, 0.4);
-          }
-
-          &:active {
-            transform: translateY(0px);
-            box-shadow: 0 4px 12px rgba(118, 75, 162, 0.3);
-          }
-        }
-      }
-    }
+    flex-direction: column;
   }
 
-  .downloadSection {
-    padding: 16px;
-    border-bottom: 1px solid var(--panel-border);
-    display: flex;
-    flex-direction: column;
-    gap: 12px;
-
-    .downloadButton {
-      width: 100%;
-      justify-content: center;
-    }
-
-    .thumbnailButton {
-      width: 100%;
-      justify-content: center;
-      height: 40px; // Match the height of the primary button
-
-      // Add space between emoji and text
-      span {
-        display: flex;
-        align-items: center;
-        gap: 6px;
-      }
-    }
+  .details {
+    width: 100%;
+    flex-direction: row;
+    flex-wrap: wrap;
   }
 
   .aiSection {
-    padding: 16px;
-    border-bottom: 1px solid var(--panel-border);
-
-    h3 {
-      margin: 0 0 12px 0;
-      font-size: 14px;
-      font-weight: 600;
-      color: var(--text-primary);
-    }
-
-    .promptSection {
-      display: flex;
-      flex-direction: column;
-      gap: 8px;
-
-      .promptInput {
-        width: 100%;
-        padding: 8px 12px;
-        border: 1px solid var(--panel-border);
-        border-radius: 4px;
-        background: var(--input-background);
-        color: var(--text-primary);
-        font-size: 12px;
-        transition: border-color 0.2s ease;
-
-        &:focus {
-          outline: none;
-          border-color: var(--accent);
-        }
-
-        &:disabled {
-          opacity: 0.6;
-          cursor: not-allowed;
-        }
-      }
-
-      .aiButton {
-        width: 100%;
-        justify-content: center;
-        background: linear-gradient(135deg, #10b981 0%, #059669 100%);
-        border: none;
-        color: white;
-        font-size: 12px;
-        height: 40px;
-
-        span {
-          display: flex;
-          align-items: center;
-          gap: 6px;
-        }
-
-        &:disabled {
-          opacity: 0.6;
-          cursor: not-allowed;
-          background: #6b7280;
-        }
-
-        &:hover:not(:disabled) {
-          background: linear-gradient(135deg, #059669 0%, #047857 100%);
-          transform: translateY(-1px);
-          box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
-          transition: all 0.2s ease;
-        }
-
-        &:active:not(:disabled) {
-          transform: translateY(0);
-          box-shadow: 0 2px 6px rgba(16, 185, 129, 0.3);
-        }
-      }
-    }
+    flex: 1;
   }
 
-  .snapshotGalleryBottom {
-    padding: 16px;
-    border-top: 1px solid var(--panel-border);
-    background: var(--panel-background);
-    width: 100%;
-
-    h3 {
-      margin: 0 0 12px 0;
-      font-size: 16px;
-      font-weight: 600;
-      color: var(--text-primary);
-    }
+  .viewControls {
+    flex: 1;
   }
 
-  .snapshotRow {
-    display: flex;
-    gap: 12px;
-    overflow-x: auto;
-    padding-bottom: 8px;
+  .toggleButtons {
+    flex-direction: row;
 
-    &::-webkit-scrollbar {
-      height: 6px;
-    }
-
-    &::-webkit-scrollbar-track {
-      background: var(--panel-border);
-      border-radius: 3px;
-    }
-
-    &::-webkit-scrollbar-thumb {
-      background: var(--accent);
-      border-radius: 3px;
-    }
-  }
-
-  .snapshotThumbnail {
-    flex-shrink: 0;
-    width: 120px;
-    height: 100px;
-    position: relative;
-    border-radius: 6px;
-    overflow: hidden;
-    cursor: pointer;
-    border: 2px solid transparent;
-    transition: all 0.2s ease;
-    background: var(--input-background);
-
-    &:hover {
-      border-color: var(--accent);
-      transform: translateY(-2px);
-      box-shadow: 0 6px 12px rgba(0, 0, 0, 0.25);
-    }
-
-    &.defaultSnapshot {
-      border-color: #10b981;
-    }
-
-    &.selectedSnapshot {
-      border-color: var(--accent);
-      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
-      transform: translateY(-1px);
-    }
-
-    img {
-      width: 100%;
-      height: 75px;
-      object-fit: cover;
-      display: block;
-    }
-
-    .defaultBadge {
-      position: absolute;
-      top: 4px;
-      right: 4px;
-      background: #10b981;
-      color: white;
-      font-size: 9px;
-      padding: 2px 6px;
-      border-radius: 3px;
-      font-weight: 600;
-    }
-
-    .snapshotLabel {
-      position: absolute;
-      bottom: 0;
-      left: 0;
-      right: 0;
-      background: rgba(0, 0, 0, 0.85);
-      color: white;
-      font-size: 10px;
-      padding: 6px 8px;
-      line-height: 1.2;
-      text-overflow: ellipsis;
-      overflow: hidden;
-      white-space: nowrap;
-    }
-  }
-
-  .upsellSection {
-    padding: 16px;
-    border-bottom: 1px solid var(--panel-border);
-
-    .upsellButton {
-      width: 100%;
-      justify-content: center;
-
-      &:hover {
-        background: linear-gradient(
-          135deg,
-          #667eea 0%,
-          #764ba2 100%
-        ) !important;
-        border: none !important;
-        color: white !important;
-        transform: translateY(-1px);
-        box-shadow: 0 6px 20px rgba(118, 75, 162, 0.4);
-        transition: all 0.3s ease;
-      }
-
-      &:active {
-        background: linear-gradient(
-          135deg,
-          #5a6fd8 0%,
-          #6a4190 100%
-        ) !important;
-        transform: translateY(0px);
-        box-shadow: 0 4px 12px rgba(118, 75, 162, 0.3);
-      }
-    }
-  }
-
-  .dropdown {
-    max-width: fit-content;
-    min-width: 155px;
     button {
-      background-color: variables.$purple-900 !important;
-      &:hover {
-        background-color: variables.$purple-800 !important;
-      }
+      flex: 1;
     }
   }
-}
-
-.inputContainer .input {
-  height: 43px;
-  border: none;
-  background: none;
-  padding: 0px;
-  color: variables.$white;
-  display: flex;
-  justify-content: center;
 }
