@@ -1,5 +1,5 @@
 .screenshotModalWrapper {
-  :global(.modal__wrapper) {
+  &:global(.modal-content) {
     width: 90%;
     max-width: 1200px;
     height: 80vh;
