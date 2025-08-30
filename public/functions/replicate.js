@@ -145,9 +145,18 @@ const generateReplicateImage = functions
       // Wait for the prediction to complete
       const output = await replicate.wait(prediction);
 
-      console.log('Replicate output:', output);
-      console.log('Replicate output type:', typeof output);
-      console.log('Replicate output keys:', Object.keys(output || {}));
+      console.log('=== REPLICATE OUTPUT DEBUG ===');
+      console.log('Full output object:', JSON.stringify(output, null, 2));
+      console.log('Output type:', typeof output);
+      console.log('Output is array?:', Array.isArray(output));
+      if (output && typeof output === 'object') {
+        console.log('Output keys:', Object.keys(output));
+        console.log('output.output exists?:', !!output.output);
+        console.log('output.output value:', output.output);
+        console.log('output.output type:', typeof output.output);
+        console.log('output.output is array?:', Array.isArray(output.output));
+      }
+      console.log('=== END DEBUG ===');
 
       // Clean up temp file if we created one
       if (input_image.startsWith('data:image/') && imageUrl !== input_image) {
@@ -181,11 +190,34 @@ const generateReplicateImage = functions
       }
 
       // Handle different output formats from Replicate
-      const imageUrl = Array.isArray(output) ? output[0] : output;
+      // The output from replicate.wait() is the prediction object with an 'output' property
+      let finalImageUrl;
+      if (output && output.output) {
+        // The output.output can be an array or a single URL
+        finalImageUrl = Array.isArray(output.output) ? output.output[0] : output.output;
+      } else if (Array.isArray(output)) {
+        finalImageUrl = output[0];
+      } else if (typeof output === 'string') {
+        finalImageUrl = output;
+      } else {
+        console.error('Unexpected output format from Replicate:', output);
+        throw new Error('Invalid output format from Replicate API');
+      }
+      
+      console.log('=== FINAL RETURN VALUE ===');
+      console.log('finalImageUrl:', finalImageUrl);
+      console.log('finalImageUrl type:', typeof finalImageUrl);
+      console.log('Returning object:', JSON.stringify({
+        success: true,
+        image_url: finalImageUrl,
+        message: 'Image generated successfully!',
+        remainingTokens: remainingTokens
+      }, null, 2));
+      console.log('=== END RETURN DEBUG ===');
       
       return { 
         success: true, 
-        image_url: imageUrl,
+        image_url: finalImageUrl,
         message: 'Image generated successfully!',
         remainingTokens: remainingTokens
       };
