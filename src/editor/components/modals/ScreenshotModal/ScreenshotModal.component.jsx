@@ -28,6 +28,7 @@ function ScreenshotModal() {
   const [currentSceneId, setCurrentSceneId] = useState(null);
   const [renderProgress, setRenderProgress] = useState(0);
   const [renderStartTime, setRenderStartTime] = useState(null);
+  const [elapsedTime, setElapsedTime] = useState(0);
 
   const resetModalState = () => {
     setOriginalImageUrl(null);
@@ -38,6 +39,7 @@ function ScreenshotModal() {
     setIsSavingSnapshot(false);
     setRenderProgress(0);
     setRenderStartTime(null);
+    setElapsedTime(0);
   };
 
   const handleClose = () => {
@@ -139,6 +141,7 @@ function ScreenshotModal() {
     setIsGeneratingAI(true);
     setRenderProgress(0);
     setRenderStartTime(Date.now());
+    setElapsedTime(0);
 
     try {
       const aiPrompt = 'Transform satellite image into high-quality drone shot';
@@ -191,6 +194,7 @@ function ScreenshotModal() {
       setIsGeneratingAI(false);
       setRenderProgress(0);
       setRenderStartTime(null);
+      setElapsedTime(0);
     }
   };
 
@@ -202,7 +206,10 @@ function ScreenshotModal() {
       progressInterval = setInterval(() => {
         const elapsed = Date.now() - renderStartTime;
         const progress = Math.min((elapsed / 20000) * 100, 100); // 20 seconds = 100%
+        const currentElapsed = Math.round(elapsed / 1000);
+
         setRenderProgress(progress);
+        setElapsedTime(currentElapsed);
       }, 100); // Update every 100ms for smooth animation
     }
 
@@ -278,9 +285,7 @@ function ScreenshotModal() {
                     <div className={styles.progressStripes} />
                   </div>
                   <span className={styles.progressText}>
-                    {renderProgress < 100
-                      ? `${Math.round((Date.now() - renderStartTime) / 1000)}/20s`
-                      : `${Math.round((Date.now() - renderStartTime) / 1000)}/20s`}
+                    {`${elapsedTime}/20s`}
                   </span>
                 </div>
               ) : (
