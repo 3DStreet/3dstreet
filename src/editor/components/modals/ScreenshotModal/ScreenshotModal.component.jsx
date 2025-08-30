@@ -26,6 +26,8 @@ function ScreenshotModal() {
   const [comparisonMode, setComparisonMode] = useState(false);
   const [isSavingSnapshot, setIsSavingSnapshot] = useState(false);
   const [currentSceneId, setCurrentSceneId] = useState(null);
+  const [renderProgress, setRenderProgress] = useState(0);
+  const [renderStartTime, setRenderStartTime] = useState(null);
 
   const resetModalState = () => {
     setOriginalImageUrl(null);
@@ -34,6 +36,8 @@ function ScreenshotModal() {
     setComparisonMode(false);
     setIsGeneratingAI(false);
     setIsSavingSnapshot(false);
+    setRenderProgress(0);
+    setRenderStartTime(null);
   };
 
   const handleClose = () => {
@@ -133,6 +137,8 @@ function ScreenshotModal() {
     }
 
     setIsGeneratingAI(true);
+    setRenderProgress(0);
+    setRenderStartTime(Date.now());
 
     try {
       const aiPrompt = 'Transform satellite image into high-quality drone shot';
@@ -183,8 +189,29 @@ function ScreenshotModal() {
       );
     } finally {
       setIsGeneratingAI(false);
+      setRenderProgress(0);
+      setRenderStartTime(null);
     }
   };
+
+  // Progress bar animation effect
+  useEffect(() => {
+    let progressInterval;
+
+    if (isGeneratingAI && renderStartTime) {
+      progressInterval = setInterval(() => {
+        const elapsed = Date.now() - renderStartTime;
+        const progress = Math.min((elapsed / 20000) * 100, 100); // 20 seconds = 100%
+        setRenderProgress(progress);
+      }, 100); // Update every 100ms for smooth animation
+    }
+
+    return () => {
+      if (progressInterval) {
+        clearInterval(progressInterval);
+      }
+    };
+  }, [isGeneratingAI, renderStartTime]);
 
   useEffect(() => {
     if (modal === 'screenshot') {
@@ -238,11 +265,24 @@ function ScreenshotModal() {
             <Button
               onClick={handleGenerateAIImage}
               variant="filled"
-              className={styles.aiButton}
+              className={`${styles.aiButton} ${isGeneratingAI ? styles.renderingButton : ''}`}
               disabled={isGeneratingAI || !currentUser}
             >
               {isGeneratingAI ? (
-                'Generating Render...'
+                <div className={styles.renderingContent}>
+                  <div className={styles.progressContainer}>
+                    <div
+                      className={styles.progressBar}
+                      style={{ width: `${renderProgress}%` }}
+                    />
+                    <div className={styles.progressStripes} />
+                  </div>
+                  <span className={styles.progressText}>
+                    {renderProgress < 100
+                      ? `${Math.round((Date.now() - renderStartTime) / 1000)}/20s`
+                      : `${Math.round((Date.now() - renderStartTime) / 1000)}/20s`}
+                  </span>
+                </div>
               ) : (
                 <span>
                   <span>🤖</span>
