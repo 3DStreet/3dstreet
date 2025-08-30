@@ -25,6 +25,32 @@ function ScreenshotModal() {
   const [showOriginal, setShowOriginal] = useState(true);
   const [comparisonMode, setComparisonMode] = useState(false);
   const [isSavingSnapshot, setIsSavingSnapshot] = useState(false);
+  const [currentSceneId, setCurrentSceneId] = useState(null);
+
+  const resetModalState = () => {
+    setOriginalImageUrl(null);
+    setAiImageUrl(null);
+    setShowOriginal(true);
+    setComparisonMode(false);
+    setIsGeneratingAI(false);
+    setIsSavingSnapshot(false);
+  };
+
+  const handleClose = () => {
+    // Check if there's an unsaved AI render
+    if (aiImageUrl && !showOriginal) {
+      const confirmClose = window.confirm(
+        'You have an unsaved AI render. Are you sure you want to close? The AI render will be lost.'
+      );
+      if (!confirmClose) {
+        return;
+      }
+    }
+
+    // Reset all state when closing
+    resetModalState();
+    setModal(null);
+  };
 
   const handleDownloadScreenshot = async () => {
     const imageUrl = showOriginal ? originalImageUrl : aiImageUrl;
@@ -154,11 +180,19 @@ function ScreenshotModal() {
 
   useEffect(() => {
     if (modal === 'screenshot') {
+      const sceneId = STREET.utils.getCurrentSceneId();
+
+      // Reset state if scene has changed or modal is opening fresh
+      if (sceneId !== currentSceneId) {
+        resetModalState();
+        setCurrentSceneId(sceneId);
+      }
+
       posthog.capture('screenshot_modal_opened', {
-        scene_id: STREET.utils.getCurrentSceneId()
+        scene_id: sceneId
       });
     }
-  }, [modal]);
+  }, [modal, currentSceneId]);
 
   useEffect(() => {
     if (modal === 'screenshot') {
@@ -181,7 +215,7 @@ function ScreenshotModal() {
     <Modal
       className={styles.screenshotModalWrapper}
       isOpen={modal === 'screenshot'}
-      onClose={() => setModal(null)}
+      onClose={handleClose}
       titleElement={
         <div className="flex pr-4 pt-5">
           <div className="font-large text-center text-2xl">
