@@ -159,22 +159,25 @@
   display: flex;
   align-items: center;
   gap: 8px;
-  padding: 10px 20px;
-  background: rgba(0, 0, 0, 0.85);
+  padding: 8px 16px;
+  background-color: rgba(50, 50, 50, 0.8);
   color: white;
-  border: 1px solid rgba(255, 255, 255, 0.3);
-  border-radius: 24px;
+  border: 1px solid transparent;
+  border-radius: 12px;
   cursor: pointer;
-  transition: all 0.2s;
+  transition: all 0.3s;
   font-size: 14px;
   font-weight: 500;
-  backdrop-filter: blur(10px);
   z-index: 10;
 
   &:hover {
-    background: rgba(0, 0, 0, 0.95);
-    border-color: rgba(255, 255, 255, 0.5);
-    transform: translateX(-50%) translateY(-2px);
+    background-color: rgba(50, 50, 50, 0.9);
+    transform: translateX(-50%) translateY(-1px);
+  }
+
+  &:active {
+    background-color: rgba(0, 0, 0, 0.9);
+    color: rgba(228, 228, 231, 1);
   }
 
   svg {
