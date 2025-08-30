@@ -219,7 +219,7 @@ function ScreenshotModal() {
       titleElement={
         <div className="flex pr-4 pt-5">
           <div className="font-large text-center text-2xl">
-            Screenshot & AI Render
+            Screenshot & Render
           </div>
         </div>
       }
@@ -234,12 +234,12 @@ function ScreenshotModal() {
               disabled={isGeneratingAI || !currentUser}
             >
               {isGeneratingAI ? (
-                'Generating AI Render...'
+                'Generating Render...'
               ) : (
                 <span>
                   <span>🤖</span>
                   <span>
-                    Generate AI Render
+                    Generate Render
                     {!currentUser?.isPro && tokenProfile && (
                       <span className={styles.tokenBadge}>
                         {tokenProfile.imageToken || 0} tokens
@@ -258,7 +258,7 @@ function ScreenshotModal() {
               !currentUser.isPro &&
               tokenProfile?.imageToken === 0 && (
                 <p className={styles.noTokensWarning}>
-                  No image tokens remaining. Upgrade to Pro for unlimited AI
+                  No image tokens remaining. Upgrade to Pro for unlimited
                   renders.
                 </p>
               )}
@@ -289,7 +289,7 @@ function ScreenshotModal() {
                   }}
                   size="small"
                 >
-                  Show AI Render
+                  Show Render
                 </Button>
                 <Button
                   variant={comparisonMode ? 'filled' : 'outline'}
