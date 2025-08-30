@@ -145,19 +145,6 @@ const generateReplicateImage = functions
       // Wait for the prediction to complete
       const output = await replicate.wait(prediction);
 
-      console.log('=== REPLICATE OUTPUT DEBUG ===');
-      console.log('Full output object:', JSON.stringify(output, null, 2));
-      console.log('Output type:', typeof output);
-      console.log('Output is array?:', Array.isArray(output));
-      if (output && typeof output === 'object') {
-        console.log('Output keys:', Object.keys(output));
-        console.log('output.output exists?:', !!output.output);
-        console.log('output.output value:', output.output);
-        console.log('output.output type:', typeof output.output);
-        console.log('output.output is array?:', Array.isArray(output.output));
-      }
-      console.log('=== END DEBUG ===');
-
       // Clean up temp file if we created one
       if (input_image.startsWith('data:image/') && imageUrl !== input_image) {
         try {
@@ -203,17 +190,6 @@ const generateReplicateImage = functions
         console.error('Unexpected output format from Replicate:', output);
         throw new Error('Invalid output format from Replicate API');
       }
-      
-      console.log('=== FINAL RETURN VALUE ===');
-      console.log('finalImageUrl:', finalImageUrl);
-      console.log('finalImageUrl type:', typeof finalImageUrl);
-      console.log('Returning object:', JSON.stringify({
-        success: true,
-        image_url: finalImageUrl,
-        message: 'Image generated successfully!',
-        remainingTokens: remainingTokens
-      }, null, 2));
-      console.log('=== END RETURN DEBUG ===');
       
       return { 
         success: true, 
