@@ -2,28 +2,24 @@
   :global(.modal__wrapper) {
     width: 90%;
     max-width: 1200px;
-    height: 85vh;
-    max-height: 85vh;
+    height: 80vh;
+    max-height: 80vh;
+    display: flex;
+    flex-direction: column;
   }
 }
 
-.modalContainer {
-  display: flex;
-  flex-direction: column;
-  height: 100%;
-  overflow: hidden;
-}
-
-.wrapper {
+.modalContent {
   display: flex;
   flex: 1;
+  min-height: 0; // Critical for preventing overflow
   padding: 20px;
   gap: 20px;
-  overflow: hidden;
 }
 
-.details {
+.sidebar {
   width: 280px;
+  flex-shrink: 0;
   display: flex;
   flex-direction: column;
   gap: 20px;
@@ -33,12 +29,6 @@
   display: flex;
   flex-direction: column;
   gap: 10px;
-
-  h3 {
-    margin: 0;
-    font-size: 16px;
-    font-weight: 600;
-  }
 }
 
 .aiButton {
@@ -132,36 +122,32 @@
   }
 }
 
-.mainContent {
+.imageContainer {
   flex: 1;
+  min-width: 0; // Prevent overflow
   display: flex;
   align-items: center;
   justify-content: center;
-  overflow: hidden;
+  position: relative;
 }
 
-.imageWrapper {
+.imageContent {
   width: 100%;
   height: 100%;
   display: flex;
   align-items: center;
   justify-content: center;
-}
-
-.screenshotWrapper {
   position: relative;
-  max-width: 100%;
-  max-height: 100%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
 
   img {
     max-width: 100%;
-    max-height: calc(85vh - 120px);
+    max-height: 100%;
+    width: auto;
+    height: auto;
     object-fit: contain;
     border-radius: 8px;
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+    display: block;
   }
 }
 
@@ -183,6 +169,7 @@
   font-size: 14px;
   font-weight: 500;
   backdrop-filter: blur(10px);
+  z-index: 10;
 
   &:hover {
     background: rgba(0, 0, 0, 0.95);
@@ -197,7 +184,6 @@
 }
 
 .comparisonContainer {
-  position: relative;
   width: 100%;
   height: 100%;
   display: flex;
@@ -205,20 +191,21 @@
   justify-content: center;
 
   :global(img-comparison-slider) {
-    width: 100%;
-    height: 100%;
     max-width: 100%;
-    max-height: calc(85vh - 120px);
+    max-height: 100%;
+    width: auto;
+    height: auto;
 
     :global([slot='first']),
     :global([slot='second']) {
-      width: 100%;
-      height: 100%;
+      max-width: 100%;
+      max-height: 100%;
+      width: auto;
+      height: auto;
       object-fit: contain;
       border-radius: 8px;
     }
 
-    // Style the slider handle
     :global(.slider) {
       background: white;
       width: 3px;
@@ -245,11 +232,11 @@
 }
 
 @media (max-width: 768px) {
-  .wrapper {
+  .modalContent {
     flex-direction: column;
   }
 
-  .details {
+  .sidebar {
     width: 100%;
     flex-direction: row;
     flex-wrap: wrap;

@@ -155,145 +155,133 @@ function ScreenshotModal() {
         </div>
       }
     >
-      <div className={styles.modalContainer}>
-        <div className={styles.wrapper}>
-          <div className={styles.details}>
-            <div className={styles.aiSection}>
-              <Button
-                onClick={handleGenerateAIImage}
-                variant="filled"
-                className={styles.aiButton}
-                disabled={isGeneratingAI || !currentUser}
-              >
-                {isGeneratingAI ? (
-                  'Generating AI Render...'
-                ) : (
+      <div className={styles.modalContent}>
+        <div className={styles.sidebar}>
+          <div className={styles.aiSection}>
+            <Button
+              onClick={handleGenerateAIImage}
+              variant="filled"
+              className={styles.aiButton}
+              disabled={isGeneratingAI || !currentUser}
+            >
+              {isGeneratingAI ? (
+                'Generating AI Render...'
+              ) : (
+                <span>
+                  <span>🤖</span>
                   <span>
-                    <span>🤖</span>
-                    <span>
-                      Generate AI Render
-                      {!currentUser?.isPro && tokenProfile && (
-                        <span className={styles.tokenBadge}>
-                          {tokenProfile.imageToken || 0} tokens
-                        </span>
-                      )}
-                    </span>
+                    Generate AI Render
+                    {!currentUser?.isPro && tokenProfile && (
+                      <span className={styles.tokenBadge}>
+                        {tokenProfile.imageToken || 0} tokens
+                      </span>
+                    )}
                   </span>
-                )}
-              </Button>
-              {!currentUser && (
-                <p className={styles.loginPrompt}>
-                  Please log in to use AI rendering
+                </span>
+              )}
+            </Button>
+            {!currentUser && (
+              <p className={styles.loginPrompt}>
+                Please log in to use AI rendering
+              </p>
+            )}
+            {currentUser &&
+              !currentUser.isPro &&
+              tokenProfile?.imageToken === 0 && (
+                <p className={styles.noTokensWarning}>
+                  No image tokens remaining. Upgrade to Pro for unlimited AI
+                  renders.
                 </p>
               )}
-              {currentUser &&
-                !currentUser.isPro &&
-                tokenProfile?.imageToken === 0 && (
-                  <p className={styles.noTokensWarning}>
-                    No image tokens remaining. Upgrade to Pro for unlimited AI
-                    renders.
-                  </p>
-                )}
-            </div>
+          </div>
 
-            {aiImageUrl && (
-              <div className={styles.viewControls}>
-                <div className={styles.toggleButtons}>
-                  <Button
-                    variant={
-                      showOriginal && !comparisonMode ? 'filled' : 'outline'
-                    }
-                    onClick={() => {
-                      setShowOriginal(true);
-                      setComparisonMode(false);
-                    }}
-                    size="small"
-                  >
-                    Show Original
-                  </Button>
-                  <Button
-                    variant={
-                      !showOriginal && !comparisonMode ? 'filled' : 'outline'
-                    }
-                    onClick={() => {
-                      setShowOriginal(false);
-                      setComparisonMode(false);
-                    }}
-                    size="small"
-                  >
-                    Show AI Render
-                  </Button>
-                  <Button
-                    variant={comparisonMode ? 'filled' : 'outline'}
-                    onClick={() => setComparisonMode(!comparisonMode)}
-                    size="small"
-                  >
-                    Compare A/B
-                  </Button>
-                </div>
-              </div>
-            )}
-
-            {!currentUser?.isPro && (
-              <div className={styles.upsellSection}>
+          {aiImageUrl && (
+            <div className={styles.viewControls}>
+              <div className={styles.toggleButtons}>
                 <Button
-                  variant="toolbtn"
-                  className={styles.upsellButton}
-                  onClick={() => setModal('payment')}
+                  variant={
+                    showOriginal && !comparisonMode ? 'filled' : 'outline'
+                  }
+                  onClick={() => {
+                    setShowOriginal(true);
+                    setComparisonMode(false);
+                  }}
+                  size="small"
                 >
-                  Upgrade to Pro to hide 3DStreet Free watermark
+                  Show Original
+                </Button>
+                <Button
+                  variant={
+                    !showOriginal && !comparisonMode ? 'filled' : 'outline'
+                  }
+                  onClick={() => {
+                    setShowOriginal(false);
+                    setComparisonMode(false);
+                  }}
+                  size="small"
+                >
+                  Show AI Render
+                </Button>
+                <Button
+                  variant={comparisonMode ? 'filled' : 'outline'}
+                  onClick={() => setComparisonMode(!comparisonMode)}
+                  size="small"
+                >
+                  Compare A/B
                 </Button>
               </div>
-            )}
-          </div>
-
-          <div className={styles.mainContent}>
-            <div className={styles.imageWrapper}>
-              <div className={styles.screenshotWrapper}>
-                {comparisonMode && aiImageUrl ? (
-                  <div className={styles.comparisonContainer}>
-                    <ImgComparisonSlider>
-                      <img
-                        slot="first"
-                        src={originalImageUrl}
-                        alt="Original Screenshot"
-                      />
-                      <img
-                        slot="second"
-                        src={aiImageUrl}
-                        alt="AI Rendered Image"
-                      />
-                    </ImgComparisonSlider>
-                  </div>
-                ) : (
-                  <>
-                    <img
-                      id="screentock-destination"
-                      src={
-                        showOriginal || !aiImageUrl
-                          ? originalImageUrl
-                          : aiImageUrl
-                      }
-                      alt={
-                        showOriginal || !aiImageUrl
-                          ? 'Original Screenshot'
-                          : 'AI Rendered Image'
-                      }
-                    />
-                    <button
-                      className={styles.downloadButton}
-                      onClick={handleDownloadScreenshot}
-                      title="Download image"
-                      aria-label="Download image"
-                    >
-                      <DownloadIcon />
-                      <span>Download</span>
-                    </button>
-                  </>
-                )}
-              </div>
             </div>
-          </div>
+          )}
+
+          {!currentUser?.isPro && (
+            <div className={styles.upsellSection}>
+              <Button
+                variant="toolbtn"
+                className={styles.upsellButton}
+                onClick={() => setModal('payment')}
+              >
+                Upgrade to Pro to hide 3DStreet Free watermark
+              </Button>
+            </div>
+          )}
+        </div>
+
+        <div className={styles.imageContainer}>
+          {comparisonMode && aiImageUrl ? (
+            <div className={styles.comparisonContainer}>
+              <ImgComparisonSlider>
+                <img
+                  slot="first"
+                  src={originalImageUrl}
+                  alt="Original Screenshot"
+                />
+                <img slot="second" src={aiImageUrl} alt="AI Rendered Image" />
+              </ImgComparisonSlider>
+            </div>
+          ) : (
+            <div className={styles.imageContent}>
+              <img
+                id="screentock-destination"
+                src={
+                  showOriginal || !aiImageUrl ? originalImageUrl : aiImageUrl
+                }
+                alt={
+                  showOriginal || !aiImageUrl
+                    ? 'Original Screenshot'
+                    : 'AI Rendered Image'
+                }
+              />
+              <button
+                className={styles.downloadButton}
+                onClick={handleDownloadScreenshot}
+                title="Download image"
+                aria-label="Download image"
+              >
+                <DownloadIcon />
+                <span>Download</span>
+              </button>
+            </div>
+          )}
         </div>
       </div>
     </Modal>
