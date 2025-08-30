@@ -6,6 +6,7 @@ import useStore from '@/store';
 import { Button } from '../../elements';
 import { DownloadIcon } from '../../../icons';
 import { takeScreenshotWithOptions } from '../../../api/scene';
+import { createSceneSnapshot } from '../../../api/snapshot';
 import { functions } from '../../../services/firebase';
 import { useAuthContext } from '../../../contexts';
 import { httpsCallable } from 'firebase/functions';
@@ -23,6 +24,7 @@ function ScreenshotModal() {
   const [aiImageUrl, setAiImageUrl] = useState(null);
   const [showOriginal, setShowOriginal] = useState(true);
   const [comparisonMode, setComparisonMode] = useState(false);
+  const [isSavingSnapshot, setIsSavingSnapshot] = useState(false);
 
   const handleDownloadScreenshot = async () => {
     const imageUrl = showOriginal ? originalImageUrl : aiImageUrl;
@@ -48,6 +50,39 @@ function ScreenshotModal() {
       scene_id: STREET.utils.getCurrentSceneId(),
       is_ai_render: !showOriginal
     });
+  };
+
+  const handleSetAsSceneThumbnail = async () => {
+    const sceneId = STREET.utils.getCurrentSceneId();
+    const authorId = STREET.utils.getAuthorId();
+
+    if (!sceneId) {
+      STREET.notify.errorMessage('Please save your scene first');
+      return;
+    }
+
+    if (!currentUser || currentUser.uid !== authorId) {
+      STREET.notify.errorMessage('Only the scene author can set the thumbnail');
+      return;
+    }
+
+    setIsSavingSnapshot(true);
+
+    try {
+      await createSceneSnapshot(sceneId, true, 'Scene Thumbnail');
+      STREET.notify.successMessage('Scene thumbnail saved successfully!');
+
+      posthog.capture('scene_thumbnail_set', {
+        scene_id: sceneId
+      });
+    } catch (error) {
+      console.error('Error setting scene thumbnail:', error);
+      STREET.notify.errorMessage(
+        'Failed to set scene thumbnail. Please try again.'
+      );
+    } finally {
+      setIsSavingSnapshot(false);
+    }
   };
 
   const handleGenerateAIImage = async () => {
@@ -260,6 +295,27 @@ function ScreenshotModal() {
             </div>
           ) : (
             <div className={styles.imageContent}>
+              {/* Set as Scene Thumbnail button - only show for scene authors */}
+              {currentUser &&
+                STREET.utils.getCurrentSceneId() &&
+                currentUser.uid === STREET.utils.getAuthorId() && (
+                  <button
+                    className={styles.thumbnailButton}
+                    onClick={handleSetAsSceneThumbnail}
+                    disabled={isSavingSnapshot}
+                    title="Set as scene thumbnail"
+                    aria-label="Set as scene thumbnail"
+                  >
+                    {isSavingSnapshot ? (
+                      <span>Saving...</span>
+                    ) : (
+                      <>
+                        <span>📌</span>
+                        <span>Set as Scene Thumbnail</span>
+                      </>
+                    )}
+                  </button>
+                )}
               <img
                 id="screentock-destination"
                 src={

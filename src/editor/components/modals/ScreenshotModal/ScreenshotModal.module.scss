@@ -151,6 +151,46 @@
   }
 }
 
+.thumbnailButton {
+  position: absolute;
+  top: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 16px;
+  background-color: rgba(50, 50, 50, 0.75);
+  color: white;
+  border: 1px solid transparent;
+  border-radius: 12px;
+  cursor: pointer;
+  transition: all 0.3s;
+  font-size: 14px;
+  font-weight: 500;
+  z-index: 10;
+  backdrop-filter: blur(8px);
+
+  &:hover {
+    background-color: rgba(50, 50, 50, 0.9);
+    transform: translateX(-50%) translateY(-1px);
+  }
+
+  &:active {
+    background-color: rgba(0, 0, 0, 0.9);
+    color: rgba(228, 228, 231, 1);
+  }
+
+  &:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+  }
+
+  span:first-child {
+    font-size: 16px;
+  }
+}
+
 .downloadButton {
   position: absolute;
   bottom: 20px;
