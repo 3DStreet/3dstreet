@@ -37,8 +37,16 @@ function ScreenshotModal() {
   };
 
   const handleClose = () => {
-    // Check if there's an unsaved AI render
-    if (aiImageUrl && !showOriginal) {
+    // Check if rendering is in progress
+    if (isGeneratingAI) {
+      const confirmClose = window.confirm(
+        'Rendering in progress. Are you sure you want to close? The render will be cancelled.'
+      );
+      if (!confirmClose) {
+        return;
+      }
+    } else if (aiImageUrl && !showOriginal) {
+      // Check if there's an unsaved AI render
       const confirmClose = window.confirm(
         'You have an unsaved AI render. Are you sure you want to close? The AI render will be lost.'
       );
