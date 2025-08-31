@@ -60,14 +60,9 @@ const PaymentModal = () => {
         ],
         mode: 'subscription',
         success_url: `${window.location.href.split('?')[0]}?payment=success`,
-        cancel_url: `${window.location.href.split('?')[0]}?payment=cancel`,
-        metadata: { userId: currentUser.uid },
-        // allow_promotion_codes: true,
-        subscription_data: {
-          metadata: {
-            userId: currentUser.uid
-          }
-        }
+        cancel_url: `${window.location.href.split('?')[0]}?payment=cancel`
+        // userId is now set server-side from authenticated context for security
+        // allow_promotion_codes: true
       });
 
       const stripe = await getStripe();

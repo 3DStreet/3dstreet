@@ -77,7 +77,7 @@ const ProfileModal = () => {
       functions,
       'createStripeBillingPortal'
     )({
-      user_id: currentUser.uid,
+      // user_id is now set server-side from authenticated context for security
       return_url: `${location.origin}/#/modal/payment`
     });
     setIsLoading(false);

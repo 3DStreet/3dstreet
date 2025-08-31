@@ -62,7 +62,8 @@ exports.createStripeSession = functions
       throw new functions.https.HttpsError('unauthenticated', 'User must be authenticated to create checkout session.');
     }
 
-    const userId = data.metadata.userId;
+    // SECURITY: Always use the authenticated user's ID from context, never trust client-provided IDs
+    const userId = context.auth.uid;
     
     // Get user email from Firebase Auth
     const userRecord = await getAuth().getUser(userId);
@@ -86,6 +87,19 @@ exports.createStripeSession = functions
       data.customer_email = userEmail;
     }
     
+    // Set metadata.userId with the authenticated user's ID for security
+    if (!data.metadata) {
+      data.metadata = {};
+    }
+    data.metadata.userId = userId;
+    
+    if (data.subscription_data) {
+      if (!data.subscription_data.metadata) {
+        data.subscription_data.metadata = {};
+      }
+      data.subscription_data.metadata.userId = userId;
+    }
+    
     const session = await stripe.checkout.sessions.create(data);
 
     return {
@@ -99,8 +113,16 @@ exports.createStripeBillingPortal = functions
   .onCall(async (data, context) => {
     const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
 
+    // Verify user is authenticated
+    if (!context.auth) {
+      throw new functions.https.HttpsError('unauthenticated', 'User must be authenticated to access billing portal.');
+    }
+
+    // SECURITY: Always use the authenticated user's ID from context, never trust client-provided IDs
+    const userId = context.auth.uid;
+
     const collectionRef = admin.firestore().collection("userProfile");
-    const querySnapshot = await collectionRef.where("userId", "==", data.user_id).get();
+    const querySnapshot = await collectionRef.where("userId", "==", userId).get();
     let stripeCustomerId = null;
     querySnapshot.forEach((doc) => {
       stripeCustomerId = doc.data().stripeCustomerId;
