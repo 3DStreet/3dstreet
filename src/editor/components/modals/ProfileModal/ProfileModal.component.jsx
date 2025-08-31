@@ -158,19 +158,103 @@ const ProfileModal = () => {
                   }}
                 >
                   <span>Plan: Free</span>
+                </div>
+                <div
+                  style={{
+                    background: '#374151',
+                    border: '1px solid #4b5563',
+                    borderRadius: '6px',
+                    padding: '8px 12px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    marginTop: '8px'
+                  }}
+                >
                   <span style={{ display: 'flex', alignItems: 'center' }}>
-                    <img
-                      src="/ui_assets/token-geo.png"
-                      alt="Geo Token"
+                    <span
                       style={{
-                        width: '20px',
-                        height: '20px',
-                        marginRight: '6px',
-                        display: 'inline-block',
-                        verticalAlign: 'middle'
+                        display: 'flex',
+                        alignItems: 'center',
+                        background: '#1f2937',
+                        borderRadius: '4px',
+                        padding: '2px 8px 2px 4px',
+                        marginRight: '8px'
                       }}
-                    />
-                    {tokenProfile.geoToken} Free Geotokens
+                    >
+                      <img
+                        src="/ui_assets/token-image.png"
+                        alt="Image Token"
+                        style={{
+                          width: '20px',
+                          height: '20px',
+                          marginRight: '4px',
+                          display: 'inline-block',
+                          verticalAlign: 'middle'
+                        }}
+                      />
+                      <span style={{ color: '#6b7280', marginRight: '4px' }}>
+                        ×
+                      </span>
+                      <span
+                        style={{
+                          fontSize: '16px',
+                          fontWeight: '500',
+                          color: '#ffffff'
+                        }}
+                      >
+                        {tokenProfile.imageToken}
+                      </span>
+                    </span>
+                    <span style={{ fontSize: '14px' }}>Free Image Tokens</span>
+                  </span>
+                </div>
+                <div
+                  style={{
+                    background: '#374151',
+                    border: '1px solid #4b5563',
+                    borderRadius: '6px',
+                    padding: '8px 12px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    marginTop: '8px'
+                  }}
+                >
+                  <span style={{ display: 'flex', alignItems: 'center' }}>
+                    <span
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        background: '#1f2937',
+                        borderRadius: '4px',
+                        padding: '2px 8px 2px 4px',
+                        marginRight: '8px'
+                      }}
+                    >
+                      <img
+                        src="/ui_assets/token-geo.png"
+                        alt="Geo Token"
+                        style={{
+                          width: '20px',
+                          height: '20px',
+                          marginRight: '4px',
+                          display: 'inline-block',
+                          verticalAlign: 'middle'
+                        }}
+                      />
+                      <span style={{ color: '#6b7280', marginRight: '4px' }}>
+                        ×
+                      </span>
+                      <span
+                        style={{
+                          fontSize: '16px',
+                          fontWeight: '500',
+                          color: '#ffffff'
+                        }}
+                      >
+                        {tokenProfile.geoToken}
+                      </span>
+                    </span>
+                    <span style={{ fontSize: '14px' }}>Free Geo Tokens</span>
                   </span>
                 </div>
               </div>
@@ -191,21 +275,121 @@ const ProfileModal = () => {
                     }}
                   >
                     <span>Plan: Geospatial Pro</span>
+                  </div>
+                  {tokenProfile && (
+                    <div
+                      style={{
+                        background: '#374151',
+                        border: '1px solid #4b5563',
+                        borderRadius: '6px',
+                        padding: '8px 12px',
+                        display: 'flex',
+                        justifyContent: 'space-between',
+                        alignItems: 'center',
+                        marginTop: '8px'
+                      }}
+                    >
+                      <span style={{ display: 'flex', alignItems: 'center' }}>
+                        <span
+                          style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            background: '#1f2937',
+                            borderRadius: '4px',
+                            padding: '2px 8px 2px 4px',
+                            marginRight: '8px'
+                          }}
+                        >
+                          <img
+                            src="/ui_assets/token-image.png"
+                            alt="Image Token"
+                            style={{
+                              width: '20px',
+                              height: '20px',
+                              marginRight: '4px',
+                              display: 'inline-block',
+                              verticalAlign: 'middle'
+                            }}
+                          />
+                          <span
+                            style={{ color: '#6b7280', marginRight: '4px' }}
+                          >
+                            ×
+                          </span>
+                          <span
+                            style={{
+                              fontSize: '16px',
+                              fontWeight: '500',
+                              color: '#ffffff'
+                            }}
+                          >
+                            {tokenProfile.imageToken}
+                          </span>
+                        </span>
+                        <span style={{ fontSize: '14px' }}>Image Tokens</span>
+                      </span>
+                      <span style={{ fontSize: '13px', color: '#9ca3af' }}>
+                        Monthly Pro refill:{' '}
+                        {new Date(
+                          new Date().getFullYear(),
+                          new Date().getMonth() + 1,
+                          1
+                        ).toLocaleDateString('en-US', {
+                          month: 'short',
+                          day: 'numeric'
+                        })}
+                      </span>
+                    </div>
+                  )}
+                  <div
+                    style={{
+                      background: '#374151',
+                      border: '1px solid #4b5563',
+                      borderRadius: '6px',
+                      padding: '8px 12px',
+                      display: 'flex',
+                      alignItems: 'center',
+                      marginTop: '8px'
+                    }}
+                  >
                     <span style={{ display: 'flex', alignItems: 'center' }}>
-                      ∞
-                      <img
-                        src="/ui_assets/token-geo.png"
-                        alt="Geo Token"
+                      <span
                         style={{
-                          width: '20px',
-                          height: '20px',
-                          marginRight: '6px',
-                          marginLeft: '6px',
-                          display: 'inline-block',
-                          verticalAlign: 'middle'
+                          display: 'flex',
+                          alignItems: 'center',
+                          background: '#1f2937',
+                          borderRadius: '4px',
+                          padding: '2px 8px 2px 4px',
+                          marginRight: '8px'
                         }}
-                      />
-                      Unlimited Geo Tokens
+                      >
+                        <img
+                          src="/ui_assets/token-geo.png"
+                          alt="Geo Token"
+                          style={{
+                            width: '20px',
+                            height: '20px',
+                            marginRight: '4px',
+                            display: 'inline-block',
+                            verticalAlign: 'middle'
+                          }}
+                        />
+                        <span style={{ color: '#6b7280', marginRight: '4px' }}>
+                          ×
+                        </span>
+                        <span
+                          style={{
+                            fontSize: '16px',
+                            fontWeight: '500',
+                            color: '#ffffff'
+                          }}
+                        >
+                          ∞
+                        </span>
+                      </span>
+                      <span style={{ fontSize: '14px' }}>
+                        Unlimited Geo Tokens
+                      </span>
                     </span>
                   </div>
                 </div>

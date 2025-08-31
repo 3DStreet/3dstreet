@@ -30,6 +30,13 @@ function ScreenshotModal() {
   const [renderStartTime, setRenderStartTime] = useState(null);
   const [elapsedTime, setElapsedTime] = useState(0);
 
+  // Ensure token profile is loaded when modal opens
+  useEffect(() => {
+    if (currentUser && !tokenProfile) {
+      refreshTokenProfile();
+    }
+  }, [currentUser, tokenProfile, refreshTokenProfile]);
+
   const resetModalState = () => {
     setOriginalImageUrl(null);
     setAiImageUrl(null);
@@ -166,15 +173,16 @@ function ScreenshotModal() {
         setShowOriginal(false);
         STREET.notify.successMessage('AI render generated successfully!');
 
-        // Refresh token profile to get updated count
-        await refreshTokenProfile();
-
-        // Show remaining tokens if not pro
-        if (!currentUser?.isPro && result.data.remainingTokens !== undefined) {
-          STREET.notify.successMessage(
-            `AI render complete! ${result.data.remainingTokens} image tokens remaining.`
-          );
+        // Show remaining tokens for all users
+        if (result.data.remainingTokens !== undefined) {
+          const message = currentUser?.isPro
+            ? `AI render complete! ${result.data.remainingTokens} tokens remaining.`
+            : `AI render complete! ${result.data.remainingTokens} image tokens remaining.`;
+          STREET.notify.successMessage(message);
         }
+
+        // Refresh token profile to show updated count in UI
+        await refreshTokenProfile();
 
         posthog.capture('ai_image_generated', {
           scene_id: STREET.utils.getCurrentSceneId(),
@@ -290,12 +298,13 @@ function ScreenshotModal() {
                 </div>
               ) : (
                 <span>
-                  <span>🤖</span>
+                  <span>✨</span>
                   <span>
                     Generate Render
-                    {!currentUser?.isPro && tokenProfile && (
+                    {tokenProfile && (
                       <span className={styles.tokenBadge}>
-                        {tokenProfile.imageToken || 0} tokens
+                        {tokenProfile.imageToken || 0}{' '}
+                        {currentUser?.isPro ? 'tokens' : 'free'}
                       </span>
                     )}
                   </span>
@@ -311,8 +320,8 @@ function ScreenshotModal() {
               !currentUser.isPro &&
               tokenProfile?.imageToken === 0 && (
                 <p className={styles.noTokensWarning}>
-                  No image tokens remaining. Upgrade to Pro for unlimited
-                  renders.
+                  No image tokens remaining. Upgrade to Pro for 100 tokens
+                  refilled monthly.
                 </p>
               )}
           </div>

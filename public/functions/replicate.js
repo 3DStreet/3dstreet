@@ -2,6 +2,7 @@ const functions = require('firebase-functions');
 const Replicate = require('replicate');
 const admin = require('firebase-admin');
 const { getAuth } = require('firebase-admin/auth');
+const { checkAndRefillImageTokensInternal } = require('./token-management.js');
 
 // Replicate API function for image generation
 const generateReplicateImage = functions
@@ -45,6 +46,12 @@ const generateReplicateImage = functions
       console.log('Error checking user claims:', error);
     }
 
+    // For Pro users, check and refill monthly allowance using the internal function
+    if (isProUser) {
+      await checkAndRefillImageTokensInternal(userId);
+      console.log(`Checked and potentially refilled tokens for Pro user ${userId}`);
+    }
+
     // If not Pro, check tokens
     if (!canProceed) {
       const tokenProfileRef = db.collection('tokenProfile').doc(userId);
@@ -56,11 +63,12 @@ const generateReplicateImage = functions
           canProceed = true;
         }
       } else {
-        // Create initial token profile with 3 tokens for each type
+        // Create initial token profile with 5 imageTokens and 3 geoTokens for free users
         await tokenProfileRef.set({
           userId: userId,
           geoToken: 3,
-          imageToken: 3,
+          imageToken: 5,
+          lastMonthlyRefill: null,
           createdAt: admin.firestore.FieldValue.serverTimestamp(),
           updatedAt: admin.firestore.FieldValue.serverTimestamp()
         });
@@ -157,23 +165,23 @@ const generateReplicateImage = functions
         }
       }
 
-      // Decrement token if not a Pro user (only after successful image generation)
+      // Decrement token for ALL users (only after successful image generation)
+      // Pro users get monthly refills but still use tokens
       let remainingTokens = null;
-      if (!isProUser) {
-        const tokenProfileRef = db.collection('tokenProfile').doc(userId);
-        const tokenDoc = await tokenProfileRef.get();
+      const tokenProfileRef = db.collection('tokenProfile').doc(userId);
+      const tokenDoc = await tokenProfileRef.get();
+      
+      if (tokenDoc.exists) {
+        const currentTokens = tokenDoc.data().imageToken;
+        const newTokenCount = Math.max(0, currentTokens - 1);
         
-        if (tokenDoc.exists) {
-          const currentTokens = tokenDoc.data().imageToken;
-          const newTokenCount = Math.max(0, currentTokens - 1);
-          
-          await tokenProfileRef.update({
-            imageToken: newTokenCount,
-            updatedAt: admin.firestore.FieldValue.serverTimestamp()
-          });
-          
-          remainingTokens = newTokenCount;
-        }
+        await tokenProfileRef.update({
+          imageToken: newTokenCount,
+          updatedAt: admin.firestore.FieldValue.serverTimestamp()
+        });
+        
+        remainingTokens = newTokenCount;
+        console.log(`Decremented tokens for user ${userId} (Pro: ${isProUser}): ${currentTokens} -> ${newTokenCount}`);
       }
 
       // Handle different output formats from Replicate

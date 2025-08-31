@@ -2,7 +2,7 @@ import { createContext, useContext, useEffect, useState } from 'react';
 import { auth } from '../services/firebase';
 import PropTypes from 'prop-types';
 import { isUserPro } from '../api/user';
-import { getTokenProfile } from '../utils/tokens';
+import { getTokenProfile, checkAndRefillProTokens } from '../utils/tokens';
 import posthog from 'posthog-js';
 
 const AuthContext = createContext({
@@ -19,6 +19,16 @@ const AuthProvider = ({ children }) => {
   const refreshTokenProfile = async () => {
     if (currentUser) {
       try {
+        // For pro users, call the cloud function to check/refill
+        if (currentUser.isPro) {
+          const refreshedTokens = await checkAndRefillProTokens();
+          if (refreshedTokens) {
+            setTokenProfile(refreshedTokens);
+            return;
+          }
+        }
+
+        // For all users (or if cloud function fails), fetch current tokens
         const tokens = await getTokenProfile(currentUser.uid);
         setTokenProfile(tokens);
       } catch (error) {
@@ -42,8 +52,21 @@ const AuthProvider = ({ children }) => {
       const enrichedUser = { ...user, isPro };
 
       try {
-        const tokens = await getTokenProfile(user.uid);
-        setTokenProfile(tokens);
+        // For pro users, call the cloud function to check/refill
+        if (isPro) {
+          const refreshedTokens = await checkAndRefillProTokens();
+          if (refreshedTokens) {
+            setTokenProfile(refreshedTokens);
+          } else {
+            // Fall back to fetching current tokens
+            const tokens = await getTokenProfile(user.uid);
+            setTokenProfile(tokens);
+          }
+        } else {
+          // For non-pro users, just fetch current tokens
+          const tokens = await getTokenProfile(user.uid);
+          setTokenProfile(tokens);
+        }
       } catch (error) {
         console.error('Error fetching token profile:', error);
       }
