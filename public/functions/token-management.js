@@ -4,8 +4,63 @@ const { getAuth } = require('firebase-admin/auth');
 
 const PRO_MONTHLY_ALLOWANCE = 100;
 
+// Centralized domain validation function using stored secrets
+const validateUserDomain = async (userEmail) => {
+  if (!userEmail) {
+    return { isProDomain: false };
+  }
+
+  try {
+    // Extract domain from email address
+    const userDomain = userEmail.split('@')[1];
+    if (!userDomain) {
+      console.warn(`Invalid email format: ${userEmail}`);
+      return { isProDomain: false };
+    }
+
+    // Get allowed domains from Firebase secret
+    const allowedDomainsSecret = process.env.ALLOWED_PRO_DOMAINS;
+    if (!allowedDomainsSecret) {
+      console.warn('ALLOWED_PRO_DOMAINS secret not configured, falling back to hardcoded domain');
+      // Temporary fallback during migration
+      const fallbackDomains = ['uoregon.edu'];
+      const matchedDomain = fallbackDomains.find(domain => domain === userDomain);
+      return { 
+        isProDomain: !!matchedDomain, 
+        matchedDomain: matchedDomain || undefined 
+      };
+    }
+
+    // Parse the JSON array of allowed domains with proper error handling
+    let allowedDomains;
+    try {
+      allowedDomains = JSON.parse(allowedDomainsSecret);
+      if (!Array.isArray(allowedDomains)) {
+        throw new Error('ALLOWED_PRO_DOMAINS must be a JSON array');
+      }
+    } catch (parseError) {
+      console.error('Error parsing ALLOWED_PRO_DOMAINS secret:', parseError);
+      return { isProDomain: false };
+    }
+
+    const matchedDomain = allowedDomains.find(domain => domain === userDomain);
+    
+    if (matchedDomain) {
+      console.log(`User ${userEmail} has pro access via domain: ${matchedDomain}`);
+      return { isProDomain: true, matchedDomain };
+    }
+
+    return { isProDomain: false };
+  } catch (error) {
+    console.error('Error validating user domain:', error);
+    // Fail safely - don't grant pro access on error
+    return { isProDomain: false };
+  }
+};
+
 // Cloud Function to check and refill image tokens for Pro users
 const checkAndRefillImageTokens = functions
+  .runWith({ secrets: ["ALLOWED_PRO_DOMAINS"] })
   .https
   .onCall(async (data, context) => {
     // Verify user is authenticated
@@ -21,16 +76,8 @@ const checkAndRefillImageTokens = functions
       const userRecord = await getAuth().getUser(userId);
       const isPro = userRecord.customClaims && userRecord.customClaims.plan === 'PRO';
       
-      // Check for pro domains (uoregon.edu)
-      const PRO_DOMAINS = ['uoregon.edu'];
-      let isProDomain = false;
-      if (!isPro && userRecord.email) {
-        const userDomain = PRO_DOMAINS.find(domain => userRecord.email.includes(domain));
-        if (userDomain) {
-          isProDomain = true;
-          console.log(`User ${userRecord.email} has pro access via domain: ${userDomain}`);
-        }
-      }
+      // Use centralized domain validation
+      const { isProDomain } = await validateUserDomain(userRecord.email);
       
       const isProUser = isPro || isProDomain;
       
@@ -124,33 +171,22 @@ const checkAndRefillImageTokensInternal = async (userId) => {
     const userRecord = await getAuth().getUser(userId);
     const isPro = userRecord.customClaims && userRecord.customClaims.plan === 'PRO';
     
-    // Check for pro domains
-    const PRO_DOMAINS = ['uoregon.edu'];
-    let isProDomain = false;
-    if (!isPro && userRecord.email) {
-      const userDomain = PRO_DOMAINS.find(domain => userRecord.email.includes(domain));
-      if (userDomain) {
-        isProDomain = true;
-      }
-    }
+    // Use centralized domain validation
+    const { isProDomain } = await validateUserDomain(userRecord.email);
     
     const isProUser = isPro || isProDomain;
-    
-    if (!isProUser) {
-      return null; // Not a pro user, no refill needed
-    }
     
     // Get current token profile
     const tokenProfileRef = db.collection('tokenProfile').doc(userId);
     const tokenDoc = await tokenProfileRef.get();
     
     if (!tokenDoc.exists) {
-      // Create initial token profile for Pro user
+      // Create initial token profile based on user type
       const newProfile = {
         userId: userId,
         geoToken: 3,
-        imageToken: PRO_MONTHLY_ALLOWANCE,
-        lastMonthlyRefill: `${new Date().getFullYear()}-${new Date().getMonth()}`,
+        imageToken: isProUser ? PRO_MONTHLY_ALLOWANCE : 5, // Pro users get 100, free users get 5
+        lastMonthlyRefill: isProUser ? `${new Date().getFullYear()}-${new Date().getMonth()}` : null,
         createdAt: admin.firestore.FieldValue.serverTimestamp(),
         updatedAt: admin.firestore.FieldValue.serverTimestamp()
       };
@@ -160,6 +196,11 @@ const checkAndRefillImageTokensInternal = async (userId) => {
     }
     
     const tokenData = tokenDoc.data();
+    
+    // Only refill for pro users
+    if (!isProUser) {
+      return tokenData; // Return existing data for free users
+    }
     
     // Check if needs monthly refill
     const now = new Date();
@@ -190,7 +231,59 @@ const checkAndRefillImageTokensInternal = async (userId) => {
   }
 };
 
+// Cloud Function to check if user is Pro (subscription + domain validation)
+const checkUserProStatus = functions
+  .runWith({ secrets: ["ALLOWED_PRO_DOMAINS"] })
+  .https
+  .onCall(async (data, context) => {
+    // Verify user is authenticated
+    if (!context.auth) {
+      throw new functions.https.HttpsError('unauthenticated', 'User must be authenticated.');
+    }
+
+    const userId = context.auth.uid;
+    
+    try {
+      // Check if user is Pro via subscription
+      const userRecord = await getAuth().getUser(userId);
+      const isPro = userRecord.customClaims && userRecord.customClaims.plan === 'PRO';
+      
+      // Check domain validation
+      const { isProDomain, matchedDomain } = await validateUserDomain(userRecord.email);
+      
+      const isProUser = isPro || isProDomain;
+      
+      return {
+        isPro: isProUser,
+        isProSubscription: isPro,
+        isProDomain: isProDomain,
+        matchedDomain: matchedDomain || null,
+        email: userRecord.email
+      };
+      
+    } catch (error) {
+      console.error('Error checking user pro status:', error);
+      throw new functions.https.HttpsError('internal', `Failed to check pro status: ${error.message}`);
+    }
+  });
+
+// Internal helper function to check if user is pro (for other functions to use)
+const isUserProInternal = async (userId) => {
+  try {
+    const userRecord = await getAuth().getUser(userId);
+    const isPro = userRecord.customClaims && userRecord.customClaims.plan === 'PRO';
+    const { isProDomain } = await validateUserDomain(userRecord.email);
+    return isPro || isProDomain;
+  } catch (error) {
+    console.error('Error checking user pro status:', error);
+    return false;
+  }
+};
+
 module.exports = { 
   checkAndRefillImageTokens,
-  checkAndRefillImageTokensInternal 
+  checkAndRefillImageTokensInternal,
+  validateUserDomain,
+  checkUserProStatus,
+  isUserProInternal
 };

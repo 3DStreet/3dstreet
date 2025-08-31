@@ -5,7 +5,7 @@ const { getAuth } = require('firebase-admin/auth');
 const { serveWebXRVariant } = require('./webxr-variant.js');
 const { getGeoidHeight } = require('./geoid-height.js');
 const { generateReplicateImage } = require('./replicate.js');
-const { checkAndRefillImageTokens } = require('./token-management.js');
+const { checkAndRefillImageTokens, checkUserProStatus } = require('./token-management.js');
 
 // Re-export the WebXR variant function
 exports.serveWebXRVariant = serveWebXRVariant;
@@ -16,8 +16,9 @@ exports.getGeoidHeight = getGeoidHeight;
 // Re-export the Replicate function
 exports.generateReplicateImage = generateReplicateImage;
 
-// Re-export the token management function
+// Re-export the token management functions
 exports.checkAndRefillImageTokens = checkAndRefillImageTokens;
+exports.checkUserProStatus = checkUserProStatus;
 
 exports.getScene = functions
   .https

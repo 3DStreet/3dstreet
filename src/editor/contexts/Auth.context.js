@@ -48,12 +48,18 @@ const AuthProvider = ({ children }) => {
 
       localStorage.setItem('token', await user.getIdToken());
 
-      const isPro = await isUserPro(user);
-      const enrichedUser = { ...user, isPro };
+      const proStatus = await isUserPro(user);
+      const enrichedUser = {
+        ...user,
+        isPro: proStatus.isPro,
+        isProSubscription: proStatus.isProSubscription,
+        isProDomain: proStatus.isProDomain,
+        matchedDomain: proStatus.matchedDomain
+      };
 
       try {
         // For pro users, call the cloud function to check/refill
-        if (isPro) {
+        if (proStatus.isPro) {
           const refreshedTokens = await checkAndRefillProTokens();
           if (refreshedTokens) {
             setTokenProfile(refreshedTokens);
@@ -74,7 +80,10 @@ const AuthProvider = ({ children }) => {
       posthog.identify(user.uid, {
         email: user.email,
         name: user.displayName,
-        isPro: isPro
+        isPro: proStatus.isPro,
+        isProSubscription: proStatus.isProSubscription,
+        isProDomain: proStatus.isProDomain,
+        matchedDomain: proStatus.matchedDomain
       });
 
       setCurrentUser(enrichedUser);

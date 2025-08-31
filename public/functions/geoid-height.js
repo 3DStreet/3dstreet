@@ -1,12 +1,12 @@
 const functions = require('firebase-functions');
 const admin = require('firebase-admin');
-const { getAuth } = require('firebase-admin/auth');
 const { getGeoidHeightFromPGM } = require('./geoid.js');
 const { Client: GoogleMapsClient } = require("@googlemaps/google-maps-services-js");
+const { isUserProInternal } = require('./token-management.js');
 
 // Function to get geoid height and location information
 exports.getGeoidHeight = functions
-  .runWith({ secrets: ["GOOGLE_MAPS_ELEVATION_API_KEY"] })
+  .runWith({ secrets: ["GOOGLE_MAPS_ELEVATION_API_KEY", "ALLOWED_PRO_DOMAINS"] })
   .https
   .onCall(async (data, context) => {
     // Check if user is authenticated
@@ -20,32 +20,8 @@ exports.getGeoidHeight = functions
 
     // Check if user is Pro or has tokens
     const db = admin.firestore();
-    let canProceed = false;
-    let isProUser = false;
-
-    // Check if user has Pro subscription or is from pro domains
-    try {
-      const userRecord = await getAuth().getUser(userId);
-      
-      // Check for Pro subscription via custom claims
-      if (userRecord.customClaims && userRecord.customClaims.plan === 'PRO') {
-        canProceed = true;
-        isProUser = true;
-      }
-      
-      // Check for pro domains (uoregon.edu)
-      const PRO_DOMAINS = ['uoregon.edu'];
-      if (!isProUser && userRecord.email) {
-        const userDomain = PRO_DOMAINS.find(domain => userRecord.email.includes(domain));
-        if (userDomain) {
-          canProceed = true;
-          isProUser = true;
-          console.log(`User ${userRecord.email} granted pro access via domain: ${userDomain}`);
-        }
-      }
-    } catch (error) {
-      console.log('Error checking user claims:', error);
-    }
+    const isProUser = await isUserProInternal(userId);
+    let canProceed = isProUser;
 
     // If not Pro, check tokens
     if (!canProceed) {

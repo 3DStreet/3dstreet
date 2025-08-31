@@ -1,12 +1,11 @@
 const functions = require('firebase-functions');
 const Replicate = require('replicate');
 const admin = require('firebase-admin');
-const { getAuth } = require('firebase-admin/auth');
 const { checkAndRefillImageTokensInternal } = require('./token-management.js');
 
 // Replicate API function for image generation
 const generateReplicateImage = functions
-  .runWith({ secrets: ["REPLICATE_API_TOKEN"] })
+  .runWith({ secrets: ["REPLICATE_API_TOKEN", "ALLOWED_PRO_DOMAINS"] })
   .https
   .onCall(async (data, context) => {
     // Verify user is authenticated
@@ -17,67 +16,10 @@ const generateReplicateImage = functions
     const userId = context.auth.uid;
     const { prompt, input_image, guidance = 2.5, num_inference_steps = 30 } = data;
     
-    // Check if user is Pro or has tokens
-    const db = admin.firestore();
-    let canProceed = false;
-    let isProUser = false;
-
-    // Check if user has Pro subscription or is from pro domains
-    try {
-      const userRecord = await getAuth().getUser(userId);
-      
-      // Check for Pro subscription via custom claims
-      if (userRecord.customClaims && userRecord.customClaims.plan === 'PRO') {
-        canProceed = true;
-        isProUser = true;
-      }
-      
-      // Check for pro domains (uoregon.edu)
-      const PRO_DOMAINS = ['uoregon.edu'];
-      if (!isProUser && userRecord.email) {
-        const userDomain = PRO_DOMAINS.find(domain => userRecord.email.includes(domain));
-        if (userDomain) {
-          canProceed = true;
-          isProUser = true;
-          console.log(`User ${userRecord.email} granted pro access via domain: ${userDomain}`);
-        }
-      }
-    } catch (error) {
-      console.log('Error checking user claims:', error);
-    }
-
-    // For Pro users, check and refill monthly allowance using the internal function
-    if (isProUser) {
-      await checkAndRefillImageTokensInternal(userId);
-      console.log(`Checked and potentially refilled tokens for Pro user ${userId}`);
-    }
-
-    // If not Pro, check tokens
-    if (!canProceed) {
-      const tokenProfileRef = db.collection('tokenProfile').doc(userId);
-      const tokenDoc = await tokenProfileRef.get();
-      
-      if (tokenDoc.exists) {
-        const tokenData = tokenDoc.data();
-        if (tokenData.imageToken > 0) {
-          canProceed = true;
-        }
-      } else {
-        // Create initial token profile with 5 imageTokens and 3 geoTokens for free users
-        await tokenProfileRef.set({
-          userId: userId,
-          geoToken: 3,
-          imageToken: 5,
-          lastMonthlyRefill: null,
-          createdAt: admin.firestore.FieldValue.serverTimestamp(),
-          updatedAt: admin.firestore.FieldValue.serverTimestamp()
-        });
-        canProceed = true;
-      }
-    }
-
-    if (!canProceed) {
-      throw new functions.https.HttpsError('permission-denied', 'No tokens or Pro subscription available');
+    // Use the centralized token management function to handle pro users, token refilling, and profile creation
+    const tokenData = await checkAndRefillImageTokensInternal(userId);
+    if (tokenData.imageToken <= 0) {
+      throw new functions.https.HttpsError('resource-exhausted', 'No image tokens available');
     }
 
     // Validate required data
@@ -167,22 +109,18 @@ const generateReplicateImage = functions
 
       // Decrement token for ALL users (only after successful image generation)
       // Pro users get monthly refills but still use tokens
-      let remainingTokens = null;
+      const db = admin.firestore();
       const tokenProfileRef = db.collection('tokenProfile').doc(userId);
-      const tokenDoc = await tokenProfileRef.get();
+      const currentTokens = tokenData.imageToken;
+      const newTokenCount = Math.max(0, currentTokens - 1);
       
-      if (tokenDoc.exists) {
-        const currentTokens = tokenDoc.data().imageToken;
-        const newTokenCount = Math.max(0, currentTokens - 1);
-        
-        await tokenProfileRef.update({
-          imageToken: newTokenCount,
-          updatedAt: admin.firestore.FieldValue.serverTimestamp()
-        });
-        
-        remainingTokens = newTokenCount;
-        console.log(`Decremented tokens for user ${userId} (Pro: ${isProUser}): ${currentTokens} -> ${newTokenCount}`);
-      }
+      await tokenProfileRef.update({
+        imageToken: newTokenCount,
+        updatedAt: admin.firestore.FieldValue.serverTimestamp()
+      });
+      
+      const remainingTokens = newTokenCount;
+      console.log(`Decremented tokens for user ${userId}: ${currentTokens} -> ${newTokenCount}`);
 
       // Handle different output formats from Replicate
       // The output from replicate.wait() is the prediction object with an 'output' property

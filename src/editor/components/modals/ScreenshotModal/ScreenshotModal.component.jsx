@@ -171,7 +171,6 @@ function ScreenshotModal() {
       if (result.data.success) {
         setAiImageUrl(result.data.image_url);
         setShowOriginal(false);
-        STREET.notify.successMessage('AI render generated successfully!');
 
         // Show remaining tokens for all users
         if (result.data.remainingTokens !== undefined) {
@@ -179,6 +178,8 @@ function ScreenshotModal() {
             ? `AI render complete! ${result.data.remainingTokens} tokens remaining.`
             : `AI render complete! ${result.data.remainingTokens} image tokens remaining.`;
           STREET.notify.successMessage(message);
+        } else {
+          STREET.notify.successMessage('AI render generated successfully!');
         }
 
         // Refresh token profile to show updated count in UI
