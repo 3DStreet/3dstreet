@@ -196,7 +196,10 @@ window.addEventListener('beforeunload', (event) => {
   // 2. Current user is not the author (scene not saved by current user)
   const isUnsaved = !sceneId || (currentUser && currentUser.uid !== authorId);
 
-  if (isUnsaved) {
+  // Only show warning if there are actual changes (undo button would be enabled) AND is unsaved
+  const hasChanges = AFRAME.INSPECTOR?.history?.undos?.length > 0;
+
+  if (isUnsaved && hasChanges) {
     const message = 'You have unsaved changes. Are you sure you want to leave?';
     event.preventDefault();
     event.returnValue = message;
