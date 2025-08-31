@@ -56,20 +56,36 @@ exports.createStripeSession = functions
   .https
   .onCall(async (data, context) => {
     const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
+    
+    // Verify user is authenticated
+    if (!context.auth) {
+      throw new functions.https.HttpsError('unauthenticated', 'User must be authenticated to create checkout session.');
+    }
 
-    // get stripeCustomerID if it exists
+    const userId = data.metadata.userId;
+    
+    // Get user email from Firebase Auth
+    const userRecord = await getAuth().getUser(userId);
+    const userEmail = userRecord.email;
+
+    // Check if customer already exists in our records
     const collectionRef = admin.firestore().collection("userProfile");
-    const querySnapshot = await collectionRef.where("userId", "==", data.metadata.userId).get();
+    const querySnapshot = await collectionRef.where("userId", "==", userId).get();
     let stripeCustomerId = null;
     querySnapshot.forEach((doc) => {
       stripeCustomerId = doc.data().stripeCustomerId;
       return; // only need the first one
     });
-    // update data to include stripeCustomerID (data.customer)
 
+    // Set either customer or customer_email (mutually exclusive)
     if (stripeCustomerId) {
+      // Returning customer - use their customer ID
       data.customer = stripeCustomerId;
+    } else if (userEmail) {
+      // New customer - pre-fill their email
+      data.customer_email = userEmail;
     }
+    
     const session = await stripe.checkout.sessions.create(data);
 
     return {
