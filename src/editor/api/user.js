@@ -8,21 +8,20 @@ const isUserPro = async (user) => {
       const checkProStatus = httpsCallable(functions, 'checkUserProStatus');
       const result = await checkProStatus();
 
-      const { isPro, isProSubscription, isProDomain, matchedDomain } =
-        result.data;
+      const { isPro, isProSubscription, isProDomain, teamDomain } = result.data;
 
       if (isPro) {
         if (isProSubscription) {
           console.log('PRO PLAN USER (subscription)');
         }
         if (isProDomain) {
-          console.log(`PRO PLAN USER (domain: ${matchedDomain})`);
+          console.log(`PRO PLAN USER (domain: ${teamDomain})`);
         }
         return {
           isPro: true,
           isProSubscription,
           isProDomain,
-          matchedDomain
+          teamDomain
         };
       } else {
         console.log('FREE PLAN USER');
@@ -30,7 +29,7 @@ const isUserPro = async (user) => {
           isPro: false,
           isProSubscription: false,
           isProDomain: false,
-          matchedDomain: null
+          teamDomain: null
         };
       }
     } catch (error) {
@@ -46,7 +45,7 @@ const isUserPro = async (user) => {
             isPro: true,
             isProSubscription: true,
             isProDomain: false,
-            matchedDomain: null
+            teamDomain: null
           };
         }
       } catch (fallbackError) {
@@ -57,7 +56,7 @@ const isUserPro = async (user) => {
         isPro: false,
         isProSubscription: false,
         isProDomain: false,
-        matchedDomain: null
+        teamDomain: null
       };
     }
   } else {
@@ -66,7 +65,7 @@ const isUserPro = async (user) => {
       isPro: false,
       isProSubscription: false,
       isProDomain: false,
-      matchedDomain: null
+      teamDomain: null
     };
   }
 };

@@ -202,7 +202,7 @@ const ProfileModal = () => {
                           color: '#ffffff'
                         }}
                       >
-                        {tokenProfile.imageToken}
+                        {tokenProfile.genToken}
                       </span>
                     </span>
                     <span style={{ fontSize: '14px' }}>Free Image Tokens</span>
@@ -274,7 +274,11 @@ const ProfileModal = () => {
                       alignItems: 'center'
                     }}
                   >
-                    <span>Plan: Geospatial Pro</span>
+                    <span>
+                      {currentUser?.isProTeam
+                        ? `Plan: Pro Team (${currentUser?.teamDomain})`
+                        : 'Plan: Geospatial Pro'}
+                    </span>
                   </div>
                   {tokenProfile && (
                     <div
@@ -323,7 +327,7 @@ const ProfileModal = () => {
                               color: '#ffffff'
                             }}
                           >
-                            {tokenProfile.imageToken}
+                            {tokenProfile.genToken}
                           </span>
                         </span>
                         <span style={{ fontSize: '14px' }}>Image Tokens</span>
@@ -393,26 +397,28 @@ const ProfileModal = () => {
                     </span>
                   </div>
                 </div>
-                <div
-                  className={styles.manageBillingCard}
-                  style={{ marginTop: '12px' }}
-                >
-                  <div>
-                    {isLoading ? (
-                      <div className={styles.loadingSpinner}>
-                        <Loader className={styles.spinner} />
-                      </div>
-                    ) : (
-                      <Button
-                        variant="ghost"
-                        className={styles.manageSubscription}
-                        onClick={manageSubscription}
-                      >
-                        Manage subscription
-                      </Button>
-                    )}
+                {!currentUser?.isProTeam && (
+                  <div
+                    className={styles.manageBillingCard}
+                    style={{ marginTop: '12px' }}
+                  >
+                    <div>
+                      {isLoading ? (
+                        <div className={styles.loadingSpinner}>
+                          <Loader className={styles.spinner} />
+                        </div>
+                      ) : (
+                        <Button
+                          variant="ghost"
+                          className={styles.manageSubscription}
+                          onClick={manageSubscription}
+                        >
+                          Manage subscription
+                        </Button>
+                      )}
+                    </div>
                   </div>
-                </div>
+                )}
               </div>
             ) : (
               <div className={styles.subscribeCard}>

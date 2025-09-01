@@ -6,7 +6,7 @@ const { isUserProInternal } = require('./token-management.js');
 
 // Function to get geoid height and location information
 exports.getGeoidHeight = functions
-  .runWith({ secrets: ["GOOGLE_MAPS_ELEVATION_API_KEY", "ALLOWED_PRO_DOMAINS"] })
+  .runWith({ secrets: ["GOOGLE_MAPS_ELEVATION_API_KEY", "ALLOWED_PRO_TEAM_DOMAINS"] })
   .https
   .onCall(async (data, context) => {
     // Check if user is authenticated

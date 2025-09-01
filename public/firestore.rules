@@ -39,7 +39,7 @@ service cloud.firestore {
         && request.auth.uid == userId  // Doc ID must match auth UID
         && request.resource.data.userId == userId  // userId field must match
         && request.resource.data.geoToken == 3  // Must start with exactly 3 geo tokens
-        && request.resource.data.imageToken == 3;  // Must start with exactly 3 image tokens
+        && request.resource.data.genToken == 3;  // Must start with exactly 3 image tokens
       
       // DENY all client-side updates - only cloud functions can modify token counts
       allow update: if false;

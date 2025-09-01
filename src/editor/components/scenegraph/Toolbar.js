@@ -127,8 +127,8 @@ function Toolbar({ currentUser, entity }) {
                 <TooltipWrapper
                   content={
                     authUser?.isPro
-                      ? authUser?.isProDomain
-                        ? `3DStreet Team Plan (${authUser?.matchedDomain})`
+                      ? authUser?.isProTeam
+                        ? `3DStreet Team Plan (${authUser?.teamDomain})`
                         : '3DStreet Pro Plan'
                       : '3DStreet Free Community Edition'
                   }
@@ -148,7 +148,7 @@ function Toolbar({ currentUser, entity }) {
                     onClick={() => setModal(currentUser ? 'profile' : 'signin')}
                   >
                     {authUser?.isPro
-                      ? authUser?.isProDomain
+                      ? authUser?.isProTeam
                         ? 'TEAM'
                         : 'PRO'
                       : 'FREE'}

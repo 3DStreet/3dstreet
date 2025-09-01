@@ -54,7 +54,8 @@ const AuthProvider = ({ children }) => {
         isPro: proStatus.isPro,
         isProSubscription: proStatus.isProSubscription,
         isProDomain: proStatus.isProDomain,
-        matchedDomain: proStatus.matchedDomain
+        isProTeam: proStatus.isProDomain, // Alias for clearer semantics
+        teamDomain: proStatus.teamDomain
       };
 
       try {
@@ -83,7 +84,7 @@ const AuthProvider = ({ children }) => {
         isPro: proStatus.isPro,
         isProSubscription: proStatus.isProSubscription,
         isProDomain: proStatus.isProDomain,
-        matchedDomain: proStatus.matchedDomain
+        teamDomain: proStatus.teamDomain
       });
 
       setCurrentUser(enrichedUser);

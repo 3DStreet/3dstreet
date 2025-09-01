@@ -9,19 +9,27 @@ export const getTokenProfile = async (userId) => {
     const tokenProfileDoc = await getDoc(tokenProfileRef);
 
     if (tokenProfileDoc.exists()) {
-      return tokenProfileDoc.data();
+      const data = tokenProfileDoc.data();
+      // Migration: If genToken is missing, provide a default value
+      if (data.geoToken !== undefined && data.genToken === undefined) {
+        console.log(
+          'Warning: Token profile missing genToken field, will be migrated on next server call'
+        );
+        data.genToken = 0; // Will be properly migrated server-side
+      }
+      return data;
     } else {
-      // Create initial token profile with exactly 5 imageTokens and 3 geoTokens for free users
+      // Create initial token profile with exactly 3 genTokens and 3 geoTokens for free users
       const defaultProfile = {
         userId,
         geoToken: 3,
-        imageToken: 5,
+        genToken: 3,
         createdAt: serverTimestamp(),
         updatedAt: serverTimestamp(),
         lastMonthlyRefill: null // Track when pro tokens were last refilled
       };
       await setDoc(tokenProfileRef, defaultProfile);
-      return { ...defaultProfile, geoToken: 3, imageToken: 5 };
+      return { ...defaultProfile, geoToken: 3, genToken: 3 };
     }
   } catch (error) {
     console.error('Error getting token profile:', error);
@@ -91,7 +99,7 @@ export const canUseImageFeature = async (user) => {
 
   try {
     const tokenProfile = await getTokenProfile(user.uid);
-    return tokenProfile.imageToken > 0;
+    return tokenProfile.genToken > 0;
   } catch (error) {
     console.error('Error checking image feature access:', error);
     return false;

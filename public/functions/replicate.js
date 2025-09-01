@@ -5,7 +5,7 @@ const { checkAndRefillImageTokensInternal } = require('./token-management.js');
 
 // Replicate API function for image generation
 const generateReplicateImage = functions
-  .runWith({ secrets: ["REPLICATE_API_TOKEN", "ALLOWED_PRO_DOMAINS"] })
+  .runWith({ secrets: ["REPLICATE_API_TOKEN", "ALLOWED_PRO_TEAM_DOMAINS"] })
   .https
   .onCall(async (data, context) => {
     // Verify user is authenticated
@@ -18,8 +18,8 @@ const generateReplicateImage = functions
     
     // Use the centralized token management function to handle pro users, token refilling, and profile creation
     const tokenData = await checkAndRefillImageTokensInternal(userId);
-    if (tokenData.imageToken <= 0) {
-      throw new functions.https.HttpsError('resource-exhausted', 'No image tokens available');
+    if (tokenData.genToken <= 0) {
+      throw new functions.https.HttpsError('resource-exhausted', 'No generation tokens available');
     }
 
     // Validate required data
@@ -111,11 +111,11 @@ const generateReplicateImage = functions
       // Pro users get monthly refills but still use tokens
       const db = admin.firestore();
       const tokenProfileRef = db.collection('tokenProfile').doc(userId);
-      const currentTokens = tokenData.imageToken;
+      const currentTokens = tokenData.genToken;
       const newTokenCount = Math.max(0, currentTokens - 1);
       
       await tokenProfileRef.update({
-        imageToken: newTokenCount,
+        genToken: newTokenCount,
         updatedAt: admin.firestore.FieldValue.serverTimestamp()
       });
       

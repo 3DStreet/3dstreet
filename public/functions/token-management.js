@@ -19,15 +19,15 @@ const validateUserDomain = async (userEmail) => {
     }
 
     // Get allowed domains from Firebase secret
-    const allowedDomainsSecret = process.env.ALLOWED_PRO_DOMAINS;
+    const allowedDomainsSecret = process.env.ALLOWED_PRO_TEAM_DOMAINS;
     if (!allowedDomainsSecret) {
-      console.warn('ALLOWED_PRO_DOMAINS secret not configured, falling back to hardcoded domain');
+      console.warn('ALLOWED_PRO_TEAM_DOMAINS secret not configured, falling back to hardcoded domain');
       // Temporary fallback during migration
       const fallbackDomains = ['uoregon.edu'];
-      const matchedDomain = fallbackDomains.find(domain => domain === userDomain);
+      const teamDomain = fallbackDomains.find(domain => domain === userDomain);
       return { 
-        isProDomain: !!matchedDomain, 
-        matchedDomain: matchedDomain || undefined 
+        isProDomain: !!teamDomain, 
+        teamDomain: teamDomain || undefined 
       };
     }
 
@@ -36,18 +36,18 @@ const validateUserDomain = async (userEmail) => {
     try {
       allowedDomains = JSON.parse(allowedDomainsSecret);
       if (!Array.isArray(allowedDomains)) {
-        throw new Error('ALLOWED_PRO_DOMAINS must be a JSON array');
+        throw new Error('ALLOWED_PRO_TEAM_DOMAINS must be a JSON array');
       }
     } catch (parseError) {
-      console.error('Error parsing ALLOWED_PRO_DOMAINS secret:', parseError);
+      console.error('Error parsing ALLOWED_PRO_TEAM_DOMAINS secret:', parseError);
       return { isProDomain: false };
     }
 
-    const matchedDomain = allowedDomains.find(domain => domain === userDomain);
+    const teamDomain = allowedDomains.find(domain => domain === userDomain);
     
-    if (matchedDomain) {
-      console.log(`User ${userEmail} has pro access via domain: ${matchedDomain}`);
-      return { isProDomain: true, matchedDomain };
+    if (teamDomain) {
+      console.log(`User ${userEmail} has pro access via domain: ${teamDomain}`);
+      return { isProDomain: true, teamDomain };
     }
 
     return { isProDomain: false };
@@ -60,7 +60,7 @@ const validateUserDomain = async (userEmail) => {
 
 // Cloud Function to check and refill image tokens for Pro users
 const checkAndRefillImageTokens = functions
-  .runWith({ secrets: ["ALLOWED_PRO_DOMAINS"] })
+  .runWith({ secrets: ["ALLOWED_PRO_TEAM_DOMAINS"] })
   .https
   .onCall(async (data, context) => {
     // Verify user is authenticated
@@ -91,7 +91,7 @@ const checkAndRefillImageTokens = functions
         const newProfile = {
           userId: userId,
           geoToken: 3,
-          imageToken: initialTokens,
+          genToken: initialTokens,
           lastMonthlyRefill: isProUser ? `${new Date().getFullYear()}-${new Date().getMonth()}` : null,
           createdAt: admin.firestore.FieldValue.serverTimestamp(),
           updatedAt: admin.firestore.FieldValue.serverTimestamp()
@@ -110,6 +110,21 @@ const checkAndRefillImageTokens = functions
       
       const tokenData = tokenDoc.data();
       
+      // Migration: Add genToken for existing users who only have geoToken
+      if (tokenData.geoToken !== undefined && tokenData.genToken === undefined) {
+        // Give existing users their initial genToken allocation
+        const initialGenTokens = isProUser ? PRO_MONTHLY_ALLOWANCE : 3;
+        
+        await tokenProfileRef.update({
+          genToken: initialGenTokens,
+          lastMonthlyRefill: isProUser ? `${new Date().getFullYear()}-${new Date().getMonth()}` : null,
+          updatedAt: admin.firestore.FieldValue.serverTimestamp()
+        });
+        
+        tokenData.genToken = initialGenTokens;
+        console.log(`Migrated user ${userId}: Added ${initialGenTokens} genTokens (Pro: ${isProUser})`);
+      }
+      
       // If not a Pro user, just return current tokens
       if (!isProUser) {
         return {
@@ -127,21 +142,21 @@ const checkAndRefillImageTokens = functions
       
       if (needsRefill) {
         // Top up to monthly allowance (don't reset if they have more from purchases)
-        const newImageTokens = Math.max(tokenData.imageToken || 0, PRO_MONTHLY_ALLOWANCE);
+        const newImageTokens = Math.max(tokenData.genToken || 0, PRO_MONTHLY_ALLOWANCE);
         
         await tokenProfileRef.update({
-          imageToken: newImageTokens,
+          genToken: newImageTokens,
           lastMonthlyRefill: currentMonthKey,
           updatedAt: admin.firestore.FieldValue.serverTimestamp()
         });
         
-        console.log(`Refilled Pro tokens for user ${userId}: ${tokenData.imageToken} -> ${newImageTokens}`);
+        console.log(`Refilled Pro tokens for user ${userId}: ${tokenData.genToken} -> ${newImageTokens}`);
         
         return {
           success: true,
           tokenProfile: {
             ...tokenData,
-            imageToken: newImageTokens,
+            genToken: newImageTokens,
             lastMonthlyRefill: currentMonthKey
           },
           refilled: true,
@@ -185,7 +200,7 @@ const checkAndRefillImageTokensInternal = async (userId) => {
       const newProfile = {
         userId: userId,
         geoToken: 3,
-        imageToken: isProUser ? PRO_MONTHLY_ALLOWANCE : 5, // Pro users get 100, free users get 5
+        genToken: isProUser ? PRO_MONTHLY_ALLOWANCE : 3, // Pro users get 100, free users get 3
         lastMonthlyRefill: isProUser ? `${new Date().getFullYear()}-${new Date().getMonth()}` : null,
         createdAt: admin.firestore.FieldValue.serverTimestamp(),
         updatedAt: admin.firestore.FieldValue.serverTimestamp()
@@ -196,6 +211,21 @@ const checkAndRefillImageTokensInternal = async (userId) => {
     }
     
     const tokenData = tokenDoc.data();
+    
+    // Migration: Add genToken for existing users who only have geoToken
+    if (tokenData.geoToken !== undefined && tokenData.genToken === undefined) {
+      // Give existing users their initial genToken allocation
+      const initialGenTokens = isProUser ? PRO_MONTHLY_ALLOWANCE : 3;
+      
+      await tokenProfileRef.update({
+        genToken: initialGenTokens,
+        lastMonthlyRefill: isProUser ? `${new Date().getFullYear()}-${new Date().getMonth()}` : null,
+        updatedAt: admin.firestore.FieldValue.serverTimestamp()
+      });
+      
+      tokenData.genToken = initialGenTokens;
+      console.log(`Migrated user ${userId}: Added ${initialGenTokens} genTokens (Pro: ${isProUser})`);
+    }
     
     // Only refill for pro users
     if (!isProUser) {
@@ -208,17 +238,17 @@ const checkAndRefillImageTokensInternal = async (userId) => {
     const needsRefill = !tokenData.lastMonthlyRefill || tokenData.lastMonthlyRefill !== currentMonthKey;
     
     if (needsRefill) {
-      const newImageTokens = Math.max(tokenData.imageToken || 0, PRO_MONTHLY_ALLOWANCE);
+      const newImageTokens = Math.max(tokenData.genToken || 0, PRO_MONTHLY_ALLOWANCE);
       
       await tokenProfileRef.update({
-        imageToken: newImageTokens,
+        genToken: newImageTokens,
         lastMonthlyRefill: currentMonthKey,
         updatedAt: admin.firestore.FieldValue.serverTimestamp()
       });
       
       return {
         ...tokenData,
-        imageToken: newImageTokens,
+        genToken: newImageTokens,
         lastMonthlyRefill: currentMonthKey
       };
     }
@@ -233,7 +263,7 @@ const checkAndRefillImageTokensInternal = async (userId) => {
 
 // Cloud Function to check if user is Pro (subscription + domain validation)
 const checkUserProStatus = functions
-  .runWith({ secrets: ["ALLOWED_PRO_DOMAINS"] })
+  .runWith({ secrets: ["ALLOWED_PRO_TEAM_DOMAINS"] })
   .https
   .onCall(async (data, context) => {
     // Verify user is authenticated
@@ -249,7 +279,7 @@ const checkUserProStatus = functions
       const isPro = userRecord.customClaims && userRecord.customClaims.plan === 'PRO';
       
       // Check domain validation
-      const { isProDomain, matchedDomain } = await validateUserDomain(userRecord.email);
+      const { isProDomain, teamDomain } = await validateUserDomain(userRecord.email);
       
       const isProUser = isPro || isProDomain;
       
@@ -257,7 +287,7 @@ const checkUserProStatus = functions
         isPro: isProUser,
         isProSubscription: isPro,
         isProDomain: isProDomain,
-        matchedDomain: matchedDomain || null,
+        teamDomain: teamDomain || null,
         email: userRecord.email
       };
       

@@ -172,13 +172,18 @@ function ScreenshotModal() {
         setAiImageUrl(result.data.image_url);
         setShowOriginal(false);
 
-        // Show remaining tokens for all users
-        if (result.data.remainingTokens !== undefined) {
+        // Show appropriate success message based on user type
+        if (currentUser?.isProTeam) {
+          // Team users - simple success message only
+          STREET.notify.successMessage('AI render generated successfully!');
+        } else if (result.data.remainingTokens !== undefined) {
+          // Pro/Free users - show token count
           const message = currentUser?.isPro
             ? `AI render complete! ${result.data.remainingTokens} tokens remaining.`
-            : `AI render complete! ${result.data.remainingTokens} image tokens remaining.`;
+            : `AI render complete! ${result.data.remainingTokens} gen tokens remaining.`;
           STREET.notify.successMessage(message);
         } else {
+          // Fallback message
           STREET.notify.successMessage('AI render generated successfully!');
         }
 
@@ -189,7 +194,7 @@ function ScreenshotModal() {
           scene_id: STREET.utils.getCurrentSceneId(),
           prompt: aiPrompt,
           is_pro_user: currentUser?.isPro || false,
-          tokens_available: tokenProfile?.imageToken || 0
+          tokens_available: tokenProfile?.genToken || 0
         });
       } else {
         throw new Error('Failed to generate image');
@@ -304,7 +309,7 @@ function ScreenshotModal() {
                     Generate Render
                     {tokenProfile && (
                       <span className={styles.tokenBadge}>
-                        {tokenProfile.imageToken || 0}{' '}
+                        {tokenProfile.genToken || 0 || 0}{' '}
                         {currentUser?.isPro ? 'tokens' : 'free'}
                       </span>
                     )}
@@ -319,9 +324,9 @@ function ScreenshotModal() {
             )}
             {currentUser &&
               !currentUser.isPro &&
-              tokenProfile?.imageToken === 0 && (
+              tokenProfile?.genToken === 0 && (
                 <p className={styles.noTokensWarning}>
-                  No image tokens remaining. Upgrade to Pro for 100 tokens
+                  No gen tokens remaining. Upgrade to Pro for 100 tokens
                   refilled monthly.
                 </p>
               )}
