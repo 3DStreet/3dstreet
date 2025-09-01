@@ -14,7 +14,7 @@ const generateReplicateImage = functions
     }
 
     const userId = context.auth.uid;
-    const { prompt, input_image, guidance = 2.5, num_inference_steps = 30 } = data;
+    const { prompt, input_image, guidance = 2.5, num_inference_steps = 30, model_version } = data;
     
     // Use the centralized token management function to handle pro users, token refilling, and profile creation
     const tokenData = await checkAndRefillImageTokensInternal(userId);
@@ -80,14 +80,33 @@ const generateReplicateImage = functions
         num_inference_steps
       });
 
+      // Use provided model version or default to Kontext Real Earth
+      const defaultModelVersion = "2af4da47bcb7b55a0705b0de9933701f7607531d763ae889241f827a648c1755";
+      const modelVersionToUse = model_version || defaultModelVersion;
+
+      // Different models use different input parameter names and formats
+      let modelInput = {
+        prompt: prompt,
+        guidance: guidance,
+        num_inference_steps: num_inference_steps
+      };
+
+      // Check if this is the Nano Banana model (uses different input format)
+      if (modelVersionToUse === 'f0a9d34b12ad1c1cd76269a844b218ff4e64e128ddaba93e15891f47368958a0') {
+        // Nano Banana uses image_input as an array
+        modelInput.image_input = [imageUrl];
+        modelInput.output_format = 'jpg';
+        // Remove parameters that Nano Banana doesn't use
+        delete modelInput.guidance;
+        delete modelInput.num_inference_steps;
+      } else {
+        // Kontext models use input_image as string
+        modelInput.input_image = imageUrl;
+      }
+
       const prediction = await replicate.predictions.create({
-        version: "2af4da47bcb7b55a0705b0de9933701f7607531d763ae889241f827a648c1755",
-        input: {
-          prompt: prompt,
-          input_image: imageUrl,
-          guidance: guidance,
-          num_inference_steps: num_inference_steps
-        }
+        version: modelVersionToUse,
+        input: modelInput
       });
 
       console.log('Replicate prediction created:', prediction);

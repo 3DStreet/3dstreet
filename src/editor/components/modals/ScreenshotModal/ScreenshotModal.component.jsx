@@ -18,6 +18,25 @@ import { ImgComparisonSlider } from '@img-comparison-slider/react';
 import 'img-comparison-slider/dist/styles.css';
 import { canUseImageFeature } from '../../../utils/tokens';
 
+// Available AI models
+const AI_MODELS = {
+  'kontext-realearth': {
+    name: 'Kontext Real Earth',
+    version: '2af4da47bcb7b55a0705b0de9933701f7607531d763ae889241f827a648c1755',
+    prompt: 'Transform satellite image into high-quality drone shot'
+  },
+  'flux-kontext-pro': {
+    name: 'Flux Kontext Pro',
+    version: 'aa776ca45ce7f7d185418f700df8ec6ca6cb367bfd88e9cd225666c4c179d1d7',
+    prompt: 'Transform satellite image into high-quality drone shot'
+  },
+  'nano-banana': {
+    name: 'Nano Banana',
+    version: 'f0a9d34b12ad1c1cd76269a844b218ff4e64e128ddaba93e15891f47368958a0',
+    prompt: 'Transform satellite image into high-quality drone shot'
+  }
+};
+
 function ScreenshotModal() {
   const setModal = useStore((state) => state.setModal);
   const modal = useStore((state) => state.modal);
@@ -34,6 +53,7 @@ function ScreenshotModal() {
   const [renderProgress, setRenderProgress] = useState(0);
   const [renderStartTime, setRenderStartTime] = useState(null);
   const [elapsedTime, setElapsedTime] = useState(0);
+  const [selectedModel, setSelectedModel] = useState('kontext-realearth');
 
   // Ensure token profile is loaded when modal opens
   useEffect(() => {
@@ -53,6 +73,7 @@ function ScreenshotModal() {
     setRenderProgress(0);
     setRenderStartTime(null);
     setElapsedTime(0);
+    // Keep model selection when resetting
   };
 
   const handleClose = () => {
@@ -177,7 +198,8 @@ function ScreenshotModal() {
     setElapsedTime(0);
 
     try {
-      const aiPrompt = 'Transform satellite image into high-quality drone shot';
+      const selectedModelConfig = AI_MODELS[selectedModel];
+      const aiPrompt = selectedModelConfig.prompt;
 
       const generateReplicateImage = httpsCallable(
         functions,
@@ -191,7 +213,8 @@ function ScreenshotModal() {
         prompt: aiPrompt,
         input_image: screentockImgElement.src,
         guidance: 2.5,
-        num_inference_steps: 30
+        num_inference_steps: 30,
+        model_version: selectedModelConfig.version
       });
 
       if (result.data.success) {
@@ -310,6 +333,24 @@ function ScreenshotModal() {
       <div className={styles.modalContent}>
         <div className={styles.sidebar}>
           <div className={styles.aiSection}>
+            <div className={styles.modelSelector}>
+              <label htmlFor="model-select" className={styles.modelLabel}>
+                AI Model:
+              </label>
+              <select
+                id="model-select"
+                value={selectedModel}
+                onChange={(e) => setSelectedModel(e.target.value)}
+                className={styles.modelSelect}
+                disabled={isGeneratingAI || hasGeneratedAI}
+              >
+                {Object.entries(AI_MODELS).map(([key, model]) => (
+                  <option key={key} value={key}>
+                    {model.name}
+                  </option>
+                ))}
+              </select>
+            </div>
             <Button
               onClick={handleGenerateAIImage}
               variant="filled"
