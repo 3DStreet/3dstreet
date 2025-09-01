@@ -14,7 +14,7 @@ const generateReplicateImage = functions
     }
 
     const userId = context.auth.uid;
-    const { prompt, input_image, guidance = 2.5, num_inference_steps = 30 } = data;
+    const { prompt, input_image, guidance = 2.5, num_inference_steps = 30, model_version } = data;
     
     // Use the centralized token management function to handle pro users, token refilling, and profile creation
     const tokenData = await checkAndRefillImageTokensInternal(userId);
@@ -80,8 +80,12 @@ const generateReplicateImage = functions
         num_inference_steps
       });
 
+      // Use provided model version or default to Kontext Real Earth
+      const defaultModelVersion = "2af4da47bcb7b55a0705b0de9933701f7607531d763ae889241f827a648c1755";
+      const modelVersionToUse = model_version || defaultModelVersion;
+
       const prediction = await replicate.predictions.create({
-        version: "2af4da47bcb7b55a0705b0de9933701f7607531d763ae889241f827a648c1755",
+        version: modelVersionToUse,
         input: {
           prompt: prompt,
           input_image: imageUrl,
