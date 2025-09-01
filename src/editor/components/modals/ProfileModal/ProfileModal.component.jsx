@@ -158,6 +158,41 @@ const ProfileModal = () => {
                   }}
                 >
                   <span>Plan: Free</span>
+                  <Button
+                    onClick={() => {
+                      onClose();
+                      setModal('payment');
+                    }}
+                    style={{
+                      padding: '4px 12px',
+                      fontSize: '12px',
+                      background:
+                        'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                      color: 'white',
+                      border: 'none',
+                      borderRadius: '4px',
+                      cursor: 'pointer',
+                      marginLeft: '12px',
+                      transition: 'all 0.3s ease',
+                      boxShadow: '0 2px 8px rgba(102, 126, 234, 0.4)'
+                    }}
+                    onMouseEnter={(e) => {
+                      e.target.style.background =
+                        'linear-gradient(135deg, #7c8ff8 0%, #8e5db4 100%)';
+                      e.target.style.transform = 'translateY(-1px)';
+                      e.target.style.boxShadow =
+                        '0 4px 12px rgba(102, 126, 234, 0.6)';
+                    }}
+                    onMouseLeave={(e) => {
+                      e.target.style.background =
+                        'linear-gradient(135deg, #667eea 0%, #764ba2 100%)';
+                      e.target.style.transform = 'translateY(0)';
+                      e.target.style.boxShadow =
+                        '0 2px 8px rgba(102, 126, 234, 0.4)';
+                    }}
+                  >
+                    Upgrade to Pro
+                  </Button>
                 </div>
                 <div
                   style={{
@@ -420,32 +455,7 @@ const ProfileModal = () => {
                   </div>
                 )}
               </div>
-            ) : (
-              <div className={styles.subscribeCard}>
-                <div className={styles.about}>
-                  <h3 className={styles.cardTitle}>
-                    Unlock Geospatial Features with 3DStreet Pro
-                  </h3>
-                  <span>
-                    Create with unlimited geospatial map access, and share your
-                    vision in augmented reality with 3DStreet Pro.
-                  </span>
-                </div>
-
-                <div className={styles.controlButtons}>
-                  <Button
-                    onClick={() => {
-                      onClose();
-                      setModal('payment');
-                    }}
-                    type="filled"
-                    target="_blank"
-                  >
-                    Subscribe
-                  </Button>
-                </div>
-              </div>
-            )}
+            ) : null}
           </div>
         </div>
       </div>
