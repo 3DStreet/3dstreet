@@ -24,6 +24,7 @@ function ScreenshotModal() {
   const startCheckout = useStore((state) => state.startCheckout);
   const { currentUser, tokenProfile, refreshTokenProfile } = useAuthContext();
   const [isGeneratingAI, setIsGeneratingAI] = useState(false);
+  const [hasGeneratedAI, setHasGeneratedAI] = useState(false);
   const [originalImageUrl, setOriginalImageUrl] = useState(null);
   const [aiImageUrl, setAiImageUrl] = useState(null);
   const [showOriginal, setShowOriginal] = useState(true);
@@ -47,6 +48,7 @@ function ScreenshotModal() {
     setShowOriginal(true);
     setComparisonMode(false);
     setIsGeneratingAI(false);
+    setHasGeneratedAI(false);
     setIsSavingSnapshot(false);
     setRenderProgress(0);
     setRenderStartTime(null);
@@ -195,6 +197,7 @@ function ScreenshotModal() {
       if (result.data.success) {
         setAiImageUrl(result.data.image_url);
         setShowOriginal(false);
+        setHasGeneratedAI(true);
 
         // Show appropriate success message based on user type
         if (currentUser?.isProTeam) {
@@ -311,7 +314,12 @@ function ScreenshotModal() {
               onClick={handleGenerateAIImage}
               variant="filled"
               className={`${styles.aiButton} ${isGeneratingAI ? styles.renderingButton : ''}`}
-              disabled={isGeneratingAI || !currentUser}
+              disabled={isGeneratingAI || !currentUser || hasGeneratedAI}
+              title={
+                hasGeneratedAI
+                  ? 'Close and reopen this modal to generate another AI rendering'
+                  : ''
+              }
             >
               {isGeneratingAI ? (
                 <div className={styles.renderingContent}>
