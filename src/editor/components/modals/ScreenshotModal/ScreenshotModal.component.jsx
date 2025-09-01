@@ -6,7 +6,11 @@ import useStore from '@/store';
 import { Button } from '../../elements';
 import { DownloadIcon } from '../../../icons';
 import { takeScreenshotWithOptions } from '../../../api/scene';
-import { createSceneSnapshot } from '../../../api/snapshot';
+import {
+  createSceneSnapshot,
+  createSnapshotFromImageUrl,
+  setSnapshotAsSceneThumbnail
+} from '../../../api/snapshot';
 import { functions } from '../../../services/firebase';
 import { useAuthContext } from '../../../contexts';
 import { httpsCallable } from 'firebase/functions';
@@ -116,11 +120,31 @@ function ScreenshotModal() {
     setIsSavingSnapshot(true);
 
     try {
-      await createSceneSnapshot(sceneId, true, 'Scene Thumbnail');
+      // Check if we're currently showing an AI-generated image
+      const currentImageUrl =
+        showOriginal || !aiImageUrl ? originalImageUrl : aiImageUrl;
+      const isAIImage =
+        !showOriginal && aiImageUrl && currentImageUrl === aiImageUrl;
+
+      if (isAIImage) {
+        // For AI images, create a new snapshot from the URL to avoid tainted canvas
+        const snapshot = await createSnapshotFromImageUrl(
+          sceneId,
+          aiImageUrl,
+          'AI Generated Thumbnail'
+        );
+        // Set this new snapshot as the scene thumbnail
+        await setSnapshotAsSceneThumbnail(sceneId, snapshot.id);
+      } else {
+        // For original screenshots, use the existing method
+        await createSceneSnapshot(sceneId, true, 'Scene Thumbnail');
+      }
+
       STREET.notify.successMessage('Scene thumbnail saved successfully!');
 
       posthog.capture('scene_thumbnail_set', {
-        scene_id: sceneId
+        scene_id: sceneId,
+        is_ai_generated: isAIImage
       });
     } catch (error) {
       console.error('Error setting scene thumbnail:', error);
