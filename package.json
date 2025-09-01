@@ -29,6 +29,7 @@
     "@gltf-transform/core": "^3.10.0",
     "@gltf-transform/extensions": "^3.10.0",
     "@gltf-transform/functions": "^3.10.0",
+    "@img-comparison-slider/react": "^8.0.2",
     "@react-google-maps/api": "^2.19.3",
     "@stripe/stripe-js": "^3.4.1",
     "3d-tiles-renderer": "^0.4.10",

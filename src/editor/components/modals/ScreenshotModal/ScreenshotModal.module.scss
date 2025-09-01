@@ -1,283 +1,388 @@
-@use '../../../style/variables.scss';
-
-.proFeaturesWrapper {
-  position: relative;
-
-  .proOverlay {
-    position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    background: rgba(0, 0, 0, 0.5);
-    backdrop-filter: blur(2px);
-    border-radius: 12px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    z-index: 1;
-    cursor: pointer;
-    transition: background-color 0.2s ease;
-
-    &:hover {
-      background: rgba(0, 0, 0, 0.4);
-    }
-
-    &:active {
-      background: rgba(0, 0, 0, 0.3);
-    }
-
-    .proOverlayContent {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      background: rgba(119, 77, 238, 0.9);
-      transition: all 0.2s ease;
-      padding: 8px 16px;
-      border-radius: 8px;
-      color: white;
-      font-weight: 500;
-      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-
-      &:hover {
-        background: rgba(119, 77, 238, 1);
-        transform: translateY(-1px);
-        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
-      }
-
-      &:active {
-        background: rgba(107, 69, 214, 1);
-        transform: translateY(0);
-        box-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
-      }
-
-      span[role='img'] {
-        font-size: 16px;
-      }
-    }
-  }
-}
-
 .screenshotModalWrapper {
-  position: absolute;
-  top: 55px;
-  left: 0;
-  right: 0;
-  width: 90vw;
-  height: 90vh;
-  overflow-y: scroll;
-
-  .wrapper {
-    width: 100%;
-    display: flex;
-    align-items: flex-start;
-    gap: 16px;
-    padding: 16px;
-    flex-direction: row-reverse;
-
-    .mainContent {
-      flex: 1;
-      display: flex;
-      flex-direction: column;
-    }
-
-    .details {
-      width: 155px;
-      background: var(--panel-background);
-      border-radius: 4px;
-      border: 1px solid var(--panel-border);
-      flex-shrink: 0;
-    }
-
-    .header {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      width: 100%;
-      .forms {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        width: 100%;
-
-        .inputContainer {
-          display: flex;
-          align-items: center;
-          width: 50%;
-
-          .input {
-            border: none;
-            background: none;
-          }
-
-          .button {
-            padding: 0px 10px 0px 0px !important;
-            cursor: pointer;
-            transition:
-              filter 0.2s,
-              transform 0.2s,
-              box-shadow 0.2s;
-            filter: brightness(85%);
-
-            svg {
-              width: 30px;
-              height: 30px;
-            }
-            &:hover {
-              filter: brightness(100%);
-              box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
-            }
-
-            &:focus {
-              outline: none;
-            }
-
-            &:active {
-              filter: brightness(70%);
-              box-shadow: none;
-            }
-          }
-        }
-      }
-    }
-    .imageWrapper {
-      justify-content: center;
-      display: flex;
-      height: fit-content;
-      position: relative;
-      width: fit-content;
-      max-height: calc(100% - 44px - 24px);
-
-      .screenshotWrapper {
-        height: fit-content;
-        max-width: 100%;
-        max-height: 100%;
-      }
-
-      .screenshotWrapper,
-      .screenshotWrapper img {
-        width: 100%;
-        height: 100%;
-        object-fit: contain;
-      }
-
-      .thumbnailButton {
-        position: absolute !important;
-        bottom: 16px;
-        right: 16px;
-      }
-
-      .upsellButtonWrapper {
-        position: absolute;
-        bottom: 16px;
-        right: 16px;
-
-        .upsellButton {
-          background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-          border: none;
-          color: white;
-          font-weight: 600;
-          font-size: 12px;
-          padding: 12px 16px;
-          border-radius: 8px;
-          cursor: pointer;
-          transition: all 0.3s ease;
-          box-shadow: 0 4px 12px rgba(118, 75, 162, 0.3);
-
-          &:hover {
-            transform: translateY(-1px);
-            box-shadow: 0 6px 20px rgba(118, 75, 162, 0.4);
-          }
-
-          &:active {
-            transform: translateY(0px);
-            box-shadow: 0 4px 12px rgba(118, 75, 162, 0.3);
-          }
-        }
-      }
-    }
-  }
-
-  .downloadSection {
-    padding: 16px;
-    border-bottom: 1px solid var(--panel-border);
+  &:global(.modal-content) {
+    width: 90%;
+    max-width: 1200px;
+    height: 80vh;
+    max-height: 80vh;
     display: flex;
     flex-direction: column;
-    gap: 12px;
+  }
+}
 
-    .downloadButton {
-      width: 100%;
-      max-width: 250px;
-      justify-content: center;
-    }
+.modalContent {
+  display: flex;
+  flex: 1;
+  min-height: 0; // Critical for preventing overflow
+  padding: 20px;
+  gap: 20px;
+}
 
-    .thumbnailButton {
-      width: 100%;
-      max-width: 250px;
-      justify-content: center;
-      height: 40px; // Match the height of the primary button
+.sidebar {
+  width: 280px;
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
 
-      // Add space between emoji and text
-      span {
-        display: flex;
-        align-items: center;
-        gap: 6px;
-      }
-    }
+.aiSection {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.aiButton {
+  width: 100%;
+  padding: 12px 16px;
+  font-size: 14px;
+  font-weight: 500;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  position: relative;
+  overflow: hidden;
+
+  span {
+    display: flex;
+    align-items: center;
+    gap: 8px;
   }
 
-  .upsellSection {
-    padding: 16px;
-    border-bottom: 1px solid var(--panel-border);
+  &:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+  }
+}
 
-    .upsellButton {
-      width: 100%;
-      max-width: 250px;
-      justify-content: center;
+.renderingButton {
+  padding: 8px 16px !important;
+}
 
-      &:hover {
-        background: linear-gradient(
-          135deg,
-          #667eea 0%,
-          #764ba2 100%
-        ) !important;
-        border: none !important;
-        color: white !important;
-        transform: translateY(-1px);
-        box-shadow: 0 6px 20px rgba(118, 75, 162, 0.4);
-        transition: all 0.3s ease;
-      }
+.renderingContent {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+}
 
-      &:active {
-        background: linear-gradient(
-          135deg,
-          #5a6fd8 0%,
-          #6a4190 100%
-        ) !important;
-        transform: translateY(0px);
-        box-shadow: 0 4px 12px rgba(118, 75, 162, 0.3);
-      }
-    }
+.progressContainer {
+  position: relative;
+  width: 100%;
+  height: 8px;
+  background-color: rgba(255, 255, 255, 0.2);
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.progressBar {
+  position: absolute;
+  top: 0;
+  left: 0;
+  height: 100%;
+  background: linear-gradient(90deg, #4f46e5, #7c3aed, #4f46e5);
+  background-size: 200% 100%;
+  border-radius: 4px;
+  transition: width 0.1s ease-out;
+  animation: shimmer 2s infinite linear;
+}
+
+.progressStripes {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: repeating-linear-gradient(
+    45deg,
+    transparent,
+    transparent 8px,
+    rgba(255, 255, 255, 0.1) 8px,
+    rgba(255, 255, 255, 0.1) 16px
+  );
+  animation: barbershop 1s infinite linear;
+}
+
+.progressText {
+  font-size: 12px;
+  font-weight: 600;
+  color: white;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
+}
+
+@keyframes shimmer {
+  0% {
+    background-position: -200% 0;
+  }
+  100% {
+    background-position: 200% 0;
+  }
+}
+
+@keyframes barbershop {
+  0% {
+    background-position: 0 0;
+  }
+  100% {
+    background-position: 32px 0;
+  }
+}
+
+.loginPrompt {
+  font-size: 12px;
+  color: #999;
+  margin: 0;
+  text-align: center;
+}
+
+.tokenBadge {
+  display: inline-block;
+  margin-left: 8px;
+  padding: 2px 8px;
+  background: rgba(16, 185, 129, 0.2);
+  color: #10b981;
+  border-radius: 12px;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.noTokensWarning {
+  font-size: 12px;
+  color: #ef4444;
+  margin: 8px 0 0 0;
+  text-align: center;
+  padding: 8px;
+  background: rgba(239, 68, 68, 0.1);
+  border-radius: 4px;
+}
+
+.viewControls {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.toggleButtons {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+
+  button {
+    width: 100%;
+    padding: 8px 12px;
+    font-size: 13px;
+  }
+}
+
+.upsellSection {
+  margin-top: auto;
+  padding-top: 20px;
+  border-top: 1px solid #333;
+}
+
+.upsellButton {
+  width: 100%;
+  padding: 10px;
+  font-size: 12px;
+  text-align: center;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  box-shadow: 0 2px 8px rgba(102, 126, 234, 0.4);
+  transform: translateY(0);
+
+  &:hover {
+    background: linear-gradient(135deg, #7c8ff8 0%, #8e5db4 100%);
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(102, 126, 234, 0.6);
   }
 
-  .dropdown {
-    max-width: fit-content;
-    min-width: 155px;
-    button {
-      background-color: variables.$purple-900 !important;
-      &:hover {
-        background-color: variables.$purple-800 !important;
+  &:active {
+    transform: translateY(-1px);
+    box-shadow: 0 3px 10px rgba(102, 126, 234, 0.5);
+  }
+}
+
+.imageContainer {
+  flex: 1;
+  min-width: 0; // Prevent overflow
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+}
+
+.imageContent {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+
+  img {
+    max-width: 100%;
+    max-height: 100%;
+    width: auto;
+    height: auto;
+    object-fit: contain;
+    border-radius: 8px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+    display: block;
+  }
+}
+
+.thumbnailButton {
+  position: absolute;
+  top: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 16px;
+  background-color: rgba(50, 50, 50, 0.75);
+  color: white;
+  border: 1px solid transparent;
+  border-radius: 12px;
+  cursor: pointer;
+  transition: all 0.3s;
+  font-size: 14px;
+  font-weight: 500;
+  z-index: 10;
+  backdrop-filter: blur(8px);
+
+  &:hover {
+    background-color: rgba(50, 50, 50, 0.9);
+    transform: translateX(-50%) translateY(-1px);
+  }
+
+  &:active {
+    background-color: rgba(0, 0, 0, 0.9);
+    color: rgba(228, 228, 231, 1);
+  }
+
+  &:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+  }
+
+  span:first-child {
+    font-size: 16px;
+  }
+}
+
+.downloadButton {
+  position: absolute;
+  bottom: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 16px;
+  background-color: rgba(50, 50, 50, 0.8);
+  color: white;
+  border: 1px solid transparent;
+  border-radius: 12px;
+  cursor: pointer;
+  transition: all 0.3s;
+  font-size: 14px;
+  font-weight: 500;
+  z-index: 10;
+
+  &:hover {
+    background-color: rgba(50, 50, 50, 0.9);
+    transform: translateX(-50%) translateY(-1px);
+  }
+
+  &:active {
+    background-color: rgba(0, 0, 0, 0.9);
+    color: rgba(228, 228, 231, 1);
+  }
+
+  svg {
+    width: 18px;
+    height: 18px;
+  }
+}
+
+.comparisonContainer {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  :global(img-comparison-slider) {
+    max-width: 100%;
+    max-height: 100%;
+    width: auto;
+    height: auto;
+
+    :global([slot='first']),
+    :global([slot='second']) {
+      max-width: 100%;
+      max-height: 100%;
+      width: auto;
+      height: auto;
+      object-fit: contain;
+      border-radius: 8px;
+    }
+
+    :global(.slider) {
+      background: white;
+      width: 3px;
+      box-shadow: 0 0 10px rgba(0, 0, 0, 0.5);
+    }
+
+    :global(.handle) {
+      width: 44px;
+      height: 44px;
+      background: white;
+      border-radius: 50%;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+
+      &:after {
+        content: '◀ ▶';
+        font-size: 12px;
+        color: #333;
       }
     }
   }
 }
 
-.inputContainer .input {
-  height: 43px;
-  border: none;
-  background: none;
-  padding: 0px;
-  color: variables.$white;
-  display: flex;
-  justify-content: center;
+@media (max-width: 768px) {
+  .modalContent {
+    flex-direction: column;
+  }
+
+  .sidebar {
+    width: 100%;
+    flex-direction: row;
+    flex-wrap: wrap;
+  }
+
+  .aiSection {
+    flex: 1;
+  }
+
+  .viewControls {
+    flex: 1;
+  }
+
+  .toggleButtons {
+    flex-direction: row;
+
+    button {
+      flex: 1;
+    }
+  }
 }
