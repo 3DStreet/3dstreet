@@ -8,9 +8,11 @@ import { auth } from './editor/services/firebase';
 const firstModal = () => {
   let modal = window.location.hash.includes('payment')
     ? 'payment'
-    : !window.location.hash.length
-      ? 'new'
-      : null;
+    : window.location.hash.includes('profile')
+      ? 'profile'
+      : !window.location.hash.length
+        ? 'new'
+        : null;
   const isStreetMix = window.location.hash.includes('streetmix');
   if (isStreetMix) {
     modal = localStorage.getItem('shownIntro') ? null : 'intro';
