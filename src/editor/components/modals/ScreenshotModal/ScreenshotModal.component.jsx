@@ -28,12 +28,14 @@ const AI_MODELS = {
   'flux-kontext-pro': {
     name: 'Flux Kontext Pro',
     version: 'aa776ca45ce7f7d185418f700df8ec6ca6cb367bfd88e9cd225666c4c179d1d7',
-    prompt: 'Transform satellite image into high-quality drone shot'
+    prompt:
+      'photorealistic street view, professional photography, high detail, natural lighting, clear and sharp'
   },
   'nano-banana': {
     name: 'Nano Banana',
     version: 'f0a9d34b12ad1c1cd76269a844b218ff4e64e128ddaba93e15891f47368958a0',
-    prompt: 'Transform satellite image into high-quality drone shot'
+    prompt:
+      'photorealistic street view, professional photography, high detail, natural lighting, clear and sharp'
   }
 };
 
