@@ -4,8 +4,8 @@
   "description": "Web-based 3D visualization of streets using A-Frame and WebXR",
   "main": "dist/3dstreet-editor.js",
   "scripts": {
-    "start": "webpack serve --config webpack.config.js --open --progress",
-    "start:prod": "npm run dist && npm run prefirebase && serve public -l 3333",
+    "start": "npm run dist && npm run prefirebase && webpack serve --open --allowed-hosts all ",
+    "start:prod": "npm run dist && npm run prefirebase && serve public -l 3333 ",
     "dist": "webpack --config webpack.prod.config.js --progress",
     "dist:staging": "cross-env DEPLOY_ENV=development webpack --config webpack.prod.config.js --progress",
     "lint": "eslint --ext .js,.jsx src",

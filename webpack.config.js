@@ -8,6 +8,7 @@ module.exports = {
   devServer: {
     liveReload: false,
     port: 3333,
+    host: '0.0.0.0',
     static: {
       directory: '.',
       watch: {
