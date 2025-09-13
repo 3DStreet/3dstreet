@@ -220,6 +220,9 @@ const GeoModal = () => {
       setShowSuccessOverlay(true);
       setIsWorking(false);
 
+      // Reset GeoJSON import state after successful location setting
+      setWasOpenedFromGeojson(false);
+
       // Auto-dismiss after 4 seconds
       setTimeout(() => {
         setShowSuccessOverlay(false);
