@@ -40,6 +40,7 @@ require('./aframe-components/css2d-renderer.js');
 require('./aframe-components/google-maps-aerial.js');
 require('./aframe-components/viewer-mode.js');
 require('./aframe-components/scene-timer.js');
+require('./aframe-components/geojson.js');
 require('./editor/index.js');
 var firebase = require('./editor/services/firebase.js');
 
