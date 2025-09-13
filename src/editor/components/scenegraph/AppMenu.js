@@ -111,7 +111,8 @@ const AppMenu = ({ currentUser }) => {
     isGridVisible,
     setIsGridVisible,
     saveScene,
-    startCheckout
+    startCheckout,
+    setGeojsonImportData
   } = useStore();
   const { currentUser: authUser } = useAuthContext();
   const [currentCamera, setCurrentCamera] = useState('perspective');
@@ -461,50 +462,18 @@ const AppMenu = ({ currentUser }) => {
                       geoJsonComponent.data.lon !== 0
                     ) {
                       console.log(
-                        '[GeoJSON Import] Center coordinates found, setting scene location...'
+                        '[GeoJSON Import] Center coordinates found, opening Geo Modal...'
                       );
 
-                      // Import and use setSceneLocation to properly set the geographic coordinates
-                      // This will update the street-geo component on the reference-layers element
-                      try {
-                        const { setSceneLocation } = await import(
-                          '../../lib/utils.js'
-                        );
-                        console.log(
-                          '[GeoJSON Import] Calling setSceneLocation with:',
-                          {
-                            lat: geoJsonComponent.data.lat,
-                            lon: geoJsonComponent.data.lon
-                          }
-                        );
+                      // Store the coordinates for the Geo Modal to use
+                      setGeojsonImportData({
+                        lat: geoJsonComponent.data.lat,
+                        lon: geoJsonComponent.data.lon,
+                        source: 'geojson-import'
+                      });
 
-                        const result = await setSceneLocation(
-                          geoJsonComponent.data.lat,
-                          geoJsonComponent.data.lon
-                        );
-
-                        if (result.success) {
-                          console.log(
-                            '[GeoJSON Import] ✅ Successfully set scene location:',
-                            result.data
-                          );
-                          console.log('[GeoJSON Import] Elevation data:', {
-                            ellipsoidalHeight: result.data.ellipsoidalHeight,
-                            orthometricHeight: result.data.orthometricHeight,
-                            geoidHeight: result.data.geoidHeight
-                          });
-                        } else {
-                          console.warn(
-                            '[GeoJSON Import] ⚠️ Could not set elevation data:',
-                            result.message
-                          );
-                        }
-                      } catch (error) {
-                        console.error(
-                          '[GeoJSON Import] ❌ Error setting scene location:',
-                          error
-                        );
-                      }
+                      // Open the Geo Modal with pre-filled coordinates
+                      setModal('geo');
                     } else {
                       console.log(
                         '[GeoJSON Import] No center coordinates calculated yet (still 0,0)'
