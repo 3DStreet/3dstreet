@@ -346,10 +346,6 @@ const GeoModal = () => {
                         at this location
                       </li>
                       <li>
-                        • You can change it later, we recommend starting with
-                        this
-                      </li>
-                      <li>
                         • This feature is in beta please join our{' '}
                         <a
                           href="https://discord.gg/zNFMhTwKSd"
@@ -388,8 +384,26 @@ const GeoModal = () => {
           </div>
 
           <div className={styles.controlButtons}>
-            <Button variant="ghost" onClick={onClose}>
-              {wasOpenedFromGeojson ? 'Set Later' : 'Cancel'}
+            <Button
+              variant="ghost"
+              onClick={onClose}
+              style={{
+                background: 'transparent',
+                color: '#9ca3af',
+                border: '1px solid #404040',
+                borderRadius: '8px',
+                transition: 'all 0.2s ease'
+              }}
+              onMouseEnter={(e) => {
+                e.target.style.background = '#404040';
+                e.target.style.color = 'white';
+              }}
+              onMouseLeave={(e) => {
+                e.target.style.background = 'transparent';
+                e.target.style.color = '#9ca3af';
+              }}
+            >
+              Cancel
             </Button>
             <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
               {!currentUser?.isPro && tokenProfile && (
@@ -422,26 +436,18 @@ const GeoModal = () => {
               <Button
                 variant="filled"
                 onClick={onSaveHandler}
-                style={
-                  wasOpenedFromGeojson
-                    ? {
-                        backgroundColor: '#22c55e',
-                        borderColor: '#22c55e',
-                        fontSize: '16px',
-                        padding: '12px 24px',
-                        height: 'auto'
-                      }
-                    : {}
-                }
+                style={{
+                  backgroundColor: '#22c55e',
+                  borderColor: '#22c55e',
+                  fontSize: '16px',
+                  padding: '12px 24px',
+                  height: 'auto'
+                }}
               >
                 {currentUser?.isPro
-                  ? wasOpenedFromGeojson
-                    ? 'Set Location →'
-                    : '📍 Set Location and Show Map'
+                  ? 'Set Location →'
                   : tokenProfile?.geoToken > 0
-                    ? wasOpenedFromGeojson
-                      ? 'Set Location →'
-                      : '📍 Set Location and Show Map'
+                    ? 'Set Location →'
                     : 'Upgrade to Pro to Change Location'}
               </Button>
             </div>
