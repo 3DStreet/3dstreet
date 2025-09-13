@@ -16,7 +16,8 @@ AFRAME.registerComponent('geojson', {
   schema: {
     lat: { type: 'number' },
     lon: { type: 'number' },
-    src: { type: 'asset' }
+    src: { type: 'asset' },
+    data: { type: 'string' } // Store GeoJSON data directly as a stringified JSON
   },
 
   init: function () {
@@ -35,7 +36,12 @@ AFRAME.registerComponent('geojson', {
       // reset the layer
       this.el.innerHTML = '';
 
-      if (this.data.src) {
+      if (this.data.data) {
+        // Use direct GeoJSON data if available (preferred for serialization)
+        console.log('[GeoJSON Component] Using direct GeoJSON data...');
+        this.onSrcLoaded(this.data.data);
+      } else if (this.data.src) {
+        // Fall back to loading from src URL
         this.loader.load(this.data.src, this.onSrcLoaded);
       }
     }

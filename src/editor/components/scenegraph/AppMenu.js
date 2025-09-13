@@ -424,21 +424,29 @@ const AppMenu = ({ currentUser }) => {
                   features: buildingFeatures
                 };
 
-                // Create a data URL for the cleaned GeoJSON
-                const dataUrl =
-                  'data:application/json;base64,' +
-                  btoa(JSON.stringify(cleanedGeoJSON));
+                // Check GeoJSON data size and warn if large
+                const geoJsonString = JSON.stringify(cleanedGeoJSON);
+                const sizeKB = new Blob([geoJsonString]).size / 1024;
+                console.log(
+                  `[GeoJSON Import] Data size: ${Math.round(sizeKB)}KB`
+                );
 
-                // Set the geojson component with the imported data
+                if (sizeKB > 100) {
+                  STREET.notify.warningMessage(
+                    `GeoJSON file is ${Math.round(sizeKB)}KB. Large files may affect performance.`
+                  );
+                }
+
+                // Set the geojson component with the imported data directly
                 // Setting lat/lon to 0,0 triggers automatic center calculation
                 console.log(
-                  '[GeoJSON Import] Setting geojson component with data URL'
+                  '[GeoJSON Import] Setting geojson component with direct data'
                 );
                 console.log(
                   '[GeoJSON Import] Entity rotation set to Y:-90° for X+ north alignment'
                 );
                 osmEntity.setAttribute('geojson', {
-                  src: dataUrl,
+                  data: geoJsonString,
                   lat: 0,
                   lon: 0
                 });

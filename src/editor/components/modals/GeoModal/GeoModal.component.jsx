@@ -338,16 +338,27 @@ const GeoModal = () => {
                         imported GeoJSON data
                       </li>
                       <li>
-                        • Click &apos;Set Location&apos; to position your scene
-                        at this location
-                      </li>
-                      <li>
                         • The red marker shows the calculated center of your
                         imported buildings
                       </li>
                       <li>
-                        • You can adjust the marker position by clicking on the
-                        map or searching for a different location
+                        • Click &apos;Set Location&apos; to position your scene
+                        at this location
+                      </li>
+                      <li>
+                        • You can change it later, we recommend starting with
+                        this
+                      </li>
+                      <li>
+                        • This feature is in beta please join our{' '}
+                        <a
+                          href="https://discord.gg/zNFMhTwKSd"
+                          rel="noreferrer"
+                          target="_blank"
+                        >
+                          Discord
+                        </a>{' '}
+                        to provide feedback
                       </li>
                     </>
                   ) : (
