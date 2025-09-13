@@ -409,6 +409,8 @@ const AppMenu = ({ currentUser }) => {
                     'data-layer-name',
                     'Imported GeoJSON Buildings'
                   );
+                  // Rotate -90 degrees on Y axis to align with 3DStreet coordinate system (X+ north)
+                  osmEntity.setAttribute('rotation', '0 -90 0');
                   // Add to user layers (street-container) instead of reference layers
                   document
                     .querySelector('#street-container')
@@ -428,11 +430,92 @@ const AppMenu = ({ currentUser }) => {
 
                 // Set the geojson component with the imported data
                 // Setting lat/lon to 0,0 triggers automatic center calculation
+                console.log(
+                  '[GeoJSON Import] Setting geojson component with data URL'
+                );
+                console.log(
+                  '[GeoJSON Import] Entity rotation set to Y:-90° for X+ north alignment'
+                );
                 osmEntity.setAttribute('geojson', {
                   src: dataUrl,
                   lat: 0,
                   lon: 0
                 });
+
+                // Get the center coordinates from the GeoJSON component after it loads
+                // The component calculates center when lat/lon are 0,0
+                setTimeout(async () => {
+                  console.log(
+                    '[GeoJSON Import] Checking for calculated center coordinates...'
+                  );
+                  const geoJsonComponent = osmEntity.components.geojson;
+
+                  if (geoJsonComponent) {
+                    console.log('[GeoJSON Import] Component data:', {
+                      lat: geoJsonComponent.data.lat,
+                      lon: geoJsonComponent.data.lon
+                    });
+
+                    if (
+                      geoJsonComponent.data.lat !== 0 &&
+                      geoJsonComponent.data.lon !== 0
+                    ) {
+                      console.log(
+                        '[GeoJSON Import] Center coordinates found, setting scene location...'
+                      );
+
+                      // Import and use setSceneLocation to properly set the geographic coordinates
+                      // This will update the street-geo component on the reference-layers element
+                      try {
+                        const { setSceneLocation } = await import(
+                          '../../lib/utils.js'
+                        );
+                        console.log(
+                          '[GeoJSON Import] Calling setSceneLocation with:',
+                          {
+                            lat: geoJsonComponent.data.lat,
+                            lon: geoJsonComponent.data.lon
+                          }
+                        );
+
+                        const result = await setSceneLocation(
+                          geoJsonComponent.data.lat,
+                          geoJsonComponent.data.lon
+                        );
+
+                        if (result.success) {
+                          console.log(
+                            '[GeoJSON Import] ✅ Successfully set scene location:',
+                            result.data
+                          );
+                          console.log('[GeoJSON Import] Elevation data:', {
+                            ellipsoidalHeight: result.data.ellipsoidalHeight,
+                            orthometricHeight: result.data.orthometricHeight,
+                            geoidHeight: result.data.geoidHeight
+                          });
+                        } else {
+                          console.warn(
+                            '[GeoJSON Import] ⚠️ Could not set elevation data:',
+                            result.message
+                          );
+                        }
+                      } catch (error) {
+                        console.error(
+                          '[GeoJSON Import] ❌ Error setting scene location:',
+                          error
+                        );
+                      }
+                    } else {
+                      console.log(
+                        '[GeoJSON Import] No center coordinates calculated yet (still 0,0)'
+                      );
+                    }
+                  } else {
+                    console.warn(
+                      '[GeoJSON Import] GeoJSON component not found on entity'
+                    );
+                  }
+                }, 100); // Small delay to ensure GeoJSON component has initialized
 
                 STREET.notify.successMessage(
                   `GeoJSON file imported successfully. Found ${buildingFeatures.length} polygon features.`

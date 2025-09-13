@@ -42,12 +42,28 @@ AFRAME.registerComponent('geojson', {
   },
 
   onSrcLoaded: function (text) {
+    console.log('[GeoJSON Component] Source loaded, parsing JSON...');
     let json = JSON.parse(text);
+    console.log('[GeoJSON Component] Parsed features:', json.features.length);
+
     if (this.data.lat === 0 && this.data.lon === 0) {
+      console.log(
+        '[GeoJSON Component] Lat/lon are 0,0 - calculating center from features...'
+      );
       let center = this.features2center(json.features);
+      console.log('[GeoJSON Component] Calculated center:', {
+        lat: center[0],
+        lon: center[1]
+      });
       this.data.lat = center[0];
       this.data.lon = center[1];
+    } else {
+      console.log('[GeoJSON Component] Using provided coordinates:', {
+        lat: this.data.lat,
+        lon: this.data.lon
+      });
     }
+
     this.addBuildings(json);
   },
 
@@ -323,6 +339,8 @@ AFRAME.registerComponent('geojson', {
       this.el.appendChild(entity);
     }
 
-    console.log('Loaded', count, 'buildings, skipped', skipped);
+    console.log(
+      `[GeoJSON Component] Rendering complete: ${count} buildings loaded, ${skipped} features skipped`
+    );
   }
 });
