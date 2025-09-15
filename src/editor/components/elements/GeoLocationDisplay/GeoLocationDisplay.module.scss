@@ -16,18 +16,6 @@
     cursor: pointer;
     transition: all 0.2s ease;
 
-    .searchIcon {
-      width: 16px;
-      height: 16px;
-      opacity: 0;
-      margin-left: -22px;
-      transition: all 0.2s ease;
-
-      path {
-        fill: white;
-      }
-    }
-
     .locationText {
       font-size: 11px;
       font-weight: 500;
@@ -38,11 +26,60 @@
 
     &.hovered {
       background-color: rgba(50, 50, 50, 0.8);
+    }
 
-      .searchIcon {
-        opacity: 1;
-        margin-left: 0;
+    &.cta {
+      background: linear-gradient(
+        135deg,
+        #774dee 0%,
+        #9333ea 50%,
+        #774dee 100%
+      );
+      background-size: 200% 200%;
+      animation: gradientShift 2s ease-in-out infinite alternate;
+      padding: 8px 12px;
+      box-shadow: 0 0 20px rgba(119, 77, 238, 0.4);
+      border: 1px solid rgba(119, 77, 238, 0.6);
+
+      .locationText {
+        font-weight: 600;
+        text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+      }
+
+      &.hovered {
+        background: linear-gradient(
+          135deg,
+          #8b5cf6 0%,
+          #a855f7 50%,
+          #8b5cf6 100%
+        );
+        background-size: 200% 200%;
+        box-shadow: 0 0 25px rgba(139, 92, 246, 0.6);
+        transform: scale(1.05);
       }
     }
+  }
+
+  &.ctaMode {
+    animation: pulseGlow 3s ease-in-out infinite;
+  }
+}
+
+@keyframes gradientShift {
+  0% {
+    background-position: 0% 50%;
+  }
+  100% {
+    background-position: 100% 50%;
+  }
+}
+
+@keyframes pulseGlow {
+  0%,
+  100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.02);
   }
 }

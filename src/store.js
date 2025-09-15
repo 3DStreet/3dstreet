@@ -73,12 +73,26 @@ const useStore = create(
         locationString: null,
         setLocationString: (newLocationString) =>
           set({ locationString: newLocationString }),
+        geoData: {
+          latitude: null,
+          longitude: null,
+          ellipsoidalHeight: null,
+          locationString: null
+        },
+        setGeoData: (newGeoData) =>
+          set({ geoData: { ...useStore.getState().geoData, ...newGeoData } }),
         newScene: () =>
           set({
             sceneId: null,
             sceneTitle: null,
             authorId: null,
             locationString: null,
+            geoData: {
+              latitude: null,
+              longitude: null,
+              ellipsoidalHeight: null,
+              locationString: null
+            },
             projectInfo: {
               description: '',
               projectArea: '',
