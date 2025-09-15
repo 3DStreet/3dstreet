@@ -691,6 +691,14 @@ function ScreenshotModal() {
         </div>
 
         <div className={styles.imageContainer}>
+          {/* Always render the screentock-destination img for screenshot functionality */}
+          <img
+            id="screentock-destination"
+            src={originalImageUrl}
+            alt="Screenshot destination"
+            style={{ display: 'none', position: 'absolute' }}
+          />
+
           {renderMode === '1x' ? (
             comparisonMode && aiImageUrl ? (
               <div className={styles.comparisonContainer}>
@@ -727,7 +735,6 @@ function ScreenshotModal() {
                     </button>
                   )}
                 <img
-                  id="screentock-destination"
                   src={
                     showOriginal || !aiImageUrl ? originalImageUrl : aiImageUrl
                   }
