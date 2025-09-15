@@ -162,11 +162,14 @@ const GeoModal = () => {
   };
 
   const onSaveHandler = async () => {
-    // Check if user can use geo feature (pro OR has tokens)
-    const canUse = await canUseGeoFeature(currentUser);
-    if (!canUse) {
-      startCheckout('geo');
-      return;
+    // Skip auth check if opened from GeoJSON import (free during beta)
+    if (!wasOpenedFromGeojson) {
+      // Check if user can use geo feature (pro OR has tokens)
+      const canUse = await canUseGeoFeature(currentUser);
+      if (!canUse) {
+        startCheckout('geo');
+        return;
+      }
     }
 
     setIsWorking(true);
@@ -182,7 +185,9 @@ const GeoModal = () => {
     });
 
     // Use the shared utility function to set the scene location
-    const result = await setSceneLocation(latitude, longitude);
+    const result = await setSceneLocation(latitude, longitude, {
+      fromGeojsonImport: wasOpenedFromGeojson
+    });
 
     if (result.success && result.data) {
       const data = result.data;
@@ -417,7 +422,10 @@ const GeoModal = () => {
               Cancel
             </Button>
             <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-              {!currentUser?.isPro && tokenProfile && (
+              {wasOpenedFromGeojson && (
+                <div className={styles.betaPill}>Free During Beta</div>
+              )}
+              {!currentUser?.isPro && tokenProfile && !wasOpenedFromGeojson && (
                 <TooltipWrapper content="Use geo tokens to set or change a geolocation for your scene.">
                   <span
                     style={{
@@ -455,11 +463,13 @@ const GeoModal = () => {
                   height: 'auto'
                 }}
               >
-                {currentUser?.isPro
+                {wasOpenedFromGeojson
                   ? 'Set Location →'
-                  : tokenProfile?.geoToken > 0
+                  : currentUser?.isPro
                     ? 'Set Location →'
-                    : 'Upgrade to Pro to Change Location'}
+                    : tokenProfile?.geoToken > 0
+                      ? 'Set Location →'
+                      : 'Upgrade to Pro to Change Location'}
               </Button>
             </div>
           </div>
