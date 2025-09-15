@@ -36,6 +36,12 @@ const AI_MODELS = {
     version: 'f0a9d34b12ad1c1cd76269a844b218ff4e64e128ddaba93e15891f47368958a0',
     prompt:
       'photorealistic street view, professional photography, high detail, natural lighting, clear and sharp'
+  },
+  'seedream-4': {
+    name: 'SeedEdit',
+    version: '5c76a1fe2e2c87eff7b1b0e2cc2b5ad6af00b89b74000b72ddd3cc6a37daf7bc',
+    prompt:
+      'photorealistic street view, professional photography, high detail, natural lighting, clear and sharp'
   }
 };
 
@@ -60,6 +66,7 @@ function ScreenshotModal() {
   const [aiImages, setAiImages] = useState({}); // Store multiple AI images with model keys
   const [renderTimers, setRenderTimers] = useState({}); // Individual timers for each model
   const [renderingStates, setRenderingStates] = useState({}); // Track which models are rendering
+  const [renderErrors, setRenderErrors] = useState({}); // Track which models had errors
   const [useMixedModels, setUseMixedModels] = useState(true); // Toggle for model mixing
 
   // Ensure token profile is loaded when modal opens
@@ -83,6 +90,7 @@ function ScreenshotModal() {
     setAiImages({});
     setRenderTimers({});
     setRenderingStates({});
+    setRenderErrors({});
     // Keep model selection and render mode when resetting
   };
 
@@ -316,9 +324,16 @@ function ScreenshotModal() {
         ? targetModel.split('-').slice(0, -1).join('-')
         : targetModel;
       const modelName = AI_MODELS[baseModelKey]?.name || 'selected model';
-      STREET.notify.errorMessage(
-        `Failed to generate AI render for ${modelName}. Please try again.`
-      );
+
+      // Track error state for this model
+      setRenderErrors((prev) => ({ ...prev, [targetModel]: true }));
+
+      // Only show error notification for single renders or if all renders have completed
+      if (renderMode === '1x') {
+        STREET.notify.errorMessage(
+          `Failed to generate AI render for ${modelName}. Please try again.`
+        );
+      }
     } finally {
       // Update rendering state for this specific model
       setRenderingStates((prev) => ({ ...prev, [targetModel]: false }));
@@ -744,6 +759,7 @@ function ScreenshotModal() {
                 const isRendering = modelKey
                   ? renderingStates[modelKey]
                   : false;
+                const hasError = modelKey ? renderErrors[modelKey] : false;
                 const timer = modelKey ? renderTimers[modelKey] : null;
 
                 return (
@@ -754,7 +770,9 @@ function ScreenshotModal() {
                           <div className={styles.modelName}>
                             {modelConfig.name}
                           </div>
-                          <div className={styles.timeOverlay}>
+                          <div
+                            className={`${styles.timeOverlay} ${hasError ? styles.errorOverlay : ''}`}
+                          >
                             {isRendering
                               ? `${timer?.elapsed || 0}s`
                               : imageUrl
@@ -785,6 +803,10 @@ function ScreenshotModal() {
                               <DownloadIcon />
                             </button>
                           </>
+                        ) : hasError ? (
+                          <div className={styles.errorSlot}>
+                            <span>Error</span>
+                          </div>
                         ) : (
                           <div className={styles.emptySlot}>
                             <span>Ready</span>
