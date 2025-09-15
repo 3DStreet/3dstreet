@@ -133,6 +133,9 @@ const useStore = create(
           set({ modal: 'payment', postCheckout });
         },
         postCheckout: null,
+        // GeoJSON import data for pre-filling the Geo Modal
+        geojsonImportData: null,
+        setGeojsonImportData: (data) => set({ geojsonImportData: data }),
         isGridVisible: true,
         setIsGridVisible: (newIsGridVisible) => {
           Events.emit('gridvisibilitychanged', newIsGridVisible);

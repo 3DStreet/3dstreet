@@ -1,7 +1,7 @@
 import { useState, useCallback, useEffect } from 'react';
 import { SavingModal } from '../SavingModal';
 import styles from './GeoModal.module.scss';
-import { Magnifier20Icon, Save24Icon } from '../../../icons';
+import { Magnifier20Icon } from '../../../icons';
 import { firebaseConfig } from '../../../services/firebase.js';
 import Modal from '../Modal.jsx';
 import { Button, Input } from '../../elements/index.js';
@@ -61,11 +61,15 @@ const GeoModal = () => {
   const [isWorking, setIsWorking] = useState(false);
   const [showSuccessOverlay, setShowSuccessOverlay] = useState(false);
   const [successData, setSuccessData] = useState(null);
+  const [wasOpenedFromGeojson, setWasOpenedFromGeojson] = useState(false);
+  const [currentLocationString, setCurrentLocationString] = useState('');
   const returnToPreviousModal = useStore(
     (state) => state.returnToPreviousModal
   );
   const isOpen = useStore((state) => state.modal === 'geo');
   const startCheckout = useStore((state) => state.startCheckout);
+  const geojsonImportData = useStore((state) => state.geojsonImportData);
+  const setGeojsonImportData = useStore((state) => state.setGeojsonImportData);
 
   const onClose = () => {
     returnToPreviousModal();
@@ -73,20 +77,42 @@ const GeoModal = () => {
 
   useEffect(() => {
     if (isOpen) {
-      const streetGeo = document
-        .getElementById('reference-layers')
-        ?.getAttribute('street-geo');
-
-      if (streetGeo && streetGeo['latitude'] && streetGeo['longitude']) {
-        const lat = roundCoord(parseFloat(streetGeo['latitude']));
-        const lng = roundCoord(parseFloat(streetGeo['longitude']));
+      // Check if we have GeoJSON import data first (takes priority)
+      if (geojsonImportData && geojsonImportData.lat && geojsonImportData.lon) {
+        const lat = roundCoord(geojsonImportData.lat);
+        const lng = roundCoord(geojsonImportData.lon);
 
         if (!isNaN(lat) && !isNaN(lng)) {
           setMarkerPosition({ lat, lng });
         }
+
+        // Set flag to show context-aware tips
+        setWasOpenedFromGeojson(true);
+
+        // Clear the import data after using it
+        setGeojsonImportData(null);
+      } else {
+        // Fall back to existing scene location if no import data
+        const streetGeo = document
+          .getElementById('reference-layers')
+          ?.getAttribute('street-geo');
+
+        if (streetGeo && streetGeo['latitude'] && streetGeo['longitude']) {
+          const lat = roundCoord(parseFloat(streetGeo['latitude']));
+          const lng = roundCoord(parseFloat(streetGeo['longitude']));
+
+          if (!isNaN(lat) && !isNaN(lng)) {
+            setMarkerPosition({ lat, lng });
+          }
+
+          // Set the current location string if available
+          if (streetGeo.locationString) {
+            setCurrentLocationString(streetGeo.locationString);
+          }
+        }
       }
     }
-  }, [isOpen]);
+  }, [isOpen, geojsonImportData, setGeojsonImportData]);
 
   const setMarkerPositionAndElevation = useCallback((lat, lng) => {
     if (!isNaN(lat) && !isNaN(lng)) {
@@ -136,11 +162,14 @@ const GeoModal = () => {
   };
 
   const onSaveHandler = async () => {
-    // Check if user can use geo feature (pro OR has tokens)
-    const canUse = await canUseGeoFeature(currentUser);
-    if (!canUse) {
-      startCheckout('geo');
-      return;
+    // Skip auth check if opened from GeoJSON import (free during beta)
+    if (!wasOpenedFromGeojson) {
+      // Check if user can use geo feature (pro OR has tokens)
+      const canUse = await canUseGeoFeature(currentUser);
+      if (!canUse) {
+        startCheckout('geo');
+        return;
+      }
     }
 
     setIsWorking(true);
@@ -156,7 +185,9 @@ const GeoModal = () => {
     });
 
     // Use the shared utility function to set the scene location
-    const result = await setSceneLocation(latitude, longitude);
+    const result = await setSceneLocation(latitude, longitude, {
+      fromGeojsonImport: wasOpenedFromGeojson
+    });
 
     if (result.success && result.data) {
       const data = result.data;
@@ -198,6 +229,8 @@ const GeoModal = () => {
       setTimeout(() => {
         setShowSuccessOverlay(false);
         setSuccessData(null);
+        // Reset GeoJSON import state after overlay is dismissed
+        setWasOpenedFromGeojson(false);
         onClose();
       }, 4000);
     } else {
@@ -226,12 +259,20 @@ const GeoModal = () => {
         className={styles.modalWrapper}
         isOpen={isOpen}
         onClose={onCloseCheck}
+        titleElement={
+          <div className="flex items-center pr-4 pt-5">
+            <img
+              src={GeoImg}
+              alt="geo"
+              style={{ width: '27px', height: '32px', marginRight: '8px' }}
+            />
+            <div className="font-large text-center text-2xl">
+              Set Scene Location
+            </div>
+          </div>
+        }
       >
         <div className={styles.wrapper}>
-          <div className={styles.header}>
-            <img src={GeoImg} alt="geo" style={{ objectFit: 'contain' }} />
-            <h3>Scene Location</h3>
-          </div>
           {isLoaded && (
             <>
               <GoogleMap
@@ -256,16 +297,18 @@ const GeoModal = () => {
               </GoogleMap>
             </>
           )}
-          <Autocomplete
-            onLoad={onAutocompleteLoad}
-            onPlaceChanged={onPlaceChanged}
-          >
-            <Input
-              leadingIcon={<Magnifier20Icon />}
-              placeholder="Search for a location"
-              onChange={(value) => {}}
-            />
-          </Autocomplete>
+          {!wasOpenedFromGeojson && (
+            <Autocomplete
+              onLoad={onAutocompleteLoad}
+              onPlaceChanged={onPlaceChanged}
+            >
+              <Input
+                leadingIcon={<Magnifier20Icon />}
+                placeholder={currentLocationString || 'Search for a location'}
+                onChange={(value) => {}}
+              />
+            </Autocomplete>
+          )}
           <div className={styles.sceneGeo}>
             <div>
               <p>Centerpoint</p>
@@ -298,37 +341,90 @@ const GeoModal = () => {
             ) : (
               <div className="rounded bg-blue-50 p-2 text-gray-600">
                 <div className="mb-1 font-semibold uppercase">
-                  💡 Geospatial Tips
+                  {wasOpenedFromGeojson
+                    ? '🗂️ GeoJSON Import Detected'
+                    : '💡 Geospatial Tips'}
                 </div>
                 <ul className="space-y-1">
-                  <li>
-                    • The red marker sets the geospatial location for the
-                    centerpoint origin of the scene
-                  </li>
-                  <li>
-                    • Click on the map to change the location of the red marker
-                    point
-                  </li>
-                  <li>
-                    • Choose a point that is easy to identify visually from
-                    aerial view such as utility pole, road marking, crosswalk
-                    ramp, or other landmark
-                  </li>
-                  <li>
-                    • Zoom in as much as possible when placing point to ensure
-                    accurate scene alignment
-                  </li>
+                  {wasOpenedFromGeojson ? (
+                    <>
+                      <li>
+                        • We&apos;ve detected geographic coordinates from your
+                        imported GeoJSON data
+                      </li>
+                      <li>
+                        • The red marker shows the calculated center of your
+                        imported buildings
+                      </li>
+                      <li>
+                        • Click &apos;Set Location&apos; to position your scene
+                        at this location
+                      </li>
+                      <li>
+                        • This feature is in beta please join our{' '}
+                        <a
+                          href="https://discord.gg/zNFMhTwKSd"
+                          rel="noreferrer"
+                          target="_blank"
+                        >
+                          Discord
+                        </a>{' '}
+                        to provide feedback
+                      </li>
+                    </>
+                  ) : (
+                    <>
+                      <li>
+                        • The red marker sets the geospatial location for the
+                        centerpoint origin of the scene
+                      </li>
+                      <li>
+                        • Click on the map to change the location of the red
+                        marker point
+                      </li>
+                      <li>
+                        • Choose a point that is easy to identify visually from
+                        aerial view such as utility pole, road marking,
+                        crosswalk ramp, or other landmark
+                      </li>
+                      <li>
+                        • Zoom in as much as possible when placing point to
+                        ensure accurate scene alignment
+                      </li>
+                    </>
+                  )}
                 </ul>
               </div>
             )}
           </div>
 
           <div className={styles.controlButtons}>
-            <Button variant="ghost" onClick={onClose}>
+            <Button
+              variant="ghost"
+              onClick={onClose}
+              style={{
+                background: 'transparent',
+                color: '#9ca3af',
+                border: '1px solid #404040',
+                borderRadius: '8px',
+                transition: 'all 0.2s ease'
+              }}
+              onMouseEnter={(e) => {
+                e.target.style.background = '#404040';
+                e.target.style.color = 'white';
+              }}
+              onMouseLeave={(e) => {
+                e.target.style.background = 'transparent';
+                e.target.style.color = '#9ca3af';
+              }}
+            >
               Cancel
             </Button>
             <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-              {!currentUser?.isPro && tokenProfile && (
+              {wasOpenedFromGeojson && (
+                <div className={styles.betaPill}>Free During Beta</div>
+              )}
+              {!currentUser?.isPro && tokenProfile && !wasOpenedFromGeojson && (
                 <TooltipWrapper content="Use geo tokens to set or change a geolocation for your scene.">
                   <span
                     style={{
@@ -356,15 +452,23 @@ const GeoModal = () => {
                 </TooltipWrapper>
               )}
               <Button
-                leadingIcon={<Save24Icon />}
                 variant="filled"
                 onClick={onSaveHandler}
+                style={{
+                  backgroundColor: '#22c55e',
+                  borderColor: '#22c55e',
+                  fontSize: '16px',
+                  padding: '12px 24px',
+                  height: 'auto'
+                }}
               >
-                {currentUser?.isPro
-                  ? 'Update Scene Location'
-                  : tokenProfile?.geoToken > 0
-                    ? 'Update Scene Location'
-                    : 'Upgrade to Pro to Change Location'}
+                {wasOpenedFromGeojson
+                  ? 'Set Location →'
+                  : currentUser?.isPro
+                    ? 'Set Location →'
+                    : tokenProfile?.geoToken > 0
+                      ? 'Set Location →'
+                      : 'Upgrade to Pro to Change Location'}
               </Button>
             </div>
           </div>
@@ -419,29 +523,31 @@ const GeoModal = () => {
               )}
             </div>
 
-            {successData.tokenInfo && !successData.tokenInfo.isProUser && (
-              <div className={styles.tokenStatus}>
-                <img
-                  src="/ui_assets/token-geo.png"
-                  alt="Geo Token"
-                  className={styles.tokenIcon}
-                  style={{
-                    width: '32px',
-                    height: '32px',
-                    display: 'inline-block',
-                    verticalAlign: 'middle'
-                  }}
-                />
-                <span className={styles.tokenText}>
-                  {successData.tokenInfo.remainingTokens} geo tokens remaining
-                </span>
-                {successData.tokenInfo.remainingTokens === 0 && (
-                  <span className={styles.upgradeHint}>
-                    Upgrade to Pro for unlimited access
+            {successData.tokenInfo &&
+              !successData.tokenInfo.isProUser &&
+              !wasOpenedFromGeojson && (
+                <div className={styles.tokenStatus}>
+                  <img
+                    src="/ui_assets/token-geo.png"
+                    alt="Geo Token"
+                    className={styles.tokenIcon}
+                    style={{
+                      width: '32px',
+                      height: '32px',
+                      display: 'inline-block',
+                      verticalAlign: 'middle'
+                    }}
+                  />
+                  <span className={styles.tokenText}>
+                    {successData.tokenInfo.remainingTokens} geo tokens remaining
                   </span>
-                )}
-              </div>
-            )}
+                  {successData.tokenInfo.remainingTokens === 0 && (
+                    <span className={styles.upgradeHint}>
+                      Upgrade to Pro for unlimited access
+                    </span>
+                  )}
+                </div>
+              )}
           </div>
         </div>
       )}

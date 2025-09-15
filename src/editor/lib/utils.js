@@ -82,7 +82,7 @@ export function injectJS(url, onLoad, onError) {
  * @param {number} longitude - The longitude coordinate
  * @returns {Promise<Object>} - Promise resolving to the elevation data or error message
  */
-export async function setSceneLocation(latitude, longitude) {
+export async function setSceneLocation(latitude, longitude, options = {}) {
   if (isNaN(latitude) || isNaN(longitude)) {
     return {
       success: false,
@@ -102,7 +102,11 @@ export async function setSceneLocation(latitude, longitude) {
 
     // Request elevation data from the cloud function
     const getGeoidHeight = httpsCallable(functions, 'getGeoidHeight');
-    const result = await getGeoidHeight({ lat, lon: lng });
+    const result = await getGeoidHeight({
+      lat,
+      lon: lng,
+      fromGeojsonImport: options.fromGeojsonImport || false
+    });
     const data = result.data;
 
     if (data) {

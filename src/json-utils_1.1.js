@@ -635,6 +635,122 @@ AFRAME.registerComponent('set-loader-from-hash', {
         }, 1000);
         return;
       }
+      if (streetURL.startsWith('geojson:')) {
+        // url.com/page#geojson:{"type":"FeatureCollection","features":[...]}
+        const fragment = window.location.hash;
+        const prefix = '#geojson:';
+
+        let geoJsonStr = '';
+        let geoJsonData = null;
+        try {
+          const encodedGeoJsonStr = fragment.substring(prefix.length);
+          geoJsonStr = decodeURIComponent(encodedGeoJsonStr);
+          geoJsonData = JSON.parse(geoJsonStr);
+          console.log(
+            '[set-loader-from-hash] Loading GeoJSON from URL hash:',
+            geoJsonData
+          );
+        } catch (err) {
+          console.error('Error parsing GeoJSON fragment:', err);
+          STREET.notify.errorMessage(
+            'Error parsing GeoJSON from URL: Invalid JSON format'
+          );
+          return;
+        }
+
+        // Validate GeoJSON structure (similar to AppMenu validation)
+        if (
+          !geoJsonData.features ||
+          !Array.isArray(geoJsonData.features) ||
+          geoJsonData.features.length === 0
+        ) {
+          STREET.notify.errorMessage(
+            'Invalid GeoJSON: No valid features found'
+          );
+          return;
+        }
+
+        // Filter for valid polygon features (same logic as AppMenu)
+        const buildingFeatures = geoJsonData.features.filter((feature) => {
+          if (!feature.properties) return false;
+          if (
+            !feature.geometry ||
+            (feature.geometry.type !== 'Polygon' &&
+              feature.geometry.type !== 'MultiPolygon')
+          ) {
+            return false;
+          }
+          return true;
+        });
+
+        if (buildingFeatures.length === 0) {
+          STREET.notify.errorMessage(
+            'No valid polygon features found in GeoJSON'
+          );
+          return;
+        }
+
+        // Create cleaned GeoJSON with only valid features
+        const cleanedGeoJSON = {
+          ...geoJsonData,
+          features: buildingFeatures
+        };
+
+        // Create GeoJSON entity (same logic as AppMenu)
+        setTimeout(() => {
+          let osmEntity = document.querySelector('[geojson]');
+          if (!osmEntity) {
+            osmEntity = document.createElement('a-entity');
+            osmEntity.setAttribute('id', 'imported-geojson');
+            osmEntity.setAttribute(
+              'data-layer-name',
+              'Imported GeoJSON Buildings'
+            );
+            // Rotate -90 degrees on Y axis to align with 3DStreet coordinate system (X+ north)
+            osmEntity.setAttribute('rotation', '0 -90 0');
+            // Add to user layers (street-container)
+            document.querySelector('#street-container').appendChild(osmEntity);
+          }
+
+          // Set the geojson component with direct data
+          osmEntity.setAttribute('geojson', {
+            data: JSON.stringify(cleanedGeoJSON),
+            lat: 0,
+            lon: 0
+          });
+
+          STREET.notify.successMessage(
+            `GeoJSON loaded from URL: ${buildingFeatures.length} polygon features.`
+          );
+
+          // Wait for GeoJSON component to calculate center, then open Geo Modal
+          setTimeout(async () => {
+            const geoJsonComponent = osmEntity.components.geojson;
+            if (
+              geoJsonComponent &&
+              geoJsonComponent.data.lat !== 0 &&
+              geoJsonComponent.data.lon !== 0
+            ) {
+              // Import setGeojsonImportData and setModal from store
+              const { setGeojsonImportData, setModal } = useStore.getState();
+
+              // Store coordinates for Geo Modal
+              setGeojsonImportData({
+                lat: geoJsonComponent.data.lat,
+                lon: geoJsonComponent.data.lon,
+                source: 'geojson-hash'
+              });
+
+              // Clear the hash to avoid "URI Too Long" errors in auth
+              window.location.hash = '';
+
+              // Open Geo Modal
+              setModal('geo');
+            }
+          }, 200);
+        }, 1000);
+        return;
+      }
       if (streetURL.includes('//streetmix.net')) {
         console.log(
           '[set-loader-from-hash]',

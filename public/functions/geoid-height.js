@@ -9,25 +9,29 @@ exports.getGeoidHeight = functions
   .runWith({ secrets: ["GOOGLE_MAPS_ELEVATION_API_KEY", "ALLOWED_PRO_TEAM_DOMAINS"] })
   .https
   .onCall(async (data, context) => {
-    // Check if user is authenticated
-    if (!context.auth) {
+    const fromGeojsonImport = data.fromGeojsonImport || false;
+
+    // Check if user is authenticated (skip for GeoJSON imports during beta)
+    if (!context.auth && !fromGeojsonImport) {
       throw new functions.https.HttpsError('unauthenticated', 'User must be authenticated');
     }
 
-    const userId = context.auth.uid;
+    const userId = context.auth ? context.auth.uid : 'anonymous-geojson-import';
     const lat = parseFloat(data.lat);
     const lon = parseFloat(data.lon);
 
     // Check if user is Pro or has tokens
     const db = admin.firestore();
-    const isProUser = await isUserProInternal(userId);
-    let canProceed = isProUser;
+    const isProUser = context.auth ? await isUserProInternal(userId) : false;
 
-    // If not Pro, check tokens
+    // Skip token checks for GeoJSON imports (free during beta)
+    let canProceed = fromGeojsonImport || isProUser;
+
+    // If not Pro and not from GeoJSON import, check tokens
     if (!canProceed) {
       const tokenProfileRef = db.collection('tokenProfile').doc(userId);
       const tokenDoc = await tokenProfileRef.get();
-      
+
       if (tokenDoc.exists) {
         const tokenData = tokenDoc.data();
         if (tokenData.geoToken > 0) {
@@ -147,21 +151,21 @@ exports.getGeoidHeight = functions
       intersectionPromise
     ]);
 
-    // Decrement token if not a Pro user (only after successful API calls)
+    // Decrement token if not a Pro user and not from GeoJSON import (only after successful API calls)
     let remainingTokens = null;
-    if (!isProUser) {
+    if (!isProUser && !fromGeojsonImport) {
       const tokenProfileRef = db.collection('tokenProfile').doc(userId);
       const tokenDoc = await tokenProfileRef.get();
-      
+
       if (tokenDoc.exists) {
         const currentTokens = tokenDoc.data().geoToken;
         const newTokenCount = Math.max(0, currentTokens - 1);
-        
+
         await tokenProfileRef.update({
           geoToken: newTokenCount,
           updatedAt: admin.firestore.FieldValue.serverTimestamp()
         });
-        
+
         remainingTokens = newTokenCount;
       }
     }
