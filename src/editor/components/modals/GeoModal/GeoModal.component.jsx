@@ -255,12 +255,20 @@ const GeoModal = () => {
         className={styles.modalWrapper}
         isOpen={isOpen}
         onClose={onCloseCheck}
+        titleElement={
+          <div className="flex items-center pr-4 pt-5">
+            <img
+              src={GeoImg}
+              alt="geo"
+              style={{ width: '27px', height: '32px', marginRight: '8px' }}
+            />
+            <div className="font-large text-center text-2xl">
+              Set Scene Location
+            </div>
+          </div>
+        }
       >
         <div className={styles.wrapper}>
-          <div className={styles.header}>
-            <img src={GeoImg} alt="geo" style={{ objectFit: 'contain' }} />
-            <h3 className="text-3xl font-bold">Set Scene Location</h3>
-          </div>
           {isLoaded && (
             <>
               <GoogleMap
