@@ -162,6 +162,13 @@ const GeoModal = () => {
   };
 
   const onSaveHandler = async () => {
+    // If GeoJSON import but user not authenticated, redirect to sign in
+    if (wasOpenedFromGeojson && !currentUser) {
+      const setModal = useStore.getState().setModal;
+      setModal('signin');
+      return;
+    }
+
     // Skip auth check if opened from GeoJSON import (free during beta)
     if (!wasOpenedFromGeojson) {
       // Check if user can use geo feature (pro OR has tokens)
@@ -463,13 +470,15 @@ const GeoModal = () => {
                   height: 'auto'
                 }}
               >
-                {wasOpenedFromGeojson
-                  ? 'Set Location →'
-                  : currentUser?.isPro
+                {wasOpenedFromGeojson && !currentUser
+                  ? 'Sign In to Set Location →'
+                  : wasOpenedFromGeojson
                     ? 'Set Location →'
-                    : tokenProfile?.geoToken > 0
+                    : currentUser?.isPro
                       ? 'Set Location →'
-                      : 'Upgrade to Pro to Change Location'}
+                      : tokenProfile?.geoToken > 0
+                        ? 'Set Location →'
+                        : 'Upgrade to Pro to Change Location'}
               </Button>
             </div>
           </div>

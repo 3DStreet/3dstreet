@@ -741,6 +741,9 @@ AFRAME.registerComponent('set-loader-from-hash', {
                 source: 'geojson-hash'
               });
 
+              // Clear the hash to avoid "URI Too Long" errors in auth
+              window.location.hash = '';
+
               // Open Geo Modal
               setModal('geo');
             }
