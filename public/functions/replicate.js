@@ -99,6 +99,14 @@ const generateReplicateImage = functions
         // Remove parameters that Nano Banana doesn't use
         delete modelInput.guidance;
         delete modelInput.num_inference_steps;
+      } else if (modelVersionToUse === '254faac883c3a411e95cc95d0fb02274a81e388aaa4394b3ce5b7d2a9f7a6569') {
+        // Seedream uses image_input as an array and different parameters
+        modelInput.image_input = [imageUrl];
+        modelInput.size = '2K';
+        modelInput.aspect_ratio = 'match_input_image';
+        // Remove parameters that Seedream doesn't use
+        delete modelInput.guidance;
+        delete modelInput.num_inference_steps;
       } else {
         // Kontext models use input_image as string
         modelInput.input_image = imageUrl;

@@ -38,8 +38,8 @@ const AI_MODELS = {
       'photorealistic street view, professional photography, high detail, natural lighting, clear and sharp'
   },
   'seedream-4': {
-    name: 'SeedEdit',
-    version: '5c76a1fe2e2c87eff7b1b0e2cc2b5ad6af00b89b74000b72ddd3cc6a37daf7bc',
+    name: 'Seedream',
+    version: '254faac883c3a411e95cc95d0fb02274a81e388aaa4394b3ce5b7d2a9f7a6569',
     prompt:
       'photorealistic street view, professional photography, high detail, natural lighting, clear and sharp'
   }
