@@ -162,13 +162,6 @@ const GeoModal = () => {
   };
 
   const onSaveHandler = async () => {
-    // If GeoJSON import but user not authenticated, redirect to sign in
-    if (wasOpenedFromGeojson && !currentUser) {
-      const setModal = useStore.getState().setModal;
-      setModal('signin');
-      return;
-    }
-
     // Skip auth check if opened from GeoJSON import (free during beta)
     if (!wasOpenedFromGeojson) {
       // Check if user can use geo feature (pro OR has tokens)
@@ -232,13 +225,12 @@ const GeoModal = () => {
       setShowSuccessOverlay(true);
       setIsWorking(false);
 
-      // Reset GeoJSON import state after successful location setting
-      setWasOpenedFromGeojson(false);
-
       // Auto-dismiss after 4 seconds
       setTimeout(() => {
         setShowSuccessOverlay(false);
         setSuccessData(null);
+        // Reset GeoJSON import state after overlay is dismissed
+        setWasOpenedFromGeojson(false);
         onClose();
       }, 4000);
     } else {
@@ -470,15 +462,13 @@ const GeoModal = () => {
                   height: 'auto'
                 }}
               >
-                {wasOpenedFromGeojson && !currentUser
-                  ? 'Sign In to Set Location →'
-                  : wasOpenedFromGeojson
+                {wasOpenedFromGeojson
+                  ? 'Set Location →'
+                  : currentUser?.isPro
                     ? 'Set Location →'
-                    : currentUser?.isPro
+                    : tokenProfile?.geoToken > 0
                       ? 'Set Location →'
-                      : tokenProfile?.geoToken > 0
-                        ? 'Set Location →'
-                        : 'Upgrade to Pro to Change Location'}
+                      : 'Upgrade to Pro to Change Location'}
               </Button>
             </div>
           </div>
@@ -533,29 +523,31 @@ const GeoModal = () => {
               )}
             </div>
 
-            {successData.tokenInfo && !successData.tokenInfo.isProUser && (
-              <div className={styles.tokenStatus}>
-                <img
-                  src="/ui_assets/token-geo.png"
-                  alt="Geo Token"
-                  className={styles.tokenIcon}
-                  style={{
-                    width: '32px',
-                    height: '32px',
-                    display: 'inline-block',
-                    verticalAlign: 'middle'
-                  }}
-                />
-                <span className={styles.tokenText}>
-                  {successData.tokenInfo.remainingTokens} geo tokens remaining
-                </span>
-                {successData.tokenInfo.remainingTokens === 0 && (
-                  <span className={styles.upgradeHint}>
-                    Upgrade to Pro for unlimited access
+            {successData.tokenInfo &&
+              !successData.tokenInfo.isProUser &&
+              !wasOpenedFromGeojson && (
+                <div className={styles.tokenStatus}>
+                  <img
+                    src="/ui_assets/token-geo.png"
+                    alt="Geo Token"
+                    className={styles.tokenIcon}
+                    style={{
+                      width: '32px',
+                      height: '32px',
+                      display: 'inline-block',
+                      verticalAlign: 'middle'
+                    }}
+                  />
+                  <span className={styles.tokenText}>
+                    {successData.tokenInfo.remainingTokens} geo tokens remaining
                   </span>
-                )}
-              </div>
-            )}
+                  {successData.tokenInfo.remainingTokens === 0 && (
+                    <span className={styles.upgradeHint}>
+                      Upgrade to Pro for unlimited access
+                    </span>
+                  )}
+                </div>
+              )}
           </div>
         </div>
       )}
