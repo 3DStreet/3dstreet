@@ -51,7 +51,6 @@ function ScreenshotModal() {
   const startCheckout = useStore((state) => state.startCheckout);
   const { currentUser, tokenProfile, refreshTokenProfile } = useAuthContext();
   const [isGeneratingAI, setIsGeneratingAI] = useState(false);
-  const [hasGeneratedAI, setHasGeneratedAI] = useState(false);
   const [originalImageUrl, setOriginalImageUrl] = useState(null);
   const [aiImageUrl, setAiImageUrl] = useState(null);
   const [showOriginal, setShowOriginal] = useState(true);
@@ -82,7 +81,6 @@ function ScreenshotModal() {
     setShowOriginal(true);
     setComparisonMode(false);
     setIsGeneratingAI(false);
-    setHasGeneratedAI(false);
     setIsSavingSnapshot(false);
     setRenderProgress(0);
     setRenderStartTime(null);
@@ -95,18 +93,24 @@ function ScreenshotModal() {
   };
 
   const handleClose = () => {
-    // Check if rendering is in progress
-    if (isGeneratingAI) {
+    // Check if any rendering is in progress (1x or 4x)
+    const isAnyRendering =
+      isGeneratingAI || Object.values(renderingStates).some((state) => state);
+
+    if (isAnyRendering) {
       const confirmClose = window.confirm(
         'Rendering in progress. Are you sure you want to close? The render will be cancelled.'
       );
       if (!confirmClose) {
         return;
       }
-    } else if (aiImageUrl && !showOriginal) {
-      // Check if there's an unsaved AI render
+    } else if (
+      (aiImageUrl && !showOriginal) ||
+      Object.keys(aiImages).length > 0
+    ) {
+      // Check if there are any unsaved AI renders (1x or 4x)
       const confirmClose = window.confirm(
-        'You have an unsaved AI render. Are you sure you want to close? The AI render will be lost.'
+        'You have unsaved AI renders. Are you sure you want to close? The AI renders will be lost.'
       );
       if (!confirmClose) {
         return;
@@ -288,7 +292,6 @@ function ScreenshotModal() {
         if (renderMode === '1x') {
           setAiImageUrl(result.data.image_url);
           setShowOriginal(false);
-          setHasGeneratedAI(true);
         } else {
           setAiImages((prev) => ({
             ...prev,
@@ -512,7 +515,6 @@ function ScreenshotModal() {
                   className={styles.modelSelect}
                   disabled={
                     isGeneratingAI ||
-                    hasGeneratedAI ||
                     Object.values(renderingStates).some((state) => state)
                   }
                 >
@@ -564,12 +566,7 @@ function ScreenshotModal() {
                 onClick={() => handleGenerateAIImage()}
                 variant="filled"
                 className={`${styles.aiButton} ${isGeneratingAI ? styles.renderingButton : ''}`}
-                disabled={isGeneratingAI || !currentUser || hasGeneratedAI}
-                title={
-                  hasGeneratedAI
-                    ? 'Close and reopen this modal to generate another AI rendering'
-                    : ''
-                }
+                disabled={isGeneratingAI || !currentUser}
               >
                 {isGeneratingAI ? (
                   <div className={styles.renderingContent}>
