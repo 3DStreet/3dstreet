@@ -237,11 +237,19 @@ function ScreenshotModal() {
     }
 
     try {
-      // Extract base model key (remove index suffix if present)
-      const baseModelKey = targetModel.includes('-')
-        ? targetModel.split('-').slice(0, -1).join('-')
-        : targetModel;
-      const selectedModelConfig = AI_MODELS[baseModelKey];
+      // Simple approach: try the key as-is first, then try removing numeric suffix
+      let selectedModelConfig = AI_MODELS[targetModel];
+      let baseModelKey = targetModel;
+
+      if (!selectedModelConfig) {
+        // If direct lookup fails, try removing numeric suffix (for 4x compound keys)
+        const parts = targetModel.split('-');
+        const lastPart = parts[parts.length - 1];
+        if (/^\d+$/.test(lastPart) && parts.length > 1) {
+          baseModelKey = parts.slice(0, -1).join('-');
+          selectedModelConfig = AI_MODELS[baseModelKey];
+        }
+      }
 
       if (!selectedModelConfig) {
         throw new Error(`Model configuration not found for: ${baseModelKey}`);
@@ -354,7 +362,7 @@ function ScreenshotModal() {
       return;
     }
 
-    // Check if user can use image feature (need 3 tokens for 3 models)
+    // Check if user can use image feature (need 4 tokens for 4 renders)
     const canUse = await canUseImageFeature(currentUser);
     if (!canUse) {
       startCheckout('image');
@@ -364,7 +372,7 @@ function ScreenshotModal() {
     const modelKeys = Object.keys(AI_MODELS);
     const modelsToRender = useMixedModels
       ? modelKeys
-      : [selectedModel, selectedModel, selectedModel];
+      : [selectedModel, selectedModel, selectedModel, selectedModel];
 
     // Generate renders for each model concurrently
     const renderPromises = modelsToRender.map((modelKey, index) =>
@@ -599,7 +607,7 @@ function ScreenshotModal() {
                   Object.values(renderingStates).some((state) => state) ||
                   !currentUser
                 }
-                title="Generate 4 renders simultaneously (uses 3 tokens)"
+                title="Generate 4 renders simultaneously (uses 4 tokens)"
               >
                 <span>
                   <span>✨</span>
