@@ -36,7 +36,6 @@ const generateReplicateImage = functions
 
       // If input_image is a base64 data URL, upload it to Firebase Storage first
       if (input_image.startsWith('data:image/')) {
-        console.log('Converting base64 image to public URL...');
         
         // Extract the base64 data and mime type
         const matches = input_image.match(/^data:([^;]+);base64,(.+)$/);
@@ -69,16 +68,14 @@ const generateReplicateImage = functions
         
         // Get the public URL
         imageUrl = `https://storage.googleapis.com/${bucket.name}/temp/${filename}`;
-        
-        console.log('Uploaded temp image to:', imageUrl);
-      }
+              }
 
-      console.log('Calling Replicate with:', {
-        prompt,
-        input_image: imageUrl,
-        guidance,
-        num_inference_steps
-      });
+      // console.log('Calling Replicate with:', {
+      //   prompt,
+      //   input_image: imageUrl,
+      //   guidance,
+      //   num_inference_steps
+      // });
 
       // Use provided model version or default to Kontext Real Earth
       const defaultModelVersion = "2af4da47bcb7b55a0705b0de9933701f7607531d763ae889241f827a648c1755";
@@ -117,8 +114,6 @@ const generateReplicateImage = functions
         input: modelInput
       });
 
-      console.log('Replicate prediction created:', prediction);
-
       // Wait for the prediction to complete
       const output = await replicate.wait(prediction);
 
@@ -128,7 +123,6 @@ const generateReplicateImage = functions
           const bucket = admin.storage().bucket();
           const filename = imageUrl.split('/').pop();
           await bucket.file(`temp/${filename}`).delete();
-          console.log('Cleaned up temp file:', filename);
         } catch (cleanupError) {
           console.warn('Failed to cleanup temp file:', cleanupError);
         }
@@ -138,16 +132,16 @@ const generateReplicateImage = functions
       // Pro users get monthly refills but still use tokens
       const db = admin.firestore();
       const tokenProfileRef = db.collection('tokenProfile').doc(userId);
-      const currentTokens = tokenData.genToken;
-      const newTokenCount = Math.max(0, currentTokens - 1);
-      
+
+      // Use atomic increment to avoid race conditions with concurrent requests
       await tokenProfileRef.update({
-        genToken: newTokenCount,
+        genToken: admin.firestore.FieldValue.increment(-1),
         updatedAt: admin.firestore.FieldValue.serverTimestamp()
       });
-      
-      const remainingTokens = newTokenCount;
-      console.log(`Decremented tokens for user ${userId}: ${currentTokens} -> ${newTokenCount}`);
+
+      // Get the updated token count
+      const updatedDoc = await tokenProfileRef.get();
+      const remainingTokens = updatedDoc.data()?.genToken || 0;
 
       // Handle different output formats from Replicate
       // The output from replicate.wait() is the prediction object with an 'output' property
