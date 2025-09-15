@@ -270,6 +270,7 @@ const AppMenu = ({ currentUser }) => {
     convertToObject();
   };
 
+  // eslint-disable-next-line no-unused-vars
   const importGeoJSON = () => {
     const input = document.createElement('input');
     input.type = 'file';
@@ -568,8 +569,8 @@ const AppMenu = ({ currentUser }) => {
                 >
                   Open...
                 </DropdownMenu.Item>
-                <DropdownMenu.Separator className="DropdownSeparator" />
-                {/* Import Submenu */}
+                {/* Import Submenu - commented out to not overtly show GeoJSON import command */}
+                {/*
                 <DropdownMenu.Sub>
                   <DropdownMenu.SubTrigger className="DropdownSubTrigger">
                     Import
@@ -588,6 +589,7 @@ const AppMenu = ({ currentUser }) => {
                     </DropdownMenu.SubContent>
                   </DropdownMenu.Portal>
                 </DropdownMenu.Sub>
+                */}
                 <DropdownMenu.Separator className="DropdownSeparator" />
                 <DropdownMenu.Item
                   className="DropdownItem"
