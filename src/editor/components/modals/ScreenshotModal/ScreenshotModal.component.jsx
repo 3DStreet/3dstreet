@@ -36,6 +36,12 @@ const AI_MODELS = {
     version: 'f0a9d34b12ad1c1cd76269a844b218ff4e64e128ddaba93e15891f47368958a0',
     prompt:
       'photorealistic street view, professional photography, high detail, natural lighting, clear and sharp'
+  },
+  'seedream-4': {
+    name: 'Seedream',
+    version: '254faac883c3a411e95cc95d0fb02274a81e388aaa4394b3ce5b7d2a9f7a6569',
+    prompt:
+      'photorealistic street view, professional photography, high detail, natural lighting, clear and sharp'
   }
 };
 
@@ -45,7 +51,6 @@ function ScreenshotModal() {
   const startCheckout = useStore((state) => state.startCheckout);
   const { currentUser, tokenProfile, refreshTokenProfile } = useAuthContext();
   const [isGeneratingAI, setIsGeneratingAI] = useState(false);
-  const [hasGeneratedAI, setHasGeneratedAI] = useState(false);
   const [originalImageUrl, setOriginalImageUrl] = useState(null);
   const [aiImageUrl, setAiImageUrl] = useState(null);
   const [showOriginal, setShowOriginal] = useState(true);
@@ -56,6 +61,12 @@ function ScreenshotModal() {
   const [renderStartTime, setRenderStartTime] = useState(null);
   const [elapsedTime, setElapsedTime] = useState(0);
   const [selectedModel, setSelectedModel] = useState('kontext-realearth');
+  const [renderMode, setRenderMode] = useState('1x'); // '1x' or '4x'
+  const [aiImages, setAiImages] = useState({}); // Store multiple AI images with model keys
+  const [renderTimers, setRenderTimers] = useState({}); // Individual timers for each model
+  const [renderingStates, setRenderingStates] = useState({}); // Track which models are rendering
+  const [renderErrors, setRenderErrors] = useState({}); // Track which models had errors
+  const [useMixedModels, setUseMixedModels] = useState(true); // Toggle for model mixing
 
   // Ensure token profile is loaded when modal opens
   useEffect(() => {
@@ -70,27 +81,36 @@ function ScreenshotModal() {
     setShowOriginal(true);
     setComparisonMode(false);
     setIsGeneratingAI(false);
-    setHasGeneratedAI(false);
     setIsSavingSnapshot(false);
     setRenderProgress(0);
     setRenderStartTime(null);
     setElapsedTime(0);
-    // Keep model selection when resetting
+    setAiImages({});
+    setRenderTimers({});
+    setRenderingStates({});
+    setRenderErrors({});
+    // Keep model selection and render mode when resetting
   };
 
   const handleClose = () => {
-    // Check if rendering is in progress
-    if (isGeneratingAI) {
+    // Check if any rendering is in progress (1x or 4x)
+    const isAnyRendering =
+      isGeneratingAI || Object.values(renderingStates).some((state) => state);
+
+    if (isAnyRendering) {
       const confirmClose = window.confirm(
         'Rendering in progress. Are you sure you want to close? The render will be cancelled.'
       );
       if (!confirmClose) {
         return;
       }
-    } else if (aiImageUrl && !showOriginal) {
-      // Check if there's an unsaved AI render
+    } else if (
+      (aiImageUrl && !showOriginal) ||
+      Object.keys(aiImages).length > 0
+    ) {
+      // Check if there are any unsaved AI renders (1x or 4x)
       const confirmClose = window.confirm(
-        'You have an unsaved AI render. Are you sure you want to close? The AI render will be lost.'
+        'You have unsaved AI renders. Are you sure you want to close? The AI renders will be lost.'
       );
       if (!confirmClose) {
         return;
@@ -102,20 +122,26 @@ function ScreenshotModal() {
     setModal(null);
   };
 
-  const handleDownloadScreenshot = async () => {
-    const imageUrl = showOriginal ? originalImageUrl : aiImageUrl;
-    if (!imageUrl) {
+  const handleDownloadScreenshot = async (imageUrl = null, modelKey = null) => {
+    const targetImageUrl =
+      imageUrl || (showOriginal ? originalImageUrl : aiImageUrl);
+    if (!targetImageUrl) {
       STREET.notify.errorMessage('No image available to download');
       return;
     }
 
     const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
-    const filename = showOriginal
+    const isOriginal = targetImageUrl === originalImageUrl;
+    const modelName = modelKey
+      ? AI_MODELS[modelKey.split('-')[0]]?.name || 'ai-render'
+      : 'ai-render';
+
+    const filename = isOriginal
       ? `3dstreet-screenshot-${timestamp}.jpg`
-      : `3dstreet-ai-render-${timestamp}.jpg`;
+      : `3dstreet-${modelName.toLowerCase().replace(/\s+/g, '-')}-${timestamp}.jpg`;
 
     const link = document.createElement('a');
-    link.href = imageUrl;
+    link.href = targetImageUrl;
     link.target = '_blank';
     link.download = filename;
     document.body.appendChild(link);
@@ -124,7 +150,9 @@ function ScreenshotModal() {
 
     posthog.capture('screenshot_downloaded', {
       scene_id: STREET.utils.getCurrentSceneId(),
-      is_ai_render: !showOriginal
+      is_ai_render: !isOriginal,
+      model: modelKey || selectedModel,
+      render_mode: renderMode
     });
   };
 
@@ -181,7 +209,7 @@ function ScreenshotModal() {
     }
   };
 
-  const handleGenerateAIImage = async () => {
+  const handleGenerateAIImage = async (modelKey = null) => {
     if (!originalImageUrl) {
       STREET.notify.errorMessage('No screenshot available to render');
       return;
@@ -194,13 +222,43 @@ function ScreenshotModal() {
       return;
     }
 
-    setIsGeneratingAI(true);
-    setRenderProgress(0);
-    setRenderStartTime(Date.now());
-    setElapsedTime(0);
+    const targetModel = modelKey || selectedModel;
+    const startTime = Date.now();
+
+    // Update rendering state for this specific model
+    setRenderingStates((prev) => ({ ...prev, [targetModel]: true }));
+    setRenderTimers((prev) => ({
+      ...prev,
+      [targetModel]: { startTime, elapsed: 0 }
+    }));
+
+    // For single render mode, set global states
+    if (renderMode === '1x') {
+      setIsGeneratingAI(true);
+      setRenderProgress(0);
+      setRenderStartTime(startTime);
+      setElapsedTime(0);
+    }
 
     try {
-      const selectedModelConfig = AI_MODELS[selectedModel];
+      // Simple approach: try the key as-is first, then try removing numeric suffix
+      let selectedModelConfig = AI_MODELS[targetModel];
+      let baseModelKey = targetModel;
+
+      if (!selectedModelConfig) {
+        // If direct lookup fails, try removing numeric suffix (for 4x compound keys)
+        const parts = targetModel.split('-');
+        const lastPart = parts[parts.length - 1];
+        if (/^\d+$/.test(lastPart) && parts.length > 1) {
+          baseModelKey = parts.slice(0, -1).join('-');
+          selectedModelConfig = AI_MODELS[baseModelKey];
+        }
+      }
+
+      if (!selectedModelConfig) {
+        throw new Error(`Model configuration not found for: ${baseModelKey}`);
+      }
+
       const aiPrompt = selectedModelConfig.prompt;
 
       const generateReplicateImage = httpsCallable(
@@ -211,32 +269,50 @@ function ScreenshotModal() {
       const screentockImgElement = document.getElementById(
         'screentock-destination'
       );
+
+      if (!screentockImgElement || !screentockImgElement.src) {
+        // Fallback to originalImageUrl if the img element isn't available
+        if (!originalImageUrl) {
+          throw new Error('No image source available for rendering');
+        }
+      }
+
+      const inputImageSrc = screentockImgElement?.src || originalImageUrl;
+
       const result = await generateReplicateImage({
         prompt: aiPrompt,
-        input_image: screentockImgElement.src,
+        input_image: inputImageSrc,
         guidance: 2.5,
         num_inference_steps: 30,
         model_version: selectedModelConfig.version
       });
 
       if (result.data.success) {
-        setAiImageUrl(result.data.image_url);
-        setShowOriginal(false);
-        setHasGeneratedAI(true);
+        // Store image in the appropriate place based on render mode
+        if (renderMode === '1x') {
+          setAiImageUrl(result.data.image_url);
+          setShowOriginal(false);
+        } else {
+          setAiImages((prev) => ({
+            ...prev,
+            [targetModel]: result.data.image_url
+          }));
+        }
 
         // Show appropriate success message based on user type
         if (currentUser?.isProTeam) {
-          // Team users - simple success message only
-          STREET.notify.successMessage('AI render generated successfully!');
+          STREET.notify.successMessage(
+            `AI render generated successfully! (${selectedModelConfig.name})`
+          );
         } else if (result.data.remainingTokens !== undefined) {
-          // Pro/Free users - show token count
           const message = currentUser?.isPro
-            ? `AI render complete! ${result.data.remainingTokens} tokens remaining.`
-            : `AI render complete! ${result.data.remainingTokens} gen tokens remaining.`;
+            ? `AI render complete! ${result.data.remainingTokens} tokens remaining. (${selectedModelConfig.name})`
+            : `AI render complete! ${result.data.remainingTokens} gen tokens remaining. (${selectedModelConfig.name})`;
           STREET.notify.successMessage(message);
         } else {
-          // Fallback message
-          STREET.notify.successMessage('AI render generated successfully!');
+          STREET.notify.successMessage(
+            `AI render generated successfully! (${selectedModelConfig.name})`
+          );
         }
 
         // Refresh token profile to show updated count in UI
@@ -245,6 +321,8 @@ function ScreenshotModal() {
         posthog.capture('ai_image_generated', {
           scene_id: STREET.utils.getCurrentSceneId(),
           prompt: aiPrompt,
+          model: baseModelKey,
+          render_mode: renderMode,
           is_pro_user: currentUser?.isPro || false,
           tokens_available: tokenProfile?.genToken || 0
         });
@@ -253,18 +331,61 @@ function ScreenshotModal() {
       }
     } catch (error) {
       console.error('Error generating AI image:', error);
-      STREET.notify.errorMessage(
-        'Failed to generate AI render. Please try again.'
-      );
+      const baseModelKey = targetModel.includes('-')
+        ? targetModel.split('-').slice(0, -1).join('-')
+        : targetModel;
+      const modelName = AI_MODELS[baseModelKey]?.name || 'selected model';
+
+      // Track error state for this model
+      setRenderErrors((prev) => ({ ...prev, [targetModel]: true }));
+
+      // Only show error notification for single renders or if all renders have completed
+      if (renderMode === '1x') {
+        STREET.notify.errorMessage(
+          `Failed to generate AI render for ${modelName}. Please try again.`
+        );
+      }
     } finally {
-      setIsGeneratingAI(false);
-      setRenderProgress(0);
-      setRenderStartTime(null);
-      setElapsedTime(0);
+      // Update rendering state for this specific model
+      setRenderingStates((prev) => ({ ...prev, [targetModel]: false }));
+
+      // For single render mode, clear global states
+      if (renderMode === '1x') {
+        setIsGeneratingAI(false);
+        setRenderProgress(0);
+        setRenderStartTime(null);
+        setElapsedTime(0);
+      }
     }
   };
 
-  // Progress bar animation effect
+  const handleGenerate4xRender = async () => {
+    if (!originalImageUrl) {
+      STREET.notify.errorMessage('No screenshot available to render');
+      return;
+    }
+
+    // Check if user can use image feature (need 4 tokens for 4 renders)
+    const canUse = await canUseImageFeature(currentUser);
+    if (!canUse) {
+      startCheckout('image');
+      return;
+    }
+
+    const modelKeys = Object.keys(AI_MODELS);
+    const modelsToRender = useMixedModels
+      ? modelKeys
+      : [selectedModel, selectedModel, selectedModel, selectedModel];
+
+    // Generate renders for each model concurrently
+    const renderPromises = modelsToRender.map((modelKey, index) =>
+      handleGenerateAIImage(`${modelKey}-${index}`)
+    );
+
+    await Promise.allSettled(renderPromises);
+  };
+
+  // Progress bar animation effect for single render
   useEffect(() => {
     let progressInterval;
 
@@ -285,6 +406,29 @@ function ScreenshotModal() {
       }
     };
   }, [isGeneratingAI, renderStartTime]);
+
+  // Timer updates for individual renders in 4x mode
+  useEffect(() => {
+    const intervals = {};
+
+    Object.keys(renderingStates).forEach((modelKey) => {
+      if (renderingStates[modelKey] && renderTimers[modelKey]) {
+        intervals[modelKey] = setInterval(() => {
+          const elapsed = Math.round(
+            (Date.now() - renderTimers[modelKey].startTime) / 1000
+          );
+          setRenderTimers((prev) => ({
+            ...prev,
+            [modelKey]: { ...prev[modelKey], elapsed }
+          }));
+        }, 1000);
+      }
+    });
+
+    return () => {
+      Object.values(intervals).forEach((interval) => clearInterval(interval));
+    };
+  }, [renderingStates, renderTimers]);
 
   useEffect(() => {
     if (modal === 'screenshot') {
@@ -334,64 +478,149 @@ function ScreenshotModal() {
     >
       <div className={styles.modalContent}>
         <div className={styles.sidebar}>
-          <div className={styles.aiSection}>
-            <div className={styles.modelSelector}>
-              <label htmlFor="model-select" className={styles.modelLabel}>
-                AI Model:
-              </label>
-              <select
-                id="model-select"
-                value={selectedModel}
-                onChange={(e) => setSelectedModel(e.target.value)}
-                className={styles.modelSelect}
-                disabled={isGeneratingAI || hasGeneratedAI}
-              >
-                {Object.entries(AI_MODELS).map(([key, model]) => (
-                  <option key={key} value={key}>
-                    {model.name}
-                  </option>
-                ))}
-              </select>
-            </div>
-            <Button
-              onClick={handleGenerateAIImage}
-              variant="filled"
-              className={`${styles.aiButton} ${isGeneratingAI ? styles.renderingButton : ''}`}
-              disabled={isGeneratingAI || !currentUser || hasGeneratedAI}
-              title={
-                hasGeneratedAI
-                  ? 'Close and reopen this modal to generate another AI rendering'
-                  : ''
+          {/* Render Mode Tabs */}
+          <div className={styles.renderModeTabs}>
+            <button
+              className={`${styles.tabButton} ${renderMode === '1x' ? styles.active : ''}`}
+              onClick={() => setRenderMode('1x')}
+              disabled={
+                isGeneratingAI ||
+                Object.values(renderingStates).some((state) => state)
               }
             >
-              {isGeneratingAI ? (
-                <div className={styles.renderingContent}>
-                  <div className={styles.progressContainer}>
-                    <div
-                      className={styles.progressBar}
-                      style={{ width: `${renderProgress}%` }}
-                    />
-                    <div className={styles.progressStripes} />
-                  </div>
-                  <span className={styles.progressText}>
-                    {`${elapsedTime}/20s`}
+              1x Render
+            </button>
+            <button
+              className={`${styles.tabButton} ${renderMode === '4x' ? styles.active : ''}`}
+              onClick={() => setRenderMode('4x')}
+              disabled={
+                isGeneratingAI ||
+                Object.values(renderingStates).some((state) => state)
+              }
+            >
+              4x Render
+            </button>
+          </div>
+
+          <div className={styles.aiSection}>
+            {renderMode === '1x' && (
+              <div className={styles.modelSelector}>
+                <label htmlFor="model-select" className={styles.modelLabel}>
+                  AI Model:
+                </label>
+                <select
+                  id="model-select"
+                  value={selectedModel}
+                  onChange={(e) => setSelectedModel(e.target.value)}
+                  className={styles.modelSelect}
+                  disabled={
+                    isGeneratingAI ||
+                    Object.values(renderingStates).some((state) => state)
+                  }
+                >
+                  {Object.entries(AI_MODELS).map(([key, model]) => (
+                    <option key={key} value={key}>
+                      {model.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
+
+            {renderMode === '4x' && (
+              <div className={styles.modelMixToggle}>
+                <label className={styles.toggleLabel}>
+                  <span className={styles.toggleText}>
+                    {useMixedModels ? 'Mixed Models' : 'Same Model'}
                   </span>
-                </div>
-              ) : (
+                  <input
+                    type="checkbox"
+                    checked={useMixedModels}
+                    onChange={(e) => setUseMixedModels(e.target.checked)}
+                    disabled={Object.values(renderingStates).some(
+                      (state) => state
+                    )}
+                  />
+                  <div className={styles.toggleSwitch}></div>
+                </label>
+                {!useMixedModels && (
+                  <select
+                    value={selectedModel}
+                    onChange={(e) => setSelectedModel(e.target.value)}
+                    className={styles.modelSelect}
+                    disabled={Object.values(renderingStates).some(
+                      (state) => state
+                    )}
+                  >
+                    {Object.entries(AI_MODELS).map(([key, model]) => (
+                      <option key={key} value={key}>
+                        {model.name}
+                      </option>
+                    ))}
+                  </select>
+                )}
+              </div>
+            )}
+            {renderMode === '1x' ? (
+              <Button
+                onClick={() => handleGenerateAIImage()}
+                variant="filled"
+                className={`${styles.aiButton} ${isGeneratingAI ? styles.renderingButton : ''}`}
+                disabled={isGeneratingAI || !currentUser}
+              >
+                {isGeneratingAI ? (
+                  <div className={styles.renderingContent}>
+                    <div className={styles.progressContainer}>
+                      <div
+                        className={styles.progressBar}
+                        style={{ width: `${renderProgress}%` }}
+                      />
+                      <div className={styles.progressStripes} />
+                    </div>
+                    <span className={styles.progressText}>
+                      {`${elapsedTime}/20s`}
+                    </span>
+                  </div>
+                ) : (
+                  <span>
+                    <span>✨</span>
+                    <span>
+                      Generate Render
+                      {tokenProfile && (
+                        <span className={styles.tokenBadge}>
+                          {tokenProfile.genToken || 0}{' '}
+                          {currentUser?.isPro ? 'tokens' : 'free'}
+                        </span>
+                      )}
+                    </span>
+                  </span>
+                )}
+              </Button>
+            ) : (
+              <Button
+                onClick={handleGenerate4xRender}
+                variant="filled"
+                className={styles.aiButton}
+                disabled={
+                  Object.values(renderingStates).some((state) => state) ||
+                  !currentUser
+                }
+                title="Generate 4 renders simultaneously (uses 4 tokens)"
+              >
                 <span>
                   <span>✨</span>
                   <span>
-                    Generate Render
+                    Generate 4x Renders
                     {tokenProfile && (
                       <span className={styles.tokenBadge}>
-                        {tokenProfile.genToken || 0 || 0}{' '}
+                        {tokenProfile.genToken || 0}{' '}
                         {currentUser?.isPro ? 'tokens' : 'free'}
                       </span>
                     )}
                   </span>
                 </span>
-              )}
-            </Button>
+              </Button>
+            )}
             {!currentUser && (
               <p className={styles.loginPrompt}>
                 Please log in to use AI rendering
@@ -407,7 +636,7 @@ function ScreenshotModal() {
               )}
           </div>
 
-          {aiImageUrl && (
+          {renderMode === '1x' && aiImageUrl && (
             <div className={styles.viewControls}>
               <div className={styles.toggleButtons}>
                 <Button
@@ -459,60 +688,152 @@ function ScreenshotModal() {
         </div>
 
         <div className={styles.imageContainer}>
-          {comparisonMode && aiImageUrl ? (
-            <div className={styles.comparisonContainer}>
-              <ImgComparisonSlider>
+          {/* Always render the screentock-destination img for screenshot functionality */}
+          <img
+            id="screentock-destination"
+            src={originalImageUrl}
+            alt="Screenshot destination"
+            style={{ display: 'none', position: 'absolute' }}
+          />
+
+          {renderMode === '1x' ? (
+            comparisonMode && aiImageUrl ? (
+              <div className={styles.comparisonContainer}>
+                <ImgComparisonSlider>
+                  <img
+                    slot="first"
+                    src={originalImageUrl}
+                    alt="Original Screenshot"
+                  />
+                  <img slot="second" src={aiImageUrl} alt="AI Rendered Image" />
+                </ImgComparisonSlider>
+              </div>
+            ) : (
+              <div className={styles.imageContent}>
+                {/* Set as Scene Thumbnail button - only show for scene authors */}
+                {currentUser &&
+                  STREET.utils.getCurrentSceneId() &&
+                  currentUser.uid === STREET.utils.getAuthorId() && (
+                    <button
+                      className={styles.thumbnailButton}
+                      onClick={handleSetAsSceneThumbnail}
+                      disabled={isSavingSnapshot}
+                      title="Set as scene thumbnail"
+                      aria-label="Set as scene thumbnail"
+                    >
+                      {isSavingSnapshot ? (
+                        <span>Saving...</span>
+                      ) : (
+                        <>
+                          <span>📌</span>
+                          <span>Set as Scene Thumbnail</span>
+                        </>
+                      )}
+                    </button>
+                  )}
                 <img
-                  slot="first"
-                  src={originalImageUrl}
-                  alt="Original Screenshot"
+                  src={
+                    showOriginal || !aiImageUrl ? originalImageUrl : aiImageUrl
+                  }
+                  alt={
+                    showOriginal || !aiImageUrl
+                      ? 'Original Screenshot'
+                      : 'AI Rendered Image'
+                  }
                 />
-                <img slot="second" src={aiImageUrl} alt="AI Rendered Image" />
-              </ImgComparisonSlider>
-            </div>
+                <button
+                  className={styles.downloadButton}
+                  onClick={() => handleDownloadScreenshot()}
+                  title="Download image"
+                  aria-label="Download image"
+                >
+                  <DownloadIcon />
+                  <span>Download</span>
+                </button>
+              </div>
+            )
           ) : (
-            <div className={styles.imageContent}>
-              {/* Set as Scene Thumbnail button - only show for scene authors */}
-              {currentUser &&
-                STREET.utils.getCurrentSceneId() &&
-                currentUser.uid === STREET.utils.getAuthorId() && (
-                  <button
-                    className={styles.thumbnailButton}
-                    onClick={handleSetAsSceneThumbnail}
-                    disabled={isSavingSnapshot}
-                    title="Set as scene thumbnail"
-                    aria-label="Set as scene thumbnail"
-                  >
-                    {isSavingSnapshot ? (
-                      <span>Saving...</span>
-                    ) : (
+            // 4x Render Grid
+            <div className={styles.renderGrid}>
+              {Array.from({ length: 4 }, (_, index) => {
+                const modelKeys = Object.keys(AI_MODELS);
+                const modelKey = useMixedModels
+                  ? index < modelKeys.length
+                    ? `${modelKeys[index]}-${index}`
+                    : null
+                  : `${selectedModel}-${index}`;
+                const baseModelKey = modelKey
+                  ? modelKey.split('-').slice(0, -1).join('-')
+                  : null;
+                const modelConfig = baseModelKey
+                  ? AI_MODELS[baseModelKey]
+                  : null;
+                const imageUrl = modelKey ? aiImages[modelKey] : null;
+                const isRendering = modelKey
+                  ? renderingStates[modelKey]
+                  : false;
+                const hasError = modelKey ? renderErrors[modelKey] : false;
+                const timer = modelKey ? renderTimers[modelKey] : null;
+
+                return (
+                  <div key={index} className={styles.renderSlot}>
+                    {modelKey && modelConfig ? (
                       <>
-                        <span>📌</span>
-                        <span>Set as Scene Thumbnail</span>
+                        <div className={styles.renderOverlay}>
+                          <div className={styles.modelName}>
+                            {modelConfig.name}
+                          </div>
+                          <div
+                            className={`${styles.timeOverlay} ${hasError ? styles.errorOverlay : ''}`}
+                          >
+                            {isRendering
+                              ? `${timer?.elapsed || 0}s`
+                              : imageUrl
+                                ? `${timer?.elapsed || 0}s`
+                                : '—'}
+                          </div>
+                        </div>
+                        {isRendering ? (
+                          <div className={styles.renderingPlaceholder}>
+                            <div className={styles.spinner}></div>
+                            <span>Rendering...</span>
+                          </div>
+                        ) : imageUrl ? (
+                          <>
+                            <img
+                              src={imageUrl}
+                              alt={`AI Render - ${modelConfig.name}`}
+                              className={styles.renderImage}
+                            />
+                            <button
+                              className={styles.slotDownloadButton}
+                              onClick={() =>
+                                handleDownloadScreenshot(imageUrl, modelKey)
+                              }
+                              title="Download image"
+                              aria-label="Download image"
+                            >
+                              <DownloadIcon />
+                            </button>
+                          </>
+                        ) : hasError ? (
+                          <div className={styles.errorSlot}>
+                            <span>Error</span>
+                          </div>
+                        ) : (
+                          <div className={styles.emptySlot}>
+                            <span>Ready</span>
+                          </div>
+                        )}
                       </>
+                    ) : (
+                      <div className={styles.emptySlot}>
+                        <span>Empty</span>
+                      </div>
                     )}
-                  </button>
-                )}
-              <img
-                id="screentock-destination"
-                src={
-                  showOriginal || !aiImageUrl ? originalImageUrl : aiImageUrl
-                }
-                alt={
-                  showOriginal || !aiImageUrl
-                    ? 'Original Screenshot'
-                    : 'AI Rendered Image'
-                }
-              />
-              <button
-                className={styles.downloadButton}
-                onClick={handleDownloadScreenshot}
-                title="Download image"
-                aria-label="Download image"
-              >
-                <DownloadIcon />
-                <span>Download</span>
-              </button>
+                  </div>
+                );
+              })}
             </div>
           )}
         </div>
