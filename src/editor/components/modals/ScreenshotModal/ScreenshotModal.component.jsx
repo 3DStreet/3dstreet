@@ -528,6 +528,9 @@ function ScreenshotModal() {
             {renderMode === '4x' && (
               <div className={styles.modelMixToggle}>
                 <label className={styles.toggleLabel}>
+                  <span className={styles.toggleText}>
+                    {useMixedModels ? 'Mixed Models' : 'Same Model'}
+                  </span>
                   <input
                     type="checkbox"
                     checked={useMixedModels}
@@ -536,9 +539,7 @@ function ScreenshotModal() {
                       (state) => state
                     )}
                   />
-                  <span className={styles.toggleText}>
-                    {useMixedModels ? 'Mixed Models' : 'Same Model'}
-                  </span>
+                  <div className={styles.toggleSwitch}></div>
                 </label>
                 {!useMixedModels && (
                   <select

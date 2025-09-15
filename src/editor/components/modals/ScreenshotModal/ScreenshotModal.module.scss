@@ -27,10 +27,11 @@
 
 .renderModeTabs {
   display: flex;
-  background: #f5f5f5;
+  background: rgba(30, 30, 30, 0.6);
   border-radius: 8px;
   padding: 4px;
   gap: 2px;
+  border: 1px solid rgba(255, 255, 255, 0.05);
 }
 
 .tabButton {
@@ -43,16 +44,18 @@
   font-weight: 500;
   cursor: pointer;
   transition: all 0.2s ease;
-  color: #666;
+  color: #9ca3af;
 
   &.active {
-    background: white;
-    color: #333;
-    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    box-shadow: 0 2px 8px rgba(102, 126, 234, 0.4);
+    font-weight: 600;
   }
 
   &:hover:not(.active) {
-    background: rgba(255, 255, 255, 0.5);
+    background: rgba(255, 255, 255, 0.05);
+    color: #d1d5db;
   }
 
   &:disabled {
@@ -64,26 +67,73 @@
 .modelMixToggle {
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 12px;
 }
 
 .toggleLabel {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 12px;
   cursor: pointer;
   font-size: 14px;
   font-weight: 500;
+  background: rgba(30, 30, 30, 0.6);
+  padding: 10px 14px;
+  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  transition: all 0.2s ease;
+
+  &:hover {
+    background: rgba(40, 40, 40, 0.8);
+    border-color: rgba(255, 255, 255, 0.1);
+  }
 
   input[type='checkbox'] {
-    width: 16px;
-    height: 16px;
-    accent-color: #007bff;
+    position: absolute;
+    opacity: 0;
+    width: 0;
+    height: 0;
   }
 }
 
 .toggleText {
-  color: #333;
+  color: #d1d5db;
+  user-select: none;
+  flex: 1;
+}
+
+// Custom toggle switch
+.toggleSwitch {
+  position: relative;
+  width: 44px;
+  height: 24px;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 12px;
+  transition: background 0.3s ease;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+
+  &::after {
+    content: '';
+    position: absolute;
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.9);
+    top: 2px;
+    left: 2px;
+    transition: transform 0.3s ease;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+  }
+
+  input:checked + & {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    border-color: transparent;
+
+    &::after {
+      transform: translateX(20px);
+      background: white;
+    }
+  }
 }
 
 .aiSection {
