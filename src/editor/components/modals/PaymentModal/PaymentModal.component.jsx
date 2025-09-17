@@ -109,6 +109,10 @@ const PaymentModal = () => {
             <CheckMark32Icon />
             Removal of Watermark on Exported Images
           </li>
+          <li>
+            <CheckMark32Icon />
+            100 AI Image Generation Tokens per Month
+          </li>
           <li>&nbsp;</li>
           <li className={styles.pricing}>
             <div className={styles.planSelector}>
