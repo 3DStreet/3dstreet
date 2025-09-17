@@ -755,9 +755,10 @@ function ScreenshotModal() {
           ) : (
             // 4x Mode Display Logic
             <>
-              {/* Show original screenshot if no renders are in progress and no completed renders */}
+              {/* Show original screenshot if no renders are in progress and no completed renders and no errors */}
               {!Object.values(renderingStates).some((state) => state) &&
-              Object.keys(aiImages).length === 0 ? (
+              Object.keys(aiImages).length === 0 &&
+              Object.keys(renderErrors).length === 0 ? (
                 <div className={styles.imageContent}>
                   {/* Set as Scene Thumbnail button - only show for scene authors */}
                   {currentUser &&
