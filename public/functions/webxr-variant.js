@@ -150,6 +150,24 @@ exports.serveWebXRVariant = functions.https.onRequest((req, res) => {
       }, 1000);
     });
   });
+
+  // XR session error handling
+  if (navigator.xr) {
+    const originalRequestSession = navigator.xr.requestSession.bind(navigator.xr);
+    navigator.xr.requestSession = async function(...args) {
+      try {
+        return await originalRequestSession(...args);
+      } catch (error) {
+        if (window.STREET?.notify) {
+          const msg = error.name === 'NotSupportedError' && args[0] === 'immersive-vr'
+            ? 'VR failed - DOM overlay not supported on headsets'
+            : 'XR session failed: ' + error.name;
+          STREET.notify.errorMessage(msg);
+        }
+        throw error;
+      }
+    };
+  }
 </script>
 
 </html>`;
