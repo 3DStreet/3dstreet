@@ -5,11 +5,16 @@ function streetmixUserToAPI(userURL) {
   var pathArray = new URL(userURL).pathname.split('/');
   const creatorId = decodeURIComponent(pathArray[1]);
   const namespacedId = pathArray[2];
+  // TEMPORARY: Use staging server for testing schema v33
+  const baseUrl = 'https://streetmix-staging.herokuapp.com';
+  // const baseUrl = 'https://streetmix.net'; // Production URL
+
   if (creatorId === '-') {
-    return 'https://streetmix.net/api/v1/streets?namespacedId=' + namespacedId;
+    return baseUrl + '/api/v1/streets?namespacedId=' + namespacedId;
   } else {
     return (
-      'https://streetmix.net/api/v1/streets?namespacedId=' +
+      baseUrl +
+      '/api/v1/streets?namespacedId=' +
       namespacedId +
       '&creatorId=' +
       encodeURIComponent(creatorId)
@@ -51,7 +56,11 @@ function streetmixAPIToUser(APIURL) {
     creatorId = '-';
   }
 
-  return 'https://streetmix.net/' + creatorId + '/' + namespacedId;
+  // TEMPORARY: Use staging server URL
+  return (
+    'https://streetmix-staging.herokuapp.com/' + creatorId + '/' + namespacedId
+  );
+  // return 'https://streetmix.net/' + creatorId + '/' + namespacedId; // Production URL
 }
 module.exports.streetmixAPIToUser = streetmixAPIToUser;
 
