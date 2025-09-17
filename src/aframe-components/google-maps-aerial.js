@@ -83,6 +83,15 @@ AFRAME.registerComponent('google-maps-aerial', {
     // Get renderer
     this.renderer = this.el.sceneEl.renderer;
 
+    // VR camera handling
+    this.isInVR = false;
+    this.onEnterVR = this.onEnterVR.bind(this);
+    this.onExitVR = this.onExitVR.bind(this);
+
+    // Listen for VR state changes
+    this.el.sceneEl.addEventListener('enter-vr', this.onEnterVR);
+    this.el.sceneEl.addEventListener('exit-vr', this.onExitVR);
+
     this.tiles.setResolutionFromRenderer(this.el.sceneEl.camera, this.renderer);
     this.tiles.setCamera(this.el.sceneEl.camera);
     this.tiles.update();
@@ -134,44 +143,95 @@ AFRAME.registerComponent('google-maps-aerial', {
   },
 
   tick: function () {
-    if (this.tiles && this.el.sceneEl.camera) {
-      // Ensure camera is set on each tick
-      this.tiles.setCamera(this.el.sceneEl.camera);
-      this.tiles.setResolutionFromRenderer(
-        this.el.sceneEl.camera,
-        this.renderer
-      );
+    if (this.tiles) {
+      const camera = this.getCurrentCamera();
 
-      // Update flattening shape if it exists
-      if (
-        this.flatteningPlugin &&
-        this.flatteningShape &&
-        this.originalFlatteningMesh
-      ) {
-        // Update world transforms
-        this.tiles.group.updateMatrixWorld();
-        this.originalFlatteningMesh.updateMatrixWorld(true);
+      if (camera) {
+        // Debug logging for VR mode
+        if (this.isInVR && Math.random() < 0.01) {
+          // Log occasionally to avoid spam
+          console.log('Google Maps Aerial: Tick in VR mode, camera:', camera);
+        }
 
-        // Re-transform the shape into the local frame of the tile set
-        this.flatteningShape.matrixWorld.copy(
-          this.originalFlatteningMesh.matrixWorld
-        );
-        this.flatteningShape.matrixWorld
-          .premultiply(this.tiles.group.matrixWorldInverse)
-          .decompose(
-            this.flatteningShape.position,
-            this.flatteningShape.quaternion,
-            this.flatteningShape.scale
-          );
+        // Workaround for WebXR compatibility issues with 3d-tiles-renderer
+        // Temporarily disable XR mode during tiles updates to prevent freezing
+        let xrWasEnabled = false;
+        if (this.isInVR && this.renderer.xr && this.renderer.xr.enabled) {
+          xrWasEnabled = true;
+          this.renderer.xr.enabled = false;
+        }
 
-        this.flatteningPlugin.updateShape(this.flatteningShape);
+        try {
+          // Ensure camera is set on each tick
+          this.tiles.setCamera(camera);
+          this.tiles.setResolutionFromRenderer(camera, this.renderer);
+
+          // Update flattening shape if it exists
+          if (
+            this.flatteningPlugin &&
+            this.flatteningShape &&
+            this.originalFlatteningMesh
+          ) {
+            // Update world transforms
+            this.tiles.group.updateMatrixWorld();
+            this.originalFlatteningMesh.updateMatrixWorld(true);
+
+            // Re-transform the shape into the local frame of the tile set
+            this.flatteningShape.matrixWorld.copy(
+              this.originalFlatteningMesh.matrixWorld
+            );
+            this.flatteningShape.matrixWorld
+              .premultiply(this.tiles.group.matrixWorldInverse)
+              .decompose(
+                this.flatteningShape.position,
+                this.flatteningShape.quaternion,
+                this.flatteningShape.scale
+              );
+
+            this.flatteningPlugin.updateShape(this.flatteningShape);
+          }
+
+          this.tiles.update();
+        } finally {
+          // Restore XR mode if it was enabled
+          if (xrWasEnabled) {
+            this.renderer.xr.enabled = true;
+          }
+        }
+      } else if (this.isInVR) {
+        console.warn('Google Maps Aerial: No camera available in VR mode');
       }
-
-      this.tiles.update();
     }
   },
 
+  onEnterVR: function () {
+    console.log('Google Maps Aerial: Entering VR mode');
+    this.isInVR = true;
+  },
+
+  onExitVR: function () {
+    console.log('Google Maps Aerial: Exiting VR mode');
+    this.isInVR = false;
+  },
+
+  getCurrentCamera: function () {
+    // In VR mode, get the actual VR camera from the WebXR session
+    if (this.isInVR && this.renderer.xr && this.renderer.xr.getCamera) {
+      const vrCamera = this.renderer.xr.getCamera();
+      if (vrCamera) {
+        return vrCamera;
+      }
+    }
+
+    // Fallback to scene camera for desktop mode
+    return this.el.sceneEl.camera;
+  },
+
   remove: function () {
+    // Remove VR event listeners
+    this.el.sceneEl.removeEventListener('enter-vr', this.onEnterVR);
+    this.el.sceneEl.removeEventListener('exit-vr', this.onExitVR);
+
     if (this.tiles) {
       // Clean up flattening shape
       if (this.flatteningPlugin && this.flatteningShape) {
