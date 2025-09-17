@@ -159,10 +159,7 @@ exports.serveWebXRVariant = functions.https.onRequest((req, res) => {
         return await originalRequestSession(...args);
       } catch (error) {
         if (window.STREET?.notify) {
-          const msg = error.name === 'NotSupportedError' && args[0] === 'immersive-vr'
-            ? 'VR failed - DOM overlay not supported on headsets'
-            : 'XR session failed: ' + error.name;
-          STREET.notify.errorMessage(msg);
+          STREET.notify.errorMessage('XR session failed: ' + error.name);
         }
         throw error;
       }
