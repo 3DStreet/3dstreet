@@ -67,6 +67,7 @@ function ScreenshotModal() {
   const [renderingStates, setRenderingStates] = useState({}); // Track which models are rendering
   const [renderErrors, setRenderErrors] = useState({}); // Track which models had errors
   const [useMixedModels, setUseMixedModels] = useState(true); // Toggle for model mixing
+  const [customPrompt, setCustomPrompt] = useState(''); // Custom prompt text
 
   // Ensure token profile is loaded when modal opens
   useEffect(() => {
@@ -89,6 +90,7 @@ function ScreenshotModal() {
     setRenderTimers({});
     setRenderingStates({});
     setRenderErrors({});
+    setCustomPrompt('');
     // Keep model selection and render mode when resetting
   };
 
@@ -259,7 +261,7 @@ function ScreenshotModal() {
         throw new Error(`Model configuration not found for: ${baseModelKey}`);
       }
 
-      const aiPrompt = selectedModelConfig.prompt;
+      const aiPrompt = customPrompt.trim() || selectedModelConfig.prompt;
 
       const generateReplicateImage = httpsCallable(
         functions,
@@ -561,6 +563,32 @@ function ScreenshotModal() {
                 )}
               </div>
             )}
+
+            {/* Custom Prompt Input */}
+            <div className={styles.promptSection}>
+              <label htmlFor="custom-prompt" className={styles.promptLabel}>
+                Custom Prompt (optional):
+              </label>
+              <textarea
+                id="custom-prompt"
+                value={customPrompt}
+                onChange={(e) => setCustomPrompt(e.target.value)}
+                placeholder={
+                  renderMode === '1x' && selectedModel
+                    ? AI_MODELS[selectedModel]?.prompt ||
+                      'Enter custom prompt...'
+                    : 'Enter custom prompt...'
+                }
+                className={styles.promptTextarea}
+                disabled={
+                  isGeneratingAI ||
+                  Object.values(renderingStates).some((state) => state)
+                }
+                rows={3}
+                maxLength={500}
+              />
+            </div>
+            {/* Render Buttons */}
             {renderMode === '1x' ? (
               <Button
                 onClick={() => handleGenerateAIImage()}
