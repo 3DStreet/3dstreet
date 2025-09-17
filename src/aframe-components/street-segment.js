@@ -341,13 +341,26 @@ AFRAME.registerComponent('street-segment', {
       });
     }
   },
-  // for streetmix elevation number values of -1, 0, 1, 2, calculate heightLevel in three.js meters units
+  // for streetmix elevation number values, calculate heightLevel in three.js meters units
   calculateHeight: function (elevationLevel) {
     const stepLevel = 0.15;
-    if (elevationLevel <= 0) {
-      return stepLevel;
+
+    // Handle undefined/null
+    if (elevationLevel === undefined || elevationLevel === null) {
+      return 0;
     }
-    return stepLevel * (elevationLevel + 1);
+
+    // If elevation is already in meters (schema v33+), it will be a small decimal like 0.15, 0.75
+    // These values are passed directly through
+    if (elevationLevel >= 0 && elevationLevel < 3 && elevationLevel % 1 !== 0) {
+      return elevationLevel;
+    }
+
+    // Legacy integer levels (0, 1, 2)
+    // Level 0 = 0m (road)
+    // Level 1 = 0.15m (curb)
+    // Level 2 = 0.30m (two curb heights)
+    return elevationLevel * stepLevel;
   },
   clearMesh: function () {
     // remove the geometry from the entity
