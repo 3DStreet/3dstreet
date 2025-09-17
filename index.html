@@ -81,7 +81,7 @@
     loading-screen="enabled: false" notify metadata
     device-orientation-permission-ui="enabled: false"
     reflection device-orientation-permission-ui="enabled: false"
-    webxr="requiredFeatures:hit-test,local-floor,dom-overlay;referenceSpaceType:local-floor;overlayElement:#viewer-mode-ar-overlay"
+    webxr="requiredFeatures:hit-test,local-floor;referenceSpaceType:local-floor;"
     xr-mode-ui="XRMode: ar; enterARButton: #viewer-mode-ar-play-button;"
     css2d-renderer scene-timer="autoStart: false; format: mm:ss:ff">
     <a-assets>
@@ -143,6 +143,21 @@
       }, 1000);
     });
   });
+
+  // XR session error handling
+  if (navigator.xr) {
+    const originalRequestSession = navigator.xr.requestSession.bind(navigator.xr);
+    navigator.xr.requestSession = async function(...args) {
+      try {
+        return await originalRequestSession(...args);
+      } catch (error) {
+        if (window.STREET?.notify) {
+          STREET.notify.errorMessage('XR session failed: ' + error.name);
+        }
+        throw error;
+      }
+    };
+  }
 </script>
 
 </html>
