@@ -753,88 +753,129 @@ function ScreenshotModal() {
               </div>
             )
           ) : (
-            // 4x Render Grid
-            <div className={styles.renderGrid}>
-              {Array.from({ length: 4 }, (_, index) => {
-                const modelKeys = Object.keys(AI_MODELS);
-                const modelKey = useMixedModels
-                  ? index < modelKeys.length
-                    ? `${modelKeys[index]}-${index}`
-                    : null
-                  : `${selectedModel}-${index}`;
-                const baseModelKey = modelKey
-                  ? modelKey.split('-').slice(0, -1).join('-')
-                  : null;
-                const modelConfig = baseModelKey
-                  ? AI_MODELS[baseModelKey]
-                  : null;
-                const imageUrl = modelKey ? aiImages[modelKey] : null;
-                const isRendering = modelKey
-                  ? renderingStates[modelKey]
-                  : false;
-                const hasError = modelKey ? renderErrors[modelKey] : false;
-                const timer = modelKey ? renderTimers[modelKey] : null;
-
-                return (
-                  <div key={index} className={styles.renderSlot}>
-                    {modelKey && modelConfig ? (
-                      <>
-                        <div className={styles.renderOverlay}>
-                          <div className={styles.modelName}>
-                            {modelConfig.name}
-                          </div>
-                          <div
-                            className={`${styles.timeOverlay} ${hasError ? styles.errorOverlay : ''}`}
-                          >
-                            {isRendering
-                              ? `${timer?.elapsed || 0}s`
-                              : imageUrl
-                                ? `${timer?.elapsed || 0}s`
-                                : '—'}
-                          </div>
-                        </div>
-                        {isRendering ? (
-                          <div className={styles.renderingPlaceholder}>
-                            <div className={styles.spinner}></div>
-                            <span>Rendering...</span>
-                          </div>
-                        ) : imageUrl ? (
+            // 4x Mode Display Logic
+            <>
+              {/* Show original screenshot if no renders are in progress and no completed renders */}
+              {!Object.values(renderingStates).some((state) => state) &&
+              Object.keys(aiImages).length === 0 ? (
+                <div className={styles.imageContent}>
+                  {/* Set as Scene Thumbnail button - only show for scene authors */}
+                  {currentUser &&
+                    STREET.utils.getCurrentSceneId() &&
+                    currentUser.uid === STREET.utils.getAuthorId() && (
+                      <button
+                        className={styles.thumbnailButton}
+                        onClick={handleSetAsSceneThumbnail}
+                        disabled={isSavingSnapshot}
+                        title="Set as scene thumbnail"
+                        aria-label="Set as scene thumbnail"
+                      >
+                        {isSavingSnapshot ? (
+                          <span>Saving...</span>
+                        ) : (
                           <>
-                            <img
-                              src={imageUrl}
-                              alt={`AI Render - ${modelConfig.name}`}
-                              className={styles.renderImage}
-                            />
-                            <button
-                              className={styles.slotDownloadButton}
-                              onClick={() =>
-                                handleDownloadScreenshot(imageUrl, modelKey)
-                              }
-                              title="Download image"
-                              aria-label="Download image"
-                            >
-                              <DownloadIcon />
-                            </button>
+                            <span>📌</span>
+                            <span>Set as Scene Thumbnail</span>
                           </>
-                        ) : hasError ? (
-                          <div className={styles.errorSlot}>
-                            <span>Error</span>
-                          </div>
+                        )}
+                      </button>
+                    )}
+                  <img src={originalImageUrl} alt="Original Screenshot" />
+                  <button
+                    className={styles.downloadButton}
+                    onClick={() => handleDownloadScreenshot()}
+                    title="Download image"
+                    aria-label="Download image"
+                  >
+                    <DownloadIcon />
+                    <span>Download</span>
+                  </button>
+                </div>
+              ) : (
+                // 4x Render Grid - show when renders are in progress or completed
+                <div className={styles.renderGrid}>
+                  {Array.from({ length: 4 }, (_, index) => {
+                    const modelKeys = Object.keys(AI_MODELS);
+                    const modelKey = useMixedModels
+                      ? index < modelKeys.length
+                        ? `${modelKeys[index]}-${index}`
+                        : null
+                      : `${selectedModel}-${index}`;
+                    const baseModelKey = modelKey
+                      ? modelKey.split('-').slice(0, -1).join('-')
+                      : null;
+                    const modelConfig = baseModelKey
+                      ? AI_MODELS[baseModelKey]
+                      : null;
+                    const imageUrl = modelKey ? aiImages[modelKey] : null;
+                    const isRendering = modelKey
+                      ? renderingStates[modelKey]
+                      : false;
+                    const hasError = modelKey ? renderErrors[modelKey] : false;
+                    const timer = modelKey ? renderTimers[modelKey] : null;
+
+                    return (
+                      <div key={index} className={styles.renderSlot}>
+                        {modelKey && modelConfig ? (
+                          <>
+                            <div className={styles.renderOverlay}>
+                              <div className={styles.modelName}>
+                                {modelConfig.name}
+                              </div>
+                              <div
+                                className={`${styles.timeOverlay} ${hasError ? styles.errorOverlay : ''}`}
+                              >
+                                {isRendering
+                                  ? `${timer?.elapsed || 0}s`
+                                  : imageUrl
+                                    ? `${timer?.elapsed || 0}s`
+                                    : '—'}
+                              </div>
+                            </div>
+                            {isRendering ? (
+                              <div className={styles.renderingPlaceholder}>
+                                <div className={styles.spinner}></div>
+                                <span>Rendering...</span>
+                              </div>
+                            ) : imageUrl ? (
+                              <>
+                                <img
+                                  src={imageUrl}
+                                  alt={`AI Render - ${modelConfig.name}`}
+                                  className={styles.renderImage}
+                                />
+                                <button
+                                  className={styles.slotDownloadButton}
+                                  onClick={() =>
+                                    handleDownloadScreenshot(imageUrl, modelKey)
+                                  }
+                                  title="Download image"
+                                  aria-label="Download image"
+                                >
+                                  <DownloadIcon />
+                                </button>
+                              </>
+                            ) : hasError ? (
+                              <div className={styles.errorSlot}>
+                                <span>Error</span>
+                              </div>
+                            ) : (
+                              <div className={styles.emptySlot}>
+                                <span>Ready</span>
+                              </div>
+                            )}
+                          </>
                         ) : (
                           <div className={styles.emptySlot}>
-                            <span>Ready</span>
+                            <span>Empty</span>
                           </div>
                         )}
-                      </>
-                    ) : (
-                      <div className={styles.emptySlot}>
-                        <span>Empty</span>
                       </div>
-                    )}
-                  </div>
-                );
-              })}
-            </div>
+                    );
+                  })}
+                </div>
+              )}
+            </>
           )}
         </div>
       </div>
