@@ -4,11 +4,11 @@
 
 ## Contribution Instructions
 * fork the repository
-* make your contribution
+* make your contribution and commit changes on your own branch
 * make sure to do check for linting and unit test:
 * `npm run lint` should have no errors. You can try `npm run lint:fix` to automatically fix errors. sometimes you need to manually fix the errors
 * `npm run test` should return all passing or pending, no failures
-* If linting and tests all pass, then create a new Pull Request to the 3DStreet repo main branch
+* If linting and tests all pass, then create a new Pull Request to merge the changes committed in your branch to the 3DStreet repo main branch 
 * Include a brief description of the changes, why you are making them, how to test them, and a link to an associated issue if any.
 * Notify us on the 3DStreet Discord if you don't hear a reply within a few days or want a faster review
 
