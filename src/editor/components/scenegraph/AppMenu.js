@@ -111,7 +111,8 @@ const AppMenu = ({ currentUser }) => {
     isGridVisible,
     setIsGridVisible,
     saveScene,
-    startCheckout
+    startCheckout,
+    setGeojsonImportData
   } = useStore();
   const { currentUser: authUser } = useAuthContext();
   const [currentCamera, setCurrentCamera] = useState('perspective');
@@ -269,6 +270,263 @@ const AppMenu = ({ currentUser }) => {
     convertToObject();
   };
 
+  // eslint-disable-next-line no-unused-vars
+  const importGeoJSON = () => {
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = '.geojson,.json';
+    input.multiple = false;
+
+    input.onchange = (event) => {
+      const file = event.target.files[0];
+      if (file) {
+        const reader = new FileReader();
+        reader.onload = (e) => {
+          try {
+            const geojsonData = JSON.parse(e.target.result);
+
+            const createGeoJSONEntity = () => {
+              try {
+                // Validate GeoJSON structure
+                if (
+                  !geojsonData.features ||
+                  !Array.isArray(geojsonData.features)
+                ) {
+                  throw new Error(
+                    'Invalid GeoJSON: missing or invalid features array'
+                  );
+                }
+
+                if (geojsonData.features.length === 0) {
+                  throw new Error('GeoJSON file contains no features');
+                }
+
+                // Check for valid polygon features with proper coordinate validation
+                const buildingFeatures = geojsonData.features.filter(
+                  (feature) => {
+                    // Accept any feature with properties (removed building tag requirement)
+                    if (!feature.properties) {
+                      return false;
+                    }
+
+                    if (
+                      !feature.geometry ||
+                      (feature.geometry.type !== 'Polygon' &&
+                        feature.geometry.type !== 'MultiPolygon')
+                    ) {
+                      return false;
+                    }
+
+                    // Validate coordinates structure
+                    if (
+                      !feature.geometry.coordinates ||
+                      !Array.isArray(feature.geometry.coordinates)
+                    ) {
+                      return false;
+                    }
+
+                    // For Polygon: coordinates should be array of arrays (rings)
+                    // For MultiPolygon: coordinates should be array of arrays of arrays
+                    try {
+                      if (feature.geometry.type === 'Polygon') {
+                        const rings = feature.geometry.coordinates;
+                        if (!Array.isArray(rings) || rings.length === 0) {
+                          return false;
+                        }
+
+                        // Check each ring has at least 4 coordinates (closed polygon)
+                        for (const ring of rings) {
+                          if (!Array.isArray(ring) || ring.length < 4) {
+                            return false;
+                          }
+                          // Check each coordinate is [lon, lat] pair
+                          for (const coord of ring) {
+                            if (
+                              !Array.isArray(coord) ||
+                              coord.length < 2 ||
+                              typeof coord[0] !== 'number' ||
+                              typeof coord[1] !== 'number'
+                            ) {
+                              return false;
+                            }
+                          }
+                        }
+                      } else if (feature.geometry.type === 'MultiPolygon') {
+                        const polygons = feature.geometry.coordinates;
+                        if (!Array.isArray(polygons) || polygons.length === 0) {
+                          return false;
+                        }
+
+                        for (const polygon of polygons) {
+                          if (!Array.isArray(polygon) || polygon.length === 0) {
+                            return false;
+                          }
+
+                          for (const ring of polygon) {
+                            if (!Array.isArray(ring) || ring.length < 4) {
+                              return false;
+                            }
+                            for (const coord of ring) {
+                              if (
+                                !Array.isArray(coord) ||
+                                coord.length < 2 ||
+                                typeof coord[0] !== 'number' ||
+                                typeof coord[1] !== 'number'
+                              ) {
+                                return false;
+                              }
+                            }
+                          }
+                        }
+                      }
+                      return true;
+                    } catch (e) {
+                      console.warn(
+                        'Invalid geometry in feature:',
+                        feature.id || 'unnamed',
+                        e
+                      );
+                      return false;
+                    }
+                  }
+                );
+
+                if (buildingFeatures.length === 0) {
+                  throw new Error(
+                    'No valid polygon features found in GeoJSON. Features should have properties, valid Polygon/MultiPolygon geometry, and proper coordinate arrays.'
+                  );
+                }
+
+                console.log(
+                  `Found ${buildingFeatures.length} valid polygon features out of ${geojsonData.features.length} total features`
+                );
+
+                // Create or update the geojson entity
+                let osmEntity = document.querySelector('[geojson]');
+                if (!osmEntity) {
+                  // Create new entity if it doesn't exist
+                  osmEntity = document.createElement('a-entity');
+                  osmEntity.setAttribute('id', 'imported-geojson');
+                  osmEntity.setAttribute(
+                    'data-layer-name',
+                    'Imported GeoJSON Buildings'
+                  );
+                  // Rotate -90 degrees on Y axis to align with 3DStreet coordinate system (X+ north)
+                  osmEntity.setAttribute('rotation', '0 -90 0');
+                  // Add to user layers (street-container) instead of reference layers
+                  document
+                    .querySelector('#street-container')
+                    .appendChild(osmEntity);
+                }
+
+                // Create cleaned GeoJSON with only valid building features
+                const cleanedGeoJSON = {
+                  ...geojsonData,
+                  features: buildingFeatures
+                };
+
+                // Check GeoJSON data size and warn if large
+                const geoJsonString = JSON.stringify(cleanedGeoJSON);
+                const sizeKB = new Blob([geoJsonString]).size / 1024;
+                console.log(
+                  `[GeoJSON Import] Data size: ${Math.round(sizeKB)}KB`
+                );
+
+                if (sizeKB > 100) {
+                  STREET.notify.warningMessage(
+                    `GeoJSON file is ${Math.round(sizeKB)}KB. Large files may affect performance.`
+                  );
+                }
+
+                // Set the geojson component with the imported data directly
+                // Setting lat/lon to 0,0 triggers automatic center calculation
+                console.log(
+                  '[GeoJSON Import] Setting geojson component with direct data'
+                );
+                console.log(
+                  '[GeoJSON Import] Entity rotation set to Y:-90° for X+ north alignment'
+                );
+                osmEntity.setAttribute('geojson', {
+                  data: geoJsonString,
+                  lat: 0,
+                  lon: 0
+                });
+
+                // Get the center coordinates from the GeoJSON component after it loads
+                // The component calculates center when lat/lon are 0,0
+                setTimeout(async () => {
+                  console.log(
+                    '[GeoJSON Import] Checking for calculated center coordinates...'
+                  );
+                  const geoJsonComponent = osmEntity.components.geojson;
+
+                  if (geoJsonComponent) {
+                    console.log('[GeoJSON Import] Component data:', {
+                      lat: geoJsonComponent.data.lat,
+                      lon: geoJsonComponent.data.lon
+                    });
+
+                    if (
+                      geoJsonComponent.data.lat !== 0 &&
+                      geoJsonComponent.data.lon !== 0
+                    ) {
+                      console.log(
+                        '[GeoJSON Import] Center coordinates found, opening Geo Modal...'
+                      );
+
+                      // Store the coordinates for the Geo Modal to use
+                      setGeojsonImportData({
+                        lat: geoJsonComponent.data.lat,
+                        lon: geoJsonComponent.data.lon,
+                        source: 'geojson-import'
+                      });
+
+                      // Open the Geo Modal with pre-filled coordinates
+                      setModal('geo');
+                    } else {
+                      console.log(
+                        '[GeoJSON Import] No center coordinates calculated yet (still 0,0)'
+                      );
+                    }
+                  } else {
+                    console.warn(
+                      '[GeoJSON Import] GeoJSON component not found on entity'
+                    );
+                  }
+                }, 100); // Small delay to ensure GeoJSON component has initialized
+
+                STREET.notify.successMessage(
+                  `GeoJSON file imported successfully. Found ${buildingFeatures.length} polygon features.`
+                );
+                posthog.capture('geojson_imported', {
+                  scene_id: STREET.utils.getCurrentSceneId(),
+                  file_name: file.name,
+                  feature_count: geojsonData.features.length,
+                  building_count: buildingFeatures.length
+                });
+              } catch (componentError) {
+                console.error('Error creating GeoJSON entity:', componentError);
+                STREET.notify.errorMessage(
+                  `Error loading GeoJSON: ${componentError.message}`
+                );
+              }
+            };
+
+            createGeoJSONEntity();
+          } catch (error) {
+            console.error('Error parsing GeoJSON file:', error);
+            STREET.notify.errorMessage(
+              'Error parsing GeoJSON file. Please ensure it is valid JSON.'
+            );
+          }
+        };
+        reader.readAsText(file);
+      }
+    };
+
+    input.click();
+  };
+
   return (
     <DropdownMenu.Root>
       <DropdownMenu.Trigger className="DropdownTrigger">
@@ -311,6 +569,27 @@ const AppMenu = ({ currentUser }) => {
                 >
                   Open...
                 </DropdownMenu.Item>
+                {/* Import Submenu - commented out to not overtly show GeoJSON import command */}
+                {/*
+                <DropdownMenu.Sub>
+                  <DropdownMenu.SubTrigger className="DropdownSubTrigger">
+                    Import
+                    <div className="RightSlot">
+                      <AwesomeIcon icon={faChevronRight} size={12} />
+                    </div>
+                  </DropdownMenu.SubTrigger>
+                  <DropdownMenu.Portal>
+                    <DropdownMenu.SubContent className="DropdownSubContent">
+                      <DropdownMenu.Item
+                        className="DropdownItem"
+                        onClick={importGeoJSON}
+                      >
+                        GeoJSON
+                      </DropdownMenu.Item>
+                    </DropdownMenu.SubContent>
+                  </DropdownMenu.Portal>
+                </DropdownMenu.Sub>
+                */}
                 <DropdownMenu.Separator className="DropdownSeparator" />
                 <DropdownMenu.Item
                   className="DropdownItem"

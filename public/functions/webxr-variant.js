@@ -150,6 +150,21 @@ exports.serveWebXRVariant = functions.https.onRequest((req, res) => {
       }, 1000);
     });
   });
+
+  // XR session error handling
+  if (navigator.xr) {
+    const originalRequestSession = navigator.xr.requestSession.bind(navigator.xr);
+    navigator.xr.requestSession = async function(...args) {
+      try {
+        return await originalRequestSession(...args);
+      } catch (error) {
+        if (window.STREET?.notify) {
+          STREET.notify.errorMessage('XR session failed: ' + error.name);
+        }
+        throw error;
+      }
+    };
+  }
 </script>
 
 </html>`;
