@@ -10,6 +10,3 @@ build/
 dist/
 /public/assets
 /public/index.html
-package.json
-webpack.config.js
-config/.env
