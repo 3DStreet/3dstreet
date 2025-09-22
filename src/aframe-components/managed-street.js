@@ -356,10 +356,15 @@ AFRAME.registerComponent('managed-street', {
       if (streetplanData.status === false) {
         throw new Error(`streetplan returned status: false`);
       }
-      const boulevard = streetplanData.project['My Street']['Boulevard Alt 1'];
+      const streetName = streetplanData.project['StreetName'];
+      const theStreet = streetplanData.project[streetName];
+      const AlternativesIDX = theStreet['AlternativesIDX'];
+      const firstAlt = AlternativesIDX['1'];
+      const boulevard = theStreet[firstAlt];
+      // const boulevard = streetplanData.project['My Street']['Boulevard Alt 1'];
       const streetPlanName = streetplanData.project.ProjectName;
       const streetLength =
-        parseFloat(streetplanData.project['My Street'].LengthMiles) *
+        parseFloat(streetplanData.project[streetName].LengthMiles) *
           5280 *
           0.3048 || 100; // Convert miles to meters
       // Convert StreetPlan format to managed-street format
