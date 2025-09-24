@@ -995,13 +995,13 @@ const STREETPLAN_OBJECT_TO_GENERATED_CLONES_MAPPING = {
   },
   '3 people': {
     mode: 'random',
-    modelsArray: 'a_char1,a_char3,a_char5,a_char7',
+    modelsArray: 'a_char2,a_char4,a_char6,a_char8',
     spacing: 15,
     count: 10
   },
   couple: {
     mode: 'random',
-    modelsArray: 'char1,char3,char5,char7',
+    modelsArray: 'char2,char4,char6,char8',
     spacing: 15,
     count: 10
   },
@@ -1019,13 +1019,13 @@ const STREETPLAN_OBJECT_TO_GENERATED_CLONES_MAPPING = {
   },
   'lady crossing street': {
     mode: 'random',
-    modelsArray: 'a_char1,a_char3,a_char5,a_char7',
+    modelsArray: 'a_char2,a_char4,a_char6,a_char8',
     spacing: 15,
     count: 10
   },
   man: {
     mode: 'random',
-    modelsArray: 'char1,char3,char5,char7',
+    modelsArray: 'char2,char4,char6,char8',
     spacing: 15,
     count: 10
   },
@@ -1043,13 +1043,13 @@ const STREETPLAN_OBJECT_TO_GENERATED_CLONES_MAPPING = {
   },
   'man come rev': {
     mode: 'random',
-    modelsArray: 'a_char1,a_char3,a_char5,a_char7',
+    modelsArray: 'a_char2,a_char4,a_char6,a_char8',
     spacing: 15,
     count: 10
   },
   'man go': {
     mode: 'random',
-    modelsArray: 'char1,char3,char5,char7',
+    modelsArray: 'char2,char4,char6,char8',
     spacing: 15,
     count: 10
   },
@@ -1067,13 +1067,13 @@ const STREETPLAN_OBJECT_TO_GENERATED_CLONES_MAPPING = {
   },
   'man walking': {
     mode: 'random',
-    modelsArray: 'a_char1,a_char3,a_char5,a_char7',
+    modelsArray: 'a_char2,a_char4,a_char6,a_char8',
     spacing: 15,
     count: 10
   },
   'older couple': {
     mode: 'random',
-    modelsArray: 'char1,char3,char5,char7',
+    modelsArray: 'char2,char4,char6,char8',
     spacing: 15,
     count: 10
   },
@@ -1091,13 +1091,13 @@ const STREETPLAN_OBJECT_TO_GENERATED_CLONES_MAPPING = {
   },
   'small girl': {
     mode: 'random',
-    modelsArray: 'a_char1,a_char3,a_char5,a_char7',
+    modelsArray: 'a_char2,a_char4,a_char6,a_char8',
     spacing: 15,
     count: 10
   },
   'wheel chair': {
     mode: 'random',
-    modelsArray: 'char1,char3,char5,char7',
+    modelsArray: 'char2,char4,char6,char8',
     spacing: 15,
     count: 10
   },
@@ -1115,13 +1115,13 @@ const STREETPLAN_OBJECT_TO_GENERATED_CLONES_MAPPING = {
   },
   'woman shopping': {
     mode: 'random',
-    modelsArray: 'a_char1,a_char3,a_char5,a_char7',
+    modelsArray: 'a_char2,a_char4,a_char6,a_char8',
     spacing: 15,
     count: 10
   },
   'woman walking': {
     mode: 'random',
-    modelsArray: 'char1,char3,char5,char7',
+    modelsArray: 'char2,char4,char6,char8',
     spacing: 15,
     count: 10
   },
