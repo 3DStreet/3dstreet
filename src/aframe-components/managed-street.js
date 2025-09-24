@@ -381,9 +381,9 @@ AFRAME.registerComponent('managed-street', {
         const segment = segments[segmentKey];
 
         // Skip Buildings and Setback segments
-        if (segment.Type === 'Buildings' || segment.Type === 'Setback') {
-          continue;
-        }
+        // if (segment.Type === 'Buildings' || segment.Type === 'Setback') {
+        //   continue;
+        // }
 
         const segmentWidth = parseFloat(segment.width) * 0.3048; // Convert feet to meters
         streetObject.width += segmentWidth;
