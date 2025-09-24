@@ -102,7 +102,7 @@ const STREETPLAN_OBJECT_TO_GENERATED_CLONES_MAPPING = {
   },
   'blue mailbox': {
     mode: 'random',
-    modelsArray: 'USPS-mailbox,bikerack,sp-furn-bench2-5x2ft',
+    modelsArray: 'usps-mailbox,bikerack,sp-furn-bench2-5x2ft',
     spacing: 20,
     count: 3
   },
@@ -150,7 +150,7 @@ const STREETPLAN_OBJECT_TO_GENERATED_CLONES_MAPPING = {
   },
   'table small 3ft': {
     mode: 'random',
-    modelsArray: 'sp-furn-table-2x7ft,trash-bin,USPS-mailbox,bikerack',
+    modelsArray: 'sp-furn-table-2x7ft,trash-bin,usps-mailbox,bikerack',
     spacing: 10,
     count: 4
   },
@@ -250,463 +250,397 @@ const STREETPLAN_OBJECT_TO_GENERATED_CLONES_MAPPING = {
   },
   'brick apartment 1floor': {
     mode: 'random',
-    modelsArray:
-      'v2-buildings-suburban-SM_Bld_House_Preset_09_1845,v2-buildings-suburban-SM_Bld_House_Preset_03_1800',
+    modelsArray: 'arched-building-02,arched-building-01',
     spacing: 10,
     count: 2
   },
   'brick apartment 2floors': {
     mode: 'random',
-    modelsArray:
-      'v2-buildings-suburban-SM_Bld_House_Preset_09_1845,v2-buildings-suburban-SM_Bld_House_Preset_03_1800',
+    modelsArray: 'arched-building-02,arched-building-01',
     spacing: 10,
     count: 2
   },
   'brick apartment 3floors': {
     mode: 'random',
-    modelsArray:
-      'v2-buildings-suburban-SM_Bld_House_Preset_09_1845,v2-buildings-suburban-SM_Bld_House_Preset_03_1800',
+    modelsArray: 'arched-building-02,arched-building-01',
     spacing: 10,
     count: 2
   },
   'brick apartment 4floors': {
     mode: 'random',
-    modelsArray:
-      'v2-buildings-suburban-SM_Bld_House_Preset_09_1845,v2-buildings-suburban-SM_Bld_House_Preset_03_1800',
+    modelsArray: 'arched-building-02,arched-building-01',
     spacing: 10,
     count: 2
   },
   'brick apartment 5floors': {
     mode: 'random',
-    modelsArray:
-      'v2-buildings-suburban-SM_Bld_House_Preset_09_1845,v2-buildings-suburban-SM_Bld_House_Preset_03_1800',
+    modelsArray: 'arched-building-02,arched-building-01',
     spacing: 10,
     count: 2
   },
   'building blue 1floor': {
     mode: 'random',
-    modelsArray:
-      'v2-buildings-suburban-SM_Bld_House_Preset_09_1845,v2-buildings-suburban-SM_Bld_House_Preset_03_1800',
+    modelsArray: 'arched-building-02,arched-building-01',
     spacing: 10,
     count: 2
   },
   'building blue 2floors': {
     mode: 'random',
-    modelsArray:
-      'v2-buildings-suburban-SM_Bld_House_Preset_09_1845,v2-buildings-suburban-SM_Bld_House_Preset_03_1800',
+    modelsArray: 'arched-building-02,arched-building-01',
     spacing: 10,
     count: 2
   },
   'building blue 3floors': {
     mode: 'random',
-    modelsArray:
-      'v2-buildings-suburban-SM_Bld_House_Preset_09_1845,v2-buildings-suburban-SM_Bld_House_Preset_03_1800',
+    modelsArray: 'arched-building-02,arched-building-01',
     spacing: 10,
     count: 2
   },
   'building blue 4floors': {
     mode: 'random',
-    modelsArray:
-      'v2-buildings-suburban-SM_Bld_House_Preset_09_1845,v2-buildings-suburban-SM_Bld_House_Preset_03_1800',
+    modelsArray: 'arched-building-02,arched-building-01',
     spacing: 10,
     count: 2
   },
   'building blue 5floors': {
     mode: 'random',
-    modelsArray:
-      'v2-buildings-suburban-SM_Bld_House_Preset_09_1845,v2-buildings-suburban-SM_Bld_House_Preset_03_1800',
+    modelsArray: 'arched-building-02,arched-building-01',
     spacing: 10,
     count: 2
   },
   'building blue 6floors': {
     mode: 'random',
-    modelsArray:
-      'v2-buildings-suburban-SM_Bld_House_Preset_09_1845,v2-buildings-suburban-SM_Bld_House_Preset_03_1800',
+    modelsArray: 'arched-building-02,arched-building-01',
     spacing: 10,
     count: 2
   },
   'building blue 7floors': {
     mode: 'random',
-    modelsArray:
-      'v2-buildings-suburban-SM_Bld_House_Preset_09_1845,v2-buildings-suburban-SM_Bld_House_Preset_03_1800',
+    modelsArray: 'arched-building-02,arched-building-01',
     spacing: 10,
     count: 2
   },
   'building yellow 1floor': {
     mode: 'random',
-    modelsArray:
-      'v2-buildings-suburban-SM_Bld_House_Preset_09_1845,v2-buildings-suburban-SM_Bld_House_Preset_03_1800',
+    modelsArray: 'arched-building-02,arched-building-01',
     spacing: 10,
     count: 2
   },
   'building yellow 2floors': {
     mode: 'random',
-    modelsArray:
-      'v2-buildings-suburban-SM_Bld_House_Preset_09_1845,v2-buildings-suburban-SM_Bld_House_Preset_03_1800',
+    modelsArray: 'arched-building-02,arched-building-01',
     spacing: 10,
     count: 2
   },
   'building yellow 3floors': {
     mode: 'random',
-    modelsArray:
-      'v2-buildings-suburban-SM_Bld_House_Preset_09_1845,v2-buildings-suburban-SM_Bld_House_Preset_03_1800',
+    modelsArray: 'arched-building-02,arched-building-01',
     spacing: 10,
     count: 2
   },
   'building yellow 4floors': {
     mode: 'random',
-    modelsArray:
-      'v2-buildings-suburban-SM_Bld_House_Preset_09_1845,v2-buildings-suburban-SM_Bld_House_Preset_03_1800',
+    modelsArray: 'arched-building-02,arched-building-01',
     spacing: 10,
     count: 2
   },
   'building yellow 5floors': {
     mode: 'random',
-    modelsArray:
-      'v2-buildings-suburban-SM_Bld_House_Preset_09_1845,v2-buildings-suburban-SM_Bld_House_Preset_03_1800',
+    modelsArray: 'arched-building-02,arched-building-01',
     spacing: 10,
     count: 2
   },
   'building yellow 6floors': {
     mode: 'random',
-    modelsArray:
-      'v2-buildings-suburban-SM_Bld_House_Preset_09_1845,v2-buildings-suburban-SM_Bld_House_Preset_03_1800',
+    modelsArray: 'arched-building-02,arched-building-01',
     spacing: 10,
     count: 2
   },
   'building yellow 7floors': {
     mode: 'random',
-    modelsArray:
-      'v2-buildings-suburban-SM_Bld_House_Preset_09_1845,v2-buildings-suburban-SM_Bld_House_Preset_03_1800',
+    modelsArray: 'arched-building-02,arched-building-01',
     spacing: 10,
     count: 2
   },
   'buildings falltrees (30ft)': {
     mode: 'random',
-    modelsArray:
-      'v2-buildings-suburban-SM_Bld_House_Preset_09_1845,v2-buildings-suburban-SM_Bld_House_Preset_03_1800',
+    modelsArray: 'arched-building-02,arched-building-01',
     spacing: 10,
     count: 2
   },
   'buildings pinetrees (30ft)': {
     mode: 'random',
-    modelsArray:
-      'v2-buildings-suburban-SM_Bld_House_Preset_09_1845,v2-buildings-suburban-SM_Bld_House_Preset_03_1800',
+    modelsArray: 'arched-building-02,arched-building-01',
     spacing: 10,
     count: 2
   },
   'gas station': {
     mode: 'random',
-    modelsArray:
-      'v2-buildings-suburban-SM_Bld_House_Preset_09_1845,v2-buildings-suburban-SM_Bld_House_Preset_03_1800',
+    modelsArray: 'arched-building-02,arched-building-01',
     spacing: 10,
     count: 2
   },
   'home depot': {
     mode: 'random',
-    modelsArray:
-      'v2-buildings-suburban-SM_Bld_House_Preset_09_1845,v2-buildings-suburban-SM_Bld_House_Preset_03_1800',
+    modelsArray: 'arched-building-02,arched-building-01',
     spacing: 10,
     count: 2
   },
   'house 1floor': {
     mode: 'random',
-    modelsArray:
-      'v2-buildings-suburban-SM_Bld_House_Preset_09_1845,v2-buildings-suburban-SM_Bld_House_Preset_03_1800',
+    modelsArray: 'arched-building-02,arched-building-01',
     spacing: 10,
     count: 2
   },
   'house 2floors': {
     mode: 'random',
-    modelsArray:
-      'v2-buildings-suburban-SM_Bld_House_Preset_09_1845,v2-buildings-suburban-SM_Bld_House_Preset_03_1800',
+    modelsArray: 'arched-building-02,arched-building-01',
     spacing: 10,
     count: 2
   },
   'house 3floors': {
     mode: 'random',
-    modelsArray:
-      'v2-buildings-suburban-SM_Bld_House_Preset_09_1845,v2-buildings-suburban-SM_Bld_House_Preset_03_1800',
+    modelsArray: 'arched-building-02,arched-building-01',
     spacing: 10,
     count: 2
   },
   'house 4floors': {
     mode: 'random',
-    modelsArray:
-      'v2-buildings-suburban-SM_Bld_House_Preset_09_1845,v2-buildings-suburban-SM_Bld_House_Preset_03_1800',
+    modelsArray: 'arched-building-02,arched-building-01',
     spacing: 10,
     count: 2
   },
   'house 5floors': {
     mode: 'random',
-    modelsArray:
-      'v2-buildings-suburban-SM_Bld_House_Preset_09_1845,v2-buildings-suburban-SM_Bld_House_Preset_03_1800',
+    modelsArray: 'arched-building-02,arched-building-01',
     spacing: 10,
     count: 2
   },
   'house newurbanist': {
     mode: 'random',
-    modelsArray:
-      'v2-buildings-suburban-SM_Bld_House_Preset_09_1845,v2-buildings-suburban-SM_Bld_House_Preset_03_1800',
+    modelsArray: 'arched-building-02,arched-building-01',
     spacing: 10,
     count: 2
   },
   'house newurbanist red': {
     mode: 'random',
-    modelsArray:
-      'v2-buildings-suburban-SM_Bld_House_Preset_09_1845,v2-buildings-suburban-SM_Bld_House_Preset_03_1800',
+    modelsArray: 'arched-building-02,arched-building-01',
     spacing: 10,
     count: 2
   },
   'live work': {
     mode: 'random',
-    modelsArray:
-      'v2-buildings-suburban-SM_Bld_House_Preset_09_1845,v2-buildings-suburban-SM_Bld_House_Preset_03_1800',
+    modelsArray: 'arched-building-02,arched-building-01',
     spacing: 10,
     count: 2
   },
   'mart chilis': {
     mode: 'random',
-    modelsArray:
-      'v2-buildings-suburban-SM_Bld_House_Preset_09_1845,v2-buildings-suburban-SM_Bld_House_Preset_03_1800',
+    modelsArray: 'arched-building-02,arched-building-01',
     spacing: 10,
     count: 2
   },
   'mikedesign midvale 2story': {
     mode: 'random',
-    modelsArray:
-      'v2-buildings-suburban-SM_Bld_House_Preset_09_1845,v2-buildings-suburban-SM_Bld_House_Preset_03_1800',
+    modelsArray: 'arched-building-02,arched-building-01',
     spacing: 10,
     count: 2
   },
   'mikedesign midvale 3story': {
     mode: 'random',
-    modelsArray:
-      'v2-buildings-suburban-SM_Bld_House_Preset_09_1845,v2-buildings-suburban-SM_Bld_House_Preset_03_1800',
+    modelsArray: 'arched-building-02,arched-building-01',
     spacing: 10,
     count: 2
   },
   'mikedesign midvale3 3story': {
     mode: 'random',
-    modelsArray:
-      'v2-buildings-suburban-SM_Bld_House_Preset_09_1845,v2-buildings-suburban-SM_Bld_House_Preset_03_1800',
+    modelsArray: 'arched-building-02,arched-building-01',
     spacing: 10,
     count: 2
   },
   'mixed use 2floors': {
     mode: 'random',
-    modelsArray:
-      'v2-buildings-suburban-SM_Bld_House_Preset_09_1845,v2-buildings-suburban-SM_Bld_House_Preset_03_1800',
+    modelsArray: 'arched-building-02,arched-building-01',
     spacing: 10,
     count: 2
   },
   'mixed use 3floors': {
     mode: 'random',
-    modelsArray:
-      'v2-buildings-suburban-SM_Bld_House_Preset_09_1845,v2-buildings-suburban-SM_Bld_House_Preset_03_1800',
+    modelsArray: 'arched-building-02,arched-building-01',
     spacing: 10,
     count: 2
   },
   'mixed use 4floors': {
     mode: 'random',
-    modelsArray:
-      'v2-buildings-suburban-SM_Bld_House_Preset_09_1845,v2-buildings-suburban-SM_Bld_House_Preset_03_1800',
+    modelsArray: 'arched-building-02,arched-building-01',
     spacing: 10,
     count: 2
   },
   'mixed use 5floors': {
     mode: 'random',
-    modelsArray:
-      'v2-buildings-suburban-SM_Bld_House_Preset_09_1845,v2-buildings-suburban-SM_Bld_House_Preset_03_1800',
+    modelsArray: 'arched-building-02,arched-building-01',
     spacing: 10,
     count: 2
   },
   'nice apartment 3story': {
     mode: 'random',
-    modelsArray:
-      'v2-buildings-suburban-SM_Bld_House_Preset_09_1845,v2-buildings-suburban-SM_Bld_House_Preset_03_1800',
+    modelsArray: 'arched-building-02,arched-building-01',
     spacing: 10,
     count: 2
   },
   'nice apartment 4story': {
     mode: 'random',
-    modelsArray:
-      'v2-buildings-suburban-SM_Bld_House_Preset_09_1845,v2-buildings-suburban-SM_Bld_House_Preset_03_1800',
+    modelsArray: 'arched-building-02,arched-building-01',
     spacing: 10,
     count: 2
   },
   'nice apartment 5story': {
     mode: 'random',
-    modelsArray:
-      'v2-buildings-suburban-SM_Bld_House_Preset_09_1845,v2-buildings-suburban-SM_Bld_House_Preset_03_1800',
+    modelsArray: 'arched-building-02,arched-building-01',
     spacing: 10,
     count: 2
   },
   'nice apartment 6story': {
     mode: 'random',
-    modelsArray:
-      'v2-buildings-suburban-SM_Bld_House_Preset_09_1845,v2-buildings-suburban-SM_Bld_House_Preset_03_1800',
+    modelsArray: 'arched-building-02,arched-building-01',
     spacing: 10,
     count: 2
   },
   'red mixed use 1floor': {
     mode: 'random',
-    modelsArray:
-      'v2-buildings-suburban-SM_Bld_House_Preset_09_1845,v2-buildings-suburban-SM_Bld_House_Preset_03_1800',
+    modelsArray: 'arched-building-02,arched-building-01',
     spacing: 10,
     count: 2
   },
   'red mixed use 2floors': {
     mode: 'random',
-    modelsArray:
-      'v2-buildings-suburban-SM_Bld_House_Preset_09_1845,v2-buildings-suburban-SM_Bld_House_Preset_03_1800',
+    modelsArray: 'arched-building-02,arched-building-01',
     spacing: 10,
     count: 2
   },
   'red mixed use 3floors': {
     mode: 'random',
-    modelsArray:
-      'v2-buildings-suburban-SM_Bld_House_Preset_09_1845,v2-buildings-suburban-SM_Bld_House_Preset_03_1800',
+    modelsArray: 'arched-building-02,arched-building-01',
     spacing: 10,
     count: 2
   },
   'red mixed use 4floors': {
     mode: 'random',
-    modelsArray:
-      'v2-buildings-suburban-SM_Bld_House_Preset_09_1845,v2-buildings-suburban-SM_Bld_House_Preset_03_1800',
+    modelsArray: 'arched-building-02,arched-building-01',
     spacing: 10,
     count: 2
   },
   'red mixed use 5floors': {
     mode: 'random',
-    modelsArray:
-      'v2-buildings-suburban-SM_Bld_House_Preset_09_1845,v2-buildings-suburban-SM_Bld_House_Preset_03_1800',
+    modelsArray: 'arched-building-02,arched-building-01',
     spacing: 10,
     count: 2
   },
   residential: {
     mode: 'random',
-    modelsArray:
-      'v2-buildings-suburban-SM_Bld_House_Preset_09_1845,v2-buildings-suburban-SM_Bld_House_Preset_03_1800',
+    modelsArray: 'arched-building-02,arched-building-01',
     spacing: 10,
     count: 2
   },
   'river crosssection': {
     mode: 'random',
-    modelsArray:
-      'v2-buildings-suburban-SM_Bld_House_Preset_09_1845,v2-buildings-suburban-SM_Bld_House_Preset_03_1800',
+    modelsArray: 'arched-building-02,arched-building-01',
     spacing: 10,
     count: 2
   },
   'river crosssection 20ft': {
     mode: 'random',
-    modelsArray:
-      'v2-buildings-suburban-SM_Bld_House_Preset_09_1845,v2-buildings-suburban-SM_Bld_House_Preset_03_1800',
+    modelsArray: 'arched-building-02,arched-building-01',
     spacing: 10,
     count: 2
   },
   'river crosssection 40ft': {
     mode: 'random',
-    modelsArray:
-      'v2-buildings-suburban-SM_Bld_House_Preset_09_1845,v2-buildings-suburban-SM_Bld_House_Preset_03_1800',
+    modelsArray: 'arched-building-02,arched-building-01',
     spacing: 10,
     count: 2
   },
   'shop 1floor': {
     mode: 'random',
-    modelsArray:
-      'v2-buildings-suburban-SM_Bld_House_Preset_09_1845,v2-buildings-suburban-SM_Bld_House_Preset_03_1800',
+    modelsArray: 'arched-building-02,arched-building-01',
     spacing: 10,
     count: 2
   },
   'shop 2floors': {
     mode: 'random',
-    modelsArray:
-      'v2-buildings-suburban-SM_Bld_House_Preset_09_1845,v2-buildings-suburban-SM_Bld_House_Preset_03_1800',
+    modelsArray: 'arched-building-02,arched-building-01',
     spacing: 10,
     count: 2
   },
   'shop 3floors': {
     mode: 'random',
-    modelsArray:
-      'v2-buildings-suburban-SM_Bld_House_Preset_09_1845,v2-buildings-suburban-SM_Bld_House_Preset_03_1800',
+    modelsArray: 'arched-building-02,arched-building-01',
     spacing: 10,
     count: 2
   },
   'shop 4floors': {
     mode: 'random',
-    modelsArray:
-      'v2-buildings-suburban-SM_Bld_House_Preset_09_1845,v2-buildings-suburban-SM_Bld_House_Preset_03_1800',
+    modelsArray: 'arched-building-02,arched-building-01',
     spacing: 10,
     count: 2
   },
   'single family': {
     mode: 'random',
-    modelsArray:
-      'v2-buildings-suburban-SM_Bld_House_Preset_09_1845,v2-buildings-suburban-SM_Bld_House_Preset_03_1800',
+    modelsArray: 'arched-building-02,arched-building-01',
     spacing: 10,
     count: 2
   },
   'single family back': {
     mode: 'random',
-    modelsArray:
-      'v2-buildings-suburban-SM_Bld_House_Preset_09_1845,v2-buildings-suburban-SM_Bld_House_Preset_03_1800',
+    modelsArray: 'arched-building-02,arched-building-01',
     spacing: 10,
     count: 2
   },
   'stripmall onerowparking': {
     mode: 'random',
-    modelsArray:
-      'v2-buildings-suburban-SM_Bld_House_Preset_09_1845,v2-buildings-suburban-SM_Bld_House_Preset_03_1800',
+    modelsArray: 'arched-building-02,arched-building-01',
     spacing: 10,
     count: 2
   },
   'stripmall1 tworowsparking': {
     mode: 'random',
-    modelsArray:
-      'v2-buildings-suburban-SM_Bld_House_Preset_09_1845,v2-buildings-suburban-SM_Bld_House_Preset_03_1800',
+    modelsArray: 'arched-building-02,arched-building-01',
     spacing: 10,
     count: 2
   },
   'stripmall1, onerowparking': {
     mode: 'random',
-    modelsArray:
-      'v2-buildings-suburban-SM_Bld_House_Preset_09_1845,v2-buildings-suburban-SM_Bld_House_Preset_03_1800',
+    modelsArray: 'arched-building-02,arched-building-01',
     spacing: 10,
     count: 2
   },
   'stripmall2 tworowsparking': {
     mode: 'random',
-    modelsArray:
-      'v2-buildings-suburban-SM_Bld_House_Preset_09_1845,v2-buildings-suburban-SM_Bld_House_Preset_03_1800',
+    modelsArray: 'arched-building-02,arched-building-01',
     spacing: 10,
     count: 2
   },
   'townhouse row 3story': {
     mode: 'random',
-    modelsArray:
-      'v2-buildings-suburban-SM_Bld_House_Preset_09_1845,v2-buildings-suburban-SM_Bld_House_Preset_03_1800',
+    modelsArray: 'arched-building-02,arched-building-01',
     spacing: 10,
     count: 2
   },
   walmart: {
     mode: 'random',
-    modelsArray:
-      'v2-buildings-suburban-SM_Bld_House_Preset_09_1845,v2-buildings-suburban-SM_Bld_House_Preset_03_1800',
+    modelsArray: 'arched-building-02,arched-building-01',
     spacing: 10,
     count: 2
   },
   'water 20ft': {
     mode: 'random',
-    modelsArray:
-      'v2-buildings-suburban-SM_Bld_House_Preset_09_1845,v2-buildings-suburban-SM_Bld_House_Preset_03_1800',
+    modelsArray: 'arched-building-02,arched-building-01',
     spacing: 10,
     count: 2
   },
   'water 30ft': {
     mode: 'random',
-    modelsArray:
-      'v2-buildings-suburban-SM_Bld_House_Preset_09_1845,v2-buildings-suburban-SM_Bld_House_Preset_03_1800',
+    modelsArray: 'arched-building-02,arched-building-01',
     spacing: 10,
     count: 2
   },
