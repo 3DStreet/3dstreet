@@ -42,18 +42,21 @@ const STREETPLAN_OBJECT_TO_GENERATED_CLONES_MAPPING = {
     mode: 'fixed',
     modelsArray:
       'temporary-jersey-barrier-concrete,temporary-jersey-barrier-concrete',
-    spacing: 50
+    spacing: 50,
+    justify: 'start'
   },
   'barrier 2-ft': {
     mode: 'fixed',
     modelsArray:
       'temporary-jersey-barrier-concrete,temporary-jersey-barrier-concrete',
-    spacing: 50
+    spacing: 50,
+    justify: 'start'
   },
   'bollard plastic yellow': {
     mode: 'fixed',
     modelsArray: 'bollard,bollard',
-    spacing: 50
+    spacing: 50,
+    justify: 'start'
   },
   'curb edge: 0.5 ft': '',
   fence: '',
@@ -75,7 +78,8 @@ const STREETPLAN_OBJECT_TO_GENERATED_CLONES_MAPPING = {
   'orange barrel': {
     mode: 'fixed',
     modelsArray: 'temporary-traffic-cone,temporary-traffic-cone',
-    spacing: 50
+    spacing: 50,
+    justify: 'start'
   },
   'slopedgrass 40ft': '',
   'soundwall (12ft)': '',
@@ -109,12 +113,14 @@ const STREETPLAN_OBJECT_TO_GENERATED_CLONES_MAPPING = {
   'boxwood planter 2ft': {
     mode: 'fixed',
     modelsArray: 'dividers-bush,dividers-bush',
-    spacing: 50
+    spacing: 50,
+    justify: 'start'
   },
   'boxwood planter 3ft': {
     mode: 'fixed',
     modelsArray: 'dividers-bush,dividers-bush',
-    spacing: 50
+    spacing: 50,
+    justify: 'start'
   },
   'flower pot 4ft': '',
   garbagecan: {
@@ -157,12 +163,14 @@ const STREETPLAN_OBJECT_TO_GENERATED_CLONES_MAPPING = {
   tallgrass: {
     mode: 'fixed',
     modelsArray: 'dividers-bush,dividers-bush',
-    spacing: 50
+    spacing: 50,
+    justify: 'start'
   },
   'tallgrass 40ft': {
     mode: 'fixed',
     modelsArray: 'dividers-bush,dividers-bush',
-    spacing: 50
+    spacing: 50,
+    justify: 'start'
   },
   trashcan: {
     mode: 'random',
@@ -180,7 +188,8 @@ const STREETPLAN_OBJECT_TO_GENERATED_CLONES_MAPPING = {
   'boxwood planter 5ft': {
     mode: 'fixed',
     modelsArray: 'dividers-bush,dividers-bush',
-    spacing: 50
+    spacing: 50,
+    justify: 'start'
   },
   'fleamarket stuff': {
     mode: 'random',
@@ -649,61 +658,71 @@ const STREETPLAN_OBJECT_TO_GENERATED_CLONES_MAPPING = {
     mode: 'fixed',
     modelsArray:
       'sp-median-planterbox-tall-10x30ft,sp-median-planterbox-tall-10x30ft',
-    spacing: 50
+    spacing: 50,
+    justify: 'start'
   },
   'cactus median (12ft)': {
     mode: 'fixed',
     modelsArray:
       'sp-median-planterbox-tall-10x30ft,sp-median-planterbox-tall-10x30ft',
-    spacing: 50
+    spacing: 50,
+    justify: 'start'
   },
   'cactus median (4ft)': {
     mode: 'fixed',
     modelsArray:
       'sp-median-planterbox-tall-06x30ft,sp-median-planterbox-tall-06x30ft',
-    spacing: 50
+    spacing: 50,
+    justify: 'start'
   },
   'cactus median (6ft)': {
     mode: 'fixed',
     modelsArray:
       'sp-median-planterbox-tall-06x30ft,sp-median-planterbox-tall-06x30ft',
-    spacing: 50
+    spacing: 50,
+    justify: 'start'
   },
   'cactus median (8ft)': {
     mode: 'fixed',
     modelsArray:
       'sp-median-planterbox-tall-06x30ft,sp-median-planterbox-tall-06x30ft',
-    spacing: 50
+    spacing: 50,
+    justify: 'start'
   },
   'flower median (10ft)': {
     mode: 'fixed',
     modelsArray:
       'sp-median-planterbox-tall-10x30ft,sp-median-planterbox-tall-10x30ft',
-    spacing: 50
+    spacing: 50,
+    justify: 'start'
   },
   'flower median (12ft)': {
     mode: 'fixed',
     modelsArray:
       'sp-median-planterbox-tall-10x30ft,sp-median-planterbox-tall-10x30ft',
-    spacing: 50
+    spacing: 50,
+    justify: 'start'
   },
   'flower median (4ft)': {
     mode: 'fixed',
     modelsArray:
       'sp-median-planterbox-tall-06x30ft,sp-median-planterbox-tall-06x30ft',
-    spacing: 50
+    spacing: 50,
+    justify: 'start'
   },
   'flower median (6ft)': {
     mode: 'fixed',
     modelsArray:
       'sp-median-planterbox-tall-06x30ft,sp-median-planterbox-tall-06x30ft',
-    spacing: 50
+    spacing: 50,
+    justify: 'start'
   },
   'flower median (8ft)': {
     mode: 'fixed',
     modelsArray:
       'sp-median-planterbox-tall-06x30ft,sp-median-planterbox-tall-06x30ft',
-    spacing: 50
+    spacing: 50,
+    justify: 'start'
   },
   'flowers pedrefuge (8ft)': '',
   'grassslopemedian (12ft)': '',
@@ -717,85 +736,99 @@ const STREETPLAN_OBJECT_TO_GENERATED_CLONES_MAPPING = {
     mode: 'fixed',
     modelsArray:
       'sp-median-planterbox-tall-10x30ft,sp-median-planterbox-tall-10x30ft',
-    spacing: 50
+    spacing: 50,
+    justify: 'start'
   },
   'rock median (12ft)': {
     mode: 'fixed',
     modelsArray:
       'sp-median-planterbox-tall-10x30ft,sp-median-planterbox-tall-10x30ft',
-    spacing: 50
+    spacing: 50,
+    justify: 'start'
   },
   'rock median (4ft)': {
     mode: 'fixed',
     modelsArray:
       'sp-median-planterbox-tall-06x30ft,sp-median-planterbox-tall-06x30ft',
-    spacing: 50
+    spacing: 50,
+    justify: 'start'
   },
   'rock median (6ft)': {
     mode: 'fixed',
     modelsArray:
       'sp-median-planterbox-tall-06x30ft,sp-median-planterbox-tall-06x30ft',
-    spacing: 50
+    spacing: 50,
+    justify: 'start'
   },
   'rock median (8ft)': {
     mode: 'fixed',
     modelsArray:
       'sp-median-planterbox-tall-06x30ft,sp-median-planterbox-tall-06x30ft',
-    spacing: 50
+    spacing: 50,
+    justify: 'start'
   },
   'tallplantbox (10ft)': {
     mode: 'fixed',
     modelsArray:
       'sp-median-planterbox-tall-10x30ft,sp-median-planterbox-tall-10x30ft',
-    spacing: 50
+    spacing: 50,
+    justify: 'start'
   },
   'tallplantbox (12ft)': {
     mode: 'fixed',
     modelsArray:
       'sp-median-planterbox-tall-10x30ft,sp-median-planterbox-tall-10x30ft',
-    spacing: 50
+    spacing: 50,
+    justify: 'start'
   },
   'tallplantbox (4ft)': {
     mode: 'fixed',
     modelsArray:
       'sp-median-planterbox-tall-06x30ft,sp-median-planterbox-tall-06x30ft',
-    spacing: 50
+    spacing: 50,
+    justify: 'start'
   },
   'tallplantbox (6ft)': {
     mode: 'fixed',
     modelsArray:
       'sp-median-planterbox-tall-06x30ft,sp-median-planterbox-tall-06x30ft',
-    spacing: 50
+    spacing: 50,
+    justify: 'start'
   },
   'tallplantbox (8ft)': {
     mode: 'fixed',
     modelsArray:
       'sp-median-planterbox-tall-06x30ft,sp-median-planterbox-tall-06x30ft',
-    spacing: 50
+    spacing: 50,
+    justify: 'start'
   },
   'tallplantbox pedref (10ft)': {
     mode: 'fixed',
     modelsArray:
       'sp-median-planterbox-tall-10x30ft,sp-median-planterbox-tall-10x30ft',
-    spacing: 50
+    spacing: 50,
+    justify: 'start'
   },
   'tallplantbox pedref (12ft)': {
     mode: 'fixed',
     modelsArray:
       'sp-median-planterbox-tall-10x30ft,sp-median-planterbox-tall-10x30ft',
-    spacing: 50
+    spacing: 50,
+    justify: 'start'
   },
   'tallplantbox pedref (6ft)': {
     mode: 'fixed',
     modelsArray:
       'sp-median-planterbox-tall-06x30ft,sp-median-planterbox-tall-06x30ft',
-    spacing: 50
+    spacing: 50,
+    justify: 'start'
   },
   'tallplantbox pedref (8ft)': {
     mode: 'fixed',
     modelsArray:
       'sp-median-planterbox-tall-06x30ft,sp-median-planterbox-tall-06x30ft',
-    spacing: 50
+    spacing: 50,
+    justify: 'start'
   },
   'tropical median (4ft)': '',
   'weeds median (4ft)': '',
@@ -815,7 +848,8 @@ const STREETPLAN_OBJECT_TO_GENERATED_CLONES_MAPPING = {
   'parallel pedbulbout': {
     mode: 'fixed',
     modelsArray: 'sp-parking-planter-5x8ft,sp-parking-planter-5x8ft',
-    spacing: 50
+    spacing: 50,
+    justify: 'start'
   },
   'parallel redvan': '',
   'parallel yellowcar': '',
@@ -839,29 +873,34 @@ const STREETPLAN_OBJECT_TO_GENERATED_CLONES_MAPPING = {
   'bike rider': {
     mode: 'fixed',
     modelsArray: 'bicycle_1,bicycle_1',
-    spacing: 50
+    spacing: 50,
+    justify: 'start'
   },
   'bike rider rev': {
     mode: 'fixed',
     modelsArray: 'bicycle_1,bicycle_1',
-    spacing: 50
+    spacing: 50,
+    justify: 'start'
   },
   'bikelane sharecar': '',
   'bikelane sharecar rev': '',
   'casual woman': {
     mode: 'fixed',
     modelsArray: 'bicycle_1,bicycle_1',
-    spacing: 50
+    spacing: 50,
+    justify: 'start'
   },
   'casual woman 2': {
     mode: 'fixed',
     modelsArray: 'cyclist3,cyclist3',
-    spacing: 50
+    spacing: 50,
+    justify: 'start'
   },
   'casual woman 2 rev': {
     mode: 'fixed',
     modelsArray: 'cyclist-dutch,cyclist-dutch',
-    spacing: 50
+    spacing: 50,
+    justify: 'start'
   },
   'couple biking': '',
   'couple jogging': '',
@@ -875,7 +914,8 @@ const STREETPLAN_OBJECT_TO_GENERATED_CLONES_MAPPING = {
   'kid biking': {
     mode: 'fixed',
     modelsArray: 'cyclist-kid,cyclist-kid',
-    spacing: 50
+    spacing: 50,
+    justify: 'start'
   },
   'multi use trail 12ft': '',
   'nev and bike 10ft': '',
@@ -889,23 +929,27 @@ const STREETPLAN_OBJECT_TO_GENERATED_CLONES_MAPPING = {
   scooter: {
     mode: 'fixed',
     modelsArray: 'cyclist-cargo,cyclist-cargo',
-    spacing: 50
+    spacing: 50,
+    justify: 'start'
   },
   'serious man': {
     mode: 'fixed',
     modelsArray: 'cyclist2,cyclist2',
-    spacing: 50
+    spacing: 50,
+    justify: 'start'
   },
   'serious man rev': {
     mode: 'fixed',
     modelsArray: 'cyclist2,cyclist2',
-    spacing: 50
+    spacing: 50,
+    justify: 'start'
   },
   smallnev: '',
   smallscooter: {
     mode: 'fixed',
     modelsArray: 'electricscooter_1,electricscooter_1',
-    spacing: 50
+    spacing: 50,
+    justify: 'start'
   },
   'two bikes back': '',
   'two bikes come and go': '',
@@ -913,7 +957,8 @@ const STREETPLAN_OBJECT_TO_GENERATED_CLONES_MAPPING = {
   'woman bike': {
     mode: 'fixed',
     modelsArray: 'cyclist-dutch,cyclist-dutch',
-    spacing: 50
+    spacing: 50,
+    justify: 'start'
   },
   'woman jogging': {
     mode: 'random',
@@ -1068,79 +1113,93 @@ const STREETPLAN_OBJECT_TO_GENERATED_CLONES_MAPPING = {
   'cobra light': {
     mode: 'fixed',
     modelsArray: 'lamp-modern,lamp-modern',
-    spacing: 50
+    spacing: 50,
+    justify: 'start'
   },
   'hawk signal narrow': {
     mode: 'fixed',
     modelsArray: 'signal_right,signal_right',
-    spacing: 50
+    spacing: 50,
+    justify: 'start'
   },
   'hawk signal wide': {
     mode: 'fixed',
     modelsArray: 'signal_right,signal_right',
-    spacing: 50
+    spacing: 50,
+    justify: 'start'
   },
   'hawk signal xwide': {
     mode: 'fixed',
     modelsArray: 'signal_right,signal_right',
-    spacing: 50
+    spacing: 50,
+    justify: 'start'
   },
   'historic light': {
     mode: 'fixed',
     modelsArray: 'lamp-traditional,lamp-traditional',
-    spacing: 50
+    spacing: 50,
+    justify: 'start'
   },
   'historic no banner': {
     mode: 'fixed',
     modelsArray: 'lamp-traditional,lamp-traditional',
-    spacing: 50
+    spacing: 50,
+    justify: 'start'
   },
   'historic with banners': {
     mode: 'fixed',
     modelsArray:
       'sp-light-flowerp-bannerby-13ft,sp-light-flowerp-bannerby-13ft',
-    spacing: 50
+    spacing: 50,
+    justify: 'start'
   },
   'historic with flowers 1': {
     mode: 'fixed',
     modelsArray:
       'sp-light-flowerp-bannerby-13ft,sp-light-flowerp-bannerby-13ft',
-    spacing: 50
+    spacing: 50,
+    justify: 'start'
   },
   'historic with flowers 2': {
     mode: 'fixed',
     modelsArray:
       'sp-light-flowery-bannerrg-13ft,sp-light-flowery-bannerrg-13ft',
-    spacing: 50
+    spacing: 50,
+    justify: 'start'
   },
   'light rail poles': '',
   'power tower 30ft': '',
   'street light': {
     mode: 'fixed',
     modelsArray: 'lamp-traditional,lamp-traditional',
-    spacing: 50
+    spacing: 50,
+    justify: 'start'
   },
   'streetlight solar': {
     mode: 'fixed',
     modelsArray: 'lamp-traditional,lamp-traditional',
-    spacing: 50
+    spacing: 50,
+    justify: 'start'
   },
   'streetlight solar banners 1': {
     mode: 'fixed',
     modelsArray:
       'sp-light-flowerp-bannerby-13ft,sp-light-flowerp-bannerby-13ft',
-    spacing: 50
+    spacing: 50,
+    justify: 'start'
   },
   'streetlight solar banners 2': {
     mode: 'fixed',
     modelsArray:
       'sp-light-flowery-bannerrg-13ft,sp-light-flowery-bannerrg-13ft',
-    spacing: 50
+    spacing: 50,
+    justify: 'start'
   },
   'telephone pole': {
     mode: 'fixed',
     modelsArray: 'utility_pole,utility_pole',
-    spacing: 50
+    spacing: 50,
+    justify: 'start'
   },
   'billboard sign': '',
   brickpillar: '',
@@ -1150,7 +1209,8 @@ const STREETPLAN_OBJECT_TO_GENERATED_CLONES_MAPPING = {
   'sign directory': {
     mode: 'fixed',
     modelsArray: 'wayfinding-box,wayfinding-box',
-    spacing: 50
+    spacing: 50,
+    justify: 'start'
   },
   'stroad sign landr 16ft': '',
   'used cars sign': '',
@@ -1159,307 +1219,386 @@ const STREETPLAN_OBJECT_TO_GENERATED_CLONES_MAPPING = {
   '10 mph': {
     mode: 'fixed',
     modelsArray: 'sp-sign-speed-limit-10mph,sp-sign-speed-limit-10mph',
-    spacing: 50
+    spacing: 50,
+    justify: 'start'
   },
   '10 mph nopole': {
     mode: 'fixed',
     modelsArray: 'sp-sign-speed-limit-10mph,sp-sign-speed-limit-10mph',
-    spacing: 50
+    spacing: 50,
+    justify: 'start'
   },
   '12 mph': '',
   '12 mph nopole': '',
   '15 mph': {
     mode: 'fixed',
     modelsArray: 'sp-sign-speed-limit-15mph,sp-sign-speed-limit-15mph',
-    spacing: 50
+    spacing: 50,
+    justify: 'start'
   },
   '15 mph nopole': {
     mode: 'fixed',
     modelsArray: 'sp-sign-speed-limit-15mph,sp-sign-speed-limit-15mph',
-    spacing: 50
+    spacing: 50,
+    justify: 'start'
   },
   '20 mph': {
     mode: 'fixed',
     modelsArray: 'sp-sign-speed-limit-20mph,sp-sign-speed-limit-20mph',
-    spacing: 50
+    spacing: 50,
+    justify: 'start'
   },
   '20 mph nopole': {
     mode: 'fixed',
     modelsArray: 'sp-sign-speed-limit-20mph,sp-sign-speed-limit-20mph',
-    spacing: 50
+    spacing: 50,
+    justify: 'start'
   },
   '25 mph': {
     mode: 'fixed',
     modelsArray: 'sp-sign-speed-limit-25mph,sp-sign-speed-limit-25mph',
-    spacing: 50
+    spacing: 50,
+    justify: 'start'
   },
   '25 mph nopole': {
     mode: 'fixed',
     modelsArray: 'sp-sign-speed-limit-25mph,sp-sign-speed-limit-25mph',
-    spacing: 50
+    spacing: 50,
+    justify: 'start'
   },
   '30 mph': {
     mode: 'fixed',
     modelsArray: 'sp-sign-speed-limit-30mph,sp-sign-speed-limit-30mph',
-    spacing: 50
+    spacing: 50,
+    justify: 'start'
   },
   '30 mph nopole': {
     mode: 'fixed',
     modelsArray: 'sp-sign-speed-limit-30mph,sp-sign-speed-limit-30mph',
-    spacing: 50
+    spacing: 50,
+    justify: 'start'
   },
   '35 mph': {
     mode: 'fixed',
     modelsArray: 'sp-sign-speed-limit-35mph,sp-sign-speed-limit-35mph',
-    spacing: 50
+    spacing: 50,
+    justify: 'start'
   },
   '35 mph nopole': {
     mode: 'fixed',
     modelsArray: 'sp-sign-speed-limit-35mph,sp-sign-speed-limit-35mph',
-    spacing: 50
+    spacing: 50,
+    justify: 'start'
   },
   '40 mph': {
     mode: 'fixed',
     modelsArray: 'sp-sign-speed-limit-40mph,sp-sign-speed-limit-40mph',
-    spacing: 50
+    spacing: 50,
+    justify: 'start'
   },
   '40 mph nopole': {
     mode: 'fixed',
     modelsArray: 'sp-sign-speed-limit-40mph,sp-sign-speed-limit-40mph',
-    spacing: 50
+    spacing: 50,
+    justify: 'start'
   },
   '45 mph': {
     mode: 'fixed',
     modelsArray: 'sp-sign-speed-limit-45mph,sp-sign-speed-limit-45mph',
-    spacing: 50
+    spacing: 50,
+    justify: 'start'
   },
   '45 mph nopole': {
     mode: 'fixed',
     modelsArray: 'sp-sign-speed-limit-45mph,sp-sign-speed-limit-45mph',
-    spacing: 50
+    spacing: 50,
+    justify: 'start'
   },
   '50 mph': {
     mode: 'fixed',
     modelsArray: 'sp-sign-speed-limit-50mph,sp-sign-speed-limit-50mph',
-    spacing: 50
+    spacing: 50,
+    justify: 'start'
   },
   '50 mph nopole': {
     mode: 'fixed',
     modelsArray: 'sp-sign-speed-limit-50mph,sp-sign-speed-limit-50mph',
-    spacing: 50
+    spacing: 50,
+    justify: 'start'
   },
   '55 mph': {
     mode: 'fixed',
     modelsArray: 'sp-sign-speed-limit-55mph,sp-sign-speed-limit-55mph',
-    spacing: 50
+    spacing: 50,
+    justify: 'start'
   },
   '55 mph nopole': {
     mode: 'fixed',
     modelsArray: 'sp-sign-speed-limit-55mph,sp-sign-speed-limit-55mph',
-    spacing: 50
+    spacing: 50,
+    justify: 'start'
   },
   '60 mph': {
     mode: 'fixed',
     modelsArray: 'sp-sign-speed-limit-60mph,sp-sign-speed-limit-60mph',
-    spacing: 50
+    spacing: 50,
+    justify: 'start'
   },
   '60 mph nopole': {
     mode: 'fixed',
     modelsArray: 'sp-sign-speed-limit-60mph,sp-sign-speed-limit-60mph',
-    spacing: 50
+    spacing: 50,
+    justify: 'start'
   },
   '65 mph': {
     mode: 'fixed',
     modelsArray: 'sp-sign-speed-limit-65mph,sp-sign-speed-limit-65mph',
-    spacing: 50
+    spacing: 50,
+    justify: 'start'
   },
   '65 mph nopole': {
     mode: 'fixed',
     modelsArray: 'sp-sign-speed-limit-65mph,sp-sign-speed-limit-65mph',
-    spacing: 50
+    spacing: 50,
+    justify: 'start'
   },
   '70 mph': {
     mode: 'fixed',
     modelsArray: 'sp-sign-speed-limit-70mph,sp-sign-speed-limit-70mph',
-    spacing: 50
+    spacing: 50,
+    justify: 'start'
   },
   '70 mph nopole': {
     mode: 'fixed',
     modelsArray: 'sp-sign-speed-limit-70mph,sp-sign-speed-limit-70mph',
-    spacing: 50
+    spacing: 50,
+    justify: 'start'
   },
   '75 mph': {
     mode: 'fixed',
     modelsArray: 'sp-sign-speed-limit-75mph,sp-sign-speed-limit-75mph',
-    spacing: 50
+    spacing: 50,
+    justify: 'start'
   },
   '75 mph nopole': {
     mode: 'fixed',
     modelsArray: 'sp-sign-speed-limit-75mph,sp-sign-speed-limit-75mph',
-    spacing: 50
+    spacing: 50,
+    justify: 'start'
   },
   '80 mph': {
     mode: 'fixed',
     modelsArray: 'sp-sign-speed-limit-80mph,sp-sign-speed-limit-80mph',
-    spacing: 50
+    spacing: 50,
+    justify: 'start'
   },
   '80 mph nopole': {
     mode: 'fixed',
     modelsArray: 'sp-sign-speed-limit-80mph,sp-sign-speed-limit-80mph',
-    spacing: 50
+    spacing: 50,
+    justify: 'start'
   },
   boulevardcirculator: {
     mode: 'fixed',
     modelsArray: 'minibus,minibus',
-    spacing: 50
+    spacing: 50,
+    justify: 'start'
   },
   'boulevardcirculator rev': {
     mode: 'fixed',
     modelsArray: 'minibus,minibus',
-    spacing: 50
+    spacing: 50,
+    justify: 'start'
   },
-  bus: { mode: 'fixed', modelsArray: 'bus,bus', spacing: 50 },
-  'bus rev': { mode: 'fixed', modelsArray: 'bus,bus', spacing: 50 },
+  bus: { mode: 'fixed', modelsArray: 'bus,bus', spacing: 50, justify: 'start' },
+  'bus rev': {
+    mode: 'fixed',
+    modelsArray: 'bus,bus',
+    spacing: 50,
+    justify: 'start'
+  },
   'heavy rail': '',
   'heavy rail rev': '',
   'streetcar blue': {
     mode: 'fixed',
     modelsArray: 'trolley,trolley',
-    spacing: 50
+    spacing: 50,
+    justify: 'start'
   },
   'streetcar blue rev': {
     mode: 'fixed',
     modelsArray: 'trolley,trolley',
-    spacing: 50
+    spacing: 50,
+    justify: 'start'
   },
   'streetcar red 1': {
     mode: 'fixed',
     modelsArray: 'trolley,trolley',
-    spacing: 50
+    spacing: 50,
+    justify: 'start'
   },
   'streetcar red 1 rev': {
     mode: 'fixed',
     modelsArray: 'trolley,trolley',
-    spacing: 50
+    spacing: 50,
+    justify: 'start'
   },
   'streetcar red 2': {
     mode: 'fixed',
     modelsArray: 'trolley,trolley',
-    spacing: 50
+    spacing: 50,
+    justify: 'start'
   },
   'streetcar red 2 rev': {
     mode: 'fixed',
     modelsArray: 'trolley,trolley',
-    spacing: 50
+    spacing: 50,
+    justify: 'start'
   },
   'streetcar yellow': {
     mode: 'fixed',
     modelsArray: 'trolley,trolley',
-    spacing: 50
+    spacing: 50,
+    justify: 'start'
   },
-  'uta bus': { mode: 'fixed', modelsArray: 'bus,bus', spacing: 50 },
-  'uta lightrail': { mode: 'fixed', modelsArray: 'tram,tram', spacing: 50 },
-  'uta lightrail rev': { mode: 'fixed', modelsArray: 'tram,tram', spacing: 50 },
+  'uta bus': {
+    mode: 'fixed',
+    modelsArray: 'bus,bus',
+    spacing: 50,
+    justify: 'start'
+  },
+  'uta lightrail': {
+    mode: 'fixed',
+    modelsArray: 'tram,tram',
+    spacing: 50,
+    justify: 'start'
+  },
+  'uta lightrail rev': {
+    mode: 'fixed',
+    modelsArray: 'tram,tram',
+    spacing: 50,
+    justify: 'start'
+  },
   'bur oak': {
     mode: 'fixed',
     modelsArray: 'sp-tree-buroak-24ft,sp-tree-buroak-24ft',
-    spacing: 50
+    spacing: 50,
+    justify: 'start'
   },
   'desertwillow texas': {
     mode: 'fixed',
     modelsArray: 'sp-tree-honeylocust-24ft,sp-tree-honeylocust-24ft',
-    spacing: 50
+    spacing: 50,
+    justify: 'start'
   },
   'english oak': {
     mode: 'fixed',
     modelsArray: 'sp-tree-buroak-28ft,sp-tree-buroak-28ft',
-    spacing: 50
+    spacing: 50,
+    justify: 'start'
   },
   'floweringpear 18ft': {
     mode: 'fixed',
     modelsArray: 'sp-tree-purpleplum-16ft,sp-tree-purpleplum-16ft',
-    spacing: 50
+    spacing: 50,
+    justify: 'start'
   },
   goldenraintree: {
     mode: 'fixed',
     modelsArray: 'sp-tree-honeylocust-24ft,sp-tree-honeylocust-24ft',
-    spacing: 50
+    spacing: 50,
+    justify: 'start'
   },
   honeylocust: {
     mode: 'fixed',
     modelsArray: 'sp-tree-honeylocust-24ft,sp-tree-honeylocust-24ft',
-    spacing: 50
+    spacing: 50,
+    justify: 'start'
   },
   'japanese lilac': {
     mode: 'fixed',
     modelsArray: 'sp-tree-japaneselilac-20ft,sp-tree-japaneselilac-20ft',
-    spacing: 50
+    spacing: 50,
+    justify: 'start'
   },
   'japanese zelkova': {
     mode: 'fixed',
     modelsArray: 'sp-tree-buroak-28ft,sp-tree-buroak-28ft',
-    spacing: 50
+    spacing: 50,
+    justify: 'start'
   },
   'jerusalem thorn': {
     mode: 'fixed',
     modelsArray: 'sp-tree-honeylocust-24ft,sp-tree-honeylocust-24ft',
-    spacing: 50
+    spacing: 50,
+    justify: 'start'
   },
   'kentucky coffeetree': {
     mode: 'fixed',
     modelsArray: 'sp-tree-buroak-28ft,sp-tree-buroak-28ft',
-    spacing: 50
+    spacing: 50,
+    justify: 'start'
   },
   'large oak': {
     mode: 'fixed',
     modelsArray: 'sp-tree-buroak-28ft,sp-tree-buroak-28ft',
-    spacing: 50
+    spacing: 50,
+    justify: 'start'
   },
   'palm tree': {
     mode: 'fixed',
     modelsArray: 'sp-tree-palm-26ft,sp-tree-palm-26ft',
-    spacing: 50
+    spacing: 50,
+    justify: 'start'
   },
   'palmtree 20ft': {
     mode: 'fixed',
     modelsArray: 'sp-tree-palm-26ft,sp-tree-palm-26ft',
-    spacing: 50
+    spacing: 50,
+    justify: 'start'
   },
   'palmtree 28ft': {
     mode: 'fixed',
     modelsArray: 'sp-tree-palm-28ft,sp-tree-palm-28ft',
-    spacing: 50
+    spacing: 50,
+    justify: 'start'
   },
   'pine tree': '',
   'pink flower 16ft': {
     mode: 'fixed',
     modelsArray: 'sp-tree-purpleplum-16ft,sp-tree-purpleplum-16ft',
-    spacing: 50
+    spacing: 50,
+    justify: 'start'
   },
   'purpleleaf plum': {
     mode: 'fixed',
     modelsArray: 'sp-tree-purpleplum-16ft,sp-tree-purpleplum-16ft',
-    spacing: 50
+    spacing: 50,
+    justify: 'start'
   },
   'red berries 14ft': {
     mode: 'fixed',
     modelsArray: 'sp-tree-purpleplum-16ft,sp-tree-purpleplum-16ft',
-    spacing: 50
+    spacing: 50,
+    justify: 'start'
   },
   'small tree': {
     mode: 'fixed',
     modelsArray: 'sp-tree-small-15ft,sp-tree-small-15ft',
-    spacing: 50
+    spacing: 50,
+    justify: 'start'
   },
   'blue car': {
     mode: 'fixed',
     modelsArray: 'sedan-rig,sedan-rig',
-    spacing: 50
+    spacing: 50,
+    justify: 'start'
   },
   'blue car rev': {
     mode: 'fixed',
     modelsArray: 'sedan-rig,sedan-rig',
-    spacing: 50
+    spacing: 50,
+    justify: 'start'
   },
   'blue truck': '',
   'blue truck rev': '',
@@ -1468,94 +1607,120 @@ const STREETPLAN_OBJECT_TO_GENERATED_CLONES_MAPPING = {
   'green car': {
     mode: 'fixed',
     modelsArray: 'sedan-rig,sedan-rig',
-    spacing: 50
+    spacing: 50,
+    justify: 'start'
   },
   'green car rev': {
     mode: 'fixed',
     modelsArray: 'sedan-rig,sedan-rig',
-    spacing: 50
+    spacing: 50,
+    justify: 'start'
   },
   'moto highway rider': {
     mode: 'fixed',
     modelsArray: 'tuk-tukmotorbike,tuk-tukmotorbike',
-    spacing: 50
+    spacing: 50,
+    justify: 'start'
   },
   'moto highway rider rev': {
     mode: 'fixed',
     modelsArray: 'tuk-tukmotorbike,tuk-tukmotorbike',
-    spacing: 50
+    spacing: 50,
+    justify: 'start'
   },
   'orange truck': '',
   'orange truck rev': '',
-  'red car': { mode: 'fixed', modelsArray: 'sedan-rig,sedan-rig', spacing: 50 },
+  'red car': {
+    mode: 'fixed',
+    modelsArray: 'sedan-rig,sedan-rig',
+    spacing: 50,
+    justify: 'start'
+  },
   'red car rev': {
     mode: 'fixed',
     modelsArray: 'sedan-rig,sedan-rig',
-    spacing: 50
+    spacing: 50,
+    justify: 'start'
   },
   'red jeep': '',
   'red jeep rev': '',
   'semi truck': '',
   'semi truck rev': '',
-  'silver suv': { mode: 'fixed', modelsArray: 'suv-rig,suv-rig', spacing: 50 },
+  'silver suv': {
+    mode: 'fixed',
+    modelsArray: 'suv-rig,suv-rig',
+    spacing: 50,
+    justify: 'start'
+  },
   'silver suv rev': {
     mode: 'fixed',
     modelsArray: 'suv-rig,suv-rig',
-    spacing: 50
+    spacing: 50,
+    justify: 'start'
   },
   truck: '',
   'truck fedex': {
     mode: 'fixed',
     modelsArray: 'box-truck-rig,box-truck-rig',
-    spacing: 50
+    spacing: 50,
+    justify: 'start'
   },
   'truck fedex rev': {
     mode: 'fixed',
     modelsArray: 'box-truck-rig,box-truck-rig',
-    spacing: 50
+    spacing: 50,
+    justify: 'start'
   },
   'truck ups': {
     mode: 'fixed',
     modelsArray: 'box-truck-rig,box-truck-rig',
-    spacing: 50
+    spacing: 50,
+    justify: 'start'
   },
   'truck ups rev': {
     mode: 'fixed',
     modelsArray: 'box-truck-rig,box-truck-rig',
-    spacing: 50
+    spacing: 50,
+    justify: 'start'
   },
   'two cars passing': '',
   'white coup': {
     mode: 'fixed',
     modelsArray: 'sedan-rig,sedan-rig',
-    spacing: 50
+    spacing: 50,
+    justify: 'start'
   },
   'white coup rev': {
     mode: 'fixed',
     modelsArray: 'sedan-rig,sedan-rig',
-    spacing: 50
+    spacing: 50,
+    justify: 'start'
   },
   'white sedan': {
     mode: 'fixed',
     modelsArray: 'sedan-rig,sedan-rig',
-    spacing: 50
+    spacing: 50,
+    justify: 'start'
   },
   'white sedan rev': {
     mode: 'fixed',
     modelsArray: 'sedan-rig,sedan-rig',
-    spacing: 50
+    spacing: 50,
+    justify: 'start'
   },
   'white truck': '',
   'white truck rev': '',
   'yellow sedan': {
     mode: 'fixed',
     modelsArray: 'sedan-rig,sedan-rig',
-    spacing: 50
+    spacing: 50,
+    justify: 'start'
   },
   'yellow sedan rev': {
     mode: 'fixed',
     modelsArray: 'sedan-rig,sedan-rig',
-    spacing: 50
+    spacing: 50,
+    justify: 'start'
   },
   'empty path': '',
   'empty place holder': '',
