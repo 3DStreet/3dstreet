@@ -419,9 +419,9 @@ AFRAME.registerComponent('managed-street', {
         }
 
         // Determine direction based on segment data
-        if (segment.Direction === 'Coming') {
+        if (segment.side === 'left') {
           segmentDirection = 'inbound';
-        } else if (segment.Direction === 'Going') {
+        } else if (segment.side === 'right') {
           segmentDirection = 'outbound';
         }
 
