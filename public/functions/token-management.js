@@ -87,6 +87,7 @@ const checkAndRefillImageTokens = functions
       
       if (!tokenDoc.exists) {
         // Create initial token profile
+        // Free users get 5 tokens to allow at least one 4x render attempt
         const initialTokens = isProUser ? PRO_MONTHLY_ALLOWANCE : 5;
         const newProfile = {
           userId: userId,
@@ -113,7 +114,8 @@ const checkAndRefillImageTokens = functions
       // Migration: Add genToken for existing users who only have geoToken
       if (tokenData.geoToken !== undefined && tokenData.genToken === undefined) {
         // Give existing users their initial genToken allocation
-        const initialGenTokens = isProUser ? PRO_MONTHLY_ALLOWANCE : 3;
+        // Free users get 5 tokens to allow at least one 4x render attempt
+        const initialGenTokens = isProUser ? PRO_MONTHLY_ALLOWANCE : 5;
         
         await tokenProfileRef.update({
           genToken: initialGenTokens,
