@@ -370,10 +370,14 @@ function ScreenshotModal() {
       return;
     }
 
-    // Check if user can use image feature (need 4 tokens for 4 renders)
-    const canUse = await canUseImageFeature(currentUser);
-    if (!canUse) {
-      startCheckout('image');
+    // Check if user has enough tokens for 4x render (need 4 tokens)
+    // Pro users also need 4 tokens for 4x render
+    if (!tokenProfile || tokenProfile.genToken < 4) {
+      STREET.notify.errorMessage('You need at least 4 tokens for 4x render');
+      // Only prompt checkout for non-pro users
+      if (!currentUser?.isPro && !currentUser?.isProTeam) {
+        startCheckout('image');
+      }
       return;
     }
 

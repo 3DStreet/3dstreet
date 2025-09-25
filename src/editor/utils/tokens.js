@@ -19,17 +19,18 @@ export const getTokenProfile = async (userId) => {
       }
       return data;
     } else {
-      // Create initial token profile with exactly 3 genTokens and 3 geoTokens for free users
+      // Create initial token profile with 5 genTokens and 3 geoTokens for free users
+      // 5 genTokens allows users to try the 4x render feature at least once
       const defaultProfile = {
         userId,
         geoToken: 3,
-        genToken: 3,
+        genToken: 5,
         createdAt: serverTimestamp(),
         updatedAt: serverTimestamp(),
         lastMonthlyRefill: null // Track when pro tokens were last refilled
       };
       await setDoc(tokenProfileRef, defaultProfile);
-      return { ...defaultProfile, geoToken: 3, genToken: 3 };
+      return { ...defaultProfile, geoToken: 3, genToken: 5 };
     }
   } catch (error) {
     console.error('Error getting token profile:', error);
