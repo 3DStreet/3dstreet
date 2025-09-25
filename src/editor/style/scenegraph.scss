@@ -44,6 +44,11 @@
         background: variables.$purple-900;
       }
     }
+
+    // Remove drag handle space for top-level layer entities only
+    > .entity:first-child .drag-handle {
+      display: none;
+    }
   }
 
   // Entity styling
@@ -62,6 +67,11 @@
 
     &:hover {
       background: variables.$purple-900;
+
+      // Show drag handle on hover only for draggable entities
+      .drag-handle.draggable {
+        opacity: 1;
+      }
     }
 
     &:first-child {
@@ -140,6 +150,61 @@
       &.active:first-child ~ .entity .entityName {
         color: variables.$lightgray-700;
       }
+    }
+
+    // Drag and drop styles
+    &.dragging {
+      opacity: 0.5;
+    }
+
+    border: 2px solid transparent;
+
+    &.drop-before {
+      border-bottom-color: transparent;
+      border-left-color: transparent;
+      border-right-color: transparent;
+      border-top-color: variables.$blue-100;
+    }
+
+    &.drop-after {
+      border-bottom-color: variables.$blue-100;
+      border-left-color: transparent;
+      border-right-color: transparent;
+      border-top-color: transparent;
+    }
+
+    &.drop-child {
+      border-color: variables.$blue-100;
+    }
+  }
+
+  // Drag handle styling
+  .drag-handle {
+    transition: opacity 0.2s ease;
+    margin-right: 4px;
+    display: inline-flex;
+    align-items: center;
+    width: 16px; // Fixed width to ensure consistent spacing
+    justify-content: center;
+
+    &.draggable {
+      opacity: 0;
+      cursor: grab;
+      color: variables.$lightgray-300;
+
+      &:active {
+        cursor: grabbing;
+      }
+
+      &:hover {
+        color: variables.$white;
+      }
+    }
+
+    &.non-draggable {
+      opacity: 0;
+      cursor: default;
+      pointer-events: none;
     }
   }
 

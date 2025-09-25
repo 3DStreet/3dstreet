@@ -194,7 +194,9 @@ function recursivelyRegenerateId(element) {
 export function cloneEntityImpl(entity) {
   entity.flushToDOM();
   const clone = prepareForSerialization(entity);
-  recursivelyRegenerateId(clone);
+  if (clone !== null) {
+    recursivelyRegenerateId(clone);
+  }
   return clone;
 }
 
@@ -213,6 +215,7 @@ export function cloneSelectedEntity() {
  * @return {string}        Entity clipboard representation
  */
 export function getEntityClipboardRepresentation(entity) {
+  entity.flushToDOM();
   var clone = prepareForSerialization(entity);
   return clone.outerHTML;
 }
@@ -223,9 +226,15 @@ export function getEntityClipboardRepresentation(entity) {
  * primitive attributes, mixins and defaults.
  *
  * @param {Element} entity Root of the DOM hierarchy.
+ * @param {Function} filterFunc Function to filter out nodes from the serialization
  * @return {Element}        Copy of the DOM hierarchy ready for serialization.
  */
-export function prepareForSerialization(entity) {
+export function prepareForSerialization(
+  entity,
+  filterFunc = (entity) => !entity.classList.contains('autocreated')
+) {
+  if (!filterFunc(entity)) return null;
+
   var clone = entity.cloneNode(false);
   var children = entity.childNodes;
   for (var i = 0, l = children.length; i < l; i++) {
@@ -236,7 +245,10 @@ export function prepareForSerialization(entity) {
         !child.hasAttribute('data-aframe-inspector') &&
         !child.hasAttribute('data-aframe-canvas'))
     ) {
-      clone.appendChild(prepareForSerialization(children[i]));
+      const childClone = prepareForSerialization(children[i], filterFunc);
+      if (childClone !== null) {
+        clone.appendChild(childClone);
+      }
     }
   }
   optimizeComponents(clone, entity);
@@ -677,13 +689,43 @@ const NOT_COMPONENTS = ['id', 'class', 'mixin'];
 
 /**
  * Helper function to add a new entity with a list of components
- * @param  {object} definition Entity definition to add, only components is required:
+ * @param  {object} definition Entity definition to add, all keys are optional:
  *   {element: 'a-entity', id: "hbiuSdYL2", class: "box", components: {geometry: 'primitive:box'}}
  * @param  {function} cb Callback to call when the entity is created
  * @param  {Element} parentEl Element to append the entity to
  * @return {Element} Entity created
  */
 export function createEntity(definition, cb, parentEl = undefined) {
+  const entity = objectToElement(definition);
+
+  // Ensure the components are loaded before update the UI
+  entity.addEventListener(
+    'loaded',
+    () => {
+      Events.emit('entitycreated', entity);
+      cb(entity);
+    },
+    { once: true }
+  );
+
+  if (parentEl) {
+    parentEl.appendChild(entity);
+  } else {
+    document
+      .querySelector(AFRAME.INSPECTOR.config.defaultParent)
+      .appendChild(entity);
+  }
+
+  return entity;
+}
+
+/**
+ * Converts an entity object definition into an A-Frame element.
+ *
+ * @param {EntityObject} definition
+ * @returns {Entity}
+ */
+export function objectToElement(definition) {
   const entity = document.createElement(definition.element || 'a-entity');
   if (definition.id) {
     entity.id = definition.id;
@@ -706,30 +748,118 @@ export function createEntity(definition, cb, parentEl = undefined) {
   }
 
   // Set components
-  for (const componentName in definition.components) {
-    const componentValue = definition.components[componentName];
-    entity.setAttribute(componentName, componentValue);
+  if (definition.components) {
+    for (const componentName in definition.components) {
+      const componentValue = definition.components[componentName];
+      entity.setAttribute(componentName, componentValue);
+    }
   }
 
-  // Ensure the components are loaded before update the UI
-  entity.addEventListener(
-    'loaded',
-    () => {
-      Events.emit('entitycreated', entity);
-      cb(entity);
-    },
-    { once: true }
-  );
-
-  if (parentEl) {
-    parentEl.appendChild(entity);
-  } else {
-    document
-      .querySelector(AFRAME.INSPECTOR.config.defaultParent)
-      .appendChild(entity);
+  if (definition.children) {
+    for (const childDefinition of definition.children) {
+      const child = objectToElement(childDefinition);
+      entity.appendChild(child);
+    }
   }
 
   return entity;
+}
+
+/**
+ * Converts an A-Frame element into a serializable object representation.
+ *
+ * @param {Entity} element
+ * @returns {EntityObject}
+ */
+export function elementToObject(element) {
+  const obj = {};
+
+  if (element.tagName !== 'A-ENTITY') {
+    obj.element = element.tagName.toLowerCase();
+  }
+
+  if (element.attributes.length > 0) {
+    const components = {};
+
+    for (const attribute of element.attributes) {
+      if (
+        NOT_COMPONENTS.includes(attribute.name) ||
+        attribute.name.startsWith('data-')
+      ) {
+        obj[attribute.name] = attribute.value;
+        continue;
+      }
+
+      /* if int has more then 6 decimal round it for position rotation and scale */
+      if (
+        attribute.name === 'position' ||
+        attribute.name === 'rotation' ||
+        attribute.name === 'scale'
+      ) {
+        const values = attribute.value.split(' ').map(parseFloat);
+        // Round rotation values to 1 degree, position and scale to 0.001
+        const precision = attribute.name === 'rotation' ? 1 : 1000;
+        const roundedValues = values.map(
+          (v) => Math.round(v * precision) / precision
+        );
+        components[attribute.name] = roundedValues.join(' ');
+        continue;
+      }
+
+      components[attribute.name] = attribute.value;
+    }
+
+    obj.components = components;
+  }
+
+  if (element.childNodes.length > 0) {
+    const children = [];
+
+    for (const child of element.childNodes) {
+      if (child.nodeType === Node.ELEMENT_NODE) {
+        children.push(elementToObject(child));
+      }
+    }
+
+    if (children.length > 0) {
+      obj.children = children;
+    }
+  }
+
+  return obj;
+}
+
+/**
+ * Converts an entity to a serializable object representation with blacklist filtering.
+ * This function prepares an entity for export by applying serialization optimizations,
+ * filtering out blacklisted properties, and adding parent relationship metadata.
+ *
+ * @param {Entity} entity
+ * @returns {EntityObject|null} serialized entity with blacklist filtering and parentEl
+ */
+export function exportEntityToObject(entity) {
+  entity.flushToDOM();
+  // prepare entity for serialization and check if it's blacklisted
+  const preparedElement = prepareForSerialization(entity);
+  if (!preparedElement) return null;
+  // convert entity to object
+  const entityObj = elementToObject(preparedElement);
+
+  // Add parentEl and indexInParent if entity has a parent that's not the default scene container
+  const parentEl = entity.parentElement;
+  const defaultParentId = AFRAME.INSPECTOR.config.defaultParent.replace(
+    '#',
+    ''
+  );
+  if (parentEl && parentEl.id) {
+    if (parentEl.id !== defaultParentId) {
+      entityObj.parentEl = parentEl.id;
+    }
+    // Store the index position within the parent for precise reinsertion
+    entityObj.indexInParent = Array.from(parentEl.children).indexOf(entity);
+  }
+
+  return entityObj;
 }
 
 export function setFocusCameraPose(entity) {
