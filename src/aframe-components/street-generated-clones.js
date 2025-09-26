@@ -166,10 +166,18 @@ AFRAME.registerComponent('street-generated-clones', {
 
     let rotationY = data.facing;
     if (data.direction === 'inbound') {
-      rotationY = 0 + data.facing;
+      if (data.modelsArray[0].indexOf('sign-speed-limit') > -1) {
+        rotationY = 180 - data.facing;
+      } else {
+        rotationY = 0 + data.facing;
+      }
     }
     if (data.direction === 'outbound') {
-      rotationY = 180 - data.facing;
+      if (data.modelsArray[0].indexOf('sign-speed-limit') > -1) {
+        rotationY = 0 + data.facing;
+      } else {
+        rotationY = 180 - data.facing;
+      }
     }
     if (data.randomFacing) {
       rotationY = this.rng() * 360;
