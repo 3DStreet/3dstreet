@@ -133,15 +133,33 @@ const generateReplicateImage = functions
       const db = admin.firestore();
       const tokenProfileRef = db.collection('tokenProfile').doc(userId);
 
-      // Use atomic increment to avoid race conditions with concurrent requests
-      await tokenProfileRef.update({
-        genToken: admin.firestore.FieldValue.increment(-1),
-        updatedAt: admin.firestore.FieldValue.serverTimestamp()
-      });
+      // Use a transaction to atomically check and decrement tokens
+      // This prevents negative balances when multiple requests run concurrently
+      let remainingTokens = 0;
+      await db.runTransaction(async (transaction) => {
+        const tokenDoc = await transaction.get(tokenProfileRef);
 
-      // Get the updated token count
-      const updatedDoc = await tokenProfileRef.get();
-      const remainingTokens = updatedDoc.data()?.genToken || 0;
+        if (!tokenDoc.exists) {
+          throw new functions.https.HttpsError('not-found', 'Token profile not found');
+        }
+
+        const currentTokens = tokenDoc.data().genToken || 0;
+
+        // Check if user has enough tokens (should already be checked, but verify in transaction)
+        if (currentTokens <= 0) {
+          throw new functions.https.HttpsError('resource-exhausted', 'Insufficient tokens');
+        }
+
+        // Calculate new token count (prevent going below 0)
+        const newTokenCount = Math.max(0, currentTokens - 1);
+        remainingTokens = newTokenCount;
+
+        // Update the token count
+        transaction.update(tokenProfileRef, {
+          genToken: newTokenCount,
+          updatedAt: admin.firestore.FieldValue.serverTimestamp()
+        });
+      });
 
       // Handle different output formats from Replicate
       // The output from replicate.wait() is the prediction object with an 'output' property

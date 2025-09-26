@@ -192,7 +192,7 @@ exports.handleSubscriptionWebhook = functions
 
 // function for Stripe webhook checkout.session.completed
 exports.stripeWebhook = functions
-  .runWith({ secrets: ["STRIPE_SECRET_KEY", "STRIPE_WEBHOOK_SECRET_CHECKOUT"] })
+  .runWith({ secrets: ["STRIPE_SECRET_KEY", "STRIPE_WEBHOOK_SECRET_CHECKOUT", "STRIPE_YEARLY_PRICE_ID"] })
   .https
   .onRequest(async (req, res) => {
     const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
@@ -211,15 +211,34 @@ exports.stripeWebhook = functions
 
     const checkoutSession = event.data.object;
 
+    // Retrieve the full session details including line items
+    const sessionWithLineItems = await stripe.checkout.sessions.retrieve(
+      checkoutSession.id,
+      {
+        expand: ['line_items']
+      }
+    );
+
+    // Check if this is an annual plan purchase
+    const annualPriceId = process.env.STRIPE_YEARLY_PRICE_ID;
+
+    let isAnnualPlan = false;
+    if (annualPriceId && sessionWithLineItems.line_items && sessionWithLineItems.line_items.data) {
+      isAnnualPlan = sessionWithLineItems.line_items.data.some(item =>
+        item.price.id === annualPriceId
+      );
+    }
+
     const collectionRef = admin.firestore().collection("userProfile");
     const querySnapshot = await collectionRef.where("userId", "==", checkoutSession.metadata.userId).get();
     let stripeCustomerId = null;
+
     querySnapshot.forEach((doc) => {
       stripeCustomerId = doc.data().stripeCustomerId;
       return; // only need the first one
     });
-    // update data to include stripeCustomerID (data.customer)
 
+    // Update or create user profile with stripeCustomerId
     if (!stripeCustomerId) {
       // add stripeCustomerId to userProfile
       await admin.firestore().collection('userProfile').doc().set({
@@ -233,6 +252,42 @@ exports.stripeWebhook = functions
       plan: 'PRO'
     };
     await getAuth().setCustomUserClaims(checkoutSession.metadata.userId, customClaims);
+
+    // Grant 840 tokens for annual plan purchases
+    if (isAnnualPlan) {
+      const db = admin.firestore();
+      const tokenProfileRef = db.collection('tokenProfile').doc(checkoutSession.metadata.userId);
+
+      try {
+        const tokenDoc = await tokenProfileRef.get();
+
+        if (tokenDoc.exists) {
+          // User has existing token profile, add 840 tokens
+          const currentTokens = tokenDoc.data().genToken || 0;
+          await tokenProfileRef.update({
+            genToken: currentTokens + 840,
+            updatedAt: admin.firestore.FieldValue.serverTimestamp()
+          });
+          console.log(`Annual tokens granted: user=${checkoutSession.metadata.userId} added=840 total=${currentTokens + 840}`);
+        } else {
+          // Create new token profile with 840 tokens plus the standard Pro allowance
+          const newProfile = {
+            userId: checkoutSession.metadata.userId,
+            geoToken: 3,
+            genToken: 940, // 840 bonus + 100 monthly allowance
+            lastMonthlyRefill: `${new Date().getFullYear()}-${new Date().getMonth()}`,
+            createdAt: admin.firestore.FieldValue.serverTimestamp(),
+            updatedAt: admin.firestore.FieldValue.serverTimestamp()
+          };
+
+          await tokenProfileRef.set(newProfile);
+          console.log(`Annual token profile created: user=${checkoutSession.metadata.userId} tokens=940`);
+        }
+      } catch (error) {
+        console.error(`Annual token grant failed: user=${checkoutSession.metadata.userId}`, error);
+        // Don't fail the webhook, just log the error
+      }
+    }
 
     return res.sendStatus(200);
   });
