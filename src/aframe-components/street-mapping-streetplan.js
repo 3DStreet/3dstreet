@@ -287,464 +287,464 @@ const STREETPLAN_OBJECT_TO_GENERATED_CLONES_MAPPING = {
     facing: 0
   },
   'brick apartment 1floor': {
-    mode: 'random',
+    mode: 'fixed',
     modelsArray: 'arched-building-02,arched-building-01',
-    spacing: 10,
+    spacing: 20,
     count: 2,
     facing: 0
   },
   'brick apartment 2floors': {
-    mode: 'random',
+    mode: 'fixed',
     modelsArray: 'arched-building-02,arched-building-01',
-    spacing: 10,
+    spacing: 20,
     count: 2,
     facing: 0
   },
   'brick apartment 3floors': {
-    mode: 'random',
+    mode: 'fixed',
     modelsArray: 'arched-building-02,arched-building-01',
-    spacing: 10,
+    spacing: 20,
     count: 2,
     facing: 0
   },
   'brick apartment 4floors': {
-    mode: 'random',
+    mode: 'fixed',
     modelsArray: 'arched-building-02,arched-building-01',
-    spacing: 10,
+    spacing: 20,
     count: 2,
     facing: 0
   },
   'brick apartment 5floors': {
-    mode: 'random',
+    mode: 'fixed',
     modelsArray: 'arched-building-02,arched-building-01',
-    spacing: 10,
+    spacing: 20,
     count: 2,
     facing: 0
   },
   'building blue 1floor': {
-    mode: 'random',
+    mode: 'fixed',
     modelsArray: 'arched-building-02,arched-building-01',
-    spacing: 10,
+    spacing: 20,
     count: 2,
     facing: 0
   },
   'building blue 2floors': {
-    mode: 'random',
+    mode: 'fixed',
     modelsArray: 'arched-building-02,arched-building-01',
-    spacing: 10,
+    spacing: 20,
     count: 2,
     facing: 0
   },
   'building blue 3floors': {
-    mode: 'random',
+    mode: 'fixed',
     modelsArray: 'arched-building-02,arched-building-01',
-    spacing: 10,
+    spacing: 20,
     count: 2,
     facing: 0
   },
   'building blue 4floors': {
-    mode: 'random',
+    mode: 'fixed',
     modelsArray: 'arched-building-02,arched-building-01',
-    spacing: 10,
+    spacing: 20,
     count: 2,
     facing: 0
   },
   'building blue 5floors': {
-    mode: 'random',
+    mode: 'fixed',
     modelsArray: 'arched-building-02,arched-building-01',
-    spacing: 10,
+    spacing: 20,
     count: 2,
     facing: 0
   },
   'building blue 6floors': {
-    mode: 'random',
+    mode: 'fixed',
     modelsArray: 'arched-building-02,arched-building-01',
-    spacing: 10,
+    spacing: 20,
     count: 2,
     facing: 0
   },
   'building blue 7floors': {
-    mode: 'random',
+    mode: 'fixed',
     modelsArray: 'arched-building-02,arched-building-01',
-    spacing: 10,
+    spacing: 20,
     count: 2,
     facing: 0
   },
   'building yellow 1floor': {
-    mode: 'random',
+    mode: 'fixed',
     modelsArray: 'arched-building-02,arched-building-01',
-    spacing: 10,
+    spacing: 20,
     count: 2,
     facing: 0
   },
   'building yellow 2floors': {
-    mode: 'random',
+    mode: 'fixed',
     modelsArray: 'arched-building-02,arched-building-01',
-    spacing: 10,
+    spacing: 20,
     count: 2,
     facing: 0
   },
   'building yellow 3floors': {
-    mode: 'random',
+    mode: 'fixed',
     modelsArray: 'arched-building-02,arched-building-01',
-    spacing: 10,
+    spacing: 20,
     count: 2,
     facing: 0
   },
   'building yellow 4floors': {
-    mode: 'random',
+    mode: 'fixed',
     modelsArray: 'arched-building-02,arched-building-01',
-    spacing: 10,
+    spacing: 20,
     count: 2,
     facing: 0
   },
   'building yellow 5floors': {
-    mode: 'random',
+    mode: 'fixed',
     modelsArray: 'arched-building-02,arched-building-01',
-    spacing: 10,
+    spacing: 20,
     count: 2,
     facing: 0
   },
   'building yellow 6floors': {
-    mode: 'random',
+    mode: 'fixed',
     modelsArray: 'arched-building-02,arched-building-01',
-    spacing: 10,
+    spacing: 20,
     count: 2,
     facing: 0
   },
   'building yellow 7floors': {
-    mode: 'random',
+    mode: 'fixed',
     modelsArray: 'arched-building-02,arched-building-01',
-    spacing: 10,
+    spacing: 20,
     count: 2,
     facing: 0
   },
   'buildings falltrees (30ft)': {
-    mode: 'random',
+    mode: 'fixed',
     modelsArray: 'arched-building-02,arched-building-01',
-    spacing: 10,
+    spacing: 20,
     count: 2,
     facing: 0
   },
   'buildings pinetrees (30ft)': {
-    mode: 'random',
+    mode: 'fixed',
     modelsArray: 'arched-building-02,arched-building-01',
-    spacing: 10,
+    spacing: 20,
     count: 2,
     facing: 0
   },
   'gas station': {
-    mode: 'random',
+    mode: 'fixed',
     modelsArray: 'arched-building-02,arched-building-01',
-    spacing: 10,
+    spacing: 20,
     count: 2,
     facing: 0
   },
   'home depot': {
-    mode: 'random',
+    mode: 'fixed',
     modelsArray: 'arched-building-02,arched-building-01',
-    spacing: 10,
+    spacing: 20,
     count: 2,
     facing: 0
   },
   'house 1floor': {
-    mode: 'random',
+    mode: 'fixed',
     modelsArray: 'arched-building-02,arched-building-01',
-    spacing: 10,
+    spacing: 20,
     count: 2,
     facing: 0
   },
   'house 2floors': {
-    mode: 'random',
+    mode: 'fixed',
     modelsArray: 'arched-building-02,arched-building-01',
-    spacing: 10,
+    spacing: 20,
     count: 2,
     facing: 0
   },
   'house 3floors': {
-    mode: 'random',
+    mode: 'fixed',
     modelsArray: 'arched-building-02,arched-building-01',
-    spacing: 10,
+    spacing: 20,
     count: 2,
     facing: 0
   },
   'house 4floors': {
-    mode: 'random',
+    mode: 'fixed',
     modelsArray: 'arched-building-02,arched-building-01',
-    spacing: 10,
+    spacing: 20,
     count: 2,
     facing: 0
   },
   'house 5floors': {
-    mode: 'random',
+    mode: 'fixed',
     modelsArray: 'arched-building-02,arched-building-01',
-    spacing: 10,
+    spacing: 20,
     count: 2,
     facing: 0
   },
   'house newurbanist': {
-    mode: 'random',
+    mode: 'fixed',
     modelsArray: 'arched-building-02,arched-building-01',
-    spacing: 10,
+    spacing: 20,
     count: 2,
     facing: 0
   },
   'house newurbanist red': {
-    mode: 'random',
+    mode: 'fixed',
     modelsArray: 'arched-building-02,arched-building-01',
-    spacing: 10,
+    spacing: 20,
     count: 2,
     facing: 0
   },
   'live work': {
-    mode: 'random',
+    mode: 'fixed',
     modelsArray: 'arched-building-02,arched-building-01',
-    spacing: 10,
+    spacing: 20,
     count: 2,
     facing: 0
   },
   'mart chilis': {
-    mode: 'random',
+    mode: 'fixed',
     modelsArray: 'arched-building-02,arched-building-01',
-    spacing: 10,
+    spacing: 20,
     count: 2,
     facing: 0
   },
   'mikedesign midvale 2story': {
-    mode: 'random',
+    mode: 'fixed',
     modelsArray: 'arched-building-02,arched-building-01',
-    spacing: 10,
+    spacing: 20,
     count: 2,
     facing: 0
   },
   'mikedesign midvale 3story': {
-    mode: 'random',
+    mode: 'fixed',
     modelsArray: 'arched-building-02,arched-building-01',
-    spacing: 10,
+    spacing: 20,
     count: 2,
     facing: 0
   },
   'mikedesign midvale3 3story': {
-    mode: 'random',
+    mode: 'fixed',
     modelsArray: 'arched-building-02,arched-building-01',
-    spacing: 10,
+    spacing: 20,
     count: 2,
     facing: 0
   },
   'mixed use 2floors': {
-    mode: 'random',
+    mode: 'fixed',
     modelsArray: 'arched-building-02,arched-building-01',
-    spacing: 10,
+    spacing: 20,
     count: 2,
     facing: 0
   },
   'mixed use 3floors': {
-    mode: 'random',
+    mode: 'fixed',
     modelsArray: 'arched-building-02,arched-building-01',
-    spacing: 10,
+    spacing: 20,
     count: 2,
     facing: 0
   },
   'mixed use 4floors': {
-    mode: 'random',
+    mode: 'fixed',
     modelsArray: 'arched-building-02,arched-building-01',
-    spacing: 10,
+    spacing: 20,
     count: 2,
     facing: 0
   },
   'mixed use 5floors': {
-    mode: 'random',
+    mode: 'fixed',
     modelsArray: 'arched-building-02,arched-building-01',
-    spacing: 10,
+    spacing: 20,
     count: 2,
     facing: 0
   },
   'nice apartment 3story': {
-    mode: 'random',
+    mode: 'fixed',
     modelsArray: 'arched-building-02,arched-building-01',
-    spacing: 10,
+    spacing: 20,
     count: 2,
     facing: 0
   },
   'nice apartment 4story': {
-    mode: 'random',
+    mode: 'fixed',
     modelsArray: 'arched-building-02,arched-building-01',
-    spacing: 10,
+    spacing: 20,
     count: 2,
     facing: 0
   },
   'nice apartment 5story': {
-    mode: 'random',
+    mode: 'fixed',
     modelsArray: 'arched-building-02,arched-building-01',
-    spacing: 10,
+    spacing: 20,
     count: 2,
     facing: 0
   },
   'nice apartment 6story': {
-    mode: 'random',
+    mode: 'fixed',
     modelsArray: 'arched-building-02,arched-building-01',
-    spacing: 10,
+    spacing: 20,
     count: 2,
     facing: 0
   },
   'red mixed use 1floor': {
-    mode: 'random',
+    mode: 'fixed',
     modelsArray: 'arched-building-02,arched-building-01',
-    spacing: 10,
+    spacing: 20,
     count: 2,
     facing: 0
   },
   'red mixed use 2floors': {
-    mode: 'random',
+    mode: 'fixed',
     modelsArray: 'arched-building-02,arched-building-01',
-    spacing: 10,
+    spacing: 20,
     count: 2,
     facing: 0
   },
   'red mixed use 3floors': {
-    mode: 'random',
+    mode: 'fixed',
     modelsArray: 'arched-building-02,arched-building-01',
-    spacing: 10,
+    spacing: 20,
     count: 2,
     facing: 0
   },
   'red mixed use 4floors': {
-    mode: 'random',
+    mode: 'fixed',
     modelsArray: 'arched-building-02,arched-building-01',
-    spacing: 10,
+    spacing: 20,
     count: 2,
     facing: 0
   },
   'red mixed use 5floors': {
-    mode: 'random',
+    mode: 'fixed',
     modelsArray: 'arched-building-02,arched-building-01',
-    spacing: 10,
+    spacing: 20,
     count: 2,
     facing: 0
   },
   residential: {
-    mode: 'random',
+    mode: 'fixed',
     modelsArray: 'arched-building-02,arched-building-01',
-    spacing: 10,
+    spacing: 20,
     count: 2,
     facing: 0
   },
   'river crosssection': {
-    mode: 'random',
+    mode: 'fixed',
     modelsArray: 'arched-building-02,arched-building-01',
-    spacing: 10,
+    spacing: 20,
     count: 2,
     facing: 0
   },
   'river crosssection 20ft': {
-    mode: 'random',
+    mode: 'fixed',
     modelsArray: 'arched-building-02,arched-building-01',
-    spacing: 10,
+    spacing: 20,
     count: 2,
     facing: 0
   },
   'river crosssection 40ft': {
-    mode: 'random',
+    mode: 'fixed',
     modelsArray: 'arched-building-02,arched-building-01',
-    spacing: 10,
+    spacing: 20,
     count: 2,
     facing: 0
   },
   'shop 1floor': {
-    mode: 'random',
+    mode: 'fixed',
     modelsArray: 'arched-building-02,arched-building-01',
-    spacing: 10,
+    spacing: 20,
     count: 2,
     facing: 0
   },
   'shop 2floors': {
-    mode: 'random',
+    mode: 'fixed',
     modelsArray: 'arched-building-02,arched-building-01',
-    spacing: 10,
+    spacing: 20,
     count: 2,
     facing: 0
   },
   'shop 3floors': {
-    mode: 'random',
+    mode: 'fixed',
     modelsArray: 'arched-building-02,arched-building-01',
-    spacing: 10,
+    spacing: 20,
     count: 2,
     facing: 0
   },
   'shop 4floors': {
-    mode: 'random',
+    mode: 'fixed',
     modelsArray: 'arched-building-02,arched-building-01',
-    spacing: 10,
+    spacing: 20,
     count: 2,
     facing: 0
   },
   'single family': {
-    mode: 'random',
+    mode: 'fixed',
     modelsArray: 'arched-building-02,arched-building-01',
-    spacing: 10,
+    spacing: 20,
     count: 2,
     facing: 0
   },
   'single family back': {
-    mode: 'random',
+    mode: 'fixed',
     modelsArray: 'arched-building-02,arched-building-01',
-    spacing: 10,
+    spacing: 20,
     count: 2,
     facing: 0
   },
   'stripmall onerowparking': {
-    mode: 'random',
+    mode: 'fixed',
     modelsArray: 'arched-building-02,arched-building-01',
-    spacing: 10,
+    spacing: 20,
     count: 2,
     facing: 0
   },
   'stripmall1 tworowsparking': {
-    mode: 'random',
+    mode: 'fixed',
     modelsArray: 'arched-building-02,arched-building-01',
-    spacing: 10,
+    spacing: 20,
     count: 2,
     facing: 0
   },
   'stripmall1, onerowparking': {
-    mode: 'random',
+    mode: 'fixed',
     modelsArray: 'arched-building-02,arched-building-01',
-    spacing: 10,
+    spacing: 20,
     count: 2,
     facing: 0
   },
   'stripmall2 tworowsparking': {
-    mode: 'random',
+    mode: 'fixed',
     modelsArray: 'arched-building-02,arched-building-01',
-    spacing: 10,
+    spacing: 20,
     count: 2,
     facing: 0
   },
   'townhouse row 3story': {
-    mode: 'random',
+    mode: 'fixed',
     modelsArray: 'arched-building-02,arched-building-01',
-    spacing: 10,
+    spacing: 20,
     count: 2,
     facing: 0
   },
   walmart: {
-    mode: 'random',
+    mode: 'fixed',
     modelsArray: 'arched-building-02,arched-building-01',
-    spacing: 10,
+    spacing: 20,
     count: 2,
     facing: 0
   },
   'water 20ft': {
-    mode: 'random',
+    mode: 'fixed',
     modelsArray: 'arched-building-02,arched-building-01',
-    spacing: 10,
+    spacing: 20,
     count: 2,
     facing: 0
   },
   'water 30ft': {
-    mode: 'random',
+    mode: 'fixed',
     modelsArray: 'arched-building-02,arched-building-01',
-    spacing: 10,
+    spacing: 20,
     count: 2,
     facing: 0
   },
