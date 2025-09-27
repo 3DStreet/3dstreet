@@ -18,12 +18,26 @@ export const updateLocationInStore = () => {
     }
 
     useStore.getState().setLocationString(locationString);
+
+    // Also update the full geo data in store
+    useStore.getState().setGeoData({
+      latitude: geoData.latitude || null,
+      longitude: geoData.longitude || null,
+      ellipsoidalHeight: geoData.ellipsoidalHeight || null,
+      locationString: locationString
+    });
   } else {
     const currentLocation = useStore.getState().locationString;
     if (currentLocation !== null) {
       console.log('[location-sync] Location cleared');
     }
     useStore.getState().setLocationString(null);
+    useStore.getState().setGeoData({
+      latitude: null,
+      longitude: null,
+      ellipsoidalHeight: null,
+      locationString: null
+    });
   }
 };
 
