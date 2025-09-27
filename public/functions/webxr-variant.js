@@ -14,7 +14,7 @@ exports.serveWebXRVariant = functions.https.onRequest((req, res) => {
   <!-- 3dstreet -->
   <script src="/dist/aframe-street-component.js"></script>
   <!-- sentry -->
-  <script src="https://js.sentry-cdn.com/941ec1dfd6b01567fe3fd16db9cbaa54.min.js" crossorigin="anonymous"></script>
+  <script src="https://js.sentry-cdn.com/b47a042eed6f907bc1dd1220f935881f.min.js" crossorigin="anonymous"></script>
   <!-- mapbox -->
   <script src="/dist/aframe-mapbox-component.min.js"></script>
 
