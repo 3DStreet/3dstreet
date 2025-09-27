@@ -404,16 +404,22 @@ AFRAME.registerComponent('managed-street', {
             segmentType = 'bus-lane';
             break;
           case 'Median/Buffer':
-            segmentType = 'divider';
+            segmentType = 'parking-lane';
             break;
           case 'Curbside':
             segmentType = 'divider';
             break;
           case 'Gutter':
+            segmentType = 'divider';
+            break;
+          case 'Parking':
             segmentType = 'parking-lane';
             break;
           case 'Furniture':
             segmentType = 'sidewalk-tree';
+            break;
+          case 'Cars':
+            segmentType = 'drive-lane';
             break;
           // Add more type mappings as needed
         }
