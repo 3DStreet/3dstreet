@@ -1311,6 +1311,7 @@ export const buildingDemo = {
       name: 'Brownstone Buildings',
       type: 'building',
       variant: 'brownstone',
+      side: 'left',
       color: '#ffffff',
       width: 6.5
     },
@@ -1345,6 +1346,7 @@ export const buildingDemo = {
       name: 'Suburban Houses',
       type: 'building',
       variant: 'suburban',
+      side: 'right',
       color: '#ffffff',
       level: 0,
       width: 6

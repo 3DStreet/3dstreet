@@ -307,7 +307,9 @@ AFRAME.registerComponent('managed-street', {
         level: segment.level,
         direction: segment.direction,
         color: segment.color || window.STREET.types[segment.type]?.color,
-        surface: segment.surface || window.STREET.types[segment.type]?.surface // no error handling for segmentPreset not found
+        surface: segment.surface || window.STREET.types[segment.type]?.surface, // no error handling for segmentPreset not found
+        variant: segment.variant,
+        side: segment.side
       });
       segmentEl.setAttribute('data-layer-name', segment.name);
       // wait for street-segment to be loaded, then generate components from segment object

@@ -20,6 +20,22 @@ const COLORS = {
 };
 STREET.colors = COLORS;
 
+// eslint-disable-next-line no-unused-vars
+const BUILDING_BASE_ROTATIONS = {
+  SM3D_Bld_Mixed_4fl: 0,
+  SM3D_Bld_Mixed_Corner_4fl: 0,
+  SM3D_Bld_Mixed_5fl: 0,
+  SM3D_Bld_Mixed_4fl_2: 0,
+  SM3D_Bld_Mixed_Double_5fl: 0,
+  SM_Bld_House_Preset_03_1800: 0,
+  SM_Bld_House_Preset_08_1809: 0,
+  SM_Bld_House_Preset_09_1845: 0,
+  'arched-building-01': 0,
+  'arched-building-02': 0,
+  'arched-building-03': 0,
+  'arched-building-04': 0
+};
+
 const TYPES = {
   'drive-lane': {
     type: 'drive-lane',
@@ -244,6 +260,11 @@ AFRAME.registerComponent('street-segment', {
       type: 'string',
       default: 'brownstone',
       oneOf: ['brownstone', 'suburban', 'arcade', 'water', 'grass', 'parking']
+    },
+    side: {
+      type: 'string',
+      default: 'right',
+      oneOf: ['left', 'right']
     }
   },
   init: function () {
@@ -262,7 +283,8 @@ AFRAME.registerComponent('street-segment', {
         componentsToGenerate = JSON.parse(JSON.stringify(componentsToGenerate));
         if (
           componentsToGenerate?.clones?.length > 0 &&
-          variantConfig.modelsArray
+          variantConfig.modelsArray &&
+          variantConfig.modelsArray.trim() !== ''
         ) {
           componentsToGenerate.clones[0].modelsArray =
             variantConfig.modelsArray;
@@ -273,9 +295,23 @@ AFRAME.registerComponent('street-segment', {
       }
     }
 
+    // calculate facing for building segments based on side
+    if (
+      this.data.type === 'building' &&
+      this.data.side &&
+      componentsToGenerate?.clones?.length > 0
+    ) {
+      const sideRotation = this.data.side === 'left' ? 270 : 90;
+      componentsToGenerate.clones[0].facing = sideRotation;
+    }
+
     // for each of clones, stencils, rail, pedestrians, etc.
     if (componentsToGenerate?.clones?.length > 0) {
       componentsToGenerate.clones.forEach((clone, index) => {
+        // Skip clones with empty modelsArray
+        if (!clone.modelsArray || clone.modelsArray.trim() === '') {
+          return;
+        }
         this.el.setAttribute(`street-generated-clones__${index + 1}`, {
           mode: clone.mode,
           modelsArray: clone.modelsArray,
@@ -376,6 +412,13 @@ AFRAME.registerComponent('street-segment', {
     }
     // regenerate components if variant has changed
     if (changedProps.includes('variant')) {
+      let typeObject = this.types[this.data.type];
+      this.updateGeneratedComponentsList();
+      this.remove();
+      this.generateComponentsFromSegmentObject(typeObject);
+    }
+    // regenerate components if side has changed
+    if (changedProps.includes('side')) {
       let typeObject = this.types[this.data.type];
       this.updateGeneratedComponentsList();
       this.remove();
