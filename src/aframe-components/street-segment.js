@@ -211,6 +211,7 @@ AFRAME.registerComponent('street-segment', {
         'sidewalk',
         'gravel',
         'sand',
+        'cracked-asphalt',
         'none',
         'solid'
       ]
@@ -397,6 +398,7 @@ AFRAME.registerComponent('street-segment', {
       sidewalk: 'seamless-sidewalk',
       gravel: 'compacted-gravel-texture',
       sand: 'sandy-asphalt-texture',
+      'cracked-asphalt': 'asphalt-texture',
       hatched: 'hatched-base',
       none: 'none',
       solid: ''
@@ -435,8 +437,9 @@ AFRAME.registerComponent('street-segment', {
     let repeatY = length / 6;
     let offsetX = 0.55; // we could get rid of this using cropped texture for asphalt
     if (textureSourceId === 'seamless-bright-road') {
-      repeatX = 0.6;
-      repeatY = 15;
+      repeatX = width / 8;
+      repeatY = length / 8;
+      offsetX = 0;
     } else if (textureSourceId === 'seamless-sandy-road') {
       repeatX = width / 30;
       repeatY = length / 30;
@@ -448,6 +451,10 @@ AFRAME.registerComponent('street-segment', {
     } else if (textureSourceId === 'grass-texture') {
       repeatX = width / 4;
       repeatY = length / 6;
+      offsetX = 0;
+    } else if (textureSourceId === 'asphalt-texture') {
+      repeatX = width / 8;
+      repeatY = length / 8;
       offsetX = 0;
     } else if (textureSourceId === 'hatched-base') {
       repeatX = 1;
