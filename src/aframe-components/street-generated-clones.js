@@ -89,6 +89,10 @@ AFRAME.registerComponent('street-generated-clones', {
     if (!this.length) {
       return;
     }
+    // Early return if data is not yet initialized
+    if (!this.data) {
+      return;
+    }
     // If mode is random or randomFacing and seed is 0, generate a random seed and return,
     // the update will be called again because of the setAttribute.
     if (this.data.mode === 'random' || this.data.randomFacing) {
