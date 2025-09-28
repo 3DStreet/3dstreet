@@ -16,8 +16,12 @@ AFRAME.registerComponent('street-generated-clones', {
     // Mode-specific properties
     mode: { default: 'fixed', oneOf: ['fixed', 'random', 'single', 'fit'] },
 
-    // Spacing for fixed and random modes
-    spacing: { default: 15, type: 'number', if: { mode: ['fixed', 'random'] } }, // minimum distance between objects
+    // Spacing for fixed, random and fit modes
+    spacing: {
+      default: 15,
+      type: 'number',
+      if: { mode: ['fixed', 'random', 'fit'] }
+    }, // minimum distance between objects
 
     // Fixed mode properties
     cycleOffset: { default: 0.5, type: 'number', if: { mode: ['fixed'] } }, // offset as a fraction of spacing, only for fixed

@@ -154,14 +154,35 @@ const TYPES = {
   building: {
     type: 'building',
     surface: 'cracked-asphalt',
-    color: COLORS.white,
     level: 0,
+    variants: {
+      brownstone: {
+        modelsArray:
+          'SM3D_Bld_Mixed_4fl, SM3D_Bld_Mixed_Corner_4fl, SM3D_Bld_Mixed_5fl, SM3D_Bld_Mixed_4fl_2, SM3D_Bld_Mixed_Double_5fl'
+      },
+      suburban: {
+        modelsArray:
+          'SM_Bld_House_Preset_03_1800, SM_Bld_House_Preset_08_1809, SM_Bld_House_Preset_09_1845',
+        spacing: 2
+      },
+      arcade: {
+        modelsArray:
+          'arched-building-01, arched-building-02, arched-building-03, arched-building-04'
+      },
+      water: {
+        modelsArray: ''
+      },
+      grass: {
+        modelsArray: ''
+      },
+      parking: {
+        modelsArray: ''
+      }
+    },
     generated: {
       clones: [
         {
           mode: 'fit',
-          modelsArray:
-            'SM3D_Bld_Mixed_4fl, SM3D_Bld_Mixed_Corner_4fl, SM3D_Bld_Mixed_5fl',
           spacing: 0
         }
       ]
@@ -218,6 +239,11 @@ AFRAME.registerComponent('street-segment', {
     },
     color: {
       type: 'color'
+    },
+    variant: {
+      type: 'string',
+      default: 'brownstone',
+      oneOf: ['brownstone', 'suburban', 'arcade', 'water', 'grass', 'parking']
     }
   },
   init: function () {
@@ -227,7 +253,25 @@ AFRAME.registerComponent('street-segment', {
   },
   generateComponentsFromSegmentObject: function (segmentObject) {
     // use global preset data to create the generated components for a given segment type
-    const componentsToGenerate = segmentObject.generated;
+    let componentsToGenerate = segmentObject.generated;
+
+    // if segment has variants and a variant is specified, override the generated config
+    if (segmentObject.variants && this.data.variant) {
+      const variantConfig = segmentObject.variants[this.data.variant];
+      if (variantConfig) {
+        componentsToGenerate = JSON.parse(JSON.stringify(componentsToGenerate));
+        if (
+          componentsToGenerate?.clones?.length > 0 &&
+          variantConfig.modelsArray
+        ) {
+          componentsToGenerate.clones[0].modelsArray =
+            variantConfig.modelsArray;
+          if (variantConfig.spacing !== undefined) {
+            componentsToGenerate.clones[0].spacing = variantConfig.spacing;
+          }
+        }
+      }
+    }
 
     // for each of clones, stencils, rail, pedestrians, etc.
     if (componentsToGenerate?.clones?.length > 0) {
@@ -329,6 +373,13 @@ AFRAME.registerComponent('street-segment', {
       for (const componentName of this.generatedComponents) {
         this.el.setAttribute(componentName, 'direction', this.data.direction);
       }
+    }
+    // regenerate components if variant has changed
+    if (changedProps.includes('variant')) {
+      let typeObject = this.types[this.data.type];
+      this.updateGeneratedComponentsList();
+      this.remove();
+      this.generateComponentsFromSegmentObject(typeObject);
     }
     // propagate change of length to generated components is solo changed
     if (changedProps.includes('length')) {

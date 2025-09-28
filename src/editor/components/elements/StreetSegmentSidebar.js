@@ -47,6 +47,18 @@ const StreetSegmentSidebar = ({ entity }) => {
                 isSingle={false}
                 entity={entity}
               />
+              {component.data['type'] === 'building' && (
+                <PropertyRow
+                  key="variant"
+                  name="variant"
+                  label="Building Variant"
+                  schema={component.schema['variant']}
+                  data={component.data['variant']}
+                  componentname={componentName}
+                  isSingle={false}
+                  entity={entity}
+                />
+              )}
               <div className="sidepanelContent">
                 <div id="sidebar-buttons-small">
                   <Button

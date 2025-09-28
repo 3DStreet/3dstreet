@@ -1308,23 +1308,11 @@ export const buildingDemo = {
   justifyLength: 'start',
   segments: [
     {
-      name: 'Left Buildings',
+      name: 'Brownstone Buildings',
       type: 'building',
+      variant: 'brownstone',
       color: '#ffffff',
-      level: 0,
-      width: 6.5,
-      direction: 'none',
-      generated: {
-        clones: [
-          {
-            mode: 'fit',
-            modelsArray:
-              'SM3D_Bld_Mixed_4fl, SM3D_Bld_Mixed_Corner_4fl, SM3D_Bld_Mixed_5fl, SM3D_Bld_Mixed_Double_5fl',
-            spacing: 0.5,
-            facing: 270
-          }
-        ]
-      }
+      width: 6.5
     },
     {
       name: 'Sidewalk Left',
@@ -1354,23 +1342,12 @@ export const buildingDemo = {
       direction: 'none'
     },
     {
-      name: 'Right Buildings',
+      name: 'Suburban Houses',
       type: 'building',
+      variant: 'suburban',
       color: '#ffffff',
       level: 0,
-      width: 6,
-      direction: 'none',
-      generated: {
-        clones: [
-          {
-            mode: 'fit',
-            modelsArray:
-              'SM3D_Bld_Mixed_4fl, SM3D_Bld_Mixed_Corner_4fl, SM3D_Bld_Mixed_5fl',
-            spacing: 0.5,
-            facing: 90
-          }
-        ]
-      }
+      width: 6
     }
   ]
 };

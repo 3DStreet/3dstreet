@@ -172,6 +172,20 @@ export default class Component extends React.Component {
               />
             </>
           )}
+          {componentData.data.mode === 'fit' && (
+            <>
+              <PropertyRow
+                key="spacing"
+                name="spacing"
+                label="Spacing"
+                schema={schema['spacing']}
+                data={componentData.data['spacing']}
+                componentname={componentName}
+                entity={this.props.entity}
+                isSingle={false}
+              />
+            </>
+          )}
           <hr></hr>
           <PropertyRow
             key="positionX"
