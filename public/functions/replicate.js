@@ -8,26 +8,58 @@ const generateReplicateImage = functions
   .runWith({ secrets: ["REPLICATE_API_TOKEN", "ALLOWED_PRO_TEAM_DOMAINS"] })
   .https
   .onCall(async (data, context) => {
+
+    // Check if required secrets are loaded
+    if (!process.env.REPLICATE_API_TOKEN) {
+      console.error('CRITICAL: REPLICATE_API_TOKEN secret not loaded');
+      throw new functions.https.HttpsError('failed-precondition', 'Image generation service is not properly configured.');
+    }
+
     // Verify user is authenticated
     if (!context.auth) {
+      console.error('Unauthenticated request to generateReplicateImage');
       throw new functions.https.HttpsError('unauthenticated', 'User must be authenticated to generate images.');
     }
 
     const userId = context.auth.uid;
     const { prompt, input_image, guidance = 2.5, num_inference_steps = 30, model_version } = data;
-    
-    // Use the centralized token management function to handle pro users, token refilling, and profile creation
-    const tokenData = await checkAndRefillImageTokensInternal(userId);
-    if (tokenData.genToken <= 0) {
-      throw new functions.https.HttpsError('resource-exhausted', 'No generation tokens available');
+
+
+    let tokenData;
+    try {
+      // Use the centralized token management function to handle pro users, token refilling, and profile creation
+      tokenData = await checkAndRefillImageTokensInternal(userId);
+    } catch (tokenError) {
+      console.error(`Error retrieving token data for user ${userId}:`, tokenError);
+      console.error('Token error stack:', tokenError.stack);
+      throw new functions.https.HttpsError('internal', `Failed to retrieve token information: ${tokenError.message}`);
+    }
+
+    // Check if tokenData is null or undefined (error in token management)
+    if (!tokenData) {
+      console.error(`Failed to get token data for user ${userId} - tokenData is null/undefined`);
+      throw new functions.https.HttpsError('internal', 'Failed to retrieve token information. Please try again.');
+    }
+
+
+    if (!tokenData.genToken || tokenData.genToken <= 0) {
+        throw new functions.https.HttpsError('resource-exhausted', 'No generation tokens available');
     }
 
     // Validate required data
     if (!prompt || !input_image) {
+      console.error(`Missing required data - prompt: ${!!prompt}, input_image: ${!!input_image}`);
       throw new functions.https.HttpsError('invalid-argument', 'Missing required prompt or input_image.');
     }
 
+
     try {
+      // Check if Replicate API token is available
+      if (!process.env.REPLICATE_API_TOKEN) {
+        console.error('REPLICATE_API_TOKEN is not configured');
+        throw new functions.https.HttpsError('failed-precondition', 'Image generation service is not configured. Please contact support.');
+      }
+
       const replicate = new Replicate({
         auth: process.env.REPLICATE_API_TOKEN,
       });
@@ -70,16 +102,10 @@ const generateReplicateImage = functions
         imageUrl = `https://storage.googleapis.com/${bucket.name}/temp/${filename}`;
               }
 
-      // console.log('Calling Replicate with:', {
-      //   prompt,
-      //   input_image: imageUrl,
-      //   guidance,
-      //   num_inference_steps
-      // });
-
       // Use provided model version or default to Kontext Real Earth
       const defaultModelVersion = "2af4da47bcb7b55a0705b0de9933701f7607531d763ae889241f827a648c1755";
       const modelVersionToUse = model_version || defaultModelVersion;
+
 
       // Different models use different input parameter names and formats
       let modelInput = {
@@ -114,8 +140,10 @@ const generateReplicateImage = functions
         input: modelInput
       });
 
+
       // Wait for the prediction to complete
       const output = await replicate.wait(prediction);
+
 
       // Clean up temp file if we created one
       if (input_image.startsWith('data:image/') && imageUrl !== input_image) {
@@ -176,8 +204,9 @@ const generateReplicateImage = functions
         throw new Error('Invalid output format from Replicate API');
       }
       
-      return { 
-        success: true, 
+
+      return {
+        success: true,
         image_url: finalImageUrl,
         message: 'Image generated successfully!',
         remainingTokens: remainingTokens

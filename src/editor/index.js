@@ -1,3 +1,4 @@
+import './instrument';
 import '../styles/tailwind.css';
 import { createRoot } from 'react-dom/client';
 import { GLTFExporter } from 'three/examples/jsm/exporters/GLTFExporter';

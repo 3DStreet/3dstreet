@@ -48,10 +48,6 @@ export const checkAndRefillProTokens = async () => {
     const result = await checkAndRefillFunction();
 
     if (result.data.success) {
-      console.log('Token refill check result:', result.data.message);
-      if (result.data.refilled) {
-        console.log('Tokens were refilled for this month');
-      }
       return result.data.tokenProfile;
     }
 

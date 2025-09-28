@@ -259,7 +259,9 @@ const checkAndRefillImageTokensInternal = async (userId) => {
     
   } catch (error) {
     console.error('Error in checkAndRefillImageTokensInternal:', error);
-    return null;
+    console.error('Error stack:', error.stack);
+    // Instead of returning null, throw the error to be handled by the calling function
+    throw error;
   }
 };
 
