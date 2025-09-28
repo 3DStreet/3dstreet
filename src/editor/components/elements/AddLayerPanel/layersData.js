@@ -60,6 +60,14 @@ export const streetLayersData = [
     handlerFunction: createFunctions.create150ftRightOfWayManagedStreet
   },
   {
+    name: '(Beta) Building Placement Demo',
+    img: '',
+    icon: 'ui_assets/cards/icons/3dst24.png',
+    description:
+      'Demo street with buildings on both sides using the new fit mode for building placement',
+    handlerFunction: createFunctions.createBuildingDemoManagedStreet
+  },
+  {
     name: '(Beta) Managed Street from Streetplan URL',
     img: '',
     requiresPro: true,

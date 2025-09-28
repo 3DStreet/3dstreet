@@ -1299,3 +1299,82 @@ export const stroad150ftROW = {
     }
   ]
 };
+
+export const buildingDemo = {
+  name: 'Building Placement Demo',
+  width: 18,
+  length: 150,
+  justifyWidth: 'center',
+  justifyLength: 'start',
+  segments: [
+    {
+      name: 'Left Buildings',
+      type: 'building',
+      surface: 'concrete',
+      color: '#ffffff',
+      level: 0,
+      width: 30,
+      direction: 'none',
+      generated: {
+        clones: [
+          {
+            mode: 'fit',
+            modelsArray:
+              'SM3D_Bld_Mixed_4fl, SM3D_Bld_Mixed_Corner_4fl, SM3D_Bld_Mixed_5fl, SM3D_Bld_Mixed_Double_5fl',
+            spacing: 0.5,
+            positionX: -20,
+            facing: 90
+          }
+        ]
+      }
+    },
+    {
+      name: 'Sidewalk Left',
+      type: 'sidewalk',
+      surface: 'sidewalk',
+      color: '#ffffff',
+      level: 1,
+      width: 3,
+      direction: 'none'
+    },
+    {
+      name: 'Drive Lane',
+      type: 'drive-lane',
+      surface: 'asphalt',
+      color: '#ffffff',
+      level: 0,
+      width: 12,
+      direction: 'inbound'
+    },
+    {
+      name: 'Sidewalk Right',
+      type: 'sidewalk',
+      surface: 'sidewalk',
+      color: '#ffffff',
+      level: 1,
+      width: 3,
+      direction: 'none'
+    },
+    {
+      name: 'Right Buildings',
+      type: 'building',
+      surface: 'concrete',
+      color: '#ffffff',
+      level: 0,
+      width: 30,
+      direction: 'none',
+      generated: {
+        clones: [
+          {
+            mode: 'fit',
+            modelsArray:
+              'SM3D_Bld_Mixed_4fl, SM3D_Bld_Mixed_Corner_4fl, SM3D_Bld_Mixed_5fl',
+            spacing: 0.5,
+            positionX: 20,
+            facing: -90
+          }
+        ]
+      }
+    }
+  ]
+};

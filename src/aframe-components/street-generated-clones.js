@@ -14,7 +14,7 @@ AFRAME.registerComponent('street-generated-clones', {
     direction: { type: 'string', oneOf: ['none', 'inbound', 'outbound'] }, // not used if facing defined?
 
     // Mode-specific properties
-    mode: { default: 'fixed', oneOf: ['fixed', 'random', 'single'] },
+    mode: { default: 'fixed', oneOf: ['fixed', 'random', 'single', 'fit'] },
 
     // Spacing for fixed and random modes
     spacing: { default: 15, type: 'number', if: { mode: ['fixed', 'random'] } }, // minimum distance between objects
@@ -111,6 +111,9 @@ AFRAME.registerComponent('street-generated-clones', {
       case 'single':
         this.generateSingle();
         break;
+      case 'fit':
+        this.generateFit();
+        break;
     }
   },
 
@@ -152,9 +155,47 @@ AFRAME.registerComponent('street-generated-clones', {
     this.createClone(positionZ);
   },
 
-  createClone: function (positionZ) {
+  generateFit: function () {
     const data = this.data;
-    const mixinId = this.getModelMixin();
+    const models = data.modelsArray;
+    let cumulativeZ = this.length / 2;
+    let modelIndex = 0;
+
+    const buildingWidths = {
+      SM3D_Bld_Mixed_4fl: 5.251,
+      SM3D_Bld_Mixed_Double_5fl: 10.9041,
+      SM3D_Bld_Mixed_4fl_2: 5.309,
+      SM3D_Bld_Mixed_5fl: 5.903,
+      SM3D_Bld_Mixed_Corner_4fl: 5.644,
+      SM_Bld_House_Preset_03_1800: 20,
+      SM_Bld_House_Preset_08_1809: 20,
+      SM_Bld_House_Preset_09_1845: 20,
+      'arched-building-01': 9.191,
+      'arched-building-02': 11.19,
+      'arched-building-03': 13.191,
+      'arched-building-04': 15.191
+    };
+
+    while (cumulativeZ > -this.length / 2) {
+      const mixinId = models[modelIndex % models.length];
+      const buildingWidth = buildingWidths[mixinId] || 10;
+
+      if (cumulativeZ - buildingWidth < -this.length / 2) {
+        break;
+      }
+
+      this.createClone(cumulativeZ - buildingWidth / 2, mixinId);
+
+      cumulativeZ -= buildingWidth + data.spacing;
+      modelIndex++;
+    }
+  },
+
+  createClone: function (positionZ, mixinId) {
+    const data = this.data;
+    if (!mixinId) {
+      mixinId = this.getModelMixin();
+    }
     const clone = document.createElement('a-entity');
 
     clone.setAttribute('mixin', mixinId);
