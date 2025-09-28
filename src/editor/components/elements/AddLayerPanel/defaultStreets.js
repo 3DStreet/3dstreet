@@ -1313,7 +1313,7 @@ export const buildingDemo = {
       surface: 'concrete',
       color: '#ffffff',
       level: 0,
-      width: 30,
+      width: 6.5,
       direction: 'none',
       generated: {
         clones: [
@@ -1322,8 +1322,8 @@ export const buildingDemo = {
             modelsArray:
               'SM3D_Bld_Mixed_4fl, SM3D_Bld_Mixed_Corner_4fl, SM3D_Bld_Mixed_5fl, SM3D_Bld_Mixed_Double_5fl',
             spacing: 0.5,
-            positionX: -20,
-            facing: 90
+            positionX: -12,
+            facing: 0
           }
         ]
       }
@@ -1361,7 +1361,7 @@ export const buildingDemo = {
       surface: 'concrete',
       color: '#ffffff',
       level: 0,
-      width: 30,
+      width: 6,
       direction: 'none',
       generated: {
         clones: [
@@ -1370,8 +1370,8 @@ export const buildingDemo = {
             modelsArray:
               'SM3D_Bld_Mixed_4fl, SM3D_Bld_Mixed_Corner_4fl, SM3D_Bld_Mixed_5fl',
             spacing: 0.5,
-            positionX: 20,
-            facing: -90
+            positionX: 12,
+            facing: 0
           }
         ]
       }
