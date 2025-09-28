@@ -150,6 +150,22 @@ const TYPES = {
         }
       ]
     }
+  },
+  building: {
+    type: 'building',
+    surface: 'concrete',
+    color: COLORS.white,
+    level: 0,
+    generated: {
+      clones: [
+        {
+          mode: 'fit',
+          modelsArray:
+            'SM3D_Bld_Mixed_4fl, SM3D_Bld_Mixed_Corner_4fl, SM3D_Bld_Mixed_5fl',
+          spacing: 0
+        }
+      ]
+    }
   }
 };
 STREET.types = TYPES;
@@ -166,7 +182,8 @@ AFRAME.registerComponent('street-segment', {
         'parking-lane',
         'divider',
         'grass',
-        'rail'
+        'rail',
+        'building'
       ]
     },
     width: {
