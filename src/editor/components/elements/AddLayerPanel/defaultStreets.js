@@ -1310,7 +1310,6 @@ export const buildingDemo = {
     {
       name: 'Left Buildings',
       type: 'building',
-      surface: 'concrete',
       color: '#ffffff',
       level: 0,
       width: 6.5,
@@ -1322,8 +1321,7 @@ export const buildingDemo = {
             modelsArray:
               'SM3D_Bld_Mixed_4fl, SM3D_Bld_Mixed_Corner_4fl, SM3D_Bld_Mixed_5fl, SM3D_Bld_Mixed_Double_5fl',
             spacing: 0.5,
-            positionX: -12,
-            facing: 0
+            facing: 270
           }
         ]
       }
@@ -1358,7 +1356,6 @@ export const buildingDemo = {
     {
       name: 'Right Buildings',
       type: 'building',
-      surface: 'concrete',
       color: '#ffffff',
       level: 0,
       width: 6,
@@ -1370,8 +1367,7 @@ export const buildingDemo = {
             modelsArray:
               'SM3D_Bld_Mixed_4fl, SM3D_Bld_Mixed_Corner_4fl, SM3D_Bld_Mixed_5fl',
             spacing: 0.5,
-            positionX: 12,
-            facing: 0
+            facing: 90
           }
         ]
       }
