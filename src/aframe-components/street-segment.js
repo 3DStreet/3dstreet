@@ -153,7 +153,7 @@ const TYPES = {
   },
   building: {
     type: 'building',
-    surface: 'concrete',
+    surface: 'cracked-asphalt',
     color: COLORS.white,
     level: 0,
     generated: {
@@ -238,7 +238,10 @@ AFRAME.registerComponent('street-segment', {
           length: this.data.length,
           spacing: clone.spacing,
           direction: this.data.direction,
-          count: clone.count
+          count: clone.count,
+          facing: clone.facing,
+          positionX: clone.positionX,
+          positionY: clone.positionY
         });
       });
     }
