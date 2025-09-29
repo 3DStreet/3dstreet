@@ -174,16 +174,19 @@ const TYPES = {
     variants: {
       brownstone: {
         modelsArray:
-          'SM3D_Bld_Mixed_4fl, SM3D_Bld_Mixed_Corner_4fl, SM3D_Bld_Mixed_5fl, SM3D_Bld_Mixed_4fl_2, SM3D_Bld_Mixed_Double_5fl'
+          'SM3D_Bld_Mixed_4fl, SM3D_Bld_Mixed_Corner_4fl, SM3D_Bld_Mixed_5fl, SM3D_Bld_Mixed_4fl_2, SM3D_Bld_Mixed_Double_5fl',
+        surface: 'cracked-asphalt'
       },
       suburban: {
         modelsArray:
           'SM_Bld_House_Preset_03_1800, SM_Bld_House_Preset_08_1809, SM_Bld_House_Preset_09_1845',
-        spacing: 2
+        spacing: 2,
+        surface: 'grass'
       },
       arcade: {
         modelsArray:
-          'arched-building-01, arched-building-02, arched-building-03, arched-building-04'
+          'arched-building-01, arched-building-02, arched-building-03, arched-building-04',
+        surface: 'sidewalk'
       },
       water: {
         modelsArray: ''
@@ -382,9 +385,19 @@ AFRAME.registerComponent('street-segment', {
   },
   updateSurfaceFromType: function (typeObject) {
     // update color, surface, level from segment type preset
+    let surface = typeObject.surface;
+
+    // if segment has variants and a variant is specified, override surface if variant has one
+    if (typeObject.variants && this.data.variant) {
+      const variantConfig = typeObject.variants[this.data.variant];
+      if (variantConfig && variantConfig.surface) {
+        surface = variantConfig.surface;
+      }
+    }
+
     this.el.setAttribute(
       'street-segment',
-      `surface: ${typeObject.surface}; color: ${typeObject.color}; level: ${typeObject.level};`
+      `surface: ${surface}; color: ${typeObject.color}; level: ${typeObject.level};`
     ); // to do: this should be more elegant to check for undefined and set default values
   },
   updateGeneratedComponentsList: function () {
@@ -424,6 +437,7 @@ AFRAME.registerComponent('street-segment', {
       this.updateGeneratedComponentsList();
       this.remove();
       this.generateComponentsFromSegmentObject(typeObject);
+      this.updateSurfaceFromType(typeObject); // update surface based on variant
     }
     // regenerate components if side has changed
     if (changedProps.includes('side')) {
