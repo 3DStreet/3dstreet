@@ -1,6 +1,29 @@
 /* global AFRAME */
 import { createRNG } from '../lib/rng';
 
+// Import building base rotations from street-segment
+const BUILDING_BASE_ROTATIONS = {
+  SM3D_Bld_Mixed_4fl: 180,
+  SM3D_Bld_Mixed_Corner_4fl: 180,
+  SM3D_Bld_Mixed_5fl: 180,
+  SM3D_Bld_Mixed_4fl_2: 180,
+  SM3D_Bld_Mixed_Double_5fl: 180,
+  SM_Bld_House_Preset_03_1800: 180,
+  SM_Bld_House_Preset_08_1809: 180,
+  SM_Bld_House_Preset_09_1845: 180,
+  'arched-building-01': 0,
+  'arched-building-02': 0,
+  'arched-building-03': 0,
+  'arched-building-04': 0,
+  'sp-prop-mixeduse-2L-29ft': 90,
+  'sp-prop-mixeduse-2L-30ft': 90,
+  'sp-prop-mixeduse-3L-18ft': 90,
+  'sp-prop-mixeduse-3L-22ft': 90,
+  'sp-prop-mixeduse-3L-23ft-corner': 90,
+  'sp-prop-mixeduse-3L-42ft': 90,
+  'sp-prop-mixeduse-3L-78ft-corner': 90
+};
+
 AFRAME.registerComponent('street-generated-clones', {
   multiple: true,
   schema: {
@@ -200,7 +223,14 @@ AFRAME.registerComponent('street-generated-clones', {
       'arched-building-02': 11.19,
       'arched-building-03': 13.191,
       'arched-building-04': 15.191,
-      seawall: 15
+      seawall: 15,
+      'sp-prop-mixeduse-2L-29ft': 8.84, // ~29ft converted to meters
+      'sp-prop-mixeduse-2L-30ft': 9.14, // ~30ft converted to meters
+      'sp-prop-mixeduse-3L-18ft': 5.49, // ~18ft converted to meters
+      'sp-prop-mixeduse-3L-22ft': 6.71, // ~22ft converted to meters
+      'sp-prop-mixeduse-3L-23ft-corner': 7.01, // ~23ft converted to meters
+      'sp-prop-mixeduse-3L-42ft': 12.8, // ~42ft converted to meters
+      'sp-prop-mixeduse-3L-78ft-corner': 23.77 // ~78ft converted to meters
     };
 
     // These are approximate depths for how far buildings extend from their placement point
@@ -217,7 +247,14 @@ AFRAME.registerComponent('street-generated-clones', {
       'arched-building-01': 10,
       'arched-building-02': 10,
       'arched-building-03': 10,
-      'arched-building-04': 10
+      'arched-building-04': 10,
+      'sp-prop-mixeduse-2L-29ft': 5, // Typical mixed-use depth
+      'sp-prop-mixeduse-2L-30ft': 5,
+      'sp-prop-mixeduse-3L-18ft': 5,
+      'sp-prop-mixeduse-3L-22ft': 5,
+      'sp-prop-mixeduse-3L-23ft-corner': 7, // Corner buildings slightly deeper
+      'sp-prop-mixeduse-3L-42ft': 5,
+      'sp-prop-mixeduse-3L-78ft-corner': 7 // Corner buildings slightly deeper
     };
 
     // Use stored segment width to calculate justified X position
@@ -264,15 +301,18 @@ AFRAME.registerComponent('street-generated-clones', {
       z: positionZ
     });
 
-    let rotationY = data.facing;
+    // Get base rotation for this specific model
+    const baseRotation = BUILDING_BASE_ROTATIONS[mixinId] || 0;
+
+    let rotationY = data.facing + baseRotation;
     if (data.direction === 'inbound') {
-      rotationY = 0 + data.facing;
+      rotationY = 180 - data.facing + baseRotation;
     }
     if (data.direction === 'outbound') {
-      rotationY = 180 - data.facing;
+      rotationY = 0 + data.facing + baseRotation;
     }
     if (data.randomFacing) {
-      rotationY = this.rng() * 360;
+      rotationY = this.rng() * 360 + baseRotation;
     }
     clone.setAttribute('rotation', `0 ${rotationY} 0`);
 
