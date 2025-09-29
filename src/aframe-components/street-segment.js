@@ -170,7 +170,7 @@ const TYPES = {
   building: {
     type: 'building',
     surface: 'cracked-asphalt',
-    level: 0,
+    level: 1,
     variants: {
       brownstone: {
         modelsArray:
@@ -192,7 +192,8 @@ const TYPES = {
         modelsArray: ''
       },
       grass: {
-        modelsArray: ''
+        modelsArray: '',
+        surface: 'grass'
       },
       parking: {
         modelsArray: ''
