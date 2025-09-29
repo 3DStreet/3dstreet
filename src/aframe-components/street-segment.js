@@ -192,11 +192,16 @@ const TYPES = {
         modelsArray: ''
       },
       grass: {
-        modelsArray: '',
-        surface: 'grass'
+        modelsArray: 'fence',
+        surface: 'grass',
+        spacing: -0.75,
+        mode: 'fit'
       },
       parking: {
-        modelsArray: ''
+        modelsArray: 'fence',
+        surface: 'parking-lot',
+        spacing: -0.75,
+        mode: 'fit'
       }
     },
     generated: {
@@ -253,6 +258,7 @@ AFRAME.registerComponent('street-segment', {
         'gravel',
         'sand',
         'cracked-asphalt',
+        'parking-lot',
         'none',
         'solid'
       ]
@@ -294,6 +300,9 @@ AFRAME.registerComponent('street-segment', {
             variantConfig.modelsArray;
           if (variantConfig.spacing !== undefined) {
             componentsToGenerate.clones[0].spacing = variantConfig.spacing;
+          }
+          if (variantConfig.mode !== undefined) {
+            componentsToGenerate.clones[0].mode = variantConfig.mode;
           }
         }
       }
@@ -519,6 +528,7 @@ AFRAME.registerComponent('street-segment', {
       gravel: 'compacted-gravel-texture',
       sand: 'sandy-asphalt-texture',
       'cracked-asphalt': 'asphalt-texture',
+      'parking-lot': 'parking-lot-texture',
       hatched: 'hatched-base',
       none: 'none',
       solid: ''
@@ -575,6 +585,10 @@ AFRAME.registerComponent('street-segment', {
     } else if (textureSourceId === 'asphalt-texture') {
       repeatX = width / 8;
       repeatY = length / 8;
+      offsetX = 0;
+    } else if (textureSourceId === 'parking-lot-texture') {
+      repeatX = width / 80;
+      repeatY = length / 40;
       offsetX = 0;
     } else if (textureSourceId === 'hatched-base') {
       repeatX = 1;

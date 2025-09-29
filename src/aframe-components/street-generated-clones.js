@@ -225,7 +225,7 @@ AFRAME.registerComponent('street-generated-clones', {
     while (cumulativeZ > -this.length / 2) {
       const mixinId = models[modelIndex % models.length];
       const buildingWidth = buildingWidths[mixinId] || 10;
-      const buildingDepth = buildingDepths[mixinId] || 15;
+      const buildingDepth = buildingDepths[mixinId] || 0;
 
       if (cumulativeZ - buildingWidth < -this.length / 2) {
         break;
