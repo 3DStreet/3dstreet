@@ -189,8 +189,11 @@ const TYPES = {
         surface: 'sidewalk'
       },
       water: {
-        modelsArray: '',
-        surface: 'water'
+        modelsArray: 'seawall',
+        surface: 'water',
+        spacing: 0,
+        mode: 'fit',
+        positionY: 0.5
       },
       grass: {
         modelsArray: 'fence',

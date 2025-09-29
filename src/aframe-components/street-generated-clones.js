@@ -199,7 +199,8 @@ AFRAME.registerComponent('street-generated-clones', {
       'arched-building-01': 9.191,
       'arched-building-02': 11.19,
       'arched-building-03': 13.191,
-      'arched-building-04': 15.191
+      'arched-building-04': 15.191,
+      seawall: 15
     };
 
     // These are approximate depths for how far buildings extend from their placement point
