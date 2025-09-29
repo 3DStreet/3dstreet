@@ -20,22 +20,6 @@ const COLORS = {
 };
 STREET.colors = COLORS;
 
-// eslint-disable-next-line no-unused-vars
-const BUILDING_BASE_ROTATIONS = {
-  SM3D_Bld_Mixed_4fl: 0,
-  SM3D_Bld_Mixed_Corner_4fl: 0,
-  SM3D_Bld_Mixed_5fl: 0,
-  SM3D_Bld_Mixed_4fl_2: 0,
-  SM3D_Bld_Mixed_Double_5fl: 0,
-  SM_Bld_House_Preset_03_1800: 0,
-  SM_Bld_House_Preset_08_1809: 0,
-  SM_Bld_House_Preset_09_1845: 0,
-  'arched-building-01': 0,
-  'arched-building-02': 0,
-  'arched-building-03': 0,
-  'arched-building-04': 0
-};
-
 const TYPES = {
   'drive-lane': {
     type: 'drive-lane',
@@ -207,6 +191,11 @@ const TYPES = {
         spacing: -0.75,
         mode: 'fit'
       },
+      'sp-mixeduse': {
+        modelsArray:
+          'sp-prop-mixeduse-2L-29ft, sp-prop-mixeduse-2L-30ft, sp-prop-mixeduse-3L-18ft, sp-prop-mixeduse-3L-22ft, sp-prop-mixeduse-3L-23ft-corner, sp-prop-mixeduse-3L-42ft, sp-prop-mixeduse-3L-78ft-corner',
+        surface: 'sidewalk'
+      },
       custom: {
         // Custom variant - no default values, preserves user modifications
       }
@@ -284,6 +273,7 @@ AFRAME.registerComponent('street-segment', {
         'water',
         'grass',
         'parking',
+        'sp-mixeduse',
         'custom'
       ]
     },
@@ -335,7 +325,7 @@ AFRAME.registerComponent('street-segment', {
       this.data.side &&
       componentsToGenerate?.clones?.length > 0
     ) {
-      const sideRotation = this.data.side === 'left' ? 270 : 90;
+      const sideRotation = this.data.side === 'left' ? 90 : 270;
       componentsToGenerate.clones[0].facing = sideRotation;
     }
 
