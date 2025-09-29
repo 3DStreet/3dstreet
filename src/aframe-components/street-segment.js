@@ -202,6 +202,9 @@ const TYPES = {
         surface: 'parking-lot',
         spacing: -0.75,
         mode: 'fit'
+      },
+      custom: {
+        // Custom variant - no default values, preserves user modifications
       }
     },
     generated: {
@@ -268,8 +271,16 @@ AFRAME.registerComponent('street-segment', {
     },
     variant: {
       type: 'string',
-      default: 'brownstone',
-      oneOf: ['brownstone', 'suburban', 'arcade', 'water', 'grass', 'parking']
+      default: 'custom',
+      oneOf: [
+        'brownstone',
+        'suburban',
+        'arcade',
+        'water',
+        'grass',
+        'parking',
+        'custom'
+      ]
     },
     side: {
       type: 'string',
@@ -287,7 +298,12 @@ AFRAME.registerComponent('street-segment', {
     let componentsToGenerate = segmentObject.generated;
 
     // if segment has variants and a variant is specified, override the generated config
-    if (segmentObject.variants && this.data.variant) {
+    // Skip variant processing for 'custom' variant to preserve existing values
+    if (
+      segmentObject.variants &&
+      this.data.variant &&
+      this.data.variant !== 'custom'
+    ) {
       const variantConfig = segmentObject.variants[this.data.variant];
       if (variantConfig) {
         componentsToGenerate = JSON.parse(JSON.stringify(componentsToGenerate));
@@ -398,7 +414,12 @@ AFRAME.registerComponent('street-segment', {
     let surface = typeObject.surface;
 
     // if segment has variants and a variant is specified, override surface if variant has one
-    if (typeObject.variants && this.data.variant) {
+    // Skip variant processing for 'custom' variant to preserve existing values
+    if (
+      typeObject.variants &&
+      this.data.variant &&
+      this.data.variant !== 'custom'
+    ) {
       const variantConfig = typeObject.variants[this.data.variant];
       if (variantConfig && variantConfig.surface) {
         surface = variantConfig.surface;
@@ -445,9 +466,13 @@ AFRAME.registerComponent('street-segment', {
     if (changedProps.includes('variant')) {
       let typeObject = this.types[this.data.type];
       this.updateGeneratedComponentsList();
-      this.remove();
-      this.generateComponentsFromSegmentObject(typeObject);
-      this.updateSurfaceFromType(typeObject); // update surface based on variant
+
+      // Skip regeneration for 'custom' variant to preserve existing components and surface
+      if (this.data.variant !== 'custom') {
+        this.remove();
+        this.generateComponentsFromSegmentObject(typeObject);
+        this.updateSurfaceFromType(typeObject); // update surface based on variant
+      }
     }
     // regenerate components if side has changed
     if (changedProps.includes('side')) {

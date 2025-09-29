@@ -71,6 +71,32 @@ export default class PropertyRow extends React.Component {
       isSingle: props.isSingle,
       name: props.name,
       onChange: function (name, value) {
+        // Auto-switch to custom variant for building segments when modifying certain properties
+        const shouldSwitchToCustom =
+          // Surface changes on street-segment
+          (props.componentname === 'street-segment' &&
+            props.name === 'surface') ||
+          // Any changes to clone components (building-related)
+          props.componentname.startsWith('street-generated-clones');
+
+        if (shouldSwitchToCustom) {
+          const streetSegment = props.entity.getAttribute('street-segment');
+          if (
+            streetSegment &&
+            streetSegment.type === 'building' &&
+            streetSegment.variant !== 'custom'
+          ) {
+            // First switch to custom variant to prevent overrides
+            AFRAME.INSPECTOR.execute('entityupdate', {
+              entity: props.entity,
+              component: 'street-segment',
+              property: 'variant',
+              value: 'custom',
+              noSelectEntity: true
+            });
+          }
+        }
+
         AFRAME.INSPECTOR.execute('entityupdate', {
           entity: props.entity,
           component: props.componentname,
