@@ -189,7 +189,8 @@ const TYPES = {
         surface: 'sidewalk'
       },
       water: {
-        modelsArray: ''
+        modelsArray: '',
+        surface: 'water'
       },
       grass: {
         modelsArray: 'fence',
@@ -262,6 +263,7 @@ AFRAME.registerComponent('street-segment', {
         'sand',
         'cracked-asphalt',
         'parking-lot',
+        'water',
         'none',
         'solid'
       ]
@@ -554,6 +556,7 @@ AFRAME.registerComponent('street-segment', {
       sand: 'sandy-asphalt-texture',
       'cracked-asphalt': 'asphalt-texture',
       'parking-lot': 'parking-lot-texture',
+      water: 'water-texture',
       hatched: 'hatched-base',
       none: 'none',
       solid: ''
@@ -567,14 +570,40 @@ AFRAME.registerComponent('street-segment', {
       textureSourceId
     );
 
-    this.el.setAttribute(
-      'material',
-      `src: #${textureMaps[data.surface]};
-        roughness: 0.8;
-        repeat: ${repeatX} ${repeatY};
-        offset: ${offsetX} 0;
-        color: ${data.color}`
-    );
+    // Special handling for water surface
+    if (data.surface === 'water') {
+      this.el.setAttribute(
+        'material',
+        `shader: standard;
+         color: #8ab39f;
+         metalness: 1;
+         roughness: 0.2;
+         normalMap: url(https://assets.3dstreet.app/materials/waternormals.jpg);
+         normalTextureRepeat: ${repeatX} ${repeatY};
+         normalTextureOffset: 0 0;
+         normalScale: 0.5 0.5;
+         opacity: 0.8;
+         transparent: true`
+      );
+
+      // Add water animation components
+      this.el.setAttribute('wobble-normal', '');
+      this.el.setAttribute('wobble-geometry-box', {
+        amplitude: 0.05,
+        amplitudeVariance: 0.1,
+        speed: 0.1,
+        speedVariance: 1
+      });
+    } else {
+      this.el.setAttribute(
+        'material',
+        `src: #${textureMaps[data.surface]};
+          roughness: 0.8;
+          repeat: ${repeatX} ${repeatY};
+          offset: ${offsetX} 0;
+          color: ${data.color}`
+      );
+    }
 
     this.el.setAttribute('shadow', '');
 
@@ -614,6 +643,11 @@ AFRAME.registerComponent('street-segment', {
     } else if (textureSourceId === 'parking-lot-texture') {
       repeatX = width / 80;
       repeatY = length / 40;
+      offsetX = 0;
+    } else if (textureSourceId === 'water-texture') {
+      // Water surface with appropriate tiling for realistic appearance
+      repeatX = width / 5; // Moderate repeat for water normals
+      repeatY = length / 5;
       offsetX = 0;
     } else if (textureSourceId === 'hatched-base') {
       repeatX = 1;
