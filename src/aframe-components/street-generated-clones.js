@@ -35,14 +35,28 @@ AFRAME.registerComponent('street-generated-clones', {
       oneOf: ['start', 'middle', 'end'],
       if: { mode: ['single'] }
     },
-    padding: { default: 4, type: 'number', if: { mode: ['single'] } }
+    padding: { default: 4, type: 'number', if: { mode: ['single'] } },
+
+    // Fit mode properties
+    justifyWidth: {
+      default: 'center',
+      oneOf: ['left', 'center', 'right'],
+      if: { mode: ['fit'] }
+    }
   },
 
   init: function () {
     this.createdEntities = [];
     this.length = this.el.getAttribute('street-segment')?.length;
+    this.width = this.el.getAttribute('street-segment')?.width;
+
     this.el.addEventListener('segment-length-changed', (event) => {
       this.length = event.detail.newLength;
+      this.update();
+    });
+
+    this.el.addEventListener('segment-width-changed', (event) => {
+      this.width = event.detail.newWidth;
       this.update();
     });
   },
@@ -86,6 +100,9 @@ AFRAME.registerComponent('street-generated-clones', {
   },
 
   update: function (oldData) {
+    // Always get the current width from the segment
+    this.width = this.el.getAttribute('street-segment')?.width || 0;
+
     if (!this.length) {
       return;
     }
@@ -184,22 +201,53 @@ AFRAME.registerComponent('street-generated-clones', {
       'arched-building-04': 15.191
     };
 
+    // These are approximate depths for how far buildings extend from their placement point
+    const buildingDepths = {
+      SM3D_Bld_Mixed_4fl: 15,
+      SM3D_Bld_Mixed_Double_5fl: 15,
+      SM3D_Bld_Mixed_4fl_2: 15,
+      SM3D_Bld_Mixed_5fl: 15,
+      SM3D_Bld_Mixed_Corner_4fl: 15,
+      SM_Bld_House_Preset_03_1800: 20,
+      SM_Bld_House_Preset_08_1809: 20,
+      SM_Bld_House_Preset_09_1845: 20,
+      'arched-building-01': 10,
+      'arched-building-02': 10,
+      'arched-building-03': 10,
+      'arched-building-04': 10
+    };
+
+    // Use stored segment width to calculate justified X position
+    const segmentWidth = this.width || 0;
+
     while (cumulativeZ > -this.length / 2) {
       const mixinId = models[modelIndex % models.length];
       const buildingWidth = buildingWidths[mixinId] || 10;
+      const buildingDepth = buildingDepths[mixinId] || 15;
 
       if (cumulativeZ - buildingWidth < -this.length / 2) {
         break;
       }
 
-      this.createClone(cumulativeZ - buildingWidth / 2, mixinId);
+      // Calculate X position based on justifyWidth
+      let positionX = data.positionX;
+      if (data.justifyWidth === 'left') {
+        // Left justify: place building so its right edge aligns with left edge of segment
+        positionX = data.positionX - segmentWidth / 2 + buildingDepth / 2;
+      } else if (data.justifyWidth === 'right') {
+        // Right justify: place building so its left edge aligns with right edge of segment
+        positionX = data.positionX + segmentWidth / 2 - buildingDepth / 2;
+      }
+      // Center is default, uses data.positionX as is
+
+      this.createClone(cumulativeZ - buildingWidth / 2, mixinId, positionX);
 
       cumulativeZ -= buildingWidth + data.spacing;
       modelIndex++;
     }
   },
 
-  createClone: function (positionZ, mixinId) {
+  createClone: function (positionZ, mixinId, positionX) {
     const data = this.data;
     if (!mixinId) {
       mixinId = this.getModelMixin();
@@ -208,7 +256,7 @@ AFRAME.registerComponent('street-generated-clones', {
 
     clone.setAttribute('mixin', mixinId);
     clone.setAttribute('position', {
-      x: data.positionX,
+      x: positionX !== undefined ? positionX : data.positionX,
       y: data.positionY,
       z: positionZ
     });
