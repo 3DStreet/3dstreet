@@ -594,6 +594,69 @@
         "category": "buildings"
     },
     {
+        "id": "sp-prop-mixeduse-2L-29ft",
+        "name": "Mixed Use 2L 29ft",
+        "img": "sets/streetplan/sp-prop-mixeduse-2L-29ft.webp",
+        "src": "sets/streetplan/sp-prop-mixeduse-2L-29ft.glb",
+        "category": "buildings",
+        "attribution": "StreetPlan.net. Used with permission.",
+        "attributionUrl": "https://www.urbaninnovators.com/streetplan"
+    },
+    {
+        "id": "sp-prop-mixeduse-2L-30ft",
+        "name": "Mixed Use 2L 30ft",
+        "img": "sets/streetplan/sp-prop-mixeduse-2L-30ft.webp",
+        "src": "sets/streetplan/sp-prop-mixeduse-2L-30ft.glb",
+        "category": "buildings",
+        "attribution": "StreetPlan.net. Used with permission.",
+        "attributionUrl": "https://www.urbaninnovators.com/streetplan"
+    },
+    {
+        "id": "sp-prop-mixeduse-3L-18ft",
+        "name": "Mixed Use 3L 18ft",
+        "img": "sets/streetplan/sp-prop-mixeduse-3L-18ft.webp",
+        "src": "sets/streetplan/sp-prop-mixeduse-3L-18ft.glb",
+        "category": "buildings",
+        "attribution": "StreetPlan.net. Used with permission.",
+        "attributionUrl": "https://www.urbaninnovators.com/streetplan"
+    },
+    {
+        "id": "sp-prop-mixeduse-3L-22ft",
+        "name": "Mixed Use 3L 22ft",
+        "img": "sets/streetplan/sp-prop-mixeduse-3L-22ft.webp",
+        "src": "sets/streetplan/sp-prop-mixeduse-3L-22ft.glb",
+        "category": "buildings",
+        "attribution": "StreetPlan.net. Used with permission.",
+        "attributionUrl": "https://www.urbaninnovators.com/streetplan"
+    },
+    {
+        "id": "sp-prop-mixeduse-3L-23ft-corner",
+        "name": "Mixed Use 3L 23ft Corner",
+        "img": "sets/streetplan/sp-prop-mixeduse-3L-23ft-corner.webp",
+        "src": "sets/streetplan/sp-prop-mixeduse-3L-23ft-corner.glb",
+        "category": "buildings",
+        "attribution": "StreetPlan.net. Used with permission.",
+        "attributionUrl": "https://www.urbaninnovators.com/streetplan"
+    },
+    {
+        "id": "sp-prop-mixeduse-3L-42ft",
+        "name": "Mixed Use 3L 42ft",
+        "img": "sets/streetplan/sp-prop-mixeduse-3L-42ft.webp",
+        "src": "sets/streetplan/sp-prop-mixeduse-3L-42ft.glb",
+        "category": "buildings",
+        "attribution": "StreetPlan.net. Used with permission.",
+        "attributionUrl": "https://www.urbaninnovators.com/streetplan"
+    },
+    {
+        "id": "sp-prop-mixeduse-3L-78ft-corner",
+        "name": "Mixed Use 3L 78ft Corner",
+        "img": "sets/streetplan/sp-prop-mixeduse-3L-78ft-corner.webp",
+        "src": "sets/streetplan/sp-prop-mixeduse-3L-78ft-corner.glb",
+        "category": "buildings",
+        "attribution": "StreetPlan.net. Used with permission.",
+        "attributionUrl": "https://www.urbaninnovators.com/streetplan"
+    },
+    {
         "id": "ElectricScooter_1",
         "name": "Electric Scooter",
         "img": "thumbnails/ElectricScooter_1.jpg"
