@@ -312,6 +312,13 @@ AFRAME.registerComponent('street-segment', {
         if (!clone.modelsArray || clone.modelsArray.trim() === '') {
           return;
         }
+
+        // Calculate justifyWidth based on segment side for fit mode
+        let justifyWidth = clone.justifyWidth;
+        if (clone.mode === 'fit' && !justifyWidth) {
+          justifyWidth = this.data.side === 'right' ? 'left' : 'right';
+        }
+
         this.el.setAttribute(`street-generated-clones__${index + 1}`, {
           mode: clone.mode,
           modelsArray: clone.modelsArray,
@@ -321,7 +328,8 @@ AFRAME.registerComponent('street-segment', {
           count: clone.count,
           facing: clone.facing,
           positionX: clone.positionX,
-          positionY: clone.positionY
+          positionY: clone.positionY,
+          justifyWidth: justifyWidth
         });
       });
     }

@@ -186,6 +186,7 @@ AFRAME.registerComponent('street-generated-clones', {
     let cumulativeZ = this.length / 2;
     let modelIndex = 0;
 
+    // measure of the building model along the street's z axis
     const buildingWidths = {
       SM3D_Bld_Mixed_4fl: 5.251,
       SM3D_Bld_Mixed_Double_5fl: 10.9041,
@@ -202,12 +203,13 @@ AFRAME.registerComponent('street-generated-clones', {
     };
 
     // These are approximate depths for how far buildings extend from their placement point
+    // measure of the building model along the street's x axis
     const buildingDepths = {
-      SM3D_Bld_Mixed_4fl: 15,
-      SM3D_Bld_Mixed_Double_5fl: 15,
-      SM3D_Bld_Mixed_4fl_2: 15,
-      SM3D_Bld_Mixed_5fl: 15,
-      SM3D_Bld_Mixed_Corner_4fl: 15,
+      SM3D_Bld_Mixed_4fl: 6,
+      SM3D_Bld_Mixed_Double_5fl: 6,
+      SM3D_Bld_Mixed_4fl_2: 6,
+      SM3D_Bld_Mixed_5fl: 6,
+      SM3D_Bld_Mixed_Corner_4fl: 6,
       SM_Bld_House_Preset_03_1800: 20,
       SM_Bld_House_Preset_08_1809: 20,
       SM_Bld_House_Preset_09_1845: 20,
