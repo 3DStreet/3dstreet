@@ -1,28 +1,13 @@
-/* global AFRAME */
+/* global AFRAME, STREET */
 import { createRNG } from '../lib/rng';
 
-// Import building base rotations from street-segment
-const BUILDING_BASE_ROTATIONS = {
-  SM3D_Bld_Mixed_4fl: 180,
-  SM3D_Bld_Mixed_Corner_4fl: 180,
-  SM3D_Bld_Mixed_5fl: 180,
-  SM3D_Bld_Mixed_4fl_2: 180,
-  SM3D_Bld_Mixed_Double_5fl: 180,
-  SM_Bld_House_Preset_03_1800: 180,
-  SM_Bld_House_Preset_08_1809: 180,
-  SM_Bld_House_Preset_09_1845: 180,
-  'arched-building-01': 0,
-  'arched-building-02': 0,
-  'arched-building-03': 0,
-  'arched-building-04': 0,
-  'sp-prop-mixeduse-2L-29ft': 90,
-  'sp-prop-mixeduse-2L-30ft': 90,
-  'sp-prop-mixeduse-3L-18ft': 90,
-  'sp-prop-mixeduse-3L-22ft': 90,
-  'sp-prop-mixeduse-3L-23ft-corner': 90,
-  'sp-prop-mixeduse-3L-42ft': 90,
-  'sp-prop-mixeduse-3L-78ft-corner': 90
-};
+// Helper function to get base rotation from catalog
+function getBaseRotationFromCatalog(mixinId) {
+  // Find the model in the catalog
+  const catalogEntry = STREET.catalog?.find((entry) => entry.id === mixinId);
+  // Return baseRotation if found, otherwise default to 0
+  return catalogEntry?.baseRotation || 0;
+}
 
 AFRAME.registerComponent('street-generated-clones', {
   multiple: true,
@@ -301,8 +286,8 @@ AFRAME.registerComponent('street-generated-clones', {
       z: positionZ
     });
 
-    // Get base rotation for this specific model
-    const baseRotation = BUILDING_BASE_ROTATIONS[mixinId] || 0;
+    // Get base rotation from catalog
+    const baseRotation = getBaseRotationFromCatalog(mixinId);
 
     let rotationY = data.facing + baseRotation;
     if (data.direction === 'inbound') {

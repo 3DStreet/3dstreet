@@ -1,5 +1,10 @@
-/* global AFRAME, customElements */
+/* global AFRAME, customElements, STREET */
 const catalog = require('./catalog.json');
+
+// Expose catalog to STREET global for component access
+if (typeof STREET !== 'undefined') {
+  STREET.catalog = catalog;
+}
 
 const assetBasePath = 'https://assets.3dstreet.app/'; // use this path if none specified in index.html assets tag
 
