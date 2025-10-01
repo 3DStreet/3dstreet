@@ -235,7 +235,7 @@ AFRAME.registerComponent('street-generated-clones', {
       'arched-building-04': 10,
       'sp-prop-mixeduse-2L-29ft': 16, // Typical mixed-use depth
       'sp-prop-mixeduse-2L-30ft': 16,
-      'sp-prop-mixeduse-3L-18ft': 7.36,
+      'sp-prop-mixeduse-3L-18ft': 8,
       'sp-prop-mixeduse-3L-22ft': 7.2,
       'sp-prop-mixeduse-3L-23ft-corner': 7.09, // Corner buildings slightly deeper
       'sp-prop-mixeduse-3L-42ft': 16.42,
