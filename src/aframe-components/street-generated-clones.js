@@ -233,13 +233,13 @@ AFRAME.registerComponent('street-generated-clones', {
       'arched-building-02': 10,
       'arched-building-03': 10,
       'arched-building-04': 10,
-      'sp-prop-mixeduse-2L-29ft': 5, // Typical mixed-use depth
-      'sp-prop-mixeduse-2L-30ft': 5,
-      'sp-prop-mixeduse-3L-18ft': 5,
-      'sp-prop-mixeduse-3L-22ft': 5,
-      'sp-prop-mixeduse-3L-23ft-corner': 7, // Corner buildings slightly deeper
-      'sp-prop-mixeduse-3L-42ft': 5,
-      'sp-prop-mixeduse-3L-78ft-corner': 7 // Corner buildings slightly deeper
+      'sp-prop-mixeduse-2L-29ft': 16, // Typical mixed-use depth
+      'sp-prop-mixeduse-2L-30ft': 16,
+      'sp-prop-mixeduse-3L-18ft': 7.36,
+      'sp-prop-mixeduse-3L-22ft': 7.2,
+      'sp-prop-mixeduse-3L-23ft-corner': 7.09, // Corner buildings slightly deeper
+      'sp-prop-mixeduse-3L-42ft': 16.42,
+      'sp-prop-mixeduse-3L-78ft-corner': 27.3 // Corner buildings slightly deeper
     };
 
     // Use stored segment width to calculate justified X position
