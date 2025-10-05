@@ -1829,10 +1829,34 @@ const STREETPLAN_OBJECT_TO_GENERATED_CLONES_MAPPING = {
     count: 10,
     facing: 0
   },
-  'blue truck': '',
-  'blue truck rev': '',
-  'dump truck': '',
-  'dump truck rev': '',
+  'blue truck': {
+    mode: 'fixed',
+    modelsArray: 'vehicle-bmw-m2',
+    spacing: 50,
+    count: 10,
+    facing: 0
+  },
+  'blue truck rev': {
+    mode: 'fixed',
+    modelsArray: 'vehicle-bmw-m2',
+    spacing: 50,
+    count: 10,
+    facing: 0
+  },
+  'dump truck': {
+    mode: 'fixed',
+    modelsArray: 'box-truck-rig',
+    spacing: 50,
+    count: 10,
+    facing: 0
+  },
+  'dump truck rev': {
+    mode: 'fixed',
+    modelsArray: 'box-truck-rig',
+    spacing: 50,
+    count: 10,
+    facing: 0
+  },
   'green car': {
     mode: 'fixed',
     modelsArray: 'sedan-rig',
@@ -1861,8 +1885,20 @@ const STREETPLAN_OBJECT_TO_GENERATED_CLONES_MAPPING = {
     count: 10,
     facing: 0
   },
-  'orange truck': '',
-  'orange truck rev': '',
+  'orange truck': {
+    mode: 'fixed',
+    modelsArray: 'suv-rig',
+    spacing: 50,
+    count: 10,
+    facing: 0
+  },
+  'orange truck rev': {
+    mode: 'fixed',
+    modelsArray: 'suv-rig',
+    spacing: 50,
+    count: 10,
+    facing: 0
+  },
   'red car': {
     mode: 'fixed',
     modelsArray: 'sedan-rig',
@@ -1877,10 +1913,34 @@ const STREETPLAN_OBJECT_TO_GENERATED_CLONES_MAPPING = {
     count: 10,
     facing: 0
   },
-  'red jeep': '',
-  'red jeep rev': '',
-  'semi truck': '',
-  'semi truck rev': '',
+  'red jeep': {
+    mode: 'fixed',
+    modelsArray: 'suv-rig',
+    spacing: 50,
+    count: 10,
+    facing: 0
+  },
+  'red jeep rev': {
+    mode: 'fixed',
+    modelsArray: 'suv-rig',
+    spacing: 50,
+    count: 10,
+    facing: 0
+  },
+  'semi truck': {
+    mode: 'fixed',
+    modelsArray: 'suv-rig',
+    spacing: 50,
+    count: 10,
+    facing: 0
+  },
+  'semi truck rev': {
+    mode: 'fixed',
+    modelsArray: 'suv-rig',
+    spacing: 50,
+    count: 10,
+    facing: 0
+  },
   'silver suv': {
     mode: 'fixed',
     modelsArray: 'suv-rig',
@@ -1895,7 +1955,13 @@ const STREETPLAN_OBJECT_TO_GENERATED_CLONES_MAPPING = {
     count: 10,
     facing: 0
   },
-  truck: '',
+  truck: {
+    mode: 'fixed',
+    modelsArray: 'box-truck-rig',
+    spacing: 50,
+    count: 10,
+    facing: 0
+  },
   'truck fedex': {
     mode: 'fixed',
     modelsArray: 'box-truck-rig',
