@@ -819,7 +819,13 @@ const STREETPLAN_OBJECT_TO_GENERATED_CLONES_MAPPING = {
     count: 10,
     facing: 0
   },
-  'flowers pedrefuge (8ft)': '',
+  'flowers pedrefuge (8ft)': {
+    mode: 'fixed',
+    modelsArray: 'dividers-flowers',
+    spacing: 50,
+    count: 10,
+    facing: 0
+  },
   'grassslopemedian (12ft)': '',
   'grassslopemedian (24ft)': '',
   'grassy median (10ft)': '',
@@ -925,7 +931,13 @@ const STREETPLAN_OBJECT_TO_GENERATED_CLONES_MAPPING = {
     count: 10,
     facing: 0
   },
-  'tropical median (4ft)': '',
+  'tropical median (4ft)': {
+    mode: 'fixed',
+    modelsArray: 'dividers-flowers',
+    spacing: 1,
+    count: 20,
+    facing: 0
+  },
   'weeds median (4ft)': '',
   'weeds median (6ft)': '',
   'weeds median (8ft)': '',
