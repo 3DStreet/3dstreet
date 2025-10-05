@@ -1036,5 +1036,104 @@
         "category": "signs",
         "attribution": "StreetPlan.net. Used with permission.",
         "attributionUrl": "https://www.urbaninnovators.com/streetplan"
+    },
+    {
+        "id": "sp-prop-bigbox-1L-220ft",
+        "name": "Big Box 1 Story 220ft",
+        "img": "sets/streetplan/sp-prop-bigbox-1L-220ft.webp",
+        "src": "sets/streetplan/sp-prop-bigbox-1L-220ft.glb",
+        "category": "buildings",
+        "attribution": "StreetPlan.net. Used with permission.",
+        "attributionUrl": "https://www.urbaninnovators.com/streetplan"
+    },
+    {
+        "id": "sp-prop-bigbox-1L-291ft",
+        "name": "Big Box 1 Story 291ft",
+        "img": "sets/streetplan/sp-prop-bigbox-1L-291ft.webp",
+        "src": "sets/streetplan/sp-prop-bigbox-1L-291ft.glb",
+        "category": "buildings",
+        "attribution": "StreetPlan.net. Used with permission.",
+        "attributionUrl": "https://www.urbaninnovators.com/streetplan"
+    },
+    {
+        "id": "sp-prop-gov-3L-61ft",
+        "name": "Government Building 3 Story 61ft",
+        "img": "sets/streetplan/sp-prop-gov-3L-61ft.webp",
+        "src": "sets/streetplan/sp-prop-gov-3L-61ft.glb",
+        "category": "buildings",
+        "attribution": "StreetPlan.net. Used with permission.",
+        "attributionUrl": "https://www.urbaninnovators.com/streetplan"
+    },
+    {
+        "id": "sp-prop-parking-3L-155ft",
+        "name": "Parking Structure 3 Story 155ft",
+        "img": "sets/streetplan/sp-prop-parking-3L-155ft.webp",
+        "src": "sets/streetplan/sp-prop-parking-3L-155ft.glb",
+        "category": "buildings",
+        "attribution": "StreetPlan.net. Used with permission.",
+        "attributionUrl": "https://www.urbaninnovators.com/streetplan"
+    },
+    {
+        "id": "sp-prop-parking-3L-97ft-centered",
+        "name": "Parking Structure 3 Story 97ft Centered",
+        "img": "sets/streetplan/sp-prop-parking-3L-97ft-centered.webp",
+        "src": "sets/streetplan/sp-prop-parking-3L-97ft-centered.glb",
+        "category": "buildings",
+        "attribution": "StreetPlan.net. Used with permission.",
+        "attributionUrl": "https://www.urbaninnovators.com/streetplan"
+    },
+    {
+        "id": "sp-prop-sf-1L-41ft",
+        "name": "Single Family 1 Story 41ft",
+        "img": "sets/streetplan/sp-prop-sf-1L-41ft.webp",
+        "src": "sets/streetplan/sp-prop-sf-1L-41ft.glb",
+        "category": "buildings",
+        "attribution": "StreetPlan.net. Used with permission.",
+        "attributionUrl": "https://www.urbaninnovators.com/streetplan"
+    },
+    {
+        "id": "sp-prop-sf-1L-62ft",
+        "name": "Single Family 1 Story 62ft",
+        "img": "sets/streetplan/sp-prop-sf-1L-62ft.webp",
+        "src": "sets/streetplan/sp-prop-sf-1L-62ft.glb",
+        "category": "buildings",
+        "attribution": "StreetPlan.net. Used with permission.",
+        "attributionUrl": "https://www.urbaninnovators.com/streetplan"
+    },
+    {
+        "id": "sp-prop-sf-2L-62ft",
+        "name": "Single Family 2 Story 62ft",
+        "img": "sets/streetplan/sp-prop-sf-2L-62ft.webp",
+        "src": "sets/streetplan/sp-prop-sf-2L-62ft.glb",
+        "category": "buildings",
+        "attribution": "StreetPlan.net. Used with permission.",
+        "attributionUrl": "https://www.urbaninnovators.com/streetplan"
+    },
+    {
+        "id": "sp-prop-sf-2L-64ft",
+        "name": "Single Family 2 Story 64ft",
+        "img": "sets/streetplan/sp-prop-sf-2L-64ft.webp",
+        "src": "sets/streetplan/sp-prop-sf-2L-64ft.glb",
+        "category": "buildings",
+        "attribution": "StreetPlan.net. Used with permission.",
+        "attributionUrl": "https://www.urbaninnovators.com/streetplan"
+    },
+    {
+        "id": "sp-prop-townhouse-3L-20ft",
+        "name": "Townhouse 3 Story 20ft",
+        "img": "sets/streetplan/sp-prop-townhouse-3L-20ft.webp",
+        "src": "sets/streetplan/sp-prop-townhouse-3L-20ft.glb",
+        "category": "buildings",
+        "attribution": "StreetPlan.net. Used with permission.",
+        "attributionUrl": "https://www.urbaninnovators.com/streetplan"
+    },
+    {
+        "id": "sp-prop-townhouse-3L-23ft",
+        "name": "Townhouse 3 Story 23ft",
+        "img": "sets/streetplan/sp-prop-townhouse-3L-23ft.webp",
+        "src": "sets/streetplan/sp-prop-townhouse-3L-23ft.glb",
+        "category": "buildings",
+        "attribution": "StreetPlan.net. Used with permission.",
+        "attributionUrl": "https://www.urbaninnovators.com/streetplan"
     }
 ]
