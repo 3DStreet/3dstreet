@@ -341,3 +341,22 @@ export function createPanoramaSphere() {
     AFRAME.INSPECTOR.execute('entitycreate', definition);
   }
 }
+
+export function createModelFromFile(file, position) {
+  // Create entity with model from a local file (blob URL)
+  // Note: This is temporary and will not persist on reload
+  if (file && file.name) {
+    const blobUrl = URL.createObjectURL(file);
+    const definition = {
+      class: 'custom-model',
+      components: {
+        position: position ?? '0 0 0',
+        'gltf-model': `url(${blobUrl})`,
+        'data-layer-name': `glTF Model • ${file.name}`,
+        'data-temporary-file': 'true',
+        shadow: 'receive: true; cast: true;'
+      }
+    };
+    AFRAME.INSPECTOR.execute('entitycreate', definition);
+  }
+}
