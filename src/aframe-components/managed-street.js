@@ -396,6 +396,9 @@ AFRAME.registerComponent('managed-street', {
 
         // convert from streetplan segment types to managed street presets
         switch (segment.Type) {
+          case 'Buildings':
+            segmentType = 'building';
+            break;
           case 'BikesPaths':
             segmentType = 'bike-lane';
             break;
@@ -458,7 +461,7 @@ AFRAME.registerComponent('managed-street', {
           generated.clones = clones;
         }
 
-        streetObject.segments.push({
+        const segmentData = {
           type: segmentType,
           width: segmentWidth,
           name: segment.title,
@@ -467,7 +470,14 @@ AFRAME.registerComponent('managed-street', {
           color: mappedColor || window.STREET.types[segmentType]?.color,
           surface: mappedSurface,
           generated: clones.length > 0 ? generated : undefined
-        });
+        };
+
+        // Only add side property if it exists in StreetPlan data
+        if (segment.side) {
+          segmentData.side = segment.side; // 'left' or 'right'
+        }
+
+        streetObject.segments.push(segmentData);
       }
 
       // Parse the street object
