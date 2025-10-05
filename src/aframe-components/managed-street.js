@@ -15,7 +15,7 @@ function parseOTags(tags) {
   return tags.split('", "').map((t) => t.replace(/"/g, '').trim());
 }
 
-// Streetplan Helper function to create clone configuration
+// Streetplan Helper function to create clone configuration or return variant
 function createCloneConfig(name, tags) {
   if (!name || name === '-') return null;
 
@@ -23,8 +23,12 @@ function createCloneConfig(name, tags) {
     STREETPLAN_OBJECT_TO_GENERATED_CLONES_MAPPING[name.toLowerCase()];
   if (!generatedClonesConfig) return null;
 
-  // if the config is an object, then it is a generated clone config
+  // if the config is an object, check for variant
   if (typeof generatedClonesConfig === 'object') {
+    // if variant is present, return special marker (not a clone config)
+    if (generatedClonesConfig.variant) {
+      return { _isVariant: true, variant: generatedClonesConfig.variant };
+    }
     return generatedClonesConfig;
   } else {
     // if it is a string, then it is a model mixin
@@ -448,13 +452,24 @@ AFRAME.registerComponent('managed-street', {
         // Map the O-Tags to clone configurations
         const generated = {};
         const clones = [];
+        let segmentVariant = null;
+
         // Process O1, O2, O3 configurations
         ['O1', 'O2', 'O3'].forEach((prefix) => {
           const name = segment[`${prefix}-Name`];
           const tags = parseOTags(segment[`${prefix}-Tags`]);
           const cloneConfig = createCloneConfig(name, tags);
           if (cloneConfig) {
-            clones.push(cloneConfig);
+            // Check if this is a variant (strict variant-only mode)
+            if (cloneConfig._isVariant) {
+              // Use the first variant found, ignore others
+              if (!segmentVariant) {
+                segmentVariant = cloneConfig.variant;
+              }
+            } else {
+              // Traditional clone config
+              clones.push(cloneConfig);
+            }
           }
         });
         if (clones.length > 0) {
@@ -471,6 +486,11 @@ AFRAME.registerComponent('managed-street', {
           surface: mappedSurface,
           generated: clones.length > 0 ? generated : undefined
         };
+
+        // Add variant if found (takes precedence over generated clones)
+        if (segmentVariant) {
+          segmentData.variant = segmentVariant;
+        }
 
         // Only add side property if it exists in StreetPlan data
         if (segment.side) {

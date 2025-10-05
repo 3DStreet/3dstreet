@@ -567,11 +567,9 @@ const STREETPLAN_OBJECT_TO_GENERATED_CLONES_MAPPING = {
     spacing: 0
   },
   'single family': {
-    mode: 'fit',
-    modelsArray:
-      'sp-prop-sf-1L-41ft, sp-prop-sf-1L-62ft, sp-prop-sf-2L-62ft, sp-prop-sf-2L-64ft',
-    positionY: -0.01,
-    spacing: 0
+    variant: 'sp-residential'
+    // Strict variant mode - when variant is present, all other fields are ignored
+    // The variant system in street-segment.js handles model selection, spacing, surface, etc.
   },
   'single family back': {
     mode: 'fit',
@@ -600,8 +598,12 @@ const STREETPLAN_OBJECT_TO_GENERATED_CLONES_MAPPING = {
   },
   'townhouse row 3story': {
     mode: 'fit',
-    modelsArray: 'SM_Bld_House_Preset_09_1845,SM_Bld_House_Preset_03_1800',
-    spacing: 0
+    modelsArray:
+      'sp-prop-townhouse-3L-20ft, sp-prop-townhouse-3L-23ft, sp-prop-mixeduse-3L-18ft, sp-prop-mixeduse-3L-22ft',
+    spacing: 0,
+    positionY: -0.01
+    // Custom config - mixing townhome and mixeduse models
+    // Don't use variant here since we want this specific mix
   },
   walmart: {
     mode: 'fit',
