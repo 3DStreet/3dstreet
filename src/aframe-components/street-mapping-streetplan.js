@@ -288,269 +288,335 @@ const STREETPLAN_OBJECT_TO_GENERATED_CLONES_MAPPING = {
   },
   'brick apartment 1floor': {
     mode: 'fit',
-    modelsArray: 'SM_Bld_House_Preset_09_1845,SM_Bld_House_Preset_03_1800'
+    modelsArray: 'SM_Bld_House_Preset_09_1845,SM_Bld_House_Preset_03_1800',
+    spacing: 0
   },
   'brick apartment 2floors': {
     mode: 'fit',
-    modelsArray: 'SM_Bld_House_Preset_09_1845,SM_Bld_House_Preset_03_1800'
+    modelsArray: 'SM_Bld_House_Preset_09_1845,SM_Bld_House_Preset_03_1800',
+    spacing: 0
   },
   'brick apartment 3floors': {
     mode: 'fit',
-    modelsArray: 'SM_Bld_House_Preset_09_1845,SM_Bld_House_Preset_03_1800'
+    modelsArray: 'SM_Bld_House_Preset_09_1845,SM_Bld_House_Preset_03_1800',
+    spacing: 0
   },
   'brick apartment 4floors': {
     mode: 'fit',
-    modelsArray: 'SM_Bld_House_Preset_09_1845,SM_Bld_House_Preset_03_1800'
+    modelsArray: 'SM_Bld_House_Preset_09_1845,SM_Bld_House_Preset_03_1800',
+    spacing: 0
   },
   'brick apartment 5floors': {
     mode: 'fit',
-    modelsArray: 'SM_Bld_House_Preset_09_1845,SM_Bld_House_Preset_03_1800'
+    modelsArray: 'SM_Bld_House_Preset_09_1845,SM_Bld_House_Preset_03_1800',
+    spacing: 0
   },
   'building blue 1floor': {
     mode: 'fit',
-    modelsArray: 'SM_Bld_House_Preset_09_1845,SM_Bld_House_Preset_03_1800'
+    modelsArray: 'SM_Bld_House_Preset_09_1845,SM_Bld_House_Preset_03_1800',
+    spacing: 0
   },
   'building blue 2floors': {
     mode: 'fit',
-    modelsArray: 'SM_Bld_House_Preset_09_1845,SM_Bld_House_Preset_03_1800'
+    modelsArray: 'SM_Bld_House_Preset_09_1845,SM_Bld_House_Preset_03_1800',
+    spacing: 0
   },
   'building blue 3floors': {
     mode: 'fit',
-    modelsArray: 'SM_Bld_House_Preset_09_1845,SM_Bld_House_Preset_03_1800'
+    modelsArray: 'SM_Bld_House_Preset_09_1845,SM_Bld_House_Preset_03_1800',
+    spacing: 0
   },
   'building blue 4floors': {
     mode: 'fit',
-    modelsArray: 'SM_Bld_House_Preset_09_1845,SM_Bld_House_Preset_03_1800'
+    modelsArray: 'SM_Bld_House_Preset_09_1845,SM_Bld_House_Preset_03_1800',
+    spacing: 0
   },
   'building blue 5floors': {
     mode: 'fit',
-    modelsArray: 'SM_Bld_House_Preset_09_1845,SM_Bld_House_Preset_03_1800'
+    modelsArray: 'SM_Bld_House_Preset_09_1845,SM_Bld_House_Preset_03_1800',
+    spacing: 0
   },
   'building blue 6floors': {
     mode: 'fit',
-    modelsArray: 'SM_Bld_House_Preset_09_1845,SM_Bld_House_Preset_03_1800'
+    modelsArray: 'SM_Bld_House_Preset_09_1845,SM_Bld_House_Preset_03_1800',
+    spacing: 0
   },
   'building blue 7floors': {
     mode: 'fit',
-    modelsArray: 'SM_Bld_House_Preset_09_1845,SM_Bld_House_Preset_03_1800'
+    modelsArray: 'SM_Bld_House_Preset_09_1845,SM_Bld_House_Preset_03_1800',
+    spacing: 0
   },
   'building yellow 1floor': {
     mode: 'fit',
-    modelsArray: 'SM_Bld_House_Preset_09_1845,SM_Bld_House_Preset_03_1800'
+    modelsArray: 'SM_Bld_House_Preset_09_1845,SM_Bld_House_Preset_03_1800',
+    spacing: 0
   },
   'building yellow 2floors': {
     mode: 'fit',
-    modelsArray: 'SM_Bld_House_Preset_09_1845,SM_Bld_House_Preset_03_1800'
+    modelsArray: 'SM_Bld_House_Preset_09_1845,SM_Bld_House_Preset_03_1800',
+    spacing: 0
   },
   'building yellow 3floors': {
     mode: 'fit',
-    modelsArray: 'SM_Bld_House_Preset_09_1845,SM_Bld_House_Preset_03_1800'
+    modelsArray: 'SM_Bld_House_Preset_09_1845,SM_Bld_House_Preset_03_1800',
+    spacing: 0
   },
   'building yellow 4floors': {
     mode: 'fit',
-    modelsArray: 'SM_Bld_House_Preset_09_1845,SM_Bld_House_Preset_03_1800'
+    modelsArray: 'SM_Bld_House_Preset_09_1845,SM_Bld_House_Preset_03_1800',
+    spacing: 0
   },
   'building yellow 5floors': {
     mode: 'fit',
-    modelsArray: 'SM_Bld_House_Preset_09_1845,SM_Bld_House_Preset_03_1800'
+    modelsArray: 'SM_Bld_House_Preset_09_1845,SM_Bld_House_Preset_03_1800',
+    spacing: 0
   },
   'building yellow 6floors': {
     mode: 'fit',
-    modelsArray: 'SM_Bld_House_Preset_09_1845,SM_Bld_House_Preset_03_1800'
+    modelsArray: 'SM_Bld_House_Preset_09_1845,SM_Bld_House_Preset_03_1800',
+    spacing: 0
   },
   'building yellow 7floors': {
     mode: 'fit',
-    modelsArray: 'SM_Bld_House_Preset_09_1845,SM_Bld_House_Preset_03_1800'
+    modelsArray: 'SM_Bld_House_Preset_09_1845,SM_Bld_House_Preset_03_1800',
+    spacing: 0
   },
   'buildings falltrees (30ft)': {
     mode: 'fit',
-    modelsArray: 'SM_Bld_House_Preset_09_1845,SM_Bld_House_Preset_03_1800'
+    modelsArray: 'SM_Bld_House_Preset_09_1845,SM_Bld_House_Preset_03_1800',
+    spacing: 0
   },
   'buildings pinetrees (30ft)': {
     mode: 'fit',
-    modelsArray: 'SM_Bld_House_Preset_09_1845,SM_Bld_House_Preset_03_1800'
+    modelsArray: 'SM_Bld_House_Preset_09_1845,SM_Bld_House_Preset_03_1800',
+    spacing: 0
   },
   'gas station': {
     mode: 'fit',
-    modelsArray: 'SM_Bld_House_Preset_09_1845,SM_Bld_House_Preset_03_1800'
+    modelsArray: 'SM_Bld_House_Preset_09_1845,SM_Bld_House_Preset_03_1800',
+    spacing: 0
   },
   'home depot': {
     mode: 'fit',
-    modelsArray: 'SM_Bld_House_Preset_09_1845,SM_Bld_House_Preset_03_1800'
+    modelsArray: 'SM_Bld_House_Preset_09_1845,SM_Bld_House_Preset_03_1800',
+    spacing: 0
   },
   'house 1floor': {
     mode: 'fit',
-    modelsArray: 'SM_Bld_House_Preset_09_1845,SM_Bld_House_Preset_03_1800'
+    modelsArray: 'SM_Bld_House_Preset_09_1845,SM_Bld_House_Preset_03_1800',
+    spacing: 0
   },
   'house 2floors': {
     mode: 'fit',
-    modelsArray: 'SM_Bld_House_Preset_09_1845,SM_Bld_House_Preset_03_1800'
+    modelsArray: 'SM_Bld_House_Preset_09_1845,SM_Bld_House_Preset_03_1800',
+    spacing: 0
   },
   'house 3floors': {
     mode: 'fit',
-    modelsArray: 'SM_Bld_House_Preset_09_1845,SM_Bld_House_Preset_03_1800'
+    modelsArray: 'SM_Bld_House_Preset_09_1845,SM_Bld_House_Preset_03_1800',
+    spacing: 0
   },
   'house 4floors': {
     mode: 'fit',
-    modelsArray: 'SM_Bld_House_Preset_09_1845,SM_Bld_House_Preset_03_1800'
+    modelsArray: 'SM_Bld_House_Preset_09_1845,SM_Bld_House_Preset_03_1800',
+    spacing: 0
   },
   'house 5floors': {
     mode: 'fit',
-    modelsArray: 'SM_Bld_House_Preset_09_1845,SM_Bld_House_Preset_03_1800'
+    modelsArray: 'SM_Bld_House_Preset_09_1845,SM_Bld_House_Preset_03_1800',
+    spacing: 0
   },
   'house newurbanist': {
     mode: 'fit',
-    modelsArray: 'SM_Bld_House_Preset_09_1845,SM_Bld_House_Preset_03_1800'
+    modelsArray: 'SM_Bld_House_Preset_09_1845,SM_Bld_House_Preset_03_1800',
+    spacing: 0
   },
   'house newurbanist red': {
     mode: 'fit',
-    modelsArray: 'SM_Bld_House_Preset_09_1845,SM_Bld_House_Preset_03_1800'
+    modelsArray: 'SM_Bld_House_Preset_09_1845,SM_Bld_House_Preset_03_1800',
+    spacing: 0
   },
   'live work': {
     mode: 'fit',
-    modelsArray: 'SM_Bld_House_Preset_09_1845,SM_Bld_House_Preset_03_1800'
+    modelsArray: 'SM_Bld_House_Preset_09_1845,SM_Bld_House_Preset_03_1800',
+    spacing: 0
   },
   'mart chilis': {
     mode: 'fit',
-    modelsArray: 'SM_Bld_House_Preset_09_1845,SM_Bld_House_Preset_03_1800'
+    modelsArray: 'SM_Bld_House_Preset_09_1845,SM_Bld_House_Preset_03_1800',
+    spacing: 0
   },
   'mikedesign midvale 2story': {
     mode: 'fit',
-    modelsArray: 'SM_Bld_House_Preset_09_1845,SM_Bld_House_Preset_03_1800'
+    modelsArray: 'SM_Bld_House_Preset_09_1845,SM_Bld_House_Preset_03_1800',
+    spacing: 0
   },
   'mikedesign midvale 3story': {
     mode: 'fit',
-    modelsArray: 'SM_Bld_House_Preset_09_1845,SM_Bld_House_Preset_03_1800'
+    modelsArray: 'SM_Bld_House_Preset_09_1845,SM_Bld_House_Preset_03_1800',
+    spacing: 0
   },
   'mikedesign midvale3 3story': {
     mode: 'fit',
-    modelsArray: 'SM_Bld_House_Preset_09_1845,SM_Bld_House_Preset_03_1800'
+    modelsArray: 'SM_Bld_House_Preset_09_1845,SM_Bld_House_Preset_03_1800',
+    spacing: 0
   },
   'mixed use 2floors': {
     mode: 'fit',
-    modelsArray: 'SM_Bld_House_Preset_09_1845,SM_Bld_House_Preset_03_1800'
+    modelsArray: 'SM_Bld_House_Preset_09_1845,SM_Bld_House_Preset_03_1800',
+    spacing: 0
   },
   'mixed use 3floors': {
     mode: 'fit',
-    modelsArray: 'SM_Bld_House_Preset_09_1845,SM_Bld_House_Preset_03_1800'
+    modelsArray: 'SM_Bld_House_Preset_09_1845,SM_Bld_House_Preset_03_1800',
+    spacing: 0
   },
   'mixed use 4floors': {
     mode: 'fit',
-    modelsArray: 'SM_Bld_House_Preset_09_1845,SM_Bld_House_Preset_03_1800'
+    modelsArray: 'SM_Bld_House_Preset_09_1845,SM_Bld_House_Preset_03_1800',
+    spacing: 0
   },
   'mixed use 5floors': {
     mode: 'fit',
-    modelsArray: 'SM_Bld_House_Preset_09_1845,SM_Bld_House_Preset_03_1800'
+    modelsArray: 'SM_Bld_House_Preset_09_1845,SM_Bld_House_Preset_03_1800',
+    spacing: 0
   },
   'nice apartment 3story': {
     mode: 'fit',
-    modelsArray: 'SM_Bld_House_Preset_09_1845,SM_Bld_House_Preset_03_1800'
+    modelsArray: 'SM_Bld_House_Preset_09_1845,SM_Bld_House_Preset_03_1800',
+    spacing: 0
   },
   'nice apartment 4story': {
     mode: 'fit',
-    modelsArray: 'SM_Bld_House_Preset_09_1845,SM_Bld_House_Preset_03_1800'
+    modelsArray: 'SM_Bld_House_Preset_09_1845,SM_Bld_House_Preset_03_1800',
+    spacing: 0
   },
   'nice apartment 5story': {
     mode: 'fit',
-    modelsArray: 'SM_Bld_House_Preset_09_1845,SM_Bld_House_Preset_03_1800'
+    modelsArray: 'SM_Bld_House_Preset_09_1845,SM_Bld_House_Preset_03_1800',
+    spacing: 0
   },
   'nice apartment 6story': {
     mode: 'fit',
-    modelsArray: 'SM_Bld_House_Preset_09_1845,SM_Bld_House_Preset_03_1800'
+    modelsArray: 'SM_Bld_House_Preset_09_1845,SM_Bld_House_Preset_03_1800',
+    spacing: 0
   },
   'red mixed use 1floor': {
     mode: 'fit',
-    modelsArray: 'SM_Bld_House_Preset_09_1845,SM_Bld_House_Preset_03_1800'
+    modelsArray: 'SM_Bld_House_Preset_09_1845,SM_Bld_House_Preset_03_1800',
+    spacing: 0
   },
   'red mixed use 2floors': {
     mode: 'fit',
-    modelsArray: 'SM_Bld_House_Preset_09_1845,SM_Bld_House_Preset_03_1800'
+    modelsArray: 'SM_Bld_House_Preset_09_1845,SM_Bld_House_Preset_03_1800',
+    spacing: 0
   },
   'red mixed use 3floors': {
     mode: 'fit',
-    modelsArray: 'SM_Bld_House_Preset_09_1845,SM_Bld_House_Preset_03_1800'
+    modelsArray: 'SM_Bld_House_Preset_09_1845,SM_Bld_House_Preset_03_1800',
+    spacing: 0
   },
   'red mixed use 4floors': {
     mode: 'fit',
-    modelsArray: 'SM_Bld_House_Preset_09_1845,SM_Bld_House_Preset_03_1800'
+    modelsArray: 'SM_Bld_House_Preset_09_1845,SM_Bld_House_Preset_03_1800',
+    spacing: 0
   },
   'red mixed use 5floors': {
     mode: 'fit',
-    modelsArray: 'SM_Bld_House_Preset_09_1845,SM_Bld_House_Preset_03_1800'
+    modelsArray: 'SM_Bld_House_Preset_09_1845,SM_Bld_House_Preset_03_1800',
+    spacing: 0
   },
   residential: {
     mode: 'fit',
-    modelsArray: 'SM_Bld_House_Preset_09_1845,SM_Bld_House_Preset_03_1800'
+    modelsArray: 'SM_Bld_House_Preset_09_1845,SM_Bld_House_Preset_03_1800',
+    spacing: 0
   },
   'river crosssection': {
     mode: 'fit',
-    modelsArray: 'SM_Bld_House_Preset_09_1845,SM_Bld_House_Preset_03_1800'
+    modelsArray: 'SM_Bld_House_Preset_09_1845,SM_Bld_House_Preset_03_1800',
+    spacing: 0
   },
   'river crosssection 20ft': {
     mode: 'fit',
-    modelsArray: 'SM_Bld_House_Preset_09_1845,SM_Bld_House_Preset_03_1800'
+    modelsArray: 'SM_Bld_House_Preset_09_1845,SM_Bld_House_Preset_03_1800',
+    spacing: 0
   },
   'river crosssection 40ft': {
     mode: 'fit',
-    modelsArray: 'SM_Bld_House_Preset_09_1845,SM_Bld_House_Preset_03_1800'
+    modelsArray: 'SM_Bld_House_Preset_09_1845,SM_Bld_House_Preset_03_1800',
+    spacing: 0
   },
   'shop 1floor': {
     mode: 'fit',
-    modelsArray: 'SM_Bld_House_Preset_09_1845,SM_Bld_House_Preset_03_1800'
+    modelsArray: 'SM_Bld_House_Preset_09_1845,SM_Bld_House_Preset_03_1800',
+    spacing: 0
   },
   'shop 2floors': {
     mode: 'fit',
-    modelsArray: 'SM_Bld_House_Preset_09_1845,SM_Bld_House_Preset_03_1800'
+    modelsArray: 'SM_Bld_House_Preset_09_1845,SM_Bld_House_Preset_03_1800',
+    spacing: 0
   },
   'shop 3floors': {
     mode: 'fit',
-    modelsArray: 'SM_Bld_House_Preset_09_1845,SM_Bld_House_Preset_03_1800'
+    modelsArray: 'SM_Bld_House_Preset_09_1845,SM_Bld_House_Preset_03_1800',
+    spacing: 0
   },
   'shop 4floors': {
     mode: 'fit',
-    modelsArray: 'SM_Bld_House_Preset_09_1845,SM_Bld_House_Preset_03_1800'
+    modelsArray: 'SM_Bld_House_Preset_09_1845,SM_Bld_House_Preset_03_1800',
+    spacing: 0
   },
   'single family': {
     mode: 'fit',
     modelsArray:
       'sp-prop-sf-1L-41ft, sp-prop-sf-1L-62ft, sp-prop-sf-2L-62ft, sp-prop-sf-2L-64ft',
-    positionY: -0.01
+    positionY: -0.01,
+    spacing: 0
   },
   'single family back': {
     mode: 'fit',
-    modelsArray: 'SM_Bld_House_Preset_09_1845,SM_Bld_House_Preset_03_1800'
+    modelsArray: 'SM_Bld_House_Preset_09_1845,SM_Bld_House_Preset_03_1800',
+    spacing: 0
   },
   'stripmall onerowparking': {
     mode: 'fit',
-    modelsArray: 'SM_Bld_House_Preset_09_1845,SM_Bld_House_Preset_03_1800'
+    modelsArray: 'SM_Bld_House_Preset_09_1845,SM_Bld_House_Preset_03_1800',
+    spacing: 0
   },
   'stripmall1 tworowsparking': {
     mode: 'fit',
-    modelsArray: 'SM_Bld_House_Preset_09_1845,SM_Bld_House_Preset_03_1800'
+    modelsArray: 'SM_Bld_House_Preset_09_1845,SM_Bld_House_Preset_03_1800',
+    spacing: 0
   },
   'stripmall1, onerowparking': {
     mode: 'fit',
-    modelsArray: 'SM_Bld_House_Preset_09_1845,SM_Bld_House_Preset_03_1800'
+    modelsArray: 'SM_Bld_House_Preset_09_1845,SM_Bld_House_Preset_03_1800',
+    spacing: 0
   },
   'stripmall2 tworowsparking': {
     mode: 'fit',
-    modelsArray: 'SM_Bld_House_Preset_09_1845,SM_Bld_House_Preset_03_1800'
+    modelsArray: 'SM_Bld_House_Preset_09_1845,SM_Bld_House_Preset_03_1800',
+    spacing: 0
   },
   'townhouse row 3story': {
     mode: 'fit',
-    modelsArray: 'SM_Bld_House_Preset_09_1845,SM_Bld_House_Preset_03_1800'
+    modelsArray: 'SM_Bld_House_Preset_09_1845,SM_Bld_House_Preset_03_1800',
+    spacing: 0
   },
   walmart: {
     mode: 'fit',
-    modelsArray: 'SM_Bld_House_Preset_09_1845,SM_Bld_House_Preset_03_1800'
+    modelsArray: 'SM_Bld_House_Preset_09_1845,SM_Bld_House_Preset_03_1800',
+    spacing: 0
   },
   'water 20ft': {
     mode: 'fit',
-    modelsArray: 'SM_Bld_House_Preset_09_1845,SM_Bld_House_Preset_03_1800'
+    modelsArray: 'SM_Bld_House_Preset_09_1845,SM_Bld_House_Preset_03_1800',
+    spacing: 0
   },
   'water 30ft': {
     mode: 'fit',
-    modelsArray: 'SM_Bld_House_Preset_09_1845,SM_Bld_House_Preset_03_1800'
+    modelsArray: 'SM_Bld_House_Preset_09_1845,SM_Bld_House_Preset_03_1800',
+    spacing: 0
   },
   'blank pedrefuge (8ft)': '',
   'cactus median (10ft)': {
