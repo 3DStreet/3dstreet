@@ -61,20 +61,74 @@ const STREETPLAN_OBJECT_TO_GENERATED_CLONES_MAPPING = {
   },
   'curb edge: 0.5 ft': '',
   fence: '',
-  'grassmound (10ft)': '',
-  'grassmound (12ft)': '',
-  'grassmound (4ft)': '',
-  'grassmound (6ft)': '',
-  'grassmound (8ft)': '',
+  'grassmound (10ft)': {
+    mode: 'fixed',
+    modelsArray: 'ground-grass',
+    spacing: 50,
+    count: 10,
+    facing: 0
+  },
+  'grassmound (12ft)': {
+    mode: 'fixed',
+    modelsArray: 'ground-grass',
+    spacing: 50,
+    count: 10,
+    facing: 0
+  },
+  'grassmound (4ft)': {
+    mode: 'fixed',
+    modelsArray: 'ground-grass',
+    spacing: 50,
+    count: 10,
+    facing: 0
+  },
+  'grassmound (6ft)': {
+    mode: 'fixed',
+    modelsArray: 'ground-grass',
+    spacing: 50,
+    count: 10,
+    facing: 0
+  },
+  'grassmound (8ft)': {
+    mode: 'fixed',
+    modelsArray: 'ground-grass',
+    spacing: 50,
+    count: 10,
+    facing: 0
+  },
   'gutter 2 narrow': '',
   'gutter rolling 2.5 ft, left': '',
   'gutter rolling 2.5 ft, right': '',
   'gutter std. 2.5 ft, left': '',
   'gutter std. 2.5 ft, right': '',
-  'materials grassslope (12ft)': '',
-  'materials grassslope (24ft)': '',
-  'materials grassslope rev (12ft)': '',
-  'materials grassslope rev (24ft)': '',
+  'materials grassslope (12ft)': {
+    mode: 'fixed',
+    modelsArray: 'ground-grass',
+    spacing: 50,
+    count: 10,
+    facing: 0
+  },
+  'materials grassslope (24ft)': {
+    mode: 'fixed',
+    modelsArray: 'ground-grass',
+    spacing: 50,
+    count: 10,
+    facing: 0
+  },
+  'materials grassslope rev (12ft)': {
+    mode: 'fixed',
+    modelsArray: 'ground-grass',
+    spacing: 50,
+    count: 10,
+    facing: 0
+  },
+  'materials grassslope rev (24ft)': {
+    mode: 'fixed',
+    modelsArray: 'ground-grass',
+    spacing: 50,
+    count: 10,
+    facing: 0
+  },
   'mountable barrier 1-ft': '',
   'orange barrel': {
     mode: 'fixed',
@@ -288,463 +342,463 @@ const STREETPLAN_OBJECT_TO_GENERATED_CLONES_MAPPING = {
   },
   'brick apartment 1floor': {
     mode: 'fixed',
-    modelsArray: 'arched-building-02,arched-building-01',
-    spacing: 20,
+    modelsArray: 'SM_Bld_House_Preset_09_1845,SM_Bld_House_Preset_03_1800',
+    spacing: 10,
     count: 2,
     facing: 0
   },
   'brick apartment 2floors': {
     mode: 'fixed',
-    modelsArray: 'arched-building-02,arched-building-01',
-    spacing: 20,
+    modelsArray: 'SM_Bld_House_Preset_09_1845,SM_Bld_House_Preset_03_1800',
+    spacing: 10,
     count: 2,
     facing: 0
   },
   'brick apartment 3floors': {
     mode: 'fixed',
-    modelsArray: 'arched-building-02,arched-building-01',
-    spacing: 20,
+    modelsArray: 'SM_Bld_House_Preset_09_1845,SM_Bld_House_Preset_03_1800',
+    spacing: 10,
     count: 2,
     facing: 0
   },
   'brick apartment 4floors': {
     mode: 'fixed',
-    modelsArray: 'arched-building-02,arched-building-01',
-    spacing: 20,
+    modelsArray: 'SM_Bld_House_Preset_09_1845,SM_Bld_House_Preset_03_1800',
+    spacing: 10,
     count: 2,
     facing: 0
   },
   'brick apartment 5floors': {
     mode: 'fixed',
-    modelsArray: 'arched-building-02,arched-building-01',
-    spacing: 20,
+    modelsArray: 'SM_Bld_House_Preset_09_1845,SM_Bld_House_Preset_03_1800',
+    spacing: 10,
     count: 2,
     facing: 0
   },
   'building blue 1floor': {
     mode: 'fixed',
-    modelsArray: 'arched-building-02,arched-building-01',
-    spacing: 20,
+    modelsArray: 'SM_Bld_House_Preset_09_1845,SM_Bld_House_Preset_03_1800',
+    spacing: 10,
     count: 2,
     facing: 0
   },
   'building blue 2floors': {
     mode: 'fixed',
-    modelsArray: 'arched-building-02,arched-building-01',
-    spacing: 20,
+    modelsArray: 'SM_Bld_House_Preset_09_1845,SM_Bld_House_Preset_03_1800',
+    spacing: 10,
     count: 2,
     facing: 0
   },
   'building blue 3floors': {
     mode: 'fixed',
-    modelsArray: 'arched-building-02,arched-building-01',
-    spacing: 20,
+    modelsArray: 'SM_Bld_House_Preset_09_1845,SM_Bld_House_Preset_03_1800',
+    spacing: 10,
     count: 2,
     facing: 0
   },
   'building blue 4floors': {
     mode: 'fixed',
-    modelsArray: 'arched-building-02,arched-building-01',
-    spacing: 20,
+    modelsArray: 'SM_Bld_House_Preset_09_1845,SM_Bld_House_Preset_03_1800',
+    spacing: 10,
     count: 2,
     facing: 0
   },
   'building blue 5floors': {
     mode: 'fixed',
-    modelsArray: 'arched-building-02,arched-building-01',
-    spacing: 20,
+    modelsArray: 'SM_Bld_House_Preset_09_1845,SM_Bld_House_Preset_03_1800',
+    spacing: 10,
     count: 2,
     facing: 0
   },
   'building blue 6floors': {
     mode: 'fixed',
-    modelsArray: 'arched-building-02,arched-building-01',
-    spacing: 20,
+    modelsArray: 'SM_Bld_House_Preset_09_1845,SM_Bld_House_Preset_03_1800',
+    spacing: 10,
     count: 2,
     facing: 0
   },
   'building blue 7floors': {
     mode: 'fixed',
-    modelsArray: 'arched-building-02,arched-building-01',
-    spacing: 20,
+    modelsArray: 'SM_Bld_House_Preset_09_1845,SM_Bld_House_Preset_03_1800',
+    spacing: 10,
     count: 2,
     facing: 0
   },
   'building yellow 1floor': {
     mode: 'fixed',
-    modelsArray: 'arched-building-02,arched-building-01',
-    spacing: 20,
+    modelsArray: 'SM_Bld_House_Preset_09_1845,SM_Bld_House_Preset_03_1800',
+    spacing: 10,
     count: 2,
     facing: 0
   },
   'building yellow 2floors': {
     mode: 'fixed',
-    modelsArray: 'arched-building-02,arched-building-01',
-    spacing: 20,
+    modelsArray: 'SM_Bld_House_Preset_09_1845,SM_Bld_House_Preset_03_1800',
+    spacing: 10,
     count: 2,
     facing: 0
   },
   'building yellow 3floors': {
     mode: 'fixed',
-    modelsArray: 'arched-building-02,arched-building-01',
-    spacing: 20,
+    modelsArray: 'SM_Bld_House_Preset_09_1845,SM_Bld_House_Preset_03_1800',
+    spacing: 10,
     count: 2,
     facing: 0
   },
   'building yellow 4floors': {
     mode: 'fixed',
-    modelsArray: 'arched-building-02,arched-building-01',
-    spacing: 20,
+    modelsArray: 'SM_Bld_House_Preset_09_1845,SM_Bld_House_Preset_03_1800',
+    spacing: 10,
     count: 2,
     facing: 0
   },
   'building yellow 5floors': {
     mode: 'fixed',
-    modelsArray: 'arched-building-02,arched-building-01',
-    spacing: 20,
+    modelsArray: 'SM_Bld_House_Preset_09_1845,SM_Bld_House_Preset_03_1800',
+    spacing: 10,
     count: 2,
     facing: 0
   },
   'building yellow 6floors': {
     mode: 'fixed',
-    modelsArray: 'arched-building-02,arched-building-01',
-    spacing: 20,
+    modelsArray: 'SM_Bld_House_Preset_09_1845,SM_Bld_House_Preset_03_1800',
+    spacing: 10,
     count: 2,
     facing: 0
   },
   'building yellow 7floors': {
     mode: 'fixed',
-    modelsArray: 'arched-building-02,arched-building-01',
-    spacing: 20,
+    modelsArray: 'SM_Bld_House_Preset_09_1845,SM_Bld_House_Preset_03_1800',
+    spacing: 10,
     count: 2,
     facing: 0
   },
   'buildings falltrees (30ft)': {
     mode: 'fixed',
-    modelsArray: 'arched-building-02,arched-building-01',
-    spacing: 20,
+    modelsArray: 'SM_Bld_House_Preset_09_1845,SM_Bld_House_Preset_03_1800',
+    spacing: 10,
     count: 2,
     facing: 0
   },
   'buildings pinetrees (30ft)': {
     mode: 'fixed',
-    modelsArray: 'arched-building-02,arched-building-01',
-    spacing: 20,
+    modelsArray: 'SM_Bld_House_Preset_09_1845,SM_Bld_House_Preset_03_1800',
+    spacing: 10,
     count: 2,
     facing: 0
   },
   'gas station': {
     mode: 'fixed',
-    modelsArray: 'arched-building-02,arched-building-01',
-    spacing: 20,
+    modelsArray: 'SM_Bld_House_Preset_09_1845,SM_Bld_House_Preset_03_1800',
+    spacing: 10,
     count: 2,
     facing: 0
   },
   'home depot': {
     mode: 'fixed',
-    modelsArray: 'arched-building-02,arched-building-01',
-    spacing: 20,
+    modelsArray: 'SM_Bld_House_Preset_09_1845,SM_Bld_House_Preset_03_1800',
+    spacing: 10,
     count: 2,
     facing: 0
   },
   'house 1floor': {
     mode: 'fixed',
-    modelsArray: 'arched-building-02,arched-building-01',
-    spacing: 20,
+    modelsArray: 'SM_Bld_House_Preset_09_1845,SM_Bld_House_Preset_03_1800',
+    spacing: 10,
     count: 2,
     facing: 0
   },
   'house 2floors': {
     mode: 'fixed',
-    modelsArray: 'arched-building-02,arched-building-01',
-    spacing: 20,
+    modelsArray: 'SM_Bld_House_Preset_09_1845,SM_Bld_House_Preset_03_1800',
+    spacing: 10,
     count: 2,
     facing: 0
   },
   'house 3floors': {
     mode: 'fixed',
-    modelsArray: 'arched-building-02,arched-building-01',
-    spacing: 20,
+    modelsArray: 'SM_Bld_House_Preset_09_1845,SM_Bld_House_Preset_03_1800',
+    spacing: 10,
     count: 2,
     facing: 0
   },
   'house 4floors': {
     mode: 'fixed',
-    modelsArray: 'arched-building-02,arched-building-01',
-    spacing: 20,
+    modelsArray: 'SM_Bld_House_Preset_09_1845,SM_Bld_House_Preset_03_1800',
+    spacing: 10,
     count: 2,
     facing: 0
   },
   'house 5floors': {
     mode: 'fixed',
-    modelsArray: 'arched-building-02,arched-building-01',
-    spacing: 20,
+    modelsArray: 'SM_Bld_House_Preset_09_1845,SM_Bld_House_Preset_03_1800',
+    spacing: 10,
     count: 2,
     facing: 0
   },
   'house newurbanist': {
     mode: 'fixed',
-    modelsArray: 'arched-building-02,arched-building-01',
-    spacing: 20,
+    modelsArray: 'SM_Bld_House_Preset_09_1845,SM_Bld_House_Preset_03_1800',
+    spacing: 10,
     count: 2,
     facing: 0
   },
   'house newurbanist red': {
     mode: 'fixed',
-    modelsArray: 'arched-building-02,arched-building-01',
-    spacing: 20,
+    modelsArray: 'SM_Bld_House_Preset_09_1845,SM_Bld_House_Preset_03_1800',
+    spacing: 10,
     count: 2,
     facing: 0
   },
   'live work': {
     mode: 'fixed',
-    modelsArray: 'arched-building-02,arched-building-01',
-    spacing: 20,
+    modelsArray: 'SM_Bld_House_Preset_09_1845,SM_Bld_House_Preset_03_1800',
+    spacing: 10,
     count: 2,
     facing: 0
   },
   'mart chilis': {
     mode: 'fixed',
-    modelsArray: 'arched-building-02,arched-building-01',
-    spacing: 20,
+    modelsArray: 'SM_Bld_House_Preset_09_1845,SM_Bld_House_Preset_03_1800',
+    spacing: 10,
     count: 2,
     facing: 0
   },
   'mikedesign midvale 2story': {
     mode: 'fixed',
-    modelsArray: 'arched-building-02,arched-building-01',
-    spacing: 20,
+    modelsArray: 'SM_Bld_House_Preset_09_1845,SM_Bld_House_Preset_03_1800',
+    spacing: 10,
     count: 2,
     facing: 0
   },
   'mikedesign midvale 3story': {
     mode: 'fixed',
-    modelsArray: 'arched-building-02,arched-building-01',
-    spacing: 20,
+    modelsArray: 'SM_Bld_House_Preset_09_1845,SM_Bld_House_Preset_03_1800',
+    spacing: 10,
     count: 2,
     facing: 0
   },
   'mikedesign midvale3 3story': {
     mode: 'fixed',
-    modelsArray: 'arched-building-02,arched-building-01',
-    spacing: 20,
+    modelsArray: 'SM_Bld_House_Preset_09_1845,SM_Bld_House_Preset_03_1800',
+    spacing: 10,
     count: 2,
     facing: 0
   },
   'mixed use 2floors': {
     mode: 'fixed',
-    modelsArray: 'arched-building-02,arched-building-01',
-    spacing: 20,
+    modelsArray: 'SM_Bld_House_Preset_09_1845,SM_Bld_House_Preset_03_1800',
+    spacing: 10,
     count: 2,
     facing: 0
   },
   'mixed use 3floors': {
     mode: 'fixed',
-    modelsArray: 'arched-building-02,arched-building-01',
-    spacing: 20,
+    modelsArray: 'SM_Bld_House_Preset_09_1845,SM_Bld_House_Preset_03_1800',
+    spacing: 10,
     count: 2,
     facing: 0
   },
   'mixed use 4floors': {
     mode: 'fixed',
-    modelsArray: 'arched-building-02,arched-building-01',
-    spacing: 20,
+    modelsArray: 'SM_Bld_House_Preset_09_1845,SM_Bld_House_Preset_03_1800',
+    spacing: 10,
     count: 2,
     facing: 0
   },
   'mixed use 5floors': {
     mode: 'fixed',
-    modelsArray: 'arched-building-02,arched-building-01',
-    spacing: 20,
+    modelsArray: 'SM_Bld_House_Preset_09_1845,SM_Bld_House_Preset_03_1800',
+    spacing: 10,
     count: 2,
     facing: 0
   },
   'nice apartment 3story': {
     mode: 'fixed',
-    modelsArray: 'arched-building-02,arched-building-01',
-    spacing: 20,
+    modelsArray: 'SM_Bld_House_Preset_09_1845,SM_Bld_House_Preset_03_1800',
+    spacing: 10,
     count: 2,
     facing: 0
   },
   'nice apartment 4story': {
     mode: 'fixed',
-    modelsArray: 'arched-building-02,arched-building-01',
-    spacing: 20,
+    modelsArray: 'SM_Bld_House_Preset_09_1845,SM_Bld_House_Preset_03_1800',
+    spacing: 10,
     count: 2,
     facing: 0
   },
   'nice apartment 5story': {
     mode: 'fixed',
-    modelsArray: 'arched-building-02,arched-building-01',
-    spacing: 20,
+    modelsArray: 'SM_Bld_House_Preset_09_1845,SM_Bld_House_Preset_03_1800',
+    spacing: 10,
     count: 2,
     facing: 0
   },
   'nice apartment 6story': {
     mode: 'fixed',
-    modelsArray: 'arched-building-02,arched-building-01',
-    spacing: 20,
+    modelsArray: 'SM_Bld_House_Preset_09_1845,SM_Bld_House_Preset_03_1800',
+    spacing: 10,
     count: 2,
     facing: 0
   },
   'red mixed use 1floor': {
     mode: 'fixed',
-    modelsArray: 'arched-building-02,arched-building-01',
-    spacing: 20,
+    modelsArray: 'SM_Bld_House_Preset_09_1845,SM_Bld_House_Preset_03_1800',
+    spacing: 10,
     count: 2,
     facing: 0
   },
   'red mixed use 2floors': {
     mode: 'fixed',
-    modelsArray: 'arched-building-02,arched-building-01',
-    spacing: 20,
+    modelsArray: 'SM_Bld_House_Preset_09_1845,SM_Bld_House_Preset_03_1800',
+    spacing: 10,
     count: 2,
     facing: 0
   },
   'red mixed use 3floors': {
     mode: 'fixed',
-    modelsArray: 'arched-building-02,arched-building-01',
-    spacing: 20,
+    modelsArray: 'SM_Bld_House_Preset_09_1845,SM_Bld_House_Preset_03_1800',
+    spacing: 10,
     count: 2,
     facing: 0
   },
   'red mixed use 4floors': {
     mode: 'fixed',
-    modelsArray: 'arched-building-02,arched-building-01',
-    spacing: 20,
+    modelsArray: 'SM_Bld_House_Preset_09_1845,SM_Bld_House_Preset_03_1800',
+    spacing: 10,
     count: 2,
     facing: 0
   },
   'red mixed use 5floors': {
     mode: 'fixed',
-    modelsArray: 'arched-building-02,arched-building-01',
-    spacing: 20,
+    modelsArray: 'SM_Bld_House_Preset_09_1845,SM_Bld_House_Preset_03_1800',
+    spacing: 10,
     count: 2,
     facing: 0
   },
   residential: {
     mode: 'fixed',
-    modelsArray: 'arched-building-02,arched-building-01',
-    spacing: 20,
+    modelsArray: 'SM_Bld_House_Preset_09_1845,SM_Bld_House_Preset_03_1800',
+    spacing: 10,
     count: 2,
     facing: 0
   },
   'river crosssection': {
     mode: 'fixed',
-    modelsArray: 'arched-building-02,arched-building-01',
-    spacing: 20,
+    modelsArray: 'SM_Bld_House_Preset_09_1845,SM_Bld_House_Preset_03_1800',
+    spacing: 10,
     count: 2,
     facing: 0
   },
   'river crosssection 20ft': {
     mode: 'fixed',
-    modelsArray: 'arched-building-02,arched-building-01',
-    spacing: 20,
+    modelsArray: 'SM_Bld_House_Preset_09_1845,SM_Bld_House_Preset_03_1800',
+    spacing: 10,
     count: 2,
     facing: 0
   },
   'river crosssection 40ft': {
     mode: 'fixed',
-    modelsArray: 'arched-building-02,arched-building-01',
-    spacing: 20,
+    modelsArray: 'SM_Bld_House_Preset_09_1845,SM_Bld_House_Preset_03_1800',
+    spacing: 10,
     count: 2,
     facing: 0
   },
   'shop 1floor': {
     mode: 'fixed',
-    modelsArray: 'arched-building-02,arched-building-01',
-    spacing: 20,
+    modelsArray: 'SM_Bld_House_Preset_09_1845,SM_Bld_House_Preset_03_1800',
+    spacing: 10,
     count: 2,
     facing: 0
   },
   'shop 2floors': {
     mode: 'fixed',
-    modelsArray: 'arched-building-02,arched-building-01',
-    spacing: 20,
+    modelsArray: 'SM_Bld_House_Preset_09_1845,SM_Bld_House_Preset_03_1800',
+    spacing: 10,
     count: 2,
     facing: 0
   },
   'shop 3floors': {
     mode: 'fixed',
-    modelsArray: 'arched-building-02,arched-building-01',
-    spacing: 20,
+    modelsArray: 'SM_Bld_House_Preset_09_1845,SM_Bld_House_Preset_03_1800',
+    spacing: 10,
     count: 2,
     facing: 0
   },
   'shop 4floors': {
     mode: 'fixed',
-    modelsArray: 'arched-building-02,arched-building-01',
-    spacing: 20,
+    modelsArray: 'SM_Bld_House_Preset_09_1845,SM_Bld_House_Preset_03_1800',
+    spacing: 10,
     count: 2,
     facing: 0
   },
   'single family': {
     mode: 'fixed',
-    modelsArray: 'arched-building-02,arched-building-01',
-    spacing: 20,
+    modelsArray: 'SM_Bld_House_Preset_09_1845,SM_Bld_House_Preset_03_1800',
+    spacing: 10,
     count: 2,
     facing: 0
   },
   'single family back': {
     mode: 'fixed',
-    modelsArray: 'arched-building-02,arched-building-01',
-    spacing: 20,
+    modelsArray: 'SM_Bld_House_Preset_09_1845,SM_Bld_House_Preset_03_1800',
+    spacing: 10,
     count: 2,
     facing: 0
   },
   'stripmall onerowparking': {
     mode: 'fixed',
-    modelsArray: 'arched-building-02,arched-building-01',
-    spacing: 20,
+    modelsArray: 'SM_Bld_House_Preset_09_1845,SM_Bld_House_Preset_03_1800',
+    spacing: 10,
     count: 2,
     facing: 0
   },
   'stripmall1 tworowsparking': {
     mode: 'fixed',
-    modelsArray: 'arched-building-02,arched-building-01',
-    spacing: 20,
+    modelsArray: 'SM_Bld_House_Preset_09_1845,SM_Bld_House_Preset_03_1800',
+    spacing: 10,
     count: 2,
     facing: 0
   },
   'stripmall1, onerowparking': {
     mode: 'fixed',
-    modelsArray: 'arched-building-02,arched-building-01',
-    spacing: 20,
+    modelsArray: 'SM_Bld_House_Preset_09_1845,SM_Bld_House_Preset_03_1800',
+    spacing: 10,
     count: 2,
     facing: 0
   },
   'stripmall2 tworowsparking': {
     mode: 'fixed',
-    modelsArray: 'arched-building-02,arched-building-01',
-    spacing: 20,
+    modelsArray: 'SM_Bld_House_Preset_09_1845,SM_Bld_House_Preset_03_1800',
+    spacing: 10,
     count: 2,
     facing: 0
   },
   'townhouse row 3story': {
     mode: 'fixed',
-    modelsArray: 'arched-building-02,arched-building-01',
-    spacing: 20,
+    modelsArray: 'SM_Bld_House_Preset_09_1845,SM_Bld_House_Preset_03_1800',
+    spacing: 10,
     count: 2,
     facing: 0
   },
   walmart: {
     mode: 'fixed',
-    modelsArray: 'arched-building-02,arched-building-01',
-    spacing: 20,
+    modelsArray: 'SM_Bld_House_Preset_09_1845,SM_Bld_House_Preset_03_1800',
+    spacing: 10,
     count: 2,
     facing: 0
   },
   'water 20ft': {
     mode: 'fixed',
-    modelsArray: 'arched-building-02,arched-building-01',
-    spacing: 20,
+    modelsArray: 'SM_Bld_House_Preset_09_1845,SM_Bld_House_Preset_03_1800',
+    spacing: 10,
     count: 2,
     facing: 0
   },
   'water 30ft': {
     mode: 'fixed',
-    modelsArray: 'arched-building-02,arched-building-01',
-    spacing: 20,
+    modelsArray: 'SM_Bld_House_Preset_09_1845,SM_Bld_House_Preset_03_1800',
+    spacing: 10,
     count: 2,
     facing: 0
   },
@@ -819,14 +873,62 @@ const STREETPLAN_OBJECT_TO_GENERATED_CLONES_MAPPING = {
     count: 10,
     facing: 0
   },
-  'flowers pedrefuge (8ft)': '',
-  'grassslopemedian (12ft)': '',
-  'grassslopemedian (24ft)': '',
-  'grassy median (10ft)': '',
-  'grassy median (12ft)': '',
-  'grassy median (4ft)': '',
-  'grassy median (6ft)': '',
-  'grassy median (8ft)': '',
+  'flowers pedrefuge (8ft)': {
+    mode: 'fixed',
+    modelsArray: 'ground-grass',
+    spacing: 50,
+    count: 10,
+    facing: 0
+  },
+  'grassslopemedian (12ft)': {
+    mode: 'fixed',
+    modelsArray: 'ground-grass',
+    spacing: 50,
+    count: 10,
+    facing: 0
+  },
+  'grassslopemedian (24ft)': {
+    mode: 'fixed',
+    modelsArray: 'ground-grass',
+    spacing: 50,
+    count: 10,
+    facing: 0
+  },
+  'grassy median (10ft)': {
+    mode: 'fixed',
+    modelsArray: 'ground-grass',
+    spacing: 50,
+    count: 10,
+    facing: 0
+  },
+  'grassy median (12ft)': {
+    mode: 'fixed',
+    modelsArray: 'ground-grass',
+    spacing: 50,
+    count: 10,
+    facing: 0
+  },
+  'grassy median (4ft)': {
+    mode: 'fixed',
+    modelsArray: 'ground-grass',
+    spacing: 50,
+    count: 10,
+    facing: 0
+  },
+  'grassy median (6ft)': {
+    mode: 'fixed',
+    modelsArray: 'ground-grass',
+    spacing: 50,
+    count: 10,
+    facing: 0
+  },
+  'grassy median (8ft)': {
+    mode: 'fixed',
+    modelsArray: 'ground-grass',
+    spacing: 50,
+    count: 10,
+    facing: 0
+  },
   'rock median (10ft)': {
     mode: 'fixed',
     modelsArray: 'sp-median-planterbox-tall-10x30ft',
@@ -925,10 +1027,34 @@ const STREETPLAN_OBJECT_TO_GENERATED_CLONES_MAPPING = {
     count: 10,
     facing: 0
   },
-  'tropical median (4ft)': '',
-  'weeds median (4ft)': '',
-  'weeds median (6ft)': '',
-  'weeds median (8ft)': '',
+  'tropical median (4ft)': {
+    mode: 'fixed',
+    modelsArray: 'ground-grass',
+    spacing: 50,
+    count: 10,
+    facing: 0
+  },
+  'weeds median (4ft)': {
+    mode: 'fixed',
+    modelsArray: 'ground-grass',
+    spacing: 50,
+    count: 10,
+    facing: 0
+  },
+  'weeds median (6ft)': {
+    mode: 'fixed',
+    modelsArray: 'ground-grass',
+    spacing: 50,
+    count: 10,
+    facing: 0
+  },
+  'weeds median (8ft)': {
+    mode: 'fixed',
+    modelsArray: 'ground-grass',
+    spacing: 50,
+    count: 10,
+    facing: 0
+  },
   'away, left park, back in': '',
   'away, left park, head in': '',
   'away, right park, back in': '',
@@ -1071,200 +1197,200 @@ const STREETPLAN_OBJECT_TO_GENERATED_CLONES_MAPPING = {
     mode: 'random',
     modelsArray: 'a_char1,a_char3,a_char5,a_char7',
     spacing: 15,
-    count: 10,
+    count: 20,
     facing: 0
   },
   '2 people': {
     mode: 'random',
     modelsArray: 'char1,char3,char5,char7',
     spacing: 15,
-    count: 10,
+    count: 20,
     facing: 0
   },
   '3 people': {
     mode: 'random',
     modelsArray: 'a_char2,a_char4,a_char6,a_char8',
     spacing: 15,
-    count: 10,
+    count: 20,
     facing: 0
   },
   couple: {
     mode: 'random',
     modelsArray: 'char2,char4,char6,char8',
     spacing: 15,
-    count: 10,
+    count: 20,
     facing: 0
   },
   'dog walker': {
     mode: 'random',
     modelsArray: 'a_char1,a_char3,a_char5,a_char7',
     spacing: 15,
-    count: 10,
+    count: 20,
     facing: 0
   },
   'grandpa and todler': {
     mode: 'random',
     modelsArray: 'char1,char3,char5,char7',
     spacing: 15,
-    count: 10,
+    count: 20,
     facing: 0
   },
   'lady crossing street': {
     mode: 'random',
     modelsArray: 'a_char2,a_char4,a_char6,a_char8',
     spacing: 15,
-    count: 10,
+    count: 20,
     facing: 0
   },
   man: {
     mode: 'random',
     modelsArray: 'char2,char4,char6,char8',
     spacing: 15,
-    count: 10,
+    count: 20,
     facing: 0
   },
   'man and girl': {
     mode: 'random',
     modelsArray: 'a_char1,a_char3,a_char5,a_char7',
     spacing: 15,
-    count: 10,
+    count: 20,
     facing: 0
   },
   'man come': {
     mode: 'random',
     modelsArray: 'char1,char3,char5,char7',
     spacing: 15,
-    count: 10,
+    count: 20,
     facing: 0
   },
   'man come rev': {
     mode: 'random',
     modelsArray: 'a_char2,a_char4,a_char6,a_char8',
     spacing: 15,
-    count: 10,
+    count: 20,
     facing: 0
   },
   'man go': {
     mode: 'random',
     modelsArray: 'char2,char4,char6,char8',
     spacing: 15,
-    count: 10,
+    count: 20,
     facing: 0
   },
   'man go rev': {
     mode: 'random',
     modelsArray: 'a_char1,a_char3,a_char5,a_char7',
     spacing: 15,
-    count: 10,
+    count: 20,
     facing: 0
   },
   'man jogging': {
     mode: 'random',
     modelsArray: 'char1,char3,char5,char7',
     spacing: 15,
-    count: 10,
+    count: 20,
     facing: 0
   },
   'man walking': {
     mode: 'random',
     modelsArray: 'a_char2,a_char4,a_char6,a_char8',
     spacing: 15,
-    count: 10,
+    count: 20,
     facing: 0
   },
   'older couple': {
     mode: 'random',
     modelsArray: 'char2,char4,char6,char8',
     spacing: 15,
-    count: 10,
+    count: 20,
     facing: 0
   },
   'older ladies walking': {
     mode: 'random',
     modelsArray: 'a_char1,a_char3,a_char5,a_char7',
     spacing: 15,
-    count: 10,
+    count: 20,
     facing: 0
   },
   'older man walking': {
     mode: 'random',
     modelsArray: 'char1,char3,char5,char7',
     spacing: 15,
-    count: 10,
+    count: 20,
     facing: 0
   },
   'small girl': {
     mode: 'random',
     modelsArray: 'a_char2,a_char4,a_char6,a_char8',
     spacing: 15,
-    count: 10,
+    count: 20,
     facing: 0
   },
   'wheel chair': {
     mode: 'random',
     modelsArray: 'char2,char4,char6,char8',
     spacing: 15,
-    count: 10,
+    count: 20,
     facing: 0
   },
   'woman back': {
     mode: 'random',
     modelsArray: 'a_char1,a_char3,a_char5,a_char7',
     spacing: 15,
-    count: 10,
+    count: 20,
     facing: 0
   },
   'woman in hat': {
     mode: 'random',
     modelsArray: 'char1,char3,char5,char7',
     spacing: 15,
-    count: 10,
+    count: 20,
     facing: 0
   },
   'woman shopping': {
     mode: 'random',
     modelsArray: 'a_char2,a_char4,a_char6,a_char8',
     spacing: 15,
-    count: 10,
+    count: 20,
     facing: 0
   },
   'woman walking': {
     mode: 'random',
     modelsArray: 'char2,char4,char6,char8',
     spacing: 15,
-    count: 10,
+    count: 20,
     facing: 0
   },
   'young woman walking': {
     mode: 'random',
     modelsArray: 'a_char1,a_char3,a_char5,a_char7',
     spacing: 15,
-    count: 10,
+    count: 20,
     facing: 0
   },
   'cobra light': {
     mode: 'fixed',
     modelsArray: 'lamp-modern',
     spacing: 70,
-    count: 10,
+    count: 20,
     facing: 0
   },
   'hawk signal narrow': {
-    mode: 'fixed',
+    mode: 'single',
     modelsArray: 'signal_right',
     spacing: 50,
     count: 10,
     facing: 0
   },
   'hawk signal wide': {
-    mode: 'fixed',
+    mode: 'single',
     modelsArray: 'signal_right',
     spacing: 50,
     count: 10,
     facing: 0
   },
   'hawk signal xwide': {
-    mode: 'fixed',
+    mode: 'single',
     modelsArray: 'signal_right',
     spacing: 50,
     count: 10,
