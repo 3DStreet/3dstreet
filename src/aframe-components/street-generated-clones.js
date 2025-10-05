@@ -215,7 +215,13 @@ AFRAME.registerComponent('street-generated-clones', {
       'sp-prop-mixeduse-3L-22ft': 6.71, // ~22ft converted to meters
       'sp-prop-mixeduse-3L-23ft-corner': 7.01, // ~23ft converted to meters
       'sp-prop-mixeduse-3L-42ft': 12.8, // ~42ft converted to meters
-      'sp-prop-mixeduse-3L-78ft-corner': 23.77 // ~78ft converted to meters
+      'sp-prop-mixeduse-3L-78ft-corner': 23.77, // ~78ft converted to meters
+      'sp-prop-sf-2L-64ft': 19.5,
+      'sp-prop-sf-2L-62ft': 18.9,
+      'sp-prop-sf-1L-62ft': 18.9,
+      'sp-prop-sf-1L-41ft': 12.5,
+      'sp-prop-townhouse-3L-20ft': 6.1,
+      'sp-prop-townhouse-3L-23ft': 7.01
     };
 
     // These are approximate depths for how far buildings extend from their placement point
@@ -239,7 +245,13 @@ AFRAME.registerComponent('street-generated-clones', {
       'sp-prop-mixeduse-3L-22ft': 7.2,
       'sp-prop-mixeduse-3L-23ft-corner': 7.09, // Corner buildings slightly deeper
       'sp-prop-mixeduse-3L-42ft': 16.42,
-      'sp-prop-mixeduse-3L-78ft-corner': 27.3 // Corner buildings slightly deeper
+      'sp-prop-mixeduse-3L-78ft-corner': 27.3, // Corner buildings slightly deeper
+      'sp-prop-sf-2L-64ft': 15.22,
+      'sp-prop-sf-2L-62ft': 18.36,
+      'sp-prop-sf-1L-62ft': 24.27,
+      'sp-prop-sf-1L-41ft': 10.15,
+      'sp-prop-townhouse-3L-20ft': 10.22,
+      'sp-prop-townhouse-3L-23ft': 10.22
     };
 
     // Use stored segment width to calculate justified X position
