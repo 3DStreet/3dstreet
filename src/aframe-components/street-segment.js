@@ -196,6 +196,12 @@ const TYPES = {
           'sp-prop-mixeduse-2L-29ft, sp-prop-mixeduse-2L-30ft, sp-prop-mixeduse-3L-18ft, sp-prop-mixeduse-3L-22ft, sp-prop-mixeduse-3L-23ft-corner, sp-prop-mixeduse-3L-42ft, sp-prop-mixeduse-3L-78ft-corner',
         surface: 'sidewalk'
       },
+      'sp-residential': {
+        modelsArray:
+          'sp-prop-sf-2L-64ft, sp-prop-sf-2L-62ft, sp-prop-sf-1L-62ft, sp-prop-sf-1L-41ft, sp-prop-townhouse-3L-20ft, sp-prop-townhouse-3L-23ft',
+        surface: 'grass',
+        positionY: -0.01
+      },
       custom: {
         // Custom variant - no default values, preserves user modifications
       }
@@ -274,6 +280,7 @@ AFRAME.registerComponent('street-segment', {
         'grass',
         'parking',
         'sp-mixeduse',
+        'sp-residential',
         'custom'
       ]
     },
@@ -314,6 +321,9 @@ AFRAME.registerComponent('street-segment', {
           }
           if (variantConfig.mode !== undefined) {
             componentsToGenerate.clones[0].mode = variantConfig.mode;
+          }
+          if (variantConfig.positionY !== undefined) {
+            componentsToGenerate.clones[0].positionY = variantConfig.positionY;
           }
         }
       }
