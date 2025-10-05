@@ -313,10 +313,10 @@ AFRAME.registerComponent('street-generated-clones', {
 
     let rotationY = data.facing + baseRotation;
     if (data.direction === 'inbound') {
-      rotationY = 180 - data.facing + baseRotation;
+      rotationY = 0 + data.facing + baseRotation;
     }
     if (data.direction === 'outbound') {
-      rotationY = 0 + data.facing + baseRotation;
+      rotationY = 180 - data.facing + baseRotation;
     }
     if (data.randomFacing) {
       rotationY = this.rng() * 360 + baseRotation;
