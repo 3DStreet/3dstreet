@@ -202,6 +202,12 @@ const TYPES = {
         surface: 'grass',
         positionY: -0.01
       },
+      'sp-big-box': {
+        modelsArray:
+          'sp-prop-bigbox-1L-220ft, sp-prop-bigbox-1L-291ft, sp-prop-parking-3L-155ft, sp-prop-parking-3L-97ft-centered, sp-prop-gov-3L-61ft',
+        surface: 'parking-lot',
+        positionY: -0.01
+      },
       custom: {
         // Custom variant - no default values, preserves user modifications
       }
@@ -281,6 +287,7 @@ AFRAME.registerComponent('street-segment', {
         'parking',
         'sp-mixeduse',
         'sp-residential',
+        'sp-big-box',
         'custom'
       ]
     },

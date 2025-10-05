@@ -221,7 +221,12 @@ AFRAME.registerComponent('street-generated-clones', {
       'sp-prop-sf-1L-62ft': 18.9,
       'sp-prop-sf-1L-41ft': 12.5,
       'sp-prop-townhouse-3L-20ft': 6.1,
-      'sp-prop-townhouse-3L-23ft': 7.01
+      'sp-prop-townhouse-3L-23ft': 7.01,
+      'sp-prop-bigbox-1L-220ft': 67, // ~220ft converted to meters
+      'sp-prop-bigbox-1L-291ft': 88.7, // ~291ft converted to meters
+      'sp-prop-parking-3L-155ft': 47.2, // ~155ft converted to meters
+      'sp-prop-parking-3L-97ft-centered': 29.6, // ~97ft converted to meters
+      'sp-prop-gov-3L-61ft': 18.6 // ~61ft converted to meters
     };
 
     // These are approximate depths for how far buildings extend from their placement point
@@ -251,7 +256,12 @@ AFRAME.registerComponent('street-generated-clones', {
       'sp-prop-sf-1L-62ft': 24.27,
       'sp-prop-sf-1L-41ft': 10.15,
       'sp-prop-townhouse-3L-20ft': 10.22,
-      'sp-prop-townhouse-3L-23ft': 10.22
+      'sp-prop-townhouse-3L-23ft': 10.22,
+      'sp-prop-bigbox-1L-220ft': 44.79,
+      'sp-prop-bigbox-1L-291ft': 79,
+      'sp-prop-parking-3L-155ft': 43.14,
+      'sp-prop-parking-3L-97ft-centered': 43.14,
+      'sp-prop-gov-3L-61ft': 16.23
     };
 
     // Use stored segment width to calculate justified X position
