@@ -424,7 +424,7 @@ AFRAME.registerComponent('managed-street', {
             segmentType = 'divider';
             break;
           case 'Furniture':
-            segmentType = 'sidewalk-tree';
+            segmentType = 'sidewalk';
             break;
           case 'Lanes':
             segmentType = 'parking-lane';
