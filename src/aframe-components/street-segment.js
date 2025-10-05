@@ -304,6 +304,25 @@ AFRAME.registerComponent('street-segment', {
   },
   generateComponentsFromSegmentObject: function (segmentObject) {
     // use global preset data to create the generated components for a given segment type
+    if (!segmentObject) {
+      console.error(
+        '[street-segment]',
+        'segmentObject is undefined! this.data.type:',
+        this.data.type
+      );
+      console.error(
+        '[street-segment]',
+        'Available types:',
+        Object.keys(this.types)
+      );
+      return;
+    }
+
+    // Skip if no generated config (valid for streetplan imports with no objects)
+    if (!segmentObject.generated) {
+      return;
+    }
+
     let componentsToGenerate = segmentObject.generated;
 
     // if segment has variants and a variant is specified, override the generated config
