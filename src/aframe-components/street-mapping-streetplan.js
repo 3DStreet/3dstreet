@@ -61,74 +61,20 @@ const STREETPLAN_OBJECT_TO_GENERATED_CLONES_MAPPING = {
   },
   'curb edge: 0.5 ft': '',
   fence: '',
-  'grassmound (10ft)': {
-    mode: 'fixed',
-    modelsArray: 'ground-grass',
-    spacing: 50,
-    count: 10,
-    facing: 0
-  },
-  'grassmound (12ft)': {
-    mode: 'fixed',
-    modelsArray: 'ground-grass',
-    spacing: 50,
-    count: 10,
-    facing: 0
-  },
-  'grassmound (4ft)': {
-    mode: 'fixed',
-    modelsArray: 'ground-grass',
-    spacing: 50,
-    count: 10,
-    facing: 0
-  },
-  'grassmound (6ft)': {
-    mode: 'fixed',
-    modelsArray: 'ground-grass',
-    spacing: 50,
-    count: 10,
-    facing: 0
-  },
-  'grassmound (8ft)': {
-    mode: 'fixed',
-    modelsArray: 'ground-grass',
-    spacing: 50,
-    count: 10,
-    facing: 0
-  },
+  'grassmound (10ft)': '',
+  'grassmound (12ft)': '',
+  'grassmound (4ft)': '',
+  'grassmound (6ft)': '',
+  'grassmound (8ft)': '',
   'gutter 2 narrow': '',
   'gutter rolling 2.5 ft, left': '',
   'gutter rolling 2.5 ft, right': '',
   'gutter std. 2.5 ft, left': '',
   'gutter std. 2.5 ft, right': '',
-  'materials grassslope (12ft)': {
-    mode: 'fixed',
-    modelsArray: 'ground-grass',
-    spacing: 50,
-    count: 10,
-    facing: 0
-  },
-  'materials grassslope (24ft)': {
-    mode: 'fixed',
-    modelsArray: 'ground-grass',
-    spacing: 50,
-    count: 10,
-    facing: 0
-  },
-  'materials grassslope rev (12ft)': {
-    mode: 'fixed',
-    modelsArray: 'ground-grass',
-    spacing: 50,
-    count: 10,
-    facing: 0
-  },
-  'materials grassslope rev (24ft)': {
-    mode: 'fixed',
-    modelsArray: 'ground-grass',
-    spacing: 50,
-    count: 10,
-    facing: 0
-  },
+  'materials grassslope (12ft)': '',
+  'materials grassslope (24ft)': '',
+  'materials grassslope rev (12ft)': '',
+  'materials grassslope rev (24ft)': '',
   'mountable barrier 1-ft': '',
   'orange barrel': {
     mode: 'fixed',
@@ -873,62 +819,14 @@ const STREETPLAN_OBJECT_TO_GENERATED_CLONES_MAPPING = {
     count: 10,
     facing: 0
   },
-  'flowers pedrefuge (8ft)': {
-    mode: 'fixed',
-    modelsArray: 'ground-grass',
-    spacing: 50,
-    count: 10,
-    facing: 0
-  },
-  'grassslopemedian (12ft)': {
-    mode: 'fixed',
-    modelsArray: 'ground-grass',
-    spacing: 50,
-    count: 10,
-    facing: 0
-  },
-  'grassslopemedian (24ft)': {
-    mode: 'fixed',
-    modelsArray: 'ground-grass',
-    spacing: 50,
-    count: 10,
-    facing: 0
-  },
-  'grassy median (10ft)': {
-    mode: 'fixed',
-    modelsArray: 'ground-grass',
-    spacing: 50,
-    count: 10,
-    facing: 0
-  },
-  'grassy median (12ft)': {
-    mode: 'fixed',
-    modelsArray: 'ground-grass',
-    spacing: 50,
-    count: 10,
-    facing: 0
-  },
-  'grassy median (4ft)': {
-    mode: 'fixed',
-    modelsArray: 'ground-grass',
-    spacing: 50,
-    count: 10,
-    facing: 0
-  },
-  'grassy median (6ft)': {
-    mode: 'fixed',
-    modelsArray: 'ground-grass',
-    spacing: 50,
-    count: 10,
-    facing: 0
-  },
-  'grassy median (8ft)': {
-    mode: 'fixed',
-    modelsArray: 'ground-grass',
-    spacing: 50,
-    count: 10,
-    facing: 0
-  },
+  'flowers pedrefuge (8ft)': '',
+  'grassslopemedian (12ft)': '',
+  'grassslopemedian (24ft)': '',
+  'grassy median (10ft)': '',
+  'grassy median (12ft)': '',
+  'grassy median (4ft)': '',
+  'grassy median (6ft)': '',
+  'grassy median (8ft)': '',
   'rock median (10ft)': {
     mode: 'fixed',
     modelsArray: 'sp-median-planterbox-tall-10x30ft',
@@ -1027,34 +925,10 @@ const STREETPLAN_OBJECT_TO_GENERATED_CLONES_MAPPING = {
     count: 10,
     facing: 0
   },
-  'tropical median (4ft)': {
-    mode: 'fixed',
-    modelsArray: 'ground-grass',
-    spacing: 50,
-    count: 10,
-    facing: 0
-  },
-  'weeds median (4ft)': {
-    mode: 'fixed',
-    modelsArray: 'ground-grass',
-    spacing: 50,
-    count: 10,
-    facing: 0
-  },
-  'weeds median (6ft)': {
-    mode: 'fixed',
-    modelsArray: 'ground-grass',
-    spacing: 50,
-    count: 10,
-    facing: 0
-  },
-  'weeds median (8ft)': {
-    mode: 'fixed',
-    modelsArray: 'ground-grass',
-    spacing: 50,
-    count: 10,
-    facing: 0
-  },
+  'tropical median (4ft)': '',
+  'weeds median (4ft)': '',
+  'weeds median (6ft)': '',
+  'weeds median (8ft)': '',
   'away, left park, back in': '',
   'away, left park, head in': '',
   'away, right park, back in': '',
