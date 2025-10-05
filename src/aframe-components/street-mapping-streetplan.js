@@ -751,14 +751,14 @@ const STREETPLAN_OBJECT_TO_GENERATED_CLONES_MAPPING = {
   'blank pedrefuge (8ft)': '',
   'cactus median (10ft)': {
     mode: 'fixed',
-    modelsArray: 'sp-median-planterbox-tall-10x30ft',
+    modelsArray: 'ssp-median-planterbox-tall-10x30ft',
     spacing: 1,
     count: 10,
     facing: 0
   },
   'cactus median (12ft)': {
     mode: 'fixed',
-    modelsArray: 'sp-median-planterbox-tall-10x30ft',
+    modelsArray: 'ssp-median-planterbox-tall-10x30ft',
     spacing: 1,
     count: 10,
     facing: 0
@@ -786,14 +786,14 @@ const STREETPLAN_OBJECT_TO_GENERATED_CLONES_MAPPING = {
   },
   'flower median (10ft)': {
     mode: 'fixed',
-    modelsArray: 'sp-median-planterbox-tall-10x30ft',
+    modelsArray: 'ssp-median-planterbox-tall-10x30ft',
     spacing: 1,
     count: 10,
     facing: 0
   },
   'flower median (12ft)': {
     mode: 'fixed',
-    modelsArray: 'sp-median-planterbox-tall-10x30ft',
+    modelsArray: 'ssp-median-planterbox-tall-10x30ft',
     spacing: 1,
     count: 10,
     facing: 0
@@ -835,14 +835,14 @@ const STREETPLAN_OBJECT_TO_GENERATED_CLONES_MAPPING = {
   'grassy median (8ft)': '',
   'rock median (10ft)': {
     mode: 'fixed',
-    modelsArray: 'sp-median-planterbox-tall-10x30ft',
+    modelsArray: 'ssp-median-planterbox-tall-10x30ft',
     spacing: 1,
     count: 10,
     facing: 0
   },
   'rock median (12ft)': {
     mode: 'fixed',
-    modelsArray: 'sp-median-planterbox-tall-10x30ft',
+    modelsArray: 'ssp-median-planterbox-tall-10x30ft',
     spacing: 1,
     count: 10,
     facing: 0
@@ -870,14 +870,14 @@ const STREETPLAN_OBJECT_TO_GENERATED_CLONES_MAPPING = {
   },
   'tallplantbox (10ft)': {
     mode: 'fixed',
-    modelsArray: 'sp-median-planterbox-tall-10x30ft',
+    modelsArray: 'ssp-median-planterbox-tall-10x30ft',
     spacing: 1,
     count: 10,
     facing: 0
   },
   'tallplantbox (12ft)': {
     mode: 'fixed',
-    modelsArray: 'sp-median-planterbox-tall-10x30ft',
+    modelsArray: 'ssp-median-planterbox-tall-10x30ft',
     spacing: 1,
     count: 10,
     facing: 0
@@ -905,14 +905,14 @@ const STREETPLAN_OBJECT_TO_GENERATED_CLONES_MAPPING = {
   },
   'tallplantbox pedref (10ft)': {
     mode: 'fixed',
-    modelsArray: 'sp-median-planterbox-tall-10x30ft',
+    modelsArray: 'ssp-median-planterbox-tall-10x30ft',
     spacing: 1,
     count: 10,
     facing: 0
   },
   'tallplantbox pedref (12ft)': {
     mode: 'fixed',
-    modelsArray: 'sp-median-planterbox-tall-10x30ft',
+    modelsArray: 'ssp-median-planterbox-tall-10x30ft',
     spacing: 1,
     count: 10,
     facing: 0
