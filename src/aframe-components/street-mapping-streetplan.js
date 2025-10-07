@@ -289,462 +289,462 @@ const STREETPLAN_OBJECT_TO_GENERATED_CLONES_MAPPING = {
   'brick apartment 1floor': {
     mode: 'fixed',
     modelsArray: 'SM_Bld_House_Preset_09_1845,SM_Bld_House_Preset_03_1800',
-    spacing: 10,
+    spacing: 20,
     count: 2,
     facing: 0
   },
   'brick apartment 2floors': {
     mode: 'fixed',
     modelsArray: 'SM_Bld_House_Preset_09_1845,SM_Bld_House_Preset_03_1800',
-    spacing: 10,
+    spacing: 20,
     count: 2,
     facing: 0
   },
   'brick apartment 3floors': {
     mode: 'fixed',
     modelsArray: 'SM_Bld_House_Preset_09_1845,SM_Bld_House_Preset_03_1800',
-    spacing: 10,
+    spacing: 20,
     count: 2,
     facing: 0
   },
   'brick apartment 4floors': {
     mode: 'fixed',
     modelsArray: 'SM_Bld_House_Preset_09_1845,SM_Bld_House_Preset_03_1800',
-    spacing: 10,
+    spacing: 20,
     count: 2,
     facing: 0
   },
   'brick apartment 5floors': {
     mode: 'fixed',
     modelsArray: 'SM_Bld_House_Preset_09_1845,SM_Bld_House_Preset_03_1800',
-    spacing: 10,
+    spacing: 20,
     count: 2,
     facing: 0
   },
   'building blue 1floor': {
     mode: 'fixed',
     modelsArray: 'SM_Bld_House_Preset_09_1845,SM_Bld_House_Preset_03_1800',
-    spacing: 10,
+    spacing: 20,
     count: 2,
     facing: 0
   },
   'building blue 2floors': {
     mode: 'fixed',
     modelsArray: 'SM_Bld_House_Preset_09_1845,SM_Bld_House_Preset_03_1800',
-    spacing: 10,
+    spacing: 20,
     count: 2,
     facing: 0
   },
   'building blue 3floors': {
     mode: 'fixed',
     modelsArray: 'SM_Bld_House_Preset_09_1845,SM_Bld_House_Preset_03_1800',
-    spacing: 10,
+    spacing: 20,
     count: 2,
     facing: 0
   },
   'building blue 4floors': {
     mode: 'fixed',
     modelsArray: 'SM_Bld_House_Preset_09_1845,SM_Bld_House_Preset_03_1800',
-    spacing: 10,
+    spacing: 20,
     count: 2,
     facing: 0
   },
   'building blue 5floors': {
     mode: 'fixed',
     modelsArray: 'SM_Bld_House_Preset_09_1845,SM_Bld_House_Preset_03_1800',
-    spacing: 10,
+    spacing: 20,
     count: 2,
     facing: 0
   },
   'building blue 6floors': {
     mode: 'fixed',
     modelsArray: 'SM_Bld_House_Preset_09_1845,SM_Bld_House_Preset_03_1800',
-    spacing: 10,
+    spacing: 20,
     count: 2,
     facing: 0
   },
   'building blue 7floors': {
     mode: 'fixed',
     modelsArray: 'SM_Bld_House_Preset_09_1845,SM_Bld_House_Preset_03_1800',
-    spacing: 10,
+    spacing: 20,
     count: 2,
     facing: 0
   },
   'building yellow 1floor': {
     mode: 'fixed',
     modelsArray: 'SM_Bld_House_Preset_09_1845,SM_Bld_House_Preset_03_1800',
-    spacing: 10,
+    spacing: 20,
     count: 2,
     facing: 0
   },
   'building yellow 2floors': {
     mode: 'fixed',
     modelsArray: 'SM_Bld_House_Preset_09_1845,SM_Bld_House_Preset_03_1800',
-    spacing: 10,
+    spacing: 20,
     count: 2,
     facing: 0
   },
   'building yellow 3floors': {
     mode: 'fixed',
     modelsArray: 'SM_Bld_House_Preset_09_1845,SM_Bld_House_Preset_03_1800',
-    spacing: 10,
+    spacing: 20,
     count: 2,
     facing: 0
   },
   'building yellow 4floors': {
     mode: 'fixed',
     modelsArray: 'SM_Bld_House_Preset_09_1845,SM_Bld_House_Preset_03_1800',
-    spacing: 10,
+    spacing: 20,
     count: 2,
     facing: 0
   },
   'building yellow 5floors': {
     mode: 'fixed',
     modelsArray: 'SM_Bld_House_Preset_09_1845,SM_Bld_House_Preset_03_1800',
-    spacing: 10,
+    spacing: 20,
     count: 2,
     facing: 0
   },
   'building yellow 6floors': {
     mode: 'fixed',
     modelsArray: 'SM_Bld_House_Preset_09_1845,SM_Bld_House_Preset_03_1800',
-    spacing: 10,
+    spacing: 20,
     count: 2,
     facing: 0
   },
   'building yellow 7floors': {
     mode: 'fixed',
     modelsArray: 'SM_Bld_House_Preset_09_1845,SM_Bld_House_Preset_03_1800',
-    spacing: 10,
+    spacing: 20,
     count: 2,
     facing: 0
   },
   'buildings falltrees (30ft)': {
     mode: 'fixed',
     modelsArray: 'SM_Bld_House_Preset_09_1845,SM_Bld_House_Preset_03_1800',
-    spacing: 10,
+    spacing: 20,
     count: 2,
     facing: 0
   },
   'buildings pinetrees (30ft)': {
     mode: 'fixed',
     modelsArray: 'SM_Bld_House_Preset_09_1845,SM_Bld_House_Preset_03_1800',
-    spacing: 10,
+    spacing: 20,
     count: 2,
     facing: 0
   },
   'gas station': {
     mode: 'fixed',
     modelsArray: 'SM_Bld_House_Preset_09_1845,SM_Bld_House_Preset_03_1800',
-    spacing: 10,
+    spacing: 20,
     count: 2,
     facing: 0
   },
   'home depot': {
     mode: 'fixed',
     modelsArray: 'SM_Bld_House_Preset_09_1845,SM_Bld_House_Preset_03_1800',
-    spacing: 10,
+    spacing: 20,
     count: 2,
     facing: 0
   },
   'house 1floor': {
     mode: 'fixed',
     modelsArray: 'SM_Bld_House_Preset_09_1845,SM_Bld_House_Preset_03_1800',
-    spacing: 10,
+    spacing: 20,
     count: 2,
     facing: 0
   },
   'house 2floors': {
     mode: 'fixed',
     modelsArray: 'SM_Bld_House_Preset_09_1845,SM_Bld_House_Preset_03_1800',
-    spacing: 10,
+    spacing: 20,
     count: 2,
     facing: 0
   },
   'house 3floors': {
     mode: 'fixed',
     modelsArray: 'SM_Bld_House_Preset_09_1845,SM_Bld_House_Preset_03_1800',
-    spacing: 10,
+    spacing: 20,
     count: 2,
     facing: 0
   },
   'house 4floors': {
     mode: 'fixed',
     modelsArray: 'SM_Bld_House_Preset_09_1845,SM_Bld_House_Preset_03_1800',
-    spacing: 10,
+    spacing: 20,
     count: 2,
     facing: 0
   },
   'house 5floors': {
     mode: 'fixed',
     modelsArray: 'SM_Bld_House_Preset_09_1845,SM_Bld_House_Preset_03_1800',
-    spacing: 10,
+    spacing: 20,
     count: 2,
     facing: 0
   },
   'house newurbanist': {
     mode: 'fixed',
     modelsArray: 'SM_Bld_House_Preset_09_1845,SM_Bld_House_Preset_03_1800',
-    spacing: 10,
+    spacing: 20,
     count: 2,
     facing: 0
   },
   'house newurbanist red': {
     mode: 'fixed',
     modelsArray: 'SM_Bld_House_Preset_09_1845,SM_Bld_House_Preset_03_1800',
-    spacing: 10,
+    spacing: 20,
     count: 2,
     facing: 0
   },
   'live work': {
     mode: 'fixed',
     modelsArray: 'SM_Bld_House_Preset_09_1845,SM_Bld_House_Preset_03_1800',
-    spacing: 10,
+    spacing: 20,
     count: 2,
     facing: 0
   },
   'mart chilis': {
     mode: 'fixed',
     modelsArray: 'SM_Bld_House_Preset_09_1845,SM_Bld_House_Preset_03_1800',
-    spacing: 10,
+    spacing: 20,
     count: 2,
     facing: 0
   },
   'mikedesign midvale 2story': {
     mode: 'fixed',
     modelsArray: 'SM_Bld_House_Preset_09_1845,SM_Bld_House_Preset_03_1800',
-    spacing: 10,
+    spacing: 20,
     count: 2,
     facing: 0
   },
   'mikedesign midvale 3story': {
     mode: 'fixed',
     modelsArray: 'SM_Bld_House_Preset_09_1845,SM_Bld_House_Preset_03_1800',
-    spacing: 10,
+    spacing: 20,
     count: 2,
     facing: 0
   },
   'mikedesign midvale3 3story': {
     mode: 'fixed',
     modelsArray: 'SM_Bld_House_Preset_09_1845,SM_Bld_House_Preset_03_1800',
-    spacing: 10,
+    spacing: 20,
     count: 2,
     facing: 0
   },
   'mixed use 2floors': {
     mode: 'fixed',
     modelsArray: 'SM_Bld_House_Preset_09_1845,SM_Bld_House_Preset_03_1800',
-    spacing: 10,
+    spacing: 20,
     count: 2,
     facing: 0
   },
   'mixed use 3floors': {
     mode: 'fixed',
     modelsArray: 'SM_Bld_House_Preset_09_1845,SM_Bld_House_Preset_03_1800',
-    spacing: 10,
+    spacing: 20,
     count: 2,
     facing: 0
   },
   'mixed use 4floors': {
     mode: 'fixed',
     modelsArray: 'SM_Bld_House_Preset_09_1845,SM_Bld_House_Preset_03_1800',
-    spacing: 10,
+    spacing: 20,
     count: 2,
     facing: 0
   },
   'mixed use 5floors': {
     mode: 'fixed',
     modelsArray: 'SM_Bld_House_Preset_09_1845,SM_Bld_House_Preset_03_1800',
-    spacing: 10,
+    spacing: 20,
     count: 2,
     facing: 0
   },
   'nice apartment 3story': {
     mode: 'fixed',
     modelsArray: 'SM_Bld_House_Preset_09_1845,SM_Bld_House_Preset_03_1800',
-    spacing: 10,
+    spacing: 20,
     count: 2,
     facing: 0
   },
   'nice apartment 4story': {
     mode: 'fixed',
     modelsArray: 'SM_Bld_House_Preset_09_1845,SM_Bld_House_Preset_03_1800',
-    spacing: 10,
+    spacing: 20,
     count: 2,
     facing: 0
   },
   'nice apartment 5story': {
     mode: 'fixed',
     modelsArray: 'SM_Bld_House_Preset_09_1845,SM_Bld_House_Preset_03_1800',
-    spacing: 10,
+    spacing: 20,
     count: 2,
     facing: 0
   },
   'nice apartment 6story': {
     mode: 'fixed',
     modelsArray: 'SM_Bld_House_Preset_09_1845,SM_Bld_House_Preset_03_1800',
-    spacing: 10,
+    spacing: 20,
     count: 2,
     facing: 0
   },
   'red mixed use 1floor': {
     mode: 'fixed',
     modelsArray: 'SM_Bld_House_Preset_09_1845,SM_Bld_House_Preset_03_1800',
-    spacing: 10,
+    spacing: 20,
     count: 2,
     facing: 0
   },
   'red mixed use 2floors': {
     mode: 'fixed',
     modelsArray: 'SM_Bld_House_Preset_09_1845,SM_Bld_House_Preset_03_1800',
-    spacing: 10,
+    spacing: 20,
     count: 2,
     facing: 0
   },
   'red mixed use 3floors': {
     mode: 'fixed',
     modelsArray: 'SM_Bld_House_Preset_09_1845,SM_Bld_House_Preset_03_1800',
-    spacing: 10,
+    spacing: 20,
     count: 2,
     facing: 0
   },
   'red mixed use 4floors': {
     mode: 'fixed',
     modelsArray: 'SM_Bld_House_Preset_09_1845,SM_Bld_House_Preset_03_1800',
-    spacing: 10,
+    spacing: 20,
     count: 2,
     facing: 0
   },
   'red mixed use 5floors': {
     mode: 'fixed',
     modelsArray: 'SM_Bld_House_Preset_09_1845,SM_Bld_House_Preset_03_1800',
-    spacing: 10,
+    spacing: 20,
     count: 2,
     facing: 0
   },
   residential: {
     mode: 'fixed',
     modelsArray: 'SM_Bld_House_Preset_09_1845,SM_Bld_House_Preset_03_1800',
-    spacing: 10,
+    spacing: 20,
     count: 2,
     facing: 0
   },
   'river crosssection': {
     mode: 'fixed',
     modelsArray: 'SM_Bld_House_Preset_09_1845,SM_Bld_House_Preset_03_1800',
-    spacing: 10,
+    spacing: 20,
     count: 2,
     facing: 0
   },
   'river crosssection 20ft': {
     mode: 'fixed',
     modelsArray: 'SM_Bld_House_Preset_09_1845,SM_Bld_House_Preset_03_1800',
-    spacing: 10,
+    spacing: 20,
     count: 2,
     facing: 0
   },
   'river crosssection 40ft': {
     mode: 'fixed',
     modelsArray: 'SM_Bld_House_Preset_09_1845,SM_Bld_House_Preset_03_1800',
-    spacing: 10,
+    spacing: 20,
     count: 2,
     facing: 0
   },
   'shop 1floor': {
     mode: 'fixed',
     modelsArray: 'SM_Bld_House_Preset_09_1845,SM_Bld_House_Preset_03_1800',
-    spacing: 10,
+    spacing: 20,
     count: 2,
     facing: 0
   },
   'shop 2floors': {
     mode: 'fixed',
     modelsArray: 'SM_Bld_House_Preset_09_1845,SM_Bld_House_Preset_03_1800',
-    spacing: 10,
+    spacing: 20,
     count: 2,
     facing: 0
   },
   'shop 3floors': {
     mode: 'fixed',
     modelsArray: 'SM_Bld_House_Preset_09_1845,SM_Bld_House_Preset_03_1800',
-    spacing: 10,
+    spacing: 20,
     count: 2,
     facing: 0
   },
   'shop 4floors': {
     mode: 'fixed',
     modelsArray: 'SM_Bld_House_Preset_09_1845,SM_Bld_House_Preset_03_1800',
-    spacing: 10,
+    spacing: 20,
     count: 2,
     facing: 0
   },
   'single family': {
     mode: 'fixed',
     modelsArray: 'SM_Bld_House_Preset_09_1845,SM_Bld_House_Preset_03_1800',
-    spacing: 10,
+    spacing: 20,
     count: 2,
     facing: 0
   },
   'single family back': {
     mode: 'fixed',
     modelsArray: 'SM_Bld_House_Preset_09_1845,SM_Bld_House_Preset_03_1800',
-    spacing: 10,
+    spacing: 20,
     count: 2,
     facing: 0
   },
   'stripmall onerowparking': {
     mode: 'fixed',
     modelsArray: 'SM_Bld_House_Preset_09_1845,SM_Bld_House_Preset_03_1800',
-    spacing: 10,
+    spacing: 20,
     count: 2,
     facing: 0
   },
   'stripmall1 tworowsparking': {
     mode: 'fixed',
     modelsArray: 'SM_Bld_House_Preset_09_1845,SM_Bld_House_Preset_03_1800',
-    spacing: 10,
+    spacing: 20,
     count: 2,
     facing: 0
   },
   'stripmall1, onerowparking': {
     mode: 'fixed',
     modelsArray: 'SM_Bld_House_Preset_09_1845,SM_Bld_House_Preset_03_1800',
-    spacing: 10,
+    spacing: 20,
     count: 2,
     facing: 0
   },
   'stripmall2 tworowsparking': {
     mode: 'fixed',
     modelsArray: 'SM_Bld_House_Preset_09_1845,SM_Bld_House_Preset_03_1800',
-    spacing: 10,
+    spacing: 20,
     count: 2,
     facing: 0
   },
   'townhouse row 3story': {
     mode: 'fixed',
     modelsArray: 'SM_Bld_House_Preset_09_1845,SM_Bld_House_Preset_03_1800',
-    spacing: 10,
+    spacing: 20,
     count: 2,
     facing: 0
   },
   walmart: {
     mode: 'fixed',
     modelsArray: 'SM_Bld_House_Preset_09_1845,SM_Bld_House_Preset_03_1800',
-    spacing: 10,
+    spacing: 20,
     count: 2,
     facing: 0
   },
   'water 20ft': {
     mode: 'fixed',
     modelsArray: 'SM_Bld_House_Preset_09_1845,SM_Bld_House_Preset_03_1800',
-    spacing: 10,
+    spacing: 20,
     count: 2,
     facing: 0
   },
   'water 30ft': {
     mode: 'fixed',
     modelsArray: 'SM_Bld_House_Preset_09_1845,SM_Bld_House_Preset_03_1800',
-    spacing: 10,
+    spacing: 20,
     count: 2,
     facing: 0
   },
@@ -752,70 +752,70 @@ const STREETPLAN_OBJECT_TO_GENERATED_CLONES_MAPPING = {
   'cactus median (10ft)': {
     mode: 'fixed',
     modelsArray: 'ssp-median-planterbox-tall-10x30ft',
-    spacing: 1,
+    spacing: 15,
     count: 10,
     facing: 0
   },
   'cactus median (12ft)': {
     mode: 'fixed',
     modelsArray: 'ssp-median-planterbox-tall-10x30ft',
-    spacing: 1,
+    spacing: 15,
     count: 10,
     facing: 0
   },
   'cactus median (4ft)': {
     mode: 'fixed',
     modelsArray: 'sp-median-planterbox-tall-06x30ft',
-    spacing: 1,
+    spacing: 15,
     count: 10,
     facing: 0
   },
   'cactus median (6ft)': {
     mode: 'fixed',
     modelsArray: 'sp-median-planterbox-tall-06x30ft',
-    spacing: 1,
+    spacing: 15,
     count: 10,
     facing: 0
   },
   'cactus median (8ft)': {
     mode: 'fixed',
     modelsArray: 'sp-median-planterbox-tall-06x30ft',
-    spacing: 1,
+    spacing: 15,
     count: 10,
     facing: 0
   },
   'flower median (10ft)': {
     mode: 'fixed',
     modelsArray: 'ssp-median-planterbox-tall-10x30ft',
-    spacing: 1,
+    spacing: 15,
     count: 10,
     facing: 0
   },
   'flower median (12ft)': {
     mode: 'fixed',
     modelsArray: 'ssp-median-planterbox-tall-10x30ft',
-    spacing: 1,
+    spacing: 15,
     count: 10,
     facing: 0
   },
   'flower median (4ft)': {
     mode: 'fixed',
     modelsArray: 'sp-median-planterbox-tall-06x30ft',
-    spacing: 1,
+    spacing: 15,
     count: 10,
     facing: 0
   },
   'flower median (6ft)': {
     mode: 'fixed',
     modelsArray: 'sp-median-planterbox-tall-06x30ft',
-    spacing: 1,
+    spacing: 15,
     count: 10,
     facing: 0
   },
   'flower median (8ft)': {
     mode: 'fixed',
     modelsArray: 'sp-median-planterbox-tall-06x30ft',
-    spacing: 50,
+    spacing: 15,
     count: 10,
     facing: 0
   },
@@ -836,105 +836,105 @@ const STREETPLAN_OBJECT_TO_GENERATED_CLONES_MAPPING = {
   'rock median (10ft)': {
     mode: 'fixed',
     modelsArray: 'ssp-median-planterbox-tall-10x30ft',
-    spacing: 1,
+    spacing: 15,
     count: 10,
     facing: 0
   },
   'rock median (12ft)': {
     mode: 'fixed',
     modelsArray: 'ssp-median-planterbox-tall-10x30ft',
-    spacing: 1,
+    spacing: 15,
     count: 10,
     facing: 0
   },
   'rock median (4ft)': {
     mode: 'fixed',
     modelsArray: 'sp-median-planterbox-tall-06x30ft',
-    spacing: 1,
+    spacing: 15,
     count: 10,
     facing: 0
   },
   'rock median (6ft)': {
     mode: 'fixed',
     modelsArray: 'sp-median-planterbox-tall-06x30ft',
-    spacing: 1,
+    spacing: 15,
     count: 10,
     facing: 0
   },
   'rock median (8ft)': {
     mode: 'fixed',
     modelsArray: 'sp-median-planterbox-tall-06x30ft',
-    spacing: 1,
+    spacing: 15,
     count: 10,
     facing: 0
   },
   'tallplantbox (10ft)': {
     mode: 'fixed',
     modelsArray: 'ssp-median-planterbox-tall-10x30ft',
-    spacing: 1,
+    spacing: 15,
     count: 10,
     facing: 0
   },
   'tallplantbox (12ft)': {
     mode: 'fixed',
     modelsArray: 'ssp-median-planterbox-tall-10x30ft',
-    spacing: 1,
+    spacing: 15,
     count: 10,
     facing: 0
   },
   'tallplantbox (4ft)': {
     mode: 'fixed',
     modelsArray: 'sp-median-planterbox-tall-06x30ft',
-    spacing: 1,
+    spacing: 15,
     count: 10,
     facing: 0
   },
   'tallplantbox (6ft)': {
     mode: 'fixed',
     modelsArray: 'sp-median-planterbox-tall-06x30ft',
-    spacing: 1,
+    spacing: 15,
     count: 10,
     facing: 0
   },
   'tallplantbox (8ft)': {
     mode: 'fixed',
     modelsArray: 'sp-median-planterbox-tall-06x30ft',
-    spacing: 1,
+    spacing: 15,
     count: 10,
     facing: 0
   },
   'tallplantbox pedref (10ft)': {
     mode: 'fixed',
     modelsArray: 'ssp-median-planterbox-tall-10x30ft',
-    spacing: 1,
+    spacing: 15,
     count: 10,
     facing: 0
   },
   'tallplantbox pedref (12ft)': {
     mode: 'fixed',
     modelsArray: 'ssp-median-planterbox-tall-10x30ft',
-    spacing: 1,
+    spacing: 15,
     count: 10,
     facing: 0
   },
   'tallplantbox pedref (6ft)': {
     mode: 'fixed',
     modelsArray: 'sp-median-planterbox-tall-06x30ft',
-    spacing: 1,
+    spacing: 15,
     count: 10,
     facing: 0
   },
   'tallplantbox pedref (8ft)': {
     mode: 'fixed',
     modelsArray: 'sp-median-planterbox-tall-06x30ft',
-    spacing: 1,
+    spacing: 15,
     count: 10,
     facing: 0
   },
   'tropical median (4ft)': {
     mode: 'fixed',
     modelsArray: 'dividers-flowers',
-    spacing: 1,
+    spacing: 15,
     count: 20,
     facing: 0
   },
@@ -1597,22 +1597,28 @@ const STREETPLAN_OBJECT_TO_GENERATED_CLONES_MAPPING = {
   boulevardcirculator: {
     mode: 'fixed',
     modelsArray: 'minibus',
-    spacing: 50,
+    spacing: 100,
     count: 10,
     facing: 0
   },
   'boulevardcirculator rev': {
     mode: 'fixed',
     modelsArray: 'minibus',
-    spacing: 50,
+    spacing: 100,
     count: 10,
     facing: 0
   },
-  bus: { mode: 'fixed', modelsArray: 'bus', spacing: 50, count: 10, facing: 0 },
+  bus: {
+    mode: 'fixed',
+    modelsArray: 'bus',
+    spacing: 100,
+    count: 10,
+    facing: 0
+  },
   'bus rev': {
     mode: 'fixed',
     modelsArray: 'bus',
-    spacing: 50,
+    spacing: 100,
     count: 10,
     facing: 0
   },
@@ -1621,70 +1627,70 @@ const STREETPLAN_OBJECT_TO_GENERATED_CLONES_MAPPING = {
   'streetcar blue': {
     mode: 'fixed',
     modelsArray: 'trolley',
-    spacing: 50,
+    spacing: 100,
     count: 10,
     facing: 0
   },
   'streetcar blue rev': {
     mode: 'fixed',
     modelsArray: 'trolley',
-    spacing: 50,
+    spacing: 100,
     count: 10,
     facing: 0
   },
   'streetcar red 1': {
     mode: 'fixed',
     modelsArray: 'trolley',
-    spacing: 50,
+    spacing: 100,
     count: 10,
     facing: 0
   },
   'streetcar red 1 rev': {
     mode: 'fixed',
     modelsArray: 'trolley',
-    spacing: 50,
+    spacing: 100,
     count: 10,
     facing: 0
   },
   'streetcar red 2': {
     mode: 'fixed',
     modelsArray: 'trolley',
-    spacing: 50,
+    spacing: 100,
     count: 10,
     facing: 0
   },
   'streetcar red 2 rev': {
     mode: 'fixed',
     modelsArray: 'trolley',
-    spacing: 50,
+    spacing: 100,
     count: 10,
     facing: 0
   },
   'streetcar yellow': {
     mode: 'fixed',
     modelsArray: 'trolley',
-    spacing: 50,
+    spacing: 100,
     count: 10,
     facing: 0
   },
   'uta bus': {
     mode: 'fixed',
     modelsArray: 'bus',
-    spacing: 50,
+    spacing: 100,
     count: 10,
     facing: 0
   },
   'uta lightrail': {
     mode: 'fixed',
     modelsArray: 'tram',
-    spacing: 50,
+    spacing: 100,
     count: 10,
     facing: 0
   },
   'uta lightrail rev': {
     mode: 'fixed',
     modelsArray: 'tram',
-    spacing: 50,
+    spacing: 100,
     count: 10,
     facing: 0
   },
@@ -1818,109 +1824,175 @@ const STREETPLAN_OBJECT_TO_GENERATED_CLONES_MAPPING = {
   'blue car': {
     mode: 'fixed',
     modelsArray: 'sedan-rig',
-    spacing: 50,
+    spacing: 100,
     count: 10,
     facing: 0
   },
   'blue car rev': {
     mode: 'fixed',
     modelsArray: 'sedan-rig',
-    spacing: 50,
+    spacing: 100,
     count: 10,
     facing: 0
   },
-  'blue truck': '',
-  'blue truck rev': '',
-  'dump truck': '',
-  'dump truck rev': '',
+  'blue truck': {
+    mode: 'fixed',
+    modelsArray: 'vehicle-bmw-m2',
+    spacing: 100,
+    count: 10,
+    facing: 0
+  },
+  'blue truck rev': {
+    mode: 'fixed',
+    modelsArray: 'vehicle-bmw-m2',
+    spacing: 100,
+    count: 10,
+    facing: 0
+  },
+  'dump truck': {
+    mode: 'fixed',
+    modelsArray: 'box-truck-rig',
+    spacing: 100,
+    count: 10,
+    facing: 0
+  },
+  'dump truck rev': {
+    mode: 'fixed',
+    modelsArray: 'box-truck-rig',
+    spacing: 100,
+    count: 10,
+    facing: 0
+  },
   'green car': {
     mode: 'fixed',
     modelsArray: 'sedan-rig',
-    spacing: 50,
+    spacing: 100,
     count: 10,
     facing: 0
   },
   'green car rev': {
     mode: 'fixed',
     modelsArray: 'sedan-rig',
-    spacing: 50,
+    spacing: 100,
     count: 10,
     facing: 0
   },
   'moto highway rider': {
     mode: 'fixed',
     modelsArray: 'tuk-tukmotorbike',
-    spacing: 50,
+    spacing: 100,
     count: 10,
     facing: 0
   },
   'moto highway rider rev': {
     mode: 'fixed',
     modelsArray: 'tuk-tukmotorbike',
-    spacing: 50,
+    spacing: 100,
     count: 10,
     facing: 0
   },
-  'orange truck': '',
-  'orange truck rev': '',
+  'orange truck': {
+    mode: 'fixed',
+    modelsArray: 'suv-rig',
+    spacing: 100,
+    count: 10,
+    facing: 0
+  },
+  'orange truck rev': {
+    mode: 'fixed',
+    modelsArray: 'suv-rig',
+    spacing: 100,
+    count: 10,
+    facing: 0
+  },
   'red car': {
     mode: 'fixed',
     modelsArray: 'sedan-rig',
-    spacing: 50,
+    spacing: 100,
     count: 10,
     facing: 0
   },
   'red car rev': {
     mode: 'fixed',
     modelsArray: 'sedan-rig',
-    spacing: 50,
+    spacing: 100,
     count: 10,
     facing: 0
   },
-  'red jeep': '',
-  'red jeep rev': '',
-  'semi truck': '',
-  'semi truck rev': '',
+  'red jeep': {
+    mode: 'fixed',
+    modelsArray: 'suv-rig',
+    spacing: 100,
+    count: 10,
+    facing: 0
+  },
+  'red jeep rev': {
+    mode: 'fixed',
+    modelsArray: 'suv-rig',
+    spacing: 100,
+    count: 10,
+    facing: 0
+  },
+  'semi truck': {
+    mode: 'fixed',
+    modelsArray: 'suv-rig',
+    spacing: 100,
+    count: 10,
+    facing: 0
+  },
+  'semi truck rev': {
+    mode: 'fixed',
+    modelsArray: 'suv-rig',
+    spacing: 100,
+    count: 10,
+    facing: 0
+  },
   'silver suv': {
     mode: 'fixed',
     modelsArray: 'suv-rig',
-    spacing: 50,
+    spacing: 100,
     count: 10,
     facing: 0
   },
   'silver suv rev': {
     mode: 'fixed',
     modelsArray: 'suv-rig',
-    spacing: 50,
+    spacing: 100,
     count: 10,
     facing: 0
   },
-  truck: '',
+  truck: {
+    mode: 'fixed',
+    modelsArray: 'box-truck-rig',
+    spacing: 100,
+    count: 10,
+    facing: 0
+  },
   'truck fedex': {
     mode: 'fixed',
     modelsArray: 'box-truck-rig',
-    spacing: 50,
+    spacing: 100,
     count: 10,
     facing: 0
   },
   'truck fedex rev': {
     mode: 'fixed',
     modelsArray: 'box-truck-rig',
-    spacing: 50,
+    spacing: 100,
     count: 10,
     facing: 0
   },
   'truck ups': {
     mode: 'fixed',
     modelsArray: 'box-truck-rig',
-    spacing: 50,
+    spacing: 100,
     count: 10,
     facing: 0
   },
   'truck ups rev': {
     mode: 'fixed',
     modelsArray: 'box-truck-rig',
-    spacing: 50,
+    spacing: 100,
     count: 10,
     facing: 0
   },
@@ -1928,28 +2000,28 @@ const STREETPLAN_OBJECT_TO_GENERATED_CLONES_MAPPING = {
   'white coup': {
     mode: 'fixed',
     modelsArray: 'sedan-rig',
-    spacing: 50,
+    spacing: 100,
     count: 10,
     facing: 0
   },
   'white coup rev': {
     mode: 'fixed',
     modelsArray: 'sedan-rig',
-    spacing: 50,
+    spacing: 100,
     count: 10,
     facing: 0
   },
   'white sedan': {
     mode: 'fixed',
     modelsArray: 'sedan-rig',
-    spacing: 50,
+    spacing: 100,
     count: 10,
     facing: 0
   },
   'white sedan rev': {
     mode: 'fixed',
     modelsArray: 'sedan-rig',
-    spacing: 50,
+    spacing: 100,
     count: 10,
     facing: 0
   },
@@ -1958,14 +2030,14 @@ const STREETPLAN_OBJECT_TO_GENERATED_CLONES_MAPPING = {
   'yellow sedan': {
     mode: 'fixed',
     modelsArray: 'sedan-rig',
-    spacing: 50,
+    spacing: 100,
     count: 10,
     facing: 0
   },
   'yellow sedan rev': {
     mode: 'fixed',
     modelsArray: 'sedan-rig',
-    spacing: 50,
+    spacing: 100,
     count: 10,
     facing: 0
   },
