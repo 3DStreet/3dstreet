@@ -197,6 +197,17 @@ export function create150ftRightOfWayManagedStreet(position) {
   );
 }
 
+export function createBuildingDemoManagedStreet(position) {
+  console.log(
+    'createBuildingDemoManagedStreet',
+    defaultStreetObjects.buildingDemo
+  );
+  createManagedStreetFromStreetObject(
+    position,
+    defaultStreetObjects.buildingDemo
+  );
+}
+
 export function create80ftRightOfWay(position) {
   createStreetmixStreet(
     position,

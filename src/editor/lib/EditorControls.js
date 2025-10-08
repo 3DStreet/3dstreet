@@ -102,9 +102,34 @@ THREE.EditorControls = function (_object, domElement) {
     }
     // Fallback to default positioning if no pose relative position
     if (!cameraPosition) {
-      cameraPosition = target.localToWorld(
-        new THREE.Vector3(0, localCenterY + distance * 0.5, distance * 2.5)
+      // Get baseRotation from catalog if available
+      let baseRotation = 0;
+      if (targetEl && targetEl.hasAttribute('mixin')) {
+        const mixinId = targetEl.getAttribute('mixin');
+        const catalogEntry = STREET.catalog?.find(
+          (entry) => entry.id === mixinId
+        );
+        baseRotation = catalogEntry?.baseRotation || 0;
+      }
+
+      // Calculate camera position accounting for baseRotation
+      const baseRotationRad = THREE.MathUtils.degToRad(baseRotation);
+      const defaultOffset = new THREE.Vector3(
+        0,
+        localCenterY + distance * 0.5,
+        distance * 2.5
       );
+
+      // Rotate the offset by the baseRotation
+      const rotatedOffset = defaultOffset.clone();
+      rotatedOffset.x =
+        defaultOffset.x * Math.cos(baseRotationRad) -
+        defaultOffset.z * Math.sin(baseRotationRad);
+      rotatedOffset.z =
+        defaultOffset.x * Math.sin(baseRotationRad) +
+        defaultOffset.z * Math.cos(baseRotationRad);
+
+      cameraPosition = target.localToWorld(rotatedOffset);
     }
     // Set camera position
     object.position.copy(cameraPosition);

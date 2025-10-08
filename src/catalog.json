@@ -514,84 +514,166 @@
         "name": "Mixed Corner 4fl",
         "img": "thumbnails/SM3D_Bld_Mixed_Corner_4fl.jpg",
         "src": "sets/buildings/gltf-exports/draco/v2-buildings-SM3D_Bld_Mixed_4fl.glb",
-        "category": "buildings"
+        "category": "buildings",
+        "baseRotation": 180
     },
     {
         "id": "SM3D_Bld_Mixed_Double_5fl",
         "name": "Mixed Double 5fl",
         "img": "thumbnails/SM3D_Bld_Mixed_Double_5fl.jpg",
         "src": "sets/buildings/gltf-exports/draco/v2-buildings-SM3D_Bld_Mixed_Double_5fl.glb",
-        "category": "buildings"
+        "category": "buildings",
+        "baseRotation": 180
     },
     {
         "id": "SM3D_Bld_Mixed_4fl_2",
         "name": "Mixed 4fl 2",
         "img": "thumbnails/SM3D_Bld_Mixed_4fl_2.jpg",
         "src": "sets/buildings/gltf-exports/draco/v2-buildings-SM3D_Bld_Mixed_4fl_2.glb",
-        "category": "buildings"
+        "category": "buildings",
+        "baseRotation": 180
     },
     {
         "id": "SM3D_Bld_Mixed_5fl",
         "name": "Mixed 5fl",
         "img": "thumbnails/SM3D_Bld_Mixed_5fl.jpg",
         "src": "sets/buildings/gltf-exports/draco/v2-buildings-SM3D_Bld_Mixed_5fl.glb",
-        "category": "buildings"
+        "category": "buildings",
+        "baseRotation": 180
     },
     {
         "id": "SM3D_Bld_Mixed_4fl",
         "name": "Mixed 4fl",
         "img": "thumbnails/SM3D_Bld_Mixed_4fl.jpg",
         "src": "sets/buildings/gltf-exports/draco/v2-buildings-SM3D_Bld_Mixed_4fl.glb",
-        "category": "buildings"
+        "category": "buildings",
+        "baseRotation": 180
     },
     {
         "id": "SM_Bld_House_Preset_03_1800",
         "name": "Suburban House 1",
         "img": "thumbnails/SM_Bld_House_Preset_03_1800.jpg",
         "src": "sets/buildings/gltf-exports/draco/v2-buildings-suburban-SM_Bld_House_Preset_03_1800.glb",
-        "category": "buildings"
+        "category": "buildings",
+        "baseRotation": 180
     },
     {
         "id": "SM_Bld_House_Preset_09_1845",
         "name": "Suburban House 2",
         "img": "thumbnails/SM_Bld_House_Preset_09_1845.jpg",
         "src": "sets/buildings/gltf-exports/draco/v2-buildings-suburban-SM_Bld_House_Preset_09_1845.glb",
-        "category": "buildings"
+        "category": "buildings",
+        "baseRotation": 180
     },
     {
         "id": "SM_Bld_House_Preset_08_1809",
         "name": "Suburban House 3",
         "img": "thumbnails/SM_Bld_House_Preset_08_1809.jpg",
         "src": "sets/buildings/gltf-exports/draco/v2-buildings-suburban-SM_Bld_House_Preset_08_1809.glb",
-        "category": "buildings"
+        "category": "buildings",
+        "baseRotation": 180
     },
     {
         "id": "arched-building-01",
         "name": "Arched Building 1",
         "img": "thumbnails/arched-building-01.jpg",
         "src": "sets/arcade-style-buildings/gltf-exports/draco/v2-buildings-arched-01.glb",
-        "category": "buildings"
+        "category": "buildings",
+        "baseRotation": 0
     },
     {
         "id": "arched-building-02",
         "name": "Arched Building 2",
         "img": "thumbnails/arched-building-02.jpg",
         "src": "sets/arcade-style-buildings/gltf-exports/draco/v2-buildings-arched-02.glb",
-        "category": "buildings"
+        "category": "buildings",
+        "baseRotation": 0
     },
     {
         "id": "arched-building-03",
         "name": "Arched Building 3",
         "img": "thumbnails/arched-building-03.jpg",
         "src": "sets/arcade-style-buildings/gltf-exports/draco/v2-buildings-arched-03.glb",
-        "category": "buildings"
+        "category": "buildings",
+        "baseRotation": 0
     },
     {
         "id": "arched-building-04",
         "name": "Arched Building 4",
         "img": "thumbnails/arched-building-04.jpg",
         "src": "sets/arcade-style-buildings/gltf-exports/draco/v2-buildings-arched-04.glb",
-        "category": "buildings"
+        "category": "buildings",
+        "baseRotation": 0
+    },
+    {
+        "id": "sp-prop-mixeduse-2L-29ft",
+        "name": "Mixed Use 2L 29ft",
+        "img": "sets/streetplan/sp-prop-mixeduse-2L-29ft.webp",
+        "src": "sets/streetplan/sp-prop-mixeduse-2L-29ft.glb",
+        "category": "buildings",
+        "baseRotation": 90,
+        "attribution": "StreetPlan.net. Used with permission.",
+        "attributionUrl": "https://www.urbaninnovators.com/streetplan"
+    },
+    {
+        "id": "sp-prop-mixeduse-2L-30ft",
+        "name": "Mixed Use 2L 30ft",
+        "img": "sets/streetplan/sp-prop-mixeduse-2L-30ft.webp",
+        "src": "sets/streetplan/sp-prop-mixeduse-2L-30ft.glb",
+        "category": "buildings",
+        "baseRotation": 90,
+        "attribution": "StreetPlan.net. Used with permission.",
+        "attributionUrl": "https://www.urbaninnovators.com/streetplan"
+    },
+    {
+        "id": "sp-prop-mixeduse-3L-18ft",
+        "name": "Mixed Use 3L 18ft",
+        "img": "sets/streetplan/sp-prop-mixeduse-3L-18ft.webp",
+        "src": "sets/streetplan/sp-prop-mixeduse-3L-18ft.glb",
+        "category": "buildings",
+        "baseRotation": 90,
+        "attribution": "StreetPlan.net. Used with permission.",
+        "attributionUrl": "https://www.urbaninnovators.com/streetplan"
+    },
+    {
+        "id": "sp-prop-mixeduse-3L-22ft",
+        "name": "Mixed Use 3L 22ft",
+        "img": "sets/streetplan/sp-prop-mixeduse-3L-22ft.webp",
+        "src": "sets/streetplan/sp-prop-mixeduse-3L-22ft.glb",
+        "category": "buildings",
+        "baseRotation": 90,
+        "attribution": "StreetPlan.net. Used with permission.",
+        "attributionUrl": "https://www.urbaninnovators.com/streetplan"
+    },
+    {
+        "id": "sp-prop-mixeduse-3L-23ft-corner",
+        "name": "Mixed Use 3L 23ft Corner",
+        "img": "sets/streetplan/sp-prop-mixeduse-3L-23ft-corner.webp",
+        "src": "sets/streetplan/sp-prop-mixeduse-3L-23ft-corner.glb",
+        "category": "buildings",
+        "baseRotation": 90,
+        "attribution": "StreetPlan.net. Used with permission.",
+        "attributionUrl": "https://www.urbaninnovators.com/streetplan"
+    },
+    {
+        "id": "sp-prop-mixeduse-3L-42ft",
+        "name": "Mixed Use 3L 42ft",
+        "img": "sets/streetplan/sp-prop-mixeduse-3L-42ft.webp",
+        "src": "sets/streetplan/sp-prop-mixeduse-3L-42ft.glb",
+        "category": "buildings",
+        "baseRotation": 90,
+        "attribution": "StreetPlan.net. Used with permission.",
+        "attributionUrl": "https://www.urbaninnovators.com/streetplan"
+    },
+    {
+        "id": "sp-prop-mixeduse-3L-78ft-corner",
+        "name": "Mixed Use 3L 78ft Corner",
+        "img": "sets/streetplan/sp-prop-mixeduse-3L-78ft-corner.webp",
+        "src": "sets/streetplan/sp-prop-mixeduse-3L-78ft-corner.glb",
+        "category": "buildings",
+        "baseRotation": 90,
+        "attribution": "StreetPlan.net. Used with permission.",
+        "attributionUrl": "https://www.urbaninnovators.com/streetplan"
     },
     {
         "id": "ElectricScooter_1",
@@ -609,11 +691,6 @@
         "name": "Magic Carpet",
         "img": "thumbnails/magic-carpet.jpg",
         "display": "none"
-    },
-    {
-        "id": "cyclist-cargo",
-        "name": "Cargo Bike",
-        "img": "thumbnails/cyclist-cargo.jpg"
     },
     {  
         "id": "crosswalk-rainbow",
@@ -952,6 +1029,116 @@
         "img": "sets/streetplan/sp-sign-speed-limit-80mph.webp",
         "src": "sets/streetplan/sp-sign-speed-limit-80mph.glb",
         "category": "signs",
+        "attribution": "StreetPlan.net. Used with permission.",
+        "attributionUrl": "https://www.urbaninnovators.com/streetplan"
+    },
+    {
+        "id": "sp-prop-bigbox-1L-220ft",
+        "name": "Big Box 1 Story 220ft",
+        "img": "sets/streetplan/sp-prop-bigbox-1L-220ft.webp",
+        "src": "sets/streetplan/sp-prop-bigbox-1L-220ft.glb",
+        "category": "buildings",
+        "baseRotation": 90,
+        "attribution": "StreetPlan.net. Used with permission.",
+        "attributionUrl": "https://www.urbaninnovators.com/streetplan"
+    },
+    {
+        "id": "sp-prop-bigbox-1L-291ft",
+        "name": "Big Box 1 Story 291ft",
+        "img": "sets/streetplan/sp-prop-bigbox-1L-291ft.webp",
+        "src": "sets/streetplan/sp-prop-bigbox-1L-291ft.glb",
+        "category": "buildings",
+        "baseRotation": 90,
+        "attribution": "StreetPlan.net. Used with permission.",
+        "attributionUrl": "https://www.urbaninnovators.com/streetplan"
+    },
+    {
+        "id": "sp-prop-gov-3L-61ft",
+        "name": "Government Building 3 Story 61ft",
+        "img": "sets/streetplan/sp-prop-gov-3L-61ft.webp",
+        "src": "sets/streetplan/sp-prop-gov-3L-61ft.glb",
+        "category": "buildings",
+        "baseRotation": 90,
+        "attribution": "StreetPlan.net. Used with permission.",
+        "attributionUrl": "https://www.urbaninnovators.com/streetplan"
+    },
+    {
+        "id": "sp-prop-parking-3L-155ft",
+        "name": "Parking Structure 3 Story 155ft",
+        "img": "sets/streetplan/sp-prop-parking-3L-155ft.webp",
+        "src": "sets/streetplan/sp-prop-parking-3L-155ft.glb",
+        "category": "buildings",
+        "baseRotation": 90,
+        "attribution": "StreetPlan.net. Used with permission.",
+        "attributionUrl": "https://www.urbaninnovators.com/streetplan"
+    },
+    {
+        "id": "sp-prop-parking-3L-97ft-centered",
+        "name": "Parking Structure 3 Story 97ft Centered",
+        "img": "sets/streetplan/sp-prop-parking-3L-97ft-centered.webp",
+        "src": "sets/streetplan/sp-prop-parking-3L-97ft-centered.glb",
+        "category": "buildings",
+        "baseRotation": 90,
+        "attribution": "StreetPlan.net. Used with permission.",
+        "attributionUrl": "https://www.urbaninnovators.com/streetplan"
+    },
+    {
+        "id": "sp-prop-sf-1L-41ft",
+        "name": "Single Family 1 Story 41ft",
+        "img": "sets/streetplan/sp-prop-sf-1L-41ft.webp",
+        "src": "sets/streetplan/sp-prop-sf-1L-41ft.glb",
+        "category": "buildings",
+        "baseRotation": 90,
+        "attribution": "StreetPlan.net. Used with permission.",
+        "attributionUrl": "https://www.urbaninnovators.com/streetplan"
+    },
+    {
+        "id": "sp-prop-sf-1L-62ft",
+        "name": "Single Family 1 Story 62ft",
+        "img": "sets/streetplan/sp-prop-sf-1L-62ft.webp",
+        "src": "sets/streetplan/sp-prop-sf-1L-62ft.glb",
+        "category": "buildings",
+        "baseRotation": 90,
+        "attribution": "StreetPlan.net. Used with permission.",
+        "attributionUrl": "https://www.urbaninnovators.com/streetplan"
+    },
+    {
+        "id": "sp-prop-sf-2L-62ft",
+        "name": "Single Family 2 Story 62ft",
+        "img": "sets/streetplan/sp-prop-sf-2L-62ft.webp",
+        "src": "sets/streetplan/sp-prop-sf-2L-62ft.glb",
+        "category": "buildings",
+        "baseRotation": 90,
+        "attribution": "StreetPlan.net. Used with permission.",
+        "attributionUrl": "https://www.urbaninnovators.com/streetplan"
+    },
+    {
+        "id": "sp-prop-sf-2L-64ft",
+        "name": "Single Family 2 Story 64ft",
+        "img": "sets/streetplan/sp-prop-sf-2L-64ft.webp",
+        "src": "sets/streetplan/sp-prop-sf-2L-64ft.glb",
+        "category": "buildings",
+        "baseRotation": 90,
+        "attribution": "StreetPlan.net. Used with permission.",
+        "attributionUrl": "https://www.urbaninnovators.com/streetplan"
+    },
+    {
+        "id": "sp-prop-townhouse-3L-20ft",
+        "name": "Townhouse 3 Story 20ft",
+        "img": "sets/streetplan/sp-prop-townhouse-3L-20ft.webp",
+        "src": "sets/streetplan/sp-prop-townhouse-3L-20ft.glb",
+        "category": "buildings",
+        "baseRotation": 90,
+        "attribution": "StreetPlan.net. Used with permission.",
+        "attributionUrl": "https://www.urbaninnovators.com/streetplan"
+    },
+    {
+        "id": "sp-prop-townhouse-3L-23ft",
+        "name": "Townhouse 3 Story 23ft",
+        "img": "sets/streetplan/sp-prop-townhouse-3L-23ft.webp",
+        "src": "sets/streetplan/sp-prop-townhouse-3L-23ft.glb",
+        "category": "buildings",
+        "baseRotation": 90,
         "attribution": "StreetPlan.net. Used with permission.",
         "attributionUrl": "https://www.urbaninnovators.com/streetplan"
     }

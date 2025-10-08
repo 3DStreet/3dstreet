@@ -15,7 +15,7 @@ function parseOTags(tags) {
   return tags.split('", "').map((t) => t.replace(/"/g, '').trim());
 }
 
-// Streetplan Helper function to create clone configuration
+// Streetplan Helper function to create clone configuration or return variant
 function createCloneConfig(name, tags) {
   if (!name || name === '-') return null;
 
@@ -23,8 +23,12 @@ function createCloneConfig(name, tags) {
     STREETPLAN_OBJECT_TO_GENERATED_CLONES_MAPPING[name.toLowerCase()];
   if (!generatedClonesConfig) return null;
 
-  // if the config is an object, then it is a generated clone config
+  // if the config is an object, check for variant
   if (typeof generatedClonesConfig === 'object') {
+    // if variant is present, return special marker (not a clone config)
+    if (generatedClonesConfig.variant) {
+      return { _isVariant: true, variant: generatedClonesConfig.variant };
+    }
     return generatedClonesConfig;
   } else {
     // if it is a string, then it is a model mixin
@@ -307,7 +311,9 @@ AFRAME.registerComponent('managed-street', {
         level: segment.level,
         direction: segment.direction,
         color: segment.color || window.STREET.types[segment.type]?.color,
-        surface: segment.surface || window.STREET.types[segment.type]?.surface // no error handling for segmentPreset not found
+        surface: segment.surface || window.STREET.types[segment.type]?.surface, // no error handling for segmentPreset not found
+        variant: segment.variant,
+        side: segment.side
       });
       segmentEl.setAttribute('data-layer-name', segment.name);
       // wait for street-segment to be loaded, then generate components from segment object
@@ -394,6 +400,9 @@ AFRAME.registerComponent('managed-street', {
 
         // convert from streetplan segment types to managed street presets
         switch (segment.Type) {
+          case 'Buildings':
+            segmentType = 'building';
+            break;
           case 'BikesPaths':
             segmentType = 'bike-lane';
             break;
@@ -419,7 +428,7 @@ AFRAME.registerComponent('managed-street', {
             segmentType = 'divider';
             break;
           case 'Furniture':
-            segmentType = 'sidewalk-tree';
+            segmentType = 'sidewalk';
             break;
           case 'Lanes':
             segmentType = 'parking-lane';
@@ -443,20 +452,31 @@ AFRAME.registerComponent('managed-street', {
         // Map the O-Tags to clone configurations
         const generated = {};
         const clones = [];
+        let segmentVariant = null;
+
         // Process O1, O2, O3 configurations
         ['O1', 'O2', 'O3'].forEach((prefix) => {
           const name = segment[`${prefix}-Name`];
           const tags = parseOTags(segment[`${prefix}-Tags`]);
           const cloneConfig = createCloneConfig(name, tags);
           if (cloneConfig) {
-            clones.push(cloneConfig);
+            // Check if this is a variant (strict variant-only mode)
+            if (cloneConfig._isVariant) {
+              // Use the first variant found, ignore others
+              if (!segmentVariant) {
+                segmentVariant = cloneConfig.variant;
+              }
+            } else {
+              // Traditional clone config
+              clones.push(cloneConfig);
+            }
           }
         });
         if (clones.length > 0) {
           generated.clones = clones;
         }
 
-        streetObject.segments.push({
+        const segmentData = {
           type: segmentType,
           width: segmentWidth,
           name: segment.title,
@@ -465,7 +485,19 @@ AFRAME.registerComponent('managed-street', {
           color: mappedColor || window.STREET.types[segmentType]?.color,
           surface: mappedSurface,
           generated: clones.length > 0 ? generated : undefined
-        });
+        };
+
+        // Add variant if found (takes precedence over generated clones)
+        if (segmentVariant) {
+          segmentData.variant = segmentVariant;
+        }
+
+        // Only add side property if it exists in StreetPlan data
+        if (segment.side) {
+          segmentData.side = segment.side; // 'left' or 'right'
+        }
+
+        streetObject.segments.push(segmentData);
       }
 
       // Parse the street object

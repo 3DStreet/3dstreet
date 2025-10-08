@@ -1,5 +1,13 @@
-/* global AFRAME */
+/* global AFRAME, STREET */
 import { createRNG } from '../lib/rng';
+
+// Helper function to get base rotation from catalog
+function getBaseRotationFromCatalog(mixinId) {
+  // Find the model in the catalog
+  const catalogEntry = STREET.catalog?.find((entry) => entry.id === mixinId);
+  // Return baseRotation if found, otherwise default to 0
+  return catalogEntry?.baseRotation || 0;
+}
 
 AFRAME.registerComponent('street-generated-clones', {
   multiple: true,
@@ -14,10 +22,14 @@ AFRAME.registerComponent('street-generated-clones', {
     direction: { type: 'string', oneOf: ['none', 'inbound', 'outbound'] }, // not used if facing defined?
 
     // Mode-specific properties
-    mode: { default: 'fixed', oneOf: ['fixed', 'random', 'single'] },
+    mode: { default: 'fixed', oneOf: ['fixed', 'random', 'single', 'fit'] },
 
-    // Spacing for fixed and random modes
-    spacing: { default: 15, type: 'number', if: { mode: ['fixed', 'random'] } }, // minimum distance between objects
+    // Spacing for fixed, random and fit modes
+    spacing: {
+      default: 15,
+      type: 'number',
+      if: { mode: ['fixed', 'random', 'fit'] }
+    }, // minimum distance between objects
 
     // Fixed mode properties
     cycleOffset: { default: 0.5, type: 'number', if: { mode: ['fixed'] } }, // offset as a fraction of spacing, only for fixed
@@ -31,14 +43,28 @@ AFRAME.registerComponent('street-generated-clones', {
       oneOf: ['start', 'middle', 'end'],
       if: { mode: ['single'] }
     },
-    padding: { default: 4, type: 'number', if: { mode: ['single'] } }
+    padding: { default: 4, type: 'number', if: { mode: ['single'] } },
+
+    // Fit mode properties
+    justifyWidth: {
+      default: 'center',
+      oneOf: ['left', 'center', 'right'],
+      if: { mode: ['fit'] }
+    }
   },
 
   init: function () {
     this.createdEntities = [];
     this.length = this.el.getAttribute('street-segment')?.length;
+    this.width = this.el.getAttribute('street-segment')?.width;
+
     this.el.addEventListener('segment-length-changed', (event) => {
       this.length = event.detail.newLength;
+      this.update();
+    });
+
+    this.el.addEventListener('segment-width-changed', (event) => {
+      this.width = event.detail.newWidth;
       this.update();
     });
   },
@@ -82,7 +108,14 @@ AFRAME.registerComponent('street-generated-clones', {
   },
 
   update: function (oldData) {
+    // Always get the current width from the segment
+    this.width = this.el.getAttribute('street-segment')?.width || 0;
+
     if (!this.length) {
+      return;
+    }
+    // Early return if data is not yet initialized
+    if (!this.data) {
       return;
     }
     // If mode is random or randomFacing and seed is 0, generate a random seed and return,
@@ -110,6 +143,9 @@ AFRAME.registerComponent('street-generated-clones', {
         break;
       case 'single':
         this.generateSingle();
+        break;
+      case 'fit':
+        this.generateFit();
         break;
     }
   },
@@ -152,27 +188,138 @@ AFRAME.registerComponent('street-generated-clones', {
     this.createClone(positionZ);
   },
 
-  createClone: function (positionZ) {
+  generateFit: function () {
     const data = this.data;
-    const mixinId = this.getModelMixin();
+    const models = data.modelsArray;
+    let cumulativeZ = this.length / 2;
+    let modelIndex = 0;
+
+    // measure of the building model along the street's z axis
+    const buildingWidths = {
+      SM3D_Bld_Mixed_4fl: 5.251,
+      SM3D_Bld_Mixed_Double_5fl: 10.9041,
+      SM3D_Bld_Mixed_4fl_2: 5.309,
+      SM3D_Bld_Mixed_5fl: 5.903,
+      SM3D_Bld_Mixed_Corner_4fl: 5.644,
+      SM_Bld_House_Preset_03_1800: 20,
+      SM_Bld_House_Preset_08_1809: 20,
+      SM_Bld_House_Preset_09_1845: 20,
+      'arched-building-01': 9.191,
+      'arched-building-02': 11.19,
+      'arched-building-03': 13.191,
+      'arched-building-04': 15.191,
+      seawall: 15,
+      'sp-prop-mixeduse-2L-29ft': 8.84, // ~29ft converted to meters
+      'sp-prop-mixeduse-2L-30ft': 9.14, // ~30ft converted to meters
+      'sp-prop-mixeduse-3L-18ft': 5.49, // ~18ft converted to meters
+      'sp-prop-mixeduse-3L-22ft': 6.71, // ~22ft converted to meters
+      'sp-prop-mixeduse-3L-23ft-corner': 7.01, // ~23ft converted to meters
+      'sp-prop-mixeduse-3L-42ft': 12.8, // ~42ft converted to meters
+      'sp-prop-mixeduse-3L-78ft-corner': 23.77, // ~78ft converted to meters
+      'sp-prop-sf-2L-64ft': 19.5,
+      'sp-prop-sf-2L-62ft': 18.9,
+      'sp-prop-sf-1L-62ft': 18.9,
+      'sp-prop-sf-1L-41ft': 12.5,
+      'sp-prop-townhouse-3L-20ft': 6.1,
+      'sp-prop-townhouse-3L-23ft': 7.01,
+      'sp-prop-bigbox-1L-220ft': 67, // ~220ft converted to meters
+      'sp-prop-bigbox-1L-291ft': 88.7, // ~291ft converted to meters
+      'sp-prop-parking-3L-155ft': 47.2, // ~155ft converted to meters
+      'sp-prop-parking-3L-97ft-centered': 29.6, // ~97ft converted to meters
+      'sp-prop-gov-3L-61ft': 18.6 // ~61ft converted to meters
+    };
+
+    // These are approximate depths for how far buildings extend from their placement point
+    // measure of the building model along the street's x axis
+    const buildingDepths = {
+      SM3D_Bld_Mixed_4fl: 6,
+      SM3D_Bld_Mixed_Double_5fl: 6,
+      SM3D_Bld_Mixed_4fl_2: 6,
+      SM3D_Bld_Mixed_5fl: 6,
+      SM3D_Bld_Mixed_Corner_4fl: 6,
+      SM_Bld_House_Preset_03_1800: 20,
+      SM_Bld_House_Preset_08_1809: 20,
+      SM_Bld_House_Preset_09_1845: 20,
+      'arched-building-01': 10,
+      'arched-building-02': 10,
+      'arched-building-03': 10,
+      'arched-building-04': 10,
+      'sp-prop-mixeduse-2L-29ft': 16, // Typical mixed-use depth
+      'sp-prop-mixeduse-2L-30ft': 16,
+      'sp-prop-mixeduse-3L-18ft': 8,
+      'sp-prop-mixeduse-3L-22ft': 7.2,
+      'sp-prop-mixeduse-3L-23ft-corner': 7.09, // Corner buildings slightly deeper
+      'sp-prop-mixeduse-3L-42ft': 16.42,
+      'sp-prop-mixeduse-3L-78ft-corner': 27.3, // Corner buildings slightly deeper
+      'sp-prop-sf-2L-64ft': 15.22,
+      'sp-prop-sf-2L-62ft': 18.36,
+      'sp-prop-sf-1L-62ft': 24.27,
+      'sp-prop-sf-1L-41ft': 10.15,
+      'sp-prop-townhouse-3L-20ft': 10.22,
+      'sp-prop-townhouse-3L-23ft': 10.22,
+      'sp-prop-bigbox-1L-220ft': 44.79,
+      'sp-prop-bigbox-1L-291ft': 79,
+      'sp-prop-parking-3L-155ft': 43.14,
+      'sp-prop-parking-3L-97ft-centered': 43.14,
+      'sp-prop-gov-3L-61ft': 16.23
+    };
+
+    // Use stored segment width to calculate justified X position
+    const segmentWidth = this.width || 0;
+
+    while (cumulativeZ > -this.length / 2) {
+      const mixinId = models[modelIndex % models.length];
+      const buildingWidth = buildingWidths[mixinId] || 10;
+      const buildingDepth = buildingDepths[mixinId] || 0;
+
+      if (cumulativeZ - buildingWidth < -this.length / 2) {
+        break;
+      }
+
+      // Calculate X position based on justifyWidth
+      let positionX = data.positionX;
+      if (data.justifyWidth === 'left') {
+        // Left justify: place building so its right edge aligns with left edge of segment
+        positionX = data.positionX - segmentWidth / 2 + buildingDepth / 2;
+      } else if (data.justifyWidth === 'right') {
+        // Right justify: place building so its left edge aligns with right edge of segment
+        positionX = data.positionX + segmentWidth / 2 - buildingDepth / 2;
+      }
+      // Center is default, uses data.positionX as is
+
+      this.createClone(cumulativeZ - buildingWidth / 2, mixinId, positionX);
+
+      cumulativeZ -= buildingWidth + data.spacing;
+      modelIndex++;
+    }
+  },
+
+  createClone: function (positionZ, mixinId, positionX) {
+    const data = this.data;
+    if (!mixinId) {
+      mixinId = this.getModelMixin();
+    }
     const clone = document.createElement('a-entity');
 
     clone.setAttribute('mixin', mixinId);
     clone.setAttribute('position', {
-      x: data.positionX,
+      x: positionX !== undefined ? positionX : data.positionX,
       y: data.positionY,
       z: positionZ
     });
 
-    let rotationY = data.facing;
+    // Get base rotation from catalog
+    const baseRotation = getBaseRotationFromCatalog(mixinId);
+
+    let rotationY = data.facing + baseRotation;
     if (data.direction === 'inbound') {
-      rotationY = 0 + data.facing;
+      rotationY = 0 + data.facing + baseRotation;
     }
     if (data.direction === 'outbound') {
-      rotationY = 180 - data.facing;
+      rotationY = 180 - data.facing + baseRotation;
     }
     if (data.randomFacing) {
-      rotationY = this.rng() * 360;
+      rotationY = this.rng() * 360 + baseRotation;
     }
     clone.setAttribute('rotation', `0 ${rotationY} 0`);
 
