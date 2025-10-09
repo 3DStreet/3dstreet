@@ -1,5 +1,7 @@
 import { createUniqueId } from '../../../lib/entity.js';
 import * as defaultStreetObjects from './defaultStreets.js';
+import { uploadAsset } from '../../../api/storage.js';
+import useStore from '@/store.js';
 
 export function createSvgExtrudedEntity(position) {
   // This component accepts a svgString and creates a new entity with geometry extruded
@@ -342,7 +344,7 @@ export function createPanoramaSphere() {
   }
 }
 
-export function createModelFromFile(file, position) {
+function createTemporaryModel(file, position) {
   // Create entity with model from a local file (blob URL)
   // Note: This is temporary and will not persist on reload
   if (file && file.name) {
@@ -358,5 +360,35 @@ export function createModelFromFile(file, position) {
       }
     };
     AFRAME.INSPECTOR.execute('entitycreate', definition);
+  }
+}
+
+export async function createModelFromFile(file, position) {
+  const { scene, auth } = useStore.getState();
+  const sceneId = scene?.id;
+  const isProUser = auth.currentUser?.isPro;
+
+  // Pro users: upload the asset and use the cloud URL
+  if (isProUser && sceneId) {
+    try {
+      const modelUrl = await uploadAsset(sceneId, file);
+      const definition = {
+        class: 'custom-model',
+        components: {
+          position: position ?? '0 0 0',
+          'gltf-model': `url(${modelUrl})`,
+          'data-layer-name': `glTF Model • ${file.name}`,
+          shadow: 'receive: true; cast: true;'
+        }
+      };
+      AFRAME.INSPECTOR.execute('entitycreate', definition);
+    } catch (error) {
+      console.error('Failed to upload GLTF model:', error);
+      // Fallback to temporary local model on upload failure
+      createTemporaryModel(file, position);
+    }
+  } else {
+    // Non-pro users: use a temporary local blob URL
+    createTemporaryModel(file, position);
   }
 }
