@@ -1,6 +1,6 @@
 import { createUniqueId } from '../../../lib/entity.js';
 import * as defaultStreetObjects from './defaultStreets.js';
-import { uploadAsset } from '../../../api/storage.js';
+import { uploadAsset, addAssetToScene } from '../../../api/storage.js';
 import useStore from '@/store.js';
 
 export function createSvgExtrudedEntity(position) {
@@ -345,50 +345,56 @@ export function createPanoramaSphere() {
 }
 
 function createTemporaryModel(file, position) {
-  // Create entity with model from a local file (blob URL)
-  // Note: This is temporary and will not persist on reload
-  if (file && file.name) {
-    const blobUrl = URL.createObjectURL(file);
-    const definition = {
-      class: 'custom-model',
-      components: {
-        position: position ?? '0 0 0',
-        'gltf-model': `url(${blobUrl})`,
-        'data-layer-name': `glTF Model • ${file.name}`,
-        'data-temporary-file': 'true',
-        shadow: 'receive: true; cast: true;'
-      }
-    };
-    AFRAME.INSPECTOR.execute('entitycreate', definition);
-  }
+  if (!file || !file.name) return null;
+
+  const blobUrl = URL.createObjectURL(file);
+  const entityId = createUniqueId();
+  const definition = {
+    id: entityId,
+    class: 'custom-model',
+    components: {
+      position: position ?? { x: 0, y: 0, z: 0 },
+      'gltf-model': `url(${blobUrl})`,
+      'data-layer-name': `glTF Model • ${file.name}`,
+      'data-temporary-file': 'true',
+      'data-upload-status': 'pending',
+      shadow: 'receive: true; cast: true;'
+    }
+  };
+  return AFRAME.INSPECTOR.execute('entitycreate', definition);
 }
 
 export async function createModelFromFile(file, position) {
+  const tempEntity = createTemporaryModel(file, position);
+  if (!tempEntity) return;
+
   const { scene, auth } = useStore.getState();
   const sceneId = scene?.id;
   const isProUser = auth.currentUser?.isPro;
 
-  // Pro users: upload the asset and use the cloud URL
-  if (isProUser && sceneId) {
-    try {
-      const modelUrl = await uploadAsset(sceneId, file);
-      const definition = {
-        class: 'custom-model',
-        components: {
-          position: position ?? '0 0 0',
-          'gltf-model': `url(${modelUrl})`,
-          'data-layer-name': `glTF Model • ${file.name}`,
-          shadow: 'receive: true; cast: true;'
-        }
-      };
-      AFRAME.INSPECTOR.execute('entitycreate', definition);
-    } catch (error) {
-      console.error('Failed to upload GLTF model:', error);
-      // Fallback to temporary local model on upload failure
-      createTemporaryModel(file, position);
-    }
-  } else {
-    // Non-pro users: use a temporary local blob URL
-    createTemporaryModel(file, position);
+  if (!isProUser || !sceneId) {
+    tempEntity.setAttribute('data-upload-status', 'pro-required');
+    return;
+  }
+
+  try {
+    tempEntity.setAttribute('data-upload-status', 'uploading');
+    const modelUrl = await uploadAsset(sceneId, file);
+
+    tempEntity.setAttribute('gltf-model', `url(${modelUrl})`);
+    tempEntity.setAttribute('data-asset-source', '3dstreet');
+    tempEntity.setAttribute('data-upload-status', 'success');
+    tempEntity.removeAttribute('data-temporary-file');
+
+    const asset = {
+      id: tempEntity.id,
+      src: modelUrl,
+      type: 'model',
+      name: file.name
+    };
+    await addAssetToScene(sceneId, asset);
+  } catch (error) {
+    console.error('Failed to upload GLTF model:', error);
+    tempEntity.setAttribute('data-upload-status', 'failed');
   }
 }

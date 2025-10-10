@@ -1,7 +1,12 @@
 import { doc, getDoc, updateDoc, serverTimestamp } from 'firebase/firestore';
 import { v4 as uuidv4 } from 'uuid';
 import { db, storage } from '../services/firebase';
-import { getDownloadURL, ref, uploadBytes } from 'firebase/storage';
+import {
+  getDownloadURL,
+  ref,
+  uploadBytes,
+  deleteObject
+} from 'firebase/storage';
 import posthog from 'posthog-js';
 
 /**
@@ -30,6 +35,24 @@ export async function uploadAsset(sceneId, file) {
   } catch (error) {
     console.error('Error uploading asset:', error);
     throw error;
+  }
+}
+
+/**
+ * Delete a file from a scene's asset folder
+ * @param {string} fileUrl - The full URL of the file to delete
+ */
+export async function deleteAsset(fileUrl) {
+  try {
+    const storageRef = ref(storage, fileUrl);
+    await deleteObject(storageRef);
+
+    posthog.capture('asset_deleted', {
+      file_url: fileUrl
+    });
+  } catch (error) {
+    // It's possible the file doesn't exist, so we don't want to throw an error
+    console.warn('Error deleting asset:', error);
   }
 }
 
