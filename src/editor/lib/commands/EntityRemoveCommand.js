@@ -1,6 +1,7 @@
 import Events from '../Events';
 import { Command } from '../command.js';
 import { findClosestEntity, prepareForSerialization } from '../entity.js';
+import { deleteAsset } from '../../api/storage.js';
 
 export class EntityRemoveCommand extends Command {
   constructor(editor, entity) {
@@ -18,6 +19,20 @@ export class EntityRemoveCommand extends Command {
 
   execute(nextCommandCallback) {
     const closest = findClosestEntity(this.entity);
+
+    // If the entity is a custom model from 3dstreet, delete it from storage
+    if (this.entity.getAttribute('data-asset-source') === '3dstreet') {
+      const modelUrlAttr = this.entity.getAttribute('gltf-model');
+      if (modelUrlAttr) {
+        // Extract URL from "url(...)" string
+        const urlMatch = /url\(([^)]+)\)/.exec(modelUrlAttr);
+        if (urlMatch && urlMatch[1]) {
+          const modelUrl = urlMatch[1];
+          // It's a fire-and-forget, no need to await
+          deleteAsset(modelUrl);
+        }
+      }
+    }
 
     // Keep a clone not attached to DOM for undo
     this.entity.flushToDOM();
