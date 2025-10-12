@@ -90,14 +90,16 @@ const STREETPLAN_OBJECT_TO_GENERATED_CLONES_MAPPING = {
   'soundwall plants (8ft)': '',
   'bench old': {
     mode: 'fixed',
-    modelsArray: 'bikerack,sp-furn-bench2-5x2ft,bikerack,trash-bin',
+    modelsArray:
+      'sp-furn-bench1-5x2ft,bikerack,sp-furn-bench2-5x2ft,bikerack,trash-bin',
     spacing: 20,
     count: 4,
     facing: 0
   },
   'bench simple': {
     mode: 'fixed',
-    modelsArray: 'bikerack,sp-furn-bench2-5x2ft,bikerack,trash-bin',
+    modelsArray:
+      'sp-furn-bench2-5x2ft,bikerack,sp-furn-bench2-5x2ft,bikerack,trash-bin',
     spacing: 20,
     count: 4,
     facing: 0
@@ -140,7 +142,7 @@ const STREETPLAN_OBJECT_TO_GENERATED_CLONES_MAPPING = {
   },
   'nyc bike rack': {
     mode: 'random',
-    modelsArray: 'trash-bin,sp-furn-table-2x7ft,sideview',
+    modelsArray: 'bikerack,sp-furn-table-2x7ft,sideview',
     spacing: 10,
     count: 3,
     facing: 0
@@ -190,7 +192,7 @@ const STREETPLAN_OBJECT_TO_GENERATED_CLONES_MAPPING = {
   },
   trashcan: {
     mode: 'random',
-    modelsArray: 'trash-bin,sp-furn-table-2x7ft,sideview',
+    modelsArray: 'trash-bin',
     spacing: 10,
     count: 3,
     facing: 0
@@ -213,7 +215,7 @@ const STREETPLAN_OBJECT_TO_GENERATED_CLONES_MAPPING = {
   'fleamarket stuff': {
     mode: 'random',
     modelsArray:
-      'sp-furn-foodcart-5dot5x9ft,sp-furn-farmertent1-10x10ft,sp-furn-sp-furn-farmertent2-10x10ft,sp-furn-table-blue-7x7ft',
+      'sp-furn-farmertent1-10x10ft,sp-furn-foodcart-5dot5x9ft,sp-furn-sp-furn-farmertent2-10x10ft,sp-furn-table-blue-7x7ft',
     spacing: 10,
     count: 4,
     facing: 0
@@ -236,7 +238,7 @@ const STREETPLAN_OBJECT_TO_GENERATED_CLONES_MAPPING = {
   },
   'planter with bench': {
     mode: 'fixed',
-    modelsArray: 'bikerack,sp-furn-bench2-5x2ft,bikerack,trash-bin',
+    modelsArray: 'sp-furn-bench2-5x2ft,bikerack,trash-bin,bikerack',
     spacing: 20,
     count: 4,
     facing: 0
@@ -265,7 +267,7 @@ const STREETPLAN_OBJECT_TO_GENERATED_CLONES_MAPPING = {
   },
   table: {
     mode: 'fixed',
-    modelsArray: 'sp-furn-foodcart-5dot5x9ft,sp-furn-table-blue-7x7ft',
+    modelsArray: 'sp-furn-table-blue-7x7ft,sp-furn-foodcart-5dot5x9ft',
     spacing: 20,
     count: 2,
     facing: 0
@@ -273,7 +275,7 @@ const STREETPLAN_OBJECT_TO_GENERATED_CLONES_MAPPING = {
   'tent bluewhite': {
     mode: 'random',
     modelsArray:
-      'sp-furn-foodcart-5dot5x9ft,sp-furn-farmertent1-10x10ft,sp-furn-sp-furn-farmertent2-10x10ft,sp-furn-table-blue-7x7ft',
+      'sp-furn-farmertent1-10x10ft,sp-furn-foodcart-5dot5x9ft,sp-furn-farmertent2-10x10ft,sp-furn-table-blue-7x7ft',
     spacing: 20,
     count: 4,
     facing: 0
@@ -281,349 +283,471 @@ const STREETPLAN_OBJECT_TO_GENERATED_CLONES_MAPPING = {
   'tent veggie': {
     mode: 'random',
     modelsArray:
-      'sp-furn-foodcart-5dot5x9ft,sp-furn-farmertent1-10x10ft,sp-furn-sp-furn-farmertent2-10x10ft,sp-furn-table-blue-7x7ft',
+      'sp-furn-farmertent2-10x10ft,sp-furn-foodcart-5dot5x9ft,sp-furn-farmertent1-10x10ft,sp-furn-table-blue-7x7ft',
     spacing: 20,
     count: 4,
     facing: 0
   },
   'brick apartment 1floor': {
-    mode: 'fit',
-    modelsArray: 'SM_Bld_House_Preset_09_1845,SM_Bld_House_Preset_03_1800',
-    spacing: 0
+    mode: 'random',
+    modelsArray:
+      'sp-prop-sf-1L-41ft,sp-prop-sf-1L-62ft,sp-prop-sf-2L-62ft,sp-prop-sf-2L-64ft,sp-prop-sf-1L-41ft,sp-prop-sf-1L-62ft',
+    spacing: 50,
+    count: 6,
+    facing: 0
   },
   'brick apartment 2floors': {
-    mode: 'fit',
-    modelsArray: 'SM_Bld_House_Preset_09_1845,SM_Bld_House_Preset_03_1800',
-    spacing: 0
+    mode: 'random',
+    modelsArray:
+      'sp-prop-sf-2L-62ft,sp-prop-sf-2L-64ft,sp-prop-mixeduse-3L-22ft,sp-prop-mixeduse-2L-30ft,sp-prop-mixeduse-2L-29ft,sp-prop-sf-1L-41ft',
+    spacing: 50,
+    count: 6,
+    facing: 0
   },
   'brick apartment 3floors': {
-    mode: 'fit',
-    modelsArray: 'SM_Bld_House_Preset_09_1845,SM_Bld_House_Preset_03_1800',
-    spacing: 0
+    mode: 'random',
+    modelsArray:
+      'sp-prop-mixeduse-3L-22ft,sp-prop-mixeduse-2L-30ft,sp-prop-mixeduse-3L-23ft-corner,sp-prop-mixeduse-3L-78ft-corner,sp-prop-townhouse-3L-23ft,sp-prop-townhouse-3L-20ft',
+    spacing: 50,
+    count: 6,
+    facing: 0
   },
   'brick apartment 4floors': {
-    mode: 'fit',
-    modelsArray: 'SM_Bld_House_Preset_09_1845,SM_Bld_House_Preset_03_1800',
-    spacing: 0
+    mode: 'random',
+    modelsArray:
+      'sp-prop-mixeduse-3L-23ft-corner,sp-prop-mixeduse-3L-78ft-corner,sp-prop-townhouse-3L-23ft,sp-prop-townhouse-3L-20ft,sp-prop-mixeduse-3L-23ft-corner,sp-prop-mixeduse-3L-78ft-corner',
+    spacing: 50,
+    count: 6,
+    facing: 0
   },
   'brick apartment 5floors': {
-    mode: 'fit',
-    modelsArray: 'SM_Bld_House_Preset_09_1845,SM_Bld_House_Preset_03_1800',
-    spacing: 0
+    mode: 'random',
+    modelsArray:
+      'sp-prop-mixeduse-3L-23ft-corner,sp-prop-mixeduse-3L-78ft-corner,sp-prop-townhouse-3L-23ft,sp-prop-townhouse-3L-20ft,sp-prop-mixeduse-3L-23ft-corner,sp-prop-mixeduse-3L-78ft-corner',
+    spacing: 50,
+    count: 6,
+    facing: 0
   },
   'building blue 1floor': {
-    mode: 'fit',
-    modelsArray: 'SM_Bld_House_Preset_09_1845,SM_Bld_House_Preset_03_1800',
-    spacing: 0
+    mode: 'random',
+    modelsArray:
+      'sp-prop-sf-1L-41ft,sp-prop-sf-1L-62ft,sp-prop-sf-2L-62ft,sp-prop-sf-2L-64ft,sp-prop-sf-1L-41ft,sp-prop-sf-1L-62ft',
+    spacing: 50,
+    count: 6,
+    facing: 0
   },
   'building blue 2floors': {
-    mode: 'fit',
-    modelsArray: 'SM_Bld_House_Preset_09_1845,SM_Bld_House_Preset_03_1800',
-    spacing: 0
+    mode: 'random',
+    modelsArray:
+      'sp-prop-sf-2L-62ft,sp-prop-sf-2L-64ft,sp-prop-mixeduse-3L-22ft,sp-prop-mixeduse-2L-30ft,sp-prop-mixeduse-2L-29ft,sp-prop-sf-1L-41ft',
+    spacing: 50,
+    count: 6,
+    facing: 0
   },
   'building blue 3floors': {
-    mode: 'fit',
-    modelsArray: 'SM_Bld_House_Preset_09_1845,SM_Bld_House_Preset_03_1800',
-    spacing: 0
+    mode: 'random',
+    modelsArray:
+      'sp-prop-mixeduse-3L-22ft,sp-prop-mixeduse-2L-30ft,sp-prop-mixeduse-3L-23ft-corner,sp-prop-mixeduse-3L-78ft-corner,sp-prop-townhouse-3L-23ft,sp-prop-townhouse-3L-20ft',
+    spacing: 50,
+    count: 6,
+    facing: 0
   },
   'building blue 4floors': {
-    mode: 'fit',
-    modelsArray: 'SM_Bld_House_Preset_09_1845,SM_Bld_House_Preset_03_1800',
-    spacing: 0
+    mode: 'random',
+    modelsArray:
+      'sp-prop-mixeduse-3L-23ft-corner,sp-prop-mixeduse-3L-78ft-corner,sp-prop-townhouse-3L-23ft,sp-prop-townhouse-3L-20ft,sp-prop-mixeduse-3L-23ft-corner,sp-prop-mixeduse-3L-78ft-corner',
+    spacing: 50,
+    count: 6,
+    facing: 0
   },
   'building blue 5floors': {
-    mode: 'fit',
-    modelsArray: 'SM_Bld_House_Preset_09_1845,SM_Bld_House_Preset_03_1800',
-    spacing: 0
+    mode: 'random',
+    modelsArray:
+      'sp-prop-mixeduse-3L-23ft-corner,sp-prop-mixeduse-3L-78ft-corner,sp-prop-townhouse-3L-23ft,sp-prop-townhouse-3L-20ft,sp-prop-mixeduse-3L-23ft-corner,sp-prop-mixeduse-3L-78ft-corner',
+    spacing: 50,
+    count: 6,
+    facing: 0
   },
   'building blue 6floors': {
-    mode: 'fit',
-    modelsArray: 'SM_Bld_House_Preset_09_1845,SM_Bld_House_Preset_03_1800',
-    spacing: 0
+    mode: 'random',
+    modelsArray:
+      'sp-prop-mixeduse-3L-23ft-corner,sp-prop-mixeduse-3L-78ft-corner,sp-prop-townhouse-3L-23ft,sp-prop-townhouse-3L-20ft,sp-prop-mixeduse-3L-23ft-corner,sp-prop-mixeduse-3L-78ft-corner',
+    spacing: 50,
+    count: 6,
+    facing: 0
   },
   'building blue 7floors': {
-    mode: 'fit',
-    modelsArray: 'SM_Bld_House_Preset_09_1845,SM_Bld_House_Preset_03_1800',
-    spacing: 0
+    mode: 'random',
+    modelsArray:
+      'sp-prop-mixeduse-3L-23ft-corner,sp-prop-mixeduse-3L-78ft-corner,sp-prop-townhouse-3L-23ft,sp-prop-townhouse-3L-20ft,sp-prop-mixeduse-3L-23ft-corner,sp-prop-mixeduse-3L-78ft-corner',
+    spacing: 50,
+    count: 6,
+    facing: 0
   },
   'building yellow 1floor': {
-    mode: 'fit',
-    modelsArray: 'SM_Bld_House_Preset_09_1845,SM_Bld_House_Preset_03_1800',
-    spacing: 0
+    mode: 'random',
+    modelsArray:
+      'sp-prop-sf-1L-41ft,sp-prop-sf-1L-62ft,sp-prop-sf-2L-62ft,sp-prop-sf-2L-64ft,sp-prop-sf-1L-41ft,sp-prop-sf-1L-62ft',
+    spacing: 50,
+    count: 6,
+    facing: 0
   },
   'building yellow 2floors': {
-    mode: 'fit',
-    modelsArray: 'SM_Bld_House_Preset_09_1845,SM_Bld_House_Preset_03_1800',
-    spacing: 0
+    mode: 'random',
+    modelsArray:
+      'sp-prop-sf-2L-62ft,sp-prop-sf-2L-64ft,sp-prop-mixeduse-3L-22ft,sp-prop-mixeduse-2L-30ft,sp-prop-mixeduse-2L-29ft,sp-prop-sf-1L-41ft',
+    spacing: 50,
+    count: 6,
+    facing: 0
   },
   'building yellow 3floors': {
-    mode: 'fit',
-    modelsArray: 'SM_Bld_House_Preset_09_1845,SM_Bld_House_Preset_03_1800',
-    spacing: 0
+    mode: 'random',
+    modelsArray:
+      'sp-prop-mixeduse-3L-22ft,sp-prop-mixeduse-2L-30ft,sp-prop-mixeduse-3L-23ft-corner,sp-prop-mixeduse-3L-78ft-corner,sp-prop-townhouse-3L-23ft,sp-prop-townhouse-3L-20ft',
+    spacing: 50,
+    count: 6,
+    facing: 0
   },
   'building yellow 4floors': {
-    mode: 'fit',
-    modelsArray: 'SM_Bld_House_Preset_09_1845,SM_Bld_House_Preset_03_1800',
-    spacing: 0
+    mode: 'random',
+    modelsArray:
+      'sp-prop-mixeduse-3L-23ft-corner,sp-prop-mixeduse-3L-78ft-corner,sp-prop-townhouse-3L-23ft,sp-prop-townhouse-3L-20ft,sp-prop-mixeduse-3L-23ft-corner,sp-prop-mixeduse-3L-78ft-corner',
+    spacing: 50,
+    count: 6,
+    facing: 0
   },
   'building yellow 5floors': {
-    mode: 'fit',
-    modelsArray: 'SM_Bld_House_Preset_09_1845,SM_Bld_House_Preset_03_1800',
-    spacing: 0
+    mode: 'random',
+    modelsArray:
+      'sp-prop-mixeduse-3L-23ft-corner,sp-prop-mixeduse-3L-78ft-corner,sp-prop-townhouse-3L-23ft,sp-prop-townhouse-3L-20ft,sp-prop-mixeduse-3L-23ft-corner,sp-prop-mixeduse-3L-78ft-corner',
+    spacing: 50,
+    count: 6,
+    facing: 0
   },
   'building yellow 6floors': {
-    mode: 'fit',
-    modelsArray: 'SM_Bld_House_Preset_09_1845,SM_Bld_House_Preset_03_1800',
-    spacing: 0
+    mode: 'random',
+    modelsArray:
+      'sp-prop-mixeduse-3L-23ft-corner,sp-prop-mixeduse-3L-78ft-corner,sp-prop-townhouse-3L-23ft,sp-prop-townhouse-3L-20ft,sp-prop-mixeduse-3L-23ft-corner,sp-prop-mixeduse-3L-78ft-corner',
+    spacing: 50,
+    count: 6,
+    facing: 0
   },
   'building yellow 7floors': {
-    mode: 'fit',
-    modelsArray: 'SM_Bld_House_Preset_09_1845,SM_Bld_House_Preset_03_1800',
-    spacing: 0
+    mode: 'random',
+    modelsArray:
+      'sp-prop-mixeduse-3L-23ft-corner,sp-prop-mixeduse-3L-78ft-corner,sp-prop-townhouse-3L-23ft,sp-prop-townhouse-3L-20ft,sp-prop-mixeduse-3L-23ft-corner,sp-prop-mixeduse-3L-78ft-corner',
+    spacing: 50,
+    count: 6,
+    facing: 0
   },
-  'buildings falltrees (30ft)': {
-    mode: 'fit',
-    modelsArray: 'SM_Bld_House_Preset_09_1845,SM_Bld_House_Preset_03_1800',
-    spacing: 0
-  },
-  'buildings pinetrees (30ft)': {
-    mode: 'fit',
-    modelsArray: 'SM_Bld_House_Preset_09_1845,SM_Bld_House_Preset_03_1800',
-    spacing: 0
-  },
+  'buildings falltrees (30ft)': '',
+  'buildings pinetrees (30ft)': '',
   'gas station': {
-    mode: 'fit',
-    modelsArray: 'SM_Bld_House_Preset_09_1845,SM_Bld_House_Preset_03_1800',
-    spacing: 0
+    mode: 'random',
+    modelsArray: 'sp-prop-bigbox-1L-220ft,sp-prop-bigbox-1L-291ft',
+    spacing: 50,
+    count: 6,
+    facing: 0
   },
   'home depot': {
-    mode: 'fit',
-    modelsArray: 'SM_Bld_House_Preset_09_1845,SM_Bld_House_Preset_03_1800',
-    spacing: 0
+    mode: 'random',
+    modelsArray: 'sp-prop-bigbox-1L-220ft,sp-prop-bigbox-1L-291ft',
+    spacing: 50,
+    count: 6,
+    facing: 0
   },
   'house 1floor': {
-    mode: 'fit',
-    modelsArray: 'SM_Bld_House_Preset_09_1845,SM_Bld_House_Preset_03_1800',
-    spacing: 0
+    mode: 'random',
+    modelsArray:
+      'sp-prop-sf-1L-41ft,sp-prop-sf-1L-62ft,sp-prop-sf-2L-62ft,sp-prop-sf-1L-41ft,sp-prop-sf-1L-62ft,sp-prop-sf-2L-62ft',
+    spacing: 50,
+    count: 6,
+    facing: 0
   },
   'house 2floors': {
-    mode: 'fit',
-    modelsArray: 'SM_Bld_House_Preset_09_1845,SM_Bld_House_Preset_03_1800',
-    spacing: 0
+    mode: 'random',
+    modelsArray:
+      'sp-prop-sf-1L-41ft,sp-prop-sf-2L-62ft,sp-prop-sf-2L-64ft,sp-prop-sf-1L-41ft,sp-prop-sf-2L-62ft,sp-prop-sf-2L-64ft',
+    spacing: 50,
+    count: 6,
+    facing: 0
   },
   'house 3floors': {
-    mode: 'fit',
-    modelsArray: 'SM_Bld_House_Preset_09_1845,SM_Bld_House_Preset_03_1800',
-    spacing: 0
+    mode: 'random',
+    modelsArray:
+      'sp-prop-sf-2L-62ft,sp-prop-sf-2L-64ft,sp-prop-townhouse-3L-23ft,sp-prop-townhouse-3L-20ft,sp-prop-sf-2L-64ft,sp-prop-townhouse-3L-20ft',
+    spacing: 50,
+    count: 6,
+    facing: 0
   },
   'house 4floors': {
-    mode: 'fit',
-    modelsArray: 'SM_Bld_House_Preset_09_1845,SM_Bld_House_Preset_03_1800',
-    spacing: 0
+    mode: 'random',
+    modelsArray:
+      'sp-prop-townhouse-3L-23ft,sp-prop-townhouse-3L-20ft,sp-prop-townhouse-3L-20ft,sp-prop-townhouse-3L-20ft,sp-prop-mixeduse-3L-78ft-corner,sp-prop-mixeduse-3L-23ft-corner',
+    spacing: 50,
+    count: 6,
+    facing: 0
   },
   'house 5floors': {
-    mode: 'fit',
-    modelsArray: 'SM_Bld_House_Preset_09_1845,SM_Bld_House_Preset_03_1800',
-    spacing: 0
+    mode: 'random',
+    modelsArray:
+      'sp-prop-townhouse-3L-23ft,sp-prop-townhouse-3L-20ft,sp-prop-townhouse-3L-20ft,sp-prop-townhouse-3L-20ft,sp-prop-mixeduse-3L-78ft-corner,sp-prop-mixeduse-3L-23ft-corner',
+    spacing: 50,
+    count: 6,
+    facing: 0
   },
   'house newurbanist': {
-    mode: 'fit',
-    modelsArray: 'SM_Bld_House_Preset_09_1845,SM_Bld_House_Preset_03_1800',
-    spacing: 0
+    mode: 'random',
+    modelsArray:
+      'sp-prop-sf-1L-41ft,sp-prop-sf-1L-62ft,sp-prop-sf-2L-62ft,sp-prop-sf-1L-41ft,sp-prop-sf-1L-62ft,sp-prop-sf-2L-62ft',
+    spacing: 50,
+    count: 6,
+    facing: 0
   },
   'house newurbanist red': {
-    mode: 'fit',
-    modelsArray: 'SM_Bld_House_Preset_09_1845,SM_Bld_House_Preset_03_1800',
-    spacing: 0
+    mode: 'random',
+    modelsArray:
+      'sp-prop-sf-1L-41ft,sp-prop-sf-1L-62ft,sp-prop-sf-2L-62ft,sp-prop-sf-1L-41ft,sp-prop-sf-1L-62ft,sp-prop-sf-2L-62ft',
+    spacing: 50,
+    count: 6,
+    facing: 0
   },
   'live work': {
-    mode: 'fit',
-    modelsArray: 'SM_Bld_House_Preset_09_1845,SM_Bld_House_Preset_03_1800',
-    spacing: 0
+    mode: 'random',
+    modelsArray:
+      'sp-prop-mixeduse-3L-22ft,sp-prop-mixeduse-2L-30ft,sp-prop-mixeduse-3L-23ft-corner,sp-prop-mixeduse-2L-29ft,sp-prop-mixeduse-2L-30ft,sp-prop-townhouse-3L-20ft',
+    spacing: 50,
+    count: 6,
+    facing: 0
   },
   'mart chilis': {
-    mode: 'fit',
-    modelsArray: 'SM_Bld_House_Preset_09_1845,SM_Bld_House_Preset_03_1800',
-    spacing: 0
+    mode: 'random',
+    modelsArray: 'sp-prop-bigbox-1L-220ft,sp-prop-bigbox-1L-291ft',
+    spacing: 50,
+    count: 6,
+    facing: 0
   },
   'mikedesign midvale 2story': {
-    mode: 'fit',
-    modelsArray: 'SM_Bld_House_Preset_09_1845,SM_Bld_House_Preset_03_1800',
-    spacing: 0
+    mode: 'random',
+    modelsArray:
+      'sp-prop-mixeduse-3L-22ft,sp-prop-mixeduse-2L-30ft,sp-prop-mixeduse-3L-23ft-corner,sp-prop-mixeduse-2L-29ft',
+    spacing: 50,
+    count: 6,
+    facing: 0
   },
   'mikedesign midvale 3story': {
-    mode: 'fit',
-    modelsArray: 'SM_Bld_House_Preset_09_1845,SM_Bld_House_Preset_03_1800',
-    spacing: 0
+    mode: 'random',
+    modelsArray:
+      'sp-prop-mixeduse-3L-22ft,sp-prop-mixeduse-2L-30ft,sp-prop-mixeduse-3L-23ft-corner,sp-prop-mixeduse-2L-29ft',
+    spacing: 50,
+    count: 6,
+    facing: 0
   },
   'mikedesign midvale3 3story': {
-    mode: 'fit',
-    modelsArray: 'SM_Bld_House_Preset_09_1845,SM_Bld_House_Preset_03_1800',
-    spacing: 0
+    mode: 'random',
+    modelsArray:
+      'sp-prop-mixeduse-3L-22ft,sp-prop-mixeduse-2L-30ft,sp-prop-mixeduse-3L-23ft-corner,sp-prop-mixeduse-2L-29ft',
+    spacing: 50,
+    count: 6,
+    facing: 0
   },
   'mixed use 2floors': {
-    mode: 'fit',
-    modelsArray: 'SM_Bld_House_Preset_09_1845,SM_Bld_House_Preset_03_1800',
-    spacing: 0
+    mode: 'random',
+    modelsArray:
+      'sp-prop-mixeduse-2L-30ft,sp-prop-mixeduse-2L-29ft,sp-prop-sf-2L-64ft',
+    spacing: 50,
+    count: 6,
+    facing: 0
   },
   'mixed use 3floors': {
-    mode: 'fit',
-    modelsArray: 'SM_Bld_House_Preset_09_1845,SM_Bld_House_Preset_03_1800',
-    spacing: 0
+    mode: 'random',
+    modelsArray:
+      'sp-prop-mixeduse-3L-23ft-corner,sp-prop-mixeduse-3L-22ft,sp-prop-townhouse-3L-20ft,sp-prop-townhouse-3L-23ft',
+    spacing: 50,
+    count: 6,
+    facing: 0
   },
   'mixed use 4floors': {
-    mode: 'fit',
-    modelsArray: 'SM_Bld_House_Preset_09_1845,SM_Bld_House_Preset_03_1800',
-    spacing: 0
+    mode: 'random',
+    modelsArray:
+      'sp-prop-mixeduse-3L-23ft-corner,sp-prop-mixeduse-3L-22ft,sp-prop-townhouse-3L-20ft,sp-prop-townhouse-3L-23ft',
+    spacing: 50,
+    count: 6,
+    facing: 0
   },
   'mixed use 5floors': {
-    mode: 'fit',
-    modelsArray: 'SM_Bld_House_Preset_09_1845,SM_Bld_House_Preset_03_1800',
-    spacing: 0
+    mode: 'random',
+    modelsArray:
+      'sp-prop-mixeduse-3L-23ft-corner,sp-prop-mixeduse-3L-22ft,sp-prop-townhouse-3L-20ft,sp-prop-townhouse-3L-23ft',
+    spacing: 50,
+    count: 6,
+    facing: 0
   },
   'nice apartment 3story': {
-    mode: 'fit',
-    modelsArray: 'SM_Bld_House_Preset_09_1845,SM_Bld_House_Preset_03_1800',
-    spacing: 0
+    mode: 'random',
+    modelsArray:
+      'sp-prop-mixeduse-3L-23ft-corner,sp-prop-mixeduse-3L-22ft,sp-prop-townhouse-3L-20ft,sp-prop-townhouse-3L-23ft',
+    spacing: 50,
+    count: 6,
+    facing: 0
   },
   'nice apartment 4story': {
-    mode: 'fit',
-    modelsArray: 'SM_Bld_House_Preset_09_1845,SM_Bld_House_Preset_03_1800',
-    spacing: 0
+    mode: 'random',
+    modelsArray:
+      'sp-prop-mixeduse-3L-23ft-corner,sp-prop-mixeduse-3L-22ft,sp-prop-townhouse-3L-20ft,sp-prop-townhouse-3L-23ft',
+    spacing: 50,
+    count: 6,
+    facing: 0
   },
   'nice apartment 5story': {
-    mode: 'fit',
-    modelsArray: 'SM_Bld_House_Preset_09_1845,SM_Bld_House_Preset_03_1800',
-    spacing: 0
+    mode: 'random',
+    modelsArray:
+      'sp-prop-mixeduse-3L-23ft-corner,sp-prop-mixeduse-3L-22ft,sp-prop-townhouse-3L-20ft,sp-prop-townhouse-3L-23ft',
+    spacing: 50,
+    count: 6,
+    facing: 0
   },
   'nice apartment 6story': {
-    mode: 'fit',
-    modelsArray: 'SM_Bld_House_Preset_09_1845,SM_Bld_House_Preset_03_1800',
-    spacing: 0
+    mode: 'random',
+    modelsArray:
+      'sp-prop-mixeduse-3L-23ft-corner,sp-prop-mixeduse-3L-22ft,sp-prop-townhouse-3L-20ft,sp-prop-townhouse-3L-23ft',
+    spacing: 50,
+    count: 6,
+    facing: 0
   },
   'red mixed use 1floor': {
-    mode: 'fit',
-    modelsArray: 'SM_Bld_House_Preset_09_1845,SM_Bld_House_Preset_03_1800',
-    spacing: 0
+    mode: 'random',
+    modelsArray:
+      'sp-prop-mixeduse-3L-22ft,sp-prop-mixeduse-2L-30ft,sp-prop-mixeduse-3L-23ft-corner,sp-prop-mixeduse-2L-29ft,sp-prop-mixeduse-2L-30ft,sp-prop-townhouse-3L-20ft',
+    spacing: 50,
+    count: 6,
+    facing: 0
   },
   'red mixed use 2floors': {
-    mode: 'fit',
-    modelsArray: 'SM_Bld_House_Preset_09_1845,SM_Bld_House_Preset_03_1800',
-    spacing: 0
+    mode: 'random',
+    modelsArray:
+      'sp-prop-mixeduse-3L-22ft,sp-prop-mixeduse-2L-30ft,sp-prop-mixeduse-3L-23ft-corner,sp-prop-mixeduse-2L-29ft,sp-prop-mixeduse-2L-30ft,sp-prop-townhouse-3L-20ft',
+    spacing: 50,
+    count: 6,
+    facing: 0
   },
   'red mixed use 3floors': {
-    mode: 'fit',
-    modelsArray: 'SM_Bld_House_Preset_09_1845,SM_Bld_House_Preset_03_1800',
-    spacing: 0
+    mode: 'random',
+    modelsArray:
+      'sp-prop-mixeduse-3L-22ft,sp-prop-mixeduse-2L-30ft,sp-prop-mixeduse-3L-23ft-corner,sp-prop-mixeduse-2L-29ft,sp-prop-mixeduse-2L-30ft,sp-prop-townhouse-3L-20ft',
+    spacing: 50,
+    count: 6,
+    facing: 0
   },
   'red mixed use 4floors': {
-    mode: 'fit',
-    modelsArray: 'SM_Bld_House_Preset_09_1845,SM_Bld_House_Preset_03_1800',
-    spacing: 0
+    mode: 'random',
+    modelsArray:
+      'sp-prop-mixeduse-3L-22ft,sp-prop-mixeduse-2L-30ft,sp-prop-mixeduse-3L-23ft-corner,sp-prop-mixeduse-2L-29ft,sp-prop-mixeduse-2L-30ft,sp-prop-townhouse-3L-20ft',
+    spacing: 50,
+    count: 6,
+    facing: 0
   },
   'red mixed use 5floors': {
-    mode: 'fit',
-    modelsArray: 'SM_Bld_House_Preset_09_1845,SM_Bld_House_Preset_03_1800',
-    spacing: 0
+    mode: 'random',
+    modelsArray:
+      'sp-prop-mixeduse-3L-22ft,sp-prop-mixeduse-2L-30ft,sp-prop-mixeduse-3L-23ft-corner,sp-prop-mixeduse-2L-29ft,sp-prop-mixeduse-2L-30ft,sp-prop-townhouse-3L-20ft',
+    spacing: 50,
+    count: 6,
+    facing: 0
   },
   residential: {
-    mode: 'fit',
+    mode: 'random',
     modelsArray: 'SM_Bld_House_Preset_09_1845,SM_Bld_House_Preset_03_1800',
-    spacing: 0
+    spacing: 50,
+    count: 6,
+    facing: 0
   },
-  'river crosssection': {
-    mode: 'fit',
-    modelsArray: 'SM_Bld_House_Preset_09_1845,SM_Bld_House_Preset_03_1800',
-    spacing: 0
-  },
-  'river crosssection 20ft': {
-    mode: 'fit',
-    modelsArray: 'SM_Bld_House_Preset_09_1845,SM_Bld_House_Preset_03_1800',
-    spacing: 0
-  },
-  'river crosssection 40ft': {
-    mode: 'fit',
-    modelsArray: 'SM_Bld_House_Preset_09_1845,SM_Bld_House_Preset_03_1800',
-    spacing: 0
-  },
+  'river crosssection': '',
+  'river crosssection 20ft': '',
+  'river crosssection 40ft': '',
   'shop 1floor': {
-    mode: 'fit',
-    modelsArray: 'SM_Bld_House_Preset_09_1845,SM_Bld_House_Preset_03_1800',
-    spacing: 0
+    mode: 'random',
+    modelsArray: 'sp-prop-mixeduse-2L-29ft,sp-prop-mixeduse-2L-30ft',
+    spacing: 50,
+    count: 6,
+    facing: 0
   },
   'shop 2floors': {
-    mode: 'fit',
-    modelsArray: 'SM_Bld_House_Preset_09_1845,SM_Bld_House_Preset_03_1800',
-    spacing: 0
+    mode: 'random',
+    modelsArray: 'sp-prop-mixeduse-2L-29ft,sp-prop-mixeduse-2L-30ft',
+    spacing: 50,
+    count: 6,
+    facing: 0
   },
   'shop 3floors': {
-    mode: 'fit',
-    modelsArray: 'SM_Bld_House_Preset_09_1845,SM_Bld_House_Preset_03_1800',
-    spacing: 0
+    mode: 'random',
+    modelsArray:
+      'sp-prop-mixeduse-3L-22ft,sp-prop-mixeduse-3L-23ft-corner,sp-prop-mixeduse-2L-29ft,sp-prop-mixeduse-2L-30ft',
+    spacing: 50,
+    count: 6,
+    facing: 0
   },
-  'shop 4floors': {
-    mode: 'fit',
-    modelsArray: 'SM_Bld_House_Preset_09_1845,SM_Bld_House_Preset_03_1800',
-    spacing: 0
-  },
+  'shop 4floors': '',
   'single family': {
-    variant: 'sp-residential'
-    // Strict variant mode - when variant is present, all other fields are ignored
-    // The variant system in street-segment.js handles model selection, spacing, surface, etc.
+    mode: 'random',
+    modelsArray:
+      'sp-prop-sf-1L-41ft,sp-prop-sf-1L-62ft,sp-prop-sf-2L-62ft,sp-prop-sf-1L-41ft,sp-prop-sf-1L-62ft,sp-prop-sf-2L-62ft',
+    spacing: 50,
+    count: 6,
+    facing: 0
   },
   'single family back': {
-    mode: 'fit',
-    modelsArray: 'SM_Bld_House_Preset_09_1845,SM_Bld_House_Preset_03_1800',
-    spacing: 0
+    mode: 'random',
+    modelsArray:
+      'sp-prop-sf-1L-41ft,sp-prop-sf-1L-62ft,sp-prop-sf-2L-62ft,sp-prop-sf-1L-41ft,sp-prop-sf-1L-62ft,sp-prop-sf-2L-62ft',
+    spacing: 50,
+    count: 6,
+    facing: 0
   },
   'stripmall onerowparking': {
-    mode: 'fit',
-    modelsArray: 'SM_Bld_House_Preset_09_1845,SM_Bld_House_Preset_03_1800',
-    spacing: 0
+    mode: 'random',
+    modelsArray: 'sp-prop-bigbox-1L-220ft,sp-prop-bigbox-1L-291ft',
+    spacing: 50,
+    count: 6,
+    facing: 0
   },
   'stripmall1 tworowsparking': {
-    mode: 'fit',
-    modelsArray: 'SM_Bld_House_Preset_09_1845,SM_Bld_House_Preset_03_1800',
-    spacing: 0
+    mode: 'random',
+    modelsArray: 'sp-prop-bigbox-1L-220ft,sp-prop-bigbox-1L-291ft',
+    spacing: 50,
+    count: 6,
+    facing: 0
   },
   'stripmall1, onerowparking': {
-    mode: 'fit',
-    modelsArray: 'SM_Bld_House_Preset_09_1845,SM_Bld_House_Preset_03_1800',
-    spacing: 0
+    mode: 'random',
+    modelsArray: 'sp-prop-bigbox-1L-220ft,sp-prop-bigbox-1L-291ft',
+    spacing: 50,
+    count: 6,
+    facing: 0
   },
   'stripmall2 tworowsparking': {
-    mode: 'fit',
-    modelsArray: 'SM_Bld_House_Preset_09_1845,SM_Bld_House_Preset_03_1800',
-    spacing: 0
+    mode: 'random',
+    modelsArray: 'sp-prop-bigbox-1L-220ft,sp-prop-bigbox-1L-291ft',
+    spacing: 50,
+    count: 6,
+    facing: 0
   },
   'townhouse row 3story': {
-    mode: 'fit',
-    modelsArray:
-      'sp-prop-townhouse-3L-20ft, sp-prop-townhouse-3L-23ft, sp-prop-mixeduse-3L-18ft, sp-prop-mixeduse-3L-22ft',
-    spacing: 0,
-    positionY: -0.01
-    // Custom config - mixing townhome and mixeduse models
-    // Don't use variant here since we want this specific mix
+    mode: 'random',
+    modelsArray: 'sp-prop-mixeduse-3L-22ft,sp-prop-mixeduse-3L-23ft-corner',
+    spacing: 50,
+    count: 6,
+    facing: 0
   },
   walmart: {
-    mode: 'fit',
-    modelsArray: 'SM_Bld_House_Preset_09_1845,SM_Bld_House_Preset_03_1800',
-    spacing: 0
-  },
-  'water 20ft': {
-    mode: 'fixed',
-    modelsArray: 'SM_Bld_House_Preset_09_1845,SM_Bld_House_Preset_03_1800',
-    spacing: 20,
-    count: 2,
+    mode: 'random',
+    modelsArray: 'sp-prop-bigbox-1L-220ft,sp-prop-bigbox-1L-291ft',
+    spacing: 50,
+    count: 6,
     facing: 0
   },
-  'water 30ft': {
-    mode: 'fixed',
-    modelsArray: 'SM_Bld_House_Preset_09_1845,SM_Bld_House_Preset_03_1800',
-    spacing: 20,
-    count: 2,
-    facing: 0
-  },
+  'water 20ft': '',
+  'water 30ft': '',
   'blank pedrefuge (8ft)': '',
   'cactus median (10ft)': {
     mode: 'fixed',
@@ -957,175 +1081,175 @@ const STREETPLAN_OBJECT_TO_GENERATED_CLONES_MAPPING = {
   },
   'woman jogging': {
     mode: 'random',
-    modelsArray: 'a_char1,a_char3,a_char5,a_char7',
+    modelsArray: 'char1,char2,char3,char4,char5,char6',
     spacing: 15,
     count: 20,
     facing: 0
   },
   '2 people': {
     mode: 'random',
-    modelsArray: 'char1,char3,char5,char7',
+    modelsArray: 'char2,char7,char8,char9,char10,char11',
     spacing: 15,
     count: 20,
     facing: 0
   },
   '3 people': {
     mode: 'random',
-    modelsArray: 'a_char2,a_char4,a_char6,a_char8',
+    modelsArray: 'char3,char12,char13,char14,char15,char16',
     spacing: 15,
     count: 20,
     facing: 0
   },
   couple: {
     mode: 'random',
-    modelsArray: 'char2,char4,char6,char8',
+    modelsArray: 'char4,char3,char13,char2,char15,char3',
     spacing: 15,
     count: 20,
     facing: 0
   },
   'dog walker': {
     mode: 'random',
-    modelsArray: 'a_char1,a_char3,a_char5,a_char7',
+    modelsArray: 'char5,char8,char8,char7,char10,char8',
     spacing: 15,
     count: 20,
     facing: 0
   },
   'grandpa and todler': {
     mode: 'random',
-    modelsArray: 'char1,char3,char5,char7',
+    modelsArray: 'char6,char13,char3,char12,char5,char13',
     spacing: 15,
     count: 20,
     facing: 0
   },
   'lady crossing street': {
     mode: 'random',
-    modelsArray: 'a_char2,a_char4,a_char6,a_char8',
+    modelsArray: 'char7,char2,char3,char4,char5,char6',
     spacing: 15,
     count: 20,
     facing: 0
   },
   man: {
     mode: 'random',
-    modelsArray: 'char2,char4,char6,char8',
+    modelsArray: 'char8,char7,char8,char9,char10,char11',
     spacing: 15,
     count: 20,
     facing: 0
   },
   'man and girl': {
     mode: 'random',
-    modelsArray: 'a_char1,a_char3,a_char5,a_char7',
+    modelsArray: 'char1,char12,char13,char14,char15,char16',
     spacing: 15,
     count: 20,
     facing: 0
   },
   'man come': {
     mode: 'random',
-    modelsArray: 'char1,char3,char5,char7',
+    modelsArray: 'char2,char3,char13,char2,char15,char3',
     spacing: 15,
     count: 20,
     facing: 0
   },
   'man come rev': {
     mode: 'random',
-    modelsArray: 'a_char2,a_char4,a_char6,a_char8',
+    modelsArray: 'char3,char8,char8,char7,char10,char8',
     spacing: 15,
     count: 20,
     facing: 0
   },
   'man go': {
     mode: 'random',
-    modelsArray: 'char2,char4,char6,char8',
+    modelsArray: 'char4,char13,char3,char12,char5,char13',
     spacing: 15,
     count: 20,
     facing: 0
   },
   'man go rev': {
     mode: 'random',
-    modelsArray: 'a_char1,a_char3,a_char5,a_char7',
+    modelsArray: 'char5,char2,char3,char4,char5,char6',
     spacing: 15,
     count: 20,
     facing: 0
   },
   'man jogging': {
     mode: 'random',
-    modelsArray: 'char1,char3,char5,char7',
+    modelsArray: 'char6,char7,char8,char9,char10,char11',
     spacing: 15,
     count: 20,
     facing: 0
   },
   'man walking': {
     mode: 'random',
-    modelsArray: 'a_char2,a_char4,a_char6,a_char8',
+    modelsArray: 'char7,char12,char13,char14,char15,char16',
     spacing: 15,
     count: 20,
     facing: 0
   },
   'older couple': {
     mode: 'random',
-    modelsArray: 'char2,char4,char6,char8',
+    modelsArray: 'char8,char3,char13,char2,char15,char3',
     spacing: 15,
     count: 20,
     facing: 0
   },
   'older ladies walking': {
     mode: 'random',
-    modelsArray: 'a_char1,a_char3,a_char5,a_char7',
+    modelsArray: 'char9,char8,char8,char7,char10,char8',
     spacing: 15,
     count: 20,
     facing: 0
   },
   'older man walking': {
     mode: 'random',
-    modelsArray: 'char1,char3,char5,char7',
+    modelsArray: 'char10,char13,char3,char12,char5,char13',
     spacing: 15,
     count: 20,
     facing: 0
   },
   'small girl': {
     mode: 'random',
-    modelsArray: 'a_char2,a_char4,a_char6,a_char8',
+    modelsArray: 'char11,char2,char3,char4,char5,char6',
     spacing: 15,
     count: 20,
     facing: 0
   },
   'wheel chair': {
     mode: 'random',
-    modelsArray: 'char2,char4,char6,char8',
+    modelsArray: 'char12,char7,char8,char9,char10,char11',
     spacing: 15,
     count: 20,
     facing: 0
   },
   'woman back': {
     mode: 'random',
-    modelsArray: 'a_char1,a_char3,a_char5,a_char7',
+    modelsArray: 'char13,char12,char13,char14,char15,char16',
     spacing: 15,
     count: 20,
     facing: 0
   },
   'woman in hat': {
     mode: 'random',
-    modelsArray: 'char1,char3,char5,char7',
+    modelsArray: 'char14,char3,char13,char2,char15,char3',
     spacing: 15,
     count: 20,
     facing: 0
   },
   'woman shopping': {
     mode: 'random',
-    modelsArray: 'a_char2,a_char4,a_char6,a_char8',
+    modelsArray: 'char15,char8,char8,char7,char10,char8',
     spacing: 15,
     count: 20,
     facing: 0
   },
   'woman walking': {
     mode: 'random',
-    modelsArray: 'char2,char4,char6,char8',
+    modelsArray: 'char16,char13,char3,char12,char5,char13',
     spacing: 15,
     count: 20,
     facing: 0
   },
   'young woman walking': {
     mode: 'random',
-    modelsArray: 'a_char1,a_char3,a_char5,a_char7',
+    modelsArray: 'char8,char2,char3,char4,char5,char6',
     spacing: 15,
     count: 20,
     facing: 0
@@ -1921,7 +2045,8 @@ const STREETPLAN_OBJECT_TO_GENERATED_CLONES_MAPPING = {
   'empty place holder': '',
   narrow: '',
   'no sign': '',
-  wide: ''
+  wide: '',
+  'file-eof': ''
 };
 
 export {
