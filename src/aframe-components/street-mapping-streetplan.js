@@ -2046,7 +2046,7 @@ const STREETPLAN_OBJECT_TO_GENERATED_CLONES_MAPPING = {
   narrow: '',
   'no sign': '',
   wide: '',
-  'file-eof': ''
+  'csv-eof': ''
 };
 
 export {
