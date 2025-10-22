@@ -20,9 +20,15 @@ async function postAIImageToDiscord(userId, imageUrl, prompt, modelVersion) {
   }
 
   try {
-    // Get user information from Firebase Auth
-    const userRecord = await admin.auth().getUser(userId);
-    const username = userRecord.displayName || userRecord.email?.split('@')[0] || 'Anonymous';
+    // Get username from social profile
+    const db = admin.firestore();
+    const socialProfileRef = db.collection('socialProfile').doc(userId);
+    const socialProfileDoc = await socialProfileRef.get();
+
+    let username = 'anonymous';
+    if (socialProfileDoc.exists) {
+      username = socialProfileDoc.data().username || 'anonymous';
+    }
 
     // Get model name from version ID
     const modelName = AI_MODEL_NAMES[modelVersion] || 'AI Model';
