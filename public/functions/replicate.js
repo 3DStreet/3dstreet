@@ -3,9 +3,81 @@ const Replicate = require('replicate');
 const admin = require('firebase-admin');
 const { checkAndRefillImageTokensInternal } = require('./token-management.js');
 
+// Model version to name mapping
+const AI_MODEL_NAMES = {
+  '2af4da47bcb7b55a0705b0de9933701f7607531d763ae889241f827a648c1755': 'Kontext Real Earth',
+  '2af3274cfd12ae2e0a87619bef1e7df80df2fbcf02d8d9dff23c74e6ca1d5f1d': 'Flux Kontext Pro',
+  'f0a9d34b12ad1c1cd76269a844b218ff4e64e128ddaba93e15891f47368958a0': 'Nano Banana',
+  '254faac883c3a411e95cc95d0fb02274a81e388aaa4394b3ce5b7d2a9f7a6569': 'Seedream v4'
+};
+
+// Helper function to post AI-generated images to Discord
+async function postAIImageToDiscord(userId, imageUrl, prompt, modelVersion, sceneId) {
+  // Only proceed if Discord webhook is configured
+  if (!process.env.DISCORD_WEBHOOK_URL) {
+    console.log('Discord webhook not configured, skipping Discord post');
+    return;
+  }
+
+  try {
+    // Get username from social profile
+    const db = admin.firestore();
+    const socialProfileRef = db.collection('socialProfile').doc(userId);
+    const socialProfileDoc = await socialProfileRef.get();
+
+    let username = 'anonymous';
+    if (socialProfileDoc.exists) {
+      username = socialProfileDoc.data().username || 'anonymous';
+    }
+
+    // Get model name from version ID
+    const modelName = AI_MODEL_NAMES[modelVersion] || 'AI Model';
+
+    // Truncate prompt if it's too long for Discord
+    const truncatedPrompt = prompt.length > 200 ? prompt.substring(0, 200) + '...' : prompt;
+
+    // Construct scene URL if sceneId is provided
+    const sceneUrl = sceneId ? `https://3dstreet.app/#scenes/${sceneId}` : null;
+
+    // Create Discord message with embed
+    const message = {
+      content: `🎨 **${username}** generated a new AI image!`,
+      embeds: [{
+        title: `${modelName} Render`,
+        description: `**Prompt:** ${truncatedPrompt}`,
+        url: sceneUrl, // Add clickable link to the scene
+        color: 0x9333EA, // Purple color for AI generations
+        image: {
+          url: imageUrl
+        },
+        footer: {
+          text: '3DStreet AI Image Generation',
+          icon_url: 'https://3dstreet.app/favicon-32x32.png'
+        },
+        timestamp: new Date().toISOString()
+      }]
+    };
+
+    const response = await fetch(process.env.DISCORD_WEBHOOK_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(message)
+    });
+
+    if (!response.ok) {
+      console.error(`Discord API error: ${response.status}`);
+    } else {
+      console.log(`AI image successfully posted to Discord for user ${userId}`);
+    }
+  } catch (error) {
+    // Don't throw error - we don't want Discord posting to fail the image generation
+    console.error('Error posting AI image to Discord:', error);
+  }
+}
+
 // Replicate API function for image generation
 const generateReplicateImage = functions
-  .runWith({ secrets: ["REPLICATE_API_TOKEN", "ALLOWED_PRO_TEAM_DOMAINS"] })
+  .runWith({ secrets: ["REPLICATE_API_TOKEN", "ALLOWED_PRO_TEAM_DOMAINS", "DISCORD_WEBHOOK_URL"] })
   .https
   .onCall(async (data, context) => {
 
@@ -22,7 +94,7 @@ const generateReplicateImage = functions
     }
 
     const userId = context.auth.uid;
-    const { prompt, input_image, guidance = 2.5, num_inference_steps = 30, model_version } = data;
+    const { prompt, input_image, guidance = 2.5, num_inference_steps = 30, model_version, scene_id } = data;
 
 
     let tokenData;
@@ -203,7 +275,11 @@ const generateReplicateImage = functions
         console.error('Unexpected output format from Replicate:', output);
         throw new Error('Invalid output format from Replicate API');
       }
-      
+
+      // Post AI-generated image to Discord (non-blocking)
+      // This runs in the background and won't fail the image generation if it errors
+      postAIImageToDiscord(userId, finalImageUrl, prompt, modelVersionToUse, scene_id)
+        .catch(err => console.error('Discord posting failed:', err));
 
       return {
         success: true,

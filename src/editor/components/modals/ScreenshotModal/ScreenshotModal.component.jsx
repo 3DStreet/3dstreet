@@ -283,13 +283,15 @@ function ScreenshotModal() {
       }
 
       const inputImageSrc = screentockImgElement?.src || originalImageUrl;
+      const sceneId = STREET.utils.getCurrentSceneId();
 
       const result = await generateReplicateImage({
         prompt: aiPrompt,
         input_image: inputImageSrc,
         guidance: 2.5,
         num_inference_steps: 30,
-        model_version: selectedModelConfig.version
+        model_version: selectedModelConfig.version,
+        scene_id: sceneId || null
       });
 
       if (result.data.success) {
