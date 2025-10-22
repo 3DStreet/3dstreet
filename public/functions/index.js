@@ -6,6 +6,7 @@ const { serveWebXRVariant } = require('./webxr-variant.js');
 const { getGeoidHeight } = require('./geoid-height.js');
 const { generateReplicateImage } = require('./replicate.js');
 const { checkAndRefillImageTokens, checkUserProStatus } = require('./token-management.js');
+const { sendTokenExhaustionEmail } = require('./token-notifications.js');
 
 // Re-export the WebXR variant function
 exports.serveWebXRVariant = serveWebXRVariant;
@@ -19,6 +20,9 @@ exports.generateReplicateImage = generateReplicateImage;
 // Re-export the token management functions
 exports.checkAndRefillImageTokens = checkAndRefillImageTokens;
 exports.checkUserProStatus = checkUserProStatus;
+
+// Re-export the token notification function
+exports.sendTokenExhaustionEmail = sendTokenExhaustionEmail;
 
 exports.getScene = functions
   .https

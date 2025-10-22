@@ -407,12 +407,30 @@ const mixinData = STREET.catalog.find(item => item.id === 'sedan-rig');
   }
   ```
 
+- **Collection:** `tokenProfile`
+- **Document structure:**
+  ```json
+  {
+    "userId": "...",
+    "geoToken": 3,        // Geospatial tokens (free: 3, Pro: unlimited)
+    "genToken": 5,        // AI generation tokens (free: 5, Pro: 100/month)
+    "lastMonthlyRefill": "YYYY-M", // For Pro users' monthly refills
+    "notifications": {    // Email notification tracking (optional)
+      "geoTokenZero": timestamp,   // Last geo token exhaustion email
+      "genTokenZero": timestamp    // Last gen token exhaustion email
+    },
+    "createdAt": timestamp,
+    "updatedAt": timestamp
+  }
+  ```
+
 #### Cloud Functions (`public/functions/`)
 - **`getScene`**: Retrieves scene JSON by UUID
 - **`createStripeSession`**: Initiates checkout
 - **`stripeWebhook`**: Handles payment webhooks
 - **`serveWebXRVariant`**: Generates WebXR-optimized HTML
 - **`geoid`**: Calculates geoid height for elevation
+- **`sendTokenExhaustionEmail`**: Firestore trigger that sends Postmark emails when users exhaust tokens (geoToken or genToken goes from 1 → 0). Includes 30-day deduplication and skips Pro users. Requires `POSTMARK_API_KEY` secret.
 
 #### Authentication
 - Firebase Auth (Google, Email/Password)
