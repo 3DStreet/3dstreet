@@ -12,7 +12,7 @@ const AI_MODEL_NAMES = {
 };
 
 // Helper function to post AI-generated images to Discord
-async function postAIImageToDiscord(userId, imageUrl, prompt, modelVersion) {
+async function postAIImageToDiscord(userId, imageUrl, prompt, modelVersion, sceneId) {
   // Only proceed if Discord webhook is configured
   if (!process.env.DISCORD_WEBHOOK_URL) {
     console.log('Discord webhook not configured, skipping Discord post');
@@ -36,12 +36,16 @@ async function postAIImageToDiscord(userId, imageUrl, prompt, modelVersion) {
     // Truncate prompt if it's too long for Discord
     const truncatedPrompt = prompt.length > 200 ? prompt.substring(0, 200) + '...' : prompt;
 
+    // Construct scene URL if sceneId is provided
+    const sceneUrl = sceneId ? `https://3dstreet.app/#scenes/${sceneId}` : null;
+
     // Create Discord message with embed
     const message = {
       content: `🎨 **${username}** generated a new AI image!`,
       embeds: [{
         title: `${modelName} Render`,
         description: `**Prompt:** ${truncatedPrompt}`,
+        url: sceneUrl, // Add clickable link to the scene
         color: 0x9333EA, // Purple color for AI generations
         image: {
           url: imageUrl
@@ -90,7 +94,7 @@ const generateReplicateImage = functions
     }
 
     const userId = context.auth.uid;
-    const { prompt, input_image, guidance = 2.5, num_inference_steps = 30, model_version } = data;
+    const { prompt, input_image, guidance = 2.5, num_inference_steps = 30, model_version, scene_id } = data;
 
 
     let tokenData;
@@ -274,7 +278,7 @@ const generateReplicateImage = functions
 
       // Post AI-generated image to Discord (non-blocking)
       // This runs in the background and won't fail the image generation if it errors
-      postAIImageToDiscord(userId, finalImageUrl, prompt, modelVersionToUse)
+      postAIImageToDiscord(userId, finalImageUrl, prompt, modelVersionToUse, scene_id)
         .catch(err => console.error('Discord posting failed:', err));
 
       return {
