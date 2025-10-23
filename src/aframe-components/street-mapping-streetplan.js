@@ -292,375 +292,281 @@ const STREETPLAN_OBJECT_TO_GENERATED_CLONES_MAPPING = {
     mode: 'fit',
     modelsArray:
       'sp-prop-sf-1L-41ft,sp-prop-sf-1L-62ft,sp-prop-sf-2L-62ft,sp-prop-sf-2L-64ft,sp-prop-sf-1L-41ft,sp-prop-sf-1L-62ft',
-    spacing: 50,
-    count: 6,
-    facing: 0
+    spacing: 0
   },
   'brick apartment 2floors': {
     mode: 'fit',
     modelsArray:
       'sp-prop-sf-2L-62ft,sp-prop-sf-2L-64ft,sp-prop-mixeduse-3L-22ft,sp-prop-mixeduse-2L-30ft,sp-prop-mixeduse-2L-29ft,sp-prop-sf-1L-41ft',
-    spacing: 50,
-    count: 6,
-    facing: 0
+    spacing: 0
   },
   'brick apartment 3floors': {
     mode: 'fit',
     modelsArray:
       'sp-prop-mixeduse-3L-22ft,sp-prop-mixeduse-2L-30ft,sp-prop-mixeduse-3L-23ft-corner,sp-prop-mixeduse-3L-78ft-corner,sp-prop-townhouse-3L-23ft,sp-prop-townhouse-3L-20ft',
-    spacing: 50,
-    count: 6,
-    facing: 0
+    spacing: 0
   },
   'brick apartment 4floors': {
     mode: 'fit',
     modelsArray:
       'sp-prop-mixeduse-3L-23ft-corner,sp-prop-mixeduse-3L-78ft-corner,sp-prop-townhouse-3L-23ft,sp-prop-townhouse-3L-20ft,sp-prop-mixeduse-3L-23ft-corner,sp-prop-mixeduse-3L-78ft-corner',
-    spacing: 50,
-    count: 6,
-    facing: 0
+    spacing: 0
   },
   'brick apartment 5floors': {
     mode: 'fit',
     modelsArray:
       'sp-prop-mixeduse-3L-23ft-corner,sp-prop-mixeduse-3L-78ft-corner,sp-prop-townhouse-3L-23ft,sp-prop-townhouse-3L-20ft,sp-prop-mixeduse-3L-23ft-corner,sp-prop-mixeduse-3L-78ft-corner',
-    spacing: 50,
-    count: 6,
-    facing: 0
+    spacing: 0
   },
   'building blue 1floor': {
     mode: 'fit',
     modelsArray:
       'sp-prop-sf-1L-41ft,sp-prop-sf-1L-62ft,sp-prop-sf-2L-62ft,sp-prop-sf-2L-64ft,sp-prop-sf-1L-41ft,sp-prop-sf-1L-62ft',
-    spacing: 50,
-    count: 6,
-    facing: 0
+    spacing: 0
   },
   'building blue 2floors': {
     mode: 'fit',
     modelsArray:
       'sp-prop-sf-2L-62ft,sp-prop-sf-2L-64ft,sp-prop-mixeduse-3L-22ft,sp-prop-mixeduse-2L-30ft,sp-prop-mixeduse-2L-29ft,sp-prop-sf-1L-41ft',
-    spacing: 50,
-    count: 6,
-    facing: 0
+    spacing: 0
   },
   'building blue 3floors': {
     mode: 'fit',
     modelsArray:
       'sp-prop-mixeduse-3L-22ft,sp-prop-mixeduse-2L-30ft,sp-prop-mixeduse-3L-23ft-corner,sp-prop-mixeduse-3L-78ft-corner,sp-prop-townhouse-3L-23ft,sp-prop-townhouse-3L-20ft',
-    spacing: 50,
-    count: 6,
-    facing: 0
+    spacing: 0
   },
   'building blue 4floors': {
     mode: 'fit',
     modelsArray:
       'sp-prop-mixeduse-3L-23ft-corner,sp-prop-mixeduse-3L-78ft-corner,sp-prop-townhouse-3L-23ft,sp-prop-townhouse-3L-20ft,sp-prop-mixeduse-3L-23ft-corner,sp-prop-mixeduse-3L-78ft-corner',
-    spacing: 50,
-    count: 6,
-    facing: 0
+    spacing: 0
   },
   'building blue 5floors': {
     mode: 'fit',
     modelsArray:
       'sp-prop-mixeduse-3L-23ft-corner,sp-prop-mixeduse-3L-78ft-corner,sp-prop-townhouse-3L-23ft,sp-prop-townhouse-3L-20ft,sp-prop-mixeduse-3L-23ft-corner,sp-prop-mixeduse-3L-78ft-corner',
-    spacing: 50,
-    count: 6,
-    facing: 0
+    spacing: 0
   },
   'building blue 6floors': {
     mode: 'fit',
     modelsArray:
       'sp-prop-mixeduse-3L-23ft-corner,sp-prop-mixeduse-3L-78ft-corner,sp-prop-townhouse-3L-23ft,sp-prop-townhouse-3L-20ft,sp-prop-mixeduse-3L-23ft-corner,sp-prop-mixeduse-3L-78ft-corner',
-    spacing: 50,
-    count: 6,
-    facing: 0
+    spacing: 0
   },
   'building blue 7floors': {
     mode: 'fit',
     modelsArray:
       'sp-prop-mixeduse-3L-23ft-corner,sp-prop-mixeduse-3L-78ft-corner,sp-prop-townhouse-3L-23ft,sp-prop-townhouse-3L-20ft,sp-prop-mixeduse-3L-23ft-corner,sp-prop-mixeduse-3L-78ft-corner',
-    spacing: 50,
-    count: 6,
-    facing: 0
+    spacing: 0
   },
   'building yellow 1floor': {
     mode: 'fit',
     modelsArray:
       'sp-prop-sf-1L-41ft,sp-prop-sf-1L-62ft,sp-prop-sf-2L-62ft,sp-prop-sf-2L-64ft,sp-prop-sf-1L-41ft,sp-prop-sf-1L-62ft',
-    spacing: 50,
-    count: 6,
-    facing: 0
+    spacing: 0
   },
   'building yellow 2floors': {
     mode: 'fit',
     modelsArray:
       'sp-prop-sf-2L-62ft,sp-prop-sf-2L-64ft,sp-prop-mixeduse-3L-22ft,sp-prop-mixeduse-2L-30ft,sp-prop-mixeduse-2L-29ft,sp-prop-sf-1L-41ft',
-    spacing: 50,
-    count: 6,
-    facing: 0
+    spacing: 0
   },
   'building yellow 3floors': {
     mode: 'fit',
     modelsArray:
       'sp-prop-mixeduse-3L-22ft,sp-prop-mixeduse-2L-30ft,sp-prop-mixeduse-3L-23ft-corner,sp-prop-mixeduse-3L-78ft-corner,sp-prop-townhouse-3L-23ft,sp-prop-townhouse-3L-20ft',
-    spacing: 50,
-    count: 6,
-    facing: 0
+    spacing: 0
   },
   'building yellow 4floors': {
     mode: 'fit',
     modelsArray:
       'sp-prop-mixeduse-3L-23ft-corner,sp-prop-mixeduse-3L-78ft-corner,sp-prop-townhouse-3L-23ft,sp-prop-townhouse-3L-20ft,sp-prop-mixeduse-3L-23ft-corner,sp-prop-mixeduse-3L-78ft-corner',
-    spacing: 50,
-    count: 6,
-    facing: 0
+    spacing: 0
   },
   'building yellow 5floors': {
     mode: 'fit',
     modelsArray:
       'sp-prop-mixeduse-3L-23ft-corner,sp-prop-mixeduse-3L-78ft-corner,sp-prop-townhouse-3L-23ft,sp-prop-townhouse-3L-20ft,sp-prop-mixeduse-3L-23ft-corner,sp-prop-mixeduse-3L-78ft-corner',
-    spacing: 50,
-    count: 6,
-    facing: 0
+    spacing: 0
   },
   'building yellow 6floors': {
     mode: 'fit',
     modelsArray:
       'sp-prop-mixeduse-3L-23ft-corner,sp-prop-mixeduse-3L-78ft-corner,sp-prop-townhouse-3L-23ft,sp-prop-townhouse-3L-20ft,sp-prop-mixeduse-3L-23ft-corner,sp-prop-mixeduse-3L-78ft-corner',
-    spacing: 50,
-    count: 6,
-    facing: 0
+    spacing: 0
   },
   'building yellow 7floors': {
     mode: 'fit',
     modelsArray:
       'sp-prop-mixeduse-3L-23ft-corner,sp-prop-mixeduse-3L-78ft-corner,sp-prop-townhouse-3L-23ft,sp-prop-townhouse-3L-20ft,sp-prop-mixeduse-3L-23ft-corner,sp-prop-mixeduse-3L-78ft-corner',
-    spacing: 50,
-    count: 6,
-    facing: 0
+    spacing: 0
   },
   'buildings falltrees (30ft)': '',
   'buildings pinetrees (30ft)': '',
   'gas station': {
     mode: 'fit',
     modelsArray: 'sp-prop-bigbox-1L-220ft,sp-prop-bigbox-1L-291ft',
-    spacing: 50,
-    count: 6,
-    facing: 0
+    spacing: 0
   },
   'home depot': {
     mode: 'fit',
     modelsArray: 'sp-prop-bigbox-1L-220ft,sp-prop-bigbox-1L-291ft',
-    spacing: 50,
-    count: 6,
-    facing: 0
+    spacing: 0
   },
   'house 1floor': {
     mode: 'fit',
     modelsArray:
       'sp-prop-sf-1L-41ft,sp-prop-sf-1L-62ft,sp-prop-sf-2L-62ft,sp-prop-sf-1L-41ft,sp-prop-sf-1L-62ft,sp-prop-sf-2L-62ft',
-    spacing: 50,
-    count: 6,
-    facing: 0
+    spacing: 0
   },
   'house 2floors': {
     mode: 'fit',
     modelsArray:
       'sp-prop-sf-1L-41ft,sp-prop-sf-2L-62ft,sp-prop-sf-2L-64ft,sp-prop-sf-1L-41ft,sp-prop-sf-2L-62ft,sp-prop-sf-2L-64ft',
-    spacing: 50,
-    count: 6,
-    facing: 0
+    spacing: 0
   },
   'house 3floors': {
     mode: 'fit',
     modelsArray:
       'sp-prop-sf-2L-62ft,sp-prop-sf-2L-64ft,sp-prop-townhouse-3L-23ft,sp-prop-townhouse-3L-20ft,sp-prop-sf-2L-64ft,sp-prop-townhouse-3L-20ft',
-    spacing: 50,
-    count: 6,
-    facing: 0
+    spacing: 0
   },
   'house 4floors': {
     mode: 'fit',
     modelsArray:
       'sp-prop-townhouse-3L-23ft,sp-prop-townhouse-3L-20ft,sp-prop-townhouse-3L-20ft,sp-prop-townhouse-3L-20ft,sp-prop-mixeduse-3L-78ft-corner,sp-prop-mixeduse-3L-23ft-corner',
-    spacing: 50,
-    count: 6,
-    facing: 0
+    spacing: 0
   },
   'house 5floors': {
     mode: 'fit',
     modelsArray:
       'sp-prop-townhouse-3L-23ft,sp-prop-townhouse-3L-20ft,sp-prop-townhouse-3L-20ft,sp-prop-townhouse-3L-20ft,sp-prop-mixeduse-3L-78ft-corner,sp-prop-mixeduse-3L-23ft-corner',
-    spacing: 50,
-    count: 6,
-    facing: 0
+    spacing: 0
   },
   'house newurbanist': {
     mode: 'fit',
     modelsArray:
       'sp-prop-sf-1L-41ft,sp-prop-sf-1L-62ft,sp-prop-sf-2L-62ft,sp-prop-sf-1L-41ft,sp-prop-sf-1L-62ft,sp-prop-sf-2L-62ft',
-    spacing: 50,
-    count: 6,
-    facing: 0
+    spacing: 0
   },
   'house newurbanist red': {
     mode: 'fit',
     modelsArray:
       'sp-prop-sf-1L-41ft,sp-prop-sf-1L-62ft,sp-prop-sf-2L-62ft,sp-prop-sf-1L-41ft,sp-prop-sf-1L-62ft,sp-prop-sf-2L-62ft',
-    spacing: 50,
-    count: 6,
-    facing: 0
+    spacing: 0
   },
   'live work': {
     mode: 'fit',
     modelsArray:
       'sp-prop-mixeduse-3L-22ft,sp-prop-mixeduse-2L-30ft,sp-prop-mixeduse-3L-23ft-corner,sp-prop-mixeduse-2L-29ft,sp-prop-mixeduse-2L-30ft,sp-prop-townhouse-3L-20ft',
-    spacing: 50,
-    count: 6,
-    facing: 0
+    spacing: 0
   },
   'mart chilis': {
     mode: 'fit',
     modelsArray: 'sp-prop-bigbox-1L-220ft,sp-prop-bigbox-1L-291ft',
-    spacing: 50,
-    count: 6,
-    facing: 0
+    spacing: 0
   },
   'mikedesign midvale 2story': {
     mode: 'fit',
     modelsArray:
       'sp-prop-mixeduse-3L-22ft,sp-prop-mixeduse-2L-30ft,sp-prop-mixeduse-3L-23ft-corner,sp-prop-mixeduse-2L-29ft',
-    spacing: 50,
-    count: 6,
-    facing: 0
+    spacing: 0
   },
   'mikedesign midvale 3story': {
     mode: 'fit',
     modelsArray:
       'sp-prop-mixeduse-3L-22ft,sp-prop-mixeduse-2L-30ft,sp-prop-mixeduse-3L-23ft-corner,sp-prop-mixeduse-2L-29ft',
-    spacing: 50,
-    count: 6,
-    facing: 0
+    spacing: 0
   },
   'mikedesign midvale3 3story': {
     mode: 'fit',
     modelsArray:
       'sp-prop-mixeduse-3L-22ft,sp-prop-mixeduse-2L-30ft,sp-prop-mixeduse-3L-23ft-corner,sp-prop-mixeduse-2L-29ft',
-    spacing: 50,
-    count: 6,
-    facing: 0
+    spacing: 0
   },
   'mixed use 2floors': {
     mode: 'fit',
     modelsArray:
       'sp-prop-mixeduse-2L-30ft,sp-prop-mixeduse-2L-29ft,sp-prop-sf-2L-64ft',
-    spacing: 50,
-    count: 6,
-    facing: 0
+    spacing: 0
   },
   'mixed use 3floors': {
     mode: 'fit',
     modelsArray:
       'sp-prop-mixeduse-3L-23ft-corner,sp-prop-mixeduse-3L-22ft,sp-prop-townhouse-3L-20ft,sp-prop-townhouse-3L-23ft',
-    spacing: 50,
-    count: 6,
-    facing: 0
+    spacing: 0
   },
   'mixed use 4floors': {
     mode: 'fit',
     modelsArray:
       'sp-prop-mixeduse-3L-23ft-corner,sp-prop-mixeduse-3L-22ft,sp-prop-townhouse-3L-20ft,sp-prop-townhouse-3L-23ft',
-    spacing: 50,
-    count: 6,
-    facing: 0
+    spacing: 0
   },
   'mixed use 5floors': {
     mode: 'fit',
     modelsArray:
       'sp-prop-mixeduse-3L-23ft-corner,sp-prop-mixeduse-3L-22ft,sp-prop-townhouse-3L-20ft,sp-prop-townhouse-3L-23ft',
-    spacing: 50,
-    count: 6,
-    facing: 0
+    spacing: 0
   },
   'nice apartment 3story': {
     mode: 'fit',
     modelsArray:
       'sp-prop-mixeduse-3L-23ft-corner,sp-prop-mixeduse-3L-22ft,sp-prop-townhouse-3L-20ft,sp-prop-townhouse-3L-23ft',
-    spacing: 50,
-    count: 6,
-    facing: 0
+    spacing: 0
   },
   'nice apartment 4story': {
     mode: 'fit',
     modelsArray:
       'sp-prop-mixeduse-3L-23ft-corner,sp-prop-mixeduse-3L-22ft,sp-prop-townhouse-3L-20ft,sp-prop-townhouse-3L-23ft',
-    spacing: 50,
-    count: 6,
-    facing: 0
+    spacing: 0
   },
   'nice apartment 5story': {
     mode: 'fit',
     modelsArray:
       'sp-prop-mixeduse-3L-23ft-corner,sp-prop-mixeduse-3L-22ft,sp-prop-townhouse-3L-20ft,sp-prop-townhouse-3L-23ft',
-    spacing: 50,
-    count: 6,
-    facing: 0
+    spacing: 0
   },
   'nice apartment 6story': {
     mode: 'fit',
     modelsArray:
       'sp-prop-mixeduse-3L-23ft-corner,sp-prop-mixeduse-3L-22ft,sp-prop-townhouse-3L-20ft,sp-prop-townhouse-3L-23ft',
-    spacing: 50,
-    count: 6,
-    facing: 0
+    spacing: 0
   },
   'red mixed use 1floor': {
     mode: 'fit',
     modelsArray:
       'sp-prop-mixeduse-3L-22ft,sp-prop-mixeduse-2L-30ft,sp-prop-mixeduse-3L-23ft-corner,sp-prop-mixeduse-2L-29ft,sp-prop-mixeduse-2L-30ft,sp-prop-townhouse-3L-20ft',
-    spacing: 50,
-    count: 6,
-    facing: 0
+    spacing: 0
   },
   'red mixed use 2floors': {
     mode: 'fit',
     modelsArray:
       'sp-prop-mixeduse-3L-22ft,sp-prop-mixeduse-2L-30ft,sp-prop-mixeduse-3L-23ft-corner,sp-prop-mixeduse-2L-29ft,sp-prop-mixeduse-2L-30ft,sp-prop-townhouse-3L-20ft',
-    spacing: 50,
-    count: 6,
-    facing: 0
+    spacing: 0
   },
   'red mixed use 3floors': {
     mode: 'fit',
     modelsArray:
       'sp-prop-mixeduse-3L-22ft,sp-prop-mixeduse-2L-30ft,sp-prop-mixeduse-3L-23ft-corner,sp-prop-mixeduse-2L-29ft,sp-prop-mixeduse-2L-30ft,sp-prop-townhouse-3L-20ft',
-    spacing: 50,
-    count: 6,
-    facing: 0
+    spacing: 0
   },
   'red mixed use 4floors': {
     mode: 'fit',
     modelsArray:
       'sp-prop-mixeduse-3L-22ft,sp-prop-mixeduse-2L-30ft,sp-prop-mixeduse-3L-23ft-corner,sp-prop-mixeduse-2L-29ft,sp-prop-mixeduse-2L-30ft,sp-prop-townhouse-3L-20ft',
-    spacing: 50,
-    count: 6,
-    facing: 0
+    spacing: 0
   },
   'red mixed use 5floors': {
     mode: 'fit',
     modelsArray:
       'sp-prop-mixeduse-3L-22ft,sp-prop-mixeduse-2L-30ft,sp-prop-mixeduse-3L-23ft-corner,sp-prop-mixeduse-2L-29ft,sp-prop-mixeduse-2L-30ft,sp-prop-townhouse-3L-20ft',
-    spacing: 50,
-    count: 6,
-    facing: 0
+    spacing: 0
   },
   residential: {
     mode: 'fit',
     modelsArray: 'SM_Bld_House_Preset_09_1845,SM_Bld_House_Preset_03_1800',
-    spacing: 50,
-    count: 6,
-    facing: 0
+    spacing: 0
   },
   'river crosssection': '',
   'river crosssection 20ft': '',
