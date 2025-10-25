@@ -363,7 +363,7 @@ const FluxGallery = {
                     </div>
                     <div style="display:flex;align-items:center;gap:6px;">
                         <label for="gallery-page-size" style="font-size:12px;color:#6b7280;">Per page</label>
-                        <select id="gallery-page-size" style="padding:6px 8px;border:1px solid #e5e7eb;border-radius:6px;background:#fff;">
+                        <select id="gallery-page-size" style="padding:6px 8px;border:1px solid #e5e7eb;border-radius:6px;">
                             <option value="12">12</option>
                             <option value="24" selected>24</option>
                             <option value="48">48</option>
@@ -380,78 +380,6 @@ const FluxGallery = {
       return;
     }
 
-    // Inline Mobile Gallery: create a container that will be displayed under the active tab on small screens
-    if (!document.getElementById('mobile-inline-gallery')) {
-      const inline = document.createElement('section');
-      inline.id = 'mobile-inline-gallery';
-      inline.innerHTML = `
-                <div class="flex items-center justify-between">
-                    <h2 class="text-base font-semibold text-gray-700">Gallery</h2>
-                    <div class="flex items-center gap-2 text-xs text-gray-500">
-                        <span>Page <span class="gp-current">1</span>/<span class="gp-total">1</span></span>
-                    </div>
-                </div>
-                <div id="mobile-gallery-grid" class="grid grid-cols-3 gap-2 mt-2"></div>
-                <div class="flex items-center justify-between mt-2">
-                    <div class="flex items-center gap-2">
-                        <button class="mobile-gallery-prev px-2 py-1 border border-gray-300 rounded">Prev</button>
-                        <button class="mobile-gallery-next px-2 py-1 border border-gray-300 rounded">Next</button>
-                    </div>
-                    <div class="flex items-center gap-2">
-                        <label for="mobile-gallery-page-size" class="text-xs text-gray-500">Per page</label>
-                        <select id="mobile-gallery-page-size" class="px-2 py-1 border border-gray-300 rounded text-sm">
-                            <option value="9" selected>9</option>
-                            <option value="12">12</option>
-                            <option value="24">24</option>
-                        </select>
-                    </div>
-                </div>
-            `;
-      // Hide by default in desktop; shown only in mobile CSS via utility classes would be ideal, but we toggle in JS based on width and active tab.
-      inline.style.display = 'none';
-      document.body.appendChild(inline);
-    }
-
-    // Handle tab switches to place inline gallery under active .tab-content on mobile
-    const placeInlineUnderActiveTab = () => {
-      const inline = document.getElementById('mobile-inline-gallery');
-      if (!inline) return;
-
-      const isMobile = window.matchMedia('(max-width: 640px)').matches;
-      if (!isMobile) {
-        inline.style.display = 'none';
-        return;
-      }
-
-      // Hide the right sidebar on mobile entirely
-      if (galleryContainer) galleryContainer.style.display = 'none';
-
-      const activeTab = document.querySelector('.tab-content.active');
-      if (activeTab) {
-        inline.style.display = '';
-        if (inline.parentElement !== activeTab) {
-          activeTab.appendChild(inline);
-        }
-      } else {
-        inline.style.display = 'none';
-      }
-      // render mobile gallery items
-      this.renderMobileInlineGallery();
-    };
-
-    // Observe tab button clicks
-    document.querySelectorAll('.tab-button').forEach((btn) => {
-      btn.addEventListener('click', () => {
-        // slight delay to allow active class switch by existing code
-        setTimeout(placeInlineUnderActiveTab, 0);
-      });
-    });
-
-    // React on resize
-    window.addEventListener('resize', placeInlineUnderActiveTab);
-    // Initial placement
-    setTimeout(placeInlineUnderActiveTab, 0);
-
     // Toggle gallery visibility
     galleryToggle.addEventListener('click', () => {
       galleryContainer.classList.toggle('gallery-collapsed');
@@ -467,58 +395,6 @@ const FluxGallery = {
     const nextBtn = document.querySelector('.gallery-next');
     const pageSizeSelect = document.getElementById('gallery-page-size');
 
-    // Mobile inline pagination events
-    const mPrev = () => {
-      if (this.page > 1) {
-        this.page--;
-        this.updateGalleryUI();
-        this.renderMobileInlineGallery();
-      }
-    };
-    const mNext = () => {
-      if (this.page < this.totalPages) {
-        this.page++;
-        this.updateGalleryUI();
-        this.renderMobileInlineGallery();
-      }
-    };
-    const mSize = (val) => {
-      const firstIndex = (this.page - 1) * this.pageSize;
-      this.pageSize = val;
-      this.page = Math.floor(firstIndex / this.pageSize) + 1;
-      if (this.page > this.totalPages) this.page = this.totalPages;
-      if (this.page < 1) this.page = 1;
-      this.updateGalleryUI();
-      this.renderMobileInlineGallery();
-    };
-
-    const mobilePrevBtn = () =>
-      document.querySelector('#mobile-inline-gallery .mobile-gallery-prev');
-    const mobileNextBtn = () =>
-      document.querySelector('#mobile-inline-gallery .mobile-gallery-next');
-    const mobileSizeSel = () =>
-      document.getElementById('mobile-gallery-page-size');
-
-    setTimeout(() => {
-      const mp = mobilePrevBtn();
-      const mn = mobileNextBtn();
-      const ms = mobileSizeSel();
-      if (mp && !mp._bound) {
-        mp.addEventListener('click', mPrev);
-        mp._bound = true;
-      }
-      if (mn && !mn._bound) {
-        mn.addEventListener('click', mNext);
-        mn._bound = true;
-      }
-      if (ms && !ms._bound) {
-        ms.addEventListener('change', (e) => {
-          const v = parseInt(e.target.value, 10);
-          if (!isNaN(v) && v > 0) mSize(v);
-        });
-        ms._bound = true;
-      }
-    }, 0);
     if (prevBtn && nextBtn) {
       prevBtn.addEventListener('click', () => {
         if (this.page > 1) {
@@ -603,9 +479,6 @@ const FluxGallery = {
     // Show empty state if no items
     if (this.items.length === 0) {
       // Optional: Add a message like galleryContent.innerHTML = '<p class="p-4 text-center text-gray-500">Gallery is empty.</p>';
-      // Also clear mobile grid if present
-      const mg = document.getElementById('mobile-gallery-grid');
-      if (mg) mg.innerHTML = '';
       const curEl = document.querySelector('.gp-current');
       const totEl = document.querySelector('.gp-total');
       if (curEl) curEl.textContent = '1';
@@ -676,66 +549,6 @@ const FluxGallery = {
         .addEventListener('click', (e) => {
           e.stopPropagation(); // Prevent modal opening
           this.downloadGalleryImage(item);
-        });
-    });
-  },
-
-  // Render simplified inline gallery for mobile (tap to open modal with full desktop actions)
-  renderMobileInlineGallery: function () {
-    const inline = document.getElementById('mobile-inline-gallery');
-    const grid = document.getElementById('mobile-gallery-grid');
-    if (!inline || !grid) return;
-
-    const isMobile = window.matchMedia('(max-width: 640px)').matches;
-    if (!isMobile) {
-      return;
-    }
-
-    // Update page label inside inline header
-    const curEl = inline.querySelector('.gp-current');
-    const totEl = inline.querySelector('.gp-total');
-    const totalPages = this.totalPages;
-    if (curEl) curEl.textContent = String(this.page);
-    if (totEl) totEl.textContent = String(totalPages);
-
-    // Rebuild grid for current page
-    grid.innerHTML = '';
-    const start = (this.page - 1) * this.pageSize;
-    const end = start + this.pageSize;
-    const pageItems = this.items.slice(start, end);
-    pageItems.forEach((item) => {
-      const wrap = document.createElement('div');
-      wrap.className =
-        'relative overflow-hidden rounded border border-gray-200';
-      wrap.innerHTML = `
-                <img src="${item.objectURL}" alt="Generated image" class="w-full h-full object-cover aspect-square">
-                <div class="absolute top-1 right-1 flex gap-1">
-                    <button class="mobile-download p-1 bg-indigo-600 text-white rounded text-xs" title="Download">⬇</button>
-                    <button class="mobile-delete p-1 bg-red-600 text-white rounded text-xs" title="Delete">✕</button>
-                </div>
-            `;
-      grid.appendChild(wrap);
-
-      // Tap anywhere on the tile (besides the small buttons) opens the full modal to access imports, metadata, etc.
-      wrap.addEventListener('click', (e) => {
-        if (e.target.closest('button')) return;
-        this.handleGalleryItemClick(item); // reuse desktop modal
-      });
-
-      wrap.querySelector('.mobile-download').addEventListener('click', (e) => {
-        e.stopPropagation();
-        this.downloadGalleryImage(item);
-      });
-      wrap
-        .querySelector('.mobile-delete')
-        .addEventListener('click', async (e) => {
-          e.stopPropagation();
-          try {
-            await this.removeImage(item.id);
-            this.renderMobileInlineGallery();
-          } catch (err) {
-            FluxUI.showNotification('Error deleting image.', 'error');
-          }
         });
     });
   },

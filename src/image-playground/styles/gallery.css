@@ -15,75 +15,12 @@
     flex-direction: column;
     z-index: 40;
     box-shadow: -2px 0 10px rgba(0, 0, 0, 0.1);
+    overflow: visible; /* Ensure toggle button outside sidebar is accessible */
 }
 
 /* Collapsed State */
 .gallery-collapsed {
     transform: translateX(calc(100% - 30px)); /* Adjust based on toggle visibility */
-}
-
-/* --- Mobile Bottom Sheet Variant (≤640px) --- */
-@media (max-width: 640px) {
-    .gallery-sidebar {
-        left: 0;
-        right: 0;
-        width: 100%;
-        height: auto;
-        max-height: 65vh; /* bottom sheet height */
-        bottom: 0;
-        top: auto;
-        border-left: none;
-        border-top: 1px solid #e5e7eb;
-        border-radius: 12px 12px 0 0;
-        transform: translateY(calc(100% - 28px)); /* collapsed shows just the handle height */
-        box-shadow: 0 -6px 16px rgba(0,0,0,0.15);
-    }
-
-    /* Collapsed on mobile: peek handle only */
-    .gallery-collapsed {
-        transform: translateY(calc(100% - 28px));
-    }
-
-    /* Toggle becomes a centered drag handle */
-    .gallery-toggle {
-        position: absolute;
-        top: -28px;
-        left: 50%;
-        transform: translate(-50%, 0);
-        width: 64px;
-        height: 28px;
-        border-radius: 12px 12px 0 0;
-        border: 1px solid #e5e7eb;
-        border-bottom: none;
-        background-color: white;
-        box-shadow: 0 -2px 6px rgba(0,0,0,0.05);
-    }
-
-    /* Drag pill inside toggle */
-    .gallery-toggle::before {
-        content: "";
-        display: block;
-        width: 28px;
-        height: 4px;
-        border-radius: 9999px;
-        background-color: #d1d5db;
-    }
-
-    .gallery-header {
-        padding: 0.75rem 1rem;
-    }
-
-    .gallery-content {
-        grid-template-columns: repeat(3, 1fr); /* fit more thumbnails in full-width drawer */
-        padding: 0.5rem;
-        gap: 0.5rem;
-        max-height: calc(65vh - 48px - 56px); /* minus header and footer */
-    }
-
-    .gallery-footer {
-        padding: 0.75rem 1rem;
-        background: #f9fafb;
-    }
 }
 
 /* Toggle Button */
@@ -105,11 +42,42 @@
     cursor: pointer;
     transition: background-color 0.2s, color 0.2s;
     box-shadow: -2px 0 5px rgba(0, 0, 0, 0.05);
+    z-index: 50; /* Ensure button is above other elements */
+    box-sizing: border-box; /* Include border in width/height */
+    padding: 0; /* Remove any default padding */
+    margin: 0; /* Remove any default margin */
+    -webkit-appearance: none; /* Remove default browser button styling */
+    appearance: none;
+    outline: none; /* We'll handle focus states ourselves */
+}
+
+.gallery-toggle::before {
+    content: '';
+    position: absolute;
+    top: -4px; /* Extend click area beyond visible button */
+    left: -4px;
+    right: -4px;
+    bottom: -4px;
+    /* This invisible area extends the clickable zone */
 }
 
 .gallery-toggle:hover {
     background-color: #f9fafb;
     color: var(--primary); /* Assuming --primary is defined elsewhere */
+}
+
+.gallery-toggle:active {
+    background-color: #e5e7eb;
+    transform: translateY(-50%); /* Maintain position, override global button:active scale */
+}
+
+.gallery-toggle svg {
+    pointer-events: none; /* Ensure clicks pass through to the button */
+    width: 24px;
+    height: 24px;
+    flex-shrink: 0; /* Prevent SVG from shrinking */
+    position: relative; /* Ensure SVG is above pseudo-element */
+    z-index: 1;
 }
 
 /* Header Section */
@@ -379,16 +347,12 @@
 /* Mobile Adjustments */
 @media (max-width: 640px) {
     .gallery-sidebar {
-        width: 240px;
-    }
-
-    .gallery-collapsed {
-        transform: translateX(calc(100% - 30px)); /* Adjust based on smaller width */
+        width: 240px; /* narrow sidebar on mobile */
     }
 
     .gallery-content {
         grid-template-columns: 1fr; /* Single column on smaller screens */
-        padding: 0.25rem; /* Reduce padding */
-        gap: 0.25rem; /* Reduce gap */
+        padding: 0.5rem;
+        gap: 0.5rem;
     }
 }
