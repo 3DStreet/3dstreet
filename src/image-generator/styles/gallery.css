@@ -4,12 +4,13 @@
 .gallery-sidebar {
     position: fixed;
     right: 0;
-    top: 0;
-    height: 100vh;
+    top: 60px;
+    height: calc(100vh - 60px);
     width: 280px; /* Default width */
     background-color: white;
     color: #1f2937;
-    border-left: 1px solid #e5e7eb;
+    border-left: 1px solid #4b5563;
+    border-top: 1px solid #4b5563;
     transition: transform 0.3s ease;
     display: flex;
     flex-direction: column;
@@ -26,11 +27,9 @@
 /* Toggle Button */
 .gallery-toggle {
     position: absolute;
-    left: -36px; /* Position outside the sidebar */
-    top: 50%;
-    transform: translateY(-50%);
-    width: 36px;
-    height: 36px;
+    left: -57px; /* Position outside the sidebar */
+    width: 57px;
+    height: 57px;
     background-color: white;
     color: #4b5563;
     border: 1px solid #e5e7eb;
@@ -68,7 +67,6 @@
 
 .gallery-toggle:active {
     background-color: #e5e7eb;
-    transform: translateY(-50%); /* Maintain position, override global button:active scale */
 }
 
 .gallery-toggle svg {
