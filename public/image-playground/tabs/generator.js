@@ -701,13 +701,7 @@ const GeneratorTab = {
     // Generate an image
     generateImage: function() {
         console.log('Generate button clicked');
-        
-        // Check if API key is available
-        if (!window.FluxUI.getApiKey()) {
-            window.FluxUI.showNotification('Please enter your API key first', 'error');
-            return;
-        }
-        
+
         // Get model type and prepare parameters
         // Get base model and selected finetune
         const baseModel = this.elements.modelSelector.value;

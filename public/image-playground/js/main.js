@@ -8,7 +8,7 @@ const FluxUI = {
     // Configuration
     apiConfig: {
         // baseUrl: 'https://api.us1.bfl.ai/v1', // Removed: Using server proxy now
-        apiKey: ''
+        // API key now stored server-side in Firebase Cloud Functions
     },
     
     // Common elements
@@ -25,27 +25,13 @@ const FluxUI = {
         this.elements = {
             tabButtons: document.querySelectorAll('.tab-button'),
             tabContents: document.querySelectorAll('.tab-content'),
-            apiKeyInput: document.getElementById('api-key-input'),
-            saveApiKeyBtn: document.getElementById('save-api-key'),
             notification: document.getElementById('notification'),
             notificationMessage: document.getElementById('notification-message'),
             notificationIcon: document.getElementById('notification-icon'),
             darkModeToggle: document.getElementById('dark-mode-toggle'),
-            clearApiKeyBtn: document.getElementById('clear-api-key'),
             themeToggleLightIcon: document.getElementById('theme-toggle-light-icon'),
             themeToggleDarkIcon: document.getElementById('theme-toggle-dark-icon')
         };
-        
-        // Try to get API key from localStorage
-        try {
-            const storedKey = localStorage.getItem('flux_api_key');
-            if (storedKey) {
-                this.apiConfig.apiKey = storedKey;
-                this.elements.apiKeyInput.value = '••••••••••••••••';
-            }
-        } catch (e) {
-            console.error('Error accessing localStorage:', e);
-        }
         
         // Setup event listeners
         this.setupEventListeners();
@@ -66,28 +52,22 @@ const FluxUI = {
         this.elements.tabButtons.forEach(button => {
             button.addEventListener('click', () => this.activateTab(button));
         });
-        
-        // API key save
-        this.elements.saveApiKeyBtn.addEventListener('click', this.saveApiKey.bind(this));
-        
+
         // Dark mode toggle
         this.elements.darkModeToggle.addEventListener('click', this.toggleDarkMode.bind(this));
-        
-        // Clear API key
-        this.elements.clearApiKeyBtn.addEventListener('click', this.clearApiKey.bind(this));
     },
     
     // Activate a tab
     activateTab: function(tabButton) {
         if (!tabButton) return;
-        
+
         const tabId = tabButton.getAttribute('data-tab');
         console.log(`Activating tab: ${tabId}`);
-        
+
         // Deactivate all tabs
         this.elements.tabButtons.forEach(btn => btn.classList.remove('active'));
         this.elements.tabContents.forEach(content => content.classList.remove('active'));
-        
+
         // Activate the selected tab
         tabButton.classList.add('active');
         const activeContent = document.getElementById(tabId);
@@ -95,43 +75,6 @@ const FluxUI = {
             activeContent.classList.add('active');
         }
     },
-    
-    // Save API key
-    saveApiKey: function() {
-        try {
-            const apiKey = this.elements.apiKeyInput.value.trim();
-            if (apiKey && !apiKey.includes('•')) {
-                // Only save if it's not the masked value
-                this.apiConfig.apiKey = apiKey;
-                localStorage.setItem('flux_api_key', apiKey);
-                this.elements.apiKeyInput.value = '••••••••••••••••';
-                this.showNotification('API key saved successfully!', 'success');
-            } else if (apiKey.includes('•')) {
-                // If they try to save the masked value, show a message
-                this.showNotification('Please enter your actual API key', 'warning');
-            } else {
-                this.showNotification('Please enter a valid API key', 'error');
-            }
-        } catch (error) {
-            console.error('Error saving API key:', error);
-            this.showNotification('Failed to save API key', 'error');
-        }
-    },
-    
-    // Clear API key
-    clearApiKey: function() {
-        try {
-            localStorage.removeItem('flux_api_key');
-            this.apiConfig.apiKey = '';
-            this.elements.apiKeyInput.value = '';
-            this.elements.apiKeyInput.placeholder = 'Enter API Key'; // Reset placeholder
-            this.showNotification('API key cleared successfully!', 'success');
-        } catch (error) {
-            console.error('Error clearing API key:', error);
-            this.showNotification('Failed to clear API key', 'error');
-        }
-    },
-    
     // Show notification
     showNotification: function(message, type = 'error') {
         console.log(`Notification (${type}): ${message}`);
@@ -165,11 +108,6 @@ const FluxUI = {
         setTimeout(() => {
             notification.classList.add('translate-y-20', 'opacity-0');
         }, 5000);
-    },
-    
-    // Get API key
-    getApiKey: function() {
-        return this.apiConfig.apiKey;
     },
 
     // Initialize Dark Mode

@@ -3,23 +3,25 @@ const fetch = require('node-fetch');
 
 const API_BASE_URL = 'https://api.us1.bfl.ai/v1';
 
-// Middleware to check for API key
-const requireApiKey = (req, res, next) => {
-  const apiKey = req.headers['x-key'];
+// Get API key from environment
+const getApiKey = () => {
+  const apiKey = process.env.BFL_API_KEY;
   if (!apiKey) {
-    return res.status(400).json({ error: 'API key (x-key header) is required' });
+    console.error('BFL_API_KEY is not configured in environment');
+    throw new Error('Image generation service is not configured');
   }
-  req.apiKey = apiKey;
-  next();
+  return apiKey;
 };
 
 // Proxy endpoint for images
-exports.bflProxyImage = functions.https.onRequest(async (req, res) => {
+exports.bflProxyImage = functions
+  .https
+  .onRequest(async (req, res) => {
   try {
     // Enable CORS
     res.set('Access-Control-Allow-Origin', '*');
     res.set('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
-    res.set('Access-Control-Allow-Headers', 'Content-Type, x-key');
+    res.set('Access-Control-Allow-Headers', 'Content-Type');
 
     // Handle preflight
     if (req.method === 'OPTIONS') {
@@ -60,12 +62,15 @@ exports.bflProxyImage = functions.https.onRequest(async (req, res) => {
 });
 
 // Proxy endpoint for API POST requests
-exports.bflApiProxy = functions.https.onRequest(async (req, res) => {
+exports.bflApiProxy = functions
+  .runWith({ secrets: ["BFL_API_KEY"] })
+  .https
+  .onRequest(async (req, res) => {
   try {
     // Enable CORS
     res.set('Access-Control-Allow-Origin', '*');
     res.set('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
-    res.set('Access-Control-Allow-Headers', 'Content-Type, x-key');
+    res.set('Access-Control-Allow-Headers', 'Content-Type');
 
     // Handle preflight
     if (req.method === 'OPTIONS') {
@@ -73,11 +78,8 @@ exports.bflApiProxy = functions.https.onRequest(async (req, res) => {
       return;
     }
 
-    // Check for API key
-    const apiKey = req.headers['x-key'];
-    if (!apiKey) {
-      return res.status(400).json({ error: 'API key (x-key header) is required' });
-    }
+    // Get API key from environment
+    const apiKey = getApiKey();
 
     // Extract endpoint from path
     // Firebase Hosting rewrites pass the FULL path including 'bflApiProxy'

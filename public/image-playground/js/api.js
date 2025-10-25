@@ -7,20 +7,13 @@
 window.FluxAPI = {
     // Make an API request to a Flux endpoint
     makeRequest: async function(endpoint, params, method = 'POST') { // Added method parameter
-        const apiKey = window.FluxUI.getApiKey();
-        
-        if (!apiKey) {
-            throw new Error('API key is required');
-        }
-        
         console.log(`Making ${method} request to ${endpoint} with params:`, params); // Log method
-        
+
         try {
             const fetchOptions = {
                 method: method.toUpperCase(), // Use the provided method
                 headers: {
-                    'Content-Type': 'application/json',
-                    'x-key': apiKey
+                    'Content-Type': 'application/json'
                 }
             };
 
@@ -61,20 +54,12 @@ window.FluxAPI = {
     
     // Poll for a task result
     pollForResult: async function(taskId, onProgress, onSuccess, onError) {
-        const apiKey = window.FluxUI.getApiKey();
-        
-        if (!apiKey) {
-            onError(new Error('API key is required'));
-            return;
-        }
-        
         const checkResult = async () => {
             try {
                 const response = await fetch(`/bflApiProxy/get_result?id=${taskId}`, {
                     method: 'GET',
                     headers: {
-                        'Content-Type': 'application/json',
-                        'x-key': apiKey
+                        'Content-Type': 'application/json'
                     }
                 });
                 
