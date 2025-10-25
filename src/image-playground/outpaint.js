@@ -3,7 +3,9 @@
  * Functionality for image outpainting (expansion) using /v1/flux-pro-1.0-expand
  */
 
-/* global FluxUI, FluxAPI, FluxGallery */
+import FluxUI from './main.js';
+import FluxAPI from './api.js';
+import FluxGallery from './gallery.js';
 
 // Outpaint tab module
 const OutpaintTab = {

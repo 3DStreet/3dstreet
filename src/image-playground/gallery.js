@@ -3,6 +3,8 @@
  * Manages the storage and display of generated images using IndexedDB
  */
 
+import FluxUI from './main.js';
+
 // Gallery module
 const FluxGallery = {
   // Max number of images to store (can be much higher with IndexedDB)
@@ -118,7 +120,7 @@ const FluxGallery = {
   addImage: async function (imageDataUri, metadata) {
     if (!this.db) {
       console.error('Database not open, cannot add image.');
-      window.FluxUI.showNotification('Gallery database not ready.', 'error');
+      FluxUI.showNotification('Gallery database not ready.', 'error');
       return null;
     }
 
@@ -146,10 +148,7 @@ const FluxGallery = {
       return new Promise((resolve, reject) => {
         request.onerror = (event) => {
           console.error('Error adding item to DB:', event.target.error);
-          window.FluxUI.showNotification(
-            'Failed to save image to gallery.',
-            'error'
-          );
+          FluxUI.showNotification('Failed to save image to gallery.', 'error');
           reject(event.target.error);
         };
 
@@ -169,7 +168,7 @@ const FluxGallery = {
           // Jump to first page to surface most recent on add
           this.page = 1;
           this.updateGalleryUI(); // Update UI
-          window.FluxUI.showNotification('Image saved to gallery!', 'success');
+          FluxUI.showNotification('Image saved to gallery!', 'success');
           resolve(item.id);
         };
 
@@ -183,10 +182,7 @@ const FluxGallery = {
       });
     } catch (error) {
       console.error('Error in addImage:', error);
-      window.FluxUI.showNotification(
-        `Error saving image: ${error.message}`,
-        'error'
-      );
+      FluxUI.showNotification(`Error saving image: ${error.message}`, 'error');
       return null;
     }
   },
@@ -243,7 +239,7 @@ const FluxGallery = {
   removeImage: function (id) {
     if (!this.db) {
       console.error('Database not open, cannot remove image.');
-      window.FluxUI.showNotification('Gallery database not ready.', 'error');
+      FluxUI.showNotification('Gallery database not ready.', 'error');
       return Promise.resolve(false);
     }
 
@@ -254,7 +250,7 @@ const FluxGallery = {
     return new Promise((resolve, reject) => {
       request.onerror = (event) => {
         console.error('Error deleting item from DB:', event.target.error);
-        window.FluxUI.showNotification('Failed to delete image.', 'error');
+        FluxUI.showNotification('Failed to delete image.', 'error');
         reject(event.target.error);
       };
 
@@ -272,7 +268,7 @@ const FluxGallery = {
             this.page = Math.max(1, this.totalPages);
           }
           this.updateGalleryUI(); // Update UI
-          window.FluxUI.showNotification('Image deleted.', 'success');
+          FluxUI.showNotification('Image deleted.', 'success');
           resolve(true);
         } else {
           console.warn(`Item ${id} not found in local cache after deletion.`);
@@ -292,7 +288,7 @@ const FluxGallery = {
   clearGallery: function () {
     if (!this.db) {
       console.error('Database not open, cannot clear gallery.');
-      window.FluxUI.showNotification('Gallery database not ready.', 'error');
+      FluxUI.showNotification('Gallery database not ready.', 'error');
       return Promise.resolve();
     }
 
@@ -303,7 +299,7 @@ const FluxGallery = {
     return new Promise((resolve, reject) => {
       request.onerror = (event) => {
         console.error('Error clearing DB:', event.target.error);
-        window.FluxUI.showNotification('Failed to clear gallery.', 'error');
+        FluxUI.showNotification('Failed to clear gallery.', 'error');
         reject(event.target.error);
       };
 
@@ -315,7 +311,7 @@ const FluxGallery = {
         });
         this.items = []; // Clear local array
         this.updateGalleryUI(); // Update UI
-        window.FluxUI.showNotification('Gallery cleared.', 'success');
+        FluxUI.showNotification('Gallery cleared.', 'success');
         resolve();
       };
 
@@ -571,7 +567,7 @@ const FluxGallery = {
             await this.clearGallery();
           } catch (error) {
             console.error('Failed to clear gallery:', error);
-            window.FluxUI.showNotification('Error clearing gallery.', 'error');
+            FluxUI.showNotification('Error clearing gallery.', 'error');
           }
         }
       });
@@ -670,7 +666,7 @@ const FluxGallery = {
             await this.removeImage(item.id);
           } catch (error) {
             console.error('Failed to remove image:', error);
-            window.FluxUI.showNotification('Error deleting image.', 'error');
+            FluxUI.showNotification('Error deleting image.', 'error');
           }
         });
 
@@ -738,7 +734,7 @@ const FluxGallery = {
             await this.removeImage(item.id);
             this.renderMobileInlineGallery();
           } catch (err) {
-            window.FluxUI.showNotification('Error deleting image.', 'error');
+            FluxUI.showNotification('Error deleting image.', 'error');
           }
         });
     });
@@ -863,13 +859,13 @@ const FluxGallery = {
     link.click();
     document.body.removeChild(link);
 
-    window.FluxUI.showNotification('Image download started!', 'success');
+    FluxUI.showNotification('Image download started!', 'success');
   },
 
   // Copy gallery item parameters to clipboard (unchanged logic)
   copyGalleryItemParams: function (item) {
     if (!item.metadata) {
-      window.FluxUI.showNotification(
+      FluxUI.showNotification(
         'No parameters available for this image',
         'error'
       );
@@ -879,13 +875,10 @@ const FluxGallery = {
     navigator.clipboard
       .writeText(params)
       .then(() =>
-        window.FluxUI.showNotification(
-          'Parameters copied to clipboard!',
-          'success'
-        )
+        FluxUI.showNotification('Parameters copied to clipboard!', 'success')
       )
       .catch((err) =>
-        window.FluxUI.showNotification(
+        FluxUI.showNotification(
           'Failed to copy parameters: ' + err.message,
           'error'
         )
@@ -895,7 +888,7 @@ const FluxGallery = {
   // Copy gallery image to clipboard (uses Blob directly)
   copyGalleryImageToClipboard: function (item) {
     if (!item.imageDataBlob || !(item.imageDataBlob instanceof Blob)) {
-      window.FluxUI.showNotification(
+      FluxUI.showNotification(
         'Image data is not available for copying.',
         'error'
       );
@@ -910,10 +903,7 @@ const FluxGallery = {
       navigator.clipboard
         .write([clipboardItem])
         .then(() => {
-          window.FluxUI.showNotification(
-            'Image copied to clipboard!',
-            'success'
-          );
+          FluxUI.showNotification('Image copied to clipboard!', 'success');
         })
         .catch((err) => {
           console.error('Clipboard API error:', err);
@@ -922,7 +912,7 @@ const FluxGallery = {
         });
     } catch (error) {
       console.error('Error using ClipboardItem:', error);
-      window.FluxUI.showNotification(
+      FluxUI.showNotification(
         'Failed to copy image. Your browser might not support this feature or requires secure context (HTTPS).',
         'error'
       );
@@ -941,26 +931,26 @@ const FluxGallery = {
         navigator.clipboard
           .writeText(base64data)
           .then(() =>
-            window.FluxUI.showNotification(
+            FluxUI.showNotification(
               'Image copied as data URL (fallback).',
               'warning'
             )
           )
           .catch((err) =>
-            window.FluxUI.showNotification(
+            FluxUI.showNotification(
               'Fallback copy failed: ' + err.message,
               'error'
             )
           );
       } catch (e) {
-        window.FluxUI.showNotification(
+        FluxUI.showNotification(
           'Failed to copy image using fallback.',
           'error'
         );
       }
     };
     reader.onerror = function () {
-      window.FluxUI.showNotification(
+      FluxUI.showNotification(
         'Failed to read image data for fallback copy.',
         'error'
       );
@@ -993,16 +983,16 @@ const FluxGallery = {
         );
         if (inpaintTabButton) inpaintTabButton.click();
         window.InpaintTab.setInputImage(dataUri); // Assuming InpaintTab expects data URI
-        window.FluxUI.showNotification('Image sent to Inpaint tab!', 'success');
+        FluxUI.showNotification('Image sent to Inpaint tab!', 'success');
       } catch (error) {
         console.error('Error sending to Inpaint:', error);
-        window.FluxUI.showNotification(
+        FluxUI.showNotification(
           'Failed to prepare image for Inpaint.',
           'error'
         );
       }
     } else {
-      window.FluxUI.showNotification('Inpaint tab is not ready yet', 'warning');
+      FluxUI.showNotification('Inpaint tab is not ready yet', 'warning');
     }
   },
 
@@ -1019,22 +1009,16 @@ const FluxGallery = {
         );
         if (outpaintTabButton) outpaintTabButton.click();
         window.OutpaintTab.setInputImage(dataUri); // Assuming OutpaintTab expects data URI
-        window.FluxUI.showNotification(
-          'Image sent to Outpaint tab!',
-          'success'
-        );
+        FluxUI.showNotification('Image sent to Outpaint tab!', 'success');
       } catch (error) {
         console.error('Error sending to Outpaint:', error);
-        window.FluxUI.showNotification(
+        FluxUI.showNotification(
           'Failed to prepare image for Outpaint.',
           'error'
         );
       }
     } else {
-      window.FluxUI.showNotification(
-        'Outpaint tab is not ready yet',
-        'warning'
-      );
+      FluxUI.showNotification('Outpaint tab is not ready yet', 'warning');
     }
   },
 
@@ -1051,16 +1035,16 @@ const FluxGallery = {
         );
         if (controlTabButton) controlTabButton.click();
         window.ControlTab.setInputImage(dataUri); // Assuming ControlTab expects data URI
-        window.FluxUI.showNotification('Image sent to Control tab!', 'success');
+        FluxUI.showNotification('Image sent to Control tab!', 'success');
       } catch (error) {
         console.error('Error sending to Control:', error);
-        window.FluxUI.showNotification(
+        FluxUI.showNotification(
           'Failed to prepare image for Control.',
           'error'
         );
       }
     } else {
-      window.FluxUI.showNotification('Control tab is not ready yet', 'warning');
+      FluxUI.showNotification('Control tab is not ready yet', 'warning');
     }
   },
 
@@ -1077,22 +1061,16 @@ const FluxGallery = {
         );
         if (genTabButton) genTabButton.click();
         window.GeneratorTab.setImagePrompt(dataUri, `Gallery Image ${item.id}`);
-        window.FluxUI.showNotification(
-          'Image sent to Generator tab!',
-          'success'
-        );
+        FluxUI.showNotification('Image sent to Generator tab!', 'success');
       } catch (error) {
         console.error('Error sending to Generator:', error);
-        window.FluxUI.showNotification(
+        FluxUI.showNotification(
           'Failed to prepare image for Generator.',
           'error'
         );
       }
     } else {
-      window.FluxUI.showNotification(
-        'Generator tab is not ready yet',
-        'warning'
-      );
+      FluxUI.showNotification('Generator tab is not ready yet', 'warning');
     }
   }
 };

@@ -12,20 +12,10 @@ import { auth } from '../editor/services/firebase.js';
 
 // Import all modules
 import FluxUI from './main.js';
-import FluxAPI from './api.js';
 import FluxGallery from './gallery.js';
 import GeneratorTab from './generator.js';
 import InpaintTab from './inpaint.js';
 import OutpaintTab from './outpaint.js';
-
-// Make modules available globally for cross-module communication
-// This maintains backward compatibility with how the modules reference each other
-window.FluxUI = FluxUI;
-window.FluxAPI = FluxAPI;
-window.FluxGallery = FluxGallery;
-window.GeneratorTab = GeneratorTab;
-window.InpaintTab = InpaintTab;
-window.OutpaintTab = OutpaintTab;
 
 // Also expose auth for potential future use
 window.firebaseAuth = auth;

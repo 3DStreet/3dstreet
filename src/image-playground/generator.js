@@ -3,6 +3,10 @@
  * Original image generation functionality
  */
 
+import FluxUI from './main.js';
+import FluxAPI from './api.js';
+import FluxGallery from './gallery.js';
+
 // Generator tab module
 const GeneratorTab = {
   // Tab state
@@ -54,9 +58,7 @@ const GeneratorTab = {
     });
 
     // Register this module with the main UI for updates
-    if (window.FluxUI) {
-      window.FluxUI.tabModules.generator = this;
-    }
+    FluxUI.tabModules.generator = this;
 
     console.log('Generator Tab: Initialization complete');
   },
@@ -923,7 +925,7 @@ const GeneratorTab = {
     this.toggleLoading(true);
 
     // Make the API request using the determined endpoint
-    window.FluxAPI.makeRequest(apiEndpoint, params)
+    FluxAPI.makeRequest(apiEndpoint, params)
       .then((response) => {
         console.log('API response:', response);
         if (response.id) {
@@ -935,7 +937,7 @@ const GeneratorTab = {
       })
       .catch((error) => {
         console.error('Generation error:', error);
-        window.FluxUI.showNotification(
+        FluxUI.showNotification(
           error.message || 'Failed to generate image',
           'error'
         );
@@ -984,7 +986,7 @@ const GeneratorTab = {
       params.prompt = prompt;
     } else if (model !== 'flux-pro-1.1-ultra') {
       // Ultra model can work without prompt, others require it
-      window.FluxUI.showNotification('Please enter a prompt', 'error');
+      FluxUI.showNotification('Please enter a prompt', 'error');
       return null;
     }
 
@@ -1110,7 +1112,7 @@ const GeneratorTab = {
     this.elements.loadingText.textContent = 'Generating your image...';
     console.log(`Polling for result: ${taskId}`);
 
-    window.FluxAPI.pollForResult(
+    FluxAPI.pollForResult(
       taskId,
       // Progress callback
       (progress) => {
@@ -1151,7 +1153,7 @@ const GeneratorTab = {
         this.currentParams.timestamp = new Date().toISOString();
 
         // Use our proxy server to bypass CORS for display and gallery saving
-        const proxiedUrl = window.FluxAPI.getProxiedImageUrl(imageUrl);
+        const proxiedUrl = FluxAPI.getProxiedImageUrl(imageUrl);
         console.log('Proxied Image URL:', proxiedUrl);
 
         // Display the image using the proxied URL
@@ -1161,16 +1163,13 @@ const GeneratorTab = {
         this.saveToGallery(proxiedUrl);
 
         this.toggleLoading(false);
-        window.FluxUI.showNotification(
-          'Image generated successfully!',
-          'success'
-        );
+        FluxUI.showNotification('Image generated successfully!', 'success');
       },
       // Error callback
       (error) => {
         console.error('Error polling for result:', error);
         this.toggleLoading(false);
-        window.FluxUI.showNotification(
+        FluxUI.showNotification(
           `Failed to get result: ${error.message}`,
           'error'
         );
@@ -1260,26 +1259,26 @@ const GeneratorTab = {
   // Open the image in a new tab
   openImage: function () {
     if (!this.currentImageUrl) {
-      window.FluxUI.showNotification('No image to open', 'error');
+      FluxUI.showNotification('No image to open', 'error');
       return;
     }
 
     console.log('Opening image in new tab:', this.currentImageUrl);
     window.open(this.currentImageUrl, '_blank');
-    window.FluxUI.showNotification('Image opened in new tab!', 'success');
+    FluxUI.showNotification('Image opened in new tab!', 'success');
   },
 
   // Download the image
   downloadImage: function () {
     if (!this.currentImageUrl) {
-      window.FluxUI.showNotification('No image to download', 'error');
+      FluxUI.showNotification('No image to download', 'error');
       return;
     }
 
     console.log('Downloading image:', this.currentImageUrl);
 
     // Use fetch to get the image as a blob
-    fetch(window.FluxAPI.getProxiedImageUrl(this.currentImageUrl))
+    fetch(FluxAPI.getProxiedImageUrl(this.currentImageUrl))
       .then((response) => response.blob())
       .then((blob) => {
         // Create a blob URL
@@ -1313,11 +1312,11 @@ const GeneratorTab = {
           URL.revokeObjectURL(blobUrl);
         }, 100);
 
-        window.FluxUI.showNotification('Image download started!', 'success');
+        FluxUI.showNotification('Image download started!', 'success');
       })
       .catch((error) => {
         console.error('Error downloading image:', error);
-        window.FluxUI.showNotification(
+        FluxUI.showNotification(
           'Failed to download image: ' + error.message,
           'error'
         );
@@ -1327,7 +1326,7 @@ const GeneratorTab = {
   // Copy the image URL to clipboard
   copyImageUrl: function () {
     if (!this.currentImageUrl) {
-      window.FluxUI.showNotification('No image URL to copy', 'error');
+      FluxUI.showNotification('No image URL to copy', 'error');
       return;
     }
 
@@ -1336,23 +1335,17 @@ const GeneratorTab = {
     navigator.clipboard
       .writeText(this.currentImageUrl)
       .then(() => {
-        window.FluxUI.showNotification(
-          'Image URL copied to clipboard!',
-          'success'
-        );
+        FluxUI.showNotification('Image URL copied to clipboard!', 'success');
       })
       .catch((err) => {
-        window.FluxUI.showNotification(
-          'Failed to copy URL: ' + err.message,
-          'error'
-        );
+        FluxUI.showNotification('Failed to copy URL: ' + err.message, 'error');
       });
   },
 
   // Copy parameters to clipboard
   copyParams: function () {
     if (Object.keys(this.currentParams).length === 0) {
-      window.FluxUI.showNotification('No parameters to copy', 'error');
+      FluxUI.showNotification('No parameters to copy', 'error');
       return;
     }
 
@@ -1376,13 +1369,10 @@ const GeneratorTab = {
     navigator.clipboard
       .writeText(paramsString)
       .then(() => {
-        window.FluxUI.showNotification(
-          'Parameters copied to clipboard!',
-          'success'
-        );
+        FluxUI.showNotification('Parameters copied to clipboard!', 'success');
       })
       .catch((err) => {
-        window.FluxUI.showNotification(
+        FluxUI.showNotification(
           'Failed to copy parameters: ' + err.message,
           'error'
         );
@@ -1392,7 +1382,7 @@ const GeneratorTab = {
   // Save the generated image to the gallery
   saveToGallery: function (imageUrl) {
     // Check if gallery module is available
-    if (!window.FluxGallery) {
+    if (!FluxGallery) {
       console.warn('Gallery module not available, cannot save image');
       return;
     }
@@ -1443,19 +1433,16 @@ const GeneratorTab = {
         };
 
         try {
-          await window.FluxGallery.addImage(dataUrl, metadata);
+          await FluxGallery.addImage(dataUrl, metadata);
           console.log('Image saved to gallery (live).');
         } catch (e) {
           console.error('Gallery addImage error:', e);
-          window.FluxUI.showNotification(
-            'Failed to save image to gallery.',
-            'error'
-          );
+          FluxUI.showNotification('Failed to save image to gallery.', 'error');
         }
       })
       .catch((error) => {
         console.error('Error saving to gallery:', error);
-        window.FluxUI.showNotification(
+        FluxUI.showNotification(
           'Failed to save image to gallery: ' + error.message,
           'error'
         );

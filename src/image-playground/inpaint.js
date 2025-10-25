@@ -3,7 +3,9 @@
  * Functionality for image inpainting using /v1/flux-pro-1.0-fill
  */
 
-/* global FluxUI, FluxAPI, FluxGallery */
+import FluxUI from './main.js';
+import FluxAPI from './api.js';
+import FluxGallery from './gallery.js';
 
 // Inpaint tab module
 const InpaintTab = {
@@ -51,9 +53,7 @@ const InpaintTab = {
     });
 
     // Register this module with the main UI for updates
-    if (window.FluxUI) {
-      window.FluxUI.tabModules.inpaint = this;
-    }
+    FluxUI.tabModules.inpaint = this;
 
     console.log('Inpaint Tab initialized');
   },
