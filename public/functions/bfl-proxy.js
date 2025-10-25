@@ -80,9 +80,10 @@ exports.bflApiProxy = functions.https.onRequest(async (req, res) => {
     }
 
     // Extract endpoint from path
-    // Expected path: /bfl-api-proxy/{endpoint} or with query params
+    // Firebase Hosting rewrites pass the FULL path including 'bflApiProxy'
+    // e.g., /bflApiProxy/my_finetunes -> need to extract 'my_finetunes'
     const pathParts = req.path.split('/').filter(Boolean);
-    const endpoint = pathParts[0] || '';
+    const endpoint = pathParts.slice(1).join('/') || ''; // Skip 'bflApiProxy' prefix
 
     console.log(`Proxying ${req.method} request to ${endpoint}`);
 
