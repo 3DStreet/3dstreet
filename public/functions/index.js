@@ -6,6 +6,7 @@ const { serveWebXRVariant } = require('./webxr-variant.js');
 const { getGeoidHeight } = require('./geoid-height.js');
 const { generateReplicateImage } = require('./replicate.js');
 const { checkAndRefillImageTokens, checkUserProStatus } = require('./token-management.js');
+const { bflProxyImage, bflApiProxy } = require('./bfl-proxy.js');
 
 // Re-export the WebXR variant function
 exports.serveWebXRVariant = serveWebXRVariant;
@@ -19,6 +20,10 @@ exports.generateReplicateImage = generateReplicateImage;
 // Re-export the token management functions
 exports.checkAndRefillImageTokens = checkAndRefillImageTokens;
 exports.checkUserProStatus = checkUserProStatus;
+
+// Re-export the BFL proxy functions
+exports.bflProxyImage = bflProxyImage;
+exports.bflApiProxy = bflApiProxy;
 
 exports.getScene = functions
   .https

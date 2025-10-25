@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Flux Image Generator</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/css/styles.css">
+    <link rel="icon" type="image/png" href="favicon.png">
+    <link rel="stylesheet" href="/css/gallery.css">
+</head>
+<body class="min-h-screen flex flex-col">
+    <header class="bg-white shadow-sm">
+        <div class="container mx-auto px-4 py-4 flex items-center justify-between">
+            <div class="flex items-center space-x-4">
+                <h1 class="text-2xl font-bold text-indigo-600">Flux Image Generator</h1>
+                <button id="dark-mode-toggle" class="p-2 rounded-md hover:bg-gray-200 dark:hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-indigo-500" aria-label="Toggle Dark Mode">
+                    <!-- Sun icon for light mode -->
+                    <svg id="theme-toggle-light-icon" class="w-5 h-5 hidden dark:block" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg"><path d="M10 2a1 1 0 011 1v1a1 1 0 11-2 0V3a1 1 0 011-1zm4 8a4 4 0 11-8 0 4 4 0 018 0zm-.464 4.95l.707.707a1 1 0 001.414-1.414l-.707-.707a1 1 0 00-1.414 1.414zm2.12-10.607a1 1 0 010 1.414l-.706.707a1 1 0 11-1.414-1.414l.707-.707a1 1 0 011.414 0zM17 11a1 1 0 100-2h-1a1 1 0 100 2h1zm-7 4a1 1 0 011 1v1a1 1 0 11-2 0v-1a1 1 0 011-1zM5.05 5.05A1 1 0 003.636 6.464l.707.707a1 1 0 001.414-1.414l-.707-.707zm1.414 12.728L5.05 19.192a1 1 0 11-1.414-1.414l.707-.707a1 1 0 011.414 1.414zM19 11a1 1 0 100-2h-1a1 1 0 100 2h1zm-7 4a1 1 0 011 1v1a1 1 0 11-2 0v-1a1 1 0 011-1zM5.05 5.05A1 1 0 003.636 6.464l.707.707a1 1 0 001.414-1.414l-.707-.707z"></path></svg>
+                    <!-- Moon icon for dark mode -->
+                    <svg id="theme-toggle-dark-icon" class="w-5 h-5 block dark:hidden" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg"><path d="M17.293 13.293A8 8 0 016.707 2.707a8.001 8.001 0 1010.586 10.586z"></path></svg>
+                </button>
+            </div>
+            <div id="api-key-container" class="flex items-center">
+                <input type="password" id="api-key-input" placeholder="Enter API Key" 
+                       class="mr-2 px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                <button id="save-api-key" class="px-4 py-2 bg-indigo-600 text-white rounded-md text-sm hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                    Save Key
+                </button>
+                <button id="clear-api-key" class="ml-2 px-4 py-2 bg-red-600 text-white rounded-md text-sm hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500">
+                    Clear Key
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <div class="bg-white shadow-sm">
+        <div class="container mx-auto px-4">
+            <div class="tab-navigation">
+                <button class="tab-button active" data-tab="generator-tab">Generator</button>
+                <button class="tab-button" data-tab="inpaint-tab">Inpaint</button>
+                <button class="tab-button" data-tab="outpaint-tab">Outpaint</button>
+                <button class="tab-button" data-tab="control-tab">Control</button>
+                <button class="tab-button" data-tab="finetune-tab">Finetune</button>
+                <!-- More tabs will be added here -->
+            </div>
+        </div>
+    </div>
+
+    <main class="flex-grow container mx-auto px-4 py-6">
+        <!-- Tab contents - each will be populated by its respective JS file -->
+        <div id="generator-tab" class="tab-content active"></div>
+        <div id="inpaint-tab" class="tab-content"></div>
+        <div id="outpaint-tab" class="tab-content"></div>
+        <div id="control-tab" class="tab-content"></div>
+        <div id="finetune-tab" class="tab-content"></div>
+    </main>
+
+    <!-- Gallery Sidebar -->
+    <div id="gallery-container" class="gallery-sidebar gallery-collapsed">
+        <button id="gallery-toggle" class="gallery-toggle" aria-label="Toggle Gallery">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 5l7 7-7 7M5 5l7 7-7 7" />
+            </svg>
+        </button>
+        <div class="gallery-header">
+            <div class="gallery-title">
+                Gallery <span id="gallery-counter" class="gallery-counter">0</span>
+            </div>
+        </div>
+        <div id="gallery-content" class="gallery-content">
+            <!-- Gallery items will be added here dynamically -->
+        </div>
+        <div class="gallery-footer">
+            <button id="clear-gallery-btn" class="clear-gallery-btn">Clear Gallery</button>
+        </div>
+    </div>
+
+    <footer class="bg-white border-t border-gray-200 py-4 mt-8">
+        <div class="container mx-auto px-4 text-center text-sm text-gray-500">
+            <p>Flux Image Generator | Simple interface for 
+               <a href="https://blackforestlabs.ai/" target="_blank" class="text-indigo-600 hover:text-indigo-800">
+                  Black Forest Labs
+               </a> 
+               Flux API | 
+               <a href="https://github.com/Tremontaine/flux-ui" target="_blank" class="text-indigo-600 hover:text-indigo-800">
+                  GitHub
+               </a>
+            </p>
+        </div>
+    </footer>
+
+    <!-- Notification -->
+    <div id="notification" class="fixed left-4 bottom-4 bg-red-500 text-white p-4 rounded-lg shadow-lg transform transition-transform duration-300 translate-y-20 opacity-0">
+        <div class="flex items-center">
+            <svg id="notification-icon" class="w-6 h-6 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+            </svg>
+            <span id="notification-message">Error message goes here</span>
+        </div>
+    </div>
+
+    <!-- Load the JavaScript files -->
+    <script src="/js/main.js"></script>
+    <script src="/js/api.js"></script>
+    <script src="/js/gallery.js"></script>
+    <!-- Load the tab files directly -->
+    <script src="/tabs/generator.js"></script>
+    <script src="/tabs/inpaint.js"></script>
+    <script src="/tabs/outpaint.js"></script>
+    <script src="/tabs/control.js"></script>
+    <script src="/tabs/finetune.js"></script>
+</body>
+</html>
