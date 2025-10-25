@@ -4,6 +4,9 @@
  */
 
 import FluxUI from './main.js';
+import GeneratorTab from './generator.js';
+import InpaintTab from './inpaint.js';
+import OutpaintTab from './outpaint.js';
 
 // Gallery module
 const FluxGallery = {
@@ -592,7 +595,6 @@ const FluxGallery = {
                         <button class="use-for-generator-btn px-3 py-1.5 bg-gray-500 text-white rounded-md text-sm hover:bg-gray-400 transition-colors">Use for Generator</button>
                         <button class="use-for-inpaint-btn px-3 py-1.5 bg-gray-600 text-white rounded-md text-sm hover:bg-gray-500 transition-colors">Use for Inpaint</button>
                         <button class="use-for-outpaint-btn px-3 py-1.5 bg-gray-700 text-white rounded-md text-sm hover:bg-gray-600 transition-colors">Use for Outpaint</button>
-                        <button class="use-for-control-btn px-3 py-1.5 bg-gray-800 text-white rounded-md text-sm hover:bg-gray-700 transition-colors">Use for Control</button>
                     </div>
                 </div>
                 <!-- Image Body Section -->
@@ -633,12 +635,6 @@ const FluxGallery = {
       .querySelector('.use-for-outpaint-btn')
       .addEventListener('click', () => {
         this.useForOutpaint(item);
-        document.body.removeChild(modal);
-      });
-    modal
-      .querySelector('.use-for-control-btn')
-      .addEventListener('click', () => {
-        this.useForControl(item);
         document.body.removeChild(modal);
       });
 
@@ -785,17 +781,14 @@ const FluxGallery = {
 
   // Use image for inpainting
   useForInpaint: async function (item) {
-    if (
-      window.InpaintTab &&
-      typeof window.InpaintTab.setInputImage === 'function'
-    ) {
+    if (InpaintTab && typeof InpaintTab.setInputImage === 'function') {
       try {
         const dataUri = await this.getBlobDataUri(item.imageDataBlob);
         const inpaintTabButton = document.querySelector(
           '.tab-button[data-tab="inpaint-tab"]'
         );
         if (inpaintTabButton) inpaintTabButton.click();
-        window.InpaintTab.setInputImage(dataUri); // Assuming InpaintTab expects data URI
+        InpaintTab.setInputImage(dataUri); // Assuming InpaintTab expects data URI
         FluxUI.showNotification('Image sent to Inpaint tab!', 'success');
       } catch (error) {
         console.error('Error sending to Inpaint:', error);
@@ -811,17 +804,14 @@ const FluxGallery = {
 
   // Use image for outpainting
   useForOutpaint: async function (item) {
-    if (
-      window.OutpaintTab &&
-      typeof window.OutpaintTab.setInputImage === 'function'
-    ) {
+    if (OutpaintTab && typeof OutpaintTab.setInputImage === 'function') {
       try {
         const dataUri = await this.getBlobDataUri(item.imageDataBlob);
         const outpaintTabButton = document.querySelector(
           '.tab-button[data-tab="outpaint-tab"]'
         );
         if (outpaintTabButton) outpaintTabButton.click();
-        window.OutpaintTab.setInputImage(dataUri); // Assuming OutpaintTab expects data URI
+        OutpaintTab.setInputImage(dataUri); // Assuming OutpaintTab expects data URI
         FluxUI.showNotification('Image sent to Outpaint tab!', 'success');
       } catch (error) {
         console.error('Error sending to Outpaint:', error);
@@ -835,45 +825,16 @@ const FluxGallery = {
     }
   },
 
-  // Use image for Control tab
-  useForControl: async function (item) {
-    if (
-      window.ControlTab &&
-      typeof window.ControlTab.setInputImage === 'function'
-    ) {
-      try {
-        const dataUri = await this.getBlobDataUri(item.imageDataBlob);
-        const controlTabButton = document.querySelector(
-          '.tab-button[data-tab="control-tab"]'
-        );
-        if (controlTabButton) controlTabButton.click();
-        window.ControlTab.setInputImage(dataUri); // Assuming ControlTab expects data URI
-        FluxUI.showNotification('Image sent to Control tab!', 'success');
-      } catch (error) {
-        console.error('Error sending to Control:', error);
-        FluxUI.showNotification(
-          'Failed to prepare image for Control.',
-          'error'
-        );
-      }
-    } else {
-      FluxUI.showNotification('Control tab is not ready yet', 'warning');
-    }
-  },
-
   // Use image for Generator tab
   useForGenerator: async function (item) {
-    if (
-      window.GeneratorTab &&
-      typeof window.GeneratorTab.setImagePrompt === 'function'
-    ) {
+    if (GeneratorTab && typeof GeneratorTab.setImagePrompt === 'function') {
       try {
         const dataUri = await this.getBlobDataUri(item.imageDataBlob);
         const genTabButton = document.querySelector(
           '.tab-button[data-tab="generator-tab"]'
         );
         if (genTabButton) genTabButton.click();
-        window.GeneratorTab.setImagePrompt(dataUri, `Gallery Image ${item.id}`);
+        GeneratorTab.setImagePrompt(dataUri, `Gallery Image ${item.id}`);
         FluxUI.showNotification('Image sent to Generator tab!', 'success');
       } catch (error) {
         console.error('Error sending to Generator:', error);
