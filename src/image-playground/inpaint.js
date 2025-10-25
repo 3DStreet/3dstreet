@@ -23,7 +23,6 @@ const InpaintTab = {
   displayCanvasScale: 1, // Scale factor of the display canvas vs original image
   maskLayerCanvas: null, // Hidden canvas for the actual mask data
   maskLayerCtx: null, // Context for the hidden mask canvas
-  selectedFinetune: null, // Store selected finetune ID
   // Elements cache
   elements: {},
 
@@ -42,15 +41,6 @@ const InpaintTab = {
 
     // Generate an initial random seed on load
     this.generateRandomSeed();
-
-    // Listen for finetune list updates from the FinetuneTab
-    document.addEventListener('finetunesListUpdated', (event) => {
-      console.log(
-        'Inpaint Tab received finetunesListUpdated event:',
-        event.detail
-      );
-      this.updateFinetuneOptions(event.detail);
-    });
 
     // Register this module with the main UI for updates
     FluxUI.tabModules.inpaint = this;
@@ -102,22 +92,6 @@ const InpaintTab = {
                         <textarea id="inpaint-prompt" rows="3" class="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500" placeholder="Describe what to generate in the masked area..."></textarea>
                     </div>
                     
-                    <!-- Finetune Selection -->
-                    <div class="mb-4">
-                        <label for="inpaint-finetune-selector" class="block text-sm font-medium text-gray-700 mb-1">Finetune Model (Optional)</label>
-                        <select id="inpaint-finetune-selector" class="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
-                            <option value="">None</option>
-                            <!-- Options populated by JS -->
-                        </select>
-                    </div>
-                    
-                    <!-- Finetune Strength (Hidden by default) -->
-                    <div id="inpaint-finetune-strength-container" class="mb-4 hidden">
-                        <label class="block text-sm font-medium text-gray-700 mb-1">Finetune Strength: <span id="inpaint-finetune-strength-value">1.1</span></label>
-                        <input type="range" id="inpaint-finetune-strength-slider" min="0" max="2" step="0.05" value="1.1" class="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer">
-                        <p class="text-xs text-gray-500 mt-1">Controls the influence of the finetuned model (0 = none, 1 = full, >1 = amplified)</p>
-                    </div>
-
                     <!-- Parameters -->
                     <div class="mb-4 param-group">
                         <label class="block text-sm font-medium text-gray-700 mb-1">Steps: <span id="inpaint-steps-value">50</span></label>
@@ -334,24 +308,6 @@ const InpaintTab = {
     this.elements.downloadBtn = this.elements.inpaintContainer.querySelector(
       '#inpaint-download-btn'
     );
-
-    // Finetune elements
-    this.elements.finetuneSelector =
-      this.elements.inpaintContainer.querySelector(
-        '#inpaint-finetune-selector'
-      );
-    this.elements.finetuneStrengthContainer =
-      this.elements.inpaintContainer.querySelector(
-        '#inpaint-finetune-strength-container'
-      );
-    this.elements.finetuneStrengthSlider =
-      this.elements.inpaintContainer.querySelector(
-        '#inpaint-finetune-strength-slider'
-      );
-    this.elements.finetuneStrengthValue =
-      this.elements.inpaintContainer.querySelector(
-        '#inpaint-finetune-strength-value'
-      );
   },
 
   // Setup event listeners
@@ -412,10 +368,6 @@ const InpaintTab = {
     this.setupSlider(this.elements.stepsSlider, this.elements.stepsValue);
     this.setupSlider(this.elements.guidanceSlider, this.elements.guidanceValue);
     this.setupSlider(this.elements.safetySlider, this.elements.safetyValue);
-    this.setupSlider(
-      this.elements.finetuneStrengthSlider,
-      this.elements.finetuneStrengthValue
-    ); // Setup finetune slider
 
     // Clear mask button
     this.elements.clearMaskBtn.addEventListener(
@@ -433,12 +385,6 @@ const InpaintTab = {
     this.elements.advancedToggle.addEventListener(
       'click',
       this.toggleAdvancedOptions.bind(this)
-    );
-
-    // Finetune selector listener
-    this.elements.finetuneSelector.addEventListener(
-      'change',
-      this.handleFinetuneSelection.bind(this)
     );
 
     // Generate button click
@@ -779,20 +725,7 @@ const InpaintTab = {
     this.currentParams =
       resultData.details?.request_params || this.currentParams; // Store request params if available
     this.currentParams.model =
-      resultData.details?.model_id ||
-      (this.selectedFinetune
-        ? 'flux-pro-1.0-fill-finetuned'
-        : 'flux-pro-1.0-fill'); // Add model info (actual endpoint used)
-    // Ensure finetune details are stored if they were used and returned
-    if (resultData.details?.request_params?.finetune_id) {
-      this.currentParams.finetune_id =
-        resultData.details.request_params.finetune_id;
-      this.currentParams.finetune_strength =
-        resultData.details.request_params.finetune_strength;
-    } else {
-      delete this.currentParams.finetune_id;
-      delete this.currentParams.finetune_strength;
-    }
+      resultData.details?.model_id || 'flux-pro-1.0-fill'; // Add model info (actual endpoint used)
     this.currentParams.timestamp = new Date().toISOString();
 
     // Automatically add to gallery
@@ -872,16 +805,8 @@ const InpaintTab = {
         safety_tolerance: parseInt(this.elements.safetySlider.value) || 2
       };
 
-      // Determine API endpoint and add finetune params if selected
-      let apiEndpoint = 'flux-pro-1.0-fill';
-      const finetuneId = this.elements.finetuneSelector.value;
-      if (finetuneId) {
-        apiEndpoint = 'flux-pro-1.0-fill-finetuned';
-        params.finetune_id = finetuneId;
-        params.finetune_strength = parseFloat(
-          this.elements.finetuneStrengthSlider.value
-        );
-      }
+      // Use the inpaint API endpoint
+      const apiEndpoint = 'flux-pro-1.0-fill';
 
       // Store params for potential gallery add / copy
       this.currentParams = { ...params };
@@ -957,7 +882,7 @@ const InpaintTab = {
       return;
     }
     const paramsToCopy = {
-      ...this.currentParams, // Includes finetune details if used
+      ...this.currentParams,
       prompt: this.elements.promptInput.value.trim(), // Ensure latest prompt is copied
       model: this.currentParams.model // Use the stored model/endpoint name
     };
@@ -985,75 +910,6 @@ const InpaintTab = {
     link.click();
     document.body.removeChild(link);
     FluxUI.showNotification('Image download started.', 'success');
-  },
-
-  // Handle finetune selection change
-  handleFinetuneSelection: function () {
-    const selectedValue = this.elements.finetuneSelector.value;
-    this.selectedFinetune = selectedValue || null; // Store null if "None" is selected
-
-    // Show/hide strength slider
-    this.elements.finetuneStrengthContainer.classList.toggle(
-      'hidden',
-      !this.selectedFinetune
-    );
-
-    // Set default strength when a finetune is selected (Inpaint uses 1.1 default)
-    if (this.selectedFinetune) {
-      const defaultStrength = 1.1;
-      this.elements.finetuneStrengthSlider.value = defaultStrength;
-      this.elements.finetuneStrengthValue.textContent = defaultStrength;
-    }
-
-    console.log('Inpaint Finetune selected:', this.selectedFinetune);
-  },
-
-  // Update finetune options in the dropdown using the detailed list
-  updateFinetuneOptions: function (detailedFinetunesList) {
-    if (!this.elements.finetuneSelector) {
-      console.warn('Inpaint Tab: Finetune selector element not found.');
-      return;
-    }
-
-    // Remember the currently selected value
-    const currentSelection = this.elements.finetuneSelector.value;
-
-    // Clear existing options (keep "None")
-    while (this.elements.finetuneSelector.options.length > 1) {
-      this.elements.finetuneSelector.remove(1);
-    }
-
-    // Add new options from the detailed list
-    if (detailedFinetunesList && detailedFinetunesList.length > 0) {
-      // The list should already be sorted by comment in FinetuneTab
-      detailedFinetunesList.forEach((ft) => {
-        const option = document.createElement('option');
-        option.value = ft.id; // Use the ID as the value
-        option.textContent = ft.comment; // Display the comment (or ID fallback)
-        option.title = `ID: ${ft.id}`; // Add title attribute for full ID tooltip
-        // Optionally add type info if available in ft.details
-        // const type = ft.details?.finetune_details?.finetune_type;
-        // if (type) {
-        //     option.textContent += ` (${type.charAt(0).toUpperCase() + type.slice(1)})`;
-        // }
-        this.elements.finetuneSelector.appendChild(option);
-      });
-    }
-
-    // Try to restore previous selection
-    this.elements.finetuneSelector.value = currentSelection;
-
-    // If the previous selection is no longer valid (e.g., finetune deleted), reset to "None"
-    if (this.elements.finetuneSelector.value !== currentSelection) {
-      this.elements.finetuneSelector.value = '';
-    }
-
-    // Trigger change handler to update UI (e.g., hide/show strength slider)
-    this.handleFinetuneSelection();
-
-    console.log(
-      'Finetune options updated in Inpaint tab based on detailed list.'
-    );
   }
 };
 
