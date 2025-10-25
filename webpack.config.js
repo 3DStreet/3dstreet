@@ -17,7 +17,11 @@ module.exports = {
   },
   devtool: 'source-map',
   entry: {
-    core: { import: './src/index.js', filename: 'aframe-street-component.js' }
+    core: { import: './src/index.js', filename: 'aframe-street-component.js' },
+    imagePlayground: {
+      import: './src/image-playground/index.js',
+      filename: 'image-playground.js'
+    }
   },
   output: {
     publicPath: '/dist/',
