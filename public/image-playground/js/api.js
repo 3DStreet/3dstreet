@@ -136,28 +136,8 @@ window.FluxAPI = {
     // Get a proxied image URL
     getProxiedImageUrl: function(originalUrl) {
         return `/bflProxyImage?url=${encodeURIComponent(originalUrl)}`;
-    },
-
-    // Fetch the list of user's finetunes
-    getMyFinetunes: async function() {
-        console.log('Fetching user finetunes...');
-        try {
-            // Use makeRequest with GET method
-            const response = await this.makeRequest('my_finetunes', null, 'GET');
-            console.log('Finetunes fetched:', response);
-            if (response && Array.isArray(response.finetunes)) {
-                return response.finetunes;
-            } else {
-                console.warn('Unexpected response format for finetunes:', response);
-                return []; // Return empty array if format is wrong
-            }
-        } catch (error) {
-            console.error('Error fetching finetunes:', error);
-            // Don't throw here, let the UI handle the empty list
-            return [];
-        }
     }
 };
 
 // Debugging log
-console.log('FluxAPI initialized and globally available with getMyFinetunes');
+console.log('FluxAPI initialized and globally available');
