@@ -393,6 +393,14 @@ const InpaintTab = {
       this.generateInpaint.bind(this)
     );
 
+    // Keyboard shortcut for prompt input (Cmd+Enter on Mac, Ctrl+Enter on PC)
+    this.elements.promptInput.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) {
+        e.preventDefault();
+        this.elements.generateBtn.click();
+      }
+    });
+
     // Action buttons
     // this.elements.addToGalleryBtn.addEventListener('click', this.addToGallery.bind(this)); // Removed
     this.elements.copyParamsBtn.addEventListener(

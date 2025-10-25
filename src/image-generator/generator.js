@@ -407,6 +407,14 @@ const GeneratorTab = {
       this.generateImage.bind(this)
     );
 
+    // Keyboard shortcut for prompt input (Cmd+Enter on Mac, Ctrl+Enter on PC)
+    this.elements.promptInput.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) {
+        e.preventDefault();
+        this.elements.generateBtn.click();
+      }
+    });
+
     // Setup sliders
     this.setupSlider(this.elements.stepsSlider, this.elements.stepsValue);
     this.setupSlider(this.elements.guidanceSlider, this.elements.guidanceValue);
