@@ -9,12 +9,14 @@ const AuthContext = createContext({
   currentUser: null,
   setCurrentUser: (user) => {},
   tokenProfile: null,
-  refreshTokenProfile: () => {}
+  refreshTokenProfile: () => {},
+  isLoading: true
 });
 
 const AuthProvider = ({ children }) => {
   const [currentUser, setCurrentUser] = useState(null);
   const [tokenProfile, setTokenProfile] = useState(null);
+  const [isLoading, setIsLoading] = useState(true);
 
   const refreshTokenProfile = async () => {
     if (currentUser) {
@@ -43,6 +45,7 @@ const AuthProvider = ({ children }) => {
         localStorage.removeItem('token');
         setCurrentUser(null);
         setTokenProfile(null);
+        setIsLoading(false);
         return;
       }
 
@@ -88,6 +91,7 @@ const AuthProvider = ({ children }) => {
       });
 
       setCurrentUser(enrichedUser);
+      setIsLoading(false);
     };
 
     const unsubscribe = auth.onAuthStateChanged((user) => {
@@ -99,7 +103,13 @@ const AuthProvider = ({ children }) => {
 
   return (
     <AuthContext.Provider
-      value={{ currentUser, setCurrentUser, tokenProfile, refreshTokenProfile }}
+      value={{
+        currentUser,
+        setCurrentUser,
+        tokenProfile,
+        refreshTokenProfile,
+        isLoading
+      }}
     >
       {children}
     </AuthContext.Provider>

@@ -1,73 +1,44 @@
 /**
- * Simplified ProfileButton for Image Generator
- * Manages modal state locally without Zustand store
+ * Image Generator ProfileButton - wraps shared ProfileButton with tooltip
+ * Uses local Zustand store for modal management
  */
-
-import { useState } from 'react';
+import { ProfileButton as SharedProfileButton } from '@shared/auth/components';
 import { useAuthContext } from '../../editor/contexts';
-import { Button } from '../../editor/components/elements/Button/Button.component.jsx';
-import { Profile32Icon } from '../../editor/components/elements/ProfileButton/icons.jsx';
-import MsftProfileImg from '../../../ui_assets/profile-microsoft.png';
+import useImageGenStore from '../store';
+import posthog from 'posthog-js';
 import SignInModal from './SignInModal.jsx';
 import ProfileModal from './ProfileModal.jsx';
-import styles from '../../editor/components/elements/ProfileButton/ProfileButton.module.scss';
-
-const renderProfileIcon = (currentUser) => {
-  const isGoogle = currentUser?.providerData[0]?.providerId === 'google.com';
-  const isMicrosoft =
-    currentUser?.providerData[0]?.providerId === 'microsoft.com';
-
-  if (isGoogle && currentUser?.photoURL) {
-    return (
-      <img
-        className={styles.photoURL}
-        src={currentUser.photoURL}
-        alt="userPhoto"
-        referrerPolicy="no-referrer"
-      />
-    );
-  } else if (isMicrosoft) {
-    return (
-      <img
-        src={MsftProfileImg}
-        alt="Microsoft Profile"
-        height="40"
-        width="40"
-      />
-    );
-  } else {
-    return Profile32Icon;
-  }
-};
 
 const ProfileButton = () => {
-  const { currentUser } = useAuthContext();
-  const [showSignIn, setShowSignIn] = useState(false);
-  const [showProfile, setShowProfile] = useState(false);
+  const { currentUser, isLoading } = useAuthContext();
+  const { modal, setModal } = useImageGenStore();
 
   const onClick = () => {
+    if (isLoading) return;
+
+    posthog.capture('profile_button_clicked', { is_logged_in: !!currentUser });
+
     if (currentUser) {
-      setShowProfile(true);
+      setModal('profile');
     } else {
-      setShowSignIn(true);
+      setModal('signin');
     }
   };
 
   return (
     <>
-      <Button
-        className={styles.profileButton}
+      <SharedProfileButton
+        currentUser={currentUser}
+        isLoading={isLoading}
         onClick={onClick}
-        variant="toolbtn"
-      >
-        {renderProfileIcon(currentUser)}
-      </Button>
+        tooltipSide="bottom"
+      />
 
-      <SignInModal isOpen={showSignIn} onClose={() => setShowSignIn(false)} />
+      <SignInModal isOpen={modal === 'signin'} onClose={() => setModal(null)} />
 
       <ProfileModal
-        isOpen={showProfile}
-        onClose={() => setShowProfile(false)}
+        isOpen={modal === 'profile'}
+        onClose={() => setModal(null)}
       />
     </>
   );

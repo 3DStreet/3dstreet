@@ -1,4 +1,4 @@
-@use '../../../style/variables.scss';
+@use '../../../editor/style/variables.scss';
 
 .profileButton {
   border: unset;
@@ -13,9 +13,4 @@
   &:active {
     background-color: variables.$purple-200;
   }
-}
-.photoURL {
-  width: 43px;
-  height: 43px;
-  border-radius: 18px;
 }

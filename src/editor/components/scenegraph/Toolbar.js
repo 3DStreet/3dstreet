@@ -1,4 +1,5 @@
-import { ProfileButton, Logo } from '../elements';
+import { Logo } from '../elements';
+import { ProfileButton } from '@shared/auth/components';
 import useStore from '@/store';
 import { useAuthContext } from '@/editor/contexts';
 import { Tooltip } from 'radix-ui';
@@ -12,6 +13,7 @@ import { ActionBar } from '../elements/ActionBar';
 import { Save } from '../elements/Save';
 import { useEffect } from 'react';
 import TimeControls from '../elements/TimeControls';
+import posthog from 'posthog-js';
 
 const TooltipWrapper = ({ children, content, side = 'bottom', ...props }) => {
   return (
@@ -42,7 +44,7 @@ const TooltipWrapper = ({ children, content, side = 'bottom', ...props }) => {
 
 function Toolbar({ currentUser, entity }) {
   const { setModal, isInspectorEnabled } = useStore();
-  const { currentUser: authUser } = useAuthContext();
+  const { currentUser: authUser, isLoading } = useAuthContext();
 
   // Initialize recording status check on component mount
   useEffect(() => {
@@ -154,18 +156,20 @@ function Toolbar({ currentUser, entity }) {
                       : 'FREE'}
                   </div>
                 </TooltipWrapper>
-                <TooltipWrapper
-                  content={currentUser ? 'Open profile' : 'Sign in'}
-                  side="bottom"
-                >
-                  <div
-                    onClick={() => setModal(currentUser ? 'profile' : 'signin')}
-                    aria-label={currentUser ? 'Open profile' : 'Sign in'}
-                    className="mr-1"
-                  >
-                    <ProfileButton />
-                  </div>
-                </TooltipWrapper>
+                <div className="mr-1">
+                  <ProfileButton
+                    currentUser={authUser}
+                    isLoading={isLoading}
+                    onClick={() => {
+                      if (isLoading) return;
+                      posthog.capture('profile_button_clicked', {
+                        is_logged_in: !!authUser
+                      });
+                      setModal(authUser ? 'profile' : 'signin');
+                    }}
+                    tooltipSide="bottom"
+                  />
+                </div>
               </>
             )}
           </div>

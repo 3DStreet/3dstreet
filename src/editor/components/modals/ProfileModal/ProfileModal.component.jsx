@@ -10,7 +10,7 @@ import { auth, functions } from '../../../services/firebase';
 import { Loader } from '../../../icons';
 import { httpsCallable } from 'firebase/functions';
 import posthog from 'posthog-js';
-import { renderProfileIcon } from '../../elements/ProfileButton';
+import { renderProfileIcon } from '@shared/auth/components';
 import useStore from '@/store';
 import {
   getUserProfile,

@@ -10,52 +10,7 @@ import Modal from '../../editor/components/modals/Modal.jsx';
 import { Button } from '../../editor/components/elements/Button/Button.component.jsx';
 import styles from '../../editor/components/modals/ProfileModal/ProfileModal.module.scss';
 import posthog from 'posthog-js';
-import MsftProfileImg from '../../../ui_assets/profile-microsoft.png';
-import profileButtonStyles from '../../editor/components/elements/ProfileButton/ProfileButton.module.scss';
-
-// Render profile icon based on provider
-const renderProfileIcon = (currentUser) => {
-  const isGoogle = currentUser?.providerData[0]?.providerId === 'google.com';
-  const isMicrosoft =
-    currentUser?.providerData[0]?.providerId === 'microsoft.com';
-
-  if (isGoogle && currentUser?.photoURL) {
-    return (
-      <img
-        className={profileButtonStyles.photoURL}
-        src={currentUser.photoURL}
-        alt="userPhoto"
-        referrerPolicy="no-referrer"
-      />
-    );
-  } else if (isMicrosoft) {
-    return (
-      <img
-        src={MsftProfileImg}
-        alt="Microsoft Profile"
-        height="40"
-        width="40"
-      />
-    );
-  } else {
-    // Default icon SVG
-    return (
-      <svg
-        width="32"
-        height="32"
-        viewBox="0 0 32 32"
-        fill="none"
-        xmlns="http://www.w3.org/2000/svg"
-      >
-        <circle cx="16" cy="10" r="6" fill="currentColor" />
-        <path
-          d="M4 28c0-6.627 5.373-12 12-12s12 5.373 12 12"
-          fill="currentColor"
-        />
-      </svg>
-    );
-  }
-};
+import { renderProfileIcon } from '@shared/auth/components';
 
 const ProfileModal = ({ isOpen, onClose }) => {
   const { currentUser, setCurrentUser, tokenProfile } = useAuthContext();

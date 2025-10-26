@@ -8,12 +8,18 @@ module.exports = {
   devServer: {
     liveReload: false,
     port: 3333,
-    static: {
-      directory: '.',
-      watch: {
-        ignored: ['.*', '**/node_modules']
+    static: [
+      {
+        directory: '.',
+        watch: {
+          ignored: ['.*', '**/node_modules']
+        }
+      },
+      {
+        directory: path.join(__dirname, 'public'),
+        publicPath: '/'
       }
-    }
+    ]
   },
   devtool: 'source-map',
   entry: {
@@ -107,8 +113,10 @@ module.exports = {
     ]
   },
   resolve: {
+    extensions: ['.js', '.jsx', '.json'],
     alias: {
-      '@': path.resolve(__dirname, 'src')
+      '@': path.resolve(__dirname, 'src'),
+      '@shared': path.resolve(__dirname, 'src/shared')
     }
   }
 };

@@ -5,6 +5,7 @@
  */
 
 import { AuthProvider } from '../editor/contexts';
+import { Tooltip } from 'radix-ui';
 import ProfileButton from './components/ProfileButton.jsx';
 
 /**
@@ -14,10 +15,12 @@ import ProfileButton from './components/ProfileButton.jsx';
 const AuthIsland = () => {
   return (
     <AuthProvider>
-      {/* Profile button that triggers signin or profile modal */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-        <ProfileButton />
-      </div>
+      <Tooltip.Provider>
+        {/* Profile button that triggers signin or profile modal */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+          <ProfileButton />
+        </div>
+      </Tooltip.Provider>
     </AuthProvider>
   );
 };

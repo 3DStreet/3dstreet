@@ -1,65 +1,32 @@
 /**
- * Simplified auth API for Image Generator
- * No dependencies on STREET global
+ * Image generator auth API - simple wrapper around shared auth
  */
-
-import {
-  GoogleAuthProvider,
-  OAuthProvider,
-  signInWithPopup
-} from 'firebase/auth';
+import { signInWithGoogle, signInWithMicrosoft } from '@shared/auth/api/auth';
 import { auth } from '../../editor/services/firebase';
 import posthog from 'posthog-js';
 
 const signIn = async () => {
-  const { user } = await signInWithPopup(auth, new GoogleAuthProvider());
+  const onAnalytics = (eventName, properties) => {
+    posthog.capture(eventName, properties);
+  };
 
-  // Check if this is a new user (sign up) or existing user (sign in)
-  const isNewUser = user.metadata.creationTime === user.metadata.lastSignInTime;
+  const onNotification = (type, message) => {
+    console.log(`[${type}] ${message}`);
+  };
 
-  if (isNewUser) {
-    posthog.capture('user_signed_up', {
-      email: user.email,
-      name: user.displayName,
-      provider: 'google.com',
-      user_id: user.uid
-    });
-  } else {
-    posthog.capture('sign_in_completed', {
-      email: user.email,
-      name: user.displayName,
-      provider: 'google.com',
-      user_id: user.uid
-    });
-  }
-
-  return user;
+  return await signInWithGoogle(auth, onAnalytics, onNotification);
 };
 
 const signInMicrosoft = async () => {
-  const provider = new OAuthProvider('microsoft.com');
-  const { user } = await signInWithPopup(auth, provider);
+  const onAnalytics = (eventName, properties) => {
+    posthog.capture(eventName, properties);
+  };
 
-  // Check if this is a new user (sign up) or existing user (sign in)
-  const isNewUser = user.metadata.creationTime === user.metadata.lastSignInTime;
+  const onNotification = (type, message) => {
+    console.log(`[${type}] ${message}`);
+  };
 
-  if (isNewUser) {
-    posthog.capture('user_signed_up', {
-      email: user.email,
-      name: user.displayName,
-      provider: 'microsoft.com',
-      user_id: user.uid
-    });
-  } else {
-    posthog.capture('sign_in_completed', {
-      email: user.email,
-      name: user.displayName,
-      provider: 'microsoft.com',
-      user_id: user.uid
-    });
-  }
-
-  return user;
+  return await signInWithMicrosoft(auth, onAnalytics, onNotification);
 };
 
 export { signIn, signInMicrosoft };
