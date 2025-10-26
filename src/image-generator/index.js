@@ -7,8 +7,11 @@
 import './styles/styles.css';
 import './styles/gallery.css';
 
-// Import Firebase auth (available for future use)
+// Import Firebase auth
 import { auth } from '../editor/services/firebase.js';
+
+// Import auth mount function
+import { mountAuthUI } from './mount-auth.js';
 
 // Import all modules
 import FluxUI from './main.js';
@@ -17,7 +20,7 @@ import GeneratorTab from './generator.js';
 import InpaintTab from './inpaint.js';
 import OutpaintTab from './outpaint.js';
 
-// Also expose auth for potential future use
+// Expose auth for compatibility
 window.firebaseAuth = auth;
 
 // TEST: Verify Firebase auth integration
@@ -33,7 +36,10 @@ console.log('===========================================');
 
 // Initialize on DOMContentLoaded
 document.addEventListener('DOMContentLoaded', async () => {
-  console.log('Initializing Image Playground');
+  console.log('Initializing Image Generator');
+
+  // Mount React auth UI first
+  mountAuthUI();
 
   // Initialize main UI
   FluxUI.init();
@@ -46,5 +52,5 @@ document.addEventListener('DOMContentLoaded', async () => {
   InpaintTab.init();
   OutpaintTab.init();
 
-  console.log('Image Playground initialized');
+  console.log('Image Generator initialized');
 });
