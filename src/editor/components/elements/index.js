@@ -5,7 +5,6 @@ export { Input } from './Input';
 export { Dropdown } from './Dropdown';
 export { Checkbox } from './Checkbox';
 export { Toggle } from './Toggle';
-export { Logo } from './Logo';
 export { ProfileButton, renderProfileIcon } from '@shared/auth/components';
 export { SceneCard } from './SceneCard';
 export { SceneEditTitle } from './SceneEditTitle';

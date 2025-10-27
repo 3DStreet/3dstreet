@@ -12,6 +12,7 @@ import { auth } from '../editor/services/firebase.js';
 
 // Import auth mount function
 import { mountAuthUI, mountTokenDisplay } from './mount-auth.js';
+import { mountAppSwitcher } from './mount-app-switcher.js';
 
 // Import all modules
 import FluxUI from './main.js';
@@ -37,6 +38,9 @@ console.log('===========================================');
 // Initialize on DOMContentLoaded
 document.addEventListener('DOMContentLoaded', async () => {
   console.log('Initializing Image Generator');
+
+  // Mount AppSwitcher
+  mountAppSwitcher();
 
   // Mount React auth UI first
   mountAuthUI();

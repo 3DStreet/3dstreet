@@ -1,0 +1,131 @@
+// AppSwitcher styles - CSS Module for shared component
+// Works in both 3DStreet Editor and Image Generator
+
+.trigger {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: none;
+  border: none;
+  padding: 6px 10px;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.2s ease-in-out;
+  position: relative;
+
+  &:hover {
+    background-color: rgba(38, 38, 38, 1); // variables.$black-400
+
+    .logo {
+      filter: brightness(1.2) contrast(1.05);
+      transform: scale(1.03);
+    }
+
+    .arrow {
+      opacity: 1;
+      transform: translateY(0px);
+    }
+  }
+
+  &[data-state='open'] {
+    background-color: rgba(38, 38, 38, 1); // variables.$black-400
+
+    .arrow {
+      transform: rotate(180deg);
+      opacity: 1;
+    }
+  }
+}
+
+.logo {
+  height: 48px;
+  width: 48px;
+  object-fit: contain;
+  transition: all 0.2s ease-in-out;
+}
+
+.arrow {
+  opacity: 0.6;
+  transition: all 0.2s ease-in-out;
+  color: white;
+  flex-shrink: 0;
+}
+
+.content {
+  min-width: 240px;
+  background-color: rgba(30, 30, 30, 0.95);
+  color: white;
+  border-radius: 8px;
+  padding: 6px;
+  box-shadow:
+    0px 10px 38px -10px rgba(22, 23, 24, 0.35),
+    0px 10px 20px -15px rgba(22, 23, 24, 0.2);
+  animation-duration: 400ms;
+  animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1);
+  will-change: transform, opacity;
+  z-index: 10;
+  backdrop-filter: blur(8.5px);
+  -webkit-backdrop-filter: blur(8.5px);
+}
+
+.label {
+  font-size: 11px;
+  font-weight: 600;
+  padding: 8px 12px 4px;
+  color: #9ca3af;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.separator {
+  height: 1px;
+  background-color: rgba(255, 255, 255, 0.1);
+  margin: 4px 4px 6px;
+}
+
+.item {
+  all: unset;
+  box-sizing: border-box;
+  font-size: 14px;
+  line-height: 1.2;
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  min-height: 32px;
+  padding: 8px 12px;
+  position: relative;
+  user-select: none;
+  cursor: pointer;
+  margin: 1px 0;
+  transition: background-color 0.15s ease-in-out;
+
+  &[data-highlighted] {
+    background-color: rgba(255, 255, 255, 0.1);
+    outline: none;
+  }
+}
+
+.itemContent {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  gap: 12px;
+}
+
+.appName {
+  font-weight: 500;
+  color: white;
+}
+
+.badge {
+  font-size: 10px;
+  font-weight: 600;
+  padding: 2px 8px;
+  border-radius: 4px;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+  background-color: #774dee;
+  color: white;
+  flex-shrink: 0;
+}

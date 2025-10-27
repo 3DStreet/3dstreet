@@ -1,5 +1,5 @@
-import { Logo } from '../elements';
 import { ProfileButton } from '@shared/auth/components';
+import { AppSwitcher } from '@shared/navigation/components';
 import useStore from '@/store';
 import { useAuthContext } from '@/editor/contexts';
 import { Tooltip } from 'radix-ui';
@@ -14,6 +14,7 @@ import { Save } from '../elements/Save';
 import { useEffect } from 'react';
 import TimeControls from '../elements/TimeControls';
 import posthog from 'posthog-js';
+import AppMenu from './AppMenu';
 
 const TooltipWrapper = ({ children, content, side = 'bottom', ...props }) => {
   return (
@@ -43,7 +44,7 @@ const TooltipWrapper = ({ children, content, side = 'bottom', ...props }) => {
 };
 
 function Toolbar({ currentUser, entity }) {
-  const { setModal, isInspectorEnabled } = useStore();
+  const { setModal, isInspectorEnabled, setIsInspectorEnabled } = useStore();
   const { currentUser: authUser, isLoading } = useAuthContext();
 
   // Initialize recording status check on component mount
@@ -61,20 +62,46 @@ function Toolbar({ currentUser, entity }) {
     <Tooltip.Provider>
       <div id="toolbar">
         <div className="flex items-center justify-between">
-          {/* Left section - Logo, Title, Save */}
+          {/* Left section - Logo, AppMenu, Title, Save */}
           <div className="flex items-center gap-4">
-            <div className="flex-shrink-0">
-              <Logo currentUser={currentUser} />
+            {/* Logo / App Switcher */}
+            <div className="flex flex-shrink-0 items-center space-x-2">
+              {isInspectorEnabled ? (
+                <AppSwitcher />
+              ) : (
+                <img
+                  src="/ui_assets/3D-St-stacked-128.png"
+                  alt="3DStreet Logo"
+                  style={{
+                    width: '48px',
+                    height: '48px',
+                    objectFit: 'contain'
+                  }}
+                />
+              )}
+
+              {!isInspectorEnabled && (
+                <Button
+                  onClick={() => setIsInspectorEnabled(!isInspectorEnabled)}
+                  variant="toolbtn"
+                >
+                  Editor
+                </Button>
+              )}
             </div>
+
             {isInspectorEnabled && (
-              <div className="flex min-w-0 items-center gap-2">
-                <TooltipWrapper content="Edit scene title" side="bottom">
-                  <div id="scene-title" className="clickable truncate">
-                    <SceneEditTitle />
-                  </div>
-                </TooltipWrapper>
-                <Save currentUser={currentUser} />
-              </div>
+              <>
+                <AppMenu currentUser={currentUser} />
+                <div className="flex min-w-0 items-center gap-2">
+                  <TooltipWrapper content="Edit scene title" side="bottom">
+                    <div id="scene-title" className="clickable truncate">
+                      <SceneEditTitle />
+                    </div>
+                  </TooltipWrapper>
+                  <Save currentUser={currentUser} />
+                </div>
+              </>
             )}
             {/* Time Controls - only shown in viewer mode */}
             {!isInspectorEnabled && (
