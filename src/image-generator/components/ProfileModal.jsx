@@ -10,8 +10,7 @@ import Modal from '../../editor/components/modals/Modal.jsx';
 import { Button } from '../../editor/components/elements/Button/Button.component.jsx';
 import styles from '../../editor/components/modals/ProfileModal/ProfileModal.module.scss';
 import posthog from 'posthog-js';
-import { renderProfileIcon } from '@shared/auth/components';
-import { TokenDisplayInner } from './TokenDisplay.jsx';
+import { renderProfileIcon, TokenDisplayInner } from '@shared/auth/components';
 
 const ProfileModal = ({ isOpen, onClose }) => {
   const { currentUser, setCurrentUser, tokenProfile } = useAuthContext();

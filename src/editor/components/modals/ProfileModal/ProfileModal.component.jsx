@@ -10,7 +10,7 @@ import { auth, functions } from '../../../services/firebase';
 import { Loader } from '../../../icons';
 import { httpsCallable } from 'firebase/functions';
 import posthog from 'posthog-js';
-import { renderProfileIcon } from '@shared/auth/components';
+import { renderProfileIcon, TokenDisplayInner } from '@shared/auth/components';
 import useStore from '@/store';
 import {
   getUserProfile,
@@ -196,106 +196,12 @@ const ProfileModal = () => {
                       Upgrade to Pro
                     </Button>
                   </div>
-                  <div
-                    style={{
-                      background: '#2a2a2a',
-                      border: '1px solid #404040',
-                      borderRadius: '6px',
-                      padding: '8px 12px',
-                      display: 'flex',
-                      alignItems: 'center',
-                      marginTop: '8px'
-                    }}
-                  >
-                    <span style={{ display: 'flex', alignItems: 'center' }}>
-                      <span
-                        style={{
-                          display: 'flex',
-                          alignItems: 'center',
-                          background: '#1a1a1a',
-                          borderRadius: '4px',
-                          padding: '2px 8px 2px 4px',
-                          marginRight: '8px'
-                        }}
-                      >
-                        <img
-                          src="/ui_assets/token-image.png"
-                          alt="Image Token"
-                          style={{
-                            width: '20px',
-                            height: '20px',
-                            marginRight: '4px',
-                            display: 'inline-block',
-                            verticalAlign: 'middle'
-                          }}
-                        />
-                        <span style={{ color: '#6b7280', marginRight: '4px' }}>
-                          ×
-                        </span>
-                        <span
-                          style={{
-                            fontSize: '16px',
-                            fontWeight: '500',
-                            color: '#ffffff'
-                          }}
-                        >
-                          {tokenProfile.genToken}
-                        </span>
-                      </span>
-                      <span style={{ fontSize: '14px' }}>
-                        AI Generation Tokens
-                      </span>
-                    </span>
-                  </div>
-                  <div
-                    style={{
-                      background: '#2a2a2a',
-                      border: '1px solid #404040',
-                      borderRadius: '6px',
-                      padding: '8px 12px',
-                      display: 'flex',
-                      alignItems: 'center',
-                      marginTop: '8px'
-                    }}
-                  >
-                    <span style={{ display: 'flex', alignItems: 'center' }}>
-                      <span
-                        style={{
-                          display: 'flex',
-                          alignItems: 'center',
-                          background: '#1a1a1a',
-                          borderRadius: '4px',
-                          padding: '2px 8px 2px 4px',
-                          marginRight: '8px'
-                        }}
-                      >
-                        <img
-                          src="/ui_assets/token-geo.png"
-                          alt="Geo Token"
-                          style={{
-                            width: '20px',
-                            height: '20px',
-                            marginRight: '4px',
-                            display: 'inline-block',
-                            verticalAlign: 'middle'
-                          }}
-                        />
-                        <span style={{ color: '#6b7280', marginRight: '4px' }}>
-                          ×
-                        </span>
-                        <span
-                          style={{
-                            fontSize: '16px',
-                            fontWeight: '500',
-                            color: '#ffffff'
-                          }}
-                        >
-                          {tokenProfile.geoToken}
-                        </span>
-                      </span>
-                      <span style={{ fontSize: '14px' }}>Geo Tokens</span>
-                    </span>
-                  </div>
+                  <TokenDisplayInner showLabel={true} useContainer={true} />
+                  <TokenDisplayInner
+                    showLabel={true}
+                    useContainer={true}
+                    tokenType="geoToken"
+                  />
                 </div>
               )}
 
@@ -359,47 +265,7 @@ const ProfileModal = () => {
                           marginTop: '8px'
                         }}
                       >
-                        <span style={{ display: 'flex', alignItems: 'center' }}>
-                          <span
-                            style={{
-                              display: 'flex',
-                              alignItems: 'center',
-                              background: '#1a1a1a',
-                              borderRadius: '4px',
-                              padding: '2px 8px 2px 4px',
-                              marginRight: '8px'
-                            }}
-                          >
-                            <img
-                              src="/ui_assets/token-image.png"
-                              alt="AI Generation Token"
-                              style={{
-                                width: '20px',
-                                height: '20px',
-                                marginRight: '4px',
-                                display: 'inline-block',
-                                verticalAlign: 'middle'
-                              }}
-                            />
-                            <span
-                              style={{ color: '#6b7280', marginRight: '4px' }}
-                            >
-                              ×
-                            </span>
-                            <span
-                              style={{
-                                fontSize: '16px',
-                                fontWeight: '500',
-                                color: '#ffffff'
-                              }}
-                            >
-                              {tokenProfile.genToken}
-                            </span>
-                          </span>
-                          <span style={{ fontSize: '14px' }}>
-                            AI Generation Tokens
-                          </span>
-                        </span>
+                        <TokenDisplayInner showLabel={true} />
                         <span style={{ fontSize: '13px', color: '#9ca3af' }}>
                           Monthly Pro refill:{' '}
                           {new Date(
@@ -413,59 +279,13 @@ const ProfileModal = () => {
                         </span>
                       </div>
                     )}
-                    <div
-                      style={{
-                        background: '#2a2a2a',
-                        border: '1px solid #404040',
-                        borderRadius: '6px',
-                        padding: '8px 12px',
-                        display: 'flex',
-                        alignItems: 'center',
-                        marginTop: '8px'
-                      }}
-                    >
-                      <span style={{ display: 'flex', alignItems: 'center' }}>
-                        <span
-                          style={{
-                            display: 'flex',
-                            alignItems: 'center',
-                            background: '#1a1a1a',
-                            borderRadius: '4px',
-                            padding: '2px 8px 2px 4px',
-                            marginRight: '8px'
-                          }}
-                        >
-                          <img
-                            src="/ui_assets/token-geo.png"
-                            alt="Geo Token"
-                            style={{
-                              width: '20px',
-                              height: '20px',
-                              marginRight: '4px',
-                              display: 'inline-block',
-                              verticalAlign: 'middle'
-                            }}
-                          />
-                          <span
-                            style={{ color: '#6b7280', marginRight: '4px' }}
-                          >
-                            ×
-                          </span>
-                          <span
-                            style={{
-                              fontSize: '16px',
-                              fontWeight: '500',
-                              color: '#ffffff'
-                            }}
-                          >
-                            ∞
-                          </span>
-                        </span>
-                        <span style={{ fontSize: '14px' }}>
-                          Unlimited Geo Tokens
-                        </span>
-                      </span>
-                    </div>
+                    <TokenDisplayInner
+                      showLabel={true}
+                      useContainer={true}
+                      tokenType="geoToken"
+                      count="∞"
+                      label="Unlimited Geo Tokens"
+                    />
                   </div>
                 </div>
               ) : null}

@@ -6,6 +6,25 @@
   padding: 2px 8px 2px 4px;
   cursor: default;
   user-select: none;
+
+  // Inline variant for use inside buttons
+  &.inline {
+    cursor: inherit;
+    background: rgba(0, 0, 0, 0.15);
+    padding: 2px 4px;
+    gap: 2px;
+
+    .tokenIcon {
+      margin-right: 0;
+    }
+
+    .multiplier {
+      margin-left: 0;
+      margin-right: 0;
+      color: var(--token-text, #ffffff);
+      opacity: 0.9;
+    }
+  }
 }
 
 .tokenIcon {

@@ -6,7 +6,7 @@ import { createRoot } from 'react-dom/client';
 import { onAuthStateChanged } from 'firebase/auth';
 import { auth } from '../editor/services/firebase';
 import AuthIsland from './auth-island.jsx';
-import TokenDisplay from './components/TokenDisplay.jsx';
+import { TokenDisplay } from '@shared/auth/components';
 
 /**
  * Global auth state object accessible to vanilla JS

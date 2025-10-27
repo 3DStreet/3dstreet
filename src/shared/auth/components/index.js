@@ -3,3 +3,4 @@
  */
 export { ProfileButton, renderProfileIcon } from './ProfileButton';
 export { SignInModal } from './SignInModal';
+export { default as TokenDisplay, TokenDisplayInner } from './TokenDisplay';

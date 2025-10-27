@@ -17,6 +17,7 @@ import { httpsCallable } from 'firebase/functions';
 import { ImgComparisonSlider } from '@img-comparison-slider/react';
 import 'img-comparison-slider/dist/styles.css';
 import { canUseImageFeature } from '../../../utils/tokens';
+import { TokenDisplayInner } from '@shared/auth/components';
 
 // Available AI models
 const AI_MODELS = {
@@ -621,17 +622,17 @@ function ScreenshotModal() {
                     </span>
                   </div>
                 ) : (
-                  <span>
-                    <span>✨</span>
-                    <span>
-                      Generate Render
-                      {tokenProfile && (
-                        <span className={styles.tokenBadge}>
-                          {tokenProfile.genToken || 0}{' '}
-                          {currentUser?.isPro ? 'tokens' : 'free'}
-                        </span>
-                      )}
-                    </span>
+                  <span
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '8px'
+                    }}
+                  >
+                    <span>✨ Generate Render</span>
+                    {tokenProfile && (
+                      <TokenDisplayInner count={1} inline={true} />
+                    )}
                   </span>
                 )}
               </Button>
@@ -646,17 +647,13 @@ function ScreenshotModal() {
                 }
                 title="Generate 4 renders simultaneously (uses 4 tokens)"
               >
-                <span>
-                  <span>✨</span>
-                  <span>
-                    Generate 4x Renders
-                    {tokenProfile && (
-                      <span className={styles.tokenBadge}>
-                        {tokenProfile.genToken || 0}{' '}
-                        {currentUser?.isPro ? 'tokens' : 'free'}
-                      </span>
-                    )}
-                  </span>
+                <span
+                  style={{ display: 'flex', alignItems: 'center', gap: '8px' }}
+                >
+                  <span>✨ Generate 4x Renders</span>
+                  {tokenProfile && (
+                    <TokenDisplayInner count={4} inline={true} />
+                  )}
                 </span>
               </Button>
             )}
@@ -666,6 +663,13 @@ function ScreenshotModal() {
               </p>
             )}
           </div>
+
+          {/* Token Display at bottom of sidebar */}
+          {tokenProfile && (
+            <div className={styles.sidebarTokenDisplay}>
+              <TokenDisplayInner showLabel={true} />
+            </div>
+          )}
 
           {renderMode === '1x' && aiImageUrl && (
             <div className={styles.viewControls}>
