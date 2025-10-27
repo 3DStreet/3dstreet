@@ -49,10 +49,55 @@ exports.bflProxyImage = functions
   .https
   .onRequest(async (req, res) => {
   try {
-    // Enable CORS
-    res.set('Access-Control-Allow-Origin', '*');
-    res.set('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
-    res.set('Access-Control-Allow-Headers', 'Content-Type');
+    // Allowed domains (your domains only)
+    const ALLOWED_DOMAINS = [
+      'dev-3dstreet.web.app',
+      '3dstreet.app',
+      'www.3dstreet.app'
+    ];
+
+    const origin = req.headers.origin;
+    const referer = req.headers.referer;
+    let isAllowed = false;
+    let allowedOrigin = '*';
+
+    // Check Origin header (sent for cross-origin requests)
+    if (origin) {
+      // Check exact domain match
+      if (ALLOWED_DOMAINS.some(domain => origin === `https://${domain}`)) {
+        isAllowed = true;
+        allowedOrigin = origin;
+      }
+      // Allow localhost/127.0.0.1 on any port for development
+      else if (/^http:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(origin)) {
+        isAllowed = true;
+        allowedOrigin = origin;
+      }
+    }
+    // Check Referer header (sent for same-origin requests)
+    else if (referer) {
+      try {
+        const refererUrl = new URL(referer);
+        if (ALLOWED_DOMAINS.includes(refererUrl.hostname) ||
+            /^(localhost|127\.0\.0\.1)$/.test(refererUrl.hostname)) {
+          isAllowed = true;
+          // For same-origin, we can set CORS to the referer origin
+          allowedOrigin = `${refererUrl.protocol}//${refererUrl.host}`;
+        }
+      } catch (error) {
+        console.warn('Invalid referer URL:', referer);
+      }
+    }
+
+    if (isAllowed) {
+      res.set('Access-Control-Allow-Origin', allowedOrigin);
+      res.set('Access-Control-Allow-Methods', 'GET, OPTIONS');
+      res.set('Access-Control-Allow-Headers', 'Content-Type');
+    } else {
+      // Origin not allowed or missing - block the request
+      console.warn('Blocked request - Origin:', origin, 'Referer:', referer);
+      return res.status(403).send('Forbidden');
+    }
 
     // Handle preflight
     if (req.method === 'OPTIONS') {
