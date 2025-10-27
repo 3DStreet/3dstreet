@@ -2,11 +2,14 @@
  * Image Generator ProfileButton - wraps shared ProfileButton with tooltip
  * Uses local Zustand store for modal management
  */
-import { ProfileButton as SharedProfileButton } from '@shared/auth/components';
+import {
+  ProfileButton as SharedProfileButton,
+  SignInModal
+} from '@shared/auth/components';
 import { useAuthContext } from '../../editor/contexts';
+import { auth } from '../../editor/services/firebase';
 import useImageGenStore from '../store';
 import posthog from 'posthog-js';
-import SignInModal from './SignInModal.jsx';
 import ProfileModal from './ProfileModal.jsx';
 
 const ProfileButton = () => {
@@ -25,6 +28,10 @@ const ProfileButton = () => {
     }
   };
 
+  const handleAnalytics = (eventName, properties) => {
+    posthog.capture(eventName, properties);
+  };
+
   return (
     <>
       <SharedProfileButton
@@ -34,7 +41,13 @@ const ProfileButton = () => {
         tooltipSide="bottom"
       />
 
-      <SignInModal isOpen={modal === 'signin'} onClose={() => setModal(null)} />
+      <SignInModal
+        isOpen={modal === 'signin'}
+        onClose={() => setModal(null)}
+        message="Sign in to use AI image generation."
+        firebaseAuth={auth}
+        onAnalytics={handleAnalytics}
+      />
 
       <ProfileModal
         isOpen={modal === 'profile'}

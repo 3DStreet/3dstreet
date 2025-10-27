@@ -47,6 +47,8 @@ export const signInWithGoogle = async (
       });
     }
 
+    onNotification?.('success', 'Successfully signed in with Google!');
+
     return user;
   } catch (error) {
     // Handle specific error for account-exists-with-different-credential
