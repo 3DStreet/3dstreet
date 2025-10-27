@@ -13,6 +13,7 @@ const config = {
     name: '@storybook/react-webpack5',
     options: {}
   },
+  staticDirs: [{ from: '../ui_assets', to: '/ui_assets' }],
   webpackFinal: async (config) => {
     // Add SCSS support
     config.module.rules.push({

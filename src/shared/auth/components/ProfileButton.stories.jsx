@@ -50,57 +50,6 @@ export const Loading = {
   }
 };
 
-// Signed in with basic user
-export const SignedIn = {
-  args: {
-    currentUser: {
-      uid: 'user123',
-      email: 'user@example.com',
-      displayName: 'John Doe',
-      photoURL: null,
-      isPro: false,
-      providerData: [{ providerId: 'password' }]
-    },
-    isLoading: false,
-    tooltipSide: 'bottom'
-  }
-};
-
-// Signed in with Pro user
-export const ProUser = {
-  args: {
-    currentUser: {
-      uid: 'user123',
-      email: 'pro@example.com',
-      displayName: 'Jane Pro',
-      photoURL: null,
-      isPro: true,
-      isProTeam: false,
-      providerData: [{ providerId: 'password' }]
-    },
-    isLoading: false,
-    tooltipSide: 'bottom'
-  }
-};
-
-// Signed in with Pro Team user
-export const ProTeamUser = {
-  args: {
-    currentUser: {
-      uid: 'user123',
-      email: 'team@example.com',
-      displayName: 'Team User',
-      photoURL: null,
-      isPro: true,
-      isProTeam: true,
-      teamDomain: 'example.com',
-      providerData: [{ providerId: 'password' }]
-    },
-    isLoading: false,
-    tooltipSide: 'bottom'
-  }
-};
-
 // User with profile photo (Google)
 export const WithProfilePhoto = {
   args: {

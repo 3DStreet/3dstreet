@@ -6,7 +6,7 @@ export default {
   parameters: {
     layout: 'centered',
     backgrounds: {
-      default: 'dark',
+      default: 'light',
       values: [
         { name: 'dark', value: '#1a1a1a' },
         { name: 'light', value: '#ffffff' }
@@ -42,6 +42,9 @@ export const InToolbar = {
     </div>
   ),
   parameters: {
+    backgrounds: {
+      default: 'dark'
+    },
     docs: {
       description: {
         story: 'AppSwitcher shown in a toolbar context with other elements.'
@@ -50,12 +53,17 @@ export const InToolbar = {
   }
 };
 
-// Story showing the component on a light background
-export const LightBackground = {
-  render: () => <AppSwitcher />,
-  parameters: {
-    backgrounds: {
-      default: 'light'
-    }
-  }
+// Story showing the component on a dark background
+export const DarkBackground = {
+  render: () => (
+    <div
+      style={{
+        backgroundColor: '#1a1a1a',
+        padding: '40px',
+        borderRadius: '8px'
+      }}
+    >
+      <AppSwitcher />
+    </div>
+  )
 };
