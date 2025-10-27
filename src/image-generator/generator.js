@@ -253,40 +253,40 @@ const GeneratorTab = {
                         <label class="block text-sm font-medium text-gray-700 mb-1">Guidance Scale: <span id="guidance-value">2.5</span></label>
                         <input type="range" id="guidance-slider" min="1.5" max="5" step="0.1" value="2.5" class="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer">
                     </div>
-                    
-                    <!-- Safety Tolerance -->
-                    <div class="mb-4 param-group">
-                        <label class="block text-sm font-medium text-gray-700 mb-1">Safety Tolerance: <span id="safety-value">2</span></label>
-                        <input type="range" id="safety-slider" min="0" max="6" step="1" value="2" class="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer">
-                        <p class="text-xs text-gray-500 mt-1">Higher values are less strict (0 = most strict, 6 = least strict)</p>
-                    </div>
-                    
-                    <!-- Seed -->
-                    <div class="mb-4 param-group">
-                        <label class="block text-sm font-medium text-gray-700 mb-1">Seed</label>
-                        <div class="flex">
-                            <input type="number" id="seed-input" placeholder="Random" class="w-full px-3 py-2 border border-gray-300 rounded-l-md text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
-                            <button id="random-seed-btn" class="px-3 py-2 bg-gray-100 border border-gray-300 border-l-0 rounded-r-md hover:bg-gray-200">
-                                🎲
-                            </button>
-                        </div>
-                        <!-- Randomize Seed Checkbox -->
-                        <div class="mt-2 flex items-center">
-                            <input type="checkbox" id="randomize-seed-checkbox" class="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded">
-                            <label for="randomize-seed-checkbox" class="ml-2 block text-sm text-gray-700">Randomize seed before each generation</label>
-                        </div>
-                    </div>
 
                     <!-- Advanced Options -->
                     <div class="mb-4">
                         <div class="flex justify-between items-center cursor-pointer" id="advanced-toggle">
-                            <span class="text-sm font-medium text-gray-700">Advanced Options</span>
-                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" id="advanced-icon">
+                            <span class="text-sm font-medium text-gray-300">Advanced Options</span>
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-gray-300" fill="none" viewBox="0 0 24 24" stroke="currentColor" id="advanced-icon">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
                             </svg>
                         </div>
                         
                         <div class="mt-2 hidden" id="advanced-options">
+                            <!-- Safety Tolerance -->
+                            <div class="mb-3 param-group opacity-50 cursor-not-allowed">
+                                <label class="block text-sm font-medium text-gray-500 mb-1">Safety Tolerance: <span id="safety-value">2</span></label>
+                                <input type="range" id="safety-slider" min="0" max="6" step="1" value="2" class="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-not-allowed pointer-events-none" disabled>
+                                <p class="text-xs text-gray-500 mt-1">Higher values are less strict (0 = most strict, 6 = least strict)</p>
+                            </div>
+
+                            <!-- Seed -->
+                            <div class="mb-3 param-group">
+                                <label class="block text-sm font-medium text-gray-700 mb-1">Seed</label>
+                                <div class="flex">
+                                    <input type="number" id="seed-input" placeholder="Random" class="w-full px-3 py-2 border border-gray-300 rounded-l-md text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                                    <button id="random-seed-btn" class="px-3 py-2 bg-gray-100 border border-gray-300 border-l-0 rounded-r-md hover:bg-gray-200">
+                                        🎲
+                                    </button>
+                                </div>
+                                <!-- Randomize Seed Checkbox -->
+                                <div class="mt-2 flex items-center">
+                                    <input type="checkbox" id="randomize-seed-checkbox" class="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded">
+                                    <label for="randomize-seed-checkbox" class="ml-2 block text-sm text-gray-700">Randomize seed before each generation</label>
+                                </div>
+                            </div>
+
                             <!-- Prompt Upsampling -->
                             <div class="mb-3 param-group" id="prompt-upsampling-group">
                                 <div class="flex items-center">
@@ -295,7 +295,7 @@ const GeneratorTab = {
                                 </div>
                                 <p class="text-xs text-gray-500 mt-1">Automatically enhances prompt with additional details</p>
                             </div>
-                            
+
                             <!-- Raw Mode (Ultra only) -->
                             <div class="mb-3 param-group hidden" id="raw-mode-group">
                                 <div class="flex items-center">
@@ -304,14 +304,14 @@ const GeneratorTab = {
                                 </div>
                                 <p class="text-xs text-gray-500 mt-1">Generate less processed, more natural-looking images</p>
                             </div>
-                            
+
                             <!-- Interval (Pro only) -->
                             <div class="mb-3 param-group hidden" id="interval-group">
                                 <label class="block text-sm font-medium text-gray-700 mb-1">Interval: <span id="interval-value">2.0</span></label>
                                 <input type="range" id="interval-slider" min="1" max="4" step="0.1" value="2.0" class="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer">
                                 <p class="text-xs text-gray-500 mt-1">Parameter for guidance control</p>
                             </div>
-                            
+
                             <!-- Output Format -->
                             <div class="mb-3">
                                 <label class="block text-sm font-medium text-gray-700 mb-1">Output Format</label>
