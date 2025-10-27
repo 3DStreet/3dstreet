@@ -70,9 +70,9 @@ export const renderProfileIcon = (currentUser, isLoading) => {
     return Profile32Icon;
   }
 
-  const isGoogle = currentUser?.providerData[0]?.providerId === 'google.com';
+  const isGoogle = currentUser?.providerData?.[0]?.providerId === 'google.com';
   const isMicrosoft =
-    currentUser?.providerData[0]?.providerId === 'microsoft.com';
+    currentUser?.providerData?.[0]?.providerId === 'microsoft.com';
 
   if (isGoogle && currentUser?.photoURL) {
     return (
@@ -127,45 +127,47 @@ export const ProfileButton = ({
   const ariaLabel = currentUser ? signedInText : signedOutText;
 
   return (
-    <Tooltip.Root delayDuration={0}>
-      <Tooltip.Trigger asChild>
-        <div role="button" aria-label={ariaLabel}>
-          <button
-            className={`${styles.profileButton} ${className}`}
-            onClick={onClick}
-            type="button"
-            disabled={isLoading}
+    <Tooltip.Provider>
+      <Tooltip.Root delayDuration={0}>
+        <Tooltip.Trigger asChild>
+          <div role="button" aria-label={ariaLabel}>
+            <button
+              className={`${styles.profileButton} ${className}`}
+              onClick={onClick}
+              type="button"
+              disabled={isLoading}
+              style={{
+                cursor: isLoading ? 'default' : 'pointer',
+                opacity: isLoading ? 0.7 : 1,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center'
+              }}
+            >
+              {renderProfileIcon(currentUser, isLoading)}
+            </button>
+          </div>
+        </Tooltip.Trigger>
+        <Tooltip.Portal>
+          <Tooltip.Content
+            side={tooltipSide}
+            sideOffset={5}
             style={{
-              cursor: isLoading ? 'default' : 'pointer',
-              opacity: isLoading ? 0.7 : 1,
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center'
+              backgroundColor: '#2d2d2d',
+              color: 'white',
+              padding: '6px 12px',
+              borderRadius: '4px',
+              fontSize: '12px',
+              fontWeight: '500',
+              zIndex: 10000,
+              maxWidth: '200px'
             }}
           >
-            {renderProfileIcon(currentUser, isLoading)}
-          </button>
-        </div>
-      </Tooltip.Trigger>
-      <Tooltip.Portal>
-        <Tooltip.Content
-          side={tooltipSide}
-          sideOffset={5}
-          style={{
-            backgroundColor: '#2d2d2d',
-            color: 'white',
-            padding: '6px 12px',
-            borderRadius: '4px',
-            fontSize: '12px',
-            fontWeight: '500',
-            zIndex: 10000,
-            maxWidth: '200px'
-          }}
-        >
-          {tooltipContent}
-          <Tooltip.Arrow style={{ fill: '#2d2d2d' }} />
-        </Tooltip.Content>
-      </Tooltip.Portal>
-    </Tooltip.Root>
+            {tooltipContent}
+            <Tooltip.Arrow style={{ fill: '#2d2d2d' }} />
+          </Tooltip.Content>
+        </Tooltip.Portal>
+      </Tooltip.Root>
+    </Tooltip.Provider>
   );
 };
