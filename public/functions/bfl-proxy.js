@@ -1,7 +1,15 @@
 const functions = require('firebase-functions');
-const fetch = require('node-fetch');
 
 const API_BASE_URL = 'https://api.us1.bfl.ai/v1';
+
+// Allowed domains for image proxy (SSRF protection)
+const ALLOWED_IMAGE_DOMAINS = [
+  'api.bfl.ai',
+  'api.us1.bfl.ai',
+  'api.eu1.bfl.ai',
+  'bfl.ai',
+  'cdn.bfl.ai'
+];
 
 // Get API key from environment
 const getApiKey = () => {
@@ -11,6 +19,26 @@ const getApiKey = () => {
     throw new Error('Image generation service is not configured');
   }
   return apiKey;
+};
+
+// Validate URL to prevent SSRF attacks
+const isAllowedImageUrl = (urlString) => {
+  try {
+    const url = new URL(urlString);
+
+    // Only allow HTTPS
+    if (url.protocol !== 'https:') {
+      return false;
+    }
+
+    // Check if hostname is in allowed list or is subdomain of allowed domain
+    return ALLOWED_IMAGE_DOMAINS.some(domain => {
+      return url.hostname === domain || url.hostname.endsWith(`.${domain}`);
+    });
+  } catch (error) {
+    // Invalid URL
+    return false;
+  }
 };
 
 // Proxy endpoint for images
@@ -34,6 +62,12 @@ exports.bflProxyImage = functions
       return res.status(400).send('Image URL is required');
     }
 
+    // Validate URL to prevent SSRF attacks
+    if (!isAllowedImageUrl(imageUrl)) {
+      console.warn('Blocked proxy request to disallowed URL:', imageUrl);
+      return res.status(403).send('URL not allowed');
+    }
+
     console.log('Proxying image:', imageUrl);
 
     const response = await fetch(imageUrl, {
@@ -41,6 +75,7 @@ exports.bflProxyImage = functions
     });
 
     if (!response.ok) {
+      console.warn(`Failed to fetch image from ${imageUrl}: ${response.status}`);
       return res.status(response.status).send('Failed to fetch image');
     }
 
@@ -56,7 +91,8 @@ exports.bflProxyImage = functions
   } catch (error) {
     console.error('Proxy error:', error);
     if (!res.headersSent) {
-      res.status(500).send('Proxy error: ' + error.message);
+      // Return generic error message to client, log full error server-side
+      res.status(500).send('Failed to proxy image');
     }
   }
 });
@@ -137,13 +173,29 @@ exports.bflApiProxy = functions
         timeout: 60000
       });
 
-      const data = await response.json();
+      // Handle JSON parsing with try-catch
+      let data;
+      try {
+        const contentType = response.headers.get('content-type');
+        if (contentType && contentType.includes('application/json')) {
+          data = await response.json();
+        } else {
+          const text = await response.text();
+          console.warn(`Received non-JSON response from ${endpoint}:`, text);
+          data = { error: 'Invalid response format', details: text };
+        }
+      } catch (parseError) {
+        console.error('Failed to parse response:', parseError);
+        data = { error: 'Failed to parse API response' };
+      }
+
       res.status(response.status).json(data);
     } else {
       res.status(405).json({ error: 'Method not allowed' });
     }
   } catch (error) {
     console.error('API proxy error:', error);
-    res.status(500).json({ error: error.message });
+    // Return generic error message to client, log full error server-side
+    res.status(500).json({ error: 'API request failed' });
   }
 });

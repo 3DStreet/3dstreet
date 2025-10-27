@@ -7,7 +7,7 @@
  * @category Shared Components
  */
 
-import { Tooltip } from 'radix-ui';
+import * as Tooltip from '@radix-ui/react-tooltip';
 import MsftProfileImg from '../../../../ui_assets/profile-microsoft.png';
 import styles from '../styles/ProfileButton.module.scss';
 
