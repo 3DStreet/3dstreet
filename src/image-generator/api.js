@@ -3,6 +3,9 @@
  * Handles API communication for all tabs
  */
 
+import { httpsCallable } from 'firebase/functions';
+import { functions } from '../editor/services/firebase.js';
+
 // Global API functions
 const FluxAPI = {
   // Make an API request to a Flux endpoint
@@ -10,52 +13,40 @@ const FluxAPI = {
     console.log(`Making ${method} request to ${endpoint} with params:`, params);
 
     try {
-      const fetchOptions = {
-        method: method.toUpperCase(),
-        headers: {
-          'Content-Type': 'application/json'
-        }
+      // Use Firebase callable function
+      const bflApiProxy = httpsCallable(functions, 'bflApiProxy');
+
+      const result = await bflApiProxy({
+        endpoint: endpoint,
+        method: method,
+        params: params
+      });
+
+      if (!result.data.success) {
+        throw new Error(result.data.error || 'API request failed');
+      }
+
+      // Return the result and remaining tokens
+      return {
+        ...result.data.result,
+        remainingTokens: result.data.remainingTokens
       };
-
-      // Only add body for methods that typically have one
-      if (
-        method.toUpperCase() !== 'GET' &&
-        method.toUpperCase() !== 'HEAD' &&
-        params
-      ) {
-        fetchOptions.body = JSON.stringify(params);
-      }
-
-      // Construct URL - use Firebase Cloud Function endpoint
-      let url = `/bflApiProxy/${endpoint}`;
-
-      const response = await fetch(url, fetchOptions);
-
-      if (!response.ok) {
-        let errorText = `API error (${response.status})`;
-        try {
-          const errorData = await response.json();
-          if (errorData.detail && Array.isArray(errorData.detail)) {
-            // Extract validation errors
-            errorText = errorData.detail
-              .map((err) => `${err.loc.join('.')}: ${err.msg}`)
-              .join(', ');
-          } else {
-            errorText =
-              errorData.message ||
-              errorData.detail ||
-              JSON.stringify(errorData);
-          }
-        } catch (e) {
-          // Can't parse JSON, use default error
-        }
-        throw new Error(errorText);
-      }
-
-      return await response.json();
     } catch (error) {
       console.error('API request error:', error);
-      throw error;
+
+      // Extract user-friendly error message
+      let errorMessage = 'API request failed';
+
+      if (error.code === 'unauthenticated') {
+        errorMessage = 'Please sign in to use image generation';
+      } else if (error.code === 'resource-exhausted') {
+        errorMessage =
+          'No tokens available. Please purchase more tokens or upgrade to Pro.';
+      } else if (error.message) {
+        errorMessage = error.message;
+      }
+
+      throw new Error(errorMessage);
     }
   },
 
@@ -63,18 +54,20 @@ const FluxAPI = {
   pollForResult: async function (taskId, onProgress, onSuccess, onError) {
     const checkResult = async () => {
       try {
-        const response = await fetch(`/bflApiProxy/get_result?id=${taskId}`, {
+        // Use Firebase callable function for polling
+        const bflApiProxy = httpsCallable(functions, 'bflApiProxy');
+
+        const response = await bflApiProxy({
+          endpoint: 'get_result',
           method: 'GET',
-          headers: {
-            'Content-Type': 'application/json'
-          }
+          params: { id: taskId }
         });
 
-        if (!response.ok) {
-          throw new Error(`API error: ${response.status}`);
+        if (!response.data.success) {
+          throw new Error(response.data.error || 'Failed to get result');
         }
 
-        const result = await response.json();
+        const result = response.data.result;
         console.log('Poll result:', result);
 
         if (result.status === 'Ready' && result.result) {
@@ -98,8 +91,8 @@ const FluxAPI = {
 
           console.log('Original Image URL:', imageUrl);
 
-          // Return the image URL and full result
-          onSuccess(imageUrl, result);
+          // Return the image URL and full result (including remaining tokens)
+          onSuccess(imageUrl, result, response.data.remainingTokens);
         } else if (result.status === 'Error') {
           // Generation failed
           onError(

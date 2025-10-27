@@ -6,6 +6,7 @@
 import FluxUI from './main.js';
 import FluxAPI from './api.js';
 import FluxGallery from './gallery.js';
+import useImageGenStore from './store.js';
 
 // Generator tab module
 const GeneratorTab = {
@@ -823,6 +824,13 @@ const GeneratorTab = {
   // Generate an image
   generateImage: function () {
     console.log('Generate button clicked');
+
+    // Check if user is authenticated
+    if (!window.authState || !window.authState.isAuthenticated) {
+      console.log('User not authenticated, showing sign-in modal');
+      useImageGenStore.getState().setModal('signin');
+      return;
+    }
 
     // Get model type and prepare parameters
     // Get model

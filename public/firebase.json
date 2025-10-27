@@ -17,10 +17,6 @@
         "function": "serveWebXRVariant"
       },
       {
-        "source": "bflApiProxy/**",
-        "function": "bflApiProxy"
-      },
-      {
         "source": "bflProxyImage",
         "function": "bflProxyImage"
       },

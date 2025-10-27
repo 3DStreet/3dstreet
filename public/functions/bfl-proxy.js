@@ -1,4 +1,6 @@
 const functions = require('firebase-functions');
+const admin = require('firebase-admin');
+const { checkAndRefillImageTokensInternal } = require('./token-management.js');
 
 const API_BASE_URL = 'https://api.us1.bfl.ai/v1';
 
@@ -8,7 +10,8 @@ const ALLOWED_IMAGE_DOMAINS = [
   'api.us1.bfl.ai',
   'api.eu1.bfl.ai',
   'bfl.ai',
-  'cdn.bfl.ai'
+  'cdn.bfl.ai',
+  'delivery-us1.bfl.ai'
 ];
 
 // Get API key from environment
@@ -86,7 +89,8 @@ exports.bflProxyImage = functions
 
     res.setHeader('Cache-Control', 'public, max-age=86400');
 
-    const buffer = await response.buffer();
+    const arrayBuffer = await response.arrayBuffer();
+    const buffer = Buffer.from(arrayBuffer);
     res.send(buffer);
   } catch (error) {
     console.error('Proxy error:', error);
@@ -97,105 +101,154 @@ exports.bflProxyImage = functions
   }
 });
 
-// Proxy endpoint for API POST requests
+// Proxy endpoint for API requests (callable function with auth and token billing)
 exports.bflApiProxy = functions
-  .runWith({ secrets: ["BFL_API_KEY"] })
+  .runWith({ secrets: ["BFL_API_KEY", "ALLOWED_PRO_TEAM_DOMAINS"] })
   .https
-  .onRequest(async (req, res) => {
-  try {
-    // Enable CORS
-    res.set('Access-Control-Allow-Origin', '*');
-    res.set('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
-    res.set('Access-Control-Allow-Headers', 'Content-Type');
+  .onCall(async (data, context) => {
+    try {
+      // Verify user is authenticated
+      if (!context.auth) {
+        throw new functions.https.HttpsError('unauthenticated', 'User must be authenticated to use image generation.');
+      }
 
-    // Handle preflight
-    if (req.method === 'OPTIONS') {
-      res.status(204).send('');
-      return;
-    }
+      const userId = context.auth.uid;
+      const { endpoint, method = 'POST', params = {} } = data;
 
-    // Get API key from environment
-    const apiKey = getApiKey();
+      if (!endpoint) {
+        throw new functions.https.HttpsError('invalid-argument', 'Endpoint is required');
+      }
 
-    // Extract endpoint from path
-    // Firebase Hosting rewrites pass the FULL path including 'bflApiProxy'
-    // e.g., /bflApiProxy/my_finetunes -> need to extract 'my_finetunes'
-    const pathParts = req.path.split('/').filter(Boolean);
-    const endpoint = pathParts.slice(1).join('/') || ''; // Skip 'bflApiProxy' prefix
+      console.log(`User ${userId} calling BFL API: ${method} ${endpoint}`);
 
-    console.log(`Proxying ${req.method} request to ${endpoint}`);
+      // Check and refill tokens for Pro users, create profile for new users
+      let tokenData;
+      try {
+        tokenData = await checkAndRefillImageTokensInternal(userId);
+      } catch (error) {
+        console.error('Error checking/refilling tokens:', error);
+        throw new functions.https.HttpsError('internal', 'Failed to verify token status');
+      }
 
-    let targetUrl = `${API_BASE_URL}/${endpoint}`;
+      // Verify user has tokens available (only for POST requests that consume tokens)
+      // GET requests (like get_result polling) don't consume tokens
+      const shouldBillToken = method === 'POST' && !endpoint.includes('get_result');
 
-    // Handle GET request with query parameters
-    if (req.method === 'GET') {
-      // Special case for get_result
-      if (endpoint === 'get_result' && req.query.id) {
-        targetUrl = `${API_BASE_URL}/get_result?id=${req.query.id}`;
-      } else {
-        // Build query string from all query params
-        const queryParams = new URLSearchParams(req.query).toString();
+      if (shouldBillToken) {
+        if (!tokenData.genToken || tokenData.genToken <= 0) {
+          throw new functions.https.HttpsError('resource-exhausted', 'No generation tokens available. Please purchase more tokens or upgrade to Pro.');
+        }
+      }
+
+      // Get API key from environment
+      const apiKey = getApiKey();
+
+      // Build target URL
+      let targetUrl = `${API_BASE_URL}/${endpoint}`;
+
+      // Make the API call
+      let response;
+      if (method === 'GET') {
+        // Build query string from params
+        const queryParams = new URLSearchParams(params).toString();
         if (queryParams) {
           targetUrl = `${targetUrl}?${queryParams}`;
         }
+
+        response = await fetch(targetUrl, {
+          method: 'GET',
+          headers: {
+            'Content-Type': 'application/json',
+            'x-key': apiKey
+          },
+          timeout: 30000
+        });
+      } else if (method === 'POST') {
+        response = await fetch(targetUrl, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'x-key': apiKey
+          },
+          body: JSON.stringify(params),
+          timeout: 60000
+        });
+      } else {
+        throw new functions.https.HttpsError('invalid-argument', 'Method must be GET or POST');
       }
 
-      const response = await fetch(targetUrl, {
-        method: 'GET',
-        headers: {
-          'Content-Type': 'application/json',
-          'x-key': apiKey
-        },
-        timeout: 30000
-      });
-
-      let data;
+      // Parse response
+      let result;
       const contentType = response.headers.get('content-type');
       if (contentType && contentType.includes('application/json')) {
-        data = await response.json();
+        result = await response.json();
       } else {
-        data = await response.text();
-        console.warn(`Received non-JSON response from ${endpoint}:`, data);
+        const text = await response.text();
+        console.warn(`Received non-JSON response from ${endpoint}:`, text);
+        result = { error: 'Invalid response format', details: text };
       }
 
-      res.status(response.status).json(data);
-    } else if (req.method === 'POST') {
-      // Handle POST request
-      const requestBody = req.body;
+      // Check if API call was successful
+      if (!response.ok) {
+        console.error(`BFL API error (${response.status}):`, result);
+        throw new functions.https.HttpsError('internal', `API request failed: ${result.error || 'Unknown error'}`);
+      }
 
-      const response = await fetch(targetUrl, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'x-key': apiKey
-        },
-        body: JSON.stringify(requestBody),
-        timeout: 60000
-      });
+      // Deduct token after successful generation (atomic transaction)
+      let remainingTokens = tokenData.genToken;
 
-      // Handle JSON parsing with try-catch
-      let data;
-      try {
-        const contentType = response.headers.get('content-type');
-        if (contentType && contentType.includes('application/json')) {
-          data = await response.json();
-        } else {
-          const text = await response.text();
-          console.warn(`Received non-JSON response from ${endpoint}:`, text);
-          data = { error: 'Invalid response format', details: text };
+      if (shouldBillToken) {
+        const db = admin.firestore();
+        const tokenProfileRef = db.collection('tokenProfile').doc(userId);
+
+        try {
+          await db.runTransaction(async (transaction) => {
+            const tokenDoc = await transaction.get(tokenProfileRef);
+
+            if (!tokenDoc.exists) {
+              throw new Error('Token profile disappeared during transaction');
+            }
+
+            const currentTokens = tokenDoc.data().genToken || 0;
+
+            if (currentTokens <= 0) {
+              throw new functions.https.HttpsError('resource-exhausted', 'Insufficient tokens');
+            }
+
+            const newTokenCount = Math.max(0, currentTokens - 1);
+            remainingTokens = newTokenCount;
+
+            transaction.update(tokenProfileRef, {
+              genToken: newTokenCount,
+              updatedAt: admin.firestore.FieldValue.serverTimestamp()
+            });
+          });
+
+          console.log(`Deducted 1 token from user ${userId}. Remaining: ${remainingTokens}`);
+        } catch (error) {
+          console.error('Error deducting token:', error);
+          // Don't fail the request if token deduction fails after successful generation
+          // Log the error but return the result
+          console.error('WARNING: Token deduction failed but API call succeeded');
         }
-      } catch (parseError) {
-        console.error('Failed to parse response:', parseError);
-        data = { error: 'Failed to parse API response' };
       }
 
-      res.status(response.status).json(data);
-    } else {
-      res.status(405).json({ error: 'Method not allowed' });
+      // Return success response
+      return {
+        success: true,
+        result: result,
+        remainingTokens: remainingTokens
+      };
+
+    } catch (error) {
+      console.error('BFL API proxy error:', error);
+
+      // Re-throw HttpsError as-is
+      if (error instanceof functions.https.HttpsError) {
+        throw error;
+      }
+
+      // Wrap other errors
+      throw new functions.https.HttpsError('internal', `API request failed: ${error.message}`);
     }
-  } catch (error) {
-    console.error('API proxy error:', error);
-    // Return generic error message to client, log full error server-side
-    res.status(500).json({ error: 'API request failed' });
-  }
-});
+  });

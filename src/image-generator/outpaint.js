@@ -6,6 +6,7 @@
 import FluxUI from './main.js';
 import FluxAPI from './api.js';
 import FluxGallery from './gallery.js';
+import useImageGenStore from './store.js';
 
 // Outpaint tab module
 const OutpaintTab = {
@@ -564,6 +565,13 @@ const OutpaintTab = {
 
   // Generate outpaint image
   generateOutpaint: async function () {
+    // Check if user is authenticated
+    if (!window.authState || !window.authState.isAuthenticated) {
+      console.log('User not authenticated, showing sign-in modal');
+      useImageGenStore.getState().setModal('signin');
+      return;
+    }
+
     if (!this.imageData) {
       FluxUI.showNotification('Please load an image first.', 'warning');
       return;
