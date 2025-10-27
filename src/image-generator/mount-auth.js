@@ -6,6 +6,7 @@ import { createRoot } from 'react-dom/client';
 import { onAuthStateChanged } from 'firebase/auth';
 import { auth } from '../editor/services/firebase';
 import AuthIsland from './auth-island.jsx';
+import TokenDisplay from './components/TokenDisplay.jsx';
 
 /**
  * Global auth state object accessible to vanilla JS
@@ -56,6 +57,26 @@ export const mountAuthUI = (elementId = 'auth-root') => {
   root.render(<AuthIsland />);
 
   console.log('Auth UI mounted successfully');
+};
+
+/**
+ * Mount the Token Display component
+ * @param {string} elementId - ID of the element to mount to (default: 'token-display-root')
+ */
+export const mountTokenDisplay = (elementId = 'token-display-root') => {
+  const tokenDisplayRoot = document.getElementById(elementId);
+
+  if (!tokenDisplayRoot) {
+    console.error(
+      `Element with id '${elementId}' not found. Cannot mount token display.`
+    );
+    return;
+  }
+
+  const root = createRoot(tokenDisplayRoot);
+  root.render(<TokenDisplay />);
+
+  console.log('Token Display mounted successfully');
 };
 
 export default mountAuthUI;

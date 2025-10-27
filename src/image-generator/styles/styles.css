@@ -2,6 +2,13 @@
     --primary: #4f46e5;
     --primary-dark: #4338ca;
     --primary-light: #e0e7ff;
+
+    /* Token display colors */
+    --token-bg-inner: #1a1a1a;
+    --token-bg-outer: #2a2a2a;
+    --token-border: #404040;
+    --token-text: #ffffff;
+    --token-text-muted: #6b7280;
 }
 
 /* Mobile layout fixes */

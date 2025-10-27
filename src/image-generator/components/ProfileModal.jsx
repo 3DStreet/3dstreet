@@ -11,6 +11,7 @@ import { Button } from '../../editor/components/elements/Button/Button.component
 import styles from '../../editor/components/modals/ProfileModal/ProfileModal.module.scss';
 import posthog from 'posthog-js';
 import { renderProfileIcon } from '@shared/auth/components';
+import { TokenDisplayInner } from './TokenDisplay.jsx';
 
 const ProfileModal = ({ isOpen, onClose }) => {
   const { currentUser, setCurrentUser, tokenProfile } = useAuthContext();
@@ -57,57 +58,7 @@ const ProfileModal = ({ isOpen, onClose }) => {
               <div className={styles.subscriptionSection}>
                 <h3 className={styles.sectionTitle}>Tokens</h3>
                 <div className={styles.tokenUsage}>
-                  <div
-                    style={{
-                      background: '#2a2a2a',
-                      border: '1px solid #404040',
-                      borderRadius: '6px',
-                      padding: '8px 12px',
-                      display: 'flex',
-                      alignItems: 'center',
-                      marginTop: '8px'
-                    }}
-                  >
-                    <span style={{ display: 'flex', alignItems: 'center' }}>
-                      <span
-                        style={{
-                          display: 'flex',
-                          alignItems: 'center',
-                          background: '#1a1a1a',
-                          borderRadius: '4px',
-                          padding: '2px 8px 2px 4px',
-                          marginRight: '8px'
-                        }}
-                      >
-                        <img
-                          src="/ui_assets/token-image.png"
-                          alt="Image Token"
-                          style={{
-                            width: '20px',
-                            height: '20px',
-                            marginRight: '4px',
-                            display: 'inline-block',
-                            verticalAlign: 'middle'
-                          }}
-                        />
-                        <span style={{ color: '#6b7280', marginRight: '4px' }}>
-                          ×
-                        </span>
-                        <span
-                          style={{
-                            fontSize: '16px',
-                            fontWeight: '500',
-                            color: '#ffffff'
-                          }}
-                        >
-                          {tokenProfile.genToken}
-                        </span>
-                      </span>
-                      <span style={{ fontSize: '14px' }}>
-                        AI Generation Tokens
-                      </span>
-                    </span>
-                  </div>
+                  <TokenDisplayInner showLabel={true} useContainer={true} />
                 </div>
               </div>
             </>

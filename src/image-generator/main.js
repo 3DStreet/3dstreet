@@ -27,10 +27,7 @@ const FluxUI = {
       tabContents: document.querySelectorAll('.tab-content'),
       notification: document.getElementById('notification'),
       notificationMessage: document.getElementById('notification-message'),
-      notificationIcon: document.getElementById('notification-icon'),
-      darkModeToggle: document.getElementById('dark-mode-toggle'),
-      themeToggleLightIcon: document.getElementById('theme-toggle-light-icon'),
-      themeToggleDarkIcon: document.getElementById('theme-toggle-dark-icon')
+      notificationIcon: document.getElementById('notification-icon')
     };
 
     // Setup event listeners
@@ -42,8 +39,8 @@ const FluxUI = {
         this.elements.tabButtons[0]
     );
 
-    // Initialize dark mode based on localStorage
-    this.initializeDarkMode();
+    // Always enable dark mode
+    this.setDarkMode(true);
 
     console.log('Main UI initialized');
   },
@@ -54,12 +51,6 @@ const FluxUI = {
     this.elements.tabButtons.forEach((button) => {
       button.addEventListener('click', () => this.activateTab(button));
     });
-
-    // Dark mode toggle
-    this.elements.darkModeToggle.addEventListener(
-      'click',
-      this.toggleDarkMode.bind(this)
-    );
   },
 
   // Activate a tab
@@ -117,37 +108,11 @@ const FluxUI = {
     }, 5000);
   },
 
-  // Initialize Dark Mode
-  initializeDarkMode: function () {
-    if (
-      localStorage.getItem('color-theme') === 'dark' ||
-      (!('color-theme' in localStorage) &&
-        window.matchMedia('(prefers-color-scheme: dark)').matches)
-    ) {
-      this.setDarkMode(true);
-    } else {
-      this.setDarkMode(false);
-    }
-  },
-
-  // Toggle Dark Mode
-  toggleDarkMode: function () {
-    const isDark = document.documentElement.classList.contains('dark');
-    this.setDarkMode(!isDark);
-  },
-
-  // Set Dark Mode state
+  // Set Dark Mode state (always dark mode)
   setDarkMode: function (isDark) {
     if (isDark) {
       document.documentElement.classList.add('dark');
       localStorage.setItem('color-theme', 'dark');
-      this.elements.themeToggleLightIcon.classList.remove('hidden');
-      this.elements.themeToggleDarkIcon.classList.add('hidden');
-    } else {
-      document.documentElement.classList.remove('dark');
-      localStorage.setItem('color-theme', 'light');
-      this.elements.themeToggleLightIcon.classList.add('hidden');
-      this.elements.themeToggleDarkIcon.classList.remove('hidden');
     }
   }
 };

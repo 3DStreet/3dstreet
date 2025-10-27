@@ -11,7 +11,7 @@ import './styles/gallery.css';
 import { auth } from '../editor/services/firebase.js';
 
 // Import auth mount function
-import { mountAuthUI } from './mount-auth.js';
+import { mountAuthUI, mountTokenDisplay } from './mount-auth.js';
 
 // Import all modules
 import FluxUI from './main.js';
@@ -40,6 +40,9 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   // Mount React auth UI first
   mountAuthUI();
+
+  // Mount token display
+  mountTokenDisplay();
 
   // Initialize main UI
   FluxUI.init();
