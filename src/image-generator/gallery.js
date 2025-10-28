@@ -562,19 +562,19 @@ const FluxGallery = {
     const modal = document.createElement('div');
     modal.className = 'gallery-modal'; // Uses the CSS defined class
 
-    // Format metadata (light theme adjustments)
+    // Format metadata
     let metadataHtml = '';
     if (item.metadata) {
       const { model, prompt, width, height, seed } = item.metadata;
       const date = new Date(item.metadata.timestamp).toLocaleString();
-      // Use lighter background and appropriate text colors
+      // Use semantic classes that work in both light and dark modes
       metadataHtml = `
-                <div class="mt-4 bg-gray-100 p-4 rounded-md text-sm border border-gray-200">
-                    <div class="mb-2"><span class="font-semibold text-indigo-600">Model:</span> ${model || 'Unknown'}</div>
-                    <div class="mb-2"><span class="font-semibold text-indigo-600">Size:</span> ${width || '?'} × ${height || '?'}</div>
-                    <div class="mb-2"><span class="font-semibold text-indigo-600">Seed:</span> ${seed || 'Unknown'}</div>
-                    <div class="mb-2"><span class="font-semibold text-indigo-600">Date:</span> ${date}</div>
-                    ${prompt ? `<div class="mb-1"><span class="font-semibold text-indigo-600">Prompt:</span> <div class="text-xs mt-1 text-gray-700 max-h-32 overflow-y-auto bg-gray-50 p-2 rounded border border-gray-200">${prompt}</div></div>` : ''}
+                <div class="mt-4 metadata-container p-4 rounded-md text-sm">
+                    <div class="mb-2"><span class="font-semibold metadata-label">Model:</span> <span class="metadata-value">${model || 'Unknown'}</span></div>
+                    <div class="mb-2"><span class="font-semibold metadata-label">Size:</span> <span class="metadata-value">${width || '?'} × ${height || '?'}</span></div>
+                    <div class="mb-2"><span class="font-semibold metadata-label">Seed:</span> <span class="metadata-value">${seed || 'Unknown'}</span></div>
+                    <div class="mb-2"><span class="font-semibold metadata-label">Date:</span> <span class="metadata-value">${date}</span></div>
+                    ${prompt ? `<div class="mb-1"><span class="font-semibold metadata-label">Prompt:</span> <div class="text-xs mt-1 metadata-prompt max-h-32 overflow-y-auto p-2 rounded">${prompt}</div></div>` : ''}
                 </div>
             `;
     }
@@ -586,7 +586,7 @@ const FluxGallery = {
                      <button class="gallery-modal-close-btn" title="Close">×</button>
                 </div>
                 <!-- Info and Buttons Section -->
-                <div class="p-4 border-b border-gray-200 overflow-y-auto flex-shrink-0">
+                <div class="gallery-modal-info">
                     ${metadataHtml}
                     <div class="flex flex-wrap gap-2 mt-4">
                         <button class="download-btn px-3 py-1.5 bg-indigo-600 text-white rounded-md text-sm hover:bg-indigo-700 transition-colors">Download</button>

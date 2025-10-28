@@ -255,6 +255,7 @@
     padding: 0.5rem;
     border-bottom: 1px solid #e5e7eb;
     flex-shrink: 0;
+    background-color: white;
 }
 
 .gallery-modal-close-btn {
@@ -270,6 +271,13 @@
     color: #1f2937; /* Darker gray on hover */
 }
 
+.gallery-modal-info {
+    padding: 1rem;
+    border-bottom: 1px solid #e5e7eb;
+    overflow-y: auto;
+    flex-shrink: 0;
+    background-color: white;
+}
 
 .gallery-modal-body { /* Container for the image */
     flex-grow: 1; /* Allow it to take available vertical space */
@@ -289,6 +297,76 @@
     height: auto; /* Maintain aspect ratio */
     object-fit: none; /* Display image at its natural size */
     margin: auto; /* Helps center if image is smaller than scroll area */
+}
+
+/* Metadata styling */
+.metadata-container {
+    background-color: #f3f4f6; /* gray-100 */
+    border: 1px solid #e5e7eb; /* gray-200 */
+    color: #1f2937; /* gray-800 - dark text for contrast */
+}
+
+.metadata-label {
+    color: #4f46e5; /* indigo-600 */
+}
+
+.metadata-value {
+    color: #374151; /* gray-700 */
+}
+
+.metadata-prompt {
+    background-color: #f9fafb; /* gray-50 */
+    border: 1px solid #e5e7eb; /* gray-200 */
+    color: #1f2937; /* gray-800 */
+}
+
+/* Dark mode styles for gallery modal */
+.dark .gallery-modal-content {
+    background: #1f2937; /* gray-800 - darker, less bright */
+    border-color: #374151; /* gray-700 */
+}
+
+.dark .gallery-modal-header {
+    background-color: #1f2937; /* gray-800 */
+    border-bottom-color: #374151; /* gray-700 */
+}
+
+.dark .gallery-modal-close-btn {
+    color: #d1d5db; /* gray-300 - brighter for visibility */
+}
+
+.dark .gallery-modal-close-btn:hover {
+    color: #f3f4f6; /* gray-100 */
+}
+
+.dark .gallery-modal-info {
+    background-color: #1f2937; /* gray-800 */
+    border-bottom-color: #374151; /* gray-700 */
+}
+
+.dark .gallery-modal-body {
+    background-color: #111827; /* gray-900 - darker background for image */
+}
+
+/* Dark mode metadata styling */
+.dark .metadata-container {
+    background-color: #374151; /* gray-700 */
+    border-color: #4b5563; /* gray-600 */
+    color: #f3f4f6; /* gray-100 - bright text */
+}
+
+.dark .metadata-label {
+    color: #a5b4fc; /* indigo-300 - brighter for dark mode */
+}
+
+.dark .metadata-value {
+    color: #e5e7eb; /* gray-200 - bright readable text */
+}
+
+.dark .metadata-prompt {
+    background-color: #1f2937; /* gray-800 */
+    border-color: #4b5563; /* gray-600 */
+    color: #f3f4f6; /* gray-100 */
 }
 
 /* Adjust media query for modal */
