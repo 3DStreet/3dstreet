@@ -525,6 +525,9 @@ const OutpaintTab = {
     this.elements.loadingText.textContent = message;
     this.elements.loadingIndicator.classList.remove('hidden');
     this.elements.actionButtons.classList.add('hidden');
+    // Disable generate button with visual feedback
+    this.elements.generateBtn.disabled = true;
+    this.elements.generateBtn.classList.add('opacity-50', 'cursor-not-allowed');
   },
 
   // Show progress during polling
@@ -547,7 +550,12 @@ const OutpaintTab = {
     // this.elements.addToGalleryBtn.classList.remove('hidden'); // Removed
     this.elements.copyParamsBtn.classList.remove('hidden');
     this.elements.downloadBtn.classList.remove('hidden');
+    // Re-enable generate button and remove visual feedback
     this.elements.generateBtn.disabled = false;
+    this.elements.generateBtn.classList.remove(
+      'opacity-50',
+      'cursor-not-allowed'
+    );
     this.currentImageUrl = proxiedUrl; // Store proxied URL
 
     // Store parameters used for this generation
@@ -569,7 +577,12 @@ const OutpaintTab = {
     this.elements.loadingIndicator.classList.add('hidden');
     this.elements.outputPlaceholder.textContent = `Error: ${error.message}`;
     this.elements.outputPlaceholder.classList.remove('hidden');
+    // Re-enable generate button and remove visual feedback
     this.elements.generateBtn.disabled = false;
+    this.elements.generateBtn.classList.remove(
+      'opacity-50',
+      'cursor-not-allowed'
+    );
     this.elements.actionButtons.classList.add('hidden');
     FluxUI.showNotification(`Outpaint failed: ${error.message}`, 'error');
   },
@@ -614,7 +627,6 @@ const OutpaintTab = {
       return;
     }
 
-    this.elements.generateBtn.disabled = true;
     this.showLoading('Starting generation...');
 
     const prompt = this.elements.promptInput.value.trim();
