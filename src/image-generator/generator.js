@@ -979,7 +979,7 @@ const GeneratorTab = {
       }
     }
 
-    // Debug info to make sure everything is included    return params;
+    return params;
   },
 
   // Poll for task result (now accepts apiEndpoint used)
