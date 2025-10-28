@@ -629,7 +629,7 @@ function ScreenshotModal() {
                       gap: '8px'
                     }}
                   >
-                    <span>✨ Generate Render</span>
+                    <span>Generate Render</span>
                     {tokenProfile && (
                       <TokenDisplayInner count={1} inline={true} />
                     )}
@@ -650,7 +650,7 @@ function ScreenshotModal() {
                 <span
                   style={{ display: 'flex', alignItems: 'center', gap: '8px' }}
                 >
-                  <span>✨ Generate 4x Renders</span>
+                  <span>Generate Renders</span>
                   {tokenProfile && (
                     <TokenDisplayInner count={4} inline={true} />
                   )}
