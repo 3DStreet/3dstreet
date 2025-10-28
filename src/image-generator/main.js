@@ -53,7 +53,31 @@ const FluxUI = {
   activateTab: function (tabButton) {
     if (!tabButton) return;
 
-    const tabId = tabButton.getAttribute('data-tab'); // Deactivate all tabs
+    const tabId = tabButton.getAttribute('data-tab');
+
+    // Special handling for gallery tab - toggle the gallery sidebar
+    if (tabId === 'gallery') {
+      const galleryToggle = document.getElementById('gallery-toggle');
+      const galleryContainer = document.getElementById('gallery-container');
+
+      if (galleryToggle && galleryContainer) {
+        // Toggle the gallery sidebar
+        galleryContainer.classList.toggle('gallery-collapsed');
+
+        // Update the gallery tab button active state based on gallery visibility
+        const isCollapsed =
+          galleryContainer.classList.contains('gallery-collapsed');
+        if (isCollapsed) {
+          tabButton.classList.remove('active');
+        } else {
+          tabButton.classList.add('active');
+        }
+      }
+      return; // Don't proceed with normal tab activation
+    }
+
+    // Normal tab activation for non-gallery tabs
+    // Deactivate all tabs
     this.elements.tabButtons.forEach((btn) => btn.classList.remove('active'));
     this.elements.tabContents.forEach((content) =>
       content.classList.remove('active')

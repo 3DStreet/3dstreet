@@ -4,8 +4,8 @@
 .gallery-sidebar {
     position: fixed;
     right: 0;
-    top: 60px;
-    height: calc(100vh - 60px);
+    top: 98px;
+    height: calc(100vh - 98px);
     width: 280px; /* Default width */
     background-color: white;
     color: #1f2937;
@@ -27,9 +27,9 @@
 /* Toggle Button */
 .gallery-toggle {
     position: absolute;
-    left: -57px; /* Position outside the sidebar */
-    width: 57px;
-    height: 57px;
+    left: -40px; /* Position outside the sidebar */
+    width: 40px;
+    height: 40px;
     background-color: white;
     color: #4b5563;
     border: 1px solid #e5e7eb;
@@ -80,7 +80,8 @@
 
 /* Header Section */
 .gallery-header {
-    padding: 1rem;
+    padding: 8px;
+    height: 40px;
     border-bottom: 1px solid #e5e7eb;
     display: flex;
     justify-content: space-between;

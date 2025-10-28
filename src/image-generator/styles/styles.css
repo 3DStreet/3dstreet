@@ -143,6 +143,10 @@ button:active {
     border-bottom-color: var(--primary);
 }
 
+.tab-button.gallery-tab-button {
+    margin-left: auto;
+}
+
 .tab-content {
     display: none;
     padding: 20px 0;
