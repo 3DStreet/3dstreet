@@ -7,6 +7,7 @@ import FluxUI from './main.js';
 import FluxAPI from './api.js';
 import FluxGallery from './gallery.js';
 import useImageGenStore from './store.js';
+import ImageUploadUtils from './image-upload-utils.js';
 
 // Generator tab module
 const GeneratorTab = {
@@ -445,6 +446,25 @@ const GeneratorTab = {
     this.elements.imagePromptInput.addEventListener(
       'change',
       this.handleImagePromptUpload.bind(this)
+    );
+
+    // Setup drag and drop for image prompt
+    ImageUploadUtils.setupDragAndDrop(
+      this.elements.imagePromptUploadLabel,
+      this.elements.imagePromptInput,
+      (dataUrl, fileName) => {
+        this.elements.imagePromptName.textContent = fileName;
+        // Store base64 data
+        this.imagePromptData = dataUrl.split(',')[1];
+        // Show preview
+        this.showImagePromptPreview(dataUrl);
+        // Show image prompt strength control only if model is Ultra
+        if (this.elements.modelSelector.value === 'flux-pro-1.1-ultra') {
+          this.elements.imagePromptStrengthContainer.classList.remove('hidden');
+        } else {
+          this.elements.imagePromptStrengthContainer.classList.add('hidden');
+        }
+      }
     );
 
     // Setup clear image button

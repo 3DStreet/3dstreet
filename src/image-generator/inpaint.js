@@ -7,6 +7,7 @@ import FluxUI from './main.js';
 import FluxAPI from './api.js';
 import FluxGallery from './gallery.js';
 import useImageGenStore from './store.js';
+import ImageUploadUtils from './image-upload-utils.js';
 
 // Inpaint tab module
 const InpaintTab = {
@@ -324,6 +325,17 @@ const InpaintTab = {
         reader.readAsDataURL(file);
       }
     });
+
+    // Setup drag and drop for file input
+    const uploadLabel = this.elements.fileInput.parentElement;
+    ImageUploadUtils.setupDragAndDrop(
+      uploadLabel,
+      this.elements.fileInput,
+      (dataUrl, fileName) => {
+        this.elements.fileNameLabel.textContent = fileName;
+        this.setInputImage(dataUrl);
+      }
+    );
 
     // Canvas drawing listeners
     this.elements.canvas.addEventListener(
