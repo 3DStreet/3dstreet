@@ -347,8 +347,13 @@ const GeneratorTab = {
                     </div>
                     
                     <!-- Generate Button -->
-                    <button id="generate-btn" class="w-full px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500">
-                        Generate Image
+                    <button id="generate-btn" class="w-full px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 flex items-center justify-center gap-2">
+                        <span>Generate Image</span>
+                        <span class="inline-flex items-center rounded" style="background: rgba(0, 0, 0, 0.15); padding: 6px 8px; gap: 2px;">
+                            <img src="/ui_assets/token-image.png" alt="Token" class="w-5 h-5" />
+                            <span class="text-sm" style="opacity: 0.9; margin-right: 1px;">×</span>
+                            <span class="text-sm font-medium">1</span>
+                        </span>
                     </button>
                 </div>
                 
