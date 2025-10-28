@@ -101,6 +101,22 @@ const AuthProvider = ({ children }) => {
     return () => unsubscribe();
   }, []);
 
+  // Listen for token count changes (e.g., after image generation)
+  useEffect(() => {
+    const handleTokenCountChanged = () => {
+      console.log(
+        'Token count changed event received, refreshing token profile'
+      );
+      refreshTokenProfile();
+    };
+
+    window.addEventListener('tokenCountChanged', handleTokenCountChanged);
+
+    return () => {
+      window.removeEventListener('tokenCountChanged', handleTokenCountChanged);
+    };
+  }, [currentUser]);
+
   return (
     <AuthContext.Provider
       value={{

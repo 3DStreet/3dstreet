@@ -844,6 +844,9 @@ const InpaintTab = {
             this.handleSuccess.bind(this),
             this.handleError.bind(this)
           );
+
+          // Dispatch custom event to refresh token count in UI
+          window.dispatchEvent(new CustomEvent('tokenCountChanged'));
         } else {
           throw new Error('Invalid API response, missing task ID.');
         }

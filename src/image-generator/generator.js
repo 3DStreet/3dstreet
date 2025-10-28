@@ -859,6 +859,11 @@ const GeneratorTab = {
         if (response.id) {
           // Pass the model used for the request to pollForResult
           this.pollForResult(response.id, model);
+
+          // Dispatch custom event to refresh token count in UI
+          // The server deducts tokens and returns remainingTokens, but we need
+          // to trigger a refresh of the TokenDisplay component
+          window.dispatchEvent(new CustomEvent('tokenCountChanged'));
         } else {
           throw new Error('No task ID returned from API');
         }
