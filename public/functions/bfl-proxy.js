@@ -236,7 +236,7 @@ exports.bflApiProxy = functions
       // Check if API call was successful
       if (!response.ok) {
         console.error(`BFL API error (${response.status}):`, result);
-        throw new functions.https.HttpsError('internal', `API request failed: ${result.error || 'Unknown error'}`);
+        throw new functions.https.HttpsError('internal', `API request failed: ${result.error || result.detail || 'Unknown error'}`);
       }
 
       // Deduct token after successful generation (atomic transaction)
