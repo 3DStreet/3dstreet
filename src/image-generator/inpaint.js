@@ -455,7 +455,8 @@ const InpaintTab = {
     this.imageData = imageDataUrl; // Store the data URL
     this.elements.sourceImage.src = ''; // Clear previous src to ensure onload triggers reliably
     this.elements.sourceImage.onload = () => {
-      // Ensure image is loaded before drawing to canvas      this.originalWidth = this.elements.sourceImage.naturalWidth;
+      // Ensure image is loaded before drawing to canvas
+      this.originalWidth = this.elements.sourceImage.naturalWidth;
       this.originalHeight = this.elements.sourceImage.naturalHeight;
       this.initializeCanvas();
       this.elements.canvasContainer.style.display = 'block';
