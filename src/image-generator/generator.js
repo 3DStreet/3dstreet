@@ -89,6 +89,17 @@ const GeneratorTab = {
       document.getElementById('image-prompt-input');
     this.elements.imagePromptName =
       document.getElementById('image-prompt-name');
+    this.elements.imagePromptUploadLabel = document.getElementById(
+      'image-prompt-upload-label'
+    );
+    this.elements.imagePromptPreviewContainer = document.getElementById(
+      'image-prompt-preview-container'
+    );
+    this.elements.imagePromptPreview = document.getElementById(
+      'image-prompt-preview'
+    );
+    this.elements.imagePromptClear =
+      document.getElementById('image-prompt-clear');
     this.elements.imagePromptStrength = document.getElementById(
       'image-prompt-strength'
     );
@@ -225,13 +236,21 @@ const GeneratorTab = {
                     <div id="image-prompt-group" class="mb-4 param-group">
                         <label class="block text-sm font-medium text-gray-700 mb-1">Image Prompt</label>
                         <div class="flex flex-col space-y-2">
-                            <label class="flex items-center justify-center w-full h-20 border-2 border-gray-300 border-dashed rounded-lg cursor-pointer hover:bg-gray-50">
+                            <label id="image-prompt-upload-label" class="flex items-center justify-center w-full h-20 border-2 border-gray-300 border-dashed rounded-lg cursor-pointer hover:bg-gray-50">
                                 <div class="flex flex-col items-center">
                                     <p class="text-sm text-gray-500">Click to upload an image</p>
                                     <p id="image-prompt-name" class="text-xs text-gray-400 mt-1">No file selected</p>
                                 </div>
                                 <input id="image-prompt-input" type="file" class="hidden" accept="image/png, image/jpeg, image/jpg" />
                             </label>
+                            <div id="image-prompt-preview-container" class="hidden relative">
+                                <img id="image-prompt-preview" class="w-full rounded-lg border border-gray-300" alt="Selected image">
+                                <button id="image-prompt-clear" class="absolute top-2 right-2 p-1 bg-white bg-opacity-80 rounded-full hover:bg-opacity-100 hover:bg-red-50 shadow hover:shadow-lg transition-all duration-200" title="Clear image">
+                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-gray-600 hover:text-red-600 transition-colors duration-200" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                        <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+                                    </svg>
+                                </button>
+                            </div>
                             <div class="hidden" id="image-prompt-strength-container">
                                 <label class="block text-xs font-medium text-gray-700 mb-1">Image Strength: <span id="image-prompt-strength-value">0.3</span></label>
                                 <input type="range" id="image-prompt-strength" min="0" max="1" step="0.05" value="0.3" class="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer">
@@ -427,6 +446,14 @@ const GeneratorTab = {
       'change',
       this.handleImagePromptUpload.bind(this)
     );
+
+    // Setup clear image button
+    if (this.elements.imagePromptClear) {
+      this.elements.imagePromptClear.addEventListener(
+        'click',
+        this.clearImagePrompt.bind(this)
+      );
+    }
 
     // Setup orientation button listener
     // Setup orientation button listener
@@ -768,19 +795,19 @@ const GeneratorTab = {
 
     this.elements.imagePromptName.textContent = file.name;
 
-    // Show image prompt strength control only if model is Ultra
-    if (this.elements.modelSelector.value === 'flux-pro-1.1-ultra') {
-      this.elements.imagePromptStrengthContainer.classList.remove('hidden');
-    } else {
-      this.elements.imagePromptStrengthContainer.classList.add('hidden');
-    }
-
     const reader = new FileReader();
     reader.onload = (event) => {
       // Store base64 data
-      this.imagePromptData = event.target.result.split(',')[1]; // Ensure strength slider is visible for Ultra after image is loaded
+      this.imagePromptData = event.target.result.split(',')[1];
+
+      // Show preview
+      this.showImagePromptPreview(event.target.result);
+
+      // Show image prompt strength control only if model is Ultra
       if (this.elements.modelSelector.value === 'flux-pro-1.1-ultra') {
         this.elements.imagePromptStrengthContainer.classList.remove('hidden');
+      } else {
+        this.elements.imagePromptStrengthContainer.classList.add('hidden');
       }
     };
     reader.readAsDataURL(file);
@@ -791,9 +818,60 @@ const GeneratorTab = {
     this.imagePromptData = imageDataUrl.split(',')[1];
     this.elements.imagePromptName.textContent = imageName;
 
+    // Show preview
+    this.showImagePromptPreview(imageDataUrl);
+
     if (this.elements.modelSelector.value === 'flux-pro-1.1-ultra') {
       this.elements.imagePromptStrengthContainer.classList.remove('hidden');
     } else {
+      this.elements.imagePromptStrengthContainer.classList.add('hidden');
+    }
+  },
+
+  // Show image prompt preview
+  showImagePromptPreview: function (imageDataUrl) {
+    if (
+      !this.elements.imagePromptPreview ||
+      !this.elements.imagePromptPreviewContainer ||
+      !this.elements.imagePromptUploadLabel
+    ) {
+      return;
+    }
+
+    // Set the preview image source
+    this.elements.imagePromptPreview.src = imageDataUrl;
+
+    // Hide upload label and show preview container
+    this.elements.imagePromptUploadLabel.classList.add('hidden');
+    this.elements.imagePromptPreviewContainer.classList.remove('hidden');
+  },
+
+  // Clear image prompt
+  clearImagePrompt: function () {
+    // Clear stored data
+    this.imagePromptData = null;
+
+    // Reset UI elements
+    if (this.elements.imagePromptPreview) {
+      this.elements.imagePromptPreview.src = '';
+    }
+    if (this.elements.imagePromptName) {
+      this.elements.imagePromptName.textContent = 'No file selected';
+    }
+    if (this.elements.imagePromptInput) {
+      this.elements.imagePromptInput.value = '';
+    }
+
+    // Hide preview and show upload label
+    if (this.elements.imagePromptPreviewContainer) {
+      this.elements.imagePromptPreviewContainer.classList.add('hidden');
+    }
+    if (this.elements.imagePromptUploadLabel) {
+      this.elements.imagePromptUploadLabel.classList.remove('hidden');
+    }
+
+    // Hide strength container
+    if (this.elements.imagePromptStrengthContainer) {
       this.elements.imagePromptStrengthContainer.classList.add('hidden');
     }
   },
