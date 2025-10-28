@@ -1241,13 +1241,26 @@ const GeneratorTab = {
           })
       )
       .then(async (dataUrl) => {
+        // Get actual image dimensions from the data URL
+        const imageDimensions = await new Promise((resolve) => {
+          const img = new Image();
+          img.onload = () => {
+            resolve({ width: img.width, height: img.height });
+          };
+          img.onerror = () => {
+            // Fallback to undefined if image fails to load
+            resolve({ width: undefined, height: undefined });
+          };
+          img.src = dataUrl;
+        });
+
         // Build comprehensive metadata to enable desktop/mobile modal features
         const metadata = {
           model: this.currentParams.model || this.elements.modelSelector.value,
           prompt: this.elements.promptInput.value,
           seed: this.currentParams.seed,
-          width: this.currentParams.width,
-          height: this.currentParams.height,
+          width: this.currentParams.width || imageDimensions.width,
+          height: this.currentParams.height || imageDimensions.height,
           output_format:
             this.currentParams.output_format ||
             (this.elements.formatJpeg?.checked ? 'jpeg' : 'png'),
