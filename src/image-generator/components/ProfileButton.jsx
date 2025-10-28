@@ -4,13 +4,13 @@
  */
 import {
   ProfileButton as SharedProfileButton,
-  SignInModal
+  SignInModal,
+  SharedProfileModal
 } from '@shared/auth/components';
 import { useAuthContext } from '../../editor/contexts';
 import { auth } from '../../editor/services/firebase';
 import useImageGenStore from '../store';
 import posthog from 'posthog-js';
-import ProfileModal from './ProfileModal.jsx';
 
 const ProfileButton = () => {
   const { currentUser, isLoading } = useAuthContext();
@@ -49,9 +49,10 @@ const ProfileButton = () => {
         onAnalytics={handleAnalytics}
       />
 
-      <ProfileModal
+      <SharedProfileModal
         isOpen={modal === 'profile'}
         onClose={() => setModal(null)}
+        showEscapeHatch={true}
       />
     </>
   );
