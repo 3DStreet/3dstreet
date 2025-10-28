@@ -1257,28 +1257,18 @@ function parseStreetmixSegments(segments, length) {
       segmentPreset = 'sidewalk';
     }
 
-    // add new object
-    segmentParentEl.setAttribute('street-segment', 'type', segmentPreset);
-    segmentParentEl.setAttribute(
-      'street-segment',
-      'width',
-      segmentWidthInMeters
-    );
-    segmentParentEl.setAttribute('street-segment', 'length', length);
-    segmentParentEl.setAttribute('street-segment', 'level', elevation);
-    segmentParentEl.setAttribute('street-segment', 'direction', direction);
-    segmentParentEl.setAttribute(
-      // find default color for segmentPreset
-      'street-segment',
-      'color',
-      segmentColor ?? window.STREET.types[segmentPreset]?.color // no error handling for segmentPreset not found
-    );
-    segmentParentEl.setAttribute(
-      // find default surface type for segmentPreset
-      'street-segment',
-      'surface',
-      window.STREET.types[segmentPreset]?.surface // no error handling for segmentPreset not found
-    );
+    // add new object - use single setAttribute call with object to avoid multiple update triggers
+    // Note: Do NOT set variant or side for Streetmix imports as Streetmix doesn't provide this data
+    // These properties have defaults in the street-segment schema and should only be set when explicitly provided
+    segmentParentEl.setAttribute('street-segment', {
+      type: segmentPreset,
+      width: segmentWidthInMeters,
+      length: length,
+      level: elevation,
+      direction: direction,
+      color: segmentColor ?? window.STREET.types[segmentPreset]?.color, // find default color for segmentPreset
+      surface: window.STREET.types[segmentPreset]?.surface // find default surface type for segmentPreset
+    });
 
     let currentSegment = segments[i];
     let previousSegment = segments[i - 1];

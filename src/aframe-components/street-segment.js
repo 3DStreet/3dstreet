@@ -493,24 +493,32 @@ AFRAME.registerComponent('street-segment', {
         this.el.setAttribute(componentName, 'direction', this.data.direction);
       }
     }
-    // regenerate components if variant has changed
+    // regenerate components if variant has changed (only relevant for building segments)
     if (changedProps.includes('variant')) {
-      let typeObject = this.types[this.data.type];
-      this.updateGeneratedComponentsList();
+      // Only process variant changes for building segments
+      if (this.data.type === 'building') {
+        let typeObject = this.types[this.data.type];
+        this.updateGeneratedComponentsList();
 
-      // Skip regeneration for 'custom' variant to preserve existing components and surface
-      if (this.data.variant !== 'custom') {
-        this.remove();
-        this.generateComponentsFromSegmentObject(typeObject);
-        this.updateSurfaceFromType(typeObject); // update surface based on variant
+        // Skip regeneration for 'custom' variant to preserve existing components and surface
+        if (this.data.variant !== 'custom') {
+          this.remove();
+          this.generateComponentsFromSegmentObject(typeObject);
+          this.updateSurfaceFromType(typeObject); // update surface based on variant
+        }
       }
     }
-    // regenerate components if side has changed
+    // regenerate components if side has changed (only for building segments and only if it's an actual change, not initial load)
     if (changedProps.includes('side')) {
-      let typeObject = this.types[this.data.type];
-      this.updateGeneratedComponentsList();
-      this.remove();
-      this.generateComponentsFromSegmentObject(typeObject);
+      // Only regenerate if:
+      // 1. This is a building segment that actually uses the 'side' property
+      // 2. AND it's not the initial load (oldData.side exists, meaning side actually changed)
+      if (this.data.type === 'building' && oldData.side !== undefined) {
+        let typeObject = this.types[this.data.type];
+        this.updateGeneratedComponentsList();
+        this.remove();
+        this.generateComponentsFromSegmentObject(typeObject);
+      }
     }
     // propagate change of length to generated components is solo changed
     if (changedProps.includes('length')) {
