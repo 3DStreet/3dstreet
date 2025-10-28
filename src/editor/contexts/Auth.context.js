@@ -122,4 +122,4 @@ AuthProvider.propTypes = {
 
 const useAuthContext = () => useContext(AuthContext);
 
-export { AuthProvider, useAuthContext };
+export { AuthProvider, useAuthContext, AuthContext };
