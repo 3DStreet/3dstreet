@@ -19,8 +19,6 @@ const FluxUI = {
 
   // Initialize the UI
   init: function () {
-    console.log('Initializing Flux Image Generator UI');
-
     // Get common elements
     this.elements = {
       tabButtons: document.querySelectorAll('.tab-button'),
@@ -41,8 +39,6 @@ const FluxUI = {
 
     // Always enable dark mode
     this.setDarkMode(true);
-
-    console.log('Main UI initialized');
   },
 
   // Set up event listeners for common elements
@@ -57,10 +53,7 @@ const FluxUI = {
   activateTab: function (tabButton) {
     if (!tabButton) return;
 
-    const tabId = tabButton.getAttribute('data-tab');
-    console.log(`Activating tab: ${tabId}`);
-
-    // Deactivate all tabs
+    const tabId = tabButton.getAttribute('data-tab'); // Deactivate all tabs
     this.elements.tabButtons.forEach((btn) => btn.classList.remove('active'));
     this.elements.tabContents.forEach((content) =>
       content.classList.remove('active')
@@ -75,8 +68,6 @@ const FluxUI = {
   },
   // Show notification
   showNotification: function (message, type = 'error') {
-    console.log(`Notification (${type}): ${message}`);
-
     const notification = this.elements.notification;
     const notificationMessage = this.elements.notificationMessage;
     const notificationIcon = this.elements.notificationIcon;

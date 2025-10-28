@@ -10,8 +10,6 @@ import { functions } from '../editor/services/firebase.js';
 const FluxAPI = {
   // Make an API request to a Flux endpoint
   makeRequest: async function (endpoint, params, method = 'POST') {
-    console.log(`Making ${method} request to ${endpoint} with params:`, params);
-
     try {
       // Use Firebase callable function
       const bflApiProxy = httpsCallable(functions, 'bflApiProxy');
@@ -68,8 +66,6 @@ const FluxAPI = {
         }
 
         const result = response.data.result;
-        console.log('Poll result:', result);
-
         if (result.status === 'Ready' && result.result) {
           // Generation completed successfully
           let imageUrl;
@@ -87,11 +83,7 @@ const FluxAPI = {
 
           if (!imageUrl) {
             throw new Error('No image URL found in response');
-          }
-
-          console.log('Original Image URL:', imageUrl);
-
-          // Return the image URL and full result (including remaining tokens)
+          } // Return the image URL and full result (including remaining tokens)
           onSuccess(imageUrl, result, response.data.remainingTokens);
         } else if (result.status === 'Error') {
           // Generation failed

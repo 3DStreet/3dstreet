@@ -22,8 +22,6 @@ const GeneratorTab = {
 
   // Initialize the tab
   init: function () {
-    console.log('Initializing Generator Tab');
-
     // Get tab container
     const tabContainer = document.getElementById('generator-tab');
     if (!tabContainer) {
@@ -48,8 +46,6 @@ const GeneratorTab = {
 
     // Register this module with the main UI for updates
     FluxUI.tabModules.generator = this;
-
-    console.log('Generator Tab: Initialization complete');
   },
 
   // Get all DOM elements after content is created
@@ -480,8 +476,6 @@ const GeneratorTab = {
         this.copyParams.bind(this)
       );
     }
-
-    console.log('Generator Tab: Event listeners set up');
   },
 
   // Update the dimension grid based on selected orientation
@@ -545,13 +539,7 @@ const GeneratorTab = {
         'hover:bg-gray-50'
       );
       this.selectedDimension = firstButton.dataset.dimension; // Update state
-      console.log(
-        'Default dimension not found in new orientation, selecting first:',
-        this.selectedDimension
-      );
     }
-
-    console.log(`Dimension grid updated for orientation: ${orientation}`);
   },
 
   // Update model parameters based on selected model
@@ -562,7 +550,6 @@ const GeneratorTab = {
     }
 
     const model = this.elements.modelSelector.value;
-    console.log('Updating parameters for model:', model);
 
     // Default visibility states
     let showDimensions = true;
@@ -653,9 +640,8 @@ const GeneratorTab = {
     if (showDimensions) {
       this.updateDimensionGrid(this.selectedOrientation);
     }
-
-    console.log('Updated UI for model:', model);
   },
+
   // Handle orientation button selection
   handleOrientationSelection: function (e) {
     if (e.target.classList.contains('orientation-button')) {
@@ -665,7 +651,6 @@ const GeneratorTab = {
       if (orientation === this.selectedOrientation) return; // No change
 
       this.selectedOrientation = orientation;
-      console.log('Orientation selected:', orientation);
 
       // Update button styles
       this.elements.orientationButtons
@@ -747,8 +732,6 @@ const GeneratorTab = {
         'text-gray-700',
         'hover:bg-gray-50'
       );
-
-      console.log('Dimension selected:', dimension);
     }
   },
 
@@ -795,13 +778,7 @@ const GeneratorTab = {
     const reader = new FileReader();
     reader.onload = (event) => {
       // Store base64 data
-      this.imagePromptData = event.target.result.split(',')[1];
-      console.log(
-        'Image data loaded',
-        this.imagePromptData ? 'successfully' : 'failed'
-      );
-
-      // Ensure strength slider is visible for Ultra after image is loaded
+      this.imagePromptData = event.target.result.split(',')[1]; // Ensure strength slider is visible for Ultra after image is loaded
       if (this.elements.modelSelector.value === 'flux-pro-1.1-ultra') {
         this.elements.imagePromptStrengthContainer.classList.remove('hidden');
       }
@@ -823,22 +800,15 @@ const GeneratorTab = {
 
   // Generate an image
   generateImage: function () {
-    console.log('Generate button clicked');
-
     // Check if user is authenticated
     if (!window.authState || !window.authState.isAuthenticated) {
-      console.log('User not authenticated, showing sign-in modal');
       useImageGenStore.getState().setModal('signin');
       return;
     }
 
     // Get model type and prepare parameters
     // Get model
-    const model = this.elements.modelSelector.value;
-
-    console.log(`Using API endpoint: ${model}`);
-
-    // Build parameters
+    const model = this.elements.modelSelector.value; // Build parameters
     const params = this.buildRequestParams(model);
 
     if (!params) {
@@ -855,7 +825,6 @@ const GeneratorTab = {
     // Make the API request using the model endpoint
     FluxAPI.makeRequest(model, params)
       .then((response) => {
-        console.log('API response:', response);
         if (response.id) {
           // Pass the model used for the request to pollForResult
           this.pollForResult(response.id, model);
@@ -889,9 +858,6 @@ const GeneratorTab = {
     ) {
       return this.selectedDimension;
     } else if (currentValidDimensions && currentValidDimensions.length > 0) {
-      console.warn(
-        `Selected dimension ${this.selectedDimension} invalid for orientation ${this.selectedOrientation}. Falling back to ${currentValidDimensions[0]}`
-      );
       this.selectedDimension = currentValidDimensions[0]; // Fallback to first valid
       // Optionally update UI selection here too
       this.updateDimensionGrid(this.selectedOrientation);
@@ -1013,17 +979,12 @@ const GeneratorTab = {
       }
     }
 
-    // Debug info to make sure everything is included
-    console.log('Final parameters:', params);
-
-    return params;
+    // Debug info to make sure everything is included    return params;
   },
 
   // Poll for task result (now accepts apiEndpoint used)
   pollForResult: function (taskId, apiEndpoint) {
     this.elements.loadingText.textContent = 'Generating your image...';
-    console.log(`Polling for result: ${taskId}`);
-
     FluxAPI.pollForResult(
       taskId,
       // Progress callback
@@ -1032,16 +993,11 @@ const GeneratorTab = {
       },
       // Success callback
       (imageUrl, result) => {
-        console.log('Full result object:', result); // Log the full result for debugging seed location
         // Store the original URL for reference
         this.currentImageUrl = imageUrl; // Store original for potential direct use if needed
 
         // Update currentParams with actual parameters used, especially the seed
         if (result.details && result.details.request_params) {
-          console.log(
-            'Updating params with details:',
-            result.details.request_params
-          );
           // Merge received params, prioritizing the received seed
           this.currentParams = {
             ...this.currentParams, // Keep originally sent params as fallback
@@ -1055,10 +1011,7 @@ const GeneratorTab = {
         this.currentParams.timestamp = new Date().toISOString();
 
         // Use our proxy server to bypass CORS for display and gallery saving
-        const proxiedUrl = FluxAPI.getProxiedImageUrl(imageUrl);
-        console.log('Proxied Image URL:', proxiedUrl);
-
-        // Display the image using the proxied URL
+        const proxiedUrl = FluxAPI.getProxiedImageUrl(imageUrl); // Display the image using the proxied URL
         this.displayImage(proxiedUrl);
 
         // Automatically save to gallery (live update without page refresh)
@@ -1081,8 +1034,6 @@ const GeneratorTab = {
 
   // Display the generated image
   displayImage: function (imageUrl) {
-    console.log('Displaying image:', imageUrl);
-
     // Show image
     this.elements.previewImage.src = imageUrl;
     this.elements.previewImage.classList.remove('hidden');
@@ -1164,8 +1115,6 @@ const GeneratorTab = {
       FluxUI.showNotification('No image to open', 'error');
       return;
     }
-
-    console.log('Opening image in new tab:', this.currentImageUrl);
     window.open(this.currentImageUrl, '_blank');
     FluxUI.showNotification('Image opened in new tab!', 'success');
   },
@@ -1175,11 +1124,7 @@ const GeneratorTab = {
     if (!this.currentImageUrl) {
       FluxUI.showNotification('No image to download', 'error');
       return;
-    }
-
-    console.log('Downloading image:', this.currentImageUrl);
-
-    // Use fetch to get the image as a blob
+    } // Use fetch to get the image as a blob
     fetch(FluxAPI.getProxiedImageUrl(this.currentImageUrl))
       .then((response) => response.blob())
       .then((blob) => {
@@ -1231,9 +1176,6 @@ const GeneratorTab = {
       FluxUI.showNotification('No image URL to copy', 'error');
       return;
     }
-
-    console.log('Copying image URL:', this.currentImageUrl);
-
     navigator.clipboard
       .writeText(this.currentImageUrl)
       .then(() => {
@@ -1266,8 +1208,6 @@ const GeneratorTab = {
 
     // Format params as JSON string with indentation
     const paramsString = JSON.stringify(paramsWithModel, null, 2);
-    console.log('Copying parameters:', paramsString);
-
     navigator.clipboard
       .writeText(paramsString)
       .then(() => {
@@ -1285,7 +1225,6 @@ const GeneratorTab = {
   saveToGallery: function (imageUrl) {
     // Check if gallery module is available
     if (!FluxGallery) {
-      console.warn('Gallery module not available, cannot save image');
       return;
     }
 
@@ -1330,7 +1269,6 @@ const GeneratorTab = {
 
         try {
           await FluxGallery.addImage(dataUrl, metadata);
-          console.log('Image saved to gallery (live).');
         } catch (e) {
           console.error('Gallery addImage error:', e);
           FluxUI.showNotification('Failed to save image to gallery.', 'error');

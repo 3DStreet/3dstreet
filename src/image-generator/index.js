@@ -24,21 +24,8 @@ import OutpaintTab from './outpaint.js';
 // Expose auth for compatibility
 window.firebaseAuth = auth;
 
-// TEST: Verify Firebase auth integration
-console.log('=== IMAGE PLAYGROUND FIREBASE AUTH TEST ===');
-console.log('✓ Firebase auth imported:', !!auth);
-console.log('✓ Firebase auth type:', auth?.constructor?.name || 'undefined');
-console.log(
-  '✓ Firebase auth available on window.firebaseAuth:',
-  !!window.firebaseAuth
-);
-console.log('Current user:', auth?.currentUser?.email || 'Not signed in');
-console.log('===========================================');
-
 // Initialize on DOMContentLoaded
 document.addEventListener('DOMContentLoaded', async () => {
-  console.log('Initializing Image Generator');
-
   // Mount AppSwitcher
   mountAppSwitcher();
 
@@ -58,6 +45,4 @@ document.addEventListener('DOMContentLoaded', async () => {
   GeneratorTab.init();
   InpaintTab.init();
   OutpaintTab.init();
-
-  console.log('Image Generator initialized');
 });

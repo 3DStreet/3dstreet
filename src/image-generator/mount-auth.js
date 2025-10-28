@@ -23,8 +23,6 @@ window.authState = {
  * Dispatches custom events so vanilla JS can react to auth changes
  */
 onAuthStateChanged(auth, (user) => {
-  console.log('Auth state changed:', user ? user.email : 'Not signed in');
-
   window.authState.currentUser = user;
   window.authState.isAuthenticated = !!user;
 
@@ -55,8 +53,6 @@ export const mountAuthUI = (elementId = 'auth-root') => {
 
   const root = createRoot(authRoot);
   root.render(<AuthIsland />);
-
-  console.log('Auth UI mounted successfully');
 };
 
 /**
@@ -75,8 +71,6 @@ export const mountTokenDisplay = (elementId = 'token-display-root') => {
 
   const root = createRoot(tokenDisplayRoot);
   root.render(<TokenDisplay />);
-
-  console.log('Token Display mounted successfully');
 };
 
 export default mountAuthUI;

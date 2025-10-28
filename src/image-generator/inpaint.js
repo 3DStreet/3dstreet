@@ -29,7 +29,6 @@ const InpaintTab = {
 
   // Initialize the tab
   init: function () {
-    console.log('Initializing Inpaint Tab');
     const inpaintContainer = document.getElementById('inpaint-tab');
     if (!inpaintContainer) {
       console.error('Inpaint Tab: Container element not found');
@@ -45,8 +44,6 @@ const InpaintTab = {
 
     // Register this module with the main UI for updates
     FluxUI.tabModules.inpaint = this;
-
-    console.log('Inpaint Tab initialized');
   },
 
   // Create the tab content HTML (aligned with generator.js structure)
@@ -455,13 +452,10 @@ const InpaintTab = {
 
   // Set input image from gallery or file upload
   setInputImage: function (imageDataUrl) {
-    console.log('Setting input image for inpainting');
     this.imageData = imageDataUrl; // Store the data URL
     this.elements.sourceImage.src = ''; // Clear previous src to ensure onload triggers reliably
     this.elements.sourceImage.onload = () => {
-      // Ensure image is loaded before drawing to canvas
-      console.log('Source image loaded, initializing canvas');
-      this.originalWidth = this.elements.sourceImage.naturalWidth;
+      // Ensure image is loaded before drawing to canvas      this.originalWidth = this.elements.sourceImage.naturalWidth;
       this.originalHeight = this.elements.sourceImage.naturalHeight;
       this.initializeCanvas();
       this.elements.canvasContainer.style.display = 'block';
@@ -539,12 +533,6 @@ const InpaintTab = {
 
     // Clear any previous mask data URL
     this.maskData = null;
-    console.log(
-      `Display Canvas initialized: ${displayCanvas.width}x${displayCanvas.height}, Scale: ${this.displayCanvasScale}`
-    );
-    console.log(
-      `Mask Layer Canvas initialized: ${this.maskLayerCanvas.width}x${this.maskLayerCanvas.height}`
-    );
   },
 
   // Get mouse/touch position relative to canvas
@@ -663,7 +651,6 @@ const InpaintTab = {
     }
 
     this.maskData = null; // Reset mask data URL
-    console.log('Mask cleared (display and hidden layer)');
   },
 
   // Get mask data as base64 string (black and white)
@@ -683,7 +670,6 @@ const InpaintTab = {
     //     }
     // }
     // if (!hasWhitePixels) {
-    //     console.warn("Mask layer is empty (all black).");
     //     // Return null or the all-black mask depending on desired behavior
     // }
 
@@ -760,7 +746,6 @@ const InpaintTab = {
   generateInpaint: async function () {
     // Check if user is authenticated
     if (!window.authState || !window.authState.isAuthenticated) {
-      console.log('User not authenticated, showing sign-in modal');
       useImageGenStore.getState().setModal('signin');
       return;
     }
@@ -834,8 +819,6 @@ const InpaintTab = {
 
       try {
         const response = await FluxAPI.makeRequest(apiEndpoint, params);
-        console.log('Inpaint API Response:', response);
-
         if (response.id) {
           this.showLoading('Task submitted, waiting for result...');
           FluxAPI.pollForResult(

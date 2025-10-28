@@ -21,8 +21,6 @@ export const mountAppSwitcher = (elementId = 'app-switcher-root') => {
 
   const root = createRoot(appSwitcherRoot);
   root.render(<AppSwitcher />);
-
-  console.log('AppSwitcher mounted successfully');
 };
 
 export default mountAppSwitcher;

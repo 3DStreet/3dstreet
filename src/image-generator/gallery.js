@@ -31,12 +31,10 @@ const FluxGallery = {
 
   // Initialize the gallery
   init: async function () {
-    console.log('Initializing Gallery with IndexedDB');
     try {
       this.db = await this.openDB();
       await this.loadFromDB(); // Load images from IndexedDB
       this.setupGalleryUI(); // Set up gallery UI
-      console.log(`Gallery loaded with ${this.items.length} images`);
       // Ensure page within bounds after load
       this.page = 1;
       this.updateGalleryUI();
@@ -58,12 +56,10 @@ const FluxGallery = {
       };
 
       request.onsuccess = (event) => {
-        console.log('IndexedDB opened successfully');
         resolve(event.target.result);
       };
 
       request.onupgradeneeded = (event) => {
-        console.log('Upgrading IndexedDB');
         const db = event.target.result;
         if (!db.objectStoreNames.contains(this.storeName)) {
           // Use 'id' as the keyPath
@@ -72,7 +68,6 @@ const FluxGallery = {
           store.createIndex('timestamp', 'metadata.timestamp', {
             unique: false
           });
-          console.log(`Object store "${this.storeName}" created.`);
         }
       };
     });
@@ -113,7 +108,6 @@ const FluxGallery = {
           objectURL: URL.createObjectURL(item.imageData) // Create URL for img src
         }));
 
-        console.log(`Loaded ${this.items.length} items from DB`);
         resolve();
       };
     });
@@ -156,7 +150,6 @@ const FluxGallery = {
         };
 
         request.onsuccess = async () => {
-          console.log('Item added to DB:', item.id);
           // Prepend to local array and create Object URL
           const newItemForUI = {
             ...item,
@@ -173,10 +166,6 @@ const FluxGallery = {
           this.updateGalleryUI(); // Update UI
           FluxUI.showNotification('Image saved to gallery!', 'success');
           resolve(item.id);
-        };
-
-        transaction.oncomplete = () => {
-          console.log('Add transaction complete.');
         };
         transaction.onerror = (event) => {
           console.error('Add transaction error:', event.target.error);
@@ -197,10 +186,6 @@ const FluxGallery = {
         return resolve(); // No need to trim
       }
 
-      console.log(
-        `Gallery size (${this.items.length}) exceeds limit (${this.maxImages}). Trimming...`
-      );
-
       // Get IDs of items to remove (oldest ones)
       const itemsToRemove = this.items.slice(this.maxImages); // Get the oldest items from the end of the sorted array
 
@@ -208,11 +193,9 @@ const FluxGallery = {
 
       const transaction = this.db.transaction(this.storeName, 'readwrite');
       const store = transaction.objectStore(this.storeName);
-      let deleteCount = 0;
 
       itemsToRemove.forEach((item) => {
         store.delete(item.id).onsuccess = () => {
-          deleteCount++;
           // Revoke Object URL of removed item
           if (item.objectURL) {
             URL.revokeObjectURL(item.objectURL);
@@ -224,7 +207,6 @@ const FluxGallery = {
       });
 
       transaction.oncomplete = () => {
-        console.log(`Trimmed ${deleteCount} oldest items from DB.`);
         // Update the local items array
         this.items = this.items.slice(0, this.maxImages);
         // No UI update needed here, as it's called after add/load
@@ -258,7 +240,6 @@ const FluxGallery = {
       };
 
       request.onsuccess = () => {
-        console.log('Item deleted from DB:', id);
         // Find and remove from local array, revoke URL
         const index = this.items.findIndex((item) => item.id === id);
         if (index > -1) {
@@ -274,7 +255,6 @@ const FluxGallery = {
           FluxUI.showNotification('Image deleted.', 'success');
           resolve(true);
         } else {
-          console.warn(`Item ${id} not found in local cache after deletion.`);
           this.updateGalleryUI(); // Still update UI in case
           resolve(false); // Indicate item wasn't in the local list
         }
@@ -307,7 +287,6 @@ const FluxGallery = {
       };
 
       request.onsuccess = () => {
-        console.log('Gallery DB cleared.');
         // Revoke all existing object URLs
         this.items.forEach((item) => {
           if (item.objectURL) URL.revokeObjectURL(item.objectURL);

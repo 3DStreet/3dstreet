@@ -22,7 +22,6 @@ const OutpaintTab = {
 
   // Initialize the tab
   init: function () {
-    console.log('Initializing Outpaint Tab');
     const outpaintContainer = document.getElementById('outpaint-tab');
     if (!outpaintContainer) {
       console.error('Outpaint Tab: Container element not found');
@@ -34,7 +33,6 @@ const OutpaintTab = {
     this.setupEventListeners();
     // Generate an initial random seed on load
     this.generateRandomSeed();
-    console.log('Outpaint Tab initialized');
   },
 
   // Create the tab content HTML (aligned with generator.js structure)
@@ -432,15 +430,12 @@ const OutpaintTab = {
 
   // Set input image from gallery or file upload
   setInputImage: function (imageDataUrl) {
-    console.log('Setting input image for outpainting');
     this.imageData = imageDataUrl; // Store the data URL
     this.elements.previewImage.src = ''; // Clear previous src
     this.elements.sourceImage.src = ''; // Clear previous src
 
     this.elements.sourceImage.onload = () => {
-      // Ensure image is loaded before using dimensions
-      console.log('Source image loaded for size calculation');
-      this.originalWidth = this.elements.sourceImage.naturalWidth;
+      // Ensure image is loaded before using dimensions      this.originalWidth = this.elements.sourceImage.naturalWidth;
       this.originalHeight = this.elements.sourceImage.naturalHeight;
       this.elements.originalSizeLabel.textContent = `Original: ${this.originalWidth} × ${this.originalHeight} px`;
       this.updateNewSizeLabel(); // Update size label initially
@@ -523,7 +518,6 @@ const OutpaintTab = {
 
   // Handle successful generation - FIX: Ensure image display works
   handleSuccess: function (imageUrl, resultData) {
-    console.log('Outpaint Success. Image URL:', imageUrl); // Debug log
     this.elements.loadingIndicator.classList.add('hidden');
     this.elements.outputPlaceholder.classList.add('hidden'); // Hide placeholder
 
@@ -567,7 +561,6 @@ const OutpaintTab = {
   generateOutpaint: async function () {
     // Check if user is authenticated
     if (!window.authState || !window.authState.isAuthenticated) {
-      console.log('User not authenticated, showing sign-in modal');
       useImageGenStore.getState().setModal('signin');
       return;
     }
@@ -641,8 +634,6 @@ const OutpaintTab = {
 
     try {
       const response = await FluxAPI.makeRequest('flux-pro-1.0-expand', params);
-      console.log('Outpaint API Response:', response);
-
       if (response.id) {
         this.showLoading('Task submitted, waiting for result...');
         FluxAPI.pollForResult(
