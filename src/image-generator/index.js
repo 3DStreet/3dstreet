@@ -3,6 +3,9 @@
  * Imports Firebase auth and initializes all modules
  */
 
+// Import Sentry for error tracking
+import '../editor/instrument.js';
+
 // Import styles
 import './styles/styles.css';
 import './styles/gallery.css';
