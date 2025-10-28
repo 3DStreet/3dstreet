@@ -68,13 +68,15 @@
         <div id="outpaint-tab" class="tab-content"></div>
     </main>
 
+    <!-- Gallery Toggle Button (positioned absolutely) -->
+    <button id="gallery-toggle" class="gallery-toggle" aria-label="Toggle Gallery">
+        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 19l-7-7 7-7m8 14l-7-7 7-7" />
+        </svg>
+    </button>
+
     <!-- Gallery Sidebar -->
     <div id="gallery-container" class="gallery-sidebar gallery-collapsed">
-        <button id="gallery-toggle" class="gallery-toggle" aria-label="Toggle Gallery">
-            <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 19l-7-7 7-7m8 14l-7-7 7-7" />
-            </svg>
-        </button>
         <div class="gallery-header">
             <div class="gallery-title">
                 Gallery <span id="gallery-counter" class="gallery-counter">0</span>

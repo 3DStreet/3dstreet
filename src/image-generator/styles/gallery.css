@@ -21,13 +21,14 @@
 
 /* Collapsed State */
 .gallery-collapsed {
-    transform: translateX(calc(100% - 30px)); /* Adjust based on toggle visibility */
+    transform: translateX(100%); /* Completely hide the sidebar */
 }
 
 /* Toggle Button */
 .gallery-toggle {
-    position: absolute;
-    left: -40px; /* Position outside the sidebar */
+    position: fixed;
+    right: 0;
+    top: 98px;
     width: 40px;
     height: 40px;
     background-color: white;
@@ -39,7 +40,7 @@
     align-items: center;
     justify-content: center;
     cursor: pointer;
-    transition: background-color 0.2s, color 0.2s;
+    transition: all 0.3s ease;
     box-shadow: -2px 0 5px rgba(0, 0, 0, 0.05);
     z-index: 50; /* Ensure button is above other elements */
     box-sizing: border-box; /* Include border in width/height */
