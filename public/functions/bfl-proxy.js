@@ -11,7 +11,8 @@ const ALLOWED_IMAGE_DOMAINS = [
   'api.eu1.bfl.ai',
   'bfl.ai',
   'cdn.bfl.ai',
-  'delivery-us1.bfl.ai'
+  'delivery-us1.bfl.ai',
+  'windows.net'  // Azure Blob Storage domains
 ];
 
 // Get API key from environment
