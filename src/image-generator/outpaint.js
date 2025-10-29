@@ -173,6 +173,11 @@ const OutpaintTab = {
                             <span class="text-sm font-medium">1</span>
                         </span>
                     </button>
+
+                    <!-- Model Information -->
+                    <div class="mt-2">
+                        <p class="text-xs text-gray-500 text-center">Model: Flux Pro 1.0 Fill</p>
+                    </div>
                 </div>
 
                 <!-- Right Column: Output -->

@@ -191,9 +191,9 @@ const GeneratorTab = {
                             <option value="flux-pro-1.1">Flux Pro 1.1</option>
                             <option value="flux-pro">Flux Pro</option>
                             <option value="flux-dev">Flux Dev</option>
-                            <option value="flux-pro-1.1-ultra">Flux Ultra</option>
+                            <!-- <option value="flux-pro-1.1-ultra">Flux Ultra</option> -->
                             <option value="flux-kontext-pro" selected>Flux Kontext Pro</option>
-                            <option value="flux-kontext-max">Flux Kontext Max</option>
+                            <!-- <option value="flux-kontext-max">Flux Kontext Max</option> -->
                         </select>
                     </div>
                     
