@@ -47,11 +47,13 @@ const ExternalLinkIcon = () => (
 
 const ProfileHoverCard = ({
   children,
-  showDetails = true // Control whether to show the hover card
+  showDetails = true, // Control whether to show the hover card
+  onClickTrigger = null // Optional click handler to pass through
 }) => {
   const { currentUser, tokenProfile, setCurrentUser } = useAuthContext();
   const [username, setUsername] = useState(null);
   const [isLoadingUsername, setIsLoadingUsername] = useState(false);
+  const [isOpen, setIsOpen] = useState(false);
 
   // Load username when hover card is opened
   useEffect(() => {
@@ -70,10 +72,19 @@ const ProfileHoverCard = ({
       }
     };
 
-    if (showDetails && currentUser) {
+    if (showDetails && currentUser && isOpen) {
       loadUsername();
     }
-  }, [currentUser, showDetails]);
+  }, [currentUser, showDetails, isOpen]);
+
+  // Handle click on trigger
+  const handleTriggerClick = (e) => {
+    e.stopPropagation();
+    setIsOpen(!isOpen);
+    if (onClickTrigger) {
+      onClickTrigger(e);
+    }
+  };
 
   // If showDetails is false, just render the children without hover card
   if (!showDetails || !currentUser) {
@@ -104,14 +115,17 @@ const ProfileHoverCard = ({
   };
 
   return (
-    <HoverCard.Root openDelay={200}>
-      <HoverCard.Trigger asChild>{children}</HoverCard.Trigger>
+    <HoverCard.Root open={isOpen} onOpenChange={setIsOpen} openDelay={200}>
+      <HoverCard.Trigger asChild>
+        <div onClick={handleTriggerClick}>{children}</div>
+      </HoverCard.Trigger>
 
       <HoverCard.Portal>
         <HoverCard.Content
           className={styles.hoverCardContent}
           sideOffset={5}
           align="end"
+          onInteractOutside={() => setIsOpen(false)}
         >
           {/* User Profile Section */}
           <div className={styles.profileSection}>

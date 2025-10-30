@@ -1,11 +1,10 @@
 /**
- * Image Generator ProfileButton - wraps shared ProfileButton with tooltip
- * Uses local Zustand store for modal management
+ * Image Generator ProfileButton - wraps shared ProfileButton with hover card
+ * Click or hover to open profile card, click to sign in if not logged in
  */
 import {
   ProfileButton as SharedProfileButton,
-  SignInModal,
-  SharedProfileModal
+  SignInModal
 } from '@shared/auth/components';
 import { useAuthContext } from '../../editor/contexts';
 import { auth } from '../../editor/services/firebase';
@@ -21,11 +20,11 @@ const ProfileButton = () => {
 
     posthog.capture('profile_button_clicked', { is_logged_in: !!currentUser });
 
-    if (currentUser) {
-      setModal('profile');
-    } else {
+    // If not logged in, open sign in modal
+    if (!currentUser) {
       setModal('signin');
     }
+    // If logged in, the hover card will handle the interaction
   };
 
   const handleAnalytics = (eventName, properties) => {
@@ -48,12 +47,6 @@ const ProfileButton = () => {
         message="Sign in to use AI image generation."
         firebaseAuth={auth}
         onAnalytics={handleAnalytics}
-      />
-
-      <SharedProfileModal
-        isOpen={modal === 'profile'}
-        onClose={() => setModal(null)}
-        showEscapeHatch={true}
       />
     </>
   );

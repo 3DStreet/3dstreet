@@ -2,6 +2,7 @@
  * TokenDetailsCard - Hover card overlay showing detailed token information
  * Uses Radix UI HoverCard for rich interactive overlays
  */
+import { useState } from 'react';
 import * as HoverCard from '@radix-ui/react-hover-card';
 import { useAuthContext } from '../../../editor/contexts';
 import styles from '../styles/TokenDetailsCard.module.scss';
@@ -12,6 +13,13 @@ const TokenDetailsCard = ({
   showDetails = true // Control whether to show the hover card
 }) => {
   const { currentUser, tokenProfile } = useAuthContext();
+  const [isOpen, setIsOpen] = useState(false);
+
+  // Handle click on trigger
+  const handleTriggerClick = (e) => {
+    e.stopPropagation();
+    setIsOpen(!isOpen);
+  };
 
   // If showDetails is false, just render the children without hover card
   if (!showDetails || !currentUser) {
@@ -32,14 +40,17 @@ const TokenDetailsCard = ({
       : 'Used for AI-powered image generation, inpainting, and outpainting.';
 
   return (
-    <HoverCard.Root openDelay={200}>
-      <HoverCard.Trigger asChild>{children}</HoverCard.Trigger>
+    <HoverCard.Root open={isOpen} onOpenChange={setIsOpen} openDelay={200}>
+      <HoverCard.Trigger asChild>
+        <div onClick={handleTriggerClick}>{children}</div>
+      </HoverCard.Trigger>
 
       <HoverCard.Portal>
         <HoverCard.Content
           className={styles.hoverCardContent}
           sideOffset={5}
           align="end"
+          onInteractOutside={() => setIsOpen(false)}
         >
           {/* Token Details Section */}
           <div className={styles.tokenSection}>
