@@ -6,6 +6,7 @@
 
 import { AuthProvider } from '../editor/contexts';
 import ProfileButton from './components/ProfileButton.jsx';
+import TokenSync from './components/TokenSync.jsx';
 
 /**
  * AuthIsland component - wraps auth UI in AuthProvider
@@ -14,6 +15,8 @@ import ProfileButton from './components/ProfileButton.jsx';
 const AuthIsland = () => {
   return (
     <AuthProvider>
+      {/* Sync token profile to window.authState for vanilla JS */}
+      <TokenSync />
       {/* Profile button that triggers signin or profile modal */}
       <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
         <ProfileButton />

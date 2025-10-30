@@ -31,6 +31,11 @@ const FluxUI = {
     // Setup event listeners
     this.setupEventListeners();
 
+    // Listen for auth state changes to update button states
+    window.addEventListener('authStateChanged', () => {
+      this.updateGenerateButtonStates();
+    });
+
     // Initialize the first tab (needed for navigation only)
     this.activateTab(
       document.querySelector('.tab-button.active') ||
@@ -39,6 +44,9 @@ const FluxUI = {
 
     // Always enable dark mode
     this.setDarkMode(true);
+
+    // Initial button state update
+    this.updateGenerateButtonStates();
   },
 
   // Set up event listeners for common elements
@@ -135,6 +143,40 @@ const FluxUI = {
       document.documentElement.classList.add('dark');
       localStorage.setItem('color-theme', 'dark');
     }
+  },
+
+  // Update generate button states based on token availability
+  updateGenerateButtonStates: function () {
+    const authState = window.authState;
+    const hasTokens =
+      authState?.isAuthenticated && authState?.tokenProfile?.genToken > 0;
+
+    // Button IDs for all three tabs
+    const buttonIds = [
+      'generate-btn',
+      'inpaint-generate-btn',
+      'outpaint-generate-btn'
+    ];
+
+    buttonIds.forEach((buttonId) => {
+      const button = document.getElementById(buttonId);
+      if (!button) return;
+
+      if (hasTokens) {
+        button.disabled = false;
+        button.classList.remove('opacity-50', 'cursor-not-allowed');
+        button.title = '';
+      } else {
+        button.disabled = true;
+        button.classList.add('opacity-50', 'cursor-not-allowed');
+        if (authState?.isAuthenticated) {
+          button.title =
+            'You need AI Generation Tokens to generate images. Click the token display in the header to get more.';
+        } else {
+          button.title = 'Sign in to generate images';
+        }
+      }
+    });
   }
 };
 
