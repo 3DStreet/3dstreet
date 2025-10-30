@@ -10,3 +10,5 @@ build/
 dist/
 /public/assets
 /public/index.html
+*storybook.log
+storybook-static

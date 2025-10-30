@@ -372,9 +372,16 @@
   }
 }
 
-.upsellSection {
+.sidebarTokenDisplay {
   margin-top: auto;
-  padding-top: 20px;
+  padding-top: 16px;
+  border-top: 1px solid #333;
+  display: flex;
+  justify-content: center;
+}
+
+.upsellSection {
+  padding-top: 16px;
   border-top: 1px solid #333;
 }
 
