@@ -9,6 +9,7 @@
 
 import * as Tooltip from '@radix-ui/react-tooltip';
 import MsftProfileImg from '../../../../ui_assets/profile-microsoft.png';
+import ProfileHoverCard from './ProfileHoverCard';
 import styles from '../styles/ProfileButton.module.scss';
 
 // Profile icon SVG (default when not using Google/Microsoft)
@@ -112,6 +113,7 @@ export const renderProfileIcon = (currentUser, isLoading) => {
  * @param {string} [props.tooltipSide] - Tooltip position (default: 'bottom')
  * @param {string} [props.signedInText] - Tooltip text when signed in (default: 'Open profile')
  * @param {string} [props.signedOutText] - Tooltip text when signed out (default: 'Sign in')
+ * @param {boolean} [props.showHoverCard] - Show detailed hover card instead of tooltip (default: false)
  * @returns {JSX.Element}
  */
 export const ProfileButton = ({
@@ -121,33 +123,44 @@ export const ProfileButton = ({
   className = '',
   tooltipSide = 'bottom',
   signedInText = 'Open profile',
-  signedOutText = 'Sign in'
+  signedOutText = 'Sign in',
+  showHoverCard = false
 }) => {
   const tooltipContent = currentUser ? signedInText : signedOutText;
   const ariaLabel = currentUser ? signedInText : signedOutText;
 
+  const buttonElement = (
+    <div role="button" aria-label={ariaLabel}>
+      <button
+        className={`${styles.profileButton} ${className}`}
+        onClick={onClick}
+        type="button"
+        disabled={isLoading}
+        style={{
+          cursor: isLoading ? 'default' : 'pointer',
+          opacity: isLoading ? 0.7 : 1,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center'
+        }}
+      >
+        {renderProfileIcon(currentUser, isLoading)}
+      </button>
+    </div>
+  );
+
+  // If hover card is enabled and user is signed in, use ProfileHoverCard
+  if (showHoverCard && currentUser && !isLoading) {
+    return (
+      <ProfileHoverCard showDetails={true}>{buttonElement}</ProfileHoverCard>
+    );
+  }
+
+  // Otherwise use the standard tooltip
   return (
     <Tooltip.Provider>
       <Tooltip.Root delayDuration={0}>
-        <Tooltip.Trigger asChild>
-          <div role="button" aria-label={ariaLabel}>
-            <button
-              className={`${styles.profileButton} ${className}`}
-              onClick={onClick}
-              type="button"
-              disabled={isLoading}
-              style={{
-                cursor: isLoading ? 'default' : 'pointer',
-                opacity: isLoading ? 0.7 : 1,
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center'
-              }}
-            >
-              {renderProfileIcon(currentUser, isLoading)}
-            </button>
-          </div>
-        </Tooltip.Trigger>
+        <Tooltip.Trigger asChild>{buttonElement}</Tooltip.Trigger>
         <Tooltip.Portal>
           <Tooltip.Content
             side={tooltipSide}

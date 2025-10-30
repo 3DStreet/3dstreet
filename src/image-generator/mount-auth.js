@@ -58,8 +58,12 @@ export const mountAuthUI = (elementId = 'auth-root') => {
 /**
  * Mount the Token Display component
  * @param {string} elementId - ID of the element to mount to (default: 'token-display-root')
+ * @param {boolean} showDetails - Whether to show the hover card with details (default: true)
  */
-export const mountTokenDisplay = (elementId = 'token-display-root') => {
+export const mountTokenDisplay = (
+  elementId = 'token-display-root',
+  showDetails = true
+) => {
   const tokenDisplayRoot = document.getElementById(elementId);
 
   if (!tokenDisplayRoot) {
@@ -70,7 +74,7 @@ export const mountTokenDisplay = (elementId = 'token-display-root') => {
   }
 
   const root = createRoot(tokenDisplayRoot);
-  root.render(<TokenDisplay />);
+  root.render(<TokenDisplay showDetails={showDetails} />);
 };
 
 export default mountAuthUI;

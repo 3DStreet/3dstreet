@@ -3,6 +3,7 @@
  * Reusable shared component with CSS module styling
  */
 import { AuthProvider, useAuthContext } from '../../../editor/contexts';
+import TokenDetailsCard from './TokenDetailsCard';
 import styles from '../styles/TokenDisplay.module.scss';
 
 /**
@@ -16,7 +17,8 @@ export const TokenDisplayInner = ({
   tokenType = 'genToken', // 'genToken' or 'geoToken'
   label = null, // Custom label, or auto-generated from tokenType
   count = null, // Custom count, or auto-retrieved from tokenProfile
-  iconSrc = null // Custom icon, or auto-selected from tokenType
+  iconSrc = null, // Custom icon, or auto-selected from tokenType
+  showDetails = false // Enable hover card with detailed info
 }) => {
   const { currentUser, tokenProfile } = useAuthContext();
 
@@ -40,9 +42,13 @@ export const TokenDisplayInner = ({
     return null;
   }
 
-  const displayClassName = inline
-    ? `${styles.tokenDisplay} ${styles.inline}`
-    : styles.tokenDisplay;
+  const displayClassName = [
+    styles.tokenDisplay,
+    inline && styles.inline,
+    showDetails && styles.hoverable
+  ]
+    .filter(Boolean)
+    .join(' ');
 
   const content = (
     <span className={displayClassName}>
@@ -53,21 +59,36 @@ export const TokenDisplayInner = ({
     </span>
   );
 
-  if (useContainer) {
-    return <div className={styles.tokenContainer}>{content}</div>;
+  const displayContent = useContainer ? (
+    <div className={styles.tokenContainer}>{content}</div>
+  ) : (
+    content
+  );
+
+  // Wrap with TokenDetailsCard if showDetails is enabled
+  if (showDetails) {
+    return (
+      <TokenDetailsCard tokenType={tokenType} showDetails={showDetails}>
+        {displayContent}
+      </TokenDetailsCard>
+    );
   }
 
-  return content;
+  return displayContent;
 };
 
 /**
  * TokenDisplay - shows token count with AuthProvider wrapper
  * Use this for standalone usage (e.g., in header)
  */
-const TokenDisplay = ({ showLabel = false }) => {
+const TokenDisplay = ({ showLabel = false, showDetails = false, ...props }) => {
   return (
     <AuthProvider>
-      <TokenDisplayInner showLabel={showLabel} />
+      <TokenDisplayInner
+        showLabel={showLabel}
+        showDetails={showDetails}
+        {...props}
+      />
     </AuthProvider>
   );
 };

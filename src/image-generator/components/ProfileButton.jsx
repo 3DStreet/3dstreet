@@ -39,6 +39,7 @@ const ProfileButton = () => {
         isLoading={isLoading}
         onClick={onClick}
         tooltipSide="bottom"
+        showHoverCard={true}
       />
 
       <SignInModal

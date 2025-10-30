@@ -6,6 +6,18 @@
   padding: 2px 8px 2px 4px;
   cursor: default;
   user-select: none;
+  transition: all 0.2s ease;
+
+  // Interactive hoverable state when details are enabled
+  &.hoverable {
+    cursor: pointer;
+
+    &:hover {
+      background: var(--token-bg-hover, #2a2a2a);
+      transform: translateY(-1px);
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    }
+  }
 
   // Inline variant for use inside buttons
   &.inline {
