@@ -909,6 +909,18 @@ const GeneratorTab = {
       return;
     }
 
+    // Check if user has tokens
+    const hasTokens = window.authState.tokenProfile?.genToken > 0;
+    if (!hasTokens) {
+      // Show purchase modal instead of just disabling button
+      window.dispatchEvent(
+        new CustomEvent('openPurchaseModal', {
+          detail: { tokenType: 'genToken' }
+        })
+      );
+      return;
+    }
+
     // Get model type and prepare parameters
     // Get model
     const model = this.elements.modelSelector.value; // Build parameters

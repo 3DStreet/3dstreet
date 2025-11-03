@@ -73,15 +73,19 @@ const TokenDetailsCard = ({
 
             {/* Actions Section */}
             <div className={styles.actionsSection}>
-              {tokenCount === 0 ? (
-                <div className={styles.outOfTokens}>
+              {tokenCount < 10 && (
+                <div
+                  className={
+                    tokenCount < 1 ? styles.outOfTokens : styles.lowTokenWarning
+                  }
+                >
                   <p className={styles.warningText}>
-                    You are out of {tokenLabel.toLowerCase()}!
+                    You are {tokenCount < 1 ? 'out of' : 'running low on'}{' '}
+                    {tokenLabel}!
                   </p>
                   <button
                     className={styles.purchaseButton}
                     onClick={() => {
-                      // This will be handled by the parent component
                       window.dispatchEvent(
                         new CustomEvent('openPurchaseModal', {
                           detail: { tokenType }
@@ -92,26 +96,6 @@ const TokenDetailsCard = ({
                     Get More Tokens
                   </button>
                 </div>
-              ) : (
-                tokenCount < 10 && (
-                  <div className={styles.lowTokenWarning}>
-                    <p className={styles.warningText}>Running low on tokens</p>
-                    <a
-                      href="#"
-                      className={styles.refillLink}
-                      onClick={(e) => {
-                        e.preventDefault();
-                        window.dispatchEvent(
-                          new CustomEvent('openPurchaseModal', {
-                            detail: { tokenType }
-                          })
-                        );
-                      }}
-                    >
-                      Refill tokens →
-                    </a>
-                  </div>
-                )
               )}
             </div>
 

@@ -3,7 +3,10 @@ const webpack = require('webpack');
 
 /** @type { import('@storybook/react-webpack5').StorybookConfig } */
 const config = {
-  stories: ['../src/shared/**/*.stories.@(js|jsx|mjs|ts|tsx)'],
+  stories: [
+    '../src/shared/**/*.stories.@(js|jsx|mjs|ts|tsx)',
+    '../src/image-generator/**/*.stories.@(js|jsx|mjs|ts|tsx)'
+  ],
   addons: [
     '@storybook/addon-webpack5-compiler-swc',
     '@storybook/addon-docs',

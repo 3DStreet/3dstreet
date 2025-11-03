@@ -16,6 +16,7 @@ import { auth } from '../editor/services/firebase.js';
 // Import auth mount function
 import { mountAuthUI, mountTokenDisplay } from './mount-auth.js';
 import { mountAppSwitcher } from './mount-app-switcher.js';
+import { mountPurchaseModal } from './mount-purchase-modal.js';
 
 // Import all modules
 import FluxUI from './main.js';
@@ -37,6 +38,9 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   // Mount token display
   mountTokenDisplay();
+
+  // Mount purchase modal
+  mountPurchaseModal();
 
   // Initialize main UI
   FluxUI.init();

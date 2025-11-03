@@ -91,6 +91,18 @@
   border-radius: 8px;
 }
 
+.optionLabel {
+  font-size: 12px;
+  color: #666;
+  font-weight: 500;
+}
+
+.optionValue {
+  font-size: 12px;
+  color: #1a1a1a;
+  font-weight: 600;
+}
+
 .warningText {
   font-size: 13px;
   color: #991b1b;
@@ -218,6 +230,14 @@
   .lowTokenWarning {
     background: #2a2515;
     border-color: #713f12;
+  }
+
+  .optionLabel {
+    color: #999;
+  }
+
+  .optionValue {
+    color: #f0f0f0;
   }
 
   .usageTips {

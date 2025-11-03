@@ -350,3 +350,87 @@ button:active {
     background-color: #1f2937;
     color: #e5e7eb;
 }
+
+/* Token Tooltip - Radix-style overlay */
+.token-tooltip-wrapper {
+    position: absolute;
+    bottom: calc(100% + 8px);
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 50;
+    pointer-events: none;
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity 0.15s ease-out, visibility 0.15s ease-out;
+}
+
+/* Show tooltip on button hover */
+.token-tooltip-trigger:hover .token-tooltip-wrapper {
+    opacity: 1;
+    visibility: visible;
+}
+
+.token-tooltip {
+    animation: tooltipSlideDown 0.15s ease-out;
+}
+
+@keyframes tooltipSlideDown {
+    from {
+        transform: translateY(-4px);
+    }
+    to {
+        transform: translateY(0);
+    }
+}
+
+.token-tooltip-content {
+    background: #18181b;
+    color: #fafafa;
+    padding: 8px 12px;
+    border-radius: 6px;
+    font-size: 13px;
+    line-height: 1.4;
+    box-shadow:
+        0 10px 38px -10px rgba(0, 0, 0, 0.35),
+        0 10px 20px -15px rgba(0, 0, 0, 0.2),
+        0 0 0 1px rgba(255, 255, 255, 0.1);
+    min-width: 280px;
+    max-width: 320px;
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+    white-space: normal;
+    opacity: 1 !important;
+}
+
+.token-tooltip-icon {
+    flex-shrink: 0;
+    margin-top: 2px;
+    color: #fbbf24;
+}
+
+.token-tooltip-arrow {
+    position: absolute;
+    bottom: -4px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 0;
+    height: 0;
+    border-left: 6px solid transparent;
+    border-right: 6px solid transparent;
+    border-top: 4px solid #18181b;
+}
+
+/* Dark mode adjustments (already dark by default) */
+.dark .token-tooltip-content {
+    background: #18181b;
+    color: #fafafa;
+    box-shadow:
+        0 10px 38px -10px rgba(0, 0, 0, 0.5),
+        0 10px 20px -15px rgba(0, 0, 0, 0.3),
+        0 0 0 1px rgba(255, 255, 255, 0.1);
+}
+
+.dark .token-tooltip-arrow {
+    border-top-color: #18181b;
+}

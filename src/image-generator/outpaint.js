@@ -165,7 +165,7 @@ const OutpaintTab = {
                     </div>
 
                     <!-- Generate Button -->
-                    <button id="outpaint-generate-btn" class="w-full px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 disabled:opacity-50 flex items-center justify-center gap-2" disabled>
+                    <button id="outpaint-generate-btn" class="w-full px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 disabled:opacity-50 flex items-center justify-center gap-2">
                         <span>Generate Outpaint</span>
                         <span class="inline-flex items-center rounded" style="background: rgba(0, 0, 0, 0.15); padding: 6px 8px; gap: 2px;">
                             <img src="/ui_assets/token-image.png" alt="Token" class="w-5 h-5" />
@@ -418,8 +418,7 @@ const OutpaintTab = {
       this.downloadImage.bind(this)
     );
 
-    // Ensure generate button is disabled initially
-    this.elements.generateBtn.disabled = true;
+    // Button is always enabled - validation happens in generateOutpaint()
   },
 
   // Setup a range slider to update its value display
@@ -463,7 +462,6 @@ const OutpaintTab = {
       this.updateNewSizeLabel(); // Update size label initially
       this.elements.previewImage.src = imageDataUrl; // Now set the preview src
       this.elements.previewContainer.style.display = 'block';
-      this.elements.generateBtn.disabled = false; // Enable generate button
       this.resetOutput(); // Clear previous output
       // Update file name label if it wasn't a file upload
       if (
@@ -474,7 +472,6 @@ const OutpaintTab = {
       }
     };
     this.elements.sourceImage.onerror = () => {
-      this.elements.generateBtn.disabled = true; // Disable if image fails to load
       this.elements.previewContainer.style.display = 'none';
       this.imageData = null;
       this.originalWidth = 0;
@@ -600,8 +597,21 @@ const OutpaintTab = {
       return;
     }
 
+    // Check if user has tokens first - prioritize showing purchase modal
+    const hasTokens = window.authState.tokenProfile?.genToken > 0;
+    if (!hasTokens) {
+      // Show purchase modal instead of just disabling button
+      window.dispatchEvent(
+        new CustomEvent('openPurchaseModal', {
+          detail: { tokenType: 'genToken' }
+        })
+      );
+      return;
+    }
+
+    // Validate required inputs after token check
     if (!this.imageData) {
-      FluxUI.showNotification('Please load an image first.', 'warning');
+      FluxUI.showNotification('Please select a source image', 'error');
       return;
     }
 

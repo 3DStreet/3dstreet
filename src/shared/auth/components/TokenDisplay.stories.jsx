@@ -264,3 +264,60 @@ export const CustomLabelAndIcon = {
     }
   }
 };
+
+// With Details Card (hover to see dropdown)
+export const WithDetailsCard = {
+  args: {
+    mockUser: { uid: 'user123', email: 'test@example.com' },
+    mockTokenProfile: { genToken: 50, geoToken: 10 },
+    showLabel: true,
+    showDetails: true,
+    tokenType: 'genToken'
+  },
+  parameters: {
+    docs: {
+      description: {
+        story:
+          'Shows the token details card on hover with purchase button and token info.'
+      }
+    }
+  }
+};
+
+// With Details Card - Low Tokens
+export const WithDetailsCardLowTokens = {
+  args: {
+    mockUser: { uid: 'user123', email: 'test@example.com' },
+    mockTokenProfile: { genToken: 3, geoToken: 1 },
+    showLabel: true,
+    showDetails: true,
+    tokenType: 'genToken'
+  },
+  parameters: {
+    docs: {
+      description: {
+        story:
+          'Shows the token details card with low token warning and purchase prompt.'
+      }
+    }
+  }
+};
+
+// With Details Card - Out of Tokens
+export const WithDetailsCardNoTokens = {
+  args: {
+    mockUser: { uid: 'user123', email: 'test@example.com' },
+    mockTokenProfile: { genToken: 0, geoToken: 0 },
+    showLabel: true,
+    showDetails: true,
+    tokenType: 'genToken'
+  },
+  parameters: {
+    docs: {
+      description: {
+        story:
+          'Shows the token details card when completely out of tokens with urgent purchase prompt.'
+      }
+    }
+  }
+};

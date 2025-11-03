@@ -159,7 +159,7 @@ const InpaintTab = {
 
 
                     <!-- Generate Button -->
-                    <button id="inpaint-generate-btn" class="w-full px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 disabled:opacity-50 flex items-center justify-center gap-2" disabled>
+                    <button id="inpaint-generate-btn" class="w-full px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 disabled:opacity-50 flex items-center justify-center gap-2">
                         <span>Generate Inpaint</span>
                         <span class="inline-flex items-center rounded" style="background: rgba(0, 0, 0, 0.15); padding: 6px 8px; gap: 2px;">
                             <img src="/ui_assets/token-image.png" alt="Token" class="w-5 h-5" />
@@ -434,8 +434,7 @@ const InpaintTab = {
       this.downloadImage.bind(this)
     );
 
-    // Ensure generate button is disabled initially
-    this.elements.generateBtn.disabled = true;
+    // Button is always enabled - validation happens in generateInpaint()
   },
 
   // Setup a range slider to update its value display and optionally a callback
@@ -482,7 +481,6 @@ const InpaintTab = {
       this.originalHeight = this.elements.sourceImage.naturalHeight;
       this.initializeCanvas();
       this.elements.canvasContainer.style.display = 'block';
-      this.elements.generateBtn.disabled = false; // Enable generate button
       this.resetOutput(); // Clear previous output
       this.elements.outputPlaceholder.textContent = 'Draw mask on the image';
       this.elements.outputPlaceholder.classList.remove('hidden');
@@ -497,7 +495,6 @@ const InpaintTab = {
       }
     };
     this.elements.sourceImage.onerror = () => {
-      this.elements.generateBtn.disabled = true; // Disable if image fails to load
       this.elements.canvasContainer.style.display = 'none';
       this.imageData = null;
       this.elements.fileNameLabel.textContent = 'No file selected';
@@ -786,8 +783,21 @@ const InpaintTab = {
       return;
     }
 
+    // Check if user has tokens first - prioritize showing purchase modal
+    const hasTokens = window.authState.tokenProfile?.genToken > 0;
+    if (!hasTokens) {
+      // Show purchase modal instead of just disabling button
+      window.dispatchEvent(
+        new CustomEvent('openPurchaseModal', {
+          detail: { tokenType: 'genToken' }
+        })
+      );
+      return;
+    }
+
+    // Validate required inputs after token check
     if (!this.imageData) {
-      FluxUI.showNotification('Please load an image first.', 'warning');
+      FluxUI.showNotification('Please select a source image', 'error');
       return;
     }
 
