@@ -109,8 +109,45 @@ exports.createStripeSession = functions
     const session = await stripe.checkout.sessions.create(data);
 
     return {
-      id: session.id
+      id: session.id,
+      clientSecret: session.client_secret // For embedded checkout
     };
+  });
+
+exports.getStripeSessionStatus = functions
+  .runWith({ secrets: ["STRIPE_SECRET_KEY"] })
+  .https
+  .onCall(async (data, context) => {
+    const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
+
+    // Verify user is authenticated
+    if (!context.auth) {
+      throw new functions.https.HttpsError('unauthenticated', 'User must be authenticated to check session status.');
+    }
+
+    const { sessionId } = data;
+
+    if (!sessionId) {
+      throw new functions.https.HttpsError('invalid-argument', 'Session ID is required.');
+    }
+
+    try {
+      const session = await stripe.checkout.sessions.retrieve(sessionId);
+
+      // Verify this session belongs to the authenticated user
+      if (session.metadata?.userId !== context.auth.uid) {
+        throw new functions.https.HttpsError('permission-denied', 'Session does not belong to authenticated user.');
+      }
+
+      return {
+        status: session.status,
+        customer_email: session.customer_details?.email,
+        payment_status: session.payment_status
+      };
+    } catch (error) {
+      console.error('Error retrieving session:', error);
+      throw new functions.https.HttpsError('internal', 'Failed to retrieve session status.');
+    }
   });
 
 exports.createStripeBillingPortal = functions
