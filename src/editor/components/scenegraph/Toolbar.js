@@ -4,7 +4,7 @@ import useStore from '@/store';
 import { useAuthContext } from '@/editor/contexts';
 import { Tooltip } from 'radix-ui';
 import { Button } from '../elements/Button';
-import { CameraSparkleIcon } from '../../icons';
+import { CameraSparkleIcon } from '@shared/icons';
 import { AwesomeIcon } from '../elements/AwesomeIcon';
 import { faLockOpen } from '@fortawesome/free-solid-svg-icons';
 import { makeScreenshot } from '@/editor/lib/SceneUtils';

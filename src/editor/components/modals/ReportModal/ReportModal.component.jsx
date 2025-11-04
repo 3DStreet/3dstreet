@@ -1,10 +1,10 @@
 import { useState, useEffect } from 'react';
-import Modal from '../Modal.jsx';
+import Modal from '@shared/components/Modal/Modal.jsx';
 import useStore from '@/store.js';
 import styles from './ReportModal.module.scss';
 import { Button, TextArea, Input } from '@/editor/components/elements';
 import { useAuthContext } from '@/editor/contexts';
-import { GeospatialIcon } from '@/editor/icons';
+import { GeospatialIcon } from '@shared/icons';
 
 export const ReportModal = () => {
   const setModal = useStore((state) => state.setModal);

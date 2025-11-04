@@ -9,10 +9,10 @@ import {
   EmbeddedCheckout
 } from '@stripe/react-stripe-js';
 import { httpsCallable } from 'firebase/functions';
-import { functions } from '../../editor/services/firebase';
+import { functions } from '@shared/services/firebase';
 import useImageGenStore from '../store';
 import { useAuthContext } from '../../editor/contexts';
-import { getTokenProfile } from '../../editor/utils/tokens';
+import { getTokenProfile } from '@shared/utils/tokens';
 import styles from './PurchaseModal.module.scss';
 
 // Initialize Stripe

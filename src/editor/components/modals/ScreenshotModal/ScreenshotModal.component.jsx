@@ -1,22 +1,22 @@
 import { useEffect, useState } from 'react';
 import styles from './ScreenshotModal.module.scss';
-import Modal from '../Modal.jsx';
+import Modal from '@shared/components/Modal/Modal.jsx';
 import posthog from 'posthog-js';
 import useStore from '@/store';
 import { Button } from '../../elements';
-import { DownloadIcon } from '../../../icons';
+import { DownloadIcon } from '@shared/icons';
 import { takeScreenshotWithOptions } from '../../../api/scene';
 import {
   createSceneSnapshot,
   createSnapshotFromImageUrl,
   setSnapshotAsSceneThumbnail
 } from '../../../api/snapshot';
-import { functions } from '../../../services/firebase';
+import { functions } from '@shared/services/firebase';
 import { useAuthContext } from '../../../contexts';
 import { httpsCallable } from 'firebase/functions';
 import { ImgComparisonSlider } from '@img-comparison-slider/react';
 import 'img-comparison-slider/dist/styles.css';
-import { canUseImageFeature } from '../../../utils/tokens';
+import { canUseImageFeature } from '@shared/utils/tokens';
 import { TokenDisplayInner } from '@shared/auth/components';
 
 // Available AI models

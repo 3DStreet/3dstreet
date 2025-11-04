@@ -2,7 +2,7 @@
  * Editor auth API - thin wrapper around shared auth with STREET notifications
  */
 import { signInWithGoogle, signInWithMicrosoft } from '@shared/auth/api/auth';
-import { auth } from '../services/firebase';
+import { auth } from '@shared/services/firebase';
 import posthog from 'posthog-js';
 
 const signIn = async () => {

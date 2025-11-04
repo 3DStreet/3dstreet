@@ -10,7 +10,7 @@ import {
   serverTimestamp,
   limit
 } from 'firebase/firestore';
-import { db } from '../services/firebase';
+import { db } from '@shared/services/firebase';
 import { generateUsername } from './username-generator.js';
 
 // Re-export the generator function

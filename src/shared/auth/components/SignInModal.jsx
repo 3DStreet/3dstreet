@@ -7,11 +7,8 @@
  */
 
 import { useState } from 'react';
-import {
-  GoogleSignInButtonSVG,
-  SignInMicrosoftIconSVG
-} from '../../../editor/icons';
-import Modal from '../../../editor/components/modals/Modal.jsx';
+import { GoogleSignInButtonSVG, SignInMicrosoftIconSVG } from '@shared/icons';
+import Modal from '../../components/Modal/Modal.jsx';
 import styles from '../styles/SignInModal.module.scss';
 import { signInWithGoogle, signInWithMicrosoft } from '../api/auth';
 

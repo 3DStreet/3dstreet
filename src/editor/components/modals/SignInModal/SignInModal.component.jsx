@@ -6,7 +6,7 @@
 import { SignInModal as SharedSignInModal } from '@/shared/auth/components';
 import useStore from '@/store';
 import { saveSceneWithScreenshot } from '@/editor/lib/SceneUtils';
-import { auth } from '@/editor/services/firebase';
+import { auth } from '@shared/services/firebase';
 import { SavingModal } from '../SavingModal';
 
 const SignInModal = () => {

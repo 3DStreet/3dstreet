@@ -1,6 +1,6 @@
 import { doc, getDoc, updateDoc, serverTimestamp } from 'firebase/firestore';
 import { v4 as uuidv4 } from 'uuid';
-import { db, storage } from '../services/firebase';
+import { db, storage } from '@shared/services/firebase';
 import { getDownloadURL, ref, uploadBytes } from 'firebase/storage';
 import { getCurrentCameraState } from '../lib/cameraUtils';
 import posthog from 'posthog-js';

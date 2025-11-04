@@ -2,7 +2,7 @@ import styles from './Modal.module.scss';
 import React, { Component } from 'react';
 import PropTypes from 'prop-types';
 import classNames from 'classnames';
-import { Cross24Icon } from '../../icons';
+import { Cross24Icon } from '@shared/icons';
 
 export default class Modal extends Component {
   static propTypes = {

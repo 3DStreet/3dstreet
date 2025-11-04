@@ -4,7 +4,7 @@
  */
 
 import { httpsCallable } from 'firebase/functions';
-import { functions } from '../editor/services/firebase.js';
+import { functions } from '@shared/services/firebase.js';
 
 // Global API functions
 const FluxAPI = {

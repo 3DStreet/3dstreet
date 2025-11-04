@@ -4,7 +4,7 @@ import PropTypes from 'prop-types';
 import PropertyRow from './PropertyRow';
 import React from 'react';
 import { shouldShowProperty } from '../../lib/utils';
-import { TrashIcon } from '../../icons';
+import { TrashIcon } from '@shared/icons';
 
 const isSingleProperty = AFRAME.schema.isSingleProperty;
 

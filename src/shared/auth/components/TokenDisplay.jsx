@@ -2,7 +2,7 @@
  * TokenDisplay component - displays user's generation token count
  * Reusable shared component with CSS module styling
  */
-import { AuthProvider, useAuthContext } from '../../../editor/contexts';
+import { AuthProvider, useAuthContext } from '../../contexts';
 import TokenDetailsCard from './TokenDetailsCard';
 import styles from '../styles/TokenDisplay.module.scss';
 

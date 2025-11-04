@@ -5,9 +5,9 @@
 import { useState, useEffect } from 'react';
 import * as HoverCard from '@radix-ui/react-hover-card';
 import { signOut } from 'firebase/auth';
-import { auth } from '../../../editor/services/firebase';
-import { useAuthContext } from '../../../editor/contexts';
-import { getUserProfile } from '../../../editor/utils/username';
+import { auth } from '../../services/firebase';
+import { useAuthContext } from '../../contexts';
+import { getUserProfile } from '../../utils/username';
 import posthog from 'posthog-js';
 import styles from '../styles/ProfileHoverCard.module.scss';
 

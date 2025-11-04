@@ -4,9 +4,9 @@ import {
   validateUsernameFormat,
   checkUsernameAvailability,
   updateUsername
-} from '../../../utils/username';
+} from '@shared/utils/username';
 import { Button } from '../Button';
-import { Loader } from '../../../icons';
+import { Loader } from '@shared/icons';
 import { debounce } from 'lodash-es';
 
 const UsernameEditor = ({ currentUsername, userId, onUpdate }) => {

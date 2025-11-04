@@ -3,7 +3,7 @@ import { Button } from '../elements';
 import { useAuthContext } from '@/editor/contexts/index.js';
 import AdvancedComponents from './AdvancedComponents';
 import PropertyRow from './PropertyRow';
-import { Magnifier20Icon } from '../../icons';
+import { Magnifier20Icon } from '@shared/icons';
 import posthog from 'posthog-js';
 import useStore from '@/store';
 import { useState, useEffect } from 'react';

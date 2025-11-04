@@ -2,7 +2,7 @@ import React from 'react';
 import PropTypes from 'prop-types';
 import Select, { components } from 'react-select';
 import Events from '../../lib/Events';
-import { DropdownArrowIcon } from '../../icons';
+import { DropdownArrowIcon } from '@shared/icons';
 import { getGroupedMixinOptions } from '../../lib/mixinUtils';
 
 export default class Mixin extends React.Component {

@@ -5,14 +5,14 @@ import {
   useImperativeHandle,
   forwardRef
 } from 'react';
-import { vertexAI } from '../../services/firebase.js';
+import { vertexAI } from '@shared/services/firebase';
 import { getGenerativeModel } from 'firebase/vertexai';
 import {
   Copy32Icon,
   DownloadIcon,
   ChatbotIcon,
   Cross24Icon
-} from '../../icons/index.js';
+} from '@shared/icons';
 import { useAuthContext } from '../../contexts';
 import useStore from '@/store';
 import styles from './AIChatPanel.module.scss';

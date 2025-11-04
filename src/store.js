@@ -3,7 +3,7 @@ import { devtools, subscribeWithSelector } from 'zustand/middleware';
 import posthog from 'posthog-js';
 import Events from './editor/lib/Events';
 import canvasRecorder from './editor/lib/CanvasRecorder';
-import { auth } from './editor/services/firebase';
+import { auth } from '@shared/services/firebase';
 
 const firstModal = () => {
   const hash = window.location.hash;

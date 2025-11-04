@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo, useRef } from 'react';
-import { Cross24Icon, Plus20Circle } from '../../../icons';
+import { Cross24Icon, Plus20Circle } from '@shared/icons';
 import { createPortal } from 'react-dom';
 import { useAuthContext } from '../../../contexts/index.js';
 import { Button, Tabs, PanelToggleButton } from '../../elements';

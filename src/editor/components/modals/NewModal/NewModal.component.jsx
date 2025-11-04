@@ -1,5 +1,5 @@
 import React from 'react';
-import Modal from '../Modal.jsx';
+import Modal from '@shared/components/Modal/Modal.jsx';
 import useStore from '@/store.js';
 import styles from './NewModal.module.scss';
 import { createBlankScene, inputStreetmix } from '@/editor/lib/SceneUtils.js';
@@ -9,7 +9,7 @@ import {
   ChatbotIcon,
   GeospatialIcon,
   ManagedStreetIcon
-} from '@/editor/icons';
+} from '@shared/icons';
 import {
   createIntersection,
   createManagedStreetFromStreetObject

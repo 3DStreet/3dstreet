@@ -1,13 +1,13 @@
 import styles from './ProfileModal.module.scss';
 import { useState, useEffect } from 'react';
 
-import Modal from '../Modal.jsx';
+import Modal from '@shared/components/Modal/Modal.jsx';
 import { Button, UsernameEditor } from '../../elements';
 import { useAuthContext } from '../../../contexts';
 import { SavingModal } from '../SavingModal/SavingModal.component.jsx';
 import { signOut } from 'firebase/auth';
-import { auth, functions } from '../../../services/firebase';
-import { Loader } from '../../../icons';
+import { auth, functions } from '@shared/services/firebase';
+import { Loader } from '@shared/icons';
 import { httpsCallable } from 'firebase/functions';
 import posthog from 'posthog-js';
 import { renderProfileIcon, TokenDisplayInner } from '@shared/auth/components';
@@ -15,7 +15,7 @@ import useStore from '@/store';
 import {
   getUserProfile,
   generateAndSaveUsername
-} from '../../../utils/username';
+} from '@shared/utils/username';
 
 const ProfileModal = () => {
   const { currentUser, setCurrentUser, tokenProfile } = useAuthContext();

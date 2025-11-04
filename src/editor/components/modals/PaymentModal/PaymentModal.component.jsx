@@ -3,10 +3,10 @@ import styles from './PaymentModal.module.scss';
 import { useState } from 'react';
 import { loadStripe } from '@stripe/stripe-js';
 import { useAuthContext } from '../../../contexts/index.js';
-import { CheckMark32Icon, Loader } from '../../../icons';
+import { CheckMark32Icon, Loader } from '@shared/icons';
 import { Button } from '../../elements/index.js';
-import Modal from '../Modal.jsx';
-import { functions } from '../../../services/firebase.js';
+import Modal from '@shared/components/Modal/Modal.jsx';
+import { functions } from '@shared/services/firebase';
 import posthog from 'posthog-js';
 import useStore from '@/store';
 

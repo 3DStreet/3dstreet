@@ -1,5 +1,5 @@
 import { TokenDisplayInner } from './TokenDisplay';
-import { AuthContext } from '../../../editor/contexts';
+import { AuthContext } from '@shared/contexts';
 
 // Mock AuthProvider for Storybook that provides fake auth data
 const MockAuthProvider = ({ children, mockUser, mockTokenProfile }) => (

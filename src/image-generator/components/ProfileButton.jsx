@@ -7,7 +7,7 @@ import {
   SignInModal
 } from '@shared/auth/components';
 import { useAuthContext } from '../../editor/contexts';
-import { auth } from '../../editor/services/firebase';
+import { auth } from '@shared/services/firebase';
 import useImageGenStore from '../store';
 import posthog from 'posthog-js';
 

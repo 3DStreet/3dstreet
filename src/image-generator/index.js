@@ -11,7 +11,7 @@ import './styles/styles.css';
 import './styles/gallery.css';
 
 // Import Firebase auth
-import { auth } from '../editor/services/firebase.js';
+import { auth } from '@shared/services/firebase.js';
 
 // Import auth mount function
 import { mountAuthUI, mountTokenDisplay } from './mount-auth.js';
