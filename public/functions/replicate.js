@@ -51,7 +51,7 @@ async function postAIImageToDiscord(userId, imageUrl, prompt, modelVersion, scen
           url: imageUrl
         },
         footer: {
-          text: '3DStreet AI Image Generation',
+          text: '3DStreet Editor Snapshot AI Render',
           icon_url: 'https://3dstreet.app/favicon-32x32.png'
         },
         timestamp: new Date().toISOString()
