@@ -227,7 +227,10 @@ exports.bflProxyImage = functions
 
 // Proxy endpoint for API requests (callable function with auth and token billing)
 exports.bflApiProxy = functions
-  .runWith({ secrets: ["BFL_API_KEY", "ALLOWED_PRO_TEAM_DOMAINS", "DISCORD_WEBHOOK_URL"] })
+  .runWith({
+    timeoutSeconds: 120,
+    secrets: ["BFL_API_KEY", "ALLOWED_PRO_TEAM_DOMAINS", "DISCORD_WEBHOOK_URL"]
+  })
   .https
   .onCall(async (data, context) => {
     try {
