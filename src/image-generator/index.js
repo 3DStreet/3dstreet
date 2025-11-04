@@ -6,6 +6,9 @@
 // Import Sentry for error tracking
 import '../editor/instrument.js';
 
+// Import Tailwind CSS (bundled via webpack instead of CDN)
+import '../styles/tailwind.css';
+
 // Import styles
 import './styles/styles.css';
 import './styles/gallery.css';
@@ -52,4 +55,10 @@ document.addEventListener('DOMContentLoaded', async () => {
   GeneratorTab.init();
   InpaintTab.init();
   OutpaintTab.init();
+
+  // Hide loading screen once everything is initialized
+  // Use requestAnimationFrame to ensure styles are applied
+  requestAnimationFrame(() => {
+    document.body.classList.add('loaded');
+  });
 });
