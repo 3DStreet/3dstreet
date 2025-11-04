@@ -5,7 +5,7 @@
 
 import FluxUI from './main.js';
 import FluxAPI from './api.js';
-import FluxGallery from './gallery.js';
+import { galleryService } from './mount-gallery.js';
 import useImageGenStore from './store.js';
 import ImageUploadUtils from './image-upload-utils.js';
 
@@ -699,7 +699,7 @@ const OutpaintTab = {
 
   // Add generated image to gallery
   addToGallery: function () {
-    if (this.currentImageUrl && FluxGallery) {
+    if (this.currentImageUrl && galleryService) {
       // Fetch the actual image data from the proxied URL to store in gallery
       fetch(this.currentImageUrl)
         .then((response) => response.blob())
@@ -717,7 +717,7 @@ const OutpaintTab = {
               seed: this.currentParams.seed || 'N/A', // Ensure seed is captured
               model: 'flux-pro-1.0-expand' // Explicitly set model
             };
-            FluxGallery.addImage(base64data, metadata);
+            galleryService.addImage(base64data, metadata);
             FluxUI.showNotification('Image added to gallery!', 'success');
           };
           reader.readAsDataURL(blob);

@@ -176,7 +176,7 @@ export const mountGallery = async () => {
       onUseForInpaint={handleUseForInpaint}
       onUseForOutpaint={handleUseForOutpaint}
       onUseForGenerator={handleUseForGenerator}
-      onNotification={FluxUI.showNotification}
+      onNotification={(message, type) => FluxUI.showNotification(message, type)}
     />
   );
 };
