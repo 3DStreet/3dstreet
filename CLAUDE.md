@@ -20,7 +20,7 @@
 
 ## Architecture Overview
 
-3DStreet has a **dual-architecture** design:
+3DStreet has a **multi-application architecture** with shared component libraries:
 
 ### 1. A-Frame Vanilla JS Application (`/src`)
 - **Purpose:** Core 3D rendering engine and scene management
@@ -29,16 +29,31 @@
 - **Entry Point:** `src/index.js`
 
 ### 2. React Editor Application (`/src/editor`)
-- **Purpose:** User interface and editing tools
+- **Purpose:** User interface and editing tools for 3D street scenes
 - **Technology:** React 18, Zustand (state management), TailwindCSS, Sass
 - **Role:** Provides UI for scene manipulation, property editing, file I/O, authentication, and cloud storage
 - **Entry Point:** `src/editor/index.js`
 - **Relationship:** Wraps around A-Frame scene, communicates via AFRAME.INSPECTOR global object and event system
 
-### 3. Firebase Hosting & Functions (`/public`)
+### 3. AI Image Generator Application (`/src/image-generator`)
+- **Purpose:** AI-powered image generation tool using Black Forest Labs (BFL) Flux models
+- **Technology:** Vanilla JavaScript with React islands for auth/navigation, TailwindCSS
+- **Features:** Text-to-image generation, inpainting, outpainting, gallery management
+- **Entry Point:** `src/image-generator/index.js`
+- **URL:** https://3dstreet.app/image-generator/
+- **Relationship:** Standalone app that shares authentication and navigation components via `/src/shared`
+
+### 4. Shared Component Library (`/src/shared`)
+- **Purpose:** Reusable components and utilities shared across multiple applications
+- **Technology:** React 18, Firebase SDK, TailwindCSS
+- **Includes:** Authentication components, navigation (AppSwitcher), Firebase services, utility functions
+- **Usage:** Imported via `@shared/*` alias in webpack configuration
+- **Architecture Pattern:** "Island Architecture" - React components mounted in non-React apps
+
+### 5. Firebase Hosting & Functions (`/public`)
 - **Purpose:** Deployment, cloud storage, serverless functions
 - **Hosting:** Serves static files and SPA routing
-- **Functions:** Scene storage/retrieval, Stripe payments, geoid calculations, WebXR variants, Replicate AI
+- **Functions:** Scene storage/retrieval, Stripe payments, geoid calculations, WebXR variants, BFL/Replicate AI proxy
 - **Configuration:** `public/firebase.json`
 
 ---
