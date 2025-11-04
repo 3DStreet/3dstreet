@@ -20,10 +20,10 @@ import { auth } from '@shared/services/firebase.js';
 import { mountAuthUI, mountTokenDisplay } from './mount-auth.js';
 import { mountAppSwitcher } from './mount-app-switcher.js';
 import { mountPurchaseModal } from './mount-purchase-modal.js';
+import { mountGallery } from './mount-gallery.js';
 
 // Import all modules
 import FluxUI from './main.js';
-import FluxGallery from './gallery.js';
 import GeneratorTab from './generator.js';
 import InpaintTab from './inpaint.js';
 import OutpaintTab from './outpaint.js';
@@ -48,8 +48,8 @@ document.addEventListener('DOMContentLoaded', async () => {
   // Initialize main UI
   FluxUI.init();
 
-  // Initialize Gallery (async)
-  await FluxGallery.init();
+  // Mount Gallery (React component)
+  await mountGallery();
 
   // Initialize tabs
   GeneratorTab.init();

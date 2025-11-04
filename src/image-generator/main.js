@@ -106,9 +106,27 @@ const FluxUI = {
   },
   // Show notification
   showNotification: function (message, type = 'error') {
+    // Check if elements are initialized
+    if (!this.elements) {
+      console.error(
+        'FluxUI not initialized, cannot show notification:',
+        message
+      );
+      return;
+    }
+
     const notification = this.elements.notification;
     const notificationMessage = this.elements.notificationMessage;
     const notificationIcon = this.elements.notificationIcon;
+
+    // Check if notification elements exist
+    if (!notification || !notificationMessage || !notificationIcon) {
+      console.error(
+        'Notification elements not found, cannot show notification:',
+        message
+      );
+      return;
+    }
 
     // Set message
     notificationMessage.textContent = message;

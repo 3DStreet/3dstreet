@@ -120,6 +120,19 @@ const FluxAPI = {
 
   // Get a proxied image URL
   getProxiedImageUrl: function (originalUrl) {
+    // When running locally (webpack dev server), we need to use the full Firebase function URL
+    // because the local server doesn't have the Firebase hosting rewrites
+    const isLocalhost =
+      window.location.hostname === 'localhost' ||
+      window.location.hostname === '127.0.0.1';
+
+    if (isLocalhost) {
+      // Use the deployed Firebase function URL for localhost development
+      const projectId = process.env.FIREBASE_PROJECT_ID || '3dstreet';
+      return `https://us-central1-${projectId}.cloudfunctions.net/bflProxyImage?url=${encodeURIComponent(originalUrl)}`;
+    }
+
+    // For production/staging, use the relative path which gets rewritten by Firebase Hosting
     return `/bflProxyImage?url=${encodeURIComponent(originalUrl)}`;
   }
 };

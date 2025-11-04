@@ -5,7 +5,7 @@
 
 import FluxUI from './main.js';
 import FluxAPI from './api.js';
-import FluxGallery from './gallery.js';
+import { galleryService } from './mount-gallery.js';
 import useImageGenStore from './store.js';
 import ImageUploadUtils from './image-upload-utils.js';
 
@@ -1338,8 +1338,8 @@ const GeneratorTab = {
 
   // Save the generated image to the gallery
   saveToGallery: function (imageUrl) {
-    // Check if gallery module is available
-    if (!FluxGallery) {
+    // Check if gallery service is available
+    if (!galleryService) {
       return;
     }
 
@@ -1396,7 +1396,8 @@ const GeneratorTab = {
         };
 
         try {
-          await FluxGallery.addImage(dataUrl, metadata);
+          await galleryService.addImage(dataUrl, metadata, 'ai-render');
+          FluxUI.showNotification('Image saved to gallery!', 'success');
         } catch (e) {
           console.error('Gallery addImage error:', e);
           FluxUI.showNotification('Failed to save image to gallery.', 'error');
