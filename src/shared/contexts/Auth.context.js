@@ -104,9 +104,6 @@ const AuthProvider = ({ children }) => {
   // Listen for token count changes (e.g., after image generation)
   useEffect(() => {
     const handleTokenCountChanged = () => {
-      console.log(
-        'Token count changed event received, refreshing token profile'
-      );
       refreshTokenProfile();
     };
 

@@ -60,7 +60,6 @@ const isUserPro = async (user) => {
       };
     }
   } else {
-    console.log('refreshIdTokens: currentUser not set');
     return {
       isPro: false,
       isProSubscription: false,
@@ -76,10 +75,8 @@ const isUserBeta = async (user) => {
       await user.getIdToken(true);
       const idTokenResult = await user.getIdTokenResult();
       if (idTokenResult.claims.beta) {
-        console.log('BETA USER');
         return true;
       } else {
-        console.log('NOT BETA USER');
         return false;
       }
     } catch (error) {
@@ -87,7 +84,6 @@ const isUserBeta = async (user) => {
       return false;
     }
   } else {
-    console.log('refreshIdTokens: currentUser not set');
     return false;
   }
 };

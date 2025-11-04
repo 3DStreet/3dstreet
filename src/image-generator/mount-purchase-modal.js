@@ -30,7 +30,6 @@ export const mountPurchaseModal = () => {
 
   // Listen for custom events to open the modal
   window.addEventListener('openPurchaseModal', (event) => {
-    console.log('Opening purchase modal', event.detail);
     useImageGenStore.getState().setModal('purchase');
   });
 };

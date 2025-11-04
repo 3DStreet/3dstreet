@@ -12,9 +12,6 @@ export const getTokenProfile = async (userId) => {
       const data = tokenProfileDoc.data();
       // Migration: If genToken is missing, provide a default value
       if (data.geoToken !== undefined && data.genToken === undefined) {
-        console.log(
-          'Warning: Token profile missing genToken field, will be migrated on next server call'
-        );
         data.genToken = 0; // Will be properly migrated server-side
       }
       return data;

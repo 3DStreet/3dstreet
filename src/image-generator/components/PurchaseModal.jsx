@@ -54,8 +54,6 @@ const PurchaseModal = () => {
       return;
     }
 
-    console.log('Starting to poll for token update...');
-
     // Store initial token count
     initialTokenCount.current = tokenProfile?.genToken || 0;
 
@@ -64,7 +62,6 @@ const PurchaseModal = () => {
 
     pollIntervalRef.current = setInterval(async () => {
       attempts++;
-      console.log(`Polling attempt ${attempts}/${maxAttempts}`);
 
       try {
         // Fetch fresh token profile directly from Firestore
@@ -76,9 +73,6 @@ const PurchaseModal = () => {
 
         // Check if tokens have increased
         if (currentTokens > initialTokenCount.current) {
-          console.log(
-            `Tokens updated! ${initialTokenCount.current} -> ${currentTokens}`
-          );
           clearInterval(pollIntervalRef.current);
           pollIntervalRef.current = null;
 
@@ -92,9 +86,6 @@ const PurchaseModal = () => {
           });
         } else if (attempts >= maxAttempts) {
           // Timeout - webhook might be delayed, but show success anyway
-          console.warn(
-            'Polling timeout - showing success but webhook may still be processing'
-          );
           clearInterval(pollIntervalRef.current);
           pollIntervalRef.current = null;
 
@@ -127,10 +118,6 @@ const PurchaseModal = () => {
         const { data } = await checkActiveSubscriptions();
 
         if (data.hasActiveSubscription) {
-          console.log(
-            `User has ${data.subscriptionCount} active subscription(s)`,
-            data.subscriptions
-          );
           setSubscriptionInfo(data);
           setModalState('has-subscription');
         }
@@ -231,7 +218,6 @@ const PurchaseModal = () => {
       },
       onComplete: () => {
         // Payment completed in the embedded form!
-        console.log('Payment completed, waiting for webhook confirmation...');
         setModalState('loading');
 
         // Start polling for token update from webhook

@@ -31,7 +31,6 @@ const AppSwitcher = () => {
 
   const handleEditorClick = () => {
     if (isEditor) {
-      console.log('Already in 3DStreet Editor');
       return;
     }
     window.location.href = '/';
@@ -39,7 +38,6 @@ const AppSwitcher = () => {
 
   const handleImageGeneratorClick = () => {
     if (isImageGenerator) {
-      console.log('Already in Image Generator');
       return;
     }
     window.location.href = '/image-generator/';
