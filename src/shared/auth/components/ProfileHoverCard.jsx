@@ -170,7 +170,7 @@ const ProfileHoverCard = ({
               className={`${styles.actionButton} ${styles.editProfileButton}`}
               onClick={handleOpenFullProfile}
             >
-              Edit Profile
+              Manage Account
               <ExternalLinkIcon />
             </button>
 

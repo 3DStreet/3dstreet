@@ -2,7 +2,7 @@
  * PurchaseModal - Token purchase modal for image generator
  * Shows pricing tiers and handles embedded Stripe checkout
  */
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useRef } from 'react';
 import { loadStripe } from '@stripe/stripe-js';
 import {
   EmbeddedCheckoutProvider,
@@ -11,6 +11,8 @@ import {
 import { httpsCallable } from 'firebase/functions';
 import { functions } from '../../editor/services/firebase';
 import useImageGenStore from '../store';
+import { useAuthContext } from '../../editor/contexts';
+import { getTokenProfile } from '../../editor/utils/tokens';
 import styles from './PurchaseModal.module.scss';
 
 // Initialize Stripe
@@ -18,57 +20,136 @@ const stripePromise = loadStripe(process.env.STRIPE_PUBLISHABLE_KEY);
 
 const PurchaseModal = () => {
   const { modal, setModal } = useImageGenStore();
+  const { currentUser, tokenProfile, refreshTokenProfile } = useAuthContext();
   const [modalState, setModalState] = useState('pricing');
-  // States: 'pricing' | 'checkout' | 'loading' | 'success' | 'error'
+  // States: 'pricing' | 'checkout' | 'loading' | 'success' | 'error' | 'has-subscription'
 
   const [selectedPlan, setSelectedPlan] = useState(null); // 'monthly' | 'annual'
   const [sessionStatus, setSessionStatus] = useState(null);
+  const [subscriptionInfo, setSubscriptionInfo] = useState(null);
+  const initialTokenCount = useRef(null);
+  const pollIntervalRef = useRef(null);
 
   const isPurchaseModalOpen = modal === 'purchase';
 
   // Handler functions
   const handleClose = useCallback(() => {
+    // Clean up polling interval if active
+    if (pollIntervalRef.current) {
+      clearInterval(pollIntervalRef.current);
+      pollIntervalRef.current = null;
+    }
     setModal(null);
     setModalState('pricing');
     setSelectedPlan(null);
     setSessionStatus(null);
+    initialTokenCount.current = null;
   }, [setModal]);
 
-  // Check URL on mount for return from Stripe
+  // Poll token profile to wait for webhook to complete
+  const startPollingForTokenUpdate = useCallback(() => {
+    if (!currentUser?.uid) {
+      console.error('Cannot poll - user not authenticated');
+      setModalState('error');
+      return;
+    }
+
+    console.log('Starting to poll for token update...');
+
+    // Store initial token count
+    initialTokenCount.current = tokenProfile?.genToken || 0;
+
+    let attempts = 0;
+    const maxAttempts = 15; // Poll for up to 30 seconds (15 * 2s)
+
+    pollIntervalRef.current = setInterval(async () => {
+      attempts++;
+      console.log(`Polling attempt ${attempts}/${maxAttempts}`);
+
+      try {
+        // Fetch fresh token profile directly from Firestore
+        const freshTokenProfile = await getTokenProfile(currentUser.uid);
+        const currentTokens = freshTokenProfile?.genToken || 0;
+
+        // Also update the auth context
+        await refreshTokenProfile();
+
+        // Check if tokens have increased
+        if (currentTokens > initialTokenCount.current) {
+          console.log(
+            `Tokens updated! ${initialTokenCount.current} -> ${currentTokens}`
+          );
+          clearInterval(pollIntervalRef.current);
+          pollIntervalRef.current = null;
+
+          // Emit event to notify other components (like TokenDisplay)
+          window.dispatchEvent(new Event('tokenCountChanged'));
+
+          setModalState('success');
+          setSessionStatus({
+            status: 'complete',
+            payment_status: 'paid'
+          });
+        } else if (attempts >= maxAttempts) {
+          // Timeout - webhook might be delayed, but show success anyway
+          console.warn(
+            'Polling timeout - showing success but webhook may still be processing'
+          );
+          clearInterval(pollIntervalRef.current);
+          pollIntervalRef.current = null;
+
+          // Emit event even on timeout - tokens might still update
+          window.dispatchEvent(new Event('tokenCountChanged'));
+
+          setModalState('success');
+        }
+      } catch (error) {
+        console.error('Error polling token profile:', error);
+        if (attempts >= maxAttempts) {
+          clearInterval(pollIntervalRef.current);
+          pollIntervalRef.current = null;
+          setModalState('error');
+        }
+      }
+    }, 2000); // Poll every 2 seconds
+  }, [currentUser, tokenProfile, refreshTokenProfile]);
+
+  // Check for active subscriptions when modal opens
+  useEffect(() => {
+    if (!isPurchaseModalOpen || !currentUser) return;
+
+    const checkSubscriptions = async () => {
+      try {
+        const checkActiveSubscriptions = httpsCallable(
+          functions,
+          'checkActiveSubscriptions'
+        );
+        const { data } = await checkActiveSubscriptions();
+
+        if (data.hasActiveSubscription) {
+          console.log(
+            `User has ${data.subscriptionCount} active subscription(s)`,
+            data.subscriptions
+          );
+          setSubscriptionInfo(data);
+          setModalState('has-subscription');
+        }
+      } catch (error) {
+        console.error('Error checking active subscriptions:', error);
+        // Don't block the modal if check fails, just log the error
+      }
+    };
+
+    checkSubscriptions();
+  }, [isPurchaseModalOpen, currentUser]);
+
+  // Clean up any stray session_id from URL (shouldn't happen with onComplete, but just in case)
   useEffect(() => {
     if (!isPurchaseModalOpen) return;
 
     const urlParams = new URLSearchParams(window.location.search);
-    const sessionId = urlParams.get('session_id');
-
-    if (sessionId) {
-      // User returned from Stripe embedded checkout
-      setModalState('loading');
-
-      const checkSessionStatus = async () => {
-        try {
-          const getSessionStatus = httpsCallable(
-            functions,
-            'getStripeSessionStatus'
-          );
-          const { data } = await getSessionStatus({ sessionId });
-
-          setSessionStatus(data);
-
-          if (data.status === 'complete' && data.payment_status === 'paid') {
-            setModalState('success');
-          } else {
-            setModalState('error');
-          }
-        } catch (error) {
-          console.error('Error checking session status:', error);
-          setModalState('error');
-        }
-      };
-
-      checkSessionStatus();
-
-      // Clean up URL
+    if (urlParams.has('session_id')) {
+      // Clean up URL without reloading
       window.history.replaceState({}, '', window.location.pathname);
     }
   }, [isPurchaseModalOpen]);
@@ -108,40 +189,56 @@ const PurchaseModal = () => {
     setSelectedPlan(null);
   };
 
-  // Fetch client secret for Stripe Embedded Checkout
-  const fetchClientSecret = useCallback(async () => {
-    if (!selectedPlan) {
-      throw new Error('No plan selected');
-    }
+  // Embedded Checkout options with onComplete callback
+  const checkoutOptions = useCallback(() => {
+    if (!selectedPlan) return null;
 
-    try {
-      const createStripeSession = httpsCallable(
-        functions,
-        'createStripeSession'
-      );
+    return {
+      fetchClientSecret: async () => {
+        try {
+          const createStripeSession = httpsCallable(
+            functions,
+            'createStripeSession'
+          );
 
-      const { data } = await createStripeSession({
-        ui_mode: 'embedded',
-        line_items: [
-          {
-            price:
-              selectedPlan === 'monthly'
-                ? process.env.STRIPE_MONTHLY_PRICE_ID
-                : process.env.STRIPE_YEARLY_PRICE_ID,
-            quantity: 1
+          const { data } = await createStripeSession({
+            ui_mode: 'embedded',
+            redirect_on_completion: 'never', // Stay in embedded mode, use onComplete callback
+            line_items: [
+              {
+                price:
+                  selectedPlan === 'monthly'
+                    ? process.env.STRIPE_MONTHLY_PRICE_ID
+                    : process.env.STRIPE_YEARLY_PRICE_ID,
+                quantity: 1
+              }
+            ],
+            mode: 'subscription'
+          });
+
+          return data.clientSecret;
+        } catch (error) {
+          console.error('Error creating checkout session:', error);
+
+          // Handle specific error for existing subscription
+          if (error.code === 'already-exists') {
+            setModalState('has-subscription');
+          } else {
+            setModalState('error');
           }
-        ],
-        mode: 'subscription',
-        return_url: `${window.location.origin}/image-generator?session_id={CHECKOUT_SESSION_ID}`
-      });
+          throw error;
+        }
+      },
+      onComplete: () => {
+        // Payment completed in the embedded form!
+        console.log('Payment completed, waiting for webhook confirmation...');
+        setModalState('loading');
 
-      return data.clientSecret;
-    } catch (error) {
-      console.error('Error creating checkout session:', error);
-      setModalState('error');
-      throw error;
-    }
-  }, [selectedPlan]);
+        // Start polling for token update from webhook
+        startPollingForTokenUpdate();
+      }
+    };
+  }, [selectedPlan, startPollingForTokenUpdate]);
 
   if (!isPurchaseModalOpen) return null;
 
@@ -158,8 +255,29 @@ const PurchaseModal = () => {
         return 'Welcome to Pro!';
       case 'error':
         return 'Payment Issue';
+      case 'has-subscription':
+        return 'Active Subscription';
       default:
         return 'Purchase';
+    }
+  };
+
+  // Open billing portal
+  const handleOpenBillingPortal = async () => {
+    try {
+      const createBillingPortal = httpsCallable(
+        functions,
+        'createStripeBillingPortal'
+      );
+      const { data } = await createBillingPortal({
+        return_url: window.location.href
+      });
+
+      if (data?.url) {
+        window.open(data.url, '_blank');
+      }
+    } catch (error) {
+      console.error('Error opening billing portal:', error);
     }
   };
 
@@ -305,7 +423,7 @@ const PurchaseModal = () => {
             <div className={styles.checkoutWrapper}>
               <EmbeddedCheckoutProvider
                 stripe={stripePromise}
-                options={{ fetchClientSecret }}
+                options={checkoutOptions()}
               >
                 <EmbeddedCheckout />
               </EmbeddedCheckoutProvider>
@@ -317,7 +435,10 @@ const PurchaseModal = () => {
         {modalState === 'loading' && (
           <div className={styles.statusContainer}>
             <div className={styles.spinner}></div>
-            <p>Checking payment status...</p>
+            <p>Processing your payment...</p>
+            <p className={styles.subtext}>
+              This usually takes just a few seconds
+            </p>
           </div>
         )}
 
@@ -347,7 +468,7 @@ const PurchaseModal = () => {
               </p>
             )}
             <button
-              className={`${styles.purchaseButton} ${styles.primary}`}
+              className={`${styles.purchaseButton} ${styles.success}`}
               onClick={handleClose}
             >
               Start Generating
@@ -385,6 +506,56 @@ const PurchaseModal = () => {
               onClick={handleBackToPricing}
             >
               Try Again
+            </button>
+          </div>
+        )}
+
+        {/* Has Active Subscription State */}
+        {modalState === 'has-subscription' && (
+          <div className={styles.statusContainer}>
+            <div className={styles.successIcon}>
+              <svg
+                width="64"
+                height="64"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
+                <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
+                <polyline points="22 4 12 14.01 9 11.01"></polyline>
+              </svg>
+            </div>
+            <h3>You Already Have an Active Subscription</h3>
+            <p>
+              You currently have {subscriptionInfo?.subscriptionCount || 1}{' '}
+              active subscription
+              {subscriptionInfo?.subscriptionCount > 1 ? 's' : ''}.
+            </p>
+            {subscriptionInfo?.subscriptionCount > 1 && (
+              <p className={styles.subtext}>
+                Note: You have multiple subscriptions. Please manage them
+                through the billing portal.
+              </p>
+            )}
+            <p className={styles.subtext}>
+              To add more tokens, manage your subscription, or
+              upgrade/downgrade, please visit the billing portal.
+            </p>
+            <button
+              className={`${styles.purchaseButton} ${styles.primary}`}
+              onClick={handleOpenBillingPortal}
+            >
+              Manage Subscription
+            </button>
+            <button
+              className={styles.purchaseButton}
+              onClick={handleClose}
+              style={{ marginTop: '10px' }}
+            >
+              Close
             </button>
           </div>
         )}

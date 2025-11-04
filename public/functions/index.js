@@ -62,7 +62,7 @@ exports.createStripeSession = functions
   .https
   .onCall(async (data, context) => {
     const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
-    
+
     // Verify user is authenticated
     if (!context.auth) {
       throw new functions.https.HttpsError('unauthenticated', 'User must be authenticated to create checkout session.');
@@ -70,7 +70,7 @@ exports.createStripeSession = functions
 
     // SECURITY: Always use the authenticated user's ID from context, never trust client-provided IDs
     const userId = context.auth.uid;
-    
+
     // Get user email from Firebase Auth
     const userRecord = await getAuth().getUser(userId);
     const userEmail = userRecord.email;
@@ -83,6 +83,32 @@ exports.createStripeSession = functions
       stripeCustomerId = doc.data().stripeCustomerId;
       return; // only need the first one
     });
+
+    // Check if customer already has active subscriptions (prevent duplicates)
+    if (stripeCustomerId) {
+      try {
+        const subscriptions = await stripe.subscriptions.list({
+          customer: stripeCustomerId,
+          status: 'active',
+          limit: 10
+        });
+
+        if (subscriptions.data.length > 0) {
+          console.log(`User ${userId} already has ${subscriptions.data.length} active subscription(s)`);
+          throw new functions.https.HttpsError(
+            'already-exists',
+            'You already have an active subscription. Please manage your subscription through the billing portal.'
+          );
+        }
+      } catch (error) {
+        // If it's our custom error, re-throw it
+        if (error.code === 'already-exists') {
+          throw error;
+        }
+        // Otherwise log and continue (don't block on Stripe API errors)
+        console.error('Error checking existing subscriptions:', error);
+      }
+    }
 
     // Set either customer or customer_email (mutually exclusive)
     if (stripeCustomerId) {
@@ -98,14 +124,18 @@ exports.createStripeSession = functions
       data.metadata = {};
     }
     data.metadata.userId = userId;
-    
+
     if (data.subscription_data) {
       if (!data.subscription_data.metadata) {
         data.subscription_data.metadata = {};
       }
       data.subscription_data.metadata.userId = userId;
     }
-    
+
+    // Restrict payment methods (removes US bank account, keeps card/Google Pay/Apple Pay)
+    // Override any client-provided payment_method_types for security
+    data.payment_method_types = ['card'];
+
     const session = await stripe.checkout.sessions.create(data);
 
     return {
@@ -147,6 +177,62 @@ exports.getStripeSessionStatus = functions
     } catch (error) {
       console.error('Error retrieving session:', error);
       throw new functions.https.HttpsError('internal', 'Failed to retrieve session status.');
+    }
+  });
+
+exports.checkActiveSubscriptions = functions
+  .runWith({ secrets: ["STRIPE_SECRET_KEY"] })
+  .https
+  .onCall(async (data, context) => {
+    const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
+
+    // Verify user is authenticated
+    if (!context.auth) {
+      throw new functions.https.HttpsError('unauthenticated', 'User must be authenticated to check subscriptions.');
+    }
+
+    const userId = context.auth.uid;
+
+    try {
+      // Get Stripe customer ID from Firestore
+      const collectionRef = admin.firestore().collection("userProfile");
+      const querySnapshot = await collectionRef.where("userId", "==", userId).get();
+      let stripeCustomerId = null;
+      querySnapshot.forEach((doc) => {
+        stripeCustomerId = doc.data().stripeCustomerId;
+        return;
+      });
+
+      // If no customer ID, user has never subscribed
+      if (!stripeCustomerId) {
+        return {
+          hasActiveSubscription: false,
+          subscriptionCount: 0,
+          subscriptions: []
+        };
+      }
+
+      // Check for active subscriptions
+      const subscriptions = await stripe.subscriptions.list({
+        customer: stripeCustomerId,
+        status: 'active',
+        limit: 10
+      });
+
+      return {
+        hasActiveSubscription: subscriptions.data.length > 0,
+        subscriptionCount: subscriptions.data.length,
+        subscriptions: subscriptions.data.map(sub => ({
+          id: sub.id,
+          status: sub.status,
+          currentPeriodEnd: sub.current_period_end,
+          planId: sub.items.data[0]?.price?.id,
+          interval: sub.items.data[0]?.price?.recurring?.interval
+        }))
+      };
+    } catch (error) {
+      console.error('Error checking subscriptions:', error);
+      throw new functions.https.HttpsError('internal', 'Failed to check subscriptions.');
     }
   });
 
@@ -234,7 +320,7 @@ exports.handleSubscriptionWebhook = functions
 
 // function for Stripe webhook checkout.session.completed
 exports.stripeWebhook = functions
-  .runWith({ secrets: ["STRIPE_SECRET_KEY", "STRIPE_WEBHOOK_SECRET_CHECKOUT", "STRIPE_YEARLY_PRICE_ID"] })
+  .runWith({ secrets: ["STRIPE_SECRET_KEY", "STRIPE_WEBHOOK_SECRET_CHECKOUT", "STRIPE_YEARLY_PRICE_ID", "STRIPE_MONTHLY_PRICE_ID"] })
   .https
   .onRequest(async (req, res) => {
     const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
@@ -261,14 +347,23 @@ exports.stripeWebhook = functions
       }
     );
 
-    // Check if this is an annual plan purchase
+    // Check if this is an annual or monthly plan purchase
     const annualPriceId = process.env.STRIPE_YEARLY_PRICE_ID;
+    const monthlyPriceId = process.env.STRIPE_MONTHLY_PRICE_ID;
 
     let isAnnualPlan = false;
-    if (annualPriceId && sessionWithLineItems.line_items && sessionWithLineItems.line_items.data) {
-      isAnnualPlan = sessionWithLineItems.line_items.data.some(item =>
-        item.price.id === annualPriceId
-      );
+    let isMonthlyPlan = false;
+    if (sessionWithLineItems.line_items && sessionWithLineItems.line_items.data) {
+      if (annualPriceId) {
+        isAnnualPlan = sessionWithLineItems.line_items.data.some(item =>
+          item.price.id === annualPriceId
+        );
+      }
+      if (monthlyPriceId) {
+        isMonthlyPlan = sessionWithLineItems.line_items.data.some(item =>
+          item.price.id === monthlyPriceId
+        );
+      }
     }
 
     const collectionRef = admin.firestore().collection("userProfile");
@@ -295,38 +390,43 @@ exports.stripeWebhook = functions
     };
     await getAuth().setCustomUserClaims(checkoutSession.metadata.userId, customClaims);
 
-    // Grant 840 tokens for annual plan purchases
-    if (isAnnualPlan) {
+    // Grant tokens for subscription purchases
+    if (isAnnualPlan || isMonthlyPlan) {
       const db = admin.firestore();
       const tokenProfileRef = db.collection('tokenProfile').doc(checkoutSession.metadata.userId);
+
+      // Determine token amount based on plan type
+      const tokensToGrant = isAnnualPlan ? 840 : 100;
+      const planType = isAnnualPlan ? 'annual' : 'monthly';
 
       try {
         const tokenDoc = await tokenProfileRef.get();
 
         if (tokenDoc.exists) {
-          // User has existing token profile, add 840 tokens
+          // User has existing token profile, add tokens
           const currentTokens = tokenDoc.data().genToken || 0;
           await tokenProfileRef.update({
-            genToken: currentTokens + 840,
+            genToken: currentTokens + tokensToGrant,
+            lastMonthlyRefill: `${new Date().getFullYear()}-${new Date().getMonth()}`,
             updatedAt: admin.firestore.FieldValue.serverTimestamp()
           });
-          console.log(`Annual tokens granted: user=${checkoutSession.metadata.userId} added=840 total=${currentTokens + 840}`);
+          console.log(`${planType} tokens granted: user=${checkoutSession.metadata.userId} added=${tokensToGrant} total=${currentTokens + tokensToGrant}`);
         } else {
-          // Create new token profile with 840 tokens plus the standard Pro allowance
+          // Create new token profile with granted tokens
           const newProfile = {
             userId: checkoutSession.metadata.userId,
             geoToken: 3,
-            genToken: 940, // 840 bonus + 100 monthly allowance
+            genToken: tokensToGrant, // Annual: 840; Monthly: 100
             lastMonthlyRefill: `${new Date().getFullYear()}-${new Date().getMonth()}`,
             createdAt: admin.firestore.FieldValue.serverTimestamp(),
             updatedAt: admin.firestore.FieldValue.serverTimestamp()
           };
 
           await tokenProfileRef.set(newProfile);
-          console.log(`Annual token profile created: user=${checkoutSession.metadata.userId} tokens=940`);
+          console.log(`${planType} token profile created: user=${checkoutSession.metadata.userId} tokens=${tokensToGrant}`);
         }
       } catch (error) {
-        console.error(`Annual token grant failed: user=${checkoutSession.metadata.userId}`, error);
+        console.error(`${planType} token grant failed: user=${checkoutSession.metadata.userId}`, error);
         // Don't fail the webhook, just log the error
       }
     }
