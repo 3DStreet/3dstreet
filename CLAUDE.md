@@ -115,6 +115,70 @@
 │   │   ├── icons/                # Icon components
 │   │   └── style/                # SCSS styles
 │   │
+│   ├── image-generator/          # AI Image Generator Application
+│   │   ├── index.js              # Entry point
+│   │   ├── main.js               # Main UI controller (tabs, notifications)
+│   │   ├── generator.js          # Text-to-image generator tab
+│   │   ├── inpaint.js            # Inpainting tab
+│   │   ├── outpaint.js           # Outpainting tab
+│   │   ├── gallery.js            # Gallery management
+│   │   ├── api.js                # BFL API proxy calls
+│   │   ├── store.js              # Zustand state management
+│   │   ├── mount-auth.js         # Auth island mounting
+│   │   ├── mount-app-switcher.js # AppSwitcher island mounting
+│   │   ├── mount-purchase-modal.js # Purchase modal mounting
+│   │   ├── image-upload-utils.js # Image processing utilities
+│   │   │
+│   │   ├── components/           # React islands
+│   │   │   ├── TokenSync.jsx     # Token synchronization
+│   │   │   ├── ProfileButton.jsx # Profile button (deprecated - use @shared)
+│   │   │   └── PurchaseModal.jsx # Token purchase modal
+│   │   │
+│   │   └── styles/               # CSS styles
+│   │       ├── styles.css        # Main styles
+│   │       └── gallery.css       # Gallery styles
+│   │
+│   ├── shared/                   # Shared Component Library
+│   │   ├── auth/                 # Authentication components
+│   │   │   ├── components/       # React components
+│   │   │   │   ├── ProfileButton.jsx     # User profile button with dropdown
+│   │   │   │   ├── ProfileHoverCard.jsx  # Profile info card
+│   │   │   │   ├── SignInModal.jsx       # Sign-in modal
+│   │   │   │   ├── TokenDisplay.jsx      # Token balance display
+│   │   │   │   ├── TokenDetailsCard.jsx  # Token details card
+│   │   │   │   └── index.js              # Component exports
+│   │   │   └── api/              # Auth API
+│   │   │       └── auth.js       # Authentication utilities
+│   │   │
+│   │   ├── navigation/           # Navigation components
+│   │   │   └── components/
+│   │   │       ├── AppSwitcher.jsx       # App switcher dropdown
+│   │   │       └── index.js              # Component exports
+│   │   │
+│   │   ├── components/           # General shared components
+│   │   │   └── Modal/
+│   │   │       └── Modal.jsx     # Generic modal component
+│   │   │
+│   │   ├── contexts/             # React contexts
+│   │   │   ├── Auth.context.js   # Authentication context
+│   │   │   └── index.js          # Context exports
+│   │   │
+│   │   ├── services/             # Shared services
+│   │   │   └── firebase.js       # Firebase SDK initialization
+│   │   │
+│   │   ├── utils/                # Shared utilities
+│   │   │   ├── tokens.js         # Token management utilities
+│   │   │   ├── username.js       # Username utilities
+│   │   │   └── username-generator.js  # Username generation
+│   │   │
+│   │   ├── icons/                # Shared icon components
+│   │   │   ├── icons.jsx         # General icons
+│   │   │   ├── street-icons.jsx  # Street-specific icons
+│   │   │   └── index.js          # Icon exports
+│   │   │
+│   │   └── api/                  # Shared API utilities
+│   │       └── user.js           # User API calls
+│   │
 │   ├── tested/                   # Unit-tested utility modules
 │   │   ├── streetmix-utils.js
 │   │   └── create-from-json-utils-tested.js
@@ -439,6 +503,217 @@ const mixinData = STREET.catalog.find(item => item.id === 'sedan-rig');
   }
   ```
 
+### AI Image Generator Application (src/image-generator/)
+
+The AI Image Generator is a standalone web application for creating images using Black Forest Labs (BFL) Flux AI models. It uses an "island architecture" approach where React components are mounted in specific DOM elements within a vanilla JavaScript application.
+
+#### Application Structure
+
+**Main Tabs:**
+- **Generator** (`generator.js`) - Text-to-image generation from prompts
+- **Inpaint** (`inpaint.js`) - Edit specific areas of existing images with masking
+- **Outpaint** (`outpaint.js`) - Extend images beyond their original boundaries
+- **Gallery** (`gallery.js`) - View and manage generated images (stored in browser localStorage)
+
+**Core Modules:**
+- **`index.js`** - Entry point, initializes Firebase auth, mounts React islands, loads all modules
+- **`main.js`** - FluxUI controller for tab switching, notifications, dark mode, token-based button states
+- **`api.js`** - API calls to Firebase Cloud Functions proxy for BFL API
+- **`store.js`** - Zustand store for state management (auth state, token counts)
+
+**React Islands (Components):**
+React components mounted into the vanilla JS app using ReactDOM.createRoot():
+- **ProfileButton** (from `@shared/auth/components`) - User profile dropdown
+- **TokenDisplay** (from `@shared/auth/components`) - Shows AI generation token balance
+- **AppSwitcher** (from `@shared/navigation/components`) - Navigate between 3DStreet apps
+- **PurchaseModal** (`components/PurchaseModal.jsx`) - Stripe checkout for purchasing tokens
+- **TokenSync** (`components/TokenSync.jsx`) - Syncs token state between Firebase and Zustand store
+
+**Mounting Functions:**
+- **`mount-auth.js`** - Mounts ProfileButton and TokenDisplay into `#auth-root` and `#token-display-root`
+- **`mount-app-switcher.js`** - Mounts AppSwitcher into `#app-switcher-root`
+- **`mount-purchase-modal.js`** - Mounts PurchaseModal into `#purchase-modal-root`
+
+#### Island Architecture Pattern
+
+The image-generator uses "island architecture" to integrate React components into a vanilla JavaScript application:
+
+```javascript
+// Example from mount-auth.js
+import { createRoot } from 'react-dom/client';
+import { ProfileButton } from '@shared/auth/components';
+import { AuthProvider } from '@shared/contexts';
+
+export function mountAuthUI() {
+  const container = document.getElementById('auth-root');
+  const root = createRoot(container);
+  root.render(
+    <AuthProvider>
+      <ProfileButton />
+    </AuthProvider>
+  );
+}
+```
+
+**Benefits:**
+- Reuse React components across different application architectures
+- Gradual migration path from vanilla JS to React
+- Shared authentication and navigation without framework lock-in
+- Smaller bundle sizes by only loading React for specific UI components
+
+#### Image Generation Workflow
+
+1. User enters prompt and parameters (aspect ratio, steps, guidance, etc.)
+2. Click "Generate" triggers token check
+3. If no tokens, show PurchaseModal for Stripe checkout
+4. If tokens available, call Firebase Cloud Function proxy
+5. Proxy forwards request to BFL API with server-side API key
+6. Poll for completion status (BFL uses async task queue)
+7. Display result and save to gallery (localStorage)
+8. Decrement token count in Firebase and update UI
+
+#### Token System
+
+- **Storage:** Firestore `/users/{uid}/tokenProfile` collection
+- **Types:** `genToken` (generation tokens), `credToken` (credit tokens)
+- **Synchronization:** TokenSync component listens to Firestore and updates Zustand store
+- **Display:** TokenDisplay component shows current balance with tooltips
+- **Purchase:** PurchaseModal integrates with Stripe via Firebase Cloud Functions
+
+### Shared Component Library (src/shared/)
+
+The shared component library provides reusable React components, utilities, and services that are used across multiple 3DStreet applications (editor, image-generator, and potentially future apps).
+
+#### Purpose and Architecture
+
+**Key Goals:**
+- **Code Reuse:** Single source of truth for authentication, navigation, and common UI
+- **Consistency:** Unified user experience across all 3DStreet applications
+- **Maintainability:** Update once, affect all apps
+- **Modularity:** Import only what you need via barrel exports
+
+**Webpack Alias:**
+Components are imported using the `@shared/*` alias defined in webpack configuration:
+```javascript
+// webpack.config.js
+resolve: {
+  alias: {
+    '@shared': path.resolve(__dirname, 'src/shared')
+  }
+}
+
+// Usage in code
+import { ProfileButton } from '@shared/auth/components';
+import { AuthProvider } from '@shared/contexts';
+import { auth, db } from '@shared/services/firebase';
+```
+
+#### Component Categories
+
+**Authentication (`shared/auth/`):**
+- **ProfileButton.jsx** - User profile button with dropdown menu (sign out, manage account)
+- **ProfileHoverCard.jsx** - Hover card showing user info and token balance
+- **SignInModal.jsx** - Modal for email/password and Google sign-in
+- **TokenDisplay.jsx** - Displays user's AI generation token balance
+- **TokenDetailsCard.jsx** - Detailed view of token balance and history
+- **auth.js** (API) - Authentication utility functions
+
+**Navigation (`shared/navigation/`):**
+- **AppSwitcher.jsx** - Dropdown menu to switch between 3DStreet applications (Editor, Image Generator, future apps)
+  - Detects current app from `window.location.pathname`
+  - Shows 3DStreet logo and dropdown with available apps
+  - Uses Radix UI for accessible dropdown component
+
+**Contexts (`shared/contexts/`):**
+- **Auth.context.js** - Authentication context provider
+  - Wraps Firebase auth state
+  - Provides `user`, `isAuthenticated`, `tokenProfile` to child components
+  - Listens to Firestore for real-time token updates
+  - Exports: `AuthProvider`, `useAuthContext`, `AuthContext`
+
+**Services (`shared/services/`):**
+- **firebase.js** - Centralized Firebase SDK initialization
+  - Exports: `app`, `auth`, `storage`, `db`, `functions`, `vertexAI`
+  - Uses environment variables from webpack Dotenv plugin
+  - Single initialization shared across all apps
+
+**Utilities (`shared/utils/`):**
+- **tokens.js** - Token management utilities (formatting, calculations)
+- **username.js** - Username display and validation
+- **username-generator.js** - Random username generation for anonymous users
+
+**Components (`shared/components/`):**
+- **Modal/Modal.jsx** - Generic modal component (can be extended for specific use cases)
+
+**Icons (`shared/icons/`):**
+- **icons.jsx** - General purpose icon components
+- **street-icons.jsx** - Street/traffic-specific icons for editor
+- **index.js** - Icon exports
+
+**API (`shared/api/`):**
+- **user.js** - User-related API calls to Firebase Cloud Functions
+
+#### Usage Examples
+
+**Using Shared Auth in a New App:**
+```javascript
+// In your app's entry point
+import { createRoot } from 'react-dom/client';
+import { AuthProvider } from '@shared/contexts';
+import { ProfileButton, TokenDisplay } from '@shared/auth/components';
+
+// Mount auth UI
+const authRoot = createRoot(document.getElementById('auth-root'));
+authRoot.render(
+  <AuthProvider>
+    <ProfileButton />
+    <TokenDisplay />
+  </AuthProvider>
+);
+```
+
+**Using Firebase Services:**
+```javascript
+import { auth, db, functions } from '@shared/services/firebase';
+import { onAuthStateChanged } from 'firebase/auth';
+import { doc, getDoc } from 'firebase/firestore';
+
+// Listen to auth state
+onAuthStateChanged(auth, async (user) => {
+  if (user) {
+    const tokenDoc = await getDoc(doc(db, 'users', user.uid, 'tokenProfile', 'default'));
+    console.log('Tokens:', tokenDoc.data());
+  }
+});
+```
+
+**Using AppSwitcher:**
+```javascript
+import { createRoot } from 'react-dom/client';
+import { AppSwitcher } from '@shared/navigation/components';
+
+const appSwitcherRoot = createRoot(document.getElementById('app-switcher-root'));
+appSwitcherRoot.render(<AppSwitcher />);
+```
+
+#### Storybook Support
+
+Many shared components include Storybook stories for development and documentation:
+- `ProfileButton.stories.jsx`
+- `SignInModal.stories.jsx`
+- `TokenDisplay.stories.jsx`
+- `AppSwitcher.stories.jsx`
+
+These allow isolated component development and visual testing.
+
+#### Migration Notes
+
+The shared component library is part of an ongoing refactoring effort:
+- **Before:** Each app had its own copy of auth components, Firebase config, etc.
+- **After:** Single source in `/src/shared` imported via `@shared/*` alias
+- **Status:** Editor and image-generator now use shared auth and navigation
+- **Legacy:** Some older editor components still exist outside of `@shared` (gradual migration)
+
 ---
 
 ## Development Workflow
@@ -461,14 +736,26 @@ FIREBASE_PROJECT_ID=...
 ### Development Server
 ```bash
 npm start                    # Starts webpack-dev-server on :3333
-# Opens http://localhost:3333
+# Access editor at http://localhost:3333
+# Access image-generator at http://localhost:3333/image-generator/
 ```
+
+**Webpack Entry Points:**
+The project has multiple entry points defined in `webpack.config.js`:
+- `core` → Builds to `dist/aframe-street-component.js` (A-Frame + Editor)
+- `imageGenerator` → Builds to `dist/image-generator.js` (AI Image Generator)
+
+Both apps are served simultaneously during development.
 
 ### Building
 ```bash
 npm run dist                 # Production build (uses .env.production)
 npm run dist:staging         # Staging build (uses .env.development)
 ```
+
+Builds both applications:
+- Editor bundle: `/dist/aframe-street-component.js`
+- Image Generator bundle: `/dist/image-generator.js`
 
 ### Testing
 ```bash
@@ -556,8 +843,78 @@ Handled by: `src/aframe-components/street-mapping-streetplan.js`, `src/index.js`
 - **A-Frame component code:** Lives directly in component `.js` file, registered with `AFRAME.registerComponent`
 - **Tested utility functions:** In `src/tested/` with corresponding tests in `test/`
 - **React component styles:** Either `.module.scss` (CSS modules) or global `.scss` imported in component
+- **Shared components:** Live in `src/shared/` and imported via `@shared/*` alias
+- **Application-specific code:** Lives in app directory (`src/editor/` or `src/image-generator/`)
 
----
+### Island Architecture Pattern
+
+For integrating React components into vanilla JavaScript applications (like image-generator):
+
+**1. Create mount point in HTML:**
+```html
+<div id="auth-root"></div>
+```
+
+**2. Create mounting function:**
+```javascript
+// mount-auth.js
+import { createRoot } from 'react-dom/client';
+import { ProfileButton } from '@shared/auth/components';
+import { AuthProvider } from '@shared/contexts';
+
+export function mountAuthUI() {
+  const container = document.getElementById('auth-root');
+  const root = createRoot(container);
+  root.render(
+    <AuthProvider>
+      <ProfileButton />
+    </AuthProvider>
+  );
+}
+```
+
+**3. Call mounting function in app initialization:**
+```javascript
+// index.js
+import { mountAuthUI } from './mount-auth.js';
+
+document.addEventListener('DOMContentLoaded', () => {
+  mountAuthUI();
+  // ... other initialization
+});
+```
+
+**Benefits:**
+- Reuse React components in any application architecture
+- Gradual migration from vanilla JS to React
+- Smaller bundle sizes by isolating React to specific features
+
+### Using Shared Components
+
+**Import from shared library:**
+```javascript
+// Authentication
+import { ProfileButton, TokenDisplay } from '@shared/auth/components';
+import { AuthProvider } from '@shared/contexts';
+
+// Navigation
+import { AppSwitcher } from '@shared/navigation/components';
+
+// Services
+import { auth, db, functions } from '@shared/services/firebase';
+
+// Utilities
+import { formatTokenCount } from '@shared/utils/tokens';
+```
+
+**Barrel exports:**
+Each subdirectory in `src/shared/` has an `index.js` that exports public APIs:
+```javascript
+// src/shared/auth/components/index.js
+export { ProfileButton } from './ProfileButton';
+export { SignInModal } from './SignInModal';
+export { default as TokenDisplay } from './TokenDisplay';
+```
 
 ---
 
@@ -632,8 +989,23 @@ Located in `test/approvalTest/` - these test outputs against approved baseline f
 - **Functions:** `public/functions/index.js` (createStripeSession, stripeWebhook)
 - **Package:** `stripe` (npm)
 
+### Black Forest Labs (BFL) - Flux AI
+- **Purpose:** AI image generation (text-to-image, inpainting, outpainting)
+- **Used By:** Image Generator application
+- **API:** `https://api.us1.bfl.ai/v1`
+- **Models:** Flux Pro 1.1, Flux Pro, Flux Dev, Flux Schnell
+- **Integration:** Firebase Cloud Function proxy (`public/functions/bfl-proxy.js`)
+- **Security:** API key stored server-side in Firebase environment config
+- **Workflow:**
+  1. Client calls Firebase Cloud Function with prompt and parameters
+  2. Function forwards request to BFL API with server-side API key
+  3. BFL returns task ID for async processing
+  4. Client polls Firebase function for task completion status
+  5. Function returns final image URL when ready
+- **Documentation:** https://docs.bfl.ai
+
 ### Replicate
-- **Purpose:** AI model inference (for image generation)
+- **Purpose:** AI model inference (legacy, being replaced by BFL)
 - **Function:** `public/functions/replicate.js`
 
 ---
