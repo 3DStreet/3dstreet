@@ -6,6 +6,7 @@ import { useState } from 'react';
 import GalleryGrid from './GalleryGrid.jsx';
 import GalleryModal from './GalleryModal.jsx';
 import useGallery from '../hooks/useGallery.js';
+import styles from './Gallery.module.scss';
 
 const GallerySidebar = ({
   onCopyParams,
@@ -99,7 +100,7 @@ const GallerySidebar = ({
       {/* Gallery Toggle Button */}
       <button
         id="gallery-toggle"
-        className="gallery-toggle"
+        className={styles.toggle}
         onClick={handleToggle}
         aria-label="Toggle Gallery"
       >
@@ -131,12 +132,12 @@ const GallerySidebar = ({
       {/* Gallery Sidebar */}
       <div
         id="gallery-container"
-        className={`gallery-sidebar ${isCollapsed ? 'gallery-collapsed' : ''}`}
+        className={`${styles.sidebar} ${isCollapsed ? styles.collapsed : ''}`}
       >
-        <div className="gallery-header">
-          <div className="gallery-title">
+        <div className={styles.header}>
+          <div className={styles.title}>
             Gallery{' '}
-            <span id="gallery-counter" className="gallery-counter">
+            <span id="gallery-counter" className={styles.counter}>
               {items.length}
             </span>
           </div>
@@ -166,10 +167,10 @@ const GallerySidebar = ({
           />
         )}
 
-        <div className="gallery-footer">
+        <div className={styles.footer}>
           <button
             id="clear-gallery-btn"
-            className="clear-gallery-btn"
+            className={styles.clearBtn}
             onClick={handleClearGallery}
           >
             Clear Gallery

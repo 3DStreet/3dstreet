@@ -11,7 +11,6 @@ import '../styles/tailwind.css';
 
 // Import styles
 import './styles/styles.css';
-import './styles/gallery.css';
 
 // Import Firebase auth
 import { auth } from '@shared/services/firebase.js';

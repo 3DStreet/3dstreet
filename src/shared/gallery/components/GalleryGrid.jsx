@@ -3,6 +3,7 @@
  */
 
 import GalleryItem from './GalleryItem.jsx';
+import styles from './Gallery.module.scss';
 
 const GalleryGrid = ({
   items,
@@ -41,28 +42,9 @@ const GalleryGrid = ({
   return (
     <>
       {/* Grid */}
-      <div
-        className="gallery-content"
-        style={{
-          display: 'grid',
-          gridTemplateColumns: 'repeat(2, 1fr)',
-          gap: '12px',
-          padding: '12px',
-          overflowY: 'auto',
-          flex: '1'
-        }}
-      >
+      <div className={styles.content}>
         {pageItems.length === 0 && (
-          <div
-            style={{
-              gridColumn: '1 / -1',
-              textAlign: 'center',
-              padding: '2rem',
-              color: '#6b7280'
-            }}
-          >
-            Gallery is empty
-          </div>
+          <div className={styles.emptyState}>Gallery is empty</div>
         )}
         {pageItems.map((item) => (
           <GalleryItem
@@ -84,6 +66,7 @@ const GalleryGrid = ({
             alignItems: 'center',
             gap: '8px',
             marginTop: '8px',
+            marginBottom: '12px',
             justifyContent: 'space-between',
             padding: '0 12px'
           }}
@@ -95,18 +78,18 @@ const GalleryGrid = ({
               disabled={page === 1}
               style={{
                 padding: '6px 10px',
-                border: '1px solid #e5e7eb',
+                border: '1px solid #4b5563',
                 borderRadius: '6px',
-                background: '#fff',
-                cursor: page === 1 ? 'not-allowed' : 'pointer',
-                opacity: page === 1 ? 0.5 : 1
+                background: '#374151',
+                color: page === 1 ? '#6b7280' : '#f3f4f6',
+                cursor: page === 1 ? 'not-allowed' : 'pointer'
               }}
             >
               Prev
             </button>
             <span
               className="gallery-page-label"
-              style={{ fontSize: '12px', color: '#6b7280' }}
+              style={{ fontSize: '12px', color: '#d1d5db' }}
             >
               Page <span className="gp-current">{page}</span> /{' '}
               <span className="gp-total">{totalPages}</span>
@@ -117,11 +100,11 @@ const GalleryGrid = ({
               disabled={page === totalPages}
               style={{
                 padding: '6px 10px',
-                border: '1px solid #e5e7eb',
+                border: '1px solid #4b5563',
                 borderRadius: '6px',
-                background: '#fff',
-                cursor: page === totalPages ? 'not-allowed' : 'pointer',
-                opacity: page === totalPages ? 0.5 : 1
+                background: '#374151',
+                color: page === totalPages ? '#6b7280' : '#f3f4f6',
+                cursor: page === totalPages ? 'not-allowed' : 'pointer'
               }}
             >
               Next
@@ -130,7 +113,7 @@ const GalleryGrid = ({
           <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
             <label
               htmlFor="gallery-page-size"
-              style={{ fontSize: '12px', color: '#6b7280' }}
+              style={{ fontSize: '12px', color: '#d1d5db' }}
             >
               Per page
             </label>
@@ -140,8 +123,10 @@ const GalleryGrid = ({
               onChange={handlePageSizeChange}
               style={{
                 padding: '6px 8px',
-                border: '1px solid #e5e7eb',
-                borderRadius: '6px'
+                border: '1px solid #4b5563',
+                borderRadius: '6px',
+                background: '#374151',
+                color: '#f3f4f6'
               }}
             >
               <option value="12">12</option>

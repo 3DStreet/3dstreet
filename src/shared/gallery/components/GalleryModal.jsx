@@ -2,6 +2,8 @@
  * GalleryModal Component - Detail view modal
  */
 
+import styles from './Gallery.module.scss';
+
 const GalleryModal = ({
   item,
   onClose,
@@ -15,7 +17,7 @@ const GalleryModal = ({
   if (!item) return null;
 
   const handleBackgroundClick = (e) => {
-    if (e.target.className && e.target.className.includes('gallery-modal')) {
+    if (e.target === e.currentTarget) {
       onClose();
     }
   };
@@ -27,11 +29,11 @@ const GalleryModal = ({
     : 'Unknown';
 
   return (
-    <div className="gallery-modal" onClick={handleBackgroundClick}>
-      <div className="gallery-modal-content">
-        <div className="gallery-modal-header">
+    <div className={styles.modal} onClick={handleBackgroundClick}>
+      <div className={styles.modalContent}>
+        <div className={styles.modalHeader}>
           <button
-            className="gallery-modal-close-btn"
+            className={styles.modalCloseBtn}
             onClick={onClose}
             title="Close"
           >
@@ -40,41 +42,44 @@ const GalleryModal = ({
         </div>
 
         {/* Info and Buttons Section */}
-        <div className="gallery-modal-info">
+        <div className={styles.modalInfo}>
           <div
-            className="metadata-container mt-4 rounded-md p-4 text-sm"
-            style={{
-              backgroundColor: 'rgba(0, 0, 0, 0.05)',
-              border: '1px solid rgba(0, 0, 0, 0.1)'
-            }}
+            className={`${styles.metadataContainer} mt-4 rounded-md p-4 text-sm`}
           >
             <div className="mb-2">
-              <span className="metadata-label font-semibold">Model:</span>{' '}
-              <span className="metadata-value">{model || 'Unknown'}</span>
+              <span className={`${styles.metadataLabel} font-semibold`}>
+                Model:
+              </span>{' '}
+              <span className={styles.metadataValue}>{model || 'Unknown'}</span>
             </div>
             <div className="mb-2">
-              <span className="metadata-label font-semibold">Size:</span>{' '}
-              <span className="metadata-value">
+              <span className={`${styles.metadataLabel} font-semibold`}>
+                Size:
+              </span>{' '}
+              <span className={styles.metadataValue}>
                 {width || '?'} × {height || '?'}
               </span>
             </div>
             <div className="mb-2">
-              <span className="metadata-label font-semibold">Seed:</span>{' '}
-              <span className="metadata-value">{seed || 'Unknown'}</span>
+              <span className={`${styles.metadataLabel} font-semibold`}>
+                Seed:
+              </span>{' '}
+              <span className={styles.metadataValue}>{seed || 'Unknown'}</span>
             </div>
             <div className="mb-2">
-              <span className="metadata-label font-semibold">Date:</span>{' '}
-              <span className="metadata-value">{date}</span>
+              <span className={`${styles.metadataLabel} font-semibold`}>
+                Date:
+              </span>{' '}
+              <span className={styles.metadataValue}>{date}</span>
             </div>
             {prompt && (
               <div className="mb-1">
-                <span className="metadata-label font-semibold">Prompt:</span>
+                <span className={`${styles.metadataLabel} font-semibold`}>
+                  Prompt:
+                </span>
                 <div
-                  className="metadata-prompt mt-1 max-h-32 overflow-y-auto rounded p-2 text-xs"
-                  style={{
-                    backgroundColor: 'rgba(0, 0, 0, 0.05)',
-                    whiteSpace: 'pre-wrap'
-                  }}
+                  className={`${styles.metadataPrompt} mt-1 max-h-32 overflow-y-auto rounded p-2 text-xs`}
+                  style={{ whiteSpace: 'pre-wrap' }}
                 >
                   {prompt}
                 </div>
@@ -142,7 +147,7 @@ const GalleryModal = ({
         </div>
 
         {/* Image Body Section */}
-        <div className="gallery-modal-body">
+        <div className={styles.modalBody}>
           <img src={item.objectURL} alt="Generated image" />
         </div>
       </div>
