@@ -456,7 +456,8 @@ const OutpaintTab = {
     this.elements.sourceImage.src = ''; // Clear previous src
 
     this.elements.sourceImage.onload = () => {
-      // Ensure image is loaded before using dimensions      this.originalWidth = this.elements.sourceImage.naturalWidth;
+      // Ensure image is loaded before using dimensions
+      this.originalWidth = this.elements.sourceImage.naturalWidth;
       this.originalHeight = this.elements.sourceImage.naturalHeight;
       this.elements.originalSizeLabel.textContent = `Original: ${this.originalWidth} × ${this.originalHeight} px`;
       this.updateNewSizeLabel(); // Update size label initially
