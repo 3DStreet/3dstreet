@@ -66,26 +66,9 @@ const FluxUI = {
     // Special handling for gallery tab - toggle the gallery sidebar
     if (tabId === 'gallery') {
       const galleryToggle = document.getElementById('gallery-toggle');
-      const galleryContainer = document.getElementById('gallery-container');
-
-      if (galleryToggle && galleryContainer) {
-        // Toggle the gallery sidebar
-        galleryContainer.classList.toggle('gallery-collapsed');
-
-        // Update the gallery tab button active state and toggle arrow based on gallery visibility
-        const isCollapsed =
-          galleryContainer.classList.contains('gallery-collapsed');
-        if (isCollapsed) {
-          tabButton.classList.remove('active');
-          // Update toggle button arrow to point left (collapsed state)
-          galleryToggle.innerHTML =
-            '<svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 19l-7-7 7-7m8 14l-7-7 7-7" /></svg>';
-        } else {
-          tabButton.classList.add('active');
-          // Update toggle button arrow to point right (expanded state)
-          galleryToggle.innerHTML =
-            '<svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 5l7 7-7 7M5 5l7 7-7 7" /></svg>';
-        }
+      if (galleryToggle) {
+        // Trigger the React component's toggle button
+        galleryToggle.click();
       }
       return; // Don't proceed with normal tab activation
     }
