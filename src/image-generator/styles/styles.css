@@ -143,10 +143,6 @@ button:active {
     border-bottom-color: var(--primary);
 }
 
-.tab-button.gallery-tab-button {
-    margin-left: auto;
-}
-
 .tab-content {
     display: none;
     padding: 20px 0;
@@ -261,42 +257,6 @@ button:active {
 .dark .tab-button.active {
     color: #818cf8; /* indigo-400 */
     border-bottom-color: #818cf8; /* indigo-400 */
-}
-
-/* Gallery Dark */
-.dark .gallery-sidebar {
-    background-color: #1f2937; /* gray-800 */
-    border-left-color: #374151; /* gray-700 */
-}
-
-.dark .gallery-toggle {
-    background-color: #374151; /* gray-700 */
-    color: #e5e7eb; /* gray-200 - Brighter gallery toggle icon */
-}
-
-.dark .gallery-toggle:hover {
-    background-color: #4b5563; /* gray-600 */
-}
-
-.dark .gallery-title,
-.dark .gallery-counter,
-.dark .gallery-item-prompt /* Make prompt text brighter */ {
-    color: #d1d5db; /* gray-300 */
-}
-
-.dark .gallery-item {
-    border-bottom-color: #374151; /* gray-700 */
-}
-
-/* Removed rule - merged above */
-
-.dark .clear-gallery-btn {
-    background-color: #374151; /* gray-700 */
-    color: #e5e7eb; /* gray-200 - Brighter clear button text */
-}
-
-.dark .clear-gallery-btn:hover {
-    background-color: #4b5563; /* gray-600 */
 }
 
 /* Notification Dark */

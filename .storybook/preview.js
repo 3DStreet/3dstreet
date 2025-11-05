@@ -1,3 +1,6 @@
+// Import Tailwind CSS
+import '../src/styles/tailwind.css';
+
 /** @type { import('@storybook/react-webpack5').Preview } */
 const preview = {
   parameters: {

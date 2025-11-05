@@ -2,6 +2,8 @@
  * GalleryItem Component - Individual thumbnail card
  */
 
+import styles from './Gallery.module.scss';
+
 const GalleryItem = ({ item, onItemClick, onDelete, onDownload }) => {
   const handleDelete = (e) => {
     e.stopPropagation();
@@ -21,27 +23,22 @@ const GalleryItem = ({ item, onItemClick, onDelete, onDownload }) => {
 
   return (
     <div
-      className="gallery-item group relative aspect-square overflow-hidden rounded-md bg-gray-800 shadow-md"
+      className={styles.item}
       onClick={handleClick}
       style={{ cursor: 'pointer' }}
     >
-      <img
-        src={item.objectURL}
-        alt="Generated image"
-        className="h-full w-full object-cover transition-transform duration-200 group-hover:scale-105"
-      />
+      <img src={item.objectURL} alt="Generated image" />
 
       {/* Overlay for buttons */}
-      <div className="absolute inset-0 flex items-center justify-center bg-black bg-opacity-0 opacity-0 transition-opacity duration-200 group-hover:bg-opacity-40 group-hover:opacity-100">
+      <div className={styles.itemOverlay}>
         {/* Download Button */}
         <button
-          className="download-btn mx-1 rounded-full bg-blue-600 p-2 text-white shadow-lg transition-colors hover:bg-blue-700"
+          className={`${styles.itemButton} ${styles.downloadBtn}`}
           onClick={handleDownload}
           title="Download Image"
         >
           <svg
             xmlns="http://www.w3.org/2000/svg"
-            className="h-5 w-5"
             fill="none"
             viewBox="0 0 24 24"
             stroke="currentColor"
@@ -57,13 +54,12 @@ const GalleryItem = ({ item, onItemClick, onDelete, onDownload }) => {
 
         {/* Delete Button */}
         <button
-          className="gallery-delete-btn mx-1 rounded-full bg-red-600 p-2 text-white shadow-lg transition-colors hover:bg-red-700"
+          className={`${styles.itemButton} ${styles.deleteBtn}`}
           onClick={handleDelete}
           title="Delete Image"
         >
           <svg
             xmlns="http://www.w3.org/2000/svg"
-            className="h-5 w-5"
             fill="none"
             viewBox="0 0 24 24"
             stroke="currentColor"
@@ -79,10 +75,8 @@ const GalleryItem = ({ item, onItemClick, onDelete, onDownload }) => {
       </div>
 
       {/* Details on hover */}
-      <div className="pointer-events-none absolute bottom-0 left-0 right-0 bg-black bg-opacity-60 p-1 text-xs text-white opacity-0 transition-opacity duration-200 group-hover:opacity-100">
-        <p className="truncate text-center">
-          {item.metadata?.model || 'Unknown'}
-        </p>
+      <div className={styles.itemDetails}>
+        <p>{item.metadata?.model || 'Unknown'}</p>
       </div>
     </div>
   );
