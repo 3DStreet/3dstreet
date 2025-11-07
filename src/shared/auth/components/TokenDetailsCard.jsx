@@ -5,7 +5,7 @@
 import { useState } from 'react';
 import * as HoverCard from '@radix-ui/react-hover-card';
 import { useAuthContext } from '../../contexts';
-import styles from '../styles/TokenDetailsCard.module.scss';
+import styles from './TokenDetailsCard.module.scss';
 
 const TokenDetailsCard = ({
   children,

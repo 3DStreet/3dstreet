@@ -2,7 +2,7 @@ const isUserPro = async (user) => {
   if (user) {
     try {
       // Use server-side validation for both subscription and domain checking
-      const { functions } = await import('../../shared/services/firebase.js');
+      const { functions } = await import('../../services/firebase.js');
       const { httpsCallable } = await import('firebase/functions');
 
       const checkProStatus = httpsCallable(functions, 'checkUserProStatus');

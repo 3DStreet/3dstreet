@@ -4,7 +4,7 @@
  */
 import { AuthProvider, useAuthContext } from '../../contexts';
 import TokenDetailsCard from './TokenDetailsCard';
-import styles from '../styles/TokenDisplay.module.scss';
+import styles from './TokenDisplay.module.scss';
 
 /**
  * TokenDisplayInner - shows token count without AuthProvider wrapper

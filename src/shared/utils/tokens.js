@@ -1,6 +1,6 @@
 import { doc, getDoc, setDoc, serverTimestamp } from 'firebase/firestore';
 import { db, functions } from '@shared/services/firebase';
-import { isUserPro } from '@shared/api/user';
+import { isUserPro } from '@shared/auth/api/user';
 import { httpsCallable } from 'firebase/functions';
 
 export const getTokenProfile = async (userId) => {

@@ -9,7 +9,7 @@ import { auth } from '../../services/firebase';
 import { useAuthContext } from '../../contexts';
 import { getUserProfile } from '../../utils/username';
 import posthog from 'posthog-js';
-import styles from '../styles/ProfileHoverCard.module.scss';
+import styles from './ProfileHoverCard.module.scss';
 
 // External link icon SVG
 const ExternalLinkIcon = () => (

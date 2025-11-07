@@ -18,7 +18,7 @@ import { auth, db, storage } from '@shared/services/firebase';
 import { getDownloadURL, ref, uploadBytes } from 'firebase/storage';
 import { httpsCallable, getFunctions } from 'firebase/functions';
 import posthog from 'posthog-js';
-import { isUserPro } from '@shared/api/user';
+import { isUserPro } from '@shared/auth/api/user';
 
 const sceneRef = collection(db, 'scenes');
 

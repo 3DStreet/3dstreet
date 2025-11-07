@@ -10,7 +10,7 @@
 import * as Tooltip from '@radix-ui/react-tooltip';
 import MsftProfileImg from '../../../../ui_assets/profile-microsoft.png';
 import ProfileHoverCard from './ProfileHoverCard';
-import styles from '../styles/ProfileButton.module.scss';
+import styles from './ProfileButton.module.scss';
 
 // Profile icon SVG (default when not using Google/Microsoft)
 const Profile32Icon = (

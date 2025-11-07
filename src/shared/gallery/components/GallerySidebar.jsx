@@ -1,5 +1,5 @@
 /**
- * GallerySidebar Component - Sidebar variant for image-generator
+ * GallerySidebar Component - Sidebar variant for generator
  */
 
 import { useState } from 'react';

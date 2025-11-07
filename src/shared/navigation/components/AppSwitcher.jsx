@@ -1,8 +1,8 @@
 import * as DropdownMenu from '@radix-ui/react-dropdown-menu';
 import { faChevronDown } from '@fortawesome/free-solid-svg-icons';
-import styles from '../styles/AppSwitcher.module.scss';
+import styles from './AppSwitcher.module.scss';
 
-// Simple inline icon renderer - works in both editor and image-generator
+// Simple inline icon renderer - works in both editor and generator
 const AwesomeIconSimple = ({ icon, size = 12, className = '' }) => {
   const width = icon.icon[0];
   const height = icon.icon[1];
@@ -26,8 +26,8 @@ const AwesomeIconSimple = ({ icon, size = 12, className = '' }) => {
 const AppSwitcher = () => {
   // Detect current app from pathname
   const currentPath = window.location.pathname;
-  const isEditor = !currentPath.includes('/image-generator');
-  const isImageGenerator = currentPath.includes('/image-generator');
+  const isEditor = !currentPath.includes('/generator');
+  const isImageGenerator = currentPath.includes('/generator');
 
   const handleEditorClick = () => {
     if (isEditor) {
@@ -40,7 +40,7 @@ const AppSwitcher = () => {
     if (isImageGenerator) {
       return;
     }
-    window.location.href = '/image-generator/';
+    window.location.href = '/generator/';
   };
 
   return (

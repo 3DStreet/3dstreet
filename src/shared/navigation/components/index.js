@@ -1,1 +1,1 @@
-export { default as AppSwitcher } from './AppSwitcher.jsx';
+export { default as AppSwitcher } from './AppSwitcher';

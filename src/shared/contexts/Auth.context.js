@@ -1,7 +1,7 @@
 import { createContext, useContext, useEffect, useState } from 'react';
 import { auth } from '@shared/services/firebase';
 import PropTypes from 'prop-types';
-import { isUserPro } from '@shared/api/user';
+import { isUserPro } from '@shared/auth/api/user';
 import { getTokenProfile, checkAndRefillProTokens } from '@shared/utils/tokens';
 import posthog from 'posthog-js';
 

@@ -16,7 +16,7 @@ Multi-application monorepo with shared components:
 
 1. **A-Frame Core** (`/src`) - 3D rendering engine, geometry, WebXR (vanilla JS + A-Frame)
 2. **React Editor** (`/src/editor`) - UI for scene editing, uses `AFRAME.INSPECTOR` to communicate with A-Frame
-3. **AI Image Generator** (`/src/image-generator`) - BFL Flux AI tool, vanilla JS with React islands
+3. **Generator** (`/src/generator`) - BFL Flux AI tool for image/video generation, vanilla JS with React islands
 4. **Shared Library** (`/src/shared`) - Auth, navigation, Firebase services (imported via `@shared/*`)
 5. **Firebase** (`/public`) - Hosting, cloud functions, Firestore
 
@@ -31,7 +31,7 @@ src/
 ├── editor/                     # React Editor
 │   ├── components/             # UI components
 │   └── lib/                    # Events, History, Commands
-├── image-generator/            # AI image app
+├── generator/                  # AI generator app
 │   ├── mount-*.js              # React island mounting
 │   └── components/             # React islands
 ├── shared/                     # Shared library (@shared/*)
@@ -92,9 +92,11 @@ public/
 
 **Functions:** getScene, createStripeSession, stripeWebhook, serveWebXRVariant, geoid, bfl-proxy
 
-## AI Image Generator
+## Generator
 
 **Structure:** Vanilla JS app (generator/inpaint/outpaint/gallery tabs) + React islands (auth, navigation, purchase modal)
+
+**Note:** UI still displays "AI Image Generator" but video generation coming soon
 
 **Island Architecture:** React components mounted via `mount-*.js` files into specific DOM elements
 
@@ -104,7 +106,7 @@ public/
 
 ## Shared Library (@shared/*)
 
-**Purpose:** Reusable components/services across editor + image-generator, imported via webpack alias
+**Purpose:** Reusable components/services across editor + generator, imported via webpack alias
 
 **Categories:**
 - `auth/` - ProfileButton, SignInModal, TokenDisplay, TokenDetailsCard
@@ -121,7 +123,7 @@ public/
 
 **Setup:** `npm install`, create `config/.env.development`
 
-**Dev server:** `npm start` → http://localhost:3333 (editor) + /image-generator/
+**Dev server:** `npm start` → http://localhost:3333 (editor) + /generator/
 
 **Build:** `npm run dist` (production) or `npm run dist:staging`
 

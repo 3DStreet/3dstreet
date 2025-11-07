@@ -24,9 +24,9 @@ module.exports = {
   devtool: 'source-map',
   entry: {
     core: { import: './src/index.js', filename: 'aframe-street-component.js' },
-    imageGenerator: {
-      import: './src/image-generator/index.js',
-      filename: 'image-generator.js'
+    generator: {
+      import: './src/generator/index.js',
+      filename: 'generator.js'
     }
   },
   output: {
