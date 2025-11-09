@@ -1,7 +1,7 @@
 import styles from './ZoomButtons.module.scss';
 import { Button } from '../Button';
 import classNames from 'classnames';
-import { CameraResetIcon } from '../../../icons';
+import { CameraResetIcon } from '@shared/icons';
 
 /**
  * ZoomButtons component.

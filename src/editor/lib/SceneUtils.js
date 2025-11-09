@@ -7,7 +7,7 @@ import {
 } from '@/editor/api/scene';
 import { createUniqueId } from '@/editor/lib/entity.js';
 import { doc, getDoc } from 'firebase/firestore';
-import { db } from '@/editor/services/firebase';
+import { db } from '@shared/services/firebase';
 
 export function createBlankScene() {
   STREET.utils.newScene();
@@ -151,7 +151,7 @@ export async function convertToObject() {
     if (currentSceneId) {
       try {
         const { doc, getDoc } = await import('firebase/firestore');
-        const { db } = await import('../services/firebase');
+        const { db } = await import('@shared/services/firebase');
 
         const sceneDocRef = doc(db, 'scenes', currentSceneId);
         const sceneSnapshot = await getDoc(sceneDocRef);

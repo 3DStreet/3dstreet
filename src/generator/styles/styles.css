@@ -1,0 +1,400 @@
+:root {
+    --primary: #4f46e5;
+    --primary-dark: #4338ca;
+    --primary-light: #e0e7ff;
+
+    /* Token display colors */
+    --token-bg-inner: #1a1a1a;
+    --token-bg-outer: #2a2a2a;
+    --token-border: #404040;
+    --token-text: #ffffff;
+    --token-text-muted: #6b7280;
+}
+
+/* Mobile layout fixes */
+@media (max-width: 640px) {
+    /* Prevent horizontal overflow caused by long flex rows */
+    html, body {
+        width: 100%;
+        overflow-x: hidden;
+    }
+
+    /* Header container wraps and avoids pushing layout horizontally */
+    header .container {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.5rem;
+    }
+
+    /* Brand + theme toggle row: allow shrink */
+    header .container > .flex.items-center.space-x-4 {
+        flex: 1 1 auto;
+        min-width: 0; /* allow text to truncate instead of overflow */
+    }
+
+    /* API key controls layout: stack on small screens */
+    #api-key-container {
+        width: 100%;
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.5rem;
+        justify-content: flex-start;
+    }
+
+    #api-key-input {
+        flex: 1 1 160px; /* grow but has a sane min width */
+        min-width: 0;    /* allow shrinking within container */
+    }
+
+    #save-api-key,
+    #clear-api-key {
+        flex: 0 0 auto;  /* keep intrinsic size but wrap to next line if needed */
+        white-space: nowrap;
+    }
+}
+
+body {
+    font-family: 'Inter', sans-serif;
+    background-color: #f9fafb;
+}
+
+input[type="range"] {
+    -webkit-appearance: none;
+    height: 0.5rem;
+    background: #e5e7eb;
+    border-radius: 0.25rem;
+    outline: none;
+}
+
+input[type="range"]::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 1.25rem;
+    height: 1.25rem;
+    border-radius: 50%;
+    background: var(--primary);
+    cursor: pointer;
+    transition: all 0.15s ease;
+}
+
+input[type="range"]::-webkit-slider-thumb:hover {
+    background: var(--primary-dark);
+    transform: scale(1.1);
+}
+
+#notification {
+    transition: transform 0.3s ease, opacity 0.3s ease;
+}
+
+.animate-spin {
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+}
+
+.param-group {
+    transition: all 0.3s ease;
+}
+
+button:focus {
+    outline: 2px solid var(--primary-light);
+    outline-offset: 2px;
+}
+
+button:active {
+    transform: scale(0.98);
+}
+
+/* Tab Styles */
+.tab-container {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+}
+
+.tab-navigation {
+    display: flex;
+    border-bottom: 1px solid #e5e7eb;
+    background-color: white;
+    overflow-x: auto;
+}
+
+.tab-button {
+    padding: 12px 16px;
+    background: none;
+    border: none;
+    border-bottom: 2px solid transparent;
+    color: #6b7280;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    white-space: nowrap;
+}
+
+.tab-button:hover {
+    color: var(--primary);
+}
+
+.tab-button.active {
+    color: var(--primary);
+    border-bottom-color: var(--primary);
+}
+
+.tab-button.gallery-tab-button {
+    margin-left: auto;
+}
+
+.tab-content {
+    display: none;
+    padding: 20px 0;
+    flex-grow: 1;
+}
+
+.tab-content.active {
+    display: block;
+}
+
+/* Dark Mode Styles */
+.dark body {
+    background-color: #111827; /* gray-900 */
+    color: #e5e7eb; /* gray-200 - Brighter default text */
+}
+
+.dark header,
+.dark footer,
+.dark .bg-white {
+    background-color: #1f2937; /* gray-800 */
+    border-color: #374151; /* gray-700 */
+}
+
+.dark h1,
+.dark .text-indigo-600 {
+    color: #818cf8; /* indigo-400 */
+}
+
+.dark a.text-indigo-600:hover,
+.dark a.text-indigo-800:hover {
+    color: #a5b4fc; /* indigo-300 */
+}
+
+.dark input[type="password"],
+.dark input[type="text"],
+.dark input[type="number"],
+.dark select,
+.dark textarea {
+    background-color: #374151; /* gray-700 */
+    border-color: #4b5563; /* gray-600 */
+    color: #f3f4f6; /* gray-100 - Brighter input text */
+}
+
+.dark input::placeholder,
+.dark textarea::placeholder {
+    color: #9ca3af; /* gray-400 */
+}
+
+.dark input:focus,
+.dark select:focus,
+.dark textarea:focus {
+    border-color: #6366f1; /* indigo-500 */
+    --tw-ring-color: #6366f1; /* indigo-500 */
+}
+
+.dark button {
+    /* Adjust default button colors if needed, or rely on specific classes */
+}
+
+.dark .bg-indigo-600 {
+    background-color: #4f46e5; /* indigo-600 - keep same or adjust */
+}
+
+.dark .hover\:bg-indigo-700:hover {
+    background-color: #4338ca; /* indigo-700 - keep same or adjust */
+}
+
+.dark .bg-red-600 {
+    background-color: #dc2626; /* red-600 */
+}
+
+.dark .hover\:bg-red-700:hover {
+    background-color: #b91c1c; /* red-700 */
+}
+
+.dark .text-white {
+    color: #ffffff;
+}
+
+.dark .text-gray-500,
+.dark label /* Target labels specifically */ {
+    color: #d1d5db; /* gray-300 - Make labels brighter */
+}
+
+.dark .border-gray-200 {
+    border-color: #374151; /* gray-700 */
+}
+
+.dark .border-gray-300 {
+    border-color: #4b5563; /* gray-600 */
+}
+
+.dark .shadow-sm {
+    --tw-shadow: 0 1px 2px 0 rgb(0 0 0 / 0.15); /* Slightly darker shadow */
+    box-shadow: var(--tw-ring-offset-shadow, 0 0 #0000), var(--tw-ring-shadow, 0 0 #0000), var(--tw-shadow);
+}
+
+/* Tab Navigation Dark */
+.dark .tab-navigation {
+    background-color: #1f2937; /* gray-800 */
+    border-bottom-color: #374151; /* gray-700 */
+}
+
+.dark .tab-button {
+    color: #d1d5db; /* gray-300 - Brighter inactive tab text */
+}
+
+.dark .tab-button:hover {
+    color: #a5b4fc; /* indigo-300 */
+}
+
+.dark .tab-button.active {
+    color: #818cf8; /* indigo-400 */
+    border-bottom-color: #818cf8; /* indigo-400 */
+}
+
+/* Notification Dark */
+.dark #notification {
+    /* Keep colors as they are for visibility, or adjust if needed */
+}
+
+/* Input Range Dark */
+.dark input[type="range"] {
+    background: #4b5563; /* gray-600 */
+}
+
+.dark input[type="range"]::-webkit-slider-thumb {
+    background: #818cf8; /* indigo-400 */
+}
+
+.dark input[type="range"]::-webkit-slider-thumb:hover {
+    background: #a5b4fc; /* indigo-300 */
+}
+
+/* Modal Styles - Required for auth modals */
+.modal {
+    position: fixed;
+    z-index: 9999;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    overflow: auto;
+    background-color: rgba(0, 0, 0, 0.5);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.modal.hide {
+    display: none !important;
+}
+
+.modal-content {
+    background-color: #fff;
+    margin: auto;
+    padding: 0;
+    border-radius: 8px;
+    max-width: 500px;
+    width: 90%;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+.dark .modal-content {
+    background-color: #1f2937;
+    color: #e5e7eb;
+}
+
+/* Token Tooltip - Radix-style overlay */
+.token-tooltip-wrapper {
+    position: absolute;
+    bottom: calc(100% + 8px);
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 50;
+    pointer-events: none;
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity 0.15s ease-out, visibility 0.15s ease-out;
+}
+
+/* Show tooltip on button hover */
+.token-tooltip-trigger:hover .token-tooltip-wrapper {
+    opacity: 1;
+    visibility: visible;
+}
+
+.token-tooltip {
+    animation: tooltipSlideDown 0.15s ease-out;
+}
+
+@keyframes tooltipSlideDown {
+    from {
+        transform: translateY(-4px);
+    }
+    to {
+        transform: translateY(0);
+    }
+}
+
+.token-tooltip-content {
+    background: #18181b;
+    color: #fafafa;
+    padding: 8px 12px;
+    border-radius: 6px;
+    font-size: 13px;
+    line-height: 1.4;
+    box-shadow:
+        0 10px 38px -10px rgba(0, 0, 0, 0.35),
+        0 10px 20px -15px rgba(0, 0, 0, 0.2),
+        0 0 0 1px rgba(255, 255, 255, 0.1);
+    min-width: 280px;
+    max-width: 320px;
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+    white-space: normal;
+    opacity: 1 !important;
+}
+
+.token-tooltip-icon {
+    flex-shrink: 0;
+    margin-top: 2px;
+    color: #fbbf24;
+}
+
+.token-tooltip-arrow {
+    position: absolute;
+    bottom: -4px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 0;
+    height: 0;
+    border-left: 6px solid transparent;
+    border-right: 6px solid transparent;
+    border-top: 4px solid #18181b;
+}
+
+/* Dark mode adjustments (already dark by default) */
+.dark .token-tooltip-content {
+    background: #18181b;
+    color: #fafafa;
+    box-shadow:
+        0 10px 38px -10px rgba(0, 0, 0, 0.5),
+        0 10px 20px -15px rgba(0, 0, 0, 0.3),
+        0 0 0 1px rgba(255, 255, 255, 0.1);
+}
+
+.dark .token-tooltip-arrow {
+    border-top-color: #18181b;
+}

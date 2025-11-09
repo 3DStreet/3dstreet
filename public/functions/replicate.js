@@ -51,7 +51,7 @@ async function postAIImageToDiscord(userId, imageUrl, prompt, modelVersion, scen
           url: imageUrl
         },
         footer: {
-          text: '3DStreet AI Image Generation',
+          text: '3DStreet Editor Snapshot AI Render',
           icon_url: 'https://3dstreet.app/favicon-32x32.png'
         },
         timestamp: new Date().toISOString()
@@ -199,12 +199,14 @@ const generateReplicateImage = functions
         modelInput.image_input = [imageUrl];
         modelInput.size = '2K';
         modelInput.aspect_ratio = 'match_input_image';
+        modelInput.output_format = 'jpg';
         // Remove parameters that Seedream doesn't use
         delete modelInput.guidance;
         delete modelInput.num_inference_steps;
       } else {
         // Kontext models use input_image as string
         modelInput.input_image = imageUrl;
+        modelInput.output_format = 'jpg';
       }
 
       const prediction = await replicate.predictions.create({

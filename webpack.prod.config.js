@@ -14,7 +14,11 @@ module.exports = {
   mode: 'production',
   devtool: 'source-map',
   entry: {
-    core: { import: './src/index.js', filename: 'aframe-street-component.js' }
+    core: { import: './src/index.js', filename: 'aframe-street-component.js' },
+    generator: {
+      import: './src/generator/index.js',
+      filename: 'generator.js'
+    }
   },
   output: {
     clean: true,
@@ -105,8 +109,10 @@ module.exports = {
     ]
   },
   resolve: {
+    extensions: ['.js', '.jsx', '.json'],
     alias: {
-      '@': path.resolve(__dirname, 'src')
+      '@': path.resolve(__dirname, 'src'),
+      '@shared': path.resolve(__dirname, 'src/shared')
     }
   }
 };

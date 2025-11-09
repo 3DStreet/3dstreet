@@ -22,7 +22,7 @@ import {
   TrashIcon,
   Copy32Icon,
   ArrowsPointingInwardIcon
-} from '../../icons';
+} from '@shared/icons';
 import GeoSidebar from './GeoSidebar';
 import EnviroSidebar from './EnviroSidebar';
 import ViewerSidebar from './ViewerSidebar';

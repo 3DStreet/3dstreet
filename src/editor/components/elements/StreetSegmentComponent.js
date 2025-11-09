@@ -10,7 +10,7 @@ import {
   PedestriansIcon,
   RailIcon,
   TrashIcon
-} from '../../icons';
+} from '@shared/icons';
 import ModelsArrayWidget from '../widgets/ModelsArrayWidget';
 
 const isSingleProperty = AFRAME.schema.isSingleProperty;

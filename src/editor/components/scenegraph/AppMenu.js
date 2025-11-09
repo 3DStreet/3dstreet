@@ -1,4 +1,4 @@
-import * as DropdownMenu from '@radix-ui/react-dropdown-menu';
+import { Menubar } from 'radix-ui';
 import '../../style/AppMenu.scss';
 import useStore from '@/store';
 import { makeScreenshot, convertToObject } from '@/editor/lib/SceneUtils';
@@ -14,7 +14,6 @@ import {
 import {
   faCheck,
   faCircle,
-  faChevronDown,
   faChevronRight
 } from '@fortawesome/free-solid-svg-icons';
 import { AwesomeIcon } from '../elements/AwesomeIcon';
@@ -528,314 +527,260 @@ const AppMenu = ({ currentUser }) => {
   };
 
   return (
-    <DropdownMenu.Root>
-      <DropdownMenu.Trigger className="DropdownTrigger">
-        <img
-          src="/ui_assets/3D-St-stacked-128.png"
-          alt="3DStreet Logo"
-          className="logo-image"
-        />
-        <AwesomeIcon
-          icon={faChevronDown}
-          size={12}
-          className="dropdown-arrow"
-        />
-      </DropdownMenu.Trigger>
-      <DropdownMenu.Portal>
-        <DropdownMenu.Content
-          className="DropdownContent"
-          align="start"
-          sideOffset={5}
-        >
-          {/* File Submenu */}
-          <DropdownMenu.Sub>
-            <DropdownMenu.SubTrigger className="DropdownSubTrigger">
-              File
-              <div className="RightSlot">
-                <AwesomeIcon icon={faChevronRight} size={12} />
-              </div>
-            </DropdownMenu.SubTrigger>
-            <DropdownMenu.Portal>
-              <DropdownMenu.SubContent className="DropdownSubContent">
-                <DropdownMenu.Item
-                  className="DropdownItem"
-                  onClick={newHandler}
-                >
-                  New...
-                </DropdownMenu.Item>
-                <DropdownMenu.Item
-                  className="DropdownItem"
-                  onClick={() => setModal('scenes')}
-                >
-                  Open...
-                </DropdownMenu.Item>
-                {/* Import Submenu - commented out to not overtly show GeoJSON import command */}
-                {/*
-                <DropdownMenu.Sub>
-                  <DropdownMenu.SubTrigger className="DropdownSubTrigger">
-                    Import
-                    <div className="RightSlot">
-                      <AwesomeIcon icon={faChevronRight} size={12} />
-                    </div>
-                  </DropdownMenu.SubTrigger>
-                  <DropdownMenu.Portal>
-                    <DropdownMenu.SubContent className="DropdownSubContent">
-                      <DropdownMenu.Item
-                        className="DropdownItem"
-                        onClick={importGeoJSON}
-                      >
-                        GeoJSON
-                      </DropdownMenu.Item>
-                    </DropdownMenu.SubContent>
-                  </DropdownMenu.Portal>
-                </DropdownMenu.Sub>
-                */}
-                <DropdownMenu.Separator className="DropdownSeparator" />
-                <DropdownMenu.Item
-                  className="DropdownItem"
-                  disabled={!STREET.utils.getCurrentSceneId()}
-                  onClick={() => {
-                    if (!currentUser) {
-                      setModal('signin');
-                      return;
-                    }
-                    if (currentUser?.uid !== STREET.utils.getAuthorId()) {
-                      return;
-                    }
-                    saveScene(false);
-                  }}
-                >
-                  Save
-                </DropdownMenu.Item>
-                <DropdownMenu.Item
-                  className="DropdownItem"
-                  onClick={() => {
-                    if (!currentUser) {
-                      setModal('signin');
-                      return;
-                    }
-                    saveScene(true, true);
-                  }}
-                >
-                  Save As...
-                </DropdownMenu.Item>
-                <DropdownMenu.Separator className="DropdownSeparator" />
-                <DropdownMenu.Item
-                  className="DropdownItem"
-                  onClick={() => {
-                    makeScreenshot();
-                    setModal('screenshot');
-                  }}
-                >
-                  Share & Download...
-                </DropdownMenu.Item>
-                <DropdownMenu.Separator className="DropdownSeparator" />
-                {/* Export Submenu */}
-                <DropdownMenu.Sub>
-                  <DropdownMenu.SubTrigger className="DropdownSubTrigger">
-                    Export
-                    <div className="RightSlot">
-                      <AwesomeIcon icon={faChevronRight} size={12} />
-                    </div>
-                  </DropdownMenu.SubTrigger>
-                  <DropdownMenu.Portal>
-                    <DropdownMenu.SubContent className="DropdownSubContent">
-                      <DropdownMenu.Item
-                        className="DropdownItem"
-                        onClick={() => exportSceneToGLTF(false)}
-                      >
-                        GLB glTF
-                        <div className="RightSlot">
-                          <span className="pro-badge">Pro</span>
-                        </div>
-                      </DropdownMenu.Item>
-                      <DropdownMenu.Item
-                        className="DropdownItem"
-                        onClick={() => exportSceneToGLTF(true)}
-                      >
-                        AR Ready GLB
-                        <div className="RightSlot">
-                          <span className="pro-badge">Pro</span>
-                        </div>
-                      </DropdownMenu.Item>
-                      <DropdownMenu.Item
-                        className="DropdownItem"
-                        onClick={exportSceneToJSON}
-                      >
-                        .3dstreet.json
-                      </DropdownMenu.Item>
-                    </DropdownMenu.SubContent>
-                  </DropdownMenu.Portal>
-                </DropdownMenu.Sub>
-              </DropdownMenu.SubContent>
-            </DropdownMenu.Portal>
-          </DropdownMenu.Sub>
-
-          {/* View Submenu */}
-          <DropdownMenu.Sub>
-            <DropdownMenu.SubTrigger className="DropdownSubTrigger">
-              View
-              <div className="RightSlot">
-                <AwesomeIcon icon={faChevronRight} size={12} />
-              </div>
-            </DropdownMenu.SubTrigger>
-            <DropdownMenu.Portal>
-              <DropdownMenu.SubContent className="DropdownSubContent">
-                <DropdownMenu.CheckboxItem
-                  className="DropdownCheckboxItem"
-                  checked={isGridVisible}
-                  onCheckedChange={setIsGridVisible}
-                >
-                  <DropdownMenu.ItemIndicator className="DropdownItemIndicator">
-                    <AwesomeIcon icon={faCheck} size={14} />
-                  </DropdownMenu.ItemIndicator>
-                  Show Grid
-                  <div className="RightSlot">G</div>
-                </DropdownMenu.CheckboxItem>
-                <DropdownMenu.Separator className="DropdownSeparator" />
-                {cameraOptions.map((option) => (
-                  <DropdownMenu.CheckboxItem
-                    key={option.value}
-                    className="DropdownCheckboxItem"
-                    checked={currentCamera === option.value}
-                    onCheckedChange={() => handleCameraChange(option)}
+    <Menubar.Root className="MenubarRoot">
+      <Menubar.Menu>
+        <Menubar.Trigger className="MenubarTrigger">File</Menubar.Trigger>
+        <Menubar.Portal>
+          <Menubar.Content
+            className="MenubarContent"
+            align="start"
+            sideOffset={5}
+            alignOffset={-3}
+          >
+            <Menubar.Item className="MenubarItem" onClick={newHandler}>
+              New...
+            </Menubar.Item>
+            <Menubar.Item
+              className="MenubarItem"
+              onClick={() => setModal('scenes')}
+            >
+              Open...
+            </Menubar.Item>
+            <Menubar.Separator className="MenubarSeparator" />
+            <Menubar.Item
+              className="MenubarItem"
+              disabled={!STREET.utils.getCurrentSceneId()}
+              onClick={() => {
+                if (!currentUser) {
+                  setModal('signin');
+                  return;
+                }
+                if (currentUser?.uid !== STREET.utils.getAuthorId()) {
+                  return;
+                }
+                saveScene(false);
+              }}
+            >
+              Save
+            </Menubar.Item>
+            <Menubar.Item
+              className="MenubarItem"
+              onClick={() => {
+                if (!currentUser) {
+                  setModal('signin');
+                  return;
+                }
+                saveScene(true, true);
+              }}
+            >
+              Save As...
+            </Menubar.Item>
+            <Menubar.Separator className="MenubarSeparator" />
+            <Menubar.Item
+              className="MenubarItem"
+              onClick={() => {
+                makeScreenshot();
+                setModal('screenshot');
+              }}
+            >
+              Share & Download...
+            </Menubar.Item>
+            <Menubar.Separator className="MenubarSeparator" />
+            <Menubar.Sub>
+              <Menubar.SubTrigger className="MenubarItem">
+                Export
+                <div className="RightSlot">
+                  <AwesomeIcon icon={faChevronRight} size={12} />
+                </div>
+              </Menubar.SubTrigger>
+              <Menubar.Portal>
+                <Menubar.SubContent className="MenubarContent">
+                  <Menubar.Item
+                    className="MenubarItem"
+                    onClick={() => exportSceneToGLTF(false)}
                   >
-                    <DropdownMenu.ItemIndicator className="DropdownItemIndicator">
-                      <AwesomeIcon icon={faCircle} size={8} />
-                    </DropdownMenu.ItemIndicator>
-                    {option.label}
-                    <div className="RightSlot">{option.shortcut}</div>
-                  </DropdownMenu.CheckboxItem>
-                ))}
-                <DropdownMenu.Separator className="DropdownSeparator" />
-                <DropdownMenu.Item
-                  className="DropdownItem"
-                  onClick={() => AFRAME.INSPECTOR.controls.resetZoom()}
-                >
-                  Reset Camera View
-                </DropdownMenu.Item>
-              </DropdownMenu.SubContent>
-            </DropdownMenu.Portal>
-          </DropdownMenu.Sub>
+                    GLB glTF
+                    <div className="RightSlot">
+                      <span className="pro-badge">Pro</span>
+                    </div>
+                  </Menubar.Item>
+                  <Menubar.Item
+                    className="MenubarItem"
+                    onClick={() => exportSceneToGLTF(true)}
+                  >
+                    AR Ready GLB
+                    <div className="RightSlot">
+                      <span className="pro-badge">Pro</span>
+                    </div>
+                  </Menubar.Item>
+                  <Menubar.Item
+                    className="MenubarItem"
+                    onClick={exportSceneToJSON}
+                  >
+                    .3dstreet.json
+                  </Menubar.Item>
+                </Menubar.SubContent>
+              </Menubar.Portal>
+            </Menubar.Sub>
+          </Menubar.Content>
+        </Menubar.Portal>
+      </Menubar.Menu>
 
-          {/* Run Submenu */}
-          <DropdownMenu.Sub>
-            <DropdownMenu.SubTrigger className="DropdownSubTrigger">
-              Run
+      <Menubar.Menu>
+        <Menubar.Trigger className="MenubarTrigger">View</Menubar.Trigger>
+        <Menubar.Portal>
+          <Menubar.Content
+            className="MenubarContent"
+            align="start"
+            sideOffset={5}
+            alignOffset={-3}
+          >
+            <Menubar.CheckboxItem
+              className="MenubarCheckboxItem"
+              checked={isGridVisible}
+              onCheckedChange={setIsGridVisible}
+            >
+              <Menubar.ItemIndicator className="MenubarItemIndicator">
+                <AwesomeIcon icon={faCheck} size={14} />
+              </Menubar.ItemIndicator>
+              Show Grid
+              <div className="RightSlot">G</div>
+            </Menubar.CheckboxItem>
+            <Menubar.Separator className="MenubarSeparator" />
+            {cameraOptions.map((option) => (
+              <Menubar.CheckboxItem
+                key={option.value}
+                className="MenubarCheckboxItem"
+                checked={currentCamera === option.value}
+                onCheckedChange={() => handleCameraChange(option)}
+              >
+                <Menubar.ItemIndicator className="MenubarItemIndicator">
+                  <AwesomeIcon icon={faCircle} size={8} />
+                </Menubar.ItemIndicator>
+                {option.label}
+                <div className="RightSlot">{option.shortcut}</div>
+              </Menubar.CheckboxItem>
+            ))}
+            <Menubar.Separator className="MenubarSeparator" />
+            <Menubar.Item
+              className="MenubarItem"
+              onClick={() => AFRAME.INSPECTOR.controls.resetZoom()}
+            >
+              Reset Camera View
+            </Menubar.Item>
+          </Menubar.Content>
+        </Menubar.Portal>
+      </Menubar.Menu>
+
+      <Menubar.Menu>
+        <Menubar.Trigger className="MenubarTrigger">Run</Menubar.Trigger>
+        <Menubar.Portal>
+          <Menubar.Content
+            className="MenubarContent"
+            align="start"
+            sideOffset={5}
+            alignOffset={-3}
+          >
+            <Menubar.Item
+              className="MenubarItem"
+              onClick={() => {
+                setIsInspectorEnabled(!isInspectorEnabled);
+              }}
+            >
+              Start Viewer
+              <div className="RightSlot">5</div>
+            </Menubar.Item>
+            <Menubar.Item
+              className="MenubarItem"
+              onClick={async () => {
+                if (!authUser) {
+                  setModal('signin');
+                  return;
+                }
+
+                if (!authUser.isPro) {
+                  startCheckout(null);
+                  posthog.capture('recording_feature_paywall_shown');
+                  return;
+                }
+
+                const aframeCanvas = document.querySelector('a-scene').canvas;
+                if (!aframeCanvas) {
+                  console.error('Could not find A-Frame canvas for recording');
+                  return;
+                }
+
+                const success = await canvasRecorder.startRecording(
+                  aframeCanvas,
+                  {
+                    name:
+                      '3DStreet-Recording-' +
+                      new Date().toISOString().slice(0, 10)
+                  }
+                );
+
+                if (success) {
+                  setIsInspectorEnabled(!isInspectorEnabled);
+                }
+              }}
+            >
+              Start and Record{' '}
               <div className="RightSlot">
-                <AwesomeIcon icon={faChevronRight} size={12} />
+                <span className="pro-badge">Pro</span>
               </div>
-            </DropdownMenu.SubTrigger>
-            <DropdownMenu.Portal>
-              <DropdownMenu.SubContent className="DropdownSubContent">
-                <DropdownMenu.Item
-                  className="DropdownItem"
-                  onClick={() => {
-                    setIsInspectorEnabled(!isInspectorEnabled);
-                  }}
-                >
-                  Start Viewer
-                  <div className="RightSlot">5</div>
-                </DropdownMenu.Item>
-                <DropdownMenu.Item
-                  className="DropdownItem"
-                  onClick={async () => {
-                    if (!authUser) {
-                      setModal('signin');
-                      return;
-                    }
+            </Menubar.Item>
+          </Menubar.Content>
+        </Menubar.Portal>
+      </Menubar.Menu>
 
-                    if (!authUser.isPro) {
-                      startCheckout(null);
-                      posthog.capture('recording_feature_paywall_shown');
-                      return;
-                    }
-
-                    const aframeCanvas =
-                      document.querySelector('a-scene').canvas;
-                    if (!aframeCanvas) {
-                      console.error(
-                        'Could not find A-Frame canvas for recording'
-                      );
-                      return;
-                    }
-
-                    const success = await canvasRecorder.startRecording(
-                      aframeCanvas,
-                      {
-                        name:
-                          '3DStreet-Recording-' +
-                          new Date().toISOString().slice(0, 10)
-                      }
-                    );
-
-                    if (success) {
-                      setIsInspectorEnabled(!isInspectorEnabled);
-                    }
-                  }}
-                >
-                  Start and Record{' '}
-                  <div className="RightSlot">
-                    <span className="pro-badge">Pro</span>
-                  </div>
-                </DropdownMenu.Item>
-              </DropdownMenu.SubContent>
-            </DropdownMenu.Portal>
-          </DropdownMenu.Sub>
-
-          {/* Help Submenu */}
-          <DropdownMenu.Sub>
-            <DropdownMenu.SubTrigger className="DropdownSubTrigger">
-              Help
-              <div className="RightSlot">
-                <AwesomeIcon icon={faChevronRight} size={12} />
-              </div>
-            </DropdownMenu.SubTrigger>
-            <DropdownMenu.Portal>
-              <DropdownMenu.SubContent className="DropdownSubContent">
-                <DropdownMenu.Item
-                  className="DropdownItem"
-                  onClick={() =>
-                    window.open('https://www.3dstreet.org/docs/', '_blank')
-                  }
-                >
-                  Documentation
-                </DropdownMenu.Item>
-                <DropdownMenu.Item
-                  className="DropdownItem"
-                  onClick={() =>
-                    window.open(
-                      'https://www.3dstreet.org/docs/3dstreet-editor/keyboard-shortcuts',
-                      '_blank'
-                    )
-                  }
-                >
-                  Keyboard Shortcuts
-                </DropdownMenu.Item>
-                <DropdownMenu.Item
-                  className="DropdownItem"
-                  onClick={() =>
-                    window.open(
-                      'https://www.3dstreet.org/docs/3dstreet-editor/mouse-and-touch-controls',
-                      '_blank'
-                    )
-                  }
-                >
-                  Mouse and Touch Controls
-                </DropdownMenu.Item>
-                <DropdownMenu.Separator className="DropdownSeparator" />
-                <DropdownMenu.Item
-                  className="DropdownItem"
-                  onClick={showAIChatPanel}
-                >
-                  AI Scene Assistant
-                </DropdownMenu.Item>
-              </DropdownMenu.SubContent>
-            </DropdownMenu.Portal>
-          </DropdownMenu.Sub>
-        </DropdownMenu.Content>
-      </DropdownMenu.Portal>
-    </DropdownMenu.Root>
+      <Menubar.Menu>
+        <Menubar.Trigger className="MenubarTrigger">Help</Menubar.Trigger>
+        <Menubar.Portal>
+          <Menubar.Content
+            className="MenubarContent"
+            align="start"
+            sideOffset={5}
+            alignOffset={-3}
+          >
+            <Menubar.Item
+              className="MenubarItem"
+              onClick={() =>
+                window.open('https://www.3dstreet.org/docs/', '_blank')
+              }
+            >
+              Documentation
+            </Menubar.Item>
+            <Menubar.Separator className="MenubarSeparator" />
+            <Menubar.Item
+              className="MenubarItem"
+              onClick={() =>
+                window.open(
+                  'https://www.3dstreet.org/docs/3dstreet-editor/keyboard-shortcuts',
+                  '_blank'
+                )
+              }
+            >
+              Keyboard Shortcuts
+            </Menubar.Item>
+            <Menubar.Item
+              className="MenubarItem"
+              onClick={() =>
+                window.open(
+                  'https://www.3dstreet.org/docs/3dstreet-editor/mouse-and-touch-controls',
+                  '_blank'
+                )
+              }
+            >
+              Mouse and Touch Controls
+            </Menubar.Item>
+            <Menubar.Separator className="MenubarSeparator" />
+            <Menubar.Item className="MenubarItem" onClick={showAIChatPanel}>
+              AI Scene Assistant
+            </Menubar.Item>
+          </Menubar.Content>
+        </Menubar.Portal>
+      </Menubar.Menu>
+    </Menubar.Root>
   );
 };
 

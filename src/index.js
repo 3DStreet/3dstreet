@@ -42,7 +42,7 @@ require('./aframe-components/viewer-mode.js');
 require('./aframe-components/scene-timer.js');
 require('./aframe-components/geojson.js');
 require('./editor/index.js');
-var firebase = require('./editor/services/firebase.js');
+var firebase = require('./shared/services/firebase.js');
 
 if (typeof VERSION !== 'undefined') {
   console.log(`3DStreet Version: ${VERSION}`);

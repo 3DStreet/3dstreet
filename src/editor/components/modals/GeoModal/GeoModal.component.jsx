@@ -1,9 +1,9 @@
 import { useState, useCallback, useEffect } from 'react';
 import { SavingModal } from '../SavingModal';
 import styles from './GeoModal.module.scss';
-import { Magnifier20Icon } from '../../../icons';
-import { firebaseConfig } from '../../../services/firebase.js';
-import Modal from '../Modal.jsx';
+import { Magnifier20Icon } from '@shared/icons';
+import { firebaseConfig } from '@shared/services/firebase';
+import Modal from '@shared/components/Modal/Modal.jsx';
 import { Button, Input } from '../../elements/index.js';
 import {
   GoogleMap,
@@ -16,7 +16,7 @@ import { roundCoord } from '../../../../../src/utils.js';
 import { setSceneLocation } from '../../../lib/utils.js';
 import useStore from '@/store.js';
 import { useAuthContext } from '../../../contexts/index.js';
-import { canUseGeoFeature } from '../../../utils/tokens.js';
+import { canUseGeoFeature } from '@shared/utils/tokens';
 import posthog from 'posthog-js';
 import { Tooltip } from 'radix-ui';
 

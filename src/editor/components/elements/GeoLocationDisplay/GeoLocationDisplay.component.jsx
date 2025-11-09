@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import styles from './GeoLocationDisplay.module.scss';
 import useStore from '@/store';
-import { Magnifier20Icon } from '../../../icons';
+import { Magnifier20Icon } from '@shared/icons';
 
 const GeoLocationDisplay = () => {
   const [isHovered, setIsHovered] = useState(false);

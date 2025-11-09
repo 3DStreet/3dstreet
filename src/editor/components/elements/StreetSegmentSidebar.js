@@ -14,7 +14,7 @@ import {
   Copy32Icon,
   Edit24Icon,
   TrashIcon
-} from '../../icons';
+} from '@shared/icons';
 import { Button } from '../elements';
 import Events from '../../lib/Events';
 

@@ -14,11 +14,11 @@ import {
   where
 } from 'firebase/firestore';
 import { v4 as uuidv4 } from 'uuid';
-import { auth, db, storage } from '../services/firebase';
+import { auth, db, storage } from '@shared/services/firebase';
 import { getDownloadURL, ref, uploadBytes } from 'firebase/storage';
 import { httpsCallable, getFunctions } from 'firebase/functions';
 import posthog from 'posthog-js';
-import { isUserPro } from './user';
+import { isUserPro } from '@shared/auth/api/user';
 
 const sceneRef = collection(db, 'scenes');
 

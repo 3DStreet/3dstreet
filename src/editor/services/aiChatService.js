@@ -1,5 +1,5 @@
 import { getGenerativeModel } from 'firebase/vertexai';
-import { vertexAI } from '../services/firebase.js';
+import { vertexAI } from '@shared/services/firebase.js';
 
 class AIChatService {
   constructor(firebaseApp) {
