@@ -48,21 +48,6 @@ export const NewModal = () => {
     onClose();
 
     switch (actionType) {
-      case 'blank':
-        AFRAME.scenes[0].addEventListener(
-          'newScene',
-          () => {
-            saveScene(true);
-            posthog.capture('scene_created_from_template', {
-              template_type: 'blank',
-              timestamp: new Date().toISOString()
-            });
-          },
-          { once: true }
-        );
-        createBlankScene();
-        break;
-
       case 'basic_street':
         AFRAME.scenes[0].addEventListener(
           'newScene',
@@ -136,38 +121,6 @@ export const NewModal = () => {
         createBlankScene();
         break;
 
-      case 'ar_panorama':
-        AFRAME.scenes[0].addEventListener(
-          'newScene',
-          () => {
-            // Create a sphere with panorama texture
-            const definition = {
-              element: 'a-entity',
-              components: {
-                geometry:
-                  'primitive: sphere; radius: 100; segmentsWidth: 64; segmentsHeight: 32',
-                material:
-                  'shader: flat; side: back; src: https://kfarr.github.io/ar-tour-assets/panoramic/world_b5da22ec-c745-40b3-ac6b-01247b8c212b_skybox.png',
-                scale: '-1 1 1',
-                'data-layer-name': 'Sphere Geometry • 360° Panorama'
-              }
-            };
-            AFRAME.INSPECTOR.execute('entitycreate', definition);
-            // Save after creating the panorama sphere
-            setTimeout(() => {
-              saveScene(true);
-            }, 100);
-            posthog.capture('scene_created_from_template', {
-              template_type: 'ar_panorama',
-              panorama_source: 'default_skybox',
-              timestamp: new Date().toISOString()
-            });
-          },
-          { once: true }
-        );
-        createBlankScene();
-        break;
-
       case 'ai_assistant':
         AFRAME.scenes[0].addEventListener(
           'newScene',
@@ -190,31 +143,12 @@ export const NewModal = () => {
         createBlankScene();
         break;
 
-      case 'mobile_measurement': {
-        posthog.capture('mobile_measurement_opened', {
+      case 'ai_generator':
+        posthog.capture('ai_generator_opened_from_new_modal', {
           timestamp: new Date().toISOString()
         });
-        // Show modal with QR code
-        const modal = document.createElement('div');
-        modal.innerHTML = `
-          <div style="position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); 
-                      background: white; padding: 30px; border-radius: 8px; 
-                      box-shadow: 0 4px 20px rgba(0,0,0,0.2); z-index: 10000; 
-                      text-align: center; max-width: 400px;">
-            <h2 style="margin-bottom: 20px; color: #333;">Mobile Measurement Tools</h2>
-            <img src="https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=https://bollardbuddy.com" 
-                 style="margin: 20px 0;" alt="QR Code" />
-            <p style="margin: 15px 0; color: #666;">Scan this QR code with your mobile device to access measurement tools</p>
-            <p style="margin: 15px 0; color: #999; font-size: 14px;">Or visit: <a href="https://bollardbuddy.com" target="_blank">bollardbuddy.com</a></p>
-            <button onclick="this.parentElement.remove()" 
-                    style="margin-top: 20px; padding: 10px 30px; background: #7B46F6; 
-                           color: white; border: none; border-radius: 4px; 
-                           cursor: pointer; font-size: 16px;">Close</button>
-          </div>
-        `;
-        document.body.appendChild(modal);
+        window.open('/generator/', '_blank');
         break;
-      }
 
       default:
         break;
@@ -261,13 +195,6 @@ export const NewModal = () => {
       icon: '➕'
     },
     {
-      title: 'AR scene from panorama',
-      description: 'Create an immersive 360° environment',
-      imagePath: '/ui_assets/cards/new-blank.jpg',
-      actionType: 'ar_panorama',
-      icon: '🌐'
-    },
-    {
       title: 'Create with AI assistant',
       description: 'Get help building your scene with AI',
       imagePath: '/ui_assets/cards/new-blank.jpg',
@@ -275,18 +202,18 @@ export const NewModal = () => {
       icon: <ChatbotIcon />
     },
     {
-      title: 'Mobile measurement tools',
-      description: 'Measure real-world objects with your phone',
+      title: 'AI Image Generator',
+      description: 'Create street images with AI',
       imagePath: '/ui_assets/cards/new-blank.jpg',
-      actionType: 'mobile_measurement',
-      icon: '📱'
-    },
-    {
-      title: 'Create blank scene',
-      description: 'Start from scratch with an empty canvas',
-      imagePath: '/ui_assets/cards/new-blank.jpg',
-      actionType: 'blank',
-      icon: '⬜'
+      actionType: 'ai_generator',
+      badge: 'new',
+      icon: (
+        <img
+          src="/ui_assets/easel-generation.svg"
+          alt="AI Generator"
+          style={{ width: '30px', height: '30px' }}
+        />
+      )
     }
   ];
 
@@ -348,7 +275,12 @@ export const NewModal = () => {
               >
                 <div className={styles.cardIcon}>{scene.icon}</div>
                 <div className={styles.cardContent}>
-                  <h4 className={styles.cardTitle}>{scene.title}</h4>
+                  <div className={styles.cardTitleRow}>
+                    <h4 className={styles.cardTitle}>{scene.title}</h4>
+                    {scene.badge && (
+                      <span className={styles.newPill}>{scene.badge}</span>
+                    )}
+                  </div>
                   <p className={styles.cardDescription}>{scene.description}</p>
                 </div>
               </div>
