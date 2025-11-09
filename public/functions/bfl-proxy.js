@@ -2,7 +2,7 @@ const functions = require('firebase-functions');
 const admin = require('firebase-admin');
 const { checkAndRefillImageTokensInternal } = require('./token-management.js');
 
-const API_BASE_URL = 'https://api.us1.bfl.ai/v1';
+const API_BASE_URL = 'https://api.us.bfl.ai/v1';
 
 // Model endpoint to name mapping
 const BFL_MODEL_NAMES = {
@@ -58,7 +58,7 @@ async function postAIImageToDiscord(userId, imageUrl, prompt, modelEndpoint, sce
           url: imageUrl
         },
         footer: {
-          text: '3DStreet AI Image Generator',
+          text: 'AI Image Generator',
           icon_url: 'https://3dstreet.app/favicon-32x32.png'
         },
         timestamp: new Date().toISOString()
@@ -85,11 +85,13 @@ async function postAIImageToDiscord(userId, imageUrl, prompt, modelEndpoint, sce
 // Allowed domains for image proxy (SSRF protection)
 const ALLOWED_IMAGE_DOMAINS = [
   'api.bfl.ai',
-  'api.us1.bfl.ai',
+  'api.us.bfl.ai',  // Multi-cluster US endpoint
+  'api.us1.bfl.ai',  // Legacy single-cluster US endpoint
   'api.eu1.bfl.ai',
   'bfl.ai',
   'cdn.bfl.ai',
-  'delivery-us1.bfl.ai',
+  'delivery-us.bfl.ai',  // Multi-cluster US delivery
+  'delivery-us1.bfl.ai',  // Legacy single-cluster US delivery
   'windows.net'  // Azure Blob Storage domains
 ];
 
@@ -197,9 +199,18 @@ exports.bflProxyImage = functions
 
     console.log('Proxying image:', imageUrl);
 
-    const response = await fetch(imageUrl, {
-      timeout: 30000
-    });
+    // Use AbortController for timeout (Node.js fetch doesn't support timeout option)
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 30000);
+
+    let response;
+    try {
+      response = await fetch(imageUrl, {
+        signal: controller.signal
+      });
+    } finally {
+      clearTimeout(timeoutId);
+    }
 
     if (!response.ok) {
       console.warn(`Failed to fetch image from ${imageUrl}: ${response.status}`);
@@ -282,24 +293,40 @@ exports.bflApiProxy = functions
           targetUrl = `${targetUrl}?${queryParams}`;
         }
 
-        response = await fetch(targetUrl, {
-          method: 'GET',
-          headers: {
-            'Content-Type': 'application/json',
-            'x-key': apiKey
-          },
-          timeout: 30000
-        });
+        // Use AbortController for timeout (Node.js fetch doesn't support timeout option)
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 30000);
+
+        try {
+          response = await fetch(targetUrl, {
+            method: 'GET',
+            headers: {
+              'Content-Type': 'application/json',
+              'x-key': apiKey
+            },
+            signal: controller.signal
+          });
+        } finally {
+          clearTimeout(timeoutId);
+        }
       } else if (method === 'POST') {
-        response = await fetch(targetUrl, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'x-key': apiKey
-          },
-          body: JSON.stringify(params),
-          timeout: 60000
-        });
+        // Use AbortController for timeout (Node.js fetch doesn't support timeout option)
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 60000);
+
+        try {
+          response = await fetch(targetUrl, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'x-key': apiKey
+            },
+            body: JSON.stringify(params),
+            signal: controller.signal
+          });
+        } finally {
+          clearTimeout(timeoutId);
+        }
       } else {
         throw new functions.https.HttpsError('invalid-argument', 'Method must be GET or POST');
       }
@@ -317,8 +344,20 @@ exports.bflApiProxy = functions
 
       // Check if API call was successful
       if (!response.ok) {
-        console.error(`BFL API error (${response.status}):`, result);
-        throw new functions.https.HttpsError('internal', `API request failed: ${result.error || result.detail || 'Unknown error'}`);
+        // Special handling for get_result polling - 404 "Task not found" is expected while task is being indexed
+        if (endpoint === 'get_result' && response.status === 404 && result.status === 'Task not found') {
+          console.log(`Task ${params.id} not found yet (404), returning Pending status`);
+          // Return a pending response instead of throwing an error
+          result = {
+            id: params.id,
+            status: 'Pending',
+            result: null,
+            progress: null
+          };
+        } else {
+          console.error(`BFL API error (${response.status}):`, result);
+          throw new functions.https.HttpsError('internal', `API request failed: ${result.error || result.detail || 'Unknown error'}`);
+        }
       }
 
       // Store generation metadata for Discord posting (non-blocking)
