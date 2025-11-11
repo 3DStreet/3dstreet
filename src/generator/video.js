@@ -157,8 +157,8 @@ const VideoTab = {
                     <div class="mb-4">
                         <label class="block text-sm font-medium text-gray-700 mb-1">Model</label>
                         <select id="video-model-selector" class="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
-                            <option value="kwaivgi/kling-v2.5-turbo-pro" selected>Kling v2.5 Turbo Pro</option>
-                            <option value="lightricks/ltx-2-fast">LTX-2 Fast</option>
+                            <option value="lightricks/ltx-2-fast" selected>LTX-2 Fast</option>
+                            <option value="kwaivgi/kling-v2.5-turbo-pro">Kling v2.5 Turbo Pro</option>
                         </select>
                     </div>
 

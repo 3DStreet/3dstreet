@@ -326,7 +326,7 @@ const generateReplicateVideo = functions
     }
 
     const userId = context.auth.uid;
-    const { prompt, input_image, model_name = 'kwaivgi/kling-v2.5-turbo-pro', aspect_ratio = '16:9', duration_seconds = 5 } = data;
+    const { prompt, input_image, model_name = 'lightricks/ltx-2-fast', aspect_ratio = '16:9', duration_seconds = 5 } = data;
 
     // Calculate token cost based on duration
     // 5 seconds = 10 tokens, 10 seconds = 20 tokens
