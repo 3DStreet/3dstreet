@@ -99,14 +99,34 @@
           flex: 1;
           min-width: 0;
 
+          .cardTitleRow {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 4px;
+          }
+
           .cardTitle {
             font-size: 15px;
             font-weight: 600;
             color: variables.$lightgray-200;
-            margin-bottom: 4px;
             white-space: nowrap;
             overflow: hidden;
             text-overflow: ellipsis;
+          }
+
+          .newPill {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            font-weight: 600;
+            font-size: 12px;
+            text-transform: uppercase;
+            padding: 4px 6px;
+            border-radius: 8px;
+            white-space: nowrap;
+            flex-shrink: 0;
+            line-height: 1;
+            height: fit-content;
           }
 
           .cardDescription {
