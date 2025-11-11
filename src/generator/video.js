@@ -574,6 +574,13 @@ const VideoTab = {
     this.elements.previewVideo.classList.remove('hidden');
     this.elements.generationPlaceholder.classList.add('hidden');
 
+    // Autoplay the video once it's loaded
+    this.elements.previewVideo.load();
+    this.elements.previewVideo.play().catch((error) => {
+      // Autoplay might be blocked by browser, that's okay
+      console.log('Autoplay prevented:', error);
+    });
+
     // Show action buttons
     this.elements.copyParamsBtn.classList.remove('hidden');
     this.elements.openVideoBtn.classList.remove('hidden');
