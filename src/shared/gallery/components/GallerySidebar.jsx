@@ -184,6 +184,7 @@ const GallerySidebar = ({
           item={selectedItem}
           onClose={handleCloseModal}
           onDownload={handleDownload}
+          onDelete={handleDelete}
           onCopyParams={onCopyParams}
           onCopyImage={onCopyImage}
           onUseForInpaint={onUseForInpaint}
