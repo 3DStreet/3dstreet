@@ -47,7 +47,9 @@ const VideoTab = {
   // Get all DOM elements after content is created
   getElements: function () {
     // Model
-    this.elements.modelSelector = document.getElementById('video-model-selector');
+    this.elements.modelSelector = document.getElementById(
+      'video-model-selector'
+    );
 
     // Prompt
     this.elements.promptInput = document.getElementById('video-prompt-input');
@@ -58,40 +60,63 @@ const VideoTab = {
     );
 
     // Duration
-    this.elements.duration5sRadio = document.getElementById('video-duration-5s');
-    this.elements.duration10sRadio = document.getElementById('video-duration-10s');
+    this.elements.duration5sRadio =
+      document.getElementById('video-duration-5s');
+    this.elements.duration10sRadio =
+      document.getElementById('video-duration-10s');
 
     // Parameters
     this.elements.seedInput = document.getElementById('video-seed-input');
-    this.elements.randomSeedBtn = document.getElementById('video-random-seed-btn');
+    this.elements.randomSeedBtn = document.getElementById(
+      'video-random-seed-btn'
+    );
     this.elements.randomizeSeedCheckbox = document.getElementById(
       'video-randomize-seed-checkbox'
     );
 
     // Advanced options
-    this.elements.advancedToggle = document.getElementById('video-advanced-toggle');
-    this.elements.advancedOptions = document.getElementById('video-advanced-options');
+    this.elements.advancedToggle = document.getElementById(
+      'video-advanced-toggle'
+    );
+    this.elements.advancedOptions = document.getElementById(
+      'video-advanced-options'
+    );
     this.elements.advancedIcon = document.getElementById('video-advanced-icon');
 
     // Preview
-    this.elements.previewContainer = document.getElementById('video-preview-container');
+    this.elements.previewContainer = document.getElementById(
+      'video-preview-container'
+    );
     this.elements.previewVideo = document.getElementById('video-preview-video');
     this.elements.generationPlaceholder = document.getElementById(
       'video-generation-placeholder'
     );
-    this.elements.loadingIndicator = document.getElementById('video-loading-indicator');
+    this.elements.loadingIndicator = document.getElementById(
+      'video-loading-indicator'
+    );
     this.elements.loadingText = document.getElementById('video-loading-text');
 
     // Action buttons
-    this.elements.actionButtons = document.getElementById('video-action-buttons');
-    this.elements.copyParamsBtn = document.getElementById('video-copy-params-btn');
-    this.elements.openVideoBtn = document.getElementById('video-open-video-btn');
-    this.elements.downloadVideoBtn = document.getElementById('video-download-video-btn');
-    this.elements.copyVideoUrlBtn = document.getElementById('video-copy-video-url-btn');
+    this.elements.actionButtons = document.getElementById(
+      'video-action-buttons'
+    );
+    this.elements.copyParamsBtn = document.getElementById(
+      'video-copy-params-btn'
+    );
+    this.elements.openVideoBtn = document.getElementById(
+      'video-open-video-btn'
+    );
+    this.elements.downloadVideoBtn = document.getElementById(
+      'video-download-video-btn'
+    );
+    this.elements.copyVideoUrlBtn = document.getElementById(
+      'video-copy-video-url-btn'
+    );
 
     // Generate button
     this.elements.generateBtn = document.getElementById('video-generate-btn');
-    this.elements.tokenCostDisplay = document.getElementById('video-token-cost');
+    this.elements.tokenCostDisplay =
+      document.getElementById('video-token-cost');
 
     // Verify critical elements
     let missingElements = [];
@@ -102,10 +127,7 @@ const VideoTab = {
     });
 
     if (missingElements.length > 0) {
-      console.error(
-        'Video Tab: Critical elements not found:',
-        missingElements
-      );
+      console.error('Video Tab: Critical elements not found:', missingElements);
     }
   },
 
@@ -379,7 +401,14 @@ const VideoTab = {
     this.toggleLoading(true);
 
     // Make the API request using Firebase callable function
-    const generateReplicateVideo = httpsCallable(functions, 'generateReplicateVideo');
+    // Set timeout to 9 minutes (540000ms) to match server-side timeout
+    const generateReplicateVideo = httpsCallable(
+      functions,
+      'generateReplicateVideo',
+      {
+        timeout: 540000 // 9 minutes in milliseconds
+      }
+    );
 
     generateReplicateVideo(params)
       .then((result) => {

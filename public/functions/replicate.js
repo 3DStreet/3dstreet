@@ -306,7 +306,10 @@ const generateReplicateImage = functions
 
 // Replicate API function for video generation
 const generateReplicateVideo = functions
-  .runWith({ secrets: ["REPLICATE_API_TOKEN"] })
+  .runWith({
+    secrets: ["REPLICATE_API_TOKEN"],
+    timeoutSeconds: 540 // 9 minutes - video generation can take several minutes
+  })
   .https
   .onCall(async (data, context) => {
 
@@ -380,14 +383,16 @@ const generateReplicateVideo = functions
       if (model_name === 'kwaivgi/kling-v2.5-turbo-pro') {
         // Kling model parameters
         modelInput.aspect_ratio = aspect_ratio;
-        modelInput.duration = duration_seconds === 10 ? '10' : '5'; // Kling uses string '5' or '10'
+        modelInput.duration = duration_seconds; // Kling uses integer 5 or 10
       } else if (model_name === 'lightricks/ltx-2-fast') {
-        // LTX model parameters
-        modelInput.aspect_ratio = aspect_ratio;
-        modelInput.num_frames = duration_seconds === 10 ? 257 : 129; // LTX uses frames (129 for ~5s, 257 for ~10s at 25fps)
+        // LTX model parameters - uses duration in seconds (not frames or aspect_ratio)
+        // LTX accepts: 6, 8, 10, 12, 14, 16, 18, or 20 seconds
+        // We'll map our 5/10 second options to 6/10 for LTX
+        modelInput.duration = duration_seconds === 10 ? 10 : 6;
       }
 
       console.log(`Generating ${duration_seconds}s video for user ${userId} with model ${model_name} (cost: ${tokenCost} tokens)`);
+      console.log('Model input parameters:', JSON.stringify(modelInput, null, 2));
 
       // Use run() with model name instead of predictions.create with version
       const output = await replicate.run(model_name, {
