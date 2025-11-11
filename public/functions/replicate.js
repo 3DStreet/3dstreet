@@ -323,7 +323,7 @@ const generateReplicateVideo = functions
     }
 
     const userId = context.auth.uid;
-    const { prompt, model_name = 'kwaivgi/kling-v2.5-turbo-pro', aspect_ratio = '16:9', duration_seconds = 5 } = data;
+    const { prompt, input_image, model_name = 'kwaivgi/kling-v2.5-turbo-pro', aspect_ratio = '16:9', duration_seconds = 5 } = data;
 
     // Calculate token cost based on duration
     // 5 seconds = 10 tokens, 10 seconds = 20 tokens
@@ -371,10 +371,57 @@ const generateReplicateVideo = functions
         throw new functions.https.HttpsError('invalid-argument', `Unsupported model: ${model_name}`);
       }
 
+      // Handle input image if provided (for image-to-video)
+      let imageUrl = null;
+      if (input_image) {
+        // If input_image is a base64 data URL, upload it to Firebase Storage first
+        if (input_image.startsWith('data:image/')) {
+          // Extract the base64 data and mime type
+          const matches = input_image.match(/^data:([^;]+);base64,(.+)$/);
+          if (!matches) {
+            throw new functions.https.HttpsError('invalid-argument', 'Invalid base64 image format.');
+          }
+
+          const mimeType = matches[1];
+          const base64Data = matches[2];
+          const imageBuffer = Buffer.from(base64Data, 'base64');
+
+          // Generate a unique filename
+          const timestamp = Date.now();
+          const filename = `temp-video-input-${userId}-${timestamp}.jpg`;
+
+          // Upload to Firebase Storage
+          const bucket = admin.storage().bucket();
+          const file = bucket.file(`temp/${filename}`);
+
+          await file.save(imageBuffer, {
+            metadata: {
+              contentType: mimeType,
+              // Set to expire in 1 hour
+              expires: new Date(Date.now() + 60 * 60 * 1000).toISOString()
+            }
+          });
+
+          // Make the file publicly readable
+          await file.makePublic();
+
+          // Get the public URL
+          imageUrl = `https://storage.googleapis.com/${bucket.name}/temp/${filename}`;
+        } else {
+          // It's already a URL
+          imageUrl = input_image;
+        }
+      }
+
       // Prepare model input based on the model
       const modelInput = {
         prompt: prompt,
       };
+
+      // Add input image if provided
+      if (imageUrl) {
+        modelInput.image = imageUrl;
+      }
 
       // Add model-specific parameters
       if (model_name === 'kwaivgi/kling-v2.5-turbo-pro') {
@@ -395,6 +442,17 @@ const generateReplicateVideo = functions
       });
 
       console.log(`Video generation completed for user ${userId}`);
+
+      // Clean up temp file if we created one
+      if (input_image && input_image.startsWith('data:image/') && imageUrl !== input_image) {
+        try {
+          const bucket = admin.storage().bucket();
+          const filename = imageUrl.split('/').pop();
+          await bucket.file(`temp/${filename}`).delete();
+        } catch (cleanupError) {
+          console.warn('Failed to cleanup temp file:', cleanupError);
+        }
+      }
 
       // Decrement tokens for ALL users (only after successful video generation)
       const db = admin.firestore();

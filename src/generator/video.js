@@ -15,6 +15,7 @@ const VideoTab = {
   currentVideoUrl: '',
   selectedAspectRatio: '16:9', // Default aspect ratio
   selectedDuration: 5, // Default duration in seconds (5 or 10)
+  inputImageData: null, // Base64 data of input image for image-to-video
 
   // DOM Elements
   elements: {},
@@ -60,6 +61,14 @@ const VideoTab = {
     // Duration
     this.elements.duration5sRadio = document.getElementById('video-duration-5s');
     this.elements.duration10sRadio = document.getElementById('video-duration-10s');
+
+    // Input Image
+    this.elements.inputImageInput = document.getElementById('video-input-image-input');
+    this.elements.inputImageName = document.getElementById('video-input-image-name');
+    this.elements.inputImageUploadLabel = document.getElementById('video-input-image-upload-label');
+    this.elements.inputImagePreviewContainer = document.getElementById('video-input-image-preview-container');
+    this.elements.inputImagePreview = document.getElementById('video-input-image-preview');
+    this.elements.inputImageClear = document.getElementById('video-input-image-clear');
 
     // Parameters
     this.elements.seedInput = document.getElementById('video-seed-input');
@@ -131,6 +140,28 @@ const VideoTab = {
                         <label class="block text-sm font-medium text-gray-700 mb-1">Prompt</label>
                         <textarea id="video-prompt-input" rows="4" class="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
                                   placeholder="Describe the video you want to generate..."></textarea>
+                    </div>
+
+                    <!-- Input Image (for image-to-video) -->
+                    <div class="mb-4">
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Input Image (Optional - for image-to-video)</label>
+                        <div class="flex flex-col space-y-2">
+                            <label id="video-input-image-upload-label" class="flex items-center justify-center w-full h-20 border-2 border-gray-300 border-dashed rounded-lg cursor-pointer hover:bg-gray-50">
+                                <div class="flex flex-col items-center">
+                                    <p class="text-sm text-gray-500">Click to upload an image</p>
+                                    <p id="video-input-image-name" class="text-xs text-gray-400 mt-1">No file selected</p>
+                                </div>
+                                <input id="video-input-image-input" type="file" class="hidden" accept="image/png, image/jpeg, image/jpg" />
+                            </label>
+                            <div id="video-input-image-preview-container" class="hidden relative">
+                                <img id="video-input-image-preview" class="w-full rounded-lg border border-gray-300" alt="Selected image">
+                                <button id="video-input-image-clear" class="absolute top-2 right-2 p-1 bg-white bg-opacity-80 rounded-full hover:bg-opacity-100 hover:bg-red-50 shadow hover:shadow-lg transition-all duration-200" title="Clear image">
+                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-gray-600 hover:text-red-600 transition-colors duration-200" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                        <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+                                    </svg>
+                                </button>
+                            </div>
+                        </div>
                     </div>
 
                     <!-- Aspect Ratio -->
@@ -255,6 +286,33 @@ const VideoTab = {
       this.updateTokenCostDisplay();
     });
 
+    // Input image upload
+    this.elements.inputImageInput.addEventListener(
+      'change',
+      this.handleInputImageUpload.bind(this)
+    );
+
+    // Setup drag and drop for input image
+    ImageUploadUtils.setupDragAndDrop(
+      this.elements.inputImageUploadLabel,
+      this.elements.inputImageInput,
+      (dataUrl, fileName) => {
+        this.elements.inputImageName.textContent = fileName;
+        // Store base64 data
+        this.inputImageData = dataUrl.split(',')[1];
+        // Show preview
+        this.showInputImagePreview(dataUrl);
+      }
+    );
+
+    // Setup clear image button
+    if (this.elements.inputImageClear) {
+      this.elements.inputImageClear.addEventListener(
+        'click',
+        this.clearInputImage.bind(this)
+      );
+    }
+
     // Advanced toggle
     this.elements.advancedToggle.addEventListener(
       'click',
@@ -345,6 +403,67 @@ const VideoTab = {
     this.elements.seedInput.value = Math.floor(Math.random() * 1000000);
   },
 
+  // Handle input image file upload
+  handleInputImageUpload: function (e) {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    this.elements.inputImageName.textContent = file.name;
+
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      // Store base64 data
+      this.inputImageData = event.target.result.split(',')[1];
+
+      // Show preview
+      this.showInputImagePreview(event.target.result);
+    };
+    reader.readAsDataURL(file);
+  },
+
+  // Show input image preview
+  showInputImagePreview: function (imageDataUrl) {
+    if (
+      !this.elements.inputImagePreview ||
+      !this.elements.inputImagePreviewContainer ||
+      !this.elements.inputImageUploadLabel
+    ) {
+      return;
+    }
+
+    // Set the preview image source
+    this.elements.inputImagePreview.src = imageDataUrl;
+
+    // Hide upload label and show preview container
+    this.elements.inputImageUploadLabel.classList.add('hidden');
+    this.elements.inputImagePreviewContainer.classList.remove('hidden');
+  },
+
+  // Clear input image
+  clearInputImage: function () {
+    // Clear stored data
+    this.inputImageData = null;
+
+    // Reset UI elements
+    if (this.elements.inputImagePreview) {
+      this.elements.inputImagePreview.src = '';
+    }
+    if (this.elements.inputImageName) {
+      this.elements.inputImageName.textContent = 'No file selected';
+    }
+    if (this.elements.inputImageInput) {
+      this.elements.inputImageInput.value = '';
+    }
+
+    // Hide preview and show upload label
+    if (this.elements.inputImagePreviewContainer) {
+      this.elements.inputImagePreviewContainer.classList.add('hidden');
+    }
+    if (this.elements.inputImageUploadLabel) {
+      this.elements.inputImageUploadLabel.classList.remove('hidden');
+    }
+  },
+
   // Generate a video
   generateVideo: function () {
     // Check if user is authenticated
@@ -420,6 +539,11 @@ const VideoTab = {
     } else {
       FluxUI.showNotification('Please enter a prompt', 'error');
       return null;
+    }
+
+    // Add input image if provided (for image-to-video)
+    if (this.inputImageData) {
+      params.input_image = `data:image/jpeg;base64,${this.inputImageData}`;
     }
 
     // Add aspect ratio
