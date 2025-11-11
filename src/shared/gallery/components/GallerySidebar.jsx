@@ -95,6 +95,24 @@ const GallerySidebar = ({
     setSelectedItem(null);
   };
 
+  const handleNavigate = (direction) => {
+    if (!selectedItem) return;
+
+    const currentIndex = items.findIndex((item) => item.id === selectedItem.id);
+    if (currentIndex === -1) return;
+
+    let newIndex;
+    if (direction === 'next') {
+      newIndex = currentIndex + 1;
+      if (newIndex >= items.length) return; // At last item
+    } else if (direction === 'prev') {
+      newIndex = currentIndex - 1;
+      if (newIndex < 0) return; // At first item
+    }
+
+    setSelectedItem(items[newIndex]);
+  };
+
   return (
     <>
       {/* Gallery Toggle Button */}
@@ -182,7 +200,10 @@ const GallerySidebar = ({
       {selectedItem && (
         <GalleryModal
           item={selectedItem}
+          currentIndex={items.findIndex((item) => item.id === selectedItem.id)}
+          totalItems={items.length}
           onClose={handleCloseModal}
+          onNavigate={handleNavigate}
           onDownload={handleDownload}
           onDelete={handleDelete}
           onCopyParams={onCopyParams}

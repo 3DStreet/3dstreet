@@ -9,7 +9,10 @@ const METADATA_VISIBILITY_KEY = 'galleryModalMetadataVisible';
 
 const GalleryModal = ({
   item,
+  currentIndex,
+  totalItems,
   onClose,
+  onNavigate,
   onDownload,
   onDelete,
   onCopyParams,
@@ -28,6 +31,22 @@ const GalleryModal = ({
   useEffect(() => {
     sessionStorage.setItem(METADATA_VISIBILITY_KEY, String(isMetadataVisible));
   }, [isMetadataVisible]);
+
+  // Keyboard navigation
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if (e.key === 'ArrowLeft' && onNavigate) {
+        onNavigate('prev');
+      } else if (e.key === 'ArrowRight' && onNavigate) {
+        onNavigate('next');
+      } else if (e.key === 'Escape') {
+        onClose();
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [onNavigate, onClose]);
 
   if (!item) return null;
 
@@ -62,6 +81,64 @@ const GalleryModal = ({
 
   return (
     <div className={styles.modal} onClick={handleBackgroundClick}>
+      {/* Navigation Buttons - Outside Modal */}
+      {onNavigate && totalItems > 1 && (
+        <>
+          {/* Previous Button */}
+          {currentIndex > 0 && (
+            <button
+              className={`${styles.navButton} ${styles.navButtonPrev}`}
+              onClick={(e) => {
+                e.stopPropagation();
+                onNavigate('prev');
+              }}
+              title="Previous (←)"
+              aria-label="Previous item"
+            >
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+                strokeWidth="2"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  d="M15 19l-7-7 7-7"
+                />
+              </svg>
+            </button>
+          )}
+          {/* Next Button */}
+          {currentIndex < totalItems - 1 && (
+            <button
+              className={`${styles.navButton} ${styles.navButtonNext}`}
+              onClick={(e) => {
+                e.stopPropagation();
+                onNavigate('next');
+              }}
+              title="Next (→)"
+              aria-label="Next item"
+            >
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+                strokeWidth="2"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  d="M9 5l7 7-7 7"
+                />
+              </svg>
+            </button>
+          )}
+        </>
+      )}
+
       <div className={styles.modalContent}>
         {/* Header with Title */}
         <div className={styles.modalHeader}>

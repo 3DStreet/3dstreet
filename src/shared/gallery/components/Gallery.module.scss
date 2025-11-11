@@ -350,6 +350,61 @@
   flex-direction: column;
 }
 
+/* Navigation Buttons - positioned outside modal content */
+.navButton {
+  position: fixed;
+  top: 50%;
+  transform: translateY(-50%);
+  background-color: rgba(31, 41, 55, 0.9); /* gray-800 with transparency */
+  color: #d1d5db; /* gray-300 */
+  border: 1px solid rgba(75, 85, 99, 0.9); /* gray-600 with transparency */
+  border-radius: 9999px;
+  width: 3.5rem;
+  height: 3.5rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  backdrop-filter: blur(8px);
+  z-index: 101; /* Above modal which is z-index: 100 */
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+}
+
+.navButton svg {
+  width: 1.75rem;
+  height: 1.75rem;
+  flex-shrink: 0;
+}
+
+.navButton:hover {
+  background-color: rgba(55, 65, 81, 1); /* gray-700 */
+  color: #f3f4f6; /* gray-100 */
+  border-color: rgba(107, 114, 128, 1);
+  transform: translateY(-50%) scale(1.1);
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.5);
+}
+
+.navButton:active {
+  transform: translateY(-50%) scale(0.98);
+}
+
+.navButtonPrev {
+  left: calc(50% - 47vw); /* Position outside left edge of modal */
+}
+
+.navButtonPrev:hover {
+  transform: translateY(-50%) translateX(-0.25rem) scale(1.1);
+}
+
+.navButtonNext {
+  right: calc(50% - 47vw); /* Position outside right edge of modal */
+}
+
+.navButtonNext:hover {
+  transform: translateY(-50%) translateX(0.25rem) scale(1.1);
+}
+
 .modalBody {
   width: 100%;
   flex-grow: 1;
@@ -730,6 +785,20 @@
   border-top-color: #e5e7eb;
 }
 
+.light .navButton {
+  background-color: rgba(255, 255, 255, 0.95);
+  color: #6b7280; /* gray-500 */
+  border-color: rgba(229, 231, 235, 0.95);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.light .navButton:hover {
+  background-color: rgba(249, 250, 251, 1); /* gray-50 */
+  color: #1f2937;
+  border-color: rgba(209, 213, 219, 1);
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.2);
+}
+
 .light .deleteButton {
   color: #6b7280;
   border-color: #e5e7eb;
@@ -775,6 +844,26 @@
     max-height: calc(
       95vh - 14rem
     ); /* Adjust for mobile: 95vh - smaller padding - video controls */
+  }
+  .navButton {
+    width: 2.5rem;
+    height: 2.5rem;
+  }
+  .navButton svg {
+    width: 1.25rem;
+    height: 1.25rem;
+  }
+  .navButtonPrev {
+    left: 0.5rem; /* On mobile, position close to edge */
+  }
+  .navButtonNext {
+    right: 0.5rem; /* On mobile, position close to edge */
+  }
+  .navButtonPrev:hover {
+    transform: translateY(-50%) translateX(-0.125rem) scale(1.05);
+  }
+  .navButtonNext:hover {
+    transform: translateY(-50%) translateX(0.125rem) scale(1.05);
   }
 }
 
