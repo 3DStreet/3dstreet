@@ -36,11 +36,13 @@ const FluxUI = {
       this.updateGenerateButtonStates();
     });
 
-    // Initialize the first tab (needed for navigation only)
-    this.activateTab(
-      document.querySelector('.tab-button.active') ||
-        this.elements.tabButtons[0]
-    );
+    // Listen for hash changes (e.g., browser back/forward)
+    window.addEventListener('hashchange', () => {
+      this.activateTabFromHash();
+    });
+
+    // Initialize tab from URL hash or default to first tab
+    this.activateTabFromHash();
 
     // Always enable dark mode
     this.setDarkMode(true);
@@ -58,7 +60,7 @@ const FluxUI = {
   },
 
   // Activate a tab
-  activateTab: function (tabButton) {
+  activateTab: function (tabButton, updateHash = true) {
     if (!tabButton) return;
 
     const tabId = tabButton.getAttribute('data-tab');
@@ -86,6 +88,37 @@ const FluxUI = {
     if (activeContent) {
       activeContent.classList.add('active');
     }
+
+    // Update URL hash (unless we're activating from hash to avoid loop)
+    if (updateHash) {
+      // Remove '-tab' suffix from hash for cleaner URLs
+      const hashValue = tabId.replace('-tab', '');
+      window.location.hash = hashValue;
+    }
+  },
+
+  // Activate tab based on URL hash
+  activateTabFromHash: function () {
+    // Get hash without the # symbol
+    const hash = window.location.hash.slice(1);
+
+    // Find tab button matching the hash
+    let tabButton = null;
+    if (hash) {
+      // Add '-tab' suffix to match data-tab attribute
+      const tabId = hash.includes('-tab') ? hash : `${hash}-tab`;
+      tabButton = document.querySelector(`.tab-button[data-tab="${tabId}"]`);
+    }
+
+    // If no matching tab found, use the first tab (generator-tab)
+    if (!tabButton) {
+      tabButton =
+        document.querySelector('.tab-button.active') ||
+        this.elements.tabButtons[0];
+    }
+
+    // Activate the tab (without updating hash to avoid loop)
+    this.activateTab(tabButton, false);
   },
   // Show notification
   showNotification: function (message, type = 'error') {
