@@ -123,6 +123,7 @@ const VideoTab = {
     );
     this.elements.loadingText = document.getElementById('video-loading-text');
     this.elements.progressBar = document.getElementById('video-progress-bar');
+    this.elements.overtimeText = document.getElementById('video-overtime-text');
 
     // Action buttons
     this.elements.actionButtons = document.getElementById(
@@ -292,6 +293,7 @@ const VideoTab = {
                                     <div class="video-progress-stripes"></div>
                                 </div>
                                 <span class="video-progress-text" id="video-loading-text">0s/40s</span>
+                                <span class="video-progress-text hidden" id="video-overtime-text" style="margin-top: 4px; color: #fbbf24;">Generation taking longer than expected.</span>
                             </div>
                         </div>
                     </div>
@@ -616,6 +618,11 @@ const VideoTab = {
     if (this.elements.progressBar) {
       this.elements.progressBar.style.width = '0%';
     }
+
+    // Hide overtime warning
+    if (this.elements.overtimeText) {
+      this.elements.overtimeText.classList.add('hidden');
+    }
   },
 
   // Update timer display
@@ -629,26 +636,22 @@ const VideoTab = {
       100
     );
 
-    // Format time as mm:ss if >= 60 seconds
-    const formatTime = (seconds) => {
-      if (seconds >= 60) {
-        const mins = Math.floor(seconds / 60);
-        const secs = seconds % 60;
-        return `${mins}:${secs.toString().padStart(2, '0')}`;
-      }
-      return `${seconds}s`;
-    };
-
-    const elapsedFormatted = formatTime(this.elapsedTime);
-    const estimatedFormatted = formatTime(estimatedTime);
-
     // Update progress bar width
     if (this.elements.progressBar) {
       this.elements.progressBar.style.width = `${this.renderProgress}%`;
     }
 
-    // Update text (just the time counter, no extra text)
-    this.elements.loadingText.textContent = `${elapsedFormatted}/${estimatedFormatted}`;
+    // Update text (always show in seconds format)
+    this.elements.loadingText.textContent = `${this.elapsedTime}s/${estimatedTime}s`;
+
+    // Show overtime warning if elapsed time is more than 10s over estimate
+    if (this.elements.overtimeText) {
+      if (this.elapsedTime > estimatedTime + 10) {
+        this.elements.overtimeText.classList.remove('hidden');
+      } else {
+        this.elements.overtimeText.classList.add('hidden');
+      }
+    }
   },
 
   // Toggle loading state
