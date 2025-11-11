@@ -166,7 +166,11 @@ const OutpaintTab = {
 
                     <!-- Generate Button -->
                     <button id="outpaint-generate-btn" class="w-full px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 disabled:opacity-50 flex items-center justify-center gap-2">
-                        <span>Generate Outpaint</span>
+                        <svg id="outpaint-generate-spinner" class="hidden animate-spin h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                        </svg>
+                        <span id="outpaint-generate-text">Generate Outpaint</span>
                         <span class="inline-flex items-center rounded" style="background: rgba(0, 0, 0, 0.15); padding: 6px 8px; gap: 2px;">
                             <img src="/ui_assets/token-image.png" alt="Token" class="w-5 h-5" />
                             <span class="text-sm" style="opacity: 0.9; margin-right: 1px;">×</span>
@@ -332,6 +336,13 @@ const OutpaintTab = {
     // Buttons
     this.elements.generateBtn = this.elements.outpaintContainer.querySelector(
       '#outpaint-generate-btn'
+    );
+    this.elements.generateSpinner =
+      this.elements.outpaintContainer.querySelector(
+        '#outpaint-generate-spinner'
+      );
+    this.elements.generateText = this.elements.outpaintContainer.querySelector(
+      '#outpaint-generate-text'
     );
     this.elements.actionButtons = this.elements.outpaintContainer.querySelector(
       '#outpaint-action-buttons'
@@ -531,6 +542,14 @@ const OutpaintTab = {
     // Disable generate button with visual feedback
     this.elements.generateBtn.disabled = true;
     this.elements.generateBtn.classList.add('opacity-50', 'cursor-not-allowed');
+
+    // Show spinner, update button text
+    if (this.elements.generateSpinner) {
+      this.elements.generateSpinner.classList.remove('hidden');
+    }
+    if (this.elements.generateText) {
+      this.elements.generateText.textContent = 'Generating...';
+    }
   },
 
   // Show progress during polling
@@ -559,6 +578,15 @@ const OutpaintTab = {
       'opacity-50',
       'cursor-not-allowed'
     );
+
+    // Hide spinner, restore button text
+    if (this.elements.generateSpinner) {
+      this.elements.generateSpinner.classList.add('hidden');
+    }
+    if (this.elements.generateText) {
+      this.elements.generateText.textContent = 'Generate Outpaint';
+    }
+
     this.currentImageUrl = proxiedUrl; // Store proxied URL
 
     // Store parameters used for this generation
@@ -586,6 +614,15 @@ const OutpaintTab = {
       'opacity-50',
       'cursor-not-allowed'
     );
+
+    // Hide spinner, restore button text
+    if (this.elements.generateSpinner) {
+      this.elements.generateSpinner.classList.add('hidden');
+    }
+    if (this.elements.generateText) {
+      this.elements.generateText.textContent = 'Generate Outpaint';
+    }
+
     this.elements.actionButtons.classList.add('hidden');
     FluxUI.showNotification(`Outpaint failed: ${error.message}`, 'error');
   },

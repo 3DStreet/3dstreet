@@ -160,7 +160,11 @@ const InpaintTab = {
 
                     <!-- Generate Button -->
                     <button id="inpaint-generate-btn" class="w-full px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 disabled:opacity-50 flex items-center justify-center gap-2">
-                        <span>Generate Inpaint</span>
+                        <svg id="inpaint-generate-spinner" class="hidden animate-spin h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                        </svg>
+                        <span id="inpaint-generate-text">Generate Inpaint</span>
                         <span class="inline-flex items-center rounded" style="background: rgba(0, 0, 0, 0.15); padding: 6px 8px; gap: 2px;">
                             <img src="/ui_assets/token-image.png" alt="Token" class="w-5 h-5" />
                             <span class="text-sm" style="opacity: 0.9; margin-right: 1px;">×</span>
@@ -308,6 +312,11 @@ const InpaintTab = {
     // Buttons
     this.elements.generateBtn = this.elements.inpaintContainer.querySelector(
       '#inpaint-generate-btn'
+    );
+    this.elements.generateSpinner =
+      this.elements.inpaintContainer.querySelector('#inpaint-generate-spinner');
+    this.elements.generateText = this.elements.inpaintContainer.querySelector(
+      '#inpaint-generate-text'
     );
     this.elements.actionButtons = this.elements.inpaintContainer.querySelector(
       '#inpaint-action-buttons'
@@ -721,6 +730,14 @@ const InpaintTab = {
     // Disable generate button with visual feedback
     this.elements.generateBtn.disabled = true;
     this.elements.generateBtn.classList.add('opacity-50', 'cursor-not-allowed');
+
+    // Show spinner, update button text
+    if (this.elements.generateSpinner) {
+      this.elements.generateSpinner.classList.remove('hidden');
+    }
+    if (this.elements.generateText) {
+      this.elements.generateText.textContent = 'Generating...';
+    }
   },
 
   // Show progress during polling
@@ -744,6 +761,15 @@ const InpaintTab = {
       'opacity-50',
       'cursor-not-allowed'
     );
+
+    // Hide spinner, restore button text
+    if (this.elements.generateSpinner) {
+      this.elements.generateSpinner.classList.add('hidden');
+    }
+    if (this.elements.generateText) {
+      this.elements.generateText.textContent = 'Generate Inpaint';
+    }
+
     this.currentImageUrl = this.elements.outputImage.src; // Store proxied URL
 
     // Store parameters used for this generation
@@ -771,6 +797,15 @@ const InpaintTab = {
       'opacity-50',
       'cursor-not-allowed'
     );
+
+    // Hide spinner, restore button text
+    if (this.elements.generateSpinner) {
+      this.elements.generateSpinner.classList.add('hidden');
+    }
+    if (this.elements.generateText) {
+      this.elements.generateText.textContent = 'Generate Inpaint';
+    }
+
     this.elements.actionButtons.classList.add('hidden');
     FluxUI.showNotification(`Inpaint failed: ${error.message}`, 'error');
   },
