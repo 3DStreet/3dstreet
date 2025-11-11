@@ -19,6 +19,18 @@ const VideoTab = {
   selectedDuration: 5, // Default duration in seconds (5 or 10)
   imageData: null, // Base64 image data for video generation
 
+  // Timer state
+  renderStartTime: null,
+  elapsedTime: 0,
+  renderProgress: 0,
+  timerInterval: null,
+
+  // Estimated generation times (in seconds)
+  estimatedTimes: {
+    'lightricks/ltx-2-fast': 40,
+    'kwaivgi/kling-v2.5-turbo-pro': 130 // 2:10
+  },
+
   // DOM Elements
   elements: {},
 
@@ -110,6 +122,7 @@ const VideoTab = {
       'video-loading-indicator'
     );
     this.elements.loadingText = document.getElementById('video-loading-text');
+    this.elements.progressBar = document.getElementById('video-progress-bar');
 
     // Action buttons
     this.elements.actionButtons = document.getElementById(
@@ -271,9 +284,15 @@ const VideoTab = {
                             <p>Your generated video will appear here</p>
                         </div>
                         <video id="video-preview-video" class="max-w-full max-h-[500px] hidden rounded-lg shadow-lg" controls></video>
-                        <div id="video-loading-indicator" class="hidden flex flex-col items-center">
+                        <div id="video-loading-indicator" class="hidden flex flex-col items-center w-full max-w-md">
                             <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600 mb-4"></div>
-                            <p class="text-gray-600" id="video-loading-text">Generating your video... This may take a few minutes.</p>
+                            <div class="video-rendering-content">
+                                <div class="video-progress-container">
+                                    <div class="video-progress-bar" id="video-progress-bar" style="width: 0%;"></div>
+                                    <div class="video-progress-stripes"></div>
+                                </div>
+                                <span class="video-progress-text" id="video-loading-text">0s/40s</span>
+                            </div>
                         </div>
                     </div>
                     <div class="px-6 pb-6">
@@ -562,6 +581,69 @@ const VideoTab = {
     this.elements.copyVideoUrlBtn.classList.remove('hidden');
   },
 
+  // Start the timer
+  startTimer: function (modelName) {
+    this.renderStartTime = Date.now();
+    this.elapsedTime = 0;
+    this.updateTimerDisplay();
+
+    // Update timer every second
+    this.timerInterval = setInterval(() => {
+      const elapsed = Math.round((Date.now() - this.renderStartTime) / 1000);
+      this.elapsedTime = elapsed;
+      this.updateTimerDisplay();
+    }, 1000);
+  },
+
+  // Stop the timer
+  stopTimer: function () {
+    if (this.timerInterval) {
+      clearInterval(this.timerInterval);
+      this.timerInterval = null;
+    }
+    this.renderStartTime = null;
+    this.elapsedTime = 0;
+    this.renderProgress = 0;
+
+    // Reset progress bar
+    if (this.elements.progressBar) {
+      this.elements.progressBar.style.width = '0%';
+    }
+  },
+
+  // Update timer display
+  updateTimerDisplay: function () {
+    const modelName = this.elements.modelSelector.value;
+    const estimatedTime = this.estimatedTimes[modelName] || 40;
+
+    // Calculate progress percentage
+    this.renderProgress = Math.min(
+      (this.elapsedTime / estimatedTime) * 100,
+      100
+    );
+
+    // Format time as mm:ss if >= 60 seconds
+    const formatTime = (seconds) => {
+      if (seconds >= 60) {
+        const mins = Math.floor(seconds / 60);
+        const secs = seconds % 60;
+        return `${mins}:${secs.toString().padStart(2, '0')}`;
+      }
+      return `${seconds}s`;
+    };
+
+    const elapsedFormatted = formatTime(this.elapsedTime);
+    const estimatedFormatted = formatTime(estimatedTime);
+
+    // Update progress bar width
+    if (this.elements.progressBar) {
+      this.elements.progressBar.style.width = `${this.renderProgress}%`;
+    }
+
+    // Update text (just the time counter, no extra text)
+    this.elements.loadingText.textContent = `${elapsedFormatted}/${estimatedFormatted}`;
+  },
+
   // Toggle loading state
   toggleLoading: function (isLoading) {
     if (isLoading) {
@@ -579,6 +661,10 @@ const VideoTab = {
       this.elements.openVideoBtn.classList.add('hidden');
       this.elements.downloadVideoBtn.classList.add('hidden');
       this.elements.copyVideoUrlBtn.classList.add('hidden');
+
+      // Start the timer
+      const modelName = this.elements.modelSelector.value;
+      this.startTimer(modelName);
     } else {
       this.elements.loadingIndicator.classList.add('hidden');
       this.elements.generateBtn.disabled = false;
@@ -586,6 +672,9 @@ const VideoTab = {
         'opacity-50',
         'cursor-not-allowed'
       );
+
+      // Stop the timer
+      this.stopTimer();
     }
   },
 
