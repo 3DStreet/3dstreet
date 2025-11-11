@@ -19,7 +19,8 @@ const GalleryModal = ({
   onCopyImage,
   onUseForInpaint,
   onUseForOutpaint,
-  onUseForGenerator
+  onUseForGenerator,
+  onUseForVideo
 }) => {
   // Initialize metadata visibility from sessionStorage
   const [isMetadataVisible, setIsMetadataVisible] = useState(() => {
@@ -325,6 +326,17 @@ const GalleryModal = ({
                 Use for Generator
               </button>
             )}
+            {!isVideo && onUseForVideo && (
+              <button
+                className={`${styles.actionButton} ${styles.secondaryButton}`}
+                onClick={() => {
+                  onUseForVideo(item);
+                  onClose();
+                }}
+              >
+                Use for Video
+              </button>
+            )}
             {!isVideo && onCopyImage && (
               <button
                 className={`${styles.actionButton} ${styles.secondaryButton}`}
@@ -333,7 +345,7 @@ const GalleryModal = ({
                 Copy to Clipboard
               </button>
             )}
-            {onCopyParams && (
+            {isVideo && onCopyParams && (
               <button
                 className={`${styles.actionButton} ${styles.secondaryButton}`}
                 onClick={() => onCopyParams(item)}

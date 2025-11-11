@@ -14,6 +14,7 @@ const GallerySidebar = ({
   onUseForInpaint,
   onUseForOutpaint,
   onUseForGenerator,
+  onUseForVideo,
   onNotification
 }) => {
   const {
@@ -211,6 +212,7 @@ const GallerySidebar = ({
           onUseForInpaint={onUseForInpaint}
           onUseForOutpaint={onUseForOutpaint}
           onUseForGenerator={onUseForGenerator}
+          onUseForVideo={onUseForVideo}
         />
       )}
     </>

@@ -187,7 +187,7 @@ const VideoTab = {
 
                     <!-- Image Upload (Required) -->
                     <div class="mb-4">
-                        <label class="block text-sm font-medium text-gray-700 mb-1">Reference Image <span class="text-red-500">*</span></label>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Source Image <span class="text-red-500">*</span></label>
                         <div class="flex flex-col space-y-2">
                             <label id="video-image-upload-label" class="flex items-center justify-center w-full h-20 border-2 border-gray-300 border-dashed rounded-lg cursor-pointer hover:bg-gray-50">
                                 <div class="flex flex-col items-center">
@@ -826,6 +826,15 @@ const VideoTab = {
     this.elements.imagePreview.src = imageDataUrl;
     this.elements.imagePreviewContainer.classList.remove('hidden');
     this.elements.imageUploadLabel.classList.add('hidden');
+  },
+
+  // Set input image from gallery or other source
+  setInputImage: function (imageDataUrl, imageName = 'From Gallery') {
+    this.imageData = imageDataUrl.split(',')[1];
+    this.elements.imageName.textContent = imageName;
+
+    // Show preview
+    this.showImagePreview(imageDataUrl);
   },
 
   // Clear image

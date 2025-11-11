@@ -11,6 +11,7 @@ const Gallery = ({
   onUseForInpaint,
   onUseForOutpaint,
   onUseForGenerator,
+  onUseForVideo,
   onNotification,
   onClose
 }) => {
@@ -24,6 +25,7 @@ const Gallery = ({
         onUseForInpaint={onUseForInpaint}
         onUseForOutpaint={onUseForOutpaint}
         onUseForGenerator={onUseForGenerator}
+        onUseForVideo={onUseForVideo}
         onNotification={onNotification}
       />
     );

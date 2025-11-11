@@ -87,7 +87,7 @@ const InpaintTab = {
 
                     <!-- Prompt -->
                     <div class="mb-4">
-                        <label for="inpaint-prompt" class="block text-sm font-medium text-gray-700 mb-1">Prompt</label>
+                        <label for="inpaint-prompt" class="block text-sm font-medium text-gray-700 mb-1">Prompt (Optional)</label>
                         <textarea id="inpaint-prompt" rows="3" class="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500" placeholder="Describe what to generate in the masked area..."></textarea>
                     </div>
                     
