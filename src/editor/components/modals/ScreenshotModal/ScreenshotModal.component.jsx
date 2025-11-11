@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import styles from './ScreenshotModal.module.scss';
 import Modal from '@shared/components/Modal/Modal.jsx';
 import posthog from 'posthog-js';
@@ -18,6 +18,7 @@ import { ImgComparisonSlider } from '@img-comparison-slider/react';
 import 'img-comparison-slider/dist/styles.css';
 import { canUseImageFeature } from '@shared/utils/tokens';
 import { TokenDisplayInner } from '@shared/auth/components';
+import { GLTFExporter } from 'three/examples/jsm/exporters/GLTFExporter.js';
 
 // Available AI models
 const AI_MODELS = {
@@ -43,6 +44,13 @@ const AI_MODELS = {
     version: '254faac883c3a411e95cc95d0fb02274a81e388aaa4394b3ce5b7d2a9f7a6569',
     prompt:
       'photorealistic street view, professional photography, high detail, natural lighting, clear and sharp'
+  },
+  'pathtracer': {
+    name: 'Pathtraced (Free)',
+    version: 'local',
+    prompt: 'Physically-based raytraced render with accurate lighting and materials',
+    isFree: true,
+    isLocal: true
   }
 };
 
@@ -70,6 +78,12 @@ function ScreenshotModal() {
   const [useMixedModels, setUseMixedModels] = useState(true); // Toggle for model mixing
   const [customPrompt, setCustomPrompt] = useState(''); // Custom prompt text
 
+  // Pathtracing iframe state
+  const pathtracerIframeRef = useRef(null);
+  const [isPathtracerReady, setIsPathtracerReady] = useState(false);
+  const [isPathtracing, setIsPathtracing] = useState(false);
+  const [pathtracingProgress, setPathtracingProgress] = useState(0);
+
   // Ensure token profile is loaded when modal opens
   useEffect(() => {
     if (currentUser && !tokenProfile) {
@@ -92,13 +106,17 @@ function ScreenshotModal() {
     setRenderingStates({});
     setRenderErrors({});
     setCustomPrompt('');
+    setIsPathtracing(false);
+    setPathtracingProgress(0);
     // Keep model selection and render mode when resetting
   };
 
   const handleClose = () => {
-    // Check if any rendering is in progress (1x or 4x)
+    // Check if any rendering is in progress (1x, 4x, or pathtracing)
     const isAnyRendering =
-      isGeneratingAI || Object.values(renderingStates).some((state) => state);
+      isGeneratingAI ||
+      isPathtracing ||
+      Object.values(renderingStates).some((state) => state);
 
     if (isAnyRendering) {
       const confirmClose = window.confirm(
@@ -106,6 +124,14 @@ function ScreenshotModal() {
       );
       if (!confirmClose) {
         return;
+      }
+
+      // Stop pathtracing if in progress
+      if (isPathtracing && pathtracerIframeRef.current) {
+        pathtracerIframeRef.current.contentWindow.postMessage(
+          { type: 'STOP_RENDER' },
+          '*'
+        );
       }
     } else if (
       (aiImageUrl && !showOriginal) ||
@@ -397,6 +423,99 @@ function ScreenshotModal() {
     await Promise.allSettled(renderPromises);
   };
 
+  const handleGeneratePathtracedRender = async () => {
+    if (!isPathtracerReady) {
+      STREET.notify.errorMessage('Pathtracer not ready. Please wait...');
+      return;
+    }
+
+    if (isPathtracing) {
+      STREET.notify.errorMessage('Already rendering...');
+      return;
+    }
+
+    setIsPathtracing(true);
+    setPathtracingProgress(0);
+
+    try {
+      // Get the A-Frame scene
+      const aframeScene = AFRAME.scenes[0];
+      if (!aframeScene) {
+        throw new Error('No A-Frame scene found');
+      }
+
+      const scene = aframeScene.object3D;
+      const camera = aframeScene.camera;
+
+      console.log('[ScreenshotModal] Exporting scene to glTF...');
+      STREET.notify.successMessage('Exporting scene...');
+
+      // Export scene to glTF
+      const exporter = new GLTFExporter();
+
+      exporter.parse(
+        scene,
+        (gltf) => {
+          console.log('[ScreenshotModal] glTF export complete');
+
+          // Convert glTF to ArrayBuffer (for binary transfer)
+          const gltfString = JSON.stringify(gltf);
+          const encoder = new TextEncoder();
+          const gltfArrayBuffer = encoder.encode(gltfString).buffer;
+
+          console.log(
+            '[ScreenshotModal] Sending to pathtracer, size:',
+            (gltfArrayBuffer.byteLength / 1024 / 1024).toFixed(2),
+            'MB'
+          );
+
+          // Get camera parameters
+          const cameraParams = {
+            position: camera.position.toArray(),
+            rotation: camera.rotation.toArray(),
+            quaternion: camera.quaternion.toArray(),
+            fov: camera.fov,
+            aspect: camera.aspect,
+            near: camera.near,
+            far: camera.far
+          };
+
+          // Send to pathtracer iframe via postMessage
+          // Use transferable for zero-copy transfer
+          pathtracerIframeRef.current.contentWindow.postMessage(
+            {
+              type: 'RENDER_SCENE',
+              data: {
+                glbData: gltfArrayBuffer,
+                camera: cameraParams,
+                samples: 256 // Target sample count
+              }
+            },
+            '*',
+            [gltfArrayBuffer] // Transfer ownership
+          );
+
+          STREET.notify.successMessage('Scene sent to pathtracer. Rendering...');
+        },
+        (error) => {
+          console.error('[ScreenshotModal] glTF export error:', error);
+          STREET.notify.errorMessage('Failed to export scene');
+          setIsPathtracing(false);
+        },
+        {
+          binary: false,
+          maxTextureSize: 2048,
+          includeCustomExtensions: false
+        }
+      );
+    } catch (error) {
+      console.error('[ScreenshotModal] Error generating pathtraced render:', error);
+      STREET.notify.errorMessage('Failed to generate pathtraced render');
+      setIsPathtracing(false);
+      setPathtracingProgress(0);
+    }
+  };
+
   // Progress bar animation effect for single render
   useEffect(() => {
     let progressInterval;
@@ -475,6 +594,73 @@ function ScreenshotModal() {
     }
   }, [modal, currentUser?.isPro]);
 
+  // Listen for messages from pathtracer iframe
+  useEffect(() => {
+    const handlePathtracerMessage = (event) => {
+      // Only accept messages from our iframe
+      if (
+        pathtracerIframeRef.current &&
+        event.source !== pathtracerIframeRef.current.contentWindow
+      ) {
+        return;
+      }
+
+      const { type, samples, progress, imageDataURL } = event.data;
+
+      switch (type) {
+        case 'PATHTRACER_READY':
+          console.log('[ScreenshotModal] Pathtracer ready');
+          setIsPathtracerReady(true);
+          break;
+
+        case 'PATHTRACER_STARTED':
+          console.log('[ScreenshotModal] Pathtracer started');
+          setIsPathtracing(true);
+          break;
+
+        case 'PATHTRACER_PROGRESS':
+          setPathtracingProgress(progress || 0);
+          break;
+
+        case 'PATHTRACER_PREVIEW':
+          // Optional: Show preview as it renders
+          if (imageDataURL) {
+            setAiImageUrl(imageDataURL);
+          }
+          break;
+
+        case 'PATHTRACER_COMPLETE':
+          console.log('[ScreenshotModal] Pathtracer complete', samples);
+          setAiImageUrl(imageDataURL);
+          setShowOriginal(false);
+          setIsPathtracing(false);
+          setPathtracingProgress(0);
+          STREET.notify.successMessage(
+            `Pathtraced render complete! (${samples} samples)`
+          );
+
+          posthog.capture('pathtraced_render_generated', {
+            scene_id: STREET.utils.getCurrentSceneId(),
+            samples: samples
+          });
+          break;
+
+        case 'PATHTRACER_ERROR':
+          console.error('[ScreenshotModal] Pathtracer error:', event.data.error);
+          STREET.notify.errorMessage('Failed to generate pathtraced render');
+          setIsPathtracing(false);
+          setPathtracingProgress(0);
+          break;
+
+        default:
+          break;
+      }
+    };
+
+    window.addEventListener('message', handlePathtracerMessage);
+    return () => window.removeEventListener('message', handlePathtracerMessage);
+  }, []);
+
   return (
     <Modal
       className={styles.screenshotModalWrapper}
@@ -488,6 +674,14 @@ function ScreenshotModal() {
         </div>
       }
     >
+      {/* Hidden pathtracer iframe */}
+      <iframe
+        ref={pathtracerIframeRef}
+        src="/pathtracer.html"
+        style={{ display: 'none' }}
+        title="Pathtracer"
+      />
+
       <div className={styles.modalContent}>
         <div className={styles.sidebar}>
           {/* Render Mode Tabs */}
@@ -603,22 +797,36 @@ function ScreenshotModal() {
             {/* Render Buttons */}
             {renderMode === '1x' ? (
               <Button
-                onClick={() => handleGenerateAIImage()}
+                onClick={() => {
+                  if (selectedModel === 'pathtracer') {
+                    handleGeneratePathtracedRender();
+                  } else {
+                    handleGenerateAIImage();
+                  }
+                }}
                 variant="filled"
-                className={`${styles.aiButton} ${isGeneratingAI ? styles.renderingButton : ''}`}
-                disabled={isGeneratingAI || !currentUser}
+                className={`${styles.aiButton} ${isGeneratingAI || isPathtracing ? styles.renderingButton : ''}`}
+                disabled={
+                  isGeneratingAI ||
+                  isPathtracing ||
+                  (!currentUser && selectedModel !== 'pathtracer')
+                }
               >
-                {isGeneratingAI ? (
+                {isGeneratingAI || isPathtracing ? (
                   <div className={styles.renderingContent}>
                     <div className={styles.progressContainer}>
                       <div
                         className={styles.progressBar}
-                        style={{ width: `${renderProgress}%` }}
+                        style={{
+                          width: `${isPathtracing ? pathtracingProgress * 100 : renderProgress}%`
+                        }}
                       />
                       <div className={styles.progressStripes} />
                     </div>
                     <span className={styles.progressText}>
-                      {`${elapsedTime}/20s`}
+                      {isPathtracing
+                        ? `${Math.round(pathtracingProgress * 100)}%`
+                        : `${elapsedTime}/20s`}
                     </span>
                   </div>
                 ) : (
@@ -630,8 +838,19 @@ function ScreenshotModal() {
                     }}
                   >
                     <span>Generate Render</span>
-                    {tokenProfile && (
+                    {tokenProfile && selectedModel !== 'pathtracer' && (
                       <TokenDisplayInner count={1} inline={true} />
+                    )}
+                    {selectedModel === 'pathtracer' && (
+                      <span
+                        style={{
+                          fontSize: '0.75rem',
+                          opacity: 0.8,
+                          marginLeft: '4px'
+                        }}
+                      >
+                        (Free)
+                      </span>
                     )}
                   </span>
                 )}
@@ -657,7 +876,7 @@ function ScreenshotModal() {
                 </span>
               </Button>
             )}
-            {!currentUser && (
+            {!currentUser && selectedModel !== 'pathtracer' && (
               <p className={styles.loginPrompt}>
                 Please log in to use AI rendering
               </p>

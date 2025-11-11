@@ -1,0 +1,398 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>3DStreet Pathtracer</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      width: 100%;
+      height: 100vh;
+      overflow: hidden;
+      background: #1a1a1a;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    }
+
+    #canvas {
+      width: 100%;
+      height: 100%;
+      display: block;
+    }
+
+    #status {
+      position: absolute;
+      top: 20px;
+      left: 20px;
+      padding: 12px 20px;
+      background: rgba(0, 0, 0, 0.7);
+      color: white;
+      border-radius: 8px;
+      font-size: 14px;
+      backdrop-filter: blur(10px);
+      display: none;
+    }
+
+    #status.visible {
+      display: block;
+    }
+
+    .progress-bar {
+      margin-top: 8px;
+      width: 200px;
+      height: 4px;
+      background: rgba(255, 255, 255, 0.2);
+      border-radius: 2px;
+      overflow: hidden;
+    }
+
+    .progress-fill {
+      height: 100%;
+      background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
+      transition: width 0.3s ease;
+    }
+  </style>
+  <script type="importmap">
+    {
+      "imports": {
+        "three": "https://cdn.jsdelivr.net/npm/three@0.172.0/build/three.module.js",
+        "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.172.0/examples/jsm/",
+        "three-gpu-pathtracer": "https://cdn.jsdelivr.net/npm/three-gpu-pathtracer@0.0.23/src/index.js"
+      }
+    }
+  </script>
+</head>
+<body>
+  <canvas id="canvas"></canvas>
+  <div id="status">
+    <div id="status-text">Initializing...</div>
+    <div class="progress-bar">
+      <div class="progress-fill" id="progress"></div>
+    </div>
+  </div>
+
+  <script type="module">
+    import * as THREE from 'three';
+    import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+    import { WebGLPathTracer } from 'three-gpu-pathtracer';
+
+    console.log('[Pathtracer] Initializing...');
+
+    const canvas = document.getElementById('canvas');
+    const statusEl = document.getElementById('status');
+    const statusText = document.getElementById('status-text');
+    const progressBar = document.getElementById('progress');
+
+    let renderer, pathTracer, scene, camera;
+    let isRendering = false;
+    let targetSamples = 256;
+    let currentSamples = 0;
+
+    // Initialize Three.js renderer
+    function initRenderer() {
+      renderer = new THREE.WebGLRenderer({
+        canvas,
+        antialias: false, // Pathtracer handles AA
+        powerPreference: 'high-performance'
+      });
+
+      renderer.toneMapping = THREE.ACESFilmicToneMapping;
+      renderer.toneMappingExposure = 1;
+
+      // Match canvas size to window
+      resizeRenderer();
+      window.addEventListener('resize', resizeRenderer);
+
+      console.log('[Pathtracer] Renderer initialized');
+    }
+
+    function resizeRenderer() {
+      const width = window.innerWidth;
+      const height = window.innerHeight;
+      renderer.setSize(width, height, false);
+
+      if (camera) {
+        camera.aspect = width / height;
+        camera.updateProjectionMatrix();
+      }
+
+      if (pathTracer) {
+        pathTracer.reset();
+      }
+    }
+
+    // Update status display
+    function updateStatus(text, progress = null) {
+      statusText.textContent = text;
+      if (progress !== null) {
+        progressBar.style.width = `${progress * 100}%`;
+      }
+      statusEl.classList.add('visible');
+
+      // Send progress to parent
+      window.parent.postMessage({
+        type: 'PATHTRACER_PROGRESS',
+        samples: currentSamples,
+        progress: progress || 0,
+        text: text
+      }, '*');
+    }
+
+    // Load glTF from ArrayBuffer
+    async function loadGLTFFromArrayBuffer(arrayBuffer) {
+      return new Promise((resolve, reject) => {
+        const loader = new GLTFLoader();
+
+        // Parse ArrayBuffer directly
+        loader.parse(
+          arrayBuffer,
+          '', // path (empty for inline data)
+          (gltf) => {
+            console.log('[Pathtracer] glTF loaded successfully', gltf);
+            resolve(gltf.scene);
+          },
+          (error) => {
+            console.error('[Pathtracer] Error loading glTF:', error);
+            reject(error);
+          }
+        );
+      });
+    }
+
+    // Create camera from parameters
+    function createCameraFromParams(params) {
+      const cam = new THREE.PerspectiveCamera(
+        params.fov || 60,
+        params.aspect || (window.innerWidth / window.innerHeight),
+        params.near || 0.1,
+        params.far || 10000
+      );
+
+      cam.position.fromArray(params.position || [0, 0, 10]);
+
+      // Handle rotation (euler angles)
+      if (params.rotation) {
+        cam.rotation.fromArray(params.rotation);
+      }
+
+      // Handle quaternion (if provided instead)
+      if (params.quaternion) {
+        cam.quaternion.fromArray(params.quaternion);
+      }
+
+      cam.updateMatrixWorld();
+
+      console.log('[Pathtracer] Camera created', {
+        position: cam.position,
+        rotation: cam.rotation
+      });
+
+      return cam;
+    }
+
+    // Add environment lighting
+    function addEnvironmentLighting(scene) {
+      // Add ambient light
+      const ambientLight = new THREE.AmbientLight(0xffffff, 0.5);
+      scene.add(ambientLight);
+
+      // Add directional light (sun)
+      const dirLight = new THREE.DirectionalLight(0xffffff, 1.5);
+      dirLight.position.set(5, 10, 7.5);
+      dirLight.castShadow = true;
+      scene.add(dirLight);
+
+      // Add hemisphere light for sky/ground
+      const hemiLight = new THREE.HemisphereLight(0x87ceeb, 0x545454, 0.6);
+      scene.add(hemiLight);
+
+      console.log('[Pathtracer] Environment lighting added');
+    }
+
+    // Initialize pathtracer
+    function initPathTracer(scene, camera) {
+      if (pathTracer) {
+        pathTracer.dispose();
+      }
+
+      pathTracer = new WebGLPathTracer(renderer);
+      pathTracer.tiles.set(2, 2); // Use tiled rendering for better responsiveness
+      pathTracer.setBVHOptions({
+        strategy: 'SAH',
+        maxLeafTris: 10
+      });
+
+      pathTracer.camera = camera;
+      pathTracer.scene = scene;
+
+      console.log('[Pathtracer] PathTracer initialized');
+    }
+
+    // Start progressive rendering
+    function startProgressiveRender(samples = 256) {
+      if (isRendering) {
+        console.warn('[Pathtracer] Already rendering');
+        return;
+      }
+
+      isRendering = true;
+      currentSamples = 0;
+      targetSamples = samples;
+
+      console.log('[Pathtracer] Starting render, target samples:', targetSamples);
+      updateStatus('Rendering... 0%', 0);
+
+      // Reset pathtracer
+      pathTracer.reset();
+
+      // Render loop
+      function render() {
+        if (!isRendering || currentSamples >= targetSamples) {
+          finishRender();
+          return;
+        }
+
+        // Update pathtracer (adds 1 sample per call)
+        pathTracer.update();
+        currentSamples++;
+
+        // Update progress every 4 samples
+        if (currentSamples % 4 === 0) {
+          const progress = currentSamples / targetSamples;
+          updateStatus(
+            `Rendering... ${Math.round(progress * 100)}% (${currentSamples}/${targetSamples} samples)`,
+            progress
+          );
+
+          // Send preview every 16 samples
+          if (currentSamples % 16 === 0 && currentSamples < targetSamples) {
+            sendPreview();
+          }
+        }
+
+        requestAnimationFrame(render);
+      }
+
+      render();
+    }
+
+    // Send preview image to parent
+    function sendPreview() {
+      canvas.toBlob((blob) => {
+        if (blob) {
+          const reader = new FileReader();
+          reader.onload = () => {
+            window.parent.postMessage({
+              type: 'PATHTRACER_PREVIEW',
+              imageDataURL: reader.result,
+              samples: currentSamples
+            }, '*');
+          };
+          reader.readAsDataURL(blob);
+        }
+      }, 'image/jpeg', 0.8);
+    }
+
+    // Finish rendering and send final image
+    function finishRender() {
+      isRendering = false;
+      updateStatus('Finalizing...', 1);
+
+      console.log('[Pathtracer] Render complete');
+
+      // Capture final image at high quality
+      canvas.toBlob((blob) => {
+        const reader = new FileReader();
+        reader.onload = () => {
+          window.parent.postMessage({
+            type: 'PATHTRACER_COMPLETE',
+            imageDataURL: reader.result,
+            samples: currentSamples
+          }, '*');
+
+          statusEl.classList.remove('visible');
+          console.log('[Pathtracer] Final image sent to parent');
+        };
+        reader.readAsDataURL(blob);
+      }, 'image/jpeg', 0.95);
+    }
+
+    // Stop rendering
+    function stopRender() {
+      isRendering = false;
+      statusEl.classList.remove('visible');
+      console.log('[Pathtracer] Render stopped');
+    }
+
+    // Listen for messages from parent
+    window.addEventListener('message', async (event) => {
+      const { type, data } = event.data;
+
+      console.log('[Pathtracer] Received message:', type);
+
+      try {
+        switch (type) {
+          case 'RENDER_SCENE':
+            const { glbData, camera: cameraParams, samples } = data;
+
+            if (!glbData) {
+              throw new Error('No glbData provided');
+            }
+
+            updateStatus('Loading scene...', 0);
+
+            // Load scene from ArrayBuffer
+            scene = await loadGLTFFromArrayBuffer(glbData);
+
+            // Add environment lighting
+            addEnvironmentLighting(scene);
+
+            // Create camera
+            camera = createCameraFromParams(cameraParams);
+
+            // Initialize pathtracer
+            initPathTracer(scene, camera);
+
+            // Start rendering
+            startProgressiveRender(samples || 256);
+
+            // Send confirmation
+            window.parent.postMessage({
+              type: 'PATHTRACER_STARTED',
+              samples: samples || 256
+            }, '*');
+            break;
+
+          case 'STOP_RENDER':
+            stopRender();
+            break;
+
+          default:
+            console.warn('[Pathtracer] Unknown message type:', type);
+        }
+      } catch (error) {
+        console.error('[Pathtracer] Error handling message:', error);
+        window.parent.postMessage({
+          type: 'PATHTRACER_ERROR',
+          error: error.message
+        }, '*');
+      }
+    });
+
+    // Initialize renderer on load
+    initRenderer();
+
+    // Signal ready to parent
+    window.parent.postMessage({
+      type: 'PATHTRACER_READY'
+    }, '*');
+
+    console.log('[Pathtracer] Ready and waiting for scene data');
+  </script>
+</body>
+</html>
