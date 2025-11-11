@@ -323,7 +323,11 @@ const generateReplicateVideo = functions
     }
 
     const userId = context.auth.uid;
-    const { prompt, model_version, aspect_ratio = '16:9', duration_seconds = 5 } = data;
+    const { prompt, model_name = 'kwaivgi/kling-v2.5-turbo-pro', aspect_ratio = '16:9', duration_seconds = 5 } = data;
+
+    // Calculate token cost based on duration
+    // 5 seconds = 10 tokens, 10 seconds = 20 tokens
+    const tokenCost = duration_seconds === 10 ? 20 : 10;
 
     let tokenData;
     try {
@@ -340,8 +344,9 @@ const generateReplicateVideo = functions
       throw new functions.https.HttpsError('internal', 'Failed to retrieve token information. Please try again.');
     }
 
-    if (!tokenData.genToken || tokenData.genToken <= 0) {
-      throw new functions.https.HttpsError('resource-exhausted', 'No generation tokens available');
+    // Check if user has enough tokens for this generation
+    if (!tokenData.genToken || tokenData.genToken < tokenCost) {
+      throw new functions.https.HttpsError('resource-exhausted', `Insufficient tokens. This video requires ${tokenCost} tokens, but you have ${tokenData.genToken || 0}.`);
     }
 
     // Validate required data
@@ -355,37 +360,43 @@ const generateReplicateVideo = functions
         auth: process.env.REPLICATE_API_TOKEN,
       });
 
-      // Use provided model version or default to minimax video-01
-      // This is the model version ID for minimax/video-01
-      const defaultModelVersion = "15a370f116c40ede5a9ebc9189739a6992bff51259e25f0a6c03fc8c5ada0ea1";
-      const modelVersionToUse = model_version || defaultModelVersion;
-
-      // Prepare model input
-      const modelInput = {
-        prompt: prompt,
-        aspect_ratio: aspect_ratio,
+      // Supported models
+      const supportedModels = {
+        'kwaivgi/kling-v2.5-turbo-pro': 'Kling v2.5 Turbo Pro',
+        'lightricks/ltx-2-fast': 'LTX-2 Fast'
       };
 
-      // Add duration_seconds if model supports it (minimax does)
-      if (duration_seconds) {
-        modelInput.duration_seconds = duration_seconds;
+      // Validate model name
+      if (!supportedModels[model_name]) {
+        throw new functions.https.HttpsError('invalid-argument', `Unsupported model: ${model_name}`);
       }
 
-      console.log(`Generating video for user ${userId} with model ${modelVersionToUse}`);
+      // Prepare model input based on the model
+      const modelInput = {
+        prompt: prompt,
+      };
 
-      const prediction = await replicate.predictions.create({
-        version: modelVersionToUse,
+      // Add model-specific parameters
+      if (model_name === 'kwaivgi/kling-v2.5-turbo-pro') {
+        // Kling model parameters
+        modelInput.aspect_ratio = aspect_ratio;
+        modelInput.duration = duration_seconds === 10 ? '10' : '5'; // Kling uses string '5' or '10'
+      } else if (model_name === 'lightricks/ltx-2-fast') {
+        // LTX model parameters
+        modelInput.aspect_ratio = aspect_ratio;
+        modelInput.num_frames = duration_seconds === 10 ? 257 : 129; // LTX uses frames (129 for ~5s, 257 for ~10s at 25fps)
+      }
+
+      console.log(`Generating ${duration_seconds}s video for user ${userId} with model ${model_name} (cost: ${tokenCost} tokens)`);
+
+      // Use run() with model name instead of predictions.create with version
+      const output = await replicate.run(model_name, {
         input: modelInput
       });
 
-      console.log(`Video prediction created: ${prediction.id}`);
+      console.log(`Video generation completed for user ${userId}`);
 
-      // Wait for the prediction to complete
-      const output = await replicate.wait(prediction);
-
-      console.log(`Video generation completed for prediction: ${prediction.id}`);
-
-      // Decrement token for ALL users (only after successful video generation)
+      // Decrement tokens for ALL users (only after successful video generation)
       const db = admin.firestore();
       const tokenProfileRef = db.collection('tokenProfile').doc(userId);
 
@@ -399,11 +410,13 @@ const generateReplicateVideo = functions
 
         const currentTokens = tokenDoc.data().genToken || 0;
 
-        if (currentTokens <= 0) {
+        // Verify user still has enough tokens (double-check after generation)
+        if (currentTokens < tokenCost) {
           throw new functions.https.HttpsError('resource-exhausted', 'Insufficient tokens');
         }
 
-        const newTokenCount = Math.max(0, currentTokens - 1);
+        // Deduct the appropriate number of tokens based on duration
+        const newTokenCount = Math.max(0, currentTokens - tokenCost);
         remainingTokens = newTokenCount;
 
         transaction.update(tokenProfileRef, {

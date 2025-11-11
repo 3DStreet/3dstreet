@@ -14,7 +14,7 @@ const VideoTab = {
   currentParams: {},
   currentVideoUrl: '',
   selectedAspectRatio: '16:9', // Default aspect ratio
-  selectedDuration: 5, // Default duration in seconds
+  selectedDuration: 5, // Default duration in seconds (5 or 10)
 
   // DOM Elements
   elements: {},
@@ -46,6 +46,9 @@ const VideoTab = {
 
   // Get all DOM elements after content is created
   getElements: function () {
+    // Model
+    this.elements.modelSelector = document.getElementById('video-model-selector');
+
     // Prompt
     this.elements.promptInput = document.getElementById('video-prompt-input');
 
@@ -55,8 +58,8 @@ const VideoTab = {
     );
 
     // Duration
-    this.elements.durationSlider = document.getElementById('video-duration-slider');
-    this.elements.durationValue = document.getElementById('video-duration-value');
+    this.elements.duration5sRadio = document.getElementById('video-duration-5s');
+    this.elements.duration10sRadio = document.getElementById('video-duration-10s');
 
     // Parameters
     this.elements.seedInput = document.getElementById('video-seed-input');
@@ -88,10 +91,11 @@ const VideoTab = {
 
     // Generate button
     this.elements.generateBtn = document.getElementById('video-generate-btn');
+    this.elements.tokenCostDisplay = document.getElementById('video-token-cost');
 
     // Verify critical elements
     let missingElements = [];
-    ['promptInput', 'generateBtn'].forEach((elem) => {
+    ['modelSelector', 'promptInput', 'generateBtn'].forEach((elem) => {
       if (!this.elements[elem]) {
         missingElements.push(elem);
       }
@@ -112,6 +116,15 @@ const VideoTab = {
                 <!-- Parameters Column -->
                 <div class="lg:col-span-1 bg-white rounded-lg shadow p-6">
                     <h2 class="text-lg font-medium mb-4">Video Generation Settings</h2>
+
+                    <!-- Model Selection -->
+                    <div class="mb-4">
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Model</label>
+                        <select id="video-model-selector" class="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                            <option value="kwaivgi/kling-v2.5-turbo-pro" selected>Kling v2.5 Turbo Pro</option>
+                            <option value="lightricks/ltx-2-fast">LTX-2 Fast</option>
+                        </select>
+                    </div>
 
                     <!-- Prompt -->
                     <div class="mb-4">
@@ -134,9 +147,17 @@ const VideoTab = {
 
                     <!-- Duration -->
                     <div class="mb-4">
-                        <label class="block text-sm font-medium text-gray-700 mb-1">Duration: <span id="video-duration-value">5</span> seconds</label>
-                        <input type="range" id="video-duration-slider" min="3" max="10" value="5" class="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer">
-                        <p class="text-xs text-gray-500 mt-1">Video length in seconds</p>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Duration</label>
+                        <div class="space-y-2">
+                            <div class="flex items-center">
+                                <input type="radio" id="video-duration-5s" name="video-duration" value="5" checked class="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300">
+                                <label for="video-duration-5s" class="ml-2 block text-sm text-gray-700">5 seconds (10 tokens)</label>
+                            </div>
+                            <div class="flex items-center">
+                                <input type="radio" id="video-duration-10s" name="video-duration" value="10" class="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300">
+                                <label for="video-duration-10s" class="ml-2 block text-sm text-gray-700">10 seconds (20 tokens)</label>
+                            </div>
+                        </div>
                     </div>
 
                     <!-- Advanced Options -->
@@ -173,7 +194,7 @@ const VideoTab = {
                         <span class="inline-flex items-center rounded" style="background: rgba(0, 0, 0, 0.15); padding: 6px 8px; gap: 2px;">
                             <img src="/ui_assets/token-image.png" alt="Token" class="w-5 h-5" />
                             <span class="text-sm" style="opacity: 0.9; margin-right: 1px;">×</span>
-                            <span class="text-sm font-medium">1</span>
+                            <span id="video-token-cost" class="text-sm font-medium">10</span>
                         </span>
                     </button>
                 </div>
@@ -226,6 +247,14 @@ const VideoTab = {
       return;
     }
 
+    // Duration radio buttons - update token cost display
+    this.elements.duration5sRadio.addEventListener('change', () => {
+      this.updateTokenCostDisplay();
+    });
+    this.elements.duration10sRadio.addEventListener('change', () => {
+      this.updateTokenCostDisplay();
+    });
+
     // Advanced toggle
     this.elements.advancedToggle.addEventListener(
       'click',
@@ -251,9 +280,6 @@ const VideoTab = {
         this.elements.generateBtn.click();
       }
     });
-
-    // Setup sliders
-    this.setupSlider(this.elements.durationSlider, this.elements.durationValue);
 
     // Setup action buttons
     if (this.elements.openVideoBtn) {
@@ -297,13 +323,21 @@ const VideoTab = {
     }
   },
 
-  // Setup range sliders
-  setupSlider: function (slider, valueDisplay) {
-    if (slider && valueDisplay) {
-      slider.addEventListener('input', () => {
-        valueDisplay.textContent = slider.value;
-      });
+  // Update token cost display based on selected duration
+  updateTokenCostDisplay: function () {
+    const duration = this.getSelectedDuration();
+    const tokenCost = duration === 10 ? 20 : 10;
+    if (this.elements.tokenCostDisplay) {
+      this.elements.tokenCostDisplay.textContent = tokenCost;
     }
+  },
+
+  // Get selected duration
+  getSelectedDuration: function () {
+    if (this.elements.duration10sRadio.checked) {
+      return 10;
+    }
+    return 5; // Default to 5 seconds
   },
 
   // Generate a random seed
@@ -376,6 +410,9 @@ const VideoTab = {
   buildRequestParams: function () {
     const params = {};
 
+    // Add model name
+    params.model_name = this.elements.modelSelector.value;
+
     // Add prompt
     const prompt = this.elements.promptInput.value.trim();
     if (prompt) {
@@ -388,8 +425,8 @@ const VideoTab = {
     // Add aspect ratio
     params.aspect_ratio = this.elements.aspectRatioSelector.value;
 
-    // Add duration
-    params.duration_seconds = parseInt(this.elements.durationSlider.value);
+    // Add duration (5 or 10 seconds)
+    params.duration_seconds = this.getSelectedDuration();
 
     // Check if seed should be randomized before generation
     if (this.elements.randomizeSeedCheckbox.checked) {
