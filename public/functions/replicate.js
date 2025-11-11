@@ -326,7 +326,7 @@ const generateReplicateVideo = functions
     }
 
     const userId = context.auth.uid;
-    const { prompt, model_name = 'kwaivgi/kling-v2.5-turbo-pro', aspect_ratio = '16:9', duration_seconds = 5 } = data;
+    const { prompt, input_image, model_name = 'kwaivgi/kling-v2.5-turbo-pro', aspect_ratio = '16:9', duration_seconds = 5 } = data;
 
     // Calculate token cost based on duration
     // 5 seconds = 10 tokens, 10 seconds = 20 tokens
@@ -358,10 +358,48 @@ const generateReplicateVideo = functions
       throw new functions.https.HttpsError('invalid-argument', 'Missing required prompt.');
     }
 
+    if (!input_image) {
+      console.error(`Missing required data - input_image: ${!!input_image}`);
+      throw new functions.https.HttpsError('invalid-argument', 'Missing required input image.');
+    }
+
     try {
       const replicate = new Replicate({
         auth: process.env.REPLICATE_API_TOKEN,
       });
+
+      let imageUrl = input_image;
+
+      // If input_image is a base64 string, upload it to Firebase Storage first
+      if (!input_image.startsWith('http://') && !input_image.startsWith('https://')) {
+        // Assume it's base64 data (without the data URL prefix since we strip it client-side)
+        // Reconstruct the data URL
+        const base64Data = input_image;
+        const imageBuffer = Buffer.from(base64Data, 'base64');
+
+        // Generate a unique filename
+        const timestamp = Date.now();
+        const filename = `temp-video-input-${context.auth.uid}-${timestamp}.jpg`;
+
+        // Upload to Firebase Storage
+        const bucket = admin.storage().bucket();
+        const file = bucket.file(`temp/${filename}`);
+
+        await file.save(imageBuffer, {
+          metadata: {
+            contentType: 'image/jpeg',
+            // Set to expire in 1 hour
+            expires: new Date(Date.now() + 60 * 60 * 1000).toISOString()
+          }
+        });
+
+        // Make the file publicly readable
+        await file.makePublic();
+
+        // Get the public URL
+        imageUrl = `https://storage.googleapis.com/${bucket.name}/temp/${filename}`;
+        console.log(`Uploaded input image to: ${imageUrl}`);
+      }
 
       // Supported models
       const supportedModels = {
@@ -377,6 +415,7 @@ const generateReplicateVideo = functions
       // Prepare model input based on the model
       const modelInput = {
         prompt: prompt,
+        image: imageUrl, // Add the image URL
       };
 
       // Add model-specific parameters

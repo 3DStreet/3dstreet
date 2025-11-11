@@ -7,6 +7,7 @@ import FluxUI from './main.js';
 import { httpsCallable } from 'firebase/functions';
 import { functions } from '@shared/services/firebase.js';
 import useImageGenStore from './store.js';
+import ImageUploadUtils from './image-upload-utils.js';
 
 // Video tab module
 const VideoTab = {
@@ -15,6 +16,7 @@ const VideoTab = {
   currentVideoUrl: '',
   selectedAspectRatio: '16:9', // Default aspect ratio
   selectedDuration: 5, // Default duration in seconds (5 or 10)
+  imageData: null, // Base64 image data for video generation
 
   // DOM Elements
   elements: {},
@@ -53,6 +55,18 @@ const VideoTab = {
 
     // Prompt
     this.elements.promptInput = document.getElementById('video-prompt-input');
+
+    // Image upload
+    this.elements.imageInput = document.getElementById('video-image-input');
+    this.elements.imageName = document.getElementById('video-image-name');
+    this.elements.imageUploadLabel = document.getElementById(
+      'video-image-upload-label'
+    );
+    this.elements.imagePreviewContainer = document.getElementById(
+      'video-image-preview-container'
+    );
+    this.elements.imagePreview = document.getElementById('video-image-preview');
+    this.elements.imageClear = document.getElementById('video-image-clear');
 
     // Aspect Ratio
     this.elements.aspectRatioSelector = document.getElementById(
@@ -148,11 +162,33 @@ const VideoTab = {
                         </select>
                     </div>
 
-                    <!-- Prompt -->
+                    <!-- Image Upload (Required) -->
                     <div class="mb-4">
-                        <label class="block text-sm font-medium text-gray-700 mb-1">Prompt</label>
-                        <textarea id="video-prompt-input" rows="4" class="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                                  placeholder="Describe the video you want to generate..."></textarea>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Reference Image <span class="text-red-500">*</span></label>
+                        <div class="flex flex-col space-y-2">
+                            <label id="video-image-upload-label" class="flex items-center justify-center w-full h-20 border-2 border-gray-300 border-dashed rounded-lg cursor-pointer hover:bg-gray-50">
+                                <div class="flex flex-col items-center">
+                                    <p class="text-sm text-gray-500">Click to upload an image</p>
+                                    <p id="video-image-name" class="text-xs text-gray-400 mt-1">No file selected</p>
+                                </div>
+                                <input id="video-image-input" type="file" class="hidden" accept="image/png, image/jpeg, image/jpg" />
+                            </label>
+                            <div id="video-image-preview-container" class="hidden relative">
+                                <img id="video-image-preview" class="w-full rounded-lg border border-gray-300" alt="Selected image">
+                                <button id="video-image-clear" class="absolute top-2 right-2 p-1 bg-white bg-opacity-80 rounded-full hover:bg-opacity-100 hover:bg-red-50 shadow hover:shadow-lg transition-all duration-200" title="Clear image">
+                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-gray-600 hover:text-red-600 transition-colors duration-200" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                        <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+                                    </svg>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Prompt (Optional) -->
+                    <div class="mb-4">
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Prompt (Optional)</label>
+                        <textarea id="video-prompt-input" rows="3" class="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                                  placeholder="create photorealistic animated render of this urban street scene with accurate shading and lighting"></textarea>
                     </div>
 
                     <!-- Aspect Ratio -->
@@ -267,6 +303,33 @@ const VideoTab = {
         'Video Tab: Cannot set up event listeners, elements not found'
       );
       return;
+    }
+
+    // Image upload
+    this.elements.imageInput.addEventListener(
+      'change',
+      this.handleImageUpload.bind(this)
+    );
+
+    // Setup drag and drop for image
+    ImageUploadUtils.setupDragAndDrop(
+      this.elements.imageUploadLabel,
+      this.elements.imageInput,
+      (dataUrl, fileName) => {
+        this.elements.imageName.textContent = fileName;
+        // Store base64 data (without the data URL prefix)
+        this.imageData = dataUrl.split(',')[1];
+        // Show preview
+        this.showImagePreview(dataUrl);
+      }
+    );
+
+    // Clear image button
+    if (this.elements.imageClear) {
+      this.elements.imageClear.addEventListener(
+        'click',
+        this.clearImage.bind(this)
+      );
     }
 
     // Duration radio buttons - update token cost display
@@ -442,13 +505,21 @@ const VideoTab = {
     // Add model name
     params.model_name = this.elements.modelSelector.value;
 
-    // Add prompt
+    // Check if image is uploaded (required)
+    if (!this.imageData) {
+      FluxUI.showNotification('Please upload a reference image', 'error');
+      return null;
+    }
+    params.input_image = this.imageData;
+
+    // Add prompt (optional with default)
     const prompt = this.elements.promptInput.value.trim();
     if (prompt) {
       params.prompt = prompt;
     } else {
-      FluxUI.showNotification('Please enter a prompt', 'error');
-      return null;
+      // Use default prompt
+      params.prompt =
+        'create photorealistic animated render of this urban street scene with accurate shading and lighting';
     }
 
     // Add aspect ratio
@@ -591,6 +662,49 @@ const VideoTab = {
           'error'
         );
       });
+  },
+
+  // Handle image file upload
+  handleImageUpload: function (e) {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    this.elements.imageName.textContent = file.name;
+
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      // Store base64 data (without the data URL prefix)
+      this.imageData = event.target.result.split(',')[1];
+
+      // Show preview
+      this.showImagePreview(event.target.result);
+    };
+    reader.readAsDataURL(file);
+  },
+
+  // Show image preview
+  showImagePreview: function (imageDataUrl) {
+    if (
+      !this.elements.imagePreview ||
+      !this.elements.imagePreviewContainer ||
+      !this.elements.imageUploadLabel
+    ) {
+      return;
+    }
+
+    this.elements.imagePreview.src = imageDataUrl;
+    this.elements.imagePreviewContainer.classList.remove('hidden');
+    this.elements.imageUploadLabel.classList.add('hidden');
+  },
+
+  // Clear image
+  clearImage: function () {
+    this.imageData = null;
+    this.elements.imageName.textContent = 'No file selected';
+    this.elements.imagePreview.src = '';
+    this.elements.imagePreviewContainer.classList.add('hidden');
+    this.elements.imageUploadLabel.classList.remove('hidden');
+    this.elements.imageInput.value = '';
   }
 };
 
