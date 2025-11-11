@@ -8,6 +8,7 @@ import { httpsCallable } from 'firebase/functions';
 import { functions } from '@shared/services/firebase.js';
 import useImageGenStore from './store.js';
 import ImageUploadUtils from './image-upload-utils.js';
+import galleryService from '@shared/gallery/services/galleryService.js';
 
 // Video tab module
 const VideoTab = {
@@ -479,6 +480,9 @@ const VideoTab = {
           // Display the video
           this.displayVideo(result.data.video_url);
 
+          // Save to gallery
+          this.saveToGallery(result.data.video_url);
+
           // Dispatch custom event to refresh token count in UI
           window.dispatchEvent(new CustomEvent('tokenCountChanged'));
 
@@ -705,6 +709,53 @@ const VideoTab = {
     this.elements.imagePreviewContainer.classList.add('hidden');
     this.elements.imageUploadLabel.classList.remove('hidden');
     this.elements.imageInput.value = '';
+  },
+
+  // Save video to gallery
+  saveToGallery: function (videoUrl) {
+    // Check if gallery service is available
+    if (!galleryService) {
+      return;
+    }
+
+    // Convert the video URL to a Data URL so gallery can store as Blob
+    fetch(videoUrl)
+      .then((response) => response.blob())
+      .then(
+        (blob) =>
+          new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onloadend = () => resolve(reader.result);
+            reader.onerror = reject;
+            reader.readAsDataURL(blob);
+          })
+      )
+      .then(async (dataUrl) => {
+        // Build comprehensive metadata for the video
+        const metadata = {
+          model:
+            this.currentParams.model_name || this.elements.modelSelector.value,
+          prompt: this.currentParams.prompt || this.elements.promptInput.value,
+          aspect_ratio: this.currentParams.aspect_ratio,
+          duration_seconds: this.currentParams.duration_seconds,
+          ...(this.currentParams.seed && { seed: this.currentParams.seed })
+        };
+
+        try {
+          await galleryService.addItem(dataUrl, metadata, 'video');
+          FluxUI.showNotification('Video saved to gallery!', 'success');
+        } catch (e) {
+          console.error('Gallery addItem error:', e);
+          FluxUI.showNotification('Failed to save video to gallery.', 'error');
+        }
+      })
+      .catch((error) => {
+        console.error('Error saving video to gallery:', error);
+        FluxUI.showNotification(
+          'Failed to save video to gallery: ' + error.message,
+          'error'
+        );
+      });
   }
 };
 

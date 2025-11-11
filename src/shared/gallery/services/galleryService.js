@@ -1,6 +1,6 @@
 /**
  * Gallery Service - IndexedDB operations for 3DStreet Gallery
- * Stores images from both AI generation and screenshots
+ * Stores images and videos from AI generation and screenshots
  */
 
 // Event emitter for gallery updates
@@ -9,7 +9,7 @@ const galleryEvents = new EventTarget();
 const galleryService = {
   // Event emitter
   events: galleryEvents,
-  // Max number of images to store
+  // Max number of items (images/videos) to store
   maxImages: 200,
 
   // IndexedDB database instance
@@ -171,7 +171,7 @@ const galleryService = {
   },
 
   /**
-   * Load all images from database
+   * Load all items (images and videos) from database
    * @returns {Promise<Array>}
    */
   loadFromDB: function () {
@@ -209,22 +209,22 @@ const galleryService = {
   },
 
   /**
-   * Add a new image to the gallery
-   * @param {string} imageDataUri - Data URI or blob URL of the image
-   * @param {object} metadata - Image metadata
-   * @param {string} type - Image type ('screenshot' | 'ai-render')
+   * Add a new item (image or video) to the gallery
+   * @param {string} dataUri - Data URI or blob URL of the image/video
+   * @param {object} metadata - Item metadata
+   * @param {string} type - Item type ('screenshot' | 'ai-render' | 'video')
    * @returns {Promise<string>} - Returns the new item ID
    */
-  addImage: async function (imageDataUri, metadata, type = 'ai-render') {
+  addItem: async function (dataUri, metadata, type = 'ai-render') {
     if (!this.db) {
-      throw new Error('Database not open, cannot add image.');
+      throw new Error('Database not open, cannot add item.');
     }
 
     try {
       // Convert data URI to Blob
-      const blob = await this.dataUriToBlob(imageDataUri);
+      const blob = await this.dataUriToBlob(dataUri);
       if (!blob) {
-        throw new Error('Failed to convert image data to Blob.');
+        throw new Error('Failed to convert data to Blob.');
       }
 
       // Create a gallery item
@@ -262,9 +262,17 @@ const galleryService = {
         };
       });
     } catch (error) {
-      console.error('Error in addImage:', error);
+      console.error('Error in addItem:', error);
       throw error;
     }
+  },
+
+  /**
+   * Alias for addItem (backwards compatibility)
+   * @deprecated Use addItem instead
+   */
+  addImage: async function (imageDataUri, metadata, type = 'ai-render') {
+    return this.addItem(imageDataUri, metadata, type);
   },
 
   /**

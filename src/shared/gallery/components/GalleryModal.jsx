@@ -24,9 +24,12 @@ const GalleryModal = ({
 
   // Format metadata
   const { model, prompt, width, height, seed } = item.metadata || {};
+  const durationSeconds = item.metadata?.duration_seconds;
+  const aspectRatio = item.metadata?.aspect_ratio;
   const date = item.metadata?.timestamp
     ? new Date(item.metadata.timestamp).toLocaleString()
     : 'Unknown';
+  const isVideo = item.type === 'video';
 
   return (
     <div className={styles.modal} onClick={handleBackgroundClick}>
@@ -52,14 +55,37 @@ const GalleryModal = ({
               </span>{' '}
               <span className={styles.metadataValue}>{model || 'Unknown'}</span>
             </div>
-            <div className="mb-2">
-              <span className={`${styles.metadataLabel} font-semibold`}>
-                Size:
-              </span>{' '}
-              <span className={styles.metadataValue}>
-                {width || '?'} × {height || '?'}
-              </span>
-            </div>
+            {isVideo ? (
+              <>
+                {aspectRatio && (
+                  <div className="mb-2">
+                    <span className={`${styles.metadataLabel} font-semibold`}>
+                      Aspect Ratio:
+                    </span>{' '}
+                    <span className={styles.metadataValue}>{aspectRatio}</span>
+                  </div>
+                )}
+                {durationSeconds && (
+                  <div className="mb-2">
+                    <span className={`${styles.metadataLabel} font-semibold`}>
+                      Duration:
+                    </span>{' '}
+                    <span className={styles.metadataValue}>
+                      {durationSeconds}s
+                    </span>
+                  </div>
+                )}
+              </>
+            ) : (
+              <div className="mb-2">
+                <span className={`${styles.metadataLabel} font-semibold`}>
+                  Size:
+                </span>{' '}
+                <span className={styles.metadataValue}>
+                  {width || '?'} × {height || '?'}
+                </span>
+              </div>
+            )}
             <div className="mb-2">
               <span className={`${styles.metadataLabel} font-semibold`}>
                 Seed:
@@ -102,7 +128,7 @@ const GalleryModal = ({
                 Copy Parameters
               </button>
             )}
-            {onCopyImage && (
+            {!isVideo && onCopyImage && (
               <button
                 className="copy-image-btn rounded-md bg-green-600 px-3 py-1.5 text-sm text-white transition-colors hover:bg-green-700"
                 onClick={() => onCopyImage(item)}
@@ -110,7 +136,7 @@ const GalleryModal = ({
                 Copy to Clipboard
               </button>
             )}
-            {onUseForGenerator && (
+            {!isVideo && onUseForGenerator && (
               <button
                 className="use-for-generator-btn rounded-md bg-gray-500 px-3 py-1.5 text-sm text-white transition-colors hover:bg-gray-400"
                 onClick={() => {
@@ -121,7 +147,7 @@ const GalleryModal = ({
                 Use for Generator
               </button>
             )}
-            {onUseForInpaint && (
+            {!isVideo && onUseForInpaint && (
               <button
                 className="use-for-inpaint-btn rounded-md bg-gray-600 px-3 py-1.5 text-sm text-white transition-colors hover:bg-gray-500"
                 onClick={() => {
@@ -132,7 +158,7 @@ const GalleryModal = ({
                 Use for Inpaint
               </button>
             )}
-            {onUseForOutpaint && (
+            {!isVideo && onUseForOutpaint && (
               <button
                 className="use-for-outpaint-btn rounded-md bg-gray-700 px-3 py-1.5 text-sm text-white transition-colors hover:bg-gray-600"
                 onClick={() => {
@@ -146,9 +172,13 @@ const GalleryModal = ({
           </div>
         </div>
 
-        {/* Image Body Section */}
+        {/* Media Body Section */}
         <div className={styles.modalBody}>
-          <img src={item.objectURL} alt="Generated image" />
+          {isVideo ? (
+            <video src={item.objectURL} controls playsInline />
+          ) : (
+            <img src={item.objectURL} alt="Generated image" />
+          )}
         </div>
       </div>
     </div>

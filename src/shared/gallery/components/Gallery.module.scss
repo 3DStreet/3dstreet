@@ -150,6 +150,15 @@
   margin: 0; /* Ensure no extra margins */
 }
 
+/* Video within Gallery Item */
+.item video {
+  display: block; /* Remove potential inline spacing */
+  width: 100%;
+  height: 100%;
+  object-fit: cover; /* Cover the item area */
+  margin: 0; /* Ensure no extra margins */
+}
+
 /* Overlay for buttons (appears on hover) */
 .itemOverlay {
   position: absolute;
@@ -332,12 +341,12 @@
 
 .modalBody {
   flex-grow: 1; /* Allow it to take available vertical space */
-  overflow: auto; /* Enable scrolling for oversized images */
-  padding: 1rem; /* Padding around the image */
-  background-color: #111827; /* gray-900 - darker background for image */
+  overflow: auto; /* Enable scrolling for oversized content */
+  padding: 1rem; /* Padding around the media */
+  background-color: #111827; /* gray-900 - darker background for media */
   display: flex; /* Needed for centering */
-  justify-content: center; /* Center image horizontally if smaller than container */
-  align-items: flex-start; /* Align image to top if smaller than container */
+  justify-content: center; /* Center media horizontally */
+  align-items: flex-start; /* Align to top for scrollable images, videos will center themselves */
 }
 
 .modalBody img {
@@ -348,6 +357,16 @@
   height: auto; /* Maintain aspect ratio */
   object-fit: none; /* Display image at its natural size */
   margin: auto; /* Helps center if image is smaller than scroll area */
+}
+
+.modalBody video {
+  display: block;
+  max-width: 100%; /* Constrain video to modal width */
+  max-height: 70vh; /* Constrain video to viewport height */
+  width: auto; /* Maintain aspect ratio */
+  height: auto; /* Maintain aspect ratio */
+  object-fit: contain; /* Fit video within constraints while maintaining aspect ratio */
+  align-self: center; /* Center video vertically (overrides parent's align-items) */
 }
 
 /* Metadata styling - dark mode by default */
