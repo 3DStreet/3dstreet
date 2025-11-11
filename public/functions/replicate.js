@@ -403,6 +403,8 @@ const generateReplicateVideo = functions
 
       // Supported models
       const supportedModels = {
+        'bytedance/seedance-1-pro-fast': 'SeeDance 1 Pro Fast',
+        'wan-video/wan-2.2-i2v-fast': 'Wan 2.2 I2V Fast',
         'kwaivgi/kling-v2.5-turbo-pro': 'Kling v2.5 Turbo Pro',
         'lightricks/ltx-2-fast': 'LTX-2 Fast'
       };
@@ -419,7 +421,28 @@ const generateReplicateVideo = functions
       };
 
       // Add model-specific parameters
-      if (model_name === 'kwaivgi/kling-v2.5-turbo-pro') {
+      if (model_name === 'bytedance/seedance-1-pro-fast') {
+        // SeeDance model parameters
+        modelInput.aspect_ratio = aspect_ratio;
+        modelInput.duration = duration_seconds; // SeeDance accepts 2-12 seconds
+        modelInput.resolution = '1080p'; // Use highest quality
+        if (data.seed) {
+          modelInput.seed = data.seed;
+        }
+      } else if (model_name === 'wan-video/wan-2.2-i2v-fast') {
+        // Wan Video model parameters
+        modelInput.resolution = '720p'; // 720p or 480p
+        modelInput.go_fast = true;
+        // Map duration to num_frames (at 16 fps default)
+        // 5 seconds = 80 frames, 10 seconds = 160 frames
+        // Model accepts 81-121 frames, so cap at 121 for 10s
+        modelInput.num_frames = duration_seconds === 10 ? 121 : 81;
+        modelInput.frames_per_second = 16;
+        modelInput.interpolate_output = true;
+        if (data.seed) {
+          modelInput.seed = data.seed;
+        }
+      } else if (model_name === 'kwaivgi/kling-v2.5-turbo-pro') {
         // Kling model parameters
         modelInput.aspect_ratio = aspect_ratio;
         modelInput.duration = duration_seconds; // Kling uses integer 5 or 10
