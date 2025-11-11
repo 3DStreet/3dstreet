@@ -75,6 +75,65 @@ async function postAIImageToDiscord(userId, imageUrl, prompt, modelVersion, scen
   }
 }
 
+// Helper function to post AI-generated videos to Discord
+async function postAIVideoToDiscord(userId, videoUrl, prompt, modelName, durationSeconds, sceneId) {
+  // Only proceed if Discord webhook is configured
+  if (!process.env.DISCORD_WEBHOOK_URL) {
+    console.log('Discord webhook not configured, skipping Discord post');
+    return;
+  }
+
+  try {
+    // Get username from social profile
+    const db = admin.firestore();
+    const socialProfileRef = db.collection('socialProfile').doc(userId);
+    const socialProfileDoc = await socialProfileRef.get();
+
+    let username = 'anonymous';
+    if (socialProfileDoc.exists) {
+      username = socialProfileDoc.data().username || 'anonymous';
+    }
+
+    // Truncate prompt if it's too long for Discord
+    const truncatedPrompt = prompt.length > 200 ? prompt.substring(0, 200) + '...' : prompt;
+
+    // Construct scene URL if sceneId is provided
+    const sceneUrl = sceneId ? `https://3dstreet.app/#scenes/${sceneId}` : null;
+
+    // Create Discord message with video
+    // Include video URL in description so Discord can auto-embed it
+    const message = {
+      content: `🎬 **${username}** generated a new AI video!\n${videoUrl}`,
+      embeds: [{
+        title: `${modelName} Video (${durationSeconds}s)`,
+        description: `**Prompt:** ${truncatedPrompt}`,
+        url: sceneUrl, // Add clickable link to the scene
+        color: 0x3B82F6, // Blue color for video generations
+        footer: {
+          text: 'AI Video Generator',
+          icon_url: 'https://3dstreet.app/favicon-32x32.png'
+        },
+        timestamp: new Date().toISOString()
+      }]
+    };
+
+    const response = await fetch(process.env.DISCORD_WEBHOOK_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(message)
+    });
+
+    if (!response.ok) {
+      console.error(`Discord API error: ${response.status}`);
+    } else {
+      console.log(`AI video successfully posted to Discord for user ${userId}`);
+    }
+  } catch (error) {
+    // Don't throw error - we don't want Discord posting to fail the video generation
+    console.error('Error posting AI video to Discord:', error);
+  }
+}
+
 // Replicate API function for image generation
 const generateReplicateImage = functions
   .runWith({ secrets: ["REPLICATE_API_TOKEN", "ALLOWED_PRO_TEAM_DOMAINS", "DISCORD_WEBHOOK_URL"] })
@@ -307,7 +366,7 @@ const generateReplicateImage = functions
 // Replicate API function for video generation
 const generateReplicateVideo = functions
   .runWith({
-    secrets: ["REPLICATE_API_TOKEN"],
+    secrets: ["REPLICATE_API_TOKEN", "DISCORD_WEBHOOK_URL"],
     timeoutSeconds: 540 // 9 minutes - video generation can take several minutes
   })
   .https
@@ -426,6 +485,7 @@ const generateReplicateVideo = functions
         modelInput.aspect_ratio = aspect_ratio;
         modelInput.duration = duration_seconds; // SeeDance accepts 2-12 seconds
         modelInput.resolution = '1080p'; // Use highest quality
+        modelInput.disable_audio = true; // Always disable audio
         if (data.seed) {
           modelInput.seed = data.seed;
         }
@@ -433,6 +493,7 @@ const generateReplicateVideo = functions
         // Wan Video model parameters
         modelInput.resolution = '720p'; // 720p or 480p
         modelInput.go_fast = true;
+        modelInput.disable_audio = true; // Always disable audio
         // Map duration to num_frames (at 16 fps default)
         // 5 seconds = 80 frames, 10 seconds = 160 frames
         // Model accepts 81-121 frames, so cap at 121 for 10s
@@ -446,11 +507,13 @@ const generateReplicateVideo = functions
         // Kling model parameters
         modelInput.aspect_ratio = aspect_ratio;
         modelInput.duration = duration_seconds; // Kling uses integer 5 or 10
+        modelInput.disable_audio = true; // Always disable audio
       } else if (model_name === 'lightricks/ltx-2-fast') {
         // LTX model parameters - uses duration in seconds (not frames or aspect_ratio)
         // LTX accepts: 6, 8, 10, 12, 14, 16, 18, or 20 seconds
         // We'll map our 5/10 second options to 6/10 for LTX
         modelInput.duration = duration_seconds === 10 ? 10 : 6;
+        modelInput.disable_audio = true; // Always disable audio
       }
 
       console.log(`Generating ${duration_seconds}s video for user ${userId} with model ${model_name} (cost: ${tokenCost} tokens)`);
@@ -506,6 +569,12 @@ const generateReplicateVideo = functions
       }
 
       console.log(`Video generation successful for user ${userId}: ${finalVideoUrl}`);
+
+      // Post AI-generated video to Discord (non-blocking)
+      // This runs in the background and won't fail the video generation if it errors
+      const readableModelName = supportedModels[model_name] || model_name;
+      postAIVideoToDiscord(userId, finalVideoUrl, prompt, readableModelName, duration_seconds, data.scene_id)
+        .catch(err => console.error('Discord posting failed:', err));
 
       return {
         success: true,
