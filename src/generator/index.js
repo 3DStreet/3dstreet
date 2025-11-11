@@ -26,6 +26,7 @@ import FluxUI from './main.js';
 import GeneratorTab from './generator.js';
 import InpaintTab from './inpaint.js';
 import OutpaintTab from './outpaint.js';
+import VideoTab from './video.js';
 
 // Expose auth for compatibility
 window.firebaseAuth = auth;
@@ -54,6 +55,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   GeneratorTab.init();
   InpaintTab.init();
   OutpaintTab.init();
+  VideoTab.init();
 
   // Hide loading screen once everything is initialized
   // Use requestAnimationFrame to ensure styles are applied

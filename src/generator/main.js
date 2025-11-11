@@ -152,11 +152,12 @@ const FluxUI = {
     const hasTokens =
       authState?.isAuthenticated && authState?.tokenProfile?.genToken > 0;
 
-    // Button IDs for all three tabs
+    // Button IDs for all tabs
     const buttonIds = [
       'generate-btn',
       'inpaint-generate-btn',
-      'outpaint-generate-btn'
+      'outpaint-generate-btn',
+      'video-generate-btn'
     ];
 
     buttonIds.forEach((buttonId) => {

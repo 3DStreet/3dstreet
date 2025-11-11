@@ -304,4 +304,148 @@ const generateReplicateImage = functions
     }
   });
 
-module.exports = { generateReplicateImage };
+// Replicate API function for video generation
+const generateReplicateVideo = functions
+  .runWith({ secrets: ["REPLICATE_API_TOKEN"] })
+  .https
+  .onCall(async (data, context) => {
+
+    // Check if required secrets are loaded
+    if (!process.env.REPLICATE_API_TOKEN) {
+      console.error('CRITICAL: REPLICATE_API_TOKEN secret not loaded');
+      throw new functions.https.HttpsError('failed-precondition', 'Video generation service is not properly configured.');
+    }
+
+    // Verify user is authenticated
+    if (!context.auth) {
+      console.error('Unauthenticated request to generateReplicateVideo');
+      throw new functions.https.HttpsError('unauthenticated', 'User must be authenticated to generate videos.');
+    }
+
+    const userId = context.auth.uid;
+    const { prompt, model_version, aspect_ratio = '16:9', duration_seconds = 5 } = data;
+
+    let tokenData;
+    try {
+      // Use the centralized token management function
+      tokenData = await checkAndRefillImageTokensInternal(userId);
+    } catch (tokenError) {
+      console.error(`Error retrieving token data for user ${userId}:`, tokenError);
+      throw new functions.https.HttpsError('internal', `Failed to retrieve token information: ${tokenError.message}`);
+    }
+
+    // Check if tokenData is valid
+    if (!tokenData) {
+      console.error(`Failed to get token data for user ${userId} - tokenData is null/undefined`);
+      throw new functions.https.HttpsError('internal', 'Failed to retrieve token information. Please try again.');
+    }
+
+    if (!tokenData.genToken || tokenData.genToken <= 0) {
+      throw new functions.https.HttpsError('resource-exhausted', 'No generation tokens available');
+    }
+
+    // Validate required data
+    if (!prompt) {
+      console.error(`Missing required data - prompt: ${!!prompt}`);
+      throw new functions.https.HttpsError('invalid-argument', 'Missing required prompt.');
+    }
+
+    try {
+      const replicate = new Replicate({
+        auth: process.env.REPLICATE_API_TOKEN,
+      });
+
+      // Use provided model version or default to minimax video-01
+      // This is the model version ID for minimax/video-01
+      const defaultModelVersion = "15a370f116c40ede5a9ebc9189739a6992bff51259e25f0a6c03fc8c5ada0ea1";
+      const modelVersionToUse = model_version || defaultModelVersion;
+
+      // Prepare model input
+      const modelInput = {
+        prompt: prompt,
+        aspect_ratio: aspect_ratio,
+      };
+
+      // Add duration_seconds if model supports it (minimax does)
+      if (duration_seconds) {
+        modelInput.duration_seconds = duration_seconds;
+      }
+
+      console.log(`Generating video for user ${userId} with model ${modelVersionToUse}`);
+
+      const prediction = await replicate.predictions.create({
+        version: modelVersionToUse,
+        input: modelInput
+      });
+
+      console.log(`Video prediction created: ${prediction.id}`);
+
+      // Wait for the prediction to complete
+      const output = await replicate.wait(prediction);
+
+      console.log(`Video generation completed for prediction: ${prediction.id}`);
+
+      // Decrement token for ALL users (only after successful video generation)
+      const db = admin.firestore();
+      const tokenProfileRef = db.collection('tokenProfile').doc(userId);
+
+      let remainingTokens = 0;
+      await db.runTransaction(async (transaction) => {
+        const tokenDoc = await transaction.get(tokenProfileRef);
+
+        if (!tokenDoc.exists) {
+          throw new functions.https.HttpsError('not-found', 'Token profile not found');
+        }
+
+        const currentTokens = tokenDoc.data().genToken || 0;
+
+        if (currentTokens <= 0) {
+          throw new functions.https.HttpsError('resource-exhausted', 'Insufficient tokens');
+        }
+
+        const newTokenCount = Math.max(0, currentTokens - 1);
+        remainingTokens = newTokenCount;
+
+        transaction.update(tokenProfileRef, {
+          genToken: newTokenCount,
+          updatedAt: admin.firestore.FieldValue.serverTimestamp()
+        });
+      });
+
+      // Handle different output formats from Replicate
+      let finalVideoUrl;
+      if (output && output.output) {
+        finalVideoUrl = Array.isArray(output.output) ? output.output[0] : output.output;
+      } else if (Array.isArray(output)) {
+        finalVideoUrl = output[0];
+      } else if (typeof output === 'string') {
+        finalVideoUrl = output;
+      } else {
+        console.error('Unexpected output format from Replicate:', output);
+        throw new Error('Invalid output format from Replicate API');
+      }
+
+      console.log(`Video generation successful for user ${userId}: ${finalVideoUrl}`);
+
+      return {
+        success: true,
+        video_url: finalVideoUrl,
+        message: 'Video generated successfully!',
+        remainingTokens: remainingTokens
+      };
+    } catch (error) {
+      console.error('Error generating video with Replicate:', error);
+      console.error('Error details:', error.message);
+
+      // If it's a Replicate error, include more details
+      if (error.response) {
+        console.error('Response status:', error.response.status);
+        console.error('Response data:', error.response.data);
+        throw new functions.https.HttpsError('internal', `Replicate API error: ${error.response.status} - ${JSON.stringify(error.response.data)}`);
+      }
+
+      throw new functions.https.HttpsError('internal', `Failed to generate video: ${error.message}`);
+    }
+  });
+
+module.exports = { generateReplicateImage, generateReplicateVideo };

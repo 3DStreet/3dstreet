@@ -4,7 +4,7 @@ admin.initializeApp();
 const { getAuth } = require('firebase-admin/auth');
 const { serveWebXRVariant } = require('./webxr-variant.js');
 const { getGeoidHeight } = require('./geoid-height.js');
-const { generateReplicateImage } = require('./replicate.js');
+const { generateReplicateImage, generateReplicateVideo } = require('./replicate.js');
 const { checkAndRefillImageTokens, checkUserProStatus } = require('./token-management.js');
 const { bflProxyImage, bflApiProxy } = require('./bfl-proxy.js');
 
@@ -14,8 +14,9 @@ exports.serveWebXRVariant = serveWebXRVariant;
 // Re-export the getGeoidHeight function
 exports.getGeoidHeight = getGeoidHeight;
 
-// Re-export the Replicate function
+// Re-export the Replicate functions
 exports.generateReplicateImage = generateReplicateImage;
+exports.generateReplicateVideo = generateReplicateVideo;
 
 // Re-export the token management functions
 exports.checkAndRefillImageTokens = checkAndRefillImageTokens;
