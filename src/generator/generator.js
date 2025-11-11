@@ -47,6 +47,48 @@ const GeneratorTab = {
 
     // Register this module with the main UI for updates
     FluxUI.tabModules.generator = this;
+
+    // Check for pending gallery item from editor
+    this.checkForPendingGalleryItem();
+  },
+
+  // Check for pending gallery item from cross-app communication
+  checkForPendingGalleryItem: function () {
+    try {
+      const pendingItemJson = localStorage.getItem('pendingGalleryItem');
+      if (!pendingItemJson) return;
+
+      const pendingItem = JSON.parse(pendingItemJson);
+
+      // Check if this item is for this tab and is recent (within 10 seconds)
+      if (
+        pendingItem.targetTab === 'generator' &&
+        Date.now() - pendingItem.timestamp < 10000
+      ) {
+        console.log(
+          'Loading pending gallery item for generator tab:',
+          pendingItem
+        );
+
+        // Load the data URL
+        if (
+          pendingItem.imageDataUrl &&
+          typeof pendingItem.imageDataUrl === 'string'
+        ) {
+          this.setImagePrompt(
+            pendingItem.imageDataUrl,
+            `Gallery Item ${pendingItem.id}`
+          );
+        }
+
+        // Clear the pending item after loading
+        localStorage.removeItem('pendingGalleryItem');
+      }
+    } catch (error) {
+      console.error('Failed to load pending gallery item:', error);
+      // Clear invalid data
+      localStorage.removeItem('pendingGalleryItem');
+    }
   },
 
   // Get all DOM elements after content is created

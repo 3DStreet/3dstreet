@@ -34,6 +34,45 @@ const OutpaintTab = {
     this.setupEventListeners();
     // Generate an initial random seed on load
     this.generateRandomSeed();
+
+    // Check for pending gallery item from editor
+    this.checkForPendingGalleryItem();
+  },
+
+  // Check for pending gallery item from cross-app communication
+  checkForPendingGalleryItem: function () {
+    try {
+      const pendingItemJson = localStorage.getItem('pendingGalleryItem');
+      if (!pendingItemJson) return;
+
+      const pendingItem = JSON.parse(pendingItemJson);
+
+      // Check if this item is for this tab and is recent (within 10 seconds)
+      if (
+        pendingItem.targetTab === 'outpaint' &&
+        Date.now() - pendingItem.timestamp < 10000
+      ) {
+        console.log(
+          'Loading pending gallery item for outpaint tab:',
+          pendingItem
+        );
+
+        // Load the data URL
+        if (
+          pendingItem.imageDataUrl &&
+          typeof pendingItem.imageDataUrl === 'string'
+        ) {
+          this.setInputImage(pendingItem.imageDataUrl);
+        }
+
+        // Clear the pending item after loading
+        localStorage.removeItem('pendingGalleryItem');
+      }
+    } catch (error) {
+      console.error('Failed to load pending gallery item:', error);
+      // Clear invalid data
+      localStorage.removeItem('pendingGalleryItem');
+    }
   },
 
   // Create the tab content HTML (aligned with generator.js structure)
