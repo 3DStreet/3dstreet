@@ -351,8 +351,7 @@ exports.bflApiProxy = functions
           result = {
             id: params.id,
             status: 'Pending',
-            result: null,
-            progress: null
+            result: null
           };
         } else {
           console.error(`BFL API error (${response.status}):`, result);
