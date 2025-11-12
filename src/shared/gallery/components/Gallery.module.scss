@@ -5,7 +5,7 @@
 .sidebar {
   position: fixed;
   right: 0;
-  top: 98px;
+  top: 80px;
   height: calc(100vh - 98px);
   width: 280px; /* Default width */
   background-color: #1f2937; /* gray-800 - dark background */
@@ -83,7 +83,7 @@
 /* Header Section */
 .header {
   padding: 8px;
-  height: 40px;
+  height: 55px;
   border-bottom: 1px solid #374151; /* gray-700 */
   display: flex;
   justify-content: space-between;
