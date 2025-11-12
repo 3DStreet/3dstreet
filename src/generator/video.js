@@ -566,10 +566,22 @@ const VideoTab = {
       })
       .catch((error) => {
         console.error('Video generation error:', error);
-        FluxUI.showNotification(
-          error.message || 'Failed to generate video',
-          'error'
-        );
+        let message = 'Failed to generate video';
+
+        if (error.code === 'unauthenticated') {
+          message = 'Please sign in to generate videos';
+        } else if (error.code === 'resource-exhausted') {
+          message = 'Insufficient tokens. Please purchase more tokens.';
+        } else if (error.code === 'permission-denied') {
+          message = 'You do not have permission to generate videos';
+        } else if (error.code === 'unavailable') {
+          message =
+            'Video generation service is temporarily unavailable. Please try again later.';
+        } else if (error.message) {
+          message = error.message;
+        }
+
+        FluxUI.showNotification(message, 'error');
         this.toggleLoading(false);
       });
   },
