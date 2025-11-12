@@ -65,17 +65,6 @@ const FluxUI = {
 
     const tabId = tabButton.getAttribute('data-tab');
 
-    // Special handling for gallery tab - toggle the gallery sidebar
-    if (tabId === 'gallery') {
-      const galleryToggle = document.getElementById('gallery-toggle');
-      if (galleryToggle) {
-        // Trigger the React component's toggle button
-        galleryToggle.click();
-      }
-      return; // Don't proceed with normal tab activation
-    }
-
-    // Normal tab activation for non-gallery tabs
     // Deactivate all tabs
     this.elements.tabButtons.forEach((btn) => btn.classList.remove('active'));
     this.elements.tabContents.forEach((content) =>

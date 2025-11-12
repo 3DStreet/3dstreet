@@ -36,16 +36,6 @@ const GallerySidebar = ({
 
   const handleToggle = () => {
     setIsCollapsed(!isCollapsed);
-
-    // Sync the Gallery tab button state
-    const galleryTabButton = document.getElementById('gallery-tab-button');
-    if (galleryTabButton) {
-      if (!isCollapsed) {
-        galleryTabButton.classList.remove('active');
-      } else {
-        galleryTabButton.classList.add('active');
-      }
-    }
   };
 
   const handleClearGallery = async () => {
