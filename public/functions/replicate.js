@@ -485,7 +485,7 @@ const generateReplicateVideo = functions
         modelInput.aspect_ratio = aspect_ratio;
         modelInput.duration = duration_seconds; // SeeDance accepts 2-12 seconds
         modelInput.resolution = '1080p'; // Use highest quality
-        modelInput.disable_audio = true; // Always disable audio
+        // Note: SeeDance does not support audio control parameters
         if (data.seed) {
           modelInput.seed = data.seed;
         }
@@ -493,13 +493,13 @@ const generateReplicateVideo = functions
         // Wan Video model parameters
         modelInput.resolution = '720p'; // 720p or 480p
         modelInput.go_fast = true;
-        modelInput.disable_audio = true; // Always disable audio
         // Map duration to num_frames (at 16 fps default)
         // 5 seconds = 80 frames, 10 seconds = 160 frames
         // Model accepts 81-121 frames, so cap at 121 for 10s
         modelInput.num_frames = duration_seconds === 10 ? 121 : 81;
         modelInput.frames_per_second = 16;
         modelInput.interpolate_output = true;
+        // Note: Wan Video does not support audio control parameters
         if (data.seed) {
           modelInput.seed = data.seed;
         }
@@ -507,13 +507,13 @@ const generateReplicateVideo = functions
         // Kling model parameters
         modelInput.aspect_ratio = aspect_ratio;
         modelInput.duration = duration_seconds; // Kling uses integer 5 or 10
-        modelInput.disable_audio = true; // Always disable audio
+        // Note: Kling does not support audio control parameters
       } else if (model_name === 'lightricks/ltx-2-fast') {
         // LTX model parameters - uses duration in seconds (not frames or aspect_ratio)
         // LTX accepts: 6, 8, 10, 12, 14, 16, 18, or 20 seconds
         // We'll map our 5/10 second options to 6/10 for LTX
         modelInput.duration = duration_seconds === 10 ? 10 : 6;
-        modelInput.disable_audio = true; // Always disable audio
+        modelInput.generate_audio = false; // LTX is the only model that supports audio control
       }
 
       console.log(`Generating ${duration_seconds}s video for user ${userId} with model ${model_name} (cost: ${tokenCost} tokens)`);
