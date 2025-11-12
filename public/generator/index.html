@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>3DStreet | AI Image Generator</title>
+    <title>3DStreet | AI Generator</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
@@ -62,7 +62,7 @@
                 <div id="app-switcher-root"></div>
                 <h1 class="text-2xl font-bold text-gray-500 flex items-center gap-2">
                     <img src="/ui_assets/easel-generation.svg" alt="AI Generator" width="30" height="30" />
-                    AI Image Generator
+                    AI Generator
                 </h1>
             </div>
             <!-- Right side: Token Display and Profile Button -->
@@ -96,11 +96,11 @@
                     </svg>
                     Outpaint
                 </button>
-                <button id="gallery-tab-button" class="tab-button gallery-tab-button" data-tab="gallery">
+                <button class="tab-button" data-tab="video-tab">
                     <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 inline-block mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 5a1 1 0 011-1h4a1 1 0 011 1v4a1 1 0 01-1 1H5a1 1 0 01-1-1V5zM14 5a1 1 0 011-1h4a1 1 0 011 1v4a1 1 0 01-1 1h-4a1 1 0 01-1-1V5zM4 15a1 1 0 011-1h4a1 1 0 011 1v4a1 1 0 01-1 1H5a1 1 0 01-1-1v-4zM14 15a1 1 0 011-1h4a1 1 0 011 1v4a1 1 0 01-1 1h-4a1 1 0 01-1-1v-4z" />
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
                     </svg>
-                    Gallery
+                    Video
                 </button>
                 <!-- More tabs will be added here -->
             </div>
@@ -112,6 +112,7 @@
         <div id="generator-tab" class="tab-content active"></div>
         <div id="inpaint-tab" class="tab-content"></div>
         <div id="outpaint-tab" class="tab-content"></div>
+        <div id="video-tab" class="tab-content"></div>
     </main>
 
     <!-- Notification -->

@@ -27,7 +27,11 @@ const GalleryItem = ({ item, onItemClick, onDelete, onDownload }) => {
       onClick={handleClick}
       style={{ cursor: 'pointer' }}
     >
-      <img src={item.objectURL} alt="Generated image" />
+      {item.type === 'video' ? (
+        <video src={item.objectURL} muted playsInline />
+      ) : (
+        <img src={item.objectURL} alt="Generated image" />
+      )}
 
       {/* Overlay for buttons */}
       <div className={styles.itemOverlay}>
@@ -35,7 +39,7 @@ const GalleryItem = ({ item, onItemClick, onDelete, onDownload }) => {
         <button
           className={`${styles.itemButton} ${styles.downloadBtn}`}
           onClick={handleDownload}
-          title="Download Image"
+          title={item.type === 'video' ? 'Download Video' : 'Download Image'}
         >
           <svg
             xmlns="http://www.w3.org/2000/svg"
@@ -56,7 +60,7 @@ const GalleryItem = ({ item, onItemClick, onDelete, onDownload }) => {
         <button
           className={`${styles.itemButton} ${styles.deleteBtn}`}
           onClick={handleDelete}
-          title="Delete Image"
+          title={item.type === 'video' ? 'Delete Video' : 'Delete Image'}
         >
           <svg
             xmlns="http://www.w3.org/2000/svg"

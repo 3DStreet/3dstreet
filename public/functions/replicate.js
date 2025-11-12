@@ -75,6 +75,65 @@ async function postAIImageToDiscord(userId, imageUrl, prompt, modelVersion, scen
   }
 }
 
+// Helper function to post AI-generated videos to Discord
+async function postAIVideoToDiscord(userId, videoUrl, prompt, modelName, durationSeconds, sceneId) {
+  // Only proceed if Discord webhook is configured
+  if (!process.env.DISCORD_WEBHOOK_URL) {
+    console.log('Discord webhook not configured, skipping Discord post');
+    return;
+  }
+
+  try {
+    // Get username from social profile
+    const db = admin.firestore();
+    const socialProfileRef = db.collection('socialProfile').doc(userId);
+    const socialProfileDoc = await socialProfileRef.get();
+
+    let username = 'anonymous';
+    if (socialProfileDoc.exists) {
+      username = socialProfileDoc.data().username || 'anonymous';
+    }
+
+    // Truncate prompt if it's too long for Discord
+    const truncatedPrompt = prompt.length > 200 ? prompt.substring(0, 200) + '...' : prompt;
+
+    // Construct scene URL if sceneId is provided
+    const sceneUrl = sceneId ? `https://3dstreet.app/#scenes/${sceneId}` : null;
+
+    // Create Discord message with video
+    // Include video URL in description so Discord can auto-embed it
+    const message = {
+      content: `🎬 **${username}** generated a new AI video!\n${videoUrl}`,
+      embeds: [{
+        title: `${modelName} Video (${durationSeconds}s)`,
+        description: `**Prompt:** ${truncatedPrompt}`,
+        url: sceneUrl, // Add clickable link to the scene
+        color: 0x3B82F6, // Blue color for video generations
+        footer: {
+          text: 'AI Video Generator',
+          icon_url: 'https://3dstreet.app/favicon-32x32.png'
+        },
+        timestamp: new Date().toISOString()
+      }]
+    };
+
+    const response = await fetch(process.env.DISCORD_WEBHOOK_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(message)
+    });
+
+    if (!response.ok) {
+      console.error(`Discord API error: ${response.status}`);
+    } else {
+      console.log(`AI video successfully posted to Discord for user ${userId}`);
+    }
+  } catch (error) {
+    // Don't throw error - we don't want Discord posting to fail the video generation
+    console.error('Error posting AI video to Discord:', error);
+  }
+}
+
 // Replicate API function for image generation
 const generateReplicateImage = functions
   .runWith({ secrets: ["REPLICATE_API_TOKEN", "ALLOWED_PRO_TEAM_DOMAINS", "DISCORD_WEBHOOK_URL"] })
@@ -304,4 +363,238 @@ const generateReplicateImage = functions
     }
   });
 
-module.exports = { generateReplicateImage };
+// Replicate API function for video generation
+const generateReplicateVideo = functions
+  .runWith({
+    secrets: ["REPLICATE_API_TOKEN", "DISCORD_WEBHOOK_URL"],
+    timeoutSeconds: 540 // 9 minutes - video generation can take several minutes
+  })
+  .https
+  .onCall(async (data, context) => {
+
+    // Check if required secrets are loaded
+    if (!process.env.REPLICATE_API_TOKEN) {
+      console.error('CRITICAL: REPLICATE_API_TOKEN secret not loaded');
+      throw new functions.https.HttpsError('failed-precondition', 'Video generation service is not properly configured.');
+    }
+
+    // Verify user is authenticated
+    if (!context.auth) {
+      console.error('Unauthenticated request to generateReplicateVideo');
+      throw new functions.https.HttpsError('unauthenticated', 'User must be authenticated to generate videos.');
+    }
+
+    const userId = context.auth.uid;
+    const { prompt, input_image, model_name = 'lightricks/ltx-2-fast', aspect_ratio = '16:9', duration_seconds = 5 } = data;
+
+    // Calculate token cost based on duration
+    // 5 seconds = 10 tokens, 10 seconds = 20 tokens
+    const tokenCost = duration_seconds === 10 ? 20 : 10;
+
+    let tokenData;
+    try {
+      // Use the centralized token management function
+      tokenData = await checkAndRefillImageTokensInternal(userId);
+    } catch (tokenError) {
+      console.error(`Error retrieving token data for user ${userId}:`, tokenError);
+      throw new functions.https.HttpsError('internal', `Failed to retrieve token information: ${tokenError.message}`);
+    }
+
+    // Check if tokenData is valid
+    if (!tokenData) {
+      console.error(`Failed to get token data for user ${userId} - tokenData is null/undefined`);
+      throw new functions.https.HttpsError('internal', 'Failed to retrieve token information. Please try again.');
+    }
+
+    // Check if user has enough tokens for this generation
+    if (!tokenData.genToken || tokenData.genToken < tokenCost) {
+      throw new functions.https.HttpsError('resource-exhausted', `Insufficient tokens. This video requires ${tokenCost} tokens, but you have ${tokenData.genToken || 0}.`);
+    }
+
+    // Validate required data
+    if (!prompt) {
+      console.error(`Missing required data - prompt: ${!!prompt}`);
+      throw new functions.https.HttpsError('invalid-argument', 'Missing required prompt.');
+    }
+
+    if (!input_image) {
+      console.error(`Missing required data - input_image: ${!!input_image}`);
+      throw new functions.https.HttpsError('invalid-argument', 'Missing required input image.');
+    }
+
+    try {
+      const replicate = new Replicate({
+        auth: process.env.REPLICATE_API_TOKEN,
+      });
+
+      let imageUrl = input_image;
+
+      // If input_image is a base64 string, upload it to Firebase Storage first
+      if (!input_image.startsWith('http://') && !input_image.startsWith('https://')) {
+        // Assume it's base64 data (without the data URL prefix since we strip it client-side)
+        // Reconstruct the data URL
+        const base64Data = input_image;
+        const imageBuffer = Buffer.from(base64Data, 'base64');
+
+        // Generate a unique filename
+        const timestamp = Date.now();
+        const filename = `temp-video-input-${context.auth.uid}-${timestamp}.jpg`;
+
+        // Upload to Firebase Storage
+        const bucket = admin.storage().bucket();
+        const file = bucket.file(`temp/${filename}`);
+
+        await file.save(imageBuffer, {
+          metadata: {
+            contentType: 'image/jpeg',
+            // Set to expire in 1 hour
+            expires: new Date(Date.now() + 60 * 60 * 1000).toISOString()
+          }
+        });
+
+        // Make the file publicly readable
+        await file.makePublic();
+
+        // Get the public URL
+        imageUrl = `https://storage.googleapis.com/${bucket.name}/temp/${filename}`;
+        console.log(`Uploaded input image to: ${imageUrl}`);
+      }
+
+      // Supported models
+      const supportedModels = {
+        'bytedance/seedance-1-pro-fast': 'SeeDance 1 Pro Fast',
+        'wan-video/wan-2.2-i2v-fast': 'Wan 2.2 I2V Fast',
+        'kwaivgi/kling-v2.5-turbo-pro': 'Kling v2.5 Turbo Pro',
+        'lightricks/ltx-2-fast': 'LTX-2 Fast'
+      };
+
+      // Validate model name
+      if (!supportedModels[model_name]) {
+        throw new functions.https.HttpsError('invalid-argument', `Unsupported model: ${model_name}`);
+      }
+
+      // Prepare model input based on the model
+      const modelInput = {
+        prompt: prompt,
+        image: imageUrl, // Add the image URL
+      };
+
+      // Add model-specific parameters
+      if (model_name === 'bytedance/seedance-1-pro-fast') {
+        // SeeDance model parameters
+        modelInput.aspect_ratio = aspect_ratio;
+        modelInput.duration = duration_seconds; // SeeDance accepts 2-12 seconds
+        modelInput.resolution = '1080p'; // Use highest quality
+        // Note: SeeDance does not support audio control parameters
+        if (data.seed) {
+          modelInput.seed = data.seed;
+        }
+      } else if (model_name === 'wan-video/wan-2.2-i2v-fast') {
+        // Wan Video model parameters
+        modelInput.resolution = '720p'; // 720p or 480p
+        modelInput.go_fast = true;
+        // Map duration to num_frames (at 16 fps default)
+        // 5 seconds = 80 frames, 10 seconds = 160 frames
+        // Model accepts 81-121 frames, so cap at 121 for 10s
+        modelInput.num_frames = duration_seconds === 10 ? 121 : 81;
+        modelInput.frames_per_second = 16;
+        modelInput.interpolate_output = true;
+        // Note: Wan Video does not support audio control parameters
+        if (data.seed) {
+          modelInput.seed = data.seed;
+        }
+      } else if (model_name === 'kwaivgi/kling-v2.5-turbo-pro') {
+        // Kling model parameters
+        modelInput.aspect_ratio = aspect_ratio;
+        modelInput.duration = duration_seconds; // Kling uses integer 5 or 10
+        // Note: Kling does not support audio control parameters
+      } else if (model_name === 'lightricks/ltx-2-fast') {
+        // LTX model parameters - uses duration in seconds (not frames or aspect_ratio)
+        // LTX accepts: 6, 8, 10, 12, 14, 16, 18, or 20 seconds
+        // We'll map our 5/10 second options to 6/10 for LTX
+        modelInput.duration = duration_seconds === 10 ? 10 : 6;
+        modelInput.generate_audio = false; // LTX is the only model that supports audio control
+      }
+
+      console.log(`Generating ${duration_seconds}s video for user ${userId} with model ${model_name} (cost: ${tokenCost} tokens)`);
+      console.log('Model input parameters:', JSON.stringify(modelInput, null, 2));
+
+      // Use run() with model name instead of predictions.create with version
+      const output = await replicate.run(model_name, {
+        input: modelInput
+      });
+
+      console.log(`Video generation completed for user ${userId}`);
+
+      // Decrement tokens for ALL users (only after successful video generation)
+      const db = admin.firestore();
+      const tokenProfileRef = db.collection('tokenProfile').doc(userId);
+
+      let remainingTokens = 0;
+      await db.runTransaction(async (transaction) => {
+        const tokenDoc = await transaction.get(tokenProfileRef);
+
+        if (!tokenDoc.exists) {
+          throw new functions.https.HttpsError('not-found', 'Token profile not found');
+        }
+
+        const currentTokens = tokenDoc.data().genToken || 0;
+
+        // Verify user still has enough tokens (double-check after generation)
+        if (currentTokens < tokenCost) {
+          throw new functions.https.HttpsError('resource-exhausted', 'Insufficient tokens');
+        }
+
+        // Deduct the appropriate number of tokens based on duration
+        const newTokenCount = Math.max(0, currentTokens - tokenCost);
+        remainingTokens = newTokenCount;
+
+        transaction.update(tokenProfileRef, {
+          genToken: newTokenCount,
+          updatedAt: admin.firestore.FieldValue.serverTimestamp()
+        });
+      });
+
+      // Handle different output formats from Replicate
+      let finalVideoUrl;
+      if (output && output.output) {
+        finalVideoUrl = Array.isArray(output.output) ? output.output[0] : output.output;
+      } else if (Array.isArray(output)) {
+        finalVideoUrl = output[0];
+      } else if (typeof output === 'string') {
+        finalVideoUrl = output;
+      } else {
+        console.error('Unexpected output format from Replicate:', output);
+        throw new Error('Invalid output format from Replicate API');
+      }
+
+      console.log(`Video generation successful for user ${userId}: ${finalVideoUrl}`);
+
+      // Post AI-generated video to Discord (non-blocking)
+      // This runs in the background and won't fail the video generation if it errors
+      const readableModelName = supportedModels[model_name] || model_name;
+      postAIVideoToDiscord(userId, finalVideoUrl, prompt, readableModelName, duration_seconds, data.scene_id)
+        .catch(err => console.error('Discord posting failed:', err));
+
+      return {
+        success: true,
+        video_url: finalVideoUrl,
+        message: 'Video generated successfully!',
+        remainingTokens: remainingTokens
+      };
+    } catch (error) {
+      console.error('Error generating video with Replicate:', error);
+      console.error('Error details:', error.message);
+
+      // If it's a Replicate error, include more details
+      if (error.response) {
+        console.error('Response status:', error.response.status);
+        console.error('Response data:', error.response.data);
+        throw new functions.https.HttpsError('internal', `Replicate API error: ${error.response.status} - ${JSON.stringify(error.response.data)}`);
+      }
+
+      throw new functions.https.HttpsError('internal', `Failed to generate video: ${error.message}`);
+    }
+  });
+
+module.exports = { generateReplicateImage, generateReplicateVideo };

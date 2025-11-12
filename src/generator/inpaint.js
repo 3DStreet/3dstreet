@@ -45,6 +45,45 @@ const InpaintTab = {
 
     // Register this module with the main UI for updates
     FluxUI.tabModules.inpaint = this;
+
+    // Check for pending gallery item from editor
+    this.checkForPendingGalleryItem();
+  },
+
+  // Check for pending gallery item from cross-app communication
+  checkForPendingGalleryItem: function () {
+    try {
+      const pendingItemJson = localStorage.getItem('pendingGalleryItem');
+      if (!pendingItemJson) return;
+
+      const pendingItem = JSON.parse(pendingItemJson);
+
+      // Check if this item is for this tab and is recent (within 10 seconds)
+      if (
+        pendingItem.targetTab === 'inpaint' &&
+        Date.now() - pendingItem.timestamp < 10000
+      ) {
+        console.log(
+          'Loading pending gallery item for inpaint tab:',
+          pendingItem
+        );
+
+        // Load the data URL
+        if (
+          pendingItem.imageDataUrl &&
+          typeof pendingItem.imageDataUrl === 'string'
+        ) {
+          this.setInputImage(pendingItem.imageDataUrl);
+        }
+
+        // Clear the pending item after loading
+        localStorage.removeItem('pendingGalleryItem');
+      }
+    } catch (error) {
+      console.error('Failed to load pending gallery item:', error);
+      // Clear invalid data
+      localStorage.removeItem('pendingGalleryItem');
+    }
   },
 
   // Create the tab content HTML (aligned with generator.js structure)
@@ -87,7 +126,7 @@ const InpaintTab = {
 
                     <!-- Prompt -->
                     <div class="mb-4">
-                        <label for="inpaint-prompt" class="block text-sm font-medium text-gray-700 mb-1">Prompt</label>
+                        <label for="inpaint-prompt" class="block text-sm font-medium text-gray-700 mb-1">Prompt (Optional)</label>
                         <textarea id="inpaint-prompt" rows="3" class="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500" placeholder="Describe what to generate in the masked area..."></textarea>
                     </div>
                     
@@ -160,7 +199,11 @@ const InpaintTab = {
 
                     <!-- Generate Button -->
                     <button id="inpaint-generate-btn" class="w-full px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 disabled:opacity-50 flex items-center justify-center gap-2">
-                        <span>Generate Inpaint</span>
+                        <svg id="inpaint-generate-spinner" class="hidden animate-spin h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                        </svg>
+                        <span id="inpaint-generate-text">Generate Inpaint</span>
                         <span class="inline-flex items-center rounded" style="background: rgba(0, 0, 0, 0.15); padding: 6px 8px; gap: 2px;">
                             <img src="/ui_assets/token-image.png" alt="Token" class="w-5 h-5" />
                             <span class="text-sm" style="opacity: 0.9; margin-right: 1px;">×</span>
@@ -308,6 +351,11 @@ const InpaintTab = {
     // Buttons
     this.elements.generateBtn = this.elements.inpaintContainer.querySelector(
       '#inpaint-generate-btn'
+    );
+    this.elements.generateSpinner =
+      this.elements.inpaintContainer.querySelector('#inpaint-generate-spinner');
+    this.elements.generateText = this.elements.inpaintContainer.querySelector(
+      '#inpaint-generate-text'
     );
     this.elements.actionButtons = this.elements.inpaintContainer.querySelector(
       '#inpaint-action-buttons'
@@ -721,6 +769,14 @@ const InpaintTab = {
     // Disable generate button with visual feedback
     this.elements.generateBtn.disabled = true;
     this.elements.generateBtn.classList.add('opacity-50', 'cursor-not-allowed');
+
+    // Show spinner, update button text
+    if (this.elements.generateSpinner) {
+      this.elements.generateSpinner.classList.remove('hidden');
+    }
+    if (this.elements.generateText) {
+      this.elements.generateText.textContent = 'Generating...';
+    }
   },
 
   // Show progress during polling
@@ -744,6 +800,15 @@ const InpaintTab = {
       'opacity-50',
       'cursor-not-allowed'
     );
+
+    // Hide spinner, restore button text
+    if (this.elements.generateSpinner) {
+      this.elements.generateSpinner.classList.add('hidden');
+    }
+    if (this.elements.generateText) {
+      this.elements.generateText.textContent = 'Generate Inpaint';
+    }
+
     this.currentImageUrl = this.elements.outputImage.src; // Store proxied URL
 
     // Store parameters used for this generation
@@ -771,6 +836,15 @@ const InpaintTab = {
       'opacity-50',
       'cursor-not-allowed'
     );
+
+    // Hide spinner, restore button text
+    if (this.elements.generateSpinner) {
+      this.elements.generateSpinner.classList.add('hidden');
+    }
+    if (this.elements.generateText) {
+      this.elements.generateText.textContent = 'Generate Inpaint';
+    }
+
     this.elements.actionButtons.classList.add('hidden');
     FluxUI.showNotification(`Inpaint failed: ${error.message}`, 'error');
   },

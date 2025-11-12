@@ -8,6 +8,7 @@ import FluxUI from './main.js';
 import GeneratorTab from './generator.js';
 import InpaintTab from './inpaint.js';
 import OutpaintTab from './outpaint.js';
+import VideoTab from './video.js';
 
 /**
  * Helper to get Data URI from Blob
@@ -157,6 +158,29 @@ const handleUseForGenerator = async (item) => {
 };
 
 /**
+ * Use image for Video tab
+ * @param {object} item - Gallery item
+ */
+const handleUseForVideo = async (item) => {
+  if (VideoTab && typeof VideoTab.setInputImage === 'function') {
+    try {
+      const dataUri = await getBlobDataUri(item.imageDataBlob);
+      const videoTabButton = document.querySelector(
+        '.tab-button[data-tab="video-tab"]'
+      );
+      if (videoTabButton) videoTabButton.click();
+      VideoTab.setInputImage(dataUri, `Gallery Image ${item.id}`);
+      FluxUI.showNotification('Image sent to Video tab!', 'success');
+    } catch (error) {
+      console.error('Error sending to Video:', error);
+      FluxUI.showNotification('Failed to prepare image for Video.', 'error');
+    }
+  } else {
+    FluxUI.showNotification('Video tab is not ready yet', 'warning');
+  }
+};
+
+/**
  * Mount the React gallery component
  * This replaces the vanilla JS gallery implementation
  */
@@ -176,6 +200,7 @@ export const mountGallery = async () => {
       onUseForInpaint={handleUseForInpaint}
       onUseForOutpaint={handleUseForOutpaint}
       onUseForGenerator={handleUseForGenerator}
+      onUseForVideo={handleUseForVideo}
       onNotification={(message, type) => FluxUI.showNotification(message, type)}
     />
   );

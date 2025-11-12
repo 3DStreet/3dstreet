@@ -18,6 +18,7 @@ import { ImgComparisonSlider } from '@img-comparison-slider/react';
 import 'img-comparison-slider/dist/styles.css';
 import { canUseImageFeature } from '@shared/utils/tokens';
 import { TokenDisplayInner } from '@shared/auth/components';
+import { galleryService } from '@shared/gallery';
 
 // Available AI models
 const AI_MODELS = {
@@ -307,6 +308,27 @@ function ScreenshotModal() {
           }));
         }
 
+        // Save AI render to gallery
+        try {
+          await galleryService.addItem(
+            result.data.image_url,
+            {
+              timestamp: new Date().toISOString(),
+              sceneId: sceneId || STREET.utils.getCurrentSceneId(),
+              source: 'ai-render',
+              model: selectedModelConfig.name,
+              modelKey: baseModelKey,
+              prompt: aiPrompt,
+              renderMode: renderMode,
+              isPro: currentUser?.isPro || false
+            },
+            'ai-render'
+          );
+          console.log('AI render saved to gallery');
+        } catch (error) {
+          console.error('Failed to save AI render to gallery:', error);
+        }
+
         // Show appropriate success message based on user type
         if (currentUser?.isProTeam) {
           STREET.notify.successMessage(
@@ -466,10 +488,27 @@ function ScreenshotModal() {
         showLogo: !isPro,
         showWatermark: !isPro,
         imgElementSelector: '#screentock-destination'
-      }).then(() => {
+      }).then(async () => {
         const imgElement = document.getElementById('screentock-destination');
         if (imgElement && imgElement.src) {
           setOriginalImageUrl(imgElement.src);
+
+          // Save screenshot to gallery
+          try {
+            await galleryService.addItem(
+              imgElement.src,
+              {
+                timestamp: new Date().toISOString(),
+                sceneId: STREET.utils.getCurrentSceneId(),
+                source: 'screenshot',
+                isPro: isPro
+              },
+              'screenshot'
+            );
+            console.log('Screenshot saved to gallery');
+          } catch (error) {
+            console.error('Failed to save screenshot to gallery:', error);
+          }
         }
       });
     }

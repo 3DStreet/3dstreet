@@ -17,6 +17,7 @@ import posthog from 'posthog-js';
 import { commandsByType } from './lib/commands/index.js';
 import useStore from '@/store';
 import { initializeLocationSync } from './lib/location-sync';
+import { Gallery, galleryService } from '@shared/gallery';
 
 // Helper function to check if viewer mode is requested via URL parameter
 function isViewerModeRequested() {
@@ -112,6 +113,9 @@ Inspector.prototype = {
       visibilityRoot.render(<VisibilityToggle />);
     }
 
+    // Mount Gallery component
+    this.mountGallery();
+
     this.scene = this.sceneEl.object3D;
     this.helpers = {};
     this.sceneHelpers = new THREE.Scene();
@@ -130,6 +134,143 @@ Inspector.prototype = {
     if (isViewerModeRequested()) {
       useStore.getState().setIsInspectorEnabled(false);
     }
+  },
+
+  mountGallery: function () {
+    // Initialize gallery service
+    galleryService.init().catch((error) => {
+      console.error('Failed to initialize gallery:', error);
+    });
+
+    // Create mount point for gallery
+    const galleryRoot = document.createElement('div');
+    galleryRoot.id = 'editor-gallery-root';
+    document.body.appendChild(galleryRoot);
+
+    // Gallery action handlers
+    const handleCopyParams = (item) => {
+      if (!item.metadata) {
+        console.log('No parameters available for this image');
+        return;
+      }
+      const params = JSON.stringify(item.metadata, null, 2);
+      navigator.clipboard
+        .writeText(params)
+        .then(() => console.log('Parameters copied to clipboard!'))
+        .catch((err) => console.error('Failed to copy parameters:', err));
+    };
+
+    const handleCopyImage = (item) => {
+      if (!item.imageDataBlob || !(item.imageDataBlob instanceof Blob)) {
+        console.log('Image data is not available for copying.');
+        return;
+      }
+
+      try {
+        const clipboardItem = new ClipboardItem({
+          [item.imageDataBlob.type || 'image/png']: item.imageDataBlob
+        });
+        navigator.clipboard
+          .write([clipboardItem])
+          .then(() => console.log('Image copied to clipboard!'))
+          .catch((err) => {
+            console.error('Clipboard API error:', err);
+            console.log(
+              'Failed to copy image. Your browser might not support this feature.'
+            );
+          });
+      } catch (error) {
+        console.error('Error using ClipboardItem:', error);
+        console.log(
+          'Failed to copy image. Your browser might not support this feature.'
+        );
+      }
+    };
+
+    // Handlers for opening generator app with gallery items
+    const openGeneratorWithItem = async (item, tabName) => {
+      try {
+        // Convert blob to data URL for cross-app communication
+        let dataUrl;
+        if (item.imageDataBlob instanceof Blob) {
+          dataUrl = await new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onloadend = () => resolve(reader.result);
+            reader.onerror = reject;
+            reader.readAsDataURL(item.imageDataBlob);
+          });
+        } else if (item.objectURL) {
+          // Fallback: try to fetch blob URL and convert
+          const response = await fetch(item.objectURL);
+          const blob = await response.blob();
+          dataUrl = await new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onloadend = () => resolve(reader.result);
+            reader.onerror = reject;
+            reader.readAsDataURL(blob);
+          });
+        } else {
+          throw new Error('No valid image data available');
+        }
+
+        // Save item data to localStorage for cross-window communication
+        const galleryItemData = {
+          imageDataUrl: dataUrl,
+          id: item.id,
+          metadata: item.metadata,
+          timestamp: Date.now(),
+          targetTab: tabName
+        };
+
+        localStorage.setItem(
+          'pendingGalleryItem',
+          JSON.stringify(galleryItemData)
+        );
+
+        // Open generator in new window with appropriate hash
+        const generatorUrl = `/generator/#${tabName}`;
+        window.open(generatorUrl, '_blank');
+
+        console.log(`Opening generator ${tabName} tab with gallery item`);
+      } catch (error) {
+        console.error('Failed to open generator with gallery item:', error);
+      }
+    };
+
+    const handleUseForInpaint = (item) => {
+      openGeneratorWithItem(item, 'inpaint');
+    };
+
+    const handleUseForOutpaint = (item) => {
+      openGeneratorWithItem(item, 'outpaint');
+    };
+
+    const handleUseForGenerator = (item) => {
+      openGeneratorWithItem(item, 'generator');
+    };
+
+    const handleUseForVideo = (item) => {
+      openGeneratorWithItem(item, 'video');
+    };
+
+    const handleNotification = (message, type) => {
+      console.log(`[${type}] ${message}`);
+    };
+
+    // Mount the React gallery component
+    const root = createRoot(galleryRoot);
+    root.render(
+      <Gallery
+        mode="sidebar"
+        onCopyParams={handleCopyParams}
+        onCopyImage={handleCopyImage}
+        onUseForInpaint={handleUseForInpaint}
+        onUseForOutpaint={handleUseForOutpaint}
+        onUseForGenerator={handleUseForGenerator}
+        onUseForVideo={handleUseForVideo}
+        onNotification={handleNotification}
+      />
+    );
   },
 
   removeObject: function (object) {

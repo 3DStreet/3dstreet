@@ -166,6 +166,7 @@ const useGallery = () => {
     link.href = item.objectURL;
 
     // Create filename
+    const isVideo = item.type === 'video';
     const model =
       item.metadata?.model ||
       (item.type === 'screenshot' ? '3dstreet' : 'flux');
@@ -176,8 +177,14 @@ const useGallery = () => {
           .slice(0, 19)
       : new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
 
-    const format = item.metadata?.output_format || 'png';
-    const extension = format === 'jpeg' ? 'jpg' : 'png';
+    let extension;
+    if (isVideo) {
+      extension = 'mp4';
+    } else {
+      const format = item.metadata?.output_format || 'png';
+      extension = format === 'jpeg' ? 'jpg' : 'png';
+    }
+
     link.download = `${model}-${timestamp}.${extension}`;
 
     document.body.appendChild(link);

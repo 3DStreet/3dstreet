@@ -47,6 +47,48 @@ const GeneratorTab = {
 
     // Register this module with the main UI for updates
     FluxUI.tabModules.generator = this;
+
+    // Check for pending gallery item from editor
+    this.checkForPendingGalleryItem();
+  },
+
+  // Check for pending gallery item from cross-app communication
+  checkForPendingGalleryItem: function () {
+    try {
+      const pendingItemJson = localStorage.getItem('pendingGalleryItem');
+      if (!pendingItemJson) return;
+
+      const pendingItem = JSON.parse(pendingItemJson);
+
+      // Check if this item is for this tab and is recent (within 10 seconds)
+      if (
+        pendingItem.targetTab === 'generator' &&
+        Date.now() - pendingItem.timestamp < 10000
+      ) {
+        console.log(
+          'Loading pending gallery item for generator tab:',
+          pendingItem
+        );
+
+        // Load the data URL
+        if (
+          pendingItem.imageDataUrl &&
+          typeof pendingItem.imageDataUrl === 'string'
+        ) {
+          this.setImagePrompt(
+            pendingItem.imageDataUrl,
+            `Gallery Item ${pendingItem.id}`
+          );
+        }
+
+        // Clear the pending item after loading
+        localStorage.removeItem('pendingGalleryItem');
+      }
+    } catch (error) {
+      console.error('Failed to load pending gallery item:', error);
+      // Clear invalid data
+      localStorage.removeItem('pendingGalleryItem');
+    }
   },
 
   // Get all DOM elements after content is created
@@ -152,6 +194,8 @@ const GeneratorTab = {
 
     // Generate button
     this.elements.generateBtn = document.getElementById('generate-btn');
+    this.elements.generateSpinner = document.getElementById('generate-spinner');
+    this.elements.generateText = document.getElementById('generate-text');
 
     // Verify critical elements
     let missingElements = [];
@@ -182,7 +226,7 @@ const GeneratorTab = {
             <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
                 <!-- Parameters Column -->
                 <div class="lg:col-span-1 bg-white rounded-lg shadow p-6">
-                    <h2 class="text-lg font-medium mb-4">Generation Settings</h2>
+                    <h2 class="text-lg font-medium mb-4">Image Generation Settings</h2>
                     
                     <!-- Model Selection -->
                     <div class="mb-4">
@@ -197,45 +241,9 @@ const GeneratorTab = {
                         </select>
                     </div>
                     
-                    <!-- Prompt -->
-                    <div class="mb-4">
-                        <label class="block text-sm font-medium text-gray-700 mb-1">Prompt</label>
-                        <textarea id="prompt-input" rows="3" class="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500" 
-                                  placeholder="Describe what you want to generate..."></textarea>
-                    </div>
-                    
-                    <!-- Image Dimensions -->
-                    <div id="dimensions-group" class="mb-4 param-group">
-                        <label class="block text-sm font-medium text-gray-700 mb-2">Dimensions</label>
-                        <!-- Orientation Selection -->
-                        <div id="orientation-buttons" class="flex space-x-2 mb-3">
-                            <button type="button" data-orientation="square" class="orientation-button flex-1 px-3 py-1 border border-gray-300 bg-white text-gray-700 rounded-md text-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-indigo-500">Square</button>
-                            <button type="button" data-orientation="landscape" class="orientation-button flex-1 px-3 py-1 border border-gray-300 bg-white text-gray-700 rounded-md text-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-indigo-500">Landscape</button>
-                            <button type="button" data-orientation="portrait" class="orientation-button flex-1 px-3 py-1 border border-indigo-500 bg-indigo-50 text-indigo-700 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 selected-orientation">Portrait</button> <!-- Default -->
-                        </div>
-                        <!-- Dimension Grid (Populated Dynamically) -->
-                        <div id="dimensions-grid" class="grid grid-cols-3 sm:grid-cols-4 gap-2">
-                            <!-- Dimension buttons will be added here by JS -->
-                        </div>
-                    </div>
-                    
-                    <!-- Aspect Ratio (for Ultra model) -->
-                    <div id="aspect-ratio-group" class="mb-4 param-group hidden">
-                        <label class="block text-sm font-medium text-gray-700 mb-1">Aspect Ratio</label>
-                        <select id="aspect-ratio-selector" class="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
-                            <option value="1:1">1:1 (Square)</option>
-                            <option value="4:3">4:3</option>
-                            <option value="16:9" selected>16:9</option>
-                            <option value="21:9">21:9 (Ultra-wide)</option>
-                            <option value="3:4">3:4</option>
-                            <option value="9:16">9:16</option>
-                            <option value="9:21">9:21</option>
-                        </select>
-                    </div>
-                    
                     <!-- Image Prompt (for remix) -->
                     <div id="image-prompt-group" class="mb-4 param-group">
-                        <label class="block text-sm font-medium text-gray-700 mb-1">Image Prompt</label>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Source Image (Recommended)</label>
                         <div class="flex flex-col space-y-2">
                             <label id="image-prompt-upload-label" class="flex items-center justify-center w-full h-20 border-2 border-gray-300 border-dashed rounded-lg cursor-pointer hover:bg-gray-50">
                                 <div class="flex flex-col items-center">
@@ -258,7 +266,43 @@ const GeneratorTab = {
                             </div>
                         </div>
                     </div>
-                    
+
+                    <!-- Prompt -->
+                    <div class="mb-4">
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Prompt (Optional)</label>
+                        <textarea id="prompt-input" rows="3" class="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                                  placeholder="create a photorealistic render of an urban street scene with accurate shading and lighting"></textarea>
+                    </div>
+
+                    <!-- Image Dimensions -->
+                    <div id="dimensions-group" class="mb-4 param-group">
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Dimensions</label>
+                        <!-- Orientation Selection -->
+                        <div id="orientation-buttons" class="flex space-x-2 mb-3">
+                            <button type="button" data-orientation="square" class="orientation-button flex-1 px-3 py-1 border border-gray-300 bg-white text-gray-700 rounded-md text-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-indigo-500">Square</button>
+                            <button type="button" data-orientation="landscape" class="orientation-button flex-1 px-3 py-1 border border-gray-300 bg-white text-gray-700 rounded-md text-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-indigo-500">Landscape</button>
+                            <button type="button" data-orientation="portrait" class="orientation-button flex-1 px-3 py-1 border border-indigo-500 bg-indigo-50 text-indigo-700 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 selected-orientation">Portrait</button> <!-- Default -->
+                        </div>
+                        <!-- Dimension Grid (Populated Dynamically) -->
+                        <div id="dimensions-grid" class="grid grid-cols-3 sm:grid-cols-4 gap-2">
+                            <!-- Dimension buttons will be added here by JS -->
+                        </div>
+                    </div>
+
+                    <!-- Aspect Ratio (for Ultra model) -->
+                    <div id="aspect-ratio-group" class="mb-4 param-group hidden">
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Aspect Ratio</label>
+                        <select id="aspect-ratio-selector" class="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                            <option value="1:1">1:1 (Square)</option>
+                            <option value="4:3">4:3</option>
+                            <option value="16:9" selected>16:9</option>
+                            <option value="21:9">21:9 (Ultra-wide)</option>
+                            <option value="3:4">3:4</option>
+                            <option value="9:16">9:16</option>
+                            <option value="9:21">9:21</option>
+                        </select>
+                    </div>
+
                     <!-- Steps -->
                     <div class="mb-4 param-group" id="steps-group">
                         <label class="block text-sm font-medium text-gray-700 mb-1">Steps: <span id="steps-value">40</span></label>
@@ -348,7 +392,11 @@ const GeneratorTab = {
                     
                     <!-- Generate Button -->
                     <button id="generate-btn" class="w-full px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 flex items-center justify-center gap-2">
-                        <span>Generate Image</span>
+                        <svg id="generate-spinner" class="hidden animate-spin h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                        </svg>
+                        <span id="generate-text">Generate Image</span>
                         <span class="inline-flex items-center rounded" style="background: rgba(0, 0, 0, 0.15); padding: 6px 8px; gap: 2px;">
                             <img src="/ui_assets/token-image.png" alt="Token" class="w-5 h-5" />
                             <span class="text-sm" style="opacity: 0.9; margin-right: 1px;">×</span>
@@ -994,14 +1042,14 @@ const GeneratorTab = {
       prompt_upsampling: this.elements.promptUpsampling.checked
     };
 
-    // Add prompt if not empty
+    // Add prompt (optional with default)
     const prompt = this.elements.promptInput.value.trim();
     if (prompt) {
       params.prompt = prompt;
-    } else if (model !== 'flux-pro-1.1-ultra') {
-      // Ultra model can work without prompt, others require it
-      FluxUI.showNotification('Please enter a prompt', 'error');
-      return null;
+    } else {
+      // Use default prompt
+      params.prompt =
+        'create a photorealistic render of an urban street scene with accurate shading and lighting';
     }
 
     // Check if seed should be randomized before generation
@@ -1202,6 +1250,14 @@ const GeneratorTab = {
         'cursor-not-allowed'
       );
 
+      // Show spinner, update button text
+      if (this.elements.generateSpinner) {
+        this.elements.generateSpinner.classList.remove('hidden');
+      }
+      if (this.elements.generateText) {
+        this.elements.generateText.textContent = 'Generating...';
+      }
+
       // Hide action buttons
       this.elements.copyParamsBtn.classList.add('hidden');
       this.elements.openImageBtn.classList.add('hidden'); // Use renamed ID
@@ -1221,6 +1277,14 @@ const GeneratorTab = {
         'opacity-50',
         'cursor-not-allowed'
       );
+
+      // Hide spinner, restore button text
+      if (this.elements.generateSpinner) {
+        this.elements.generateSpinner.classList.add('hidden');
+      }
+      if (this.elements.generateText) {
+        this.elements.generateText.textContent = 'Generate Image';
+      }
     }
   },
 
