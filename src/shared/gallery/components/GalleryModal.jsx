@@ -2,7 +2,7 @@
  * GalleryModal Component - Detail view modal
  */
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import styles from './Gallery.module.scss';
 
 const METADATA_VISIBILITY_KEY = 'galleryModalMetadataVisible';
@@ -28,10 +28,21 @@ const GalleryModal = ({
     return stored !== null ? stored === 'true' : true;
   });
 
+  const videoRef = useRef(null);
+
   // Save metadata visibility to sessionStorage when it changes
   useEffect(() => {
     sessionStorage.setItem(METADATA_VISIBILITY_KEY, String(isMetadataVisible));
   }, [isMetadataVisible]);
+
+  // Autoplay video when item changes
+  useEffect(() => {
+    if (videoRef.current && item.type === 'video') {
+      videoRef.current.play().catch((error) => {
+        console.warn('Autoplay prevented:', error);
+      });
+    }
+  }, [item]);
 
   // Keyboard navigation
   useEffect(() => {
@@ -158,7 +169,13 @@ const GalleryModal = ({
           {/* Media */}
           <div className={styles.modalBody}>
             {isVideo ? (
-              <video src={item.objectURL} controls playsInline />
+              <video
+                ref={videoRef}
+                src={item.objectURL}
+                controls
+                autoPlay
+                playsInline
+              />
             ) : (
               <img src={item.objectURL} alt="Generated image" />
             )}
