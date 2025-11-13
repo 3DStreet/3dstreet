@@ -79,6 +79,7 @@ function ScreenshotModal() {
   const [useMixedModels, setUseMixedModels] = useState(true); // Toggle for model mixing
   const [customPrompt, setCustomPrompt] = useState(''); // Custom prompt text
   const [showOvertimeWarning, setShowOvertimeWarning] = useState(false); // Show overtime warning for 1x mode
+  const [isClosing, setIsClosing] = useState(false); // Track closing animation
 
   // Ensure token profile is loaded when modal opens
   useEffect(() => {
@@ -131,9 +132,16 @@ function ScreenshotModal() {
       }
     }
 
-    // Reset all state when closing
-    resetModalState();
-    setModal(null);
+    // Trigger closing animation
+    setIsClosing(true);
+
+    // Wait for animation to complete, then close
+    setTimeout(() => {
+      // Reset all state when closing
+      resetModalState();
+      setIsClosing(false);
+      setModal(null);
+    }, 600); // Match animation duration
   };
 
   const handleDownloadScreenshot = async (imageUrl = null, modelKey = null) => {
@@ -547,7 +555,7 @@ function ScreenshotModal() {
 
   return (
     <Modal
-      className={styles.screenshotModalWrapper}
+      className={`${styles.screenshotModalWrapper} ${isClosing ? styles.closing : ''}`}
       isOpen={modal === 'screenshot'}
       onClose={handleClose}
       titleElement={
