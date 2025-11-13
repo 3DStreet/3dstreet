@@ -32,6 +32,24 @@
         "category": "vehicles-rigged"
     },
     {
+        "id": "sp-grand-suv",
+        "name": "Grand SUV",
+        "img": "sets/streetplan/sp-grand-suv.webp",
+        "src": "sets/streetplan/sp-grand-suv.glb",
+        "category": "vehicles-rigged",
+        "attribution": "Creative Commons Attribution: 'Generic passenger car pack' by Sketchfab User @Comrade1280",
+        "attributionUrl": "https://sketchfab.com/3d-models/generic-passenger-car-pack-20f9af9b8a404d5cb022ac6fe87f21f5"
+    },
+    {
+        "id": "sp-hatchback-yellow",
+        "name": "Hatchback Car",
+        "img": "sets/streetplan/sp-hatchback-yellow.webp",
+        "src": "sets/streetplan/sp-hatchback-yellow.glb",
+        "category": "vehicles-rigged",
+        "attribution": "Creative Commons Attribution: 'Generic passenger car pack' by Sketchfab User @Comrade1280",
+        "attributionUrl": "https://sketchfab.com/3d-models/generic-passenger-car-pack-20f9af9b8a404d5cb022ac6fe87f21f5"
+    },
+    {
         "id": "box-truck-rig",
         "name": "Box Truck",
         "src": "sets/vehicles-rig/gltf-exports/draco/isuzu-truck-rig.glb",
@@ -722,6 +740,33 @@
         "name": "Bur Oak Tree 24ft",
         "img": "sets/streetplan/sp-tree-buroak-24ft.webp",
         "src": "sets/streetplan/sp-tree-buroak-24ft.glb",
+        "category": "sidewalk-props",
+        "attribution": "StreetPlan.net. Used with permission.",
+        "attributionUrl": "https://www.urbaninnovators.com/streetplan"
+    },
+    {
+        "id": "sp-tree-buroak-28ft",
+        "name": "Bur Oak Tree 28ft",
+        "img": "sets/streetplan/sp-tree-buroak-28ft.webp",
+        "src": "sets/streetplan/sp-tree-buroak-28ft.glb",
+        "category": "sidewalk-props",
+        "attribution": "StreetPlan.net. Used with permission.",
+        "attributionUrl": "https://www.urbaninnovators.com/streetplan"
+    },
+    {
+        "id": "sp-median-tallflower-RYB-6x10ft",
+        "name": "Median Planterbox 6x10 ft",
+        "img": "sets/streetplan/sp-median-tallflower-RYB-6x10ft.webp",
+        "src": "sets/streetplan/sp-median-tallflower-RYB-6x10ft.glb",
+        "category": "sidewalk-props",
+        "attribution": "StreetPlan.net. Used with permission.",
+        "attributionUrl": "https://www.urbaninnovators.com/streetplan"
+    },
+    {
+        "id": "sp-median-tallflower-RYB-10x10ft",
+        "name": "Median Planterbox 10x10 ft",
+        "img": "sets/streetplan/sp-median-tallflower-RYB-10x10ft.webp",
+        "src": "sets/streetplan/sp-median-tallflower-RYB-10x10ft.glb",
         "category": "sidewalk-props",
         "attribution": "StreetPlan.net. Used with permission.",
         "attributionUrl": "https://www.urbaninnovators.com/streetplan"
