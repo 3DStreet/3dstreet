@@ -47,6 +47,14 @@ const AI_MODELS = {
   }
 };
 
+// Estimated generation times (in seconds)
+const ESTIMATED_TIMES = {
+  'kontext-realearth': 25,
+  'flux-kontext-pro': 15,
+  'nano-banana': 20,
+  'seedream-4': 25
+};
+
 function ScreenshotModal() {
   const setModal = useStore((state) => state.setModal);
   const modal = useStore((state) => state.modal);
@@ -70,6 +78,7 @@ function ScreenshotModal() {
   const [renderErrors, setRenderErrors] = useState({}); // Track which models had errors
   const [useMixedModels, setUseMixedModels] = useState(true); // Toggle for model mixing
   const [customPrompt, setCustomPrompt] = useState(''); // Custom prompt text
+  const [showOvertimeWarning, setShowOvertimeWarning] = useState(false); // Show overtime warning for 1x mode
 
   // Ensure token profile is loaded when modal opens
   useEffect(() => {
@@ -93,6 +102,7 @@ function ScreenshotModal() {
     setRenderingStates({});
     setRenderErrors({});
     setCustomPrompt('');
+    setShowOvertimeWarning(false);
     // Keep model selection and render mode when resetting
   };
 
@@ -270,7 +280,10 @@ function ScreenshotModal() {
 
       const generateReplicateImage = httpsCallable(
         functions,
-        'generateReplicateImage'
+        'generateReplicateImage',
+        {
+          timeout: 300000 // 5 minutes in milliseconds
+        }
       );
 
       const screentockImgElement = document.getElementById(
@@ -424,13 +437,25 @@ function ScreenshotModal() {
     let progressInterval;
 
     if (isGeneratingAI && renderStartTime) {
+      const estimatedTime = ESTIMATED_TIMES[selectedModel] || 30;
+
       progressInterval = setInterval(() => {
         const elapsed = Date.now() - renderStartTime;
-        const progress = Math.min((elapsed / 20000) * 100, 100); // 20 seconds = 100%
+        const progress = Math.min(
+          (elapsed / (estimatedTime * 1000)) * 100,
+          100
+        );
         const currentElapsed = Math.round(elapsed / 1000);
 
         setRenderProgress(progress);
         setElapsedTime(currentElapsed);
+
+        // Show overtime warning if elapsed time is more than 10s over estimate
+        if (currentElapsed > estimatedTime + 10) {
+          setShowOvertimeWarning(true);
+        } else {
+          setShowOvertimeWarning(false);
+        }
       }, 100); // Update every 100ms for smooth animation
     }
 
@@ -439,7 +464,7 @@ function ScreenshotModal() {
         clearInterval(progressInterval);
       }
     };
-  }, [isGeneratingAI, renderStartTime]);
+  }, [isGeneratingAI, renderStartTime, selectedModel]);
 
   // Timer updates for individual renders in 4x mode
   useEffect(() => {
@@ -451,9 +476,15 @@ function ScreenshotModal() {
           const elapsed = Math.round(
             (Date.now() - renderTimers[modelKey].startTime) / 1000
           );
+
+          // Extract base model key to get estimated time
+          const baseModelKey = modelKey.split('-').slice(0, -1).join('-');
+          const estimatedTime = ESTIMATED_TIMES[baseModelKey] || 30;
+          const isOvertime = elapsed > estimatedTime + 10;
+
           setRenderTimers((prev) => ({
             ...prev,
-            [modelKey]: { ...prev[modelKey], elapsed }
+            [modelKey]: { ...prev[modelKey], elapsed, isOvertime }
           }));
         }, 1000);
       }
@@ -657,8 +688,13 @@ function ScreenshotModal() {
                       <div className={styles.progressStripes} />
                     </div>
                     <span className={styles.progressText}>
-                      {`${elapsedTime}/20s`}
+                      {`${elapsedTime}/${ESTIMATED_TIMES[selectedModel] || 30}s`}
                     </span>
+                    {showOvertimeWarning && (
+                      <span className={styles.overtimeText}>
+                        Generation taking longer than expected.
+                      </span>
+                    )}
                   </div>
                 ) : (
                   <span
@@ -898,7 +934,7 @@ function ScreenshotModal() {
                                 {modelConfig.name}
                               </div>
                               <div
-                                className={`${styles.timeOverlay} ${hasError ? styles.errorOverlay : ''}`}
+                                className={`${styles.timeOverlay} ${hasError ? styles.errorOverlay : ''} ${isRendering && timer?.isOvertime ? styles.overtimeOverlay : ''}`}
                               >
                                 {isRendering
                                   ? `${timer?.elapsed || 0}s`
