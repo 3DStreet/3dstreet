@@ -85,7 +85,7 @@ const OutpaintTab = {
 
                     <!-- Image Input -->
                     <div class="mb-4">
-                        <label class="block text-sm font-medium text-gray-700 mb-1">Source Image</label>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Source Image <span class="text-red-500">*</span></label>
                          <label class="flex items-center justify-center w-full h-20 border-2 border-gray-300 border-dashed rounded-lg cursor-pointer hover:bg-gray-50">
                             <div class="flex flex-col items-center">
                                 <p class="text-sm text-gray-500">Click to upload or use Gallery</p>
@@ -137,17 +137,6 @@ const OutpaintTab = {
                         <textarea id="outpaint-prompt" rows="3" class="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500" placeholder="Describe the scene for expanded areas..."></textarea>
                     </div>
 
-                    <!-- Parameters -->
-                     <div class="mb-4 param-group">
-                        <label class="block text-sm font-medium text-gray-700 mb-1">Steps: <span id="outpaint-steps-value">50</span></label>
-                        <input type="range" id="outpaint-steps-slider" min="15" max="50" value="50" class="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer">
-                    </div>
-
-                    <div class="mb-4 param-group">
-                        <label class="block text-sm font-medium text-gray-700 mb-1">Guidance Scale: <span id="outpaint-guidance-value">60</span></label>
-                        <input type="range" id="outpaint-guidance-slider" min="1.5" max="100" step="0.5" value="60" class="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer">
-                    </div>
-
                     <!-- Advanced Options -->
                      <div class="mb-4">
                         <div class="flex justify-between items-center cursor-pointer" id="outpaint-advanced-toggle">
@@ -157,6 +146,18 @@ const OutpaintTab = {
                             </svg>
                         </div>
                         <div class="mt-2 hidden" id="outpaint-advanced-options">
+                            <!-- Steps -->
+                            <div class="mb-3 param-group">
+                                <label class="block text-sm font-medium text-gray-700 mb-1">Steps: <span id="outpaint-steps-value">50</span></label>
+                                <input type="range" id="outpaint-steps-slider" min="15" max="50" value="50" class="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer">
+                            </div>
+
+                            <!-- Guidance Scale -->
+                            <div class="mb-3 param-group">
+                                <label class="block text-sm font-medium text-gray-700 mb-1">Guidance Scale: <span id="outpaint-guidance-value">60</span></label>
+                                <input type="range" id="outpaint-guidance-slider" min="1.5" max="100" step="0.5" value="60" class="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer">
+                            </div>
+
                             <!-- Safety Tolerance -->
                             <div class="mb-3 param-group opacity-50 cursor-not-allowed">
                                 <label class="block text-sm font-medium text-gray-500 mb-1">Safety Tolerance: <span id="outpaint-safety-value">2</span></label>
