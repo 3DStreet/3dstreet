@@ -8,6 +8,29 @@ import FluxAPI from './api.js';
 import { galleryService } from './mount-gallery.js';
 import useImageGenStore from './store.js';
 import ImageUploadUtils from './image-upload-utils.js';
+import { httpsCallable } from 'firebase/functions';
+import { functions } from '@shared/services/firebase.js';
+
+// Replicate AI model configurations
+const REPLICATE_MODELS = {
+  'kontext-realearth': {
+    name: 'Kontext Real Earth',
+    version: '2af4da47bcb7b55a0705b0de9933701f7607531d763ae889241f827a648c1755',
+    prompt: 'Transform satellite image into high-quality drone shot'
+  },
+  'nano-banana': {
+    name: 'Nano Banana',
+    version: 'f0a9d34b12ad1c1cd76269a844b218ff4e64e128ddaba93e15891f47368958a0',
+    prompt:
+      'photorealistic street view, professional photography, high detail, natural lighting, clear and sharp'
+  },
+  'seedream-4': {
+    name: 'Seedream',
+    version: '254faac883c3a411e95cc95d0fb02274a81e388aaa4394b3ce5b7d2a9f7a6569',
+    prompt:
+      'photorealistic street view, professional photography, high detail, natural lighting, clear and sharp'
+  }
+};
 
 // Generator tab module
 const GeneratorTab = {
@@ -17,6 +40,19 @@ const GeneratorTab = {
   currentImageUrl: '',
   selectedOrientation: 'portrait', // Default orientation
   selectedDimension: '1024x1440', // Default dimension
+
+  // Timer state
+  renderStartTime: null,
+  elapsedTime: 0,
+  renderProgress: 0,
+  timerInterval: null,
+
+  // Estimated generation times for Replicate models (in seconds)
+  estimatedTimes: {
+    'kontext-realearth': 25,
+    'nano-banana': 20,
+    'seedream-4': 25
+  },
 
   // DOM Elements
   elements: {},
@@ -183,6 +219,14 @@ const GeneratorTab = {
       document.getElementById('loading-indicator');
     this.elements.loadingText = document.getElementById('loading-text');
 
+    // Timer elements
+    this.elements.progressBar = document.getElementById(
+      'generator-progress-bar'
+    );
+    this.elements.overtimeText = document.getElementById(
+      'generator-overtime-text'
+    );
+
     // Action buttons
     this.elements.actionButtons = document.getElementById('action-buttons');
     this.elements.copyParamsBtn = document.getElementById('copy-params-btn');
@@ -238,6 +282,9 @@ const GeneratorTab = {
                             <!-- <option value="flux-pro-1.1-ultra">Flux Ultra</option> -->
                             <option value="flux-kontext-pro" selected>Flux Kontext Pro</option>
                             <!-- <option value="flux-kontext-max">Flux Kontext Max</option> -->
+                            <option value="kontext-realearth">Kontext Real Earth</option>
+                            <option value="nano-banana">Nano Banana</option>
+                            <option value="seedream-4">Seedream</option>
                         </select>
                     </div>
                     
@@ -418,9 +465,16 @@ const GeneratorTab = {
                             <p>Your generated image will appear here</p>
                         </div>
                         <img id="preview-image" class="max-w-full max-h-[500px] hidden rounded-lg shadow-lg" alt="Generated image">
-                        <div id="loading-indicator" class="hidden flex flex-col items-center">
+                        <div id="loading-indicator" class="hidden flex flex-col items-center w-full max-w-md">
                             <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600 mb-4"></div>
-                            <p class="text-gray-600" id="loading-text">Generating your image...</p>
+                            <div class="generator-rendering-content">
+                                <div class="generator-progress-container">
+                                    <div class="generator-progress-bar" id="generator-progress-bar" style="width: 0%;"></div>
+                                    <div class="generator-progress-stripes"></div>
+                                </div>
+                                <span class="generator-progress-text" id="loading-text">Generating your image...</span>
+                                <span class="generator-progress-text hidden" id="generator-overtime-text" style="margin-top: 4px; color: #fbbf24;">Generation taking longer than expected.</span>
+                            </div>
                         </div>
                     </div>
                     <div class="px-6 pb-6">
@@ -722,6 +776,20 @@ const GeneratorTab = {
         // Show prompt upsampling for Kontext models
         this.elements.promptUpsamplingGroup.classList.remove('hidden');
         break;
+
+      // Add cases for Replicate models
+      case 'kontext-realearth':
+      case 'nano-banana':
+      case 'seedream-4':
+        showDimensions = false;
+        showAspectRatio = false;
+        showRaw = false;
+        showSteps = false;
+        showGuidance = false;
+        showImagePrompt = true; // Image prompt is required for Replicate models
+        // Hide prompt upsampling for Replicate models
+        this.elements.promptUpsamplingGroup.classList.add('hidden');
+        break;
     }
 
     // Apply visibility based on the model logic above
@@ -950,7 +1018,7 @@ const GeneratorTab = {
   },
 
   // Generate an image
-  generateImage: function () {
+  generateImage: async function () {
     // Check if user is authenticated
     if (!window.authState || !window.authState.isAuthenticated) {
       useImageGenStore.getState().setModal('signin');
@@ -970,44 +1038,163 @@ const GeneratorTab = {
     }
 
     // Get model type and prepare parameters
-    // Get model
-    const model = this.elements.modelSelector.value; // Build parameters
-    const params = this.buildRequestParams(model);
+    const model = this.elements.modelSelector.value;
 
-    if (!params) {
-      // buildRequestParams will show error notification if needed
+    // Check if this is a Replicate model
+    const isReplicateModel = REPLICATE_MODELS[model];
+
+    if (isReplicateModel) {
+      // Use Replicate API for these models
+      this.generateReplicateImage(model);
+    } else {
+      // Use BFL API for Flux models
+      const params = this.buildRequestParams(model);
+
+      if (!params) {
+        // buildRequestParams will show error notification if needed
+        return;
+      }
+
+      // Store current parameters for later use
+      this.currentParams = params;
+
+      // Show loading state
+      this.toggleLoading(true);
+
+      // Make the API request using the model endpoint
+      FluxAPI.makeRequest(model, params)
+        .then((response) => {
+          if (response.id) {
+            // Pass the model used for the request to pollForResult
+            this.pollForResult(response.id, model);
+
+            // Dispatch custom event to refresh token count in UI
+            window.dispatchEvent(new CustomEvent('tokenCountChanged'));
+          } else {
+            throw new Error('No task ID returned from API');
+          }
+        })
+        .catch((error) => {
+          console.error('Generation error:', error);
+          FluxUI.showNotification(
+            error.message || 'Failed to generate image',
+            'error'
+          );
+          this.toggleLoading(false);
+        });
+    }
+  },
+
+  // Generate image using Replicate API
+  generateReplicateImage: async function (model) {
+    const modelConfig = REPLICATE_MODELS[model];
+    if (!modelConfig) {
+      FluxUI.showNotification('Invalid model selected', 'error');
       return;
     }
 
-    // Store current parameters for later use
-    this.currentParams = params;
+    // Check if image prompt is provided (required for Replicate models)
+    if (!this.imagePromptData) {
+      FluxUI.showNotification(
+        'Source image is required for this model',
+        'error'
+      );
+      return;
+    }
 
     // Show loading state
     this.toggleLoading(true);
 
-    // Make the API request using the model endpoint
-    FluxAPI.makeRequest(model, params)
-      .then((response) => {
-        if (response.id) {
-          // Pass the model used for the request to pollForResult
-          this.pollForResult(response.id, model);
+    // Start timer for Replicate models
+    this.startTimer(model);
 
-          // Dispatch custom event to refresh token count in UI
-          // The server deducts tokens and returns remainingTokens, but we need
-          // to trigger a refresh of the TokenDisplay component
-          window.dispatchEvent(new CustomEvent('tokenCountChanged'));
-        } else {
-          throw new Error('No task ID returned from API');
+    try {
+      const generateReplicateImage = httpsCallable(
+        functions,
+        'generateReplicateImage',
+        {
+          timeout: 300000 // 5 minutes in milliseconds
         }
-      })
-      .catch((error) => {
-        console.error('Generation error:', error);
-        FluxUI.showNotification(
-          error.message || 'Failed to generate image',
-          'error'
-        );
-        this.toggleLoading(false);
+      );
+
+      // Use custom prompt if provided, otherwise use default model prompt
+      const prompt =
+        this.elements.promptInput.value.trim() || modelConfig.prompt;
+
+      // Convert base64 to data URL format if needed
+      const inputImageSrc = this.imagePromptData.startsWith('data:')
+        ? this.imagePromptData
+        : `data:image/jpeg;base64,${this.imagePromptData}`;
+
+      const result = await generateReplicateImage({
+        prompt: prompt,
+        input_image: inputImageSrc,
+        guidance: 2.5,
+        num_inference_steps: 30,
+        model_version: modelConfig.version,
+        scene_id: null
       });
+
+      if (result.data.success) {
+        const imageUrl = result.data.image_url;
+
+        // Store current parameters for copying
+        this.currentParams = {
+          model: model,
+          model_name: modelConfig.name,
+          prompt: prompt,
+          timestamp: new Date().toISOString()
+        };
+
+        // Display the image
+        this.currentImageUrl = imageUrl;
+        this.displayImage(imageUrl);
+
+        // Automatically save to gallery
+        this.saveToGallery(imageUrl);
+
+        // Stop timer
+        this.stopTimer();
+
+        this.toggleLoading(false);
+
+        // Show success message with remaining tokens
+        if (result.data.remainingTokens !== undefined) {
+          FluxUI.showNotification(
+            `Image generated successfully! ${result.data.remainingTokens} gen tokens remaining. (${modelConfig.name})`,
+            'success'
+          );
+        } else {
+          FluxUI.showNotification(
+            `Image generated successfully! (${modelConfig.name})`,
+            'success'
+          );
+        }
+
+        // Dispatch custom event to refresh token count in UI
+        window.dispatchEvent(new CustomEvent('tokenCountChanged'));
+      } else {
+        throw new Error('Failed to generate image');
+      }
+    } catch (error) {
+      console.error('Error generating Replicate image:', error);
+
+      // Stop timer on error
+      this.stopTimer();
+
+      let errorMessage = 'Failed to generate image';
+      if (error.code === 'unauthenticated') {
+        errorMessage = 'Please sign in to use image generation';
+      } else if (error.code === 'resource-exhausted') {
+        errorMessage =
+          'No tokens available. Please purchase more tokens or upgrade to Pro.';
+      } else if (error.message) {
+        errorMessage = error.message;
+      }
+
+      FluxUI.showNotification(errorMessage, 'error');
+      this.toggleLoading(false);
+    }
   },
 
   // Get selected dimension (now stored in state)
@@ -1138,6 +1325,23 @@ const GeneratorTab = {
       case 'flux-kontext-max': {
         // Kontext models use aspect ratio
         params.aspect_ratio = this.elements.aspectRatioSelector.value;
+        break;
+      }
+
+      // Add cases for Replicate models
+      case 'kontext-realearth':
+      case 'nano-banana':
+      case 'seedream-4': {
+        // Replicate models require input_image (check if it exists)
+        if (!this.imagePromptData) {
+          FluxUI.showNotification(
+            'Source image is required for this model',
+            'error'
+          );
+          return null;
+        }
+        // For Replicate models, we'll handle params differently in generateImage
+        // Just ensure the basic structure is here
         break;
       }
     }
@@ -1303,8 +1507,19 @@ const GeneratorTab = {
     if (!this.currentImageUrl) {
       FluxUI.showNotification('No image to download', 'error');
       return;
-    } // Use fetch to get the image as a blob
-    fetch(FluxAPI.getProxiedImageUrl(this.currentImageUrl))
+    }
+
+    // Determine if this is a Replicate image (doesn't need BFL proxy)
+    const isReplicateImage =
+      this.currentImageUrl.includes('replicate.delivery') ||
+      this.currentImageUrl.includes('pbxt.replicate.delivery');
+
+    // Use fetch to get the image as a blob
+    const fetchUrl = isReplicateImage
+      ? this.currentImageUrl
+      : FluxAPI.getProxiedImageUrl(this.currentImageUrl);
+
+    fetch(fetchUrl)
       .then((response) => response.blob())
       .then((blob) => {
         // Create a blob URL
@@ -1474,6 +1689,70 @@ const GeneratorTab = {
           'error'
         );
       });
+  },
+
+  // Start the timer
+  startTimer: function (modelName) {
+    this.renderStartTime = Date.now();
+    this.elapsedTime = 0;
+    this.updateTimerDisplay();
+
+    // Update timer every second
+    this.timerInterval = setInterval(() => {
+      const elapsed = Math.round((Date.now() - this.renderStartTime) / 1000);
+      this.elapsedTime = elapsed;
+      this.updateTimerDisplay();
+    }, 1000);
+  },
+
+  // Stop the timer
+  stopTimer: function () {
+    if (this.timerInterval) {
+      clearInterval(this.timerInterval);
+      this.timerInterval = null;
+    }
+    this.renderStartTime = null;
+    this.elapsedTime = 0;
+    this.renderProgress = 0;
+
+    // Reset progress bar
+    if (this.elements.progressBar) {
+      this.elements.progressBar.style.width = '0%';
+    }
+
+    // Hide overtime warning
+    if (this.elements.overtimeText) {
+      this.elements.overtimeText.classList.add('hidden');
+    }
+  },
+
+  // Update timer display
+  updateTimerDisplay: function () {
+    const modelName = this.elements.modelSelector.value;
+    const estimatedTime = this.estimatedTimes[modelName] || 30;
+
+    // Calculate progress percentage
+    this.renderProgress = Math.min(
+      (this.elapsedTime / estimatedTime) * 100,
+      100
+    );
+
+    // Update progress bar width
+    if (this.elements.progressBar) {
+      this.elements.progressBar.style.width = `${this.renderProgress}%`;
+    }
+
+    // Update text (always show in seconds format)
+    this.elements.loadingText.textContent = `${this.elapsedTime}s/${estimatedTime}s`;
+
+    // Show overtime warning if elapsed time is more than 10s over estimate
+    if (this.elements.overtimeText) {
+      if (this.elapsedTime > estimatedTime + 10) {
+        this.elements.overtimeText.classList.remove('hidden');
+      } else {
+        this.elements.overtimeText.classList.add('hidden');
+      }
+    }
   }
 };
 

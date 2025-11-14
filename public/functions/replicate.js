@@ -253,6 +253,7 @@ const generateReplicateImage = functions
       if (modelVersionToUse === 'f0a9d34b12ad1c1cd76269a844b218ff4e64e128ddaba93e15891f47368958a0') {
         // Nano Banana uses image_input as an array
         modelInput.image_input = [imageUrl];
+        modelInput.aspect_ratio = 'match_input_image';
         modelInput.output_format = 'jpg';
         // Remove parameters that Nano Banana doesn't use
         delete modelInput.guidance;
@@ -337,8 +338,16 @@ const generateReplicateImage = functions
       } else if (typeof output === 'string') {
         finalImageUrl = output;
       } else {
-        console.error('Unexpected output format from Replicate:', output);
+        console.error('Unexpected output format from Replicate:', JSON.stringify(output, null, 2));
+        console.error('Full prediction object:', JSON.stringify(prediction, null, 2));
         throw new Error('Invalid output format from Replicate API');
+      }
+
+      // Validate that we got a valid URL
+      if (!finalImageUrl || typeof finalImageUrl !== 'string') {
+        console.error('Invalid image URL received:', finalImageUrl);
+        console.error('Full output object:', JSON.stringify(output, null, 2));
+        throw new Error('No valid image URL returned from Replicate');
       }
 
       // Post AI-generated image to Discord (non-blocking)
@@ -355,14 +364,38 @@ const generateReplicateImage = functions
     } catch (error) {
       console.error('Error generating image with Replicate:', error);
       console.error('Error details:', error.message);
-      
+      console.error('Error stack:', error.stack);
+
       // If it's a Replicate error, include more details
       if (error.response) {
         console.error('Response status:', error.response.status);
-        console.error('Response data:', error.response.data);
-        throw new functions.https.HttpsError('internal', `Replicate API error: ${error.response.status} - ${JSON.stringify(error.response.data)}`);
+        console.error('Response data:', JSON.stringify(error.response.data, null, 2));
+
+        // Better error message handling
+        let errorMessage = 'Replicate API error';
+        if (error.response.status) {
+          errorMessage += `: ${error.response.status}`;
+        }
+        if (error.response.data) {
+          if (typeof error.response.data === 'string') {
+            errorMessage += ` - ${error.response.data}`;
+          } else if (error.response.data.detail) {
+            errorMessage += ` - ${error.response.data.detail}`;
+          } else if (error.response.data.error) {
+            errorMessage += ` - ${error.response.data.error}`;
+          } else {
+            errorMessage += ` - ${JSON.stringify(error.response.data)}`;
+          }
+        }
+
+        throw new functions.https.HttpsError('internal', errorMessage);
       }
-      
+
+      // Check if it's a Firebase HttpsError and rethrow
+      if (error.code && error.code.startsWith('resource-exhausted')) {
+        throw error;
+      }
+
       throw new functions.https.HttpsError('internal', `Failed to generate image: ${error.message}`);
     }
   });
