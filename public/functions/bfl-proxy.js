@@ -355,7 +355,18 @@ exports.bflApiProxy = functions
           };
         } else {
           console.error(`BFL API error (${response.status}):`, result);
-          throw new functions.https.HttpsError('internal', `API request failed: ${result.error || result.detail || 'Unknown error'}`);
+
+          // Extract error message properly, handling objects
+          let errorMessage = 'Unknown error';
+          if (result.error) {
+            errorMessage = typeof result.error === 'string' ? result.error : JSON.stringify(result.error);
+          } else if (result.detail) {
+            errorMessage = typeof result.detail === 'string' ? result.detail : JSON.stringify(result.detail);
+          } else if (result.message) {
+            errorMessage = typeof result.message === 'string' ? result.message : JSON.stringify(result.message);
+          }
+
+          throw new functions.https.HttpsError('internal', `API request failed: ${errorMessage}`);
         }
       }
 

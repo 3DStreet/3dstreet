@@ -5,7 +5,7 @@
 import { createRoot } from 'react-dom/client';
 import { Gallery, galleryService } from '@shared/gallery';
 import FluxUI from './main.js';
-import GeneratorTab from './generator.js';
+import ModifyTab from './modify.js';
 import InpaintTab from './inpaint.js';
 import OutpaintTab from './outpaint.js';
 import VideoTab from './video.js';
@@ -132,28 +132,25 @@ const handleUseForOutpaint = async (item) => {
 };
 
 /**
- * Use image for Generator tab
+ * Use image for Modify tab
  * @param {object} item - Gallery item
  */
 const handleUseForGenerator = async (item) => {
-  if (GeneratorTab && typeof GeneratorTab.setImagePrompt === 'function') {
+  if (ModifyTab && typeof ModifyTab.setImagePrompt === 'function') {
     try {
       const dataUri = await getBlobDataUri(item.imageDataBlob);
-      const genTabButton = document.querySelector(
-        '.tab-button[data-tab="generator-tab"]'
+      const modifyTabButton = document.querySelector(
+        '.tab-button[data-tab="modify-tab"]'
       );
-      if (genTabButton) genTabButton.click();
-      GeneratorTab.setImagePrompt(dataUri, `Gallery Image ${item.id}`);
-      FluxUI.showNotification('Image sent to Generator tab!', 'success');
+      if (modifyTabButton) modifyTabButton.click();
+      ModifyTab.setImagePrompt(dataUri, `Gallery Image ${item.id}`);
+      FluxUI.showNotification('Image sent to Modify tab!', 'success');
     } catch (error) {
-      console.error('Error sending to Generator:', error);
-      FluxUI.showNotification(
-        'Failed to prepare image for Generator.',
-        'error'
-      );
+      console.error('Error sending to Modify:', error);
+      FluxUI.showNotification('Failed to prepare image for Modify.', 'error');
     }
   } else {
-    FluxUI.showNotification('Generator tab is not ready yet', 'warning');
+    FluxUI.showNotification('Modify tab is not ready yet', 'warning');
   }
 };
 

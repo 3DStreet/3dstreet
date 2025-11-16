@@ -1,6 +1,6 @@
 /**
- * Flux Image Generator - Generator Tab
- * Original image generation functionality
+ * Flux Image Generator - Modify Tab
+ * Image modification functionality (requires source image)
  */
 
 import FluxUI from './main.js';
@@ -32,8 +32,8 @@ const REPLICATE_MODELS = {
   }
 };
 
-// Generator tab module
-const GeneratorTab = {
+// Modify tab module
+const ModifyTab = {
   // Tab state
   imagePromptData: null,
   currentParams: {},
@@ -60,9 +60,9 @@ const GeneratorTab = {
   // Initialize the tab
   init: function () {
     // Get tab container
-    const tabContainer = document.getElementById('generator-tab');
+    const tabContainer = document.getElementById('modify-tab');
     if (!tabContainer) {
-      console.error('Generator Tab: Container element not found!');
+      console.error('Modify Tab: Container element not found!');
       return;
     }
 
@@ -82,7 +82,7 @@ const GeneratorTab = {
     this.generateRandomSeed();
 
     // Register this module with the main UI for updates
-    FluxUI.tabModules.generator = this;
+    FluxUI.tabModules.modify = this;
 
     // Check for pending gallery item from editor
     this.checkForPendingGalleryItem();
@@ -98,11 +98,11 @@ const GeneratorTab = {
 
       // Check if this item is for this tab and is recent (within 10 seconds)
       if (
-        pendingItem.targetTab === 'generator' &&
+        pendingItem.targetTab === 'modify' &&
         Date.now() - pendingItem.timestamp < 10000
       ) {
         console.log(
-          'Loading pending gallery item for generator tab:',
+          'Loading pending gallery item for modify tab:',
           pendingItem
         );
 
@@ -130,38 +130,57 @@ const GeneratorTab = {
   // Get all DOM elements after content is created
   getElements: function () {
     // Model Selection
-    this.elements.modelSelector = document.getElementById('model-selector');
+    this.elements.modelSelector = document.getElementById(
+      'modify-model-selector'
+    );
 
     // Prompt and dimensions
-    this.elements.promptInput = document.getElementById('prompt-input');
-    this.elements.dimensionsGroup = document.getElementById('dimensions-group');
-    this.elements.orientationButtons = document.getElementById(
-      'orientation-buttons'
+    this.elements.promptInput = document.getElementById('modify-prompt-input');
+    this.elements.dimensionsGroup = document.getElementById(
+      'modify-dimensions-group'
     );
-    this.elements.dimensionsGrid = document.getElementById('dimensions-grid');
+    this.elements.orientationButtons = document.getElementById(
+      'modify-orientation-buttons'
+    );
+    this.elements.dimensionsGrid = document.getElementById(
+      'modify-dimensions-grid'
+    );
     this.elements.aspectRatioSelector = document.getElementById(
-      'aspect-ratio-selector'
+      'modify-aspect-ratio-selector'
     );
 
     // Parameters
-    this.elements.stepsSlider = document.getElementById('steps-slider');
-    this.elements.stepsValue = document.getElementById('steps-value');
-    this.elements.guidanceSlider = document.getElementById('guidance-slider');
-    this.elements.guidanceValue = document.getElementById('guidance-value');
-    this.elements.safetySlider = document.getElementById('safety-slider');
-    this.elements.safetyValue = document.getElementById('safety-value');
-    this.elements.seedInput = document.getElementById('seed-input');
-    this.elements.randomSeedBtn = document.getElementById('random-seed-btn');
+    this.elements.stepsSlider = document.getElementById('modify-steps-slider');
+    this.elements.stepsValue = document.getElementById('modify-steps-value');
+    this.elements.guidanceSlider = document.getElementById(
+      'modify-guidance-slider'
+    );
+    this.elements.guidanceValue = document.getElementById(
+      'modify-guidance-value'
+    );
+    this.elements.safetySlider = document.getElementById(
+      'modify-safety-slider'
+    );
+    this.elements.safetyValue = document.getElementById('modify-safety-value');
+    this.elements.seedInput = document.getElementById('modify-seed-input');
+    this.elements.randomSeedBtn = document.getElementById(
+      'modify-random-seed-btn'
+    );
     this.elements.randomizeSeedCheckbox = document.getElementById(
-      'randomize-seed-checkbox'
-    ); // New checkbox
-    this.elements.promptUpsampling =
-      document.getElementById('prompt-upsampling');
-    this.elements.rawMode = document.getElementById('raw-mode');
-    this.elements.intervalSlider = document.getElementById('interval-slider');
-    this.elements.intervalValue = document.getElementById('interval-value');
-    this.elements.formatJpeg = document.getElementById('format-jpeg');
-    this.elements.formatPng = document.getElementById('format-png');
+      'modify-randomize-seed-checkbox'
+    );
+    this.elements.promptUpsampling = document.getElementById(
+      'modify-prompt-upsampling'
+    );
+    this.elements.rawMode = document.getElementById('modify-raw-mode');
+    this.elements.intervalSlider = document.getElementById(
+      'modify-interval-slider'
+    );
+    this.elements.intervalValue = document.getElementById(
+      'modify-interval-value'
+    );
+    this.elements.formatJpeg = document.getElementById('modify-format-jpeg');
+    this.elements.formatPng = document.getElementById('modify-format-png');
 
     // Image prompt
     this.elements.imagePromptInput =
@@ -190,56 +209,87 @@ const GeneratorTab = {
     );
 
     // Groups
-    this.elements.dimensionsGroup = document.getElementById('dimensions-group');
-    this.elements.aspectRatioGroup =
-      document.getElementById('aspect-ratio-group');
-    this.elements.stepsGroup = document.getElementById('steps-group');
-    this.elements.guidanceGroup = document.getElementById('guidance-group');
+    this.elements.dimensionsGroup = document.getElementById(
+      'modify-dimensions-group'
+    );
+    this.elements.aspectRatioGroup = document.getElementById(
+      'modify-aspect-ratio-group'
+    );
+    this.elements.stepsGroup = document.getElementById('modify-steps-group');
+    this.elements.guidanceGroup = document.getElementById(
+      'modify-guidance-group'
+    );
     this.elements.imagePromptGroup =
       document.getElementById('image-prompt-group');
-    this.elements.rawModeGroup = document.getElementById('raw-mode-group');
-    this.elements.intervalGroup = document.getElementById('interval-group');
+    this.elements.rawModeGroup = document.getElementById(
+      'modify-raw-mode-group'
+    );
+    this.elements.intervalGroup = document.getElementById(
+      'modify-interval-group'
+    );
     this.elements.promptUpsamplingGroup = document.getElementById(
-      'prompt-upsampling-group'
+      'modify-prompt-upsampling-group'
     );
 
     // Advanced options
-    this.elements.advancedToggle = document.getElementById('advanced-toggle');
-    this.elements.advancedOptions = document.getElementById('advanced-options');
-    this.elements.advancedIcon = document.getElementById('advanced-icon');
+    this.elements.advancedToggle = document.getElementById(
+      'modify-advanced-toggle'
+    );
+    this.elements.advancedOptions = document.getElementById(
+      'modify-advanced-options'
+    );
+    this.elements.advancedIcon = document.getElementById(
+      'modify-advanced-icon'
+    );
 
     // Preview
-    this.elements.previewContainer =
-      document.getElementById('preview-container');
-    this.elements.previewImage = document.getElementById('preview-image');
-    this.elements.generationPlaceholder = document.getElementById(
-      'generation-placeholder'
+    this.elements.previewContainer = document.getElementById(
+      'modify-preview-container'
     );
-    this.elements.loadingIndicator =
-      document.getElementById('loading-indicator');
-    this.elements.loadingText = document.getElementById('loading-text');
+    this.elements.previewImage = document.getElementById(
+      'modify-preview-image'
+    );
+    this.elements.generationPlaceholder = document.getElementById(
+      'modify-generation-placeholder'
+    );
+    this.elements.loadingIndicator = document.getElementById(
+      'modify-loading-indicator'
+    );
+    this.elements.loadingText = document.getElementById('modify-loading-text');
 
     // Timer elements
     this.elements.progressBar = document.getElementById(
-      'generator-progress-bar'
+      'modify-generator-progress-bar'
     );
     this.elements.overtimeText = document.getElementById(
-      'generator-overtime-text'
+      'modify-generator-overtime-text'
     );
 
     // Action buttons
-    this.elements.actionButtons = document.getElementById('action-buttons');
-    this.elements.copyParamsBtn = document.getElementById('copy-params-btn');
-    this.elements.openImageBtn = document.getElementById('open-image-btn'); // Renamed ID
-    this.elements.downloadImageBtn =
-      document.getElementById('download-image-btn'); // Renamed ID
-    this.elements.copyImageUrlBtn =
-      document.getElementById('copy-image-url-btn'); // Renamed ID
+    this.elements.actionButtons = document.getElementById(
+      'modify-action-buttons'
+    );
+    this.elements.copyParamsBtn = document.getElementById(
+      'modify-copy-params-btn'
+    );
+    this.elements.openImageBtn = document.getElementById(
+      'modify-open-image-btn'
+    );
+    this.elements.downloadImageBtn = document.getElementById(
+      'modify-download-image-btn'
+    );
+    this.elements.copyImageUrlBtn = document.getElementById(
+      'modify-copy-image-url-btn'
+    );
 
     // Generate button
-    this.elements.generateBtn = document.getElementById('generate-btn');
-    this.elements.generateSpinner = document.getElementById('generate-spinner');
-    this.elements.generateText = document.getElementById('generate-text');
+    this.elements.generateBtn = document.getElementById('modify-generate-btn');
+    this.elements.generateSpinner = document.getElementById(
+      'modify-generate-spinner'
+    );
+    this.elements.generateText = document.getElementById(
+      'modify-generate-text'
+    );
 
     // Verify critical elements
     let missingElements = [];
@@ -270,14 +320,14 @@ const GeneratorTab = {
             <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
                 <!-- Parameters Column -->
                 <div class="lg:col-span-1 bg-white rounded-lg shadow p-6">
-                    <h2 class="text-lg font-medium mb-4">Image Generation Settings</h2>
-                    
+                    <h2 class="text-lg font-medium mb-1">Modify Image Settings</h2>
+                    <p class="text-sm text-gray-500 mb-4">Transform an existing image by applying styling, content, and visual fidelity changes.</p>
+
                     <!-- Model Selection -->
                     <div class="mb-4">
                         <label class="block text-sm font-medium text-gray-700 mb-1">Model</label>
-                        <select id="model-selector" class="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                        <select id="modify-model-selector" class="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
                             <option value="flux-pro-1.1">Flux Pro 1.1</option>
-                            <option value="flux-pro">Flux Pro</option>
                             <option value="flux-dev">Flux Dev</option>
                             <!-- <option value="flux-pro-1.1-ultra">Flux Ultra</option> -->
                             <option value="flux-kontext-pro" selected>Flux Kontext Pro</option>
@@ -290,7 +340,7 @@ const GeneratorTab = {
                     
                     <!-- Image Prompt (for remix) -->
                     <div id="image-prompt-group" class="mb-4 param-group">
-                        <label class="block text-sm font-medium text-gray-700 mb-1">Source Image (Recommended)</label>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Source Image <span class="text-red-500">*</span></label>
                         <div class="flex flex-col space-y-2">
                             <label id="image-prompt-upload-label" class="flex items-center justify-center w-full h-20 border-2 border-gray-300 border-dashed rounded-lg cursor-pointer hover:bg-gray-50">
                                 <div class="flex flex-col items-center">
@@ -317,29 +367,29 @@ const GeneratorTab = {
                     <!-- Prompt -->
                     <div class="mb-4">
                         <label class="block text-sm font-medium text-gray-700 mb-1">Prompt (Optional)</label>
-                        <textarea id="prompt-input" rows="3" class="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                        <textarea id="modify-prompt-input" rows="3" class="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
                                   placeholder="create a photorealistic render of an urban street scene with accurate shading and lighting"></textarea>
                     </div>
 
                     <!-- Image Dimensions -->
-                    <div id="dimensions-group" class="mb-4 param-group">
+                    <div id="modify-dimensions-group" class="mb-4 param-group">
                         <label class="block text-sm font-medium text-gray-700 mb-2">Dimensions</label>
                         <!-- Orientation Selection -->
-                        <div id="orientation-buttons" class="flex space-x-2 mb-3">
+                        <div id="modify-orientation-buttons" class="flex space-x-2 mb-3">
                             <button type="button" data-orientation="square" class="orientation-button flex-1 px-3 py-1 border border-gray-300 bg-white text-gray-700 rounded-md text-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-indigo-500">Square</button>
                             <button type="button" data-orientation="landscape" class="orientation-button flex-1 px-3 py-1 border border-gray-300 bg-white text-gray-700 rounded-md text-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-indigo-500">Landscape</button>
                             <button type="button" data-orientation="portrait" class="orientation-button flex-1 px-3 py-1 border border-indigo-500 bg-indigo-50 text-indigo-700 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 selected-orientation">Portrait</button> <!-- Default -->
                         </div>
                         <!-- Dimension Grid (Populated Dynamically) -->
-                        <div id="dimensions-grid" class="grid grid-cols-3 sm:grid-cols-4 gap-2">
+                        <div id="modify-dimensions-grid" class="grid grid-cols-3 sm:grid-cols-4 gap-2">
                             <!-- Dimension buttons will be added here by JS -->
                         </div>
                     </div>
 
                     <!-- Aspect Ratio (for Ultra model) -->
-                    <div id="aspect-ratio-group" class="mb-4 param-group hidden">
+                    <div id="modify-aspect-ratio-group" class="mb-4 param-group hidden">
                         <label class="block text-sm font-medium text-gray-700 mb-1">Aspect Ratio</label>
-                        <select id="aspect-ratio-selector" class="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                        <select id="modify-aspect-ratio-selector" class="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
                             <option value="1:1">1:1 (Square)</option>
                             <option value="4:3">4:3</option>
                             <option value="16:9" selected>16:9</option>
@@ -350,32 +400,32 @@ const GeneratorTab = {
                         </select>
                     </div>
 
-                    <!-- Steps -->
-                    <div class="mb-4 param-group" id="steps-group">
-                        <label class="block text-sm font-medium text-gray-700 mb-1">Steps: <span id="steps-value">40</span></label>
-                        <input type="range" id="steps-slider" min="1" max="50" value="40" class="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer">
-                    </div>
-                    
-                    <!-- Guidance Scale -->
-                    <div class="mb-4 param-group" id="guidance-group">
-                        <label class="block text-sm font-medium text-gray-700 mb-1">Guidance Scale: <span id="guidance-value">2.5</span></label>
-                        <input type="range" id="guidance-slider" min="1.5" max="5" step="0.1" value="2.5" class="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer">
-                    </div>
-
                     <!-- Advanced Options -->
                     <div class="mb-4">
-                        <div class="flex justify-between items-center cursor-pointer" id="advanced-toggle">
-                            <span class="text-sm font-medium text-gray-300">Advanced Options</span>
-                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-gray-300" fill="none" viewBox="0 0 24 24" stroke="currentColor" id="advanced-icon">
+                        <div class="flex justify-between items-center cursor-pointer" id="modify-advanced-toggle">
+                            <span class="text-sm font-medium text-gray-700">Advanced Options</span>
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-gray-700" fill="none" viewBox="0 0 24 24" stroke="currentColor" id="modify-advanced-icon">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
                             </svg>
                         </div>
-                        
-                        <div class="mt-2 hidden" id="advanced-options">
+
+                        <div class="mt-2 hidden" id="modify-advanced-options">
+                            <!-- Steps -->
+                            <div class="mb-3 param-group" id="modify-steps-group">
+                                <label class="block text-sm font-medium text-gray-700 mb-1">Steps: <span id="modify-steps-value">40</span></label>
+                                <input type="range" id="modify-steps-slider" min="1" max="50" value="40" class="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer">
+                            </div>
+
+                            <!-- Guidance Scale -->
+                            <div class="mb-3 param-group" id="modify-guidance-group">
+                                <label class="block text-sm font-medium text-gray-700 mb-1">Guidance Scale: <span id="modify-guidance-value">2.5</span></label>
+                                <input type="range" id="modify-guidance-slider" min="1.5" max="5" step="0.1" value="2.5" class="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer">
+                            </div>
+
                             <!-- Safety Tolerance -->
                             <div class="mb-3 param-group opacity-50 cursor-not-allowed">
-                                <label class="block text-sm font-medium text-gray-500 mb-1">Safety Tolerance: <span id="safety-value">2</span></label>
-                                <input type="range" id="safety-slider" min="0" max="6" step="1" value="2" class="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-not-allowed pointer-events-none" disabled>
+                                <label class="block text-sm font-medium text-gray-500 mb-1">Safety Tolerance: <span id="modify-safety-value">2</span></label>
+                                <input type="range" id="modify-safety-slider" min="0" max="6" step="1" value="2" class="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-not-allowed pointer-events-none" disabled>
                                 <p class="text-xs text-gray-500 mt-1">Higher values are less strict (0 = most strict, 6 = least strict)</p>
                             </div>
 
@@ -383,40 +433,40 @@ const GeneratorTab = {
                             <div class="mb-3 param-group">
                                 <label class="block text-sm font-medium text-gray-700 mb-1">Seed</label>
                                 <div class="flex">
-                                    <input type="number" id="seed-input" placeholder="Random" class="w-full px-3 py-2 border border-gray-300 rounded-l-md text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
-                                    <button id="random-seed-btn" class="px-3 py-2 bg-gray-100 border border-gray-300 border-l-0 rounded-r-md hover:bg-gray-200">
+                                    <input type="number" id="modify-seed-input" placeholder="Random" class="w-full px-3 py-2 border border-gray-300 rounded-l-md text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                                    <button id="modify-random-seed-btn" class="px-3 py-2 bg-gray-100 border border-gray-300 border-l-0 rounded-r-md hover:bg-gray-200">
                                         🎲
                                     </button>
                                 </div>
                                 <!-- Randomize Seed Checkbox -->
                                 <div class="mt-2 flex items-center">
-                                    <input type="checkbox" id="randomize-seed-checkbox" class="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded">
-                                    <label for="randomize-seed-checkbox" class="ml-2 block text-sm text-gray-700">Randomize seed before each generation</label>
+                                    <input type="checkbox" id="modify-randomize-seed-checkbox" class="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded">
+                                    <label for="modify-randomize-seed-checkbox" class="ml-2 block text-sm text-gray-700">Randomize seed before each generation</label>
                                 </div>
                             </div>
 
                             <!-- Prompt Upsampling -->
-                            <div class="mb-3 param-group" id="prompt-upsampling-group">
+                            <div class="mb-3 param-group" id="modify-prompt-upsampling-group">
                                 <div class="flex items-center">
-                                    <input type="checkbox" id="prompt-upsampling" class="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded">
-                                    <label for="prompt-upsampling" class="ml-2 block text-sm text-gray-700">Prompt Upsampling</label>
+                                    <input type="checkbox" id="modify-prompt-upsampling" class="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded">
+                                    <label for="modify-prompt-upsampling" class="ml-2 block text-sm text-gray-700">Prompt Upsampling</label>
                                 </div>
                                 <p class="text-xs text-gray-500 mt-1">Automatically enhances prompt with additional details</p>
                             </div>
 
                             <!-- Raw Mode (Ultra only) -->
-                            <div class="mb-3 param-group hidden" id="raw-mode-group">
+                            <div class="mb-3 param-group hidden" id="modify-raw-mode-group">
                                 <div class="flex items-center">
-                                    <input type="checkbox" id="raw-mode" class="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded">
-                                    <label for="raw-mode" class="ml-2 block text-sm text-gray-700">Raw Mode</label>
+                                    <input type="checkbox" id="modify-raw-mode" class="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded">
+                                    <label for="modify-raw-mode" class="ml-2 block text-sm text-gray-700">Raw Mode</label>
                                 </div>
                                 <p class="text-xs text-gray-500 mt-1">Generate less processed, more natural-looking images</p>
                             </div>
 
                             <!-- Interval (Pro only) -->
-                            <div class="mb-3 param-group hidden" id="interval-group">
-                                <label class="block text-sm font-medium text-gray-700 mb-1">Interval: <span id="interval-value">2.0</span></label>
-                                <input type="range" id="interval-slider" min="1" max="4" step="0.1" value="2.0" class="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer">
+                            <div class="mb-3 param-group hidden" id="modify-interval-group">
+                                <label class="block text-sm font-medium text-gray-700 mb-1">Interval: <span id="modify-interval-value">2.0</span></label>
+                                <input type="range" id="modify-interval-slider" min="1" max="4" step="0.1" value="2.0" class="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer">
                                 <p class="text-xs text-gray-500 mt-1">Parameter for guidance control</p>
                             </div>
 
@@ -425,12 +475,12 @@ const GeneratorTab = {
                                 <label class="block text-sm font-medium text-gray-700 mb-1">Output Format</label>
                                 <div class="flex space-x-4">
                                     <div class="flex items-center">
-                                        <input type="radio" id="format-jpeg" name="output-format" value="jpeg" checked class="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300">
-                                        <label for="format-jpeg" class="ml-2 block text-sm text-gray-700">JPEG</label>
+                                        <input type="radio" id="modify-format-jpeg" name="modify-output-format" value="jpeg" checked class="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300">
+                                        <label for="modify-format-jpeg" class="ml-2 block text-sm text-gray-700">JPEG</label>
                                     </div>
                                     <div class="flex items-center">
-                                        <input type="radio" id="format-png" name="output-format" value="png" class="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300">
-                                        <label for="format-png" class="ml-2 block text-sm text-gray-700">PNG</label>
+                                        <input type="radio" id="modify-format-png" name="modify-output-format" value="png" class="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300">
+                                        <label for="modify-format-png" class="ml-2 block text-sm text-gray-700">PNG</label>
                                     </div>
                                 </div>
                             </div>
@@ -438,12 +488,12 @@ const GeneratorTab = {
                     </div>
                     
                     <!-- Generate Button -->
-                    <button id="generate-btn" class="w-full px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 flex items-center justify-center gap-2">
-                        <svg id="generate-spinner" class="hidden animate-spin h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                    <button id="modify-generate-btn" class="w-full px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 flex items-center justify-center gap-2">
+                        <svg id="modify-generate-spinner" class="hidden animate-spin h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                             <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
                             <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                         </svg>
-                        <span id="generate-text">Generate Image</span>
+                        <span id="modify-generate-text">Generate Image</span>
                         <span class="inline-flex items-center rounded" style="background: rgba(0, 0, 0, 0.15); padding: 6px 8px; gap: 2px;">
                             <img src="/ui_assets/token-image.png" alt="Token" class="w-5 h-5" />
                             <span class="text-sm" style="opacity: 0.9; margin-right: 1px;">×</span>
@@ -457,38 +507,38 @@ const GeneratorTab = {
                     <div class="p-6 border-b border-gray-200">
                         <h2 class="text-lg font-medium">Preview</h2>
                     </div>
-                    <div class="p-6 flex flex-col items-center justify-center min-h-[500px]" id="preview-container">
-                        <div id="generation-placeholder" class="text-center text-gray-400">
+                    <div class="p-6 flex flex-col items-center justify-center min-h-[500px]" id="modify-preview-container">
+                        <div id="modify-generation-placeholder" class="text-center text-gray-400">
                             <svg xmlns="http://www.w3.org/2000/svg" class="h-16 w-16 mx-auto mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
                             </svg>
                             <p>Your generated image will appear here</p>
                         </div>
-                        <img id="preview-image" class="max-w-full max-h-[500px] hidden rounded-lg shadow-lg" alt="Generated image">
-                        <div id="loading-indicator" class="hidden flex flex-col items-center w-full max-w-md">
+                        <img id="modify-preview-image" class="max-w-full max-h-[500px] hidden rounded-lg shadow-lg" alt="Generated image">
+                        <div id="modify-loading-indicator" class="hidden flex flex-col items-center w-full max-w-md">
                             <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600 mb-4"></div>
                             <div class="generator-rendering-content">
                                 <div class="generator-progress-container">
-                                    <div class="generator-progress-bar" id="generator-progress-bar" style="width: 0%;"></div>
+                                    <div class="generator-progress-bar" id="modify-generator-progress-bar" style="width: 0%;"></div>
                                     <div class="generator-progress-stripes"></div>
                                 </div>
-                                <span class="generator-progress-text" id="loading-text">Generating your image...</span>
-                                <span class="generator-progress-text hidden" id="generator-overtime-text" style="margin-top: 4px; color: #fbbf24;">Generation taking longer than expected.</span>
+                                <span class="generator-progress-text" id="modify-loading-text">Generating your image...</span>
+                                <span class="generator-progress-text hidden" id="modify-generator-overtime-text" style="margin-top: 4px; color: #fbbf24;">Generation taking longer than expected.</span>
                             </div>
                         </div>
                     </div>
                     <div class="px-6 pb-6">
-                        <div class="flex flex-wrap justify-center gap-2 mt-4" id="action-buttons">
-                            <button id="copy-params-btn" class="px-3 py-1.5 border border-gray-300 bg-white text-gray-600 rounded-md text-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-indigo-500 hidden">
+                        <div class="flex flex-wrap justify-center gap-2 mt-4" id="modify-action-buttons">
+                            <button id="modify-copy-params-btn" class="px-3 py-1.5 border border-gray-300 bg-white text-gray-600 rounded-md text-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-indigo-500 hidden">
                                 Copy Parameters
                             </button>
-                            <button id="open-image-btn" class="px-3 py-1.5 border border-gray-300 bg-white text-gray-600 rounded-md text-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-indigo-500 hidden">
+                            <button id="modify-open-image-btn" class="px-3 py-1.5 border border-gray-300 bg-white text-gray-600 rounded-md text-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-indigo-500 hidden">
                                 Open Image
                             </button>
-                            <button id="download-image-btn" class="px-3 py-1.5 border border-gray-300 bg-white text-gray-600 rounded-md text-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-indigo-500 hidden">
+                            <button id="modify-download-image-btn" class="px-3 py-1.5 border border-gray-300 bg-white text-gray-600 rounded-md text-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-indigo-500 hidden">
                                 Download Image
                             </button>
-                            <button id="copy-image-url-btn" class="px-3 py-1.5 border border-gray-300 bg-white text-gray-600 rounded-md text-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-indigo-500 hidden">
+                            <button id="modify-copy-image-url-btn" class="px-3 py-1.5 border border-gray-300 bg-white text-gray-600 rounded-md text-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-indigo-500 hidden">
                                 Copy Image URL
                             </button>
                         </div>
@@ -1019,6 +1069,15 @@ const GeneratorTab = {
 
   // Generate an image
   generateImage: async function () {
+    // Check if source image is provided (required for Modify tab)
+    if (!this.imagePromptData) {
+      FluxUI.showNotification(
+        'Source image is required. Please upload an image to modify.',
+        'error'
+      );
+      return;
+    }
+
     // Check if user is authenticated
     if (!window.authState || !window.authState.isAuthenticated) {
       useImageGenStore.getState().setModal('signin');
@@ -1229,12 +1288,12 @@ const GeneratorTab = {
       prompt_upsampling: this.elements.promptUpsampling.checked
     };
 
-    // Add prompt (optional with default)
+    // Add prompt (optional for modify tab with default)
     const prompt = this.elements.promptInput.value.trim();
     if (prompt) {
       params.prompt = prompt;
     } else {
-      // Use default prompt
+      // Use default prompt for modify tab
       params.prompt =
         'create a photorealistic render of an urban street scene with accurate shading and lighting';
     }
@@ -1756,4 +1815,4 @@ const GeneratorTab = {
   }
 };
 
-export default GeneratorTab;
+export default ModifyTab;

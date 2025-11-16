@@ -211,7 +211,8 @@ const VideoTab = {
             <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
                 <!-- Parameters Column -->
                 <div class="lg:col-span-1 bg-white rounded-lg shadow p-6">
-                    <h2 class="text-lg font-medium mb-4">Video Generation Settings</h2>
+                    <h2 class="text-lg font-medium mb-1">Video Generation Settings</h2>
+                    <p class="text-sm text-gray-500 mb-4">Create animated videos from a source image with motion and camera control parameters.</p>
 
                     <!-- Model Selection -->
                     <div class="mb-4">

@@ -92,7 +92,8 @@ const InpaintTab = {
             <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
                 <!-- Left Column: Input, Masking, Parameters -->
                 <div class="lg:col-span-1 bg-white rounded-lg shadow p-6">
-                    <h2 class="text-lg font-medium mb-4">Inpaint Settings</h2>
+                    <h2 class="text-lg font-medium mb-1">Inpaint Settings</h2>
+                    <p class="text-sm text-gray-500 mb-4">Edit specific areas of an image by painting a mask and providing a prompt for the masked region.</p>
 
                     <!-- Image Input -->
                     <div class="mb-4">

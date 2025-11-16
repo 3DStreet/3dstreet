@@ -81,7 +81,8 @@ const OutpaintTab = {
             <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
                 <!-- Left Column: Input, Parameters -->
                 <div class="lg:col-span-1 bg-white rounded-lg shadow p-6">
-                    <h2 class="text-lg font-medium mb-4">Outpaint Settings</h2>
+                    <h2 class="text-lg font-medium mb-1">Outpaint Settings</h2>
+                    <p class="text-sm text-gray-500 mb-4">Expand your image beyond its original borders by generating new content in any direction.</p>
 
                     <!-- Image Input -->
                     <div class="mb-4">
