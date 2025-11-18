@@ -176,7 +176,8 @@ const FluxUI = {
 
     // Button IDs for all tabs
     const buttonIds = [
-      'generate-btn',
+      'modify-generate-btn',
+      'create-generate-btn',
       'inpaint-generate-btn',
       'outpaint-generate-btn',
       'video-generate-btn'

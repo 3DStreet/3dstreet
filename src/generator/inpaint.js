@@ -92,11 +92,12 @@ const InpaintTab = {
             <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
                 <!-- Left Column: Input, Masking, Parameters -->
                 <div class="lg:col-span-1 bg-white rounded-lg shadow p-6">
-                    <h2 class="text-lg font-medium mb-4">Inpaint Settings</h2>
+                    <h2 class="text-lg font-medium mb-1">Inpaint Settings</h2>
+                    <p class="text-sm text-gray-500 mb-4">Edit specific areas of an image by painting a mask and providing a prompt for the masked region.</p>
 
                     <!-- Image Input -->
                     <div class="mb-4">
-                        <label class="block text-sm font-medium text-gray-700 mb-1">Source Image</label>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Source Image <span class="text-red-500">*</span></label>
                         <label class="flex items-center justify-center w-full h-20 border-2 border-gray-300 border-dashed rounded-lg cursor-pointer hover:bg-gray-50">
                             <div class="flex flex-col items-center">
                                 <p class="text-sm text-gray-500">Click to upload or use Gallery</p>
@@ -107,13 +108,14 @@ const InpaintTab = {
                     </div>
 
                     <!-- Masking Area -->
-                    <div class="mb-4 relative" id="inpaint-canvas-container" style="display: none;">
-                        <label class="block text-sm font-medium text-gray-700 mb-1">Draw Mask (White areas will be inpainted):</label>
+                    <div class="mb-4" id="inpaint-canvas-container" style="display: none;">
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Draw Mask <span class="text-red-500">*</span></label>
+                        <p class="text-xs text-gray-500 mb-1">White areas will be inpainted</p>
                         <canvas id="inpaint-mask-canvas" class="border border-gray-300 rounded-md cursor-crosshair w-full bg-gray-100"></canvas>
                         <img id="inpaint-source-image" style="display: none;" /> <!-- Hidden image element to hold source -->
 
                         <!-- Brush Controls -->
-                        <div class="absolute top-0 right-0 mt-2 mr-2 flex items-center space-x-2 bg-white bg-opacity-80 p-1 rounded shadow">
+                        <div class="mt-2 flex items-center justify-end space-x-2 bg-white p-1 rounded">
                              <label for="inpaint-brush-size" class="text-xs">Brush: <span id="inpaint-brush-size-label" class="font-medium">${this.brushSize}</span></label>
                              <input type="range" id="inpaint-brush-size" min="5" max="100" value="${this.brushSize}" class="w-20 h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer">
                              <button id="inpaint-clear-mask" title="Clear Mask" class="p-1 hover:bg-gray-200 rounded">
@@ -126,19 +128,8 @@ const InpaintTab = {
 
                     <!-- Prompt -->
                     <div class="mb-4">
-                        <label for="inpaint-prompt" class="block text-sm font-medium text-gray-700 mb-1">Prompt (Optional)</label>
+                        <label for="inpaint-prompt" class="block text-sm font-medium text-gray-700 mb-1">Prompt <span class="text-red-500">*</span></label>
                         <textarea id="inpaint-prompt" rows="3" class="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500" placeholder="Describe what to generate in the masked area..."></textarea>
-                    </div>
-                    
-                    <!-- Parameters -->
-                    <div class="mb-4 param-group">
-                        <label class="block text-sm font-medium text-gray-700 mb-1">Steps: <span id="inpaint-steps-value">50</span></label>
-                        <input type="range" id="inpaint-steps-slider" min="15" max="50" value="50" class="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer">
-                    </div>
-
-                    <div class="mb-4 param-group">
-                        <label class="block text-sm font-medium text-gray-700 mb-1">Guidance Scale: <span id="inpaint-guidance-value">60</span></label>
-                        <input type="range" id="inpaint-guidance-slider" min="1.5" max="100" step="0.5" value="60" class="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer">
                     </div>
 
                     <!-- Advanced Options -->
@@ -150,6 +141,18 @@ const InpaintTab = {
                             </svg>
                         </div>
                         <div class="mt-2 hidden" id="inpaint-advanced-options">
+                            <!-- Steps -->
+                            <div class="mb-3 param-group">
+                                <label class="block text-sm font-medium text-gray-700 mb-1">Steps: <span id="inpaint-steps-value">50</span></label>
+                                <input type="range" id="inpaint-steps-slider" min="15" max="50" value="50" class="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer">
+                            </div>
+
+                            <!-- Guidance Scale -->
+                            <div class="mb-3 param-group">
+                                <label class="block text-sm font-medium text-gray-700 mb-1">Guidance Scale: <span id="inpaint-guidance-value">60</span></label>
+                                <input type="range" id="inpaint-guidance-slider" min="1.5" max="100" step="0.5" value="60" class="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer">
+                            </div>
+
                             <!-- Safety Tolerance -->
                             <div class="mb-3 param-group opacity-50 cursor-not-allowed">
                                 <label class="block text-sm font-medium text-gray-500 mb-1">Safety Tolerance: <span id="inpaint-safety-value">2</span></label>
@@ -168,7 +171,7 @@ const InpaintTab = {
                                 </div>
                                 <!-- Randomize Seed Checkbox -->
                                 <div class="mt-2 flex items-center">
-                                    <input type="checkbox" id="inpaint-randomize-seed-checkbox" class="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded">
+                                    <input type="checkbox" id="inpaint-randomize-seed-checkbox" class="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded" checked>
                                     <label for="inpaint-randomize-seed-checkbox" class="ml-2 block text-sm text-gray-700">Randomize seed before each generation</label>
                                 </div>
                             </div>
@@ -471,6 +474,11 @@ const InpaintTab = {
       }
     });
 
+    // Remove prompt error highlight when user starts typing
+    this.elements.promptInput.addEventListener('input', () => {
+      this.removePromptErrorHighlight();
+    });
+
     // Action buttons
     // this.elements.addToGalleryBtn.addEventListener('click', this.addToGallery.bind(this)); // Removed
     this.elements.copyParamsBtn.addEventListener(
@@ -630,6 +638,10 @@ const InpaintTab = {
   // Start drawing mask
   startDrawing: function (event) {
     this.isDrawing = true;
+
+    // Remove error highlight when user starts drawing
+    this.removeMaskErrorHighlight();
+
     const pos = this.getCanvasPosition(event); // Position on display canvas
     [this.lastX, this.lastY] = [pos.x, pos.y];
 
@@ -721,6 +733,62 @@ const InpaintTab = {
     this.maskData = null; // Reset mask data URL
   },
 
+  // Highlight mask canvas with red border when validation fails
+  highlightMaskError: function () {
+    if (this.elements.canvas) {
+      this.elements.canvas.classList.remove('border-gray-300');
+      this.elements.canvas.classList.add('border-red-500', 'border-2');
+    }
+  },
+
+  // Remove red highlight from mask canvas
+  removeMaskErrorHighlight: function () {
+    if (this.elements.canvas) {
+      this.elements.canvas.classList.remove('border-red-500', 'border-2');
+      this.elements.canvas.classList.add('border-gray-300');
+    }
+  },
+
+  // Highlight prompt field with red border when validation fails
+  highlightPromptError: function () {
+    if (this.elements.promptInput) {
+      this.elements.promptInput.classList.remove('border-gray-300');
+      this.elements.promptInput.classList.add('border-red-500', 'border-2');
+    }
+  },
+
+  // Remove red highlight from prompt field
+  removePromptErrorHighlight: function () {
+    if (this.elements.promptInput) {
+      this.elements.promptInput.classList.remove('border-red-500', 'border-2');
+      this.elements.promptInput.classList.add('border-gray-300');
+    }
+  },
+
+  // Check if the mask has any white pixels (i.e., user actually drew something)
+  hasMaskContent: function () {
+    if (!this.maskLayerCanvas || !this.maskLayerCtx) {
+      return false;
+    }
+
+    const maskPixelData = this.maskLayerCtx.getImageData(
+      0,
+      0,
+      this.maskLayerCanvas.width,
+      this.maskLayerCanvas.height
+    ).data;
+
+    // Check if any pixel is white (RGB: 255, 255, 255)
+    for (let i = 0; i < maskPixelData.length; i += 4) {
+      if (maskPixelData[i] === 255) {
+        // Check Red channel for white
+        return true;
+      }
+    }
+
+    return false;
+  },
+
   // Get mask data as base64 string (black and white)
   // Get mask data as base64 string (black and white) from the hidden mask layer
   getMaskDataURL: function () {
@@ -728,18 +796,6 @@ const InpaintTab = {
       console.error('Mask layer canvas not initialized.');
       return null;
     }
-    // Optional: Check if the mask is empty before returning?
-    // const maskPixelData = this.maskLayerCtx.getImageData(0, 0, this.maskLayerCanvas.width, this.maskLayerCanvas.height).data;
-    // let hasWhitePixels = false;
-    // for (let i = 0; i < maskPixelData.length; i += 4) {
-    //     if (maskPixelData[i] === 255) { // Check Red channel for white
-    //         hasWhitePixels = true;
-    //         break;
-    //     }
-    // }
-    // if (!hasWhitePixels) {
-    //     // Return null or the all-black mask depending on desired behavior
-    // }
 
     // Return the data URL (base64 encoded PNG) of the hidden mask layer
     return this.maskLayerCanvas.toDataURL('image/png');
@@ -875,26 +931,33 @@ const InpaintTab = {
       return;
     }
 
+    // Check if prompt is provided
+    const prompt = this.elements.promptInput.value.trim();
+    if (!prompt) {
+      this.highlightPromptError();
+      FluxUI.showNotification(
+        'Please enter a prompt describing what to generate.',
+        'error'
+      );
+      return;
+    }
+
+    // Check if mask has any content (user actually drew something)
+    if (!this.hasMaskContent()) {
+      this.highlightMaskError();
+      FluxUI.showNotification(
+        'Please draw a mask on the image. Mask is required for inpainting.',
+        'error'
+      );
+      return;
+    }
+
     // Get mask data (ensuring it's generated at original resolution)
     this.maskData = this.getMaskDataURL();
     if (!this.maskData) {
       FluxUI.showNotification('Could not generate mask data.', 'error');
       return;
     }
-
-    // Optional: Basic check if mask is empty (can be done within getMaskDataURL or here)
-    // This simplified check assumes getMaskDataURL provides a valid data URL
-    if (this.maskData.length < 100) {
-      // Very basic check for empty data URL possibility
-      FluxUI.showNotification(
-        'Mask data seems empty. Please draw a mask.',
-        'warning'
-      );
-      return;
-    }
-    // More robust check (optional): Load maskData to check for white pixels if needed
-    // const checkMask = async () => { ... code similar to removed block ... };
-    // await checkMask(); // If you want to keep the explicit check
 
     // --- Proceed with generation ---
     // Removed the complex async validation block that loaded the mask image
@@ -903,7 +966,6 @@ const InpaintTab = {
       // Wrap the rest in an async IIFE to keep structure
       this.showLoading('Starting generation...');
 
-      const prompt = this.elements.promptInput.value.trim();
       const selectedFormat = this.elements.inpaintContainer.querySelector(
         'input[name="inpaint-output-format"]:checked'
       );
@@ -916,7 +978,7 @@ const InpaintTab = {
       const params = {
         image: this.imageData.split(',')[1], // Send base64 part only
         mask: this.maskData.split(',')[1], // Send base64 part only
-        prompt: prompt || '', // Send empty string if no prompt
+        prompt: prompt, // Use the already validated prompt
         steps: parseInt(this.elements.stepsSlider.value) || 50,
         guidance: parseFloat(this.elements.guidanceSlider.value) || 60,
         seed: this.elements.seedInput.value

@@ -76,7 +76,7 @@ const AppSwitcher = () => {
               onClick={handleEditorClick}
             >
               <div className={styles.itemContent}>
-                <span className={styles.appName}>3DStreet Editor</span>
+                <span className={styles.appName}>Editor</span>
                 {isEditor && <span className={styles.badge}>Current</span>}
               </div>
             </DropdownMenu.Item>
@@ -85,7 +85,7 @@ const AppSwitcher = () => {
               onClick={handleImageGeneratorClick}
             >
               <div className={styles.itemContent}>
-                <span className={styles.appName}>AI Image Generator</span>
+                <span className={styles.appName}>AI Generator</span>
                 {isImageGenerator && (
                   <span className={styles.badge}>Current</span>
                 )}

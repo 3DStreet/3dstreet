@@ -310,6 +310,17 @@ const GalleryModal = ({
 
           <div className={styles.actionButtonGroup}>
             {/* Optional action buttons */}
+            {!isVideo && onUseForGenerator && (
+              <button
+                className={`${styles.actionButton} ${styles.secondaryButton}`}
+                onClick={() => {
+                  onUseForGenerator(item);
+                  onClose();
+                }}
+              >
+                Modify
+              </button>
+            )}
             {!isVideo && onUseForOutpaint && (
               <button
                 className={`${styles.actionButton} ${styles.secondaryButton}`}
@@ -318,7 +329,7 @@ const GalleryModal = ({
                   onClose();
                 }}
               >
-                Use for Outpaint
+                Outpaint
               </button>
             )}
             {!isVideo && onUseForInpaint && (
@@ -329,18 +340,7 @@ const GalleryModal = ({
                   onClose();
                 }}
               >
-                Use for Inpaint
-              </button>
-            )}
-            {!isVideo && onUseForGenerator && (
-              <button
-                className={`${styles.actionButton} ${styles.secondaryButton}`}
-                onClick={() => {
-                  onUseForGenerator(item);
-                  onClose();
-                }}
-              >
-                Use for Generator
+                Inpaint
               </button>
             )}
             {!isVideo && onUseForVideo && (
@@ -351,7 +351,7 @@ const GalleryModal = ({
                   onClose();
                 }}
               >
-                Use for Video
+                Create Video
               </button>
             )}
             {!isVideo && onCopyImage && (

@@ -54,8 +54,8 @@ const VideoTab = {
     // Setup event listeners
     this.setupEventListeners();
 
-    // Generate an initial random seed on load
-    this.generateRandomSeed();
+    // Generate an initial random seed on load (commented out - seed doesn't work for video models)
+    // this.generateRandomSeed();
 
     // Register this module with the main UI for updates
     FluxUI.tabModules.video = this;
@@ -133,23 +133,23 @@ const VideoTab = {
     this.elements.duration10sRadio =
       document.getElementById('video-duration-10s');
 
-    // Parameters
-    this.elements.seedInput = document.getElementById('video-seed-input');
-    this.elements.randomSeedBtn = document.getElementById(
-      'video-random-seed-btn'
-    );
-    this.elements.randomizeSeedCheckbox = document.getElementById(
-      'video-randomize-seed-checkbox'
-    );
+    // Parameters (commented out - seed doesn't work for video models)
+    // this.elements.seedInput = document.getElementById('video-seed-input');
+    // this.elements.randomSeedBtn = document.getElementById(
+    //   'video-random-seed-btn'
+    // );
+    // this.elements.randomizeSeedCheckbox = document.getElementById(
+    //   'video-randomize-seed-checkbox'
+    // );
 
-    // Advanced options
-    this.elements.advancedToggle = document.getElementById(
-      'video-advanced-toggle'
-    );
-    this.elements.advancedOptions = document.getElementById(
-      'video-advanced-options'
-    );
-    this.elements.advancedIcon = document.getElementById('video-advanced-icon');
+    // Advanced options (commented out - seed doesn't work for video models)
+    // this.elements.advancedToggle = document.getElementById(
+    //   'video-advanced-toggle'
+    // );
+    // this.elements.advancedOptions = document.getElementById(
+    //   'video-advanced-options'
+    // );
+    // this.elements.advancedIcon = document.getElementById('video-advanced-icon');
 
     // Preview
     this.elements.previewContainer = document.getElementById(
@@ -211,7 +211,8 @@ const VideoTab = {
             <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
                 <!-- Parameters Column -->
                 <div class="lg:col-span-1 bg-white rounded-lg shadow p-6">
-                    <h2 class="text-lg font-medium mb-4">Video Generation Settings</h2>
+                    <h2 class="text-lg font-medium mb-1">Video Generation Settings</h2>
+                    <p class="text-sm text-gray-500 mb-4">Create animated videos from a source image with motion and camera control parameters.</p>
 
                     <!-- Model Selection -->
                     <div class="mb-4">
@@ -280,8 +281,8 @@ const VideoTab = {
                         </div>
                     </div>
 
-                    <!-- Advanced Options -->
-                    <div class="mb-4">
+                    <!-- Advanced Options (Hidden - seed doesn't work for video models) -->
+                    <!-- <div class="mb-4">
                         <div class="flex justify-between items-center cursor-pointer" id="video-advanced-toggle">
                             <span class="text-sm font-medium text-gray-700">Advanced Options</span>
                             <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-gray-700" fill="none" viewBox="0 0 24 24" stroke="currentColor" id="video-advanced-icon">
@@ -290,7 +291,6 @@ const VideoTab = {
                         </div>
 
                         <div class="mt-2 hidden" id="video-advanced-options">
-                            <!-- Seed -->
                             <div class="mb-3 param-group">
                                 <label class="block text-sm font-medium text-gray-700 mb-1">Seed</label>
                                 <div class="flex">
@@ -299,14 +299,13 @@ const VideoTab = {
                                         🎲
                                     </button>
                                 </div>
-                                <!-- Randomize Seed Checkbox -->
                                 <div class="mt-2 flex items-center">
-                                    <input type="checkbox" id="video-randomize-seed-checkbox" class="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded">
+                                    <input type="checkbox" id="video-randomize-seed-checkbox" class="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded" checked>
                                     <label for="video-randomize-seed-checkbox" class="ml-2 block text-sm text-gray-700">Randomize seed before each generation</label>
                                 </div>
                             </div>
                         </div>
-                    </div>
+                    </div> -->
 
                     <!-- Generate Button -->
                     <button id="video-generate-btn" class="w-full px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 flex items-center justify-center gap-2">
@@ -413,17 +412,17 @@ const VideoTab = {
       this.updateTokenCostDisplay();
     });
 
-    // Advanced toggle
-    this.elements.advancedToggle.addEventListener(
-      'click',
-      this.toggleAdvancedOptions.bind(this)
-    );
+    // Advanced toggle (commented out - seed doesn't work for video models)
+    // this.elements.advancedToggle.addEventListener(
+    //   'click',
+    //   this.toggleAdvancedOptions.bind(this)
+    // );
 
-    // Random seed button
-    this.elements.randomSeedBtn.addEventListener(
-      'click',
-      this.generateRandomSeed.bind(this)
-    );
+    // Random seed button (commented out - seed doesn't work for video models)
+    // this.elements.randomSeedBtn.addEventListener(
+    //   'click',
+    //   this.generateRandomSeed.bind(this)
+    // );
 
     // Generate button
     this.elements.generateBtn.addEventListener(
@@ -616,15 +615,16 @@ const VideoTab = {
     // Add duration (5 or 10 seconds)
     params.duration_seconds = this.getSelectedDuration();
 
+    // Seed functionality removed - doesn't work for video models
     // Check if seed should be randomized before generation
-    if (this.elements.randomizeSeedCheckbox.checked) {
-      this.generateRandomSeed();
-    }
+    // if (this.elements.randomizeSeedCheckbox.checked) {
+    //   this.generateRandomSeed();
+    // }
 
     // Add seed if provided
-    if (this.elements.seedInput.value) {
-      params.seed = parseInt(this.elements.seedInput.value);
-    }
+    // if (this.elements.seedInput.value) {
+    //   params.seed = parseInt(this.elements.seedInput.value);
+    // }
 
     return params;
   },

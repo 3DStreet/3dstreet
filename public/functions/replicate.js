@@ -2,15 +2,7 @@ const functions = require('firebase-functions');
 const Replicate = require('replicate');
 const admin = require('firebase-admin');
 const { checkAndRefillImageTokensInternal } = require('./token-management.js');
-
-// Model version to name mapping
-const AI_MODEL_NAMES = {
-  '2af4da47bcb7b55a0705b0de9933701f7607531d763ae889241f827a648c1755': 'Kontext Real Earth',
-  '2af3274cfd12ae2e0a87619bef1e7df80df2fbcf02d8d9dff23c74e6ca1d5f1d': 'Flux Kontext Pro',
-  'aa776ca45ce7f7d185418f700df8ec6ca6cb367bfd88e9cd225666c4c179d1d7': 'Flux Kontext Pro',
-  'f0a9d34b12ad1c1cd76269a844b218ff4e64e128ddaba93e15891f47368958a0': 'Nano Banana',
-  '254faac883c3a411e95cc95d0fb02274a81e388aaa4394b3ce5b7d2a9f7a6569': 'Seedream v4'
-};
+const { AI_MODEL_NAMES, DEFAULT_MODEL_VERSION, MODEL_VERSIONS } = require('./replicate-models.js');
 
 // Helper function to post AI-generated images to Discord
 async function postAIImageToDiscord(userId, imageUrl, prompt, modelVersion, sceneId) {
@@ -181,10 +173,10 @@ const generateReplicateImage = functions
         throw new functions.https.HttpsError('resource-exhausted', 'No generation tokens available');
     }
 
-    // Validate required data
-    if (!prompt || !input_image) {
-      console.error(`Missing required data - prompt: ${!!prompt}, input_image: ${!!input_image}`);
-      throw new functions.https.HttpsError('invalid-argument', 'Missing required prompt or input_image.');
+    // Validate required data - prompt is always required, input_image is optional
+    if (!prompt) {
+      console.error(`Missing required prompt`);
+      throw new functions.https.HttpsError('invalid-argument', 'Missing required prompt.');
     }
 
 
@@ -202,7 +194,7 @@ const generateReplicateImage = functions
       let imageUrl = input_image;
 
       // If input_image is a base64 data URL, upload it to Firebase Storage first
-      if (input_image.startsWith('data:image/')) {
+      if (input_image && input_image.startsWith('data:image/')) {
         
         // Extract the base64 data and mime type
         const matches = input_image.match(/^data:([^;]+);base64,(.+)$/);
@@ -238,8 +230,7 @@ const generateReplicateImage = functions
               }
 
       // Use provided model version or default to Kontext Real Earth
-      const defaultModelVersion = "2af4da47bcb7b55a0705b0de9933701f7607531d763ae889241f827a648c1755";
-      const modelVersionToUse = model_version || defaultModelVersion;
+      const modelVersionToUse = model_version || DEFAULT_MODEL_VERSION;
 
 
       // Different models use different input parameter names and formats
@@ -250,25 +241,32 @@ const generateReplicateImage = functions
       };
 
       // Check if this is the Nano Banana model (uses different input format)
-      if (modelVersionToUse === 'f0a9d34b12ad1c1cd76269a844b218ff4e64e128ddaba93e15891f47368958a0') {
-        // Nano Banana uses image_input as an array
-        modelInput.image_input = [imageUrl];
+      if (modelVersionToUse === MODEL_VERSIONS.NANO_BANANA) {
+        // Nano Banana uses image_input as an array (optional)
+        if (imageUrl) {
+          modelInput.image_input = [imageUrl];
+          modelInput.aspect_ratio = 'match_input_image';
+        }
         modelInput.output_format = 'jpg';
         // Remove parameters that Nano Banana doesn't use
         delete modelInput.guidance;
         delete modelInput.num_inference_steps;
-      } else if (modelVersionToUse === '254faac883c3a411e95cc95d0fb02274a81e388aaa4394b3ce5b7d2a9f7a6569') {
-        // Seedream uses image_input as an array and different parameters
-        modelInput.image_input = [imageUrl];
+      } else if (modelVersionToUse === MODEL_VERSIONS.SEEDREAM_4) {
+        // Seedream uses image_input as an array and different parameters (optional)
+        if (imageUrl) {
+          modelInput.image_input = [imageUrl];
+          modelInput.aspect_ratio = 'match_input_image';
+        }
         modelInput.size = '2K';
-        modelInput.aspect_ratio = 'match_input_image';
         modelInput.output_format = 'jpg';
         // Remove parameters that Seedream doesn't use
         delete modelInput.guidance;
         delete modelInput.num_inference_steps;
       } else {
-        // Kontext models use input_image as string
-        modelInput.input_image = imageUrl;
+        // Kontext models use input_image as string (optional)
+        if (imageUrl) {
+          modelInput.input_image = imageUrl;
+        }
         modelInput.output_format = 'jpg';
       }
 
@@ -283,7 +281,7 @@ const generateReplicateImage = functions
 
 
       // Clean up temp file if we created one
-      if (input_image.startsWith('data:image/') && imageUrl !== input_image) {
+      if (input_image && input_image.startsWith('data:image/') && imageUrl !== input_image) {
         try {
           const bucket = admin.storage().bucket();
           const filename = imageUrl.split('/').pop();
@@ -337,8 +335,16 @@ const generateReplicateImage = functions
       } else if (typeof output === 'string') {
         finalImageUrl = output;
       } else {
-        console.error('Unexpected output format from Replicate:', output);
+        console.error('Unexpected output format from Replicate:', JSON.stringify(output, null, 2));
+        console.error('Full prediction object:', JSON.stringify(prediction, null, 2));
         throw new Error('Invalid output format from Replicate API');
+      }
+
+      // Validate that we got a valid URL
+      if (!finalImageUrl || typeof finalImageUrl !== 'string') {
+        console.error('Invalid image URL received:', finalImageUrl);
+        console.error('Full output object:', JSON.stringify(output, null, 2));
+        throw new Error('No valid image URL returned from Replicate');
       }
 
       // Post AI-generated image to Discord (non-blocking)
@@ -355,14 +361,38 @@ const generateReplicateImage = functions
     } catch (error) {
       console.error('Error generating image with Replicate:', error);
       console.error('Error details:', error.message);
-      
+      console.error('Error stack:', error.stack);
+
       // If it's a Replicate error, include more details
       if (error.response) {
         console.error('Response status:', error.response.status);
-        console.error('Response data:', error.response.data);
-        throw new functions.https.HttpsError('internal', `Replicate API error: ${error.response.status} - ${JSON.stringify(error.response.data)}`);
+        console.error('Response data:', JSON.stringify(error.response.data, null, 2));
+
+        // Better error message handling
+        let errorMessage = 'Replicate API error';
+        if (error.response.status) {
+          errorMessage += `: ${error.response.status}`;
+        }
+        if (error.response.data) {
+          if (typeof error.response.data === 'string') {
+            errorMessage += ` - ${error.response.data}`;
+          } else if (error.response.data.detail) {
+            errorMessage += ` - ${error.response.data.detail}`;
+          } else if (error.response.data.error) {
+            errorMessage += ` - ${error.response.data.error}`;
+          } else {
+            errorMessage += ` - ${JSON.stringify(error.response.data)}`;
+          }
+        }
+
+        throw new functions.https.HttpsError('internal', errorMessage);
       }
-      
+
+      // Check if it's a Firebase HttpsError and rethrow
+      if (error.code && error.code.startsWith('resource-exhausted')) {
+        throw error;
+      }
+
       throw new functions.https.HttpsError('internal', `Failed to generate image: ${error.message}`);
     }
   });
@@ -490,9 +520,6 @@ const generateReplicateVideo = functions
         modelInput.duration = duration_seconds; // SeeDance accepts 2-12 seconds
         modelInput.resolution = '1080p'; // Use highest quality
         // Note: SeeDance does not support audio control parameters
-        if (data.seed) {
-          modelInput.seed = data.seed;
-        }
       } else if (model_name === 'wan-video/wan-2.2-i2v-fast') {
         // Wan Video model parameters
         modelInput.resolution = '720p'; // 720p or 480p
@@ -504,9 +531,6 @@ const generateReplicateVideo = functions
         modelInput.frames_per_second = 16;
         modelInput.interpolate_output = true;
         // Note: Wan Video does not support audio control parameters
-        if (data.seed) {
-          modelInput.seed = data.seed;
-        }
       } else if (model_name === 'kwaivgi/kling-v2.5-turbo-pro') {
         // Kling model parameters
         modelInput.aspect_ratio = aspect_ratio;

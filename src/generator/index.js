@@ -23,7 +23,8 @@ import { mountGallery } from './mount-gallery.js';
 
 // Import all modules
 import FluxUI from './main.js';
-import GeneratorTab from './generator.js';
+import ModifyTab from './modify.js';
+import CreateTab from './create.js';
 import InpaintTab from './inpaint.js';
 import OutpaintTab from './outpaint.js';
 import VideoTab from './video.js';
@@ -52,7 +53,8 @@ document.addEventListener('DOMContentLoaded', async () => {
   await mountGallery();
 
   // Initialize tabs
-  GeneratorTab.init();
+  ModifyTab.init();
+  CreateTab.init();
   InpaintTab.init();
   OutpaintTab.init();
   VideoTab.init();
