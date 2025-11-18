@@ -21,24 +21,8 @@ import { TokenDisplayInner } from '@shared/auth/components';
 import { galleryService } from '@shared/gallery';
 import { REPLICATE_MODELS } from '@shared/constants/replicateModels.js';
 
-// Available AI models (import from shared constants)
-const AI_MODELS = {
-  ...REPLICATE_MODELS,
-  'flux-kontext-pro': {
-    name: 'Flux Kontext Pro',
-    version: 'aa776ca45ce7f7d185418f700df8ec6ca6cb367bfd88e9cd225666c4c179d1d7',
-    prompt:
-      'photorealistic street view, professional photography, high detail, natural lighting, clear and sharp'
-  }
-};
-
-// Estimated generation times (in seconds)
-const ESTIMATED_TIMES = {
-  'kontext-realearth': 25,
-  'flux-kontext-pro': 15,
-  'nano-banana': 20,
-  'seedream-4': 25
-};
+// Available AI models (use shared constants)
+const AI_MODELS = REPLICATE_MODELS;
 
 function ScreenshotModal() {
   const setModal = useStore((state) => state.setModal);
@@ -430,7 +414,7 @@ function ScreenshotModal() {
     let progressInterval;
 
     if (isGeneratingAI && renderStartTime) {
-      const estimatedTime = ESTIMATED_TIMES[selectedModel] || 30;
+      const estimatedTime = AI_MODELS[selectedModel]?.estimatedTime || 30;
 
       progressInterval = setInterval(() => {
         const elapsed = Date.now() - renderStartTime;
@@ -472,7 +456,7 @@ function ScreenshotModal() {
 
           // Extract base model key to get estimated time
           const baseModelKey = modelKey.split('-').slice(0, -1).join('-');
-          const estimatedTime = ESTIMATED_TIMES[baseModelKey] || 30;
+          const estimatedTime = AI_MODELS[baseModelKey]?.estimatedTime || 30;
           const isOvertime = elapsed > estimatedTime + 10;
 
           setRenderTimers((prev) => ({
@@ -681,7 +665,7 @@ function ScreenshotModal() {
                       <div className={styles.progressStripes} />
                     </div>
                     <span className={styles.progressText}>
-                      {`${elapsedTime}/${ESTIMATED_TIMES[selectedModel] || 30}s`}
+                      {`${elapsedTime}/${AI_MODELS[selectedModel]?.estimatedTime || 30}s`}
                     </span>
                     {showOvertimeWarning && (
                       <span className={styles.overtimeText}>

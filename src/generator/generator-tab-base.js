@@ -13,6 +13,29 @@ import { functions } from '@shared/services/firebase.js';
 import { REPLICATE_MODELS } from '@shared/constants/replicateModels.js';
 
 /**
+ * Build estimated times object from Replicate models and BFL models
+ */
+const buildEstimatedTimes = () => {
+  const times = {};
+
+  // Add Replicate model times from shared constants
+  Object.entries(REPLICATE_MODELS).forEach(([key, model]) => {
+    times[key] = model.estimatedTime;
+  });
+
+  // Add BFL model times (not in REPLICATE_MODELS)
+  const bflTimes = {
+    'flux-pro-1.1': 25,
+    'flux-pro': 25,
+    'flux-pro-1.1-ultra': 25,
+    'flux-dev': 25,
+    'flux-kontext-max': 25
+  };
+
+  return { ...times, ...bflTimes };
+};
+
+/**
  * Base class for generator tabs
  */
 class GeneratorTabBase {
@@ -42,20 +65,8 @@ class GeneratorTabBase {
     this.renderProgress = 0;
     this.timerInterval = null;
 
-    // Estimated generation times (in seconds)
-    this.estimatedTimes = {
-      // Replicate models
-      'kontext-realearth': 25,
-      'nano-banana': 20,
-      'seedream-4': 25,
-      // BFL models
-      'flux-pro-1.1': 25,
-      'flux-pro': 25,
-      'flux-pro-1.1-ultra': 25,
-      'flux-dev': 25,
-      'flux-kontext-pro': 25,
-      'flux-kontext-max': 25
-    };
+    // Estimated generation times (in seconds) - built from shared constants
+    this.estimatedTimes = buildEstimatedTimes();
 
     // DOM Elements
     this.elements = {};

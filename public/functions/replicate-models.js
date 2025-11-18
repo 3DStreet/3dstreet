@@ -8,11 +8,7 @@ const REPLICATE_MODELS = {
     name: 'Kontext Real Earth',
     version: '2af4da47bcb7b55a0705b0de9933701f7607531d763ae889241f827a648c1755'
   },
-  'flux-kontext-pro-v1': {
-    name: 'Flux Kontext Pro',
-    version: '2af3274cfd12ae2e0a87619bef1e7df80df2fbcf02d8d9dff23c74e6ca1d5f1d'
-  },
-  'flux-kontext-pro-v2': {
+  'flux-kontext-pro': {
     name: 'Flux Kontext Pro',
     version: 'aa776ca45ce7f7d185418f700df8ec6ca6cb367bfd88e9cd225666c4c179d1d7'
   },
