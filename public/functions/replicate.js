@@ -2,15 +2,7 @@ const functions = require('firebase-functions');
 const Replicate = require('replicate');
 const admin = require('firebase-admin');
 const { checkAndRefillImageTokensInternal } = require('./token-management.js');
-
-// Model version to name mapping
-const AI_MODEL_NAMES = {
-  '2af4da47bcb7b55a0705b0de9933701f7607531d763ae889241f827a648c1755': 'Kontext Real Earth',
-  '2af3274cfd12ae2e0a87619bef1e7df80df2fbcf02d8d9dff23c74e6ca1d5f1d': 'Flux Kontext Pro',
-  'aa776ca45ce7f7d185418f700df8ec6ca6cb367bfd88e9cd225666c4c179d1d7': 'Flux Kontext Pro',
-  'f0a9d34b12ad1c1cd76269a844b218ff4e64e128ddaba93e15891f47368958a0': 'Nano Banana',
-  '254faac883c3a411e95cc95d0fb02274a81e388aaa4394b3ce5b7d2a9f7a6569': 'Seedream v4'
-};
+const { AI_MODEL_NAMES, DEFAULT_MODEL_VERSION, MODEL_VERSIONS } = require('./replicate-models.js');
 
 // Helper function to post AI-generated images to Discord
 async function postAIImageToDiscord(userId, imageUrl, prompt, modelVersion, sceneId) {
@@ -238,8 +230,7 @@ const generateReplicateImage = functions
               }
 
       // Use provided model version or default to Kontext Real Earth
-      const defaultModelVersion = "2af4da47bcb7b55a0705b0de9933701f7607531d763ae889241f827a648c1755";
-      const modelVersionToUse = model_version || defaultModelVersion;
+      const modelVersionToUse = model_version || DEFAULT_MODEL_VERSION;
 
 
       // Different models use different input parameter names and formats
@@ -250,7 +241,7 @@ const generateReplicateImage = functions
       };
 
       // Check if this is the Nano Banana model (uses different input format)
-      if (modelVersionToUse === 'f0a9d34b12ad1c1cd76269a844b218ff4e64e128ddaba93e15891f47368958a0') {
+      if (modelVersionToUse === MODEL_VERSIONS.NANO_BANANA) {
         // Nano Banana uses image_input as an array (optional)
         if (imageUrl) {
           modelInput.image_input = [imageUrl];
@@ -260,7 +251,7 @@ const generateReplicateImage = functions
         // Remove parameters that Nano Banana doesn't use
         delete modelInput.guidance;
         delete modelInput.num_inference_steps;
-      } else if (modelVersionToUse === '254faac883c3a411e95cc95d0fb02274a81e388aaa4394b3ce5b7d2a9f7a6569') {
+      } else if (modelVersionToUse === MODEL_VERSIONS.SEEDREAM_4) {
         // Seedream uses image_input as an array and different parameters (optional)
         if (imageUrl) {
           modelInput.image_input = [imageUrl];
