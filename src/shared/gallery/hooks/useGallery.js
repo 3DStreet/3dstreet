@@ -13,7 +13,7 @@ const useGallery = () => {
   const [items, setItems] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [page, setPage] = useState(1);
-  const [pageSize, setPageSize] = useState(24);
+  const [pageSize, setPageSize] = useState(12);
 
   const totalPages = Math.max(1, Math.ceil(items.length / pageSize));
 
