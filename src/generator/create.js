@@ -299,12 +299,10 @@ const CreateTab = {
                         <label class="block text-sm font-medium text-gray-700 mb-1">Model</label>
                         <select id="create-model-selector" class="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
                             <option value="flux-pro-1.1">Flux Pro 1.1</option>
-                            <option value="flux-pro">Flux Pro</option>
                             <option value="flux-dev">Flux Dev</option>
                             <!-- <option value="flux-pro-1.1-ultra">Flux Ultra</option> -->
                             <option value="flux-kontext-pro" selected>Flux Kontext Pro</option>
                             <!-- <option value="flux-kontext-max">Flux Kontext Max</option> -->
-                            <option value="kontext-realearth">Kontext Real Earth</option>
                             <option value="nano-banana">Nano Banana</option>
                             <option value="seedream-4">Seedream</option>
                         </select>
@@ -726,8 +724,7 @@ const CreateTab = {
         this.elements.promptUpsamplingGroup.classList.remove('hidden');
         break;
 
-      // Add cases for Replicate models
-      case 'kontext-realearth':
+      // Add cases for Replicate models (text-to-image capable)
       case 'nano-banana':
       case 'seedream-4':
         showDimensions = false;
@@ -1048,14 +1045,7 @@ const CreateTab = {
       return;
     }
 
-    // Check if image prompt is provided (required for Replicate models)
-    if (!this.imagePromptData) {
-      FluxUI.showNotification(
-        'Source image is required for this model',
-        'error'
-      );
-      return;
-    }
+    // Source image is optional in create tab - will use null if not provided
 
     // Show loading state
     this.toggleLoading(true);
@@ -1076,14 +1066,8 @@ const CreateTab = {
       const prompt =
         this.elements.promptInput.value.trim() || modelConfig.prompt;
 
-      // Convert base64 to data URL format if needed
-      const inputImageSrc = this.imagePromptData.startsWith('data:')
-        ? this.imagePromptData
-        : `data:image/jpeg;base64,${this.imagePromptData}`;
-
       const result = await generateReplicateImage({
         prompt: prompt,
-        input_image: inputImageSrc,
         guidance: 2.5,
         num_inference_steps: 30,
         model_version: modelConfig.version,
@@ -1260,22 +1244,8 @@ const CreateTab = {
         break;
       }
 
-      // Add cases for Replicate models
-      case 'kontext-realearth':
-      case 'nano-banana':
-      case 'seedream-4': {
-        // Replicate models require input_image (check if it exists)
-        if (!this.imagePromptData) {
-          FluxUI.showNotification(
-            'Source image is required for this model',
-            'error'
-          );
-          return null;
-        }
-        // For Replicate models, we'll handle params differently in generateImage
-        // Just ensure the basic structure is here
-        break;
-      }
+      // Note: Replicate models (nano-banana, seedream-4) don't use this function
+      // They're handled entirely in generateReplicateImage() instead
     }
 
     return params;

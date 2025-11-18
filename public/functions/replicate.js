@@ -181,10 +181,10 @@ const generateReplicateImage = functions
         throw new functions.https.HttpsError('resource-exhausted', 'No generation tokens available');
     }
 
-    // Validate required data
-    if (!prompt || !input_image) {
-      console.error(`Missing required data - prompt: ${!!prompt}, input_image: ${!!input_image}`);
-      throw new functions.https.HttpsError('invalid-argument', 'Missing required prompt or input_image.');
+    // Validate required data - prompt is always required, input_image is optional
+    if (!prompt) {
+      console.error(`Missing required prompt`);
+      throw new functions.https.HttpsError('invalid-argument', 'Missing required prompt.');
     }
 
 
@@ -202,7 +202,7 @@ const generateReplicateImage = functions
       let imageUrl = input_image;
 
       // If input_image is a base64 data URL, upload it to Firebase Storage first
-      if (input_image.startsWith('data:image/')) {
+      if (input_image && input_image.startsWith('data:image/')) {
         
         // Extract the base64 data and mime type
         const matches = input_image.match(/^data:([^;]+);base64,(.+)$/);
@@ -251,25 +251,31 @@ const generateReplicateImage = functions
 
       // Check if this is the Nano Banana model (uses different input format)
       if (modelVersionToUse === 'f0a9d34b12ad1c1cd76269a844b218ff4e64e128ddaba93e15891f47368958a0') {
-        // Nano Banana uses image_input as an array
-        modelInput.image_input = [imageUrl];
-        modelInput.aspect_ratio = 'match_input_image';
+        // Nano Banana uses image_input as an array (optional)
+        if (imageUrl) {
+          modelInput.image_input = [imageUrl];
+          modelInput.aspect_ratio = 'match_input_image';
+        }
         modelInput.output_format = 'jpg';
         // Remove parameters that Nano Banana doesn't use
         delete modelInput.guidance;
         delete modelInput.num_inference_steps;
       } else if (modelVersionToUse === '254faac883c3a411e95cc95d0fb02274a81e388aaa4394b3ce5b7d2a9f7a6569') {
-        // Seedream uses image_input as an array and different parameters
-        modelInput.image_input = [imageUrl];
+        // Seedream uses image_input as an array and different parameters (optional)
+        if (imageUrl) {
+          modelInput.image_input = [imageUrl];
+          modelInput.aspect_ratio = 'match_input_image';
+        }
         modelInput.size = '2K';
-        modelInput.aspect_ratio = 'match_input_image';
         modelInput.output_format = 'jpg';
         // Remove parameters that Seedream doesn't use
         delete modelInput.guidance;
         delete modelInput.num_inference_steps;
       } else {
-        // Kontext models use input_image as string
-        modelInput.input_image = imageUrl;
+        // Kontext models use input_image as string (optional)
+        if (imageUrl) {
+          modelInput.input_image = imageUrl;
+        }
         modelInput.output_format = 'jpg';
       }
 
@@ -284,7 +290,7 @@ const generateReplicateImage = functions
 
 
       // Clean up temp file if we created one
-      if (input_image.startsWith('data:image/') && imageUrl !== input_image) {
+      if (input_image && input_image.startsWith('data:image/') && imageUrl !== input_image) {
         try {
           const bucket = admin.storage().bucket();
           const filename = imageUrl.split('/').pop();
