@@ -62,11 +62,19 @@ class GeneratorTabBase {
     this.renderProgress = 0;
     this.timerInterval = null;
 
-    // Estimated generation times for Replicate models (in seconds)
+    // Estimated generation times (in seconds)
     this.estimatedTimes = {
+      // Replicate models
       'kontext-realearth': 25,
       'nano-banana': 20,
-      'seedream-4': 25
+      'seedream-4': 25,
+      // BFL models
+      'flux-pro-1.1': 25,
+      'flux-pro': 25,
+      'flux-pro-1.1-ultra': 25,
+      'flux-dev': 25,
+      'flux-kontext-pro': 25,
+      'flux-kontext-max': 25
     };
 
     // DOM Elements
@@ -1206,6 +1214,7 @@ class GeneratorTabBase {
 
       this.currentParams = params;
       this.toggleLoading(true);
+      this.startTimer(model);
 
       FluxAPI.makeRequest(model, params)
         .then((response) => {
@@ -1222,6 +1231,7 @@ class GeneratorTabBase {
             error.message || 'Failed to generate image',
             'error'
           );
+          this.stopTimer();
           this.toggleLoading(false);
         });
     }
@@ -1464,11 +1474,11 @@ class GeneratorTabBase {
    * Poll for task result
    */
   pollForResult(taskId, apiEndpoint) {
-    this.elements.loadingText.textContent = 'Generating your image...';
     FluxAPI.pollForResult(
       taskId,
       (progress) => {
-        this.elements.loadingText.textContent = `Generating your image... ${Math.round(progress * 100)}%`;
+        // Progress callback - BFL API returns null for progress now
+        // Timer-based progress is used instead via updateTimerDisplay()
       },
       (imageUrl, result) => {
         this.currentImageUrl = imageUrl;
@@ -1487,11 +1497,13 @@ class GeneratorTabBase {
         const proxiedUrl = FluxAPI.getProxiedImageUrl(imageUrl);
         this.displayImage(proxiedUrl);
         this.saveToGallery(proxiedUrl);
+        this.stopTimer();
         this.toggleLoading(false);
         FluxUI.showNotification('Image generated successfully!', 'success');
       },
       (error) => {
         console.error('Error polling for result:', error);
+        this.stopTimer();
         this.toggleLoading(false);
         FluxUI.showNotification(
           `Failed to get result: ${error.message}`,
