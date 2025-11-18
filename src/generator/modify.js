@@ -230,6 +230,7 @@ const ModifyTab = {
     this.elements.promptUpsamplingGroup = document.getElementById(
       'modify-prompt-upsampling-group'
     );
+    this.elements.safetyGroup = document.getElementById('modify-safety-group');
 
     // Advanced options
     this.elements.advancedToggle = document.getElementById(
@@ -423,7 +424,7 @@ const ModifyTab = {
                             </div>
 
                             <!-- Safety Tolerance -->
-                            <div class="mb-3 param-group opacity-50 cursor-not-allowed">
+                            <div class="mb-3 param-group opacity-50 cursor-not-allowed" id="modify-safety-group">
                                 <label class="block text-sm font-medium text-gray-500 mb-1">Safety Tolerance: <span id="modify-safety-value">2</span></label>
                                 <input type="range" id="modify-safety-slider" min="0" max="6" step="1" value="2" class="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-not-allowed pointer-events-none" disabled>
                                 <p class="text-xs text-gray-500 mt-1">Higher values are less strict (0 = most strict, 6 = least strict)</p>
@@ -763,6 +764,7 @@ const ModifyTab = {
     let showRaw = false;
     let showInterval = false;
     let showImagePrompt = true; // New variable for controlling image prompt visibility
+    let showSafetyTolerance = true;
 
     // Show image prompt strength only if there's an image AND it's Ultra model
     const showImageStrength =
@@ -836,6 +838,7 @@ const ModifyTab = {
         showRaw = false;
         showSteps = false;
         showGuidance = false;
+        showSafetyTolerance = false;
         showImagePrompt = true; // Image prompt is required for Replicate models
         // Hide prompt upsampling for Replicate models
         this.elements.promptUpsamplingGroup.classList.add('hidden');
@@ -849,6 +852,7 @@ const ModifyTab = {
     this.elements.guidanceGroup.classList.toggle('hidden', !showGuidance);
     this.elements.rawModeGroup.classList.toggle('hidden', !showRaw);
     this.elements.intervalGroup.classList.toggle('hidden', !showInterval);
+    this.elements.safetyGroup.classList.toggle('hidden', !showSafetyTolerance);
 
     // Control image prompt visibility based on model
     this.elements.imagePromptGroup.classList.toggle('hidden', !showImagePrompt);

@@ -201,6 +201,7 @@ const CreateTab = {
     this.elements.promptUpsamplingGroup = document.getElementById(
       'create-prompt-upsampling-group'
     );
+    this.elements.safetyGroup = document.getElementById('create-safety-group');
 
     // Advanced options
     this.elements.advancedToggle = document.getElementById(
@@ -367,7 +368,7 @@ const CreateTab = {
                             </div>
 
                             <!-- Safety Tolerance -->
-                            <div class="mb-3 param-group opacity-50 cursor-not-allowed">
+                            <div class="mb-3 param-group opacity-50 cursor-not-allowed" id="create-safety-group">
                                 <label class="block text-sm font-medium text-gray-500 mb-1">Safety Tolerance: <span id="create-safety-value">2</span></label>
                                 <input type="range" id="create-safety-slider" min="0" max="6" step="1" value="2" class="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-not-allowed pointer-events-none" disabled>
                                 <p class="text-xs text-gray-500 mt-1">Higher values are less strict (0 = most strict, 6 = least strict)</p>
@@ -669,6 +670,7 @@ const CreateTab = {
     let showGuidance = true;
     let showRaw = false;
     let showInterval = false;
+    let showSafetyTolerance = true;
 
     // Update slider ranges and visibility based on model
     switch (model) {
@@ -732,6 +734,7 @@ const CreateTab = {
         showRaw = false;
         showSteps = false;
         showGuidance = false;
+        showSafetyTolerance = false;
         // Hide prompt upsampling for Replicate models
         this.elements.promptUpsamplingGroup.classList.add('hidden');
         break;
@@ -744,6 +747,7 @@ const CreateTab = {
     this.elements.guidanceGroup.classList.toggle('hidden', !showGuidance);
     this.elements.rawModeGroup.classList.toggle('hidden', !showRaw);
     this.elements.intervalGroup.classList.toggle('hidden', !showInterval);
+    this.elements.safetyGroup.classList.toggle('hidden', !showSafetyTolerance);
     this.elements.promptUpsamplingGroup.classList.remove('hidden');
 
     // Update dimension grid if dimensions are visible for this model
