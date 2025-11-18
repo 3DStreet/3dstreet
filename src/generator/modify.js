@@ -231,6 +231,7 @@ const ModifyTab = {
       'modify-prompt-upsampling-group'
     );
     this.elements.safetyGroup = document.getElementById('modify-safety-group');
+    this.elements.seedGroup = document.getElementById('modify-seed-group');
 
     // Advanced options
     this.elements.advancedToggle = document.getElementById(
@@ -431,7 +432,7 @@ const ModifyTab = {
                             </div>
 
                             <!-- Seed -->
-                            <div class="mb-3 param-group">
+                            <div class="mb-3 param-group" id="modify-seed-group">
                                 <label class="block text-sm font-medium text-gray-700 mb-1">Seed</label>
                                 <div class="flex">
                                     <input type="number" id="modify-seed-input" placeholder="Random" class="w-full px-3 py-2 border border-gray-300 rounded-l-md text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
@@ -441,7 +442,7 @@ const ModifyTab = {
                                 </div>
                                 <!-- Randomize Seed Checkbox -->
                                 <div class="mt-2 flex items-center">
-                                    <input type="checkbox" id="modify-randomize-seed-checkbox" class="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded">
+                                    <input type="checkbox" id="modify-randomize-seed-checkbox" class="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded" checked>
                                     <label for="modify-randomize-seed-checkbox" class="ml-2 block text-sm text-gray-700">Randomize seed before each generation</label>
                                 </div>
                             </div>
@@ -765,6 +766,7 @@ const ModifyTab = {
     let showInterval = false;
     let showImagePrompt = true; // New variable for controlling image prompt visibility
     let showSafetyTolerance = true;
+    let showSeed = true;
 
     // Show image prompt strength only if there's an image AND it's Ultra model
     const showImageStrength =
@@ -839,6 +841,7 @@ const ModifyTab = {
         showSteps = false;
         showGuidance = false;
         showSafetyTolerance = false;
+        showSeed = false; // Replicate models don't respect seed parameter
         showImagePrompt = true; // Image prompt is required for Replicate models
         // Hide prompt upsampling for Replicate models
         this.elements.promptUpsamplingGroup.classList.add('hidden');
@@ -853,6 +856,7 @@ const ModifyTab = {
     this.elements.rawModeGroup.classList.toggle('hidden', !showRaw);
     this.elements.intervalGroup.classList.toggle('hidden', !showInterval);
     this.elements.safetyGroup.classList.toggle('hidden', !showSafetyTolerance);
+    this.elements.seedGroup.classList.toggle('hidden', !showSeed);
 
     // Control image prompt visibility based on model
     this.elements.imagePromptGroup.classList.toggle('hidden', !showImagePrompt);

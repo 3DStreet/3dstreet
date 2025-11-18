@@ -171,7 +171,7 @@ const InpaintTab = {
                                 </div>
                                 <!-- Randomize Seed Checkbox -->
                                 <div class="mt-2 flex items-center">
-                                    <input type="checkbox" id="inpaint-randomize-seed-checkbox" class="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded">
+                                    <input type="checkbox" id="inpaint-randomize-seed-checkbox" class="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded" checked>
                                     <label for="inpaint-randomize-seed-checkbox" class="ml-2 block text-sm text-gray-700">Randomize seed before each generation</label>
                                 </div>
                             </div>

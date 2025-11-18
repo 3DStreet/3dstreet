@@ -529,9 +529,6 @@ const generateReplicateVideo = functions
         modelInput.duration = duration_seconds; // SeeDance accepts 2-12 seconds
         modelInput.resolution = '1080p'; // Use highest quality
         // Note: SeeDance does not support audio control parameters
-        if (data.seed) {
-          modelInput.seed = data.seed;
-        }
       } else if (model_name === 'wan-video/wan-2.2-i2v-fast') {
         // Wan Video model parameters
         modelInput.resolution = '720p'; // 720p or 480p
@@ -543,9 +540,6 @@ const generateReplicateVideo = functions
         modelInput.frames_per_second = 16;
         modelInput.interpolate_output = true;
         // Note: Wan Video does not support audio control parameters
-        if (data.seed) {
-          modelInput.seed = data.seed;
-        }
       } else if (model_name === 'kwaivgi/kling-v2.5-turbo-pro') {
         // Kling model parameters
         modelInput.aspect_ratio = aspect_ratio;

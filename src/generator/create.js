@@ -202,6 +202,7 @@ const CreateTab = {
       'create-prompt-upsampling-group'
     );
     this.elements.safetyGroup = document.getElementById('create-safety-group');
+    this.elements.seedGroup = document.getElementById('create-seed-group');
 
     // Advanced options
     this.elements.advancedToggle = document.getElementById(
@@ -375,7 +376,7 @@ const CreateTab = {
                             </div>
 
                             <!-- Seed -->
-                            <div class="mb-3 param-group">
+                            <div class="mb-3 param-group" id="create-seed-group">
                                 <label class="block text-sm font-medium text-gray-700 mb-1">Seed</label>
                                 <div class="flex">
                                     <input type="number" id="create-seed-input" placeholder="Random" class="w-full px-3 py-2 border border-gray-300 rounded-l-md text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
@@ -385,7 +386,7 @@ const CreateTab = {
                                 </div>
                                 <!-- Randomize Seed Checkbox -->
                                 <div class="mt-2 flex items-center">
-                                    <input type="checkbox" id="create-randomize-seed-checkbox" class="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded">
+                                    <input type="checkbox" id="create-randomize-seed-checkbox" class="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded" checked>
                                     <label for="create-randomize-seed-checkbox" class="ml-2 block text-sm text-gray-700">Randomize seed before each generation</label>
                                 </div>
                             </div>
@@ -671,6 +672,7 @@ const CreateTab = {
     let showRaw = false;
     let showInterval = false;
     let showSafetyTolerance = true;
+    let showSeed = true;
 
     // Update slider ranges and visibility based on model
     switch (model) {
@@ -735,6 +737,7 @@ const CreateTab = {
         showSteps = false;
         showGuidance = false;
         showSafetyTolerance = false;
+        showSeed = false; // Replicate models don't respect seed parameter
         // Hide prompt upsampling for Replicate models
         this.elements.promptUpsamplingGroup.classList.add('hidden');
         break;
@@ -748,6 +751,7 @@ const CreateTab = {
     this.elements.rawModeGroup.classList.toggle('hidden', !showRaw);
     this.elements.intervalGroup.classList.toggle('hidden', !showInterval);
     this.elements.safetyGroup.classList.toggle('hidden', !showSafetyTolerance);
+    this.elements.seedGroup.classList.toggle('hidden', !showSeed);
     this.elements.promptUpsamplingGroup.classList.remove('hidden');
 
     // Update dimension grid if dimensions are visible for this model
