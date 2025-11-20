@@ -536,12 +536,24 @@ function ScreenshotModal() {
 
           // Save screenshot to gallery
           try {
+            // Get image dimensions
+            const img = new Image();
+            img.src = imgElement.src;
+            await new Promise((resolve) => {
+              img.onload = resolve;
+              // If already loaded, resolve immediately
+              if (img.complete) resolve();
+            });
+
             await galleryService.addItem(
               imgElement.src,
               {
                 timestamp: new Date().toISOString(),
                 sceneId: STREET.utils.getCurrentSceneId(),
                 source: 'screenshot',
+                model: 'Editor Snapshot',
+                width: img.width,
+                height: img.height,
                 isPro: isPro
               },
               'screenshot'
