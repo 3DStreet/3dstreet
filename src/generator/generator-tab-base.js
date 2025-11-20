@@ -322,6 +322,7 @@ class GeneratorTabBase {
     this.elements.generateText = document.getElementById(
       getId('generate-text')
     );
+    this.elements.tokenCost = document.getElementById(getId('token-cost'));
 
     // Verify critical elements
     const missingElements = [];
@@ -421,6 +422,7 @@ class GeneratorTabBase {
                                 : ''
                             }
                             <option value="nano-banana">Nano Banana</option>
+                            <option value="nano-banana-pro">Nano Banana Pro</option>
                             <option value="seedream-4">Seedream</option>
                         </select>
                     </div>
@@ -560,7 +562,7 @@ class GeneratorTabBase {
                         <span class="inline-flex items-center rounded" style="background: rgba(0, 0, 0, 0.15); padding: 6px 8px; gap: 2px;">
                             <img src="/ui_assets/token-image.png" alt="Token" class="w-5 h-5" />
                             <span class="text-sm" style="opacity: 0.9; margin-right: 1px;">×</span>
-                            <span class="text-sm font-medium">1</span>
+                            <span id="${getId('token-cost')}" class="text-sm font-medium">1</span>
                         </span>
                     </button>
                 </div>
@@ -813,6 +815,15 @@ class GeneratorTabBase {
 
     const model = this.elements.modelSelector.value;
 
+    // Update token cost display based on selected model
+    const modelConfig = REPLICATE_MODELS[model];
+    if (modelConfig && this.elements.tokenCost) {
+      this.elements.tokenCost.textContent = modelConfig.tokenCost || 1;
+    } else if (this.elements.tokenCost) {
+      // Default to 1 for non-Replicate models
+      this.elements.tokenCost.textContent = 1;
+    }
+
     // Default visibility states
     let showDimensions = true;
     let showAspectRatio = false;
@@ -884,6 +895,7 @@ class GeneratorTabBase {
 
       case 'kontext-realearth':
       case 'nano-banana':
+      case 'nano-banana-pro':
       case 'seedream-4':
         showDimensions = false;
         showAspectRatio = false;
@@ -1229,6 +1241,27 @@ class GeneratorTabBase {
   }
 
   /**
+   * Convert image to JPEG with specified quality
+   */
+  convertToJpeg(dataUrl, quality = 0.9) {
+    return new Promise((resolve, reject) => {
+      const img = new Image();
+      img.onload = () => {
+        const canvas = document.createElement('canvas');
+        canvas.width = img.width;
+        canvas.height = img.height;
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(img, 0, 0);
+        // Convert to JPEG with specified quality (0.9 = 90%)
+        const jpegDataUrl = canvas.toDataURL('image/jpeg', quality);
+        resolve(jpegDataUrl);
+      };
+      img.onerror = reject;
+      img.src = dataUrl;
+    });
+  }
+
+  /**
    * Generate image using Replicate API
    */
   async generateReplicateImage(model) {
@@ -1268,6 +1301,15 @@ class GeneratorTabBase {
         inputImageSrc = this.imagePromptData.startsWith('data:')
           ? this.imagePromptData
           : `data:image/jpeg;base64,${this.imagePromptData}`;
+
+        // Convert to JPEG with 90% quality to reduce upload time
+        if (inputImageSrc.startsWith('data:image/')) {
+          try {
+            inputImageSrc = await this.convertToJpeg(inputImageSrc, 0.9);
+          } catch (error) {
+            console.warn('Failed to convert to JPEG, using original:', error);
+          }
+        }
       }
 
       const result = await generateReplicateImage({
@@ -1446,6 +1488,7 @@ class GeneratorTabBase {
 
       case 'kontext-realearth':
       case 'nano-banana':
+      case 'nano-banana-pro':
       case 'seedream-4': {
         if (!this.imagePromptData) {
           FluxUI.showNotification(

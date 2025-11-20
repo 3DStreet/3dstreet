@@ -50,6 +50,30 @@ function ScreenshotModal() {
   const [showOvertimeWarning, setShowOvertimeWarning] = useState(false); // Show overtime warning for 1x mode
   const [isClosing, setIsClosing] = useState(false); // Track closing animation
 
+  // Get token cost for the selected model
+  const getTokenCost = (modelKey) => {
+    return AI_MODELS[modelKey]?.tokenCost || 1;
+  };
+
+  // Convert image to JPEG with specified quality
+  const convertToJpeg = (dataUrl, quality = 0.9) => {
+    return new Promise((resolve, reject) => {
+      const img = new Image();
+      img.onload = () => {
+        const canvas = document.createElement('canvas');
+        canvas.width = img.width;
+        canvas.height = img.height;
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(img, 0, 0);
+        // Convert to JPEG with specified quality (0.9 = 90%)
+        const jpegDataUrl = canvas.toDataURL('image/jpeg', quality);
+        resolve(jpegDataUrl);
+      };
+      img.onerror = reject;
+      img.src = dataUrl;
+    });
+  };
+
   // Ensure token profile is loaded when modal opens
   useEffect(() => {
     if (currentUser && !tokenProfile) {
@@ -84,17 +108,6 @@ function ScreenshotModal() {
     if (isAnyRendering) {
       const confirmClose = window.confirm(
         'Rendering in progress. Are you sure you want to close? The render will be cancelled.'
-      );
-      if (!confirmClose) {
-        return;
-      }
-    } else if (
-      (aiImageUrl && !showOriginal) ||
-      Object.keys(aiImages).length > 0
-    ) {
-      // Check if there are any unsaved AI renders (1x or 4x)
-      const confirmClose = window.confirm(
-        'You have unsaved AI renders. Are you sure you want to close? The AI renders will be lost.'
       );
       if (!confirmClose) {
         return;
@@ -274,7 +287,17 @@ function ScreenshotModal() {
         }
       }
 
-      const inputImageSrc = screentockImgElement?.src || originalImageUrl;
+      let inputImageSrc = screentockImgElement?.src || originalImageUrl;
+
+      // Convert to JPEG with 90% quality to reduce upload time
+      if (inputImageSrc && inputImageSrc.startsWith('data:image/')) {
+        try {
+          inputImageSrc = await convertToJpeg(inputImageSrc, 0.9);
+        } catch (error) {
+          console.warn('Failed to convert to JPEG, using original:', error);
+        }
+      }
+
       const sceneId = STREET.utils.getCurrentSceneId();
 
       const result = await generateReplicateImage({
@@ -385,10 +408,21 @@ function ScreenshotModal() {
       return;
     }
 
-    // Check if user has enough tokens for 4x render (need 4 tokens)
-    // Pro users also need 4 tokens for 4x render
-    if (!tokenProfile || tokenProfile.genToken < 4) {
-      STREET.notify.errorMessage('You need at least 4 tokens for 4x render');
+    // Filter models to only include those with includeIn4x: true
+    const modelKeys = Object.keys(AI_MODELS).filter(
+      (key) => AI_MODELS[key].includeIn4x !== false
+    );
+
+    // Calculate total token cost for 4x render
+    const totalTokenCost = useMixedModels
+      ? modelKeys.reduce((sum, key) => sum + getTokenCost(key), 0)
+      : getTokenCost(selectedModel) * 4;
+
+    // Check if user has enough tokens for 4x render
+    if (!tokenProfile || tokenProfile.genToken < totalTokenCost) {
+      STREET.notify.errorMessage(
+        `You need at least ${totalTokenCost} tokens for 4x render`
+      );
       // Only prompt checkout for non-pro users
       if (!currentUser?.isPro && !currentUser?.isProTeam) {
         startCheckout('image');
@@ -396,7 +430,6 @@ function ScreenshotModal() {
       return;
     }
 
-    const modelKeys = Object.keys(AI_MODELS);
     const modelsToRender = useMixedModels
       ? modelKeys
       : [selectedModel, selectedModel, selectedModel, selectedModel];
@@ -683,7 +716,10 @@ function ScreenshotModal() {
                   >
                     <span>Generate Render</span>
                     {tokenProfile && (
-                      <TokenDisplayInner count={1} inline={true} />
+                      <TokenDisplayInner
+                        count={getTokenCost(selectedModel)}
+                        inline={true}
+                      />
                     )}
                   </span>
                 )}
@@ -697,14 +733,31 @@ function ScreenshotModal() {
                   Object.values(renderingStates).some((state) => state) ||
                   !currentUser
                 }
-                title="Generate 4 renders simultaneously (uses 4 tokens)"
+                title={`Generate 4 renders simultaneously (uses ${
+                  useMixedModels
+                    ? Object.keys(AI_MODELS)
+                        .filter((key) => AI_MODELS[key].includeIn4x !== false)
+                        .reduce((sum, key) => sum + getTokenCost(key), 0)
+                    : getTokenCost(selectedModel) * 4
+                } tokens)`}
               >
                 <span
                   style={{ display: 'flex', alignItems: 'center', gap: '8px' }}
                 >
                   <span>Generate Renders</span>
                   {tokenProfile && (
-                    <TokenDisplayInner count={4} inline={true} />
+                    <TokenDisplayInner
+                      count={
+                        useMixedModels
+                          ? Object.keys(AI_MODELS)
+                              .filter(
+                                (key) => AI_MODELS[key].includeIn4x !== false
+                              )
+                              .reduce((sum, key) => sum + getTokenCost(key), 0)
+                          : getTokenCost(selectedModel) * 4
+                      }
+                      inline={true}
+                    />
                   )}
                 </span>
               </Button>
@@ -883,7 +936,10 @@ function ScreenshotModal() {
                 // 4x Render Grid - show when renders are in progress or completed
                 <div className={styles.renderGrid}>
                   {Array.from({ length: 4 }, (_, index) => {
-                    const modelKeys = Object.keys(AI_MODELS);
+                    // Filter models to only include those with includeIn4x: true
+                    const modelKeys = Object.keys(AI_MODELS).filter(
+                      (key) => AI_MODELS[key].includeIn4x !== false
+                    );
                     const modelKey = useMixedModels
                       ? index < modelKeys.length
                         ? `${modelKeys[index]}-${index}`

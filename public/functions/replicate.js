@@ -2,7 +2,7 @@ const functions = require('firebase-functions');
 const Replicate = require('replicate');
 const admin = require('firebase-admin');
 const { checkAndRefillImageTokensInternal } = require('./token-management.js');
-const { AI_MODEL_NAMES, DEFAULT_MODEL_VERSION, MODEL_VERSIONS } = require('./replicate-models.js');
+const { AI_MODEL_NAMES, DEFAULT_MODEL_VERSION, MODEL_VERSIONS, REPLICATE_MODELS } = require('./replicate-models.js');
 
 // Helper function to post AI-generated images to Discord
 async function postAIImageToDiscord(userId, imageUrl, prompt, modelVersion, sceneId) {
@@ -151,6 +151,12 @@ const generateReplicateImage = functions
     const userId = context.auth.uid;
     const { prompt, input_image, guidance = 2.5, num_inference_steps = 30, model_version, scene_id } = data;
 
+    // Determine the model version to use and its token cost
+    const modelVersionToUse = model_version || DEFAULT_MODEL_VERSION;
+
+    // Find the model configuration by version to get the token cost
+    const modelConfig = Object.values(REPLICATE_MODELS).find(m => m.version === modelVersionToUse);
+    const tokenCost = modelConfig?.tokenCost || 1; // Default to 1 if not found
 
     let tokenData;
     try {
@@ -169,8 +175,8 @@ const generateReplicateImage = functions
     }
 
 
-    if (!tokenData.genToken || tokenData.genToken <= 0) {
-        throw new functions.https.HttpsError('resource-exhausted', 'No generation tokens available');
+    if (!tokenData.genToken || tokenData.genToken < tokenCost) {
+        throw new functions.https.HttpsError('resource-exhausted', `Not enough generation tokens. This model requires ${tokenCost} token(s), but you have ${tokenData.genToken || 0}.`);
     }
 
     // Validate required data - prompt is always required, input_image is optional
@@ -195,17 +201,17 @@ const generateReplicateImage = functions
 
       // If input_image is a base64 data URL, upload it to Firebase Storage first
       if (input_image && input_image.startsWith('data:image/')) {
-        
+
         // Extract the base64 data and mime type
         const matches = input_image.match(/^data:([^;]+);base64,(.+)$/);
         if (!matches) {
           throw new functions.https.HttpsError('invalid-argument', 'Invalid base64 image format.');
         }
-        
+
         const mimeType = matches[1];
         const base64Data = matches[2];
         const imageBuffer = Buffer.from(base64Data, 'base64');
-        
+
         // Generate a unique filename
         const timestamp = Date.now();
         const filename = `temp-ai-input-${context.auth.uid}-${timestamp}.jpg`;
@@ -229,9 +235,6 @@ const generateReplicateImage = functions
         imageUrl = `https://storage.googleapis.com/${bucket.name}/temp/${filename}`;
               }
 
-      // Use provided model version or default to Kontext Real Earth
-      const modelVersionToUse = model_version || DEFAULT_MODEL_VERSION;
-
 
       // Different models use different input parameter names and formats
       let modelInput = {
@@ -240,15 +243,19 @@ const generateReplicateImage = functions
         num_inference_steps: num_inference_steps
       };
 
-      // Check if this is the Nano Banana model (uses different input format)
-      if (modelVersionToUse === MODEL_VERSIONS.NANO_BANANA) {
-        // Nano Banana uses image_input as an array (optional)
+      // Check if this is the Nano Banana or Nano Banana Pro model (uses different input format)
+      if (modelVersionToUse === MODEL_VERSIONS.NANO_BANANA || modelVersionToUse === MODEL_VERSIONS.NANO_BANANA_PRO) {
+        // Nano Banana models use image_input as an array (optional)
         if (imageUrl) {
           modelInput.image_input = [imageUrl];
           modelInput.aspect_ratio = 'match_input_image';
         }
+        // Nano Banana Pro supports higher resolution
+        if (modelVersionToUse === MODEL_VERSIONS.NANO_BANANA_PRO) {
+          modelInput.resolution = '2K'; // Can be '1K', '2K', or '4K'
+        }
         modelInput.output_format = 'jpg';
-        // Remove parameters that Nano Banana doesn't use
+        // Remove parameters that Nano Banana models don't use
         delete modelInput.guidance;
         delete modelInput.num_inference_steps;
       } else if (modelVersionToUse === MODEL_VERSIONS.SEEDREAM_4) {
@@ -274,7 +281,6 @@ const generateReplicateImage = functions
         version: modelVersionToUse,
         input: modelInput
       });
-
 
       // Wait for the prediction to complete
       const output = await replicate.wait(prediction);
@@ -309,12 +315,12 @@ const generateReplicateImage = functions
         const currentTokens = tokenDoc.data().genToken || 0;
 
         // Check if user has enough tokens (should already be checked, but verify in transaction)
-        if (currentTokens <= 0) {
+        if (currentTokens < tokenCost) {
           throw new functions.https.HttpsError('resource-exhausted', 'Insufficient tokens');
         }
 
         // Calculate new token count (prevent going below 0)
-        const newTokenCount = Math.max(0, currentTokens - 1);
+        const newTokenCount = Math.max(0, currentTokens - tokenCost);
         remainingTokens = newTokenCount;
 
         // Update the token count
