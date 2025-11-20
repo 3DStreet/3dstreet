@@ -6,19 +6,28 @@
 const REPLICATE_MODELS = {
   'kontext-realearth': {
     name: 'Kontext Real Earth',
-    version: '2af4da47bcb7b55a0705b0de9933701f7607531d763ae889241f827a648c1755'
+    version: '2af4da47bcb7b55a0705b0de9933701f7607531d763ae889241f827a648c1755',
+    tokenCost: 1
   },
   'flux-kontext-pro': {
     name: 'Flux Kontext Pro',
-    version: 'aa776ca45ce7f7d185418f700df8ec6ca6cb367bfd88e9cd225666c4c179d1d7'
+    version: 'aa776ca45ce7f7d185418f700df8ec6ca6cb367bfd88e9cd225666c4c179d1d7',
+    tokenCost: 1
   },
   'nano-banana': {
     name: 'Nano Banana',
-    version: 'f0a9d34b12ad1c1cd76269a844b218ff4e64e128ddaba93e15891f47368958a0'
+    version: 'f0a9d34b12ad1c1cd76269a844b218ff4e64e128ddaba93e15891f47368958a0',
+    tokenCost: 1
+  },
+  'nano-banana-pro': {
+    name: 'Nano Banana Pro',
+    version: '99256cc418d9ac41854575e2f1c8846ce2defd0c0fb6ff2d5cbc3c826be75bc8',
+    tokenCost: 4
   },
   'seedream-4': {
     name: 'Seedream v4',
-    version: '254faac883c3a411e95cc95d0fb02274a81e388aaa4394b3ce5b7d2a9f7a6569'
+    version: '254faac883c3a411e95cc95d0fb02274a81e388aaa4394b3ce5b7d2a9f7a6569',
+    tokenCost: 1
   }
 };
 
@@ -42,6 +51,7 @@ const DEFAULT_MODEL_VERSION = REPLICATE_MODELS['kontext-realearth'].version;
 const MODEL_VERSIONS = {
   KONTEXT_REALEARTH: REPLICATE_MODELS['kontext-realearth'].version,
   NANO_BANANA: REPLICATE_MODELS['nano-banana'].version,
+  NANO_BANANA_PRO: REPLICATE_MODELS['nano-banana-pro'].version,
   SEEDREAM_4: REPLICATE_MODELS['seedream-4'].version
 };
 
