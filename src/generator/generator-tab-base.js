@@ -5,11 +5,11 @@
 
 import FluxUI from './main.js';
 import FluxAPI from './api.js';
-import { galleryService } from './mount-gallery.js';
+import { galleryServiceUnified as galleryService } from '@shared/gallery';
 import useImageGenStore from './store.js';
 import ImageUploadUtils from './image-upload-utils.js';
 import { httpsCallable } from 'firebase/functions';
-import { functions } from '@shared/services/firebase.js';
+import { functions, auth } from '@shared/services/firebase.js';
 import { REPLICATE_MODELS } from '@shared/constants/replicateModels.js';
 
 /**
@@ -1752,6 +1752,14 @@ class GeneratorTabBase {
   saveToGallery(imageUrl) {
     if (!galleryService) {
       return;
+    }
+
+    // Initialize gallery service with current user
+    const currentUser = auth.currentUser;
+    if (currentUser && !galleryService.userId) {
+      galleryService.init(currentUser.uid).catch((err) => {
+        console.warn('Failed to initialize gallery V2, using V1:', err);
+      });
     }
 
     fetch(imageUrl)

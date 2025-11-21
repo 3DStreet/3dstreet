@@ -4,6 +4,9 @@
 
 // Services
 export { default as galleryService } from './services/galleryService';
+export { default as galleryServiceV2 } from './services/galleryServiceV2';
+export { default as galleryServiceUnified } from './services/galleryServiceUnified';
+export { default as galleryMigration } from './services/galleryMigration';
 
 // Hooks
 export { default as useGallery } from './hooks/useGallery';

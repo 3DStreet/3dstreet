@@ -3,12 +3,15 @@
  */
 
 import { createRoot } from 'react-dom/client';
-import { Gallery, galleryService } from '@shared/gallery';
+import { Gallery, galleryServiceUnified } from '@shared/gallery';
 import FluxUI from './main.js';
 import ModifyTab from './modify.js';
 import InpaintTab from './inpaint.js';
 import OutpaintTab from './outpaint.js';
 import VideoTab from './video.js';
+
+// Use unified service for backward compatibility
+const galleryService = galleryServiceUnified;
 
 /**
  * Helper to get Data URI from Blob
