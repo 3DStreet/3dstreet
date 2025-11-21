@@ -30,15 +30,18 @@ Real-time sync across devices
 
 ### Firestore Collection Structure
 
-**Path**: `users/{userId}/assets/{assetId}`
+**Collection**: `galleryAssets`
+**Document ID**: `{assetId}` (UUID)
+
+This follows the same pattern as other top-level collections in the codebase (e.g., `tokenProfile/{userId}`, `scenes/{sceneId}`).
 
 **Document Schema**:
 
 ```javascript
 {
   // Identity
-  assetId: "uuid",                    // Generated UUID
-  userId: "user123",                  // Owner
+  assetId: "uuid",                    // Generated UUID (same as document ID)
+  userId: "user123",                  // Owner (relational key for queries)
   type: "video" | "image" | "splat" | "mesh" | "scene",
   category: "ai-render" | "screenshot" | "upload" | "splat-source" | "splat-output",
 
@@ -117,14 +120,16 @@ users/
 
 New Firestore-based service with full CRUD operations:
 
-- `addAsset()` - Upload file to Storage + save metadata to Firestore
-- `getAsset()` - Retrieve single asset
-- `getAssets()` - Query assets with filters
-- `updateAsset()` - Update metadata
-- `deleteAsset()` - Soft delete (or hard delete)
-- `subscribeToAssets()` - Real-time updates
-- `uploadToStorage()` - Upload file with progress
-- `generateThumbnail()` - Auto-generate thumbnails
+- `addAsset()` - Upload file to Storage + save metadata to Firestore (`galleryAssets` collection)
+- `getAsset()` - Retrieve single asset (with ownership verification)
+- `getAssets()` - Query assets with filters (by userId, type, category, etc.)
+- `updateAsset()` - Update metadata (with ownership verification)
+- `deleteAsset()` - Soft delete or hard delete (with ownership verification)
+- `subscribeToAssets()` - Real-time updates via Firestore listener
+- `uploadToStorage()` - Upload file with progress tracking
+- `generateThumbnail()` - Auto-generate thumbnails for images
+
+**Collection**: Uses top-level `galleryAssets` collection with `userId` as a field for relational queries.
 
 ### 2. `galleryServiceUnified.js`
 
@@ -147,14 +152,27 @@ Migration utility to move existing IndexedDB data to Firestore:
 ### Firestore Rules
 
 ```javascript
-// Gallery Assets Collection
-match /users/{userId}/assets/{assetId} {
-  allow read: if request.auth != null && request.auth.uid == userId;
-  allow create: if request.auth != null && request.auth.uid == userId;
-  allow update: if request.auth != null && request.auth.uid == userId;
-  allow delete: if request.auth != null && request.auth.uid == userId;
+// Gallery Assets Collection (top-level)
+match /galleryAssets/{assetId} {
+  // Users can only read their own assets
+  allow read: if request.auth != null
+    && request.auth.uid == resource.data.userId;
+
+  // Users can create their own assets
+  allow create: if request.auth != null
+    && request.auth.uid == request.resource.data.userId;
+
+  // Users can update their own assets
+  allow update: if request.auth != null
+    && request.auth.uid == resource.data.userId;
+
+  // Users can delete their own assets
+  allow delete: if request.auth != null
+    && request.auth.uid == resource.data.userId;
 }
 ```
+
+**Note**: This pattern matches the existing codebase style where collections like `tokenProfile/{userId}` use the top-level approach with `userId` as a field rather than subcollections.
 
 ### Firebase Storage Rules
 
@@ -297,10 +315,23 @@ await galleryService.addImage(dataUrl, metadata, 'ai-render');
 - [ ] Migration from V1 to V2 works
 - [ ] Fallback to V1 works when not authenticated
 
+## Architecture Notes
+
+### Why Top-Level Collection?
+
+The `galleryAssets` collection uses a **top-level collection** pattern (not subcollections) to match the existing codebase architecture:
+
+- **Consistent with existing patterns**: Collections like `tokenProfile/{userId}` and `scenes/{sceneId}` use top-level collections
+- **Simpler queries**: Direct queries like `where('userId', '==', userId)` without nested paths
+- **Better indexing**: Composite indexes work better with top-level collections
+- **No phantom documents**: Avoids creating empty parent documents
+
+**Alternative considered**: `users/{userId}/assets/{assetId}` (subcollections) was the initial approach but was refactored to match the codebase's existing patterns.
+
 ## File Locations
 
-- `src/shared/gallery/services/galleryServiceV2.js` - New Firestore service
-- `src/shared/gallery/services/galleryServiceUnified.js` - Unified API
+- `src/shared/gallery/services/galleryServiceV2.js` - New Firestore service (top-level `galleryAssets` collection)
+- `src/shared/gallery/services/galleryServiceUnified.js` - Unified API (backward compatible)
 - `src/shared/gallery/services/galleryMigration.js` - Migration utility
 - `src/shared/gallery/services/galleryService.js` - Legacy IndexedDB service
 - `public/firestore.rules` - Security rules (Firestore + Storage)

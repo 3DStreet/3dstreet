@@ -220,7 +220,7 @@ class GalleryServiceV2 {
       };
 
       // Save to Firestore
-      const assetRef = doc(db, 'users', userId, 'assets', assetId);
+      const assetRef = doc(db, 'galleryAssets', assetId);
       await setDoc(assetRef, assetDoc);
 
       // Cache locally
@@ -426,11 +426,15 @@ class GalleryServiceV2 {
    */
   async getAsset(assetId, userId) {
     try {
-      const assetRef = doc(db, 'users', userId, 'assets', assetId);
+      const assetRef = doc(db, 'galleryAssets', assetId);
       const assetSnap = await getDoc(assetRef);
 
       if (assetSnap.exists()) {
-        return { id: assetSnap.id, ...assetSnap.data() };
+        const asset = assetSnap.data();
+        // Verify the asset belongs to the user
+        if (asset.userId === userId) {
+          return { id: assetSnap.id, ...asset };
+        }
       }
 
       return null;
@@ -455,8 +459,8 @@ class GalleryServiceV2 {
     orderByField = 'createdAt'
   ) {
     try {
-      const assetsRef = collection(db, 'users', userId, 'assets');
-      let q = query(assetsRef);
+      const assetsRef = collection(db, 'galleryAssets');
+      let q = query(assetsRef, where('userId', '==', userId));
 
       // Apply filters
       if (filters.type) {
@@ -498,7 +502,14 @@ class GalleryServiceV2 {
    */
   async updateAsset(assetId, userId, updates) {
     try {
-      const assetRef = doc(db, 'users', userId, 'assets', assetId);
+      const assetRef = doc(db, 'galleryAssets', assetId);
+
+      // Verify ownership before updating
+      const assetSnap = await getDoc(assetRef);
+      if (!assetSnap.exists() || assetSnap.data().userId !== userId) {
+        throw new Error('Asset not found or access denied');
+      }
+
       await updateDoc(assetRef, {
         ...updates,
         updatedAt: serverTimestamp()
@@ -522,21 +533,23 @@ class GalleryServiceV2 {
    */
   async deleteAsset(assetId, userId, hard = false) {
     try {
-      const assetRef = doc(db, 'users', userId, 'assets', assetId);
+      const assetRef = doc(db, 'galleryAssets', assetId);
+
+      // Get asset to verify ownership
+      const assetSnap = await getDoc(assetRef);
+      if (!assetSnap.exists() || assetSnap.data().userId !== userId) {
+        throw new Error('Asset not found or access denied');
+      }
 
       if (hard) {
-        // Get asset to find storage paths
-        const assetSnap = await getDoc(assetRef);
-        if (assetSnap.exists()) {
-          const asset = assetSnap.data();
+        const asset = assetSnap.data();
 
-          // Delete from storage
-          if (asset.storagePath) {
-            await deleteObject(ref(storage, asset.storagePath));
-          }
-          if (asset.thumbnailPath) {
-            await deleteObject(ref(storage, asset.thumbnailPath));
-          }
+        // Delete from storage
+        if (asset.storagePath) {
+          await deleteObject(ref(storage, asset.storagePath));
+        }
+        if (asset.thumbnailPath) {
+          await deleteObject(ref(storage, asset.thumbnailPath));
         }
 
         // Delete Firestore document
@@ -571,8 +584,8 @@ class GalleryServiceV2 {
    */
   subscribeToAssets(userId, filters = {}, callback) {
     try {
-      const assetsRef = collection(db, 'users', userId, 'assets');
-      let q = query(assetsRef);
+      const assetsRef = collection(db, 'galleryAssets');
+      let q = query(assetsRef, where('userId', '==', userId));
 
       // Apply filters
       if (filters.type) {
