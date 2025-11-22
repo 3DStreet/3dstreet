@@ -87,11 +87,13 @@ const AIModelSelector = ({
           <span className={styles.modelName}>
             {selectedModelConfig?.name || 'Select Model'}
           </span>
-          {selectedModelConfig?.tokenCost > 1 && (
-            <span className={styles.tokenCost}>
-              x{selectedModelConfig.tokenCost}
-            </span>
-          )}
+          {mode === 'image' &&
+            selectedModelConfig?.tokenCost &&
+            selectedModelConfig.tokenCost >= 1 && (
+              <span className={styles.tokenCost}>
+                x{selectedModelConfig.tokenCost}
+              </span>
+            )}
         </div>
         <AwesomeIconSimple
           icon={faChevronDown}
@@ -130,11 +132,13 @@ const AIModelSelector = ({
                         />
                       )}
                       <span className={styles.modelName}>{model.name}</span>
-                      {model.tokenCost > 1 && (
-                        <span className={styles.tokenCost}>
-                          x{model.tokenCost}
-                        </span>
-                      )}
+                      {mode === 'image' &&
+                        model.tokenCost &&
+                        model.tokenCost >= 1 && (
+                          <span className={styles.tokenCost}>
+                            x{model.tokenCost}
+                          </span>
+                        )}
                     </div>
                   </DropdownMenu.Item>
                 ))}
