@@ -1,0 +1,153 @@
+import { useState } from 'react';
+import * as DropdownMenu from '@radix-ui/react-dropdown-menu';
+import { faChevronDown } from '@fortawesome/free-solid-svg-icons';
+import styles from './AIModelSelector.module.scss';
+import {
+  REPLICATE_MODELS,
+  MODEL_GROUPS,
+  getGroupedModels,
+  VIDEO_MODELS,
+  VIDEO_MODEL_GROUPS,
+  getGroupedVideoModels
+} from '@shared/constants/replicateModels.js';
+
+// Simple inline icon renderer
+const AwesomeIconSimple = ({ icon, size = 12, className = '' }) => {
+  const width = icon.icon[0];
+  const height = icon.icon[1];
+  const vectorData = icon.icon[4];
+
+  return (
+    <svg
+      role="img"
+      className={className}
+      xmlns="http://www.w3.org/2000/svg"
+      viewBox={`0 0 ${width} ${height}`}
+      width={size}
+      height={size}
+      style={{ display: 'inline-block' }}
+    >
+      <path fill="currentColor" d={vectorData} />
+    </svg>
+  );
+};
+
+const AIModelSelector = ({
+  value,
+  onChange,
+  disabled = false,
+  mode = 'image' // 'image' or 'video'
+}) => {
+  const [isOpen, setIsOpen] = useState(false);
+
+  // Select appropriate models and groups based on mode
+  const models = mode === 'video' ? VIDEO_MODELS : REPLICATE_MODELS;
+  const modelGroups = mode === 'video' ? VIDEO_MODEL_GROUPS : MODEL_GROUPS;
+  const groupedModels =
+    mode === 'video' ? getGroupedVideoModels() : getGroupedModels();
+
+  const selectedModelConfig = models[value];
+
+  // Sort groups by their order property
+  const sortedGroups = Object.entries(modelGroups).sort(
+    ([, a], [, b]) => a.order - b.order
+  );
+
+  // If selected model is hidden (group: null), auto-select first available model
+  const isSelectedModelHidden =
+    selectedModelConfig && selectedModelConfig.group === null;
+  if (isSelectedModelHidden && !disabled) {
+    const firstAvailableModel = sortedGroups
+      .map(([groupKey]) => groupedModels[groupKey])
+      .find((models) => models && models.length > 0)?.[0];
+    if (firstAvailableModel) {
+      setTimeout(() => onChange(firstAvailableModel.id), 0);
+    }
+  }
+
+  const handleSelect = (modelId) => {
+    onChange(modelId);
+    setIsOpen(false);
+  };
+
+  return (
+    <DropdownMenu.Root open={isOpen} onOpenChange={setIsOpen}>
+      <DropdownMenu.Trigger
+        className={`${styles.trigger} ${disabled ? styles.disabled : ''}`}
+        disabled={disabled}
+      >
+        <div className={styles.selectedModel}>
+          {selectedModelConfig?.logo && (
+            <img
+              src={selectedModelConfig.logo}
+              alt=""
+              className={styles.modelLogo}
+            />
+          )}
+          <span className={styles.modelName}>
+            {selectedModelConfig?.name || 'Select Model'}
+          </span>
+          {selectedModelConfig?.tokenCost > 1 && (
+            <span className={styles.tokenCost}>
+              x{selectedModelConfig.tokenCost}
+            </span>
+          )}
+        </div>
+        <AwesomeIconSimple
+          icon={faChevronDown}
+          size={12}
+          className={styles.arrow}
+        />
+      </DropdownMenu.Trigger>
+
+      <DropdownMenu.Portal>
+        <DropdownMenu.Content
+          className={styles.content}
+          align="start"
+          sideOffset={5}
+        >
+          {sortedGroups.map(([groupKey, groupConfig]) => {
+            const models = groupedModels[groupKey];
+            if (!models || models.length === 0) return null;
+
+            return (
+              <div key={groupKey} className={styles.group}>
+                <DropdownMenu.Label className={styles.groupLabel}>
+                  {groupConfig.label}
+                </DropdownMenu.Label>
+                {models.map((model) => (
+                  <DropdownMenu.Item
+                    key={model.id}
+                    className={`${styles.item} ${value === model.id ? styles.selected : ''}`}
+                    onSelect={() => handleSelect(model.id)}
+                  >
+                    <div className={styles.itemContent}>
+                      {model.logo && (
+                        <img
+                          src={model.logo}
+                          alt=""
+                          className={styles.modelLogo}
+                        />
+                      )}
+                      <span className={styles.modelName}>{model.name}</span>
+                      {model.tokenCost > 1 && (
+                        <span className={styles.tokenCost}>
+                          x{model.tokenCost}
+                        </span>
+                      )}
+                    </div>
+                  </DropdownMenu.Item>
+                ))}
+                {groupKey !== sortedGroups[sortedGroups.length - 1][0] && (
+                  <DropdownMenu.Separator className={styles.separator} />
+                )}
+              </div>
+            );
+          })}
+        </DropdownMenu.Content>
+      </DropdownMenu.Portal>
+    </DropdownMenu.Root>
+  );
+};
+
+export default AIModelSelector;
