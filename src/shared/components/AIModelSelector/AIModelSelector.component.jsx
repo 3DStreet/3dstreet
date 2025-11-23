@@ -54,18 +54,6 @@ const AIModelSelector = ({
     ([, a], [, b]) => a.order - b.order
   );
 
-  // If selected model is hidden (group: null), auto-select first available model
-  const isSelectedModelHidden =
-    selectedModelConfig && selectedModelConfig.group === null;
-  if (isSelectedModelHidden && !disabled) {
-    const firstAvailableModel = sortedGroups
-      .map(([groupKey]) => groupedModels[groupKey])
-      .find((models) => models && models.length > 0)?.[0];
-    if (firstAvailableModel) {
-      setTimeout(() => onChange(firstAvailableModel.id), 0);
-    }
-  }
-
   const handleSelect = (modelId) => {
     onChange(modelId);
     setIsOpen(false);
