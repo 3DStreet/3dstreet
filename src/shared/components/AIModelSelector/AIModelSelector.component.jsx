@@ -10,6 +10,7 @@ import {
   VIDEO_MODEL_GROUPS,
   getGroupedVideoModels
 } from '@shared/constants/replicateModels.js';
+import { TokenDisplayBase } from '@shared/auth/components';
 
 // Simple inline icon renderer
 const AwesomeIconSimple = ({ icon, size = 12, className = '' }) => {
@@ -90,9 +91,11 @@ const AIModelSelector = ({
           {mode === 'image' &&
             selectedModelConfig?.tokenCost &&
             selectedModelConfig.tokenCost >= 1 && (
-              <span className={styles.tokenCost}>
-                x{selectedModelConfig.tokenCost}
-              </span>
+              <TokenDisplayBase
+                count={selectedModelConfig.tokenCost}
+                inline={true}
+                className={styles.tokenCostBadge}
+              />
             )}
         </div>
         <AwesomeIconSimple
@@ -135,9 +138,11 @@ const AIModelSelector = ({
                       {mode === 'image' &&
                         model.tokenCost &&
                         model.tokenCost >= 1 && (
-                          <span className={styles.tokenCost}>
-                            x{model.tokenCost}
-                          </span>
+                          <TokenDisplayBase
+                            count={model.tokenCost}
+                            inline={true}
+                            className={styles.tokenCostBadge}
+                          />
                         )}
                     </div>
                   </DropdownMenu.Item>
