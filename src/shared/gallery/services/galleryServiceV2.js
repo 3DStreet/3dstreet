@@ -23,7 +23,6 @@ import {
   orderBy,
   limit as firestoreLimit,
   onSnapshot,
-  Timestamp,
   serverTimestamp
 } from 'firebase/firestore';
 import {
@@ -112,7 +111,13 @@ class GalleryServiceV2 {
    * @param {string} userId - User ID
    * @returns {Promise<string>} - Returns the asset ID
    */
-  async addAsset(file, metadata = {}, type = 'image', category = 'ai-render', userId) {
+  async addAsset(
+    file,
+    metadata = {},
+    type = 'image',
+    category = 'ai-render',
+    userId
+  ) {
     if (!userId) {
       throw new Error('User ID is required to add assets');
     }
@@ -163,7 +168,10 @@ class GalleryServiceV2 {
             category,
             `${assetId}-thumb.jpg`
           );
-          thumbnailUrl = await this.uploadToStorage(thumbnailBlob, thumbnailPath);
+          thumbnailUrl = await this.uploadToStorage(
+            thumbnailBlob,
+            thumbnailPath
+          );
         } catch (error) {
           console.warn('Failed to generate thumbnail:', error);
         }
