@@ -82,6 +82,7 @@ const AIModelSelector = ({
               <TokenDisplayBase
                 count={selectedModelConfig.tokenCost}
                 inline={true}
+                compact={true}
                 className={styles.tokenCostBadge}
               />
             )}
@@ -129,6 +130,7 @@ const AIModelSelector = ({
                           <TokenDisplayBase
                             count={model.tokenCost}
                             inline={true}
+                            compact={true}
                             className={styles.tokenCostBadge}
                           />
                         )}

@@ -138,25 +138,10 @@
   background-color: rgba(255, 255, 255, 0.1) !important;
   border-radius: 0.25rem !important;
   flex-shrink: 0;
+  color: #9ca3af;
 
   .selected & {
     background-color: rgba(119, 77, 238, 0.3) !important;
-  }
-
-  // Override token icon size for compact display (80% of normal size)
-  img {
-    width: 0.8rem !important;
-    height: 0.8rem !important;
-  }
-
-  // Override token count color
-  span {
-    font-size: 0.75rem;
-    font-weight: 600;
-    color: #9ca3af;
-  }
-
-  .selected & span {
     color: #e0d4ff;
   }
 }

@@ -618,7 +618,6 @@ function ScreenshotModal() {
                     isGeneratingAI ||
                     Object.values(renderingStates).some((state) => state)
                   }
-                  showImagePromptUI={false}
                 />
               </div>
             )}
@@ -646,7 +645,6 @@ function ScreenshotModal() {
                     disabled={Object.values(renderingStates).some(
                       (state) => state
                     )}
-                    showImagePromptUI={false}
                   />
                 )}
               </div>

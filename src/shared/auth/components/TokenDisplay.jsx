@@ -15,6 +15,7 @@ export const TokenDisplayBase = ({
   showLabel = false,
   useContainer = false,
   inline = false,
+  compact = false,
   tokenType = 'genToken',
   label = null,
   iconSrc = null,
@@ -36,6 +37,7 @@ export const TokenDisplayBase = ({
   const displayClassName = [
     styles.tokenDisplay,
     inline && styles.inline,
+    compact && styles.compact,
     className
   ]
     .filter(Boolean)
@@ -64,6 +66,7 @@ export const TokenDisplayInner = ({
   showLabel = false,
   useContainer = false,
   inline = false,
+  compact = false,
   tokenType = 'genToken',
   label = null,
   count = null,
@@ -91,6 +94,7 @@ export const TokenDisplayInner = ({
       showLabel={showLabel}
       useContainer={useContainer}
       inline={inline}
+      compact={compact}
       tokenType={tokenType}
       label={label}
       iconSrc={iconSrc}
