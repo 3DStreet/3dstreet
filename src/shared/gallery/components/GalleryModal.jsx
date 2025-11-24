@@ -171,13 +171,16 @@ const GalleryModal = ({
             {isVideo ? (
               <video
                 ref={videoRef}
-                src={item.objectURL}
+                src={item.fullImageURL || item.objectURL}
                 controls
                 autoPlay
                 playsInline
               />
             ) : (
-              <img src={item.objectURL} alt="Generated image" />
+              <img
+                src={item.fullImageURL || item.objectURL}
+                alt="Generated image"
+              />
             )}
           </div>
 

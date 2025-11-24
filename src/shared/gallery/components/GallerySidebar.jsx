@@ -28,7 +28,12 @@ const GallerySidebar = ({
     setPageSize,
     removeItem,
     clearGallery,
-    downloadItem
+    downloadItem,
+    // Migration
+    needsMigration,
+    isMigrating,
+    migrationProgress,
+    runMigration
   } = useGallery();
 
   const [isCollapsed, setIsCollapsed] = useState(true);
@@ -214,7 +219,7 @@ const GallerySidebar = ({
                       maxWidth: '200px'
                     }}
                   >
-                    Gallery saved to local storage only. No cloud backup.
+                    Gallery synced to cloud. Available on all your devices.
                     <Tooltip.Arrow style={{ fill: '#2d2d2d' }} />
                   </Tooltip.Content>
                 </Tooltip.Portal>
@@ -232,6 +237,110 @@ const GallerySidebar = ({
             }}
           >
             Loading gallery...
+          </div>
+        ) : needsMigration ? (
+          <div
+            style={{
+              padding: '2rem',
+              textAlign: 'center',
+              color: '#6b7280'
+            }}
+          >
+            <div style={{ marginBottom: '1rem', fontSize: '14px' }}>
+              <p style={{ marginBottom: '0.5rem', fontWeight: '500' }}>
+                Gallery Migration Required
+              </p>
+              <p style={{ fontSize: '12px', lineHeight: '1.5' }}>
+                Your gallery needs to be migrated to the new cloud-based system.
+                This is a one-time process that will upload your images to
+                secure cloud storage.
+              </p>
+            </div>
+            {isMigrating ? (
+              <div>
+                <div
+                  style={{
+                    marginBottom: '0.5rem',
+                    fontSize: '12px',
+                    fontWeight: '500'
+                  }}
+                >
+                  Migrating... {migrationProgress.toFixed(0)}%
+                </div>
+                <div
+                  style={{
+                    width: '100%',
+                    height: '8px',
+                    backgroundColor: '#e5e7eb',
+                    borderRadius: '4px',
+                    overflow: 'hidden'
+                  }}
+                >
+                  <div
+                    style={{
+                      width: `${migrationProgress}%`,
+                      height: '100%',
+                      backgroundColor: '#3b82f6',
+                      transition: 'width 0.3s ease'
+                    }}
+                  />
+                </div>
+              </div>
+            ) : (
+              <button
+                onClick={() => {
+                  runMigration()
+                    .then((status) => {
+                      if (onNotification) {
+                        // Check if migration had failures
+                        if (status.failed > 0) {
+                          // Some or all assets failed
+                          if (status.migrated === 0) {
+                            // Complete failure
+                            onNotification(
+                              `Migration failed: All ${status.total} images could not be uploaded. Please check your permissions and try again.`,
+                              'error'
+                            );
+                          } else {
+                            // Partial failure
+                            onNotification(
+                              `Migration partially complete: ${status.migrated} of ${status.total} images uploaded. ${status.failed} failed.`,
+                              'warning'
+                            );
+                          }
+                        } else {
+                          // Complete success
+                          onNotification(
+                            `Migration complete! ${status.migrated} images uploaded to cloud.`,
+                            'success'
+                          );
+                        }
+                      }
+                    })
+                    .catch((error) => {
+                      console.error('Migration failed:', error);
+                      if (onNotification) {
+                        onNotification(
+                          'Migration failed. Please try again.',
+                          'error'
+                        );
+                      }
+                    });
+                }}
+                style={{
+                  padding: '0.5rem 1rem',
+                  backgroundColor: '#3b82f6',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: '6px',
+                  cursor: 'pointer',
+                  fontSize: '14px',
+                  fontWeight: '500'
+                }}
+              >
+                Migrate Gallery
+              </button>
+            )}
           </div>
         ) : (
           <GalleryGrid

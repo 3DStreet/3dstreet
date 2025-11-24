@@ -30,7 +30,7 @@ const GalleryItem = ({ item, onItemClick, onDelete, onDownload }) => {
       {item.type === 'video' ? (
         <video src={item.objectURL} muted playsInline />
       ) : (
-        <img src={item.objectURL} alt="Generated image" />
+        <img src={item.objectURL} alt="Generated image" loading="lazy" />
       )}
 
       {/* Overlay for buttons */}

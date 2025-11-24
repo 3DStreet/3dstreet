@@ -6,6 +6,7 @@
 import galleryService from '../services/galleryService.js';
 import galleryServiceV2 from '../services/galleryServiceV2.js';
 import galleryMigration from '../services/galleryMigration.js';
+import updateCacheHeaders from './updateCacheHeaders.js';
 
 /**
  * Check V1 data in IndexedDB
@@ -174,21 +175,31 @@ export async function fullDebugReport(userId) {
 
 /**
  * Trigger migration manually
+ * @param {string} userId - User ID
+ * @param {object} options - Migration options
+ * @param {boolean} options.keepV1Data - Keep V1 data for repeated testing
  */
-export async function migrateNow(userId) {
+export async function migrateNow(userId, options = {}) {
   if (!userId) {
     console.error('❌ Cannot migrate: No user ID provided');
     return;
   }
 
   console.log(`🚀 Starting migration for user ${userId}...`);
+  if (options.keepV1Data) {
+    console.log('⚠️ Testing mode: V1 data will be preserved');
+  }
 
   try {
-    const status = await galleryMigration.migrateAll(userId, (progress) => {
-      console.log(
-        `📊 Progress: ${progress.current}/${progress.total} (${progress.percentage.toFixed(1)}%)`
-      );
-    });
+    const status = await galleryMigration.migrateAll(
+      userId,
+      (progress) => {
+        console.log(
+          `📊 Progress: ${progress.current}/${progress.total} (${progress.percentage.toFixed(1)}%)`
+        );
+      },
+      options
+    );
 
     console.log('\n✅ Migration complete!');
     console.log(`Migrated: ${status.migrated}`);
@@ -212,6 +223,21 @@ export async function migrateNow(userId) {
   }
 }
 
+/**
+ * Reset migration flag (for testing repeated migrations)
+ */
+export function resetMigrationFlag(userId) {
+  if (!userId) {
+    console.error('❌ No user ID provided');
+    return;
+  }
+
+  const flagKey = galleryMigration.getMigrationFlagKey(userId);
+  localStorage.removeItem(flagKey);
+  console.log(`✅ Migration flag cleared for user ${userId}`);
+  console.log('Reload the page to see migration prompt again');
+}
+
 // Make functions available globally for console use
 if (typeof window !== 'undefined') {
   window.debugGallery = {
@@ -220,13 +246,22 @@ if (typeof window !== 'undefined') {
     checkMigrationStatus,
     checkV2Cache,
     fullDebugReport,
-    migrateNow
+    migrateNow,
+    resetMigrationFlag,
+    updateCacheHeaders
   };
 
   console.log('🔧 Gallery debug tools loaded. Available commands:');
   console.log('  - debugGallery.fullDebugReport(userId)');
   console.log('  - debugGallery.checkV1Data()');
   console.log('  - debugGallery.migrateNow(userId)');
+  console.log(
+    '  - debugGallery.migrateNow(userId, {keepV1Data: true}) // Testing mode'
+  );
+  console.log('  - debugGallery.resetMigrationFlag(userId)');
+  console.log(
+    '  - debugGallery.updateCacheHeaders(userId) // Fix cache headers on existing files'
+  );
 }
 
 export default {
@@ -235,5 +270,7 @@ export default {
   checkMigrationStatus,
   checkV2Cache,
   fullDebugReport,
-  migrateNow
+  migrateNow,
+  resetMigrationFlag,
+  updateCacheHeaders
 };

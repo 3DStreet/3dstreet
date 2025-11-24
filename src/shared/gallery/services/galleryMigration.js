@@ -8,6 +8,29 @@
 import galleryService from './galleryService.js';
 import galleryServiceV2 from './galleryServiceV2.js';
 
+/**
+ * Remove undefined values from object (Firestore doesn't accept undefined)
+ * @param {object} obj - Object to clean
+ * @returns {object} - Cleaned object
+ */
+function removeUndefined(obj) {
+  if (obj === null || typeof obj !== 'object') {
+    return obj;
+  }
+
+  if (Array.isArray(obj)) {
+    return obj.map((item) => removeUndefined(item));
+  }
+
+  const cleaned = {};
+  for (const [key, value] of Object.entries(obj)) {
+    if (value !== undefined) {
+      cleaned[key] = removeUndefined(value);
+    }
+  }
+  return cleaned;
+}
+
 class GalleryMigration {
   constructor() {
     this.migrationStatus = {
@@ -83,9 +106,11 @@ class GalleryMigration {
    * This is a one-way, one-time migration per user
    * @param {string} userId - User ID
    * @param {Function} onProgress - Progress callback
+   * @param {object} options - Migration options
+   * @param {boolean} options.keepV1Data - Keep V1 database after migration (for testing)
    * @returns {Promise<object>} - Migration status
    */
-  async migrateAll(userId, onProgress = null) {
+  async migrateAll(userId, onProgress = null, options = {}) {
     if (!userId) {
       throw new Error('User ID is required for migration');
     }
@@ -157,10 +182,15 @@ class GalleryMigration {
         // Mark user as migrated
         this.markAsMigrated(userId);
 
-        // Delete V1 database
-        await this.deleteV1Database();
-
-        console.log('V1 database deleted, migration complete');
+        // Delete V1 database (unless keepV1Data flag is set for testing)
+        if (!options.keepV1Data) {
+          await this.deleteV1Database();
+          console.log('V1 database deleted, migration complete');
+        } else {
+          console.warn(
+            '⚠️ TESTING MODE: V1 database preserved for repeated testing'
+          );
+        }
       } else {
         console.warn('Migration failed for all assets, V1 database retained');
       }
@@ -180,13 +210,16 @@ class GalleryMigration {
    */
   async migrateAsset(asset, userId) {
     // Extract metadata from old asset
-    const metadata = {
+    const rawMetadata = {
       ...asset.metadata,
       originalFilename: asset.id, // Use old ID as filename reference
       migrated: true,
       migratedAt: new Date().toISOString(),
       oldAssetId: asset.id
     };
+
+    // Clean metadata to remove undefined values (Firestore doesn't accept undefined)
+    const metadata = removeUndefined(rawMetadata);
 
     // Determine type and category
     const type = asset.type === 'video' ? 'video' : 'image';

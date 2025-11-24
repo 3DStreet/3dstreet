@@ -65,10 +65,13 @@ class GalleryServiceV2 {
       this.db = await this.openCacheDB();
       console.log('Gallery Service V2 initialized (metadata-only cache)');
 
-      // Warm Service Worker cache in background (don't await)
-      this.warmServiceWorkerCache(50).catch((error) => {
-        console.warn('Failed to warm Service Worker cache on init:', error);
-      });
+      // NOTE: Service Worker cache warming disabled due to CORS requirements
+      // To re-enable, configure CORS on Firebase Storage first:
+      // gsutil cors set public/storage-cors.json gs://dev-3dstreet.appspot.com
+      //
+      // this.warmServiceWorkerCache(50).catch((error) => {
+      //   console.warn('Failed to warm Service Worker cache on init:', error);
+      // });
     } catch (error) {
       console.error('Failed to initialize gallery service:', error);
       throw error;
@@ -303,7 +306,14 @@ class GalleryServiceV2 {
    */
   async uploadToStorage(blob, storagePath, onProgress = null) {
     const storageRef = ref(storage, storagePath);
-    const uploadTask = uploadBytesResumable(storageRef, blob);
+
+    // Set metadata with cache control for browser caching
+    const metadata = {
+      cacheControl: 'public, max-age=31536000', // 1 year cache
+      contentType: blob.type
+    };
+
+    const uploadTask = uploadBytesResumable(storageRef, blob, metadata);
 
     return new Promise((resolve, reject) => {
       uploadTask.on(

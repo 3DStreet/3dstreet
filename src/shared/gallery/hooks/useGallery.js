@@ -66,7 +66,8 @@ const useGallery = () => {
         return {
           id: asset.assetId,
           type: asset.category,
-          objectURL: asset.thumbnailUrl || asset.storageUrl,
+          objectURL: asset.thumbnailUrl || asset.storageUrl, // Thumbnail for grid
+          fullImageURL: asset.storageUrl, // Full image for modal
           storageUrl: asset.storageUrl,
           thumbnailUrl: asset.thumbnailUrl,
           metadata: {
@@ -247,7 +248,7 @@ const useGallery = () => {
    */
   const downloadItem = useCallback((item) => {
     const link = document.createElement('a');
-    link.href = item.objectURL;
+    link.href = item.fullImageURL || item.storageUrl || item.objectURL;
 
     // Create filename
     const isVideo = item.type === 'video';
@@ -315,6 +316,12 @@ const useGallery = () => {
       await reloadItems();
 
       setNeedsMigration(false);
+
+      // Emit success event
+      galleryServiceV2.events.dispatchEvent(
+        new CustomEvent('migrationComplete', { detail: { status } })
+      );
+
       return status;
     } catch (error) {
       console.error('Migration failed:', error);

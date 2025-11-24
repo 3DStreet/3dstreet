@@ -183,6 +183,11 @@ async function pruneCache(targetBytes = 10 * 1024 * 1024) { // Default: try to f
  * Add response to cache with quota handling
  */
 async function cacheResponse(request, response) {
+  // Cache API only supports GET requests
+  if (request.method !== 'GET') {
+    return;
+  }
+
   try {
     const cache = await caches.open(CACHE_NAME);
 
@@ -283,7 +288,13 @@ self.addEventListener('activate', (event) => {
 /**
  * Service Worker Fetch Event
  * Cache-first strategy for Firebase Storage URLs
+ *
+ * NOTE: Disabled due to CORS requirements. Firebase Storage requires CORS
+ * configuration to allow service workers to cache responses.
+ * To re-enable, configure CORS first:
+ * gsutil cors set public/storage-cors.json gs://dev-3dstreet.appspot.com
  */
+/*
 self.addEventListener('fetch', (event) => {
   const { request } = event;
 
@@ -328,6 +339,7 @@ self.addEventListener('fetch', (event) => {
     })
   );
 });
+*/
 
 /**
  * Service Worker Message Event
