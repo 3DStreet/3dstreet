@@ -3,7 +3,6 @@
  */
 
 import { useState, useEffect, useCallback } from 'react';
-import { useAuthContext } from '@shared/contexts';
 import galleryServiceUnified from '../services/galleryServiceUnified.js';
 
 /**
@@ -11,7 +10,9 @@ import galleryServiceUnified from '../services/galleryServiceUnified.js';
  * @returns {Object} Gallery state and methods
  */
 const useGallery = () => {
-  const { currentUser } = useAuthContext();
+  // Use window.authState from mount-auth.js instead of useAuthContext
+  // to avoid creating redundant AuthProvider instances
+  const [currentUser, setCurrentUser] = useState(window.authState?.currentUser);
   const [items, setItems] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [page, setPage] = useState(1);
@@ -19,6 +20,19 @@ const useGallery = () => {
 
   const totalPages = Math.max(1, Math.ceil(items.length / pageSize));
   const userId = currentUser?.uid || null;
+
+  // Listen for auth state changes from mount-auth.js
+  useEffect(() => {
+    const handleAuthChange = (event) => {
+      setCurrentUser(event.detail.user);
+    };
+
+    window.addEventListener('authStateChanged', handleAuthChange);
+
+    return () => {
+      window.removeEventListener('authStateChanged', handleAuthChange);
+    };
+  }, []);
 
   /**
    * Reload items from database
