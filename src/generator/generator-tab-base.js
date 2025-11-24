@@ -1751,6 +1751,8 @@ class GeneratorTabBase {
    */
   async saveToGallery(imageUrl) {
     if (!galleryService) {
+      console.error('Gallery service not available');
+      FluxUI.showNotification('Failed to save to gallery', 'error');
       return;
     }
 
@@ -1760,7 +1762,11 @@ class GeneratorTabBase {
       try {
         await galleryService.init(currentUser.uid);
       } catch (err) {
-        console.warn('Failed to initialize gallery V2, using V1:', err);
+        console.warn(
+          'Failed to initialize gallery V2, falling back to V1:',
+          err
+        );
+        // V1 will be used automatically by the unified service
         FluxUI.showNotification(
           'Cloud gallery sync unavailable, using local storage',
           'warning'
@@ -1768,6 +1774,7 @@ class GeneratorTabBase {
       }
     }
 
+    // Proceed with saving even if V2 init failed (V1 fallback will be used)
     fetch(imageUrl)
       .then((response) => response.blob())
       .then(
