@@ -159,10 +159,11 @@ class GalleryServiceV2 {
 
       // Generate thumbnail if it's an image
       let thumbnailUrl = null;
+      let thumbnailPath = null;
       if (type === 'image') {
         try {
           const thumbnailBlob = await this.generateThumbnail(blob);
-          const thumbnailPath = this.getStoragePath(
+          thumbnailPath = this.getStoragePath(
             userId,
             type,
             category,
@@ -195,8 +196,8 @@ class GalleryServiceV2 {
         storagePath,
         storageUrl: downloadURL,
         ...(thumbnailUrl && {
-          thumbnailPath: thumbnailUrl.path,
-          thumbnailUrl: thumbnailUrl.url
+          thumbnailPath: thumbnailPath,
+          thumbnailUrl: thumbnailUrl
         }),
 
         // File Metadata
