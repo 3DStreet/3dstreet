@@ -39,9 +39,8 @@ class GalleryServiceUnified {
         // Check if migration is needed (only once per session)
         if (!this.migrationChecked) {
           this.migrationChecked = true;
-          const needsMigration = await galleryMigration.isMigrationNeeded(
-            userId
-          );
+          const needsMigration =
+            await galleryMigration.isMigrationNeeded(userId);
 
           if (needsMigration) {
             console.log(
@@ -121,16 +120,31 @@ class GalleryServiceUnified {
         const assets = await galleryServiceV2.getAssets(this.userId, {}, 200);
 
         // Convert to V1 format for backward compatibility
-        return assets.map((asset) => ({
-          id: asset.assetId,
-          type: asset.category,
-          imageData: null, // Will be loaded on demand
-          objectURL: asset.thumbnailUrl || asset.storageUrl,
-          metadata: {
-            ...asset.generationMetadata,
-            timestamp: asset.createdAt?.toDate?.()?.toISOString() || asset.createdAt
+        return assets.map((asset) => {
+          // Handle Firestore Timestamp objects
+          let timestamp = asset.createdAt;
+          if (timestamp?.toMillis) {
+            // Firestore Timestamp object
+            timestamp = new Date(timestamp.toMillis()).toISOString();
+          } else if (timestamp?.toDate) {
+            // Legacy Firestore Timestamp
+            timestamp = timestamp.toDate().toISOString();
+          } else if (typeof timestamp !== 'string') {
+            // Fallback to current time if not already a string
+            timestamp = new Date().toISOString();
           }
-        }));
+
+          return {
+            id: asset.assetId,
+            type: asset.category,
+            imageData: null, // Will be loaded on demand
+            objectURL: asset.thumbnailUrl || asset.storageUrl,
+            metadata: {
+              ...asset.generationMetadata,
+              timestamp
+            }
+          };
+        });
       }
 
       // Otherwise, use V1
