@@ -1,9 +1,11 @@
 /**
  * useGallery Hook - React hook for managing gallery state
+ * Uses V2 (Firestore + Firebase Storage) exclusively
  */
 
 import { useState, useEffect, useCallback } from 'react';
-import galleryServiceUnified from '../services/galleryServiceUnified.js';
+import galleryServiceV2 from '../services/galleryServiceV2.js';
+import galleryMigration from '../services/galleryMigration.js';
 
 /**
  * Custom hook for gallery state management
@@ -17,6 +19,9 @@ const useGallery = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(12);
+  const [needsMigration, setNeedsMigration] = useState(false);
+  const [isMigrating, setIsMigrating] = useState(false);
+  const [migrationProgress, setMigrationProgress] = useState(0);
 
   const totalPages = Math.max(1, Math.ceil(items.length / pageSize));
   const userId = currentUser?.uid || null;
@@ -35,27 +40,77 @@ const useGallery = () => {
   }, []);
 
   /**
-   * Reload items from database
+   * Reload items from Firestore
    */
   const reloadItems = useCallback(async () => {
+    if (!userId) {
+      setItems([]);
+      return;
+    }
+
     try {
-      const loadedItems = await galleryServiceUnified.loadFromDB();
-      setItems(loadedItems);
+      const assets = await galleryServiceV2.getAssets(userId, {}, 200);
+
+      // Convert to display format
+      const displayItems = assets.map((asset) => {
+        // Handle Firestore Timestamp objects
+        let timestamp = asset.createdAt;
+        if (timestamp?.toMillis) {
+          timestamp = new Date(timestamp.toMillis()).toISOString();
+        } else if (timestamp?.toDate) {
+          timestamp = timestamp.toDate().toISOString();
+        } else if (typeof timestamp !== 'string') {
+          timestamp = new Date().toISOString();
+        }
+
+        return {
+          id: asset.assetId,
+          type: asset.category,
+          objectURL: asset.thumbnailUrl || asset.storageUrl,
+          storageUrl: asset.storageUrl,
+          thumbnailUrl: asset.thumbnailUrl,
+          metadata: {
+            ...asset.generationMetadata,
+            timestamp
+          }
+        };
+      });
+
+      setItems(displayItems);
     } catch (error) {
       console.error('Failed to reload gallery items:', error);
+      setItems([]);
     }
-  }, []);
+  }, [userId]);
 
   /**
-   * Initialize the gallery
+   * Initialize the gallery (V2 only)
    */
   useEffect(() => {
     const initGallery = async () => {
+      if (!userId) {
+        setIsLoading(false);
+        return;
+      }
+
       try {
         setIsLoading(true);
-        await galleryServiceUnified.init(userId);
-        const loadedItems = await galleryServiceUnified.loadFromDB();
-        setItems(loadedItems);
+
+        // Initialize V2 service
+        await galleryServiceV2.init();
+
+        // Check if migration is needed
+        const migrationNeeded =
+          await galleryMigration.isMigrationNeeded(userId);
+        setNeedsMigration(migrationNeeded);
+
+        if (migrationNeeded) {
+          console.log('V1→V2 migration needed for user');
+          // UI can show migration prompt
+        }
+
+        // Load items from Firestore
+        await reloadItems();
       } catch (error) {
         console.error('Failed to initialize gallery:', error);
       } finally {
@@ -65,75 +120,81 @@ const useGallery = () => {
 
     initGallery();
 
-    // Listen for external item additions (e.g., from vanilla JS)
+    // Listen for external item additions
     const handleItemAdded = () => {
       reloadItems();
     };
 
-    galleryServiceUnified.events.addEventListener('itemAdded', handleItemAdded);
+    const handleAssetAdded = () => {
+      reloadItems();
+    };
 
-    // Cleanup: remove event listener when component unmounts
-    // Note: Object URL cleanup is handled by the service layer when items are removed
+    galleryServiceV2.events.addEventListener('itemAdded', handleItemAdded);
+    galleryServiceV2.events.addEventListener('assetAdded', handleAssetAdded);
+
     return () => {
-      galleryServiceUnified.events.removeEventListener(
-        'itemAdded',
-        handleItemAdded
+      galleryServiceV2.events.removeEventListener('itemAdded', handleItemAdded);
+      galleryServiceV2.events.removeEventListener(
+        'assetAdded',
+        handleAssetAdded
       );
     };
   }, [reloadItems, userId]);
 
   /**
-   * Add a new item to the gallery
+   * Add a new item to the gallery (V2)
    * @param {string} imageDataUri - Data URI of the image
    * @param {object} metadata - Image metadata
-   * @param {string} type - Image type ('screenshot' | 'ai-render')
-   * @returns {Promise<string>} - Returns the new item ID
+   * @param {string} type - Image type ('screenshot' | 'ai-render' | 'video')
+   * @returns {Promise<string>} - Returns the new asset ID
    */
   const addItem = useCallback(
     async (imageDataUri, metadata, type = 'ai-render') => {
+      if (!userId) {
+        throw new Error('User must be logged in to add items to gallery');
+      }
+
       try {
-        const itemId = await galleryServiceUnified.addImage(
+        // Map type to V2 structure
+        const assetType = type === 'video' ? 'video' : 'image';
+        const category = type === 'video' ? 'ai-render' : type;
+
+        const assetId = await galleryServiceV2.addAsset(
           imageDataUri,
           metadata,
-          type
+          assetType,
+          category,
+          userId
         );
 
-        // Reload items from DB to get the new item with object URL
-        const loadedItems = await galleryServiceUnified.loadFromDB();
-        setItems(loadedItems);
-
-        // Enforce max images limit (if this method exists on unified service)
-        if (typeof galleryServiceUnified.enforceMaxImagesLimit === 'function') {
-          await galleryServiceUnified.enforceMaxImagesLimit(loadedItems);
-        }
+        // Reload items from Firestore
+        await reloadItems();
 
         // Jump to first page to show the new item
         setPage(1);
 
-        return itemId;
+        return assetId;
       } catch (error) {
         console.error('Failed to add item to gallery:', error);
         throw error;
       }
     },
-    []
+    [userId, reloadItems]
   );
 
   /**
-   * Remove an item from the gallery
-   * @param {string} id - Item ID to remove
+   * Remove an item from the gallery (V2 - soft delete)
+   * @param {string} id - Asset ID to remove
    * @returns {Promise<boolean>}
    */
   const removeItem = useCallback(
     async (id) => {
-      try {
-        // Find and revoke object URL
-        const itemToRemove = items.find((item) => item.id === id);
-        if (itemToRemove?.objectURL) {
-          URL.revokeObjectURL(itemToRemove.objectURL);
-        }
+      if (!userId) {
+        throw new Error('User must be logged in to remove items');
+      }
 
-        await galleryServiceUnified.removeImage(id);
+      try {
+        await galleryServiceV2.deleteAsset(id, userId, false); // Soft delete
 
         // Update local state
         const updatedItems = items.filter((item) => item.id !== id);
@@ -154,30 +215,31 @@ const useGallery = () => {
         throw error;
       }
     },
-    [items, page, pageSize]
+    [userId, items, page, pageSize]
   );
 
   /**
-   * Clear all items from the gallery
+   * Clear all items from the gallery (V2)
    * @returns {Promise<void>}
    */
   const clearGallery = useCallback(async () => {
-    try {
-      // Revoke all object URLs
-      items.forEach((item) => {
-        if (item.objectURL) {
-          URL.revokeObjectURL(item.objectURL);
-        }
-      });
+    if (!userId) {
+      throw new Error('User must be logged in to clear gallery');
+    }
 
-      await galleryServiceUnified.clearGallery();
+    try {
+      const assets = await galleryServiceV2.getAssets(userId, {}, 500);
+      for (const asset of assets) {
+        await galleryServiceV2.deleteAsset(asset.assetId, userId, true); // Hard delete
+      }
+
       setItems([]);
       setPage(1);
     } catch (error) {
       console.error('Failed to clear gallery:', error);
       throw error;
     }
-  }, [items]);
+  }, [userId]);
 
   /**
    * Download an item
@@ -230,6 +292,39 @@ const useGallery = () => {
     [page, pageSize, items.length]
   );
 
+  /**
+   * Run V1 to V2 migration
+   * @returns {Promise<object>}
+   */
+  const runMigration = useCallback(async () => {
+    if (!userId) {
+      throw new Error('User must be logged in to migrate');
+    }
+
+    try {
+      setIsMigrating(true);
+      setMigrationProgress(0);
+
+      const status = await galleryMigration.migrateAll(userId, (progress) => {
+        setMigrationProgress(progress.percentage);
+      });
+
+      console.log('Migration complete:', status);
+
+      // Reload items after migration
+      await reloadItems();
+
+      setNeedsMigration(false);
+      return status;
+    } catch (error) {
+      console.error('Migration failed:', error);
+      throw error;
+    } finally {
+      setIsMigrating(false);
+      setMigrationProgress(0);
+    }
+  }, [userId, reloadItems]);
+
   return {
     items,
     isLoading,
@@ -241,7 +336,12 @@ const useGallery = () => {
     addItem,
     removeItem,
     clearGallery,
-    downloadItem
+    downloadItem,
+    // Migration
+    needsMigration,
+    isMigrating,
+    migrationProgress,
+    runMigration
   };
 };
 

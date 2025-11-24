@@ -49,9 +49,9 @@ class GalleryServiceV2 {
   constructor() {
     this.events = galleryEvents;
     this.unsubscribe = null; // Real-time listener
-    this.db = null; // IndexedDB instance for caching
+    this.db = null; // IndexedDB instance for caching (metadata only, no blobs)
     this.dbName = '3DStreetGalleryCache';
-    this.dbVersion = 2;
+    this.dbVersion = 3; // Increment version for schema change
     this.storeName = 'assets';
   }
 
@@ -63,7 +63,12 @@ class GalleryServiceV2 {
     try {
       // Initialize IndexedDB cache
       this.db = await this.openCacheDB();
-      console.log('Gallery Service V2 initialized');
+      console.log('Gallery Service V2 initialized (metadata-only cache)');
+
+      // Warm Service Worker cache in background (don't await)
+      this.warmServiceWorkerCache(50).catch((error) => {
+        console.warn('Failed to warm Service Worker cache on init:', error);
+      });
     } catch (error) {
       console.error('Failed to initialize gallery service:', error);
       throw error;
@@ -97,6 +102,42 @@ class GalleryServiceV2 {
           store.createIndex('type', 'type', { unique: false });
           store.createIndex('category', 'category', { unique: false });
           store.createIndex('createdAt', 'createdAt', { unique: false });
+          // LRU tracking indexes
+          store.createIndex('lastAccessedAt', 'lastAccessedAt', {
+            unique: false
+          });
+          store.createIndex('accessCount', 'accessCount', { unique: false });
+        } else if (event.oldVersion < 3) {
+          // Upgrade from v2 to v3: Add LRU indexes and remove blob data
+          const transaction = event.target.transaction;
+          const store = transaction.objectStore(this.storeName);
+
+          // Add new indexes if they don't exist
+          if (!store.indexNames.contains('lastAccessedAt')) {
+            store.createIndex('lastAccessedAt', 'lastAccessedAt', {
+              unique: false
+            });
+          }
+          if (!store.indexNames.contains('accessCount')) {
+            store.createIndex('accessCount', 'accessCount', { unique: false });
+          }
+
+          // Clear blob data from existing records
+          const cursorRequest = store.openCursor();
+          cursorRequest.onsuccess = (e) => {
+            const cursor = e.target.result;
+            if (cursor) {
+              const record = cursor.value;
+              // Remove imageData blob if it exists
+              if (record.imageData) {
+                delete record.imageData;
+                record.lastAccessedAt = Date.now();
+                record.accessCount = 0;
+                cursor.update(record);
+              }
+              cursor.continue();
+            }
+          };
         }
       };
     });
@@ -231,11 +272,13 @@ class GalleryServiceV2 {
       const assetRef = doc(db, 'users', userId, 'assets', assetId);
       await setDoc(assetRef, assetDoc);
 
-      // Cache locally
+      // Cache metadata locally (no blob storage)
       await this.cacheAsset(assetId, {
         ...assetDoc,
-        imageData: blob,
-        createdAt: new Date().toISOString()
+        // DO NOT store blob - Service Worker will cache images
+        createdAt: new Date().toISOString(),
+        lastAccessedAt: Date.now(),
+        accessCount: 0
       });
 
       // Emit event
@@ -639,18 +682,31 @@ class GalleryServiceV2 {
   }
 
   /**
-   * Cache asset locally in IndexedDB
+   * Cache asset metadata locally in IndexedDB (metadata only, no blobs)
    * @param {string} assetId - Asset ID
-   * @param {object} assetData - Asset data
+   * @param {object} assetData - Asset metadata (URLs, not blobs)
    * @returns {Promise<void>}
    */
   async cacheAsset(assetId, assetData) {
     if (!this.db) return;
 
+    // Ensure no blob data is stored
+    const metadataOnly = { ...assetData };
+    delete metadataOnly.imageData; // Remove any blob data
+    delete metadataOnly.imageDataBlob;
+
+    // Add LRU tracking if not present
+    if (!metadataOnly.lastAccessedAt) {
+      metadataOnly.lastAccessedAt = Date.now();
+    }
+    if (!metadataOnly.accessCount) {
+      metadataOnly.accessCount = 0;
+    }
+
     return new Promise((resolve, reject) => {
       const transaction = this.db.transaction(this.storeName, 'readwrite');
       const store = transaction.objectStore(this.storeName);
-      const request = store.put(assetData);
+      const request = store.put(metadataOnly);
 
       request.onerror = () => reject(request.error);
       request.onsuccess = () => resolve();
@@ -722,6 +778,147 @@ class GalleryServiceV2 {
     } catch (error) {
       console.error('Error converting data URI to Blob:', error);
       return null;
+    }
+  }
+
+  /**
+   * Track asset access for LRU (updates lastAccessedAt and accessCount)
+   * @param {string} assetId - Asset ID
+   * @returns {Promise<void>}
+   */
+  async trackAccess(assetId) {
+    if (!this.db) return;
+
+    return new Promise((resolve, reject) => {
+      const transaction = this.db.transaction(this.storeName, 'readwrite');
+      const store = transaction.objectStore(this.storeName);
+      const getRequest = store.get(assetId);
+
+      getRequest.onsuccess = () => {
+        const asset = getRequest.result;
+        if (asset) {
+          asset.lastAccessedAt = Date.now();
+          asset.accessCount = (asset.accessCount || 0) + 1;
+
+          const updateRequest = store.put(asset);
+          updateRequest.onsuccess = () => resolve();
+          updateRequest.onerror = () => reject(updateRequest.error);
+        } else {
+          resolve(); // Asset not in cache
+        }
+      };
+
+      getRequest.onerror = () => reject(getRequest.error);
+    });
+  }
+
+  /**
+   * Warm Service Worker cache with recent thumbnails
+   * @param {number} count - Number of recent thumbnails to cache
+   * @returns {Promise<void>}
+   */
+  async warmServiceWorkerCache(count = 50) {
+    try {
+      // Get cached assets (already sorted by most recent)
+      const cachedAssets = await this.getCachedAssets();
+
+      // Extract thumbnail URLs (limit to count)
+      const thumbnailUrls = cachedAssets
+        .slice(0, count)
+        .map((asset) => asset.thumbnailUrl || asset.storageUrl)
+        .filter(Boolean);
+
+      if (thumbnailUrls.length === 0) {
+        console.log('No thumbnails to warm cache');
+        return;
+      }
+
+      // Send message to Service Worker
+      if ('serviceWorker' in navigator && navigator.serviceWorker.controller) {
+        const messageChannel = new MessageChannel();
+
+        return new Promise((resolve, reject) => {
+          messageChannel.port1.onmessage = (event) => {
+            if (event.data.success) {
+              console.log(
+                `Service Worker cache warmed with ${thumbnailUrls.length} thumbnails`
+              );
+              resolve();
+            } else {
+              reject(new Error(event.data.error));
+            }
+          };
+
+          navigator.serviceWorker.controller.postMessage(
+            {
+              type: 'WARM_CACHE',
+              data: { urls: thumbnailUrls }
+            },
+            [messageChannel.port2]
+          );
+        });
+      } else {
+        console.warn('Service Worker not available for cache warming');
+      }
+    } catch (error) {
+      console.error('Failed to warm Service Worker cache:', error);
+    }
+  }
+
+  /**
+   * Get Service Worker cache status
+   * @returns {Promise<object>}
+   */
+  async getServiceWorkerCacheStatus() {
+    if ('serviceWorker' in navigator && navigator.serviceWorker.controller) {
+      const messageChannel = new MessageChannel();
+
+      return new Promise((resolve, reject) => {
+        messageChannel.port1.onmessage = (event) => {
+          if (event.data.success) {
+            resolve(event.data.status);
+          } else {
+            reject(new Error(event.data.error));
+          }
+        };
+
+        navigator.serviceWorker.controller.postMessage(
+          {
+            type: 'GET_CACHE_STATUS'
+          },
+          [messageChannel.port2]
+        );
+      });
+    }
+
+    return null;
+  }
+
+  /**
+   * Clear Service Worker cache
+   * @returns {Promise<void>}
+   */
+  async clearServiceWorkerCache() {
+    if ('serviceWorker' in navigator && navigator.serviceWorker.controller) {
+      const messageChannel = new MessageChannel();
+
+      return new Promise((resolve, reject) => {
+        messageChannel.port1.onmessage = (event) => {
+          if (event.data.success) {
+            console.log('Service Worker cache cleared');
+            resolve();
+          } else {
+            reject(new Error(event.data.error));
+          }
+        };
+
+        navigator.serviceWorker.controller.postMessage(
+          {
+            type: 'CLEAR_CACHE'
+          },
+          [messageChannel.port2]
+        );
+      });
     }
   }
 

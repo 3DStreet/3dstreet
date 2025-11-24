@@ -1,7 +1,8 @@
 /**
  * Gallery Migration Utility
  *
- * Migrates existing IndexedDB gallery assets to Firestore + Firebase Storage
+ * One-way migration from V1 (IndexedDB) to V2 (Firestore + Firebase Storage)
+ * Migration is per-user and happens only once
  */
 
 import galleryService from './galleryService.js';
@@ -18,25 +19,59 @@ class GalleryMigration {
   }
 
   /**
-   * Check if migration is needed
+   * Get migration flag key for user
+   * @param {string} userId - User ID
+   * @returns {string}
+   */
+  getMigrationFlagKey(userId) {
+    return `gallery_migrated_${userId}`;
+  }
+
+  /**
+   * Check if user has already migrated
+   * @param {string} userId - User ID
+   * @returns {boolean}
+   */
+  hasMigrated(userId) {
+    if (!userId) return false;
+    const flagKey = this.getMigrationFlagKey(userId);
+    return localStorage.getItem(flagKey) === 'true';
+  }
+
+  /**
+   * Mark user as migrated
+   * @param {string} userId - User ID
+   */
+  markAsMigrated(userId) {
+    if (!userId) return;
+    const flagKey = this.getMigrationFlagKey(userId);
+    localStorage.setItem(flagKey, 'true');
+    console.log(`User ${userId} marked as migrated`);
+  }
+
+  /**
+   * Check if migration is needed for this user
    * @param {string} userId - User ID
    * @returns {Promise<boolean>}
    */
   async isMigrationNeeded(userId) {
     try {
+      if (!userId) {
+        return false;
+      }
+
+      // Check if already migrated
+      if (this.hasMigrated(userId)) {
+        console.log(`User ${userId} already migrated, skipping`);
+        return false;
+      }
+
       // Check if there are any assets in old IndexedDB
       await galleryService.init();
       const oldAssets = await galleryService.loadFromDB();
 
-      if (oldAssets.length === 0) {
-        return false;
-      }
-
-      // Check if any assets already exist in Firestore
-      const newAssets = await galleryServiceV2.getAssets(userId, {}, 1);
-
-      // If old assets exist and no new assets, migration is needed
-      return oldAssets.length > 0 && newAssets.length === 0;
+      // Migration needed if V1 has data and user hasn't migrated yet
+      return oldAssets.length > 0;
     } catch (error) {
       console.error('Error checking migration status:', error);
       return false;
@@ -44,7 +79,8 @@ class GalleryMigration {
   }
 
   /**
-   * Migrate all assets from IndexedDB to Firestore
+   * Migrate all assets from V1 (IndexedDB) to V2 (Firestore)
+   * This is a one-way, one-time migration per user
    * @param {string} userId - User ID
    * @param {Function} onProgress - Progress callback
    * @returns {Promise<object>} - Migration status
@@ -54,8 +90,23 @@ class GalleryMigration {
       throw new Error('User ID is required for migration');
     }
 
+    // Check if already migrated
+    if (this.hasMigrated(userId)) {
+      console.log(`User ${userId} already migrated, skipping`);
+      return {
+        total: 0,
+        migrated: 0,
+        failed: 0,
+        errors: [],
+        alreadyMigrated: true
+      };
+    }
+
+    // Reset migration status
+    this.reset();
+
     try {
-      console.log('Starting gallery migration...');
+      console.log(`Starting one-way V1→V2 migration for user ${userId}...`);
 
       // Initialize services
       await galleryService.init();
@@ -66,11 +117,13 @@ class GalleryMigration {
       this.migrationStatus.total = oldAssets.length;
 
       if (oldAssets.length === 0) {
-        console.log('No assets to migrate');
+        console.log('No V1 assets to migrate');
+        // Mark as migrated even if no assets
+        this.markAsMigrated(userId);
         return this.migrationStatus;
       }
 
-      console.log(`Found ${oldAssets.length} assets to migrate`);
+      console.log(`Found ${oldAssets.length} V1 assets to migrate to V2`);
 
       // Migrate each asset
       for (let i = 0; i < oldAssets.length; i++) {
@@ -98,6 +151,20 @@ class GalleryMigration {
       }
 
       console.log('Migration completed:', this.migrationStatus);
+
+      // If migration was successful (all or most migrated), mark as complete and delete V1 DB
+      if (this.migrationStatus.migrated > 0) {
+        // Mark user as migrated
+        this.markAsMigrated(userId);
+
+        // Delete V1 database
+        await this.deleteV1Database();
+
+        console.log('V1 database deleted, migration complete');
+      } else {
+        console.warn('Migration failed for all assets, V1 database retained');
+      }
+
       return this.migrationStatus;
     } catch (error) {
       console.error('Migration error:', error);
@@ -146,18 +213,42 @@ class GalleryMigration {
   }
 
   /**
-   * Clean up old IndexedDB data after successful migration
+   * Delete V1 IndexedDB database completely
+   * @returns {Promise<void>}
+   */
+  async deleteV1Database() {
+    return new Promise((resolve, reject) => {
+      console.log('Deleting V1 IndexedDB database...');
+
+      const dbName = galleryService.dbName; // '3DStreetGalleryDB'
+      const deleteRequest = indexedDB.deleteDatabase(dbName);
+
+      deleteRequest.onsuccess = () => {
+        console.log(`V1 database '${dbName}' deleted successfully`);
+        resolve();
+      };
+
+      deleteRequest.onerror = (event) => {
+        console.error('Error deleting V1 database:', event.target.error);
+        reject(event.target.error);
+      };
+
+      deleteRequest.onblocked = () => {
+        console.warn('V1 database deletion blocked (close all tabs using it)');
+        // Still resolve, will be deleted when tabs close
+        resolve();
+      };
+    });
+  }
+
+  /**
+   * Clean up old IndexedDB data (deprecated - use deleteV1Database)
+   * @deprecated Use deleteV1Database instead
    * @returns {Promise<void>}
    */
   async cleanupOldData() {
-    try {
-      await galleryService.init();
-      await galleryService.clearGallery();
-      console.log('Old IndexedDB data cleaned up');
-    } catch (error) {
-      console.error('Error cleaning up old data:', error);
-      throw error;
-    }
+    console.warn('cleanupOldData is deprecated, use deleteV1Database');
+    return this.deleteV1Database();
   }
 
   /**

@@ -1,29 +1,55 @@
-# Gallery Storage Architecture - Firestore + Firebase Storage
+# Gallery Storage Architecture - V2 with Service Worker Caching
 
 ## Overview
 
-This document describes the refactored gallery storage architecture that uses **Firestore as the source of truth** for gallery assets, with **Firebase Storage** for file storage and **IndexedDB** as a local cache.
+This document describes the **V2-only** gallery architecture using **Firestore** as the source of truth, with **Firebase Storage** for files, **Service Worker** for LRU image caching, and **IndexedDB** for metadata-only caching.
 
 ## Architecture
 
 ### Components
 
-1. **Firestore** - Asset metadata (source of truth)
-2. **Firebase Storage** - Binary file storage
-3. **IndexedDB** - Local cache for offline access
+1. **Firestore** - Asset metadata (source of truth, cloud)
+2. **Firebase Storage** - Binary file storage (cloud, CDN-backed)
+3. **Service Worker** - LRU cache for image blobs (Cache API, quota-aware)
+4. **IndexedDB** - Metadata-only cache (~1KB per asset vs 2MB with blobs)
 
 ### Data Flow
 
+**Upload Flow:**
 ```
 User generates/uploads asset
     ↓
-Upload to Firebase Storage
+Upload to Firebase Storage (blob)
     ↓
 Save metadata to Firestore
     ↓
-Cache locally in IndexedDB
+Cache metadata in IndexedDB (no blobs)
     ↓
-Real-time sync across devices
+Service Worker caches image on first fetch
+```
+
+**Load Flow:**
+```
+App loads → IndexedDB (metadata, instant)
+    ↓
+Display thumbnails (URLs from metadata)
+    ↓
+Browser fetches images → Service Worker intercepts
+    ↓
+Service Worker: Cache-first (instant if cached, else fetch from Storage)
+    ↓
+On quota exceeded → Prune LRU entries → Retry
+```
+
+**Offline Flow:**
+```
+User goes offline
+    ↓
+IndexedDB provides metadata instantly
+    ↓
+Service Worker serves cached images
+    ↓
+Uncached images show placeholder
 ```
 
 ## Storage Structure
@@ -116,12 +142,13 @@ users/
 
 ## Services
 
-### 1. `galleryServiceV2.js`
+### 1. `galleryServiceV2.js` (Primary Service)
 
-New Firestore-based service with full CRUD operations:
+**V2-only** Firestore-based service with full CRUD operations and metadata-only IndexedDB caching:
 
-- `addAsset()` - Upload file to Storage + save metadata to Firestore (`galleryAssets` collection)
-- `getAsset()` - Retrieve single asset (with ownership verification)
+**Core Methods:**
+- `addAsset()` - Upload file to Storage + save metadata to Firestore + cache metadata locally
+- `getAsset()` - Retrieve single asset metadata
 - `getAssets()` - Query assets with filters (by userId, type, category, etc.)
 - `updateAsset()` - Update metadata (with ownership verification)
 - `deleteAsset()` - Soft delete or hard delete (with ownership verification)
@@ -129,23 +156,63 @@ New Firestore-based service with full CRUD operations:
 - `uploadToStorage()` - Upload file with progress tracking
 - `generateThumbnail()` - Auto-generate thumbnails for images
 
-**Collection**: Uses top-level `galleryAssets` collection with `userId` as a field for relational queries.
+**Cache Methods:**
+- `cacheAsset()` - Cache metadata only (no blobs, ~1KB per asset)
+- `getCachedAssets()` - Get all cached metadata from IndexedDB
+- `trackAccess()` - Update access timestamp for LRU
+- `clearLocalCache()` - Clear IndexedDB cache
 
-### 2. `galleryServiceUnified.js`
+**Service Worker Integration:**
+- `warmServiceWorkerCache()` - Proactively cache recent 50 thumbnails
+- `getServiceWorkerCacheStatus()` - Get cache statistics
+- `clearServiceWorkerCache()` - Clear Service Worker cache
 
-Unified API that works with both:
-- **V1** (legacy IndexedDB)
-- **V2** (new Firestore + Storage)
+**Collection**: Uses subcollection `users/{userId}/assets/{assetId}` for better security isolation.
 
-Automatically detects authentication state and uses V2 when user is signed in, falls back to V1 otherwise.
+### 2. `galleryMigration.js`
 
-### 3. `galleryMigration.js`
+**One-way, one-time** migration utility from V1 → V2:
 
-Migration utility to move existing IndexedDB data to Firestore:
+- `isMigrationNeeded()` - Check if user needs migration (checks localStorage flag)
+- `hasMigrated()` - Check per-user migration flag
+- `migrateAll()` - Migrate all V1 assets to V2 with progress tracking
+- `deleteV1Database()` - Completely delete V1 IndexedDB after successful migration
 
-- `isMigrationNeeded()` - Check if migration is required
-- `migrateAll()` - Migrate all assets with progress tracking
-- `cleanupOldData()` - Remove old IndexedDB data
+**Per-user migration flag**: `localStorage.setItem('gallery_migrated_{userId}', 'true')`
+
+**Migration is one-way**: Once migrated, V1 database is deleted. No fallback logic.
+
+### 3. Service Worker (`public/sw.js`)
+
+**LRU image caching** with quota-aware storage management:
+
+**Features:**
+- Cache-first strategy for Firebase Storage URLs
+- LRU eviction (least recently used entries pruned first)
+- Quota-aware: Automatically prunes cache when QuotaExceededError occurs
+- Proactive cache warming: Caches recent 50 thumbnails on load
+- Metadata tracking in separate IndexedDB (`3DStreetGalleryCacheMeta`)
+
+**Cache Strategy:**
+```javascript
+// 1. Check Service Worker cache (Cache API)
+// 2. If hit: Return cached response + update access metadata
+// 3. If miss: Fetch from Firebase Storage
+// 4. Cache response (with quota error handling)
+```
+
+**Message API:**
+- `WARM_CACHE` - Proactively cache array of URLs
+- `CLEAR_CACHE` - Clear all cached images
+- `GET_CACHE_STATUS` - Get cache size, quota, usage stats
+
+**Quota Handling:**
+```javascript
+// On QuotaExceededError:
+// 1. Query IndexedDB for LRU candidates
+// 2. Prune oldest entries (at least 5, ~10MB freed)
+// 3. Retry cache operation
+```
 
 ## Security Rules
 
@@ -184,130 +251,305 @@ match /users/{userId}/assets/{allPaths=**} {
 
 This single rule handles all nested asset paths (images/ai-renders/, videos/, models/splats/{taskId}/, etc.) without conflicts.
 
+### 4. IndexedDB Schemas
+
+**V2 Metadata Cache** (`3DStreetGalleryCache` v3):
+```javascript
+{
+  assetId: "uuid",             // Primary key
+  userId: "user123",           // For filtering
+  type: "image",
+  category: "ai-render",
+  storageUrl: "https://...",   // Firebase Storage URL
+  thumbnailUrl: "https://...", // Thumbnail URL
+  generationMetadata: {...},
+  createdAt: "ISO string",
+  // LRU tracking:
+  lastAccessedAt: 1234567890,  // Timestamp
+  accessCount: 42              // Number of accesses
+}
+```
+
+**Service Worker Cache Metadata** (`3DStreetGalleryCacheMeta`):
+```javascript
+{
+  url: "https://...",          // Primary key (Firebase Storage URL)
+  lastAccessedAt: 1234567890,  // For LRU
+  accessCount: 42,
+  cachedAt: 1234567890,        // When first cached
+  size: 256000                 // Blob size in bytes
+}
+```
+
 ## Usage
 
-### Adding an Asset
+### Adding an Asset (V2)
 
 ```javascript
-import { galleryServiceUnified } from '@shared/gallery';
+import { galleryServiceV2 } from '@shared/gallery';
 import { auth } from '@shared/services/firebase';
 
-// Initialize with user ID
+// Initialize
 const user = auth.currentUser;
-await galleryServiceUnified.init(user.uid);
+await galleryServiceV2.init();
 
 // Add an image
-const assetId = await galleryServiceUnified.addItem(
+const assetId = await galleryServiceV2.addAsset(
   imageBlob,
   {
     model: 'flux-pro-1.1',
     prompt: 'urban street scene',
     seed: 12345
   },
-  'ai-render'
+  'image',      // type
+  'ai-render',  // category
+  user.uid
 );
 ```
 
-### Loading Assets
+### Loading Assets (V2)
 
 ```javascript
-// Load all assets (auto-detects V1/V2)
-const assets = await galleryServiceUnified.loadFromDB();
+// Get all assets
+const assets = await galleryServiceV2.getAssets(user.uid, {}, 200);
 
-// Query specific type (V2 only)
-const videos = await galleryServiceUnified.getAssetsByType('video', 50);
+// Query specific type
+const videos = await galleryServiceV2.getAssetsByType(user.uid, 'video', 50);
+
+// Query specific category
+const aiRenders = await galleryServiceV2.getAssetsByCategory(
+  user.uid,
+  'ai-render',
+  100
+);
 ```
 
 ### Real-time Updates
 
 ```javascript
-// Subscribe to real-time updates (V2 only)
-const unsubscribe = galleryServiceUnified.subscribeToAssets((assets) => {
+// Subscribe to real-time updates (V2)
+const unsubscribe = galleryServiceV2.subscribeToAssets(user.uid, {}, (assets) => {
   console.log('Assets updated:', assets);
 });
 
 // Later: unsubscribe
-unsubscribe();
+galleryServiceV2.unsubscribeFromAssets();
 ```
 
-### Migration
+### Service Worker Cache Management
+
+```javascript
+// Warm cache with recent thumbnails (automatic on init)
+await galleryServiceV2.warmServiceWorkerCache(50);
+
+// Get cache status
+const cacheStatus = await galleryServiceV2.getServiceWorkerCacheStatus();
+console.log(`Cache: ${cacheStatus.totalEntries} entries, ${cacheStatus.totalSizeMB}MB`);
+console.log(`Quota: ${cacheStatus.usageMB}MB / ${cacheStatus.quotaMB}MB (${cacheStatus.usagePercent}%)`);
+
+// Clear Service Worker cache
+await galleryServiceV2.clearServiceWorkerCache();
+```
+
+### Migration (One-Time, One-Way)
 
 ```javascript
 import { galleryMigration } from '@shared/gallery';
+import { auth } from '@shared/services/firebase';
+
+const user = auth.currentUser;
 
 // Check if migration is needed
-const needsMigration = await galleryMigration.isMigrationNeeded(userId);
+const needsMigration = await galleryMigration.isMigrationNeeded(user.uid);
 
-// Migrate with progress tracking
 if (needsMigration) {
-  const status = await galleryMigration.migrateAll(userId, (progress) => {
-    console.log(`${progress.percentage}% complete`);
+  console.log('V1 → V2 migration needed');
+
+  // Migrate with progress tracking
+  const status = await galleryMigration.migrateAll(user.uid, (progress) => {
+    console.log(`${progress.current}/${progress.total} (${progress.percentage.toFixed(1)}%)`);
   });
 
+  console.log(`Migration complete:`, status);
   console.log(`Migrated: ${status.migrated}, Failed: ${status.failed}`);
+
+  // V1 database is automatically deleted after successful migration
+}
+```
+
+### Using React Hook
+
+```javascript
+import { useGallery } from '@shared/gallery';
+
+function GalleryComponent() {
+  const {
+    items,
+    isLoading,
+    needsMigration,
+    isMigrating,
+    migrationProgress,
+    addItem,
+    removeItem,
+    runMigration
+  } = useGallery();
+
+  // Handle migration
+  if (needsMigration) {
+    return (
+      <button onClick={runMigration} disabled={isMigrating}>
+        {isMigrating ? `Migrating... ${migrationProgress.toFixed(1)}%` : 'Migrate V1 → V2'}
+      </button>
+    );
+  }
+
+  // Display gallery
+  return <div>{/* render items */}</div>;
 }
 ```
 
 ## Generator Integration
 
-The generator tabs (create, modify, inpaint, outpaint, video) have been updated to use the unified service:
+The generator tabs (create, modify, inpaint, outpaint, video) use V2 exclusively:
 
 ```javascript
 // In generator-tab-base.js and video.js
-import { galleryServiceUnified as galleryService } from '@shared/gallery';
+import { galleryServiceV2 as galleryService } from '@shared/gallery';
 import { auth } from '@shared/services/firebase';
 
-// Initialize on save
+// Save image to gallery
 const currentUser = auth.currentUser;
-if (currentUser && !galleryService.userId) {
-  await galleryService.init(currentUser.uid);
+if (currentUser) {
+  await galleryService.addAsset(
+    dataUrl,
+    metadata,
+    'image',
+    'ai-render',
+    currentUser.uid
+  );
 }
-
-// Save as before
-await galleryService.addImage(dataUrl, metadata, 'ai-render');
 ```
 
 ## Benefits
 
-1. **Cross-device Sync** - Assets available on all devices
+1. **Cross-device Sync** - Assets available on all devices via Firestore
 2. **Real-time Updates** - Live sync when new assets are added
-3. **Scalability** - No storage limits (vs IndexedDB ~5-10MB)
+3. **Scalability** - No storage limits (Firebase vs IndexedDB ~5-10MB)
 4. **Better Search** - Query by type, category, tags, metadata
-5. **Thumbnails** - Auto-generated for better performance
+5. **Thumbnails** - Auto-generated, CDN-backed for fast loading
 6. **Soft Delete** - Recover deleted assets
-7. **Offline Support** - IndexedDB cache for offline access
-8. **Migration Path** - Seamless upgrade from V1 to V2
+7. **Mobile-Friendly** - Metadata-only IndexedDB (~1KB vs 2MB per asset)
+8. **Offline Support** - Service Worker Cache API with LRU eviction
+9. **Quota-Aware** - Automatic cache pruning on iOS Safari (50MB limit)
+10. **Clean Architecture** - V2-only, no dual-system complexity
 
 ## Migration Strategy
 
-**Phase 1**: New system runs in parallel (✅ Complete)
-- V2 services created
-- Unified service provides backward compatibility
-- Security rules updated
+**Phase 1**: V2-only refactor (✅ Complete)
+- Removed `galleryServiceUnified.js`
+- V2 is now the only active service
+- Metadata-only IndexedDB caching
+- Service Worker with LRU image caching
+- One-way V1 → V2 migration with per-user flags
 
-**Phase 2**: Gradual adoption (Current)
-- Generator tabs use unified service
-- Users can manually trigger migration
-- Both systems work simultaneously
+**Phase 2**: User migration (In Progress)
+- Users prompted to migrate on first login
+- One-time migration per user
+- V1 database deleted after successful migration
+- No fallback logic (V2 or nothing)
 
-**Phase 3**: Full migration (Future)
-- Automatic migration prompt for users
-- Legacy V1 code removal
-- Full V2 adoption
+**Phase 3**: Legacy cleanup (Future)
+- Remove `galleryService.js` (V1) entirely
+- Remove migration code once all users migrated
+
+## Testing Scenarios
+
+### 1. Fresh User (No V1 Data)
+- ✅ Login → No migration needed
+- ✅ Gallery loads from Firestore (empty)
+- ✅ Add image → Saved to Firestore + Storage
+- ✅ IndexedDB stores metadata only (~1KB)
+- ✅ Service Worker caches thumbnail on first load
+
+### 2. Existing V1 User
+- ✅ Login → Migration prompt shown
+- ✅ Click migrate → Progress bar displays
+- ✅ V1 assets uploaded to Storage
+- ✅ Firestore docs created
+- ✅ V1 IndexedDB deleted
+- ✅ Migration flag set in localStorage
+- ✅ Second login → No migration prompt
+
+### 3. Offline Mode
+- ✅ Load gallery → IndexedDB provides metadata instantly
+- ✅ Display thumbnails → Service Worker serves cached images
+- ✅ Uncached images → Show placeholder
+- ✅ Go online → Fetch uncached images
+- ✅ Service Worker caches new images
+
+### 4. Quota Exceeded (Mobile)
+- ✅ Add 100+ images → Service Worker quota exceeded
+- ✅ Automatic pruning → Oldest 5+ entries removed
+- ✅ Retry cache → Succeeds
+- ✅ App continues working normally
+- ✅ Most recent 50 thumbnails always cached
+
+### 5. Multi-Device Sync
+- ✅ Add image on laptop → Saved to Firestore
+- ✅ Open phone → Real-time listener triggers
+- ✅ Gallery updates with new image
+- ✅ Thumbnail fetched from Storage
+- ✅ Service Worker caches thumbnail
+
+### 6. Multi-User (Same Browser)
+- ✅ Alice logs in → Sees only Alice's images
+- ✅ Bob logs in → Sees only Bob's images
+- ✅ IndexedDB has both users' metadata
+- ✅ Service Worker cache shared (OK, images are public)
+- ✅ Firestore security rules prevent cross-user access
 
 ## Testing Checklist
 
-- [ ] Upload image via AI generator → saved to Firestore + Storage
-- [ ] View gallery → assets load from Firestore
-- [ ] Real-time sync: upload on one device → appears on another
-- [ ] Offline mode: cached assets viewable when offline
-- [ ] Delete asset → soft deleted (can be recovered)
-- [ ] Search/filter assets by type, category
-- [ ] Thumbnails generated and displayed
-- [ ] Storage paths follow new structure
-- [ ] Security rules prevent cross-user access
-- [ ] Migration from V1 to V2 works
-- [ ] Fallback to V1 works when not authenticated
+**Core Functionality:**
+- [ ] Login required for gallery access
+- [ ] Upload image → Firestore + Storage + IndexedDB metadata
+- [ ] View gallery → Loads from Firestore
+- [ ] Thumbnails auto-generated and cached
+- [ ] Delete asset → Soft delete (deleted: true)
+- [ ] Search/filter by type, category
+- [ ] Storage paths: `users/{uid}/assets/{type}s/{assetId}.ext`
+
+**Service Worker:**
+- [ ] Service Worker registered on load
+- [ ] Cache-first strategy for Firebase Storage URLs
+- [ ] Proactive cache warming (50 thumbnails)
+- [ ] LRU eviction on quota exceeded
+- [ ] Cache status API works
+- [ ] Clear cache works
+
+**IndexedDB:**
+- [ ] Stores metadata only (no blobs)
+- [ ] ~1KB per asset (vs 2MB before)
+- [ ] LRU tracking (lastAccessedAt, accessCount)
+- [ ] Schema upgrade v2 → v3 removes old blobs
+
+**Migration:**
+- [ ] V1 → V2 migration works with progress
+- [ ] V1 database deleted after success
+- [ ] Per-user migration flag in localStorage
+- [ ] No migration prompt after first migration
+- [ ] Multi-user migration (different flags per user)
+
+**Offline:**
+- [ ] IndexedDB provides instant metadata
+- [ ] Service Worker serves cached images
+- [ ] Uncached images show placeholder
+- [ ] Works on iOS Safari (50MB quota)
+
+**Security:**
+- [ ] Users see only their own images
+- [ ] Firestore rules prevent cross-user read/write
+- [ ] Storage rules prevent cross-user access
 
 ## Architecture Notes
 

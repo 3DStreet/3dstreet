@@ -3,27 +3,40 @@
  */
 
 import { createRoot } from 'react-dom/client';
-import { Gallery, galleryServiceUnified } from '@shared/gallery';
+import { Gallery, galleryServiceV2 } from '@shared/gallery';
 import FluxUI from './main.js';
 import ModifyTab from './modify.js';
 import InpaintTab from './inpaint.js';
 import OutpaintTab from './outpaint.js';
 import VideoTab from './video.js';
 
-// Use unified service for backward compatibility
-const galleryService = galleryServiceUnified;
+// Use V2 (Firestore + Firebase Storage) exclusively
+const galleryService = galleryServiceV2;
 
 /**
- * Helper to get Data URI from Blob
- * @param {Blob} blob - The blob to convert
+ * Helper to get Data URI from Blob or URL
+ * @param {Blob|string} blobOrUrl - The blob or URL to convert
  * @returns {Promise<string>}
  */
-const getBlobDataUri = (blob) => {
+const getBlobDataUri = async (blobOrUrl) => {
+  // If it's already a data URI or blob URL, fetch it first
+  if (typeof blobOrUrl === 'string') {
+    const response = await fetch(blobOrUrl);
+    const blob = await response.blob();
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onloadend = () => resolve(reader.result);
+      reader.onerror = reject;
+      reader.readAsDataURL(blob);
+    });
+  }
+
+  // If it's a Blob, convert directly
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
     reader.onloadend = () => resolve(reader.result);
     reader.onerror = reject;
-    reader.readAsDataURL(blob);
+    reader.readAsDataURL(blobOrUrl);
   });
 };
 
@@ -54,33 +67,27 @@ const handleCopyParams = (item) => {
  * Copy gallery image to clipboard
  * @param {object} item - Gallery item
  */
-const handleCopyImage = (item) => {
-  if (!item.imageDataBlob || !(item.imageDataBlob instanceof Blob)) {
-    FluxUI.showNotification(
-      'Image data is not available for copying.',
-      'error'
-    );
+const handleCopyImage = async (item) => {
+  const imageUrl = item.storageUrl || item.objectURL;
+
+  if (!imageUrl) {
+    FluxUI.showNotification('Image URL is not available for copying.', 'error');
     return;
   }
 
   try {
+    // Fetch the image as a blob
+    const response = await fetch(imageUrl);
+    const blob = await response.blob();
+
     const clipboardItem = new ClipboardItem({
-      [item.imageDataBlob.type || 'image/png']: item.imageDataBlob
+      [blob.type || 'image/png']: blob
     });
-    navigator.clipboard
-      .write([clipboardItem])
-      .then(() => {
-        FluxUI.showNotification('Image copied to clipboard!', 'success');
-      })
-      .catch((err) => {
-        console.error('Clipboard API error:', err);
-        FluxUI.showNotification(
-          'Failed to copy image. Your browser might not support this feature or requires secure context (HTTPS).',
-          'error'
-        );
-      });
+
+    await navigator.clipboard.write([clipboardItem]);
+    FluxUI.showNotification('Image copied to clipboard!', 'success');
   } catch (error) {
-    console.error('Error using ClipboardItem:', error);
+    console.error('Clipboard API error:', error);
     FluxUI.showNotification(
       'Failed to copy image. Your browser might not support this feature or requires secure context (HTTPS).',
       'error'
@@ -95,7 +102,8 @@ const handleCopyImage = (item) => {
 const handleUseForInpaint = async (item) => {
   if (InpaintTab && typeof InpaintTab.setInputImage === 'function') {
     try {
-      const dataUri = await getBlobDataUri(item.imageDataBlob);
+      const imageUrl = item.storageUrl || item.objectURL;
+      const dataUri = await getBlobDataUri(imageUrl);
       const inpaintTabButton = document.querySelector(
         '.tab-button[data-tab="inpaint-tab"]'
       );
@@ -118,7 +126,8 @@ const handleUseForInpaint = async (item) => {
 const handleUseForOutpaint = async (item) => {
   if (OutpaintTab && typeof OutpaintTab.setInputImage === 'function') {
     try {
-      const dataUri = await getBlobDataUri(item.imageDataBlob);
+      const imageUrl = item.storageUrl || item.objectURL;
+      const dataUri = await getBlobDataUri(imageUrl);
       const outpaintTabButton = document.querySelector(
         '.tab-button[data-tab="outpaint-tab"]'
       );
@@ -141,7 +150,8 @@ const handleUseForOutpaint = async (item) => {
 const handleUseForGenerator = async (item) => {
   if (ModifyTab && typeof ModifyTab.setImagePrompt === 'function') {
     try {
-      const dataUri = await getBlobDataUri(item.imageDataBlob);
+      const imageUrl = item.storageUrl || item.objectURL;
+      const dataUri = await getBlobDataUri(imageUrl);
       const modifyTabButton = document.querySelector(
         '.tab-button[data-tab="modify-tab"]'
       );
@@ -164,7 +174,8 @@ const handleUseForGenerator = async (item) => {
 const handleUseForVideo = async (item) => {
   if (VideoTab && typeof VideoTab.setInputImage === 'function') {
     try {
-      const dataUri = await getBlobDataUri(item.imageDataBlob);
+      const imageUrl = item.storageUrl || item.objectURL;
+      const dataUri = await getBlobDataUri(imageUrl);
       const videoTabButton = document.querySelector(
         '.tab-button[data-tab="video-tab"]'
       );
