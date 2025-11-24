@@ -899,7 +899,7 @@ const VideoTab = {
   },
 
   // Save video to gallery
-  saveToGallery: function (videoUrl) {
+  saveToGallery: async function (videoUrl) {
     // Check if gallery service is available
     if (!galleryService) {
       return;
@@ -908,9 +908,11 @@ const VideoTab = {
     // Initialize gallery service with current user
     const currentUser = window.authState?.user;
     if (currentUser && !galleryService.userId) {
-      galleryService.init(currentUser.uid).catch((err) => {
+      try {
+        await galleryService.init(currentUser.uid);
+      } catch (err) {
         console.warn('Failed to initialize gallery V2, using V1:', err);
-      });
+      }
     }
 
     // Convert the video URL to a Data URL so gallery can store as Blob
