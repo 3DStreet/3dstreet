@@ -3,7 +3,7 @@
  */
 
 import { createRoot } from 'react-dom/client';
-import { AuthProvider } from '../editor/contexts';
+import { AuthProvider } from '@shared/contexts';
 import { Gallery, galleryServiceUnified } from '@shared/gallery';
 import FluxUI from './main.js';
 import ModifyTab from './modify.js';

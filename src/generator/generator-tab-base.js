@@ -1749,7 +1749,7 @@ class GeneratorTabBase {
   /**
    * Save the generated image to the gallery
    */
-  saveToGallery(imageUrl) {
+  async saveToGallery(imageUrl) {
     if (!galleryService) {
       return;
     }
@@ -1757,9 +1757,15 @@ class GeneratorTabBase {
     // Initialize gallery service with current user
     const currentUser = auth.currentUser;
     if (currentUser && !galleryService.userId) {
-      galleryService.init(currentUser.uid).catch((err) => {
+      try {
+        await galleryService.init(currentUser.uid);
+      } catch (err) {
         console.warn('Failed to initialize gallery V2, using V1:', err);
-      });
+        FluxUI.showNotification(
+          'Cloud gallery sync unavailable, using local storage',
+          'warning'
+        );
+      }
     }
 
     fetch(imageUrl)
