@@ -3,26 +3,29 @@
  */
 
 import { useState, useEffect, useCallback } from 'react';
-import galleryService from '../services/galleryService.js';
+import { useAuthContext } from '@shared/contexts';
+import galleryServiceUnified from '../services/galleryServiceUnified.js';
 
 /**
  * Custom hook for gallery state management
  * @returns {Object} Gallery state and methods
  */
 const useGallery = () => {
+  const { currentUser } = useAuthContext();
   const [items, setItems] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(12);
 
   const totalPages = Math.max(1, Math.ceil(items.length / pageSize));
+  const userId = currentUser?.uid || null;
 
   /**
    * Reload items from database
    */
   const reloadItems = useCallback(async () => {
     try {
-      const loadedItems = await galleryService.loadFromDB();
+      const loadedItems = await galleryServiceUnified.loadFromDB();
       setItems(loadedItems);
     } catch (error) {
       console.error('Failed to reload gallery items:', error);
@@ -36,8 +39,8 @@ const useGallery = () => {
     const initGallery = async () => {
       try {
         setIsLoading(true);
-        await galleryService.init();
-        const loadedItems = await galleryService.loadFromDB();
+        await galleryServiceUnified.init(userId);
+        const loadedItems = await galleryServiceUnified.loadFromDB();
         setItems(loadedItems);
       } catch (error) {
         console.error('Failed to initialize gallery:', error);
@@ -53,14 +56,17 @@ const useGallery = () => {
       reloadItems();
     };
 
-    galleryService.events.addEventListener('itemAdded', handleItemAdded);
+    galleryServiceUnified.events.addEventListener('itemAdded', handleItemAdded);
 
     // Cleanup: remove event listener when component unmounts
     // Note: Object URL cleanup is handled by the service layer when items are removed
     return () => {
-      galleryService.events.removeEventListener('itemAdded', handleItemAdded);
+      galleryServiceUnified.events.removeEventListener(
+        'itemAdded',
+        handleItemAdded
+      );
     };
-  }, [reloadItems]);
+  }, [reloadItems, userId]);
 
   /**
    * Add a new item to the gallery
@@ -72,18 +78,20 @@ const useGallery = () => {
   const addItem = useCallback(
     async (imageDataUri, metadata, type = 'ai-render') => {
       try {
-        const itemId = await galleryService.addImage(
+        const itemId = await galleryServiceUnified.addImage(
           imageDataUri,
           metadata,
           type
         );
 
         // Reload items from DB to get the new item with object URL
-        const loadedItems = await galleryService.loadFromDB();
+        const loadedItems = await galleryServiceUnified.loadFromDB();
         setItems(loadedItems);
 
-        // Enforce max images limit
-        await galleryService.enforceMaxImagesLimit(loadedItems);
+        // Enforce max images limit (if this method exists on unified service)
+        if (typeof galleryServiceUnified.enforceMaxImagesLimit === 'function') {
+          await galleryServiceUnified.enforceMaxImagesLimit(loadedItems);
+        }
 
         // Jump to first page to show the new item
         setPage(1);
@@ -111,7 +119,7 @@ const useGallery = () => {
           URL.revokeObjectURL(itemToRemove.objectURL);
         }
 
-        await galleryService.removeImage(id);
+        await galleryServiceUnified.removeImage(id);
 
         // Update local state
         const updatedItems = items.filter((item) => item.id !== id);
@@ -148,7 +156,7 @@ const useGallery = () => {
         }
       });
 
-      await galleryService.clearGallery();
+      await galleryServiceUnified.clearGallery();
       setItems([]);
       setPage(1);
     } catch (error) {

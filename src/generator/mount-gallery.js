@@ -3,6 +3,7 @@
  */
 
 import { createRoot } from 'react-dom/client';
+import { AuthProvider } from '../editor/contexts';
 import { Gallery, galleryServiceUnified } from '@shared/gallery';
 import FluxUI from './main.js';
 import ModifyTab from './modify.js';
@@ -190,19 +191,23 @@ export const mountGallery = async () => {
   galleryRoot.id = 'gallery-root';
   document.body.appendChild(galleryRoot);
 
-  // Mount the React gallery component
+  // Mount the React gallery component wrapped in AuthProvider
   const root = createRoot(galleryRoot);
   root.render(
-    <Gallery
-      mode="sidebar"
-      onCopyParams={handleCopyParams}
-      onCopyImage={handleCopyImage}
-      onUseForInpaint={handleUseForInpaint}
-      onUseForOutpaint={handleUseForOutpaint}
-      onUseForGenerator={handleUseForGenerator}
-      onUseForVideo={handleUseForVideo}
-      onNotification={(message, type) => FluxUI.showNotification(message, type)}
-    />
+    <AuthProvider>
+      <Gallery
+        mode="sidebar"
+        onCopyParams={handleCopyParams}
+        onCopyImage={handleCopyImage}
+        onUseForInpaint={handleUseForInpaint}
+        onUseForOutpaint={handleUseForOutpaint}
+        onUseForGenerator={handleUseForGenerator}
+        onUseForVideo={handleUseForVideo}
+        onNotification={(message, type) =>
+          FluxUI.showNotification(message, type)
+        }
+      />
+    </AuthProvider>
   );
 };
 

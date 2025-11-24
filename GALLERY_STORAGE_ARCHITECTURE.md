@@ -30,10 +30,10 @@ Real-time sync across devices
 
 ### Firestore Collection Structure
 
-**Collection**: `galleryAssets`
+**Structure**: `users/{userId}/assets/{assetId}` (subcollection)
 **Document ID**: `{assetId}` (UUID)
 
-This follows the same pattern as other top-level collections in the codebase (e.g., `tokenProfile/{userId}`, `scenes/{sceneId}`).
+This uses a subcollection pattern for better security isolation and consistency with Firebase Storage paths. Each user's assets are stored under their user document, making security rules simpler and more explicit.
 
 **Document Schema**:
 
@@ -46,9 +46,9 @@ This follows the same pattern as other top-level collections in the codebase (e.
   category: "ai-render" | "screenshot" | "upload" | "splat-source" | "splat-output",
 
   // Storage
-  storagePath: "users/{userId}/media/images/ai-render/{assetId}.jpg",
+  storagePath: "users/{userId}/assets/images/ai-render/{assetId}.jpg",
   storageUrl: "https://...",          // Download URL
-  thumbnailPath: "users/{userId}/media/images/ai-render/{assetId}-thumb.jpg",
+  thumbnailPath: "users/{userId}/assets/images/ai-render/{assetId}-thumb.jpg",
   thumbnailUrl: "https://...",
 
   // File Metadata
@@ -92,7 +92,7 @@ This follows the same pattern as other top-level collections in the codebase (e.
 ```
 users/
 └── {userId}/
-    └── media/
+    └── assets/
         ├── images/
         │   ├── ai-renders/
         │   │   ├── {assetId}.jpg
@@ -152,43 +152,37 @@ Migration utility to move existing IndexedDB data to Firestore:
 ### Firestore Rules
 
 ```javascript
-// Gallery Assets Collection (top-level)
-match /galleryAssets/{assetId} {
-  // Users can only read their own assets
-  allow read: if request.auth != null
-    && request.auth.uid == resource.data.userId;
+// Gallery Assets Subcollection (under users)
+match /users/{userId}/assets/{assetId} {
+  // Users can only access their own gallery assets
+  allow read: if request.auth != null && request.auth.uid == userId;
 
-  // Users can create their own assets
+  // Users can create assets with proper userId field
   allow create: if request.auth != null
-    && request.auth.uid == request.resource.data.userId;
+    && request.auth.uid == userId
+    && request.resource.data.userId == userId;
 
   // Users can update their own assets
-  allow update: if request.auth != null
-    && request.auth.uid == resource.data.userId;
+  allow update: if request.auth != null && request.auth.uid == userId;
 
   // Users can delete their own assets
-  allow delete: if request.auth != null
-    && request.auth.uid == resource.data.userId;
+  allow delete: if request.auth != null && request.auth.uid == userId;
 }
 ```
 
-**Note**: This pattern matches the existing codebase style where collections like `tokenProfile/{userId}` use the top-level approach with `userId` as a field rather than subcollections.
+**Note**: This subcollection pattern provides simpler security rules (direct userId path check) and better consistency with Firebase Storage paths (`users/{userId}/assets/...`).
 
 ### Firebase Storage Rules
 
 ```javascript
-// Gallery media files
-match /users/{userId}/media/{mediaType}/{assetFile} {
-  allow read: if request.auth != null && request.auth.uid == userId;
-  allow write: if request.auth != null && request.auth.uid == userId;
-}
-
-// Nested paths (e.g., images/ai-renders/file.jpg)
-match /users/{userId}/media/{mediaType}/{category}/{assetFile} {
+// Gallery asset files (recursive wildcard for all nested paths)
+match /users/{userId}/assets/{allPaths=**} {
   allow read: if request.auth != null && request.auth.uid == userId;
   allow write: if request.auth != null && request.auth.uid == userId;
 }
 ```
+
+This single rule handles all nested asset paths (images/ai-renders/, videos/, models/splats/{taskId}/, etc.) without conflicts.
 
 ## Usage
 
@@ -317,20 +311,21 @@ await galleryService.addImage(dataUrl, metadata, 'ai-render');
 
 ## Architecture Notes
 
-### Why Top-Level Collection?
+### Why Subcollections?
 
-The `galleryAssets` collection uses a **top-level collection** pattern (not subcollections) to match the existing codebase architecture:
+The gallery uses a **subcollection pattern** (`users/{userId}/assets/{assetId}`) for these reasons:
 
-- **Consistent with existing patterns**: Collections like `tokenProfile/{userId}` and `scenes/{sceneId}` use top-level collections
-- **Simpler queries**: Direct queries like `where('userId', '==', userId)` without nested paths
-- **Better indexing**: Composite indexes work better with top-level collections
-- **No phantom documents**: Avoids creating empty parent documents
+- **Simpler security rules**: Path-based security (`request.auth.uid == userId`) is more explicit than field-based checks
+- **Storage consistency**: Matches Firebase Storage structure (`users/{userId}/assets/...`)
+- **Data isolation**: Assets are naturally scoped to their owner's document
+- **No cross-user queries needed**: Gallery assets are always queried per-user, never globally
+- **Better organization**: User data is logically grouped under user documents
 
-**Alternative considered**: `users/{userId}/assets/{assetId}` (subcollections) was the initial approach but was refactored to match the codebase's existing patterns.
+**Alternative considered**: Top-level `galleryAssets` collection was initially implemented to match `scenes` collection pattern, but subcollections are more appropriate for user-private data that's never queried across users.
 
 ## File Locations
 
-- `src/shared/gallery/services/galleryServiceV2.js` - New Firestore service (top-level `galleryAssets` collection)
+- `src/shared/gallery/services/galleryServiceV2.js` - New Firestore service (`users/{userId}/assets/{assetId}` subcollection)
 - `src/shared/gallery/services/galleryServiceUnified.js` - Unified API (backward compatible)
 - `src/shared/gallery/services/galleryMigration.js` - Migration utility
 - `src/shared/gallery/services/galleryService.js` - Legacy IndexedDB service

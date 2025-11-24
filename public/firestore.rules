@@ -45,23 +45,22 @@ service cloud.firestore {
       allow update: if false;
     }
 
-    // Gallery Assets Collection Rules (PRIVATE data - user's gallery assets)
-    match /galleryAssets/{assetId} {
-      // Users can only read their own assets
-      allow read: if request.auth != null
-        && request.auth.uid == resource.data.userId;
+    // Gallery Assets Subcollection Rules (PRIVATE data - user's gallery assets)
+    // Structure: users/{userId}/assets/{assetId}
+    match /users/{userId}/assets/{assetId} {
+      // Users can only read their own gallery assets
+      allow read: if request.auth != null && request.auth.uid == userId;
 
-      // Users can create their own assets
+      // Users can create assets with proper userId field
       allow create: if request.auth != null
-        && request.auth.uid == request.resource.data.userId;
+        && request.auth.uid == userId
+        && request.resource.data.userId == userId;
 
       // Users can update their own assets
-      allow update: if request.auth != null
-        && request.auth.uid == resource.data.userId;
+      allow update: if request.auth != null && request.auth.uid == userId;
 
       // Users can delete their own assets
-      allow delete: if request.auth != null
-        && request.auth.uid == resource.data.userId;
+      allow delete: if request.auth != null && request.auth.uid == userId;
     }
   }
 }
@@ -73,30 +72,13 @@ service firebase.storage {
       allow write: if request.auth != null && isAuthorOfScene(scene_uuid);
     }
 
-    // Gallery assets storage rules
-    match /users/{userId}/media/{mediaType}/{assetFile} {
-      // Users can read their own media files
+    // Gallery asset files storage rules (all nested paths)
+    // Handles: images/ai-renders/, videos/, models/splats/{taskId}/, etc.
+    match /users/{userId}/assets/{allPaths=**} {
+      // Users can read their own asset files
       allow read: if request.auth != null && request.auth.uid == userId;
 
-      // Users can write (upload/update/delete) their own media files
-      allow write: if request.auth != null && request.auth.uid == userId;
-    }
-
-    // Nested media paths (e.g., images/ai-renders/file.jpg)
-    match /users/{userId}/media/{mediaType}/{category}/{assetFile} {
-      // Users can read their own media files
-      allow read: if request.auth != null && request.auth.uid == userId;
-
-      // Users can write (upload/update/delete) their own media files
-      allow write: if request.auth != null && request.auth.uid == userId;
-    }
-
-    // Model files with task IDs (e.g., models/splats/{taskId}/file.ply)
-    match /users/{userId}/media/{mediaType}/{taskId}/{assetFile} {
-      // Users can read their own media files
-      allow read: if request.auth != null && request.auth.uid == userId;
-
-      // Users can write (upload/update/delete) their own media files
+      // Users can write (upload/update/delete) their own asset files
       allow write: if request.auth != null && request.auth.uid == userId;
     }
   }

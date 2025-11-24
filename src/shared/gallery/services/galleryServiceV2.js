@@ -6,7 +6,7 @@
  *
  * Architecture:
  * - Firestore: Asset metadata (users/{userId}/assets/{assetId})
- * - Storage: File storage (users/{userId}/media/{type}/{assetId}.ext)
+ * - Storage: File storage (users/{userId}/assets/{type}/{category}/{assetId}.ext)
  * - IndexedDB: Local cache for offline access
  */
 
@@ -227,8 +227,8 @@ class GalleryServiceV2 {
         deleted: false
       };
 
-      // Save to Firestore
-      const assetRef = doc(db, 'galleryAssets', assetId);
+      // Save to Firestore (subcollection under user)
+      const assetRef = doc(db, 'users', userId, 'assets', assetId);
       await setDoc(assetRef, assetDoc);
 
       // Cache locally
@@ -401,7 +401,7 @@ class GalleryServiceV2 {
    */
   getStoragePath(userId, type, category, filename) {
     const typeFolder = type === 'image' ? `images/${category}` : `${type}s`;
-    return `users/${userId}/media/${typeFolder}/${filename}`;
+    return `users/${userId}/assets/${typeFolder}/${filename}`;
   }
 
   /**
@@ -434,15 +434,11 @@ class GalleryServiceV2 {
    */
   async getAsset(assetId, userId) {
     try {
-      const assetRef = doc(db, 'galleryAssets', assetId);
+      const assetRef = doc(db, 'users', userId, 'assets', assetId);
       const assetSnap = await getDoc(assetRef);
 
       if (assetSnap.exists()) {
-        const asset = assetSnap.data();
-        // Verify the asset belongs to the user
-        if (asset.userId === userId) {
-          return { id: assetSnap.id, ...asset };
-        }
+        return { id: assetSnap.id, ...assetSnap.data() };
       }
 
       return null;
@@ -467,8 +463,10 @@ class GalleryServiceV2 {
     orderByField = 'createdAt'
   ) {
     try {
-      const assetsRef = collection(db, 'galleryAssets');
-      let q = query(assetsRef, where('userId', '==', userId));
+      console.log('getAssets called with userId:', userId);
+      // Use subcollection under user
+      const assetsRef = collection(db, 'users', userId, 'assets');
+      let q = query(assetsRef);
 
       // Apply filters
       if (filters.type) {
@@ -510,12 +508,12 @@ class GalleryServiceV2 {
    */
   async updateAsset(assetId, userId, updates) {
     try {
-      const assetRef = doc(db, 'galleryAssets', assetId);
+      const assetRef = doc(db, 'users', userId, 'assets', assetId);
 
-      // Verify ownership before updating
+      // Verify asset exists
       const assetSnap = await getDoc(assetRef);
-      if (!assetSnap.exists() || assetSnap.data().userId !== userId) {
-        throw new Error('Asset not found or access denied');
+      if (!assetSnap.exists()) {
+        throw new Error('Asset not found');
       }
 
       await updateDoc(assetRef, {
@@ -541,12 +539,12 @@ class GalleryServiceV2 {
    */
   async deleteAsset(assetId, userId, hard = false) {
     try {
-      const assetRef = doc(db, 'galleryAssets', assetId);
+      const assetRef = doc(db, 'users', userId, 'assets', assetId);
 
-      // Get asset to verify ownership
+      // Get asset
       const assetSnap = await getDoc(assetRef);
-      if (!assetSnap.exists() || assetSnap.data().userId !== userId) {
-        throw new Error('Asset not found or access denied');
+      if (!assetSnap.exists()) {
+        throw new Error('Asset not found');
       }
 
       if (hard) {
@@ -592,8 +590,9 @@ class GalleryServiceV2 {
    */
   subscribeToAssets(userId, filters = {}, callback) {
     try {
-      const assetsRef = collection(db, 'galleryAssets');
-      let q = query(assetsRef, where('userId', '==', userId));
+      // Use subcollection under user
+      const assetsRef = collection(db, 'users', userId, 'assets');
+      let q = query(assetsRef);
 
       // Apply filters
       if (filters.type) {
