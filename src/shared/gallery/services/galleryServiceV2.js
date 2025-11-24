@@ -142,7 +142,7 @@ class GalleryServiceV2 {
       const filename = `${assetId}.${extension}`;
 
       // Get storage path
-      const storagePath = this.getStoragePath(userId, type, category, filename);
+      const storagePath = this.getStoragePath(userId, type, filename);
 
       // Upload to Firebase Storage with progress tracking
       const downloadURL = await this.uploadToStorage(
@@ -166,7 +166,6 @@ class GalleryServiceV2 {
           thumbnailPath = this.getStoragePath(
             userId,
             type,
-            category,
             `${assetId}-thumb.jpg`
           );
           thumbnailUrl = await this.uploadToStorage(
@@ -396,12 +395,15 @@ class GalleryServiceV2 {
    * Get storage path for asset
    * @param {string} userId - User ID
    * @param {string} type - Asset type
-   * @param {string} category - Asset category
    * @param {string} filename - Filename
    * @returns {string}
+   * @example
+   * getStoragePath('user123', 'image', 'abc.jpg') => 'users/user123/assets/images/abc.jpg'
+   * getStoragePath('user123', 'video', 'xyz.mp4') => 'users/user123/assets/videos/xyz.mp4'
    */
-  getStoragePath(userId, type, category, filename) {
-    const typeFolder = type === 'image' ? `images/${category}` : `${type}s`;
+  getStoragePath(userId, type, filename) {
+    // Pluralize type for folder name (image -> images, video -> videos, model -> models)
+    const typeFolder = `${type}s`;
     return `users/${userId}/assets/${typeFolder}/${filename}`;
   }
 

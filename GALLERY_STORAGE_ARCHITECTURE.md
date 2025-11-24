@@ -46,9 +46,9 @@ This uses a subcollection pattern for better security isolation and consistency 
   category: "ai-render" | "screenshot" | "upload" | "splat-source" | "splat-output",
 
   // Storage
-  storagePath: "users/{userId}/assets/images/ai-render/{assetId}.jpg",
+  storagePath: "users/{userId}/assets/images/{assetId}.jpg",
   storageUrl: "https://...",          // Download URL
-  thumbnailPath: "users/{userId}/assets/images/ai-render/{assetId}-thumb.jpg",
+  thumbnailPath: "users/{userId}/assets/images/{assetId}-thumb.jpg",
   thumbnailUrl: "https://...",
 
   // File Metadata
@@ -89,30 +89,30 @@ This uses a subcollection pattern for better security isolation and consistency 
 
 ### Firebase Storage Structure
 
+Storage is organized by media type only (not category). Categories like "ai-render", "screenshot", "upload" are stored in Firestore metadata, not in the storage path.
+
 ```
 users/
 └── {userId}/
     └── assets/
         ├── images/
-        │   ├── ai-renders/
-        │   │   ├── {assetId}.jpg
-        │   │   └── {assetId}-thumb.jpg
-        │   ├── screenshots/
-        │   │   ├── {assetId}.png
-        │   │   └── {assetId}-thumb.jpg
-        │   └── uploads/
-        │       ├── {assetId}.jpg
-        │       └── {assetId}-thumb.jpg
+        │   ├── {assetId}.jpg
+        │   ├── {assetId}-thumb.jpg
+        │   ├── {assetId2}.png
+        │   └── {assetId2}-thumb.jpg
         ├── videos/
         │   ├── {assetId}.mp4
         │   └── {assetId}-thumb.jpg
         └── models/
-            └── splats/
-                └── {taskId}/
-                    ├── source.mp4
-                    ├── output.ply
-                    └── thumb.jpg
+            ├── {assetId}.ply
+            ├── {assetId}.glb
+            └── {assetId}-thumb.jpg
 ```
+
+**Rationale**:
+- Media type separation (images/videos/models) allows for future sharding to different storage systems/APIs
+- Category information (ai-render, screenshot, upload, etc.) is stored in Firestore metadata where it can be easily queried and updated
+- Simpler path structure reduces complexity and potential naming conflicts
 
 ## Services
 
