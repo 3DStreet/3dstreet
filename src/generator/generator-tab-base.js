@@ -11,28 +11,26 @@ import ImageUploadUtils from './image-upload-utils.js';
 import { httpsCallable } from 'firebase/functions';
 import { functions, auth } from '@shared/services/firebase.js';
 import { REPLICATE_MODELS } from '@shared/constants/replicateModels.js';
+import { mountModelSelector } from './mount-model-selector.js';
 
 /**
- * Build estimated times object from Replicate models and BFL models
+ * Build estimated times object from all models
  */
 const buildEstimatedTimes = () => {
   const times = {};
 
-  // Add Replicate model times from shared constants
+  // Add all model times from shared constants
   Object.entries(REPLICATE_MODELS).forEach(([key, model]) => {
     times[key] = model.estimatedTime;
   });
 
-  // Add BFL model times (not in REPLICATE_MODELS)
-  const bflTimes = {
-    'flux-pro-1.1': 25,
-    'flux-pro': 25,
-    'flux-pro-1.1-ultra': 25,
-    'flux-dev': 25,
-    'flux-kontext-max': 25
+  // Add any legacy models not yet migrated
+  const legacyTimes = {
+    'flux-pro': 25, // Legacy BFL model
+    'flux-kontext-max': 25 // Legacy BFL model
   };
 
-  return { ...times, ...bflTimes };
+  return { ...times, ...legacyTimes };
 };
 
 /**
@@ -58,6 +56,7 @@ class GeneratorTabBase {
     this.currentImageUrl = '';
     this.selectedOrientation = 'portrait';
     this.selectedDimension = '1024x1440';
+    this.selectedModel = 'flux-kontext-pro'; // Default model
 
     // Timer state
     this.renderStartTime = null;
@@ -70,6 +69,9 @@ class GeneratorTabBase {
 
     // DOM Elements
     this.elements = {};
+
+    // React component instances
+    this.modelSelectorInstance = null;
   }
 
   /**
@@ -102,6 +104,7 @@ class GeneratorTabBase {
 
     this.createTabContent(tabContainer);
     this.getElements();
+    this.mountModelSelectorComponent();
     this.updateModelParams();
     this.setupEventListeners();
     this.generateRandomSeed();
@@ -155,9 +158,9 @@ class GeneratorTabBase {
   getElements() {
     const getId = (name) => this.getElementId(name);
 
-    // Model Selection
-    this.elements.modelSelector = document.getElementById(
-      getId('model-selector')
+    // Model Selection - React component container
+    this.elements.modelSelectorContainer = document.getElementById(
+      getId('model-selector-container')
     );
 
     // Prompt and dimensions
@@ -326,7 +329,7 @@ class GeneratorTabBase {
 
     // Verify critical elements
     const missingElements = [];
-    ['modelSelector', 'promptInput', 'generateBtn'].forEach((elem) => {
+    ['modelSelectorContainer', 'promptInput', 'generateBtn'].forEach((elem) => {
       if (!this.elements[elem]) {
         missingElements.push(elem);
       }
@@ -396,6 +399,30 @@ class GeneratorTabBase {
   }
 
   /**
+   * Mount the ModelSelector React component
+   */
+  mountModelSelectorComponent() {
+    const container = this.elements.modelSelectorContainer;
+    if (!container) {
+      console.error('Model selector container not found');
+      return;
+    }
+
+    this.modelSelectorInstance = mountModelSelector(container, {
+      value: this.selectedModel,
+      onChange: (modelId) => {
+        this.selectedModel = modelId;
+        this.updateModelParams();
+        // Re-render the component with the new value
+        if (this.modelSelectorInstance) {
+          this.modelSelectorInstance.update({ value: modelId });
+        }
+      },
+      disabled: false
+    });
+  }
+
+  /**
    * Create the tab content HTML
    * This method generates the complete HTML structure for the tab
    */
@@ -412,19 +439,7 @@ class GeneratorTabBase {
                     <!-- Model Selection -->
                     <div class="mb-4">
                         <label class="block text-sm font-medium text-gray-700 mb-1">Model</label>
-                        <select id="${getId('model-selector')}" class="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
-                            <option value="flux-pro-1.1">Flux Pro 1.1</option>
-                            <option value="flux-dev">Flux Dev</option>
-                            <option value="flux-kontext-pro" selected>Flux Kontext Pro</option>
-                            ${
-                              this.config.showImagePromptUI
-                                ? '<option value="kontext-realearth">Kontext Real Earth</option>'
-                                : ''
-                            }
-                            <option value="nano-banana">Nano Banana</option>
-                            <option value="nano-banana-pro">Nano Banana Pro</option>
-                            <option value="seedream-4">Seedream</option>
-                        </select>
+                        <div id="${getId('model-selector-container')}"></div>
                     </div>
 
                     ${this.getImagePromptHTML()}
@@ -559,9 +574,8 @@ class GeneratorTabBase {
                             <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                         </svg>
                         <span id="${getId('generate-text')}">Generate Image</span>
-                        <span class="inline-flex items-center rounded" style="background: rgba(0, 0, 0, 0.15); padding: 6px 8px; gap: 2px;">
+                        <span class="inline-flex items-center rounded" style="background: rgba(0, 0, 0, 0.15); padding: 6px 8px; gap: 4px;">
                             <img src="/ui_assets/token-image.png" alt="Token" class="w-5 h-5" />
-                            <span class="text-sm" style="opacity: 0.9; margin-right: 1px;">×</span>
                             <span id="${getId('token-cost')}" class="text-sm font-medium">1</span>
                         </span>
                     </button>
@@ -617,17 +631,15 @@ class GeneratorTabBase {
    * Setup event listeners
    */
   setupEventListeners() {
-    if (!this.elements.modelSelector) {
+    if (!this.elements.modelSelectorContainer) {
       console.error(
         'Generator Tab: Cannot set up event listeners, elements not found'
       );
       return;
     }
 
-    this.elements.modelSelector.addEventListener(
-      'change',
-      this.updateModelParams.bind(this)
-    );
+    // Model selector is now handled by React component
+    // No need for manual event listener
 
     this.elements.advancedToggle.addEventListener(
       'click',
@@ -677,7 +689,7 @@ class GeneratorTabBase {
           this.elements.imagePromptName.textContent = fileName;
           this.imagePromptData = dataUrl.split(',')[1];
           this.showImagePromptPreview(dataUrl);
-          if (this.elements.modelSelector.value === 'flux-pro-1.1-ultra') {
+          if (this.selectedModel === 'flux-pro-1.1-ultra') {
             this.elements.imagePromptStrengthContainer.classList.remove(
               'hidden'
             );
@@ -808,12 +820,7 @@ class GeneratorTabBase {
    * Update model parameters based on selected model
    */
   updateModelParams() {
-    if (!this.elements.modelSelector) {
-      console.error('Generator Tab: modelSelector not found');
-      return;
-    }
-
-    const model = this.elements.modelSelector.value;
+    const model = this.selectedModel;
 
     // Update token cost display based on selected model
     const modelConfig = REPLICATE_MODELS[model];
@@ -1071,7 +1078,7 @@ class GeneratorTabBase {
       this.imagePromptData = event.target.result.split(',')[1];
       this.showImagePromptPreview(event.target.result);
 
-      if (this.elements.modelSelector.value === 'flux-pro-1.1-ultra') {
+      if (this.selectedModel === 'flux-pro-1.1-ultra') {
         this.elements.imagePromptStrengthContainer.classList.remove('hidden');
       } else {
         this.elements.imagePromptStrengthContainer.classList.add('hidden');
@@ -1093,7 +1100,7 @@ class GeneratorTabBase {
 
     if (
       this.config.showImagePromptUI &&
-      this.elements.modelSelector.value === 'flux-pro-1.1-ultra'
+      this.selectedModel === 'flux-pro-1.1-ultra'
     ) {
       this.elements.imagePromptStrengthContainer.classList.remove('hidden');
     } else if (this.config.showImagePromptUI) {
@@ -1203,7 +1210,7 @@ class GeneratorTabBase {
       return;
     }
 
-    const model = this.elements.modelSelector.value;
+    const model = this.selectedModel;
     const isReplicateModel = REPLICATE_MODELS[model];
 
     if (isReplicateModel) {
@@ -1671,10 +1678,7 @@ class GeneratorTabBase {
         const downloadLink = document.createElement('a');
         downloadLink.href = blobUrl;
 
-        const modelName = this.elements.modelSelector.value.replace(
-          'flux-',
-          ''
-        );
+        const modelName = this.selectedModel.replace('flux-', '');
         const timestamp = new Date()
           .toISOString()
           .replace(/[:.]/g, '-')
@@ -1730,8 +1734,7 @@ class GeneratorTabBase {
     }
 
     const paramsToCopy = { ...this.currentParams };
-    paramsToCopy.model =
-      this.currentParams.model || this.elements.modelSelector.value;
+    paramsToCopy.model = this.currentParams.model || this.selectedModel;
 
     const paramsString = JSON.stringify(paramsToCopy, null, 2);
     navigator.clipboard
@@ -1792,7 +1795,7 @@ class GeneratorTabBase {
         });
 
         const metadata = {
-          model: this.currentParams.model || this.elements.modelSelector.value,
+          model: this.currentParams.model || this.selectedModel,
           prompt: this.elements.promptInput.value,
           seed: this.currentParams.seed,
           width: this.currentParams.width || imageDimensions.width,
@@ -1889,7 +1892,7 @@ class GeneratorTabBase {
    * Update timer display
    */
   updateTimerDisplay() {
-    const modelName = this.elements.modelSelector.value;
+    const modelName = this.selectedModel;
     const estimatedTime = this.estimatedTimes[modelName] || 30;
 
     this.renderProgress = Math.min(

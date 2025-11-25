@@ -9,6 +9,8 @@ import { functions } from '@shared/services/firebase.js';
 import useImageGenStore from './store.js';
 import ImageUploadUtils from './image-upload-utils.js';
 import galleryService from '@shared/gallery/services/galleryService.js';
+import { VIDEO_MODELS } from '@shared/constants/replicateModels.js';
+import { mountVideoModelSelector } from './mount-video-model-selector.js';
 
 // Video tab module
 const VideoTab = {
@@ -17,6 +19,7 @@ const VideoTab = {
   currentVideoUrl: '',
   selectedAspectRatio: '16:9', // Default aspect ratio
   selectedDuration: 5, // Default duration in seconds (5 or 10)
+  selectedModel: 'bytedance/seedance-1-pro-fast', // Default video model
   imageData: null, // Base64 image data for video generation
 
   // Timer state
@@ -25,16 +28,17 @@ const VideoTab = {
   renderProgress: 0,
   timerInterval: null,
 
-  // Estimated generation times (in seconds)
-  estimatedTimes: {
-    'bytedance/seedance-1-pro-fast': 45,
-    'wan-video/wan-2.2-i2v-fast': 110,
-    'lightricks/ltx-2-fast': 40,
-    'kwaivgi/kling-v2.5-turbo-pro': 130 // 2:10
-  },
+  // Estimated generation times (in seconds) - built from VIDEO_MODELS
+  estimatedTimes: Object.entries(VIDEO_MODELS).reduce((acc, [key, model]) => {
+    acc[key] = model.estimatedTime;
+    return acc;
+  }, {}),
 
   // DOM Elements
   elements: {},
+
+  // React component instances
+  modelSelectorInstance: null,
 
   // Initialize the tab
   init: function () {
@@ -50,6 +54,9 @@ const VideoTab = {
 
     // Now that content is created, get all the necessary elements
     this.getElements();
+
+    // Mount the React model selector component
+    this.mountVideoModelSelectorComponent();
 
     // Setup event listeners
     this.setupEventListeners();
@@ -102,9 +109,9 @@ const VideoTab = {
 
   // Get all DOM elements after content is created
   getElements: function () {
-    // Model
-    this.elements.modelSelector = document.getElementById(
-      'video-model-selector'
+    // Model - React component container
+    this.elements.modelSelectorContainer = document.getElementById(
+      'video-model-selector-container'
     );
 
     // Prompt
@@ -194,7 +201,7 @@ const VideoTab = {
 
     // Verify critical elements
     let missingElements = [];
-    ['modelSelector', 'promptInput', 'generateBtn'].forEach((elem) => {
+    ['modelSelectorContainer', 'promptInput', 'generateBtn'].forEach((elem) => {
       if (!this.elements[elem]) {
         missingElements.push(elem);
       }
@@ -203,6 +210,28 @@ const VideoTab = {
     if (missingElements.length > 0) {
       console.error('Video Tab: Critical elements not found:', missingElements);
     }
+  },
+
+  // Mount the VideoModelSelector React component
+  mountVideoModelSelectorComponent: function () {
+    const container = this.elements.modelSelectorContainer;
+    if (!container) {
+      console.error('Video model selector container not found');
+      return;
+    }
+
+    this.modelSelectorInstance = mountVideoModelSelector(container, {
+      value: this.selectedModel,
+      onChange: (modelId) => {
+        this.selectedModel = modelId;
+        this.updateTokenCostDisplay();
+        // Re-render the component with the new value
+        if (this.modelSelectorInstance) {
+          this.modelSelectorInstance.update({ value: modelId });
+        }
+      },
+      disabled: false
+    });
   },
 
   // Create the tab content HTML
@@ -217,12 +246,7 @@ const VideoTab = {
                     <!-- Model Selection -->
                     <div class="mb-4">
                         <label class="block text-sm font-medium text-gray-700 mb-1">Model</label>
-                        <select id="video-model-selector" class="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
-                            <option value="bytedance/seedance-1-pro-fast" selected>SeeDance 1 Pro Fast</option>
-                            <option value="wan-video/wan-2.2-i2v-fast">Wan 2.2 I2V Fast</option>
-                            <option value="lightricks/ltx-2-fast">LTX-2 Fast</option>
-                            <option value="kwaivgi/kling-v2.5-turbo-pro">Kling v2.5 Turbo Pro</option>
-                        </select>
+                        <div id="video-model-selector-container"></div>
                     </div>
 
                     <!-- Image Upload (Required) -->
@@ -314,9 +338,8 @@ const VideoTab = {
                             <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                         </svg>
                         <span id="video-generate-text">Generate Video</span>
-                        <span class="inline-flex items-center rounded" style="background: rgba(0, 0, 0, 0.15); padding: 6px 8px; gap: 2px;">
+                        <span class="inline-flex items-center rounded" style="background: rgba(0, 0, 0, 0.15); padding: 6px 8px; gap: 4px;">
                             <img src="/ui_assets/token-image.png" alt="Token" class="w-5 h-5" />
-                            <span class="text-sm" style="opacity: 0.9; margin-right: 1px;">×</span>
                             <span id="video-token-cost" class="text-sm font-medium">10</span>
                         </span>
                     </button>
@@ -590,7 +613,7 @@ const VideoTab = {
     const params = {};
 
     // Add model name
-    params.model_name = this.elements.modelSelector.value;
+    params.model_name = this.selectedModel;
 
     // Check if image is uploaded (required)
     if (!this.imageData) {
@@ -690,7 +713,7 @@ const VideoTab = {
 
   // Update timer display
   updateTimerDisplay: function () {
-    const modelName = this.elements.modelSelector.value;
+    const modelName = this.selectedModel;
     const estimatedTime = this.estimatedTimes[modelName] || 40;
 
     // Calculate progress percentage
@@ -744,7 +767,7 @@ const VideoTab = {
       this.elements.copyVideoUrlBtn.classList.add('hidden');
 
       // Start the timer
-      const modelName = this.elements.modelSelector.value;
+      const modelName = this.selectedModel;
       this.startTimer(modelName);
     } else {
       this.elements.loadingIndicator.classList.add('hidden');
@@ -930,8 +953,7 @@ const VideoTab = {
       .then(async (dataUrl) => {
         // Build comprehensive metadata for the video
         const metadata = {
-          model:
-            this.currentParams.model_name || this.elements.modelSelector.value,
+          model: this.currentParams.model_name || this.selectedModel,
           prompt: this.currentParams.prompt || this.elements.promptInput.value,
           aspect_ratio: this.currentParams.aspect_ratio,
           duration_seconds: this.currentParams.duration_seconds,

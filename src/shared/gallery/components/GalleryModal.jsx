@@ -5,6 +5,7 @@
 
 import { useState, useEffect, useRef } from 'react';
 import styles from './Gallery.module.scss';
+import { REPLICATE_MODELS } from '@shared/constants/replicateModels.js';
 
 const METADATA_VISIBILITY_KEY = 'galleryModalMetadataVisible';
 
@@ -201,7 +202,17 @@ const GalleryModal = ({
                 <div className={styles.metadataItem}>
                   <span className={styles.metadataLabel}>Model</span>
                   <span className={styles.metadataValue}>
-                    {model || 'Unknown'}
+                    {model && REPLICATE_MODELS[model]?.logo && (
+                      <img
+                        src={REPLICATE_MODELS[model].logo}
+                        alt=""
+                        className={styles.modelLogo}
+                        onError={(e) => {
+                          e.target.style.display = 'none';
+                        }}
+                      />
+                    )}
+                    {REPLICATE_MODELS[model]?.name || model || 'Unknown'}
                   </span>
                 </div>
                 {isVideo ? (

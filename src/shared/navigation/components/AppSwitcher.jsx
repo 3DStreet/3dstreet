@@ -30,18 +30,28 @@ const AppSwitcher = () => {
   const isEditor = !currentPath.includes('/generator');
   const isImageGenerator = currentPath.includes('/generator');
 
-  const handleEditorClick = () => {
+  const handleEditorClick = (e) => {
     if (isEditor) {
       return;
     }
-    window.location.href = '/';
+    // Command+click (Mac) or Ctrl+click (Windows/Linux) opens in new tab
+    if (e.metaKey || e.ctrlKey) {
+      window.open('/', '_blank');
+    } else {
+      window.location.href = '/';
+    }
   };
 
-  const handleImageGeneratorClick = () => {
+  const handleImageGeneratorClick = (e) => {
     if (isImageGenerator) {
       return;
     }
-    window.location.href = '/generator/';
+    // Command+click (Mac) or Ctrl+click (Windows/Linux) opens in new tab
+    if (e.metaKey || e.ctrlKey) {
+      window.open('/generator/', '_blank');
+    } else {
+      window.location.href = '/generator/';
+    }
   };
 
   return (

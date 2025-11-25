@@ -37,6 +37,20 @@
       opacity: 0.9;
     }
   }
+
+  // Compact variant for use in smaller UI elements
+  &.compact {
+    .tokenIcon {
+      width: 0.8rem;
+      height: 0.8rem;
+    }
+
+    .count {
+      font-size: 0.75rem;
+      font-weight: 600;
+      color: inherit;
+    }
+  }
 }
 
 .tokenIcon {

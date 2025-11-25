@@ -20,6 +20,7 @@ import { canUseImageFeature } from '@shared/utils/tokens';
 import { TokenDisplayInner } from '@shared/auth/components';
 import { galleryServiceV2 } from '@shared/gallery';
 import { REPLICATE_MODELS } from '@shared/constants/replicateModels.js';
+import AIModelSelector from '@shared/components/AIModelSelector';
 
 // Available AI models (use shared constants)
 const AI_MODELS = REPLICATE_MODELS;
@@ -417,7 +418,7 @@ function ScreenshotModal() {
 
     // Filter models to only include those with includeIn4x: true
     const modelKeys = Object.keys(AI_MODELS).filter(
-      (key) => AI_MODELS[key].includeIn4x !== false
+      (key) => AI_MODELS[key].includeIn4x === true
     );
 
     // Calculate total token cost for 4x render
@@ -641,25 +642,15 @@ function ScreenshotModal() {
           <div className={styles.aiSection}>
             {renderMode === '1x' && (
               <div className={styles.modelSelector}>
-                <label htmlFor="model-select" className={styles.modelLabel}>
-                  AI Model:
-                </label>
-                <select
-                  id="model-select"
+                <label className={styles.modelLabel}>AI Model:</label>
+                <AIModelSelector
                   value={selectedModel}
-                  onChange={(e) => setSelectedModel(e.target.value)}
-                  className={styles.modelSelect}
+                  onChange={setSelectedModel}
                   disabled={
                     isGeneratingAI ||
                     Object.values(renderingStates).some((state) => state)
                   }
-                >
-                  {Object.entries(AI_MODELS).map(([key, model]) => (
-                    <option key={key} value={key}>
-                      {model.name}
-                    </option>
-                  ))}
-                </select>
+                />
               </div>
             )}
 
@@ -680,20 +671,13 @@ function ScreenshotModal() {
                   <div className={styles.toggleSwitch}></div>
                 </label>
                 {!useMixedModels && (
-                  <select
+                  <AIModelSelector
                     value={selectedModel}
-                    onChange={(e) => setSelectedModel(e.target.value)}
-                    className={styles.modelSelect}
+                    onChange={setSelectedModel}
                     disabled={Object.values(renderingStates).some(
                       (state) => state
                     )}
-                  >
-                    {Object.entries(AI_MODELS).map(([key, model]) => (
-                      <option key={key} value={key}>
-                        {model.name}
-                      </option>
-                    ))}
-                  </select>
+                  />
                 )}
               </div>
             )}
@@ -780,7 +764,7 @@ function ScreenshotModal() {
                 title={`Generate 4 renders simultaneously (uses ${
                   useMixedModels
                     ? Object.keys(AI_MODELS)
-                        .filter((key) => AI_MODELS[key].includeIn4x !== false)
+                        .filter((key) => AI_MODELS[key].includeIn4x === true)
                         .reduce((sum, key) => sum + getTokenCost(key), 0)
                     : getTokenCost(selectedModel) * 4
                 } tokens)`}
@@ -795,7 +779,7 @@ function ScreenshotModal() {
                         useMixedModels
                           ? Object.keys(AI_MODELS)
                               .filter(
-                                (key) => AI_MODELS[key].includeIn4x !== false
+                                (key) => AI_MODELS[key].includeIn4x === true
                               )
                               .reduce((sum, key) => sum + getTokenCost(key), 0)
                           : getTokenCost(selectedModel) * 4
@@ -982,7 +966,7 @@ function ScreenshotModal() {
                   {Array.from({ length: 4 }, (_, index) => {
                     // Filter models to only include those with includeIn4x: true
                     const modelKeys = Object.keys(AI_MODELS).filter(
-                      (key) => AI_MODELS[key].includeIn4x !== false
+                      (key) => AI_MODELS[key].includeIn4x === true
                     );
                     const modelKey = useMixedModels
                       ? index < modelKeys.length
