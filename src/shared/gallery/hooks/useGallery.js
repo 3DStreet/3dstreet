@@ -29,6 +29,8 @@ const useGallery = () => {
   const [needsMigration, setNeedsMigration] = useState(false);
   const [isMigrating, setIsMigrating] = useState(false);
   const [migrationProgress, setMigrationProgress] = useState(0);
+  const [isDownloadingZip, setIsDownloadingZip] = useState(false);
+  const [zipProgress, setZipProgress] = useState(0);
 
   const totalPages = Math.max(1, Math.ceil(items.length / pageSize));
   const userId = currentUser?.uid || null;
@@ -369,27 +371,46 @@ const useGallery = () => {
   );
 
   /**
-   * Clear all items from the gallery (V2)
+   * Download V1 local images as a ZIP file
    * @returns {Promise<void>}
    */
-  const clearGallery = useCallback(async () => {
+  const downloadV1AsZip = useCallback(async () => {
+    try {
+      setIsDownloadingZip(true);
+      setZipProgress(0);
+
+      await galleryMigration.downloadV1AsZip((progress) => {
+        setZipProgress(progress.percentage);
+      });
+
+      console.log('V1 ZIP download complete');
+    } catch (error) {
+      console.error('Failed to download V1 as ZIP:', error);
+      throw error;
+    } finally {
+      setIsDownloadingZip(false);
+      setZipProgress(0);
+    }
+  }, []);
+
+  /**
+   * Discard V1 local data without migrating
+   * @returns {Promise<void>}
+   */
+  const discardV1Data = useCallback(async () => {
     // Get userId directly from Firebase auth (handles generator timing issues)
     const currentUserId =
       auth.currentUser?.uid || window.authState?.currentUser?.uid;
     if (!currentUserId) {
-      throw new Error('User must be logged in to clear gallery');
+      throw new Error('User must be logged in to discard V1 data');
     }
 
     try {
-      const assets = await galleryServiceV2.getAssets(currentUserId, {}, 500);
-      for (const asset of assets) {
-        await galleryServiceV2.deleteAsset(asset.assetId, currentUserId, true); // Hard delete
-      }
-
-      setItems([]);
-      setPage(1);
+      await galleryMigration.discardV1Data(currentUserId);
+      setNeedsMigration(false);
+      console.log('V1 data discarded');
     } catch (error) {
-      console.error('Failed to clear gallery:', error);
+      console.error('Failed to discard V1 data:', error);
       throw error;
     }
   }, []);
@@ -494,14 +515,18 @@ const useGallery = () => {
     setPageSize: changePageSize,
     addItem,
     removeItem,
-    clearGallery,
     downloadItem,
     reloadItems,
     // Migration
     needsMigration,
     isMigrating,
     migrationProgress,
-    runMigration
+    runMigration,
+    // V1 data management
+    downloadV1AsZip,
+    discardV1Data,
+    isDownloadingZip,
+    zipProgress
   };
 };
 

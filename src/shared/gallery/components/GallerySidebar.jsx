@@ -27,13 +27,17 @@ const GallerySidebar = ({
     setPage,
     setPageSize,
     removeItem,
-    clearGallery,
     downloadItem,
     // Migration
     needsMigration,
     isMigrating,
     migrationProgress,
     runMigration,
+    // V1 data management
+    downloadV1AsZip,
+    discardV1Data,
+    isDownloadingZip,
+    zipProgress,
     // Reload
     reloadItems
   } = useGallery();
@@ -43,26 +47,6 @@ const GallerySidebar = ({
 
   const handleToggle = () => {
     setIsCollapsed(!isCollapsed);
-  };
-
-  const handleClearGallery = async () => {
-    if (
-      window.confirm(
-        'Are you sure you want to clear all saved images? This cannot be undone.'
-      )
-    ) {
-      try {
-        await clearGallery();
-        if (onNotification) {
-          onNotification('Gallery cleared.', 'success');
-        }
-      } catch (error) {
-        console.error('Failed to clear gallery:', error);
-        if (onNotification) {
-          onNotification('Error clearing gallery.', 'error');
-        }
-      }
-    }
   };
 
   const handleDelete = async (id) => {
@@ -347,60 +331,169 @@ const GallerySidebar = ({
                   />
                 </div>
               </div>
+            ) : isDownloadingZip ? (
+              <div>
+                <div
+                  style={{
+                    marginBottom: '0.5rem',
+                    fontSize: '12px',
+                    fontWeight: '500'
+                  }}
+                >
+                  Downloading... {zipProgress.toFixed(0)}%
+                </div>
+                <div
+                  style={{
+                    width: '100%',
+                    height: '8px',
+                    backgroundColor: '#e5e7eb',
+                    borderRadius: '4px',
+                    overflow: 'hidden'
+                  }}
+                >
+                  <div
+                    style={{
+                      width: `${zipProgress}%`,
+                      height: '100%',
+                      backgroundColor: '#10b981',
+                      transition: 'width 0.3s ease'
+                    }}
+                  />
+                </div>
+              </div>
             ) : (
-              <button
-                onClick={() => {
-                  runMigration()
-                    .then((status) => {
-                      if (onNotification) {
-                        // Check if migration had failures
-                        if (status.failed > 0) {
-                          // Some or all assets failed
-                          if (status.migrated === 0) {
-                            // Complete failure
-                            onNotification(
-                              `Migration failed: All ${status.total} images could not be uploaded. Please check your permissions and try again.`,
-                              'error'
-                            );
+              <div
+                style={{
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: '0.75rem',
+                  alignItems: 'center'
+                }}
+              >
+                <button
+                  onClick={() => {
+                    runMigration()
+                      .then((status) => {
+                        if (onNotification) {
+                          if (status.failed > 0) {
+                            if (status.migrated === 0) {
+                              onNotification(
+                                `Migration failed: All ${status.total} images could not be uploaded. Please check your permissions and try again.`,
+                                'error'
+                              );
+                            } else {
+                              onNotification(
+                                `Migration partially complete: ${status.migrated} of ${status.total} images uploaded. ${status.failed} failed.`,
+                                'warning'
+                              );
+                            }
                           } else {
-                            // Partial failure
                             onNotification(
-                              `Migration partially complete: ${status.migrated} of ${status.total} images uploaded. ${status.failed} failed.`,
-                              'warning'
+                              `Migration complete! ${status.migrated} images uploaded to cloud.`,
+                              'success'
                             );
                           }
-                        } else {
-                          // Complete success
+                        }
+                      })
+                      .catch((error) => {
+                        console.error('Migration failed:', error);
+                        if (onNotification) {
                           onNotification(
-                            `Migration complete! ${status.migrated} images uploaded to cloud.`,
+                            'Migration failed. Please try again.',
+                            'error'
+                          );
+                        }
+                      });
+                  }}
+                  style={{
+                    padding: '0.5rem 1rem',
+                    backgroundColor: '#3b82f6',
+                    color: 'white',
+                    border: 'none',
+                    borderRadius: '6px',
+                    cursor: 'pointer',
+                    fontSize: '14px',
+                    fontWeight: '500',
+                    width: '100%'
+                  }}
+                >
+                  Migrate to Cloud
+                </button>
+                <button
+                  onClick={() => {
+                    downloadV1AsZip()
+                      .then(() => {
+                        if (onNotification) {
+                          onNotification(
+                            'Gallery downloaded as ZIP file.',
                             'success'
                           );
                         }
-                      }
-                    })
-                    .catch((error) => {
-                      console.error('Migration failed:', error);
-                      if (onNotification) {
-                        onNotification(
-                          'Migration failed. Please try again.',
-                          'error'
-                        );
-                      }
-                    });
-                }}
-                style={{
-                  padding: '0.5rem 1rem',
-                  backgroundColor: '#3b82f6',
-                  color: 'white',
-                  border: 'none',
-                  borderRadius: '6px',
-                  cursor: 'pointer',
-                  fontSize: '14px',
-                  fontWeight: '500'
-                }}
-              >
-                Migrate Gallery
-              </button>
+                      })
+                      .catch((error) => {
+                        console.error('Download failed:', error);
+                        if (onNotification) {
+                          onNotification(
+                            'Failed to download gallery.',
+                            'error'
+                          );
+                        }
+                      });
+                  }}
+                  style={{
+                    padding: '0.5rem 1rem',
+                    backgroundColor: '#10b981',
+                    color: 'white',
+                    border: 'none',
+                    borderRadius: '6px',
+                    cursor: 'pointer',
+                    fontSize: '14px',
+                    fontWeight: '500',
+                    width: '100%'
+                  }}
+                >
+                  Download as ZIP
+                </button>
+                <button
+                  onClick={() => {
+                    if (
+                      window.confirm(
+                        'Are you sure you want to discard your local images? This cannot be undone. Consider downloading a ZIP backup first.'
+                      )
+                    ) {
+                      discardV1Data()
+                        .then(() => {
+                          if (onNotification) {
+                            onNotification(
+                              'Local images discarded.',
+                              'success'
+                            );
+                          }
+                        })
+                        .catch((error) => {
+                          console.error('Discard failed:', error);
+                          if (onNotification) {
+                            onNotification(
+                              'Failed to discard local images.',
+                              'error'
+                            );
+                          }
+                        });
+                    }
+                  }}
+                  style={{
+                    padding: '0.25rem 0.5rem',
+                    backgroundColor: 'transparent',
+                    color: '#9ca3af',
+                    border: 'none',
+                    cursor: 'pointer',
+                    fontSize: '12px',
+                    textDecoration: 'underline'
+                  }}
+                >
+                  Discard local images
+                </button>
+              </div>
             )}
           </div>
         ) : (
@@ -416,16 +509,6 @@ const GallerySidebar = ({
             onPageSizeChange={setPageSize}
           />
         )}
-
-        <div className={styles.footer}>
-          <button
-            id="clear-gallery-btn"
-            className={styles.clearBtn}
-            onClick={handleClearGallery}
-          >
-            Clear Gallery
-          </button>
-        </div>
       </div>
 
       {/* Modal */}

@@ -285,6 +285,110 @@ class GalleryMigration {
   }
 
   /**
+   * Download all V1 IndexedDB images as a ZIP file
+   * @param {Function} onProgress - Progress callback
+   * @returns {Promise<void>}
+   */
+  async downloadV1AsZip(onProgress = null) {
+    try {
+      console.log('Starting V1 gallery ZIP download...');
+
+      // Initialize V1 service and get assets
+      await galleryService.init();
+      const assets = await galleryService.loadFromDB();
+
+      if (assets.length === 0) {
+        throw new Error('No images found in local gallery');
+      }
+
+      console.log(`Found ${assets.length} images to download`);
+
+      // Dynamic import JSZip only when needed (keeps it out of core bundle)
+      const JSZip = (await import('jszip')).default;
+      const zip = new JSZip();
+
+      // Add each asset to the ZIP
+      for (let i = 0; i < assets.length; i++) {
+        const asset = assets[i];
+        const blob = asset.imageData || asset.imageDataBlob;
+
+        if (!blob) {
+          console.warn(`Skipping asset ${asset.id}: no image data`);
+          continue;
+        }
+
+        // Determine file extension based on type
+        const isVideo = asset.type === 'video';
+        const extension = isVideo ? 'mp4' : 'png';
+
+        // Create filename from metadata or id
+        const timestamp = asset.metadata?.timestamp
+          ? new Date(asset.metadata.timestamp)
+              .toISOString()
+              .replace(/[:.]/g, '-')
+              .slice(0, 19)
+          : asset.id;
+        const model = asset.metadata?.model || 'unknown';
+        const filename = `${model}_${timestamp}.${extension}`;
+
+        zip.file(filename, blob);
+
+        if (onProgress) {
+          onProgress({
+            current: i + 1,
+            total: assets.length,
+            percentage: ((i + 1) / assets.length) * 100
+          });
+        }
+      }
+
+      // Generate the ZIP file
+      const zipBlob = await zip.generateAsync({
+        type: 'blob',
+        compression: 'DEFLATE',
+        compressionOptions: { level: 6 }
+      });
+
+      // Trigger download
+      const url = URL.createObjectURL(zipBlob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `3dstreet-gallery-backup-${new Date().toISOString().slice(0, 10)}.zip`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+
+      console.log('ZIP download complete');
+    } catch (error) {
+      console.error('Error creating ZIP:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Discard V1 data without migrating
+   * Deletes local IndexedDB and marks user as migrated
+   * @param {string} userId - User ID
+   * @returns {Promise<void>}
+   */
+  async discardV1Data(userId) {
+    if (!userId) {
+      throw new Error('User ID is required to discard V1 data');
+    }
+
+    console.log(`Discarding V1 data for user ${userId}...`);
+
+    // Delete the V1 database
+    await this.deleteV1Database();
+
+    // Mark as migrated so the banner doesn't show again
+    this.markAsMigrated(userId);
+
+    console.log('V1 data discarded successfully');
+  }
+
+  /**
    * Get migration status
    * @returns {object}
    */
