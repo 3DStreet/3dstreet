@@ -1,5 +1,6 @@
 /**
  * GalleryModal Component - Detail view modal
+ * Uses Firebase Storage URLs with browser HTTP caching
  */
 
 import { useState, useEffect, useRef } from 'react';
@@ -28,6 +29,9 @@ const GalleryModal = ({
     return stored !== null ? stored === 'true' : true;
   });
 
+  // Use full image URL directly - browser HTTP cache handles caching
+  const fullImageUrl =
+    item?.fullImageURL || item?.storageUrl || item?.objectURL;
   const videoRef = useRef(null);
 
   // Save metadata visibility to sessionStorage when it changes
@@ -171,16 +175,13 @@ const GalleryModal = ({
             {isVideo ? (
               <video
                 ref={videoRef}
-                src={item.fullImageURL || item.objectURL}
+                src={fullImageUrl}
                 controls
                 autoPlay
                 playsInline
               />
             ) : (
-              <img
-                src={item.fullImageURL || item.objectURL}
-                alt="Generated image"
-              />
+              <img src={fullImageUrl} alt="Generated image" />
             )}
           </div>
 

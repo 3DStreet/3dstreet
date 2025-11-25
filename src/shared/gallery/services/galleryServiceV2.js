@@ -2,12 +2,13 @@
  * Gallery Service V2 - Firestore + Firebase Storage
  *
  * This service uses Firestore as the source of truth for gallery assets,
- * with Firebase Storage for file storage and IndexedDB as a local cache.
+ * with Firebase Storage for file storage. Browser HTTP cache handles
+ * image caching (Cache-Control headers set on upload).
  *
  * Architecture:
  * - Firestore: Asset metadata (users/{userId}/assets/{assetId})
- * - Storage: File storage (users/{userId}/assets/{type}/{category}/{assetId}.ext)
- * - IndexedDB: Local cache for offline access
+ * - Storage: File storage (users/{userId}/assets/{type}/{assetId}.ext)
+ * - Browser: HTTP cache for images (1 year cache-control)
  */
 
 import {
@@ -49,101 +50,14 @@ class GalleryServiceV2 {
   constructor() {
     this.events = galleryEvents;
     this.unsubscribe = null; // Real-time listener
-    this.db = null; // IndexedDB instance for caching (metadata only, no blobs)
-    this.dbName = '3DStreetGalleryCache';
-    this.dbVersion = 3; // Increment version for schema change
-    this.storeName = 'assets';
   }
 
   /**
-   * Initialize the service (both Firestore and local cache)
+   * Initialize the service
    * @returns {Promise<void>}
    */
   async init() {
-    try {
-      // Initialize IndexedDB cache
-      this.db = await this.openCacheDB();
-      console.log('Gallery Service V2 initialized (metadata-only cache)');
-
-      // NOTE: Service Worker cache warming disabled due to CORS requirements
-      // To re-enable, configure CORS on Firebase Storage first:
-      // gsutil cors set public/storage-cors.json gs://dev-3dstreet.appspot.com
-      //
-      // this.warmServiceWorkerCache(50).catch((error) => {
-      //   console.warn('Failed to warm Service Worker cache on init:', error);
-      // });
-    } catch (error) {
-      console.error('Failed to initialize gallery service:', error);
-      throw error;
-    }
-  }
-
-  /**
-   * Open IndexedDB for caching
-   * @returns {Promise<IDBDatabase>}
-   */
-  openCacheDB() {
-    return new Promise((resolve, reject) => {
-      const request = indexedDB.open(this.dbName, this.dbVersion);
-
-      request.onerror = (event) => {
-        console.error('IndexedDB cache error:', event.target.error);
-        reject(new Error(`IndexedDB error: ${event.target.error}`));
-      };
-
-      request.onsuccess = (event) => {
-        resolve(event.target.result);
-      };
-
-      request.onupgradeneeded = (event) => {
-        const db = event.target.result;
-        if (!db.objectStoreNames.contains(this.storeName)) {
-          const store = db.createObjectStore(this.storeName, {
-            keyPath: 'assetId'
-          });
-          store.createIndex('userId', 'userId', { unique: false });
-          store.createIndex('type', 'type', { unique: false });
-          store.createIndex('category', 'category', { unique: false });
-          store.createIndex('createdAt', 'createdAt', { unique: false });
-          // LRU tracking indexes
-          store.createIndex('lastAccessedAt', 'lastAccessedAt', {
-            unique: false
-          });
-          store.createIndex('accessCount', 'accessCount', { unique: false });
-        } else if (event.oldVersion < 3) {
-          // Upgrade from v2 to v3: Add LRU indexes and remove blob data
-          const transaction = event.target.transaction;
-          const store = transaction.objectStore(this.storeName);
-
-          // Add new indexes if they don't exist
-          if (!store.indexNames.contains('lastAccessedAt')) {
-            store.createIndex('lastAccessedAt', 'lastAccessedAt', {
-              unique: false
-            });
-          }
-          if (!store.indexNames.contains('accessCount')) {
-            store.createIndex('accessCount', 'accessCount', { unique: false });
-          }
-
-          // Clear blob data from existing records
-          const cursorRequest = store.openCursor();
-          cursorRequest.onsuccess = (e) => {
-            const cursor = e.target.result;
-            if (cursor) {
-              const record = cursor.value;
-              // Remove imageData blob if it exists
-              if (record.imageData) {
-                delete record.imageData;
-                record.lastAccessedAt = Date.now();
-                record.accessCount = 0;
-                cursor.update(record);
-              }
-              cursor.continue();
-            }
-          };
-        }
-      };
-    });
+    console.log('Gallery Service V2 initialized');
   }
 
   /**
@@ -274,15 +188,6 @@ class GalleryServiceV2 {
       // Save to Firestore (subcollection under user)
       const assetRef = doc(db, 'users', userId, 'assets', assetId);
       await setDoc(assetRef, assetDoc);
-
-      // Cache metadata locally (no blob storage)
-      await this.cacheAsset(assetId, {
-        ...assetDoc,
-        // DO NOT store blob - Service Worker will cache images
-        createdAt: new Date().toISOString(),
-        lastAccessedAt: Date.now(),
-        accessCount: 0
-      });
 
       // Emit event
       this.events.dispatchEvent(
@@ -625,9 +530,6 @@ class GalleryServiceV2 {
         });
       }
 
-      // Remove from cache
-      await this.removeFromCache(assetId);
-
       this.events.dispatchEvent(
         new CustomEvent('assetDeleted', { detail: { assetId, hard } })
       );
@@ -692,90 +594,6 @@ class GalleryServiceV2 {
   }
 
   /**
-   * Cache asset metadata locally in IndexedDB (metadata only, no blobs)
-   * @param {string} assetId - Asset ID
-   * @param {object} assetData - Asset metadata (URLs, not blobs)
-   * @returns {Promise<void>}
-   */
-  async cacheAsset(assetId, assetData) {
-    if (!this.db) return;
-
-    // Ensure no blob data is stored
-    const metadataOnly = { ...assetData };
-    delete metadataOnly.imageData; // Remove any blob data
-    delete metadataOnly.imageDataBlob;
-
-    // Add LRU tracking if not present
-    if (!metadataOnly.lastAccessedAt) {
-      metadataOnly.lastAccessedAt = Date.now();
-    }
-    if (!metadataOnly.accessCount) {
-      metadataOnly.accessCount = 0;
-    }
-
-    return new Promise((resolve, reject) => {
-      const transaction = this.db.transaction(this.storeName, 'readwrite');
-      const store = transaction.objectStore(this.storeName);
-      const request = store.put(metadataOnly);
-
-      request.onerror = () => reject(request.error);
-      request.onsuccess = () => resolve();
-    });
-  }
-
-  /**
-   * Remove asset from cache
-   * @param {string} assetId - Asset ID
-   * @returns {Promise<void>}
-   */
-  async removeFromCache(assetId) {
-    if (!this.db) return;
-
-    return new Promise((resolve, reject) => {
-      const transaction = this.db.transaction(this.storeName, 'readwrite');
-      const store = transaction.objectStore(this.storeName);
-      const request = store.delete(assetId);
-
-      request.onerror = () => reject(request.error);
-      request.onsuccess = () => resolve();
-    });
-  }
-
-  /**
-   * Get cached assets from IndexedDB
-   * @returns {Promise<Array>}
-   */
-  async getCachedAssets() {
-    if (!this.db) return [];
-
-    return new Promise((resolve, reject) => {
-      const transaction = this.db.transaction(this.storeName, 'readonly');
-      const store = transaction.objectStore(this.storeName);
-      const request = store.getAll();
-
-      request.onerror = () => reject(request.error);
-      request.onsuccess = () => resolve(request.result || []);
-    });
-  }
-
-  /**
-   * Clear local cache
-   * @returns {Promise<void>}
-   */
-  async clearLocalCache() {
-    if (!this.db) return;
-
-    return new Promise((resolve, reject) => {
-      const transaction = this.db.transaction(this.storeName, 'readwrite');
-      const store = transaction.objectStore(this.storeName);
-      const request = store.clear();
-
-      request.onerror = () => reject(request.error);
-      request.onsuccess = () => resolve();
-    });
-  }
-
-  /**
    * Convert Data URI to Blob
    * @param {string} dataURI - Data URI string
    * @returns {Promise<Blob>}
@@ -788,147 +606,6 @@ class GalleryServiceV2 {
     } catch (error) {
       console.error('Error converting data URI to Blob:', error);
       return null;
-    }
-  }
-
-  /**
-   * Track asset access for LRU (updates lastAccessedAt and accessCount)
-   * @param {string} assetId - Asset ID
-   * @returns {Promise<void>}
-   */
-  async trackAccess(assetId) {
-    if (!this.db) return;
-
-    return new Promise((resolve, reject) => {
-      const transaction = this.db.transaction(this.storeName, 'readwrite');
-      const store = transaction.objectStore(this.storeName);
-      const getRequest = store.get(assetId);
-
-      getRequest.onsuccess = () => {
-        const asset = getRequest.result;
-        if (asset) {
-          asset.lastAccessedAt = Date.now();
-          asset.accessCount = (asset.accessCount || 0) + 1;
-
-          const updateRequest = store.put(asset);
-          updateRequest.onsuccess = () => resolve();
-          updateRequest.onerror = () => reject(updateRequest.error);
-        } else {
-          resolve(); // Asset not in cache
-        }
-      };
-
-      getRequest.onerror = () => reject(getRequest.error);
-    });
-  }
-
-  /**
-   * Warm Service Worker cache with recent thumbnails
-   * @param {number} count - Number of recent thumbnails to cache
-   * @returns {Promise<void>}
-   */
-  async warmServiceWorkerCache(count = 50) {
-    try {
-      // Get cached assets (already sorted by most recent)
-      const cachedAssets = await this.getCachedAssets();
-
-      // Extract thumbnail URLs (limit to count)
-      const thumbnailUrls = cachedAssets
-        .slice(0, count)
-        .map((asset) => asset.thumbnailUrl || asset.storageUrl)
-        .filter(Boolean);
-
-      if (thumbnailUrls.length === 0) {
-        console.log('No thumbnails to warm cache');
-        return;
-      }
-
-      // Send message to Service Worker
-      if ('serviceWorker' in navigator && navigator.serviceWorker.controller) {
-        const messageChannel = new MessageChannel();
-
-        return new Promise((resolve, reject) => {
-          messageChannel.port1.onmessage = (event) => {
-            if (event.data.success) {
-              console.log(
-                `Service Worker cache warmed with ${thumbnailUrls.length} thumbnails`
-              );
-              resolve();
-            } else {
-              reject(new Error(event.data.error));
-            }
-          };
-
-          navigator.serviceWorker.controller.postMessage(
-            {
-              type: 'WARM_CACHE',
-              data: { urls: thumbnailUrls }
-            },
-            [messageChannel.port2]
-          );
-        });
-      } else {
-        console.warn('Service Worker not available for cache warming');
-      }
-    } catch (error) {
-      console.error('Failed to warm Service Worker cache:', error);
-    }
-  }
-
-  /**
-   * Get Service Worker cache status
-   * @returns {Promise<object>}
-   */
-  async getServiceWorkerCacheStatus() {
-    if ('serviceWorker' in navigator && navigator.serviceWorker.controller) {
-      const messageChannel = new MessageChannel();
-
-      return new Promise((resolve, reject) => {
-        messageChannel.port1.onmessage = (event) => {
-          if (event.data.success) {
-            resolve(event.data.status);
-          } else {
-            reject(new Error(event.data.error));
-          }
-        };
-
-        navigator.serviceWorker.controller.postMessage(
-          {
-            type: 'GET_CACHE_STATUS'
-          },
-          [messageChannel.port2]
-        );
-      });
-    }
-
-    return null;
-  }
-
-  /**
-   * Clear Service Worker cache
-   * @returns {Promise<void>}
-   */
-  async clearServiceWorkerCache() {
-    if ('serviceWorker' in navigator && navigator.serviceWorker.controller) {
-      const messageChannel = new MessageChannel();
-
-      return new Promise((resolve, reject) => {
-        messageChannel.port1.onmessage = (event) => {
-          if (event.data.success) {
-            console.log('Service Worker cache cleared');
-            resolve();
-          } else {
-            reject(new Error(event.data.error));
-          }
-        };
-
-        navigator.serviceWorker.controller.postMessage(
-          {
-            type: 'CLEAR_CACHE'
-          },
-          [messageChannel.port2]
-        );
-      });
     }
   }
 

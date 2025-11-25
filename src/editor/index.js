@@ -17,7 +17,8 @@ import posthog from 'posthog-js';
 import { commandsByType } from './lib/commands/index.js';
 import useStore from '@/store';
 import { initializeLocationSync } from './lib/location-sync';
-import { Gallery, galleryService } from '@shared/gallery';
+import { Gallery, galleryServiceV2, galleryMigration } from '@shared/gallery';
+import { auth } from '@shared/services/firebase';
 
 // Helper function to check if viewer mode is requested via URL parameter
 function isViewerModeRequested() {
@@ -137,10 +138,40 @@ Inspector.prototype = {
   },
 
   mountGallery: function () {
-    // Initialize gallery service
-    galleryService.init().catch((error) => {
-      console.error('Failed to initialize gallery:', error);
-    });
+    // Initialize gallery service V2 with migration support
+    const initGalleryWithMigration = async () => {
+      try {
+        // Initialize V2 service
+        await galleryServiceV2.init();
+        console.log('Editor gallery service V2 initialized');
+
+        // Check for migration if user is authenticated
+        const handleAuthChange = async () => {
+          const user = auth.currentUser;
+          if (user) {
+            const needsMigration = await galleryMigration.isMigrationNeeded(
+              user.uid
+            );
+            if (needsMigration) {
+              console.log(
+                'Gallery migration needed for editor user. User can migrate from the gallery UI.'
+              );
+              // The migration UI is handled by the Gallery component itself
+            }
+          }
+        };
+
+        // Check migration now
+        await handleAuthChange();
+
+        // Listen for auth changes
+        auth.onAuthStateChanged(handleAuthChange);
+      } catch (error) {
+        console.error('Failed to initialize gallery:', error);
+      }
+    };
+
+    initGalleryWithMigration();
 
     // Create mount point for gallery
     const galleryRoot = document.createElement('div');

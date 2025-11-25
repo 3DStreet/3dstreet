@@ -29,66 +29,11 @@ import InpaintTab from './inpaint.js';
 import OutpaintTab from './outpaint.js';
 import VideoTab from './video.js';
 
-// Import debug tools (temporary - for debugging gallery migration)
-import debugGallery from '@shared/gallery/utils/debugGallery.js';
-
 // Expose auth for compatibility
 window.firebaseAuth = auth;
 
-/**
- * Register Service Worker for gallery image caching
- */
-async function registerServiceWorker() {
-  if ('serviceWorker' in navigator) {
-    try {
-      const registration = await navigator.serviceWorker.register('/sw.js', {
-        scope: '/'
-      });
-
-      console.log(
-        'Service Worker registered successfully:',
-        registration.scope
-      );
-
-      // Wait for SW to be active
-      if (registration.active) {
-        console.log('Service Worker is active');
-      } else {
-        // Wait for activation
-        await new Promise((resolve) => {
-          if (registration.installing) {
-            registration.installing.addEventListener('statechange', (e) => {
-              if (e.target.state === 'activated') {
-                resolve();
-              }
-            });
-          } else if (registration.waiting) {
-            registration.waiting.addEventListener('statechange', (e) => {
-              if (e.target.state === 'activated') {
-                resolve();
-              }
-            });
-          } else {
-            resolve();
-          }
-        });
-        console.log('Service Worker activated');
-      }
-    } catch (error) {
-      console.error('Service Worker registration failed:', error);
-    }
-  } else {
-    console.warn('Service Workers not supported in this browser');
-  }
-}
-
 // Initialize on DOMContentLoaded
 document.addEventListener('DOMContentLoaded', async () => {
-  // Register Service Worker first (non-blocking)
-  registerServiceWorker().catch((err) => {
-    console.warn('Service Worker registration error:', err);
-  });
-
   // Mount AppSwitcher
   mountAppSwitcher();
 
@@ -119,15 +64,4 @@ document.addEventListener('DOMContentLoaded', async () => {
   requestAnimationFrame(() => {
     document.body.classList.add('loaded');
   });
-
-  // Debug: Check gallery data after initialization (temporary)
-  setTimeout(async () => {
-    const user = auth.currentUser;
-    if (user) {
-      console.log('🔍 Running gallery debug check...');
-      await debugGallery.fullDebugReport(user.uid);
-    } else {
-      console.log('⚠️ No user logged in. V2 gallery requires authentication.');
-    }
-  }, 2000); // Wait 2 seconds for everything to initialize
 });

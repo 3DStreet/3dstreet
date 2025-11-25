@@ -1,10 +1,14 @@
 /**
  * GalleryItem Component - Individual thumbnail card
+ * Uses Firebase Storage URLs with browser HTTP caching
  */
 
 import styles from './Gallery.module.scss';
 
 const GalleryItem = ({ item, onItemClick, onDelete, onDownload }) => {
+  // Use thumbnail URL for grid display, fallback to objectURL
+  const imageUrl = item.thumbnailUrl || item.objectURL;
+
   const handleDelete = (e) => {
     e.stopPropagation();
     onDelete(item.id);
@@ -28,9 +32,9 @@ const GalleryItem = ({ item, onItemClick, onDelete, onDownload }) => {
       style={{ cursor: 'pointer' }}
     >
       {item.type === 'video' ? (
-        <video src={item.objectURL} muted playsInline />
+        <video src={imageUrl} muted playsInline />
       ) : (
-        <img src={item.objectURL} alt="Generated image" loading="lazy" />
+        <img src={imageUrl} alt="Generated image" loading="lazy" />
       )}
 
       {/* Overlay for buttons */}
