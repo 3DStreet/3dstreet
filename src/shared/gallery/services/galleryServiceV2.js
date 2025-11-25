@@ -209,12 +209,9 @@ class GalleryServiceV2 {
         asset: assetForEvent
       };
 
-      // Dispatch events immediately for optimistic updates
+      // Dispatch event immediately for optimistic updates
       this.events.dispatchEvent(
         new CustomEvent('assetAdded', { detail: eventDetail })
-      );
-      this.events.dispatchEvent(
-        new CustomEvent('itemAdded', { detail: eventDetail })
       );
 
       // Also dispatch a delayed reload event as a fallback
@@ -225,6 +222,12 @@ class GalleryServiceV2 {
           new CustomEvent('assetAddedReload', { detail: { userId, assetId } })
         );
       }, 1500); // 1.5 second delay to ensure Firestore write is complete
+
+      // Simple window event fallback for generator (bypasses EventTarget issues)
+      setTimeout(() => {
+        console.log('Gallery: Dispatching window refresh event');
+        window.dispatchEvent(new Event('gallery:refresh'));
+      }, 2500);
 
       console.log(
         `Asset ${assetId} added successfully, events dispatched with asset data`

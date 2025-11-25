@@ -158,67 +158,6 @@ const useGallery = () => {
 
     // Listen for external item additions
     // Use function that reads current userId from ref
-    const handleItemAdded = (event) => {
-      const currentUserId = userIdRef.current;
-      const eventUserId = event.detail?.userId;
-
-      console.log(
-        'Gallery: itemAdded event received, reloading for userId:',
-        currentUserId
-      );
-
-      if (!currentUserId) {
-        console.warn('Gallery: Cannot reload, userId is null - ignoring event');
-        return;
-      }
-
-      // Filter: only process events for this user's gallery
-      if (eventUserId !== currentUserId) {
-        console.log(
-          `Gallery: Event is for different user (${eventUserId}), ignoring`
-        );
-        return;
-      }
-
-      // Optimistic update: if asset data is provided, add it immediately
-      if (event.detail?.asset) {
-        const asset = event.detail.asset;
-        console.log(
-          'Gallery: Optimistically adding asset to display',
-          asset.assetId
-        );
-
-        // Convert to display format
-        let timestamp = asset.createdAt;
-        if (timestamp?.toMillis) {
-          timestamp = new Date(timestamp.toMillis()).toISOString();
-        } else if (timestamp?.toDate) {
-          timestamp = timestamp.toDate().toISOString();
-        } else if (typeof timestamp !== 'string') {
-          timestamp = new Date().toISOString();
-        }
-
-        const displayItem = {
-          id: asset.assetId,
-          type: asset.category,
-          objectURL: asset.thumbnailUrl || asset.storageUrl,
-          fullImageURL: asset.storageUrl,
-          storageUrl: asset.storageUrl,
-          thumbnailUrl: asset.thumbnailUrl,
-          metadata: {
-            ...asset.generationMetadata,
-            timestamp
-          }
-        };
-
-        // Add to beginning of items array
-        setItems((prevItems) => [displayItem, ...prevItems]);
-        console.log(
-          'Gallery: Item added optimistically, no background reload needed'
-        );
-      }
-    };
-
     const handleAssetAdded = (event) => {
       const currentUserId = userIdRef.current;
       const eventUserId = event.detail?.userId;
@@ -313,7 +252,6 @@ const useGallery = () => {
       reloadItems();
     };
 
-    galleryServiceV2.events.addEventListener('itemAdded', handleItemAdded);
     galleryServiceV2.events.addEventListener('assetAdded', handleAssetAdded);
     galleryServiceV2.events.addEventListener(
       'assetAddedReload',
@@ -323,7 +261,6 @@ const useGallery = () => {
 
     return () => {
       console.log('Gallery: Cleaning up event listeners for userId:', userId);
-      galleryServiceV2.events.removeEventListener('itemAdded', handleItemAdded);
       galleryServiceV2.events.removeEventListener(
         'assetAdded',
         handleAssetAdded
@@ -335,6 +272,19 @@ const useGallery = () => {
     };
   }, [userId, reloadItems]); // Include reloadItems since handleAssetAddedReload uses it
 
+  // Simple window event listener for gallery refresh (works even when userId is null)
+  // This is a fallback for the generator where EventTarget events may not work
+  useEffect(() => {
+    const handleWindowRefresh = () => {
+      console.log('Gallery: Window refresh event received, reloading...');
+      reloadItems();
+    };
+    window.addEventListener('gallery:refresh', handleWindowRefresh);
+    return () => {
+      window.removeEventListener('gallery:refresh', handleWindowRefresh);
+    };
+  }, [reloadItems]);
+
   /**
    * Add a new item to the gallery (V2)
    * @param {string} imageDataUri - Data URI of the image
@@ -344,7 +294,10 @@ const useGallery = () => {
    */
   const addItem = useCallback(
     async (imageDataUri, metadata, type = 'ai-render') => {
-      if (!userId) {
+      // Get userId directly from Firebase auth (handles generator timing issues)
+      const currentUserId =
+        auth.currentUser?.uid || window.authState?.currentUser?.uid;
+      if (!currentUserId) {
         throw new Error('User must be logged in to add items to gallery');
       }
 
@@ -358,7 +311,7 @@ const useGallery = () => {
           metadata,
           assetType,
           category,
-          userId
+          currentUserId
         );
 
         // Reload items from Firestore
@@ -373,7 +326,7 @@ const useGallery = () => {
         throw error;
       }
     },
-    [userId, reloadItems]
+    [reloadItems]
   );
 
   /**
@@ -383,12 +336,15 @@ const useGallery = () => {
    */
   const removeItem = useCallback(
     async (id) => {
-      if (!userId) {
+      // Get userId directly from Firebase auth (handles generator timing issues)
+      const currentUserId =
+        auth.currentUser?.uid || window.authState?.currentUser?.uid;
+      if (!currentUserId) {
         throw new Error('User must be logged in to remove items');
       }
 
       try {
-        await galleryServiceV2.deleteAsset(id, userId, false); // Soft delete
+        await galleryServiceV2.deleteAsset(id, currentUserId, false); // Soft delete
 
         // Update local state
         const updatedItems = items.filter((item) => item.id !== id);
@@ -409,7 +365,7 @@ const useGallery = () => {
         throw error;
       }
     },
-    [userId, items, page, pageSize]
+    [items, page, pageSize]
   );
 
   /**
@@ -417,14 +373,17 @@ const useGallery = () => {
    * @returns {Promise<void>}
    */
   const clearGallery = useCallback(async () => {
-    if (!userId) {
+    // Get userId directly from Firebase auth (handles generator timing issues)
+    const currentUserId =
+      auth.currentUser?.uid || window.authState?.currentUser?.uid;
+    if (!currentUserId) {
       throw new Error('User must be logged in to clear gallery');
     }
 
     try {
-      const assets = await galleryServiceV2.getAssets(userId, {}, 500);
+      const assets = await galleryServiceV2.getAssets(currentUserId, {}, 500);
       for (const asset of assets) {
-        await galleryServiceV2.deleteAsset(asset.assetId, userId, true); // Hard delete
+        await galleryServiceV2.deleteAsset(asset.assetId, currentUserId, true); // Hard delete
       }
 
       setItems([]);
@@ -433,7 +392,7 @@ const useGallery = () => {
       console.error('Failed to clear gallery:', error);
       throw error;
     }
-  }, [userId]);
+  }, []);
 
   /**
    * Download an item
