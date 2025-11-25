@@ -57,6 +57,10 @@ export default class Modal extends Component {
     if (target === this.self.current || this.self.current.contains(target)) {
       return false;
     }
+    // Don't dismiss if clicking inside a Radix portal (dropdown menus, etc.)
+    if (target.closest('[data-radix-popper-content-wrapper]')) {
+      return false;
+    }
     return true;
   };
 

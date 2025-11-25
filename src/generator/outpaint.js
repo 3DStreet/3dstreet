@@ -212,9 +212,8 @@ const OutpaintTab = {
                             <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                         </svg>
                         <span id="outpaint-generate-text">Generate Outpaint</span>
-                        <span class="inline-flex items-center rounded" style="background: rgba(0, 0, 0, 0.15); padding: 6px 8px; gap: 2px;">
+                        <span class="inline-flex items-center rounded" style="background: rgba(0, 0, 0, 0.15); padding: 6px 8px; gap: 4px;">
                             <img src="/ui_assets/token-image.png" alt="Token" class="w-5 h-5" />
-                            <span class="text-sm" style="opacity: 0.9; margin-right: 1px;">×</span>
                             <span class="text-sm font-medium">1</span>
                         </span>
                     </button>

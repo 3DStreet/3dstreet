@@ -581,6 +581,16 @@
   font-size: 0.875rem;
   color: #e5e7eb; /* gray-200 */
   font-weight: 500;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.modelLogo {
+  width: 1.25rem;
+  height: 1.25rem;
+  object-fit: contain;
+  flex-shrink: 0;
 }
 
 /* Modal Actions - Button container */
