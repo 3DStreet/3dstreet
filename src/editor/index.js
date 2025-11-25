@@ -291,16 +291,18 @@ Inspector.prototype = {
     // Mount the React gallery component
     const root = createRoot(galleryRoot);
     root.render(
-      <Gallery
-        mode="sidebar"
-        onCopyParams={handleCopyParams}
-        onCopyImage={handleCopyImage}
-        onUseForInpaint={handleUseForInpaint}
-        onUseForOutpaint={handleUseForOutpaint}
-        onUseForGenerator={handleUseForGenerator}
-        onUseForVideo={handleUseForVideo}
-        onNotification={handleNotification}
-      />
+      <AuthProvider>
+        <Gallery
+          mode="sidebar"
+          onCopyParams={handleCopyParams}
+          onCopyImage={handleCopyImage}
+          onUseForInpaint={handleUseForInpaint}
+          onUseForOutpaint={handleUseForOutpaint}
+          onUseForGenerator={handleUseForGenerator}
+          onUseForVideo={handleUseForVideo}
+          onNotification={handleNotification}
+        />
+      </AuthProvider>
     );
   },
 

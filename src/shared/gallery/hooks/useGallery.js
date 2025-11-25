@@ -3,18 +3,24 @@
  * Uses V2 (Firestore + Firebase Storage) exclusively
  */
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useContext } from 'react';
 import galleryServiceV2 from '../services/galleryServiceV2.js';
 import galleryMigration from '../services/galleryMigration.js';
+import { AuthContext } from '@shared/contexts';
 
 /**
  * Custom hook for gallery state management
  * @returns {Object} Gallery state and methods
  */
 const useGallery = () => {
-  // Use window.authState from mount-auth.js instead of useAuthContext
-  // to avoid creating redundant AuthProvider instances
-  const [currentUser, setCurrentUser] = useState(window.authState?.currentUser);
+  // Try to use AuthContext first (editor), fall back to window.authState (generator)
+  // useContext will return default value if not in a provider
+  const authContext = useContext(AuthContext);
+  const contextUser = authContext?.currentUser;
+
+  const [currentUser, setCurrentUser] = useState(
+    contextUser || window.authState?.currentUser
+  );
   const [items, setItems] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [page, setPage] = useState(1);
@@ -26,18 +32,24 @@ const useGallery = () => {
   const totalPages = Math.max(1, Math.ceil(items.length / pageSize));
   const userId = currentUser?.uid || null;
 
-  // Listen for auth state changes from mount-auth.js
+  // Listen for auth state changes from both AuthContext (editor) and window.authState (generator)
   useEffect(() => {
+    // For generator: listen to window event
     const handleAuthChange = (event) => {
       setCurrentUser(event.detail.user);
     };
 
     window.addEventListener('authStateChanged', handleAuthChange);
 
+    // For editor: update when contextUser changes
+    if (contextUser !== currentUser) {
+      setCurrentUser(contextUser);
+    }
+
     return () => {
       window.removeEventListener('authStateChanged', handleAuthChange);
     };
-  }, []);
+  }, [contextUser, currentUser]);
 
   /**
    * Reload items from Firestore
