@@ -1824,10 +1824,26 @@ class GeneratorTabBase {
         };
 
         try {
-          await galleryService.addImage(dataUrl, metadata, 'ai-render');
+          const currentUser = auth.currentUser;
+          if (!currentUser) {
+            console.warn('User not authenticated, skipping gallery save');
+            return;
+          }
+
+          // Initialize gallery service if needed
+          await galleryService.init();
+
+          // Use V2 API: addAsset(file, metadata, type, category, userId)
+          await galleryService.addAsset(
+            dataUrl,
+            metadata,
+            'image', // type
+            'ai-render', // category
+            currentUser.uid // userId
+          );
           FluxUI.showNotification('Image saved to gallery!', 'success');
         } catch (e) {
-          console.error('Gallery addImage error:', e);
+          console.error('Gallery addAsset error:', e);
           FluxUI.showNotification('Failed to save image to gallery.', 'error');
         }
       })

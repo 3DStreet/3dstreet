@@ -141,6 +141,9 @@ class GalleryServiceV2 {
         dimensions = await this.getMediaDimensions(blob, type);
       }
 
+      // Clean metadata to remove undefined values (Firestore doesn't accept undefined)
+      const cleanMetadata = this.removeUndefinedValues(metadata || {});
+
       // Create Firestore document
       const assetDoc = {
         // Identity
@@ -166,8 +169,8 @@ class GalleryServiceV2 {
         // Media Dimensions
         ...dimensions,
 
-        // Generation Metadata
-        generationMetadata: metadata || {},
+        // Generation Metadata (cleaned of undefined values)
+        generationMetadata: cleanMetadata,
 
         // Timestamps
         createdAt: serverTimestamp(),
@@ -189,12 +192,43 @@ class GalleryServiceV2 {
       const assetRef = doc(db, 'users', userId, 'assets', assetId);
       await setDoc(assetRef, assetDoc);
 
-      // Emit event
+      // Create a version of the asset with resolved timestamp for optimistic UI
+      // (assetDoc has serverTimestamp() which is a sentinel, not a real Date)
+      const now = new Date();
+      const assetForEvent = {
+        ...assetDoc,
+        createdAt: now,
+        updatedAt: now,
+        uploadedAt: now
+      };
+
+      // Emit events with full asset data for optimistic updates
+      const eventDetail = {
+        assetId,
+        userId,
+        asset: assetForEvent
+      };
+
+      // Dispatch events immediately for optimistic updates
       this.events.dispatchEvent(
-        new CustomEvent('assetAdded', { detail: { assetId } })
+        new CustomEvent('assetAdded', { detail: eventDetail })
+      );
+      this.events.dispatchEvent(
+        new CustomEvent('itemAdded', { detail: eventDetail })
       );
 
-      console.log(`Asset ${assetId} added successfully`);
+      // Also dispatch a delayed reload event as a fallback
+      // This ensures the gallery updates even if components are re-rendering
+      setTimeout(() => {
+        console.log(`Asset ${assetId} fallback reload event dispatched`);
+        this.events.dispatchEvent(
+          new CustomEvent('assetAddedReload', { detail: { userId, assetId } })
+        );
+      }, 1500); // 1.5 second delay to ensure Firestore write is complete
+
+      console.log(
+        `Asset ${assetId} added successfully, events dispatched with asset data`
+      );
       return assetId;
     } catch (error) {
       console.error('Error adding asset:', error);
@@ -385,6 +419,29 @@ class GalleryServiceV2 {
     };
 
     return mimeMap[mimeType] || 'bin';
+  }
+
+  /**
+   * Remove undefined values from object (Firestore doesn't accept undefined)
+   * @param {object} obj - Object to clean
+   * @returns {object} - Cleaned object
+   */
+  removeUndefinedValues(obj) {
+    if (obj === null || typeof obj !== 'object') {
+      return obj;
+    }
+
+    if (Array.isArray(obj)) {
+      return obj.map((item) => this.removeUndefinedValues(item));
+    }
+
+    const cleaned = {};
+    for (const key in obj) {
+      if (obj[key] !== undefined) {
+        cleaned[key] = this.removeUndefinedValues(obj[key]);
+      }
+    }
+    return cleaned;
   }
 
   /**

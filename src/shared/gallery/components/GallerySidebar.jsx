@@ -33,7 +33,9 @@ const GallerySidebar = ({
     needsMigration,
     isMigrating,
     migrationProgress,
-    runMigration
+    runMigration,
+    // Reload
+    reloadItems
   } = useGallery();
 
   const [isCollapsed, setIsCollapsed] = useState(true);
@@ -220,6 +222,65 @@ const GallerySidebar = ({
                     }}
                   >
                     Gallery synced to cloud. Available on all your devices.
+                    <Tooltip.Arrow style={{ fill: '#2d2d2d' }} />
+                  </Tooltip.Content>
+                </Tooltip.Portal>
+              </Tooltip.Root>
+            </Tooltip.Provider>
+            <Tooltip.Provider>
+              <Tooltip.Root delayDuration={0}>
+                <Tooltip.Trigger asChild>
+                  <button
+                    onClick={() => reloadItems()}
+                    style={{
+                      background: 'none',
+                      border: 'none',
+                      cursor: 'pointer',
+                      padding: '4px',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      color: '#9ca3af',
+                      transition: 'color 0.2s',
+                      marginLeft: '8px'
+                    }}
+                    onMouseEnter={(e) =>
+                      (e.currentTarget.style.color = '#ffffff')
+                    }
+                    onMouseLeave={(e) =>
+                      (e.currentTarget.style.color = '#9ca3af')
+                    }
+                  >
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      width="16"
+                      height="16"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    >
+                      <path d="M21.5 2v6h-6M2.5 22v-6h6M2 11.5a10 10 0 0 1 18.8-4.3M22 12.5a10 10 0 0 1-18.8 4.2" />
+                    </svg>
+                  </button>
+                </Tooltip.Trigger>
+                <Tooltip.Portal>
+                  <Tooltip.Content
+                    side="bottom"
+                    sideOffset={5}
+                    style={{
+                      backgroundColor: '#2d2d2d',
+                      color: 'white',
+                      padding: '6px 12px',
+                      borderRadius: '4px',
+                      fontSize: '12px',
+                      fontWeight: '500',
+                      zIndex: 10000
+                    }}
+                  >
+                    Refresh gallery
                     <Tooltip.Arrow style={{ fill: '#2d2d2d' }} />
                   </Tooltip.Content>
                 </Tooltip.Portal>

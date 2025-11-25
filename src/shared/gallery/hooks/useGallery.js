@@ -3,10 +3,11 @@
  * Uses V2 (Firestore + Firebase Storage) exclusively
  */
 
-import { useState, useEffect, useCallback, useContext } from 'react';
+import { useState, useEffect, useCallback, useContext, useRef } from 'react';
 import galleryServiceV2 from '../services/galleryServiceV2.js';
 import galleryMigration from '../services/galleryMigration.js';
 import { AuthContext } from '@shared/contexts';
+import { auth } from '@shared/services/firebase.js';
 
 /**
  * Custom hook for gallery state management
@@ -32,6 +33,12 @@ const useGallery = () => {
   const totalPages = Math.max(1, Math.ceil(items.length / pageSize));
   const userId = currentUser?.uid || null;
 
+  // Use ref to always get current userId in event handlers
+  const userIdRef = useRef(userId);
+  useEffect(() => {
+    userIdRef.current = userId;
+  }, [userId]);
+
   // Listen for auth state changes from both AuthContext (editor) and window.authState (generator)
   useEffect(() => {
     // For generator: listen to window event
@@ -55,13 +62,20 @@ const useGallery = () => {
    * Reload items from Firestore
    */
   const reloadItems = useCallback(async () => {
-    if (!userId) {
-      setItems([]);
-      return;
+    // Get the current user directly from Firebase auth or window.authState
+    const currentAuthUser = auth.currentUser || window.authState?.currentUser;
+    const currentUserId = currentAuthUser?.uid;
+
+    if (!currentUserId) {
+      console.log(
+        'Gallery: reloadItems called but no authenticated user found, skipping'
+      );
+      return; // Don't clear items, just skip reload
     }
 
+    console.log('Gallery: reloadItems called for userId:', currentUserId);
     try {
-      const assets = await galleryServiceV2.getAssets(userId, {}, 200);
+      const assets = await galleryServiceV2.getAssets(currentUserId, {}, 200);
 
       // Convert to display format
       const displayItems = assets.map((asset) => {
@@ -90,22 +104,31 @@ const useGallery = () => {
       });
 
       setItems(displayItems);
+      console.log(
+        `Gallery: Loaded ${displayItems.length} items from Firestore`
+      );
     } catch (error) {
       console.error('Failed to reload gallery items:', error);
-      setItems([]);
+      // Don't clear items on error
     }
-  }, [userId]);
+  }, []); // No dependencies - always get fresh auth state
 
   /**
    * Initialize the gallery (V2 only)
    */
   useEffect(() => {
-    const initGallery = async () => {
-      if (!userId) {
-        setIsLoading(false);
-        return;
-      }
+    // Early return if no userId - don't attach event listeners with null userId
+    if (!userId) {
+      console.log(
+        'Gallery: useEffect called with null userId, skipping initialization and event listeners'
+      );
+      setIsLoading(false);
+      return;
+    }
 
+    console.log('Gallery: useEffect called with userId:', userId);
+
+    const initGallery = async () => {
       try {
         setIsLoading(true);
 
@@ -134,25 +157,183 @@ const useGallery = () => {
     initGallery();
 
     // Listen for external item additions
-    const handleItemAdded = () => {
-      reloadItems();
+    // Use function that reads current userId from ref
+    const handleItemAdded = (event) => {
+      const currentUserId = userIdRef.current;
+      const eventUserId = event.detail?.userId;
+
+      console.log(
+        'Gallery: itemAdded event received, reloading for userId:',
+        currentUserId
+      );
+
+      if (!currentUserId) {
+        console.warn('Gallery: Cannot reload, userId is null - ignoring event');
+        return;
+      }
+
+      // Filter: only process events for this user's gallery
+      if (eventUserId !== currentUserId) {
+        console.log(
+          `Gallery: Event is for different user (${eventUserId}), ignoring`
+        );
+        return;
+      }
+
+      // Optimistic update: if asset data is provided, add it immediately
+      if (event.detail?.asset) {
+        const asset = event.detail.asset;
+        console.log(
+          'Gallery: Optimistically adding asset to display',
+          asset.assetId
+        );
+
+        // Convert to display format
+        let timestamp = asset.createdAt;
+        if (timestamp?.toMillis) {
+          timestamp = new Date(timestamp.toMillis()).toISOString();
+        } else if (timestamp?.toDate) {
+          timestamp = timestamp.toDate().toISOString();
+        } else if (typeof timestamp !== 'string') {
+          timestamp = new Date().toISOString();
+        }
+
+        const displayItem = {
+          id: asset.assetId,
+          type: asset.category,
+          objectURL: asset.thumbnailUrl || asset.storageUrl,
+          fullImageURL: asset.storageUrl,
+          storageUrl: asset.storageUrl,
+          thumbnailUrl: asset.thumbnailUrl,
+          metadata: {
+            ...asset.generationMetadata,
+            timestamp
+          }
+        };
+
+        // Add to beginning of items array
+        setItems((prevItems) => [displayItem, ...prevItems]);
+        console.log(
+          'Gallery: Item added optimistically, no background reload needed'
+        );
+      }
     };
 
-    const handleAssetAdded = () => {
+    const handleAssetAdded = (event) => {
+      const currentUserId = userIdRef.current;
+      const eventUserId = event.detail?.userId;
+
+      console.log(
+        'Gallery: assetAdded event received',
+        event.detail,
+        'current userId:',
+        currentUserId
+      );
+
+      if (!currentUserId) {
+        console.warn('Gallery: Cannot reload, userId is null - ignoring event');
+        return;
+      }
+
+      // Filter: only process events for this user's gallery
+      if (eventUserId !== currentUserId) {
+        console.log(
+          `Gallery: Event is for different user (${eventUserId}), ignoring`
+        );
+        return;
+      }
+
+      // Optimistic update: if asset data is provided, add it immediately
+      if (event.detail?.asset) {
+        const asset = event.detail.asset;
+        console.log(
+          'Gallery: Optimistically adding asset to display',
+          asset.assetId
+        );
+
+        // Convert to display format
+        let timestamp = asset.createdAt;
+        if (timestamp?.toMillis) {
+          timestamp = new Date(timestamp.toMillis()).toISOString();
+        } else if (timestamp?.toDate) {
+          timestamp = timestamp.toDate().toISOString();
+        } else if (typeof timestamp !== 'string') {
+          timestamp = new Date().toISOString();
+        }
+
+        const displayItem = {
+          id: asset.assetId,
+          type: asset.category,
+          objectURL: asset.thumbnailUrl || asset.storageUrl,
+          fullImageURL: asset.storageUrl,
+          storageUrl: asset.storageUrl,
+          thumbnailUrl: asset.thumbnailUrl,
+          metadata: {
+            ...asset.generationMetadata,
+            timestamp
+          }
+        };
+
+        // Add to beginning of items array
+        setItems((prevItems) => [displayItem, ...prevItems]);
+        console.log(
+          'Gallery: Item added optimistically, no background reload needed'
+        );
+      }
+    };
+
+    // Fallback reload handler for when optimistic updates fail
+    const handleAssetAddedReload = (event) => {
+      const currentUserId = userIdRef.current;
+      const eventUserId = event.detail?.userId;
+
+      console.log(
+        'Gallery: assetAddedReload event received for userId:',
+        eventUserId,
+        'current userId:',
+        currentUserId
+      );
+
+      if (!currentUserId) {
+        console.warn(
+          'Gallery: Cannot reload, userId is null - ignoring fallback event'
+        );
+        return;
+      }
+
+      // Filter: only process events for this user's gallery
+      if (eventUserId !== currentUserId) {
+        console.log(
+          `Gallery: Fallback event is for different user (${eventUserId}), ignoring`
+        );
+        return;
+      }
+
+      console.log('Gallery: Triggering fallback reload from Firestore');
       reloadItems();
     };
 
     galleryServiceV2.events.addEventListener('itemAdded', handleItemAdded);
     galleryServiceV2.events.addEventListener('assetAdded', handleAssetAdded);
+    galleryServiceV2.events.addEventListener(
+      'assetAddedReload',
+      handleAssetAddedReload
+    );
+    console.log('Gallery: Event listeners attached for userId:', userId);
 
     return () => {
+      console.log('Gallery: Cleaning up event listeners for userId:', userId);
       galleryServiceV2.events.removeEventListener('itemAdded', handleItemAdded);
       galleryServiceV2.events.removeEventListener(
         'assetAdded',
         handleAssetAdded
       );
+      galleryServiceV2.events.removeEventListener(
+        'assetAddedReload',
+        handleAssetAddedReload
+      );
     };
-  }, [reloadItems, userId]);
+  }, [userId, reloadItems]); // Include reloadItems since handleAssetAddedReload uses it
 
   /**
    * Add a new item to the gallery (V2)
@@ -356,6 +537,7 @@ const useGallery = () => {
     removeItem,
     clearGallery,
     downloadItem,
+    reloadItems,
     // Migration
     needsMigration,
     isMigrating,

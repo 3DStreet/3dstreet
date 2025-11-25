@@ -1040,8 +1040,36 @@ const InpaintTab = {
               seed: this.currentParams.seed || 'N/A', // Ensure seed is captured
               model: this.currentParams.model // Use the stored model/endpoint name
             };
-            galleryService.addImage(base64data, metadata);
-            FluxUI.showNotification('Image added to gallery!', 'success');
+
+            // Save to gallery using V2 API
+            const currentUser = window.authState?.user;
+            if (currentUser) {
+              galleryService.init().then(() => {
+                galleryService
+                  .addAsset(
+                    base64data,
+                    metadata,
+                    'image',
+                    'ai-render',
+                    currentUser.uid
+                  )
+                  .then(() => {
+                    FluxUI.showNotification(
+                      'Image added to gallery!',
+                      'success'
+                    );
+                  })
+                  .catch((error) => {
+                    console.error('Failed to add to gallery:', error);
+                    FluxUI.showNotification(
+                      'Failed to add to gallery.',
+                      'error'
+                    );
+                  });
+              });
+            } else {
+              console.warn('User not authenticated, skipping gallery save');
+            }
           };
           reader.readAsDataURL(blob);
         })
