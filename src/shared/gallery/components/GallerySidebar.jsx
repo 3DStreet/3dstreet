@@ -21,6 +21,7 @@ const GallerySidebar = ({
   const {
     items,
     isLoading,
+    isLoggedIn,
     page,
     pageSize,
     totalPages,
@@ -44,6 +45,11 @@ const GallerySidebar = ({
 
   const [isCollapsed, setIsCollapsed] = useState(true);
   const [selectedItem, setSelectedItem] = useState(null);
+
+  // Don't render the gallery if user is not logged in
+  if (!isLoggedIn) {
+    return null;
+  }
 
   const handleToggle = () => {
     setIsCollapsed(!isCollapsed);

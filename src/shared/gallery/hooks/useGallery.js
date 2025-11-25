@@ -505,9 +505,18 @@ const useGallery = () => {
     }
   }, [userId, reloadItems]);
 
+  // Check auth state from multiple sources for isLoggedIn
+  // This handles the generator case where auth.currentUser may be set before state updates
+  const isLoggedIn = !!(
+    userId ||
+    auth.currentUser?.uid ||
+    window.authState?.currentUser?.uid
+  );
+
   return {
     items,
     isLoading,
+    isLoggedIn,
     page,
     pageSize,
     totalPages,
