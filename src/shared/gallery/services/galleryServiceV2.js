@@ -202,28 +202,41 @@ class GalleryServiceV2 {
         uploadedAt: now
       };
 
-      // Emit events with full asset data for optimistic updates
+      // Event dispatch strategy for gallery UI updates:
+      //
+      // We use 3 events due to different React architectures:
+      // 1. assetAdded (immediate) - Optimistic update with full asset data.
+      //    Works in editor where Gallery shares the same module instance.
+      // 2. assetAddedReload (1.5s) - Fallback that triggers Firestore reload.
+      //    Catches cases where optimistic update fails during re-renders.
+      // 3. gallery:refresh (2.5s) - Window event for generator app.
+      //    Generator uses React islands (separate createRoot calls), so the
+      //    EventTarget instance may differ from what Gallery listens to.
+      //    Window events bypass this module isolation issue.
+      //
+      // TODO: Remove fallbacks #2 and #3 when generator is fully converted to React
+      // with a single React tree (no more islands architecture).
+
       const eventDetail = {
         assetId,
         userId,
         asset: assetForEvent
       };
 
-      // Dispatch event immediately for optimistic updates
+      // Event #1: Immediate optimistic update (works in editor)
       this.events.dispatchEvent(
         new CustomEvent('assetAdded', { detail: eventDetail })
       );
 
-      // Also dispatch a delayed reload event as a fallback
-      // This ensures the gallery updates even if components are re-rendering
+      // Event #2: Delayed reload fallback via EventTarget
       setTimeout(() => {
         console.log(`Asset ${assetId} fallback reload event dispatched`);
         this.events.dispatchEvent(
           new CustomEvent('assetAddedReload', { detail: { userId, assetId } })
         );
-      }, 1500); // 1.5 second delay to ensure Firestore write is complete
+      }, 1500);
 
-      // Simple window event fallback for generator (bypasses EventTarget issues)
+      // Event #3: Window event fallback for generator (bypasses EventTarget issues)
       setTimeout(() => {
         console.log('Gallery: Dispatching window refresh event');
         window.dispatchEvent(new Event('gallery:refresh'));
