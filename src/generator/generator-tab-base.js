@@ -1757,21 +1757,13 @@ class GeneratorTabBase {
       return;
     }
 
-    // Initialize gallery service with current user
+    // Initialize gallery service
     const currentUser = auth.currentUser;
-    if (currentUser && !galleryService.userId) {
+    if (currentUser) {
       try {
-        await galleryService.init(currentUser.uid);
+        await galleryService.init();
       } catch (err) {
-        console.warn(
-          'Failed to initialize gallery V2, falling back to V1:',
-          err
-        );
-        // V1 will be used automatically by the unified service
-        FluxUI.showNotification(
-          'Cloud gallery sync unavailable, using local storage',
-          'warning'
-        );
+        console.warn('Failed to initialize gallery service:', err);
       }
     }
 

@@ -92,34 +92,19 @@ export async function checkMigrationStatus(userId) {
 }
 
 /**
- * Check IndexedDB cache (V2 metadata cache)
+ * Check V2 caching strategy
+ * Note: V2 uses browser HTTP cache (via Cache-Control headers), not IndexedDB
  */
-export async function checkV2Cache() {
-  try {
-    await galleryServiceV2.init();
-    const cachedAssets = await galleryServiceV2.getCachedAssets();
-
-    console.log('=== V2 IndexedDB Cache ===');
-    console.log(`Found ${cachedAssets.length} cached metadata entries`);
-
-    if (cachedAssets.length > 0) {
-      const hasBlobs = cachedAssets.some((a) => a.imageData || a.imageDataBlob);
-      console.log(
-        `Contains blob data: ${hasBlobs ? 'YES (should be NO!)' : 'NO (correct)'}`
-      );
-
-      console.log('First cached entry:', {
-        assetId: cachedAssets[0].assetId,
-        hasBlob: !!(cachedAssets[0].imageData || cachedAssets[0].imageDataBlob),
-        hasUrls: !!(cachedAssets[0].storageUrl || cachedAssets[0].thumbnailUrl)
-      });
-    }
-
-    return cachedAssets;
-  } catch (error) {
-    console.error('Error checking V2 cache:', error);
-    return [];
-  }
+export function checkV2Cache() {
+  console.log('=== V2 Caching Strategy ===');
+  console.log('V2 uses browser HTTP cache, not IndexedDB.');
+  console.log(
+    'Images are cached via Cache-Control: public, max-age=31536000 (1 year)'
+  );
+  console.log(
+    'To verify caching, check Network tab in DevTools for cached responses.'
+  );
+  return [];
 }
 
 /**
@@ -238,8 +223,8 @@ export function resetMigrationFlag(userId) {
   console.log('Reload the page to see migration prompt again');
 }
 
-// Make functions available globally for console use
-if (typeof window !== 'undefined') {
+// Make functions available globally for console use (development only)
+if (typeof window !== 'undefined' && process.env.NODE_ENV !== 'production') {
   window.debugGallery = {
     checkV1Data,
     checkV2Data,
