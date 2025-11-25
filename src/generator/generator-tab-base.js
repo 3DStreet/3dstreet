@@ -1318,7 +1318,8 @@ class GeneratorTabBase {
         guidance: 2.5,
         num_inference_steps: 30,
         model_version: modelConfig.version,
-        scene_id: null
+        scene_id: null,
+        source: 'generator'
       });
 
       if (result.data.success) {

@@ -5,7 +5,7 @@ const { checkAndRefillImageTokensInternal } = require('./token-management.js');
 const { AI_MODEL_NAMES, DEFAULT_MODEL_VERSION, MODEL_VERSIONS, REPLICATE_MODELS } = require('./replicate-models.js');
 
 // Helper function to post AI-generated images to Discord
-async function postAIImageToDiscord(userId, imageUrl, prompt, modelVersion, sceneId) {
+async function postAIImageToDiscord(userId, imageUrl, prompt, modelVersion, sceneId, source = 'editor') {
   // Only proceed if Discord webhook is configured
   if (!process.env.DISCORD_WEBHOOK_URL) {
     console.log('Discord webhook not configured, skipping Discord post');
@@ -32,6 +32,10 @@ async function postAIImageToDiscord(userId, imageUrl, prompt, modelVersion, scen
     // Construct scene URL if sceneId is provided
     const sceneUrl = sceneId ? `https://3dstreet.app/#scenes/${sceneId}` : null;
 
+    // Determine footer text based on source parameter
+    // Default to 'editor' for backwards compatibility
+    const footerText = source === 'generator' ? '3DStreet AI Generator' : '3DStreet Editor Snapshot AI Render';
+
     // Create Discord message with embed
     const message = {
       content: `🎨 **${username}** generated a new AI image!`,
@@ -44,7 +48,7 @@ async function postAIImageToDiscord(userId, imageUrl, prompt, modelVersion, scen
           url: imageUrl
         },
         footer: {
-          text: '3DStreet Editor Snapshot AI Render',
+          text: footerText,
           icon_url: 'https://3dstreet.app/favicon-32x32.png'
         },
         timestamp: new Date().toISOString()
@@ -149,7 +153,7 @@ const generateReplicateImage = functions
     }
 
     const userId = context.auth.uid;
-    const { prompt, input_image, guidance = 2.5, num_inference_steps = 30, model_version, scene_id } = data;
+    const { prompt, input_image, guidance = 2.5, num_inference_steps = 30, model_version, scene_id, source = 'editor' } = data;
 
     // Determine the model version to use and its token cost
     const modelVersionToUse = model_version || DEFAULT_MODEL_VERSION;
@@ -355,7 +359,7 @@ const generateReplicateImage = functions
 
       // Post AI-generated image to Discord (non-blocking)
       // This runs in the background and won't fail the image generation if it errors
-      postAIImageToDiscord(userId, finalImageUrl, prompt, modelVersionToUse, scene_id)
+      postAIImageToDiscord(userId, finalImageUrl, prompt, modelVersionToUse, scene_id, source)
         .catch(err => console.error('Discord posting failed:', err));
 
       return {
