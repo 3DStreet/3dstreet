@@ -53,6 +53,57 @@ function generateUUID() {
 // Event emitter for real-time updates
 const galleryEvents = new EventTarget();
 
+/**
+ * Gallery Service V2 Class
+ *
+ * @fires GalleryServiceV2#assetAdded - Dispatched immediately after asset is added
+ * @fires GalleryServiceV2#assetAddedReload - Dispatched 1.5s after add for fallback reload
+ * @fires GalleryServiceV2#assetUpdated - Dispatched when asset metadata is updated
+ * @fires GalleryServiceV2#assetDeleted - Dispatched when asset is deleted
+ * @fires GalleryServiceV2#uploadProgress - Dispatched during file upload with progress
+ * @fires GalleryServiceV2#migrationComplete - Dispatched when V1→V2 migration completes
+ */
+
+/**
+ * @event GalleryServiceV2#assetAdded
+ * @type {CustomEvent}
+ * @property {Object} detail - Event detail
+ * @property {string} detail.assetId - The ID of the added asset
+ * @property {string} detail.userId - The user ID
+ * @property {Object} detail.asset - The full asset object for optimistic UI updates
+ */
+
+/**
+ * @event GalleryServiceV2#assetAddedReload
+ * @type {CustomEvent}
+ * @property {Object} detail - Event detail
+ * @property {string} detail.assetId - The ID of the added asset
+ * @property {string} detail.userId - The user ID
+ */
+
+/**
+ * @event GalleryServiceV2#assetUpdated
+ * @type {CustomEvent}
+ * @property {Object} detail - Event detail
+ * @property {string} detail.assetId - The ID of the updated asset
+ */
+
+/**
+ * @event GalleryServiceV2#assetDeleted
+ * @type {CustomEvent}
+ * @property {Object} detail - Event detail
+ * @property {string} detail.assetId - The ID of the deleted asset
+ * @property {boolean} detail.hard - Whether this was a hard (permanent) delete
+ */
+
+/**
+ * @event GalleryServiceV2#uploadProgress
+ * @type {CustomEvent}
+ * @property {Object} detail - Event detail
+ * @property {string} detail.assetId - The ID of the asset being uploaded
+ * @property {number} detail.progress - Upload progress percentage (0-100)
+ */
+
 class GalleryServiceV2 {
   constructor() {
     this.events = galleryEvents;
@@ -109,7 +160,8 @@ class GalleryServiceV2 {
       // Get storage path
       const storagePath = this.getStoragePath(userId, type, filename);
 
-      // Upload to Firebase Storage with progress tracking
+      // IMPORTANT: Upload to Storage FIRST before creating Firestore doc
+      // This ensures no orphaned Firestore documents if upload fails
       const downloadURL = await this.uploadToStorage(
         blob,
         storagePath,
@@ -183,9 +235,6 @@ class GalleryServiceV2 {
         createdAt: serverTimestamp(),
         updatedAt: serverTimestamp(),
         uploadedAt: serverTimestamp(),
-
-        // Sync Tracking
-        syncedToDevices: {},
 
         // Organization
         tags: metadata.tags || [],
@@ -718,14 +767,17 @@ class GalleryServiceV2 {
 
   /**
    * Search assets by tags or metadata
+   * WARNING: Client-side search, not scalable beyond ~200 assets.
+   * For production scale, consider using Algolia or Elasticsearch.
    * @param {string} userId - User ID
    * @param {string} query - Search query
    * @returns {Promise<Array>}
    */
   async searchAssets(userId, query) {
-    // Note: Firestore doesn't support full-text search natively
-    // For production, consider using Algolia or similar service
-    const allAssets = await this.getAssets(userId, {}, 100);
+    // WARNING: Client-side search, not scalable beyond ~200 assets
+    // This fetches all assets and filters in-memory. For larger galleries,
+    // consider implementing server-side search with Algolia or similar.
+    const allAssets = await this.getAssets(userId, {}, 200);
 
     return allAssets.filter((asset) => {
       const searchString = JSON.stringify(asset).toLowerCase();

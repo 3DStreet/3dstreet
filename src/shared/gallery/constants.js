@@ -4,6 +4,12 @@
  */
 
 /**
+ * Maximum number of gallery items to load/display
+ * @type {number}
+ */
+export const MAX_GALLERY_ITEMS = 200;
+
+/**
  * Valid asset types for gallery items
  * @readonly
  * @enum {string}

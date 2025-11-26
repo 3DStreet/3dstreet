@@ -6,9 +6,23 @@
 import { useState, useEffect, useCallback, useContext, useRef } from 'react';
 import galleryServiceV2 from '../services/galleryServiceV2.js';
 import galleryMigration from '../services/galleryMigration.js';
-import { ASSET_TYPES, ASSET_CATEGORIES } from '../constants.js';
+import { ASSET_TYPES, ASSET_CATEGORIES, MAX_GALLERY_ITEMS } from '../constants.js';
 import { AuthContext } from '@shared/contexts';
 import { auth } from '@shared/services/firebase.js';
+
+/**
+ * Convert Firestore timestamp to ISO string
+ * Handles various timestamp formats from Firestore consistently
+ * @param {Object|Date|string|null} ts - Firestore Timestamp, Date, or ISO string
+ * @returns {string} ISO 8601 timestamp string
+ */
+const convertTimestamp = (ts) => {
+  if (!ts) return new Date().toISOString();
+  if (ts.toDate) return ts.toDate().toISOString(); // Firestore Timestamp
+  if (ts instanceof Date) return ts.toISOString();
+  if (typeof ts === 'string') return ts;
+  return new Date().toISOString(); // Fallback
+};
 
 /**
  * Custom hook for gallery state management
@@ -78,19 +92,11 @@ const useGallery = () => {
 
     console.log('Gallery: reloadItems called for userId:', currentUserId);
     try {
-      const assets = await galleryServiceV2.getAssets(currentUserId, {}, 200);
+      const assets = await galleryServiceV2.getAssets(currentUserId, {}, MAX_GALLERY_ITEMS);
 
       // Convert to display format
       const displayItems = assets.map((asset) => {
-        // Handle Firestore Timestamp objects
-        let timestamp = asset.createdAt;
-        if (timestamp?.toMillis) {
-          timestamp = new Date(timestamp.toMillis()).toISOString();
-        } else if (timestamp?.toDate) {
-          timestamp = timestamp.toDate().toISOString();
-        } else if (typeof timestamp !== 'string') {
-          timestamp = new Date().toISOString();
-        }
+        const timestamp = convertTimestamp(asset.createdAt);
 
         return {
           id: asset.assetId,
@@ -193,15 +199,7 @@ const useGallery = () => {
           asset.assetId
         );
 
-        // Convert to display format
-        let timestamp = asset.createdAt;
-        if (timestamp?.toMillis) {
-          timestamp = new Date(timestamp.toMillis()).toISOString();
-        } else if (timestamp?.toDate) {
-          timestamp = timestamp.toDate().toISOString();
-        } else if (typeof timestamp !== 'string') {
-          timestamp = new Date().toISOString();
-        }
+        const timestamp = convertTimestamp(asset.createdAt);
 
         const displayItem = {
           id: asset.assetId,
