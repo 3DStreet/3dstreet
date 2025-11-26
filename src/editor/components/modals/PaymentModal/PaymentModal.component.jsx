@@ -39,12 +39,20 @@ const PaymentModal = () => {
 
   if (checkoutSuccess) {
     posthog.capture('checkout_finished');
+    // Funnel event: payment_completed (standardized event for conversion funnel)
+    posthog.capture('payment_completed', {
+      plan: selectedPlan
+    });
   } else if (location.hash.includes('cancel')) {
     posthog.capture('checkout_canceled');
   }
 
   const startCheckout = async () => {
     posthog.capture('start_checkout');
+    // Funnel event: checkout_started (standardized event for conversion funnel)
+    posthog.capture('checkout_started', {
+      plan: selectedPlan
+    });
     setIsLoading(true);
     try {
       const {

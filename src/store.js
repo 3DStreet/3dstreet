@@ -130,6 +130,11 @@ const useStore = create(
         },
         startCheckout: (postCheckout) => {
           posthog.capture('modal_opened', { modal: 'payment' });
+          // Funnel event: pricing_page_viewed (for conversion funnel analysis)
+          posthog.capture('pricing_page_viewed', {
+            source: postCheckout || 'direct',
+            trigger: postCheckout === 'geo' ? 'geo_token_limit' : postCheckout === 'image' ? 'gen_token_limit' : 'manual'
+          });
           posthog.capture('start_checkout');
           set({ modal: 'payment', postCheckout });
         },
