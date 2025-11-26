@@ -33,16 +33,22 @@ service cloud.firestore {
     match /tokenProfile/{userId} {
       // Users can only read their own token profile
       allow read: if request.auth != null && request.auth.uid == userId;
-      
+
       // Allow users to create their initial token profile with default token counts
       allow create: if request.auth != null
         && request.auth.uid == userId  // Doc ID must match auth UID
         && request.resource.data.userId == userId  // userId field must match
         && request.resource.data.geoToken == 3  // Must start with exactly 3 geo tokens
         && request.resource.data.genToken == 5;  // Must start with exactly 5 image tokens (allows one 4x render)
-      
+
       // DENY all client-side updates - only cloud functions can modify token counts
       allow update: if false;
+    }
+
+    // Email Log Collection Rules (PRIVATE - cloud functions only)
+    // Tracks email sends for rate limiting; no client access allowed
+    match /emailLog/{userId} {
+      allow read, write: if false;
     }
   }
 }
