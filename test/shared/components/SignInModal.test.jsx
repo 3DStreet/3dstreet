@@ -487,6 +487,7 @@ describe('SignInModal', () => {
           onClose={mockOnClose}
           firebaseAuth={mockFirebaseAuth}
           onAnalytics={mockOnAnalytics}
+          onNotification={mockOnNotification}
         />
       );
 
@@ -494,9 +495,9 @@ describe('SignInModal', () => {
 
       await waitFor(() => {
         expect(mockSignInWithGoogle).toHaveBeenCalledWith(
-          expect.anything(),
+          mockFirebaseAuth,
           mockOnAnalytics,
-          expect.anything()
+          mockOnNotification
         );
       });
     });
@@ -511,6 +512,7 @@ describe('SignInModal', () => {
           isOpen={true}
           onClose={mockOnClose}
           firebaseAuth={mockFirebaseAuth}
+          onAnalytics={mockOnAnalytics}
           onNotification={mockOnNotification}
         />
       );
@@ -519,8 +521,8 @@ describe('SignInModal', () => {
 
       await waitFor(() => {
         expect(mockSignInWithMicrosoft).toHaveBeenCalledWith(
-          expect.anything(),
-          expect.anything(),
+          mockFirebaseAuth,
+          mockOnAnalytics,
           mockOnNotification
         );
       });
