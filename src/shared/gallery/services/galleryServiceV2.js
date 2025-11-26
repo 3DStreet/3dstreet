@@ -33,6 +33,13 @@ import {
   deleteObject
 } from 'firebase/storage';
 import { db, storage } from '@shared/services/firebase.js';
+import {
+  ASSET_TYPES,
+  ASSET_CATEGORIES,
+  STORAGE_PATHS,
+  getTypeFolderName,
+  validateUserIdForPath
+} from '../constants.js';
 
 // UUID generator
 function generateUUID() {
@@ -64,16 +71,16 @@ class GalleryServiceV2 {
    * Add a new asset to gallery (uploads to Storage + saves metadata to Firestore)
    * @param {File|Blob|string} file - File, Blob, or data URI
    * @param {object} metadata - Asset metadata
-   * @param {string} type - Asset type ('image' | 'video' | 'splat' | 'mesh')
-   * @param {string} category - Asset category ('ai-render' | 'screenshot' | 'upload' | 'splat-source' | 'splat-output')
+   * @param {string} type - Asset type (use ASSET_TYPES constants)
+   * @param {string} category - Asset category (use ASSET_CATEGORIES constants)
    * @param {string} userId - User ID
    * @returns {Promise<string>} - Returns the asset ID
    */
   async addAsset(
     file,
     metadata = {},
-    type = 'image',
-    category = 'ai-render',
+    type = ASSET_TYPES.IMAGE,
+    category = ASSET_CATEGORIES.AI_RENDER,
     userId
   ) {
     if (!userId) {
@@ -118,7 +125,7 @@ class GalleryServiceV2 {
       // Generate thumbnail if it's an image
       let thumbnailUrl = null;
       let thumbnailPath = null;
-      if (type === 'image') {
+      if (type === ASSET_TYPES.IMAGE) {
         try {
           const thumbnailBlob = await this.generateThumbnail(blob);
           thumbnailPath = this.getStoragePath(
@@ -137,7 +144,7 @@ class GalleryServiceV2 {
 
       // Get image dimensions if applicable
       let dimensions = {};
-      if (type === 'image' || type === 'video') {
+      if (type === ASSET_TYPES.IMAGE || type === ASSET_TYPES.VIDEO) {
         dimensions = await this.getMediaDimensions(blob, type);
       }
 
@@ -352,11 +359,11 @@ class GalleryServiceV2 {
   /**
    * Get media dimensions
    * @param {Blob} blob - Media blob
-   * @param {string} type - Media type
+   * @param {string} type - Media type (use ASSET_TYPES constants)
    * @returns {Promise<object>}
    */
   async getMediaDimensions(blob, type) {
-    if (type === 'image') {
+    if (type === ASSET_TYPES.IMAGE) {
       return new Promise((resolve) => {
         const img = new Image();
         const url = URL.createObjectURL(blob);
@@ -373,7 +380,7 @@ class GalleryServiceV2 {
 
         img.src = url;
       });
-    } else if (type === 'video') {
+    } else if (type === ASSET_TYPES.VIDEO) {
       return new Promise((resolve) => {
         const video = document.createElement('video');
         const url = URL.createObjectURL(blob);
@@ -402,17 +409,22 @@ class GalleryServiceV2 {
   /**
    * Get storage path for asset
    * @param {string} userId - User ID
-   * @param {string} type - Asset type
+   * @param {string} type - Asset type (must be one of ASSET_TYPES)
    * @param {string} filename - Filename
    * @returns {string}
+   * @throws {Error} If userId or type is invalid
    * @example
    * getStoragePath('user123', 'image', 'abc.jpg') => 'users/user123/assets/images/abc.jpg'
    * getStoragePath('user123', 'video', 'xyz.mp4') => 'users/user123/assets/videos/xyz.mp4'
    */
   getStoragePath(userId, type, filename) {
-    // Pluralize type for folder name (image -> images, video -> videos, model -> models)
-    const typeFolder = `${type}s`;
-    return `users/${userId}/assets/${typeFolder}/${filename}`;
+    // Validate userId to prevent path traversal attacks
+    validateUserIdForPath(userId);
+
+    // Get the pluralized folder name using the mapping (handles irregular plurals correctly)
+    const typeFolder = getTypeFolderName(type);
+
+    return STORAGE_PATHS.assetFile(userId, typeFolder, filename);
   }
 
   /**

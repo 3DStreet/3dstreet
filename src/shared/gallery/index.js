@@ -3,6 +3,16 @@
  * V2 (Firestore + Firebase Storage) is the primary service
  */
 
+// Constants
+export {
+  ASSET_TYPES,
+  ASSET_CATEGORIES,
+  ASSET_TYPE_FOLDERS,
+  STORAGE_PATHS,
+  getTypeFolderName,
+  validateUserIdForPath
+} from './constants';
+
 // Services
 export { default as galleryService } from './services/galleryService'; // V1 - kept for migration only
 export { default as galleryServiceV2 } from './services/galleryServiceV2'; // V2 - primary service

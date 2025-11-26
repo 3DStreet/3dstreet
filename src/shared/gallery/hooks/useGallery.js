@@ -6,6 +6,7 @@
 import { useState, useEffect, useCallback, useContext, useRef } from 'react';
 import galleryServiceV2 from '../services/galleryServiceV2.js';
 import galleryMigration from '../services/galleryMigration.js';
+import { ASSET_TYPES, ASSET_CATEGORIES } from '../constants.js';
 import { AuthContext } from '@shared/contexts';
 import { auth } from '@shared/services/firebase.js';
 
@@ -291,11 +292,11 @@ const useGallery = () => {
    * Add a new item to the gallery (V2)
    * @param {string} imageDataUri - Data URI of the image
    * @param {object} metadata - Image metadata
-   * @param {string} type - Image type ('screenshot' | 'ai-render' | 'video')
+   * @param {string} type - Image type (use ASSET_CATEGORIES constants)
    * @returns {Promise<string>} - Returns the new asset ID
    */
   const addItem = useCallback(
-    async (imageDataUri, metadata, type = 'ai-render') => {
+    async (imageDataUri, metadata, type = ASSET_CATEGORIES.AI_RENDER) => {
       // Get userId directly from Firebase auth (handles generator timing issues)
       const currentUserId =
         auth.currentUser?.uid || window.authState?.currentUser?.uid;
@@ -305,8 +306,8 @@ const useGallery = () => {
 
       try {
         // Map type to V2 structure
-        const assetType = type === 'video' ? 'video' : 'image';
-        const category = type === 'video' ? 'ai-render' : type;
+        const assetType = type === ASSET_TYPES.VIDEO ? ASSET_TYPES.VIDEO : ASSET_TYPES.IMAGE;
+        const category = type === ASSET_TYPES.VIDEO ? ASSET_CATEGORIES.AI_RENDER : type;
 
         const assetId = await galleryServiceV2.addAsset(
           imageDataUri,
@@ -424,10 +425,10 @@ const useGallery = () => {
     link.href = item.fullImageURL || item.storageUrl || item.objectURL;
 
     // Create filename
-    const isVideo = item.type === 'video';
+    const isVideo = item.type === ASSET_TYPES.VIDEO;
     const model =
       item.metadata?.model ||
-      (item.type === 'screenshot' ? '3dstreet' : 'flux');
+      (item.type === ASSET_CATEGORIES.SCREENSHOT ? '3dstreet' : 'flux');
     const timestamp = item.metadata?.timestamp
       ? new Date(item.metadata.timestamp)
           .toISOString()
