@@ -7,7 +7,7 @@ const { getGeoidHeight } = require('./geoid-height.js');
 const { generateReplicateImage, generateReplicateVideo } = require('./replicate.js');
 const { checkAndRefillImageTokens, checkUserProStatus } = require('./token-management.js');
 const { bflProxyImage, bflApiProxy } = require('./bfl-proxy.js');
-const { onTokenExhaustion } = require('./tokenExhaustion.js');
+const { sendScheduledEmails, triggerScheduledEmails } = require('./scheduledEmails.js');
 
 // Re-export the WebXR variant function
 exports.serveWebXRVariant = serveWebXRVariant;
@@ -27,8 +27,9 @@ exports.checkUserProStatus = checkUserProStatus;
 exports.bflProxyImage = bflProxyImage;
 exports.bflApiProxy = bflApiProxy;
 
-// Re-export the token exhaustion notification function
-exports.onTokenExhaustion = onTokenExhaustion;
+// Re-export the scheduled email functions
+exports.sendScheduledEmails = sendScheduledEmails;
+exports.triggerScheduledEmails = triggerScheduledEmails;
 
 exports.getScene = functions
   .https
