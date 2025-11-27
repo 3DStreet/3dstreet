@@ -405,7 +405,7 @@ const sendScheduledEmails = functions
     secrets: ['POSTMARK_API_KEY', 'ALLOWED_PRO_TEAM_DOMAINS']
   })
   .pubsub
-  .schedule('0 17 * * *')  // 9:00 AM PT (17:00 UTC)
+  .schedule('0 9 * * *')  // 9:00 AM PT
   .timeZone('America/Los_Angeles')
   .onRun(async (context) => {
     console.log('Starting scheduled email job');

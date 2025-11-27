@@ -120,11 +120,11 @@ firebase deploy --only firestore:rules
 
 ## Schedule
 
-The `sendScheduledEmails` function runs daily at **9:00 AM Pacific Time** (17:00 UTC).
+The `sendScheduledEmails` function runs daily at **9:00 AM Pacific Time**.
 
 To change the schedule, modify the cron expression:
 ```js
-.schedule('0 17 * * *')  // minute hour day month weekday (UTC)
+.schedule('0 9 * * *')  // minute hour day month weekday (in configured timezone)
 ```
 
 ## Manual Triggering
