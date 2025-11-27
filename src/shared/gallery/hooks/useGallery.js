@@ -6,7 +6,11 @@
 import { useState, useEffect, useCallback, useContext, useRef } from 'react';
 import galleryServiceV2 from '../services/galleryServiceV2.js';
 import galleryMigration from '../services/galleryMigration.js';
-import { ASSET_TYPES, ASSET_CATEGORIES, MAX_GALLERY_ITEMS } from '../constants.js';
+import {
+  ASSET_TYPES,
+  ASSET_CATEGORIES,
+  MAX_GALLERY_ITEMS
+} from '../constants.js';
 import { AuthContext } from '@shared/contexts';
 import { auth } from '@shared/services/firebase.js';
 
@@ -92,7 +96,11 @@ const useGallery = () => {
 
     console.log('Gallery: reloadItems called for userId:', currentUserId);
     try {
-      const assets = await galleryServiceV2.getAssets(currentUserId, {}, MAX_GALLERY_ITEMS);
+      const assets = await galleryServiceV2.getAssets(
+        currentUserId,
+        {},
+        MAX_GALLERY_ITEMS
+      );
 
       // Convert to display format
       const displayItems = assets.map((asset) => {
@@ -304,8 +312,10 @@ const useGallery = () => {
 
       try {
         // Map type to V2 structure
-        const assetType = type === ASSET_TYPES.VIDEO ? ASSET_TYPES.VIDEO : ASSET_TYPES.IMAGE;
-        const category = type === ASSET_TYPES.VIDEO ? ASSET_CATEGORIES.AI_RENDER : type;
+        const assetType =
+          type === ASSET_TYPES.VIDEO ? ASSET_TYPES.VIDEO : ASSET_TYPES.IMAGE;
+        const category =
+          type === ASSET_TYPES.VIDEO ? ASSET_CATEGORIES.AI_RENDER : type;
 
         const assetId = await galleryServiceV2.addAsset(
           imageDataUri,
@@ -470,7 +480,12 @@ const useGallery = () => {
    * @returns {Promise<object>}
    */
   const runMigration = useCallback(async () => {
-    if (!userId) {
+    // Check multiple sources for user ID to handle timing issues
+    // where auth.currentUser is set but React state hasn't updated yet
+    const effectiveUserId =
+      userId || auth.currentUser?.uid || window.authState?.currentUser?.uid;
+
+    if (!effectiveUserId) {
       throw new Error('User must be logged in to migrate');
     }
 
@@ -478,9 +493,12 @@ const useGallery = () => {
       setIsMigrating(true);
       setMigrationProgress(0);
 
-      const status = await galleryMigration.migrateAll(userId, (progress) => {
-        setMigrationProgress(progress.percentage);
-      });
+      const status = await galleryMigration.migrateAll(
+        effectiveUserId,
+        (progress) => {
+          setMigrationProgress(progress.percentage);
+        }
+      );
 
       console.log('Migration complete:', status);
 
