@@ -51,10 +51,14 @@ service cloud.firestore {
       // Users can only read their own gallery assets
       allow read: if request.auth != null && request.auth.uid == userId;
 
-      // Users can create assets with proper userId field
+      // Users can create assets with proper userId field and required fields validated
       allow create: if request.auth != null
         && request.auth.uid == userId
-        && request.resource.data.userId == userId;
+        && request.resource.data.userId == userId
+        && request.resource.data.type in ['image', 'video', 'splat', 'mesh']
+        && request.resource.data.category is string
+        && request.resource.data.storagePath is string
+        && request.resource.data.storagePath.matches('^users/' + userId + '/.*');
 
       // Users can update their own assets
       allow update: if request.auth != null && request.auth.uid == userId;
