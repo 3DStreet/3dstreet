@@ -18,17 +18,20 @@ scheduledEmails.js
 
 ## Current Email Types
 
-### Token Exhaustion Emails
+### Token Exhaustion (`tokenExhaustion`)
 
-| Type | Trigger Condition | Template |
-|------|-------------------|----------|
-| `geoTokenExhaustion` | `geoToken == 0` | Geo tokens exhausted |
-| `genTokenExhaustion` | `genToken == 0` | AI tokens exhausted |
+Sends ONE email per user, ever, when they exhaust either token type.
 
-Both types:
-- Skip PRO users
-- Rate-limit to 1 email per type per user every 7 days
-- Link to upgrade page
+| Condition | Template Used |
+|-----------|---------------|
+| `genToken == 0` | AI token exhaustion (prioritized) |
+| `geoToken == 0` | Geo token exhaustion |
+
+**Behavior:**
+- Queries users with `geoToken == 0` OR `genToken == 0`
+- Skips PRO users
+- Sends only ONE email per user lifetime (tracked via `tokenExhaustionEmailSent`)
+- Selects template based on which token is exhausted (AI prioritized if both)
 
 ## Adding New Email Types
 
@@ -53,15 +56,12 @@ const EMAIL_TYPES = {
   // ... existing types ...
 
   welcome: {
-    templateKey: 'welcome',
-    cooldownMs: 0,  // No cooldown for welcome emails
-    emailLogField: 'lastWelcomeEmail',
+    emailLogField: 'welcomeEmailSent',  // Track in emailLog
 
     // Query users who need this email
     async getEligibleUsers(db) {
-      const oneDayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
       const snapshot = await db.collection('users')
-        .where('createdAt', '>', oneDayAgo)
+        .where('emailVerified', '==', true)
         .get();
       return snapshot.docs.map(doc => ({
         userId: doc.id,
@@ -71,10 +71,32 @@ const EMAIL_TYPES = {
 
     // Optional: additional filter
     async shouldSendToUser(userId) {
-      return true;  // Send to all eligible users
-    }
+      return true;
+    },
+
+    // Static template (or use getTemplateKey for dynamic selection)
+    templateKey: 'welcome'
   }
 };
+```
+
+### Dynamic Template Selection
+
+For email types that select different templates based on user data:
+
+```js
+myEmailType: {
+  emailLogField: 'myEmailSent',
+  async getEligibleUsers(db) { ... },
+
+  // Dynamic template selection based on user data
+  getTemplateKey(userData) {
+    if (userData.someCondition) {
+      return 'templateA';
+    }
+    return 'templateB';
+  }
+}
 ```
 
 ## Firestore Collections
@@ -83,13 +105,12 @@ const EMAIL_TYPES = {
 Queried to find users with exhausted tokens.
 
 ### `emailLog/{userId}` (read/write)
-Tracks email sends for rate limiting:
+Tracks email sends:
 ```js
 {
   userId: string,
   email: string,
-  lastGeoTokenEmail: Timestamp,
-  lastGenTokenEmail: Timestamp,
+  tokenExhaustionEmailSent: Timestamp,  // If exists, email was sent
   // Add more fields as you add email types
   updatedAt: Timestamp
 }
@@ -139,41 +160,8 @@ const trigger = firebase.functions().httpsCallable('triggerScheduledEmails');
 await trigger();
 
 // Process specific types only
-await trigger({ emailTypes: ['geoTokenExhaustion'] });
+await trigger({ emailTypes: ['tokenExhaustion'] });
 ```
-
-Or via Firebase CLI:
-```bash
-# Note: Requires authentication setup
-firebase functions:shell
-> triggerScheduledEmails({})
-```
-
-## Local Testing
-
-### Using Emulators
-
-1. Start emulators:
-```bash
-cd public/functions
-npm run serve
-```
-
-2. The scheduled function won't auto-run in emulators. Use the callable trigger:
-```js
-// In your test script
-const { triggerScheduledEmails } = require('./scheduledEmails');
-// Mock the context and call directly
-```
-
-### Testing with Real Postmark
-
-Create `public/functions/.env`:
-```
-POSTMARK_API_KEY=your-test-api-key
-```
-
-Use Postmark's test mode or sandbox server.
 
 ## Viewing Logs
 
@@ -187,37 +175,23 @@ firebase functions:log --only sendScheduledEmails --follow
 
 ## Monitoring
 
-### Success Metrics
-- Check Postmark Activity for delivery stats
-- Function logs show sent/skipped counts per email type
-
 ### Log Output Example
 ```
 Starting scheduled email job
-Processing email type: geoTokenExhaustion
-Found 15 eligible users for geoTokenExhaustion
-Sent geoTokenExhaustion email to user@example.com: abc123
-Completed geoTokenExhaustion: {"type":"geoTokenExhaustion","processed":15,"sent":3,"skipped":{"cooldown":10,"noEmail":1,"filtered":1,"error":0}}
+Processing email type: tokenExhaustion
+Found 15 eligible users for tokenExhaustion
+Sent tokenExhaustion (genTokenExhaustion) email to user@example.com: abc123
+Completed tokenExhaustion: {"type":"tokenExhaustion","processed":15,"sent":3,"skipped":{"alreadySent":10,"noEmail":1,"filtered":1,"error":0}}
 ```
 
 ### Common Issues
 
 | Issue | Cause | Solution |
 |-------|-------|----------|
-| No emails sent | All users in cooldown | Check `emailLog` collection |
+| No emails sent | All users already emailed | Check `emailLog` collection |
 | No emails sent | All users are PRO | Expected behavior |
 | Postmark 401 | Invalid API key | Verify secret |
 | Postmark 422 | Invalid sender | Verify sender in Postmark |
-| Function timeout | Too many users | Increase `timeoutSeconds` or batch |
-
-## Cost Optimization
-
-This scheduled approach is more cost-effective than trigger-based:
-
-| Approach | Invocations/month | Notes |
-|----------|-------------------|-------|
-| Firestore trigger | ~N token operations | Fires on every update |
-| Scheduled (daily) | ~30 | One query per email type |
 
 ## Security
 

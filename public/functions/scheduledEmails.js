@@ -6,8 +6,7 @@ const { isUserProInternal } = require('./token-management.js');
 // Postmark API endpoint
 const POSTMARK_API_URL = 'https://api.postmarkapp.com/email';
 
-// Email cooldown periods (in milliseconds)
-const COOLDOWN_7_DAYS = 7 * 24 * 60 * 60 * 1000;
+// No cooldown - we only send token exhaustion emails once ever per user
 
 // ============================================================================
 // EMAIL TEMPLATES
@@ -158,43 +157,46 @@ If you have questions, reply to this email or visit https://3dstreet.com/docs/`,
 // ============================================================================
 
 const EMAIL_TYPES = {
-  geoTokenExhaustion: {
-    templateKey: 'geoTokenExhaustion',
-    cooldownMs: COOLDOWN_7_DAYS,
-    emailLogField: 'lastGeoTokenEmail',
-    // Query function returns users eligible for this email type
-    async getEligibleUsers(db) {
-      const snapshot = await db.collection('tokenProfile')
-        .where('geoToken', '==', 0)
-        .get();
-      return snapshot.docs.map(doc => ({
-        userId: doc.id,
-        ...doc.data()
-      }));
-    },
-    // Filter function for additional checks (e.g., skip PRO users)
-    async shouldSendToUser(userId) {
-      const isPro = await isUserProInternal(userId);
-      return !isPro;
-    }
-  },
+  tokenExhaustion: {
+    // Template is selected dynamically based on which token is exhausted
+    emailLogField: 'tokenExhaustionEmailSent',
 
-  genTokenExhaustion: {
-    templateKey: 'genTokenExhaustion',
-    cooldownMs: COOLDOWN_7_DAYS,
-    emailLogField: 'lastGenTokenEmail',
+    // Query users with either token at 0
+    // Firestore doesn't support OR queries, so we run two queries and merge
     async getEligibleUsers(db) {
-      const snapshot = await db.collection('tokenProfile')
-        .where('genToken', '==', 0)
-        .get();
-      return snapshot.docs.map(doc => ({
-        userId: doc.id,
-        ...doc.data()
-      }));
+      const [geoSnapshot, genSnapshot] = await Promise.all([
+        db.collection('tokenProfile').where('geoToken', '==', 0).get(),
+        db.collection('tokenProfile').where('genToken', '==', 0).get()
+      ]);
+
+      // Merge and dedupe by userId
+      const userMap = new Map();
+
+      for (const doc of geoSnapshot.docs) {
+        userMap.set(doc.id, { userId: doc.id, ...doc.data() });
+      }
+      for (const doc of genSnapshot.docs) {
+        if (!userMap.has(doc.id)) {
+          userMap.set(doc.id, { userId: doc.id, ...doc.data() });
+        }
+      }
+
+      return Array.from(userMap.values());
     },
+
+    // Skip PRO users
     async shouldSendToUser(userId) {
       const isPro = await isUserProInternal(userId);
       return !isPro;
+    },
+
+    // Select template based on which token is exhausted
+    // Prioritize AI (genToken) if both are exhausted
+    getTemplateKey(userData) {
+      if (userData.genToken === 0) {
+        return 'genTokenExhaustion';
+      }
+      return 'geoTokenExhaustion';
     }
   }
 
@@ -243,18 +245,13 @@ const sendPostmarkEmail = async (toEmail, subject, htmlBody, textBody) => {
 };
 
 /**
- * Check if user is within email cooldown period
+ * Check if user has already received this email type (once ever)
  */
-const isWithinCooldown = (emailLog, emailLogField, cooldownMs) => {
+const hasAlreadyReceivedEmail = (emailLog, emailLogField) => {
   if (!emailLog || !emailLog[emailLogField]) {
     return false;
   }
-
-  const lastEmailTime = emailLog[emailLogField];
-  const lastEmailMs = lastEmailTime.toMillis ? lastEmailTime.toMillis() : lastEmailTime;
-  const now = Date.now();
-
-  return (now - lastEmailMs) < cooldownMs;
+  return true;
 };
 
 /**
@@ -296,18 +293,12 @@ const processEmailType = async (db, emailTypeKey, emailType) => {
     processed: 0,
     sent: 0,
     skipped: {
-      cooldown: 0,
+      alreadySent: 0,
       noEmail: 0,
       filtered: 0,
       error: 0
     }
   };
-
-  const template = EMAIL_TEMPLATES[emailType.templateKey];
-  if (!template) {
-    console.error(`Template not found for email type: ${emailTypeKey}`);
-    return results;
-  }
 
   // Get eligible users
   let eligibleUsers;
@@ -340,10 +331,10 @@ const processEmailType = async (db, emailTypeKey, emailType) => {
     const userId = user.userId;
 
     try {
-      // Check cooldown
+      // Check if already sent (once ever per email type)
       const emailLog = emailLogMap[userId];
-      if (isWithinCooldown(emailLog, emailType.emailLogField, emailType.cooldownMs)) {
-        results.skipped.cooldown++;
+      if (hasAlreadyReceivedEmail(emailLog, emailType.emailLogField)) {
+        results.skipped.alreadySent++;
         continue;
       }
 
@@ -356,10 +347,22 @@ const processEmailType = async (db, emailTypeKey, emailType) => {
         }
       }
 
-      // Get user email
+      // Get user email from Firebase Auth
       const userInfo = await getUserInfo(userId);
       if (!userInfo || !userInfo.email) {
         results.skipped.noEmail++;
+        continue;
+      }
+
+      // Select template - either static or dynamic based on user data
+      const templateKey = emailType.getTemplateKey
+        ? emailType.getTemplateKey(user)
+        : emailType.templateKey;
+
+      const template = EMAIL_TEMPLATES[templateKey];
+      if (!template) {
+        console.error(`Template not found: ${templateKey}`);
+        results.skipped.error++;
         continue;
       }
 
@@ -375,7 +378,7 @@ const processEmailType = async (db, emailTypeKey, emailType) => {
         textBody
       );
 
-      console.log(`Sent ${emailTypeKey} email to ${userInfo.email}: ${postmarkResult.MessageID}`);
+      console.log(`Sent ${emailTypeKey} (${templateKey}) email to ${userInfo.email}: ${postmarkResult.MessageID}`);
 
       // Record email sent
       await recordEmailSent(db, userId, emailType.emailLogField, userInfo.email);
