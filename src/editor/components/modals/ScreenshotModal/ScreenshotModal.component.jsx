@@ -381,7 +381,6 @@ function ScreenshotModal() {
         });
 
         // Check if user just used their last gen token (track token_limit_reached)
-        const tokensUsed = getTokenCost(baseModelKey);
         const remainingTokens = result.data.remainingTokens;
         if (
           !currentUser?.isPro &&
