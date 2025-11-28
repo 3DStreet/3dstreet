@@ -26,5 +26,13 @@ export default defineConfig({
     alias: {
       '@shared': path.resolve(__dirname, './src/shared')
     }
+  },
+  esbuild: {
+    // Handle JSX in .js files (common in this codebase)
+    loader: 'jsx',
+    include: /\.(js|jsx)$/,
+    exclude: [],
+    // Auto-inject React for JSX
+    jsx: 'automatic'
   }
 });

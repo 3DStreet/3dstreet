@@ -18,7 +18,7 @@ import { ImgComparisonSlider } from '@img-comparison-slider/react';
 import 'img-comparison-slider/dist/styles.css';
 import { canUseImageFeature } from '@shared/utils/tokens';
 import { TokenDisplayInner } from '@shared/auth/components';
-import { galleryService } from '@shared/gallery';
+import { galleryServiceV2 } from '@shared/gallery';
 import { REPLICATE_MODELS } from '@shared/constants/replicateModels.js';
 import AIModelSelector from '@shared/components/AIModelSelector';
 
@@ -323,24 +323,31 @@ function ScreenshotModal() {
         }
 
         // Save AI render to gallery
-        try {
-          await galleryService.addItem(
-            result.data.image_url,
-            {
-              timestamp: new Date().toISOString(),
-              sceneId: sceneId || STREET.utils.getCurrentSceneId(),
-              source: 'ai-render',
-              model: selectedModelConfig.name,
-              modelKey: baseModelKey,
-              prompt: aiPrompt,
-              renderMode: renderMode,
-              isPro: currentUser?.isPro || false
-            },
-            'ai-render'
-          );
-          console.log('AI render saved to gallery');
-        } catch (error) {
-          console.error('Failed to save AI render to gallery:', error);
+        if (currentUser?.uid) {
+          try {
+            // Initialize gallery service V2 if needed
+            await galleryServiceV2.init();
+
+            await galleryServiceV2.addAsset(
+              result.data.image_url,
+              {
+                timestamp: new Date().toISOString(),
+                sceneId: sceneId || STREET.utils.getCurrentSceneId(),
+                source: 'ai-render',
+                model: selectedModelConfig.name,
+                modelKey: baseModelKey,
+                prompt: aiPrompt,
+                renderMode: renderMode,
+                isPro: currentUser?.isPro || false
+              },
+              'image', // type
+              'ai-render', // category
+              currentUser.uid // userId
+            );
+            console.log('AI render saved to gallery');
+          } catch (error) {
+            console.error('Failed to save AI render to gallery:', error);
+          }
         }
 
         // Show appropriate success message based on user type
@@ -535,38 +542,63 @@ function ScreenshotModal() {
         if (imgElement && imgElement.src) {
           setOriginalImageUrl(imgElement.src);
 
-          // Save screenshot to gallery
-          try {
-            // Get image dimensions
-            const img = new Image();
-            img.src = imgElement.src;
-            await new Promise((resolve) => {
-              img.onload = resolve;
-              // If already loaded, resolve immediately
-              if (img.complete) resolve();
-            });
+          // Save screenshot to gallery (async, don't block UI)
+          if (currentUser?.uid) {
+            // Upload to gallery in the background
+            (async () => {
+              try {
+                // Load the image to get dimensions and convert to JPEG
+                const img = new Image();
+                img.src = imgElement.src;
+                await new Promise((resolve) => {
+                  img.onload = resolve;
+                  // If already loaded, resolve immediately
+                  if (img.complete) resolve();
+                });
 
-            await galleryService.addItem(
-              imgElement.src,
-              {
-                timestamp: new Date().toISOString(),
-                sceneId: STREET.utils.getCurrentSceneId(),
-                source: 'screenshot',
-                model: 'Editor Snapshot',
-                width: img.width,
-                height: img.height,
-                isPro: isPro
-              },
-              'screenshot'
-            );
-            console.log('Screenshot saved to gallery');
-          } catch (error) {
-            console.error('Failed to save screenshot to gallery:', error);
+                // Convert PNG data URI to JPEG for smaller file size
+                const canvas = document.createElement('canvas');
+                canvas.width = img.width;
+                canvas.height = img.height;
+                const ctx = canvas.getContext('2d');
+                ctx.drawImage(img, 0, 0);
+
+                // Convert to JPEG at 95% quality (much smaller than PNG)
+                const jpegDataUri = canvas.toDataURL('image/jpeg', 0.95);
+
+                // Initialize gallery service V2 if needed
+                await galleryServiceV2.init();
+
+                console.log('Uploading screenshot to gallery (JPEG format)...');
+
+                // Add to gallery using V2 API
+                const assetId = await galleryServiceV2.addAsset(
+                  jpegDataUri, // JPEG Data URI (will be auto-converted to blob)
+                  {
+                    timestamp: new Date().toISOString(),
+                    sceneId: STREET.utils.getCurrentSceneId(),
+                    source: 'screenshot',
+                    model: 'Editor Snapshot',
+                    width: img.width,
+                    height: img.height,
+                    isPro: isPro
+                  },
+                  'image', // type
+                  'screenshot', // category
+                  currentUser.uid // userId
+                );
+                console.log(`Screenshot saved to gallery with ID: ${assetId}`);
+              } catch (error) {
+                console.error('Failed to save screenshot to gallery:', error);
+              }
+            })();
+          } else {
+            console.log('User not logged in, skipping gallery save');
           }
         }
       });
     }
-  }, [modal, currentUser?.isPro]);
+  }, [modal, currentUser?.isPro, currentUser?.uid]);
 
   return (
     <Modal

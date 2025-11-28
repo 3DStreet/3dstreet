@@ -922,10 +922,20 @@ const VideoTab = {
   },
 
   // Save video to gallery
-  saveToGallery: function (videoUrl) {
+  saveToGallery: async function (videoUrl) {
     // Check if gallery service is available
     if (!galleryService) {
       return;
+    }
+
+    // Initialize gallery service with current user
+    const currentUser = window.authState?.user;
+    if (currentUser && !galleryService.userId) {
+      try {
+        await galleryService.init(currentUser.uid);
+      } catch (err) {
+        console.warn('Failed to initialize gallery V2, using V1:', err);
+      }
     }
 
     // Convert the video URL to a Data URL so gallery can store as Blob
@@ -951,10 +961,26 @@ const VideoTab = {
         };
 
         try {
-          await galleryService.addItem(dataUrl, metadata, 'video');
+          const currentUser = window.authState?.user;
+          if (!currentUser) {
+            console.warn('User not authenticated, skipping gallery save');
+            return;
+          }
+
+          // Initialize gallery service if needed
+          await galleryService.init();
+
+          // Use V2 API: addAsset(file, metadata, type, category, userId)
+          await galleryService.addAsset(
+            dataUrl,
+            metadata,
+            'video', // type
+            'ai-render', // category
+            currentUser.uid // userId
+          );
           FluxUI.showNotification('Video saved to gallery!', 'success');
         } catch (e) {
-          console.error('Gallery addItem error:', e);
+          console.error('Gallery addAsset error:', e);
           FluxUI.showNotification('Failed to save video to gallery.', 'error');
         }
       })
