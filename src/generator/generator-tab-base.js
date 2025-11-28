@@ -5,11 +5,11 @@
 
 import FluxUI from './main.js';
 import FluxAPI from './api.js';
-import { galleryService } from './mount-gallery.js';
+import { galleryServiceV2 as galleryService } from '@shared/gallery';
 import useImageGenStore from './store.js';
 import ImageUploadUtils from './image-upload-utils.js';
 import { httpsCallable } from 'firebase/functions';
-import { functions } from '@shared/services/firebase.js';
+import { functions, auth } from '@shared/services/firebase.js';
 import { REPLICATE_MODELS } from '@shared/constants/replicateModels.js';
 import { mountModelSelector } from './mount-model-selector.js';
 import posthog from 'posthog-js';
@@ -1326,7 +1326,8 @@ class GeneratorTabBase {
         guidance: 2.5,
         num_inference_steps: 30,
         model_version: modelConfig.version,
-        scene_id: null
+        scene_id: null,
+        source: 'generator'
       });
 
       if (result.data.success) {
@@ -1769,11 +1770,24 @@ class GeneratorTabBase {
   /**
    * Save the generated image to the gallery
    */
-  saveToGallery(imageUrl) {
+  async saveToGallery(imageUrl) {
     if (!galleryService) {
+      console.error('Gallery service not available');
+      FluxUI.showNotification('Failed to save to gallery', 'error');
       return;
     }
 
+    // Initialize gallery service
+    const currentUser = auth.currentUser;
+    if (currentUser) {
+      try {
+        await galleryService.init();
+      } catch (err) {
+        console.warn('Failed to initialize gallery service:', err);
+      }
+    }
+
+    // Proceed with saving even if V2 init failed (V1 fallback will be used)
     fetch(imageUrl)
       .then((response) => response.blob())
       .then(
@@ -1823,10 +1837,26 @@ class GeneratorTabBase {
         };
 
         try {
-          await galleryService.addImage(dataUrl, metadata, 'ai-render');
+          const currentUser = auth.currentUser;
+          if (!currentUser) {
+            console.warn('User not authenticated, skipping gallery save');
+            return;
+          }
+
+          // Initialize gallery service if needed
+          await galleryService.init();
+
+          // Use V2 API: addAsset(file, metadata, type, category, userId)
+          await galleryService.addAsset(
+            dataUrl,
+            metadata,
+            'image', // type
+            'ai-render', // category
+            currentUser.uid // userId
+          );
           FluxUI.showNotification('Image saved to gallery!', 'success');
         } catch (e) {
-          console.error('Gallery addImage error:', e);
+          console.error('Gallery addAsset error:', e);
           FluxUI.showNotification('Failed to save image to gallery.', 'error');
         }
       })

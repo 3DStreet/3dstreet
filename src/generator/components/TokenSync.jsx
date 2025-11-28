@@ -14,7 +14,15 @@ const TokenSync = () => {
     }
 
     // Dispatch event so main.js can update button states
-    window.dispatchEvent(new Event('authStateChanged'));
+    // Use CustomEvent with detail to match mount-auth.js format
+    window.dispatchEvent(
+      new CustomEvent('authStateChanged', {
+        detail: {
+          user: window.authState?.currentUser,
+          isAuthenticated: !!window.authState?.currentUser
+        }
+      })
+    );
   }, [tokenProfile]);
 
   return null; // This component doesn't render anything
