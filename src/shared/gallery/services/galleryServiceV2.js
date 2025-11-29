@@ -115,7 +115,7 @@ class GalleryServiceV2 {
    * @returns {Promise<void>}
    */
   async init() {
-    console.log('Gallery Service V2 initialized');
+    // Service initialized
   }
 
   /**
@@ -286,7 +286,6 @@ class GalleryServiceV2 {
 
       // Event #2: Delayed reload fallback via EventTarget
       setTimeout(() => {
-        console.log(`Asset ${assetId} fallback reload event dispatched`);
         this.events.dispatchEvent(
           new CustomEvent('assetAddedReload', { detail: { userId, assetId } })
         );
@@ -294,13 +293,9 @@ class GalleryServiceV2 {
 
       // Event #3: Window event fallback for generator (bypasses EventTarget issues)
       setTimeout(() => {
-        console.log('Gallery: Dispatching window refresh event');
         window.dispatchEvent(new Event('gallery:refresh'));
       }, 2500);
 
-      console.log(
-        `Asset ${assetId} added successfully, events dispatched with asset data`
-      );
       return assetId;
     } catch (error) {
       console.error('Error adding asset:', error);
@@ -558,7 +553,6 @@ class GalleryServiceV2 {
     orderByField = 'createdAt'
   ) {
     try {
-      console.log('getAssets called with userId:', userId);
       // Use subcollection under user
       const assetsRef = collection(db, 'users', userId, 'assets');
       let q = query(assetsRef);

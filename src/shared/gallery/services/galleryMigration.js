@@ -69,7 +69,6 @@ class GalleryMigration {
     if (!userId) return;
     const flagKey = this.getMigrationFlagKey(userId);
     localStorage.setItem(flagKey, 'true');
-    console.log(`User ${userId} marked as migrated`);
   }
 
   /**
@@ -85,7 +84,6 @@ class GalleryMigration {
 
       // Check if already migrated
       if (this.hasMigrated(userId)) {
-        console.log(`User ${userId} already migrated, skipping`);
         return false;
       }
 
@@ -117,7 +115,6 @@ class GalleryMigration {
 
     // Check if already migrated
     if (this.hasMigrated(userId)) {
-      console.log(`User ${userId} already migrated, skipping`);
       return {
         total: 0,
         migrated: 0,
@@ -131,8 +128,6 @@ class GalleryMigration {
     this.reset();
 
     try {
-      console.log(`Starting one-way V1→V2 migration for user ${userId}...`);
-
       // Initialize services
       await galleryService.init();
       await galleryServiceV2.init();
@@ -142,13 +137,10 @@ class GalleryMigration {
       this.migrationStatus.total = oldAssets.length;
 
       if (oldAssets.length === 0) {
-        console.log('No V1 assets to migrate');
         // Mark as migrated even if no assets
         this.markAsMigrated(userId);
         return this.migrationStatus;
       }
-
-      console.log(`Found ${oldAssets.length} V1 assets to migrate to V2`);
 
       // Migrate each asset
       for (let i = 0; i < oldAssets.length; i++) {
@@ -175,8 +167,6 @@ class GalleryMigration {
         }
       }
 
-      console.log('Migration completed:', this.migrationStatus);
-
       // If migration was successful (all or most migrated), mark as complete and delete V1 DB
       if (this.migrationStatus.migrated > 0) {
         // Mark user as migrated
@@ -185,11 +175,6 @@ class GalleryMigration {
         // Delete V1 database (unless keepV1Data flag is set for testing)
         if (!options.keepV1Data) {
           await this.deleteV1Database();
-          console.log('V1 database deleted, migration complete');
-        } else {
-          console.warn(
-            '⚠️ TESTING MODE: V1 database preserved for repeated testing'
-          );
         }
       } else {
         console.warn('Migration failed for all assets, V1 database retained');
@@ -241,7 +226,6 @@ class GalleryMigration {
       userId
     );
 
-    console.log(`Migrated asset ${asset.id} → ${newAssetId}`);
     return newAssetId;
   }
 
@@ -251,13 +235,10 @@ class GalleryMigration {
    */
   async deleteV1Database() {
     return new Promise((resolve, reject) => {
-      console.log('Deleting V1 IndexedDB database...');
-
       const dbName = galleryService.dbName; // '3DStreetGalleryDB'
       const deleteRequest = indexedDB.deleteDatabase(dbName);
 
       deleteRequest.onsuccess = () => {
-        console.log(`V1 database '${dbName}' deleted successfully`);
         resolve();
       };
 
@@ -291,8 +272,6 @@ class GalleryMigration {
    */
   async downloadV1AsZip(onProgress = null) {
     try {
-      console.log('Starting V1 gallery ZIP download...');
-
       // Initialize V1 service and get assets
       await galleryService.init();
       const assets = await galleryService.loadFromDB();
@@ -300,8 +279,6 @@ class GalleryMigration {
       if (assets.length === 0) {
         throw new Error('No images found in local gallery');
       }
-
-      console.log(`Found ${assets.length} images to download`);
 
       // Dynamic import JSZip only when needed (keeps it out of core bundle)
       const JSZip = (await import('jszip')).default;
@@ -358,8 +335,6 @@ class GalleryMigration {
       link.click();
       document.body.removeChild(link);
       URL.revokeObjectURL(url);
-
-      console.log('ZIP download complete');
     } catch (error) {
       console.error('Error creating ZIP:', error);
       throw error;
@@ -377,15 +352,11 @@ class GalleryMigration {
       throw new Error('User ID is required to discard V1 data');
     }
 
-    console.log(`Discarding V1 data for user ${userId}...`);
-
     // Delete the V1 database
     await this.deleteV1Database();
 
     // Mark as migrated so the banner doesn't show again
     this.markAsMigrated(userId);
-
-    console.log('V1 data discarded successfully');
   }
 
   /**

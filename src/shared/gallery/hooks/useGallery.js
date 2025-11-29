@@ -4,6 +4,7 @@
  */
 
 import { useState, useEffect, useCallback, useContext, useRef } from 'react';
+import posthog from 'posthog-js';
 import galleryServiceV2 from '../services/galleryServiceV2.js';
 import galleryMigration from '../services/galleryMigration.js';
 import {
@@ -88,13 +89,9 @@ const useGallery = () => {
     const currentUserId = currentAuthUser?.uid;
 
     if (!currentUserId) {
-      console.log(
-        'Gallery: reloadItems called but no authenticated user found, skipping'
-      );
       return; // Don't clear items, just skip reload
     }
 
-    console.log('Gallery: reloadItems called for userId:', currentUserId);
     try {
       const assets = await galleryServiceV2.getAssets(
         currentUserId,
@@ -121,9 +118,6 @@ const useGallery = () => {
       });
 
       setItems(displayItems);
-      console.log(
-        `Gallery: Loaded ${displayItems.length} items from Firestore`
-      );
     } catch (error) {
       console.error('Failed to reload gallery items:', error);
       // Don't clear items on error
@@ -136,14 +130,9 @@ const useGallery = () => {
   useEffect(() => {
     // Early return if no userId - don't attach event listeners with null userId
     if (!userId) {
-      console.log(
-        'Gallery: useEffect called with null userId, skipping initialization and event listeners'
-      );
       setIsLoading(false);
       return;
     }
-
-    console.log('Gallery: useEffect called with userId:', userId);
 
     const initGallery = async () => {
       try {
@@ -157,10 +146,7 @@ const useGallery = () => {
           await galleryMigration.isMigrationNeeded(userId);
         setNeedsMigration(migrationNeeded);
 
-        if (migrationNeeded) {
-          console.log('V1→V2 migration needed for user');
-          // UI can show migration prompt
-        }
+        // UI will show migration prompt if migrationNeeded is true
 
         // Load items from Firestore
         await reloadItems();
@@ -179,34 +165,18 @@ const useGallery = () => {
       const currentUserId = userIdRef.current;
       const eventUserId = event.detail?.userId;
 
-      console.log(
-        'Gallery: assetAdded event received',
-        event.detail,
-        'current userId:',
-        currentUserId
-      );
-
       if (!currentUserId) {
-        console.warn('Gallery: Cannot reload, userId is null - ignoring event');
         return;
       }
 
       // Filter: only process events for this user's gallery
       if (eventUserId !== currentUserId) {
-        console.log(
-          `Gallery: Event is for different user (${eventUserId}), ignoring`
-        );
         return;
       }
 
       // Optimistic update: if asset data is provided, add it immediately
       if (event.detail?.asset) {
         const asset = event.detail.asset;
-        console.log(
-          'Gallery: Optimistically adding asset to display',
-          asset.assetId
-        );
-
         const timestamp = convertTimestamp(asset.createdAt);
 
         const displayItem = {
@@ -224,9 +194,6 @@ const useGallery = () => {
 
         // Add to beginning of items array
         setItems((prevItems) => [displayItem, ...prevItems]);
-        console.log(
-          'Gallery: Item added optimistically, no background reload needed'
-        );
       }
     };
 
@@ -235,29 +202,15 @@ const useGallery = () => {
       const currentUserId = userIdRef.current;
       const eventUserId = event.detail?.userId;
 
-      console.log(
-        'Gallery: assetAddedReload event received for userId:',
-        eventUserId,
-        'current userId:',
-        currentUserId
-      );
-
       if (!currentUserId) {
-        console.warn(
-          'Gallery: Cannot reload, userId is null - ignoring fallback event'
-        );
         return;
       }
 
       // Filter: only process events for this user's gallery
       if (eventUserId !== currentUserId) {
-        console.log(
-          `Gallery: Fallback event is for different user (${eventUserId}), ignoring`
-        );
         return;
       }
 
-      console.log('Gallery: Triggering fallback reload from Firestore');
       reloadItems();
     };
 
@@ -266,10 +219,8 @@ const useGallery = () => {
       'assetAddedReload',
       handleAssetAddedReload
     );
-    console.log('Gallery: Event listeners attached for userId:', userId);
 
     return () => {
-      console.log('Gallery: Cleaning up event listeners for userId:', userId);
       galleryServiceV2.events.removeEventListener(
         'assetAdded',
         handleAssetAdded
@@ -285,7 +236,6 @@ const useGallery = () => {
   // This is a fallback for the generator where EventTarget events may not work
   useEffect(() => {
     const handleWindowRefresh = () => {
-      console.log('Gallery: Window refresh event received, reloading...');
       reloadItems();
     };
     window.addEventListener('gallery:refresh', handleWindowRefresh);
@@ -324,6 +274,12 @@ const useGallery = () => {
           category,
           currentUserId
         );
+
+        // Track asset added to cloud gallery
+        posthog.capture('gallery_asset_added', {
+          asset_type: assetType,
+          category: category
+        });
 
         // Reload items from Firestore
         await reloadItems();
@@ -391,8 +347,6 @@ const useGallery = () => {
       await galleryMigration.downloadV1AsZip((progress) => {
         setZipProgress(progress.percentage);
       });
-
-      console.log('V1 ZIP download complete');
     } catch (error) {
       console.error('Failed to download V1 as ZIP:', error);
       throw error;
@@ -417,7 +371,6 @@ const useGallery = () => {
     try {
       await galleryMigration.discardV1Data(currentUserId);
       setNeedsMigration(false);
-      console.log('V1 data discarded');
     } catch (error) {
       console.error('Failed to discard V1 data:', error);
       throw error;
@@ -493,6 +446,9 @@ const useGallery = () => {
       setIsMigrating(true);
       setMigrationProgress(0);
 
+      // Track migration started
+      posthog.capture('gallery_migration_started');
+
       const status = await galleryMigration.migrateAll(
         effectiveUserId,
         (progress) => {
@@ -500,7 +456,13 @@ const useGallery = () => {
         }
       );
 
-      console.log('Migration complete:', status);
+      // Track migration completed
+      posthog.capture('gallery_migration_completed', {
+        migrated_count: status.migrated,
+        failed_count: status.failed,
+        total_count: status.total,
+        skipped_count: status.skipped
+      });
 
       // Reload items after migration
       await reloadItems();

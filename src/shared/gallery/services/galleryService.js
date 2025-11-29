@@ -110,10 +110,6 @@ const galleryService = {
               return;
             }
 
-            console.log(
-              `Migrating ${legacyItems.length} images from FluxGalleryDB to 3DStreetGalleryDB...`
-            );
-
             // Open new database
             const newDb = await this.openDB();
 
@@ -133,13 +129,11 @@ const galleryService = {
             });
 
             migrateTransaction.oncomplete = () => {
-              console.log('Migration completed successfully!');
               newDb.close();
 
               // Delete legacy database
               const deleteRequest = indexedDB.deleteDatabase(this.legacyDbName);
               deleteRequest.onsuccess = () => {
-                console.log('Legacy database deleted.');
                 resolve();
               };
               deleteRequest.onerror = () => {
