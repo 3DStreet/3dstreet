@@ -12,6 +12,7 @@ import { httpsCallable } from 'firebase/functions';
 import { functions, auth } from '@shared/services/firebase.js';
 import { REPLICATE_MODELS } from '@shared/constants/replicateModels.js';
 import { mountModelSelector } from './mount-model-selector.js';
+import posthog from 'posthog-js';
 
 /**
  * Build estimated times object from all models
@@ -1355,6 +1356,22 @@ class GeneratorTabBase {
             `Image generated successfully! (${modelConfig.name})`,
             'success'
           );
+        }
+
+        // Funnel event: ai_render_used (for conversion funnel analysis)
+        posthog.capture('ai_render_used', {
+          token_type: 'gen',
+          model: model,
+          source: 'generator',
+          is_pro_user: window.authState?.currentUser?.isPro || false
+        });
+
+        // Check if user just used their last gen token (track token_limit_reached)
+        if (result.data.remainingTokens !== undefined && result.data.remainingTokens === 0) {
+          posthog.capture('token_limit_reached', {
+            token_type: 'gen',
+            source: 'generator'
+          });
         }
 
         window.dispatchEvent(new CustomEvent('tokenCountChanged'));

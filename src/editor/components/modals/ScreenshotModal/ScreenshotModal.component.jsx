@@ -377,6 +377,28 @@ function ScreenshotModal() {
           is_pro_user: currentUser?.isPro || false,
           tokens_available: tokenProfile?.genToken || 0
         });
+
+        // Funnel event: ai_render_used (standardized event for conversion funnel)
+        posthog.capture('ai_render_used', {
+          token_type: 'gen',
+          model: baseModelKey,
+          render_mode: renderMode,
+          is_pro_user: currentUser?.isPro || false,
+          scene_id: STREET.utils.getCurrentSceneId()
+        });
+
+        // Check if user just used their last gen token (track token_limit_reached)
+        const remainingTokens = result.data.remainingTokens;
+        if (
+          !currentUser?.isPro &&
+          remainingTokens !== undefined &&
+          remainingTokens === 0
+        ) {
+          posthog.capture('token_limit_reached', {
+            token_type: 'gen',
+            scene_id: STREET.utils.getCurrentSceneId()
+          });
+        }
       } else {
         throw new Error('Failed to generate image');
       }
