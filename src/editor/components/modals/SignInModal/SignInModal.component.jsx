@@ -8,6 +8,7 @@ import useStore from '@/store';
 import { saveSceneWithScreenshot } from '@/editor/lib/SceneUtils';
 import { auth } from '@shared/services/firebase';
 import { SavingModal } from '../SavingModal';
+import posthog from 'posthog-js';
 
 const SignInModal = () => {
   const setModal = useStore((state) => state.setModal);
@@ -25,6 +26,10 @@ const SignInModal = () => {
     }
   };
 
+  const handleAnalytics = (eventName, properties) => {
+    posthog.capture(eventName, properties);
+  };
+
   const handleSuccess = async () => {
     // Save scene after successful sign-in if there's an active scene
     if (STREET.utils.getCurrentSceneId() !== null) {
@@ -38,6 +43,7 @@ const SignInModal = () => {
       onClose={onClose}
       message="Sign in to save and share scenes."
       firebaseAuth={auth}
+      onAnalytics={handleAnalytics}
       onNotification={handleNotification}
       onSuccess={handleSuccess}
       LoadingComponent={() => <SavingModal action="Signing in" />}
