@@ -26,7 +26,7 @@ Want to keep designing with real-world context? Upgrade to 3DStreet Pro and get:
 - Priority support
 - Early access to new features
 
-Upgrade now: https://3dstreet.app/#/modal/payment
+Upgrade now: https://3dstreet.app/?utm_source=email&utm_medium=token_exhaustion&utm_campaign=geo_zero&utm_content=cta_link#modal/payment
 
 Thanks for using 3DStreet!
 
@@ -61,7 +61,7 @@ If you have questions, reply to this email or visit https://3dstreet.com/docs/`,
   </ul>
 
   <div style="text-align: center; margin: 30px 0;">
-    <a href="https://3dstreet.app/#/modal/payment" style="display: inline-block; background-color: #6366f1; color: white; padding: 14px 28px; text-decoration: none; border-radius: 8px; font-weight: 600;">Upgrade to Pro</a>
+    <a href="https://3dstreet.app/?utm_source=email&utm_medium=token_exhaustion&utm_campaign=geo_zero&utm_content=cta_button#modal/payment" style="display: inline-block; background-color: #6366f1; color: white; padding: 14px 28px; text-decoration: none; border-radius: 8px; font-weight: 600;">Upgrade to Pro</a>
   </div>
 
   <p>Thanks for using 3DStreet!</p>
@@ -92,7 +92,7 @@ Want to keep creating amazing renders? Upgrade to 3DStreet Pro and get:
 - Priority support
 - Early access to new features
 
-Upgrade now: https://3dstreet.app/#/modal/payment
+Upgrade now: https://3dstreet.app/?utm_source=email&utm_medium=token_exhaustion&utm_campaign=ai_zero&utm_content=cta_link#modal/payment
 
 Thanks for using 3DStreet!
 
@@ -127,7 +127,7 @@ If you have questions, reply to this email or visit https://3dstreet.com/docs/`,
   </ul>
 
   <div style="text-align: center; margin: 30px 0;">
-    <a href="https://3dstreet.app/#/modal/payment" style="display: inline-block; background-color: #6366f1; color: white; padding: 14px 28px; text-decoration: none; border-radius: 8px; font-weight: 600;">Upgrade to Pro</a>
+    <a href="https://3dstreet.app/?utm_source=email&utm_medium=token_exhaustion&utm_campaign=ai_zero&utm_content=cta_button#modal/payment" style="display: inline-block; background-color: #6366f1; color: white; padding: 14px 28px; text-decoration: none; border-radius: 8px; font-weight: 600;">Upgrade to Pro</a>
   </div>
 
   <p>Thanks for using 3DStreet!</p>

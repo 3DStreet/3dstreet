@@ -24,6 +24,23 @@ const resetPaymentQueryParam = () => {
   window.history.replaceState({}, '', newUrl);
 };
 
+// Extract UTM params for tracking email→payment conversion funnel
+const getUtmParams = () => {
+  const params = new URLSearchParams(window.location.search);
+  const utmParams = {};
+  [
+    'utm_source',
+    'utm_medium',
+    'utm_campaign',
+    'utm_content',
+    'utm_term'
+  ].forEach((key) => {
+    const value = params.get(key);
+    if (value) utmParams[key] = value;
+  });
+  return Object.keys(utmParams).length > 0 ? utmParams : null;
+};
+
 const PaymentModal = () => {
   const { currentUser } = useAuthContext();
   const [isLoading, setIsLoading] = useState(false);
@@ -44,7 +61,8 @@ const PaymentModal = () => {
   }
 
   const startCheckout = async () => {
-    posthog.capture('start_checkout');
+    const utmParams = getUtmParams();
+    posthog.capture('start_checkout', utmParams || {});
     setIsLoading(true);
     try {
       const {
