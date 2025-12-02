@@ -1,0 +1,20 @@
+[
+  {
+    "origin": [
+      "https://3dstreet.app",
+      "https://staging.3dstreet.app",
+      "https://dev-3dstreet.web.app",
+      "http://localhost:3333",
+      "http://localhost:8080"
+    ],
+    "method": ["GET", "HEAD", "OPTIONS"],
+    "responseHeader": [
+      "Content-Type",
+      "Content-Length",
+      "Content-Disposition",
+      "Cache-Control",
+      "Access-Control-Allow-Origin"
+    ],
+    "maxAgeSeconds": 3600
+  }
+]
