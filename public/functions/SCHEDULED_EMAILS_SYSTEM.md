@@ -150,25 +150,42 @@ To change the schedule, modify the cron expression:
 
 ## Manual Triggering
 
-For testing, use the `triggerScheduledEmails` callable function:
+For testing, use the `triggerScheduledEmails` callable function. **Requires admin claim** on the authenticated user.
+
+### Using `adminTools` (Recommended)
+
+A helper is exposed on `window.adminTools` for easy console access:
 
 ```js
-// From client code (browser console on 3dstreet.app or dev site)
-const trigger = firebase.functions().httpsCallable('triggerScheduledEmails');
+// From browser console on 3dstreet.app or dev site (must be logged in as admin)
 
 // DRY RUN (default) - see what would be sent without actually sending
-const dryRunResult = await trigger({ dryRun: true });
-console.log(dryRunResult.data);
+await adminTools.triggerEmails()
 // Returns: { success: true, dryRun: true, results: [{ type: 'tokenExhaustion', wouldSend: [...], ... }] }
 
-// ACTUALLY SEND emails (must explicitly set dryRun: false)
+// ACTUALLY SEND emails (must explicitly pass false)
+await adminTools.triggerEmails(false)
+```
+
+### Using Firebase SDK Directly
+
+```js
+const trigger = firebase.functions().httpsCallable('triggerScheduledEmails');
+
+// DRY RUN
+const dryRunResult = await trigger({ dryRun: true });
+console.log(dryRunResult.data);
+
+// ACTUALLY SEND
 await trigger({ dryRun: false });
 
 // Process specific types only
 await trigger({ emailTypes: ['tokenExhaustion'], dryRun: true });
 ```
 
-**Important:** The function defaults to `dryRun: true` for safety. You must explicitly pass `dryRun: false` to send real emails.
+**Important:**
+- The function requires the `admin` custom claim on the authenticated user
+- Defaults to `dryRun: true` for safety - you must explicitly pass `false` to send real emails
 
 ## Viewing Logs
 
