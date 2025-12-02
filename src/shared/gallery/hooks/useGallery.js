@@ -379,12 +379,10 @@ const useGallery = () => {
 
   /**
    * Download an item
+   * For cross-origin URLs (Firebase Storage), fetches blob first then downloads
    * @param {object} item - Gallery item to download
    */
-  const downloadItem = useCallback((item) => {
-    const link = document.createElement('a');
-    link.href = item.fullImageURL || item.storageUrl || item.objectURL;
-
+  const downloadItem = useCallback(async (item) => {
     // Create filename
     const isVideo = item.type === ASSET_TYPES.VIDEO;
     const model =
@@ -405,11 +403,29 @@ const useGallery = () => {
       extension = format === 'jpeg' ? 'jpg' : 'png';
     }
 
-    link.download = `${model}-${timestamp}.${extension}`;
+    const filename = `${model}-${timestamp}.${extension}`;
+    const imageUrl = item.fullImageURL || item.storageUrl || item.objectURL;
 
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+    try {
+      // Fetch as blob to enable download for cross-origin URLs
+      const response = await fetch(imageUrl);
+      const blob = await response.blob();
+      const blobUrl = URL.createObjectURL(blob);
+
+      const link = document.createElement('a');
+      link.href = blobUrl;
+      link.download = filename;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+
+      // Clean up blob URL
+      URL.revokeObjectURL(blobUrl);
+    } catch (error) {
+      console.error('Failed to download, opening in new tab:', error);
+      // Fallback: open in new tab if fetch fails
+      window.open(imageUrl, '_blank');
+    }
   }, []);
 
   /**
