@@ -44,7 +44,7 @@ If you have questions, reply to this email or visit https://3dstreet.com/docs/`,
 </head>
 <body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
   <div style="text-align: center; margin-bottom: 30px;">
-    <img src="https://3dstreet.app/ui_assets/streetmix3d-logo.svg" alt="3DStreet" style="height: 40px;">
+    <img src="https://3dstreet.app/ui_assets/3dstreet-logo-rect-r-640.png" alt="3DStreet" style="height: 40px;">
   </div>
 
   <h2 style="color: #1a1a1a; margin-bottom: 20px;">Hi ${userName},</h2>
@@ -110,7 +110,7 @@ If you have questions, reply to this email or visit https://3dstreet.com/docs/`,
 </head>
 <body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
   <div style="text-align: center; margin-bottom: 30px;">
-    <img src="https://3dstreet.app/ui_assets/streetmix3d-logo.svg" alt="3DStreet" style="height: 40px;">
+    <img src="https://3dstreet.app/ui_assets/3dstreet-logo-rect-r-640.png" alt="3DStreet" style="height: 40px;">
   </div>
 
   <h2 style="color: #1a1a1a; margin-bottom: 20px;">Hi ${userName},</h2>
