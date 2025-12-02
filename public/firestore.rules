@@ -5,7 +5,7 @@ service cloud.firestore {
     match /scenes/{scene} {
       allow read;
     }
-    
+
     match /scenes/{scene} {
     	// Allow create new scene if user is authenticated
       allow create: if request.auth != null;
@@ -18,12 +18,12 @@ service cloud.firestore {
     match /socialProfile/{userId} {
       // Allow any authenticated user to read (for username lookups, public profiles)
       allow read: if request.auth != null;
-      
+
       // Users can only create their own profile (doc ID must match auth UID)
-      allow create: if request.auth != null 
+      allow create: if request.auth != null
         && request.auth.uid == userId  // Doc ID must match auth UID
         && request.resource.data.userId == userId; // userId field must match too
-      
+
       // Users can only update their own profile
       allow update: if request.auth != null
         && request.auth.uid == resource.data.userId;
@@ -43,6 +43,28 @@ service cloud.firestore {
 
       // DENY all client-side updates - only cloud functions can modify token counts
       allow update: if false;
+    }
+
+    // Gallery Assets Subcollection Rules (PRIVATE data - user's gallery assets)
+    // Structure: users/{userId}/assets/{assetId}
+    match /users/{userId}/assets/{assetId} {
+      // Users can only read their own gallery assets
+      allow read: if request.auth != null && request.auth.uid == userId;
+
+      // Users can create assets with proper userId field and required fields validated
+      allow create: if request.auth != null
+        && request.auth.uid == userId
+        && request.resource.data.userId == userId
+        && request.resource.data.type in ['image', 'video', 'splat', 'mesh']
+        && request.resource.data.category is string
+        && request.resource.data.storagePath is string
+        && request.resource.data.storagePath.matches('^users/' + userId + '/.*');
+
+      // Users can update their own assets
+      allow update: if request.auth != null && request.auth.uid == userId;
+
+      // Users can delete their own assets
+      allow delete: if request.auth != null && request.auth.uid == userId;
     }
 
     // Email Log Collection Rules (PRIVATE - cloud functions only)

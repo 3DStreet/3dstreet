@@ -153,15 +153,22 @@ To change the schedule, modify the cron expression:
 For testing, use the `triggerScheduledEmails` callable function:
 
 ```js
-// From client code
+// From client code (browser console on 3dstreet.app or dev site)
 const trigger = firebase.functions().httpsCallable('triggerScheduledEmails');
 
-// Process all email types
-await trigger();
+// DRY RUN (default) - see what would be sent without actually sending
+const dryRunResult = await trigger({ dryRun: true });
+console.log(dryRunResult.data);
+// Returns: { success: true, dryRun: true, results: [{ type: 'tokenExhaustion', wouldSend: [...], ... }] }
+
+// ACTUALLY SEND emails (must explicitly set dryRun: false)
+await trigger({ dryRun: false });
 
 // Process specific types only
-await trigger({ emailTypes: ['tokenExhaustion'] });
+await trigger({ emailTypes: ['tokenExhaustion'], dryRun: true });
 ```
+
+**Important:** The function defaults to `dryRun: true` for safety. You must explicitly pass `dryRun: false` to send real emails.
 
 ## Viewing Logs
 

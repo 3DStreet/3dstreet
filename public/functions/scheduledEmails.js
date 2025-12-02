@@ -286,12 +286,20 @@ const getUserInfo = async (userId) => {
 
 /**
  * Process a single email type - find eligible users and send emails
+ * @param {Object} db - Firestore database instance
+ * @param {string} emailTypeKey - The email type identifier
+ * @param {Object} emailType - The email type configuration
+ * @param {Object} options - Processing options
+ * @param {boolean} options.dryRun - If true, log what would be sent without actually sending
  */
-const processEmailType = async (db, emailTypeKey, emailType) => {
+const processEmailType = async (db, emailTypeKey, emailType, options = {}) => {
+  const { dryRun = false } = options;
   const results = {
     type: emailTypeKey,
+    dryRun,
     processed: 0,
     sent: 0,
+    wouldSend: [], // For dry run mode - list of emails that would be sent
     skipped: {
       alreadySent: 0,
       noEmail: 0,
@@ -366,10 +374,23 @@ const processEmailType = async (db, emailTypeKey, emailType) => {
         continue;
       }
 
-      // Send email
+      // Send email (or log in dry run mode)
       const subject = template.subject;
       const textBody = template.getTextBody(userInfo.displayName);
       const htmlBody = template.getHtmlBody(userInfo.displayName);
+
+      if (dryRun) {
+        // Dry run - just log what would be sent
+        console.log(`[DRY RUN] Would send ${emailTypeKey} (${templateKey}) email to ${userInfo.email}`);
+        results.wouldSend.push({
+          email: userInfo.email,
+          displayName: userInfo.displayName,
+          templateKey,
+          subject
+        });
+        results.sent++;
+        continue;
+      }
 
       const postmarkResult = await sendPostmarkEmail(
         userInfo.email,
@@ -430,6 +451,17 @@ const sendScheduledEmails = functions
 /**
  * HTTP callable function for manual triggering (useful for testing)
  * Only processes specified email types if provided, otherwise all
+ *
+ * @param {Object} data - Function parameters
+ * @param {string[]} data.emailTypes - Optional array of email types to process (defaults to all)
+ * @param {boolean} data.dryRun - If true, shows what would be sent without actually sending emails
+ *
+ * Usage from client:
+ *   const trigger = firebase.functions().httpsCallable('triggerScheduledEmails');
+ *   // Dry run - see what would be sent without sending
+ *   await trigger({ dryRun: true });
+ *   // Actually send emails
+ *   await trigger({ dryRun: false });
  */
 const triggerScheduledEmails = functions
   .runWith({
@@ -449,7 +481,8 @@ const triggerScheduledEmails = functions
     //   throw new functions.https.HttpsError('permission-denied', 'Admin access required.');
     // }
 
-    console.log('Manually triggering scheduled emails');
+    const dryRun = data?.dryRun ?? true; // Default to dry run for safety
+    console.log(`Manually triggering scheduled emails (dryRun: ${dryRun})`);
     const db = admin.firestore();
     const allResults = [];
 
@@ -464,12 +497,12 @@ const triggerScheduledEmails = functions
       }
 
       console.log(`Processing email type: ${emailTypeKey}`);
-      const results = await processEmailType(db, emailTypeKey, emailType);
+      const results = await processEmailType(db, emailTypeKey, emailType, { dryRun });
       allResults.push(results);
       console.log(`Completed ${emailTypeKey}:`, JSON.stringify(results));
     }
 
-    return { success: true, results: allResults };
+    return { success: true, dryRun, results: allResults };
   });
 
 module.exports = {
