@@ -471,15 +471,15 @@ const triggerScheduledEmails = functions
   })
   .https
   .onCall(async (data, context) => {
-    // Verify user is authenticated and is admin (optional: add admin check)
+    // Verify user is authenticated
     if (!context.auth) {
       throw new functions.https.HttpsError('unauthenticated', 'User must be authenticated.');
     }
 
-    // Optional: Check for admin role
-    // if (!context.auth.token.admin) {
-    //   throw new functions.https.HttpsError('permission-denied', 'Admin access required.');
-    // }
+    // Require admin claim to trigger emails
+    if (!context.auth.token.admin) {
+      throw new functions.https.HttpsError('permission-denied', 'Admin access required.');
+    }
 
     const dryRun = data?.dryRun ?? true; // Default to dry run for safety
     console.log(`Manually triggering scheduled emails (dryRun: ${dryRun})`);
