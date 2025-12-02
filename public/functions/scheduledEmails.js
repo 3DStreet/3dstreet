@@ -238,6 +238,7 @@ const sendPostmarkEmail = async (toEmail, subject, htmlBody, textBody) => {
 
   if (!response.ok) {
     const errorText = await response.text();
+    console.error(`Postmark API error sending to ${toEmail}: status=${response.status}, body=${errorText}`);
     throw new Error(`Postmark API error (${response.status}): ${errorText}`);
   }
 
@@ -313,6 +314,15 @@ const processEmailType = async (db, emailTypeKey, emailType, options = {}) => {
   try {
     eligibleUsers = await emailType.getEligibleUsers(db);
     console.log(`Found ${eligibleUsers.length} eligible users for ${emailTypeKey}`);
+    if (dryRun && eligibleUsers.length > 0) {
+      console.log(`[DRY RUN] Eligible users found:`, eligibleUsers.map(u => ({
+        userId: u.userId,
+        geoToken: u.geoToken,
+        genToken: u.genToken,
+        geoTokenType: typeof u.geoToken,
+        genTokenType: typeof u.genToken
+      })));
+    }
   } catch (error) {
     console.error(`Error querying eligible users for ${emailTypeKey}:`, error);
     return results;
@@ -399,14 +409,14 @@ const processEmailType = async (db, emailTypeKey, emailType, options = {}) => {
         textBody
       );
 
-      console.log(`Sent ${emailTypeKey} (${templateKey}) email to ${userInfo.email}: ${postmarkResult.MessageID}`);
+      console.log(`Sent ${emailTypeKey} email to ${userInfo.email}, MessageID: ${postmarkResult.MessageID}`);
 
       // Record email sent
       await recordEmailSent(db, userId, emailType.emailLogField, userInfo.email);
       results.sent++;
 
     } catch (error) {
-      console.error(`Error processing ${emailTypeKey} for user ${userId}:`, error);
+      console.error(`Error processing ${emailTypeKey} for user ${userId}:`, error.message || error);
       results.skipped.error++;
     }
   }
