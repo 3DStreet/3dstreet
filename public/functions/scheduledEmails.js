@@ -227,7 +227,7 @@ const sendPostmarkEmail = async (toEmail, subject, htmlBody, textBody) => {
       'X-Postmark-Server-Token': apiKey
     },
     body: JSON.stringify({
-      From: 'hello@3dstreet.com',
+      From: 'notify@3dstreet.com',
       To: toEmail,
       Subject: subject,
       HtmlBody: htmlBody,
