@@ -34,7 +34,7 @@ The 3DStreet Team
 https://3dstreet.com
 
 ---
-You received this email because you created an account on 3DStreet.
+You received this email because you created an account on 3DStreet. This message is only sent once.
 If you have questions, reply to this email or visit https://3dstreet.com/docs/`,
     getHtmlBody: (userName) => `<!DOCTYPE html>
 <html>
@@ -73,7 +73,7 @@ If you have questions, reply to this email or visit https://3dstreet.com/docs/`,
 
   <p style="font-size: 12px; color: #999;">
     You received this email because you created an account on 3DStreet.<br>
-    If you have questions, reply to this email or visit <a href="https://3dstreet.com/docs/" style="color: #6366f1;">our documentation</a>.
+    This message is only sent once. If you have questions, reply to this email or visit <a href="https://3dstreet.com/docs/" style="color: #6366f1;">our documentation</a>.
   </p>
 </body>
 </html>`
@@ -100,7 +100,7 @@ The 3DStreet Team
 https://3dstreet.com
 
 ---
-You received this email because you created an account on 3DStreet.
+You received this email because you created an account on 3DStreet. This message is only sent once.
 If you have questions, reply to this email or visit https://3dstreet.com/docs/`,
     getHtmlBody: (userName) => `<!DOCTYPE html>
 <html>
@@ -139,7 +139,7 @@ If you have questions, reply to this email or visit https://3dstreet.com/docs/`,
 
   <p style="font-size: 12px; color: #999;">
     You received this email because you created an account on 3DStreet.<br>
-    If you have questions, reply to this email or visit <a href="https://3dstreet.com/docs/" style="color: #6366f1;">our documentation</a>.
+    This message is only sent once. If you have questions, reply to this email or visit <a href="https://3dstreet.com/docs/" style="color: #6366f1;">our documentation</a>.
   </p>
 </body>
 </html>`
