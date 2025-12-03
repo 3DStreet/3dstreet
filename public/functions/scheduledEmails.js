@@ -159,7 +159,7 @@ If you have questions, reply to this email or visit https://3dstreet.com/docs/`,
 const EMAIL_TYPES = {
   tokenExhaustion: {
     // Template is selected dynamically based on which token is exhausted
-    emailLogField: 'tokenExhaustionEmailSent',
+    notifyLogField: 'tokenExhaustionEmailSent',
 
     // Query users with either token at 0
     // Firestore doesn't support OR queries, so we run two queries and merge
@@ -248,8 +248,8 @@ const sendPostmarkEmail = async (toEmail, subject, htmlBody, textBody) => {
 /**
  * Check if user has already received this email type (once ever)
  */
-const hasAlreadyReceivedEmail = (emailLog, emailLogField) => {
-  if (!emailLog || !emailLog[emailLogField]) {
+const hasAlreadyReceivedEmail = (notifyLog, notifyLogField) => {
+  if (!notifyLog || !notifyLog[notifyLogField]) {
     return false;
   }
   return true;
@@ -258,13 +258,13 @@ const hasAlreadyReceivedEmail = (emailLog, emailLogField) => {
 /**
  * Record that an email was sent
  */
-const recordEmailSent = async (db, userId, emailLogField, email) => {
-  const emailLogRef = db.collection('notifyLog').doc(userId);
+const recordEmailSent = async (db, userId, notifyLogField, email) => {
+  const notifyLogRef = db.collection('notifyLog').doc(userId);
 
-  await emailLogRef.set({
+  await notifyLogRef.set({
     userId: userId,
     email: email,
-    [emailLogField]: admin.firestore.FieldValue.serverTimestamp(),
+    [notifyLogField]: admin.firestore.FieldValue.serverTimestamp(),
     updatedAt: admin.firestore.FieldValue.serverTimestamp()
   }, { merge: true });
 };
@@ -332,16 +332,22 @@ const processEmailType = async (db, emailTypeKey, emailType, options = {}) => {
     return results;
   }
 
-  // Get all email logs in batch for efficiency
+  // Get all notify logs in batch for efficiency
+  // Firestore getAll() has a limit of 100 documents per call, so we chunk
   const userIds = eligibleUsers.map(u => u.userId);
-  const emailLogRefs = userIds.map(id => db.collection('notifyLog').doc(id));
-  const emailLogDocs = await db.getAll(...emailLogRefs);
-  const emailLogMap = {};
-  emailLogDocs.forEach((doc, index) => {
-    if (doc.exists) {
-      emailLogMap[userIds[index]] = doc.data();
-    }
-  });
+  const notifyLogMap = {};
+  const BATCH_SIZE = 100;
+
+  for (let i = 0; i < userIds.length; i += BATCH_SIZE) {
+    const batchIds = userIds.slice(i, i + BATCH_SIZE);
+    const notifyLogRefs = batchIds.map(id => db.collection('notifyLog').doc(id));
+    const notifyLogDocs = await db.getAll(...notifyLogRefs);
+    notifyLogDocs.forEach((doc, index) => {
+      if (doc.exists) {
+        notifyLogMap[batchIds[index]] = doc.data();
+      }
+    });
+  }
 
   // Process each user
   for (const user of eligibleUsers) {
@@ -350,8 +356,8 @@ const processEmailType = async (db, emailTypeKey, emailType, options = {}) => {
 
     try {
       // Check if already sent (once ever per email type)
-      const emailLog = emailLogMap[userId];
-      if (hasAlreadyReceivedEmail(emailLog, emailType.emailLogField)) {
+      const notifyLog = notifyLogMap[userId];
+      if (hasAlreadyReceivedEmail(notifyLog, emailType.notifyLogField)) {
         results.skipped.alreadySent++;
         continue;
       }
@@ -412,7 +418,7 @@ const processEmailType = async (db, emailTypeKey, emailType, options = {}) => {
       console.log(`Sent ${emailTypeKey} email to ${userInfo.email}, MessageID: ${postmarkResult.MessageID}`);
 
       // Record email sent
-      await recordEmailSent(db, userId, emailType.emailLogField, userInfo.email);
+      await recordEmailSent(db, userId, emailType.notifyLogField, userInfo.email);
       results.sent++;
 
     } catch (error) {
