@@ -1,5 +1,6 @@
 /**
  * GalleryModal Component - Detail view modal
+ * Uses Firebase Storage URLs with browser HTTP caching
  */
 
 import { useState, useEffect, useRef } from 'react';
@@ -29,6 +30,9 @@ const GalleryModal = ({
     return stored !== null ? stored === 'true' : true;
   });
 
+  // Use full image URL directly - browser HTTP cache handles caching
+  const fullImageUrl =
+    item?.fullImageURL || item?.storageUrl || item?.objectURL;
   const videoRef = useRef(null);
 
   // Save metadata visibility to sessionStorage when it changes
@@ -172,13 +176,13 @@ const GalleryModal = ({
             {isVideo ? (
               <video
                 ref={videoRef}
-                src={item.objectURL}
+                src={fullImageUrl}
                 controls
                 autoPlay
                 playsInline
               />
             ) : (
-              <img src={item.objectURL} alt="Generated image" />
+              <img src={fullImageUrl} alt="Generated image" />
             )}
           </div>
 
@@ -195,22 +199,24 @@ const GalleryModal = ({
 
               {/* Metadata Row - Horizontal scrolling */}
               <div className={styles.overlayMetadataRow}>
-                <div className={styles.metadataItem}>
-                  <span className={styles.metadataLabel}>Model</span>
-                  <span className={styles.metadataValue}>
-                    {model && REPLICATE_MODELS[model]?.logo && (
-                      <img
-                        src={REPLICATE_MODELS[model].logo}
-                        alt=""
-                        className={styles.modelLogo}
-                        onError={(e) => {
-                          e.target.style.display = 'none';
-                        }}
-                      />
-                    )}
-                    {REPLICATE_MODELS[model]?.name || model || 'Unknown'}
-                  </span>
-                </div>
+                {model && (
+                  <div className={styles.metadataItem}>
+                    <span className={styles.metadataLabel}>Model</span>
+                    <span className={styles.metadataValue}>
+                      {REPLICATE_MODELS[model]?.logo && (
+                        <img
+                          src={REPLICATE_MODELS[model].logo}
+                          alt=""
+                          className={styles.modelLogo}
+                          onError={(e) => {
+                            e.target.style.display = 'none';
+                          }}
+                        />
+                      )}
+                      {REPLICATE_MODELS[model]?.name || model}
+                    </span>
+                  </div>
+                )}
                 {isVideo ? (
                   <>
                     {aspectRatio && (
@@ -233,23 +239,28 @@ const GalleryModal = ({
                     )}
                   </>
                 ) : (
+                  width &&
+                  height && (
+                    <div className={styles.metadataItem}>
+                      <span className={styles.metadataLabel}>Size</span>
+                      <span className={styles.metadataValue}>
+                        {width} × {height}
+                      </span>
+                    </div>
+                  )
+                )}
+                {seed && (
                   <div className={styles.metadataItem}>
-                    <span className={styles.metadataLabel}>Size</span>
-                    <span className={styles.metadataValue}>
-                      {width || '?'} × {height || '?'}
-                    </span>
+                    <span className={styles.metadataLabel}>Seed</span>
+                    <span className={styles.metadataValue}>{seed}</span>
                   </div>
                 )}
-                <div className={styles.metadataItem}>
-                  <span className={styles.metadataLabel}>Seed</span>
-                  <span className={styles.metadataValue}>
-                    {seed || 'Unknown'}
-                  </span>
-                </div>
-                <div className={styles.metadataItem}>
-                  <span className={styles.metadataLabel}>Date</span>
-                  <span className={styles.metadataValue}>{date}</span>
-                </div>
+                {item.metadata?.timestamp && (
+                  <div className={styles.metadataItem}>
+                    <span className={styles.metadataLabel}>Date</span>
+                    <span className={styles.metadataValue}>{date}</span>
+                  </div>
+                )}
               </div>
             </div>
           )}

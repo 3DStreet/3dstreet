@@ -14,6 +14,7 @@ import useImageGenStore from '../store';
 import { useAuthContext } from '../../editor/contexts';
 import { getTokenProfile } from '@shared/utils/tokens';
 import styles from './PurchaseModal.module.scss';
+import posthog from 'posthog-js';
 
 // Initialize Stripe
 const stripePromise = loadStripe(process.env.STRIPE_PUBLISHABLE_KEY);
@@ -84,6 +85,12 @@ const PurchaseModal = () => {
             status: 'complete',
             payment_status: 'paid'
           });
+
+          // Funnel event: payment_completed (for conversion funnel analysis)
+          posthog.capture('payment_completed', {
+            plan: selectedPlan,
+            source: 'generator'
+          });
         } else if (attempts >= maxAttempts) {
           // Timeout - webhook might be delayed, but show success anyway
           clearInterval(pollIntervalRef.current);
@@ -108,6 +115,12 @@ const PurchaseModal = () => {
   // Check for active subscriptions when modal opens
   useEffect(() => {
     if (!isPurchaseModalOpen || !currentUser) return;
+
+    // Funnel event: pricing_page_viewed (for conversion funnel analysis)
+    posthog.capture('pricing_page_viewed', {
+      source: 'generator',
+      trigger: 'gen_token_limit'
+    });
 
     const checkSubscriptions = async () => {
       try {
@@ -169,6 +182,11 @@ const PurchaseModal = () => {
   const handlePlanSelect = (plan) => {
     setSelectedPlan(plan);
     setModalState('checkout');
+    // Funnel event: checkout_started (for conversion funnel analysis)
+    posthog.capture('checkout_started', {
+      plan: plan,
+      source: 'generator'
+    });
   };
 
   const handleBackToPricing = () => {

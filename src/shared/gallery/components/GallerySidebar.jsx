@@ -21,41 +21,38 @@ const GallerySidebar = ({
   const {
     items,
     isLoading,
+    isLoggedIn,
     page,
     pageSize,
     totalPages,
     setPage,
     setPageSize,
     removeItem,
-    clearGallery,
-    downloadItem
+    downloadItem,
+    // Migration
+    needsMigration,
+    isMigrating,
+    migrationProgress,
+    runMigration,
+    // V1 data management
+    downloadV1AsZip,
+    discardV1Data,
+    isDownloadingZip,
+    zipProgress,
+    // Reload
+    reloadItems
   } = useGallery();
 
   const [isCollapsed, setIsCollapsed] = useState(true);
   const [selectedItem, setSelectedItem] = useState(null);
 
+  // Don't render the gallery if user is not logged in
+  if (!isLoggedIn) {
+    return null;
+  }
+
   const handleToggle = () => {
     setIsCollapsed(!isCollapsed);
-  };
-
-  const handleClearGallery = async () => {
-    if (
-      window.confirm(
-        'Are you sure you want to clear all saved images? This cannot be undone.'
-      )
-    ) {
-      try {
-        await clearGallery();
-        if (onNotification) {
-          onNotification('Gallery cleared.', 'success');
-        }
-      } catch (error) {
-        console.error('Failed to clear gallery:', error);
-        if (onNotification) {
-          onNotification('Error clearing gallery.', 'error');
-        }
-      }
-    }
   };
 
   const handleDelete = async (id) => {
@@ -214,7 +211,66 @@ const GallerySidebar = ({
                       maxWidth: '200px'
                     }}
                   >
-                    Gallery saved to local storage only. No cloud backup.
+                    Gallery synced to cloud. Available on all your devices.
+                    <Tooltip.Arrow style={{ fill: '#2d2d2d' }} />
+                  </Tooltip.Content>
+                </Tooltip.Portal>
+              </Tooltip.Root>
+            </Tooltip.Provider>
+            <Tooltip.Provider>
+              <Tooltip.Root delayDuration={0}>
+                <Tooltip.Trigger asChild>
+                  <button
+                    onClick={() => reloadItems()}
+                    style={{
+                      background: 'none',
+                      border: 'none',
+                      cursor: 'pointer',
+                      padding: '4px',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      color: '#9ca3af',
+                      transition: 'color 0.2s',
+                      marginLeft: '8px'
+                    }}
+                    onMouseEnter={(e) =>
+                      (e.currentTarget.style.color = '#ffffff')
+                    }
+                    onMouseLeave={(e) =>
+                      (e.currentTarget.style.color = '#9ca3af')
+                    }
+                  >
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      width="16"
+                      height="16"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    >
+                      <path d="M21.5 2v6h-6M2.5 22v-6h6M2 11.5a10 10 0 0 1 18.8-4.3M22 12.5a10 10 0 0 1-18.8 4.2" />
+                    </svg>
+                  </button>
+                </Tooltip.Trigger>
+                <Tooltip.Portal>
+                  <Tooltip.Content
+                    side="bottom"
+                    sideOffset={5}
+                    style={{
+                      backgroundColor: '#2d2d2d',
+                      color: 'white',
+                      padding: '6px 12px',
+                      borderRadius: '4px',
+                      fontSize: '12px',
+                      fontWeight: '500',
+                      zIndex: 10000
+                    }}
+                  >
+                    Refresh gallery
                     <Tooltip.Arrow style={{ fill: '#2d2d2d' }} />
                   </Tooltip.Content>
                 </Tooltip.Portal>
@@ -233,6 +289,219 @@ const GallerySidebar = ({
           >
             Loading gallery...
           </div>
+        ) : needsMigration ? (
+          <div
+            style={{
+              padding: '2rem',
+              textAlign: 'center',
+              color: '#6b7280'
+            }}
+          >
+            <div style={{ marginBottom: '1rem', fontSize: '14px' }}>
+              <p style={{ marginBottom: '0.5rem', fontWeight: '500' }}>
+                Gallery Migration Required
+              </p>
+              <p style={{ fontSize: '12px', lineHeight: '1.5' }}>
+                Your gallery needs to be migrated to the new cloud-based system.
+                This is a one-time process that will upload your images to
+                secure cloud storage.
+              </p>
+            </div>
+            {isMigrating ? (
+              <div>
+                <div
+                  style={{
+                    marginBottom: '0.5rem',
+                    fontSize: '12px',
+                    fontWeight: '500'
+                  }}
+                >
+                  Migrating... {migrationProgress.toFixed(0)}%
+                </div>
+                <div
+                  style={{
+                    width: '100%',
+                    height: '8px',
+                    backgroundColor: '#e5e7eb',
+                    borderRadius: '4px',
+                    overflow: 'hidden'
+                  }}
+                >
+                  <div
+                    style={{
+                      width: `${migrationProgress}%`,
+                      height: '100%',
+                      backgroundColor: '#3b82f6',
+                      transition: 'width 0.3s ease'
+                    }}
+                  />
+                </div>
+              </div>
+            ) : isDownloadingZip ? (
+              <div>
+                <div
+                  style={{
+                    marginBottom: '0.5rem',
+                    fontSize: '12px',
+                    fontWeight: '500'
+                  }}
+                >
+                  Downloading... {zipProgress.toFixed(0)}%
+                </div>
+                <div
+                  style={{
+                    width: '100%',
+                    height: '8px',
+                    backgroundColor: '#e5e7eb',
+                    borderRadius: '4px',
+                    overflow: 'hidden'
+                  }}
+                >
+                  <div
+                    style={{
+                      width: `${zipProgress}%`,
+                      height: '100%',
+                      backgroundColor: '#10b981',
+                      transition: 'width 0.3s ease'
+                    }}
+                  />
+                </div>
+              </div>
+            ) : (
+              <div
+                style={{
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: '0.75rem',
+                  alignItems: 'center'
+                }}
+              >
+                <button
+                  onClick={() => {
+                    runMigration()
+                      .then((status) => {
+                        if (onNotification) {
+                          if (status.failed > 0) {
+                            if (status.migrated === 0) {
+                              onNotification(
+                                `Migration failed: All ${status.total} images could not be uploaded. Please check your permissions and try again.`,
+                                'error'
+                              );
+                            } else {
+                              onNotification(
+                                `Migration partially complete: ${status.migrated} of ${status.total} images uploaded. ${status.failed} failed.`,
+                                'warning'
+                              );
+                            }
+                          } else {
+                            onNotification(
+                              `Migration complete! ${status.migrated} images uploaded to cloud.`,
+                              'success'
+                            );
+                          }
+                        }
+                      })
+                      .catch((error) => {
+                        console.error('Migration failed:', error);
+                        if (onNotification) {
+                          onNotification(
+                            'Migration failed. Please try again.',
+                            'error'
+                          );
+                        }
+                      });
+                  }}
+                  style={{
+                    padding: '0.5rem 1rem',
+                    backgroundColor: '#3b82f6',
+                    color: 'white',
+                    border: 'none',
+                    borderRadius: '6px',
+                    cursor: 'pointer',
+                    fontSize: '14px',
+                    fontWeight: '500',
+                    width: '100%'
+                  }}
+                >
+                  Migrate to Cloud
+                </button>
+                <button
+                  onClick={() => {
+                    downloadV1AsZip()
+                      .then(() => {
+                        if (onNotification) {
+                          onNotification(
+                            'Gallery downloaded as ZIP file.',
+                            'success'
+                          );
+                        }
+                      })
+                      .catch((error) => {
+                        console.error('Download failed:', error);
+                        if (onNotification) {
+                          onNotification(
+                            'Failed to download gallery.',
+                            'error'
+                          );
+                        }
+                      });
+                  }}
+                  style={{
+                    padding: '0.5rem 1rem',
+                    backgroundColor: '#10b981',
+                    color: 'white',
+                    border: 'none',
+                    borderRadius: '6px',
+                    cursor: 'pointer',
+                    fontSize: '14px',
+                    fontWeight: '500',
+                    width: '100%'
+                  }}
+                >
+                  Download as ZIP
+                </button>
+                <button
+                  onClick={() => {
+                    if (
+                      window.confirm(
+                        'Are you sure you want to discard your local images? This cannot be undone. Consider downloading a ZIP backup first.'
+                      )
+                    ) {
+                      discardV1Data()
+                        .then(() => {
+                          if (onNotification) {
+                            onNotification(
+                              'Local images discarded.',
+                              'success'
+                            );
+                          }
+                        })
+                        .catch((error) => {
+                          console.error('Discard failed:', error);
+                          if (onNotification) {
+                            onNotification(
+                              'Failed to discard local images.',
+                              'error'
+                            );
+                          }
+                        });
+                    }
+                  }}
+                  style={{
+                    padding: '0.25rem 0.5rem',
+                    backgroundColor: 'transparent',
+                    color: '#9ca3af',
+                    border: 'none',
+                    cursor: 'pointer',
+                    fontSize: '12px',
+                    textDecoration: 'underline'
+                  }}
+                >
+                  Discard local images
+                </button>
+              </div>
+            )}
+          </div>
         ) : (
           <GalleryGrid
             items={items}
@@ -246,16 +515,6 @@ const GallerySidebar = ({
             onPageSizeChange={setPageSize}
           />
         )}
-
-        <div className={styles.footer}>
-          <button
-            id="clear-gallery-btn"
-            className={styles.clearBtn}
-            onClick={handleClearGallery}
-          >
-            Clear Gallery
-          </button>
-        </div>
       </div>
 
       {/* Modal */}
