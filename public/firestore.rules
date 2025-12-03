@@ -5,7 +5,7 @@ service cloud.firestore {
     match /scenes/{scene} {
       allow read;
     }
-    
+
     match /scenes/{scene} {
     	// Allow create new scene if user is authenticated
       allow create: if request.auth != null;
@@ -18,12 +18,12 @@ service cloud.firestore {
     match /socialProfile/{userId} {
       // Allow any authenticated user to read (for username lookups, public profiles)
       allow read: if request.auth != null;
-      
+
       // Users can only create their own profile (doc ID must match auth UID)
-      allow create: if request.auth != null 
+      allow create: if request.auth != null
         && request.auth.uid == userId  // Doc ID must match auth UID
         && request.resource.data.userId == userId; // userId field must match too
-      
+
       // Users can only update their own profile
       allow update: if request.auth != null
         && request.auth.uid == resource.data.userId;
@@ -65,6 +65,12 @@ service cloud.firestore {
 
       // Users can delete their own assets
       allow delete: if request.auth != null && request.auth.uid == userId;
+    }
+
+    // Notify Log Collection Rules (PRIVATE - cloud functions only)
+    // Tracks notification sends to prevent duplicates; no client access allowed
+    match /notifyLog/{userId} {
+      allow read, write: if false;
     }
   }
 }
