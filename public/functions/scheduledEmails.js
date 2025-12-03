@@ -259,7 +259,7 @@ const hasAlreadyReceivedEmail = (emailLog, emailLogField) => {
  * Record that an email was sent
  */
 const recordEmailSent = async (db, userId, emailLogField, email) => {
-  const emailLogRef = db.collection('emailLog').doc(userId);
+  const emailLogRef = db.collection('notifyLog').doc(userId);
 
   await emailLogRef.set({
     userId: userId,
@@ -334,7 +334,7 @@ const processEmailType = async (db, emailTypeKey, emailType, options = {}) => {
 
   // Get all email logs in batch for efficiency
   const userIds = eligibleUsers.map(u => u.userId);
-  const emailLogRefs = userIds.map(id => db.collection('emailLog').doc(id));
+  const emailLogRefs = userIds.map(id => db.collection('notifyLog').doc(id));
   const emailLogDocs = await db.getAll(...emailLogRefs);
   const emailLogMap = {};
   emailLogDocs.forEach((doc, index) => {

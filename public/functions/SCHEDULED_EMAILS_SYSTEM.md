@@ -56,7 +56,7 @@ const EMAIL_TYPES = {
   // ... existing types ...
 
   welcome: {
-    emailLogField: 'welcomeEmailSent',  // Track in emailLog
+    notifyLogField: 'welcomeEmailSent',  // Track in notifyLog
 
     // Query users who need this email
     async getEligibleUsers(db) {
@@ -86,7 +86,7 @@ For email types that select different templates based on user data:
 
 ```js
 myEmailType: {
-  emailLogField: 'myEmailSent',
+  notifyLogField: 'myEmailSent',
   async getEligibleUsers(db) { ... },
 
   // Dynamic template selection based on user data
@@ -104,7 +104,7 @@ myEmailType: {
 ### `tokenProfile/{userId}` (read)
 Queried to find users with exhausted tokens.
 
-### `emailLog/{userId}` (read/write)
+### `notifyLog/{userId}` (read/write)
 Tracks email sends:
 ```js
 {
@@ -212,14 +212,14 @@ Completed tokenExhaustion: {"type":"tokenExhaustion","processed":15,"sent":3,"sk
 
 | Issue | Cause | Solution |
 |-------|-------|----------|
-| No emails sent | All users already emailed | Check `emailLog` collection |
+| No emails sent | All users already emailed | Check `notifyLog` collection |
 | No emails sent | All users are PRO | Expected behavior |
 | Postmark 401 | Invalid API key | Verify secret |
 | Postmark 422 | Invalid sender | Verify sender in Postmark |
 
 ## Security
 
-- `emailLog` collection denies all client access (Cloud Functions only)
+- `notifyLog` collection denies all client access (Cloud Functions only)
 - User emails retrieved from Firebase Auth, not Firestore
 - API key stored as Cloud Secret
 - Manual trigger requires authentication

@@ -67,9 +67,9 @@ service cloud.firestore {
       allow delete: if request.auth != null && request.auth.uid == userId;
     }
 
-    // Email Log Collection Rules (PRIVATE - cloud functions only)
-    // Tracks email sends for rate limiting; no client access allowed
-    match /emailLog/{userId} {
+    // Notify Log Collection Rules (PRIVATE - cloud functions only)
+    // Tracks notification sends to prevent duplicates; no client access allowed
+    match /notifyLog/{userId} {
       allow read, write: if false;
     }
   }
