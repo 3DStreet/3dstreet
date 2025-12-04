@@ -194,28 +194,23 @@ Inspector.prototype = {
     // Handlers for opening generator app with gallery items
     const openGeneratorWithItem = async (item, tabName) => {
       try {
-        // Convert blob to data URL for cross-app communication
-        let dataUrl;
-        if (item.imageDataBlob instanceof Blob) {
-          dataUrl = await new Promise((resolve, reject) => {
-            const reader = new FileReader();
-            reader.onloadend = () => resolve(reader.result);
-            reader.onerror = reject;
-            reader.readAsDataURL(item.imageDataBlob);
-          });
-        } else if (item.objectURL) {
-          // Fallback: try to fetch blob URL and convert
-          const response = await fetch(item.objectURL);
-          const blob = await response.blob();
-          dataUrl = await new Promise((resolve, reject) => {
-            const reader = new FileReader();
-            reader.onloadend = () => resolve(reader.result);
-            reader.onerror = reject;
-            reader.readAsDataURL(blob);
-          });
-        } else {
-          throw new Error('No valid image data available');
+        // Get the full-size image URL (not thumbnail)
+        // Priority: fullImageURL > storageUrl > objectURL
+        const imageUrl = item.fullImageURL || item.storageUrl || item.objectURL;
+
+        if (!imageUrl) {
+          throw new Error('No valid image URL available');
         }
+
+        // Fetch the full-size image and convert to data URL
+        const response = await fetch(imageUrl);
+        const blob = await response.blob();
+        const dataUrl = await new Promise((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onloadend = () => resolve(reader.result);
+          reader.onerror = reject;
+          reader.readAsDataURL(blob);
+        });
 
         // Save item data to localStorage for cross-window communication
         const galleryItemData = {
@@ -250,7 +245,7 @@ Inspector.prototype = {
     };
 
     const handleUseForGenerator = (item) => {
-      openGeneratorWithItem(item, 'generator');
+      openGeneratorWithItem(item, 'modify');
     };
 
     const handleUseForVideo = (item) => {
