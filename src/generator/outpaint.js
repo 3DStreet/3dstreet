@@ -797,7 +797,7 @@ const OutpaintTab = {
             };
 
             // Save to gallery using V2 API
-            const currentUser = window.authState?.user;
+            const currentUser = window.authState?.currentUser;
             if (currentUser) {
               galleryService.init().then(() => {
                 galleryService
