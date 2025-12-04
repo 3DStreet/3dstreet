@@ -5,7 +5,7 @@
 
 import FluxUI from './main.js';
 import FluxAPI from './api.js';
-import { galleryService } from './mount-gallery.js';
+import { galleryServiceV2 as galleryService } from '@shared/gallery';
 import useImageGenStore from './store.js';
 import ImageUploadUtils from './image-upload-utils.js';
 
@@ -1041,7 +1041,7 @@ const InpaintTab = {
             };
 
             // Save to gallery using V2 API
-            const currentUser = window.authState?.user;
+            const currentUser = window.authState?.currentUser;
             if (currentUser) {
               galleryService.init().then(() => {
                 galleryService

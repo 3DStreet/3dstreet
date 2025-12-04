@@ -217,7 +217,6 @@ export const ModalWithFullMetadata = {
     onClose: () => console.log('Modal closed'),
     onDownload: (item) => console.log('Download:', item),
     onCopyParams: (item) => console.log('Copy params:', item),
-    onCopyImage: (item) => console.log('Copy image:', item),
     onUseForInpaint: (item) => console.log('Use for inpaint:', item),
     onUseForOutpaint: (item) => console.log('Use for outpaint:', item),
     onUseForGenerator: (item) => console.log('Use for generator:', item)
@@ -244,8 +243,7 @@ export const ModalMinimalMetadata = {
     }),
     onClose: () => console.log('Modal closed'),
     onDownload: (item) => console.log('Download:', item),
-    onCopyParams: (item) => console.log('Copy params:', item),
-    onCopyImage: (item) => console.log('Copy image:', item)
+    onCopyParams: (item) => console.log('Copy params:', item)
   },
   parameters: {
     docs: {
@@ -306,7 +304,6 @@ export const ModalJPEGFormat = {
     onClose: () => console.log('Modal closed'),
     onDownload: (item) => console.log('Download:', item),
     onCopyParams: (item) => console.log('Copy params:', item),
-    onCopyImage: (item) => console.log('Copy image:', item),
     onUseForInpaint: (item) => console.log('Use for inpaint:', item),
     onUseForOutpaint: (item) => console.log('Use for outpaint:', item),
     onUseForGenerator: (item) => console.log('Use for generator:', item)
@@ -346,11 +343,6 @@ const InteractiveDemoComponent = () => {
     alert('Parameters copied to clipboard!');
   };
 
-  const handleCopyImage = (item) => {
-    console.log('Copy image:', item);
-    alert('Image copied to clipboard!');
-  };
-
   return (
     <div style={{ height: '100vh', display: 'flex', flexDirection: 'column' }}>
       <div
@@ -388,7 +380,6 @@ const InteractiveDemoComponent = () => {
           onClose={() => setSelectedItem(null)}
           onDownload={handleDownload}
           onCopyParams={handleCopyParams}
-          onCopyImage={handleCopyImage}
           onUseForInpaint={(item) => {
             console.log('Use for inpaint:', item);
             alert('Sent to Inpaint tab!');

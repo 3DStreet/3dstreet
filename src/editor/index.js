@@ -191,58 +191,26 @@ Inspector.prototype = {
         .catch((err) => console.error('Failed to copy parameters:', err));
     };
 
-    const handleCopyImage = (item) => {
-      if (!item.imageDataBlob || !(item.imageDataBlob instanceof Blob)) {
-        console.log('Image data is not available for copying.');
-        return;
-      }
-
-      try {
-        const clipboardItem = new ClipboardItem({
-          [item.imageDataBlob.type || 'image/png']: item.imageDataBlob
-        });
-        navigator.clipboard
-          .write([clipboardItem])
-          .then(() => console.log('Image copied to clipboard!'))
-          .catch((err) => {
-            console.error('Clipboard API error:', err);
-            console.log(
-              'Failed to copy image. Your browser might not support this feature.'
-            );
-          });
-      } catch (error) {
-        console.error('Error using ClipboardItem:', error);
-        console.log(
-          'Failed to copy image. Your browser might not support this feature.'
-        );
-      }
-    };
-
     // Handlers for opening generator app with gallery items
     const openGeneratorWithItem = async (item, tabName) => {
       try {
-        // Convert blob to data URL for cross-app communication
-        let dataUrl;
-        if (item.imageDataBlob instanceof Blob) {
-          dataUrl = await new Promise((resolve, reject) => {
-            const reader = new FileReader();
-            reader.onloadend = () => resolve(reader.result);
-            reader.onerror = reject;
-            reader.readAsDataURL(item.imageDataBlob);
-          });
-        } else if (item.objectURL) {
-          // Fallback: try to fetch blob URL and convert
-          const response = await fetch(item.objectURL);
-          const blob = await response.blob();
-          dataUrl = await new Promise((resolve, reject) => {
-            const reader = new FileReader();
-            reader.onloadend = () => resolve(reader.result);
-            reader.onerror = reject;
-            reader.readAsDataURL(blob);
-          });
-        } else {
-          throw new Error('No valid image data available');
+        // Get the full-size image URL (not thumbnail)
+        // Priority: fullImageURL > storageUrl > objectURL
+        const imageUrl = item.fullImageURL || item.storageUrl || item.objectURL;
+
+        if (!imageUrl) {
+          throw new Error('No valid image URL available');
         }
+
+        // Fetch the full-size image and convert to data URL
+        const response = await fetch(imageUrl);
+        const blob = await response.blob();
+        const dataUrl = await new Promise((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onloadend = () => resolve(reader.result);
+          reader.onerror = reject;
+          reader.readAsDataURL(blob);
+        });
 
         // Save item data to localStorage for cross-window communication
         const galleryItemData = {
@@ -277,7 +245,7 @@ Inspector.prototype = {
     };
 
     const handleUseForGenerator = (item) => {
-      openGeneratorWithItem(item, 'generator');
+      openGeneratorWithItem(item, 'modify');
     };
 
     const handleUseForVideo = (item) => {
@@ -295,7 +263,6 @@ Inspector.prototype = {
         <Gallery
           mode="sidebar"
           onCopyParams={handleCopyParams}
-          onCopyImage={handleCopyImage}
           onUseForInpaint={handleUseForInpaint}
           onUseForOutpaint={handleUseForOutpaint}
           onUseForGenerator={handleUseForGenerator}

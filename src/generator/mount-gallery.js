@@ -64,38 +64,6 @@ const handleCopyParams = (item) => {
 };
 
 /**
- * Copy gallery image to clipboard
- * @param {object} item - Gallery item
- */
-const handleCopyImage = async (item) => {
-  const imageUrl = item.storageUrl || item.objectURL;
-
-  if (!imageUrl) {
-    FluxUI.showNotification('Image URL is not available for copying.', 'error');
-    return;
-  }
-
-  try {
-    // Fetch the image as a blob
-    const response = await fetch(imageUrl);
-    const blob = await response.blob();
-
-    const clipboardItem = new ClipboardItem({
-      [blob.type || 'image/png']: blob
-    });
-
-    await navigator.clipboard.write([clipboardItem]);
-    FluxUI.showNotification('Image copied to clipboard!', 'success');
-  } catch (error) {
-    console.error('Clipboard API error:', error);
-    FluxUI.showNotification(
-      'Failed to copy image. Your browser might not support this feature or requires secure context (HTTPS).',
-      'error'
-    );
-  }
-};
-
-/**
  * Use image for inpainting
  * @param {object} item - Gallery item
  */
@@ -207,7 +175,6 @@ export const mountGallery = async () => {
     <Gallery
       mode="sidebar"
       onCopyParams={handleCopyParams}
-      onCopyImage={handleCopyImage}
       onUseForInpaint={handleUseForInpaint}
       onUseForOutpaint={handleUseForOutpaint}
       onUseForGenerator={handleUseForGenerator}

@@ -333,6 +333,7 @@ function ScreenshotModal() {
               {
                 timestamp: new Date().toISOString(),
                 sceneId: sceneId || STREET.utils.getCurrentSceneId(),
+                sceneTitle: useStore.getState().sceneTitle || 'Untitled',
                 source: 'ai-render',
                 model: selectedModelConfig.name,
                 modelKey: baseModelKey,
@@ -599,6 +600,7 @@ function ScreenshotModal() {
                   {
                     timestamp: new Date().toISOString(),
                     sceneId: STREET.utils.getCurrentSceneId(),
+                    sceneTitle: useStore.getState().sceneTitle || 'Untitled',
                     source: 'screenshot',
                     model: 'Editor Snapshot',
                     width: img.width,

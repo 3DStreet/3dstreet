@@ -34,7 +34,7 @@ export const REPLICATE_MODELS = {
     version: '99256cc418d9ac41854575e2f1c8846ce2defd0c0fb6ff2d5cbc3c826be75bc8',
     prompt:
       'use the guidance of the geometry in the input image to create a photorealistic rendering of street improvements with accurate shading and lighting',
-    estimatedTime: 40,
+    estimatedTime: 60,
     includeIn4x: true,
     tokenCost: 4
   },
