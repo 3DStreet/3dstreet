@@ -191,33 +191,6 @@ Inspector.prototype = {
         .catch((err) => console.error('Failed to copy parameters:', err));
     };
 
-    const handleCopyImage = (item) => {
-      if (!item.imageDataBlob || !(item.imageDataBlob instanceof Blob)) {
-        console.log('Image data is not available for copying.');
-        return;
-      }
-
-      try {
-        const clipboardItem = new ClipboardItem({
-          [item.imageDataBlob.type || 'image/png']: item.imageDataBlob
-        });
-        navigator.clipboard
-          .write([clipboardItem])
-          .then(() => console.log('Image copied to clipboard!'))
-          .catch((err) => {
-            console.error('Clipboard API error:', err);
-            console.log(
-              'Failed to copy image. Your browser might not support this feature.'
-            );
-          });
-      } catch (error) {
-        console.error('Error using ClipboardItem:', error);
-        console.log(
-          'Failed to copy image. Your browser might not support this feature.'
-        );
-      }
-    };
-
     // Handlers for opening generator app with gallery items
     const openGeneratorWithItem = async (item, tabName) => {
       try {
@@ -295,7 +268,6 @@ Inspector.prototype = {
         <Gallery
           mode="sidebar"
           onCopyParams={handleCopyParams}
-          onCopyImage={handleCopyImage}
           onUseForInpaint={handleUseForInpaint}
           onUseForOutpaint={handleUseForOutpaint}
           onUseForGenerator={handleUseForGenerator}

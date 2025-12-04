@@ -593,6 +593,19 @@
   flex-shrink: 0;
 }
 
+.metadataLink {
+  font-size: 0.875rem;
+  color: #93c5fd; /* blue-300 */
+  font-weight: 500;
+  text-decoration: none;
+  transition: color 0.15s ease;
+
+  &:hover {
+    color: #60a5fa; /* blue-400 */
+    text-decoration: underline;
+  }
+}
+
 /* Modal Actions - Button container */
 .modalActions {
   display: flex;

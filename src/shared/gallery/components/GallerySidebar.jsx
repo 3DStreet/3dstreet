@@ -11,7 +11,6 @@ import styles from './Gallery.module.scss';
 
 const GallerySidebar = ({
   onCopyParams,
-  onCopyImage,
   onUseForInpaint,
   onUseForOutpaint,
   onUseForGenerator,
@@ -528,7 +527,6 @@ const GallerySidebar = ({
           onDownload={handleDownload}
           onDelete={handleDelete}
           onCopyParams={onCopyParams}
-          onCopyImage={onCopyImage}
           onUseForInpaint={onUseForInpaint}
           onUseForOutpaint={onUseForOutpaint}
           onUseForGenerator={onUseForGenerator}

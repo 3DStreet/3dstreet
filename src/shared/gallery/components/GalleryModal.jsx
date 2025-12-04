@@ -18,7 +18,6 @@ const GalleryModal = ({
   onDownload,
   onDelete,
   onCopyParams,
-  onCopyImage,
   onUseForInpaint,
   onUseForOutpaint,
   onUseForGenerator,
@@ -78,7 +77,8 @@ const GalleryModal = ({
   };
 
   // Format metadata
-  const { model, prompt, width, height, seed } = item.metadata || {};
+  const { model, prompt, width, height, seed, sceneId, sceneTitle } =
+    item.metadata || {};
   const durationSeconds = item.metadata?.duration_seconds;
   const aspectRatio = item.metadata?.aspect_ratio;
   const date = item.metadata?.timestamp
@@ -87,6 +87,11 @@ const GalleryModal = ({
   const isVideo = item.type === 'video';
   const mediaType = isVideo ? 'Video' : 'Image';
   const modalTitle = `${mediaType} - ${model || 'Unknown Model'}`;
+
+  // Generate scene URL for linking back to the editor
+  const sceneUrl = sceneId
+    ? `${window.location.origin}/#/scenes/${sceneId}`
+    : null;
 
   const handleDelete = (e) => {
     e.stopPropagation();
@@ -261,6 +266,20 @@ const GalleryModal = ({
                     <span className={styles.metadataValue}>{date}</span>
                   </div>
                 )}
+                {sceneUrl && (
+                  <div className={styles.metadataItem}>
+                    <span className={styles.metadataLabel}>Scene</span>
+                    <a
+                      href={sceneUrl}
+                      className={styles.metadataLink}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      title="Open scene in editor"
+                    >
+                      {sceneTitle || 'Untitled'}
+                    </a>
+                  </div>
+                )}
               </div>
             </div>
           )}
@@ -374,14 +393,6 @@ const GalleryModal = ({
                 }}
               >
                 Create Video
-              </button>
-            )}
-            {!isVideo && onCopyImage && (
-              <button
-                className={`${styles.actionButton} ${styles.secondaryButton}`}
-                onClick={() => onCopyImage(item)}
-              >
-                Copy to Clipboard
               </button>
             )}
             {isVideo && onCopyParams && (
