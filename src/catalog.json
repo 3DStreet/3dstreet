@@ -275,28 +275,28 @@
         "name": "Flowers",
         "img": "thumbnails/dividers-flowers.jpg",
         "src": "sets/dividers/gltf-exports/draco/dividers-flowers.glb",
-        "category": "dividers"
+        "category": "plants"
     },
     {
         "id": "dividers-planting-strip",
         "name": "Planting Strip",
         "img": "thumbnails/dividers-planting-strip.jpg",
         "src": "sets/dividers/gltf-exports/draco/dividers-planting-strip.glb",
-        "category": "dividers"
+        "category": "plants"
     },
     {
         "id": "dividers-planter-box",
         "name": "Planter Box",
         "img": "thumbnails/dividers-planter-box.jpg",
         "src": "sets/dividers/gltf-exports/draco/dividers-planter-box.glb",
-        "category": "dividers"
+        "category": "plants"
     },
     {
         "id": "dividers-bush",
         "name": "Bush",
         "img": "thumbnails/dividers-bush.jpg",
         "src": "sets/dividers/gltf-exports/draco/dividers-bush.glb",
-        "category": "dividers"
+        "category": "plants"
     },
     {
         "id": "dividers-dome",
@@ -731,7 +731,7 @@
         "name": "Honey Locust Tree 24ft",
         "img": "sets/streetplan/sp-tree-honeylocust-24ft.webp",
         "src": "sets/streetplan/sp-tree-honeylocust-24ft.glb",
-        "category": "sidewalk-props",
+        "category": "plants",
         "attribution": "StreetPlan.net. Used with permission.",
         "attributionUrl": "https://www.urbaninnovators.com/streetplan"
     },
@@ -740,7 +740,7 @@
         "name": "Bur Oak Tree 24ft",
         "img": "sets/streetplan/sp-tree-buroak-24ft.webp",
         "src": "sets/streetplan/sp-tree-buroak-24ft.glb",
-        "category": "sidewalk-props",
+        "category": "plants",
         "attribution": "StreetPlan.net. Used with permission.",
         "attributionUrl": "https://www.urbaninnovators.com/streetplan"
     },
@@ -749,7 +749,7 @@
         "name": "Bur Oak Tree 28ft",
         "img": "sets/streetplan/sp-tree-buroak-28ft.webp",
         "src": "sets/streetplan/sp-tree-buroak-28ft.glb",
-        "category": "sidewalk-props",
+        "category": "plants",
         "attribution": "StreetPlan.net. Used with permission.",
         "attributionUrl": "https://www.urbaninnovators.com/streetplan"
     },
@@ -758,7 +758,7 @@
         "name": "Median Planterbox 6x10 ft",
         "img": "sets/streetplan/sp-median-tallflower-RYB-6x10ft.webp",
         "src": "sets/streetplan/sp-median-tallflower-RYB-6x10ft.glb",
-        "category": "sidewalk-props",
+        "category": "plants",
         "attribution": "StreetPlan.net. Used with permission.",
         "attributionUrl": "https://www.urbaninnovators.com/streetplan"
     },
@@ -767,7 +767,7 @@
         "name": "Median Planterbox 10x10 ft",
         "img": "sets/streetplan/sp-median-tallflower-RYB-10x10ft.webp",
         "src": "sets/streetplan/sp-median-tallflower-RYB-10x10ft.glb",
-        "category": "sidewalk-props",
+        "category": "plants",
         "attribution": "StreetPlan.net. Used with permission.",
         "attributionUrl": "https://www.urbaninnovators.com/streetplan"
     },
@@ -776,7 +776,7 @@
         "name": "Japanese Lilac Tree 20ft",
         "img": "sets/streetplan/sp-tree-japaneselilac-20ft.webp",
         "src": "sets/streetplan/sp-tree-japaneselilac-20ft.glb",
-        "category": "sidewalk-props",
+        "category": "plants",
         "attribution": "StreetPlan.net. Used with permission.",
         "attributionUrl": "https://www.urbaninnovators.com/streetplan"
     },
@@ -785,7 +785,7 @@
         "name": "Palm Tree 26 ft",
         "img": "sets/streetplan/sp-tree-palm-26ft.webp",
         "src": "sets/streetplan/sp-tree-palm-26ft.glb",
-        "category": "sidewalk-props",
+        "category": "plants",
         "attribution": "StreetPlan.net. Used with permission.",
         "attributionUrl": "https://www.urbaninnovators.com/streetplan"
     },
@@ -794,7 +794,7 @@
         "name": "Palm Tree 28ft",
         "img": "sets/streetplan/sp-tree-palm-28ft.webp",
         "src": "sets/streetplan/sp-tree-palm-28ft.glb",
-        "category": "sidewalk-props",
+        "category": "plants",
         "attribution": "StreetPlan.net. Used with permission.",
         "attributionUrl": "https://www.urbaninnovators.com/streetplan"
     },
@@ -803,7 +803,7 @@
         "name": "Purple Plum Tree 16ft",
         "img": "sets/streetplan/sp-tree-purpleplum-16ft.webp",
         "src": "sets/streetplan/sp-tree-purpleplum-16ft.glb",
-        "category": "sidewalk-props",
+        "category": "plants",
         "attribution": "StreetPlan.net. Used with permission.",
         "attributionUrl": "https://www.urbaninnovators.com/streetplan"
     },
@@ -812,7 +812,7 @@
         "name": "Small Tree 15ft",
         "img": "sets/streetplan/sp-tree-small-15ft.webp",
         "src": "sets/streetplan/sp-tree-small-15ft.glb",
-        "category": "sidewalk-props",
+        "category": "plants",
         "attribution": "StreetPlan.net. Used with permission.",
         "attributionUrl": "https://www.urbaninnovators.com/streetplan"
     },
@@ -821,7 +821,7 @@
         "name": "Bench with people #1",
         "img": "sets/streetplan/sp-furn-bench1-5x2ft.webp",
         "src": "sets/streetplan/sp-furn-bench1-5x2ft.glb",
-        "category": "sidewalk-props",
+        "category": "fixtures",
         "attribution": "StreetPlan.net. Used with permission.",
         "attributionUrl": "https://www.urbaninnovators.com/streetplan"
     },
@@ -830,7 +830,7 @@
         "name": "Bench with people #2",
         "img": "sets/streetplan/sp-furn-bench2-5x2ft.webp",
         "src": "sets/streetplan/sp-furn-bench2-5x2ft.glb",
-        "category": "sidewalk-props",
+        "category": "fixtures",
         "attribution": "StreetPlan.net. Used with permission.",
         "attributionUrl": "https://www.urbaninnovators.com/streetplan"
     },
@@ -839,7 +839,7 @@
         "name": "Bus stop rounded shelter with people",
         "img": "sets/streetplan/sp-furn-busstop-roundshelter-12x13ft.webp",
         "src": "sets/streetplan/sp-furn-busstop-roundshelter-12x13ft.glb",
-        "category": "sidewalk-props",
+        "category": "fixtures",
         "attribution": "StreetPlan.net. Used with permission.",
         "attributionUrl": "https://www.urbaninnovators.com/streetplan"
     },
@@ -848,7 +848,7 @@
         "name": "Bus stop shelter with people",
         "img": "sets/streetplan/sp-furn-busstop-shelter-12x4ft.webp",
         "src": "sets/streetplan/sp-furn-busstop-shelter-12x4ft.glb",
-        "category": "sidewalk-props",
+        "category": "fixtures",
         "attribution": "StreetPlan.net. Used with permission.",
         "attributionUrl": "https://www.urbaninnovators.com/streetplan"
     },
@@ -857,7 +857,7 @@
         "name": "Farmer's market tent 10x10 with people 1",
         "img": "sets/streetplan/sp-furn-farmertent1-10x10ft.webp",
         "src": "sets/streetplan/sp-furn-farmertent1-10x10ft.glb",
-        "category": "sidewalk-props",
+        "category": "fixtures",
         "attribution": "StreetPlan.net. Used with permission.",
         "attributionUrl": "https://www.urbaninnovators.com/streetplan"
     },
@@ -866,7 +866,7 @@
         "name": "Farmer's market tent 10x10 with people 2",
         "img": "sets/streetplan/sp-furn-farmertent2-10x10ft.webp",
         "src": "sets/streetplan/sp-furn-farmertent2-10x10ft.glb",
-        "category": "sidewalk-props",
+        "category": "fixtures",
         "attribution": "StreetPlan.net. Used with permission.",
         "attributionUrl": "https://www.urbaninnovators.com/streetplan"
     },
@@ -875,7 +875,7 @@
         "name": "Food cart with people",
         "img": "sets/streetplan/sp-furn-foodcart-5dot5x9ft.webp",
         "src": "sets/streetplan/sp-furn-foodcart-5dot5x9ft.glb",
-        "category": "sidewalk-props",
+        "category": "fixtures",
         "attribution": "StreetPlan.net. Used with permission.",
         "attributionUrl": "https://www.urbaninnovators.com/streetplan"
     },
@@ -884,7 +884,7 @@
         "name": "Outdoor seating with people",
         "img": "sets/streetplan/sp-furn-table-2x7ft.webp",
         "src": "sets/streetplan/sp-furn-table-2x7ft.glb",
-        "category": "sidewalk-props",
+        "category": "fixtures",
         "attribution": "StreetPlan.net. Used with permission.",
         "attributionUrl": "https://www.urbaninnovators.com/streetplan"
     },
@@ -893,7 +893,7 @@
         "name": "Outdoor seating with umbrella and people",
         "img": "sets/streetplan/sp-furn-table-blue-7x7ft.webp",
         "src": "sets/streetplan/sp-furn-table-blue-7x7ft.glb",
-        "category": "sidewalk-props",
+        "category": "fixtures",
         "attribution": "StreetPlan.net. Used with permission.",
         "attributionUrl": "https://www.urbaninnovators.com/streetplan"
     },
@@ -902,7 +902,7 @@
         "name": "Light pole 13 ft with purple flowers and blue & yellow banners",
         "img": "sets/streetplan/sp-light-flowerP-bannerBY-13ft.webp",
         "src": "sets/streetplan/sp-light-flowerP-bannerBY-13ft.glb",
-        "category": "sidewalk-props",
+        "category": "fixtures",
         "attribution": "StreetPlan.net. Used with permission.",
         "attributionUrl": "https://www.urbaninnovators.com/streetplan"
     },
@@ -911,7 +911,7 @@
         "name": "Light pole 13 ft with yellow flowers and red & green banners",
         "img": "sets/streetplan/sp-light-flowerY-bannerRG-13ft.webp",
         "src": "sets/streetplan/sp-light-flowerY-bannerRG-13ft.glb",
-        "category": "sidewalk-props",
+        "category": "fixtures",
         "attribution": "StreetPlan.net. Used with permission.",
         "attributionUrl": "https://www.urbaninnovators.com/streetplan"
     },
@@ -920,7 +920,7 @@
         "name": "Median Planterbox 6x30 ft",
         "img": "sets/streetplan/sp-median-planterbox-tall-06x30ft.webp",
         "src": "sets/streetplan/sp-median-planterbox-tall-06x30ft.glb",
-        "category": "sidewalk-props",
+        "category": "plants",
         "attribution": "StreetPlan.net. Used with permission.",
         "attributionUrl": "https://www.urbaninnovators.com/streetplan"
     },
@@ -929,7 +929,7 @@
         "name": "Median Planterbox 10x30 ft",
         "img": "sets/streetplan/sp-median-planterbox-tall-10x30ft.webp",
         "src": "sets/streetplan/sp-median-planterbox-tall-10x30ft.glb",
-        "category": "sidewalk-props",
+        "category": "plants",
         "attribution": "StreetPlan.net. Used with permission.",
         "attributionUrl": "https://www.urbaninnovators.com/streetplan"
     },
@@ -938,7 +938,7 @@
         "name": "Parking Planter 5x8 ft",
         "img": "sets/streetplan/sp-parking-planter-5x8ft.webp",
         "src": "sets/streetplan/sp-parking-planter-5x8ft.glb",
-        "category": "sidewalk-props",
+        "category": "plants",
         "attribution": "StreetPlan.net. Used with permission.",
         "attributionUrl": "https://www.urbaninnovators.com/streetplan"
     },
