@@ -7,7 +7,7 @@ const LayersOptions = [
   {
     value: 'Traffic Control',
     label: '🚧 Traffic Control',
-    mixinGroups: ['dividers'],
+    mixinGroups: ['dividers', 'traffic-control'],
     onClick: () => {}
   },
   {
@@ -17,9 +17,15 @@ const LayersOptions = [
     onClick: () => {}
   },
   {
-    value: 'Sidewalk Props',
-    label: '🌳 Sidewalk Props',
-    mixinGroups: ['sidewalk-props', 'intersection-props'],
+    value: 'Plants',
+    label: '🌿 Plants',
+    mixinGroups: ['plants'],
+    onClick: () => {}
+  },
+  {
+    value: 'Fixtures',
+    label: '🚏 Fixtures',
+    mixinGroups: ['fixtures'],
     onClick: () => {}
   },
   {
