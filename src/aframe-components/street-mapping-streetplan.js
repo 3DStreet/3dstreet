@@ -572,85 +572,63 @@ const STREETPLAN_OBJECT_TO_GENERATED_CLONES_MAPPING = {
   'river crosssection 20ft': '',
   'river crosssection 40ft': '',
   'shop 1floor': {
-    mode: 'random',
+    mode: 'fit',
     modelsArray: 'sp-prop-mixeduse-2L-29ft,sp-prop-mixeduse-2L-30ft',
-    spacing: 50,
-    count: 6,
-    facing: 0
+    spacing: 0
   },
   'shop 2floors': {
-    mode: 'random',
+    mode: 'fit',
     modelsArray: 'sp-prop-mixeduse-2L-29ft,sp-prop-mixeduse-2L-30ft',
-    spacing: 50,
-    count: 6,
-    facing: 0
+    spacing: 0
   },
   'shop 3floors': {
-    mode: 'random',
+    mode: 'fit',
     modelsArray:
       'sp-prop-mixeduse-3L-22ft,sp-prop-mixeduse-3L-23ft-corner,sp-prop-mixeduse-2L-29ft,sp-prop-mixeduse-2L-30ft',
-    spacing: 50,
-    count: 6,
-    facing: 0
+    spacing: 0
   },
   'shop 4floors': '',
   'single family': {
-    mode: 'random',
+    mode: 'fit',
     modelsArray:
       'sp-prop-sf-1L-41ft,sp-prop-sf-1L-62ft,sp-prop-sf-2L-62ft,sp-prop-sf-1L-41ft,sp-prop-sf-1L-62ft,sp-prop-sf-2L-62ft',
-    spacing: 50,
-    count: 6,
-    facing: 0
+    spacing: 0
   },
   'single family back': {
-    mode: 'random',
+    mode: 'fit',
     modelsArray:
       'sp-prop-sf-1L-41ft,sp-prop-sf-1L-62ft,sp-prop-sf-2L-62ft,sp-prop-sf-1L-41ft,sp-prop-sf-1L-62ft,sp-prop-sf-2L-62ft',
-    spacing: 50,
-    count: 6,
-    facing: 0
+    spacing: 0
   },
   'stripmall onerowparking': {
-    mode: 'random',
+    mode: 'fit',
     modelsArray: 'sp-prop-bigbox-1L-220ft,sp-prop-bigbox-1L-291ft',
-    spacing: 50,
-    count: 6,
-    facing: 0
+    spacing: 0
   },
   'stripmall1 tworowsparking': {
-    mode: 'random',
+    mode: 'fit',
     modelsArray: 'sp-prop-bigbox-1L-220ft,sp-prop-bigbox-1L-291ft',
-    spacing: 50,
-    count: 6,
-    facing: 0
+    spacing: 0
   },
   'stripmall1, onerowparking': {
-    mode: 'random',
+    mode: 'fit',
     modelsArray: 'sp-prop-bigbox-1L-220ft,sp-prop-bigbox-1L-291ft',
-    spacing: 50,
-    count: 6,
-    facing: 0
+    spacing: 0
   },
   'stripmall2 tworowsparking': {
-    mode: 'random',
+    mode: 'fit',
     modelsArray: 'sp-prop-bigbox-1L-220ft,sp-prop-bigbox-1L-291ft',
-    spacing: 50,
-    count: 6,
-    facing: 0
+    spacing: 0
   },
   'townhouse row 3story': {
-    mode: 'random',
+    mode: 'fit',
     modelsArray: 'sp-prop-mixeduse-3L-22ft,sp-prop-mixeduse-3L-23ft-corner',
-    spacing: 50,
-    count: 6,
-    facing: 0
+    spacing: 0
   },
   walmart: {
-    mode: 'random',
+    mode: 'fit',
     modelsArray: 'sp-prop-bigbox-1L-220ft,sp-prop-bigbox-1L-291ft',
-    spacing: 50,
-    count: 6,
-    facing: 0
+    spacing: 0
   },
   'water 20ft': '',
   'water 30ft': '',
