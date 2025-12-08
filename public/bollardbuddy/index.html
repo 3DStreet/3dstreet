@@ -1,0 +1,390 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <title>Bollard Buddy 2</title>
+
+  <style>
+    html, body {
+      margin: 0;
+      padding: 0;
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    }
+
+    /* Object Picker UI */
+    #object-picker {
+      position: fixed;
+      top: 20px;
+      left: 20px;
+      z-index: 100;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .picker-toggle {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 12px 16px;
+      background: rgba(0, 0, 0, 0.7);
+      border: none;
+      border-radius: 12px;
+      color: white;
+      font-size: 16px;
+      cursor: pointer;
+      backdrop-filter: blur(10px);
+    }
+
+    .picker-toggle:active {
+      background: rgba(0, 0, 0, 0.8);
+    }
+
+    .picker-menu {
+      display: none;
+      flex-direction: column;
+      gap: 4px;
+      background: rgba(0, 0, 0, 0.7);
+      border-radius: 12px;
+      padding: 8px;
+      backdrop-filter: blur(10px);
+    }
+
+    .picker-menu.open {
+      display: flex;
+    }
+
+    .picker-item {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 10px 12px;
+      background: transparent;
+      border: none;
+      border-radius: 8px;
+      color: white;
+      font-size: 14px;
+      cursor: pointer;
+      text-align: left;
+    }
+
+    .picker-item:active,
+    .picker-item.selected {
+      background: rgba(59, 130, 246, 0.5);
+    }
+
+    .picker-hint {
+      position: fixed;
+      bottom: 100px;
+      left: 50%;
+      transform: translateX(-50%);
+      padding: 12px 20px;
+      background: rgba(0, 0, 0, 0.7);
+      border-radius: 20px;
+      color: white;
+      font-size: 14px;
+      backdrop-filter: blur(10px);
+      pointer-events: none;
+      opacity: 0;
+      transition: opacity 0.3s;
+      z-index: 100;
+    }
+
+    .picker-hint.visible {
+      opacity: 1;
+    }
+
+    .picker-arrow {
+      font-size: 12px;
+      opacity: 0.7;
+      margin-left: 4px;
+    }
+
+    /* Auth button container */
+    #auth-root {
+      position: fixed;
+      top: 20px;
+      right: 20px;
+      z-index: 100;
+    }
+
+    /* Camera button container */
+    #camera-container {
+      position: fixed;
+      bottom: 40px;
+      left: 50%;
+      transform: translateX(-50%);
+      z-index: 100;
+      display: none;
+    }
+
+    #camera-container.visible {
+      display: block;
+    }
+  </style>
+</head>
+<body>
+  <!-- Object Picker UI -->
+  <div id="object-picker">
+    <button class="picker-toggle" id="picker-toggle">
+      <span id="picker-icon">🚧</span>
+      <span id="picker-label">Bollard</span>
+      <span class="picker-arrow">▼</span>
+    </button>
+    <div class="picker-menu" id="picker-menu">
+      <button class="picker-item selected" data-model="bollard" data-icon="🚧" data-label="Bollard">
+        <span>🚧</span> Bollard
+      </button>
+      <button class="picker-item" data-model="cone" data-icon="🔶" data-label="Cone">
+        <span>🔶</span> Cone
+      </button>
+      <button class="picker-item" data-model="flowers" data-icon="🌸" data-label="Flowers">
+        <span>🌸</span> Flowers
+      </button>
+      <button class="picker-item" data-model="planter" data-icon="🌿" data-label="Planter">
+        <span>🌿</span> Planter
+      </button>
+      <button class="picker-item" data-model="safehit" data-icon="🛡️" data-label="SafeHit">
+        <span>🛡️</span> SafeHit
+      </button>
+    </div>
+  </div>
+  <div class="picker-hint" id="picker-hint">Tap on ground to place</div>
+
+  <!-- React Auth Island Mount Point -->
+  <div id="auth-root"></div>
+
+  <!-- Camera button container (button added dynamically after first object placed) -->
+  <div id="camera-container"></div>
+
+  <!-- 8th Wall SDK scripts -->
+  <script src="https://cdn.8thwall.com/web/aframe/8frame-1.3.0.min.js"></script>
+  <script src="https://cdn.8thwall.com/web/xrextras/xrextras.js"></script>
+  <script src="https://cdn.8thwall.com/web/landing-page/landing-page.js"></script>
+  <script src="https://cdn.8thwall.com/web/coaching-overlay/coaching-overlay.js"></script>
+  <script src="https://apps.8thwall.com/xrweb?appKey=ytGX1RewlSvtViblkupyoCZFFPktzeZbcCf3wX4TVXI1CKtIiQlGEKdKj6Y9cJadtd8j6S"></script>
+
+  <!-- Object Picker Logic -->
+  <script>
+    // Pre-select bollard
+    window.selectedModel = 'bollard';
+
+    const pickerToggle = document.getElementById('picker-toggle');
+    const pickerMenu = document.getElementById('picker-menu');
+    const pickerIcon = document.getElementById('picker-icon');
+    const pickerLabel = document.getElementById('picker-label');
+    const pickerHint = document.getElementById('picker-hint');
+    const pickerItems = document.querySelectorAll('.picker-item');
+
+    pickerToggle.addEventListener('click', () => {
+      pickerMenu.classList.toggle('open');
+    });
+
+    pickerItems.forEach(item => {
+      item.addEventListener('click', () => {
+        const model = item.dataset.model;
+        const icon = item.dataset.icon;
+        const label = item.dataset.label;
+
+        // Toggle selection
+        if (window.selectedModel === model) {
+          window.selectedModel = null;
+          pickerIcon.textContent = '+';
+          pickerLabel.textContent = 'Select Object';
+          pickerHint.classList.remove('visible');
+          pickerItems.forEach(i => i.classList.remove('selected'));
+        } else {
+          window.selectedModel = model;
+          pickerIcon.textContent = icon;
+          pickerLabel.textContent = label;
+          pickerHint.classList.add('visible');
+          pickerItems.forEach(i => i.classList.remove('selected'));
+          item.classList.add('selected');
+        }
+
+        pickerMenu.classList.remove('open');
+        console.log('Selected model:', window.selectedModel);
+      });
+    });
+
+    // Close menu when tapping outside
+    document.addEventListener('click', (e) => {
+      if (!e.target.closest('#object-picker')) {
+        pickerMenu.classList.remove('open');
+      }
+    });
+
+    // Track state
+    window.hasPlacedObject = false;
+    window.coachingVisible = true;
+
+    const cameraContainer = document.getElementById('camera-container');
+
+    // Show camera button (dynamically create it after coaching hides)
+    window.showCameraButton = () => {
+      if (!window.coachingVisible && !window.cameraButtonAdded) {
+        window.cameraButtonAdded = true;
+        const captureButton = document.createElement('xrextras-capture-button');
+        captureButton.setAttribute('capture-mode', 'photo');
+        cameraContainer.appendChild(captureButton);
+        cameraContainer.classList.add('visible');
+        console.log('Camera button added');
+      }
+    };
+
+    // Show hint after coaching overlay hides (if user hasn't placed yet)
+    const showHintAfterCoaching = () => {
+      const scene = document.querySelector('a-scene');
+      if (scene) {
+        scene.addEventListener('coaching-overlay.hide', () => {
+          window.coachingVisible = false;
+          if (window.selectedModel && !window.hasPlacedObject) {
+            pickerHint.classList.add('visible');
+          }
+          window.showCameraButton();
+        });
+        scene.addEventListener('coaching-overlay.show', () => {
+          window.coachingVisible = true;
+          pickerHint.classList.remove('visible');
+        });
+      }
+    };
+
+    // Wait for scene to be fully loaded before attaching listeners
+    const initCoachingListeners = () => {
+      const scene = document.querySelector('a-scene');
+      if (scene) {
+        if (scene.hasLoaded) {
+          showHintAfterCoaching();
+        } else {
+          scene.addEventListener('loaded', showHintAfterCoaching);
+        }
+      } else {
+        setTimeout(initCoachingListeners, 100);
+      }
+    };
+    initCoachingListeners();
+  </script>
+
+  <!-- tap-place component -->
+  <script>
+    AFRAME.registerComponent('tap-place', {
+      init() {
+        const ground = document.getElementById('ground');
+
+        const modelMap = {
+          bollard: '#model-bollard',
+          cone: '#model-cone',
+          flowers: '#model-flowers',
+          planter: '#model-planter',
+          safehit: '#model-safehit',
+        };
+
+        ground.addEventListener('click', (event) => {
+          const selectedModel = window.selectedModel;
+          if (!selectedModel) {
+            console.log('No model selected');
+            return;
+          }
+
+          const modelSrc = modelMap[selectedModel];
+          if (!modelSrc) {
+            console.error('Unknown model:', selectedModel);
+            return;
+          }
+
+          console.log('Ground clicked, placing:', selectedModel);
+
+          const touchPoint = event.detail.intersection.point;
+          console.log('Touch point:', touchPoint.x, touchPoint.y, touchPoint.z);
+
+          const newElement = document.createElement('a-entity');
+          newElement.setAttribute('position', `${touchPoint.x} ${touchPoint.y} ${touchPoint.z}`);
+          newElement.setAttribute('scale', '1 1 1');
+          newElement.setAttribute('gltf-model', modelSrc);
+          newElement.setAttribute('class', 'cantap');
+          newElement.setAttribute('shadow', 'cast: true; receive: false');
+          newElement.setAttribute('xrextras-hold-drag', '');
+          newElement.setAttribute('xrextras-two-finger-rotate', '');
+
+          this.el.sceneEl.appendChild(newElement);
+          console.log('Entity added to scene');
+
+          // Hide hint after first placement
+          if (!window.hasPlacedObject) {
+            window.hasPlacedObject = true;
+            const hint = document.getElementById('picker-hint');
+            if (hint) hint.classList.remove('visible');
+          }
+
+          newElement.addEventListener('model-loaded', () => {
+            console.log('Model loaded successfully!');
+          });
+
+          newElement.addEventListener('model-error', (err) => {
+            console.error('Model failed to load:', err);
+          });
+        });
+
+        console.log('tap-place component initialized');
+      }
+    });
+  </script>
+
+  <!-- A-Frame Scene -->
+  <a-scene
+    tap-place
+    landing-page
+    xrextras-gesture-detector
+    coaching-overlay="animationColor: #E86FFF; promptText: For accurate scale push your phone forward and then pull back;"
+    renderer="colorManagement: true"
+    gltf-model="dracoDecoderPath: https://cdn.8thwall.com/web/aframe/draco-decoder/"
+    xrweb="allowedDevices: any; scale: absolute">
+
+    <a-assets>
+      <a-asset-item id="model-bollard" src="https://assets.3dstreet.app/sets/dividers/gltf-exports/draco/dividers-bollard.glb"></a-asset-item>
+      <a-asset-item id="model-cone" src="https://assets.3dstreet.app/sets/dividers/gltf-exports/draco/dividers-traffic-cone.glb"></a-asset-item>
+      <a-asset-item id="model-flowers" src="https://assets.3dstreet.app/sets/dividers/gltf-exports/draco/dividers-flowers.glb"></a-asset-item>
+      <a-asset-item id="model-planter" src="https://assets.3dstreet.app/sets/dividers/gltf-exports/draco/dividers-planter-box.glb"></a-asset-item>
+      <a-asset-item id="model-safehit" src="https://assets.3dstreet.app/sets/dividers/gltf-exports/draco/dividers-safehit.glb"></a-asset-item>
+    </a-assets>
+
+    <a-camera
+      id="camera"
+      position="0 1.6 0"
+      raycaster="objects: .cantap"
+      cursor="fuse: false; rayOrigin: mouse;">
+    </a-camera>
+
+    <a-entity
+      light="type: directional; intensity: 1; castShadow: true; shadowMapHeight: 2048; shadowMapWidth: 2048"
+      position="1 4.3 2.5">
+    </a-entity>
+    <a-entity light="type: ambient; intensity: 0.7"></a-entity>
+
+    <a-box
+      id="ground"
+      class="cantap"
+      scale="1000 2 1000"
+      position="0 -1 0"
+      material="shader: shadow; transparent: true; opacity: 0.4"
+      shadow>
+    </a-box>
+
+    <!-- Photo capture config and preview -->
+    <xrextras-capture-config
+      file-name-prefix="bollardbuddy-"
+      request-mic="false"
+    ></xrextras-capture-config>
+    <xrextras-capture-preview></xrextras-capture-preview>
+
+  </a-scene>
+
+  <!-- Load the bundled JavaScript for React auth island -->
+  <script src="/dist/bollardbuddy.js"></script>
+</body>
+</html>
