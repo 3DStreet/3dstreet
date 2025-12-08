@@ -10,6 +10,7 @@ import './styles.css';
 
 import { auth } from '@shared/services/firebase.js';
 import { mountAuthUI } from './mount-auth.js';
+import { mountGallery } from './mount-gallery.js';
 
 // Expose auth for compatibility with vanilla JS
 window.firebaseAuth = auth;
@@ -20,6 +21,9 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   // Mount React auth UI
   mountAuthUI();
+
+  // Mount React gallery UI
+  await mountGallery();
 
   console.log('Bollard Buddy React island initialized');
 });

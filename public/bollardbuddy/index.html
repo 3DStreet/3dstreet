@@ -131,6 +131,30 @@
     #previewContainer {
       z-index: 1000 !important;
     }
+
+    /* Gallery overrides for Bollard Buddy */
+    /* Position gallery toggle below auth button */
+    #gallery-toggle {
+      top: 90px !important;
+      z-index: 150 !important; /* Higher than sidebar to stay clickable */
+      width: 50px !important;
+      height: 50px !important;
+      /* Ensure visibility on mobile */
+      display: flex !important;
+      pointer-events: auto !important;
+    }
+
+    /* Position gallery sidebar below header area */
+    #gallery-container {
+      top: 90px !important;
+      height: calc(100vh - 110px) !important;
+      z-index: 100 !important;
+    }
+
+    /* Ensure gallery modal appears above everything */
+    #gallery-root > div[class*="modal"] {
+      z-index: 2000 !important;
+    }
   </style>
 </head>
 <body>
