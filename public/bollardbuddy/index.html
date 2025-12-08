@@ -125,6 +125,12 @@
     #camera-container.visible {
       display: block;
     }
+
+    /* Ensure xrextras capture preview/share dialog appears above our UI */
+    /* The xrextras previewContainer has z-index: 30 by default, but our UI uses z-index: 100 */
+    #previewContainer {
+      z-index: 1000 !important;
+    }
   </style>
 </head>
 <body>
@@ -162,7 +168,7 @@
   <div id="camera-container"></div>
 
   <!-- 8th Wall SDK scripts -->
-  <script src="https://cdn.8thwall.com/web/aframe/8frame-1.3.0.min.js"></script>
+  <script src="https://cdn.8thwall.com/web/aframe/8frame-1.4.1.min.js"></script>
   <script src="https://cdn.8thwall.com/web/xrextras/xrextras.js"></script>
   <script src="https://cdn.8thwall.com/web/landing-page/landing-page.js"></script>
   <script src="https://cdn.8thwall.com/web/coaching-overlay/coaching-overlay.js"></script>
