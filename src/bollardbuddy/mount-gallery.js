@@ -80,6 +80,7 @@ const saveToGallery = async (blob) => {
     await galleryService.addAsset(
       dataUri,
       {
+        model: 'Bollard Buddy',
         source: 'bollard-buddy',
         capturedAt: new Date().toISOString()
       },
