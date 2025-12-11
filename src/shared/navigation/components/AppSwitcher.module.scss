@@ -39,7 +39,8 @@
 
 .logo {
   height: 48px;
-  width: 48px;
+  width: auto;
+  max-width: 180px;
   object-fit: contain;
   transition: all 0.2s ease-in-out;
 }
