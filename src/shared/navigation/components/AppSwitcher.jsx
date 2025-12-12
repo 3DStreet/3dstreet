@@ -27,8 +27,15 @@ const AwesomeIconSimple = ({ icon, size = 12, className = '' }) => {
 const AppSwitcher = () => {
   // Detect current app from pathname
   const currentPath = window.location.pathname;
-  const isEditor = !currentPath.includes('/generator');
+  const isBollardBuddy = currentPath.includes('/bollardbuddy');
   const isImageGenerator = currentPath.includes('/generator');
+  const isEditor = !isImageGenerator && !isBollardBuddy;
+
+  // Determine which logo to show based on current app
+  const currentLogo = isBollardBuddy
+    ? '/ui_assets/logo-bollard-buddy-text-rect.png'
+    : '/ui_assets/3D-St-stacked-128.png';
+  const currentAlt = isBollardBuddy ? 'Bollard Buddy Logo' : '3DStreet Logo';
 
   const handleEditorClick = (e) => {
     if (isEditor) {
@@ -54,16 +61,24 @@ const AppSwitcher = () => {
     }
   };
 
+  const handleBollardBuddyClick = (e) => {
+    if (isBollardBuddy) {
+      return;
+    }
+    // Command+click (Mac) or Ctrl+click (Windows/Linux) opens in new tab
+    if (e.metaKey || e.ctrlKey) {
+      window.open('/bollardbuddy/', '_blank');
+    } else {
+      window.location.href = '/bollardbuddy/';
+    }
+  };
+
   return (
     <HoverCard.Root openDelay={200}>
       <DropdownMenu.Root>
         <HoverCard.Trigger asChild>
           <DropdownMenu.Trigger className={styles.trigger}>
-            <img
-              src="/ui_assets/3D-St-stacked-128.png"
-              alt="3DStreet Logo"
-              className={styles.logo}
-            />
+            <img src={currentLogo} alt={currentAlt} className={styles.logo} />
             <AwesomeIconSimple
               icon={faChevronDown}
               size={12}
@@ -81,6 +96,17 @@ const AppSwitcher = () => {
               Switch Apps
             </DropdownMenu.Label>
             <DropdownMenu.Separator className={styles.separator} />
+            <DropdownMenu.Item
+              className={styles.item}
+              onClick={handleBollardBuddyClick}
+            >
+              <div className={styles.itemContent}>
+                <span className={styles.appName}>Bollard Buddy Web</span>
+                {isBollardBuddy && (
+                  <span className={styles.badge}>Current</span>
+                )}
+              </div>
+            </DropdownMenu.Item>
             <DropdownMenu.Item
               className={styles.item}
               onClick={handleEditorClick}

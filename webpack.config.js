@@ -8,6 +8,7 @@ module.exports = {
   devServer: {
     liveReload: false,
     port: 3333,
+    allowedHosts: 'all',
     static: [
       {
         directory: '.',
@@ -27,6 +28,10 @@ module.exports = {
     generator: {
       import: './src/generator/index.js',
       filename: 'generator.js'
+    },
+    bollardbuddy: {
+      import: './src/bollardbuddy/index.js',
+      filename: 'bollardbuddy.js'
     }
   },
   output: {

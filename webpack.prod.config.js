@@ -18,6 +18,10 @@ module.exports = {
     generator: {
       import: './src/generator/index.js',
       filename: 'generator.js'
+    },
+    bollardbuddy: {
+      import: './src/bollardbuddy/index.js',
+      filename: 'bollardbuddy.js'
     }
   },
   output: {

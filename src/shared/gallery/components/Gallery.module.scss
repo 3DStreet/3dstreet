@@ -115,7 +115,10 @@
   overflow-y: auto; /* Enable scrolling */
   padding: 0.5rem; /* Consistent padding around the grid */
   display: grid;
-  grid-template-columns: repeat(2, 1fr); /* Two columns */
+  grid-template-columns: repeat(
+    2,
+    1fr
+  ) !important; /* Always 2 columns - !important needed to override Tailwind */
   gap: 0.5rem; /* Single gap property for rows and columns */
   align-content: start; /* Align grid rows to the start */
   background-color: #111827; /* gray-900 - darker background for content area */
@@ -933,7 +936,7 @@
   }
 
   .content {
-    grid-template-columns: 1fr; /* Single column on smaller screens */
+    /* Always 2 columns - inherited from base .content style */
     padding: 0.5rem;
     gap: 0.5rem;
   }
