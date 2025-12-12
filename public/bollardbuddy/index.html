@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-  <title>Bollard Buddy 2</title>
+  <title>Bollard Buddy Web</title>
 
   <style>
     html, body {
@@ -141,21 +141,27 @@
     }
 
     /* Gallery overrides for Bollard Buddy */
-    /* Position gallery toggle below auth button */
+    /* Position gallery toggle in lower-right corner next to shutter */
     #gallery-toggle {
-      top: 90px !important;
-      z-index: 150 !important; /* Higher than sidebar to stay clickable */
+      top: auto !important;
+      bottom: 40px !important;
+      right: 10px !important;
+      left: auto !important;
+      z-index: 150 !important;
       width: 50px !important;
       height: 50px !important;
-      /* Ensure visibility on mobile */
       display: flex !important;
       pointer-events: auto !important;
     }
 
-    /* Position gallery sidebar below header area */
+    /* Position gallery sidebar from bottom-right, full height */
     #gallery-container {
-      top: 90px !important;
-      height: calc(100vh - 110px) !important;
+      top: 0 !important;
+      bottom: 100px !important;
+      right: 0 !important;
+      width: 66vw !important;
+      height: auto !important;
+      max-height: none !important;
       z-index: 100 !important;
     }
 
@@ -177,14 +183,11 @@
       <button class="picker-item selected" data-model="bollard" data-icon="🚧" data-label="Bollard">
         <span>🚧</span> Bollard
       </button>
+      <button class="picker-item" data-model="k71" data-icon="🔴" data-label="K71 Post">
+        <span>🔴</span> K71 Post
+      </button>
       <button class="picker-item" data-model="cone" data-icon="🔶" data-label="Cone">
         <span>🔶</span> Cone
-      </button>
-      <button class="picker-item" data-model="flowers" data-icon="🌸" data-label="Flowers">
-        <span>🌸</span> Flowers
-      </button>
-      <button class="picker-item" data-model="planter" data-icon="🌿" data-label="Planter">
-        <span>🌿</span> Planter
       </button>
       <button class="picker-item" data-model="safehit" data-icon="🛡️" data-label="SafeHit">
         <span>🛡️</span> SafeHit
@@ -319,9 +322,8 @@
 
         const modelMap = {
           bollard: '#model-bollard',
+          k71: '#model-k71',
           cone: '#model-cone',
-          flowers: '#model-flowers',
-          planter: '#model-planter',
           safehit: '#model-safehit',
         };
 
@@ -388,9 +390,8 @@
 
     <a-assets>
       <a-asset-item id="model-bollard" src="https://assets.3dstreet.app/sets/dividers/gltf-exports/draco/dividers-bollard.glb"></a-asset-item>
+      <a-asset-item id="model-k71" src="https://assets.3dstreet.app/sets/uoregon/gltf-exports/draco/traffic-post-k71.glb"></a-asset-item>
       <a-asset-item id="model-cone" src="https://assets.3dstreet.app/sets/dividers/gltf-exports/draco/dividers-traffic-cone.glb"></a-asset-item>
-      <a-asset-item id="model-flowers" src="https://assets.3dstreet.app/sets/dividers/gltf-exports/draco/dividers-flowers.glb"></a-asset-item>
-      <a-asset-item id="model-planter" src="https://assets.3dstreet.app/sets/dividers/gltf-exports/draco/dividers-planter-box.glb"></a-asset-item>
       <a-asset-item id="model-safehit" src="https://assets.3dstreet.app/sets/dividers/gltf-exports/draco/dividers-safehit.glb"></a-asset-item>
     </a-assets>
 
