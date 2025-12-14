@@ -105,8 +105,7 @@ const useGallery = () => {
 
         return {
           id: asset.assetId,
-          type: asset.category, // Category for display (ai-render, screenshot, etc.)
-          assetType: asset.type, // Actual asset type (image, video) for download logic
+          type: asset.type, // Media type (image, video)
           objectURL: asset.thumbnailUrl || asset.storageUrl, // Thumbnail for grid
           fullImageURL: asset.storageUrl, // Full image for modal
           storageUrl: asset.storageUrl,
@@ -182,8 +181,7 @@ const useGallery = () => {
 
         const displayItem = {
           id: asset.assetId,
-          type: asset.category, // Category for display (ai-render, screenshot, etc.)
-          assetType: asset.type, // Actual asset type (image, video) for download logic
+          type: asset.type, // Media type (image, video)
           objectURL: asset.thumbnailUrl || asset.storageUrl,
           fullImageURL: asset.storageUrl,
           storageUrl: asset.storageUrl,
@@ -386,11 +384,8 @@ const useGallery = () => {
    */
   const downloadItem = useCallback(async (item) => {
     // Create filename
-    // Use assetType (image/video) for format detection, not type (category like ai-render)
-    const isVideo = item.assetType === ASSET_TYPES.VIDEO;
-    const model =
-      item.metadata?.model ||
-      (item.type === ASSET_CATEGORIES.SCREENSHOT ? '3dstreet' : 'flux');
+    const isVideo = item.type === ASSET_TYPES.VIDEO;
+    const model = item.metadata?.model || '3dstreet';
     const timestamp = item.metadata?.timestamp
       ? new Date(item.metadata.timestamp)
           .toISOString()

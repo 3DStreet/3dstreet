@@ -31,7 +31,7 @@ const GalleryItem = ({ item, onItemClick, onDelete, onDownload }) => {
       onClick={handleClick}
       style={{ cursor: 'pointer' }}
     >
-      {item.assetType === 'video' ? (
+      {item.type === 'video' ? (
         <video src={imageUrl} muted playsInline />
       ) : (
         <img src={imageUrl} alt="Generated image" loading="lazy" />
@@ -43,9 +43,7 @@ const GalleryItem = ({ item, onItemClick, onDelete, onDownload }) => {
         <button
           className={`${styles.itemButton} ${styles.downloadBtn}`}
           onClick={handleDownload}
-          title={
-            item.assetType === 'video' ? 'Download Video' : 'Download Image'
-          }
+          title={item.type === 'video' ? 'Download Video' : 'Download Image'}
         >
           <svg
             xmlns="http://www.w3.org/2000/svg"
@@ -66,7 +64,7 @@ const GalleryItem = ({ item, onItemClick, onDelete, onDownload }) => {
         <button
           className={`${styles.itemButton} ${styles.deleteBtn}`}
           onClick={handleDelete}
-          title={item.assetType === 'video' ? 'Delete Video' : 'Delete Image'}
+          title={item.type === 'video' ? 'Delete Video' : 'Delete Image'}
         >
           <svg
             xmlns="http://www.w3.org/2000/svg"

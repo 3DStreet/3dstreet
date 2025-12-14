@@ -41,7 +41,7 @@ const GalleryModal = ({
 
   // Autoplay video when item changes
   useEffect(() => {
-    if (videoRef.current && item.assetType === 'video') {
+    if (videoRef.current && item.type === 'video') {
       videoRef.current.play().catch((error) => {
         console.warn('Autoplay prevented:', error);
       });
@@ -84,7 +84,7 @@ const GalleryModal = ({
   const date = item.metadata?.timestamp
     ? new Date(item.metadata.timestamp).toLocaleString()
     : 'Unknown';
-  const isVideo = item.assetType === 'video';
+  const isVideo = item.type === 'video';
   const mediaType = isVideo ? 'Video' : 'Image';
   const modalTitle = `${mediaType} - ${model || 'Unknown Model'}`;
 
