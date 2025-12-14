@@ -8,7 +8,7 @@ import { httpsCallable } from 'firebase/functions';
 import { functions } from '@shared/services/firebase.js';
 import useImageGenStore from './store.js';
 import ImageUploadUtils from './image-upload-utils.js';
-import galleryService from '@shared/gallery/services/galleryService.js';
+import galleryService from '@shared/gallery/services/galleryServiceV2.js';
 import { VIDEO_MODELS } from '@shared/constants/replicateModels.js';
 import { mountVideoModelSelector } from './mount-video-model-selector.js';
 
@@ -929,7 +929,7 @@ const VideoTab = {
     }
 
     // Initialize gallery service with current user
-    const currentUser = window.authState?.user;
+    const currentUser = window.authState?.currentUser;
     if (currentUser && !galleryService.userId) {
       try {
         await galleryService.init(currentUser.uid);
@@ -961,7 +961,7 @@ const VideoTab = {
         };
 
         try {
-          const currentUser = window.authState?.user;
+          const currentUser = window.authState?.currentUser;
           if (!currentUser) {
             console.warn('User not authenticated, skipping gallery save');
             return;
