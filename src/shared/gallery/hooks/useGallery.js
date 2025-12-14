@@ -105,7 +105,8 @@ const useGallery = () => {
 
         return {
           id: asset.assetId,
-          type: asset.category,
+          type: asset.category, // Category for display (ai-render, screenshot, etc.)
+          assetType: asset.type, // Actual asset type (image, video) for download logic
           objectURL: asset.thumbnailUrl || asset.storageUrl, // Thumbnail for grid
           fullImageURL: asset.storageUrl, // Full image for modal
           storageUrl: asset.storageUrl,
@@ -181,7 +182,8 @@ const useGallery = () => {
 
         const displayItem = {
           id: asset.assetId,
-          type: asset.category,
+          type: asset.category, // Category for display (ai-render, screenshot, etc.)
+          assetType: asset.type, // Actual asset type (image, video) for download logic
           objectURL: asset.thumbnailUrl || asset.storageUrl,
           fullImageURL: asset.storageUrl,
           storageUrl: asset.storageUrl,
@@ -384,7 +386,8 @@ const useGallery = () => {
    */
   const downloadItem = useCallback(async (item) => {
     // Create filename
-    const isVideo = item.type === ASSET_TYPES.VIDEO;
+    // Use assetType (image/video) for format detection, not type (category like ai-render)
+    const isVideo = item.assetType === ASSET_TYPES.VIDEO;
     const model =
       item.metadata?.model ||
       (item.type === ASSET_CATEGORIES.SCREENSHOT ? '3dstreet' : 'flux');
