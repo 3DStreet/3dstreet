@@ -180,7 +180,8 @@ const FluxUI = {
       'create-generate-btn',
       'inpaint-generate-btn',
       'outpaint-generate-btn',
-      'video-generate-btn'
+      'video-generate-btn',
+      'splat-generate-btn'
     ];
 
     buttonIds.forEach((buttonId) => {

@@ -90,19 +90,73 @@ public/
 
 **Auth:** Google, Email/Password, user claims for plan levels
 
-**Functions:** getScene, createStripeSession, stripeWebhook, serveWebXRVariant, geoid, bfl-proxy
+**Functions:** getScene, createStripeSession, stripeWebhook, serveWebXRVariant, geoid, bfl-proxy, initVarjoCapture, finalizeVarjoUpload, checkVarjoStatus, varjoWebhook
 
 ## Generator
 
-**Structure:** Vanilla JS app (generator/inpaint/outpaint/gallery tabs) + React islands (auth, navigation, purchase modal)
+**Structure:** Vanilla JS app (generator/inpaint/outpaint/splat/gallery tabs) + React islands (auth, navigation, purchase modal)
 
-**Note:** UI still displays "AI Image Generator" but video generation coming soon
+**Tabs:** Image generation, inpainting, outpainting, 3D splat generation, gallery
 
 **Island Architecture:** React components mounted via `mount-*.js` files into specific DOM elements
 
-**Workflow:** User prompt → token check → Firebase Cloud Function → BFL API → poll → display + save to localStorage
-
 **Token system:** TokenSync syncs Firestore → Zustand, PurchaseModal for Stripe checkout
+
+### Splat Generation (3D Gaussian Splats)
+
+**Provider:** Varjo Teleport API - https://teleport.varjo.com/docs/
+
+**Files:**
+- `src/generator/splat.js` - Client UI tab
+- `public/functions/varjo-proxy.js` - Cloud functions (init, finalize, webhook, status)
+- `public/functions/asset-notifications.js` - Generic email notifications
+- `scripts/varjo/` - CLI tools for testing
+
+**Architecture (webhook-based for long-running jobs):**
+```
+1. User uploads → initVarjoCapture → asset created (status: 'uploading')
+2. Client uploads directly to Varjo via presigned URLs
+3. finalizeVarjoUpload → tokens deducted, status: 'processing'
+4. User can close browser - webhook handles completion
+5. Varjo webhook fires → varjoWebhook handler
+6. Server downloads PLY → uploads to Firebase Storage
+7. Asset updated (status: 'ready'), email sent via Postmark
+```
+
+**Key Design Decisions:**
+- Assets stored in `users/{userId}/assets` (same as gallery) with `status` field
+- Server-side storage upload (user doesn't need to keep browser open)
+- Email notification via Postmark when complete
+- `provider` field allows future splat providers
+- Collection group index enables cross-user job monitoring
+
+**Cloud Function Secrets Required:**
+- `VARJO_CLIENT_ID`, `VARJO_CLIENT_SECRET` - API credentials
+- `VARJO_WEBHOOK_SECRET` - Webhook signature verification (optional)
+- `POSTMARK_API_KEY` - Email notifications
+
+**Firestore Indexes:** Collection group index on `assets` for `provider` + `providerData.eid`
+
+### Asset Notifications (Reusable)
+
+`public/functions/asset-notifications.js` provides generic email notifications:
+
+```javascript
+await sendAssetReadyEmail({
+  email: 'user@example.com',
+  userName: 'John',
+  assetName: 'My Scene',
+  assetType: 'splat',      // 'splat', 'image', 'video', 'mesh'
+  provider: 'varjo',       // 'varjo', 'flux-pro', 'replicate'
+  viewerUrl: '...',        // optional
+  previewUrl: '...',       // optional preview image
+  status: 'ready',         // 'ready' or 'error'
+  errorMessage: '...'      // if status is 'error'
+});
+```
+
+**Supported asset types:** splat, image, video, mesh
+**Supported providers:** varjo, flux-pro, flux-dev, replicate
 
 ## Shared Library (@shared/*)
 

@@ -8,6 +8,7 @@ const { generateReplicateImage, generateReplicateVideo } = require('./replicate.
 const { checkAndRefillImageTokens, checkUserProStatus } = require('./token-management.js');
 const { bflProxyImage, bflApiProxy } = require('./bfl-proxy.js');
 const { sendScheduledEmails, triggerScheduledEmails } = require('./scheduledEmails.js');
+const { initVarjoCapture, finalizeVarjoUpload, checkVarjoStatus, varjoWebhook } = require('./varjo-proxy.js');
 
 // Re-export the WebXR variant function
 exports.serveWebXRVariant = serveWebXRVariant;
@@ -26,6 +27,12 @@ exports.checkUserProStatus = checkUserProStatus;
 // Re-export the BFL proxy functions
 exports.bflProxyImage = bflProxyImage;
 exports.bflApiProxy = bflApiProxy;
+
+// Re-export the Varjo Teleport proxy functions
+exports.initVarjoCapture = initVarjoCapture;
+exports.finalizeVarjoUpload = finalizeVarjoUpload;
+exports.checkVarjoStatus = checkVarjoStatus;
+exports.varjoWebhook = varjoWebhook;
 
 // Re-export the scheduled email functions
 exports.sendScheduledEmails = sendScheduledEmails;

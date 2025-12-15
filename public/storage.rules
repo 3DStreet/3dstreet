@@ -24,11 +24,12 @@ service firebase.storage {
       allow read: if request.auth != null && request.auth.uid == userId;
 
       // Users can write (upload/update/delete) their own asset files
-      // With size limit (50MB) and content type validation
+      // With size limit (500MB) and content type validation
       // Note: application/octet-stream is needed for PLY files (splats)
+      // Increased from 50MB to 500MB to support large Gaussian splat PLY files
       allow write: if request.auth != null
         && request.auth.uid == userId
-        && request.resource.size < 50 * 1024 * 1024
+        && request.resource.size < 500 * 1024 * 1024
         && request.resource.contentType.matches('image/.*|video/.*|model/.*|application/octet-stream');
     }
   }
