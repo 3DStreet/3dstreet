@@ -1,7 +1,11 @@
 /**
  * Shared auth components exports
  */
-export { ProfileButton, renderProfileIcon } from './ProfileButton';
+export {
+  ProfileButton,
+  renderProfileIcon,
+  getAuthProviderName
+} from './ProfileButton';
 export { SignInModal } from './SignInModal';
 export {
   default as TokenDisplay,
