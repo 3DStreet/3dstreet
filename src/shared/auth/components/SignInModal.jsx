@@ -7,10 +7,18 @@
  */
 
 import { useState } from 'react';
-import { GoogleSignInButtonSVG, SignInMicrosoftIconSVG } from '@shared/icons';
+import {
+  GoogleSignInButtonSVG,
+  SignInMicrosoftIconSVG,
+  SignInAppleIconSVG
+} from '@shared/icons';
 import Modal from '../../components/Modal/Modal.jsx';
 import styles from './SignInModal.module.scss';
-import { signInWithGoogle, signInWithMicrosoft } from '../api/auth';
+import {
+  signInWithGoogle,
+  signInWithMicrosoft,
+  signInWithApple
+} from '../api/auth';
 
 /**
  * SignInModal Component
@@ -45,6 +53,8 @@ const SignInModal = ({
         await signInWithGoogle(firebaseAuth, onAnalytics, onNotification);
       } else if (provider === 'microsoft') {
         await signInWithMicrosoft(firebaseAuth, onAnalytics, onNotification);
+      } else if (provider === 'apple') {
+        await signInWithApple(firebaseAuth, onAnalytics, onNotification);
       }
 
       // Call optional success callback
@@ -84,6 +94,13 @@ const SignInModal = ({
             style={{ transform: 'scale(0.85)' }}
           >
             <SignInMicrosoftIconSVG />
+          </div>
+          <div
+            onClick={() => onSignInClick('apple')}
+            alt="Sign In with Apple Button"
+            className={styles.signInButton}
+          >
+            <SignInAppleIconSVG />
           </div>
           {isAuthenticating && !LoadingComponent && (
             <div style={{ marginTop: '20px', textAlign: 'center' }}>
