@@ -82,14 +82,20 @@ const SignInModal = ({
           </div>
           <div
             onClick={() => onSignInClick('google')}
-            alt="Sign In with Google Button"
+            onKeyDown={(e) => e.key === 'Enter' && onSignInClick('google')}
+            role="button"
+            tabIndex={0}
+            aria-label="Sign in with Google"
             className={styles.signInButton}
           >
             <GoogleSignInButtonSVG />
           </div>
           <div
             onClick={() => onSignInClick('microsoft')}
-            alt="Sign In with Microsoft Button"
+            onKeyDown={(e) => e.key === 'Enter' && onSignInClick('microsoft')}
+            role="button"
+            tabIndex={0}
+            aria-label="Sign in with Microsoft"
             className={styles.signInButton}
             style={{ transform: 'scale(0.85)' }}
           >
@@ -97,7 +103,10 @@ const SignInModal = ({
           </div>
           <div
             onClick={() => onSignInClick('apple')}
-            alt="Sign In with Apple Button"
+            onKeyDown={(e) => e.key === 'Enter' && onSignInClick('apple')}
+            role="button"
+            tabIndex={0}
+            aria-label="Sign in with Apple"
             className={styles.signInButton}
           >
             <SignInAppleIconSVG />
