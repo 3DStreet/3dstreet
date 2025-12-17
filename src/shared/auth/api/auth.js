@@ -125,6 +125,61 @@ export const signInWithMicrosoft = async (
 };
 
 /**
+ * Sign in with Apple
+ *
+ * @param {Object} firebaseAuth - Firebase auth instance
+ * @param {Function} [onAnalytics] - Optional analytics callback (eventName, properties)
+ * @param {Function} [onNotification] - Optional notification callback (type, message)
+ * @returns {Promise<Object>} Firebase user object
+ */
+export const signInWithApple = async (
+  firebaseAuth,
+  onAnalytics,
+  onNotification
+) => {
+  try {
+    const provider = new OAuthProvider('apple.com');
+    provider.addScope('email');
+    provider.addScope('name');
+    const { user } = await signInWithPopup(firebaseAuth, provider);
+
+    // Check if this is a new user (sign up) or existing user (sign in)
+    const isNewUser =
+      user.metadata.creationTime === user.metadata.lastSignInTime;
+
+    // Fire analytics event if callback provided
+    if (onAnalytics) {
+      const eventName = isNewUser ? 'user_signed_up' : 'sign_in_completed';
+      onAnalytics(eventName, {
+        email: user.email,
+        name: user.displayName,
+        provider: 'apple.com',
+        user_id: user.uid
+      });
+    }
+
+    onNotification?.('success', 'Successfully signed in with Apple!');
+
+    return user;
+  } catch (error) {
+    // Handle specific error for account-exists-with-different-credential
+    if (error.code === 'auth/account-exists-with-different-credential') {
+      onNotification?.(
+        'error',
+        'Cannot use Apple login with your email, try using Google or Microsoft login instead.'
+      );
+    } else {
+      onNotification?.(
+        'error',
+        `Unexpected error using Apple for login: ${error.message}`
+      );
+      console.error(error);
+    }
+    throw error;
+  }
+};
+
+/**
  * Sign out the current user
  *
  * @param {Object} firebaseAuth - Firebase auth instance

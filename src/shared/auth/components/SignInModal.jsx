@@ -7,10 +7,18 @@
  */
 
 import { useState } from 'react';
-import { GoogleSignInButtonSVG, SignInMicrosoftIconSVG } from '@shared/icons';
+import {
+  GoogleSignInButtonSVG,
+  SignInMicrosoftIconSVG,
+  SignInAppleIconSVG
+} from '@shared/icons';
 import Modal from '../../components/Modal/Modal.jsx';
 import styles from './SignInModal.module.scss';
-import { signInWithGoogle, signInWithMicrosoft } from '../api/auth';
+import {
+  signInWithGoogle,
+  signInWithMicrosoft,
+  signInWithApple
+} from '../api/auth';
 
 /**
  * SignInModal Component
@@ -45,6 +53,8 @@ const SignInModal = ({
         await signInWithGoogle(firebaseAuth, onAnalytics, onNotification);
       } else if (provider === 'microsoft') {
         await signInWithMicrosoft(firebaseAuth, onAnalytics, onNotification);
+      } else if (provider === 'apple') {
+        await signInWithApple(firebaseAuth, onAnalytics, onNotification);
       }
 
       // Call optional success callback
@@ -72,18 +82,34 @@ const SignInModal = ({
           </div>
           <div
             onClick={() => onSignInClick('google')}
-            alt="Sign In with Google Button"
+            onKeyDown={(e) => e.key === 'Enter' && onSignInClick('google')}
+            role="button"
+            tabIndex={0}
+            aria-label="Sign in with Google"
             className={styles.signInButton}
           >
             <GoogleSignInButtonSVG />
           </div>
           <div
             onClick={() => onSignInClick('microsoft')}
-            alt="Sign In with Microsoft Button"
+            onKeyDown={(e) => e.key === 'Enter' && onSignInClick('microsoft')}
+            role="button"
+            tabIndex={0}
+            aria-label="Sign in with Microsoft"
             className={styles.signInButton}
             style={{ transform: 'scale(0.85)' }}
           >
             <SignInMicrosoftIconSVG />
+          </div>
+          <div
+            onClick={() => onSignInClick('apple')}
+            onKeyDown={(e) => e.key === 'Enter' && onSignInClick('apple')}
+            role="button"
+            tabIndex={0}
+            aria-label="Sign in with Apple"
+            className={styles.signInButton}
+          >
+            <SignInAppleIconSVG />
           </div>
           {isAuthenticating && !LoadingComponent && (
             <div style={{ marginTop: '20px', textAlign: 'center' }}>
