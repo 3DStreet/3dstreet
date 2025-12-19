@@ -1,5 +1,30 @@
 /* global AFRAME */
-import { SplatMesh, SparkRenderer } from '@sparkjsdev/spark';
+
+// Spark library is loaded dynamically to reduce initial bundle size (~500KB)
+let SplatMesh = null;
+let SparkRenderer = null;
+let sparkLoadPromise = null;
+
+/**
+ * Dynamically loads the Spark library for Gaussian Splat rendering.
+ * Only loaded when first splat component is used.
+ */
+async function loadSparkLibrary() {
+  if (SplatMesh && SparkRenderer) {
+    return { SplatMesh, SparkRenderer };
+  }
+
+  if (!sparkLoadPromise) {
+    sparkLoadPromise = import('@sparkjsdev/spark').then((module) => {
+      SplatMesh = module.SplatMesh;
+      SparkRenderer = module.SparkRenderer;
+      console.log('[splat] Spark library loaded');
+      return { SplatMesh, SparkRenderer };
+    });
+  }
+
+  return sparkLoadPromise;
+}
 
 /**
  * Normalizes a URL by adding http/https protocol if missing.
@@ -71,9 +96,20 @@ AFRAME.registerComponent('splat', {
       );
     }
 
-    // Create new splat mesh
+    // Load Spark library dynamically, then create the splat mesh
+    this.loadSplat(src);
+  },
+
+  loadSplat: async function (src) {
     try {
-      this.splatMesh = new SplatMesh({ url: src });
+      // Dynamically load the Spark library (only loads once, ~500KB)
+      const { SplatMesh: LoadedSplatMesh } = await loadSparkLibrary();
+
+      // Initialize the SparkRenderer if not already done
+      this.system.initSparkRenderer();
+
+      // Create new splat mesh
+      this.splatMesh = new LoadedSplatMesh({ url: src });
       // Spark uses a different quaternion convention, rotate to match A-Frame
       this.splatMesh.quaternion.set(1, 0, 0, 0);
 
@@ -107,25 +143,47 @@ AFRAME.registerComponent('splat', {
 
 /**
  * Splat system that initializes the SparkRenderer for Gaussian Splat visualization.
- * This system is automatically initialized when any entity uses the splat component.
+ * The SparkRenderer is lazily initialized only when the first splat is loaded.
  */
 AFRAME.registerSystem('splat', {
   init: function () {
-    // Wait for the renderer to be available
+    this.sparkRenderer = null;
+    this.rendererReady = false;
+
+    // Track when renderer is available
     if (this.el.renderer) {
-      this.initSparkRenderer();
+      this.rendererReady = true;
     } else {
       this.el.addEventListener('renderstart', () => {
-        this.initSparkRenderer();
+        this.rendererReady = true;
+        // If SparkRenderer was requested before renderer was ready, init it now
+        if (this._pendingInit) {
+          this.initSparkRenderer();
+        }
       });
     }
   },
 
-  initSparkRenderer: function () {
+  initSparkRenderer: async function () {
     if (this.sparkRenderer) {
       return;
     }
-    this.sparkRenderer = new SparkRenderer({ renderer: this.el.renderer });
-    this.el.object3D.add(this.sparkRenderer);
+
+    if (!this.rendererReady) {
+      // Mark that we need to init once renderer is ready
+      this._pendingInit = true;
+      return;
+    }
+
+    try {
+      // Load Spark library dynamically
+      const { SparkRenderer: LoadedSparkRenderer } = await loadSparkLibrary();
+      this.sparkRenderer = new LoadedSparkRenderer({
+        renderer: this.el.renderer
+      });
+      this.el.object3D.add(this.sparkRenderer);
+    } catch (error) {
+      console.error('[splat] Failed to initialize SparkRenderer:', error);
+    }
   }
 });
