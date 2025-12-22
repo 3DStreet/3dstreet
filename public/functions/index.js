@@ -8,6 +8,7 @@ const { generateReplicateImage, generateReplicateVideo } = require('./replicate.
 const { checkAndRefillImageTokens, checkUserProStatus } = require('./token-management.js');
 const { bflProxyImage, bflApiProxy } = require('./bfl-proxy.js');
 const { sendScheduledEmails, triggerScheduledEmails } = require('./scheduledEmails.js');
+const { auditUserSubscriptions, auditUserSubscriptionsHttp } = require('./utilities/user-audit.js');
 
 // Re-export the WebXR variant function
 exports.serveWebXRVariant = serveWebXRVariant;
@@ -30,6 +31,10 @@ exports.bflApiProxy = bflApiProxy;
 // Re-export the scheduled email functions
 exports.sendScheduledEmails = sendScheduledEmails;
 exports.triggerScheduledEmails = triggerScheduledEmails;
+
+// Re-export the user audit functions
+exports.auditUserSubscriptions = auditUserSubscriptions;
+exports.auditUserSubscriptionsHttp = auditUserSubscriptionsHttp;
 
 exports.getScene = functions
   .https
