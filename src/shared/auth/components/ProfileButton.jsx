@@ -59,8 +59,91 @@ const LoadingSpinner = ({ className }) => (
   </svg>
 );
 
+// Apple profile icon (Apple logo in a circle)
+const AppleProfileIcon = (
+  <svg
+    width="43"
+    height="43"
+    viewBox="0 0 43 43"
+    fill="none"
+    xmlns="http://www.w3.org/2000/svg"
+  >
+    <circle cx="21.5" cy="21.5" r="21.5" fill="#000000" />
+    <g transform="translate(23.5, 23) scale(1.3) translate(-10, -10)">
+      <path
+        d="M10.5 3.5c.45-.55.75-1.3.75-2.05 0-.1 0-.2-.03-.3-.7.03-1.55.48-2.05 1.08-.4.45-.76 1.2-.76 1.96 0 .12.02.23.03.27.05.01.12.02.2.02.64 0 1.43-.43 1.86-.98zm.53 1.18c-1.03 0-1.91.63-2.44.63-.56 0-1.35-.59-2.22-.59-1.68 0-3.39 1.4-3.39 4.06 0 1.65.64 3.4 1.43 4.53.67.98 1.27 1.78 2.13 1.78.84 0 1.2-.56 2.23-.56 1.05 0 1.29.54 2.22.54.9 0 1.52-.89 2.1-1.76.65-.99.92-1.96.93-2.01-.06-.02-1.84-.76-1.84-2.83 0-1.77 1.38-2.57 1.46-2.63-.93-1.35-2.35-1.37-2.61-1.37v.21z"
+        fill="#FFFFFF"
+      />
+    </g>
+  </svg>
+);
+
+/**
+ * Get all auth provider IDs from a user
+ */
+export const getAuthProviders = (user) => {
+  return user?.providerData?.map((p) => p.providerId) || [];
+};
+
+/**
+ * Get photoURL from any linked provider (useful when main photoURL is cleared)
+ * This handles the case where Apple sign-in overwrites the main photoURL with null
+ */
+export const getPhotoURLFromProviders = (user) => {
+  if (!user?.providerData) return null;
+  for (const provider of user.providerData) {
+    if (provider.photoURL) {
+      return provider.photoURL;
+    }
+  }
+  return null;
+};
+
+/**
+ * Check if user has a specific provider linked
+ */
+export const hasProvider = (user, providerId) => {
+  return getAuthProviders(user).includes(providerId);
+};
+
+/**
+ * Get human-readable names for all linked providers
+ */
+export const getAuthProviderNames = (user) => {
+  const providers = getAuthProviders(user);
+  const names = providers.map((providerId) => {
+    switch (providerId) {
+      case 'google.com':
+        return 'Google';
+      case 'microsoft.com':
+        return 'Microsoft';
+      case 'apple.com':
+        return 'Apple';
+      default:
+        return 'Email';
+    }
+  });
+  return names;
+};
+
+/**
+ * Get a human-readable provider name string
+ * Formats as: "Google" or "Google & Apple" or "Google, Microsoft & Apple"
+ */
+export const getAuthProviderName = (user) => {
+  const names = getAuthProviderNames(user);
+  if (names.length === 0) return 'Email';
+  if (names.length === 1) return names[0];
+  if (names.length === 2) return `${names[0]} & ${names[1]}`;
+  // 3+ providers: "A, B & C" format
+  const allButLast = names.slice(0, -1);
+  const last = names[names.length - 1];
+  return `${allButLast.join(', ')} & ${last}`;
+};
+
 /**
  * Renders the appropriate profile icon based on user's auth provider
+ * Priority: photoURL (from user or any provider) > Apple icon > Microsoft icon > default
  */
 export const renderProfileIcon = (currentUser, isLoading) => {
   if (isLoading) {
@@ -71,11 +154,12 @@ export const renderProfileIcon = (currentUser, isLoading) => {
     return Profile32Icon;
   }
 
-  const isGoogle = currentUser?.providerData?.[0]?.providerId === 'google.com';
-  const isMicrosoft =
-    currentUser?.providerData?.[0]?.providerId === 'microsoft.com';
-
-  if (isGoogle && currentUser?.photoURL) {
+  // Check for photo URL - first from user object, then from any linked provider
+  // This handles the case where Apple sign-in clears the main photoURL but
+  // Google's photoURL is still available in providerData
+  const photoURL =
+    currentUser?.photoURL || getPhotoURLFromProviders(currentUser);
+  if (photoURL) {
     return (
       <img
         style={{
@@ -83,12 +167,17 @@ export const renderProfileIcon = (currentUser, isLoading) => {
           height: '43px',
           borderRadius: '18px'
         }}
-        src={currentUser.photoURL}
+        src={photoURL}
         alt="userPhoto"
         referrerPolicy="no-referrer"
       />
     );
-  } else if (isMicrosoft) {
+  }
+
+  // No photo from any provider - show provider-specific icon
+  if (hasProvider(currentUser, 'apple.com')) {
+    return AppleProfileIcon;
+  } else if (hasProvider(currentUser, 'microsoft.com')) {
     return (
       <img
         src={MsftProfileImg}

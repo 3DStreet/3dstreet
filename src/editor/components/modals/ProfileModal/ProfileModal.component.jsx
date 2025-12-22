@@ -10,7 +10,11 @@ import { auth, functions } from '@shared/services/firebase';
 import { Loader } from '@shared/icons';
 import { httpsCallable } from 'firebase/functions';
 import posthog from 'posthog-js';
-import { renderProfileIcon, TokenDisplayInner } from '@shared/auth/components';
+import {
+  renderProfileIcon,
+  TokenDisplayInner,
+  getAuthProviderName
+} from '@shared/auth/components';
 import useStore from '@/store';
 import {
   getUserProfile,
@@ -106,6 +110,12 @@ const ProfileModal = () => {
                       {currentUser?.displayName}
                     </span>
                     <span className={styles.email}>{currentUser?.email}</span>
+                    <span
+                      className={styles.email}
+                      style={{ fontSize: '11px', opacity: 0.7 }}
+                    >
+                      Signed in with {getAuthProviderName(currentUser)}
+                    </span>
                   </div>
                 </div>
                 <Button

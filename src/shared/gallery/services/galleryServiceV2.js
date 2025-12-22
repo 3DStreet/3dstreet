@@ -153,7 +153,16 @@ class GalleryServiceV2 {
       }
 
       // Determine file extension and MIME type
-      const mimeType = blob.type || 'image/jpeg';
+      // For video assets, force video MIME type since blob type from data URI
+      // conversion can be unreliable (may incorrectly report image/png)
+      let mimeType;
+      if (type === ASSET_TYPES.VIDEO) {
+        // Force video MIME type - trust the caller's asset type over blob.type
+        mimeType = 'video/mp4';
+      } else {
+        // For images, use blob type if available, otherwise default to image/jpeg
+        mimeType = blob.type && blob.type !== '' ? blob.type : 'image/jpeg';
+      }
       const extension = this.getExtensionFromMimeType(mimeType);
       const filename = `${assetId}.${extension}`;
 
