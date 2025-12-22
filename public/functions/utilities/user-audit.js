@@ -197,13 +197,9 @@ exports.auditUserSubscriptions = functions
       throw new functions.https.HttpsError('unauthenticated', 'Must be authenticated');
     }
 
-    // Check for admin claim or specific allowed users
-    const callerClaims = context.auth.token;
-    const isAdmin = callerClaims.admin === true;
-
-    // For now, also allow PRO users to run audits (you can restrict this further)
-    if (!isAdmin && callerClaims.plan !== 'PRO') {
-      throw new functions.https.HttpsError('permission-denied', 'Admin access required');
+    // Require admin claim to run audit
+    if (!context.auth.token.admin) {
+      throw new functions.https.HttpsError('permission-denied', 'Admin access required.');
     }
 
     const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
