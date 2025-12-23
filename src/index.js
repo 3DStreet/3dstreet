@@ -12,7 +12,7 @@ require('./aframe-components/gltf-part');
 require('./aframe-components/ocean');
 require('./aframe-components/svg-extruder.js');
 require('./lib/animation-mixer.js');
-require('./lib/aframe-gaussian-splatting-component.min.js');
+require('./aframe-components/splat.js');
 require('./assets.js');
 require('./aframe-components/notify.js');
 require('./aframe-components/create-from-json');

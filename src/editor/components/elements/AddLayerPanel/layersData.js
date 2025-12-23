@@ -123,5 +123,14 @@ export const customLayersData = [
     description:
       'Create an immersive 360° environment from a panoramic image for AR/VR experiences.',
     handlerFunction: createFunctions.createPanoramaSphere
+  },
+  {
+    name: 'Gaussian Splat from URL',
+    img: '',
+    requiresPro: true,
+    icon: '',
+    description:
+      'Create entity with Gaussian Splat model from a URL. Supports .splat, .ply, and .spz file formats.',
+    handlerFunction: createFunctions.createSplatObject
   }
 ].map((layer, index) => ({ ...layer, id: index + 1 }));
