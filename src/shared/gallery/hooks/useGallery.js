@@ -112,6 +112,11 @@ const useGallery = () => {
           thumbnailUrl: asset.thumbnailUrl,
           metadata: {
             ...asset.generationMetadata,
+            // Include top-level dimensions if not in generationMetadata
+            ...(asset.width &&
+              !asset.generationMetadata?.width && { width: asset.width }),
+            ...(asset.height &&
+              !asset.generationMetadata?.height && { height: asset.height }),
             timestamp
           }
         };
@@ -188,6 +193,11 @@ const useGallery = () => {
           thumbnailUrl: asset.thumbnailUrl,
           metadata: {
             ...asset.generationMetadata,
+            // Include top-level dimensions if not in generationMetadata
+            ...(asset.width &&
+              !asset.generationMetadata?.width && { width: asset.width }),
+            ...(asset.height &&
+              !asset.generationMetadata?.height && { height: asset.height }),
             timestamp
           }
         };

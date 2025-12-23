@@ -1,0 +1,915 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <title>Bollard Buddy UI Prototype</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: #000;
+      color: #fff;
+      height: 100vh;
+      height: 100dvh;
+      overflow: hidden;
+      user-select: none;
+    }
+
+    .app-container {
+      display: flex;
+      flex-direction: column;
+      height: 100%;
+      position: relative;
+    }
+
+    /* AR Camera View (simulated) */
+    .ar-view {
+      flex: 1;
+      background: linear-gradient(145deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+      position: relative;
+      overflow: hidden;
+    }
+
+    .ar-view::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background:
+        radial-gradient(circle at 30% 40%, rgba(255,255,255,0.03) 0%, transparent 50%),
+        radial-gradient(circle at 70% 60%, rgba(255,255,255,0.02) 0%, transparent 40%);
+    }
+
+    .ar-placeholder {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      text-align: center;
+      color: rgba(255,255,255,0.3);
+      font-size: 14px;
+    }
+
+    .ar-placeholder svg {
+      width: 48px;
+      height: 48px;
+      margin-bottom: 8px;
+      opacity: 0.3;
+    }
+
+    /* Floating Header */
+    .floating-header {
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 12px 16px;
+      padding-top: max(12px, env(safe-area-inset-top));
+      z-index: 100;
+    }
+
+    .logo {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-weight: 600;
+      font-size: 16px;
+      color: #fff;
+      text-shadow: 0 1px 3px rgba(0,0,0,0.5);
+    }
+
+    .logo-icon {
+      width: 32px;
+      height: 32px;
+      background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 18px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+    }
+
+    .profile-button {
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
+      background: rgba(255,255,255,0.2);
+      backdrop-filter: blur(10px);
+      border: none;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      transition: transform 0.15s ease, background 0.15s ease;
+    }
+
+    .profile-button:active {
+      transform: scale(0.95);
+      background: rgba(255,255,255,0.3);
+    }
+
+    .profile-button svg {
+      width: 20px;
+      height: 20px;
+      color: #fff;
+    }
+
+    /* Bottom Controls Container */
+    .bottom-controls {
+      background: rgba(0,0,0,0.85);
+      backdrop-filter: blur(20px);
+      padding-bottom: env(safe-area-inset-bottom);
+    }
+
+    /* Mode Content Area */
+    .mode-content {
+      min-height: 60px;
+      display: flex;
+      align-items: center;
+      padding: 8px 0;
+      border-bottom: 1px solid rgba(255,255,255,0.1);
+    }
+
+    .mode-content[data-mode="place"] .place-content { display: flex; }
+    .mode-content[data-mode="place"] .photo-content { display: none; }
+    .mode-content[data-mode="photo"] .place-content { display: none; }
+    .mode-content[data-mode="photo"] .photo-content { display: flex; }
+
+    /* Place Mode - Object Picker */
+    .place-content {
+      width: 100%;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .category-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 12px;
+      gap: 8px;
+    }
+
+    .edit-actions {
+      display: flex;
+      gap: 8px;
+    }
+
+    .edit-action-btn {
+      width: 36px;
+      height: 36px;
+      border-radius: 8px;
+      background: rgba(255,255,255,0.15);
+      border: none;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      transition: all 0.15s ease;
+    }
+
+    .edit-action-btn:active {
+      transform: scale(0.95);
+      background: rgba(255,255,255,0.25);
+    }
+
+    .edit-action-btn:disabled {
+      opacity: 0.3;
+      pointer-events: none;
+    }
+
+    .edit-action-btn svg {
+      width: 18px;
+      height: 18px;
+      color: #fff;
+    }
+
+    .category-dropdown {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      background: rgba(255,255,255,0.15);
+      border: none;
+      border-radius: 8px;
+      padding: 8px 12px;
+      color: #fff;
+      font-size: 13px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: background 0.15s ease;
+      flex-shrink: 0;
+    }
+
+    .category-dropdown:active {
+      background: rgba(255,255,255,0.25);
+    }
+
+    .category-dropdown svg {
+      width: 14px;
+      height: 14px;
+    }
+
+    .object-strip {
+      display: flex;
+      gap: 8px;
+      overflow-x: auto;
+      scroll-snap-type: x mandatory;
+      scrollbar-width: none;
+      -ms-overflow-style: none;
+      padding: 0 12px;
+      flex: 1;
+    }
+
+    .object-strip::-webkit-scrollbar {
+      display: none;
+    }
+
+    .object-item {
+      flex-shrink: 0;
+      width: 56px;
+      height: 56px;
+      background: rgba(255,255,255,0.1);
+      border: 2px solid transparent;
+      border-radius: 12px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      transition: all 0.15s ease;
+      scroll-snap-align: start;
+    }
+
+    .object-item:active {
+      transform: scale(0.95);
+    }
+
+    .object-item.selected {
+      background: rgba(245, 158, 11, 0.3);
+      border-color: #f59e0b;
+    }
+
+    .object-item .icon {
+      font-size: 24px;
+      line-height: 1;
+    }
+
+    .object-item .label {
+      font-size: 9px;
+      color: rgba(255,255,255,0.7);
+      margin-top: 2px;
+      text-align: center;
+    }
+
+    /* Photo Mode - Minimal Controls */
+    .photo-content {
+      width: 100%;
+      justify-content: center;
+      align-items: center;
+      padding: 16px;
+    }
+
+    .photo-hint {
+      color: rgba(255,255,255,0.5);
+      font-size: 13px;
+    }
+
+    /* Action Bar */
+    .action-bar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 16px 24px;
+    }
+
+    .action-bar.hidden {
+      display: none;
+    }
+
+    .action-button {
+      width: 44px;
+      height: 44px;
+      border-radius: 50%;
+      background: rgba(255,255,255,0.15);
+      border: none;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      transition: all 0.15s ease;
+    }
+
+    .action-button:active {
+      transform: scale(0.95);
+      background: rgba(255,255,255,0.25);
+    }
+
+    .action-button svg {
+      width: 22px;
+      height: 22px;
+      color: #fff;
+    }
+
+    .action-spacer {
+      width: 44px;
+    }
+
+    /* Capture Button */
+    .capture-button {
+      width: 72px;
+      height: 72px;
+      border-radius: 50%;
+      background: #fff;
+      border: 4px solid rgba(255,255,255,0.3);
+      cursor: pointer;
+      transition: all 0.15s ease;
+      position: relative;
+    }
+
+    .capture-button::before {
+      content: '';
+      position: absolute;
+      inset: 4px;
+      border-radius: 50%;
+      background: #fff;
+      transition: all 0.15s ease;
+    }
+
+    .capture-button:active {
+      transform: scale(0.95);
+    }
+
+    .capture-button:active::before {
+      background: #e5e5e5;
+    }
+
+    /* Gallery Button */
+    .gallery-button {
+      width: 44px;
+      height: 44px;
+      border-radius: 8px;
+      background: rgba(255,255,255,0.15);
+      border: 2px solid rgba(255,255,255,0.3);
+      overflow: hidden;
+      cursor: pointer;
+      transition: all 0.15s ease;
+    }
+
+    .gallery-button:active {
+      transform: scale(0.95);
+    }
+
+    .gallery-button img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+
+    .gallery-placeholder {
+      width: 100%;
+      height: 100%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .gallery-placeholder svg {
+      width: 20px;
+      height: 20px;
+      color: rgba(255,255,255,0.5);
+    }
+
+    /* Mode Switcher (iOS Camera Style) */
+    .mode-switcher {
+      padding: 12px 0 8px;
+      overflow: hidden;
+    }
+
+    .mode-switcher-track {
+      display: flex;
+      justify-content: center;
+      gap: 24px;
+      transition: transform 0.3s ease;
+    }
+
+    .mode-option {
+      position: relative;
+      padding: 8px 4px;
+      background: none;
+      border: none;
+      color: rgba(255,255,255,0.5);
+      font-size: 13px;
+      font-weight: 500;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      cursor: pointer;
+      transition: color 0.2s ease;
+    }
+
+    .mode-option.active {
+      color: #f59e0b;
+    }
+
+    .mode-option::before {
+      content: '';
+      position: absolute;
+      bottom: 0;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 5px;
+      height: 5px;
+      border-radius: 50%;
+      background: #f59e0b;
+      opacity: 0;
+      transition: opacity 0.2s ease;
+    }
+
+    .mode-option.active::before {
+      opacity: 1;
+    }
+
+    /* Category Modal */
+    .category-modal {
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.8);
+      backdrop-filter: blur(10px);
+      z-index: 1000;
+      display: flex;
+      flex-direction: column;
+      opacity: 0;
+      visibility: hidden;
+      transition: all 0.3s ease;
+    }
+
+    .category-modal.open {
+      opacity: 1;
+      visibility: visible;
+    }
+
+    .category-modal-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 16px;
+      padding-top: max(16px, env(safe-area-inset-top));
+      border-bottom: 1px solid rgba(255,255,255,0.1);
+    }
+
+    .category-modal-title {
+      font-size: 17px;
+      font-weight: 600;
+    }
+
+    .category-modal-close {
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
+      background: rgba(255,255,255,0.15);
+      border: none;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+    }
+
+    .category-modal-close svg {
+      width: 18px;
+      height: 18px;
+      color: #fff;
+    }
+
+    .category-list {
+      flex: 1;
+      overflow-y: auto;
+      padding: 8px 0;
+    }
+
+    .category-list-item {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 14px 20px;
+      background: none;
+      border: none;
+      width: 100%;
+      color: #fff;
+      font-size: 16px;
+      cursor: pointer;
+      transition: background 0.15s ease;
+      text-align: left;
+    }
+
+    .category-list-item:active {
+      background: rgba(255,255,255,0.1);
+    }
+
+    .category-list-item.selected {
+      color: #f59e0b;
+    }
+
+    .category-list-item .count {
+      margin-left: auto;
+      color: rgba(255,255,255,0.4);
+      font-size: 14px;
+    }
+
+    /* Object Selected Indicator */
+    .selected-indicator {
+      position: absolute;
+      bottom: 200px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: rgba(0,0,0,0.7);
+      backdrop-filter: blur(10px);
+      padding: 8px 16px;
+      border-radius: 20px;
+      font-size: 13px;
+      color: #fff;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      opacity: 0;
+      transition: opacity 0.3s ease;
+      pointer-events: none;
+    }
+
+    .selected-indicator.visible {
+      opacity: 1;
+    }
+
+    .selected-indicator .icon {
+      font-size: 18px;
+    }
+
+    /* Toast */
+    .toast {
+      position: fixed;
+      top: 80px;
+      left: 50%;
+      transform: translateX(-50%) translateY(-20px);
+      background: rgba(0,0,0,0.8);
+      backdrop-filter: blur(10px);
+      padding: 12px 20px;
+      border-radius: 12px;
+      font-size: 14px;
+      color: #fff;
+      opacity: 0;
+      visibility: hidden;
+      transition: all 0.3s ease;
+      z-index: 500;
+    }
+
+    .toast.visible {
+      opacity: 1;
+      visibility: visible;
+      transform: translateX(-50%) translateY(0);
+    }
+  </style>
+</head>
+<body>
+  <div class="app-container">
+    <!-- AR Camera View -->
+    <div class="ar-view" onclick="handleARTap()">
+      <div class="ar-placeholder">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+          <path d="M6.827 6.175A2.31 2.31 0 015.186 7.23c-.38.054-.757.112-1.134.175C2.999 7.58 2.25 8.507 2.25 9.574V18a2.25 2.25 0 002.25 2.25h15A2.25 2.25 0 0021.75 18V9.574c0-1.067-.75-1.994-1.802-2.169a47.865 47.865 0 00-1.134-.175 2.31 2.31 0 01-1.64-1.055l-.822-1.316a2.192 2.192 0 00-1.736-1.039 48.774 48.774 0 00-5.232 0 2.192 2.192 0 00-1.736 1.039l-.821 1.316z"/>
+          <path d="M16.5 12.75a4.5 4.5 0 11-9 0 4.5 4.5 0 019 0zM18.75 10.5h.008v.008h-.008V10.5z"/>
+        </svg>
+        <div>AR Camera View</div>
+      </div>
+
+      <!-- Floating Header -->
+      <div class="floating-header">
+        <div class="logo">
+          <div class="logo-icon">🚧</div>
+          <span>Bollard Buddy</span>
+        </div>
+        <button class="profile-button" onclick="showToast('Profile menu')">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M15.75 6a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.501 20.118a7.5 7.5 0 0114.998 0A17.933 17.933 0 0112 21.75c-2.676 0-5.216-.584-7.499-1.632z"/>
+          </svg>
+        </button>
+      </div>
+
+      <!-- Selected Object Indicator -->
+      <div class="selected-indicator" id="selectedIndicator">
+        <span class="icon" id="selectedIcon">🚗</span>
+        <span id="selectedLabel">Tap to place Car</span>
+      </div>
+    </div>
+
+    <!-- Bottom Controls -->
+    <div class="bottom-controls">
+      <!-- Mode-specific Content -->
+      <div class="mode-content" id="modeContent" data-mode="place">
+        <!-- Place Mode Content -->
+        <div class="place-content">
+          <div class="category-row">
+            <button class="category-dropdown" onclick="openCategoryModal()">
+              <span id="currentCategory">Vehicles</span>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                <path d="M19.5 8.25l-7.5 7.5-7.5-7.5"/>
+              </svg>
+            </button>
+            <div class="edit-actions">
+              <button class="edit-action-btn" id="undoBtn" onclick="handleUndo()" disabled>
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M9 15L3 9m0 0l6-6M3 9h12a6 6 0 010 12h-3"/>
+                </svg>
+              </button>
+              <button class="edit-action-btn" id="redoBtn" onclick="handleRedo()" disabled>
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M15 15l6-6m0 0l-6-6m6 6H9a6 6 0 000 12h3"/>
+                </svg>
+              </button>
+            </div>
+          </div>
+          <div class="object-strip" id="objectStrip">
+            <!-- Objects populated by JS -->
+          </div>
+        </div>
+
+        <!-- Photo Mode Content -->
+        <div class="photo-content">
+        </div>
+      </div>
+
+      <!-- Action Bar (Photo mode only) -->
+      <div class="action-bar hidden" id="actionBar">
+        <div class="action-spacer"></div>
+        <button class="capture-button" onclick="handleCapture()"></button>
+        <button class="gallery-button" onclick="showToast('Opening gallery...')">
+          <div class="gallery-placeholder">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M2.25 15.75l5.159-5.159a2.25 2.25 0 013.182 0l5.159 5.159m-1.5-1.5l1.409-1.409a2.25 2.25 0 013.182 0l2.909 2.909m-18 3.75h16.5a1.5 1.5 0 001.5-1.5V6a1.5 1.5 0 00-1.5-1.5H3.75A1.5 1.5 0 002.25 6v12a1.5 1.5 0 001.5 1.5zm10.5-11.25h.008v.008h-.008V8.25zm.375 0a.375.375 0 11-.75 0 .375.375 0 01.75 0z"/>
+            </svg>
+          </div>
+        </button>
+      </div>
+
+      <!-- Mode Switcher -->
+      <div class="mode-switcher">
+        <div class="mode-switcher-track">
+          <button class="mode-option active" data-mode="place" onclick="setMode('place')">Place</button>
+          <button class="mode-option" data-mode="photo" onclick="setMode('photo')">Photo</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Category Modal -->
+  <div class="category-modal" id="categoryModal">
+    <div class="category-modal-header">
+      <span class="category-modal-title">Categories</span>
+      <button class="category-modal-close" onclick="closeCategoryModal()">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M6 18L18 6M6 6l12 12"/>
+        </svg>
+      </button>
+    </div>
+    <div class="category-list" id="categoryList">
+      <!-- Categories populated by JS -->
+    </div>
+  </div>
+
+  <!-- Toast -->
+  <div class="toast" id="toast"></div>
+
+  <script>
+    // Sample catalog data (mimics structure from catalog.json)
+    const catalog = {
+      'Vehicles': [
+        { id: 'car', icon: '🚗', label: 'Car' },
+        { id: 'suv', icon: '🚙', label: 'SUV' },
+        { id: 'taxi', icon: '🚕', label: 'Taxi' },
+        { id: 'bus', icon: '🚌', label: 'Bus' },
+        { id: 'truck', icon: '🚚', label: 'Truck' },
+        { id: 'motorcycle', icon: '🏍️', label: 'Motorcycle' },
+        { id: 'bicycle', icon: '🚲', label: 'Bicycle' },
+        { id: 'scooter', icon: '🛴', label: 'Scooter' },
+      ],
+      'People': [
+        { id: 'pedestrian', icon: '🚶', label: 'Walking' },
+        { id: 'runner', icon: '🏃', label: 'Running' },
+        { id: 'worker', icon: '👷', label: 'Worker' },
+        { id: 'standing', icon: '🧍', label: 'Standing' },
+        { id: 'cyclist', icon: '🚴', label: 'Cyclist' },
+      ],
+      'Dividers': [
+        { id: 'bollard', icon: '🚧', label: 'Bollard' },
+        { id: 'cone', icon: '🔶', label: 'Cone' },
+        { id: 'barrier', icon: '⬛', label: 'Barrier' },
+        { id: 'planter', icon: '🌳', label: 'Planter' },
+        { id: 'bench', icon: '🪑', label: 'Bench' },
+      ],
+      'Signs': [
+        { id: 'stop', icon: '🛑', label: 'Stop' },
+        { id: 'yield', icon: '⚠️', label: 'Yield' },
+        { id: 'parking', icon: '🅿️', label: 'Parking' },
+        { id: 'speed', icon: '🚸', label: 'Speed' },
+      ],
+      'Street Furniture': [
+        { id: 'streetlamp', icon: '🏮', label: 'Lamp' },
+        { id: 'trashcan', icon: '🗑️', label: 'Trash Can' },
+        { id: 'mailbox', icon: '📮', label: 'Mailbox' },
+        { id: 'hydrant', icon: '🧯', label: 'Hydrant' },
+      ],
+      'Vegetation': [
+        { id: 'tree', icon: '🌳', label: 'Tree' },
+        { id: 'bush', icon: '🌿', label: 'Bush' },
+        { id: 'flowers', icon: '🌸', label: 'Flowers' },
+        { id: 'palm', icon: '🌴', label: 'Palm' },
+      ],
+    };
+
+    let currentMode = 'place';
+    let currentCategory = 'Vehicles';
+    let selectedObject = null;
+
+    // Simple undo/redo stack for demo
+    let undoStack = [];
+    let redoStack = [];
+
+    // Initialize
+    document.addEventListener('DOMContentLoaded', () => {
+      renderObjects();
+      renderCategories();
+    });
+
+    // Render objects for current category
+    function renderObjects() {
+      const strip = document.getElementById('objectStrip');
+      const objects = catalog[currentCategory] || [];
+
+      strip.innerHTML = objects.map((obj, i) => `
+        <div class="object-item ${selectedObject?.id === obj.id ? 'selected' : ''}"
+             onclick="selectObject('${obj.id}', '${obj.icon}', '${obj.label}')">
+          <span class="icon">${obj.icon}</span>
+          <span class="label">${obj.label}</span>
+        </div>
+      `).join('');
+    }
+
+    // Render category list
+    function renderCategories() {
+      const list = document.getElementById('categoryList');
+      const categories = Object.keys(catalog);
+
+      list.innerHTML = categories.map(cat => `
+        <button class="category-list-item ${cat === currentCategory ? 'selected' : ''}"
+                onclick="selectCategory('${cat}')">
+          <span>${cat}</span>
+          <span class="count">${catalog[cat].length}</span>
+        </button>
+      `).join('');
+    }
+
+    // Select object
+    function selectObject(id, icon, label) {
+      selectedObject = { id, icon, label };
+      renderObjects();
+
+      const indicator = document.getElementById('selectedIndicator');
+      document.getElementById('selectedIcon').textContent = icon;
+      document.getElementById('selectedLabel').textContent = `Tap to place ${label}`;
+      indicator.classList.add('visible');
+
+      setTimeout(() => {
+        indicator.classList.remove('visible');
+      }, 2000);
+    }
+
+    // Handle tap on AR view to place selected object
+    function handleARTap() {
+      if (currentMode === 'place' && selectedObject) {
+        placeObject(selectedObject);
+      }
+    }
+
+    // Select category
+    function selectCategory(category) {
+      currentCategory = category;
+      document.getElementById('currentCategory').textContent = category;
+      selectedObject = null;
+      renderObjects();
+      renderCategories();
+      closeCategoryModal();
+    }
+
+    // Mode switching
+    function setMode(mode) {
+      currentMode = mode;
+
+      // Update mode buttons
+      document.querySelectorAll('.mode-option').forEach(btn => {
+        btn.classList.toggle('active', btn.dataset.mode === mode);
+      });
+
+      // Update content area
+      document.getElementById('modeContent').dataset.mode = mode;
+
+      // Show/hide action bar based on mode
+      const actionBar = document.getElementById('actionBar');
+      if (mode === 'photo') {
+        actionBar.classList.remove('hidden');
+      } else {
+        actionBar.classList.add('hidden');
+      }
+    }
+
+    // Undo/Redo handlers
+    function handleUndo() {
+      if (undoStack.length > 0) {
+        const action = undoStack.pop();
+        redoStack.push(action);
+        showToast(`Undo: removed ${action.label}`);
+        updateUndoRedoButtons();
+      }
+    }
+
+    function handleRedo() {
+      if (redoStack.length > 0) {
+        const action = redoStack.pop();
+        undoStack.push(action);
+        showToast(`Redo: restored ${action.label}`);
+        updateUndoRedoButtons();
+      }
+    }
+
+    function updateUndoRedoButtons() {
+      document.getElementById('undoBtn').disabled = undoStack.length === 0;
+      document.getElementById('redoBtn').disabled = redoStack.length === 0;
+    }
+
+    // Simulate placing an object (adds to undo stack)
+    function placeObject(obj) {
+      undoStack.push(obj);
+      redoStack = []; // Clear redo stack on new action
+      updateUndoRedoButtons();
+      showToast(`Placed ${obj.label}`);
+    }
+
+    function toggleFlash() {
+      const btn = document.getElementById('flashBtn');
+      btn.classList.toggle('active');
+      showToast(btn.classList.contains('active') ? 'Flash on' : 'Flash off');
+    }
+
+    function handleCapture() {
+      showToast('Photo captured!');
+    }
+
+    // Category modal
+    function openCategoryModal() {
+      document.getElementById('categoryModal').classList.add('open');
+    }
+
+    function closeCategoryModal() {
+      document.getElementById('categoryModal').classList.remove('open');
+    }
+
+    // Toast
+    function showToast(message) {
+      const toast = document.getElementById('toast');
+      toast.textContent = message;
+      toast.classList.add('visible');
+
+      setTimeout(() => {
+        toast.classList.remove('visible');
+      }, 1500);
+    }
+
+    // Swipe handling for mode switcher (basic)
+    let touchStartX = 0;
+    const modeSwitcher = document.querySelector('.mode-switcher');
+
+    modeSwitcher.addEventListener('touchstart', (e) => {
+      touchStartX = e.touches[0].clientX;
+    });
+
+    modeSwitcher.addEventListener('touchend', (e) => {
+      const touchEndX = e.changedTouches[0].clientX;
+      const diff = touchStartX - touchEndX;
+
+      if (Math.abs(diff) > 50) {
+        if (diff > 0 && currentMode === 'place') {
+          setMode('photo');
+        } else if (diff < 0 && currentMode === 'photo') {
+          setMode('place');
+        }
+      }
+    });
+  </script>
+</body>
+</html>
