@@ -18,7 +18,8 @@ export const ASSET_TYPES = {
   IMAGE: 'image',
   VIDEO: 'video',
   SPLAT: 'splat',
-  MESH: 'mesh'
+  MESH: 'mesh',
+  GEOJSON: 'geojson'
 };
 
 /**
@@ -31,7 +32,8 @@ export const ASSET_CATEGORIES = {
   SCREENSHOT: 'screenshot',
   UPLOAD: 'upload',
   SPLAT_SOURCE: 'splat-source',
-  SPLAT_OUTPUT: 'splat-output'
+  SPLAT_OUTPUT: 'splat-output',
+  PLACEMARK: 'placemark'
 };
 
 /**
@@ -43,7 +45,8 @@ export const ASSET_TYPE_FOLDERS = {
   [ASSET_TYPES.IMAGE]: 'images',
   [ASSET_TYPES.VIDEO]: 'videos',
   [ASSET_TYPES.SPLAT]: 'splats',
-  [ASSET_TYPES.MESH]: 'meshes'
+  [ASSET_TYPES.MESH]: 'meshes',
+  [ASSET_TYPES.GEOJSON]: 'geojsons'
 };
 
 /**

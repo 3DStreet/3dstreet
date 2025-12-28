@@ -153,12 +153,15 @@ class GalleryServiceV2 {
       }
 
       // Determine file extension and MIME type
-      // For video assets, force video MIME type since blob type from data URI
+      // For video and geojson assets, force MIME type since blob type from data URI
       // conversion can be unreliable (may incorrectly report image/png)
       let mimeType;
       if (type === ASSET_TYPES.VIDEO) {
         // Force video MIME type - trust the caller's asset type over blob.type
         mimeType = 'video/mp4';
+      } else if (type === ASSET_TYPES.GEOJSON) {
+        // Force GeoJSON MIME type for geospatial data
+        mimeType = 'application/geo+json';
       } else {
         // For images, use blob type if available, otherwise default to image/jpeg
         mimeType = blob.type && blob.type !== '' ? blob.type : 'image/jpeg';
@@ -496,7 +499,9 @@ class GalleryServiceV2 {
       'video/webm': 'webm',
       'video/quicktime': 'mov',
       'model/gltf-binary': 'glb',
-      'application/octet-stream': 'ply'
+      'application/octet-stream': 'ply',
+      'application/geo+json': 'geojson',
+      'application/json': 'json'
     };
 
     return mimeMap[mimeType] || 'bin';

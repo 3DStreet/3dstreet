@@ -15,15 +15,17 @@ const GallerySidebar = ({
   onUseForOutpaint,
   onUseForGenerator,
   onUseForVideo,
-  onNotification
+  onNotification,
+  onItemClick: externalOnItemClick,
+  filterType
 }) => {
   const {
-    items,
+    items: allItems,
     isLoading,
     isLoggedIn,
     page,
     pageSize,
-    totalPages,
+    // totalPages from hook not used - we recalculate based on filtered items
     setPage,
     setPageSize,
     removeItem,
@@ -42,7 +44,13 @@ const GallerySidebar = ({
     reloadItems
   } = useGallery();
 
-  const [isCollapsed, setIsCollapsed] = useState(true);
+  // Filter items by type if filterType is provided
+  const items = filterType
+    ? allItems.filter((item) => item.type === filterType)
+    : allItems;
+  const totalPages = Math.max(1, Math.ceil(items.length / pageSize));
+
+  const [isCollapsed, setIsCollapsed] = useState(!externalOnItemClick);
   const [selectedItem, setSelectedItem] = useState(null);
 
   // Don't render the gallery if user is not logged in
@@ -76,7 +84,13 @@ const GallerySidebar = ({
   };
 
   const handleItemClick = (item) => {
-    setSelectedItem(item);
+    if (externalOnItemClick) {
+      // External handler provided - call it instead of opening modal
+      externalOnItemClick(item);
+    } else {
+      // Default behavior - open modal
+      setSelectedItem(item);
+    }
   };
 
   const handleCloseModal = () => {

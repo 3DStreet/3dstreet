@@ -18,18 +18,24 @@ service firebase.storage {
     }
 
     // Gallery asset files storage rules (all nested paths)
-    // Handles: images/, videos/, models/splats/{taskId}/, etc.
+    // Handles: images/, videos/, splats/, meshes/, geojsons/, etc.
     match /users/{userId}/assets/{allPaths=**} {
       // Users can read their own asset files
       allow read: if request.auth != null && request.auth.uid == userId;
 
       // Users can write (upload/update/delete) their own asset files
       // With size limit (50MB) and content type validation
-      // Note: application/octet-stream is needed for PLY files (splats)
+      // Allowed content types:
+      // - image/* for images
+      // - video/* for videos
+      // - model/* for 3D models
+      // - application/octet-stream for PLY files (splats)
+      // - application/geo+json for GeoJSON files (Placemark)
+      // - application/json for JSON files
       allow write: if request.auth != null
         && request.auth.uid == userId
         && request.resource.size < 50 * 1024 * 1024
-        && request.resource.contentType.matches('image/.*|video/.*|model/.*|application/octet-stream');
+        && request.resource.contentType.matches('image/.*|video/.*|model/.*|application/octet-stream|application/geo\\+json|application/json');
     }
   }
 }

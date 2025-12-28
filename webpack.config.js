@@ -32,6 +32,10 @@ module.exports = {
     bollardbuddy: {
       import: './src/bollardbuddy/index.js',
       filename: 'bollardbuddy.js'
+    },
+    'placemark-islands': {
+      import: './src/placemark-islands/index.js',
+      filename: 'placemark-islands.js'
     }
   },
   output: {

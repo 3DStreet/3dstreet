@@ -55,7 +55,7 @@ service cloud.firestore {
       allow create: if request.auth != null
         && request.auth.uid == userId
         && request.resource.data.userId == userId
-        && request.resource.data.type in ['image', 'video', 'splat', 'mesh']
+        && request.resource.data.type in ['image', 'video', 'splat', 'mesh', 'geojson']
         && request.resource.data.category is string
         && request.resource.data.storagePath is string
         && request.resource.data.storagePath.matches('^users/' + userId + '/.*');
