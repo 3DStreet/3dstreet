@@ -914,6 +914,19 @@ class GeneratorTabBase {
         showSeed = false;
         this.elements.promptUpsamplingGroup.classList.add('hidden');
         break;
+
+      // fal.ai models
+      case 'fal-flux-2-edit':
+      case 'fal-flux-2-lora-sfmta':
+        showDimensions = false;
+        showAspectRatio = false;
+        showRaw = false;
+        showSteps = false;
+        showGuidance = false;
+        showSafetyTolerance = false;
+        showSeed = false;
+        this.elements.promptUpsamplingGroup.classList.add('hidden');
+        break;
     }
 
     // Apply visibility
@@ -1212,11 +1225,22 @@ class GeneratorTabBase {
     }
 
     const model = this.selectedModel;
-    const isReplicateModel = REPLICATE_MODELS[model];
+    const modelConfig = REPLICATE_MODELS[model];
 
-    if (isReplicateModel) {
+    // Check if this is a fal.ai model
+    if (modelConfig && modelConfig.type === 'fal') {
+      this.generateFalImage(model);
+      return;
+    }
+
+    // Check if this is a Replicate model
+    if (modelConfig && modelConfig.type === 'replicate') {
       this.generateReplicateImage(model);
-    } else {
+      return;
+    }
+
+    // Legacy BFL model handling
+    if (!modelConfig) {
       const params = this.buildRequestParams(model);
 
       if (!params) {
@@ -1367,7 +1391,10 @@ class GeneratorTabBase {
         });
 
         // Check if user just used their last gen token (track token_limit_reached)
-        if (result.data.remainingTokens !== undefined && result.data.remainingTokens === 0) {
+        if (
+          result.data.remainingTokens !== undefined &&
+          result.data.remainingTokens === 0
+        ) {
           posthog.capture('token_limit_reached', {
             token_type: 'gen',
             source: 'generator'
@@ -1380,6 +1407,133 @@ class GeneratorTabBase {
       }
     } catch (error) {
       console.error('Error generating Replicate image:', error);
+      this.stopTimer();
+
+      let errorMessage = 'Failed to generate image';
+      if (error.code === 'unauthenticated') {
+        errorMessage = 'Please sign in to use image generation';
+      } else if (error.code === 'resource-exhausted') {
+        errorMessage =
+          'No tokens available. Please purchase more tokens or upgrade to Pro.';
+      } else if (error.message) {
+        errorMessage = error.message;
+      }
+
+      FluxUI.showNotification(errorMessage, 'error');
+      this.toggleLoading(false);
+    }
+  }
+
+  /**
+   * Generate image using fal.ai API
+   */
+  async generateFalImage(model) {
+    const modelConfig = REPLICATE_MODELS[model];
+    if (!modelConfig) {
+      FluxUI.showNotification('Invalid model selected', 'error');
+      return;
+    }
+
+    // For modify tab, check image requirement
+    if (this.config.requiresSourceImage && !this.imagePromptData) {
+      FluxUI.showNotification(
+        'Source image is required for this model',
+        'error'
+      );
+      return;
+    }
+
+    this.toggleLoading(true);
+    this.startTimer(model);
+
+    try {
+      const generateFalImage = httpsCallable(functions, 'generateFalImage', {
+        timeout: 300000
+      });
+
+      const prompt =
+        this.elements.promptInput.value.trim() || modelConfig.prompt;
+
+      // Prepare input image if available
+      let inputImageSrc = null;
+      if (this.imagePromptData) {
+        inputImageSrc = this.imagePromptData.startsWith('data:')
+          ? this.imagePromptData
+          : `data:image/jpeg;base64,${this.imagePromptData}`;
+
+        // Convert to JPEG with 90% quality to reduce upload time
+        if (inputImageSrc.startsWith('data:image/')) {
+          try {
+            inputImageSrc = await this.convertToJpeg(inputImageSrc, 0.9);
+          } catch (error) {
+            console.warn('Failed to convert to JPEG, using original:', error);
+          }
+        }
+      }
+
+      const result = await generateFalImage({
+        prompt: prompt,
+        input_image: inputImageSrc,
+        model_id: model,
+        guidance_scale: 2.5,
+        num_inference_steps: 28,
+        scene_id: null,
+        source: 'generator'
+      });
+
+      if (result.data.success) {
+        const imageUrl = result.data.image_url;
+
+        this.currentParams = {
+          model: model,
+          model_name: modelConfig.name,
+          prompt: prompt,
+          timestamp: new Date().toISOString()
+        };
+
+        this.currentImageUrl = imageUrl;
+        this.displayImage(imageUrl);
+        this.saveToGallery(imageUrl);
+        this.stopTimer();
+        this.toggleLoading(false);
+
+        if (result.data.remainingTokens !== undefined) {
+          FluxUI.showNotification(
+            `Image generated successfully! ${result.data.remainingTokens} gen tokens remaining. (${modelConfig.name})`,
+            'success'
+          );
+        } else {
+          FluxUI.showNotification(
+            `Image generated successfully! (${modelConfig.name})`,
+            'success'
+          );
+        }
+
+        // Funnel event: ai_render_used (for conversion funnel analysis)
+        posthog.capture('ai_render_used', {
+          token_type: 'gen',
+          model: model,
+          source: 'generator',
+          is_pro_user: window.authState?.currentUser?.isPro || false
+        });
+
+        // Check if user just used their last gen token (track token_limit_reached)
+        if (
+          result.data.remainingTokens !== undefined &&
+          result.data.remainingTokens === 0
+        ) {
+          posthog.capture('token_limit_reached', {
+            token_type: 'gen',
+            source: 'generator'
+          });
+        }
+
+        window.dispatchEvent(new CustomEvent('tokenCountChanged'));
+      } else {
+        throw new Error('Failed to generate image');
+      }
+    } catch (error) {
+      console.error('Error generating fal.ai image:', error);
       this.stopTimer();
 
       let errorMessage = 'Failed to generate image';

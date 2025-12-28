@@ -90,6 +90,36 @@ export const REPLICATE_MODELS = {
     tokenCost: 1
   },
 
+  // fal.ai Models
+  'fal-flux-2-edit': {
+    name: 'Flux 2 Edit',
+    type: 'fal',
+    group: 'best-quality',
+    logo: '/ui_assets/model-black-forest-labs.png',
+    endpoint: 'fal-ai/flux-2/edit',
+    prompt: 'transform this image into a photorealistic aerial satellite view',
+    estimatedTime: 30,
+    includeIn4x: false,
+    tokenCost: 3
+  },
+  'fal-flux-2-lora-sfmta': {
+    name: 'Flux 2 SFMTA Striping',
+    type: 'fal',
+    group: 'best-quality',
+    logo: '/ui_assets/model-black-forest-labs.png',
+    endpoint: 'fal-ai/flux-2/lora/edit',
+    loras: [
+      {
+        path: 'https://v3b.fal.media/files/b/0a87f612/4HKUTB4LNJycc4hyZOkr4_pytorch_lora_weights.safetensors',
+        scale: 1
+      }
+    ],
+    prompt: 'turn this striping drawing into a satellite view',
+    estimatedTime: 35,
+    includeIn4x: false,
+    tokenCost: 3
+  },
+
   // BFL Models - kept for backwards compatibility but hidden from UI
   'flux-dev': {
     name: 'Flux Dev',
