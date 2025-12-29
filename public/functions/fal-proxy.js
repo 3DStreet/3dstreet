@@ -92,7 +92,16 @@ const generateFalImage = functions
     }
 
     const userId = context.auth.uid;
-    const { prompt, input_image, model_id, scene_id, source = 'generator', guidance_scale = 2.5, num_inference_steps = 28 } = data;
+    const {
+      prompt,
+      input_image,
+      model_id,
+      scene_id,
+      source = 'generator',
+      guidance_scale = 2.5,
+      num_inference_steps = 28,
+      image_size = { width: 1600, height: 900 } // 16:9 widescreen default
+    } = data;
 
     // Get the model configuration
     const modelConfig = REPLICATE_MODELS[model_id];
@@ -176,6 +185,7 @@ const generateFalImage = functions
       const falPayload = {
         prompt: prompt,
         image_urls: [imageUrl],
+        image_size: image_size, // Preset string or {width, height} object
         guidance_scale: guidance_scale,
         num_inference_steps: num_inference_steps,
         enable_safety_checker: true,

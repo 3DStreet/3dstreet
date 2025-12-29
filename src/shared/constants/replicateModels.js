@@ -114,7 +114,8 @@ export const REPLICATE_MODELS = {
         scale: 1
       }
     ],
-    prompt: 'turn this striping drawing into a satellite view',
+    prompt:
+      'Generate a top-down satellite view from this sfmta style striping drawing',
     estimatedTime: 35,
     includeIn4x: false,
     tokenCost: 3

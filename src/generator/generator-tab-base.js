@@ -418,6 +418,15 @@ class GeneratorTabBase {
         if (this.modelSelectorInstance) {
           this.modelSelectorInstance.update({ value: modelId });
         }
+        // Update prompt input with model's default prompt if current prompt is empty
+        const modelConfig = REPLICATE_MODELS[modelId];
+        if (
+          modelConfig?.prompt &&
+          this.elements.promptInput &&
+          !this.elements.promptInput.value.trim()
+        ) {
+          this.elements.promptInput.value = modelConfig.prompt;
+        }
       },
       disabled: false
     });
@@ -1475,6 +1484,7 @@ class GeneratorTabBase {
         prompt: prompt,
         input_image: inputImageSrc,
         model_id: model,
+        image_size: { width: 1600, height: 900 }, // Max resolution (2048 limit per dimension)
         guidance_scale: 2.5,
         num_inference_steps: 28,
         scene_id: null,
