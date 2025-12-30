@@ -7,6 +7,7 @@ const { getGeoidHeight } = require('./geoid-height.js');
 const { generateReplicateImage, generateReplicateVideo } = require('./replicate.js');
 const { checkAndRefillImageTokens, checkUserProStatus } = require('./token-management.js');
 const { bflProxyImage, bflApiProxy } = require('./bfl-proxy.js');
+const { generateFalImage } = require('./fal-proxy.js');
 const { sendScheduledEmails, triggerScheduledEmails } = require('./scheduledEmails.js');
 const { auditUserSubscriptions, auditUserSubscriptionsHttp } = require('./utilities/user-audit.js');
 
@@ -27,6 +28,9 @@ exports.checkUserProStatus = checkUserProStatus;
 // Re-export the BFL proxy functions
 exports.bflProxyImage = bflProxyImage;
 exports.bflApiProxy = bflApiProxy;
+
+// Re-export the fal.ai proxy function
+exports.generateFalImage = generateFalImage;
 
 // Re-export the scheduled email functions
 exports.sendScheduledEmails = sendScheduledEmails;
