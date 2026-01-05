@@ -37,15 +37,24 @@ const AIModelSelector = ({
   value,
   onChange,
   disabled = false,
-  mode = 'image' // 'image' or 'video'
+  mode = 'image', // 'image' or 'video'
+  hasSourceImage = true // When false, filter out models that require source images (e.g., fal.ai edit models)
 }) => {
   const [isOpen, setIsOpen] = useState(false);
 
   // Select appropriate models and groups based on mode
   const models = mode === 'video' ? VIDEO_MODELS : REPLICATE_MODELS;
   const modelGroups = mode === 'video' ? VIDEO_MODEL_GROUPS : MODEL_GROUPS;
-  const groupedModels =
+  const rawGroupedModels =
     mode === 'video' ? getGroupedVideoModels() : getGroupedModels();
+
+  // Filter out models that require source images if hasSourceImage is false
+  const groupedModels = {};
+  Object.entries(rawGroupedModels).forEach(([groupKey, groupModels]) => {
+    groupedModels[groupKey] = hasSourceImage
+      ? groupModels
+      : groupModels.filter((model) => !model.requiresSourceImage);
+  });
 
   const selectedModelConfig = models[value];
 
@@ -137,9 +146,6 @@ const AIModelSelector = ({
                     </div>
                   </DropdownMenu.Item>
                 ))}
-                {groupKey !== sortedGroups[sortedGroups.length - 1][0] && (
-                  <DropdownMenu.Separator className={styles.separator} />
-                )}
               </div>
             );
           })}

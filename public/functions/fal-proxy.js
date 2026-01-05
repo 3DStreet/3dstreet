@@ -137,13 +137,14 @@ const generateFalImage = functions
       throw new functions.https.HttpsError('invalid-argument', 'Missing required prompt.');
     }
 
+    // fal.ai edit models require an input image
     if (!input_image) {
-      console.error(`Missing required input image for edit model`);
-      throw new functions.https.HttpsError('invalid-argument', 'Missing required input image.');
+      console.error(`Missing required input image for fal.ai edit model: ${model_id}`);
+      throw new functions.https.HttpsError('invalid-argument', 'This model requires a source image. Please use the Modify tab or upload an image.');
     }
 
     try {
-      let imageUrl = input_image;
+      let imageUrl = null;
 
       // If input_image is a base64 data URL, upload it to Firebase Storage first
       if (input_image.startsWith('data:image/')) {
@@ -179,6 +180,9 @@ const generateFalImage = functions
         // Get the public URL
         imageUrl = `https://storage.googleapis.com/${bucket.name}/temp/${filename}`;
         console.log(`Uploaded input image to: ${imageUrl}`);
+      } else {
+        // input_image is already a URL
+        imageUrl = input_image;
       }
 
       // Build the fal.ai request payload

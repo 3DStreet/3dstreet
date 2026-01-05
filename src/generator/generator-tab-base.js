@@ -411,6 +411,7 @@ class GeneratorTabBase {
 
     this.modelSelectorInstance = mountModelSelector(container, {
       value: this.selectedModel,
+      hasSourceImage: this.config.showImagePromptUI, // Hide fal models on create tab (no source image)
       onChange: (modelId) => {
         this.selectedModel = modelId;
         this.updateModelParams();
