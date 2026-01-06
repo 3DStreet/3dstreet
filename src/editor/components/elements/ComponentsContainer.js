@@ -70,6 +70,29 @@ export default class ComponentsContainer extends React.Component {
             </div>
           </div>
         )}
+        {entity.hasAttribute('data-temporary-file') && (
+          <div className="details">
+            <div className="propertyRow" style={{ paddingRight: '10px' }}>
+              <div className="rounded bg-yellow-50 p-2 text-gray-600">
+                <div className="mb-1 font-semibold uppercase">
+                  ⚠️ Temporary Model
+                </div>
+                <p>
+                  This drag-and-drop model is only available during this session
+                  and will not be saved when you reload the scene.{' '}
+                  <a
+                    href="https://www.3dstreet.com/blog/2025/02/06/creating-custom-models-with-ai-for-creative-street-scenes/#4-optimize-for-web-use"
+                    target="_blank"
+                    rel="noreferrer"
+                    style={{ textDecoration: 'underline' }}
+                  >
+                    See instructions for saving imported glTF files.
+                  </a>
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
         <div className="advancedComponentsContainer">
           <AdvancedComponents entity={entity} />
         </div>

@@ -14,7 +14,7 @@ import {
   Copy32Icon,
   Edit24Icon,
   TrashIcon
-} from '../../icons';
+} from '@shared/icons';
 import { Button } from '../elements';
 import Events from '../../lib/Events';
 
@@ -47,6 +47,30 @@ const StreetSegmentSidebar = ({ entity }) => {
                 isSingle={false}
                 entity={entity}
               />
+              {component.data['type'] === 'building' && (
+                <>
+                  <PropertyRow
+                    key="variant"
+                    name="variant"
+                    label="Building Variant"
+                    schema={component.schema['variant']}
+                    data={component.data['variant']}
+                    componentname={componentName}
+                    isSingle={false}
+                    entity={entity}
+                  />
+                  <PropertyRow
+                    key="side"
+                    name="side"
+                    label="Side"
+                    schema={component.schema['side']}
+                    data={component.data['side']}
+                    componentname={componentName}
+                    isSingle={false}
+                    entity={entity}
+                  />
+                </>
+              )}
               <div className="sidepanelContent">
                 <div id="sidebar-buttons-small">
                   <Button
@@ -91,16 +115,18 @@ const StreetSegmentSidebar = ({ entity }) => {
                 isSingle={false}
                 entity={entity}
               />
-              <PropertyRow
-                key="direction"
-                name="direction"
-                label="Direction"
-                schema={component.schema['direction']}
-                data={component.data['direction']}
-                componentname={componentName}
-                isSingle={false}
-                entity={entity}
-              />
+              {component.data['type'] !== 'building' && (
+                <PropertyRow
+                  key="direction"
+                  name="direction"
+                  label="Direction"
+                  schema={component.schema['direction']}
+                  data={component.data['direction']}
+                  componentname={componentName}
+                  isSingle={false}
+                  entity={entity}
+                />
+              )}
               {/* props for street-segment but formatted as a fake 'surface' component */}
               <div className="collapsible component">
                 <div className="static">

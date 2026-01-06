@@ -46,7 +46,12 @@ class OrientedBoxHelper extends THREE.BoxHelper {
     // If there's any rotation the box will have the wrong size.
     // It undoes the local entity rotation and then restores so box has the expected size.
     // We also undo the parent world rotation.
-    if (this.object !== undefined) {
+
+    // Skip the position/rotation zeroing for splat entities as it interferes with
+    // how Spark's SplatMesh handles matrix updates
+    const isSplatEntity = this.object?.el?.hasAttribute('splat');
+
+    if (this.object !== undefined && !isSplatEntity) {
       auxEuler.copy(this.object.rotation);
       auxLocalPosition.copy(this.object.position);
       this.object.rotation.set(0, 0, 0);
@@ -72,9 +77,22 @@ class OrientedBoxHelper extends THREE.BoxHelper {
     // This is the super.update code with an additional _box.expandByPoint(this.object.position)
     // for a group of several models to include the group origin.
     if (this.object !== undefined) {
-      _box.setFromObject(this.object);
-      if (!this.object.el?.getObject3D('mesh')) {
-        _box.expandByPoint(this.object.position);
+      // For splat entities, use the splat component's getBoundingBox method
+      if (isSplatEntity) {
+        const splatComponent = this.object.el.components['splat'];
+        const splatBox = splatComponent?.getBoundingBox?.();
+        if (splatBox) {
+          _box.copy(splatBox);
+          // Transform the box to world space
+          _box.applyMatrix4(this.object.matrixWorld);
+        } else {
+          _box.setFromObject(this.object);
+        }
+      } else {
+        _box.setFromObject(this.object);
+        if (!this.object.el?.getObject3D('mesh')) {
+          _box.expandByPoint(this.object.position);
+        }
       }
     }
 
@@ -116,8 +134,8 @@ class OrientedBoxHelper extends THREE.BoxHelper {
     this.geometry.computeBoundingSphere();
     // end of super.update();
 
-    // Restore rotations.
-    if (this.object !== undefined) {
+    // Restore rotations (skip for splat entities since we didn't modify them).
+    if (this.object !== undefined && !isSplatEntity) {
       this.object.parent.matrixWorld.compose(
         auxPosition,
         auxQuaternion,
@@ -125,6 +143,10 @@ class OrientedBoxHelper extends THREE.BoxHelper {
       );
       this.object.rotation.copy(auxEuler);
       this.object.position.copy(auxLocalPosition);
+    }
+
+    // Update helper position for all objects
+    if (this.object !== undefined) {
       this.object.getWorldQuaternion(this.quaternion);
       this.object.getWorldPosition(this.position);
       this.updateMatrix();

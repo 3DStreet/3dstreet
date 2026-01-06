@@ -5,6 +5,7 @@
   "main": "dist/3dstreet-editor.js",
   "scripts": {
     "start": "webpack serve --config webpack.config.js --open --progress",
+    "start:tunnel": "webpack serve --config webpack.config.js --progress & cloudflared tunnel --url http://localhost:3333",
     "start:prod": "npm run dist && npm run prefirebase && serve public -l 3333",
     "dist": "webpack --config webpack.prod.config.js --progress",
     "dist:staging": "cross-env DEPLOY_ENV=development webpack --config webpack.prod.config.js --progress",
@@ -12,12 +13,20 @@
     "lint:fix": "eslint --ext .js,.jsx --fix src",
     "prefirebase": "cp -R assets public && cp -R ui_assets public && cp index.html public && cp -R dist public",
     "prepare": "husky",
-    "test": "nyc --reporter=lcov --reporter=text mocha --recursive --full-trace test/*.test.js",
-    "test:watch": "mocha --recursive --full-trace --watch test/*.test.js",
+    "test": "npm run test:core && npm run test:modern",
+    "test:core": "nyc --reporter=lcov --reporter=text mocha --recursive --full-trace 'test/core/**/*.test.js'",
+    "test:core:watch": "mocha --recursive --full-trace --watch 'test/core/**/*.test.js'",
+    "test:modern": "vitest run",
+    "test:modern:watch": "vitest",
+    "test:modern:ui": "vitest --ui",
+    "test:modern:coverage": "vitest run --coverage",
+    "test:generator": "vitest run test/generator",
     "prettier": "prettier --write 'src/**/*.js' 'src/**/*.jsx' 'src/**/*.scss'",
     "deploy": "npm run dist && npm run prefirebase && cd public && firebase use dstreet-305604 && firebase deploy --only hosting:app3dstreet",
     "deploy:staging": "npm run dist:staging && npm run prefirebase && cd public && firebase use dev-3dstreet && firebase deploy --only hosting:dev-3dstreet",
-    "emulator": "npm run dist:staging && npm run prefirebase && cd public && firebase emulators:start"
+    "emulator": "npm run dist:staging && npm run prefirebase && cd public && firebase emulators:start",
+    "storybook": "storybook dev -p 6006",
+    "build-storybook": "storybook build"
   },
   "repository": "3dstreet/3dstreet",
   "author": "kieran.farr@gmail.com",
@@ -31,6 +40,9 @@
     "@gltf-transform/functions": "^3.10.0",
     "@img-comparison-slider/react": "^8.0.2",
     "@react-google-maps/api": "^2.19.3",
+    "@sentry/react": "^10.15.0",
+    "@sparkjsdev/spark": "^0.1.10",
+    "@stripe/react-stripe-js": "^4.0.2",
     "@stripe/stripe-js": "^3.4.1",
     "3d-tiles-renderer": "^0.4.10",
     "aframe-atlas-uvs-component": "^3.0.0",
@@ -44,6 +56,7 @@
     "firebase-functions": "^5.0.1",
     "gl-matrix": "^3.4.3",
     "jsoncrush": "^1.1.8",
+    "jszip": "^3.10.1",
     "lodash-es": "^4.17.21",
     "nanoid": "^5.0.7",
     "posthog-js": "^1.161.5",
@@ -61,7 +74,16 @@
   "devDependencies": {
     "@babel/eslint-parser": "^7.24.5",
     "@babel/preset-react": "^7.23.3",
+    "@storybook/addon-docs": "^9.1.15",
+    "@storybook/addon-onboarding": "^9.1.15",
+    "@storybook/addon-webpack5-compiler-swc": "^4.0.1",
+    "@storybook/react-webpack5": "^9.1.15",
+    "@testing-library/jest-dom": "^6.9.1",
+    "@testing-library/react": "^16.3.0",
+    "@testing-library/user-event": "^14.6.1",
     "@types/uuid": "^9.0.0",
+    "@vitest/coverage-v8": "^4.0.7",
+    "@vitest/ui": "^4.0.7",
     "approvals": "^7.1.0",
     "autoprefixer": "^10.4.20",
     "babel-loader": "^9.1.3",
@@ -74,8 +96,9 @@
     "eslint-config-standard": "^17.1.0",
     "eslint-plugin-react": "^7.33.1",
     "eslint-plugin-react-hooks": "^4.6.0",
+    "eslint-plugin-storybook": "^9.1.15",
     "husky": "^9.1.7",
-    "jsdom": "^24.0.0",
+    "jsdom": "^24.1.3",
     "jsdom-global": "^3.0.2",
     "lint-staged": "^15.4.1",
     "mocha": "^10.4.0",
@@ -89,8 +112,10 @@
     "sass": "^1.69.5",
     "sass-loader": "^13.3.2",
     "serve": "^14.2.1",
+    "storybook": "^9.1.15",
     "style-loader": "^3.3.4",
     "tailwindcss": "^3.4.14",
+    "vitest": "^4.0.7",
     "webpack": "^5.91.0",
     "webpack-cli": "^5.1.4",
     "webpack-dev-server": "^5.0.4"
@@ -115,6 +140,11 @@
     ],
     "*.scss": [
       "prettier --write"
+    ]
+  },
+  "eslintConfig": {
+    "extends": [
+      "plugin:storybook/recommended"
     ]
   }
 }

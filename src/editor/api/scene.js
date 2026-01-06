@@ -14,15 +14,15 @@ import {
   where
 } from 'firebase/firestore';
 import { v4 as uuidv4 } from 'uuid';
-import { auth, db, storage } from '../services/firebase';
+import { auth, db, storage } from '@shared/services/firebase';
 import { getDownloadURL, ref, uploadBytes } from 'firebase/storage';
 import { httpsCallable, getFunctions } from 'firebase/functions';
 import posthog from 'posthog-js';
-import { isUserPro } from './user';
+import { isUserPro } from '@shared/auth/api/user';
 
 const sceneRef = collection(db, 'scenes');
 
-const generateSceneId = async (authorId) => {
+const generateSceneId = async (authorId, isFirstScene = false) => {
   // Generate a new UUID
   const newSceneId = uuidv4();
 
@@ -37,13 +37,21 @@ const generateSceneId = async (authorId) => {
 
   posthog.capture('scene_created', {
     scene_id: newSceneId,
-    author_id: authorId
+    author_id: authorId,
+    is_first: isFirstScene
   });
 
   return newSceneId;
 };
 
-const createScene = async (authorId, sceneData, title, version, memory) => {
+const createScene = async (
+  authorId,
+  sceneData,
+  title,
+  version,
+  memory,
+  isFirstScene = false
+) => {
   // Generate a new UUID
   const newSceneId = uuidv4();
   const newSceneDocRef = doc(sceneRef, newSceneId);
@@ -61,7 +69,8 @@ const createScene = async (authorId, sceneData, title, version, memory) => {
   posthog.capture('scene_created', {
     scene_id: newSceneId,
     author_id: authorId,
-    scene_title: title
+    scene_title: title,
+    is_first: isFirstScene
   });
 
   return newSceneId;

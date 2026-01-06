@@ -6,7 +6,7 @@ import {
   CloudSavedIcon,
   CloudSavingIcon,
   CloudNotSavedIcon
-} from '@/editor/icons';
+} from '@shared/icons';
 import debounce from 'lodash-es/debounce';
 import Events from '@/editor/lib/Events';
 import { Tooltip } from 'radix-ui';

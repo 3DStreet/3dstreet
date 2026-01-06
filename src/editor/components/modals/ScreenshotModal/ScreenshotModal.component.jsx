@@ -1,49 +1,29 @@
 import { useEffect, useState } from 'react';
 import styles from './ScreenshotModal.module.scss';
-import Modal from '../Modal.jsx';
+import Modal from '@shared/components/Modal/Modal.jsx';
 import posthog from 'posthog-js';
 import useStore from '@/store';
 import { Button } from '../../elements';
-import { DownloadIcon } from '../../../icons';
+import { DownloadIcon } from '@shared/icons';
 import { takeScreenshotWithOptions } from '../../../api/scene';
 import {
   createSceneSnapshot,
   createSnapshotFromImageUrl,
   setSnapshotAsSceneThumbnail
 } from '../../../api/snapshot';
-import { functions } from '../../../services/firebase';
+import { functions } from '@shared/services/firebase';
 import { useAuthContext } from '../../../contexts';
 import { httpsCallable } from 'firebase/functions';
 import { ImgComparisonSlider } from '@img-comparison-slider/react';
 import 'img-comparison-slider/dist/styles.css';
-import { canUseImageFeature } from '../../../utils/tokens';
+import { canUseImageFeature } from '@shared/utils/tokens';
+import { TokenDisplayInner } from '@shared/auth/components';
+import { galleryServiceV2 } from '@shared/gallery';
+import { REPLICATE_MODELS } from '@shared/constants/replicateModels.js';
+import AIModelSelector from '@shared/components/AIModelSelector';
 
-// Available AI models
-const AI_MODELS = {
-  'kontext-realearth': {
-    name: 'Kontext Real Earth',
-    version: '2af4da47bcb7b55a0705b0de9933701f7607531d763ae889241f827a648c1755',
-    prompt: 'Transform satellite image into high-quality drone shot'
-  },
-  'flux-kontext-pro': {
-    name: 'Flux Kontext Pro',
-    version: 'aa776ca45ce7f7d185418f700df8ec6ca6cb367bfd88e9cd225666c4c179d1d7',
-    prompt:
-      'photorealistic street view, professional photography, high detail, natural lighting, clear and sharp'
-  },
-  'nano-banana': {
-    name: 'Nano Banana',
-    version: 'f0a9d34b12ad1c1cd76269a844b218ff4e64e128ddaba93e15891f47368958a0',
-    prompt:
-      'photorealistic street view, professional photography, high detail, natural lighting, clear and sharp'
-  },
-  'seedream-4': {
-    name: 'Seedream',
-    version: '254faac883c3a411e95cc95d0fb02274a81e388aaa4394b3ce5b7d2a9f7a6569',
-    prompt:
-      'photorealistic street view, professional photography, high detail, natural lighting, clear and sharp'
-  }
-};
+// Available AI models (use shared constants)
+const AI_MODELS = REPLICATE_MODELS;
 
 function ScreenshotModal() {
   const setModal = useStore((state) => state.setModal);
@@ -67,6 +47,33 @@ function ScreenshotModal() {
   const [renderingStates, setRenderingStates] = useState({}); // Track which models are rendering
   const [renderErrors, setRenderErrors] = useState({}); // Track which models had errors
   const [useMixedModels, setUseMixedModels] = useState(true); // Toggle for model mixing
+  const [customPrompt, setCustomPrompt] = useState(''); // Custom prompt text
+  const [showOvertimeWarning, setShowOvertimeWarning] = useState(false); // Show overtime warning for 1x mode
+  const [isClosing, setIsClosing] = useState(false); // Track closing animation
+
+  // Get token cost for the selected model
+  const getTokenCost = (modelKey) => {
+    return AI_MODELS[modelKey]?.tokenCost || 1;
+  };
+
+  // Convert image to JPEG with specified quality
+  const convertToJpeg = (dataUrl, quality = 0.9) => {
+    return new Promise((resolve, reject) => {
+      const img = new Image();
+      img.onload = () => {
+        const canvas = document.createElement('canvas');
+        canvas.width = img.width;
+        canvas.height = img.height;
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(img, 0, 0);
+        // Convert to JPEG with specified quality (0.9 = 90%)
+        const jpegDataUrl = canvas.toDataURL('image/jpeg', quality);
+        resolve(jpegDataUrl);
+      };
+      img.onerror = reject;
+      img.src = dataUrl;
+    });
+  };
 
   // Ensure token profile is loaded when modal opens
   useEffect(() => {
@@ -89,6 +96,8 @@ function ScreenshotModal() {
     setRenderTimers({});
     setRenderingStates({});
     setRenderErrors({});
+    setCustomPrompt('');
+    setShowOvertimeWarning(false);
     // Keep model selection and render mode when resetting
   };
 
@@ -104,22 +113,18 @@ function ScreenshotModal() {
       if (!confirmClose) {
         return;
       }
-    } else if (
-      (aiImageUrl && !showOriginal) ||
-      Object.keys(aiImages).length > 0
-    ) {
-      // Check if there are any unsaved AI renders (1x or 4x)
-      const confirmClose = window.confirm(
-        'You have unsaved AI renders. Are you sure you want to close? The AI renders will be lost.'
-      );
-      if (!confirmClose) {
-        return;
-      }
     }
 
-    // Reset all state when closing
-    resetModalState();
-    setModal(null);
+    // Trigger closing animation
+    setIsClosing(true);
+
+    // Wait for animation to complete, then close
+    setTimeout(() => {
+      // Reset all state when closing
+      resetModalState();
+      setIsClosing(false);
+      setModal(null);
+    }, 600); // Match animation duration
   };
 
   const handleDownloadScreenshot = async (imageUrl = null, modelKey = null) => {
@@ -259,11 +264,17 @@ function ScreenshotModal() {
         throw new Error(`Model configuration not found for: ${baseModelKey}`);
       }
 
-      const aiPrompt = selectedModelConfig.prompt;
+      // Only allow custom prompts for Pro users
+      const aiPrompt =
+        (currentUser?.isPro && customPrompt.trim()) ||
+        selectedModelConfig.prompt;
 
       const generateReplicateImage = httpsCallable(
         functions,
-        'generateReplicateImage'
+        'generateReplicateImage',
+        {
+          timeout: 300000 // 5 minutes in milliseconds
+        }
       );
 
       const screentockImgElement = document.getElementById(
@@ -277,14 +288,26 @@ function ScreenshotModal() {
         }
       }
 
-      const inputImageSrc = screentockImgElement?.src || originalImageUrl;
+      let inputImageSrc = screentockImgElement?.src || originalImageUrl;
+
+      // Convert to JPEG with 90% quality to reduce upload time
+      if (inputImageSrc && inputImageSrc.startsWith('data:image/')) {
+        try {
+          inputImageSrc = await convertToJpeg(inputImageSrc, 0.9);
+        } catch (error) {
+          console.warn('Failed to convert to JPEG, using original:', error);
+        }
+      }
+
+      const sceneId = STREET.utils.getCurrentSceneId();
 
       const result = await generateReplicateImage({
         prompt: aiPrompt,
         input_image: inputImageSrc,
         guidance: 2.5,
         num_inference_steps: 30,
-        model_version: selectedModelConfig.version
+        model_version: selectedModelConfig.version,
+        scene_id: sceneId || null
       });
 
       if (result.data.success) {
@@ -297,6 +320,35 @@ function ScreenshotModal() {
             ...prev,
             [targetModel]: result.data.image_url
           }));
+        }
+
+        // Save AI render to gallery
+        if (currentUser?.uid) {
+          try {
+            // Initialize gallery service V2 if needed
+            await galleryServiceV2.init();
+
+            await galleryServiceV2.addAsset(
+              result.data.image_url,
+              {
+                timestamp: new Date().toISOString(),
+                sceneId: sceneId || STREET.utils.getCurrentSceneId(),
+                sceneTitle: useStore.getState().sceneTitle || 'Untitled',
+                source: 'ai-render',
+                model: selectedModelConfig.name,
+                modelKey: baseModelKey,
+                prompt: aiPrompt,
+                renderMode: renderMode,
+                isPro: currentUser?.isPro || false
+              },
+              'image', // type
+              'ai-render', // category
+              currentUser.uid // userId
+            );
+            console.log('AI render saved to gallery');
+          } catch (error) {
+            console.error('Failed to save AI render to gallery:', error);
+          }
         }
 
         // Show appropriate success message based on user type
@@ -326,6 +378,28 @@ function ScreenshotModal() {
           is_pro_user: currentUser?.isPro || false,
           tokens_available: tokenProfile?.genToken || 0
         });
+
+        // Funnel event: ai_render_used (standardized event for conversion funnel)
+        posthog.capture('ai_render_used', {
+          token_type: 'gen',
+          model: baseModelKey,
+          render_mode: renderMode,
+          is_pro_user: currentUser?.isPro || false,
+          scene_id: STREET.utils.getCurrentSceneId()
+        });
+
+        // Check if user just used their last gen token (track token_limit_reached)
+        const remainingTokens = result.data.remainingTokens;
+        if (
+          !currentUser?.isPro &&
+          remainingTokens !== undefined &&
+          remainingTokens === 0
+        ) {
+          posthog.capture('token_limit_reached', {
+            token_type: 'gen',
+            scene_id: STREET.utils.getCurrentSceneId()
+          });
+        }
       } else {
         throw new Error('Failed to generate image');
       }
@@ -365,14 +439,28 @@ function ScreenshotModal() {
       return;
     }
 
-    // Check if user can use image feature (need 4 tokens for 4 renders)
-    const canUse = await canUseImageFeature(currentUser);
-    if (!canUse) {
-      startCheckout('image');
+    // Filter models to only include those with includeIn4x: true
+    const modelKeys = Object.keys(AI_MODELS).filter(
+      (key) => AI_MODELS[key].includeIn4x === true
+    );
+
+    // Calculate total token cost for 4x render
+    const totalTokenCost = useMixedModels
+      ? modelKeys.reduce((sum, key) => sum + getTokenCost(key), 0)
+      : getTokenCost(selectedModel) * 4;
+
+    // Check if user has enough tokens for 4x render
+    if (!tokenProfile || tokenProfile.genToken < totalTokenCost) {
+      STREET.notify.errorMessage(
+        `You need at least ${totalTokenCost} tokens for 4x render`
+      );
+      // Only prompt checkout for non-pro users
+      if (!currentUser?.isPro && !currentUser?.isProTeam) {
+        startCheckout('image');
+      }
       return;
     }
 
-    const modelKeys = Object.keys(AI_MODELS);
     const modelsToRender = useMixedModels
       ? modelKeys
       : [selectedModel, selectedModel, selectedModel, selectedModel];
@@ -390,13 +478,25 @@ function ScreenshotModal() {
     let progressInterval;
 
     if (isGeneratingAI && renderStartTime) {
+      const estimatedTime = AI_MODELS[selectedModel]?.estimatedTime || 30;
+
       progressInterval = setInterval(() => {
         const elapsed = Date.now() - renderStartTime;
-        const progress = Math.min((elapsed / 20000) * 100, 100); // 20 seconds = 100%
+        const progress = Math.min(
+          (elapsed / (estimatedTime * 1000)) * 100,
+          100
+        );
         const currentElapsed = Math.round(elapsed / 1000);
 
         setRenderProgress(progress);
         setElapsedTime(currentElapsed);
+
+        // Show overtime warning if elapsed time is more than 10s over estimate
+        if (currentElapsed > estimatedTime + 10) {
+          setShowOvertimeWarning(true);
+        } else {
+          setShowOvertimeWarning(false);
+        }
       }, 100); // Update every 100ms for smooth animation
     }
 
@@ -405,7 +505,7 @@ function ScreenshotModal() {
         clearInterval(progressInterval);
       }
     };
-  }, [isGeneratingAI, renderStartTime]);
+  }, [isGeneratingAI, renderStartTime, selectedModel]);
 
   // Timer updates for individual renders in 4x mode
   useEffect(() => {
@@ -417,9 +517,15 @@ function ScreenshotModal() {
           const elapsed = Math.round(
             (Date.now() - renderTimers[modelKey].startTime) / 1000
           );
+
+          // Extract base model key to get estimated time
+          const baseModelKey = modelKey.split('-').slice(0, -1).join('-');
+          const estimatedTime = AI_MODELS[baseModelKey]?.estimatedTime || 30;
+          const isOvertime = elapsed > estimatedTime + 10;
+
           setRenderTimers((prev) => ({
             ...prev,
-            [modelKey]: { ...prev[modelKey], elapsed }
+            [modelKey]: { ...prev[modelKey], elapsed, isOvertime }
           }));
         }, 1000);
       }
@@ -454,18 +560,73 @@ function ScreenshotModal() {
         showLogo: !isPro,
         showWatermark: !isPro,
         imgElementSelector: '#screentock-destination'
-      }).then(() => {
+      }).then(async () => {
         const imgElement = document.getElementById('screentock-destination');
         if (imgElement && imgElement.src) {
           setOriginalImageUrl(imgElement.src);
+
+          // Save screenshot to gallery (async, don't block UI)
+          if (currentUser?.uid) {
+            // Upload to gallery in the background
+            (async () => {
+              try {
+                // Load the image to get dimensions and convert to JPEG
+                const img = new Image();
+                img.src = imgElement.src;
+                await new Promise((resolve) => {
+                  img.onload = resolve;
+                  // If already loaded, resolve immediately
+                  if (img.complete) resolve();
+                });
+
+                // Convert PNG data URI to JPEG for smaller file size
+                const canvas = document.createElement('canvas');
+                canvas.width = img.width;
+                canvas.height = img.height;
+                const ctx = canvas.getContext('2d');
+                ctx.drawImage(img, 0, 0);
+
+                // Convert to JPEG at 95% quality (much smaller than PNG)
+                const jpegDataUri = canvas.toDataURL('image/jpeg', 0.95);
+
+                // Initialize gallery service V2 if needed
+                await galleryServiceV2.init();
+
+                console.log('Uploading screenshot to gallery (JPEG format)...');
+
+                // Add to gallery using V2 API
+                const assetId = await galleryServiceV2.addAsset(
+                  jpegDataUri, // JPEG Data URI (will be auto-converted to blob)
+                  {
+                    timestamp: new Date().toISOString(),
+                    sceneId: STREET.utils.getCurrentSceneId(),
+                    sceneTitle: useStore.getState().sceneTitle || 'Untitled',
+                    source: 'screenshot',
+                    model: 'Editor Snapshot',
+                    width: img.width,
+                    height: img.height,
+                    isPro: isPro
+                  },
+                  'image', // type
+                  'screenshot', // category
+                  currentUser.uid // userId
+                );
+                console.log(`Screenshot saved to gallery with ID: ${assetId}`);
+              } catch (error) {
+                console.error('Failed to save screenshot to gallery:', error);
+              }
+            })();
+          } else {
+            console.log('User not logged in, skipping gallery save');
+          }
         }
       });
     }
-  }, [modal, currentUser?.isPro]);
+  }, [modal, currentUser?.isPro, currentUser?.uid]);
 
   return (
     <Modal
-      className={styles.screenshotModalWrapper}
+      className={`${styles.screenshotModalWrapper} ${isClosing ? styles.closing : ''}`}
       isOpen={modal === 'screenshot'}
       onClose={handleClose}
       titleElement={
@@ -505,25 +666,15 @@ function ScreenshotModal() {
           <div className={styles.aiSection}>
             {renderMode === '1x' && (
               <div className={styles.modelSelector}>
-                <label htmlFor="model-select" className={styles.modelLabel}>
-                  AI Model:
-                </label>
-                <select
-                  id="model-select"
+                <label className={styles.modelLabel}>AI Model:</label>
+                <AIModelSelector
                   value={selectedModel}
-                  onChange={(e) => setSelectedModel(e.target.value)}
-                  className={styles.modelSelect}
+                  onChange={setSelectedModel}
                   disabled={
                     isGeneratingAI ||
                     Object.values(renderingStates).some((state) => state)
                   }
-                >
-                  {Object.entries(AI_MODELS).map(([key, model]) => (
-                    <option key={key} value={key}>
-                      {model.name}
-                    </option>
-                  ))}
-                </select>
+                />
               </div>
             )}
 
@@ -544,23 +695,44 @@ function ScreenshotModal() {
                   <div className={styles.toggleSwitch}></div>
                 </label>
                 {!useMixedModels && (
-                  <select
+                  <AIModelSelector
                     value={selectedModel}
-                    onChange={(e) => setSelectedModel(e.target.value)}
-                    className={styles.modelSelect}
+                    onChange={setSelectedModel}
                     disabled={Object.values(renderingStates).some(
                       (state) => state
                     )}
-                  >
-                    {Object.entries(AI_MODELS).map(([key, model]) => (
-                      <option key={key} value={key}>
-                        {model.name}
-                      </option>
-                    ))}
-                  </select>
+                  />
                 )}
               </div>
             )}
+
+            {/* Custom Prompt Input - Only show for Pro users */}
+            {currentUser?.isPro && (
+              <div className={styles.promptSection}>
+                <label htmlFor="custom-prompt" className={styles.promptLabel}>
+                  Custom Prompt (optional):
+                </label>
+                <textarea
+                  id="custom-prompt"
+                  value={customPrompt}
+                  onChange={(e) => setCustomPrompt(e.target.value)}
+                  placeholder={
+                    renderMode === '1x' && selectedModel
+                      ? AI_MODELS[selectedModel]?.prompt ||
+                        'Enter custom prompt...'
+                      : 'Enter custom prompt...'
+                  }
+                  className={styles.promptTextarea}
+                  disabled={
+                    isGeneratingAI ||
+                    Object.values(renderingStates).some((state) => state)
+                  }
+                  rows={3}
+                  maxLength={500}
+                />
+              </div>
+            )}
+            {/* Render Buttons */}
             {renderMode === '1x' ? (
               <Button
                 onClick={() => handleGenerateAIImage()}
@@ -578,21 +750,29 @@ function ScreenshotModal() {
                       <div className={styles.progressStripes} />
                     </div>
                     <span className={styles.progressText}>
-                      {`${elapsedTime}/20s`}
+                      {`${elapsedTime}/${AI_MODELS[selectedModel]?.estimatedTime || 30}s`}
                     </span>
+                    {showOvertimeWarning && (
+                      <span className={styles.overtimeText}>
+                        Generation taking longer than expected.
+                      </span>
+                    )}
                   </div>
                 ) : (
-                  <span>
-                    <span>✨</span>
-                    <span>
-                      Generate Render
-                      {tokenProfile && (
-                        <span className={styles.tokenBadge}>
-                          {tokenProfile.genToken || 0}{' '}
-                          {currentUser?.isPro ? 'tokens' : 'free'}
-                        </span>
-                      )}
-                    </span>
+                  <span
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '8px'
+                    }}
+                  >
+                    <span>Generate Render</span>
+                    {tokenProfile && (
+                      <TokenDisplayInner
+                        count={getTokenCost(selectedModel)}
+                        inline={true}
+                      />
+                    )}
                   </span>
                 )}
               </Button>
@@ -605,19 +785,32 @@ function ScreenshotModal() {
                   Object.values(renderingStates).some((state) => state) ||
                   !currentUser
                 }
-                title="Generate 4 renders simultaneously (uses 4 tokens)"
+                title={`Generate 4 renders simultaneously (uses ${
+                  useMixedModels
+                    ? Object.keys(AI_MODELS)
+                        .filter((key) => AI_MODELS[key].includeIn4x === true)
+                        .reduce((sum, key) => sum + getTokenCost(key), 0)
+                    : getTokenCost(selectedModel) * 4
+                } tokens)`}
               >
-                <span>
-                  <span>✨</span>
-                  <span>
-                    Generate 4x Renders
-                    {tokenProfile && (
-                      <span className={styles.tokenBadge}>
-                        {tokenProfile.genToken || 0}{' '}
-                        {currentUser?.isPro ? 'tokens' : 'free'}
-                      </span>
-                    )}
-                  </span>
+                <span
+                  style={{ display: 'flex', alignItems: 'center', gap: '8px' }}
+                >
+                  <span>Generate Renders</span>
+                  {tokenProfile && (
+                    <TokenDisplayInner
+                      count={
+                        useMixedModels
+                          ? Object.keys(AI_MODELS)
+                              .filter(
+                                (key) => AI_MODELS[key].includeIn4x === true
+                              )
+                              .reduce((sum, key) => sum + getTokenCost(key), 0)
+                          : getTokenCost(selectedModel) * 4
+                      }
+                      inline={true}
+                    />
+                  )}
                 </span>
               </Button>
             )}
@@ -626,15 +819,14 @@ function ScreenshotModal() {
                 Please log in to use AI rendering
               </p>
             )}
-            {currentUser &&
-              !currentUser.isPro &&
-              tokenProfile?.genToken === 0 && (
-                <p className={styles.noTokensWarning}>
-                  No gen tokens remaining. Upgrade to Pro for 100 tokens
-                  refilled monthly.
-                </p>
-              )}
           </div>
+
+          {/* Token Display at bottom of sidebar */}
+          {tokenProfile && (
+            <div className={styles.sidebarTokenDisplay}>
+              <TokenDisplayInner showLabel={true} />
+            </div>
+          )}
 
           {renderMode === '1x' && aiImageUrl && (
             <div className={styles.viewControls}>
@@ -753,88 +945,133 @@ function ScreenshotModal() {
               </div>
             )
           ) : (
-            // 4x Render Grid
-            <div className={styles.renderGrid}>
-              {Array.from({ length: 4 }, (_, index) => {
-                const modelKeys = Object.keys(AI_MODELS);
-                const modelKey = useMixedModels
-                  ? index < modelKeys.length
-                    ? `${modelKeys[index]}-${index}`
-                    : null
-                  : `${selectedModel}-${index}`;
-                const baseModelKey = modelKey
-                  ? modelKey.split('-').slice(0, -1).join('-')
-                  : null;
-                const modelConfig = baseModelKey
-                  ? AI_MODELS[baseModelKey]
-                  : null;
-                const imageUrl = modelKey ? aiImages[modelKey] : null;
-                const isRendering = modelKey
-                  ? renderingStates[modelKey]
-                  : false;
-                const hasError = modelKey ? renderErrors[modelKey] : false;
-                const timer = modelKey ? renderTimers[modelKey] : null;
-
-                return (
-                  <div key={index} className={styles.renderSlot}>
-                    {modelKey && modelConfig ? (
-                      <>
-                        <div className={styles.renderOverlay}>
-                          <div className={styles.modelName}>
-                            {modelConfig.name}
-                          </div>
-                          <div
-                            className={`${styles.timeOverlay} ${hasError ? styles.errorOverlay : ''}`}
-                          >
-                            {isRendering
-                              ? `${timer?.elapsed || 0}s`
-                              : imageUrl
-                                ? `${timer?.elapsed || 0}s`
-                                : '—'}
-                          </div>
-                        </div>
-                        {isRendering ? (
-                          <div className={styles.renderingPlaceholder}>
-                            <div className={styles.spinner}></div>
-                            <span>Rendering...</span>
-                          </div>
-                        ) : imageUrl ? (
+            // 4x Mode Display Logic
+            <>
+              {/* Show original screenshot if no renders are in progress and no completed renders and no errors */}
+              {!Object.values(renderingStates).some((state) => state) &&
+              Object.keys(aiImages).length === 0 &&
+              Object.keys(renderErrors).length === 0 ? (
+                <div className={styles.imageContent}>
+                  {/* Set as Scene Thumbnail button - only show for scene authors */}
+                  {currentUser &&
+                    STREET.utils.getCurrentSceneId() &&
+                    currentUser.uid === STREET.utils.getAuthorId() && (
+                      <button
+                        className={styles.thumbnailButton}
+                        onClick={handleSetAsSceneThumbnail}
+                        disabled={isSavingSnapshot}
+                        title="Set as scene thumbnail"
+                        aria-label="Set as scene thumbnail"
+                      >
+                        {isSavingSnapshot ? (
+                          <span>Saving...</span>
+                        ) : (
                           <>
-                            <img
-                              src={imageUrl}
-                              alt={`AI Render - ${modelConfig.name}`}
-                              className={styles.renderImage}
-                            />
-                            <button
-                              className={styles.slotDownloadButton}
-                              onClick={() =>
-                                handleDownloadScreenshot(imageUrl, modelKey)
-                              }
-                              title="Download image"
-                              aria-label="Download image"
-                            >
-                              <DownloadIcon />
-                            </button>
+                            <span>📌</span>
+                            <span>Set as Scene Thumbnail</span>
                           </>
-                        ) : hasError ? (
-                          <div className={styles.errorSlot}>
-                            <span>Error</span>
-                          </div>
+                        )}
+                      </button>
+                    )}
+                  <img src={originalImageUrl} alt="Original Screenshot" />
+                  <button
+                    className={styles.downloadButton}
+                    onClick={() => handleDownloadScreenshot()}
+                    title="Download image"
+                    aria-label="Download image"
+                  >
+                    <DownloadIcon />
+                    <span>Download</span>
+                  </button>
+                </div>
+              ) : (
+                // 4x Render Grid - show when renders are in progress or completed
+                <div className={styles.renderGrid}>
+                  {Array.from({ length: 4 }, (_, index) => {
+                    // Filter models to only include those with includeIn4x: true
+                    const modelKeys = Object.keys(AI_MODELS).filter(
+                      (key) => AI_MODELS[key].includeIn4x === true
+                    );
+                    const modelKey = useMixedModels
+                      ? index < modelKeys.length
+                        ? `${modelKeys[index]}-${index}`
+                        : null
+                      : `${selectedModel}-${index}`;
+                    const baseModelKey = modelKey
+                      ? modelKey.split('-').slice(0, -1).join('-')
+                      : null;
+                    const modelConfig = baseModelKey
+                      ? AI_MODELS[baseModelKey]
+                      : null;
+                    const imageUrl = modelKey ? aiImages[modelKey] : null;
+                    const isRendering = modelKey
+                      ? renderingStates[modelKey]
+                      : false;
+                    const hasError = modelKey ? renderErrors[modelKey] : false;
+                    const timer = modelKey ? renderTimers[modelKey] : null;
+
+                    return (
+                      <div key={index} className={styles.renderSlot}>
+                        {modelKey && modelConfig ? (
+                          <>
+                            <div className={styles.renderOverlay}>
+                              <div className={styles.modelName}>
+                                {modelConfig.name}
+                              </div>
+                              <div
+                                className={`${styles.timeOverlay} ${hasError ? styles.errorOverlay : ''} ${isRendering && timer?.isOvertime ? styles.overtimeOverlay : ''}`}
+                              >
+                                {isRendering
+                                  ? `${timer?.elapsed || 0}s`
+                                  : imageUrl
+                                    ? `${timer?.elapsed || 0}s`
+                                    : '—'}
+                              </div>
+                            </div>
+                            {isRendering ? (
+                              <div className={styles.renderingPlaceholder}>
+                                <div className={styles.spinner}></div>
+                                <span>Rendering...</span>
+                              </div>
+                            ) : imageUrl ? (
+                              <>
+                                <img
+                                  src={imageUrl}
+                                  alt={`AI Render - ${modelConfig.name}`}
+                                  className={styles.renderImage}
+                                />
+                                <button
+                                  className={styles.slotDownloadButton}
+                                  onClick={() =>
+                                    handleDownloadScreenshot(imageUrl, modelKey)
+                                  }
+                                  title="Download image"
+                                  aria-label="Download image"
+                                >
+                                  <DownloadIcon />
+                                </button>
+                              </>
+                            ) : hasError ? (
+                              <div className={styles.errorSlot}>
+                                <span>Error</span>
+                              </div>
+                            ) : (
+                              <div className={styles.emptySlot}>
+                                <span>Ready</span>
+                              </div>
+                            )}
+                          </>
                         ) : (
                           <div className={styles.emptySlot}>
-                            <span>Ready</span>
+                            <span>Empty</span>
                           </div>
                         )}
-                      </>
-                    ) : (
-                      <div className={styles.emptySlot}>
-                        <span>Empty</span>
                       </div>
-                    )}
-                  </div>
-                );
-              })}
-            </div>
+                    );
+                  })}
+                </div>
+              )}
+            </>
           )}
         </div>
       </div>

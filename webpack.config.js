@@ -8,16 +8,31 @@ module.exports = {
   devServer: {
     liveReload: false,
     port: 3333,
-    static: {
-      directory: '.',
-      watch: {
-        ignored: ['.*', '**/node_modules']
+    allowedHosts: 'all',
+    static: [
+      {
+        directory: '.',
+        watch: {
+          ignored: ['.*', '**/node_modules']
+        }
+      },
+      {
+        directory: path.join(__dirname, 'public'),
+        publicPath: '/'
       }
-    }
+    ]
   },
   devtool: 'source-map',
   entry: {
-    core: { import: './src/index.js', filename: 'aframe-street-component.js' }
+    core: { import: './src/index.js', filename: 'aframe-street-component.js' },
+    generator: {
+      import: './src/generator/index.js',
+      filename: 'generator.js'
+    },
+    bollardbuddy: {
+      import: './src/bollardbuddy/index.js',
+      filename: 'bollardbuddy.js'
+    }
   },
   output: {
     publicPath: '/dist/',
@@ -103,8 +118,10 @@ module.exports = {
     ]
   },
   resolve: {
+    extensions: ['.js', '.jsx', '.json'],
     alias: {
-      '@': path.resolve(__dirname, 'src')
+      '@': path.resolve(__dirname, 'src'),
+      '@shared': path.resolve(__dirname, 'src/shared')
     }
   }
 };

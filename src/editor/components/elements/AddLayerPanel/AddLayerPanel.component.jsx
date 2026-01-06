@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo, useRef } from 'react';
-import { Cross24Icon, Plus20Circle } from '../../../icons';
+import { Cross24Icon, Plus20Circle } from '@shared/icons';
 import { createPortal } from 'react-dom';
 import { useAuthContext } from '../../../contexts/index.js';
 import { Button, Tabs, PanelToggleButton } from '../../elements';
@@ -296,6 +296,84 @@ const AddLayerPanel = () => {
     setGroupedMixins(data);
   }, []);
 
+  // Add global file drop handlers for the entire scene
+  useEffect(() => {
+    const handleGlobalDragOver = (e) => {
+      // Check if files are being dragged
+      if (
+        e.dataTransfer &&
+        e.dataTransfer.types &&
+        e.dataTransfer.types.includes('Files')
+      ) {
+        e.preventDefault();
+        e.dataTransfer.dropEffect = 'copy';
+
+        // Show drop plane for file drops
+        if (dropPlaneEl.current) {
+          fadeInDropPlane();
+        }
+      }
+    };
+
+    const handleGlobalDrop = (e) => {
+      // Check if files are being dropped
+      if (
+        e.dataTransfer &&
+        e.dataTransfer.files &&
+        e.dataTransfer.files.length > 0
+      ) {
+        e.preventDefault();
+        e.stopPropagation();
+
+        const file = e.dataTransfer.files[0];
+        // Check if it's a GLB or GLTF file
+        if (
+          file.name.toLowerCase().endsWith('.glb') ||
+          file.name.toLowerCase().endsWith('.gltf')
+        ) {
+          // Get the position where the file was dropped
+          const position = pickPointOnGroundPlane({
+            x: e.clientX,
+            y: e.clientY,
+            canvas: AFRAME.scenes[0].canvas,
+            camera: AFRAME.INSPECTOR.camera
+          });
+
+          // Import and call the function
+          import('./createLayerFunctions.js').then((module) => {
+            module.createModelFromFile(file, position);
+          });
+        }
+
+        // Hide drop plane
+        if (dropPlaneEl.current) {
+          fadeOutDropPlane();
+        }
+      }
+    };
+
+    const handleGlobalDragLeave = (e) => {
+      // Only hide if leaving the window
+      if (e.target === document.body || e.relatedTarget === null) {
+        if (dropPlaneEl.current) {
+          fadeOutDropPlane();
+        }
+      }
+    };
+
+    // Add listeners to document body
+    document.body.addEventListener('dragover', handleGlobalDragOver);
+    document.body.addEventListener('drop', handleGlobalDrop);
+    document.body.addEventListener('dragleave', handleGlobalDragLeave);
+
+    return () => {
+      // Cleanup
+      document.body.removeEventListener('dragover', handleGlobalDragOver);
+      document.body.removeEventListener('drop', handleGlobalDrop);
+      document.body.removeEventListener('dragleave', handleGlobalDragLeave);
+    };
+  }, []);
+
   const selectedCards = useMemo(() => {
     switch (selectedOption) {
       case 'Custom Layers':
@@ -380,6 +458,15 @@ const AddLayerPanel = () => {
   };
 
   const onItemDrop = (e) => {
+    // Skip this handler if files are being dropped - let the global handler deal with it
+    if (
+      e.dataTransfer &&
+      e.dataTransfer.files &&
+      e.dataTransfer.files.length > 0
+    ) {
+      return;
+    }
+
     e.preventDefault();
     e.stopPropagation();
 
@@ -394,21 +481,22 @@ const AddLayerPanel = () => {
       camera: AFRAME.INSPECTOR.camera
     });
 
-    // get item data
+    // get item data (existing layer card drag and drop)
     if (e.dataTransfer) {
-      const transferredData = JSON.parse(
-        e.dataTransfer.getData('application/json')
-      );
-      if (transferredData.mixinId) {
-        createEntityOnPosition(
-          transferredData.mixinId,
-          position,
-          transferredData.mixinName
-        );
-      } else if (transferredData.layerCardId) {
-        selectedCards
-          .find((card) => card.id === transferredData.layerCardId)
-          ?.handlerFunction(position);
+      const transferredData = e.dataTransfer.getData('application/json');
+      if (transferredData) {
+        const parsedData = JSON.parse(transferredData);
+        if (parsedData.mixinId) {
+          createEntityOnPosition(
+            parsedData.mixinId,
+            position,
+            parsedData.mixinName
+          );
+        } else if (parsedData.layerCardId) {
+          selectedCards
+            .find((card) => card.id === parsedData.layerCardId)
+            ?.handlerFunction(position);
+        }
       }
     }
 

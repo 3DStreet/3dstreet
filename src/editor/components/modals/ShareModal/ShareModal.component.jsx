@@ -1,16 +1,16 @@
 import { useState, useEffect } from 'react';
 import styles from './ShareModal.module.scss';
 import { useAuthContext } from '../../../contexts';
-import { Copy32Icon } from '../../../icons';
+import { Copy32Icon } from '@shared/icons';
 import { Button } from '../../elements';
-import Modal from '../Modal.jsx';
+import Modal from '@shared/components/Modal/Modal.jsx';
 import posthog from 'posthog-js';
 import useStore from '@/store';
 import { getDoc, doc } from 'firebase/firestore';
-import { db } from '../../../services/firebase';
+import { db } from '@shared/services/firebase';
 import { shareSceneToDiscord } from '../../../api/scene';
 import ScenePlaceholder from '../../../../../ui_assets/ScenePlaceholder.svg';
-import { getUserProfile } from '../../../utils/username';
+import { getUserProfile } from '@shared/utils/username';
 import { Tooltip } from 'radix-ui';
 
 const TooltipWrapper = ({ children, content, side = 'bottom', ...props }) => {

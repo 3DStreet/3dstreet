@@ -121,6 +121,10 @@ AFRAME.registerComponent('street-generated-stencil', {
     if (!this.length) {
       return;
     }
+    // Early return if data is not yet initialized
+    if (!this.data) {
+      return;
+    }
     const data = this.data;
 
     // Clean up old entities

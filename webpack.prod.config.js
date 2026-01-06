@@ -7,14 +7,22 @@ const DEPLOY_ENV = process.env.DEPLOY_ENV ?? 'production';
 
 module.exports = {
   performance: {
-    maxAssetSize: 2999999, // 2.8 MiB
-    maxEntrypointSize: 2999999, // 2.8 MiB
+    maxAssetSize: 3250000, // 3.1 MiB
+    maxEntrypointSize: 3250000, // 3.1 MiB
     hints: 'error'
   },
   mode: 'production',
   devtool: 'source-map',
   entry: {
-    core: { import: './src/index.js', filename: 'aframe-street-component.js' }
+    core: { import: './src/index.js', filename: 'aframe-street-component.js' },
+    generator: {
+      import: './src/generator/index.js',
+      filename: 'generator.js'
+    },
+    bollardbuddy: {
+      import: './src/bollardbuddy/index.js',
+      filename: 'bollardbuddy.js'
+    }
   },
   output: {
     clean: true,
@@ -105,8 +113,10 @@ module.exports = {
     ]
   },
   resolve: {
+    extensions: ['.js', '.jsx', '.json'],
     alias: {
-      '@': path.resolve(__dirname, 'src')
+      '@': path.resolve(__dirname, 'src'),
+      '@shared': path.resolve(__dirname, 'src/shared')
     }
   }
 };

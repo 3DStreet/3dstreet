@@ -3,17 +3,18 @@ import { devtools, subscribeWithSelector } from 'zustand/middleware';
 import posthog from 'posthog-js';
 import Events from './editor/lib/Events';
 import canvasRecorder from './editor/lib/CanvasRecorder';
-import { auth } from './editor/services/firebase';
+import { auth } from '@shared/services/firebase';
 
 const firstModal = () => {
-  let modal = window.location.hash.includes('payment')
+  const hash = window.location.hash;
+  let modal = hash.includes('payment')
     ? 'payment'
-    : window.location.hash.includes('profile')
+    : hash.includes('profile') || hash.includes('/modal/profile')
       ? 'profile'
-      : !window.location.hash.length
+      : !hash.length
         ? 'new'
         : null;
-  const isStreetMix = window.location.hash.includes('streetmix');
+  const isStreetMix = hash.includes('streetmix');
   if (isStreetMix) {
     modal = localStorage.getItem('shownIntro') ? null : 'intro';
   }
@@ -129,6 +130,11 @@ const useStore = create(
         },
         startCheckout: (postCheckout) => {
           posthog.capture('modal_opened', { modal: 'payment' });
+          // Funnel event: pricing_page_viewed (for conversion funnel analysis)
+          posthog.capture('pricing_page_viewed', {
+            source: postCheckout || 'direct',
+            trigger: postCheckout === 'geo' ? 'geo_token_limit' : postCheckout === 'image' ? 'gen_token_limit' : 'manual'
+          });
           posthog.capture('start_checkout');
           set({ modal: 'payment', postCheckout });
         },

@@ -13,7 +13,7 @@ import {
   LayersIcon,
   Object24IconCyan,
   Ruler24Icon
-} from '../icons';
+} from '@shared/icons';
 
 /**
  * Update a component.

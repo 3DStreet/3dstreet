@@ -1,11 +1,11 @@
 import { useEffect, useState } from 'react';
 import { useAuthContext } from '../../../contexts';
 import { Button, SceneCard, Tabs } from '../../elements';
-import Modal from '../Modal.jsx';
+import Modal from '@shared/components/Modal/Modal.jsx';
 import styles from './ScenesModal.module.scss';
 import { createElementsForScenesFromJSON } from '@/editor/lib/SceneUtils.js';
 import { getCommunityScenes, getUserScenes } from '../../../api/scene';
-import { Loader, Upload24Icon } from '../../../icons';
+import { Loader, Upload24Icon } from '@shared/icons';
 import { signIn } from '../../../api';
 import posthog from 'posthog-js';
 import useStore from '../../../../store.js';

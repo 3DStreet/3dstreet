@@ -5,7 +5,7 @@ service cloud.firestore {
     match /scenes/{scene} {
       allow read;
     }
-    
+
     match /scenes/{scene} {
     	// Allow create new scene if user is authenticated
       allow create: if request.auth != null;
@@ -18,12 +18,12 @@ service cloud.firestore {
     match /socialProfile/{userId} {
       // Allow any authenticated user to read (for username lookups, public profiles)
       allow read: if request.auth != null;
-      
+
       // Users can only create their own profile (doc ID must match auth UID)
-      allow create: if request.auth != null 
+      allow create: if request.auth != null
         && request.auth.uid == userId  // Doc ID must match auth UID
         && request.resource.data.userId == userId; // userId field must match too
-      
+
       // Users can only update their own profile
       allow update: if request.auth != null
         && request.auth.uid == resource.data.userId;
@@ -33,33 +33,44 @@ service cloud.firestore {
     match /tokenProfile/{userId} {
       // Users can only read their own token profile
       allow read: if request.auth != null && request.auth.uid == userId;
-      
-      // Allow users to create their initial token profile with exactly 3 tokens of each type
-      allow create: if request.auth != null 
+
+      // Allow users to create their initial token profile with default token counts
+      allow create: if request.auth != null
         && request.auth.uid == userId  // Doc ID must match auth UID
         && request.resource.data.userId == userId  // userId field must match
         && request.resource.data.geoToken == 3  // Must start with exactly 3 geo tokens
-        && request.resource.data.genToken == 3;  // Must start with exactly 3 image tokens
-      
+        && request.resource.data.genToken == 5;  // Must start with exactly 5 image tokens (allows one 4x render)
+
       // DENY all client-side updates - only cloud functions can modify token counts
       allow update: if false;
     }
-  }
-}
 
-service firebase.storage {
-  match /b/{bucket}/o {
-    match /scenes/{scene_uuid}/files/{allPaths=**} {
-      allow read: if isImageUnderSizeLimit() || request.auth != null;
-      allow write: if request.auth != null && isAuthorOfScene(scene_uuid);
+    // Gallery Assets Subcollection Rules (PRIVATE data - user's gallery assets)
+    // Structure: users/{userId}/assets/{assetId}
+    match /users/{userId}/assets/{assetId} {
+      // Users can only read their own gallery assets
+      allow read: if request.auth != null && request.auth.uid == userId;
+
+      // Users can create assets with proper userId field and required fields validated
+      allow create: if request.auth != null
+        && request.auth.uid == userId
+        && request.resource.data.userId == userId
+        && request.resource.data.type in ['image', 'video', 'splat', 'mesh']
+        && request.resource.data.category is string
+        && request.resource.data.storagePath is string
+        && request.resource.data.storagePath.matches('^users/' + userId + '/.*');
+
+      // Users can update their own assets
+      allow update: if request.auth != null && request.auth.uid == userId;
+
+      // Users can delete their own assets
+      allow delete: if request.auth != null && request.auth.uid == userId;
+    }
+
+    // Notify Log Collection Rules (PRIVATE - cloud functions only)
+    // Tracks notification sends to prevent duplicates; no client access allowed
+    match /notifyLog/{userId} {
+      allow read, write: if false;
     }
   }
-}
-
-function isImageUnderSizeLimit() {
-  return resource.size < 100 * 1024 && resource.contentType.matches('image/.*');
-}
-
-function isAuthorOfScene(scene_uuid) {
-  return firestore.get(/databases/(default)/documents/scenes/$(scene_uuid)).data.author == request.auth.uid;
 }

@@ -197,6 +197,17 @@ export function create150ftRightOfWayManagedStreet(position) {
   );
 }
 
+export function createBuildingDemoManagedStreet(position) {
+  console.log(
+    'createBuildingDemoManagedStreet',
+    defaultStreetObjects.buildingDemo
+  );
+  createManagedStreetFromStreetObject(
+    position,
+    defaultStreetObjects.buildingDemo
+  );
+}
+
 export function create80ftRightOfWay(position) {
   createStreetmixStreet(
     position,
@@ -287,25 +298,25 @@ export function createIntersection(position) {
   AFRAME.INSPECTOR.execute('entitycreate', definition);
 }
 
-export function createSplatObject() {
-  // accepts a path for a .splat file hosted on any publicly accessible HTTP server.
-  // Then create entity with model from that path by using gaussian_splatting component
+export function createSplatObject(position) {
+  // accepts a path for a .splat, .ply, or .spz file hosted on a CORS-enabled HTTP server.
+  // Then create entity with model from that path by using splat component (Spark library)
+  // Note: GitHub raw URLs don't work due to CORS. Use a CDN or CORS-enabled server.
   const modelUrl = prompt(
-    'Please enter a URL to custom Splat model',
-    'https://cdn.glitch.me/f80a77a3-62a6-4024-9bef-a6b523d1abc0/gs_Bioswale3_treat.splat'
+    "Enter URL to a Gaussian Splat (.splat, .ply, .spz)\n\nNote: Host must allow CORS. GitHub raw URLs won't work.",
+    'https://sparkjs.dev/assets/splats/butterfly.spz'
   );
 
   if (modelUrl && modelUrl !== '') {
     const definition = {
       class: 'splat-model',
       'data-layer-name': 'Splat Model • My Custom Object',
-      'data-no-pause': '',
       components: {
-        gaussian_splatting: `src: ${modelUrl}`
+        position: position ?? '0 0 0',
+        splat: `src: ${modelUrl}`
       }
     };
-    const entity = AFRAME.INSPECTOR.execute('entitycreate', definition);
-    entity.play();
+    AFRAME.INSPECTOR.execute('entitycreate', definition);
   }
 }
 
@@ -325,6 +336,25 @@ export function createPanoramaSphere() {
         material: `shader: flat; side: back; src: ${panoramaUrl}`,
         scale: '-1 1 1',
         'data-layer-name': 'Sphere Geometry • 360° Panorama'
+      }
+    };
+    AFRAME.INSPECTOR.execute('entitycreate', definition);
+  }
+}
+
+export function createModelFromFile(file, position) {
+  // Create entity with model from a local file (blob URL)
+  // Note: This is temporary and will not persist on reload
+  if (file && file.name) {
+    const blobUrl = URL.createObjectURL(file);
+    const definition = {
+      class: 'custom-model',
+      components: {
+        position: position ?? '0 0 0',
+        'gltf-model': `url(${blobUrl})`,
+        'data-layer-name': `glTF Model • ${file.name}`,
+        'data-temporary-file': 'true',
+        shadow: 'receive: true; cast: true;'
       }
     };
     AFRAME.INSPECTOR.execute('entitycreate', definition);

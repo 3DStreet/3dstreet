@@ -13,84 +13,44 @@
   width: 100%;
 }
 
-.DropdownTrigger {
+// Horizontal Menubar styles
+.MenubarRoot {
+  display: flex;
+  background-color: rgba(50, 50, 50, 0.8);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  border-radius: 6px;
+  gap: 2px;
+  padding: 6px;
+}
+
+.MenubarTrigger {
+  all: unset;
+  padding: 6px 12px;
+  outline: none;
+  user-select: none;
+  font-weight: 500;
+  line-height: 1;
+  border-radius: 6px;
+  font-size: 16px;
   display: flex;
   align-items: center;
-  gap: 8px;
-  background: none;
-  border: none;
-  padding: 8px 12px;
-  border-radius: 8px;
+  justify-content: space-between;
+  gap: 2px;
   cursor: pointer;
-  transition: all 0.2s ease-in-out;
-  position: relative;
-  z-index: 2;
+  transition: background-color 0.15s ease-in-out;
 
-  &:hover {
+  &[data-highlighted] {
     background-color: variables.$black-400;
-    transform: translateY(-1px);
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
-
-    .logo-image {
-      filter: brightness(1.4) contrast(1.1);
-      transform: scale(1.05);
-    }
-
-    .dropdown-arrow {
-      opacity: 1;
-      transform: translateY(-1px);
-    }
   }
 
   &[data-state='open'] {
     background-color: variables.$black-400;
-
-    .dropdown-arrow {
-      transform: rotate(180deg);
-    }
   }
 }
 
-.logo-image {
-  height: 40px;
-  width: 40px;
-  transition: all 0.2s ease-in-out;
-}
-
-.dropdown-arrow {
-  opacity: 0;
-  transition: all 0.2s ease-in-out;
-  color: variables.$lightgray-100;
-}
-
-.DropdownLabel {
-  font-size: 14px;
-  font-weight: 600;
-  padding: 8px 12px;
-  color: variables.$lightgray-100;
-  margin: 4px 0;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-}
-
-.DropdownContent {
-  min-width: 200px;
-  background-color: variables.$bgalphadarker;
-  border-radius: 8px;
-  padding: 6px;
-  box-shadow:
-    0px 10px 38px -10px rgba(22, 23, 24, 0.35),
-    0px 10px 20px -15px rgba(22, 23, 24, 0.2);
-  animation-duration: 400ms;
-  animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1);
-  will-change: transform, opacity;
-  z-index: 10;
-  backdrop-filter: blur(8.5px);
-  -webkit-backdrop-filter: blur(8.5px);
-}
-
-.DropdownSubContent {
-  min-width: 250px;
+.MenubarContent {
+  min-width: 220px;
   background-color: variables.$bgalphadarker;
   border-radius: 8px;
   padding: 6px;
@@ -107,9 +67,7 @@
   overflow-y: auto;
 }
 
-.DropdownItem,
-.DropdownCheckboxItem,
-.DropdownSubTrigger {
+.MenubarItem {
   all: unset;
   font-size: 16px;
   line-height: 1.2;
@@ -136,17 +94,35 @@
   }
 }
 
-.DropdownCheckboxItem {
+.MenubarCheckboxItem {
+  all: unset;
+  font-size: 16px;
+  line-height: 1.2;
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-height: 24px;
+  padding: 4px 12px;
   padding-left: 36px;
-}
+  position: relative;
+  user-select: none;
+  cursor: pointer;
+  margin: 1px 0;
+  transition: background-color 0.15s ease-in-out;
 
-.DropdownSubTrigger {
-  &[data-state='open'] {
+  &[data-highlighted] {
     background-color: variables.$black-100;
+    outline: none;
+  }
+
+  &[data-disabled] {
+    color: variables.$lightgray-800;
+    pointer-events: none;
   }
 }
 
-.DropdownItemIndicator {
+.MenubarItemIndicator {
   position: absolute;
   left: 12px;
   width: 16px;
@@ -155,7 +131,7 @@
   justify-content: center;
 }
 
-.DropdownSeparator {
+.MenubarSeparator {
   height: 1px;
   background-color: variables.$lightgray;
   margin: 6px 4px;

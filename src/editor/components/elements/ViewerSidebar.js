@@ -3,7 +3,7 @@ import { useState, useEffect } from 'react';
 import { useAuthContext } from '@/editor/contexts';
 import PropertyRow from './PropertyRow';
 import AdvancedComponents from './AdvancedComponents';
-import { Copy32Icon } from '@/editor/icons';
+import { Copy32Icon } from '@shared/icons';
 import { Button } from '../elements';
 import useStore from '@/store';
 import Events from '../../lib/Events';

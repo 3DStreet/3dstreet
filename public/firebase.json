@@ -17,6 +17,10 @@
         "function": "serveWebXRVariant"
       },
       {
+        "source": "bflProxyImage",
+        "function": "bflProxyImage"
+      },
+      {
         "source": "**",
         "destination": "/index.html"
       },
@@ -63,5 +67,8 @@
   "firestore": {
     "rules": "firestore.rules",
     "indexes": "firestore.indexes.json"
+  },
+  "storage": {
+    "rules": "storage.rules"
   }
 }

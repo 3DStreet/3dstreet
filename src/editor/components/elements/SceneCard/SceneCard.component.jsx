@@ -2,10 +2,10 @@ import { useEffect, useRef, useState, useCallback } from 'react';
 import ScenePlaceholder from '../../../../../ui_assets/ScenePlaceholder.svg';
 import styles from './SceneCard.module.scss';
 import { formatDistanceToNow } from 'date-fns';
-import { DropdownIcon } from '../../../icons';
+import { DropdownIcon } from '@shared/icons';
 import { deleteScene, updateSceneIdAndTitle } from '../../../api/scene';
 import { Button } from '../Button';
-import { getUserProfile } from '../../../utils/username';
+import { getUserProfile } from '@shared/utils/username';
 
 function TimeAgo({ timestamp, includeAgo = false }) {
   // Convert Firestore Timestamp to JavaScript Date object if it exists

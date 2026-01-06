@@ -12,7 +12,7 @@ require('./aframe-components/gltf-part');
 require('./aframe-components/ocean');
 require('./aframe-components/svg-extruder.js');
 require('./lib/animation-mixer.js');
-require('./lib/aframe-gaussian-splatting-component.min.js');
+require('./aframe-components/splat.js');
 require('./assets.js');
 require('./aframe-components/notify.js');
 require('./aframe-components/create-from-json');
@@ -42,7 +42,7 @@ require('./aframe-components/viewer-mode.js');
 require('./aframe-components/scene-timer.js');
 require('./aframe-components/geojson.js');
 require('./editor/index.js');
-var firebase = require('./editor/services/firebase.js');
+var firebase = require('./shared/services/firebase.js');
 
 if (typeof VERSION !== 'undefined') {
   console.log(`3DStreet Version: ${VERSION}`);

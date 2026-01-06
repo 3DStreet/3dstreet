@@ -3,10 +3,10 @@ import styles from './PaymentModal.module.scss';
 import { useState } from 'react';
 import { loadStripe } from '@stripe/stripe-js';
 import { useAuthContext } from '../../../contexts/index.js';
-import { CheckMark32Icon, Loader } from '../../../icons';
+import { CheckMark32Icon, Loader } from '@shared/icons';
 import { Button } from '../../elements/index.js';
-import Modal from '../Modal.jsx';
-import { functions } from '../../../services/firebase.js';
+import Modal from '@shared/components/Modal/Modal.jsx';
+import { functions } from '@shared/services/firebase';
 import posthog from 'posthog-js';
 import useStore from '@/store';
 
@@ -24,10 +24,31 @@ const resetPaymentQueryParam = () => {
   window.history.replaceState({}, '', newUrl);
 };
 
+// Extract UTM params for tracking email→payment conversion funnel
+const getUtmParams = () => {
+  const params = new URLSearchParams(window.location.search);
+  const utmParams = {};
+  [
+    'utm_source',
+    'utm_medium',
+    'utm_campaign',
+    'utm_content',
+    'utm_term'
+  ].forEach((key) => {
+    const value = params.get(key);
+    if (value) utmParams[key] = value;
+  });
+  return Object.keys(utmParams).length > 0 ? utmParams : null;
+};
+
 const PaymentModal = () => {
   const { currentUser } = useAuthContext();
   const [isLoading, setIsLoading] = useState(false);
-  const [selectedPlan, setSelectedPlan] = useState('monthly');
+  // Check if the annual hash is present to set initial plan
+  const initialPlan = window.location.hash.includes('payment-modal-annual')
+    ? 'yearly'
+    : 'monthly';
+  const [selectedPlan, setSelectedPlan] = useState(initialPlan);
   const setModal = useStore((state) => state.setModal);
   const modal = useStore((state) => state.modal);
   const postCheckout = useStore((state) => state.postCheckout);
@@ -35,12 +56,22 @@ const PaymentModal = () => {
 
   if (checkoutSuccess) {
     posthog.capture('checkout_finished');
+    // Funnel event: payment_completed (standardized event for conversion funnel)
+    posthog.capture('payment_completed', {
+      plan: selectedPlan
+    });
   } else if (location.hash.includes('cancel')) {
     posthog.capture('checkout_canceled');
   }
 
   const startCheckout = async () => {
-    posthog.capture('start_checkout');
+    const utmParams = getUtmParams();
+    posthog.capture('start_checkout', utmParams || {});
+    // Funnel event: checkout_started (standardized event for conversion funnel)
+    posthog.capture('checkout_started', {
+      plan: selectedPlan,
+      ...(utmParams || {})
+    });
     setIsLoading(true);
     try {
       const {
@@ -87,27 +118,68 @@ const PaymentModal = () => {
       className={styles.modalWrapper}
       isOpen={modal === 'payment'}
       onClose={onClose}
-      title="Unlock Pro Features"
+      title="Activate Pro Edition"
     >
       <div className={styles.paymentDetails}>
-        <h3>Access 3DStreet Pro features now with a paid plan.</h3>
-        <h2>The Pro plan includes all features of Free and adds:</h2>
+        <p style={{ fontStyle: 'italic' }}>Everything in Free, plus:</p>
         <ul>
           <li>
             <CheckMark32Icon />
-            Integrated 2D & 3D Maps with Unlimited Edits
+            Download JPEG snapshots without watermark
           </li>
           <li>
             <CheckMark32Icon />
-            glTF Export with `AR Ready` Output
+            Unlimited Geospatial 3D Maps
           </li>
           <li>
             <CheckMark32Icon />
-            Import Custom 3D Models and Images
+            <span style={{ display: 'flex', alignItems: 'center' }}>
+              <span
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  background: '#1a1a1a',
+                  borderRadius: '4px',
+                  padding: '2px 8px 2px 4px',
+                  marginRight: '8px'
+                }}
+              >
+                <img
+                  src="/ui_assets/token-image.png"
+                  alt="AI Generation Token"
+                  style={{
+                    width: '16px',
+                    height: '16px',
+                    marginRight: '4px',
+                    display: 'inline-block',
+                    verticalAlign: 'middle'
+                  }}
+                />
+                <span style={{ color: '#6b7280', marginRight: '4px' }}>×</span>
+                <span
+                  style={{
+                    fontSize: '14px',
+                    fontWeight: '500',
+                    color: '#ffffff'
+                  }}
+                >
+                  100
+                </span>
+              </span>
+              AI generation tokens per month
+            </span>
           </li>
           <li>
             <CheckMark32Icon />
-            Removal of Watermark on Exported Images
+            Import custom 3D models
+          </li>
+          <li>
+            <CheckMark32Icon />
+            Reference custom SVG and glTF files
+          </li>
+          <li>
+            <CheckMark32Icon />
+            Export &quot;AR Ready&quot; glTF for Augmented Reality apps
           </li>
           <li>&nbsp;</li>
           <li className={styles.pricing}>
@@ -117,15 +189,57 @@ const PaymentModal = () => {
                 onClick={() => setSelectedPlan('monthly')}
               >
                 Monthly
-                <span className={styles.price}>$9.99/mo</span>
+                <span className={styles.price}>$10/mo</span>
               </button>
               <button
                 className={`${styles.planButton} ${selectedPlan === 'yearly' ? styles.selected : ''}`}
                 onClick={() => setSelectedPlan('yearly')}
               >
                 Yearly
-                <span className={styles.price}>$99/year</span>
-                <span className={styles.savings}>Save 17%</span>
+                <span className={styles.savings}>Save 30%</span>
+                <span className={styles.price}>$84/year</span>
+                <div className={styles.bonus}>
+                  <span
+                    style={{
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      background: '#1a1a1a',
+                      borderRadius: '4px',
+                      padding: '2px 8px 2px 4px',
+                      marginRight: '4px',
+                      minWidth: '50px'
+                    }}
+                  >
+                    <img
+                      src="/ui_assets/token-image.png"
+                      alt="AI Generation Token"
+                      style={{
+                        width: '12px',
+                        height: '12px',
+                        marginRight: '2px'
+                      }}
+                    />
+                    <span
+                      style={{
+                        color: '#6b7280',
+                        marginRight: '2px',
+                        fontSize: '10px'
+                      }}
+                    >
+                      ×
+                    </span>
+                    <span
+                      style={{
+                        fontSize: '10px',
+                        fontWeight: '500',
+                        color: '#ffffff'
+                      }}
+                    >
+                      840
+                    </span>
+                  </span>
+                  AI gen tokens on first purchase
+                </div>
               </button>
             </div>
           </li>

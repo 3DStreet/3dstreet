@@ -1,5 +1,5 @@
 /* global AFRAME */
-import { firebaseConfig } from '../editor/services/firebase.js';
+import { firebaseConfig } from '@shared/services/firebase.js';
 import { loadScript } from '../utils.js';
 
 const MAPBOX_ACCESS_TOKEN_VALUE =

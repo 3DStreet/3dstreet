@@ -6,7 +6,7 @@ import React from 'react';
 import Events from '../../lib/Events';
 import Entity from './Entity';
 import { ToolbarWrapper } from './ToolbarWrapper';
-import { LayersIcon, ArrowLeftIcon } from '../../icons';
+import { LayersIcon, ArrowLeftIcon } from '@shared/icons';
 import { getEntityDisplayName } from '../../lib/entity';
 import posthog from 'posthog-js';
 import GeoLayer from './GeoLayer';

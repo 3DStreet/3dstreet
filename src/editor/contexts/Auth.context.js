@@ -1,20 +1,22 @@
 import { createContext, useContext, useEffect, useState } from 'react';
-import { auth } from '../services/firebase';
+import { auth } from '@shared/services/firebase';
 import PropTypes from 'prop-types';
-import { isUserPro } from '../api/user';
-import { getTokenProfile, checkAndRefillProTokens } from '../utils/tokens';
+import { isUserPro } from '@shared/auth/api/user';
+import { getTokenProfile, checkAndRefillProTokens } from '@shared/utils/tokens';
 import posthog from 'posthog-js';
 
 const AuthContext = createContext({
   currentUser: null,
   setCurrentUser: (user) => {},
   tokenProfile: null,
-  refreshTokenProfile: () => {}
+  refreshTokenProfile: () => {},
+  isLoading: true
 });
 
 const AuthProvider = ({ children }) => {
   const [currentUser, setCurrentUser] = useState(null);
   const [tokenProfile, setTokenProfile] = useState(null);
+  const [isLoading, setIsLoading] = useState(true);
 
   const refreshTokenProfile = async () => {
     if (currentUser) {
@@ -43,6 +45,7 @@ const AuthProvider = ({ children }) => {
         localStorage.removeItem('token');
         setCurrentUser(null);
         setTokenProfile(null);
+        setIsLoading(false);
         return;
       }
 
@@ -88,6 +91,7 @@ const AuthProvider = ({ children }) => {
       });
 
       setCurrentUser(enrichedUser);
+      setIsLoading(false);
     };
 
     const unsubscribe = auth.onAuthStateChanged((user) => {
@@ -97,9 +101,31 @@ const AuthProvider = ({ children }) => {
     return () => unsubscribe();
   }, []);
 
+  // Listen for token count changes (e.g., after image generation)
+  useEffect(() => {
+    const handleTokenCountChanged = () => {
+      console.log(
+        'Token count changed event received, refreshing token profile'
+      );
+      refreshTokenProfile();
+    };
+
+    window.addEventListener('tokenCountChanged', handleTokenCountChanged);
+
+    return () => {
+      window.removeEventListener('tokenCountChanged', handleTokenCountChanged);
+    };
+  }, [currentUser]);
+
   return (
     <AuthContext.Provider
-      value={{ currentUser, setCurrentUser, tokenProfile, refreshTokenProfile }}
+      value={{
+        currentUser,
+        setCurrentUser,
+        tokenProfile,
+        refreshTokenProfile,
+        isLoading
+      }}
     >
       {children}
     </AuthContext.Provider>
@@ -112,4 +138,4 @@ AuthProvider.propTypes = {
 
 const useAuthContext = () => useContext(AuthContext);
 
-export { AuthProvider, useAuthContext };
+export { AuthProvider, useAuthContext, AuthContext };

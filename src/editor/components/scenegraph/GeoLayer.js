@@ -3,7 +3,7 @@ import useStore from '@/store';
 import { useAuthContext, useGeoContext } from '@/editor/contexts/index.js';
 import Events from '@/editor/lib/Events';
 import posthog from 'posthog-js';
-import { GeospatialIcon } from '../../icons';
+import { GeospatialIcon } from '@shared/icons';
 
 const GeoLayer = () => {
   const [clicked, setClicked] = useState(false);

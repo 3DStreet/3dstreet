@@ -93,7 +93,7 @@ export async function setSceneLocation(latitude, longitude, options = {}) {
   try {
     // Import the httpsCallable and functions from firebase
     const { httpsCallable } = await import('firebase/functions');
-    const { functions } = await import('../services/firebase.js');
+    const { functions } = await import('@shared/services/firebase');
     const { roundCoord } = await import('../../../src/utils.js');
 
     // Round coordinates to reasonable precision
