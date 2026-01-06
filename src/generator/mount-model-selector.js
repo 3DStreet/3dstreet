@@ -12,10 +12,11 @@ import AIModelSelector from '@shared/components/AIModelSelector';
  * @param {string} options.value - Currently selected model ID
  * @param {Function} options.onChange - Callback when model changes
  * @param {boolean} options.disabled - Whether the selector is disabled
+ * @param {boolean} options.hasSourceImage - Whether source image is available (filters fal models when false)
  * @returns {Object} - Object with unmount and update functions
  */
 export const mountModelSelector = (container, options) => {
-  const { value, onChange, disabled = false } = options;
+  const { value, onChange, disabled = false, hasSourceImage = true } = options;
 
   const root = createRoot(container);
 
@@ -25,12 +26,13 @@ export const mountModelSelector = (container, options) => {
         value={props.value}
         onChange={props.onChange}
         disabled={props.disabled}
+        hasSourceImage={props.hasSourceImage}
       />
     );
   };
 
   // Initial render
-  render({ value, onChange, disabled });
+  render({ value, onChange, disabled, hasSourceImage });
 
   return {
     unmount: () => root.unmount(),
@@ -38,7 +40,8 @@ export const mountModelSelector = (container, options) => {
       render({
         value: newOptions.value,
         onChange: newOptions.onChange ?? onChange,
-        disabled: newOptions.disabled ?? disabled
+        disabled: newOptions.disabled ?? disabled,
+        hasSourceImage: newOptions.hasSourceImage ?? hasSourceImage
       });
     }
   };

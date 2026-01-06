@@ -16,7 +16,11 @@ export const MODEL_GROUPS = {
     order: 2
   },
   versatile: {
-    label: 'Versatile',
+    label: 'Legacy',
+    order: 4
+  },
+  specialized: {
+    label: 'Specialized',
     order: 3
   }
 };
@@ -36,7 +40,7 @@ export const REPLICATE_MODELS = {
       'use the guidance of the geometry in the input image to create a photorealistic rendering of street improvements with accurate shading and lighting',
     estimatedTime: 60,
     includeIn4x: true,
-    tokenCost: 4
+    tokenCost: 3
   },
 
   // High quality and fast
@@ -49,7 +53,8 @@ export const REPLICATE_MODELS = {
     prompt: 'Transform satellite image into high-quality drone shot',
     estimatedTime: 25,
     includeIn4x: true,
-    tokenCost: 1
+    tokenCost: 1,
+    requiresSourceImage: true
   },
   'seedream-4': {
     name: 'Seedream',
@@ -74,7 +79,7 @@ export const REPLICATE_MODELS = {
     prompt:
       'photorealistic street view, professional photography, high detail, natural lighting, clear and sharp',
     estimatedTime: 15,
-    includeIn4x: true,
+    includeIn4x: false,
     tokenCost: 1
   },
   'nano-banana': {
@@ -88,6 +93,40 @@ export const REPLICATE_MODELS = {
     estimatedTime: 20,
     includeIn4x: false,
     tokenCost: 1
+  },
+
+  // fal.ai Models
+  'fal-flux-2-edit': {
+    name: 'Flux 2 Edit',
+    type: 'fal',
+    group: 'high-quality-fast',
+    logo: '/ui_assets/model-black-forest-labs.png',
+    endpoint: 'fal-ai/flux-2/edit',
+    prompt:
+      'photorealistic street view, professional photography, high detail, natural lighting, clear and sharp',
+    estimatedTime: 30,
+    includeIn4x: true,
+    tokenCost: 1,
+    requiresSourceImage: true
+  },
+  'fal-flux-2-lora-sfmta': {
+    name: 'Flux 2 SFMTA Striping',
+    type: 'fal',
+    group: 'specialized',
+    logo: '/ui_assets/model-black-forest-labs.png',
+    endpoint: 'fal-ai/flux-2/lora/edit',
+    loras: [
+      {
+        path: 'https://v3b.fal.media/files/b/0a87f612/4HKUTB4LNJycc4hyZOkr4_pytorch_lora_weights.safetensors',
+        scale: 1
+      }
+    ],
+    prompt:
+      'Generate a top-down satellite view from this sfmta style striping drawing',
+    estimatedTime: 35,
+    includeIn4x: false,
+    tokenCost: 2,
+    requiresSourceImage: true
   },
 
   // BFL Models - kept for backwards compatibility but hidden from UI
