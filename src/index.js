@@ -129,8 +129,7 @@ AFRAME.registerComponent('street', {
       data.showStriping,
       data.length,
       data.globalAnimated,
-      data.showVehicles,
-      streetmixSegments.schemaVersion
+      data.showVehicles
     );
     this.el.append(streetEl);
 
@@ -236,10 +235,7 @@ AFRAME.registerComponent('streetmix-loader', {
         el.setAttribute(
           'street',
           'JSON',
-          JSON.stringify({
-            streetmixSegmentsMetric: streetmixSegments,
-            schemaVersion: streetData.schemaVersion
-          })
+          JSON.stringify({ streetmixSegmentsMetric: streetmixSegments })
         );
         el.emit('streetmix-loader-street-loaded');
         // the streetmix data has been loaded, set the synchronize flag to false

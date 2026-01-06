@@ -993,8 +993,7 @@ function processSegments(
   showStriping,
   length,
   globalAnimated,
-  showVehicles,
-  schemaVersion
+  showVehicles
 ) {
   var clonedObjectRadius = length / 2;
   //  Adjust clonedObjectRadius so that objects do not repeat
@@ -1032,18 +1031,11 @@ function processSegments(
     // show warning message if segment or variantString are not supported
     supportCheck(segments[i].type, segments[i].variantString);
 
-    // elevation property from streetmix segment
-    let elevation = segments[i].elevation;
-    let elevationPosY;
-
-    // For schema v33+, elevation is already in meters
-    if (schemaVersion >= 33) {
-      elevationPosY = elevation || 0;
-    } else {
-      // Legacy: use hardcoded levels
-      const elevationLevels = [0, 0.2, 0.4];
-      elevationPosY = elevationLevels[elevation] || 0;
-    }
+    // elevation property from streetmix segment (already converted to integer level by convertStreetValues)
+    const elevation = segments[i].elevation || 0;
+    // Convert level to meters: Level 0 = 0m, Level 1 = 0.15m (curb height), etc.
+    const CURB_HEIGHT = 0.15;
+    const elevationPosY = elevation * CURB_HEIGHT;
 
     // add y elevation position as a data attribute to segment entity
     segmentParentEl.setAttribute('data-elevation-posY', elevationPosY);

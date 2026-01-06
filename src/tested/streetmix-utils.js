@@ -5,9 +5,7 @@ function streetmixUserToAPI(userURL) {
   var pathArray = new URL(userURL).pathname.split('/');
   const creatorId = decodeURIComponent(pathArray[1]);
   const namespacedId = pathArray[2];
-  // TEMPORARY: Use staging server for testing schema v33
-  const baseUrl = 'https://streetmix-staging.herokuapp.com';
-  // const baseUrl = 'https://streetmix.net'; // Production URL
+  const baseUrl = 'https://streetmix.net';
 
   if (creatorId === '-') {
     return baseUrl + '/api/v1/streets?namespacedId=' + namespacedId;
@@ -56,15 +54,24 @@ function streetmixAPIToUser(APIURL) {
     creatorId = '-';
   }
 
-  // TEMPORARY: Use staging server URL
-  return (
-    'https://streetmix-staging.herokuapp.com/' + creatorId + '/' + namespacedId
-  );
-  // return 'https://streetmix.net/' + creatorId + '/' + namespacedId; // Production URL
+  return 'https://streetmix.net/' + creatorId + '/' + namespacedId;
 }
 module.exports.streetmixAPIToUser = streetmixAPIToUser;
 
+// Convert metric elevation (from schemaVersion 33+) to integer level
+// Curb height is 0.15m, so we divide by that to get integer levels
+// e.g., 0m → 0, 0.15m → 1, 0.30m → 2, 0.75m → 5
+function metricElevationToLevel(elevation) {
+  if (elevation === undefined || elevation === null) {
+    return 0;
+  }
+  const CURB_HEIGHT = 0.15;
+  return Math.round(elevation / CURB_HEIGHT);
+}
+module.exports.metricElevationToLevel = metricElevationToLevel;
+
 // convert all feet values to meters for schemaVersion < 30
+// convert metric elevation to integer levels for schemaVersion >= 33
 function convertStreetValues(streetData) {
   if (streetData.schemaVersion < 30) {
     // convert width from feet to meters
@@ -73,6 +80,16 @@ function convertStreetValues(streetData) {
     });
     if (streetData.width) streetData.width *= 0.3048;
   }
+
+  // For schemaVersion 33+, elevation is in meters - convert back to integer levels
+  if (streetData.schemaVersion >= 33) {
+    streetData.segments.forEach((segmentData) => {
+      if (segmentData.elevation !== undefined) {
+        segmentData.elevation = metricElevationToLevel(segmentData.elevation);
+      }
+    });
+  }
+
   return streetData;
 }
 module.exports.convertStreetValues = convertStreetValues;
