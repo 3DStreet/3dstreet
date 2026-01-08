@@ -30,8 +30,6 @@ const FluxAPI = {
         remainingTokens: result.data.remainingTokens
       };
     } catch (error) {
-      console.error('API request error:', error);
-
       // Extract user-friendly error message
       let errorMessage = 'API request failed';
 
@@ -109,7 +107,6 @@ const FluxAPI = {
           setTimeout(checkResult, 1000);
         }
       } catch (error) {
-        console.error('Error polling for result:', error);
         onError(error);
       }
     };

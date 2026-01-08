@@ -65,7 +65,6 @@ const SignInModal = ({
       // Successfully signed in, close modal
       onClose();
     } catch (error) {
-      console.error('Authentication error:', error);
       // Don't close modal on error so user can retry
     } finally {
       setIsAuthenticating(false);

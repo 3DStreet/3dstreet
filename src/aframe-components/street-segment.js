@@ -552,13 +552,14 @@ AFRAME.registerComponent('street-segment', {
       });
     }
   },
-  // for streetmix elevation number values of -1, 0, 1, 2, calculate heightLevel in three.js meters units
+  // Convert integer elevation level to height in meters
+  // Level 0 = 0m (road), Level 1 = 0.15m (curb height), Level 2 = 0.30m, etc.
   calculateHeight: function (elevationLevel) {
-    const stepLevel = 0.15;
-    if (elevationLevel <= 0) {
-      return stepLevel;
+    const CURB_HEIGHT = 0.15; // Standard curb height in meters
+    if (elevationLevel === undefined || elevationLevel === null) {
+      return 0;
     }
-    return stepLevel * (elevationLevel + 1);
+    return elevationLevel * CURB_HEIGHT;
   },
   clearMesh: function () {
     // remove the geometry from the entity
