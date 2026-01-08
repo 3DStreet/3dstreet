@@ -5,9 +5,10 @@
  * authentication. These tests focus on behavior contracts that must be preserved
  * during React migration.
  */
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import * as React from 'react';
 
 // Mock Firebase auth
 vi.mock('firebase/auth', () => ({
@@ -16,6 +17,7 @@ vi.mock('firebase/auth', () => ({
   signInWithPopup: vi.fn()
 }));
 
+// eslint-disable-next-line import/first -- Must import after vi.mock
 import { signInWithPopup } from 'firebase/auth';
 
 // ============= MOCK COMPONENTS FOR TESTING =============
@@ -33,8 +35,12 @@ const MockModal = ({ isOpen, onClose, children, className }) => {
 };
 
 // Mock icons
-const MockGoogleIcon = () => <div data-testid="google-icon">Google Sign In</div>;
-const MockMicrosoftIcon = () => <div data-testid="microsoft-icon">Microsoft Sign In</div>;
+const MockGoogleIcon = () => (
+  <div data-testid="google-icon">Google Sign In</div>
+);
+const MockMicrosoftIcon = () => (
+  <div data-testid="microsoft-icon">Microsoft Sign In</div>
+);
 
 // SignInModal component for testing (simplified version matching real behavior)
 const SignInModal = ({
@@ -56,7 +62,11 @@ const SignInModal = ({
       if (provider === 'google') {
         await mockSignInWithGoogle(firebaseAuth, onAnalytics, onNotification);
       } else if (provider === 'microsoft') {
-        await mockSignInWithMicrosoft(firebaseAuth, onAnalytics, onNotification);
+        await mockSignInWithMicrosoft(
+          firebaseAuth,
+          onAnalytics,
+          onNotification
+        );
       }
 
       if (onSuccess) {
@@ -65,7 +75,7 @@ const SignInModal = ({
 
       onClose();
     } catch (error) {
-      console.error('Authentication error:', error);
+      // Don't close modal on error so user can retry
     } finally {
       setIsAuthenticating(false);
     }
@@ -100,9 +110,6 @@ const SignInModal = ({
     </>
   );
 };
-
-// Import React for useState
-import * as React from 'react';
 
 // Mock sign-in functions
 const mockSignInWithGoogle = vi.fn();
@@ -392,7 +399,9 @@ describe('SignInModal', () => {
         () => new Promise((resolve) => setTimeout(resolve, 1000))
       );
 
-      const CustomLoader = () => <div data-testid="custom-loader">Custom Loading...</div>;
+      const CustomLoader = () => (
+        <div data-testid="custom-loader">Custom Loading...</div>
+      );
 
       render(
         <SignInModal
@@ -536,7 +545,11 @@ describe('Sign In API Functions', () => {
   describe('signInWithGoogle() contract', () => {
     it('should accept firebaseAuth, onAnalytics, onNotification params', () => {
       // Contract: function signature
-      const signInWithGoogleSignature = (firebaseAuth, onAnalytics, onNotification) => {};
+      const signInWithGoogleSignature = (
+        firebaseAuth,
+        onAnalytics,
+        onNotification
+      ) => {};
 
       expect(typeof signInWithGoogleSignature).toBe('function');
     });
