@@ -1,5 +1,7 @@
 import { createUniqueId } from '../../../lib/entity.js';
 import * as defaultStreetObjects from './defaultStreets.js';
+import { uploadAsset, addAssetToScene } from '../../../api/storage.js';
+import useStore from '@/store.js';
 
 export function createSvgExtrudedEntity(position) {
   // This component accepts a svgString and creates a new entity with geometry extruded
@@ -342,21 +344,57 @@ export function createPanoramaSphere() {
   }
 }
 
-export function createModelFromFile(file, position) {
-  // Create entity with model from a local file (blob URL)
-  // Note: This is temporary and will not persist on reload
-  if (file && file.name) {
-    const blobUrl = URL.createObjectURL(file);
-    const definition = {
-      class: 'custom-model',
-      components: {
-        position: position ?? '0 0 0',
-        'gltf-model': `url(${blobUrl})`,
-        'data-layer-name': `glTF Model • ${file.name}`,
-        'data-temporary-file': 'true',
-        shadow: 'receive: true; cast: true;'
-      }
+function createTemporaryModel(file, position) {
+  if (!file || !file.name) return null;
+
+  const blobUrl = URL.createObjectURL(file);
+  const entityId = createUniqueId();
+  const definition = {
+    id: entityId,
+    class: 'custom-model',
+    components: {
+      position: position ?? { x: 0, y: 0, z: 0 },
+      'gltf-model': `url(${blobUrl})`,
+      'data-layer-name': `glTF Model • ${file.name}`,
+      'data-temporary-file': 'true',
+      'data-upload-status': 'pending',
+      shadow: 'receive: true; cast: true;'
+    }
+  };
+  return AFRAME.INSPECTOR.execute('entitycreate', definition);
+}
+
+export async function createModelFromFile(file, position) {
+  const tempEntity = createTemporaryModel(file, position);
+  if (!tempEntity) return;
+
+  const { scene, auth } = useStore.getState();
+  const sceneId = scene?.id;
+  const isProUser = auth.currentUser?.isPro;
+
+  if (!isProUser || !sceneId) {
+    tempEntity.setAttribute('data-upload-status', 'pro-required');
+    return;
+  }
+
+  try {
+    tempEntity.setAttribute('data-upload-status', 'uploading');
+    const modelUrl = await uploadAsset(sceneId, file);
+
+    tempEntity.setAttribute('gltf-model', `url(${modelUrl})`);
+    tempEntity.setAttribute('data-asset-source', '3dstreet');
+    tempEntity.setAttribute('data-upload-status', 'success');
+    tempEntity.removeAttribute('data-temporary-file');
+
+    const asset = {
+      id: tempEntity.id,
+      src: modelUrl,
+      type: 'model',
+      name: file.name
     };
-    AFRAME.INSPECTOR.execute('entitycreate', definition);
+    await addAssetToScene(sceneId, asset);
+  } catch (error) {
+    console.error('Failed to upload GLTF model:', error);
+    tempEntity.setAttribute('data-upload-status', 'failed');
   }
 }
