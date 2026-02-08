@@ -26,7 +26,9 @@
     "deploy:staging": "npm run dist:staging && npm run prefirebase && cd public && firebase use dev-3dstreet && firebase deploy --only hosting:dev-3dstreet",
     "emulator": "npm run dist:staging && npm run prefirebase && cd public && firebase emulators:start",
     "storybook": "storybook dev -p 6006",
-    "build-storybook": "storybook build"
+    "build-storybook": "storybook build",
+    "test:visual": "playwright test",
+    "test:visual:headed": "playwright test --headed"
   },
   "repository": "3dstreet/3dstreet",
   "author": "kieran.farr@gmail.com",
@@ -74,6 +76,7 @@
   "devDependencies": {
     "@babel/eslint-parser": "^7.24.5",
     "@babel/preset-react": "^7.23.3",
+    "@playwright/test": "^1.58.2",
     "@storybook/addon-docs": "^9.1.15",
     "@storybook/addon-onboarding": "^9.1.15",
     "@storybook/addon-webpack5-compiler-swc": "^4.0.1",
@@ -103,6 +106,8 @@
     "lint-staged": "^15.4.1",
     "mocha": "^10.4.0",
     "nyc": "^15.1.0",
+    "pixelmatch": "^7.1.0",
+    "pngjs": "^7.0.0",
     "postcss": "^8.4.47",
     "postcss-loader": "^8.1.1",
     "prettier": "^3.1.0",

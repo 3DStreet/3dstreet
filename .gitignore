@@ -12,3 +12,6 @@ dist/
 /public/index.html
 *storybook.log
 storybook-static
+test/parity/screenshots/
+playwright-report/
+test-results/
