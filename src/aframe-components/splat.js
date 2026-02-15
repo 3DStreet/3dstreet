@@ -109,7 +109,7 @@ AFRAME.registerComponent('splat', {
       this.system.initSparkRenderer();
 
       // Create new splat mesh
-      this.splatMesh = new LoadedSplatMesh({ url: src });
+      this.splatMesh = new LoadedSplatMesh({ url: src, lod: true });
       // Spark uses a different quaternion convention, rotate to match A-Frame
       this.splatMesh.quaternion.set(1, 0, 0, 0);
 
@@ -179,7 +179,8 @@ AFRAME.registerSystem('splat', {
       // Load Spark library dynamically
       const { SparkRenderer: LoadedSparkRenderer } = await loadSparkLibrary();
       this.sparkRenderer = new LoadedSparkRenderer({
-        renderer: this.el.renderer
+        renderer: this.el.renderer,
+        enableLod: true
       });
       this.el.object3D.add(this.sparkRenderer);
     } catch (error) {
