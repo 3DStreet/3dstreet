@@ -5,6 +5,8 @@ import {
   STREETPLAN_OBJECT_TO_GENERATED_CLONES_MAPPING
 } from './street-mapping-streetplan.js';
 import useStore from '../store.js';
+import { getMaterials } from '../editor/components/widgets/CustomizeColorWidget.js';
+import { NEUTRAL_CAR_COLORS } from '../editor/utils/neutral-car-color.js';
 const { segmentVariants } = require('../segments-variants.js');
 const streetmixUtils = require('../tested/streetmix-utils');
 const streetmixParsersTested = require('../tested/aframe-streetmix-parsers-tested');
@@ -65,6 +67,9 @@ AFRAME.registerComponent('managed-street', {
     // Bind the method to preserve context
     this.refreshFromSource = this.refreshFromSource.bind(this);
     this.onSegmentWidthChanged = this.onSegmentWidthChanged.bind(this);
+    this.randomizeColors = this.randomizeColors.bind(this);
+    this.neutralAutoColors = this.neutralAutoColors.bind(this);
+    this.resetColors = this.resetColors.bind(this);
 
     if (!this.el.hasAttribute('street-align')) {
       this.el.setAttribute('street-align', '');
@@ -666,6 +671,40 @@ AFRAME.registerComponent('managed-street', {
       (entity) => entity.parentNode && entity.remove()
     );
     this.managedEntities.length = 0; // Clear the array
+  },
+  randomizeColors: function () {
+    this.el.querySelectorAll('*').forEach((descendant) => {
+      const materials = getMaterials(descendant.object3D);
+      // We only add the custom color attribute to the "Accent" material
+      if (materials.some((m) => m.name === 'Accent')) {
+        descendant.setAttribute(
+          'custom-colors',
+          `Accent: #${Math.floor(Math.random() * 0xffffff)
+            .toString(16)
+            .padStart(6, '0')}`
+        );
+      }
+    });
+  },
+  neutralAutoColors: function () {
+    this.el.querySelectorAll('*').forEach((descendant) => {
+      const materials = getMaterials(descendant.object3D);
+      // We only add the custom color attribute to the "Accent" material
+      if (materials.some((m) => m.name === 'Accent')) {
+        const randomIndex = Math.floor(
+          Math.random() * NEUTRAL_CAR_COLORS.length
+        );
+        descendant.setAttribute(
+          'custom-colors',
+          `Accent: ${NEUTRAL_CAR_COLORS[randomIndex]}`
+        );
+      }
+    });
+  },
+  resetColors: function () {
+    this.el.querySelectorAll('*').forEach((descendant) => {
+      descendant.removeAttribute('custom-colors');
+    });
   }
 });
 

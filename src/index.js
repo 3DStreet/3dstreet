@@ -14,6 +14,7 @@ require('./aframe-components/svg-extruder.js');
 require('./lib/animation-mixer.js');
 require('./aframe-components/splat.js');
 require('./assets.js');
+require('./aframe-components/custom-colors.js');
 require('./aframe-components/notify.js');
 require('./aframe-components/create-from-json');
 require('./aframe-components/screentock.js');
