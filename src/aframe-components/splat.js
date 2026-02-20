@@ -15,7 +15,9 @@ async function loadSparkLibrary() {
   }
 
   if (!sparkLoadPromise) {
-    sparkLoadPromise = import('@sparkjsdev/spark').then((module) => {
+    sparkLoadPromise = import(
+      /* webpackChunkName: "spark-splat" */ '@sparkjsdev/spark'
+    ).then((module) => {
       SplatMesh = module.SplatMesh;
       SparkRenderer = module.SparkRenderer;
       console.log('[splat] Spark library loaded');
