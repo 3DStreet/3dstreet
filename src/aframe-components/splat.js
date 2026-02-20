@@ -114,7 +114,7 @@ AFRAME.registerComponent('splat', {
       // Create new splat mesh
       // RAD files have pre-built LOD and support streaming via range requests
       // Other formats use on-the-fly LOD generation (downloads full file first)
-      const isRad = src.toLowerCase().endsWith('.rad');
+      const isRad = new URL(src).pathname.toLowerCase().endsWith('.rad');
       this.splatMesh = new LoadedSplatMesh({
         url: src,
         ...(isRad ? { paged: true } : { lod: true })
