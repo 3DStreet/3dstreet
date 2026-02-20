@@ -9,7 +9,15 @@ module.exports = {
   performance: {
     maxAssetSize: 3250000, // 3.1 MiB
     maxEntrypointSize: 3250000, // 3.1 MiB
-    hints: 'error'
+    hints: 'error',
+    assetFilter: function (assetFilename) {
+      // Only check named entry point bundles, not async-loaded chunks.
+      // The Spark splat library (~4.4 MiB) is dynamically imported and
+      // lazy-loaded only when a splat component is used.
+      return /^(aframe-street-component|generator|bollardbuddy)\.js$/.test(
+        assetFilename
+      );
+    }
   },
   mode: 'production',
   devtool: 'source-map',
