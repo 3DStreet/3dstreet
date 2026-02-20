@@ -52,7 +52,8 @@ function normalizeUrl(url) {
 
 /**
  * Splat component for loading Gaussian Splat files using the Spark library.
- * Supports .splat, .ply, and .spz file formats.
+ * Supports .splat, .ply, .spz, and .rad file formats.
+ * RAD files stream progressively via HTTP range requests (best for large scenes).
  *
  * Note: The hosting server must have CORS headers configured to allow
  * cross-origin requests. GitHub raw URLs do not work due to CORS restrictions.
@@ -109,7 +110,13 @@ AFRAME.registerComponent('splat', {
       this.system.initSparkRenderer();
 
       // Create new splat mesh
-      this.splatMesh = new LoadedSplatMesh({ url: src, lod: true });
+      // RAD files have pre-built LOD and support streaming via range requests
+      // Other formats use on-the-fly LOD generation (downloads full file first)
+      const isRad = src.toLowerCase().endsWith('.rad');
+      this.splatMesh = new LoadedSplatMesh({
+        url: src,
+        ...(isRad ? { paged: true } : { lod: true })
+      });
       // Spark uses a different quaternion convention, rotate to match A-Frame
       this.splatMesh.quaternion.set(1, 0, 0, 0);
 
