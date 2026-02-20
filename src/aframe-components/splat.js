@@ -15,7 +15,9 @@ async function loadSparkLibrary() {
   }
 
   if (!sparkLoadPromise) {
-    sparkLoadPromise = import('@sparkjsdev/spark').then((module) => {
+    sparkLoadPromise = import(
+      /* webpackChunkName: "spark-splat" */ '@sparkjsdev/spark'
+    ).then((module) => {
       SplatMesh = module.SplatMesh;
       SparkRenderer = module.SparkRenderer;
       console.log('[splat] Spark library loaded');
@@ -52,7 +54,8 @@ function normalizeUrl(url) {
 
 /**
  * Splat component for loading Gaussian Splat files using the Spark library.
- * Supports .splat, .ply, and .spz file formats.
+ * Supports .splat, .ply, .spz, and .rad file formats.
+ * RAD files stream progressively via HTTP range requests (best for large scenes).
  *
  * Note: The hosting server must have CORS headers configured to allow
  * cross-origin requests. GitHub raw URLs do not work due to CORS restrictions.
@@ -109,7 +112,13 @@ AFRAME.registerComponent('splat', {
       this.system.initSparkRenderer();
 
       // Create new splat mesh
-      this.splatMesh = new LoadedSplatMesh({ url: src });
+      // RAD files have pre-built LOD and support streaming via range requests
+      // Other formats use on-the-fly LOD generation (downloads full file first)
+      const isRad = new URL(src).pathname.toLowerCase().endsWith('.rad');
+      this.splatMesh = new LoadedSplatMesh({
+        url: src,
+        ...(isRad ? { paged: true } : { lod: true })
+      });
       // Spark uses a different quaternion convention, rotate to match A-Frame
       this.splatMesh.quaternion.set(1, 0, 0, 0);
 
@@ -137,7 +146,11 @@ AFRAME.registerComponent('splat', {
     if (!this.splatMesh) {
       return null;
     }
-    return this.splatMesh.getBoundingBox(centersOnly);
+    try {
+      return this.splatMesh.getBoundingBox(centersOnly);
+    } catch (e) {
+      return null;
+    }
   }
 });
 
@@ -179,7 +192,8 @@ AFRAME.registerSystem('splat', {
       // Load Spark library dynamically
       const { SparkRenderer: LoadedSparkRenderer } = await loadSparkLibrary();
       this.sparkRenderer = new LoadedSparkRenderer({
-        renderer: this.el.renderer
+        renderer: this.el.renderer,
+        enableLod: true
       });
       this.el.object3D.add(this.sparkRenderer);
     } catch (error) {

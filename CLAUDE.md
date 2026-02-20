@@ -161,7 +161,7 @@ public/
 
 ## Tech Stack
 
-A-Frame 1.7.1, Three.js 0.172.0, React 18.2.0, Zustand 5.0.1, Firebase 11.3.1, Webpack 5.91.0, TailwindCSS 3.4.14
+A-Frame master build (commit 6a054e8, loaded via CDN in index.html — required for Three.js r181 compatibility with the Spark splat library), Three.js r181, React 18.2.0, Zustand 5.0.1, Firebase 11.3.1, Webpack 5.91.0, TailwindCSS 3.4.14
 
 ## Resources
 
