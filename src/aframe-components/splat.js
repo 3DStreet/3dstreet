@@ -144,7 +144,11 @@ AFRAME.registerComponent('splat', {
     if (!this.splatMesh) {
       return null;
     }
-    return this.splatMesh.getBoundingBox(centersOnly);
+    try {
+      return this.splatMesh.getBoundingBox(centersOnly);
+    } catch (e) {
+      return null;
+    }
   }
 });
 
