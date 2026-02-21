@@ -179,8 +179,6 @@ export async function convertToObject() {
 
     const link = document.createElement('a');
     link.href = jsonString;
-    const storeModule = await import('../../store.js');
-    const useStore = storeModule.default;
     const sceneTitle = useStore.getState().sceneTitle;
     const sanitized = sceneTitle
       ? sceneTitle.replace(/[<>:"/\\|?*]+/g, '').trim()
