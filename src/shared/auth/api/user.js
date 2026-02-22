@@ -35,12 +35,12 @@ const isUserPro = async (user) => {
     } catch (error) {
       console.error('Error checking PRO plan:', error);
 
-      // Fallback to local claims check if server call fails
+      // Fallback to local claims check if server call fails.
+      // Uses cached token (no forced refresh) to avoid additional latency.
       try {
-        await user.getIdToken(true);
         const idTokenResult = await user.getIdTokenResult();
         if (idTokenResult.claims.plan === 'PRO') {
-          console.log('PRO PLAN USER (fallback)');
+          console.log('PRO PLAN USER (fallback - cached claims)');
           return {
             isPro: true,
             isProSubscription: true,
