@@ -529,7 +529,7 @@ const generateReplicateVideo = functions
         'wan-video/wan-2.2-i2v-fast': 'Wan 2.2 I2V Fast',
         'wan-video/wan-2.6-i2v': 'Wan 2.6 I2V',
         'kwaivgi/kling-v2.5-turbo-pro': 'Kling v2.5 Turbo Pro',
-        'kwaivgi/kling-v3.0-pro': 'Kling v3.0 Pro',
+        'kwaivgi/kling-v3-video': 'Kling v3.0 Pro',
         'lightricks/ltx-2-fast': 'LTX-2 Fast'
       };
 
@@ -566,11 +566,16 @@ const generateReplicateVideo = functions
         modelInput.resolution = '1080p';
         modelInput.duration = duration_seconds;
       } else if (model_name === 'kwaivgi/kling-v2.5-turbo-pro') {
-        // Kling v2.5 model parameters (legacy)
+        // Kling v2.5 model parameters (legacy) - uses start_image instead of image
+        delete modelInput.image;
+        modelInput.start_image = imageUrl;
         modelInput.aspect_ratio = aspect_ratio;
         modelInput.duration = duration_seconds;
-      } else if (model_name === 'kwaivgi/kling-v3.0-pro') {
-        // Kling v3.0 model parameters
+      } else if (model_name === 'kwaivgi/kling-v3-video') {
+        // Kling v3.0 model parameters - uses start_image instead of image
+        delete modelInput.image;
+        modelInput.start_image = imageUrl;
+        modelInput.mode = 'pro';
         modelInput.aspect_ratio = aspect_ratio;
         modelInput.duration = duration_seconds;
       } else if (model_name === 'lightricks/ltx-2-fast') {

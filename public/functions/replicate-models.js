@@ -10,11 +10,23 @@ const REPLICATE_MODELS = {
     tokenCost: 1
   },
   // fal.ai Models
+  'fal-flux-2-max-edit': {
+    name: 'Flux 2 Max',
+    type: 'fal',
+    endpoint: 'fal-ai/flux-2-max/edit',
+    tokenCost: 3
+  },
+  'fal-flux-2-pro-edit': {
+    name: 'Flux 2 Pro',
+    type: 'fal',
+    endpoint: 'fal-ai/flux-2-pro/edit',
+    tokenCost: 2
+  },
   'fal-flux-2-edit': {
     name: 'Flux 2 Edit',
     type: 'fal',
     endpoint: 'fal-ai/flux-2/edit',
-    tokenCost: 3
+    tokenCost: 1
   },
   'fal-flux-2-lora-sfmta': {
     name: 'Flux 2 SFMTA Striping',

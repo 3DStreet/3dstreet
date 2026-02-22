@@ -20,7 +20,7 @@ const auth = getAuth(app);
 const storage = getStorage(app);
 const db = getFirestore(app);
 const functions = getFunctions(app);
-const vertexAI = getVertexAI(app);
+const vertexAI = getVertexAI(app, { location: 'global' });
 
 // Admin utilities exposed on window for console access
 // Server-side functions still enforce admin claim check
