@@ -1,3 +1,5 @@
+const { CURB_HEIGHT } = require('./street-segment-utils');
+
 function streetmixUserToAPI(userURL) {
   // eslint-disable-line no-unused-vars
   // this takes in a user facing Streetmix.net URL like https://streetmix.net/kfarr/3/a-frame-city-builder-street-only
@@ -65,7 +67,6 @@ function metricElevationToLevel(elevation) {
   if (elevation === undefined || elevation === null) {
     return 0;
   }
-  const CURB_HEIGHT = 0.15;
   return Math.round(elevation / CURB_HEIGHT);
 }
 module.exports.metricElevationToLevel = metricElevationToLevel;
