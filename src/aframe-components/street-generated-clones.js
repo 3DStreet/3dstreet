@@ -304,7 +304,7 @@ AFRAME.registerComponent('street-generated-clones', {
     clone.setAttribute('mixin', mixinId);
     clone.setAttribute('position', {
       x: positionX !== undefined ? positionX : data.positionX,
-      y: data.positionY,
+      y: data.positionY + 0.01,
       z: positionZ
     });
 
