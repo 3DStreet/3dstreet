@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { Button } from '../elements';
 import canvasRecorder from '../../lib/CanvasRecorder';
 import useStore from '@/store';
-import { useAuthContext } from '../../contexts/Auth.context';
+import { useAuthContext } from '../../contexts';
 
 /**
  * Helper function to get the scene-timer component
