@@ -70,6 +70,8 @@ const AuthProvider = ({ children }) => {
   };
 
   useEffect(() => {
+    let cancelled = false;
+
     const fetchUserData = async (user) => {
       if (!user) {
         localStorage.removeItem('token');
@@ -105,6 +107,9 @@ const AuthProvider = ({ children }) => {
         getTokenProfile(user.uid)
       ]);
 
+      // Guard: if user logged out while Phase 2 was in-flight, discard results
+      if (cancelled) return;
+
       const proStatus =
         proStatusResult.status === 'fulfilled'
           ? proStatusResult.value
@@ -115,8 +120,11 @@ const AuthProvider = ({ children }) => {
               teamDomain: null
             };
 
-      // Cache pro status for next page load
-      setCachedProStatus(user.uid, proStatus);
+      // Only cache when the cloud function actually succeeded —
+      // avoid overwriting a valid cache with a failure fallback
+      if (proStatusResult.status === 'fulfilled') {
+        setCachedProStatus(user.uid, proStatus);
+      }
 
       const enrichedUser = {
         ...user,
@@ -134,13 +142,18 @@ const AuthProvider = ({ children }) => {
         tokenProfileResult.value
       ) {
         setTokenProfile(tokenProfileResult.value);
+      } else if (tokenProfileResult.status === 'rejected') {
+        console.error(
+          'Error fetching token profile:',
+          tokenProfileResult.reason
+        );
       }
 
       // For pro users, check and refill tokens in background (non-blocking)
       if (proStatus.isPro) {
         checkAndRefillProTokens()
           .then((refreshedTokens) => {
-            if (refreshedTokens) {
+            if (!cancelled && refreshedTokens) {
               setTokenProfile(refreshedTokens);
             }
           })
@@ -164,7 +177,10 @@ const AuthProvider = ({ children }) => {
       fetchUserData(user);
     });
 
-    return () => unsubscribe();
+    return () => {
+      cancelled = true;
+      unsubscribe();
+    };
   }, []);
 
   // Listen for token count changes (e.g., after image generation)
