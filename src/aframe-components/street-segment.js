@@ -129,7 +129,7 @@ const TYPES = {
   grass: {
     surface: 'grass',
     color: COLORS.white,
-    level: -1
+    level: 0
   },
   rail: {
     surface: 'asphalt',
@@ -562,7 +562,10 @@ AFRAME.registerComponent('street-segment', {
     if (elevationLevel === undefined || elevationLevel === null) {
       return BASE_SURFACE_DEPTH;
     }
-    return BASE_SURFACE_DEPTH + elevationLevel * CURB_HEIGHT;
+    return Math.max(
+      BASE_SURFACE_DEPTH,
+      BASE_SURFACE_DEPTH + elevationLevel * CURB_HEIGHT
+    );
   },
   clearMesh: function () {
     // remove the geometry from the entity
