@@ -1,4 +1,5 @@
 /* global AFRAME */
+const { calculateHeight } = require('../tested/street-segment-utils');
 
 /*
 <a-entity street-way="source: xyz">
@@ -552,21 +553,7 @@ AFRAME.registerComponent('street-segment', {
       });
     }
   },
-  // Convert integer elevation level to total below-ground material depth in meters.
-  // Every segment has a base surface depth (currently 0.15m) of material above the
-  // dirt layer, plus additional height per elevation level (0.15m per level).
-  // Level 0 = 0.15m (base depth only), Level 1 = 0.30m, Level 2 = 0.45m, etc.
-  calculateHeight: function (elevationLevel) {
-    const CURB_HEIGHT = 0.15; // Height per elevation level in meters
-    const BASE_SURFACE_DEPTH = 0.15; // Minimum material depth above dirt layer
-    if (elevationLevel === undefined || elevationLevel === null) {
-      return BASE_SURFACE_DEPTH;
-    }
-    return Math.max(
-      BASE_SURFACE_DEPTH,
-      BASE_SURFACE_DEPTH + elevationLevel * CURB_HEIGHT
-    );
-  },
+  calculateHeight: calculateHeight,
   clearMesh: function () {
     // remove the geometry from the entity
     this.el.removeAttribute('geometry');
