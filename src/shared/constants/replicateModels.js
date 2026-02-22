@@ -56,12 +56,12 @@ export const REPLICATE_MODELS = {
     tokenCost: 1,
     requiresSourceImage: true
   },
-  'seedream-4': {
-    name: 'Seedream',
+  'seedream-4.5': {
+    name: 'Seedream 4.5',
     type: 'replicate',
     group: 'high-quality-fast',
     logo: '/ui_assets/model-bytedance.png',
-    version: '254faac883c3a411e95cc95d0fb02274a81e388aaa4394b3ce5b7d2a9f7a6569',
+    modelName: 'bytedance/seedream-4.5',
     prompt:
       'photorealistic street view, professional photography, high detail, natural lighting, clear and sharp',
     estimatedTime: 25,
@@ -186,10 +186,10 @@ export const getModelByVersion = (version) => {
 };
 
 /**
- * Default model version (Kontext Real Earth)
+ * Default model version (Nano Banana Pro)
  */
 export const DEFAULT_REPLICATE_MODEL_VERSION =
-  REPLICATE_MODELS['kontext-realearth'].version;
+  REPLICATE_MODELS['nano-banana-pro'].version;
 
 /**
  * Get models grouped by their group property
@@ -239,8 +239,8 @@ export const VIDEO_MODEL_GROUPS = {
  * Video models configuration
  */
 export const VIDEO_MODELS = {
-  'kwaivgi/kling-v2.5-turbo-pro': {
-    name: 'Kling v2.5 Turbo Pro',
+  'kwaivgi/kling-v3.0-pro': {
+    name: 'Kling v3.0 Pro',
     type: 'replicate',
     group: 'video-best-quality',
     logo: '/ui_assets/model-kling.png',
@@ -263,8 +263,8 @@ export const VIDEO_MODELS = {
     estimatedTime: 40,
     tokenCost: 1
   },
-  'wan-video/wan-2.2-i2v-fast': {
-    name: 'Wan 2.2 I2V Fast',
+  'wan-video/wan-2.6-i2v': {
+    name: 'Wan 2.6 I2V',
     type: 'replicate',
     group: 'video-versatile',
     logo: '/ui_assets/model-wan.png',

@@ -40,7 +40,7 @@ function ScreenshotModal() {
   const [renderProgress, setRenderProgress] = useState(0);
   const [renderStartTime, setRenderStartTime] = useState(null);
   const [elapsedTime, setElapsedTime] = useState(0);
-  const [selectedModel, setSelectedModel] = useState('kontext-realearth');
+  const [selectedModel, setSelectedModel] = useState('nano-banana-pro');
   const [renderMode, setRenderMode] = useState('1x'); // '1x' or '4x'
   const [aiImages, setAiImages] = useState({}); // Store multiple AI images with model keys
   const [renderTimers, setRenderTimers] = useState({}); // Individual timers for each model
@@ -307,6 +307,7 @@ function ScreenshotModal() {
         guidance: 2.5,
         num_inference_steps: 30,
         model_version: selectedModelConfig.version,
+        model_id: selectedModel,
         scene_id: sceneId || null
       });
 

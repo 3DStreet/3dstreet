@@ -47,6 +47,11 @@ const REPLICATE_MODELS = {
     name: 'Seedream v4',
     version: '254faac883c3a411e95cc95d0fb02274a81e388aaa4394b3ce5b7d2a9f7a6569',
     tokenCost: 1
+  },
+  'seedream-4.5': {
+    name: 'Seedream v4.5',
+    modelName: 'bytedance/seedream-4.5',
+    tokenCost: 1
   }
 };
 
@@ -65,9 +70,9 @@ const AI_MODEL_NAMES = Object.entries(REPLICATE_MODELS).reduce((acc, [key, model
 }, {});
 
 /**
- * Default model version (Kontext Real Earth)
+ * Default model version (Nano Banana Pro)
  */
-const DEFAULT_MODEL_VERSION = REPLICATE_MODELS['kontext-realearth'].version;
+const DEFAULT_MODEL_VERSION = REPLICATE_MODELS['nano-banana-pro'].version;
 
 /**
  * Model version constants for easy reference
@@ -76,7 +81,8 @@ const MODEL_VERSIONS = {
   KONTEXT_REALEARTH: REPLICATE_MODELS['kontext-realearth'].version,
   NANO_BANANA: REPLICATE_MODELS['nano-banana'].version,
   NANO_BANANA_PRO: REPLICATE_MODELS['nano-banana-pro'].version,
-  SEEDREAM_4: REPLICATE_MODELS['seedream-4'].version
+  SEEDREAM_4: REPLICATE_MODELS['seedream-4'].version,
+  SEEDREAM_4_5: 'seedream-4.5' // Uses modelName-based calling, not version hash
 };
 
 module.exports = {
