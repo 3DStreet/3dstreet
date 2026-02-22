@@ -166,24 +166,22 @@ describe('Streetmix Schema Version Handling', function () {
       assert.strictEqual(result.segments[0].width, 3.048);
     });
 
-    it('should convert metric elevation to integer levels with +1 offset', function () {
+    it('should convert metric elevation to integer levels', function () {
       const result = streetmixUtils.convertStreetValues(
         JSON.parse(JSON.stringify(SCHEMA_V33_STREET))
       );
-      // Note: +1 offset applied to avoid z-fighting with ground plane
-      assert.strictEqual(result.segments[0].elevation, 1); // 0m -> level 1 (road)
-      assert.strictEqual(result.segments[1].elevation, 2); // 0.15m -> level 2 (curb)
-      assert.strictEqual(result.segments[2].elevation, 6); // 0.75m -> level 6 (raised platform)
+      assert.strictEqual(result.segments[0].elevation, 0); // 0m -> level 0 (road)
+      assert.strictEqual(result.segments[1].elevation, 1); // 0.15m -> level 1 (curb)
+      assert.strictEqual(result.segments[2].elevation, 5); // 0.75m -> level 5 (raised platform)
     });
 
     it('should handle edge cases gracefully', function () {
       const result = streetmixUtils.convertStreetValues(
         JSON.parse(JSON.stringify(SCHEMA_V33_EDGE_CASES))
       );
-      // Note: +1 offset applied to avoid z-fighting with ground plane
-      assert.strictEqual(result.segments[0].elevation, 1); // 0m -> level 1
-      assert.strictEqual(result.segments[1].elevation, 2); // 0.15m -> level 2
-      assert.strictEqual(result.segments[2].elevation, 3); // 0.30m -> level 3
+      assert.strictEqual(result.segments[0].elevation, 0); // 0m -> level 0
+      assert.strictEqual(result.segments[1].elevation, 1); // 0.15m -> level 1
+      assert.strictEqual(result.segments[2].elevation, 2); // 0.30m -> level 2
       // undefined and missing elevation should remain as-is (handled downstream)
       assert.strictEqual(result.segments[3].elevation, undefined);
       assert.strictEqual(result.segments[4].elevation, undefined);
@@ -191,7 +189,7 @@ describe('Streetmix Schema Version Handling', function () {
   });
 
   describe('Cross-schema compatibility', function () {
-    it('should preserve relative elevation difference between v32 and v33 data', function () {
+    it('should produce equivalent elevation levels from v32 and v33 data', function () {
       // Same logical street in v32 (integer) and v33 (metric) formats
       const v32Street = {
         schemaVersion: 32,
@@ -215,15 +213,15 @@ describe('Streetmix Schema Version Handling', function () {
         JSON.parse(JSON.stringify(v33Street))
       );
 
-      // v32: levels unchanged (0, 1)
-      // v33: levels have +1 offset (1, 2)
-      // The RELATIVE difference (1 level = 0.15m curb height) should be the same
-      const v32Difference =
-        resultV32.segments[1].elevation - resultV32.segments[0].elevation;
-      const v33Difference =
-        resultV33.segments[1].elevation - resultV33.segments[0].elevation;
-      assert.strictEqual(v32Difference, v33Difference);
-      assert.strictEqual(v32Difference, 1); // 1 level difference = curb height
+      // Both should have the same elevation levels after conversion
+      assert.strictEqual(
+        resultV32.segments[0].elevation,
+        resultV33.segments[0].elevation
+      );
+      assert.strictEqual(
+        resultV32.segments[1].elevation,
+        resultV33.segments[1].elevation
+      );
     });
   });
 });

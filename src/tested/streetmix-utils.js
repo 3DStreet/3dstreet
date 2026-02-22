@@ -60,15 +60,13 @@ module.exports.streetmixAPIToUser = streetmixAPIToUser;
 
 // Convert metric elevation (from schemaVersion 33+) to integer level
 // Curb height is 0.15m, so we divide by that to get integer levels
-// Add +1 offset because Streetmix v33+ uses 0m as road level, but our system
-// needs road level at 0.15m to avoid z-fighting with the ground plane
-// e.g., 0m → 1, 0.15m → 2, 0.30m → 3, 0.75m → 6
+// e.g., 0m → 0, 0.15m → 1, 0.30m → 2, 0.75m → 5
 function metricElevationToLevel(elevation) {
   if (elevation === undefined || elevation === null) {
-    return 1; // Default to level 1 (road level) for v33+
+    return 0;
   }
   const CURB_HEIGHT = 0.15;
-  return Math.round(elevation / CURB_HEIGHT) + 1;
+  return Math.round(elevation / CURB_HEIGHT);
 }
 module.exports.metricElevationToLevel = metricElevationToLevel;
 

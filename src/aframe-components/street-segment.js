@@ -552,14 +552,17 @@ AFRAME.registerComponent('street-segment', {
       });
     }
   },
-  // Convert integer elevation level to height in meters
-  // Level 0 = 0m (road), Level 1 = 0.15m (curb height), Level 2 = 0.30m, etc.
+  // Convert integer elevation level to total below-ground material depth in meters.
+  // Every segment has a base surface depth (currently 0.15m) of material above the
+  // dirt layer, plus additional height per elevation level (0.15m per level).
+  // Level 0 = 0.15m (base depth only), Level 1 = 0.30m, Level 2 = 0.45m, etc.
   calculateHeight: function (elevationLevel) {
-    const CURB_HEIGHT = 0.15; // Standard curb height in meters
+    const CURB_HEIGHT = 0.15; // Height per elevation level in meters
+    const BASE_SURFACE_DEPTH = 0.15; // Minimum material depth above dirt layer
     if (elevationLevel === undefined || elevationLevel === null) {
-      return 0;
+      return BASE_SURFACE_DEPTH;
     }
-    return elevationLevel * CURB_HEIGHT;
+    return BASE_SURFACE_DEPTH + elevationLevel * CURB_HEIGHT;
   },
   clearMesh: function () {
     // remove the geometry from the entity
