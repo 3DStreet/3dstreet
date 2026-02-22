@@ -70,10 +70,14 @@ const AuthProvider = ({ children }) => {
   };
 
   useEffect(() => {
-    let cancelled = false;
+    // Tracks the currently active user UID (null = logged out).
+    // Used to discard stale Phase 2 results when the user logs out
+    // or switches accounts while background fetches are in-flight.
+    let activeUid = null;
 
     const fetchUserData = async (user) => {
       if (!user) {
+        activeUid = null;
         localStorage.removeItem('token');
         localStorage.removeItem(PRO_STATUS_CACHE_KEY);
         setCurrentUser(null);
@@ -81,6 +85,9 @@ const AuthProvider = ({ children }) => {
         setIsLoading(false);
         return;
       }
+
+      activeUid = user.uid;
+      const thisUid = user.uid;
 
       // Phase 1: Set basic user immediately with cached pro status.
       // This unblocks the UI so components know the user is authenticated
@@ -107,8 +114,8 @@ const AuthProvider = ({ children }) => {
         getTokenProfile(user.uid)
       ]);
 
-      // Guard: if user logged out while Phase 2 was in-flight, discard results
-      if (cancelled) return;
+      // Discard results if user changed (logout or switched accounts)
+      if (activeUid !== thisUid) return;
 
       const proStatus =
         proStatusResult.status === 'fulfilled'
@@ -153,7 +160,7 @@ const AuthProvider = ({ children }) => {
       if (proStatus.isPro) {
         checkAndRefillProTokens()
           .then((refreshedTokens) => {
-            if (!cancelled && refreshedTokens) {
+            if (activeUid === thisUid && refreshedTokens) {
               setTokenProfile(refreshedTokens);
             }
           })
@@ -177,10 +184,7 @@ const AuthProvider = ({ children }) => {
       fetchUserData(user);
     });
 
-    return () => {
-      cancelled = true;
-      unsubscribe();
-    };
+    return () => unsubscribe();
   }, []);
 
   // Listen for token count changes (e.g., after image generation)
