@@ -170,8 +170,66 @@ AFRAME.registerComponent('street-generated-clones', {
       data.count
     );
 
+    const models = data.modelsArray;
+    let modelIndex = 0;
+
+    // These are approximate depths for how far buildings extend from their placement point
+    // measure of the building model along the street's x axis
+    const buildingDepths = {
+      SM3D_Bld_Mixed_4fl: 6,
+      SM3D_Bld_Mixed_Double_5fl: 6,
+      SM3D_Bld_Mixed_4fl_2: 6,
+      SM3D_Bld_Mixed_5fl: 6,
+      SM3D_Bld_Mixed_Corner_4fl: 6,
+      SM_Bld_House_Preset_03_1800: 20,
+      SM_Bld_House_Preset_08_1809: 20,
+      SM_Bld_House_Preset_09_1845: 20,
+      'arched-building-01': 10,
+      'arched-building-02': 10,
+      'arched-building-03': 10,
+      'arched-building-04': 10,
+      'sp-prop-mixeduse-2L-29ft': 16, // Typical mixed-use depth
+      'sp-prop-mixeduse-2L-30ft': 16,
+      'sp-prop-mixeduse-3L-18ft': 8,
+      'sp-prop-mixeduse-3L-22ft': 7.2,
+      'sp-prop-mixeduse-3L-23ft-corner': 7.09, // Corner buildings slightly deeper
+      'sp-prop-mixeduse-3L-42ft': 16.42,
+      'sp-prop-mixeduse-3L-78ft-corner': 27.3, // Corner buildings slightly deeper
+      'sp-prop-sf-2L-64ft': 15.22,
+      'sp-prop-sf-2L-62ft': 18.36,
+      'sp-prop-sf-1L-62ft': 24.27,
+      'sp-prop-sf-1L-41ft': 10.15,
+      'sp-prop-townhouse-3L-20ft': 10.22,
+      'sp-prop-townhouse-3L-23ft': 10.22,
+      'sp-prop-bigbox-1L-220ft': 44.79,
+      'sp-prop-bigbox-1L-291ft': 79,
+      'sp-prop-parking-3L-155ft': 43.14,
+      'sp-prop-parking-3L-97ft-centered': 43.14,
+      'sp-prop-gov-3L-61ft': 16.23
+    };
+
+    // Use stored segment width to calculate justified X position
+    const segmentWidth = this.width || 0;
+
     positions.forEach((positionZ) => {
-      this.createClone(positionZ);
+      const mixinId = models[modelIndex % models.length];
+      const buildingDepth = buildingDepths[mixinId] || 0;
+
+      // Calculate X position based on justifyWidth
+      let positionX = data.positionX;
+      if (data.direction === 'outbound') {
+        // Left justify: place building so its right edge aligns with left edge of segment
+        positionX = data.positionX - segmentWidth / 2 + buildingDepth / 2;
+      } else if (data.direction === 'inbound') {
+        // Right justify: place building so its left edge aligns with right edge of segment
+        positionX = data.positionX + segmentWidth / 2 - buildingDepth / 2;
+      }
+      if (buildingDepth > 0 && positionZ > -this.length / 2) {
+        this.createClone(positionZ, mixinId, positionX);
+      } else {
+        this.createClone(positionZ);
+      }
+      modelIndex++;
     });
   },
 
