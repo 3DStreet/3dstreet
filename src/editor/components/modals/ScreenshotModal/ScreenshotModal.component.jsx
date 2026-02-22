@@ -230,6 +230,13 @@ function ScreenshotModal() {
     const targetModel = modelKey || selectedModel;
     const startTime = Date.now();
 
+    // Clear any previous error state for this model
+    setRenderErrors((prev) => {
+      const next = { ...prev };
+      delete next[targetModel];
+      return next;
+    });
+
     // Update rendering state for this specific model
     setRenderingStates((prev) => ({ ...prev, [targetModel]: true }));
     setRenderTimers((prev) => ({
@@ -461,6 +468,10 @@ function ScreenshotModal() {
       }
       return;
     }
+
+    // Clear previous render states before starting new batch
+    setRenderErrors({});
+    setAiImages({});
 
     const modelsToRender = useMixedModels
       ? modelKeys
