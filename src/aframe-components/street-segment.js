@@ -1,4 +1,5 @@
 /* global AFRAME */
+const { calculateHeight } = require('../tested/street-segment-utils');
 
 /*
 <a-entity street-way="source: xyz">
@@ -129,7 +130,7 @@ const TYPES = {
   grass: {
     surface: 'grass',
     color: COLORS.white,
-    level: -1
+    level: 0
   },
   rail: {
     surface: 'asphalt',
@@ -552,15 +553,7 @@ AFRAME.registerComponent('street-segment', {
       });
     }
   },
-  // Convert integer elevation level to height in meters
-  // Level 0 = 0m (road), Level 1 = 0.15m (curb height), Level 2 = 0.30m, etc.
-  calculateHeight: function (elevationLevel) {
-    const CURB_HEIGHT = 0.15; // Standard curb height in meters
-    if (elevationLevel === undefined || elevationLevel === null) {
-      return 0;
-    }
-    return elevationLevel * CURB_HEIGHT;
-  },
+  calculateHeight: calculateHeight,
   clearMesh: function () {
     // remove the geometry from the entity
     this.el.removeAttribute('geometry');

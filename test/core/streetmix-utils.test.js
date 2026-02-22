@@ -62,27 +62,26 @@ describe('StreetmixUtils', function () {
   });
 
   describe('#metricElevationToLevel()', function () {
-    // Note: All levels have +1 offset to avoid z-fighting with ground plane
-    it('should convert 0m to level 1 (road level)', function () {
-      assert.strictEqual(streetmixUtils.metricElevationToLevel(0), 1);
+    it('should convert 0m to level 0', function () {
+      assert.strictEqual(streetmixUtils.metricElevationToLevel(0), 0);
     });
-    it('should convert 0.15m (curb height) to level 2', function () {
-      assert.strictEqual(streetmixUtils.metricElevationToLevel(0.15), 2);
+    it('should convert 0.15m (curb height) to level 1', function () {
+      assert.strictEqual(streetmixUtils.metricElevationToLevel(0.15), 1);
     });
-    it('should convert 0.30m to level 3', function () {
-      assert.strictEqual(streetmixUtils.metricElevationToLevel(0.3), 3);
+    it('should convert 0.30m to level 2', function () {
+      assert.strictEqual(streetmixUtils.metricElevationToLevel(0.3), 2);
     });
-    it('should convert 0.75m (light rail) to level 6', function () {
-      assert.strictEqual(streetmixUtils.metricElevationToLevel(0.75), 6);
+    it('should convert 0.75m (light rail) to level 5', function () {
+      assert.strictEqual(streetmixUtils.metricElevationToLevel(0.75), 5);
     });
-    it('should handle undefined as level 1 (road level default)', function () {
-      assert.strictEqual(streetmixUtils.metricElevationToLevel(undefined), 1);
+    it('should handle undefined as level 0', function () {
+      assert.strictEqual(streetmixUtils.metricElevationToLevel(undefined), 0);
     });
-    it('should handle null as level 1 (road level default)', function () {
-      assert.strictEqual(streetmixUtils.metricElevationToLevel(null), 1);
+    it('should handle null as level 0', function () {
+      assert.strictEqual(streetmixUtils.metricElevationToLevel(null), 0);
     });
-    it('should round 0.14m to level 2 (nearest curb height)', function () {
-      assert.strictEqual(streetmixUtils.metricElevationToLevel(0.14), 2);
+    it('should round 0.14m to level 1 (nearest curb height)', function () {
+      assert.strictEqual(streetmixUtils.metricElevationToLevel(0.14), 1);
     });
   });
 
@@ -97,10 +96,9 @@ describe('StreetmixUtils', function () {
         ]
       };
       const result = streetmixUtils.convertStreetValues(streetData);
-      // Note: +1 offset applied to avoid z-fighting with ground plane
-      assert.strictEqual(result.segments[0].elevation, 1); // 0m -> level 1
-      assert.strictEqual(result.segments[1].elevation, 2); // 0.15m -> level 2
-      assert.strictEqual(result.segments[2].elevation, 3); // 0.30m -> level 3
+      assert.strictEqual(result.segments[0].elevation, 0); // 0m -> level 0
+      assert.strictEqual(result.segments[1].elevation, 1); // 0.15m -> level 1
+      assert.strictEqual(result.segments[2].elevation, 2); // 0.30m -> level 2
     });
     it('should not convert elevation for schemaVersion < 33', function () {
       const streetData = {
