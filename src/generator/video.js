@@ -19,7 +19,7 @@ const VideoTab = {
   currentVideoUrl: '',
   selectedAspectRatio: '16:9', // Default aspect ratio
   selectedDuration: 5, // Default duration in seconds (5 or 10)
-  selectedModel: 'bytedance/seedance-1-pro-fast', // Default video model
+  selectedModel: 'kwaivgi/kling-v3-video', // Default video model
   imageData: null, // Base64 image data for video generation
 
   // Timer state

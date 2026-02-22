@@ -153,13 +153,23 @@ const generateReplicateImage = functions
     }
 
     const userId = context.auth.uid;
-    const { prompt, input_image, guidance = 2.5, num_inference_steps = 30, model_version, scene_id, source = 'editor' } = data;
+    const { prompt, input_image, guidance = 2.5, num_inference_steps = 30, model_version, model_id, scene_id, source = 'editor' } = data;
 
-    // Determine the model version to use and its token cost
-    const modelVersionToUse = model_version || DEFAULT_MODEL_VERSION;
+    // Determine the model to use and its token cost
+    // First try model_id (key-based lookup), then fall back to model_version (hash-based lookup)
+    let modelConfig = null;
+    let modelVersionToUse = null;
 
-    // Find the model configuration by version to get the token cost
-    const modelConfig = Object.values(REPLICATE_MODELS).find(m => m.version === modelVersionToUse);
+    if (model_id && REPLICATE_MODELS[model_id]) {
+      modelConfig = REPLICATE_MODELS[model_id];
+      modelVersionToUse = modelConfig.version || null; // May be null for modelName-based models
+    }
+
+    if (!modelConfig) {
+      modelVersionToUse = model_version || DEFAULT_MODEL_VERSION;
+      modelConfig = Object.values(REPLICATE_MODELS).find(m => m.version === modelVersionToUse);
+    }
+
     const tokenCost = modelConfig?.tokenCost || 1; // Default to 1 if not found
 
     let tokenData;
@@ -262,7 +272,7 @@ const generateReplicateImage = functions
         // Remove parameters that Nano Banana models don't use
         delete modelInput.guidance;
         delete modelInput.num_inference_steps;
-      } else if (modelVersionToUse === MODEL_VERSIONS.SEEDREAM_4) {
+      } else if (modelVersionToUse === MODEL_VERSIONS.SEEDREAM_4 || model_id === 'seedream-4.5') {
         // Seedream uses image_input as an array and different parameters (optional)
         if (imageUrl) {
           modelInput.image_input = [imageUrl];
@@ -281,10 +291,19 @@ const generateReplicateImage = functions
         modelInput.output_format = 'jpg';
       }
 
-      const prediction = await replicate.predictions.create({
-        version: modelVersionToUse,
-        input: modelInput
-      });
+      let prediction;
+      if (modelConfig?.modelName) {
+        // Model-name-based calling (for models without version hashes, e.g. Seedream 4.5)
+        prediction = await replicate.predictions.create({
+          model: modelConfig.modelName,
+          input: modelInput
+        });
+      } else {
+        prediction = await replicate.predictions.create({
+          version: modelVersionToUse,
+          input: modelInput
+        });
+      }
 
       // Wait for the prediction to complete
       const output = await replicate.wait(prediction);
@@ -508,7 +527,9 @@ const generateReplicateVideo = functions
       const supportedModels = {
         'bytedance/seedance-1-pro-fast': 'SeeDance 1 Pro Fast',
         'wan-video/wan-2.2-i2v-fast': 'Wan 2.2 I2V Fast',
+        'wan-video/wan-2.6-i2v': 'Wan 2.6 I2V',
         'kwaivgi/kling-v2.5-turbo-pro': 'Kling v2.5 Turbo Pro',
+        'kwaivgi/kling-v3-video': 'Kling v3.0 Pro',
         'lightricks/ltx-2-fast': 'LTX-2 Fast'
       };
 
@@ -531,7 +552,7 @@ const generateReplicateVideo = functions
         modelInput.resolution = '1080p'; // Use highest quality
         // Note: SeeDance does not support audio control parameters
       } else if (model_name === 'wan-video/wan-2.2-i2v-fast') {
-        // Wan Video model parameters
+        // Wan Video 2.2 model parameters (legacy)
         modelInput.resolution = '720p'; // 720p or 480p
         modelInput.go_fast = true;
         // Map duration to num_frames (at 16 fps default)
@@ -540,12 +561,23 @@ const generateReplicateVideo = functions
         modelInput.num_frames = duration_seconds === 10 ? 121 : 81;
         modelInput.frames_per_second = 16;
         modelInput.interpolate_output = true;
-        // Note: Wan Video does not support audio control parameters
+      } else if (model_name === 'wan-video/wan-2.6-i2v') {
+        // Wan Video 2.6 model parameters
+        modelInput.resolution = '1080p';
+        modelInput.duration = duration_seconds;
       } else if (model_name === 'kwaivgi/kling-v2.5-turbo-pro') {
-        // Kling model parameters
+        // Kling v2.5 model parameters (legacy) - uses start_image instead of image
+        delete modelInput.image;
+        modelInput.start_image = imageUrl;
         modelInput.aspect_ratio = aspect_ratio;
-        modelInput.duration = duration_seconds; // Kling uses integer 5 or 10
-        // Note: Kling does not support audio control parameters
+        modelInput.duration = duration_seconds;
+      } else if (model_name === 'kwaivgi/kling-v3-video') {
+        // Kling v3.0 model parameters - uses start_image instead of image
+        delete modelInput.image;
+        modelInput.start_image = imageUrl;
+        modelInput.mode = 'pro';
+        modelInput.aspect_ratio = aspect_ratio;
+        modelInput.duration = duration_seconds;
       } else if (model_name === 'lightricks/ltx-2-fast') {
         // LTX model parameters - uses duration in seconds (not frames or aspect_ratio)
         // LTX accepts: 6, 8, 10, 12, 14, 16, 18, or 20 seconds

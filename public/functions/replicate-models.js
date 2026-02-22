@@ -10,11 +10,23 @@ const REPLICATE_MODELS = {
     tokenCost: 1
   },
   // fal.ai Models
+  'fal-flux-2-max-edit': {
+    name: 'Flux 2 Max',
+    type: 'fal',
+    endpoint: 'fal-ai/flux-2-max/edit',
+    tokenCost: 3
+  },
+  'fal-flux-2-pro-edit': {
+    name: 'Flux 2 Pro',
+    type: 'fal',
+    endpoint: 'fal-ai/flux-2-pro/edit',
+    tokenCost: 2
+  },
   'fal-flux-2-edit': {
     name: 'Flux 2 Edit',
     type: 'fal',
     endpoint: 'fal-ai/flux-2/edit',
-    tokenCost: 3
+    tokenCost: 1
   },
   'fal-flux-2-lora-sfmta': {
     name: 'Flux 2 SFMTA Striping',
@@ -47,6 +59,11 @@ const REPLICATE_MODELS = {
     name: 'Seedream v4',
     version: '254faac883c3a411e95cc95d0fb02274a81e388aaa4394b3ce5b7d2a9f7a6569',
     tokenCost: 1
+  },
+  'seedream-4.5': {
+    name: 'Seedream v4.5',
+    modelName: 'bytedance/seedream-4.5',
+    tokenCost: 2
   }
 };
 
@@ -65,9 +82,9 @@ const AI_MODEL_NAMES = Object.entries(REPLICATE_MODELS).reduce((acc, [key, model
 }, {});
 
 /**
- * Default model version (Kontext Real Earth)
+ * Default model version (Nano Banana Pro)
  */
-const DEFAULT_MODEL_VERSION = REPLICATE_MODELS['kontext-realearth'].version;
+const DEFAULT_MODEL_VERSION = REPLICATE_MODELS['nano-banana-pro'].version;
 
 /**
  * Model version constants for easy reference
@@ -76,7 +93,8 @@ const MODEL_VERSIONS = {
   KONTEXT_REALEARTH: REPLICATE_MODELS['kontext-realearth'].version,
   NANO_BANANA: REPLICATE_MODELS['nano-banana'].version,
   NANO_BANANA_PRO: REPLICATE_MODELS['nano-banana-pro'].version,
-  SEEDREAM_4: REPLICATE_MODELS['seedream-4'].version
+  SEEDREAM_4: REPLICATE_MODELS['seedream-4'].version,
+  SEEDREAM_4_5: 'seedream-4.5' // Uses modelName-based calling, not version hash
 };
 
 module.exports = {

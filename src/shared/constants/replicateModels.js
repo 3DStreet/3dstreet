@@ -11,13 +11,9 @@ export const MODEL_GROUPS = {
     label: 'Best quality',
     order: 1
   },
-  'high-quality-fast': {
-    label: 'High quality and fast',
+  'high-quality': {
+    label: 'High quality',
     order: 2
-  },
-  versatile: {
-    label: 'Legacy',
-    order: 4
   },
   specialized: {
     label: 'Specialized',
@@ -42,70 +38,58 @@ export const REPLICATE_MODELS = {
     includeIn4x: true,
     tokenCost: 3
   },
-
-  // High quality and fast
-  'kontext-realearth': {
-    name: 'Kontext Real Earth',
-    type: 'replicate',
-    group: 'high-quality-fast',
+  'fal-flux-2-max-edit': {
+    name: 'Flux 2 Max',
+    type: 'fal',
+    group: 'best-quality',
     logo: '/ui_assets/model-black-forest-labs.png',
-    version: '2af4da47bcb7b55a0705b0de9933701f7607531d763ae889241f827a648c1755',
-    prompt: 'Transform satellite image into high-quality drone shot',
-    estimatedTime: 25,
+    endpoint: 'fal-ai/flux-2-max/edit',
+    prompt:
+      'photorealistic street view, professional photography, high detail, natural lighting, clear and sharp',
+    estimatedTime: 30,
     includeIn4x: true,
-    tokenCost: 1,
+    tokenCost: 3,
     requiresSourceImage: true
   },
-  'seedream-4': {
-    name: 'Seedream',
+
+  // High quality
+  'seedream-4.5': {
+    name: 'Seedream 4.5',
     type: 'replicate',
-    group: 'high-quality-fast',
+    group: 'high-quality',
     logo: '/ui_assets/model-bytedance.png',
-    version: '254faac883c3a411e95cc95d0fb02274a81e388aaa4394b3ce5b7d2a9f7a6569',
+    modelName: 'bytedance/seedream-4.5',
     prompt:
       'photorealistic street view, professional photography, high detail, natural lighting, clear and sharp',
     estimatedTime: 25,
     includeIn4x: true,
-    tokenCost: 1
+    tokenCost: 2
   },
-
-  // Versatile
-  'flux-kontext-pro': {
-    name: 'Flux Kontext Pro',
-    type: 'replicate',
-    group: 'versatile',
+  'fal-flux-2-pro-edit': {
+    name: 'Flux 2 Pro',
+    type: 'fal',
+    group: 'high-quality',
     logo: '/ui_assets/model-black-forest-labs.png',
-    version: 'aa776ca45ce7f7d185418f700df8ec6ca6cb367bfd88e9cd225666c4c179d1d7',
-    prompt:
-      'photorealistic street view, professional photography, high detail, natural lighting, clear and sharp',
-    estimatedTime: 15,
-    includeIn4x: false,
-    tokenCost: 1
-  },
-  'nano-banana': {
-    name: 'Nano Banana',
-    type: 'replicate',
-    group: 'versatile',
-    logo: '/ui_assets/model-google.png',
-    version: 'f0a9d34b12ad1c1cd76269a844b218ff4e64e128ddaba93e15891f47368958a0',
+    endpoint: 'fal-ai/flux-2-pro/edit',
     prompt:
       'photorealistic street view, professional photography, high detail, natural lighting, clear and sharp',
     estimatedTime: 20,
     includeIn4x: false,
-    tokenCost: 1
+    tokenCost: 2,
+    requiresSourceImage: true
   },
 
-  // fal.ai Models
+  // Specialized
   'fal-flux-2-edit': {
     name: 'Flux 2 Edit',
     type: 'fal',
-    group: 'high-quality-fast',
+    group: 'specialized',
     logo: '/ui_assets/model-black-forest-labs.png',
     endpoint: 'fal-ai/flux-2/edit',
     prompt:
       'photorealistic street view, professional photography, high detail, natural lighting, clear and sharp',
     estimatedTime: 30,
-    includeIn4x: true,
+    includeIn4x: false,
     tokenCost: 1,
     requiresSourceImage: true
   },
@@ -126,6 +110,18 @@ export const REPLICATE_MODELS = {
     estimatedTime: 35,
     includeIn4x: false,
     tokenCost: 2,
+    requiresSourceImage: true
+  },
+  'kontext-realearth': {
+    name: 'Kontext Real Earth',
+    type: 'replicate',
+    group: 'specialized',
+    logo: '/ui_assets/model-black-forest-labs.png',
+    version: '2af4da47bcb7b55a0705b0de9933701f7607531d763ae889241f827a648c1755',
+    prompt: 'Transform satellite image into high-quality drone shot',
+    estimatedTime: 25,
+    includeIn4x: true,
+    tokenCost: 1,
     requiresSourceImage: true
   },
 
@@ -186,10 +182,10 @@ export const getModelByVersion = (version) => {
 };
 
 /**
- * Default model version (Kontext Real Earth)
+ * Default model version (Nano Banana Pro)
  */
 export const DEFAULT_REPLICATE_MODEL_VERSION =
-  REPLICATE_MODELS['kontext-realearth'].version;
+  REPLICATE_MODELS['nano-banana-pro'].version;
 
 /**
  * Get models grouped by their group property
@@ -239,8 +235,8 @@ export const VIDEO_MODEL_GROUPS = {
  * Video models configuration
  */
 export const VIDEO_MODELS = {
-  'kwaivgi/kling-v2.5-turbo-pro': {
-    name: 'Kling v2.5 Turbo Pro',
+  'kwaivgi/kling-v3-video': {
+    name: 'Kling v3.0 Pro',
     type: 'replicate',
     group: 'video-best-quality',
     logo: '/ui_assets/model-kling.png',
@@ -263,8 +259,8 @@ export const VIDEO_MODELS = {
     estimatedTime: 40,
     tokenCost: 1
   },
-  'wan-video/wan-2.2-i2v-fast': {
-    name: 'Wan 2.2 I2V Fast',
+  'wan-video/wan-2.6-i2v': {
+    name: 'Wan 2.6 I2V',
     type: 'replicate',
     group: 'video-versatile',
     logo: '/ui_assets/model-wan.png',

@@ -30,7 +30,7 @@ import {
 } from '@fortawesome/free-solid-svg-icons';
 import { getGroupedMixinOptions } from '../../lib/mixinUtils';
 
-const AI_MODEL_ID = 'gemini-2.5-flash';
+const AI_MODEL_ID = 'gemini-3-flash-preview';
 let AI_CONVERSATION_ID = uuidv4();
 
 // Helper component for the copy button
