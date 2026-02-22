@@ -51,7 +51,7 @@ const REPLICATE_MODELS = {
   'seedream-4.5': {
     name: 'Seedream v4.5',
     modelName: 'bytedance/seedream-4.5',
-    tokenCost: 1
+    tokenCost: 2
   }
 };
 

@@ -66,7 +66,7 @@ export const REPLICATE_MODELS = {
       'photorealistic street view, professional photography, high detail, natural lighting, clear and sharp',
     estimatedTime: 25,
     includeIn4x: true,
-    tokenCost: 1
+    tokenCost: 2
   },
 
   // Versatile
