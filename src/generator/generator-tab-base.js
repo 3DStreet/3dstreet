@@ -57,7 +57,7 @@ class GeneratorTabBase {
     this.currentImageUrl = '';
     this.selectedOrientation = 'portrait';
     this.selectedDimension = '1024x1440';
-    this.selectedModel = 'flux-kontext-pro'; // Default model
+    this.selectedModel = 'nano-banana-pro'; // Default model
 
     // Timer state
     this.renderStartTime = null;
@@ -915,6 +915,7 @@ class GeneratorTabBase {
       case 'nano-banana':
       case 'nano-banana-pro':
       case 'seedream-4':
+      case 'seedream-4.5':
         showDimensions = false;
         showAspectRatio = false;
         showRaw = false;
@@ -1360,6 +1361,7 @@ class GeneratorTabBase {
         guidance: 2.5,
         num_inference_steps: 30,
         model_version: modelConfig.version,
+        model_id: model,
         scene_id: null,
         source: 'generator'
       });
@@ -1679,7 +1681,8 @@ class GeneratorTabBase {
       case 'kontext-realearth':
       case 'nano-banana':
       case 'nano-banana-pro':
-      case 'seedream-4': {
+      case 'seedream-4':
+      case 'seedream-4.5': {
         if (!this.imagePromptData) {
           FluxUI.showNotification(
             'Source image is required for this model',

@@ -40,7 +40,7 @@ function ScreenshotModal() {
   const [renderProgress, setRenderProgress] = useState(0);
   const [renderStartTime, setRenderStartTime] = useState(null);
   const [elapsedTime, setElapsedTime] = useState(0);
-  const [selectedModel, setSelectedModel] = useState('kontext-realearth');
+  const [selectedModel, setSelectedModel] = useState('nano-banana-pro');
   const [renderMode, setRenderMode] = useState('1x'); // '1x' or '4x'
   const [aiImages, setAiImages] = useState({}); // Store multiple AI images with model keys
   const [renderTimers, setRenderTimers] = useState({}); // Individual timers for each model
@@ -230,6 +230,13 @@ function ScreenshotModal() {
     const targetModel = modelKey || selectedModel;
     const startTime = Date.now();
 
+    // Clear any previous error state for this model
+    setRenderErrors((prev) => {
+      const next = { ...prev };
+      delete next[targetModel];
+      return next;
+    });
+
     // Update rendering state for this specific model
     setRenderingStates((prev) => ({ ...prev, [targetModel]: true }));
     setRenderTimers((prev) => ({
@@ -269,14 +276,6 @@ function ScreenshotModal() {
         (currentUser?.isPro && customPrompt.trim()) ||
         selectedModelConfig.prompt;
 
-      const generateReplicateImage = httpsCallable(
-        functions,
-        'generateReplicateImage',
-        {
-          timeout: 300000 // 5 minutes in milliseconds
-        }
-      );
-
       const screentockImgElement = document.getElementById(
         'screentock-destination'
       );
@@ -301,14 +300,35 @@ function ScreenshotModal() {
 
       const sceneId = STREET.utils.getCurrentSceneId();
 
-      const result = await generateReplicateImage({
-        prompt: aiPrompt,
-        input_image: inputImageSrc,
-        guidance: 2.5,
-        num_inference_steps: 30,
-        model_version: selectedModelConfig.version,
-        scene_id: sceneId || null
-      });
+      // Route to the correct cloud function based on model type
+      let result;
+      if (selectedModelConfig.type === 'fal') {
+        const generateFalImage = httpsCallable(functions, 'generateFalImage', {
+          timeout: 300000
+        });
+        result = await generateFalImage({
+          prompt: aiPrompt,
+          input_image: inputImageSrc,
+          model_id: baseModelKey,
+          scene_id: sceneId || null,
+          source: 'editor'
+        });
+      } else {
+        const generateReplicateImage = httpsCallable(
+          functions,
+          'generateReplicateImage',
+          { timeout: 300000 }
+        );
+        result = await generateReplicateImage({
+          prompt: aiPrompt,
+          input_image: inputImageSrc,
+          guidance: 2.5,
+          num_inference_steps: 30,
+          model_version: selectedModelConfig.version,
+          model_id: baseModelKey,
+          scene_id: sceneId || null
+        });
+      }
 
       if (result.data.success) {
         // Store image in the appropriate place based on render mode
@@ -460,6 +480,10 @@ function ScreenshotModal() {
       }
       return;
     }
+
+    // Clear previous render states before starting new batch
+    setRenderErrors({});
+    setAiImages({});
 
     const modelsToRender = useMixedModels
       ? modelKeys

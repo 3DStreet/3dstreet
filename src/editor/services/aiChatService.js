@@ -10,7 +10,7 @@ class AIChatService {
   async initialize(firebaseApp) {
     try {
       this.model = getGenerativeModel(vertexAI, {
-        model: 'gemini-1.5-flash'
+        model: 'gemini-3-flash-preview'
       });
     } catch (error) {
       console.error('Error initializing AI Chat Service:', error);
