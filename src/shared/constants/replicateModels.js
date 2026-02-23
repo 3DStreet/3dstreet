@@ -47,7 +47,7 @@ export const REPLICATE_MODELS = {
     prompt:
       'photorealistic street view, professional photography, high detail, natural lighting, clear and sharp',
     estimatedTime: 60,
-    includeIn4x: true,
+    includeIn4x: false,
     tokenCost: 3,
     requiresSourceImage: true
   },
@@ -74,7 +74,7 @@ export const REPLICATE_MODELS = {
     prompt:
       'photorealistic street view, professional photography, high detail, natural lighting, clear and sharp',
     estimatedTime: 30,
-    includeIn4x: false,
+    includeIn4x: true,
     tokenCost: 2,
     requiresSourceImage: true
   },
