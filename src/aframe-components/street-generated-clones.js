@@ -173,6 +173,41 @@ AFRAME.registerComponent('street-generated-clones', {
     const models = data.modelsArray;
     let modelIndex = 0;
 
+    // measure of the building model along the street's z axis
+    const buildingWidths = {
+      SM3D_Bld_Mixed_4fl: 5.251,
+      SM3D_Bld_Mixed_Double_5fl: 10.9041,
+      SM3D_Bld_Mixed_4fl_2: 5.309,
+      SM3D_Bld_Mixed_5fl: 5.903,
+      SM3D_Bld_Mixed_Corner_4fl: 5.644,
+      SM_Bld_House_Preset_03_1800: 20,
+      SM_Bld_House_Preset_08_1809: 20,
+      SM_Bld_House_Preset_09_1845: 20,
+      'arched-building-01': 9.191,
+      'arched-building-02': 11.19,
+      'arched-building-03': 13.191,
+      'arched-building-04': 15.191,
+      seawall: 15,
+      'sp-prop-mixeduse-2L-29ft': 8.84, // ~29ft converted to meters
+      'sp-prop-mixeduse-2L-30ft': 9.14, // ~30ft converted to meters
+      'sp-prop-mixeduse-3L-18ft': 5.49, // ~18ft converted to meters
+      'sp-prop-mixeduse-3L-22ft': 6.71, // ~22ft converted to meters
+      'sp-prop-mixeduse-3L-23ft-corner': 7.01, // ~23ft converted to meters
+      'sp-prop-mixeduse-3L-42ft': 12.8, // ~42ft converted to meters
+      'sp-prop-mixeduse-3L-78ft-corner': 23.77, // ~78ft converted to meters
+      'sp-prop-sf-2L-64ft': 19.5,
+      'sp-prop-sf-2L-62ft': 18.9,
+      'sp-prop-sf-1L-62ft': 18.9,
+      'sp-prop-sf-1L-41ft': 12.5,
+      'sp-prop-townhouse-3L-20ft': 6.1,
+      'sp-prop-townhouse-3L-23ft': 7.01,
+      'sp-prop-bigbox-1L-220ft': 67, // ~220ft converted to meters
+      'sp-prop-bigbox-1L-291ft': 88.7, // ~291ft converted to meters
+      'sp-prop-parking-3L-155ft': 47.2, // ~155ft converted to meters
+      'sp-prop-parking-3L-97ft-centered': 29.6, // ~97ft converted to meters
+      'sp-prop-gov-3L-61ft': 18.6 // ~61ft converted to meters
+    };
+
     // These are approximate depths for how far buildings extend from their placement point
     // measure of the building model along the street's x axis
     const buildingDepths = {
@@ -214,6 +249,7 @@ AFRAME.registerComponent('street-generated-clones', {
     positions.forEach((positionZ) => {
       const mixinId = models[modelIndex % models.length];
       const buildingDepth = buildingDepths[mixinId] || 0;
+      const buildingWidth = buildingWidths[mixinId] || 10;
 
       // Calculate X position based on justifyWidth
       let positionX = data.positionX;
@@ -224,9 +260,14 @@ AFRAME.registerComponent('street-generated-clones', {
         // Right justify: place building so its left edge aligns with right edge of segment
         positionX = data.positionX + segmentWidth / 2 - buildingDepth / 2;
       }
-      if (buildingDepth > 0 && positionZ > -this.length / 2) {
+      if (
+        buildingDepth > 0 &&
+        positionZ > -this.length / 2 &&
+        positionZ + buildingWidth < this.length
+      ) {
         this.createClone(positionZ, mixinId, positionX);
-      } else {
+      }
+      if (buildingDepth === 0) {
         this.createClone(positionZ);
       }
       modelIndex++;
