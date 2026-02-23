@@ -46,7 +46,7 @@ export const REPLICATE_MODELS = {
     endpoint: 'fal-ai/flux-2-max/edit',
     prompt:
       'photorealistic street view, professional photography, high detail, natural lighting, clear and sharp',
-    estimatedTime: 30,
+    estimatedTime: 60,
     includeIn4x: true,
     tokenCost: 3,
     requiresSourceImage: true
@@ -73,28 +73,27 @@ export const REPLICATE_MODELS = {
     endpoint: 'fal-ai/flux-2-pro/edit',
     prompt:
       'photorealistic street view, professional photography, high detail, natural lighting, clear and sharp',
-    estimatedTime: 20,
+    estimatedTime: 30,
     includeIn4x: false,
     tokenCost: 2,
     requiresSourceImage: true
   },
 
   // Specialized
-  'fal-flux-2-edit': {
-    name: 'Flux 2 Edit',
-    type: 'fal',
+  'kontext-realearth': {
+    name: 'Kontext Real Earth',
+    type: 'replicate',
     group: 'specialized',
     logo: '/ui_assets/model-black-forest-labs.png',
-    endpoint: 'fal-ai/flux-2/edit',
-    prompt:
-      'photorealistic street view, professional photography, high detail, natural lighting, clear and sharp',
-    estimatedTime: 30,
-    includeIn4x: false,
+    version: '2af4da47bcb7b55a0705b0de9933701f7607531d763ae889241f827a648c1755',
+    prompt: 'Transform satellite image into high-quality drone shot',
+    estimatedTime: 25,
+    includeIn4x: true,
     tokenCost: 1,
     requiresSourceImage: true
   },
   'fal-flux-2-lora-sfmta': {
-    name: 'Flux 2 SFMTA Striping',
+    name: 'Flux 2 SFMTA Striping LoRA',
     type: 'fal',
     group: 'specialized',
     logo: '/ui_assets/model-black-forest-labs.png',
@@ -112,16 +111,17 @@ export const REPLICATE_MODELS = {
     tokenCost: 2,
     requiresSourceImage: true
   },
-  'kontext-realearth': {
-    name: 'Kontext Real Earth',
-    type: 'replicate',
+  'fal-flux-2-edit': {
+    name: 'Flux 2 Dev Base',
+    type: 'fal',
     group: 'specialized',
     logo: '/ui_assets/model-black-forest-labs.png',
-    version: '2af4da47bcb7b55a0705b0de9933701f7607531d763ae889241f827a648c1755',
-    prompt: 'Transform satellite image into high-quality drone shot',
-    estimatedTime: 25,
-    includeIn4x: true,
-    tokenCost: 1,
+    endpoint: 'fal-ai/flux-2/edit',
+    prompt:
+      'photorealistic street view, professional photography, high detail, natural lighting, clear and sharp',
+    estimatedTime: 30,
+    includeIn4x: false,
+    tokenCost: 2,
     requiresSourceImage: true
   },
 
@@ -180,6 +180,11 @@ export const getModelByVersion = (version) => {
     Object.values(REPLICATE_MODELS).find((m) => m.version === version) || null
   );
 };
+
+/**
+ * Default model ID key
+ */
+export const DEFAULT_REPLICATE_MODEL_ID = 'nano-banana-pro';
 
 /**
  * Default model version (Nano Banana Pro)

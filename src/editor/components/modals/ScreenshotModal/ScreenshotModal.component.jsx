@@ -276,14 +276,6 @@ function ScreenshotModal() {
         (currentUser?.isPro && customPrompt.trim()) ||
         selectedModelConfig.prompt;
 
-      const generateReplicateImage = httpsCallable(
-        functions,
-        'generateReplicateImage',
-        {
-          timeout: 300000 // 5 minutes in milliseconds
-        }
-      );
-
       const screentockImgElement = document.getElementById(
         'screentock-destination'
       );
@@ -308,15 +300,35 @@ function ScreenshotModal() {
 
       const sceneId = STREET.utils.getCurrentSceneId();
 
-      const result = await generateReplicateImage({
-        prompt: aiPrompt,
-        input_image: inputImageSrc,
-        guidance: 2.5,
-        num_inference_steps: 30,
-        model_version: selectedModelConfig.version,
-        model_id: selectedModel,
-        scene_id: sceneId || null
-      });
+      // Route to the correct cloud function based on model type
+      let result;
+      if (selectedModelConfig.type === 'fal') {
+        const generateFalImage = httpsCallable(functions, 'generateFalImage', {
+          timeout: 300000
+        });
+        result = await generateFalImage({
+          prompt: aiPrompt,
+          input_image: inputImageSrc,
+          model_id: baseModelKey,
+          scene_id: sceneId || null,
+          source: 'editor'
+        });
+      } else {
+        const generateReplicateImage = httpsCallable(
+          functions,
+          'generateReplicateImage',
+          { timeout: 300000 }
+        );
+        result = await generateReplicateImage({
+          prompt: aiPrompt,
+          input_image: inputImageSrc,
+          guidance: 2.5,
+          num_inference_steps: 30,
+          model_version: selectedModelConfig.version,
+          model_id: baseModelKey,
+          scene_id: sceneId || null
+        });
+      }
 
       if (result.data.success) {
         // Store image in the appropriate place based on render mode

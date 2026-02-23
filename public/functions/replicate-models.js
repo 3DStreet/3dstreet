@@ -26,7 +26,7 @@ const REPLICATE_MODELS = {
     name: 'Flux 2 Edit',
     type: 'fal',
     endpoint: 'fal-ai/flux-2/edit',
-    tokenCost: 1
+    tokenCost: 2
   },
   'fal-flux-2-lora-sfmta': {
     name: 'Flux 2 SFMTA Striping',
@@ -82,6 +82,11 @@ const AI_MODEL_NAMES = Object.entries(REPLICATE_MODELS).reduce((acc, [key, model
 }, {});
 
 /**
+ * Default model ID key
+ */
+const DEFAULT_MODEL_ID = 'nano-banana-pro';
+
+/**
  * Default model version (Nano Banana Pro)
  */
 const DEFAULT_MODEL_VERSION = REPLICATE_MODELS['nano-banana-pro'].version;
@@ -100,6 +105,7 @@ const MODEL_VERSIONS = {
 module.exports = {
   REPLICATE_MODELS,
   AI_MODEL_NAMES,
+  DEFAULT_MODEL_ID,
   DEFAULT_MODEL_VERSION,
   MODEL_VERSIONS
 };
