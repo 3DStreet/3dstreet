@@ -534,7 +534,7 @@ AFRAME.registerComponent('street-segment', {
     this.tempZPosition = this.el.getAttribute('position').z;
     this.el.setAttribute('position', {
       x: this.tempXPosition,
-      y: this.height,
+      y: this.height + 0.01,
       z: this.tempZPosition
     });
     this.generateMesh(data);
