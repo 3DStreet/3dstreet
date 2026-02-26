@@ -405,7 +405,7 @@ AFRAME.registerComponent('managed-street', {
           Transit: { type: 'bus-lane', name: 'Transit' },
           Cars: { type: 'drive-lane', name: 'Vehicles' },
           Parking: { type: 'parking-lane', name: 'Parking' },
-          Median: { type: 'median-lane', name: 'Median' },
+          Median: { type: 'parking-lane', name: 'Median' },
           Buffer: { type: 'buffer-lane', name: 'Buffer' },
           Curbside: { type: 'divider', name: 'CS' },
           Gutter: { type: 'divider', name: 'GU' },
