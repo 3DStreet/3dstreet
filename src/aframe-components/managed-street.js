@@ -397,41 +397,52 @@ AFRAME.registerComponent('managed-street', {
         // Convert from streetplan segment type to managed street types
         let segmentType = 'drive-lane'; // Default type
         let segmentDirection = 'inbound';
-
+        let segmentName = 'Vehicles';
         // convert from streetplan segment types to managed street presets
         switch (segment.Type) {
           case 'Buildings':
             segmentType = 'building';
+            segmentName = 'Land Use';
             break;
           case 'BikesPaths':
             segmentType = 'bike-lane';
+            segmentName = 'Bikes';
             break;
           case 'Walkways':
             segmentType = 'sidewalk';
+            segmentName = 'Walkways';
             break;
           case 'Transit':
             segmentType = 'bus-lane';
+            segmentName = 'Transit';
             break;
           case 'Cars':
             segmentType = 'drive-lane';
+            segmentName = 'Vehicles';
             break;
           case 'Parking':
             segmentType = 'parking-lane';
+            segmentName = 'Parking';
             break;
           case 'Median/Buffer':
             segmentType = 'parking-lane';
+            segmentName = 'Median';
             break;
           case 'Curbside':
             segmentType = 'divider';
+            segmentName = 'Curbside';
             break;
           case 'Gutter':
             segmentType = 'divider';
+            segmentName = 'Gutter';
             break;
           case 'Furniture':
             segmentType = 'sidewalk';
+            segmentName = 'Furniture';
             break;
-          case 'Lanes':
-            segmentType = 'parking-lane';
+          case 'Setback':
+            segmentType = 'setback-lane';
+            segmentName = 'SB';
             break;
           // Add more type mappings as needed
         }
@@ -479,7 +490,8 @@ AFRAME.registerComponent('managed-street', {
         const segmentData = {
           type: segmentType,
           width: segmentWidth,
-          name: segment.title,
+          // name: segment.title,
+          name: segmentName,
           level: parseFloat(segment.MaterialH) === 0.5 ? 1 : 0,
           direction: segmentDirection,
           color: mappedColor || window.STREET.types[segmentType]?.color,
