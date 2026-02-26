@@ -490,7 +490,6 @@ AFRAME.registerComponent('managed-street', {
         const segmentData = {
           type: segmentType,
           width: segmentWidth,
-          // name: segment.title,
           name: segmentName,
           level: parseFloat(segment.MaterialH) === 0.5 ? 1 : 0,
           direction: segmentDirection,
