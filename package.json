@@ -27,7 +27,10 @@
     "emulator": "npm run dist:staging && npm run prefirebase && cd public && firebase emulators:start",
     "storybook": "storybook dev -p 6006",
     "build-storybook": "storybook build",
-    "perf": "node scripts/perf-profile.js"
+    "perf": "node scripts/perf-profile.js",
+    "test:visual": "npx playwright test",
+    "test:visual:headed": "npx playwright test --headed",
+    "test:visual:update": "npx playwright test --update-snapshots"
   },
   "repository": "3dstreet/3dstreet",
   "author": "kieran.farr@gmail.com",
@@ -75,6 +78,7 @@
   "devDependencies": {
     "@babel/eslint-parser": "^7.24.5",
     "@babel/preset-react": "^7.23.3",
+    "@playwright/test": "^1.58.2",
     "@storybook/addon-docs": "^9.1.15",
     "@storybook/addon-onboarding": "^9.1.15",
     "@storybook/addon-webpack5-compiler-swc": "^4.0.1",
@@ -109,7 +113,6 @@
     "prettier": "^3.1.0",
     "prettier-plugin-tailwindcss": "^0.6.8",
     "pretty": "^2.0.0",
-    "puppeteer": "^24.37.5",
     "rewire": "^7.0.0",
     "sass": "^1.69.5",
     "sass-loader": "^13.3.2",

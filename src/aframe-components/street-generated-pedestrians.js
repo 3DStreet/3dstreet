@@ -167,6 +167,13 @@ AFRAME.registerComponent('street-generated-pedestrians', {
   },
 
   buildInstancedMeshes: function () {
+    // When ?instancing=off is in the URL, fall back to individual entities
+    const urlParams = new URLSearchParams(window.location.search);
+    if (urlParams.get('instancing') === 'off') {
+      this.buildEntityClones();
+      return;
+    }
+
     // Group specs by mixinId
     const groups = {};
     this.cloneSpecs.forEach((spec) => {
@@ -201,6 +208,20 @@ AFRAME.registerComponent('street-generated-pedestrians', {
       this.el.emit('pedestrians-generated', {
         count: this.cloneSpecs.length
       });
+    });
+  },
+
+  buildEntityClones: function () {
+    this.cloneSpecs.forEach((spec) => {
+      const entity = document.createElement('a-entity');
+      entity.setAttribute('mixin', spec.mixinId);
+      entity.setAttribute('position', spec.position);
+      entity.setAttribute('rotation', spec.rotation);
+      this.el.appendChild(entity);
+      this.createdEntities.push(entity);
+    });
+    this.el.emit('pedestrians-generated', {
+      count: this.cloneSpecs.length
     });
   },
 

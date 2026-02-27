@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 'use strict';
 
-const puppeteer = require('puppeteer');
+const { chromium } = require('playwright');
 
 const DEFAULT_SCENES = [
   {
@@ -31,41 +31,28 @@ function percentile(sortedArr, p) {
 }
 
 async function profileScene(browser, url) {
-  const page = await browser.newPage();
-  await page.setViewport({ width: 1920, height: 1080 });
+  const context = await browser.newContext({
+    viewport: { width: 1920, height: 1080 }
+  });
+  const page = await context.newPage();
 
   console.log(`\nNavigating to: ${url}`);
   await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 60000 });
 
   // Wait for A-Frame scene to load
   console.log('Waiting for A-Frame scene to load...');
-  await page.evaluate(() => {
-    return new Promise((resolve, reject) => {
-      const timeout = setTimeout(
-        () => reject(new Error('Scene load timeout (60s)')),
-        60000
-      );
+  await page.waitForFunction(
+    () => {
       const scene = document.querySelector('a-scene');
-      if (!scene) {
-        clearTimeout(timeout);
-        reject(new Error('No <a-scene> found'));
-        return;
-      }
-      if (scene.hasLoaded) {
-        clearTimeout(timeout);
-        resolve();
-      } else {
-        scene.addEventListener('loaded', () => {
-          clearTimeout(timeout);
-          resolve();
-        });
-      }
-    });
-  });
+      if (!scene) throw new Error('No <a-scene> found');
+      return scene.hasLoaded;
+    },
+    { timeout: 60000 }
+  );
   console.log('Scene loaded. Waiting for assets to finish loading...');
 
   // Wait for assets (models, textures) to settle
-  await new Promise((resolve) => setTimeout(resolve, ASSET_WAIT_S * 1000));
+  await page.waitForTimeout(ASSET_WAIT_S * 1000);
 
   // Measure FPS over sample duration
   console.log(`Measuring FPS over ${SAMPLE_DURATION_S}s...`);
@@ -128,7 +115,7 @@ async function profileScene(browser, url) {
     return { entities, threeObjects };
   });
 
-  // Collect memory stats
+  // Collect memory stats (Chromium only)
   const memoryStats = await page.evaluate(() => {
     if (performance.memory) {
       return {
@@ -139,7 +126,7 @@ async function profileScene(browser, url) {
     return null;
   });
 
-  await page.close();
+  await context.close();
 
   return {
     url,
@@ -207,7 +194,7 @@ async function main() {
     args.length > 0 ? args.map((url) => ({ name: url, url })) : DEFAULT_SCENES;
 
   console.log('Launching Chrome (headful for GPU rendering)...');
-  const browser = await puppeteer.launch({
+  const browser = await chromium.launch({
     headless: false,
     args: [
       '--enable-gpu-rasterization',
