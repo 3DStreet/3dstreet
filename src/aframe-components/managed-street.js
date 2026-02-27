@@ -395,46 +395,30 @@ AFRAME.registerComponent('managed-street', {
         streetObject.width += segmentWidth;
 
         // Convert from streetplan segment type to managed street types
-        let segmentType = 'drive-lane'; // Default type
         let segmentDirection = 'inbound';
-
         // convert from streetplan segment types to managed street presets
-        switch (segment.Type) {
-          case 'Buildings':
-            segmentType = 'building';
-            break;
-          case 'BikesPaths':
-            segmentType = 'bike-lane';
-            break;
-          case 'Walkways':
-            segmentType = 'sidewalk';
-            break;
-          case 'Transit':
-            segmentType = 'bus-lane';
-            break;
-          case 'Cars':
-            segmentType = 'drive-lane';
-            break;
-          case 'Parking':
-            segmentType = 'parking-lane';
-            break;
-          case 'Median/Buffer':
-            segmentType = 'parking-lane';
-            break;
-          case 'Curbside':
-            segmentType = 'divider';
-            break;
-          case 'Gutter':
-            segmentType = 'divider';
-            break;
-          case 'Furniture':
-            segmentType = 'sidewalk';
-            break;
-          case 'Lanes':
-            segmentType = 'parking-lane';
-            break;
-          // Add more type mappings as needed
-        }
+
+        const STREETPLAN_TYPE_MAPPING = {
+          Buildings: { type: 'building', name: 'Land Use' },
+          BikesPaths: { type: 'bike-lane', name: 'Bikes' },
+          Walkways: { type: 'sidewalk', name: 'Walkways' },
+          Transit: { type: 'bus-lane', name: 'Transit' },
+          Cars: { type: 'drive-lane', name: 'Vehicles' },
+          Parking: { type: 'parking-lane', name: 'Parking' },
+          Median: { type: 'parking-lane', name: 'Median' },
+          Buffer: { type: 'buffer-lane', name: 'Buffer' },
+          Curbside: { type: 'divider', name: 'CS' },
+          Gutter: { type: 'divider', name: 'GU' },
+          Furniture: { type: 'sidewalk', name: 'Furniture' },
+          Setback: { type: 'setback-lane', name: 'SB' }
+        };
+
+        const typeMapping = STREETPLAN_TYPE_MAPPING[segment.Type] || {
+          type: 'drive-lane',
+          name: 'Vehicles'
+        };
+        const segmentType = typeMapping.type;
+        const segmentName = typeMapping.name;
 
         // Determine direction based on segment data
         if (segment.side === 'left') {
@@ -479,7 +463,7 @@ AFRAME.registerComponent('managed-street', {
         const segmentData = {
           type: segmentType,
           width: segmentWidth,
-          name: segment.title,
+          name: segmentName,
           level: parseFloat(segment.MaterialH) === 0.5 ? 1 : 0,
           direction: segmentDirection,
           color: mappedColor || window.STREET.types[segmentType]?.color,
