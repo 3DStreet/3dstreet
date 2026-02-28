@@ -1,4 +1,4 @@
-/* eslint-disable no-unused-vars, react/no-danger */
+/* eslint-disable no-unused-vars */
 import classNames from 'classnames';
 import debounce from 'lodash-es/debounce';
 import PropTypes from 'prop-types';

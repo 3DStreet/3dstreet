@@ -55,7 +55,7 @@ export const Save = ({ currentUser }) => {
         setSavedScene(false);
       }, 1000);
     }
-  }, [savedScene]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [savedScene]);
 
   useEffect(() => {
     const autoSaveScene = debounce((cmd) => {
