@@ -89,6 +89,7 @@ export const ReportModal = () => {
         proposedSolutions: projectInfo.proposedSolutions || ''
       });
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isOpen]);
 
   // Listen for modal changes to handle returning from geo modal
