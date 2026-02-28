@@ -11,6 +11,10 @@ export default [
   // neostandard base config, no style rules, browser globals
   ...neostandard({ noStyle: true, env: ["browser"] }),
 
+  // React recommended rules
+  reactPlugin.configs.flat.recommended,
+  reactPlugin.configs.flat['jsx-runtime'],
+
   // React hooks recommended rules
   reactHooks.configs.flat.recommended,
 
@@ -34,14 +38,14 @@ export default [
       react: { version: "detect" },
     },
     rules: {
-      "no-var": "off",
       "no-useless-return": "off",
+      "no-var": "off",
       "object-shorthand": "off",
       "prefer-const": "off",
-      "react/self-closing-comp": "off",
       "react/jsx-boolean-value": "off",
       "react/jsx-handler-names": "off",
-      "react/jsx-uses-vars": "error",
+      "react/prop-types": "off",
+      "react/self-closing-comp": "off",
       "react-hooks/set-state-in-effect": "off",
     },
   },
