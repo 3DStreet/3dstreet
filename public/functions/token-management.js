@@ -144,16 +144,29 @@ const checkAndRefillImageTokens = functions
       
       if (needsRefill) {
         // Top up to monthly allowance (don't reset if they have more from purchases)
-        const newImageTokens = Math.max(tokenData.genToken || 0, PRO_MONTHLY_ALLOWANCE);
-        
+        const tokensBefore = tokenData.genToken || 0;
+        const newImageTokens = Math.max(tokensBefore, PRO_MONTHLY_ALLOWANCE);
+
         await tokenProfileRef.update({
           genToken: newImageTokens,
           lastMonthlyRefill: currentMonthKey,
           updatedAt: admin.firestore.FieldValue.serverTimestamp()
         });
-        
-        console.log(`Refilled Pro tokens for user ${userId}: ${tokenData.genToken} -> ${newImageTokens}`);
-        
+
+        // Fire-and-forget: write token refill audit log
+        db.collection('tokenLog').add({
+          userId,
+          type: 'refill',
+          tokensBefore,
+          tokensAfter: newImageTokens,
+          tokenCost: null,
+          source: 'monthly-refill',
+          relatedModel: null,
+          createdAt: admin.firestore.FieldValue.serverTimestamp()
+        }).catch(err => console.error('Failed to write tokenLog:', err));
+
+        console.log(`Refilled Pro tokens for user ${userId}: ${tokensBefore} -> ${newImageTokens}`);
+
         return {
           success: true,
           tokenProfile: {
@@ -240,14 +253,27 @@ const checkAndRefillImageTokensInternal = async (userId) => {
     const needsRefill = !tokenData.lastMonthlyRefill || tokenData.lastMonthlyRefill !== currentMonthKey;
     
     if (needsRefill) {
-      const newImageTokens = Math.max(tokenData.genToken || 0, PRO_MONTHLY_ALLOWANCE);
-      
+      const internalTokensBefore = tokenData.genToken || 0;
+      const newImageTokens = Math.max(internalTokensBefore, PRO_MONTHLY_ALLOWANCE);
+
       await tokenProfileRef.update({
         genToken: newImageTokens,
         lastMonthlyRefill: currentMonthKey,
         updatedAt: admin.firestore.FieldValue.serverTimestamp()
       });
-      
+
+      // Fire-and-forget: write token refill audit log
+      db.collection('tokenLog').add({
+        userId,
+        type: 'refill',
+        tokensBefore: internalTokensBefore,
+        tokensAfter: newImageTokens,
+        tokenCost: null,
+        source: 'monthly-refill',
+        relatedModel: null,
+        createdAt: admin.firestore.FieldValue.serverTimestamp()
+      }).catch(err => console.error('Failed to write tokenLog:', err));
+
       return {
         ...tokenData,
         genToken: newImageTokens,
