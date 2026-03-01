@@ -257,8 +257,8 @@ const generateReplicateImage = functions
         num_inference_steps: num_inference_steps
       };
 
-      // Check if this is the Nano Banana or Nano Banana Pro model (uses different input format)
-      if (modelVersionToUse === MODEL_VERSIONS.NANO_BANANA || modelVersionToUse === MODEL_VERSIONS.NANO_BANANA_PRO) {
+      // Check if this is a Nano Banana model (uses different input format)
+      if (modelVersionToUse === MODEL_VERSIONS.NANO_BANANA || modelVersionToUse === MODEL_VERSIONS.NANO_BANANA_PRO || model_id === 'nano-banana-2') {
         // Nano Banana models use image_input as an array (optional)
         if (imageUrl) {
           modelInput.image_input = [imageUrl];
@@ -450,9 +450,18 @@ const generateReplicateVideo = functions
     const userId = context.auth.uid;
     const { prompt, input_image, model_name = 'lightricks/ltx-2-fast', aspect_ratio = '16:9', duration_seconds = 5 } = data;
 
-    // Calculate token cost based on duration
-    // 5 seconds = 10 tokens, 10 seconds = 20 tokens
-    const tokenCost = duration_seconds === 10 ? 20 : 10;
+    // Per-model token costs based on duration
+    const VIDEO_TOKEN_COSTS = {
+      'kwaivgi/kling-v3-video': { tokenCost5s: 20, tokenCost10s: 40 },
+      'google/veo-3.1-fast': { tokenCost5s: 10, tokenCost10s: 20 },
+      'bytedance/seedance-1-pro-fast': { tokenCost5s: 7, tokenCost10s: 14 },
+      'wan-video/wan-2.6-i2v': { tokenCost5s: 15, tokenCost10s: 30 },
+      'lightricks/ltx-2-fast': { tokenCost5s: 5, tokenCost10s: 10 }
+    };
+
+    // Calculate token cost based on model and duration
+    const modelCosts = VIDEO_TOKEN_COSTS[model_name] || { tokenCost5s: 10, tokenCost10s: 20 };
+    const tokenCost = duration_seconds === 10 ? modelCosts.tokenCost10s : modelCosts.tokenCost5s;
 
     let tokenData;
     try {
@@ -530,7 +539,8 @@ const generateReplicateVideo = functions
         'wan-video/wan-2.6-i2v': 'Wan 2.6 I2V',
         'kwaivgi/kling-v2.5-turbo-pro': 'Kling v2.5 Turbo Pro',
         'kwaivgi/kling-v3-video': 'Kling v3.0 Pro',
-        'lightricks/ltx-2-fast': 'LTX-2 Fast'
+        'lightricks/ltx-2-fast': 'LTX-2 Fast',
+        'google/veo-3.1-fast': 'Veo 3.1 Fast'
       };
 
       // Validate model name
@@ -584,9 +594,13 @@ const generateReplicateVideo = functions
         // We'll map our 5/10 second options to 6/10 for LTX
         modelInput.duration = duration_seconds === 10 ? 10 : 6;
         modelInput.generate_audio = false; // LTX is the only model that supports audio control
+      } else if (model_name === 'google/veo-3.1-fast') {
+        // Veo 3.1 Fast model parameters
+        modelInput.aspect_ratio = aspect_ratio;
+        modelInput.duration = duration_seconds;
       }
 
-      console.log(`Generating ${duration_seconds}s video for user ${userId} with model ${model_name} (cost: ${tokenCost} tokens)`);
+      console.log(`Generating ${duration_seconds}s video for user ${userId} with model ${model_name} (tokenCost: ${tokenCost})`);
       console.log('Model input parameters:', JSON.stringify(modelInput, null, 2));
 
       // Use run() with model name instead of predictions.create with version

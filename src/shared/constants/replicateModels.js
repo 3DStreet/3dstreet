@@ -61,8 +61,20 @@ export const REPLICATE_MODELS = {
     modelName: 'bytedance/seedream-4.5',
     prompt:
       'photorealistic street view, professional photography, high detail, natural lighting, clear and sharp',
-    estimatedTime: 25,
+    estimatedTime: 20,
     includeIn4x: true,
+    tokenCost: 2
+  },
+  'nano-banana-2': {
+    name: 'Nano Banana 2',
+    type: 'replicate',
+    group: 'high-quality',
+    logo: '/ui_assets/model-google.png',
+    modelName: 'google/nano-banana-2',
+    prompt:
+      'use the guidance of the geometry in the input image to create a photorealistic rendering of street improvements with accurate shading and lighting',
+    estimatedTime: 30,
+    includeIn4x: false,
     tokenCost: 2
   },
   'fal-flux-2-pro-edit': {
@@ -87,7 +99,7 @@ export const REPLICATE_MODELS = {
     logo: '/ui_assets/model-black-forest-labs.png',
     version: '2af4da47bcb7b55a0705b0de9933701f7607531d763ae889241f827a648c1755',
     prompt: 'Transform satellite image into high-quality drone shot',
-    estimatedTime: 25,
+    estimatedTime: 15,
     includeIn4x: true,
     tokenCost: 1,
     requiresSourceImage: true
@@ -245,16 +257,27 @@ export const VIDEO_MODELS = {
     type: 'replicate',
     group: 'video-best-quality',
     logo: '/ui_assets/model-kling.png',
-    estimatedTime: 130,
-    tokenCost: 3
+    estimatedTime: 330,
+    tokenCost5s: 20,
+    tokenCost10s: 40
+  },
+  'google/veo-3.1-fast': {
+    name: 'Veo 3.1 Fast',
+    type: 'replicate',
+    group: 'video-best-quality',
+    logo: '/ui_assets/model-google.png',
+    estimatedTime: 60,
+    tokenCost5s: 10,
+    tokenCost10s: 20
   },
   'bytedance/seedance-1-pro-fast': {
     name: 'SeeDance 1 Pro Fast',
     type: 'replicate',
     group: 'video-high-quality-fast',
     logo: '/ui_assets/model-bytedance.png',
-    estimatedTime: 45,
-    tokenCost: 1
+    estimatedTime: 65,
+    tokenCost5s: 7,
+    tokenCost10s: 14
   },
   'lightricks/ltx-2-fast': {
     name: 'LTX-2 Fast',
@@ -262,15 +285,17 @@ export const VIDEO_MODELS = {
     group: 'video-high-quality-fast',
     logo: '/ui_assets/model-lightricks.png',
     estimatedTime: 40,
-    tokenCost: 1
+    tokenCost5s: 5,
+    tokenCost10s: 10
   },
   'wan-video/wan-2.6-i2v': {
     name: 'Wan 2.6 I2V',
     type: 'replicate',
     group: 'video-versatile',
     logo: '/ui_assets/model-wan.png',
-    estimatedTime: 110,
-    tokenCost: 2
+    estimatedTime: 100,
+    tokenCost5s: 15,
+    tokenCost10s: 30
   }
 };
 

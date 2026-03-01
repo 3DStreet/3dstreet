@@ -19,7 +19,7 @@ const VideoTab = {
   currentVideoUrl: '',
   selectedAspectRatio: '16:9', // Default aspect ratio
   selectedDuration: 5, // Default duration in seconds (5 or 10)
-  selectedModel: 'kwaivgi/kling-v3-video', // Default video model
+  selectedModel: 'google/veo-3.1-fast', // Default video model
   imageData: null, // Base64 image data for video generation
 
   // Timer state
@@ -60,6 +60,9 @@ const VideoTab = {
 
     // Setup event listeners
     this.setupEventListeners();
+
+    // Initialize token cost display and duration labels for default model
+    this.updateTokenCostDisplay();
 
     // Generate an initial random seed on load (commented out - seed doesn't work for video models)
     // this.generateRandomSeed();
@@ -503,12 +506,33 @@ const VideoTab = {
     }
   },
 
-  // Update token cost display based on selected duration
+  // Update token cost display based on selected duration and model
   updateTokenCostDisplay: function () {
     const duration = this.getSelectedDuration();
-    const tokenCost = duration === 10 ? 20 : 10;
+    const modelConfig = VIDEO_MODELS[this.selectedModel];
+    const tokenCost =
+      duration === 10
+        ? modelConfig?.tokenCost10s || 20
+        : modelConfig?.tokenCost5s || 10;
     if (this.elements.tokenCostDisplay) {
       this.elements.tokenCostDisplay.textContent = tokenCost;
+    }
+    // Update duration radio button labels with per-model costs
+    this.updateDurationLabels();
+  },
+
+  // Update duration radio button labels to show per-model token costs
+  updateDurationLabels: function () {
+    const modelConfig = VIDEO_MODELS[this.selectedModel];
+    const cost5s = modelConfig?.tokenCost5s || 10;
+    const cost10s = modelConfig?.tokenCost10s || 20;
+    const label5s = document.querySelector('label[for="video-duration-5s"]');
+    const label10s = document.querySelector('label[for="video-duration-10s"]');
+    if (label5s) {
+      label5s.textContent = `5 seconds (${cost5s} tokens)`;
+    }
+    if (label10s) {
+      label10s.textContent = `10 seconds (${cost10s} tokens)`;
     }
   },
 
