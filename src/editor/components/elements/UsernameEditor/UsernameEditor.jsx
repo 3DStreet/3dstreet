@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import styles from './UsernameEditor.module.scss';
 import {
   validateUsernameFormat,
@@ -18,38 +18,39 @@ const UsernameEditor = ({ currentUsername, userId, onUpdate }) => {
   const [isSaving, setIsSaving] = useState(false);
 
   // Debounced username validation
-  const checkUsername = useCallback(
-    debounce(async (value) => {
-      if (value === originalUsername) {
-        setValidationState(null);
-        setIsChecking(false);
-        return;
-      }
+  const checkUsername = useMemo(
+    () =>
+      debounce(async (value) => {
+        if (value === originalUsername) {
+          setValidationState(null);
+          setIsChecking(false);
+          return;
+        }
 
-      const formatValidation = validateUsernameFormat(value);
-      if (!formatValidation.valid) {
-        setValidationState({
-          valid: false,
-          message: formatValidation.error
-        });
-        setIsChecking(false);
-        return;
-      }
+        const formatValidation = validateUsernameFormat(value);
+        if (!formatValidation.valid) {
+          setValidationState({
+            valid: false,
+            message: formatValidation.error
+          });
+          setIsChecking(false);
+          return;
+        }
 
-      try {
-        const isAvailable = await checkUsernameAvailability(value);
-        setValidationState({
-          valid: isAvailable,
-          message: isAvailable ? 'Available' : 'Username already taken'
-        });
-      } catch (error) {
-        setValidationState({
-          valid: false,
-          message: 'Error checking availability'
-        });
-      }
-      setIsChecking(false);
-    }, 500),
+        try {
+          const isAvailable = await checkUsernameAvailability(value);
+          setValidationState({
+            valid: isAvailable,
+            message: isAvailable ? 'Available' : 'Username already taken'
+          });
+        } catch (error) {
+          setValidationState({
+            valid: false,
+            message: 'Error checking availability'
+          });
+        }
+        setIsChecking(false);
+      }, 500),
     [originalUsername]
   );
 

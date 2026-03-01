@@ -1,7 +1,6 @@
 const { CURB_HEIGHT } = require('./street-segment-utils');
 
 function streetmixUserToAPI(userURL) {
-  // eslint-disable-line no-unused-vars
   // this takes in a user facing Streetmix.net URL like https://streetmix.net/kfarr/3/a-frame-city-builder-street-only
   // and turns it into the API redirect URL like https://streetmix.net/api/v1/streets?namespacedId=3&creatorId=kfarr
   var pathArray = new URL(userURL).pathname.split('/');
@@ -34,7 +33,6 @@ function pathStartsWithAPI(urlString) {
 module.exports.pathStartsWithAPI = pathStartsWithAPI;
 
 function streetmixAPIToUser(APIURL) {
-  // eslint-disable-line no-unused-vars
   // this takes in a Streetmix.net API redirect URL like https://streetmix.net/api/v1/streets?namespacedId=3&creatorId=kfarr
   // and turns it into the user facing friendly Streetmix.net URL like https://streetmix.net/kfarr/3/a-frame-city-builder-street-only
 

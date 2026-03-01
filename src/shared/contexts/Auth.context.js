@@ -198,6 +198,7 @@ const AuthProvider = ({ children }) => {
     return () => {
       window.removeEventListener('tokenCountChanged', handleTokenCountChanged);
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentUser]);
 
   return (

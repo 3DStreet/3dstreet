@@ -663,6 +663,7 @@ const AIChatPanel = forwardRef(function AIChatPanel(props, ref) {
     return () => {
       window.aiChatPanelRef = null;
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // Scroll to bottom when new messages are added

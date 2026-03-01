@@ -168,6 +168,7 @@ const SceneCard = ({
     if (scenesData?.length > 0) {
       fetchUsernames();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [scenesData]);
 
   return (
