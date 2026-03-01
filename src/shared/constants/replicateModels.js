@@ -266,7 +266,7 @@ export const VIDEO_MODELS = {
     type: 'replicate',
     group: 'video-best-quality',
     logo: '/ui_assets/model-google.png',
-    estimatedTime: 60,
+    estimatedTime: 90,
     tokenCost5s: 10,
     tokenCost10s: 20
   },

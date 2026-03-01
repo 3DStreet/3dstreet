@@ -528,11 +528,15 @@ const VideoTab = {
     const cost10s = modelConfig?.tokenCost10s || 20;
     const label5s = document.querySelector('label[for="video-duration-5s"]');
     const label10s = document.querySelector('label[for="video-duration-10s"]');
+    // Veo only supports 4s/8s durations
+    const isVeo = this.selectedModel === 'google/veo-3.1-fast';
+    const shortLabel = isVeo ? '4 seconds' : '5 seconds';
+    const longLabel = isVeo ? '8 seconds' : '10 seconds';
     if (label5s) {
-      label5s.textContent = `5 seconds (${cost5s} tokens)`;
+      label5s.textContent = `${shortLabel} (${cost5s} tokens)`;
     }
     if (label10s) {
-      label10s.textContent = `10 seconds (${cost10s} tokens)`;
+      label10s.textContent = `${longLabel} (${cost10s} tokens)`;
     }
   },
 

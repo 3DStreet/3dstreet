@@ -264,8 +264,8 @@ const generateReplicateImage = functions
           modelInput.image_input = [imageUrl];
           modelInput.aspect_ratio = 'match_input_image';
         }
-        // Nano Banana Pro supports higher resolution
-        if (modelVersionToUse === MODEL_VERSIONS.NANO_BANANA_PRO) {
+        // Nano Banana Pro and Nano Banana 2 support higher resolution
+        if (modelVersionToUse === MODEL_VERSIONS.NANO_BANANA_PRO || model_id === 'nano-banana-2') {
           modelInput.resolution = '2K'; // Can be '1K', '2K', or '4K'
         }
         modelInput.output_format = 'jpg';
@@ -596,8 +596,10 @@ const generateReplicateVideo = functions
         modelInput.generate_audio = false; // LTX is the only model that supports audio control
       } else if (model_name === 'google/veo-3.1-fast') {
         // Veo 3.1 Fast model parameters
+        // Veo accepts duration: 4, 6, or 8 seconds only
         modelInput.aspect_ratio = aspect_ratio;
-        modelInput.duration = duration_seconds;
+        modelInput.duration = duration_seconds <= 5 ? 4 : 8;
+        modelInput.generate_audio = false;
       }
 
       console.log(`Generating ${duration_seconds}s video for user ${userId} with model ${model_name} (tokenCost: ${tokenCost})`);
