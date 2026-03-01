@@ -365,6 +365,7 @@ const generateReplicateImage = functions
         provider: 'replicate',
         model: modelConfig?.modelName || modelVersionToUse,
         generationType: 'image',
+        tokenCost,
         processingTimeMs: generationElapsedMs,
         providerPredictionId: prediction.id,
         status: 'succeeded',
@@ -428,6 +429,7 @@ const generateReplicateImage = functions
         provider: 'replicate',
         model: modelConfig?.modelName || modelVersionToUse,
         generationType: 'image',
+        tokenCost,
         processingTimeMs: generationStartTime ? Date.now() - generationStartTime : null,
         providerPredictionId: prediction?.id || null,
         status: 'failed',
@@ -680,8 +682,9 @@ const generateReplicateVideo = functions
         provider: 'replicate',
         model: model_name,
         generationType: 'video',
+        tokenCost,
         processingTimeMs: videoGenerationElapsedMs,
-        providerPredictionId: null,
+        providerPredictionId: null, // replicate.run() doesn't expose prediction ID; use predictions.create() if needed
         status: 'succeeded',
         createdAt: admin.firestore.FieldValue.serverTimestamp()
       }).catch(err => console.error('Failed to write generationLog:', err));
@@ -735,8 +738,9 @@ const generateReplicateVideo = functions
         provider: 'replicate',
         model: model_name,
         generationType: 'video',
+        tokenCost,
         processingTimeMs: videoGenerationStartTime ? Date.now() - videoGenerationStartTime : null,
-        providerPredictionId: null,
+        providerPredictionId: null, // replicate.run() doesn't expose prediction ID; use predictions.create() if needed
         status: 'failed',
         error: error.message,
         createdAt: admin.firestore.FieldValue.serverTimestamp()
