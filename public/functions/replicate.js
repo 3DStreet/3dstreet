@@ -292,6 +292,7 @@ const generateReplicateImage = functions
       }
 
       let prediction;
+      const generationStartTime = Date.now();
       if (modelConfig?.modelName) {
         // Model-name-based calling (for models without version hashes, e.g. Seedream 4.5)
         prediction = await replicate.predictions.create({
@@ -307,6 +308,7 @@ const generateReplicateImage = functions
 
       // Wait for the prediction to complete
       const output = await replicate.wait(prediction);
+      const generationElapsedMs = Date.now() - generationStartTime;
 
 
       // Clean up temp file if we created one
@@ -328,6 +330,7 @@ const generateReplicateImage = functions
       // Use a transaction to atomically check and decrement tokens
       // This prevents negative balances when multiple requests run concurrently
       let remainingTokens = 0;
+      let tokensBefore = 0;
       await db.runTransaction(async (transaction) => {
         const tokenDoc = await transaction.get(tokenProfileRef);
 
@@ -336,6 +339,7 @@ const generateReplicateImage = functions
         }
 
         const currentTokens = tokenDoc.data().genToken || 0;
+        tokensBefore = currentTokens;
 
         // Check if user has enough tokens (should already be checked, but verify in transaction)
         if (currentTokens < tokenCost) {
@@ -352,6 +356,31 @@ const generateReplicateImage = functions
           updatedAt: admin.firestore.FieldValue.serverTimestamp()
         });
       });
+
+      // Fire-and-forget: write generation audit log
+      db.collection('generationLog').add({
+        userId,
+        provider: 'replicate',
+        model: modelConfig?.modelName || modelVersionToUse,
+        generationType: 'image',
+        processingTimeMs: generationElapsedMs,
+        providerPredictionId: prediction.id,
+        status: 'succeeded',
+        error: null,
+        createdAt: admin.firestore.FieldValue.serverTimestamp()
+      }).catch(err => console.error('Failed to write generationLog:', err));
+
+      // Fire-and-forget: write token deduction audit log
+      db.collection('tokenLog').add({
+        userId,
+        type: 'deduction',
+        tokensBefore,
+        tokensAfter: remainingTokens,
+        tokenCost,
+        source: 'image-generation',
+        relatedModel: modelConfig?.modelName || modelVersionToUse,
+        createdAt: admin.firestore.FieldValue.serverTimestamp()
+      }).catch(err => console.error('Failed to write tokenLog:', err));
 
       // Handle different output formats from Replicate
       // The output from replicate.wait() is the prediction object with an 'output' property
@@ -391,6 +420,20 @@ const generateReplicateImage = functions
       console.error('Error generating image with Replicate:', error);
       console.error('Error details:', error.message);
       console.error('Error stack:', error.stack);
+
+      // Fire-and-forget: write failed generation audit log
+      const db = admin.firestore();
+      db.collection('generationLog').add({
+        userId,
+        provider: 'replicate',
+        model: modelConfig?.modelName || modelVersionToUse,
+        generationType: 'image',
+        processingTimeMs: typeof generationStartTime !== 'undefined' ? Date.now() - generationStartTime : null,
+        providerPredictionId: prediction?.id || null,
+        status: 'failed',
+        error: error.message,
+        createdAt: admin.firestore.FieldValue.serverTimestamp()
+      }).catch(err => console.error('Failed to write generationLog:', err));
 
       // If it's a Replicate error, include more details
       if (error.response) {
@@ -590,9 +633,11 @@ const generateReplicateVideo = functions
       console.log('Model input parameters:', JSON.stringify(modelInput, null, 2));
 
       // Use run() with model name instead of predictions.create with version
+      const videoGenerationStartTime = Date.now();
       const output = await replicate.run(model_name, {
         input: modelInput
       });
+      const videoGenerationElapsedMs = Date.now() - videoGenerationStartTime;
 
       console.log(`Video generation completed for user ${userId}`);
 
@@ -601,6 +646,7 @@ const generateReplicateVideo = functions
       const tokenProfileRef = db.collection('tokenProfile').doc(userId);
 
       let remainingTokens = 0;
+      let videoTokensBefore = 0;
       await db.runTransaction(async (transaction) => {
         const tokenDoc = await transaction.get(tokenProfileRef);
 
@@ -609,6 +655,7 @@ const generateReplicateVideo = functions
         }
 
         const currentTokens = tokenDoc.data().genToken || 0;
+        videoTokensBefore = currentTokens;
 
         // Verify user still has enough tokens (double-check after generation)
         if (currentTokens < tokenCost) {
@@ -624,6 +671,31 @@ const generateReplicateVideo = functions
           updatedAt: admin.firestore.FieldValue.serverTimestamp()
         });
       });
+
+      // Fire-and-forget: write generation audit log
+      db.collection('generationLog').add({
+        userId,
+        provider: 'replicate',
+        model: model_name,
+        generationType: 'video',
+        processingTimeMs: videoGenerationElapsedMs,
+        providerPredictionId: null,
+        status: 'succeeded',
+        error: null,
+        createdAt: admin.firestore.FieldValue.serverTimestamp()
+      }).catch(err => console.error('Failed to write generationLog:', err));
+
+      // Fire-and-forget: write token deduction audit log
+      db.collection('tokenLog').add({
+        userId,
+        type: 'deduction',
+        tokensBefore: videoTokensBefore,
+        tokensAfter: remainingTokens,
+        tokenCost,
+        source: 'video-generation',
+        relatedModel: model_name,
+        createdAt: admin.firestore.FieldValue.serverTimestamp()
+      }).catch(err => console.error('Failed to write tokenLog:', err));
 
       // Handle different output formats from Replicate
       let finalVideoUrl;
@@ -655,6 +727,20 @@ const generateReplicateVideo = functions
     } catch (error) {
       console.error('Error generating video with Replicate:', error);
       console.error('Error details:', error.message);
+
+      // Fire-and-forget: write failed generation audit log
+      const db = admin.firestore();
+      db.collection('generationLog').add({
+        userId,
+        provider: 'replicate',
+        model: model_name,
+        generationType: 'video',
+        processingTimeMs: typeof videoGenerationStartTime !== 'undefined' ? Date.now() - videoGenerationStartTime : null,
+        providerPredictionId: null,
+        status: 'failed',
+        error: error.message,
+        createdAt: admin.firestore.FieldValue.serverTimestamp()
+      }).catch(err => console.error('Failed to write generationLog:', err));
 
       // If it's a Replicate error, include more details
       if (error.response) {
