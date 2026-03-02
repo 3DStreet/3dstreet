@@ -453,6 +453,7 @@ const generateReplicateVideo = functions
     // Per-model token costs based on duration
     const VIDEO_TOKEN_COSTS = {
       'kwaivgi/kling-v3-video': { tokenCost5s: 20, tokenCost10s: 40 },
+      'google/veo-3.1': { tokenCost5s: 20, tokenCost10s: 40 },
       'google/veo-3.1-fast': { tokenCost5s: 10, tokenCost10s: 20 },
       'bytedance/seedance-1-pro-fast': { tokenCost5s: 7, tokenCost10s: 14 },
       'wan-video/wan-2.6-i2v': { tokenCost5s: 15, tokenCost10s: 30 },
@@ -540,6 +541,7 @@ const generateReplicateVideo = functions
         'kwaivgi/kling-v2.5-turbo-pro': 'Kling v2.5 Turbo Pro',
         'kwaivgi/kling-v3-video': 'Kling v3.0 Pro',
         'lightricks/ltx-2-fast': 'LTX-2 Fast',
+        'google/veo-3.1': 'Veo 3.1',
         'google/veo-3.1-fast': 'Veo 3.1 Fast'
       };
 
@@ -594,8 +596,8 @@ const generateReplicateVideo = functions
         // We'll map our 5/10 second options to 6/10 for LTX
         modelInput.duration = duration_seconds === 10 ? 10 : 6;
         modelInput.generate_audio = false; // LTX is the only model that supports audio control
-      } else if (model_name === 'google/veo-3.1-fast') {
-        // Veo 3.1 Fast model parameters
+      } else if (model_name === 'google/veo-3.1' || model_name === 'google/veo-3.1-fast') {
+        // Veo 3.1 model parameters
         // Veo accepts duration: 4, 6, or 8 seconds only
         modelInput.aspect_ratio = aspect_ratio;
         modelInput.duration = duration_seconds <= 5 ? 4 : 8;

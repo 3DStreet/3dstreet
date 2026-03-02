@@ -261,10 +261,19 @@ export const VIDEO_MODELS = {
     tokenCost5s: 20,
     tokenCost10s: 40
   },
+  'google/veo-3.1': {
+    name: 'Veo 3.1',
+    type: 'replicate',
+    group: 'video-best-quality',
+    logo: '/ui_assets/model-google.png',
+    estimatedTime: 120,
+    tokenCost5s: 20,
+    tokenCost10s: 40
+  },
   'google/veo-3.1-fast': {
     name: 'Veo 3.1 Fast',
     type: 'replicate',
-    group: 'video-best-quality',
+    group: 'video-high-quality-fast',
     logo: '/ui_assets/model-google.png',
     estimatedTime: 90,
     tokenCost5s: 10,
