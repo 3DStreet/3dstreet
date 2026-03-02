@@ -10,13 +10,13 @@
     "logs": "firebase functions:log"
   },
   "engines": {
-    "node": "20"
+    "node": "22"
   },
   "main": "index.js",
   "dependencies": {
     "@googlemaps/google-maps-services-js": "^3.4.0",
-    "firebase-admin": "^12.1.1",
-    "firebase-functions": "^5.0.1",
+    "firebase-admin": "^12.7.0",
+    "firebase-functions": "^5.1.1",
     "stripe": "^8.4.0",
     "core-js": "^3.6.5",
     "replicate": "^0.34.1"
