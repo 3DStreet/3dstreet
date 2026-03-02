@@ -7,7 +7,7 @@ import Events from '../../lib/Events';
 import Entity, { isContainer } from './Entity';
 import { ToolbarWrapper } from './ToolbarWrapper';
 import { LayersIcon, ArrowLeftIcon } from '@shared/icons';
-import { getEntityDisplayName } from '../../lib/entity';
+import { createUniqueId, getEntityDisplayName } from '../../lib/entity';
 import posthog from 'posthog-js';
 import GeoLayer from './GeoLayer';
 const HIDDEN_CLASSES = ['teleportRay', 'hitEntity', 'hideFromSceneGraph'];
