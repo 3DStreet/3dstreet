@@ -89,7 +89,11 @@ module.exports = {
           {
             loader: 'sass-loader',
             options: {
-              sourceMap: true
+              sourceMap: true,
+              api: 'modern',
+              sassOptions: {
+                silenceDeprecations: ['import']
+              }
             }
           }
         ]
@@ -103,7 +107,11 @@ module.exports = {
           {
             loader: 'sass-loader',
             options: {
-              sourceMap: true
+              sourceMap: true,
+              api: 'modern',
+              sassOptions: {
+                silenceDeprecations: ['import']
+              }
             }
           }
         ]
