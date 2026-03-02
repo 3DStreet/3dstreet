@@ -1,5 +1,10 @@
 /* global AFRAME */
 import { createRNG } from '../lib/rng';
+import {
+  loadMixinModel,
+  createInstancedGroup,
+  disposeInstancedGroup
+} from '../lib/instanced-mesh-helper';
 
 AFRAME.registerComponent('street-generated-pedestrians', {
   multiple: true,
@@ -30,6 +35,8 @@ AFRAME.registerComponent('street-generated-pedestrians', {
 
   init: function () {
     this.createdEntities = [];
+    this.cloneSpecs = [];
+    this.instancedGroups = [];
     this.densityFactors = {
       empty: 0,
       sparse: 0.03,
@@ -44,39 +51,44 @@ AFRAME.registerComponent('street-generated-pedestrians', {
   },
 
   remove: function () {
+    // Remove instanced groups from object3D and dispose
+    this.instancedGroups.forEach((group) => {
+      this.el.object3D.remove(group);
+      disposeInstancedGroup(group);
+    });
+    this.instancedGroups.length = 0;
+    this.cloneSpecs.length = 0;
+    // Also remove any legacy entities (for backward compat during transition)
     this.createdEntities.forEach((entity) => entity.remove());
     this.createdEntities.length = 0;
   },
+
   detach: function () {
     const commands = [];
     commands.push([
       'componentremove',
       { entity: this.el, component: this.attrName }
     ]);
-    let entityObjToPushAtTheEnd = null; // so that the entity is selected after executing the multi command
-    this.createdEntities.forEach((entity) => {
-      const position = entity.getAttribute('position');
-      const rotation = entity.getAttribute('rotation');
+    this.cloneSpecs.forEach((spec) => {
       const entityObj = {
         parentEl: this.el,
-        mixin: entity.getAttribute('mixin'),
-        'data-layer-name': entity
-          .getAttribute('data-layer-name')
-          .replace('Cloned Pedestrian', 'Detached Pedestrian'),
+        mixin: spec.mixinId,
+        'data-layer-name': 'Detached Pedestrian',
         components: {
-          position: { x: position.x, y: position.y, z: position.z },
-          rotation: { x: rotation.x, y: rotation.y, z: rotation.z }
+          position: {
+            x: spec.position.x,
+            y: spec.position.y,
+            z: spec.position.z
+          },
+          rotation: {
+            x: spec.rotation.x,
+            y: spec.rotation.y,
+            z: spec.rotation.z
+          }
         }
       };
-      if (AFRAME.INSPECTOR?.selectedEntity === entity) {
-        entityObjToPushAtTheEnd = entityObj;
-      } else {
-        commands.push(['entitycreate', entityObj]);
-      }
+      commands.push(['entitycreate', entityObj]);
     });
-    if (entityObjToPushAtTheEnd !== null) {
-      commands.push(['entitycreate', entityObjToPushAtTheEnd]);
-    }
     AFRAME.INSPECTOR.execute('multi', commands);
   },
 
@@ -100,7 +112,7 @@ AFRAME.registerComponent('street-generated-pedestrians', {
     // Create seeded RNG
     this.rng = createRNG(this.data.seed);
 
-    // Clean up old entities
+    // Clean up old instances
     this.remove();
 
     // Calculate x position range based on segment width
@@ -121,40 +133,96 @@ AFRAME.registerComponent('street-generated-pedestrians', {
       1.5
     );
 
-    // Create pedestrians
+    // Collect pedestrian specs
     for (let i = 0; i < totalPedestrians; i++) {
-      const pedestrian = document.createElement('a-entity');
-      this.el.appendChild(pedestrian);
-
-      // Set seeded random position within bounds
       const position = {
         x: this.getRandomArbitrary(xRange.min, xRange.max),
         y: data.positionY,
         z: zPositions[i]
       };
-      pedestrian.setAttribute('position', position);
 
       // Set model variant using seeded random
       const variantNumber = this.getRandomIntInclusive(1, 16);
-      pedestrian.setAttribute('mixin', `char${variantNumber}`);
+      const mixinId = `char${variantNumber}`;
 
       // Set rotation based on direction and seeded random
+      let rotationY = 0;
       if (data.direction === 'none') {
         if (this.rng() < 0.5) {
-          pedestrian.setAttribute('rotation', '0 180 0');
+          rotationY = 180;
         }
       } else if (data.direction === 'outbound') {
-        pedestrian.setAttribute('rotation', '0 180 0');
+        rotationY = 180;
       }
 
-      // Add metadata
-      pedestrian.classList.add('autocreated');
-      pedestrian.setAttribute('data-no-transform', '');
-      pedestrian.setAttribute('data-layer-name', 'Cloned Pedestrian');
-      pedestrian.setAttribute('data-parent-component', this.attrName);
-
-      this.createdEntities.push(pedestrian);
+      this.cloneSpecs.push({
+        mixinId: mixinId,
+        position: position,
+        rotation: { x: 0, y: rotationY, z: 0 }
+      });
     }
+
+    // Build instanced meshes from collected specs
+    this.buildInstancedMeshes();
+  },
+
+  buildInstancedMeshes: function () {
+    // When ?instancing=off is in the URL, fall back to individual entities
+    const urlParams = new URLSearchParams(window.location.search);
+    if (urlParams.get('instancing') === 'off') {
+      this.buildEntityClones();
+      return;
+    }
+
+    // Group specs by mixinId
+    const groups = {};
+    this.cloneSpecs.forEach((spec) => {
+      if (!groups[spec.mixinId]) {
+        groups[spec.mixinId] = [];
+      }
+      groups[spec.mixinId].push(spec);
+    });
+
+    const mixinIds = Object.keys(groups);
+    if (mixinIds.length === 0) return;
+
+    // Load all unique models and create instanced meshes
+    const promises = mixinIds.map((mixinId) => {
+      return loadMixinModel(mixinId)
+        .then(({ object3D, scale }) => {
+          const instances = groups[mixinId];
+          const group = createInstancedGroup(object3D, scale, instances);
+          group.name = 'instanced-' + mixinId;
+          this.el.object3D.add(group);
+          this.instancedGroups.push(group);
+        })
+        .catch((err) => {
+          console.error(
+            `[street-generated-pedestrians] Failed to load model for ${mixinId}:`,
+            err
+          );
+        });
+    });
+
+    Promise.all(promises).then(() => {
+      this.el.emit('pedestrians-generated', {
+        count: this.cloneSpecs.length
+      });
+    });
+  },
+
+  buildEntityClones: function () {
+    this.cloneSpecs.forEach((spec) => {
+      const entity = document.createElement('a-entity');
+      entity.setAttribute('mixin', spec.mixinId);
+      entity.setAttribute('position', spec.position);
+      entity.setAttribute('rotation', spec.rotation);
+      this.el.appendChild(entity);
+      this.createdEntities.push(entity);
+    });
+    this.el.emit('pedestrians-generated', {
+      count: this.cloneSpecs.length
+    });
   },
 
   // Helper methods now using seeded RNG

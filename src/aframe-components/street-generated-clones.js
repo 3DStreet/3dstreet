@@ -1,5 +1,10 @@
 /* global AFRAME, STREET */
 import { createRNG } from '../lib/rng';
+import {
+  loadMixinModel,
+  createInstancedGroup,
+  disposeInstancedGroup
+} from '../lib/instanced-mesh-helper';
 
 // Helper function to get base rotation from catalog
 function getBaseRotationFromCatalog(mixinId) {
@@ -55,6 +60,8 @@ AFRAME.registerComponent('street-generated-clones', {
 
   init: function () {
     this.createdEntities = [];
+    this.cloneSpecs = [];
+    this.instancedGroups = [];
     this.length = this.el.getAttribute('street-segment')?.length;
     this.width = this.el.getAttribute('street-segment')?.width;
 
@@ -70,8 +77,16 @@ AFRAME.registerComponent('street-generated-clones', {
   },
 
   remove: function () {
+    // Remove instanced groups from object3D and dispose
+    this.instancedGroups.forEach((group) => {
+      this.el.object3D.remove(group);
+      disposeInstancedGroup(group);
+    });
+    this.instancedGroups.length = 0;
+    this.cloneSpecs.length = 0;
+    // Also remove any legacy entities (for backward compat during transition)
     this.createdEntities.forEach((entity) => entity.remove());
-    this.createdEntities.length = 0; // Clear the array
+    this.createdEntities.length = 0;
   },
 
   detach: function () {
@@ -80,30 +95,26 @@ AFRAME.registerComponent('street-generated-clones', {
       'componentremove',
       { entity: this.el, component: this.attrName }
     ]);
-    let entityObjToPushAtTheEnd = null; // so that the entity is selected after executing the multi command
-    this.createdEntities.forEach((entity) => {
-      const position = entity.getAttribute('position');
-      const rotation = entity.getAttribute('rotation');
+    this.cloneSpecs.forEach((spec) => {
       const entityObj = {
         parentEl: this.el,
-        mixin: entity.getAttribute('mixin'),
-        'data-layer-name': entity
-          .getAttribute('data-layer-name')
-          .replace('Cloned Model', 'Detached Model'),
+        mixin: spec.mixinId,
+        'data-layer-name': 'Detached Model • ' + spec.mixinId,
         components: {
-          position: { x: position.x, y: position.y, z: position.z },
-          rotation: { x: rotation.x, y: rotation.y, z: rotation.z }
+          position: {
+            x: spec.position.x,
+            y: spec.position.y,
+            z: spec.position.z
+          },
+          rotation: {
+            x: spec.rotation.x,
+            y: spec.rotation.y,
+            z: spec.rotation.z
+          }
         }
       };
-      if (AFRAME.INSPECTOR?.selectedEntity === entity) {
-        entityObjToPushAtTheEnd = entityObj;
-      } else {
-        commands.push(['entitycreate', entityObj]);
-      }
+      commands.push(['entitycreate', entityObj]);
     });
-    if (entityObjToPushAtTheEnd !== null) {
-      commands.push(['entitycreate', entityObjToPushAtTheEnd]);
-    }
     AFRAME.INSPECTOR.execute('multi', commands);
   },
 
@@ -130,10 +141,10 @@ AFRAME.registerComponent('street-generated-clones', {
       this.rng = createRNG(this.data.seed);
     }
 
-    // Clear existing entities
+    // Clear existing instances
     this.remove();
 
-    // Generate new entities based on mode
+    // Collect clone specs based on mode
     switch (this.data.mode) {
       case 'fixed':
         this.generateFixed();
@@ -148,6 +159,9 @@ AFRAME.registerComponent('street-generated-clones', {
         this.generateFit();
         break;
     }
+
+    // Build instanced meshes from collected specs
+    this.buildInstancedMeshes();
   },
 
   generateFixed: function () {
@@ -158,7 +172,7 @@ AFRAME.registerComponent('street-generated-clones', {
     for (let i = 0; i < numClones; i++) {
       const positionZ =
         this.length / 2 - (i + data.cycleOffset) * correctedSpacing;
-      this.createClone(positionZ);
+      this.addCloneSpec(positionZ);
     }
   },
 
@@ -171,7 +185,7 @@ AFRAME.registerComponent('street-generated-clones', {
     );
 
     positions.forEach((positionZ) => {
-      this.createClone(positionZ);
+      this.addCloneSpec(positionZ);
     });
   },
 
@@ -185,7 +199,7 @@ AFRAME.registerComponent('street-generated-clones', {
       positionZ = -this.length / 2 + data.padding;
     }
 
-    this.createClone(positionZ);
+    this.addCloneSpec(positionZ);
   },
 
   generateFit: function () {
@@ -287,26 +301,18 @@ AFRAME.registerComponent('street-generated-clones', {
       }
       // Center is default, uses data.positionX as is
 
-      this.createClone(cumulativeZ - buildingWidth / 2, mixinId, positionX);
+      this.addCloneSpec(cumulativeZ - buildingWidth / 2, mixinId, positionX);
 
       cumulativeZ -= buildingWidth + data.spacing;
       modelIndex++;
     }
   },
 
-  createClone: function (positionZ, mixinId, positionX) {
+  addCloneSpec: function (positionZ, mixinId, positionX) {
     const data = this.data;
     if (!mixinId) {
       mixinId = this.getModelMixin();
     }
-    const clone = document.createElement('a-entity');
-
-    clone.setAttribute('mixin', mixinId);
-    clone.setAttribute('position', {
-      x: positionX !== undefined ? positionX : data.positionX,
-      y: data.positionY,
-      z: positionZ
-    });
 
     // Get base rotation from catalog
     const baseRotation = getBaseRotationFromCatalog(mixinId);
@@ -321,16 +327,71 @@ AFRAME.registerComponent('street-generated-clones', {
     if (data.randomFacing) {
       rotationY = this.rng() * 360 + baseRotation;
     }
-    clone.setAttribute('rotation', `0 ${rotationY} 0`);
 
-    // Add common attributes
-    clone.classList.add('autocreated');
-    clone.setAttribute('data-no-transform', '');
-    clone.setAttribute('data-layer-name', 'Cloned Model • ' + mixinId);
-    clone.setAttribute('data-parent-component', this.attrName);
+    this.cloneSpecs.push({
+      mixinId: mixinId,
+      position: {
+        x: positionX !== undefined ? positionX : data.positionX,
+        y: data.positionY,
+        z: positionZ
+      },
+      rotation: { x: 0, y: rotationY, z: 0 }
+    });
+  },
 
-    this.el.appendChild(clone);
-    this.createdEntities.push(clone);
+  buildInstancedMeshes: function () {
+    // When ?instancing=off is in the URL, fall back to individual entities
+    const urlParams = new URLSearchParams(window.location.search);
+    if (urlParams.get('instancing') === 'off') {
+      this.buildEntityClones();
+      return;
+    }
+
+    // Group specs by mixinId
+    const groups = {};
+    this.cloneSpecs.forEach((spec) => {
+      if (!groups[spec.mixinId]) {
+        groups[spec.mixinId] = [];
+      }
+      groups[spec.mixinId].push(spec);
+    });
+
+    const mixinIds = Object.keys(groups);
+    if (mixinIds.length === 0) return;
+
+    // Load all unique models and create instanced meshes
+    const promises = mixinIds.map((mixinId) => {
+      return loadMixinModel(mixinId)
+        .then(({ object3D, scale }) => {
+          const instances = groups[mixinId];
+          const group = createInstancedGroup(object3D, scale, instances);
+          group.name = 'instanced-' + mixinId;
+          this.el.object3D.add(group);
+          this.instancedGroups.push(group);
+        })
+        .catch((err) => {
+          console.error(
+            `[street-generated-clones] Failed to load model for ${mixinId}:`,
+            err
+          );
+        });
+    });
+
+    Promise.all(promises).then(() => {
+      this.el.emit('clones-generated', { count: this.cloneSpecs.length });
+    });
+  },
+
+  buildEntityClones: function () {
+    this.cloneSpecs.forEach((spec) => {
+      const entity = document.createElement('a-entity');
+      entity.setAttribute('mixin', spec.mixinId);
+      entity.setAttribute('position', spec.position);
+      entity.setAttribute('rotation', spec.rotation);
+      this.el.appendChild(entity);
+      this.createdEntities.push(entity);
+    });
+    this.el.emit('clones-generated', { count: this.cloneSpecs.length });
   },
 
   getModelMixin: function () {

@@ -752,22 +752,50 @@ AFRAME.registerComponent('set-loader-from-hash', {
         return;
       }
       if (streetURL.includes('//streetmix.net')) {
-        console.log(
-          '[set-loader-from-hash]',
-          'Set streetmix-loader streetmixStreetURL to',
-          streetURL
-        );
+        const urlParams = new URLSearchParams(window.location.search);
+        if (urlParams.get('importer') === 'managed') {
+          console.log(
+            '[set-loader-from-hash]',
+            'Create new Managed Street with Streetmix URL',
+            streetURL
+          );
+          const definition = {
+            id: createUniqueId(),
+            components: {
+              'managed-street': {
+                sourceType: 'streetmix-url',
+                sourceValue: streetURL,
+                showVehicles: true,
+                showStriping: true,
+                synchronize: true
+              }
+            }
+          };
+          setTimeout(() => {
+            AFRAME.INSPECTOR.execute('entitycreate', definition);
+            setTimeout(() => {
+              console.log('trigger saveScene from street component');
+              useStore.getState().saveScene(true);
+            }, 3000);
+          }, 1000);
+        } else {
+          console.log(
+            '[set-loader-from-hash]',
+            'Set streetmix-loader streetmixStreetURL to',
+            streetURL
+          );
 
-        this.el.setAttribute(
-          'streetmix-loader',
-          'streetmixStreetURL',
-          streetURL
-        );
+          this.el.setAttribute(
+            'streetmix-loader',
+            'streetmixStreetURL',
+            streetURL
+          );
 
-        setTimeout(() => {
-          console.log('trigger saveScene from street component');
-          useStore.getState().saveScene(true);
-        }, 3000);
+          setTimeout(() => {
+            console.log('trigger saveScene from street component');
+            useStore.getState().saveScene(true);
+          }, 3000);
+        }
       } else if (streetURL.includes('streetplan.net/')) {
         // instead, load streetplan via managed street the new addlayerpanel
         console.log(
