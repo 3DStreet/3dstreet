@@ -53,7 +53,12 @@ const REPLICATE_MODELS = {
   'nano-banana-pro': {
     name: 'Nano Banana Pro',
     version: '99256cc418d9ac41854575e2f1c8846ce2defd0c0fb6ff2d5cbc3c826be75bc8',
-    tokenCost: 4
+    tokenCost: 3
+  },
+  'nano-banana-2': {
+    name: 'Nano Banana 2',
+    modelName: 'google/nano-banana-2',
+    tokenCost: 2
   },
   'seedream-4': {
     name: 'Seedream v4',
@@ -99,7 +104,8 @@ const MODEL_VERSIONS = {
   NANO_BANANA: REPLICATE_MODELS['nano-banana'].version,
   NANO_BANANA_PRO: REPLICATE_MODELS['nano-banana-pro'].version,
   SEEDREAM_4: REPLICATE_MODELS['seedream-4'].version,
-  SEEDREAM_4_5: 'seedream-4.5' // Uses modelName-based calling, not version hash
+  SEEDREAM_4_5: 'seedream-4.5', // Uses modelName-based calling, not version hash
+  NANO_BANANA_2: 'nano-banana-2' // Uses modelName-based calling, not version hash
 };
 
 module.exports = {

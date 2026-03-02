@@ -110,6 +110,7 @@ const PurchaseModal = () => {
         }
       }
     }, 2000); // Poll every 2 seconds
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentUser, tokenProfile, refreshTokenProfile]);
 
   // Check for active subscriptions when modal opens

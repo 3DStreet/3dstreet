@@ -200,14 +200,12 @@ const TYPES = {
       'sp-residential': {
         modelsArray:
           'sp-prop-sf-2L-64ft, sp-prop-sf-2L-62ft, sp-prop-sf-1L-62ft, sp-prop-sf-1L-41ft, sp-prop-townhouse-3L-20ft, sp-prop-townhouse-3L-23ft',
-        surface: 'grass',
-        positionY: -0.01
+        surface: 'grass'
       },
       'sp-big-box': {
         modelsArray:
           'sp-prop-bigbox-1L-220ft, sp-prop-bigbox-1L-291ft, sp-prop-parking-3L-155ft, sp-prop-parking-3L-97ft-centered, sp-prop-gov-3L-61ft',
-        surface: 'parking-lot',
-        positionY: -0.01
+        surface: 'parking-lot'
       },
       custom: {
         // Custom variant - no default values, preserves user modifications

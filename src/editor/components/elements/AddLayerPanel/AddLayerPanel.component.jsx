@@ -284,6 +284,7 @@ const AddLayerPanel = () => {
       document.removeEventListener('mousemove', handleDrag);
       document.removeEventListener('mouseup', handleDragEnd);
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const onClose = () => {

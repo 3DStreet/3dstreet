@@ -215,6 +215,9 @@ const TimeControls = () => {
     }
   }
 
+  // eslint-disable-next-line react-hooks/refs -- reads A-Frame component ref, re-render driven by polling interval
+  const formattedTime = formatTime();
+
   return (
     <div className="flex items-center space-x-2 rounded-md bg-gray-800 bg-opacity-75 p-2">
       {/* Timer display - clickable to toggle format */}
@@ -223,7 +226,7 @@ const TimeControls = () => {
         onClick={handleTimeFormatToggle}
         title="Click to toggle time format"
       >
-        <span>{formatTime()}</span>
+        <span>{formattedTime}</span>
         {isRecording && (
           <span className="ml-2 inline-block h-2 w-2 animate-pulse rounded-full bg-red-500"></span>
         )}

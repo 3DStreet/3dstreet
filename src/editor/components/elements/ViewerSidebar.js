@@ -11,6 +11,17 @@ import canvasRecorder from '../../lib/CanvasRecorder';
 import { shouldShowProperty } from '../../lib/utils';
 import { QrCode } from './QrCode';
 
+// Generate 8-character random alphanumeric string for cache busting
+const generateCacheBust = () => {
+  const chars =
+    'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+  let result = '';
+  for (let i = 0; i < 8; i++) {
+    result += chars.charAt(Math.floor(Math.random() * chars.length));
+  }
+  return result;
+};
+
 const ViewerSidebar = ({ entity }) => {
   const componentName = 'viewer-mode';
   // Access the store to control inspector mode and get recording status
@@ -116,17 +127,6 @@ const ViewerSidebar = ({ entity }) => {
       return window.STREET.utils.getCurrentSceneId();
     }
     return null;
-  };
-
-  // Generate 8-character random alphanumeric string for cache busting
-  const generateCacheBust = () => {
-    const chars =
-      'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
-    let result = '';
-    for (let i = 0; i < 8; i++) {
-      result += chars.charAt(Math.floor(Math.random() * chars.length));
-    }
-    return result;
   };
 
   // Generate viewer URL for AR-WebXR mode
