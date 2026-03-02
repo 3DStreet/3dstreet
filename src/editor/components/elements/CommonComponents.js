@@ -2,9 +2,7 @@ import React from 'react';
 import PropTypes from 'prop-types';
 import DEFAULT_COMPONENTS from './DefaultComponents';
 import PropertyRow from './PropertyRow';
-import { getEntityClipboardRepresentation } from '../../lib/entity';
 import Events from '../../lib/Events';
-import Clipboard from 'clipboard';
 import { saveBlob } from '../../lib/utils';
 
 export default class CommonComponents extends React.Component {
@@ -28,15 +26,6 @@ export default class CommonComponents extends React.Component {
 
   componentDidMount() {
     Events.on('entityupdate', this.onEntityUpdate);
-
-    var clipboard = new Clipboard('[data-action="copy-entity-to-clipboard"]', {
-      text: (trigger) => {
-        return getEntityClipboardRepresentation(this.props.entity);
-      }
-    });
-    clipboard.on('error', (e) => {
-      // @todo Show the error on the UI
-    });
   }
 
   componentWillUnmount() {

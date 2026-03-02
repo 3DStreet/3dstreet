@@ -1,7 +1,7 @@
 import React from 'react';
 import PropTypes from 'prop-types';
 import Events from '../../lib/Events';
-import Modal from './Modal.jsx';
+import Modal from '@shared/components/Modal/Modal.jsx';
 import { insertNewAsset } from '../../lib/assetsUtils';
 
 function getFilename(url, converted = false) {

@@ -3,10 +3,39 @@ import { Button } from '../elements';
 import { useAuthContext } from '@/editor/contexts/index.js';
 import AdvancedComponents from './AdvancedComponents';
 import PropertyRow from './PropertyRow';
+import { Magnifier20Icon } from '@shared/icons';
 import posthog from 'posthog-js';
 import useStore from '@/store';
 import { useState, useEffect } from 'react';
 import Events from '../../lib/Events';
+import { Tooltip } from 'radix-ui';
+
+const TooltipWrapper = ({ children, content, side = 'bottom', ...props }) => {
+  return (
+    <Tooltip.Root delayDuration={0}>
+      <Tooltip.Trigger asChild>{children}</Tooltip.Trigger>
+      <Tooltip.Portal>
+        <Tooltip.Content
+          side={side}
+          sideOffset={5}
+          style={{
+            backgroundColor: '#2d2d2d',
+            color: 'white',
+            padding: '8px 12px',
+            borderRadius: '6px',
+            fontSize: '12px',
+            border: '1px solid #4b4b4b',
+            zIndex: 1000
+          }}
+          {...props}
+        >
+          {content}
+          <Tooltip.Arrow style={{ fill: '#2d2d2d' }} />
+        </Tooltip.Content>
+      </Tooltip.Portal>
+    </Tooltip.Root>
+  );
+};
 
 const FlatteningShapeSelector = ({
   entity,
@@ -59,11 +88,11 @@ const FlatteningShapeSelector = ({
     const definition = {
       id: shapeId,
       element: 'a-box',
+      'data-layer-name': 'Geo Flattening Shape',
+      class: 'flattening shape',
       components: {
-        'data-layer-name': 'Geo Flattening Shape',
         scale: '20 5 40',
-        material: 'transparent: true; opacity: 0.3; color: purple',
-        class: 'flattening shape'
+        material: 'transparent: true; opacity: 0.3; color: purple'
       }
     };
 
@@ -133,7 +162,8 @@ FlatteningShapeSelector.propTypes = {
 
 const GeoSidebar = ({ entity }) => {
   const setModal = useStore((state) => state.setModal);
-  const { currentUser } = useAuthContext();
+  const { currentUser, tokenProfile } = useAuthContext();
+  const startCheckout = useStore((state) => state.startCheckout);
 
   // Force re-render when entity updates
   const [, forceUpdate] = useState({});
@@ -172,10 +202,8 @@ const GeoSidebar = ({ entity }) => {
     posthog.capture('geo_panel_clicked');
     if (!currentUser) {
       setModal('signin');
-    } else if (currentUser.isPro) {
-      setModal('geo');
     } else {
-      setModal('payment');
+      setModal('geo');
     }
   };
 
@@ -183,103 +211,384 @@ const GeoSidebar = ({ entity }) => {
   const component = entity?.components?.['street-geo'];
 
   return (
-    <div className="geo-sidebar">
-      <div className="geo-controls">
-        <div className="details">
-          <div className="propertyRow">
-            {entity && entity.components ? (
-              <>
+    <Tooltip.Provider>
+      <div className="geo-sidebar">
+        <div className="geo-controls">
+          <div className="details">
+            {/* Map Source Selection */}
+            {component && component.schema && component.data && (
+              <div className="propertyRow" style={{ marginBottom: '16px' }}>
+                <div className="fakePropertyRowLabel">Map Type</div>
+                <div
+                  style={{ display: 'flex', gap: '8px', alignItems: 'center' }}
+                >
+                  {['none', 'google3d', 'mapbox2d', 'osm3d'].map((mapType) => (
+                    <TooltipWrapper
+                      key={mapType}
+                      content={
+                        mapType === 'google3d'
+                          ? 'Google 3D Map Tiles'
+                          : mapType === 'mapbox2d'
+                            ? 'Mapbox 2D Satellite'
+                            : mapType === 'osm3d'
+                              ? 'Open Street Map 2.5D Buildings'
+                              : 'No Map'
+                      }
+                    >
+                      <button
+                        onClick={() => {
+                          if (window.AFRAME && window.AFRAME.INSPECTOR) {
+                            AFRAME.INSPECTOR.execute('entityupdate', {
+                              entity: entity,
+                              component: 'street-geo',
+                              property: 'maps',
+                              value: mapType
+                            });
+                          }
+                        }}
+                        style={{
+                          width: '50px',
+                          height: '40px',
+                          border:
+                            component.data['maps'] === mapType
+                              ? '2px solid #774dee'
+                              : '1px solid #4b4b4b',
+                          borderRadius: '6px',
+                          background:
+                            component.data['maps'] === mapType
+                              ? '#4c1d95'
+                              : '#2d2d2d',
+                          cursor: 'pointer',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          fontSize: '16px',
+                          transition: 'all 0.2s',
+                          position: 'relative'
+                        }}
+                      >
+                        {/* Map icons */}
+                        {mapType === 'google3d' && (
+                          <>
+                            <img
+                              src="/ui_assets/map-icon1.jpg"
+                              alt="Google 3D"
+                              style={{
+                                width: '24px',
+                                height: '24px',
+                                objectFit: 'cover',
+                                borderRadius: '2px'
+                              }}
+                            />
+                            <span
+                              style={{
+                                position: 'absolute',
+                                bottom: '4px',
+                                fontSize: '8px',
+                                color: '#ffffff',
+                                fontWeight: '600',
+                                textShadow:
+                                  '0 1px 2px rgba(0,0,0,0.8), 0 0 4px rgba(0,0,0,0.6)',
+                                pointerEvents: 'none'
+                              }}
+                            >
+                              3D
+                            </span>
+                          </>
+                        )}
+                        {mapType === 'mapbox2d' && (
+                          <>
+                            <img
+                              src="/ui_assets/map-icon2.jpg"
+                              alt="Mapbox 2D"
+                              style={{
+                                width: '24px',
+                                height: '24px',
+                                objectFit: 'cover',
+                                borderRadius: '2px'
+                              }}
+                            />
+                            <span
+                              style={{
+                                position: 'absolute',
+                                bottom: '4px',
+                                fontSize: '8px',
+                                color: '#ffffff',
+                                fontWeight: '600',
+                                textShadow:
+                                  '0 1px 2px rgba(0,0,0,0.8), 0 0 4px rgba(0,0,0,0.6)',
+                                pointerEvents: 'none'
+                              }}
+                            >
+                              2D
+                            </span>
+                          </>
+                        )}
+                        {mapType === 'osm3d' && (
+                          <>
+                            <img
+                              src="/ui_assets/map-icon3.jpg"
+                              alt="OSM 3D"
+                              style={{
+                                width: '24px',
+                                height: '24px',
+                                objectFit: 'cover',
+                                borderRadius: '2px'
+                              }}
+                            />
+                            <span
+                              style={{
+                                position: 'absolute',
+                                bottom: '4px',
+                                fontSize: '8px',
+                                color: '#ffffff',
+                                fontWeight: '600',
+                                textShadow:
+                                  '0 1px 2px rgba(0,0,0,0.8), 0 0 4px rgba(0,0,0,0.6)',
+                                pointerEvents: 'none'
+                              }}
+                            >
+                              2.5D
+                            </span>
+                          </>
+                        )}
+                        {mapType === 'none' && '🚫'}
+                      </button>
+                    </TooltipWrapper>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Combined location header with button */}
+            <div className="propertyRow" style={{ marginBottom: '12px' }}>
+              <div
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  width: '100%',
+                  paddingRight: '12px'
+                }}
+              >
+                <div
+                  style={{ display: 'flex', alignItems: 'center', gap: '8px' }}
+                >
+                  <TooltipWrapper
+                    content={
+                      component && component.data && component.data.latitude
+                        ? `This scene's centerpoint is ${component.data.latitude}, ${component.data.longitude}`
+                        : 'This scene has a geolocation centerpoint defined.'
+                    }
+                  >
+                    <span
+                      className="success-badge"
+                      style={{
+                        background: '#2d2d2d',
+                        border:
+                          component && component.data && component.data.latitude
+                            ? '1px solid #10b981'
+                            : '1px solid #6b7280',
+                        color: 'white',
+                        padding: '4px 8px',
+                        borderRadius: '4px',
+                        fontSize: '11px',
+                        fontWeight: '500'
+                      }}
+                    >
+                      {component && component.data && component.data.latitude
+                        ? '✅ Location Set'
+                        : '📍 No Location'}
+                    </span>
+                  </TooltipWrapper>
+                  {!currentUser?.isPro && tokenProfile && (
+                    <TooltipWrapper content="Use geo tokens to set or change a geolocation for your scene.">
+                      <span
+                        className="token-badge"
+                        style={{
+                          background: '#2d2d2d',
+                          color: '#9ca3af',
+                          padding: '4px 8px',
+                          borderRadius: '4px',
+                          fontSize: '10px'
+                        }}
+                      >
+                        <img
+                          src="/ui_assets/token-geo.png"
+                          alt="Geo Token"
+                          style={{
+                            width: '20px',
+                            height: '20px',
+                            marginRight: '3px',
+                            display: 'inline-block',
+                            verticalAlign: 'middle'
+                          }}
+                        />
+                        {tokenProfile.geoToken} free
+                      </span>
+                    </TooltipWrapper>
+                  )}
+                </div>
                 <Button variant="toolbtn" onClick={openGeoModal}>
-                  Change Location
+                  <Magnifier20Icon />
+                  {entity && entity.components
+                    ? 'Change Location'
+                    : 'Set Location'}
                 </Button>
-              </>
-            ) : (
-              <div>
-                <Button variant="toolbtn" onClick={openGeoModal}>
-                  Set Location
+              </div>
+            </div>
+
+            {/* Upgrade prompt for users with 0 tokens */}
+            {!currentUser?.isPro && tokenProfile?.geoToken === 0 && (
+              <div className="propertyRow" style={{ marginTop: '8px' }}>
+                <Button
+                  variant="toolbtn"
+                  style={{
+                    width: '100%',
+                    background:
+                      'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                    border: 'none',
+                    color: 'white',
+                    fontWeight: '600',
+                    fontSize: '12px',
+                    padding: '12px 16px',
+                    borderRadius: '8px',
+                    cursor: 'pointer',
+                    transition: 'all 0.3s ease',
+                    boxShadow: '0 4px 12px rgba(118, 75, 162, 0.3)',
+                    ':hover': {
+                      transform: 'translateY(-1px)',
+                      boxShadow: '0 6px 20px rgba(118, 75, 162, 0.4)'
+                    }
+                  }}
+                  onClick={() => startCheckout('geo')}
+                  onMouseEnter={(e) => {
+                    e.target.style.transform = 'translateY(-1px)';
+                    e.target.style.boxShadow =
+                      '0 6px 20px rgba(118, 75, 162, 0.4)';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.target.style.transform = 'translateY(0px)';
+                    e.target.style.boxShadow =
+                      '0 4px 12px rgba(118, 75, 162, 0.3)';
+                  }}
+                >
+                  Upgrade to Pro for unlimited geo lookups
                 </Button>
               </div>
             )}
-          </div>
-          {component && component.schema && component.data && (
-            <>
-              <PropertyRow
-                key="maps"
-                name="maps"
-                label="Map Source"
-                schema={component.schema['maps']}
-                data={component.data['maps']}
-                componentname="street-geo"
-                isSingle={false}
-                entity={entity}
-              />
-              {/* only show this if google3d is selected */}
-              {component.data['maps'] === 'google3d' && (
-                <div className="collapsible component">
-                  <div className="static">
-                    <div className="componentHeader collapsible-header">
-                      <span className="componentTitle" title="Surface">
-                        <span>Blending & Flattening</span>
-                      </span>
+
+            {/* Location details using standard label/value format */}
+            {component && component.data && component.data.locationString && (
+              <>
+                <div className="propertyRow">
+                  <div className="fakePropertyRowLabel">Location</div>
+                  <div
+                    className="fakePropertyRowValue"
+                    style={{ fontSize: '12px', color: '#ccc' }}
+                  >
+                    {component.data.locationString}
+                  </div>
+                </div>
+
+                {component.data.intersectionString && (
+                  <div className="propertyRow">
+                    <div className="fakePropertyRowLabel">
+                      Nearest
+                      <br /> Intersection
+                    </div>
+                    <div
+                      className="fakePropertyRowValue"
+                      style={{ fontSize: '12px', color: '#ccc' }}
+                    >
+                      {component.data.intersectionString}
                     </div>
                   </div>
-                  <div className="content">
-                    <div className="collapsible-content">
-                      <PropertyRow
-                        key="blendingEnabled"
-                        name="blendingEnabled"
-                        label="Blending"
-                        schema={component.schema['blendingEnabled']}
-                        data={component.data['blendingEnabled']}
-                        componentname="street-geo"
-                        isSingle={false}
-                        entity={entity}
-                      />
-                      {component.data['blendingEnabled'] && (
+                )}
+
+                {component.data.orthometricHeight && (
+                  <div className="propertyRow">
+                    <div className="fakePropertyRowLabel">Elevation</div>
+                    <div
+                      className="fakePropertyRowValue"
+                      style={{ fontSize: '12px', color: '#ccc' }}
+                    >
+                      {Math.round(component.data.orthometricHeight)}m
+                    </div>
+                  </div>
+                )}
+              </>
+            )}
+            {component && component.schema && component.data && (
+              <>
+                {/* only show this if google3d is selected */}
+                {component.data['maps'] === 'google3d' && (
+                  <div className="collapsible component">
+                    <div className="static">
+                      <div className="componentHeader collapsible-header">
+                        <span className="componentTitle" title="Surface">
+                          <span>Blending & Flattening</span>
+                        </span>
+                      </div>
+                    </div>
+                    <div className="content">
+                      <div className="collapsible-content">
                         <PropertyRow
-                          key="blendMode"
-                          name="blendMode"
-                          label="Blend Mode"
-                          schema={component.schema['blendMode']}
-                          data={component.data['blendMode']}
+                          key="blendingEnabled"
+                          name="blendingEnabled"
+                          label="Blending"
+                          schema={component.schema['blendingEnabled']}
+                          data={component.data['blendingEnabled']}
                           componentname="street-geo"
                           isSingle={false}
                           entity={entity}
                         />
-                      )}
-                      <PropertyRow
-                        key="enableFlattening"
-                        name="enableFlattening"
-                        label="Terrain Flattening"
-                        schema={component.schema['enableFlattening']}
-                        data={component.data['enableFlattening']}
-                        componentname="street-geo"
-                        isSingle={false}
-                        entity={entity}
-                      />
-                      {component.data['enableFlattening'] && (
-                        <FlatteningShapeSelector
+                        {component.data['blendingEnabled'] && (
+                          <PropertyRow
+                            key="blendMode"
+                            name="blendMode"
+                            label="Blend Mode"
+                            schema={component.schema['blendMode']}
+                            data={component.data['blendMode']}
+                            componentname="street-geo"
+                            isSingle={false}
+                            entity={entity}
+                          />
+                        )}
+                        <PropertyRow
+                          key="enableFlattening"
+                          name="enableFlattening"
+                          label="Terrain Flattening"
+                          schema={component.schema['enableFlattening']}
+                          data={component.data['enableFlattening']}
+                          componentname="street-geo"
+                          isSingle={false}
                           entity={entity}
-                          componentName="street-geo"
-                          shapeEntities={getShapeEntities()}
-                          currentValue={component.data['flatteningShape']}
                         />
-                      )}
+                        {component.data['enableFlattening'] && (
+                          <FlatteningShapeSelector
+                            entity={entity}
+                            componentName="street-geo"
+                            shapeEntities={getShapeEntities()}
+                            currentValue={component.data['flatteningShape']}
+                          />
+                        )}
+                      </div>
                     </div>
                   </div>
-                </div>
-              )}
-            </>
-          )}
+                )}
+              </>
+            )}
 
-          {entity && entity.components && (
-            <div className="propertyRow">
-              <AdvancedComponents entity={entity} />
-            </div>
-          )}
+            {entity && entity.components && (
+              <div className="propertyRow">
+                <AdvancedComponents entity={entity} />
+              </div>
+            )}
+          </div>
         </div>
       </div>
-    </div>
+    </Tooltip.Provider>
   );
 };
 

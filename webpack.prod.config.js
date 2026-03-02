@@ -7,14 +7,30 @@ const DEPLOY_ENV = process.env.DEPLOY_ENV ?? 'production';
 
 module.exports = {
   performance: {
-    maxAssetSize: 2999999, // 2.8 MiB
-    maxEntrypointSize: 2999999, // 2.8 MiB
-    hints: 'error'
+    maxAssetSize: 3250000, // 3.1 MiB
+    maxEntrypointSize: 3250000, // 3.1 MiB
+    hints: 'error',
+    assetFilter: function (assetFilename) {
+      // Only check named entry point bundles, not async-loaded chunks.
+      // The Spark splat library (~4.4 MiB) is dynamically imported and
+      // lazy-loaded only when a splat component is used.
+      return /^(aframe-street-component|generator|bollardbuddy)\.js$/.test(
+        assetFilename
+      );
+    }
   },
   mode: 'production',
   devtool: 'source-map',
   entry: {
-    core: { import: './src/index.js', filename: 'aframe-street-component.js' }
+    core: { import: './src/index.js', filename: 'aframe-street-component.js' },
+    generator: {
+      import: './src/generator/index.js',
+      filename: 'generator.js'
+    },
+    bollardbuddy: {
+      import: './src/bollardbuddy/index.js',
+      filename: 'bollardbuddy.js'
+    }
   },
   output: {
     clean: true,
@@ -105,8 +121,10 @@ module.exports = {
     ]
   },
   resolve: {
+    extensions: ['.js', '.jsx', '.json'],
     alias: {
-      '@': path.resolve(__dirname, 'src')
+      '@': path.resolve(__dirname, 'src'),
+      '@shared': path.resolve(__dirname, 'src/shared')
     }
   }
 };

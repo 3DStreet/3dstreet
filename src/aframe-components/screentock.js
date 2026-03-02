@@ -1,5 +1,4 @@
 /* AFRAME */
-import useStore from '../store';
 
 AFRAME.registerComponent('screentock', {
   schema: {
@@ -7,60 +6,28 @@ AFRAME.registerComponent('screentock', {
     filename: { type: 'string', default: 'screenshot' },
     type: { type: 'string', default: 'jpg' }, // png, jpg, img
     imgElementSelector: { type: 'selector' },
-    // New title styling properties
     showLogo: { type: 'boolean', default: true },
-    showTitle: { type: 'boolean', default: true },
-    titleFont: {
-      type: 'string',
-      default: 'Lato',
-      oneOf: ['Lato', 'Helvetica', 'Times', 'Courier', 'Impact']
-    },
-    titleSize: {
-      type: 'number',
-      default: 10,
-      oneOf: [5, 8, 10, 12, 15, 20, 30]
-    },
-    titleColor: { type: 'color', default: '#FFFFFF' },
-    titleStroke: { type: 'boolean', default: true },
-    titleStrokeColor: {
-      type: 'color',
-      default: '#000000',
-      if: { titleStroke: true }
-    },
-    titleStrokeWidth: {
-      type: 'number',
-      default: 1,
-      max: 5,
-      min: 0,
-      if: { titleStroke: true }
-    }
+    // Community Edition watermark - default based on user plan
+    showCommunityWatermark: { type: 'boolean', default: true }
   },
 
-  addStyledTitleToCanvas: function (ctx, screenWidth, screenHeight) {
-    let titleText = useStore.getState().sceneTitle;
-    const fontSize = this.data.titleSize * 10;
-    const strokeWidth = this.data.titleStrokeWidth * 10;
+  addCommunityWatermarkToCanvas: function (ctx, screenWidth, screenHeight) {
+    // Only show Community Edition watermark if enabled
+    if (!this.data.showCommunityWatermark) {
+      return;
+    }
+
+    const titleText = 'Made with 3DStreet Free Community Edition';
+    const fontSize = 5 * 10; // Size 5 as specified
+    const fontFamily = 'Helvetica'; // Helvetica as specified
+    const textColor = '#ea9eff'; // Purple color as specified
 
     // Set font properties
-    ctx.font = `${fontSize}px ${this.data.titleFont}`;
+    ctx.font = `${fontSize}px ${fontFamily}`;
     ctx.textAlign = 'center';
 
-    if (!titleText) {
-      titleText = 'Untitled';
-    }
-    // Add stroke if enabled
-    if (this.data.titleStroke) {
-      ctx.strokeStyle = this.data.titleStrokeColor;
-      ctx.lineWidth = strokeWidth;
-      ctx.strokeText(
-        titleText,
-        screenWidth - screenWidth / 2,
-        screenHeight - 43
-      );
-    }
-
-    // Fill text
-    ctx.fillStyle = this.data.titleColor;
+    // Fill text (no stroke)
+    ctx.fillStyle = textColor;
     ctx.fillText(titleText, screenWidth - screenWidth / 2, screenHeight - 43);
   },
 
@@ -89,14 +56,12 @@ AFRAME.registerComponent('screentock', {
 
       // draw image from Aframe canvas to screenshot canvas
       ctxScreenshot.drawImage(aframeCanvas, 0, 0);
-      // add scene title to screenshot with custom styling
-      if (this.data.showTitle) {
-        this.addStyledTitleToCanvas(
-          ctxScreenshot,
-          screenshotCanvas.width,
-          screenshotCanvas.height
-        );
-      }
+      // add Community Edition watermark
+      this.addCommunityWatermarkToCanvas(
+        ctxScreenshot,
+        screenshotCanvas.width,
+        screenshotCanvas.height
+      );
       // add 3DStreet logo
       if (this.data.showLogo) {
         addLogoToCanvas(ctxScreenshot);

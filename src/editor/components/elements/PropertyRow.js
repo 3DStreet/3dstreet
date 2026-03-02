@@ -1,6 +1,5 @@
 /* eslint-disable no-prototype-builtins */
 import React from 'react';
-import classNames from 'classnames';
 import PropTypes from 'prop-types';
 
 import BooleanWidget from '../widgets/BooleanWidget';
@@ -49,8 +48,15 @@ export default class PropertyRow extends React.Component {
       props.componentname === 'material' &&
       (props.name === 'envMap' || props.name === 'src');
     let type = props.schema.type;
-    if (props.componentname === 'animation' && props.name === 'loop') {
-      // fix wrong number type for animation loop property
+    if (
+      (props.componentname === 'animation' ||
+        props.componentname.startsWith('animation__')) &&
+      props.name === 'loop'
+    ) {
+      // The loop property can be a boolean for an infinite loop or a number to set the number of iterations.
+      // It's auto detected as number because the default value is 0, but for most use case we want an infinite loop
+      // so we're forcing the type to boolean. In the future we could create a custom widget to allow user to choose
+      // between infinite loop and number of iterations.
       type = 'boolean';
     }
 
@@ -65,6 +71,32 @@ export default class PropertyRow extends React.Component {
       isSingle: props.isSingle,
       name: props.name,
       onChange: function (name, value) {
+        // Auto-switch to custom variant for building segments when modifying certain properties
+        const shouldSwitchToCustom =
+          // Surface changes on street-segment
+          (props.componentname === 'street-segment' &&
+            props.name === 'surface') ||
+          // Any changes to clone components (building-related)
+          props.componentname.startsWith('street-generated-clones');
+
+        if (shouldSwitchToCustom) {
+          const streetSegment = props.entity.getAttribute('street-segment');
+          if (
+            streetSegment &&
+            streetSegment.type === 'building' &&
+            streetSegment.variant !== 'custom'
+          ) {
+            // First switch to custom variant to prevent overrides
+            AFRAME.INSPECTOR.execute('entityupdate', {
+              entity: props.entity,
+              component: 'street-segment',
+              property: 'variant',
+              value: 'custom',
+              noSelectEntity: true
+            });
+          }
+        }
+
         AFRAME.INSPECTOR.execute('entityupdate', {
           entity: props.entity,
           component: props.componentname,
@@ -141,16 +173,8 @@ export default class PropertyRow extends React.Component {
     const title =
       props.name + '\n - type: ' + props.schema.type + '\n - value: ' + value;
 
-    const className = classNames({
-      propertyRow: true,
-      propertyRowDefined: props.isSingle
-        ? !!props.entity.getDOMAttribute(props.componentname)
-        : props.name in
-          (props.entity.getDOMAttribute(props.componentname) || {})
-    });
-
     return (
-      <div className={className}>
+      <div className="propertyRow">
         <label
           htmlFor={this.id}
           className="text"

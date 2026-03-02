@@ -1,7 +1,7 @@
-/* eslint-disable react/no-danger */
 import { nanoid } from 'nanoid';
 import Events from './Events';
 import { equal } from './utils';
+import posthog from 'posthog-js';
 import {
   GeospatialIcon,
   ManagedStreetIcon,
@@ -12,7 +12,7 @@ import {
   LayersIcon,
   Object24IconCyan,
   Ruler24Icon
-} from '../icons';
+} from '@shared/icons';
 
 /**
  * Update a component.
@@ -53,6 +53,19 @@ export function updateEntity(entity, component, property, value) {
     }
   }
 
+  // Track street positioning events for workflow analytics
+  if (
+    component === 'position' &&
+    (entity.hasAttribute('managed-street') || entity.hasAttribute('street'))
+  ) {
+    posthog.capture('street_positioned', {
+      property: property,
+      value: value,
+      entity_id: entity.id,
+      scene_id: STREET.utils.getCurrentSceneId()
+    });
+  }
+
   Events.emit('entityupdate', { entity, component, property, value });
 }
 
@@ -60,9 +73,9 @@ export function updateEntity(entity, component, property, value) {
  * Remove an entity.
  *
  * @param {Element} entity Entity to remove.
- * @param {boolean} force (Optional) If true it won't ask for confirmation.
+ * @param {boolean} [force=false] If true it won't ask for confirmation.
  */
-export function removeEntity(entity, force) {
+export function removeEntity(entity, force = false) {
   if (entity) {
     if (
       force === true ||
@@ -104,9 +117,9 @@ export function findClosestEntity(entity) {
 
 /**
  * Remove the selected entity
- * @param  {boolean} force (Optional) If true it won't ask for confirmation
+ * @param {boolean} [force=false] If true it won't ask for confirmation.
  */
-export function removeSelectedEntity(force) {
+export function removeSelectedEntity(force = false) {
   if (AFRAME.INSPECTOR.selectedEntity) {
     removeEntity(AFRAME.INSPECTOR.selectedEntity, force);
   }
@@ -573,14 +586,27 @@ export function createUniqueId() {
 
 export function getComponentClipboardRepresentation(entity, componentName) {
   entity.flushToDOM();
-  const data = entity.getDOMAttribute(componentName);
+  let data = entity.getDOMAttribute(componentName);
   if (!data) {
     return componentName;
   }
 
-  const schema = entity.components[componentName].schema;
-  const attributes = stringifyComponentValue(schema, data);
-  return `${componentName}="${attributes}"`;
+  const component = entity.components[componentName];
+  const schema = component.schema;
+  // If multi-properties component, filter out properties that are the same as their default value
+  if (!isSingleProperty(schema)) {
+    data = { ...data };
+
+    for (const [propertyName, value] of Object.entries(data)) {
+      const defaultValue = getDefaultValue(component, propertyName);
+      if (equal(value, defaultValue)) {
+        delete data[propertyName];
+      }
+    }
+  }
+
+  const properties = stringifyComponentValue(schema, data);
+  return `${componentName}="${properties}"`;
 }
 
 export function getEntityDisplayName(entity) {

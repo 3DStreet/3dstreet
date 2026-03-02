@@ -1,4 +1,4 @@
-/* eslint-disable no-unused-vars, react/no-danger */
+/* eslint-disable no-unused-vars */
 import classNames from 'classnames';
 import debounce from 'lodash-es/debounce';
 import PropTypes from 'prop-types';
@@ -6,8 +6,8 @@ import React from 'react';
 import Events from '../../lib/Events';
 import Entity, { isContainer } from './Entity';
 import { ToolbarWrapper } from './ToolbarWrapper';
-import { LayersIcon, ArrowLeftIcon } from '../../icons';
-import { createUniqueId, getEntityDisplayName } from '../../lib/entity';
+import { LayersIcon, ArrowLeftIcon } from '@shared/icons';
+import { getEntityDisplayName } from '../../lib/entity';
 import posthog from 'posthog-js';
 import GeoLayer from './GeoLayer';
 const HIDDEN_CLASSES = ['teleportRay', 'hitEntity', 'hideFromSceneGraph'];
@@ -118,6 +118,7 @@ export default class SceneGraph extends React.Component {
         });
         Events.emit('entityselect', entity);
         found = true;
+        break;
       }
     }
 

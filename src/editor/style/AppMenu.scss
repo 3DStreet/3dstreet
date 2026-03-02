@@ -7,110 +7,125 @@
   backdrop-filter: blur(4px);
   height: auto;
   border-radius: 6px;
-  padding: 10px;
+  padding: 2px;
   transition: 0.2s ease-in-out;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
   width: 100%;
 }
 
+// Horizontal Menubar styles
 .MenubarRoot {
   display: flex;
-  background-color: variables.$bgalphadarker;
-  padding: 3px;
-  border-radius: 8px;
-  box-shadow: 0 2px 10px rgba(22, 23, 24, 0.5);
-  position: relative;
-  z-index: 2;
+  background-color: rgba(50, 50, 50, 0.8);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  border-radius: 6px;
+  gap: 2px;
+  padding: 6px;
 }
 
 .MenubarTrigger {
-  font-size: 17px !important;
-  padding: 7px 16px;
+  all: unset;
+  padding: 6px 12px;
   outline: none;
   user-select: none;
   font-weight: 500;
   line-height: 1;
-  border-radius: 4px;
+  border-radius: 6px;
+  font-size: 16px;
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 2px;
+  cursor: pointer;
+  transition: background-color 0.15s ease-in-out;
 
-  &:hover {
-    background-color: variables.$darkgray-100;
+  &[data-highlighted] {
+    background-color: variables.$black-400;
+  }
+
+  &[data-state='open'] {
+    background-color: variables.$black-400;
   }
 }
 
-.MenubarTrigger[data-highlighted],
-.MenubarTrigger[data-state='open'] {
-  background-color: variables.$black-100;
-}
-
-.MenubarContent,
-.MenubarSubContent {
+.MenubarContent {
   min-width: 220px;
   background-color: variables.$bgalphadarker;
-  border-radius: 6px;
-  padding: 5px;
+  border-radius: 8px;
+  padding: 6px;
   box-shadow:
     0px 10px 38px -10px rgba(22, 23, 24, 0.35),
     0px 10px 20px -15px rgba(22, 23, 24, 0.2);
   animation-duration: 400ms;
   animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1);
   will-change: transform, opacity;
-  z-index: 10;
+  z-index: 15;
   backdrop-filter: blur(8.5px);
   -webkit-backdrop-filter: blur(8.5px);
+  max-height: 80vh;
+  overflow-y: auto;
 }
 
-.MenubarItem,
-.MenubarSubTrigger,
-.MenubarCheckboxItem,
-.MenubarRadioItem {
+.MenubarItem {
   all: unset;
-  font-size: 17px;
-  line-height: 1;
-  border-radius: 4px;
+  font-size: 16px;
+  line-height: 1.2;
+  border-radius: 6px;
   display: flex;
   align-items: center;
-  height: 35px;
-  padding: 0 10px;
+  justify-content: space-between;
+  min-height: 24px;
+  padding: 4px 12px;
   position: relative;
   user-select: none;
   cursor: pointer;
+  margin: 1px 0;
+  transition: background-color 0.15s ease-in-out;
+
+  &[data-highlighted] {
+    background-color: variables.$black-100;
+    outline: none;
+  }
+
+  &[data-disabled] {
+    color: variables.$lightgray-800;
+    pointer-events: none;
+  }
 }
 
-.MenubarItem.inset,
-.MenubarSubTrigger.inset,
-.MenubarCheckboxItem.inset,
-.MenubarRadioItem.inset {
-  padding-left: 20px;
-}
+.MenubarCheckboxItem {
+  all: unset;
+  font-size: 16px;
+  line-height: 1.2;
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-height: 24px;
+  padding: 4px 12px;
+  padding-left: 36px;
+  position: relative;
+  user-select: none;
+  cursor: pointer;
+  margin: 1px 0;
+  transition: background-color 0.15s ease-in-out;
 
-.MenubarItem[data-state='open'],
-.MenubarSubTrigger[data-state='open'] {
-  background-color: variables.$black-100;
-}
+  &[data-highlighted] {
+    background-color: variables.$black-100;
+    outline: none;
+  }
 
-.MenubarItem[data-highlighted],
-.MenubarSubTrigger[data-highlighted],
-.MenubarCheckboxItem[data-highlighted],
-.MenubarRadioItem[data-highlighted] {
-  background-color: variables.$black-100;
-}
-
-.MenubarItem[data-disabled],
-.MenubarSubTrigger[data-disabled],
-.MenubarCheckboxItem[data-disabled],
-.MenubarRadioItem[data-disabled] {
-  color: variables.$lightgray-800;
-  pointer-events: none;
+  &[data-disabled] {
+    color: variables.$lightgray-800;
+    pointer-events: none;
+  }
 }
 
 .MenubarItemIndicator {
   position: absolute;
-  left: 0;
-  width: 20px;
+  left: 12px;
+  width: 16px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -119,7 +134,7 @@
 .MenubarSeparator {
   height: 1px;
   background-color: variables.$lightgray;
-  margin: 5px;
+  margin: 6px 4px;
 }
 
 .RightSlot {

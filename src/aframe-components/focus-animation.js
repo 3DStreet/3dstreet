@@ -6,7 +6,7 @@ AFRAME.registerComponent('focus-animation', {
   schema: {
     speed: {
       type: 'string',
-      oneOf: ['immediate', 'fast', 'slow'],
+      oneOf: ['immediate', 'fast', 'slow', 'super-slow'],
       default: 'fast'
     }
   },
@@ -23,7 +23,9 @@ AFRAME.registerComponent('focus-animation', {
   },
 
   update() {
-    if (this.data.speed === 'slow') {
+    if (this.data.speed === 'super-slow') {
+      this.transitionSpeed = 0.0000625; // 4x slower than slow
+    } else if (this.data.speed === 'slow') {
       this.transitionSpeed = 0.00025;
     } else {
       this.transitionSpeed = 0.001;

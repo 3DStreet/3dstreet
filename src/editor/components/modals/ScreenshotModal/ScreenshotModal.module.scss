@@ -1,204 +1,830 @@
-@use '../../../style/variables.scss';
-
-.proFeaturesWrapper {
-  position: relative;
-
-  .proOverlay {
-    position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    background: rgba(0, 0, 0, 0.5);
-    backdrop-filter: blur(2px);
-    border-radius: 12px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    z-index: 1;
-    cursor: pointer;
-    transition: background-color 0.2s ease;
-
-    &:hover {
-      background: rgba(0, 0, 0, 0.4);
-    }
-
-    &:active {
-      background: rgba(0, 0, 0, 0.3);
-    }
-
-    .proOverlayContent {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      background: rgba(119, 77, 238, 0.9);
-      transition: all 0.2s ease;
-      padding: 8px 16px;
-      border-radius: 8px;
-      color: white;
-      font-weight: 500;
-      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-
-      &:hover {
-        background: rgba(119, 77, 238, 1);
-        transform: translateY(-1px);
-        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
-      }
-
-      &:active {
-        background: rgba(107, 69, 214, 1);
-        transform: translateY(0);
-        box-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
-      }
-
-      span[role='img'] {
-        font-size: 16px;
-      }
-    }
-  }
-}
-
 .screenshotModalWrapper {
-  position: absolute;
-  top: 55px;
-  left: 0;
-  right: 0;
-  width: 90vw;
-  height: 90vh;
-  overflow-y: scroll;
-
-  .wrapper {
-    width: 100%;
-    display: flex;
-    align-items: flex-start;
-    gap: 16px;
-    padding: 16px;
-    flex-direction: row-reverse;
-
-    .mainContent {
-      flex: 1;
-      display: flex;
-      flex-direction: column;
-    }
-
-    .header {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      width: 100%;
-      .forms {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        width: 100%;
-
-        .inputContainer {
-          display: flex;
-          align-items: center;
-          width: 50%;
-
-          .input {
-            border: none;
-            background: none;
-          }
-
-          .button {
-            padding: 0px 10px 0px 0px !important;
-            cursor: pointer;
-            transition:
-              filter 0.2s,
-              transform 0.2s,
-              box-shadow 0.2s;
-            filter: brightness(85%);
-
-            svg {
-              width: 30px;
-              height: 30px;
-            }
-            &:hover {
-              filter: brightness(100%);
-              box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
-            }
-
-            &:focus {
-              outline: none;
-            }
-
-            &:active {
-              filter: brightness(70%);
-              box-shadow: none;
-            }
-          }
-        }
-      }
-    }
-    .imageWrapper {
-      justify-content: center;
-      display: flex;
-      height: fit-content;
-      position: relative;
-      width: fit-content;
-      max-height: calc(100% - 44px - 24px);
-
-      .screenshotWrapper {
-        height: fit-content;
-        max-width: 100%;
-        max-height: 100%;
-      }
-
-      .screenshotWrapper,
-      .screenshotWrapper img {
-        width: 100%;
-        height: 100%;
-        object-fit: contain;
-      }
-
-      .thumbnailButton {
-        position: absolute !important;
-        bottom: 16px;
-        right: 16px;
-      }
-    }
-  }
-
-  .propertiesPanel {
-    width: 310px;
-    background: var(--panel-background);
-    border-radius: 4px;
-    border: 1px solid var(--panel-border);
-    flex-shrink: 0;
-  }
-
-  .propertiesHeader {
-    padding: 8px 10px;
-    font-weight: 600;
-    border-bottom: 1px solid var(--panel-border);
-  }
-
-  .propertiesContent {
+  &:global(.modal-content) {
+    width: 95%;
+    max-width: 1400px;
+    height: 85vh;
+    max-height: 85vh;
     display: flex;
     flex-direction: column;
-    overflow-x: hidden;
-    overflow-y: auto;
   }
-  .dropdown {
-    max-width: fit-content;
-    min-width: 310px;
-    button {
-      background-color: variables.$purple-900 !important;
-      &:hover {
-        background-color: variables.$purple-800 !important;
+}
+
+.modalContent {
+  display: flex;
+  flex: 1;
+  min-height: 0; // Critical for preventing overflow
+  padding: 20px;
+  gap: 20px;
+}
+
+.sidebar {
+  width: 280px;
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.renderModeTabs {
+  display: flex;
+  background: rgba(30, 30, 30, 0.6);
+  border-radius: 8px;
+  padding: 4px;
+  gap: 2px;
+  border: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.tabButton {
+  flex: 1;
+  padding: 8px 12px;
+  background: transparent;
+  border: none;
+  border-radius: 6px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  color: #9ca3af;
+
+  &.active {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    box-shadow: 0 2px 8px rgba(102, 126, 234, 0.4);
+    font-weight: 600;
+  }
+
+  &:hover:not(.active) {
+    background: rgba(255, 255, 255, 0.05);
+    color: #d1d5db;
+  }
+
+  &:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+}
+
+.modelMixToggle {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.toggleLabel {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 500;
+  background: rgba(30, 30, 30, 0.6);
+  padding: 10px 14px;
+  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  transition: all 0.2s ease;
+
+  &:hover {
+    background: rgba(40, 40, 40, 0.8);
+    border-color: rgba(255, 255, 255, 0.1);
+  }
+
+  input[type='checkbox'] {
+    position: absolute;
+    opacity: 0;
+    width: 0;
+    height: 0;
+  }
+}
+
+.toggleText {
+  color: #d1d5db;
+  user-select: none;
+  flex: 1;
+}
+
+// Custom toggle switch
+.toggleSwitch {
+  position: relative;
+  width: 44px;
+  height: 24px;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 12px;
+  transition: background 0.3s ease;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+
+  &::after {
+    content: '';
+    position: absolute;
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.9);
+    top: 2px;
+    left: 2px;
+    transition: transform 0.3s ease;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+  }
+
+  input:checked + & {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    border-color: transparent;
+
+    &::after {
+      transform: translateX(20px);
+      background: white;
+    }
+  }
+}
+
+.aiSection {
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+}
+
+.promptSection {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.promptLabel {
+  font-size: 12px;
+  font-weight: 500;
+  color: #666;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.promptTextarea {
+  padding: 10px 12px;
+  border: 1px solid #ddd;
+  border-radius: 6px;
+  font-size: 14px;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto',
+    sans-serif;
+  background: white;
+  resize: vertical;
+  min-height: 72px;
+  line-height: 1.4;
+
+  &:focus {
+    outline: none;
+    border-color: #007bff;
+    box-shadow: 0 0 0 2px rgba(0, 123, 255, 0.25);
+  }
+
+  &:disabled {
+    background: #f5f5f5;
+    cursor: not-allowed;
+    opacity: 0.6;
+  }
+
+  &::placeholder {
+    color: #999;
+    font-style: italic;
+  }
+}
+
+.promptHelper {
+  font-size: 11px;
+  color: #666;
+  font-style: italic;
+  padding-left: 4px;
+}
+
+.modelSelector {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.modelLabel {
+  font-size: 12px;
+  font-weight: 500;
+  color: #666;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.modelSelect {
+  padding: 8px 12px;
+  border: 1px solid #ddd;
+  border-radius: 6px;
+  font-size: 14px;
+  background: white;
+  cursor: pointer;
+
+  &:focus {
+    outline: none;
+    border-color: #007bff;
+    box-shadow: 0 0 0 2px rgba(0, 123, 255, 0.25);
+  }
+
+  &:disabled {
+    background: #f5f5f5;
+    cursor: not-allowed;
+    opacity: 0.6;
+  }
+}
+
+.aiButton {
+  width: 100%;
+  padding: 12px 16px;
+  font-size: 14px;
+  font-weight: 500;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  position: relative;
+  overflow: hidden;
+
+  span {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  &:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+  }
+}
+
+.renderingButton {
+  padding: 8px 16px !important;
+}
+
+.renderingContent {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+}
+
+.progressContainer {
+  position: relative;
+  width: 100%;
+  height: 8px;
+  background-color: rgba(255, 255, 255, 0.2);
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.progressBar {
+  position: absolute;
+  top: 0;
+  left: 0;
+  height: 100%;
+  background: linear-gradient(90deg, #4f46e5, #7c3aed, #4f46e5);
+  background-size: 200% 100%;
+  border-radius: 4px;
+  transition: width 0.1s ease-out;
+  animation: shimmer 2s infinite linear;
+}
+
+.progressStripes {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: repeating-linear-gradient(
+    45deg,
+    transparent,
+    transparent 8px,
+    rgba(255, 255, 255, 0.1) 8px,
+    rgba(255, 255, 255, 0.1) 16px
+  );
+  animation: barbershop 1s infinite linear;
+}
+
+.progressText {
+  font-size: 12px;
+  font-weight: 600;
+  color: white;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
+}
+
+.overtimeText {
+  font-size: 12px;
+  font-weight: 500;
+  color: #fbbf24;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
+}
+
+@keyframes shimmer {
+  0% {
+    background-position: -200% 0;
+  }
+  100% {
+    background-position: 200% 0;
+  }
+}
+
+@keyframes barbershop {
+  0% {
+    background-position: 0 0;
+  }
+  100% {
+    background-position: 32px 0;
+  }
+}
+
+.loginPrompt {
+  font-size: 12px;
+  color: #999;
+  margin: 0;
+  text-align: center;
+}
+
+.tokenBadge {
+  display: inline-block;
+  margin-left: 8px;
+  padding: 2px 8px;
+  background: rgba(16, 185, 129, 0.2);
+  color: #10b981;
+  border-radius: 12px;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.noTokensWarning {
+  font-size: 12px;
+  color: #ef4444;
+  margin: 8px 0 0 0;
+  text-align: center;
+  padding: 8px;
+  background: rgba(239, 68, 68, 0.1);
+  border-radius: 4px;
+}
+
+.viewControls {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.toggleButtons {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+
+  button {
+    width: 100%;
+    padding: 8px 12px;
+    font-size: 13px;
+  }
+}
+
+.sidebarTokenDisplay {
+  margin-top: auto;
+  padding-top: 16px;
+  border-top: 1px solid #333;
+  display: flex;
+  justify-content: center;
+}
+
+.upsellSection {
+  padding-top: 16px;
+  border-top: 1px solid #333;
+}
+
+.upsellButton {
+  width: 100%;
+  padding: 10px;
+  font-size: 12px;
+  text-align: center;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  box-shadow: 0 2px 8px rgba(102, 126, 234, 0.4);
+  transform: translateY(0);
+
+  &:hover {
+    background: linear-gradient(135deg, #7c8ff8 0%, #8e5db4 100%);
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(102, 126, 234, 0.6);
+  }
+
+  &:active {
+    transform: translateY(-1px);
+    box-shadow: 0 3px 10px rgba(102, 126, 234, 0.5);
+  }
+}
+
+.imageContainer {
+  flex: 1;
+  min-width: 0; // Prevent overflow
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+}
+
+.renderGrid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  grid-template-rows: 1fr 1fr;
+  gap: 12px;
+  width: 100%;
+  height: 100%;
+  max-width: 600px;
+  max-height: 600px;
+}
+
+.renderSlot {
+  position: relative;
+  border: 2px solid #d1d5db;
+  border-radius: 8px;
+  overflow: hidden;
+  background: linear-gradient(135deg, #374151 0%, #4b5563 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 200px;
+  box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.renderImage {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.renderOverlay {
+  position: absolute;
+  top: 8px;
+  left: 8px;
+  right: 8px;
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  z-index: 10;
+  pointer-events: none;
+}
+
+.modelName {
+  background: rgba(0, 0, 0, 0.7);
+  color: white;
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-size: 11px;
+  font-weight: 600;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
+  backdrop-filter: blur(4px);
+}
+
+.timeOverlay {
+  background: rgba(16, 185, 129, 0.8);
+  color: white;
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-size: 11px;
+  font-weight: 600;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
+  backdrop-filter: blur(4px);
+
+  &.errorOverlay {
+    background: rgba(239, 68, 68, 0.9);
+  }
+
+  &.overtimeOverlay {
+    background: rgba(251, 191, 36, 0.9);
+    color: #000;
+  }
+}
+
+.renderingPlaceholder {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  color: #e5e7eb;
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.spinner {
+  width: 24px;
+  height: 24px;
+  border: 3px solid #f3f3f3;
+  border-top: 3px solid #007bff;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(360deg);
+  }
+}
+
+.emptySlot {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #9ca3af;
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.errorSlot {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  color: #ef4444;
+  font-size: 14px;
+  font-weight: 500;
+
+  span:first-child {
+    font-size: 24px;
+  }
+}
+
+.slotDownloadButton {
+  position: absolute;
+  bottom: 8px;
+  right: 8px;
+  width: 32px;
+  height: 32px;
+  background: rgba(0, 0, 0, 0.7);
+  color: white;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+  backdrop-filter: blur(4px);
+  z-index: 15;
+
+  &:hover {
+    background: rgba(0, 0, 0, 0.9);
+    transform: scale(1.05);
+  }
+
+  svg {
+    width: 16px;
+    height: 16px;
+  }
+}
+
+.imageContent {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+
+  img {
+    max-width: 100%;
+    max-height: 100%;
+    width: auto;
+    height: auto;
+    object-fit: contain;
+    border-radius: 8px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+    display: block;
+  }
+}
+
+.thumbnailButton {
+  position: absolute;
+  top: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 16px;
+  background-color: rgba(50, 50, 50, 0.75);
+  color: white;
+  border: 1px solid transparent;
+  border-radius: 12px;
+  cursor: pointer;
+  transition: all 0.3s;
+  font-size: 14px;
+  font-weight: 500;
+  z-index: 10;
+  backdrop-filter: blur(8px);
+
+  &:hover {
+    background-color: rgba(50, 50, 50, 0.9);
+    transform: translateX(-50%) translateY(-1px);
+  }
+
+  &:active {
+    background-color: rgba(0, 0, 0, 0.9);
+    color: rgba(228, 228, 231, 1);
+  }
+
+  &:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+  }
+
+  span:first-child {
+    font-size: 16px;
+  }
+}
+
+.downloadButton {
+  position: absolute;
+  bottom: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 16px;
+  background-color: rgba(50, 50, 50, 0.8);
+  color: white;
+  border: 1px solid transparent;
+  border-radius: 12px;
+  cursor: pointer;
+  transition: all 0.3s;
+  font-size: 14px;
+  font-weight: 500;
+  z-index: 10;
+
+  &:hover {
+    background-color: rgba(50, 50, 50, 0.9);
+    transform: translateX(-50%) translateY(-1px);
+  }
+
+  &:active {
+    background-color: rgba(0, 0, 0, 0.9);
+    color: rgba(228, 228, 231, 1);
+  }
+
+  svg {
+    width: 18px;
+    height: 18px;
+  }
+}
+
+.comparisonContainer {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  :global(img-comparison-slider) {
+    max-width: 100%;
+    max-height: 100%;
+    width: auto;
+    height: auto;
+
+    :global([slot='first']),
+    :global([slot='second']) {
+      max-width: 100%;
+      max-height: 100%;
+      width: auto;
+      height: auto;
+      object-fit: contain;
+      border-radius: 8px;
+    }
+
+    :global(.slider) {
+      background: white;
+      width: 3px;
+      box-shadow: 0 0 10px rgba(0, 0, 0, 0.5);
+    }
+
+    :global(.handle) {
+      width: 44px;
+      height: 44px;
+      background: white;
+      border-radius: 50%;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+
+      &:after {
+        content: '◀ ▶';
+        font-size: 12px;
+        color: #333;
       }
     }
   }
 }
 
-.inputContainer .input {
-  height: 43px;
-  border: none;
-  background: none;
-  padding: 0px;
-  color: variables.$white;
-  display: flex;
-  justify-content: center;
+// Closing animation - shrink and fly to gallery
+.closing {
+  &:global(.modal-content) {
+    animation: shrinkAndFlyToGallery 0.6s cubic-bezier(0.4, 0, 0.2, 1) forwards !important;
+    // Prevent display:none from hiding the modal during animation
+    display: flex !important;
+  }
+}
+
+// Override hide class on parent modal when closing animation is active
+:global(.modal:has(.closing)) {
+  display: block !important;
+}
+
+// Also override on the modal-content itself
+:global(.modal.hide) .closing {
+  display: flex !important;
+}
+
+@keyframes shrinkAndFlyToGallery {
+  0% {
+    transform: translate(0, 0) scale(1);
+    opacity: 1;
+  }
+  40% {
+    transform: translate(0, 0) scale(0.9);
+    opacity: 0.85;
+  }
+  100% {
+    // Fly to top-right corner where gallery icon is (right: 0, top: 80px)
+    // Move right by ~50vw (half viewport + some extra to reach right edge)
+    // Move up by ~-42.5vh (half viewport to center, then up to top)
+    transform: translate(50vw, -42.5vh) scale(0.05);
+    opacity: 0;
+  }
+}
+
+@media (max-width: 768px) {
+  .modalContent {
+    flex-direction: column;
+  }
+
+  .sidebar {
+    width: 100%;
+    flex-direction: column;
+    gap: 15px;
+  }
+
+  .renderModeTabs {
+    margin-bottom: 10px;
+  }
+
+  .aiSection {
+    flex: 1;
+  }
+
+  .viewControls {
+    flex: 1;
+  }
+
+  .toggleButtons {
+    flex-direction: row;
+
+    button {
+      flex: 1;
+    }
+  }
+
+  .renderGrid {
+    max-width: 100%;
+    max-height: 400px;
+  }
+
+  .renderSlot {
+    min-height: 150px;
+  }
+
+  .modelName {
+    font-size: 10px;
+  }
+
+  .timeOverlay {
+    font-size: 10px;
+  }
+
+  // Adjust animation for smaller screens
+  @keyframes shrinkAndFlyToGallery {
+    0% {
+      transform: translate(0, 0) scale(1);
+      opacity: 1;
+    }
+    40% {
+      transform: translate(0, 0) scale(0.9);
+      opacity: 0.85;
+    }
+    100% {
+      // On mobile, fly to top-right corner
+      transform: translate(45vw, -45vh) scale(0.05);
+      opacity: 0;
+    }
+  }
 }

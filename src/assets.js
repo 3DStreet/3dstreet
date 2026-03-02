@@ -1,5 +1,10 @@
-/* global AFRAME, customElements */
+/* global AFRAME, customElements, STREET */
 const catalog = require('./catalog.json');
+
+// Expose catalog to STREET global for component access
+if (typeof STREET !== 'undefined') {
+  STREET.catalog = catalog;
+}
 
 const assetBasePath = 'https://assets.3dstreet.app/'; // use this path if none specified in index.html assets tag
 
@@ -7,10 +12,15 @@ function buildAssetHTML(assetUrl, categories) {
   console.log('[street]', 'Using street assets from', assetUrl);
   const surfacesRoughness = 0.8;
   var assetsObj = {
-    'sidewalk-props': `
-        <!-- sidewalk props -->
-        <img id="wayfinding-map" src="${assetUrl}objects/wayfinding.jpg" crossorigin="anonymous" />
+    plants: `
+        <!-- plants -->
         <a-asset-item id="streetProps" src="${assetUrl}sets/street-props/gltf-exports/draco/street-props.glb"></a-asset-item>
+        <a-mixin shadow id="palm-tree" gltf-part="src: #streetProps; part: palmtree" scale="1 1.5 1"></a-mixin>
+        <a-mixin shadow id="tree3" gltf-part="src: #streetProps; part: tree-01" scale="1.25 1.25 1.25"></a-mixin>
+        `,
+    fixtures: `
+        <!-- fixtures -->
+        <img id="wayfinding-map" src="${assetUrl}objects/wayfinding.jpg" crossorigin="anonymous" />
         <a-asset-item id="brt-station-model" src="${assetUrl}sets/brt-station/gltf-exports/draco/brt-station.glb"></a-asset-item>
         <a-mixin shadow id="brt-station" gltf-model="#brt-station-model" ></a-mixin>
         <a-mixin shadow id="outdoor_dining" gltf-part="src: #streetProps; part: outdoor_dining"></a-mixin>
@@ -22,11 +32,9 @@ function buildAssetHTML(assetUrl, categories) {
         <a-mixin shadow id="bikerack" gltf-part="src: #streetProps; part: bike_rack"></a-mixin>
         <a-mixin shadow id="bikeshare" gltf-part="src: #streetProps; part: bike_share"></a-mixin>
         <a-mixin shadow id="lamp-traditional" gltf-part="src: #streetProps; part: lamp_post_traditional" scale="2 2 2"></a-mixin>
-        <a-mixin shadow id="palm-tree" gltf-part="src: #streetProps; part: palmtree" scale="1 1.5 1"></a-mixin>
         <a-mixin shadow id="bench" gltf-part="src: #streetProps; part: park_bench"></a-mixin>
         <a-mixin shadow id="seawall" gltf-part="src: #streetProps; part: sea_wall"></a-mixin>
         <a-mixin shadow id="track" gltf-part="src: #streetProps; part: track"></a-mixin>
-        <a-mixin shadow id="tree3" gltf-part="src: #streetProps; part: tree-01" scale="1.25 1.25 1.25"></a-mixin>
         <a-mixin shadow id="bus-stop" gltf-part="src: #streetProps; part: transit-shelter-1"></a-mixin>
         <a-mixin shadow id="bus-stop-alternate" gltf-model="url(${assetUrl}sets/bus-shelter-alt-1/gltf-exports/draco/bus-shelter-alt-1.glb)"></a-mixin>
         <a-mixin shadow id="pride-flag" position="0.409 3.345 0" rotation="0 0 0" scale="0.5 0.75 0" geometry="width:2;height:2;primitive:plane" material="side:double; src:${assetUrl}materials/rainbow-flag-poles_512.png;transparent: true;"></a-mixin>
@@ -89,7 +97,7 @@ function buildAssetHTML(assetUrl, categories) {
         <a-mixin shadow id="Character_1_M" gltf-part="src: #magic-carpet-glb; part: Character_1_M"></a-mixin>
         <a-mixin shadow id="magic-carpet" gltf-part="src: #magic-carpet-glb; part: magic-carpet"></a-mixin>
       `,
-    'intersection-props': `
+    'traffic-control': `
         <a-mixin shadow id="signal_left" gltf-model="url(${assetUrl}sets/signals/gltf-exports/draco/signal1.glb)"></a-mixin>
         <a-mixin shadow id="signal_right" gltf-model="url(${assetUrl}sets/signals/gltf-exports/draco/signal2.glb)"></a-mixin>
       `,

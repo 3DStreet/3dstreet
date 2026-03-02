@@ -1,8 +1,19 @@
 # How to contribute to 3DStreet
 
-We welcome community contributions to 3DStreet.
+3DStreet is open-source software. We welcome community contributions to 3DStreet but cannot guarantee they will always be accepted. If in doubt please contact us via our [Discord server](https://discord.com/invite/zNFMhTwKSd) to discuss your proposed contributions or [open a new issue on this repository](https://github.com/3DStreet/3dstreet/issues/new) first.
 
-## Release checklist for this repo:
+## Contribution Instructions
+* fork the repository
+* make your contribution and commit changes on your own branch
+* make sure to do check for linting and unit test:
+* `npm run lint` should have no errors. You can try `npm run lint:fix` to automatically fix errors. sometimes you need to manually fix the errors
+* `npm run test` should return all passing or pending, no failures
+* If linting and tests all pass, then create a new Pull Request to merge the changes committed in your branch to the 3DStreet repo main branch 
+* Include a brief description of the changes, why you are making them, how to test them, and a link to an associated issue if any.
+* Notify us on the 3DStreet Discord if you don't hear a reply within a few days or want a faster review
+
+## Release checklist for this repo
+- (This checklist is for 3DStreet maintainers, contributors are not expected to release new version numbers)
 - After all testing is done and things work well enough for a release.
 - Bump the version on package.json & package-lock.json (for example from 0.4.2 to 0.4.4)
 - Re-run npm run dist (rerun the build, it hardcodes the version into global var used for console log)
@@ -10,26 +21,11 @@ We welcome community contributions to 3DStreet.
 - Use command line to create new tag for new version `git tag 0.4.4` and `git push --tags`
 - Create a new release here: https://github.com/3DStreet/3dstreet/releases/new. Choose the tag you just created. (If needed for the title simply use the new version such as "0.4.4")
 - Click to automatically "generate release notes." Consider summarizing a few key changes to put at the top.
-- Update https://www.3dstreet.org/docs/development/releases/ with summary of major improvements and linking back to the new release on github.
-- Then to run npm publish after all github version stuff works
 
 ## Updating assets submodule:
 - from the repo's root directory run `git submodule update --remote` to update the assets submodule
 
-## Contribution Instructions
-* fork the repo
-* make your contribution
-* make sure to do check for linting and unit test:
-* `npm run lint` should have no errors. You can try `npm run lint:fix` to automatically fix errors. sometimes you need to manually fix the errors
-* `npm run test` should return all passing or pending, no failures. See below for how to handle test failures
-* If linting and tests all pass, then create a pull request to merge into main 3dstreet repo with a description of the changes and a link to an associated issue if any.
-* Notify us on the 3dstreet discord if you don't hear a reply within a few days or want a faster review
-
-### If failed test:
-* Either change your code so that the test passes once again, or
-* You might need to update the tests
-
-### About 3DStreet test
+### About 3DStreet tests
 
 A small portion of 3dstreet code is tested. All of this code lives in this directory [/src/tested/](https://github.com/3DStreet/3dstreet/tree/main/src/tested)
 

@@ -1,10 +1,8 @@
-import Clipboard from 'clipboard';
 import Collapsible from '../Collapsible';
 import Events from '../../lib/Events';
 import PropTypes from 'prop-types';
 import PropertyRow from './PropertyRow';
 import React from 'react';
-import { getComponentClipboardRepresentation } from '../../lib/entity';
 import {
   ClonedTreesIcon,
   StencilsIcon,
@@ -12,7 +10,7 @@ import {
   PedestriansIcon,
   RailIcon,
   TrashIcon
-} from '../../icons';
+} from '@shared/icons';
 import ModelsArrayWidget from '../widgets/ModelsArrayWidget';
 
 const isSingleProperty = AFRAME.schema.isSingleProperty;
@@ -46,25 +44,6 @@ export default class Component extends React.Component {
   };
 
   componentDidMount() {
-    var clipboard = new Clipboard(
-      '[data-action="copy-component-to-clipboard"]',
-      {
-        text: (trigger) => {
-          var componentName = trigger
-            .getAttribute('data-component')
-            .toLowerCase();
-          return getComponentClipboardRepresentation(
-            this.state.entity,
-            componentName
-          );
-        }
-      }
-    );
-    clipboard.on('error', (e) => {
-      // @todo Show the error in the UI
-      console.error(e);
-    });
-
     Events.on('entityupdate', this.onEntityUpdate);
   }
 
@@ -103,6 +82,31 @@ export default class Component extends React.Component {
     const componentName = this.props.name;
     const schema = AFRAME.components[componentName.split('__')[0]].schema;
 
+    // Safety check: if component data is not available, show refresh link
+    if (!componentData || !componentData.data) {
+      return (
+        <div
+          className="detailed"
+          style={{ textAlign: 'center', padding: '10px' }}
+        >
+          <a
+            href="#"
+            onClick={(e) => {
+              e.preventDefault();
+              // Re-select the current entity to refresh the inspector panel
+              const currentEntity = AFRAME.INSPECTOR.selectedEntity;
+              if (currentEntity) {
+                AFRAME.INSPECTOR.selectEntity(currentEntity);
+              }
+            }}
+            style={{ color: '#1faaf2', textDecoration: 'underline' }}
+          >
+            Component data changed, click to refresh
+          </a>
+        </div>
+      );
+    }
+
     if (componentName.startsWith('street-generated-clones')) {
       // Custom rendering for clones
       return (
@@ -121,7 +125,7 @@ export default class Component extends React.Component {
             entity={this.props.entity}
             isSingle={false}
           />
-          {componentData.data.mode === 'fixed' && (
+          {componentData.data && componentData.data.mode === 'fixed' && (
             <>
               <PropertyRow
                 key="spacing"
@@ -145,7 +149,7 @@ export default class Component extends React.Component {
               />
             </>
           )}
-          {componentData.data.mode === 'random' && (
+          {componentData.data && componentData.data.mode === 'random' && (
             <>
               <PropertyRow
                 key="spacing"
@@ -169,7 +173,7 @@ export default class Component extends React.Component {
               />
             </>
           )}
-          {componentData.data.mode === 'single' && (
+          {componentData.data && componentData.data.mode === 'single' && (
             <>
               <PropertyRow
                 key="justify"
@@ -187,6 +191,30 @@ export default class Component extends React.Component {
                 label="Padding"
                 schema={schema['padding']}
                 data={componentData.data['padding']}
+                componentname={componentName}
+                entity={this.props.entity}
+                isSingle={false}
+              />
+            </>
+          )}
+          {componentData.data && componentData.data.mode === 'fit' && (
+            <>
+              <PropertyRow
+                key="spacing"
+                name="spacing"
+                label="Spacing"
+                schema={schema['spacing']}
+                data={componentData.data['spacing']}
+                componentname={componentName}
+                entity={this.props.entity}
+                isSingle={false}
+              />
+              <PropertyRow
+                key="justifyWidth"
+                name="justifyWidth"
+                label="Justify Width"
+                schema={schema['justifyWidth']}
+                data={componentData.data['justifyWidth']}
                 componentname={componentName}
                 entity={this.props.entity}
                 isSingle={false}

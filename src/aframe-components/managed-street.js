@@ -15,7 +15,7 @@ function parseOTags(tags) {
   return tags.split('", "').map((t) => t.replace(/"/g, '').trim());
 }
 
-// Streetplan Helper function to create clone configuration
+// Streetplan Helper function to create clone configuration or return variant
 function createCloneConfig(name, tags) {
   if (!name || name === '-') return null;
 
@@ -23,8 +23,12 @@ function createCloneConfig(name, tags) {
     STREETPLAN_OBJECT_TO_GENERATED_CLONES_MAPPING[name.toLowerCase()];
   if (!generatedClonesConfig) return null;
 
-  // if the config is an object, then it is a generated clone config
+  // if the config is an object, check for variant
   if (typeof generatedClonesConfig === 'object') {
+    // if variant is present, return special marker (not a clone config)
+    if (generatedClonesConfig.variant) {
+      return { _isVariant: true, variant: generatedClonesConfig.variant };
+    }
     return generatedClonesConfig;
   } else {
     // if it is a string, then it is a model mixin
@@ -307,7 +311,9 @@ AFRAME.registerComponent('managed-street', {
         level: segment.level,
         direction: segment.direction,
         color: segment.color || window.STREET.types[segment.type]?.color,
-        surface: segment.surface || window.STREET.types[segment.type]?.surface // no error handling for segmentPreset not found
+        surface: segment.surface || window.STREET.types[segment.type]?.surface, // no error handling for segmentPreset not found
+        variant: segment.variant,
+        side: segment.side
       });
       segmentEl.setAttribute('data-layer-name', segment.name);
       // wait for street-segment to be loaded, then generate components from segment object
@@ -356,10 +362,15 @@ AFRAME.registerComponent('managed-street', {
       if (streetplanData.status === false) {
         throw new Error(`streetplan returned status: false`);
       }
-      const boulevard = streetplanData.project['My Street']['Boulevard Alt 1'];
+      const streetName = streetplanData.project['StreetName'];
+      const theStreet = streetplanData.project[streetName];
+      const AlternativesIDX = theStreet['AlternativesIDX'];
+      const firstAlt = AlternativesIDX['1'];
+      const boulevard = theStreet[firstAlt];
+      // const boulevard = streetplanData.project['My Street']['Boulevard Alt 1'];
       const streetPlanName = streetplanData.project.ProjectName;
       const streetLength =
-        parseFloat(streetplanData.project['My Street'].LengthMiles) *
+        parseFloat(streetplanData.project[streetName].LengthMiles) *
           5280 *
           0.3048 || 100; // Convert miles to meters
       // Convert StreetPlan format to managed-street format
@@ -376,47 +387,43 @@ AFRAME.registerComponent('managed-street', {
         const segment = segments[segmentKey];
 
         // Skip Buildings and Setback segments
-        if (segment.Type === 'Buildings' || segment.Type === 'Setback') {
-          continue;
-        }
+        // if (segment.Type === 'Buildings' || segment.Type === 'Setback') {
+        //   continue;
+        // }
 
         const segmentWidth = parseFloat(segment.width) * 0.3048; // Convert feet to meters
         streetObject.width += segmentWidth;
 
         // Convert from streetplan segment type to managed street types
-        let segmentType = 'drive-lane'; // Default type
         let segmentDirection = 'inbound';
-
         // convert from streetplan segment types to managed street presets
-        switch (segment.Type) {
-          case 'BikesPaths':
-            segmentType = 'bike-lane';
-            break;
-          case 'Walkways':
-            segmentType = 'sidewalk';
-            break;
-          case 'Transit':
-            segmentType = 'bus-lane';
-            break;
-          case 'Median/Buffer':
-            segmentType = 'divider';
-            break;
-          case 'Curbside':
-            segmentType = 'divider';
-            break;
-          case 'Gutter':
-            segmentType = 'parking-lane';
-            break;
-          case 'Furniture':
-            segmentType = 'sidewalk-tree';
-            break;
-          // Add more type mappings as needed
-        }
+
+        const STREETPLAN_TYPE_MAPPING = {
+          Buildings: { type: 'building', name: 'Land Use' },
+          BikesPaths: { type: 'bike-lane', name: 'Bikes' },
+          Walkways: { type: 'sidewalk', name: 'Walkways' },
+          Transit: { type: 'bus-lane', name: 'Transit' },
+          Cars: { type: 'drive-lane', name: 'Vehicles' },
+          Parking: { type: 'parking-lane', name: 'Parking' },
+          Median: { type: 'parking-lane', name: 'Median' },
+          Buffer: { type: 'buffer-lane', name: 'Buffer' },
+          Curbside: { type: 'divider', name: 'CS' },
+          Gutter: { type: 'divider', name: 'GU' },
+          Furniture: { type: 'sidewalk', name: 'Furniture' },
+          Setback: { type: 'setback-lane', name: 'SB' }
+        };
+
+        const typeMapping = STREETPLAN_TYPE_MAPPING[segment.Type] || {
+          type: 'drive-lane',
+          name: 'Vehicles'
+        };
+        const segmentType = typeMapping.type;
+        const segmentName = typeMapping.name;
 
         // Determine direction based on segment data
-        if (segment.Direction === 'Coming') {
+        if (segment.side === 'left') {
           segmentDirection = 'inbound';
-        } else if (segment.Direction === 'Going') {
+        } else if (segment.side === 'right') {
           segmentDirection = 'outbound';
         }
 
@@ -429,29 +436,52 @@ AFRAME.registerComponent('managed-street', {
         // Map the O-Tags to clone configurations
         const generated = {};
         const clones = [];
+        let segmentVariant = null;
+
         // Process O1, O2, O3 configurations
         ['O1', 'O2', 'O3'].forEach((prefix) => {
           const name = segment[`${prefix}-Name`];
           const tags = parseOTags(segment[`${prefix}-Tags`]);
           const cloneConfig = createCloneConfig(name, tags);
           if (cloneConfig) {
-            clones.push(cloneConfig);
+            // Check if this is a variant (strict variant-only mode)
+            if (cloneConfig._isVariant) {
+              // Use the first variant found, ignore others
+              if (!segmentVariant) {
+                segmentVariant = cloneConfig.variant;
+              }
+            } else {
+              // Traditional clone config
+              clones.push(cloneConfig);
+            }
           }
         });
         if (clones.length > 0) {
           generated.clones = clones;
         }
 
-        streetObject.segments.push({
+        const segmentData = {
           type: segmentType,
           width: segmentWidth,
-          name: segment.title,
+          name: segmentName,
           level: parseFloat(segment.MaterialH) === 0.5 ? 1 : 0,
           direction: segmentDirection,
           color: mappedColor || window.STREET.types[segmentType]?.color,
           surface: mappedSurface,
           generated: clones.length > 0 ? generated : undefined
-        });
+        };
+
+        // Add variant if found (takes precedence over generated clones)
+        if (segmentVariant) {
+          segmentData.variant = segmentVariant;
+        }
+
+        // Only add side property if it exists in StreetPlan data
+        if (segment.side) {
+          segmentData.side = segment.side; // 'left' or 'right'
+        }
+
+        streetObject.segments.push(segmentData);
       }
 
       // Parse the street object
@@ -1211,28 +1241,18 @@ function parseStreetmixSegments(segments, length) {
       segmentPreset = 'sidewalk';
     }
 
-    // add new object
-    segmentParentEl.setAttribute('street-segment', 'type', segmentPreset);
-    segmentParentEl.setAttribute(
-      'street-segment',
-      'width',
-      segmentWidthInMeters
-    );
-    segmentParentEl.setAttribute('street-segment', 'length', length);
-    segmentParentEl.setAttribute('street-segment', 'level', elevation);
-    segmentParentEl.setAttribute('street-segment', 'direction', direction);
-    segmentParentEl.setAttribute(
-      // find default color for segmentPreset
-      'street-segment',
-      'color',
-      segmentColor ?? window.STREET.types[segmentPreset]?.color // no error handling for segmentPreset not found
-    );
-    segmentParentEl.setAttribute(
-      // find default surface type for segmentPreset
-      'street-segment',
-      'surface',
-      window.STREET.types[segmentPreset]?.surface // no error handling for segmentPreset not found
-    );
+    // add new object - use single setAttribute call with object to avoid multiple update triggers
+    // Note: Do NOT set variant or side for Streetmix imports as Streetmix doesn't provide this data
+    // These properties have defaults in the street-segment schema and should only be set when explicitly provided
+    segmentParentEl.setAttribute('street-segment', {
+      type: segmentPreset,
+      width: segmentWidthInMeters,
+      length: length,
+      level: elevation,
+      direction: direction,
+      color: segmentColor ?? window.STREET.types[segmentPreset]?.color, // find default color for segmentPreset
+      surface: window.STREET.types[segmentPreset]?.surface // find default surface type for segmentPreset
+    });
 
     let currentSegment = segments[i];
     let previousSegment = segments[i - 1];

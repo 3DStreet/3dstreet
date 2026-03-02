@@ -2,7 +2,7 @@ import React from 'react';
 import PropTypes from 'prop-types';
 import Events from '../../lib/Events';
 import catalog from '../../../catalog.json';
-import { Open24Icon } from '../../icons';
+import { Open24Icon } from '@shared/icons';
 
 export default class MixinMetadata extends React.Component {
   static propTypes = {

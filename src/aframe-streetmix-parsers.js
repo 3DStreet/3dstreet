@@ -1031,11 +1031,11 @@ function processSegments(
     // show warning message if segment or variantString are not supported
     supportCheck(segments[i].type, segments[i].variantString);
 
-    // elevation property from streetmix segment
-    const elevation = segments[i].elevation;
-
-    const elevationLevels = [0, 0.2, 0.4];
-    const elevationPosY = elevationLevels[elevation];
+    // elevation property from streetmix segment (already converted to integer level by convertStreetValues)
+    const elevation = segments[i].elevation || 0;
+    // Convert level to meters: Level 0 = 0m, Level 1 = 0.15m (curb height), etc.
+    const CURB_HEIGHT = 0.15;
+    const elevationPosY = elevation * CURB_HEIGHT;
 
     // add y elevation position as a data attribute to segment entity
     segmentParentEl.setAttribute('data-elevation-posY', elevationPosY);

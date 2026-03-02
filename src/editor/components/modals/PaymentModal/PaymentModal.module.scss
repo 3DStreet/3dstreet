@@ -13,7 +13,7 @@
 
     ul {
       list-style-type: none;
-      margin-top: 32px;
+      margin-top: 16px;
     }
 
     li {
@@ -65,6 +65,8 @@
       flex-direction: column;
       align-items: center;
       gap: 8px;
+      position: relative;
+      color: #000;
 
       &:hover {
         border-color: #0eaf00;
@@ -72,7 +74,9 @@
 
       &.selected {
         border-color: #0eaf00;
+        border-width: 3px;
         background: #f0fff0;
+        box-shadow: 0 0 8px rgba(14, 175, 0, 0.3);
       }
 
       .price {
@@ -82,9 +86,33 @@
       }
 
       .savings {
-        font-size: 0.875rem;
+        position: absolute;
+        top: -20px;
+        right: 10px;
+        background: #0eaf00;
+        color: white;
+        font-size: 0.75rem;
+        font-weight: 500;
+        padding: 4px 8px;
+        border-radius: 12px;
+        z-index: 1;
+        opacity: 0.75;
+      }
+
+      &.selected .savings {
+        opacity: 1;
+      }
+
+      .bonus {
+        font-size: 0.8rem;
         color: #0eaf00;
         font-weight: 500;
+        text-align: center;
+        margin-top: 4px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        line-height: 1.2;
       }
     }
   }

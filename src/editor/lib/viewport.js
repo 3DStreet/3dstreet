@@ -2,6 +2,7 @@
 import TransformControls from './TransformControls.js';
 import EditorControls from './EditorControls.js';
 import { MeasureLineControls } from './MeasureLineControls.js';
+import InfiniteGridHelper from './InfiniteGridHelper.js';
 
 import { copyCameraPosition } from './cameras';
 import { initRaycaster } from './raycaster';
@@ -19,6 +20,7 @@ const auxMatrix = new THREE.Matrix4();
 const tempBox3 = new THREE.Box3();
 const tempVector3Size = new THREE.Vector3();
 const tempVector3Center = new THREE.Vector3();
+const _box = new THREE.Box3();
 
 class OrientedBoxHelper extends THREE.BoxHelper {
   constructor(object, color = 0xffff00, fill = false) {
@@ -44,7 +46,12 @@ class OrientedBoxHelper extends THREE.BoxHelper {
     // If there's any rotation the box will have the wrong size.
     // It undoes the local entity rotation and then restores so box has the expected size.
     // We also undo the parent world rotation.
-    if (this.object !== undefined) {
+
+    // Skip the position/rotation zeroing for splat entities as it interferes with
+    // how Spark's SplatMesh handles matrix updates
+    const isSplatEntity = this.object?.el?.hasAttribute('splat');
+
+    if (this.object !== undefined && !isSplatEntity) {
       auxEuler.copy(this.object.rotation);
       auxLocalPosition.copy(this.object.position);
       this.object.rotation.set(0, 0, 0);
@@ -66,10 +73,69 @@ class OrientedBoxHelper extends THREE.BoxHelper {
       }
     }
 
-    super.update();
-
-    // Restore rotations.
+    // super.update();
+    // This is the super.update code with an additional _box.expandByPoint(this.object.position)
+    // for a group of several models to include the group origin.
     if (this.object !== undefined) {
+      // For splat entities, use the splat component's getBoundingBox method
+      if (isSplatEntity) {
+        const splatComponent = this.object.el.components['splat'];
+        const splatBox = splatComponent?.getBoundingBox?.();
+        if (splatBox) {
+          _box.copy(splatBox);
+          // Transform the box to world space
+          _box.applyMatrix4(this.object.matrixWorld);
+        } else {
+          _box.setFromObject(this.object);
+        }
+      } else {
+        _box.setFromObject(this.object);
+        if (!this.object.el?.getObject3D('mesh')) {
+          _box.expandByPoint(this.object.position);
+        }
+      }
+    }
+
+    if (_box.isEmpty()) return;
+
+    const min = _box.min;
+    const max = _box.max;
+
+    const position = this.geometry.attributes.position;
+    const array = position.array;
+
+    array[0] = max.x;
+    array[1] = max.y;
+    array[2] = max.z;
+    array[3] = min.x;
+    array[4] = max.y;
+    array[5] = max.z;
+    array[6] = min.x;
+    array[7] = min.y;
+    array[8] = max.z;
+    array[9] = max.x;
+    array[10] = min.y;
+    array[11] = max.z;
+    array[12] = max.x;
+    array[13] = max.y;
+    array[14] = min.z;
+    array[15] = min.x;
+    array[16] = max.y;
+    array[17] = min.z;
+    array[18] = min.x;
+    array[19] = min.y;
+    array[20] = min.z;
+    array[21] = max.x;
+    array[22] = min.y;
+    array[23] = min.z;
+
+    position.needsUpdate = true;
+
+    this.geometry.computeBoundingSphere();
+    // end of super.update();
+
+    // Restore rotations (skip for splat entities since we didn't modify them).
+    if (this.object !== undefined && !isSplatEntity) {
       this.object.parent.matrixWorld.compose(
         auxPosition,
         auxQuaternion,
@@ -77,6 +143,10 @@ class OrientedBoxHelper extends THREE.BoxHelper {
       );
       this.object.rotation.copy(auxEuler);
       this.object.position.copy(auxLocalPosition);
+    }
+
+    // Update helper position for all objects
+    if (this.object !== undefined) {
       this.object.getWorldQuaternion(this.quaternion);
       this.object.getWorldPosition(this.position);
       this.updateMatrix();
@@ -109,9 +179,53 @@ export function Viewport(inspector) {
 
   // Helpers.
   const sceneHelpers = inspector.sceneHelpers;
-  const grid = new THREE.GridHelper(30, 60, 0xaaaaaa, 0x262626);
-  grid.visible = false;
+  const grid = new InfiniteGridHelper(1, 10, new THREE.Color(0xffffff), 500);
+  grid.visible = true;
   sceneHelpers.add(grid);
+
+  // Origin indicator with RGB axis cylinders
+  const originIndicator = new THREE.Group();
+
+  // Create cylinder geometry for axes (1m length, thin radius)
+  const axisGeometry = new THREE.CylinderGeometry(0.01, 0.01, 1, 8);
+
+  // X-axis (red) - points in +X direction
+  const xAxisMaterial = new THREE.MeshBasicMaterial({
+    color: 0xff0000,
+    transparent: true,
+    opacity: 0.8,
+    depthTest: false
+  });
+  const xAxis = new THREE.Mesh(axisGeometry, xAxisMaterial);
+  xAxis.rotation.z = -Math.PI / 2; // Rotate to point along X axis
+  xAxis.position.x = 0.5; // Move half length to start at origin
+  originIndicator.add(xAxis);
+
+  // Y-axis (green) - points in +Y direction
+  const yAxisMaterial = new THREE.MeshBasicMaterial({
+    color: 0x00ff00,
+    transparent: true,
+    opacity: 0.8,
+    depthTest: false
+  });
+  const yAxis = new THREE.Mesh(axisGeometry, yAxisMaterial);
+  yAxis.position.y = 0.5; // Move half length to start at origin
+  originIndicator.add(yAxis);
+
+  // Z-axis (blue) - points in +Z direction
+  const zAxisMaterial = new THREE.MeshBasicMaterial({
+    color: 0x0000ff,
+    transparent: true,
+    opacity: 0.8,
+    depthTest: false
+  });
+  const zAxis = new THREE.Mesh(axisGeometry, zAxisMaterial);
+  zAxis.rotation.x = Math.PI / 2; // Rotate to point along Z axis
+  zAxis.position.z = 0.5; // Move half length to start at origin
+  originIndicator.add(zAxis);
+
+  originIndicator.visible = true;
+  sceneHelpers.add(originIndicator);
 
   const selectionBox = new OrientedBoxHelper(undefined, 0x1faaf2);
   selectionBox.material.depthTest = false;
@@ -224,6 +338,7 @@ export function Viewport(inspector) {
 
   transformControls.addEventListener('mouseDown', () => {
     controls.enabled = false;
+    hoverBox.visible = false; // if we start to move a group with a child hovered at the same time
   });
 
   transformControls.addEventListener('mouseUp', () => {
@@ -286,8 +401,10 @@ export function Viewport(inspector) {
     Events.emit('camerachanged');
   });
 
-  sceneEl.addEventListener('newScene', () => {
-    controls.resetZoom();
+  sceneEl.addEventListener('newScene', (event) => {
+    // Check if there's a snapshot camera state passed with the event
+    const snapshotCameraState = event.detail?.snapshotCameraState;
+    controls.newSceneCameraZoom(snapshotCameraState);
   });
 
   Events.on('cameratoggle', (data) => {
@@ -295,11 +412,6 @@ export function Viewport(inspector) {
     transformControls.setCamera(data.camera);
     measureLineControls.camera = data.camera;
     updateAspectRatio();
-    // quick solution to change 3d tiles camera
-    const tilesElem = document.querySelector('a-entity[google-maps-aerial]');
-    if (tilesElem) {
-      tilesElem.emit('cameraChange', data.camera);
-    }
   });
 
   function disableControls() {
@@ -371,6 +483,9 @@ export function Viewport(inspector) {
           object.el.removeEventListener('model-loaded', listener);
         };
         object.el.addEventListener('model-loaded', listener);
+      } else if (!object.el.isScene && object.el.id !== 'street-container') {
+        selectionBox.setFromObject(object);
+        selectionBox.visible = true;
       }
 
       if (
@@ -449,10 +564,12 @@ export function Viewport(inspector) {
 
   Events.on('gridvisibilitychanged', (showGrid) => {
     grid.visible = showGrid;
+    originIndicator.visible = showGrid;
   });
 
   Events.on('togglegrid', () => {
     grid.visible = !grid.visible;
+    originIndicator.visible = grid.visible;
   });
 
   useStore.subscribe(

@@ -5,14 +5,14 @@ import {
   useImperativeHandle,
   forwardRef
 } from 'react';
-import { vertexAI } from '../../services/firebase.js';
+import { vertexAI } from '@shared/services/firebase';
 import { getGenerativeModel } from 'firebase/vertexai';
 import {
   Copy32Icon,
   DownloadIcon,
   ChatbotIcon,
   Cross24Icon
-} from '../../icons/index.js';
+} from '@shared/icons';
 import { useAuthContext } from '../../contexts';
 import useStore from '@/store';
 import styles from './AIChatPanel.module.scss';
@@ -30,7 +30,7 @@ import {
 } from '@fortawesome/free-solid-svg-icons';
 import { getGroupedMixinOptions } from '../../lib/mixinUtils';
 
-const AI_MODEL_ID = 'gemini-2.5-flash-preview-05-20';
+const AI_MODEL_ID = 'gemini-3-flash-preview';
 let AI_CONVERSATION_ID = uuidv4();
 
 // Helper component for the copy button
@@ -663,6 +663,7 @@ const AIChatPanel = forwardRef(function AIChatPanel(props, ref) {
     return () => {
       window.aiChatPanelRef = null;
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // Scroll to bottom when new messages are added

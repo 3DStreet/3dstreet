@@ -8,13 +8,11 @@ export function insertNewAsset(
   var element = null;
   switch (type) {
     case 'img':
-      {
-        element = document.createElement('img');
-        element.id = id;
-        element.src = src;
-        if (anonymousCrossOrigin) {
-          element.crossOrigin = 'anonymous';
-        }
+      element = document.createElement('img');
+      element.id = id;
+      element.src = src;
+      if (anonymousCrossOrigin) {
+        element.crossOrigin = 'anonymous';
       }
       break;
   }

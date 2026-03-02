@@ -1,0 +1,35 @@
+rules_version = '2';
+
+service firebase.storage {
+  match /b/{bucket}/o {
+    // Helper functions
+    function isImageUnderSizeLimit() {
+      return resource.size < 100 * 1024 && resource.contentType.matches('image/.*');
+    }
+
+    function isAuthorOfScene(scene_uuid) {
+      return firestore.get(/databases/(default)/documents/scenes/$(scene_uuid)).data.author == request.auth.uid;
+    }
+
+    // Scene files
+    match /scenes/{scene_uuid}/files/{allPaths=**} {
+      allow read: if isImageUnderSizeLimit() || request.auth != null;
+      allow write: if request.auth != null && isAuthorOfScene(scene_uuid);
+    }
+
+    // Gallery asset files storage rules (all nested paths)
+    // Handles: images/, videos/, models/splats/{taskId}/, etc.
+    match /users/{userId}/assets/{allPaths=**} {
+      // Users can read their own asset files
+      allow read: if request.auth != null && request.auth.uid == userId;
+
+      // Users can write (upload/update/delete) their own asset files
+      // With size limit (50MB) and content type validation
+      // Note: application/octet-stream is needed for PLY files (splats)
+      allow write: if request.auth != null
+        && request.auth.uid == userId
+        && request.resource.size < 50 * 1024 * 1024
+        && request.resource.contentType.matches('image/.*|video/.*|model/.*|application/octet-stream');
+    }
+  }
+}

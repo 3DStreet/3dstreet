@@ -3,7 +3,7 @@ import useStore from '@/store';
 import { useAuthContext, useGeoContext } from '@/editor/contexts/index.js';
 import Events from '@/editor/lib/Events';
 import posthog from 'posthog-js';
-import { GeospatialIcon } from '../../icons';
+import { GeospatialIcon } from '@shared/icons';
 
 const GeoLayer = () => {
   const [clicked, setClicked] = useState(false);
@@ -27,7 +27,6 @@ const GeoLayer = () => {
   }, []);
   const { currentUser } = useAuthContext();
   const setModal = useStore((state) => state.setModal);
-  const startCheckout = useStore((state) => state.startCheckout);
   const streetGeo = useGeoContext();
   const entity = document.getElementById('reference-layers');
 
@@ -36,14 +35,12 @@ const GeoLayer = () => {
     posthog.capture('geo_layer_clicked');
     if (!currentUser) {
       setModal('signin');
-    } else if (currentUser.isPro) {
+    } else {
       if (streetGeo) {
         Events.emit('entityselect', entity);
       } else {
         setModal('geo');
       }
-    } else {
-      startCheckout('geo');
     }
   };
 

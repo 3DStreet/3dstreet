@@ -76,6 +76,94 @@ export function injectJS(url, onLoad, onError) {
   document.head.appendChild(link);
 }
 
+/**
+ * Sets the scene location with latitude and longitude coordinates
+ * @param {number} latitude - The latitude coordinate
+ * @param {number} longitude - The longitude coordinate
+ * @returns {Promise<Object>} - Promise resolving to the elevation data or error message
+ */
+export async function setSceneLocation(latitude, longitude, options = {}) {
+  if (isNaN(latitude) || isNaN(longitude)) {
+    return {
+      success: false,
+      message: 'Error: Invalid latitude or longitude values'
+    };
+  }
+
+  try {
+    // Import the httpsCallable and functions from firebase
+    const { httpsCallable } = await import('firebase/functions');
+    const { functions } = await import('@shared/services/firebase');
+    const { roundCoord } = await import('../../../src/utils.js');
+
+    // Round coordinates to reasonable precision
+    const lat = roundCoord(parseFloat(latitude));
+    const lng = roundCoord(parseFloat(longitude));
+
+    // Request elevation data from the cloud function
+    const getGeoidHeight = httpsCallable(functions, 'getGeoidHeight');
+    const result = await getGeoidHeight({
+      lat,
+      lon: lng,
+      fromGeojsonImport: options.fromGeojsonImport || false
+    });
+    const data = result.data;
+
+    if (data) {
+      // Get the reference layers element
+      const geoLayer = document.getElementById('reference-layers');
+
+      // Update or add the street-geo component
+      AFRAME.INSPECTOR.execute(
+        geoLayer.hasAttribute('street-geo') ? 'entityupdate' : 'componentadd',
+        {
+          entity: geoLayer,
+          component: 'street-geo',
+          value: {
+            latitude: lat,
+            longitude: lng,
+            ellipsoidalHeight: data.ellipsoidalHeight,
+            orthometricHeight: data.orthometricHeight,
+            geoidHeight: data.geoidHeight,
+            locationString: data.location?.locationString || '',
+            intersectionString:
+              data.nearestIntersection?.intersectionString || ''
+          }
+        }
+      );
+
+      // Select the geo layer in the inspector
+      setTimeout(() => {
+        AFRAME.INSPECTOR.selectEntity(geoLayer);
+      }, 0);
+
+      // Manually trigger location sync update
+      import('./location-sync').then(({ updateLocationInStore }) => {
+        if (updateLocationInStore) {
+          updateLocationInStore();
+        }
+      });
+
+      return {
+        success: true,
+        message: `Successfully set location to latitude: ${lat}, longitude: ${lng}`,
+        data
+      };
+    } else {
+      return {
+        success: false,
+        message: 'Error: Failed to retrieve elevation data'
+      };
+    }
+  } catch (error) {
+    console.error('Error setting lat/lon:', error);
+    return {
+      success: false,
+      message: `Error setting location: ${error.message || 'Unknown error'}`
+    };
+  }
+}
+
 export function saveString(text, filename, mimeType) {
   saveBlob(new Blob([text], { type: mimeType }), filename);
 }
@@ -102,4 +190,45 @@ export function areVectorsEqual(v1, v2) {
     Object.is(v1.z, v2.z) &&
     Object.is(v1.w, v2.w)
   );
+}
+
+/**
+ * Check if a property should be shown in the UI based on the `if` object
+ * condition included in the schema for the property.
+ *
+ * When more than one property is used in the object, this applies a logical AND.
+ * When the value is an array, it means one of the entries in this array.
+ *
+ * Example in the light component:
+ * ```js
+ * {
+ *   penumbra: {default: 0, min: 0, max: 1, if: {type: ['spot']}},
+ * }
+ * ```
+ *
+ * @param {string} propertyName - The name of the property
+ * @param {Component} component - The component instance
+ * @returns {boolean} Whether the property should be shown
+ */
+export function shouldShowProperty(propertyName, component) {
+  if (!component.schema[propertyName].if) {
+    return true;
+  }
+  let showProperty = true;
+  for (const [conditionKey, conditionValue] of Object.entries(
+    component.schema[propertyName].if
+  )) {
+    if (Array.isArray(conditionValue)) {
+      if (conditionValue.indexOf(component.data[conditionKey]) === -1) {
+        showProperty = false;
+        break;
+      }
+    } else {
+      if (conditionValue !== component.data[conditionKey]) {
+        showProperty = false;
+        break;
+      }
+    }
+  }
+  return showProperty;
 }

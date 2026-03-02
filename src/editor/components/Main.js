@@ -5,15 +5,17 @@ import Events from '../lib/Events';
 import ModalTextures from './modals/ModalTextures';
 import SceneGraph from './scenegraph/SceneGraph';
 import { ScreenshotModal } from './modals/ScreenshotModal';
+import { ShareModal } from './modals/ShareModal';
 // import ViewportHUD from "./viewport/ViewportHUD";
 import { SignInModal } from './modals/SignInModal';
 import { ProfileModal } from './modals/ProfileModal';
-import { firebaseConfig, app } from '../services/firebase.js';
+import { firebaseConfig, app } from '@shared/services/firebase.js';
 import { LoadScript } from '@react-google-maps/api';
 import { GeoModal } from './modals/GeoModal';
 import { ScenesModal } from './modals/ScenesModal';
 import { PaymentModal } from './modals/PaymentModal';
 import { AddLayerPanel } from './elements/AddLayerPanel';
+import { GeoLocationDisplay } from './elements/GeoLocationDisplay';
 import { NewModal } from './modals/NewModal';
 import { ReportModal } from './modals/ReportModal';
 import { ToolbarWrapper } from './scenegraph/ToolbarWrapper.js';
@@ -135,6 +137,7 @@ export default function Main() {
         </AIChatProvider>
       )}
       <ScreenshotModal />
+      <ShareModal />
       <SignInModal />
       <PaymentModal />
       <ScenesModal />
@@ -161,6 +164,7 @@ export default function Main() {
           <div className="clickable">
             <AddLayerPanel />
           </div>
+          <GeoLocationDisplay />
         </>
       )}
     </div>

@@ -14,13 +14,15 @@ import {
   where
 } from 'firebase/firestore';
 import { v4 as uuidv4 } from 'uuid';
-import { db, storage } from '../services/firebase';
+import { auth, db, storage } from '@shared/services/firebase';
 import { getDownloadURL, ref, uploadBytes } from 'firebase/storage';
+import { httpsCallable, getFunctions } from 'firebase/functions';
 import posthog from 'posthog-js';
+import { isUserPro } from '@shared/auth/api/user';
 
 const sceneRef = collection(db, 'scenes');
 
-const generateSceneId = async (authorId) => {
+const generateSceneId = async (authorId, isFirstScene = false) => {
   // Generate a new UUID
   const newSceneId = uuidv4();
 
@@ -33,10 +35,23 @@ const generateSceneId = async (authorId) => {
     author: authorId
   });
 
+  posthog.capture('scene_created', {
+    scene_id: newSceneId,
+    author_id: authorId,
+    is_first: isFirstScene
+  });
+
   return newSceneId;
 };
 
-const createScene = async (authorId, sceneData, title, version, memory) => {
+const createScene = async (
+  authorId,
+  sceneData,
+  title,
+  version,
+  memory,
+  isFirstScene = false
+) => {
   // Generate a new UUID
   const newSceneId = uuidv4();
   const newSceneDocRef = doc(sceneRef, newSceneId);
@@ -50,6 +65,14 @@ const createScene = async (authorId, sceneData, title, version, memory) => {
     version: version,
     memory: memory
   });
+
+  posthog.capture('scene_created', {
+    scene_id: newSceneId,
+    author_id: authorId,
+    scene_title: title,
+    is_first: isFirstScene
+  });
+
   return newSceneId;
 };
 
@@ -177,30 +200,78 @@ const checkIfImagePathIsEmpty = async (sceneId) => {
   }
 };
 
-const saveScreenshot = async (value) => {
+// Enhanced screenshot function with explicit overlay control
+const takeScreenshotWithOptions = async (options = {}) => {
+  const {
+    type = 'jpg',
+    filename = 'screenshot',
+    showLogo = false,
+    showWatermark = false,
+    imgElementSelector = null
+  } = options;
+
   const screenshotEl = document.getElementById('screenshot');
   screenshotEl.play();
 
-  if (value === 'img') {
+  // Set all screentock attributes explicitly
+  screenshotEl.setAttribute('screentock', 'showLogo', showLogo);
+  screenshotEl.setAttribute(
+    'screentock',
+    'showCommunityWatermark',
+    showWatermark
+  );
+  screenshotEl.setAttribute('screentock', 'filename', filename);
+  screenshotEl.setAttribute('screentock', 'type', type);
+
+  if (imgElementSelector) {
     screenshotEl.setAttribute(
       'screentock',
       'imgElementSelector',
-      '#screentock-destination'
+      imgElementSelector
     );
   }
 
-  posthog.capture('screenshot_taken', {
-    type: value,
+  posthog.capture('export_initiated', {
+    export_type: type,
     scene_id: STREET.utils.getCurrentSceneId()
   });
 
-  screenshotEl.setAttribute('screentock', 'type', value);
+  posthog.capture('screenshot_taken', {
+    type: type,
+    scene_id: STREET.utils.getCurrentSceneId()
+  });
+
   screenshotEl.setAttribute('screentock', 'takeScreenshot', true);
+};
+
+// Legacy function for backward compatibility - auto-detects user plan
+const saveScreenshot = async (value) => {
+  // Check if user is Pro to determine overlay settings
+  const currentUser = auth.currentUser;
+  const isPro = currentUser ? await isUserPro(currentUser) : false;
+
+  const options = {
+    type: value,
+    showLogo: !isPro,
+    showWatermark: !isPro
+  };
+
+  if (value === 'img') {
+    options.imgElementSelector = '#screentock-destination';
+  }
+
+  await takeScreenshotWithOptions(options);
 };
 
 const uploadThumbnailImage = async (sceneDocId) => {
   try {
-    // saveScreenshot('img');
+    // Take a fresh screenshot without watermarks for thumbnail
+    await takeScreenshotWithOptions({
+      type: 'img',
+      showLogo: false,
+      showWatermark: false,
+      imgElementSelector: '#screentock-destination'
+    });
 
     const screentockImgElement = document.getElementById(
       'screentock-destination'
@@ -271,6 +342,20 @@ const uploadThumbnailImage = async (sceneDocId) => {
   }
 };
 
+// Share scene to Discord
+const shareSceneToDiscord = async (sceneData) => {
+  try {
+    const functions = getFunctions();
+    const shareToDiscord = httpsCallable(functions, 'shareToDiscord');
+
+    const result = await shareToDiscord(sceneData);
+    return result.data;
+  } catch (error) {
+    console.error('Error sharing to Discord:', error);
+    throw error;
+  }
+};
+
 export {
   checkIfImagePathIsEmpty,
   createScene,
@@ -281,5 +366,7 @@ export {
   updateScene,
   updateSceneIdAndTitle,
   uploadThumbnailImage,
-  saveScreenshot
+  saveScreenshot,
+  takeScreenshotWithOptions,
+  shareSceneToDiscord
 };

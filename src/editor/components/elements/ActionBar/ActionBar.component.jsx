@@ -6,7 +6,7 @@ import styles from './ActionBar.module.scss';
 import { Button, UnitsPreference, UndoRedo } from '../../elements';
 import { useState, useEffect } from 'react';
 import posthog from 'posthog-js';
-import { Rotate24Icon, Translate24Icon, Ruler24Icon } from '../../../icons';
+import { Rotate24Icon, Translate24Icon, Ruler24Icon } from '@shared/icons';
 import {
   fadeInRulerCursorEntity,
   fadeOutRulerCursorEntity,

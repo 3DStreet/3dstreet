@@ -32,6 +32,24 @@
         "category": "vehicles-rigged"
     },
     {
+        "id": "sp-grand-suv",
+        "name": "Grand SUV",
+        "img": "sets/streetplan/sp-grand-suv.webp",
+        "src": "sets/streetplan/sp-grand-suv.glb",
+        "category": "vehicles-rigged",
+        "attribution": "Creative Commons Attribution: 'Generic passenger car pack' by Sketchfab User @Comrade1280",
+        "attributionUrl": "https://sketchfab.com/3d-models/generic-passenger-car-pack-20f9af9b8a404d5cb022ac6fe87f21f5"
+    },
+    {
+        "id": "sp-hatchback-yellow",
+        "name": "Hatchback Car",
+        "img": "sets/streetplan/sp-hatchback-yellow.webp",
+        "src": "sets/streetplan/sp-hatchback-yellow.glb",
+        "category": "vehicles-rigged",
+        "attribution": "Creative Commons Attribution: 'Generic passenger car pack' by Sketchfab User @Comrade1280",
+        "attributionUrl": "https://sketchfab.com/3d-models/generic-passenger-car-pack-20f9af9b8a404d5cb022ac6fe87f21f5"
+    },
+    {
         "id": "box-truck-rig",
         "name": "Box Truck",
         "src": "sets/vehicles-rig/gltf-exports/draco/isuzu-truck-rig.glb",
@@ -257,28 +275,28 @@
         "name": "Flowers",
         "img": "thumbnails/dividers-flowers.jpg",
         "src": "sets/dividers/gltf-exports/draco/dividers-flowers.glb",
-        "category": "dividers"
+        "category": "plants"
     },
     {
         "id": "dividers-planting-strip",
         "name": "Planting Strip",
         "img": "thumbnails/dividers-planting-strip.jpg",
         "src": "sets/dividers/gltf-exports/draco/dividers-planting-strip.glb",
-        "category": "dividers"
+        "category": "plants"
     },
     {
         "id": "dividers-planter-box",
         "name": "Planter Box",
         "img": "thumbnails/dividers-planter-box.jpg",
         "src": "sets/dividers/gltf-exports/draco/dividers-planter-box.glb",
-        "category": "dividers"
+        "category": "plants"
     },
     {
         "id": "dividers-bush",
         "name": "Bush",
         "img": "thumbnails/dividers-bush.jpg",
         "src": "sets/dividers/gltf-exports/draco/dividers-bush.glb",
-        "category": "dividers"
+        "category": "plants"
     },
     {
         "id": "dividers-dome",
@@ -514,84 +532,166 @@
         "name": "Mixed Corner 4fl",
         "img": "thumbnails/SM3D_Bld_Mixed_Corner_4fl.jpg",
         "src": "sets/buildings/gltf-exports/draco/v2-buildings-SM3D_Bld_Mixed_4fl.glb",
-        "category": "buildings"
+        "category": "buildings",
+        "baseRotation": 180
     },
     {
         "id": "SM3D_Bld_Mixed_Double_5fl",
         "name": "Mixed Double 5fl",
         "img": "thumbnails/SM3D_Bld_Mixed_Double_5fl.jpg",
         "src": "sets/buildings/gltf-exports/draco/v2-buildings-SM3D_Bld_Mixed_Double_5fl.glb",
-        "category": "buildings"
+        "category": "buildings",
+        "baseRotation": 180
     },
     {
         "id": "SM3D_Bld_Mixed_4fl_2",
         "name": "Mixed 4fl 2",
         "img": "thumbnails/SM3D_Bld_Mixed_4fl_2.jpg",
         "src": "sets/buildings/gltf-exports/draco/v2-buildings-SM3D_Bld_Mixed_4fl_2.glb",
-        "category": "buildings"
+        "category": "buildings",
+        "baseRotation": 180
     },
     {
         "id": "SM3D_Bld_Mixed_5fl",
         "name": "Mixed 5fl",
         "img": "thumbnails/SM3D_Bld_Mixed_5fl.jpg",
         "src": "sets/buildings/gltf-exports/draco/v2-buildings-SM3D_Bld_Mixed_5fl.glb",
-        "category": "buildings"
+        "category": "buildings",
+        "baseRotation": 180
     },
     {
         "id": "SM3D_Bld_Mixed_4fl",
         "name": "Mixed 4fl",
         "img": "thumbnails/SM3D_Bld_Mixed_4fl.jpg",
         "src": "sets/buildings/gltf-exports/draco/v2-buildings-SM3D_Bld_Mixed_4fl.glb",
-        "category": "buildings"
+        "category": "buildings",
+        "baseRotation": 180
     },
     {
         "id": "SM_Bld_House_Preset_03_1800",
         "name": "Suburban House 1",
         "img": "thumbnails/SM_Bld_House_Preset_03_1800.jpg",
         "src": "sets/buildings/gltf-exports/draco/v2-buildings-suburban-SM_Bld_House_Preset_03_1800.glb",
-        "category": "buildings"
+        "category": "buildings",
+        "baseRotation": 180
     },
     {
         "id": "SM_Bld_House_Preset_09_1845",
         "name": "Suburban House 2",
         "img": "thumbnails/SM_Bld_House_Preset_09_1845.jpg",
         "src": "sets/buildings/gltf-exports/draco/v2-buildings-suburban-SM_Bld_House_Preset_09_1845.glb",
-        "category": "buildings"
+        "category": "buildings",
+        "baseRotation": 180
     },
     {
         "id": "SM_Bld_House_Preset_08_1809",
         "name": "Suburban House 3",
         "img": "thumbnails/SM_Bld_House_Preset_08_1809.jpg",
         "src": "sets/buildings/gltf-exports/draco/v2-buildings-suburban-SM_Bld_House_Preset_08_1809.glb",
-        "category": "buildings"
+        "category": "buildings",
+        "baseRotation": 180
     },
     {
         "id": "arched-building-01",
         "name": "Arched Building 1",
         "img": "thumbnails/arched-building-01.jpg",
         "src": "sets/arcade-style-buildings/gltf-exports/draco/v2-buildings-arched-01.glb",
-        "category": "buildings"
+        "category": "buildings",
+        "baseRotation": 0
     },
     {
         "id": "arched-building-02",
         "name": "Arched Building 2",
         "img": "thumbnails/arched-building-02.jpg",
         "src": "sets/arcade-style-buildings/gltf-exports/draco/v2-buildings-arched-02.glb",
-        "category": "buildings"
+        "category": "buildings",
+        "baseRotation": 0
     },
     {
         "id": "arched-building-03",
         "name": "Arched Building 3",
         "img": "thumbnails/arched-building-03.jpg",
         "src": "sets/arcade-style-buildings/gltf-exports/draco/v2-buildings-arched-03.glb",
-        "category": "buildings"
+        "category": "buildings",
+        "baseRotation": 0
     },
     {
         "id": "arched-building-04",
         "name": "Arched Building 4",
         "img": "thumbnails/arched-building-04.jpg",
         "src": "sets/arcade-style-buildings/gltf-exports/draco/v2-buildings-arched-04.glb",
-        "category": "buildings"
+        "category": "buildings",
+        "baseRotation": 0
+    },
+    {
+        "id": "sp-prop-mixeduse-2L-29ft",
+        "name": "Mixed Use 2L 29ft",
+        "img": "sets/streetplan/sp-prop-mixeduse-2L-29ft.webp",
+        "src": "sets/streetplan/sp-prop-mixeduse-2L-29ft.glb",
+        "category": "buildings",
+        "baseRotation": 90,
+        "attribution": "StreetPlan.net. Used with permission.",
+        "attributionUrl": "https://www.urbaninnovators.com/streetplan"
+    },
+    {
+        "id": "sp-prop-mixeduse-2L-30ft",
+        "name": "Mixed Use 2L 30ft",
+        "img": "sets/streetplan/sp-prop-mixeduse-2L-30ft.webp",
+        "src": "sets/streetplan/sp-prop-mixeduse-2L-30ft.glb",
+        "category": "buildings",
+        "baseRotation": 90,
+        "attribution": "StreetPlan.net. Used with permission.",
+        "attributionUrl": "https://www.urbaninnovators.com/streetplan"
+    },
+    {
+        "id": "sp-prop-mixeduse-3L-18ft",
+        "name": "Mixed Use 3L 18ft",
+        "img": "sets/streetplan/sp-prop-mixeduse-3L-18ft.webp",
+        "src": "sets/streetplan/sp-prop-mixeduse-3L-18ft.glb",
+        "category": "buildings",
+        "baseRotation": 90,
+        "attribution": "StreetPlan.net. Used with permission.",
+        "attributionUrl": "https://www.urbaninnovators.com/streetplan"
+    },
+    {
+        "id": "sp-prop-mixeduse-3L-22ft",
+        "name": "Mixed Use 3L 22ft",
+        "img": "sets/streetplan/sp-prop-mixeduse-3L-22ft.webp",
+        "src": "sets/streetplan/sp-prop-mixeduse-3L-22ft.glb",
+        "category": "buildings",
+        "baseRotation": 90,
+        "attribution": "StreetPlan.net. Used with permission.",
+        "attributionUrl": "https://www.urbaninnovators.com/streetplan"
+    },
+    {
+        "id": "sp-prop-mixeduse-3L-23ft-corner",
+        "name": "Mixed Use 3L 23ft Corner",
+        "img": "sets/streetplan/sp-prop-mixeduse-3L-23ft-corner.webp",
+        "src": "sets/streetplan/sp-prop-mixeduse-3L-23ft-corner.glb",
+        "category": "buildings",
+        "baseRotation": 90,
+        "attribution": "StreetPlan.net. Used with permission.",
+        "attributionUrl": "https://www.urbaninnovators.com/streetplan"
+    },
+    {
+        "id": "sp-prop-mixeduse-3L-42ft",
+        "name": "Mixed Use 3L 42ft",
+        "img": "sets/streetplan/sp-prop-mixeduse-3L-42ft.webp",
+        "src": "sets/streetplan/sp-prop-mixeduse-3L-42ft.glb",
+        "category": "buildings",
+        "baseRotation": 90,
+        "attribution": "StreetPlan.net. Used with permission.",
+        "attributionUrl": "https://www.urbaninnovators.com/streetplan"
+    },
+    {
+        "id": "sp-prop-mixeduse-3L-78ft-corner",
+        "name": "Mixed Use 3L 78ft Corner",
+        "img": "sets/streetplan/sp-prop-mixeduse-3L-78ft-corner.webp",
+        "src": "sets/streetplan/sp-prop-mixeduse-3L-78ft-corner.glb",
+        "category": "buildings",
+        "baseRotation": 90,
+        "attribution": "StreetPlan.net. Used with permission.",
+        "attributionUrl": "https://www.urbaninnovators.com/streetplan"
     },
     {
         "id": "ElectricScooter_1",
@@ -609,11 +709,6 @@
         "name": "Magic Carpet",
         "img": "thumbnails/magic-carpet.jpg",
         "display": "none"
-    },
-    {
-        "id": "cyclist-cargo",
-        "name": "Cargo Bike",
-        "img": "thumbnails/cyclist-cargo.jpg"
     },
     {  
         "id": "crosswalk-rainbow",
@@ -636,7 +731,7 @@
         "name": "Honey Locust Tree 24ft",
         "img": "sets/streetplan/sp-tree-honeylocust-24ft.webp",
         "src": "sets/streetplan/sp-tree-honeylocust-24ft.glb",
-        "category": "sidewalk-props",
+        "category": "plants",
         "attribution": "StreetPlan.net. Used with permission.",
         "attributionUrl": "https://www.urbaninnovators.com/streetplan"
     },
@@ -645,7 +740,34 @@
         "name": "Bur Oak Tree 24ft",
         "img": "sets/streetplan/sp-tree-buroak-24ft.webp",
         "src": "sets/streetplan/sp-tree-buroak-24ft.glb",
-        "category": "sidewalk-props",
+        "category": "plants",
+        "attribution": "StreetPlan.net. Used with permission.",
+        "attributionUrl": "https://www.urbaninnovators.com/streetplan"
+    },
+    {
+        "id": "sp-tree-buroak-28ft",
+        "name": "Bur Oak Tree 28ft",
+        "img": "sets/streetplan/sp-tree-buroak-28ft.webp",
+        "src": "sets/streetplan/sp-tree-buroak-28ft.glb",
+        "category": "plants",
+        "attribution": "StreetPlan.net. Used with permission.",
+        "attributionUrl": "https://www.urbaninnovators.com/streetplan"
+    },
+    {
+        "id": "sp-median-tallflower-RYB-6x10ft",
+        "name": "Median Planterbox 6x10 ft",
+        "img": "sets/streetplan/sp-median-tallflower-RYB-6x10ft.webp",
+        "src": "sets/streetplan/sp-median-tallflower-RYB-6x10ft.glb",
+        "category": "plants",
+        "attribution": "StreetPlan.net. Used with permission.",
+        "attributionUrl": "https://www.urbaninnovators.com/streetplan"
+    },
+    {
+        "id": "sp-median-tallflower-RYB-10x10ft",
+        "name": "Median Planterbox 10x10 ft",
+        "img": "sets/streetplan/sp-median-tallflower-RYB-10x10ft.webp",
+        "src": "sets/streetplan/sp-median-tallflower-RYB-10x10ft.glb",
+        "category": "plants",
         "attribution": "StreetPlan.net. Used with permission.",
         "attributionUrl": "https://www.urbaninnovators.com/streetplan"
     },
@@ -654,7 +776,7 @@
         "name": "Japanese Lilac Tree 20ft",
         "img": "sets/streetplan/sp-tree-japaneselilac-20ft.webp",
         "src": "sets/streetplan/sp-tree-japaneselilac-20ft.glb",
-        "category": "sidewalk-props",
+        "category": "plants",
         "attribution": "StreetPlan.net. Used with permission.",
         "attributionUrl": "https://www.urbaninnovators.com/streetplan"
     },
@@ -663,7 +785,7 @@
         "name": "Palm Tree 26 ft",
         "img": "sets/streetplan/sp-tree-palm-26ft.webp",
         "src": "sets/streetplan/sp-tree-palm-26ft.glb",
-        "category": "sidewalk-props",
+        "category": "plants",
         "attribution": "StreetPlan.net. Used with permission.",
         "attributionUrl": "https://www.urbaninnovators.com/streetplan"
     },
@@ -672,7 +794,7 @@
         "name": "Palm Tree 28ft",
         "img": "sets/streetplan/sp-tree-palm-28ft.webp",
         "src": "sets/streetplan/sp-tree-palm-28ft.glb",
-        "category": "sidewalk-props",
+        "category": "plants",
         "attribution": "StreetPlan.net. Used with permission.",
         "attributionUrl": "https://www.urbaninnovators.com/streetplan"
     },
@@ -681,7 +803,7 @@
         "name": "Purple Plum Tree 16ft",
         "img": "sets/streetplan/sp-tree-purpleplum-16ft.webp",
         "src": "sets/streetplan/sp-tree-purpleplum-16ft.glb",
-        "category": "sidewalk-props",
+        "category": "plants",
         "attribution": "StreetPlan.net. Used with permission.",
         "attributionUrl": "https://www.urbaninnovators.com/streetplan"
     },
@@ -690,7 +812,7 @@
         "name": "Small Tree 15ft",
         "img": "sets/streetplan/sp-tree-small-15ft.webp",
         "src": "sets/streetplan/sp-tree-small-15ft.glb",
-        "category": "sidewalk-props",
+        "category": "plants",
         "attribution": "StreetPlan.net. Used with permission.",
         "attributionUrl": "https://www.urbaninnovators.com/streetplan"
     },
@@ -699,7 +821,7 @@
         "name": "Bench with people #1",
         "img": "sets/streetplan/sp-furn-bench1-5x2ft.webp",
         "src": "sets/streetplan/sp-furn-bench1-5x2ft.glb",
-        "category": "sidewalk-props",
+        "category": "fixtures",
         "attribution": "StreetPlan.net. Used with permission.",
         "attributionUrl": "https://www.urbaninnovators.com/streetplan"
     },
@@ -708,7 +830,7 @@
         "name": "Bench with people #2",
         "img": "sets/streetplan/sp-furn-bench2-5x2ft.webp",
         "src": "sets/streetplan/sp-furn-bench2-5x2ft.glb",
-        "category": "sidewalk-props",
+        "category": "fixtures",
         "attribution": "StreetPlan.net. Used with permission.",
         "attributionUrl": "https://www.urbaninnovators.com/streetplan"
     },
@@ -717,7 +839,7 @@
         "name": "Bus stop rounded shelter with people",
         "img": "sets/streetplan/sp-furn-busstop-roundshelter-12x13ft.webp",
         "src": "sets/streetplan/sp-furn-busstop-roundshelter-12x13ft.glb",
-        "category": "sidewalk-props",
+        "category": "fixtures",
         "attribution": "StreetPlan.net. Used with permission.",
         "attributionUrl": "https://www.urbaninnovators.com/streetplan"
     },
@@ -726,7 +848,7 @@
         "name": "Bus stop shelter with people",
         "img": "sets/streetplan/sp-furn-busstop-shelter-12x4ft.webp",
         "src": "sets/streetplan/sp-furn-busstop-shelter-12x4ft.glb",
-        "category": "sidewalk-props",
+        "category": "fixtures",
         "attribution": "StreetPlan.net. Used with permission.",
         "attributionUrl": "https://www.urbaninnovators.com/streetplan"
     },
@@ -735,7 +857,7 @@
         "name": "Farmer's market tent 10x10 with people 1",
         "img": "sets/streetplan/sp-furn-farmertent1-10x10ft.webp",
         "src": "sets/streetplan/sp-furn-farmertent1-10x10ft.glb",
-        "category": "sidewalk-props",
+        "category": "fixtures",
         "attribution": "StreetPlan.net. Used with permission.",
         "attributionUrl": "https://www.urbaninnovators.com/streetplan"
     },
@@ -744,7 +866,7 @@
         "name": "Farmer's market tent 10x10 with people 2",
         "img": "sets/streetplan/sp-furn-farmertent2-10x10ft.webp",
         "src": "sets/streetplan/sp-furn-farmertent2-10x10ft.glb",
-        "category": "sidewalk-props",
+        "category": "fixtures",
         "attribution": "StreetPlan.net. Used with permission.",
         "attributionUrl": "https://www.urbaninnovators.com/streetplan"
     },
@@ -753,7 +875,7 @@
         "name": "Food cart with people",
         "img": "sets/streetplan/sp-furn-foodcart-5dot5x9ft.webp",
         "src": "sets/streetplan/sp-furn-foodcart-5dot5x9ft.glb",
-        "category": "sidewalk-props",
+        "category": "fixtures",
         "attribution": "StreetPlan.net. Used with permission.",
         "attributionUrl": "https://www.urbaninnovators.com/streetplan"
     },
@@ -762,7 +884,7 @@
         "name": "Outdoor seating with people",
         "img": "sets/streetplan/sp-furn-table-2x7ft.webp",
         "src": "sets/streetplan/sp-furn-table-2x7ft.glb",
-        "category": "sidewalk-props",
+        "category": "fixtures",
         "attribution": "StreetPlan.net. Used with permission.",
         "attributionUrl": "https://www.urbaninnovators.com/streetplan"
     },
@@ -771,7 +893,7 @@
         "name": "Outdoor seating with umbrella and people",
         "img": "sets/streetplan/sp-furn-table-blue-7x7ft.webp",
         "src": "sets/streetplan/sp-furn-table-blue-7x7ft.glb",
-        "category": "sidewalk-props",
+        "category": "fixtures",
         "attribution": "StreetPlan.net. Used with permission.",
         "attributionUrl": "https://www.urbaninnovators.com/streetplan"
     },
@@ -780,7 +902,7 @@
         "name": "Light pole 13 ft with purple flowers and blue & yellow banners",
         "img": "sets/streetplan/sp-light-flowerP-bannerBY-13ft.webp",
         "src": "sets/streetplan/sp-light-flowerP-bannerBY-13ft.glb",
-        "category": "sidewalk-props",
+        "category": "fixtures",
         "attribution": "StreetPlan.net. Used with permission.",
         "attributionUrl": "https://www.urbaninnovators.com/streetplan"
     },
@@ -789,7 +911,7 @@
         "name": "Light pole 13 ft with yellow flowers and red & green banners",
         "img": "sets/streetplan/sp-light-flowerY-bannerRG-13ft.webp",
         "src": "sets/streetplan/sp-light-flowerY-bannerRG-13ft.glb",
-        "category": "sidewalk-props",
+        "category": "fixtures",
         "attribution": "StreetPlan.net. Used with permission.",
         "attributionUrl": "https://www.urbaninnovators.com/streetplan"
     },
@@ -798,7 +920,7 @@
         "name": "Median Planterbox 6x30 ft",
         "img": "sets/streetplan/sp-median-planterbox-tall-06x30ft.webp",
         "src": "sets/streetplan/sp-median-planterbox-tall-06x30ft.glb",
-        "category": "sidewalk-props",
+        "category": "plants",
         "attribution": "StreetPlan.net. Used with permission.",
         "attributionUrl": "https://www.urbaninnovators.com/streetplan"
     },
@@ -807,7 +929,7 @@
         "name": "Median Planterbox 10x30 ft",
         "img": "sets/streetplan/sp-median-planterbox-tall-10x30ft.webp",
         "src": "sets/streetplan/sp-median-planterbox-tall-10x30ft.glb",
-        "category": "sidewalk-props",
+        "category": "plants",
         "attribution": "StreetPlan.net. Used with permission.",
         "attributionUrl": "https://www.urbaninnovators.com/streetplan"
     },
@@ -816,7 +938,7 @@
         "name": "Parking Planter 5x8 ft",
         "img": "sets/streetplan/sp-parking-planter-5x8ft.webp",
         "src": "sets/streetplan/sp-parking-planter-5x8ft.glb",
-        "category": "sidewalk-props",
+        "category": "plants",
         "attribution": "StreetPlan.net. Used with permission.",
         "attributionUrl": "https://www.urbaninnovators.com/streetplan"
     },
@@ -952,6 +1074,116 @@
         "img": "sets/streetplan/sp-sign-speed-limit-80mph.webp",
         "src": "sets/streetplan/sp-sign-speed-limit-80mph.glb",
         "category": "signs",
+        "attribution": "StreetPlan.net. Used with permission.",
+        "attributionUrl": "https://www.urbaninnovators.com/streetplan"
+    },
+    {
+        "id": "sp-prop-bigbox-1L-220ft",
+        "name": "Big Box 1 Story 220ft",
+        "img": "sets/streetplan/sp-prop-bigbox-1L-220ft.webp",
+        "src": "sets/streetplan/sp-prop-bigbox-1L-220ft.glb",
+        "category": "buildings",
+        "baseRotation": 90,
+        "attribution": "StreetPlan.net. Used with permission.",
+        "attributionUrl": "https://www.urbaninnovators.com/streetplan"
+    },
+    {
+        "id": "sp-prop-bigbox-1L-291ft",
+        "name": "Big Box 1 Story 291ft",
+        "img": "sets/streetplan/sp-prop-bigbox-1L-291ft.webp",
+        "src": "sets/streetplan/sp-prop-bigbox-1L-291ft.glb",
+        "category": "buildings",
+        "baseRotation": 90,
+        "attribution": "StreetPlan.net. Used with permission.",
+        "attributionUrl": "https://www.urbaninnovators.com/streetplan"
+    },
+    {
+        "id": "sp-prop-gov-3L-61ft",
+        "name": "Government Building 3 Story 61ft",
+        "img": "sets/streetplan/sp-prop-gov-3L-61ft.webp",
+        "src": "sets/streetplan/sp-prop-gov-3L-61ft.glb",
+        "category": "buildings",
+        "baseRotation": 90,
+        "attribution": "StreetPlan.net. Used with permission.",
+        "attributionUrl": "https://www.urbaninnovators.com/streetplan"
+    },
+    {
+        "id": "sp-prop-parking-3L-155ft",
+        "name": "Parking Structure 3 Story 155ft",
+        "img": "sets/streetplan/sp-prop-parking-3L-155ft.webp",
+        "src": "sets/streetplan/sp-prop-parking-3L-155ft.glb",
+        "category": "buildings",
+        "baseRotation": 90,
+        "attribution": "StreetPlan.net. Used with permission.",
+        "attributionUrl": "https://www.urbaninnovators.com/streetplan"
+    },
+    {
+        "id": "sp-prop-parking-3L-97ft-centered",
+        "name": "Parking Structure 3 Story 97ft Centered",
+        "img": "sets/streetplan/sp-prop-parking-3L-97ft-centered.webp",
+        "src": "sets/streetplan/sp-prop-parking-3L-97ft-centered.glb",
+        "category": "buildings",
+        "baseRotation": 90,
+        "attribution": "StreetPlan.net. Used with permission.",
+        "attributionUrl": "https://www.urbaninnovators.com/streetplan"
+    },
+    {
+        "id": "sp-prop-sf-1L-41ft",
+        "name": "Single Family 1 Story 41ft",
+        "img": "sets/streetplan/sp-prop-sf-1L-41ft.webp",
+        "src": "sets/streetplan/sp-prop-sf-1L-41ft.glb",
+        "category": "buildings",
+        "baseRotation": 90,
+        "attribution": "StreetPlan.net. Used with permission.",
+        "attributionUrl": "https://www.urbaninnovators.com/streetplan"
+    },
+    {
+        "id": "sp-prop-sf-1L-62ft",
+        "name": "Single Family 1 Story 62ft",
+        "img": "sets/streetplan/sp-prop-sf-1L-62ft.webp",
+        "src": "sets/streetplan/sp-prop-sf-1L-62ft.glb",
+        "category": "buildings",
+        "baseRotation": 90,
+        "attribution": "StreetPlan.net. Used with permission.",
+        "attributionUrl": "https://www.urbaninnovators.com/streetplan"
+    },
+    {
+        "id": "sp-prop-sf-2L-62ft",
+        "name": "Single Family 2 Story 62ft",
+        "img": "sets/streetplan/sp-prop-sf-2L-62ft.webp",
+        "src": "sets/streetplan/sp-prop-sf-2L-62ft.glb",
+        "category": "buildings",
+        "baseRotation": 90,
+        "attribution": "StreetPlan.net. Used with permission.",
+        "attributionUrl": "https://www.urbaninnovators.com/streetplan"
+    },
+    {
+        "id": "sp-prop-sf-2L-64ft",
+        "name": "Single Family 2 Story 64ft",
+        "img": "sets/streetplan/sp-prop-sf-2L-64ft.webp",
+        "src": "sets/streetplan/sp-prop-sf-2L-64ft.glb",
+        "category": "buildings",
+        "baseRotation": 90,
+        "attribution": "StreetPlan.net. Used with permission.",
+        "attributionUrl": "https://www.urbaninnovators.com/streetplan"
+    },
+    {
+        "id": "sp-prop-townhouse-3L-20ft",
+        "name": "Townhouse 3 Story 20ft",
+        "img": "sets/streetplan/sp-prop-townhouse-3L-20ft.webp",
+        "src": "sets/streetplan/sp-prop-townhouse-3L-20ft.glb",
+        "category": "buildings",
+        "baseRotation": 90,
+        "attribution": "StreetPlan.net. Used with permission.",
+        "attributionUrl": "https://www.urbaninnovators.com/streetplan"
+    },
+    {
+        "id": "sp-prop-townhouse-3L-23ft",
+        "name": "Townhouse 3 Story 23ft",
+        "img": "sets/streetplan/sp-prop-townhouse-3L-23ft.webp",
+        "src": "sets/streetplan/sp-prop-townhouse-3L-23ft.glb",
+        "category": "buildings",
+        "baseRotation": 90,
         "attribution": "StreetPlan.net. Used with permission.",
         "attributionUrl": "https://www.urbaninnovators.com/streetplan"
     }

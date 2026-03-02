@@ -1,10 +1,10 @@
 import { useState, useEffect } from 'react';
-import Modal from '../Modal.jsx';
+import Modal from '@shared/components/Modal/Modal.jsx';
 import useStore from '@/store.js';
 import styles from './ReportModal.module.scss';
 import { Button, TextArea, Input } from '@/editor/components/elements';
 import { useAuthContext } from '@/editor/contexts';
-import { GeospatialIcon } from '@/editor/icons';
+import { GeospatialIcon } from '@shared/icons';
 
 export const ReportModal = () => {
   const setModal = useStore((state) => state.setModal);
@@ -12,7 +12,6 @@ export const ReportModal = () => {
   const projectInfo = useStore((state) => state.projectInfo);
   const setProjectInfo = useStore((state) => state.setProjectInfo);
   const { currentUser } = useAuthContext();
-  const startCheckout = useStore((state) => state.startCheckout);
 
   const [formData, setFormData] = useState({
     description: '',
@@ -63,21 +62,16 @@ export const ReportModal = () => {
 
     // Load project info data from Zustand store when modal opens
     if (isOpen) {
-      setFormData({
-        description: projectInfo.description || '',
-        location: projectInfo.projectArea || '',
-        currentCondition: projectInfo.currentCondition || '',
-        problemStatement: projectInfo.problemStatement || '',
-        proposedSolutions: projectInfo.proposedSolutions || ''
-      });
-
-      // Check if geo location is defined
+      // Check if geo location is defined and get locationString
       const geoLayer = document.getElementById('reference-layers');
+      let locationFromGeo = '';
       if (geoLayer && geoLayer.hasAttribute('street-geo')) {
         const streetGeo = geoLayer.getAttribute('street-geo');
         if (streetGeo && streetGeo.latitude && streetGeo.longitude) {
           setHasGeoLocation(true);
           setGeoCoordinates(`${streetGeo.latitude}, ${streetGeo.longitude}`);
+          // Get locationString if available
+          locationFromGeo = streetGeo.locationString || '';
         } else {
           setHasGeoLocation(false);
           setGeoCoordinates('');
@@ -86,7 +80,16 @@ export const ReportModal = () => {
         setHasGeoLocation(false);
         setGeoCoordinates('');
       }
+
+      setFormData({
+        description: projectInfo.description || '',
+        location: projectInfo.projectArea || locationFromGeo,
+        currentCondition: projectInfo.currentCondition || '',
+        problemStatement: projectInfo.problemStatement || '',
+        proposedSolutions: projectInfo.proposedSolutions || ''
+      });
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isOpen]);
 
   // Listen for modal changes to handle returning from geo modal
@@ -98,6 +101,16 @@ export const ReportModal = () => {
         if (streetGeo && streetGeo.latitude && streetGeo.longitude) {
           setHasGeoLocation(true);
           setGeoCoordinates(`${streetGeo.latitude}, ${streetGeo.longitude}`);
+
+          // Update location field if it's empty and locationString is available
+          const locationFromGeo = streetGeo.locationString || '';
+          if (!formData.location && locationFromGeo) {
+            setFormData((prev) => ({
+              ...prev,
+              location: locationFromGeo
+            }));
+          }
+
           // Clear geo location error
           setErrors((prev) => ({
             ...prev,
@@ -109,7 +122,7 @@ export const ReportModal = () => {
         }
       }
     }
-  }, [isOpen]);
+  }, [isOpen, formData.location]);
 
   const onClose = () => {
     setModal(null);
@@ -130,17 +143,13 @@ export const ReportModal = () => {
     // Save form data without validation before opening geo modal
     saveFormData();
 
-    // Check if user is logged in and is a pro user
+    // Check if user is logged in
     if (!currentUser) {
       setModal('signin');
       return;
-    } else if (!currentUser.isPro) {
-      // If not a pro user, start checkout process
-      startCheckout('geo');
-      return;
     }
 
-    // If user is a pro user, open geo modal
+    // Open geo modal for all signed-in users
     setModal('geo', true);
 
     // Mark geoLocation as touched
@@ -407,11 +416,7 @@ export const ReportModal = () => {
               >
                 Save Project Info Only
               </Button>
-              <Button
-                onClick={generateReport}
-                disabled={isGenerating}
-                loading={isGenerating}
-              >
+              <Button onClick={generateReport} disabled={isGenerating}>
                 {isGenerating ? 'Generating...' : 'Save and Generate Report'}
               </Button>
             </div>

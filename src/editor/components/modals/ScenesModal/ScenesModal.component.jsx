@@ -1,11 +1,11 @@
 import { useEffect, useState } from 'react';
 import { useAuthContext } from '../../../contexts';
 import { Button, SceneCard, Tabs } from '../../elements';
-import Modal from '../Modal.jsx';
+import Modal from '@shared/components/Modal/Modal.jsx';
 import styles from './ScenesModal.module.scss';
 import { createElementsForScenesFromJSON } from '@/editor/lib/SceneUtils.js';
 import { getCommunityScenes, getUserScenes } from '../../../api/scene';
-import { Loader, Upload24Icon } from '../../../icons';
+import { Loader, Upload24Icon } from '@shared/icons';
 import { signIn } from '../../../api';
 import posthog from 'posthog-js';
 import useStore from '../../../../store.js';
@@ -54,10 +54,12 @@ const ScenesModal = ({ initialTab = 'owner', delay = undefined }) => {
     }
 
     if (event.ctrlKey || event.metaKey) {
-      // Store both data and memory for new tab
+      // Store both data and memory (which contains snapshots) for new tab
       const fullData = {
         data: sceneData.data,
-        memory: sceneData.memory
+        memory: sceneData.memory,
+        title: sceneData.title,
+        author: sceneData.author
       };
       localStorage.setItem('sceneData', JSON.stringify(fullData));
       const newTabUrl = `#/scenes/${scene.id}`;
@@ -71,7 +73,7 @@ const ScenesModal = ({ initialTab = 'owner', delay = undefined }) => {
         console.log('No memory data found in scene data');
       }
 
-      // Pass both data and memory to createElementsForScenesFromJSON
+      // Pass data and memory (which now contains snapshots) to createElementsForScenesFromJSON
       createElementsForScenesFromJSON(sceneData.data, sceneData.memory);
       window.location.hash = `#/scenes/${scene.id}`;
 
@@ -80,6 +82,7 @@ const ScenesModal = ({ initialTab = 'owner', delay = undefined }) => {
       AFRAME.scenes[0].setAttribute('metadata', 'sceneId', sceneId);
       useStore.getState().setSceneTitle(sceneTitle);
       AFRAME.scenes[0].setAttribute('metadata', 'authorId', sceneData.author);
+
       STREET.notify.successMessage('Scene loaded from 3DStreet Cloud.');
       onClose();
     }
@@ -100,6 +103,7 @@ const ScenesModal = ({ initialTab = 'owner', delay = undefined }) => {
         console.log('Loading scene from localStorage with old format');
         createElementsForScenesFromJSON(storedData);
       }
+
       localStorage.removeItem('sceneData');
     }
   }, []);

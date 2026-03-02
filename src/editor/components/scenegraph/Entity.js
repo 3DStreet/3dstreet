@@ -1,4 +1,3 @@
-/* eslint-disable react/no-danger */
 import React from 'react';
 import PropTypes from 'prop-types';
 import classNames from 'classnames';
@@ -50,10 +49,7 @@ export default class Entity extends React.Component {
 
   toggleVisibility = () => {
     const entity = this.props.entity;
-    const visible =
-      entity.tagName.toLowerCase() === 'a-scene'
-        ? entity.object3D.visible
-        : entity.getAttribute('visible');
+    const visible = entity.object3D.visible;
     AFRAME.INSPECTOR.execute('entityupdate', {
       entity,
       component: 'visible',
@@ -220,10 +216,7 @@ export default class Entity extends React.Component {
     }
 
     // Visibility button.
-    const visible =
-      tagName === 'a-scene'
-        ? entity.object3D.visible
-        : entity.getAttribute('visible');
+    const visible = entity.object3D.visible;
     const visibilityButton = (
       <i
         title="Toggle entity visibility"

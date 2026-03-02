@@ -3,14 +3,18 @@ import { devtools, subscribeWithSelector } from 'zustand/middleware';
 import posthog from 'posthog-js';
 import Events from './editor/lib/Events';
 import canvasRecorder from './editor/lib/CanvasRecorder';
+import { auth } from '@shared/services/firebase';
 
 const firstModal = () => {
-  let modal = window.location.hash.includes('payment')
+  const hash = window.location.hash;
+  let modal = hash.includes('payment')
     ? 'payment'
-    : !window.location.hash.length
-      ? 'new'
-      : null;
-  const isStreetMix = window.location.hash.includes('streetmix');
+    : hash.includes('profile') || hash.includes('/modal/profile')
+      ? 'profile'
+      : !hash.length
+        ? 'new'
+        : null;
+  const isStreetMix = hash.includes('streetmix');
   if (isStreetMix) {
     modal = localStorage.getItem('shownIntro') ? null : 'intro';
   }
@@ -67,11 +71,15 @@ const useStore = create(
         doSaveAs: false,
         sceneTitle: null,
         setSceneTitle: (newSceneTitle) => set({ sceneTitle: newSceneTitle }),
+        locationString: null,
+        setLocationString: (newLocationString) =>
+          set({ locationString: newLocationString }),
         newScene: () =>
           set({
             sceneId: null,
             sceneTitle: null,
             authorId: null,
+            locationString: null,
             projectInfo: {
               description: '',
               projectArea: '',
@@ -122,10 +130,23 @@ const useStore = create(
         },
         startCheckout: (postCheckout) => {
           posthog.capture('modal_opened', { modal: 'payment' });
+          // Funnel event: pricing_page_viewed (for conversion funnel analysis)
+          posthog.capture('pricing_page_viewed', {
+            source: postCheckout || 'direct',
+            trigger: postCheckout === 'geo' ? 'geo_token_limit' : postCheckout === 'image' ? 'gen_token_limit' : 'manual'
+          });
           posthog.capture('start_checkout');
           set({ modal: 'payment', postCheckout });
         },
         postCheckout: null,
+        // GeoJSON import data for pre-filling the Geo Modal
+        geojsonImportData: null,
+        setGeojsonImportData: (data) => set({ geojsonImportData: data }),
+        isGridVisible: true,
+        setIsGridVisible: (newIsGridVisible) => {
+          Events.emit('gridvisibilitychanged', newIsGridVisible);
+          set({ isGridVisible: newIsGridVisible });
+        },
         isInspectorEnabled: true,
         setIsInspectorEnabled: (newIsInspectorEnabled) => {
           const viewerModeUI = document.getElementById('viewer-mode-ui');
@@ -173,5 +194,28 @@ useStore.subscribe(
     }
   }
 );
+
+// Add beforeunload warning for unsaved changes
+window.addEventListener('beforeunload', (event) => {
+  // Check if scene is unsaved using the same logic as the Save button
+  const sceneId = STREET.utils.getCurrentSceneId();
+  const authorId = STREET.utils.getAuthorId();
+  const currentUser = auth.currentUser;
+
+  // Scene is unsaved if:
+  // 1. No scene ID (new unsaved scene)
+  // 2. Current user is not the author (scene not saved by current user)
+  const isUnsaved = !sceneId || (currentUser && currentUser.uid !== authorId);
+
+  // Only show warning if there are actual changes (undo button would be enabled) AND is unsaved
+  const hasChanges = AFRAME.INSPECTOR?.history?.undos?.length > 0;
+
+  if (isUnsaved && hasChanges) {
+    const message = 'You have unsaved changes. Are you sure you want to leave?';
+    event.preventDefault();
+    event.returnValue = message;
+    return message;
+  }
+});
 
 export default useStore;

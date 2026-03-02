@@ -22,7 +22,7 @@ import {
   TrashIcon,
   Copy32Icon,
   ArrowsPointingInwardIcon
-} from '../../icons';
+} from '@shared/icons';
 import GeoSidebar from './GeoSidebar';
 import EnviroSidebar from './EnviroSidebar';
 import ViewerSidebar from './ViewerSidebar';
@@ -30,6 +30,7 @@ import IntersectionSidebar from './IntersectionSidebar';
 import StreetSegmentSidebar from './StreetSegmentSidebar';
 import ManagedStreetSidebar from './ManagedStreetSidebar';
 import MeasureLineSidebar from './MeasureLineSidebar';
+import UserLayersSidebar from './UserLayersSidebar';
 import AdvancedComponents from './AdvancedComponents';
 export default class Sidebar extends React.Component {
   static propTypes = {
@@ -140,6 +141,7 @@ export default class Sidebar extends React.Component {
                 {entity.id !== 'reference-layers' &&
                 entity.id !== 'environment' &&
                 entity.id !== 'cameraRig' &&
+                entity.id !== 'street-container' &&
                 !entity.getAttribute('street-segment') ? (
                   <>
                     {entity.classList.contains('autocreated') && (
@@ -267,6 +269,9 @@ export default class Sidebar extends React.Component {
                     )}
                     {entity.id === 'cameraRig' && (
                       <ViewerSidebar entity={entity} />
+                    )}
+                    {entity.id === 'street-container' && (
+                      <UserLayersSidebar entity={entity} />
                     )}
                   </>
                 )}

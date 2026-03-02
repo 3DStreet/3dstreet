@@ -33,6 +33,27 @@ export function initRaycaster(inspector) {
   inspector.sceneEl.appendChild(mouseCursor);
   inspector.cursor = mouseCursor;
 
+  function getIntersectedEl() {
+    let intersectedEl = mouseCursor.components.cursor.intersectedEl;
+    // The user needs to click on the street-segment first to then select a car or pedestrian.
+    if (
+      intersectedEl !== null &&
+      intersectedEl.parentElement?.hasAttribute('street-segment')
+    ) {
+      // If the street-segment is already selected, return the intersected el.
+      // If a child of the same street-segment is already selected, return the intersected el.
+      if (
+        inspector.selectedEntity === intersectedEl.parentElement ||
+        inspector.selectedEntity?.parentElement === intersectedEl.parentElement
+      ) {
+        return intersectedEl;
+      }
+      // Otherwise, return the street-segment.
+      return intersectedEl.parentElement;
+    }
+    return intersectedEl;
+  }
+
   mouseCursor.addEventListener('click', handleClick);
   mouseCursor.addEventListener('mouseenter', onMouseEnter);
   mouseCursor.addEventListener('mouseleave', onMouseLeave);
@@ -50,23 +71,19 @@ export function initRaycaster(inspector) {
   const onUpPosition = new THREE.Vector2();
 
   function onMouseEnter() {
-    Events.emit(
-      'raycastermouseenter',
-      mouseCursor.components.cursor.intersectedEl
-    );
+    Events.emit('raycastermouseenter', getIntersectedEl());
   }
 
   function onMouseLeave() {
-    Events.emit(
-      'raycastermouseleave',
-      mouseCursor.components.cursor.intersectedEl
-    );
+    Events.emit('raycastermouseleave', getIntersectedEl());
   }
 
   function handleClick(evt) {
     // Check to make sure not dragging.
     if (onDownPosition.distanceTo(onUpPosition) === 0) {
-      inspector.selectEntity(evt.detail.intersectedEl);
+      inspector.selectEntity(getIntersectedEl());
+      // Force the cursor component to trigger again an intersection to show hover box on the original intersected el inside the street-segment.
+      mouseCursor.components.cursor.clearCurrentIntersection(false);
     }
   }
 
@@ -100,7 +117,7 @@ export function initRaycaster(inspector) {
    * Focus on double click.
    */
   function onDoubleClick(event) {
-    const intersectedEl = mouseCursor.components.cursor.intersectedEl;
+    const intersectedEl = getIntersectedEl();
     if (!intersectedEl) {
       return;
     }

@@ -3,13 +3,24 @@ import { useState, useEffect } from 'react';
 import { useAuthContext } from '@/editor/contexts';
 import PropertyRow from './PropertyRow';
 import AdvancedComponents from './AdvancedComponents';
-import { Copy32Icon } from '@/editor/icons';
+import { Copy32Icon } from '@shared/icons';
 import { Button } from '../elements';
 import useStore from '@/store';
 import Events from '../../lib/Events';
 import canvasRecorder from '../../lib/CanvasRecorder';
-import { shouldShowProperty } from '@/editor/components/elements/Component';
+import { shouldShowProperty } from '../../lib/utils';
 import { QrCode } from './QrCode';
+
+// Generate 8-character random alphanumeric string for cache busting
+const generateCacheBust = () => {
+  const chars =
+    'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+  let result = '';
+  for (let i = 0; i < 8; i++) {
+    result += chars.charAt(Math.floor(Math.random() * chars.length));
+  }
+  return result;
+};
 
 const ViewerSidebar = ({ entity }) => {
   const componentName = 'viewer-mode';
@@ -128,10 +139,12 @@ const ViewerSidebar = ({ entity }) => {
     // Check if webXRVariant is enabled AND user has Pro access
     const isVariantEnabled =
       currentUser?.isPro && component?.data?.webXRVariant === true;
+    // Generate cache bust parameter for AR mode
+    const cacheBust = generateCacheBust();
     // Create the viewer URL with the scene ID in the hash
     // Include /webxr-variant/ path if the variant is enabled
     const pathPrefix = isVariantEnabled ? 'webxr-variant/' : '';
-    return `${baseUrl}/${pathPrefix}?viewer=true#/scenes/${sceneId}`;
+    return `${baseUrl}/${pathPrefix}?viewer=true&cacheBust=${cacheBust}#/scenes/${sceneId}`;
   };
 
   // Check if AR-WebXR mode is selected
@@ -349,6 +362,54 @@ const ViewerSidebar = ({ entity }) => {
                 viewer URL.
               </div>
             ))}
+
+          {/* Viewer Mode Tips - only show when camera-path mode is selected and NOT custom path */}
+          {component?.data?.preset === 'camera-path' &&
+            component?.data?.cameraPath !== 'custom' && (
+              <div className="propertyRow">
+                <div className="rounded bg-blue-50 p-2 text-gray-600">
+                  <div className="mb-1 font-semibold uppercase">
+                    💡 Viewer Mode Tips
+                  </div>
+                  <ul className="space-y-1">
+                    <li>
+                      • These settings control the experience when a scene is
+                      run by pressing Start or Record
+                    </li>
+                    <li>
+                      • Choose camera path styles to quickly create moving
+                      videos of your scene
+                    </li>
+                    <li>
+                      • Create an augmented reality (AR) experience by choosing
+                      ar-webxr Mode
+                    </li>
+                  </ul>
+                </div>
+              </div>
+            )}
+
+          {/* Viewer Mode Tips - only show when camera-path mode is selected and NOT custom path */}
+          {component?.data?.preset === 'locomotion' && (
+            <div className="propertyRow">
+              <div className="rounded bg-blue-50 p-2 text-gray-600">
+                <div className="mb-1 font-semibold uppercase">
+                  💡 Locomotion Mode Tips
+                </div>
+                <ul className="space-y-1">
+                  <li>
+                    • Locomotion mode provides First Person controls for viewers
+                    to move about the scene when you Run the scene by pressing
+                    Start
+                  </li>
+                  <li>
+                    • The user is provided with instructions to use W A S D or
+                    Arrow Keys to move and clicking + dragging to pan screen
+                  </li>
+                </ul>
+              </div>
+            </div>
+          )}
 
           {entity && entity.components && (
             <div className="propertyRow">

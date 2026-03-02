@@ -26,6 +26,10 @@ AFRAME.registerComponent('street-generated-rail', {
     if (!this.length) {
       return;
     }
+    // Early return if data is not yet initialized
+    if (!this.data) {
+      return;
+    }
     // Clean up old entities
     this.remove();
 
