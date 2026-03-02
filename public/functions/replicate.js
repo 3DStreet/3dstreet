@@ -258,14 +258,14 @@ const generateReplicateImage = functions
       };
 
       // Check if this is a Nano Banana model (uses different input format)
-      if (modelVersionToUse === MODEL_VERSIONS.NANO_BANANA || modelVersionToUse === MODEL_VERSIONS.NANO_BANANA_PRO || model_id === 'nano-banana-2') {
+      if (modelVersionToUse === MODEL_VERSIONS.NANO_BANANA || modelVersionToUse === MODEL_VERSIONS.NANO_BANANA_PRO || modelVersionToUse === MODEL_VERSIONS.NANO_BANANA_2) {
         // Nano Banana models use image_input as an array (optional)
         if (imageUrl) {
           modelInput.image_input = [imageUrl];
           modelInput.aspect_ratio = 'match_input_image';
         }
         // Nano Banana Pro and Nano Banana 2 support higher resolution
-        if (modelVersionToUse === MODEL_VERSIONS.NANO_BANANA_PRO || model_id === 'nano-banana-2') {
+        if (modelVersionToUse === MODEL_VERSIONS.NANO_BANANA_PRO || modelVersionToUse === MODEL_VERSIONS.NANO_BANANA_2) {
           modelInput.resolution = '2K'; // Can be '1K', '2K', or '4K'
         }
         modelInput.output_format = 'jpg';
