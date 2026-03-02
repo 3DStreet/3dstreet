@@ -41,7 +41,7 @@
     "@img-comparison-slider/react": "^8.0.2",
     "@react-google-maps/api": "^2.20.8",
     "@sentry/react": "^10.40.0",
-    "@sparkjsdev/spark": "github:kfarr/spark-lod-testing#1e98440975064cc6630deba72e0bcdd9c39b6281",
+    "@sparkjsdev/spark": "github:sparkjsdev/spark#v2.0.0-preview",
     "@stripe/react-stripe-js": "^4.0.2",
     "@stripe/stripe-js": "^3.5.0",
     "3d-tiles-renderer": "^0.4.21",
