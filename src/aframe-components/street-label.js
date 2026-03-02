@@ -173,7 +173,7 @@ AFRAME.registerComponent('street-label', {
       ctx.fillStyle = '#000000';
       ctx.font = `${this.fontSize}px Arial`;
       const centerX = currentX + segmentWidth / 2;
-      const centerY = canvas.height / 2 - 50;
+      const centerY = canvas.height / 2 - 30;
 
       let widthText;
       if (this.units === 'metric') {
@@ -192,7 +192,7 @@ AFRAME.registerComponent('street-label', {
         this.drawMultilineText(
           lines,
           centerX,
-          centerY + this.fontSize * 0.4 + 75,
+          centerY + this.fontSize * 0.4 + 65,
           lineHeight
         );
       }
