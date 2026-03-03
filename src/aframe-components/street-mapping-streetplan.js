@@ -825,11 +825,41 @@ const STREETPLAN_OBJECT_TO_GENERATED_CLONES_MAPPING = {
   'weeds median (4ft)': '',
   'weeds median (6ft)': '',
   'weeds median (8ft)': '',
-  'away, left park, back in': '',
-  'away, left park, head in': '',
-  'away, right park, back in': '',
-  'away, right park, head in': '',
-  'bluecar parallelpark': '',
+  'away, left park, back in': {
+    mode: 'random',
+    modelsArray: 'suv-rig, sedan-rig, self-driving-waymo-car',
+    spacing: 5,
+    count: 15,
+    facing: 225
+  },
+  'away, left park, head in': {
+    mode: 'random',
+    modelsArray: 'suv-rig, sedan-rig, self-driving-waymo-car',
+    spacing: 5,
+    count: 15,
+    facing: 45
+  },
+  'away, right park, back in': {
+    mode: 'random',
+    modelsArray: 'suv-rig, sedan-rig, self-driving-waymo-car',
+    spacing: 5,
+    count: 15,
+    facing: 135
+  },
+  'away, right park, head in': {
+    mode: 'random',
+    modelsArray: 'suv-rig, sedan-rig, self-driving-waymo-car',
+    spacing: 5,
+    count: 15,
+    facing: 45
+  },
+  'bluecar parallelpark': {
+    mode: 'random',
+    modelsArray: 'sedan-rig',
+    spacing: 5,
+    count: 15,
+    facing: 0
+  },
   'bulb out parking': '',
   'camptrailer sideview 33ft': '',
   foodtruck: '',
@@ -893,7 +923,13 @@ const STREETPLAN_OBJECT_TO_GENERATED_CLONES_MAPPING = {
     count: 15,
     facing: 90
   },
-  'semitruck sideview 70ft': '',
+  'semitruck sideview 70ft': {
+    mode: 'random',
+    modelsArray: 'box-truck-rig, fire-truck-rig',
+    spacing: 5,
+    count: 15,
+    facing: 90
+  },
   smartcar: '',
   'smartcar 5ft': '',
   'smartcar 5ft rev': '',
