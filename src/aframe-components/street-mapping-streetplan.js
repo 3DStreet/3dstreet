@@ -828,35 +828,35 @@ const STREETPLAN_OBJECT_TO_GENERATED_CLONES_MAPPING = {
   'away, left park, back in': {
     mode: 'random',
     modelsArray: 'suv-rig, sedan-rig, self-driving-waymo-car',
-    spacing: 5,
+    spacing: 15,
     count: 15,
     facing: 45
   },
   'away, left park, head in': {
     mode: 'random',
     modelsArray: 'suv-rig, sedan-rig, self-driving-waymo-car',
-    spacing: 5,
+    spacing: 15,
     count: 15,
     facing: 315
   },
   'away, right park, back in': {
     mode: 'random',
     modelsArray: 'suv-rig, sedan-rig, self-driving-waymo-car',
-    spacing: 5,
+    spacing: 15,
     count: 15,
     facing: 315
   },
   'away, right park, head in': {
     mode: 'random',
     modelsArray: 'suv-rig, sedan-rig, self-driving-waymo-car',
-    spacing: 5,
+    spacing: 15,
     count: 15,
     facing: 45
   },
   'bluecar parallelpark': {
     mode: 'random',
-    modelsArray: 'sedan-rig',
-    spacing: 5,
+    modelsArray: 'suv-rig, sedan-rig',
+    spacing: 15,
     count: 15,
     facing: 0
   },
@@ -898,35 +898,35 @@ const STREETPLAN_OBJECT_TO_GENERATED_CLONES_MAPPING = {
   'purpendicular left side, blue': {
     mode: 'random',
     modelsArray: 'suv-rig, sedan-rig, self-driving-waymo-car',
-    spacing: 5,
+    spacing: 15,
     count: 15,
     facing: 270
   },
   'purpendicular left side, red': {
     mode: 'random',
     modelsArray: 'sedan-rig, suv-rig, self-driving-waymo-car',
-    spacing: 5,
+    spacing: 15,
     count: 15,
     facing: 270
   },
   'purpendicular right side, blue': {
     mode: 'random',
     modelsArray: 'sedan-rig, suv-rig, self-driving-waymo-car',
-    spacing: 5,
+    spacing: 15,
     count: 15,
     facing: 90
   },
   'purpendicular right side, red': {
     mode: 'random',
     modelsArray: 'suv-rig, sedan-rig, self-driving-waymo-car',
-    spacing: 5,
+    spacing: 15,
     count: 15,
     facing: 90
   },
   'semitruck sideview 70ft': {
     mode: 'random',
-    modelsArray: 'box-truck-rig, fire-truck-rig',
-    spacing: 5,
+    modelsArray: 'box-truck-rig',
+    spacing: 15,
     count: 15,
     facing: 90
   },
