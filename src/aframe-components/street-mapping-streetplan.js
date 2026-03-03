@@ -855,7 +855,7 @@ const STREETPLAN_OBJECT_TO_GENERATED_CLONES_MAPPING = {
   },
   'bluecar parallelpark': {
     mode: 'random',
-    modelsArray: 'suv-rig, sedan-rig',
+    modelsArray: 'suv-rig, sedan-rig, sp-grand-suv',
     spacing: 15,
     count: 15,
     facing: 0
