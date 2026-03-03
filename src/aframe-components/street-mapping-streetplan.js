@@ -843,23 +843,89 @@ const STREETPLAN_OBJECT_TO_GENERATED_CLONES_MAPPING = {
     count: 10,
     facing: 0
   },
-  'parallel redvan': '',
-  'parallel yellowcar': '',
+  'parallel redvan': {
+    mode: 'random',
+    modelsArray: 'sedan-rig, suv-rig, self-driving-waymo-car',
+    spacing: 15,
+    count: 15,
+    facing: 0
+  },
+  'parallel yellowcar': {
+    mode: 'random',
+    modelsArray: 'suv-rig, sedan-rig, self-driving-waymo-car',
+    spacing: 15,
+    count: 15,
+    facing: 0
+  },
   parklet: '',
-  'pickup sideview 20ft': '',
-  'purpendicular left side, blue': '',
-  'purpendicular left side, red': '',
-  'purpendicular right side, blue': '',
-  'purpendicular right side, red': '',
+  'pickup sideview 20ft': {
+    mode: 'random',
+    modelsArray: 'trailer-truck-rig, box-truck-rig',
+    spacing: 20,
+    count: 15,
+    facing: 0
+  },
+  'purpendicular left side, blue': {
+    mode: 'random',
+    modelsArray: 'suv-rig, sedan-rig, self-driving-waymo-car',
+    spacing: 5,
+    count: 15,
+    facing: 270
+  },
+  'purpendicular left side, red': {
+    mode: 'random',
+    modelsArray: 'sedan-rig, suv-rig, self-driving-waymo-car',
+    spacing: 5,
+    count: 15,
+    facing: 270
+  },
+  'purpendicular right side, blue': {
+    mode: 'random',
+    modelsArray: 'sedan-rig, suv-rig, self-driving-waymo-car',
+    spacing: 5,
+    count: 15,
+    facing: 90
+  },
+  'purpendicular right side, red': {
+    mode: 'random',
+    modelsArray: 'suv-rig, sedan-rig, self-driving-waymo-car',
+    spacing: 5,
+    count: 15,
+    facing: 90
+  },
   'semitruck sideview 70ft': '',
   smartcar: '',
   'smartcar 5ft': '',
   'smartcar 5ft rev': '',
   'smartcar perpendicular': '',
-  'toward, left park, back in': '',
-  'toward, left park, head in': '',
-  'toward, right park, back in': '',
-  'toward, right park, head in': '',
+  'toward, left park, back in': {
+    mode: 'random',
+    modelsArray: 'suv-rig, sedan-rig, self-driving-waymo-car',
+    spacing: 5,
+    count: 15,
+    facing: 135
+  },
+  'toward, left park, head in': {
+    mode: 'random',
+    modelsArray: 'suv-rig, sedan-rig, self-driving-waymo-car',
+    spacing: 5,
+    count: 15,
+    facing: 225
+  },
+  'toward, right park, back in': {
+    mode: 'random',
+    modelsArray: 'suv-rig, sedan-rig, self-driving-waymo-car',
+    spacing: 5,
+    count: 15,
+    facing: 45
+  },
+  'toward, right park, head in': {
+    mode: 'random',
+    modelsArray: 'suv-rig, sedan-rig, self-driving-waymo-car',
+    spacing: 5,
+    count: 15,
+    facing: 135
+  },
   'truck fedex sideview': '',
   'atv off highway': '',
   'bike rider': {
