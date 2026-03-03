@@ -1,13 +1,18 @@
 import * as Sentry from '@sentry/react';
 
-Sentry.init({
-  dsn: 'https://b47a042eed6f907bc1dd1220f935881f@o4510089552265216.ingest.us.sentry.io/4510092752060416',
-  integrations: [
-    Sentry.browserTracingIntegration(),
-    Sentry.replayIntegration()
-  ],
-  tracesSampleRate: 1.0,
-  tracePropagationTargets: ['localhost', /^https:\/\/3dstreet\.app/],
-  replaysSessionSampleRate: 0.1,
-  replaysOnErrorSampleRate: 1.0
-});
+if (process.env.SENTRY_DSN) {
+  Sentry.init({
+    dsn: process.env.SENTRY_DSN,
+    integrations: [
+      Sentry.browserTracingIntegration(),
+      Sentry.replayIntegration()
+    ],
+    tracesSampleRate: 1.0,
+    tracePropagationTargets: [/^https:\/\/3dstreet\.app/],
+    replaysSessionSampleRate: 0.1,
+    replaysOnErrorSampleRate: 1.0
+  });
+  console.debug('[Sentry] Initialized – error reporting enabled.');
+} else {
+  console.debug('[Sentry] DSN not set – error reporting disabled.');
+}
