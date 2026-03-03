@@ -93,33 +93,31 @@ export default class Entity extends React.Component {
 
     const rect = e.currentTarget.getBoundingClientRect();
     const y = e.clientY;
-    const topQuarter = rect.top + rect.height * 0.25;
-    const bottomQuarter = rect.bottom - rect.height * 0.25;
+    const midpoint = rect.top + rect.height * 0.5;
 
-    let position = 'child';
+    // Currently only "before" and "after" are enabled (reorder within same parent).
+    // To re-enable reparenting (dropping as a child of another entity), restore
+    // the three-zone layout: top 25% = "before", middle 50% = "child", bottom 25% = "after"
+    // and remove the same-parent check in canBeDropTarget in SceneGraph.js.
+    let position = null;
 
-    // Don't allow before/after for scene entities
     if (!isContainer(this.props.entity)) {
-      if (y <= topQuarter) {
-        // Check if this "before" position would be redundant
+      if (y <= midpoint) {
         const draggedEntity = this.props.draggedEntity;
         const prevSibling = this.props.entity.previousElementSibling;
-
-        // Don't show "before" if the dragged entity is the previous sibling
         if (draggedEntity !== prevSibling) {
           position = 'before';
         }
-      } else if (y >= bottomQuarter) {
-        // Check if this "after" position would be redundant
+      } else {
         const draggedEntity = this.props.draggedEntity;
         const nextSibling = this.props.entity.nextElementSibling;
-
-        // Don't show "after" if the dragged entity is the next sibling
         if (draggedEntity !== nextSibling) {
           position = 'after';
         }
       }
     }
+
+    if (!position) return;
 
     this.props.setHoveredDropTarget(this.props.entity);
     this.props.setInsertionInfo({ entity: this.props.entity, position });
@@ -244,8 +242,7 @@ export default class Entity extends React.Component {
       // Drag and drop classes
       dragging: isDragging,
       'drop-before': isHoveredDropTarget && insertionPosition === 'before',
-      'drop-after': isHoveredDropTarget && insertionPosition === 'after',
-      'drop-child': isHoveredDropTarget && insertionPosition === 'child'
+      'drop-after': isHoveredDropTarget && insertionPosition === 'after'
     });
 
     return (

@@ -142,7 +142,6 @@ export default class SceneGraph extends React.Component {
     return (
       !isContainer(entity) &&
       !entity.classList.contains('autocreated') &&
-      !entity.hasAttribute('managed-street') &&
       !entity.hasAttribute('street-segment')
     );
   };
@@ -160,13 +159,16 @@ export default class SceneGraph extends React.Component {
       return false;
     }
 
-    // Prevent dropping an entity onto its own descendants
-    let current = entity.parentNode;
-    while (current && current.isEntity) {
-      if (current === draggedEntity) {
-        return false;
-      }
-      current = current.parentNode;
+    // Only allow reordering within the same parent for now.
+    // To re-enable reparenting, replace this check with the descendant-walk check:
+    //   let current = entity.parentNode;
+    //   while (current && current.isEntity) {
+    //     if (current === draggedEntity) return false;
+    //     current = current.parentNode;
+    //   }
+    // and re-enable the "child" drop position in Entity.js onDragOver.
+    if (entity.parentNode !== draggedEntity.parentNode) {
+      return false;
     }
 
     return true;
