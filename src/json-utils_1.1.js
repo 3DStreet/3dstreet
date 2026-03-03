@@ -871,8 +871,8 @@ AFRAME.registerComponent('set-loader-from-hash', {
           );
         }
 
-        // Check for snapshots and store default camera state BEFORE createElementsFromJSON
-        let defaultSnapshotCameraState = null;
+        // Resolve camera state: explicit snapshot > auto-saved > null (default)
+        let defaultSnapshotCameraState = jsonData.memory?.cameraState || null;
         if (
           jsonData.memory?.snapshots &&
           jsonData.memory.snapshots.length > 0
@@ -881,15 +881,17 @@ AFRAME.registerComponent('set-loader-from-hash', {
             (s) => s.isDefault
           );
           if (defaultSnapshot && defaultSnapshot.cameraState) {
-            console.log(
-              '[set-loader-from-hash] Found default snapshot camera state:',
-              defaultSnapshot.cameraState
-            );
             defaultSnapshotCameraState = defaultSnapshot.cameraState;
-            // Store it temporarily on the scene element for the newScene event
-            AFRAME.scenes[0].defaultSnapshotCameraState =
-              defaultSnapshotCameraState;
           }
+        }
+        if (defaultSnapshotCameraState) {
+          console.log(
+            '[set-loader-from-hash] Resolved camera state:',
+            defaultSnapshotCameraState
+          );
+          // Store it temporarily on the scene element for the newScene event
+          AFRAME.scenes[0].defaultSnapshotCameraState =
+            defaultSnapshotCameraState;
         }
 
         STREET.utils.createElementsFromJSON(jsonData, false);
