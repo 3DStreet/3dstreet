@@ -92,11 +92,19 @@ export class EntityReparentCommand extends Command {
       entity.parentNode.removeChild(entity);
     }
 
-    // Determine the insertion point
+    // Determine the insertion point. When moving forward within the same
+    // parent, removing the entity shifts subsequent siblings left by 1, so
+    // we adjust the target index to compensate.
+    let adjustedIndex = this.newIndexInParent;
+    if (
+      this.newParentEl === this.oldParentEl &&
+      this.oldIndexInParent < this.newIndexInParent
+    ) {
+      adjustedIndex--;
+    }
     const beforeEl =
-      this.newIndexInParent >= 0 &&
-      this.newIndexInParent < newParent.children.length
-        ? newParent.children[this.newIndexInParent]
+      adjustedIndex >= 0 && adjustedIndex < newParent.children.length
+        ? newParent.children[adjustedIndex]
         : null;
 
     // Deep-clone because createEntityFromObj mutates the data (deletes
