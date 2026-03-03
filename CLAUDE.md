@@ -70,7 +70,9 @@ public/
 
 **State:** `src/store.js` (Zustand) - scene metadata, modal state, save state, preferences
 
-**Commands:** `src/editor/lib/commands/` - undo/redo pattern (AddEntity, SetComponent, etc.)
+**Commands:** `src/editor/lib/commands/` - undo/redo pattern (AddEntity, SetComponent, EntityReparent, etc.)
+
+**Layer Reordering:** Drag-and-drop reordering of layers within the same parent in the SceneGraph. Uses `EntityReparentCommand` which serializes via `STREET.utils.getElementData()` and recreates via `STREET.utils.createEntityFromObj()` — the same proven save/load code path.
 
 ## Asset System
 

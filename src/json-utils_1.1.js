@@ -488,7 +488,7 @@ Add a new entity with a list of components and children (if exists)
  * @param {Element} parentEl the parent element to which the Entity will be added
  * @return {Element} Entity created
 */
-function createEntityFromObj(entityData, parentEl) {
+function createEntityFromObj(entityData, parentEl, beforeEl) {
   // Special handling for cameraRig with viewer-mode component
   if (
     entityData.id === 'cameraRig' &&
@@ -511,7 +511,11 @@ function createEntityFromObj(entityData, parentEl) {
   const entity = entityData.entityElement || document.createElement(tagName);
 
   if (!entity.parentEl && parentEl) {
-    parentEl.appendChild(entity);
+    if (beforeEl) {
+      parentEl.insertBefore(entity, beforeEl);
+    } else {
+      parentEl.appendChild(entity);
+    }
   }
 
   if (entityData['primitive']) {
@@ -555,7 +559,11 @@ function createEntityFromObj(entityData, parentEl) {
       createEntityFromObj(childEntityData, entity);
     }
   }
+
+  return entity;
 }
+
+STREET.utils.createEntityFromObj = createEntityFromObj;
 
 /*
   Code imported from index.html, mix of save load utils and some ui functions

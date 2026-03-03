@@ -1,11 +1,7 @@
-/* global THREE */
+/* global THREE, STREET */
 import Events from '../Events.js';
 import { Command } from '../command.js';
-import {
-  createUniqueId,
-  exportEntityToObject,
-  objectToElement
-} from '../entity.js';
+import { createUniqueId } from '../entity.js';
 
 export class EntityReparentCommand extends Command {
   constructor(editor, payload = null) {
@@ -31,8 +27,10 @@ export class EntityReparentCommand extends Command {
         entity
       );
 
-      // Store entity data for recreation
-      this.entityData = exportEntityToObject(entity);
+      // Serialize using the exact same function the save/load pipeline uses.
+      // This is the proven format that createEntityFromObj can recreate
+      // losslessly, including correct component dependency resolution.
+      this.entityData = STREET.utils.getElementData(entity);
 
       // Store world position and quaternion before reparenting
       this.worldPosition = new THREE.Vector3();
@@ -94,22 +92,29 @@ export class EntityReparentCommand extends Command {
       entity.parentNode.removeChild(entity);
     }
 
-    // Recreate entity from data to ensure clean state
-    const recreatedEntity = objectToElement(this.entityData);
-    recreatedEntity.id = this.entityId; // Ensure same ID
-
-    // Insert at specific position
-    if (
+    // Determine the insertion point
+    const beforeEl =
       this.newIndexInParent >= 0 &&
       this.newIndexInParent < newParent.children.length
-    ) {
-      const referenceChild = newParent.children[this.newIndexInParent];
-      newParent.insertBefore(recreatedEntity, referenceChild);
-    } else {
-      newParent.appendChild(recreatedEntity);
-    }
+        ? newParent.children[this.newIndexInParent]
+        : null;
 
-    // Wait for entity to be loaded before emitting events
+    // Deep-clone because createEntityFromObj mutates the data (deletes
+    // geometry/material from components). We need the original intact for undo.
+    const entityData = JSON.parse(JSON.stringify(this.entityData));
+
+    // Recreate using the exact same function the save/load pipeline uses.
+    // The beforeEl param inserts the freshly-created element at the right
+    // position (this is NOT moving an existing entity — the element is new).
+    const recreatedEntity = STREET.utils.createEntityFromObj(
+      entityData,
+      newParent,
+      beforeEl
+    );
+
+    // Wait for entity to be loaded before emitting events.
+    // createEntityFromObj also uses 'loaded' to set deferred components;
+    // its handler was registered first so it runs before this one.
     recreatedEntity.addEventListener(
       'loaded',
       () => {
@@ -150,20 +155,22 @@ export class EntityReparentCommand extends Command {
       entity.parentNode.removeChild(entity);
     }
 
-    // Recreate entity from stored data
-    const recreatedEntity = objectToElement(this.entityData);
-    recreatedEntity.id = this.entityId; // Ensure same ID
-
-    // Insert at original position
-    if (
+    // Determine the insertion point
+    const beforeEl =
       this.oldIndexInParent >= 0 &&
       this.oldIndexInParent < oldParent.children.length
-    ) {
-      const referenceChild = oldParent.children[this.oldIndexInParent];
-      oldParent.insertBefore(recreatedEntity, referenceChild);
-    } else {
-      oldParent.appendChild(recreatedEntity);
-    }
+        ? oldParent.children[this.oldIndexInParent]
+        : null;
+
+    // Deep-clone because createEntityFromObj mutates the data
+    const entityData = JSON.parse(JSON.stringify(this.entityData));
+
+    // Recreate using the exact same function the save/load pipeline uses
+    const recreatedEntity = STREET.utils.createEntityFromObj(
+      entityData,
+      oldParent,
+      beforeEl
+    );
 
     // Wait for entity to be loaded before emitting events
     recreatedEntity.addEventListener(
