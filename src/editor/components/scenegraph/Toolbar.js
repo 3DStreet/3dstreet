@@ -131,6 +131,13 @@ function Toolbar({ currentUser, entity }) {
                       </div>
                     }
                     onClick={() => {
+                      // Autosave to preserve camera position before snapshot
+                      if (
+                        currentUser &&
+                        STREET.utils.getAuthorId() === currentUser.uid
+                      ) {
+                        useStore.getState().saveScene(false);
+                      }
                       makeScreenshot();
                       useStore.getState().setModal('screenshot');
                     }}
@@ -144,6 +151,13 @@ function Toolbar({ currentUser, entity }) {
                   <Button
                     leadingIcon={<AwesomeIcon icon={faLockOpen} size={20} />}
                     onClick={() => {
+                      // Autosave to preserve camera position before sharing
+                      if (
+                        currentUser &&
+                        STREET.utils.getAuthorId() === currentUser.uid
+                      ) {
+                        useStore.getState().saveScene(false);
+                      }
                       useStore.getState().setModal('share');
                     }}
                     variant="toolbtn"
