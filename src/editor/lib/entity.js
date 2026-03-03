@@ -216,6 +216,7 @@ export function cloneSelectedEntity() {
 export function getEntityClipboardRepresentation(entity) {
   entity.flushToDOM();
   var clone = prepareForSerialization(entity);
+  if (clone === null) return '';
   return clone.outerHTML;
 }
 
