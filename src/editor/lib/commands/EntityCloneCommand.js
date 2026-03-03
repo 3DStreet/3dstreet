@@ -27,6 +27,7 @@ export class EntityCloneCommand extends Command {
       if (!this.detachedClone) {
         this.detachedClone = cloneEntityImpl(entityToClone);
       }
+      if (!this.detachedClone) return;
       const clone = this.detachedClone.cloneNode(true);
       clone.addEventListener(
         'loaded',
