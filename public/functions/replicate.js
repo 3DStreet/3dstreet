@@ -363,7 +363,7 @@ const generateReplicateImage = functions
       db.collection('generationLog').add({
         userId,
         provider: 'replicate',
-        model: modelConfig?.modelName || modelVersionToUse,
+        model: modelConfig?.modelName || AI_MODEL_NAMES[modelVersionToUse] || modelVersionToUse,
         generationType: 'image',
         tokenCost,
         processingTimeMs: generationElapsedMs,
@@ -380,7 +380,7 @@ const generateReplicateImage = functions
         tokensAfter: remainingTokens,
         tokenCost,
         source: 'image-generation',
-        relatedModel: modelConfig?.modelName || modelVersionToUse,
+        relatedModel: modelConfig?.modelName || AI_MODEL_NAMES[modelVersionToUse] || modelVersionToUse,
         createdAt: admin.firestore.FieldValue.serverTimestamp()
       }).catch(err => console.error('Failed to write tokenLog:', err));
 
@@ -427,7 +427,7 @@ const generateReplicateImage = functions
       db.collection('generationLog').add({
         userId,
         provider: 'replicate',
-        model: modelConfig?.modelName || modelVersionToUse,
+        model: modelConfig?.modelName || AI_MODEL_NAMES[modelVersionToUse] || modelVersionToUse,
         generationType: 'image',
         tokenCost,
         processingTimeMs: generationStartTime ? Date.now() - generationStartTime : null,
