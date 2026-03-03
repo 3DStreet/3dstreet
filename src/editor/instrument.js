@@ -12,7 +12,7 @@ if (process.env.SENTRY_DSN) {
     replaysSessionSampleRate: 0.1,
     replaysOnErrorSampleRate: 1.0
   });
-  console.log('[Sentry] Initialized – error reporting enabled.');
+  console.debug('[Sentry] Initialized – error reporting enabled.');
 } else {
-  console.log('[Sentry] DSN not set – error reporting disabled.');
+  console.debug('[Sentry] DSN not set – error reporting disabled.');
 }
