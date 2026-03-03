@@ -937,28 +937,28 @@ const STREETPLAN_OBJECT_TO_GENERATED_CLONES_MAPPING = {
   'toward, left park, back in': {
     mode: 'random',
     modelsArray: 'suv-rig, sedan-rig, self-driving-waymo-car',
-    spacing: 5,
+    spacing: 15,
     count: 15,
     facing: 135
   },
   'toward, left park, head in': {
     mode: 'random',
     modelsArray: 'suv-rig, sedan-rig, self-driving-waymo-car',
-    spacing: 5,
+    spacing: 15,
     count: 15,
     facing: 225
   },
   'toward, right park, back in': {
     mode: 'random',
     modelsArray: 'suv-rig, sedan-rig, self-driving-waymo-car',
-    spacing: 5,
+    spacing: 15,
     count: 15,
     facing: 225
   },
   'toward, right park, head in': {
     mode: 'random',
     modelsArray: 'suv-rig, sedan-rig, self-driving-waymo-car',
-    spacing: 5,
+    spacing: 15,
     count: 15,
     facing: 135
   },
