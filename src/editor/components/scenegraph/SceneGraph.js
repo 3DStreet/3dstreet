@@ -153,7 +153,6 @@ export default class SceneGraph extends React.Component {
       entity.id === 'reference-layers' ||
       entity.id === 'environment' ||
       entity.id === 'cameraRig' ||
-      entity.hasAttribute('managed-street') ||
       entity.hasAttribute('street-segment')
     ) {
       return false;
