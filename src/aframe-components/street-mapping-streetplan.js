@@ -875,14 +875,15 @@ const STREETPLAN_OBJECT_TO_GENERATED_CLONES_MAPPING = {
   },
   'parallel redvan': {
     mode: 'random',
-    modelsArray: 'sedan-rig, suv-rig, self-driving-waymo-car',
+    modelsArray: 'sedan-rig, suv-rig, self-driving-waymo-car, sp-grand-suv',
     spacing: 15,
     count: 15,
     facing: 0
   },
   'parallel yellowcar': {
     mode: 'random',
-    modelsArray: 'suv-rig, sedan-rig, self-driving-waymo-car',
+    modelsArray:
+      'suv-rig, sedan-rig, self-driving-waymo-car, sp-hatchback-yellow',
     spacing: 15,
     count: 15,
     facing: 0
