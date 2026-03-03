@@ -825,11 +825,41 @@ const STREETPLAN_OBJECT_TO_GENERATED_CLONES_MAPPING = {
   'weeds median (4ft)': '',
   'weeds median (6ft)': '',
   'weeds median (8ft)': '',
-  'away, left park, back in': '',
-  'away, left park, head in': '',
-  'away, right park, back in': '',
-  'away, right park, head in': '',
-  'bluecar parallelpark': '',
+  'away, left park, back in': {
+    mode: 'random',
+    modelsArray: 'suv-rig, sedan-rig, self-driving-waymo-car',
+    spacing: 15,
+    count: 15,
+    facing: 45
+  },
+  'away, left park, head in': {
+    mode: 'random',
+    modelsArray: 'suv-rig, sedan-rig, self-driving-waymo-car',
+    spacing: 15,
+    count: 15,
+    facing: 315
+  },
+  'away, right park, back in': {
+    mode: 'random',
+    modelsArray: 'suv-rig, sedan-rig, self-driving-waymo-car',
+    spacing: 15,
+    count: 15,
+    facing: 315
+  },
+  'away, right park, head in': {
+    mode: 'random',
+    modelsArray: 'suv-rig, sedan-rig, self-driving-waymo-car',
+    spacing: 15,
+    count: 15,
+    facing: 45
+  },
+  'bluecar parallelpark': {
+    mode: 'random',
+    modelsArray: 'suv-rig, sedan-rig, sp-grand-suv',
+    spacing: 15,
+    count: 15,
+    facing: 0
+  },
   'bulb out parking': '',
   'camptrailer sideview 33ft': '',
   foodtruck: '',
@@ -845,14 +875,15 @@ const STREETPLAN_OBJECT_TO_GENERATED_CLONES_MAPPING = {
   },
   'parallel redvan': {
     mode: 'random',
-    modelsArray: 'sedan-rig, suv-rig, self-driving-waymo-car',
+    modelsArray: 'sedan-rig, suv-rig, self-driving-waymo-car, sp-grand-suv',
     spacing: 15,
     count: 15,
     facing: 0
   },
   'parallel yellowcar': {
     mode: 'random',
-    modelsArray: 'suv-rig, sedan-rig, self-driving-waymo-car',
+    modelsArray:
+      'suv-rig, sedan-rig, self-driving-waymo-car, sp-hatchback-yellow',
     spacing: 15,
     count: 15,
     facing: 0
@@ -868,32 +899,38 @@ const STREETPLAN_OBJECT_TO_GENERATED_CLONES_MAPPING = {
   'purpendicular left side, blue': {
     mode: 'random',
     modelsArray: 'suv-rig, sedan-rig, self-driving-waymo-car',
-    spacing: 5,
+    spacing: 15,
     count: 15,
     facing: 270
   },
   'purpendicular left side, red': {
     mode: 'random',
     modelsArray: 'sedan-rig, suv-rig, self-driving-waymo-car',
-    spacing: 5,
+    spacing: 15,
     count: 15,
     facing: 270
   },
   'purpendicular right side, blue': {
     mode: 'random',
     modelsArray: 'sedan-rig, suv-rig, self-driving-waymo-car',
-    spacing: 5,
+    spacing: 15,
     count: 15,
     facing: 90
   },
   'purpendicular right side, red': {
     mode: 'random',
     modelsArray: 'suv-rig, sedan-rig, self-driving-waymo-car',
-    spacing: 5,
+    spacing: 15,
     count: 15,
     facing: 90
   },
-  'semitruck sideview 70ft': '',
+  'semitruck sideview 70ft': {
+    mode: 'random',
+    modelsArray: 'box-truck-rig',
+    spacing: 15,
+    count: 15,
+    facing: 90
+  },
   smartcar: '',
   'smartcar 5ft': '',
   'smartcar 5ft rev': '',
@@ -901,28 +938,28 @@ const STREETPLAN_OBJECT_TO_GENERATED_CLONES_MAPPING = {
   'toward, left park, back in': {
     mode: 'random',
     modelsArray: 'suv-rig, sedan-rig, self-driving-waymo-car',
-    spacing: 5,
+    spacing: 15,
     count: 15,
     facing: 135
   },
   'toward, left park, head in': {
     mode: 'random',
     modelsArray: 'suv-rig, sedan-rig, self-driving-waymo-car',
-    spacing: 5,
+    spacing: 15,
     count: 15,
     facing: 225
   },
   'toward, right park, back in': {
     mode: 'random',
     modelsArray: 'suv-rig, sedan-rig, self-driving-waymo-car',
-    spacing: 5,
+    spacing: 15,
     count: 15,
-    facing: 45
+    facing: 225
   },
   'toward, right park, head in': {
     mode: 'random',
     modelsArray: 'suv-rig, sedan-rig, self-driving-waymo-car',
-    spacing: 5,
+    spacing: 15,
     count: 15,
     facing: 135
   },
