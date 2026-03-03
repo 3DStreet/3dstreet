@@ -6,6 +6,7 @@ import {
   uploadThumbnailImage
 } from '@/editor/api/scene';
 import { createUniqueId } from '@/editor/lib/entity.js';
+import { getCurrentCameraState } from '@/editor/lib/cameraUtils.js';
 import { doc, getDoc } from 'firebase/firestore';
 import { db } from '@shared/services/firebase';
 
@@ -68,11 +69,11 @@ export function createElementsForScenesFromJSON(streetData, memoryData) {
     useStore.getState().setProjectInfo(memoryData.projectInfo);
   }
 
-  // Store snapshot camera state if available
-  let defaultSnapshotCameraState = null;
-  if (memoryData?.snapshots && memoryData.snapshots.length > 0) {
+  // Resolve camera state: explicit snapshot > auto-saved > null (default)
+  let defaultSnapshotCameraState = memoryData?.cameraState || null;
+  if (memoryData?.snapshots?.length > 0) {
     const defaultSnapshot = memoryData.snapshots.find((s) => s.isDefault);
-    if (defaultSnapshot && defaultSnapshot.cameraState) {
+    if (defaultSnapshot?.cameraState) {
       defaultSnapshotCameraState = defaultSnapshot.cameraState;
     }
   }
@@ -267,6 +268,12 @@ export async function saveScene(currentUser, doSaveAs, doPromptTitle) {
 
   // Ensure memory data (including project info) is preserved
   filteredData.memory = data.memory;
+
+  // Auto-save current camera state to memory
+  const currentCameraState = getCurrentCameraState();
+  if (currentCameraState) {
+    filteredData.memory.cameraState = currentCameraState;
+  }
 
   // If we have an existing scene ID, fetch and preserve snapshots from Firebase
   if (sceneId && !doSaveAs) {
