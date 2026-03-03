@@ -488,7 +488,7 @@ Add a new entity with a list of components and children (if exists)
  * @param {Element} parentEl the parent element to which the Entity will be added
  * @return {Element} Entity created
 */
-function createEntityFromObj(entityData, parentEl) {
+function createEntityFromObj(entityData, parentEl, beforeEl) {
   // Special handling for cameraRig with viewer-mode component
   if (
     entityData.id === 'cameraRig' &&
@@ -511,7 +511,11 @@ function createEntityFromObj(entityData, parentEl) {
   const entity = entityData.entityElement || document.createElement(tagName);
 
   if (!entity.parentEl && parentEl) {
-    parentEl.appendChild(entity);
+    if (beforeEl) {
+      parentEl.insertBefore(entity, beforeEl);
+    } else {
+      parentEl.appendChild(entity);
+    }
   }
 
   if (entityData['primitive']) {
@@ -555,7 +559,11 @@ function createEntityFromObj(entityData, parentEl) {
       createEntityFromObj(childEntityData, entity);
     }
   }
+
+  return entity;
 }
+
+STREET.utils.createEntityFromObj = createEntityFromObj;
 
 /*
   Code imported from index.html, mix of save load utils and some ui functions
@@ -863,8 +871,8 @@ AFRAME.registerComponent('set-loader-from-hash', {
           );
         }
 
-        // Check for snapshots and store default camera state BEFORE createElementsFromJSON
-        let defaultSnapshotCameraState = null;
+        // Resolve camera state: explicit snapshot > auto-saved > null (default)
+        let defaultSnapshotCameraState = jsonData.memory?.cameraState || null;
         if (
           jsonData.memory?.snapshots &&
           jsonData.memory.snapshots.length > 0
@@ -873,15 +881,17 @@ AFRAME.registerComponent('set-loader-from-hash', {
             (s) => s.isDefault
           );
           if (defaultSnapshot && defaultSnapshot.cameraState) {
-            console.log(
-              '[set-loader-from-hash] Found default snapshot camera state:',
-              defaultSnapshot.cameraState
-            );
             defaultSnapshotCameraState = defaultSnapshot.cameraState;
-            // Store it temporarily on the scene element for the newScene event
-            AFRAME.scenes[0].defaultSnapshotCameraState =
-              defaultSnapshotCameraState;
           }
+        }
+        if (defaultSnapshotCameraState) {
+          console.log(
+            '[set-loader-from-hash] Resolved camera state:',
+            defaultSnapshotCameraState
+          );
+          // Store it temporarily on the scene element for the newScene event
+          AFRAME.scenes[0].defaultSnapshotCameraState =
+            defaultSnapshotCameraState;
         }
 
         STREET.utils.createElementsFromJSON(jsonData, false);
