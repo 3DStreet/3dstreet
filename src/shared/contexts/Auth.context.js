@@ -180,6 +180,8 @@ const AuthProvider = ({ children }) => {
         email: user.email,
         name: user.displayName,
         isPro: proStatus.isPro,
+        isMax: proStatus.isMax,
+        plan: proStatus.plan,
         isProSubscription: proStatus.isProSubscription,
         isProDomain: proStatus.isProDomain,
         teamDomain: proStatus.teamDomain
