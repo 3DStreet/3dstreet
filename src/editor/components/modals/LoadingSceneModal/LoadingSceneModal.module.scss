@@ -1,0 +1,109 @@
+@use '../../../style/variables.scss';
+
+.loadingModalWrapper {
+  position: fixed;
+  top: 0;
+  left: 0;
+  z-index: 10001;
+  display: flex;
+  flex-direction: column;
+  row-gap: 16px;
+  width: 100vw;
+  height: 100vh;
+  align-items: center;
+  justify-content: center;
+  background-color: rgba(0, 0, 0, 0.7);
+  pointer-events: all;
+}
+
+.spinnerBox {
+  display: flex;
+  max-width: 100px;
+  max-height: 100px;
+  padding: 20px;
+  background-color: rgba(21, 21, 21, 0.7);
+  border-radius: 50%;
+
+  .spinner {
+    animation: spin 1s linear infinite;
+  }
+}
+
+.progressBarContainer {
+  width: 240px;
+  height: 4px;
+  background-color: rgba(255, 255, 255, 0.2);
+  border-radius: 2px;
+  overflow: hidden;
+}
+
+.progressBar {
+  height: 100%;
+  background-color: #774dee;
+  border-radius: 2px;
+  transition: width 0.3s ease;
+}
+
+.message {
+  font-size: 16px;
+  line-height: 20px;
+  font-weight: 400;
+  color: variables.$white;
+}
+
+.errorContent {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  row-gap: 20px;
+}
+
+.errorMessage {
+  font-size: 16px;
+  line-height: 20px;
+  font-weight: 400;
+  color: #ff6b6b;
+}
+
+.errorButtons {
+  display: flex;
+  gap: 12px;
+}
+
+.retryButton,
+.dismissButton {
+  padding: 8px 20px;
+  border-radius: 6px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  border: none;
+}
+
+.retryButton {
+  background-color: #774dee;
+  color: white;
+
+  &:hover {
+    background-color: #6a3de0;
+  }
+}
+
+.dismissButton {
+  background-color: transparent;
+  color: white;
+  border: 1px solid rgba(255, 255, 255, 0.3);
+
+  &:hover {
+    background-color: rgba(255, 255, 255, 0.1);
+  }
+}
+
+@keyframes spin {
+  from {
+    transform: rotateZ(0deg);
+  }
+  to {
+    transform: rotateZ(359deg);
+  }
+}
