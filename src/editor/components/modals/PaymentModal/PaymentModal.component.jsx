@@ -44,11 +44,12 @@ const getUtmParams = () => {
 const PaymentModal = () => {
   const { currentUser } = useAuthContext();
   const [isLoading, setIsLoading] = useState(false);
-  // Check if the annual hash is present to set initial plan
-  const initialPlan = window.location.hash.includes('payment-modal-annual')
+  const [selectedTier, setSelectedTier] = useState('pro'); // 'pro' | 'max'
+  const initialBilling = window.location.hash.includes('payment-modal-annual')
     ? 'yearly'
     : 'monthly';
-  const [selectedPlan, setSelectedPlan] = useState(initialPlan);
+  const [billingPeriod, setBillingPeriod] = useState(initialBilling);
+  const selectedPlan = `${selectedTier}-${billingPeriod}`;
   const setModal = useStore((state) => state.setModal);
   const modal = useStore((state) => state.modal);
   const postCheckout = useStore((state) => state.postCheckout);
@@ -73,6 +74,12 @@ const PaymentModal = () => {
       ...(utmParams || {})
     });
     setIsLoading(true);
+    const priceIdMap = {
+      'pro-monthly': process.env.STRIPE_MONTHLY_PRICE_ID,
+      'pro-yearly': process.env.STRIPE_YEARLY_PRICE_ID,
+      'max-monthly': process.env.STRIPE_MAX_MONTHLY_PRICE_ID,
+      'max-yearly': process.env.STRIPE_MAX_YEARLY_PRICE_ID
+    };
     try {
       const {
         data: { id }
@@ -82,10 +89,7 @@ const PaymentModal = () => {
       )({
         line_items: [
           {
-            price:
-              selectedPlan === 'monthly'
-                ? process.env.STRIPE_MONTHLY_PRICE_ID
-                : process.env.STRIPE_YEARLY_PRICE_ID,
+            price: priceIdMap[selectedPlan],
             quantity: 1
           }
         ],
@@ -118,160 +122,421 @@ const PaymentModal = () => {
       className={styles.modalWrapper}
       isOpen={modal === 'payment'}
       onClose={onClose}
-      title="Activate Pro Edition"
+      title="Upgrade to Pro"
     >
       <div className={styles.paymentDetails}>
-        <p style={{ fontStyle: 'italic' }}>Everything in Free, plus:</p>
-        <ul>
-          <li>
-            <CheckMark32Icon />
-            Download JPEG snapshots without watermark
-          </li>
-          <li>
-            <CheckMark32Icon />
-            Unlimited Geospatial 3D Maps
-          </li>
-          <li>
-            <CheckMark32Icon />
-            <span style={{ display: 'flex', alignItems: 'center' }}>
+        {/* Monthly / Annual toggle */}
+        <div
+          style={{
+            display: 'flex',
+            justifyContent: 'center',
+            marginBottom: '20px'
+          }}
+        >
+          <div
+            style={{
+              display: 'inline-flex',
+              background: '#f3f4f6',
+              borderRadius: '8px',
+              padding: '3px'
+            }}
+          >
+            <button
+              style={{
+                padding: '6px 20px',
+                borderRadius: '6px',
+                border: 'none',
+                cursor: 'pointer',
+                fontWeight: '500',
+                fontSize: '13px',
+                background:
+                  billingPeriod === 'monthly' ? '#fff' : 'transparent',
+                color: billingPeriod === 'monthly' ? '#000' : '#6b7280',
+                boxShadow:
+                  billingPeriod === 'monthly'
+                    ? '0 1px 3px rgba(0,0,0,0.1)'
+                    : 'none'
+              }}
+              onClick={() => setBillingPeriod('monthly')}
+            >
+              Monthly
+            </button>
+            <button
+              style={{
+                padding: '6px 20px',
+                borderRadius: '6px',
+                border: 'none',
+                cursor: 'pointer',
+                fontWeight: '500',
+                fontSize: '13px',
+                background: billingPeriod === 'yearly' ? '#fff' : 'transparent',
+                color: billingPeriod === 'yearly' ? '#000' : '#6b7280',
+                boxShadow:
+                  billingPeriod === 'yearly'
+                    ? '0 1px 3px rgba(0,0,0,0.1)'
+                    : 'none'
+              }}
+              onClick={() => setBillingPeriod('yearly')}
+            >
+              Yearly
               <span
+                style={{
+                  marginLeft: '6px',
+                  fontSize: '11px',
+                  color: '#0eaf00',
+                  fontWeight: '600'
+                }}
+              >
+                Save 17%
+              </span>
+            </button>
+          </div>
+        </div>
+
+        {/* Two-column tier cards */}
+        <div style={{ display: 'flex', gap: '16px' }}>
+          {/* Pro card */}
+          <div
+            onClick={() => setSelectedTier('pro')}
+            style={{
+              flex: 1,
+              border:
+                selectedTier === 'pro'
+                  ? '2px solid #0eaf00'
+                  : '1px solid #e0e0e0',
+              borderRadius: '12px',
+              padding: '20px',
+              cursor: 'pointer',
+              background: selectedTier === 'pro' ? '#f0fff0' : '#fff',
+              transition: 'all 0.2s ease'
+            }}
+          >
+            <h3
+              style={{ margin: '0 0 4px 0', fontSize: '18px', color: '#000' }}
+            >
+              Pro
+            </h3>
+            <div style={{ marginBottom: '12px' }}>
+              <span
+                style={{
+                  fontSize: '28px',
+                  fontWeight: '700',
+                  color: '#000'
+                }}
+              >
+                {billingPeriod === 'monthly' ? '$14' : '$11.67'}
+              </span>
+              <span style={{ color: '#6b7280', fontSize: '14px' }}>/mo</span>
+              {billingPeriod === 'yearly' && (
+                <span
+                  style={{
+                    color: '#6b7280',
+                    fontSize: '12px',
+                    marginLeft: '4px'
+                  }}
+                >
+                  ($140/yr)
+                </span>
+              )}
+            </div>
+            <div
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '6px',
+                marginBottom: billingPeriod === 'yearly' ? '6px' : '16px',
+                padding: '8px',
+                background: '#1a1a1a',
+                borderRadius: '6px'
+              }}
+            >
+              <img
+                src="/ui_assets/token-image.png"
+                alt="Token"
+                style={{ width: '18px', height: '18px' }}
+              />
+              <span
+                style={{
+                  fontWeight: '600',
+                  color: '#fff',
+                  fontSize: '15px'
+                }}
+              >
+                {billingPeriod === 'monthly' ? '140' : '1,400'}
+              </span>
+              <span style={{ color: '#9ca3af', fontSize: '12px' }}>
+                {billingPeriod === 'monthly' ? 'tokens/mo' : 'tokens upfront'}
+              </span>
+            </div>
+            {billingPeriod === 'yearly' && (
+              <div
                 style={{
                   display: 'flex',
                   alignItems: 'center',
+                  gap: '6px',
+                  marginBottom: '16px',
+                  padding: '6px 8px',
                   background: '#1a1a1a',
-                  borderRadius: '4px',
-                  padding: '2px 8px 2px 4px',
-                  marginRight: '8px'
+                  borderRadius: '6px'
                 }}
               >
                 <img
                   src="/ui_assets/token-image.png"
-                  alt="AI Generation Token"
-                  style={{
-                    width: '16px',
-                    height: '16px',
-                    marginRight: '4px',
-                    display: 'inline-block',
-                    verticalAlign: 'middle'
-                  }}
+                  alt="Token"
+                  style={{ width: '14px', height: '14px' }}
                 />
-                <span style={{ color: '#6b7280', marginRight: '4px' }}>×</span>
                 <span
                   style={{
-                    fontSize: '14px',
-                    fontWeight: '500',
-                    color: '#ffffff'
+                    fontWeight: '600',
+                    color: '#0eaf00',
+                    fontSize: '13px'
                   }}
                 >
-                  100
+                  +140
                 </span>
-              </span>
-              AI generation tokens per month
-            </span>
-          </li>
-          <li>
-            <CheckMark32Icon />
-            Import custom 3D models
-          </li>
-          <li>
-            <CheckMark32Icon />
-            Reference custom SVG and glTF files
-          </li>
-          <li>
-            <CheckMark32Icon />
-            Export &quot;AR Ready&quot; glTF for Augmented Reality apps
-          </li>
-          <li>&nbsp;</li>
-          <li className={styles.pricing}>
-            <div className={styles.planSelector}>
-              <button
-                className={`${styles.planButton} ${selectedPlan === 'monthly' ? styles.selected : ''}`}
-                onClick={() => setSelectedPlan('monthly')}
-              >
-                Monthly
-                <span className={styles.price}>$10/mo</span>
-              </button>
-              <button
-                className={`${styles.planButton} ${selectedPlan === 'yearly' ? styles.selected : ''}`}
-                onClick={() => setSelectedPlan('yearly')}
-              >
-                Yearly
-                <span className={styles.savings}>Save 30%</span>
-                <span className={styles.price}>$84/year</span>
-                <div className={styles.bonus}>
-                  <span
-                    style={{
-                      display: 'inline-flex',
-                      alignItems: 'center',
-                      background: '#1a1a1a',
-                      borderRadius: '4px',
-                      padding: '2px 8px 2px 4px',
-                      marginRight: '4px',
-                      minWidth: '50px'
-                    }}
-                  >
-                    <img
-                      src="/ui_assets/token-image.png"
-                      alt="AI Generation Token"
-                      style={{
-                        width: '12px',
-                        height: '12px',
-                        marginRight: '2px'
-                      }}
-                    />
-                    <span
-                      style={{
-                        color: '#6b7280',
-                        marginRight: '2px',
-                        fontSize: '10px'
-                      }}
-                    >
-                      ×
-                    </span>
-                    <span
-                      style={{
-                        fontSize: '10px',
-                        fontWeight: '500',
-                        color: '#ffffff'
-                      }}
-                    >
-                      840
-                    </span>
-                  </span>
-                  AI gen tokens on first purchase
-                </div>
-              </button>
-            </div>
-          </li>
-          <li>
-            {currentUser ? (
-              <div className="paymentButton">
-                {currentUser.isPro ? (
-                  <h3>🎉 Congrats! Thank you for your subscription.</h3>
-                ) : (
-                  <div>
-                    {isLoading ? (
-                      <div className={styles.loadingSpinner}>
-                        <Loader className={styles.spinner} />
-                      </div>
-                    ) : (
-                      <Button onClick={startCheckout} variant="filled">
-                        Activate Now
-                      </Button>
-                    )}
-                  </div>
-                )}
-              </div>
-            ) : (
-              <div className={styles.unAuth}>
-                <p>To upgrade you have to sign in:</p>
-                <Button onClick={() => setModal('signin')} variant="filled">
-                  Sign in to 3DStreet Cloud
-                </Button>
+                <span style={{ color: '#9ca3af', fontSize: '11px' }}>
+                  tokens/mo top-up
+                </span>
               </div>
             )}
-          </li>
-        </ul>
+            <ul
+              style={{
+                listStyle: 'none',
+                padding: 0,
+                margin: 0,
+                fontSize: '13px',
+                color: '#000'
+              }}
+            >
+              <li
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '8px',
+                  marginBottom: '6px'
+                }}
+              >
+                <CheckMark32Icon /> Snapshots without watermark
+              </li>
+              <li
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '8px',
+                  marginBottom: '6px'
+                }}
+              >
+                <CheckMark32Icon /> Unlimited Geospatial 3D Maps
+              </li>
+              <li
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '8px',
+                  marginBottom: '6px'
+                }}
+              >
+                <CheckMark32Icon /> Import custom 3D models
+              </li>
+              <li
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '8px',
+                  marginBottom: '6px'
+                }}
+              >
+                <CheckMark32Icon /> AI image generation
+              </li>
+              <li
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '8px',
+                  marginBottom: '6px'
+                }}
+              >
+                <CheckMark32Icon /> Export glTF for AR apps
+              </li>
+            </ul>
+          </div>
+
+          {/* Max card */}
+          <div
+            onClick={() => setSelectedTier('max')}
+            style={{
+              flex: 1,
+              border:
+                selectedTier === 'max'
+                  ? '2px solid #0eaf00'
+                  : '1px solid #e0e0e0',
+              borderRadius: '12px',
+              padding: '20px',
+              cursor: 'pointer',
+              background: selectedTier === 'max' ? '#f0fff0' : '#fff',
+              transition: 'all 0.2s ease'
+            }}
+          >
+            <h3
+              style={{ margin: '0 0 4px 0', fontSize: '18px', color: '#000' }}
+            >
+              Max
+            </h3>
+            <div style={{ marginBottom: '12px' }}>
+              <span
+                style={{
+                  fontSize: '28px',
+                  fontWeight: '700',
+                  color: '#000'
+                }}
+              >
+                {billingPeriod === 'monthly' ? '$50' : '$41.67'}
+              </span>
+              <span style={{ color: '#6b7280', fontSize: '14px' }}>/mo</span>
+              {billingPeriod === 'yearly' && (
+                <span
+                  style={{
+                    color: '#6b7280',
+                    fontSize: '12px',
+                    marginLeft: '4px'
+                  }}
+                >
+                  ($500/yr)
+                </span>
+              )}
+            </div>
+            <div
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '6px',
+                marginBottom: billingPeriod === 'yearly' ? '6px' : '16px',
+                padding: '8px',
+                background: '#1a1a1a',
+                borderRadius: '6px'
+              }}
+            >
+              <img
+                src="/ui_assets/token-image.png"
+                alt="Token"
+                style={{ width: '18px', height: '18px' }}
+              />
+              <span
+                style={{
+                  fontWeight: '600',
+                  color: '#fff',
+                  fontSize: '15px'
+                }}
+              >
+                {billingPeriod === 'monthly' ? '500' : '5,000'}
+              </span>
+              <span style={{ color: '#9ca3af', fontSize: '12px' }}>
+                {billingPeriod === 'monthly' ? 'tokens/mo' : 'tokens upfront'}
+              </span>
+            </div>
+            {billingPeriod === 'yearly' && (
+              <div
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                  marginBottom: '16px',
+                  padding: '6px 8px',
+                  background: '#1a1a1a',
+                  borderRadius: '6px'
+                }}
+              >
+                <img
+                  src="/ui_assets/token-image.png"
+                  alt="Token"
+                  style={{ width: '14px', height: '14px' }}
+                />
+                <span
+                  style={{
+                    fontWeight: '600',
+                    color: '#0eaf00',
+                    fontSize: '13px'
+                  }}
+                >
+                  +500
+                </span>
+                <span style={{ color: '#9ca3af', fontSize: '11px' }}>
+                  tokens/mo top-up
+                </span>
+              </div>
+            )}
+            <ul
+              style={{
+                listStyle: 'none',
+                padding: 0,
+                margin: 0,
+                fontSize: '13px',
+                color: '#000'
+              }}
+            >
+              <li
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '8px',
+                  marginBottom: '6px'
+                }}
+              >
+                <CheckMark32Icon /> Everything in Pro
+              </li>
+              <li
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '8px',
+                  marginBottom: '6px'
+                }}
+              >
+                <CheckMark32Icon /> 3.5x more AI generation tokens
+              </li>
+            </ul>
+          </div>
+        </div>
+
+        {/* Action button */}
+        <div style={{ textAlign: 'center', marginTop: '20px' }}>
+          {currentUser ? (
+            <div>
+              {currentUser.isPro ? (
+                <p style={{ color: '#000', fontWeight: '500' }}>
+                  Thank you for your subscription.
+                </p>
+              ) : (
+                <div>
+                  {isLoading ? (
+                    <div className={styles.loadingSpinner}>
+                      <Loader className={styles.spinner} />
+                    </div>
+                  ) : (
+                    <Button onClick={startCheckout} variant="filled">
+                      {`Activate ${selectedTier === 'max' ? 'Max' : 'Pro'} — ${
+                        billingPeriod === 'monthly'
+                          ? selectedTier === 'max'
+                            ? '$50/mo'
+                            : '$14/mo'
+                          : selectedTier === 'max'
+                            ? '$41.67/mo ($500/yr)'
+                            : '$11.67/mo ($140/yr)'
+                      }`}
+                    </Button>
+                  )}
+                </div>
+              )}
+            </div>
+          ) : (
+            <div className={styles.unAuth}>
+              <p>To upgrade you have to sign in:</p>
+              <Button onClick={() => setModal('signin')} variant="filled">
+                Sign in to 3DStreet Cloud
+              </Button>
+            </div>
+          )}
+        </div>
       </div>
     </Modal>
   );

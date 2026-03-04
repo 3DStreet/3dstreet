@@ -25,7 +25,10 @@ const PurchaseModal = () => {
   const [modalState, setModalState] = useState('pricing');
   // States: 'pricing' | 'checkout' | 'loading' | 'success' | 'error' | 'has-subscription'
 
-  const [selectedPlan, setSelectedPlan] = useState(null); // 'monthly' | 'annual'
+  const [selectedTier, setSelectedTier] = useState('pro'); // 'pro' | 'max'
+  const [billingPeriod, setBillingPeriod] = useState('monthly'); // 'monthly' | 'annual'
+  const selectedPlan =
+    selectedTier && billingPeriod ? `${selectedTier}-${billingPeriod}` : null;
   const [sessionStatus, setSessionStatus] = useState(null);
   const [subscriptionInfo, setSubscriptionInfo] = useState(null);
   const initialTokenCount = useRef(null);
@@ -42,7 +45,8 @@ const PurchaseModal = () => {
     }
     setModal(null);
     setModalState('pricing');
-    setSelectedPlan(null);
+    setSelectedTier('pro');
+    setBillingPeriod('monthly');
     setSessionStatus(null);
     initialTokenCount.current = null;
   }, [setModal]);
@@ -180,19 +184,18 @@ const PurchaseModal = () => {
     };
   }, [isPurchaseModalOpen]);
 
-  const handlePlanSelect = (plan) => {
-    setSelectedPlan(plan);
+  const handlePlanSelect = (tier) => {
+    setSelectedTier(tier);
     setModalState('checkout');
     // Funnel event: checkout_started (for conversion funnel analysis)
     posthog.capture('checkout_started', {
-      plan: plan,
+      plan: `${tier}-${billingPeriod}`,
       source: 'generator'
     });
   };
 
   const handleBackToPricing = () => {
     setModalState('pricing');
-    setSelectedPlan(null);
   };
 
   // Embedded Checkout options with onComplete callback
@@ -207,15 +210,19 @@ const PurchaseModal = () => {
             'createStripeSession'
           );
 
+          const priceIdMap = {
+            'pro-monthly': process.env.STRIPE_MONTHLY_PRICE_ID,
+            'pro-annual': process.env.STRIPE_YEARLY_PRICE_ID,
+            'max-monthly': process.env.STRIPE_MAX_MONTHLY_PRICE_ID,
+            'max-annual': process.env.STRIPE_MAX_YEARLY_PRICE_ID
+          };
+
           const { data } = await createStripeSession({
             ui_mode: 'embedded',
             redirect_on_completion: 'never', // Stay in embedded mode, use onComplete callback
             line_items: [
               {
-                price:
-                  selectedPlan === 'monthly'
-                    ? process.env.STRIPE_MONTHLY_PRICE_ID
-                    : process.env.STRIPE_YEARLY_PRICE_ID,
+                price: priceIdMap[selectedPlan],
                 quantity: 1
               }
             ],
@@ -257,7 +264,9 @@ const PurchaseModal = () => {
       case 'loading':
         return 'Processing...';
       case 'success':
-        return 'Welcome to Pro!';
+        return selectedPlan?.startsWith('max')
+          ? 'Welcome to Max!'
+          : 'Welcome to Pro!';
       case 'error':
         return 'Payment Issue';
       case 'has-subscription':
@@ -325,58 +334,77 @@ const PurchaseModal = () => {
               Choose a plan to continue generating AI images:
             </p>
 
-            <div className={styles.pricingContainer}>
-              {/* Monthly Plan */}
-              <div className={styles.pricingCard}>
-                <div className={styles.cardHeader}>
-                  <h3 className={styles.planName}>Pro Monthly</h3>
-                </div>
-                <div className={styles.cardBody}>
-                  <div className={styles.tokenCount}>
-                    <img
-                      src="/ui_assets/token-image.png"
-                      alt="Token"
-                      className={styles.tokenIcon}
-                    />
-                    <span className={styles.tokenAmount}>100</span>
-                    <span className={styles.tokenLabel}>Tokens Now</span>
-                  </div>
-                  <div className={styles.tokenRefill}>
-                    <img
-                      src="/ui_assets/token-image.png"
-                      alt="Token"
-                      className={styles.tokenIconSmall}
-                    />
-                    <span className={styles.refillAmount}>+100</span>
-                    <span className={styles.refillLabel}>
-                      top-up each month
-                    </span>
-                  </div>
-                  <div className={styles.pricing}>
-                    <span className={styles.price}>$10</span>
-                    <span className={styles.period}>/month</span>
-                  </div>
-                  <p>Use AI Gen Tokens for:</p>
-                  <ul className={styles.featureList}>
-                    <li>AI Render from Editor Scene Screenshot</li>
-                    <li>Text-to-Image and Image-to-Image</li>
-                    <li>Inpainting & Outpainting</li>
-                    <li>All 3DStreet Editor Pro features</li>
-                  </ul>
-                  <button
-                    className={styles.purchaseButton}
-                    onClick={() => handlePlanSelect('monthly')}
+            {/* Monthly / Annual toggle */}
+            <div
+              style={{
+                display: 'flex',
+                justifyContent: 'center',
+                marginBottom: '20px'
+              }}
+            >
+              <div
+                style={{
+                  display: 'inline-flex',
+                  background: '#2d2d2d',
+                  borderRadius: '8px',
+                  padding: '3px'
+                }}
+              >
+                <button
+                  style={{
+                    padding: '6px 20px',
+                    borderRadius: '6px',
+                    border: 'none',
+                    cursor: 'pointer',
+                    fontWeight: '500',
+                    fontSize: '13px',
+                    background:
+                      billingPeriod === 'monthly' ? '#4b4b4b' : 'transparent',
+                    color: billingPeriod === 'monthly' ? '#fff' : '#9ca3af'
+                  }}
+                  onClick={() => setBillingPeriod('monthly')}
+                >
+                  Monthly
+                </button>
+                <button
+                  style={{
+                    padding: '6px 20px',
+                    borderRadius: '6px',
+                    border: 'none',
+                    cursor: 'pointer',
+                    fontWeight: '500',
+                    fontSize: '13px',
+                    background:
+                      billingPeriod === 'annual' ? '#4b4b4b' : 'transparent',
+                    color: billingPeriod === 'annual' ? '#fff' : '#9ca3af'
+                  }}
+                  onClick={() => setBillingPeriod('annual')}
+                >
+                  Yearly
+                  <span
+                    style={{
+                      marginLeft: '6px',
+                      fontSize: '11px',
+                      color: '#22c55e',
+                      fontWeight: '600'
+                    }}
                   >
-                    Subscribe to Pro Monthly
-                  </button>
-                </div>
+                    Save 17%
+                  </span>
+                </button>
               </div>
+            </div>
 
-              {/* Annual Plan */}
-              <div className={`${styles.pricingCard} ${styles.featured}`}>
-                <div className={styles.badge}>Best Value</div>
+            <div className={styles.pricingContainer}>
+              {/* Pro */}
+              <div
+                className={`${styles.pricingCard} ${selectedTier === 'pro' ? styles.featured : ''}`}
+              >
+                {selectedTier === 'pro' && (
+                  <div className={styles.badge}>Selected</div>
+                )}
                 <div className={styles.cardHeader}>
-                  <h3 className={styles.planName}>Pro Annual</h3>
+                  <h3 className={styles.planName}>Pro</h3>
                 </div>
                 <div className={styles.cardBody}>
                   <div className={styles.tokenCount}>
@@ -385,25 +413,42 @@ const PurchaseModal = () => {
                       alt="Token"
                       className={styles.tokenIcon}
                     />
-                    <span className={styles.tokenAmount}>840</span>
-                    <span className={styles.tokenLabel}>Tokens Now</span>
-                  </div>
-                  <div className={styles.tokenRefill}>
-                    <img
-                      src="/ui_assets/token-image.png"
-                      alt="Token"
-                      className={styles.tokenIconSmall}
-                    />
-                    <span className={styles.refillAmount}>+100</span>
-                    <span className={styles.refillLabel}>
-                      top-up each month
+                    <span className={styles.tokenAmount}>
+                      {billingPeriod === 'monthly' ? '140' : '1,400'}
+                    </span>
+                    <span className={styles.tokenLabel}>
+                      {billingPeriod === 'monthly'
+                        ? 'Tokens/mo'
+                        : 'Tokens upfront'}
                     </span>
                   </div>
+                  {billingPeriod === 'annual' && (
+                    <div className={styles.tokenRefill}>
+                      <img
+                        src="/ui_assets/token-image.png"
+                        alt="Token"
+                        className={styles.tokenIconSmall}
+                      />
+                      <span className={styles.refillAmount}>+140</span>
+                      <span className={styles.refillLabel}>
+                        tokens/mo top-up
+                      </span>
+                    </div>
+                  )}
                   <div className={styles.pricing}>
-                    <span className={styles.price}>$84</span>
-                    <span className={styles.period}>/year</span>
+                    <span className={styles.price}>
+                      {billingPeriod === 'monthly' ? '$14' : '$11.67'}
+                    </span>
+                    <span className={styles.period}>/month</span>
+                    {billingPeriod === 'annual' && (
+                      <span
+                        className={styles.period}
+                        style={{ fontSize: '0.75rem', marginLeft: '4px' }}
+                      >
+                        ($140/yr)
+                      </span>
+                    )}
                   </div>
-                  <div className={styles.savings}>Save 30% vs monthly</div>
                   <ul className={styles.featureList}>
                     <li>AI Render from Editor Screenshot</li>
                     <li>Text-to-Image and Image-to-Image</li>
@@ -411,10 +456,76 @@ const PurchaseModal = () => {
                     <li>All 3DStreet Editor Pro features</li>
                   </ul>
                   <button
-                    className={`${styles.purchaseButton} ${styles.primary}`}
-                    onClick={() => handlePlanSelect('annual')}
+                    className={`${styles.purchaseButton} ${selectedTier === 'pro' ? styles.primary : ''}`}
+                    onClick={() => handlePlanSelect('pro')}
                   >
-                    Subscribe to Pro Annual
+                    Subscribe to Pro
+                  </button>
+                </div>
+              </div>
+
+              {/* Max */}
+              <div
+                className={`${styles.pricingCard} ${selectedTier === 'max' ? styles.featured : ''}`}
+              >
+                {selectedTier === 'max' && (
+                  <div className={styles.badge}>Selected</div>
+                )}
+                <div className={styles.cardHeader}>
+                  <h3 className={styles.planName}>Max</h3>
+                </div>
+                <div className={styles.cardBody}>
+                  <div className={styles.tokenCount}>
+                    <img
+                      src="/ui_assets/token-image.png"
+                      alt="Token"
+                      className={styles.tokenIcon}
+                    />
+                    <span className={styles.tokenAmount}>
+                      {billingPeriod === 'monthly' ? '500' : '5,000'}
+                    </span>
+                    <span className={styles.tokenLabel}>
+                      {billingPeriod === 'monthly'
+                        ? 'Tokens/mo'
+                        : 'Tokens upfront'}
+                    </span>
+                  </div>
+                  {billingPeriod === 'annual' && (
+                    <div className={styles.tokenRefill}>
+                      <img
+                        src="/ui_assets/token-image.png"
+                        alt="Token"
+                        className={styles.tokenIconSmall}
+                      />
+                      <span className={styles.refillAmount}>+500</span>
+                      <span className={styles.refillLabel}>
+                        tokens/mo top-up
+                      </span>
+                    </div>
+                  )}
+                  <div className={styles.pricing}>
+                    <span className={styles.price}>
+                      {billingPeriod === 'monthly' ? '$50' : '$41.67'}
+                    </span>
+                    <span className={styles.period}>/month</span>
+                    {billingPeriod === 'annual' && (
+                      <span
+                        className={styles.period}
+                        style={{ fontSize: '0.75rem', marginLeft: '4px' }}
+                      >
+                        ($500/yr)
+                      </span>
+                    )}
+                  </div>
+                  <ul className={styles.featureList}>
+                    <li>Everything in Pro</li>
+                    <li>3.5x more AI generation tokens</li>
+                  </ul>
+                  <button
+                    className={`${styles.purchaseButton} ${selectedTier === 'max' ? styles.primary : ''}`}
+                    onClick={() => handlePlanSelect('max')}
+                  >
+                    Subscribe to Max
                   </button>
                 </div>
               </div>
@@ -466,7 +577,10 @@ const PurchaseModal = () => {
               </svg>
             </div>
             <h3>Payment Successful!</h3>
-            <p>Your Pro subscription is now active.</p>
+            <p>
+              Your {selectedPlan?.startsWith('max') ? 'Max' : 'Pro'}{' '}
+              subscription is now active.
+            </p>
             {sessionStatus?.customer_email && (
               <p className={styles.emailConfirmation}>
                 Confirmation email sent to {sessionStatus.customer_email}

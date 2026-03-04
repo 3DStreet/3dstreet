@@ -16,12 +16,7 @@ import { httpsCallable } from 'firebase/functions';
 import PurchaseModal from '../../../src/generator/components/PurchaseModal';
 import useImageGenStore from '../../../src/generator/store';
 import { AuthContext } from '@shared/contexts';
-import {
-  createMockUser,
-  createMockTokenProfile,
-  createMockCallable,
-  createMockCallableError
-} from '../test-utils';
+import { createMockUser, createMockTokenProfile } from '../test-utils';
 
 // Helper to render PurchaseModal with all required providers
 const renderPurchaseModal = ({
@@ -84,53 +79,78 @@ describe('PurchaseModal', () => {
   });
 
   describe('Pricing State (Default)', () => {
-    it('should display both monthly and annual plans', () => {
+    it('should display both Pro and Max tiers', () => {
       renderPurchaseModal();
 
-      expect(screen.getByText('Pro Monthly')).toBeInTheDocument();
-      expect(screen.getByText('Pro Annual')).toBeInTheDocument();
+      // Plan names (not "Pro Monthly" / "Pro Annual" — just "Pro" and "Max")
+      const proHeadings = screen.getAllByText('Pro');
+      expect(proHeadings.length).toBeGreaterThanOrEqual(1);
+      const maxHeadings = screen.getAllByText('Max');
+      expect(maxHeadings.length).toBeGreaterThanOrEqual(1);
     });
 
-    it('should show monthly plan details', () => {
+    it('should show monthly/annual billing toggle', () => {
       renderPurchaseModal();
 
-      expect(screen.getByText('$10')).toBeInTheDocument();
-      expect(screen.getByText('/month')).toBeInTheDocument();
-      expect(screen.getByText('Subscribe to Pro Monthly')).toBeInTheDocument();
+      expect(screen.getByText('Monthly')).toBeInTheDocument();
+      expect(screen.getByText(/Yearly/)).toBeInTheDocument();
     });
 
-    it('should show annual plan details with savings badge', () => {
+    it('should show Pro plan details (monthly by default)', () => {
       renderPurchaseModal();
 
-      expect(screen.getByText('$84')).toBeInTheDocument();
-      expect(screen.getByText('/year')).toBeInTheDocument();
-      expect(screen.getByText('Best Value')).toBeInTheDocument();
-      expect(screen.getByText('Save 30% vs monthly')).toBeInTheDocument();
-      expect(screen.getByText('Subscribe to Pro Annual')).toBeInTheDocument();
+      expect(screen.getByText('$14')).toBeInTheDocument();
+      expect(screen.getAllByText('/month').length).toBeGreaterThanOrEqual(1);
+      expect(screen.getByText('Subscribe to Pro')).toBeInTheDocument();
+    });
+
+    it('should show Max plan details (monthly by default)', () => {
+      renderPurchaseModal();
+
+      expect(screen.getByText('$50')).toBeInTheDocument();
+      expect(screen.getByText('Subscribe to Max')).toBeInTheDocument();
     });
 
     it('should show token amounts for both plans', () => {
       renderPurchaseModal();
 
-      // Monthly: 100 tokens now
-      // Annual: 840 tokens now
-      expect(screen.getByText('100')).toBeInTheDocument();
-      expect(screen.getByText('840')).toBeInTheDocument();
+      // Pro: 140 tokens/mo, Max: 500 tokens/mo (monthly view by default)
+      expect(screen.getByText('140')).toBeInTheDocument();
+      expect(screen.getByText('500')).toBeInTheDocument();
+    });
+
+    it('should switch to annual pricing when toggle is clicked', async () => {
+      const user = userEvent.setup();
+      renderPurchaseModal();
+
+      // Click the Yearly toggle
+      await user.click(screen.getByText(/Yearly/));
+
+      // Should now show monthly equivalent prices
+      expect(screen.getByText('$11.67')).toBeInTheDocument();
+      expect(screen.getByText('$41.67')).toBeInTheDocument();
+      // Should show annual totals
+      expect(screen.getByText('($140/yr)')).toBeInTheDocument();
+      expect(screen.getByText('($500/yr)')).toBeInTheDocument();
+      // Should show annual upfront token amounts
+      expect(screen.getByText('1,400')).toBeInTheDocument();
+      expect(screen.getByText('5,000')).toBeInTheDocument();
+      // Should show monthly refill amounts
+      expect(screen.getByText('+140')).toBeInTheDocument();
+      expect(screen.getByText('+500')).toBeInTheDocument();
     });
 
     it('should show feature lists', () => {
       renderPurchaseModal();
 
-      // Features appear in both cards
-      const renderFeatures = screen.getAllByText(
-        /AI Render from Editor/i
-      );
+      // Features appear in Pro card
+      const renderFeatures = screen.getAllByText(/AI Render from Editor/i);
       expect(renderFeatures.length).toBeGreaterThanOrEqual(1);
     });
   });
 
   describe('Plan Selection', () => {
-    it('should transition to checkout when monthly plan is selected', async () => {
+    it('should transition to checkout when Pro plan is selected', async () => {
       const user = userEvent.setup();
       renderPurchaseModal();
 
@@ -147,14 +167,14 @@ describe('PurchaseModal', () => {
         return () => Promise.resolve({ data: {} });
       });
 
-      await user.click(screen.getByText('Subscribe to Pro Monthly'));
+      await user.click(screen.getByText('Subscribe to Pro'));
 
       await waitFor(() => {
         expect(screen.getByText('Complete Your Purchase')).toBeInTheDocument();
       });
     });
 
-    it('should transition to checkout when annual plan is selected', async () => {
+    it('should transition to checkout when Max plan is selected', async () => {
       const user = userEvent.setup();
       renderPurchaseModal();
 
@@ -170,7 +190,7 @@ describe('PurchaseModal', () => {
         return () => Promise.resolve({ data: {} });
       });
 
-      await user.click(screen.getByText('Subscribe to Pro Annual'));
+      await user.click(screen.getByText('Subscribe to Max'));
 
       await waitFor(() => {
         expect(screen.getByText('Complete Your Purchase')).toBeInTheDocument();
@@ -191,7 +211,7 @@ describe('PurchaseModal', () => {
         return () => Promise.resolve({ data: { clientSecret: 'mock_secret' } });
       });
 
-      await user.click(screen.getByText('Subscribe to Pro Monthly'));
+      await user.click(screen.getByText('Subscribe to Pro'));
 
       await waitFor(() => {
         expect(screen.getByText('← Change Plan')).toBeInTheDocument();
@@ -210,7 +230,7 @@ describe('PurchaseModal', () => {
         return () => Promise.resolve({ data: { clientSecret: 'mock_secret' } });
       });
 
-      await user.click(screen.getByText('Subscribe to Pro Monthly'));
+      await user.click(screen.getByText('Subscribe to Pro'));
 
       await waitFor(() => {
         expect(screen.getByText('← Change Plan')).toBeInTheDocument();
@@ -266,16 +286,10 @@ describe('PurchaseModal', () => {
   });
 
   describe('Success State', () => {
-    it('should display success content', async () => {
-      const user = userEvent.setup();
+    it('should display success content', () => {
       renderPurchaseModal();
 
-      // Manually set the internal state by simulating the flow
-      // For direct state testing, we need to access component internals
-      // Instead, we'll test the visible elements when success state is shown
-
-      // We can test by checking that the success title mapping exists
-      // by verifying the component renders initially
+      // Verify the component renders initially
       expect(
         screen.getByText('Purchase AI Generation Tokens')
       ).toBeInTheDocument();
@@ -330,31 +344,18 @@ describe('PurchaseModal', () => {
   });
 
   describe('Error Handling', () => {
-    // Note: Full error handling tests require integration tests with Stripe
-    // because errors occur in the fetchClientSecret callback which is
-    // consumed by Stripe's EmbeddedCheckoutProvider
-
     it('should display error state UI correctly', () => {
-      // This tests the error UI rendering - the actual error triggering
-      // would happen via Stripe's callback which we can't easily simulate
-      // In a full React migration, we could expose the error state more directly
-
       renderPurchaseModal();
 
-      // Verify the component renders and has the expected structure
       expect(
         screen.getByText('Purchase AI Generation Tokens')
       ).toBeInTheDocument();
-
-      // The error state UI can be verified via Storybook or integration tests
     });
 
     it('should have try again button in error state', () => {
-      // The error state shows a "Try Again" button
-      // This is tested via Storybook story or manual testing
-      // Unit tests verify the component structure is correct
       renderPurchaseModal();
-      expect(screen.getByText('Pro Monthly')).toBeInTheDocument();
+      // Verify Pro tier is rendered
+      expect(screen.getByText('Subscribe to Pro')).toBeInTheDocument();
     });
   });
 

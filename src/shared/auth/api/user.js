@@ -8,10 +8,13 @@ const isUserPro = async (user) => {
       const checkProStatus = httpsCallable(functions, 'checkUserProStatus');
       const result = await checkProStatus();
 
-      const { isPro, isProSubscription, isProDomain, teamDomain } = result.data;
+      const { isPro, isMax, plan, isProSubscription, isProDomain, teamDomain } =
+        result.data;
 
       if (isPro) {
-        if (isProSubscription) {
+        if (isMax) {
+          console.log('MAX PLAN USER (subscription)');
+        } else if (isProSubscription) {
           console.log('PRO PLAN USER (subscription)');
         }
         if (isProDomain) {
@@ -19,6 +22,8 @@ const isUserPro = async (user) => {
         }
         return {
           isPro: true,
+          isMax: !!isMax,
+          plan: plan || null,
           isProSubscription,
           isProDomain,
           teamDomain
@@ -27,6 +32,8 @@ const isUserPro = async (user) => {
         console.log('FREE PLAN USER');
         return {
           isPro: false,
+          isMax: false,
+          plan: null,
           isProSubscription: false,
           isProDomain: false,
           teamDomain: null
@@ -39,10 +46,13 @@ const isUserPro = async (user) => {
       // Uses cached token (no forced refresh) to avoid additional latency.
       try {
         const idTokenResult = await user.getIdTokenResult();
-        if (idTokenResult.claims.plan === 'PRO') {
-          console.log('PRO PLAN USER (fallback - cached claims)');
+        const claimPlan = idTokenResult.claims.plan;
+        if (claimPlan === 'PRO' || claimPlan === 'MAX') {
+          console.log(`${claimPlan} PLAN USER (fallback - cached claims)`);
           return {
             isPro: true,
+            isMax: claimPlan === 'MAX',
+            plan: claimPlan,
             isProSubscription: true,
             isProDomain: false,
             teamDomain: null
@@ -54,6 +64,8 @@ const isUserPro = async (user) => {
 
       return {
         isPro: false,
+        isMax: false,
+        plan: null,
         isProSubscription: false,
         isProDomain: false,
         teamDomain: null
@@ -62,6 +74,8 @@ const isUserPro = async (user) => {
   } else {
     return {
       isPro: false,
+      isMax: false,
+      plan: null,
       isProSubscription: false,
       isProDomain: false,
       teamDomain: null

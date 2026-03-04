@@ -2,7 +2,10 @@ const functions = require('firebase-functions');
 const admin = require('firebase-admin');
 const { getAuth } = require('firebase-admin/auth');
 
-const PRO_MONTHLY_ALLOWANCE = 100;
+const getMonthlyAllowance = (plan) => {
+  if (plan === 'MAX') return 500;
+  return 140; // PRO and domain-based
+};
 
 // Centralized domain validation function using stored secrets
 const validateUserDomain = async (userEmail) => {
@@ -72,23 +75,25 @@ const checkAndRefillImageTokens = functions
     const db = admin.firestore();
     
     try {
-      // Check if user is Pro
+      // Check if user is Pro or Max
       const userRecord = await getAuth().getUser(userId);
-      const isPro = userRecord.customClaims && userRecord.customClaims.plan === 'PRO';
-      
+      const plan = userRecord.customClaims?.plan || null;
+      const isPaidPlan = plan === 'PRO' || plan === 'MAX';
+
       // Use centralized domain validation
       const { isProDomain } = await validateUserDomain(userRecord.email);
-      
-      const isProUser = isPro || isProDomain;
-      
+
+      const isProUser = isPaidPlan || isProDomain;
+      const monthlyAllowance = getMonthlyAllowance(plan);
+
       // Get current token profile
       const tokenProfileRef = db.collection('tokenProfile').doc(userId);
       const tokenDoc = await tokenProfileRef.get();
-      
+
       if (!tokenDoc.exists) {
         // Create initial token profile
         // Free users get 5 tokens to allow at least one 4x render attempt
-        const initialTokens = isProUser ? PRO_MONTHLY_ALLOWANCE : 5;
+        const initialTokens = isProUser ? monthlyAllowance : 5;
         const newProfile = {
           userId: userId,
           geoToken: 3,
@@ -115,19 +120,19 @@ const checkAndRefillImageTokens = functions
       if (tokenData.geoToken !== undefined && tokenData.genToken === undefined) {
         // Give existing users their initial genToken allocation
         // Free users get 5 tokens to allow at least one 4x render attempt
-        const initialGenTokens = isProUser ? PRO_MONTHLY_ALLOWANCE : 5;
-        
+        const initialGenTokens = isProUser ? monthlyAllowance : 5;
+
         await tokenProfileRef.update({
           genToken: initialGenTokens,
           lastMonthlyRefill: isProUser ? `${new Date().getFullYear()}-${new Date().getMonth()}` : null,
           updatedAt: admin.firestore.FieldValue.serverTimestamp()
         });
-        
+
         tokenData.genToken = initialGenTokens;
         console.log(`Migrated user ${userId}: Added ${initialGenTokens} genTokens (Pro: ${isProUser})`);
       }
-      
-      // If not a Pro user, just return current tokens
+
+      // If not a paid/domain user, just return current tokens
       if (!isProUser) {
         return {
           success: true,
@@ -136,16 +141,16 @@ const checkAndRefillImageTokens = functions
           message: 'Not a Pro user'
         };
       }
-      
-      // Check if Pro user needs monthly refill
+
+      // Check if paid user needs monthly refill
       const now = new Date();
       const currentMonthKey = `${now.getFullYear()}-${now.getMonth()}`;
       const needsRefill = !tokenData.lastMonthlyRefill || tokenData.lastMonthlyRefill !== currentMonthKey;
-      
+
       if (needsRefill) {
         // Top up to monthly allowance (don't reset if they have more from purchases)
         const tokensBefore = tokenData.genToken || 0;
-        const newImageTokens = Math.max(tokensBefore, PRO_MONTHLY_ALLOWANCE);
+        const newImageTokens = Math.max(tokensBefore, monthlyAllowance);
 
         await tokenProfileRef.update({
           genToken: newImageTokens,
@@ -197,25 +202,27 @@ const checkAndRefillImageTokensInternal = async (userId) => {
   const db = admin.firestore();
   
   try {
-    // Check if user is Pro
+    // Check if user is Pro or Max
     const userRecord = await getAuth().getUser(userId);
-    const isPro = userRecord.customClaims && userRecord.customClaims.plan === 'PRO';
-    
+    const plan = userRecord.customClaims?.plan || null;
+    const isPaidPlan = plan === 'PRO' || plan === 'MAX';
+
     // Use centralized domain validation
     const { isProDomain } = await validateUserDomain(userRecord.email);
-    
-    const isProUser = isPro || isProDomain;
-    
+
+    const isProUser = isPaidPlan || isProDomain;
+    const monthlyAllowance = getMonthlyAllowance(plan);
+
     // Get current token profile
     const tokenProfileRef = db.collection('tokenProfile').doc(userId);
     const tokenDoc = await tokenProfileRef.get();
-    
+
     if (!tokenDoc.exists) {
       // Create initial token profile based on user type
       const newProfile = {
         userId: userId,
         geoToken: 3,
-        genToken: isProUser ? PRO_MONTHLY_ALLOWANCE : 3, // Pro users get 100, free users get 3
+        genToken: isProUser ? monthlyAllowance : 3, // Max users get 500, Pro users get 100, free users get 3
         lastMonthlyRefill: isProUser ? `${new Date().getFullYear()}-${new Date().getMonth()}` : null,
         createdAt: admin.firestore.FieldValue.serverTimestamp(),
         updatedAt: admin.firestore.FieldValue.serverTimestamp()
@@ -230,31 +237,31 @@ const checkAndRefillImageTokensInternal = async (userId) => {
     // Migration: Add genToken for existing users who only have geoToken
     if (tokenData.geoToken !== undefined && tokenData.genToken === undefined) {
       // Give existing users their initial genToken allocation
-      const initialGenTokens = isProUser ? PRO_MONTHLY_ALLOWANCE : 3;
-      
+      const initialGenTokens = isProUser ? monthlyAllowance : 3;
+
       await tokenProfileRef.update({
         genToken: initialGenTokens,
         lastMonthlyRefill: isProUser ? `${new Date().getFullYear()}-${new Date().getMonth()}` : null,
         updatedAt: admin.firestore.FieldValue.serverTimestamp()
       });
-      
+
       tokenData.genToken = initialGenTokens;
       console.log(`Migrated user ${userId}: Added ${initialGenTokens} genTokens (Pro: ${isProUser})`);
     }
-    
-    // Only refill for pro users
+
+    // Only refill for paid/domain users
     if (!isProUser) {
       return tokenData; // Return existing data for free users
     }
-    
+
     // Check if needs monthly refill
     const now = new Date();
     const currentMonthKey = `${now.getFullYear()}-${now.getMonth()}`;
     const needsRefill = !tokenData.lastMonthlyRefill || tokenData.lastMonthlyRefill !== currentMonthKey;
-    
+
     if (needsRefill) {
       const internalTokensBefore = tokenData.genToken || 0;
-      const newImageTokens = Math.max(internalTokensBefore, PRO_MONTHLY_ALLOWANCE);
+      const newImageTokens = Math.max(internalTokensBefore, monthlyAllowance);
 
       await tokenProfileRef.update({
         genToken: newImageTokens,
@@ -304,18 +311,21 @@ const checkUserProStatus = functions
     const userId = context.auth.uid;
     
     try {
-      // Check if user is Pro via subscription
+      // Check if user is Pro or Max via subscription
       const userRecord = await getAuth().getUser(userId);
-      const isPro = userRecord.customClaims && userRecord.customClaims.plan === 'PRO';
-      
+      const plan = userRecord.customClaims?.plan || null;
+      const isPaidPlan = plan === 'PRO' || plan === 'MAX';
+
       // Check domain validation
       const { isProDomain, teamDomain } = await validateUserDomain(userRecord.email);
-      
-      const isProUser = isPro || isProDomain;
-      
+
+      const isProUser = isPaidPlan || isProDomain;
+
       return {
         isPro: isProUser,
-        isProSubscription: isPro,
+        isMax: plan === 'MAX',
+        plan: plan || null,
+        isProSubscription: isPaidPlan,
         isProDomain: isProDomain,
         teamDomain: teamDomain || null,
         email: userRecord.email
@@ -331,9 +341,10 @@ const checkUserProStatus = functions
 const isUserProInternal = async (userId) => {
   try {
     const userRecord = await getAuth().getUser(userId);
-    const isPro = userRecord.customClaims && userRecord.customClaims.plan === 'PRO';
+    const plan = userRecord.customClaims?.plan || null;
+    const isPaidPlan = plan === 'PRO' || plan === 'MAX';
     const { isProDomain } = await validateUserDomain(userRecord.email);
-    return isPro || isProDomain;
+    return isPaidPlan || isProDomain;
   } catch (error) {
     console.error('Error checking user pro status:', error);
     return false;
