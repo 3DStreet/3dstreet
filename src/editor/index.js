@@ -373,6 +373,12 @@ Inspector.prototype = {
 
     this.sceneEl.addEventListener('newScene', () => {
       this.history.clear();
+      if (useStore.getState().isLoadingScene) {
+        useStore.getState().updateLoadingProgress(95, 'Loading scene...');
+        setTimeout(() => {
+          useStore.getState().finishLoadingScene();
+        }, 500);
+      }
     });
 
     document.addEventListener('child-detached', (event) => {

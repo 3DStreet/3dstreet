@@ -74,6 +74,7 @@ const ScenesModal = ({ initialTab = 'owner', delay = undefined }) => {
       }
 
       // Pass data and memory (which now contains snapshots) to createElementsForScenesFromJSON
+      useStore.getState().startLoadingScene('Loading scene from cloud...');
       createElementsForScenesFromJSON(sceneData.data, sceneData.memory);
       window.location.hash = `#/scenes/${scene.id}`;
 
