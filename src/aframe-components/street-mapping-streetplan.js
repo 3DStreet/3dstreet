@@ -1056,8 +1056,20 @@ const STREETPLAN_OBJECT_TO_GENERATED_CLONES_MAPPING = {
     count: 10,
     facing: 0
   },
-  'two bikes back': '',
-  'two bikes come and go': '',
+  'two bikes back': {
+    mode: 'random',
+    modelsArray: 'cyclist1,cyclist2,cyclist3,cyclist4,cyclist5',
+    spacing: 15,
+    count: 20,
+    facing: 180
+  },
+  'two bikes come and go': {
+    mode: 'random',
+    modelsArray: 'cyclist1,cyclist2,cyclist3,cyclist4,cyclist5',
+    spacing: 15,
+    count: 20,
+    facing: 0
+  },
   'widebikepath twosides': '',
   'woman bike': {
     mode: 'fixed',
@@ -1609,8 +1621,20 @@ const STREETPLAN_OBJECT_TO_GENERATED_CLONES_MAPPING = {
     count: 10,
     facing: 0
   },
-  'heavy rail': '',
-  'heavy rail rev': '',
+  'heavy rail': {
+    mode: 'fixed',
+    modelsArray: 'tram',
+    spacing: 100,
+    count: 10,
+    facing: 0
+  },
+  'heavy rail rev': {
+    mode: 'fixed',
+    modelsArray: 'tram',
+    spacing: 100,
+    count: 10,
+    facing: 180
+  },
   'streetcar blue': {
     mode: 'fixed',
     modelsArray: 'trolley',
@@ -1679,7 +1703,7 @@ const STREETPLAN_OBJECT_TO_GENERATED_CLONES_MAPPING = {
     modelsArray: 'tram',
     spacing: 100,
     count: 10,
-    facing: 0
+    facing: 180
   },
   'bur oak': {
     mode: 'fixed',
@@ -2012,8 +2036,20 @@ const STREETPLAN_OBJECT_TO_GENERATED_CLONES_MAPPING = {
     count: 4,
     facing: 0
   },
-  'white truck': '',
-  'white truck rev': '',
+  'white truck': {
+    mode: 'random',
+    modelsArray: 'box-truck-rig, sedan-rig, suv-rig, self-driving-waymo-car',
+    spacing: 15,
+    count: 4,
+    facing: 0
+  },
+  'white truck rev': {
+    mode: 'random',
+    modelsArray: 'box-truck-rig, sedan-rig, suv-rig, self-driving-waymo-car',
+    spacing: 15,
+    count: 4,
+    facing: 180
+  },
   'yellow sedan': {
     mode: 'random',
     modelsArray: 'sedan-rig, suv-rig, self-driving-waymo-car',
