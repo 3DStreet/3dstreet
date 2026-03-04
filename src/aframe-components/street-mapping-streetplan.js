@@ -587,7 +587,12 @@ const STREETPLAN_OBJECT_TO_GENERATED_CLONES_MAPPING = {
       'sp-prop-mixeduse-3L-22ft,sp-prop-mixeduse-3L-23ft-corner,sp-prop-mixeduse-2L-29ft,sp-prop-mixeduse-2L-30ft',
     spacing: 0
   },
-  'shop 4floors': '',
+  'shop 4floors': {
+    mode: 'fit',
+    modelsArray:
+      'sp-prop-mixeduse-3L-22ft,sp-prop-mixeduse-3L-23ft-corner,sp-prop-mixeduse-2L-29ft,sp-prop-mixeduse-2L-30ft',
+    spacing: 0
+  },
   'single family': {
     mode: 'fit',
     modelsArray:
@@ -827,35 +832,35 @@ const STREETPLAN_OBJECT_TO_GENERATED_CLONES_MAPPING = {
   'weeds median (8ft)': '',
   'away, left park, back in': {
     mode: 'random',
-    modelsArray: 'suv-rig, sedan-rig, self-driving-waymo-car',
+    modelsArray: 'suv-rig,sedan-rig,self-driving-waymo-car',
     spacing: 15,
     count: 15,
     facing: 45
   },
   'away, left park, head in': {
     mode: 'random',
-    modelsArray: 'suv-rig, sedan-rig, self-driving-waymo-car',
+    modelsArray: 'suv-rig,sedan-rig,self-driving-waymo-car',
     spacing: 15,
     count: 15,
     facing: 315
   },
   'away, right park, back in': {
     mode: 'random',
-    modelsArray: 'suv-rig, sedan-rig, self-driving-waymo-car',
+    modelsArray: 'suv-rig,sedan-rig,self-driving-waymo-car',
     spacing: 15,
     count: 15,
     facing: 315
   },
   'away, right park, head in': {
     mode: 'random',
-    modelsArray: 'suv-rig, sedan-rig, self-driving-waymo-car',
+    modelsArray: 'suv-rig,sedan-rig,self-driving-waymo-car',
     spacing: 15,
     count: 15,
     facing: 45
   },
   'bluecar parallelpark': {
     mode: 'random',
-    modelsArray: 'suv-rig, sedan-rig, sp-grand-suv',
+    modelsArray: 'suv-rig,sedan-rig,sp-grand-suv',
     spacing: 15,
     count: 15,
     facing: 0
@@ -875,15 +880,14 @@ const STREETPLAN_OBJECT_TO_GENERATED_CLONES_MAPPING = {
   },
   'parallel redvan': {
     mode: 'random',
-    modelsArray: 'sedan-rig, suv-rig, self-driving-waymo-car, sp-grand-suv',
+    modelsArray: 'sedan-rig,suv-rig,self-driving-waymo-car,sp-grand-suv',
     spacing: 15,
     count: 15,
     facing: 0
   },
   'parallel yellowcar': {
     mode: 'random',
-    modelsArray:
-      'suv-rig, sedan-rig, self-driving-waymo-car, sp-hatchback-yellow',
+    modelsArray: 'suv-rig,sedan-rig,self-driving-waymo-car,sp-hatchback-yellow',
     spacing: 15,
     count: 15,
     facing: 0
@@ -891,35 +895,35 @@ const STREETPLAN_OBJECT_TO_GENERATED_CLONES_MAPPING = {
   parklet: '',
   'pickup sideview 20ft': {
     mode: 'random',
-    modelsArray: 'trailer-truck-rig, box-truck-rig',
+    modelsArray: 'trailer-truck-rig,box-truck-rig',
     spacing: 20,
     count: 15,
     facing: 0
   },
   'purpendicular left side, blue': {
     mode: 'random',
-    modelsArray: 'suv-rig, sedan-rig, self-driving-waymo-car',
+    modelsArray: 'suv-rig,sedan-rig,self-driving-waymo-car',
     spacing: 15,
     count: 15,
     facing: 270
   },
   'purpendicular left side, red': {
     mode: 'random',
-    modelsArray: 'sedan-rig, suv-rig, self-driving-waymo-car',
+    modelsArray: 'sedan-rig,suv-rig,self-driving-waymo-car',
     spacing: 15,
     count: 15,
     facing: 270
   },
   'purpendicular right side, blue': {
     mode: 'random',
-    modelsArray: 'sedan-rig, suv-rig, self-driving-waymo-car',
+    modelsArray: 'sedan-rig,suv-rig,self-driving-waymo-car',
     spacing: 15,
     count: 15,
     facing: 90
   },
   'purpendicular right side, red': {
     mode: 'random',
-    modelsArray: 'suv-rig, sedan-rig, self-driving-waymo-car',
+    modelsArray: 'suv-rig,sedan-rig,self-driving-waymo-car',
     spacing: 15,
     count: 15,
     facing: 90
@@ -937,28 +941,28 @@ const STREETPLAN_OBJECT_TO_GENERATED_CLONES_MAPPING = {
   'smartcar perpendicular': '',
   'toward, left park, back in': {
     mode: 'random',
-    modelsArray: 'suv-rig, sedan-rig, self-driving-waymo-car',
+    modelsArray: 'suv-rig,sedan-rig,self-driving-waymo-car',
     spacing: 15,
     count: 15,
     facing: 135
   },
   'toward, left park, head in': {
     mode: 'random',
-    modelsArray: 'suv-rig, sedan-rig, self-driving-waymo-car',
+    modelsArray: 'suv-rig,sedan-rig,self-driving-waymo-car',
     spacing: 15,
     count: 15,
     facing: 225
   },
   'toward, right park, back in': {
     mode: 'random',
-    modelsArray: 'suv-rig, sedan-rig, self-driving-waymo-car',
+    modelsArray: 'suv-rig,sedan-rig,self-driving-waymo-car',
     spacing: 15,
     count: 15,
     facing: 225
   },
   'toward, right park, head in': {
     mode: 'random',
-    modelsArray: 'suv-rig, sedan-rig, self-driving-waymo-car',
+    modelsArray: 'suv-rig,sedan-rig,self-driving-waymo-car',
     spacing: 15,
     count: 15,
     facing: 135
@@ -1056,8 +1060,20 @@ const STREETPLAN_OBJECT_TO_GENERATED_CLONES_MAPPING = {
     count: 10,
     facing: 0
   },
-  'two bikes back': '',
-  'two bikes come and go': '',
+  'two bikes back': {
+    mode: 'random',
+    modelsArray: 'cyclist1,cyclist2,cyclist3,cyclist4,cyclist5',
+    spacing: 15,
+    count: 20,
+    facing: 180
+  },
+  'two bikes come and go': {
+    mode: 'random',
+    modelsArray: 'cyclist1,cyclist2,cyclist3,cyclist4,cyclist5',
+    spacing: 15,
+    count: 20,
+    facing: 0
+  },
   'widebikepath twosides': '',
   'woman bike': {
     mode: 'fixed',
@@ -1609,8 +1625,20 @@ const STREETPLAN_OBJECT_TO_GENERATED_CLONES_MAPPING = {
     count: 10,
     facing: 0
   },
-  'heavy rail': '',
-  'heavy rail rev': '',
+  'heavy rail': {
+    mode: 'fixed',
+    modelsArray: 'tram',
+    spacing: 100,
+    count: 10,
+    facing: 0
+  },
+  'heavy rail rev': {
+    mode: 'fixed',
+    modelsArray: 'tram',
+    spacing: 100,
+    count: 10,
+    facing: 180
+  },
   'streetcar blue': {
     mode: 'fixed',
     modelsArray: 'trolley',
@@ -1679,7 +1707,7 @@ const STREETPLAN_OBJECT_TO_GENERATED_CLONES_MAPPING = {
     modelsArray: 'tram',
     spacing: 100,
     count: 10,
-    facing: 0
+    facing: 180
   },
   'bur oak': {
     mode: 'fixed',
@@ -1810,147 +1838,147 @@ const STREETPLAN_OBJECT_TO_GENERATED_CLONES_MAPPING = {
   },
   'blue car': {
     mode: 'random',
-    modelsArray: 'sedan-rig, suv-rig, self-driving-waymo-car',
+    modelsArray: 'sedan-rig,suv-rig,self-driving-waymo-car',
     spacing: 15,
     count: 4,
     facing: 0
   },
   'blue car rev': {
     mode: 'random',
-    modelsArray: 'sedan-rig, suv-rig, self-driving-waymo-car',
+    modelsArray: 'sedan-rig,suv-rig,self-driving-waymo-car',
     spacing: 15,
     count: 4,
     facing: 0
   },
   'blue truck': {
     mode: 'random',
-    modelsArray: 'vehicle-bmw-m2, suv-rig, sedan-rig',
+    modelsArray: 'vehicle-bmw-m2,suv-rig,sedan-rig',
     spacing: 15,
     count: 4,
     facing: 0
   },
   'blue truck rev': {
     mode: 'random',
-    modelsArray: 'vehicle-bmw-m2, suv-rig, sedan-rig',
+    modelsArray: 'vehicle-bmw-m2,suv-rig,sedan-rig',
     spacing: 15,
     count: 4,
     facing: 0
   },
   'dump truck': {
     mode: 'random',
-    modelsArray: 'box-truck-rig, trailer-truck-rig',
+    modelsArray: 'box-truck-rig,trailer-truck-rig',
     spacing: 25,
     count: 3,
     facing: 0
   },
   'dump truck rev': {
     mode: 'random',
-    modelsArray: 'box-truck-rig, trailer-truck-rig',
+    modelsArray: 'box-truck-rig,trailer-truck-rig',
     spacing: 25,
     count: 3,
     facing: 0
   },
   'green car': {
     mode: 'random',
-    modelsArray: 'sedan-rig, suv-rig, self-driving-waymo-car',
+    modelsArray: 'sedan-rig,suv-rig,self-driving-waymo-car',
     spacing: 15,
     count: 4,
     facing: 0
   },
   'green car rev': {
     mode: 'random',
-    modelsArray: 'sedan-rig, suv-rig, self-driving-waymo-car',
+    modelsArray: 'sedan-rig,suv-rig,self-driving-waymo-car',
     spacing: 15,
     count: 4,
     facing: 0
   },
   'moto highway rider': {
     mode: 'random',
-    modelsArray: 'motorbike, tuk-tuk',
+    modelsArray: 'motorbike,tuk-tuk',
     spacing: 20,
     count: 3,
     facing: 0
   },
   'moto highway rider rev': {
     mode: 'random',
-    modelsArray: 'motorbike, tuk-tuk',
+    modelsArray: 'motorbike,tuk-tuk',
     spacing: 20,
     count: 3,
     facing: 0
   },
   'orange truck': {
     mode: 'random',
-    modelsArray: 'suv-rig, sedan-rig, self-driving-waymo-car',
+    modelsArray: 'suv-rig,sedan-rig,self-driving-waymo-car',
     spacing: 15,
     count: 4,
     facing: 0
   },
   'orange truck rev': {
     mode: 'random',
-    modelsArray: 'suv-rig, sedan-rig, self-driving-waymo-car',
+    modelsArray: 'suv-rig,sedan-rig,self-driving-waymo-car',
     spacing: 15,
     count: 4,
     facing: 0
   },
   'red car': {
     mode: 'random',
-    modelsArray: 'sedan-rig, suv-rig, self-driving-waymo-car',
+    modelsArray: 'sedan-rig,suv-rig,self-driving-waymo-car',
     spacing: 15,
     count: 4,
     facing: 0
   },
   'red car rev': {
     mode: 'random',
-    modelsArray: 'sedan-rig, suv-rig, self-driving-waymo-car',
+    modelsArray: 'sedan-rig,suv-rig,self-driving-waymo-car',
     spacing: 15,
     count: 4,
     facing: 0
   },
   'red jeep': {
     mode: 'random',
-    modelsArray: 'suv-rig, sedan-rig, self-driving-waymo-car',
+    modelsArray: 'suv-rig,sedan-rig,self-driving-waymo-car',
     spacing: 15,
     count: 4,
     facing: 0
   },
   'red jeep rev': {
     mode: 'random',
-    modelsArray: 'suv-rig, sedan-rig, self-driving-waymo-car',
+    modelsArray: 'suv-rig,sedan-rig,self-driving-waymo-car',
     spacing: 15,
     count: 4,
     facing: 0
   },
   'semi truck': {
     mode: 'random',
-    modelsArray: 'trailer-truck-rig, box-truck-rig',
+    modelsArray: 'trailer-truck-rig,box-truck-rig',
     spacing: 30,
     count: 2,
     facing: 0
   },
   'semi truck rev': {
     mode: 'random',
-    modelsArray: 'trailer-truck-rig, box-truck-rig',
+    modelsArray: 'trailer-truck-rig,box-truck-rig',
     spacing: 30,
     count: 2,
     facing: 0
   },
   'silver suv': {
     mode: 'random',
-    modelsArray: 'suv-rig, sedan-rig, self-driving-waymo-car',
+    modelsArray: 'suv-rig,sedan-rig,self-driving-waymo-car',
     spacing: 15,
     count: 4,
     facing: 0
   },
   'silver suv rev': {
     mode: 'random',
-    modelsArray: 'suv-rig, sedan-rig, self-driving-waymo-car',
+    modelsArray: 'suv-rig,sedan-rig,self-driving-waymo-car',
     spacing: 15,
     count: 4,
     facing: 0
   },
   truck: {
     mode: 'random',
-    modelsArray: 'box-truck-rig, trailer-truck-rig',
+    modelsArray: 'box-truck-rig,trailer-truck-rig',
     spacing: 25,
     count: 3,
     facing: 0
@@ -1986,44 +2014,56 @@ const STREETPLAN_OBJECT_TO_GENERATED_CLONES_MAPPING = {
   'two cars passing': '',
   'white coup': {
     mode: 'random',
-    modelsArray: 'sedan-rig, suv-rig, self-driving-waymo-car',
+    modelsArray: 'sedan-rig,suv-rig,self-driving-waymo-car',
     spacing: 15,
     count: 4,
     facing: 0
   },
   'white coup rev': {
     mode: 'random',
-    modelsArray: 'sedan-rig, suv-rig, self-driving-waymo-car',
+    modelsArray: 'sedan-rig,suv-rig,self-driving-waymo-car',
     spacing: 15,
     count: 4,
     facing: 0
   },
   'white sedan': {
     mode: 'random',
-    modelsArray: 'sedan-rig, suv-rig, self-driving-waymo-car',
+    modelsArray: 'sedan-rig,suv-rig,self-driving-waymo-car',
     spacing: 15,
     count: 4,
     facing: 0
   },
   'white sedan rev': {
     mode: 'random',
-    modelsArray: 'sedan-rig, suv-rig, self-driving-waymo-car',
+    modelsArray: 'sedan-rig,suv-rig,self-driving-waymo-car',
     spacing: 15,
     count: 4,
     facing: 0
   },
-  'white truck': '',
-  'white truck rev': '',
+  'white truck': {
+    mode: 'random',
+    modelsArray: 'box-truck-rig,sedan-rig,suv-rig,self-driving-waymo-car',
+    spacing: 15,
+    count: 4,
+    facing: 0
+  },
+  'white truck rev': {
+    mode: 'random',
+    modelsArray: 'box-truck-rig,sedan-rig,suv-rig,self-driving-waymo-car',
+    spacing: 15,
+    count: 4,
+    facing: 180
+  },
   'yellow sedan': {
     mode: 'random',
-    modelsArray: 'sedan-rig, suv-rig, self-driving-waymo-car',
+    modelsArray: 'sedan-rig,suv-rig,self-driving-waymo-car',
     spacing: 15,
     count: 4,
     facing: 0
   },
   'yellow sedan rev': {
     mode: 'random',
-    modelsArray: 'sedan-rig, suv-rig, self-driving-waymo-car',
+    modelsArray: 'sedan-rig,suv-rig,self-driving-waymo-car',
     spacing: 15,
     count: 4,
     facing: 0
