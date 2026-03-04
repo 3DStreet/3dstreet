@@ -122,7 +122,7 @@ const PaymentModal = () => {
       className={styles.modalWrapper}
       isOpen={modal === 'payment'}
       onClose={onClose}
-      title="Upgrade to Pro"
+      title="Choose Plan"
     >
       <div className={styles.paymentDetails}>
         {/* Monthly / Annual toggle */}
@@ -499,7 +499,13 @@ const PaymentModal = () => {
         </div>
 
         {/* Action button */}
-        <div style={{ textAlign: 'center', marginTop: '20px' }}>
+        <div
+          style={{
+            display: 'flex',
+            justifyContent: 'center',
+            marginTop: '20px'
+          }}
+        >
           {currentUser ? (
             <div>
               {currentUser.isPro ? (
@@ -514,15 +520,7 @@ const PaymentModal = () => {
                     </div>
                   ) : (
                     <Button onClick={startCheckout} variant="filled">
-                      {`Activate ${selectedTier === 'max' ? 'Max' : 'Pro'} — ${
-                        billingPeriod === 'monthly'
-                          ? selectedTier === 'max'
-                            ? '$50/mo'
-                            : '$14/mo'
-                          : selectedTier === 'max'
-                            ? '$41.67/mo ($500/yr)'
-                            : '$11.67/mo ($140/yr)'
-                      }`}
+                      {`Activate ${selectedTier === 'max' ? 'Max' : 'Pro'}`}
                     </Button>
                   )}
                 </div>
