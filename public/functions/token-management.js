@@ -222,7 +222,7 @@ const checkAndRefillImageTokensInternal = async (userId) => {
       const newProfile = {
         userId: userId,
         geoToken: 3,
-        genToken: isProUser ? monthlyAllowance : 3, // Max users get 500, Pro users get 100, free users get 3
+        genToken: isProUser ? monthlyAllowance : 3, // Max: 500, Pro: 140, free: 3
         lastMonthlyRefill: isProUser ? `${new Date().getFullYear()}-${new Date().getMonth()}` : null,
         createdAt: admin.firestore.FieldValue.serverTimestamp(),
         updatedAt: admin.firestore.FieldValue.serverTimestamp()
