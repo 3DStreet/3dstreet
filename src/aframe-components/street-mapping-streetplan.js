@@ -587,7 +587,12 @@ const STREETPLAN_OBJECT_TO_GENERATED_CLONES_MAPPING = {
       'sp-prop-mixeduse-3L-22ft,sp-prop-mixeduse-3L-23ft-corner,sp-prop-mixeduse-2L-29ft,sp-prop-mixeduse-2L-30ft',
     spacing: 0
   },
-  'shop 4floors': '',
+  'shop 4floors': {
+    mode: 'fit',
+    modelsArray:
+      'sp-prop-mixeduse-3L-22ft,sp-prop-mixeduse-3L-23ft-corner,sp-prop-mixeduse-2L-29ft,sp-prop-mixeduse-2L-30ft',
+    spacing: 0
+  },
   'single family': {
     mode: 'fit',
     modelsArray:
