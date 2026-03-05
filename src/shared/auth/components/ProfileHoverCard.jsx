@@ -50,7 +50,7 @@ const ProfileHoverCard = ({
   showDetails = true, // Control whether to show the hover card
   onClickTrigger = null // Optional click handler to pass through
 }) => {
-  const { currentUser, tokenProfile, setCurrentUser } = useAuthContext();
+  const { currentUser, setCurrentUser } = useAuthContext();
   const [username, setUsername] = useState(null);
   const [isLoadingUsername, setIsLoadingUsername] = useState(false);
   const [isOpen, setIsOpen] = useState(false);
@@ -95,7 +95,8 @@ const ProfileHoverCard = ({
   const userEmail = currentUser?.email || 'Not available';
   const userDisplayName = currentUser?.displayName || userEmail.split('@')[0];
   const userPhotoURL = currentUser?.photoURL || null;
-  const isPro = tokenProfile?.plan === 'PRO';
+  const isPro = currentUser?.isPro;
+  const isMax = currentUser?.isMax;
 
   // Logout handler
   const handleLogout = async (e) => {
@@ -157,7 +158,7 @@ const ProfileHoverCard = ({
 
             {isPro && (
               <div className={styles.planBadge}>
-                <span className={styles.proBadge}>PRO</span>
+                <span className={styles.proBadge}>{isMax ? 'MAX' : 'PRO'}</span>
               </div>
             )}
           </div>
