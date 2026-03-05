@@ -69,6 +69,35 @@ const useStore = create(
           }),
         postSaveScene: () => set({ isSavingScene: false, doSaveAs: false }),
         doSaveAs: false,
+        // Scene loading state
+        isLoadingScene: false,
+        loadingSceneProgress: 0,
+        loadingSceneMessage: 'Loading scene...',
+        loadingSceneError: null,
+        startLoadingScene: (message) =>
+          set({
+            isLoadingScene: true,
+            loadingSceneProgress: 0,
+            loadingSceneMessage: message || 'Loading scene...',
+            loadingSceneError: null
+          }),
+        updateLoadingProgress: (progress, message) =>
+          set((state) => ({
+            loadingSceneProgress: Math.min(progress, 100),
+            ...(message && { loadingSceneMessage: message })
+          })),
+        finishLoadingScene: () =>
+          set({
+            isLoadingScene: false,
+            loadingSceneProgress: 100,
+            loadingSceneMessage: '',
+            loadingSceneError: null
+          }),
+        errorLoadingScene: (errorMessage) =>
+          set({
+            loadingSceneError: errorMessage,
+            loadingSceneMessage: 'Error loading scene'
+          }),
         sceneTitle: null,
         setSceneTitle: (newSceneTitle) => set({ sceneTitle: newSceneTitle }),
         locationString: null,

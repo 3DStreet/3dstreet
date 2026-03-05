@@ -18,6 +18,7 @@ import { AddLayerPanel } from './elements/AddLayerPanel';
 import { GeoLocationDisplay } from './elements/GeoLocationDisplay';
 import { NewModal } from './modals/NewModal';
 import { ReportModal } from './modals/ReportModal';
+import { LoadingSceneModal } from './modals/LoadingSceneModal';
 import { ToolbarWrapper } from './scenegraph/ToolbarWrapper.js';
 import useStore from '@/store';
 import { AIChatProvider } from '../contexts/AIChatContext';
@@ -144,6 +145,7 @@ export default function Main() {
       <ProfileModal />
       <NewModal />
       <ReportModal />
+      <LoadingSceneModal />
       <LoadScript
         googleMapsApiKey={firebaseConfig.apiKey}
         libraries={GOOGLE_MAPS_LIBRARIES}

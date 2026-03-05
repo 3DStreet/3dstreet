@@ -6,6 +6,7 @@ import JSONCrush from 'jsoncrush';
 window.STREET = {};
 var assetsUrl;
 STREET.utils = {};
+STREET.store = useStore;
 function getSceneUuidFromURLHash() {
   const currentHash = window.location.hash;
   const match = currentHash.match(/#\/scenes\/([a-zA-Z0-9-]+)/);
@@ -805,7 +806,12 @@ AFRAME.registerComponent('set-loader-from-hash', {
             }, 3000);
           }, 1000);
         }
-      } else {
+      } else if (
+        !streetURL.includes('payment') &&
+        !streetURL.includes('profile') &&
+        !streetURL.includes('modal')
+      ) {
+        useStore.getState().startLoadingScene('Loading scene...');
         // try to load JSON file from remote resource
         console.log(
           '[set-loader-from-hash]',
@@ -894,6 +900,7 @@ AFRAME.registerComponent('set-loader-from-hash', {
             defaultSnapshotCameraState;
         }
 
+        useStore.getState().updateLoadingProgress(50, 'Creating scene...');
         STREET.utils.createElementsFromJSON(jsonData, false);
         const sceneId = getUUIDFromPath(requestURL);
         if (sceneId) {
@@ -905,6 +912,7 @@ AFRAME.registerComponent('set-loader-from-hash', {
         console.error(
           '[set-loader-from-hash] Error trying to load scene: Resource not found.'
         );
+        useStore.getState().errorLoadingScene('Scene not found.');
         STREET.notify.errorMessage(
           'Error trying to load scene: Resource not found.'
         );
@@ -915,6 +923,7 @@ AFRAME.registerComponent('set-loader-from-hash', {
       console.error(
         'Loading Error: There was a connection error during JSON loading'
       );
+      useStore.getState().errorLoadingScene('Could not connect to server.');
       STREET.notify.errorMessage('Could not fetch scene.');
     };
     request.send();
@@ -1000,6 +1009,7 @@ function createElementsFromJSON(streetJSON, clearUrlHash) {
   const streetContainerEl = document.getElementById('street-container');
 
   createEntities(streetObject.data, streetContainerEl);
+  useStore.getState().updateLoadingProgress(90, 'Finalizing...');
   STREET.notify.successMessage('Scene loaded');
 
   // Pass snapshot camera state if available

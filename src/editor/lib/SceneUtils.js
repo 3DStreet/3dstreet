@@ -52,6 +52,7 @@ export function createElementsForScenesFromJSON(streetData, memoryData) {
   // clear scene data, create new blank scene.
   // clearMetadata = true, clearUrlHash = false, addDefaultStreet = false
   STREET.utils.newScene(true, false, false);
+  useStore.getState().updateLoadingProgress(20, 'Preparing scene...');
 
   const streetContainerEl = document.getElementById('street-container');
 
@@ -112,6 +113,7 @@ export function createElementsForScenesFromJSON(streetData, memoryData) {
   const correctedStreetData = processStreetDataForDuplicateIds(streetData);
 
   STREET.utils.createEntities(correctedStreetData, streetContainerEl);
+  useStore.getState().updateLoadingProgress(80, 'Finalizing scene...');
 
   // Emit newScene with snapshot camera state if available
   AFRAME.scenes[0].emit('newScene', {
@@ -123,6 +125,7 @@ export function fileJSON(event) {
   let reader = new FileReader();
 
   reader.onload = function () {
+    useStore.getState().startLoadingScene('Loading scene from file...');
     const data = JSON.parse(reader.result);
     // Pass the data and memory (which now contains snapshots)
     createElementsForScenesFromJSON(data.data, data.memory);
