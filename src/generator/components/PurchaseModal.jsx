@@ -25,7 +25,14 @@ const PurchaseModal = () => {
   const [modalState, setModalState] = useState('pricing');
   // States: 'pricing' | 'checkout' | 'loading' | 'success' | 'error' | 'has-subscription'
 
-  const [selectedTier, setSelectedTier] = useState('pro'); // 'pro' | 'max'
+  const userPlan = currentUser?.isMax
+    ? 'max'
+    : currentUser?.isPro
+      ? 'pro'
+      : null;
+  const [selectedTier, setSelectedTier] = useState(
+    userPlan === 'max' ? 'max' : 'pro'
+  ); // 'pro' | 'max'
   const [billingPeriod, setBillingPeriod] = useState('monthly'); // 'monthly' | 'annual'
   const selectedPlan =
     selectedTier && billingPeriod ? `${selectedTier}-${billingPeriod}` : null;
@@ -400,9 +407,11 @@ const PurchaseModal = () => {
               <div
                 className={`${styles.pricingCard} ${selectedTier === 'pro' ? styles.featured : ''}`}
               >
-                {selectedTier === 'pro' && (
+                {userPlan === 'pro' ? (
+                  <div className={styles.badge}>Current Plan</div>
+                ) : selectedTier === 'pro' ? (
                   <div className={styles.badge}>Selected</div>
-                )}
+                ) : null}
                 <div className={styles.cardHeader}>
                   <h3 className={styles.planName}>Pro</h3>
                 </div>
@@ -455,12 +464,21 @@ const PurchaseModal = () => {
                     <li>Inpainting & Outpainting</li>
                     <li>All 3DStreet Editor Pro features</li>
                   </ul>
-                  <button
-                    className={`${styles.purchaseButton} ${selectedTier === 'pro' ? styles.primary : ''}`}
-                    onClick={() => handlePlanSelect('pro')}
-                  >
-                    Subscribe to Pro
-                  </button>
+                  {userPlan === 'pro' ? (
+                    <button
+                      className={`${styles.purchaseButton} ${styles.primary}`}
+                      onClick={handleOpenBillingPortal}
+                    >
+                      Manage Subscription
+                    </button>
+                  ) : (
+                    <button
+                      className={`${styles.purchaseButton} ${selectedTier === 'pro' ? styles.primary : ''}`}
+                      onClick={() => handlePlanSelect('pro')}
+                    >
+                      Subscribe to Pro
+                    </button>
+                  )}
                 </div>
               </div>
 
@@ -468,9 +486,11 @@ const PurchaseModal = () => {
               <div
                 className={`${styles.pricingCard} ${selectedTier === 'max' ? styles.featured : ''}`}
               >
-                {selectedTier === 'max' && (
+                {userPlan === 'max' ? (
+                  <div className={styles.badge}>Current Plan</div>
+                ) : selectedTier === 'max' ? (
                   <div className={styles.badge}>Selected</div>
-                )}
+                ) : null}
                 <div className={styles.cardHeader}>
                   <h3 className={styles.planName}>Max</h3>
                 </div>
@@ -521,12 +541,28 @@ const PurchaseModal = () => {
                     <li>Everything in Pro</li>
                     <li>3.5x more AI generation tokens</li>
                   </ul>
-                  <button
-                    className={`${styles.purchaseButton} ${selectedTier === 'max' ? styles.primary : ''}`}
-                    onClick={() => handlePlanSelect('max')}
-                  >
-                    Subscribe to Max
-                  </button>
+                  {userPlan === 'max' ? (
+                    <button
+                      className={`${styles.purchaseButton} ${styles.primary}`}
+                      onClick={handleOpenBillingPortal}
+                    >
+                      Manage Subscription
+                    </button>
+                  ) : userPlan === 'pro' ? (
+                    <button
+                      className={`${styles.purchaseButton} ${styles.primary}`}
+                      onClick={handleOpenBillingPortal}
+                    >
+                      Upgrade to Max
+                    </button>
+                  ) : (
+                    <button
+                      className={`${styles.purchaseButton} ${selectedTier === 'max' ? styles.primary : ''}`}
+                      onClick={() => handlePlanSelect('max')}
+                    >
+                      Subscribe to Max
+                    </button>
+                  )}
                 </div>
               </div>
             </div>
