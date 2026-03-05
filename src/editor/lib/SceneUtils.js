@@ -16,7 +16,6 @@ export function createBlankScene() {
 }
 
 export function inputStreetmix() {
-  useStore.getState().startLoadingScene('Importing from Streetmix...');
   const streetmixURL = prompt(
     'Please enter a Streetmix URL',
     'https://streetmix.net/kfarr/3/example-street'

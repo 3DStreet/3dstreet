@@ -594,7 +594,6 @@ AFRAME.registerComponent('set-loader-from-hash', {
       if (!streetURL) {
         return;
       }
-      useStore.getState().startLoadingScene('Loading scene...');
       if (streetURL.startsWith('crushed-3dstreet-json:')) {
         const fragment = window.location.hash;
         const prefix = '#crushed-3dstreet-json:';
@@ -807,7 +806,12 @@ AFRAME.registerComponent('set-loader-from-hash', {
             }, 3000);
           }, 1000);
         }
-      } else {
+      } else if (
+        !streetURL.includes('payment') &&
+        !streetURL.includes('profile') &&
+        !streetURL.includes('modal')
+      ) {
+        useStore.getState().startLoadingScene('Loading scene...');
         // try to load JSON file from remote resource
         console.log(
           '[set-loader-from-hash]',
