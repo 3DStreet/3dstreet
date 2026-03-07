@@ -122,6 +122,10 @@ AFRAME.registerComponent('splat', {
       // Spark uses a different quaternion convention, rotate to match A-Frame
       this.splatMesh.quaternion.set(1, 0, 0, 0);
 
+      // Disable raycasting on the splat mesh to prevent errors when
+      // the internal raycast buffer isn't ready yet
+      this.splatMesh.raycast = function () {};
+
       // Set the splat mesh directly on the entity (like gltf-model does)
       this.el.setObject3D('mesh', this.splatMesh);
     } catch (error) {
