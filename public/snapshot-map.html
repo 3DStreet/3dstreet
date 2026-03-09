@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Bollard Buddy Snapshot Map</title>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; }
+    #map { width: 100vw; height: 100vh; }
+    .header {
+      position: absolute;
+      top: 12px;
+      left: 60px;
+      z-index: 1000;
+      background: white;
+      padding: 8px 16px;
+      border-radius: 8px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+      font-size: 14px;
+    }
+    .header h1 { font-size: 16px; margin-bottom: 2px; }
+    .header .count { color: #666; font-size: 13px; }
+    .snapshot-popup {
+      max-width: 280px;
+    }
+    .snapshot-popup img {
+      width: 100%;
+      border-radius: 6px;
+      margin-bottom: 6px;
+      cursor: pointer;
+    }
+    .snapshot-popup .meta {
+      font-size: 12px;
+      color: #666;
+      line-height: 1.4;
+    }
+    .snapshot-popup .meta a {
+      color: #0066cc;
+      text-decoration: none;
+    }
+    .snapshot-popup .meta a:hover {
+      text-decoration: underline;
+    }
+    .loading-overlay {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      z-index: 1000;
+      background: white;
+      padding: 20px 32px;
+      border-radius: 12px;
+      box-shadow: 0 4px 16px rgba(0,0,0,0.2);
+      font-size: 16px;
+    }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <h1>Bollard Buddy Snapshots</h1>
+    <div class="count" id="count">Loading...</div>
+  </div>
+  <div class="loading-overlay" id="loading">Loading snapshots from dev server...</div>
+  <div id="map"></div>
+
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script>
+    // Cloud Function endpoint (dev project)
+    const FUNCTION_URL = 'https://us-central1-dev-3dstreet.cloudfunctions.net/getBollardBuddySnapshots';
+
+    // Initialize map centered on US
+    const map = L.map('map').setView([37.7749, -122.4194], 4);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      attribution: '&copy; OpenStreetMap contributors',
+      maxZoom: 19
+    }).addTo(map);
+
+    async function loadSnapshots() {
+      try {
+        const res = await fetch(FUNCTION_URL);
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const { count, snapshots } = await res.json();
+
+        document.getElementById('loading').style.display = 'none';
+        document.getElementById('count').textContent =
+          `${count} geotagged snapshot${count !== 1 ? 's' : ''}`;
+
+        if (count === 0) {
+          document.getElementById('count').textContent = 'No geotagged snapshots found';
+          return;
+        }
+
+        const bounds = [];
+
+        snapshots.forEach(snap => {
+          const lat = snap.latitude;
+          const lng = snap.longitude;
+          bounds.push([lat, lng]);
+
+          const marker = L.marker([lat, lng]).addTo(map);
+
+          const date = snap.capturedAt
+            ? new Date(snap.capturedAt).toLocaleDateString('en-US', {
+                year: 'numeric', month: 'short', day: 'numeric',
+                hour: '2-digit', minute: '2-digit'
+              })
+            : snap.createdAt
+              ? new Date(snap.createdAt).toLocaleDateString('en-US', {
+                  year: 'numeric', month: 'short', day: 'numeric',
+                  hour: '2-digit', minute: '2-digit'
+                })
+              : 'Unknown date';
+
+          const imgUrl = snap.storageUrl;
+          const imgHtml = imgUrl
+            ? `<img src="${imgUrl}" alt="Snapshot" loading="lazy" />`
+            : '';
+
+          const sceneLink = snap.sceneId
+            ? `<br><a href="https://dev.3dstreet.app/scenes/#${snap.sceneId}" target="_blank">Open in 3DStreet &rarr;</a>`
+            : '';
+
+          const headingInfo = snap.heading != null
+            ? `<br>Heading: ${Math.round(snap.heading)}&deg;`
+            : '';
+
+          const popup = `
+            <div class="snapshot-popup">
+              ${imgHtml}
+              <div class="meta">
+                <strong>${date}</strong><br>
+                ${lat.toFixed(5)}, ${lng.toFixed(5)}${headingInfo}
+                ${sceneLink}
+              </div>
+            </div>
+          `;
+
+          marker.bindPopup(popup, { maxWidth: 300 });
+        });
+
+        if (bounds.length === 1) {
+          map.setView(bounds[0], 15);
+        } else {
+          map.fitBounds(bounds, { padding: [50, 50] });
+        }
+      } catch (err) {
+        console.error('Error loading snapshots:', err);
+        document.getElementById('loading').textContent =
+          `Error: ${err.message}`;
+      }
+    }
+
+    loadSnapshots();
+  </script>
+</body>
+</html>

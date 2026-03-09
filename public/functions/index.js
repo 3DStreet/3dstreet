@@ -450,6 +450,55 @@ exports.stripeWebhook = functions
   });
 
 // Discord webhook function for sharing scenes
+// Bollard Buddy snapshot map endpoint - returns all geotagged BB assets (dev only)
+exports.getBollardBuddySnapshots = functions
+  .https
+  .onRequest(async (req, res) => {
+    res.set('Access-Control-Allow-Origin', '*');
+    res.set('Access-Control-Allow-Methods', 'GET');
+
+    if (req.method === 'OPTIONS') {
+      res.status(204).send('');
+      return;
+    }
+
+    try {
+      const db = admin.firestore();
+      // Query all users' assets subcollections using collection group query
+      const snapshot = await db.collectionGroup('assets')
+        .where('generationMetadata.source', '==', 'bollard-buddy-ios')
+        .where('deleted', '==', false)
+        .get();
+
+      const results = [];
+      snapshot.forEach(doc => {
+        const data = doc.data();
+        if (data.latitude && data.longitude) {
+          results.push({
+            assetId: data.assetId,
+            storageUrl: data.storageUrl,
+            thumbnailUrl: data.thumbnailUrl || null,
+            latitude: data.latitude,
+            longitude: data.longitude,
+            heading: data.heading || null,
+            width: data.width,
+            height: data.height,
+            capturedAt: data.generationMetadata?.capturedAt || null,
+            sceneId: data.generationMetadata?.sceneId || null,
+            createdAt: data.createdAt?.toDate
+              ? data.createdAt.toDate().toISOString()
+              : null
+          });
+        }
+      });
+
+      res.json({ count: results.length, snapshots: results });
+    } catch (err) {
+      console.error('Error fetching bollard buddy snapshots:', err);
+      res.status(500).json({ error: 'Failed to fetch snapshots' });
+    }
+  });
+
 exports.shareToDiscord = functions
   .runWith({ secrets: ["DISCORD_WEBHOOK_URL"] })
   .https
