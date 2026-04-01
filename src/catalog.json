@@ -1186,5 +1186,19 @@
         "baseRotation": 90,
         "attribution": "StreetPlan.net. Used with permission.",
         "attributionUrl": "https://www.urbaninnovators.com/streetplan"
+    },
+    {
+        "id": "sp-gutter-25ft-left",
+        "name": "sp Gutter-2.5ft left",
+        "img": "sets/streetplan/sp-Gutter-2.5ft-left.jpg",
+        "src": "sets/streetplan/sp-Gutter-2.5ft-left.glb",
+        "category": "dividers"
+    },
+    {
+        "id": "sp-gutter-25ft-right",
+        "name": "sp Gutter-2.5ft right",
+        "img": "sets/streetplan/sp-Gutter-2.5ft-right.jpg",
+        "src": "sets/streetplan/sp-Gutter-2.5ft-right.glb",
+        "category": "dividers"
     }
 ]

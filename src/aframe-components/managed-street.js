@@ -315,6 +315,20 @@ AFRAME.registerComponent('managed-street', {
         variant: segment.variant,
         side: segment.side
       });
+
+      const streetURL = window.location.hash.substring(1);
+      if (streetURL.includes('streetplan.net/')) {
+        segmentEl.setAttribute('data-layer-rulergrpa', segment.rulergrpa);
+        segmentEl.setAttribute('data-layer-rulergrpaw', segment.rulergrpaw);
+        segmentEl.setAttribute('data-layer-rulergrpaofs', segment.rulergrpaofs);
+        segmentEl.setAttribute('data-layer-rulergrpb', segment.rulergrpb);
+        segmentEl.setAttribute('data-layer-rulergrpbw', segment.rulergrpbw);
+        segmentEl.setAttribute('data-layer-rulergrpbofs', segment.rulergrpbofs);
+        segmentEl.setAttribute('data-layer-leftsidec', segment.leftsidec);
+        segmentEl.setAttribute('data-layer-rightsidec', segment.rightsidec);
+        segmentEl.setAttribute('data-layer-price', segment.price);
+      }
+
       segmentEl.setAttribute('data-layer-name', segment.name);
       // wait for street-segment to be loaded, then generate components from segment object
       segmentEl.addEventListener('loaded', () => {
@@ -380,6 +394,13 @@ AFRAME.registerComponent('managed-street', {
         length: streetLength,
         segments: []
       };
+
+      // Setup Display unit to FT or MT
+      if (streetplanData.project.DispUnit === 'FT') {
+        currentState.setUnitsPreference('imperial');
+      } else {
+        currentState.setUnitsPreference('metric');
+      }
 
       // Process streetplan segments
       const segments = boulevard.segments;
@@ -460,16 +481,40 @@ AFRAME.registerComponent('managed-street', {
           generated.clones = clones;
         }
 
-        const segmentData = {
-          type: segmentType,
-          width: segmentWidth,
-          name: segmentName,
-          level: parseFloat(segment.MaterialH) === 0.5 ? 1 : 0,
-          direction: segmentDirection,
-          color: mappedColor || window.STREET.types[segmentType]?.color,
-          surface: mappedSurface,
-          generated: clones.length > 0 ? generated : undefined
-        };
+        const streetURL = window.location.hash.substring(1);
+        let segmentData = {};
+        if (streetURL.includes('streetplan.net/')) {
+          segmentData = {
+            type: segmentType,
+            width: segmentWidth,
+            name: segmentName,
+            level: parseFloat(segment.MaterialH) === 0.5 ? 1 : 0,
+            direction: segmentDirection,
+            color: mappedColor || window.STREET.types[segmentType]?.color,
+            surface: mappedSurface,
+            generated: clones.length > 0 ? generated : undefined,
+            rulergrpa: segment.rulergrpa,
+            rulergrpaw: segment.rulergrpaw * 0.3048,
+            rulergrpaofs: segment.rulergrpaofs,
+            rulergrpb: segment.rulergrpb,
+            rulergrpbw: segment.rulergrpbw * 0.3048,
+            rulergrpbofs: segment.rulergrpbofs,
+            leftsidec: segment.leftsidec,
+            rightsidec: segment.rightsidec,
+            price: segment.price
+          };
+        } else {
+          segmentData = {
+            type: segmentType,
+            width: segmentWidth,
+            name: segmentName,
+            level: parseFloat(segment.MaterialH) === 0.5 ? 1 : 0,
+            direction: segmentDirection,
+            color: mappedColor || window.STREET.types[segmentType]?.color,
+            surface: mappedSurface,
+            generated: clones.length > 0 ? generated : undefined
+          };
+        }
 
         // Add variant if found (takes precedence over generated clones)
         if (segmentVariant) {
@@ -543,6 +588,14 @@ AFRAME.registerComponent('managed-street', {
     } else {
       // Same direction cases
       if (currentSegment.type === previousSegment.type) {
+        variantString = 'dashed-stripe';
+      }
+      if (
+        (currentSegment.type === 'bus-lane' &&
+          previousSegment.type === 'drive-lane') ||
+        (currentSegment.type === 'drive-lane' &&
+          previousSegment.type === 'bus-lane')
+      ) {
         variantString = 'dashed-stripe';
       }
 
