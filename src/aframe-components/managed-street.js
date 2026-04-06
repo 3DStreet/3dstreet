@@ -381,6 +381,13 @@ AFRAME.registerComponent('managed-street', {
         segments: []
       };
 
+      // Setup Display unit to FT or MT
+      if (streetplanData.project.DispUnit === 'FT') {
+        currentState.setUnitsPreference('imperial');
+      } else {
+        currentState.setUnitsPreference('metric');
+      }
+
       // Process streetplan segments
       const segments = boulevard.segments;
       for (const segmentKey in segments) {
