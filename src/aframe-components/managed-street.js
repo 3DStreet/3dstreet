@@ -546,6 +546,18 @@ AFRAME.registerComponent('managed-street', {
         variantString = 'dashed-stripe';
       }
 
+      const streetURL = window.location.hash.substring(1);
+      if (streetURL.includes('streetplan.net/')) {
+        if (
+          (currentSegment.type === 'bus-lane' &&
+            previousSegment.type === 'drive-lane') ||
+          (currentSegment.type === 'drive-lane' &&
+            previousSegment.type === 'bus-lane')
+        ) {
+          variantString = 'dashed-stripe';
+        }
+      }
+
       // Drive lane and turn lane combination would go here if needed
     }
 
