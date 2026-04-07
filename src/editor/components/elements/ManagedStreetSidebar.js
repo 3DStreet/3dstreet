@@ -1,4 +1,5 @@
 import PropTypes from 'prop-types';
+import { Button } from '../elements/Button';
 import PropertyRow from './PropertyRow';
 
 const ManagedStreetSidebar = ({ entity }) => {
@@ -39,6 +40,24 @@ const ManagedStreetSidebar = ({ entity }) => {
                   isSingle={false}
                   entity={entity}
                 />
+                <div className="propertyRow">
+                  <label className="text">Accent Colors</label>
+                  <Button
+                    variant="toolbtn"
+                    onClick={component?.randomizeColors}
+                  >
+                    Random
+                  </Button>
+                  <Button
+                    variant="toolbtn"
+                    onClick={component?.neutralAutoColors}
+                  >
+                    Neutral
+                  </Button>
+                  <Button variant="toolbtn" onClick={component?.resetColors}>
+                    Reset
+                  </Button>
+                </div>
               </>
             )}
         </div>
