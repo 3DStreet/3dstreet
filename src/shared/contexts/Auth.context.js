@@ -96,6 +96,8 @@ const AuthProvider = ({ children }) => {
       setCurrentUser({
         ...user,
         isPro: cachedProStatus?.isPro ?? false,
+        isMax: cachedProStatus?.isMax ?? false,
+        plan: cachedProStatus?.plan ?? null,
         isProSubscription: cachedProStatus?.isProSubscription ?? false,
         isProDomain: cachedProStatus?.isProDomain ?? false,
         isProTeam: cachedProStatus?.isProDomain ?? false,
@@ -122,6 +124,8 @@ const AuthProvider = ({ children }) => {
           ? proStatusResult.value
           : {
               isPro: false,
+              isMax: false,
+              plan: null,
               isProSubscription: false,
               isProDomain: false,
               teamDomain: null
@@ -136,6 +140,8 @@ const AuthProvider = ({ children }) => {
       const enrichedUser = {
         ...user,
         isPro: proStatus.isPro,
+        isMax: proStatus.isMax ?? false,
+        plan: proStatus.plan ?? null,
         isProSubscription: proStatus.isProSubscription,
         isProDomain: proStatus.isProDomain,
         isProTeam: proStatus.isProDomain, // Alias for clearer semantics
@@ -174,6 +180,8 @@ const AuthProvider = ({ children }) => {
         email: user.email,
         name: user.displayName,
         isPro: proStatus.isPro,
+        isMax: proStatus.isMax,
+        plan: proStatus.plan,
         isProSubscription: proStatus.isProSubscription,
         isProDomain: proStatus.isProDomain,
         teamDomain: proStatus.teamDomain

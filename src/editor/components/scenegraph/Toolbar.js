@@ -169,11 +169,13 @@ function Toolbar({ currentUser, entity }) {
                 {/* User Status Pill */}
                 <TooltipWrapper
                   content={
-                    authUser?.isPro
-                      ? authUser?.isProTeam
-                        ? `3DStreet Team Plan (${authUser?.teamDomain})`
-                        : '3DStreet Pro Plan'
-                      : '3DStreet Free Community Edition'
+                    authUser?.isMax
+                      ? '3DStreet Max Plan'
+                      : authUser?.isPro
+                        ? authUser?.isProTeam
+                          ? `3DStreet Team Plan (${authUser?.teamDomain})`
+                          : '3DStreet Pro Plan'
+                        : '3DStreet Free Community Edition'
                   }
                   side="bottom"
                 >
@@ -190,11 +192,13 @@ function Toolbar({ currentUser, entity }) {
                     }}
                     onClick={() => setModal(currentUser ? 'profile' : 'signin')}
                   >
-                    {authUser?.isPro
-                      ? authUser?.isProTeam
-                        ? 'TEAM'
-                        : 'PRO'
-                      : 'FREE'}
+                    {authUser?.isMax
+                      ? 'MAX'
+                      : authUser?.isPro
+                        ? authUser?.isProTeam
+                          ? 'TEAM'
+                          : 'PRO'
+                        : 'FREE'}
                   </div>
                 </TooltipWrapper>
                 <div className="mr-1">

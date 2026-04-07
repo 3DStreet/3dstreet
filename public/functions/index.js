@@ -335,7 +335,7 @@ exports.handleSubscriptionWebhook = functions
 
 // function for Stripe webhook checkout.session.completed
 exports.stripeWebhook = functions
-  .runWith({ secrets: ["STRIPE_SECRET_KEY", "STRIPE_WEBHOOK_SECRET_CHECKOUT", "STRIPE_YEARLY_PRICE_ID", "STRIPE_MONTHLY_PRICE_ID"] })
+  .runWith({ secrets: ["STRIPE_SECRET_KEY", "STRIPE_WEBHOOK_SECRET_CHECKOUT", "STRIPE_YEARLY_PRICE_ID", "STRIPE_MONTHLY_PRICE_ID", "STRIPE_MAX_MONTHLY_PRICE_ID", "STRIPE_MAX_YEARLY_PRICE_ID"] })
   .https
   .onRequest(async (req, res) => {
     const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
@@ -362,22 +362,29 @@ exports.stripeWebhook = functions
       }
     );
 
-    // Check if this is an annual or monthly plan purchase
+    // Check if this is a Pro or Max plan purchase
     const annualPriceId = process.env.STRIPE_YEARLY_PRICE_ID;
     const monthlyPriceId = process.env.STRIPE_MONTHLY_PRICE_ID;
+    const maxMonthlyPriceId = process.env.STRIPE_MAX_MONTHLY_PRICE_ID;
+    const maxAnnualPriceId = process.env.STRIPE_MAX_YEARLY_PRICE_ID;
 
     let isAnnualPlan = false;
     let isMonthlyPlan = false;
+    let isMaxMonthly = false;
+    let isMaxAnnual = false;
     if (sessionWithLineItems.line_items && sessionWithLineItems.line_items.data) {
+      const priceIds = sessionWithLineItems.line_items.data.map(item => item.price.id);
       if (annualPriceId) {
-        isAnnualPlan = sessionWithLineItems.line_items.data.some(item =>
-          item.price.id === annualPriceId
-        );
+        isAnnualPlan = priceIds.includes(annualPriceId);
       }
       if (monthlyPriceId) {
-        isMonthlyPlan = sessionWithLineItems.line_items.data.some(item =>
-          item.price.id === monthlyPriceId
-        );
+        isMonthlyPlan = priceIds.includes(monthlyPriceId);
+      }
+      if (maxMonthlyPriceId) {
+        isMaxMonthly = priceIds.includes(maxMonthlyPriceId);
+      }
+      if (maxAnnualPriceId) {
+        isMaxAnnual = priceIds.includes(maxAnnualPriceId);
       }
     }
 
@@ -399,20 +406,34 @@ exports.stripeWebhook = functions
       });
     }
 
-    // Set custom user claims on this update.
+    // Set custom user claims based on plan tier
+    const isMaxPlan = isMaxMonthly || isMaxAnnual;
     const customClaims = {
-      plan: 'PRO'
+      plan: isMaxPlan ? 'MAX' : 'PRO'
     };
     await getAuth().setCustomUserClaims(checkoutSession.metadata.userId, customClaims);
 
     // Grant tokens for subscription purchases
-    if (isAnnualPlan || isMonthlyPlan) {
+    if (isAnnualPlan || isMonthlyPlan || isMaxMonthly || isMaxAnnual) {
       const db = admin.firestore();
       const tokenProfileRef = db.collection('tokenProfile').doc(checkoutSession.metadata.userId);
 
       // Determine token amount based on plan type
-      const tokensToGrant = isAnnualPlan ? 840 : 100;
-      const planType = isAnnualPlan ? 'annual' : 'monthly';
+      let tokensToGrant;
+      let planType;
+      if (isMaxAnnual) {
+        tokensToGrant = 5000;
+        planType = 'max-annual';
+      } else if (isMaxMonthly) {
+        tokensToGrant = 500;
+        planType = 'max-monthly';
+      } else if (isAnnualPlan) {
+        tokensToGrant = 1400;
+        planType = 'annual';
+      } else {
+        tokensToGrant = 140;
+        planType = 'monthly';
+      }
 
       try {
         const tokenDoc = await tokenProfileRef.get();
