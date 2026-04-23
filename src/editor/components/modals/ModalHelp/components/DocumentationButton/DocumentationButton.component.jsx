@@ -15,7 +15,7 @@ class DocumentationButton extends Component {
       <Button variant="toolbtn">
         <div
           className={styles.docsButtonWrapper}
-          onClick={() => window.open('https://3dstreet.org/docs/')}
+          onClick={() => window.open('https://3dstreet.org/docs/', '_blank', 'noopener,noreferrer')}
         >
           Documentation <Open />
         </div>
