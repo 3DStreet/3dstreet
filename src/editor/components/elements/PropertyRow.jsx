@@ -68,14 +68,29 @@ export default class PropertyRow extends React.Component {
         ? props.entity.getDOMAttribute(props.componentname)?.[props.name]
         : props.data;
 
+    const isFreeInputArray =
+      type === 'array' &&
+      !(props.schema.oneOf && props.schema.oneOf.length > 0);
+
     if (type === 'string' && value && typeof value !== 'string') {
       // Allow editing a custom type like event-set component schema
+      value = props.schema.stringify(value);
+    } else if (isFreeInputArray && Array.isArray(value)) {
+      // InputWidget expects a string. Use the schema stringify to get a
+      // consistent ", "-separated representation. Skipped when oneOf is set
+      // because SelectWidget needs the raw array to compute selected options.
       value = props.schema.stringify(value);
     }
 
     const widgetProps = {
       name: props.name,
       onChange: function (name, value) {
+        if (isFreeInputArray && typeof value === 'string') {
+          // Parse comma-separated string back to array so EntityUpdateCommand's
+          // schemaProperty.stringify(value) can call .join() on it.
+          value = props.schema.parse(value);
+        }
+
         // Auto-switch to custom variant for building segments when modifying certain properties
         const shouldSwitchToCustom =
           // Surface changes on street-segment
