@@ -1,0 +1,60 @@
+# Cog config for Tencent HY-World 2.0 (WorldMirror 2.0 reconstruction).
+# Mirrors the upstream environment: Python 3.10, CUDA 12.4, torch 2.4.0.
+# https://github.com/Tencent-Hunyuan/HY-World-2.0
+
+build:
+  gpu: true
+  cuda: "12.4"
+  python_version: "3.10"
+  system_packages:
+    - "git"
+    - "wget"
+    - "ninja-build"
+    - "libgl1-mesa-glx"
+    - "libglib2.0-0"
+    - "libsm6"
+    - "libxext6"
+    - "libxrender-dev"
+    - "ffmpeg"
+    - "libgomp1"
+  python_packages:
+    # Pinned to the upstream-tested versions.
+    - "torch==2.4.0"
+    - "torchvision==0.19.0"
+    - "numpy<2.0.0"
+    - "jaxtyping"
+    - "typeguard"
+    - "tqdm"
+    - "omegaconf"
+    - "plyfile"
+    - "colorspacious"
+    - "pydantic"
+    - "opencv-python"
+    - "scipy"
+    - "requests"
+    - "trimesh"
+    - "matplotlib"
+    - "pillow_heif"
+    - "onnxruntime"
+    - "einops"
+    - "torchmetrics"
+    - "uniception"
+    - "safetensors"
+    - "open3d==0.18.0"
+    - "pycolmap==3.10.0"
+    - "moviepy==1.0.3"
+    - "huggingface_hub"
+    - "imageio[ffmpeg]"
+    # Prebuilt gsplat wheel matching torch 2.4 / cu124 / cp310.
+    - "https://github.com/nerfstudio-project/gsplat/releases/download/v1.5.3/gsplat-1.5.3+pt24cu124-cp310-cp310-linux_x86_64.whl"
+  run:
+    # Clone the upstream pipeline code.
+    - "git clone --depth 1 https://github.com/Tencent-Hunyuan/HY-World-2.0 /opt/hy-world"
+    # FlashAttention 2 prebuilt wheel (cu12, torch 2.4, cxx11abiFALSE, py310).
+    # Building from source takes 30+ min and breaks Replicate build timeouts.
+    - "pip install https://github.com/Dao-AILab/flash-attention/releases/download/v2.7.0.post2/flash_attn-2.7.0.post2+cu12torch2.4cxx11abiFALSE-cp310-cp310-linux_x86_64.whl"
+    # Pre-download model weights (~6GB) so cold-start prediction is fast.
+    - "python -c 'from huggingface_hub import snapshot_download; snapshot_download(repo_id=\"tencent/HY-World-2.0\", allow_patterns=[\"HY-WorldMirror-2.0/*\"])'"
+    # Smoke test the import path so build fails early on missing deps.
+    - "cd /opt/hy-world && python -c 'from hyworld2.worldrecon.pipeline import WorldMirrorPipeline; print(\"WorldMirrorPipeline imports OK\")'"
+predict: "predict.py:Predictor"

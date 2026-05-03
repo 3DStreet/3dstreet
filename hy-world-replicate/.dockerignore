@@ -1,0 +1,11 @@
+README.md
+.gitignore
+.dockerignore
+__pycache__
+*.pyc
+.pytest_cache
+.venv
+samples
+*.zip
+*.mp4
+*.ply
