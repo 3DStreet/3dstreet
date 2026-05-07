@@ -165,3 +165,69 @@ This follows the dominant repo convention (Vitest tests under `test/<app>/<mirro
 2. Are there callers of `inspector.controls` outside the editor (e.g. in viewer-mode code, screentock, focus-animation) that we should sweep for as part of task 1?
 //!! I don't know - please check
 //** Will check as part of task 1 (the API-surface sweep). Output goes back into this plan if anything surprising shows up.
+
+## Adversarial review findings
+
+*Subagent review, 2026-05-07. Appended to original plan.*
+
+The plan's overall shape is sound — sibling controls class, URL flag, six-file scaffold — and its model of `EditorControls` matches the code I read. But several specifics are wrong or under-specified, and at least one (the Vitest include path) will silently invalidate exit criterion 1 if not fixed first. Findings below ordered roughly by severity.
+
+### Vitest include glob does not pick up `test/editor/`
+
+`vitest.config.js:11` sets `include: ['test/{editor,generator,shared}/**/*.test.{js,jsx}']`. So tests under `test/editor/lib/nav-experimental/` *will* be picked up — but the plan's claim "Vitest picks these up automatically via its default `**/*.test.js` glob — no config changes needed" is wrong on the *reason*: the default glob is overridden, and the include list happens to already contain `test/editor/`. The plan also justifies the directory with "establishes the `test/editor/` directory that `test/README.md` anticipates as a TODO" — fine, but the load-bearing fact is the explicit include in the config, not a default. Worth correcting in the plan so future readers don't think they can drop tests anywhere.
+
+### `controls.focus()` is non-trivially coupled to `focus-animation`
+
+`EditorControls.js:165-170` does `document.querySelector('[focus-animation]').components['focus-animation']` *at construction time*, then calls `setCamera(object, changeEventCallback)` on it. `focus()` (lines 63-163) writes directly into the animation component's `transitionCamPosStart/End`, `transitionCamQuaternionStart/End`, and `transitioning` fields, and the animation component's `tick` (`focus-animation.js:41-76`) then drives the camera each frame and calls back into `changeEventCallback` to dispatch `'change'`. Three implications the plan understates:
+
+- **`focus()` cannot be a no-op stub** without breaking double-click-to-focus, which `viewport.js:502-504` wires unconditionally on `Events.on('objectfocus', ...)`. Flag-on users will double-click an entity and nothing will happen. That's a regression the smoke-test checklist won't catch unless it explicitly tests double-click-to-focus.
+- **`ExperimentalControls` will need to either reuse the existing `focus-animation` component (which assumes a single camera registered via `setCamera`) or implement its own animation path.** Reusing means at most one of the two control classes can hold the camera registration at a time; if both register, the last one wins and the off-path class breaks. Keeping them strictly mutually exclusive (selected at construction by the flag) sidesteps this, but the plan's "leave EditorControls untouched on the off-path" framing implies coexistence at runtime that doesn't actually occur.
+- **`focus-camera-pose`-aware framing** (`EditorControls.js:99-145`) and the catalog `baseRotation` lookup are non-trivial logic. The plan should call out explicitly that flag-on Phase 0 either replicates this or accepts that double-click navigation feels different.
+
+### `EditorControls` is event-driven, not RAF-driven — the plan has this backwards
+
+The plan says `ExperimentalControls` "runs an animation-frame-driven update loop while active … matching `EditorControls`' behavior." `EditorControls` does *not* run a RAF loop. It dispatches `'change'` synchronously inside its `pan`/`zoom`/`rotate`/`focus`-driven callbacks (see e.g. `EditorControls.js:188, 238, 261, 478`). The only RAF loop in this neighbourhood is in `focus-animation`'s `tick` (which is A-Frame's tick, not raw RAF) and in `newSceneCameraZoom`'s ad-hoc `requestAnimationFrame(animate)` (`EditorControls.js:551-591`). Adding a continuously-running RAF loop in `ExperimentalControls` is a real behavioural change vs. the existing system: it will fight A-Frame's render loop (renders happen inside A-Frame's tick), can cause double-renders if `'change'` triggers a render on a frame A-Frame is already rendering, and changes the cost profile when the camera is idle. If the goal is "drive a smooth dolly/swoop animation", route it through A-Frame's tick (like `focus-animation` does) rather than a sibling RAF loop. At minimum the plan should drop the "matches `EditorControls`" justification — it doesn't.
+
+### `controls.enabled` is toggled by sibling controls — needs explicit handling
+
+`viewport.js:340, 345, 349, 353` toggle `controls.enabled` from inside `transformControls`'s `mouseDown`/`mouseUp` and `measureLineControls`'s `mouseDown`/`mouseUp` listeners. This is the existing mechanism preventing the camera from panning *while a gizmo drag is happening*. `ExperimentalControls` must honour `enabled` for the same reason — if it doesn't, flag-on mode will let users drag transform gizmos and pan the camera simultaneously. The plan lists `enabled` in the API surface but doesn't flag this specific failure mode. Add to the smoke-test checklist: "with flag on, drag a transform gizmo — camera does not move."
+
+### Bounds-invalidation event coverage gap — `componentchanged` does not fire on nested mutations
+
+The plan says subscribe to "A-Frame entity add/remove events and component-change events on those entity types," and notes the risk that this may miss events. Specifically: `managed-street`'s bounds depend on its child `street-segment` widths and lengths. Changing a `street-segment`'s `width` fires `componentchanged` *on the segment*, not on the parent `managed-street`. Anyone subscribing to `componentchanged` on `[managed-street]` only will silently miss this. Two concrete options worth deciding now:
+
+- **Subscribe at scene level** to `componentchanged` for any of a known set of components (`width`, `length`, `position` on segments, etc.), not just on the parent types. Cheap, catches more.
+- **Subscribe to `child-attached` / `child-detached` on `managed-street`** in addition to scene-level add/remove. Only these two files in `src/` use those events today (`SceneGraph.jsx`, `index.jsx`), so there's prior art but it's thin.
+
+The plan's "conservative invalidation: any add/remove invalidates" is fine for add/remove, but it doesn't cover the resize-an-existing-segment case at all. Worth being explicit in `sceneBounds.js`'s contract about which mutations *do not* invalidate (so Phase 2 doesn't get confused by a stale cache).
+
+### Sibling-class strategy is fine, but `setCamera` semantics need pinning down
+
+`viewport.js:407-412` calls `controls.setCamera(data.camera)` on every `cameratoggle` (perspective ↔ ortho). `EditorControls.setCamera` (lines 47-57) flips `isOrthographic` and `rotationEnabled` based on camera type. `ExperimentalControls` either has to support orthographic cameras too — which the navigation proposal implicitly doesn't — or has to gracefully handle being told "switch to ortho" without breaking. Not addressed in the plan. Simplest answer: when handed an orthographic camera, fall back to delegating to a stashed `EditorControls` instance, or just disable yourself and let the user understand that the experimental scheme is perspective-only. Either way, decide and write it down.
+
+### Sizing realism — task 5 is bigger than "a single sitting"
+
+The `sceneBounds.js` task has to: pick the right A-Frame events to subscribe to (see above), handle the timing where `componentchanged` fires before `object3D` is updated, deal with managed-street rebuilds (which detach and reattach children), and ship with tests that exercise invalidation. Plus the cylindrical bounds derivation itself, which needs to handle empty scenes and scenes with `street-geo` sentinel correctly. Two sittings, more likely. Also, task 1 (the API-surface sweep) is honestly trivial *if* you accept "`focus` is a no-op stub" — but the focus-animation finding above means task 1 turns into a real design call about how to handle `focus()`, which bleeds into task 6.
+
+### Risks list misses a few
+
+Worth adding:
+
+- **Hot-reload during dev.** Webpack HMR can re-evaluate modules while the editor is live. If `ExperimentalControls` adds module-level singletons (e.g. a single `gestureLatch` instance, a singleton bounds cache), HMR can leave stale state behind. Either keep state per-instance, or document that HMR requires a hard reload for `nav-experimental/` changes.
+- **`focus-animation` component registration.** `EditorControls.js:166` queries the DOM for `[focus-animation]` *during construction*. If `ExperimentalControls` is constructed before A-Frame has registered the component (timing depends on whether viewport init runs before/after the component's `init`), it'll throw. The plan should mirror `EditorControls`' assumption (it works today, so it's fine to assume — but call it out).
+- **Smoke test does not exercise the ortho path.** Flag-on with the user pressing the top/front/etc. ortho-camera buttons will trigger `setCamera` with an `OrthographicCamera`. Add to the checklist.
+
+### Exit criteria gaps
+
+The five-item exit list will not catch:
+
+- Double-click-to-focus broken in flag-on (`focus()` regression).
+- Transform-gizmo drags double-pan in flag-on (`enabled` not honoured).
+- Ortho camera mode broken in flag-on (`setCamera` not handling ortho).
+- `newSceneCameraZoom` broken in flag-on (loading a saved scene in flag-on mode triggers `controls.newSceneCameraZoom(snapshotCameraState)` at `viewport.js:404`; not in the plan's listed API surface).
+
+The last one is particularly easy to miss because it's wired via the `newScene` event, not a direct caller. Worth at least listing in the "ActionBar callers" sentence as "ActionBar zoom/reset *and* `newScene` snapshot animation."
+
+### Minor: dead-code claim about `aframe-orbit-controls.min.js`
+
+Confirmed. `src/lib/aframe-orbit-controls.min.js` has no `import`/`require` references in `src/`. The only reference is in `vehicle-wheel-animation.html`, a standalone test page that loads it from unpkg — the local copy in `src/lib/` is genuinely unused. Plan is correct here.
