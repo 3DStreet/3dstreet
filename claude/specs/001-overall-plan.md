@@ -20,9 +20,10 @@ The five prototypes share a lot of plumbing: event handlers, modifier-key state 
 
 Outputs:
 - A `nav-experimental` component (or similar) that owns the camera and reads input
-- A setting to enable it (so old and new systems can coexist)
+- A feature flag to enable it (URL parameter — fast to toggle without a rebuild; old and new systems coexist)
 - Latching infrastructure (mode and rotation-center latched at gesture start)
 - Bounds computation + cache + invalidation hooks
+- Foundational analysis of the existing camera-controls wiring (stock A-Frame? three.js OrbitControls? custom?) — done as part of Phase 0 planning, before any code lands. Output is a short note documenting what's being displaced and where the toggle inserts cleanly.
 
 ### Phase 1 — Birds-eye view, top-down to gentle tilt only
 
@@ -73,27 +74,14 @@ Self-contained, slot in last as agreed.
 - WASD navigation
 - Visual indicators for mode (subtle FOV nudge, fade of 2D overlays)
 
-## What's worth pinning down before Phase 1
+## Decisions (resolved before Phase 1)
 
-These affect the foundation work, so resolving them early avoids rework.
-
-1. **Replace vs coexist.** Working assumption: a feature-flagged new control system that fully takes over when on, and the old system runs unchanged when off. The alternative — incrementally mutating the existing controls — sounds tempting but means every prototype is fighting the existing semantics. Confirm.
-//!! Confirm.  On this branch we could even completely break the old controls and that would probably be OK.  But for safety let's use a feature flag.  Can be build timr, or a URL parameter id that's just as easy.
-2. **What's the existing nav component?** Worth a quick look at how the current camera controls are wired — stock A-Frame controls, three.js OrbitControls, custom? That tells us how much we're displacing in Phase 0 and where the toggle inserts cleanly.
-//!! Agree sensible foundational analysis.  Propose this is done as part of planning phase 0.
-3. **Scenes for evaluation.** Three representative scenes is probably right:
-   - A Streetmix import (small, narrow, bounded)
-   - A geo-located scene with Google Tiles (unbounded)
-   - A large diorama with multi-storey buildings (bounded but with vertical extent)
-
-   Worth picking specific ones now so feel-tests stay comparable across phases.
-//!! Initially planning to start with just what we get from "Create a basic street".  I think we can learn a lot there, before extending to other scenes.  Key thing this doesn't cover is the unbounded scene, but the behaviour of the unbounded scene is just the behavour we get when in the middle of a bounded scene, so not actually any limitation in getting a sense of hos this feels.
-4. **Who tests, and how often.** Self? Self + Kieran? A few Discord users? Per-phase walk-through, or a checkpoint at each merge? "Feel" feedback only, or any rough numeric capture (e.g. "rate 1–5 vs current")?
-//!! Me first.  Once I think it's OK, I will share with Kieran (and we will definitely try a wider range of scenes at that point - he'll have ideas about what matters & is most interesting)
-5. **Branch strategy.** Long-lived feature branch with squash-merges per phase, vs. main behind a flag. The flag-on-main approach makes it easy for Kieran or others to try the prototype without checking out a branch — probably the right call given the testing audience, but it constrains how broken intermediate states can be.
-//!! Just work on my "navigation" branch for now.  Integration with upstream mein is something we'll plan for later.  If you want to work on a sub-branch for each phase and merge back into "navigation" that should work well.
-6. **Visual indicator for the 30° hard-cut.** Cursor change? On-screen badge? Subtle camera FOV nudge? Worth deciding *before* Phase 2 lands so we're not retrofitting; even a placeholder we can iterate on.
-//!! Don't know if this is going to work, but thinking about restyling the two toolbars that hover centrally top & bottom into full-width black strips, so we end up with a slightly different aspect ratio (wider screen).  No idea if this will work, but should be a pretty clear indication something has changed.  Would like to see how this feels.
+1. **Replace vs coexist: coexist, behind a URL-parameter feature flag.** New control system fully takes over when on; old system unchanged when off. URL parameter rather than build-time flag, so it's cheap to toggle in-session. The `navigation` branch could in principle break the old controls outright, but the flag is cheap insurance and supports side-by-side feel comparisons.
+2. **Existing nav component analysis: deferred to Phase 0 planning.** Done before any Phase 0 code lands. Output is a short note on what's being displaced and where the toggle inserts cleanly.
+3. **Scenes for evaluation: start with the "Create a basic street" default scene.** A single bounded scene is enough to learn from initially. The "unbounded" case is behaviorally equivalent to "inside a bounded scene's cylinder," which the basic street already exercises. Wider scene set (Streetmix import, geo-located, large multi-storey diorama) brought in when sharing with Kieran — he'll have informed views on what matters most.
+4. **Testing: self first, Kieran second.** Diarmid drives feel-tests through the early phases. Once the prototype is at a state worth sharing, Kieran joins and the scene set broadens. Discord-user testing is not in this round.
+5. **Branch strategy: work on the `navigation` branch.** A sub-branch per phase, merged back into `navigation` at phase boundaries, keeps each phase reviewable and reversible. Integration with upstream `main` is a later-phase concern.
+6. **Visual indicator for the 30° hard-cut: toolbar aspect-ratio shift.** Restyle the two centrally-floating toolbars (top + bottom) into full-width black strips when the new low-tilt mode is active. The resulting aspect-ratio change (wider effective viewport) is a strong, hard-to-miss signal that mode has changed, while staying out of the user's mouse path. Treat as a placeholder to evaluate in Phase 2 — may need iteration. Lower-effort fallbacks if this doesn't feel right: cursor-shape change, subtle accent-color overlay on canvas border, or a small mode badge.
 
 ## Open / deferred to prototype-time evaluation
 
