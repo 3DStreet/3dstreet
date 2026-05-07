@@ -1,0 +1,13 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npx vitest *)",
+      "Bash(npx eslint *)",
+      "Bash(node -e \"import\\('./src/editor/lib/nav-experimental/flag.js'\\).then\\(m => console.log\\('flag:', Object.keys\\(m\\)\\)\\)\")",
+      "Bash(node *)",
+      "Bash(npm ls *)",
+      "Bash(npm i *)",
+      "Bash(npm run *)"
+    ]
+  }
+}

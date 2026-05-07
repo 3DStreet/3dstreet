@@ -3,6 +3,10 @@ import TransformControls from './TransformControls.js';
 import EditorControls from './EditorControls.js';
 import { MeasureLineControls } from './MeasureLineControls.js';
 import InfiniteGridHelper from './InfiniteGridHelper.js';
+import {
+  ExperimentalControls,
+  isExperimentalNav
+} from './nav-experimental/index.js';
 
 import { copyCameraPosition } from './cameras';
 import { initRaycaster } from './raycaster';
@@ -387,7 +391,12 @@ export function Viewport(inspector) {
   });
 
   // Controls need to be added *after* main logic.
-  const controls = new THREE.EditorControls(camera, inspector.container);
+  // URL flag `?nav=experimental` selects the experimental nav-controls
+  // system (Phase 0 placeholder; see claude/specs/001-phase-0-plan.md).
+  // The two control classes are mutually exclusive at construction time.
+  const controls = isExperimentalNav()
+    ? new ExperimentalControls(camera, inspector.container)
+    : new THREE.EditorControls(camera, inspector.container);
   inspector.controls = controls; // used by ActionBar zoom/reset buttons
   controls.center.set(0, 1.6, 0);
   controls.rotationSpeed = 0.0035;
