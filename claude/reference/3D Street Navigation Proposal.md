@@ -4,6 +4,12 @@
 
 
 
+## Conventions
+
+**Tilt angle:** 0° = camera horizontal, 90° = camera straight down. The "30° threshold" referenced throughout is a gentle downward gaze — well above horizontal but well short of straight-down.
+
+**Scene "bounded" vs "unbounded":** A scene is treated as **unbounded** if it contains a `street-geo` or `google-maps-aerial` entity (geo-located scenes are effectively infinite). Otherwise it is **bounded**. The bounds, when bounded, are computed as a vertical cylinder: center = the XZ center of the union AABB of all `managed-street`, `street` (legacy), and `intersection` entities; radius = the largest horizontal half-extent of that AABB. Bounds are cached and invalidated on entity add/remove/reposition.
+
 ## Camera movement terminology
 
 
@@ -34,11 +40,11 @@ When tilt is pointing downwards from 90 degrees up to 30 degrees, and we are not
 
 Proposed changes from current implementation:
 
-- "Plan view" is removed as a separate view.  This is just a particular camera angle of "Birds eye view".  It becomes a button that resets camera angle to a N-S oriented top-down view.
+- "Plan view" is removed as a separate view.  This is just a particular camera angle of "Birds eye view".  It becomes a button that resets camera angle to a N-S oriented top-down view, via an **animated transition** (consistent with the smooth transitions used elsewhere; an instant cut would feel jarring).
 - LB+mouse = truck/dolly.  Similar to existing controls.  However current implementation moves in the camera X & Y planes.  Switches to move in the world X & Z planes, to match Google Maps.
 - Shift+LB+mouse = pan/tilt.  Similar to existing controls, but shifted from RB to Shift+LB to match Google Maps, and to free up RB for a contextual menu
-- Mouse wheel = dolly along camera's Z axis.  Matches Google Maps.  Similar to current behaviour, but movement rate should be faster (Google Maps has a very sensitive zoom in/out), and linear (current implementation seems to slow down as it approaches the orbit controls origin).
-- WASD keys as an alternative mechanism for truck/dolly (world co-ordinates).  For consistency with closer views (see later).
+- Mouse wheel = dolly along camera's Z axis.  Matches Google Maps.  Similar to current behaviour, but movement rate should be faster (Google Maps has a very sensitive zoom in/out), and **exponential** — each wheel tick changes camera distance by a fixed *percentage* rather than a fixed absolute amount. (Google Maps appears linear but is in fact exponential; a true linear zoom feels sluggish high up and runaway low down.)
+- WASD keys as an alternative mechanism for truck/dolly. Movement is in the **horizontal plane**, with "forward" (W) projected from the camera's current yaw — i.e. W moves you in the direction the camera is facing, ignoring tilt. (When the camera is pointing straight down, "forward" follows the camera's local up direction projected to horizontal.) For consistency with closer views (see later).
 
 
 
@@ -78,9 +84,11 @@ Allowing views with a low tilt angle (below 30 degrees) creates problems for the
 
 Proposed solution:
 
-- 1. Above 30 degrees (or so), rotate about the center of the current camera view, at street level.  Same as existing function
-- 2. Below 30 degrees, when the scene geometry is bounded, and the camera sits outside those bounds, rotate about the center of the scene geometry ("diomara mode")
-- 3. Below 30 degrees, when the scene geometry is unbounded, or the camera XZ co-ordinates lies within the scene bounds, rotate about the camera position.  This is the rotation model used in Google Street View.
+- 1. Above 30 degrees tilt (i.e. looking mostly downward), rotate about the center of the current camera view, at street level.  Same as existing function
+- 2. Below 30 degrees tilt, when the scene is bounded (per definition above) and the camera sits outside the bounds cylinder, rotate about the center of the scene geometry ("diorama mode"). The cylindrical (rather than AABB) bounds avoid the "long narrow street" pathology where a camera 2m off the side of the street would otherwise rotate around a point 25m down the street.
+- 3. Below 30 degrees tilt, when the scene is unbounded, or the camera lies within the bounds cylinder, rotate about the camera position.  This is the rotation model used in Google Street View.
+
+**Latching:** The choice of rotation center is latched at gesture start (mouse-down) and held for the duration of the drag, to avoid mid-gesture jumps when the camera crosses the bounds boundary or the 30° threshold. A new gesture re-evaluates.
 
 Transitons / Border regions
 
@@ -99,9 +107,13 @@ This attempts to deliver a smooth, continuous, equivalent of the transitions in 
 
 Mouse-wheel behaviour is split into 3 phases.
 
-- Phase 1 (birds eye view) - Mouse wheel dollies along camera's Z axis.  In plan view, this is directly down; if there is some camera tilt, this is a movement down and forwards.
-- Phase 2 (transition) - At elevations between (maybe) 10m and 1.5m (eye level), mouse wheel turns into a combined pedestal up/down (like riding an elevator) and a camera tilt, so that by 1.5m, the camera is horizontal.
-- Phase 3 (focal zoom) - Once the camera is at street height, further mouse wheel up (zoom in) translates into a focal zoom (no further forward movement).  This means that the camera avoids flying through geometry that is in front of it (which can cause clipping etc.).
+- Phase 1 (birds eye view) - Mouse wheel dollies the camera along the ray from the camera through the cursor's current world hit-point ("**cursor-anchored zoom**", matching Google Maps). The world point under the cursor stays under the cursor as the camera moves in. Tilt is preserved through the move. In plan view with the cursor at screen center, this degenerates to a straight-down dolly; with the cursor off-center, the camera also translates horizontally so the anchor point stays put.
+- Phase 2 (transition) - At elevations between (maybe) 10m and 1.5m (eye level), mouse wheel turns into a combined pedestal up/down (like riding an elevator) and a camera tilt, so that by 1.5m, the camera is horizontal. **Cursor anchoring continues to apply** — the descent track aims to keep the anchor point under the cursor — which means the user naturally lands next to the world point they were aiming at, rather than stranded above or short of it.
+- Phase 3 (focal zoom) - Once the camera is at street height, further mouse wheel up (zoom in) translates into a focal zoom (no further forward movement).  This means that the camera avoids flying through geometry that is in front of it (which can cause clipping etc.). For prototype simplicity, Phase 3 is **FOV-only** (no cursor anchoring) — once at street level, "zoom into the cursor point" matters less. May revisit if it feels wrong.
+
+**No-hit fallback for cursor anchoring:** If the cursor's ray misses all scene geometry, fall back in order: (a) intersect with the ground plane (y=0); (b) if that's behind the camera or absurdly far, use a fixed point straight ahead at a sensible distance, equivalent to a plain camera-Z dolly.
+
+**Mid-zoom cursor movement:** Each wheel tick re-raycasts, so if the user moves the mouse during a flurry of wheel ticks the anchor updates per tick. Matches Google Maps behavior.
 
 Zooming out
 
@@ -111,7 +123,10 @@ Zooming out
 
 Eventual camera angle on zoom out
 
-- When zooming in, at the point of entry to Phase, the controls store the camera tilt angle, so that the tilting down that occurs on zooming out stops at the original tilt level.
+- When zooming in, at the point of entry to Phase 2, the controls store the camera tilt angle, so that the tilting down that occurs on zooming out stops at the original tilt level.
+- If the user crosses the Phase 1↔2 boundary multiple times in a session, **the most recent crossing wins** — the stored tilt is overwritten on each downward entry to Phase 2.
+
+**Mac trackpad mapping:** A two-finger pinch on a Mac (or Windows) trackpad arrives in the browser as Ctrl+wheel, and maps naturally onto the "fixed-tilt zoom" Ctrl-modifier behavior described above. Pinch zoom is also cursor-anchored, for consistency. Two-finger scroll up/down (which arrives as a plain wheel event) drives the full 3-phase swoop. No additional mapping needed.
 
 
 
@@ -230,6 +245,8 @@ What would I intuitively expect from double-click navigation?
 - Navigation for double-click on a lane feels completely broken at the moment.
   - Zooms right out to a very wide view; but maybe the user just wanted to TP their street level view a few meters along the street?
   - Clicking on a lane should probably resolve to a UV point on that lane and navigate there, rather than treating the whole lane as an "object" that the user wants to see the "front" of.
+
+**Facing direction after navigation.** Rather than relying on each object having a defined "front" (which works for cars/people but not for trees, generic geometry, etc.), the resulting view's heading **snaps to the closest cardinal direction (N/S/E/W)** to the user's current camera heading. This gives a predictable rule that works for any object including lanes, and avoids large unwanted rotations.
 
 
 
