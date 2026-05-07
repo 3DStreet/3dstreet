@@ -77,7 +77,24 @@ const controls = isExperimentalNav()
 inspector.controls = controls;
 ```
 
-`ExperimentalControls` exposes the subset of the `EditorControls` API that other code calls (`focus`, `enabled`, `setCamera`, `dispatchEvent('change')`, plus any methods ActionBar uses for zoom/reset). Identifying that subset is a Phase 0 task.
+The two control classes are **mutually exclusive at construction time** — only one is ever instantiated for a given session, selected by the URL flag. They never coexist at runtime. This matters because `EditorControls` registers itself with the `focus-animation` component via `setCamera()` at construction (see the focus-animation finding below); having two controls trying to drive that single component would break.
+
+`ExperimentalControls` must implement the full subset of the `EditorControls` API that other editor code calls. From a sweep of `viewport.js` and surrounding editor code, that surface includes:
+
+- `enabled` (read/write — toggled by `transformControls` and `measureLineControls` mouseDown/mouseUp at `viewport.js:340-353` to suppress camera motion during gizmo drags)
+- `center` (Vector3, read/write — `viewport.js:392`)
+- `rotationSpeed` (`viewport.js:393`)
+- `panSpeed`, `zoomSpeed`, `minSpeedFactor` (set by callers configuring feel)
+- `setCamera(camera)` (called on `cameratoggle` events at `viewport.js:407-412` to switch perspective ↔ ortho)
+- `focus(target)` (called by `Events.on('objectfocus', ...)` at `viewport.js:502-504` — drives double-click-to-focus)
+- `newSceneCameraZoom(snapshotCameraState)` (called via the `newScene` event at `viewport.js:404` — animates the camera into a saved scene's stored camera pose)
+- `addEventListener('change', ...)` / `dispatchEvent({type: 'change'})` (Three.js EventDispatcher mixin — used by viewport rendering to know when to re-render)
+
+`focus()` and `newSceneCameraZoom()` cannot be no-op stubs without breaking double-click-to-focus and saved-scene loading respectively.
+
+**`focus()` strategy (locked):** `ExperimentalControls.focus()` reuses the existing `focus-animation` A-Frame component, mirroring `EditorControls.focus()`'s structure — query `[focus-animation]` at construction, call `setCamera(camera, changeCallback)`, and on each `focus()` invocation populate `transitionCamPosStart/End` etc. and flip `transitioning = true`. Mutual exclusion at construction guarantees only one camera is registered with `focus-animation` at a time, so this is safe. Catalog `baseRotation` framing logic is replicated as-is for Phase 0; navigation-proposal-aware framing is a Phase 4 problem.
+
+**`setCamera` ortho strategy (locked):** When handed an `OrthographicCamera`, `ExperimentalControls.setCamera()` flips an internal `disabled` flag and stops responding to input, with a `console.info`-level log. Ortho navigation is out of scope for the prototype. Tracked for later in `claude/issues-for-discussion.md` issue #2.
 
 ### Latching infrastructure
 
@@ -93,12 +110,22 @@ inspector.controls = controls;
 - `getBounds()` → `{ bounded: bool, center: Vec3, radius: number }` — cached.
 - Detection: scene is **unbounded** if any `street-geo` or `google-maps-aerial` entity is present. Otherwise bounded.
 - Computation when bounded: union AABB of all `managed-street`, `street`, and `intersection` entities. Cylinder = XZ center of AABB, radius = max horizontal half-extent.
-- Invalidation: subscribes to A-Frame entity add/remove events and component-change events on those entity types. On invalidation, the next `getBounds()` call recomputes.
 - Phase 0 ships this with unit tests but no consumers; Phase 2 is the first consumer.
+- **Cache lifetime (locked):** the cache lives on a `SceneBounds` instance, not at module scope. `sceneBounds.js` exports a class (or factory); the `ExperimentalControls` instance owns one. Cleanly torn down on instance destruction, HMR-safe.
+
+**Invalidation policy** — explicit because A-Frame's event coverage for nested mutations is uneven:
+
+- **Invalidates on:** scene-level entity add/remove of any `managed-street`, `street`, `intersection`, `street-geo`, or `google-maps-aerial`; `child-attached` / `child-detached` on any of those entity types (catches `managed-street` rebuilds that detach and reattach segments); `componentchanged` at scene level for a known list of dimension-affecting components on `street-segment` (`width`, `length`, `position`).
+- **Does NOT invalidate on:** position changes to non-segment entities; rotation of any entity (cylindrical bounds are rotation-invariant); component changes outside the known list.
+- **Fallback:** the cache is also invalidated on `newScene` (saved-scene loads), which catches anything else as a side effect.
+
+Document this contract in `sceneBounds.js` itself so Phase 2 doesn't get confused by a stale cache.
 
 ### Camera-update loop
 
-`ExperimentalControls` runs an animation-frame-driven update loop while active. For Phase 0 it just calls `dispatchEvent({type: 'change'})` after gesture-driven camera updates (matching `EditorControls`' behavior, so the rest of the editor re-renders correctly).
+`ExperimentalControls` is **event-driven**, dispatching `'change'` synchronously inside its pan/zoom/rotate/focus callbacks — matching the actual behavior of `EditorControls` (which is *not* RAF-driven, despite a previous version of this plan claiming so).
+
+Where Phase 1+ needs continuous animation (e.g. swoop transitions, focus tweens), it routes through **A-Frame's tick** (the same way `focus-animation` does today via its component `tick`), not a sibling `requestAnimationFrame` loop. A standalone RAF loop would fight A-Frame's render loop and risk double-renders. Phase 0 doesn't need any animation path beyond synchronous `'change'` dispatch, but the constraint is recorded here so Phase 1+ doesn't reintroduce a RAF loop.
 
 ## Deliverables
 
@@ -108,38 +135,45 @@ inspector.controls = controls;
 4. **Toggle in `viewport.js`** that selects between `EditorControls` and `ExperimentalControls` based on the URL flag.
 5. **Trivial proof-of-life behavior in `ExperimentalControls`**: LB+drag does a screen-space camera pan (just enough to confirm input → camera update → re-render works end-to-end). No part of the real proposal — placeholder only.
 6. **Unit tests** for `gestureLatch`, `modifierState`, and `sceneBounds`. Use the existing vitest setup (`npm run test:modern`).
-7. **Manual smoke test checklist** documenting:
+7. **Manual smoke test checklist:**
    - Flag off → existing controls unchanged.
-   - Flag on → editor camera responds to LB+drag with placeholder pan; ActionBar zoom/reset buttons still work.
+   - Flag on → editor camera responds to LB+drag with placeholder pan.
+   - Flag on → ActionBar zoom/reset buttons still work.
+   - Flag on → double-click on an entity focuses on it (regression check for `focus()`).
+   - Flag on → drag a transform gizmo — camera does **not** pan simultaneously (regression check for `enabled` arbitration).
+   - Flag on → load a saved scene — camera animates to the saved pose (regression check for `newSceneCameraZoom`).
+   - Flag on → switch to top/front/etc. ortho camera via the toolbar — does not crash; controls disable themselves with a `console.info` log; switching back to perspective re-enables them.
 
 ## Task breakdown
 
-Rough sizing — each task is a single sitting unless noted.
+Rough sizing in sittings (a sitting is a focused 1–3h block).
 
-1. **Identify the `EditorControls` API surface that other code consumes.** Grep `inspector.controls.` and `controls.` across editor code; list every method/property called externally. Output: short list, drives the `ExperimentalControls` interface.
-2. **Scaffold `nav-experimental/` directory + `flag.js`.** Trivial.
-3. **`modifierState.js`** with tests.
-4. **`gestureLatch.js`** with tests.
-5. **`sceneBounds.js`** with tests. Largest single task — cache invalidation hookup needs care.
-6. **`ExperimentalControls.js` skeleton** implementing the API subset from task 1 + the placeholder LB-pan behavior.
-7. **Wire toggle into `viewport.js`.**
-8. **Manual smoke test** against the basic-street default scene.
-9. **Document any surprises** found during integration in this plan or as follow-ups.
+1. **Confirm and finalize the `EditorControls` API surface.** Most of the surface is already documented above. Task is to grep-verify (`inspector.controls.`, `controls.` across `src/`), settle the `focus()` / ortho-camera design calls (see "Open design calls" below), and lock the interface. (1 sitting.)
+2. **Scaffold `nav-experimental/` directory + `flag.js`.** Trivial. (≤1 sitting.)
+3. **`modifierState.js`** with tests. (1 sitting.)
+4. **`gestureLatch.js`** with tests. (1 sitting.)
+5. **`sceneBounds.js`** with tests. Larger than a single sitting — has to handle: empty scene, scene with `street-geo` sentinel, `managed-street` rebuilds (detach/reattach), `street-segment` resize without parent `componentchanged` firing, and `newScene` fallback. (2 sittings, possibly 3.)
+6. **`ExperimentalControls.js` skeleton** implementing the API surface from task 1 + the placeholder LB-pan. Size depends on the `focus()` / ortho design call: a "delegate to a stashed `EditorControls` for ortho + share `focus-animation`" approach is ~1 sitting; a from-scratch focus-animation path is more. (1–2 sittings.)
+7. **Wire toggle into `viewport.js`.** (≤1 sitting.)
+8. **Manual smoke test** against the basic-street default scene, working through the checklist below. (1 sitting.)
+9. **Document any surprises** found during integration in this plan or as follow-ups. (Ongoing.)
 
 ## Risks
 
-- **`EditorControls` API surface larger than expected.** Some methods may be tightly coupled to `EditorControls` internals. Mitigation: list them all (task 1) before designing the class. Worst case: stub unknown methods as no-ops in Phase 0, address in Phase 1.
+- **`focus()` design call has implementation depth.** `EditorControls.focus()` is non-trivially coupled to the `focus-animation` A-Frame component (which assumes a single registered camera) and to catalog-driven framing logic. A no-op stub will visibly break double-click-to-focus. Mitigation: settle the design call (see "Open design calls" below) before writing `ExperimentalControls.focus()`.
 - **Inspector container event handling collisions.** Editor uses pointer events for both camera control and entity-selection raycasts. If our controls and the selection layer both want LB events, we need the same arbitration `EditorControls` already does. Read `EditorControls.js` carefully before duplicating.
-- **Bounds invalidation events unreliable.** A-Frame's component-change event coverage for nested entity changes (e.g. resizing a `street-segment` that affects `managed-street` bounds) may not fire on every relevant case. Mitigation: start with conservative invalidation (any add/remove invalidates; recompute is cheap), tighten only if profiling shows it matters.
+- **Bounds invalidation events uneven.** A-Frame's `componentchanged` does not bubble — changing a `street-segment` width fires on the segment, not the parent `managed-street`. Mitigation: explicit invalidation policy documented above (scene-level subscriptions + `newScene` fallback). Worth profiling once Phase 2 actually consumes bounds.
 - **Two-camera confusion.** Easy to start hacking on `look-controls` by mistake. Be explicit in code comments that this is editor-camera only.
+- **Webpack HMR can leave stale state in module-level singletons.** If `gestureLatch` or the bounds cache use module-scope state, HMR can preserve it across reloads in surprising ways. Mitigation: keep state per-`ExperimentalControls`-instance where possible, or document that `nav-experimental/` changes need a hard reload during dev.
+- **`focus-animation` registration timing.** `EditorControls` queries `[focus-animation]` from the DOM at construction time; if `ExperimentalControls` is constructed before A-Frame has registered that component's instance, the query will fail. Today's setup works, but the timing is implicit. Mitigation: mirror `EditorControls`' construction site exactly; if it works there, it works for us.
+- **Ortho camera mode.** `setCamera` can be handed an `OrthographicCamera`. Phase 0 strategy is "disable self, log, wait for return to perspective" — see the toggle-insertion section. Tracked as issue #2 in `claude/issues-for-discussion.md`.
 
 ## Exit criteria
 
 Phase 0 is done when:
 - [ ] All six files in `nav-experimental/` exist and are exercised by tests.
 - [ ] `?nav=experimental` flag selects `ExperimentalControls`; absence selects `EditorControls`.
-- [ ] Smoke test passes: flag off behaves identically to current; flag on responds to LB-drag with placeholder pan and re-renders correctly.
-- [ ] ActionBar zoom/reset still work with flag on.
+- [ ] Smoke test passes end-to-end (all seven items in the checklist above).
 - [ ] Sub-branch merged back to `navigation`.
 
 After exit, Phase 1 begins by replacing the placeholder LB-pan with the real birds-eye control set.
@@ -155,7 +189,7 @@ test/editor/lib/nav-experimental/
 └── sceneBounds.test.js
 ```
 
-This follows the dominant repo convention (Vitest tests under `test/<app>/<mirrored source path>`) and establishes the `test/editor/` directory that `test/README.md` anticipates as a TODO. Vitest picks these up automatically via its default `**/*.test.js` glob — no config changes needed. See `claude/issues-for-discussion.md` for a related inconsistency between the README's stated best practice ("co-locate when possible") and actual repo behavior, to raise with Kieran.
+This follows the dominant repo convention (Vitest tests under `test/<app>/<mirrored source path>`) and establishes the `test/editor/` directory that `test/README.md` anticipates as a TODO. `vitest.config.js:11` explicitly sets `include: ['test/{editor,generator,shared}/**/*.test.{js,jsx}']`, so `test/editor/` is already a known root — no config changes needed *because the include list already covers it*, not because of a default glob. See `claude/issues-for-discussion.md` for a related inconsistency between the README's stated best practice ("co-locate when possible") and actual repo behavior, to raise with Kieran.
 
 ## Open questions for review
 
@@ -231,3 +265,61 @@ The last one is particularly easy to miss because it's wired via the `newScene` 
 ### Minor: dead-code claim about `aframe-orbit-controls.min.js`
 
 Confirmed. `src/lib/aframe-orbit-controls.min.js` has no `import`/`require` references in `src/`. The only reference is in `vehicle-wheel-animation.html`, a standalone test page that loads it from unpkg — the local copy in `src/lib/` is genuinely unused. Plan is correct here.
+
+## Response to adversarial review
+
+*Mapping each finding to plan changes or open decisions, 2026-05-07.*
+
+| Finding | Status |
+|---|---|
+| Vitest include glob | **Fixed** — Test-file location section corrected to cite the explicit `vitest.config.js` include rather than a non-existent default glob. |
+| `controls.focus()` coupling | **Fixed in plan + open design call.** API surface now lists `focus` as a real obligation, not a stub. Recommended approach below in "Open design calls." |
+| Event-driven vs RAF-driven | **Fixed.** Camera-update-loop section now correctly says event-driven, with a constraint on Phase 1+ animations going through A-Frame's tick. |
+| `controls.enabled` toggled by gizmos | **Fixed.** API surface now flags this. Smoke test now includes a transform-gizmo regression check. |
+| Bounds-invalidation gap | **Fixed.** Scene-bounds section now has an explicit invalidation policy, including the `street-segment` resize case and `newScene` fallback. |
+| `setCamera` ortho semantics | **Open design call** below. Plan now lists ortho as a risk and a smoke-test item, but the strategy needs your call. |
+| Sizing realism | **Fixed.** Task 5 bumped to 2–3 sittings; task 1 framing changed to "confirm and finalize" rather than "discover from scratch." |
+| Risks list omissions | **Fixed.** HMR, focus-animation registration timing, and ortho-mode added. |
+| Exit-criteria gaps | **Fixed.** Smoke test checklist now covers double-click focus, gizmo arbitration, ortho mode, and `newSceneCameraZoom`. Exit criteria collapsed to reference the full checklist. |
+| Dead-code claim | **No action needed.** Confirmed. |
+
+## Open design calls
+
+Three decisions surfaced by the review that need your input before Phase 0 implementation begins. Recommended defaults given for each.
+
+### 1. How does `ExperimentalControls.focus()` work?
+
+`focus()` is wired to double-click-to-focus and is non-trivially coupled to the `focus-animation` A-Frame component. Three options:
+
+- **(a) Reuse `focus-animation` (recommended).** Mutual-exclusion-at-construction means only one control class is alive per session, so only one camera registration with `focus-animation` exists at a time. `ExperimentalControls.focus()` mirrors `EditorControls.focus()`'s logic — write into `transitionCamPosStart/End` etc., flip `transitioning = true`, let the existing tick drive the animation. Lowest risk, fastest path; double-click-to-focus behaves identically in flag-on and flag-off mode.
+- **(b) Implement own animation path.** `ExperimentalControls` ticks its own focus animation through A-Frame's tick (separate from `focus-animation`). More code, but decouples us from the existing component. Worth doing only if the navigation proposal calls for materially different focus behavior — which it doesn't.
+- **(c) No-op stub.** Double-click-to-focus broken in flag-on. Not viable for prototype use.
+
+**Recommendation: (a).** Confirm.
+//!! Agree
+//** Locked in. `ExperimentalControls.focus()` will reuse `focus-animation`, mirroring the structure of `EditorControls.focus()`. Reflected in the toggle-insertion section (focus() obligation made concrete) and risks list.
+
+### 2. Ortho camera mode in flag-on
+
+The toolbar's top/front/side ortho buttons trigger `controls.setCamera(orthoCamera)`. The navigation proposal is silent on ortho. Three options:
+
+- **(a) Disable self in ortho mode (recommended).** When handed an `OrthographicCamera`, `ExperimentalControls.setCamera()` flips an internal `disabled` flag and stops responding to input. Ortho buttons effectively freeze the camera at the chosen ortho view; user has to click "Plan view" or similar to return to perspective and regain control. Acceptable because ortho mode is rarely used in nav workflows, and Phase 0 is not about ortho.
+- **(b) Delegate to a stashed `EditorControls` for ortho.** Construct an `EditorControls` lazily on first `setCamera(orthoCamera)` call and route input there. Preserves existing ortho behavior exactly, but breaks the "mutual exclusion at construction" model and means two controls *can* exist at once. Adds complexity for a rarely-used path.
+- **(c) Implement ortho support in `ExperimentalControls` from scratch.** Pan + zoom only, no rotate. Out of scope for Phase 0.
+
+**Recommendation: (a).** Phase 0 ships with ortho mode effectively disabled in flag-on, with a clear log message. Phase 1+ can revisit if ortho turns out to matter.
+//!! Agree.  Not needed for prototyping.  Please surface an issue for discussion re: ortho mode.
+//** Locked in. Recorded as issue #2 in `claude/issues-for-discussion.md` for later discussion with Kieran. Smoke-test item updated to specify the disable-self behavior.
+
+### 3. Where does the bounds-cache live?
+
+The plan currently implies module-level state. With HMR, that's a footgun (stale state across reloads). Two options:
+
+- **(a) Per-`ExperimentalControls` instance (recommended).** The cache lives on the controls instance; `sceneBounds.js` exports a class or factory. Cleanly destroyed when the instance is torn down. HMR-safe.
+- **(b) Module-level singleton.** Slightly simpler API, but susceptible to HMR weirdness. Document "hard reload after `nav-experimental/` changes."
+
+**Recommendation: (a).** Modest extra plumbing, avoids a class of dev-experience bug.
+//!! Happy with recommendation.
+//** Locked in. `sceneBounds.js` exports a class (or factory); cache lives on the instance. Reflected in the scene-bounds section.
+
+All three resolved (see `//**` confirmations above). Phase 0 is ready to start.
