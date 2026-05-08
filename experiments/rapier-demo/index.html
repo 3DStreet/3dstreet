@@ -1,0 +1,244 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <title>A-Frame + Rapier — drive a box-car</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <script src="https://cdn.jsdelivr.net/gh/aframevr/aframe@6a054e85953bbcc71854bcd64f9abde0897be649/dist/aframe-master.min.js"></script>
+    <script type="module" src="https://cdn.jsdelivr.net/gh/Elettrotecnica/aframe-rapier-physics@43f389f46e4a10a40a03792654039923a69b3e3b/aframe-rapier.js"></script>
+    <style>
+      html, body { margin: 0; padding: 0; overflow: hidden; }
+      #hud {
+        position: absolute; top: 12px; left: 12px; z-index: 10;
+        font-family: ui-sans-serif, system-ui, sans-serif; font-size: 13px;
+        color: #fff; background: rgba(0,0,0,0.55); padding: 8px 12px;
+        border-radius: 6px; line-height: 1.4;
+      }
+      #hud b { color: #ffd54a; }
+      #tune {
+        position: absolute; top: 12px; right: 12px; z-index: 10;
+        font-family: ui-sans-serif, system-ui, sans-serif; font-size: 12px;
+        color: #fff; background: rgba(0,0,0,0.55); padding: 10px 12px;
+        border-radius: 6px; line-height: 1.6; min-width: 220px;
+      }
+      #tune label { display: grid; grid-template-columns: 1fr 50px; align-items: center; gap: 8px; }
+      #tune input[type=range] { width: 100%; }
+      #tune .val { text-align: right; color: #ffd54a; font-variant-numeric: tabular-nums; }
+      #tune h3 { margin: 0 0 6px; font-size: 12px; font-weight: 600; opacity: 0.85; letter-spacing: 0.04em; text-transform: uppercase; }
+    </style>
+  </head>
+  <body>
+    <div id="hud">
+      <b>WASD</b> drive · red box = you
+    </div>
+
+    <div id="tune">
+      <h3>Tuning</h3>
+      <label>Max speed <input id="t-speed" type="range" min="2" max="30" step="0.5" value="12"><span class="val" id="v-speed">12</span></label>
+      <label>Turn rate <input id="t-turn"  type="range" min="0.5" max="6" step="0.1" value="3.2"><span class="val" id="v-turn">3.2</span></label>
+      <label>Lin. damp <input id="t-lin"   type="range" min="0" max="10" step="0.1" value="3.0"><span class="val" id="v-lin">3.0</span></label>
+      <label>Ang. damp <input id="t-ang"   type="range" min="0" max="20" step="0.1" value="10.0"><span class="val" id="v-ang">10.0</span></label>
+      <label>Cam height<input id="t-cam"   type="range" min="8" max="60" step="1" value="25"><span class="val" id="v-cam">25</span></label>
+    </div>
+
+    <a-scene rapier-physics background="color: #87ceeb" cursor="rayOrigin: mouse">
+
+      <!-- Ground -->
+      <a-entity
+        geometry="primitive: plane; width: 80; height: 80"
+        material="color: #4a8a3a"
+        rotation="-90 0 0"
+        rapier-body="type: Fixed"
+        rapier-shape="shape: Cuboid; fit: true">
+      </a-entity>
+
+      <!-- Walls (perimeter so you can't drive off) -->
+      <a-entity geometry="primitive: box; width: 80; height: 2; depth: 1" position="0 1 -40"  material="color: #8a8a8a" rapier-body="type: Fixed" rapier-shape="shape: Cuboid; fit: true"></a-entity>
+      <a-entity geometry="primitive: box; width: 80; height: 2; depth: 1" position="0 1 40"   material="color: #8a8a8a" rapier-body="type: Fixed" rapier-shape="shape: Cuboid; fit: true"></a-entity>
+      <a-entity geometry="primitive: box; width: 1; height: 2; depth: 80" position="-40 1 0"  material="color: #8a8a8a" rapier-body="type: Fixed" rapier-shape="shape: Cuboid; fit: true"></a-entity>
+      <a-entity geometry="primitive: box; width: 1; height: 2; depth: 80" position="40 1 0"   material="color: #8a8a8a" rapier-body="type: Fixed" rapier-shape="shape: Cuboid; fit: true"></a-entity>
+
+      <!-- Parked cars (Fixed — realistic, also blocks the player solidly) -->
+      <a-entity geometry="primitive: box; width: 2; height: 1.2; depth: 4" position="-8  0.6 -10" material="color: #2255cc" rapier-body="type: Fixed" rapier-shape="shape: Cuboid; fit: true"></a-entity>
+      <a-entity geometry="primitive: box; width: 2; height: 1.2; depth: 4" position="-8  0.6 -4"  material="color: #cc8822" rapier-body="type: Fixed" rapier-shape="shape: Cuboid; fit: true"></a-entity>
+      <a-entity geometry="primitive: box; width: 2; height: 1.2; depth: 4" position="-8  0.6  2"  material="color: #22aa66" rapier-body="type: Fixed" rapier-shape="shape: Cuboid; fit: true"></a-entity>
+      <a-entity geometry="primitive: box; width: 2; height: 1.2; depth: 4" position="-8  0.6  8"  material="color: #aa2266" rapier-body="type: Fixed" rapier-shape="shape: Cuboid; fit: true"></a-entity>
+      <a-entity geometry="primitive: box; width: 2; height: 1.2; depth: 4" position=" 8  0.6 -10" material="color: #663388" rapier-body="type: Fixed" rapier-shape="shape: Cuboid; fit: true"></a-entity>
+      <a-entity geometry="primitive: box; width: 2; height: 1.2; depth: 4" position=" 8  0.6 -4"  material="color: #884422" rapier-body="type: Fixed" rapier-shape="shape: Cuboid; fit: true"></a-entity>
+      <a-entity geometry="primitive: box; width: 2; height: 1.2; depth: 4" position=" 8  0.6  2"  material="color: #226688" rapier-body="type: Fixed" rapier-shape="shape: Cuboid; fit: true"></a-entity>
+      <a-entity geometry="primitive: box; width: 2; height: 1.2; depth: 4" position=" 8  0.6  8"  material="color: #888822" rapier-body="type: Fixed" rapier-shape="shape: Cuboid; fit: true"></a-entity>
+
+      <!-- People (tall thin Dynamic boxes) -->
+      <a-entity geometry="primitive: box; width: 0.5; height: 1.7; depth: 0.5" position="-3 0.85 -6"  material="color: #f4d35e" rapier-body="type: Dynamic" rapier-shape="shape: Cuboid; fit: true"></a-entity>
+      <a-entity geometry="primitive: box; width: 0.5; height: 1.7; depth: 0.5" position="-3 0.85 -2"  material="color: #ee964b" rapier-body="type: Dynamic" rapier-shape="shape: Cuboid; fit: true"></a-entity>
+      <a-entity geometry="primitive: box; width: 0.5; height: 1.7; depth: 0.5" position=" 3 0.85  3"  material="color: #f95738" rapier-body="type: Dynamic" rapier-shape="shape: Cuboid; fit: true"></a-entity>
+      <a-entity geometry="primitive: box; width: 0.5; height: 1.7; depth: 0.5" position=" 3 0.85  7"  material="color: #f4d35e" rapier-body="type: Dynamic" rapier-shape="shape: Cuboid; fit: true"></a-entity>
+
+      <!-- Bikes (low thin Dynamic boxes) -->
+      <a-entity geometry="primitive: box; width: 0.6; height: 1.0; depth: 1.8" position="-2 0.5  10" material="color: #cccccc" rapier-body="type: Dynamic" rapier-shape="shape: Cuboid; fit: true"></a-entity>
+      <a-entity geometry="primitive: box; width: 0.6; height: 1.0; depth: 1.8" position=" 2 0.5  12" material="color: #aa44aa" rapier-body="type: Dynamic" rapier-shape="shape: Cuboid; fit: true"></a-entity>
+
+      <!-- Trees (Fixed cylinders + foliage spheres for fun) -->
+      <a-entity position="-20 0 -20">
+        <a-entity geometry="primitive: cylinder; height: 4; radius: 0.3" position="0 2 0" material="color: #6b3f1d" rapier-body="type: Fixed" rapier-shape="shape: Cuboid; fit: true"></a-entity>
+        <a-entity geometry="primitive: sphere; radius: 1.6" position="0 5 0" material="color: #2d6a2d"></a-entity>
+      </a-entity>
+      <a-entity position=" 20 0 -20">
+        <a-entity geometry="primitive: cylinder; height: 4; radius: 0.3" position="0 2 0" material="color: #6b3f1d" rapier-body="type: Fixed" rapier-shape="shape: Cuboid; fit: true"></a-entity>
+        <a-entity geometry="primitive: sphere; radius: 1.6" position="0 5 0" material="color: #2d6a2d"></a-entity>
+      </a-entity>
+      <a-entity position="-20 0  20">
+        <a-entity geometry="primitive: cylinder; height: 4; radius: 0.3" position="0 2 0" material="color: #6b3f1d" rapier-body="type: Fixed" rapier-shape="shape: Cuboid; fit: true"></a-entity>
+        <a-entity geometry="primitive: sphere; radius: 1.6" position="0 5 0" material="color: #2d6a2d"></a-entity>
+      </a-entity>
+      <a-entity position=" 20 0  20">
+        <a-entity geometry="primitive: cylinder; height: 4; radius: 0.3" position="0 2 0" material="color: #6b3f1d" rapier-body="type: Fixed" rapier-shape="shape: Cuboid; fit: true"></a-entity>
+        <a-entity geometry="primitive: sphere; radius: 1.6" position="0 5 0" material="color: #2d6a2d"></a-entity>
+      </a-entity>
+
+      <!-- Player car (red box) — kinematic so character controller can do sweep/slide -->
+      <a-entity
+        id="player"
+        geometry="primitive: box; width: 2; height: 1.2; depth: 4"
+        material="color: #cc2222"
+        position="0 0.6 20"
+        rotation="0 180 0"
+        rapier-body="type: Dynamic; linearDamping: 3.0; angularDamping: 10.0"
+        rapier-shape="shape: Cuboid; fit: true"
+        vehicle-controls>
+      </a-entity>
+
+      <!-- Follow camera -->
+      <a-entity id="camera" camera look-controls="enabled: false"
+                follow-camera="target: #player; height: 25"></a-entity>
+
+      <a-entity light="type: ambient; intensity: 0.6"></a-entity>
+      <a-entity light="type: directional; intensity: 0.9" position="10 20 10"></a-entity>
+    </a-scene>
+
+    <script>
+      // Drive-with-WASD via Dynamic body. Rotation around X/Z is locked
+      // imperatively after body-loaded so the car can't tip. Snappy feel
+      // comes from setting linvel/angvel directly + high damping on release.
+      AFRAME.registerComponent('vehicle-controls', {
+        schema: { enabled: { type: 'boolean', default: true } },
+
+        init: function () {
+          this.input = { forward: 0, turn: 0 };
+          this.MAX_SPEED = 12;
+          this.TURN_RATE = 3.2; // rad/s
+
+          this.onKeyDown = (e) => {
+            if (e.code === 'KeyW' || e.code === 'ArrowUp') this.input.forward = 1;
+            else if (e.code === 'KeyS' || e.code === 'ArrowDown') this.input.forward = -1;
+            else if (e.code === 'KeyA' || e.code === 'ArrowLeft') this.input.turn = 1;
+            else if (e.code === 'KeyD' || e.code === 'ArrowRight') this.input.turn = -1;
+          };
+          this.onKeyUp = (e) => {
+            if ((e.code === 'KeyW' || e.code === 'ArrowUp') && this.input.forward === 1) this.input.forward = 0;
+            else if ((e.code === 'KeyS' || e.code === 'ArrowDown') && this.input.forward === -1) this.input.forward = 0;
+            else if ((e.code === 'KeyA' || e.code === 'ArrowLeft') && this.input.turn === 1) this.input.turn = 0;
+            else if ((e.code === 'KeyD' || e.code === 'ArrowRight') && this.input.turn === -1) this.input.turn = 0;
+          };
+          window.addEventListener('keydown', this.onKeyDown);
+          window.addEventListener('keyup', this.onKeyUp);
+
+          this.lockRotationsWhenReady = () => {
+            const body = this.el.components['rapier-body'] &&
+                         this.el.components['rapier-body'].body;
+            if (!body) return false;
+            // Allow only Y rotation (turning); freeze X/Z so the car never tips.
+            body.setEnabledRotations(false, true, false, true);
+            console.log('[demo] vehicle rotations locked to Y only');
+            return true;
+          };
+          if (!this.lockRotationsWhenReady()) {
+            this.el.addEventListener('body-loaded', this.lockRotationsWhenReady, { once: true });
+          }
+        },
+
+        tick: function () {
+          if (!this.data.enabled) return;
+          const bodyComp = this.el.components['rapier-body'];
+          const body = bodyComp && bodyComp.body;
+          if (!body) return;
+
+          // Forward in world space from current yaw.
+          const yaw = this.el.object3D.rotation.y;
+          const fx = Math.sin(yaw);
+          const fz = Math.cos(yaw);
+          const targetSpeed = this.input.forward * this.MAX_SPEED;
+          const cur = body.linvel();
+          // Set planar velocity directly (snappy); preserve vertical so
+          // gravity / ground contact still work.
+          body.setLinvel(
+            { x: fx * targetSpeed, y: cur.y, z: fz * targetSpeed },
+            true
+          );
+          // Flip steering when reversing so it matches driving-game convention
+          // (turn left in reverse → rear of car swings left, car backs right).
+          const turnSign = this.input.forward < 0 ? -1 : 1;
+          body.setAngvel(
+            { x: 0, y: this.input.turn * this.TURN_RATE * turnSign, z: 0 },
+            true
+          );
+        },
+
+        remove: function () {
+          window.removeEventListener('keydown', this.onKeyDown);
+          window.removeEventListener('keyup', this.onKeyUp);
+        }
+      });
+
+      // Tuning panel — live-update vehicle + camera + body damping.
+      (function () {
+        const bind = (id, valId, apply) => {
+          const slider = document.getElementById(id);
+          const out = document.getElementById(valId);
+          const update = () => {
+            const v = parseFloat(slider.value);
+            out.textContent = Number.isInteger(v) ? v.toString() : v.toFixed(1);
+            apply(v);
+          };
+          slider.addEventListener('input', update);
+          update();
+        };
+        const player = () => document.getElementById('player');
+        const vehicle = () => player() && player().components['vehicle-controls'];
+        const body = () => {
+          const c = player() && player().components['rapier-body'];
+          return c && c.body;
+        };
+        const cam = () => document.getElementById('camera') &&
+                          document.getElementById('camera').components['follow-camera'];
+
+        // Defer until A-Frame components are wired up.
+        document.querySelector('a-scene').addEventListener('loaded', () => {
+          bind('t-speed', 'v-speed', (v) => { if (vehicle()) vehicle().MAX_SPEED = v; });
+          bind('t-turn',  'v-turn',  (v) => { if (vehicle()) vehicle().TURN_RATE = v; });
+          bind('t-lin',   'v-lin',   (v) => { if (body()) body().setLinearDamping(v); });
+          bind('t-ang',   'v-ang',   (v) => { if (body()) body().setAngularDamping(v); });
+          bind('t-cam',   'v-cam',   (v) => { if (cam()) cam().data.height = v; });
+        });
+      })();
+
+      AFRAME.registerComponent('follow-camera', {
+        schema: {
+          target: { type: 'selector' },
+          height: { type: 'number', default: 18 }
+        },
+        tick: function () {
+          const t = this.data.target;
+          if (!t || !t.object3D) return;
+          // Hardcoded top-down: position above target, look straight down.
+          this.el.object3D.position.set(
+            t.object3D.position.x,
+            t.object3D.position.y + this.data.height,
+            t.object3D.position.z
+          );
+          this.el.object3D.rotation.set(-Math.PI / 2, 0, 0);
+        }
+      });
+    </script>
+  </body>
+</html>
