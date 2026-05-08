@@ -21,7 +21,15 @@ import { initializeLocationSync } from './lib/location-sync';
 // Helper function to check if viewer mode is requested via URL parameter
 function isViewerModeRequested() {
   const urlParams = new URLSearchParams(window.location.search);
-  return urlParams.get('viewer') === 'true';
+  // ?drive=true is a shortcut: enter viewer mode AND switch the cameraRig
+  // viewer-mode preset to 'drive'.
+  return (
+    urlParams.get('viewer') === 'true' || urlParams.get('drive') === 'true'
+  );
+}
+
+function isDriveModeRequested() {
+  return new URLSearchParams(window.location.search).get('drive') === 'true';
 }
 
 function Inspector(configOverrides) {
@@ -129,6 +137,12 @@ Inspector.prototype = {
     // If viewer mode is requested, switch to it after initialization is complete
     if (isViewerModeRequested()) {
       useStore.getState().setIsInspectorEnabled(false);
+      if (isDriveModeRequested()) {
+        const cameraRig = document.querySelector('#cameraRig');
+        if (cameraRig) {
+          cameraRig.setAttribute('viewer-mode', 'preset', 'drive');
+        }
+      }
     }
   },
 

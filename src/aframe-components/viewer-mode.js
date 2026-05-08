@@ -19,7 +19,7 @@ AFRAME.registerComponent('viewer-mode', {
     preset: {
       type: 'string',
       default: 'camera-path',
-      oneOf: ['locomotion', 'camera-path', 'ar-webxr']
+      oneOf: ['locomotion', 'camera-path', 'ar-webxr', 'drive']
     },
     cameraPath: {
       type: 'string',
@@ -102,6 +102,8 @@ AFRAME.registerComponent('viewer-mode', {
       this.enableCameraPathMode();
     } else if (mode === 'ar-webxr') {
       this.enableARWebXRMode();
+    } else if (mode === 'drive') {
+      this.enableDriveMode();
     }
     // Notify other components about the mode change
     this.el.emit('viewer-mode-changed', { mode: mode });
@@ -137,6 +139,12 @@ AFRAME.registerComponent('viewer-mode', {
     document.getElementById('viewer-mode-ar-play-button').style.display =
       'none';
 
+    // Tear down drive mode if it was up
+    if (this.driveCleanup) {
+      this.driveCleanup();
+      this.driveCleanup = null;
+    }
+
     // Hide locomotion controls UI
     document.getElementById('viewer-mode-locomotion-controls').style.display =
       'none';
@@ -144,6 +152,46 @@ AFRAME.registerComponent('viewer-mode', {
     // Remove event listeners if they were added
     this.el.sceneEl.removeEventListener('enter-vr', this.onEnterVR);
     this.el.sceneEl.removeEventListener('exit-vr', this.onExitVR);
+  },
+
+  enableDriveMode: function () {
+    // Park the camera rig out of the way; the play-mode-vehicle component
+    // takes over the camera each tick (top-down follow).
+    const sceneEl = this.el.sceneEl;
+    const start = this.data.cameraStartPosition;
+
+    // Spawn a player car entity. The play-mode-vehicle component handles
+    // the chassis body, vehicle controller, input, and follow camera.
+    const car = document.createElement('a-entity');
+    car.setAttribute('id', 'play-mode-player-car');
+    car.setAttribute('data-no-transform', '');
+    car.setAttribute(
+      'play-mode-vehicle',
+      `spawnPosition: ${start.x} ${Math.max(start.y, 1)} ${start.z}; cameraSelector: #camera`
+    );
+    sceneEl.appendChild(car);
+
+    // Add a single big static ground collider so the car has something
+    // to land on. Placed at y = -0.05 with a 0.1m thickness so its top
+    // surface sits at y = 0 (matching A-Frame default ground).
+    //
+    // We do this via an after-physics-init callback because the system
+    // loads Rapier WASM lazily.
+    const physics = sceneEl.systems['play-mode-physics'];
+    physics.activate().then(() => {
+      physics.addStaticCuboid(
+        { x: 0, y: -0.05, z: 0 },
+        { x: 200, y: 0.05, z: 200 }
+      );
+    });
+
+    this.driveCleanup = () => {
+      if (car && car.parentNode) car.parentNode.removeChild(car);
+      // Leave the system around — deactivating recreates the world,
+      // which is wasteful if the user just toggles modes. Drop synced
+      // state instead.
+      physics.deactivate();
+    };
   },
 
   enableARWebXRMode: function () {
