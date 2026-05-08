@@ -159,6 +159,37 @@ AFRAME.registerSystem('play-mode-physics', {
 });
 
 // ---------------------------------------------------------------------
+// Component: drive-controls
+//
+// Tag an entity with this component to mark it as a player-drivable
+// vehicle in play mode. The schema mirrors the runtime tunables on
+// `play-mode-vehicle`, so when the entity is selected in the editor the
+// properties panel exposes the same knobs the user would otherwise have
+// no way to reach. Saved with the scene via the existing component
+// serialization path.
+//
+// At play-time, viewer-mode's enableDriveMode() looks for the first
+// entity with drive-controls, reads its world position/yaw + tunables,
+// and spawns the player car at that pose with those values. If no
+// entity has drive-controls, drive mode falls back to default tuning at
+// the cameraRig start position (the original synthetic spawn).
+//
+// Edit-time behavior is intentionally inert — this component does not
+// add visuals, listeners, or physics during editing.
+// ---------------------------------------------------------------------
+AFRAME.registerComponent('drive-controls', {
+  schema: {
+    chassisSize: { type: 'vec3', default: { x: 1.6, y: 0.4, z: 0.8 } },
+    accelerateForce: { type: 'number', default: 2 },
+    brakeForce: { type: 'number', default: 0.05 },
+    steerAngle: { type: 'number', default: Math.PI / 24 },
+    suspensionStiffness: { type: 'number', default: 24 },
+    frictionSlip: { type: 'number', default: 1.5 },
+    sideFrictionStiffness: { type: 'number', default: 3 }
+  }
+});
+
+// ---------------------------------------------------------------------
 // Component: player car. Attach to an entity and it becomes a drivable
 // raycast-wheel vehicle.
 //

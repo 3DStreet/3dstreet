@@ -162,28 +162,67 @@ AFRAME.registerComponent('viewer-mode', {
   },
 
   enableDriveMode: function () {
-    // Park the camera rig out of the way; the play-mode-vehicle component
-    // takes over the camera each tick (top-down follow).
     const sceneEl = this.el.sceneEl;
-    const start = this.data.cameraStartPosition;
 
-    // Spawn a player car entity. The play-mode-vehicle component handles
-    // the chassis body, vehicle controller, input, and follow camera.
+    // If any entity is tagged with drive-controls, that entity defines
+    // the spawn pose + tuning. Otherwise fall back to the cameraRig
+    // start position with the play-mode-vehicle defaults.
+    const driveEntity = sceneEl.querySelector('[drive-controls]');
+
+    let spawnPos, spawnYawDeg, dcAttrs;
+    if (driveEntity) {
+      const wp = new THREE.Vector3();
+      driveEntity.object3D.getWorldPosition(wp);
+      // Lift slightly above the entity's recorded position so the chassis
+      // doesn't spawn intersecting the ground collider.
+      spawnPos = { x: wp.x, y: Math.max(wp.y, 1), z: wp.z };
+
+      const wq = new THREE.Quaternion();
+      driveEntity.object3D.getWorldQuaternion(wq);
+      const e = new THREE.Euler().setFromQuaternion(wq, 'YXZ');
+      spawnYawDeg = (e.y * 180) / Math.PI;
+
+      dcAttrs = driveEntity.getAttribute('drive-controls');
+
+      // Hide the source entity while driving — the play-mode-vehicle
+      // renders its own debug chassis in this slice. Restored on cleanup.
+      this._hiddenDriveEntity = driveEntity;
+      this._driveEntityVisible = driveEntity.object3D.visible;
+      driveEntity.object3D.visible = false;
+    } else {
+      const start = this.data.cameraStartPosition;
+      spawnPos = { x: start.x, y: Math.max(start.y, 1), z: start.z };
+      spawnYawDeg = 0;
+      dcAttrs = null;
+    }
+
+    // Build the play-mode-vehicle attribute string. Schema fields shared
+    // with drive-controls are forwarded; everything else falls through
+    // to play-mode-vehicle's own defaults.
+    const parts = [
+      `spawnPosition: ${spawnPos.x} ${spawnPos.y} ${spawnPos.z}`,
+      `spawnYaw: ${spawnYawDeg}`,
+      'cameraSelector: #camera'
+    ];
+    if (dcAttrs) {
+      const cs = dcAttrs.chassisSize;
+      parts.push(`chassisSize: ${cs.x} ${cs.y} ${cs.z}`);
+      parts.push(`accelerateForce: ${dcAttrs.accelerateForce}`);
+      parts.push(`brakeForce: ${dcAttrs.brakeForce}`);
+      parts.push(`steerAngle: ${dcAttrs.steerAngle}`);
+      // Per-wheel suspension/friction live on play-mode-vehicle's wheel
+      // wiring; the component reads them once at buildVehicle. To keep
+      // this slice small, those three are not yet plumbed through —
+      // they're TODO when we expose wheel sliders.
+    }
+
     const car = document.createElement('a-entity');
     car.setAttribute('id', 'play-mode-player-car');
     car.setAttribute('data-no-transform', '');
-    car.setAttribute(
-      'play-mode-vehicle',
-      `spawnPosition: ${start.x} ${Math.max(start.y, 1)} ${start.z}; cameraSelector: #camera`
-    );
+    car.setAttribute('play-mode-vehicle', parts.join('; '));
     sceneEl.appendChild(car);
 
-    // Add a single big static ground collider so the car has something
-    // to land on. Placed at y = -0.05 with a 0.1m thickness so its top
-    // surface sits at y = 0 (matching A-Frame default ground).
-    //
-    // We do this via an after-physics-init callback because the system
-    // loads Rapier WASM lazily.
+    // Lazy-load Rapier and seed the ground collider.
     const physics = sceneEl.systems['play-mode-physics'];
     physics.activate().then(() => {
       physics.addStaticCuboid(
@@ -194,9 +233,10 @@ AFRAME.registerComponent('viewer-mode', {
 
     this.driveCleanup = () => {
       if (car && car.parentNode) car.parentNode.removeChild(car);
-      // Leave the system around — deactivating recreates the world,
-      // which is wasteful if the user just toggles modes. Drop synced
-      // state instead.
+      if (this._hiddenDriveEntity) {
+        this._hiddenDriveEntity.object3D.visible = this._driveEntityVisible;
+        this._hiddenDriveEntity = null;
+      }
       physics.deactivate();
     };
   },
