@@ -164,37 +164,27 @@ AFRAME.registerComponent('viewer-mode', {
   enableDriveMode: function () {
     const sceneEl = this.el.sceneEl;
 
-    // If any entity is tagged with drive-controls, that entity defines
-    // the spawn pose + tuning. Otherwise fall back to the cameraRig
-    // start position with the play-mode-vehicle defaults.
-    const driveEntity = sceneEl.querySelector('[drive-controls]');
+    // drive-controls lives on the cameraRig (this.el) and is the single
+    // source of tuning. The cameraRig is also the spawn-pose anchor:
+    // its position/yaw determines where the chassis appears.
+    const dcAttrs = this.el.getAttribute('drive-controls') || null;
 
-    let spawnPos, spawnYawDeg, dcAttrs;
-    if (driveEntity) {
-      const wp = new THREE.Vector3();
-      driveEntity.object3D.getWorldPosition(wp);
-      // Lift slightly above the entity's recorded position so the chassis
-      // doesn't spawn intersecting the ground collider.
-      spawnPos = { x: wp.x, y: Math.max(wp.y, 1), z: wp.z };
+    const wp = new THREE.Vector3();
+    this.el.object3D.getWorldPosition(wp);
+    const start = this.data.cameraStartPosition;
+    // Prefer cameraStartPosition for x/z (more stable than the rig's
+    // current world pos, which moves while editing); use a min-y of 1m
+    // so the chassis doesn't spawn intersecting the ground collider.
+    const spawnPos = {
+      x: start.x,
+      y: Math.max(start.y, 1),
+      z: start.z
+    };
 
-      const wq = new THREE.Quaternion();
-      driveEntity.object3D.getWorldQuaternion(wq);
-      const e = new THREE.Euler().setFromQuaternion(wq, 'YXZ');
-      spawnYawDeg = (e.y * 180) / Math.PI;
-
-      dcAttrs = driveEntity.getAttribute('drive-controls');
-
-      // Hide the source entity while driving — the play-mode-vehicle
-      // renders its own debug chassis in this slice. Restored on cleanup.
-      this._hiddenDriveEntity = driveEntity;
-      this._driveEntityVisible = driveEntity.object3D.visible;
-      driveEntity.object3D.visible = false;
-    } else {
-      const start = this.data.cameraStartPosition;
-      spawnPos = { x: start.x, y: Math.max(start.y, 1), z: start.z };
-      spawnYawDeg = 0;
-      dcAttrs = null;
-    }
+    const wq = new THREE.Quaternion();
+    this.el.object3D.getWorldQuaternion(wq);
+    const e = new THREE.Euler().setFromQuaternion(wq, 'YXZ');
+    const spawnYawDeg = (e.y * 180) / Math.PI;
 
     // Build the play-mode-vehicle attribute string. Schema fields shared
     // with drive-controls are forwarded; everything else falls through
@@ -233,10 +223,6 @@ AFRAME.registerComponent('viewer-mode', {
 
     this.driveCleanup = () => {
       if (car && car.parentNode) car.parentNode.removeChild(car);
-      if (this._hiddenDriveEntity) {
-        this._hiddenDriveEntity.object3D.visible = this._driveEntityVisible;
-        this._hiddenDriveEntity = null;
-      }
       physics.deactivate();
     };
   },

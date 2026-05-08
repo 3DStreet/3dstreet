@@ -19,6 +19,7 @@ import { LoadingSceneModal } from './modals/LoadingSceneModal';
 import { ToolbarWrapper } from './scenegraph/ToolbarWrapper.jsx';
 import { ActionBar } from './elements/ActionBar';
 import { PrimaryToolbar } from './elements/PrimaryToolbar';
+import { PlayModeControls } from './elements/PlayModeControls';
 import useStore from '@/store';
 import { AIChatProvider } from '../contexts/AIChatContext';
 import styles from './Main.module.scss';
@@ -71,6 +72,7 @@ export default function Main() {
   return (
     <div id="inspectorContainer">
       <ToolbarWrapper />
+      {!isInspectorEnabled && <PlayModeControls />}
       {isInspectorEnabled && (
         <AIChatProvider firebaseApp={app}>
           <div>
