@@ -163,23 +163,37 @@
           const body = bodyComp && bodyComp.body;
           if (!body) return;
 
-          // Forward in world space from current yaw.
+          // Forward direction in world space from current yaw.
           const yaw = this.el.object3D.rotation.y;
           const fx = Math.sin(yaw);
           const fz = Math.cos(yaw);
-          const targetSpeed = this.input.forward * this.MAX_SPEED;
           const cur = body.linvel();
-          // Set planar velocity directly (snappy); preserve vertical so
-          // gravity / ground contact still work.
-          body.setLinvel(
-            { x: fx * targetSpeed, y: cur.y, z: fz * targetSpeed },
-            true
-          );
-          // Flip steering when reversing so it matches driving-game convention
-          // (turn left in reverse → rear of car swings left, car backs right).
-          const turnSign = this.input.forward < 0 ? -1 : 1;
+
+          // Drive: only push velocity while accelerator is held. Otherwise
+          // let linearDamping coast the car down — this also lets us keep
+          // turning while coasting, which feels natural.
+          if (this.input.forward !== 0) {
+            const targetSpeed = this.input.forward * this.MAX_SPEED;
+            body.setLinvel(
+              { x: fx * targetSpeed, y: cur.y, z: fz * targetSpeed },
+              true
+            );
+          }
+
+          // Speed-locked steering: yaw rate scales with current planar speed
+          // (a real car can't pivot at a standstill). Sign of the velocity
+          // along the heading determines whether steering is inverted (we're
+          // moving backward).
+          const speedMag = Math.hypot(cur.x, cur.z);
+          const speedFraction = Math.min(speedMag / this.MAX_SPEED, 1);
+          const dirAlongHeading = cur.x * fx + cur.z * fz;
+          const turnSign = dirAlongHeading < 0 ? -1 : 1;
           body.setAngvel(
-            { x: 0, y: this.input.turn * this.TURN_RATE * turnSign, z: 0 },
+            {
+              x: 0,
+              y: this.input.turn * this.TURN_RATE * speedFraction * turnSign,
+              z: 0
+            },
             true
           );
         },
