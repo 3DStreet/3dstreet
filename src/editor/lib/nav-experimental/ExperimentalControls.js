@@ -62,6 +62,14 @@ export class ExperimentalControls extends THREE.EventDispatcher {
     this._initFocusAnimation();
     this._bindHandlers();
     this._attach();
+
+    // Phase 0 marker so it's obvious in the console which control system
+    // the editor is using. Remove or downgrade to debug-level once the
+    // toggle is reliable.
+    console.info(
+      '[nav-experimental] ExperimentalControls active (Phase 0). ' +
+        'See claude/specs/001-phase-0-plan.md.'
+    );
   }
 
   // --- Public API consumed by viewport.js / ActionBar ---
