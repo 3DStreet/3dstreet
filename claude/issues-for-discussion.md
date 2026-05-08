@@ -51,3 +51,18 @@ If neither, at least worth a note in `test/README.md` pointing Windows users at 
 **What we did.** Changed `.husky/pre-commit` from `lint-staged` to `npx lint-staged`. `npx` invokes the JS entry via Node's resolver and bypasses the bash shim entirely. This is a strict improvement for Windows and a no-op for Mac/Linux, but it is a change to shared developer tooling.
 
 **What we'd want from Kieran.** Confirmation that the change is acceptable to land before this branch is PR'd. Worth pairing with issue #3 (Vitest 4 / rolldown native binding) — both are recent Windows-DX papercuts that future Windows contributors will hit. If we're not going to PR this branch (still an open question), revert this back to `lint-staged` before close-out so the change doesn't accidentally ship via some other route.
+
+---
+
+## 5. New top-level "compass" button for reset-to-plan-view
+
+**Context.** The navigation proposal calls for reset-to-plan-view to be a top-level affordance — a compass-style button analogous to Google Maps' compass, not buried in a menu. Today Plan View is reachable via three paths, all firing the same `cameraorthographictoggle` 'top' event: the App menu's View → Plan View item, the "Plan View" button in the existing camera toolbar (alongside "3D View"), and a keyboard shortcut. Phase 1 intercepts that event in flag-on mode and animates the perspective camera to top-down rather than switching to ortho — so the *behavior* is in place. What's missing is the UI: surfacing this as a primary action a user can hit with one click without diving into a menu.
+
+**What we did.** Phase 1 ships only the intercept (controls work). The existing menu / toolbar entries serve as placeholder triggers during Phase 1 prototyping. No new UI element added.
+
+**What we'd want from Kieran.** Two questions:
+
+1. Sign-off on adding a new top-level compass-style button — placement (top-right corner like Google Maps? alongside the camera toolbar? as part of an action bar?), iconography, hover state, and whether it should also indicate camera bearing (Google Maps' compass shows a north arrow and rotates).
+2. Timing: ideally lands before Phase 2 feel-testing starts, so testers can hit "reset" with a single click. Confirm that fits the team's UI-work cadence.
+
+Until this is resolved, Phase 1 testers reset to plan view via the existing menu / toolbar entries — minor friction during prototyping, not blocking.

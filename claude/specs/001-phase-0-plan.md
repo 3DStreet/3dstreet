@@ -171,10 +171,10 @@ Rough sizing in sittings (a sitting is a focused 1–3h block).
 ## Exit criteria
 
 Phase 0 is done when:
-- [ ] All six files in `nav-experimental/` exist and are exercised by tests.
-- [ ] `?nav=experimental` flag selects `ExperimentalControls`; absence selects `EditorControls`.
-- [ ] Smoke test passes end-to-end (all seven items in the checklist above).
-- [ ] Sub-branch merged back to `navigation`.
+- [x] All six files in `nav-experimental/` exist and are exercised by tests.
+- [x] `?nav=experimental` flag selects `ExperimentalControls`; absence selects `EditorControls`.
+- [x] Smoke test passes end-to-end (all seven items in the checklist above). *Confirmed 2026-05-08 against the basic-street default scene.*
+- [ ] Sub-branch merged back to `navigation`. *Skipped — work landed directly on `navigation`, no sub-branch was used.*
 
 After exit, Phase 1 begins by replacing the placeholder LB-pan with the real birds-eye control set.
 
