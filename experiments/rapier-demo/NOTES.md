@@ -69,6 +69,50 @@ document.querySelectorAll('[rapier-shape]').forEach(e => {
 All entities show `collider: true, body: true` — `fit: true` works on
 A-Frame primitive geometry (boxes, planes, cylinders).
 
+### Updates after first round of feel tuning
+
+- **Speed-locked steering.** Yaw rate now scales with planar speed; the
+  car can't pivot at a standstill. Sign of velocity-along-heading flips
+  the steering when reversing.
+- **Coast on accelerator release.** `setLinvel` is only called when the
+  player is actively pressing forward/back; otherwise `linearDamping`
+  decelerates naturally, which preserves the ability to steer while
+  coasting (and feels much closer to a real car).
+
+## Failed attempt at a raycast-wheel vehicle (deleted)
+
+We spent a long session trying to build a "proper" raycast-wheel
+vehicle on top of Rapier's `DynamicRayCastVehicleController` via the
+`aframe-rapier-physics` wrapper. The car always hit a hard terminal
+velocity (~0.15 m/s for any reasonable engine force, scaling linearly
+with engine), and we never diagnosed the opposing force. We tried:
+
+- Real-world scale (2×1.2×4 m, 480 kg chassis) and Rapier-rust-example
+  scale (1.2 m chassis, ~12 kg).
+- Explicit `mass:` on the chassis collider (the wrapper's `setMass(1)`
+  default overrides density unless you set `mass: 0`).
+- Putting the chassis geometry directly on the rapier-body entity (the
+  wrapper's `object3dset` listener doesn't fire for child meshes).
+- Suspension stiffness from 100 to 5000, damping from 10 to 800.
+- Friction slip from 1 to 50, side friction stiffness from 1 to 2.5.
+- Linear damping 0, chassis collider friction 0.
+- Per-tick diagnostics confirmed `wheelForwardImpulse(i)` matched
+  `engine_force × dt` exactly — engine torque was reaching the
+  chassis at the right magnitude — yet the chassis still wouldn't
+  accelerate past the plateau.
+
+The next attempt should not start from Rapier docs again. See
+`../NEXT_PROMPT.md` — it instructs the next agent to find a
+verifiably-working JS implementation of a Rapier raycast vehicle and
+port it byte-for-byte before adapting anything.
+
+## Phase 2 plan (when a working vehicle is locked in)
+
+Same as before — see "Phase 2 plan" above. The integration should be
+a thin tagging layer over whichever vehicle setup ends up working
+(Dynamic-body baseline OR raycast vehicle, whichever feels right and
+performs in the real 3DStreet scene).
+
 ## Open questions / next steps for Phase 1
 
 - **NPC traffic.** Add a `npc-vehicle` component that drives Dynamic-body
