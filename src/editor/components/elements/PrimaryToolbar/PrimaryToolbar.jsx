@@ -19,9 +19,15 @@ export const PrimaryToolbar = () => {
     // change has to happen with the inspector already closed.
     useStore.getState().setIsInspectorEnabled(false);
     const cameraRig = document.getElementById('cameraRig');
+    const viewerMode = cameraRig?.components?.['viewer-mode'];
     if (cameraRig) {
       cameraRig.setAttribute('viewer-mode', 'preset', 'drive');
     }
+    // If preset was already 'drive' (e.g. after a prior Play -> Edit
+    // cycle, where Edit deliberately leaves the preset alone),
+    // setAttribute is a no-op and update() won't fire — so re-run
+    // setupMode explicitly to (re-)spawn the player car.
+    if (viewerMode) viewerMode.setupMode('drive');
   };
 
   const handleSnapshot = () => {

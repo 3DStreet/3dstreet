@@ -7,14 +7,13 @@ function Toolbar() {
   if (isInspectorEnabled) return null;
 
   const handleEdit = () => {
-    // Tear down play-mode side effects (player car + physics world) by
-    // resetting the cameraRig viewer-mode preset before reopening the
-    // inspector. 'locomotion' is the no-op fallback (just A-Frame's
-    // built-in movement-controls / look-controls).
-    const cameraRig = document.getElementById('cameraRig');
-    if (cameraRig) {
-      cameraRig.setAttribute('viewer-mode', 'preset', 'locomotion');
-    }
+    // Tear down play-mode side effects (player car + Rapier world) but
+    // do NOT re-enable cursor-teleport / look-controls / movement-controls
+    // afterward — the inspector handles its own input, and re-enabling
+    // those leaks click listeners that break first-click-to-select.
+    const viewerMode =
+      document.getElementById('cameraRig')?.components?.['viewer-mode'];
+    if (viewerMode) viewerMode.disableAllModes();
     setIsInspectorEnabled(true);
   };
 
