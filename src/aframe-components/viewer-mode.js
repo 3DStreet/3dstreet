@@ -103,7 +103,14 @@ AFRAME.registerComponent('viewer-mode', {
     } else if (mode === 'ar-webxr') {
       this.enableARWebXRMode();
     } else if (mode === 'drive') {
-      this.enableDriveMode();
+      // Only spawn physics + player car when the inspector is closed
+      // (i.e. user is in play mode). If a saved scene comes back with
+      // preset: drive baked in while the user is editing, this guard
+      // keeps a chassis from falling through the editor.
+      const useStoreLocal = require('../store.js').default;
+      if (!useStoreLocal.getState().isInspectorEnabled) {
+        this.enableDriveMode();
+      }
     }
     // Notify other components about the mode change
     this.el.emit('viewer-mode-changed', { mode: mode });
