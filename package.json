@@ -35,9 +35,10 @@
   "dependencies": {
     "@fortawesome/free-regular-svg-icons": "^6.7.2",
     "@fortawesome/free-solid-svg-icons": "^6.7.2",
-    "@gltf-transform/core": "^3.10.1",
-    "@gltf-transform/extensions": "^3.10.1",
-    "@gltf-transform/functions": "^3.10.1",
+    "@gltf-transform/cli": "^4.3.0",
+    "@gltf-transform/core": "^4.3.0",
+    "@gltf-transform/extensions": "^4.3.0",
+    "@gltf-transform/functions": "^4.3.0",
     "@img-comparison-slider/react": "^8.0.2",
     "@react-google-maps/api": "^2.20.8",
     "@sentry/react": "^10.40.0",
