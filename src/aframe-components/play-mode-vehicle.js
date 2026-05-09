@@ -186,6 +186,38 @@ AFRAME.registerComponent('drive-controls', {
     suspensionStiffness: { type: 'number', default: 24 },
     frictionSlip: { type: 'number', default: 1.5 },
     sideFrictionStiffness: { type: 'number', default: 3 }
+  },
+
+  init: function () {
+    // Add a yellow forward-direction cone child so the user can see
+    // which end of the entity is "front" before they rotate it.
+    // Forward is the entity's local -Z (matches A-Frame's default forward
+    // axis), and the play-mode chassis is spawned with the matching
+    // -π/2 yaw offset so its local -X (the vehicle controller's actual
+    // forward) ends up pointing in the same world direction.
+    if (this.el.querySelector('[data-drive-controls-marker]')) return;
+    const cone = document.createElement('a-entity');
+    cone.setAttribute('data-drive-controls-marker', '');
+    cone.setAttribute(
+      'geometry',
+      'primitive: cone; radiusBottom: 0.12; radiusTop: 0; height: 0.5; segmentsRadial: 12'
+    );
+    cone.setAttribute('material', 'color: #ffd54a; shader: flat');
+    // Default cone tip points +Y. Rotate so it points -Z (the entity's
+    // forward direction).
+    cone.setAttribute('position', '0 0.1 -1.0');
+    cone.setAttribute('rotation', '-90 0 0');
+    // Don't expose the marker in the scenegraph as a user-editable child.
+    cone.setAttribute('data-no-transform', '');
+    cone.setAttribute('data-aframe-inspector', 'autocreated');
+    this._marker = cone;
+    this.el.appendChild(cone);
+  },
+
+  remove: function () {
+    if (this._marker && this._marker.parentNode) {
+      this._marker.parentNode.removeChild(this._marker);
+    }
   }
 });
 

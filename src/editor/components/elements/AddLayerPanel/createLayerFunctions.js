@@ -266,18 +266,24 @@ export function createPrimitiveGeometry(position) {
 }
 
 export function createDriveableVehicle(position) {
-  // A driveable vehicle is just an entity tagged with `drive-controls`
-  // and given a placeholder mesh so it's visible in the editor. When
-  // the user clicks Play, viewer-mode's enableDriveMode looks for any
-  // such entity in the scene and uses it as the spawn pose + tuning
-  // source. The schema fields on drive-controls are exposed in the
-  // standard properties panel for editing.
+  // A driveable vehicle is an entity tagged with `drive-controls`
+  // (which auto-adds a forward-direction cone marker) plus a
+  // placeholder box mesh so it's visible in the editor. When the user
+  // clicks Play, viewer-mode's enableDriveMode looks for any such
+  // entity in the scene and uses it as the spawn pose + tuning source.
+  //
+  // Box dimensions are oriented so the entity's local -Z is forward
+  // (A-Frame default). The play-mode chassis is spawned with a -π/2
+  // yaw offset that maps its internal "forward" (chassis-local -X, set
+  // by the vehicle controller's wheel layout) to the same world
+  // direction, so the editor box and the in-play chassis end up with
+  // matching world-frame orientation.
   const definition = {
     'data-layer-name': 'Driveable Vehicle',
     components: {
       position: position ?? '0 1 0',
       'drive-controls': '',
-      geometry: 'primitive: box; width: 1.6; height: 0.4; depth: 0.8',
+      geometry: 'primitive: box; width: 0.8; height: 0.4; depth: 1.6',
       material: 'color: #cc2222'
     }
   };
