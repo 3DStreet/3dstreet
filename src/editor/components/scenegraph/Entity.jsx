@@ -4,6 +4,7 @@ import classNames from 'classnames';
 import Events from '../../lib/Events';
 import { printEntity, removeEntity, cloneEntity } from '../../lib/entity';
 import { AwesomeIcon } from '../elements/AwesomeIcon';
+import AssetUploadDot from '../elements/AssetUploadDot';
 import {
   faCaretDown,
   faCaretRight,
@@ -266,6 +267,7 @@ export default class Entity extends React.Component {
           {dragHandle}
           {visibilityButton}
           {printEntity(entity)}
+          <AssetUploadDot entity={entity} />
           {collapse}
         </span>
         <span className="entityActions">

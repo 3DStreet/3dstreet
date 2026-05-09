@@ -27,6 +27,7 @@ import ManagedStreetSidebar from './ManagedStreetSidebar';
 import MeasureLineSidebar from './MeasureLineSidebar';
 import UserLayersSidebar from './UserLayersSidebar';
 import AdvancedComponents from './AdvancedComponents';
+import AssetUploadStatus from './AssetUploadStatus';
 export default class Sidebar extends React.Component {
   static propTypes = {
     entity: PropTypes.object
@@ -159,6 +160,7 @@ export default class Sidebar extends React.Component {
                 </div>
               )}
               <div className="sidepanelContent">
+                <AssetUploadStatus entity={entity} />
                 {entity.hasAttribute('data-no-transform') ? (
                   <></>
                 ) : (

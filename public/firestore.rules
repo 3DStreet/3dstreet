@@ -72,5 +72,13 @@ service cloud.firestore {
     match /notifyLog/{userId} {
       allow read, write: if false;
     }
+
+    // Asset usage doc (PRIVATE - cloud functions write, owner reads)
+    // Maintained by onAssetWritten trigger; read by getUploadQuota and the
+    // Assets panel storage meter.
+    match /users/{userId}/meta/usage {
+      allow read: if request.auth != null && request.auth.uid == userId;
+      allow write: if false;
+    }
   }
 }

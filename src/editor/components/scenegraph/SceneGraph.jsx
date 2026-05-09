@@ -517,7 +517,7 @@ export default class SceneGraph extends React.Component {
                       onClick: this.selectGeoTab
                     },
                     {
-                      label: 'Gallery',
+                      label: 'Assets',
                       value: 'gallery',
                       isSelected: this.state.activeTab === 'gallery',
                       onClick: () => this.setActiveTab('gallery')

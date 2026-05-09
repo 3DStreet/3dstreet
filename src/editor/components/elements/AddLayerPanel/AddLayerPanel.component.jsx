@@ -9,6 +9,10 @@ import CardPlaceholder from '../../../../../ui_assets/card-placeholder.svg';
 import LockedCard from '../../../../../ui_assets/locked-card.svg';
 import posthog from 'posthog-js';
 import pickPointOnGroundPlane from '../../../lib/pick-point-on-ground-plane';
+import {
+  uploadAndPlaceAsset,
+  isAcceptedAssetFile
+} from '@/editor/lib/asset-upload/uploadAndPlaceAsset.js';
 import { customLayersData, streetLayersData } from './layersData.js';
 import { LayersOptions } from './LayersOptions.js';
 import useStore from '@/store.js';
@@ -327,23 +331,14 @@ const AddLayerPanel = () => {
         e.stopPropagation();
 
         const file = e.dataTransfer.files[0];
-        // Check if it's a GLB or GLTF file
-        if (
-          file.name.toLowerCase().endsWith('.glb') ||
-          file.name.toLowerCase().endsWith('.gltf')
-        ) {
-          // Get the position where the file was dropped
+        if (isAcceptedAssetFile(file)) {
           const position = pickPointOnGroundPlane({
             x: e.clientX,
             y: e.clientY,
             canvas: AFRAME.scenes[0].canvas,
             camera: AFRAME.INSPECTOR.camera
           });
-
-          // Import and call the function
-          import('./createLayerFunctions.js').then((module) => {
-            module.createModelFromFile(file, position);
-          });
+          uploadAndPlaceAsset(file, position);
         }
 
         // Hide drop plane

@@ -9,6 +9,7 @@ const { checkAndRefillImageTokens, checkUserProStatus } = require('./token-manag
 const { generateFalImage } = require('./fal-proxy.js');
 const { sendScheduledEmails, triggerScheduledEmails } = require('./scheduledEmails.js');
 const { auditUserSubscriptions, auditUserSubscriptionsHttp } = require('./utilities/user-audit.js');
+const { onAssetWritten, getUploadQuota } = require('./asset-quota.js');
 
 // Re-export the WebXR variant function
 exports.serveWebXRVariant = serveWebXRVariant;
@@ -34,6 +35,10 @@ exports.triggerScheduledEmails = triggerScheduledEmails;
 // Re-export the user audit functions
 exports.auditUserSubscriptions = auditUserSubscriptions;
 exports.auditUserSubscriptionsHttp = auditUserSubscriptionsHttp;
+
+// Asset upload quota tracking (Firestore trigger + callable pre-flight)
+exports.onAssetWritten = onAssetWritten;
+exports.getUploadQuota = getUploadQuota;
 
 exports.getScene = functions
   .https

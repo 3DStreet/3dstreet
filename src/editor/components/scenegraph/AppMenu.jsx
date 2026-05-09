@@ -7,6 +7,10 @@ import Events from '../../lib/Events.js';
 import { useAuthContext } from '@/editor/contexts';
 import { saveBlob } from '../../lib/utils';
 import {
+  uploadAndPlaceAsset,
+  FILE_PICKER_ACCEPT
+} from '@/editor/lib/asset-upload/uploadAndPlaceAsset.js';
+import {
   transformUVs,
   addGLBMetadata
 } from '../modals/ScreenshotModal/gltfTransforms';
@@ -259,6 +263,20 @@ const AppMenu = ({ currentUser }) => {
       scene_id: STREET.utils.getCurrentSceneId()
     });
     convertToObject();
+  };
+
+  const importAssetFromPicker = () => {
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = FILE_PICKER_ACCEPT;
+    input.multiple = true;
+    input.onchange = async (event) => {
+      const files = Array.from(event.target.files || []);
+      for (const file of files) {
+        await uploadAndPlaceAsset(file);
+      }
+    };
+    input.click();
   };
 
   // eslint-disable-next-line no-unused-vars
@@ -575,6 +593,12 @@ const AppMenu = ({ currentUser }) => {
               Share...
             </Menubar.Item>
             <Menubar.Separator className="MenubarSeparator" />
+            <Menubar.Item
+              className="MenubarItem"
+              onClick={() => importAssetFromPicker()}
+            >
+              Import...
+            </Menubar.Item>
             <Menubar.Sub>
               <Menubar.SubTrigger className="MenubarItem">
                 Export

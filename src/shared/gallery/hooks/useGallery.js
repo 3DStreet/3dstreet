@@ -309,7 +309,10 @@ const useGallery = () => {
       }
 
       try {
-        await galleryServiceV2.deleteAsset(id, currentUserId, false);
+        // Hard-delete: remove the Storage object too so any scene still
+        // referencing the tokenized download URL gets a 404, and the
+        // user's quota immediately reflects the freed bytes.
+        await galleryServiceV2.deleteAsset(id, currentUserId, true);
 
         const updatedItems = items.filter((item) => item.id !== id);
         setItems(updatedItems);

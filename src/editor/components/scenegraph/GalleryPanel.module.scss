@@ -18,8 +18,84 @@
   font-size: 12px;
 }
 
+.toolbarActions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
 .count {
   font-weight: 500;
+}
+
+.uploadButton {
+  all: unset;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 8px;
+  background: variables.$purple-400;
+  color: variables.$white;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 11px;
+  font-weight: 500;
+
+  &:hover {
+    background: variables.$purple-300;
+  }
+}
+
+.filterTabs {
+  display: flex;
+  gap: 4px;
+  padding: 0 12px 8px;
+  flex-shrink: 0;
+}
+
+.filterTab {
+  all: unset;
+  padding: 3px 8px;
+  font-size: 11px;
+  border-radius: 3px;
+  cursor: pointer;
+  color: variables.$lightgray-400;
+
+  &:hover {
+    color: variables.$white;
+    background: rgba(255, 255, 255, 0.04);
+  }
+
+  &.active {
+    color: variables.$white;
+    background: variables.$purple-900;
+  }
+}
+
+.usageRow {
+  padding: 0 12px 8px;
+  font-size: 11px;
+  color: variables.$lightgray-400;
+  flex-shrink: 0;
+}
+
+.usageBar {
+  width: 100%;
+  height: 4px;
+  background: rgba(255, 255, 255, 0.06);
+  border-radius: 2px;
+  overflow: hidden;
+  margin-top: 3px;
+}
+
+.usageFill {
+  height: 100%;
+  background: variables.$purple-400;
+  transition: width 0.2s ease;
+}
+
+.usageFill.full {
+  background: #e0473d;
 }
 
 .refreshButton {
