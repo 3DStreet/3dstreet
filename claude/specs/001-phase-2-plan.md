@@ -7,7 +7,7 @@ Phase 2 of the navigation prototype work (see `001-overall-plan.md`). Promotes `
 ## Goals
 
 1. Lower or remove the 30° tilt floor on the manual tilt path so the camera can be driven down to street level.
-2. Validate the **30° hard-cut** between truck/dolly (above 30°) and truck/pedestal (at-or-below 30°) on LB+drag — answer "does mode-flipping at gesture start feel acceptable, or does it feel jarring?".
+2. Validate the **30° hard-cut** between truck/dolly (looking-down by >30°) and truck/pedestal (everything else, including looking-up) on LB+drag — answer "does mode-flipping at gesture start feel acceptable, or does it feel jarring?".
 3. Validate the **three-rule rotation center** logic (camera view / diorama center / camera position) with a 20–30° angular blend — answer "does the bounds-based design feel coherent, or does it hunt/spiral?".
 4. Land a **visual indicator** for the truck-mode change strong enough that the user knows which mode they're in without thinking about it.
 5. Keep Phase 3 (swoop) deferred. Wheel zoom remains the Phase 1 cursor-anchored exponential dolly throughout — Phase 2 only changes the LB and Shift+LB paths.
@@ -42,8 +42,8 @@ The two skeleton items still open at promote-time:
 
 The mode is decided at gesture start from the camera's tilt angle, latched, and held for the duration of the drag.
 
-- **Tilt > 30°** (camera mostly looking down): **truck/dolly** in the world horizontal plane. Identical to Phase 1 — the existing hit-anchored math in `_lbTruckMove` is reused.
-- **Tilt ≤ 30°** (camera near horizontal): **truck/pedestal** in world coordinates.
+- **Tilt > 30°** (camera looking down by more than 30°): **truck/dolly** in the world horizontal plane. Identical to Phase 1 — the existing hit-anchored math in `_lbTruckMove` is reused.
+- **Tilt ≤ 30°** (camera near horizontal *or* looking up by any amount): **truck/pedestal** in world coordinates. This branch covers the entire range from −89° (near straight up) through horizontal up to 30° down — see "LB-mode dispatch with negative tilt" below.
   - Horizontal drag → world-X / world-Z translate, in the **camera-yaw-projected horizontal plane** (i.e. drag-right moves the camera in the camera's screen-right horizontal direction; same model as WASD A/D).
   - Vertical drag → world-Y translate (pedestal). Drag down = world goes down = camera moves up.
   - Speed: pixel-to-metres scaling that preserves the Phase 1 "speed-scales-with-height" feel. Use the same hit-anchored math but project onto a **vertical plane through the anchor whose normal = the camera's forward direction projected onto the horizontal plane and normalized** (i.e. the plane is parallel to screen-right + world-up, perpendicular to camera-forward-horizontal). The cursor's ray-plane intersection then varies in (camera-right-horizontal, world-Y), which maps cleanly to (truck-right, pedestal-up). Keeps the "world point under cursor stays under cursor" property in 2D.
@@ -58,8 +58,8 @@ The mode is decided at gesture start from the camera's tilt angle, latched, and 
 At gesture start, choose the rotation center:
 
 - **Rule 1 (>30° tilt):** screen-center raycast hit. Identical to Phase 1's existing `_shiftRotate` center.
-- **Rule 2 (≤30° tilt, scene bounded, camera outside cylinder):** scene bounds center at **eye-height** (`{bounds.center.x, ROTATION_CENTER_EYE_HEIGHT_METRES, bounds.center.z}`, default 1.5m). Eye-height (rather than y=0 ground) prevents the camera arcing underground when the user tilts up to look at buildings. Assumes flat ground at y=0; elevated-terrain scenes are a known Phase 2 gap (see Open Design Call #1).
-- **Rule 3 (≤30° tilt, scene unbounded OR camera inside cylinder):** the camera position itself ("Street View"-style: rotate in place).
+- **Rule 2 (tilt ≤ 30° including negative, scene bounded, camera outside cylinder):** scene bounds center at **eye-height** (`{bounds.center.x, ROTATION_CENTER_EYE_HEIGHT_METRES, bounds.center.z}`, default 1.5m). Eye-height (rather than y=0 ground) prevents the camera arcing underground when the user tilts up to look at buildings. Assumes flat ground at y=0; elevated-terrain scenes are a known Phase 2 gap (see Open Design Call #1).
+- **Rule 3 (tilt ≤ 30° including negative, scene unbounded OR camera inside cylinder):** the camera position itself ("Street View"-style: rotate in place).
 
 "Inside the cylinder" means `((cam.x - center.x)² + (cam.z - center.z)²) ≤ radius²`. Y is ignored — bounds are cylindrical.
 
@@ -85,7 +85,7 @@ Concrete spec:
   - Sets `background: #000` (full opacity, not the existing semi-transparent panel chrome).
   - Animates over 200ms via CSS transition (so the aspect-ratio change feels intentional, not glitchy).
 - **Persistence rule.** The mode is held until the next gesture *changes* it — not until the gesture ends. So: user does Shift+LB to tilt down past 30°, releases, mode is now `'pan-pedestal'`. User does LB-drag (truck/pedestal). Releases. Toolbars stay black. User Shift+LB tilts back above 30° — toolbars return to floating.
-- **Mode-tracking logic.** `ExperimentalControls` keeps a `_currentLbMode` field. Updated on every Shift+LB *end* (not start) to reflect what the next LB+drag would do given the new tilt. Emits `nav-experimental:modechange` with the new value when it changes.
+- **Mode-tracking logic.** `ExperimentalControls` keeps a `_currentLbMode` field. Updated on every Shift+LB *move* (per Open Design Call #2) when the computed mode differs from the last-emitted mode — so the indicator transitions the moment the tilt crosses 30° during the gesture, not at gesture end. Also recomputed at gesture end as a safety net. Emits `nav-experimental:modechange` with the new value on each transition.
 
 This rule means the indicator is a *predictor* of the next LB drag, not a reflection of the current gesture. That's the form the user actually wants — "what will my next LB do?".
 
@@ -99,7 +99,7 @@ This rule means the indicator is a *predictor* of the next LB drag, not a reflec
 
 All Phase 1 mechanics carry over verbatim. Phase 1's wheel handler is reused. Phase 1's WASD is reused. Phase 1's Plan View intercept is reused (and now more important — it's the user's primary "get me back to a sane bird's-eye view" affordance until the compass button lands).
 
-One micro-tweak: with the tilt clamp lowered, **WASD's degenerate-case branch (camera looking straight down)** is now reachable only via Plan View (same as Phase 1). The existing `-Z projection with +Y fallback` covers it. No change.
+One micro-tweak: with the tilt clamp lowered, the user can now reach near-straight-up tilt via Shift+LB (camera looking ~89° above horizontal). At those angles the camera's `−Z` direction projects almost-zero onto the horizontal plane, just like the looking-straight-down case. Phase 1's `−Z-projection with +Y-projection fallback` covers both extremes — at near-straight-up, `+Y` projects to roughly the negation of the camera-forward-horizontal direction, which is what the user intuits as "WASD-forward should keep going forward". Verify in feel-test rather than re-derive.
 
 ## Architecture additions
 
@@ -140,16 +140,17 @@ _decideRotationCenter(camera) {
         bounds.center.z
       );
 
+  // Looking up (negative tilt) always falls in Rule 2/3 — the blend
+  // triggers only on the looking-down side, between 20° and 30° down.
   if (tiltDeg >= 30) return screenHit;
-  if (tiltDeg <= 20) return ruleAB;
-  // 20–30° blend
-  const t = (tiltDeg - 20) / 10;                       // 0 at 20°, 1 at 30°
-  const eased = t * t * (3 - 2 * t);                   // smoothstep
+  if (tiltDeg <= 20) return ruleAB;          // includes all negative tilts
+  const t = (tiltDeg - 20) / 10;             // 0 at 20°, 1 at 30°
+  const eased = t * t * (3 - 2 * t);         // smoothstep
   return new THREE.Vector3().lerpVectors(ruleAB, screenHit, eased);
 }
 ```
 
-The `lerpVectors` produces a single `Vector3` that gets latched. The `_shiftRotate` math doesn't need to change.
+**Latching scope (post-review).** The high-level Rule-1-vs-Rule-2/3 dispatch is latched at gesture start (so the user doesn't get truck/dolly mode flipping mid-Shift+LB-drag). The `screenHit` and `ruleAB` *positions* used in the lerp are also latched at gesture start *for the >20° branches* — the blend output is a single latched `Vector3`. **Exception:** when the gesture starts in the Rule-2/3 group with `ruleAB` close to the cylinder boundary, switch to per-frame recomputation of just the inside/outside-cylinder feathered lerp (Open Design Call #3). Concretely: latch a flag `liveRuleAB` at gesture start (true if camera is within ±10% of cylinder radius, else false); when set, recompute `ruleAB` each `_shiftRotate` call by smoothstep-lerping between `cameraPos` and `dioramaCenter` based on the camera's live distance to the cylinder axis. `_shiftRotate` itself doesn't need to know — it just reads `this._latch.get('center')` (or, when `liveRuleAB`, the per-frame value the move handler stuffs back in).
 
 #### `_lbPedestalMove(clientX, clientY)` — new branch alongside `_lbTruckMove`
 
@@ -183,26 +184,20 @@ _onMouseDown(event) {
 
 `_onMouseMove` dispatches on `subMode` for the `'pan'` mode, calling either `_lbTruckMove` or `_lbPedestalMove`.
 
-#### `_onMouseUp` — recompute and emit indicator mode
+#### `_onMouseMove` (Shift+LB branch) and `_onMouseUp` — emit indicator mode on transition
+
+Per Open Design Call #2, the LB-mode is recomputed on every `_shiftRotate` call (not just on mouseup), and the change event fires the moment the mode flips:
 
 ```js
-_onMouseUp() {
-  if (this._latch.isActive()) {
-    this._latch.end();
-    this._emitModeChange(null);
-  }
-  // Phase 2: emit current LB mode for the visual indicator (toolbar
-  // restyle subscribes to this).
-  const newLbMode = this._decideLbMode(this._camera);
-  if (newLbMode !== this._currentLbMode) {
-    this._currentLbMode = newLbMode;
-    this._emitModeChange(newLbMode);
-  }
-  // ... detach window listeners ...
+// Inside _shiftRotate, after applying the rotation:
+const newLbMode = this._decideLbMode(this._camera);
+if (newLbMode !== this._currentLbMode) {
+  this._currentLbMode = newLbMode;
+  this._emitModeChange(newLbMode);
 }
 ```
 
-The Shift+LB tilt branch can change tilt across 30°; that's why the recompute happens on *every* mouse-up, not just `'pan'` ends.
+`_onMouseUp` does the same recompute as a safety net (in case a final move event was missed).
 
 ### `constants.js` — adjustments
 
@@ -261,7 +256,7 @@ Worth pinning into the code as the comment header on `_decideRotationCenter`.
 
 ## Deliverables
 
-1. **`MIN_TILT_DEGREES` lowered** to 1 (or removed as a hard clamp, with a tiny safety margin in `_shiftRotate`).
+1. **`MIN_TILT_DEGREES` lowered** to −89 (and `MAX_TILT_DEGREES = +89`) so the user can drive from near-straight-up through horizontal to near-straight-down.
 2. **`_decideLbMode` and `_decideRotationCenter`** in `ExperimentalControls`, with unit-testable shape (pure given camera + bounds — feed test fixtures).
 3. **`_lbPedestalMove`** branch implemented, mirroring `_lbTruckMove` for the vertical plane.
 4. **Mode-change emission on mouseup** for the visual indicator.
@@ -293,17 +288,17 @@ Total: ~7–8 sittings. The math-heavy items (pedestal vertical-plane anchor, ro
 
 - **Vertical-plane anchored pedestal math drift.** The horizontal-plane case in Phase 1 is numerically robust because the plane y-coordinate equals the latched anchor's y. Vertical-plane analogue: ray-plane intersection numerics can blow up when the camera is nearly looking parallel to the plane normal (i.e. drag-direction parallel to camera +X — won't happen in practice, but worth a guard). Mitigation: reuse the 5000m sanity cap from `_lbTruckMove`.
 
-- **Rotation-center latch staleness.** If a gesture is held for 10s and the user pans the camera *out of* the bounds cylinder mid-drag, the rotation center stays at the latched diorama-center even though Rule 3 (camera position) would now apply. Spec says this is correct — rotation centers don't flip mid-gesture. Risk is the user perceives "the world is rotating around the wrong point". Mitigation: capture in feel-test; if it bites, revisit the latch-at-start rule for this specific case.
+- **Rotation-center hunting near the cylinder boundary.** Per Open Design Call #3, Rule 2 ↔ Rule 3 is *not* latched — `ruleAB` is feathered per-frame when the gesture starts near the boundary. If the camera oscillates across the boundary during a drag, the rotation point hunts. Mitigation: 10%-of-radius feather zone + smoothstep should damp small oscillations. Fall-back: latch fully if hunting is observed in feel-test. The Rule-1-vs-Rule-2/3 high-level dispatch *is* still latched, so this risk only manifests within the Rule-2/3 family.
 
 - **`SceneBounds` correctness on real scenes.** Phase 1 only tested the basic-street default scene. Phase 2 puts `getBounds()` on a hot-ish path. Smoke item #9 is the validation — if Streetmix imports give garbage bounds, rotation centers will be garbage. Plan to debug-render the cylinder during the real-scene smoke pass (transient `<a-entity>` overlay, removed after testing).
 
 - **Toolbar restyle is distracting, not informative.** Already flagged in the skeleton. The CSS transition over 200ms is meant to make the change feel deliberate; if it instead looks like a glitch, the lower-effort fallbacks from the overall plan (cursor-shape change, accent-color overlay, mode badge) are next options. Plan a feel-test exit criterion: "after 30 seconds of use, do I need to look at the toolbars to know what mode I'm in?" — answer should be "no".
 
-- **`MIN_TILT_DEGREES = 1` might collide with Plan View end-pose.** Plan View tweens to a near-vertical orientation (90° tilt). The clamp lives in `_shiftRotate`, not in the Plan View tween, so this is fine — but worth re-reading the clamp branch to confirm. Risk: a clamp added "defensively" elsewhere bites the Plan View animation.
+- **`MIN_TILT_DEGREES = -89` might collide with Plan View end-pose.** Plan View tweens to a near-vertical down orientation (90° tilt). Clamp now bookends both directions (`MIN = -89`, `MAX = +89`). The clamps live in `_shiftRotate`, not in the Plan View tween, so the tween is unaffected — but worth re-reading the clamp branch to confirm no defensive clamp bites the animation.
 
-- **Most-recent crossing wins for indicator mode.** The "emit on every mouseup" rule is correct for Shift+LB tilt-across-30° events. Edge case: a gesture that starts above 30° and ends below (Shift+LB drag-down past the boundary) emits the mode change at the *end* of the gesture, not the moment it crossed. Acceptable by spec; if the toolbar doesn't transition until the gesture is released, that may feel laggy. Mitigation: on Shift+LB *move*, recompute the mode each frame and emit if it changes. (Costs ~one comparison per move event.)
+- **Mode-emission cadence.** Resolved as (b) — emit on every Shift+LB move when the computed mode differs from the last-emitted mode (Open Design Call #2). Edge case: rapid tilt across the 30° boundary and back within a single frame (could happen with large mouse-move deltas or trackpad bursts) — the comparator catches it but the toolbar restyle may flicker. Mitigation if observed: debounce the *style* application by 50–100ms while keeping the mode-change event uncoalesced.
 
-- **Bounds cylinder for "long thin" scenes.** `SceneBounds` already uses the larger horizontal half-extent as the radius (per the proposal's pathology mitigation). But for a 100m × 5m street, the cylinder radius is 50m — large compared to the actual scene width. Camera at (10m off the side, low altitude) is *inside* the cylinder, so Rule 3 (rotate-in-place) applies, not Rule 2 (diorama center). That matches the proposal's intent ("inside the cylinder = rotate in place") and the alternative (an oriented bounding cylinder) is over-engineered for this prototype. Worth a feel-test note rather than a fix.
+- **Bounds cylinder for "long thin" scenes.** `SceneBounds` uses the larger horizontal half-extent as the radius (per the proposal's pathology mitigation). For a 100m × 5m street, that's a 50m-radius cylinder — a camera 10m off the side is *inside*, so Rule 3 applies, even though it intuitively feels "outside the scene". The cylinder-edge feathering (per inline discussion #2) plus the per-frame Rule 2 ↔ Rule 3 recompute partially mitigates: as the user trucks across the boundary the rotation point slides smoothly. But the *width* of the cylinder is still wrong — feathering only smooths the edge, doesn't move it. Could revisit with a smaller "core radius" or oriented cylinder if feel-test still feels off. Logged as a feel-test risk.
 
 ## Exit criteria
 
@@ -325,7 +320,7 @@ URL: **http://localhost:3333/?nav=experimental**, against each of the four test 
 - [ ] **L1.** Camera at high altitude (>30° tilt). LB-drag right — world slides right; Y unchanged. Same feel as Phase 1.
 - [ ] **L2.** Toolbars stay floating (not restyled). Visual indicator = "truck mode".
 
-### LB+drag — truck/pedestal at-or-below 30° (new)
+### LB+drag — truck/pedestal (≤30° down through near-straight-up; new)
 
 - [ ] **L3.** Tilt camera to ~20° via Shift+LB. Release. Toolbars restyle to full-width black strips.
 - [ ] **L4.** LB-drag right — camera trucks in the screen-right horizontal direction. Y unchanged.
@@ -336,17 +331,18 @@ URL: **http://localhost:3333/?nav=experimental**, against each of the four test 
 ### Mode boundary (30° hard-cut)
 
 - [ ] **L8.** At ~31° tilt, LB-drag — truck/dolly. At ~29° tilt, LB-drag — truck/pedestal. No mid-gesture mode flip.
-- [ ] **L9.** During a Shift+LB tilt that crosses 30°, the toolbar restyle happens at gesture end (or during, per the mitigation if used). No flicker.
+- [ ] **L8b.** Camera tilted up (negative tilt, e.g. looking 20° above horizontal): LB-drag is **truck/pedestal**, not truck/dolly. Toolbars in pedestal-mode styling.
+- [ ] **L9.** During a Shift+LB tilt that crosses 30°, the toolbar restyle happens *during* the gesture, the moment the boundary is crossed (per Open Design Call #2). No flicker, no lag until release.
 
 ### Shift+LB — rotation center rules
 
 - [ ] **R1.** Tilt > 30°: rotation center = screen-center hit (Phase 1 behavior preserved).
-- [ ] **R2.** Tilt ≤ 20°, scene bounded, camera outside cylinder: rotation center = scene-center on ground. View orbits around the diorama.
-- [ ] **R3.** Tilt ≤ 20°, scene bounded, camera inside cylinder: rotation center = camera position. Street-View-like in-place pan.
-- [ ] **R4.** Tilt ≤ 20°, scene unbounded (`street-geo` scene): rotation center = camera position regardless of position.
+- [ ] **R2.** Tilt ≤ 20° (incl. looking up), scene bounded, camera outside cylinder: rotation center = scene-center at eye-height (1.5m). View orbits around the diorama.
+- [ ] **R3.** Tilt ≤ 20° (incl. looking up), scene bounded, camera inside cylinder: rotation center = camera position. Street-View-like in-place pan.
+- [ ] **R4.** Tilt ≤ 20° (incl. looking up), scene unbounded (`street-geo` scene): rotation center = camera position regardless of position.
 - [ ] **R5.** Tilt = 25° (mid-blend): rotation center is between screen-hit and rule-2/3. Smooth, no hunting.
-- [ ] **R6.** Tilt clamp engages near 1° (no flip past horizontal). No jitter.
-- [ ] **R7.** Tilt clamp engages at ~89° (top-down). Same as Phase 1.
+- [ ] **R6.** Tilt clamp engages near +89° (looking nearly straight down). Same behavior as Phase 1's +89°-from-vertical floor.
+- [ ] **R7.** Tilt clamp engages near −89° (looking nearly straight up). Symmetric counterpart to R6. No jitter at either extreme.
 - [ ] **R8.** At street level (camera y ≈ 1.5m), Shift+LB drag-up tilts the camera up toward looking at buildings. Camera does **not** dip underground; arc orbits cleanly around the eye-height rotation center. Tilt clamp engages near −89° (looking nearly straight up).
 
 ### Visual indicator — toolbar restyle
@@ -376,12 +372,13 @@ URL: **http://localhost:3333/?nav=experimental**, against each of the four test 
 
 For each, write a one-line feel note:
 
-- [ ] **F1.** 30° hard-cut on LB+drag — does mode-flipping at gesture start feel acceptable, or jarring?
+- [ ] **F1.** 30° hard-cut on LB+drag (down side; and the looking-up branch) — does mode-flipping at gesture start feel acceptable, or jarring?
 - [ ] **F2.** Rotation-center diorama mode — does Rule 2 feel like "the world rotates around the scene", or weird?
 - [ ] **F3.** Rotation-center in-place mode — does Rule 3 feel like Street View, or disorienting?
 - [ ] **F4.** Angular blend (20–30°) — smooth, or does it hunt/spiral?
 - [ ] **F5.** Toolbar restyle — informative (good) or distracting (bad)?
 - [ ] **F6.** Driving the camera all the way down to street level via Shift+LB — does it feel like a continuous gesture, or is there a discontinuity at any point?
+- [ ] **F6b.** From street level, looking up at buildings via Shift+LB — does the camera arc feel natural, or does the eye-height rotation center cause weirdness?
 - [ ] **F7.** Overall: is street-level usable in this prototype?
 
 The F-row notes are the load-bearing output of Phase 2.
