@@ -21,6 +21,7 @@ import { ActionBar } from './elements/ActionBar';
 import { PrimaryToolbar } from './elements/PrimaryToolbar';
 import useStore from '@/store';
 import { AIChatProvider } from '../contexts/AIChatContext';
+import { useNavMode } from '../lib/nav-experimental/useNavMode';
 import styles from './Main.module.scss';
 
 // Define the libraries array as a constant outside of the component
@@ -67,6 +68,9 @@ export default function Main() {
 
   const scene = state.sceneEl;
   const isInspectorEnabled = useStore((state) => state.isInspectorEnabled);
+  const { isPedestalMode } = useNavMode();
+  const dockClass = (base) =>
+    isPedestalMode ? `${base} ${styles.pedestalMode}` : base;
 
   return (
     <div id="inspectorContainer">
@@ -76,10 +80,12 @@ export default function Main() {
           <div>
             <SceneGraph scene={scene} selectedEntity={state.entity} />
             <RightPanel entity={state.entity} />
-            <div className={`clickable ${styles.primaryToolbarDock}`}>
+            <div
+              className={dockClass(`clickable ${styles.primaryToolbarDock}`)}
+            >
               <PrimaryToolbar />
             </div>
-            <div className={`clickable ${styles.actionBarDock}`}>
+            <div className={dockClass(`clickable ${styles.actionBarDock}`)}>
               <ActionBar selectedEntity={state.entity} />
             </div>
           </div>

@@ -31,6 +31,7 @@ import { CursorAnchor } from './cursorAnchor.js';
 import { TickAnimator } from './tickAnimator.js';
 import {
   MIN_TILT_DEGREES,
+  MAX_TILT_DEGREES,
   ZOOM_PER_WHEEL_TICK,
   WHEEL_BUDGET_PER_TICK_UNITS,
   WHEEL_MAX_TICKS_PER_FRAME,
@@ -40,14 +41,22 @@ import {
   WASD_MIN_SPEED,
   WASD_MAX_SPEED,
   WASD_RAMP_UP_MS,
-  PLAN_VIEW_DURATION_MS
+  PLAN_VIEW_DURATION_MS,
+  LB_PAN_MAX_STEP_METRES
 } from './constants.js';
+import {
+  cameraTiltDegrees,
+  decideLbMode,
+  computeRuleAB,
+  latchedRotationCenter
+} from './navMath.js';
 
 const DEG2RAD = Math.PI / 180;
-// Spherical phi is angle from +Y. Elevation = 90° - phi. Min elevation
-// MIN_TILT_DEGREES => max phi = 90° - MIN_TILT_DEGREES.
+// Spherical phi is angle from +Y. Elevation = 90° - phi.
+//   MIN_TILT_DEGREES (-89°, looking up)  -> phi = 179°  (MAX_SPHERICAL_PHI)
+//   MAX_TILT_DEGREES (+89°, looking down) -> phi =   1°  (MIN_SPHERICAL_PHI)
 const MAX_SPHERICAL_PHI = (90 - MIN_TILT_DEGREES) * DEG2RAD;
-const MIN_SPHERICAL_PHI = 1e-4; // not exactly 0 — keeps lookAt stable
+const MIN_SPHERICAL_PHI = (90 - MAX_TILT_DEGREES) * DEG2RAD;
 
 const NAV_DEBUG = (() => {
   if (typeof window === 'undefined' || !window.location) return false;
@@ -118,6 +127,11 @@ export class ExperimentalControls extends THREE.EventDispatcher {
     // Plan View animation in flight — input ignored while true.
     this._planViewActive = false;
     this._planViewHandle = null;
+
+    // Phase 2 visual-indicator state. `_currentLbMode` is the last
+    // value emitted via `nav-experimental:modechange` for the LB sub-
+    // mode comparator. Initialised lazily on the first gesture / tween.
+    this._currentLbMode = null;
 
     this.setCamera(camera);
     this._initFocusAnimation();
@@ -295,6 +309,17 @@ export class ExperimentalControls extends THREE.EventDispatcher {
     this._zoomOutInterval = null;
   }
 
+  // Phase 2: read the cached LB sub-mode for the visual indicator. The
+  // hook (`useNavMode`) calls this on mount to seed initial state, then
+  // listens for `nav-experimental:modechange` for updates. Forces a
+  // recompute if the cache is empty so the first read is always honest.
+  getCurrentLbMode() {
+    if (this._currentLbMode == null && this._camera) {
+      this._currentLbMode = decideLbMode(cameraTiltDegrees(this._camera));
+    }
+    return this._currentLbMode;
+  }
+
   // Phase 1 entry point used by viewport.js when the user triggers Plan
   // View (App menu / toolbar / keyboard) in flag-on mode. The camera was
   // briefly swapped to ortho by cameras.js; viewport.js reverts it back to
@@ -380,6 +405,10 @@ export class ExperimentalControls extends THREE.EventDispatcher {
         this._planViewActive = false;
         this._planViewHandle = null;
         this._emitModeChange(null);
+        // Plan View ends at near-90° tilt — guaranteed truck-mode. Per
+        // A6, refresh the indicator on tween end so users who never
+        // touch Shift+LB see the correct toolbar state.
+        this._maybeEmitLbModeChange();
         this.dispatchEvent(this._changeEvent);
       }
     });
@@ -406,7 +435,15 @@ export class ExperimentalControls extends THREE.EventDispatcher {
     this._focusAnimation =
       el && el.components ? el.components['focus-animation'] : null;
     if (this._focusAnimation) {
-      const callback = () => this.dispatchEvent(this._changeEvent);
+      // Wrap the change callback so a focus-animation tween that
+      // crosses the 30° tilt boundary updates the visual indicator
+      // mid-animation (per A6). `_maybeEmitLbModeChange` is a no-op
+      // unless the comparator flips, so the per-frame cost is one
+      // asin + one comparison.
+      const callback = () => {
+        this._maybeEmitLbModeChange();
+        this.dispatchEvent(this._changeEvent);
+      };
       this._focusAnimation.setCamera(this._camera, callback);
     } else {
       console.warn(
@@ -454,13 +491,33 @@ export class ExperimentalControls extends THREE.EventDispatcher {
   }
 
   _emitModeChange(mode) {
-    // Phase 1 has no consumer; Phase 2's visual indicator subscribes here
-    // rather than reaching into controls internals.
-    this.dispatchEvent({ type: 'nav-experimental:modechange', mode });
+    // Phase 2's visual indicator subscribes via the sceneEl event bus;
+    // the controls dispatch on both `this` (Three.EventDispatcher) and
+    // the scene element so React-side hooks have a stable mounting
+    // point that survives camera-swap paths.
+    const event = { type: 'nav-experimental:modechange', mode };
+    this.dispatchEvent(event);
+    if (this._sceneEl && this._sceneEl.emit) {
+      this._sceneEl.emit('nav-experimental:modechange', { mode }, false);
+    }
+  }
+
+  // Recompute the LB sub-mode from the live camera and emit on change.
+  // Called from gesture-start (catches stale-from-tween states), from
+  // every Shift+LB move (the moment the tilt crosses 30°), and from
+  // Plan-View / focus-animation onDone callbacks.
+  _maybeEmitLbModeChange() {
+    if (!this._camera) return;
+    const next = decideLbMode(cameraTiltDegrees(this._camera));
+    if (next !== this._currentLbMode) {
+      this._currentLbMode = next;
+      this._emitModeChange(next);
+    }
   }
 
   // Mouse-mode dispatch. Phase 1 returns 'pan' (LB) or 'rotate' (Shift+LB).
-  // Phase 2 will extend with a tilt-angle branch.
+  // Phase 2 splits the 'pan' branch further at gesture-start time via
+  // `decideLbMode(cameraTiltDegrees(camera))`.
   _decideMouseMode(event) {
     if (event.button !== 0) return null;
     if (event.shiftKey) return 'rotate';
@@ -483,33 +540,64 @@ export class ExperimentalControls extends THREE.EventDispatcher {
 
     this._pointerOld.set(event.clientX, event.clientY);
 
+    // Per A6: catch stale-from-tween states (e.g. a Plan View tween or
+    // focus animation moved the camera across the 30° boundary without
+    // going through `_shiftRotate`). Emits a fresh LB-mode if changed,
+    // before the gesture latches.
+    this._maybeEmitLbModeChange();
+
     if (mode === 'pan') {
-      // Hit-anchored truck: latch the world point under the cursor at
-      // gesture start. The horizontal plane y = H0.y is preserved for the
-      // duration of the drag.
+      // Sub-mode latched at gesture start from the live camera tilt.
+      // truck-mode (>30° looking down) keeps the Phase 1 horizontal-
+      // plane anchor; pedestal-mode (everything else) uses a vertical
+      // plane through the anchor.
+      const subMode = decideLbMode(cameraTiltDegrees(this._camera));
       const anchor = this._cursorAnchor.worldPointAt(
         event.clientX,
         event.clientY
       );
-      this._anchorPlane.set(
-        new THREE.Vector3(0, 1, 0),
-        -anchor.y // signed dist; plane equation y = anchor.y
-      );
-      this._latch.start({
-        mode: 'pan',
-        anchor,
-        anchorY: anchor.y
-      });
+
+      if (subMode === 'pan-truck') {
+        this._anchorPlane.set(
+          new THREE.Vector3(0, 1, 0),
+          -anchor.y // signed dist; plane equation y = anchor.y
+        );
+        this._latch.start({
+          mode: 'pan',
+          subMode,
+          anchor,
+          anchorY: anchor.y
+        });
+      } else {
+        // Pedestal: vertical plane through anchor, normal =
+        // camera-forward-horizontal (camera -Z projected onto the
+        // horizontal plane and normalized). Spans world-Y plus camera-
+        // right-horizontal — sits "in front of" the camera like a
+        // window. (See plan §"_lbPedestalMove" + inline discussion #1.)
+        const fwd = new THREE.Vector3();
+        this._camera.getWorldDirection(fwd);
+        fwd.y = 0;
+        if (fwd.lengthSq() < 1e-6) {
+          // Camera looking straight up or down — degenerate horizontal
+          // forward. Fall back to world -Z so the gesture still latches
+          // a sane plane; pedestal mode is normally unreachable from
+          // straight-up via the tilt clamp, but be defensive.
+          fwd.set(0, 0, -1);
+        }
+        fwd.normalize();
+        const planeAnchor = new THREE.Vector3(anchor.x, anchor.y, anchor.z);
+        this._anchorPlane.setFromNormalAndCoplanarPoint(fwd, planeAnchor);
+        this._latch.start({
+          mode: 'pan',
+          subMode,
+          anchor: planeAnchor,
+          // Stash the plane normal so move-time math doesn't need to
+          // re-derive it from the (possibly mid-rotated) camera.
+          planeNormal: fwd.clone()
+        });
+      }
     } else if (mode === 'rotate') {
-      // Screen-center raycast for rotation center.
-      const rect = this._domElement.getBoundingClientRect();
-      const cx = rect.left + rect.width / 2;
-      const cy = rect.top + rect.height / 2;
-      const center = this._cursorAnchor.worldPointAt(cx, cy);
-      this._latch.start({
-        mode: 'rotate',
-        center: new THREE.Vector3(center.x, center.y, center.z)
-      });
+      this._latchRotationCenter(this._camera);
     }
 
     this._emitModeChange(mode);
@@ -532,9 +620,18 @@ export class ExperimentalControls extends THREE.EventDispatcher {
 
     const mode = this._latch.get('mode');
     if (mode === 'pan') {
-      this._lbTruckMove(event.clientX, event.clientY);
+      const subMode = this._latch.get('subMode');
+      if (subMode === 'pan-pedestal') {
+        this._lbPedestalMove(event.clientX, event.clientY);
+      } else {
+        this._lbTruckMove(event.clientX, event.clientY);
+      }
     } else if (mode === 'rotate') {
+      this._updateLiveRuleAB(this._camera);
       this._shiftRotate(dx, dy);
+      // Per Open Design Call #2: emit LB-mode change the moment the
+      // tilt crosses the 30° boundary mid-gesture, not at gesture end.
+      this._maybeEmitLbModeChange();
     }
   }
 
@@ -542,6 +639,10 @@ export class ExperimentalControls extends THREE.EventDispatcher {
     if (this._latch.isActive()) {
       this._latch.end();
       this._emitModeChange(null);
+      // Safety-net recompute: in case the final move was missed (e.g.
+      // mouseup arrived before a queued mousemove drained), recheck the
+      // LB-mode comparator at gesture end.
+      this._maybeEmitLbModeChange();
     }
     window.removeEventListener('mousemove', this._onMouseMove, false);
     window.removeEventListener('mouseup', this._onMouseUp, false);
@@ -804,6 +905,140 @@ export class ExperimentalControls extends THREE.EventDispatcher {
     this.dispatchEvent(this._changeEvent);
   }
 
+  // --- LB pedestal move (Phase 2) ---
+  //
+  // Mirrors `_lbTruckMove` but operates on a *vertical* plane through
+  // the latched anchor. Plane normal = camera-forward-horizontal (latched
+  // at gesture start). Mouse-X drives camera-right-horizontal motion
+  // (truck-right); mouse-Y drives world-Y motion (pedestal-up).
+  //
+  // The "world point under cursor stays under cursor in 2D" property is
+  // preserved as long as the camera-yaw doesn't change during the
+  // gesture (which it can't — pedestal mode doesn't rotate the camera).
+  _lbPedestalMove(clientX, clientY) {
+    const camera = this._camera;
+    const anchor = this._latch.get('anchor');
+    if (!anchor) return;
+
+    const rect = this._domElement.getBoundingClientRect();
+    const ndcX = ((clientX - rect.left) / rect.width) * 2 - 1;
+    const ndcY = -((clientY - rect.top) / rect.height) * 2 + 1;
+    this._tmpNDC.set(ndcX, ndcY);
+    this._raycaster.setFromCamera(this._tmpNDC, camera);
+
+    const hNow = new THREE.Vector3();
+    const ok = this._raycaster.ray.intersectPlane(this._anchorPlane, hNow);
+    if (!ok) return; // ray parallel to plane — no-op
+
+    // Decompose the (anchor - hNow) delta onto (camera-right-horizontal,
+    // world-up) so a horizontal mouse drag never accidentally introduces
+    // a y-component and vice-versa. The intersection point already lies
+    // in the plane; this is just choosing a basis to read it in.
+    const planeNormal = this._latch.get('planeNormal');
+    if (!planeNormal) return;
+    const right = new THREE.Vector3().crossVectors(
+      planeNormal,
+      new THREE.Vector3(0, 1, 0)
+    );
+    if (right.lengthSq() < 1e-6) return;
+    right.normalize();
+
+    const delta = new THREE.Vector3().subVectors(anchor, hNow);
+    const stepRight = delta.dot(right);
+    const stepUp = delta.y;
+    if (!isFinite(stepRight) || !isFinite(stepUp)) return;
+
+    // Sanity cap — same as `_lbTruckMove`. Numerically-degenerate hits
+    // (drag near-parallel to plane normal) get clamped, not zeroed.
+    const stepMag = Math.hypot(stepRight, stepUp);
+    let sR = stepRight;
+    let sU = stepUp;
+    const cap = LB_PAN_MAX_STEP_METRES;
+    if (stepMag > cap) {
+      const k = cap / stepMag;
+      sR *= k;
+      sU *= k;
+    }
+
+    camera.position.x += right.x * sR;
+    camera.position.z += right.z * sR;
+    camera.position.y += sU;
+    this.center.x += right.x * sR;
+    this.center.z += right.z * sR;
+    this.center.y += sU;
+    camera.updateMatrixWorld();
+    this.dispatchEvent(this._changeEvent);
+  }
+
+  // --- Phase 2 rotation-center pipeline (latch-time + live-time) ---
+
+  // Truth table — see claude/specs/001-phase-2-plan.md §"Truth table".
+  //
+  //   Tilt > 30° down              -> Rule 1: screen-center hit.
+  //                                   (falls back to ruleAB if null).
+  //   20–30° down (blend zone)     -> lerp(screen-hit, ruleAB) by tilt.
+  //   ≤20° down through any up     -> Rule 2/3 (ruleAB), no Rule 1 blend.
+  //
+  // ruleAB = Rule 2 (diorama center @ eye height) outside cylinder,
+  //          Rule 3 (camera position) inside, smoothstepped across the
+  //          ±10%-of-radius feather zone — recomputed live.
+  _latchRotationCenter(camera) {
+    const screenHit = this._screenCenterHit();
+    const bounds = this._bounds.getBounds();
+    const latch = latchedRotationCenter(camera, bounds, screenHit);
+    this._latch.start({
+      mode: 'rotate',
+      center: latch.center,
+      screenHit: latch.screenHit,
+      blend: latch.blend,
+      liveRuleAB: latch.liveRuleAB
+    });
+  }
+
+  // Per-move recompute of `ruleAB` for cylinder-edge feathering. Mutates
+  // the latched `center` in-place so `_shiftRotate` reads it transparently.
+  // No-op when the scene is unbounded (Rule 3 == camera position is
+  // already invariant in the camera's reference frame).
+  _updateLiveRuleAB(camera) {
+    if (!this._latch.isActive()) return;
+    if (!this._latch.get('liveRuleAB')) return;
+    const bounds = this._bounds.getBounds();
+    const ruleAB = computeRuleAB(camera.position, bounds);
+    const blend = this._latch.get('blend');
+    const screenHit = this._latch.get('screenHit');
+    const center = this._latch.get('center');
+    if (!center || !screenHit) return;
+    center.lerpVectors(screenHit, ruleAB, blend);
+  }
+
+  // Screen-center scene/ground raycast. Returns a Vector3 or null on
+  // sky-miss (no scene mesh hit, no ground intersection in front of the
+  // camera). Note: `CursorAnchor.worldPointAt` always returns a point
+  // (with a fallback layer), so we can't rely on it for null. We do a
+  // direct raycast/plane test here that intentionally allows null.
+  _screenCenterHit() {
+    const rect = this._domElement.getBoundingClientRect();
+    const cx = rect.left + rect.width / 2;
+    const cy = rect.top + rect.height / 2;
+    const ndcX = ((cx - rect.left) / rect.width) * 2 - 1;
+    const ndcY = -((cy - rect.top) / rect.height) * 2 + 1;
+    this._tmpNDC.set(ndcX, ndcY);
+    this._raycaster.setFromCamera(this._tmpNDC, this._camera);
+
+    // Step 1: scene mesh raycast (excludes gizmo / helper subtrees via
+    // CursorAnchor's logic — reuse it here for consistency).
+    const meshAnchor = this._cursorAnchor.worldPointAt(cx, cy);
+    if (meshAnchor && meshAnchor.source === 'mesh') {
+      return new THREE.Vector3(meshAnchor.x, meshAnchor.y, meshAnchor.z);
+    }
+    if (meshAnchor && meshAnchor.source === 'ground') {
+      return new THREE.Vector3(meshAnchor.x, meshAnchor.y, meshAnchor.z);
+    }
+    // 'fallback' = sky-miss for our purposes — return null so the
+    // latch-time logic collapses to ruleAB (per A3).
+    return null;
+  }
+
   // --- Shift+LB orbit/tilt around latched center ---
 
   _shiftRotate(dxPx, dyPx) {
@@ -812,19 +1047,43 @@ export class ExperimentalControls extends THREE.EventDispatcher {
     if (!center) return;
 
     const offset = this._tmpV3a.copy(camera.position).sub(center);
+    // Rule 3 (rotate-in-place: center === camera position) gives a
+    // zero-length offset, which `setFromVector3` collapses to a
+    // radius-0 spherical and `setFromSpherical` will then reproduce as
+    // (0, 0, 0) regardless of the new theta/phi. Detect that case and
+    // run on a unit-length virtual offset opposite the view direction
+    // — so phi reads the current camera tilt, the rotation deltas
+    // apply normally, and we update the camera's `lookAt` target
+    // (camera position itself stays put).
+    const rotateInPlace = offset.lengthSq() < 1e-6;
+    if (rotateInPlace) {
+      const fwd = this._tmpV3c;
+      camera.getWorldDirection(fwd); // -Z, normalized
+      offset.copy(fwd).multiplyScalar(-1);
+    }
     const sph = this._spherical.setFromVector3(offset);
 
     sph.theta -= dxPx * this.rotationSpeed; // yaw
     sph.phi -= dyPx * this.rotationSpeed; // tilt: drag-down (+dy) -> phi smaller -> more top-down
 
-    // Tilt clamp: phi <= MAX (i.e. elevation >= MIN_TILT_DEGREES).
+    // Tilt clamp: phi between MIN (≈ MAX_TILT_DEGREES = +89° down) and
+    // MAX (= 90 - MIN_TILT_DEGREES = +179° = -89° up).
     sph.phi = Math.max(MIN_SPHERICAL_PHI, Math.min(MAX_SPHERICAL_PHI, sph.phi));
 
     const newOffset = this._tmpV3b.setFromSpherical(sph);
-    camera.position.copy(center).add(newOffset);
-    camera.lookAt(center);
+    if (rotateInPlace) {
+      // Keep camera position; aim its `lookAt` 1m down the new forward
+      // direction (which is `-newOffset`, since the virtual offset was
+      // `-fwd`).
+      const lookTarget = this._tmpV3a.copy(camera.position).sub(newOffset);
+      camera.lookAt(lookTarget);
+      this.center.copy(camera.position);
+    } else {
+      camera.position.copy(center).add(newOffset);
+      camera.lookAt(center);
+      this.center.copy(center);
+    }
     camera.updateMatrixWorld();
-    this.center.copy(center);
     this.dispatchEvent(this._changeEvent);
   }
 

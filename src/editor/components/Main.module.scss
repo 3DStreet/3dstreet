@@ -4,6 +4,14 @@
   left: 50%;
   transform: translateX(-50%);
   z-index: 10;
+  transition:
+    top 200ms ease-out,
+    left 200ms ease-out,
+    right 200ms ease-out,
+    transform 200ms ease-out,
+    width 200ms ease-out,
+    background-color 200ms ease-out,
+    padding 200ms ease-out;
 }
 
 .actionBarDock {
@@ -12,4 +20,41 @@
   left: 50%;
   transform: translateX(-50%);
   z-index: 10;
+  transition:
+    bottom 200ms ease-out,
+    left 200ms ease-out,
+    right 200ms ease-out,
+    transform 200ms ease-out,
+    width 200ms ease-out,
+    background-color 200ms ease-out,
+    padding 200ms ease-out;
+}
+
+// Phase 2 visual indicator (per claude/specs/001-phase-2-plan.md §"Visual
+// indicator"). When the next LB drag would be truck/pedestal, the
+// floating toolbars expand to full-width black strips so the
+// aspect-ratio change of the visible viewport tells the user "low-tilt
+// mode is engaged" without a separate badge.
+.pedestalMode.primaryToolbarDock {
+  top: 0;
+  left: 0;
+  right: 0;
+  transform: none;
+  width: 100vw;
+  background-color: #000;
+  padding: 6px 12px;
+  display: flex;
+  justify-content: center;
+}
+
+.pedestalMode.actionBarDock {
+  bottom: 0;
+  left: 0;
+  right: 0;
+  transform: none;
+  width: 100vw;
+  background-color: #000;
+  padding: 6px 12px;
+  display: flex;
+  justify-content: center;
 }

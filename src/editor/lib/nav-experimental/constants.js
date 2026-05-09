@@ -1,10 +1,38 @@
 // Single source-of-truth knobs for the experimental nav-controls system.
 // See claude/specs/001-phase-1-plan.md.
 
-// Minimum tilt from horizontal, in degrees, enforced by Shift+LB tilt drag.
-// Phase 2 will lower or remove this floor; until then it lives here as a
-// single named export so the change is one edit.
-export const MIN_TILT_DEGREES = 30;
+// Tilt clamps (degrees from horizontal). Positive = looking down,
+// negative = looking up. Phase 2 lowered MIN to -89 so the user can pitch
+// up to look at buildings; MAX = +89 mirrors the floor on the down side
+// and keeps `lookAt` numerically stable just shy of the spherical
+// singularity.
+export const MIN_TILT_DEGREES = -89;
+export const MAX_TILT_DEGREES = 89;
+
+// Phase 2: 30° hard-cut between truck/dolly (>30° down) and truck/pedestal
+// (everything else). Cut is on absolute angle from horizontal — looking
+// up by any amount is pedestal mode.
+export const TRUCK_PEDESTAL_CUTOFF_DEGREES = 30;
+
+// Phase 2: angular blend zone (in degrees below horizontal) for the
+// rotation-center lerp between Rule 1 (screen-center hit) and Rule 2/3.
+export const ROTATION_BLEND_LOW_DEGREES = 20;
+export const ROTATION_BLEND_HIGH_DEGREES = 30;
+
+// Phase 2: Rule 2 (diorama-center) rotation-center y-coordinate. Eye
+// height rather than ground (y=0) so a Shift+LB tilt-up gesture at street
+// level orbits around a point above the ground and the camera doesn't
+// arc underground. Assumes flat ground at y=0; non-pedestrian scene
+// scales (drone/satellite) would need a scene-aware override.
+export const ROTATION_CENTER_EYE_HEIGHT_METRES = 1.5;
+
+// Phase 2: cylinder-edge feathering width as a fraction of cylinder
+// radius. Smoothstep from Rule 3 (inside, rotate-in-place) to Rule 2
+// (outside, diorama center) over `radius ± fraction*radius`. Always
+// active when the scene is bounded — no activation threshold (avoids
+// "near-identical gestures behave differently" discontinuity; per-frame
+// cost is one Pythagoras + smoothstep).
+export const CYLINDER_FEATHER_FRACTION = 0.1;
 
 // Wheel zoom: each "wheel-tick of budget" moves the camera by this fraction
 // of the current camera-to-anchor distance. Sign is applied by the caller.

@@ -122,65 +122,141 @@ _decideLbMode(camera) {
 
 Where `_cameraTiltDegrees` returns the angle of the camera's view direction below horizontal (so 0° = horizontal, 90° = straight down). Phase 2 introduces this helper; Phase 3 reuses it.
 
-#### `_decideRotationCenter(camera, screenCenterHit)` — pure, returns `Vector3` + blend metadata
+#### Rotation-center pipeline — split into latch-time and live-time
+
+The rotation center is computed in two phases. Latch-time (at Shift+LB-down) snapshots the high-level rule (Rule 1 vs Rule 2/3-group) plus tilt-blend weight; live-time (per `_shiftRotate` call) optionally recomputes `ruleAB` for the cylinder-edge feather. The `_shiftRotate` math reads only `this._latch.get('center')` and has no knowledge of which path produced it.
+
+**At Shift+LB-down (`_latchRotationCenter`):**
 
 ```js
-_decideRotationCenter(camera) {
+_latchRotationCenter(camera) {
   const tiltDeg = this._cameraTiltDegrees(camera);
-  const screenHit = this._screenCenterHit();           // Rule 1 candidate
-  const bounds = this._bounds.getBounds();             // cached
-  const camPos = camera.position;
-  const insideCyl = bounds.bounded
-    && Math.hypot(camPos.x - bounds.center.x, camPos.z - bounds.center.z) <= bounds.radius;
-  const ruleAB = (!bounds.bounded || insideCyl)
-    ? camPos.clone()                                                          // Rule 3
-    : new THREE.Vector3(                                                      // Rule 2
-        bounds.center.x,
-        ROTATION_CENTER_EYE_HEIGHT_METRES,
-        bounds.center.z
-      );
+  const screenHit = (tiltDeg > ROTATION_BLEND_LOW_DEGREES)
+    ? this._screenCenterHit()        // null if no scene/ground hit
+    : null;                          // not needed for ≤20° branch
 
-  // Looking up (negative tilt) always falls in Rule 2/3 — the blend
-  // triggers only on the looking-down side, between 20° and 30° down.
-  if (tiltDeg >= 30) return screenHit;
-  if (tiltDeg <= 20) return ruleAB;          // includes all negative tilts
-  const t = (tiltDeg - 20) / 10;             // 0 at 20°, 1 at 30°
-  const eased = t * t * (3 - 2 * t);         // smoothstep
-  return new THREE.Vector3().lerpVectors(ruleAB, screenHit, eased);
+  // Resolve ruleAB lazily — only the bounded/unbounded check is needed
+  // unconditionally, because Rule 3 (camera-pos) is the always-live floor.
+  const ruleAB = this._computeRuleAB(camera);
+  // Always-live feather (per A4): per-frame `_updateLiveRuleAB` runs on
+  // every Shift+LB move when the scene is bounded. Cheap (~one Pythagoras
+  // + smoothstep) and avoids the discontinuity an activation-threshold
+  // would create.
+  const liveRuleAB = this._bounds.getBounds().bounded;
+
+  // Tilt-blend weight (latched).
+  let blend = 1;                     // 1 = fully ruleAB, 0 = fully screenHit
+  if (tiltDeg > ROTATION_BLEND_HIGH_DEGREES) {
+    blend = 0;
+  } else if (tiltDeg > ROTATION_BLEND_LOW_DEGREES) {
+    const t = (tiltDeg - ROTATION_BLEND_LOW_DEGREES) /
+              (ROTATION_BLEND_HIGH_DEGREES - ROTATION_BLEND_LOW_DEGREES);
+    blend = 1 - t * t * (3 - 2 * t); // smoothstep, inverted
+  }
+
+  // No-screenHit fallback (per A3): if Rule 1 has nothing to anchor to
+  // (sky raycast miss), collapse to ruleAB regardless of blend weight.
+  const effectiveScreenHit = screenHit ?? ruleAB.clone();
+  const center = new THREE.Vector3().lerpVectors(
+    effectiveScreenHit, ruleAB, blend
+  );
+
+  this._latch.start({
+    mode: 'rotate',
+    center,                          // live-mutated by _updateLiveRuleAB
+    screenHit: effectiveScreenHit,   // latched
+    blend,                           // latched
+    liveRuleAB,                      // flag
+  });
 }
 ```
 
-**Latching scope (post-review).** The high-level Rule-1-vs-Rule-2/3 dispatch is latched at gesture start (so the user doesn't get truck/dolly mode flipping mid-Shift+LB-drag). The `screenHit` and `ruleAB` *positions* used in the lerp are also latched at gesture start *for the >20° branches* — the blend output is a single latched `Vector3`. **Exception:** when the gesture starts in the Rule-2/3 group with `ruleAB` close to the cylinder boundary, switch to per-frame recomputation of just the inside/outside-cylinder feathered lerp (Open Design Call #3). Concretely: latch a flag `liveRuleAB` at gesture start (true if camera is within ±10% of cylinder radius, else false); when set, recompute `ruleAB` each `_shiftRotate` call by smoothstep-lerping between `cameraPos` and `dioramaCenter` based on the camera's live distance to the cylinder axis. `_shiftRotate` itself doesn't need to know — it just reads `this._latch.get('center')` (or, when `liveRuleAB`, the per-frame value the move handler stuffs back in).
+**On each Shift+LB move (`_updateLiveRuleAB`, called from `_onMouseMove` before `_shiftRotate`):**
+
+```js
+_updateLiveRuleAB(camera) {
+  if (!this._latch.get('liveRuleAB')) return;
+  const ruleAB = this._computeRuleAB(camera);   // re-evaluates inside/outside
+  const blend = this._latch.get('blend');
+  const screenHit = this._latch.get('screenHit');
+  this._latch.get('center').lerpVectors(screenHit, ruleAB, blend);
+}
+```
+
+**Helper (`_computeRuleAB`)** — handles both the inside/outside test and the feathered transition:
+
+```js
+_computeRuleAB(camera) {
+  const bounds = this._bounds.getBounds();
+  const camPos = camera.position;
+  if (!bounds.bounded) {
+    // No cylinder — Rule 3 always (per A5).
+    return camPos.clone();
+  }
+  const dist = Math.hypot(
+    camPos.x - bounds.center.x, camPos.z - bounds.center.z
+  );
+  const r = bounds.radius;
+  const featherWidth = r * CYLINDER_FEATHER_FRACTION;   // 0.10 default
+  // smoothstep from inside (Rule 3) to outside (Rule 2) over the feather.
+  const u = THREE.MathUtils.clamp((dist - (r - featherWidth)) /
+                                  featherWidth, 0, 1);
+  const w = u * u * (3 - 2 * u);                        // 0 inside, 1 outside
+  const dioramaCenter = new THREE.Vector3(
+    bounds.center.x, ROTATION_CENTER_EYE_HEIGHT_METRES, bounds.center.z
+  );
+  return new THREE.Vector3().lerpVectors(camPos, dioramaCenter, w);
+}
+```
+
+**Latching contract (post-review):**
+
+- **Latched** at gesture start: high-level rule (Rule 1 vs Rule 2/3-group via `tiltDeg > 30`), `screenHit` (with null fallback to `ruleAB`), tilt-blend weight `blend`, `liveRuleAB` flag.
+- **Live** during the gesture: the inside/outside-cylinder feathered position via `_computeRuleAB`, only when `liveRuleAB === true` (i.e. scene is bounded). Unbounded scenes short-circuit to Rule 3 / camera-position and don't recompute, since `ruleAB === camPos` is constant in the camera's reference frame.
+- **`_shiftRotate`** reads `this._latch.get('center')` — opaque to it whether the value was set once or per-frame.
+
+**`CYLINDER_FEATHER_FRACTION`** is a new constant (default 0.10 = ±10% of cylinder radius). Lives in `constants.js`; see below.
 
 #### `_lbPedestalMove(clientX, clientY)` — new branch alongside `_lbTruckMove`
 
-Mirrors `_lbTruckMove` but operates on a vertical plane parallel to screen-X through the latched anchor point:
+Mirrors `_lbTruckMove` but operates on a vertical plane through the latched anchor, oriented to face the camera:
 
-- At gesture start: latch `anchor` (cursor world hit) and `anchorPlane` = vertical plane through anchor, normal = `screenRight` (horizontal projection of camera +X).
-- On move: raycast cursor against the latched plane; camera position += `(anchor - hitNow)` (still "grab the world"). Y component now varies; X/Z move along the screen-right horizontal direction.
-- Same 5000m sanity cap as `_lbTruckMove`.
+- At gesture start: latch `anchor` (cursor world hit) and `anchorPlane` = vertical plane through anchor with **normal = camera-forward-horizontal** (camera −Z projected onto the horizontal plane and normalized). The plane spans world-Y plus camera-right-horizontal — i.e. it sits "in front of" the camera like a window. (Per inline discussion #1; the earlier "normal = camera-right-horizontal" formulation was wrong.)
+- On move: raycast cursor against the latched plane → `hitNow`. Camera position += `(anchor - hitNow)` (still "grab the world"). Mouse-X drives camera-right-horizontal motion (truck-right); mouse-Y drives world-Y motion (pedestal-up).
+- **Sanity cap.** Same `LB_PAN_MAX_STEP_METRES = 5000m` as `_lbTruckMove`. When triggered, the per-event delta is clamped to the cap (not zeroed, not snapped back) — matches Phase 1's behavior. Triggered only by numerically-degenerate hits, e.g. cursor ray nearly parallel to plane normal (drag direction parallel to camera-forward-horizontal — vanishingly rare in practice but possible).
 
 #### `_onMouseDown` — extend the dispatch
 
 ```js
 _onMouseDown(event) {
   // ... existing inactive guard, _decideMouseMode call ...
+
+  // Recompute & emit current LB-mode before latching the gesture (per A6).
+  // The camera may have changed tilt since the last `_shiftRotate` —
+  // e.g. a Plan View tween or focus-animation finished and the toolbar
+  // indicator is now stale. Catching it here keeps the indicator honest
+  // for users who never use Shift+LB.
+  const liveLbMode = this._decideLbMode(this._camera);
+  if (liveLbMode !== this._currentLbMode) {
+    this._currentLbMode = liveLbMode;
+    this._emitModeChange(liveLbMode);
+  }
+
   if (mode === 'pan') {
-    const lbMode = this._decideLbMode(this._camera);
-    // Latch anchor + sub-mode for use by _onMouseMove dispatch.
-    if (lbMode === 'pan-truck') {
+    if (liveLbMode === 'pan-truck') {
       // Phase 1 truck path, unchanged.
     } else {
       // Phase 2 pedestal path. Compute vertical-plane anchor.
     }
-    this._latch.start({ mode: 'pan', subMode: lbMode, /* ... */ });
+    this._latch.start({ mode: 'pan', subMode: liveLbMode, /* ... */ });
   } else if (mode === 'rotate') {
-    const center = this._decideRotationCenter(this._camera);
-    this._latch.start({ mode: 'rotate', center });
+    this._latchRotationCenter(this._camera);   // see above
   }
-  // ... emit modechange, attach window listeners ...
+  // ... attach window listeners ...
 }
 ```
+
+The Plan View tween and focus-animation also change tilt outside any mouse gesture; both should fire a mode-change check on completion. Add a tilt-watch in their `onDone` callbacks (one-line: same comparator as above).
 
 `_onMouseMove` dispatches on `subMode` for the `'pan'` mode, calling either `_lbTruckMove` or `_lbPedestalMove`.
 
@@ -220,8 +296,18 @@ export const ROTATION_BLEND_HIGH_DEGREES = 30;
 // Eye-height rather than ground (y=0) so a Shift+LB tilt-up gesture at
 // street level orbits around a point above the ground and the camera
 // doesn't arc underground. Assumes flat ground at y=0; elevated terrain
-// is a known Phase 2 gap.
+// is a known Phase 2 gap. Note: "eye height" implies pedestrian scale —
+// for non-pedestrian scene types (drone/satellite) this default would
+// be wrong; revisit when such scenes enter scope.
 export const ROTATION_CENTER_EYE_HEIGHT_METRES = 1.5;
+
+// Phase 2: cylinder-edge feathering width as a fraction of cylinder
+// radius. Smoothstep from Rule 3 (inside, rotate-in-place) to Rule 2
+// (outside, diorama center) over `radius ± fraction*radius`. Always
+// active when the scene is bounded (per A4 — no activation threshold;
+// the per-frame cost is negligible and constant feathering removes the
+// "near-identical gestures behave differently" discontinuity).
+export const CYLINDER_FEATHER_FRACTION = 0.10;
 ```
 
 Nothing else moves in `constants.js`. Phase 1 wheel constants, WASD constants, Plan View duration — all unchanged.
@@ -232,7 +318,7 @@ Two small additions:
 
 1. **`src/editor/lib/nav-experimental/useNavMode.js`** — Zustand selector or React hook that subscribes to `nav-experimental:modechange` from the active `ExperimentalControls` instance and re-renders. Exports `isPedestalMode: boolean`.
 2. **`Main.module.scss` / `ToolbarWrapper.module.scss`** — new class `.pedestalMode` that overrides the floating-toolbar geometry (`width: 100vw`, `left: 0`, `right: 0`, `background: #000`, `transition: all 200ms ease-out`).
-3. **`ToolbarWrapper.jsx`** and the bottom-toolbar wrapper — read the hook, conditionally apply the class.
+3. **`ToolbarWrapper.jsx`** and the bottom-toolbar wrapper — read the hook, conditionally apply the class. **Tail-debounce the class application by ~100ms** (per A9) to absorb rapid toggles when a Shift+LB tilt crosses 30° on a single frame (large mouse delta or trackpad burst). Implementation: keep a small `useEffect` that delays applying the new class until `isPedestalMode` has been stable for the debounce window; the underlying mode-change *event* is uncoalesced for any subscriber that needs the immediate value.
 
 Flag-off (no `?nav=experimental`) — no `ExperimentalControls` instance exists, hook returns `false`, toolbars never restyle.
 
@@ -242,15 +328,20 @@ Six cases, plus the angular blend:
 
 "Tilt" here is the angle below horizontal (positive = looking down, negative = looking up). The blend triggers only on the looking-down side; looking-up always falls into the Rule 2/3 branch.
 
-| Tilt           | Bounded? | Inside cyl? | Center            |
-|----------------|----------|-------------|-------------------|
-| > 30°          | —        | —           | Screen-center hit |
-| 20–30°         | Yes      | No          | lerp(diorama @ eye-height, screen-hit) |
-| 20–30°         | Yes      | Yes         | lerp(camera-pos, screen-hit) |
-| 20–30°         | No       | n/a         | lerp(camera-pos, screen-hit) |
-| ≤ 20° (incl. negative) | Yes | No       | Diorama center @ eye-height (1.5m) |
-| ≤ 20° (incl. negative) | Yes | Yes      | Camera position |
-| ≤ 20° (incl. negative) | No  | n/a      | Camera position |
+| Tilt          | Bounded? | Inside cyl? | Center            |
+|---------------|----------|-------------|-------------------|
+| > 30°         | —        | —           | Screen-center hit (Rule 1; falls back to ruleAB if null) |
+| 20–30°        | Yes      | No          | lerp(diorama @ eye-height, screen-hit) — feathered live |
+| 20–30°        | Yes      | Yes         | lerp(camera-pos, screen-hit) — feathered live |
+| 20–30°        | No       | n/a         | lerp(camera-pos, screen-hit) — Rule 3, no feathering needed |
+| 0–20°         | Yes      | No          | Diorama center @ eye-height (1.5m) — feathered live |
+| 0–20°         | Yes      | Yes         | Camera position — feathered live |
+| 0–20°         | No       | n/a         | Camera position |
+| < 0° (looking up) | Yes      | No          | Diorama center @ eye-height — feathered live |
+| < 0° (looking up) | Yes      | Yes         | Camera position — feathered live |
+| < 0° (looking up) | No       | n/a         | Camera position |
+
+"Tilt" is angle below horizontal; positive = looking down, negative = looking up. The Rule-1-vs-Rule-2/3-group split is always at +30° down — looking up is always Rule 2/3. "Feathered live" means `_computeRuleAB` runs each Shift+LB move (per A4 always-on rule), smoothstepping between Rule 2 and Rule 3 across the cylinder edge.
 
 Worth pinning into the code as the comment header on `_decideRotationCenter`.
 
@@ -259,7 +350,7 @@ Worth pinning into the code as the comment header on `_decideRotationCenter`.
 1. **`MIN_TILT_DEGREES` lowered** to −89 (and `MAX_TILT_DEGREES = +89`) so the user can drive from near-straight-up through horizontal to near-straight-down.
 2. **`_decideLbMode` and `_decideRotationCenter`** in `ExperimentalControls`, with unit-testable shape (pure given camera + bounds — feed test fixtures).
 3. **`_lbPedestalMove`** branch implemented, mirroring `_lbTruckMove` for the vertical plane.
-4. **Mode-change emission on mouseup** for the visual indicator.
+4. **Mode-change emission** for the visual indicator: emit on every `_shiftRotate` move-event when the LB-mode comparator flips, on `_onMouseDown` (LB-only path catches stale-from-tween states, per A6), and on Plan View / focus-animation `onDone` callbacks.
 5. **`useNavMode` hook** + toolbar CSS class + `ToolbarWrapper` integration.
 6. **Unit tests** for `_decideLbMode` (boundary at 30°), `_decideRotationCenter` (each truth-table row, plus blend at 25°), and the angular smoothstep math.
 7. **Manual smoke test** covering each new mechanic, plus regression coverage of Phase 1.
@@ -271,11 +362,11 @@ Sittings (1–3h focused blocks). Suggested order:
 
 1. **`_cameraTiltDegrees` helper + `_decideLbMode`** with tests. Tiny but unblocks everything else. ~0.5 sitting.
 2. **`_decideRotationCenter` with the truth table + blend** with tests. ~1 sitting.
-3. **Lower `MIN_TILT_DEGREES`**, verify nothing else broke (Plan View end-pose, WASD degenerate case). ~0.5 sitting.
+3. **Lower `MIN_TILT_DEGREES` to −89, add `MAX_TILT_DEGREES`**, verify nothing else broke. ~0.5 sitting. Includes a 5-min `grep` (per A10) for `MIN_TILT_DEGREES` / `MAX_TILT_DEGREES` references across the codebase to confirm the clamps are read only by `_shiftRotate` — no defensive uses elsewhere that could bite the Plan View tween or future swoop.
 4. **`_lbPedestalMove`** — vertical-plane anchored translation. The math is the riskiest piece — walk through it on paper before coding. ~1–1.5 sittings.
 5. **Wire `_onMouseDown` / `_onMouseMove`** to the new sub-mode dispatch. ~0.5 sitting.
-6. **`useNavMode` hook + toolbar CSS + `ToolbarWrapper` wiring.** ~1 sitting.
-7. **Mode-change emission on mouse-up** — small but needs care to not double-fire during fast gesture sequences. ~0.5 sitting.
+6. **`useNavMode` hook + toolbar CSS + `ToolbarWrapper` wiring.** ~1 sitting. **Pre-task 15-min spike** (per A11) before committing to a discovery path: instrument `sceneEl` and the active controls instance with logs through a Plan View transition + camera-swap cycle, confirm `sceneEl` is stable across the swap. If yes, ship (b) event-bus-on-`sceneEl`; if no (sceneEl gets recreated), fall back to (a) Zustand slot. Decision recorded in this plan once the spike runs.
+7. **Mode-change emission** — wire emit-on-`_shiftRotate-move`, emit-on-`_onMouseDown`, and emit on Plan-View/focus-animation `onDone` (per A6 + Open Design Call #2). Care needed to not double-fire during fast gesture sequences. ~0.5 sitting.
 8. **Smoke test pass** end-to-end on the basic-street scene. ~1 sitting.
 9. **Real-scene smoke pass** — Streetmix import, `street-geo` scene, single intersection. Captures `SceneBounds` correctness gaps. ~1 sitting.
 10. **Tune blend constants and toolbar timing** based on feel. Time-boxed to 1 sitting; if it overruns, that's a signal to log issues rather than keep tuning.
@@ -288,11 +379,13 @@ Total: ~7–8 sittings. The math-heavy items (pedestal vertical-plane anchor, ro
 
 - **Vertical-plane anchored pedestal math drift.** The horizontal-plane case in Phase 1 is numerically robust because the plane y-coordinate equals the latched anchor's y. Vertical-plane analogue: ray-plane intersection numerics can blow up when the camera is nearly looking parallel to the plane normal (i.e. drag-direction parallel to camera +X — won't happen in practice, but worth a guard). Mitigation: reuse the 5000m sanity cap from `_lbTruckMove`.
 
-- **Rotation-center hunting near the cylinder boundary.** Per Open Design Call #3, Rule 2 ↔ Rule 3 is *not* latched — `ruleAB` is feathered per-frame when the gesture starts near the boundary. If the camera oscillates across the boundary during a drag, the rotation point hunts. Mitigation: 10%-of-radius feather zone + smoothstep should damp small oscillations. Fall-back: latch fully if hunting is observed in feel-test. The Rule-1-vs-Rule-2/3 high-level dispatch *is* still latched, so this risk only manifests within the Rule-2/3 family.
+- **Rotation-center hunting near the cylinder boundary.** Per Open Design Call #3, Rule 2 ↔ Rule 3 is feathered per-frame on every Shift+LB move (always-live, per A4). If the camera oscillates across the boundary during a drag, the rotation point hunts. Mitigation: 10%-of-radius feather zone + smoothstep should damp small oscillations. **Concrete fall-back trigger (per A15):** during smoke R5/F4 with the camera held still by the user near the boundary, if the rotation-center position visibly drifts more than ~5cm/frame (~3m/s at 60Hz), latch fully. Same trigger if the camera, during a held Shift+LB tilt with no LB pan input, produces visible center-of-rotation oscillation. Otherwise the always-live design ships. The Rule-1-vs-Rule-2/3 high-level dispatch *is* still latched, so this risk only manifests within the Rule-2/3 family.
 
 - **`SceneBounds` correctness on real scenes.** Phase 1 only tested the basic-street default scene. Phase 2 puts `getBounds()` on a hot-ish path. Smoke item #9 is the validation — if Streetmix imports give garbage bounds, rotation centers will be garbage. Plan to debug-render the cylinder during the real-scene smoke pass (transient `<a-entity>` overlay, removed after testing).
 
 - **Toolbar restyle is distracting, not informative.** Already flagged in the skeleton. The CSS transition over 200ms is meant to make the change feel deliberate; if it instead looks like a glitch, the lower-effort fallbacks from the overall plan (cursor-shape change, accent-color overlay, mode badge) are next options. Plan a feel-test exit criterion: "after 30 seconds of use, do I need to look at the toolbars to know what mode I'm in?" — answer should be "no".
+
+- **Toolbar restyle "predictor-of-next-LB" framing may not read intuitively** (per A14). The current spec persists the indicator between gestures (e.g. after a Shift+LB tilt below 30°, toolbars stay restyled until the next tilt above 30°). Most users don't intuit "this chrome reflects what the next gesture will do, not the current one". If F5 comes back ambiguous, the simpler fallback is "toolbar restyle only while an LB-drag is active in pedestal mode" — reflects the *active* gesture rather than predicting the next. Less ambitious, possibly clearer; logged here so we don't have to redesign during feel-test if the predictor framing fails.
 
 - **`MIN_TILT_DEGREES = -89` might collide with Plan View end-pose.** Plan View tweens to a near-vertical down orientation (90° tilt). Clamp now bookends both directions (`MIN = -89`, `MAX = +89`). The clamps live in `_shiftRotate`, not in the Plan View tween, so the tween is unaffected — but worth re-reading the clamp branch to confirm no defensive clamp bites the animation.
 
@@ -314,6 +407,16 @@ Phase 2 is done when:
 ## Smoke test checklist
 
 URL: **http://localhost:3333/?nav=experimental**, against each of the four test scenes in turn.
+
+**Ordering note (per A13).** The smoke checklist assumes Phase 2 lands as a single deliverable. If implementation is split across multiple PRs, individual items have prerequisites:
+
+- **L8b, R7, R8, F6b** require Task 3 (lowered `MIN_TILT_DEGREES`) — can't tilt up before the clamp lifts.
+- **L3–L7** require Tasks 1+4 (`_decideLbMode` + `_lbPedestalMove`).
+- **R2–R5** require Task 2 (`_decideRotationCenter` pipeline) + Task 3.
+- **V1–V3** require Tasks 6+7 (toolbar wiring + mode emission).
+- **S1–S4** require everything but Tasks 9–10.
+
+In a multi-PR rollout, mark prerequisite-blocked items as N/A in the interim rather than failing them.
 
 ### LB+drag — truck/dolly above 30° (regression of Phase 1)
 
@@ -340,7 +443,8 @@ URL: **http://localhost:3333/?nav=experimental**, against each of the four test 
 - [ ] **R2.** Tilt ≤ 20° (incl. looking up), scene bounded, camera outside cylinder: rotation center = scene-center at eye-height (1.5m). View orbits around the diorama.
 - [ ] **R3.** Tilt ≤ 20° (incl. looking up), scene bounded, camera inside cylinder: rotation center = camera position. Street-View-like in-place pan.
 - [ ] **R4.** Tilt ≤ 20° (incl. looking up), scene unbounded (`street-geo` scene): rotation center = camera position regardless of position.
-- [ ] **R5.** Tilt = 25° (mid-blend): rotation center is between screen-hit and rule-2/3. Smooth, no hunting.
+- [ ] **R5.** Tilt = +25° (mid-blend, looking down): rotation center is between screen-hit and rule-2/3. Smooth, no hunting.
+- [ ] **R5b.** Tilt = −25° (looking up): rotation center is **not** in the blend zone — it's pure ruleAB (per the truth table, looking-up always falls into Rule 2/3 with no Rule-1 blend). Verify the blend code path is gated correctly.
 - [ ] **R6.** Tilt clamp engages near +89° (looking nearly straight down). Same behavior as Phase 1's +89°-from-vertical floor.
 - [ ] **R7.** Tilt clamp engages near −89° (looking nearly straight up). Symmetric counterpart to R6. No jitter at either extreme.
 - [ ] **R8.** At street level (camera y ≈ 1.5m), Shift+LB drag-up tilts the camera up toward looking at buildings. Camera does **not** dip underground; arc orbits cleanly around the eye-height rotation center. Tilt clamp engages near −89° (looking nearly straight up).
@@ -409,7 +513,7 @@ The proposal mentions "weighted blend in the zone around the edge of the scene b
 - **(a) Defer.** Don't implement. Rule 2/3 are sharp transitions but only manifest when the camera is exactly on the cylinder boundary mid-gesture.
 - **(b) Implement now, per-frame.** Width = 10% of cylinder radius, smoothstep Rule 2 ↔ Rule 3 *and* recompute live during the gesture (Rule 2/3 not latched).
 
-**Resolved: (b)**, post-review (item #2). The long-thin-street pathology (`SceneBounds` cylinder swallows positions that feel "outside") makes feathering load-bearing rather than nice-to-have, *and* requires that the inside/outside choice not be latched. The Rule-1-vs-Rule-2/3 high-level dispatch *is* still latched (so the user doesn't get truck/dolly mode flipping mid-Shift+LB-drag). Only the inside/outside-cylinder sub-decision is live. Feel-test risk: hunting near the boundary. Fall-back: latch-at-start if hunting bites.
+**Resolved: (b)**, post-review (item #2 in inline discussion). Further refined post-adversarial-review (A4): the live feather is **always on** when the scene is bounded, not gated by a "starts within ±10% of radius" activation threshold. The activation threshold would create a discontinuity (two near-identical gestures, one starting at 11% outside the cylinder and one at 9% outside, would behave fundamentally differently); always-on costs ~one Pythagoras + smoothstep per move event and removes the discontinuity for free. Unbounded scenes short-circuit (Rule 3 always = camera position; no recompute needed). The Rule-1-vs-Rule-2/3 high-level dispatch *is* still latched. Concrete hunting fall-back trigger in Risks (A15).
 
 ### 4. WASD direction at low tilt
 
@@ -541,3 +645,23 @@ Independent pass over the plan as written. Focus: internal inconsistencies, gaps
 6. Add A8/A13 truth-table-and-smoke-ordering clarifications.
 
 The remaining items can be tracked alongside implementation but won't change the shape of the code.
+
+---
+
+## Ready-to-implement note (2026-05-09)
+
+Plan promoted from skeleton, inline-reviewed, adversarially reviewed, and post-review patches applied. All review items A1–A15 are either resolved in the spec body above or carried forward as feel-test risks. Open Design Calls #1–#3 are all resolved. Safe to `/clear` and start Phase 2 in a fresh context.
+
+Reading order for the next session:
+
+1. `claude/CLAUDE.md` — folder conventions and `//!!` / `//**` markers.
+2. `claude/specs/001-overall-plan.md` — phase map.
+3. `claude/specs/001-phase-2-plan.md` — this file. The "Mechanics — exact spec", "Architecture additions", "Truth table", "Task breakdown", and "Smoke test checklist" sections are the implementation-facing parts; the inline-discussion and adversarial-review sections at the bottom are the trail.
+4. `claude/specs/001-phase-1-plan.md` — especially the "Phase 1 feel-test notes" section (lessons that should carry forward).
+5. `src/editor/lib/nav-experimental/` — read fresh; the Phase 1 code is the substrate Phase 2 extends.
+
+Entry point: **Task 1** (`_cameraTiltDegrees` + `_decideLbMode` with tests). Task ordering in §"Task breakdown" is the suggested sequence.
+
+One open spike to resolve before Task 6: the `useNavMode` discovery-path question (A11). Plan is to spike (b) event-bus-on-`sceneEl`, fall back to (a) Zustand-slot if `sceneEl` doesn't survive camera swaps cleanly. 15 minutes; not blocking earlier tasks.
+
+Issues-for-discussion log was reviewed during planning; no new entries added. Items surfaced from feel-test (especially anything near the cylinder-edge feathering in F4, the toolbar-restyle predictor framing in F5, and the long-thin-street pathology hinted at in §Risks) are candidates if they bite.
