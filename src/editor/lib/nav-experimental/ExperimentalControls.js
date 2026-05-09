@@ -442,9 +442,8 @@ export class ExperimentalControls extends THREE.EventDispatcher {
     el.removeEventListener('mousedown', this._onMouseDown, false);
     el.removeEventListener('wheel', this._onWheel, false);
     el.removeEventListener('contextmenu', this._onContextMenu, false);
-    el.removeEventListener('mousemove', this._onMouseMove, false);
-    el.removeEventListener('mouseup', this._onMouseUp, false);
-    el.removeEventListener('mouseout', this._onMouseUp, false);
+    window.removeEventListener('mousemove', this._onMouseMove, false);
+    window.removeEventListener('mouseup', this._onMouseUp, false);
     window.removeEventListener('keydown', this._onKeyDown, false);
     window.removeEventListener('keyup', this._onKeyUp, false);
     window.removeEventListener('blur', this._onWindowBlur, false);
@@ -514,10 +513,13 @@ export class ExperimentalControls extends THREE.EventDispatcher {
     }
 
     this._emitModeChange(mode);
-    const el = this._domElement;
-    el.addEventListener('mousemove', this._onMouseMove, false);
-    el.addEventListener('mouseup', this._onMouseUp, false);
-    el.addEventListener('mouseout', this._onMouseUp, false);
+    // mousemove + mouseup attached to window (not the canvas) so the
+    // gesture follows the cursor across editor panels: leaving the
+    // viewport mid-drag pauses input visually because the panel is
+    // covering the canvas, but coming back resumes the same gesture.
+    // Only an actual mouse-button release ends the latch.
+    window.addEventListener('mousemove', this._onMouseMove, false);
+    window.addEventListener('mouseup', this._onMouseUp, false);
   }
 
   _onMouseMove(event) {
@@ -541,10 +543,8 @@ export class ExperimentalControls extends THREE.EventDispatcher {
       this._latch.end();
       this._emitModeChange(null);
     }
-    const el = this._domElement;
-    el.removeEventListener('mousemove', this._onMouseMove, false);
-    el.removeEventListener('mouseup', this._onMouseUp, false);
-    el.removeEventListener('mouseout', this._onMouseUp, false);
+    window.removeEventListener('mousemove', this._onMouseMove, false);
+    window.removeEventListener('mouseup', this._onMouseUp, false);
   }
 
   _onWheel(event) {
