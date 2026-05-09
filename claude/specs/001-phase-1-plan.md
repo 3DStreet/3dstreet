@@ -403,3 +403,45 @@ Three items are worth resolving *before* implementation starts, because they cha
 3. Plan View intercept mechanism (ExperimentalControls listener vs viewport.js delegation) — the resolved option (a) likely doesn't work as described.
 
 The rest can be flagged in code comments and resolved during the smoke-test pass.
+
+---
+
+## Phase 1 feel-test notes (2026-05-08 / 2026-05-09)
+
+Informal feel-testing on the basic-street default scene during implementation. Captured here so Phase 2 planning can draw from the lessons rather than re-deriving them.
+
+### What works as specced
+
+- **LB-drag hit-anchored truck.** Felt like Google Maps from the first try. The "world point under cursor stays anchored" math is the right model — speed-scales-with-height emerges naturally and feels correct. No tuning needed.
+- **Wheel cursor-anchored exponential dolly.** Anchoring is tight on buildings and ground. Tilt-preserving by construction (pure translation along camera→hit ray) is correct and should be defended in any future cleanup.
+- **Shift+LB tilt clamp at 30°.** Hard stop is clean — no jitter, no spring-back. Didn't feel restrictive at altitude; will feel restrictive at street level (which is exactly what Phase 2 unlocks).
+- **Plan View intercept via viewport.js delegation.** The `cameratoggle` interception path is correct; Plan View triggered from menu / toolbar / keyboard all hit the new tween.
+
+### What needed feel-driven changes during Phase 1
+
+- **Shift+LB tilt direction.** Original implementation had drag-up = tilt-toward-top-down (Google-Earth-ish). Inverted to **drag-down = tilt-toward-top-down** to match Google Maps. Feels right.
+- **Plan View end-pose orientation.** Original spec said "screen-up = world +Z (north-up)". Hard-coding this caused a 180° spin whenever the user was orbited the opposite way. Switched to **preserve the camera's current horizontal facing direction (yaw)** — only tilt and altitude change in the transition. Feels continuous.
+- **Plan View end-pose altitude.** Original spec deferred this. Implemented as: bounded scene → recenter on `bounds.center.xz`, altitude = `radius * 1.3 / tan(min(halfVFov, halfHFov))`; unbounded → stay over current XZ at max(current y, 200 m). Constraint: never zoom in (Plan View is a zoom-out gesture). Feels right; user wanted the recentering on bounded scenes specifically.
+- **WASD acceleration ramp.** Phase 1 spec assumed constant velocity. Felt jerky in practice — especially the on/off snap. Replaced with **velocity ramp from 0 → target over 200 ms while keys held; instant halt on release** (no decel ramp). Felt much better. Same model would apply to Phase 5 FPS mode.
+- **Wheel budget hard-cap.** Original budget model accumulated unbounded `deltaY`, drained 3 ticks/frame. Trackpad bursts piled up budget that kept zooming for hundreds of ms after release — felt like inputs were being queued/blocking. Capped budget to one frame's drain capacity (10 ticks) and bumped per-frame drain from 3 to 10. Now max ~16 ms post-release lag. The user flagged the underlying budget/drain model as "is this needed at all?" — logged as issue #6 in `claude/issues-for-discussion.md` for later review.
+- **Cursor anchor exclusion list.** Initial implementation only excluded by name substring. Real scenes have `CameraHelper` (no name, type-based) and 3DStreet's `TransformGizmo*` fork (no name, no `isTransformControls` flag, identifiable only by `constructor.name`). Exclusion logic now checks: `type.endsWith(Helper)`, `isTransformControls`, `isLight`, `isCamera`, and a constructor.name allowlist for the 3DStreet TransformGizmo classes. Worth carrying into Phase 2/3 as a known-fragile area.
+- **WASD vs editor shortcuts.** W=translate-mode, S=scale-mode, D=clone collided with our movement keys (D in particular caused entity duplication mid-flight). Resolved by remapping editor shortcuts: W→T, S→L, D→C. Globally applied (not flag-gated) — muscle memory only changes once. Updated `shortcuts.js`, `Shortcuts.component.jsx` help modal, and the spec.
+- **Drag gesture cursor-leaves-canvas.** Originally `mouseout` on the canvas ended the gesture. Switched to attaching `mousemove`/`mouseup` to `window` so drags follow the cursor across editor panels and only end on actual button release. Also fixes the related "release outside canvas leaves latch active" bug.
+
+### Implementation discoveries worth carrying forward
+
+- **TickAnimator hosting.** Originally tried `setAttribute(component-name, )` on the scene element — component attached but `tick` never fired in Inspector mode. Switched to attaching the component to a hidden child entity of the scene (mirroring `focus-animation`'s pattern). Works reliably. Earlier diagnosis "scene-level component late attachment doesn't tick" was overgeneralized — root cause was never properly nailed down.
+- **Plan View end-pose quaternion.** `Object3D.lookAt()` orients local **+Z** toward target; `Camera.lookAt()` (and `PerspectiveCamera`) orients local **-Z**. Plan View end-pose computation must use a scratch `PerspectiveCamera` (or similar), not a plain `Object3D`, or the camera ends up looking at the sky.
+- **Three.js TransformGizmo fork in 3DStreet.** Doesn't set `isTransformControls`, doesn't override `.type`. Only identifiable by class name. Phase 2's rotation-center logic shouldn't assume modern three.js TransformControls API.
+
+### Phase-1-scaffolding gaps Phase 2 will need to close
+
+- **`nav-experimental:modechange` event.** Currently emitted but no consumer. Phase 2's visual-indicator (toolbar aspect-ratio shift) should subscribe to this.
+- **`SceneBounds` consumer hot-path validation.** Phase 1 only uses bounds for the Plan View end-pose framing (one call per gesture). Phase 2 will use bounds in mouse-move hot paths for the rotation-center decision — the cache invalidation hooks need a real workout. Worth a quick spike: confirm the cache doesn't thrash during entity changes and the cylinder-derivation cost is acceptable on a non-trivial scene.
+- **`SceneBounds` correctness on real scenes.** Phase 1 testing was on the default basic-street scene. Phase 2 needs verification against: an unbounded `street-geo` / `google-maps-aerial` scene; a Streetmix import with multiple managed-streets; a scene with only an intersection. The unit tests cover the cases in isolation but the live integration is untested.
+
+### What feels weakest going into Phase 2
+
+- **Wheel zoom is the most "engineered-feeling" mechanic** — the budget/cap model works but the user's "do we need this at all?" question is a real one. Phase 2 doesn't depend on this resolving, but worth keeping in mind.
+- **The 30° tilt clamp is not annoying in normal use** because high-altitude orbiting doesn't want to drop below 30° anyway. Phase 2 will be the first time we actually get to street-level — that's where the clamp removal pays off.
+- **No formal Google-Maps comparison F-row notes captured.** Informally the controls feel comparable to Google Maps for the basic exploration gesture. A side-by-side session would produce concrete tuning data but hasn't happened yet.
