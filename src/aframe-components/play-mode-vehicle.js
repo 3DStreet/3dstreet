@@ -213,8 +213,8 @@ AFRAME.registerComponent('drive-controls', {
     );
     cone.setAttribute('material', 'color: #ffd54a; shader: flat');
     // Default cone tip points +Y. Rotate so it points -Z (the entity's
-    // forward direction).
-    cone.setAttribute('position', '0 0.1 -1.0');
+    // forward direction). Position is set by applyConePosition so it
+    // sits just outside the front face for any vehicleSize.
     cone.setAttribute('rotation', '-90 0 0');
     // Don't expose the marker as a user-editable child node.
     cone.setAttribute('data-no-transform', '');
@@ -222,8 +222,9 @@ AFRAME.registerComponent('drive-controls', {
     this._marker = cone;
     this.el.appendChild(cone);
 
-    // First-time geometry sync. update() handles subsequent changes.
+    // First-time geometry / cone-position sync.
     this.applyVehicleSize();
+    this.applyConePosition();
   },
 
   update: function (oldData) {
@@ -232,7 +233,21 @@ AFRAME.registerComponent('drive-controls', {
     const cur = this.data.vehicleSize;
     if (old && cur && (old.x !== cur.x || old.y !== cur.y || old.z !== cur.z)) {
       this.applyVehicleSize();
+      this.applyConePosition();
     }
+  },
+
+  applyConePosition: function () {
+    // Place the cone tip ~0.2m beyond the front face (entity local -Z),
+    // at a fixed fraction of vehicle height so it sits in the upper
+    // half of the box vertically. Scales with vehicleSize so the cone
+    // never gets buried inside the chassis as the box grows.
+    if (!this._marker) return;
+    const v = this.data.vehicleSize;
+    this._marker.setAttribute(
+      'position',
+      `0 ${v.y * 0.25} ${-(v.z / 2 + 0.2)}`
+    );
   },
 
   applyVehicleSize: function () {
