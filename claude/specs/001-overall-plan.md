@@ -93,3 +93,4 @@ Carrying forward from the review's `//**` notes — these are not blockers, but 
 - Whether cursor-anchored Phase 2 lands at a sensible distance from the cursor target
 - Double-click elevation asymmetry (same gesture, different end-states by altitude)
 - Sensible defaults for absolute thresholds (10m Phase-2 entry, 1.5m eye level) — tune for human-scale streets first, generalize later
+- ~~**Acceleration-based WASD instead of instant velocity.**~~ Landed in Phase 1 (2026-05-09): velocity ramps from 0 to target over `WASD_RAMP_UP_MS` (200ms default) while keys are held; releasing all keys snaps velocity to zero (no decel ramp). Same site (`_drainWASD`) would extend to Phase 5 FPS mode unchanged.

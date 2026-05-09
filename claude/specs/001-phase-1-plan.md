@@ -62,15 +62,21 @@ Phase 1 of the navigation prototype work (see `001-overall-plan.md`). First UX-t
 - **Mid-zoom cursor movement:** each wheel tick re-raycasts. If the cursor is moving while wheeling, the anchor updates per tick (matches Google Maps).
 - **Mac pinch (Ctrl+wheel):** Phase 1 treats Ctrl+wheel identically to plain wheel for now — both drive cursor-anchored dolly. The "fixed-tilt vs swoop" distinction lives in Phase 3, where the swoop transition lands. Phase 1 has no swoop, so the Ctrl modifier has nothing to differentiate.
 
-### WASD → camera-yaw-projected horizontal motion
+### WASD (and arrow keys) → camera-yaw-projected horizontal motion
+
+WASD and arrow keys are both bound; they're equivalent. WASD collided
+with editor shortcuts at first (W=translate, S=scale, D=clone — see
+`shortcuts.js`); on 2026-05-09 those were remapped to T/L/C respectively
+so WASD is free for camera movement, matching the original spec.
 
 - Movement is **always in the horizontal plane** (y unchanged), regardless of camera tilt. This is true for all of Phase 1 — the 30° tilt clamp ensures the camera always has a coherent forward direction in horizontal world space.
-- "Forward" (W) is the projection of the camera's −Z direction onto the horizontal plane, then normalized.
+- "Forward" (W / Up arrow) is the projection of the camera's −Z direction onto the horizontal plane, then normalized.
 - **Degenerate case (camera looking straight down, after Plan View):** the camera's −Z direction projects to ~zero on the horizontal plane. Fall back to the camera's local +Y direction projected to horizontal — when the camera has no roll (true throughout Phase 1), this is the same direction the upper-screen-edge points to in world space, which is what the user intuits as "forward". For an upright camera with no roll, −Z and +Y project to the *same* horizontal direction differing only in magnitude, so use −Z whenever its horizontal-projection magnitude is > ~0.01, else fall back to +Y. No discontinuity in practice.
-- A/D = strafe (perpendicular to W in the horizontal plane).
-- S = reverse W.
+- A/D and Left/Right arrows = strafe (perpendicular to forward in the horizontal plane).
+- S / Down arrow = reverse forward.
 - Speed proportional to camera height, with sane bounds (e.g. 5–500 m/s ramp).
 - Multiple keys held = vector addition then re-normalized (so W+D moves at the same speed as W alone, just diagonally).
+- **Velocity ramp** (added 2026-05-09 after constant-velocity felt jerky): a held key ramps the camera velocity from 0 toward `targetSpeed * direction` over `WASD_RAMP_UP_MS` (200 ms default). Release of all keys snaps velocity to zero immediately — no deceleration ramp. The acceleration constant is `WASD_MAX_SPEED / WASD_RAMP_UP_MS`, so a standing-start press at low altitude (small target speed) reaches steady-state proportionally faster than at high altitude.
 
 ### Plan View action → animated reset to top-down
 

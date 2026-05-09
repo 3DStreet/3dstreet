@@ -66,3 +66,18 @@ If neither, at least worth a note in `test/README.md` pointing Windows users at 
 2. Timing: ideally lands before Phase 2 feel-testing starts, so testers can hit "reset" with a single click. Confirm that fits the team's UI-work cadence.
 
 Until this is resolved, Phase 1 testers reset to plan view via the existing menu / toolbar entries — minor friction during prototyping, not blocking.
+
+---
+
+## 6. Wheel-zoom drain/budget model — is it needed at all?
+
+**Context.** Phase 1 wheel-zoom uses a `deltaY` accumulator drained at a capped rate per frame (`WHEEL_BUDGET_PER_TICK_UNITS = 100`, `WHEEL_MAX_TICKS_PER_FRAME = 10`, `WHEEL_MAX_BUDGET = 1000`). The justification in the spec was device normalization (mice send `deltaY ≈ ±100` per detent; trackpads send `±1–4` at ~60Hz with an inertial tail; pinch arrives as Ctrl+wheel). The model attempts to make the same physical gesture produce the same zoom motion across devices.
+
+In practice, the budget model has caused two felt issues during smoke-testing:
+
+- **Inertial-feel lag.** Without a hard budget cap, a trackpad burst piled up enough budget that the camera kept zooming for hundreds of ms after the user stopped scrolling — felt like input was being queued and blocking subsequent gestures. Mitigated by clamping the budget to one frame's drain capacity, but the underlying "queue then drain" model is what created the symptom.
+- **Conceptual overhead.** The drain loop, the budget accumulator, the per-frame cap, and the residual cleanup add up to ~30 lines of code defending against a problem (event-rate mismatch across devices) that may not actually need defending against — most apps just zoom-per-event with a tilt-tunable scalar and rely on the OS to deliver sensible event rates.
+
+**What we did.** Kept the budget model with a hard cap so the lag symptom is gone for now (max ~16ms lag after release).
+
+**What we'd want from Kieran.** A view on whether we need the budget/drain model at all, or whether a simpler "each wheel event = one zoom step, scaled by a small constant" approach would feel just as good. If the simpler model works, deleting the budget machinery is worth ~30 lines of complexity.

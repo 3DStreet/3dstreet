@@ -34,10 +34,12 @@ import {
   ZOOM_PER_WHEEL_TICK,
   WHEEL_BUDGET_PER_TICK_UNITS,
   WHEEL_MAX_TICKS_PER_FRAME,
+  WHEEL_MAX_BUDGET,
   ROTATION_SPEED_RAD_PER_PX,
   WASD_SPEED_HEIGHT_FACTOR,
   WASD_MIN_SPEED,
   WASD_MAX_SPEED,
+  WASD_RAMP_UP_MS,
   PLAN_VIEW_DURATION_MS
 } from './constants.js';
 
@@ -105,6 +107,9 @@ export class ExperimentalControls extends THREE.EventDispatcher {
 
     // WASD held-key set; drained per tick.
     this._heldKeys = new Set();
+    // Current WASD velocity in world horizontal plane (m/s). Ramps up
+    // toward the target while keys are held; snaps to zero on release.
+    this._wasdVelocity = new THREE.Vector3();
 
     // ActionBar zoom-in/out hold-down intervals.
     this._zoomInInterval = null;
@@ -558,6 +563,14 @@ export class ExperimentalControls extends THREE.EventDispatcher {
       dy *= window.innerHeight || 800;
     }
     this._wheelBudget += dy;
+    // Hard-cap so a trackpad burst can't queue zoom that keeps draining
+    // for hundreds of ms after the user stops (felt like input lag /
+    // queued inputs). At MAX_BUDGET the next frame consumes everything.
+    if (this._wheelBudget > WHEEL_MAX_BUDGET) {
+      this._wheelBudget = WHEEL_MAX_BUDGET;
+    } else if (this._wheelBudget < -WHEEL_MAX_BUDGET) {
+      this._wheelBudget = -WHEEL_MAX_BUDGET;
+    }
 
     // Latest cursor position is needed at drain time; remember it.
     this._lastWheelClientX = event.clientX;
@@ -577,8 +590,24 @@ export class ExperimentalControls extends THREE.EventDispatcher {
     if (this._isTypingTarget(event.target)) return;
     if (event.ctrlKey || event.metaKey || event.altKey) return;
     const k = event.code;
-    if (k === 'KeyW' || k === 'KeyA' || k === 'KeyS' || k === 'KeyD') {
+    // Both WASD and arrow keys drive movement. The original W/S/D
+    // editor shortcuts (translate-mode, scale-mode, clone-entity) were
+    // remapped to T/L/C in shortcuts.js on 2026-05-09 so WASD is free
+    // for camera movement.
+    if (
+      k === 'KeyW' ||
+      k === 'KeyA' ||
+      k === 'KeyS' ||
+      k === 'KeyD' ||
+      k === 'ArrowUp' ||
+      k === 'ArrowDown' ||
+      k === 'ArrowLeft' ||
+      k === 'ArrowRight'
+    ) {
       this._heldKeys.add(k);
+      // Prevent the browser from scrolling the page (arrow keys) or
+      // shifting focus in scrollable panels while driving the camera.
+      event.preventDefault();
     }
   }
 
@@ -656,15 +685,26 @@ export class ExperimentalControls extends THREE.EventDispatcher {
   }
 
   _drainWASD(deltaMs) {
-    if (this._heldKeys.size === 0) return;
     const camera = this._camera;
-    const dirX = this._heldKeys.has('KeyD') ? 1 : 0;
-    const dirXNeg = this._heldKeys.has('KeyA') ? 1 : 0;
-    const dirZ = this._heldKeys.has('KeyW') ? 1 : 0;
-    const dirZNeg = this._heldKeys.has('KeyS') ? 1 : 0;
+    const dirX =
+      this._heldKeys.has('KeyD') || this._heldKeys.has('ArrowRight') ? 1 : 0;
+    const dirXNeg =
+      this._heldKeys.has('KeyA') || this._heldKeys.has('ArrowLeft') ? 1 : 0;
+    const dirZ =
+      this._heldKeys.has('KeyW') || this._heldKeys.has('ArrowUp') ? 1 : 0;
+    const dirZNeg =
+      this._heldKeys.has('KeyS') || this._heldKeys.has('ArrowDown') ? 1 : 0;
     const strafe = dirX - dirXNeg;
     const fwd = dirZ - dirZNeg;
-    if (strafe === 0 && fwd === 0) return;
+    const hasInput = strafe !== 0 || fwd !== 0;
+
+    // Release semantics: any frame with no held movement keys snaps the
+    // velocity to zero immediately. No deceleration ramp.
+    if (!hasInput) {
+      if (this._wasdVelocity.lengthSq() === 0) return;
+      this._wasdVelocity.set(0, 0, 0);
+      return;
+    }
 
     // Forward = horizontal projection of camera -Z, normalized; if degenerate
     // (camera looking straight down), fall back to camera +Y horizontal projection.
@@ -685,20 +725,38 @@ export class ExperimentalControls extends THREE.EventDispatcher {
     right.y = 0;
     right.normalize();
 
-    const move = this._tmpV3c.set(0, 0, 0);
-    move.addScaledVector(forward, fwd);
-    move.addScaledVector(right, strafe);
-    if (move.lengthSq() === 0) return;
-    move.normalize();
+    // Target velocity: unit direction × height-scaled speed.
+    const targetDir = this._tmpV3c.set(0, 0, 0);
+    targetDir.addScaledVector(forward, fwd);
+    targetDir.addScaledVector(right, strafe);
+    targetDir.normalize();
 
     const height = Math.max(0.1, Math.abs(camera.position.y));
-    const speed = THREE.MathUtils.clamp(
+    const targetSpeed = THREE.MathUtils.clamp(
       height * WASD_SPEED_HEIGHT_FACTOR,
       WASD_MIN_SPEED,
       WASD_MAX_SPEED
     );
-    const distMetres = (speed * deltaMs) / 1000;
-    move.multiplyScalar(distMetres);
+    const targetVel = targetDir.multiplyScalar(targetSpeed);
+
+    // Acceleration ramp toward target. accel = max-speed / ramp-time so a
+    // standing-start key-press reaches WASD_MAX_SPEED in WASD_RAMP_UP_MS;
+    // for lower target speeds the ramp completes proportionally faster.
+    const accel = WASD_MAX_SPEED / (WASD_RAMP_UP_MS / 1000);
+    const maxStep = accel * (deltaMs / 1000);
+    const dv = new THREE.Vector3().subVectors(targetVel, this._wasdVelocity);
+    const dvMag = dv.length();
+    if (dvMag <= maxStep) {
+      this._wasdVelocity.copy(targetVel);
+    } else {
+      this._wasdVelocity.add(dv.multiplyScalar(maxStep / dvMag));
+    }
+
+    if (this._wasdVelocity.lengthSq() === 0) return;
+    const distMetres = deltaMs / 1000;
+    const move = new THREE.Vector3()
+      .copy(this._wasdVelocity)
+      .multiplyScalar(distMetres);
     camera.position.add(move);
     this.center.add(move);
     camera.updateMatrixWorld();
