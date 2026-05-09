@@ -102,7 +102,9 @@ export const PlayModeControls = () => {
           </span>
         </label>
       ))}
-      <p className={styles.hint}>WASD drive · Space brake · R reset</p>
+      <p className={styles.hint}>
+        WASD drive · Space brake · R reset · C camera
+      </p>
     </div>
   );
 };

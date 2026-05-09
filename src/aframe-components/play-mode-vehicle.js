@@ -305,6 +305,11 @@ AFRAME.registerComponent('play-mode-vehicle', {
     wheelWidth: { type: 'number', default: 0 },
     cameraSelector: { type: 'string', default: '#camera' },
     cameraHeight: { type: 'number', default: 18 },
+    cameraMode: {
+      type: 'string',
+      default: 'top-down',
+      oneOf: ['top-down', 'chase', 'fpv']
+    },
     debugChassisVisible: { type: 'boolean', default: true },
     // When false, skip the red placeholder box but still render the
     // forward cone and wheels. Used when a custom mesh is being
@@ -341,6 +346,9 @@ AFRAME.registerComponent('play-mode-vehicle', {
     this.onKeyDown = (e) => {
       if (this.keymap[e.code]) {
         this.input[this.keymap[e.code]] = true;
+        e.preventDefault();
+      } else if (e.code === 'KeyC') {
+        this.cycleCameraMode();
         e.preventDefault();
       }
     };
@@ -600,13 +608,111 @@ AFRAME.registerComponent('play-mode-vehicle', {
       outer.object3D.quaternion.multiplyQuaternions(this._qSteer, this._qSpin);
     }
 
-    // Top-down follow camera (matches the standalone demo).
+    // Follow camera. Mode is toggled at runtime with the C key.
     if (this.cameraEl && this.chassisBody) {
-      const t = this.chassisBody.translation();
-      const camObj = this.cameraEl.object3D;
-      camObj.position.set(t.x, t.y + this.data.cameraHeight, t.z);
-      camObj.rotation.set(-Math.PI / 2, 0, 0);
+      this.updateCamera();
     }
+  },
+
+  cycleCameraMode: function () {
+    const order = ['top-down', 'chase', 'fpv'];
+    const i = order.indexOf(this.data.cameraMode);
+    const next = order[(i + 1) % order.length];
+    // setAttribute so other observers (PlayModeControls future state)
+    // stay in sync.
+    this.el.setAttribute('play-mode-vehicle', 'cameraMode', next);
+  },
+
+  updateCamera: function () {
+    const t = this.chassisBody.translation();
+    const r = this.chassisBody.rotation();
+    const camObj = this.cameraEl.object3D;
+    const mode = this.data.cameraMode;
+
+    // Scratch space.
+    const carPos = this._carPos || (this._carPos = new THREE.Vector3());
+    const camWorld = this._camWorld || (this._camWorld = new THREE.Vector3());
+    const lookAt = this._lookAt || (this._lookAt = new THREE.Vector3());
+    const worldUp =
+      this._worldUp || (this._worldUp = new THREE.Vector3(0, 1, 0));
+    carPos.set(t.x, t.y, t.z);
+
+    if (mode === 'top-down') {
+      camWorld.set(t.x, t.y + this.data.cameraHeight, t.z);
+      lookAt.copy(carPos);
+    } else {
+      // chase + fpv: project car's forward heading onto world
+      // horizontal plane so chassis pitch/roll doesn't tilt the camera.
+      // Forward = chassis -X = the direction the car drives under
+      // engine force.
+      const carQuat = this._carQuat || (this._carQuat = new THREE.Quaternion());
+      carQuat.set(r.x, r.y, r.z, r.w);
+      const headingH = this._headingH || (this._headingH = new THREE.Vector3());
+      headingH.set(-1, 0, 0).applyQuaternion(carQuat);
+      headingH.y = 0;
+      if (headingH.lengthSq() < 1e-4) {
+        headingH.set(0, 0, -1);
+      } else {
+        headingH.normalize();
+      }
+
+      if (mode === 'chase') {
+        // Camera behind car (-headingH), elevated, looking at car.
+        const distance = Math.max(this.data.chassisSize.x * 2.5, 4);
+        const height = Math.max(this.data.chassisSize.y * 3, 2);
+        camWorld.set(
+          carPos.x - headingH.x * distance,
+          carPos.y + height,
+          carPos.z - headingH.z * distance
+        );
+        lookAt.copy(carPos);
+      } else if (mode === 'fpv') {
+        // Driver POV: slightly forward of car center along headingH,
+        // at driver eye height, looking further ahead.
+        const fwdDist = this.data.chassisSize.x * 0.15;
+        const eyeUp = Math.max(this.data.chassisSize.y * 0.6, 1.2);
+        camWorld.set(
+          carPos.x + headingH.x * fwdDist,
+          carPos.y + eyeUp,
+          carPos.z + headingH.z * fwdDist
+        );
+        lookAt.set(
+          carPos.x + headingH.x * 5,
+          carPos.y + eyeUp,
+          carPos.z + headingH.z * 5
+        );
+      }
+    }
+
+    // ---- World -> camera-parent-local conversion -----------------
+    // cameraEl.object3D is a child of cameraRig; treating its
+    // .position/.lookAt as world coords is wrong if cameraRig has
+    // moved or rotated. Convert explicitly.
+    if (camObj.parent) camObj.parent.updateMatrixWorld();
+
+    // Position: convert world -> local.
+    const localPos = this._localPos || (this._localPos = new THREE.Vector3());
+    localPos.copy(camWorld);
+    if (camObj.parent) camObj.parent.worldToLocal(localPos);
+    camObj.position.copy(localPos);
+
+    // Rotation: build the world matrix where -Z points from the camera
+    // to the look target (this is what an actual THREE.Camera does, and
+    // it's the opposite of what Object3D.lookAt does for non-camera
+    // objects — which cameraEl.object3D is, since the actual
+    // PerspectiveCamera is stored as a child via getObject3D('camera').
+    // Using Matrix4.lookAt directly skips that asymmetry.).
+    const m = this._tmpMat || (this._tmpMat = new THREE.Matrix4());
+    m.lookAt(camWorld, lookAt, worldUp);
+    const worldQuat = this._tmpQuat || (this._tmpQuat = new THREE.Quaternion());
+    worldQuat.setFromRotationMatrix(m);
+    if (camObj.parent) {
+      const pq = this._parQuat || (this._parQuat = new THREE.Quaternion());
+      camObj.parent.getWorldQuaternion(pq);
+      pq.invert();
+      worldQuat.premultiply(pq);
+    }
+    camObj.quaternion.copy(worldQuat);
   },
 
   remove: function () {
