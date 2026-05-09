@@ -43,7 +43,7 @@ Phase 1 of the navigation prototype work (see `001-overall-plan.md`). First UX-t
 
 - **Rotation center:** screen-center raycast hit, latched at gesture start. If raycast misses everything, fall back to ground-plane (y=0) intersection at screen center; if that's behind the camera, fall back to a fixed point 10m forward on the ground plane.
 - Horizontal drag → orbit around that center (yaw).
-- Vertical drag → tilt around that center.
+- Vertical drag → tilt around that center. **Drag down = tilt toward top-down; drag up = tilt toward horizontal.** (Matches Google Maps. Resolved during feel-testing 2026-05-08; original implementation had this inverted.)
 - **Tilt clamp:** tilt is clamped to ≥30° (≥30° from horizontal, i.e. always at least somewhat looking down). Hitting the clamp stops further tilt — no spring-back, no resistance ramp, just a hard stop.
 - Speed: matches Google Maps feel (similar to current `EditorControls.rotationSpeed: 0.0035`).
 
@@ -82,8 +82,11 @@ The "Plan View" action is currently surfaced in three places, all of which fire 
 
 Phase 1 intercepts that event in flag-on mode regardless of UI path:
 
-- Do **not** switch to ortho. Instead, animate the perspective camera to a top-down view aligned with world North.
-  - End pose: camera at current XZ, elevated (preserve current height or pick something based on scene bounds — implementation detail, tune in feel-test), looking straight down (−Y), oriented so screen-up = world +Z.
+- Do **not** switch to ortho. Instead, animate the perspective camera to a top-down view that frames the scene.
+  - End pose (resolved during feel-testing 2026-05-09):
+    - **XZ**: scene-bounds centre when the scene is bounded (uses `SceneBounds`); current XZ otherwise.
+    - **Altitude**: bounded → `radius * 1.3 / tan(min(halfVFov, halfHFov))` (fits the bounds circle in view with 30% margin); unbounded → max(current y, 200 m). Never lower than current altitude — Plan View should zoom out, never zoom in.
+    - **Orientation**: looking straight down (−Y); **screen-up preserves the camera's current horizontal facing direction (yaw)**, not hardcoded to world North. Hardcoding screen-up to world +Z forced a 180° spin whenever the user was orbited the opposite way; preserving yaw makes the transition feel continuous (only tilt + altitude change).
   - Animation: ~1s easeInOutQuad, routed through A-Frame's tick (consistent with `focus-animation`; no sibling RAF loop).
 - Flag-off behavior is unchanged — the existing path switches to the ortho top camera as today.
 

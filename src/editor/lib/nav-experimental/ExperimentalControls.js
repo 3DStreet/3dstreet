@@ -1,15 +1,18 @@
 /* global THREE, AFRAME, STREET */
 
 // Sibling to THREE.EditorControls. Drives the editor camera when the
-// `?nav=experimental` URL flag is set. See claude/specs/001-phase-0-plan.md.
+// `?nav=experimental` URL flag is set.
 //
-// Phase 0 placeholder behavior: LB+drag pans in screen space at ~2x the
-// EditorControls speed so flag-on mode is visibly distinguishable during
-// the smoke test. This is NOT the proposed Phase 1 behavior — it exists
-// only to confirm the toggle wires through to camera updates and
-// re-renders correctly.
+// Phase 1 mechanics — see claude/specs/001-phase-1-plan.md:
+//   - LB+drag        -> world-horizontal hit-anchored truck/dolly
+//   - Shift+LB+drag  -> orbit/tilt around screen-center hit (>=30° clamp)
+//   - Wheel          -> exponential cursor-anchored dolly (budget drained
+//                       per A-Frame tick; tilt-preserving)
+//   - WASD           -> camera-yaw-projected horizontal motion
+//   - Plan View      -> animated tween to top-down N-up (entered via
+//                       handlePlanViewRequest, called by viewport.js)
 //
-// API surface (mirrors THREE.EditorControls — see plan §"Toggle insertion
+// Public API (mirrors THREE.EditorControls — see plan §"Toggle insertion
 // in viewport.js"):
 //   - enabled, center, panSpeed, zoomSpeed, minSpeedFactor, rotationSpeed
 //   - setCamera(camera), setAspectRatio(ratio)
@@ -17,25 +20,49 @@
 //   - newSceneCameraZoom(snapshotCameraState)
 //   - resetZoom()
 //   - zoomInStart/Stop, zoomOutStart/Stop
+//   - handlePlanViewRequest()         (new in Phase 1)
 //   - addEventListener / dispatchEvent (Three EventDispatcher)
 //   - dispose()
 
 import { ModifierState } from './modifierState.js';
 import { GestureLatch } from './gestureLatch.js';
 import { SceneBounds } from './sceneBounds.js';
+import { CursorAnchor } from './cursorAnchor.js';
+import { TickAnimator } from './tickAnimator.js';
+import {
+  MIN_TILT_DEGREES,
+  ZOOM_PER_WHEEL_TICK,
+  WHEEL_BUDGET_PER_TICK_UNITS,
+  WHEEL_MAX_TICKS_PER_FRAME,
+  ROTATION_SPEED_RAD_PER_PX,
+  WASD_SPEED_HEIGHT_FACTOR,
+  WASD_MIN_SPEED,
+  WASD_MAX_SPEED,
+  PLAN_VIEW_DURATION_MS
+} from './constants.js';
+
+const DEG2RAD = Math.PI / 180;
+// Spherical phi is angle from +Y. Elevation = 90° - phi. Min elevation
+// MIN_TILT_DEGREES => max phi = 90° - MIN_TILT_DEGREES.
+const MAX_SPHERICAL_PHI = (90 - MIN_TILT_DEGREES) * DEG2RAD;
+const MIN_SPHERICAL_PHI = 1e-4; // not exactly 0 — keeps lookAt stable
+
+const NAV_DEBUG = (() => {
+  if (typeof window === 'undefined' || !window.location) return false;
+  return new URLSearchParams(window.location.search).get('navDebug') === 'true';
+})();
 
 export class ExperimentalControls extends THREE.EventDispatcher {
   constructor(camera, domElement) {
     super();
 
-    // Public, EditorControls-compatible knobs. Defaults chosen to differ
-    // visibly from EditorControls so flag-on mode is recognisable.
+    // EditorControls-compatible knobs.
     this.enabled = true;
     this.center = new THREE.Vector3();
     this.panSpeed = 0.002;
-    this.zoomSpeed = 0.1;
+    this.zoomSpeed = ZOOM_PER_WHEEL_TICK;
     this.minSpeedFactor = 8;
-    this.rotationSpeed = 0.005;
+    this.rotationSpeed = ROTATION_SPEED_RAD_PER_PX;
 
     this._camera = camera;
     this._domElement = domElement;
@@ -43,11 +70,18 @@ export class ExperimentalControls extends THREE.EventDispatcher {
     this._disabledByOrtho = false;
     this._aspectRatio = 1;
 
+    this._sceneEl =
+      typeof AFRAME !== 'undefined' && AFRAME.scenes ? AFRAME.scenes[0] : null;
+
     this._modifiers = new ModifierState(domElement);
     this._latch = new GestureLatch();
-    this._bounds = new SceneBounds(
-      typeof AFRAME !== 'undefined' && AFRAME.scenes ? AFRAME.scenes[0] : null
-    );
+    this._bounds = new SceneBounds(this._sceneEl);
+    this._cursorAnchor = new CursorAnchor({
+      camera,
+      sceneEl: this._sceneEl,
+      domElement
+    });
+    this._tick = new TickAnimator(this._sceneEl);
 
     this._pointer = new THREE.Vector2();
     this._pointerOld = new THREE.Vector2();
@@ -55,33 +89,61 @@ export class ExperimentalControls extends THREE.EventDispatcher {
     this._normalMatrix = new THREE.Matrix3();
     this._changeEvent = { type: 'change' };
 
+    // Scratch.
+    this._spherical = new THREE.Spherical();
+    this._tmpV3a = new THREE.Vector3();
+    this._tmpV3b = new THREE.Vector3();
+    this._tmpV3c = new THREE.Vector3();
+    this._groundPlane = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0);
+    this._anchorPlane = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0);
+    this._tmpRay = new THREE.Ray();
+    this._raycaster = new THREE.Raycaster();
+    this._tmpNDC = new THREE.Vector2();
+
+    // Wheel-budget accumulator (deltaY units; drained per tick).
+    this._wheelBudget = 0;
+
+    // WASD held-key set; drained per tick.
+    this._heldKeys = new Set();
+
+    // ActionBar zoom-in/out hold-down intervals.
     this._zoomInInterval = null;
     this._zoomOutInterval = null;
+
+    // Plan View animation in flight — input ignored while true.
+    this._planViewActive = false;
+    this._planViewHandle = null;
 
     this.setCamera(camera);
     this._initFocusAnimation();
     this._bindHandlers();
     this._attach();
 
-    // Phase 0 marker so it's obvious in the console which control system
-    // the editor is using. Remove or downgrade to debug-level once the
-    // toggle is reliable.
-    console.info(
-      '[nav-experimental] ExperimentalControls active (Phase 0). ' +
-        'See claude/specs/001-phase-0-plan.md.'
+    // Per-tick driver for WASD + wheel-budget drain.
+    this._unsubscribeTick = this._tick.subscribe((delta) =>
+      this._onTick(delta)
     );
+
+    if (NAV_DEBUG) {
+      console.info(
+        '[nav-experimental] ExperimentalControls active (Phase 1). ' +
+          'See claude/specs/001-phase-1-plan.md.'
+      );
+    }
   }
 
   // --- Public API consumed by viewport.js / ActionBar ---
 
   setCamera(camera) {
     this._camera = camera;
+    if (this._cursorAnchor) this._cursorAnchor.setCamera(camera);
     if (camera && camera.type === 'OrthographicCamera') {
       this._isOrthographic = true;
       if (!this._disabledByOrtho) {
         this._disabledByOrtho = true;
+
         console.info(
-          'ExperimentalControls: orthographic camera not supported in Phase 0; ' +
+          'ExperimentalControls: orthographic camera not supported; ' +
             'controls disabled until a perspective camera is restored. ' +
             'See claude/issues-for-discussion.md #2.'
         );
@@ -96,10 +158,6 @@ export class ExperimentalControls extends THREE.EventDispatcher {
     this._aspectRatio = ratio;
   }
 
-  // Reuses the existing focus-animation A-Frame component, mirroring
-  // THREE.EditorControls.focus(). Mutual exclusion at construction time
-  // (only one of EditorControls or ExperimentalControls per session) means
-  // this is the sole holder of focus-animation's camera registration.
   focus(target) {
     if (this._disabledByOrtho || !this._focusAnimation) return;
     const camera = this._camera;
@@ -118,7 +176,6 @@ export class ExperimentalControls extends THREE.EventDispatcher {
       distance = box.getBoundingSphere(new THREE.Sphere()).radius;
       localCenterY = (box.max.y - box.min.y) / 2;
     } else {
-      // AmbientLight, etc.
       targetCenter.setFromMatrixPosition(target.matrixWorld);
       distance = 0.1;
       localCenterY = target.position.y;
@@ -137,7 +194,6 @@ export class ExperimentalControls extends THREE.EventDispatcher {
     const targetEl = target.el;
     let cameraPosition;
 
-    // Use focus-camera-pose override if present.
     if (targetEl && targetEl.hasAttribute('focus-camera-pose')) {
       const rel =
         targetEl.getAttribute('focus-camera-pose').relativePosition || null;
@@ -148,7 +204,6 @@ export class ExperimentalControls extends THREE.EventDispatcher {
       }
     }
 
-    // Fallback: catalog baseRotation-aware default offset.
     if (!cameraPosition) {
       let baseRotation = 0;
       if (targetEl && targetEl.hasAttribute('mixin')) {
@@ -180,7 +235,6 @@ export class ExperimentalControls extends THREE.EventDispatcher {
     fa.transitionCamPosEnd.copy(camera.position);
     fa.transitionCamQuaternionEnd.copy(camera.quaternion);
 
-    // Restore start pose; let focus-animation tick the transition.
     camera.position.copy(fa.transitionCamPosStart);
     camera.quaternion.copy(fa.transitionCamQuaternionStart);
     fa.transitionProgress = 0;
@@ -197,11 +251,6 @@ export class ExperimentalControls extends THREE.EventDispatcher {
     this.dispatchEvent(this._changeEvent);
   }
 
-  // Phase 0: snap to the snapshot pose without animation. EditorControls
-  // does an easeOutCubic 3s tween via a sibling RAF loop; replicating that
-  // accurately would mean a second RAF loop here, which we explicitly
-  // avoid (see plan "Camera-update loop"). Phase 1+ can route this through
-  // A-Frame's tick if a smoother arrival is wanted.
   newSceneCameraZoom(snapshotCameraState) {
     if (this._disabledByOrtho) {
       this.resetZoom();
@@ -226,10 +275,7 @@ export class ExperimentalControls extends THREE.EventDispatcher {
 
   zoomInStart() {
     if (this._disabledByOrtho) return;
-    this._zoomInInterval = setInterval(
-      () => this._zoom(this._delta.set(0, 0, -1)),
-      50
-    );
+    this._zoomInInterval = setInterval(() => this._zoomActionBar(-1), 50);
   }
   zoomInStop() {
     clearInterval(this._zoomInInterval);
@@ -237,20 +283,110 @@ export class ExperimentalControls extends THREE.EventDispatcher {
   }
   zoomOutStart() {
     if (this._disabledByOrtho) return;
-    this._zoomOutInterval = setInterval(
-      () => this._zoom(this._delta.set(0, 0, 1)),
-      50
-    );
+    this._zoomOutInterval = setInterval(() => this._zoomActionBar(1), 50);
   }
   zoomOutStop() {
     clearInterval(this._zoomOutInterval);
     this._zoomOutInterval = null;
   }
 
+  // Phase 1 entry point used by viewport.js when the user triggers Plan
+  // View (App menu / toolbar / keyboard) in flag-on mode. The camera was
+  // briefly swapped to ortho by cameras.js; viewport.js reverts it back to
+  // the perspective camera before calling this.
+  handlePlanViewRequest() {
+    if (this._disabledByOrtho) return;
+    const camera = this._camera;
+    if (!camera || camera.type !== 'PerspectiveCamera') return;
+
+    const startPos = camera.position.clone();
+    const startQuat = camera.quaternion.clone();
+
+    // End pose target XZ: scene-bounds centre when bounded, else stay
+    // over current XZ. Either way, lift to a height that frames the
+    // whole scene (or a sensible default for unbounded scenes).
+    const bounds = this._bounds.getBounds();
+    const fov = (camera.fov || 60) * DEG2RAD;
+    const aspect = camera.aspect || 1;
+    // Vertical fov gives the height-fit; horizontal fov fits the width.
+    // Use the smaller of the two so the radius fits both ways with margin.
+    const halfVFov = fov / 2;
+    const halfHFov = Math.atan(Math.tan(halfVFov) * aspect);
+    const fitFov = Math.min(halfVFov, halfHFov);
+    const margin = 1.3; // 30% padding around the bounds circle
+    let endX, endZ, endY;
+    if (bounds && bounds.bounded && bounds.radius > 0) {
+      endX = bounds.center.x;
+      endZ = bounds.center.z;
+      endY = (bounds.radius * margin) / Math.tan(fitFov);
+    } else {
+      endX = camera.position.x;
+      endZ = camera.position.z;
+      endY = Math.max(camera.position.y, 200);
+    }
+    // Don't drop below the current altitude — Plan View should zoom out,
+    // never zoom in.
+    endY = Math.max(endY, camera.position.y);
+
+    // Look straight down (-Y), with screen-up matching the camera's
+    // current horizontal facing direction. Hardcoding screen-up to world
+    // +Z (the original spec) forced a 180° spin whenever the user was
+    // orbited so their heading pointed at world -Z. Preserving yaw keeps
+    // the transition feeling continuous — only tilt and altitude change.
+    //
+    // Scratch PerspectiveCamera (not Object3D) so lookAt uses the camera
+    // convention (-Z toward target).
+    const endPos = new THREE.Vector3(endX, endY, endZ);
+    const fwd = new THREE.Vector3();
+    camera.getWorldDirection(fwd);
+    fwd.y = 0;
+    if (fwd.lengthSq() < 1e-6) {
+      // Degenerate (camera already looking straight down) — fall back to
+      // world North. No yaw can be inferred.
+      fwd.set(0, 0, -1);
+    }
+    fwd.normalize();
+    const scratch = new THREE.PerspectiveCamera();
+    scratch.position.copy(endPos);
+    // With view=-Y, any horizontal `up` works — `fwd` is the camera's
+    // current forward direction projected horizontal, so screen-up after
+    // the transition equals that direction. Heading is preserved.
+    scratch.up.copy(fwd);
+    scratch.lookAt(endPos.x, 0, endPos.z);
+    const endQuat = scratch.quaternion.clone();
+
+    // Recenter "this.center" to be on the ground beneath the end pose.
+    this.center.set(endPos.x, 0, endPos.z);
+
+    this._planViewActive = true;
+    this._emitModeChange('plan-view');
+    this._planViewHandle = this._tick.animate({
+      durationMs: PLAN_VIEW_DURATION_MS,
+      onTick: (eased) => {
+        camera.position.lerpVectors(startPos, endPos, eased);
+        camera.quaternion.slerpQuaternions(startQuat, endQuat, eased);
+        camera.updateMatrixWorld();
+        this.dispatchEvent(this._changeEvent);
+      },
+      onDone: () => {
+        camera.position.copy(endPos);
+        camera.quaternion.copy(endQuat);
+        camera.updateMatrixWorld();
+        this._planViewActive = false;
+        this._planViewHandle = null;
+        this._emitModeChange(null);
+        this.dispatchEvent(this._changeEvent);
+      }
+    });
+  }
+
   dispose() {
     this._detach();
+    if (this._unsubscribeTick) this._unsubscribeTick();
     this._modifiers.dispose();
     this._bounds.dispose();
+    if (this._cursorAnchor) this._cursorAnchor.dispose();
+    if (this._tick) this._tick.dispose();
     this.zoomInStop();
     this.zoomOutStop();
   }
@@ -281,13 +417,19 @@ export class ExperimentalControls extends THREE.EventDispatcher {
     this._onMouseUp = this._onMouseUp.bind(this);
     this._onWheel = this._onWheel.bind(this);
     this._onContextMenu = this._onContextMenu.bind(this);
+    this._onKeyDown = this._onKeyDown.bind(this);
+    this._onKeyUp = this._onKeyUp.bind(this);
+    this._onWindowBlur = this._onWindowBlur.bind(this);
   }
 
   _attach() {
     const el = this._domElement;
     el.addEventListener('mousedown', this._onMouseDown, false);
-    el.addEventListener('wheel', this._onWheel, false);
+    el.addEventListener('wheel', this._onWheel, { passive: false });
     el.addEventListener('contextmenu', this._onContextMenu, false);
+    window.addEventListener('keydown', this._onKeyDown, false);
+    window.addEventListener('keyup', this._onKeyUp, false);
+    window.addEventListener('blur', this._onWindowBlur, false);
   }
 
   _detach() {
@@ -298,10 +440,32 @@ export class ExperimentalControls extends THREE.EventDispatcher {
     el.removeEventListener('mousemove', this._onMouseMove, false);
     el.removeEventListener('mouseup', this._onMouseUp, false);
     el.removeEventListener('mouseout', this._onMouseUp, false);
+    window.removeEventListener('keydown', this._onKeyDown, false);
+    window.removeEventListener('keyup', this._onKeyUp, false);
+    window.removeEventListener('blur', this._onWindowBlur, false);
   }
 
   _isInactive() {
-    return !this.enabled || this._disabledByOrtho;
+    return !this.enabled || this._disabledByOrtho || this._planViewActive;
+  }
+
+  _emitModeChange(mode) {
+    // Phase 1 has no consumer; Phase 2's visual indicator subscribes here
+    // rather than reaching into controls internals.
+    this.dispatchEvent({ type: 'nav-experimental:modechange', mode });
+  }
+
+  // Mouse-mode dispatch. Phase 1 returns 'pan' (LB) or 'rotate' (Shift+LB).
+  // Phase 2 will extend with a tilt-angle branch.
+  _decideMouseMode(event) {
+    if (event.button !== 0) return null;
+    if (event.shiftKey) return 'rotate';
+    return 'pan';
+  }
+
+  // Wheel-phase dispatch. Phase 1 has one phase; Phase 3 will extend.
+  _decideZoomPhase(_event) {
+    return 'phase1';
   }
 
   _onContextMenu(event) {
@@ -310,12 +474,41 @@ export class ExperimentalControls extends THREE.EventDispatcher {
 
   _onMouseDown(event) {
     if (this._isInactive()) return;
-    // Phase 0 placeholder: LB only.
-    if (event.button !== 0) return;
+    const mode = this._decideMouseMode(event);
+    if (!mode) return;
 
     this._pointerOld.set(event.clientX, event.clientY);
-    this._latch.start({ button: event.button });
 
+    if (mode === 'pan') {
+      // Hit-anchored truck: latch the world point under the cursor at
+      // gesture start. The horizontal plane y = H0.y is preserved for the
+      // duration of the drag.
+      const anchor = this._cursorAnchor.worldPointAt(
+        event.clientX,
+        event.clientY
+      );
+      this._anchorPlane.set(
+        new THREE.Vector3(0, 1, 0),
+        -anchor.y // signed dist; plane equation y = anchor.y
+      );
+      this._latch.start({
+        mode: 'pan',
+        anchor,
+        anchorY: anchor.y
+      });
+    } else if (mode === 'rotate') {
+      // Screen-center raycast for rotation center.
+      const rect = this._domElement.getBoundingClientRect();
+      const cx = rect.left + rect.width / 2;
+      const cy = rect.top + rect.height / 2;
+      const center = this._cursorAnchor.worldPointAt(cx, cy);
+      this._latch.start({
+        mode: 'rotate',
+        center: new THREE.Vector3(center.x, center.y, center.z)
+      });
+    }
+
+    this._emitModeChange(mode);
     const el = this._domElement;
     el.addEventListener('mousemove', this._onMouseMove, false);
     el.addEventListener('mouseup', this._onMouseUp, false);
@@ -326,15 +519,23 @@ export class ExperimentalControls extends THREE.EventDispatcher {
     if (this._isInactive() || !this._latch.isActive()) return;
 
     this._pointer.set(event.clientX, event.clientY);
-    const movementX = this._pointer.x - this._pointerOld.x;
-    const movementY = this._pointer.y - this._pointerOld.y;
+    const dx = this._pointer.x - this._pointerOld.x;
+    const dy = this._pointer.y - this._pointerOld.y;
     this._pointerOld.copy(this._pointer);
 
-    this._pan(this._delta.set(-movementX, movementY, 0));
+    const mode = this._latch.get('mode');
+    if (mode === 'pan') {
+      this._lbTruckMove(event.clientX, event.clientY);
+    } else if (mode === 'rotate') {
+      this._shiftRotate(dx, dy);
+    }
   }
 
   _onMouseUp() {
-    this._latch.end();
+    if (this._latch.isActive()) {
+      this._latch.end();
+      this._emitModeChange(null);
+    }
     const el = this._domElement;
     el.removeEventListener('mousemove', this._onMouseMove, false);
     el.removeEventListener('mouseup', this._onMouseUp, false);
@@ -344,31 +545,247 @@ export class ExperimentalControls extends THREE.EventDispatcher {
   _onWheel(event) {
     if (this._isInactive()) return;
     event.preventDefault();
-    this._zoom(this._delta.set(0, 0, event.deltaY > 0 ? 1 : -1));
+    const phase = this._decideZoomPhase(event);
+    if (phase !== 'phase1') return;
+
+    // Normalize deltaY across deltaMode (pixel/line/page).
+    let dy = event.deltaY;
+    if (event.deltaMode === 1) {
+      // line mode: ~16px per line
+      dy *= 16;
+    } else if (event.deltaMode === 2) {
+      // page mode
+      dy *= window.innerHeight || 800;
+    }
+    this._wheelBudget += dy;
+
+    // Latest cursor position is needed at drain time; remember it.
+    this._lastWheelClientX = event.clientX;
+    this._lastWheelClientY = event.clientY;
   }
 
-  _pan(delta) {
+  _onWindowBlur() {
+    this._heldKeys.clear();
+    if (this._latch.isActive()) {
+      this._latch.end();
+      this._emitModeChange(null);
+    }
+  }
+
+  _onKeyDown(event) {
+    if (this._isInactive()) return;
+    if (this._isTypingTarget(event.target)) return;
+    if (event.ctrlKey || event.metaKey || event.altKey) return;
+    const k = event.code;
+    if (k === 'KeyW' || k === 'KeyA' || k === 'KeyS' || k === 'KeyD') {
+      this._heldKeys.add(k);
+    }
+  }
+
+  _onKeyUp(event) {
+    const k = event.code;
+    if (this._heldKeys.has(k)) this._heldKeys.delete(k);
+  }
+
+  _isTypingTarget(target) {
+    if (!target) return false;
+    const tag = target.tagName;
+    if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return true;
+    if (target.isContentEditable) return true;
+    return false;
+  }
+
+  // --- Per-tick driver ---
+
+  _onTick(deltaMs) {
+    if (this._isInactive()) {
+      // Plan View tween or disabled — nothing to do here. (The tween
+      // itself runs as a separate TickAnimator subscription via animate().)
+      return;
+    }
+    this._drainWheel();
+    this._drainWASD(deltaMs);
+  }
+
+  _drainWheel() {
+    if (this._wheelBudget === 0) return;
+    const unit = WHEEL_BUDGET_PER_TICK_UNITS;
+    let ticksThisFrame = 0;
+    let changed = false;
+    while (
+      ticksThisFrame < WHEEL_MAX_TICKS_PER_FRAME &&
+      Math.abs(this._wheelBudget) >= unit
+    ) {
+      const sign = this._wheelBudget > 0 ? 1 : -1;
+      this._wheelBudget -= sign * unit;
+      this._applyWheelTick(sign);
+      ticksThisFrame++;
+      changed = true;
+    }
+    // If the residual is small, drop it so it doesn't accumulate forever.
+    if (Math.abs(this._wheelBudget) < unit * 0.05) this._wheelBudget = 0;
+    if (changed) this.dispatchEvent(this._changeEvent);
+  }
+
+  _applyWheelTick(sign) {
+    // sign > 0 -> deltaY positive -> wheel "down" -> zoom out
     const camera = this._camera;
+    const x = this._lastWheelClientX;
+    const y = this._lastWheelClientY;
+    if (x == null || y == null) return;
+    const hit = this._cursorAnchor.worldPointAt(x, y);
+
+    // factor: zoom in (sign<0) brings camera closer to anchor by 10%;
+    // zoom out (sign>0) is the inverse so a zoom-in/zoom-out pair returns
+    // to (approximately) the start.
+    let factor;
+    if (sign < 0) factor = 1 - ZOOM_PER_WHEEL_TICK;
+    else factor = 1 / (1 - ZOOM_PER_WHEEL_TICK);
+
+    const offset = this._tmpV3a
+      .copy(camera.position)
+      .sub(this._tmpV3b.set(hit.x, hit.y, hit.z));
+    offset.multiplyScalar(factor);
+    camera.position.copy(this._tmpV3b).add(offset);
+
+    // Track far plane based on distance.
     const distance = camera.position.distanceTo(this.center);
-    delta.multiplyScalar(
-      Math.max(this.minSpeedFactor, distance) * this.panSpeed
+    camera.far = Math.min(100000000, Math.max(20000, distance * 10));
+    camera.updateProjectionMatrix();
+    camera.updateMatrixWorld();
+  }
+
+  _drainWASD(deltaMs) {
+    if (this._heldKeys.size === 0) return;
+    const camera = this._camera;
+    const dirX = this._heldKeys.has('KeyD') ? 1 : 0;
+    const dirXNeg = this._heldKeys.has('KeyA') ? 1 : 0;
+    const dirZ = this._heldKeys.has('KeyW') ? 1 : 0;
+    const dirZNeg = this._heldKeys.has('KeyS') ? 1 : 0;
+    const strafe = dirX - dirXNeg;
+    const fwd = dirZ - dirZNeg;
+    if (strafe === 0 && fwd === 0) return;
+
+    // Forward = horizontal projection of camera -Z, normalized; if degenerate
+    // (camera looking straight down), fall back to camera +Y horizontal projection.
+    const forward = this._tmpV3a;
+    camera.getWorldDirection(forward); // -Z direction, normalized
+    forward.y = 0;
+    if (forward.lengthSq() > 0.0001) {
+      forward.normalize();
+    } else {
+      const up = this._tmpV3c.set(0, 1, 0).applyQuaternion(camera.quaternion);
+      up.y = 0;
+      if (up.lengthSq() > 0.0001) forward.copy(up).normalize();
+      else forward.set(0, 0, -1);
+    }
+    // Right = forward × worldUp. For forward=(0,0,-1), worldUp=(0,1,0),
+    // this yields (1,0,0), which is screen-right for an upright camera.
+    const right = this._tmpV3b.copy(forward).cross(this._tmpV3c.set(0, 1, 0));
+    right.y = 0;
+    right.normalize();
+
+    const move = this._tmpV3c.set(0, 0, 0);
+    move.addScaledVector(forward, fwd);
+    move.addScaledVector(right, strafe);
+    if (move.lengthSq() === 0) return;
+    move.normalize();
+
+    const height = Math.max(0.1, Math.abs(camera.position.y));
+    const speed = THREE.MathUtils.clamp(
+      height * WASD_SPEED_HEIGHT_FACTOR,
+      WASD_MIN_SPEED,
+      WASD_MAX_SPEED
     );
-    delta.applyMatrix3(this._normalMatrix.getNormalMatrix(camera.matrix));
-    camera.position.add(delta);
-    this.center.add(delta);
+    const distMetres = (speed * deltaMs) / 1000;
+    move.multiplyScalar(distMetres);
+    camera.position.add(move);
+    this.center.add(move);
+    camera.updateMatrixWorld();
     this.dispatchEvent(this._changeEvent);
   }
 
-  _zoom(delta) {
+  // --- LB hit-anchored truck ---
+
+  _lbTruckMove(clientX, clientY) {
+    const camera = this._camera;
+    const anchor = this._latch.get('anchor');
+    if (!anchor) return;
+
+    // Compute world point currently under the cursor on the latched
+    // horizontal plane y = anchor.y.
+    const rect = this._domElement.getBoundingClientRect();
+    const ndcX = ((clientX - rect.left) / rect.width) * 2 - 1;
+    const ndcY = -((clientY - rect.top) / rect.height) * 2 + 1;
+    this._tmpNDC.set(ndcX, ndcY);
+    this._raycaster.setFromCamera(this._tmpNDC, camera);
+
+    const hNow = new THREE.Vector3();
+    const ok = this._raycaster.ray.intersectPlane(this._anchorPlane, hNow);
+    if (!ok) return; // ray parallel to plane (camera looking horizontally) — no-op
+
+    const dx = anchor.x - hNow.x;
+    const dz = anchor.z - hNow.z;
+    if (!isFinite(dx) || !isFinite(dz)) return;
+
+    // Sanity cap to avoid teleports if the anchor solution is degenerate.
+    const stepMag = Math.hypot(dx, dz);
+    let sx = dx;
+    let sz = dz;
+    const cap = 5000;
+    if (stepMag > cap) {
+      const k = cap / stepMag;
+      sx *= k;
+      sz *= k;
+    }
+    camera.position.x += sx;
+    camera.position.z += sz;
+    this.center.x += sx;
+    this.center.z += sz;
+    camera.updateMatrixWorld();
+    this.dispatchEvent(this._changeEvent);
+  }
+
+  // --- Shift+LB orbit/tilt around latched center ---
+
+  _shiftRotate(dxPx, dyPx) {
+    const camera = this._camera;
+    const center = this._latch.get('center');
+    if (!center) return;
+
+    const offset = this._tmpV3a.copy(camera.position).sub(center);
+    const sph = this._spherical.setFromVector3(offset);
+
+    sph.theta -= dxPx * this.rotationSpeed; // yaw
+    sph.phi -= dyPx * this.rotationSpeed; // tilt: drag-down (+dy) -> phi smaller -> more top-down
+
+    // Tilt clamp: phi <= MAX (i.e. elevation >= MIN_TILT_DEGREES).
+    sph.phi = Math.max(MIN_SPHERICAL_PHI, Math.min(MAX_SPHERICAL_PHI, sph.phi));
+
+    const newOffset = this._tmpV3b.setFromSpherical(sph);
+    camera.position.copy(center).add(newOffset);
+    camera.lookAt(center);
+    camera.updateMatrixWorld();
+    this.center.copy(center);
+    this.dispatchEvent(this._changeEvent);
+  }
+
+  // --- ActionBar zoom buttons (held-down repeat) ---
+  // Phase 0 used a center-anchored dolly; Phase 1 keeps the same behavior
+  // for the toolbar path so the zoom buttons feel unchanged.
+  _zoomActionBar(sign) {
+    if (this._isInactive()) return;
     const camera = this._camera;
     const distance = camera.position.distanceTo(this.center);
     camera.far = Math.min(100000000, Math.max(20000, distance * 10));
     camera.updateProjectionMatrix();
+    const delta = this._delta.set(0, 0, sign);
     delta.multiplyScalar(
       Math.max(this.minSpeedFactor, distance) * this.zoomSpeed
     );
     delta.applyMatrix3(this._normalMatrix.getNormalMatrix(camera.matrix));
     camera.position.add(delta);
+    camera.updateMatrixWorld();
     this.dispatchEvent(this._changeEvent);
   }
 }

@@ -414,6 +414,30 @@ export function Viewport(inspector) {
   });
 
   Events.on('cameratoggle', (data) => {
+    // Phase 1 Plan View intercept (claude/specs/001-phase-1-plan.md): when
+    // experimental nav is on and the user triggered Plan View (which
+    // cameras.js dispatched as `orthotop`), revert the camera swap and
+    // delegate to the experimental controls' animated tween instead. The
+    // brief revert happens before any frame renders, so there is no
+    // visual flicker. Other ortho-toggle paths (left/right/etc.) are
+    // unaffected by the intercept.
+    if (
+      isExperimentalNav() &&
+      data.value === 'orthotop' &&
+      typeof controls.handlePlanViewRequest === 'function'
+    ) {
+      const perspective = inspector.cameras && inspector.cameras.perspective;
+      if (perspective) {
+        sceneEl.camera = perspective;
+        inspector.camera = perspective;
+        transformControls.setCamera(perspective);
+        measureLineControls.camera = perspective;
+        controls.setCamera(perspective);
+        updateAspectRatio();
+        controls.handlePlanViewRequest();
+        return;
+      }
+    }
     controls.setCamera(data.camera);
     transformControls.setCamera(data.camera);
     measureLineControls.camera = data.camera;
