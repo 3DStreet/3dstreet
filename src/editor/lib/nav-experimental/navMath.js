@@ -43,9 +43,14 @@ function smoothstep(t) {
 // Tilt-blend weight: 1 = fully Rule 2/3 (ruleAB); 0 = fully Rule 1
 // (screen-center hit). Latched once at gesture start.
 //
-//   tilt >= HIGH (e.g. >=30°)  -> 0  (all rule 1)
-//   tilt <= LOW  (e.g. <=20°)  -> 1  (all rule 2/3, including looking-up)
+//   tilt >= HIGH (e.g. >=30°)  -> 0  (all rule 1, inclusive at HIGH)
+//   tilt <= LOW  (e.g. <=20°)  -> 1  (all rule 2/3, inclusive at LOW;
+//                                     covers all looking-up tilts)
 //   in between                 -> smoothstep ramp
+//
+// Endpoint convention: both ends inclusive — tiltBlendWeight(LOW) === 1
+// and tiltBlendWeight(HIGH) === 0. Matches smoke item R5b ("Tilt = -25°
+// is *not* in the blend zone — pure ruleAB").
 export function tiltBlendWeight(
   tiltDeg,
   lo = ROTATION_BLEND_LOW_DEGREES,
@@ -74,18 +79,16 @@ export function computeRuleAB(camPos, bounds) {
   const r = bounds.radius;
   const dist = Math.hypot(camPos.x - cx, camPos.z - cz);
   const featherWidth = Math.max(1e-6, r * CYLINDER_FEATHER_FRACTION);
-  // u = 0 at (r - featherWidth) (still inside), u = 1 at r (cylinder
-  // edge). Outside the edge: clamp to 1. We center the feather *on the
-  // inside* of the radius rather than straddling the edge so a camera
-  // exactly at the edge already reads as "outside" — matches the
-  // intuitive "I'm right at the boundary, treat me as outside the
-  // diorama".
-  const u = THREE.MathUtils.clamp(
-    (dist - (r - featherWidth)) / featherWidth,
-    0,
-    1
-  );
-  const w = smoothstep(u); // 0 fully inside (Rule 3), 1 fully outside (Rule 2)
+  // u = 0 at the cylinder edge (dist = r), u = 1 at (r + featherWidth)
+  // and beyond. Inside the cylinder: clamp to 0 (full Rule 3,
+  // rotate-in-place). Matches the plan prose at
+  // 001-phase-2-plan.md:68 — feather extends *outward* from the edge,
+  // so a camera exactly at the boundary still rotates in place and
+  // only fully-Rule-2 (diorama center) once it's a feather-width
+  // outside. Intuition: "I'm in/at the scene → rotate in place; I'm
+  // well clear of the scene → orbit the diorama".
+  const u = THREE.MathUtils.clamp((dist - r) / featherWidth, 0, 1);
+  const w = smoothstep(u); // 0 inside-or-at-edge (Rule 3), 1 outside (Rule 2)
   const cam = new THREE.Vector3(camPos.x, camPos.y, camPos.z);
   const dioramaCenter = new THREE.Vector3(
     cx,

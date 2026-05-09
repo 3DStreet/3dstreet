@@ -157,23 +157,64 @@ describe('computeRuleAB', () => {
       radius: 10
     };
     const featherWidth = 10 * CYLINDER_FEATHER_FRACTION; // 1m
-    // Just inside the inner edge of the feather (still mostly Rule 3):
-    // result should be close to the camera position, not the diorama
-    // center.
-    const innerCam = { x: 10 - featherWidth * 0.8, y: 5, z: 0 };
+    // Inside the cylinder (strictly < r): fully Rule 3 (camera pos).
+    const innerCam = { x: 10 - featherWidth * 0.5, y: 5, z: 0 };
     const inner = computeRuleAB(innerCam, bounds);
-    expect(inner.x).toBeGreaterThan(5);
-    expect(inner.y).toBeGreaterThan(ROTATION_CENTER_EYE_HEIGHT_METRES);
-    // At the cylinder edge: fully outside = diorama center.
+    expect(inner.x).toBeCloseTo(innerCam.x, 5);
+    expect(inner.y).toBeCloseTo(5, 5);
+    // At the cylinder edge: still fully Rule 3 (feather extends *out*).
     const edge = computeRuleAB({ x: 10, y: 5, z: 0 }, bounds);
-    expect(edge.x).toBeCloseTo(0, 5);
-    expect(edge.y).toBeCloseTo(ROTATION_CENTER_EYE_HEIGHT_METRES, 5);
-    // Halfway across the feather: must be strictly between the two
-    // anchors on x.
-    const midCam = { x: 10 - featherWidth * 0.5, y: 5, z: 0 };
+    expect(edge.x).toBeCloseTo(10, 5);
+    expect(edge.y).toBeCloseTo(5, 5);
+    // Halfway through the feather (just outside): strictly between cam
+    // pos and diorama center.
+    const midCam = { x: 10 + featherWidth * 0.5, y: 5, z: 0 };
     const mid = computeRuleAB(midCam, bounds);
     expect(mid.x).toBeGreaterThan(0);
     expect(mid.x).toBeLessThan(midCam.x);
+    expect(mid.y).toBeLessThan(5);
+    expect(mid.y).toBeGreaterThan(ROTATION_CENTER_EYE_HEIGHT_METRES);
+    // Past the feather (well outside): fully Rule 2 (diorama center).
+    const outerCam = { x: 10 + featherWidth * 1.5, y: 5, z: 0 };
+    const outer = computeRuleAB(outerCam, bounds);
+    expect(outer.x).toBeCloseTo(0, 5);
+    expect(outer.y).toBeCloseTo(ROTATION_CENTER_EYE_HEIGHT_METRES, 5);
+  });
+
+  // Live-feather behavioural check: as a Shift+LB camera trucks across
+  // the cylinder edge mid-gesture, `_updateLiveRuleAB` calls
+  // `computeRuleAB` each frame and should smoothly slide the rotation
+  // center from camera-pos toward diorama-center. Walk a sample path
+  // across the edge and verify the centre's x-coordinate is monotone
+  // non-increasing (Rule 3 inside → Rule 2 outside) and continuous
+  // (no jump > 1m between adjacent samples).
+  it('produces a smooth, monotone slide as the camera crosses the edge', () => {
+    const bounds = {
+      bounded: true,
+      center: { x: 0, y: 0, z: 0 },
+      radius: 10
+    };
+    // Walk x from the cylinder edge (10) outward through the feather
+    // and beyond (15) at 0.05m steps. Across this range result.x
+    // starts at the camera position (10) and slides monotonically
+    // toward the diorama center (0). The smoothstep's mid-feather
+    // slope is the steepest part — bound the per-step jump by a
+    // smoothstep-derived constant so the test catches a *broken*
+    // (discontinuous) function but tolerates the legitimate steepness.
+    //   lerp(cam, diorama, smoothstep((dist-r)/fw))
+    //   |d/dx| max ≈ |cam-diorama| * 1.5 / fw + 1
+    //   = 10 * 1.5 / 1 + 1 ≈ 16  → bound 16 * stepSize = 0.8m.
+    const stepSize = 0.05;
+    const maxJump = ((10 * 1.5) / 1) * stepSize + stepSize + 1e-6;
+    let prev = null;
+    for (let x = 10; x <= 15.0001; x += stepSize) {
+      const v = computeRuleAB({ x, y: 5, z: 0 }, bounds);
+      if (prev) {
+        expect(v.x).toBeLessThanOrEqual(prev.x + 1e-9);
+        expect(Math.abs(v.x - prev.x)).toBeLessThan(maxJump);
+      }
+      prev = v;
+    }
   });
 });
 

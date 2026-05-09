@@ -42,7 +42,8 @@ import {
   WASD_MAX_SPEED,
   WASD_RAMP_UP_MS,
   PLAN_VIEW_DURATION_MS,
-  LB_PAN_MAX_STEP_METRES
+  LB_PAN_MAX_STEP_METRES,
+  ROTATION_BLEND_LOW_DEGREES
 } from './constants.js';
 import {
   cameraTiltDegrees,
@@ -389,6 +390,10 @@ export class ExperimentalControls extends THREE.EventDispatcher {
     this.center.set(endPos.x, 0, endPos.z);
 
     this._planViewActive = true;
+    // 'plan-view' is a forward-hook payload — no Phase 2 consumer reads
+    // it (`useNavMode` filters to pan-truck/pan-pedestal only). Phase 3
+    // / future indicator work may key off it; left dispatched so the
+    // tween bracket is symmetric with the closing `null` emission.
     this._emitModeChange('plan-view');
     this._planViewHandle = this._tick.animate({
       durationMs: PLAN_VIEW_DURATION_MS,
@@ -437,9 +442,12 @@ export class ExperimentalControls extends THREE.EventDispatcher {
     if (this._focusAnimation) {
       // Wrap the change callback so a focus-animation tween that
       // crosses the 30° tilt boundary updates the visual indicator
-      // mid-animation (per A6). `_maybeEmitLbModeChange` is a no-op
-      // unless the comparator flips, so the per-frame cost is one
-      // asin + one comparison.
+      // mid-animation (per A6). The plan asked for an `onDone`-only
+      // hook, but the focus-animation component doesn't expose one;
+      // `_maybeEmitLbModeChange` is a no-op unless the comparator
+      // flips, so per-frame is fine — cost is one asin + one
+      // comparison, and the user gets the indicator update *during*
+      // the tween rather than at its end.
       const callback = () => {
         this._maybeEmitLbModeChange();
         this.dispatchEvent(this._changeEvent);
@@ -498,6 +506,10 @@ export class ExperimentalControls extends THREE.EventDispatcher {
     const event = { type: 'nav-experimental:modechange', mode };
     this.dispatchEvent(event);
     if (this._sceneEl && this._sceneEl.emit) {
+      // bubbles=false: no React subscriber currently listens above the
+      // sceneEl in the DOM, and an A-Frame `componentchanged` storm on
+      // ancestors during Plan View tweens shouldn't see this event.
+      // Flip to true if a parent-level subscriber appears.
       this._sceneEl.emit('nav-experimental:modechange', { mode }, false);
     }
   }
@@ -891,7 +903,7 @@ export class ExperimentalControls extends THREE.EventDispatcher {
     const stepMag = Math.hypot(dx, dz);
     let sx = dx;
     let sz = dz;
-    const cap = 5000;
+    const cap = LB_PAN_MAX_STEP_METRES;
     if (stepMag > cap) {
       const k = cap / stepMag;
       sx *= k;
@@ -983,7 +995,13 @@ export class ExperimentalControls extends THREE.EventDispatcher {
   //          Rule 3 (camera position) inside, smoothstepped across the
   //          ±10%-of-radius feather zone — recomputed live.
   _latchRotationCenter(camera) {
-    const screenHit = this._screenCenterHit();
+    // Per A3 (deferred-raycast): if the tilt is at or below the blend
+    // zone, the screen-center hit would be discarded by `blend === 1`
+    // anyway. Skip the scene-mesh traversal in that case — saves work
+    // at every Shift+LB-down at street level.
+    const tiltDeg = cameraTiltDegrees(camera);
+    const needsScreenHit = tiltDeg > ROTATION_BLEND_LOW_DEGREES;
+    const screenHit = needsScreenHit ? this._screenCenterHit() : null;
     const bounds = this._bounds.getBounds();
     const latch = latchedRotationCenter(camera, bounds, screenHit);
     this._latch.start({
