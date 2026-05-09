@@ -1,3 +1,4 @@
+import { useEffect, useState } from 'react';
 import { faEye, faEyeSlash, faPlay } from '@fortawesome/free-solid-svg-icons';
 import useStore from '@/store';
 import { useAuthContext } from '@/editor/contexts';
@@ -7,10 +8,36 @@ import { CameraSparkleIcon } from '@shared/icons';
 import { makeScreenshot } from '@/editor/lib/SceneUtils';
 import styles from './PrimaryToolbar.module.scss';
 
+/**
+ * Watches the scene for entities tagged with `drive-controls` (a.k.a.
+ * "Driveable Vehicle" entries from the AddLayerPanel) and returns a
+ * boolean indicating whether at least one is currently present. Used to
+ * gate the Play button — without one, Play has nothing to spawn.
+ */
+function useHasDriveable() {
+  const [has, setHas] = useState(false);
+  useEffect(() => {
+    const sceneEl = document.querySelector('a-scene');
+    if (!sceneEl) return undefined;
+    const recheck = () => setHas(!!sceneEl.querySelector('[drive-controls]'));
+    recheck();
+    const obs = new MutationObserver(recheck);
+    obs.observe(sceneEl, {
+      childList: true,
+      subtree: true,
+      attributes: true,
+      attributeFilter: ['drive-controls']
+    });
+    return () => obs.disconnect();
+  }, []);
+  return has;
+}
+
 export const PrimaryToolbar = () => {
   const panelsVisible = useStore((s) => s.panelsVisible);
   const togglePanelsVisible = useStore((s) => s.togglePanelsVisible);
   const { currentUser } = useAuthContext() || {};
+  const hasDriveable = useHasDriveable();
 
   const handlePlay = () => {
     // Close the inspector FIRST, then flip the preset. The viewer-mode
@@ -54,8 +81,13 @@ export const PrimaryToolbar = () => {
       <Button
         variant="toolbtn"
         onClick={handlePlay}
+        disabled={!hasDriveable}
         leadingIcon={<AwesomeIcon icon={faPlay} size={14} />}
-        title="Enter play mode (drive a vehicle around the scene)"
+        title={
+          hasDriveable
+            ? 'Enter play mode (drive the vehicle around the scene)'
+            : 'Add a Driveable Vehicle from the layers panel to enable Play'
+        }
       >
         Play
       </Button>

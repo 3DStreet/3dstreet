@@ -265,6 +265,25 @@ export function createPrimitiveGeometry(position) {
   AFRAME.INSPECTOR.execute('entitycreate', definition);
 }
 
+export function createDriveableVehicle(position) {
+  // A driveable vehicle is just an entity tagged with `drive-controls`
+  // and given a placeholder mesh so it's visible in the editor. When
+  // the user clicks Play, viewer-mode's enableDriveMode looks for any
+  // such entity in the scene and uses it as the spawn pose + tuning
+  // source. The schema fields on drive-controls are exposed in the
+  // standard properties panel for editing.
+  const definition = {
+    'data-layer-name': 'Driveable Vehicle',
+    components: {
+      position: position ?? '0 1 0',
+      'drive-controls': '',
+      geometry: 'primitive: box; width: 1.6; height: 0.4; depth: 0.8',
+      material: 'color: #cc2222'
+    }
+  };
+  AFRAME.INSPECTOR.execute('entitycreate', definition);
+}
+
 export function createImageEntity(position) {
   // This component accepts a svgString and creates a new entity with geometry extruded
   // from the svg and applies the default mixin material grass.

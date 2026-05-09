@@ -125,6 +125,15 @@ export const customLayersData = [
     handlerFunction: createFunctions.createPanoramaSphere
   },
   {
+    name: 'Driveable Vehicle',
+    img: '',
+    requiresPro: false,
+    icon: '',
+    description:
+      'Adds a vehicle that you can drive in Play mode. Tune engine force, brake, steering, and other driving properties from the properties panel.',
+    handlerFunction: createFunctions.createDriveableVehicle
+  },
+  {
     name: 'Gaussian Splat from URL',
     img: '',
     requiresPro: true,

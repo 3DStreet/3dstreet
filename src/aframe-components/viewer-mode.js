@@ -164,27 +164,35 @@ AFRAME.registerComponent('viewer-mode', {
   enableDriveMode: function () {
     const sceneEl = this.el.sceneEl;
 
-    // drive-controls lives on the cameraRig (this.el) and is the single
-    // source of tuning. The cameraRig is also the spawn-pose anchor:
-    // its position/yaw determines where the chassis appears.
-    const dcAttrs = this.el.getAttribute('drive-controls') || null;
+    // The user must have added a 'Driveable Vehicle' entity (an entity
+    // tagged with `drive-controls`) before Play can do anything useful.
+    // The Play button is disabled when no such entity exists; this
+    // guard is a safety net for any other entry point.
+    const driveEntity = sceneEl.querySelector('[drive-controls]');
+    if (!driveEntity) {
+      console.warn(
+        'viewer-mode drive: no entity with `drive-controls` found in the scene. Add a Driveable Vehicle from the layers panel first.'
+      );
+      return;
+    }
 
     const wp = new THREE.Vector3();
-    this.el.object3D.getWorldPosition(wp);
-    const start = this.data.cameraStartPosition;
-    // Prefer cameraStartPosition for x/z (more stable than the rig's
-    // current world pos, which moves while editing); use a min-y of 1m
-    // so the chassis doesn't spawn intersecting the ground collider.
-    const spawnPos = {
-      x: start.x,
-      y: Math.max(start.y, 1),
-      z: start.z
-    };
+    driveEntity.object3D.getWorldPosition(wp);
+    // Lift slightly so the chassis doesn't spawn intersecting ground.
+    const spawnPos = { x: wp.x, y: Math.max(wp.y, 1), z: wp.z };
 
     const wq = new THREE.Quaternion();
-    this.el.object3D.getWorldQuaternion(wq);
+    driveEntity.object3D.getWorldQuaternion(wq);
     const e = new THREE.Euler().setFromQuaternion(wq, 'YXZ');
     const spawnYawDeg = (e.y * 180) / Math.PI;
+
+    const dcAttrs = driveEntity.getAttribute('drive-controls');
+
+    // Hide the source entity while driving — the play-mode-vehicle
+    // renders its own debug chassis. Restore on cleanup.
+    this._hiddenDriveEntity = driveEntity;
+    this._driveEntityVisible = driveEntity.object3D.visible;
+    driveEntity.object3D.visible = false;
 
     // Build the play-mode-vehicle attribute string. Schema fields shared
     // with drive-controls are forwarded; everything else falls through
@@ -223,6 +231,10 @@ AFRAME.registerComponent('viewer-mode', {
 
     this.driveCleanup = () => {
       if (car && car.parentNode) car.parentNode.removeChild(car);
+      if (this._hiddenDriveEntity) {
+        this._hiddenDriveEntity.object3D.visible = this._driveEntityVisible;
+        this._hiddenDriveEntity = null;
+      }
       physics.deactivate();
     };
   },

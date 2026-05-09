@@ -4,18 +4,15 @@ import styles from './PlayModeControls.module.scss';
 
 /**
  * Top-right tuning panel shown only while the user is in play (drive)
- * mode. Reads from the cameraRig's `drive-controls` component (the
- * single source of truth) and live-updates the running player car
- * entity's `play-mode-vehicle` attributes on every change so sliders
- * affect feel immediately.
+ * mode. Reads from the scene's first `[drive-controls]` entity (the
+ * Driveable Vehicle the user added from the layers panel) and
+ * live-updates the running player car entity's `play-mode-vehicle`
+ * attributes on every change so sliders affect feel immediately.
  *
  * Shown when:
  *   - inspector is closed (isInspectorEnabled === false), AND
- *   - the cameraRig's viewer-mode preset is currently 'drive'.
- *
- * The component polls the player car's existence on mount because the
- * Rapier WASM module is loaded lazily, so the chassis isn't ready
- * synchronously when Play is clicked.
+ *   - the player car has spawned (Rapier WASM is loaded lazily, so it
+ *     polls via rAF).
  */
 const FIELDS = [
   {
@@ -50,8 +47,8 @@ export const PlayModeControls = () => {
     const tick = () => {
       if (cancelled) return;
       const car = document.getElementById('play-mode-player-car');
-      const rig = document.getElementById('cameraRig');
-      const dc = rig?.components?.['drive-controls']?.data;
+      const driveEntity = document.querySelector('[drive-controls]');
+      const dc = driveEntity?.components?.['drive-controls']?.data;
       const carReady = !!car?.components?.['play-mode-vehicle']?.vehicle;
       if (carReady && dc) {
         setActive(true);
@@ -72,9 +69,10 @@ export const PlayModeControls = () => {
   const setField = (key, value) => {
     const next = { ...data, [key]: value };
     setData(next);
-    // Persist on cameraRig (canonical source for next Play).
+    // Persist on the scene's Driveable Vehicle entity (canonical source
+    // for next Play; serialized with the scene).
     document
-      .getElementById('cameraRig')
+      .querySelector('[drive-controls]')
       ?.setAttribute('drive-controls', key, value);
     // Apply live to the running car. play-mode-vehicle reads its data
     // each tick, so this lands immediately.
