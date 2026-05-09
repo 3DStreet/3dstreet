@@ -115,7 +115,7 @@ users/
         ├── videos/
         │   ├── {assetId}.mp4
         │   └── {assetId}-thumb.jpg
-        └── models/
+        └── meshes/
             ├── {assetId}.ply
             ├── {assetId}.glb
             └── {assetId}-thumb.jpg
