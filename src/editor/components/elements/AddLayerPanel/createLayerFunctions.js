@@ -278,14 +278,31 @@ export function createDriveableVehicle(position) {
   // by the vehicle controller's wheel layout) to the same world
   // direction, so the editor box and the in-play chassis end up with
   // matching world-frame orientation.
+  //
+  // A child 'Vehicle Mesh' entity is included with an empty mixin
+  // attribute so the user can pick a glTF model from the Model
+  // dropdown in the properties panel. This child is what gives the
+  // vehicle its real appearance; the parent's box geometry is just a
+  // placeholder you can hide once the mixin is set.
   const definition = {
     'data-layer-name': 'Driveable Vehicle',
     components: {
       position: position ?? '0 1 0',
       'drive-controls': '',
       geometry: 'primitive: box; width: 0.8; height: 0.4; depth: 1.6',
-      material: 'color: #cc2222'
-    }
+      material: 'color: #cc2222',
+      shadow: 'cast: true; receive: true'
+    },
+    children: [
+      {
+        'data-layer-name': 'Vehicle Mesh',
+        'data-driveable-mesh': '',
+        components: {
+          mixin: 'sedan-taxi-rig',
+          shadow: 'cast: true; receive: true'
+        }
+      }
+    ]
   };
   AFRAME.INSPECTOR.execute('entitycreate', definition);
 }

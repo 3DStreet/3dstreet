@@ -292,7 +292,11 @@ AFRAME.registerComponent('play-mode-vehicle', {
     wheelWidth: { type: 'number', default: 0 },
     cameraSelector: { type: 'string', default: '#camera' },
     cameraHeight: { type: 'number', default: 18 },
-    debugChassisVisible: { type: 'boolean', default: true }
+    debugChassisVisible: { type: 'boolean', default: true },
+    // When false, skip the red placeholder box but still render the
+    // forward cone and wheels. Used when a custom mesh is being
+    // cloned in alongside.
+    showDebugBox: { type: 'boolean', default: true }
   },
 
   init: async function () {
@@ -401,11 +405,14 @@ AFRAME.registerComponent('play-mode-vehicle', {
 
     // --- Visual chassis (red box + yellow forward-direction cone) ---
     if (data.debugChassisVisible) {
-      this.el.setAttribute(
-        'geometry',
-        `primitive: box; width: ${data.chassisSize.x}; height: ${data.chassisSize.y}; depth: ${data.chassisSize.z}`
-      );
-      this.el.setAttribute('material', 'color: #cc2222');
+      if (data.showDebugBox) {
+        this.el.setAttribute(
+          'geometry',
+          `primitive: box; width: ${data.chassisSize.x}; height: ${data.chassisSize.y}; depth: ${data.chassisSize.z}`
+        );
+        this.el.setAttribute('material', 'color: #cc2222');
+        this.el.setAttribute('shadow', 'cast: true; receive: true');
+      }
       const fwd = document.createElement('a-entity');
       fwd.setAttribute('data-play-cone', '');
       fwd.setAttribute(
@@ -506,6 +513,7 @@ AFRAME.registerComponent('play-mode-vehicle', {
         );
         inner.setAttribute('material', 'color: #222');
         inner.setAttribute('rotation', '-90 0 0');
+        inner.setAttribute('shadow', 'cast: true; receive: true');
         outer.appendChild(inner);
         this.wheelOuterEls.push(outer);
       } else {

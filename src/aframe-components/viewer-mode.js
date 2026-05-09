@@ -202,6 +202,13 @@ AFRAME.registerComponent('viewer-mode', {
       `spawnYaw: ${spawnYawDeg}`,
       'cameraSelector: #camera'
     ];
+    // Detect whether the user has set a custom mesh on the Driveable
+    // Vehicle's child mesh slot. If so, hide the play-mode-vehicle's
+    // red placeholder box and clone the mesh into the player car.
+    const meshSlot = driveEntity.querySelector('[data-driveable-mesh]');
+    const customMixin = meshSlot && meshSlot.getAttribute('mixin');
+    const hasCustomMesh = !!(customMixin && customMixin.length);
+
     if (dcAttrs) {
       // drive-controls.vehicleSize is in ENTITY frame (x=width, y=height,
       // z=length). play-mode-vehicle.chassisSize is in CHASSIS frame
@@ -217,12 +224,27 @@ AFRAME.registerComponent('viewer-mode', {
       // wiring; the component reads them once at buildVehicle. Not yet
       // plumbed through — TODO when we expose wheel sliders.
     }
+    if (hasCustomMesh) parts.push('showDebugBox: false');
 
     const car = document.createElement('a-entity');
     car.setAttribute('id', 'play-mode-player-car');
     car.setAttribute('data-no-transform', '');
     car.setAttribute('play-mode-vehicle', parts.join('; '));
     sceneEl.appendChild(car);
+
+    // Clone the user's custom mesh onto the player car. The car's
+    // body rotation is in chassis frame (forward = chassis -X), and
+    // the 3DStreet vehicle catalog meshes are authored with forward =
+    // +Z, so the wrapper rotates -90° around Y to align them.
+    if (hasCustomMesh) {
+      const wrapper = document.createElement('a-entity');
+      wrapper.setAttribute('rotation', '0 -90 0');
+      const meshClone = document.createElement('a-entity');
+      meshClone.setAttribute('mixin', customMixin);
+      meshClone.setAttribute('shadow', 'cast: true; receive: true');
+      wrapper.appendChild(meshClone);
+      car.appendChild(wrapper);
+    }
 
     // Lazy-load Rapier and seed the ground collider.
     const physics = sceneEl.systems['play-mode-physics'];
