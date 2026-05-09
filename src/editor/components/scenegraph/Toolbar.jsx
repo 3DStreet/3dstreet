@@ -1,12 +1,14 @@
+import { faStop } from '@fortawesome/free-solid-svg-icons';
 import useStore from '@/store';
 import { Button } from '../elements/Button';
+import { AwesomeIcon } from '../elements/AwesomeIcon';
 
 function Toolbar() {
   const { isInspectorEnabled, setIsInspectorEnabled } = useStore();
 
   if (isInspectorEnabled) return null;
 
-  const handleEdit = () => {
+  const handleStop = () => {
     // Tear down play-mode side effects (player car + Rapier world) but
     // do NOT re-enable cursor-teleport / look-controls / movement-controls
     // afterward — the inspector handles its own input, and re-enabling
@@ -19,14 +21,13 @@ function Toolbar() {
 
   return (
     <div id="toolbar" data-inspector="false">
-      <div className="flex flex-shrink-0 items-center space-x-2">
-        <img
-          src="/ui_assets/3D-St-stacked-128.png"
-          alt="3DStreet Logo"
-          style={{ width: '48px', height: '48px', objectFit: 'contain' }}
-        />
-        <Button onClick={handleEdit} variant="toolbtn">
-          Edit
+      <div className="flex w-full items-center justify-center">
+        <Button
+          onClick={handleStop}
+          variant="toolbtn"
+          leadingIcon={<AwesomeIcon icon={faStop} size={14} />}
+        >
+          Stop
         </Button>
       </div>
     </div>
