@@ -128,6 +128,27 @@ Both live in `public/functions/asset-quota.js` and are wired through `public/fun
 | PRO  | 5 GB        |
 | TEAM / MAX | 25 GB |
 
+### Deploying
+
+From inside `public/` (where `firebase.json` lives):
+
+```bash
+# Cloud Functions
+firebase deploy --only functions:onAssetWritten,functions:getUploadQuota
+
+# Security rules (per-content-type Storage caps + usage doc read rule)
+firebase deploy --only firestore:rules,storage
+```
+
+Or in one shot:
+
+```bash
+firebase deploy --only \
+  functions:onAssetWritten,functions:getUploadQuota,firestore:rules,storage
+```
+
+Deploy rules before functions if there's a window where the panel might call the new `users/{uid}/meta/usage` listener — otherwise the snapshot subscription errors with `permission-denied` until the new rule lands. Verify the trigger fires with `firebase functions:log --only onAssetWritten` after dropping a GLB.
+
 ## Security rules
 
 ### Firestore (`public/firestore.rules`)
