@@ -275,3 +275,13 @@ All three call `uploadAndPlaceAsset(file, position?)` directly (static imports; 
 - `public/storage.rules` — per-content-type size caps.
 - `public/functions/index.js` — exports `onAssetWritten` and `getUploadQuota`.
 - `webpack.config.js` — `fs` / `path` fallbacks; copy Draco WASM blobs to `/dist/`.
+
+
+# Remaining to do
+
+- [ ] previous code was doing a soft delete with
+  galleryServiceV2.deleteAsset(id, currentUserId, false);
+  I changed it hard delete so the quota decrease, but I actually don't have the right to delete in firebase apparently
+- [ ] deploy new functions
+- [ ] create model thumbnail client side
+- [ ] drag and drop from assets panel
