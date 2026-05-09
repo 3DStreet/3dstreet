@@ -179,13 +179,21 @@ AFRAME.registerSystem('play-mode-physics', {
 // ---------------------------------------------------------------------
 AFRAME.registerComponent('drive-controls', {
   schema: {
-    chassisSize: { type: 'vec3', default: { x: 1.6, y: 0.4, z: 0.8 } },
+    // vehicleSize is in ENTITY frame: x=width, y=height, z=length.
+    // play-mode-vehicle's internal chassisSize is in chassis frame
+    // (x=length, y=height, z=width); viewer-mode swaps X<->Z when
+    // forwarding so this drive-controls field stays intuitive in the
+    // editor (length is Z, matching the editor box geometry).
+    vehicleSize: { type: 'vec3', default: { x: 0.8, y: 0.4, z: 1.6 } },
     accelerateForce: { type: 'number', default: 2 },
     brakeForce: { type: 'number', default: 0.05 },
     steerAngle: { type: 'number', default: Math.PI / 24 },
     suspensionStiffness: { type: 'number', default: 24 },
     frictionSlip: { type: 'number', default: 1.5 },
-    sideFrictionStiffness: { type: 'number', default: 3 }
+    sideFrictionStiffness: { type: 'number', default: 3 },
+    // 0 = auto-fit from vehicleSize.y. Use these for explicit override.
+    wheelRadius: { type: 'number', default: 0 },
+    wheelWidth: { type: 'number', default: 0 }
   },
 
   init: function () {
@@ -213,6 +221,33 @@ AFRAME.registerComponent('drive-controls', {
     cone.setAttribute('data-aframe-inspector', 'autocreated');
     this._marker = cone;
     this.el.appendChild(cone);
+
+    // First-time geometry sync. update() handles subsequent changes.
+    this.applyVehicleSize();
+  },
+
+  update: function (oldData) {
+    if (!oldData) return;
+    const old = oldData.vehicleSize;
+    const cur = this.data.vehicleSize;
+    if (old && cur && (old.x !== cur.x || old.y !== cur.y || old.z !== cur.z)) {
+      this.applyVehicleSize();
+    }
+  },
+
+  applyVehicleSize: function () {
+    // Resize the editor's placeholder box to match vehicleSize so what
+    // the user sees is what the play-mode chassis will be. Touches only
+    // the geometry width/height/depth — leaves color/material alone.
+    const v = this.data.vehicleSize;
+    const existing = this.el.getAttribute('geometry');
+    // Skip if the entity has no geometry primitive at all (the user
+    // may have replaced it with a glTF model — leave that alone).
+    if (!existing || existing.primitive !== 'box') return;
+    this.el.setAttribute(
+      'geometry',
+      `primitive: box; width: ${v.x}; height: ${v.y}; depth: ${v.z}`
+    );
   },
 
   remove: function () {
@@ -230,12 +265,16 @@ AFRAME.registerComponent('drive-controls', {
 // ---------------------------------------------------------------------
 AFRAME.registerComponent('play-mode-vehicle', {
   schema: {
+    // CHASSIS frame: x = length, y = height, z = width.
     chassisSize: { type: 'vec3', default: { x: 1.6, y: 0.4, z: 0.8 } },
     spawnPosition: { type: 'vec3', default: { x: 0, y: 1, z: 0 } },
     spawnYaw: { type: 'number', default: 0 }, // degrees, around world Y
     accelerateForce: { type: 'number', default: 2 },
     brakeForce: { type: 'number', default: 0.05 },
     steerAngle: { type: 'number', default: Math.PI / 24 },
+    // 0 = auto-fit (radius from chassisSize.y, width similar).
+    wheelRadius: { type: 'number', default: 0 },
+    wheelWidth: { type: 'number', default: 0 },
     cameraSelector: { type: 'string', default: '#camera' },
     cameraHeight: { type: 'number', default: 18 },
     debugChassisVisible: { type: 'boolean', default: true }
@@ -324,14 +363,18 @@ AFRAME.registerComponent('play-mode-vehicle', {
 
   update: function (oldData) {
     if (!this.chassisBody || !oldData) return; // nothing built yet
-    // Only chassisSize affects the build (wheel layout, collider, mesh).
-    // accelerateForce / brakeForce / steerAngle are read live each tick.
+    // Build-time fields (rebuild if any changes). Live-tick fields
+    // (accelerateForce / brakeForce / steerAngle) are read each tick
+    // so they don't need a rebuild.
     const oldCs = oldData.chassisSize;
     const newCs = this.data.chassisSize;
-    if (
+    const sizeChanged =
       oldCs &&
-      (oldCs.x !== newCs.x || oldCs.y !== newCs.y || oldCs.z !== newCs.z)
-    ) {
+      (oldCs.x !== newCs.x || oldCs.y !== newCs.y || oldCs.z !== newCs.z);
+    const wheelChanged =
+      oldData.wheelRadius !== this.data.wheelRadius ||
+      oldData.wheelWidth !== this.data.wheelWidth;
+    if (sizeChanged || wheelChanged) {
       this.tearDownVehicle();
       this.buildVehicle();
     }
@@ -395,6 +438,10 @@ AFRAME.registerComponent('play-mode-vehicle', {
     //     default chassisSize (1.6 x 0.4 x 0.8) produces the literal
     //     numbers from the verified standalone demo (Isaac Mason's
     //     dynamic-raycast-vehicle-controller port).
+    const autoRadius = 0.375 * data.chassisSize.y; // 0.15 @ default
+    const autoWidth = 0.375 * data.chassisSize.y; // 0.15 @ default
+    const wheelRadius = data.wheelRadius > 0 ? data.wheelRadius : autoRadius;
+    const wheelWidth = data.wheelWidth > 0 ? data.wheelWidth : autoWidth;
     const wheelInfo = {
       axleCs: { x: 0, y: 0, z: -1 },
       suspensionRestLength: 0.3125 * data.chassisSize.y, // 0.125 @ default
@@ -402,7 +449,7 @@ AFRAME.registerComponent('play-mode-vehicle', {
       maxSuspensionTravel: 1,
       sideFrictionStiffness: 3,
       frictionSlip: 1.5,
-      radius: 0.375 * data.chassisSize.y // 0.15 @ default
+      radius: wheelRadius
     };
     const wbx = 0.40625 * data.chassisSize.x; // 0.65 @ default (wheelbase / 2)
     const trz = 0.5625 * data.chassisSize.z; // 0.45 @ default (track / 2)
@@ -440,7 +487,7 @@ AFRAME.registerComponent('play-mode-vehicle', {
         const inner = document.createElement('a-entity');
         inner.setAttribute(
           'geometry',
-          `primitive: cylinder; radius: ${wheelInfo.radius}; height: 0.15; segmentsRadial: 16`
+          `primitive: cylinder; radius: ${wheelRadius}; height: ${wheelWidth}; segmentsRadial: 16`
         );
         inner.setAttribute('material', 'color: #222');
         inner.setAttribute('rotation', '-90 0 0');

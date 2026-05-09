@@ -203,15 +203,19 @@ AFRAME.registerComponent('viewer-mode', {
       'cameraSelector: #camera'
     ];
     if (dcAttrs) {
-      const cs = dcAttrs.chassisSize;
-      parts.push(`chassisSize: ${cs.x} ${cs.y} ${cs.z}`);
+      // drive-controls.vehicleSize is in ENTITY frame (x=width, y=height,
+      // z=length). play-mode-vehicle.chassisSize is in CHASSIS frame
+      // (x=length, y=height, z=width). Swap X<->Z when forwarding.
+      const v = dcAttrs.vehicleSize;
+      parts.push(`chassisSize: ${v.z} ${v.y} ${v.x}`);
       parts.push(`accelerateForce: ${dcAttrs.accelerateForce}`);
       parts.push(`brakeForce: ${dcAttrs.brakeForce}`);
       parts.push(`steerAngle: ${dcAttrs.steerAngle}`);
+      parts.push(`wheelRadius: ${dcAttrs.wheelRadius}`);
+      parts.push(`wheelWidth: ${dcAttrs.wheelWidth}`);
       // Per-wheel suspension/friction live on play-mode-vehicle's wheel
-      // wiring; the component reads them once at buildVehicle. To keep
-      // this slice small, those three are not yet plumbed through —
-      // they're TODO when we expose wheel sliders.
+      // wiring; the component reads them once at buildVehicle. Not yet
+      // plumbed through — TODO when we expose wheel sliders.
     }
 
     const car = document.createElement('a-entity');
