@@ -481,3 +481,63 @@ These came up while writing the plan above. Captured here as a discussion list s
 ### Issues-for-discussion log
 
 No new entries added to `claude/issues-for-discussion.md` during this planning pass. Items 2 and 4 above could become Kieran questions if Phase 2 feel-test confirms they bite, but holding off until evidence — the issues log shouldn't grow speculative.
+
+---
+
+## Adversarial review — 2026-05-09
+
+Independent pass over the plan as written. Focus: internal inconsistencies, gaps, and edge cases the spec doesn't yet address. Ordered by how likely each is to cause real trouble during implementation or feel-test.
+
+### Load-bearing — fix before coding
+
+**A1. Pedestal plane normal is contradicted between the Mechanics and Architecture sections.** Item #1 in the planning-pass comments was resolved to "plane normal = camera-forward-horizontal" and line 49 reflects that fix. But `_lbPedestalMove` at line 159 still says `normal = screenRight (horizontal projection of camera +X)`. These are orthogonal directions — one of them is wrong. Per the resolved discussion, line 159 is the stale one and needs updating to match line 49 (camera-forward-horizontal, i.e. camera −Z projected onto the horizontal plane). If the implementer follows the architecture pseudocode literally, they'll build the wrong plane.
+
+**A2. `_decideRotationCenter` pseudocode contradicts its own latching contract.** The function as shown (lines 128–151) is a pure function of current camera state — it recomputes `screenHit`, `ruleAB`, the cylinder test, and the lerp from scratch each call. But the surrounding prose (line 153 "Latching scope") says the high-level rule, the `screenHit`, and `ruleAB` (in the >20° branch) are all latched at gesture start, and only the inside/outside-cylinder sub-decision is live when `liveRuleAB` is set. The code doesn't take a latch parameter, doesn't read prior latch state, and has no branch for `liveRuleAB`. An implementer reading the code block will build a fully-live function and lose all the latching guarantees. Either rewrite the pseudocode to take latch state as input (and split into "compute-at-start" vs. "recompute-during-move" entry points), or replace the code block with prose plus the truth table. Right now the two are out of sync.
+
+**A3. `screenHit` may be `null` (sky/horizon raycast miss) and the lerp will crash.** `_screenCenterHit()` returns the world-space point under the screen center; if the user is looking at sky with no terrain hit, there is no point. Phase 1 must already have a fallback for this in Rule 1, but the Phase 2 pseudocode does `THREE.Vector3().lerpVectors(ruleAB, screenHit, eased)` unconditionally in the 20–30° blend branch, and `screenHit` is always called even on `tiltDeg <= 20` paths where the result is unused. Spec needs to (a) define the fallback when `screenHit` is null (likely: collapse to `ruleAB`), and (b) defer the screen-hit raycast until the branch that needs it.
+
+**A4. `liveRuleAB` activation threshold creates a discontinuity in feel.** The flag is set at gesture start "if camera is within ±10% of cylinder radius". So two near-identical gestures, one starting at 11% outside the cylinder and one at 9% outside, get fundamentally different rotation behavior — the first uses a stationary diorama center, the second feathers live as the camera moves. This is the kind of "two things that look the same behave differently" boundary that breeds bug reports. Options: (a) always use the live feather (simpler, but pays per-frame cost on every Shift+LB drag whether useful or not — cost is negligible per the spec, so this is probably the right move); (b) widen the activation zone substantially so the boundary feels less sharp; (c) accept and document. Recommend (a) — kills the discontinuity for free.
+
+**A5. The `liveRuleAB` path doesn't specify `bounded === false` short-circuit.** When the scene is unbounded, there's no cylinder, so `ruleAB === camPos` always. `liveRuleAB` should be forced false in this case. Pseudocode at 153 doesn't say so explicitly. Trivial to fix but worth pinning.
+
+### Smaller — fix or note before merging
+
+**A6. LB-only gesture never updates the toolbar indicator.** The mode-emission rule (lines 188–198) only fires inside `_shiftRotate` (Shift+LB moves) and at gesture end. If the user has been doing LB-drags only — never Shift+LB — `_currentLbMode` is set at LB-down (via the latch) but never compared to a fresh evaluation. If the camera reaches a state where the *next* LB drag would be a different mode (e.g. an entity-double-click animation tweens the camera across the 30° boundary), the toolbar indicator won't reflect the new mode until the next Shift+LB gesture. Consider also recomputing on LB-down before the gesture latches, and emitting if changed. Same applies to wheel-zoom-induced tilt changes — there are none in Phase 2 (wheel preserves tilt) but Plan View tweens *do* change tilt without going through `_shiftRotate`.
+
+**A7. The 5000m sanity-cap behavior isn't specified for `_lbPedestalMove`.** Phase 1's `_lbTruckMove` has the cap; the spec says "same 5000m sanity cap" (line 162) but doesn't say what happens when it triggers — does the camera freeze, snap-back, or clamp the delta? Whatever Phase 1 does is presumably fine to inherit, but the plan should name the behavior so the reader doesn't have to dig.
+
+**A8. Truth table omits looking-up cases explicitly.** The table at lines 245–253 lumps "negative tilt" into the `≤ 20°` rows via the parenthetical "(incl. negative)". A reader scanning the table for "looking up by 60°" has to do the mental conversion. Consider adding two explicit rows for `< 0°` (looking up) for clarity. Same applies to smoke item R5 — only tests `tilt = 25°` (down side); should also test `tilt = -25°` to verify the looking-up branch never enters the blend.
+
+**A9. Mode-emission "fast-flip flicker" mitigation is conditional.** Risk note (line 299) says "if observed, debounce the *style* application by 50–100ms". Better to define the behavior up front: rapid mode toggling on the Shift+LB tilt threshold is a real risk (large mouse delta + boundary crossing), and adding the debounce after the fact means one extra round of feel-testing. Cheap to add a 100ms tail-debounce to the CSS class application from day one.
+
+**A10. `MIN_TILT_DEGREES = -89` interaction with Plan View not actually re-checked.** Risk note (line 297) says the clamp lives in `_shiftRotate`, not the Plan View tween, so the tween is unaffected — but qualifies "worth re-reading the clamp branch to confirm no defensive clamp bites the animation". This is listed as a risk but not as a task. Promote to a 5-minute item under Task #3 (lower MIN_TILT_DEGREES): grep for `MIN_TILT_DEGREES` and `MAX_TILT_DEGREES` usage and confirm only `_shiftRotate` reads them.
+
+**A11. `useNavMode` instance-discovery path still unresolved (item #6 in planning notes, deferred to reviewer).** This isn't an architectural showstopper but the spec lists it as a Phase 2 deliverable (line 263). Picking and committing to one of (a/b/c) before coding avoids a mid-implementation rewrite. The (b) event-bus-on-`sceneEl` choice is the cheapest but the "does `sceneEl` survive camera-swap paths cleanly?" question is unanswered. Spike (15 minutes: log all `sceneEl` references during a Plan View transition + camera swap) before committing.
+
+**A12. Eye-height constant placement is policy, not just a number.** `ROTATION_CENTER_EYE_HEIGHT_METRES = 1.5` is fine as a default but worth flagging that the constant name implies "human eye height" — for non-pedestrian scenes (drone, satellite) it's wrong. No action for Phase 2 (the scene set is street-scale), but a future scene-aware override is foreseeable. Worth a one-line comment on the constant.
+
+**A13. Smoke item L8b can't actually be reached without first lowering `MIN_TILT_DEGREES`.** The smoke checklist orders items as if they're independent, but you can only test "camera tilted up by 20°" after the Phase 2 tilt clamp change has landed. Smoke ordering implicitly assumes all mechanics ship together; if the implementation is staged across more than one PR (and Task breakdown #3 is "Lower `MIN_TILT_DEGREES`" as a discrete sitting), L8b runs blank in the interim. Minor — call out which smoke items require which deliverables.
+
+### Risks worth widening
+
+**A14. The "predictor of the next LB drag" framing of the toolbar indicator (line 90) is subtle.** Most users won't intuit "this chrome reflects what the next gesture will do, not the current one". If feel-test F5 comes back ambiguous, consider whether the indicator should *only* show during a held LB-drag (reflecting the active mode) rather than persisting between gestures. The current spec is the more ambitious choice; mention the simpler alternative as a fallback in the risks.
+
+**A15. No exit criterion for the cylinder-feathering hunting risk.** Risk A3 in the original Risks section says "if it hunts, fall back to fully-latched". But there's no objective threshold for "hunts" — feel-test is qualitative. Suggest a concrete trigger: "if during smoke item R5/F4 the rotation point visibly moves more than X cm/frame when the camera is held still near the boundary, latch fully". Otherwise the fallback decision drags into Phase 3.
+
+### Things the plan got right (worth preserving)
+
+- The decision in #2 to cut the LB-mode dispatch on absolute angle from horizontal (not signed tilt) is correct and the negative-tilt smoke cases (L8b, R7, R8, F6b) are well-targeted.
+- The eye-height rotation center coupling to `MIN_TILT_DEGREES = -89` (item #7 resolution) is the right structural insight — those two changes should not be separable.
+- The decision to keep wheel zoom unchanged from Phase 1 isolates the Phase 2 feel-test variables cleanly.
+- The "F-row notes are the load-bearing output of Phase 2" framing keeps the goal honest — implementation completeness without feel-test answers is not "done".
+
+### Suggested action list before starting Task #1
+
+1. Fix A1 (pedestal plane normal in `_lbPedestalMove` architecture block).
+2. Rewrite the `_decideRotationCenter` pseudocode (A2) — either as latch-aware or replace with prose.
+3. Decide A4 (always-live feather vs. activation threshold) — recommend always-live.
+4. Specify A3 (screenHit-null fallback).
+5. Resolve A11 (`useNavMode` discovery path) with a 15-minute spike.
+6. Add A8/A13 truth-table-and-smoke-ordering clarifications.
+
+The remaining items can be tracked alongside implementation but won't change the shape of the code.
