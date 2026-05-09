@@ -198,6 +198,7 @@ AFRAME.registerComponent('drive-controls', {
     if (this.el.querySelector('[data-drive-controls-marker]')) return;
     const cone = document.createElement('a-entity');
     cone.setAttribute('data-drive-controls-marker', '');
+    cone.setAttribute('data-layer-name', 'Forward Direction');
     cone.setAttribute(
       'geometry',
       'primitive: cone; radiusBottom: 0.12; radiusTop: 0; height: 0.5; segmentsRadial: 12'
@@ -207,7 +208,7 @@ AFRAME.registerComponent('drive-controls', {
     // forward direction).
     cone.setAttribute('position', '0 0.1 -1.0');
     cone.setAttribute('rotation', '-90 0 0');
-    // Don't expose the marker in the scenegraph as a user-editable child.
+    // Don't expose the marker as a user-editable child node.
     cone.setAttribute('data-no-transform', '');
     cone.setAttribute('data-aframe-inspector', 'autocreated');
     this._marker = cone;
@@ -283,6 +284,59 @@ AFRAME.registerComponent('play-mode-vehicle', {
     this.buildVehicle();
   },
 
+  /**
+   * Tear down the chassis body, vehicle controller, and visual children
+   * (cone marker + wheels). The component's input listeners and the
+   * physics system stay around — only the per-build state is cleared.
+   * Used when chassisSize (or any other build-time field) changes so
+   * we can rebuild from scratch.
+   */
+  tearDownVehicle: function () {
+    if (this.system && this._afterStep) {
+      this.system.offAfterStep(this._afterStep);
+      this._afterStep = null;
+    }
+    if (this.system && this.chassisBody) {
+      this.system.unregisterSync(this.chassisBody);
+    }
+    const world = this.system && this.system.world;
+    if (world && this.vehicle) {
+      world.removeVehicleController(this.vehicle);
+    }
+    if (world && this.chassisBody) {
+      world.removeRigidBody(this.chassisBody);
+    }
+    this.vehicle = null;
+    this.chassisBody = null;
+    // Clear visual children (cone, wheels). The geometry/material on
+    // this.el itself will be re-set by the next buildVehicle().
+    if (this.wheelOuterEls) {
+      for (const w of this.wheelOuterEls) {
+        if (w && w.parentNode) w.parentNode.removeChild(w);
+      }
+      this.wheelOuterEls = null;
+    }
+    // Remove the play-side forward cone created in buildVehicle.
+    this.el.querySelectorAll('[data-play-cone]').forEach((c) => {
+      if (c.parentNode) c.parentNode.removeChild(c);
+    });
+  },
+
+  update: function (oldData) {
+    if (!this.chassisBody || !oldData) return; // nothing built yet
+    // Only chassisSize affects the build (wheel layout, collider, mesh).
+    // accelerateForce / brakeForce / steerAngle are read live each tick.
+    const oldCs = oldData.chassisSize;
+    const newCs = this.data.chassisSize;
+    if (
+      oldCs &&
+      (oldCs.x !== newCs.x || oldCs.y !== newCs.y || oldCs.z !== newCs.z)
+    ) {
+      this.tearDownVehicle();
+      this.buildVehicle();
+    }
+  },
+
   buildVehicle: function () {
     const data = this.data;
     const world = this.system.world;
@@ -295,6 +349,7 @@ AFRAME.registerComponent('play-mode-vehicle', {
       );
       this.el.setAttribute('material', 'color: #cc2222');
       const fwd = document.createElement('a-entity');
+      fwd.setAttribute('data-play-cone', '');
       fwd.setAttribute(
         'geometry',
         'primitive: cone; radiusBottom: 0.1; radiusTop: 0; height: 0.4; segmentsRadial: 12'
@@ -335,23 +390,30 @@ AFRAME.registerComponent('play-mode-vehicle', {
     this.spawnQuat = spawnQuat;
     this.system.registerSync(chassisBody, this.el);
 
-    // --- Wheel info: literal port of the known-good demo ---
+    // --- Wheel info: proportional to chassisSize so resizing the chassis
+    //     auto-rescales wheels. The fractions are chosen so that the
+    //     default chassisSize (1.6 x 0.4 x 0.8) produces the literal
+    //     numbers from the verified standalone demo (Isaac Mason's
+    //     dynamic-raycast-vehicle-controller port).
     const wheelInfo = {
       axleCs: { x: 0, y: 0, z: -1 },
-      suspensionRestLength: 0.125,
+      suspensionRestLength: 0.3125 * data.chassisSize.y, // 0.125 @ default
       suspensionStiffness: 24,
       maxSuspensionTravel: 1,
       sideFrictionStiffness: 3,
       frictionSlip: 1.5,
-      radius: 0.15
+      radius: 0.375 * data.chassisSize.y // 0.15 @ default
     };
+    const wbx = 0.40625 * data.chassisSize.x; // 0.65 @ default (wheelbase / 2)
+    const trz = 0.5625 * data.chassisSize.z; // 0.45 @ default (track / 2)
+    const wy = -0.375 * data.chassisSize.y; // -0.15 @ default
     const wheelPositions = [
       // Front (chassis-local -X is forward)
-      { x: -0.65, y: -0.15, z: -0.45 },
-      { x: -0.65, y: -0.15, z: 0.45 },
+      { x: -wbx, y: wy, z: -trz },
+      { x: -wbx, y: wy, z: trz },
       // Rear
-      { x: 0.65, y: -0.15, z: -0.45 },
-      { x: 0.65, y: -0.15, z: 0.45 }
+      { x: wbx, y: wy, z: -trz },
+      { x: wbx, y: wy, z: trz }
     ];
 
     const vehicle = world.createVehicleController(chassisBody);
