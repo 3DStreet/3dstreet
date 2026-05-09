@@ -161,6 +161,70 @@ AFRAME.registerComponent('viewer-mode', {
     this.el.sceneEl.removeEventListener('exit-vr', this.onExitVR);
   },
 
+  /**
+   * Walk the scene for entities that look like vehicles (any mixin
+   * whose registered <a-mixin category="..."> starts with "vehicles")
+   * and seed a static cuboid collider sized to each one's world-frame
+   * bounding box. The player's own Driveable Vehicle (and its
+   * descendants) is skipped — that's the dynamic chassis.
+   *
+   * Bounding boxes are evaluated AFTER models load: this fires inside
+   * the physics.activate() .then(), but the GLBs may still be loading
+   * since A-Frame loads them async. Listen for `model-loaded` on each
+   * candidate and (re)apply the collider when a load lands.
+   */
+  addOtherVehicleColliders: function (sceneEl, driveEntity) {
+    const physics = sceneEl.systems['play-mode-physics'];
+    const COLLIDABLE_CATEGORIES = ['vehicles', 'cyclists'];
+    const isVehicleMixin = (id) => {
+      const mixin = document.getElementById(id);
+      if (!mixin || mixin.tagName !== 'A-MIXIN') return false;
+      const cat = mixin.getAttribute('category') || '';
+      return COLLIDABLE_CATEGORIES.some((c) => cat.indexOf(c) === 0);
+    };
+    const isCandidate = (el) => {
+      if (!el || el === driveEntity) return false;
+      if (driveEntity && driveEntity.contains(el)) return false;
+      const mixinAttr = el.getAttribute('mixin');
+      if (!mixinAttr) return false;
+      return mixinAttr.split(/\s+/).some(isVehicleMixin);
+    };
+    const listeners = [];
+    // Bounding boxes wrap the mesh's full AABB which is generally
+    // larger than the visible silhouette (especially for vehicles
+    // whose body curves inward at the corners). Shrink to 80% so the
+    // collider feels closer to the mesh visually.
+    const COLLIDER_SHRINK = 0.8;
+    const add = (el) => {
+      const box = new THREE.Box3().setFromObject(el.object3D);
+      if (box.isEmpty()) return;
+      const size = box.getSize(new THREE.Vector3());
+      const center = box.getCenter(new THREE.Vector3());
+      // Skip degenerate boxes (no mesh loaded yet, or zero-size).
+      if (size.x < 0.05 || size.y < 0.05 || size.z < 0.05) return;
+      const half = COLLIDER_SHRINK / 2;
+      physics.addStaticCuboid(
+        { x: center.x, y: center.y, z: center.z },
+        { x: size.x * half, y: size.y * half, z: size.z * half }
+      );
+    };
+
+    sceneEl.querySelectorAll('[mixin]').forEach((el) => {
+      if (!isCandidate(el)) return;
+      // Try immediately, then retry after model-loaded if the bounding
+      // box came back empty/tiny (gltf still streaming).
+      add(el);
+      const onLoaded = () => add(el);
+      el.addEventListener('model-loaded', onLoaded);
+      listeners.push({ el, fn: onLoaded });
+    });
+
+    // Bodies live on the Rapier world, which is freed by
+    // physics.deactivate() on Stop — no need to track them here.
+    // Just remember the model-loaded listeners so we can detach.
+    this._vehicleColliderListeners = listeners;
+  },
+
   enableDriveMode: function () {
     const sceneEl = this.el.sceneEl;
 
@@ -203,9 +267,11 @@ AFRAME.registerComponent('viewer-mode', {
       'cameraSelector: #camera'
     ];
     // Detect whether the user has set a custom mesh on the Driveable
-    // Vehicle's child mesh slot. If so, hide the play-mode-vehicle's
-    // red placeholder box and clone the mesh into the player car.
-    const meshSlot = driveEntity.querySelector('[data-driveable-mesh]');
+    // Vehicle's child mesh slot (an entity tagged with the
+    // vehicle-mesh-slot marker component). If so, hide the
+    // play-mode-vehicle's red placeholder box and clone the mesh into
+    // the player car.
+    const meshSlot = driveEntity.querySelector('[vehicle-mesh-slot]');
     const customMixin = meshSlot && meshSlot.getAttribute('mixin');
     const hasCustomMesh = !!(customMixin && customMixin.length);
 
@@ -246,13 +312,16 @@ AFRAME.registerComponent('viewer-mode', {
       car.appendChild(wrapper);
     }
 
-    // Lazy-load Rapier and seed the ground collider.
+    // Lazy-load Rapier and seed colliders: ground plane + every other
+    // vehicle in the scene as a static cuboid sized to its bounding
+    // box. The player can then bump into parked cars, transit, etc.
     const physics = sceneEl.systems['play-mode-physics'];
     physics.activate().then(() => {
       physics.addStaticCuboid(
         { x: 0, y: -0.05, z: 0 },
         { x: 200, y: 0.05, z: 200 }
       );
+      this.addOtherVehicleColliders(sceneEl, driveEntity);
     });
 
     this.driveCleanup = () => {
@@ -260,6 +329,12 @@ AFRAME.registerComponent('viewer-mode', {
       if (this._hiddenDriveEntity) {
         this._hiddenDriveEntity.object3D.visible = this._driveEntityVisible;
         this._hiddenDriveEntity = null;
+      }
+      if (this._vehicleColliderListeners) {
+        for (const { el, fn } of this._vehicleColliderListeners) {
+          el.removeEventListener('model-loaded', fn);
+        }
+        this._vehicleColliderListeners = null;
       }
       physics.deactivate();
     };

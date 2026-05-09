@@ -177,6 +177,19 @@ AFRAME.registerSystem('play-mode-physics', {
 // Edit-time behavior is intentionally inert — this component does not
 // add visuals, listeners, or physics during editing.
 // ---------------------------------------------------------------------
+// ---------------------------------------------------------------------
+// Marker component: vehicle-mesh-slot
+//
+// Tag the Driveable Vehicle's child entity that holds the user-picked
+// mixin/glTF model. viewer-mode's enableDriveMode looks up
+// [vehicle-mesh-slot] to find which subtree to clone onto the player
+// car. We use a marker COMPONENT (not a data-* attribute) because the
+// scene serializer in json-utils only persists components, mixin,
+// id/class, and data-layer-name — plain data-* attributes get dropped
+// on save/reload.
+// ---------------------------------------------------------------------
+AFRAME.registerComponent('vehicle-mesh-slot', {});
+
 AFRAME.registerComponent('drive-controls', {
   schema: {
     // vehicleSize is in ENTITY frame: x=width, y=height, z=length.

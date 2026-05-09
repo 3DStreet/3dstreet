@@ -296,8 +296,8 @@ export function createDriveableVehicle(position) {
     children: [
       {
         'data-layer-name': 'Vehicle Mesh',
-        'data-driveable-mesh': '',
         components: {
+          'vehicle-mesh-slot': '',
           mixin: 'sedan-taxi-rig',
           shadow: 'cast: true; receive: true'
         }
