@@ -15,7 +15,7 @@ Phase 2 of the navigation prototype work (see `001-overall-plan.md`). Promotes `
 ## Non-goals
 
 - No swoop transition. Wheel zoom stays as Phase 1 (cursor-anchored, tilt-preserving).
-- No cylinder-boundary feathering yet (the proposal's "spatial blend near the edge of the scene bounds"). The skeleton lists this as a Phase 2 concern but the truth-table grows from 6 cases to 12+; defer until the angular blend has been feel-tested. Logged as an open call below.
+- ~~No cylinder-boundary feathering yet.~~ **Updated post-review:** feathering *is* in scope (per inline discussion #2) — the long-thin-street pathology makes it load-bearing. Implemented as a per-frame Rule 2 ↔ Rule 3 lerp over a 10%-of-radius feather zone. See Open Design Call #3.
 - No FPS mode, no double-click changes.
 - No new top-level compass button (still tracked as `issues-for-discussion.md` #5).
 - No touch / WebXR / ortho work.
@@ -46,7 +46,7 @@ The mode is decided at gesture start from the camera's tilt angle, latched, and 
 - **Tilt ≤ 30°** (camera near horizontal): **truck/pedestal** in world coordinates.
   - Horizontal drag → world-X / world-Z translate, in the **camera-yaw-projected horizontal plane** (i.e. drag-right moves the camera in the camera's screen-right horizontal direction; same model as WASD A/D).
   - Vertical drag → world-Y translate (pedestal). Drag down = world goes down = camera moves up.
-  - Speed: pixel-to-metres scaling that preserves the Phase 1 "speed-scales-with-height" feel. Use the same hit-anchored math but project onto a vertical plane through the camera and parallel to screen-X (rather than the horizontal plane through the cursor hit) — this keeps the "world point under cursor stays under cursor" property in the X/screen-vertical sense.
+  - Speed: pixel-to-metres scaling that preserves the Phase 1 "speed-scales-with-height" feel. Use the same hit-anchored math but project onto a **vertical plane through the anchor whose normal = the camera's forward direction projected onto the horizontal plane and normalized** (i.e. the plane is parallel to screen-right + world-up, perpendicular to camera-forward-horizontal). The cursor's ray-plane intersection then varies in (camera-right-horizontal, world-Y), which maps cleanly to (truck-right, pedestal-up). Keeps the "world point under cursor stays under cursor" property in 2D.
   - **No tilt change** during truck/pedestal. Tilt is only changed by Shift+LB.
 
 **Mode-flip behavior.** If the user's camera is at exactly 30° tilt at gesture start, the chosen branch is `≤30°` (inclusive). The latched mode persists for the gesture even if Shift+LB drags happen between LB drags and re-tilt the camera across 30° — each new LB-down re-evaluates.
@@ -58,14 +58,18 @@ The mode is decided at gesture start from the camera's tilt angle, latched, and 
 At gesture start, choose the rotation center:
 
 - **Rule 1 (>30° tilt):** screen-center raycast hit. Identical to Phase 1's existing `_shiftRotate` center.
-- **Rule 2 (≤30° tilt, scene bounded, camera outside cylinder):** scene bounds center, projected onto the camera's view plane *or* clamped to ground (`{bounds.center.x, 0, bounds.center.z}` is the simplest defensible choice). Use ground-clamped form unless feel-test reveals it's wrong.
+- **Rule 2 (≤30° tilt, scene bounded, camera outside cylinder):** scene bounds center at **eye-height** (`{bounds.center.x, ROTATION_CENTER_EYE_HEIGHT_METRES, bounds.center.z}`, default 1.5m). Eye-height (rather than y=0 ground) prevents the camera arcing underground when the user tilts up to look at buildings. Assumes flat ground at y=0; elevated-terrain scenes are a known Phase 2 gap (see Open Design Call #1).
 - **Rule 3 (≤30° tilt, scene unbounded OR camera inside cylinder):** the camera position itself ("Street View"-style: rotate in place).
 
 "Inside the cylinder" means `((cam.x - center.x)² + (cam.z - center.z)²) ≤ radius²`. Y is ignored — bounds are cylindrical.
 
 **Angular blend (20–30°).** When the camera tilt at gesture start is between 20° and 30°, the latched rotation center is a **weighted lerp** between Rule 1's screen-center hit and the rule-2-or-3 center. Weight = `smoothstep(20°, 30°, tilt)` (so 20° → fully rule-2/3, 30° → fully rule-1). One smoothstep, latched once at gesture start. The blend is computed in world-space coordinates, not in tilt-angle space — once latched, the center is a fixed `Vector3` and the rotation math doesn't need to know the blend exists.
 
-**Tilt clamp removed.** With Phase 2's tilt-floor lowered to ~0° (camera horizontal), the user can drive the camera down to street level via Shift+LB. Implementation: change `MIN_TILT_DEGREES` to a small positive value (suggest 1° — keeps `lookAt` numerically stable, prevents the camera flipping past horizontal which has no Phase-2-specified behavior). Going past horizontal (negative tilt, looking up) is out of scope for Phase 2; stays clamped at 1° from horizontal.
+**Cylinder-edge feathering — provisionally per-frame, not latched.** Per inline discussion #2, the inside/outside-cylinder choice (Rule 2 ↔ Rule 3) is *not* fully latched at gesture start. Instead: latch which *high-level rule* applies (Rule 1 vs. Rule 2/3 group) but recompute Rule 2 ↔ Rule 3 live on each move. When the camera crosses the cylinder edge mid-gesture, the rotation center smoothly slides from diorama-center toward camera-position over a feather zone (default ±10% of cylinder radius), via a smoothstep on `(distance_to_axis − radius) / featherWidth`. This addresses the long-thin-street pathology where a camera 5m off the side of a 5m × 100m street is technically "inside" the cylinder but feels "outside" — as the user trucks closer to the street, the rotation point smoothly transitions from "scene center far down the road" to "rotate in place". Trade-off: per-frame `_decideRotationCenter` cost (~one Pythagoras + smoothstep, negligible) and a risk of hunting if the camera oscillates near the boundary. Counted as a Phase 2 feel-test risk; if it hunts, fall back to fully-latched.
+
+**Tilt clamp expanded.** With Phase 2 the user can drive the camera down to street level *and* tilt up to look at buildings. Implementation: change `MIN_TILT_DEGREES` from +30° to **−89°** (keeps `lookAt` numerically stable just shy of straight-up, mirroring the +89° floor on the down side via `MAX_TILT_DEGREES`). Combined with Rule 2/3's eye-height rotation center, the camera doesn't arc underground when tilting up.
+
+**LB-mode dispatch with negative tilt.** With looking-up enabled, the 30° truck/dolly cutoff needs to be on **absolute angle from horizontal**, not signed tilt — looking up at any angle should fall into truck/pedestal mode (it's never sensible to truck/dolly the world horizontally when the camera is pitched up at the sky). So `_decideLbMode` returns `'pan-pedestal'` when `|tilt| ≤ 30°` and `'pan-truck'` only when `tilt > 30°` (i.e. looking down at >30°). Looking up by any amount = pedestal mode.
 
 **Tilt direction.** Drag-down = tilt-toward-top-down, drag-up = tilt-toward-horizontal. Phase 1's resolved direction; unchanged.
 
@@ -110,7 +114,9 @@ Phase 2 calls `bounds.getBounds()` from `_decideRotationCenter()` (see below). T
 ```js
 _decideLbMode(camera) {
   const tiltDeg = this._cameraTiltDegrees(camera);
-  return tiltDeg <= 30 ? 'pan-pedestal' : 'pan-truck';
+  // Cut on absolute angle from horizontal: looking up by any amount =
+  // pedestal mode. Only "looking down by >30°" gets truck/dolly.
+  return tiltDeg > TRUCK_PEDESTAL_CUTOFF_DEGREES ? 'pan-truck' : 'pan-pedestal';
 }
 ```
 
@@ -127,8 +133,12 @@ _decideRotationCenter(camera) {
   const insideCyl = bounds.bounded
     && Math.hypot(camPos.x - bounds.center.x, camPos.z - bounds.center.z) <= bounds.radius;
   const ruleAB = (!bounds.bounded || insideCyl)
-    ? camPos.clone()                                   // Rule 3
-    : new THREE.Vector3(bounds.center.x, 0, bounds.center.z);  // Rule 2
+    ? camPos.clone()                                                          // Rule 3
+    : new THREE.Vector3(                                                      // Rule 2
+        bounds.center.x,
+        ROTATION_CENTER_EYE_HEIGHT_METRES,
+        bounds.center.z
+      );
 
   if (tiltDeg >= 30) return screenHit;
   if (tiltDeg <= 20) return ruleAB;
@@ -197,17 +207,26 @@ The Shift+LB tilt branch can change tilt across 30°; that's why the recompute h
 ### `constants.js` — adjustments
 
 ```js
-// Phase 2: lower the manual-tilt floor to ~0° so the camera can reach
-// street level. Keep a tiny positive value to avoid lookAt instability
-// at the singularity. Was 30 in Phase 1.
-export const MIN_TILT_DEGREES = 1;
+// Phase 2: tilt floor lowered to allow looking up at buildings. Was 30
+// in Phase 1; -89 keeps `lookAt` numerically stable just shy of straight
+// up, mirroring the +89 floor on the down side.
+export const MIN_TILT_DEGREES = -89;
+export const MAX_TILT_DEGREES = 89;
 
-// Phase 2: 30° hard-cut between truck/dolly and truck/pedestal.
+// Phase 2: 30° hard-cut between truck/dolly (>30° down) and truck/pedestal
+// (everything else). Cut is on absolute angle from horizontal.
 export const TRUCK_PEDESTAL_CUTOFF_DEGREES = 30;
 
 // Phase 2: angular blend zone for rotation-center lerp.
 export const ROTATION_BLEND_LOW_DEGREES = 20;
 export const ROTATION_BLEND_HIGH_DEGREES = 30;
+
+// Phase 2: Rule 2 (diorama-center) rotation-center y-coordinate.
+// Eye-height rather than ground (y=0) so a Shift+LB tilt-up gesture at
+// street level orbits around a point above the ground and the camera
+// doesn't arc underground. Assumes flat ground at y=0; elevated terrain
+// is a known Phase 2 gap.
+export const ROTATION_CENTER_EYE_HEIGHT_METRES = 1.5;
 ```
 
 Nothing else moves in `constants.js`. Phase 1 wheel constants, WASD constants, Plan View duration — all unchanged.
@@ -226,15 +245,17 @@ Flag-off (no `?nav=experimental`) — no `ExperimentalControls` instance exists,
 
 Six cases, plus the angular blend:
 
-| Tilt    | Bounded? | Inside cyl? | Center            |
-|---------|----------|-------------|-------------------|
-| > 30°   | —        | —           | Screen-center hit |
-| 20–30°  | Yes      | No          | lerp(diorama, screen-hit) |
-| 20–30°  | Yes      | Yes         | lerp(camera-pos, screen-hit) |
-| 20–30°  | No       | n/a         | lerp(camera-pos, screen-hit) |
-| ≤ 20°   | Yes      | No          | Diorama center (ground) |
-| ≤ 20°   | Yes      | Yes         | Camera position |
-| ≤ 20°   | No       | n/a         | Camera position |
+"Tilt" here is the angle below horizontal (positive = looking down, negative = looking up). The blend triggers only on the looking-down side; looking-up always falls into the Rule 2/3 branch.
+
+| Tilt           | Bounded? | Inside cyl? | Center            |
+|----------------|----------|-------------|-------------------|
+| > 30°          | —        | —           | Screen-center hit |
+| 20–30°         | Yes      | No          | lerp(diorama @ eye-height, screen-hit) |
+| 20–30°         | Yes      | Yes         | lerp(camera-pos, screen-hit) |
+| 20–30°         | No       | n/a         | lerp(camera-pos, screen-hit) |
+| ≤ 20° (incl. negative) | Yes | No       | Diorama center @ eye-height (1.5m) |
+| ≤ 20° (incl. negative) | Yes | Yes      | Camera position |
+| ≤ 20° (incl. negative) | No  | n/a      | Camera position |
 
 Worth pinning into the code as the comment header on `_decideRotationCenter`.
 
@@ -326,6 +347,7 @@ URL: **http://localhost:3333/?nav=experimental**, against each of the four test 
 - [ ] **R5.** Tilt = 25° (mid-blend): rotation center is between screen-hit and rule-2/3. Smooth, no hunting.
 - [ ] **R6.** Tilt clamp engages near 1° (no flip past horizontal). No jitter.
 - [ ] **R7.** Tilt clamp engages at ~89° (top-down). Same as Phase 1.
+- [ ] **R8.** At street level (camera y ≈ 1.5m), Shift+LB drag-up tilts the camera up toward looking at buildings. Camera does **not** dip underground; arc orbits cleanly around the eye-height rotation center. Tilt clamp engages near −89° (looking nearly straight up).
 
 ### Visual indicator — toolbar restyle
 
@@ -368,26 +390,29 @@ The F-row notes are the load-bearing output of Phase 2.
 
 ### 1. Diorama-center y-coordinate (Rule 2)
 
-- **(a) Ground-clamp.** Center = `(bounds.center.x, 0, bounds.center.z)`. Predictable, doesn't depend on AABB Y.
-- **(b) AABB center.** Center = `bounds.center` directly. Could land mid-air for tall scenes (but our scenes are flat — streets, not skyscrapers).
+Updated post-review (item #7): Rule 2 center y = **eye-height (1.5m)** rather than ground (0m). The eye-height choice prevents the camera arcing underground when the user enables looking-up via the lowered MIN_TILT_DEGREES.
 
-**Recommended: (a)** — keeps the rotation center on the ground plane, which is where users intuit "the scene" lives.
+- **(a) Eye-height (resolved).** Center = `(bounds.center.x, 1.5, bounds.center.z)`. Pairs with `MIN_TILT_DEGREES = -89` to allow looking up at buildings without underground dipping.
+- **(b) Ground-clamp.** Center y=0. Was the initial pick; rejected because it lets the camera arc underground when tilt goes negative.
+- **(c) AABB center y.** Center = `bounds.center` y as derived. Rejected — fragile for elevated geometry.
+
+**Resolved: (a) eye-height (1.5m).** Assumes flat ground at y=0; elevated-terrain scenes (e.g. bounded geo-located scenes, if any) are a known Phase 2 gap. Deferred per inline discussion #4.
 
 ### 2. Mode-flip emission timing for visual indicator
 
-- **(a) On mouseup only.** Simple. Indicator updates after each gesture. May feel laggy if a Shift+LB tilt visibly crosses 30° before release.
-- **(b) On every Shift+LB move.** Cheap (~1 cmp/frame). Indicator updates the moment the tilt crosses the threshold, even mid-drag.
+- **(a) On mouseup only.** Simple. Indicator updates after each gesture. Feels laggy when a Shift+LB tilt visibly crosses 30° before release.
+- **(b) On every Shift+LB move when the computed mode differs from the last-emitted mode.** Cheap (~1 cmp/frame). Indicator updates the moment the tilt crosses the threshold, even mid-drag.
 
-**Recommended: (b)** — better feel for the visual-indicator goal, negligible cost. Implement (a) first, fall back to (b) only if mouseup-only feels laggy.
+**Resolved: (b).** Confirmed during review — (a) feels laggy.
 
 ### 3. Cylinder-boundary feathering
 
 The proposal mentions "weighted blend in the zone around the edge of the scene bounds" between Rule 2 (outside) and Rule 3 (inside).
 
-- **(a) Defer.** Don't implement. Rule 2/3 are sharp transitions but only manifest when the camera is exactly on the cylinder boundary mid-gesture. With latch-at-start, never actually visible.
-- **(b) Implement now.** Width = e.g. 10% of cylinder radius, lerp Rule 2 ↔ Rule 3.
+- **(a) Defer.** Don't implement. Rule 2/3 are sharp transitions but only manifest when the camera is exactly on the cylinder boundary mid-gesture.
+- **(b) Implement now, per-frame.** Width = 10% of cylinder radius, smoothstep Rule 2 ↔ Rule 3 *and* recompute live during the gesture (Rule 2/3 not latched).
 
-**Recommended: (a)**. Latch-at-start hides the discontinuity. If feel-test reveals "the rotation center jumps weirdly when I start a gesture near the edge", revisit. Kept on the open-issues list.
+**Resolved: (b)**, post-review (item #2). The long-thin-street pathology (`SceneBounds` cylinder swallows positions that feel "outside") makes feathering load-bearing rather than nice-to-have, *and* requires that the inside/outside choice not be latched. The Rule-1-vs-Rule-2/3 high-level dispatch *is* still latched (so the user doesn't get truck/dolly mode flipping mid-Shift+LB-drag). Only the inside/outside-cylinder sub-decision is live. Feel-test risk: hunting near the boundary. Fall-back: latch-at-start if hunting bites.
 
 ### 4. WASD direction at low tilt
 
@@ -423,26 +448,38 @@ These came up while writing the plan above. Captured here as a discussion list s
 //!! discussed further, and agreed with agent that:
 //!! "item #1 isn't really "is the plane normal a sensible choice?" — it's "I picked the wrong axis when writing the spec, and the right answer is
 //!! camera-forward-horizontal, not camera-right-horizontal." Once paper-derived, it's an unambiguous fix. I should correct the spec rather than leave the wrong version sitting there for the reviewer to trip over."
+//** Fixed upstream. The LB+drag mechanics section now specifies the plane normal as camera-forward-horizontal (camera -Z projected onto the horizontal plane); the `_lbPedestalMove` architecture section was updated to match.
 
 2. **`SceneBounds` cylinder is probably wrong for long-thin scenes in Rule 2/3 evaluation.** Existing `SceneBounds` uses `max(width, depth) / 2` as the radius. For a 100m × 5m street that's a 50m-radius cylinder, so a camera 10m off the side is *inside* — meaning Rule 3 (rotate-in-place) fires, not Rule 2 (diorama center). The plan's Risks section flags this as "matches proposal intent", but on reflection a user 10m off the side of a 5m-wide street probably doesn't intuit "I am inside the scene". The proposal called the original AABB-radius approach a "long narrow street pathology" and the cylindrical fix doesn't actually escape it — it just moves the pathology from "rotation point 25m down the street" to "rotate-in-place when standing next to the street". Possible answers: (a) use `min(width, depth) / 2` instead, accepting that *both* ends of the street are then "outside"; (b) introduce a separate, smaller "core" radius for the inside/outside test, distinct from the cylinder used for diorama-center positioning; (c) live with it and let feel-test decide. Reviewer's pick?
 //!! Agree this is a potential issue.  When I am 5m outside a long thin street I do feel "outside" the scene.  But if we rotate about the scene center (with latching for rotation center), I will soon be moving quickly horizontally across the street which is the situation we are trying to avoid.  One option might be to not latch the rotation center, so that when the user enters the sceme, rotation switches to user-centered?  Hard to imagin how that would feel - I'd be interested to try (probably with feathering as aleady intended for marginal cases)
+//** Captured. This is a substantive change — it reverses the latch-at-start design for rule-2/3 specifically (Rule 1's screen-center hit can stay latched). It also makes cylinder-edge feathering load-bearing rather than deferred (Open Design Call #3). New approach for Phase 2 feel-test: try (i) latch the *rotation rule* (which of 2/3 applies) but recompute the *center position* live as the camera moves, so when the user enters the cylinder mid-gesture, the rotation point smoothly slides from diorama-center toward camera-position over the feather zone. The angular blend at 20-30° still latches because tilt doesn't change during a Shift+LB gesture without changing the latched mode itself. Will update the Mechanics, Architecture (`_decideRotationCenter` becomes a per-frame call rather than gesture-start), and Truth Table sections accordingly. Flagging as a candidate-to-feel-test rather than a hard spec change so we can revert if the per-frame recompute hunts.
 
 3. **Mode-emission timing — am I picking the right one?** Two options in Open Design Call #2 (mouseup-only vs. every Shift+LB move); I recommended every-move for indicator feel. But the indicator reflects "what the *next* LB drag will do", which during an active Shift+LB tilt drag means toolbars restyle *while the user is tilting*. That's mid-gesture chrome motion in a phase where the user is focused on the camera. Mouseup-only is calmer and the resulting "tilt finishes, then toolbars settle" sequence might actually read better. I'd weakly defend the every-move choice but a reviewer might land the other way.
 //!! Yes, agree (b) - (a) will feel laggy
+//** Locked. Updated Open Design Call #2 to make (b) the resolved choice rather than a recommendation. Mode-emission happens on every Shift+LB move when the computed mode differs from the last-emitted mode.
 
 4. **Diorama-center y-coordinate assumes flat ground.** Open Design Call #1 ground-clamps Rule 2's center to y=0. Fine for streets; possibly wrong for geo-located scenes with terrain. Phase 2's `street-geo` smoke test (S2) is the only non-flat scene in the test set and it's *unbounded*, so Rule 2 doesn't fire — the assumption is never exercised by the test set. Either: expand the test set with a bounded-but-elevated scene, or accept that Phase 2 validates only flat-ground scenes. The proposal doesn't say either way. Probably fine to defer but worth a sentence.
 //!! this is relevant for Shift+LB+up/down, right?  tilt changes when rotation center is in the scene?  I agree this needs to be at groun level, not y=0 level.  But could defer that to a later phase...?
+//** Yes, exactly that case — Shift+LB orbits around the latched rotation center, so if the center y is wrong (sky vs. ground vs. terrain) the tilt arc feels off. Agreed to defer the "ground level ≠ y=0" case to a later phase. Phase 2 keeps the y=0 ground-clamp; will note in Open Design Call #1 that elevated-terrain scenes (geo-located bounded scenes, if any) are a known Phase 2 gap. See item #7 below for the related but distinct change to rotation-center *elevation* (street + 1.5m) for street-view scenarios — that's not about terrain, it's about preventing the camera arcing underground.
 
 ### Smaller — probably don't change the shape
 
 5. **Angular blend zone (20°–30°) is taken straight from the proposal with no calibration.** May need widening, narrowing, or different easing. Smoothstep was chosen as the obvious default; could be linear, cubic, or something else. No principled reason for any specific choice yet.
 //!! Go with your choice and see.
+//** Acknowledged. Sticking with smoothstep over 20–30° as the initial guess; will tune from feel.
 
 6. **`useNavMode` hook plumbing is hand-waved.** The hook needs to locate the active `ExperimentalControls` instance to subscribe to `nav-experimental:modechange`. In flag-off mode there's no instance; in flag-on the hook needs a concrete subscription path. Three plausible options: (a) Zustand slot exposing the controls instance once viewport.js installs it; (b) event bus on `sceneEl` (controls dispatches there, hook subscribes there, no React-side coupling to the instance); (c) singleton module export from `nav-experimental/index.js`. I'd lean (b) since the controls already extend `THREE.EventDispatcher` and `sceneEl` is already a known mounting point, but I haven't checked whether `sceneEl` survives all the camera-swap paths cleanly.
 //!! (b) sounds plausible.  Interested in reviewer's take on this.
+//** Leaving open for reviewer. No upstream change yet — implementation will tentatively use (b) (event bus on `sceneEl`) but we'll defer the lock-in until reviewer weighs in.
 
 7. **`MIN_TILT_DEGREES = 1` is unverified.** Picked for `lookAt` numerical safety without checking whether 0° actually breaks anything in three.js's spherical math. Could be 0; could need to be larger if nearly-horizontal `lookAt` produces visible roll wobble. Easy to tune but worth a reviewer asking "why 1?".
 //!! I think users in a street scene may want to look up at buildings?  On the other hand, we don't want users to be able to rotate themselves underground.  Suggests center of rotation should not be at y=0 or street level, but rather y=1.5 or street level + 1.5?  I think MIN_TILT_DEGREES should possibly by -90?
+//** Strong agree, this is a real insight. Two coupled changes: (i) `MIN_TILT_DEGREES = -90` (or close) so users can pitch up to look at buildings; (ii) Rule 2/3 rotation-center y = ~1.5m (eye level) rather than y=0 (ground), so a Shift+LB tilt-up gesture orbits around a point above the ground and the camera doesn't arc underground. The two changes are linked: without (ii), enabling (i) lets the camera dip below ground when tilting past horizontal; without (i), (ii) is unnecessary. Updating upstream:
+//**   - Tilt clamp: MIN_TILT_DEGREES becomes -89 (slightly less than -90 for `lookAt` numerical safety at the singularity, mirroring the +89 floor on the down side).
+//**   - Rule 2 center: y = 1.5 (eye level), not 0. Rule 3 (camera-position) is unchanged since the camera is already at its own y.
+//**   - Constants: add `ROTATION_CENTER_EYE_HEIGHT_METRES = 1.5`.
+//**   - Smoke test: add an R8 case ("Shift+LB tilt up at street level — no underground dip; camera looks up at buildings cleanly").
+//** Also worth noting: when tilt goes negative (looking up), the `_decideLbMode` 30° cutoff isn't quite right — the LB-mode cut should probably be on |tilt|, or we should treat looking-up the same as low-tilt (truck/pedestal). Initial pick: cut on absolute tilt below 30° from horizontal (so looking-up to any angle = pedestal mode). Add to feel-test.
 
 ### Issues-for-discussion log
 
