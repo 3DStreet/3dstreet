@@ -12,8 +12,18 @@ import {
   ROTATION_BLEND_LOW_DEGREES,
   ROTATION_BLEND_HIGH_DEGREES,
   ROTATION_CENTER_EYE_HEIGHT_METRES,
-  CYLINDER_FEATHER_FRACTION
+  SCENE_FEATHER_METRES
 } from '../../../../src/editor/lib/nav-experimental/constants.js';
+
+// Helper: build a square-ish bounds object centered on the origin.
+function squareBounds(half) {
+  return {
+    bounded: true,
+    center: { x: 0, y: 0, z: 0 },
+    radius: half * Math.SQRT2,
+    aabb: { minX: -half, maxX: half, minZ: -half, maxZ: half }
+  };
+}
 
 if (!globalThis.THREE) globalThis.THREE = THREE;
 
@@ -123,12 +133,8 @@ describe('computeRuleAB', () => {
     expect(v.z).toBe(-2);
   });
 
-  it('returns diorama center @ eye height when far outside the cylinder', () => {
-    const bounds = {
-      bounded: true,
-      center: { x: 0, y: 0, z: 0 },
-      radius: 10
-    };
+  it('returns diorama center @ eye height far outside the AABB', () => {
+    const bounds = squareBounds(10);
     // Camera 50m east — well outside, well past the feather zone.
     const v = computeRuleAB({ x: 50, y: 5, z: 0 }, bounds);
     expect(v.x).toBeCloseTo(0, 5);
@@ -136,13 +142,8 @@ describe('computeRuleAB', () => {
     expect(v.z).toBeCloseTo(0, 5);
   });
 
-  it('returns camera position when fully inside the cylinder', () => {
-    const bounds = {
-      bounded: true,
-      center: { x: 0, y: 0, z: 0 },
-      radius: 100
-    };
-    // Way inside (well past the inner edge of the feather zone).
+  it('returns camera position when fully inside the AABB', () => {
+    const bounds = squareBounds(100);
     const camPos = { x: 5, y: 2, z: 5 };
     const v = computeRuleAB(camPos, bounds);
     expect(v.x).toBeCloseTo(5, 5);
@@ -150,35 +151,55 @@ describe('computeRuleAB', () => {
     expect(v.z).toBeCloseTo(5, 5);
   });
 
-  it('feathers smoothly across the cylinder edge', () => {
-    const bounds = {
-      bounded: true,
-      center: { x: 0, y: 0, z: 0 },
-      radius: 10
-    };
-    const featherWidth = 10 * CYLINDER_FEATHER_FRACTION; // 1m
-    // Inside the cylinder (strictly < r): fully Rule 3 (camera pos).
-    const innerCam = { x: 10 - featherWidth * 0.5, y: 5, z: 0 };
+  it('feathers smoothly outward from the AABB edge', () => {
+    const bounds = squareBounds(10); // 20×20 box centered on origin
+    const fw = SCENE_FEATHER_METRES;
+    // Inside the AABB (strictly < edge): fully Rule 3 (camera pos).
+    const innerCam = { x: 10 - 1, y: 5, z: 0 };
     const inner = computeRuleAB(innerCam, bounds);
     expect(inner.x).toBeCloseTo(innerCam.x, 5);
     expect(inner.y).toBeCloseTo(5, 5);
-    // At the cylinder edge: still fully Rule 3 (feather extends *out*).
+    // Exactly at the AABB edge: still fully Rule 3.
     const edge = computeRuleAB({ x: 10, y: 5, z: 0 }, bounds);
     expect(edge.x).toBeCloseTo(10, 5);
     expect(edge.y).toBeCloseTo(5, 5);
     // Halfway through the feather (just outside): strictly between cam
     // pos and diorama center.
-    const midCam = { x: 10 + featherWidth * 0.5, y: 5, z: 0 };
+    const midCam = { x: 10 + fw * 0.5, y: 5, z: 0 };
     const mid = computeRuleAB(midCam, bounds);
     expect(mid.x).toBeGreaterThan(0);
     expect(mid.x).toBeLessThan(midCam.x);
     expect(mid.y).toBeLessThan(5);
     expect(mid.y).toBeGreaterThan(ROTATION_CENTER_EYE_HEIGHT_METRES);
     // Past the feather (well outside): fully Rule 2 (diorama center).
-    const outerCam = { x: 10 + featherWidth * 1.5, y: 5, z: 0 };
+    const outerCam = { x: 10 + fw * 1.5, y: 5, z: 0 };
     const outer = computeRuleAB(outerCam, bounds);
     expect(outer.x).toBeCloseTo(0, 5);
     expect(outer.y).toBeCloseTo(ROTATION_CENTER_EYE_HEIGHT_METRES, 5);
+  });
+
+  it('treats long-thin scenes by their AABB, not their cylinder', () => {
+    // 100m × 5m street centered on origin: half-extents (50, 2.5).
+    // The legacy cylinder radius would be 50m, so a camera 10m off the
+    // side (x=0, z=12.5) would be deemed "inside" — wrong.
+    const bounds = {
+      bounded: true,
+      center: { x: 0, y: 0, z: 0 },
+      radius: 50,
+      aabb: { minX: -50, maxX: 50, minZ: -2.5, maxZ: 2.5 }
+    };
+    // 10m off the side = well past the feather (5m). Should be full
+    // Rule 2 (diorama center @ eye height), not Rule 3.
+    const v = computeRuleAB({ x: 0, y: 5, z: 12.5 }, bounds);
+    expect(v.x).toBeCloseTo(0, 5);
+    expect(v.y).toBeCloseTo(ROTATION_CENTER_EYE_HEIGHT_METRES, 5);
+    expect(v.z).toBeCloseTo(0, 5);
+    // On the long-axis at z = 0, x = 25 (25m from center, on the
+    // street): inside the AABB → Rule 3.
+    const onStreet = computeRuleAB({ x: 25, y: 1.6, z: 0 }, bounds);
+    expect(onStreet.x).toBeCloseTo(25, 5);
+    expect(onStreet.y).toBeCloseTo(1.6, 5);
+    expect(onStreet.z).toBeCloseTo(0, 5);
   });
 
   // Live-feather behavioural check: as a Shift+LB camera trucks across
@@ -188,42 +209,38 @@ describe('computeRuleAB', () => {
   // across the edge and verify the centre's x-coordinate is monotone
   // non-increasing (Rule 3 inside → Rule 2 outside) and continuous
   // (no jump > 1m between adjacent samples).
-  it('produces a smooth, monotone slide as the camera crosses the edge', () => {
-    const bounds = {
-      bounded: true,
-      center: { x: 0, y: 0, z: 0 },
-      radius: 10
-    };
-    // Walk x from the cylinder edge (10) outward through the feather
-    // and beyond (15) at 0.05m steps. Across this range result.x
-    // starts at the camera position (10) and slides monotonically
-    // toward the diorama center (0). The smoothstep's mid-feather
-    // slope is the steepest part — bound the per-step jump by a
-    // smoothstep-derived constant so the test catches a *broken*
-    // (discontinuous) function but tolerates the legitimate steepness.
-    //   lerp(cam, diorama, smoothstep((dist-r)/fw))
+  it('produces a continuous slide as the camera crosses the edge', () => {
+    const bounds = squareBounds(10); // AABB edge at x = 10
+    const fw = SCENE_FEATHER_METRES;
+    // Walk x from the AABB edge outward through the feather and well
+    // beyond. Endpoints: at the edge result == camera pos (10); past
+    // the feather result == diorama center (0). Across the walk the
+    // per-step jump must stay bounded by a smoothstep-derived constant
+    // — the main thing this catches is a discontinuous (broken)
+    // transition function. Note: result.x is NOT monotone across the
+    // whole walk — just inside the feather the camera-position drift
+    // (linear in x) dominates the smoothstep pull-toward-center, so
+    // result.x can briefly rise above the start before turning down.
+    //   lerp(cam, diorama, smoothstep(dist/fw))
     //   |d/dx| max ≈ |cam-diorama| * 1.5 / fw + 1
-    //   = 10 * 1.5 / 1 + 1 ≈ 16  → bound 16 * stepSize = 0.8m.
     const stepSize = 0.05;
-    const maxJump = ((10 * 1.5) / 1) * stepSize + stepSize + 1e-6;
-    let prev = null;
-    for (let x = 10; x <= 15.0001; x += stepSize) {
+    const maxJump = ((10 * 1.5) / fw) * stepSize + stepSize + 1e-6;
+    const start = computeRuleAB({ x: 10, y: 5, z: 0 }, bounds);
+    expect(start.x).toBeCloseTo(10, 5);
+    let prev = start;
+    for (let x = 10 + stepSize; x <= 10 + fw + 5 + 1e-4; x += stepSize) {
       const v = computeRuleAB({ x, y: 5, z: 0 }, bounds);
-      if (prev) {
-        expect(v.x).toBeLessThanOrEqual(prev.x + 1e-9);
-        expect(Math.abs(v.x - prev.x)).toBeLessThan(maxJump);
-      }
+      expect(Math.abs(v.x - prev.x)).toBeLessThan(maxJump);
       prev = v;
     }
+    // End-state: well past the feather, fully diorama center.
+    expect(prev.x).toBeCloseTo(0, 5);
+    expect(prev.y).toBeCloseTo(ROTATION_CENTER_EYE_HEIGHT_METRES, 5);
   });
 });
 
 describe('latchedRotationCenter', () => {
-  const bounded = {
-    bounded: true,
-    center: { x: 0, y: 0, z: 0 },
-    radius: 10
-  };
+  const bounded = squareBounds(10);
   const unbounded = { bounded: false, center: { x: 0, y: 0, z: 0 }, radius: 0 };
 
   it('above the blend zone, picks Rule 1 (screen hit)', () => {
@@ -238,7 +255,7 @@ describe('latchedRotationCenter', () => {
   });
 
   it('below the blend zone, picks Rule 2/3 (ignores screen hit)', () => {
-    // Tilt 0° (horizontal). Camera outside cylinder -> diorama center.
+    // Tilt 0° (horizontal). Camera well outside AABB -> diorama center.
     const cam = camAt({ x: 50, y: 5, z: 0 }, { x: 0, y: 5, z: 0 });
     const r = latchedRotationCenter(cam, bounded, { x: 999, y: 999, z: 999 });
     expect(r.center.x).toBeCloseTo(0, 5);
@@ -268,10 +285,14 @@ describe('latchedRotationCenter', () => {
     expect(r.center.z).toBeCloseTo(0, 5);
   });
 
-  it('liveRuleAB is true for bounded scenes, false for unbounded', () => {
+  it('returns the latched fields the gesture handler stores', () => {
     const cam = camAt({ x: 0, y: 5, z: 5 }, { x: 0, y: 5, z: 0 });
-    expect(latchedRotationCenter(cam, bounded, null).liveRuleAB).toBe(true);
-    expect(latchedRotationCenter(cam, unbounded, null).liveRuleAB).toBe(false);
+    const r = latchedRotationCenter(cam, bounded, { x: 1, y: 2, z: 3 });
+    expect(r.center).toBeDefined();
+    expect(r.screenHit).toBeDefined();
+    expect(typeof r.blend).toBe('number');
+    // No `liveRuleAB`: center is fully latched at gesture start.
+    expect(r.liveRuleAB).toBeUndefined();
   });
 
   it('mid-blend at +25° produces an intermediate center', () => {

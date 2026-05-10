@@ -9,8 +9,18 @@ import {
   ROTATION_BLEND_LOW_DEGREES,
   ROTATION_BLEND_HIGH_DEGREES,
   ROTATION_CENTER_EYE_HEIGHT_METRES,
-  CYLINDER_FEATHER_FRACTION
+  SCENE_FEATHER_METRES
 } from './constants.js';
+
+// Signed-positive distance from a horizontal point (px, pz) to an
+// axis-aligned scene rectangle. Returns 0 when the point is inside the
+// rectangle, otherwise the Euclidean distance to the nearest edge.
+// Pure helper — exported for testing; not used outside this module.
+export function distanceToAabbXZ(px, pz, aabb) {
+  const dx = Math.max(aabb.minX - px, 0, px - aabb.maxX);
+  const dz = Math.max(aabb.minZ - pz, 0, pz - aabb.maxZ);
+  return Math.hypot(dx, dz);
+}
 
 const RAD2DEG = 180 / Math.PI;
 
@@ -62,49 +72,57 @@ export function tiltBlendWeight(
   return 1 - smoothstep(t);
 }
 
-// Compute the Rule 2/3 rotation-center position with cylinder-edge
-// feathering. Pure: takes the raw camera position and the bounds object
-// returned by `SceneBounds.getBounds()`. Returns a new THREE.Vector3.
+// Compute the Rule 2/3 rotation-center position with scene-edge
+// feathering. Pure: takes the raw camera position and the bounds
+// object returned by `SceneBounds.getBounds()`. Returns a new
+// THREE.Vector3.
 //
-// Rule 2 (outside cylinder, bounded scene): diorama center @ eye height.
-// Rule 3 (inside cylinder, or unbounded scene): camera position.
-// Within ±feather*radius of the cylinder edge: smoothstep lerp between
-// Rule 3 (inside) and Rule 2 (outside).
+// Inside / outside is tested against the scene's *AABB* (the actual
+// horizontal footprint), not the cylinder. A camera 5m off the side of
+// a 5m-wide × 100m street is correctly "outside the scene" — it
+// orbits the diorama center — rather than being deemed "inside" by a
+// 50m-radius cylinder.
+//
+//   Inside the AABB     -> Rule 3: camera position (rotate in place)
+//   Outside, far away   -> Rule 2: diorama center @ eye height
+//   In the feather zone -> smoothstep lerp from Rule 3 to Rule 2 over
+//                          `SCENE_FEATHER_METRES` extending outward
+//                          from the AABB boundary.
+//
+// Unbounded scenes (`bounded === false`) always get Rule 3.
 export function computeRuleAB(camPos, bounds) {
-  if (!bounds || !bounds.bounded) {
+  if (!bounds || !bounds.bounded || !bounds.aabb) {
     return new THREE.Vector3(camPos.x, camPos.y, camPos.z);
   }
-  const cx = bounds.center.x;
-  const cz = bounds.center.z;
-  const r = bounds.radius;
-  const dist = Math.hypot(camPos.x - cx, camPos.z - cz);
-  const featherWidth = Math.max(1e-6, r * CYLINDER_FEATHER_FRACTION);
-  // u = 0 at the cylinder edge (dist = r), u = 1 at (r + featherWidth)
-  // and beyond. Inside the cylinder: clamp to 0 (full Rule 3,
-  // rotate-in-place). Matches the plan prose at
-  // 001-phase-2-plan.md:68 — feather extends *outward* from the edge,
-  // so a camera exactly at the boundary still rotates in place and
-  // only fully-Rule-2 (diorama center) once it's a feather-width
-  // outside. Intuition: "I'm in/at the scene → rotate in place; I'm
-  // well clear of the scene → orbit the diorama".
-  const u = THREE.MathUtils.clamp((dist - r) / featherWidth, 0, 1);
+  const dist = distanceToAabbXZ(camPos.x, camPos.z, bounds.aabb);
+  const featherWidth = Math.max(1e-6, SCENE_FEATHER_METRES);
+  // u = 0 at the AABB boundary, u = 1 at (boundary + featherWidth) and
+  // beyond. Inside the AABB: dist = 0, clamps to 0 → full Rule 3.
+  const u = THREE.MathUtils.clamp(dist / featherWidth, 0, 1);
   const w = smoothstep(u); // 0 inside-or-at-edge (Rule 3), 1 outside (Rule 2)
   const cam = new THREE.Vector3(camPos.x, camPos.y, camPos.z);
   const dioramaCenter = new THREE.Vector3(
-    cx,
+    bounds.center.x,
     ROTATION_CENTER_EYE_HEIGHT_METRES,
-    cz
+    bounds.center.z
   );
   return new THREE.Vector3().lerpVectors(cam, dioramaCenter, w);
 }
 
 // Combined latch-time computation. Returns the fields that should be
 // stored on the GestureLatch:
-//   { center, screenHit, blend, liveRuleAB }
+//   { center, screenHit, blend }
 // `screenHitOrNull` is the world-space screen-center raycast hit, or
 // null if there was no scene/ground hit (sky raycast miss). When null,
 // the rotation center collapses to `ruleAB` regardless of blend weight
 // (per A3).
+//
+// The center is fully latched once computed — no per-move recompute.
+// An earlier revision returned a `liveRuleAB` flag intended for
+// per-move re-evaluation of Rule 2 ↔ Rule 3, but during a Shift+LB
+// rotate the camera position only changes via the orbit math, and
+// feeding that back into the center produced visible judder near the
+// AABB edge. See ExperimentalControls._latchRotationCenter.
 export function latchedRotationCenter(camera, bounds, screenHitOrNull) {
   const tiltDeg = cameraTiltDegrees(camera);
   const blend = tiltBlendWeight(tiltDeg);
@@ -124,9 +142,6 @@ export function latchedRotationCenter(camera, bounds, screenHitOrNull) {
   return {
     center,
     screenHit: effectiveScreenHit,
-    blend,
-    // Rule 3 == camera position when the scene is unbounded; the live
-    // recompute is a no-op in that case so short-circuit it.
-    liveRuleAB: !!(bounds && bounds.bounded)
+    blend
   };
 }

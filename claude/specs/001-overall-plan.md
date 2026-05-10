@@ -43,7 +43,7 @@ This is enough to answer the biggest single question: does the new control schem
 
 - Remove the 30° tilt clamp
 - 30° hard-cut between truck/dolly and truck/pedestal, latched at gesture start, with a visual indicator
-- Cylindrical bounds derivation, cached
+- Bounds derivation (AABB-based for inside/outside test, cylinder-based for Plan View framing), cached
 - Three-rule rotation center (camera view / diorama center / camera position), latched at gesture start, with the smooth blend in the 20°–30° band
 
 This is where the bounds-based design either feels good or doesn't. High-information phase.

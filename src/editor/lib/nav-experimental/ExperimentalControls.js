@@ -48,7 +48,6 @@ import {
 import {
   cameraTiltDegrees,
   decideLbMode,
-  computeRuleAB,
   latchedRotationCenter
 } from './navMath.js';
 
@@ -639,7 +638,6 @@ export class ExperimentalControls extends THREE.EventDispatcher {
         this._lbTruckMove(event.clientX, event.clientY);
       }
     } else if (mode === 'rotate') {
-      this._updateLiveRuleAB(this._camera);
       this._shiftRotate(dx, dy);
       // Per Open Design Call #2: emit LB-mode change the moment the
       // tilt crosses the 30° boundary mid-gesture, not at gesture end.
@@ -991,9 +989,19 @@ export class ExperimentalControls extends THREE.EventDispatcher {
   //   20–30° down (blend zone)     -> lerp(screen-hit, ruleAB) by tilt.
   //   ≤20° down through any up     -> Rule 2/3 (ruleAB), no Rule 1 blend.
   //
-  // ruleAB = Rule 2 (diorama center @ eye height) outside cylinder,
-  //          Rule 3 (camera position) inside, smoothstepped across the
-  //          ±10%-of-radius feather zone — recomputed live.
+  // ruleAB = Rule 2 (diorama center @ eye height) outside the scene
+  //          AABB, Rule 3 (camera position) inside, smoothstepped over
+  //          a SCENE_FEATHER_METRES feather extending outward from the
+  //          AABB edge.
+  //
+  // Computed once at gesture start and held for the duration of the
+  // drag. An earlier revision live-recomputed `ruleAB` per move so the
+  // rotation center could slide as the camera crossed the AABB edge
+  // mid-gesture, but during a Shift+LB rotate the camera *only* moves
+  // because of the orbit math — feeding that back into the center
+  // produced visible judder near the boundary. Latching breaks the
+  // feedback. The next Shift+LB-down re-evaluates the camera state and
+  // picks a fresh center.
   _latchRotationCenter(camera) {
     // Per A3 (deferred-raycast): if the tilt is at or below the blend
     // zone, the screen-center hit would be discarded by `blend === 1`
@@ -1008,25 +1016,8 @@ export class ExperimentalControls extends THREE.EventDispatcher {
       mode: 'rotate',
       center: latch.center,
       screenHit: latch.screenHit,
-      blend: latch.blend,
-      liveRuleAB: latch.liveRuleAB
+      blend: latch.blend
     });
-  }
-
-  // Per-move recompute of `ruleAB` for cylinder-edge feathering. Mutates
-  // the latched `center` in-place so `_shiftRotate` reads it transparently.
-  // No-op when the scene is unbounded (Rule 3 == camera position is
-  // already invariant in the camera's reference frame).
-  _updateLiveRuleAB(camera) {
-    if (!this._latch.isActive()) return;
-    if (!this._latch.get('liveRuleAB')) return;
-    const bounds = this._bounds.getBounds();
-    const ruleAB = computeRuleAB(camera.position, bounds);
-    const blend = this._latch.get('blend');
-    const screenHit = this._latch.get('screenHit');
-    const center = this._latch.get('center');
-    if (!center || !screenHit) return;
-    center.lerpVectors(screenHit, ruleAB, blend);
   }
 
   // Screen-center scene/ground raycast. Returns a Vector3 or null on

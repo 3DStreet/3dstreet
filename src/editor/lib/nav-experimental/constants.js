@@ -26,13 +26,16 @@ export const ROTATION_BLEND_HIGH_DEGREES = 30;
 // scales (drone/satellite) would need a scene-aware override.
 export const ROTATION_CENTER_EYE_HEIGHT_METRES = 1.5;
 
-// Phase 2: cylinder-edge feathering width as a fraction of cylinder
-// radius. Smoothstep from Rule 3 (inside, rotate-in-place) to Rule 2
-// (outside, diorama center) over `radius ± fraction*radius`. Always
-// active when the scene is bounded — no activation threshold (avoids
-// "near-identical gestures behave differently" discontinuity; per-frame
-// cost is one Pythagoras + smoothstep).
-export const CYLINDER_FEATHER_FRACTION = 0.1;
+// Phase 2: scene-edge feathering width in metres. Smoothstep from Rule
+// 3 (inside the scene AABB, rotate-in-place) to Rule 2 (outside,
+// diorama center) over a feather zone extending outward from the AABB
+// boundary by this many metres. Constant in absolute units (rather
+// than a fraction of scene size) because the user-perceived "I am
+// outside the scene" distance is human-scale, not scene-scale —
+// dropping it to ~0.5m on a 5m-wide street feels jumpy, scaling it up
+// to 10m on a city scene feels mushy. 5m is the initial pick; tune
+// from feel.
+export const SCENE_FEATHER_METRES = 5;
 
 // Wheel zoom: each "wheel-tick of budget" moves the camera by this fraction
 // of the current camera-to-anchor distance. Sign is applied by the caller.

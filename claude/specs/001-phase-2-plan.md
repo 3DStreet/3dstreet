@@ -15,7 +15,7 @@ Phase 2 of the navigation prototype work (see `001-overall-plan.md`). Promotes `
 ## Non-goals
 
 - No swoop transition. Wheel zoom stays as Phase 1 (cursor-anchored, tilt-preserving).
-- ~~No cylinder-boundary feathering yet.~~ **Updated post-review:** feathering *is* in scope (per inline discussion #2) — the long-thin-street pathology makes it load-bearing. Implemented as a per-frame Rule 2 ↔ Rule 3 lerp over a 10%-of-radius feather zone. See Open Design Call #3.
+- ~~No cylinder-boundary feathering yet.~~ **Updated post-review:** feathering *is* in scope (per inline discussion #2) — the long-thin-street pathology makes it load-bearing. ~~Implemented as a per-frame Rule 2 ↔ Rule 3 lerp over a 10%-of-radius feather zone.~~ **Updated post-implementation (2026-05-09):** the inside/outside test moved off the cylinder onto the scene AABB, and the feather is a fixed 5m extending outward from the AABB boundary. The cylinder is still computed (Plan View framing needs a single radius) but is no longer load-bearing for rotation-center selection. See Open Design Call #3 for the trail.
 - No FPS mode, no double-click changes.
 - No new top-level compass button (still tracked as `issues-for-discussion.md` #5).
 - No touch / WebXR / ortho work.
@@ -58,14 +58,14 @@ The mode is decided at gesture start from the camera's tilt angle, latched, and 
 At gesture start, choose the rotation center:
 
 - **Rule 1 (>30° tilt):** screen-center raycast hit. Identical to Phase 1's existing `_shiftRotate` center.
-- **Rule 2 (tilt ≤ 30° including negative, scene bounded, camera outside cylinder):** scene bounds center at **eye-height** (`{bounds.center.x, ROTATION_CENTER_EYE_HEIGHT_METRES, bounds.center.z}`, default 1.5m). Eye-height (rather than y=0 ground) prevents the camera arcing underground when the user tilts up to look at buildings. Assumes flat ground at y=0; elevated-terrain scenes are a known Phase 2 gap (see Open Design Call #1).
-- **Rule 3 (tilt ≤ 30° including negative, scene unbounded OR camera inside cylinder):** the camera position itself ("Street View"-style: rotate in place).
+- **Rule 2 (tilt ≤ 30° including negative, scene bounded, camera outside scene AABB):** scene bounds center at **eye-height** (`{bounds.center.x, ROTATION_CENTER_EYE_HEIGHT_METRES, bounds.center.z}`, default 1.5m). Eye-height (rather than y=0 ground) prevents the camera arcing underground when the user tilts up to look at buildings. Assumes flat ground at y=0; elevated-terrain scenes are a known Phase 2 gap (see Open Design Call #1).
+- **Rule 3 (tilt ≤ 30° including negative, scene unbounded OR camera inside scene AABB):** the camera position itself ("Street View"-style: rotate in place).
 
-"Inside the cylinder" means `((cam.x - center.x)² + (cam.z - center.z)²) ≤ radius²`. Y is ignored — bounds are cylindrical.
+"Inside the AABB" is tested against the scene's actual horizontal footprint: `(cam.x ∈ [aabb.minX, aabb.maxX]) ∧ (cam.z ∈ [aabb.minZ, aabb.maxZ])`. The cylinder version of this test (used in the original spec — `((cam.x - center.x)² + (cam.z - center.z)²) ≤ radius²`) was abandoned during implementation: a 50m-radius cylinder for a 100m × 5m street made a camera 10m off the side "inside" by cylinder reckoning when intuitively it's clearly outside. The cylinder is still computed and exposed on `bounds.{center, radius}` for the Plan View tween's framing math; rotation-center selection now reads `bounds.aabb` instead.
 
 **Angular blend (20–30°).** When the camera tilt at gesture start is between 20° and 30°, the latched rotation center is a **weighted lerp** between Rule 1's screen-center hit and the rule-2-or-3 center. Weight = `smoothstep(20°, 30°, tilt)` (so 20° → fully rule-2/3, 30° → fully rule-1). One smoothstep, latched once at gesture start. The blend is computed in world-space coordinates, not in tilt-angle space — once latched, the center is a fixed `Vector3` and the rotation math doesn't need to know the blend exists.
 
-**Cylinder-edge feathering — provisionally per-frame, not latched.** Per inline discussion #2, the inside/outside-cylinder choice (Rule 2 ↔ Rule 3) is *not* fully latched at gesture start. Instead: latch which *high-level rule* applies (Rule 1 vs. Rule 2/3 group) but recompute Rule 2 ↔ Rule 3 live on each move. When the camera crosses the cylinder edge mid-gesture, the rotation center smoothly slides from diorama-center toward camera-position over a feather zone (default ±10% of cylinder radius), via a smoothstep on `(distance_to_axis − radius) / featherWidth`. This addresses the long-thin-street pathology where a camera 5m off the side of a 5m × 100m street is technically "inside" the cylinder but feels "outside" — as the user trucks closer to the street, the rotation point smoothly transitions from "scene center far down the road" to "rotate in place". Trade-off: per-frame `_decideRotationCenter` cost (~one Pythagoras + smoothstep, negligible) and a risk of hunting if the camera oscillates near the boundary. Counted as a Phase 2 feel-test risk; if it hunts, fall back to fully-latched.
+**Scene-edge feathering — applied at gesture start; rotation center then fully latched.** The feather still applies, but only at latch time: at Shift+LB-down the camera's current position determines a feather-blended center that's held for the gesture. The earlier "live-recompute Rule 2 ↔ Rule 3 on each move" design was reverted post-implementation because it produced visible judder during a rotate gesture near the AABB edge — the camera position changes only because of the orbit math, and feeding that back into the center created a feedback loop. Latching breaks the feedback. Concretely, the feather smoothstep on `distanceToAabb(cam.x, cam.z) / SCENE_FEATHER_METRES` is evaluated once per gesture; the result is mixed with `screenHit` by the tilt-blend weight; and the resulting Vector3 is stored on the GestureLatch as `center` and read by `_shiftRotate` for the duration of the drag. Inside the AABB at gesture start: rotate-in-place. One feather-width outside at gesture start: orbit the diorama. In between: orbit a fixed point partway between camera and diorama. The next Shift+LB-down re-evaluates the live camera state and picks a fresh center, so a user who has moved their camera since the last rotate gets the appropriate behavior. Trade-off vs. the live design: a long Shift+LB rotation that geometrically takes the orbit across the AABB edge will continue orbiting the latched point, even when the camera is now "in" the scene — judged acceptable since the user can release Shift+LB and re-engage to switch modes. The original cylinder-version with a 10%-of-radius feather is documented in Open Design Call #3.
 
 **Tilt clamp expanded.** With Phase 2 the user can drive the camera down to street level *and* tilt up to look at buildings. Implementation: change `MIN_TILT_DEGREES` from +30° to **−89°** (keeps `lookAt` numerically stable just shy of straight-up, mirroring the +89° floor on the down side via `MAX_TILT_DEGREES`). Combined with Rule 2/3's eye-height rotation center, the camera doesn't arc underground when tilting up.
 
@@ -103,9 +103,9 @@ One micro-tweak: with the tilt clamp lowered, the user can now reach near-straig
 
 ## Architecture additions
 
-### `sceneBounds.js` — new consumer, no API change
+### `sceneBounds.js` — new consumer, additive shape change
 
-Phase 2 calls `bounds.getBounds()` from `_decideRotationCenter()` (see below). The cache invalidation semantics are unchanged — `getBounds()` returns the cached cylinder, recomputing only after an invalidating event.
+Phase 2 calls `bounds.getBounds()` from `_decideRotationCenter()` (see below). The cache invalidation semantics are unchanged — `getBounds()` returns the cached bounds object, recomputing only after an invalidating event. The bounds object now exposes both representations: `aabb: {minX, maxX, minZ, maxZ}` (read by Phase 2's rotation-center inside/outside test) and `center` + `radius` (kept for the Plan View tween's framing math, unchanged from Phase 1). Adding `aabb` is the only API change.
 
 ### `ExperimentalControls.js` — three new internals
 
@@ -122,9 +122,9 @@ _decideLbMode(camera) {
 
 Where `_cameraTiltDegrees` returns the angle of the camera's view direction below horizontal (so 0° = horizontal, 90° = straight down). Phase 2 introduces this helper; Phase 3 reuses it.
 
-#### Rotation-center pipeline — split into latch-time and live-time
+#### Rotation-center pipeline — fully latched at gesture start
 
-The rotation center is computed in two phases. Latch-time (at Shift+LB-down) snapshots the high-level rule (Rule 1 vs Rule 2/3-group) plus tilt-blend weight; live-time (per `_shiftRotate` call) optionally recomputes `ruleAB` for the cylinder-edge feather. The `_shiftRotate` math reads only `this._latch.get('center')` and has no knowledge of which path produced it.
+The rotation center is computed once at gesture start. Latch-time (at Shift+LB-down) snapshots the high-level rule (Rule 1 vs Rule 2/3-group), the screen-center hit (or null), the tilt-blend weight, and the AABB-edge feather-blended Vector3. The `_shiftRotate` math reads only `this._latch.get('center')` for the duration of the drag. (An earlier revision split this into latch-time + live-time, recomputing the feather per move; that produced rotation-judder near the AABB edge and was reverted.)
 
 **At Shift+LB-down (`_latchRotationCenter`):**
 
@@ -135,14 +135,7 @@ _latchRotationCenter(camera) {
     ? this._screenCenterHit()        // null if no scene/ground hit
     : null;                          // not needed for ≤20° branch
 
-  // Resolve ruleAB lazily — only the bounded/unbounded check is needed
-  // unconditionally, because Rule 3 (camera-pos) is the always-live floor.
   const ruleAB = this._computeRuleAB(camera);
-  // Always-live feather (per A4): per-frame `_updateLiveRuleAB` runs on
-  // every Shift+LB move when the scene is bounded. Cheap (~one Pythagoras
-  // + smoothstep) and avoids the discontinuity an activation-threshold
-  // would create.
-  const liveRuleAB = this._bounds.getBounds().bounded;
 
   // Tilt-blend weight (latched).
   let blend = 1;                     // 1 = fully ruleAB, 0 = fully screenHit
@@ -163,59 +156,51 @@ _latchRotationCenter(camera) {
 
   this._latch.start({
     mode: 'rotate',
-    center,                          // live-mutated by _updateLiveRuleAB
-    screenHit: effectiveScreenHit,   // latched
-    blend,                           // latched
-    liveRuleAB,                      // flag
+    center,
+    screenHit: effectiveScreenHit,
+    blend
   });
 }
 ```
 
-**On each Shift+LB move (`_updateLiveRuleAB`, called from `_onMouseMove` before `_shiftRotate`):**
+(There is no per-move recompute method. An earlier revision had `_updateLiveRuleAB` re-evaluating `ruleAB` from the live camera position on each Shift+LB move; reverted post-implementation because the camera-position change is itself the orbit-math output, and feeding it back into the center produced visible judder near the AABB edge.)
+
+**Helper (`_computeRuleAB`)** — handles both the inside/outside test and the feathered transition. Implementation lives in `navMath.js` as a pure function; the controls method is a thin wrapper. (The original pseudocode used the cylinder; revised post-implementation to AABB per item #2.)
 
 ```js
-_updateLiveRuleAB(camera) {
-  if (!this._latch.get('liveRuleAB')) return;
-  const ruleAB = this._computeRuleAB(camera);   // re-evaluates inside/outside
-  const blend = this._latch.get('blend');
-  const screenHit = this._latch.get('screenHit');
-  this._latch.get('center').lerpVectors(screenHit, ruleAB, blend);
+// signed-positive distance from a horizontal point to the scene rectangle.
+function distanceToAabbXZ(px, pz, aabb) {
+  const dx = Math.max(aabb.minX - px, 0, px - aabb.maxX);
+  const dz = Math.max(aabb.minZ - pz, 0, pz - aabb.maxZ);
+  return Math.hypot(dx, dz);
 }
-```
 
-**Helper (`_computeRuleAB`)** — handles both the inside/outside test and the feathered transition:
-
-```js
-_computeRuleAB(camera) {
-  const bounds = this._bounds.getBounds();
-  const camPos = camera.position;
-  if (!bounds.bounded) {
-    // No cylinder — Rule 3 always (per A5).
-    return camPos.clone();
+function computeRuleAB(camPos, bounds) {
+  if (!bounds || !bounds.bounded || !bounds.aabb) {
+    // Unbounded scene — Rule 3 always (per A5).
+    return new THREE.Vector3(camPos.x, camPos.y, camPos.z);
   }
-  const dist = Math.hypot(
-    camPos.x - bounds.center.x, camPos.z - bounds.center.z
-  );
-  const r = bounds.radius;
-  const featherWidth = r * CYLINDER_FEATHER_FRACTION;   // 0.10 default
-  // smoothstep from inside (Rule 3) to outside (Rule 2) over the feather.
-  const u = THREE.MathUtils.clamp((dist - (r - featherWidth)) /
-                                  featherWidth, 0, 1);
+  const dist = distanceToAabbXZ(camPos.x, camPos.z, bounds.aabb);
+  const fw = SCENE_FEATHER_METRES;                      // 5m default
+  // smoothstep from inside-or-at-edge (Rule 3) to outside (Rule 2)
+  // over the feather, which extends *outward* from the AABB edge.
+  const u = THREE.MathUtils.clamp(dist / fw, 0, 1);
   const w = u * u * (3 - 2 * u);                        // 0 inside, 1 outside
   const dioramaCenter = new THREE.Vector3(
     bounds.center.x, ROTATION_CENTER_EYE_HEIGHT_METRES, bounds.center.z
   );
-  return new THREE.Vector3().lerpVectors(camPos, dioramaCenter, w);
+  const cam = new THREE.Vector3(camPos.x, camPos.y, camPos.z);
+  return new THREE.Vector3().lerpVectors(cam, dioramaCenter, w);
 }
 ```
 
 **Latching contract (post-review):**
 
-- **Latched** at gesture start: high-level rule (Rule 1 vs Rule 2/3-group via `tiltDeg > 30`), `screenHit` (with null fallback to `ruleAB`), tilt-blend weight `blend`, `liveRuleAB` flag.
-- **Live** during the gesture: the inside/outside-cylinder feathered position via `_computeRuleAB`, only when `liveRuleAB === true` (i.e. scene is bounded). Unbounded scenes short-circuit to Rule 3 / camera-position and don't recompute, since `ruleAB === camPos` is constant in the camera's reference frame.
+- **Latched** at gesture start: high-level rule (Rule 1 vs Rule 2/3-group via `tiltDeg > 30`), `screenHit` (with null fallback to `ruleAB`), tilt-blend weight `blend`, the AABB-edge feather-blended ruleAB position, and the final composed `center`.
+- **Live** during the gesture: nothing. The center, screenHit, and blend are all latched once and read for every move event. (An earlier revision recomputed the inside/outside-AABB feather position per frame; reverted post-implementation because it caused juddering during rotation near the AABB edge — the camera position changes only because of the orbit math, and feeding that back into the center created a feedback loop.)
 - **`_shiftRotate`** reads `this._latch.get('center')` — opaque to it whether the value was set once or per-frame.
 
-**`CYLINDER_FEATHER_FRACTION`** is a new constant (default 0.10 = ±10% of cylinder radius). Lives in `constants.js`; see below.
+**`SCENE_FEATHER_METRES`** is a new constant (default 5m, extending outward from the AABB edge). Lives in `constants.js`; see below. (Was originally `CYLINDER_FEATHER_FRACTION = 0.10` in the spec — replaced post-implementation; see Open Design Call #3 for the trail.)
 
 #### `_lbPedestalMove(clientX, clientY)` — new branch alongside `_lbTruckMove`
 
@@ -301,13 +286,17 @@ export const ROTATION_BLEND_HIGH_DEGREES = 30;
 // be wrong; revisit when such scenes enter scope.
 export const ROTATION_CENTER_EYE_HEIGHT_METRES = 1.5;
 
-// Phase 2: cylinder-edge feathering width as a fraction of cylinder
-// radius. Smoothstep from Rule 3 (inside, rotate-in-place) to Rule 2
-// (outside, diorama center) over `radius ± fraction*radius`. Always
-// active when the scene is bounded (per A4 — no activation threshold;
-// the per-frame cost is negligible and constant feathering removes the
-// "near-identical gestures behave differently" discontinuity).
-export const CYLINDER_FEATHER_FRACTION = 0.10;
+// Phase 2: scene-edge feathering width in metres. Smoothstep from
+// Rule 3 (inside the scene AABB, rotate-in-place) to Rule 2 (outside,
+// diorama center) over a feather zone extending outward from the AABB
+// boundary. Always active when the scene is bounded (per A4 — no
+// activation threshold; the per-frame cost is negligible and constant
+// feathering removes the "near-identical gestures behave differently"
+// discontinuity). Constant in absolute units rather than a fraction of
+// scene size — the user-perceived "I am outside the scene" distance
+// is human-scale, not scene-scale (item #2 in inline discussion;
+// finalised post-implementation).
+export const SCENE_FEATHER_METRES = 5;
 ```
 
 Nothing else moves in `constants.js`. Phase 1 wheel constants, WASD constants, Plan View duration — all unchanged.
@@ -328,20 +317,20 @@ Six cases, plus the angular blend:
 
 "Tilt" here is the angle below horizontal (positive = looking down, negative = looking up). The blend triggers only on the looking-down side; looking-up always falls into the Rule 2/3 branch.
 
-| Tilt          | Bounded? | Inside cyl? | Center            |
-|---------------|----------|-------------|-------------------|
-| > 30°         | —        | —           | Screen-center hit (Rule 1; falls back to ruleAB if null) |
-| 20–30°        | Yes      | No          | lerp(diorama @ eye-height, screen-hit) — feathered live |
-| 20–30°        | Yes      | Yes         | lerp(camera-pos, screen-hit) — feathered live |
-| 20–30°        | No       | n/a         | lerp(camera-pos, screen-hit) — Rule 3, no feathering needed |
-| 0–20°         | Yes      | No          | Diorama center @ eye-height (1.5m) — feathered live |
-| 0–20°         | Yes      | Yes         | Camera position — feathered live |
-| 0–20°         | No       | n/a         | Camera position |
-| < 0° (looking up) | Yes      | No          | Diorama center @ eye-height — feathered live |
-| < 0° (looking up) | Yes      | Yes         | Camera position — feathered live |
-| < 0° (looking up) | No       | n/a         | Camera position |
+| Tilt          | Bounded? | Inside AABB? | Center            |
+|---------------|----------|--------------|-------------------|
+| > 30°         | —        | —            | Screen-center hit (Rule 1; falls back to ruleAB if null) |
+| 20–30°        | Yes      | No           | lerp(diorama @ eye-height, screen-hit) — feathered live |
+| 20–30°        | Yes      | Yes          | lerp(camera-pos, screen-hit) — feathered live |
+| 20–30°        | No       | n/a          | lerp(camera-pos, screen-hit) — Rule 3, no feathering needed |
+| 0–20°         | Yes      | No           | Diorama center @ eye-height (1.5m) — feathered live |
+| 0–20°         | Yes      | Yes          | Camera position — feathered live |
+| 0–20°         | No       | n/a          | Camera position |
+| < 0° (looking up) | Yes      | No           | Diorama center @ eye-height — feathered live |
+| < 0° (looking up) | Yes      | Yes          | Camera position — feathered live |
+| < 0° (looking up) | No       | n/a          | Camera position |
 
-"Tilt" is angle below horizontal; positive = looking down, negative = looking up. The Rule-1-vs-Rule-2/3-group split is always at +30° down — looking up is always Rule 2/3. "Feathered live" means `_computeRuleAB` runs each Shift+LB move (per A4 always-on rule), smoothstepping between Rule 2 and Rule 3 across the cylinder edge.
+"Tilt" is angle below horizontal; positive = looking down, negative = looking up. The Rule-1-vs-Rule-2/3-group split is always at +30° down — looking up is always Rule 2/3. "Feathered live" means `_computeRuleAB` runs each Shift+LB move (per A4 always-on rule), smoothstepping between Rule 2 and Rule 3 across the AABB edge — feather extends outward from the AABB by `SCENE_FEATHER_METRES`.
 
 Worth pinning into the code as the comment header on `_decideRotationCenter`.
 
@@ -381,7 +370,7 @@ Total: ~7–8 sittings. The math-heavy items (pedestal vertical-plane anchor, ro
 
 - **Rotation-center hunting near the cylinder boundary.** Per Open Design Call #3, Rule 2 ↔ Rule 3 is feathered per-frame on every Shift+LB move (always-live, per A4). If the camera oscillates across the boundary during a drag, the rotation point hunts. Mitigation: 10%-of-radius feather zone + smoothstep should damp small oscillations. **Concrete fall-back trigger (per A15):** during smoke R5/F4 with the camera held still by the user near the boundary, if the rotation-center position visibly drifts more than ~5cm/frame (~3m/s at 60Hz), latch fully. Same trigger if the camera, during a held Shift+LB tilt with no LB pan input, produces visible center-of-rotation oscillation. Otherwise the always-live design ships. The Rule-1-vs-Rule-2/3 high-level dispatch *is* still latched, so this risk only manifests within the Rule-2/3 family.
 
-- **`SceneBounds` correctness on real scenes.** Phase 1 only tested the basic-street default scene. Phase 2 puts `getBounds()` on a hot-ish path. Smoke item #9 is the validation — if Streetmix imports give garbage bounds, rotation centers will be garbage. Plan to debug-render the cylinder during the real-scene smoke pass (transient `<a-entity>` overlay, removed after testing).
+- **`SceneBounds` correctness on real scenes.** Phase 1 only tested the basic-street default scene. Phase 2 puts `getBounds()` on a hot-ish path. Smoke item #9 is the validation — if Streetmix imports give garbage bounds, rotation centers will be garbage. Plan to debug-render the AABB rectangle (and optionally the cylinder) during the real-scene smoke pass (transient `<a-entity>` overlay, removed after testing).
 
 - **Toolbar restyle is distracting, not informative.** Already flagged in the skeleton. The CSS transition over 200ms is meant to make the change feel deliberate; if it instead looks like a glitch, the lower-effort fallbacks from the overall plan (cursor-shape change, accent-color overlay, mode badge) are next options. Plan a feel-test exit criterion: "after 30 seconds of use, do I need to look at the toolbars to know what mode I'm in?" — answer should be "no".
 
@@ -391,7 +380,7 @@ Total: ~7–8 sittings. The math-heavy items (pedestal vertical-plane anchor, ro
 
 - **Mode-emission cadence.** Resolved as (b) — emit on every Shift+LB move when the computed mode differs from the last-emitted mode (Open Design Call #2). Edge case: rapid tilt across the 30° boundary and back within a single frame (could happen with large mouse-move deltas or trackpad bursts) — the comparator catches it but the toolbar restyle may flicker. Mitigation if observed: debounce the *style* application by 50–100ms while keeping the mode-change event uncoalesced.
 
-- **Bounds cylinder for "long thin" scenes.** `SceneBounds` uses the larger horizontal half-extent as the radius (per the proposal's pathology mitigation). For a 100m × 5m street, that's a 50m-radius cylinder — a camera 10m off the side is *inside*, so Rule 3 applies, even though it intuitively feels "outside the scene". The cylinder-edge feathering (per inline discussion #2) plus the per-frame Rule 2 ↔ Rule 3 recompute partially mitigates: as the user trucks across the boundary the rotation point slides smoothly. But the *width* of the cylinder is still wrong — feathering only smooths the edge, doesn't move it. Could revisit with a smaller "core radius" or oriented cylinder if feel-test still feels off. Logged as a feel-test risk.
+- ~~**Bounds cylinder for "long thin" scenes.**~~ **Resolved post-implementation (2026-05-09):** the inside/outside test is now AABB-based, not cylinder-based, so a camera 10m off the side of a 100m × 5m street is correctly outside the scene and orbits the diorama. The cylinder is still computed (Plan View framing reads its radius) but no longer participates in rotation-center selection. The remaining risk in this neighbourhood is the choice of `SCENE_FEATHER_METRES = 5` — too narrow makes the transition feel jumpy on small scenes, too wide makes it mushy on city-scale scenes. Initial pick to evaluate in feel-test F4.
 
 ## Exit criteria
 
@@ -440,8 +429,8 @@ In a multi-PR rollout, mark prerequisite-blocked items as N/A in the interim rat
 ### Shift+LB — rotation center rules
 
 - [ ] **R1.** Tilt > 30°: rotation center = screen-center hit (Phase 1 behavior preserved).
-- [ ] **R2.** Tilt ≤ 20° (incl. looking up), scene bounded, camera outside cylinder: rotation center = scene-center at eye-height (1.5m). View orbits around the diorama.
-- [ ] **R3.** Tilt ≤ 20° (incl. looking up), scene bounded, camera inside cylinder: rotation center = camera position. Street-View-like in-place pan.
+- [ ] **R2.** Tilt ≤ 20° (incl. looking up), scene bounded, camera outside scene AABB (more than `SCENE_FEATHER_METRES` past the edge): rotation center = scene-center at eye-height (1.5m). View orbits around the diorama.
+- [ ] **R3.** Tilt ≤ 20° (incl. looking up), scene bounded, camera inside scene AABB: rotation center = camera position. Street-View-like in-place pan.
 - [ ] **R4.** Tilt ≤ 20° (incl. looking up), scene unbounded (`street-geo` scene): rotation center = camera position regardless of position.
 - [ ] **R5.** Tilt = +25° (mid-blend, looking down): rotation center is between screen-hit and rule-2/3. Smooth, no hunting.
 - [ ] **R5b.** Tilt = −25° (looking up): rotation center is **not** in the blend zone — it's pure ruleAB (per the truth table, looking-up always falls into Rule 2/3 with no Rule-1 blend). Verify the blend code path is gated correctly.
@@ -479,7 +468,7 @@ For each, write a one-line feel note:
 - [ ] **F1.** 30° hard-cut on LB+drag (down side; and the looking-up branch) — does mode-flipping at gesture start feel acceptable, or jarring?
 - [ ] **F2.** Rotation-center diorama mode — does Rule 2 feel like "the world rotates around the scene", or weird?
 - [ ] **F3.** Rotation-center in-place mode — does Rule 3 feel like Street View, or disorienting?
-- [ ] **F4.** Angular blend (20–30°) — smooth, or does it hunt/spiral?
+- [ ] **F4.** Angular blend (20–30°) — smooth, or does it hunt/spiral? Does the AABB-edge feather (`SCENE_FEATHER_METRES = 5`) feel right at street scale and city scale, or does it need tuning?
 - [ ] **F5.** Toolbar restyle — informative (good) or distracting (bad)?
 - [ ] **F6.** Driving the camera all the way down to street level via Shift+LB — does it feel like a continuous gesture, or is there a discontinuity at any point?
 - [ ] **F6b.** From street level, looking up at buildings via Shift+LB — does the camera arc feel natural, or does the eye-height rotation center cause weirdness?
@@ -506,14 +495,18 @@ Updated post-review (item #7): Rule 2 center y = **eye-height (1.5m)** rather th
 
 **Resolved: (b).** Confirmed during review — (a) feels laggy.
 
-### 3. Cylinder-boundary feathering
+### 3. Scene-boundary feathering
 
 The proposal mentions "weighted blend in the zone around the edge of the scene bounds" between Rule 2 (outside) and Rule 3 (inside).
 
-- **(a) Defer.** Don't implement. Rule 2/3 are sharp transitions but only manifest when the camera is exactly on the cylinder boundary mid-gesture.
-- **(b) Implement now, per-frame.** Width = 10% of cylinder radius, smoothstep Rule 2 ↔ Rule 3 *and* recompute live during the gesture (Rule 2/3 not latched).
+- **(a) Defer.** Don't implement. Rule 2/3 are sharp transitions but only manifest when the camera is exactly on the boundary mid-gesture.
+- **(b) Implement now, per-frame.** Smoothstep Rule 2 ↔ Rule 3 *and* recompute live during the gesture (Rule 2/3 not latched).
 
-**Resolved: (b)**, post-review (item #2 in inline discussion). Further refined post-adversarial-review (A4): the live feather is **always on** when the scene is bounded, not gated by a "starts within ±10% of radius" activation threshold. The activation threshold would create a discontinuity (two near-identical gestures, one starting at 11% outside the cylinder and one at 9% outside, would behave fundamentally differently); always-on costs ~one Pythagoras + smoothstep per move event and removes the discontinuity for free. Unbounded scenes short-circuit (Rule 3 always = camera position; no recompute needed). The Rule-1-vs-Rule-2/3 high-level dispatch *is* still latched. Concrete hunting fall-back trigger in Risks (A15).
+**Resolved: (b)**, post-review (item #2 in inline discussion). Further refined post-adversarial-review (A4): the live feather is **always on** when the scene is bounded, not gated by a position-based activation threshold. The threshold would create a discontinuity (two near-identical gestures, one starting just outside the activation zone and one just inside, would behave fundamentally differently); always-on costs ~one distance-to-rectangle + smoothstep per move event and removes the discontinuity for free. Unbounded scenes short-circuit (Rule 3 always = camera position; no recompute needed). The Rule-1-vs-Rule-2/3 high-level dispatch *is* still latched. Concrete hunting fall-back trigger in Risks (A15).
+
+**Boundary geometry — post-implementation revision (2026-05-09).** The original spec used the SceneBounds *cylinder* (`max(width, depth) / 2` radius) as the inside/outside boundary, with the feather being 10% of that radius. Implementation surfaced that this was the wrong boundary: a 100m × 5m street produces a 50m-radius cylinder, and the user feels "outside" the street long before they're 50m away. The boundary is now the scene's *AABB rectangle*, with the feather extending outward from the rectangle edge by `SCENE_FEATHER_METRES = 5`. The cylinder is still computed (Plan View needs it for framing) but no longer participates in rotation-center selection. This change is what inline discussion item #2 in the planning notes was actually pointing at — the planning trail captured the right diagnosis ("the *width* of the cylinder is still wrong — feathering only smooths the edge, doesn't move it") but didn't propagate the change into the Mechanics / Architecture / Truth Table sections, which kept saying "cylinder" through the adversarial review and into the implementation. Caught at feel-test time.
+
+**Live recompute — second post-implementation revision (2026-05-09).** Resolution (b) above committed to per-frame Rule 2 ↔ Rule 3 recompute during the gesture. Feel-test confirmed the resulting judder near the AABB edge: the camera position only changes during a Shift+LB rotate because of the orbit math, and feeding that position back into the center via `_updateLiveRuleAB` created a feedback loop — the orbit center jitters, the camera jitters, repeat. Reverted to fully-latched: the feather-blended ruleAB is computed once at Shift+LB-down from the live camera state and held for the gesture. The user's planning-time intuition ("when the user enters the scene, rotation switches to user-centered") still holds — the *next* Shift+LB-down evaluates the now-inside camera position and picks rotate-in-place — it just doesn't switch mid-gesture. Trade-off: a long rotation that geometrically arcs the camera across the AABB edge keeps orbiting the original latched point even when "inside" the scene; release-and-re-engage fixes it. The fully-live design that Open Design Call #3 originally resolved to is no longer in the codebase; `_updateLiveRuleAB` and the `liveRuleAB` latch flag were removed.
 
 ### 4. WASD direction at low tilt
 
@@ -535,7 +528,7 @@ All design calls have a recommended resolution. Implementation can start; calls 
 
 - Not a final design for the visual indicator. The toolbar restyle is the primary candidate; lower-effort fallbacks (cursor change, accent overlay, badge) stay on the table if it doesn't feel right.
 - Not the Phase 3 plan. Wheel zoom remains Phase 1's cursor-anchored exponential dolly throughout Phase 2; the swoop is Phase 3's job.
-- Not the cylinder-feathering implementation. Deferred per Open Design Call #3.
+- ~~Not the cylinder-feathering implementation. Deferred per Open Design Call #3.~~ Updated post-implementation: scene-edge feathering *is* implemented (AABB-based, 5m outward), per the resolution of Open Design Call #3.
 
 ---
 
@@ -554,6 +547,7 @@ These came up while writing the plan above. Captured here as a discussion list s
 2. **`SceneBounds` cylinder is probably wrong for long-thin scenes in Rule 2/3 evaluation.** Existing `SceneBounds` uses `max(width, depth) / 2` as the radius. For a 100m × 5m street that's a 50m-radius cylinder, so a camera 10m off the side is *inside* — meaning Rule 3 (rotate-in-place) fires, not Rule 2 (diorama center). The plan's Risks section flags this as "matches proposal intent", but on reflection a user 10m off the side of a 5m-wide street probably doesn't intuit "I am inside the scene". The proposal called the original AABB-radius approach a "long narrow street pathology" and the cylindrical fix doesn't actually escape it — it just moves the pathology from "rotation point 25m down the street" to "rotate-in-place when standing next to the street". Possible answers: (a) use `min(width, depth) / 2` instead, accepting that *both* ends of the street are then "outside"; (b) introduce a separate, smaller "core" radius for the inside/outside test, distinct from the cylinder used for diorama-center positioning; (c) live with it and let feel-test decide. Reviewer's pick?
 //!! Agree this is a potential issue.  When I am 5m outside a long thin street I do feel "outside" the scene.  But if we rotate about the scene center (with latching for rotation center), I will soon be moving quickly horizontally across the street which is the situation we are trying to avoid.  One option might be to not latch the rotation center, so that when the user enters the sceme, rotation switches to user-centered?  Hard to imagin how that would feel - I'd be interested to try (probably with feathering as aleady intended for marginal cases)
 //** Captured. This is a substantive change — it reverses the latch-at-start design for rule-2/3 specifically (Rule 1's screen-center hit can stay latched). It also makes cylinder-edge feathering load-bearing rather than deferred (Open Design Call #3). New approach for Phase 2 feel-test: try (i) latch the *rotation rule* (which of 2/3 applies) but recompute the *center position* live as the camera moves, so when the user enters the cylinder mid-gesture, the rotation point smoothly slides from diorama-center toward camera-position over the feather zone. The angular blend at 20-30° still latches because tilt doesn't change during a Shift+LB gesture without changing the latched mode itself. Will update the Mechanics, Architecture (`_decideRotationCenter` becomes a per-frame call rather than gesture-start), and Truth Table sections accordingly. Flagging as a candidate-to-feel-test rather than a hard spec change so we can revert if the per-frame recompute hunts.
+//** Follow-up (2026-05-09, post-implementation): you were right that the cylinder was the wrong shape and feel-test confirmed it. The diagnosis ("the *width* of the cylinder is still wrong — feathering only smooths the edge, doesn't move it") was captured in the Risks section but didn't propagate into the implementation-facing sections — Mechanics, Architecture, Truth Table, and the post-implementation review all kept saying "cylinder". The fix landed late: the boundary is now the scene AABB and the feather extends 5m outward from the rectangle edge. SceneBounds still publishes the cylinder for Plan View framing. Updated upstream in Mechanics, Architecture/`_computeRuleAB` pseudocode, the constants block (`CYLINDER_FEATHER_FRACTION` → `SCENE_FEATHER_METRES`), the Truth Table heading, smoke items R2/R3, and Open Design Call #3.
 
 3. **Mode-emission timing — am I picking the right one?** Two options in Open Design Call #2 (mouseup-only vs. every Shift+LB move); I recommended every-move for indicator feel. But the indicator reflects "what the *next* LB drag will do", which during an active Shift+LB tilt drag means toolbars restyle *while the user is tilting*. That's mid-gesture chrome motion in a phase where the user is focused on the camera. Mouseup-only is calmer and the resulting "tilt finishes, then toolbars settle" sequence might actually read better. I'd weakly defend the every-move choice but a reviewer might land the other way.
 //!! Yes, agree (b) - (a) will feel laggy
