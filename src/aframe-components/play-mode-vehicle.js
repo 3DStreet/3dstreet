@@ -168,11 +168,12 @@ AFRAME.registerSystem('play-mode-physics', {
 // no way to reach. Saved with the scene via the existing component
 // serialization path.
 //
-// At play-time, viewer-mode's enableDriveMode() looks for the first
-// entity with drive-controls, reads its world position/yaw + tunables,
-// and spawns the player car at that pose with those values. If no
-// entity has drive-controls, drive mode falls back to default tuning at
-// the cameraRig start position (the original synthetic spawn).
+// At play-time, the `drive-mode` scene component (further down in this
+// file) listens for play-mode-start, finds the first [drive-controls]
+// entity, reads its world position/yaw + tunables, and spawns the
+// player car at that pose with those values. If no entity has
+// drive-controls, drive-mode is a no-op — Play still fires for any
+// other feature subscribers (traffic animation, etc.).
 //
 // Edit-time behavior is intentionally inert — this component does not
 // add visuals, listeners, or physics during editing.
@@ -181,7 +182,7 @@ AFRAME.registerSystem('play-mode-physics', {
 // Marker component: vehicle-mesh-slot
 //
 // Tag the Driveable Vehicle's child entity that holds the user-picked
-// mixin/glTF model. viewer-mode's enableDriveMode looks up
+// mixin/glTF model. The drive-mode scene component looks up
 // [vehicle-mesh-slot] to find which subtree to clone onto the player
 // car. We use a marker COMPONENT (not a data-* attribute) because the
 // scene serializer in json-utils only persists components, mixin,
@@ -556,6 +557,9 @@ AFRAME.registerComponent('play-mode-vehicle', {
     this._qSteer = new THREE.Quaternion();
     this._qSpin = new THREE.Quaternion();
     this._axleVec = new THREE.Vector3();
+
+    // Let listeners (e.g. PlayModeControls) know the car is drivable.
+    this.el.emit('vehicle-built', {}, true);
   },
 
   driveStep: function () {
@@ -761,5 +765,193 @@ AFRAME.registerComponent('play-mode-vehicle', {
     if (this.system && this.chassisBody) {
       this.system.unregisterSync(this.chassisBody);
     }
+  }
+});
+
+// ---------------------------------------------------------------------
+// Component: drive-mode (scene-level bootstrap)
+//
+// Attach once to the scene. Subscribes to the play-mode system's
+// lifecycle events and spawns/cleans up the player car + Rapier world.
+//
+// This is the bridge between the generic "user pressed Play" signal
+// and the drive-specific machinery. Other play-mode features (e.g.
+// future managed-street traffic animation) live in their own scene
+// components and listen for the same events — they have no idea drive
+// mode exists and vice versa.
+//
+// Activation rules:
+//   - Only acts when the scene contains a [drive-controls] entity (the
+//     user added a Driveable Vehicle from the layers panel).
+//   - If there is none, this component is a no-op: Play still works
+//     for whichever other features want to respond (camera freeze,
+//     traffic, etc.).
+// ---------------------------------------------------------------------
+AFRAME.registerComponent('drive-mode', {
+  init: function () {
+    this.onPlayStart = this.onPlayStart.bind(this);
+    this.onPlayStop = this.onPlayStop.bind(this);
+    this.el.addEventListener('play-mode-start', this.onPlayStart);
+    this.el.addEventListener('play-mode-stop', this.onPlayStop);
+    this.cleanup = null;
+  },
+
+  remove: function () {
+    this.el.removeEventListener('play-mode-start', this.onPlayStart);
+    this.el.removeEventListener('play-mode-stop', this.onPlayStop);
+    if (this.cleanup) {
+      this.cleanup();
+      this.cleanup = null;
+    }
+  },
+
+  onPlayStart: function () {
+    const sceneEl = this.el;
+    const driveEntity = sceneEl.querySelector('[drive-controls]');
+    if (!driveEntity) return; // No driveable vehicle → nothing to do.
+
+    const wp = new THREE.Vector3();
+    driveEntity.object3D.getWorldPosition(wp);
+    // Lift slightly so the chassis doesn't spawn intersecting ground.
+    const spawnPos = { x: wp.x, y: Math.max(wp.y, 1), z: wp.z };
+
+    const wq = new THREE.Quaternion();
+    driveEntity.object3D.getWorldQuaternion(wq);
+    const e = new THREE.Euler().setFromQuaternion(wq, 'YXZ');
+    const spawnYawDeg = (e.y * 180) / Math.PI;
+
+    const dcAttrs = driveEntity.getAttribute('drive-controls');
+
+    // Hide the source entity while driving — play-mode-vehicle renders
+    // its own debug chassis. Restore on cleanup.
+    const prevVisible = driveEntity.object3D.visible;
+    driveEntity.object3D.visible = false;
+
+    const parts = [
+      `spawnPosition: ${spawnPos.x} ${spawnPos.y} ${spawnPos.z}`,
+      `spawnYaw: ${spawnYawDeg}`,
+      'cameraSelector: #camera'
+    ];
+
+    const meshSlot = driveEntity.querySelector('[vehicle-mesh-slot]');
+    const customMixin = meshSlot && meshSlot.getAttribute('mixin');
+    const hasCustomMesh = !!(customMixin && customMixin.length);
+
+    if (dcAttrs) {
+      // drive-controls.vehicleSize is in ENTITY frame (x=width, y=height,
+      // z=length). play-mode-vehicle.chassisSize is in CHASSIS frame
+      // (x=length, y=height, z=width). Swap X<->Z when forwarding.
+      const v = dcAttrs.vehicleSize;
+      parts.push(`chassisSize: ${v.z} ${v.y} ${v.x}`);
+      parts.push(`accelerateForce: ${dcAttrs.accelerateForce}`);
+      parts.push(`brakeForce: ${dcAttrs.brakeForce}`);
+      parts.push(`steerAngle: ${dcAttrs.steerAngle}`);
+      parts.push(`wheelRadius: ${dcAttrs.wheelRadius}`);
+      parts.push(`wheelWidth: ${dcAttrs.wheelWidth}`);
+    }
+    if (hasCustomMesh) parts.push('showDebugBox: false');
+
+    const car = document.createElement('a-entity');
+    car.setAttribute('id', 'play-mode-player-car');
+    car.setAttribute('data-no-transform', '');
+    car.setAttribute('play-mode-vehicle', parts.join('; '));
+    sceneEl.appendChild(car);
+
+    if (hasCustomMesh) {
+      const wrapper = document.createElement('a-entity');
+      wrapper.setAttribute('rotation', '0 -90 0');
+      const meshClone = document.createElement('a-entity');
+      meshClone.setAttribute('mixin', customMixin);
+      meshClone.setAttribute('shadow', 'cast: true; receive: true');
+      wrapper.appendChild(meshClone);
+      car.appendChild(wrapper);
+    }
+
+    const physics = sceneEl.systems['play-mode-physics'];
+    // Token guards against the Stop-before-Rapier-loaded race: if the
+    // user stops play before the WASM resolves, this.cleanup will have
+    // been called and reset to null, so we skip the late seeding work.
+    const myToken = (this._activationToken = {});
+    physics.activate().then(() => {
+      if (this._activationToken !== myToken) return;
+      physics.addStaticCuboid(
+        { x: 0, y: -0.05, z: 0 },
+        { x: 200, y: 0.05, z: 200 }
+      );
+      this.addOtherVehicleColliders(sceneEl, driveEntity);
+    });
+
+    this.cleanup = () => {
+      this._activationToken = null;
+      if (car && car.parentNode) car.parentNode.removeChild(car);
+      driveEntity.object3D.visible = prevVisible;
+      if (this._vehicleColliderListeners) {
+        for (const { el: el2, fn } of this._vehicleColliderListeners) {
+          el2.removeEventListener('model-loaded', fn);
+        }
+        this._vehicleColliderListeners = null;
+      }
+      physics.deactivate();
+    };
+  },
+
+  onPlayStop: function () {
+    if (this.cleanup) {
+      this.cleanup();
+      this.cleanup = null;
+    }
+  },
+
+  /**
+   * Walk the scene for entities whose mixin's <a-mixin category> starts
+   * with "vehicles" or "cyclists" and seed a static cuboid collider
+   * sized to each one's world-frame bounding box. The player's own
+   * Driveable Vehicle (and its descendants) is skipped — that's the
+   * dynamic chassis. Bounding boxes are re-evaluated on model-loaded
+   * since GLBs load async.
+   */
+  addOtherVehicleColliders: function (sceneEl, driveEntity) {
+    const physics = sceneEl.systems['play-mode-physics'];
+    const COLLIDABLE_CATEGORIES = ['vehicles', 'cyclists'];
+    const isVehicleMixin = (id) => {
+      const mixin = document.getElementById(id);
+      if (!mixin || mixin.tagName !== 'A-MIXIN') return false;
+      const cat = mixin.getAttribute('category') || '';
+      return COLLIDABLE_CATEGORIES.some((c) => cat.indexOf(c) === 0);
+    };
+    const isCandidate = (el) => {
+      if (!el || el === driveEntity) return false;
+      if (driveEntity && driveEntity.contains(el)) return false;
+      const mixinAttr = el.getAttribute('mixin');
+      if (!mixinAttr) return false;
+      return mixinAttr.split(/\s+/).some(isVehicleMixin);
+    };
+    const listeners = [];
+    // Bounding boxes wrap the mesh's full AABB which is generally
+    // larger than the visible silhouette; shrink to 80% so the collider
+    // feels closer to the mesh visually.
+    const COLLIDER_SHRINK = 0.8;
+    const add = (el) => {
+      const box = new THREE.Box3().setFromObject(el.object3D);
+      if (box.isEmpty()) return;
+      const size = box.getSize(new THREE.Vector3());
+      const center = box.getCenter(new THREE.Vector3());
+      if (size.x < 0.05 || size.y < 0.05 || size.z < 0.05) return;
+      const half = COLLIDER_SHRINK / 2;
+      physics.addStaticCuboid(
+        { x: center.x, y: center.y, z: center.z },
+        { x: size.x * half, y: size.y * half, z: size.z * half }
+      );
+    };
+
+    sceneEl.querySelectorAll('[mixin]').forEach((el) => {
+      if (!isCandidate(el)) return;
+      add(el);
+      const onLoaded = () => add(el);
+      el.addEventListener('model-loaded', onLoaded);
+      listeners.push({ el, fn: onLoaded });
+    });
+
+    this._vehicleColliderListeners = listeners;
   }
 });

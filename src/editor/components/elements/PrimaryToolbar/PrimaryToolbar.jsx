@@ -40,21 +40,12 @@ export const PrimaryToolbar = () => {
   const hasDriveable = useHasDriveable();
 
   const handlePlay = () => {
-    // Close the inspector FIRST, then flip the preset. The viewer-mode
-    // component's setupMode() guards on isInspectorEnabled to keep a
-    // chassis from spawning while the editor is open, so the preset
-    // change has to happen with the inspector already closed.
+    // Play is feature-agnostic: close the inspector and tell the
+    // play-mode system to start. Drive-mode, and any future
+    // subscribers (traffic animation, etc.), react to the scene
+    // event play-mode-start independently.
     useStore.getState().setIsInspectorEnabled(false);
-    const cameraRig = document.getElementById('cameraRig');
-    const viewerMode = cameraRig?.components?.['viewer-mode'];
-    if (cameraRig) {
-      cameraRig.setAttribute('viewer-mode', 'preset', 'drive');
-    }
-    // If preset was already 'drive' (e.g. after a prior Play -> Edit
-    // cycle, where Edit deliberately leaves the preset alone),
-    // setAttribute is a no-op and update() won't fire — so re-run
-    // setupMode explicitly to (re-)spawn the player car.
-    if (viewerMode) viewerMode.setupMode('drive');
+    document.querySelector('a-scene')?.systems?.['play-mode']?.start();
   };
 
   const handleSnapshot = () => {

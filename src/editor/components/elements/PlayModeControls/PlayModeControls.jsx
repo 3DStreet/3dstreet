@@ -1,18 +1,17 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useState } from 'react';
 import useStore from '@/store';
 import styles from './PlayModeControls.module.scss';
 
 /**
- * Top-right tuning panel shown only while the user is in play (drive)
- * mode. Reads from the scene's first `[drive-controls]` entity (the
- * Driveable Vehicle the user added from the layers panel) and
- * live-updates the running player car entity's `play-mode-vehicle`
- * attributes on every change so sliders affect feel immediately.
+ * Top-right tuning panel shown only while the user is in drive mode.
+ * Reads from the scene's first `[drive-controls]` entity and
+ * live-updates the running player car's `play-mode-vehicle`
+ * attributes on every change.
  *
- * Shown when:
- *   - inspector is closed (isInspectorEnabled === false), AND
- *   - the player car has spawned (Rapier WASM is loaded lazily, so it
- *     polls via rAF).
+ * Shown when isPlaying === true AND drive-mode has built a player car
+ * (signaled by the `vehicle-built` event since Rapier WASM is
+ * loaded lazily). If play mode is entered without a driveable vehicle
+ * (future traffic-only play), this panel stays hidden.
  */
 const FIELDS = [
   {
@@ -27,44 +26,37 @@ const FIELDS = [
 ];
 
 export const PlayModeControls = () => {
-  const isInspectorEnabled = useStore((s) => s.isInspectorEnabled);
-  const [active, setActive] = useState(false);
-  // Local mirror of drive-controls data. Updates in lockstep with both
-  // the cameraRig component and the live player-car so sliders are the
-  // sole UI surface — no need to read across components every render.
+  const isPlaying = useStore((s) => s.isPlaying);
   const [data, setData] = useState(null);
-  const rafRef = useRef(null);
 
   useEffect(() => {
-    if (isInspectorEnabled) {
-      setActive(false);
+    if (!isPlaying) {
       setData(null);
       return undefined;
     }
-    // Watch for the player car to appear (lazy Rapier WASM load) and
-    // pick up the cameraRig's drive-controls data once it's there.
-    let cancelled = false;
-    const tick = () => {
-      if (cancelled) return;
-      const car = document.getElementById('play-mode-player-car');
-      const driveEntity = document.querySelector('[drive-controls]');
-      const dc = driveEntity?.components?.['drive-controls']?.data;
-      const carReady = !!car?.components?.['play-mode-vehicle']?.vehicle;
-      if (carReady && dc) {
-        setActive(true);
-        setData({ ...dc });
-        return;
-      }
-      rafRef.current = requestAnimationFrame(tick);
+    const sceneEl = document.querySelector('a-scene');
+    if (!sceneEl) return undefined;
+    const sync = () => {
+      const dc =
+        document.querySelector('[drive-controls]')?.components?.[
+          'drive-controls'
+        ]?.data;
+      if (dc) setData({ ...dc });
     };
-    rafRef.current = requestAnimationFrame(tick);
-    return () => {
-      cancelled = true;
-      if (rafRef.current) cancelAnimationFrame(rafRef.current);
-    };
-  }, [isInspectorEnabled]);
+    sceneEl.addEventListener('vehicle-built', sync);
+    // Race: drive-mode may have already finished building the car
+    // before this effect ran. Check once now.
+    if (
+      document.getElementById('play-mode-player-car')?.components?.[
+        'play-mode-vehicle'
+      ]?.vehicle
+    ) {
+      sync();
+    }
+    return () => sceneEl.removeEventListener('vehicle-built', sync);
+  }, [isPlaying]);
 
-  if (!active || !data) return null;
+  if (!isPlaying || !data) return null;
 
   const setField = (key, value) => {
     const next = { ...data, [key]: value };

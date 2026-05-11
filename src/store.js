@@ -181,11 +181,16 @@ const useStore = create(
           set((state) => ({ panelsVisible: !state.panelsVisible })),
         rightPanelTab: 'properties',
         setRightPanelTab: (newTab) => set({ rightPanelTab: newTab }),
+        isPlaying: false,
         isInspectorEnabled: true,
         setIsInspectorEnabled: (newIsInspectorEnabled) => {
           const viewerModeUI = document.getElementById('viewer-mode-ui');
 
           if (newIsInspectorEnabled) {
+            // Opening the inspector exits play mode (regardless of how
+            // the open was triggered — Stop button, programmatic, etc.).
+            // Subscribers tear down their own state via play-mode-stop.
+            document.querySelector('a-scene')?.systems?.['play-mode']?.stop();
             posthog.capture('inspector_opened');
             AFRAME.INSPECTOR.open();
 

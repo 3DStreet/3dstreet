@@ -9,13 +9,11 @@ function Toolbar() {
   if (isInspectorEnabled) return null;
 
   const handleStop = () => {
-    // Tear down play-mode side effects (player car + Rapier world) but
-    // do NOT re-enable cursor-teleport / look-controls / movement-controls
-    // afterward — the inspector handles its own input, and re-enabling
-    // those leaks click listeners that break first-click-to-select.
-    const viewerMode =
-      document.getElementById('cameraRig')?.components?.['viewer-mode'];
-    if (viewerMode) viewerMode.disableAllModes();
+    // setIsInspectorEnabled(true) already calls play-mode.stop() so
+    // play-mode subscribers (drive-mode, future traffic) tear down
+    // via the scene event. We deliberately don't re-enable
+    // cursor-teleport / look-controls / movement-controls — see
+    // play-mode-notes.md (two-click selection bug investigation).
     setIsInspectorEnabled(true);
   };
 

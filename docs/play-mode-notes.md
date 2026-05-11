@@ -3,6 +3,38 @@
 A scratchpad for the play-mode driving feature. Not user-facing docs.
 Captures intent and open questions so the next slice has context.
 
+## Architecture: play mode is decoupled from any single feature
+
+"Play" is a generic lifecycle, not a synonym for drive mode.
+
+- `play-mode` A-Frame system (`src/aframe-components/play-mode.js`)
+  owns one boolean (`isPlaying`, mirrored into the zustand store as
+  `useStore.getState().isPlaying`) and two scene events:
+  `play-mode-start` and `play-mode-stop`. Methods: `start()`, `stop()`.
+- Buttons hit the system directly. They have no knowledge of which
+  features will respond:
+  - Play button: `setIsInspectorEnabled(false)` then
+    `scene.systems['play-mode'].start()`.
+  - Stop button: `setIsInspectorEnabled(true)` — opening the inspector
+    in `store.js` also calls `play-mode.stop()` as a belt-and-suspenders
+    guard against state drift if the inspector is opened by any other
+    path.
+- Features subscribe to scene events and do their own setup/teardown:
+  - **`drive-mode` component** (lives in `play-mode-vehicle.js`,
+    attached to `<a-scene drive-mode>` in `index.html`). On
+    `play-mode-start`: if a `[drive-controls]` entity exists, spawn
+    the `play-mode-player-car`, lazy-load Rapier, seed colliders. On
+    `play-mode-stop`: tear it all down.
+  - **Future traffic animation** will be a sibling scene component
+    (e.g. `managed-street-traffic`) that listens for the same events
+    and animates lane occupants. It will not import or depend on
+    drive-mode or Rapier.
+- Cross-feature coupling (drive mode + traffic active simultaneously)
+  is handled inside the feature components, not at the play-mode
+  layer: traffic creates kinematic Rapier bodies *only when*
+  `play-mode-physics` has an active world. Otherwise it just moves
+  visuals.
+
 ## Where we are (commit `829c7014`, tip of `physics-play-mode`)
 
 - A `Play` button on the primary toolbar enters drive mode; a centered
@@ -130,13 +162,6 @@ Each play mode introspects the scene for its required object type.
   street furniture, and props are still pass-through. Likely next
   step: extend the category allowlist or move to a generic
   `play-collidable` opt-in component.
-- **Race on Stop before Rapier finishes loading.** `enableDriveMode`
-  registers `model-loaded` listeners inside `physics.activate().then`.
-  If the user clicks Stop before WASM resolves, `driveCleanup`
-  already ran and the listeners get attached after cleanup with no
-  one to remove them. Low-impact (`addStaticCuboid` no-ops on a freed
-  world) but worth fixing — capture cleanup state on `this` and
-  re-check inside the `.then`.
 - **Wheel suspension/friction sliders** (suspensionStiffness,
   frictionSlip, sideFrictionStiffness) are in `drive-controls`'s
   schema but not yet plumbed through to `play-mode-vehicle` —
@@ -145,9 +170,6 @@ Each play mode introspects the scene for its required object type.
 - **Camera mode isn't persisted.** `C` cycles top-down → chase → fpv
   but the choice resets to top-down on the next Play. Could surface
   as a `PlayModeControls` field tied to `drive-controls` schema.
-- **PlayModeControls polls via rAF** waiting for the player car.
-  Should be replaced with a `vehicle-built` event emitted at the end
-  of `play-mode-vehicle.buildVehicle`.
 - **Hardcoded default mixin (`sedan-taxi-rig`)** in
   `createDriveableVehicle`. If catalog renames it, the AddLayerPanel
   template silently produces an empty mesh slot.

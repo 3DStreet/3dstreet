@@ -269,7 +269,7 @@ export function createDriveableVehicle(position) {
   // A driveable vehicle is an entity tagged with `drive-controls`
   // (which auto-adds a forward-direction cone marker) plus a
   // placeholder box mesh so it's visible in the editor. When the user
-  // clicks Play, viewer-mode's enableDriveMode looks for any such
+  // clicks Play, the drive-mode scene component looks for any such
   // entity in the scene and uses it as the spawn pose + tuning source.
   //
   // Box dimensions are oriented so the entity's local -Z is forward

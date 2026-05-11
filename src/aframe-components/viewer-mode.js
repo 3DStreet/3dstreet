@@ -19,7 +19,7 @@ AFRAME.registerComponent('viewer-mode', {
     preset: {
       type: 'string',
       default: 'camera-path',
-      oneOf: ['locomotion', 'camera-path', 'ar-webxr', 'drive']
+      oneOf: ['locomotion', 'camera-path', 'ar-webxr']
     },
     cameraPath: {
       type: 'string',
@@ -102,15 +102,6 @@ AFRAME.registerComponent('viewer-mode', {
       this.enableCameraPathMode();
     } else if (mode === 'ar-webxr') {
       this.enableARWebXRMode();
-    } else if (mode === 'drive') {
-      // Only spawn physics + player car when the inspector is closed
-      // (i.e. user is in play mode). If a saved scene comes back with
-      // preset: drive baked in while the user is editing, this guard
-      // keeps a chassis from falling through the editor.
-      const useStoreLocal = require('../store.js').default;
-      if (!useStoreLocal.getState().isInspectorEnabled) {
-        this.enableDriveMode();
-      }
     }
     // Notify other components about the mode change
     this.el.emit('viewer-mode-changed', { mode: mode });
@@ -146,12 +137,6 @@ AFRAME.registerComponent('viewer-mode', {
     document.getElementById('viewer-mode-ar-play-button').style.display =
       'none';
 
-    // Tear down drive mode if it was up
-    if (this.driveCleanup) {
-      this.driveCleanup();
-      this.driveCleanup = null;
-    }
-
     // Hide locomotion controls UI
     document.getElementById('viewer-mode-locomotion-controls').style.display =
       'none';
@@ -159,185 +144,6 @@ AFRAME.registerComponent('viewer-mode', {
     // Remove event listeners if they were added
     this.el.sceneEl.removeEventListener('enter-vr', this.onEnterVR);
     this.el.sceneEl.removeEventListener('exit-vr', this.onExitVR);
-  },
-
-  /**
-   * Walk the scene for entities that look like vehicles (any mixin
-   * whose registered <a-mixin category="..."> starts with "vehicles")
-   * and seed a static cuboid collider sized to each one's world-frame
-   * bounding box. The player's own Driveable Vehicle (and its
-   * descendants) is skipped — that's the dynamic chassis.
-   *
-   * Bounding boxes are evaluated AFTER models load: this fires inside
-   * the physics.activate() .then(), but the GLBs may still be loading
-   * since A-Frame loads them async. Listen for `model-loaded` on each
-   * candidate and (re)apply the collider when a load lands.
-   */
-  addOtherVehicleColliders: function (sceneEl, driveEntity) {
-    const physics = sceneEl.systems['play-mode-physics'];
-    const COLLIDABLE_CATEGORIES = ['vehicles', 'cyclists'];
-    const isVehicleMixin = (id) => {
-      const mixin = document.getElementById(id);
-      if (!mixin || mixin.tagName !== 'A-MIXIN') return false;
-      const cat = mixin.getAttribute('category') || '';
-      return COLLIDABLE_CATEGORIES.some((c) => cat.indexOf(c) === 0);
-    };
-    const isCandidate = (el) => {
-      if (!el || el === driveEntity) return false;
-      if (driveEntity && driveEntity.contains(el)) return false;
-      const mixinAttr = el.getAttribute('mixin');
-      if (!mixinAttr) return false;
-      return mixinAttr.split(/\s+/).some(isVehicleMixin);
-    };
-    const listeners = [];
-    // Bounding boxes wrap the mesh's full AABB which is generally
-    // larger than the visible silhouette (especially for vehicles
-    // whose body curves inward at the corners). Shrink to 80% so the
-    // collider feels closer to the mesh visually.
-    const COLLIDER_SHRINK = 0.8;
-    const add = (el) => {
-      const box = new THREE.Box3().setFromObject(el.object3D);
-      if (box.isEmpty()) return;
-      const size = box.getSize(new THREE.Vector3());
-      const center = box.getCenter(new THREE.Vector3());
-      // Skip degenerate boxes (no mesh loaded yet, or zero-size).
-      if (size.x < 0.05 || size.y < 0.05 || size.z < 0.05) return;
-      const half = COLLIDER_SHRINK / 2;
-      physics.addStaticCuboid(
-        { x: center.x, y: center.y, z: center.z },
-        { x: size.x * half, y: size.y * half, z: size.z * half }
-      );
-    };
-
-    sceneEl.querySelectorAll('[mixin]').forEach((el) => {
-      if (!isCandidate(el)) return;
-      // Try immediately, then retry after model-loaded if the bounding
-      // box came back empty/tiny (gltf still streaming).
-      add(el);
-      const onLoaded = () => add(el);
-      el.addEventListener('model-loaded', onLoaded);
-      listeners.push({ el, fn: onLoaded });
-    });
-
-    // Bodies live on the Rapier world, which is freed by
-    // physics.deactivate() on Stop — no need to track them here.
-    // Just remember the model-loaded listeners so we can detach.
-    this._vehicleColliderListeners = listeners;
-  },
-
-  enableDriveMode: function () {
-    const sceneEl = this.el.sceneEl;
-
-    // The user must have added a 'Driveable Vehicle' entity (an entity
-    // tagged with `drive-controls`) before Play can do anything useful.
-    // The Play button is disabled when no such entity exists; this
-    // guard is a safety net for any other entry point.
-    const driveEntity = sceneEl.querySelector('[drive-controls]');
-    if (!driveEntity) {
-      console.warn(
-        'viewer-mode drive: no entity with `drive-controls` found in the scene. Add a Driveable Vehicle from the layers panel first.'
-      );
-      return;
-    }
-
-    const wp = new THREE.Vector3();
-    driveEntity.object3D.getWorldPosition(wp);
-    // Lift slightly so the chassis doesn't spawn intersecting ground.
-    const spawnPos = { x: wp.x, y: Math.max(wp.y, 1), z: wp.z };
-
-    const wq = new THREE.Quaternion();
-    driveEntity.object3D.getWorldQuaternion(wq);
-    const e = new THREE.Euler().setFromQuaternion(wq, 'YXZ');
-    const spawnYawDeg = (e.y * 180) / Math.PI;
-
-    const dcAttrs = driveEntity.getAttribute('drive-controls');
-
-    // Hide the source entity while driving — the play-mode-vehicle
-    // renders its own debug chassis. Restore on cleanup.
-    this._hiddenDriveEntity = driveEntity;
-    this._driveEntityVisible = driveEntity.object3D.visible;
-    driveEntity.object3D.visible = false;
-
-    // Build the play-mode-vehicle attribute string. Schema fields shared
-    // with drive-controls are forwarded; everything else falls through
-    // to play-mode-vehicle's own defaults.
-    const parts = [
-      `spawnPosition: ${spawnPos.x} ${spawnPos.y} ${spawnPos.z}`,
-      `spawnYaw: ${spawnYawDeg}`,
-      'cameraSelector: #camera'
-    ];
-    // Detect whether the user has set a custom mesh on the Driveable
-    // Vehicle's child mesh slot (an entity tagged with the
-    // vehicle-mesh-slot marker component). If so, hide the
-    // play-mode-vehicle's red placeholder box and clone the mesh into
-    // the player car.
-    const meshSlot = driveEntity.querySelector('[vehicle-mesh-slot]');
-    const customMixin = meshSlot && meshSlot.getAttribute('mixin');
-    const hasCustomMesh = !!(customMixin && customMixin.length);
-
-    if (dcAttrs) {
-      // drive-controls.vehicleSize is in ENTITY frame (x=width, y=height,
-      // z=length). play-mode-vehicle.chassisSize is in CHASSIS frame
-      // (x=length, y=height, z=width). Swap X<->Z when forwarding.
-      const v = dcAttrs.vehicleSize;
-      parts.push(`chassisSize: ${v.z} ${v.y} ${v.x}`);
-      parts.push(`accelerateForce: ${dcAttrs.accelerateForce}`);
-      parts.push(`brakeForce: ${dcAttrs.brakeForce}`);
-      parts.push(`steerAngle: ${dcAttrs.steerAngle}`);
-      parts.push(`wheelRadius: ${dcAttrs.wheelRadius}`);
-      parts.push(`wheelWidth: ${dcAttrs.wheelWidth}`);
-      // Per-wheel suspension/friction live on play-mode-vehicle's wheel
-      // wiring; the component reads them once at buildVehicle. Not yet
-      // plumbed through — TODO when we expose wheel sliders.
-    }
-    if (hasCustomMesh) parts.push('showDebugBox: false');
-
-    const car = document.createElement('a-entity');
-    car.setAttribute('id', 'play-mode-player-car');
-    car.setAttribute('data-no-transform', '');
-    car.setAttribute('play-mode-vehicle', parts.join('; '));
-    sceneEl.appendChild(car);
-
-    // Clone the user's custom mesh onto the player car. The car's
-    // body rotation is in chassis frame (forward = chassis -X), and
-    // the 3DStreet vehicle catalog meshes are authored with forward =
-    // +Z, so the wrapper rotates -90° around Y to align them.
-    if (hasCustomMesh) {
-      const wrapper = document.createElement('a-entity');
-      wrapper.setAttribute('rotation', '0 -90 0');
-      const meshClone = document.createElement('a-entity');
-      meshClone.setAttribute('mixin', customMixin);
-      meshClone.setAttribute('shadow', 'cast: true; receive: true');
-      wrapper.appendChild(meshClone);
-      car.appendChild(wrapper);
-    }
-
-    // Lazy-load Rapier and seed colliders: ground plane + every other
-    // vehicle in the scene as a static cuboid sized to its bounding
-    // box. The player can then bump into parked cars, transit, etc.
-    const physics = sceneEl.systems['play-mode-physics'];
-    physics.activate().then(() => {
-      physics.addStaticCuboid(
-        { x: 0, y: -0.05, z: 0 },
-        { x: 200, y: 0.05, z: 200 }
-      );
-      this.addOtherVehicleColliders(sceneEl, driveEntity);
-    });
-
-    this.driveCleanup = () => {
-      if (car && car.parentNode) car.parentNode.removeChild(car);
-      if (this._hiddenDriveEntity) {
-        this._hiddenDriveEntity.object3D.visible = this._driveEntityVisible;
-        this._hiddenDriveEntity = null;
-      }
-      if (this._vehicleColliderListeners) {
-        for (const { el, fn } of this._vehicleColliderListeners) {
-          el.removeEventListener('model-loaded', fn);
-        }
-        this._vehicleColliderListeners = null;
-      }
-      physics.deactivate();
-    };
   },
 
   enableARWebXRMode: function () {
