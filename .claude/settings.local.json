@@ -8,7 +8,14 @@
       "Bash(npm ls *)",
       "Bash(npm i *)",
       "Bash(npm run *)",
-      "Bash(grep *)"
+      "Bash(grep *)",
+      "Bash(git add *)",
+      "Bash(git commit -m ' *)",
+      "Bash(git commit *)",
+      "Bash(git branch *)",
+      "Bash(git reset *)",
+      "Bash(npm test *)",
+      "Bash(npx mocha *)"
     ]
   }
 }
