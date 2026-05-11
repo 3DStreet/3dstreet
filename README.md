@@ -108,12 +108,12 @@ What's changed?
 - When tilt goes below 30 degrees, 2 key changes happen:
   1. LB+drag switches from truck/dolly (horizontal plane movement) to truck/pedestal (vertical plane movement)
   2. Rotation center depends on camera position relative to scene.  When camera is inside the scene (or vertically above), rotation about the camera; when camera is outside the scene, orbit controls centered on the scene center.
-  (also a visible indicator of the mode switch: black bars at top and bottom of the view pane)
+  - (also a visible indicator of the mode switch: black bars at top and bottom of the view pane)
 - When zoom-in goes below 20m above street-level, we begin a "swoop zoom"
   - Camera tilts up towards horizontal
   - Camera pedestals down towards eye-level
   - Once at street level zoom becomes a focal-zoom.
-  (Ctrl+wheel can be used for classic (non-swoop) zoom in/out)
+  - (Ctrl+wheel can be used for classic (non-swoop) zoom in/out)
 
 Not yet implemented / known limitations:
 - Improvements to double-click logic
