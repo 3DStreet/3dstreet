@@ -862,7 +862,16 @@ AFRAME.registerComponent('drive-mode', {
 
     const meshSlot = driveEntity.querySelector('[vehicle-mesh-slot]');
     const customMixin = meshSlot && meshSlot.getAttribute('mixin');
-    const hasCustomMesh = !!(customMixin && customMixin.length);
+    // "has custom mesh" = the slot defines a visual either via a
+    // catalog mixin OR via a procedural component like
+    // `delivery-bot-mesh`. New procedural components can be added to
+    // this list without touching the clone code below.
+    const PROCEDURAL_MESH_COMPONENTS = ['delivery-bot-mesh'];
+    const hasProceduralMesh =
+      !!meshSlot &&
+      PROCEDURAL_MESH_COMPONENTS.some((c) => meshSlot.hasAttribute(c));
+    const hasCustomMesh =
+      !!(customMixin && customMixin.length) || hasProceduralMesh;
 
     if (dcAttrs) {
       // drive-controls.vehicleSize is in ENTITY frame (x=width, y=height,
@@ -888,7 +897,24 @@ AFRAME.registerComponent('drive-mode', {
       const wrapper = document.createElement('a-entity');
       wrapper.setAttribute('rotation', '0 -90 0');
       const meshClone = document.createElement('a-entity');
-      meshClone.setAttribute('mixin', customMixin);
+      // Copy every visual attribute from the editor's mesh slot
+      // (mixin OR procedural component, plus any future ones) so we
+      // don't have to special-case each kind here. Skip the slot
+      // marker, the editor's 180° rotation (the wrapper handles
+      // orientation), and stuff that shouldn't be cloned.
+      const SKIP_ATTRS = new Set([
+        'id',
+        'vehicle-mesh-slot',
+        'rotation',
+        'class',
+        'data-aframe-inspector',
+        'data-no-transform',
+        'data-layer-name'
+      ]);
+      for (const attr of meshSlot.attributes) {
+        if (SKIP_ATTRS.has(attr.name)) continue;
+        meshClone.setAttribute(attr.name, attr.value);
+      }
       meshClone.setAttribute('shadow', 'cast: true; receive: true');
       wrapper.appendChild(meshClone);
       car.appendChild(wrapper);
@@ -1004,9 +1030,14 @@ AFRAME.registerComponent('drive-mode', {
       const cat = mixin.getAttribute('category') || '';
       return COLLIDABLE_CATEGORIES.some((c) => cat.indexOf(c) === 0);
     };
+    const playerCar = sceneEl.querySelector('#play-mode-player-car');
     const isCandidate = (el) => {
       if (!el || el === driveEntity) return false;
       if (driveEntity && driveEntity.contains(el)) return false;
+      // The player's own cloned mesh (mixin or procedural) lives
+      // under play-mode-player-car. Skip it so we don't seed a
+      // phantom static collider at the spawn point.
+      if (playerCar && playerCar.contains(el)) return false;
       // Animated traffic gets kinematic colliders from
       // managed-street-traffic; don't double-seed with static cuboids.
       if (el.hasAttribute('data-play-mode-traffic')) return false;

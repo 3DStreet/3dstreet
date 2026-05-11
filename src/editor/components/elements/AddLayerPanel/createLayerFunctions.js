@@ -285,12 +285,64 @@ export function createDriveableVehicle(position) {
   // vehicle its real appearance; the parent's box geometry is just a
   // placeholder you can hide once the mixin is set.
   const definition = {
-    'data-layer-name': 'Driveable Vehicle',
+    'data-layer-name': 'Driveable Delivery Robot',
     components: {
       position: position ?? '0 1 0',
       'drive-controls': '',
       geometry: 'primitive: box; width: 0.8; height: 0.4; depth: 1.6',
-      material: 'color: #cc2222',
+      material: 'color: #cc2222; opacity: 0.0; transparent: true',
+      shadow: 'cast: false; receive: false'
+    },
+    children: [
+      {
+        'data-layer-name': 'Vehicle Mesh',
+        components: {
+          'vehicle-mesh-slot': '',
+          // Procedural generic bot — body + dynamic antenna with a
+          // 2D spring-damper that lags under chassis acceleration.
+          // No GLB, no brand. Replace this attribute with a catalog
+          // mixin (e.g. `mixin: tuk-tuk-rig`) if you'd rather use a
+          // real model.
+          'delivery-bot-mesh': '',
+          // Procedural mesh is authored with +Z forward (same as
+          // catalog meshes), so the same 180° editor-rotation trick
+          // works to align it with the entity's -Z forward marker.
+          rotation: '0 180 0',
+          shadow: 'cast: true; receive: true'
+        }
+      }
+    ]
+  };
+  AFRAME.INSPECTOR.execute('entitycreate', definition);
+}
+
+export function createDriveableTaxi(position) {
+  // Full-size sedan physics: real-world Toyota-Camry-ish dimensions
+  // so a 0.15m (US standard 6" curb) is mountable with momentum. The
+  // delivery-robot preset deliberately can't mount curbs — Starship-
+  // class robots use ADA ramps in real life, so the chassis matches
+  // that.
+  //
+  // ENTITY-frame vehicleSize (x=width, y=height, z=length):
+  //   1.85 W × 1.45 H × 4.8 L  (≈ Camry / Crown Vic)
+  // play-mode swaps X<->Z when forwarding to chassis frame.
+  //
+  // Wheel radius 0.32m matches a real-world ~0.65m-diameter car
+  // wheel. The default auto-fit (0.375 * height) would give 0.54m
+  // which looks comically big on a sedan; explicit override.
+  //
+  // accelerateForce scaled up because the chassis collider volume is
+  // ~14x the robot's, so Rapier's default mass is much larger and the
+  // robot's 2N would feel limp. Numbers are a starting point — tune
+  // with the in-play PlayModeControls sliders.
+  const definition = {
+    'data-layer-name': 'Driveable Taxi',
+    components: {
+      position: position ?? '0 1 0',
+      'drive-controls':
+        'vehicleSize: 1.85 1.45 4.8; accelerateForce: 8; brakeForce: 0.12; steerAngle: 0.13; wheelRadius: 0.32; wheelWidth: 0.22',
+      geometry: 'primitive: box; width: 1.85; height: 1.45; depth: 4.8',
+      material: 'color: #f4c842',
       shadow: 'cast: true; receive: true'
     },
     children: [
@@ -299,12 +351,6 @@ export function createDriveableVehicle(position) {
         components: {
           'vehicle-mesh-slot': '',
           mixin: 'sedan-taxi-rig',
-          // Catalog vehicle glTFs are authored with forward = +Z, but
-          // the parent's "forward" (and its cone marker) is -Z. Rotate
-          // 180° around Y so the mesh's hood lines up with the cone in
-          // the editor. Play mode does its own rotation compensation
-          // when cloning the mesh — this rotation here is for the
-          // editor view only and doesn't affect play.
           rotation: '0 180 0',
           shadow: 'cast: true; receive: true'
         }

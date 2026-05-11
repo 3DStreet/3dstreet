@@ -125,13 +125,22 @@ export const customLayersData = [
     handlerFunction: createFunctions.createPanoramaSphere
   },
   {
-    name: 'Driveable Vehicle',
+    name: 'Driveable Delivery Robot',
     img: '',
     requiresPro: false,
     icon: '',
     description:
-      'Adds a vehicle that you can drive in Play mode. Tune engine force, brake, steering, and other driving properties from the properties panel.',
+      'A small-chassis driveable bot (~tuk-tuk sized). Like real delivery robots, it cannot mount standard 6" curbs — use it for sidewalk play. Tune from the drive-controls properties panel.',
     handlerFunction: createFunctions.createDriveableVehicle
+  },
+  {
+    name: 'Driveable Taxi',
+    img: '',
+    requiresPro: false,
+    icon: '',
+    description:
+      'A full-size sedan with real-car physics (~Camry-sized). Mounts standard curbs with momentum, hits real-world speeds. Tune from the drive-controls properties panel.',
+    handlerFunction: createFunctions.createDriveableTaxi
   },
   {
     name: 'Gaussian Splat from URL',
