@@ -15,9 +15,14 @@
 //
 // `source` on the returned object is one of 'mesh', 'ground', 'fallback'
 // for debugging.
+//
+// **Wheel-zoom consumer note (2026-05-11):** `_applyWheelTick` in
+// `ExperimentalControls` now branches on the 30° tilt cut *before*
+// calling `worldPointAt`, so Step 3 only fires for wheel zoom at high
+// tilt (per `claude/specs/001-tilt-conditional-zoom.md`). LB-pan still
+// calls `worldPointAt` unconditionally and gets the full chain.
 
-const MAX_GROUND_DIST = 2000; // metres
-const FALLBACK_FORWARD_DIST = 30; // metres
+import { MAX_GROUND_DIST, FALLBACK_FORWARD_DIST } from './constants.js';
 
 // Substring-match against object3D / DOM-element ancestors. Anchor must
 // not lock onto these.

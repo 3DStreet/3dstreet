@@ -5,14 +5,16 @@ import {
   decideLbMode,
   computeRuleAB,
   tiltBlendWeight,
-  latchedRotationCenter
+  latchedRotationCenter,
+  computeLowTiltWheelHit
 } from '../../../../src/editor/lib/nav-experimental/navMath.js';
 import {
   TRUCK_PEDESTAL_CUTOFF_DEGREES,
   ROTATION_BLEND_LOW_DEGREES,
   ROTATION_BLEND_HIGH_DEGREES,
   ROTATION_CENTER_EYE_HEIGHT_METRES,
-  SCENE_FEATHER_METRES
+  SCENE_FEATHER_METRES,
+  FALLBACK_FORWARD_DIST
 } from '../../../../src/editor/lib/nav-experimental/constants.js';
 
 // Helper: build a square-ish bounds object centered on the origin.
@@ -305,5 +307,53 @@ describe('latchedRotationCenter', () => {
     // x should be strictly between screenHit.x (50) and diorama.x (0).
     expect(r.center.x).toBeGreaterThan(0);
     expect(r.center.x).toBeLessThan(50);
+  });
+});
+
+describe('computeLowTiltWheelHit', () => {
+  it('returns camera position + cameraForward * FALLBACK_FORWARD_DIST for a horizontal camera', () => {
+    // Camera at (0, 1.6, 10) looking toward origin. Forward direction
+    // is (0, 0, -1) (camera-Z), so the synthetic hit is at
+    // (0, 1.6, 10) + (0, 0, -1) * 30 = (0, 1.6, -20).
+    const cam = camAt({ x: 0, y: 1.6, z: 10 }, { x: 0, y: 1.6, z: 0 });
+    const hit = computeLowTiltWheelHit(cam);
+    expect(hit.x).toBeCloseTo(0, 5);
+    expect(hit.y).toBeCloseTo(1.6, 5);
+    expect(hit.z).toBeCloseTo(10 - FALLBACK_FORWARD_DIST, 4);
+  });
+
+  it('returned point lies at FALLBACK_FORWARD_DIST from the camera', () => {
+    const cam = camAt({ x: 5, y: 8, z: -2 }, { x: 0, y: 1, z: 0 });
+    const hit = computeLowTiltWheelHit(cam);
+    const dist = Math.hypot(hit.x - 5, hit.y - 8, hit.z - -2);
+    expect(dist).toBeCloseTo(FALLBACK_FORWARD_DIST, 4);
+  });
+
+  it('drifts upward when the camera is pitched up (looking-up case)', () => {
+    // Camera at (0, 1.6, 5) pitched up 45° → looking at (0, 6.6, 0).
+    // forward.y > 0; synthetic hit's y > camera.y.
+    const cam = camAt({ x: 0, y: 1.6, z: 5 }, { x: 0, y: 6.6, z: 0 });
+    const hit = computeLowTiltWheelHit(cam);
+    expect(hit.y).toBeGreaterThan(1.6);
+  });
+
+  it('drifts downward when the camera is pitched down', () => {
+    // Camera at (0, 10, 5) pitched down → looking at (0, 5, 0).
+    // forward.y < 0; synthetic hit's y < camera.y.
+    const cam = camAt({ x: 0, y: 10, z: 5 }, { x: 0, y: 5, z: 0 });
+    const hit = computeLowTiltWheelHit(cam);
+    expect(hit.y).toBeLessThan(10);
+  });
+
+  it('vertical drift at near-extreme looking-up matches the risk-table quantification', () => {
+    // Camera at street level (y=1.6), pitched up close to the
+    // MIN_TILT_DEGREES = -89° clamp. forward.y ≈ sin(89°) ≈ 0.9998.
+    // Synthetic hit y ≈ camera.y + 30 * 0.9998 ≈ 31.6.
+    // (Tilt = -89° means camera looks at (0, camY + Δy, 0) where
+    // Δy/distance ≈ tan(89°). We aim from y=1.6 at a target nearly
+    // straight up: y=101.6 puts a ~89.05° angle, close enough.)
+    const cam = camAt({ x: 0, y: 1.6, z: 5 }, { x: 0, y: 101.6, z: 5 - 0.01 });
+    const hit = computeLowTiltWheelHit(cam);
+    expect(hit.y - 1.6).toBeGreaterThan(29); // ≥29m of the ~30m expected
   });
 });

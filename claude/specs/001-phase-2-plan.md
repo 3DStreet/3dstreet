@@ -99,6 +99,8 @@ This rule means the indicator is a *predictor* of the next LB drag, not a reflec
 
 All Phase 1 mechanics carry over verbatim. Phase 1's wheel handler is reused. Phase 1's WASD is reused. Phase 1's Plan View intercept is reused (and now more important — it's the user's primary "get me back to a sane bird's-eye view" affordance until the compass button lands).
 
+> **Post-implementation tweak (2026-05-11, per `001-tilt-conditional-zoom.md`):** wheel zoom now branches on the 30° tilt cut. At tilt > 30° (map mode): cursor-anchored zoom (Phase 1 behaviour, unchanged). At tilt ≤ 30° (FPS mode): plain camera-Z dolly along the view direction, no cursor anchoring. Sidesteps the "cursor over sky → screen-centre-feeling zoom" inconsistency at low tilt that surfaced during Phase 2 feel-test. See `claude/decisions.md` 2026-05-11.
+
 One micro-tweak: with the tilt clamp lowered, the user can now reach near-straight-up tilt via Shift+LB (camera looking ~89° above horizontal). At those angles the camera's `−Z` direction projects almost-zero onto the horizontal plane, just like the looking-straight-down case. Phase 1's `−Z-projection with +Y-projection fallback` covers both extremes — at near-straight-up, `+Y` projects to roughly the negation of the camera-forward-horizontal direction, which is what the user intuits as "WASD-forward should keep going forward". Verify in feel-test rather than re-derive.
 
 ## Architecture additions

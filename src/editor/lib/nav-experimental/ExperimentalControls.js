@@ -43,12 +43,14 @@ import {
   WASD_RAMP_UP_MS,
   PLAN_VIEW_DURATION_MS,
   LB_PAN_MAX_STEP_METRES,
-  ROTATION_BLEND_LOW_DEGREES
+  ROTATION_BLEND_LOW_DEGREES,
+  TRUCK_PEDESTAL_CUTOFF_DEGREES
 } from './constants.js';
 import {
   cameraTiltDegrees,
   decideLbMode,
-  latchedRotationCenter
+  latchedRotationCenter,
+  computeLowTiltWheelHit
 } from './navMath.js';
 
 const DEG2RAD = Math.PI / 180;
@@ -770,10 +772,22 @@ export class ExperimentalControls extends THREE.EventDispatcher {
   _applyWheelTick(sign) {
     // sign > 0 -> deltaY positive -> wheel "down" -> zoom out
     const camera = this._camera;
-    const x = this._lastWheelClientX;
-    const y = this._lastWheelClientY;
-    if (x == null || y == null) return;
-    const hit = this._cursorAnchor.worldPointAt(x, y);
+
+    // Tilt-conditional wheel-zoom (per
+    // claude/specs/001-tilt-conditional-zoom.md). At tilt > 30° (map
+    // mode): cursor-anchored zoom — Phase 1 behaviour. At tilt ≤ 30°
+    // (FPS mode): plain camera-Z dolly via a synthetic anchor along
+    // camera-forward. Sidesteps the "cursor over sky" inconsistency
+    // at low tilt without changing the high-tilt cursor-anchored UX.
+    let hit;
+    if (cameraTiltDegrees(camera) > TRUCK_PEDESTAL_CUTOFF_DEGREES) {
+      const x = this._lastWheelClientX;
+      const y = this._lastWheelClientY;
+      if (x == null || y == null) return;
+      hit = this._cursorAnchor.worldPointAt(x, y);
+    } else {
+      hit = computeLowTiltWheelHit(camera);
+    }
 
     // factor: zoom in (sign<0) brings camera closer to anchor by 10%;
     // zoom out (sign>0) is the inverse so a zoom-in/zoom-out pair returns

@@ -9,7 +9,8 @@ import {
   ROTATION_BLEND_LOW_DEGREES,
   ROTATION_BLEND_HIGH_DEGREES,
   ROTATION_CENTER_EYE_HEIGHT_METRES,
-  SCENE_FEATHER_METRES
+  SCENE_FEATHER_METRES,
+  FALLBACK_FORWARD_DIST
 } from './constants.js';
 
 // Signed-positive distance from a horizontal point (px, pz) to an
@@ -144,4 +145,19 @@ export function latchedRotationCenter(camera, bounds, screenHitOrNull) {
     screenHit: effectiveScreenHit,
     blend
   };
+}
+
+// Synthetic wheel-zoom anchor for the low-tilt branch (per
+// `claude/specs/001-tilt-conditional-zoom.md`): a point
+// `FALLBACK_FORWARD_DIST` metres along the camera's view direction.
+// Reused as the "hit point" in the existing orbit-step math in
+// `_applyWheelTick`, giving a 3m-per-tick forward dolly
+// (ZOOM_PER_WHEEL_TICK × FALLBACK_FORWARD_DIST) — no cursor anchoring.
+// Pure.
+export function computeLowTiltWheelHit(camera) {
+  const fwd = new THREE.Vector3();
+  camera.getWorldDirection(fwd);
+  return new THREE.Vector3()
+    .copy(camera.position)
+    .addScaledVector(fwd, FALLBACK_FORWARD_DIST);
 }

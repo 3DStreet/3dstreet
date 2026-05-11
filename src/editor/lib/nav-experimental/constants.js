@@ -61,6 +61,20 @@ export const WHEEL_MAX_BUDGET =
 // degenerate ground-plane intersections at low tilt).
 export const LB_PAN_MAX_STEP_METRES = 5000;
 
+// cursorAnchor.worldPointAt fallback chain (Phase 1):
+//   Step 2 caps the ground-plane intersection distance at this many metres
+//     to reject grazing rays that would anchor far out of scene scope.
+//   Step 3 returns a fixed point this many metres along the camera's
+//     forward direction when both scene-mesh raycast and ground-plane
+//     intersection miss.
+// Also used as the synthetic-anchor depth for the tilt-conditional
+// wheel-zoom's low-tilt branch (per `001-tilt-conditional-zoom.md`):
+// `pos + cameraForward * FALLBACK_FORWARD_DIST` is the "hit" point fed
+// into the existing orbit-step math, giving a 3m-per-tick forward dolly
+// (ZOOM_PER_WHEEL_TICK × FALLBACK_FORWARD_DIST).
+export const MAX_GROUND_DIST = 2000;
+export const FALLBACK_FORWARD_DIST = 30;
+
 // Shift+LB rotation speed (radians per pixel). Matches the Phase-0
 // EditorControls feel.
 export const ROTATION_SPEED_RAD_PER_PX = 0.0035;

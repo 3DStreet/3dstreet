@@ -49,6 +49,8 @@ Phase 1 of the navigation prototype work (see `001-overall-plan.md`). First UX-t
 
 ### Wheel → exponential cursor-anchored dolly
 
+> **Tilt-conditional (post-Phase-1, 2026-05-11):** the cursor-anchored behaviour described in this section applies at tilt > 30° only. At tilt ≤ 30° wheel zoom switches to a plain camera-Z dolly along the view direction (no cursor anchoring; 3m per zoom-in tick at `ZOOM_PER_WHEEL_TICK = 0.10` × `FALLBACK_FORWARD_DIST = 30m`). Rationale: Google Maps' cursor-anchored zoom is a map-view feature; at low tilt we're in FPS mode and the comparison doesn't apply. See `claude/specs/001-tilt-conditional-zoom.md` and `claude/decisions.md` 2026-05-11.
+
 - Each wheel tick moves the camera along the ray from camera position through the cursor's current world hit-point.
 - **Anchoring:** the world point under the cursor stays at the same screen pixel (mathematically: translating along that ray preserves the camera→hit direction, hence the screen projection of the hit-point).
 - **Tilt-preserving by construction:** translation along the ray does not rotate the camera, so tilt is unchanged. This is structurally different from Google Maps' zoom (which re-aims the camera as part of the operation, and as a result drives tilt below 30° on far-horizon zooms). No tilt clamp is needed on the zoom path.
