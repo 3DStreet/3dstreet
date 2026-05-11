@@ -100,15 +100,45 @@ Contact [kieran@3dstreet.org](mailto:kieran@3dstreet.org) for commercial licensi
 
 Work-in-progress overhaul of the editor camera controls. Enabled per-session by appending `?nav=experimental` to the URL (e.g. `http://localhost:3333/?nav=experimental`). Old controls remain the default.
 
-Implemented so far:
+What's changed?
 
-- **LB+drag** — truck/dolly in the world horizontal plane (high tilt) or world-vertical pedestal (low tilt). Hit-anchored: the world point under the cursor at gesture start stays under the cursor.
-- **Shift+LB+drag** — pan/tilt. Rotation centre is bounds-aware (diorama centre when outside a bounded scene, camera position when inside or unbounded), latched at gesture start. Museum-diorama feel — no `lookAt(centre)` snap.
-- **Wheel** — 3-phase "swoop" zoom: cursor-anchored exponential dolly above 20m → pedestal-and-tilt-toward-horizontal between 20m and 1.5m → FOV-only zoom at street level. Reverses on wheel-out. **Ctrl+wheel** (incl. Mac trackpad pinch) bypasses the swoop and gives a plain fixed-tilt dolly.
-- **WASD / arrow keys** — camera-yaw-projected horizontal motion with a velocity ramp.
-- **Plan View** — animated tween to top-down, framing the scene bounds when available.
+- At a distance, controls match Google Maps.  LB+drag to truck/dolly, Shift+LB+drag to rotate/tilt view, Mouse wheel to zoom in/out.  Zoom centers on mouse pointer, not screen center (matches Google Maps)
+- RB no longer used (free for context-specific menus)
+- Plan View is no longer a separate mode.  It is an operation that returns the camera to a plan view.
+- When tilt goes below 30 degrees, 2 key changes happen:
+  1. LB+drag switches from truck/dolly (horizontal plane movement) to truck/pedestal (vertical plane movement)
+  2. Rotation center depends on camera position relative to scene.  When camera is inside the scene (or vertically above), rotation about the camera; when camera is outside the scene, orbit controls centered on the scene center.
+  (also a visible indicator of the mode switch: black bars at top and bottom of the view pane)
+- When zoom-in goes below 20m above street-level, we begin a "swoop zoom"
+  - Camera tilts up towards horizontal
+  - Camera pedestals down towards eye-level
+  - Once at street level zoom becomes a focal-zoom.
+  (Ctrl+wheel can be used for classic (non-swoop) zoom in/out)
 
-Design rationale, locked decisions, and known gaps live in `claude/specs/001-overall-plan.md` (start there) and the phase-specific plans alongside it.
+Not yet implemented / known limitations:
+- Improvements to double-click logic
+- FPS / Pointer lock mode
+- Plan view should be a button, not a mode selection.  Possibly combine with a compass indicator/control, like in Google Maps.
+- Need some visible signal to the user when they are inside / outside a finite scene boundary
+- Height for swoop zoom is controlled by y co-ordinate.  Should be mesured above street level (for scenes where street level is not y=0)
+
+What feels good:
+- Solid replicaton of Google Maps for birds-eye view
+- I think the swoop zoom works pretty well (perhaps parameters could be fine-tuned a little).  Nice transition between birds-eye view & street view.
+- Rotation center depending on whether inside / outside the scene feels OK, but it would be better with a visual indicator that shows the user the mode-switch
+- Switch between truck/dolly and truck/pedestal at 30 degrees tilt feels natural to me.  I don't miss the blended (camera-XZ plane) motion we had before.
+
+
+What might not be quite right yet:
+- Transition between phases 2 & 3 of swoop zoom (transition into focal zoom) might benefit from a brief pause.  If you want to be at street-level/eye-level, with no focal zoom, it's a bit tricky to hit that exact point.
+- When at street-level, not obvious what angle zoom out will happen at (stored state from zoom-in).  Visual indicator (possibly an aspect of the compass indicator) might help here?
+- While Shift+LB-drag matches Google Maps, I still find myself trying to use RB-drag to rotate.  Adding an RB contextual menu might help: at the moment RB has no function at all, which feels wrong.  If RB contextual menu is not needed, we can restore RB
+- Ctrl+LB-drag is missing vs. Google Maps.  Intention was to keep Ctrl key for FPS / Pointer-lock mode.  Not completely convinced about this yet, but as with contextual menu, actually implementing something Ctrl does might help!
+- At street level, LB-drag for truck/pedestal can feels a bit unexpected, and makes it easy to accidentally go below street level!  At street level LB-drag might make more sense as rotate than truck/pedestal, but we'd need to figure out the transition to/from this control system.
+- Potential clash between Ctrl+wheel for pure zoom, and Ctrl for FPS / Pointer lock mode.
+
+
+
 
 ### Developer Docs
 See [this link for more information](src/README.md) about the custom components developed and modified for the project.
