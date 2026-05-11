@@ -146,7 +146,7 @@ AFRAME.registerComponent('managed-street', {
       default: false
     },
     // Opt-in flag for the traffic animation feature. When true and the
-    // user presses Play, managed-street-traffic spawns animated
+    // user presses Play, street-traffic spawns animated
     // entities along each lane (drive-lane, bus-lane, bike-lane,
     // sidewalk). Off by default so existing scenes don't start
     // animating on Play after this feature lands.

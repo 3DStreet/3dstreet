@@ -37,6 +37,7 @@ AFRAME.registerComponent('delivery-bot-mesh', {
   },
 
   init: function () {
+    this._spawned = [];
     this._buildBody();
     this._buildAntenna();
     this._lastWorldPos = new THREE.Vector3();
@@ -46,6 +47,27 @@ AFRAME.registerComponent('delivery-bot-mesh', {
     this._tipXZ = new THREE.Vector2();
     this._tipVel = new THREE.Vector2();
     this._haveLastPos = false;
+  },
+
+  // Helper: append a procedurally-generated child while tagging it as
+  // `autocreated` so json-utils skips it on save (avoids bloating the
+  // saved scene with dozens of mesh-piece entities) and `data-no-
+  // transform` so it doesn't show as a selectable layer in the
+  // SceneGraph.
+  _spawn: function (parent, child) {
+    child.classList.add('autocreated');
+    child.setAttribute('data-aframe-inspector', 'autocreated');
+    child.setAttribute('data-no-transform', '');
+    parent.appendChild(child);
+    this._spawned.push(child);
+  },
+
+  remove: function () {
+    if (!this._spawned) return;
+    for (const c of this._spawned) {
+      if (c.parentNode) c.parentNode.removeChild(c);
+    }
+    this._spawned.length = 0;
   },
 
   _buildBody: function () {
@@ -65,7 +87,7 @@ AFRAME.registerComponent('delivery-bot-mesh', {
     );
     body.setAttribute('position', '0 0.2 0');
     body.setAttribute('shadow', 'cast: true; receive: true');
-    root.appendChild(body);
+    this._spawn(root, body);
 
     // Lid (accent color, inset)
     const lid = document.createElement('a-entity');
@@ -78,7 +100,7 @@ AFRAME.registerComponent('delivery-bot-mesh', {
       `color: ${d.accentColor}; metalness: 0.2; roughness: 0.4`
     );
     lid.setAttribute('position', '0 0.42 0');
-    root.appendChild(lid);
+    this._spawn(root, lid);
 
     // Front sensor band (faces +Z forward)
     const face = document.createElement('a-entity');
@@ -88,7 +110,7 @@ AFRAME.registerComponent('delivery-bot-mesh', {
     );
     face.setAttribute('material', 'color: #1a1a1a; metalness: 0; roughness: 1');
     face.setAttribute('position', '0 0.28 0.33');
-    root.appendChild(face);
+    this._spawn(root, face);
 
     // Eyes
     for (const x of [-0.11, 0.11]) {
@@ -102,7 +124,7 @@ AFRAME.registerComponent('delivery-bot-mesh', {
         `color: ${d.accentColor}; emissive: ${d.accentColor}; emissiveIntensity: 0.6; shader: flat`
       );
       eye.setAttribute('position', `${x} 0.28 0.34`);
-      root.appendChild(eye);
+      this._spawn(root, eye);
     }
 
     // Tail light (at -Z back)
@@ -116,7 +138,7 @@ AFRAME.registerComponent('delivery-bot-mesh', {
       'color: #cc3333; emissive: #cc3333; emissiveIntensity: 0.4; shader: flat'
     );
     tail.setAttribute('position', '0 0.28 -0.33');
-    root.appendChild(tail);
+    this._spawn(root, tail);
 
     // Side dot stripe — little accent details
     for (const z of [-0.22, 0, 0.22]) {
@@ -128,7 +150,7 @@ AFRAME.registerComponent('delivery-bot-mesh', {
         );
         dot.setAttribute('material', `color: ${d.accentColor}; shader: flat`);
         dot.setAttribute('position', `${side * 0.25} 0.18 ${z}`);
-        root.appendChild(dot);
+        this._spawn(root, dot);
       }
     }
   },
@@ -145,12 +167,12 @@ AFRAME.registerComponent('delivery-bot-mesh', {
     );
     mount.setAttribute('material', `color: ${d.accentColor}; shader: flat`);
     mount.setAttribute('position', `0 ${this._mountY + 0.03} 0`);
-    this.el.appendChild(mount);
+    this._spawn(this.el, mount);
 
     // Line from mount to tip — thin cylinder, regenerated each tick.
     const line = document.createElement('a-entity');
     line.setAttribute('material', `color: ${d.antennaColor}; shader: flat`);
-    this.el.appendChild(line);
+    this._spawn(this.el, line);
     this._line = line;
 
     // Tip ball
@@ -163,7 +185,7 @@ AFRAME.registerComponent('delivery-bot-mesh', {
       'material',
       `color: ${d.antennaColor}; emissive: ${d.antennaColor}; emissiveIntensity: 0.5; shader: flat`
     );
-    this.el.appendChild(ball);
+    this._spawn(this.el, ball);
     this._ball = ball;
   },
 

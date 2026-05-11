@@ -183,6 +183,12 @@ const useStore = create(
         setRightPanelTab: (newTab) => set({ rightPanelTab: newTab }),
         isPlaying: false,
         isPlayPaused: false,
+        // Transient outcome shown by the toolbar SIM pill.
+        //   null   – normal running state
+        //   'finish'  – race-target was crossed (blue, pinned at finish time)
+        //   'crash'   – a recent chassis collision (red, auto-clears)
+        playOutcome: null,
+        playOutcomeTimeMs: 0,
         isInspectorEnabled: true,
         setIsInspectorEnabled: (newIsInspectorEnabled) => {
           const viewerModeUI = document.getElementById('viewer-mode-ui');

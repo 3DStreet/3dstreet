@@ -3,7 +3,7 @@
 A scratchpad for the play-mode driving feature. Not user-facing docs.
 Captures intent and open questions so the next slice has context.
 
-## Traffic animation v1 (`managed-street-traffic`)
+## Traffic animation v1 (`street-traffic`)
 
 Opt-in per managed-street. Set `playable: true` on a `managed-street`
 and pressing Play animates entities along each of its lanes.
@@ -22,7 +22,7 @@ and pressing Play animates entities along each of its lanes.
   and fires `timer-start`; `play-mode.stop()` fires `timer-pause`.
   The timer is the canonical clock for any subscriber that wants
   deterministic time.
-- **Per-segment-type defaults** (in `managed-street-traffic.js`):
+- **Per-segment-type defaults** (in `street-traffic.js`):
   - drive-lane: 11.2 m/s (25 mph), `sedan-rig`, ~2 per 60m
   - bus-lane: 9.0 m/s, `bus`, ~1 per 60m
   - bike-lane: 6.0 m/s, `cyclist1`, ~3 per 60m
@@ -147,7 +147,7 @@ doubles as the pause toggle.
     the `play-mode-player-car`, lazy-load Rapier, seed colliders. On
     `play-mode-stop`: tear it all down.
   - **Future traffic animation** will be a sibling scene component
-    (e.g. `managed-street-traffic`) that listens for the same events
+    (e.g. `street-traffic`) that listens for the same events
     and animates lane occupants. It will not import or depend on
     drive-mode or Rapier.
 - Cross-feature coupling (drive mode + traffic active simultaneously)

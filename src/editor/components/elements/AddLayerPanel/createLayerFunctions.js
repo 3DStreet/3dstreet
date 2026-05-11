@@ -1,6 +1,6 @@
 import { createUniqueId } from '../../../lib/entity.js';
 import * as defaultStreetObjects from './defaultStreets.js';
-import { VEHICLE_PRESETS } from '../../../../aframe-components/vehicle-presets.js';
+import { VEHICLE_PRESETS } from '../../../../aframe-components/play/vehicle-presets.js';
 
 export function createSvgExtrudedEntity(position) {
   // This component accepts a svgString and creates a new entity with geometry extruded
@@ -250,6 +250,17 @@ export function createCustomModel(position) {
     };
     AFRAME.INSPECTOR.execute('entitycreate', definition);
   }
+}
+
+export function createRaceTarget(position) {
+  const definition = {
+    'data-layer-name': 'Race Target',
+    components: {
+      position: position ?? '0 0 0',
+      'race-target': 'width: 6; height: 4; color: #2196f3'
+    }
+  };
+  AFRAME.INSPECTOR.execute('entitycreate', definition);
 }
 
 export function createPrimitiveGeometry(position) {

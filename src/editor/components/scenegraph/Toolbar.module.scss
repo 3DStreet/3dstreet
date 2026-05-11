@@ -54,6 +54,26 @@
   animation: simTimerBlink 1s steps(2, start) infinite;
 }
 
+.simTimerFinish {
+  color: #2196f3;
+  animation: simTimerBlink 1s steps(2, start) infinite;
+}
+
+.simTimerCrash {
+  color: #ff3a3a;
+  animation: simTimerCrashFlash 0.4s ease-out infinite;
+}
+
+@keyframes simTimerCrashFlash {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.35;
+  }
+}
+
 @keyframes simTimerBlink {
   to {
     opacity: 0.25;

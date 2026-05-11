@@ -1,5 +1,11 @@
 import { useEffect, useRef, useState } from 'react';
-import { faStop, faPause, faPlay } from '@fortawesome/free-solid-svg-icons';
+import {
+  faStop,
+  faPause,
+  faPlay,
+  faFlagCheckered,
+  faTriangleExclamation
+} from '@fortawesome/free-solid-svg-icons';
 import useStore from '@/store';
 import { Button } from '../elements/Button';
 import { AwesomeIcon } from '../elements/AwesomeIcon';
@@ -20,6 +26,8 @@ function formatSeconds(ms) {
 function SimTimer() {
   const isPlaying = useStore((s) => s.isPlaying);
   const isPlayPaused = useStore((s) => s.isPlayPaused);
+  const playOutcome = useStore((s) => s.playOutcome);
+  const playOutcomeTimeMs = useStore((s) => s.playOutcomeTimeMs);
   const [times, setTimes] = useState({ wall: 0, sim: 0 });
   const rafRef = useRef(null);
   // Wall-time anchor: performance.now() corresponding to "wall = 0".
@@ -68,26 +76,47 @@ function SimTimer() {
 
   const drift = times.wall - times.sim;
   const desynced = drift > DRIFT_WARN_MS && !isPlayPaused;
+  const isFinish = playOutcome === 'finish';
+  const isCrash = playOutcome === 'crash';
+
+  // Outcome states freeze the display value so the user sees the
+  // event time, not the still-running sim clock.
+  const displayMs = isFinish || isCrash ? playOutcomeTimeMs : times.sim;
 
   const onClick = () => {
     document.querySelector('a-scene')?.systems?.['play-mode']?.togglePause();
   };
 
+  const icon = isFinish
+    ? faFlagCheckered
+    : isCrash
+      ? faTriangleExclamation
+      : isPlayPaused
+        ? faPlay
+        : faPause;
+
+  const title = isFinish
+    ? `Finished in ${formatSeconds(playOutcomeTimeMs)} — click to resume`
+    : isCrash
+      ? `Crash at ${formatSeconds(playOutcomeTimeMs)}`
+      : isPlayPaused
+        ? 'Paused — click to resume'
+        : desynced
+          ? `Simulation lagging wall-clock by ${drift.toFixed(0)}ms — click to pause`
+          : 'Simulation time — click to pause';
+
+  const className = [
+    styles.simTimer,
+    isFinish ? styles.simTimerFinish : '',
+    isCrash ? styles.simTimerCrash : '',
+    !isFinish && !isCrash && desynced ? styles.simTimerWarn : '',
+    !isFinish && !isCrash && isPlayPaused ? styles.simTimerPaused : ''
+  ].join(' ');
+
   return (
-    <button
-      type="button"
-      onClick={onClick}
-      className={`${styles.simTimer} ${desynced ? styles.simTimerWarn : ''} ${isPlayPaused ? styles.simTimerPaused : ''}`}
-      title={
-        isPlayPaused
-          ? 'Paused — click to resume'
-          : desynced
-            ? `Simulation lagging wall-clock by ${drift.toFixed(0)}ms — click to pause`
-            : 'Simulation time — click to pause'
-      }
-    >
-      <AwesomeIcon icon={isPlayPaused ? faPlay : faPause} size={10} />
-      <span className={styles.simTimerValue}>{formatSeconds(times.sim)}</span>
+    <button type="button" onClick={onClick} className={className} title={title}>
+      <AwesomeIcon icon={icon} size={10} />
+      <span className={styles.simTimerValue}>{formatSeconds(displayMs)}</span>
     </button>
   );
 }

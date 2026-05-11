@@ -152,6 +152,15 @@ export const customLayersData = [
     handlerFunction: createFunctions.createDriveableTaxi
   },
   {
+    name: 'Race Target',
+    img: '',
+    requiresPro: false,
+    icon: '',
+    description:
+      'A finish-line gate. Driving the player vehicle through it during play ends the race, pauses the simulation, and pins the finish time in the toolbar.',
+    handlerFunction: createFunctions.createRaceTarget
+  },
+  {
     name: 'Gaussian Splat from URL',
     img: '',
     requiresPro: true,

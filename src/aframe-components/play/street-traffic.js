@@ -1,7 +1,7 @@
 /* global AFRAME, THREE */
 
 /**
- * managed-street-traffic
+ * street-traffic
  * ======================
  *
  * Scene-level play-mode subscriber that animates entities along each
@@ -66,7 +66,7 @@ const SEGMENT_TRAFFIC_DEFAULTS = {
   // divider/grass/rail/building: no traffic.
 };
 
-AFRAME.registerComponent('managed-street-traffic', {
+AFRAME.registerComponent('street-traffic', {
   init: function () {
     this.onPlayStart = this.onPlayStart.bind(this);
     this.onPlayStop = this.onPlayStop.bind(this);
@@ -109,7 +109,7 @@ AFRAME.registerComponent('managed-street-traffic', {
     }
 
     console.log(
-      '[managed-street-traffic] start:',
+      '[street-traffic] start:',
       streets.length,
       'managed-streets found,',
       playableCount,
@@ -133,11 +133,12 @@ AFRAME.registerComponent('managed-street-traffic', {
       r.el.object3D.getWorldPosition(wp);
       r.body = physics.addKinematicCuboid(
         { x: wp.x, y: wp.y, z: wp.z },
-        r.half
+        r.half,
+        'traffic'
       );
       if (r.body) n++;
     }
-    console.log('[managed-street-traffic] created', n, 'kinematic bodies');
+    console.log('[street-traffic] created', n, 'kinematic bodies');
   },
 
   onPlayStop: function () {
@@ -153,7 +154,7 @@ AFRAME.registerComponent('managed-street-traffic', {
       if (h.el?.object3D) h.el.object3D.visible = h.wasVisible;
     }
     console.log(
-      '[managed-street-traffic] stop: removed',
+      '[street-traffic] stop: removed',
       this.records.length,
       'animated entities, restored',
       this.hidden.length,
@@ -193,7 +194,7 @@ AFRAME.registerComponent('managed-street-traffic', {
         });
         if (!hasPedestrians) {
           console.log(
-            '[managed-street-traffic] skipping sidewalk segment without pedestrian density'
+            '[street-traffic] skipping sidewalk segment without pedestrian density'
           );
           return;
         }

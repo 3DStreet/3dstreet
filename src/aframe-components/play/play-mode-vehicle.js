@@ -79,6 +79,11 @@ AFRAME.registerSystem('play-mode-physics', {
     this.physAcc = 0;
     this.timestep = 1 / 60;
     this.afterStepCallbacks = []; // run after each physics sub-step
+    // Collider handle → tag string. Lets the contact event loop
+    // distinguish ground / segment slabs (ignored) from buildings,
+    // traffic, etc. (counts as a collision).
+    this.colliderTags = new Map();
+    this.eventQueue = null;
   },
 
   /**
@@ -95,6 +100,9 @@ AFRAME.registerSystem('play-mode-physics', {
       this.world = new RAPIER.World({ x: g.x, y: g.y, z: g.z });
       this.world.timestep = this.timestep;
     }
+    if (!this.eventQueue) {
+      this.eventQueue = new RAPIER.EventQueue(true);
+    }
     this.active = true;
   },
 
@@ -104,10 +112,15 @@ AFRAME.registerSystem('play-mode-physics', {
     this.synced.length = 0;
     this.afterStepCallbacks.length = 0;
     this.physAcc = 0;
+    this.colliderTags.clear();
     if (this.world) {
       // Free everything by recreating the world next activate().
       this.world.free?.();
       this.world = null;
+    }
+    if (this.eventQueue) {
+      this.eventQueue.free?.();
+      this.eventQueue = null;
     }
   },
 
@@ -130,11 +143,31 @@ AFRAME.registerSystem('play-mode-physics', {
   },
 
   /**
+   * Register a chassis-collision listener. play-mode-vehicle wires its
+   * own collider handle here so the system can drain Rapier collision
+   * events after each step and dispatch only the ones involving that
+   * chassis. Tag-based filtering (ground / segment ignored) happens
+   * here so subscribers see a clean "you hit something that matters"
+   * signal.
+   *
+   * cb signature: ({ otherTag: string, world: rapierWorld }) => void
+   */
+  setChassisContactListener: function (chassisColliderHandle, cb) {
+    this._chassisColliderHandle = chassisColliderHandle;
+    this._chassisContactCb = cb;
+  },
+
+  clearChassisContactListener: function () {
+    this._chassisColliderHandle = null;
+    this._chassisContactCb = null;
+  },
+
+  /**
    * Add a static cuboid collider matching an entity's box geometry.
    * Used to seed ground / walls at the boundary so the player has
    * something to collide with.
    */
-  addStaticCuboid: function (pos, halfExtents, quat) {
+  addStaticCuboid: function (pos, halfExtents, quat, tag) {
     if (!this.world) return null;
     const desc = RAPIER.RigidBodyDesc.fixed().setTranslation(
       pos.x,
@@ -143,10 +176,11 @@ AFRAME.registerSystem('play-mode-physics', {
     );
     if (quat) desc.setRotation(quat);
     const body = this.world.createRigidBody(desc);
-    this.world.createCollider(
+    const collider = this.world.createCollider(
       RAPIER.ColliderDesc.cuboid(halfExtents.x, halfExtents.y, halfExtents.z),
       body
     );
+    if (tag) this.colliderTags.set(collider.handle, tag);
     return body;
   },
 
@@ -154,10 +188,10 @@ AFRAME.registerSystem('play-mode-physics', {
    * Add a kinematic-position-based cuboid. Caller drives the body
    * each tick via setNextKinematicTranslation/Rotation; the solver
    * computes correct velocity so dynamic bodies (player chassis)
-   * bounce off cleanly. Used by managed-street-traffic to give
+   * bounce off cleanly. Used by street-traffic to give
    * animated traffic real collision shapes that the player can hit.
    */
-  addKinematicCuboid: function (pos, halfExtents) {
+  addKinematicCuboid: function (pos, halfExtents, tag) {
     if (!this.world) return null;
     const body = this.world.createRigidBody(
       RAPIER.RigidBodyDesc.kinematicPositionBased().setTranslation(
@@ -166,10 +200,11 @@ AFRAME.registerSystem('play-mode-physics', {
         pos.z
       )
     );
-    this.world.createCollider(
+    const collider = this.world.createCollider(
       RAPIER.ColliderDesc.cuboid(halfExtents.x, halfExtents.y, halfExtents.z),
       body
     );
+    if (tag) this.colliderTags.set(collider.handle, tag);
     return body;
   },
 
@@ -190,7 +225,26 @@ AFRAME.registerSystem('play-mode-physics', {
     const timer = this.sceneEl.components['scene-timer'];
     let steps = 0;
     while (this.physAcc >= this.timestep && steps < 4) {
-      this.world.step();
+      this.world.step(this.eventQueue);
+      // Drain collision-start events that involve the chassis. Filter
+      // out ground / segment slabs — those are "you drove on the road"
+      // and produce constant contacts when bottoming out / scraping
+      // curbs. The chassis listener only wants "you hit something."
+      if (this._chassisContactCb && this._chassisColliderHandle != null) {
+        const myHandle = this._chassisColliderHandle;
+        const cb = this._chassisContactCb;
+        const tags = this.colliderTags;
+        this.eventQueue.drainCollisionEvents((h1, h2, started) => {
+          if (!started) return;
+          const other = h1 === myHandle ? h2 : h2 === myHandle ? h1 : null;
+          if (other == null) return;
+          const tag = tags.get(other) || 'unknown';
+          if (tag === 'ground' || tag === 'segment') return;
+          cb({ otherTag: tag, otherHandle: other });
+        });
+      } else {
+        this.eventQueue.drainCollisionEvents(() => {});
+      }
       for (const cb of this.afterStepCallbacks) cb(this.timestep);
       if (timer) timer.advanceSimulation(this.timestep * 1000);
       this.physAcc -= this.timestep;
@@ -369,6 +423,13 @@ AFRAME.registerComponent('drive-controls', {
     for (const comp of PROCEDURAL_MESH_COMPONENTS) {
       if (slot.hasAttribute(comp)) slot.removeAttribute(comp);
     }
+    // Belt-and-suspenders: remove any leftover autocreated procedural-
+    // mesh children. Each procedural mesh's `remove()` should already
+    // clean its own spawned entities, but scenes saved BEFORE that
+    // cleanup landed can have stale children sitting under the slot.
+    slot.querySelectorAll('.autocreated').forEach((c) => {
+      if (c.parentNode) c.parentNode.removeChild(c);
+    });
     // Apply the preset's mesh — either a catalog mixin or a
     // procedural component name (mutually exclusive in the preset
     // schema).
@@ -439,6 +500,11 @@ AFRAME.registerComponent('play-mode-vehicle', {
       default: 'four-wheel',
       oneOf: WHEEL_LAYOUT_NAMES
     },
+    // Forwarded from drive-controls so the value travels with the
+    // play-mode-vehicle attribute string when drive-mode rebuilds the
+    // player car. The actual offset is applied to the cloned mesh
+    // wrapper in createPlayerCar.
+    meshYOffset: { type: 'number', default: 0 },
     cameraSelector: { type: 'string', default: '#camera' },
     cameraHeight: { type: 'number', default: 18 },
     cameraMode: {
@@ -510,6 +576,9 @@ AFRAME.registerComponent('play-mode-vehicle', {
     if (this.system && this._afterStep) {
       this.system.offAfterStep(this._afterStep);
       this._afterStep = null;
+    }
+    if (this.system) {
+      this.system.clearChassisContactListener();
     }
     if (this.system && this.chassisBody) {
       this.system.unregisterSync(this.chassisBody);
@@ -600,17 +669,25 @@ AFRAME.registerComponent('play-mode-vehicle', {
         .setRotation(spawnQuat)
         .setCanSleep(false)
     );
-    world.createCollider(
+    const chassisCollider = world.createCollider(
       RAPIER.ColliderDesc.cuboid(
         data.chassisSize.x / 2,
         data.chassisSize.y / 2,
         data.chassisSize.z / 2
-      ),
+      ).setActiveEvents(RAPIER.ActiveEvents.COLLISION_EVENTS),
       chassisBody
     );
     this.chassisBody = chassisBody;
+    this.chassisCollider = chassisCollider;
+    this.system.colliderTags.set(chassisCollider.handle, 'chassis');
     this.spawnQuat = spawnQuat;
     this.system.registerSync(chassisBody, this.el);
+    // Subscribe to chassis-impact events. The system filters out
+    // ground / segment colliders (curb scrapes don't count), so this
+    // callback only fires for "you actually hit something."
+    this.system.setChassisContactListener(chassisCollider.handle, (info) =>
+      this.onChassisContact(info)
+    );
 
     // --- Wheel info: proportional to chassisSize so resizing the chassis
     //     auto-rescales wheels. The fractions are chosen so that the
@@ -736,6 +813,39 @@ AFRAME.registerComponent('play-mode-vehicle', {
     }
 
     v.updateVehicle(this.system.timestep);
+  },
+
+  /**
+   * Fires when the chassis collider exchanges a contact-start with a
+   * non-segment, non-ground body. Rapier reports a CollisionStart per
+   * pair on the substep it begins, so a single crash often produces
+   * multiple events as the chassis pings several colliders in quick
+   * succession. Throttle by elapsed sim time + minimum distance so
+   * the user gets one marker per "incident", not a confetti of them.
+   */
+  onChassisContact: function (info) {
+    if (!this.chassisBody) return;
+    const sceneEl = this.el.sceneEl;
+    const timer = sceneEl.components['scene-timer'];
+    const simMs = timer ? timer.simulationTime || 0 : 0;
+    const t = this.chassisBody.translation();
+    if (this._lastCollisionAt != null) {
+      const dtMs = simMs - this._lastCollisionAt.simMs;
+      const dx = t.x - this._lastCollisionAt.x;
+      const dz = t.z - this._lastCollisionAt.z;
+      const distSq = dx * dx + dz * dz;
+      if (dtMs < 1000 && distSq < 1.5 * 1.5) return;
+    }
+    this._lastCollisionAt = { simMs, x: t.x, y: t.y, z: t.z };
+    sceneEl.emit(
+      'play-mode-collision',
+      {
+        simulationTime: simMs,
+        position: { x: t.x, y: t.y, z: t.z },
+        otherTag: info.otherTag
+      },
+      false
+    );
   },
 
   tick: function (time, deltaMs) {
@@ -1062,7 +1172,9 @@ AFRAME.registerComponent('drive-mode', {
       // an empty scene with just a driveable vehicle.
       physics.addStaticCuboid(
         { x: 0, y: -0.05, z: 0 },
-        { x: 200, y: 0.05, z: 200 }
+        { x: 200, y: 0.05, z: 200 },
+        undefined,
+        'ground'
       );
       this.addSegmentColliders(sceneEl);
       this.addOtherVehicleColliders(sceneEl, driveEntity);
@@ -1145,7 +1257,8 @@ AFRAME.registerComponent('drive-mode', {
         physics.addStaticCuboid(
           { x: wp.x, y: wp.y - halfY, z: wp.z },
           { x: width / 2, y: halfY, z: length / 2 },
-          { x: wq.x, y: wq.y, z: wq.z, w: wq.w }
+          { x: wq.x, y: wq.y, z: wq.z, w: wq.w },
+          'segment'
         );
         count++;
       });
@@ -1188,7 +1301,7 @@ AFRAME.registerComponent('drive-mode', {
       // phantom static collider at the spawn point.
       if (playerCar && playerCar.contains(el)) return false;
       // Animated traffic gets kinematic colliders from
-      // managed-street-traffic; don't double-seed with static cuboids.
+      // street-traffic; don't double-seed with static cuboids.
       if (el.hasAttribute('data-play-mode-traffic')) return false;
       // Skip entities that traffic has hidden — they're visually gone,
       // so a static collider sitting at their last pose would just
@@ -1212,7 +1325,9 @@ AFRAME.registerComponent('drive-mode', {
       const half = COLLIDER_SHRINK / 2;
       physics.addStaticCuboid(
         { x: center.x, y: center.y, z: center.z },
-        { x: size.x * half, y: size.y * half, z: size.z * half }
+        { x: size.x * half, y: size.y * half, z: size.z * half },
+        undefined,
+        'obstacle'
       );
     };
 
