@@ -1,6 +1,6 @@
 # 001 — Cursor-anchor fallback: project along cursor ray, not camera forward
 
-*Working draft 2026-05-11. Will iterate.*
+*Working draft 2026-05-11. **Superseded 2026-05-11** by `001-tilt-conditional-zoom.md` — the user's "make wheel zoom tilt-conditional" approach sidesteps the bug at its source rather than fixing Step 3's fallback shape. This file and its adversarial review (`claude/reports/003-cursor-anchor-fallback-review.md`) preserved as the design trail. Plan body below is unchanged from the draft.*
 
 Sub-plan within the navigation prototype work. Changes `cursorAnchor.worldPointAt`'s no-hit fallback (Step 3) so it preserves the cursor's direction instead of snapping to the camera's forward direction. Caller-visible effect: wheel zoom no longer feels inconsistent in corners — cursor-direction always controls zoom direction, even when the cursor's ray misses scene and ground.
 
