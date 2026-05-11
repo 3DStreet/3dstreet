@@ -1,13 +1,10 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import useStore from '@/store';
 import styles from './PlayModeControls.module.scss';
 
-const stallMainThread = (durationMs) => {
-  const end = performance.now() + durationMs;
-  while (performance.now() < end) {
-    // intentional busy-wait to simulate a slow CPU / hitch
-  }
-};
+const DRIFT_WARN_MS = 100;
+
+const formatSeconds = (ms) => (Math.max(0, ms) / 1000).toFixed(2) + 's';
 
 /**
  * Top-right tuning panel shown only while the user is in drive mode.
@@ -34,7 +31,12 @@ const FIELDS = [
 
 export const PlayModeControls = () => {
   const isPlaying = useStore((s) => s.isPlaying);
+  const isPlayPaused = useStore((s) => s.isPlayPaused);
   const [data, setData] = useState(null);
+  const [times, setTimes] = useState({ wall: 0, sim: 0 });
+  const rafRef = useRef(null);
+  const playStartRef = useRef(0);
+  const pausedAtRef = useRef(0);
 
   useEffect(() => {
     if (!isPlaying) {
@@ -63,7 +65,53 @@ export const PlayModeControls = () => {
     return () => sceneEl.removeEventListener('vehicle-built', sync);
   }, [isPlaying]);
 
+  // Wall + sim readouts. Wall anchored locally on Play press so it
+  // doesn't depend on scene-timer.elapsedTime (which can be polluted
+  // if timerActive was already set elsewhere). The toolbar SimTimer
+  // does the same — keeping this independent so the debug panel can
+  // be enabled/disabled without affecting the toolbar.
+  useEffect(() => {
+    if (!isPlaying) {
+      setTimes({ wall: 0, sim: 0 });
+      return undefined;
+    }
+    playStartRef.current = performance.now();
+    let lastUpdate = 0;
+    const loop = (now) => {
+      rafRef.current = requestAnimationFrame(loop);
+      if (now - lastUpdate < 100) return;
+      lastUpdate = now;
+      if (pausedAtRef.current) return;
+      const timer =
+        document.querySelector('a-scene')?.components?.['scene-timer'];
+      setTimes({
+        wall: now - playStartRef.current,
+        sim: timer ? timer.simulationTime || 0 : 0
+      });
+    };
+    rafRef.current = requestAnimationFrame(loop);
+    return () => cancelAnimationFrame(rafRef.current);
+  }, [isPlaying]);
+
+  // Match toolbar pause behavior: freeze readouts on pause, shift the
+  // wall anchor forward by paused duration on resume.
+  useEffect(() => {
+    if (!isPlaying) {
+      pausedAtRef.current = 0;
+      return;
+    }
+    if (isPlayPaused) {
+      pausedAtRef.current = performance.now();
+    } else if (pausedAtRef.current) {
+      playStartRef.current += performance.now() - pausedAtRef.current;
+      pausedAtRef.current = 0;
+    }
+  }, [isPlayPaused, isPlaying]);
+
   if (!isPlaying || !data) return null;
+
+  const drift = times.wall - times.sim;
+  const desynced = drift > DRIFT_WARN_MS && !isPlayPaused;
 
   const setField = (key, value) => {
     const next = { ...data, [key]: value };
@@ -101,13 +149,22 @@ export const PlayModeControls = () => {
           </span>
         </label>
       ))}
-      <button
-        type="button"
-        className={styles.stallBtn}
-        onClick={() => stallMainThread(2000)}
-      >
-        Stall 2s (force desync)
-      </button>
+      <div className={styles.timers}>
+        <div className={styles.timerRow}>
+          <span className={styles.name}>Wall</span>
+          <span className={styles.value}>{formatSeconds(times.wall)}</span>
+        </div>
+        <div className={styles.timerRow}>
+          <span className={styles.name}>Sim</span>
+          <span
+            className={`${styles.value} ${desynced ? styles.valueWarn : ''}`}
+            title={desynced ? `Sim lagging wall by ${drift.toFixed(0)}ms` : ''}
+          >
+            {formatSeconds(times.sim)}
+            {desynced ? ` (-${(drift / 1000).toFixed(2)}s)` : ''}
+          </span>
+        </div>
+      </div>
       <p className={styles.hint}>
         WASD drive · Space brake · R reset · C camera
       </p>

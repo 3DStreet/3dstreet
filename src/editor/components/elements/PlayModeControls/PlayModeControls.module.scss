@@ -72,19 +72,3 @@
 .valueWarn {
   color: #ffd54a;
 }
-
-.stallBtn {
-  margin-top: 6px;
-  width: 100%;
-  background: rgba(255, 255, 255, 0.06);
-  color: variables.$lightgray-300;
-  border: 1px solid variables.$gray-700;
-  border-radius: 4px;
-  padding: 4px 8px;
-  font-size: 11px;
-  cursor: pointer;
-
-  &:hover {
-    background: rgba(255, 255, 255, 0.1);
-  }
-}

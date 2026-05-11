@@ -9,7 +9,10 @@ import styles from './Toolbar.module.scss';
 const DRIFT_WARN_MS = 100;
 
 function formatSeconds(ms) {
-  return (Math.max(0, ms) / 1000).toFixed(2) + 's';
+  const totalMs = Math.max(0, ms);
+  const minutes = Math.floor(totalMs / 60000);
+  const seconds = (totalMs % 60000) / 1000;
+  return `${minutes}:${seconds.toFixed(2).padStart(5, '0')}`;
 }
 
 function SimTimer() {

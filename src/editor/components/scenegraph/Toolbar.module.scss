@@ -46,5 +46,12 @@
 }
 
 .simTimerPaused {
-  opacity: 0.7;
+  color: #ffd54a;
+  animation: simTimerBlink 1s steps(2, start) infinite;
+}
+
+@keyframes simTimerBlink {
+  to {
+    opacity: 0.25;
+  }
 }
