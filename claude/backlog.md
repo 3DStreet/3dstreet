@@ -4,6 +4,20 @@ Internal backlog for the navigation prototype: ideas, follow-ups, and improvemen
 
 Newest first.
 
+## 2026-05-11 — Phase 3 swoop elevation thresholds must be AGL for production
+
+**Phase target:** before production (pre-merge to main; possibly Phase 6).
+
+Phase 3 prototype measures the 10m and 1.5m swoop boundaries against `camera.position.y` (i.e. metres above world origin). Known-broken for scenes whose ground level is meaningfully above or below y=0 — at ground-level = 5m, the "1.5m street-level floor" lands underground. Acceptable for prototype testing against the basic-street default scene (ground at y=0); not acceptable for production where Streetmix imports, geo-located scenes, and elevated dioramas exist.
+
+Production fix: switch to AGL ("above ground level") via a per-tick raycast straight down from camera. The raycast is cheap (one ray per tick) and `cursorAnchor` already does per-tick raycasts. Fall back to absolute-y if the downward raycast misses (open sky / outside scene).
+
+What is unknown: how prevalent non-y=0 ground scenes are in real 3DStreet usage. Worth scanning the published scene corpus before deciding whether AGL is critical-path or a nice-to-have.
+
+See `claude/specs/001-phase-3-plan.md` §"Open decisions" #1.
+
+**Source:** user, 2026-05-11, Phase 3 plan review.
+
 ## 2026-05-11 — "Smoothly recenter the diorama" control
 
 **Phase target:** Phase 4 (double-click) — possibly overlapping with that work.
