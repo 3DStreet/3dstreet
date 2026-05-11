@@ -94,3 +94,32 @@ Carrying forward from the review's `//**` notes — these are not blockers, but 
 - Double-click elevation asymmetry (same gesture, different end-states by altitude)
 - Sensible defaults for absolute thresholds (10m Phase-2 entry, 1.5m eye level) — tune for human-scale streets first, generalize later
 - ~~**Acceleration-based WASD instead of instant velocity.**~~ Landed in Phase 1 (2026-05-09): velocity ramps from 0 to target over `WASD_RAMP_UP_MS` (200ms default) while keys are held; releasing all keys snaps velocity to zero (no decel ramp). Same site (`_drainWASD`) would extend to Phase 5 FPS mode unchanged.
+
+## Phase 2 status — feel-tested and accepted (2026-05-11)
+
+Phase 2 implementation is complete and the prototype is in a stable state. Key feel-test outcomes from the May 2026 session:
+
+- **Latched rotation centre** (not live-recompute). Two live-recompute designs were tried and ruled out at feel-test (one juddered near the AABB edge; one felt "absolutely terrible"). Latched centre with the museum-diorama view-decoupling is the shipping design. See `claude/decisions.md` 2026-05-10 (rotation latching) and 2026-05-11 (museum feel via dual-spherical). Live-recompute code is preserved on branch `navigation-phase2-nolatch` for reference.
+- **Scene-boundary inside/outside test uses the AABB rectangle**, not the cylinder. Cylinder still computed (Plan View framing needs a single radius). See `decisions.md` 2026-05-09.
+- **Shift+LB rotation: museum-diorama feel.** Apply yaw/tilt deltas to both camera position-around-centre AND view direction independently; no `lookAt(centre)` snap. See `claude/specs/001-shiftrotate-decoupled-view.md`.
+- **Wheel zoom: tilt-conditional.** Cursor-anchored at tilt > 30° (map mode); plain camera-Z dolly at tilt ≤ 30° (FPS mode). See `claude/specs/001-tilt-conditional-zoom.md`.
+- **WASD ground-level speed: 2× faster** (MIN_SPEED 5 → 10 m/s). Per user feel-test request.
+
+Superseded sub-plans (kept as historical record):
+- `claude/specs/001-phase-2-rotation-blend.md` — superseded result-blend approach (lives only on branch `navigation-phase2-nolatch`, not `navigation`).
+- `claude/specs/001-cursor-anchor-fallback.md` — superseded by the tilt-conditional approach.
+
+Backlog (not blocking Phase 3): see `claude/backlog.md`. Items include "smooth recentre diorama" control (overlaps Phase 4), scene-bounds visual cue, and "evaluate replacing custom orbit math with library before production".
+
+## Starting Phase 3
+
+Phase 3 is the **3-phase swoop zoom**. Skeleton lives at `claude/specs/001-phase-3-skeleton.md` (designed to be filled in after Phase 1+2 feel-test, which has now happened). The skeleton's dependency map references Phase 1 and Phase 2 mechanics that have shipped — particularly the cursor-anchored wheel dolly (Phase 1) and the 30° tilt cut (Phase 2). The tilt-conditional wheel-zoom decision is directly relevant: the swoop applies to the >30° branch; the ≤30° branch stays as plain dolly across all phases.
+
+**Reading order for the next session:**
+1. `claude/CLAUDE.md` — folder conventions and the plan-and-code adversarial-review cycle.
+2. `claude/decisions.md` — locked-in UX choices that constrain new designs.
+3. `claude/backlog.md` — open items for context.
+4. `claude/specs/001-overall-plan.md` (this file) — phasing.
+5. `claude/specs/001-phase-2-plan.md` — current state of Phase 2 (the "current state" boxes at the top of each section).
+6. `claude/specs/001-phase-3-skeleton.md` — Phase 3 starting point.
+7. `src/editor/lib/nav-experimental/` — read fresh; the Phase 1+2 code is the substrate Phase 3 extends.
