@@ -47,8 +47,7 @@ AFRAME.registerSystem('play-mode', {
     this.isPlaying = true;
     useStore.setState({ isPlaying: true });
     // Reset both clocks on the scene-timer at t=0. elapsedTime tracks
-    // wall-clock (used by camera-path and other legacy features);
-    // simulationTime is the passive counter that physics + traffic +
+    // wall-clock; simulationTime is the passive counter that physics + traffic +
     // any other deterministic play feature reads from. Pausing on
     // stop, advancing on tick — see tick() and play-mode-physics.
     const timer = this.sceneEl.components['scene-timer'];

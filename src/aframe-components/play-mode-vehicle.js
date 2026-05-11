@@ -2,7 +2,9 @@
 const {
   VEHICLE_PRESETS,
   PROCEDURAL_MESH_COMPONENTS,
-  PRESET_NAMES
+  PRESET_NAMES,
+  WHEEL_LAYOUTS,
+  WHEEL_LAYOUT_NAMES
 } = require('./vehicle-presets.js');
 
 /**
@@ -261,7 +263,20 @@ AFRAME.registerComponent('drive-controls', {
     sideFrictionStiffness: { type: 'number', default: 3 },
     // 0 = auto-fit from vehicleSize.y. Use these for explicit override.
     wheelRadius: { type: 'number', default: 0 },
-    wheelWidth: { type: 'number', default: 0 }
+    wheelWidth: { type: 'number', default: 0 },
+    // Wheel count + per-wheel steered/driven flags are bundled into a
+    // named layout (see WHEEL_LAYOUTS in vehicle-presets.js). Default
+    // matches the historic 4-wheel FWD behavior. Tuk-tuk preset swaps
+    // this to 'tuk-tuk-front' (1F-2R, RWD).
+    wheelLayout: {
+      type: 'string',
+      default: 'four-wheel',
+      oneOf: WHEEL_LAYOUT_NAMES
+    },
+    // Vertical offset (meters) for the cloned mesh on the play-mode
+    // chassis. Catalog glTFs differ in where their origin sits relative
+    // to the wheels, so each preset tunes its own value.
+    meshYOffset: { type: 'number', default: 0 }
   },
 
   init: function () {
@@ -331,7 +346,9 @@ AFRAME.registerComponent('drive-controls', {
       brakeForce: p.brakeForce,
       steerAngle: p.steerAngle,
       wheelRadius: p.wheelRadius,
-      wheelWidth: p.wheelWidth
+      wheelWidth: p.wheelWidth,
+      wheelLayout: p.wheelLayout || 'four-wheel',
+      meshYOffset: p.meshYOffset || 0
     });
     // Update the editor's placeholder material to the preset color
     // (used for layer-panel-spawned entities). Geometry box auto-
@@ -415,6 +432,13 @@ AFRAME.registerComponent('play-mode-vehicle', {
     // 0 = auto-fit (radius from chassisSize.y, width similar).
     wheelRadius: { type: 'number', default: 0 },
     wheelWidth: { type: 'number', default: 0 },
+    // See WHEEL_LAYOUTS in vehicle-presets.js. Drives wheel count,
+    // placement, and which wheels are steered / driven.
+    wheelLayout: {
+      type: 'string',
+      default: 'four-wheel',
+      oneOf: WHEEL_LAYOUT_NAMES
+    },
     cameraSelector: { type: 'string', default: '#camera' },
     cameraHeight: { type: 'number', default: 18 },
     cameraMode: {
@@ -610,17 +634,21 @@ AFRAME.registerComponent('play-mode-vehicle', {
       frictionSlip: 1.5,
       radius: wheelRadius
     };
-    const wbx = 0.40625 * data.chassisSize.x; // 0.65 @ default (wheelbase / 2)
-    const trz = 0.5625 * data.chassisSize.z; // 0.45 @ default (track / 2)
-    const wy = -0.375 * data.chassisSize.y; // -0.15 @ default
-    const wheelPositions = [
-      // Front (chassis-local -X is forward)
-      { x: -wbx, y: wy, z: -trz },
-      { x: -wbx, y: wy, z: trz },
-      // Rear
-      { x: wbx, y: wy, z: -trz },
-      { x: wbx, y: wy, z: trz }
-    ];
+    // Wheel layout (count + per-wheel positions + which are
+    // steered/driven) is data-driven from WHEEL_LAYOUTS so a preset
+    // can swap a 4-wheel sedan for a 3-wheel tuk-tuk without touching
+    // this file. Positions are stored as fractions of chassisSize so
+    // resizing the chassis auto-scales wheelbase and track.
+    const layout =
+      WHEEL_LAYOUTS[data.wheelLayout] || WHEEL_LAYOUTS['four-wheel'];
+    const cs = data.chassisSize;
+    const wheelPositions = layout.positions.map((p) => ({
+      x: p.xFrac * cs.x,
+      y: p.yFrac * cs.y,
+      z: p.zFrac * cs.z
+    }));
+    this._steeredIndices = layout.steered;
+    this._drivenIndices = layout.driven;
 
     const vehicle = world.createVehicleController(chassisBody);
     const susDir = { x: 0, y: -1, z: 0 };
@@ -685,17 +713,20 @@ AFRAME.registerComponent('play-mode-vehicle', {
 
     const engineForce =
       (i.forward ? 1 : 0) * data.accelerateForce - (i.back ? 1 : 0);
-    v.setWheelEngineForce(0, engineForce);
-    v.setWheelEngineForce(1, engineForce);
+    for (const k of this._drivenIndices) v.setWheelEngineForce(k, engineForce);
 
     const brake = (i.brake ? 1 : 0) * data.brakeForce;
-    for (let k = 0; k < 4; k++) v.setWheelBrake(k, brake);
+    // Brakes apply to every wheel regardless of layout.
+    const wheelCount = v.numWheels ? v.numWheels() : this.wheelOuterEls.length;
+    for (let k = 0; k < wheelCount; k++) v.setWheelBrake(k, brake);
 
     const steerDir = (i.left ? 1 : 0) - (i.right ? 1 : 0);
-    const cur = v.wheelSteering(0) || 0;
+    // All steered wheels share the same steering state — read from the
+    // first one as the reference for the lerp.
+    const refIdx = this._steeredIndices[0] ?? 0;
+    const cur = v.wheelSteering(refIdx) || 0;
     const steer = THREE.MathUtils.lerp(cur, data.steerAngle * steerDir, 0.5);
-    v.setWheelSteering(0, steer);
-    v.setWheelSteering(1, steer);
+    for (const k of this._steeredIndices) v.setWheelSteering(k, steer);
 
     if (i.reset && this.chassisBody) {
       this.chassisBody.setTranslation(this.data.spawnPosition, true);
@@ -980,6 +1011,8 @@ AFRAME.registerComponent('drive-mode', {
       parts.push(`steerAngle: ${dcAttrs.steerAngle}`);
       parts.push(`wheelRadius: ${dcAttrs.wheelRadius}`);
       parts.push(`wheelWidth: ${dcAttrs.wheelWidth}`);
+      parts.push(`wheelLayout: ${dcAttrs.wheelLayout || 'four-wheel'}`);
+      parts.push(`meshYOffset: ${dcAttrs.meshYOffset || 0}`);
     }
     if (hasCustomMesh) parts.push('showDebugBox: false');
 
@@ -992,6 +1025,8 @@ AFRAME.registerComponent('drive-mode', {
     if (hasCustomMesh) {
       const wrapper = document.createElement('a-entity');
       wrapper.setAttribute('rotation', '0 -90 0');
+      const meshY = (dcAttrs && dcAttrs.meshYOffset) || 0;
+      if (meshY) wrapper.setAttribute('position', `0 ${meshY} 0`);
       const meshClone = document.createElement('a-entity');
       // Copy every visual attribute from the editor's mesh slot
       // (mixin OR procedural component, plus any future ones) so we

@@ -293,7 +293,9 @@ function createDriveableFromPreset(presetName, layerName, position) {
     `brakeForce: ${p.brakeForce}`,
     `steerAngle: ${p.steerAngle}`,
     `wheelRadius: ${p.wheelRadius}`,
-    `wheelWidth: ${p.wheelWidth}`
+    `wheelWidth: ${p.wheelWidth}`,
+    `wheelLayout: ${p.wheelLayout || 'four-wheel'}`,
+    `meshYOffset: ${p.meshYOffset || 0}`
   ].join('; ');
 
   // Mesh-slot child: catalog mixin OR procedural component. The

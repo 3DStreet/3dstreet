@@ -48,18 +48,6 @@ exports.serveWebXRVariant = functions.https.onRequest((req, res) => {
     <div id="viewer-mode-ar-webxr-not-supported">
       Device does not support WebXR.
     </div>
-    <!-- Viewer Mode - Locomotion Instructions -->
-    <div id="viewer-mode-locomotion-controls">
-      <div class="controls-container">
-        <div class="controls-title">Controls</div>
-        <div class="controls-item">
-          <span class="key-group">W A S D</span> or <span class="key-group">Arrow Keys</span> to move
-        </div>
-        <div class="controls-item">
-          <span class="key-group">Click + Drag</span> to pan screen
-        </div>
-      </div>
-    </div>
   </div>
 
   <!-- AR Overlay - only shown when in AR mode -->
@@ -112,7 +100,7 @@ exports.serveWebXRVariant = functions.https.onRequest((req, res) => {
 
     <a-entity id="environment" data-layer-name="Environment" street-environment="preset: day;" data-no-transform></a-entity>
 
-    <a-entity id="cameraRig" class="ph-no-capture" data-layer-name="Viewer" data-no-transform viewer-mode="preset: camera-path;"
+    <a-entity id="cameraRig" class="ph-no-capture" data-layer-name="Viewer" data-no-transform viewer-mode="preset: locomotion;"
       cursor-teleport="cameraRig: #cameraRig; cameraHead: #camera;"
       movement-controls="camera: #camera; fly: true">
       <a-entity id="camera" data-layer-name="Camera" position="0 1.6 0" camera look-controls="reverseMouseDrag: true" class="autocreated"></a-entity>

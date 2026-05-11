@@ -87,7 +87,6 @@ function SimTimer() {
       }
     >
       <AwesomeIcon icon={isPlayPaused ? faPlay : faPause} size={10} />
-      <span className={styles.simTimerLabel}>SIM</span>
       <span className={styles.simTimerValue}>{formatSeconds(times.sim)}</span>
     </button>
   );
@@ -127,6 +126,7 @@ function Toolbar() {
   return (
     <div id="toolbar" data-inspector="false" className={styles.toolbarRoot}>
       <div className={`${primaryStyles.wrapper} ${styles.toolbarRow}`}>
+        <SimTimer />
         <Button
           onClick={handleStop}
           variant="toolbtn"
@@ -134,7 +134,6 @@ function Toolbar() {
         >
           Stop
         </Button>
-        <SimTimer />
         <Button
           variant="toolbtn"
           onClick={handleSnapshot}
