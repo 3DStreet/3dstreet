@@ -588,8 +588,9 @@ AFRAME.registerComponent('play-mode-vehicle', {
     v.updateVehicle(this.system.timestep);
   },
 
-  tick: function () {
+  tick: function (time, deltaMs) {
     if (!this.vehicle) return;
+    this._lastDeltaMs = deltaMs;
 
     // Sync each wheel visual: position from suspension travel, orientation
     // from steering * spin around the (chassis-local) axle.
@@ -618,6 +619,9 @@ AFRAME.registerComponent('play-mode-vehicle', {
     const order = ['top-down', 'chase', 'fpv'];
     const i = order.indexOf(this.data.cameraMode);
     const next = order[(i + 1) % order.length];
+    // Reset smoothing so the new mode snaps in cleanly instead of
+    // lerping from the previous mode's stale position.
+    this._cameraSmoothed = false;
     // setAttribute so other observers (PlayModeControls future state)
     // stay in sync.
     this.el.setAttribute('play-mode-vehicle', 'cameraMode', next);
@@ -636,6 +640,11 @@ AFRAME.registerComponent('play-mode-vehicle', {
     const worldUp =
       this._worldUp || (this._worldUp = new THREE.Vector3(0, 1, 0));
     carPos.set(t.x, t.y, t.z);
+
+    // Smoothing state is per-mode (only chase uses it). Drop the flag
+    // whenever we're not in chase so re-entering chase snaps in clean
+    // — covers attribute-driven mode changes that bypass cycleCameraMode.
+    if (mode !== 'chase') this._cameraSmoothed = false;
 
     if (mode === 'top-down') {
       camWorld.set(t.x, t.y + this.data.cameraHeight, t.z);
@@ -657,7 +666,13 @@ AFRAME.registerComponent('play-mode-vehicle', {
       }
 
       if (mode === 'chase') {
-        // Camera behind car (-headingH), elevated, looking at car.
+        // Camera ideally sits behind car (-headingH), elevated, looking
+        // at car. The values below are the *target* the smoothed
+        // camera state lerps toward — so the camera lags a bit when
+        // the car turns, swerves, or jolts, instead of being rigidly
+        // glued to the chassis. The momentum is asymmetric: the
+        // position lags more (cinematic), the look target chases
+        // faster (keeps the car centered).
         const distance = Math.max(this.data.chassisSize.x * 2.5, 4);
         const height = Math.max(this.data.chassisSize.y * 3, 2);
         camWorld.set(
@@ -666,6 +681,28 @@ AFRAME.registerComponent('play-mode-vehicle', {
           carPos.z - headingH.z * distance
         );
         lookAt.copy(carPos);
+
+        const sCam =
+          this._smoothedCamPos || (this._smoothedCamPos = new THREE.Vector3());
+        const sLook =
+          this._smoothedLookAt || (this._smoothedLookAt = new THREE.Vector3());
+        if (!this._cameraSmoothed) {
+          // First chase frame (or just switched modes): snap so we
+          // don't lerp from a stale position.
+          sCam.copy(camWorld);
+          sLook.copy(lookAt);
+          this._cameraSmoothed = true;
+        } else {
+          // Frame-rate-independent exponential smoothing.
+          // rate higher => snappier; lower => more lag.
+          const dt = Math.min((this._lastDeltaMs || 16) / 1000, 0.1);
+          const tPos = 1 - Math.exp(-3 * dt);
+          const tLook = 1 - Math.exp(-6 * dt);
+          sCam.lerp(camWorld, tPos);
+          sLook.lerp(lookAt, tLook);
+        }
+        camWorld.copy(sCam);
+        lookAt.copy(sLook);
       } else if (mode === 'fpv') {
         // Driver POV: slightly forward of car center along headingH,
         // at driver eye height, looking further ahead.
