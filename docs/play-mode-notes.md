@@ -68,6 +68,26 @@ and pressing Play animates entities along each of its lanes.
 
 ### Open questions for v1.5+
 
+- Simulation-time / physics-time coupling. **Done:** scene-timer
+  gained a passive `simulationTime` field separate from the
+  wall-clock `elapsedTime` (camera-path and other legacy features
+  keep using elapsedTime; play-mode features use simulationTime).
+  Ownership rules:
+    - `play-mode-physics` advances simulationTime by exactly one
+      `timestep` per completed `world.step()`. The 4-sub-step cap
+      in the accumulator means slow CPUs drop wall-time rather than
+      letting physics fall further behind — simulationTime lags
+      wall-time and we get true slow-motion.
+    - `play-mode` system tick advances simulationTime by rAF
+      deltaMs only when physics is NOT active (traffic-only play
+      without a driveable). Otherwise it leaves simulationTime
+      alone so physics is the sole writer.
+  Effect: at any given simulationTime, every machine that kept up
+  has executed the same number of sub-steps from the same initial
+  state. Recording/replay is now feasible — record input at each
+  physics sub-step, replay by injecting at the same indices.
+  (Input is still captured at rAF rate, so true cross-machine
+  determinism for interactive play still needs the input log work.)
 - Coprime-period stagger or seeded jitter to break the visible loop
   on long sessions.
 - Crosswalk events (pedestrian crosses perpendicular to street at

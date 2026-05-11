@@ -13,7 +13,14 @@ AFRAME.registerComponent('scene-timer', {
 
   init: function () {
     // Initialize timer state
-    this.elapsedTime = 0; // Time in milliseconds
+    this.elapsedTime = 0; // Wall-clock time in ms (driven by performance.now())
+    // simulationTime is a parallel passive counter. The scene-timer
+    // itself NEVER advances simulationTime — external callers do, via
+    // advanceSimulation(deltaMs). Used by play-mode features so the
+    // simulation can lag wall-time on slow CPUs (true slow-motion)
+    // and so two machines watching the same scene at the same
+    // simulation-time end up in convergent state.
+    this.simulationTime = 0;
     this.startTime = null;
     this.timerActive = false;
     this.isPaused = false;
@@ -172,6 +179,27 @@ AFRAME.registerComponent('scene-timer', {
    */
   getTime: function () {
     return this.elapsedTime;
+  },
+
+  /**
+   * Advance the passive simulationTime by `deltaMs`. Only takes effect
+   * while the timer is active (between timer-start and timer-pause /
+   * timer-stop). Callers: `play-mode-physics` (one timestep per
+   * completed sub-step) for driveable-active runs, `play-mode` system
+   * tick (rAF deltaMs) for traffic-only runs without a driveable.
+   */
+  advanceSimulation: function (deltaMs) {
+    if (!this.timerActive) return;
+    this.simulationTime += deltaMs;
+  },
+
+  /**
+   * Reset simulationTime to zero. Called by play-mode.start() so each
+   * Play begins at t=0 regardless of how long the wall-clock timer has
+   * been ticking.
+   */
+  resetSimulation: function () {
+    this.simulationTime = 0;
   },
 
   /**

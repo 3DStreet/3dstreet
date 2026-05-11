@@ -45,14 +45,16 @@ AFRAME.registerSystem('play-mode', {
     if (this.isPlaying) return;
     this.isPlaying = true;
     useStore.setState({ isPlaying: true });
-    // Reset and start the scene-timer so subscribers can derive
-    // deterministic positions from a known t=0. scene-timer responds
-    // to events; we use them rather than calling methods directly so
-    // the same lifecycle works whether or not scene-timer is attached.
+    // Reset both clocks on the scene-timer at t=0. elapsedTime tracks
+    // wall-clock (used by camera-path and other legacy features);
+    // simulationTime is the passive counter that physics + traffic +
+    // any other deterministic play feature reads from. Pausing on
+    // stop, advancing on tick — see tick() and play-mode-physics.
     const timer = this.sceneEl.components['scene-timer'];
     if (timer) {
       timer.elapsedTime = 0;
       timer.startTime = null;
+      timer.resetSimulation();
     }
     // Match the play camera to the editor (inspector) camera pose so
     // entering play mode doesn't jump the view. Drive-mode may then
@@ -113,5 +115,22 @@ AFRAME.registerSystem('play-mode', {
     window.removeEventListener('keydown', this.onEscape);
     this.sceneEl.emit('timer-pause');
     this.sceneEl.emit('play-mode-stop', {}, false);
+  },
+
+  tick: function (time, deltaMs) {
+    if (!this.isPlaying) return;
+    // simulationTime ownership:
+    //   - When play-mode-physics is active, IT advances simulationTime
+    //     by exactly `timestep` per completed sub-step. On slow CPUs
+    //     this naturally lags wall-time (true slow-motion).
+    //   - Otherwise (traffic-only play, no driveable), nobody else
+    //     advances it — so do it here at wall-clock rate so traffic
+    //     still animates.
+    const physics = this.sceneEl.systems['play-mode-physics'];
+    if (physics && physics.active) return;
+    const timer = this.sceneEl.components['scene-timer'];
+    if (timer && timer.timerActive) {
+      timer.advanceSimulation(Math.min(deltaMs, 100));
+    }
   }
 });

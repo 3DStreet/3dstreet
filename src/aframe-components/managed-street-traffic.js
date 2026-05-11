@@ -280,8 +280,11 @@ AFRAME.registerComponent('managed-street-traffic', {
     if (!this.active) return;
     const timer = this.el.components['scene-timer'];
     if (!timer) return;
-    // scene-timer stores elapsedTime in MILLISECONDS.
-    const t = (timer.elapsedTime || 0) / 1000;
+    // simulationTime is the passive counter advanced by physics (per
+    // sub-step) or by play-mode (per rAF tick when no physics).
+    // Using it instead of elapsedTime gives slow-motion behavior on
+    // weak CPUs and cross-machine determinism at the same sim-time.
+    const t = (timer.simulationTime || 0) / 1000;
     const wp = this._wp || (this._wp = new THREE.Vector3());
     const wq = this._wq || (this._wq = new THREE.Quaternion());
     for (const r of this.records) {

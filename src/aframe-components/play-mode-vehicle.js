@@ -101,6 +101,7 @@ AFRAME.registerSystem('play-mode-physics', {
     // Drop synced refs but keep the world around in case we re-enter.
     this.synced.length = 0;
     this.afterStepCallbacks.length = 0;
+    this.physAcc = 0;
     if (this.world) {
       // Free everything by recreating the world next activate().
       this.world.free?.();
@@ -172,12 +173,23 @@ AFRAME.registerSystem('play-mode-physics', {
 
   tick: function (time, deltaMs) {
     if (!this.active || !this.world) return;
+    // Consume rAF wall-clock dt into the accumulator. The 4-sub-step
+    // cap below is what produces slow-motion on weak CPUs: if rAF
+    // delivers more time than we can simulate, we drop the excess
+    // wall-time (rather than running endless sub-steps and falling
+    // further behind). Meanwhile, simulationTime advances by EXACTLY
+    // `timestep` per completed sub-step — so on a slow machine
+    // simulationTime lags wall-time, and at any given simulationTime
+    // every machine has executed the same number of sub-steps from
+    // the same initial state.
     const dt = Math.min((deltaMs || 16) / 1000, 0.1);
     this.physAcc += dt;
+    const timer = this.sceneEl.components['scene-timer'];
     let steps = 0;
     while (this.physAcc >= this.timestep && steps < 4) {
       this.world.step();
       for (const cb of this.afterStepCallbacks) cb(this.timestep);
+      if (timer) timer.advanceSimulation(this.timestep * 1000);
       this.physAcc -= this.timestep;
       steps++;
     }
