@@ -52,17 +52,18 @@ AFRAME.registerComponent('delivery-bot-mesh', {
     const d = this.data;
     const root = this.el;
 
-    // Main body box
+    // Main body box (real delivery-bot proportions, fits inside the
+    // 0.55W × 0.45H × 0.7L chassis bounding box)
     const body = document.createElement('a-entity');
     body.setAttribute(
       'geometry',
-      'primitive: box; width: 0.55; height: 0.34; depth: 1.2'
+      'primitive: box; width: 0.5; height: 0.4; depth: 0.65'
     );
     body.setAttribute(
       'material',
       `color: ${d.bodyColor}; metalness: 0.05; roughness: 0.7`
     );
-    body.setAttribute('position', '0 0.17 0');
+    body.setAttribute('position', '0 0.2 0');
     body.setAttribute('shadow', 'cast: true; receive: true');
     root.appendChild(body);
 
@@ -70,37 +71,37 @@ AFRAME.registerComponent('delivery-bot-mesh', {
     const lid = document.createElement('a-entity');
     lid.setAttribute(
       'geometry',
-      'primitive: box; width: 0.48; height: 0.04; depth: 1.1'
+      'primitive: box; width: 0.44; height: 0.04; depth: 0.55'
     );
     lid.setAttribute(
       'material',
       `color: ${d.accentColor}; metalness: 0.2; roughness: 0.4`
     );
-    lid.setAttribute('position', '0 0.36 0');
+    lid.setAttribute('position', '0 0.42 0');
     root.appendChild(lid);
 
     // Front sensor band (faces +Z forward)
     const face = document.createElement('a-entity');
     face.setAttribute(
       'geometry',
-      'primitive: box; width: 0.5; height: 0.08; depth: 0.03'
+      'primitive: box; width: 0.46; height: 0.08; depth: 0.03'
     );
     face.setAttribute('material', 'color: #1a1a1a; metalness: 0; roughness: 1');
-    face.setAttribute('position', '0 0.22 0.6');
+    face.setAttribute('position', '0 0.28 0.33');
     root.appendChild(face);
 
     // Eyes
-    for (const x of [-0.13, 0.13]) {
+    for (const x of [-0.11, 0.11]) {
       const eye = document.createElement('a-entity');
       eye.setAttribute(
         'geometry',
-        'primitive: sphere; radius: 0.03; segmentsWidth: 12; segmentsHeight: 8'
+        'primitive: sphere; radius: 0.028; segmentsWidth: 12; segmentsHeight: 8'
       );
       eye.setAttribute(
         'material',
         `color: ${d.accentColor}; emissive: ${d.accentColor}; emissiveIntensity: 0.6; shader: flat`
       );
-      eye.setAttribute('position', `${x} 0.22 0.62`);
+      eye.setAttribute('position', `${x} 0.28 0.34`);
       root.appendChild(eye);
     }
 
@@ -108,17 +109,17 @@ AFRAME.registerComponent('delivery-bot-mesh', {
     const tail = document.createElement('a-entity');
     tail.setAttribute(
       'geometry',
-      'primitive: box; width: 0.4; height: 0.03; depth: 0.02'
+      'primitive: box; width: 0.36; height: 0.03; depth: 0.02'
     );
     tail.setAttribute(
       'material',
       'color: #cc3333; emissive: #cc3333; emissiveIntensity: 0.4; shader: flat'
     );
-    tail.setAttribute('position', '0 0.22 -0.6');
+    tail.setAttribute('position', '0 0.28 -0.33');
     root.appendChild(tail);
 
     // Side dot stripe — little accent details
-    for (const z of [-0.4, 0, 0.4]) {
+    for (const z of [-0.22, 0, 0.22]) {
       for (const side of [-1, 1]) {
         const dot = document.createElement('a-entity');
         dot.setAttribute(
@@ -126,7 +127,7 @@ AFRAME.registerComponent('delivery-bot-mesh', {
           'primitive: sphere; radius: 0.018; segmentsWidth: 8; segmentsHeight: 6'
         );
         dot.setAttribute('material', `color: ${d.accentColor}; shader: flat`);
-        dot.setAttribute('position', `${side * 0.275} 0.15 ${z}`);
+        dot.setAttribute('position', `${side * 0.25} 0.18 ${z}`);
         root.appendChild(dot);
       }
     }
@@ -135,7 +136,7 @@ AFRAME.registerComponent('delivery-bot-mesh', {
   _buildAntenna: function () {
     const d = this.data;
     // Mount Y (top of lid) — captured here so tick() can use it.
-    this._mountY = 0.38;
+    this._mountY = 0.44;
 
     const mount = document.createElement('a-entity');
     mount.setAttribute(

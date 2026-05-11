@@ -125,13 +125,22 @@ export const customLayersData = [
     handlerFunction: createFunctions.createPanoramaSphere
   },
   {
+    name: 'Driveable Tuk-tuk',
+    img: '',
+    requiresPro: false,
+    icon: '',
+    description:
+      'A small three-wheeler-style driveable vehicle with the tuk-tuk catalog mesh. Can mount curbs at speed. Switch presets from the drive-controls properties panel.',
+    handlerFunction: createFunctions.createDriveableTukTuk
+  },
+  {
     name: 'Driveable Delivery Robot',
     img: '',
     requiresPro: false,
     icon: '',
     description:
-      'A small-chassis driveable bot (~tuk-tuk sized). Like real delivery robots, it cannot mount standard 6" curbs — use it for sidewalk play. Tune from the drive-controls properties panel.',
-    handlerFunction: createFunctions.createDriveableVehicle
+      'A small-chassis driveable bot (~Starship/Serve-sized) with a procedural mesh + dynamic antenna. Like real delivery robots, it cannot mount standard 6" curbs. Switch presets from the drive-controls properties panel.',
+    handlerFunction: createFunctions.createDriveableDeliveryRobot
   },
   {
     name: 'Driveable Taxi',
@@ -139,7 +148,7 @@ export const customLayersData = [
     requiresPro: false,
     icon: '',
     description:
-      'A full-size sedan with real-car physics (~Camry-sized). Mounts standard curbs with momentum, hits real-world speeds. Tune from the drive-controls properties panel.',
+      'A full-size sedan with real-car physics (~Camry-sized). Mounts standard curbs with momentum, hits real-world speeds. Switch presets from the drive-controls properties panel.',
     handlerFunction: createFunctions.createDriveableTaxi
   },
   {

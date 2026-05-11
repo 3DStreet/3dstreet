@@ -1,4 +1,9 @@
 /* global AFRAME, THREE */
+const {
+  VEHICLE_PRESETS,
+  PROCEDURAL_MESH_COMPONENTS,
+  PRESET_NAMES
+} = require('./vehicle-presets.js');
 
 /**
  * play-mode-vehicle
@@ -220,6 +225,15 @@ AFRAME.registerComponent('vehicle-mesh-slot', {});
 
 AFRAME.registerComponent('drive-controls', {
   schema: {
+    // Preset is a "package deal" selector — picking one in the
+    // property panel re-applies size + physics + mesh from the
+    // VEHICLE_PRESETS table. 'custom' is the leave-alone value used
+    // when the user wants to hand-tune fields directly.
+    preset: {
+      type: 'string',
+      default: 'custom',
+      oneOf: ['custom', ...PRESET_NAMES]
+    },
     // vehicleSize is in ENTITY frame: x=width, y=height, z=length.
     // play-mode-vehicle's internal chassisSize is in chassis frame
     // (x=length, y=height, z=width); viewer-mode swaps X<->Z when
@@ -270,11 +284,68 @@ AFRAME.registerComponent('drive-controls', {
 
   update: function (oldData) {
     if (!oldData) return;
+    // If the user just picked a preset (and it isn't the
+    // leave-alone 'custom'), copy the whole preset bundle onto the
+    // entity. Field-level update logic further down still runs after
+    // — applyVehicleSize/applyConePosition pick up the new size.
+    if (
+      this.data.preset !== oldData.preset &&
+      this.data.preset !== 'custom' &&
+      VEHICLE_PRESETS[this.data.preset]
+    ) {
+      this.applyPreset(this.data.preset);
+      // applyPreset uses setAttribute, which will fire update() again
+      // with vehicleSize-changed; let that pass handle the visuals.
+      return;
+    }
     const old = oldData.vehicleSize;
     const cur = this.data.vehicleSize;
     if (old && cur && (old.x !== cur.x || old.y !== cur.y || old.z !== cur.z)) {
       this.applyVehicleSize();
       this.applyConePosition();
+    }
+  },
+
+  applyPreset: function (name) {
+    const p = VEHICLE_PRESETS[name];
+    if (!p) return;
+    // Single setAttribute with an object => one batched update().
+    // Don't include `preset` here — that would be a no-op (already
+    // set) and could cause infinite-loop edge cases.
+    this.el.setAttribute('drive-controls', {
+      vehicleSize: p.vehicleSize,
+      accelerateForce: p.accelerateForce,
+      brakeForce: p.brakeForce,
+      steerAngle: p.steerAngle,
+      wheelRadius: p.wheelRadius,
+      wheelWidth: p.wheelWidth
+    });
+    // Update the editor's placeholder material to the preset color
+    // (used for layer-panel-spawned entities). Geometry box auto-
+    // resizes via applyVehicleSize when the vec3 change lands.
+    this.el.setAttribute(
+      'material',
+      `color: ${p.placeholderColor}; opacity: 0; transparent: true`
+    );
+    // Swap mesh in the Vehicle Mesh child slot.
+    this.applyMeshPreset(p);
+  },
+
+  applyMeshPreset: function (p) {
+    const slot = this.el.querySelector('[vehicle-mesh-slot]');
+    if (!slot) return;
+    // Strip whichever previous mesh was on the slot.
+    if (slot.hasAttribute('mixin')) slot.removeAttribute('mixin');
+    for (const comp of PROCEDURAL_MESH_COMPONENTS) {
+      if (slot.hasAttribute(comp)) slot.removeAttribute(comp);
+    }
+    // Apply the preset's mesh — either a catalog mixin or a
+    // procedural component name (mutually exclusive in the preset
+    // schema).
+    if (p.meshComponent) {
+      slot.setAttribute(p.meshComponent, '');
+    } else if (p.meshMixin) {
+      slot.setAttribute('mixin', p.meshMixin);
     }
   },
 
@@ -876,10 +947,9 @@ AFRAME.registerComponent('drive-mode', {
     const meshSlot = driveEntity.querySelector('[vehicle-mesh-slot]');
     const customMixin = meshSlot && meshSlot.getAttribute('mixin');
     // "has custom mesh" = the slot defines a visual either via a
-    // catalog mixin OR via a procedural component like
-    // `delivery-bot-mesh`. New procedural components can be added to
-    // this list without touching the clone code below.
-    const PROCEDURAL_MESH_COMPONENTS = ['delivery-bot-mesh'];
+    // catalog mixin OR via a registered procedural component. The
+    // list lives in vehicle-presets.js so adding a new procedural
+    // mesh component there is a one-line change everywhere.
     const hasProceduralMesh =
       !!meshSlot &&
       PROCEDURAL_MESH_COMPONENTS.some((c) => meshSlot.hasAttribute(c));

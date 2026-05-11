@@ -1,5 +1,6 @@
 import { createUniqueId } from '../../../lib/entity.js';
 import * as defaultStreetObjects from './defaultStreets.js';
+import { VEHICLE_PRESETS } from '../../../../aframe-components/vehicle-presets.js';
 
 export function createSvgExtrudedEntity(position) {
   // This component accepts a svgString and creates a new entity with geometry extruded
@@ -265,100 +266,89 @@ export function createPrimitiveGeometry(position) {
   AFRAME.INSPECTOR.execute('entitycreate', definition);
 }
 
-export function createDriveableVehicle(position) {
-  // A driveable vehicle is an entity tagged with `drive-controls`
-  // (which auto-adds a forward-direction cone marker) plus a
-  // placeholder box mesh so it's visible in the editor. When the user
-  // clicks Play, the drive-mode scene component looks for any such
-  // entity in the scene and uses it as the spawn pose + tuning source.
-  //
-  // Box dimensions are oriented so the entity's local -Z is forward
-  // (A-Frame default). The play-mode chassis is spawned with a -π/2
-  // yaw offset that maps its internal "forward" (chassis-local -X, set
-  // by the vehicle controller's wheel layout) to the same world
-  // direction, so the editor box and the in-play chassis end up with
-  // matching world-frame orientation.
-  //
-  // A child 'Vehicle Mesh' entity is included with an empty mixin
-  // attribute so the user can pick a glTF model from the Model
-  // dropdown in the properties panel. This child is what gives the
-  // vehicle its real appearance; the parent's box geometry is just a
-  // placeholder you can hide once the mixin is set.
+/**
+ * Spawn a driveable-vehicle entity from a named preset
+ * (`tuk-tuk`, `delivery-bot`, `taxi`). The preset bundle in
+ * `vehicle-presets.js` drives chassis size, engine/brake/steer
+ * tuning, wheel dimensions, AND the mesh — either a catalog mixin
+ * or a registered procedural component.
+ *
+ * Switching preset later in the property panel re-applies the
+ * whole bundle via drive-controls' update() hook, so users aren't
+ * locked into whichever preset they spawned with.
+ */
+function createDriveableFromPreset(presetName, layerName, position) {
+  const p = VEHICLE_PRESETS[presetName];
+  if (!p) {
+    console.error('createDriveableFromPreset: unknown preset', presetName);
+    return;
+  }
+  // Build the drive-controls attribute string from the preset.
+  // `preset: ...` is included so the schema field reflects the
+  // current choice in the property panel.
+  const driveControlsStr = [
+    `preset: ${presetName}`,
+    `vehicleSize: ${p.vehicleSize.x} ${p.vehicleSize.y} ${p.vehicleSize.z}`,
+    `accelerateForce: ${p.accelerateForce}`,
+    `brakeForce: ${p.brakeForce}`,
+    `steerAngle: ${p.steerAngle}`,
+    `wheelRadius: ${p.wheelRadius}`,
+    `wheelWidth: ${p.wheelWidth}`
+  ].join('; ');
+
+  // Mesh-slot child: catalog mixin OR procedural component. The
+  // 180° editor-rotation trick aligns the mesh's +Z forward with
+  // the entity's -Z forward marker.
+  const meshSlotComponents = {
+    'vehicle-mesh-slot': '',
+    rotation: '0 180 0',
+    shadow: 'cast: true; receive: true'
+  };
+  if (p.meshComponent) {
+    meshSlotComponents[p.meshComponent] = '';
+  } else if (p.meshMixin) {
+    meshSlotComponents.mixin = p.meshMixin;
+  }
+
   const definition = {
-    'data-layer-name': 'Driveable Delivery Robot',
+    'data-layer-name': layerName,
     components: {
       position: position ?? '0 1 0',
-      'drive-controls': '',
-      geometry: 'primitive: box; width: 0.8; height: 0.4; depth: 1.6',
-      material: 'color: #cc2222; opacity: 0.0; transparent: true',
+      'drive-controls': driveControlsStr,
+      geometry: `primitive: box; width: ${p.vehicleSize.x}; height: ${p.vehicleSize.y}; depth: ${p.vehicleSize.z}`,
+      material: `color: ${p.placeholderColor}; opacity: 0.0; transparent: true`,
       shadow: 'cast: false; receive: false'
     },
     children: [
       {
         'data-layer-name': 'Vehicle Mesh',
-        components: {
-          'vehicle-mesh-slot': '',
-          // Procedural generic bot — body + dynamic antenna with a
-          // 2D spring-damper that lags under chassis acceleration.
-          // No GLB, no brand. Replace this attribute with a catalog
-          // mixin (e.g. `mixin: tuk-tuk-rig`) if you'd rather use a
-          // real model.
-          'delivery-bot-mesh': '',
-          // Procedural mesh is authored with +Z forward (same as
-          // catalog meshes), so the same 180° editor-rotation trick
-          // works to align it with the entity's -Z forward marker.
-          rotation: '0 180 0',
-          shadow: 'cast: true; receive: true'
-        }
+        components: meshSlotComponents
       }
     ]
   };
   AFRAME.INSPECTOR.execute('entitycreate', definition);
 }
 
-export function createDriveableTaxi(position) {
-  // Full-size sedan physics: real-world Toyota-Camry-ish dimensions
-  // so a 0.15m (US standard 6" curb) is mountable with momentum. The
-  // delivery-robot preset deliberately can't mount curbs — Starship-
-  // class robots use ADA ramps in real life, so the chassis matches
-  // that.
-  //
-  // ENTITY-frame vehicleSize (x=width, y=height, z=length):
-  //   1.85 W × 1.45 H × 4.8 L  (≈ Camry / Crown Vic)
-  // play-mode swaps X<->Z when forwarding to chassis frame.
-  //
-  // Wheel radius 0.32m matches a real-world ~0.65m-diameter car
-  // wheel. The default auto-fit (0.375 * height) would give 0.54m
-  // which looks comically big on a sedan; explicit override.
-  //
-  // accelerateForce scaled up because the chassis collider volume is
-  // ~14x the robot's, so Rapier's default mass is much larger and the
-  // robot's 2N would feel limp. Numbers are a starting point — tune
-  // with the in-play PlayModeControls sliders.
-  const definition = {
-    'data-layer-name': 'Driveable Taxi',
-    components: {
-      position: position ?? '0 1 0',
-      'drive-controls':
-        'vehicleSize: 1.85 1.45 4.8; accelerateForce: 8; brakeForce: 0.12; steerAngle: 0.13; wheelRadius: 0.32; wheelWidth: 0.22',
-      geometry: 'primitive: box; width: 1.85; height: 1.45; depth: 4.8',
-      material: 'color: #f4c842',
-      shadow: 'cast: true; receive: true'
-    },
-    children: [
-      {
-        'data-layer-name': 'Vehicle Mesh',
-        components: {
-          'vehicle-mesh-slot': '',
-          mixin: 'sedan-taxi-rig',
-          rotation: '0 180 0',
-          shadow: 'cast: true; receive: true'
-        }
-      }
-    ]
-  };
-  AFRAME.INSPECTOR.execute('entitycreate', definition);
+export function createDriveableTukTuk(position) {
+  createDriveableFromPreset('tuk-tuk', 'Driveable Tuk-tuk', position);
 }
+
+export function createDriveableDeliveryRobot(position) {
+  createDriveableFromPreset(
+    'delivery-bot',
+    'Driveable Delivery Robot',
+    position
+  );
+}
+
+export function createDriveableTaxi(position) {
+  createDriveableFromPreset('taxi', 'Driveable Taxi', position);
+}
+
+// Backwards compat: old layersData entries that referenced
+// `createDriveableVehicle` keep working and now point at the
+// Delivery Robot preset.
+export const createDriveableVehicle = createDriveableDeliveryRobot;
 
 export function createImageEntity(position) {
   // This component accepts a svgString and creates a new entity with geometry extruded
