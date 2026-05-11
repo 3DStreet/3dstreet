@@ -126,11 +126,15 @@ AFRAME.registerSystem('play-mode-physics', {
    * Used to seed ground / walls at the boundary so the player has
    * something to collide with.
    */
-  addStaticCuboid: function (pos, halfExtents) {
+  addStaticCuboid: function (pos, halfExtents, quat) {
     if (!this.world) return null;
-    const body = this.world.createRigidBody(
-      RAPIER.RigidBodyDesc.fixed().setTranslation(pos.x, pos.y, pos.z)
+    const desc = RAPIER.RigidBodyDesc.fixed().setTranslation(
+      pos.x,
+      pos.y,
+      pos.z
     );
+    if (quat) desc.setRotation(quat);
+    const body = this.world.createRigidBody(desc);
     this.world.createCollider(
       RAPIER.ColliderDesc.cuboid(halfExtents.x, halfExtents.y, halfExtents.z),
       body
@@ -897,10 +901,13 @@ AFRAME.registerComponent('drive-mode', {
     const myToken = (this._activationToken = {});
     physics.activate().then(() => {
       if (this._activationToken !== myToken) return;
+      // Flat ground plane — catches the player when off-street or in
+      // an empty scene with just a driveable vehicle.
       physics.addStaticCuboid(
         { x: 0, y: -0.05, z: 0 },
         { x: 200, y: 0.05, z: 200 }
       );
+      this.addSegmentColliders(sceneEl);
       this.addOtherVehicleColliders(sceneEl, driveEntity);
     });
 
@@ -926,8 +933,58 @@ AFRAME.registerComponent('drive-mode', {
   },
 
   /**
+   * Walk every managed-street's sidewalk segments and seed a raised
+   * static slab (top at +0.15m). Because adjacent drive-lane segments
+   * sit flush with the ground (top at y=0), the vertical X-face of
+   * each sidewalk slab is automatically a curb. Wheels of the raycast
+   * vehicle controller step up 15cm without trouble, so the curb is
+   * mountable — the player can drive onto a sidewalk and then collide
+   * with pedestrians/buildings on it.
+   *
+   * Drive/bus/bike/parking lanes deliberately don't get slabs: the
+   * flat ground plane already covers them, and adding redundant
+   * cuboids is just static-collider noise.
+   */
+  addSegmentColliders: function (sceneEl) {
+    const physics = sceneEl.systems['play-mode-physics'];
+    const SIDEWALK_TOP = 0.15;
+    // Extra-deep so the side face overlaps the ground plane and there
+    // are no slits the chassis could wedge into between slab and ground.
+    const SIDEWALK_THICKNESS = 0.3;
+    const halfY = SIDEWALK_THICKNESS / 2;
+    const centerYOffset = SIDEWALK_TOP - halfY;
+
+    const wp = new THREE.Vector3();
+    const wq = new THREE.Quaternion();
+    let count = 0;
+    sceneEl
+      .querySelectorAll('[managed-street] > [street-segment]')
+      .forEach((segEl) => {
+        const seg = segEl.components?.['street-segment']?.data;
+        if (!seg || seg.type !== 'sidewalk') return;
+        const length = seg.length || 60;
+        const width = seg.width || 1.5;
+        segEl.object3D.updateMatrixWorld();
+        segEl.object3D.getWorldPosition(wp);
+        segEl.object3D.getWorldQuaternion(wq);
+        physics.addStaticCuboid(
+          { x: wp.x, y: wp.y + centerYOffset, z: wp.z },
+          { x: width / 2, y: halfY, z: length / 2 },
+          { x: wq.x, y: wq.y, z: wq.z, w: wq.w }
+        );
+        count++;
+      });
+    console.log(
+      '[drive-mode] seeded',
+      count,
+      'sidewalk slabs (curbs at +0.15m)'
+    );
+  },
+
+  /**
    * Walk the scene for entities whose mixin's <a-mixin category> starts
-   * with "vehicles" or "cyclists" and seed a static cuboid collider
+   * with "vehicles", "cyclists", or "buildings" and seed a static
+   * cuboid collider
    * sized to each one's world-frame bounding box. The player's own
    * Driveable Vehicle (and its descendants) is skipped — that's the
    * dynamic chassis. Bounding boxes are re-evaluated on model-loaded
@@ -935,7 +992,12 @@ AFRAME.registerComponent('drive-mode', {
    */
   addOtherVehicleColliders: function (sceneEl, driveEntity) {
     const physics = sceneEl.systems['play-mode-physics'];
-    const COLLIDABLE_CATEGORIES = ['vehicles', 'cyclists'];
+    // 'vehicles' and 'cyclists' catch parked cars / static cyclists on
+    // non-playable streets. 'buildings' is the Tier-2 add — a car
+    // driving through a wall is the highest-signal break in
+    // suspension of disbelief, so seed those too. Street furniture
+    // (poles/benches/trees) deferred until users actually complain.
+    const COLLIDABLE_CATEGORIES = ['vehicles', 'cyclists', 'buildings'];
     const isVehicleMixin = (id) => {
       const mixin = document.getElementById(id);
       if (!mixin || mixin.tagName !== 'A-MIXIN') return false;

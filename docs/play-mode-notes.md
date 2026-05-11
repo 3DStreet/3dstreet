@@ -231,12 +231,13 @@ Each play mode introspects the scene for its required object type.
   without retuning. Eventual fix: auto-fit `vehicleSize` from the
   mesh's bounding box, or drop `vehicleSize` entirely once we move to
   per-mixin tuning.
-- **Partial colliders on scene content.** Ground plane + any entity
-  with a `vehicles*` or `cyclists*` mixin gets a static cuboid sized
-  to its bounding box (shrunk 80%). Buildings, street segments,
-  street furniture, and props are still pass-through. Likely next
-  step: extend the category allowlist or move to a generic
-  `play-collidable` opt-in component.
+- **Static colliders cover:** flat ground plane, raised sidewalk
+  slabs (top at +0.15m, mountable curbs by virtue of the raycast
+  vehicle controller's per-wheel suspension), and bounding-box
+  cuboids for any entity whose mixin's category starts with
+  `vehicles`, `cyclists`, or `buildings`. Street furniture
+  (poles/benches/trees) still pass-through — defer until someone
+  drives through a hydrant and complains.
 - **Wheel suspension/friction sliders** (suspensionStiffness,
   frictionSlip, sideFrictionStiffness) are in `drive-controls`'s
   schema but not yet plumbed through to `play-mode-vehicle` —
