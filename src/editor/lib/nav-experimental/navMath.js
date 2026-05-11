@@ -12,7 +12,10 @@ import {
   SCENE_FEATHER_METRES,
   FALLBACK_FORWARD_DIST,
   MIN_TILT_DEGREES,
-  MAX_TILT_DEGREES
+  MAX_TILT_DEGREES,
+  SWOOP_PHASE2_ENTRY_ELEVATION_METRES,
+  SWOOP_PHASE2_EXIT_ELEVATION_METRES,
+  SWOOP_PHASE2_STEP
 } from './constants.js';
 
 const DEG2RAD = Math.PI / 180;
@@ -169,6 +172,50 @@ export function computeLowTiltWheelHit(camera) {
   return new THREE.Vector3()
     .copy(camera.position)
     .addScaledVector(fwd, FALLBACK_FORWARD_DIST);
+}
+
+// Phase 3 swoop helpers. See claude/specs/001-phase-3-plan.md.
+
+// Decide which of the 3 swoop phases applies, from camera elevation.
+//   y > 10m         -> 'phase1'  (cursor-anchored dolly, tilt-conditional)
+//   1.5m < y ≤ 10m  -> 'phase2'  (pedestal + tilt-toward-horizontal)
+//   y ≤ 1.5m        -> 'phase3'  (FOV-only zoom)
+// Pure.
+export function decideSwoopPhase(y) {
+  if (y > SWOOP_PHASE2_ENTRY_ELEVATION_METRES) return 'phase1';
+  if (y > SWOOP_PHASE2_EXIT_ELEVATION_METRES) return 'phase2';
+  return 'phase3';
+}
+
+// Phase 2 tilt lerp: θ(y) = θ_stored × (y - 1.5) / 8.5.
+// Linear in y from θ_stored at y=10 to 0° at y=1.5. Both ends inclusive.
+// Outside the Phase 2 band the helper clamps: y ≥ 10 → θ_stored;
+// y ≤ 1.5 → 0°. Pure.
+export function phase2TargetTilt(y, storedTiltDeg) {
+  const yHi = SWOOP_PHASE2_ENTRY_ELEVATION_METRES;
+  const yLo = SWOOP_PHASE2_EXIT_ELEVATION_METRES;
+  if (y >= yHi) return storedTiltDeg;
+  if (y <= yLo) return 0;
+  return (storedTiltDeg * (y - yLo)) / (yHi - yLo);
+}
+
+// Phase 2 elevation step.
+//   sign < 0 (zoom-in):  y_next = y - α × (y - 1.5)  -- exponential approach
+//                                                       to 1.5m floor.
+//   sign > 0 (zoom-out): y_next = 1.5 + (y - 1.5) / (1 - α)  -- exact
+//                                                                multiplicative
+//                                                                inverse.
+// Per H2 of `claude/reports/007-phase-3-plan-review.md`: the zoom-out
+// formula has `(y - 1.5)` in the numerator, so for y < 1.5 it produces
+// y_next < y (further down — wrong direction). Caller must clamp y up to
+// 1.5 *before* invoking on zoom-out if camera is below the floor (e.g.
+// saved-scene-at-street-level case). Pure.
+export function phase2NextElevation(y, sign, alpha = SWOOP_PHASE2_STEP) {
+  const yLo = SWOOP_PHASE2_EXIT_ELEVATION_METRES;
+  if (sign < 0) {
+    return y - alpha * (y - yLo);
+  }
+  return yLo + (y - yLo) / (1 - alpha);
 }
 
 // Compute one Shift+LB rotation step. Pure: takes camera position +

@@ -97,3 +97,31 @@ export const WASD_RAMP_UP_MS = 200;
 
 // Plan View transition.
 export const PLAN_VIEW_DURATION_MS = 1000;
+
+// Phase 3 "swoop" wheel-zoom boundaries (camera.position.y in metres).
+// See claude/specs/001-phase-3-plan.md. Absolute-y for now; production
+// needs to be ground-relative (AGL) — backlog item 2026-05-11.
+export const SWOOP_PHASE2_ENTRY_ELEVATION_METRES = 10;
+export const SWOOP_PHASE2_EXIT_ELEVATION_METRES = 1.5;
+
+// Phase 2 per-tick pedestal step: fraction of (current y - exit elevation)
+// consumed per unit zoom-in tick. Matches ZOOM_PER_WHEEL_TICK in shape;
+// kept as a separate constant so Phase 2 feel can be tuned independently
+// of Phase 1's anchored dolly step.
+export const SWOOP_PHASE2_STEP = 0.1;
+
+// Phase 2 per-frame drain cap (overrides WHEEL_MAX_TICKS_PER_FRAME inside
+// the swoop transition only). Slows trackpad bursts so the transition
+// reads as deliberate rather than instantaneous. Per H4 of the
+// adversarial review, the cap is latched at the start of each frame's
+// drain pass — see ExperimentalControls._drainWheel.
+export const SWOOP_PHASE2_MAX_TICKS_PER_FRAME = 3;
+
+// Phase 2 floor-snap: when zoom-in lands within this distance of
+// SWOOP_PHASE2_EXIT_ELEVATION_METRES, snap to it. Avoids the asymptotic
+// non-arrival at y=1.5 noted in H6 of the review.
+export const SWOOP_PHASE2_FLOOR_SNAP_METRES = 0.1;
+
+// Phase 3 FOV floor (degrees). Further zoom-in ticks at the floor are
+// no-ops.
+export const SWOOP_PHASE3_FOV_FLOOR_DEGREES = 15;

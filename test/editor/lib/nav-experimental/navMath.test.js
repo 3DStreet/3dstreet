@@ -7,7 +7,10 @@ import {
   tiltBlendWeight,
   latchedRotationCenter,
   computeLowTiltWheelHit,
-  shiftRotateStep
+  shiftRotateStep,
+  decideSwoopPhase,
+  phase2TargetTilt,
+  phase2NextElevation
 } from '../../../../src/editor/lib/nav-experimental/navMath.js';
 import {
   TRUCK_PEDESTAL_CUTOFF_DEGREES,
@@ -15,7 +18,9 @@ import {
   ROTATION_BLEND_HIGH_DEGREES,
   ROTATION_CENTER_EYE_HEIGHT_METRES,
   SCENE_FEATHER_METRES,
-  FALLBACK_FORWARD_DIST
+  FALLBACK_FORWARD_DIST,
+  SWOOP_PHASE2_ENTRY_ELEVATION_METRES,
+  SWOOP_PHASE2_EXIT_ELEVATION_METRES
 } from '../../../../src/editor/lib/nav-experimental/constants.js';
 
 // Helper: build a square-ish bounds object centered on the origin.
@@ -511,5 +516,109 @@ describe('shiftRotateStep', () => {
     // exact sign).
     const angle = Math.acos(THREE.MathUtils.clamp(newDir.dot(viewDir), -1, 1));
     expect((angle * 180) / Math.PI).toBeCloseTo(45, 1);
+  });
+});
+
+describe('decideSwoopPhase', () => {
+  it('returns phase1 above the upper boundary', () => {
+    expect(decideSwoopPhase(SWOOP_PHASE2_ENTRY_ELEVATION_METRES + 0.01)).toBe(
+      'phase1'
+    );
+    expect(decideSwoopPhase(100)).toBe('phase1');
+  });
+
+  it('returns phase2 at the upper boundary (inclusive on phase1 side)', () => {
+    // y == 10m exactly: per the table in §Mechanics, "y > 10m" → phase1;
+    // "1.5m < y ≤ 10m" → phase2.
+    expect(decideSwoopPhase(SWOOP_PHASE2_ENTRY_ELEVATION_METRES)).toBe(
+      'phase2'
+    );
+  });
+
+  it('returns phase2 inside the band', () => {
+    expect(decideSwoopPhase(5)).toBe('phase2');
+    expect(decideSwoopPhase(SWOOP_PHASE2_EXIT_ELEVATION_METRES + 0.01)).toBe(
+      'phase2'
+    );
+  });
+
+  it('returns phase3 at and below the lower boundary', () => {
+    // y == 1.5m exactly: per the table, "y ≤ 1.5m" → phase3.
+    expect(decideSwoopPhase(SWOOP_PHASE2_EXIT_ELEVATION_METRES)).toBe('phase3');
+    expect(decideSwoopPhase(0.5)).toBe('phase3');
+    expect(decideSwoopPhase(0)).toBe('phase3');
+  });
+});
+
+describe('phase2TargetTilt', () => {
+  it('returns θ_stored at the upper boundary', () => {
+    expect(
+      phase2TargetTilt(SWOOP_PHASE2_ENTRY_ELEVATION_METRES, 60)
+    ).toBeCloseTo(60, 6);
+  });
+
+  it('returns 0 at the lower boundary', () => {
+    expect(phase2TargetTilt(SWOOP_PHASE2_EXIT_ELEVATION_METRES, 60)).toBe(0);
+  });
+
+  it('returns θ_stored above the band (clamped)', () => {
+    expect(phase2TargetTilt(20, 60)).toBe(60);
+  });
+
+  it('returns 0 below the band (clamped)', () => {
+    expect(phase2TargetTilt(0.5, 60)).toBe(0);
+  });
+
+  it('lerps linearly in y', () => {
+    // Midpoint of the band: y = (10 + 1.5)/2 = 5.75. Expect θ_stored/2.
+    const yMid =
+      (SWOOP_PHASE2_ENTRY_ELEVATION_METRES +
+        SWOOP_PHASE2_EXIT_ELEVATION_METRES) /
+      2;
+    expect(phase2TargetTilt(yMid, 60)).toBeCloseTo(30, 6);
+  });
+
+  it('handles θ_stored = 0 (low-tilt Phase 2 entry path)', () => {
+    expect(phase2TargetTilt(5, 0)).toBe(0);
+    expect(phase2TargetTilt(10, 0)).toBe(0);
+  });
+});
+
+describe('phase2NextElevation', () => {
+  it('zoom-in: y_next = y - α(y - 1.5)', () => {
+    // y=10, α=0.1: y_next = 10 - 0.1×8.5 = 9.15
+    expect(phase2NextElevation(10, -1)).toBeCloseTo(9.15, 6);
+    // y=5, α=0.1: y_next = 5 - 0.1×3.5 = 4.65
+    expect(phase2NextElevation(5, -1)).toBeCloseTo(4.65, 6);
+  });
+
+  it('zoom-out: y_next = 1.5 + (y - 1.5)/(1 - α) — exact inverse of zoom-in', () => {
+    // Zoom-in from y=10 to 9.15; zoom-out from 9.15 should return to 10.
+    const yIn = phase2NextElevation(10, -1);
+    const yOut = phase2NextElevation(yIn, +1);
+    expect(yOut).toBeCloseTo(10, 6);
+  });
+
+  it('round-trips 5 ticks in/out to floating-point precision', () => {
+    // R1/R2 smoke test, isolated to the math.
+    let y = 10;
+    for (let i = 0; i < 5; i++) y = phase2NextElevation(y, -1);
+    for (let i = 0; i < 5; i++) y = phase2NextElevation(y, +1);
+    expect(y).toBeCloseTo(10, 6);
+  });
+
+  it('zoom-out from y < 1.5 produces y_next < y (caller must clamp)', () => {
+    // Per H2: at y=0.5, the formula gives 1.5 + (0.5 - 1.5)/0.9 = 1.5 - 1.111 = 0.389
+    // i.e. *further down*. This is by design — the caller must clamp y up
+    // to 1.5 before invoking zoom-out when below the floor (saved-scene
+    // case). Test the math directly so a future "helpful fix" doesn't
+    // silently change the formula without addressing the caller.
+    const out = phase2NextElevation(0.5, +1);
+    expect(out).toBeLessThan(0.5);
+  });
+
+  it('respects custom alpha', () => {
+    // Zoom-in with α=0.2: y_next = 10 - 0.2×8.5 = 8.3
+    expect(phase2NextElevation(10, -1, 0.2)).toBeCloseTo(8.3, 6);
   });
 });

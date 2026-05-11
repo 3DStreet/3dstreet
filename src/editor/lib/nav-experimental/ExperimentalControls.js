@@ -12,6 +12,16 @@
 //   - Plan View      -> animated tween to top-down N-up (entered via
 //                       handlePlanViewRequest, called by viewport.js)
 //
+// Phase 3 mechanics — see claude/specs/001-phase-3-plan.md:
+//   - Wheel zoom is a 3-phase "swoop" gated by camera elevation:
+//       y > 10m         -> phase1: cursor-anchored dolly (tilt-conditional)
+//       1.5m < y ≤ 10m  -> phase2: pedestal + tilt-toward-horizontal
+//       y ≤ 1.5m        -> phase3: FOV-only zoom
+//   - Stored tilt latched at downward 10m crossings; lerped during Phase 2.
+//   - Ctrl+wheel (incl. Mac trackpad pinch) bypasses the swoop entirely
+//     -> plain camera-Z dolly at current tilt and elevation.
+//   - Per-phase drain cap: Phase 2 = 3 ticks/frame; Phase 1/3 = 10.
+//
 // Public API (mirrors THREE.EditorControls — see plan §"Toggle insertion
 // in viewport.js"):
 //   - enabled, center, panSpeed, zoomSpeed, minSpeedFactor, rotationSpeed
@@ -42,14 +52,22 @@ import {
   PLAN_VIEW_DURATION_MS,
   LB_PAN_MAX_STEP_METRES,
   ROTATION_BLEND_LOW_DEGREES,
-  TRUCK_PEDESTAL_CUTOFF_DEGREES
+  TRUCK_PEDESTAL_CUTOFF_DEGREES,
+  SWOOP_PHASE2_ENTRY_ELEVATION_METRES,
+  SWOOP_PHASE2_EXIT_ELEVATION_METRES,
+  SWOOP_PHASE2_MAX_TICKS_PER_FRAME,
+  SWOOP_PHASE2_FLOOR_SNAP_METRES,
+  SWOOP_PHASE3_FOV_FLOOR_DEGREES
 } from './constants.js';
 import {
   cameraTiltDegrees,
   decideLbMode,
   latchedRotationCenter,
   computeLowTiltWheelHit,
-  shiftRotateStep
+  shiftRotateStep,
+  decideSwoopPhase,
+  phase2TargetTilt,
+  phase2NextElevation
 } from './navMath.js';
 
 const DEG2RAD = Math.PI / 180;
@@ -112,6 +130,22 @@ export class ExperimentalControls extends THREE.EventDispatcher {
 
     // Wheel-budget accumulator (deltaY units; drained per tick).
     this._wheelBudget = 0;
+
+    // Phase 3 swoop state.
+    //
+    //   _storedTilt — latched on a Phase 1 zoom-in tick that clamps to
+    //     y = SWOOP_PHASE2_ENTRY_ELEVATION_METRES; read by Phase 2's
+    //     tilt lerp. Init from current tilt so Phase 2's lerp is defined
+    //     even if the session opens already inside the elevation band.
+    //     Manual camera moves (Shift+LB, LB+drag, Plan View, etc.) do
+    //     not update this — only wheel-driven downward 10m crossings.
+    //   _phase3FovBaseline — latched on a Phase 2 zoom-in tick that
+    //     clamps to y = SWOOP_PHASE2_EXIT_ELEVATION_METRES; cleared on
+    //     Phase 3 zoom-out crossing back to baseline. Null when not in
+    //     Phase 3.
+    // See claude/specs/001-phase-3-plan.md.
+    this._storedTilt = cameraTiltDegrees(camera);
+    this._phase3FovBaseline = null;
 
     // WASD held-key set; drained per tick.
     this._heldKeys = new Set();
@@ -685,6 +719,12 @@ export class ExperimentalControls extends THREE.EventDispatcher {
     // Latest cursor position is needed at drain time; remember it.
     this._lastWheelClientX = event.clientX;
     this._lastWheelClientY = event.clientY;
+
+    // Ctrl+wheel = fixed-tilt zoom escape hatch (Phase 3 plan, Open
+    // Decision #2). Mac trackpad pinch arrives as Ctrl+wheel naturally,
+    // so the same code path handles pinch-to-zoom. Latch the flag at
+    // event time; drain-time consumes it per tick.
+    this._lastWheelCtrlKey = !!event.ctrlKey;
   }
 
   _onWindowBlur() {
@@ -749,12 +789,16 @@ export class ExperimentalControls extends THREE.EventDispatcher {
   _drainWheel() {
     if (this._wheelBudget === 0) return;
     const unit = WHEEL_BUDGET_PER_TICK_UNITS;
+    // Per H4 of `claude/reports/007-phase-3-plan-review.md`: latch the
+    // per-frame cap once at the start of the drain pass, hold for the
+    // whole frame. Re-evaluating per iteration produces an asymmetric
+    // speed-up at boundary crossings (Phase 2 → Phase 1 zoom-out would
+    // unlock 7 extra Phase 1 ticks in the same frame the moment y
+    // crosses 10m).
+    const frameCap = this._wheelFrameCap();
     let ticksThisFrame = 0;
     let changed = false;
-    while (
-      ticksThisFrame < WHEEL_MAX_TICKS_PER_FRAME &&
-      Math.abs(this._wheelBudget) >= unit
-    ) {
+    while (ticksThisFrame < frameCap && Math.abs(this._wheelBudget) >= unit) {
       const sign = this._wheelBudget > 0 ? 1 : -1;
       this._wheelBudget -= sign * unit;
       this._applyWheelTick(sign);
@@ -766,29 +810,87 @@ export class ExperimentalControls extends THREE.EventDispatcher {
     if (changed) this.dispatchEvent(this._changeEvent);
   }
 
+  // Per-frame drain cap based on the current swoop phase. Latched once
+  // at the start of `_drainWheel` and held for the frame. Phase 2 uses
+  // a lower cap so trackpad bursts can't blast through the swoop
+  // (~350ms guaranteed minimum, vs ~100ms with the default cap).
+  _wheelFrameCap() {
+    if (decideSwoopPhase(this._camera.position.y) === 'phase2') {
+      return SWOOP_PHASE2_MAX_TICKS_PER_FRAME;
+    }
+    return WHEEL_MAX_TICKS_PER_FRAME;
+  }
+
   _applyWheelTick(sign) {
     // sign > 0 -> deltaY positive -> wheel "down" -> zoom out
+    // sign < 0 -> zoom in
+    //
+    // Elevation-first dispatch (per H1 of the adversarial review at
+    // `claude/reports/007-phase-3-plan-review.md`). The tilt-conditional
+    // split from `001-tilt-conditional-zoom.md` lives inside the Phase 1
+    // branch only; Phase 2/3 must run regardless of tilt — that *is* the
+    // swoop. The reverse dispatch order silently routes Phase 2 ticks
+    // into the low-tilt camera-Z dolly the moment the swoop's lerp drops
+    // tilt below 30° (≈ y=5.75m for θ_stored=60°), aborting mid-flight.
+    //
+    // Ctrl+wheel (incl. Mac trackpad pinch) bypasses the swoop and gives
+    // a plain camera-Z dolly at the current tilt and elevation (Open
+    // Decision #2). Routes to the low-tilt branch's math regardless of
+    // tilt or phase.
     const camera = this._camera;
-
-    // Tilt-conditional wheel-zoom (per
-    // claude/specs/001-tilt-conditional-zoom.md). At tilt > 30° (map
-    // mode): cursor-anchored zoom — Phase 1 behaviour. At tilt ≤ 30°
-    // (FPS mode): plain camera-Z dolly via a synthetic anchor along
-    // camera-forward. Sidesteps the "cursor over sky" inconsistency
-    // at low tilt without changing the high-tilt cursor-anchored UX.
-    let hit;
-    if (cameraTiltDegrees(camera) > TRUCK_PEDESTAL_CUTOFF_DEGREES) {
-      const x = this._lastWheelClientX;
-      const y = this._lastWheelClientY;
-      if (x == null || y == null) return;
-      hit = this._cursorAnchor.worldPointAt(x, y);
-    } else {
-      hit = computeLowTiltWheelHit(camera);
+    if (this._lastWheelCtrlKey) {
+      return this._applyLowTiltWheelTick(sign);
     }
+    const phase = decideSwoopPhase(camera.position.y);
+    if (phase === 'phase2') return this._applyPhase2WheelTick(sign);
+    if (phase === 'phase3') return this._applyPhase3WheelTick(sign);
+    // phase1: tilt-conditional split applies here only.
+    if (cameraTiltDegrees(camera) <= TRUCK_PEDESTAL_CUTOFF_DEGREES) {
+      return this._applyLowTiltWheelTick(sign);
+    }
+    return this._applyPhase1WheelTick(sign);
+  }
 
-    // factor: zoom in (sign<0) brings camera closer to anchor by 10%;
-    // zoom out (sign>0) is the inverse so a zoom-in/zoom-out pair returns
-    // to (approximately) the start.
+  // Phase 1 — cursor-anchored exponential dolly at high tilt + high
+  // altitude. Translates the camera along the camera→anchor ray by 10%
+  // of the current distance per tick. Tilt-preserving by construction.
+  //
+  // Boundary handling: if zoom-in pushes y below 10m, clamp to 10m and
+  // latch _storedTilt = current tilt (round-down model — see §"Tick
+  // energy" in the plan). The next tick is Phase 2.
+  _applyPhase1WheelTick(sign) {
+    const camera = this._camera;
+    const x = this._lastWheelClientX;
+    const y = this._lastWheelClientY;
+    if (x == null || y == null) return;
+    const hit = this._cursorAnchor.worldPointAt(x, y);
+    this._applyAnchoredDollyStep(sign, hit);
+
+    // Boundary: Phase 1 → Phase 2 on zoom-in.
+    if (sign < 0 && camera.position.y < SWOOP_PHASE2_ENTRY_ELEVATION_METRES) {
+      camera.position.y = SWOOP_PHASE2_ENTRY_ELEVATION_METRES;
+      // Phase 1 ticks are tilt-preserving, so this matches the tilt at
+      // the moment of crossing.
+      this._storedTilt = cameraTiltDegrees(camera);
+      camera.updateMatrixWorld();
+    }
+  }
+
+  // Low-tilt branch (tilt ≤ 30° while y > 10m) and the Ctrl+wheel
+  // escape hatch. Synthetic anchor 30m along camera-forward; runs the
+  // same orbit-step math as Phase 1 so behaviour matches a plain
+  // camera-Z dolly. No cursor anchoring (per
+  // `001-tilt-conditional-zoom.md`).
+  _applyLowTiltWheelTick(sign) {
+    const hit = computeLowTiltWheelHit(this._camera);
+    this._applyAnchoredDollyStep(sign, hit);
+  }
+
+  // Shared step: translate the camera along the camera→hit ray by 10%
+  // of current distance (sign<0 = closer; sign>0 = farther — exact
+  // multiplicative inverse for reversibility).
+  _applyAnchoredDollyStep(sign, hit) {
+    const camera = this._camera;
     let factor;
     if (sign < 0) factor = 1 - ZOOM_PER_WHEEL_TICK;
     else factor = 1 / (1 - ZOOM_PER_WHEEL_TICK);
@@ -804,6 +906,132 @@ export class ExperimentalControls extends THREE.EventDispatcher {
     camera.far = Math.min(100000000, Math.max(20000, distance * 10));
     camera.updateProjectionMatrix();
     camera.updateMatrixWorld();
+  }
+
+  // Phase 2 — pedestal + tilt-toward-horizontal. No cursor anchoring
+  // (see plan §"Design history note"). Yaw and (x,z) preserved across
+  // the tick; only y and tilt change.
+  //
+  // Boundary handling:
+  //   zoom-in below SWOOP_PHASE2_EXIT_ELEVATION_METRES → snap to floor,
+  //     tilt to 0°, latch _phase3FovBaseline. Next tick is Phase 3.
+  //   zoom-out above SWOOP_PHASE2_ENTRY_ELEVATION_METRES → clamp at
+  //     entry. _storedTilt is unchanged on zoom-out.
+  //   zoom-out from y < exit (saved-scene-below-floor edge case, H2):
+  //     snap up to exit elevation first, then begin the lerp.
+  _applyPhase2WheelTick(sign) {
+    const camera = this._camera;
+    const yFloor = SWOOP_PHASE2_EXIT_ELEVATION_METRES;
+    const yCeil = SWOOP_PHASE2_ENTRY_ELEVATION_METRES;
+
+    // Saved-scene edge case: zoom-out from below the floor. Snap up
+    // first; otherwise the reciprocal formula pushes y further down.
+    let y = camera.position.y;
+    if (sign > 0 && y < yFloor) {
+      y = yFloor;
+    }
+
+    let yNext = phase2NextElevation(y, sign);
+
+    // Floor snap on zoom-in (per H6 of the review): the asymptotic
+    // approach to yFloor would otherwise leave the user wheeling
+    // forever to land. Snap to floor when within snap distance.
+    if (sign < 0 && yNext - yFloor < SWOOP_PHASE2_FLOOR_SNAP_METRES) {
+      yNext = yFloor;
+    }
+
+    // Boundary: Phase 2 → Phase 3 on zoom-in.
+    if (sign < 0 && yNext <= yFloor) {
+      camera.position.y = yFloor;
+      this._setCameraTiltPreservingYaw(0);
+      this._phase3FovBaseline = camera.fov;
+      camera.updateMatrixWorld();
+      this.dispatchEvent(this._changeEvent);
+      return;
+    }
+
+    // Boundary: Phase 2 → Phase 1 on zoom-out.
+    if (sign > 0 && yNext >= yCeil) {
+      camera.position.y = yCeil;
+      this._setCameraTiltPreservingYaw(this._storedTilt);
+      camera.updateMatrixWorld();
+      return;
+    }
+
+    camera.position.y = yNext;
+    this._setCameraTiltPreservingYaw(phase2TargetTilt(yNext, this._storedTilt));
+    camera.updateMatrixWorld();
+  }
+
+  // Phase 3 — FOV-only zoom at street level. Camera position and tilt
+  // locked; only fov changes. Multiplicative reciprocal for exact
+  // reversibility. Clamped to [SWOOP_PHASE3_FOV_FLOOR_DEGREES,
+  // _phase3FovBaseline].
+  //
+  // Boundary handling: zoom-out reaching baseline FOV clears the
+  // baseline; next tick is Phase 2 (which begins pedestalling up). If
+  // entry into Phase 3 was not via Phase 2 (e.g. saved scene at y<1.5
+  // with FOV manually set), _phase3FovBaseline is null — latch it
+  // lazily from the current FOV on first tick.
+  _applyPhase3WheelTick(sign) {
+    const camera = this._camera;
+    if (this._phase3FovBaseline == null) {
+      this._phase3FovBaseline = camera.fov;
+    }
+    const baseline = this._phase3FovBaseline;
+    const floor = SWOOP_PHASE3_FOV_FLOOR_DEGREES;
+
+    let fov;
+    if (sign < 0) fov = camera.fov / (1 + ZOOM_PER_WHEEL_TICK);
+    else fov = camera.fov * (1 + ZOOM_PER_WHEEL_TICK);
+
+    if (fov < floor) fov = floor;
+    if (fov >= baseline) {
+      // Zoom-out hand-off to Phase 2: clamp to baseline, clear it so
+      // the next zoom-out tick falls through to Phase 2.
+      fov = baseline;
+      this._phase3FovBaseline = null;
+    }
+    camera.fov = fov;
+    camera.updateProjectionMatrix();
+  }
+
+  // Apply a tilt (in degrees from horizontal, positive = looking down)
+  // while preserving the camera's current yaw. Used by Phase 2.
+  // Re-derives the view direction from yaw + tilt and re-points the
+  // camera. (camera.lookAt() can't be used directly because it needs a
+  // target point, not an orientation.)
+  _setCameraTiltPreservingYaw(tiltDeg) {
+    const camera = this._camera;
+    // Current yaw from camera-forward horizontal projection.
+    const fwd = this._tmpV3a;
+    camera.getWorldDirection(fwd);
+    fwd.y = 0;
+    if (fwd.lengthSq() < 1e-6) {
+      // Camera looking straight up/down — yaw is undefined. Use camera's
+      // local +Y projected to horizontal as a stand-in (matches the
+      // WASD-degenerate convention).
+      this._tmpV3b.set(0, 1, 0).applyQuaternion(camera.quaternion);
+      this._tmpV3b.y = 0;
+      if (this._tmpV3b.lengthSq() > 1e-6) {
+        fwd.copy(this._tmpV3b).normalize();
+      } else {
+        fwd.set(0, 0, -1);
+      }
+    } else {
+      fwd.normalize();
+    }
+    // Tilt: rotate fwd downward by tiltDeg around the horizontal axis
+    // perpendicular to fwd.
+    const tiltRad = tiltDeg * DEG2RAD;
+    const cos = Math.cos(tiltRad);
+    const sin = Math.sin(tiltRad);
+    const newFwd = this._tmpV3c.set(fwd.x * cos, -sin, fwd.z * cos);
+    // Target = position + newFwd.
+    const target = this._tmpV3a // reuse — fwd not needed past here
+      .copy(camera.position)
+      .add(newFwd);
+    camera.lookAt(target);
   }
 
   _drainWASD(deltaMs) {
