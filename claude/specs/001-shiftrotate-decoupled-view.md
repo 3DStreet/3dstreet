@@ -52,16 +52,18 @@ Replace the `lookAt(center)` semantics with **dual-spherical rotation** (the imp
   - Position orbits around the scene centre by (yaw, tilt) — the camera "walks around" the diorama.
   - View direction rotates by the same (yaw, tilt) — equivalent to the diorama rotating in place from the user's POV; the user's angular relationship to the diorama is preserved.
 
-**Concrete trace (off-centre 90° yaw):**
+**Concrete trace (off-centre 90° drag-right yaw):**
 
 - Setup: diorama at origin, camera at (10, 0, 0), looking 30° off from diorama (forward ≈ (−0.87, 0, −0.5)). Diorama is in the user's peripheral vision.
-- Apply yaw +90° via dual-spherical:
-  - Position rotates 90° around centre: (10, 0, 0) → (0, 0, −10).
-  - View direction rotates 90°: (−0.87, 0, −0.5) → (−0.5, 0, 0.87).
-  - Direction from new camera position to diorama: (0, 0, 1).
-  - Angle between new view direction and direction-to-diorama: arccos(0.866) = **30°**.
+- Apply drag-right 90° yaw via dual-spherical (`dxPx > 0`, so the code's `theta -= dxPx * speed` decreases theta by π/2):
+  - Position rotates 90° around centre: (10, 0, 0) → (0, 0, **+10**). (Spherical theta π/2 → 0 maps +X to +Z.)
+  - View direction rotates 90° in the same sense: (−0.87, 0, −0.5) → (0.5, 0, −0.866).
+  - Direction from new camera position to diorama: (0, 0, −1).
+  - Angle between new view direction and direction-to-diorama: arccos(0.866) = **30°**. (Diorama still 30° off from view centre.)
 
-After the rotation, the diorama is still 30° off from view centre — same peripheral position, just seen from a different side. Museum behaviour confirmed.
+After the rotation, the diorama is still 30° off from view centre — same peripheral position, just seen from a different side of the scene. Museum behaviour confirmed.
+
+(Note: the sign/handedness here depends on the spherical convention. THREE.Spherical uses `x = r·sin(phi)·sin(theta)`, `z = r·sin(phi)·cos(theta)`; the code's `theta -= dxPx * speed` produces the trace above. The earlier draft of this section had `(0, 0, −10)`, which would correspond to the opposite sign convention. The user-perceived effect is invariant to handedness — the museum property is preserved either way.)
 
 ### Why this is "behaviour identical to current" when the user IS aimed at centre
 

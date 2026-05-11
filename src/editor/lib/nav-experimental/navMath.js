@@ -10,8 +10,17 @@ import {
   ROTATION_BLEND_HIGH_DEGREES,
   ROTATION_CENTER_EYE_HEIGHT_METRES,
   SCENE_FEATHER_METRES,
-  FALLBACK_FORWARD_DIST
+  FALLBACK_FORWARD_DIST,
+  MIN_TILT_DEGREES,
+  MAX_TILT_DEGREES
 } from './constants.js';
+
+const DEG2RAD = Math.PI / 180;
+// Spherical phi is angle from +Y. Elevation = 90° - phi.
+//   MIN_TILT_DEGREES (-89°, looking up)  -> phi = 179°  (MAX_SPHERICAL_PHI)
+//   MAX_TILT_DEGREES (+89°, looking down) -> phi =   1°  (MIN_SPHERICAL_PHI)
+const MAX_SPHERICAL_PHI = (90 - MIN_TILT_DEGREES) * DEG2RAD;
+const MIN_SPHERICAL_PHI = (90 - MAX_TILT_DEGREES) * DEG2RAD;
 
 // Signed-positive distance from a horizontal point (px, pz) to an
 // axis-aligned scene rectangle. Returns 0 when the point is inside the
@@ -160,4 +169,107 @@ export function computeLowTiltWheelHit(camera) {
   return new THREE.Vector3()
     .copy(camera.position)
     .addScaledVector(fwd, FALLBACK_FORWARD_DIST);
+}
+
+// Compute one Shift+LB rotation step. Pure: takes camera position +
+// view direction + rotation centre + per-event deltas, returns new
+// camera position + lookAt target. Caller writes back to the camera.
+//
+// Implements the "museum diorama" rotation (per
+// `claude/specs/001-shiftrotate-decoupled-view.md`): yaw/tilt deltas
+// apply to *both* the position-offset-from-centre (camera orbits the
+// scene) and the camera's view direction (independently). Preserves
+// the user's angular relationship to the centre across the rotation
+// — if the scene was in periphery at gesture start, it stays in
+// periphery; if it was at view centre, it stays at view centre.
+//
+// No `camera.lookAt(centre)` semantics: that's what produced the
+// first-move "focus grab" snap when the user wasn't aimed at centre.
+//
+// Inputs:
+//   camPos   — current camera world position (THREE.Vector3-like).
+//   viewDir  — current camera view direction, unit (THREE.Vector3-like).
+//   centre   — latched rotation centre (THREE.Vector3-like).
+//   dxPx, dyPx — per-event mouse pixel deltas.
+//   speed    — radians per pixel (typically `controls.rotationSpeed`).
+//
+// Output:
+//   { pos, lookTarget }, both THREE.Vector3. `pos` may equal `camPos`
+//   when offset is degenerate (rotate-in-place case).
+//
+// Tilt clamp: gated by the view-direction's phi (= camera view tilt).
+// `dPhi` is reduced to whatever doesn't push view tilt outside
+// [MIN_TILT_DEGREES, MAX_TILT_DEGREES]. The same gated dPhi is then
+// applied to the position-offset, so position and view stay
+// consistent.
+export function shiftRotateStep({
+  camPos,
+  viewDir,
+  centre,
+  dxPx,
+  dyPx,
+  speed
+}) {
+  // (1) Position offset from centre.
+  const offsetPos = new THREE.Vector3(
+    camPos.x - centre.x,
+    camPos.y - centre.y,
+    camPos.z - centre.z
+  );
+  const hasPositionOrbit = offsetPos.lengthSq() >= 1e-6;
+  // Rotate-in-place case: centre coincides with camera (Rule 3 /
+  // unbounded scene). Position doesn't move; only view direction
+  // rotates.
+
+  // (2) View-direction virtual offset = -viewDir (unit length).
+  //     Spherical phi of this vector reads as the camera's view tilt:
+  //       view tilt 0° (horizontal) → -viewDir.y = 0  → phi = π/2
+  //       view tilt +89° (looking down) → -viewDir.y ≈ +1 → phi ≈ 0
+  //       view tilt -89° (looking up)   → -viewDir.y ≈ -1 → phi ≈ π
+  const offsetView = new THREE.Vector3(-viewDir.x, -viewDir.y, -viewDir.z);
+  const sphView = new THREE.Spherical().setFromVector3(offsetView);
+
+  // (3) Tilt clamp via view-direction phi.
+  const wantDPhi = -dyPx * speed;
+  const newPhi = sphView.phi + wantDPhi;
+  let actualDPhi = wantDPhi;
+  if (newPhi < MIN_SPHERICAL_PHI) {
+    actualDPhi = MIN_SPHERICAL_PHI - sphView.phi;
+  } else if (newPhi > MAX_SPHERICAL_PHI) {
+    actualDPhi = MAX_SPHERICAL_PHI - sphView.phi;
+  }
+  const dTheta = -dxPx * speed;
+
+  // (4) Apply to view direction.
+  sphView.theta += dTheta;
+  sphView.phi += actualDPhi;
+  const newOffsetView = new THREE.Vector3().setFromSpherical(sphView);
+
+  // (5) Apply to position offset (only when not rotate-in-place).
+  let pos;
+  if (hasPositionOrbit) {
+    const sphPos = new THREE.Spherical().setFromVector3(offsetPos);
+    sphPos.theta += dTheta;
+    sphPos.phi += actualDPhi;
+    // No separate phi clamp on position — view-tilt clamp above gates
+    // dPhi for both.
+    const newOffsetPos = new THREE.Vector3().setFromSpherical(sphPos);
+    pos = new THREE.Vector3(
+      centre.x + newOffsetPos.x,
+      centre.y + newOffsetPos.y,
+      centre.z + newOffsetPos.z
+    );
+  } else {
+    pos = new THREE.Vector3(camPos.x, camPos.y, camPos.z);
+  }
+
+  // (6) Look target. newOffsetView is the virtual offset (= -newViewDir,
+  //     unit length), so lookTarget = pos + newViewDir = pos - newOffsetView.
+  const lookTarget = new THREE.Vector3(
+    pos.x - newOffsetView.x,
+    pos.y - newOffsetView.y,
+    pos.z - newOffsetView.z
+  );
+
+  return { pos, lookTarget };
 }

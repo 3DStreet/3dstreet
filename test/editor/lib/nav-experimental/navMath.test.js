@@ -6,7 +6,8 @@ import {
   computeRuleAB,
   tiltBlendWeight,
   latchedRotationCenter,
-  computeLowTiltWheelHit
+  computeLowTiltWheelHit,
+  shiftRotateStep
 } from '../../../../src/editor/lib/nav-experimental/navMath.js';
 import {
   TRUCK_PEDESTAL_CUTOFF_DEGREES,
@@ -355,5 +356,160 @@ describe('computeLowTiltWheelHit', () => {
     const cam = camAt({ x: 0, y: 1.6, z: 5 }, { x: 0, y: 101.6, z: 5 - 0.01 });
     const hit = computeLowTiltWheelHit(cam);
     expect(hit.y - 1.6).toBeGreaterThan(29); // ≥29m of the ~30m expected
+  });
+});
+
+describe('shiftRotateStep', () => {
+  const SPEED = 0.0035; // ROTATION_SPEED_RAD_PER_PX
+
+  // Helper: extract the view direction from a `lookTarget` and `pos`.
+  function dirFrom(step) {
+    return new THREE.Vector3()
+      .subVectors(step.lookTarget, step.pos)
+      .normalize();
+  }
+
+  it('zero deltas with camera aimed at centre: pos and view unchanged (no snap)', () => {
+    const camPos = new THREE.Vector3(10, 0, 0);
+    const viewDir = new THREE.Vector3(-1, 0, 0); // looking toward origin
+    const centre = new THREE.Vector3(0, 0, 0);
+    const step = shiftRotateStep({
+      camPos,
+      viewDir,
+      centre,
+      dxPx: 0,
+      dyPx: 0,
+      speed: SPEED
+    });
+    expect(step.pos.distanceTo(camPos)).toBeLessThan(1e-6);
+    expect(dirFrom(step).distanceTo(viewDir)).toBeLessThan(1e-6);
+  });
+
+  it('zero deltas with camera NOT aimed at centre: pos and view unchanged (the regression check)', () => {
+    // This is the bug case. Camera at (10, 0, 0) looking 30° off from
+    // the centre at origin. View direction is rotated 30° around +Y
+    // from the direction-to-origin (-X).
+    const camPos = new THREE.Vector3(10, 0, 0);
+    const viewDir = new THREE.Vector3(
+      -Math.cos(Math.PI / 6), // -cos(30°)
+      0,
+      -Math.sin(Math.PI / 6) // -sin(30°)
+    ); // looking 30° off from origin
+    const centre = new THREE.Vector3(0, 0, 0);
+    const step = shiftRotateStep({
+      camPos,
+      viewDir,
+      centre,
+      dxPx: 0,
+      dyPx: 0,
+      speed: SPEED
+    });
+    expect(step.pos.distanceTo(camPos)).toBeLessThan(1e-6);
+    expect(dirFrom(step).distanceTo(viewDir)).toBeLessThan(1e-6);
+  });
+
+  it('yaw delta with camera aimed at centre: orbit and view both track centre', () => {
+    // Camera at (10, 0, 0) looking at origin. Apply yaw such that
+    // dxPx * speed = 90° (i.e. dxPx = π/2 / speed).
+    const camPos = new THREE.Vector3(10, 0, 0);
+    const viewDir = new THREE.Vector3(-1, 0, 0);
+    const centre = new THREE.Vector3(0, 0, 0);
+    const dxPx = Math.PI / 2 / SPEED;
+    const step = shiftRotateStep({
+      camPos,
+      viewDir,
+      centre,
+      dxPx,
+      dyPx: 0,
+      speed: SPEED
+    });
+    // After 90° yaw, position rotated 90° around centre.
+    expect(step.pos.length()).toBeCloseTo(10, 4); // still 10m from centre
+    // View direction should still point toward centre from the new position.
+    const expectedView = new THREE.Vector3()
+      .subVectors(centre, step.pos)
+      .normalize();
+    expect(dirFrom(step).distanceTo(expectedView)).toBeLessThan(0.01);
+  });
+
+  it('yaw delta with camera NOT aimed at centre: angular offset to centre is preserved', () => {
+    // Museum diorama test. Camera at (10, 0, 0) looking 30° off from
+    // origin. Apply 90° yaw. After the rotation, the angle between
+    // view direction and direction-to-centre should still be 30°.
+    const camPos = new THREE.Vector3(10, 0, 0);
+    const viewDir = new THREE.Vector3(
+      -Math.cos(Math.PI / 6),
+      0,
+      -Math.sin(Math.PI / 6)
+    );
+    const centre = new THREE.Vector3(0, 0, 0);
+    const dxPx = Math.PI / 2 / SPEED;
+    const step = shiftRotateStep({
+      camPos,
+      viewDir,
+      centre,
+      dxPx,
+      dyPx: 0,
+      speed: SPEED
+    });
+    // Angular relationship preserved.
+    const newDir = dirFrom(step);
+    const dirToCentre = new THREE.Vector3()
+      .subVectors(centre, step.pos)
+      .normalize();
+    const angleAfter = Math.acos(
+      THREE.MathUtils.clamp(newDir.dot(dirToCentre), -1, 1)
+    );
+    expect((angleAfter * 180) / Math.PI).toBeCloseTo(30, 1);
+  });
+
+  it('tilt delta hits clamp: view tilt clamps at the limit', () => {
+    // Camera looking horizontal; tilt up hard (negative dyPx → tilt up).
+    const camPos = new THREE.Vector3(10, 0, 0);
+    const viewDir = new THREE.Vector3(-1, 0, 0); // horizontal
+    const centre = new THREE.Vector3(0, 0, 0);
+    // Huge tilt-up delta — should clamp at -89° (MIN_TILT_DEGREES).
+    const dyPx = -1000;
+    const step = shiftRotateStep({
+      camPos,
+      viewDir,
+      centre,
+      dxPx: 0,
+      dyPx,
+      speed: SPEED
+    });
+    const newDir = dirFrom(step);
+    // view tilt = asin(-dir.y). Clamped at -89° → -dir.y = sin(-89°) ≈ -0.9998
+    // i.e. dir.y ≈ +0.9998.
+    expect(newDir.y).toBeGreaterThan(0.999);
+  });
+
+  it('rotate-in-place (centre coincides with camera): pos unchanged; view rotates', () => {
+    const camPos = new THREE.Vector3(5, 1.6, 5);
+    const viewDir = new THREE.Vector3(0, 0, -1);
+    const centre = new THREE.Vector3(5, 1.6, 5); // same as camPos
+    const dxPx = Math.PI / 4 / SPEED; // 45° yaw
+    const step = shiftRotateStep({
+      camPos,
+      viewDir,
+      centre,
+      dxPx,
+      dyPx: 0,
+      speed: SPEED
+    });
+    // Position is an exact copy of camPos (the spec contract — when
+    // offset.lengthSq < 1e-6, the helper returns `pos = camPos.clone()`,
+    // not a lerped or recomputed value).
+    expect(step.pos.x).toBe(camPos.x);
+    expect(step.pos.y).toBe(camPos.y);
+    expect(step.pos.z).toBe(camPos.z);
+    // View direction rotated 45° around +Y.
+    const newDir = dirFrom(step);
+    // Original viewDir = (0, 0, -1). After +45° yaw around +Y in the
+    // convention used by setFromSpherical/setFromVector3, the new
+    // direction should differ from the original by ~45° (regardless of
+    // exact sign).
+    const angle = Math.acos(THREE.MathUtils.clamp(newDir.dot(viewDir), -1, 1));
+    expect((angle * 180) / Math.PI).toBeCloseTo(45, 1);
   });
 });

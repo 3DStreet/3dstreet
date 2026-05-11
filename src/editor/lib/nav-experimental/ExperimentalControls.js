@@ -30,8 +30,6 @@ import { SceneBounds } from './sceneBounds.js';
 import { CursorAnchor } from './cursorAnchor.js';
 import { TickAnimator } from './tickAnimator.js';
 import {
-  MIN_TILT_DEGREES,
-  MAX_TILT_DEGREES,
   ZOOM_PER_WHEEL_TICK,
   WHEEL_BUDGET_PER_TICK_UNITS,
   WHEEL_MAX_TICKS_PER_FRAME,
@@ -50,15 +48,15 @@ import {
   cameraTiltDegrees,
   decideLbMode,
   latchedRotationCenter,
-  computeLowTiltWheelHit
+  computeLowTiltWheelHit,
+  shiftRotateStep
 } from './navMath.js';
 
 const DEG2RAD = Math.PI / 180;
-// Spherical phi is angle from +Y. Elevation = 90° - phi.
-//   MIN_TILT_DEGREES (-89°, looking up)  -> phi = 179°  (MAX_SPHERICAL_PHI)
-//   MAX_TILT_DEGREES (+89°, looking down) -> phi =   1°  (MIN_SPHERICAL_PHI)
-const MAX_SPHERICAL_PHI = (90 - MIN_TILT_DEGREES) * DEG2RAD;
-const MIN_SPHERICAL_PHI = (90 - MAX_TILT_DEGREES) * DEG2RAD;
+// Note: spherical phi clamps for Shift+LB rotation now live in
+// navMath.shiftRotateStep (derived from MIN/MAX_TILT_DEGREES at module
+// load time there). They were removed from this file when the rotation
+// step extracted to a pure helper.
 
 const NAV_DEBUG = (() => {
   if (typeof window === 'undefined' || !window.location) return false;
@@ -103,7 +101,6 @@ export class ExperimentalControls extends THREE.EventDispatcher {
     this._changeEvent = { type: 'change' };
 
     // Scratch.
-    this._spherical = new THREE.Spherical();
     this._tmpV3a = new THREE.Vector3();
     this._tmpV3b = new THREE.Vector3();
     this._tmpV3c = new THREE.Vector3();
@@ -1064,48 +1061,36 @@ export class ExperimentalControls extends THREE.EventDispatcher {
 
   // --- Shift+LB orbit/tilt around latched center ---
 
+  // Shift+LB rotation step. Implements the "museum diorama" rotation
+  // feel (per claude/specs/001-shiftrotate-decoupled-view.md): the
+  // scene's angular position in the user's view is preserved across
+  // the rotation. Camera position orbits the latched centre; camera
+  // view direction rotates by the same yaw/tilt deltas, independently.
+  // Math lives in navMath.shiftRotateStep.
   _shiftRotate(dxPx, dyPx) {
     const camera = this._camera;
     const center = this._latch.get('center');
     if (!center) return;
 
-    const offset = this._tmpV3a.copy(camera.position).sub(center);
-    // Rule 3 (rotate-in-place: center === camera position) gives a
-    // zero-length offset, which `setFromVector3` collapses to a
-    // radius-0 spherical and `setFromSpherical` will then reproduce as
-    // (0, 0, 0) regardless of the new theta/phi. Detect that case and
-    // run on a unit-length virtual offset opposite the view direction
-    // — so phi reads the current camera tilt, the rotation deltas
-    // apply normally, and we update the camera's `lookAt` target
-    // (camera position itself stays put).
-    const rotateInPlace = offset.lengthSq() < 1e-6;
-    if (rotateInPlace) {
-      const fwd = this._tmpV3c;
-      camera.getWorldDirection(fwd); // -Z, normalized
-      offset.copy(fwd).multiplyScalar(-1);
-    }
-    const sph = this._spherical.setFromVector3(offset);
+    const fwd = this._tmpV3c;
+    camera.getWorldDirection(fwd); // unit, camera -Z in world space
+    const { pos, lookTarget } = shiftRotateStep({
+      camPos: camera.position,
+      viewDir: fwd,
+      centre: center,
+      dxPx,
+      dyPx,
+      speed: this.rotationSpeed
+    });
 
-    sph.theta -= dxPx * this.rotationSpeed; // yaw
-    sph.phi -= dyPx * this.rotationSpeed; // tilt: drag-down (+dy) -> phi smaller -> more top-down
-
-    // Tilt clamp: phi between MIN (≈ MAX_TILT_DEGREES = +89° down) and
-    // MAX (= 90 - MIN_TILT_DEGREES = +179° = -89° up).
-    sph.phi = Math.max(MIN_SPHERICAL_PHI, Math.min(MAX_SPHERICAL_PHI, sph.phi));
-
-    const newOffset = this._tmpV3b.setFromSpherical(sph);
-    if (rotateInPlace) {
-      // Keep camera position; aim its `lookAt` 1m down the new forward
-      // direction (which is `-newOffset`, since the virtual offset was
-      // `-fwd`).
-      const lookTarget = this._tmpV3a.copy(camera.position).sub(newOffset);
-      camera.lookAt(lookTarget);
-      this.center.copy(camera.position);
-    } else {
-      camera.position.copy(center).add(newOffset);
-      camera.lookAt(center);
-      this.center.copy(center);
-    }
+    camera.position.copy(pos);
+    camera.lookAt(lookTarget);
+    // `this.center` (EditorControls API field) reflects the orbit
+    // anchor — distance-from-camera reference used by ActionBar / wheel
+    // zoom. Use the latched rotation centre in the orbit case; for the
+    // rotate-in-place case (centre coincides with camera) `pos === camPos`
+    // and the latched centre equals camera position anyway.
+    this.center.copy(center);
     camera.updateMatrixWorld();
     this.dispatchEvent(this._changeEvent);
   }

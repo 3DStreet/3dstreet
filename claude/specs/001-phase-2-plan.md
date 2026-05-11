@@ -105,6 +105,8 @@ One micro-tweak: with the tilt clamp lowered, the user can now reach near-straig
 
 ## Architecture additions
 
+> **Shift+LB rotation step (2026-05-11):** `_shiftRotate` realises the "museum diorama" rotation model — the scene's angular position in the user's view is preserved across the rotation. Implementation: dual-spherical (yaw/tilt deltas apply to both the camera's position-offset-from-centre and the camera's view direction, independently). Replaces the earlier "orbit-and-`lookAt(centre)`" semantics, which produced a first-move focus-grab snap when the camera wasn't aimed at centre at gesture start. The pure step math lives in `navMath.shiftRotateStep`. See `claude/specs/001-shiftrotate-decoupled-view.md`.
+
 ### `sceneBounds.js` — new consumer, additive shape change
 
 Phase 2 calls `bounds.getBounds()` from `_decideRotationCenter()` (see below). The cache invalidation semantics are unchanged — `getBounds()` returns the cached bounds object, recomputing only after an invalidating event. The bounds object now exposes both representations: `aabb: {minX, maxX, minZ, maxZ}` (read by Phase 2's rotation-center inside/outside test) and `center` + `radius` (kept for the Plan View tween's framing math, unchanged from Phase 1). Adding `aabb` is the only API change.

@@ -2,6 +2,16 @@
 
 Consolidated record of UX and design decisions made on the navigation prototype, with date, one-line decision, brief rationale, and pointer to the relevant doc. Newest first. Implementation tunables (constants, file structure, etc.) live in the plan files — this log is for decisions that shaped the user-visible behaviour and would otherwise be hard to reconstruct.
 
+## 2026-05-11 — Shift+LB rotation: "museum diorama" feel via dual-spherical math
+
+Mental model: the rotation gesture is "rotate the scene around its centre". The user's position and view direction are preserved across the rotation; only the scene's apparent orientation changes. If the scene was in the user's peripheral vision before the gesture, it stays in periphery during and after. Equivalent to walking around a diorama in a museum — the diorama doesn't grab your focus when you rotate it from off to one side.
+
+Implementation: apply yaw/tilt deltas to both the camera's position-offset-from-centre and the camera's view direction (virtual-offset spherical decomposition), independently. Removes `camera.lookAt(centre)` from `_shiftRotate`, which was the focus-grab that produced the first-move snap on Rule 2 (low tilt, scene bounded, camera outside AABB) gestures.
+
+**Rationale:** the snap was an emergent consequence of "orbit and lookAt(centre)" semantics — fine when the camera was already looking at centre (Rule 1 high tilt → screen-centre raycast is on the forward ray by construction; no snap), but jarring when not (Rule 2). User reported the snap on 2026-05-11. Tried "smooth transition" approach (animate centre over ~150ms); architecturally complex (would need per-tick orientation tracking to avoid pause-snap reintroduction), and on reflection the museum framing is cleaner anyway — there's no reason to "transition" toward looking at centre if the user wasn't trying to.
+
+See `claude/specs/001-shiftrotate-decoupled-view.md`.
+
 ## 2026-05-11 — Wheel-zoom is cursor-anchored at tilt > 30° only
 
 At tilt > 30° (map mode): cursor-anchored exponential dolly (Phase 1 spec, unchanged). At tilt ≤ 30° (FPS mode): plain camera-Z dolly along the view direction, no cursor anchoring.
