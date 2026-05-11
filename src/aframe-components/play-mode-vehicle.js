@@ -513,6 +513,10 @@ AFRAME.registerComponent('play-mode-vehicle', {
     const autoWidth = 0.375 * data.chassisSize.y; // 0.15 @ default
     const wheelRadius = data.wheelRadius > 0 ? data.wheelRadius : autoRadius;
     const wheelWidth = data.wheelWidth > 0 ? data.wheelWidth : autoWidth;
+    // Stored for tick() to lift the wheel VISUAL up by one radius so
+    // the cylinder's bottom (not its center) sits at the suspension
+    // contact point.
+    this._wheelRadius = wheelRadius;
     const wheelInfo = {
       axleCs: { x: 0, y: 0, z: -1 },
       suspensionRestLength: 0.3125 * data.chassisSize.y, // 0.125 @ default
@@ -633,7 +637,16 @@ AFRAME.registerComponent('play-mode-vehicle', {
       const stY = this.vehicle.wheelSteering(i) || 0;
       const spin = this.vehicle.wheelRotation(i) || 0;
       const axle = this.vehicle.wheelAxleCs(i);
-      outer.object3D.position.set(conn.x, conn.y - sus, conn.z);
+      // Rapier's suspensionLength is measured to the wheel CONTACT
+      // point with the ground (where the raycast lands). Placing a
+      // radius-symmetric cylinder centered there would half-bury it
+      // under the road. Lift the visual by `_wheelRadius` so the
+      // cylinder's bottom — not its center — sits at the contact.
+      outer.object3D.position.set(
+        conn.x,
+        conn.y - sus + this._wheelRadius,
+        conn.z
+      );
       this._qSteer.setFromAxisAngle(this._up, stY);
       this._axleVec.set(axle.x, axle.y, axle.z);
       this._qSpin.setFromAxisAngle(this._axleVec, spin);
@@ -959,26 +972,42 @@ AFRAME.registerComponent('drive-mode', {
   },
 
   /**
-   * Walk every managed-street's sidewalk segments and seed a raised
-   * static slab (top at +0.15m). Because adjacent drive-lane segments
-   * sit flush with the ground (top at y=0), the vertical X-face of
-   * each sidewalk slab is automatically a curb. Wheels of the raycast
-   * vehicle controller step up 15cm without trouble, so the curb is
-   * mountable — the player can drive onto a sidewalk and then collide
-   * with pedestrians/buildings on it.
+   * Walk every managed-street's segments and seed a static cuboid
+   * matching each segment's visible top surface.
    *
-   * Drive/bus/bike/parking lanes deliberately don't get slabs: the
-   * flat ground plane already covers them, and adding redundant
-   * cuboids is just static-collider noise.
+   * Key fact about 3DStreet rendering (see
+   * `src/tested/street-segment-utils.js`): the segment's entity
+   * origin is positioned at world Y = BASE_SURFACE_DEPTH (0.15) +
+   * level × CURB_HEIGHT (0.15), and the visible surface mesh has
+   * its TOP face exactly at the entity origin. So a drive lane
+   * (level 0) has its visible top at Y=0.15; a sidewalk (level 1)
+   * at Y=0.30; an elevated bus stop (level 2) at Y=0.45; etc.
+   *
+   * Earlier this seeder used the literal constant 0.15 for sidewalk
+   * top and skipped drive lanes, which mis-aligned with visuals by
+   * 0.15m in both directions (drive-lane wheels sank into the road,
+   * sidewalk wheels hovered above the curb). Reading each segment's
+   * own world Y is what makes physics match visuals at every level.
+   *
+   * Curb walls between adjacent segments at different levels emerge
+   * automatically from the slab side faces. Slabs are 0.5m deep so
+   * the curb walls extend well below the visible bottom and the
+   * chassis can't wedge into a gap.
    */
   addSegmentColliders: function (sceneEl) {
     const physics = sceneEl.systems['play-mode-physics'];
-    const SIDEWALK_TOP = 0.15;
-    // Extra-deep so the side face overlaps the ground plane and there
-    // are no slits the chassis could wedge into between slab and ground.
-    const SIDEWALK_THICKNESS = 0.3;
-    const halfY = SIDEWALK_THICKNESS / 2;
-    const centerYOffset = SIDEWALK_TOP - halfY;
+    const COLLIDABLE_LANE_TYPES = new Set([
+      'drive-lane',
+      'bus-lane',
+      'bike-lane',
+      'sidewalk',
+      'parking-lane',
+      'divider',
+      'grass',
+      'rail'
+    ]);
+    const SLAB_DEPTH = 0.5;
+    const halfY = SLAB_DEPTH / 2;
 
     const wp = new THREE.Vector3();
     const wq = new THREE.Quaternion();
@@ -987,14 +1016,16 @@ AFRAME.registerComponent('drive-mode', {
       .querySelectorAll('[managed-street] > [street-segment]')
       .forEach((segEl) => {
         const seg = segEl.components?.['street-segment']?.data;
-        if (!seg || seg.type !== 'sidewalk') return;
+        if (!seg || !COLLIDABLE_LANE_TYPES.has(seg.type)) return;
         const length = seg.length || 60;
         const width = seg.width || 1.5;
         segEl.object3D.updateMatrixWorld();
         segEl.object3D.getWorldPosition(wp);
         segEl.object3D.getWorldQuaternion(wq);
+        // Visible top = segment world Y. Place slab so its TOP face
+        // is exactly there: center the cuboid halfY below segWorldY.
         physics.addStaticCuboid(
-          { x: wp.x, y: wp.y + centerYOffset, z: wp.z },
+          { x: wp.x, y: wp.y - halfY, z: wp.z },
           { x: width / 2, y: halfY, z: length / 2 },
           { x: wq.x, y: wq.y, z: wq.z, w: wq.w }
         );
@@ -1003,7 +1034,7 @@ AFRAME.registerComponent('drive-mode', {
     console.log(
       '[drive-mode] seeded',
       count,
-      'sidewalk slabs (curbs at +0.15m)'
+      'per-segment slabs (tops at each segment world Y; curbs emerge from level differences)'
     );
   },
 
