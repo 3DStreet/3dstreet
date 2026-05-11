@@ -299,6 +299,13 @@ export function createDriveableVehicle(position) {
         components: {
           'vehicle-mesh-slot': '',
           mixin: 'sedan-taxi-rig',
+          // Catalog vehicle glTFs are authored with forward = +Z, but
+          // the parent's "forward" (and its cone marker) is -Z. Rotate
+          // 180° around Y so the mesh's hood lines up with the cone in
+          // the editor. Play mode does its own rotation compensation
+          // when cloning the mesh — this rotation here is for the
+          // editor view only and doesn't affect play.
+          rotation: '0 180 0',
           shadow: 'cast: true; receive: true'
         }
       }
