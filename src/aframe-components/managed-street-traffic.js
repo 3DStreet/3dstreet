@@ -1,4 +1,4 @@
-/* global AFRAME */
+/* global AFRAME, THREE */
 
 /**
  * managed-street-traffic
@@ -34,11 +34,34 @@
  */
 
 const SEGMENT_TRAFFIC_DEFAULTS = {
-  // [speed m/s, default mixin id, default density (entities per 60m)]
-  'drive-lane': { speed: 11.2, mixin: 'sedan-rig', density: 2 },
-  'bus-lane': { speed: 9.0, mixin: 'bus', density: 1 },
-  'bike-lane': { speed: 6.0, mixin: 'cyclist1', density: 3 },
-  sidewalk: { speed: 1.4, mixin: 'char1', density: 6 }
+  // [speed m/s, default mixin id, default density (entities per 60m),
+  //  kinematic collider half-extents in ENTITY-local frame
+  //  (x=width, y=height, z=length, since catalog models are
+  //  authored forward = +Z so length lies on z).]
+  'drive-lane': {
+    speed: 11.2,
+    mixin: 'sedan-rig',
+    density: 2,
+    half: { x: 0.9, y: 0.75, z: 2.25 } // 1.8 W × 1.5 H × 4.5 L
+  },
+  'bus-lane': {
+    speed: 9.0,
+    mixin: 'bus',
+    density: 1,
+    half: { x: 1.25, y: 1.5, z: 6.0 } // 2.5 W × 3.0 H × 12 L
+  },
+  'bike-lane': {
+    speed: 6.0,
+    mixin: 'cyclist1',
+    density: 3,
+    half: { x: 0.25, y: 0.85, z: 0.85 } // 0.5 W × 1.7 H × 1.7 L
+  },
+  sidewalk: {
+    speed: 1.4,
+    mixin: 'char1',
+    density: 6,
+    half: { x: 0.25, y: 0.85, z: 0.25 } // 0.5 W × 1.7 H × 0.5 L
+  }
   // parking-lane intentionally absent: parked cars are static.
   // divider/grass/rail/building: no traffic.
 };
@@ -74,6 +97,17 @@ AFRAME.registerComponent('managed-street-traffic', {
       this.spawnForStreet(streetEl);
     });
     this.active = this.records.length > 0;
+
+    // If drive-mode is also up (driveable vehicle present), give the
+    // animated entities kinematic Rapier bodies so the player can
+    // collide with them. Otherwise leave them visual-only — no point
+    // loading Rapier WASM just to watch traffic.
+    const wantsPhysics = !!this.el.querySelector('[drive-controls]');
+    if (wantsPhysics) {
+      const physics = this.el.systems['play-mode-physics'];
+      physics?.activate()?.then(() => this.createKinematicBodies());
+    }
+
     console.log(
       '[managed-street-traffic] start:',
       streets.length,
@@ -83,8 +117,27 @@ AFRAME.registerComponent('managed-street-traffic', {
       this.records.length,
       'animated entities, hid',
       this.hidden.length,
-      'static'
+      'static, kinematic-physics=',
+      wantsPhysics
     );
+  },
+
+  createKinematicBodies: function () {
+    const physics = this.el.systems['play-mode-physics'];
+    if (!physics?.active) return;
+    const wp = new THREE.Vector3();
+    let n = 0;
+    for (const r of this.records) {
+      if (r.body) continue;
+      r.el.object3D.updateMatrixWorld();
+      r.el.object3D.getWorldPosition(wp);
+      r.body = physics.addKinematicCuboid(
+        { x: wp.x, y: wp.y, z: wp.z },
+        r.half
+      );
+      if (r.body) n++;
+    }
+    console.log('[managed-street-traffic] created', n, 'kinematic bodies');
   },
 
   onPlayStop: function () {
@@ -195,6 +248,9 @@ AFRAME.registerComponent('managed-street-traffic', {
         entity.setAttribute('mixin', defaults.mixin);
         entity.setAttribute('data-no-transform', '');
         entity.setAttribute('data-layer-name', 'Traffic');
+        // Mark as animated traffic so drive-mode's static-collider
+        // seeder skips us (we get kinematic colliders instead).
+        entity.setAttribute('data-play-mode-traffic', '');
         entity.classList.add('autocreated');
         // Catalog models are authored forward = +Z. inbound (dir=+1)
         // keeps default rotation; outbound (dir=-1) flips 180° so the
@@ -212,7 +268,9 @@ AFRAME.registerComponent('managed-street-traffic', {
           startZ,
           halfLen,
           length,
-          dir
+          dir,
+          half: defaults.half,
+          body: null
         });
       }
     });
@@ -224,6 +282,8 @@ AFRAME.registerComponent('managed-street-traffic', {
     if (!timer) return;
     // scene-timer stores elapsedTime in MILLISECONDS.
     const t = (timer.elapsedTime || 0) / 1000;
+    const wp = this._wp || (this._wp = new THREE.Vector3());
+    const wq = this._wq || (this._wq = new THREE.Quaternion());
     for (const r of this.records) {
       // Pure function: z(t) = wrap(startZ + dir * speed * t, [-half, +half])
       const span = r.length;
@@ -231,6 +291,23 @@ AFRAME.registerComponent('managed-street-traffic', {
       // Wrap into [-half, +half] regardless of sign.
       z = ((((z + r.halfLen) % span) + span) % span) - r.halfLen;
       r.el.object3D.position.z = z;
+
+      // Kinematic body sync (only if drive-mode is active and the
+      // body has been created). setNext* gives Rapier the future
+      // pose so the solver can compute a proper velocity for the
+      // dynamic player chassis to bounce off.
+      if (r.body) {
+        r.el.object3D.updateMatrixWorld();
+        r.el.object3D.getWorldPosition(wp);
+        r.el.object3D.getWorldQuaternion(wq);
+        r.body.setNextKinematicTranslation({ x: wp.x, y: wp.y, z: wp.z });
+        r.body.setNextKinematicRotation({
+          x: wq.x,
+          y: wq.y,
+          z: wq.z,
+          w: wq.w
+        });
+      }
     }
   }
 });

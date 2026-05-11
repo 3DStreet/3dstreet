@@ -41,9 +41,20 @@ and pressing Play animates entities along each of its lanes.
 
 ### What v1 is NOT
 
-- **Visual-only.** No Rapier colliders. Player car drives through
-  animated traffic. v1.5 adds kinematic Rapier bodies that follow
-  each animated entity for solid player-vs-traffic collision.
+- ~~**Visual-only.**~~ Resolved: when drive-mode is also active
+  (a `[drive-controls]` entity exists), traffic creates a
+  kinematic-position-based Rapier body per animated entity, sized
+  from a per-segment-type cuboid table (no GLB bounding-box scan
+  needed). The body is updated every tick via
+  `setNextKinematicTranslation/Rotation` so the dynamic player
+  chassis collides with traffic correctly. Without drive-mode,
+  Rapier WASM is never loaded — traffic stays visual-only.
+- **drive-mode's static-collider seeder skips** entities tagged
+  with `data-play-mode-traffic` (they get kinematic instead) and
+  entities whose `object3D.visible === false` (the static pre-
+  existing entities traffic hid). That eliminates the "player
+  collides with invisible boxes where static cars used to be"
+  problem.
 - **No intersection coordination.** Each managed-street loops
   independently. Entities disappear into intersection regions and
   reappear at the other end of their own segment. Multi-street
@@ -57,10 +68,6 @@ and pressing Play animates entities along each of its lanes.
 
 ### Open questions for v1.5+
 
-- Kinematic colliders on traffic so the player can collide with it.
-  Each record needs a Rapier kinematic body sized from the model
-  bounding box, fed via `setNextKinematicTranslation` each tick.
-  Conditional on `play-mode-physics` being active.
 - Coprime-period stagger or seeded jitter to break the visible loop
   on long sessions.
 - Crosswalk events (pedestrian crosses perpendicular to street at

@@ -138,6 +138,29 @@ AFRAME.registerSystem('play-mode-physics', {
     return body;
   },
 
+  /**
+   * Add a kinematic-position-based cuboid. Caller drives the body
+   * each tick via setNextKinematicTranslation/Rotation; the solver
+   * computes correct velocity so dynamic bodies (player chassis)
+   * bounce off cleanly. Used by managed-street-traffic to give
+   * animated traffic real collision shapes that the player can hit.
+   */
+  addKinematicCuboid: function (pos, halfExtents) {
+    if (!this.world) return null;
+    const body = this.world.createRigidBody(
+      RAPIER.RigidBodyDesc.kinematicPositionBased().setTranslation(
+        pos.x,
+        pos.y,
+        pos.z
+      )
+    );
+    this.world.createCollider(
+      RAPIER.ColliderDesc.cuboid(halfExtents.x, halfExtents.y, halfExtents.z),
+      body
+    );
+    return body;
+  },
+
   tick: function (time, deltaMs) {
     if (!this.active || !this.world) return;
     const dt = Math.min((deltaMs || 16) / 1000, 0.1);
@@ -922,6 +945,13 @@ AFRAME.registerComponent('drive-mode', {
     const isCandidate = (el) => {
       if (!el || el === driveEntity) return false;
       if (driveEntity && driveEntity.contains(el)) return false;
+      // Animated traffic gets kinematic colliders from
+      // managed-street-traffic; don't double-seed with static cuboids.
+      if (el.hasAttribute('data-play-mode-traffic')) return false;
+      // Skip entities that traffic has hidden — they're visually gone,
+      // so a static collider sitting at their last pose would just
+      // produce phantom collisions.
+      if (el.object3D && !el.object3D.visible) return false;
       const mixinAttr = el.getAttribute('mixin');
       if (!mixinAttr) return false;
       return mixinAttr.split(/\s+/).some(isVehicleMixin);
