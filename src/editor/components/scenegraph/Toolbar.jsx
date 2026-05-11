@@ -3,6 +3,8 @@ import { faStop, faPause, faPlay } from '@fortawesome/free-solid-svg-icons';
 import useStore from '@/store';
 import { Button } from '../elements/Button';
 import { AwesomeIcon } from '../elements/AwesomeIcon';
+import { CameraSparkleIcon } from '@shared/icons';
+import { makeScreenshot } from '@/editor/lib/SceneUtils';
 import primaryStyles from '../elements/PrimaryToolbar/PrimaryToolbar.module.scss';
 import styles from './Toolbar.module.scss';
 
@@ -92,7 +94,9 @@ function SimTimer() {
 }
 
 function Toolbar() {
-  const { isInspectorEnabled, setIsInspectorEnabled } = useStore();
+  const isInspectorEnabled = useStore((s) => s.isInspectorEnabled);
+  const setIsInspectorEnabled = useStore((s) => s.setIsInspectorEnabled);
+  const setModal = useStore((s) => s.setModal);
 
   if (isInspectorEnabled) return null;
 
@@ -105,17 +109,39 @@ function Toolbar() {
     setIsInspectorEnabled(true);
   };
 
+  const handleSnapshot = () => {
+    document.querySelector('a-scene')?.systems?.['play-mode']?.pause();
+    // No auto-resume on modal close. Other modals (upsell, sign-in)
+    // can open while paused, and we don't want closing those to
+    // silently resume the simulation. The user clicks the SIM timer
+    // to resume when they're ready.
+    // Deliberately skip the editor-mode auto-save (`saveScene(false)`)
+    // here. Play mode adds synthetic runtime entities (player-car,
+    // kinematic traffic bodies) to the DOM that we don't want to bake
+    // into the saved scene. The screenshot modal still handles its own
+    // gallery-image save for authed users.
+    makeScreenshot();
+    setModal('screenshot');
+  };
+
   return (
     <div id="toolbar" data-inspector="false" className={styles.toolbarRoot}>
-      <div className={primaryStyles.wrapper}>
-        <SimTimer />
-        <div className={primaryStyles.divider} />
+      <div className={`${primaryStyles.wrapper} ${styles.toolbarRow}`}>
         <Button
           onClick={handleStop}
           variant="toolbtn"
           leadingIcon={<AwesomeIcon icon={faStop} size={14} />}
         >
           Stop
+        </Button>
+        <SimTimer />
+        <Button
+          variant="toolbtn"
+          onClick={handleSnapshot}
+          leadingIcon={<CameraSparkleIcon />}
+          title="Pause and capture from the current camera"
+        >
+          Snapshot
         </Button>
       </div>
     </div>
