@@ -4,14 +4,7 @@
   left: 50%;
   transform: translateX(-50%);
   z-index: 10;
-  transition:
-    top 200ms ease-out,
-    left 200ms ease-out,
-    right 200ms ease-out,
-    transform 200ms ease-out,
-    width 200ms ease-out,
-    background-color 200ms ease-out,
-    padding 200ms ease-out;
+  transition: background-color 200ms ease-out;
 }
 
 .actionBarDock {
@@ -20,14 +13,7 @@
   left: 50%;
   transform: translateX(-50%);
   z-index: 10;
-  transition:
-    bottom 200ms ease-out,
-    left 200ms ease-out,
-    right 200ms ease-out,
-    transform 200ms ease-out,
-    width 200ms ease-out,
-    background-color 200ms ease-out,
-    padding 200ms ease-out;
+  transition: background-color 200ms ease-out;
 }
 
 // Phase 2 visual indicator (per claude/specs/001-phase-2-plan.md §"Visual
