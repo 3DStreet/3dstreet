@@ -45,11 +45,13 @@ Using plain `cameraForward` means wheel zoom moves you in the direction you're l
 
 Wheel zoom is tilt-preserving by construction — within a single wheel-zoom gesture, the camera tilt doesn't change. So the tilt-conditional mode is fixed for the duration of any wheel-zoom drag/scroll. The mode only changes *between* separate wheel gestures, if the user has used Shift+LB to re-tilt in between. No mid-gesture switching to worry about.
 
-At exactly 30° tilt: the gate uses `tiltDeg > TRUCK_PEDESTAL_CUTOFF_DEGREES`, so 30° falls into the *low-tilt* branch (forward dolly). Matches Phase 2's `decideLbMode` convention (which uses the same comparator).
+The gate uses `tiltDeg > TRUCK_PEDESTAL_CUTOFF_DEGREES`. At exactly 30° tilt: the low-tilt branch fires (inclusive at 30°), matching `decideLbMode`'s convention (which uses the same comparator).
 
 ### High-tilt sky-miss case unchanged
 
 At high tilt, `_applyWheelTick` still calls `cursorAnchor.worldPointAt`, which can still hit Step 3 (camera-forward fallback) on a sky-miss. At high tilt this is rare (cursor mostly points at ground/scene), and when it does fire, camera-forward points downward — zoom-in moves the camera toward the scene, which is reasonable. Not worth a separate code path; the earlier cursor-anchor-fallback plan is superseded for this reason.
+
+**Known residual (per `claude/reports/004-tilt-conditional-zoom-review.md` finding 3):** the high-tilt sky-miss case isn't *as* rare as "almost never". For FOV=60° at tilt ≈ 30°–60° with the cursor near the top of the viewport, the ray can still point above the horizon and Step 3 fires (giving non-cursor-anchored behaviour). The user's reported bug at low tilt is solved; this residual band remains. Acceptable for the prototype — fixable later if feel-test surfaces it.
 
 ### What `_zoomActionBar` does
 
@@ -66,6 +68,28 @@ Optionally also move `MAX_GROUND_DIST` for consistency — it lives in `cursorAn
 ### `src/editor/lib/nav-experimental/cursorAnchor.js`
 
 Replace the local `FALLBACK_FORWARD_DIST` constant with an import from `constants.js`. The `_internals` test seam continues to re-export it. No behavioural change.
+
+Doc-comment header (lines 7–17) updated to note that the wheel-zoom consumer in `ExperimentalControls._applyWheelTick` now branches on the 30° tilt cut *before* calling `worldPointAt` — so Step 3 of the fallback chain only fires for wheel zoom at high tilt. (LB-pan still calls `worldPointAt` unconditionally; the chain applies to it as before.)
+
+### `src/editor/lib/nav-experimental/navMath.js`
+
+Add a pure helper that synthesises the low-tilt wheel-zoom anchor. Matches the existing small-helper pattern (`cameraTiltDegrees`, `decideLbMode`):
+
+```js
+// Synthetic wheel-zoom anchor for the low-tilt branch: a point
+// FALLBACK_FORWARD_DIST metres along the camera's view direction.
+// Reused as the "hit point" in the existing orbit-step math so wheel
+// zoom at low tilt gives a 3m-per-tick camera-Z dolly. Pure.
+export function computeLowTiltWheelHit(camera) {
+  const fwd = new THREE.Vector3();
+  camera.getWorldDirection(fwd);
+  return new THREE.Vector3()
+    .copy(camera.position)
+    .addScaledVector(fwd, FALLBACK_FORWARD_DIST);
+}
+```
+
+Imports `FALLBACK_FORWARD_DIST` from `constants.js`.
 
 ### `src/editor/lib/nav-experimental/ExperimentalControls.js`
 
@@ -87,12 +111,7 @@ _applyWheelTick(sign) {
     // Low tilt (FPS mode): plain camera-Z dolly. No cursor anchoring.
     // Synthesise an anchor at FALLBACK_FORWARD_DIST along camera-forward
     // so the existing orbit math gives a 3m-per-tick forward step.
-    const fwd = this._tmpV3c;
-    camera.getWorldDirection(fwd);
-    const fp = this._tmpV3a
-      .copy(camera.position)
-      .addScaledVector(fwd, FALLBACK_FORWARD_DIST);
-    hit = { x: fp.x, y: fp.y, z: fp.z };
+    hit = computeLowTiltWheelHit(camera);
   }
 
   let factor;
@@ -104,10 +123,10 @@ _applyWheelTick(sign) {
 ```
 
 Imports added:
-- `cameraTiltDegrees` from `navMath.js`.
-- `TRUCK_PEDESTAL_CUTOFF_DEGREES` and `FALLBACK_FORWARD_DIST` from `constants.js`.
+- `cameraTiltDegrees` and `computeLowTiltWheelHit` from `navMath.js`.
+- `TRUCK_PEDESTAL_CUTOFF_DEGREES` from `constants.js`.
 
-`_tmpV3c` is reused as scratch for the forward vector; no new instance state.
+No new instance state.
 
 ### No other files touched
 
@@ -117,21 +136,20 @@ The Shift+LB rotation-centre raycast at `001-phase-1-plan.md:44` is a separate c
 
 ## Test changes
 
-### `test/editor/lib/nav-experimental/...` — new test file `wheelZoom.test.js`
+### `test/editor/lib/nav-experimental/navMath.test.js`
 
-Extract the wheel-tick math into a pure helper `computeWheelTickHit(camera, cursorAnchor, lastWheelClient, sign)` in `navMath.js` (returns `{hit, factor}`), so the tilt branch can be unit-tested without instantiating an A-Frame scene. Or keep `_applyWheelTick` self-contained and add an integration-style test using a stub camera + stub `cursorAnchor` with `worldPointAt` spied.
+Add unit tests for `computeLowTiltWheelHit`. The pure helper is small but covers the load-bearing math; a few targeted tests are enough:
 
-Test cases:
+- **Horizontal camera.** Camera at (0, 1.6, 10) looking toward origin. Expect returned hit ≈ `(0, 1.6, 10) + (0, 0, -1) * 30 = (0, 1.6, -20)`.
+- **Camera pitched up 45° (looking up).** Expect returned hit's y > camera.y (drift upward).
+- **Camera pitched down 45° (looking down).** Expect returned hit's y < camera.y.
+- **Vertical drift quantification at street level.** Camera at y=1.6 with tilt = -89°; expect `(hit − camera).y ≈ 30 * sin(89°) ≈ 30m` (the worst case in the Risks section).
 
-- **High tilt → cursor-anchored.** Camera at +60° tilt, cursor at viewport centre over a stub scene-mesh hit. Expect `hit === scene-mesh-hit` (not the synthetic camera-forward point).
-- **Low tilt → camera-forward dolly.** Camera at 0° tilt, cursor anywhere (top-left corner — the user's bug case). Expect `hit === camera.position + cameraForward * 30`.
-- **Boundary at exactly 30° tilt.** Expect the low-tilt branch fires (inclusive at 30°, matching `decideLbMode`).
-- **Looking-up (negative tilt).** Camera at -20° tilt (looking up at 20°), cursor at viewport centre. Expect the low-tilt branch fires.
-- **Symmetry across mode boundary.** Adjacent ticks at +30.5° and +29.5° should produce qualitatively different hits (cursor-anchored vs forward-dolly).
+No need to test the branch dispatch in `_applyWheelTick` itself — that's a 2-line if/else; the math under each branch is independently tested (`computeLowTiltWheelHit` here; cursor-anchored math is unchanged from Phase 1).
 
 ### `test/editor/lib/nav-experimental/cursorAnchor.test.js`
 
-If `FALLBACK_FORWARD_DIST` moves to `constants.js`, the existing tests that reference it (via `_internals`) should continue to pass. Verify.
+`FALLBACK_FORWARD_DIST` moves to `constants.js`. Existing tests reference it via `_internals` (in `cursorAnchor.js`), which continues to re-export the (now-imported) value. Verify the existing test suite passes unchanged.
 
 ## Spec doc updates
 
@@ -153,7 +171,15 @@ Add one line under §"Wheel, WASD, Plan View — unchanged" noting the tilt-cond
 
 ## Risks
 
-- **Forward dolly at low tilt with non-zero pitch lets the camera drift up/down.** At ±30° tilt the per-tick vertical drift is ≤ ~1.5m. At -45° tilt (looking up at 45°, well above the 30° cut so still low-tilt branch) it's ~2.1m. Over a 10-tick burst, the camera could rise/fall 15–20m. Mitigation paths if feel-test surfaces this: (a) project forward onto horizontal plane (matches W's behaviour, but removes the differentiation); (b) clamp the camera's y after each tick to a sensible floor.
+- **Forward dolly at low tilt with non-zero pitch lets the camera drift up/down.** Per-tick vertical drift is `3m * sin(-tilt)`:
+  - tilt = 0° → 0
+  - tilt = +30° (boundary, looking down) → −1.5m/tick downward
+  - tilt = −30° (looking up 30°) → +1.5m/tick upward
+  - tilt = −45° → ~+2.1m/tick
+  - tilt = −60° → ~+2.6m/tick
+  - tilt = −89° (clamp) → ~+3m/tick
+
+  At the looking-up extreme a 10-tick trackpad burst lifts the camera ~30m — roof-of-a-10-storey-building height from street level (1.6m). At the +30° boundary, the equivalent burst sinks the camera ~15m. Mitigation paths if feel-test surfaces this: (a) project forward onto horizontal plane (matches W's behaviour, but removes the differentiation); (b) clamp the camera's y after each tick to a sensible floor (e.g. y ≥ 0.5 — prevents below-ground states without changing felt behaviour above ground; one-line change).
 - **Discovering the boundary.** Users may not realise wheel-zoom feel changes at the 30° tilt cut. Mitigation: the toolbar indicator (Phase 2's visual indicator for the same 30° cut) already exists; it covers both LB+drag and wheel-zoom semantics.
 - **Phase 3 swoop integration.** The swoop is high-tilt-only by current Phase 3 design — but Phase 3 isn't fully specced yet. If Phase 3 turns out to want a "transition out of map mode" that's actually tilt-conditional itself, this design composes cleanly. If it wants something else, may need revisit. Low risk; logged.
 
