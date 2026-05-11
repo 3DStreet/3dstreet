@@ -4,6 +4,21 @@ Internal backlog for the navigation prototype: ideas, follow-ups, and improvemen
 
 Newest first.
 
+## 2026-05-11 — Evaluate replacing custom orbit math with an existing library
+
+**Phase target:** before production (Phase 6 / pre-merge to main).
+
+`ExperimentalControls` rolls its own orbit-and-rotation math (`_shiftRotate`, `_latchRotationCenter`, spherical math, tilt clamps, virtual-offset rotate-in-place trick, etc.) rather than delegating to a library that already implements this — e.g. `THREE.OrbitControls` (`update()` runs per render frame; handles `target` updates naturally) or A-Frame's own camera control components. Rolling our own was probably the wrong call: it cost us implementation effort, and it costs us *again* every time we want a small behavioural change (most recent: the snap-fix is non-trivial because per-tick orientation tracking has to be added by hand, where a library that runs `update()` per frame would handle it for free).
+
+Before productising, evaluate:
+- `THREE.OrbitControls` — can we configure it to give the Phase 1/2 behaviours we want? (Tilt-conditional wheel zoom, the 30° hard-cut at LB+drag, Plan View tween, etc.)
+- Other libraries (e.g. `camera-controls`).
+- Hybrid: library for the orbit/rotate path, custom for the Phase 2 sub-modes.
+
+If the answer is "library covers most cases, custom covers the rest", the migration is worth doing. If our custom design is too divergent (e.g. the 30° hard-cut between truck/dolly and truck/pedestal isn't a standard orbit-controls feature), maybe not — but at least document the gap.
+
+**Source:** user, 2026-05-11, during snap-fix design discussion.
+
 ## 2026-05-11 — Visual cue for scene-bounds entry/exit
 
 **Phase target:** TBD (Phase 3+ probably; not blocking Phase 2 UX learning).
