@@ -96,6 +96,20 @@ Assets such as 3D models, textures, and audio are offered under the [Creative Co
 
 Contact [kieran@3dstreet.org](mailto:kieran@3dstreet.org) for commercial licensing.
 
+### Experimental navigation controls (this branch)
+
+Work-in-progress overhaul of the editor camera controls. Enabled per-session by appending `?nav=experimental` to the URL (e.g. `http://localhost:3333/?nav=experimental`). Old controls remain the default.
+
+Implemented so far:
+
+- **LB+drag** — truck/dolly in the world horizontal plane (high tilt) or world-vertical pedestal (low tilt). Hit-anchored: the world point under the cursor at gesture start stays under the cursor.
+- **Shift+LB+drag** — pan/tilt. Rotation centre is bounds-aware (diorama centre when outside a bounded scene, camera position when inside or unbounded), latched at gesture start. Museum-diorama feel — no `lookAt(centre)` snap.
+- **Wheel** — 3-phase "swoop" zoom: cursor-anchored exponential dolly above 20m → pedestal-and-tilt-toward-horizontal between 20m and 1.5m → FOV-only zoom at street level. Reverses on wheel-out. **Ctrl+wheel** (incl. Mac trackpad pinch) bypasses the swoop and gives a plain fixed-tilt dolly.
+- **WASD / arrow keys** — camera-yaw-projected horizontal motion with a velocity ramp.
+- **Plan View** — animated tween to top-down, framing the scene bounds when available.
+
+Design rationale, locked decisions, and known gaps live in `claude/specs/001-overall-plan.md` (start there) and the phase-specific plans alongside it.
+
 ### Developer Docs
 See [this link for more information](src/README.md) about the custom components developed and modified for the project.
 
