@@ -3,6 +3,74 @@
 A scratchpad for the play-mode driving feature. Not user-facing docs.
 Captures intent and open questions so the next slice has context.
 
+## Traffic animation v1 (`managed-street-traffic`)
+
+Opt-in per managed-street. Set `playable: true` on a `managed-street`
+and pressing Play animates entities along each of its lanes.
+
+- **Knob:** `managed-street.playable` (boolean, default false). Existing
+  scenes are unaffected until the user flips it.
+- **Play gate:** the Play button is enabled when EITHER a
+  `[drive-controls]` entity exists OR any `[managed-street]` has
+  `playable: true`. See `useHasPlayable` in `PrimaryToolbar.jsx`.
+- **Determinism:** every entity's position is a pure function of
+  `scene-timer.elapsedTime`, the entity's lane slot index, the
+  segment length, and the segment direction. Two viewers of the same
+  scene at the same scene-time see identical traffic. No per-entity
+  state, no RNG, no rAF accumulator coupling.
+- **scene-timer wiring:** `play-mode.start()` resets the timer to 0
+  and fires `timer-start`; `play-mode.stop()` fires `timer-pause`.
+  The timer is the canonical clock for any subscriber that wants
+  deterministic time.
+- **Per-segment-type defaults** (in `managed-street-traffic.js`):
+  - drive-lane: 11.2 m/s (25 mph), `sedan-rig`, ~2 per 60m
+  - bus-lane: 9.0 m/s, `bus`, ~1 per 60m
+  - bike-lane: 6.0 m/s, `cyclist1`, ~3 per 60m
+  - sidewalk: 1.4 m/s (real walking, not jogging), `char1`, ~6 per 60m
+  - parking-lane: excluded (parked cars are static)
+  - divider/grass/rail/building: no traffic
+- **No pass-through within a lane** by construction: every entity in
+  a given lane has identical speed, so relative velocity is zero.
+  Cross-lane variation gives the visual richness.
+- **Direction:** `direction: outbound` → -Z motion (mesh rotated
+  180°); `inbound` → +Z (default rotation). `none` (sidewalks) →
+  half the entities each way.
+- **Loop:** `z(t) = ((startZ + dir*speed*t) wrap [-L/2, L/2])`. Loop
+  period per lane = `length / speed`. Different lanes have different
+  periods, hiding the repetition.
+
+### What v1 is NOT
+
+- **Visual-only.** No Rapier colliders. Player car drives through
+  animated traffic. v1.5 adds kinematic Rapier bodies that follow
+  each animated entity for solid player-vs-traffic collision.
+- **No intersection coordination.** Each managed-street loops
+  independently. Entities disappear into intersection regions and
+  reappear at the other end of their own segment. Multi-street
+  coordination is out of scope.
+- **No within-lane speed variation, no overtaking, no spawning
+  variation.** Pure loop, evenly spaced. The ±15% jitter discussed
+  in the design conversation would reintroduce pass-through and is
+  deferred.
+- **No car-following / IDM / lane-change.** Real traffic-sim is a
+  separate project.
+
+### Open questions for v1.5+
+
+- Kinematic colliders on traffic so the player can collide with it.
+  Each record needs a Rapier kinematic body sized from the model
+  bounding box, fed via `setNextKinematicTranslation` each tick.
+  Conditional on `play-mode-physics` being active.
+- Coprime-period stagger or seeded jitter to break the visible loop
+  on long sessions.
+- Crosswalk events (pedestrian crosses perpendicular to street at
+  intersection) as a much higher-signal animation than parallel
+  sidewalk walkers.
+- Physics-time = scene-time coupling. Right now scene-timer is
+  wall-clock-driven (resumes via `performance.now()` offset). When
+  determinism for recordings becomes a requirement, the timer
+  should advance only on completed physics sub-steps.
+
 ## Architecture: play mode is decoupled from any single feature
 
 "Play" is a generic lifecycle, not a synonym for drive mode.

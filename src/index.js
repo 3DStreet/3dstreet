@@ -41,6 +41,7 @@ require('./aframe-components/google-maps-aerial.js');
 require('./aframe-components/viewer-mode.js');
 require('./aframe-components/play-mode.js');
 require('./aframe-components/play-mode-vehicle.js');
+require('./aframe-components/managed-street-traffic.js');
 require('./aframe-components/scene-timer.js');
 require('./aframe-components/geojson.js');
 require('./editor/index.jsx');

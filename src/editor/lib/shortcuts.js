@@ -159,6 +159,31 @@ export const Shortcuts = {
       event.preventDefault();
       event.stopPropagation();
     }
+
+    // p: enter play mode. Gated to non-input focus + something
+    // playable in the scene (driveable vehicle or playable
+    // managed-street). Mirrors the toolbar Play button.
+    if (
+      event.keyCode === 80 &&
+      !event.ctrlKey &&
+      !event.metaKey &&
+      !event.altKey &&
+      document.activeElement.tagName !== 'INPUT' &&
+      document.activeElement.tagName !== 'TEXTAREA'
+    ) {
+      const sceneEl = document.querySelector('a-scene');
+      const playable =
+        !!sceneEl?.querySelector('[drive-controls]') ||
+        Array.from(sceneEl?.querySelectorAll('[managed-street]') || []).some(
+          (s) => s.components?.['managed-street']?.data?.playable
+        );
+      if (playable) {
+        useStore.getState().setIsInspectorEnabled(false);
+        sceneEl?.systems?.['play-mode']?.start();
+        event.preventDefault();
+        event.stopPropagation();
+      }
+    }
   },
   enable: function () {
     if (this.enabled) {
