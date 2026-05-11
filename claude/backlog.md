@@ -4,6 +4,16 @@ Internal backlog for the navigation prototype: ideas, follow-ups, and improvemen
 
 Newest first.
 
+## 2026-05-11 — "Smoothly recenter the diorama" control
+
+**Phase target:** Phase 4 (double-click) — possibly overlapping with that work.
+
+After the Shift+LB rotation snap fix, a long off-aim rotation can leave the user with the diorama in their peripheral vision (which is the correct museum behaviour). Sometimes the user wants a quick way to "recentre" — smoothly tween the camera back to looking at the diorama centre, similar to the existing `focus()` / double-click animation.
+
+Worth considering as part of Phase 4 (double-click navigation): the design might naturally cover this. Double-click on the diorama → camera tweens to face it. Or a dedicated key/button if the affordance needs to be more discoverable.
+
+**Source:** user, 2026-05-11, post-rotation-fix feel-test.
+
 ## 2026-05-11 — Evaluate replacing custom orbit math with an existing library
 
 **Phase target:** before production (Phase 6 / pre-merge to main).

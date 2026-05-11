@@ -80,8 +80,15 @@ export const FALLBACK_FORWARD_DIST = 30;
 export const ROTATION_SPEED_RAD_PER_PX = 0.0035;
 
 // WASD horizontal motion: speed = clamp(camera height * factor, MIN, MAX).
+// At y ≥ MIN_SPEED metres: speed = altitude (linear scaling).
+// At y < MIN_SPEED metres: speed = MIN_SPEED (constant floor).
+// MIN raised from 5 to 10 on 2026-05-11 per user feel-test request:
+// at street level (~1.6m) the previous 5m/s was too slow; 10m/s ≈ urban
+// driving pace gets you across a block in a reasonable time. High
+// altitudes unchanged (the linear scaling above y=10 still gives the
+// same speeds).
 export const WASD_SPEED_HEIGHT_FACTOR = 1.0; // m/s per metre of altitude
-export const WASD_MIN_SPEED = 5; // m/s
+export const WASD_MIN_SPEED = 10; // m/s
 export const WASD_MAX_SPEED = 500; // m/s
 // Acceleration ramp-up: time (ms) to reach the target speed from rest
 // while a key is held. Release of all keys snaps velocity to zero
