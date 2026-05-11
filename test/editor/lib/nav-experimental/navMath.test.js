@@ -20,7 +20,8 @@ import {
   SCENE_FEATHER_METRES,
   FALLBACK_FORWARD_DIST,
   SWOOP_PHASE2_ENTRY_ELEVATION_METRES,
-  SWOOP_PHASE2_EXIT_ELEVATION_METRES
+  SWOOP_PHASE2_EXIT_ELEVATION_METRES,
+  SWOOP_PHASE2_STEP
 } from '../../../../src/editor/lib/nav-experimental/constants.js';
 
 // Helper: build a square-ish bounds object centered on the origin.
@@ -586,10 +587,14 @@ describe('phase2TargetTilt', () => {
 
 describe('phase2NextElevation', () => {
   it('zoom-in: y_next = y - α(y - 1.5)', () => {
-    // y=10, α=0.1: y_next = 10 - 0.1×8.5 = 9.15
-    expect(phase2NextElevation(10, -1)).toBeCloseTo(9.15, 6);
-    // y=5, α=0.1: y_next = 5 - 0.1×3.5 = 4.65
-    expect(phase2NextElevation(5, -1)).toBeCloseTo(4.65, 6);
+    // Uses the default SWOOP_PHASE2_STEP from constants (0.20 as of
+    // 2026-05-11 feel-test). Asserted via the formula directly so the
+    // test tracks the constant.
+    const alpha = SWOOP_PHASE2_STEP;
+    const expectedAt10 = 10 - alpha * (10 - 1.5);
+    expect(phase2NextElevation(10, -1)).toBeCloseTo(expectedAt10, 6);
+    const expectedAt5 = 5 - alpha * (5 - 1.5);
+    expect(phase2NextElevation(5, -1)).toBeCloseTo(expectedAt5, 6);
   });
 
   it('zoom-out: y_next = 1.5 + (y - 1.5)/(1 - α) — exact inverse of zoom-in', () => {
@@ -608,11 +613,13 @@ describe('phase2NextElevation', () => {
   });
 
   it('zoom-out from y < 1.5 produces y_next < y (caller must clamp)', () => {
-    // Per H2: at y=0.5, the formula gives 1.5 + (0.5 - 1.5)/0.9 = 1.5 - 1.111 = 0.389
-    // i.e. *further down*. This is by design — the caller must clamp y up
-    // to 1.5 before invoking zoom-out when below the floor (saved-scene
-    // case). Test the math directly so a future "helpful fix" doesn't
-    // silently change the formula without addressing the caller.
+    // Per H2: with α=0.20 the formula at y=0.5 gives
+    //   1.5 + (0.5 - 1.5)/(1 - 0.20) = 1.5 - 1.25 = 0.25
+    // i.e. *further down*. This is by design — the caller must kick-start
+    // y up to (floor + snap) before invoking zoom-out when at or below the
+    // floor (see `_applyPhase2WheelTick`). Test the math directly so a
+    // future "helpful fix" doesn't silently change the formula without
+    // addressing the caller.
     const out = phase2NextElevation(0.5, +1);
     expect(out).toBeLessThan(0.5);
   });

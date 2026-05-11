@@ -912,31 +912,46 @@ export class ExperimentalControls extends THREE.EventDispatcher {
   // (see plan §"Design history note"). Yaw and (x,z) preserved across
   // the tick; only y and tilt change.
   //
+  // Boundary handling at zoom-out is *active*, not deferred to next
+  // tick. The naive "clamp at boundary, let next tick re-dispatch"
+  // model deadlocks because `decideSwoopPhase(yCeil)` returns 'phase2'
+  // (the table is inclusive on the Phase 2 side at y = yCeil) and the
+  // next tick fires the boundary again. The active hand-off applies
+  // this tick's energy in the destination phase. Found at feel-test
+  // 2026-05-11.
+  //
   // Boundary handling:
-  //   zoom-in below SWOOP_PHASE2_EXIT_ELEVATION_METRES → snap to floor,
-  //     tilt to 0°, latch _phase3FovBaseline. Next tick is Phase 3.
-  //   zoom-out above SWOOP_PHASE2_ENTRY_ELEVATION_METRES → clamp at
-  //     entry. _storedTilt is unchanged on zoom-out.
-  //   zoom-out from y < exit (saved-scene-below-floor edge case, H2):
-  //     snap up to exit elevation first, then begin the lerp.
+  //   zoom-in: yNext ≤ yFloor → snap to floor, tilt to 0°, latch
+  //     _phase3FovBaseline. Next tick dispatches naturally to Phase 3.
+  //   zoom-in: yNext within SWOOP_PHASE2_FLOOR_SNAP_METRES of yFloor →
+  //     snap (H6).
+  //   zoom-out: y ≤ yFloor + snap → kick-start to yFloor + snap. The
+  //     multiplicative reciprocal `1.5 + (y-1.5)/(1-α)` is zero at
+  //     y=yFloor exactly, so without the kick-start zoom-out from
+  //     street level produces no motion.
+  //   zoom-out: yNext ≥ yCeil → clamp to yCeil, set tilt to _storedTilt,
+  //     hand the tick's energy to Phase 1 (recursive call).
   _applyPhase2WheelTick(sign) {
     const camera = this._camera;
     const yFloor = SWOOP_PHASE2_EXIT_ELEVATION_METRES;
     const yCeil = SWOOP_PHASE2_ENTRY_ELEVATION_METRES;
+    const snap = SWOOP_PHASE2_FLOOR_SNAP_METRES;
 
-    // Saved-scene edge case: zoom-out from below the floor. Snap up
-    // first; otherwise the reciprocal formula pushes y further down.
     let y = camera.position.y;
-    if (sign > 0 && y < yFloor) {
-      y = yFloor;
+
+    // Zoom-out kick-start: at or near the floor (including the
+    // saved-scene-below-floor case), the reciprocal formula stays put.
+    // Snap up to (yFloor + snap) so subsequent ticks have nonzero
+    // (y - yFloor) to grow. The discontinuity is bounded by snap and
+    // mirrors the zoom-in floor-snap for boundary symmetry.
+    if (sign > 0 && y <= yFloor + snap) {
+      y = yFloor + snap;
     }
 
     let yNext = phase2NextElevation(y, sign);
 
-    // Floor snap on zoom-in (per H6 of the review): the asymptotic
-    // approach to yFloor would otherwise leave the user wheeling
-    // forever to land. Snap to floor when within snap distance.
-    if (sign < 0 && yNext - yFloor < SWOOP_PHASE2_FLOOR_SNAP_METRES) {
+    // Floor snap on zoom-in (H6).
+    if (sign < 0 && yNext - yFloor < snap) {
       yNext = yFloor;
     }
 
@@ -946,21 +961,35 @@ export class ExperimentalControls extends THREE.EventDispatcher {
       this._setCameraTiltPreservingYaw(0);
       this._phase3FovBaseline = camera.fov;
       camera.updateMatrixWorld();
-      this.dispatchEvent(this._changeEvent);
+      this._maybeEmitLbModeChange();
       return;
     }
 
-    // Boundary: Phase 2 → Phase 1 on zoom-out.
+    // Boundary: Phase 2 → Phase 1 on zoom-out. Hand the tick off
+    // actively so the wheel click visibly continues past y=yCeil
+    // rather than deadlocking at the boundary.
     if (sign > 0 && yNext >= yCeil) {
       camera.position.y = yCeil;
       this._setCameraTiltPreservingYaw(this._storedTilt);
       camera.updateMatrixWorld();
-      return;
+      this._maybeEmitLbModeChange();
+      // Now dispatch a Phase 1 tick. Phase 1 may itself route to the
+      // low-tilt branch depending on _storedTilt; that's fine.
+      if (cameraTiltDegrees(camera) <= TRUCK_PEDESTAL_CUTOFF_DEGREES) {
+        return this._applyLowTiltWheelTick(sign);
+      }
+      return this._applyPhase1WheelTick(sign);
     }
 
     camera.position.y = yNext;
     this._setCameraTiltPreservingYaw(phase2TargetTilt(yNext, this._storedTilt));
     camera.updateMatrixWorld();
+    // Toolbar visual indicator: Phase 2's tilt lerp crosses the 30°
+    // boundary silently from the LB-mode comparator's perspective. Emit
+    // here so the toolbar restyles in lock-step with the swoop. (Phase
+    // 1 and Phase 3 are tilt-preserving, so no equivalent calls needed
+    // there.)
+    this._maybeEmitLbModeChange();
   }
 
   // Phase 3 — FOV-only zoom at street level. Camera position and tilt
@@ -968,13 +997,30 @@ export class ExperimentalControls extends THREE.EventDispatcher {
   // reversibility. Clamped to [SWOOP_PHASE3_FOV_FLOOR_DEGREES,
   // _phase3FovBaseline].
   //
-  // Boundary handling: zoom-out reaching baseline FOV clears the
-  // baseline; next tick is Phase 2 (which begins pedestalling up). If
-  // entry into Phase 3 was not via Phase 2 (e.g. saved scene at y<1.5
-  // with FOV manually set), _phase3FovBaseline is null — latch it
-  // lazily from the current FOV on first tick.
+  // Boundary handling:
+  //   zoom-out at fov ≥ baseline → clear _phase3FovBaseline, hand the
+  //     tick off to Phase 2 (active hand-off; same dispatch-deadlock
+  //     reason as Phase 2 → Phase 1 — `decideSwoopPhase(1.5)` returns
+  //     'phase3' inclusively, so without active hand-off the next
+  //     zoom-out tick re-latches baseline and loops). Found at
+  //     feel-test 2026-05-11.
+  //   _phase3FovBaseline null at entry: lazy-latch from current FOV
+  //     (Phase 3 was entered without Phase 2 doing the latch — e.g.
+  //     saved scene at y < yFloor).
   _applyPhase3WheelTick(sign) {
     const camera = this._camera;
+
+    // Hand-off on zoom-out from baseline FOV. Check first so we don't
+    // re-latch and loop when zoom-out continues past Phase 3.
+    if (
+      sign > 0 &&
+      this._phase3FovBaseline != null &&
+      camera.fov >= this._phase3FovBaseline
+    ) {
+      this._phase3FovBaseline = null;
+      return this._applyPhase2WheelTick(sign);
+    }
+
     if (this._phase3FovBaseline == null) {
       this._phase3FovBaseline = camera.fov;
     }
@@ -986,12 +1032,7 @@ export class ExperimentalControls extends THREE.EventDispatcher {
     else fov = camera.fov * (1 + ZOOM_PER_WHEEL_TICK);
 
     if (fov < floor) fov = floor;
-    if (fov >= baseline) {
-      // Zoom-out hand-off to Phase 2: clamp to baseline, clear it so
-      // the next zoom-out tick falls through to Phase 2.
-      fov = baseline;
-      this._phase3FovBaseline = null;
-    }
+    if (fov > baseline) fov = baseline;
     camera.fov = fov;
     camera.updateProjectionMatrix();
   }
