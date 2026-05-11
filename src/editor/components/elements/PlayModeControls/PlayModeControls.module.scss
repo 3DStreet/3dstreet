@@ -54,3 +54,37 @@
   font-size: 11px;
   opacity: 0.7;
 }
+
+.timers {
+  margin-top: 10px;
+  padding-top: 8px;
+  border-top: 1px solid variables.$gray-700;
+}
+
+.timerRow {
+  display: grid;
+  grid-template-columns: 90px 1fr;
+  align-items: center;
+  gap: 8px;
+  font-variant-numeric: tabular-nums;
+}
+
+.valueWarn {
+  color: #ffd54a;
+}
+
+.stallBtn {
+  margin-top: 6px;
+  width: 100%;
+  background: rgba(255, 255, 255, 0.06);
+  color: variables.$lightgray-300;
+  border: 1px solid variables.$gray-700;
+  border-radius: 4px;
+  padding: 4px 8px;
+  font-size: 11px;
+  cursor: pointer;
+
+  &:hover {
+    background: rgba(255, 255, 255, 0.1);
+  }
+}

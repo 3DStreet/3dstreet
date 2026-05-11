@@ -27,6 +27,7 @@ import useStore from '../store.js';
 AFRAME.registerSystem('play-mode', {
   init: function () {
     this.isPlaying = false;
+    this.isPaused = false;
     // Escape stops play mode and reopens the inspector. Attached only
     // while playing so it doesn't shadow Escape elsewhere in the
     // editor (modal close, etc.).
@@ -111,14 +112,34 @@ AFRAME.registerSystem('play-mode', {
   stop: function () {
     if (!this.isPlaying) return;
     this.isPlaying = false;
-    useStore.setState({ isPlaying: false });
+    this.isPaused = false;
+    useStore.setState({ isPlaying: false, isPlayPaused: false });
     window.removeEventListener('keydown', this.onEscape);
     this.sceneEl.emit('timer-pause');
     this.sceneEl.emit('play-mode-stop', {}, false);
   },
 
+  pause: function () {
+    if (!this.isPlaying || this.isPaused) return;
+    this.isPaused = true;
+    useStore.setState({ isPlayPaused: true });
+    this.sceneEl.emit('timer-pause');
+  },
+
+  resume: function () {
+    if (!this.isPlaying || !this.isPaused) return;
+    this.isPaused = false;
+    useStore.setState({ isPlayPaused: false });
+    this.sceneEl.emit('timer-start');
+  },
+
+  togglePause: function () {
+    if (this.isPaused) this.resume();
+    else this.pause();
+  },
+
   tick: function (time, deltaMs) {
-    if (!this.isPlaying) return;
+    if (!this.isPlaying || this.isPaused) return;
     // simulationTime ownership:
     //   - When play-mode-physics is active, IT advances simulationTime
     //     by exactly `timestep` per completed sub-step. On slow CPUs

@@ -2,6 +2,13 @@ import { useEffect, useState } from 'react';
 import useStore from '@/store';
 import styles from './PlayModeControls.module.scss';
 
+const stallMainThread = (durationMs) => {
+  const end = performance.now() + durationMs;
+  while (performance.now() < end) {
+    // intentional busy-wait to simulate a slow CPU / hitch
+  }
+};
+
 /**
  * Top-right tuning panel shown only while the user is in drive mode.
  * Reads from the scene's first `[drive-controls]` entity and
@@ -94,6 +101,13 @@ export const PlayModeControls = () => {
           </span>
         </label>
       ))}
+      <button
+        type="button"
+        className={styles.stallBtn}
+        onClick={() => stallMainThread(2000)}
+      >
+        Stall 2s (force desync)
+      </button>
       <p className={styles.hint}>
         WASD drive · Space brake · R reset · C camera
       </p>

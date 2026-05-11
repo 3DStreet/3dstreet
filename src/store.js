@@ -182,6 +182,7 @@ const useStore = create(
         rightPanelTab: 'properties',
         setRightPanelTab: (newTab) => set({ rightPanelTab: newTab }),
         isPlaying: false,
+        isPlayPaused: false,
         isInspectorEnabled: true,
         setIsInspectorEnabled: (newIsInspectorEnabled) => {
           const viewerModeUI = document.getElementById('viewer-mode-ui');

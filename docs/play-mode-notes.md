@@ -98,6 +98,32 @@ and pressing Play animates entities along each of its lanes.
   determinism for recordings becomes a requirement, the timer
   should advance only on completed physics sub-steps.
 
+## Pause / sim-time HUD (toolbar)
+
+The play-mode top toolbar (`scenegraph/Toolbar.jsx`) reuses the
+editor's `PrimaryToolbar.module.scss` styling so Stop looks like the
+editor's Play. To the left of Stop sits a clickable SIM readout that
+doubles as the pause toggle.
+
+- **Clock**: shows `scene-timer.simulationTime`. Wall-time is anchored
+  locally in React at the moment `isPlaying` flips true — reading
+  `scene-timer.elapsedTime` is unsafe because if its `timerActive`
+  flag was already set, the reset to 0 in `play-mode.start()` gets
+  clobbered and elapsed reverts to time-since-page-load.
+- **Desync warning**: sim turns yellow when `wall - sim > 100ms`.
+  Slow CPUs naturally produce this because `play-mode-physics` caps
+  at 4 sub-steps per rAF frame, so wall pulls ahead of sim. The
+  "Stall 2s" button in `PlayModeControls` busy-waits the main thread
+  to force the case on demand.
+- **Pause toggle**: clicking the SIM readout calls
+  `play-mode.togglePause()`. Pause sets `this.isPaused`, mirrors
+  `isPlayPaused` into zustand, and the tick guards in `play-mode`
+  and `play-mode-physics` early-return — physics stops stepping, the
+  passive `simulationTime` stops advancing, and traffic (which is a
+  pure function of `simulationTime`) freezes alongside. The toolbar
+  shifts its wall anchor forward by the pause duration on resume so
+  the displayed drift doesn't include time spent paused.
+
 ## Architecture: play mode is decoupled from any single feature
 
 "Play" is a generic lifecycle, not a synonym for drive mode.

@@ -1,0 +1,50 @@
+@use '../../style/variables.scss';
+
+// Centered floating container — replaces the previous full-width
+// glass strip styling on #toolbar. The inner panel reuses
+// PrimaryToolbar.module.scss for visual parity with editor mode.
+.toolbarRoot {
+  position: absolute;
+  top: 12px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 5;
+  display: flex;
+  justify-content: center;
+}
+
+.simTimer {
+  // Rendered as a <button> so it's clickable to toggle pause. We
+  // explicitly reset the native button chrome — the surrounding
+  // PrimaryToolbar.module.scss `button { ... }` rule provides height,
+  // radius, and the purple hover state.
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: variables.$lightgray-300;
+  font-size: 13px;
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.simTimerLabel {
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  opacity: 0.65;
+}
+
+.simTimerValue {
+  font-variant-numeric: tabular-nums;
+}
+
+.simTimerWarn {
+  color: #ffd54a;
+}
+
+.simTimerPaused {
+  opacity: 0.7;
+}

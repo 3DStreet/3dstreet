@@ -173,6 +173,7 @@ AFRAME.registerSystem('play-mode-physics', {
 
   tick: function (time, deltaMs) {
     if (!this.active || !this.world) return;
+    if (this.sceneEl.systems['play-mode']?.isPaused) return;
     // Consume rAF wall-clock dt into the accumulator. The 4-sub-step
     // cap below is what produces slow-motion on weak CPUs: if rAF
     // delivers more time than we can simulate, we drop the excess
