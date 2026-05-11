@@ -111,15 +111,26 @@ Superseded sub-plans (kept as historical record):
 
 Backlog (not blocking Phase 3): see `claude/backlog.md`. Items include "smooth recentre diorama" control (overlaps Phase 4), scene-bounds visual cue, and "evaluate replacing custom orbit math with library before production".
 
-## Starting Phase 3
+## Phase 3 status — implemented and one-pass feel-tested (2026-05-11)
 
-Phase 3 is the **3-phase swoop zoom**. Skeleton lives at `claude/specs/001-phase-3-skeleton.md` (designed to be filled in after Phase 1+2 feel-test, which has now happened). The skeleton's dependency map references Phase 1 and Phase 2 mechanics that have shipped — particularly the cursor-anchored wheel dolly (Phase 1) and the 30° tilt cut (Phase 2). The tilt-conditional wheel-zoom decision is directly relevant: the swoop applies to the >30° branch; the ≤30° branch stays as plain dolly across all phases.
+Phase 3 plan: `claude/specs/001-phase-3-plan.md` (promoted from the skeleton). Adversarial review: `claude/reports/007-phase-3-plan-review.md`. Implementation lives in `src/editor/lib/nav-experimental/` and went through one feel-test pass on 2026-05-11.
+
+**Mechanics as shipped:**
+- 3-phase wheel-zoom gated by camera elevation: Phase 1 (cursor-anchored at high tilt, plain dolly at low tilt) above 20m; Phase 2 (pedestal + tilt-toward-horizontal, **no cursor anchoring** — deliberately dropped vs the proposal) between 20m and 1.5m; Phase 3 (FOV-only) at 1.5m.
+- Stored-tilt latched on Phase 1 → Phase 2 downward crossings; lerped during Phase 2.
+- Ctrl+wheel (incl. Mac trackpad pinch) bypasses the swoop → plain camera-Z dolly at current tilt.
+- Per-frame drain cap latched at frame start (3 ticks/frame in Phase 2; 10 elsewhere).
+- Zoom-out hand-off across phase boundaries uses active recursion into the destination phase's helper (round-down deadlocks at the boundary; active hand-off keeps the wheel responsive).
+- Toolbar 30° black-bars indicator now fires during Phase 2's tilt lerp, not just on LB events.
+
+**Backlog (not blocking the next phase):**
+- Phase 3 swoop thresholds must be AGL for production (currently absolute-y; see `claude/backlog.md`).
+- Possible second feel-test refinement round before moving to Phase 4.
 
 **Reading order for the next session:**
 1. `claude/CLAUDE.md` — folder conventions and the plan-and-code adversarial-review cycle.
 2. `claude/decisions.md` — locked-in UX choices that constrain new designs.
 3. `claude/backlog.md` — open items for context.
 4. `claude/specs/001-overall-plan.md` (this file) — phasing.
-5. `claude/specs/001-phase-2-plan.md` — current state of Phase 2 (the "current state" boxes at the top of each section).
-6. `claude/specs/001-phase-3-skeleton.md` — Phase 3 starting point.
-7. `src/editor/lib/nav-experimental/` — read fresh; the Phase 1+2 code is the substrate Phase 3 extends.
+5. `claude/specs/001-phase-3-plan.md` — current state of Phase 3 (mechanics, open decisions, risks, smoke test).
+6. `src/editor/lib/nav-experimental/` — read fresh.
