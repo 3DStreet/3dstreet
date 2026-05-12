@@ -288,6 +288,13 @@ AFRAME.registerComponent('street-traffic', {
     const t = (timer.simulationTime || 0) / 1000;
     const wp = this._wp || (this._wp = new THREE.Vector3());
     const wq = this._wq || (this._wq = new THREE.Quaternion());
+    // Pre-allocated plain-object scratches reused for every kinematic
+    // setNext* call below. Without this we churned ~3,700 short-lived
+    // {x,y,z}/{x,y,z,w} object literals per second (31 traffic entities
+    // × 60 fps × 2 calls), which the major-GC trace caught: heap grew
+    // ~3 MB/sec and produced visible stutter every few seconds.
+    const posOut = this._posOut || (this._posOut = { x: 0, y: 0, z: 0 });
+    const rotOut = this._rotOut || (this._rotOut = { x: 0, y: 0, z: 0, w: 1 });
     for (const r of this.records) {
       // Pure function: z(t) = wrap(startZ + dir * speed * t, [-half, +half])
       const span = r.length;
@@ -304,13 +311,15 @@ AFRAME.registerComponent('street-traffic', {
         r.el.object3D.updateMatrixWorld();
         r.el.object3D.getWorldPosition(wp);
         r.el.object3D.getWorldQuaternion(wq);
-        r.body.setNextKinematicTranslation({ x: wp.x, y: wp.y, z: wp.z });
-        r.body.setNextKinematicRotation({
-          x: wq.x,
-          y: wq.y,
-          z: wq.z,
-          w: wq.w
-        });
+        posOut.x = wp.x;
+        posOut.y = wp.y;
+        posOut.z = wp.z;
+        r.body.setNextKinematicTranslation(posOut);
+        rotOut.x = wq.x;
+        rotOut.y = wq.y;
+        rotOut.z = wq.z;
+        rotOut.w = wq.w;
+        r.body.setNextKinematicRotation(rotOut);
       }
     }
   }
