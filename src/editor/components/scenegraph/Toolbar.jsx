@@ -30,28 +30,32 @@ function SimTimer() {
   const playOutcomeTimeMs = useStore((s) => s.playOutcomeTimeMs);
   const [times, setTimes] = useState({ wall: 0, sim: 0 });
   const rafRef = useRef(null);
-  // Wall-time anchor: performance.now() corresponding to "wall = 0".
-  // Shifted forward by the duration of each pause so wall stops while
-  // paused and resumes from where it left off.
-  const playStartRef = useRef(0);
+  // Cumulative ms spent paused so wall-time doesn't include it. Wall
+  // itself is anchored on play-mode.playStartedAt (set synchronously
+  // in play-mode.start) — using a React useEffect anchor here drifts
+  // by a frame and made sim appear to lead wall by ~50ms.
   const pausedAtRef = useRef(0);
+  const pausedTotalRef = useRef(0);
 
   useEffect(() => {
     if (!isPlaying) {
       setTimes({ wall: 0, sim: 0 });
+      pausedAtRef.current = 0;
+      pausedTotalRef.current = 0;
       return undefined;
     }
-    playStartRef.current = performance.now();
     let lastUpdate = 0;
     const loop = (now) => {
       rafRef.current = requestAnimationFrame(loop);
       if (now - lastUpdate < 100) return;
       lastUpdate = now;
       if (pausedAtRef.current) return; // hold last value while paused
-      const timer =
-        document.querySelector('a-scene')?.components?.['scene-timer'];
+      const sceneEl = document.querySelector('a-scene');
+      const playMode = sceneEl?.systems?.['play-mode'];
+      const timer = sceneEl?.components?.['scene-timer'];
+      if (!playMode || !playMode.playStartedAt) return;
       setTimes({
-        wall: now - playStartRef.current,
+        wall: now - playMode.playStartedAt - pausedTotalRef.current,
         sim: timer ? timer.simulationTime || 0 : 0
       });
     };
@@ -59,17 +63,13 @@ function SimTimer() {
     return () => cancelAnimationFrame(rafRef.current);
   }, [isPlaying]);
 
-  // Stamp pause start and shift the wall anchor on resume so the
-  // wall-time delta doesn't include time spent paused.
+  // Track total time spent paused so wall-time subtracts it on display.
   useEffect(() => {
-    if (!isPlaying) {
-      pausedAtRef.current = 0;
-      return;
-    }
+    if (!isPlaying) return;
     if (isPlayPaused) {
       pausedAtRef.current = performance.now();
     } else if (pausedAtRef.current) {
-      playStartRef.current += performance.now() - pausedAtRef.current;
+      pausedTotalRef.current += performance.now() - pausedAtRef.current;
       pausedAtRef.current = 0;
     }
   }, [isPlayPaused, isPlaying]);
