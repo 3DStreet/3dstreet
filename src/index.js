@@ -277,7 +277,15 @@ const { detectWheels } = require('./tested/wheel-detection.js');
 
 AFRAME.registerComponent('wheel', {
   schema: {
-    speed: { type: 'number', default: 1 },
+    // 0 = auto-derive from the entity's positional delta each tick.
+    // Used by managed-street's animated traffic and by kinematic traffic
+    // in physics mode — both move the entity directly so the wheels
+    // can read their own velocity rather than needing a per-vehicle
+    // configured value. >0 = explicit m/s (legacy `street` parser path).
+    speed: { type: 'number', default: 0 },
+    // Fallback diameter (meters) used when the detector didn't return a
+    // radius — i.e. the named-bone fast path. Geometric wheels supply
+    // their own per-wheel radius and ignore this.
     wheelDiameter: { type: 'number', default: 1 }
   },
 
@@ -289,14 +297,35 @@ AFRAME.registerComponent('wheel', {
       if (!vehicle) return;
       self.wheels = detectWheels(vehicle);
     });
+    this._prevPos = null;
+    this._tmpVec = new THREE.Vector3();
   },
   tick: function (t, dt) {
-    if (!this.wheels || this.wheels.length === 0) return;
-    const speed = this.data.speed / 1000;
-    const wheelDiameter = this.data.wheelDiameter;
-    const rateOfRotation = 2 * (speed / wheelDiameter) * dt;
+    if (!this.wheels || this.wheels.length === 0 || dt <= 0) return;
+
+    // Speed source: explicit if data.speed > 0; otherwise derive from
+    // the entity's own local-position delta. Local (not world) on
+    // purpose — managed-street segments don't move during animation,
+    // so magnitudes match world-frame speed, and reading position
+    // directly avoids stale-matrixWorld races with sibling tick()s
+    // (street-traffic / play-mode-physics) that mutate position the
+    // same frame.
+    let speedMps = this.data.speed;
+    if (speedMps <= 0) {
+      const cur = this._tmpVec.copy(this.el.object3D.position);
+      if (!this._prevPos) {
+        this._prevPos = new THREE.Vector3().copy(cur);
+        return;
+      }
+      speedMps = (cur.distanceTo(this._prevPos) * 1000) / dt;
+      this._prevPos.copy(cur);
+    }
+
+    const speedPerMs = speedMps / 1000;
     for (const w of this.wheels) {
-      w.object3D.rotateOnAxis(w.axleLocal, rateOfRotation);
+      const diameter = w.radius > 0 ? w.radius * 2 : this.data.wheelDiameter;
+      const rate = 2 * (speedPerMs / diameter) * dt;
+      w.object3D.rotateOnAxis(w.axleLocal, rate);
     }
   }
 });

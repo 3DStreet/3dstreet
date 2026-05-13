@@ -253,6 +253,12 @@ AFRAME.registerComponent('street-traffic', {
         // seeder skips us (we get kinematic colliders instead).
         entity.setAttribute('data-play-mode-traffic', '');
         entity.classList.add('autocreated');
+        // Wheeled lane types get the `wheel` component (no params =
+        // auto-derive spin from positional delta + detector radius).
+        // Sidewalks are pedestrians — no wheels, skip.
+        if (seg.type !== 'sidewalk') {
+          entity.setAttribute('wheel', '');
+        }
         // Catalog models are authored forward = +Z. inbound (dir=+1)
         // keeps default rotation; outbound (dir=-1) flips 180° so the
         // mesh faces the direction it's moving.
