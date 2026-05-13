@@ -128,6 +128,13 @@ class GalleryServiceV2 {
    * @param {string} userId - User ID
    * @returns {Promise<string>} - Returns the asset ID
    */
+  // Quota policy: addAsset intentionally does NOT call getUploadQuota.
+  // AI-generated images/videos and editor screenshots consume user tokens to
+  // produce, so we never block them on storage quota — they always save. Only
+  // the custom drag-drop upload flow (editor/lib/asset-upload/uploadAndPlaceAsset.js)
+  // runs a preflight, since those bytes are free to produce. The size: blob.size
+  // field below is what onAssetWritten reads to maintain users/{uid}/meta/usage,
+  // so all asset types still count toward the displayed total even when not gated.
   async addAsset(
     file,
     metadata = {},
