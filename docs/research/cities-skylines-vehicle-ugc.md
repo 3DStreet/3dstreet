@@ -391,6 +391,10 @@ For 3DStreet:
 
 - Keep the existing named-wheel-bone convention (`wheel_F_L`, etc.) plus the proposed `extras.radiusMeters` as the **portable, shared UGC contract**. Any glb in the 3DStreet catalog, whether shipped by the team or contributed externally, follows this.
 - The Rapier-based `physics-play-mode` rig is a **per-preset overlay** on top of the catalog. The preset knows the chassis dimensions, the engine params, the per-wheel anchor points — but it doesn't *change* the underlying glb. A new driveable preset is a JSON file plus a chosen catalog mixin.
+- **Wheel detection is shared across all callers; the actuator splits by caller.** Three concrete cases:
+  - Path mode traffic (`managed-street-traffic` without drive-controls): wheel-spin component derives angular velocity from the entity's positional delta.
+  - Physics mode kinematic traffic: same wheel-spin component — the chassis pose still moves frame-to-frame via `setNextKinematicTranslation`, so the per-wheel spin rate is the same `velocity / radius` calculation.
+  - Physics mode dynamic player vehicle (Rapier raycast vehicle controller): Rapier already produces per-wheel suspension translation, spin X-rotation, and steering Y-rotation. The detected wheel sub-meshes are bound directly to Rapier's per-wheel transform outputs and the wheel-spin component is *not* applied (would double-rotate).
 
 This keeps the catalog stable as physics evolves, lets play-mode driveable vehicles inherit from regular catalog vehicles, and means a UGC contributor doesn't need to understand Rapier to ship a vehicle.
 
