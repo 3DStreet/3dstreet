@@ -21,6 +21,7 @@
     "test:modern:ui": "vitest --ui",
     "test:modern:coverage": "vitest run --coverage",
     "test:generator": "vitest run test/generator",
+    "validate-vehicle": "node scripts/validate-vehicle.js",
     "prettier": "prettier --write 'src/**/*.js' 'src/**/*.jsx' 'src/**/*.scss'",
     "deploy": "npm run dist && npm run prefirebase && cd public && firebase use dstreet-305604 && firebase deploy --only hosting:app3dstreet",
     "deploy:staging": "npm run dist:staging && npm run prefirebase && cd public && firebase use dev-3dstreet && firebase deploy --only hosting:dev-3dstreet",
