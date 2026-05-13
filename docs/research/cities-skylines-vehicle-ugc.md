@@ -292,7 +292,14 @@ Comparing 3DStreet's current convention with CS's, line by line:
 | Metadata location | Inside `.crp` + AI fields | Split: `catalog.json`, `carParams` JS, README |
 | Curation | Steam Workshop, community-policed | Curated by 3DStreet team; no UGC pipeline exists |
 
-3DStreet's CSE convention is **closer to Unreal's `FL/FR/RL/RR` rig** than to CS's vertex-color trick — which is fine, and more idiomatic for glTF. The named-bone approach is also more discoverable (a modeler can immediately see what's happening in Blender's outliner) and easier to extend (steering wheel, axle indicators, doors can be named alongside wheels).
+3DStreet's current convention is **closer to Unreal's `FL/FR/RL/RR` rig** than to CS's vertex-color trick — which is more discoverable (a modeler can immediately see what's happening in Blender's outliner) and easier to extend (steering wheel, axle indicators, doors can be named alongside wheels).
+
+But there are two real-world constraints that push back hard on a names-only approach:
+
+1. **glb optimization pipelines strip node names.** Draco compression and `gltfpack` both default to dropping names; even tools that preserve them often rename for deduplication. 3DStreet has hit this in practice — purposefully named wheel nodes have been lost downstream of authoring. A names-only convention is fragile against the asset pipeline 3DStreet already uses.
+2. **AI-generated meshes won't follow our naming convention.** Rodin, Tripo, Hunyuan3D, and similar text/image-to-mesh tools produce ground-centered vehicles with separated wheel geometry — but with arbitrary node names like `mesh_0`, `wheel`, or nothing at all. As more 3DStreet vehicles come from AI generation rather than hand-authored Blender exports, names-only fails open (no animation) by default.
+
+Together these argue for **geometric detection as the primary mechanism, with named nodes as an optional fast-path hint** — the inverse of the current convention. CS's 5 cm rule survives both constraints because it depends only on vertex positions, which compression preserves and AI tools produce correctly.
 
 ---
 
