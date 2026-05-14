@@ -27,7 +27,7 @@ Unchanged from the existing gallery system:
 | Storage   | `users/{userId}/assets/{meshes\|images\|videos}/{assetId}.ext` |
 | Quota doc | `users/{userId}/meta/usage` (managed by Cloud Function)        |
 
-Asset doc fields used by uploads: `assetId`, `userId`, `type` (`mesh` / `image`), `category` (`upload`), `storagePath`, `storageUrl`, `filename`, `originalFilename`, `size`, `mimeType`, `deleted`, timestamps.
+Asset doc fields used by uploads: `assetId`, `userId`, `type` (`mesh` / `image`), `category` (`upload`), `storagePath`, `storageUrl`, `name` (editable display name, default = basename of `originalFilename`), `filename`, `originalFilename`, `size`, `mimeType`, `deleted`, timestamps.
 
 ## Drop / upload flow
 
@@ -213,7 +213,7 @@ await document.transform(
 
 ### Per-entity status
 
-- **Properties panel** — `<AssetUploadStatus>` (`src/editor/components/elements/AssetUploadStatus.jsx`) renders a colored pill: status text, progress percent, asset source (`your cloud` / `not owned by you`), assetId snippet, original filename. Retry button shown only on `status === 'failed'`.
+- **Properties panel** — `<AssetUploadStatus>` (`src/editor/components/elements/AssetUploadStatus.jsx`) renders a colored pill: status text, progress percent, asset source (`your cloud` / `not owned by you`), assetId snippet, original filename. Retry button shown only on `status === 'failed'`. A **Details** button on uploaded entities opens `MeshDetailsModal`.
 - **Layers panel** — `<AssetUploadDot>` (next to each entity name) shows a small colored dot keyed to status.
 
 Both consume `useAssetUploadStatus(entity)`, which:
@@ -221,15 +221,33 @@ Both consume `useAssetUploadStatus(entity)`, which:
 1. Subscribes to Zustand `uploads[entity.id]` for in-flight state.
 2. Reads `data-asset-id` + `data-asset-owner-uid` via a `MutationObserver` (only those two persistent attrs are watched).
 3. Triggers `ensureAsset(assetId, ownerUid)` to fetch the Firestore doc into the Zustand `assets` cache.
-4. Returns a merged shape; Firestore data wins for `sizeBytes` / `originalFilename` once cached.
+4. Returns a merged shape; Firestore data wins for `sizeBytes` / `originalFilename` / `name` / `type` once cached.
 
 Status colors live in a single shared `STATUS_LABELS` constant exported from the hook file.
+
+### Mesh details modal
+
+`MeshDetailsModal.jsx` (in `src/shared/gallery/components/`) opens from either a mesh card click in the Assets panel or the **Details** button on `AssetUploadStatus`. Features:
+
+- 3D preview via `<model-viewer>` hosted in a sandboxed iframe (`public/model-viewer.html`) so its bundled THREE doesn't collide with A-Frame's `window.THREE`. The iframe loads `model-viewer@4.2.0` from CDN.
+- Editable display name (saved via `galleryServiceV2.updateAsset` → emits `assetUpdated` → editor cache + gallery list refresh via event listeners).
+- Read-only metadata: file, size, MIME, uploaded-at, asset ID, owner.
+- Icon-only **Download** and **Delete** actions with radix tooltips. Delete is owner-only and does a soft delete (`assetDeleted` event fires with `{size}` so the storage meter shrinks optimistically).
+
+### Drag mesh / image cards into the viewport
+
+Mirror of the AddLayer card flow:
+
+- `GalleryItem` cards become `draggable` only when the host opts in via `placeable` (the editor's `GalleryPanel` passes it; the generator's standalone gallery does not).
+- `dragStart` writes a custom MIME `application/x-3dstreet-asset` with `{ assetId, ownerUid, storageUrl, name, type }` and suppresses the default ghost via the same empty-gif trick used by AddLayer.
+- `AddLayerPanel`'s global `dragover` fades the drop plane in for either `Files` or `application/x-3dstreet-asset`.
+- `AddLayerPanel`'s global `drop` reads the MIME, parses the payload, picks the ground point, and calls `placeCloudAsset(asset, position)` (also exported from `uploadAndPlaceAsset.js`) — a plain `entitycreate` with the cloud URL + `data-asset-id` + `data-asset-owner-uid` + `data-layer-name = asset.name`. No upload, no `data-temporary-file` marker.
 
 ### Imports
 
 - File menu → **Import…** (above Export) — multi-file picker.
 - Assets panel → **Upload** button (same picker).
-- Drag-drop onto viewport — global handler in `AddLayerPanel.component.jsx`.
+- Drag-drop file onto viewport — global handler in `AddLayerPanel.component.jsx`.
 
 All three call `uploadAndPlaceAsset(file, position?)` directly (static imports; only `optimizeGlb` is dynamically imported).
 
@@ -237,7 +255,9 @@ All three call `uploadAndPlaceAsset(file, position?)` directly (static imports; 
 
 `useGallery.removeItem` calls `galleryServiceV2.deleteAsset(id, userId, false)` — soft delete. The Firestore doc is marked `deleted: true`; the Storage object stays.
 
-- `onAssetWritten` decrements `bytesUsed` immediately (the trigger treats `deleted: true` the same as a removed doc when summing).
+- The `assetDeleted` event payload includes `size` (read from the doc before the delete) so the storage meter in `GalleryPanel` can subtract optimistically — no lag waiting on the Cloud Function trigger + Firestore listener round-trip.
+- `useGallery` listens for `assetDeleted` and `assetUpdated` and updates the list (drop / patch) without a refetch. The editor's `assetUploadStore` listens too and keeps the SceneGraph row, props pill, and layer dot in sync via `patchAsset` / `dropAsset`.
+- `onAssetWritten` decrements `bytesUsed` server-side (the trigger treats `deleted: true` the same as a removed doc when summing).
 - Scenes still referencing the tokenized download URL keep working — Firebase Storage tokens don't auto-invalidate when the Firestore doc flips. Effective deletion across saved scenes lands when the resolver Cloud Function ships.
 
 ## Known limitations
@@ -253,27 +273,37 @@ All three call `uploadAndPlaceAsset(file, position?)` directly (static imports; 
 
 ### New
 
-- `src/editor/lib/asset-upload/optimizeGlb.js`
-- `src/editor/lib/asset-upload/uploadAndPlaceAsset.js`
-- `src/editor/state/assetUploadStore.js`
-- `src/editor/components/elements/useAssetUploadStatus.js`
-- `src/editor/components/elements/AssetUploadStatus.jsx`
-- `src/editor/components/elements/AssetUploadDot.jsx`
-- `public/functions/asset-quota.js`
+- `src/editor/lib/asset-upload/optimizeGlb.js` — gltf-transform pipeline.
+- `src/editor/lib/asset-upload/uploadAndPlaceAsset.js` — drop-flow orchestrator + `placeCloudAsset` (drag-from-card).
+- `src/editor/state/assetUploadStore.js` — Zustand: in-flight uploads + asset metadata cache + `galleryServiceV2` event listeners that patch / drop cache entries.
+- `src/editor/components/elements/useAssetUploadStatus.js` — hook merging in-flight slot + persistent attrs + Firestore cache; exports `STATUS_LABELS`.
+- `src/editor/components/elements/AssetUploadStatus.jsx` — props-panel status pill + Retry + Details button.
+- `src/editor/components/elements/AssetUploadDot.jsx` — layers-panel status dot.
+- `src/editor/components/scenegraph/EntityLabel.jsx` — replaces `printEntity`; renders icon + name (asset-aware) for SceneGraph row, ViewportHUD, and props panel header.
+- `src/shared/gallery/components/MeshDetailsModal.jsx` + `.module.scss` — mesh details modal (model-viewer iframe, editable name, Download / Delete).
+- `src/shared/gallery/utils.js` — `formatBytes`, `formatDate` (reused by panel, modal, status pill).
+- `public/model-viewer.html` — sandboxed iframe page; loads `model-viewer@4.2.0` from CDN.
+- `public/functions/asset-quota.js` — `onAssetWritten` + `getUploadQuota`.
 
 ### Modified
 
-- `src/editor/components/elements/AddLayerPanel/AddLayerPanel.component.jsx` — global drop handler routes to `uploadAndPlaceAsset`.
+- `src/editor/components/elements/AddLayerPanel/AddLayerPanel.component.jsx` — global drop handler routes to `uploadAndPlaceAsset` (file drop) and `placeCloudAsset` (gallery-card drop via `application/x-3dstreet-asset` MIME).
 - `src/editor/components/elements/AddLayerPanel/createLayerFunctions.js` — removed legacy `createModelFromFile`.
 - `src/editor/components/elements/ComponentsContainer.jsx` — removed legacy "Temporary Model" warning panel (replaced by the status pill / dot).
-- `src/editor/components/elements/Sidebar.jsx` — renders `<AssetUploadStatus />`.
-- `src/editor/components/scenegraph/Entity.jsx` — renders `<AssetUploadDot />` next to layer names.
-- `src/editor/components/scenegraph/GalleryPanel.jsx` + `.module.scss` — Assets panel rename + filters + upload + storage meter.
+- `src/editor/components/elements/Sidebar.jsx` — props panel header uses `<EntityLabel />`; renders `<AssetUploadStatus />`.
+- `src/editor/components/scenegraph/Entity.jsx` — uses `<EntityLabel />` + `<AssetUploadDot />`.
+- `src/editor/components/viewport/ViewportHUD.js` — uses `<EntityLabel />`.
+- `src/editor/components/scenegraph/GalleryPanel.jsx` + `.module.scss` — Assets panel rename + filters + upload + storage meter (optimistic shrink on `assetDeleted`) + `placeable` enabled.
 - `src/editor/components/scenegraph/SceneGraph.jsx` — tab label "Gallery" → "Assets".
 - `src/editor/components/scenegraph/AppMenu.jsx` — File > Import… entry.
+- `src/editor/lib/entity.js` — `printEntity` removed; `getEntityDisplayName` formats kebab/snake mixin fallback, prefers mixin over class.
 - `src/json-utils_1.1.js` — serializer special-cases for `data-asset-id`, `data-asset-owner-uid`, and the `data-temporary-file` skip.
-- `src/shared/gallery/components/GalleryItem.jsx` + `Gallery.module.scss` — mesh placeholder, "Model" type label.
-- `src/shared/gallery/hooks/useGallery.js` — soft delete on `removeItem`.
+- `src/shared/gallery/components/GalleryItem.jsx` + `Gallery.module.scss` — asset name as card label, mesh placeholder cube, "Model" type label, drag-from-card (`placeable` prop).
+- `src/shared/gallery/components/GalleryContent.jsx` / `GalleryGrid.jsx` — forward `placeable`; route mesh-item clicks to `MeshDetailsModal`.
+- `src/shared/gallery/components/GalleryModal.jsx` — uses `@shared/icons` `TrashIcon`.
+- `src/shared/gallery/hooks/useGallery.js` — soft delete on `removeItem`; listens for `assetUpdated` / `assetDeleted` to keep the list in sync without refetch; exposes `name` on display items.
+- `src/shared/gallery/services/galleryServiceV2.js` — `addAsset` writes `name`; `updateAsset` / `deleteAsset` events enriched with `userId` + `updates` / `size`.
+- `src/shared/icons/icons.jsx` — `TrashIcon` + `DownloadIcon` use `stroke="currentColor"` / `fill="currentColor"` so callers control color via CSS.
 - `public/firestore.rules` — usage doc read rule.
 - `public/storage.rules` — per-content-type size caps.
 - `public/functions/index.js` — exports `onAssetWritten` and `getUploadQuota`.
@@ -282,4 +312,3 @@ All three call `uploadAndPlaceAsset(file, position?)` directly (static imports; 
 # Remaining to do
 
 - [ ] create model thumbnail client side
-- [ ] drag and drop from assets panel
