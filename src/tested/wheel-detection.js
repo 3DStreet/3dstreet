@@ -274,6 +274,98 @@ function classifySide(pivotXZ) {
   };
 }
 
+/**
+ * Build a sub-mesh index buffer that keeps only triangles whose three
+ * vertices are all in `vertexIndices`, with each kept vertex remapped
+ * to its position in `vertexIndices` (so the sub-mesh's attribute
+ * arrays can be packed densely into `vertexIndices.length` slots).
+ *
+ * Used by the surgery path to extract a wheel sub-geometry from a
+ * Draco/gltfpack-merged primitive without disturbing the chassis.
+ *
+ * @param {Uint32Array|Uint16Array|number[]|null} indices source index
+ *   buffer; `null` means triangle soup (every 3 positions = a triangle).
+ * @param {number[]} vertexIndices vertices to keep, in the order they
+ *   should appear in the new sub-mesh.
+ * @param {number} vertexCount total vertex count in the source geometry
+ *   (only consulted in soup mode for the triangle-count bound).
+ * @returns {{ newIndices: number[], oldToNew: Map<number, number> }}
+ */
+function buildSubmeshIndices(indices, vertexIndices, vertexCount) {
+  const oldToNew = new Map();
+  for (let i = 0; i < vertexIndices.length; i++) {
+    oldToNew.set(vertexIndices[i], i);
+  }
+  const newIndices = [];
+  if (indices && indices.length >= 3) {
+    for (let t = 0; t + 2 < indices.length; t += 3) {
+      const a = indices[t];
+      const b = indices[t + 1];
+      const c = indices[t + 2];
+      if (oldToNew.has(a) && oldToNew.has(b) && oldToNew.has(c)) {
+        newIndices.push(oldToNew.get(a), oldToNew.get(b), oldToNew.get(c));
+      }
+    }
+  } else {
+    // Soup: vertex i forms a triangle with i+1 / i+2 every 3 verts.
+    for (let t = 0; t + 2 < vertexCount; t += 3) {
+      if (oldToNew.has(t) && oldToNew.has(t + 1) && oldToNew.has(t + 2)) {
+        newIndices.push(
+          oldToNew.get(t),
+          oldToNew.get(t + 1),
+          oldToNew.get(t + 2)
+        );
+      }
+    }
+  }
+  return { newIndices, oldToNew };
+}
+
+/**
+ * Return only the triangles whose three vertices are ALL absent from
+ * `removedVertexSet`. The complement of buildSubmeshIndices — used to
+ * rebuild the chassis primitive after pulling wheel vertices out, so
+ * the chassis doesn't render ghost wheels at their original positions.
+ *
+ * Returns original (not remapped) vertex indices — the chassis keeps
+ * its full attribute arrays, only its index buffer changes. Unused
+ * vertices stay around as harmless dead weight rather than triggering
+ * a full attribute compaction.
+ *
+ * @param {Uint32Array|Uint16Array|number[]|null} indices
+ * @param {Set<number>} removedVertexSet
+ * @param {number} vertexCount
+ * @returns {number[]} flat triangle list
+ */
+function removeTriangles(indices, removedVertexSet, vertexCount) {
+  const kept = [];
+  if (indices && indices.length >= 3) {
+    for (let t = 0; t + 2 < indices.length; t += 3) {
+      const a = indices[t];
+      const b = indices[t + 1];
+      const c = indices[t + 2];
+      if (
+        !removedVertexSet.has(a) &&
+        !removedVertexSet.has(b) &&
+        !removedVertexSet.has(c)
+      ) {
+        kept.push(a, b, c);
+      }
+    }
+  } else {
+    for (let t = 0; t + 2 < vertexCount; t += 3) {
+      if (
+        !removedVertexSet.has(t) &&
+        !removedVertexSet.has(t + 1) &&
+        !removedVertexSet.has(t + 2)
+      ) {
+        kept.push(t, t + 1, t + 2);
+      }
+    }
+  }
+  return kept;
+}
+
 // ---------------------------------------------------------------------
 // Three.js-backed detection (runtime path).
 // ---------------------------------------------------------------------
@@ -311,6 +403,16 @@ function detectWheels(root, opts = {}) {
   let wheels = detectNamed(root, T);
   if (wheels.length === 0) {
     wheels = detectGeometric(root, T, opts);
+  }
+
+  // Surgery turns `cc-pending-surgery` placeholders into real spinnable
+  // sub-meshes by carving wheel vertices out of the host primitive and
+  // attaching them under a new pivot Object3D at the wheel center.
+  // Off-switchable so callers (e.g. CLI validator) can inspect the raw
+  // detection output without mutating geometry.
+  if (opts.performSurgery !== false) {
+    const needsSurgery = wheels.some((w) => w.surgeryParts);
+    if (needsSurgery) performWheelSurgery(root, wheels, T);
   }
 
   if (root.userData) root.userData.wheels = wheels;
@@ -535,9 +637,11 @@ function detectGeometric(root, T, opts) {
         z: pivot.z - vehicleCenterXZ.z
       }),
       axleLocal,
+      // Vehicle-frame axle is kept so the surgery path can spin its
+      // synthetic pivot directly without re-deriving the axis from a
+      // node that's about to lose those vertices.
+      axleVehicle: vehicleAxle,
       source: pendingSurgery ? 'cc-pending-surgery' : 'geometric',
-      // Surgery inputs (consumed by a follow-up commit that builds
-      // per-wheel meshes from these vertex subsets).
       surgeryNode,
       surgeryParts: pendingSurgery ? clusterVertexIndices : null
     });
@@ -579,6 +683,218 @@ function vehicleAxleToNodeLocal(vehicleAxle, root, node, T) {
   return v.normalize();
 }
 
+/**
+ * Carve `cc-pending-surgery` wheels out of their host primitives and
+ * rebuild them as spinnable sub-meshes under fresh pivot Object3Ds.
+ *
+ * For each pending wheel:
+ *   1. Create a pivot Object3D under `root` at the wheel's vehicle-local
+ *      pivot. The pivot has identity rotation relative to root, so the
+ *      vehicle-frame axle direction is also the pivot-frame axle — that's
+ *      what gets written to `axleLocal` so the existing rotateOnAxis spin
+ *      path Just Works.
+ *   2. For each surgery part (one or more vertex subsets, possibly from
+ *      different host nodes), build a fresh BufferGeometry containing
+ *      only those vertices. Positions / normals / tangents are
+ *      transformed from the host node's local frame into the pivot's
+ *      local frame; other attributes (uv, color, skin*, ...) are copied
+ *      verbatim. Materials are reused by reference.
+ *   3. After all sub-meshes are built, rewrite each host node's geometry
+ *      index buffer to drop the surgery vertices' triangles. Without
+ *      this step the chassis would still render ghost wheels at their
+ *      original positions, producing double-imaging.
+ *
+ * Host geometries are CLONED before mutation, so this is safe to call
+ * on Mesh instances that share a BufferGeometry across spawns (the
+ * catalog-mixin case).
+ */
+function performWheelSurgery(root, wheels, T) {
+  // Accumulate per-host-node vertex-removal sets across all wheels
+  // first, then rewrite each affected geometry once at the end. A single
+  // node can contribute parts to multiple wheels (e.g. a merged glb
+  // with all four wheels inside one chassis primitive).
+  const nodeRemovals = new Map(); // node -> Set<vertexIndex>
+
+  for (const wheel of wheels) {
+    if (!wheel.surgeryParts || wheel.surgeryParts.length === 0) continue;
+
+    const pivot = new T.Object3D();
+    pivot.position.copy(wheel.pivot);
+    pivot.name = `wheel-pivot-${wheel.side.x}${wheel.side.z}`;
+    root.add(pivot);
+    pivot.updateMatrixWorld(true);
+    const pivotWorldInv = new T.Matrix4().copy(pivot.matrixWorld).invert();
+
+    let primary = null; // first sub-mesh used as object3D fallback
+    for (const part of wheel.surgeryParts) {
+      const node = part.node;
+      if (!node || !node.geometry) continue;
+      // Transform from node-local into pivot-local. Pivot is a child of
+      // root with no rotation/scale, so this composition handles
+      // arbitrarily deep host node hierarchies and any root-level
+      // transform on the vehicle.
+      const nodeToPivot = new T.Matrix4().multiplyMatrices(
+        pivotWorldInv,
+        node.matrixWorld
+      );
+      const subGeo = buildSubGeometry(
+        node.geometry,
+        part.vertexIndices,
+        nodeToPivot,
+        T
+      );
+      if (!subGeo) continue;
+      const subMesh = new T.Mesh(subGeo, node.material);
+      subMesh.castShadow = node.castShadow;
+      subMesh.receiveShadow = node.receiveShadow;
+      pivot.add(subMesh);
+      if (!primary) primary = subMesh;
+
+      let set = nodeRemovals.get(node);
+      if (!set) {
+        set = new Set();
+        nodeRemovals.set(node, set);
+      }
+      for (const vi of part.vertexIndices) set.add(vi);
+    }
+
+    if (primary) {
+      // The spin path keys off `object3D` and `axleLocal`. Use the pivot
+      // itself (not the primary sub-mesh) so rotation hits every part
+      // we attached to it.
+      wheel.object3D = pivot;
+      // Vehicle frame == pivot frame (pivot has identity rotation
+      // relative to root); copy the axle direction directly.
+      const a = wheel.axleVehicle;
+      if (a) wheel.axleLocal = new T.Vector3(a.x, a.y, a.z).normalize();
+      wheel.source = 'cc-surgery';
+    } else {
+      // No part successfully extracted (degenerate vertex subset).
+      // Leave the wheel record marked pending so tick() keeps skipping
+      // it and we don't leave an empty pivot dangling.
+      root.remove(pivot);
+    }
+  }
+
+  // Strip surgery vertices from each host node's geometry. We clone
+  // before mutating so catalog-shared BufferGeometries don't lose their
+  // chassis on the next spawn.
+  for (const [node, removeSet] of nodeRemovals) {
+    rewriteGeometryWithoutVertices(node, removeSet, T);
+  }
+}
+
+/**
+ * Build a fresh BufferGeometry holding only the listed vertices,
+ * transformed by `nodeToPivot` and reindexed against the surviving
+ * triangles in the source primitive.
+ *
+ * Returns `null` if no triangle survives the filter (the requested
+ * vertex subset doesn't form any complete tri in the source).
+ */
+function buildSubGeometry(srcGeo, vertexIndices, nodeToPivot, T) {
+  const posAttr = srcGeo.attributes && srcGeo.attributes.position;
+  if (!posAttr) return null;
+  const N = vertexIndices.length;
+  if (N === 0) return null;
+
+  const srcIndex = srcGeo.index ? srcGeo.index.array : null;
+  const { newIndices } = buildSubmeshIndices(
+    srcIndex,
+    vertexIndices,
+    posAttr.count
+  );
+  if (newIndices.length === 0) return null;
+
+  const subGeo = new T.BufferGeometry();
+  const tmpV = new T.Vector3();
+  const normalMat = new T.Matrix3().getNormalMatrix(nodeToPivot);
+
+  for (const name in srcGeo.attributes) {
+    const srcAttr = srcGeo.attributes[name];
+    const itemSize = srcAttr.itemSize;
+    const dst = new srcAttr.array.constructor(N * itemSize);
+    for (let i = 0; i < N; i++) {
+      const oldI = vertexIndices[i];
+      const srcOff = oldI * itemSize;
+      const dstOff = i * itemSize;
+      for (let k = 0; k < itemSize; k++) {
+        dst[dstOff + k] = srcAttr.array[srcOff + k];
+      }
+    }
+
+    if (name === 'position' && itemSize >= 3) {
+      for (let i = 0; i < N; i++) {
+        const o = i * itemSize;
+        tmpV.set(dst[o], dst[o + 1], dst[o + 2]).applyMatrix4(nodeToPivot);
+        dst[o] = tmpV.x;
+        dst[o + 1] = tmpV.y;
+        dst[o + 2] = tmpV.z;
+      }
+    } else if (name === 'normal' && itemSize >= 3) {
+      for (let i = 0; i < N; i++) {
+        const o = i * itemSize;
+        tmpV
+          .set(dst[o], dst[o + 1], dst[o + 2])
+          .applyMatrix3(normalMat)
+          .normalize();
+        dst[o] = tmpV.x;
+        dst[o + 1] = tmpV.y;
+        dst[o + 2] = tmpV.z;
+      }
+    } else if (name === 'tangent' && itemSize === 4) {
+      // Tangent xyz rotates with the normal transform; w (handedness)
+      // is preserved as-is.
+      for (let i = 0; i < N; i++) {
+        const o = i * itemSize;
+        tmpV
+          .set(dst[o], dst[o + 1], dst[o + 2])
+          .applyMatrix3(normalMat)
+          .normalize();
+        dst[o] = tmpV.x;
+        dst[o + 1] = tmpV.y;
+        dst[o + 2] = tmpV.z;
+      }
+    }
+
+    subGeo.setAttribute(
+      name,
+      new T.BufferAttribute(dst, itemSize, srcAttr.normalized)
+    );
+  }
+
+  const IndexCtor = N > 65535 ? Uint32Array : Uint16Array;
+  subGeo.setIndex(new T.BufferAttribute(new IndexCtor(newIndices), 1));
+  subGeo.computeBoundingBox();
+  subGeo.computeBoundingSphere();
+  return subGeo;
+}
+
+/**
+ * Replace `node.geometry` with a clone whose index buffer omits every
+ * triangle touching a vertex in `removeSet`. Attribute arrays are left
+ * intact — the dropped vertices become unreferenced but harmless. The
+ * clone protects shared catalog BufferGeometry instances from mutation.
+ */
+function rewriteGeometryWithoutVertices(node, removeSet, T) {
+  const oldGeo = node.geometry;
+  const posAttr = oldGeo.attributes && oldGeo.attributes.position;
+  if (!posAttr) return;
+  const srcIndex = oldGeo.index ? oldGeo.index.array : null;
+  const kept = removeTriangles(srcIndex, removeSet, posAttr.count);
+
+  const newGeo = oldGeo.clone();
+  if (kept.length === 0) {
+    newGeo.setIndex(new T.BufferAttribute(new Uint16Array(0), 1));
+  } else {
+    const IndexCtor = posAttr.count > 65535 ? Uint32Array : Uint16Array;
+    newGeo.setIndex(new T.BufferAttribute(new IndexCtor(kept), 1));
+  }
+  newGeo.computeBoundingBox();
+  newGeo.computeBoundingSphere();
+  node.geometry = newGeo;
+}
+
 module.exports = {
   detectWheels,
   // Pure helpers (exported for unit tests).
@@ -587,6 +903,8 @@ module.exports = {
   classifySide,
   splitIntoComponents,
   wheelLikeAspect,
+  buildSubmeshIndices,
+  removeTriangles,
   // Constants (exported for tests / external tuning).
   NAMED_BONES,
   DEFAULT_GROUND_EPSILON,

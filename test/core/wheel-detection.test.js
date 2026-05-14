@@ -7,6 +7,8 @@ const {
   classifySide,
   splitIntoComponents,
   wheelLikeAspect,
+  buildSubmeshIndices,
+  removeTriangles,
   DEFAULT_GROUND_EPSILON,
   DEFAULT_CLUSTER_RADIUS
 } = require('../../src/tested/wheel-detection');
@@ -294,6 +296,83 @@ describe('wheel-detection', function () {
       const box = aabb(-0.1, 0, -0.3, 0.1, 0.4, 0.3);
       assert.strictEqual(wheelLikeAspect(box, 2.0), true);
       assert.strictEqual(wheelLikeAspect(box, 1.2), false);
+    });
+  });
+
+  describe('#buildSubmeshIndices()', function () {
+    it('keeps only triangles whose three vertices are all in the kept set', function () {
+      // Quad A (verts 0..3) and quad B (verts 4..7); kept = quad A only.
+      const indices = [0, 1, 2, 0, 2, 3, 4, 5, 6, 4, 6, 7];
+      const { newIndices, oldToNew } = buildSubmeshIndices(
+        indices,
+        [0, 1, 2, 3],
+        8
+      );
+      assert.deepStrictEqual(newIndices, [0, 1, 2, 0, 2, 3]);
+      assert.strictEqual(oldToNew.size, 4);
+      assert.strictEqual(oldToNew.get(0), 0);
+      assert.strictEqual(oldToNew.get(3), 3);
+    });
+
+    it('reindexes against the order of vertexIndices, not the old indices', function () {
+      // Same quad-A triangles but request a different vertex ordering.
+      const indices = [0, 1, 2, 0, 2, 3];
+      const { newIndices } = buildSubmeshIndices(indices, [3, 0, 2, 1], 4);
+      // 3→0, 0→1, 1→3, 2→2 — so the triangles re-encode as below.
+      assert.deepStrictEqual(newIndices, [1, 3, 2, 1, 2, 0]);
+    });
+
+    it('drops triangles that straddle the kept/excluded boundary', function () {
+      // Triangle (0,1,4) crosses the cut and must be dropped entirely.
+      const indices = [0, 1, 2, 0, 1, 4];
+      const { newIndices } = buildSubmeshIndices(indices, [0, 1, 2], 5);
+      assert.deepStrictEqual(newIndices, [0, 1, 2]);
+    });
+
+    it('handles non-indexed (triangle soup) input via the vertexCount bound', function () {
+      // 6 vertices = 2 triangles in soup mode; keep the second one only.
+      const { newIndices } = buildSubmeshIndices(null, [3, 4, 5], 6);
+      assert.deepStrictEqual(newIndices, [0, 1, 2]);
+    });
+
+    it('returns an empty index list when no triangle qualifies', function () {
+      const indices = [0, 1, 2];
+      const { newIndices } = buildSubmeshIndices(indices, [3, 4, 5], 6);
+      assert.deepStrictEqual(newIndices, []);
+    });
+  });
+
+  describe('#removeTriangles()', function () {
+    it('drops every triangle that touches a removed vertex', function () {
+      // Two quads. Remove vertex 4 → both triangles of quad B vanish.
+      const indices = [0, 1, 2, 0, 2, 3, 4, 5, 6, 4, 6, 7];
+      const kept = removeTriangles(indices, new Set([4]), 8);
+      assert.deepStrictEqual(kept, [0, 1, 2, 0, 2, 3]);
+    });
+
+    it('preserves triangles whose vertices are all outside the removed set', function () {
+      const indices = [0, 1, 2, 3, 4, 5];
+      const kept = removeTriangles(indices, new Set([99]), 6);
+      assert.deepStrictEqual(kept, [0, 1, 2, 3, 4, 5]);
+    });
+
+    it('drops a triangle even when only one vertex is removed', function () {
+      const indices = [0, 1, 2];
+      const kept = removeTriangles(indices, new Set([2]), 3);
+      assert.deepStrictEqual(kept, []);
+    });
+
+    it('handles triangle soup via vertexCount', function () {
+      // 9 vertices = 3 triangles in soup mode. Remove vertex 4 (middle
+      // triangle) — only first and last triangles survive.
+      const kept = removeTriangles(null, new Set([4]), 9);
+      assert.deepStrictEqual(kept, [0, 1, 2, 6, 7, 8]);
+    });
+
+    it('returns an empty list when every vertex is removed', function () {
+      const indices = [0, 1, 2];
+      const kept = removeTriangles(indices, new Set([0, 1, 2]), 3);
+      assert.deepStrictEqual(kept, []);
     });
   });
 
