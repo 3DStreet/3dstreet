@@ -5,6 +5,8 @@ const {
   groundCandidates,
   clusterByXZ,
   classifySide,
+  splitIntoComponents,
+  wheelLikeAspect,
   DEFAULT_GROUND_EPSILON,
   DEFAULT_CLUSTER_RADIUS
 } = require('../../src/tested/wheel-detection');
@@ -104,6 +106,194 @@ describe('wheel-detection', function () {
       ];
       const clusters = clusterByXZ(items);
       assert.strictEqual(clusters.length, 6);
+    });
+  });
+
+  describe('#splitIntoComponents()', function () {
+    // Helper: build a quad from 4 corners (two triangles).
+    function quad(verts) {
+      const positions = [];
+      for (const v of verts) positions.push(v[0], v[1], v[2]);
+      const indices = [0, 1, 2, 0, 2, 3];
+      return { positions, indices };
+    }
+
+    it('returns one component for a single connected mesh', function () {
+      const q = quad([
+        [0, 0, 0],
+        [1, 0, 0],
+        [1, 0, 1],
+        [0, 0, 1]
+      ]);
+      const comps = splitIntoComponents(q.positions, q.indices);
+      assert.strictEqual(comps.length, 1);
+      assert.strictEqual(comps[0].vertexIndices.length, 4);
+    });
+
+    it('splits a primitive containing two disjoint quads', function () {
+      // Quad A at origin, quad B 10m away — no shared verts, no shared tris.
+      const positions = [
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        1,
+        0,
+        1,
+        0,
+        0,
+        1, // A: 0..3
+        10,
+        0,
+        0,
+        11,
+        0,
+        0,
+        11,
+        0,
+        1,
+        10,
+        0,
+        1 // B: 4..7
+      ];
+      const indices = [0, 1, 2, 0, 2, 3, 4, 5, 6, 4, 6, 7];
+      const comps = splitIntoComponents(positions, indices);
+      assert.strictEqual(comps.length, 2);
+      const sorted = comps.slice().sort((a, b) => a.aabb.min.x - b.aabb.min.x);
+      assert.strictEqual(sorted[0].aabb.min.x, 0);
+      assert.strictEqual(sorted[1].aabb.min.x, 10);
+    });
+
+    it('merges seam-duplicated vertices via position snapping', function () {
+      // Same quad but with vertex 4 = duplicate of vertex 0 (different
+      // index, identical position — common UV/normal seam case). Two
+      // disjoint index triangles that would split without snapping.
+      const positions = [
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        1,
+        0,
+        1, // tri 1
+        0,
+        0,
+        0,
+        1,
+        0,
+        1,
+        0,
+        0,
+        1 // tri 2 — index 3 duplicates index 0
+      ];
+      const indices = [0, 1, 2, 3, 4, 5];
+      const comps = splitIntoComponents(positions, indices);
+      assert.strictEqual(comps.length, 1);
+    });
+
+    it('separates a chassis-merged glb into chassis + 4 wheel components', function () {
+      // Synthetic mini-bus: one big roof quad far above ground, plus four
+      // ground-level wheel quads at the corners. All in one positions
+      // array, indexed but with no shared topology between them.
+      const positions = [];
+      const indices = [];
+      const addQuad = (corners) => {
+        const base = positions.length / 3;
+        for (const c of corners) positions.push(c[0], c[1], c[2]);
+        indices.push(base, base + 1, base + 2, base, base + 2, base + 3);
+      };
+      // Chassis (roof).
+      addQuad([
+        [-1, 2, -2],
+        [1, 2, -2],
+        [1, 2, 2],
+        [-1, 2, 2]
+      ]);
+      // 4 wheels at corners on the ground.
+      for (const [cx, cz] of [
+        [-0.8, -1.5],
+        [0.8, -1.5],
+        [-0.8, 1.5],
+        [0.8, 1.5]
+      ]) {
+        addQuad([
+          [cx - 0.15, 0, cz - 0.15],
+          [cx + 0.15, 0, cz - 0.15],
+          [cx + 0.15, 0, cz + 0.15],
+          [cx - 0.15, 0, cz + 0.15]
+        ]);
+      }
+      const comps = splitIntoComponents(positions, indices);
+      assert.strictEqual(comps.length, 5);
+      // Exactly one component has its AABB up at the roof (y≥2);
+      // the other four sit on the ground.
+      const roof = comps.filter((c) => c.aabb.min.y >= 1.5);
+      const wheels = comps.filter((c) => c.aabb.max.y < 1);
+      assert.strictEqual(roof.length, 1);
+      assert.strictEqual(wheels.length, 4);
+    });
+
+    it('handles non-indexed primitives (triangle soup)', function () {
+      // Two disjoint triangles in soup form.
+      const positions = [
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1, // tri 1
+        10,
+        0,
+        0,
+        11,
+        0,
+        0,
+        10,
+        0,
+        1 // tri 2
+      ];
+      const comps = splitIntoComponents(positions, null);
+      assert.strictEqual(comps.length, 2);
+    });
+
+    it('returns an empty list for empty input', function () {
+      assert.deepStrictEqual(splitIntoComponents([], null), []);
+    });
+  });
+
+  describe('#wheelLikeAspect()', function () {
+    it('accepts a roughly circular wheel (axle = X)', function () {
+      // 0.2m wide on axle (X), 0.6m × 0.6m side-profile.
+      const box = aabb(-0.1, 0, -0.3, 0.1, 0.6, 0.3);
+      assert.strictEqual(wheelLikeAspect(box), true);
+    });
+    it('rejects a flat mud-flap (very thin in Z)', function () {
+      // 0.3m × 0.4m × 0.04m — yz aspect ~10 from the mini-bus.
+      const box = aabb(-0.15, 0, -0.02, 0.15, 0.4, 0.02);
+      assert.strictEqual(wheelLikeAspect(box), false);
+    });
+    it('rejects an elongated running-board lip (very long in X)', function () {
+      // X dominates so axle = smallest of (Y, Z); whichever it picks,
+      // the other pair has X vs the remaining axis with ratio ~6.
+      const box = aabb(-1.5, 0, -0.05, 1.5, 0.05, 0.05);
+      assert.strictEqual(wheelLikeAspect(box), false);
+    });
+    it('passes when maxRatio is Infinity (off switch)', function () {
+      const box = aabb(-0.15, 0, -0.02, 0.15, 0.4, 0.02);
+      assert.strictEqual(wheelLikeAspect(box, Infinity), true);
+    });
+    it('respects a tighter custom ratio', function () {
+      // 0.6m vs 0.4m → ratio 1.5. Passes at 2.0, fails at 1.2.
+      const box = aabb(-0.1, 0, -0.3, 0.1, 0.4, 0.3);
+      assert.strictEqual(wheelLikeAspect(box, 2.0), true);
+      assert.strictEqual(wheelLikeAspect(box, 1.2), false);
     });
   });
 

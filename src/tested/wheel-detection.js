@@ -54,6 +54,12 @@ const DEFAULT_GROUND_EPSILON = 0.05; // 5 cm — Cities: Skylines convention.
 // lets rim + tire pairs merge while keeping front/back/left/right
 // wheels apart even on a compact-car wheelbase.
 const DEFAULT_CLUSTER_RADIUS = 0.3;
+// A wheel is a circle viewed from its axle: the two non-axle extents
+// of its AABB are equal. Real-world variance + AABB inflation pushes
+// that close-to-1 ratio up to ~1.5 in practice. Anything beyond ~2 is
+// flat enough to be a mud flap, fender skirt, or running-board lip
+// rather than a wheel. Set to Infinity in opts to disable the filter.
+const DEFAULT_ASPECT_RATIO_MAX = 2.0;
 
 // ---------------------------------------------------------------------
 // Pure helpers (no Three.js — unit-testable in plain node).
@@ -116,6 +122,142 @@ function clusterByXZ(items, clusterRadius) {
     }
   }
   return clusters;
+}
+
+/**
+ * Split a mesh primitive's vertices into connected components.
+ *
+ * Two vertices are considered connected if they share a triangle. To
+ * handle duplicated vertices at UV/normal seams (where two distinct
+ * vertex indices sit at the same 3D position), positions are snapped to
+ * a grid of size `positionTolerance` and treated as the same canonical
+ * point during union-find.
+ *
+ * This is the input filter that lets the rest of the wheel detector
+ * work on exporter-merged glbs (Draco/gltfpack often collapse multiple
+ * sub-objects into a single primitive). Run it first; pretend each
+ * returned component is its own "primitive" downstream.
+ *
+ * @param {Float32Array|number[]} positions - length 3N
+ * @param {Uint32Array|Uint16Array|number[]|null} indices - length 3M, or
+ *   null for non-indexed primitives (every 3 consecutive vertices = a tri)
+ * @param {object} [opts]
+ * @param {number} [opts.positionTolerance=1e-4] grid size for merging
+ *   coincident vertices during connectivity analysis (meters)
+ * @returns {Array<{vertexIndices: number[], aabb: {min, max}}>}
+ */
+function splitIntoComponents(positions, indices, opts = {}) {
+  const tol = opts.positionTolerance != null ? opts.positionTolerance : 1e-4;
+  const n = Math.floor(positions.length / 3);
+  if (n === 0) return [];
+
+  // Canonicalize: positions within `tol` of each other share an ID.
+  const keyToCanon = new Map();
+  const canon = new Array(n);
+  for (let i = 0; i < n; i++) {
+    const x = Math.round(positions[i * 3] / tol);
+    const y = Math.round(positions[i * 3 + 1] / tol);
+    const z = Math.round(positions[i * 3 + 2] / tol);
+    const key = x + '|' + y + '|' + z;
+    let c = keyToCanon.get(key);
+    if (c === undefined) {
+      c = keyToCanon.size;
+      keyToCanon.set(key, c);
+    }
+    canon[i] = c;
+  }
+
+  // Union-find over canonical IDs.
+  const m = keyToCanon.size;
+  const parent = new Int32Array(m);
+  for (let i = 0; i < m; i++) parent[i] = i;
+  const find = (x) => {
+    while (parent[x] !== x) {
+      parent[x] = parent[parent[x]];
+      x = parent[x];
+    }
+    return x;
+  };
+  const union = (a, b) => {
+    const ra = find(a);
+    const rb = find(b);
+    if (ra !== rb) parent[ra] = rb;
+  };
+
+  if (indices && indices.length >= 3) {
+    for (let t = 0; t + 2 < indices.length; t += 3) {
+      const a = canon[indices[t]];
+      const b = canon[indices[t + 1]];
+      const c = canon[indices[t + 2]];
+      union(a, b);
+      union(b, c);
+    }
+  } else {
+    for (let t = 0; t + 2 < n; t += 3) {
+      union(canon[t], canon[t + 1]);
+      union(canon[t + 1], canon[t + 2]);
+    }
+  }
+
+  // Group original vertex indices by root, accumulating AABBs.
+  const groups = new Map();
+  for (let i = 0; i < n; i++) {
+    const root = find(canon[i]);
+    let g = groups.get(root);
+    if (!g) {
+      g = {
+        vertexIndices: [],
+        aabb: {
+          min: { x: Infinity, y: Infinity, z: Infinity },
+          max: { x: -Infinity, y: -Infinity, z: -Infinity }
+        }
+      };
+      groups.set(root, g);
+    }
+    g.vertexIndices.push(i);
+    const x = positions[i * 3];
+    const y = positions[i * 3 + 1];
+    const z = positions[i * 3 + 2];
+    if (x < g.aabb.min.x) g.aabb.min.x = x;
+    if (y < g.aabb.min.y) g.aabb.min.y = y;
+    if (z < g.aabb.min.z) g.aabb.min.z = z;
+    if (x > g.aabb.max.x) g.aabb.max.x = x;
+    if (y > g.aabb.max.y) g.aabb.max.y = y;
+    if (z > g.aabb.max.z) g.aabb.max.z = z;
+  }
+  return Array.from(groups.values());
+}
+
+/**
+ * Wheel-likeness test based on AABB aspect ratio.
+ *
+ * A wheel viewed end-on (looking down its axle) is a circle, so its
+ * two non-axle extents are equal. The axle is the shortest axis of
+ * the AABB. We compare the remaining two axes; if their ratio exceeds
+ * `maxRatio`, the cluster is too flat / too elongated to be a wheel
+ * (mud flap, skirt, running-board edge).
+ *
+ * @param {{min:{x,y,z}, max:{x,y,z}}} bounds
+ * @param {number} [maxRatio=DEFAULT_ASPECT_RATIO_MAX]
+ * @returns {boolean}
+ */
+function wheelLikeAspect(bounds, maxRatio) {
+  const limit = maxRatio == null ? DEFAULT_ASPECT_RATIO_MAX : maxRatio;
+  if (!isFinite(limit)) return true; // off switch
+  const dx = bounds.max.x - bounds.min.x;
+  const dy = bounds.max.y - bounds.min.y;
+  const dz = bounds.max.z - bounds.min.z;
+  if (dx <= 0 || dy <= 0 || dz <= 0) return false;
+  // Vehicle local frame: axle is along X (forward = -Z, up = Y). A
+  // wheel viewed down its axle is a circle, so its YZ side-profile is
+  // square: dy ≈ dz. Mud flaps and fender skirts are very flat in one
+  // of those axes and fail this test.
+  const yzRatio = dy >= dz ? dy / dz : dz / dy;
+  if (yzRatio > limit) return false;
+  // Axle width (X) must not exceed the wheel diameter — rules out long
+  // running-board / sill strips that happen to be square in YZ.
+  if (dx > dy * limit) return false;
+  return true;
 }
 
 /**
@@ -288,6 +430,11 @@ function detectGeometric(root, T, opts) {
       if (p.aabb.max.y > maxY) maxY = p.aabb.max.y;
       if (p.aabb.max.z > maxZ) maxZ = p.aabb.max.z;
     }
+    const clusterBounds = {
+      min: { x: minX, y: minY, z: minZ },
+      max: { x: maxX, y: maxY, z: maxZ }
+    };
+    if (!wheelLikeAspect(clusterBounds, opts.aspectRatioMax)) continue;
     const pivot = new T.Vector3(
       (minX + maxX) / 2,
       (minY + maxY) / 2,
@@ -368,8 +515,11 @@ module.exports = {
   groundCandidates,
   clusterByXZ,
   classifySide,
+  splitIntoComponents,
+  wheelLikeAspect,
   // Constants (exported for tests / external tuning).
   NAMED_BONES,
   DEFAULT_GROUND_EPSILON,
-  DEFAULT_CLUSTER_RADIUS
+  DEFAULT_CLUSTER_RADIUS,
+  DEFAULT_ASPECT_RATIO_MAX
 };

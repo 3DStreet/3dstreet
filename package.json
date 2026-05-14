@@ -93,6 +93,7 @@
     "css-loader": "^6.11.0",
     "css-minimizer-webpack-plugin": "^8.0.0",
     "dotenv-webpack": "^8.1.1",
+    "draco3dgltf": "^1.5.7",
     "eslint": "^9.39.3",
     "eslint-plugin-react": "^7.37.5",
     "eslint-plugin-react-hooks": "^7.0.1",

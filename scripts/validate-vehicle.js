@@ -31,9 +31,12 @@ const {
   groundCandidates,
   clusterByXZ,
   classifySide,
+  splitIntoComponents,
+  wheelLikeAspect,
   NAMED_BONES,
   DEFAULT_GROUND_EPSILON,
-  DEFAULT_CLUSTER_RADIUS
+  DEFAULT_CLUSTER_RADIUS,
+  DEFAULT_ASPECT_RATIO_MAX
 } = require('../src/tested/wheel-detection');
 
 function parseArgs(argv) {
@@ -42,15 +45,18 @@ function parseArgs(argv) {
   let file = null;
   let groundEpsilon = DEFAULT_GROUND_EPSILON;
   let clusterRadius = DEFAULT_CLUSTER_RADIUS;
+  let aspectRatioMax = DEFAULT_ASPECT_RATIO_MAX;
   for (let i = 0; i < args.length; i++) {
     const a = args[i];
     if (a === '--verbose' || a === '-v') verbose = true;
     else if (a === '--epsilon') groundEpsilon = parseFloat(args[++i]);
     else if (a === '--cluster-radius') clusterRadius = parseFloat(args[++i]);
+    else if (a === '--aspect-max') aspectRatioMax = parseFloat(args[++i]);
+    else if (a === '--no-aspect-filter') aspectRatioMax = Infinity;
     else if (a === '--help' || a === '-h') return { help: true };
     else if (!file) file = a;
   }
-  return { file, verbose, groundEpsilon, clusterRadius };
+  return { file, verbose, groundEpsilon, clusterRadius, aspectRatioMax };
 }
 
 function printUsage() {
@@ -60,6 +66,8 @@ Options:
   -v, --verbose            Print every primitive and rejection reason
   --epsilon <m>            Ground-floor tolerance (default ${DEFAULT_GROUND_EPSILON})
   --cluster-radius <m>     XZ merge distance for rim+tire (default ${DEFAULT_CLUSTER_RADIUS})
+  --aspect-max <ratio>     Max non-axle aspect ratio for a wheel (default ${DEFAULT_ASPECT_RATIO_MAX})
+  --no-aspect-filter       Disable the aspect-ratio filter entirely
   -h, --help               Show this help
 `);
 }
@@ -118,7 +126,18 @@ function fmtBox(b) {
 
 async function loadDocument(file) {
   const { NodeIO } = require('@gltf-transform/core');
-  const io = new NodeIO();
+  const { ALL_EXTENSIONS } = require('@gltf-transform/extensions');
+  const io = new NodeIO().registerExtensions(ALL_EXTENSIONS);
+  try {
+    const draco = require('draco3dgltf');
+    io.registerDependencies({
+      'draco3d.decoder': await draco.createDecoderModule(),
+      'draco3d.encoder': await draco.createEncoderModule()
+    });
+  } catch (err) {
+    // draco3dgltf is a devDependency; only required for draco-compressed glbs.
+    // If the file isn't draco, read() will succeed without it.
+  }
   return io.read(file);
 }
 
@@ -138,27 +157,48 @@ function gatherPrimitives(scene) {
     const nodePath = parentPath + '/' + name;
     const mesh = node.getMesh();
     if (mesh) {
+      let primIdx = 0;
       for (const prim of mesh.listPrimitives()) {
         const position = prim.getAttribute('POSITION');
         if (!position) continue;
         const positions = position.getArray();
-        const aabb = emptyAabb();
-        for (let i = 0; i < positions.length; i += 3) {
-          const p = transformPoint(
-            worldMatrix,
-            positions[i],
-            positions[i + 1],
-            positions[i + 2]
-          );
-          expandAabb(aabb, p);
-        }
-        if (isEmptyAabb(aabb)) continue;
-        const centroid = {
-          x: (aabb.min.x + aabb.max.x) / 2,
-          y: (aabb.min.y + aabb.max.y) / 2,
-          z: (aabb.min.z + aabb.max.z) / 2
-        };
-        out.push({ nodePath, name, aabb, centroid });
+        const indicesAttr = prim.getIndices();
+        const indices = indicesAttr ? indicesAttr.getArray() : null;
+
+        // Vertex-level connected components — splits exporter-merged
+        // primitives (Draco/gltfpack) into wheel-vs-chassis pieces.
+        const comps = splitIntoComponents(positions, indices);
+        const multi = comps.length > 1;
+        comps.forEach((comp, ci) => {
+          const aabb = emptyAabb();
+          for (const vi of comp.vertexIndices) {
+            const p = transformPoint(
+              worldMatrix,
+              positions[vi * 3],
+              positions[vi * 3 + 1],
+              positions[vi * 3 + 2]
+            );
+            expandAabb(aabb, p);
+          }
+          if (isEmptyAabb(aabb)) return;
+          const centroid = {
+            x: (aabb.min.x + aabb.max.x) / 2,
+            y: (aabb.min.y + aabb.max.y) / 2,
+            z: (aabb.min.z + aabb.max.z) / 2
+          };
+          const label = multi
+            ? `${nodePath}#prim${primIdx}cc${ci}`
+            : `${nodePath}#prim${primIdx}`;
+          out.push({
+            nodePath: label,
+            name,
+            aabb,
+            centroid,
+            vertexCount: comp.vertexIndices.length,
+            componentOf: multi ? nodePath : null
+          });
+        });
+        primIdx++;
       }
     }
     for (const child of node.listChildren()) {
@@ -206,7 +246,9 @@ function detectGeometricCli(primitives, opts) {
     x: (vehicleBox.min.x + vehicleBox.max.x) / 2,
     z: (vehicleBox.min.z + vehicleBox.max.z) / 2
   };
-  const wheels = clusters.map((c, i) => {
+  const wheels = [];
+  const aspectRejections = [];
+  clusters.forEach((c, i) => {
     const cb = emptyAabb();
     for (const p of c) unionAabb(p.aabb, cb);
     const pivot = {
@@ -214,13 +256,20 @@ function detectGeometricCli(primitives, opts) {
       y: (cb.min.y + cb.max.y) / 2,
       z: (cb.min.z + cb.max.z) / 2
     };
-    return {
+    const record = {
       index: i,
       members: c.map((m) => m.nodePath),
+      memberDetails: c.map((m) => ({ nodePath: m.nodePath, aabb: m.aabb })),
+      bounds: cb,
       pivot,
       radius: (cb.max.y - cb.min.y) / 2,
       side: classifySide({ x: pivot.x - centerXZ.x, z: pivot.z - centerXZ.z })
     };
+    if (!wheelLikeAspect(cb, opts.aspectRatioMax)) {
+      aspectRejections.push(record);
+    } else {
+      wheels.push(record);
+    }
   });
 
   const rejections = [];
@@ -235,7 +284,7 @@ function detectGeometricCli(primitives, opts) {
       almost: almostSet.has(p)
     });
   }
-  return { wheels, rejections, vehicleBox };
+  return { wheels, rejections, vehicleBox, aspectRejections };
 }
 
 async function main() {
@@ -285,9 +334,29 @@ async function main() {
   }
   console.log(`  geometric wheels: ${geom.wheels.length}`);
   for (const w of geom.wheels) {
+    const dx = (w.bounds.max.x - w.bounds.min.x).toFixed(3);
+    const dy = (w.bounds.max.y - w.bounds.min.y).toFixed(3);
+    const dz = (w.bounds.max.z - w.bounds.min.z).toFixed(3);
     console.log(
-      `    [${w.index}] side ${w.side.x}${w.side.z}  pivot(${w.pivot.x.toFixed(3)}, ${w.pivot.y.toFixed(3)}, ${w.pivot.z.toFixed(3)})  r=${w.radius.toFixed(3)}m  ${w.members.length === 1 ? w.members[0] : `(${w.members.length} primitives: ${w.members.join(', ')})`}`
+      `    [${w.index}] side ${w.side.x}${w.side.z}  pivot(${w.pivot.x.toFixed(3)}, ${w.pivot.y.toFixed(3)}, ${w.pivot.z.toFixed(3)})  r=${w.radius.toFixed(3)}m  extent(${dx}, ${dy}, ${dz})  yz-aspect=${(Math.max(dy, dz) / Math.min(dy, dz)).toFixed(2)}`
     );
+    for (const m of w.memberDetails) {
+      console.log(`      ${m.nodePath}  ${fmtBox(m.aabb)}`);
+    }
+  }
+
+  if (geom.aspectRejections && geom.aspectRejections.length > 0) {
+    console.log(
+      `  aspect-filtered (${geom.aspectRejections.length}, --aspect-max=${opts.aspectRatioMax}):`
+    );
+    for (const w of geom.aspectRejections) {
+      const dx = (w.bounds.max.x - w.bounds.min.x).toFixed(3);
+      const dy = (w.bounds.max.y - w.bounds.min.y).toFixed(3);
+      const dz = (w.bounds.max.z - w.bounds.min.z).toFixed(3);
+      console.log(
+        `    side ${w.side.x}${w.side.z}  pivot(${w.pivot.x.toFixed(3)}, ${w.pivot.y.toFixed(3)}, ${w.pivot.z.toFixed(3)})  extent(${dx}, ${dy}, ${dz})  ${w.members.join(', ')}`
+      );
+    }
   }
 
   const showRejections =
