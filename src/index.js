@@ -275,6 +275,17 @@ AFRAME.registerComponent('streetmix-loader', {
 // meshes, and CDN-stripped glb files.
 const { detectWheels } = require('./tested/wheel-detection.js');
 
+// ============================================================
+// MASTER OFF SWITCH for wheel spinning
+// ------------------------------------------------------------
+// Set to false to disable wheel rotation across ALL vehicles
+// (named-bone rig, geometric, kinematic traffic, AI uploads — every
+// path). Detection still runs and userData.wheels is still populated,
+// but tick() becomes a no-op. Useful to bisect rendering regressions
+// where wheel spin is suspected.
+// ============================================================
+const WHEEL_SPIN_ENABLED = true;
+
 AFRAME.registerComponent('wheel', {
   schema: {
     // 0 = auto-derive from the entity's positional delta each tick.
@@ -301,6 +312,7 @@ AFRAME.registerComponent('wheel', {
     this._tmpVec = new THREE.Vector3();
   },
   tick: function (t, dt) {
+    if (!WHEEL_SPIN_ENABLED) return;
     if (!this.wheels || this.wheels.length === 0 || dt <= 0) return;
 
     // Speed source: explicit if data.speed > 0; otherwise derive from
@@ -323,6 +335,10 @@ AFRAME.registerComponent('wheel', {
 
     const speedPerMs = speedMps / 1000;
     for (const w of this.wheels) {
+      // Multi-component primitives need geometry surgery before they
+      // can be spun without rotating their containing chassis; skip
+      // until that lands.
+      if (!w.object3D) continue;
       const diameter = w.radius > 0 ? w.radius * 2 : this.data.wheelDiameter;
       const rate = 2 * (speedPerMs / diameter) * dt;
       w.object3D.rotateOnAxis(w.axleLocal, rate);

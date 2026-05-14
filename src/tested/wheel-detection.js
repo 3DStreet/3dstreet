@@ -314,6 +314,18 @@ function detectWheels(root, opts = {}) {
   }
 
   if (root.userData) root.userData.wheels = wheels;
+  if (wheels.length > 0) {
+    const counts = wheels.reduce((acc, w) => {
+      acc[w.source] = (acc[w.source] || 0) + 1;
+      return acc;
+    }, {});
+    console.info(
+      '[wheel-detection]',
+      root.name || '<vehicle>',
+      `${wheels.length} wheels —`,
+      counts
+    );
+  }
   return wheels;
 }
 
@@ -354,6 +366,24 @@ function sideFromBoneName(name) {
   };
 }
 
+/**
+ * Cache CC result on the geometry instance so we pay union-find at
+ * most once per unique BufferGeometry, regardless of how many vehicle
+ * spawns share it (mixin-based traffic shares geometry by reference).
+ */
+function getOrComputeComponents(geometry) {
+  if (!geometry.userData) geometry.userData = {};
+  if (geometry.userData._wheelComponents) {
+    return geometry.userData._wheelComponents;
+  }
+  const pos = geometry.attributes && geometry.attributes.position;
+  if (!pos) return null;
+  const idx = geometry.index;
+  const components = splitIntoComponents(pos.array, idx ? idx.array : null);
+  geometry.userData._wheelComponents = components;
+  return components;
+}
+
 function detectGeometric(root, T, opts) {
   // Gather every Mesh under the vehicle along with its AABB and centroid
   // in vehicle-local frame. updateWorldMatrix(true, true) refreshes
@@ -363,7 +393,6 @@ function detectGeometric(root, T, opts) {
   const rootWorldInv = new T.Matrix4().copy(root.matrixWorld).invert();
 
   const primitives = [];
-  const tmpBox = new T.Box3();
   let vehicleMinY = Infinity;
   let vehicleCenterXZ = { x: 0, z: 0 };
   const vehicleBox = new T.Box3();
@@ -371,31 +400,56 @@ function detectGeometric(root, T, opts) {
   root.traverse((node) => {
     if (!node.isMesh || !node.geometry) return;
     if (!node.geometry.boundingBox) node.geometry.computeBoundingBox();
-    // Transform the mesh's local AABB into vehicle-local frame by way
-    // of: mesh.local -> world -> vehicle.local.
     const localToVehicle = new T.Matrix4().multiplyMatrices(
       rootWorldInv,
       node.matrixWorld
     );
-    tmpBox.copy(node.geometry.boundingBox).applyMatrix4(localToVehicle);
-    if (tmpBox.isEmpty()) return;
-    const centroid = tmpBox.getCenter(new T.Vector3());
-    const size = tmpBox.getSize(new T.Vector3());
-    // Detect short-axis = axle direction. Wheels are "thin" along the
-    // axle (e.g. width 0.2m vs height/depth ~0.6m). We pick the axis
-    // with the smallest extent of THIS primitive's vehicle-local AABB.
-    const axleAxisVehicle = shortestAxis(size);
-    primitives.push({
-      node,
-      aabb: {
-        min: { x: tmpBox.min.x, y: tmpBox.min.y, z: tmpBox.min.z },
-        max: { x: tmpBox.max.x, y: tmpBox.max.y, z: tmpBox.max.z }
-      },
-      centroid: { x: centroid.x, y: centroid.y, z: centroid.z },
-      axleAxisVehicle
-    });
-    vehicleBox.union(tmpBox);
-    if (tmpBox.min.y < vehicleMinY) vehicleMinY = tmpBox.min.y;
+    // Vertex-level CC: a Mesh whose geometry contains multiple
+    // disjoint sub-objects (Draco/gltfpack often merge chassis + wheels
+    // into a single primitive) gets split into one entry per component
+    // here. Cached on `geometry.userData._wheelComponents` so we pay
+    // the union-find cost once per unique geometry instance, regardless
+    // of how many traffic spawns share it.
+    const components = getOrComputeComponents(node.geometry);
+    if (!components || components.length === 0) return;
+    const multi = components.length > 1;
+
+    for (let ci = 0; ci < components.length; ci++) {
+      const comp = components[ci];
+      const compBoxLocal = new T.Box3(
+        new T.Vector3(comp.aabb.min.x, comp.aabb.min.y, comp.aabb.min.z),
+        new T.Vector3(comp.aabb.max.x, comp.aabb.max.y, comp.aabb.max.z)
+      );
+      const compBoxVehicle = compBoxLocal.clone().applyMatrix4(localToVehicle);
+      if (compBoxVehicle.isEmpty()) continue;
+      const centroid = compBoxVehicle.getCenter(new T.Vector3());
+      const size = compBoxVehicle.getSize(new T.Vector3());
+      const axleAxisVehicle = shortestAxis(size);
+      primitives.push({
+        node,
+        componentIndex: multi ? ci : null,
+        vertexIndices: multi ? comp.vertexIndices : null,
+        aabb: {
+          min: {
+            x: compBoxVehicle.min.x,
+            y: compBoxVehicle.min.y,
+            z: compBoxVehicle.min.z
+          },
+          max: {
+            x: compBoxVehicle.max.x,
+            y: compBoxVehicle.max.y,
+            z: compBoxVehicle.max.z
+          }
+        },
+        centroid: { x: centroid.x, y: centroid.y, z: centroid.z },
+        axleAxisVehicle,
+        fromMultiComponent: multi
+      });
+      vehicleBox.union(compBoxVehicle);
+      if (compBoxVehicle.min.y < vehicleMinY) {
+        vehicleMinY = compBoxVehicle.min.y;
+      }
+    }
   });
 
   if (primitives.length === 0) return [];
@@ -442,26 +496,38 @@ function detectGeometric(root, T, opts) {
     );
     const radius = (maxY - minY) / 2;
 
-    // The cluster's representative node is the largest primitive in it
-    // (by AABB volume). That's the node we'll spin — typically the
-    // tire, not the rim cap.
+    // Pick the largest sub-AABB in the cluster as the representative
+    // for axle / target lookups. If any member came from a multi-
+    // component primitive, this cluster needs geometry surgery before
+    // it can be spun — we still emit the wheel record (pivot, radius,
+    // side are valid) but leave object3D null so tick() skips it.
     let target = cluster[0].node;
     let targetVol = volume(cluster[0].aabb);
-    for (let i = 1; i < cluster.length; i++) {
+    let pendingSurgery = false;
+    const clusterVertexIndices = [];
+    let surgeryNode = null;
+    for (let i = 0; i < cluster.length; i++) {
       const v = volume(cluster[i].aabb);
       if (v > targetVol) {
         target = cluster[i].node;
         targetVol = v;
       }
+      if (cluster[i].fromMultiComponent) {
+        pendingSurgery = true;
+        surgeryNode = cluster[i].node;
+        clusterVertexIndices.push({
+          node: cluster[i].node,
+          componentIndex: cluster[i].componentIndex,
+          vertexIndices: cluster[i].vertexIndices
+        });
+      }
     }
 
-    // Convert vehicle-local axle direction into the target node's
-    // local frame. This is the axis we'll feed into rotateOnAxis().
     const vehicleAxle = cluster[0].axleAxisVehicle; // {x,y,z}
     const axleLocal = vehicleAxleToNodeLocal(vehicleAxle, root, target, T);
 
     out.push({
-      object3D: target,
+      object3D: pendingSurgery ? null : target,
       pivot,
       radius,
       side: classifySide({
@@ -469,7 +535,11 @@ function detectGeometric(root, T, opts) {
         z: pivot.z - vehicleCenterXZ.z
       }),
       axleLocal,
-      source: 'geometric'
+      source: pendingSurgery ? 'cc-pending-surgery' : 'geometric',
+      // Surgery inputs (consumed by a follow-up commit that builds
+      // per-wheel meshes from these vertex subsets).
+      surgeryNode,
+      surgeryParts: pendingSurgery ? clusterVertexIndices : null
     });
   }
   return out;
