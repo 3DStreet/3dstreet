@@ -108,6 +108,10 @@ AFRAME.registerSystem('play-mode', {
   start: function () {
     if (this.isPlaying) return;
     this.isPlaying = true;
+    // Authoritative wall-clock anchor. The toolbar reads this so its
+    // wall-time display zeros when scene-timer's simulationTime zeros
+    this.playStartedAt = performance.now();
+    this.playStartedAt = performance.now();
     useStore.setState({
       isPlaying: true,
       playOutcome: null,
@@ -222,6 +226,7 @@ AFRAME.registerSystem('play-mode', {
     if (!this.isPlaying) return;
     this.isPlaying = false;
     this.isPaused = false;
+    this.playStartedAt = null;
     useStore.setState({
       isPlaying: false,
       isPlayPaused: false,
