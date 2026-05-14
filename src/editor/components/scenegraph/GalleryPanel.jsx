@@ -1,7 +1,12 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { doc, onSnapshot } from 'firebase/firestore';
 import { httpsCallable } from 'firebase/functions';
-import { useGallery, GalleryContent, formatBytes } from '@shared/gallery';
+import {
+  useGallery,
+  GalleryContent,
+  formatBytes,
+  galleryServiceV2
+} from '@shared/gallery';
 import { Loader } from '@shared/icons';
 import { auth, db, functions } from '@shared/services/firebase.js';
 import {
@@ -122,9 +127,27 @@ const GalleryPanel = () => {
         }
       }
     );
+
+    // Optimistically shrink the meter on delete. The Firestore listener
+    // above eventually reconciles via the onAssetWritten Cloud Function
+    // trigger; this just removes the perceived lag.
+    const onAssetDeleted = (e) => {
+      const { userId: eventUserId, size } = e.detail || {};
+      if (eventUserId !== user.uid || !size) return;
+      setUsage((prev) => ({
+        ...prev,
+        bytesUsed: Math.max(0, prev.bytesUsed - size)
+      }));
+    };
+    galleryServiceV2.events.addEventListener('assetDeleted', onAssetDeleted);
+
     return () => {
       cancelled = true;
       unsub();
+      galleryServiceV2.events.removeEventListener(
+        'assetDeleted',
+        onAssetDeleted
+      );
     };
   }, [isLoggedIn]);
 

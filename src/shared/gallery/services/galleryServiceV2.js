@@ -721,10 +721,9 @@ class GalleryServiceV2 {
       if (!assetSnap.exists()) {
         throw new Error('Asset not found');
       }
+      const asset = assetSnap.data();
 
       if (hard) {
-        const asset = assetSnap.data();
-
         // Delete from storage
         if (asset.storagePath) {
           await deleteObject(ref(storage, asset.storagePath));
@@ -744,8 +743,13 @@ class GalleryServiceV2 {
         });
       }
 
+      // Include `size` in the event so listeners (e.g. the storage meter)
+      // can update optimistically before the Cloud Function trigger
+      // recomputes users/{uid}/meta/usage.bytesUsed.
       this.events.dispatchEvent(
-        new CustomEvent('assetDeleted', { detail: { assetId, userId, hard } })
+        new CustomEvent('assetDeleted', {
+          detail: { assetId, userId, hard, size: Number(asset.size) || 0 }
+        })
       );
     } catch (error) {
       console.error('Error deleting asset:', error);
