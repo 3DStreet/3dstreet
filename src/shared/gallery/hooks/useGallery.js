@@ -298,7 +298,9 @@ const useGallery = () => {
   );
 
   /**
-   * Remove an item from the gallery (soft delete)
+   * Remove an item from the gallery (soft delete). The Firestore doc is
+   * marked deleted: true; the Storage object stays. Quota is decremented
+   * immediately by the onAssetWritten trigger.
    */
   const removeItem = useCallback(
     async (id) => {
@@ -308,26 +310,25 @@ const useGallery = () => {
         throw new Error('User must be logged in to remove items');
       }
 
+      const snapshot = items;
+      const snapshotPage = page;
+      const updatedItems = items.filter((item) => item.id !== id);
+      setItems(updatedItems);
+      const newTotalPages = Math.max(
+        1,
+        Math.ceil(updatedItems.length / pageSize)
+      );
+      if (page > newTotalPages) {
+        setPage(newTotalPages);
+      }
+
       try {
-        // Hard-delete: remove the Storage object too so any scene still
-        // referencing the tokenized download URL gets a 404, and the
-        // user's quota immediately reflects the freed bytes.
-        await galleryServiceV2.deleteAsset(id, currentUserId, true);
-
-        const updatedItems = items.filter((item) => item.id !== id);
-        setItems(updatedItems);
-
-        const newTotalPages = Math.max(
-          1,
-          Math.ceil(updatedItems.length / pageSize)
-        );
-        if (page > newTotalPages) {
-          setPage(newTotalPages);
-        }
-
+        await galleryServiceV2.deleteAsset(id, currentUserId, false);
         return true;
       } catch (error) {
         console.error('Failed to remove item from gallery:', error);
+        setItems(snapshot);
+        setPage(snapshotPage);
         throw error;
       }
     },

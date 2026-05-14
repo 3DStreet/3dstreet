@@ -21,11 +21,11 @@ First-party drag-and-drop GLB / image upload, cloud persistence, and quota track
 
 Unchanged from the existing gallery system:
 
-| Layer        | Path                                                   |
-|--------------|--------------------------------------------------------|
-| Firestore    | `users/{userId}/assets/{assetId}`                      |
-| Storage      | `users/{userId}/assets/{meshes\|images\|videos}/{assetId}.ext` |
-| Quota doc    | `users/{userId}/meta/usage` (managed by Cloud Function)|
+| Layer     | Path                                                           |
+| --------- | -------------------------------------------------------------- |
+| Firestore | `users/{userId}/assets/{assetId}`                              |
+| Storage   | `users/{userId}/assets/{meshes\|images\|videos}/{assetId}.ext` |
+| Quota doc | `users/{userId}/meta/usage` (managed by Cloud Function)        |
 
 Asset doc fields used by uploads: `assetId`, `userId`, `type` (`mesh` / `image`), `category` (`upload`), `storagePath`, `storageUrl`, `filename`, `originalFilename`, `size`, `mimeType`, `deleted`, timestamps.
 
@@ -122,11 +122,11 @@ Both live in `public/functions/asset-quota.js` and are wired through `public/fun
 
 ### Plan limits (decimal MB / GB)
 
-| Plan | Limit       |
-|------|-------------|
-| FREE | 100 MB      |
-| PRO  | 5 GB        |
-| TEAM / MAX | 25 GB |
+| Plan       | Limit  |
+| ---------- | ------ |
+| FREE       | 100 MB |
+| PRO        | 5 GB   |
+| TEAM / MAX | 25 GB  |
 
 ### Deploying
 
@@ -160,11 +160,11 @@ Deploy rules before functions if there's a window where the panel might call the
 
 Per-content-type size caps replace the old single 50 MB ceiling:
 
-| Content type                        | Cap      |
-|-------------------------------------|----------|
-| `image/*`                           | 10 MB    |
-| `model/*` and `application/octet-stream` (GLB / PLY) | 50 MB    |
-| `video/*`                           | 50 MB    |
+| Content type                                         | Cap   |
+| ---------------------------------------------------- | ----- |
+| `image/*`                                            | 10 MB |
+| `model/*` and `application/octet-stream` (GLB / PLY) | 50 MB |
+| `video/*`                                            | 50 MB |
 
 ## Optimization pipeline (`src/editor/lib/asset-upload/optimizeGlb.js`)
 
@@ -201,6 +201,7 @@ await document.transform(
 ### Assets panel (renamed from Gallery)
 
 `src/editor/components/scenegraph/GalleryPanel.jsx`:
+
 - Tab label: **Assets** (was Gallery).
 - Filter tabs: All / Meshes / Images / Video.
 - Upload button (file picker, accepts `FILE_PICKER_ACCEPT`).
@@ -216,6 +217,7 @@ await document.transform(
 - **Layers panel** — `<AssetUploadDot>` (next to each entity name) shows a small colored dot keyed to status.
 
 Both consume `useAssetUploadStatus(entity)`, which:
+
 1. Subscribes to Zustand `uploads[entity.id]` for in-flight state.
 2. Reads `data-asset-id` + `data-asset-owner-uid` via a `MutationObserver` (only those two persistent attrs are watched).
 3. Triggers `ensureAsset(assetId, ownerUid)` to fetch the Firestore doc into the Zustand `assets` cache.
@@ -233,24 +235,24 @@ All three call `uploadAndPlaceAsset(file, position?)` directly (static imports; 
 
 ## Delete behavior
 
-`useGallery.removeItem` calls `galleryServiceV2.deleteAsset(id, userId, true)` — hard delete. This:
-- `deleteObject`s the Storage path + thumbnail path.
-- `deleteDoc`s the Firestore asset doc.
-- Triggers `onAssetWritten`, which decrements `bytesUsed`.
-- Causes any scene still referencing the tokenized URL to 404 on next load — matching user expectation of "delete = gone".
+`useGallery.removeItem` calls `galleryServiceV2.deleteAsset(id, userId, false)` — soft delete. The Firestore doc is marked `deleted: true`; the Storage object stays.
+
+- `onAssetWritten` decrements `bytesUsed` immediately (the trigger treats `deleted: true` the same as a removed doc when summing).
+- Scenes still referencing the tokenized download URL keep working — Firebase Storage tokens don't auto-invalidate when the Firestore doc flips. Effective deletion across saved scenes lands when the resolver Cloud Function ships.
 
 ## Known limitations
 
-| Limitation | Mitigation / future |
-|------------|---------------------|
-| Foreign-asset metadata not readable (Firestore rule) | Hook degrades silently; pill shows "not owned by you" without size/filename. Resolver Cloud Function lifts this constraint when shipped. |
-| Hard-delete loses any future "trash/restore" UI | Soft-delete UI was never surfaced anyway. If we add restore later, switch back to soft + ship the resolver to enforce the deleted flag at load time. |
-| Undo of `entitycreate` while upload is in-flight | Entity removed from scene; upload proceeds in background and creates an orphan asset doc in the gallery. No data loss but visible artifact. |
-| No real-time progress chip outside the selected entity | Drop several files at once and only the selected entity shows progress. Acceptable for v1; add a global progress badge if it becomes painful. |
+| Limitation                                             | Mitigation / future                                                                                                                                           |
+| ------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Foreign-asset metadata not readable (Firestore rule)   | Hook degrades silently; pill shows "not owned by you" without size/filename. Resolver Cloud Function lifts this constraint when shipped.                      |
+| Soft-deleted assets keep serving via the tokenized URL | Quota frees immediately, but scenes embedding the URL still load the file until the resolver is in place. Acceptable for v1; revisit when the resolver lands. |
+| Undo of `entitycreate` while upload is in-flight       | Entity removed from scene; upload proceeds in background and creates an orphan asset doc in the gallery. No data loss but visible artifact.                   |
+| No real-time progress chip outside the selected entity | Drop several files at once and only the selected entity shows progress. Acceptable for v1; add a global progress badge if it becomes painful.                 |
 
 ## Key files
 
 ### New
+
 - `src/editor/lib/asset-upload/optimizeGlb.js`
 - `src/editor/lib/asset-upload/uploadAndPlaceAsset.js`
 - `src/editor/state/assetUploadStore.js`
@@ -260,6 +262,7 @@ All three call `uploadAndPlaceAsset(file, position?)` directly (static imports; 
 - `public/functions/asset-quota.js`
 
 ### Modified
+
 - `src/editor/components/elements/AddLayerPanel/AddLayerPanel.component.jsx` — global drop handler routes to `uploadAndPlaceAsset`.
 - `src/editor/components/elements/AddLayerPanel/createLayerFunctions.js` — removed legacy `createModelFromFile`.
 - `src/editor/components/elements/ComponentsContainer.jsx` — removed legacy "Temporary Model" warning panel (replaced by the status pill / dot).
@@ -270,18 +273,13 @@ All three call `uploadAndPlaceAsset(file, position?)` directly (static imports; 
 - `src/editor/components/scenegraph/AppMenu.jsx` — File > Import… entry.
 - `src/json-utils_1.1.js` — serializer special-cases for `data-asset-id`, `data-asset-owner-uid`, and the `data-temporary-file` skip.
 - `src/shared/gallery/components/GalleryItem.jsx` + `Gallery.module.scss` — mesh placeholder, "Model" type label.
-- `src/shared/gallery/hooks/useGallery.js` — hard delete on `removeItem`.
+- `src/shared/gallery/hooks/useGallery.js` — soft delete on `removeItem`.
 - `public/firestore.rules` — usage doc read rule.
 - `public/storage.rules` — per-content-type size caps.
 - `public/functions/index.js` — exports `onAssetWritten` and `getUploadQuota`.
 - `webpack.config.js` — `fs` / `path` fallbacks; copy Draco WASM blobs to `/dist/`.
 
-
 # Remaining to do
 
-- [ ] previous code was doing a soft delete with
-  galleryServiceV2.deleteAsset(id, currentUserId, false);
-  I changed it hard delete so the quota decrease, but I actually don't have the right to delete in firebase apparently
-- [ ] deploy new functions
 - [ ] create model thumbnail client side
 - [ ] drag and drop from assets panel
