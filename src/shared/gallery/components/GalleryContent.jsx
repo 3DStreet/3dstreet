@@ -26,7 +26,10 @@ const GalleryContent = ({
   onCopyParams,
   onUseForGenerator,
   onUseForVideo,
-  onNotification
+  onNotification,
+  // Editor's Assets panel opts in to drag-mesh/image-into-viewport.
+  // Generator (standalone page) doesn't have a viewport so it stays off.
+  placeable = false
 }) => {
   const {
     items,
@@ -103,6 +106,7 @@ const GalleryContent = ({
           onDownload={handleDownload}
           onPageChange={setPage}
           onPageSizeChange={setPageSize}
+          placeable={placeable}
         />
       ) : items.length === 0 ? (
         (emptyState ?? defaultEmpty)
@@ -116,6 +120,7 @@ const GalleryContent = ({
                 onItemClick={setSelectedItem}
                 onDelete={handleDelete}
                 onDownload={handleDownload}
+                placeable={placeable}
               />
             ))}
           </div>

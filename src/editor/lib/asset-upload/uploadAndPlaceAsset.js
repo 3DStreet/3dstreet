@@ -72,7 +72,6 @@ function createPlaceholderEntity(file, position, kind) {
   const definition =
     kind === 'glb'
       ? {
-          class: 'custom-model',
           components: {
             ...baseComponents,
             'gltf-model': `url(${blobUrl})`,
@@ -94,6 +93,49 @@ function createPlaceholderEntity(file, position, kind) {
       resolve({ entity, blobUrl })
     );
   });
+}
+
+/**
+ * Place an already-uploaded asset into the scene at the given position.
+ * Used by drag-from-gallery-card. No upload, no temp marker — the entity
+ * starts in its persistent state (data-asset-id + data-asset-owner-uid +
+ * cloud URL in gltf-model / src).
+ *
+ * @param {object} asset
+ * @param {string} asset.assetId
+ * @param {string} asset.ownerUid
+ * @param {string} asset.storageUrl
+ * @param {string} asset.name
+ * @param {string} asset.type     - 'mesh' | 'image'
+ * @param {THREE.Vector3 | string} position
+ */
+export function placeCloudAsset(asset, position) {
+  if (!asset?.assetId || !asset.storageUrl) return;
+  const isMesh = asset.type === 'mesh';
+  const baseComponents = {
+    position: position ?? '0 0 0',
+    'data-layer-name': asset.name || asset.assetId,
+    'data-asset-id': asset.assetId,
+    'data-asset-owner-uid': asset.ownerUid
+  };
+  const definition = isMesh
+    ? {
+        components: {
+          ...baseComponents,
+          'gltf-model': `url(${asset.storageUrl})`,
+          shadow: 'receive: true; cast: true;'
+        }
+      }
+    : {
+        element: 'a-image',
+        components: {
+          ...baseComponents,
+          src: asset.storageUrl,
+          width: 4,
+          height: 4
+        }
+      };
+  AFRAME.INSPECTOR.execute('entitycreate', definition);
 }
 
 async function preflightQuota(proposedBytes) {

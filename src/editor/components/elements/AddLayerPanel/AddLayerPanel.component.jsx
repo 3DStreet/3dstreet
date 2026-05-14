@@ -11,12 +11,15 @@ import posthog from 'posthog-js';
 import pickPointOnGroundPlane from '../../../lib/pick-point-on-ground-plane';
 import {
   uploadAndPlaceAsset,
-  isAcceptedAssetFile
+  isAcceptedAssetFile,
+  placeCloudAsset
 } from '@/editor/lib/asset-upload/uploadAndPlaceAsset.js';
 import { customLayersData, streetLayersData } from './layersData.js';
 import { LayersOptions } from './LayersOptions.js';
 import useStore from '@/store.js';
 import { getGroupedMixinOptions } from '../../../lib/mixinUtils';
+
+const ASSET_CARD_MIME = 'application/x-3dstreet-asset';
 
 // Create an empty image
 const emptyImg = new Image();
@@ -304,24 +307,20 @@ const AddLayerPanel = () => {
   // Add global file drop handlers for the entire scene
   useEffect(() => {
     const handleGlobalDragOver = (e) => {
-      // Check if files are being dragged
-      if (
-        e.dataTransfer &&
-        e.dataTransfer.types &&
-        e.dataTransfer.types.includes('Files')
-      ) {
-        e.preventDefault();
-        e.dataTransfer.dropEffect = 'copy';
+      const types = e.dataTransfer?.types || [];
+      const isFile = types.includes('Files');
+      const isAssetCard = types.includes(ASSET_CARD_MIME);
+      if (!isFile && !isAssetCard) return;
 
-        // Show drop plane for file drops
-        if (dropPlaneEl.current) {
-          fadeInDropPlane();
-        }
+      e.preventDefault();
+      e.dataTransfer.dropEffect = 'copy';
+      if (dropPlaneEl.current) {
+        fadeInDropPlane();
       }
     };
 
     const handleGlobalDrop = (e) => {
-      // Check if files are being dropped
+      // File drop: upload + place.
       if (
         e.dataTransfer &&
         e.dataTransfer.files &&
@@ -341,10 +340,29 @@ const AddLayerPanel = () => {
           uploadAndPlaceAsset(file, position);
         }
 
-        // Hide drop plane
-        if (dropPlaneEl.current) {
-          fadeOutDropPlane();
+        if (dropPlaneEl.current) fadeOutDropPlane();
+        return;
+      }
+
+      // Asset-card drop from the gallery panel: place the existing cloud
+      // asset at the picked point (no upload).
+      const assetPayload = e.dataTransfer?.getData?.(ASSET_CARD_MIME);
+      if (assetPayload) {
+        e.preventDefault();
+        e.stopPropagation();
+        try {
+          const asset = JSON.parse(assetPayload);
+          const position = pickPointOnGroundPlane({
+            x: e.clientX,
+            y: e.clientY,
+            canvas: AFRAME.scenes[0].canvas,
+            camera: AFRAME.INSPECTOR.camera
+          });
+          placeCloudAsset(asset, position);
+        } catch (err) {
+          console.warn('[AddLayerPanel] bad asset drag payload', err);
         }
+        if (dropPlaneEl.current) fadeOutDropPlane();
       }
     };
 

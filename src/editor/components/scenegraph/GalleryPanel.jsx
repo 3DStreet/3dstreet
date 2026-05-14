@@ -263,6 +263,7 @@ const GalleryPanel = () => {
           onCopyParams={handleCopyParams}
           onUseForGenerator={(item) => openInGenerator(item, 'modify')}
           onUseForVideo={(item) => openInGenerator(item, 'video')}
+          placeable
         />
         {isLoadingMore && (
           <div className={styles.loadingMore}>

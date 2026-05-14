@@ -6,6 +6,12 @@
 import { DownloadIcon, TrashIcon } from '@shared/icons';
 import styles from './Gallery.module.scss';
 
+// 1×1 transparent gif used to suppress the default browser drag ghost so the
+// 3D preview at the cursor isn't fighting with a card thumbnail floating along.
+const emptyDragImage = new Image();
+emptyDragImage.src =
+  'data:image/gif;base64,R0lGODlhAQABAAD/ACwAAAAAAQABAAACADs=';
+
 const MeshPlaceholder = () => (
   <div className={styles.meshPlaceholder} aria-label="3D model">
     <svg
@@ -24,7 +30,15 @@ const MeshPlaceholder = () => (
   </div>
 );
 
-const GalleryItem = ({ item, onItemClick, onDelete, onDownload }) => {
+const GalleryItem = ({
+  item,
+  onItemClick,
+  onDelete,
+  onDownload,
+  // When true (editor's Assets panel), mesh/image cards become draggable
+  // into the viewport. Off in the generator app where there's no viewport.
+  placeable = false
+}) => {
   const isMesh = item.type === 'mesh';
   // Mesh items get a placeholder until a thumbnail exists. For images and
   // videos, fall back through thumbnailUrl → objectURL as before.
@@ -46,6 +60,30 @@ const GalleryItem = ({ item, onItemClick, onDelete, onDownload }) => {
     onItemClick(item);
   };
 
+  // Mesh/image cards are draggable into the viewport — same pattern as the
+  // Add Layer cards. Videos are skipped (no in-scene placement makes sense).
+  // Only enabled when the host opts in via the `placeable` prop.
+  const isPlaceable =
+    placeable &&
+    (item.type === 'mesh' || item.type === 'image') &&
+    !!item.storageUrl;
+
+  const handleDragStart = (e) => {
+    if (!isPlaceable) return;
+    e.dataTransfer.setData(
+      'application/x-3dstreet-asset',
+      JSON.stringify({
+        assetId: item.id,
+        ownerUid: item.userId,
+        storageUrl: item.storageUrl,
+        name: item.name || item.originalFilename || '',
+        type: item.type
+      })
+    );
+    e.dataTransfer.effectAllowed = 'copy';
+    e.dataTransfer.setDragImage(emptyDragImage, 0, 0);
+  };
+
   const typeLabel =
     item.type === 'video' ? 'Video' : item.type === 'mesh' ? 'Model' : 'Image';
   // For meshes we show the user-editable display name. For AI-generated
@@ -58,7 +96,9 @@ const GalleryItem = ({ item, onItemClick, onDelete, onDownload }) => {
     <div
       className={styles.item}
       onClick={handleClick}
-      style={{ cursor: 'pointer' }}
+      draggable={isPlaceable}
+      onDragStart={handleDragStart}
+      style={{ cursor: isPlaceable ? 'grab' : 'pointer' }}
     >
       {item.type === 'video' ? (
         <video src={imageUrl} muted playsInline />

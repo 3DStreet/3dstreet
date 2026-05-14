@@ -17,7 +17,8 @@ const GalleryGrid = ({
   onPageSizeChange,
   hasMore = false,
   isLoadingMore = false,
-  onLoadMore
+  onLoadMore,
+  placeable = false
 }) => {
   const start = (page - 1) * pageSize;
   const end = start + pageSize;
@@ -65,6 +66,7 @@ const GalleryGrid = ({
             onItemClick={onItemClick}
             onDelete={onDelete}
             onDownload={onDownload}
+            placeable={placeable}
           />
         ))}
       </div>
