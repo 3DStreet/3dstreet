@@ -28,7 +28,7 @@ IconTooltip.propTypes = {
   label: PropTypes.string.isRequired
 };
 
-const MeshDetailsModal = ({ assetId, ownerUid, onClose }) => {
+const MeshDetailsModal = ({ assetId, ownerUid, onClose, onPlace }) => {
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
 
@@ -105,6 +105,18 @@ const MeshDetailsModal = ({ assetId, ownerUid, onClose }) => {
     }
   };
 
+  const handlePlace = () => {
+    if (!onPlace || !data) return;
+    onPlace({
+      assetId,
+      ownerUid,
+      storageUrl: data.storageUrl,
+      name: savedName || data.name || data.originalFilename || '',
+      type: data.type
+    });
+    onClose();
+  };
+
   const title = savedName || data?.originalFilename || 'Asset';
 
   return (
@@ -145,10 +157,11 @@ const MeshDetailsModal = ({ assetId, ownerUid, onClose }) => {
             <iframe
               className={styles.viewerFrame}
               title={savedName || data.originalFilename || '3D model'}
-              src={
-                `/model-viewer.html?src=${encodeURIComponent(data.storageUrl)}` +
-                (savedName ? `&alt=${encodeURIComponent(savedName)}` : '')
-              }
+              // Don't put the editable name in the iframe URL — the src
+              // string drives the iframe's load; baking savedName in
+              // would cause model-viewer to reload on every Save name
+              // click. The iframe title above is enough for a11y.
+              src={`/model-viewer.html?src=${encodeURIComponent(data.storageUrl)}`}
             />
           )}
         </div>
@@ -209,17 +222,6 @@ const MeshDetailsModal = ({ assetId, ownerUid, onClose }) => {
 
           <Tooltip.Provider>
             <div className={styles.controlButtons}>
-              <IconTooltip label="Download">
-                <button
-                  type="button"
-                  onClick={onDownload}
-                  disabled={!data}
-                  className={styles.iconButton}
-                  aria-label="Download"
-                >
-                  <DownloadIcon />
-                </button>
-              </IconTooltip>
               {isOwner && (
                 <IconTooltip label="Delete">
                   <button
@@ -233,6 +235,27 @@ const MeshDetailsModal = ({ assetId, ownerUid, onClose }) => {
                   </button>
                 </IconTooltip>
               )}
+              <IconTooltip label="Download">
+                <button
+                  type="button"
+                  onClick={onDownload}
+                  disabled={!data}
+                  className={styles.iconButton}
+                  aria-label="Download"
+                >
+                  <DownloadIcon />
+                </button>
+              </IconTooltip>
+              {onPlace && (
+                <button
+                  type="button"
+                  onClick={handlePlace}
+                  disabled={!data}
+                  className={styles.primaryButton}
+                >
+                  Place in scene
+                </button>
+              )}
             </div>
           </Tooltip.Provider>
         </div>
@@ -244,7 +267,13 @@ const MeshDetailsModal = ({ assetId, ownerUid, onClose }) => {
 MeshDetailsModal.propTypes = {
   assetId: PropTypes.string.isRequired,
   ownerUid: PropTypes.string.isRequired,
-  onClose: PropTypes.func.isRequired
+  onClose: PropTypes.func.isRequired,
+  // Optional: when provided, renders a "Place in scene" CTA. Called with
+  // { assetId, ownerUid, storageUrl, name, type } when the user clicks it;
+  // the modal closes itself after invoking. Only the gallery card open
+  // path passes this — the props-panel "Details" button leaves it
+  // undefined (the entity is already in the scene).
+  onPlace: PropTypes.func
 };
 
 export default MeshDetailsModal;

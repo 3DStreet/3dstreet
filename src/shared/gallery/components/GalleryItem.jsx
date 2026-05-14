@@ -99,6 +99,11 @@ const GalleryItem = ({
       draggable={isPlaceable}
       onDragStart={handleDragStart}
       style={{ cursor: isPlaceable ? 'grab' : 'pointer' }}
+      title={
+        isPlaceable
+          ? 'Drag and drop to viewport to add it to your scene'
+          : undefined
+      }
     >
       {item.type === 'video' ? (
         <video src={imageUrl} muted playsInline />

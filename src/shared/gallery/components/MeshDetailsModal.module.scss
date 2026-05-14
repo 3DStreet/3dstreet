@@ -2,6 +2,18 @@
 
 .modalWrapper {
   position: relative;
+
+  // Hide the scrollbar on the shared Modal's .modal-body wrapper — the
+  // global rule sets `overflow-y: scroll` so the gutter is always visible
+  // even when content fits. Keep scrollability for tall content; just
+  // hide the visual scrollbar (Firefox + WebKit).
+  :global(.modal-body) {
+    scrollbar-width: none;
+
+    &::-webkit-scrollbar {
+      display: none;
+    }
+  }
 }
 
 .title {
@@ -148,7 +160,7 @@
 
 .controlButtons {
   display: flex;
-  justify-content: flex-end;
+  justify-content: flex-start;
   gap: 8px;
   margin-top: auto;
   padding-top: 12px;
@@ -192,6 +204,29 @@
   &:hover:not(:disabled) {
     background: rgba(239, 68, 68, 0.1);
     color: #f87171;
+  }
+}
+
+.primaryButton {
+  margin-left: auto;
+  padding: 8px 16px;
+  background: variables.$purple-400;
+  color: variables.$lightgray-100;
+  border: 1px solid variables.$purple-400;
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+
+  &:hover:not(:disabled) {
+    background: variables.$purple-300;
+    border-color: variables.$purple-300;
+  }
+
+  &:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
   }
 }
 

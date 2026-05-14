@@ -29,7 +29,12 @@ const GalleryContent = ({
   onNotification,
   // Editor's Assets panel opts in to drag-mesh/image-into-viewport.
   // Generator (standalone page) doesn't have a viewport so it stays off.
-  placeable = false
+  placeable = false,
+  // When provided, the mesh details modal opened from a card click shows
+  // a "Place in scene" CTA. The callback receives the same payload shape
+  // as the drag-from-card flow:
+  //   { assetId, ownerUid, storageUrl, name, type }
+  onPlaceAsset
 }) => {
   const {
     items,
@@ -134,6 +139,7 @@ const GalleryContent = ({
             assetId={selectedItem.id}
             ownerUid={selectedItem.userId}
             onClose={() => setSelectedItem(null)}
+            onPlace={onPlaceAsset}
           />
         ) : (
           <GalleryModal

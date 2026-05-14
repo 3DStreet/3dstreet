@@ -11,10 +11,23 @@ import { Loader } from '@shared/icons';
 import { auth, db, functions } from '@shared/services/firebase.js';
 import {
   uploadAndPlaceAsset,
+  placeCloudAsset,
   FILE_PICKER_ACCEPT
 } from '@/editor/lib/asset-upload/uploadAndPlaceAsset.js';
+import pickPointOnGroundPlane from '@/editor/lib/pick-point-on-ground-plane';
 import { signIn } from '../../api';
 import styles from './GalleryPanel.module.scss';
+
+// Drop the asset at the picked ground point in front of the editor camera,
+// matching how AddLayerPanel's card-click places a new mixin entity.
+const handlePlaceAsset = (asset) => {
+  const position = pickPointOnGroundPlane({
+    normalizedX: 0,
+    normalizedY: -0.1,
+    camera: AFRAME.INSPECTOR.camera
+  });
+  placeCloudAsset(asset, position);
+};
 
 const FILTERS = [
   { key: 'all', label: 'All', match: () => true },
@@ -287,6 +300,7 @@ const GalleryPanel = () => {
           onUseForGenerator={(item) => openInGenerator(item, 'modify')}
           onUseForVideo={(item) => openInGenerator(item, 'video')}
           placeable
+          onPlaceAsset={handlePlaceAsset}
         />
         {isLoadingMore && (
           <div className={styles.loadingMore}>

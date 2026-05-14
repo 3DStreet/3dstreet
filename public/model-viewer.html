@@ -48,12 +48,10 @@
     <script>
       const params = new URLSearchParams(location.search);
       const src = params.get('src');
-      const alt = params.get('alt');
       const mv = document.getElementById('mv');
       const err = document.getElementById('err');
       if (src) {
         mv.src = src;
-        if (alt) mv.alt = alt;
         mv.addEventListener('error', () => {
           mv.hidden = true;
           err.hidden = false;
