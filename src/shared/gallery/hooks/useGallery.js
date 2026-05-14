@@ -32,6 +32,13 @@ const assetToDisplayItem = (asset) => {
   return {
     id: asset.assetId,
     type: asset.type,
+    // Editable display name (falls back to originalFilename for legacy docs
+    // that predate the field).
+    name: asset.name || asset.originalFilename,
+    originalFilename: asset.originalFilename,
+    size: asset.size,
+    mimeType: asset.mimeType,
+    userId: asset.userId,
     objectURL: asset.thumbnailUrl || asset.storageUrl,
     fullImageURL: asset.storageUrl,
     storageUrl: asset.storageUrl,
@@ -226,10 +233,44 @@ const useGallery = () => {
       reloadItems();
     };
 
+    // Keep the list in sync when an asset is renamed / metadata-edited
+    // from outside the panel (e.g. the mesh details modal).
+    const handleAssetUpdated = (event) => {
+      const currentUserId = userIdRef.current;
+      const { assetId, userId: eventUserId, updates } = event.detail || {};
+      if (!currentUserId || eventUserId !== currentUserId || !assetId) return;
+      setItems((prevItems) =>
+        prevItems.map((item) =>
+          item.id === assetId
+            ? {
+                ...item,
+                ...(updates?.name !== undefined && { name: updates.name })
+              }
+            : item
+        )
+      );
+    };
+
+    // Drop the row when an asset is deleted (soft or hard) from anywhere.
+    const handleAssetDeleted = (event) => {
+      const currentUserId = userIdRef.current;
+      const { assetId, userId: eventUserId } = event.detail || {};
+      if (!currentUserId || eventUserId !== currentUserId || !assetId) return;
+      setItems((prevItems) => prevItems.filter((item) => item.id !== assetId));
+    };
+
     galleryServiceV2.events.addEventListener('assetAdded', handleAssetAdded);
     galleryServiceV2.events.addEventListener(
       'assetAddedReload',
       handleAssetAddedReload
+    );
+    galleryServiceV2.events.addEventListener(
+      'assetUpdated',
+      handleAssetUpdated
+    );
+    galleryServiceV2.events.addEventListener(
+      'assetDeleted',
+      handleAssetDeleted
     );
 
     return () => {
@@ -240,6 +281,14 @@ const useGallery = () => {
       galleryServiceV2.events.removeEventListener(
         'assetAddedReload',
         handleAssetAddedReload
+      );
+      galleryServiceV2.events.removeEventListener(
+        'assetUpdated',
+        handleAssetUpdated
+      );
+      galleryServiceV2.events.removeEventListener(
+        'assetDeleted',
+        handleAssetDeleted
       );
     };
   }, [userId, reloadItems]);

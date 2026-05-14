@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { doc, onSnapshot } from 'firebase/firestore';
 import { httpsCallable } from 'firebase/functions';
-import { useGallery, GalleryContent } from '@shared/gallery';
+import { useGallery, GalleryContent, formatBytes } from '@shared/gallery';
 import { Loader } from '@shared/icons';
 import { auth, db, functions } from '@shared/services/firebase.js';
 import {
@@ -17,19 +17,6 @@ const FILTERS = [
   { key: 'image', label: 'Images', match: (item) => item.type === 'image' },
   { key: 'video', label: 'Video', match: (item) => item.type === 'video' }
 ];
-
-function formatBytes(bytes) {
-  if (!bytes || bytes < 1000) {
-    return `${bytes || 0} B`;
-  }
-  if (bytes < 1_000_000) {
-    return `${(bytes / 1000).toFixed(0)} KB`;
-  }
-  if (bytes < 1_000_000_000) {
-    return `${(bytes / 1_000_000).toFixed(1)} MB`;
-  }
-  return `${(bytes / 1_000_000_000).toFixed(2)} GB`;
-}
 
 const openInGenerator = async (item, tabName) => {
   try {

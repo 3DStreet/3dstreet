@@ -220,6 +220,17 @@ class GalleryServiceV2 {
       // Clean metadata to remove undefined values (Firestore doesn't accept undefined)
       const cleanMetadata = this.removeUndefinedValues(metadata || {});
 
+      // Editable display name for the asset. Defaults to the basename of the
+      // original filename minus the extension; users can rename via the mesh
+      // details modal. Falls back to `originalFilename` in older docs that
+      // don't have this field.
+      const originalFilenameForName = metadata.originalFilename || filename;
+      const lastDot = originalFilenameForName.lastIndexOf('.');
+      const defaultName =
+        lastDot > 0
+          ? originalFilenameForName.slice(0, lastDot)
+          : originalFilenameForName;
+
       // Create Firestore document
       const assetDoc = {
         // Identity
@@ -237,8 +248,9 @@ class GalleryServiceV2 {
         }),
 
         // File Metadata
+        name: metadata.name || defaultName,
         filename,
-        originalFilename: metadata.originalFilename || filename,
+        originalFilename: originalFilenameForName,
         size: blob.size,
         mimeType,
 
@@ -683,7 +695,9 @@ class GalleryServiceV2 {
       });
 
       this.events.dispatchEvent(
-        new CustomEvent('assetUpdated', { detail: { assetId } })
+        new CustomEvent('assetUpdated', {
+          detail: { assetId, userId, updates }
+        })
       );
     } catch (error) {
       console.error('Error updating asset:', error);
@@ -731,7 +745,7 @@ class GalleryServiceV2 {
       }
 
       this.events.dispatchEvent(
-        new CustomEvent('assetDeleted', { detail: { assetId, hard } })
+        new CustomEvent('assetDeleted', { detail: { assetId, userId, hard } })
       );
     } catch (error) {
       console.error('Error deleting asset:', error);

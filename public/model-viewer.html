@@ -1,0 +1,68 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Model Viewer</title>
+    <style>
+      html,
+      body {
+        margin: 0;
+        padding: 0;
+        height: 100%;
+        background: #393939;
+        color: #d1d5db;
+        font-family: system-ui, sans-serif;
+      }
+      model-viewer {
+        width: 100%;
+        height: 100%;
+        background: #393939;
+        --poster-color: transparent;
+      }
+      #err {
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        font-size: 13px;
+        color: #e0473d;
+      }
+    </style>
+    <script
+      type="module"
+      src="https://ajax.googleapis.com/ajax/libs/model-viewer/4.2.0/model-viewer.min.js"
+    ></script>
+  </head>
+  <body>
+    <!-- Hosted in its own document so model-viewer's bundled THREE doesn't
+         collide with the editor's window.THREE (set by A-Frame). The parent
+         frame passes the GLB URL via the `src` query param. -->
+    <model-viewer
+      id="mv"
+      camera-controls
+      touch-action="pan-y"
+      shadow-intensity="1"
+    ></model-viewer>
+    <div id="err" hidden>Unable to load model</div>
+    <script>
+      const params = new URLSearchParams(location.search);
+      const src = params.get('src');
+      const alt = params.get('alt');
+      const mv = document.getElementById('mv');
+      const err = document.getElementById('err');
+      if (src) {
+        mv.src = src;
+        if (alt) mv.alt = alt;
+        mv.addEventListener('error', () => {
+          mv.hidden = true;
+          err.hidden = false;
+        });
+      } else {
+        mv.hidden = true;
+        err.textContent = 'No model URL provided';
+        err.hidden = false;
+      }
+    </script>
+  </body>
+</html>

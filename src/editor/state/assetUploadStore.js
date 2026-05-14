@@ -43,6 +43,29 @@ const useAssetUploadStore = create((set, get) => ({
   },
 
   /**
+   * Merge a partial update into a cached asset doc. Called after the mesh
+   * details modal saves a name / metadata edit so the layers panel, props
+   * panel, and asset card reflect the change without a refetch.
+   */
+  patchAsset: (assetId, ownerUid, partial) => {
+    if (!assetId || !ownerUid || !partial) return;
+    const key = `${assetId}:${ownerUid}`;
+    set((state) => {
+      const existing = state.assets[key];
+      if (!existing?.data) return state;
+      return {
+        assets: {
+          ...state.assets,
+          [key]: {
+            ...existing,
+            data: { ...existing.data, ...partial }
+          }
+        }
+      };
+    });
+  },
+
+  /**
    * Trigger a Firestore fetch for an asset, idempotent. Subsequent calls
    * during the in-flight period and after success short-circuit.
    */
@@ -71,7 +94,41 @@ const useAssetUploadStore = create((set, get) => ({
         [key]: { data: data || null, fetching: false, fetchedAt: Date.now() }
       }
     }));
+  },
+
+  dropAsset: (assetId, ownerUid) => {
+    if (!assetId || !ownerUid) return;
+    const key = `${assetId}:${ownerUid}`;
+    set((state) => {
+      if (!state.assets[key]) return state;
+      const next = { ...state.assets };
+      delete next[key];
+      return { assets: next };
+    });
   }
 }));
+
+// Keep the cache in sync with any updates / deletes dispatched by
+// galleryServiceV2, regardless of which UI surface triggered them
+// (mesh details modal, gallery panel actions, future cloud-model resolver…).
+if (typeof window !== 'undefined') {
+  galleryServiceV2.events.addEventListener('assetUpdated', (e) => {
+    const { assetId, userId, updates } = e.detail || {};
+    if (assetId && userId && updates) {
+      useAssetUploadStore.getState().patchAsset(assetId, userId, updates);
+    }
+  });
+  galleryServiceV2.events.addEventListener('assetDeleted', (e) => {
+    const { assetId, userId, hard } = e.detail || {};
+    if (!assetId || !userId) return;
+    if (hard) {
+      useAssetUploadStore.getState().dropAsset(assetId, userId);
+    } else {
+      useAssetUploadStore
+        .getState()
+        .patchAsset(assetId, userId, { deleted: true });
+    }
+  });
+}
 
 export default useAssetUploadStore;

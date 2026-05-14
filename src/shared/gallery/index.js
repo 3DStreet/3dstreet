@@ -26,3 +26,7 @@ export { default as GalleryGrid } from './components/GalleryGrid';
 export { default as GalleryItem } from './components/GalleryItem';
 export { default as GalleryModal } from './components/GalleryModal';
 export { default as GalleryContent } from './components/GalleryContent';
+export { default as MeshDetailsModal } from './components/MeshDetailsModal';
+
+// Formatters
+export { formatBytes, formatDate } from './utils';

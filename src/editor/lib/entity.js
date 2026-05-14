@@ -1,4 +1,5 @@
 import { nanoid } from 'nanoid';
+import capitalize from 'lodash-es/capitalize';
 import Events from './Events';
 import { equal } from './utils';
 import posthog from 'posthog-js';
@@ -611,22 +612,24 @@ export function getComponentClipboardRepresentation(entity, componentName) {
 }
 
 export function getEntityDisplayName(entity) {
-  let entityName = '';
-  if (!entity.isScene && !entityName && entity.getAttribute('class')) {
-    entityName = entity.getAttribute('class').split(' ')[0];
-  } else if (!entity.isScene && !entityName && entity.getAttribute('mixin')) {
-    entityName = entity.getAttribute('mixin').split(' ')[0];
-  }
-  // Custom display name for a layer if available, otherwise use entity name or tag
-  let displayName = entity.getAttribute('data-layer-name');
-  if (!displayName) {
-    displayName = entityName;
-  }
-  if (!displayName) {
-    displayName = entity.tagName.toLowerCase();
+  // User-set display name wins.
+  const layerName = entity.getAttribute('data-layer-name');
+  if (layerName) return layerName;
+
+  if (!entity.isScene) {
+    const mixinAttr = entity.getAttribute('mixin');
+    if (mixinAttr) {
+      // Mixin ids are kebab/snake-case (e.g. "box-truck-rig"); format for
+      // display ("Box truck rig"). Classes are returned as-is.
+      return capitalize(
+        mixinAttr.split(' ')[0].replaceAll('-', ' ').replaceAll('_', ' ')
+      );
+    }
+    const classAttr = entity.getAttribute('class');
+    if (classAttr) return classAttr.split(' ')[0];
   }
 
-  return displayName;
+  return entity.tagName.toLowerCase();
 }
 
 export function getEntityIcon(entity) {
@@ -663,26 +666,6 @@ export function getEntityIcon(entity) {
     default:
       return <Object24IconCyan />;
   }
-}
-
-/**
- * Entity representation.
- */
-export function printEntity(entity) {
-  if (!entity) {
-    return '';
-  }
-
-  const icon = getEntityIcon(entity);
-
-  // Custom display name for a layer if available, otherwise use entity name or tag
-  let displayName = getEntityDisplayName(entity);
-  return (
-    <span className="entityPrint">
-      {icon && <span className="entityIcons">{icon}</span>}
-      {displayName && <span className="entityName">&nbsp;{displayName}</span>}
-    </span>
-  );
 }
 
 const NOT_COMPONENTS = ['id', 'class', 'mixin'];

@@ -13,6 +13,7 @@ import { useState } from 'react';
 import GalleryItem from './GalleryItem.jsx';
 import GalleryGrid from './GalleryGrid.jsx';
 import GalleryModal from './GalleryModal.jsx';
+import MeshDetailsModal from './MeshDetailsModal.jsx';
 import styles from './Gallery.module.scss';
 
 const GalleryContent = ({
@@ -122,20 +123,27 @@ const GalleryContent = ({
         </>
       )}
 
-      {selectedItem && (
-        <GalleryModal
-          item={selectedItem}
-          currentIndex={items.findIndex((i) => i.id === selectedItem.id)}
-          totalItems={items.length}
-          onClose={() => setSelectedItem(null)}
-          onNavigate={handleNavigate}
-          onDownload={handleDownload}
-          onDelete={handleDelete}
-          onCopyParams={onCopyParams}
-          onUseForGenerator={onUseForGenerator}
-          onUseForVideo={onUseForVideo}
-        />
-      )}
+      {selectedItem &&
+        (selectedItem.type === 'mesh' ? (
+          <MeshDetailsModal
+            assetId={selectedItem.id}
+            ownerUid={selectedItem.userId}
+            onClose={() => setSelectedItem(null)}
+          />
+        ) : (
+          <GalleryModal
+            item={selectedItem}
+            currentIndex={items.findIndex((i) => i.id === selectedItem.id)}
+            totalItems={items.length}
+            onClose={() => setSelectedItem(null)}
+            onNavigate={handleNavigate}
+            onDownload={handleDownload}
+            onDelete={handleDelete}
+            onCopyParams={onCopyParams}
+            onUseForGenerator={onUseForGenerator}
+            onUseForVideo={onUseForVideo}
+          />
+        ))}
     </>
   );
 };
