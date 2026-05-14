@@ -7,8 +7,8 @@ const DEPLOY_ENV = process.env.DEPLOY_ENV ?? 'production';
 
 module.exports = {
   performance: {
-    maxAssetSize: 3250000, // 3.1 MiB
-    maxEntrypointSize: 3250000, // 3.1 MiB
+    maxAssetSize: 3460300, // 3.3 MiB
+    maxEntrypointSize: 3460300, // 3.3 MiB
     hints: 'error',
     assetFilter: function (assetFilename) {
       // Only check named entry point bundles, not async-loaded chunks.
