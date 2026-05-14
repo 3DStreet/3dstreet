@@ -306,7 +306,17 @@ AFRAME.registerComponent('wheel', {
     el.addEventListener('model-loaded', () => {
       const vehicle = el.getObject3D('mesh');
       if (!vehicle) return;
-      self.wheels = detectWheels(vehicle);
+      // Build a useful identifier for the detection log: prefer the
+      // entity's mixin (catalog name), fall back to its id, then to
+      // a parent tag/class hint. Plain "Scene" comes from the glTF
+      // root and isn't useful for telling vehicles apart.
+      const mixin = el.getAttribute('mixin');
+      const label =
+        mixin ||
+        el.id ||
+        (el.parentNode && el.parentNode.getAttribute('data-layer-name')) ||
+        '<vehicle>';
+      self.wheels = detectWheels(vehicle, { label });
     });
     this._prevPos = null;
     this._tmpVec = new THREE.Vector3();

@@ -321,7 +321,7 @@ function detectWheels(root, opts = {}) {
     }, {});
     console.info(
       '[wheel-detection]',
-      root.name || '<vehicle>',
+      opts.label || root.name || '<vehicle>',
       `${wheels.length} wheels —`,
       counts
     );
