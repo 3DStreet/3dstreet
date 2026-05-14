@@ -13,7 +13,7 @@ First-party drag-and-drop GLB / image upload, cloud persistence, and quota track
 ## Out of scope (deferred)
 
 - `cloud-model` resolver Cloud Function (Variant 3 of the brief). Today scenes carry the tokenized Firebase download URL directly; resolver-based deletion enforcement and per-project access control land later.
-- Server-side `screenshot-glb` thumbnail generation. Mesh items render a placeholder cube SVG until thumbnails arrive.
+- Server-side `screenshot-glb` Cloud Function. Thumbnails are generated client-side instead (see _Thumbnail capture_ below); a placeholder cube SVG shows until the JPEG lands.
 - `shortName` / programmatic asset access for the StreetPlan integration.
 - Server-side optimization pipeline (`functions-pipeline` codebase).
 
@@ -69,6 +69,12 @@ INSPECTOR.execute('multi', [
         │  (single history entry; dirty-state machinery fires; serializer now picks up the entity)
         ▼
 clearUpload(entity.id) → toast "Uploaded"
+        │
+        ▼ (GLB only, fire-and-forget)
+captureAndUploadThumbnail(assetId, userId, cloudUrl)
+        │  see "Thumbnail capture" below — galleryServiceV2.updateAsset emits
+        │  'assetUpdated' so the gallery card swaps the cube placeholder
+        │  for the JPEG once it lands.
 ```
 
 Failure of the catch path leaves `status: 'failed'` plus the stashed `file` in the Zustand slot; the props-panel **Retry** button calls `uploadAndPlaceAsset(file, null, entity)` to re-run the same flow on the existing entity.
@@ -196,6 +202,22 @@ await document.transform(
 
 `textureCompress` uses gltf-transform's canvas-based fallback encoder (no `sharp` in browser). Quality / effort options are ignored; `targetFormat` and `resize` are honored.
 
+## Thumbnail capture (`src/editor/lib/asset-upload/captureThumbnail.js`)
+
+Same idea as `@shopify/screenshot-glb` but in the browser:
+
+1. After an upload succeeds, `uploadAndPlaceAsset` fire-and-forgets `captureAndUploadThumbnail(assetId, ownerUid, cloudUrl)`.
+2. `captureGlbThumbnail` injects a hidden iframe pointing at **`/model-viewer-screenshot.html`** with `?src=<glbUrl>&w=512&h=512`.
+3. The iframe loads `model-viewer@4.2.0` from CDN, sets `loading="eager"`, waits for `poster-dismissed` + 3× `requestAnimationFrame` (Shopify's stabilisation pattern) and calls `modelViewer.toBlob({ mimeType: 'image/png', idealAspect: true })`.
+4. The PNG (alpha preserved) is composited onto a fresh 2D canvas pre-filled with `#ffffff`, then exported as JPEG (`qualityArgument: 0.85`). Shopify gets the white background "for free" via puppeteer's DOM compositor; in the browser we substitute with this 2D canvas pass.
+5. The blob is `postMessage`'d back to the parent.
+6. Parent uploads it to `users/{ownerUid}/assets/meshes/{assetId}-thumb.jpg` via `galleryServiceV2.uploadToStorage`, then `galleryServiceV2.updateAsset(assetId, ownerUid, { thumbnailPath, thumbnailUrl })`.
+7. The resulting `assetUpdated` event propagates to `useGallery` (gallery card swaps cube → JPEG) and the editor's Zustand cache.
+
+The iframe is rendered on-screen at `position: fixed; right: 0; bottom: 0` with `opacity: 0` + `pointer-events: none` + `z-index: -1`. Off-screen positioning (`left: -9999px`) was tried first and didn't work — Chrome pauses the render loop on iframes positioned outside the parent viewport, so `poster-dismissed` never fires.
+
+The capture is best-effort: failures are logged but never surfaced to the user — the upload itself already succeeded, missing thumbnail just keeps the cube placeholder.
+
 ## UI
 
 ### Assets panel (renamed from Gallery)
@@ -275,6 +297,8 @@ All three call `uploadAndPlaceAsset(file, position?)` directly (static imports; 
 
 - `src/editor/lib/asset-upload/optimizeGlb.js` — gltf-transform pipeline.
 - `src/editor/lib/asset-upload/uploadAndPlaceAsset.js` — drop-flow orchestrator + `placeCloudAsset` (drag-from-card).
+- `src/editor/lib/asset-upload/captureThumbnail.js` — client-side thumbnail capture (iframe + post-upload write).
+- `public/model-viewer-screenshot.html` — standalone iframe page for the thumbnail capture (model-viewer + PNG → composite onto white → JPEG).
 - `src/editor/state/assetUploadStore.js` — Zustand: in-flight uploads + asset metadata cache + `galleryServiceV2` event listeners that patch / drop cache entries.
 - `src/editor/components/elements/useAssetUploadStatus.js` — hook merging in-flight slot + persistent attrs + Firestore cache; exports `STATUS_LABELS`.
 - `src/editor/components/elements/AssetUploadStatus.jsx` — props-panel status pill + Retry + Details button.
@@ -308,7 +332,3 @@ All three call `uploadAndPlaceAsset(file, position?)` directly (static imports; 
 - `public/storage.rules` — per-content-type size caps.
 - `public/functions/index.js` — exports `onAssetWritten` and `getUploadQuota`.
 - `webpack.config.js` — `fs` / `path` fallbacks; copy Draco WASM blobs to `/dist/`.
-
-# Remaining to do
-
-- [ ] create model thumbnail client side
