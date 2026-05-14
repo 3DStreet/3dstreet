@@ -325,6 +325,17 @@ export async function uploadAndPlaceAsset(file, position, existingEntity) {
 
     // Drop the in-flight slot — the hook now reads from the Firestore cache.
     clearUpload(entityId);
+
+    // Client-side thumbnail capture for GLBs. Fire-and-forget: errors are
+    // logged but never block the success toast. The 'assetUpdated' event
+    // from updateAsset will replace the gallery card placeholder with the
+    // generated JPEG when it lands.
+    if (kind === 'glb') {
+      import('./captureThumbnail.js').then(({ captureAndUploadThumbnail }) => {
+        captureAndUploadThumbnail(assetId, userId, cloudUrl);
+      });
+    }
+
     notifySuccess(`Uploaded ${file.name}`);
     return { entity, assetId, kind };
   } catch (err) {

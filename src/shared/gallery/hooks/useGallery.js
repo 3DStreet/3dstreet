@@ -234,20 +234,35 @@ const useGallery = () => {
     };
 
     // Keep the list in sync when an asset is renamed / metadata-edited
-    // from outside the panel (e.g. the mesh details modal).
+    // from outside the panel (e.g. the mesh details modal, or the
+    // post-upload thumbnail capture writing thumbnailUrl).
     const handleAssetUpdated = (event) => {
       const currentUserId = userIdRef.current;
       const { assetId, userId: eventUserId, updates } = event.detail || {};
-      if (!currentUserId || eventUserId !== currentUserId || !assetId) return;
+      if (
+        !currentUserId ||
+        eventUserId !== currentUserId ||
+        !assetId ||
+        !updates
+      ) {
+        return;
+      }
       setItems((prevItems) =>
-        prevItems.map((item) =>
-          item.id === assetId
-            ? {
-                ...item,
-                ...(updates?.name !== undefined && { name: updates.name })
-              }
-            : item
-        )
+        prevItems.map((item) => {
+          if (item.id !== assetId) return item;
+          const patched = { ...item, ...updates };
+          // objectURL is derived from thumbnailUrl with storageUrl fallback;
+          // re-derive when either side changes so the grid swaps to the
+          // newly-captured thumbnail without a refetch.
+          if (
+            updates.thumbnailUrl !== undefined ||
+            updates.storageUrl !== undefined
+          ) {
+            patched.objectURL =
+              patched.thumbnailUrl || patched.storageUrl || item.objectURL;
+          }
+          return patched;
+        })
       );
     };
 
