@@ -4,7 +4,8 @@ import {
   faPause,
   faPlay,
   faFlagCheckered,
-  faTriangleExclamation
+  faTriangleExclamation,
+  faRotateRight
 } from '@fortawesome/free-solid-svg-icons';
 import useStore from '@/store';
 import { Button } from '../elements/Button';
@@ -74,6 +75,21 @@ function SimTimer() {
     }
   }, [isPlayPaused, isPlaying]);
 
+  // Reset clears accumulated pause-time so the freshly-zeroed
+  // playStartedAt produces a wall-time of 0 on the very next tick.
+  useEffect(() => {
+    if (!isPlaying) return undefined;
+    const sceneEl = document.querySelector('a-scene');
+    if (!sceneEl) return undefined;
+    const onReset = () => {
+      pausedAtRef.current = 0;
+      pausedTotalRef.current = 0;
+      setTimes({ wall: 0, sim: 0 });
+    };
+    sceneEl.addEventListener('play-mode-reset', onReset);
+    return () => sceneEl.removeEventListener('play-mode-reset', onReset);
+  }, [isPlaying]);
+
   const drift = times.wall - times.sim;
   const desynced = drift > DRIFT_WARN_MS && !isPlayPaused;
   const isFinish = playOutcome === 'finish';
@@ -128,6 +144,10 @@ function Toolbar() {
 
   if (isInspectorEnabled) return null;
 
+  const handleReset = () => {
+    document.querySelector('a-scene')?.systems?.['play-mode']?.reset();
+  };
+
   const handleStop = () => {
     // setIsInspectorEnabled(true) already calls play-mode.stop() so
     // play-mode subscribers (drive-mode, future traffic) tear down
@@ -156,6 +176,14 @@ function Toolbar() {
     <div id="toolbar" data-inspector="false" className={styles.toolbarRoot}>
       <div className={`${primaryStyles.wrapper} ${styles.toolbarRow}`}>
         <SimTimer />
+        <Button
+          onClick={handleReset}
+          variant="toolbtn"
+          leadingIcon={<AwesomeIcon icon={faRotateRight} size={14} />}
+          title="Reset — restart the simulation from t=0 with objects at spawn"
+        >
+          Reset
+        </Button>
         <Button
           onClick={handleStop}
           variant="toolbtn"

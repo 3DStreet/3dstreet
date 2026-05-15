@@ -531,7 +531,12 @@ AFRAME.registerComponent('play-mode-vehicle', {
       left: false,
       right: false,
       brake: false,
-      reset: false
+      // Analog gamepad overrides. When non-zero, take precedence over
+      // the boolean keys above. Set by play-mode.pollGamepad() each
+      // tick and consumed in driveStep().
+      throttle: 0,
+      steerAxis: 0,
+      padBrake: false
     };
     this.keymap = {
       KeyW: 'forward',
@@ -542,8 +547,7 @@ AFRAME.registerComponent('play-mode-vehicle', {
       ArrowLeft: 'left',
       KeyD: 'right',
       ArrowRight: 'right',
-      Space: 'brake',
-      KeyR: 'reset'
+      Space: 'brake'
     };
     this.onKeyDown = (e) => {
       if (this.keymap[e.code]) {
@@ -552,6 +556,12 @@ AFRAME.registerComponent('play-mode-vehicle', {
       } else if (e.code === 'KeyC') {
         this.cycleCameraMode();
         e.preventDefault();
+      } else if (e.code === 'KeyR') {
+        // Route R through the scene-level reset so sim/wall clocks,
+        // race-target, collision markers, and the chassis all reset
+        // together — matching the toolbar Reset button and gamepad Y.
+        this.el.sceneEl.systems['play-mode']?.reset();
+        e.preventDefault();
       }
     };
     this.onKeyUp = (e) => {
@@ -559,6 +569,20 @@ AFRAME.registerComponent('play-mode-vehicle', {
     };
     window.addEventListener('keydown', this.onKeyDown);
     window.addEventListener('keyup', this.onKeyUp);
+
+    // Soft restart from the toolbar Reset button (or gamepad Y).
+    // Snap chassis to spawn pose and zero velocities — same effect as
+    // the R-key path in driveStep, but routed off a scene event so
+    // multiple play subsystems (race-target, future traffic) can
+    // respond to the same signal.
+    this.onPlayModeReset = () => {
+      if (!this.chassisBody) return;
+      this.chassisBody.setTranslation(this.data.spawnPosition, true);
+      this.chassisBody.setRotation(this.spawnQuat, true);
+      this.chassisBody.setLinvel({ x: 0, y: 0, z: 0 }, true);
+      this.chassisBody.setAngvel({ x: 0, y: 0, z: 0 }, true);
+    };
+    this.el.sceneEl.addEventListener('play-mode-reset', this.onPlayModeReset);
 
     // Boot physics, then build the vehicle.
     await this.system.activate();
@@ -788,29 +812,37 @@ AFRAME.registerComponent('play-mode-vehicle', {
     const data = this.data;
     const i = this.input;
 
-    const engineForce =
-      (i.forward ? 1 : 0) * data.accelerateForce - (i.back ? 1 : 0);
+    // Analog throttle (gamepad RT - LT) preempts the keyboard W/S boolean
+    // pair when present. Forward arm scales by accelerateForce so the
+    // peak matches a held W; reverse arm stays at unit magnitude to
+    // preserve the historic keyboard-S behavior (a soft reverse, not a
+    // mirrored full-power back-drive).
+    let engineForce;
+    if (i.throttle !== 0) {
+      engineForce =
+        i.throttle > 0 ? i.throttle * data.accelerateForce : i.throttle;
+    } else {
+      engineForce =
+        (i.forward ? 1 : 0) * data.accelerateForce - (i.back ? 1 : 0);
+    }
     for (const k of this._drivenIndices) v.setWheelEngineForce(k, engineForce);
 
-    const brake = (i.brake ? 1 : 0) * data.brakeForce;
+    const brake = (i.brake || i.padBrake ? 1 : 0) * data.brakeForce;
     // Brakes apply to every wheel regardless of layout.
     const wheelCount = v.numWheels ? v.numWheels() : this.wheelOuterEls.length;
     for (let k = 0; k < wheelCount; k++) v.setWheelBrake(k, brake);
 
-    const steerDir = (i.left ? 1 : 0) - (i.right ? 1 : 0);
+    // Analog steer (gamepad left-stick X) preempts A/D. Negated so
+    // stick-right (positive axis) maps to in-game right (negative
+    // steerDir, matching `i.right`).
+    const steerDir =
+      i.steerAxis !== 0 ? -i.steerAxis : (i.left ? 1 : 0) - (i.right ? 1 : 0);
     // All steered wheels share the same steering state — read from the
     // first one as the reference for the lerp.
     const refIdx = this._steeredIndices[0] ?? 0;
     const cur = v.wheelSteering(refIdx) || 0;
     const steer = THREE.MathUtils.lerp(cur, data.steerAngle * steerDir, 0.5);
     for (const k of this._steeredIndices) v.setWheelSteering(k, steer);
-
-    if (i.reset && this.chassisBody) {
-      this.chassisBody.setTranslation(this.data.spawnPosition, true);
-      this.chassisBody.setRotation(this.spawnQuat, true);
-      this.chassisBody.setLinvel({ x: 0, y: 0, z: 0 }, true);
-      this.chassisBody.setAngvel({ x: 0, y: 0, z: 0 }, true);
-    }
 
     v.updateVehicle(this.system.timestep);
   },
@@ -1024,6 +1056,12 @@ AFRAME.registerComponent('play-mode-vehicle', {
   remove: function () {
     window.removeEventListener('keydown', this.onKeyDown);
     window.removeEventListener('keyup', this.onKeyUp);
+    if (this.onPlayModeReset) {
+      this.el.sceneEl.removeEventListener(
+        'play-mode-reset',
+        this.onPlayModeReset
+      );
+    }
     if (this.system && this._afterStep) {
       this.system.offAfterStep(this._afterStep);
     }

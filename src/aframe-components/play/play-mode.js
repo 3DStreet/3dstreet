@@ -44,6 +44,9 @@ AFRAME.registerSystem('play-mode', {
     this.onRaceFinish = this.onRaceFinish.bind(this);
     this.sceneEl.addEventListener('play-mode-collision', this.onCollision);
     this.sceneEl.addEventListener('race-finish', this.onRaceFinish);
+    // Edge-triggered gamepad button state. Index = button index in the
+    // standard Gamepad mapping; value = pressed-last-tick boolean.
+    this._padPrev = {};
   },
 
   formatSimTime: function (ms) {
@@ -262,8 +265,107 @@ AFRAME.registerSystem('play-mode', {
     else this.pause();
   },
 
+  /**
+   * Restart the current play session in-place: zero both clocks,
+   * clear outcome/marker state, and tell subscribers to put their
+   * actors back at spawn. Lighter than stop()+start() — physics WASM,
+   * vehicle controller, and traffic records stay alive; only positions
+   * and the simulation clock reset.
+   */
+  reset: function () {
+    if (!this.isPlaying) return;
+    if (this.isPaused) {
+      this.isPaused = false;
+      useStore.setState({ isPlayPaused: false });
+    }
+    this.playStartedAt = performance.now();
+    const timer = this.sceneEl.components['scene-timer'];
+    if (timer) {
+      timer.elapsedTime = 0;
+      timer.startTime = null;
+      timer.resetSimulation();
+    }
+    // Strip collision markers from prior attempts so the scene reads
+    // fresh. They re-spawn naturally on the next crash.
+    this.sceneEl.querySelectorAll('[collision-marker]').forEach((el) => {
+      if (el.parentNode) el.parentNode.removeChild(el);
+    });
+    if (this._crashFlashTimeout) {
+      clearTimeout(this._crashFlashTimeout);
+      this._crashFlashTimeout = null;
+    }
+    useStore.setState({ playOutcome: null, playOutcomeTimeMs: 0 });
+    this.sceneEl.emit('timer-start');
+    this.sceneEl.emit('play-mode-reset', {}, false);
+  },
+
+  /**
+   * Poll connected gamepads for system-level buttons (Start = pause
+   * toggle, Back = stop, Y = reset, X = camera cycle) and forward the
+   * analog/continuous driving inputs to the active player car. Called
+   * each tick while in play mode.
+   *
+   * Edge-triggered for system buttons so a single press doesn't fire
+   * 60× per second. Driving inputs are level-sampled — they need the
+   * current value every tick.
+   */
+  pollGamepad: function () {
+    const pads = navigator.getGamepads ? navigator.getGamepads() : [];
+    let pad = null;
+    for (const p of pads) {
+      if (p && p.connected) {
+        pad = p;
+        break;
+      }
+    }
+    if (!pad) return;
+    const prev = this._padPrev;
+    const edge = (idx) => {
+      const cur = !!(pad.buttons[idx] && pad.buttons[idx].pressed);
+      const fired = cur && !prev[idx];
+      prev[idx] = cur;
+      return fired;
+    };
+    // Standard Gamepad mapping: 8=Back/View, 9=Start/Menu, 3=Y, 2=X.
+    if (edge(9)) this.togglePause();
+    if (edge(8)) {
+      // Match the toolbar Stop: route through the React store so any
+      // inspector-side hooks (e.g. cursor-teleport restoration) run.
+      useStore.getState().setIsInspectorEnabled(true);
+      // Reset edge state now since stop() won't be re-entered to do it.
+      this._padPrev = {};
+      return;
+    }
+    if (edge(3)) this.reset();
+    const car = document.getElementById('play-mode-player-car');
+    const pmv = car && car.components && car.components['play-mode-vehicle'];
+    if (edge(2) && pmv) pmv.cycleCameraMode();
+    if (pmv && pmv.input) {
+      // 6=LT, 7=RT (analog, value 0..1). Combined into a signed throttle
+      // so the existing keyboard fallback can be left intact when both
+      // triggers rest at zero.
+      const rt = pad.buttons[7] ? pad.buttons[7].value || 0 : 0;
+      const lt = pad.buttons[6] ? pad.buttons[6].value || 0 : 0;
+      const throttle = rt - lt;
+      pmv.input.throttle = Math.abs(throttle) > 0.05 ? throttle : 0;
+      // 1 = B (brake). Level-sampled into a dedicated pad-brake slot so
+      // releasing the button clears it without fighting the keyboard
+      // Space handler (which owns `brake`).
+      pmv.input.padBrake = !!(pad.buttons[1] && pad.buttons[1].pressed);
+      // Left stick X (axis 0). Standard mapping: -1 = left, +1 = right.
+      const sx = pad.axes[0] || 0;
+      pmv.input.steerAxis = Math.abs(sx) > 0.1 ? sx : 0;
+    }
+  },
+
   tick: function (time, deltaMs) {
-    if (!this.isPlaying || this.isPaused) return;
+    if (!this.isPlaying || this.isPaused) {
+      // Still poll for Start/Back so the controller can unpause/stop
+      // even while paused. Reset/X/driving inputs are gated below.
+      if (this.isPlaying) this.pollGamepad();
+      return;
+    }
+    this.pollGamepad();
     // simulationTime ownership:
     //   - When play-mode-physics is active, IT advances simulationTime
     //     by exactly `timestep` per completed sub-step. On slow CPUs

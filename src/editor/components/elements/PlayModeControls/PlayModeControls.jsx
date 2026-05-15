@@ -108,6 +108,20 @@ export const PlayModeControls = () => {
     }
   }, [isPlayPaused, isPlaying]);
 
+  // Re-anchor on toolbar Reset so wall time visually snaps to 0.
+  useEffect(() => {
+    if (!isPlaying) return undefined;
+    const sceneEl = document.querySelector('a-scene');
+    if (!sceneEl) return undefined;
+    const onReset = () => {
+      playStartRef.current = performance.now();
+      pausedAtRef.current = 0;
+      setTimes({ wall: 0, sim: 0 });
+    };
+    sceneEl.addEventListener('play-mode-reset', onReset);
+    return () => sceneEl.removeEventListener('play-mode-reset', onReset);
+  }, [isPlaying]);
+
   if (!isPlaying || !data) return null;
 
   const drift = times.wall - times.sim;
@@ -167,6 +181,10 @@ export const PlayModeControls = () => {
       </div>
       <p className={styles.hint}>
         WASD drive · Space brake · R reset · C camera
+      </p>
+      <p className={styles.hint}>
+        Gamepad: RT/LT throttle · B brake · stick steer · Y reset · X camera ·
+        Start pause · Back stop
       </p>
     </div>
   );

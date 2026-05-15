@@ -29,6 +29,7 @@ AFRAME.registerComponent('race-target', {
     this._buildVisual();
     this._reset = this._reset.bind(this);
     this.el.sceneEl.addEventListener('play-mode-start', this._reset);
+    this.el.sceneEl.addEventListener('play-mode-reset', this._reset);
     this.crossed = false;
   },
 
@@ -48,6 +49,7 @@ AFRAME.registerComponent('race-target', {
 
   remove: function () {
     this.el.sceneEl.removeEventListener('play-mode-start', this._reset);
+    this.el.sceneEl.removeEventListener('play-mode-reset', this._reset);
   },
 
   _reset: function () {
