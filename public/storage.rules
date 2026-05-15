@@ -23,8 +23,9 @@ service firebase.storage {
       // Users can read their own asset files
       allow read: if request.auth != null && request.auth.uid == userId;
 
-      // Delete: owner-only, no contentType check (request.resource is null on delete).
-      allow delete: if request.auth != null && request.auth.uid == userId;
+      // Delete: disallowed for clients. Soft delete flips `deleted: true` on
+      // the Firestore doc; actual byte purge is done by a garbage-collector
+      // Cloud Function via Admin SDK (which bypasses these rules).
 
       // Create/update: owner-only with per-type size caps (decimal MB, base 1000):
       //   image/* : 10 MB

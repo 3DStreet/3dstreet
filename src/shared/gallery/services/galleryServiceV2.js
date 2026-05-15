@@ -18,7 +18,6 @@ import {
   getDoc,
   getDocs,
   updateDoc,
-  deleteDoc,
   query,
   where,
   orderBy,
@@ -27,12 +26,7 @@ import {
   onSnapshot,
   serverTimestamp
 } from 'firebase/firestore';
-import {
-  ref,
-  uploadBytesResumable,
-  getDownloadURL,
-  deleteObject
-} from 'firebase/storage';
+import { ref, uploadBytesResumable, getDownloadURL } from 'firebase/storage';
 import { db, storage } from '@shared/services/firebase.js';
 import {
   ASSET_TYPES,
@@ -706,42 +700,35 @@ class GalleryServiceV2 {
   }
 
   /**
-   * Delete asset (soft delete by default)
+   * Soft-delete asset. Hard delete (byte purge + doc removal) is performed by
+   * a garbage-collector Cloud Function via Admin SDK; clients can no longer
+   * hard-delete because storage/firestore rules disallow it.
    * @param {string} assetId - Asset ID
    * @param {string} userId - User ID
-   * @param {boolean} hard - Permanent delete
+   * @param {boolean} [hard=false] - Deprecated; passing `true` throws.
    * @returns {Promise<void>}
    */
   async deleteAsset(assetId, userId, hard = false) {
+    if (hard) {
+      throw new Error(
+        'Hard delete is not allowed from clients. The garbage-collector Cloud Function purges soft-deleted assets.'
+      );
+    }
     try {
       const assetRef = doc(db, 'users', userId, 'assets', assetId);
 
-      // Get asset
+      // Get asset (for the dispatched event's `size` field)
       const assetSnap = await getDoc(assetRef);
       if (!assetSnap.exists()) {
         throw new Error('Asset not found');
       }
       const asset = assetSnap.data();
 
-      if (hard) {
-        // Delete from storage
-        if (asset.storagePath) {
-          await deleteObject(ref(storage, asset.storagePath));
-        }
-        if (asset.thumbnailPath) {
-          await deleteObject(ref(storage, asset.thumbnailPath));
-        }
-
-        // Delete Firestore document
-        await deleteDoc(assetRef);
-      } else {
-        // Soft delete
-        await updateDoc(assetRef, {
-          deleted: true,
-          deletedAt: serverTimestamp(),
-          updatedAt: serverTimestamp()
-        });
-      }
+      await updateDoc(assetRef, {
+        deleted: true,
+        deletedAt: serverTimestamp(),
+        updatedAt: serverTimestamp()
+      });
 
       // Include `size` in the event so listeners (e.g. the storage meter)
       // can update optimistically before the Cloud Function trigger
