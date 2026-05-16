@@ -1,17 +1,17 @@
 /**
- * GalleryModal Component - Detail view modal
+ * AssetsModal Component - Detail view modal
  * Uses Firebase Storage URLs with browser HTTP caching
  */
 
 import { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { TrashIcon } from '@shared/icons';
-import styles from './Gallery.module.scss';
+import styles from './Assets.module.scss';
 import { REPLICATE_MODELS } from '@shared/constants/replicateModels.js';
 
 const METADATA_VISIBILITY_KEY = 'galleryModalMetadataVisible';
 
-const GalleryModal = ({
+const AssetsModal = ({
   item,
   currentIndex,
   totalItems,
@@ -384,4 +384,4 @@ const GalleryModal = ({
   );
 };
 
-export default GalleryModal;
+export default AssetsModal;

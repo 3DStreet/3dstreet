@@ -1,5 +1,5 @@
 /**
- * Gallery Service V2 - Firestore + Firebase Storage
+ * Assets Service V2 - Firestore + Firebase Storage
  *
  * This service uses Firestore as the source of truth for gallery assets,
  * with Firebase Storage for file storage. Browser HTTP cache handles
@@ -49,18 +49,18 @@ function generateUUID() {
 const galleryEvents = new EventTarget();
 
 /**
- * Gallery Service V2 Class
+ * Assets Service V2 Class
  *
- * @fires GalleryServiceV2#assetAdded - Dispatched immediately after asset is added
- * @fires GalleryServiceV2#assetAddedReload - Dispatched 1.5s after add for fallback reload
- * @fires GalleryServiceV2#assetUpdated - Dispatched when asset metadata is updated
- * @fires GalleryServiceV2#assetDeleted - Dispatched when asset is deleted
- * @fires GalleryServiceV2#uploadProgress - Dispatched during file upload with progress
- * @fires GalleryServiceV2#migrationComplete - Dispatched when V1→V2 migration completes
+ * @fires AssetsServiceV2#assetAdded - Dispatched immediately after asset is added
+ * @fires AssetsServiceV2#assetAddedReload - Dispatched 1.5s after add for fallback reload
+ * @fires AssetsServiceV2#assetUpdated - Dispatched when asset metadata is updated
+ * @fires AssetsServiceV2#assetDeleted - Dispatched when asset is deleted
+ * @fires AssetsServiceV2#uploadProgress - Dispatched during file upload with progress
+ * @fires AssetsServiceV2#migrationComplete - Dispatched when V1→V2 migration completes
  */
 
 /**
- * @event GalleryServiceV2#assetAdded
+ * @event AssetsServiceV2#assetAdded
  * @type {CustomEvent}
  * @property {Object} detail - Event detail
  * @property {string} detail.assetId - The ID of the added asset
@@ -69,7 +69,7 @@ const galleryEvents = new EventTarget();
  */
 
 /**
- * @event GalleryServiceV2#assetAddedReload
+ * @event AssetsServiceV2#assetAddedReload
  * @type {CustomEvent}
  * @property {Object} detail - Event detail
  * @property {string} detail.assetId - The ID of the added asset
@@ -77,14 +77,14 @@ const galleryEvents = new EventTarget();
  */
 
 /**
- * @event GalleryServiceV2#assetUpdated
+ * @event AssetsServiceV2#assetUpdated
  * @type {CustomEvent}
  * @property {Object} detail - Event detail
  * @property {string} detail.assetId - The ID of the updated asset
  */
 
 /**
- * @event GalleryServiceV2#assetDeleted
+ * @event AssetsServiceV2#assetDeleted
  * @type {CustomEvent}
  * @property {Object} detail - Event detail
  * @property {string} detail.assetId - The ID of the deleted asset
@@ -92,14 +92,14 @@ const galleryEvents = new EventTarget();
  */
 
 /**
- * @event GalleryServiceV2#uploadProgress
+ * @event AssetsServiceV2#uploadProgress
  * @type {CustomEvent}
  * @property {Object} detail - Event detail
  * @property {string} detail.assetId - The ID of the asset being uploaded
  * @property {number} detail.progress - Upload progress percentage (0-100)
  */
 
-class GalleryServiceV2 {
+class AssetsServiceV2 {
   constructor() {
     this.events = galleryEvents;
     this.unsubscribe = null; // Real-time listener
@@ -285,12 +285,12 @@ class GalleryServiceV2 {
       //
       // We use 3 events due to different React architectures:
       // 1. assetAdded (immediate) - Optimistic update with full asset data.
-      //    Works in editor where Gallery shares the same module instance.
+      //    Works in editor where Assets shares the same module instance.
       // 2. assetAddedReload (1.5s) - Fallback that triggers Firestore reload.
       //    Catches cases where optimistic update fails during re-renders.
-      // 3. gallery:refresh (2.5s) - Window event for generator app.
+      // 3. assets:refresh (2.5s) - Window event for generator app.
       //    Generator uses React islands (separate createRoot calls), so the
-      //    EventTarget instance may differ from what Gallery listens to.
+      //    EventTarget instance may differ from what Assets listens to.
       //    Window events bypass this module isolation issue.
       //
       // TODO: Remove fallbacks #2 and #3 when generator is fully converted to React
@@ -316,7 +316,7 @@ class GalleryServiceV2 {
 
       // Event #3: Window event fallback for generator (bypasses EventTarget issues)
       setTimeout(() => {
-        window.dispatchEvent(new Event('gallery:refresh'));
+        window.dispatchEvent(new Event('assets:refresh'));
       }, 2500);
 
       return assetId;
@@ -858,6 +858,6 @@ class GalleryServiceV2 {
 }
 
 // Create singleton instance
-const galleryServiceV2 = new GalleryServiceV2();
+const assetsService = new AssetsServiceV2();
 
-export default galleryServiceV2;
+export default assetsService;

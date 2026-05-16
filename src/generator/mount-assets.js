@@ -1,15 +1,15 @@
 /**
- * Mount Gallery - Renders React gallery component
+ * Mount Assets - Renders the shared <Assets> sidebar into the generator.
  */
 
 import { createRoot } from 'react-dom/client';
-import { Gallery, galleryServiceV2 } from '@shared/gallery';
+import { Assets, assetsService } from '@shared/assets';
+import { signInWithGoogle } from '@shared/auth/api/auth';
+import { auth } from '@shared/services/firebase';
+import posthog from 'posthog-js';
 import FluxUI from './main.js';
 import ModifyTab from './modify.js';
 import VideoTab from './video.js';
-
-// Use V2 (Firestore + Firebase Storage) exclusively
-const galleryService = galleryServiceV2;
 
 /**
  * Helper to get Data URI from Blob or URL
@@ -109,32 +109,36 @@ const handleUseForVideo = async (item) => {
   }
 };
 
-/**
- * Mount the React gallery component
- * This replaces the vanilla JS gallery implementation
- */
-export const mountGallery = async () => {
-  // Create a new mount point for the gallery
-  const galleryRoot = document.createElement('div');
-  galleryRoot.id = 'gallery-root';
-  document.body.appendChild(galleryRoot);
+const handleSignIn = () =>
+  signInWithGoogle(
+    auth,
+    (eventName, properties) => posthog.capture(eventName, properties),
+    (type, message) => FluxUI.showNotification(message, type)
+  );
 
-  // Mount the React gallery component (uses window.authState from mount-auth.js)
-  const root = createRoot(galleryRoot);
+/**
+ * Mount the React Assets sidebar (replaces the vanilla JS gallery).
+ */
+export const mountAssets = async () => {
+  const assetsRoot = document.createElement('div');
+  assetsRoot.id = 'assets-root';
+  document.body.appendChild(assetsRoot);
+
+  // Mount the React component (uses window.authState from mount-auth.js)
+  const root = createRoot(assetsRoot);
   root.render(
-    <Gallery
+    <Assets
       mode="sidebar"
       onCopyParams={handleCopyParams}
       onUseForGenerator={handleUseForGenerator}
       onUseForVideo={handleUseForVideo}
       onNotification={(message, type) => FluxUI.showNotification(message, type)}
+      onSignIn={handleSignIn}
     />
   );
 };
 
-/**
- * Expose gallery service for saving images
- */
-export { galleryService };
+// Re-export so vanilla JS callers can still import via this module.
+export { assetsService };
 
-export default mountGallery;
+export default mountAssets;

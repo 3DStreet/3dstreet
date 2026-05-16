@@ -79,7 +79,7 @@ export default function useAssetUploadStatus(entity) {
   const originalFilename =
     remoteData?.originalFilename || upload?.originalFilename || null;
   // Editable asset display name (defaults to originalFilename basename in
-  // galleryServiceV2.addAsset). Older docs without the field fall back to
+  // assetsService.addAsset). Older docs without the field fall back to
   // originalFilename. While the Firestore fetch is in flight we use the
   // in-flight slot's originalFilename so the layer panel renders something
   // reasonable immediately.

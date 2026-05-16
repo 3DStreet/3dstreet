@@ -7,7 +7,7 @@
   right: 0;
   top: 80px;
   height: calc(100vh - 98px);
-  width: 280px; /* Default width */
+  width: 348px; /* Matches editor right panel width */
   background-color: #1f2937; /* gray-800 - dark background */
   color: #f3f4f6; /* gray-100 - light text */
   border-left: 1px solid #374151; /* gray-700 */
@@ -950,7 +950,7 @@
 /* Mobile Adjustments */
 @media (max-width: 640px) {
   .sidebar {
-    width: 240px; /* narrow sidebar on mobile */
+    width: 100vw; /* full-width on phones */
   }
 
   .content {

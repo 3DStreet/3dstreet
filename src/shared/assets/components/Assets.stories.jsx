@@ -1,11 +1,11 @@
 /**
- * Gallery Storybook Stories
+ * Assets Storybook Stories
  */
 
 import React from 'react';
-import GalleryItem from './GalleryItem';
-import GalleryGrid from './GalleryGrid';
-import GalleryModal from './GalleryModal';
+import AssetsItem from './AssetsItem';
+import AssetsGrid from './AssetsGrid';
+import AssetsModal from './AssetsModal';
 
 // Mock gallery item data
 const createMockItem = (id, overrides = {}) => ({
@@ -31,7 +31,7 @@ const createMockItem = (id, overrides = {}) => ({
 const mockItems = Array.from({ length: 48 }, (_, i) => createMockItem(i));
 
 export default {
-  title: 'Shared/Gallery',
+  title: 'Shared/Assets',
   parameters: {
     layout: 'fullscreen',
     backgrounds: {
@@ -45,11 +45,11 @@ export default {
   tags: ['autodocs']
 };
 
-// GalleryItem Stories
+// AssetsItem Stories
 export const SingleItem = {
   render: (args) => (
     <div style={{ width: '300px', padding: '20px' }}>
-      <GalleryItem {...args} />
+      <AssetsItem {...args} />
     </div>
   ),
   args: {
@@ -68,11 +68,11 @@ export const SingleItem = {
   }
 };
 
-// GalleryGrid Stories
+// AssetsGrid Stories
 export const GridView = {
   render: (args) => (
     <div style={{ height: '600px', display: 'flex', flexDirection: 'column' }}>
-      <GalleryGrid {...args} />
+      <AssetsGrid {...args} />
     </div>
   ),
   args: {
@@ -98,7 +98,7 @@ export const GridView = {
 export const GridWithFewItems = {
   render: (args) => (
     <div style={{ height: '600px', display: 'flex', flexDirection: 'column' }}>
-      <GalleryGrid {...args} />
+      <AssetsGrid {...args} />
     </div>
   ),
   args: {
@@ -124,7 +124,7 @@ export const GridWithFewItems = {
 export const EmptyGrid = {
   render: (args) => (
     <div style={{ height: '600px', display: 'flex', flexDirection: 'column' }}>
-      <GalleryGrid {...args} />
+      <AssetsGrid {...args} />
     </div>
   ),
   args: {
@@ -150,7 +150,7 @@ export const EmptyGrid = {
 export const GridPage2 = {
   render: (args) => (
     <div style={{ height: '600px', display: 'flex', flexDirection: 'column' }}>
-      <GalleryGrid {...args} />
+      <AssetsGrid {...args} />
     </div>
   ),
   args: {
@@ -176,7 +176,7 @@ export const GridPage2 = {
 export const GridSmallPageSize = {
   render: (args) => (
     <div style={{ height: '600px', display: 'flex', flexDirection: 'column' }}>
-      <GalleryGrid {...args} />
+      <AssetsGrid {...args} />
     </div>
   ),
   args: {
@@ -199,11 +199,11 @@ export const GridSmallPageSize = {
   }
 };
 
-// GalleryModal Stories
+// AssetsModal Stories
 export const ModalWithFullMetadata = {
   render: (args) => (
     <div style={{ position: 'relative', height: '100vh' }}>
-      <GalleryModal {...args} />
+      <AssetsModal {...args} />
     </div>
   ),
   args: {
@@ -231,7 +231,7 @@ export const ModalWithFullMetadata = {
 export const ModalMinimalMetadata = {
   render: (args) => (
     <div style={{ position: 'relative', height: '100vh' }}>
-      <GalleryModal {...args} />
+      <AssetsModal {...args} />
     </div>
   ),
   args: {
@@ -256,7 +256,7 @@ export const ModalMinimalMetadata = {
 export const ModalScreenshotType = {
   render: (args) => (
     <div style={{ position: 'relative', height: '100vh' }}>
-      <GalleryModal {...args} />
+      <AssetsModal {...args} />
     </div>
   ),
   args: {
@@ -291,7 +291,7 @@ export const ModalScreenshotType = {
 export const ModalJPEGFormat = {
   render: (args) => (
     <div style={{ position: 'relative', height: '100vh' }}>
-      <GalleryModal {...args} />
+      <AssetsModal {...args} />
     </div>
   ),
   args: {
@@ -349,7 +349,7 @@ const InteractiveDemoComponent = () => {
         }}
       >
         <h2 style={{ margin: 0, fontSize: '18px', fontWeight: 600 }}>
-          Interactive Gallery Demo
+          Interactive Assets Demo
         </h2>
         <p style={{ margin: '8px 0 0', fontSize: '14px', color: '#6b7280' }}>
           {items.length} items total
@@ -357,7 +357,7 @@ const InteractiveDemoComponent = () => {
       </div>
 
       <div style={{ flex: 1, overflow: 'hidden' }}>
-        <GalleryGrid
+        <AssetsGrid
           items={items}
           page={page}
           pageSize={pageSize}
@@ -371,7 +371,7 @@ const InteractiveDemoComponent = () => {
       </div>
 
       {selectedItem && (
-        <GalleryModal
+        <AssetsModal
           item={selectedItem}
           onClose={() => setSelectedItem(null)}
           onDownload={handleDownload}

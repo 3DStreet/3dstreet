@@ -3,7 +3,7 @@ import PropTypes from 'prop-types';
 import useAssetUploadStatus, { STATUS_LABELS } from './useAssetUploadStatus';
 import useAssetUploadStore from '@/editor/state/assetUploadStore.js';
 import { uploadAndPlaceAsset } from '@/editor/lib/asset-upload/uploadAndPlaceAsset.js';
-import { MeshDetailsModal, formatBytes } from '@shared/gallery';
+import { MeshDetailsModal, formatBytes } from '@shared/assets';
 
 const AssetUploadStatus = ({ entity }) => {
   const state = useAssetUploadStatus(entity);

@@ -1,10 +1,10 @@
 /**
- * GalleryItem Component - Individual thumbnail card
+ * AssetsItem Component - Individual thumbnail card
  * Uses Firebase Storage URLs with browser HTTP caching
  */
 
 import { DownloadIcon, TrashIcon } from '@shared/icons';
-import styles from './Gallery.module.scss';
+import styles from './Assets.module.scss';
 
 // 1×1 transparent gif used to suppress the default browser drag ghost so the
 // 3D preview at the cursor isn't fighting with a card thumbnail floating along.
@@ -30,7 +30,7 @@ const MeshPlaceholder = () => (
   </div>
 );
 
-const GalleryItem = ({
+const AssetsItem = ({
   item,
   onItemClick,
   onDelete,
@@ -70,6 +70,8 @@ const GalleryItem = ({
 
   const handleDragStart = (e) => {
     if (!isPlaceable) return;
+    // Receiver: src/editor/components/elements/AddLayerPanel/AddLayerPanel.component.jsx
+    // (drop handler reads ASSET_CARD_MIME and calls placeCloudAsset).
     e.dataTransfer.setData(
       'application/x-3dstreet-asset',
       JSON.stringify({
@@ -146,4 +148,4 @@ const GalleryItem = ({
   );
 };
 
-export default GalleryItem;
+export default AssetsItem;

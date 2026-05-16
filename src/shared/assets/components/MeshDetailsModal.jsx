@@ -4,7 +4,7 @@ import * as Tooltip from '@radix-ui/react-tooltip';
 import Modal from '@shared/components/Modal/Modal.jsx';
 import { auth } from '@shared/services/firebase.js';
 import { DownloadIcon, TrashIcon } from '@shared/icons';
-import galleryServiceV2 from '../services/galleryServiceV2.js';
+import assetsService from '../services/assetsService.js';
 import { formatBytes, formatDate } from '../utils.js';
 import styles from './MeshDetailsModal.module.scss';
 
@@ -40,7 +40,7 @@ const MeshDetailsModal = ({ assetId, ownerUid, onClose, onPlace }) => {
   useEffect(() => {
     let cancelled = false;
     setLoading(true);
-    galleryServiceV2
+    assetsService
       .getAsset(assetId, ownerUid)
       .then((doc) => {
         if (cancelled) return;
@@ -70,7 +70,7 @@ const MeshDetailsModal = ({ assetId, ownerUid, onClose, onPlace }) => {
     setError(null);
     try {
       const trimmed = name.trim();
-      await galleryServiceV2.updateAsset(assetId, ownerUid, { name: trimmed });
+      await assetsService.updateAsset(assetId, ownerUid, { name: trimmed });
       setData((prev) => (prev ? { ...prev, name: trimmed } : prev));
       setSavedName(trimmed);
     } catch (err) {
@@ -97,7 +97,7 @@ const MeshDetailsModal = ({ assetId, ownerUid, onClose, onPlace }) => {
       return;
     }
     try {
-      await galleryServiceV2.deleteAsset(assetId, ownerUid, false);
+      await assetsService.deleteAsset(assetId, ownerUid, false);
       onClose();
     } catch (err) {
       console.error('[MeshDetailsModal] delete failed', err);

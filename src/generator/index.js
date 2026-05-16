@@ -22,7 +22,7 @@ import { auth } from '@shared/services/firebase.js';
 import { mountAuthUI, mountTokenDisplay } from './mount-auth.jsx';
 import { mountAppSwitcher } from './mount-app-switcher.jsx';
 import { mountPurchaseModal } from './mount-purchase-modal.jsx';
-import { mountGallery } from './mount-gallery.js';
+import { mountAssets } from './mount-assets.js';
 
 // Import all modules
 import FluxUI from './main.js';
@@ -53,8 +53,8 @@ document.addEventListener('DOMContentLoaded', async () => {
   // Initialize main UI
   FluxUI.init();
 
-  // Mount Gallery (React component)
-  await mountGallery();
+  // Mount Assets sidebar (React component)
+  await mountAssets();
 
   // Initialize tabs
   ModifyTab.init();

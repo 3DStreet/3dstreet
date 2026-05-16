@@ -1,13 +1,12 @@
 /**
- * Mount Gallery - Renders React gallery component for Bollard Buddy
- * Saves AR screenshots to cloud gallery when photos are captured
+ * Mount Assets - Renders the shared <Assets> sidebar for Bollard Buddy.
+ * Also saves AR screenshots to the cloud asset library when photos are captured.
  */
 
 import { createRoot } from 'react-dom/client';
-import { Gallery, galleryServiceV2 } from '@shared/gallery';
-
-// Use V2 (Firestore + Firebase Storage) exclusively
-const galleryService = galleryServiceV2;
+import { Assets, assetsService } from '@shared/assets';
+import { signInWithGoogle } from '@shared/auth/api/auth';
+import { auth } from '@shared/services/firebase';
 
 /**
  * Convert Blob to data URI
@@ -77,7 +76,7 @@ const saveToGallery = async (blob) => {
   try {
     const dataUri = await blobToDataUri(blob);
 
-    await galleryService.addAsset(
+    await assetsService.addAsset(
       dataUri,
       {
         model: 'Bollard Buddy',
@@ -97,25 +96,26 @@ const saveToGallery = async (blob) => {
   }
 };
 
-/**
- * Mount the React gallery component
- */
-export const mountGallery = async () => {
-  // Create a new mount point for the gallery
-  const galleryRoot = document.createElement('div');
-  galleryRoot.id = 'gallery-root';
-  document.body.appendChild(galleryRoot);
+const handleSignIn = () =>
+  signInWithGoogle(auth, undefined, (type, message) =>
+    showNotification(message, type)
+  );
 
-  // Mount the React gallery component (uses window.authState from mount-auth.js)
-  const root = createRoot(galleryRoot);
+/**
+ * Mount the React Assets sidebar.
+ */
+export const mountAssets = async () => {
+  const assetsRoot = document.createElement('div');
+  assetsRoot.id = 'assets-root';
+  document.body.appendChild(assetsRoot);
+
+  // Mount the React component (uses window.authState from mount-auth.js)
+  const root = createRoot(assetsRoot);
   root.render(
-    <Gallery
+    <Assets
       mode="sidebar"
       onNotification={(message, type) => showNotification(message, type)}
-      // No generator-specific handlers needed for Bollard Buddy
-      onCopyParams={null}
-      onUseForGenerator={null}
-      onUseForVideo={null}
+      onSignIn={handleSignIn}
     />
   );
 
@@ -127,8 +127,8 @@ export const mountGallery = async () => {
     }
   });
 
-  console.log('Gallery mounted');
+  console.log('Assets sidebar mounted');
 };
 
-export { galleryService };
-export default mountGallery;
+export { assetsService };
+export default mountAssets;
