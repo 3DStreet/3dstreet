@@ -8,6 +8,7 @@ import { createPortal } from 'react-dom';
 import { TrashIcon } from '@shared/icons';
 import styles from './Assets.module.scss';
 import { REPLICATE_MODELS } from '@shared/constants/replicateModels.js';
+import { getAssetTitle } from '../utils.js';
 
 const METADATA_VISIBILITY_KEY = 'galleryModalMetadataVisible';
 
@@ -89,8 +90,7 @@ const AssetsModal = ({
     ? new Date(item.metadata.timestamp).toLocaleString()
     : 'Unknown';
   const isVideo = item.type === 'video';
-  const mediaType = isVideo ? 'Video' : 'Image';
-  const modalTitle = `${mediaType} - ${model || 'Unknown Model'}`;
+  const modalTitle = getAssetTitle(item);
 
   // Generate scene URL for linking back to the editor
   const sceneUrl = sceneId

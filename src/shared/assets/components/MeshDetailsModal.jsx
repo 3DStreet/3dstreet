@@ -12,7 +12,7 @@ import * as Tooltip from '@radix-ui/react-tooltip';
 import { auth } from '@shared/services/firebase.js';
 import { DownloadIcon, TrashIcon, Cross24Icon } from '@shared/icons';
 import assetsService from '../services/assetsService.js';
-import { formatBytes, formatDate } from '../utils.js';
+import { formatBytes, formatDate, getAssetTitle } from '../utils.js';
 import styles from './MeshDetailsModal.module.scss';
 
 const IconTooltip = ({ children, label }) => (
@@ -149,7 +149,15 @@ const MeshDetailsModal = ({
     if (e.target === e.currentTarget) onClose();
   };
 
-  const title = savedName || data?.originalFilename || 'Asset';
+  // Canonical "{Type} · {Source}" title — matches the gallery card overlay
+  // and the image/video modal. For meshes, the source label is the editable
+  // display name, so the live `savedName` takes precedence over `data.name`
+  // (which only refreshes after the doc reloads).
+  const title = getAssetTitle({
+    type: 'mesh',
+    name: savedName || data?.name,
+    originalFilename: data?.originalFilename
+  });
   const showNav = onNavigate && totalItems > 1;
   const hasPrev = showNav && currentIndex > 0;
   const hasNext = showNav && currentIndex < totalItems - 1;

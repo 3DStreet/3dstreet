@@ -17,6 +17,39 @@ export function formatBytes(bytes) {
  * objects (`.toDate()`), Date instances, and ISO / millisecond inputs that
  * `new Date()` understands. Returns '' on falsy or invalid input.
  */
+/**
+ * Human label for an asset's origin. For meshes this is the user-editable
+ * display name; for uploads it's "Upload"; for AI renders it's the model
+ * (e.g. "flux"). Falls back to "Unknown" so callers never render `undefined`.
+ */
+export function getAssetSourceLabel(item) {
+  if (!item) return 'Unknown';
+  if (item.type === 'mesh') {
+    return item.name || item.originalFilename || 'Untitled';
+  }
+  if (item.category === 'upload') return 'Upload';
+  return item.metadata?.model || 'Unknown';
+}
+
+/**
+ * Type label for an asset card / modal header (`Image`, `Video`, `Model`).
+ */
+export function getAssetTypeLabel(item) {
+  if (!item) return 'Asset';
+  if (item.type === 'video') return 'Video';
+  if (item.type === 'mesh') return 'Model';
+  return 'Image';
+}
+
+/**
+ * Canonical "{Type} · {Source}" title used by the gallery card overlay and
+ * every asset detail modal. Keeping these in lockstep avoids the gallery
+ * saying "Image · Upload" while the modal shows "Image - Unknown Model".
+ */
+export function getAssetTitle(item) {
+  return `${getAssetTypeLabel(item)} · ${getAssetSourceLabel(item)}`;
+}
+
 export function formatDate(ts) {
   if (!ts) return '';
   try {

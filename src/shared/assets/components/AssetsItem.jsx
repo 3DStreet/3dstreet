@@ -5,6 +5,7 @@
 
 import { DownloadIcon, TrashIcon } from '@shared/icons';
 import styles from './Assets.module.scss';
+import { getAssetSourceLabel, getAssetTypeLabel } from '../utils.js';
 
 // 1×1 transparent gif used to suppress the default browser drag ghost so the
 // 3D preview at the cursor isn't fighting with a card thumbnail floating along.
@@ -86,13 +87,8 @@ const AssetsItem = ({
     e.dataTransfer.setDragImage(emptyDragImage, 0, 0);
   };
 
-  const typeLabel =
-    item.type === 'video' ? 'Video' : item.type === 'mesh' ? 'Model' : 'Image';
-  // For meshes we show the user-editable display name. For AI-generated
-  // images/videos the model name (e.g. "flux", "nano-banana") is more useful.
-  const sourceLabel = isMesh
-    ? item.name || item.originalFilename || 'Untitled'
-    : item.metadata?.model || 'Unknown';
+  const typeLabel = getAssetTypeLabel(item);
+  const sourceLabel = getAssetSourceLabel(item);
 
   return (
     <div

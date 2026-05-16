@@ -32,6 +32,7 @@ const assetToDisplayItem = (asset) => {
   return {
     id: asset.assetId,
     type: asset.type,
+    category: asset.category,
     // Editable display name (falls back to originalFilename for legacy docs
     // that predate the field).
     name: asset.name || asset.originalFilename,
