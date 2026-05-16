@@ -249,7 +249,6 @@ const MeshDetailsModal = ({
 
         <div className={styles.wrapper}>
           <div className={styles.viewerArea}>
-            {loading && <div className={styles.placeholder}>Loading…</div>}
             {!loading && !data && (
               <div className={`${styles.placeholder} ${styles.error}`}>
                 Asset not available

@@ -35,6 +35,13 @@ const AssetsModal = ({
     item?.fullImageURL || item?.storageUrl || item?.objectURL;
   const videoRef = useRef(null);
 
+  // Image load state — reset when navigating to a new item so we don't show
+  // the previous image inside the new (correctly-sized) frame.
+  const [imageLoaded, setImageLoaded] = useState(false);
+  useEffect(() => {
+    setImageLoaded(false);
+  }, [item?.id]);
+
   // Save metadata visibility to sessionStorage when it changes
   useEffect(() => {
     sessionStorage.setItem(METADATA_VISIBILITY_KEY, String(isMetadataVisible));
@@ -91,6 +98,14 @@ const AssetsModal = ({
     : 'Unknown';
   const isVideo = item.type === 'video';
   const modalTitle = getAssetTitle(item);
+
+  // Pre-size the media frame to the asset's known dimensions so the modal
+  // doesn't pop from "small placeholder" to "full image" on every load.
+  // Falls back to a minimum frame when dimensions are missing.
+  const frameStyle =
+    width && height
+      ? { aspectRatio: `${width} / ${height}`, width: `${width}px` }
+      : undefined;
 
   // Generate scene URL for linking back to the editor
   const sceneUrl = sceneId
@@ -205,17 +220,56 @@ const AssetsModal = ({
         <div className={styles.modalMediaContainer}>
           {/* Media */}
           <div className={styles.modalBody}>
-            {isVideo ? (
-              <video
-                ref={videoRef}
-                src={fullImageUrl}
-                controls
-                autoPlay
-                playsInline
-              />
-            ) : (
-              <img src={fullImageUrl} alt="Generated image" />
-            )}
+            <div className={styles.imageFrame} style={frameStyle}>
+              {/* Blur-up: the gallery card just rendered this thumbnail, so
+                  it's HTTP-cached and shows instantly while the full image
+                  downloads. Hidden for videos (no thumbnail) and once the
+                  real media is loaded. */}
+              {!imageLoaded && !isVideo && item.thumbnailUrl && (
+                <img
+                  className={styles.thumbBlur}
+                  src={item.thumbnailUrl}
+                  alt=""
+                  aria-hidden="true"
+                />
+              )}
+              {!imageLoaded && (
+                <div
+                  className={styles.imageLoader}
+                  aria-label={isVideo ? 'Loading video' : 'Loading image'}
+                >
+                  <div className={styles.spinner} />
+                </div>
+              )}
+              {isVideo ? (
+                <video
+                  key={item.id}
+                  ref={videoRef}
+                  src={fullImageUrl}
+                  controls
+                  autoPlay
+                  playsInline
+                  onLoadedData={() => setImageLoaded(true)}
+                  style={{
+                    opacity: imageLoaded ? 1 : 0,
+                    transition: 'opacity 0.15s ease-out'
+                  }}
+                />
+              ) : (
+                <img
+                  // key forces a remount per item so the previous (loaded)
+                  // media isn't visible inside the new frame while paging.
+                  key={item.id}
+                  src={fullImageUrl}
+                  alt="Generated image"
+                  onLoad={() => setImageLoaded(true)}
+                  style={{
+                    opacity: imageLoaded ? 1 : 0,
+                    transition: 'opacity 0.15s ease-out'
+                  }}
+                />
+              )}
+            </div>
           </div>
 
           {/* Metadata Overlay - Toggleable */}
