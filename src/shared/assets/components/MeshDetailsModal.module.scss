@@ -15,16 +15,6 @@
   backdrop-filter: blur(4px);
   padding: 1rem;
   overflow-y: auto;
-  animation: meshModalFadeIn 0.2s ease-out;
-}
-
-@keyframes meshModalFadeIn {
-  from {
-    opacity: 0;
-  }
-  to {
-    opacity: 1;
-  }
 }
 
 .modalContent {

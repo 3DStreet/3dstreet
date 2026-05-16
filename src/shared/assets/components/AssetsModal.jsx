@@ -60,8 +60,12 @@ const AssetsModal = ({
       }
     };
 
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
+    // Capture phase: the editor's SceneGraph panel has an onKeyDown that
+    // stopPropagation()s arrow keys to block native scroll. If we listen in
+    // bubble phase, the modal never sees arrows until the user clicks inside
+    // it (which moves focus out of the scenegraph subtree).
+    window.addEventListener('keydown', handleKeyDown, true);
+    return () => window.removeEventListener('keydown', handleKeyDown, true);
   }, [onNavigate, onClose]);
 
   if (!item) return null;

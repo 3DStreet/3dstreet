@@ -83,8 +83,10 @@ const MeshDetailsModal = ({
       else if (e.key === 'ArrowRight' && onNavigate) onNavigate('next');
       else if (e.key === 'Escape') onClose();
     };
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
+    // Capture phase — see AssetsModal for why (SceneGraph's onKeyDown
+    // stopPropagation()s arrow keys in bubble phase before they reach window).
+    window.addEventListener('keydown', handleKeyDown, true);
+    return () => window.removeEventListener('keydown', handleKeyDown, true);
   }, [onNavigate, onClose]);
 
   const isOwner = !!auth.currentUser && auth.currentUser.uid === ownerUid;
