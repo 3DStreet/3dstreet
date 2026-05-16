@@ -138,6 +138,9 @@ const AssetsContent = ({
             ownerUid={selectedItem.userId}
             onClose={() => setSelectedItem(null)}
             onPlace={onPlaceAsset}
+            currentIndex={items.findIndex((i) => i.id === selectedItem.id)}
+            totalItems={items.length}
+            onNavigate={handleNavigate}
           />
         ) : (
           <AssetsModal

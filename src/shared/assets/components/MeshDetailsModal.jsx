@@ -1,9 +1,16 @@
+/**
+ * MeshDetailsModal — self-contained portal modal (backdrop + frame in this
+ * module's own SCSS). Does NOT use the shared <Modal> component because that
+ * relies on global `.modal-*` rules from editor/style/textureModal.scss,
+ * which aren't loaded in the generator or bollardbuddy bundles.
+ */
+
 import { useEffect, useState } from 'react';
+import { createPortal } from 'react-dom';
 import PropTypes from 'prop-types';
 import * as Tooltip from '@radix-ui/react-tooltip';
-import Modal from '@shared/components/Modal/Modal.jsx';
 import { auth } from '@shared/services/firebase.js';
-import { DownloadIcon, TrashIcon } from '@shared/icons';
+import { DownloadIcon, TrashIcon, Cross24Icon } from '@shared/icons';
 import assetsService from '../services/assetsService.js';
 import { formatBytes, formatDate } from '../utils.js';
 import styles from './MeshDetailsModal.module.scss';
@@ -28,7 +35,15 @@ IconTooltip.propTypes = {
   label: PropTypes.string.isRequired
 };
 
-const MeshDetailsModal = ({ assetId, ownerUid, onClose, onPlace }) => {
+const MeshDetailsModal = ({
+  assetId,
+  ownerUid,
+  onClose,
+  onPlace,
+  currentIndex,
+  totalItems,
+  onNavigate
+}) => {
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
 
@@ -60,6 +75,17 @@ const MeshDetailsModal = ({ assetId, ownerUid, onClose, onPlace }) => {
       cancelled = true;
     };
   }, [assetId, ownerUid]);
+
+  // Keyboard nav — mirrors AssetsModal.
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if (e.key === 'ArrowLeft' && onNavigate) onNavigate('prev');
+      else if (e.key === 'ArrowRight' && onNavigate) onNavigate('next');
+      else if (e.key === 'Escape') onClose();
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [onNavigate, onClose]);
 
   const isOwner = !!auth.currentUser && auth.currentUser.uid === ownerUid;
   const dirty = isOwner && name.trim() !== savedName && name.trim() !== '';
@@ -117,150 +143,218 @@ const MeshDetailsModal = ({ assetId, ownerUid, onClose, onPlace }) => {
     onClose();
   };
 
+  const handleBackgroundClick = (e) => {
+    if (e.target === e.currentTarget) onClose();
+  };
+
   const title = savedName || data?.originalFilename || 'Asset';
+  const showNav = onNavigate && totalItems > 1;
+  const hasPrev = showNav && currentIndex > 0;
+  const hasNext = showNav && currentIndex < totalItems - 1;
 
-  return (
-    <Modal
-      className={styles.modalWrapper}
-      isOpen={true}
-      onClose={onClose}
-      titleElement={
-        <div className={styles.title}>
+  return createPortal(
+    <div className={styles.modal} onClick={handleBackgroundClick}>
+      {hasPrev && (
+        <button
+          type="button"
+          className={`${styles.navButton} ${styles.navButtonPrev}`}
+          onClick={(e) => {
+            e.stopPropagation();
+            onNavigate('prev');
+          }}
+          title="Previous (←)"
+          aria-label="Previous item"
+        >
           <svg
-            className={styles.titleIcon}
             xmlns="http://www.w3.org/2000/svg"
-            viewBox="0 0 24 24"
             fill="none"
+            viewBox="0 0 24 24"
             stroke="currentColor"
-            strokeWidth="1.5"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            aria-hidden="true"
+            strokeWidth="2"
           >
-            <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z" />
-            <polyline points="3.27 6.96 12 12.01 20.73 6.96" />
-            <line x1="12" y1="22.08" x2="12" y2="12" />
-          </svg>
-          {title}
-        </div>
-      }
-    >
-      <div className={styles.wrapper}>
-        <div className={styles.viewerArea}>
-          {loading && <div className={styles.placeholder}>Loading…</div>}
-          {!loading && !data && (
-            <div className={`${styles.placeholder} ${styles.error}`}>
-              Asset not available
-            </div>
-          )}
-          {data && (
-            <iframe
-              className={styles.viewerFrame}
-              title={savedName || data.originalFilename || '3D model'}
-              // Don't put the editable name in the iframe URL — the src
-              // string drives the iframe's load; baking savedName in
-              // would cause model-viewer to reload on every Save name
-              // click. The iframe title above is enough for a11y.
-              src={`/model-viewer.html?src=${encodeURIComponent(data.storageUrl)}`}
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              d="M15 19l-7-7 7-7"
             />
-          )}
+          </svg>
+        </button>
+      )}
+      {hasNext && (
+        <button
+          type="button"
+          className={`${styles.navButton} ${styles.navButtonNext}`}
+          onClick={(e) => {
+            e.stopPropagation();
+            onNavigate('next');
+          }}
+          title="Next (→)"
+          aria-label="Next item"
+        >
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke="currentColor"
+            strokeWidth="2"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              d="M9 5l7 7-7 7"
+            />
+          </svg>
+        </button>
+      )}
+
+      <div className={styles.modalContent}>
+        <div className={styles.modalHeader}>
+          <div className={styles.title}>
+            <svg
+              className={styles.titleIcon}
+              xmlns="http://www.w3.org/2000/svg"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="1.5"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              aria-hidden="true"
+            >
+              <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z" />
+              <polyline points="3.27 6.96 12 12.01 20.73 6.96" />
+              <line x1="12" y1="22.08" x2="12" y2="12" />
+            </svg>
+            {title}
+          </div>
+          <button
+            type="button"
+            className={styles.closeBtn}
+            onClick={onClose}
+            aria-label="Close"
+          >
+            <Cross24Icon />
+          </button>
         </div>
 
-        <div className={styles.sidebar}>
-          <div className={styles.field}>
-            <label className={styles.fieldLabel} htmlFor="meshAssetName">
-              Display name
-            </label>
-            <input
-              id="meshAssetName"
-              type="text"
-              className={styles.fieldInput}
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              disabled={!isOwner || saving || !data}
-            />
-            {dirty && (
-              <button
-                type="button"
-                onClick={onSaveName}
-                disabled={saving}
-                className={styles.saveNameBtn}
-              >
-                {saving ? 'Saving…' : 'Save name'}
-              </button>
+        <div className={styles.wrapper}>
+          <div className={styles.viewerArea}>
+            {loading && <div className={styles.placeholder}>Loading…</div>}
+            {!loading && !data && (
+              <div className={`${styles.placeholder} ${styles.error}`}>
+                Asset not available
+              </div>
+            )}
+            {data && (
+              <iframe
+                className={styles.viewerFrame}
+                title={savedName || data.originalFilename || '3D model'}
+                // Don't put the editable name in the iframe URL — the src
+                // string drives the iframe's load; baking savedName in
+                // would cause model-viewer to reload on every Save name
+                // click. The iframe title above is enough for a11y.
+                src={`/model-viewer.html?src=${encodeURIComponent(data.storageUrl)}`}
+              />
             )}
           </div>
 
-          <div className={styles.metaList}>
-            <div>
-              <span className={styles.metaLabel}>File:</span>
-              {data?.originalFilename || '—'}
+          <div className={styles.sidebar}>
+            <div className={styles.field}>
+              <label className={styles.fieldLabel} htmlFor="meshAssetName">
+                Display name
+              </label>
+              <input
+                id="meshAssetName"
+                type="text"
+                className={styles.fieldInput}
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                disabled={!isOwner || saving || !data}
+              />
+              {dirty && (
+                <button
+                  type="button"
+                  onClick={onSaveName}
+                  disabled={saving}
+                  className={styles.saveNameBtn}
+                >
+                  {saving ? 'Saving…' : 'Save name'}
+                </button>
+              )}
             </div>
-            <div>
-              <span className={styles.metaLabel}>Size:</span>
-              {formatBytes(data?.size)}
-            </div>
-            <div>
-              <span className={styles.metaLabel}>Type:</span>
-              {data?.mimeType || '—'}
-            </div>
-            <div>
-              <span className={styles.metaLabel}>Uploaded:</span>
-              {formatDate(data?.uploadedAt || data?.createdAt)}
-            </div>
-            <div>
-              <span className={styles.metaLabel}>Asset ID:</span>
-              {assetId}
-            </div>
-            <div>
-              <span className={styles.metaLabel}>Owner:</span>
-              {isOwner ? 'you' : 'another user'}
-            </div>
-          </div>
 
-          {error && <div className={styles.error}>{error}</div>}
+            <div className={styles.metaList}>
+              <div>
+                <span className={styles.metaLabel}>File:</span>
+                {data?.originalFilename || '—'}
+              </div>
+              <div>
+                <span className={styles.metaLabel}>Size:</span>
+                {formatBytes(data?.size)}
+              </div>
+              <div>
+                <span className={styles.metaLabel}>Type:</span>
+                {data?.mimeType || '—'}
+              </div>
+              <div>
+                <span className={styles.metaLabel}>Uploaded:</span>
+                {formatDate(data?.uploadedAt || data?.createdAt)}
+              </div>
+              <div>
+                <span className={styles.metaLabel}>Asset ID:</span>
+                {assetId}
+              </div>
+              <div>
+                <span className={styles.metaLabel}>Owner:</span>
+                {isOwner ? 'you' : 'another user'}
+              </div>
+            </div>
 
-          <Tooltip.Provider>
-            <div className={styles.controlButtons}>
-              {isOwner && (
-                <IconTooltip label="Delete">
+            {error && <div className={styles.error}>{error}</div>}
+
+            <Tooltip.Provider>
+              <div className={styles.controlButtons}>
+                {isOwner && (
+                  <IconTooltip label="Delete">
+                    <button
+                      type="button"
+                      onClick={onDelete}
+                      disabled={!data}
+                      className={`${styles.iconButton} ${styles.deleteBtn}`}
+                      aria-label="Delete"
+                    >
+                      <TrashIcon />
+                    </button>
+                  </IconTooltip>
+                )}
+                <IconTooltip label="Download">
                   <button
                     type="button"
-                    onClick={onDelete}
+                    onClick={onDownload}
                     disabled={!data}
-                    className={`${styles.iconButton} ${styles.deleteBtn}`}
-                    aria-label="Delete"
+                    className={styles.iconButton}
+                    aria-label="Download"
                   >
-                    <TrashIcon />
+                    <DownloadIcon />
                   </button>
                 </IconTooltip>
-              )}
-              <IconTooltip label="Download">
-                <button
-                  type="button"
-                  onClick={onDownload}
-                  disabled={!data}
-                  className={styles.iconButton}
-                  aria-label="Download"
-                >
-                  <DownloadIcon />
-                </button>
-              </IconTooltip>
-              {onPlace && (
-                <button
-                  type="button"
-                  onClick={handlePlace}
-                  disabled={!data}
-                  className={styles.primaryButton}
-                >
-                  Place in scene
-                </button>
-              )}
-            </div>
-          </Tooltip.Provider>
+                {onPlace && (
+                  <button
+                    type="button"
+                    onClick={handlePlace}
+                    disabled={!data}
+                    className={styles.primaryButton}
+                  >
+                    Place in scene
+                  </button>
+                )}
+              </div>
+            </Tooltip.Provider>
+          </div>
         </div>
       </div>
-    </Modal>
+    </div>,
+    document.body
   );
 };
 
@@ -273,7 +367,10 @@ MeshDetailsModal.propTypes = {
   // the modal closes itself after invoking. Only the gallery card open
   // path passes this — the props-panel "Details" button leaves it
   // undefined (the entity is already in the scene).
-  onPlace: PropTypes.func
+  onPlace: PropTypes.func,
+  currentIndex: PropTypes.number,
+  totalItems: PropTypes.number,
+  onNavigate: PropTypes.func
 };
 
 export default MeshDetailsModal;
