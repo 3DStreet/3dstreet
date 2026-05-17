@@ -132,32 +132,48 @@ AFRAME.registerComponent('street-geo', {
   mapbox2dCreate: function () {
     const data = this.data;
     const el = this.el;
+    const self = this;
 
-    const mapbox2dElement = document.createElement('a-entity');
-    mapbox2dElement.setAttribute('data-layer-name', 'Mapbox Satellite Streets');
-    mapbox2dElement.setAttribute(
-      'geometry',
-      'primitive: plane; width: 512; height: 512;'
-    );
-    mapbox2dElement.setAttribute(
-      'material',
-      'color: #ffffff; shader: flat; side: both; transparent: true;'
-    );
-    mapbox2dElement.setAttribute('rotation', '-90 -90 0');
-    mapbox2dElement.setAttribute('anisotropy', '');
-    mapbox2dElement.setAttribute('mapbox', {
-      accessToken: MAPBOX_ACCESS_TOKEN_VALUE,
-      center: `${data.longitude}, ${data.latitude}`,
-      zoom: 18,
-      style: 'mapbox://styles/mapbox/satellite-streets-v11',
-      pxToWorldRatio: 4
-    });
-    mapbox2dElement.classList.add('autocreated');
-    mapbox2dElement.setAttribute('data-ignore-raycaster', '');
-    mapbox2dElement.setAttribute('data-no-transform', '');
-    el.appendChild(mapbox2dElement);
-    this['mapbox2d'] = mapbox2dElement;
-    document.getElementById('map-copyright').textContent = 'MapBox';
+    const createMapbox2dElement = () => {
+      const mapbox2dElement = document.createElement('a-entity');
+      mapbox2dElement.setAttribute(
+        'data-layer-name',
+        'Mapbox Satellite Streets'
+      );
+      mapbox2dElement.setAttribute(
+        'geometry',
+        'primitive: plane; width: 512; height: 512;'
+      );
+      mapbox2dElement.setAttribute(
+        'material',
+        'color: #ffffff; shader: flat; side: both; transparent: true;'
+      );
+      mapbox2dElement.setAttribute('rotation', '-90 -90 0');
+      mapbox2dElement.setAttribute('anisotropy', '');
+      mapbox2dElement.setAttribute('mapbox', {
+        accessToken: MAPBOX_ACCESS_TOKEN_VALUE,
+        center: `${data.longitude}, ${data.latitude}`,
+        zoom: 18,
+        style: 'mapbox://styles/mapbox/satellite-streets-v11',
+        pxToWorldRatio: 4
+      });
+      mapbox2dElement.classList.add('autocreated');
+      mapbox2dElement.setAttribute('data-ignore-raycaster', '');
+      mapbox2dElement.setAttribute('data-no-transform', '');
+      el.appendChild(mapbox2dElement);
+      self['mapbox2d'] = mapbox2dElement;
+      document.getElementById('map-copyright').textContent = 'MapBox';
+    };
+
+    // check whether the library has been imported. Download if not
+    if (AFRAME.components['mapbox']) {
+      createMapbox2dElement();
+    } else {
+      loadScript(
+        new URL('/src/lib/aframe-mapbox-component.min.js', import.meta.url),
+        createMapbox2dElement
+      );
+    }
   },
   google3dCreate: function () {
     const data = this.data;
