@@ -26,17 +26,11 @@ AFRAME.registerSystem('mode-manager', {
   init: function () {
     this.modes = {};
     this.currentMode = null;
+    // Editor is the default. Other subsystems register their own
+    // modes at init time — e.g. drive-mode in play-mode-vehicle.js
+    // registers the `drive` mode there so its setup logic stays with
+    // the rest of the drive-mode code.
     this.registerMode('editor', {
-      enter: () => {},
-      exit: () => {}
-    });
-    this.registerMode('drive', {
-      // play-mode-vehicle subscribes to the `play-mode-start` /
-      // `play-mode-stop` scene events for its own setup/teardown,
-      // so drive mode's hooks are currently no-ops. They exist as
-      // anchor points for future drive-only attachments (e.g. a
-      // dedicated drive HUD entity) and to make the lifecycle
-      // explicit in one place.
       enter: () => {},
       exit: () => {}
     });

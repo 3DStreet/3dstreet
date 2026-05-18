@@ -1094,14 +1094,23 @@ AFRAME.registerComponent('drive-mode', {
   init: function () {
     this.onPlayStart = this.onPlayStart.bind(this);
     this.onPlayStop = this.onPlayStop.bind(this);
-    this.el.addEventListener('play-mode-start', this.onPlayStart);
-    this.el.addEventListener('play-mode-stop', this.onPlayStop);
     this.cleanup = null;
+    // Register as the canonical `drive` mode. mode-manager.setMode('drive')
+    // (called from play-mode.start) drives enter/exit through here.
+    const mgr = this.el.systems['mode-manager'];
+    if (mgr) {
+      mgr.registerMode('drive', {
+        enter: this.onPlayStart,
+        exit: this.onPlayStop
+      });
+    }
   },
 
   remove: function () {
-    this.el.removeEventListener('play-mode-start', this.onPlayStart);
-    this.el.removeEventListener('play-mode-stop', this.onPlayStop);
+    const mgr = this.el.systems['mode-manager'];
+    if (mgr) {
+      mgr.registerMode('drive', { enter: () => {}, exit: () => {} });
+    }
     if (this.cleanup) {
       this.cleanup();
       this.cleanup = null;
@@ -1112,6 +1121,9 @@ AFRAME.registerComponent('drive-mode', {
     const sceneEl = this.el;
     const driveEntity = sceneEl.querySelector('[drive-controls]');
     if (!driveEntity) return; // No driveable vehicle → nothing to do.
+    // Broadcast for drive-mode-scoped features (e.g. race-target) so
+    // they don't have to listen to the broader play-mode-start event.
+    sceneEl.emit('drive-mode-start', {}, false);
 
     const wp = new THREE.Vector3();
     driveEntity.object3D.getWorldPosition(wp);
@@ -1236,6 +1248,7 @@ AFRAME.registerComponent('drive-mode', {
     if (this.cleanup) {
       this.cleanup();
       this.cleanup = null;
+      this.el.emit('drive-mode-stop', {}, false);
     }
   },
 

@@ -2,16 +2,12 @@ const functions = require('firebase-functions/v1');
 const admin = require('firebase-admin');
 admin.initializeApp();
 const { getAuth } = require('firebase-admin/auth');
-const { serveWebXRVariant } = require('./webxr-variant.js');
 const { getGeoidHeight } = require('./geoid-height.js');
 const { generateReplicateImage, generateReplicateVideo } = require('./replicate.js');
 const { checkAndRefillImageTokens, checkUserProStatus } = require('./token-management.js');
 const { generateFalImage } = require('./fal-proxy.js');
 const { sendScheduledEmails, triggerScheduledEmails } = require('./scheduledEmails.js');
 const { auditUserSubscriptions, auditUserSubscriptionsHttp } = require('./utilities/user-audit.js');
-
-// Re-export the WebXR variant function
-exports.serveWebXRVariant = serveWebXRVariant;
 
 // Re-export the getGeoidHeight function
 exports.getGeoidHeight = getGeoidHeight;

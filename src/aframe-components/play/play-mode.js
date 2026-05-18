@@ -135,12 +135,6 @@ AFRAME.registerSystem('play-mode', {
     // where the user was looking — even though they may have driven
     // around in play mode.
     this.saveEditorCameraPose();
-    // Tell the mode-manager we're now in drive mode. Any future
-    // drive-only components/HUD will be attached by drive mode's
-    // enter() hook — play-mode-vehicle still does its own setup via
-    // the play-mode-start scene event below.
-    const modeMgr = this.sceneEl.systems['mode-manager'];
-    if (modeMgr) modeMgr.setMode('drive');
     // Match the play camera to the editor (inspector) camera pose so
     // entering play mode doesn't jump the view. Drive-mode may then
     // take the camera over for chase/fpv/top-down if a driveable
@@ -149,6 +143,13 @@ AFRAME.registerSystem('play-mode', {
     this.copyEditorCameraToScene();
     this.sceneEl.emit('timer-start');
     this.sceneEl.emit('play-mode-start', {}, false);
+    // Tell the mode-manager we're now in drive mode. drive-mode's enter
+    // hook (registered by the drive-mode component) does its own setup.
+    // Order: after play-mode-start so non-drive subscribers (street-
+    // traffic, race-target) get their event first and the camera has
+    // already been re-pointed at the scene camera.
+    const modeMgr = this.sceneEl.systems['mode-manager'];
+    if (modeMgr) modeMgr.setMode('drive');
     window.addEventListener('keydown', this.onEscape);
   },
 
@@ -245,13 +246,14 @@ AFRAME.registerSystem('play-mode', {
     window.removeEventListener('keydown', this.onEscape);
     this.sceneEl.emit('timer-pause');
     this.sceneEl.emit('play-mode-stop', {}, false);
+    // Drive mode tears down its chassis + physics via the exit hook.
+    const modeMgr = this.sceneEl.systems['mode-manager'];
+    if (modeMgr) modeMgr.setMode('editor');
     // Restore the editor camera so the inspector resumes exactly
     // where the user was looking when they pressed Play. Drive-mode
     // is responsible for the scene #camera during play; this is the
     // separate inspector-editor camera owned by AFRAME.INSPECTOR.
     this.restoreEditorCameraPose();
-    const modeMgr = this.sceneEl.systems['mode-manager'];
-    if (modeMgr) modeMgr.setMode('editor');
   },
 
   pause: function () {

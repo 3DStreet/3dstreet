@@ -28,7 +28,11 @@ AFRAME.registerComponent('race-target', {
   init: function () {
     this._buildVisual();
     this._reset = this._reset.bind(this);
-    this.el.sceneEl.addEventListener('play-mode-start', this._reset);
+    // Race-target is meaningful only when a chassis exists, so listen
+    // to drive-mode's start/reset rather than the broader play-mode-*
+    // events. drive-mode-start is emitted from play-mode-vehicle's
+    // drive-mode component when a [drive-controls] entity is present.
+    this.el.sceneEl.addEventListener('drive-mode-start', this._reset);
     this.el.sceneEl.addEventListener('play-mode-reset', this._reset);
     this.crossed = false;
   },
@@ -48,7 +52,7 @@ AFRAME.registerComponent('race-target', {
   },
 
   remove: function () {
-    this.el.sceneEl.removeEventListener('play-mode-start', this._reset);
+    this.el.sceneEl.removeEventListener('drive-mode-start', this._reset);
     this.el.sceneEl.removeEventListener('play-mode-reset', this._reset);
   },
 
