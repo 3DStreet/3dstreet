@@ -362,18 +362,52 @@ its `exit` hook tears all of that down. So a Stop→Play cycle does a
 full rebuild — visible as a brief flicker / first-time-build look on
 the chassis.
 
-The right model (per discussion 2026-05-17): mode changes own
-setup/teardown; Play/Stop within drive mode should just pause/resume
-the simulation. Chassis stays alive across Stop→Play cycles. Only
-explicit mode changes (drive → editor, future drive → locomotion)
-trigger drive-mode `enter`/`exit`.
+### The conceptual fix: editor is not a mode
 
-Open design questions to settle before fixing:
-- When stopped (but still in drive mode), is the chassis visible?
-  Frozen in place, hidden, or restored to spawn?
-- Does the inspector treat the live chassis as a selectable entity
-  while stopped, or stay hidden from the scene-graph?
-- What invalidates drive-mode state — only removing the
-  `[drive-controls]` entity, or any edit to it?
+Three axes are independent and the current code conflates two of them:
+
+| Axis | Values | Changes when |
+| --- | --- | --- |
+| **Mode** | `none` / `drive` / future `locomotion`, `observer`, `ar-webxr` | Scene loads, or a mode-defining entity is added/removed (e.g. `[drive-controls]` appears or disappears). |
+| **Inspector** | open / closed | User clicks Play/Stop button, or programmatic. |
+| **Play state** | running / paused | User clicks Play/Pause inside a session, or Reset. |
+
+A scene with a Driveable Vehicle in it is in `drive` mode from the
+moment that entity exists — regardless of whether the inspector is
+open or whether the simulation is running. The chassis should be
+born when `[drive-controls]` is added and die when it's removed,
+**not** on every Stop→Play.
+
+### What needs to change
+
+- `mode-manager.setMode('drive')` runs when `[drive-controls]` appears
+  in the scene (component init / scene load). drive-mode `enter`
+  spawns chassis + activates Rapier.
+- `mode-manager.setMode('none')` runs when the last `[drive-controls]`
+  is removed. drive-mode `exit` tears it down.
+- `play-mode.start/stop` stop calling `setMode`. They just start/pause
+  the sim and emit `play-mode-start/stop` for things that genuinely
+  depend on simulation tick (street-traffic, scene-timer).
+- `setIsInspectorEnabled` is purely about the inspector UI. It still
+  pauses play on open (current behavior is fine) but doesn't touch
+  mode.
+
+### Open questions to settle before implementing
+
+- When the sim is paused (inspector open, mode still `drive`), is the
+  chassis visible? Frozen in place is probably the right answer — it's
+  the WYSIWYG win, and it makes "tune steerAngle, press Play, see
+  effect" feel instant. But maybe the chassis hides when the inspector
+  is open and the scene-graph shows the source `[drive-controls]`
+  entity instead.
+- Does the inspector treat the live chassis (`#play-mode-player-car`)
+  as a selectable entity while paused, or stay hidden from the
+  scene-graph?
+- What invalidates drive-mode state mid-session — only removing
+  `[drive-controls]`, or edits to it (vehicleSize, wheelLayout)? A
+  watcher on the entity that respawns on relevant changes is the
+  natural answer but worth thinking through.
+- mode-manager's `editor` mode goes away. The default mode for a
+  scene with no playable entities is `none`, not `editor`.
 
 Don't tackle until the asset-system work lands.
