@@ -1,8 +1,8 @@
 /**
- * GalleryContent - Grid + Modal wiring shared by the generator sidebar and
- * the editor Gallery tab. Wrappers own useGallery() and their own chrome.
+ * AssetsContent - Grid + Modal wiring shared by the generator sidebar and
+ * the editor Assets tab. Wrappers own useAssets() and their own chrome.
  *
- * variant="paginated": renders GalleryGrid with Prev/Next + "Load more" that
+ * variant="paginated": renders AssetsGrid with Prev/Next + "Load more" that
  *   triggers cursor-based fetching once client-side pages are exhausted.
  * variant="unbounded": renders a flat grid of every loaded item plus a
  *   sentinel div (infinite scroll). Callers pass a ref in `sentinelRef` and
@@ -10,13 +10,13 @@
  */
 
 import { useState } from 'react';
-import GalleryItem from './GalleryItem.jsx';
-import GalleryGrid from './GalleryGrid.jsx';
-import GalleryModal from './GalleryModal.jsx';
+import AssetsItem from './AssetsItem.jsx';
+import AssetsGrid from './AssetsGrid.jsx';
+import AssetsModal from './AssetsModal.jsx';
 import MeshDetailsModal from './MeshDetailsModal.jsx';
-import styles from './Gallery.module.scss';
+import styles from './Assets.module.scss';
 
-const GalleryContent = ({
+const AssetsContent = ({
   gallery,
   variant = 'paginated',
   gridClassName,
@@ -89,16 +89,14 @@ const GalleryContent = ({
     </div>
   );
 
-  const defaultEmpty = (
-    <div className={styles.emptyState}>Gallery is empty</div>
-  );
+  const defaultEmpty = <div className={styles.emptyState}>No assets yet</div>;
 
   return (
     <>
       {isLoading ? (
         (loadingState ?? defaultLoading)
       ) : variant === 'paginated' ? (
-        <GalleryGrid
+        <AssetsGrid
           items={items}
           page={page}
           pageSize={pageSize}
@@ -119,7 +117,7 @@ const GalleryContent = ({
         <>
           <div className={gridClassName}>
             {items.map((item) => (
-              <GalleryItem
+              <AssetsItem
                 key={item.id}
                 item={item}
                 onItemClick={setSelectedItem}
@@ -140,9 +138,12 @@ const GalleryContent = ({
             ownerUid={selectedItem.userId}
             onClose={() => setSelectedItem(null)}
             onPlace={onPlaceAsset}
+            currentIndex={items.findIndex((i) => i.id === selectedItem.id)}
+            totalItems={items.length}
+            onNavigate={handleNavigate}
           />
         ) : (
-          <GalleryModal
+          <AssetsModal
             item={selectedItem}
             currentIndex={items.findIndex((i) => i.id === selectedItem.id)}
             totalItems={items.length}
@@ -159,4 +160,4 @@ const GalleryContent = ({
   );
 };
 
-export default GalleryContent;
+export default AssetsContent;

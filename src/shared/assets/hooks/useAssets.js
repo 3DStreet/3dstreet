@@ -1,14 +1,14 @@
 /**
- * useGallery Hook - React hook for managing gallery state
+ * useAssets Hook - React hook for managing gallery state
  */
 
 import { useState, useEffect, useCallback, useContext, useRef } from 'react';
 import posthog from 'posthog-js';
-import galleryServiceV2 from '../services/galleryServiceV2.js';
+import assetsService from '../services/assetsService.js';
 import {
   ASSET_TYPES,
   ASSET_CATEGORIES,
-  GALLERY_FETCH_BATCH_SIZE
+  ASSETS_FETCH_BATCH_SIZE
 } from '../constants.js';
 import { AuthContext } from '@shared/contexts';
 import { auth } from '@shared/services/firebase.js';
@@ -32,6 +32,7 @@ const assetToDisplayItem = (asset) => {
   return {
     id: asset.assetId,
     type: asset.type,
+    category: asset.category,
     // Editable display name (falls back to originalFilename for legacy docs
     // that predate the field).
     name: asset.name || asset.originalFilename,
@@ -56,9 +57,9 @@ const assetToDisplayItem = (asset) => {
 
 /**
  * Custom hook for gallery state management
- * @returns {Object} Gallery state and methods
+ * @returns {Object} Assets state and methods
  */
-const useGallery = () => {
+const useAssets = () => {
   // Try to use AuthContext first (editor), fall back to window.authState (generator)
   // useContext will return default value if not in a provider
   const authContext = useContext(AuthContext);
@@ -122,8 +123,8 @@ const useGallery = () => {
         assets,
         lastDoc,
         hasMore: nextHasMore
-      } = await galleryServiceV2.getAssetsPage(currentUserId, {
-        pageSize: GALLERY_FETCH_BATCH_SIZE
+      } = await assetsService.getAssetsPage(currentUserId, {
+        pageSize: ASSETS_FETCH_BATCH_SIZE
       });
 
       setItems(assets.map(assetToDisplayItem));
@@ -153,8 +154,8 @@ const useGallery = () => {
         assets,
         lastDoc,
         hasMore: nextHasMore
-      } = await galleryServiceV2.getAssetsPage(currentUserId, {
-        pageSize: GALLERY_FETCH_BATCH_SIZE,
+      } = await assetsService.getAssetsPage(currentUserId, {
+        pageSize: ASSETS_FETCH_BATCH_SIZE,
         cursor
       });
 
@@ -189,10 +190,10 @@ const useGallery = () => {
       return;
     }
 
-    const initGallery = async () => {
+    const initAssets = async () => {
       try {
         setIsLoading(true);
-        await galleryServiceV2.init();
+        await assetsService.init();
         await reloadItems();
       } catch (error) {
         console.error('Failed to initialize gallery:', error);
@@ -201,7 +202,7 @@ const useGallery = () => {
       }
     };
 
-    initGallery();
+    initAssets();
 
     // Optimistic insert when a new asset is added
     const handleAssetAdded = (event) => {
@@ -274,34 +275,25 @@ const useGallery = () => {
       setItems((prevItems) => prevItems.filter((item) => item.id !== assetId));
     };
 
-    galleryServiceV2.events.addEventListener('assetAdded', handleAssetAdded);
-    galleryServiceV2.events.addEventListener(
+    assetsService.events.addEventListener('assetAdded', handleAssetAdded);
+    assetsService.events.addEventListener(
       'assetAddedReload',
       handleAssetAddedReload
     );
-    galleryServiceV2.events.addEventListener(
-      'assetUpdated',
-      handleAssetUpdated
-    );
-    galleryServiceV2.events.addEventListener(
-      'assetDeleted',
-      handleAssetDeleted
-    );
+    assetsService.events.addEventListener('assetUpdated', handleAssetUpdated);
+    assetsService.events.addEventListener('assetDeleted', handleAssetDeleted);
 
     return () => {
-      galleryServiceV2.events.removeEventListener(
-        'assetAdded',
-        handleAssetAdded
-      );
-      galleryServiceV2.events.removeEventListener(
+      assetsService.events.removeEventListener('assetAdded', handleAssetAdded);
+      assetsService.events.removeEventListener(
         'assetAddedReload',
         handleAssetAddedReload
       );
-      galleryServiceV2.events.removeEventListener(
+      assetsService.events.removeEventListener(
         'assetUpdated',
         handleAssetUpdated
       );
-      galleryServiceV2.events.removeEventListener(
+      assetsService.events.removeEventListener(
         'assetDeleted',
         handleAssetDeleted
       );
@@ -314,9 +306,9 @@ const useGallery = () => {
     const handleWindowRefresh = () => {
       reloadItems();
     };
-    window.addEventListener('gallery:refresh', handleWindowRefresh);
+    window.addEventListener('assets:refresh', handleWindowRefresh);
     return () => {
-      window.removeEventListener('gallery:refresh', handleWindowRefresh);
+      window.removeEventListener('assets:refresh', handleWindowRefresh);
     };
   }, [reloadItems]);
 
@@ -337,7 +329,7 @@ const useGallery = () => {
         const category =
           type === ASSET_TYPES.VIDEO ? ASSET_CATEGORIES.AI_RENDER : type;
 
-        const assetId = await galleryServiceV2.addAsset(
+        const assetId = await assetsService.addAsset(
           imageDataUri,
           metadata,
           assetType,
@@ -387,7 +379,7 @@ const useGallery = () => {
       }
 
       try {
-        await galleryServiceV2.deleteAsset(id, currentUserId, false);
+        await assetsService.deleteAsset(id, currentUserId, false);
         return true;
       } catch (error) {
         console.error('Failed to remove item from gallery:', error);
@@ -482,4 +474,4 @@ const useGallery = () => {
   };
 };
 
-export default useGallery;
+export default useAssets;

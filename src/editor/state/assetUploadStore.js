@@ -16,7 +16,7 @@
  */
 
 import { create } from 'zustand';
-import { galleryServiceV2 } from '@shared/gallery';
+import { assetsService } from '@shared/assets';
 
 const useAssetUploadStore = create((set, get) => ({
   uploads: {},
@@ -84,7 +84,7 @@ const useAssetUploadStore = create((set, get) => ({
 
     let data = null;
     try {
-      data = await galleryServiceV2.getAsset(assetId, ownerUid);
+      data = await assetsService.getAsset(assetId, ownerUid);
     } catch {
       // permission-denied (foreign asset) or transient — degrade silently.
     }
@@ -109,16 +109,16 @@ const useAssetUploadStore = create((set, get) => ({
 }));
 
 // Keep the cache in sync with any updates / deletes dispatched by
-// galleryServiceV2, regardless of which UI surface triggered them
+// assetsService, regardless of which UI surface triggered them
 // (mesh details modal, gallery panel actions, future cloud-model resolver…).
 if (typeof window !== 'undefined') {
-  galleryServiceV2.events.addEventListener('assetUpdated', (e) => {
+  assetsService.events.addEventListener('assetUpdated', (e) => {
     const { assetId, userId, updates } = e.detail || {};
     if (assetId && userId && updates) {
       useAssetUploadStore.getState().patchAsset(assetId, userId, updates);
     }
   });
-  galleryServiceV2.events.addEventListener('assetDeleted', (e) => {
+  assetsService.events.addEventListener('assetDeleted', (e) => {
     const { assetId, userId, hard } = e.detail || {};
     if (!assetId || !userId) return;
     if (hard) {

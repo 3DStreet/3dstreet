@@ -10,7 +10,7 @@
  * model-viewer's bundled THREE away from A-Frame's window.THREE.
  */
 
-import { galleryServiceV2, STORAGE_PATHS } from '@shared/gallery';
+import { assetsService, STORAGE_PATHS } from '@shared/assets';
 
 const SCREENSHOT_PAGE = '/model-viewer-screenshot.html';
 const DEFAULT_TIMEOUT_MS = 30000;
@@ -109,11 +109,11 @@ export async function captureAndUploadThumbnail(assetId, ownerUid, glbUrl) {
       'meshes',
       `${assetId}-thumb.jpg`
     );
-    const thumbnailUrl = await galleryServiceV2.uploadToStorage(
+    const thumbnailUrl = await assetsService.uploadToStorage(
       blob,
       thumbnailPath
     );
-    await galleryServiceV2.updateAsset(assetId, ownerUid, {
+    await assetsService.updateAsset(assetId, ownerUid, {
       thumbnailPath,
       thumbnailUrl
     });

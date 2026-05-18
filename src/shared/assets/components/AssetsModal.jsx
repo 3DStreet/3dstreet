@@ -1,17 +1,18 @@
 /**
- * GalleryModal Component - Detail view modal
+ * AssetsModal Component - Detail view modal
  * Uses Firebase Storage URLs with browser HTTP caching
  */
 
 import { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { TrashIcon } from '@shared/icons';
-import styles from './Gallery.module.scss';
+import styles from './Assets.module.scss';
 import { REPLICATE_MODELS } from '@shared/constants/replicateModels.js';
+import { getAssetTitle } from '../utils.js';
 
 const METADATA_VISIBILITY_KEY = 'galleryModalMetadataVisible';
 
-const GalleryModal = ({
+const AssetsModal = ({
   item,
   currentIndex,
   totalItems,
@@ -33,6 +34,13 @@ const GalleryModal = ({
   const fullImageUrl =
     item?.fullImageURL || item?.storageUrl || item?.objectURL;
   const videoRef = useRef(null);
+
+  // Image load state — reset when navigating to a new item so we don't show
+  // the previous image inside the new (correctly-sized) frame.
+  const [imageLoaded, setImageLoaded] = useState(false);
+  useEffect(() => {
+    setImageLoaded(false);
+  }, [item?.id]);
 
   // Save metadata visibility to sessionStorage when it changes
   useEffect(() => {
@@ -60,8 +68,12 @@ const GalleryModal = ({
       }
     };
 
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
+    // Capture phase: the editor's SceneGraph panel has an onKeyDown that
+    // stopPropagation()s arrow keys to block native scroll. If we listen in
+    // bubble phase, the modal never sees arrows until the user clicks inside
+    // it (which moves focus out of the scenegraph subtree).
+    window.addEventListener('keydown', handleKeyDown, true);
+    return () => window.removeEventListener('keydown', handleKeyDown, true);
   }, [onNavigate, onClose]);
 
   if (!item) return null;
@@ -85,8 +97,15 @@ const GalleryModal = ({
     ? new Date(item.metadata.timestamp).toLocaleString()
     : 'Unknown';
   const isVideo = item.type === 'video';
-  const mediaType = isVideo ? 'Video' : 'Image';
-  const modalTitle = `${mediaType} - ${model || 'Unknown Model'}`;
+  const modalTitle = getAssetTitle(item);
+
+  // Pre-size the media frame to the asset's known dimensions so the modal
+  // doesn't pop from "small placeholder" to "full image" on every load.
+  // Falls back to a minimum frame when dimensions are missing.
+  const frameStyle =
+    width && height
+      ? { aspectRatio: `${width} / ${height}`, width: `${width}px` }
+      : undefined;
 
   // Generate scene URL for linking back to the editor
   const sceneUrl = sceneId
@@ -165,30 +184,92 @@ const GalleryModal = ({
         {/* Header with Title */}
         <div className={styles.modalHeader}>
           <h2 className={styles.modalTitle}>{modalTitle}</h2>
-          <button
-            className={styles.modalCloseBtn}
-            onClick={onClose}
-            title="Close"
-          >
-            ×
-          </button>
+          <div className={styles.modalHeaderActions}>
+            <button
+              className={styles.infoToggleBtn}
+              onClick={toggleMetadataVisibility}
+              title={isMetadataVisible ? 'Hide info' : 'Show info'}
+            >
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
+                <circle cx="12" cy="12" r="10" />
+                <line x1="12" y1="8" x2="12.01" y2="8" />
+                <polyline points="11 12 12 12 12 16 13 16" />
+                {isMetadataVisible && <line x1="4" y1="4" x2="20" y2="20" />}
+              </svg>
+              <span>{isMetadataVisible ? 'Hide Info' : 'Show Info'}</span>
+            </button>
+            <button
+              className={styles.modalCloseBtn}
+              onClick={onClose}
+              title="Close"
+            >
+              ×
+            </button>
+          </div>
         </div>
 
         {/* Media Body Section with Overlay */}
         <div className={styles.modalMediaContainer}>
           {/* Media */}
           <div className={styles.modalBody}>
-            {isVideo ? (
-              <video
-                ref={videoRef}
-                src={fullImageUrl}
-                controls
-                autoPlay
-                playsInline
-              />
-            ) : (
-              <img src={fullImageUrl} alt="Generated image" />
-            )}
+            <div className={styles.imageFrame} style={frameStyle}>
+              {/* Blur-up: the gallery card just rendered this thumbnail, so
+                  it's HTTP-cached and shows instantly while the full image
+                  downloads. Hidden for videos (no thumbnail) and once the
+                  real media is loaded. */}
+              {!imageLoaded && !isVideo && item.thumbnailUrl && (
+                <img
+                  className={styles.thumbBlur}
+                  src={item.thumbnailUrl}
+                  alt=""
+                  aria-hidden="true"
+                />
+              )}
+              {!imageLoaded && (
+                <div
+                  className={styles.imageLoader}
+                  aria-label={isVideo ? 'Loading video' : 'Loading image'}
+                >
+                  <div className={styles.spinner} />
+                </div>
+              )}
+              {isVideo ? (
+                <video
+                  key={item.id}
+                  ref={videoRef}
+                  src={fullImageUrl}
+                  controls
+                  autoPlay
+                  playsInline
+                  onLoadedData={() => setImageLoaded(true)}
+                  style={{
+                    opacity: imageLoaded ? 1 : 0,
+                    transition: 'opacity 0.15s ease-out'
+                  }}
+                />
+              ) : (
+                <img
+                  // key forces a remount per item so the previous (loaded)
+                  // media isn't visible inside the new frame while paging.
+                  key={item.id}
+                  src={fullImageUrl}
+                  alt="Generated image"
+                  onLoad={() => setImageLoaded(true)}
+                  style={{
+                    opacity: imageLoaded ? 1 : 0,
+                    transition: 'opacity 0.15s ease-out'
+                  }}
+                />
+              )}
+            </div>
           </div>
 
           {/* Metadata Overlay - Toggleable */}
@@ -283,45 +364,6 @@ const GalleryModal = ({
               </div>
             </div>
           )}
-
-          {/* Toggle Button for Metadata */}
-          <button
-            className={styles.metadataToggleBtn}
-            onClick={toggleMetadataVisibility}
-            title={isMetadataVisible ? 'Hide metadata' : 'Show metadata'}
-          >
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
-              strokeWidth="2"
-            >
-              {isMetadataVisible ? (
-                // Eye-off icon (metadata visible, click to hide)
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21"
-                />
-              ) : (
-                // Eye icon (metadata hidden, click to show)
-                <>
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"
-                  />
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"
-                  />
-                </>
-              )}
-            </svg>
-            <span>Toggle Metadata</span>
-          </button>
         </div>
 
         {/* Action Buttons - Right justified with most important on right */}
@@ -384,4 +426,4 @@ const GalleryModal = ({
   );
 };
 
-export default GalleryModal;
+export default AssetsModal;

@@ -1,11 +1,11 @@
 /**
- * GalleryGrid Component - Grid display with pagination
+ * AssetsGrid Component - Grid display with pagination
  */
 
-import GalleryItem from './GalleryItem.jsx';
-import styles from './Gallery.module.scss';
+import AssetsItem from './AssetsItem.jsx';
+import styles from './Assets.module.scss';
 
-const GalleryGrid = ({
+const AssetsGrid = ({
   items,
   page,
   pageSize,
@@ -57,10 +57,10 @@ const GalleryGrid = ({
       {/* Grid */}
       <div className={styles.content}>
         {pageItems.length === 0 && (
-          <div className={styles.emptyState}>Gallery is empty</div>
+          <div className={styles.emptyState}>No assets yet</div>
         )}
         {pageItems.map((item) => (
-          <GalleryItem
+          <AssetsItem
             key={item.id}
             item={item}
             onItemClick={onItemClick}
@@ -158,4 +158,4 @@ const GalleryGrid = ({
   );
 };
 
-export default GalleryGrid;
+export default AssetsGrid;

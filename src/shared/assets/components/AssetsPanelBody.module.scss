@@ -1,6 +1,9 @@
-@use '../../style/variables.scss';
+/* AssetsPanelBody — shared body used by the editor's Assets panel and the
+   generator's Assets sidebar. Colors are hardcoded (not pulled from editor
+   variables.scss) so generator/bollardbuddy can use this without pulling in
+   editor styles. Values mirror the editor's $purple-* / $lightgray-* palette. */
 
-.galleryPanel {
+.body {
   display: flex;
   flex-direction: column;
   flex: 1 1 auto;
@@ -14,7 +17,7 @@
   justify-content: space-between;
   padding: 4px 12px 8px 12px;
   flex-shrink: 0;
-  color: variables.$lightgray-400;
+  color: #dbdbdb;
   font-size: 12px;
 }
 
@@ -34,15 +37,32 @@
   align-items: center;
   gap: 4px;
   padding: 4px 8px;
-  background: variables.$purple-400;
-  color: variables.$white;
+  background: #543e79;
+  color: #fff;
   border-radius: 4px;
   cursor: pointer;
   font-size: 11px;
   font-weight: 500;
 
   &:hover {
-    background: variables.$purple-300;
+    background: #8965ef;
+  }
+}
+
+.refreshButton {
+  all: unset;
+  width: 22px;
+  height: 22px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 4px;
+  cursor: pointer;
+  color: #bbb;
+
+  &:hover {
+    background-color: #6a4ac3;
+    color: #fff;
   }
 }
 
@@ -59,23 +79,23 @@
   font-size: 11px;
   border-radius: 3px;
   cursor: pointer;
-  color: variables.$lightgray-400;
+  color: #dbdbdb;
 
   &:hover {
-    color: variables.$white;
+    color: #fff;
     background: rgba(255, 255, 255, 0.04);
   }
 
   &.active {
-    color: variables.$white;
-    background: variables.$purple-900;
+    color: #fff;
+    background: #6a4ac3;
   }
 }
 
 .usageRow {
   padding: 0 12px 8px;
   font-size: 11px;
-  color: variables.$lightgray-400;
+  color: #dbdbdb;
   flex-shrink: 0;
 }
 
@@ -90,29 +110,12 @@
 
 .usageFill {
   height: 100%;
-  background: variables.$purple-400;
+  background: #543e79;
   transition: width 0.2s ease;
 }
 
 .usageFill.full {
   background: #e0473d;
-}
-
-.refreshButton {
-  all: unset;
-  width: 22px;
-  height: 22px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border-radius: 4px;
-  cursor: pointer;
-  color: variables.$lightgray-300;
-
-  &:hover {
-    background-color: variables.$purple-900;
-    color: variables.$white;
-  }
 }
 
 .scrollArea {
@@ -135,16 +138,16 @@
   align-items: center;
   justify-content: center;
   padding: 24px 0;
-  color: variables.$lightgray-600;
+  color: #ccc;
   font-size: 12px;
   text-align: center;
 }
 
 .spinner {
-  animation: gallery-spin 2s linear infinite;
+  animation: assets-spin 2s linear infinite;
 }
 
-@keyframes gallery-spin {
+@keyframes assets-spin {
   from {
     transform: rotate(0deg);
   }
@@ -159,7 +162,7 @@
   align-items: stretch;
   gap: 10px;
   padding: 16px 12px;
-  color: variables.$lightgray-300;
+  color: #bbb;
   font-size: 13px;
 
   p {
@@ -173,14 +176,14 @@
   display: flex;
   justify-content: center;
   padding: 8px 12px;
-  background: variables.$purple-400;
-  color: variables.$white;
+  background: #543e79;
+  color: #fff;
   border-radius: 6px;
   cursor: pointer;
   font-size: 13px;
   font-weight: 500;
 
   &:hover {
-    background: variables.$purple-300;
+    background: #8965ef;
   }
 }

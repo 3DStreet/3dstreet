@@ -1,26 +1,28 @@
 /**
- * Gallery Component - Main container component
+ * Assets Component - Main container component
  */
 
-import GallerySidebar from './GallerySidebar.jsx';
+import AssetsSidebar from './AssetsSidebar.jsx';
 
-const Gallery = ({
+const Assets = ({
   mode = 'sidebar',
   onCopyParams,
   onUseForGenerator,
   onUseForVideo,
   onNotification,
+  onSignIn,
   onClose
 }) => {
   // For now, only sidebar mode is implemented
   // Modal mode can be added later for other use cases
   if (mode === 'sidebar') {
     return (
-      <GallerySidebar
+      <AssetsSidebar
         onCopyParams={onCopyParams}
         onUseForGenerator={onUseForGenerator}
         onUseForVideo={onUseForVideo}
         onNotification={onNotification}
+        onSignIn={onSignIn}
       />
     );
   }
@@ -29,4 +31,4 @@ const Gallery = ({
   return null;
 };
 
-export default Gallery;
+export default Assets;

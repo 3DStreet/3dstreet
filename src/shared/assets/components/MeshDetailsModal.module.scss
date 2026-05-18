@@ -1,18 +1,116 @@
 @use '../../../editor/style/variables.scss';
 
-.modalWrapper {
+/* Self-contained backdrop + frame so the modal renders identically in the
+   editor, generator, and bollardbuddy bundles. Don't lean on global
+   `.modal-*` rules — those only ship in the editor (textureModal.scss). */
+
+.modal {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-color: rgba(0, 0, 0, 0.5);
+  backdrop-filter: blur(4px);
+  padding: 1rem;
+  overflow-y: auto;
+}
+
+.modalContent {
   position: relative;
+  display: flex;
+  flex-direction: column;
+  background-color: rgb(34, 34, 34);
+  border-radius: 12px;
+  box-shadow:
+    0 4px 8px rgba(0, 0, 0, 0.5),
+    0 6px 20px rgba(0, 0, 0, 0.5);
+  max-height: 90vh;
+  max-width: 95vw;
+  overflow: hidden;
+}
 
-  // Hide the scrollbar on the shared Modal's .modal-body wrapper — the
-  // global rule sets `overflow-y: scroll` so the gutter is always visible
-  // even when content fits. Keep scrollability for tall content; just
-  // hide the visual scrollbar (Firefox + WebKit).
-  :global(.modal-body) {
-    scrollbar-width: none;
+.modalHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 16px 12px 24px;
+  border-bottom: 1px solid variables.$darkgray-600;
+  flex-shrink: 0;
+}
 
-    &::-webkit-scrollbar {
-      display: none;
-    }
+.closeBtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  background: transparent;
+  border: none;
+  border-radius: 6px;
+  color: variables.$lightgray-300;
+  cursor: pointer;
+  flex-shrink: 0;
+
+  &:hover {
+    color: variables.$lightgray-100;
+    background: rgba(255, 255, 255, 0.05);
+  }
+}
+
+/* Navigation arrows — visually consistent with AssetsModal's. */
+.navButton {
+  position: fixed;
+  top: 50%;
+  transform: translateY(-50%);
+  background-color: rgba(31, 41, 55, 0.9);
+  color: #d1d5db;
+  border: 1px solid rgba(75, 85, 99, 0.9);
+  border-radius: 9999px;
+  width: 3.5rem;
+  height: 3.5rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  backdrop-filter: blur(8px);
+  z-index: 1001;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+
+  svg {
+    width: 1.75rem;
+    height: 1.75rem;
+    flex-shrink: 0;
+  }
+
+  &:hover {
+    background-color: rgba(55, 65, 81, 1);
+    color: #f3f4f6;
+    border-color: rgba(107, 114, 128, 1);
+    transform: translateY(-50%) scale(1.1);
+    box-shadow: 0 6px 16px rgba(0, 0, 0, 0.5);
+  }
+
+  &:active {
+    transform: translateY(-50%) scale(0.98);
+  }
+}
+
+.navButtonPrev {
+  left: 1rem;
+
+  &:hover {
+    transform: translateY(-50%) translateX(-0.25rem) scale(1.1);
+  }
+}
+
+.navButtonNext {
+  right: 1rem;
+
+  &:hover {
+    transform: translateY(-50%) translateX(0.25rem) scale(1.1);
   }
 }
 
@@ -20,16 +118,18 @@
   display: flex;
   align-items: center;
   column-gap: 10px;
-  padding-top: 20px;
-  padding-right: 16px;
-  font-size: 20px;
+  font-size: 18px;
   font-weight: 500;
   color: variables.$lightgray-100;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .titleIcon {
-  width: 24px;
-  height: 24px;
+  width: 22px;
+  height: 22px;
   flex-shrink: 0;
   color: variables.$lightgray-300;
 }
@@ -39,8 +139,9 @@
   grid-template-columns: minmax(0, 1fr) minmax(280px, 360px);
   gap: 16px;
   width: 820px;
-  max-width: calc(95vw - 64px);
-  padding: 8px 0 16px;
+  max-width: calc(95vw - 32px);
+  padding: 16px 24px 24px;
+  overflow-y: auto;
 }
 
 .viewerArea {

@@ -6,7 +6,7 @@
  *   2. Pre-flight quota check via callable Cloud Function
  *   3. Create entity at drop position with local blob URL
  *   4. (GLB only) optimize via gltf-transform
- *   5. Upload via galleryServiceV2.addAsset
+ *   5. Upload via assetsService.addAsset
  *   6. On success: write data-asset-id + data-asset-owner-uid (the only
  *      persistent identity attrs), swap blob URL for cloud URL, revoke blob.
  *   7. On failure: leave blob URL so the model still renders locally.
@@ -18,32 +18,17 @@
 
 import { httpsCallable } from 'firebase/functions';
 import { auth, functions } from '@shared/services/firebase.js';
+import { assetsService, ASSET_TYPES, ASSET_CATEGORIES } from '@shared/assets';
 import {
-  galleryServiceV2,
-  ASSET_TYPES,
-  ASSET_CATEGORIES
-} from '@shared/gallery';
+  GLB_MAX_BYTES,
+  IMAGE_MAX_BYTES,
+  FILE_PICKER_ACCEPT,
+  getAssetKind,
+  isAcceptedAssetFile
+} from '@shared/asset-upload';
 import useAssetUploadStore from '@/editor/state/assetUploadStore.js';
 
-const GLB_MAX_BYTES = 50 * 1000 * 1000;
-const IMAGE_MAX_BYTES = 10 * 1000 * 1000;
-
-const GLB_EXTS = ['.glb', '.gltf'];
-const IMAGE_EXTS = ['.jpg', '.jpeg', '.png', '.webp', '.avif'];
-const ACCEPTED_EXTS = [...GLB_EXTS, ...IMAGE_EXTS];
-
-export const FILE_PICKER_ACCEPT = ACCEPTED_EXTS.join(',');
-
-function getAssetKind(file) {
-  const name = (file.name || '').toLowerCase();
-  if (GLB_EXTS.some((ext) => name.endsWith(ext))) return 'glb';
-  if (IMAGE_EXTS.some((ext) => name.endsWith(ext))) return 'image';
-  return null;
-}
-
-export function isAcceptedAssetFile(file) {
-  return getAssetKind(file) !== null;
-}
+export { FILE_PICKER_ACCEPT, isAcceptedAssetFile };
 
 function notifyError(msg) {
   if (window.STREET?.notify?.errorMessage) {
@@ -231,13 +216,14 @@ export async function uploadAndPlaceAsset(file, position, existingEntity) {
       progress: Math.round(detail.progress || 0)
     });
   };
-  galleryServiceV2.events.addEventListener('uploadProgress', onProgress);
+  assetsService.events.addEventListener('uploadProgress', onProgress);
 
   try {
     let blobToUpload = file;
     if (kind === 'glb') {
       setUpload(entityId, { status: 'optimizing', progress: 0 });
-      const { optimizeGlb } = await import('./optimizeGlb.js');
+      const { optimizeGlb } =
+        await import('@shared/asset-upload/optimizeGlb.js');
       blobToUpload = await optimizeGlb(file);
       if (blobToUpload.size > GLB_MAX_BYTES) {
         notifyError(
@@ -253,7 +239,7 @@ export async function uploadAndPlaceAsset(file, position, existingEntity) {
 
     setUpload(entityId, { status: 'uploading', progress: 0 });
     const assetType = kind === 'glb' ? ASSET_TYPES.MESH : ASSET_TYPES.IMAGE;
-    const assetId = await galleryServiceV2.addAsset(
+    const assetId = await assetsService.addAsset(
       blobToUpload,
       { originalFilename: file.name },
       assetType,
@@ -262,7 +248,7 @@ export async function uploadAndPlaceAsset(file, position, existingEntity) {
     );
     pendingAssetId = assetId;
 
-    const asset = await galleryServiceV2.getAsset(assetId, userId);
+    const asset = await assetsService.getAsset(assetId, userId);
     const cloudUrl = asset?.storageUrl;
     if (!cloudUrl) {
       throw new Error('Upload succeeded but no cloud URL returned');
@@ -331,9 +317,11 @@ export async function uploadAndPlaceAsset(file, position, existingEntity) {
     // from updateAsset will replace the gallery card placeholder with the
     // generated JPEG when it lands.
     if (kind === 'glb') {
-      import('./captureThumbnail.js').then(({ captureAndUploadThumbnail }) => {
-        captureAndUploadThumbnail(assetId, userId, cloudUrl);
-      });
+      import('@shared/asset-upload/captureThumbnail.js').then(
+        ({ captureAndUploadThumbnail }) => {
+          captureAndUploadThumbnail(assetId, userId, cloudUrl);
+        }
+      );
     }
 
     notifySuccess(`Uploaded ${file.name}`);
@@ -344,6 +332,6 @@ export async function uploadAndPlaceAsset(file, position, existingEntity) {
     setUpload(entityId, { status: 'failed' });
     return { entity, assetId: null, kind };
   } finally {
-    galleryServiceV2.events.removeEventListener('uploadProgress', onProgress);
+    assetsService.events.removeEventListener('uploadProgress', onProgress);
   }
 }
