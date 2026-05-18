@@ -9,7 +9,8 @@ import { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
 import PropTypes from 'prop-types';
 import * as Tooltip from '@radix-ui/react-tooltip';
-import { auth } from '@shared/services/firebase.js';
+import { httpsCallable } from 'firebase/functions';
+import { auth, functions } from '@shared/services/firebase.js';
 import { DownloadIcon, TrashIcon, Cross24Icon } from '@shared/icons';
 import assetsService from '../services/assetsService.js';
 import { formatBytes, formatDate, getAssetTitle } from '../utils.js';
@@ -130,6 +131,45 @@ const MeshDetailsModal = ({
     } catch (err) {
       console.error('[MeshDetailsModal] delete failed', err);
       setError(err.message || 'Delete failed');
+    }
+  };
+
+  const onRestore = async () => {
+    if (!isOwner || !data) return;
+    setError(null);
+    try {
+      // Soft-delete dropped this asset's bytes from the user's usage tally
+      // (asset-quota.js onAssetWritten subtracts deleted docs). Restoring
+      // adds them back — so check headroom first.
+      const proposedBytes = Number(data.size) || 0;
+      try {
+        const callable = httpsCallable(functions, 'getUploadQuota');
+        const { data: quota } = await callable({ proposedBytes });
+        if (quota && quota.allowed === false && !quota.soft) {
+          const usedMb = ((quota.bytesUsed || 0) / 1000 / 1000).toFixed(1);
+          const limitMb = Math.round((quota.planLimit || 0) / 1000 / 1000);
+          const restoreMb = (proposedBytes / 1000 / 1000).toFixed(1);
+          setError(
+            `Not enough storage to restore (${restoreMb} MB needed; ${usedMb} / ${limitMb} MB used). Delete other assets or upgrade.`
+          );
+          return;
+        }
+      } catch (quotaErr) {
+        // If the callable is unavailable, fall through and let the write
+        // attempt — server still tracks usage even if it can't pre-flight.
+        console.warn(
+          '[MeshDetailsModal] quota check unavailable, proceeding',
+          quotaErr
+        );
+      }
+
+      await assetsService.undeleteAsset(assetId, ownerUid);
+      // Refresh local state so the banner and button disappear without
+      // closing the modal — the user might want to keep editing.
+      setData((prev) => (prev ? { ...prev, deleted: false } : prev));
+    } catch (err) {
+      console.error('[MeshDetailsModal] restore failed', err);
+      setError(err.message || 'Restore failed');
     }
   };
 
@@ -268,6 +308,15 @@ const MeshDetailsModal = ({
           </div>
 
           <div className={styles.sidebar}>
+            {data?.deleted && (
+              <div className={styles.deletedBanner} role="alert">
+                <strong>Marked for deletion</strong>
+                <span>
+                  This model will be permanently purged on the next cleanup
+                  pass. Restore it to keep using it in your scenes.
+                </span>
+              </div>
+            )}
             <div className={styles.field}>
               <label className={styles.fieldLabel} htmlFor="meshAssetName">
                 Display name
@@ -323,19 +372,45 @@ const MeshDetailsModal = ({
 
             <Tooltip.Provider>
               <div className={styles.controlButtons}>
-                {isOwner && (
-                  <IconTooltip label="Delete">
-                    <button
-                      type="button"
-                      onClick={onDelete}
-                      disabled={!data}
-                      className={`${styles.iconButton} ${styles.deleteBtn}`}
-                      aria-label="Delete"
-                    >
-                      <TrashIcon />
-                    </button>
-                  </IconTooltip>
-                )}
+                {isOwner &&
+                  (data?.deleted ? (
+                    <IconTooltip label="Restore">
+                      <button
+                        type="button"
+                        onClick={onRestore}
+                        disabled={!data}
+                        className={`${styles.iconButton} ${styles.restoreBtn}`}
+                        aria-label="Restore"
+                      >
+                        <svg
+                          xmlns="http://www.w3.org/2000/svg"
+                          viewBox="0 0 24 24"
+                          fill="none"
+                          stroke="currentColor"
+                          strokeWidth="2"
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          aria-hidden="true"
+                        >
+                          <path d="M3 12a9 9 0 1 0 3-6.7" />
+                          <polyline points="3 4 3 10 9 10" />
+                          <polyline points="12 7 12 12 15 14" />
+                        </svg>
+                      </button>
+                    </IconTooltip>
+                  ) : (
+                    <IconTooltip label="Delete">
+                      <button
+                        type="button"
+                        onClick={onDelete}
+                        disabled={!data}
+                        className={`${styles.iconButton} ${styles.deleteBtn}`}
+                        aria-label="Delete"
+                      >
+                        <TrashIcon />
+                      </button>
+                    </IconTooltip>
+                  ))}
                 <IconTooltip label="Download">
                   <button
                     type="button"

@@ -154,14 +154,10 @@ export async function uploadAndPlaceAsset(file, position, existingEntity) {
     return { entity: null, assetId: null, kind: null };
   }
 
-  const sizeCap = kind === 'glb' ? GLB_MAX_BYTES : IMAGE_MAX_BYTES;
-  if (file.size > sizeCap) {
-    const limitMb = Math.round(sizeCap / 1000 / 1000);
-    const kindLabel = kind === 'glb' ? 'GLB files' : 'Images';
-    notifyError(`File too large. ${kindLabel} must be under ${limitMb} MB.`);
-    return { entity: null, assetId: null, kind };
-  }
-
+  // Create the placeholder *before* enforcing the upload size cap so the
+  // user can still preview oversize files locally (e.g. raw photogrammetry
+  // GLBs that exceed our 50 MB cloud cap). The cap is enforced below by
+  // skipping the upload and marking the entity local_error instead.
   let entity;
   let blobUrl = null;
   if (existingEntity) {
@@ -180,6 +176,7 @@ export async function uploadAndPlaceAsset(file, position, existingEntity) {
   setUpload(entityId, {
     status: 'uploading',
     progress: 0,
+    reason: null,
     sizeBytes: file.size,
     originalFilename: file.name,
     // Stashed so the Retry button on a failed upload can re-invoke this
@@ -190,8 +187,26 @@ export async function uploadAndPlaceAsset(file, position, existingEntity) {
     blobUrl
   });
 
+  const sizeCap = kind === 'glb' ? GLB_MAX_BYTES : IMAGE_MAX_BYTES;
+  if (file.size > sizeCap) {
+    const limitMb = Math.round(sizeCap / 1000 / 1000);
+    notifyError(
+      `${file.name} is over the ${limitMb} MB cloud upload limit — kept local for preview only.`
+    );
+    setUpload(entityId, {
+      status: 'local_error',
+      reason: 'too_large',
+      progress: 0
+    });
+    return { entity, assetId: null, kind };
+  }
+
   if (!auth.currentUser) {
-    setUpload(entityId, { status: 'local', progress: 0 });
+    setUpload(entityId, {
+      status: 'local',
+      reason: 'not_signed_in',
+      progress: 0
+    });
     notifyError('Sign in to save assets to the cloud.');
     return { entity, assetId: null, kind };
   }
@@ -206,10 +221,19 @@ export async function uploadAndPlaceAsset(file, position, existingEntity) {
       notifyError(
         `Storage full — using ${usedMb} / ${limitMb} MB. Delete assets or upgrade.`
       );
+      setUpload(entityId, {
+        status: 'local_error',
+        reason: 'over_quota',
+        progress: 0
+      });
     } else {
       notifyError('Upload blocked.');
+      setUpload(entityId, {
+        status: 'local_error',
+        reason: 'upload_blocked',
+        progress: 0
+      });
     }
-    setUpload(entityId, { status: 'local', progress: 0 });
     return { entity, assetId: null, kind };
   }
 
@@ -234,9 +258,12 @@ export async function uploadAndPlaceAsset(file, position, existingEntity) {
         notifyError(
           `Optimized GLB still exceeds ${Math.round(
             GLB_MAX_BYTES / 1000 / 1000
-          )} MB.`
+          )} MB — kept local for preview only.`
         );
-        setUpload(entityId, { status: 'local' });
+        setUpload(entityId, {
+          status: 'local_error',
+          reason: 'optimized_too_large'
+        });
         return { entity, assetId: null, kind };
       }
       setUpload(entityId, { sizeBytes: blobToUpload.size });

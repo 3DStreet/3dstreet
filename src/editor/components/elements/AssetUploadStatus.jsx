@@ -1,6 +1,9 @@
 import { useState } from 'react';
 import PropTypes from 'prop-types';
-import useAssetUploadStatus, { STATUS_LABELS } from './useAssetUploadStatus';
+import useAssetUploadStatus, {
+  STATUS_LABELS,
+  REASON_TEXT
+} from './useAssetUploadStatus';
 import useAssetUploadStore from '@/editor/state/assetUploadStore.js';
 import { uploadAndPlaceAsset } from '@/editor/lib/asset-upload/uploadAndPlaceAsset.js';
 import { MeshDetailsModal, formatBytes } from '@shared/assets';
@@ -17,11 +20,16 @@ const AssetUploadStatus = ({ entity }) => {
   let detail = '';
   if (state.status === 'uploading' && state.progress > 0) {
     detail = `${state.progress}%`;
-  } else if (state.status === 'uploaded' && sizeStr) {
-    detail = sizeStr;
-  } else if (state.status === 'local' && sizeStr) {
+  } else if (
+    (state.status === 'uploaded' ||
+      state.status === 'local' ||
+      state.status === 'local_error') &&
+    sizeStr
+  ) {
     detail = sizeStr;
   }
+
+  const reasonText = state.reason ? REASON_TEXT[state.reason] : null;
 
   return (
     <div
@@ -47,7 +55,7 @@ const AssetUploadStatus = ({ entity }) => {
             display: 'inline-block'
           }}
         />
-        <strong>{meta.text}</strong>
+        <strong style={{ color: meta.color }}>{meta.text}</strong>
         {detail && <span style={{ opacity: 0.7 }}>· {detail}</span>}
         {state.status === 'failed' && (
           <button
@@ -72,6 +80,18 @@ const AssetUploadStatus = ({ entity }) => {
           </button>
         )}
       </div>
+      {reasonText && (
+        <div
+          style={{
+            marginTop: 4,
+            fontSize: 11,
+            color: meta.color,
+            opacity: 0.95
+          }}
+        >
+          {reasonText}
+        </div>
+      )}
       {state.assetId && (
         <div
           style={{

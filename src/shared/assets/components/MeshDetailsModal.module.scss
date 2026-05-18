@@ -259,6 +259,23 @@
   font-size: 12px;
 }
 
+.deletedBanner {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 10px 12px;
+  margin-bottom: 12px;
+  background: rgba(224, 71, 61, 0.12);
+  border-left: 3px solid #e0473d;
+  border-radius: 4px;
+  font-size: 12px;
+  color: #f5a8a3;
+
+  strong {
+    color: #e0473d;
+  }
+}
+
 .controlButtons {
   display: flex;
   justify-content: flex-start;
@@ -305,6 +322,16 @@
   &:hover:not(:disabled) {
     background: rgba(239, 68, 68, 0.1);
     color: #f87171;
+  }
+}
+
+.restoreBtn {
+  color: #2bb673;
+  border-color: rgba(43, 182, 115, 0.4);
+
+  &:hover:not(:disabled) {
+    background: rgba(43, 182, 115, 0.1);
+    color: #51d995;
   }
 }
 

@@ -129,6 +129,13 @@ if (typeof window !== 'undefined') {
         .patchAsset(assetId, userId, { deleted: true });
     }
   });
+  assetsService.events.addEventListener('assetRestored', (e) => {
+    const { assetId, userId } = e.detail || {};
+    if (!assetId || !userId) return;
+    useAssetUploadStore
+      .getState()
+      .patchAsset(assetId, userId, { deleted: false });
+  });
 }
 
 export default useAssetUploadStore;

@@ -745,6 +745,40 @@ class AssetsServiceV2 {
   }
 
   /**
+   * Restore a soft-deleted asset. Clears the `deleted` flag and re-emits a
+   * symmetric `assetRestored` event so any in-scene entities that were
+   * hidden/unloaded on delete can be put back.
+   * @param {string} assetId - Asset ID
+   * @param {string} userId - User ID
+   * @returns {Promise<void>}
+   */
+  async undeleteAsset(assetId, userId) {
+    try {
+      const assetRef = doc(db, 'users', userId, 'assets', assetId);
+      const assetSnap = await getDoc(assetRef);
+      if (!assetSnap.exists()) throw new Error('Asset not found');
+      const asset = assetSnap.data();
+
+      await updateDoc(assetRef, {
+        deleted: false,
+        deletedAt: null,
+        updatedAt: serverTimestamp()
+      });
+
+      // Mirror of the assetDeleted event — listeners (usage meter, scene
+      // visibility sync) use the size delta to update optimistically.
+      this.events.dispatchEvent(
+        new CustomEvent('assetRestored', {
+          detail: { assetId, userId, size: Number(asset.size) || 0 }
+        })
+      );
+    } catch (error) {
+      console.error('Error restoring asset:', error);
+      throw error;
+    }
+  }
+
+  /**
    * Subscribe to real-time updates for assets
    * @param {string} userId - User ID
    * @param {object} filters - Query filters

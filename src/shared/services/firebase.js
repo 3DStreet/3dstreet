@@ -18,6 +18,13 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const storage = getStorage(app);
+// Default is 10 minutes — way too long to leave a UI silently "uploading"
+// when the user lost connection. 30s gives the SDK enough room to ride out
+// brief blips while still surfacing a real failure (and our Retry button)
+// quickly enough to act on. The settable property is documented on the
+// Storage service instance; the modular setter isn't exported in this SDK
+// version.
+storage.maxUploadRetryTime = 30_000;
 const db = getFirestore(app);
 const functions = getFunctions(app);
 const ai = getAI(app, { backend: new VertexAIBackend('global') });
