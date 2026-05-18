@@ -48,6 +48,21 @@ const resolvePort = () => {
   return DEFAULT_PORT;
 };
 
+// True when the URL carries explicit MCP pairing intent (the relay's
+// auto-pair `#mcp` hash or the legacy `?mcp=PORT` query). Used to gate the
+// mount probe — without this, every page load opens a WebSocket to the
+// relay port and the browser logs `WebSocket connection failed` for users
+// who never installed the relay. JS error handlers can't suppress that
+// log, so the only fix is to not open the socket. Users who later opt in
+// via `/mcp` still trigger a connect through `reconnect()`.
+const hasMCPIntent = () => {
+  if (typeof window === 'undefined') return false;
+  if (/^#mcp(?:=\d+)?$/.test(window.location.hash || '')) return true;
+  const params = new URLSearchParams(window.location.search);
+  const fromQuery = parseInt(params.get('mcp'), 10);
+  return Number.isFinite(fromQuery) && fromQuery > 0 && fromQuery < 65536;
+};
+
 export function useMCPClient({ currentUser, readOnly, persistRetries }) {
   const [status, setStatus] = useState('disconnected');
   const [lastError, setLastError] = useState(null);
@@ -202,10 +217,14 @@ export function useMCPClient({ currentUser, readOnly, persistRetries }) {
     connectRef.current = connect;
   }, [connect]);
 
-  // Probe on mount, tear down on unmount.
+  // Probe on mount only when the URL signals explicit intent; tear down on
+  // unmount. Skipping the probe for everyone else keeps the browser from
+  // logging a `WebSocket connection failed` line on every session for users
+  // who don't run the MCP relay. Typing `/mcp` later still pairs via
+  // `reconnect()`.
   useEffect(() => {
     backoffRef.current = 1000;
-    connect();
+    if (hasMCPIntent()) connect();
     return () => {
       clearReconnectTimer();
       const sock = wsRef.current;

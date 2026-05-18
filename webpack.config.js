@@ -18,7 +18,10 @@ module.exports = {
       },
       {
         directory: path.join(__dirname, 'public'),
-        publicPath: '/'
+        publicPath: '/',
+        watch: {
+          ignored: ['**/.*', '**/node_modules/**']
+        }
       }
     ]
   },
