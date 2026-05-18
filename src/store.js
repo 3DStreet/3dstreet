@@ -191,8 +191,6 @@ const useStore = create(
         playOutcomeTimeMs: 0,
         isInspectorEnabled: true,
         setIsInspectorEnabled: (newIsInspectorEnabled) => {
-          const viewerModeUI = document.getElementById('viewer-mode-ui');
-
           if (newIsInspectorEnabled) {
             // Opening the inspector exits play mode (regardless of how
             // the open was triggered — Stop button, programmatic, etc.).
@@ -206,19 +204,9 @@ const useStore = create(
               console.log('Stopping recording due to returning to editor mode');
               canvasRecorder.stopRecording();
             }
-
-            // Hide viewer mode UI when inspector is visible
-            if (viewerModeUI) {
-              viewerModeUI.style.display = 'none';
-            }
           } else {
             posthog.capture('inspector_closed');
             AFRAME.INSPECTOR.close();
-
-            // Show viewer mode UI when inspector is not visible
-            if (viewerModeUI) {
-              viewerModeUI.style.display = 'block';
-            }
           }
           set({ isInspectorEnabled: newIsInspectorEnabled });
         }

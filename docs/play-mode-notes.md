@@ -281,9 +281,13 @@ Each play mode introspects the scene for its required object type.
   slabs (top at +0.15m, mountable curbs by virtue of the raycast
   vehicle controller's per-wheel suspension), and bounding-box
   cuboids for any entity whose mixin's category starts with
-  `vehicles`, `cyclists`, or `buildings`. Street furniture
-  (poles/benches/trees) still pass-through — defer until someone
-  drives through a hydrant and complains.
+  `vehicles`, `cyclists`, `buildings`, `fixtures` (benches,
+  shelters, food carts, light poles), or `dividers` (jersey
+  barriers, bollards, planters, cones). Still pass-through:
+  `plants` (tree canopy AABB would feel unfair — needs trunk-only
+  collider) and `signs` (thin posts on most variants). Light-pole
+  and cone tall+thin AABBs inside the included categories are an
+  accepted minor cost — revisit when a user complains.
 - **Wheel suspension/friction sliders** (suspensionStiffness,
   frictionSlip, sideFrictionStiffness) are in `drive-controls`'s
   schema but not yet plumbed through to `play-mode-vehicle` —
@@ -322,7 +326,24 @@ Each play mode introspects the scene for its required object type.
   else (stale raycaster state? lingering play-mode listener? the
   hidden Driveable Vehicle re-appearing under the cursor?). Worth
   investigating next; don't re-enable the controls as part of the
-  fix without first proving they're the cause.
+  fix without first proving they're the cause. **Resolved:** logs
+  from `window.__DEBUG_PLAY_CLICK` showed the raycaster's `click`
+  handler in `src/editor/lib/raycaster.js` was rejecting every
+  post-Stop click because of a strict `onDownPosition.distanceTo(
+  onUpPosition) === 0` check. Pre-Play, mouse-down/up positions
+  happened to be exactly equal; post-Stop, layout shifts and
+  control-settling perturb the container's bounding rect so the
+  same physical click produces 0.005-0.12 normalized-coord drift
+  and gets discarded as a drag. Loosened to `< 0.01` (≈10-20 px).
+  The instrumentation behind the `__DEBUG_PLAY_CLICK` flag stays
+  in place for the next time something weird happens here.
+- **Perf budget bumped to 3.2 MiB** in `webpack.prod.config.js` to
+  fit the play-mode JS (~52 KB net add to the core bundle on top
+  of main). Lazy-loading play-mode itself is feasible but the
+  win-per-effort is poor next to the structural wins listed in
+  issue #1624 (GLTFExporter dynamic import, async catalog.json,
+  editor code-split). Treat play-mode lazy-loading as part of
+  that work, not this branch.
 - **Chassis frame ≠ entity frame.** `drive-controls.vehicleSize` is in
   ENTITY frame (x=width, y=height, z=length, A-Frame -Z forward);
   `play-mode-vehicle.chassisSize` is in CHASSIS frame (x=length,

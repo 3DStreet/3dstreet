@@ -9,11 +9,12 @@
   color: variables.$lightgray-300;
   border: 1px solid variables.$gray-700;
   border-radius: 8px;
-  padding: 12px 14px;
-  min-width: 240px;
+  padding: 8px 10px;
+  width: 280px;
+  max-width: 33vw;
   font-family: ui-sans-serif, system-ui, sans-serif;
-  font-size: 12px;
-  line-height: 1.6;
+  font-size: 11px;
+  line-height: 1.4;
   box-shadow: 0 2px 12px rgba(0, 0, 0, 0.45);
   pointer-events: auto;
 }
@@ -29,10 +30,10 @@
 
 .row {
   display: grid;
-  grid-template-columns: 90px 1fr 50px;
+  grid-template-columns: 72px 1fr 40px;
   align-items: center;
-  gap: 8px;
-  margin-top: 4px;
+  gap: 6px;
+  margin-top: 3px;
 
   input[type='range'] {
     width: 100%;
@@ -63,9 +64,9 @@
 
 .timerRow {
   display: grid;
-  grid-template-columns: 90px 1fr;
+  grid-template-columns: 72px 1fr;
   align-items: center;
-  gap: 8px;
+  gap: 6px;
   font-variant-numeric: tabular-nums;
 }
 

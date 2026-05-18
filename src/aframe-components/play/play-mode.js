@@ -135,6 +135,12 @@ AFRAME.registerSystem('play-mode', {
     // where the user was looking — even though they may have driven
     // around in play mode.
     this.saveEditorCameraPose();
+    // Tell the mode-manager we're now in drive mode. Any future
+    // drive-only components/HUD will be attached by drive mode's
+    // enter() hook — play-mode-vehicle still does its own setup via
+    // the play-mode-start scene event below.
+    const modeMgr = this.sceneEl.systems['mode-manager'];
+    if (modeMgr) modeMgr.setMode('drive');
     // Match the play camera to the editor (inspector) camera pose so
     // entering play mode doesn't jump the view. Drive-mode may then
     // take the camera over for chase/fpv/top-down if a driveable
@@ -244,6 +250,8 @@ AFRAME.registerSystem('play-mode', {
     // is responsible for the scene #camera during play; this is the
     // separate inspector-editor camera owned by AFRAME.INSPECTOR.
     this.restoreEditorCameraPose();
+    const modeMgr = this.sceneEl.systems['mode-manager'];
+    if (modeMgr) modeMgr.setMode('editor');
   },
 
   pause: function () {
