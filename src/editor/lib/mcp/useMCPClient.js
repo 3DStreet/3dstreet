@@ -21,14 +21,46 @@ const MAX_TRANSCRIPT = 200;
 const MAX_BACKOFF_MS = 30_000;
 const PAIRED_ELSEWHERE_CODE = 4001;
 
+// `#mcp` (auto-pair URL emitted by the relay) optionally encodes a port as
+// `#mcp=PORT`. The hash, when present, takes precedence — bare `#mcp`
+// resolves to DEFAULT_PORT even if a `?mcp=PORT` query is also set, since
+// the auto-pair URL is the explicit user intent. The legacy `?mcp=PORT`
+// query remains as a fallback for URLs without the hash.
 const resolvePort = () => {
   if (typeof window === 'undefined') return DEFAULT_PORT;
+  const hashMatch = (window.location.hash || '').match(/^#mcp(?:=(\d+))?$/);
+  if (hashMatch) {
+    if (hashMatch[1]) {
+      const fromHash = parseInt(hashMatch[1], 10);
+      if (Number.isFinite(fromHash) && fromHash > 0 && fromHash < 65536) {
+        return fromHash;
+      }
+      // Out-of-range port digits in the hash: don't silently fall through
+      // to the query param, since the user wrote a hash. Use the default.
+    }
+    return DEFAULT_PORT;
+  }
   const params = new URLSearchParams(window.location.search);
   const fromQuery = parseInt(params.get('mcp'), 10);
   if (Number.isFinite(fromQuery) && fromQuery > 0 && fromQuery < 65536) {
     return fromQuery;
   }
   return DEFAULT_PORT;
+};
+
+// True when the URL carries explicit MCP pairing intent (the relay's
+// auto-pair `#mcp` hash or the legacy `?mcp=PORT` query). Used to gate the
+// mount probe — without this, every page load opens a WebSocket to the
+// relay port and the browser logs `WebSocket connection failed` for users
+// who never installed the relay. JS error handlers can't suppress that
+// log, so the only fix is to not open the socket. Users who later opt in
+// via `/mcp` still trigger a connect through `reconnect()`.
+const hasMCPIntent = () => {
+  if (typeof window === 'undefined') return false;
+  if (/^#mcp(?:=\d+)?$/.test(window.location.hash || '')) return true;
+  const params = new URLSearchParams(window.location.search);
+  const fromQuery = parseInt(params.get('mcp'), 10);
+  return Number.isFinite(fromQuery) && fromQuery > 0 && fromQuery < 65536;
 };
 
 export function useMCPClient({ currentUser, readOnly, persistRetries }) {
@@ -185,10 +217,14 @@ export function useMCPClient({ currentUser, readOnly, persistRetries }) {
     connectRef.current = connect;
   }, [connect]);
 
-  // Probe on mount, tear down on unmount.
+  // Probe on mount only when the URL signals explicit intent; tear down on
+  // unmount. Skipping the probe for everyone else keeps the browser from
+  // logging a `WebSocket connection failed` line on every session for users
+  // who don't run the MCP relay. Typing `/mcp` later still pairs via
+  // `reconnect()`.
   useEffect(() => {
     backoffRef.current = 1000;
-    connect();
+    if (hasMCPIntent()) connect();
     return () => {
       clearReconnectTimer();
       const sock = wsRef.current;
@@ -210,6 +246,16 @@ export function useMCPClient({ currentUser, readOnly, persistRetries }) {
     // successful pairing so subsequent drops trigger backoff retries.
     everConnectedRef.current = true;
     if (wsRef.current) {
+      const state = wsRef.current.readyState;
+      if (state === WebSocket.OPEN || state === WebSocket.CONNECTING) {
+        // Already paired or handshake in flight — don't tear it down.
+        // Without this guard, an auto-pair URL that fires reconnect()
+        // during the hook's own mount probe races a fresh socket
+        // against the relay's still-set peer, landing on close code
+        // 4001 `paired-elsewhere` and showing the user a red status
+        // bar plus a transient "MCP relay paired" chat message.
+        return;
+      }
       try {
         wsRef.current.close(1000, 'manual-reconnect');
       } catch {

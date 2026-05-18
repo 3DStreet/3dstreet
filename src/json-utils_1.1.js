@@ -610,6 +610,12 @@ AFRAME.registerComponent('set-loader-from-hash', {
       if (!streetURL) {
         return;
       }
+      // `#mcp` (with optional `=PORT`) is the MCP relay auto-pair URL —
+      // handled by AIChatPanel, not the scene loader. Without this bail,
+      // the dispatcher would fall through to fetchJSON('mcp.json') below.
+      if (/^mcp(=\d+)?$/.test(streetURL)) {
+        return;
+      }
       if (streetURL.startsWith('crushed-3dstreet-json:')) {
         const fragment = window.location.hash;
         const prefix = '#crushed-3dstreet-json:';
