@@ -34,7 +34,8 @@ async function resolvePlanForUser(uid) {
   try {
     const record = await getAuth().getUser(uid);
     const claims = record.customClaims || {};
-    if (claims.plan === 'TEAM' || claims.plan === 'MAX') return 'TEAM';
+    if (claims.plan === 'MAX') return 'MAX';
+    if (claims.plan === 'TEAM') return 'TEAM';
     if (claims.plan === 'PRO') return 'PRO';
   } catch (err) {
     console.warn('[asset-quota] failed to read user claims', err);

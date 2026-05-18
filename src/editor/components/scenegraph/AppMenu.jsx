@@ -269,12 +269,9 @@ const AppMenu = ({ currentUser }) => {
     const input = document.createElement('input');
     input.type = 'file';
     input.accept = FILE_PICKER_ACCEPT;
-    input.multiple = true;
     input.onchange = async (event) => {
-      const files = Array.from(event.target.files || []);
-      for (const file of files) {
-        await uploadAndPlaceAsset(file);
-      }
+      const file = event.target.files?.[0];
+      if (file) await uploadAndPlaceAsset(file);
     };
     input.click();
   };

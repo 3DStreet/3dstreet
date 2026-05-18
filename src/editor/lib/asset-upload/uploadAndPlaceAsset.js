@@ -165,10 +165,12 @@ export async function uploadAndPlaceAsset(file, position, existingEntity) {
   let entity;
   let blobUrl = null;
   if (existingEntity) {
-    // Retry path: reuse the existing failed placeholder, keep its current
-    // gltf-model/src blob URL (still valid since File outlives the failed
-    // attempt). No new blob URL is allocated.
+    // Retry path: reuse the existing failed placeholder. Its current
+    // gltf-model/src blob URL (allocated on the first attempt) is still
+    // valid. Pull it from the upload slot so we can revoke it on success.
     entity = existingEntity;
+    blobUrl =
+      useAssetUploadStore.getState().uploads[entity.id]?.blobUrl || null;
   } else {
     ({ entity, blobUrl } = await createPlaceholderEntity(file, position, kind));
   }
@@ -182,7 +184,10 @@ export async function uploadAndPlaceAsset(file, position, existingEntity) {
     originalFilename: file.name,
     // Stashed so the Retry button on a failed upload can re-invoke this
     // function without the user having to re-drop the file.
-    file
+    file,
+    // Stashed so a successful retry can revoke the original blob URL —
+    // the retry path doesn't allocate a new one.
+    blobUrl
   });
 
   if (!auth.currentUser) {

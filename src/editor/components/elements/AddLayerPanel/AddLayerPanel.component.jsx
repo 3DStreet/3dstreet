@@ -338,6 +338,11 @@ const AddLayerPanel = () => {
             camera: AFRAME.INSPECTOR.camera
           });
           uploadAndPlaceAsset(file, position);
+          if (e.dataTransfer.files.length > 1) {
+            STREET.notify.warningMessage(
+              `Only the first file was added. Drop one file at a time.`
+            );
+          }
         }
 
         if (dropPlaneEl.current) fadeOutDropPlane();

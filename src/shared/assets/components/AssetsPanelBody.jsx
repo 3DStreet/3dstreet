@@ -88,20 +88,18 @@ const AssetsPanelBody = ({
     const input = document.createElement('input');
     input.type = 'file';
     input.accept = FILE_PICKER_ACCEPT;
-    input.multiple = true;
     input.onchange = async (event) => {
-      const files = Array.from(event.target.files || []);
+      const file = event.target.files?.[0];
+      if (!file) return;
       const handler =
         onUpload ||
-        ((file) =>
-          sharedUploadAsset(file).then((res) => {
+        ((f) =>
+          sharedUploadAsset(f).then((res) => {
             if (!res.ok && res.error) {
               onNotification?.(res.error, 'error');
             }
           }));
-      for (const file of files) {
-        await handler(file);
-      }
+      await handler(file);
     };
     input.click();
   };
