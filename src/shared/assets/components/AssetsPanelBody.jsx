@@ -13,7 +13,8 @@ import {
   useAssets,
   AssetsContent,
   formatBytes,
-  useStorageUsage
+  useStorageUsage,
+  useCurrentUploadStore
 } from '@shared/assets';
 import { Loader } from '@shared/icons';
 import {
@@ -59,6 +60,7 @@ const AssetsPanelBody = ({
   const sentinelRef = useRef(null);
   const [filter, setFilter] = useState('all');
   const usage = useStorageUsage(isLoggedIn);
+  const isUploading = useCurrentUploadStore((s) => !!s.upload);
 
   useEffect(() => {
     const node = sentinelRef.current;
@@ -140,8 +142,14 @@ const AssetsPanelBody = ({
             type="button"
             className={styles.uploadButton}
             onClick={triggerUploadPicker}
+            disabled={isUploading}
+            title={
+              isUploading
+                ? 'An upload is already in progress'
+                : 'Upload an asset'
+            }
           >
-            Upload
+            {isUploading ? 'Uploading…' : 'Upload'}
           </button>
           <button
             type="button"

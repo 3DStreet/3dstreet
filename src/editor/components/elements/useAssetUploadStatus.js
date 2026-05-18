@@ -5,7 +5,7 @@ import useAssetUploadStore from '@/editor/state/assetUploadStore.js';
 export const STATUS_LABELS = {
   optimizing: { color: '#f4a01a', text: 'Optimizing GLB…' },
   uploading: { color: '#f4a01a', text: 'Uploading' },
-  uploaded: { color: '#2bb673', text: 'Uploaded to cloud' },
+  uploaded: { color: '#2bb673', text: 'Cloud asset' },
   failed: { color: '#e0473d', text: 'Upload failed' },
   local: { color: '#7f7f7f', text: 'Saved locally only' },
   local_error: { color: '#e0473d', text: "Local only — won't sync" },

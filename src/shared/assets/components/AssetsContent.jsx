@@ -9,11 +9,13 @@
  *   hook up their own IntersectionObserver against the enclosing scroll area.
  */
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import AssetsItem from './AssetsItem.jsx';
 import AssetsGrid from './AssetsGrid.jsx';
 import AssetsModal from './AssetsModal.jsx';
 import MeshDetailsModal from './MeshDetailsModal.jsx';
+import PendingUploadCard from './PendingUploadCard.jsx';
+import useCurrentUploadStore from '../state/currentUploadStore.js';
 import styles from './Assets.module.scss';
 
 const AssetsContent = ({
@@ -91,6 +93,21 @@ const AssetsContent = ({
 
   const defaultEmpty = <div className={styles.emptyState}>No assets yet</div>;
 
+  const hasPendingUpload = useCurrentUploadStore((s) => !!s.upload);
+  const awaitingAssetId = useCurrentUploadStore(
+    (s) => s.upload?.awaitingAssetId || null
+  );
+
+  // Round-trip: clear the pending card once the new asset actually shows up
+  // in the items list. The upload pipeline arms a timeout that surfaces an
+  // error if it never lands. Either way, the card stops looking stuck.
+  useEffect(() => {
+    if (!awaitingAssetId) return;
+    if (items.some((i) => i.id === awaitingAssetId)) {
+      useCurrentUploadStore.getState().clear();
+    }
+  }, [items, awaitingAssetId]);
+
   return (
     <>
       {isLoading ? (
@@ -111,11 +128,12 @@ const AssetsContent = ({
           onPageSizeChange={setPageSize}
           placeable={placeable}
         />
-      ) : items.length === 0 ? (
+      ) : items.length === 0 && !hasPendingUpload ? (
         (emptyState ?? defaultEmpty)
       ) : (
         <>
           <div className={gridClassName}>
+            {hasPendingUpload && <PendingUploadCard />}
             {items.map((item) => (
               <AssetsItem
                 key={item.id}

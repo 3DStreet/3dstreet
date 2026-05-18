@@ -20,6 +20,9 @@ export { default as assetsService } from './services/assetsService';
 export { default as useAssets } from './hooks/useAssets';
 export { default as useStorageUsage } from './hooks/useStorageUsage';
 
+// State
+export { default as useCurrentUploadStore } from './state/currentUploadStore';
+
 // Components
 export { default as Assets } from './components/Assets';
 export { default as AssetsSidebar } from './components/AssetsSidebar';

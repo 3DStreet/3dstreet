@@ -47,6 +47,13 @@
   &:hover {
     background: #8965ef;
   }
+
+  &:disabled,
+  &[disabled] {
+    background: #3a3147;
+    color: #9ca3af;
+    cursor: not-allowed;
+  }
 }
 
 .refreshButton {

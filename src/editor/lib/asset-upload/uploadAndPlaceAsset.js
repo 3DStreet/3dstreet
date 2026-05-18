@@ -19,6 +19,7 @@
 import { httpsCallable } from 'firebase/functions';
 import { auth, functions } from '@shared/services/firebase.js';
 import { assetsService, ASSET_TYPES, ASSET_CATEGORIES } from '@shared/assets';
+import useCurrentUploadStore from '@shared/assets/state/currentUploadStore.js';
 import {
   GLB_MAX_BYTES,
   IMAGE_MAX_BYTES,
@@ -154,6 +155,22 @@ export async function uploadAndPlaceAsset(file, position, existingEntity) {
     return { entity: null, assetId: null, kind: null };
   }
 
+  // Enforce one-at-a-time across all upload surfaces. The gallery's pending
+  // card is the single source of truth for "an upload is happening" — drops
+  // and Upload-button clicks are blocked until it clears.
+  const currentUploadStore = useCurrentUploadStore.getState();
+  if (currentUploadStore.isBusy()) {
+    notifyError(
+      'An upload is already in progress. Please wait for it to finish.'
+    );
+    return { entity: null, assetId: null, kind };
+  }
+  currentUploadStore.start({
+    filename: file.name,
+    sizeBytes: file.size,
+    kind
+  });
+
   // Create the placeholder *before* enforcing the upload size cap so the
   // user can still preview oversize files locally (e.g. raw photogrammetry
   // GLBs that exceed our 50 MB cloud cap). The cap is enforced below by
@@ -198,6 +215,7 @@ export async function uploadAndPlaceAsset(file, position, existingEntity) {
       reason: 'too_large',
       progress: 0
     });
+    currentUploadStore.clear();
     return { entity, assetId: null, kind };
   }
 
@@ -208,6 +226,7 @@ export async function uploadAndPlaceAsset(file, position, existingEntity) {
       progress: 0
     });
     notifyError('Sign in to save assets to the cloud.');
+    currentUploadStore.clear();
     return { entity, assetId: null, kind };
   }
 
@@ -234,6 +253,7 @@ export async function uploadAndPlaceAsset(file, position, existingEntity) {
         progress: 0
       });
     }
+    currentUploadStore.clear();
     return { entity, assetId: null, kind };
   }
 
@@ -241,9 +261,9 @@ export async function uploadAndPlaceAsset(file, position, existingEntity) {
   const onProgress = (e) => {
     const detail = e.detail || {};
     if (pendingAssetId && detail.assetId !== pendingAssetId) return;
-    setUpload(entityId, {
-      progress: Math.round(detail.progress || 0)
-    });
+    const pct = Math.round(detail.progress || 0);
+    setUpload(entityId, { progress: pct });
+    currentUploadStore.update({ progress: pct });
   };
   assetsService.events.addEventListener('uploadProgress', onProgress);
 
@@ -251,6 +271,7 @@ export async function uploadAndPlaceAsset(file, position, existingEntity) {
     let blobToUpload = file;
     if (kind === 'glb') {
       setUpload(entityId, { status: 'optimizing', progress: 0 });
+      currentUploadStore.update({ status: 'optimizing', progress: 0 });
       const { optimizeGlb } =
         await import('@shared/asset-upload/optimizeGlb.js');
       blobToUpload = await optimizeGlb(file);
@@ -267,9 +288,11 @@ export async function uploadAndPlaceAsset(file, position, existingEntity) {
         return { entity, assetId: null, kind };
       }
       setUpload(entityId, { sizeBytes: blobToUpload.size });
+      currentUploadStore.update({ sizeBytes: blobToUpload.size });
     }
 
     setUpload(entityId, { status: 'uploading', progress: 0 });
+    currentUploadStore.update({ status: 'uploading', progress: 0 });
     const assetType = kind === 'glb' ? ASSET_TYPES.MESH : ASSET_TYPES.IMAGE;
     const assetId = await assetsService.addAsset(
       blobToUpload,
@@ -344,6 +367,13 @@ export async function uploadAndPlaceAsset(file, position, existingEntity) {
     // Drop the in-flight slot — the hook now reads from the Firestore cache.
     clearUpload(entityId);
 
+    // Keep the gallery's pending card up until the new asset doc actually
+    // appears in the items list. AssetsContent watches items and clears on
+    // arrival; the timeout below is the safety net — if it never lands,
+    // that's an error.
+    currentUploadStore.awaitArrival(assetId);
+    armArrivalTimeout(assetId, kind);
+
     // Client-side thumbnail capture for GLBs. Fire-and-forget: errors are
     // logged but never block the success toast. The 'assetUpdated' event
     // from updateAsset will replace the gallery card placeholder with the
@@ -365,5 +395,27 @@ export async function uploadAndPlaceAsset(file, position, existingEntity) {
     return { entity, assetId: null, kind };
   } finally {
     assetsService.events.removeEventListener('uploadProgress', onProgress);
+    // Leaves the card up if we transitioned to 'finishing' (round-trip
+    // pending); error/early-return paths get cleaned up here. Per-entity
+    // sidebar/dot indicators retain their failed/local_error status.
+    currentUploadStore.clearIfNotAwaiting();
   }
+}
+
+// Safety net: if the asset doc never appears in the gallery after the upload
+// resolves, that's an error. Clear the stuck pending card.
+function armArrivalTimeout(assetId, kind) {
+  const ARRIVAL_TIMEOUT_MS = 15000;
+  setTimeout(() => {
+    const cur = useCurrentUploadStore.getState().upload;
+    if (cur && cur.awaitingAssetId === assetId) {
+      console.warn(
+        `[asset-upload] ${kind} ${assetId} uploaded but never appeared in gallery within ${ARRIVAL_TIMEOUT_MS}ms`
+      );
+      notifyError(
+        `Upload finished but the asset didn't appear in your gallery. Try refreshing.`
+      );
+      useCurrentUploadStore.getState().clear();
+    }
+  }, ARRIVAL_TIMEOUT_MS);
 }

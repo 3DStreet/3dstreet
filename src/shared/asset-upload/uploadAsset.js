@@ -11,6 +11,7 @@
 import { httpsCallable } from 'firebase/functions';
 import { auth, functions } from '@shared/services/firebase.js';
 import { assetsService, ASSET_TYPES, ASSET_CATEGORIES } from '@shared/assets';
+import useCurrentUploadStore from '@shared/assets/state/currentUploadStore.js';
 
 export const GLB_MAX_BYTES = 50 * 1000 * 1000;
 export const IMAGE_MAX_BYTES = 10 * 1000 * 1000;
@@ -57,6 +58,16 @@ export async function uploadAsset(file, { onStatus, onProgress } = {}) {
   const kind = getAssetKind(file);
   if (!kind) return { ok: false, error: `Unsupported file type: ${file.name}` };
 
+  // Enforce one-at-a-time across all upload surfaces (editor + generator).
+  const uploadStore = useCurrentUploadStore.getState();
+  if (uploadStore.isBusy()) {
+    return {
+      ok: false,
+      kind,
+      error: 'An upload is already in progress. Please wait for it to finish.'
+    };
+  }
+
   const sizeCap = kind === 'glb' ? GLB_MAX_BYTES : IMAGE_MAX_BYTES;
   if (file.size > sizeCap) {
     const limitMb = Math.round(sizeCap / 1000 / 1000);
@@ -73,33 +84,38 @@ export async function uploadAsset(file, { onStatus, onProgress } = {}) {
   }
   const userId = auth.currentUser.uid;
 
-  onStatus?.('validating');
-  const quota = await preflightQuota(file.size);
-  if (quota && quota.allowed === false && !quota.soft) {
-    const usedMb = ((quota.bytesUsed || 0) / 1000 / 1000).toFixed(1);
-    const limitMb = Math.round((quota.planLimit || 0) / 1000 / 1000);
-    return {
-      ok: false,
-      kind,
-      error:
-        quota.reason === 'over_limit'
-          ? `Storage full — using ${usedMb} / ${limitMb} MB.`
-          : 'Upload blocked.'
-    };
-  }
+  uploadStore.start({ filename: file.name, sizeBytes: file.size, kind });
 
   let pendingAssetId = null;
   const onProgressEvent = (e) => {
     const detail = e.detail || {};
     if (pendingAssetId && detail.assetId !== pendingAssetId) return;
-    onProgress?.(Math.round(detail.progress || 0));
+    const pct = Math.round(detail.progress || 0);
+    onProgress?.(pct);
+    uploadStore.update({ progress: pct });
   };
   assetsService.events.addEventListener('uploadProgress', onProgressEvent);
 
   try {
+    onStatus?.('validating');
+    const quota = await preflightQuota(file.size);
+    if (quota && quota.allowed === false && !quota.soft) {
+      const usedMb = ((quota.bytesUsed || 0) / 1000 / 1000).toFixed(1);
+      const limitMb = Math.round((quota.planLimit || 0) / 1000 / 1000);
+      return {
+        ok: false,
+        kind,
+        error:
+          quota.reason === 'over_limit'
+            ? `Storage full — using ${usedMb} / ${limitMb} MB.`
+            : 'Upload blocked.'
+      };
+    }
+
     let blobToUpload = file;
     if (kind === 'glb') {
       onStatus?.('optimizing');
+      uploadStore.update({ status: 'optimizing', progress: 0 });
       const { optimizeGlb } = await import('./optimizeGlb.js');
       blobToUpload = await optimizeGlb(file);
       if (blobToUpload.size > GLB_MAX_BYTES) {
@@ -109,9 +125,11 @@ export async function uploadAsset(file, { onStatus, onProgress } = {}) {
           error: `Optimized GLB still exceeds ${Math.round(GLB_MAX_BYTES / 1000 / 1000)} MB.`
         };
       }
+      uploadStore.update({ sizeBytes: blobToUpload.size });
     }
 
     onStatus?.('uploading');
+    uploadStore.update({ status: 'uploading', progress: 0 });
     const assetType = kind === 'glb' ? ASSET_TYPES.MESH : ASSET_TYPES.IMAGE;
     const assetId = await assetsService.addAsset(
       blobToUpload,
@@ -124,6 +142,7 @@ export async function uploadAsset(file, { onStatus, onProgress } = {}) {
 
     if (kind === 'glb') {
       onStatus?.('thumbnailing');
+      uploadStore.update({ status: 'thumbnailing', progress: 100 });
       // Fire-and-forget: thumbnail errors are non-fatal (the asset doc is
       // already written; missing thumbnail just leaves a placeholder card).
       const asset = await assetsService.getAsset(assetId, userId);
@@ -135,11 +154,36 @@ export async function uploadAsset(file, { onStatus, onProgress } = {}) {
       }
     }
 
+    // Card stays up until the asset actually lands in the gallery items
+    // list. AssetsContent clears it on arrival; the timeout below is the
+    // safety net — if the round-trip never lands, that's an error.
+    uploadStore.awaitArrival(assetId);
+    armArrivalTimeout(assetId, kind);
+
     return { ok: true, assetId, kind };
   } catch (err) {
     console.error('[asset-upload] failed', err);
     return { ok: false, kind, error: err.message || String(err) };
   } finally {
     assetsService.events.removeEventListener('uploadProgress', onProgressEvent);
+    // Leaves the card up if we transitioned to 'finishing' (round-trip
+    // pending); error/early-return paths get cleaned up here.
+    uploadStore.clearIfNotAwaiting();
   }
+}
+
+// Safety net: if the asset doc never appears in the gallery after the upload
+// resolves, something is wrong (Firestore lag, missed event, foreign-user
+// mismatch). Clear the stuck card and surface an error.
+function armArrivalTimeout(assetId, kind) {
+  const ARRIVAL_TIMEOUT_MS = 15000;
+  setTimeout(() => {
+    const cur = useCurrentUploadStore.getState().upload;
+    if (cur && cur.awaitingAssetId === assetId) {
+      console.warn(
+        `[asset-upload] ${kind} ${assetId} uploaded but never appeared in gallery within ${ARRIVAL_TIMEOUT_MS}ms`
+      );
+      useCurrentUploadStore.getState().clear();
+    }
+  }, ARRIVAL_TIMEOUT_MS);
 }
