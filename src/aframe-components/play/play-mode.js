@@ -340,7 +340,7 @@ AFRAME.registerSystem('play-mode', {
     if (edge(9)) this.togglePause();
     if (edge(8)) {
       // Match the toolbar Stop: route through the React store so any
-      // inspector-side hooks (e.g. cursor-teleport restoration) run.
+      // inspector-side hooks run.
       useStore.getState().setIsInspectorEnabled(true);
       // Reset edge state now since stop() won't be re-entered to do it.
       this._padPrev = {};

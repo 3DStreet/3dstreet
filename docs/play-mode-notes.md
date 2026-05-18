@@ -352,3 +352,28 @@ Each play mode introspects the scene for its required object type.
   the two frames into the same world orientation. Don't try to
   unify them — the chassis-frame convention comes from the upstream
   Rapier demo wheel layout and changing it breaks the literal port.
+
+## PARKED: full chassis teardown on every Stop→Play (flicker)
+
+Right now `play-mode.start` ends with `mode-manager.setMode('drive')`
+and `play-mode.stop` calls `setMode('editor')`. Drive-mode's `enter`
+hook spawns the chassis + activates Rapier + seeds segment colliders;
+its `exit` hook tears all of that down. So a Stop→Play cycle does a
+full rebuild — visible as a brief flicker / first-time-build look on
+the chassis.
+
+The right model (per discussion 2026-05-17): mode changes own
+setup/teardown; Play/Stop within drive mode should just pause/resume
+the simulation. Chassis stays alive across Stop→Play cycles. Only
+explicit mode changes (drive → editor, future drive → locomotion)
+trigger drive-mode `enter`/`exit`.
+
+Open design questions to settle before fixing:
+- When stopped (but still in drive mode), is the chassis visible?
+  Frozen in place, hidden, or restored to spawn?
+- Does the inspector treat the live chassis as a selectable entity
+  while stopped, or stay hidden from the scene-graph?
+- What invalidates drive-mode state — only removing the
+  `[drive-controls]` entity, or any edit to it?
+
+Don't tackle until the asset-system work lands.

@@ -149,11 +149,9 @@ function Toolbar() {
   };
 
   const handleStop = () => {
-    // setIsInspectorEnabled(true) already calls play-mode.stop() so
-    // play-mode subscribers (drive-mode, future traffic) tear down
-    // via the scene event. We deliberately don't re-enable
-    // cursor-teleport / look-controls / movement-controls — see
-    // play-mode-notes.md (two-click selection bug investigation).
+    // setIsInspectorEnabled(true) calls play-mode.stop(), which routes
+    // mode-manager.setMode('editor') so drive-mode/street-traffic tear
+    // down via their hooks/event subscriptions.
     setIsInspectorEnabled(true);
   };
 
