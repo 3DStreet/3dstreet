@@ -1321,9 +1321,20 @@ AFRAME.registerComponent('drive-mode', {
     // 'vehicles' and 'cyclists' catch parked cars / static cyclists on
     // non-playable streets. 'buildings' is the Tier-2 add — a car
     // driving through a wall is the highest-signal break in
-    // suspension of disbelief, so seed those too. Street furniture
-    // (poles/benches/trees) deferred until users actually complain.
-    const COLLIDABLE_CATEGORIES = ['vehicles', 'cyclists', 'buildings'];
+    // suspension of disbelief. 'fixtures' (benches, shelters, food
+    // carts, light poles) and 'dividers' (jersey barriers, bollards,
+    // planters, cones) are the Tier-3 add. Skipping 'plants' (tree
+    // canopy AABB feels unfair) and 'signs' (thin posts on most
+    // variants). Light-pole / cone tall+thin AABBs inside the
+    // included categories are an accepted minor cost — cheap to
+    // revisit when a user complains.
+    const COLLIDABLE_CATEGORIES = [
+      'vehicles',
+      'cyclists',
+      'buildings',
+      'fixtures',
+      'dividers'
+    ];
     const isVehicleMixin = (id) => {
       const mixin = document.getElementById(id);
       if (!mixin || mixin.tagName !== 'A-MIXIN') return false;
