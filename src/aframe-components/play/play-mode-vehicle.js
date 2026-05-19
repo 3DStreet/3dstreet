@@ -570,17 +570,97 @@ AFRAME.registerComponent('play-mode-vehicle', {
     window.addEventListener('keydown', this.onKeyDown);
     window.addEventListener('keyup', this.onKeyUp);
 
+    // Chase-cam user overrides. Multiplier on the computed distance/height
+    // (zoom) and a yaw offset (radians) applied around the car's heading.
+    // Reset on play-mode-reset and on any camera-mode cycle so each entry
+    // into chase starts clean.
+    this.chaseZoom = 1;
+    this.chaseYaw = 0;
+    this._chaseDragging = false;
+    this.onChaseWheel = (e) => {
+      if (this.data.cameraMode !== 'chase') return;
+      // deltaY > 0 = scroll down = zoom out.
+      const factor = Math.exp(e.deltaY * 0.001);
+      this.chaseZoom = THREE.MathUtils.clamp(this.chaseZoom * factor, 0.4, 4);
+      e.preventDefault();
+    };
+    this.onChasePointerDown = (e) => {
+      if (e.button !== 0) return;
+      if (this.data.cameraMode !== 'chase') return;
+      // Ignore drags that start on UI chrome (toolbar, modals) — only
+      // on the scene canvas should left-drag orbit the chase cam.
+      const canvas = this.el.sceneEl && this.el.sceneEl.canvas;
+      if (!canvas || e.target !== canvas) return;
+      this._chaseDragging = true;
+      this._chaseDragLastX = e.clientX;
+      // Pointer capture keeps mousemove flowing even if the pointer
+      // leaves the canvas during a drag.
+      if (canvas.setPointerCapture && e.pointerId !== undefined) {
+        try {
+          canvas.setPointerCapture(e.pointerId);
+          this._chasePointerId = e.pointerId;
+        } catch (_) {}
+      }
+      e.preventDefault();
+    };
+    this.onChasePointerMove = (e) => {
+      if (!this._chaseDragging) return;
+      const dx = e.clientX - this._chaseDragLastX;
+      this._chaseDragLastX = e.clientX;
+      // Drag right = camera orbits clockwise (yaw +). 0.005 rad/px.
+      this.chaseYaw += dx * 0.005;
+    };
+    this.onChasePointerUp = (e) => {
+      if (!this._chaseDragging) return;
+      this._chaseDragging = false;
+      const canvas = this.el.sceneEl && this.el.sceneEl.canvas;
+      if (
+        canvas &&
+        canvas.releasePointerCapture &&
+        this._chasePointerId !== undefined
+      ) {
+        try {
+          canvas.releasePointerCapture(this._chasePointerId);
+        } catch (_) {}
+        this._chasePointerId = undefined;
+      }
+    };
+    window.addEventListener('wheel', this.onChaseWheel, { passive: false });
+    window.addEventListener('pointerdown', this.onChasePointerDown);
+    window.addEventListener('pointermove', this.onChasePointerMove);
+    window.addEventListener('pointerup', this.onChasePointerUp);
+    window.addEventListener('pointercancel', this.onChasePointerUp);
+
     // Soft restart from the toolbar Reset button (or gamepad Y).
     // Snap chassis to spawn pose and zero velocities — same effect as
     // the R-key path in driveStep, but routed off a scene event so
     // multiple play subsystems (race-target, future traffic) can
     // respond to the same signal.
     this.onPlayModeReset = () => {
+      this.chaseZoom = 1;
+      this.chaseYaw = 0;
       if (!this.chassisBody) return;
       this.chassisBody.setTranslation(this.data.spawnPosition, true);
       this.chassisBody.setRotation(this.spawnQuat, true);
       this.chassisBody.setLinvel({ x: 0, y: 0, z: 0 }, true);
       this.chassisBody.setAngvel({ x: 0, y: 0, z: 0 }, true);
+      // Snap the visual to spawn immediately so anything reading
+      // chassis.object3D.getWorldPosition() between now and the next
+      // physics afterStep sync (e.g. race-target.tick) sees the spawn
+      // pose, not the stale finish-gate position. Otherwise the same
+      // tick can re-fire race-finish at simulationTime=0.
+      const obj = this.el.object3D;
+      obj.position.set(
+        this.data.spawnPosition.x,
+        this.data.spawnPosition.y,
+        this.data.spawnPosition.z
+      );
+      obj.quaternion.set(
+        this.spawnQuat.x,
+        this.spawnQuat.y,
+        this.spawnQuat.z,
+        this.spawnQuat.w
+      );
     };
     this.el.sceneEl.addEventListener('play-mode-reset', this.onPlayModeReset);
 
@@ -923,6 +1003,8 @@ AFRAME.registerComponent('play-mode-vehicle', {
     // Reset smoothing so the new mode snaps in cleanly instead of
     // lerping from the previous mode's stale position.
     this._cameraSmoothed = false;
+    this.chaseZoom = 1;
+    this.chaseYaw = 0;
     // setAttribute so other observers (PlayModeControls future state)
     // stay in sync.
     this.el.setAttribute('play-mode-vehicle', 'cameraMode', next);
@@ -974,14 +1056,29 @@ AFRAME.registerComponent('play-mode-vehicle', {
         // glued to the chassis. The momentum is asymmetric: the
         // position lags more (cinematic), the look target chases
         // faster (keeps the car centered).
-        const distance = Math.max(this.data.chassisSize.x * 2.5, 4);
-        const height = Math.max(this.data.chassisSize.y * 3, 2);
+        const distance =
+          Math.max(this.data.chassisSize.x * 3.2, 5.5) * this.chaseZoom;
+        const height =
+          Math.max(this.data.chassisSize.y * 4, 3) * this.chaseZoom;
+        // Orbit headingH around world-up by chaseYaw so user can swing
+        // the camera around the car. Yaw 0 = directly behind.
+        const yawCos = Math.cos(this.chaseYaw);
+        const yawSin = Math.sin(this.chaseYaw);
+        const ox = headingH.x * yawCos - headingH.z * yawSin;
+        const oz = headingH.x * yawSin + headingH.z * yawCos;
         camWorld.set(
-          carPos.x - headingH.x * distance,
+          carPos.x - ox * distance,
           carPos.y + height,
-          carPos.z - headingH.z * distance
+          carPos.z - oz * distance
         );
-        lookAt.copy(carPos);
+        // Lift look-target above the car so the horizon sits higher
+        // in frame (less downward tilt). Tied to chassis height so
+        // bigger vehicles get a proportionally higher look point.
+        lookAt.set(
+          carPos.x,
+          carPos.y + Math.max(this.data.chassisSize.y * 1.2, 1.2),
+          carPos.z
+        );
 
         const sCam =
           this._smoothedCamPos || (this._smoothedCamPos = new THREE.Vector3());
@@ -1056,6 +1153,11 @@ AFRAME.registerComponent('play-mode-vehicle', {
   remove: function () {
     window.removeEventListener('keydown', this.onKeyDown);
     window.removeEventListener('keyup', this.onKeyUp);
+    window.removeEventListener('wheel', this.onChaseWheel);
+    window.removeEventListener('pointerdown', this.onChasePointerDown);
+    window.removeEventListener('pointermove', this.onChasePointerMove);
+    window.removeEventListener('pointerup', this.onChasePointerUp);
+    window.removeEventListener('pointercancel', this.onChasePointerUp);
     if (this.onPlayModeReset) {
       this.el.sceneEl.removeEventListener(
         'play-mode-reset',

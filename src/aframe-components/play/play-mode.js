@@ -365,6 +365,18 @@ AFRAME.registerSystem('play-mode', {
       // Left stick X (axis 0). Standard mapping: -1 = left, +1 = right.
       const sx = pad.axes[0] || 0;
       pmv.input.steerAxis = Math.abs(sx) > 0.1 ? sx : 0;
+      // Right stick (axes 2/3) drives chase-cam orbit + zoom while in
+      // chase mode. Standard driving-game convention: rx = yaw,
+      // ry = zoom (push up = zoom in). Other camera modes ignore it.
+      if (pmv.data.cameraMode === 'chase') {
+        const rx = pad.axes[2] || 0;
+        const ry = pad.axes[3] || 0;
+        if (Math.abs(rx) > 0.15) pmv.chaseYaw += rx * 0.04;
+        if (Math.abs(ry) > 0.15) {
+          const factor = Math.exp(ry * 0.03);
+          pmv.chaseZoom = THREE.MathUtils.clamp(pmv.chaseZoom * factor, 0.4, 4);
+        }
+      }
     }
   },
 
