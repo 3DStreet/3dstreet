@@ -309,6 +309,16 @@ export async function uploadAndPlaceAsset(file, position, existingEntity) {
       throw new Error('Upload succeeded but no cloud URL returned');
     }
 
+    // On slow connections the GLB swap pops the model out (blob removed,
+    // cloud still downloading). Warm A-Frame/THREE.Cache via a hidden probe
+    // entity so the real entity's load is near-instant after the swap.
+    // Best-effort: bounded by a short timeout so a flaky probe never blocks
+    // the upload from finalizing. Images don't have this issue (they swap
+    // through the browser image cache quickly).
+    if (kind === 'glb') {
+      await preloadGltfWithTimeout(cloudUrl, 12000);
+    }
+
     // Swap the temp blob URL for the cloud URL and write persistent identity
     // attrs (data-asset-id, data-asset-owner-uid). These go through
     // entityupdate commands wrapped in a single MultiCommand so:
@@ -400,6 +410,54 @@ export async function uploadAndPlaceAsset(file, position, existingEntity) {
     // sidebar/dot indicators retain their failed/local_error status.
     currentUploadStore.clearIfNotAwaiting();
   }
+}
+
+/**
+ * Hidden probe entity that triggers A-Frame's gltf-model component, which
+ * loads via THREE.GLTFLoader and populates THREE.Cache. When the real entity
+ * subsequently sets its gltf-model to the same URL, parse is fast and the
+ * blob → cloud swap doesn't briefly render an empty entity.
+ *
+ * Best-effort: any error or timeout falls through and the caller proceeds
+ * with the swap anyway. The visible entity's own gltf-model error handling
+ * surfaces a real load failure.
+ */
+function preloadGltfWithTimeout(url, timeoutMs) {
+  return new Promise((resolve) => {
+    let done = false;
+    const finish = () => {
+      if (done) return;
+      done = true;
+      probe.removeEventListener('model-loaded', onLoaded);
+      probe.removeEventListener('model-error', onError);
+      if (probe.parentNode) probe.parentNode.removeChild(probe);
+      clearTimeout(timer);
+      resolve();
+    };
+    const onLoaded = () => finish();
+    const onError = (e) => {
+      console.warn('[asset-upload] cloud GLB preload failed', e?.detail);
+      finish();
+    };
+
+    const probe = document.createElement('a-entity');
+    probe.setAttribute('visible', 'false');
+    probe.setAttribute('position', '0 -1000000 0');
+    probe.setAttribute('data-ignore-raycaster', '');
+    probe.classList.add('hideFromSceneGraph');
+    probe.addEventListener('model-loaded', onLoaded);
+    probe.addEventListener('model-error', onError);
+
+    const timer = setTimeout(() => {
+      console.warn(
+        `[asset-upload] cloud GLB preload timed out after ${timeoutMs}ms — swapping anyway`
+      );
+      finish();
+    }, timeoutMs);
+
+    AFRAME.scenes[0].appendChild(probe);
+    probe.setAttribute('gltf-model', `url(${url})`);
+  });
 }
 
 // Safety net: if the asset doc never appears in the gallery after the upload
