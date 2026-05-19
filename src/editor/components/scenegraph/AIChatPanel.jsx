@@ -96,6 +96,9 @@ claude mcp add 3dstreet -- npx -y 3dstreet-mcp
 
 Then click **Reconnect** above. Once paired, the relay forwards Claude's tool calls to this tab. Toggle **Read-only** to block scene mutations. Source and docs: [github.com/3DStreet/3dstreet-mcp](https://github.com/3DStreet/3dstreet-mcp).`;
 
+const MCP_PAIR_SUCCESS_MARKDOWN =
+  '**MCP relay paired.** Tool calls from your MCP client are now wired through this tab. Return to **Claude** (or whichever MCP client you launched the relay from) to continue your workflow. Keep this tab open in the background.';
+
 // Helper component for the copy button
 const CopyButton = ({ jsonData, textContent }) => {
   const [copied, setCopied] = useState(false);
@@ -703,8 +706,14 @@ function AIChatPanel() {
   const { currentUser } = useAuthContext();
   const setModal = useStore((state) => state.setModal);
   const rightPanelTab = useStore((state) => state.rightPanelTab);
+  const setRightPanelTab = useStore((state) => state.setRightPanelTab);
 
   const modelRef = useRef(null);
+  // Set when the user explicitly opts into MCP (typed `/mcp` or arrived via
+  // the auto-pair URL). Used to gate the post-pair success message so users
+  // who never engaged with MCP don't see a "return to your MCP client"
+  // message they have no context for.
+  const awaitingPairRef = useRef(false);
 
   const mcp = useMCPClient({
     currentUser,
@@ -714,10 +723,87 @@ function AIChatPanel() {
     persistRetries: mcpVisible
   });
 
+  const postPairSuccess = () => {
+    setMessages((prev) => [
+      ...prev,
+      {
+        role: 'assistant',
+        content: MCP_PAIR_SUCCESS_MARKDOWN,
+        timestamp: new Date()
+      }
+    ]);
+  };
+
   // First successful pair "unlocks" the bar for the rest of the session.
+  // When the user explicitly engaged (`/mcp` or auto-pair URL) and the
+  // status transitions to 'connected', post a confirmation in the chat so
+  // they know to switch back to their MCP client to continue the workflow.
   useEffect(() => {
-    if (mcp.status === 'connected') setMcpVisible(true);
+    if (mcp.status !== 'connected') return;
+    setMcpVisible(true);
+    if (!awaitingPairRef.current) return;
+    awaitingPairRef.current = false;
+    postPairSuccess();
   }, [mcp.status]);
+
+  // Drop the pending-pair intent if retries stop (`mcpVisible` off → the
+  // hook idles) or the connection was kicked by another tab
+  // (`paired-elsewhere` doesn't auto-recover). Without this, a stale
+  // `awaitingPairRef = true` would survive forever and a much later
+  // reconnect — long after the user moved on — would surface a confusing
+  // "MCP relay paired" message. Unmount cleanup is split into its own
+  // mount-only effect so it doesn't fire on every status flip and race
+  // the success effect above.
+  useEffect(() => {
+    if (mcp.status === 'paired-elsewhere' || !mcpVisible) {
+      awaitingPairRef.current = false;
+    }
+  }, [mcp.status, mcpVisible]);
+
+  useEffect(() => {
+    return () => {
+      awaitingPairRef.current = false;
+    };
+  }, []);
+
+  // Auto-pair on `#mcp` (or `#mcp=PORT`) URL fragment. Equivalent to the
+  // user typing `/mcp` and clicking Reconnect, but skips the manual step
+  // entirely — the relay's startup banner prints this URL so the only
+  // pairing action is opening the link.
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const hash = window.location.hash || '';
+    if (!/^#mcp(?:=\d+)?$/.test(hash)) return;
+    setRightPanelTab('console');
+    setMcpVisible(true);
+    if (mcp.status === 'connected') {
+      // Already paired (panel remount, hot reload, etc). The transition
+      // effect won't fire because there's no status change, so emit the
+      // confirmation inline instead of leaving the user without feedback.
+      postPairSuccess();
+    } else {
+      awaitingPairRef.current = true;
+      // Idempotent: reconnect() no-ops if the hook's mount probe is
+      // already in flight (CONNECTING) or has already paired (OPEN).
+      // Calling it unconditionally also covers the case where the
+      // probe gave up in idle mode and we need a fresh attempt.
+      mcp.reconnect();
+    }
+    // Strip the hash so a refresh doesn't re-trigger and the URL bar isn't
+    // cluttered. `replaceState` keeps history clean (no stale forward entry).
+    try {
+      window.history.replaceState(
+        null,
+        '',
+        window.location.pathname + window.location.search
+      );
+    } catch {
+      // best-effort — older browsers without replaceState just keep the hash
+    }
+    // Mount-only: read the URL once at startup. Subsequent pairing should
+    // go through the normal `/mcp` command flow.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // Interleave Gemini chat messages with incoming MCP frames so a single
   // chronological feed shows both LLM channels. Both arrays already carry
@@ -1221,6 +1307,7 @@ function AIChatPanel() {
 
   const showMCPHelpMessage = (rawInput) => {
     setMcpVisible(true);
+    awaitingPairRef.current = true;
     if (mcp.status !== 'connected' && mcp.status !== 'connecting') {
       mcp.reconnect();
     }

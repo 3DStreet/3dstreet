@@ -98,7 +98,7 @@ Contact [kieran@3dstreet.org](mailto:kieran@3dstreet.org) for commercial licensi
 
 ### Experimental navigation controls (this branch)
 
-Work-in-progress overhaul of the editor camera controls. Enabled per-session by appending `?nav=experimental` to the URL (e.g. `http://localhost:3333/?nav=experimental`). Old controls remain the default.
+Work-in-progress overhaul of the editor camera controls. **Enabled by default on this branch.** To fall back to the legacy controls for a session, append `?nav=classic` to the URL (e.g. `http://localhost:3333/?nav=classic`).
 
 What's changed?
 
