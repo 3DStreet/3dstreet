@@ -23,6 +23,11 @@
  * scene events directly.
  */
 import useStore from '../../store.js';
+import { courseKey, recordFinish } from './bestTimes.js';
+
+// Collision penalty added to the final race time, in ms. One second
+// per collision matches the trackmania-style "shake-it-off" feel.
+const COLLISION_PENALTY_MS = 1000;
 
 AFRAME.registerSystem('play-mode', {
   init: function () {
@@ -47,6 +52,9 @@ AFRAME.registerSystem('play-mode', {
     // Edge-triggered gamepad button state. Index = button index in the
     // standard Gamepad mapping; value = pressed-last-tick boolean.
     this._padPrev = {};
+    // Collision count for the current run, reset on start/reset.
+    // Drives the +1s/collision penalty applied at race-finish.
+    this._collisions = 0;
   },
 
   formatSimTime: function (ms) {
@@ -61,10 +69,11 @@ AFRAME.registerSystem('play-mode', {
     // flash the toolbar pill red. The player keeps driving. A future
     // "strict" mode could auto-pause here instead.
     const { simulationTime, position } = e.detail || {};
+    this._collisions += 1;
     this.spawnCollisionMarker(position, simulationTime);
     const label = this.formatSimTime(simulationTime);
     if (window.STREET && STREET.notify) {
-      STREET.notify.errorMessage(`Collision at ${label}`);
+      STREET.notify.errorMessage(`Collision at ${label} (+1s)`);
     }
     useStore.setState({
       playOutcome: 'crash',
@@ -82,13 +91,34 @@ AFRAME.registerSystem('play-mode', {
 
   onRaceFinish: function (e) {
     const { simulationTime } = e.detail || {};
-    const label = this.formatSimTime(simulationTime);
-    if (window.STREET && STREET.notify) {
-      STREET.notify.infoMessage(`Finished in ${label}`);
-    }
+    const simMs = simulationTime || 0;
+    const collisions = this._collisions;
+    const finalMs = simMs + collisions * COLLISION_PENALTY_MS;
+    // sceneTitle is mirrored into the store; sceneId is canonically
+    // read from scene metadata (the store's sceneId field is not yet
+    // kept in sync — see store.js comment).
+    const { sceneTitle } = useStore.getState();
+    const sceneId =
+      window.STREET &&
+      STREET.utils &&
+      typeof STREET.utils.getCurrentSceneId === 'function'
+        ? STREET.utils.getCurrentSceneId()
+        : null;
+    const key = courseKey(sceneId, sceneTitle);
+    const { previousBest, isNewBest, deltaMs } = recordFinish(key, finalMs);
     useStore.setState({
       playOutcome: 'finish',
-      playOutcomeTimeMs: simulationTime
+      playOutcomeTimeMs: finalMs,
+      playFinish: {
+        finalMs,
+        simMs,
+        collisions,
+        previousBestMs: previousBest,
+        isNewBest,
+        deltaMs,
+        courseKey: key,
+        finishedAt: performance.now()
+      }
     });
     // Pause so the player can savor the moment + line up a snapshot.
     this.pause();
@@ -115,10 +145,12 @@ AFRAME.registerSystem('play-mode', {
     // wall-time display zeros when scene-timer's simulationTime zeros
     this.playStartedAt = performance.now();
     this.playStartedAt = performance.now();
+    this._collisions = 0;
     useStore.setState({
       isPlaying: true,
       playOutcome: null,
-      playOutcomeTimeMs: 0
+      playOutcomeTimeMs: 0,
+      playFinish: null
     });
     // Reset both clocks on the scene-timer at t=0. elapsedTime tracks
     // wall-clock; simulationTime is the passive counter that physics + traffic +
@@ -237,11 +269,13 @@ AFRAME.registerSystem('play-mode', {
     this.isPlaying = false;
     this.isPaused = false;
     this.playStartedAt = null;
+    this._collisions = 0;
     useStore.setState({
       isPlaying: false,
       isPlayPaused: false,
       playOutcome: null,
-      playOutcomeTimeMs: 0
+      playOutcomeTimeMs: 0,
+      playFinish: null
     });
     window.removeEventListener('keydown', this.onEscape);
     this.sceneEl.emit('timer-pause');
@@ -304,7 +338,12 @@ AFRAME.registerSystem('play-mode', {
       clearTimeout(this._crashFlashTimeout);
       this._crashFlashTimeout = null;
     }
-    useStore.setState({ playOutcome: null, playOutcomeTimeMs: 0 });
+    this._collisions = 0;
+    useStore.setState({
+      playOutcome: null,
+      playOutcomeTimeMs: 0,
+      playFinish: null
+    });
     this.sceneEl.emit('timer-start');
     this.sceneEl.emit('play-mode-reset', {}, false);
   },

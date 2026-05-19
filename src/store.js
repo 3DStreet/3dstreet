@@ -189,6 +189,18 @@ const useStore = create(
         //   'crash'   – a recent chassis collision (red, auto-clears)
         playOutcome: null,
         playOutcomeTimeMs: 0,
+        // Race-finish detail consumed by the end-of-race banner.
+        // playFinish: null | {
+        //   finalMs,            // sim time + collision penalty
+        //   simMs,              // raw simulationTime at finish
+        //   collisions,         // count for this run
+        //   previousBestMs,     // best before this run (null if first)
+        //   isNewBest,          // true if finalMs < previousBestMs
+        //   deltaMs,            // signed diff vs previous best (0 if first)
+        //   courseKey,          // sceneId::sceneTitle
+        //   finishedAt          // performance.now() snapshot
+        // }
+        playFinish: null,
         isInspectorEnabled: true,
         setIsInspectorEnabled: (newIsInspectorEnabled) => {
           if (newIsInspectorEnabled) {

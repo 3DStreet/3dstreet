@@ -20,6 +20,7 @@ import { ToolbarWrapper } from './scenegraph/ToolbarWrapper.jsx';
 import { ActionBar } from './elements/ActionBar';
 import { PrimaryToolbar } from './elements/PrimaryToolbar';
 import { PlayModeControls } from './elements/PlayModeControls';
+import { RaceFinishBanner } from './elements/RaceFinishBanner';
 import useStore from '@/store';
 import { AIChatProvider } from '../contexts/AIChatContext';
 import styles from './Main.module.scss';
@@ -73,6 +74,7 @@ export default function Main() {
     <div id="inspectorContainer">
       <ToolbarWrapper />
       {!isInspectorEnabled && <PlayModeControls />}
+      {!isInspectorEnabled && <RaceFinishBanner />}
       {isInspectorEnabled && (
         <AIChatProvider firebaseApp={app}>
           <div>
