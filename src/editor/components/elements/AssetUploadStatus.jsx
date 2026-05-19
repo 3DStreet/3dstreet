@@ -5,6 +5,7 @@ import useAssetUploadStatus, {
   REASON_TEXT
 } from './useAssetUploadStatus';
 import useAssetUploadStore from '@/editor/state/assetUploadStore.js';
+import useCurrentUploadStore from '@shared/assets/state/currentUploadStore.js';
 import { uploadAndPlaceAsset } from '@/editor/lib/asset-upload/uploadAndPlaceAsset.js';
 import { MeshDetailsModal, formatBytes } from '@shared/assets';
 
@@ -57,6 +58,24 @@ const AssetUploadStatus = ({ entity }) => {
         />
         <strong style={{ color: meta.color }}>{meta.text}</strong>
         {detail && <span style={{ opacity: 0.7 }}>· {detail}</span>}
+        {(state.status === 'uploading' || state.status === 'optimizing') && (
+          <button
+            type="button"
+            onClick={() => useCurrentUploadStore.getState().cancel()}
+            style={{
+              marginLeft: 'auto',
+              background: 'transparent',
+              border: '1px solid currentColor',
+              color: 'currentColor',
+              borderRadius: 3,
+              padding: '2px 6px',
+              fontSize: 11,
+              cursor: 'pointer'
+            }}
+          >
+            Cancel
+          </button>
+        )}
         {state.status === 'failed' && (
           <button
             type="button"

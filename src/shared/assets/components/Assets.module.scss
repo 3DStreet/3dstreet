@@ -209,6 +209,21 @@
   transition: width 0.15s ease;
 }
 
+.pendingCancelBtn {
+  background: transparent;
+  border: 1px solid rgba(137, 101, 239, 0.5);
+  color: #c4b5fd;
+  border-radius: 0.25rem;
+  padding: 0 0.3rem;
+  font-size: 0.6rem;
+  cursor: pointer;
+  line-height: 1.4;
+  &:hover {
+    border-color: #8965ef;
+    color: #e5e7eb;
+  }
+}
+
 /* Individual Gallery Item */
 .item {
   position: relative;

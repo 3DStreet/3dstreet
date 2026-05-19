@@ -170,6 +170,7 @@ export async function uploadAndPlaceAsset(file, position, existingEntity) {
     sizeBytes: file.size,
     kind
   });
+  const signal = currentUploadStore.getSignal();
 
   // Create the placeholder *before* enforcing the upload size cap so the
   // user can still preview oversize files locally (e.g. raw photogrammetry
@@ -275,6 +276,9 @@ export async function uploadAndPlaceAsset(file, position, existingEntity) {
       const { optimizeGlb } =
         await import('@shared/asset-upload/optimizeGlb.js');
       blobToUpload = await optimizeGlb(file);
+      if (signal?.aborted) {
+        throw new DOMException('Upload cancelled', 'AbortError');
+      }
       if (blobToUpload.size > GLB_MAX_BYTES) {
         notifyError(
           `Optimized GLB still exceeds ${Math.round(
@@ -299,7 +303,8 @@ export async function uploadAndPlaceAsset(file, position, existingEntity) {
       { originalFilename: file.name },
       assetType,
       ASSET_CATEGORIES.UPLOAD,
-      userId
+      userId,
+      { signal }
     );
     pendingAssetId = assetId;
 
@@ -399,6 +404,16 @@ export async function uploadAndPlaceAsset(file, position, existingEntity) {
     notifySuccess(`Uploaded ${file.name}`);
     return { entity, assetId, kind };
   } catch (err) {
+    if (err.name === 'AbortError') {
+      // User cancelled — remove the placeholder entity and clean up silently.
+      if (entity?.parentNode) {
+        AFRAME.INSPECTOR.execute('entityremove', entity);
+      }
+      if (blobUrl) URL.revokeObjectURL(blobUrl);
+      clearUpload(entityId);
+      // currentUploadStore already cleared by cancel()
+      return { entity: null, assetId: null, kind };
+    }
     console.error('[asset-upload] failed', err);
     notifyError(`Upload failed: ${err.message || err}`);
     setUpload(entityId, { status: 'failed' });

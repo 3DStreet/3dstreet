@@ -134,7 +134,8 @@ class AssetsServiceV2 {
     metadata = {},
     type = ASSET_TYPES.IMAGE,
     category = ASSET_CATEGORIES.AI_RENDER,
-    userId
+    userId,
+    { signal } = {}
   ) {
     if (!userId) {
       throw new Error('User ID is required to add assets');
@@ -182,8 +183,15 @@ class AssetsServiceV2 {
               detail: { assetId, progress }
             })
           );
-        }
+        },
+        signal
       );
+
+      // If the caller cancelled during the storage upload, bail before
+      // writing any Firestore doc.
+      if (signal?.aborted) {
+        throw new DOMException('Upload cancelled', 'AbortError');
+      }
 
       // Generate thumbnail if it's an image
       let thumbnailUrl = null;
@@ -333,7 +341,7 @@ class AssetsServiceV2 {
    * @param {Function} onProgress - Progress callback
    * @returns {Promise<string>} - Download URL
    */
-  async uploadToStorage(blob, storagePath, onProgress = null) {
+  async uploadToStorage(blob, storagePath, onProgress = null, signal = null) {
     const storageRef = ref(storage, storagePath);
 
     // Set metadata with cache control for browser caching
@@ -344,6 +352,12 @@ class AssetsServiceV2 {
 
     const uploadTask = uploadBytesResumable(storageRef, blob, metadata);
 
+    if (signal) {
+      signal.addEventListener('abort', () => uploadTask.cancel(), {
+        once: true
+      });
+    }
+
     return new Promise((resolve, reject) => {
       uploadTask.on(
         'state_changed',
@@ -353,8 +367,12 @@ class AssetsServiceV2 {
           if (onProgress) onProgress(progress);
         },
         (error) => {
-          console.error('Upload error:', error);
-          reject(error);
+          if (error.code === 'storage/canceled') {
+            reject(new DOMException('Upload cancelled', 'AbortError'));
+          } else {
+            console.error('Upload error:', error);
+            reject(error);
+          }
         },
         async () => {
           const downloadURL = await getDownloadURL(uploadTask.snapshot.ref);

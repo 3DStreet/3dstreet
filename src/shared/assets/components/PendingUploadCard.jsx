@@ -12,6 +12,8 @@ import { useCurrentUploadStore } from '@shared/assets';
 import { formatBytes } from '../utils.js';
 import styles from './Assets.module.scss';
 
+const CANCELLABLE_STATUSES = new Set(['validating', 'optimizing', 'uploading']);
+
 const STATUS_LABELS = {
   validating: 'Validating…',
   optimizing: 'Optimizing…',
@@ -22,6 +24,7 @@ const STATUS_LABELS = {
 
 const PendingUploadCard = () => {
   const upload = useCurrentUploadStore((s) => s.upload);
+  const cancel = useCurrentUploadStore((s) => s.cancel);
   if (!upload) return null;
 
   const label = STATUS_LABELS[upload.status] || 'Uploading…';
@@ -39,6 +42,15 @@ const PendingUploadCard = () => {
           <div className={styles.pendingSize}>
             {formatBytes(upload.sizeBytes)}
           </div>
+        )}
+        {CANCELLABLE_STATUSES.has(upload.status) && (
+          <button
+            type="button"
+            className={styles.pendingCancelBtn}
+            onClick={cancel}
+          >
+            Cancel
+          </button>
         )}
       </div>
       <div className={styles.pendingProgressTrack}>

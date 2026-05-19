@@ -85,6 +85,7 @@ export async function uploadAsset(file, { onStatus, onProgress } = {}) {
   const userId = auth.currentUser.uid;
 
   uploadStore.start({ filename: file.name, sizeBytes: file.size, kind });
+  const signal = uploadStore.getSignal();
 
   let pendingAssetId = null;
   const onProgressEvent = (e) => {
@@ -118,6 +119,9 @@ export async function uploadAsset(file, { onStatus, onProgress } = {}) {
       uploadStore.update({ status: 'optimizing', progress: 0 });
       const { optimizeGlb } = await import('./optimizeGlb.js');
       blobToUpload = await optimizeGlb(file);
+      if (signal?.aborted) {
+        throw new DOMException('Upload cancelled', 'AbortError');
+      }
       if (blobToUpload.size > GLB_MAX_BYTES) {
         return {
           ok: false,
@@ -136,7 +140,8 @@ export async function uploadAsset(file, { onStatus, onProgress } = {}) {
       { originalFilename: file.name },
       assetType,
       ASSET_CATEGORIES.UPLOAD,
-      userId
+      userId,
+      { signal }
     );
     pendingAssetId = assetId;
 
@@ -162,6 +167,9 @@ export async function uploadAsset(file, { onStatus, onProgress } = {}) {
 
     return { ok: true, assetId, kind };
   } catch (err) {
+    if (err.name === 'AbortError') {
+      return { ok: false, kind, cancelled: true };
+    }
     console.error('[asset-upload] failed', err);
     return { ok: false, kind, error: err.message || String(err) };
   } finally {

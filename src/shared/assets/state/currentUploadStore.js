@@ -21,6 +21,10 @@ let lastAddedAssetId = null;
 let lastAddedAt = 0;
 const ARRIVAL_GRACE_MS = 5000;
 
+// AbortController for the active upload. Stored outside Zustand (not
+// serializable). Created in start(), aborted in cancel(), nulled in clear().
+let _abortController = null;
+
 const useCurrentUploadStore = create((set, get) => ({
   // { status, progress, filename, sizeBytes, kind, awaitingAssetId } | null
   // status:
@@ -33,6 +37,7 @@ const useCurrentUploadStore = create((set, get) => ({
   upload: null,
 
   start: ({ filename, sizeBytes, kind }) => {
+    _abortController = new AbortController();
     set({
       upload: {
         status: 'validating',
@@ -44,6 +49,18 @@ const useCurrentUploadStore = create((set, get) => ({
       }
     });
   },
+
+  /** Abort the in-flight upload and dismiss the pending card. */
+  cancel: () => {
+    if (_abortController) {
+      _abortController.abort();
+      _abortController = null;
+    }
+    set({ upload: null });
+  },
+
+  /** Returns the AbortSignal for the current upload, or null if not started. */
+  getSignal: () => _abortController?.signal ?? null,
 
   update: (partial) => {
     const cur = get().upload;
@@ -79,7 +96,10 @@ const useCurrentUploadStore = create((set, get) => ({
     });
   },
 
-  clear: () => set({ upload: null }),
+  clear: () => {
+    _abortController = null;
+    set({ upload: null });
+  },
 
   /**
    * Used by the upload pipeline's `finally` block — leaves the card up when
